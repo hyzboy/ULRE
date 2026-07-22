@@ -1,5 +1,6 @@
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/core/Entity.h>
+#include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialInstance.h>
@@ -45,6 +46,17 @@ namespace hgl::ecs
             return nullptr;
 
         return primitive->GetMaterialInstance();
+    }
+
+    hgl::graph::DescriptorBindingSet* PrimitiveComponent::GetDescriptorBindingSet() const
+    {
+        if (descriptorBindingSet)
+            return descriptorBindingSet;
+
+        if (!primitive)
+            return nullptr;
+
+        return primitive->GetDescriptorBindingSet();
     }
 
     hgl::graph::Material* PrimitiveComponent::GetMaterial() const
@@ -118,9 +130,9 @@ namespace hgl::ecs
         // Just clear our references
         primitive = nullptr;
         overrideMaterial = nullptr;
+        descriptorBindingSet = nullptr;
         overridePipeline = nullptr;
     }
 }//namespace hgl::ecs
-
 
 

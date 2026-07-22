@@ -13,6 +13,7 @@ namespace hgl
         class Primitive;
         class Material;
         class MaterialInstance;
+        class DescriptorBindingSet;
         class Pipeline;
     }
 
@@ -55,6 +56,7 @@ namespace hgl::ecs
         // For material batching support
         virtual hgl::graph::Primitive* GetPrimitive() const = 0;
         virtual hgl::graph::MaterialInstance* GetMaterialInstance() const = 0;
+        virtual hgl::graph::DescriptorBindingSet* GetDescriptorBindingSet() const = 0;
         virtual hgl::graph::Material* GetMaterial() const = 0;
         virtual hgl::graph::Pipeline* GetPipeline() const = 0;
 

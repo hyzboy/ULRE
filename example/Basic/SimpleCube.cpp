@@ -14,6 +14,10 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/DescriptorBindingSet.h>
+#include<hgl/graph/SSBOSlotAllocator.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
 
 #include<hgl/color/Color.h>
 
@@ -24,10 +28,12 @@
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
 #include<memory>
+#include<cstring>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -53,11 +59,13 @@ private:
     Entity *      camera_entity  =nullptr;
 
     Material *          material        = nullptr;
-    MaterialInstance *  mi              = nullptr;
+    DescriptorBindingSet *binding_set   = nullptr;
     Pipeline *          pipeline        = nullptr;
 
     Geometry *          geometry        = nullptr;
     Primitive *         primitive       = nullptr;
+    graph::DeviceBuffer *mi_ssbo        = nullptr;
+    SSBOSlotAllocator    slot_allocator;
 
 private:
 
@@ -80,13 +88,6 @@ private:
         material = material_manager->CreateMaterial(mtl::MaterialPreset::Gizmo3D, &cfg);
 
         if(!material)
-            return false;
-
-        Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-
-        mi = material_manager->CreateMaterialInstance(material, (VIL *)nullptr, &color);
-
-        if(!mi)
             return false;
 
         auto* render_target = render_context->GetCurrentRenderTarget();
@@ -148,10 +149,96 @@ private:
         if (!primitive_manager)
             return false;
 
-        primitive = primitive_manager->CreatePrimitive(geometry, mi, pipeline);
+        primitive = primitive_manager->CreatePrimitive(geometry, binding_set, pipeline);
         return primitive != nullptr;
     }
 
+    bool InitMISSBO()
+    {
+        if (!material)
+            return false;
+
+        if (!ecs_context)
+            ecs_context = GetECSContext();
+        if (!ecs_context)
+            return false;
+
+        const uint32_t mi_data_bytes = material->GetMIDataBytes();
+        if (mi_data_bytes == 0)
+            return true;
+        if (mi_data_bytes != sizeof(Color4f))
+            return false;
+
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
+        auto* buffer_manager = graphics_context->GetBufferManager();
+        auto* domain_manager = graphics_context->GetResourceDomainManager();
+        if (!buffer_manager || !domain_manager)
+            return false;
+
+        auto descriptor_system = ecs_context->GetSystem<RenderDescriptorBindingSystem>();
+        if (!descriptor_system)
+            return false;
+
+        if (!slot_allocator.Init(1))
+            return false;
+
+        uint32_t slot_index = 0;
+        if (!slot_allocator.Allocate(slot_index))
+            return false;
+
+        const uint32_t mi_count = 1;
+        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * mi_data_bytes;
+
+        mi_ssbo = buffer_manager->CreateSSBO("SimpleCube:PBRSurface:MIData", ssbo_size, nullptr, SharingMode::Exclusive);
+        if (!mi_ssbo)
+            return false;
+
+        auto *gpu_buf = mi_ssbo->GetGPUBuffer();
+        if (!gpu_buf)
+            return false;
+
+        uint8_t *dst = static_cast<uint8_t *>(gpu_buf->Map(0, ssbo_size));
+        if (!dst)
+            return false;
+
+        memset(dst, 0, static_cast<size_t>(ssbo_size));
+
+        const Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
+        memcpy(dst + static_cast<VkDeviceSize>(slot_index) * mi_data_bytes, &color, mi_data_bytes);
+
+        gpu_buf->Unmap();
+
+        binding_set = new DescriptorBindingSet(material, material->GetDefaultVIL());
+        if (!binding_set)
+            return false;
+
+        bool has_struct_binding = false;
+        for (const auto &req : material->GetBindingContract().requirements)
+        {
+            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                continue;
+
+            has_struct_binding = true;
+            if (!descriptor_system->RegisterMaterialStructLayout(req.ssbo_type, req.ssbo_id, mi_data_bytes))
+                return false;
+
+            const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
+            if (!domain_manager->RegisterBuffer(addr, mi_ssbo, mi_count))
+                return false;
+
+            if (!binding_set->SetSSBOBinding(req.ssbo_type, req.ssbo_id, slot_index))
+                return false;
+        }
+
+        return has_struct_binding;
+    }
     bool InitECS()
     {
         ecs_context = GetECSContext();
@@ -168,6 +255,7 @@ private:
 
         auto primitive_comp = cube_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         primitive_comp->SetPrimitive(primitive);
+        primitive_comp->SetDescriptorBindingSet(binding_set);
         primitive_comp->SetVisible(true);
 
         return true;
@@ -199,6 +287,8 @@ private:
 public:
     ~TestApp()
     {
+        delete binding_set;
+        SAFE_CLEAR(mi_ssbo)
         SAFE_CLEAR(primitive)
         SAFE_CLEAR(geometry)
     }
@@ -211,6 +301,9 @@ public:
             return false;
 
         if(!CreateCubeGeometry())
+            return false;
+
+        if(!InitMISSBO())
             return false;
 
         if(!InitPrimitive())

@@ -46,24 +46,6 @@ namespace hgl::ecs
     #endif
     }
 
-    bool RenderDescriptorBindingSystem::GetCompatibilityId0FallbackStats(uint32_t &current_frame_hits,
-                                                                          uint32_t &last_summary_hits,
-                                                                          uint32_t &last_summary_frame) const
-    {
-        current_frame_hits = 0;
-        last_summary_hits = 0;
-        last_summary_frame = std::numeric_limits<uint32_t>::max();
-
-    #if !ULRE_ECS_DEBUG_API
-        return false;
-    #else
-        current_frame_hits = compat_id0_fallback_hits_current_frame;
-        last_summary_hits = compat_id0_fallback_hits_last_summary;
-        last_summary_frame = compat_id0_fallback_summary_frame;
-        return true;
-    #endif
-    }
-
     bool RenderDescriptorBindingSystem::GetMaterialBindingKeys(const graph::Material *material,
                                                                std::vector<std::string> &out_keys) const
     {

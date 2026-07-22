@@ -9,17 +9,20 @@
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
+#include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/mtl/MaterialRecipe.h>
+#include<hgl/mtl/MaterializationPools.h>
 #include<hgl/object/ObjectTracker.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
+#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/graph/mesh/Primitive.h>
-#include<hgl/ecs/support/MaterialInstanceAssignmentBuffer.h>
 #include<hgl/log/Log.h>
 #include<algorithm>
 #include<array>
@@ -55,16 +58,6 @@ namespace hgl::ecs
             indexed_draw_cmd->firstInstance = batch->first_instance;
         }
 
-        bool HasMaterialInstanceSemantic(const graph::mtl::BindingContract &contract)
-        {
-            for (const auto &req : contract.requirements)
-            {
-                if (req.semantic == graph::mtl::DescriptorSemantic::MaterialInstance)
-                    return true;
-            }
-
-            return false;
-        }
     }
 
     bool PrimitiveBatchPipeline::PrepareFrame(ECSContext* ctx)
@@ -464,7 +457,6 @@ namespace hgl::ecs
     {
         SortBatchItems(batch);
         BuildBatches(batch, 0);
-        UpdateMaterialInstanceBuffer(batch);
         EnsureBatchIndexRows(batch);
         WriteBatchIndexRows(batch);
     }
@@ -513,32 +505,6 @@ namespace hgl::ecs
         batch.static_count = static_cast<uint32_t>(static_items.size());
     }
 
-    void PrimitiveBatchPipeline::UpdateMaterialInstanceBuffer(MaterialBatch& batch)
-    {
-        if (!batch.key.material || !batch.key.material->hasMI())
-            return;
-
-        bool has_material_instance_semantic = false;
-        const auto &contract = batch.key.material->GetBindingContract();
-        has_material_instance_semantic = HasMaterialInstanceSemantic(contract);
-
-        if (!has_material_instance_semantic)
-            return;
-
-        if (!batch.mi_buffer && !batch.items.empty())
-            batch.mi_buffer = new MaterialInstanceAssignmentBuffer(batch.buffer_manager, batch.key.material);
-
-        if (batch.mi_buffer && !batch.items.empty())
-        {
-            // DataIndexID = 批内 MaterialInstance 索引。
-            // 纹理行表在 bindless 路径下写为“每实例 TextureSlot->handle 平铺表”。
-            batch.mi_buffer->WriteItems(batch.items,
-                                        nullptr,
-                                        nullptr,
-                                        batch.has_texture_slot_handles ? &batch.texture_slot_handles : nullptr);
-        }
-    }
-
     void PrimitiveBatchPipeline::EnsureBatchIndexRows(MaterialBatch& batch)
     {
         if (!batch.buffer_manager || batch.items.empty())
@@ -570,6 +536,32 @@ namespace hgl::ecs
                     "ECS:Batch:L2WIndexRows", byte_size, nullptr, graph::SharingMode::Exclusive);
             }
         }
+
+        // Per-batch DataIndex rows SSBO — shader consumes this as a flat uint[] by instance index.
+        if (batch.key.material && batch.key.material->hasMI())
+        {
+            if (!batch.mi_data_index_rows_buffer || batch.mi_data_index_rows_capacity < item_count)
+            {
+                batch.mi_data_index_rows_capacity = new_node_count;
+
+                if (batch.mi_data_index_rows_buffer)
+                {
+                    if (batch.buffer_manager)
+                        batch.buffer_manager->Release(batch.mi_data_index_rows_buffer);
+                    else
+                        delete batch.mi_data_index_rows_buffer;
+                    batch.mi_data_index_rows_buffer = nullptr;
+                }
+
+                if (batch.buffer_manager)
+                {
+                    const VkDeviceSize byte_size = static_cast<VkDeviceSize>(batch.mi_data_index_rows_capacity) * sizeof(uint32_t);
+                    batch.mi_data_index_rows_buffer = batch.buffer_manager->CreateSSBO(
+                        "ECS:Batch:MIDataIndexRows", byte_size, nullptr, graph::SharingMode::Exclusive);
+                }
+            }
+        }
+
     }
 
     void PrimitiveBatchPipeline::WriteBatchIndexRows(MaterialBatch& batch)
@@ -599,8 +591,53 @@ namespace hgl::ecs
                 }
             }
         }
-    }
 
+        // Write per-batch DataIndex rows SSBO in draw order.
+        // mtl_data_index_rows is declared as uint values[] in shader, so this must be tightly packed uint.
+        if (batch.mi_data_index_rows_buffer)
+        {
+            auto *mi_gpu = batch.mi_data_index_rows_buffer->GetGPUBuffer();
+            if (mi_gpu)
+            {
+                graph::mtl::SSBOType primary_ssbo_type = graph::mtl::SSBOType::PBRSurface;
+                if (batch.key.material)
+                {
+                    for (const auto &req : batch.key.material->GetBindingContract().requirements)
+                    {
+                        if (req.semantic == graph::mtl::DescriptorSemantic::MaterialInstance)
+                        {
+                            primary_ssbo_type = req.ssbo_type;
+                            break;
+                        }
+                    }
+                }
+
+                uint32_t *row_ptr = static_cast<uint32_t *>(
+                    mi_gpu->Map(0, static_cast<VkDeviceSize>(item_count) * sizeof(uint32_t)));
+                if (row_ptr)
+                {
+                    for (size_t i = 0; i < item_count; ++i)
+                    {
+                        RenderItem *item = batch.items[i];
+                        uint32_t mi_index = 0;
+                        if (item)
+                        {
+                            if (auto *binding_set = item->GetDescriptorBindingSet())
+                            {
+                                if (binding_set->HasSSBOBinding(primary_ssbo_type))
+                                    mi_index = binding_set->GetSlotIndex(primary_ssbo_type);
+                            }
+                            else if (auto *mi = item->GetMaterialInstance())
+                                mi_index = static_cast<uint32_t>(mi->GetMIID());
+                        }
+                        row_ptr[i] = mi_index;
+                    }
+                    mi_gpu->Unmap();
+                }
+            }
+        }
+
+    }
     void PrimitiveBatchPipeline::BuildMaterialBatches()
     {
         if (!world)

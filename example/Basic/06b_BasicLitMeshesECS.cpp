@@ -10,6 +10,8 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
 
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
@@ -25,6 +27,7 @@
 
 #include<vector>
 #include<memory>
+#include<cstring>
 #include<string>
 
 using namespace hgl;
@@ -64,6 +67,7 @@ private:
 
     Material* material = nullptr;
     MaterialInstance* material_instance = nullptr;
+    graph::DeviceBuffer* mi_ssbo = nullptr;
     Pipeline* pipeline = nullptr;
     VertexDataManager* mesh_vdm = nullptr;
 
@@ -182,6 +186,72 @@ private:
         if (!rdbs->RegisterMaterialTexture(material, "TextureRoughness", roughness_texture))
             return false;
 
+        return true;
+    }
+
+    bool InitMISSBO()
+    {
+        if (!ecs_context || !material || !material_instance)
+            return false;
+
+        const uint32_t mi_data_bytes = material->GetMIDataBytes();
+        if (mi_data_bytes == 0)
+            return true;
+
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
+        auto* buffer_manager = graphics_context->GetBufferManager();
+        auto* domain_manager = graphics_context->GetResourceDomainManager();
+        if (!buffer_manager || !domain_manager)
+            return false;
+
+        auto rdbs = ecs_context->GetSystem<RenderDescriptorBindingSystem>();
+        if (!rdbs)
+            return false;
+
+        const int mi_id = material_instance->GetMIID();
+        if (mi_id < 0)
+            return false;
+
+        const uint32_t mi_count = static_cast<uint32_t>(mi_id + 1);
+        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * mi_data_bytes;
+
+        mi_ssbo = buffer_manager->CreateSSBO("06b:PBRSurface:MIData", ssbo_size, nullptr, SharingMode::Exclusive);
+        if (!mi_ssbo)
+            return false;
+
+        auto* gpu_buf = mi_ssbo->GetGPUBuffer();
+        if (!gpu_buf)
+            return false;
+
+        uint8_t* dst = static_cast<uint8_t*>(gpu_buf->Map(0, ssbo_size));
+        if (!dst)
+            return false;
+
+        memset(dst, 0, static_cast<size_t>(ssbo_size));
+
+        void* src = material->GetMIData(mi_id);
+        if (src)
+            memcpy(dst + static_cast<VkDeviceSize>(mi_id) * mi_data_bytes, src, mi_data_bytes);
+
+        gpu_buf->Unmap();
+
+        const uint32_t ssbo_id = graph::mtl::MakeRecipeSSBOId(0);
+        if (!rdbs->RegisterMaterialStructLayout(graph::mtl::SSBOType::PBRSurface, ssbo_id, mi_data_bytes))
+            return false;
+
+        const graph::mtl::SSBOAddress addr{graph::mtl::SSBOType::PBRSurface, ssbo_id, 0};
+        if (!domain_manager->RegisterBuffer(addr, mi_ssbo, mi_count))
+            return false;
+
+        std::cout << "[06b::InitMISSBO] registered PBRSurface SSBO: count=" << mi_count
+                  << ", stride=" << mi_data_bytes << ", ssbo_id=" << ssbo_id << std::endl;
         return true;
     }
 
@@ -507,6 +577,9 @@ private:
             return false;
 
         if (!InitBindlessTextureResources())
+            return false;
+
+        if (!InitMISSBO())
             return false;
 
         if (!InitVDM())

@@ -11,6 +11,8 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
+#include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include"GizmoResource.h"
 
@@ -40,6 +42,7 @@ namespace hgl::graph
             Material *          mtl;
             MaterialInstance *  mi[size_t(GizmoColor::RANGE_SIZE)];
             Pipeline *          pipeline;
+            DeviceBuffer *      mi_ssbo;
             VertexDataManager * vdm;
 
             GeometryCreater *  prim_creater;
@@ -117,6 +120,88 @@ namespace hgl::graph
             return(true);
         }
 
+        bool InitMISSBO(GizmoResource *gr)
+        {
+            if (!gr || !gr->mtl)
+                return false;
+
+            if (!graphics_context)
+                return false;
+
+            auto *buffer_manager = graphics_context->GetBufferManager();
+            auto *domain_manager = graphics_context->GetResourceDomainManager();
+            if (!buffer_manager || !domain_manager)
+                return false;
+
+            const uint32_t mi_data_bytes = gr->mtl->GetMIDataBytes();
+            if (mi_data_bytes == 0)
+                return true;
+
+            int max_mi_id = -1;
+            for (size_t i = 0; i < size_t(GizmoColor::RANGE_SIZE); ++i)
+            {
+                if (!gr->mi[i])
+                    continue;
+
+                const int mi_id = gr->mi[i]->GetMIID();
+                if (mi_id >= 0 && mi_id > max_mi_id)
+                    max_mi_id = mi_id;
+            }
+
+            if (max_mi_id < 0)
+                return false;
+
+            const uint32_t mi_count = static_cast<uint32_t>(max_mi_id + 1);
+            const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * mi_data_bytes;
+
+            gr->mi_ssbo = buffer_manager->CreateSSBO("GizmoResource:PureColor3D:MIData", ssbo_size, nullptr, SharingMode::Exclusive);
+            if (!gr->mi_ssbo)
+                return false;
+
+            auto *gpu_buf = gr->mi_ssbo->GetGPUBuffer();
+            if (!gpu_buf)
+                return false;
+
+            auto *dst = static_cast<uint8_t *>(gpu_buf->Map(0, ssbo_size));
+            if (!dst)
+                return false;
+
+            memset(dst, 0, static_cast<size_t>(ssbo_size));
+
+            for (size_t i = 0; i < size_t(GizmoColor::RANGE_SIZE); ++i)
+            {
+                auto *mi = gr->mi[i];
+                if (!mi)
+                    continue;
+
+                const int mi_id = mi->GetMIID();
+                if (mi_id < 0)
+                    continue;
+
+                void *src = gr->mtl->GetMIData(mi_id);
+                if (!src)
+                    continue;
+
+                memcpy(dst + static_cast<VkDeviceSize>(mi_id) * mi_data_bytes, src, mi_data_bytes);
+            }
+
+            gpu_buf->Unmap();
+
+            bool has_struct_binding = false;
+            for (const auto &req : gr->mtl->GetBindingContract().requirements)
+            {
+                if (req.semantic != mtl::DescriptorSemantic::MaterialInstance)
+                    continue;
+
+                has_struct_binding = true;
+                const mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
+                if (!domain_manager->RegisterBuffer(addr, gr->mi_ssbo, mi_count))
+                    return false;
+            }
+
+            return has_struct_binding;
+        }
+
         bool InitGizmoResource3D()
         {
             if(!graphics_context)
@@ -151,6 +236,9 @@ namespace hgl::graph
             }
 
             if(!InitMI(&gizmo_triangle))
+                return(false);
+
+            if(!InitMISSBO(&gizmo_triangle))
                 return(false);
 
             {
@@ -277,6 +365,7 @@ namespace hgl::graph
 
         SAFE_CLEAR(gizmo_triangle.prim_creater);
         SAFE_CLEAR(gizmo_triangle.vdm);
+        SAFE_CLEAR(gizmo_triangle.mi_ssbo);
 
         gizmo_triangle.pipeline = nullptr;
         gizmo_triangle.mtl = nullptr;

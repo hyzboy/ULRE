@@ -9,6 +9,8 @@
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/TextureManager.h>
+#include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/core/GraphicsContext.h>
@@ -31,6 +33,7 @@
 #include<hgl/ecs/systems/tick/InputSystem.h>
 
 #include <memory>
+#include <cstring>
 #include <numbers>
 
 using namespace hgl;
@@ -71,6 +74,17 @@ namespace
                 (void *)tex->GetVulkanImageView(),
                 (uint32_t)tex->GetImageLayout());
     }
+
+    bool LogStageFail(const char *stage, const char *reason)
+    {
+        GLogError("[RenderToTexture][%s] %s", stage, reason);
+        return false;
+    }
+
+    void LogStage(const char *stage, const char *message)
+    {
+        GLogInfo("[RenderToTexture][%s] %s", stage, message);
+    }
 }
 
 class OffscreenPass
@@ -85,7 +99,94 @@ private:
     Pipeline *pipeline = nullptr;
     Geometry *geometry = nullptr;
     Primitive *primitive = nullptr;
+    graph::DeviceBuffer *mi_ssbo = nullptr;
 
+
+    bool InitMISSBO(ECSContext *world)
+    {
+        GLogInfo("[RenderToTexture][OffscreenPass::InitMISSBO] begin world=%p mtl=%p mi=%p",
+                 (void *)world, (void *)mtl, (void *)mi);
+        if (!world || !mtl || !mi)
+            return LogStageFail("OffscreenPass::InitMISSBO", "invalid input pointers");
+
+        auto *gc = world->GetGraphicsContext();
+        if (!gc && render_context)
+            gc = render_context->GetGraphicsContext();
+
+        if (!gc)
+        {
+            GLogError("[RenderToTexture][OffscreenPass::InitMISSBO] world_gc=%p render_context=%p rc_gc=%p",
+                      (void *)(world ? world->GetGraphicsContext() : nullptr),
+                      (void *)render_context,
+                      (void *)(render_context ? render_context->GetGraphicsContext() : nullptr));
+        }
+        if (!gc)
+            return LogStageFail("OffscreenPass::InitMISSBO", "graphics context is null");
+
+        auto *buffer_manager = gc->GetBufferManager();
+        auto *domain_manager = gc->GetResourceDomainManager();
+        if (!buffer_manager || !domain_manager)
+            return LogStageFail("OffscreenPass::InitMISSBO", "buffer/domain manager is null");
+
+        auto rdbs = world->GetSystem<RenderDescriptorBindingSystem>();
+        if (!rdbs)
+            return LogStageFail("OffscreenPass::InitMISSBO", "RenderDescriptorBindingSystem missing");
+
+        const uint32_t mi_data_bytes = mtl->GetMIDataBytes();
+        if (mi_data_bytes == 0)
+        {
+            LogStage("OffscreenPass::InitMISSBO", "mi_data_bytes is zero, skip SSBO");
+            return true;
+        }
+
+        const int mi_id = mi->GetMIID();
+        if (mi_id < 0)
+            return LogStageFail("OffscreenPass::InitMISSBO", "material instance id invalid");
+
+        const uint32_t mi_count = static_cast<uint32_t>(mi_id + 1);
+        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * mi_data_bytes;
+        GLogInfo("[RenderToTexture][OffscreenPass::InitMISSBO] mi_id=%d mi_bytes=%u mi_count=%u ssbo_size=%llu",
+                 mi_id, mi_data_bytes, mi_count, static_cast<unsigned long long>(ssbo_size));
+
+        mi_ssbo = buffer_manager->CreateSSBO("RenderToTexture:OffscreenPass:MIData", ssbo_size, nullptr, SharingMode::Exclusive);
+        if (!mi_ssbo)
+            return LogStageFail("OffscreenPass::InitMISSBO", "CreateSSBO failed");
+
+        auto *gpu_buf = mi_ssbo->GetGPUBuffer();
+        if (!gpu_buf)
+            return LogStageFail("OffscreenPass::InitMISSBO", "GetGPUBuffer failed");
+
+        auto *dst = static_cast<uint8_t *>(gpu_buf->Map(0, ssbo_size));
+        if (!dst)
+            return LogStageFail("OffscreenPass::InitMISSBO", "SSBO map failed");
+
+        memset(dst, 0, static_cast<size_t>(ssbo_size));
+        void *src = mtl->GetMIData(mi_id);
+        if (src)
+            memcpy(dst + static_cast<VkDeviceSize>(mi_id) * mi_data_bytes, src, mi_data_bytes);
+        gpu_buf->Unmap();
+
+        bool has_struct_binding = false;
+        for (const auto &req : mtl->GetBindingContract().requirements)
+        {
+            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                continue;
+
+            has_struct_binding = true;
+            if (!rdbs->RegisterMaterialStructLayout(req.ssbo_type, req.ssbo_id, mi_data_bytes))
+                return LogStageFail("OffscreenPass::InitMISSBO", "RegisterMaterialStructLayout failed");
+
+            const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
+            if (!domain_manager->RegisterBuffer(addr, mi_ssbo, mi_count))
+                return LogStageFail("OffscreenPass::InitMISSBO", "RegisterBuffer failed");
+        }
+
+        if (!has_struct_binding)
+            return LogStageFail("OffscreenPass::InitMISSBO", "MaterialInstance contract binding not found");
+
+        LogStage("OffscreenPass::InitMISSBO", "success");
+        return has_struct_binding;
+    }
 public:
     ~OffscreenPass()
     {
@@ -122,6 +223,7 @@ public:
         primitive = nullptr;
         geometry = nullptr;
         mi = nullptr;
+        mi_ssbo = nullptr;
         mtl = nullptr;
         pipeline = nullptr;
     }
@@ -133,6 +235,8 @@ public:
 
     bool Init(WorkObject *owner, const uint32_t width, const uint32_t height)
     {
+        GLogInfo("[RenderToTexture][OffscreenPass::Init] begin owner=%p size=%ux%u",
+                 (void *)owner, width, height);
         hgl::example::OffscreenWorldConfig cfg;
         cfg.width = width;
         cfg.height = height;
@@ -141,32 +245,36 @@ public:
         cfg.register_input_system = false;
 
         if (!runtime.Init(owner, cfg))
-            return false;
+            return LogStageFail("OffscreenPass::Init", "runtime.Init failed");
 
         LogTextureInfo("offscreen_rt_color0_init", runtime.GetColorTexture(0));
         render_context = owner->GetRenderContext();
+        GLogInfo("[RenderToTexture][OffscreenPass::Init] success world=%p rt=%p",
+                 (void *)runtime.GetWorld(), (void *)runtime.GetRenderTarget());
         return true;
     }
 
     bool BuildSphere(WorkObject *owner)
     {
+        GLogInfo("[RenderToTexture][OffscreenPass::BuildSphere] begin owner=%p world=%p rt=%p",
+                 (void *)owner, (void *)runtime.GetWorld(), (void *)runtime.GetRenderTarget());
         if (!owner || !runtime.GetWorld() || !runtime.GetRenderTarget())
-            return false;
+            return LogStageFail("OffscreenPass::BuildSphere", "owner/world/render target missing");
 
         RenderContext *rc = owner->GetRenderContext();
         if (!rc)
-            return false;
+            return LogStageFail("OffscreenPass::BuildSphere", "render context is null");
 
         GraphicsContext *gc = rc->GetGraphicsContext();
         if (!gc)
-            return false;
+            return LogStageFail("OffscreenPass::BuildSphere", "graphics context is null");
 
         auto *mm = gc->GetMaterialManager();
         auto *gm = gc->GetGeometryManager();
         auto *pm = gc->GetPrimitiveManager();
         auto *device = gc->GetDevice();
         if (!mm || !gm || !pm || !device)
-            return false;
+            return LogStageFail("OffscreenPass::BuildSphere", "required managers/device missing");
 
         mtl::Material3DCreateConfig cfg3d(PrimitiveType::Triangles,
                                           mtl::WithCamera::With,
@@ -175,30 +283,33 @@ public:
 
         mtl = mm->CreateMaterial(mtl::MaterialPreset::Gizmo3D, &cfg3d);
         if (!mtl)
-            return false;
+            return LogStageFail("OffscreenPass::BuildSphere", "CreateMaterial(Gizmo3D) failed");
 
         auto *rp = runtime.GetRenderTarget()->GetRenderPass();
         pipeline = rp ? rp->CreatePipeline(mtl, InlinePipeline::Solid3D) : nullptr;
         if (!pipeline)
-            return false;
+            return LogStageFail("OffscreenPass::BuildSphere", "CreatePipeline failed");
 
         Color4f sphere_color = GetColor4f(COLOR::SkyBlue, 1.0f);
         mi = mm->CreateMaterialInstance(mtl, (VIL*)nullptr, &sphere_color);
         if (!mi)
-            return false;
+            return LogStageFail("OffscreenPass::BuildSphere", "CreateMaterialInstance failed");
+
+        if (!InitMISSBO(runtime.GetWorld()))
+            return LogStageFail("OffscreenPass::BuildSphere", "InitMISSBO failed");
 
         auto pc = std::make_unique<GeometryCreater>(
             device,
             CreateGizmo3DGeometryVertexFormat());
         geometry = inline_geometry::CreateSphere(pc.get(), 64);
         if (!geometry)
-            return false;
+            return LogStageFail("OffscreenPass::BuildSphere", "CreateSphere geometry failed");
 
         gm->Add(geometry);
 
         primitive = pm->CreatePrimitive(geometry, mi, pipeline);
         if (!primitive)
-            return false;
+            return LogStageFail("OffscreenPass::BuildSphere", "CreatePrimitive failed");
 
         auto *world = runtime.GetWorld();
         Entity *sphere = world->CreateEntity<Entity>("OffscreenSphere");
@@ -228,12 +339,18 @@ public:
         camera->camera_info = const_cast<CameraInfo *>(camera_system ? camera_system->GetCameraInfo() : nullptr);
         camera->viewport_info = camera_system ? camera_system->GetViewportInfo() : nullptr;
 
+        LogStage("OffscreenPass::BuildSphere", "success");
         return true;
     }
 
     bool RenderOnce()
     {
-        return runtime.RenderOnce(GetColor4f(COLOR::DarkSlateBlue, 1.0f));
+        LogStage("OffscreenPass::RenderOnce", "begin");
+        if (!runtime.RenderOnce(GetColor4f(COLOR::DarkSlateBlue, 1.0f)))
+            return LogStageFail("OffscreenPass::RenderOnce", "runtime.RenderOnce failed");
+
+        LogStage("OffscreenPass::RenderOnce", "success");
+        return true;
     }
 };
 
@@ -248,6 +365,7 @@ private:
 
     Material *cube_mtl = nullptr;
     MaterialInstance *cube_mi = nullptr;
+    graph::DeviceBuffer *cube_mi_ssbo = nullptr;
     Pipeline *cube_pipeline = nullptr;
     Sampler *cube_sampler = nullptr;
     Primitive *cube_primitive = nullptr;
@@ -264,8 +382,9 @@ private:
 private:
     bool SetupMainCamera()
     {
+        LogStage("RenderToTextureApp::SetupMainCamera", "begin");
         if (!ecs_context || !ecs_context->EnsureCameraSystem())
-            return false;
+            return LogStageFail("RenderToTextureApp::SetupMainCamera", "ECS context/camera system unavailable");
 
         camera_entity = ecs_context->CreateEntity<Entity>("MainCamera");
         auto camera = camera_entity->AddComponent<CameraComponent>();
@@ -281,38 +400,42 @@ private:
         camera->camera_data = GetCamera();
         camera->camera_info = const_cast<CameraInfo *>(GetCameraInfo());
         camera->viewport_info = GetViewportInfo();
+        LogStage("RenderToTextureApp::SetupMainCamera", "success");
         return true;
     }
 
     bool CreateOffscreenRT()
     {
+        LogStage("RenderToTextureApp::CreateOffscreenRT", "begin");
         offscreen = new OffscreenPass();
         if (!offscreen)
-            return false;
+            return LogStageFail("RenderToTextureApp::CreateOffscreenRT", "new OffscreenPass failed");
 
         if (!offscreen->Init(this, 512, 512))
-            return false;
+            return LogStageFail("RenderToTextureApp::CreateOffscreenRT", "OffscreenPass::Init failed");
 
         if (!offscreen->BuildSphere(this))
-            return false;
+            return LogStageFail("RenderToTextureApp::CreateOffscreenRT", "OffscreenPass::BuildSphere failed");
 
         // This sample's offscreen content is static. Render once at startup to
         // avoid cross-pass write/read jitter on the same texture each frame.
         if (!offscreen->RenderOnce())
-            return false;
+            return LogStageFail("RenderToTextureApp::CreateOffscreenRT", "OffscreenPass::RenderOnce failed");
 
+        LogStage("RenderToTextureApp::CreateOffscreenRT", "success");
         return true;
     }
 
     bool CreateCube()
     {
+        LogStage("RenderToTextureApp::CreateCube", "begin");
         auto *rc = GetRenderContext();
         if (!rc)
-            return false;
+            return LogStageFail("RenderToTextureApp::CreateCube", "render context is null");
 
         auto *gc = rc->GetGraphicsContext();
         if (!gc)
-            return false;
+            return LogStageFail("RenderToTextureApp::CreateCube", "graphics context is null");
 
         auto *mm = gc->GetMaterialManager();
         auto *sm = gc->GetSamplerManager();
@@ -321,7 +444,7 @@ private:
         auto *pm = gc->GetPrimitiveManager();
         auto *device = gc->GetDevice();
         if (!mm || !sm || !tm || !gm || !pm || !device)
-            return false;
+            return LogStageFail("RenderToTextureApp::CreateCube", "required managers/device missing");
 
         mtl::Material3DCreateConfig cfg3d(PrimitiveType::Triangles,
                                           mtl::WithCamera::With,
@@ -330,15 +453,16 @@ private:
 
         cube_mtl = mm->CreateMaterial(mtl::MaterialPreset::Standard, &cfg3d);
         if (!cube_mtl)
-            return false;
+            return LogStageFail("RenderToTextureApp::CreateCube", "CreateMaterial(Standard) failed");
 
         cube_sampler = sm->CreateSampler();
         if (!cube_sampler)
-            return false;
+            return LogStageFail("RenderToTextureApp::CreateCube", "CreateSampler failed");
 
         base_tex = offscreen ? offscreen->GetColorTexture() : nullptr;
         if (!base_tex)
         {
+            LogStage("RenderToTextureApp::CreateCube", "offscreen texture unavailable, loading fallback albedo");
             fallback_albedo = tm->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
             base_tex = fallback_albedo;
         }
@@ -347,13 +471,13 @@ private:
         roughness_tex = tm->LoadTexture2D(OS_TEXT("res/image/Brickwall/Roughness.Tex2D"), true);
 
         if (!base_tex || !normal_tex || !roughness_tex)
-            return false;
+            return LogStageFail("RenderToTextureApp::CreateCube", "required textures missing");
 
         if (!bindless_texture_manager)
         {
             bindless_texture_manager = std::make_unique<BindlessTextureManager>();
             if (!bindless_texture_manager->Init(VkDevice(*device)))
-                return false;
+                return LogStageFail("RenderToTextureApp::CreateCube", "BindlessTextureManager::Init failed");
 
             rc->SetBindlessTextureManager(bindless_texture_manager.get());
             mm->SetBindlessLayout(bindless_texture_manager->GetLayout());
@@ -361,25 +485,26 @@ private:
 
         auto rdbs = ecs_context ? ecs_context->GetSystem<RenderDescriptorBindingSystem>() : nullptr;
         if (!rdbs)
-            return false;
+            return LogStageFail("RenderToTextureApp::CreateCube", "RenderDescriptorBindingSystem missing");
 
         auto* bindless_mgr = rc->GetBindlessTextureManager();
         if (!bindless_mgr)
-            return false;
+            return LogStageFail("RenderToTextureApp::CreateCube", "bindless manager missing on render context");
 
-        if (rdbs->RegisterTexture2DResource("", base_tex, cube_sampler, bindless_mgr) == 0)
-            return false;
-        if (rdbs->RegisterTexture2DResource("", normal_tex, cube_sampler, bindless_mgr) == 0)
-            return false;
-        if (rdbs->RegisterTexture2DResource("", roughness_tex, cube_sampler, bindless_mgr) == 0)
-            return false;
+        const uint32_t base_tex_handle = rdbs->RegisterTexture2DResource("", base_tex, cube_sampler, bindless_mgr);
+        const uint32_t normal_tex_handle = rdbs->RegisterTexture2DResource("", normal_tex, cube_sampler, bindless_mgr);
+        const uint32_t roughness_tex_handle = rdbs->RegisterTexture2DResource("", roughness_tex, cube_sampler, bindless_mgr);
+        GLogInfo("[RenderToTexture][RenderToTextureApp::CreateCube] bindless handles base=%u normal=%u roughness=%u",
+                 base_tex_handle, normal_tex_handle, roughness_tex_handle);
+        if (base_tex_handle == 0 || normal_tex_handle == 0 || roughness_tex_handle == 0)
+            return LogStageFail("RenderToTextureApp::CreateCube", "RegisterTexture2DResource returned 0 handle");
 
         if (!rdbs->RegisterMaterialTexture(cube_mtl, mtl::SamplerName::BaseColor, base_tex))
-            return false;
+            return LogStageFail("RenderToTextureApp::CreateCube", "RegisterMaterialTexture(BaseColor) failed");
         if (!rdbs->RegisterMaterialTexture(cube_mtl, "TextureNormal", normal_tex))
-            return false;
+            return LogStageFail("RenderToTextureApp::CreateCube", "RegisterMaterialTexture(TextureNormal) failed");
         if (!rdbs->RegisterMaterialTexture(cube_mtl, "TextureRoughness", roughness_tex))
-            return false;
+            return LogStageFail("RenderToTextureApp::CreateCube", "RegisterMaterialTexture(TextureRoughness) failed");
 
         LogTextureInfo("onscreen_bind_basecolor", base_tex);
 
@@ -390,7 +515,7 @@ private:
         auto *rp = render_target ? render_target->GetRenderPass() : nullptr;
         cube_pipeline = rp ? rp->CreatePipeline(cube_mtl, InlinePipeline::Solid3D) : nullptr;
         if (!cube_pipeline)
-            return false;
+            return LogStageFail("RenderToTextureApp::CreateCube", "CreatePipeline failed");
 
         mtl::StandardMaterialInstance cube_mi_data{};
         cube_mi_data.base_color = 0xFFFFFFFFu;
@@ -400,7 +525,10 @@ private:
 
         cube_mi = mm->CreateMaterialInstance(cube_mtl, (VIL*)nullptr, &cube_mi_data);
         if (!cube_mi)
-            return false;
+            return LogStageFail("RenderToTextureApp::CreateCube", "CreateMaterialInstance failed");
+
+        if (!InitCubeMISSBO())
+            return LogStageFail("RenderToTextureApp::CreateCube", "InitCubeMISSBO failed");
 
         auto pc = std::make_unique<GeometryCreater>(
             device,
@@ -411,13 +539,13 @@ private:
 
         Geometry *cube_geometry = inline_geometry::CreateCube(pc.get(), &cci);
         if (!cube_geometry)
-            return false;
+            return LogStageFail("RenderToTextureApp::CreateCube", "CreateCube geometry failed");
 
         gm->Add(cube_geometry);
 
         cube_primitive = pm->CreatePrimitive(cube_geometry, cube_mi, cube_pipeline);
         if (!cube_primitive)
-            return false;
+            return LogStageFail("RenderToTextureApp::CreateCube", "CreatePrimitive failed");
 
         cube_entity = ecs_context->CreateEntity<Entity>("RTTCube");
         cube_transform = cube_entity->AddComponent<TransformComponent>(Mobility::Static);
@@ -430,9 +558,88 @@ private:
 
         cube_prim_comp->SetPrimitive(cube_primitive);
         cube_prim_comp->SetVisible(true);
+        LogStage("RenderToTextureApp::CreateCube", "success");
         return true;
     }
+    bool InitCubeMISSBO()
+    {
+        GLogInfo("[RenderToTexture][RenderToTextureApp::InitCubeMISSBO] begin ecs=%p mtl=%p mi=%p",
+                 (void *)ecs_context, (void *)cube_mtl, (void *)cube_mi);
+        if (!ecs_context || !cube_mtl || !cube_mi)
+            return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "invalid input pointers");
 
+        auto *rc = GetRenderContext();
+        if (!rc)
+            return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "render context is null");
+
+        auto *gc = rc->GetGraphicsContext();
+        if (!gc)
+            return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "graphics context is null");
+
+        auto *buffer_manager = gc->GetBufferManager();
+        auto *domain_manager = gc->GetResourceDomainManager();
+        if (!buffer_manager || !domain_manager)
+            return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "buffer/domain manager is null");
+
+        auto rdbs = ecs_context->GetSystem<RenderDescriptorBindingSystem>();
+        if (!rdbs)
+            return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "RenderDescriptorBindingSystem missing");
+
+        const uint32_t mi_data_bytes = cube_mtl->GetMIDataBytes();
+        if (mi_data_bytes == 0)
+        {
+            LogStage("RenderToTextureApp::InitCubeMISSBO", "mi_data_bytes is zero, skip SSBO");
+            return true;
+        }
+
+        const int mi_id = cube_mi->GetMIID();
+        if (mi_id < 0)
+            return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "material instance id invalid");
+
+        const uint32_t mi_count = static_cast<uint32_t>(mi_id + 1);
+        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * mi_data_bytes;
+        GLogInfo("[RenderToTexture][RenderToTextureApp::InitCubeMISSBO] mi_id=%d mi_bytes=%u mi_count=%u ssbo_size=%llu",
+                 mi_id, mi_data_bytes, mi_count, static_cast<unsigned long long>(ssbo_size));
+
+        cube_mi_ssbo = buffer_manager->CreateSSBO("RenderToTexture:MainScene:MIData", ssbo_size, nullptr, SharingMode::Exclusive);
+        if (!cube_mi_ssbo)
+            return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "CreateSSBO failed");
+
+        auto *gpu_buf = cube_mi_ssbo->GetGPUBuffer();
+        if (!gpu_buf)
+            return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "GetGPUBuffer failed");
+
+        auto *dst = static_cast<uint8_t *>(gpu_buf->Map(0, ssbo_size));
+        if (!dst)
+            return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "SSBO map failed");
+
+        memset(dst, 0, static_cast<size_t>(ssbo_size));
+        void *src = cube_mtl->GetMIData(mi_id);
+        if (src)
+            memcpy(dst + static_cast<VkDeviceSize>(mi_id) * mi_data_bytes, src, mi_data_bytes);
+        gpu_buf->Unmap();
+
+        bool has_struct_binding = false;
+        for (const auto &req : cube_mtl->GetBindingContract().requirements)
+        {
+            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                continue;
+
+            has_struct_binding = true;
+            if (!rdbs->RegisterMaterialStructLayout(req.ssbo_type, req.ssbo_id, mi_data_bytes))
+                return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "RegisterMaterialStructLayout failed");
+
+            const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
+            if (!domain_manager->RegisterBuffer(addr, cube_mi_ssbo, mi_count))
+                return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "RegisterBuffer failed");
+        }
+
+        if (!has_struct_binding)
+            return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "MaterialInstance contract binding not found");
+
+        LogStage("RenderToTextureApp::InitCubeMISSBO", "success");
+        return has_struct_binding;
+    }
 public:
     ~RenderToTextureApp() override
     {
@@ -465,6 +672,7 @@ public:
 
         cube_primitive = nullptr;
         cube_mi = nullptr;
+        cube_mi_ssbo = nullptr;
         cube_mtl = nullptr;
         cube_sampler = nullptr;
         cube_pipeline = nullptr;
@@ -476,9 +684,10 @@ public:
 
     bool Init() override
     {
+        LogStage("RenderToTextureApp::Init", "begin");
         ecs_context = GetECSContext();
         if (!ecs_context)
-            return false;
+            return LogStageFail("RenderToTextureApp::Init", "ECS context is null");
 
         ecs_context->SetResourceNamePrefix("RenderToTexture:MainScene");
 
@@ -493,14 +702,15 @@ public:
         }
 
         if (!CreateOffscreenRT())
-            return false;
+            return LogStageFail("RenderToTextureApp::Init", "CreateOffscreenRT failed");
 
         if (!CreateCube())
-            return false;
+            return LogStageFail("RenderToTextureApp::Init", "CreateCube failed");
 
         if (!SetupMainCamera())
-            return false;
+            return LogStageFail("RenderToTextureApp::Init", "SetupMainCamera failed");
 
+        LogStage("RenderToTextureApp::Init", "success");
         return true;
     }
 

@@ -7,15 +7,19 @@
 // 2. 每个实体使用不同的MaterialInstance（不同颜色）
 // 3. 所有实体共享同一个Geometry（顶点数据）
 // 4. RenderCollector自动合并相同Material的不同MaterialInstance进行批量渲染
-// 5. MaterialInstanceAssignmentBuffer自动去重和索引管理
+// 5. 示例自建 PBRSurface 结构体 SSBO 并注册进 ResourceDomainManager，RDBS 按 SSBOType+ID 严格绑定
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
+#include<hgl/graph/DescriptorBindingSet.h>
+#include<hgl/graph/SSBOSlotAllocator.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/color/Color.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
+#include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
 
 // 引入几何创建器
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -25,6 +29,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -66,11 +71,15 @@ private:
     Pipeline* pipeline = nullptr;
     Geometry* geometry = nullptr;
 
+    // MI 结构体 SSBO（由本示例创建并注册进 ResourceDomainManager）
+    graph::DeviceBuffer* mi_ssbo = nullptr;
+    SSBOSlotAllocator slot_allocator;
+
     // 每个三角形的数据
     struct TriangleData
     {
         Entity* entity;
-        MaterialInstance* mi;
+        DescriptorBindingSet* dbs;
         Primitive* primitive;
     };
 
@@ -106,31 +115,13 @@ private:
             std::cout << "[TestApp::InitMaterial] Material has MI: " << material->hasMI() << std::endl;
             std::cout << "[TestApp::InitMaterial] Material MI data bytes: " << material->GetMIDataBytes() << std::endl;
 
-            // 为每个三角形创建不同颜色的MaterialInstance
+            // 仅创建材质；外部 SSBO + DescriptorBindingSet 在 InitMISSBO 中配置
             for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
             {
-                triangles[i].mi = material_manager->CreateMaterialInstance(material);
-
-                if (!triangles[i].mi)
-                    return false;
-
-                // 使用不同的颜色
                 Color4f color = GetColor4f((COLOR)(i + int(COLOR::Blue)), 1.0f);
 
                 std::cout << "[TestApp::InitMaterial] Triangle[" << i << "] color: "
                           << "R=" << color.r << ", G=" << color.g << ", B=" << color.b << ", A=" << color.a << std::endl;
-
-                triangles[i].mi->WriteMIData(color);       //设置MaterialInstance的数据
-            }
-        }
-
-        {
-            for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
-            {
-                Color4f *mi_color=(Color4f *)triangles[i].mi->GetMIData();
-
-                std::cout<<"[TestApp::InitMaterial] Triangle["<<i<<"] MI Data Address: "<<(void*)mi_color
-                    <<", Color: R="<<mi_color->r<<", G="<<mi_color->g<<", B="<<mi_color->b<<", A="<<mi_color->a<<std::endl;
             }
         }
 
@@ -213,7 +204,7 @@ private:
             if (!primitive_manager)
                 return false;
 
-            triangles[i].primitive = primitive_manager->CreatePrimitive(geometry, triangles[i].mi, pipeline);
+            triangles[i].primitive = primitive_manager->CreatePrimitive(geometry, triangles[i].dbs, pipeline);
 
             if (!triangles[i].primitive)
             {
@@ -222,7 +213,7 @@ private:
             }
 
             std::cout << "[TestApp::InitECS] Created primitive[" << i << "]: " << (void*)triangles[i].primitive
-                      << ", MI: " << (void*)triangles[i].mi << std::endl;
+                      << ", DBS: " << (void*)triangles[i].dbs << std::endl;
 
             // 创建实体
             triangles[i].entity = ecs_world->CreateEntity<Entity>("ColoredTriangle_" + std::to_string(i));
@@ -250,6 +241,7 @@ private:
             // 每个实体使用不同的Primitive（不同的MaterialInstance）
             auto primitive_comp = triangles[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitive(triangles[i].primitive);
+            primitive_comp->SetDescriptorBindingSet(triangles[i].dbs);
             primitive_comp->SetVisible(true);
 
             std::cout << "[TestApp::InitECS] Entity[" << i << "] setup complete" << std::endl;
@@ -259,9 +251,112 @@ private:
         std::cout << "[TestApp::InitECS] Created " << DRAW_OBJECT_COUNT << " entities" << std::endl;
         std::cout << "[TestApp::InitECS] Each entity uses a different MaterialInstance (different color)" << std::endl;
         std::cout << "[TestApp::InitECS] RenderCollector will automatically merge them into batches" << std::endl;
-        std::cout << "[TestApp::InitECS] MaterialInstanceAssignmentBuffer will deduplicate MIs" << std::endl;
+        std::cout << "[TestApp::InitECS] Material index tables are bound by strict SSBOType+ssbo_id routing" << std::endl;
 
         return true;
+    }
+
+    /**
+     * 创建 PBRSurface 结构体 SSBO 并注册进 ResourceDomainManager。
+     * 这是"新终极形态"示范：资源生产方自建 SSBO，向 RDBS 登记 layout，
+     * 由 RenderDescriptorBindingSystem 按 SSBOType+ssbo_id 严格绑定，
+     * PrimitiveBatchPipeline 负责按 draw order 写 DataIndex 行表。
+     */
+    bool InitMISSBO()
+    {
+        const uint32_t mi_data_bytes = material->GetMIDataBytes();
+        if (mi_data_bytes == 0)
+            return true;  // 材质无 MI 数据，无需创建
+        if (mi_data_bytes != sizeof(Color4f))
+            return false;
+
+        if (!ecs_world)
+            ecs_world = GetECSContext();
+        if (!ecs_world)
+        {
+            std::cout << "[TestApp::InitMISSBO] ERROR: Failed to get ECS context!" << std::endl;
+            return false;
+        }
+
+        auto* render_context  = GetRenderContext();
+        if (!render_context) return false;
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context) return false;
+
+        auto* buffer_manager  = graphics_context->GetBufferManager();
+        auto* domain_manager  = graphics_context->GetResourceDomainManager();
+        if (!buffer_manager || !domain_manager) return false;
+
+        auto rdbs = ecs_world->GetSystem<RenderDescriptorBindingSystem>();
+        if (!rdbs) return false;
+
+        if (!slot_allocator.Init(DRAW_OBJECT_COUNT))
+            return false;
+
+        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(DRAW_OBJECT_COUNT) * mi_data_bytes;
+        mi_ssbo = buffer_manager->CreateSSBO("Example:PBRSurface:MIData", ssbo_size);
+        if (!mi_ssbo)
+        {
+            std::cout << "[TestApp::InitMISSBO] ERROR: failed to create PBRSurface SSBO" << std::endl;
+            return false;
+        }
+
+        auto* gpu_buf = mi_ssbo->GetGPUBuffer();
+        if (!gpu_buf)
+        {
+            std::cout << "[TestApp::InitMISSBO] ERROR: no GPU buffer" << std::endl;
+            return false;
+        }
+        uint8_t* ptr = static_cast<uint8_t*>(gpu_buf->Map(0, ssbo_size));
+        if (!ptr)
+        {
+            std::cout << "[TestApp::InitMISSBO] ERROR: map failed" << std::endl;
+            return false;
+        }
+        memset(ptr, 0, static_cast<size_t>(ssbo_size));
+        for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
+        {
+            uint32_t slot_index = 0;
+            if (!slot_allocator.Allocate(slot_index))
+                return false;
+
+            Color4f color = GetColor4f((COLOR)(i + int(COLOR::Blue)), 1.0f);
+            memcpy(ptr + static_cast<VkDeviceSize>(slot_index) * mi_data_bytes, &color, mi_data_bytes);
+
+            triangles[i].dbs = new DescriptorBindingSet(material);
+            if (!triangles[i].dbs)
+                return false;
+
+            triangles[i].entity = nullptr;
+            triangles[i].primitive = nullptr;
+        }
+        gpu_buf->Unmap();
+
+        const uint32_t ssbo_id = graph::mtl::MakeRecipeSSBOId(0);
+        bool has_struct_binding = false;
+        for (const auto &req : material->GetBindingContract().requirements)
+        {
+            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                continue;
+
+            has_struct_binding = true;
+            rdbs->RegisterMaterialStructLayout(req.ssbo_type, ssbo_id, mi_data_bytes);
+
+            const graph::mtl::SSBOAddress addr{req.ssbo_type, ssbo_id, 0};
+            domain_manager->RegisterBuffer(addr, mi_ssbo, DRAW_OBJECT_COUNT);
+
+            for (uint i = 0; i < DRAW_OBJECT_COUNT; ++i)
+            {
+                if (!triangles[i].dbs->SetSSBOBinding(req.ssbo_type, ssbo_id, i))
+                    return false;
+            }
+        }
+
+        std::cout << "[TestApp::InitMISSBO] PBRSurface SSBO registered: "
+                  << DRAW_OBJECT_COUNT << " instances x " << mi_data_bytes << " bytes"
+                  << ", ssbo_id=" << ssbo_id << std::endl;
+
+        return has_struct_binding;
     }
 
 public:
@@ -283,6 +378,12 @@ public:
             return false;
         }
 
+        if (!InitMISSBO())
+        {
+            std::cout << "[TestApp::Init] ERROR: InitMISSBO failed!" << std::endl;
+            return false;
+        }
+
         if (!InitECS())
         {
             std::cout << "[TestApp::Init] ERROR: InitECS failed!" << std::endl;
@@ -299,6 +400,13 @@ public:
         // ECS世界的更新由框架层 Tick 自动调用
 
         WorkObject::Tick(delta_time);
+    }
+
+    ~TestApp()
+    {
+        for (uint i = 0; i < DRAW_OBJECT_COUNT; ++i)
+            delete triangles[i].dbs;
+        SAFE_CLEAR(mi_ssbo)
     }
 };//class TestApp:public WorkObject
 

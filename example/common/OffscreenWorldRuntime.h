@@ -7,6 +7,7 @@
 #include <hgl/ecs/systems/render/RenderTargetSystem.h>
 #include <hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
 #include <hgl/ecs/systems/render/RenderSystemCore.h>
+#include <hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/ecs/systems/tick/InputSystem.h>
 
@@ -33,6 +34,7 @@ namespace hgl::example
 
         std::shared_ptr<ecs::RenderTargetSystem> rt_system_;
         std::shared_ptr<ecs::RenderPrimitiveCollectSystem> collect_system_;
+        std::shared_ptr<ecs::RenderDescriptorBindingSystem> descriptor_binding_system_;
         std::shared_ptr<ecs::CameraSystem> camera_system_;
 
     public:
@@ -92,6 +94,9 @@ namespace hgl::example
 
             rt_system_ = world_->RegisterRenderSystem<ecs::RenderTargetSystem>();
             collect_system_ = world_->RegisterRenderSystem<ecs::RenderPrimitiveCollectSystem>();
+            descriptor_binding_system_ = world_->RegisterRenderSystem<ecs::RenderDescriptorBindingSystem>();
+            if (!descriptor_binding_system_)
+                return false;
 
             if (cfg.register_input_system)
                 world_->RegisterTickSystem<ecs::InputSystem>();

@@ -44,7 +44,7 @@ mat4 GetLocalToWorld() { return l2w.mats[ResolveTransformID(gl_InstanceIndex)]; 
 
 #ifdef HAS_MI
 uint GetDataIndexID2D() { return ResolveDataIndexID(gl_InstanceIndex); }
-uint GetTextureLayerID2D() { return ResolveTextureLayerID(gl_InstanceIndex); }
+uint GetTextureLayerID2D() { return GetDataIndexID2D(); }
 #endif
 
 vec4 GetPosition2D()

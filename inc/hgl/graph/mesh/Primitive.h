@@ -7,6 +7,7 @@
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/graph/mesh/GeometryDataBuffer.h>
 #include<hgl/graph/mesh/GeometryDrawRange.h>
@@ -19,6 +20,7 @@ class Primitive
 {
     Pipeline *          pipeline;
     MaterialInstance *  mat_inst;
+    DescriptorBindingSet *binding_set;
     Geometry *          geometry;
 
     GeometryDataBuffer *data_buffer;
@@ -27,8 +29,10 @@ class Primitive
 private:
 
     friend Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,Pipeline *);
+    friend Primitive *DirectCreatePrimitive(Geometry *,DescriptorBindingSet *,Pipeline *);
 
     Primitive(Geometry *,MaterialInstance *,Pipeline *,GeometryDataBuffer *);
+    Primitive(Geometry *,DescriptorBindingSet *,Pipeline *,GeometryDataBuffer *);
 
 public:
 
@@ -40,9 +44,10 @@ public:
     }
 
             Pipeline *          GetPipeline         (){return pipeline;}
-            VkPipelineLayout    GetPipelineLayout   (){return mat_inst->GetMaterial()->GetPipelineLayout();}
-            Material *          GetMaterial         (){return mat_inst->GetMaterial();}
+            VkPipelineLayout    GetPipelineLayout   (){return GetMaterial()?GetMaterial()->GetPipelineLayout():VK_NULL_HANDLE;}
+            Material *          GetMaterial         (){return mat_inst?mat_inst->GetMaterial():(binding_set?binding_set->GetMaterial():nullptr);}
             MaterialInstance *  GetMaterialInstance (){return mat_inst;}
+            DescriptorBindingSet *GetDescriptorBindingSet(){return binding_set;}
             Geometry *          GetGeometry         (){return geometry;}
             AnsiString          GetGeometryName     (){return geometry->GetName();}
     const   BoundingVolumes &   GetBoundingVolumes  ()const{return geometry->GetBoundingVolumes();}
@@ -70,6 +75,7 @@ public:
 };//class Primitive
 
 Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,Pipeline *);
+Primitive *DirectCreatePrimitive(Geometry *,DescriptorBindingSet *,Pipeline *);
 
 // Pre-flight compatibility check: matches geometry vertex format against the
 // material's VIL and returns the full failure summary without creating a primitive.
@@ -77,5 +83,4 @@ Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,Pipeline *);
 // of calling DirectCreatePrimitive.
 GeometryVertexFormatMatch QueryGeometryVertexCompatibility(const Geometry *geom, const MaterialInstance *mi);
 }//namespace hgl::graph
-
 

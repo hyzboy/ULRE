@@ -30,7 +30,7 @@ TEXTURE_LAYER_ROWS_SSBO;
 
 #define GET_TRANSFORM_ID()          ResolveTransformID(gl_InstanceIndex)
 #define GET_DATA_INDEX_ID()         ResolveDataIndexID(gl_InstanceIndex)
-#define GET_TEXTURE_LAYER_ID()      ResolveTextureLayerID(gl_InstanceIndex)
+#define GET_TEXTURE_LAYER_ID()      GET_DATA_INDEX_ID()  // share the same indirection as mtl
 
 // Outputs to FS
 layout(location=0) flat out uint fragDataIndexID;

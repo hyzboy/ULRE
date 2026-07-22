@@ -2,6 +2,8 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
+#include<hgl/graph/DescriptorBindingSet.h>
+#include<hgl/graph/SSBOSlotAllocator.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
@@ -9,6 +11,8 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/color/Color.h>
 
@@ -19,10 +23,12 @@
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
 #include<memory>
+#include<cstring>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -47,9 +53,12 @@ private:
 
     Material *          material            =nullptr;
     Pipeline *          pipeline            =nullptr;
+    graph::DeviceBuffer *mi_ssbo            =nullptr;
+    const VIL *         material_vil        =nullptr;
+    DescriptorBindingSet *binding_set[3]{};
+    SSBOSlotAllocator   slot_allocator;
 
     Geometry *         geom_plane_grid     =nullptr;
-    MaterialInstance *  material_instance[3]{};
 
 private:
 
@@ -79,21 +88,13 @@ private:
 
         vil_config.Add(VAN::Luminance,VF_V1UN8);
 
-        Color4f GridColor;
-        COLOR ce=COLOR::BlenderAxisRed;
-
-        for(uint i=0;i<3;i++)
-        {
-            GridColor=GetColor4f(ce,1.0);
-
-            material_instance[i]=material_manager->CreateMaterialInstance(material,&vil_config,&GridColor);
-
-            ce=COLOR((int)ce+1);
-        }
+        material_vil = material->CreateVIL(&vil_config);
+        if(!material_vil)
+            return false;
 
         auto* render_target = render_context->GetCurrentRenderTarget();
         auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material_instance[0], InlinePipeline::Solid3D) : nullptr;
+        pipeline = render_pass ? render_pass->CreatePipeline(material, material_vil, InlinePipeline::Solid3D) : nullptr;
 
         return pipeline;
     }
@@ -134,7 +135,7 @@ private:
         return geom_plane_grid;
     }
 
-    bool Add(const char *name,MaterialInstance *mi,const glm::quat &rotation)
+    bool Add(const char *name,DescriptorBindingSet *dbs,const glm::quat &rotation)
     {
         auto* render_context = GetRenderContext();
         if (!render_context)
@@ -148,7 +149,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        Primitive *ri=primitive_manager->CreatePrimitive(geom_plane_grid,mi,pipeline);
+        Primitive *ri=primitive_manager->CreatePrimitive(geom_plane_grid,dbs,pipeline);
 
         if(!ri)
             return false;
@@ -163,6 +164,7 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitive(ri);
+        prim_comp->SetDescriptorBindingSet(dbs);
         prim_comp->SetVisible(true);
 
         return true;
@@ -173,16 +175,105 @@ private:
         if(!ecs_context)
             return false;
 
-        if(!Add("PlaneXY", material_instance[0], glm::quat(1.0f, 0.0f, 0.0f, 0.0f)))
+        if(!Add("PlaneXY", binding_set[0], glm::quat(1.0f, 0.0f, 0.0f, 0.0f)))
             return false;
 
         const float rot90 = glm::radians(90.0f);
-        if(!Add("PlaneYZ", material_instance[1], glm::angleAxis(rot90, glm::vec3(0.0f, 1.0f, 0.0f))))
+        if(!Add("PlaneYZ", binding_set[1], glm::angleAxis(rot90, glm::vec3(0.0f, 1.0f, 0.0f))))
             return false;
-        if(!Add("PlaneXZ", material_instance[2], glm::angleAxis(rot90, glm::vec3(1.0f, 0.0f, 0.0f))))
+        if(!Add("PlaneXZ", binding_set[2], glm::angleAxis(rot90, glm::vec3(1.0f, 0.0f, 0.0f))))
             return false;
 
         return true;
+    }
+
+    bool InitMISSBO()
+    {
+        if (!ecs_context || !material)
+            return false;
+
+        const uint32_t mi_data_bytes = material->GetMIDataBytes();
+        if (mi_data_bytes == 0)
+            return true;
+        if (mi_data_bytes != sizeof(Color4f))
+            return false;
+
+        auto *render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto *graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
+        auto *buffer_manager = graphics_context->GetBufferManager();
+        auto *domain_manager = graphics_context->GetResourceDomainManager();
+        if (!buffer_manager || !domain_manager)
+            return false;
+
+        auto rdbs = ecs_context->GetSystem<hgl::ecs::RenderDescriptorBindingSystem>();
+        if (!rdbs)
+            return false;
+
+        if (!slot_allocator.Init(3))
+            return false;
+
+        const uint32_t mi_count = 3;
+        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * mi_data_bytes;
+
+        mi_ssbo = buffer_manager->CreateSSBO("PlaneGrid3D:MIData", ssbo_size, nullptr, SharingMode::Exclusive);
+        if (!mi_ssbo)
+            return false;
+
+        auto *gpu_buf = mi_ssbo->GetGPUBuffer();
+        if (!gpu_buf)
+            return false;
+
+        auto *dst = static_cast<uint8_t *>(gpu_buf->Map(0, ssbo_size));
+        if (!dst)
+            return false;
+
+        memset(dst, 0, static_cast<size_t>(ssbo_size));
+
+        Color4f grid_color = GetColor4f(COLOR::BlenderAxisRed,1.0f);
+        for (uint32_t i = 0; i < 3; ++i)
+        {
+            uint32_t slot_index = 0;
+            if (!slot_allocator.Allocate(slot_index))
+                return false;
+
+            memcpy(dst + static_cast<VkDeviceSize>(slot_index) * mi_data_bytes, &grid_color, mi_data_bytes);
+
+            binding_set[i] = new DescriptorBindingSet(material, material_vil);
+            if (!binding_set[i])
+                return false;
+
+            grid_color = GetColor4f(COLOR(int(COLOR::BlenderAxisRed) + int(i) + 1), 1.0f);
+        }
+        gpu_buf->Unmap();
+
+        bool has_struct_binding = false;
+        for (const auto &req : material->GetBindingContract().requirements)
+        {
+            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                continue;
+
+            has_struct_binding = true;
+            if (!rdbs->RegisterMaterialStructLayout(req.ssbo_type, req.ssbo_id, mi_data_bytes))
+                return false;
+
+            const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
+            if (!domain_manager->RegisterBuffer(addr, mi_ssbo, mi_count))
+                return false;
+
+            for (uint32_t i = 0; i < 3; ++i)
+            {
+                if (!binding_set[i] || !binding_set[i]->SetSSBOBinding(req.ssbo_type, req.ssbo_id, i))
+                    return false;
+            }
+        }
+
+        return has_struct_binding;
     }
 
     bool InitCamera()
@@ -215,6 +306,9 @@ private:
         if(!ecs_context)
             return false;
 
+        if(!InitMISSBO())
+            return false;
+
         if(!InitScene())
             return false;
 
@@ -227,7 +321,12 @@ private:
 public:
     ~TestApp()
     {
+        for (auto *dbs : binding_set)
+            delete dbs;
+        if (material && material_vil)
+            material->Release(const_cast<VIL *>(material_vil));
         SAFE_CLEAR(geom_plane_grid);
+        SAFE_CLEAR(mi_ssbo);
     }
 
     bool Init() override

@@ -35,7 +35,7 @@ void main()
 {
     const uint transform_id = ResolveTransformID(gl_InstanceIndex);
     const uint data_index_id = ResolveDataIndexID(gl_InstanceIndex);
-    const uint texture_layer_id = ResolveTextureLayerID(gl_InstanceIndex);
+    const uint texture_layer_id = data_index_id;
     mat4 l2w_mat = l2w.mats[transform_id];
     vec4 worldPos = l2w_mat * vec4(Position, 1.0);
     vec3 worldNormal = normalize(mat3(l2w_mat) * Normal);

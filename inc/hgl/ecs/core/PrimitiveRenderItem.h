@@ -9,6 +9,7 @@ namespace hgl
         class Primitive;
         class Material;
         class MaterialInstance;
+        class DescriptorBindingSet;
         class Pipeline;
     }
 }
@@ -56,6 +57,7 @@ namespace hgl::ecs
         // Material batching interface
         hgl::graph::Primitive* GetPrimitive() const override;
         hgl::graph::MaterialInstance* GetMaterialInstance() const override;
+        hgl::graph::DescriptorBindingSet* GetDescriptorBindingSet() const override;
         hgl::graph::Material* GetMaterial() const override;
         hgl::graph::Pipeline* GetPipeline() const override;
         TransformPolicySpec GetTransformPolicySpec() const override;

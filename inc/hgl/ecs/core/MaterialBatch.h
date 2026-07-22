@@ -21,7 +21,6 @@ namespace hgl
     namespace ecs
     {
         class TransformAssignmentBuffer;
-        class MaterialInstanceAssignmentBuffer;
         class PipelineMaterialRenderer;
     }
 }
@@ -54,11 +53,15 @@ namespace hgl::ecs
 
         // Per-batch L2W index rows SSBO — written in draw order so gl_InstanceIndex
         // directly maps to the correct L2W matrix slot.
-        graph::DeviceBuffer *                   l2w_index_rows_buffer   = nullptr;          ///<每批 L2W 行表 SSBO（draw order）
-        uint32_t                                l2w_index_rows_capacity = 0;                ///<行表容量（元素数）
+        graph::DeviceBuffer *                   l2w_index_rows_buffer       = nullptr;      ///<每批 L2W 行表 SSBO（draw order）
+        uint32_t                                l2w_index_rows_capacity     = 0;            ///<L2W 行表容量（元素数）
+
+        // Per-batch DataIndex rows SSBO — each row carries one DataSlot struct_index per instance.
+        // row[i].values[DataSlot::PBRSurface] = MaterialInstance::GetMIID() of items[i].
+        graph::DeviceBuffer *                   mi_data_index_rows_buffer   = nullptr;      ///<每批 DataIndex 行表 SSBO（draw order）
+        uint32_t                                mi_data_index_rows_capacity = 0;            ///<DataIndex 行表容量（元素数）
 
         TransformAssignmentBuffer *          transform_buffer        = nullptr;          ///<Transform分配缓冲(非拥有)
-        MaterialInstanceAssignmentBuffer *   mi_buffer               = nullptr;          ///<材质实例分配缓冲
         std::array<uint32_t, static_cast<size_t>(graph::mtl::TextureSlot::RANGE_SIZE)> texture_slot_handles{}; ///<每材质纹理槽的 bindless handle（用于实例纹理行表）
         bool                                  has_texture_slot_handles = false;
 

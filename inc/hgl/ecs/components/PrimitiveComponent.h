@@ -15,6 +15,7 @@ namespace hgl
 
     namespace graph
     {
+        class DescriptorBindingSet;
         class Primitive;
         class Material;
         class MaterialInstance;
@@ -42,6 +43,7 @@ namespace hgl::ecs
 
         hgl::graph::Primitive* primitive;                // The primitive to render (not owned)
         hgl::graph::MaterialInstance* overrideMaterial;   // Optional material override (not owned)
+        hgl::graph::DescriptorBindingSet* descriptorBindingSet; // Optional explicit binding set (not owned)
         hgl::graph::Pipeline* overridePipeline;           // Optional pipeline override (not owned)
         PositionSourceSpec positionSourceSpec;            // Unified position source ingress policy
         TransformPolicySpec transformPolicySpec;           // Unified transform policy ingress
@@ -52,6 +54,7 @@ namespace hgl::ecs
             : RenderableComponent(name)
             , primitive(nullptr)
             , overrideMaterial(nullptr)
+            , descriptorBindingSet(nullptr)
             , overridePipeline(nullptr)
             , positionSourceSpec(PositionSourceSpec::MeshVertex)
             , transformPolicySpec{}
@@ -72,6 +75,10 @@ namespace hgl::ecs
         void SetOverrideMaterial(hgl::graph::MaterialInstance* mi);
         hgl::graph::MaterialInstance* GetOverrideMaterial() const { return overrideMaterial; }
         void ClearOverrideMaterial() { overrideMaterial = nullptr; }
+
+        void SetDescriptorBindingSet(hgl::graph::DescriptorBindingSet* set) { descriptorBindingSet = set; }
+        hgl::graph::DescriptorBindingSet* GetDescriptorBindingSet() const;
+        void ClearDescriptorBindingSet() { descriptorBindingSet = nullptr; }
 
         void SetOverridePipeline(hgl::graph::Pipeline* p) { overridePipeline = p; }
         hgl::graph::Pipeline* GetOverridePipeline() const { return overridePipeline; }

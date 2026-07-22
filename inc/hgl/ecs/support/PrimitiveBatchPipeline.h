@@ -64,7 +64,6 @@ namespace hgl::ecs
         void BuildBatches(MaterialBatch& batch, const uint32_t base_instance);
         void FinalizeBatch(MaterialBatch& batch);
         void SortBatchItems(MaterialBatch& batch);
-        void UpdateMaterialInstanceBuffer(MaterialBatch& batch);
         void EnsureBatchIndexRows(MaterialBatch& batch);
         void WriteBatchIndexRows(MaterialBatch& batch);
     };

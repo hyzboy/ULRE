@@ -18,9 +18,8 @@ namespace
         float metallic;
         float roughness;
         float normal_scale;
-        uint  texture_id;
     )";
-    constexpr const uint32_t mi_bytes = sizeof(uint32_t) * 2 + sizeof(float) * 3;
+    constexpr const uint32_t mi_bytes = sizeof(uint32_t) + sizeof(float) * 3;
 
     constexpr FixedVertexEntry STANDARD_ARRAY_VERTEX[] = {
         { VK_FORMAT_R32G32B32_SFLOAT, VertexSemantic::Position },

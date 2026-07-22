@@ -11,6 +11,8 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/color/Color.h>
 
 #include<hgl/ecs/core/Context.h>
@@ -19,11 +21,13 @@
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
 
 #include<memory>
+#include<cstring>
 #include<random>
 #include<vector>
 #include<string>
@@ -51,6 +55,7 @@ private:
 
     Material *material = nullptr;
     MaterialInstance *mi = nullptr;
+    graph::DeviceBuffer *mi_ssbo = nullptr;
     Pipeline *pipeline = nullptr;
 
     Geometry *geometry = nullptr;
@@ -141,6 +146,76 @@ private:
         return pipeline != nullptr;
     }
 
+    bool InitMISSBO()
+    {
+        if (!ecs_context || !material || !mi)
+            return false;
+
+        auto *render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto *graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
+        auto *buffer_manager = graphics_context->GetBufferManager();
+        auto *domain_manager = graphics_context->GetResourceDomainManager();
+        if (!buffer_manager || !domain_manager)
+            return false;
+
+        auto rdbs = ecs_context->GetSystem<RenderDescriptorBindingSystem>();
+        if (!rdbs)
+            return false;
+
+        const uint32_t mi_data_bytes = material->GetMIDataBytes();
+        if (mi_data_bytes == 0)
+            return true;
+
+        const int mi_id = mi->GetMIID();
+        if (mi_id < 0)
+            return false;
+
+        const uint32_t mi_count = static_cast<uint32_t>(mi_id + 1);
+        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * mi_data_bytes;
+
+        mi_ssbo = buffer_manager->CreateSSBO("RecursiveCube:MIData", ssbo_size, nullptr, SharingMode::Exclusive);
+        if (!mi_ssbo)
+            return false;
+
+        auto *gpu_buf = mi_ssbo->GetGPUBuffer();
+        if (!gpu_buf)
+            return false;
+
+        auto *dst = static_cast<uint8_t *>(gpu_buf->Map(0, ssbo_size));
+        if (!dst)
+            return false;
+
+        memset(dst, 0, static_cast<size_t>(ssbo_size));
+
+        void *src = material->GetMIData(mi_id);
+        if (src)
+            memcpy(dst + static_cast<VkDeviceSize>(mi_id) * mi_data_bytes, src, mi_data_bytes);
+
+        gpu_buf->Unmap();
+
+        bool has_struct_binding = false;
+        for (const auto &req : material->GetBindingContract().requirements)
+        {
+            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                continue;
+
+            has_struct_binding = true;
+            if (!rdbs->RegisterMaterialStructLayout(req.ssbo_type, req.ssbo_id, mi_data_bytes))
+                return false;
+
+            const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
+            if (!domain_manager->RegisterBuffer(addr, mi_ssbo, mi_count))
+                return false;
+        }
+
+        return has_struct_binding;
+    }
     bool CreateCubeGeometry()
     {
         using namespace inline_geometry;
@@ -257,6 +332,9 @@ private:
         if (!primitive_manager)
             return false;
 
+        if (!InitMISSBO())
+            return false;
+
         // Base cube at origin
         Entity *root = CreateCubeEntity(glm::vec3(0.0f, 0.0f, 0.0f), 1.0f, "RootCube", false, EntityID());
         if (!root)
@@ -311,6 +389,7 @@ public:
         for (auto *prim : primitives)
             SAFE_CLEAR(prim)
         SAFE_CLEAR(geometry)
+        SAFE_CLEAR(mi_ssbo)
     }
 
     bool Init() override
@@ -368,3 +447,8 @@ int os_main(int argc, os_char **argv)
 {
     return RunFramework<RecursiveCubeApp>(OS_TEXT("Recursive Cube (ECS)"), argc, argv, 1280, 720);
 }
+
+
+
+
+

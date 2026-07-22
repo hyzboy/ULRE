@@ -37,8 +37,13 @@ namespace hgl::ecs
             else
                 delete l2w_index_rows_buffer;
         }
-        if (mi_buffer)
-            delete mi_buffer;
+        if (mi_data_index_rows_buffer)
+        {
+            if (buffer_manager)
+                buffer_manager->Release(mi_data_index_rows_buffer);
+            else
+                delete mi_data_index_rows_buffer;
+        }
         if (renderer)
             delete renderer;
     }
@@ -53,4 +58,3 @@ namespace hgl::ecs
     }
 
 }//namespace hgl::ecs
-

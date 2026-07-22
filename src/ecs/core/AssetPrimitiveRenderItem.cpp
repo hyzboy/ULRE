@@ -2,6 +2,7 @@
 #include <hgl/ecs/core/Entity.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/components/TransformComponent.h>
+#include <hgl/graph/DescriptorBindingSet.h>
 #include <hgl/graph/mesh/Primitive.h>
 #include <hgl/vk/VKMaterial.h>
 #include <hgl/vk/VKMaterialInstance.h>
@@ -39,6 +40,11 @@ namespace hgl::ecs
     graph::MaterialInstance* AssetPrimitiveRenderItem::GetMaterialInstance() const
     {
         return primitive ? primitive->GetMaterialInstance() : nullptr;
+    }
+
+    graph::DescriptorBindingSet* AssetPrimitiveRenderItem::GetDescriptorBindingSet() const
+    {
+        return primitive ? primitive->GetDescriptorBindingSet() : nullptr;
     }
 
     graph::Material* AssetPrimitiveRenderItem::GetMaterial() const

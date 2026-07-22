@@ -100,7 +100,6 @@ struct StandardTextureArrayMaterialInstance
     float  metallic;        ///<金属度
     float  roughness;       ///<粗糙度
     float  normal_scale = DefaultNormalStrength; ///<法线强度(运行时可调)
-    uint32 texture_id = 0;  ///<2DArray层索引
 };
 
 constexpr const size_t StandardTextureArrayMaterialInstanceBytes=sizeof(StandardTextureArrayMaterialInstance);

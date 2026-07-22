@@ -1,229 +1,81 @@
-# Material 与 MaterialInstance 在 ECS 中的数据整理与工作机制分析
+# ECS 材质实例索引链路（2026-07 收口版）
 
-## 1. 目标与范围
-
-本文基于当前工程代码，说明两个核心问题：
-
-1. `Material` 与 `MaterialInstance` 的数据在 CPU/GPU 侧如何组织。
-2. 这些数据在 ECS 渲染链中如何被整理、去重、索引化并最终参与 draw。
-
-分析覆盖以下链路：
-
-- SceneGraph 侧：`Material` / `MaterialInstance` / `MaterialParameters`
-- ECS 侧：`MaterialBatch` / `MaterialInstanceAssignmentBuffer` / `PipelineMaterialRenderer`
-- 绑定侧：`RenderDescriptorBindingSystem`
+本文档描述当前 ECS 渲染主线：**不再使用 `mi_buffer`/`MaterialInstanceAssignmentBuffer`**，统一走独立 SSBO 资源与 `SSBOType + ssbo_id` 精确绑定。
 
 ---
 
-## 2. 基础对象与职责拆分
+## 1. 当前架构边界
 
-## 2.1 Material：shader + descriptor 合约 + MI 内存池入口
+- `PrimitiveBatchPipeline` 负责批次整理、排序和绘制批次构建。
+- `RenderDescriptorBindingSystem` 负责按 binding contract 语义执行 descriptor 绑定。
+- `PipelineMaterialRenderer` 只负责 VAB/IBO 与 draw 提交，不再承担材质实例数据整理逻辑。
 
-`Material` 本质是一组 shader 与 descriptor 绑定规则的管理对象，关键状态包括：
+核心约束：
 
-- `binding_contract`：描述语义化资源需求（例如 LocalToWorld、MaterialInstance、CameraInfo）。
-- `mp_array`：不同 `DescriptorSetType` 对应的 `MaterialParameters`。
-- `mi_data_bytes` / `mi_max_count`：材质实例结构体字节数与最大数量。
-- `mi_data_manager`：材质实例数据区（CPU 侧连续内存块管理）。
-
-因此，`Material` 既定义“要绑定什么”，也定义“每个 MaterialInstance 的数据结构和容量”。
-
-## 2.2 MaterialInstance：只持有实例 ID，不拷贝布局定义
-
-`MaterialInstance` 结构很轻，关键字段：
-
-- `material`：所属材质。
-- `mi_id`：在材质实例数据区中的槽位。
-- `vil`：顶点输入布局关联。
-
-创建流程：
-
-1. `Material::CreateMI` 从 `mi_data_manager` 申请一个 `mi_id`。
-2. `MaterialInstance` 构造后仅记录这个 `mi_id`。
-3. `WriteMIData` 通过 `Material::GetMIData(mi_id)` 直接写入材质实例数据区。
-
-销毁流程：
-
-- `MaterialInstance` 析构时调用 `material->ReleaseMI(mi_id)` 回收槽位。
-
-这意味着实例数据是集中存放、按 ID 索引，而非每个实例各自维护独立大块结构。
-
-## 2.3 MaterialParameters：DescriptorSet 的执行器
-
-`MaterialParameters` 负责把资源真正写入 descriptor：
-
-- `BindUBO/BindSSBO`
-- `BindTexture/BindTextureSampler`
-- `Update()` 提交 descriptor 更新
-
-`Material::BindUBO/BindSSBO/BindTexture...` 最终都转发到对应 set 的 `MaterialParameters`。
+1. 绑定资源解析只认 `SSBOType + ssbo_id (+ slot)`。
+2. `MaterialTextureLayerTable` / `MaterialDataIndexTable` 不再 `id=0` 回退。
+3. recipe 负责“声明关联”，资源存在性由独立 SSBO 注册链路保证。
 
 ---
 
-## 3. ECS 侧如何整理 Material/MI 数据
+## 2. 批处理阶段（Batch）
 
-## 3.1 先按 Material+Pipeline 建批
+`PrimitiveBatchPipeline::BuildMaterialBatches` 仍按 `MaterialPipelineKey{material,pipeline}` 聚合 `RenderItem`，并在 `FinalizeBatch` 中完成：
 
-ECS 使用 `MaterialPipelineKey {material*, pipeline*}` 作为 batch key。
+1. batch 内 item 排序与 draw range 归并；
+2. `LocalToWorldIndexTable` 相关每批行表写入；
+3. 绘制命令缓冲（ICB）准备。
 
-在 `PrimitiveBatchPipeline::BuildMaterialBatches` 中：
+已移除：
 
-- 遍历 `renderItems`
-- 同 key 的 item 聚合到同一个 `MaterialBatch`
-
-这样做的结果是：
-
-- 一个 batch 内材质与管线一致，便于最小化 pipeline/descriptor 切换。
-- MI 与 Transform 的分配缓冲可以按 batch 一次性构建。
-
-## 3.2 MaterialBatch 里对 MI 的管理
-
-`MaterialBatch` 里包含：
-
-- `MaterialInstanceAssignmentBuffer *mi_buffer`
-- `TransformAssignmentBuffer *transform_buffer`
-- `VkBuffer transform_vab_buffer`
-- `DrawBatchArray draw_batches`
-
-`FinalizeBatch` 流程中会调用 `UpdateMaterialInstanceBuffer(batch)`：
-
-1. 若材质 `hasMI()==false`，直接跳过。
-2. 若 `mi_buffer` 不存在则创建。
-3. 调用 `mi_buffer->WriteItems(batch.items)` 完成本批次 MI 数据整理。
+- `UpdateMaterialInstanceBuffer(batch)`；
+- `MaterialBatch::mi_buffer` 字段及其生命周期管理。
 
 ---
 
-## 4. MaterialInstanceAssignmentBuffer 的数据整理策略
+## 3. Descriptor 绑定阶段（FrameSync / DrawOnly）
 
-## 4.1 两类输出数据
+`RenderDescriptorBindingSystem::ApplyContractBindings` 按语义分派：
 
-`MaterialInstanceAssignmentBuffer` 同时产出两类缓冲：
+- `LocalToWorld` / `LocalToWorldIndexTable`：从 Transform 相关缓冲或 domain 资源解析。
+- `MaterialTextureLayerTable`：按 `SSBOAddress{req.ssbo_type, req.ssbo_id, texture_slot}` 解析。
+- `MaterialDataIndexTable`：按 `SSBOAddress{req.ssbo_type, req.ssbo_id, data_slot}` 解析。
+- 纹理/采样器语义按注册表绑定。
 
-1. `material_instance_buffer`（UBO/SSBO）
-   - 存放“去重后的 MI 结构体真实数据”。
-2. `material_instance_vab`（R16UI）
-   - 每个 RenderItem 一个 MI 索引，作为实例率属性输入。
+已移除：
 
-这与 Transform 通道完全同构：
-
-- VAB 传 ID
-- UBO/SSBO 传真实结构体数组
-
-## 4.2 去重与索引映射
-
-`MaterialInstanceSet` 内部维护：
-
-- `instances`：唯一 MI 指针数组
-- `index_map`：`MaterialInstance* -> uint16`
-
-`StatMaterialInstance(items)` 会：
-
-1. 扫描 batch 中所有 item 的 `GetMaterialInstance()`。
-2. 去重后得到唯一 MI 集合。
-3. 把每个唯一 MI 的数据块拷贝进 `material_instance_buffer`。
-
-随后 `WriteItems(items)` 写入 `material_instance_vab`：
-
-- 对每个 item，查 `mi_set.Find(mi)`，写入对应 `uint16` 索引。
-
-最终效果：
-
-- 同一批次中重复使用相同 MI 的 item，不重复拷贝大块 MI 数据。
-- draw 时每实例只需传一个 16-bit 索引。
-
-## 4.3 容量与边界
-
-实现中包含以下保护：
-
-- 材质无 MI 数据（`mi_data_bytes<=0`）时跳过 MI VAB。
-- 唯一 MI 数量超过 `material->GetMIMaxCount()` 会告警。
-- VAB 容量采用 2 的幂扩展。
+1. `batch->mi_buffer->BindMaterialInstance(material)` 分支；
+2. 从 `mi_buffer` 直接取 `GetTextureLayerRowsBuffer/GetDataIndexRowsBuffer` 的旁路；
+3. `CompatibilityId0Fallback` 开关、统计与日志回退路径。
 
 ---
 
-## 5. Descriptor 绑定如何进入材质
+## 4. Draw 阶段
 
-## 5.1 语义驱动绑定（推荐路径）
+`PipelineMaterialRenderer::Render` 当前职责：
 
-`RenderDescriptorBindingSystem` 遍历材质 `binding_contract.requirements`，按语义分派：
+1. `BindPipeline`；
+2. `BindDescriptorSets(material)`；
+3. 遍历 `DrawBatch` 绑定几何 VAB/IBO 并提交 draw（直接或间接）。
 
-- `LocalToWorld` -> `transform_buffer->BindTransform(material)`
-- `MaterialInstance` -> `mi_buffer->BindMaterialInstance(material)`
-- 其他语义（CameraInfo/SkyInfo/Texture/Sampler）按各自来源绑定
-
-该方式保证绑定逻辑统一由语义驱动，而不是散落在各个 renderer 中。
-
-## 5.2 BindMaterialInstance 的实际行为
-
-`MaterialInstanceAssignmentBuffer::BindMaterialInstance` 根据宏选择：
-
-- `HGL_MI_USE_SSBO`：`Material::BindSSBO(SBS_MaterialInstance...)`
-- 否则：`Material::BindUBO(SBS_MaterialInstance...)`
-
-再由 `MaterialParameters` 写入 descriptor set，最终 `Material::Update()` 生效。
+注意：渲染器接口已删除 `MaterialInstanceAssignmentBuffer*` 参数，材质实例相关绑定完全由 descriptor 系统在前序阶段完成。
 
 ---
 
-## 6. Draw 阶段如何消费这些数据
+## 5. 端到端时序
 
-`PipelineMaterialRenderer::Render` 的职责是“绑定状态 + 提交绘制”：
-
-1. `BindPipeline`
-2. `BindDescriptorSets(material)`
-3. 对每个 DrawBatch 做：
-   - 绑定几何 VAB
-   - 追加 `transform_vab`
-   - 追加 `material_instance_vab`（若存在）
-   - 绑定 IBO（若有）
-   - 直接或间接 draw
-
-关键点：
-
-- descriptor 里已经有 LocalToWorld / MaterialInstance 的大数组缓冲。
-- 顶点输入里有 TransformID / DataIndexID（新路径可附带 TextureLayerID）实例属性。
-- shader 可用 ID 去索引对应数组，拿到矩阵与材质实例参数。
+1. Collect：收集可见 `RenderItem`。
+2. Batch：按 `MaterialPipelineKey` 聚合并生成 draw batches。
+3. FrameSync/RenderDrawOnly：`RenderDescriptorBindingSystem` 严格按 contract + `SSBOType + ssbo_id` 绑定资源。
+4. DrawSubmit：`PipelineMaterialRenderer` 提交绘制。
 
 ---
 
-## 7. 端到端时序（ECS 视角）
+## 6. 验收要点
 
-一帧内与 Material/MI 相关的主路径可总结为：
+以下条件同时满足即为主线收口完成：
 
-1. Collect 阶段收集 `PrimitiveComponent`，生成 `RenderItem`。
-2. Batch 阶段按 `MaterialPipelineKey` 聚合到 `MaterialBatch`。
-3. `FinalizeBatch`：
-   - 构建 draw batches
-   - 生成/更新 `mi_buffer`（去重 + UBO/SSBO + MI 索引 VAB）
-   - 生成/更新 Transform 索引 VAB
-4. FrameSync 阶段：`RenderDescriptorBindingSystem` 绑定 LocalToWorld 与 MaterialInstance 资源。
-5. DrawSubmit 阶段：`PipelineMaterialRenderer` 绑定 VAB/IBO 并提交 draw。
-
-这条路径形成了“批内去重 + 索引分发 + 语义绑定 + 绘制消费”的闭环。
-
----
-
-## 8. 与当前设计目标的契合点
-
-结合你在渲染文档中的目标（ID 走实例率，真实数据走 UBO/SSBO），当前实现已经满足：
-
-1. Transform 与 MI 两条通道都采用同一种模式。
-2. MI 在 batch 内进行去重，减少重复上传。
-3. 绑定逻辑由 binding contract 统一驱动，易于扩展新语义。
-
-同时，现实现状也有两个工程性约束：
-
-1. MI 去重粒度是“单个 MaterialBatch 内”，不是跨 batch 全局去重。
-2. MI 索引当前使用 `uint16` VAB，需要注意超大实例规模时的索引上限。
-
----
-
-## 9. 结论
-
-在当前 ECS 架构下：
-
-- `Material` 负责定义与承载材质实例数据规则（布局、容量、descriptor 合约）。
-- `MaterialInstance` 通过 `mi_id` 指向材质实例数据池中的槽位。
-- ECS 在 batch 阶段将 MI 做去重整理，生成“真实数据缓冲 + 索引 VAB”。
-- 渲染阶段通过 contract 语义绑定这些缓冲，并由 renderer 将索引属性喂给 shader。
-
-这套机制的核心价值是把“高频实例变化”压缩成“小索引 + 集中大块数据”，在保持材质灵活性的同时提升批量渲染效率。
+1. 主仓 `inc/src` 不再出现 `mi_buffer` 与 `MaterialInstanceAssignmentBuffer` 引用；
+2. 不再存在 `CompatibilityId0Fallback` 相关 API/状态；
+3. `Material*Table` 绑定仅按请求 `ssbo_id` 命中，无隐式回退；
+4. 示例 `03_auto_merge_material_instance` 可构建并运行。

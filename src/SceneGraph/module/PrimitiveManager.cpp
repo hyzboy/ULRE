@@ -43,4 +43,39 @@ Primitive *PrimitiveManager::CreatePrimitive(GeometryCreater *pc, MaterialInstan
     return(nullptr);
 }
 
+Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, DescriptorBindingSet *dbs, Pipeline *p)
+{
+    if(!p||!dbs||!r)
+        return(nullptr);
+
+    Primitive *ri=hgl::graph::DirectCreatePrimitive(r,dbs,p);
+
+    if(ri)
+        Add(ri);
+
+    return ri;
+}
+
+Primitive *PrimitiveManager::CreatePrimitive(GeometryCreater *pc, DescriptorBindingSet *dbs, Pipeline *p)
+{
+    if(!p||!dbs||!pc)
+        return(nullptr);
+
+    Geometry *geometry=pc->Create();
+
+    if(!geometry)
+        return(nullptr);
+
+    Primitive *ri=hgl::graph::DirectCreatePrimitive(geometry,dbs,p);
+
+    if(ri)
+    {
+        Add(ri);
+        return ri;
+    }
+
+    delete geometry;
+    return(nullptr);
+}
+
 }//namespace hgl::graph

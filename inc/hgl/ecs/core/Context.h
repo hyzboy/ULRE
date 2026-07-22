@@ -361,11 +361,6 @@ namespace hgl
 
             bool GetMaterialBindingRegistryStats(uint32_t &materials_registered,
                                                  uint32_t &binding_entries) const;
-            bool GetCompatibilityId0FallbackStats(uint32_t &current_frame_hits,
-                                                  uint32_t &last_summary_hits,
-                                                  uint32_t &last_summary_frame) const;
-            bool SetCompatibilityId0FallbackEnabled(bool enabled);
-            bool IsCompatibilityId0FallbackEnabled(bool &enabled) const;
 
             bool GetMaterialBindingKeys(const hgl::graph::Material *material,
                                         std::vector<std::string> &out_keys) const;

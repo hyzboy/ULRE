@@ -4,6 +4,7 @@
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/RenderableComponent.h>
 #include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialInstance.h>
@@ -50,6 +51,11 @@ namespace hgl::ecs
     hgl::graph::MaterialInstance* PrimitiveRenderItem::GetMaterialInstance() const
     {
         return primitiveComp ? primitiveComp->GetMaterialInstance() : nullptr;
+    }
+
+    hgl::graph::DescriptorBindingSet* PrimitiveRenderItem::GetDescriptorBindingSet() const
+    {
+        return primitiveComp ? primitiveComp->GetDescriptorBindingSet() : nullptr;
     }
 
     hgl::graph::Material* PrimitiveRenderItem::GetMaterial() const

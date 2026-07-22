@@ -11,6 +11,8 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
+#include<hgl/graph/DescriptorBindingSet.h>
+#include<hgl/graph/SSBOSlotAllocator.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/color/Color.h>
 #include<ctime>
@@ -19,7 +21,10 @@
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
+#include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
 #include<cmath>
+#include<cstring>
 
 // 引入ECS相关头文件
 #include<hgl/ecs/core/Context.h>
@@ -27,6 +32,7 @@
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
+#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -71,12 +77,14 @@ private:
     Material* material = nullptr;
     Pipeline* pipeline = nullptr;
     Geometry* geometry = nullptr;
+    graph::DeviceBuffer* mi_ssbo = nullptr;
+    DescriptorBindingSet *tick_binding_set = nullptr;
+    SSBOSlotAllocator slot_allocator;
 
     // 刻度数据
     struct TickData
     {
         Entity* entity;
-        MaterialInstance* mi;
         Primitive* primitive;
     };
 
@@ -96,6 +104,7 @@ private:
 
     enum HandType { Hour, Minute, Second };
     HandData hands[3];  // 0=hour, 1=minute, 2=second
+    DescriptorBindingSet *hand_binding_sets[3]{};
 
 private:
 
@@ -127,27 +136,6 @@ private:
         }
 
         {
-            // 刻度颜色（白色）
-            Color4f tick_color(1.0f, 1.0f, 1.0f, 1.0f);
-
-            mi_tick = material_manager->CreateMaterialInstance(material);
-            if(mi_tick)
-                mi_tick->WriteMIData(tick_color);
-
-            // 指针颜色
-            Color4f hand_colors[3] = {
-                Color4f(1.0f, 0.0f, 0.0f, 1.0f),   // 时针 - 红色
-                Color4f(0.0f, 1.0f, 0.0f, 1.0f),   // 分针 - 绿色
-                Color4f(0.0f, 0.0f, 1.0f, 1.0f)    // 秒针 - 蓝色
-            };
-
-            for (uint i = 0; i < 3; i++)
-            {
-                hands[i].mi = material_manager->CreateMaterialInstance(material);
-                if (!hands[i].mi)
-                    return false;
-                hands[i].mi->WriteMIData(hand_colors[i]);
-            }
         }
 
         auto* render_target = render_context->GetCurrentRenderTarget();
@@ -201,6 +189,122 @@ private:
         return true;
     }
 
+    bool InitMISSBO()
+    {
+        if (!material)
+            return false;
+
+        if (!ecs_world)
+            ecs_world = GetECSContext();
+        if (!ecs_world)
+            return false;
+
+        const uint32_t mi_data_bytes = material->GetMIDataBytes();
+        if (mi_data_bytes == 0)
+            return true;
+        if (mi_data_bytes != sizeof(Color4f))
+            return false;
+
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
+        auto* buffer_manager = graphics_context->GetBufferManager();
+        auto* domain_manager = graphics_context->GetResourceDomainManager();
+        if (!buffer_manager || !domain_manager)
+            return false;
+
+        auto descriptor_system = ecs_world->GetSystem<RenderDescriptorBindingSystem>();
+        if (!descriptor_system)
+            return false;
+
+        if (!slot_allocator.Init(4))
+            return false;
+
+        const uint32_t mi_count = 4;
+        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * mi_data_bytes;
+
+        mi_ssbo = buffer_manager->CreateSSBO("Clock:PBRSurface:MIData", ssbo_size, nullptr, SharingMode::Exclusive);
+        if (!mi_ssbo)
+        {
+            std::cout << "[ClockApp::InitMISSBO] ERROR: failed to create MI SSBO" << std::endl;
+            return false;
+        }
+
+        auto *gpu_buf = mi_ssbo->GetGPUBuffer();
+        if (!gpu_buf)
+            return false;
+
+        uint8_t *dst = static_cast<uint8_t *>(gpu_buf->Map(0, ssbo_size));
+        if (!dst)
+            return false;
+
+        memset(dst, 0, static_cast<size_t>(ssbo_size));
+
+        uint32_t tick_slot = 0;
+        if (!slot_allocator.Allocate(tick_slot))
+            return false;
+
+        const Color4f tick_color(1.0f, 1.0f, 1.0f, 1.0f);
+        memcpy(dst + static_cast<VkDeviceSize>(tick_slot) * mi_data_bytes, &tick_color, mi_data_bytes);
+
+        Color4f hand_colors[3] = {
+            Color4f(1.0f, 0.0f, 0.0f, 1.0f),
+            Color4f(0.0f, 1.0f, 0.0f, 1.0f),
+            Color4f(0.0f, 0.0f, 1.0f, 1.0f)
+        };
+        uint32_t hand_slots[3]{};
+        for (uint i = 0; i < 3; ++i)
+        {
+            if (!slot_allocator.Allocate(hand_slots[i]))
+                return false;
+            memcpy(dst + static_cast<VkDeviceSize>(hand_slots[i]) * mi_data_bytes, &hand_colors[i], mi_data_bytes);
+        }
+
+        gpu_buf->Unmap();
+
+        tick_binding_set = new DescriptorBindingSet(material);
+        if (!tick_binding_set)
+            return false;
+        for (uint i = 0; i < 3; ++i)
+        {
+            hand_binding_sets[i] = new DescriptorBindingSet(material);
+            if (!hand_binding_sets[i])
+                return false;
+        }
+
+        bool has_struct_binding = false;
+        for (const auto &req : material->GetBindingContract().requirements)
+        {
+            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                continue;
+
+            has_struct_binding = true;
+            if (!descriptor_system->RegisterMaterialStructLayout(req.ssbo_type, req.ssbo_id, mi_data_bytes))
+                return false;
+
+            const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
+            if (!domain_manager->RegisterBuffer(addr, mi_ssbo, mi_count))
+                return false;
+
+            if (!tick_binding_set->SetSSBOBinding(req.ssbo_type, req.ssbo_id, tick_slot))
+                return false;
+            for (uint i = 0; i < 3; ++i)
+            {
+                if (!hand_binding_sets[i]->SetSSBOBinding(req.ssbo_type, req.ssbo_id, hand_slots[i]))
+                    return false;
+            }
+        }
+
+        std::cout << "[ClockApp::InitMISSBO] registered PBRSurface SSBO: count=" << mi_count
+                  << ", stride=" << mi_data_bytes << std::endl;
+        return has_struct_binding;
+    }
+
     bool InitECS()
     {
         auto* render_context = GetRenderContext();
@@ -237,7 +341,7 @@ private:
         // === 创建12个刻度（Static Transform） ===
         for (uint i = 0; i < TICK_COUNT; i++)
         {
-            ticks[i].primitive = primitive_manager->CreatePrimitive(geometry, mi_tick, pipeline);
+            ticks[i].primitive = primitive_manager->CreatePrimitive(geometry, tick_binding_set, pipeline);
 
             if (!ticks[i].primitive)
             {
@@ -272,6 +376,7 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = ticks[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitive(ticks[i].primitive);
+            primitive_comp->SetDescriptorBindingSet(tick_binding_set);
             primitive_comp->SetVisible(true);
 
             std::cout << "[ClockApp::InitECS] Created static tick [" << i << "] at angle " << (30.0f * i) << " degrees" << std::endl;
@@ -284,7 +389,7 @@ private:
 
         for (uint i = 0; i < 3; i++)
         {
-            hands[i].primitive = primitive_manager->CreatePrimitive(geometry, hands[i].mi, pipeline);
+            hands[i].primitive = primitive_manager->CreatePrimitive(geometry, hand_binding_sets[i], pipeline);
 
             if (!hands[i].primitive)
             {
@@ -310,6 +415,7 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = hands[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitive(hands[i].primitive);
+            primitive_comp->SetDescriptorBindingSet(hand_binding_sets[i]);
             primitive_comp->SetVisible(true);
 
             std::cout << "[ClockApp::InitECS] Created movable hand [" << i << "] (" << hand_names[i] << ")" << std::endl;
@@ -338,6 +444,12 @@ public:
         if (!InitGeometry())
         {
             std::cout << "[ClockApp::Init] ERROR: InitGeometry failed!" << std::endl;
+            return false;
+        }
+
+        if (!InitMISSBO())
+        {
+            std::cout << "[ClockApp::Init] ERROR: InitMISSBO failed!" << std::endl;
             return false;
         }
 
@@ -398,9 +510,18 @@ public:
 
         WorkObject::Tick(delta_time);
     }
+
+    ~ClockApp()
+    {
+        delete tick_binding_set;
+        for (auto *dbs : hand_binding_sets)
+            delete dbs;
+        SAFE_CLEAR(mi_ssbo)
+    }
 };//class ClockApp:public WorkObject
 
 int os_main(int argc, os_char** argv)
 {
     return RunFramework<ClockApp>(OS_TEXT("Clock (Static and Movable Transform Separation with ECS)"), argc, argv, 1024, 1024);
 }
+

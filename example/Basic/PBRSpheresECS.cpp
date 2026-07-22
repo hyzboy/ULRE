@@ -18,6 +18,8 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/color/ColorPacking.h>
 
 #include<hgl/ecs/core/Context.h>
@@ -31,6 +33,7 @@
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
 #include<memory>
+#include<cstring>
 #include<string>
 
 using namespace hgl;
@@ -84,6 +87,8 @@ private:
     Entity *      camera_entity = nullptr;
 
     Material *          material  = nullptr;
+    graph::DeviceBuffer * mi_ssbo = nullptr;
+    graph::DeviceBuffer * texture_layer_ssbo = nullptr;
     Pipeline *          pipeline  = nullptr;
     Texture2DArray *    base_color_texture = nullptr;
     Texture2DArray *    normal_texture = nullptr;
@@ -318,7 +323,6 @@ private:
                 d.metallic   = metallic;
                 d.roughness  = roughness;
                 d.normal_scale = 0.35f;
-                d.texture_id = row;
 
                 auto &store = sphere_mi_data[row][col];
                 store.base_color = d.base_color;
@@ -336,6 +340,239 @@ private:
             }
         }
 
+        return true;
+    }
+
+    bool InitMISSBO()
+    {
+        if (!ecs_world || !material)
+            return false;
+
+        auto *render_context = GetRenderContext();
+        if (!render_context) {
+            printf("[ERROR] InitMISSBO: No render_context\n");
+            return false;
+        }
+
+        auto *graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context) {
+            printf("[ERROR] InitMISSBO: No graphics_context\n");
+            return false;
+        }
+
+        auto *buffer_manager = graphics_context->GetBufferManager();
+        auto *domain_manager = graphics_context->GetResourceDomainManager();
+        if (!buffer_manager || !domain_manager) {
+            printf("[ERROR] InitMISSBO: Missing buffer/domain manager\n");
+            return false;
+        }
+
+        auto rdbs = ecs_world->GetSystem<RenderDescriptorBindingSystem>();
+        if (!rdbs) {
+            printf("[ERROR] InitMISSBO: No RenderDescriptorBindingSystem\n");
+            return false;
+        }
+
+        const uint32_t mi_data_bytes = material->GetMIDataBytes();
+        if (mi_data_bytes == 0)
+            return true;
+
+        int max_mi_id = -1;
+        for (uint row = 0; row < GRID_SIZE; ++row)
+        {
+            for (uint col = 0; col < GRID_SIZE; ++col)
+            {
+                auto *mi = sphere_mi[row][col];
+                if (!mi)
+                    continue;
+
+                const int mi_id = mi->GetMIID();
+                if (mi_id > max_mi_id)
+                    max_mi_id = mi_id;
+            }
+        }
+
+        if (max_mi_id < 0) {
+            printf("[ERROR] InitMISSBO: No material instances found\n");
+            return false;
+        }
+
+        const uint32_t mi_count = static_cast<uint32_t>(max_mi_id + 1);
+        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * mi_data_bytes;
+
+        mi_ssbo = buffer_manager->CreateSSBO("PBRSpheres:PBRSurface:MIData", ssbo_size, nullptr, SharingMode::Exclusive);
+        if (!mi_ssbo) {
+            printf("[ERROR] InitMISSBO: Failed to create SSBO\n");
+            return false;
+        }
+
+        auto *gpu_buf = mi_ssbo->GetGPUBuffer();
+        if (!gpu_buf) {
+            printf("[ERROR] InitMISSBO: Failed to get GPU buffer\n");
+            return false;
+        }
+
+        auto *dst = static_cast<uint8_t *>(gpu_buf->Map(0, ssbo_size));
+        if (!dst) {
+            printf("[ERROR] InitMISSBO: Failed to map SSBO\n");
+            return false;
+        }
+
+        memset(dst, 0, static_cast<size_t>(ssbo_size));
+
+        for (uint row = 0; row < GRID_SIZE; ++row)
+        {
+            for (uint col = 0; col < GRID_SIZE; ++col)
+            {
+                auto *mi = sphere_mi[row][col];
+                if (!mi)
+                    continue;
+
+                const int mi_id = mi->GetMIID();
+                if (mi_id < 0)
+                    continue;
+
+                void *src = material->GetMIData(mi_id);
+                if (!src)
+                    continue;
+
+                memcpy(dst + static_cast<VkDeviceSize>(mi_id) * mi_data_bytes, src, mi_data_bytes);
+            }
+        }
+
+        gpu_buf->Unmap();
+
+        const uint32_t ssbo_id = graph::mtl::MakeRecipeSSBOId(0);
+        if (!rdbs->RegisterMaterialStructLayout(graph::mtl::SSBOType::PBRSurface, ssbo_id, mi_data_bytes)) {
+            printf("[ERROR] InitMISSBO: RegisterMaterialStructLayout failed\n");
+            return false;
+        }
+
+        const graph::mtl::SSBOAddress addr{graph::mtl::SSBOType::PBRSurface, ssbo_id, 0};
+        if (!domain_manager->RegisterBuffer(addr, mi_ssbo, mi_count)) {
+            printf("[ERROR] InitMISSBO: RegisterBuffer failed\n");
+            return false;
+        }
+
+        std::cout << "[PBRSpheres::InitMISSBO] registered PBRSurface SSBO: count=" << mi_count
+                  << ", stride=" << mi_data_bytes << ", ssbo_id=" << ssbo_id << std::endl;
+        return true;
+    }
+
+    bool InitTextureLayerSSBO(const uint32_t base_color_handle, const uint32_t normal_handle)
+    {
+        if (!ecs_world || !material)
+            return false;
+
+        auto *render_context = GetRenderContext();
+        if (!render_context) {
+            printf("[ERROR] InitTextureLayerSSBO: No render_context\n");
+            return false;
+        }
+
+        auto *graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context) {
+            printf("[ERROR] InitTextureLayerSSBO: No graphics_context\n");
+            return false;
+        }
+
+        auto *buffer_manager = graphics_context->GetBufferManager();
+        auto *domain_manager = graphics_context->GetResourceDomainManager();
+        if (!buffer_manager || !domain_manager) {
+            printf("[ERROR] InitTextureLayerSSBO: Missing buffer/domain manager\n");
+            return false;
+        }
+
+        auto rdbs = ecs_world->GetSystem<RenderDescriptorBindingSystem>();
+        if (!rdbs) {
+            printf("[ERROR] InitTextureLayerSSBO: No RenderDescriptorBindingSystem\n");
+            return false;
+        }
+
+        int max_mi_id = -1;
+        for (uint row = 0; row < GRID_SIZE; ++row)
+        {
+            for (uint col = 0; col < GRID_SIZE; ++col)
+            {
+                auto *mi = sphere_mi[row][col];
+                if (!mi)
+                    continue;
+
+                const int mi_id = mi->GetMIID();
+                if (mi_id > max_mi_id)
+                    max_mi_id = mi_id;
+            }
+        }
+
+        if (max_mi_id < 0) {
+            printf("[ERROR] InitTextureLayerSSBO: No material instances found\n");
+            return false;
+        }
+
+        const uint32_t row_count = static_cast<uint32_t>(max_mi_id + 1);
+        const uint32_t slot_count = static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE);
+        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(row_count) * slot_count * sizeof(uint32_t);
+
+        texture_layer_ssbo = buffer_manager->CreateSSBO("PBRSpheres:TextureLayerRows", ssbo_size, nullptr, SharingMode::Exclusive);
+        if (!texture_layer_ssbo) {
+            printf("[ERROR] InitTextureLayerSSBO: Failed to create SSBO\n");
+            return false;
+        }
+
+        auto *gpu_buf = texture_layer_ssbo->GetGPUBuffer();
+        if (!gpu_buf) {
+            printf("[ERROR] InitTextureLayerSSBO: Failed to get GPU buffer\n");
+            return false;
+        }
+
+        auto *dst = static_cast<uint32_t *>(gpu_buf->Map(0, ssbo_size));
+        if (!dst) {
+            printf("[ERROR] InitTextureLayerSSBO: Failed to map SSBO\n");
+            return false;
+        }
+
+        memset(dst, 0, static_cast<size_t>(ssbo_size));
+
+        // TextureLayer rows reuse the same index space as mtl (mi_id).
+        for (uint row = 0; row < GRID_SIZE; ++row)
+        {
+            for (uint col = 0; col < GRID_SIZE; ++col)
+            {
+                auto *mi = sphere_mi[row][col];
+                if (!mi)
+                    continue;
+
+                const int mi_id = mi->GetMIID();
+                if (mi_id < 0)
+                    continue;
+
+                const size_t base = static_cast<size_t>(mi_id) * slot_count;
+                dst[base + static_cast<uint32_t>(graph::mtl::TextureSlot::BaseColor)] = base_color_handle;
+                dst[base + static_cast<uint32_t>(graph::mtl::TextureSlot::Normal)] = normal_handle;
+                // TEXTURE_SLOT_CUSTOM0 carries the Texture2DArray layer index (= PBR folder row).
+                dst[base + static_cast<uint32_t>(graph::mtl::TextureSlot::Custom0)] = row;
+            }
+        }
+
+        gpu_buf->Unmap();
+
+        const uint32_t ssbo_id = graph::mtl::MakeRecipeSSBOId(0);
+        const uint32_t row_stride = slot_count * sizeof(uint32_t);
+        if (!rdbs->RegisterMaterialStructLayout(graph::mtl::SSBOType::TextureLayer, ssbo_id, row_stride)) {
+            printf("[ERROR] InitTextureLayerSSBO: RegisterMaterialStructLayout failed\n");
+            return false;
+        }
+
+        const graph::mtl::SSBOAddress addr{graph::mtl::SSBOType::TextureLayer, ssbo_id, 0};
+        if (!domain_manager->RegisterBuffer(addr, texture_layer_ssbo, row_count)) {
+            printf("[ERROR] InitTextureLayerSSBO: RegisterBuffer failed\n");
+            return false;
+        }
+
+        std::cout << "[PBRSpheres::InitTextureLayerSSBO] registered TextureLayer SSBO: rows=" << row_count
+                  << ", stride=" << row_stride
+                  << ", base_handle=" << base_color_handle
+                  << ", normal_handle=" << normal_handle << std::endl;
         return true;
     }
 
@@ -525,6 +762,9 @@ private:
             return false;
         }
 
+        if (!InitMISSBO())
+            return false;
+
         auto* render_context = GetRenderContext();
         auto* bindless_mgr = render_context ? render_context->GetBindlessTextureManager() : nullptr;
         if (!bindless_mgr) {
@@ -534,7 +774,8 @@ private:
 
         // S8: ECS main path no longer depends on RegisterMaterialTextureSampler.
         // Keep only bindless resource registration + semantic texture mapping.
-        if (rdbs->RegisterTexture2DArrayResource("", base_color_texture, sampler, bindless_mgr) == 0) {
+        const uint32_t base_color_handle = rdbs->RegisterTexture2DArrayResource("", base_color_texture, sampler, bindless_mgr);
+        if (base_color_handle == 0) {
             printf("[ERROR] InitECS: Failed to register base color 2DArray bindless resource\n");
             return false;
         }
@@ -543,7 +784,8 @@ private:
             return false;
         }
 
-        if (rdbs->RegisterTexture2DArrayResource("", normal_texture, sampler, bindless_mgr) == 0) {
+        const uint32_t normal_handle = rdbs->RegisterTexture2DArrayResource("", normal_texture, sampler, bindless_mgr);
+        if (normal_handle == 0) {
             printf("[ERROR] InitECS: Failed to register normal 2DArray bindless resource\n");
             return false;
         }
@@ -551,6 +793,9 @@ private:
             printf("[ERROR] InitECS: Failed to map normal texture to material\n");
             return false;
         }
+
+        if (!InitTextureLayerSSBO(base_color_handle, normal_handle))
+            return false;
 
         // 计算网格原点，使整体居中于世界原点
         const float offset = (GRID_SIZE - 1) * SPHERE_SPACING * 0.5f;
@@ -649,6 +894,8 @@ public:
         }
 
         SAFE_CLEAR(mesh_vdm)
+        SAFE_CLEAR(mi_ssbo)
+        SAFE_CLEAR(texture_layer_ssbo)
         SAFE_CLEAR(base_color_texture)
         SAFE_CLEAR(normal_texture)
         SAFE_CLEAR(sampler)

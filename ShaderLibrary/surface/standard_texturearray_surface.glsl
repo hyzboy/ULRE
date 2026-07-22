@@ -2,7 +2,8 @@
 // S6: Texture sampling migrated to bindless (bindless_tex2darray[], binding=1 on Set 4).
 // Texture semantic declarations remain in the material contract for recipe extraction,
 // but actual sampling is fully bindless in this shader.
-// Layer index still comes from MI (mi.texture_id); handle from per-instance TextureLayerRows.
+// Array layer index is stored in TextureLayerRows[iid][TEXTURE_SLOT_CUSTOM0].
+// This aligns with the general texture-layer architecture (no texture_id in MI).
 
 #include "common/surface_interface.glsl"
 #include "common/material_instance_ssbo.glsl"
@@ -12,7 +13,6 @@ struct MaterialInstance
     float metallic;
     float roughness;
     float normal_scale;
-    uint  texture_id;
 };
 MI_SSBO;
 
@@ -63,10 +63,10 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
     vec3 sunColor   = max(ULRE_GetSkyLightColor(), vec3(0.2));
     vec3 skyAmbient = ULRE_GetSkyAmbientColor();
 
-    // Layer index driven by per-instance payload (mi.texture_id).
+    // Array layer index stored in TextureLayerRows[iid][TEXTURE_SLOT_CUSTOM0].
     // Handle resolved from per-instance TextureLayerRows via GetTextureHandle().
-    float layer = float(mi.texture_id);
     const uint iid = si.textureLayerID;
+    float layer = float(GetTextureHandle(iid, TEXTURE_SLOT_CUSTOM0));
 
     vec3 albedo = unpackUnorm4x8(mi.base_color).rgb;
     albedo *= SampleBindless2DArray(GetTextureHandle(iid, TEXTURE_SLOT_BASE_COLOR), si.uv0, layer).rgb;

@@ -16,6 +16,8 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
 
 #include<hgl/color/Color.h>
 #include<hgl/math/geometry/AABB.h>
@@ -27,10 +29,13 @@
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
 #include<glm/gtx/quaternion.hpp>
+
+#include<cstring>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -92,6 +97,7 @@ private:
 
         Pipeline *          pipeline          = nullptr;
         MaterialInstance *  mi[COLOR_COUNT]{};
+        graph::DeviceBuffer * mi_ssbo = nullptr;
     };
 
     struct RenderMesh
@@ -216,6 +222,100 @@ private:
         return InitMaterialInstance(&wire);
     }
 
+    bool InitMISSBOForMaterial(MaterialData *md, const char *tag)
+    {
+        if (!ecs_context || !md || !md->material)
+            return false;
+
+        auto *render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto *graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
+        auto *buffer_manager = graphics_context->GetBufferManager();
+        auto *domain_manager = graphics_context->GetResourceDomainManager();
+        if (!buffer_manager || !domain_manager)
+            return false;
+
+        auto rdbs = ecs_context->GetSystem<RenderDescriptorBindingSystem>();
+        if (!rdbs)
+            return false;
+
+        const uint32_t mi_data_bytes = md->material->GetMIDataBytes();
+        if (mi_data_bytes == 0)
+            return true;
+
+        int max_mi_id = -1;
+        for (size_t i = 0; i < COLOR_COUNT; ++i)
+        {
+            auto *inst = md->mi[i];
+            if (!inst)
+                continue;
+
+            const int mi_id = inst->GetMIID();
+            if (mi_id > max_mi_id)
+                max_mi_id = mi_id;
+        }
+
+        if (max_mi_id < 0)
+            return false;
+
+        const uint32_t mi_count = static_cast<uint32_t>(max_mi_id + 1);
+        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * mi_data_bytes;
+
+        md->mi_ssbo = buffer_manager->CreateSSBO(tag ? tag : "RenderBoundBox:MIData", ssbo_size, nullptr, SharingMode::Exclusive);
+        if (!md->mi_ssbo)
+            return false;
+
+        auto *gpu_buf = md->mi_ssbo->GetGPUBuffer();
+        if (!gpu_buf)
+            return false;
+
+        auto *dst = static_cast<uint8_t *>(gpu_buf->Map(0, ssbo_size));
+        if (!dst)
+            return false;
+
+        memset(dst, 0, static_cast<size_t>(ssbo_size));
+
+        for (size_t i = 0; i < COLOR_COUNT; ++i)
+        {
+            auto *inst = md->mi[i];
+            if (!inst)
+                continue;
+
+            const int mi_id = inst->GetMIID();
+            if (mi_id < 0)
+                continue;
+
+            void *src = md->material->GetMIData(mi_id);
+            if (!src)
+                continue;
+
+            memcpy(dst + static_cast<VkDeviceSize>(mi_id) * mi_data_bytes, src, mi_data_bytes);
+        }
+
+        gpu_buf->Unmap();
+
+        bool has_struct_binding = false;
+        for (const auto &req : md->material->GetBindingContract().requirements)
+        {
+            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                continue;
+
+            has_struct_binding = true;
+            if (!rdbs->RegisterMaterialStructLayout(req.ssbo_type, req.ssbo_id, mi_data_bytes))
+                return false;
+
+            const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
+            if (!domain_manager->RegisterBuffer(addr, md->mi_ssbo, mi_count))
+                return false;
+        }
+
+        return has_struct_binding;
+    }
     bool InitVDM()
     {
         auto* render_context = GetRenderContext();
@@ -566,6 +666,12 @@ private:
         if(!ecs_context)
             return false;
 
+        if (!InitMISSBOForMaterial(&solid, "RenderBoundBox:SolidMIData"))
+            return false;
+
+        if (!InitMISSBOForMaterial(&wire, "RenderBoundBox:WireMIData"))
+            return false;
+
         if(!CreateGeometryMesh())
             return false;
 
@@ -702,9 +808,13 @@ private:
 public:
     ~TestApp()
     {
+        // RenderMesh destruction may touch VDM-backed geometry resources.
+        render_mesh.clear();
+        rm_floor = nullptr;
+
+        SAFE_CLEAR(wire.mi_ssbo)
+        SAFE_CLEAR(solid.mi_ssbo)
         SAFE_CLEAR(mesh_vdm)
-        delete bbox_primitive;
-        delete bbox_geometry;
     }
 
     bool Init() override
@@ -739,3 +849,4 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Render Bounding Box (ECS)"),argc,argv,1280,720);
 }
+

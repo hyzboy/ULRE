@@ -33,7 +33,7 @@ DATA_INDEX_ROWS_SSBO;
 
 #define GET_TRANSFORM_ID()          ResolveTransformID(gl_InstanceIndex)
 #define GET_DATA_INDEX_ID()         ResolveDataIndexID(gl_InstanceIndex)
-#define GET_TEXTURE_LAYER_ID()      gl_InstanceIndex   // bindless: row index into texture_layer_rows
+#define GET_TEXTURE_LAYER_ID()      GET_DATA_INDEX_ID() // bindless: share texture row by data-index indirection
 
 layout(location=0) out vec3 fragWorldPos;
 layout(location=1) out vec3 fragWorldNormal;

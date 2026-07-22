@@ -11,6 +11,8 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
+#include<hgl/graph/DescriptorBindingSet.h>
+#include<hgl/graph/SSBOSlotAllocator.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/camera/Camera.h>
@@ -23,7 +25,11 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/log/Log.h>
 #include<memory>
+#include<cstring>
 
 // 引入ECS相关头文件
 #include<hgl/ecs/core/Context.h>
@@ -32,6 +38,7 @@
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -78,16 +85,20 @@ private:
 
     // 传统渲染资源
     Material *          mtl_plane_grid      =nullptr;
-    MaterialInstance *  mi_plane_grid       =nullptr;
+    const VIL *         vil_plane_grid      =nullptr;
+    DescriptorBindingSet *dbs_plane_grid    =nullptr;
     Pipeline *          pipeline_plane_grid =nullptr;
     Geometry *          geom_plane_grid     =nullptr;
+    graph::DeviceBuffer *mi_shared_ssbo      =nullptr;
 
     Material *          mtl_line            =nullptr;
-    MaterialInstance *  mi_line             =nullptr;
+    const VIL *         vil_line            =nullptr;
+    DescriptorBindingSet *dbs_line          =nullptr;
     Pipeline *          pipeline_line       =nullptr;
     Geometry *          geom_line           =nullptr;
     Primitive *         prim_line           =nullptr;
     VAB *               prim_line_vab       =nullptr;
+    SSBOSlotAllocator   slot_allocator;
 
     math::Ray           ray;
 
@@ -123,13 +134,12 @@ private:
 
             mtl_plane_grid = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg);
             if(!mtl_plane_grid)return(false);
-
-            mi_plane_grid=material_manager->CreateMaterialInstance(mtl_plane_grid,&vil_config,&white_color);
-            if(!mi_plane_grid)return(false);
+            vil_plane_grid = mtl_plane_grid->CreateVIL(&vil_config);
+            if(!vil_plane_grid)return(false);
 
             auto* render_target = render_context->GetCurrentRenderTarget();
             auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-            pipeline_plane_grid = render_pass ? render_pass->CreatePipeline(mi_plane_grid, InlinePipeline::Solid3D) : nullptr;
+            pipeline_plane_grid = render_pass ? render_pass->CreatePipeline(mtl_plane_grid, vil_plane_grid, InlinePipeline::Solid3D) : nullptr;
             if(!pipeline_plane_grid)return(false);
         }
 
@@ -138,13 +148,12 @@ private:
 
             mtl_line = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg);
             if(!mtl_line)return(false);
-
-            mi_line=material_manager->CreateMaterialInstance(mtl_line,&vil_config,&yellow_color);
-            if(!mi_line)return(false);
+            vil_line = mtl_line->CreateVIL(&vil_config);
+            if(!vil_line)return(false);
 
             auto* render_target = render_context->GetCurrentRenderTarget();
             auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-            pipeline_line = render_pass ? render_pass->CreatePipeline(mi_line, InlinePipeline::Solid3D) : nullptr;
+            pipeline_line = render_pass ? render_pass->CreatePipeline(mtl_line, vil_line, InlinePipeline::Solid3D) : nullptr;
 
             if(!pipeline_line)
                 return(false);
@@ -232,6 +241,96 @@ private:
         if(!ecs_world)
             return false;
 
+        auto *buffer_manager = graphics_context->GetBufferManager();
+        auto *domain_manager = graphics_context->GetResourceDomainManager();
+        if (!buffer_manager || !domain_manager)
+            return false;
+
+        auto rdbs = ecs_world->GetSystem<RenderDescriptorBindingSystem>();
+        if (!rdbs)
+            return false;
+
+        if (!mtl_plane_grid || !mtl_line)
+            return false;
+
+        const uint32_t plane_mi_bytes = mtl_plane_grid->GetMIDataBytes();
+        const uint32_t line_mi_bytes = mtl_line->GetMIDataBytes();
+        if (plane_mi_bytes == 0 || line_mi_bytes == 0 || plane_mi_bytes != line_mi_bytes)
+            return false;
+        if (plane_mi_bytes != sizeof(Color4f))
+            return false;
+
+        if (!slot_allocator.Init(2))
+            return false;
+
+        uint32_t plane_slot = 0;
+        uint32_t line_slot = 0;
+        if (!slot_allocator.Allocate(plane_slot) || !slot_allocator.Allocate(line_slot))
+            return false;
+
+        const uint32_t mi_count = (std::max)(plane_slot, line_slot) + 1;
+        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * plane_mi_bytes;
+        GLogInfo("[RayPicking] MI setup: plane_slot=%u line_slot=%u stride=%u count=%u bytes=%llu",
+                 plane_slot, line_slot, plane_mi_bytes, mi_count,
+                 static_cast<unsigned long long>(ssbo_size));
+
+        mi_shared_ssbo = buffer_manager->CreateSSBO("RayPicking:SharedMIData", ssbo_size, nullptr, SharingMode::Exclusive);
+        if (!mi_shared_ssbo)
+            return false;
+
+        auto *gpu_buf = mi_shared_ssbo->GetGPUBuffer();
+        if (!gpu_buf)
+            return false;
+
+        auto *dst = static_cast<uint8_t *>(gpu_buf->Map(0, ssbo_size));
+        if (!dst)
+            return false;
+
+        memset(dst, 0, static_cast<size_t>(ssbo_size));
+        memcpy(dst + static_cast<VkDeviceSize>(plane_slot) * plane_mi_bytes, &white_color, plane_mi_bytes);
+        memcpy(dst + static_cast<VkDeviceSize>(line_slot) * plane_mi_bytes, &yellow_color, plane_mi_bytes);
+
+        gpu_buf->Unmap();
+
+        dbs_plane_grid = new DescriptorBindingSet(mtl_plane_grid, vil_plane_grid);
+        dbs_line = new DescriptorBindingSet(mtl_line, vil_line);
+        if (!dbs_plane_grid || !dbs_line)
+            return false;
+
+        auto bind_material_mi = [&](Material *material, DescriptorBindingSet *binding_set, const uint32_t slot_index) -> bool
+        {
+            bool has_struct_binding = false;
+            for (const auto &req : material->GetBindingContract().requirements)
+            {
+                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                    continue;
+
+                has_struct_binding = true;
+                if (!rdbs->RegisterMaterialStructLayout(req.ssbo_type, req.ssbo_id, plane_mi_bytes))
+                    return false;
+
+                const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
+                if (!domain_manager->RegisterBuffer(addr, mi_shared_ssbo, mi_count))
+                    return false;
+
+                GLogInfo("[RayPicking] Bound MI SSBO: material=%s semantic=%s type=%s ssbo_id=%u count=%u",
+                         material->GetName().c_str(),
+                         graph::mtl::GetDescriptorSemanticName(req.semantic),
+                         graph::mtl::GetSSBOTypeName(req.ssbo_type),
+                         req.ssbo_id,
+                         mi_count);
+
+                if (!binding_set->SetSSBOBinding(req.ssbo_type, req.ssbo_id, slot_index))
+                    return false;
+            }
+            return has_struct_binding;
+        };
+
+        if (!bind_material_mi(mtl_plane_grid, dbs_plane_grid, plane_slot))
+            return false;
+        if (!bind_material_mi(mtl_line, dbs_line, line_slot))
+            return false;
+
         // === 步骤2: 创建平面网格实体 ===
         {
             plane_grid_entity = ecs_world->CreateEntity<Entity>("PlaneGrid");
@@ -241,7 +340,7 @@ private:
             if (!primitive_manager)
                 return false;
 
-            Primitive* prim_plane = primitive_manager->CreatePrimitive(geom_plane_grid, mi_plane_grid, pipeline_plane_grid);
+            Primitive* prim_plane = primitive_manager->CreatePrimitive(geom_plane_grid, dbs_plane_grid, pipeline_plane_grid);
             if(!prim_plane)
                 return false;
 
@@ -254,6 +353,7 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = plane_grid_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitive(prim_plane);
+            primitive_comp->SetDescriptorBindingSet(dbs_plane_grid);
             primitive_comp->SetVisible(true);
         }
 
@@ -266,7 +366,7 @@ private:
             if (!primitive_manager)
                 return false;
 
-            prim_line = primitive_manager->CreatePrimitive(geom_line, mi_line, pipeline_line);
+            prim_line = primitive_manager->CreatePrimitive(geom_line, dbs_line, pipeline_line);
             if(!prim_line)
                 return false;
 
@@ -282,6 +382,7 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = ray_line_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitive(prim_line);
+            primitive_comp->SetDescriptorBindingSet(dbs_line);
             primitive_comp->SetVisible(true);
         }
 
@@ -324,8 +425,15 @@ private:
 public:
     ~TestApp()
     {
+        delete dbs_plane_grid;
+        delete dbs_line;
+        if (mtl_plane_grid && vil_plane_grid)
+            mtl_plane_grid->Release(const_cast<VIL *>(vil_plane_grid));
+        if (mtl_line && vil_line)
+            mtl_line->Release(const_cast<VIL *>(vil_line));
         SAFE_CLEAR(geom_plane_grid);
         SAFE_CLEAR(geom_line);
+        SAFE_CLEAR(mi_shared_ssbo);
     }
 
     bool Init() override

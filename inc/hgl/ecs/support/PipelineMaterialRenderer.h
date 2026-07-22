@@ -6,7 +6,7 @@
  * - 执行ECS渲染命令
  * - 管理渲染状态（VAB绑定、IBO绑定等）
  * - 处理直接绘制和间接绘制
- * - 与 TransformAssignmentBuffer 和 MaterialInstanceAssignmentBuffer 配合
+ * - 与 TransformAssignmentBuffer 配合
  */
 
 #pragma once
@@ -31,7 +31,6 @@ namespace hgl
     namespace ecs
     {
         class TransformAssignmentBuffer;
-        class MaterialInstanceAssignmentBuffer;
     }
 }
 
@@ -85,11 +84,9 @@ namespace hgl::ecs
         /**
          * 绑定顶点属性缓冲
          * @param batch 绘制批次
-         * @param mi_buffer ECS 材质实例分配缓冲
          * @return 绑定是否成功
          */
-        bool BindVAB(const DrawBatch* batch,
-                     MaterialInstanceAssignmentBuffer* mi_buffer);
+        bool BindVAB(const DrawBatch* batch);
 
         /**
          * 处理间接渲染
@@ -103,14 +100,12 @@ namespace hgl::ecs
          * 绘制单个批次
          * @param batch 绘制批次
          * @param transform_buffer ECS Transform分配缓冲
-         * @param mi_buffer ECS 材质实例分配缓冲
          * @param icb_draw 间接绘制缓冲（无索引）
          * @param icb_draw_indexed 间接绘制缓冲（有索引）
          * @return 绘制是否成功
          */
         bool Draw(DrawBatch* batch,
                   TransformAssignmentBuffer* transform_buffer,
-                  MaterialInstanceAssignmentBuffer* mi_buffer,
                   graph::IndirectDrawBuffer* icb_draw,
                   graph::IndirectDrawIndexedBuffer* icb_draw_indexed);
 
@@ -124,7 +119,6 @@ namespace hgl::ecs
          * @param batches 绘制批次数组
          * @param batch_count 批次数量
          * @param transform_buffer ECS Transform分配缓冲（可为空）
-         * @param mi_buffer ECS 材质实例分配缓冲（可为空）
          * @param icb_draw 间接绘制缓冲（无索引）
          * @param icb_draw_indexed 间接绘制缓冲（有索引）
          */
@@ -132,7 +126,6 @@ namespace hgl::ecs
                     const DrawBatchArray& batches,
                     uint32_t batch_count,
                     TransformAssignmentBuffer* transform_buffer,
-                    MaterialInstanceAssignmentBuffer* mi_buffer,
                     graph::IndirectDrawBuffer* icb_draw,
                     graph::IndirectDrawIndexedBuffer* icb_draw_indexed);
     };

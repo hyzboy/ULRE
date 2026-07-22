@@ -91,54 +91,6 @@ namespace hgl
         #endif
         }
 
-        bool ECSContext::GetCompatibilityId0FallbackStats(uint32_t &current_frame_hits,
-                                                          uint32_t &last_summary_hits,
-                                                          uint32_t &last_summary_frame) const
-        {
-            current_frame_hits = 0;
-            last_summary_hits = 0;
-            last_summary_frame = std::numeric_limits<uint32_t>::max();
-
-        #if !ULRE_ECS_DEBUG_API
-            return false;
-        #else
-            auto descriptor_system = GetSystem<RenderDescriptorBindingSystem>();
-            if (!descriptor_system)
-                return false;
-
-            return descriptor_system->GetCompatibilityId0FallbackStats(current_frame_hits,
-                                                                       last_summary_hits,
-                                                                       last_summary_frame);
-        #endif
-        }
-
-        bool ECSContext::SetCompatibilityId0FallbackEnabled(bool enabled)
-        {
-        #if !ULRE_ECS_DEBUG_API
-            return false;
-        #else
-            auto descriptor_system = GetSystem<RenderDescriptorBindingSystem>();
-            if (!descriptor_system)
-                return false;
-            descriptor_system->SetCompatibilityId0FallbackEnabled(enabled);
-            return true;
-        #endif
-        }
-
-        bool ECSContext::IsCompatibilityId0FallbackEnabled(bool &enabled) const
-        {
-            enabled = false;
-        #if !ULRE_ECS_DEBUG_API
-            return false;
-        #else
-            auto descriptor_system = GetSystem<RenderDescriptorBindingSystem>();
-            if (!descriptor_system)
-                return false;
-            enabled = descriptor_system->IsCompatibilityId0FallbackEnabled();
-            return true;
-        #endif
-        }
-
         bool ECSContext::GetMaterialBindingKeys(const hgl::graph::Material *material,
                                                 std::vector<std::string> &out_keys) const
         {
