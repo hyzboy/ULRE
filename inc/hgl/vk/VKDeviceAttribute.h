@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/vk/VKInstance.h>
 #include<hgl/vk/VKTexture.h>
@@ -25,6 +25,7 @@ struct VulkanDevAttr
     bool                                uint8_index_type    =false;
     bool                                uint32_index_type   =false;
     bool                                wide_lines          =false;
+    bool                                graphics_pipeline_library =false;
 
     VkDevice                            device          =VK_NULL_HANDLE;
     VkCommandPool                       cmd_pool        =VK_NULL_HANDLE;
@@ -53,3 +54,4 @@ public:
     }
 };//class VulkanDevAttr
 }//namespace hgl::graph
+

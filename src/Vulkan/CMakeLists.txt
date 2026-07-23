@@ -143,6 +143,7 @@ SET(VK_PIPELINE_FILES       ${PIPELINE_HEADER_PATH}/VKPipeline.h
                             ${PIPELINE_HEADER_PATH}/VKPipelineData.h
                             ${PIPELINE_HEADER_PATH}/VKPipelineLayoutData.h
                             ${PIPELINE_HEADER_PATH}/VKPipelineHash.h
+                            ${PIPELINE_HEADER_PATH}/VKPipelineResolver.h
                             ${PIPELINE_HEADER_PATH}/VKInlinePipeline.h
                             ${PIPELINE_HEADER_PATH}/VKComputePipeline.h
                             ${PIPELINE_SOURCE_PATH}/VKPipelineCompare.cpp
@@ -150,6 +151,7 @@ SET(VK_PIPELINE_FILES       ${PIPELINE_HEADER_PATH}/VKPipeline.h
                             ${PIPELINE_SOURCE_PATH}/VKPipelineDataManage.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipelineDataSaveLoad.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipelineHash.cpp
+                            ${PIPELINE_SOURCE_PATH}/VKPipelineResolver.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipeline.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipelineCache.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipelineLayoutData.cpp
@@ -322,3 +324,4 @@ if(TARGET Vulkan::Vulkan)
 elseif(WIN32)
     target_link_libraries(ULRE.Vulkan PUBLIC vulkan-1)
 endif()
+

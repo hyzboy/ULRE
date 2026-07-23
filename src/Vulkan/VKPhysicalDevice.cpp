@@ -1,4 +1,4 @@
-﻿#include<hgl/vk/VKPhysicalDevice.h>
+#include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/VKInstance.h>
 #include<hgl/log/Log.h>
 #include<hgl/shadergen/contract/ShaderGenPhysicalDeviceProfileAdapter.h>
@@ -254,6 +254,37 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
 
     dynamic_state=CheckExtensionSupport(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME);
 
+    graphics_pipeline_library=false;
+    mem_zero(graphics_pipeline_library_features);
+    mem_zero(graphics_pipeline_library_properties);
+
+    if(CheckExtensionSupport(VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME))
+    {
+        auto get_features2=(PFN_vkGetPhysicalDeviceFeatures2KHR)vkGetInstanceProcAddr(inst,"vkGetPhysicalDeviceFeatures2KHR");
+        if(get_features2)
+        {
+            VkPhysicalDeviceFeatures2 features2{};
+            features2.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
+            graphics_pipeline_library_features.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT;
+            graphics_pipeline_library_features.pNext=nullptr;
+            features2.pNext=&graphics_pipeline_library_features;
+            get_features2(physical_device,&features2);
+        }
+
+        auto get_properties2=(PFN_vkGetPhysicalDeviceProperties2KHR)vkGetInstanceProcAddr(inst,"vkGetPhysicalDeviceProperties2KHR");
+        if(get_properties2)
+        {
+            VkPhysicalDeviceProperties2 properties2{};
+            properties2.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
+            graphics_pipeline_library_properties.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_PROPERTIES_EXT;
+            graphics_pipeline_library_properties.pNext=nullptr;
+            properties2.pNext=&graphics_pipeline_library_properties;
+            get_properties2(physical_device,&properties2);
+        }
+
+        graphics_pipeline_library=(graphics_pipeline_library_features.graphicsPipelineLibrary==VK_TRUE);
+    }
+
     physical_device_profile = mtl::contract::BuildPhysicalDeviceProfileFromVulkanPhyDevice(*this);
 
 }
@@ -369,3 +400,4 @@ VkFormat VulkanPhyDevice::GetDepthStencilFormat(bool lower_to_high)const
     return result;
 }
 }//namespace hgl::graph
+

@@ -1,4 +1,4 @@
-﻿#include<hgl/platform/Vulkan.h>
+#include<hgl/platform/Vulkan.h>
 #include<hgl/platform/Window.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKInstance.h>
@@ -226,6 +226,7 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     create_info.pEnabledFeatures        =&features;
 
     VkPhysicalDeviceIndexTypeUint8FeaturesEXT index_type_uint8_features;
+    VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT graphics_pipeline_library_features{};
 
     // 启用 descriptorBindingPartiallyBound (Vulkan 1.2 core / VK_EXT_descriptor_indexing)
     // 允许描述符集中未使用的绑定不必写入有效描述符
@@ -244,6 +245,14 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
         create_info.pNext = &descriptor_indexing_features;
     }
 
+
+    if(physical_device->SupportGraphicsPipelineLibrary())
+    {
+        graphics_pipeline_library_features.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT;
+        graphics_pipeline_library_features.pNext=const_cast<void*>(static_cast<const void*>(create_info.pNext));
+        graphics_pipeline_library_features.graphicsPipelineLibrary=VK_TRUE;
+        create_info.pNext=&graphics_pipeline_library_features;
+    }
     if(physical_device->SupportU8Index()
      &&require.fullDrawIndexUint8>=VulkanHardwareRequirement::SupportLevel::Want)
     {
@@ -345,6 +354,8 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
     {
         device_attr->wide_lines = true;
     }
+
+    device_attr->graphics_pipeline_library = physical_device->SupportGraphicsPipelineLibrary();
 
     device_attr->surface_format=surface_format;
 
@@ -530,3 +541,5 @@ VulkanDevice *VulkanDeviceCreater::Create()
     return device;
 }
 }//namespace hgl::graph
+
+

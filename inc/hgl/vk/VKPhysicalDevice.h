@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/vk/VK.h>
 #include<hgl/type/String.h>
@@ -61,6 +61,9 @@ private:
 
     bool support_u8_index=false;
     bool dynamic_state=false;
+    bool graphics_pipeline_library=false;
+    VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT graphics_pipeline_library_features{};
+    VkPhysicalDeviceGraphicsPipelineLibraryPropertiesEXT graphics_pipeline_library_properties{};
     VkDeviceSize rebar_size=0;  // Resizable BAR size (0 if not available)
 
 public:
@@ -246,6 +249,9 @@ public:
     }
 
     const bool      SupportDynamicState() const {return dynamic_state;}
+    const bool      SupportGraphicsPipelineLibrary() const {return graphics_pipeline_library;}
+    const VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT &GetGraphicsPipelineLibraryFeatures() const {return graphics_pipeline_library_features;}
+    const VkPhysicalDeviceGraphicsPipelineLibraryPropertiesEXT &GetGraphicsPipelineLibraryProperties() const {return graphics_pipeline_library_properties;}
 
 public: // Vulkan API
 
@@ -255,3 +261,4 @@ public: // Vulkan API
     }
 };//class VulkanPhyDevice
 }//namespace hgl::graph
+
