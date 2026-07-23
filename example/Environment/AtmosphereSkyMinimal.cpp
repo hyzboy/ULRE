@@ -4,6 +4,7 @@
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<memory>
@@ -39,10 +40,10 @@ private:
     hgl::ecs::Entity *camera_entity = nullptr;
 
     Material *          mtl_sky_sphere      =nullptr;
+    DescriptorBindingSet *sky_dbs           =nullptr;
     Pipeline *          mtl_pipeline        =nullptr;
 
     Geometry *          prim_sky_sphere     =nullptr;
-    MaterialInstance *  mi_sky_sphere       =nullptr;
 
 private:
 
@@ -62,11 +63,17 @@ private:
 
         mtl::SkyMinimalCreateConfig cfg;
 
-        mi_sky_sphere=material_manager->CreateMaterialInstance(mtl::MaterialPreset::SkyMinimal,&cfg);
+        mtl_sky_sphere = material_manager->CreateMaterial(mtl::MaterialPreset::SkyMinimal, &cfg);
+        if (!mtl_sky_sphere)
+            return false;
+
+        sky_dbs = new DescriptorBindingSet(mtl_sky_sphere, mtl_sky_sphere->GetDefaultVIL());
+        if (!sky_dbs)
+            return false;
 
         auto* render_target = render_context->GetCurrentRenderTarget();
         auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-        mtl_pipeline = render_pass ? render_pass->CreatePipeline(mi_sky_sphere, InlinePipeline::Sky) : nullptr;
+        mtl_pipeline = render_pass ? render_pass->CreatePipeline(mtl_sky_sphere, mtl_sky_sphere->GetDefaultVIL(), InlinePipeline::Sky) : nullptr;
 
         return mtl_pipeline;
     }
@@ -109,7 +116,7 @@ private:
         if(!ecs_context)
             return false;
 
-        if(!prim_sky_sphere || !mi_sky_sphere || !mtl_pipeline)
+        if(!prim_sky_sphere || !sky_dbs || !mtl_pipeline)
             return false;
 
         auto* render_context = GetRenderContext();
@@ -124,7 +131,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        Primitive *ri=primitive_manager->CreatePrimitive(prim_sky_sphere,mi_sky_sphere,mtl_pipeline);
+        Primitive *ri=primitive_manager->CreatePrimitive(prim_sky_sphere, sky_dbs, mtl_pipeline);
         if(!ri)
             return false;
 

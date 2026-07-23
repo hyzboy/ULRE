@@ -16,6 +16,9 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/color/Color.h>
 
@@ -68,13 +71,16 @@ private:
     std::shared_ptr<TransformGizmoSystem> gizmo_system;
 
     Material *grid_material = nullptr;
-    MaterialInstance *grid_mi = nullptr;
+    const VIL *grid_vil = nullptr;
+    DescriptorBindingSet *grid_dbs = nullptr;
+    graph::DeviceBuffer *grid_mi_ssbo = nullptr;
     Pipeline *grid_pipeline = nullptr;
     Geometry *grid_geometry = nullptr;
     Primitive *grid_primitive = nullptr;
 
     Material *cube_material = nullptr;
-    MaterialInstance *cube_mi = nullptr;
+    DescriptorBindingSet *cube_dbs = nullptr;
+    graph::DeviceBuffer *cube_mi_ssbo = nullptr;
     Pipeline *cube_pipeline = nullptr;
     Geometry *cube_geometry = nullptr;
     Primitive *cube_primitive = nullptr;
@@ -115,12 +121,41 @@ private:
             VILConfig vil_config;
             vil_config.Add(VAN::Luminance, VF_V1UN8);
 
-            const Color4f white = GetColor4f(COLOR::White, 1.0f);
-            grid_mi = material_manager->CreateMaterialInstance(grid_material, &vil_config, &white);
-            if(!grid_mi)
+            grid_vil = grid_material->CreateVIL(&vil_config);
+            if (!grid_vil)
                 return false;
 
-            grid_pipeline = render_pass->CreatePipeline(grid_mi, InlinePipeline::Solid3D);
+            // Grid uses per-instance color; create SSBO + DBS if material has MI data
+            auto *buffer_manager = graphics_context->GetBufferManager();
+            auto *domain_manager = graphics_context->GetResourceDomainManager();
+            if (!buffer_manager || !domain_manager)
+                return false;
+
+            const Color4f white = GetColor4f(COLOR::White, 1.0f);
+            const uint32_t stride = grid_material->GetMIDataBytes();
+            if (stride > 0)
+            {
+                grid_mi_ssbo = buffer_manager->CreateSSBO("GizmoUsage:GridMIData", stride, nullptr, SharingMode::Exclusive);
+                if (!grid_mi_ssbo)
+                    return false;
+
+                if (auto *gpu = grid_mi_ssbo->GetGPUBuffer())
+                    gpu->Write(&white, 0, hgl_min(stride, static_cast<uint32_t>(sizeof(white))));
+
+                for (const auto &req : grid_material->GetBindingContract().requirements)
+                {
+                    if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                        continue;
+                    const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
+                    domain_manager->RegisterBuffer(addr, grid_mi_ssbo, 1);
+                    grid_dbs = new DescriptorBindingSet(grid_material, grid_vil);
+                    grid_dbs->SetSSBOBinding(req.ssbo_type, req.ssbo_id, 0);
+                }
+            }
+            if (!grid_dbs)
+                grid_dbs = new DescriptorBindingSet(grid_material, grid_vil);
+
+            grid_pipeline = render_pass->CreatePipeline(grid_material, grid_vil, InlinePipeline::Solid3D);
             if(!grid_pipeline)
                 return false;
 
@@ -140,7 +175,7 @@ private:
 
             geometry_manager->Add(grid_geometry);
 
-            grid_primitive = primitive_manager->CreatePrimitive(grid_geometry, grid_mi, grid_pipeline);
+            grid_primitive = primitive_manager->CreatePrimitive(grid_geometry, grid_dbs, grid_pipeline);
             if(!grid_primitive)
                 return false;
         }
@@ -152,10 +187,34 @@ private:
             if(!cube_material)
                 return false;
 
-            const Color4f blue = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-            cube_mi = material_manager->CreateMaterialInstance(cube_material, (VIL *)nullptr, &blue);
-            if(!cube_mi)
+            auto *buffer_manager = graphics_context->GetBufferManager();
+            auto *domain_manager = graphics_context->GetResourceDomainManager();
+            if (!buffer_manager || !domain_manager)
                 return false;
+
+            const Color4f blue = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
+            const uint32_t stride = cube_material->GetMIDataBytes();
+            if (stride > 0)
+            {
+                cube_mi_ssbo = buffer_manager->CreateSSBO("GizmoUsage:CubeMIData", stride, nullptr, SharingMode::Exclusive);
+                if (!cube_mi_ssbo)
+                    return false;
+
+                if (auto *gpu = cube_mi_ssbo->GetGPUBuffer())
+                    gpu->Write(&blue, 0, hgl_min(stride, static_cast<uint32_t>(sizeof(blue))));
+
+                for (const auto &req : cube_material->GetBindingContract().requirements)
+                {
+                    if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                        continue;
+                    const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
+                    domain_manager->RegisterBuffer(addr, cube_mi_ssbo, 1);
+                    cube_dbs = new DescriptorBindingSet(cube_material, cube_material->GetDefaultVIL());
+                    cube_dbs->SetSSBOBinding(req.ssbo_type, req.ssbo_id, 0);
+                }
+            }
+            if (!cube_dbs)
+                cube_dbs = new DescriptorBindingSet(cube_material, cube_material->GetDefaultVIL());
 
             cube_pipeline = render_pass->CreatePipeline(cube_material, InlinePipeline::Solid3D);
             if(!cube_pipeline)
@@ -176,7 +235,7 @@ private:
 
             geometry_manager->Add(cube_geometry);
 
-            cube_primitive = primitive_manager->CreatePrimitive(cube_geometry, cube_mi, cube_pipeline);
+            cube_primitive = primitive_manager->CreatePrimitive(cube_geometry, cube_dbs, cube_pipeline);
             if(!cube_primitive)
                 return false;
         }
@@ -342,8 +401,12 @@ public:
     }
     ~GizmoExampleApp()
     {
-        // Resources are owned by ECS/Graphics managers; avoid double-free on shutdown.
         gizmo_system.reset();
+        delete grid_dbs;   grid_dbs = nullptr;
+        delete cube_dbs;   cube_dbs = nullptr;
+        SAFE_CLEAR(grid_mi_ssbo)
+        SAFE_CLEAR(cube_mi_ssbo)
+        if (grid_vil && grid_material) { grid_material->Release(const_cast<VIL*>(grid_vil)); grid_vil = nullptr; }
     }
 
     void Tick(double delta) override

@@ -3,11 +3,15 @@
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/graph/mesh/LoadStaticMesh.h>
 #include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/color/Color.h>
 #include<hgl/type/StdString.h>
+#include<cstring>
 #include<filesystem>
 
 // ECS headers
@@ -78,10 +82,22 @@ private:
     struct MaterialData
     {
         Material *material = nullptr;
+        const VIL *vil = nullptr;
         GeometryVertexFormat geometry_vertex_format;
 
         Pipeline *pipeline = nullptr;
-        MaterialInstance *mi[COLOR_COUNT]{};
+        MaterialInstance *mi[COLOR_COUNT]{};   // kept for LoadStaticMeshScene compat
+        DescriptorBindingSet *dbs[COLOR_COUNT]{};
+        graph::DeviceBuffer *mi_ssbo = nullptr;
+
+        void FreeDBS()
+        {
+            for (auto *&b : dbs)
+            {
+                delete b;
+                b = nullptr;
+            }
+        }
     };
 
     MaterialData solid;
@@ -98,45 +114,100 @@ private:
 
 private:
 
-    bool InitMaterialInstance(MaterialData *md)
+    bool InitMaterialForDBS(MaterialData *md, const char *tag, InlinePipeline inline_pipeline)
     {
-        if(!md)
-            return(false);
+        if (!md || !md->material)
+            return false;
 
-        auto* render_context = GetRenderContext();
+        auto *render_context = GetRenderContext();
         if (!render_context)
             return false;
 
-        auto* graphics_context = render_context->GetGraphicsContext();
+        auto *graphics_context = render_context->GetGraphicsContext();
         if (!graphics_context)
             return false;
 
-        auto* material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager)
+        auto *material_manager = graphics_context->GetMaterialManager();
+        auto *buffer_manager   = graphics_context->GetBufferManager();
+        auto *domain_manager   = graphics_context->GetResourceDomainManager();
+        if (!material_manager || !buffer_manager || !domain_manager)
             return false;
 
-        Color4f color;
+        md->vil = md->material->GetDefaultVIL();
+        if (!md->vil)
+            return false;
 
-        for(size_t i = 0;i < COLOR_COUNT;i++)
+        md->geometry_vertex_format = CreateGeometryVertexFormatFromVIL(md->vil);
+        if (md->geometry_vertex_format.GetCount() == 0)
+            return false;
+
+        // Populate MI array for LoadStaticMeshScene compatibility
+        for (size_t i = 0; i < COLOR_COUNT; i++)
         {
-            color = GetColor4f(TestColor[i],1.0);
-
-            md->mi[i] = material_manager->CreateMaterialInstance(md->material,(VIL *)nullptr,&color);
-
-            if(!md->mi[i])
-                return(false);
+            const Color4f mi_color = GetColor4f(TestColor[i], 1.0f);
+            md->mi[i] = material_manager->CreateMaterialInstance(md->material, (VIL *)nullptr, &mi_color);
+            if (!md->mi[i])
+                return false;
         }
 
-        const VIL *vil = md->material->GetDefaultVIL();
-        md->geometry_vertex_format = CreateGeometryVertexFormatFromVIL(vil);
-        if(md->geometry_vertex_format.GetCount()==0)
-            return(false);
+        const uint32_t stride      = md->material->GetMIDataBytes();
+        const uint32_t color_count = static_cast<uint32_t>(COLOR_COUNT);
 
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-        md->pipeline = render_pass ? render_pass->CreatePipeline(md->material, InlinePipeline::Solid3D) : nullptr;
+        if (stride > 0)
+        {
+            const VkDeviceSize ssbo_size = VkDeviceSize(color_count) * stride;
+            md->mi_ssbo = buffer_manager->CreateSSBO(tag, ssbo_size, nullptr, SharingMode::Exclusive);
+            if (!md->mi_ssbo)
+                return false;
 
-        return md->pipeline;
+            auto *gpu_buf = md->mi_ssbo->GetGPUBuffer();
+            if (!gpu_buf)
+                return false;
+
+            auto *dst = static_cast<uint8_t *>(gpu_buf->Map(0, ssbo_size));
+            if (!dst)
+                return false;
+
+            memset(dst, 0, static_cast<size_t>(ssbo_size));
+            const uint32_t copy_bytes = hgl_min(stride, static_cast<uint32_t>(sizeof(Color4f)));
+            for (uint32_t i = 0; i < color_count; ++i)
+            {
+                const Color4f color = GetColor4f(TestColor[i], 1.0f);
+                memcpy(dst + VkDeviceSize(i) * stride, &color, copy_bytes);
+            }
+            gpu_buf->Unmap();
+
+            for (const auto &req : md->material->GetBindingContract().requirements)
+            {
+                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                    continue;
+
+                const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
+                if (!domain_manager->RegisterBuffer(addr, md->mi_ssbo, color_count))
+                    return false;
+
+                for (uint32_t c = 0; c < color_count; ++c)
+                {
+                    md->dbs[c] = new DescriptorBindingSet(md->material, md->vil);
+                    if (!md->dbs[c])
+                        return false;
+                    md->dbs[c]->SetSSBOBinding(req.ssbo_type, req.ssbo_id, c);
+                }
+            }
+        }
+
+        // Fallback: DBS with no SSBO binding (vertex-color-only materials)
+        for (uint32_t c = 0; c < color_count; ++c)
+        {
+            if (!md->dbs[c])
+                md->dbs[c] = new DescriptorBindingSet(md->material, md->vil);
+        }
+
+        auto *render_target = render_context->GetCurrentRenderTarget();
+        auto *render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        md->pipeline = render_pass ? render_pass->CreatePipeline(md->material, md->vil, inline_pipeline) : nullptr;
+
+        return md->pipeline != nullptr;
     }
 
     bool InitSolidMDP()
@@ -156,7 +227,7 @@ private:
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
         solid.material = material_manager->CreateMaterial(mtl::MaterialPreset::Gizmo3D,&cfg);
 
-        return InitMaterialInstance(&solid);
+        return InitMaterialForDBS(&solid, "LoadScene:SolidMIData", InlinePipeline::Solid3D);
     }
 
     bool TryLoadStaticMeshScene()
@@ -227,6 +298,7 @@ private:
                 se.transform->SetMovable(false);
 
                 se.primitive_comp->SetPrimitive(prim);
+                se.primitive_comp->SetDescriptorBindingSet(solid.dbs[(entity_idx - 1) % COLOR_COUNT]);
                 se.primitive_comp->SetVisible(true);
 
                 scene_entities_.push_back(std::move(se));
@@ -280,6 +352,8 @@ public:
     {
         scene_entities_.clear();
         delete scene_mesh_;
+        solid.FreeDBS();
+        SAFE_CLEAR(solid.mi_ssbo)
     }
 
     bool Init() override
