@@ -10,6 +10,9 @@
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/SamplerManager.h>
+#include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/DescriptorBindingSet.h>
 
 // ECS headers
 #include<hgl/ecs/core/Context.h>
@@ -81,12 +84,13 @@ private:
 
     Pipeline *          pipeline            = nullptr;
     Primitive *         mesh_rect           = nullptr;
+    DeviceBuffer *      mi_ssbo             = nullptr;
     std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
 
     struct
     {
-        Entity *            entity;
-        MaterialInstance *  mi;
+        Entity *              entity;
+        DescriptorBindingSet *dbs;
     }render_obj[TexCount]{};
 
 private:
@@ -168,16 +172,67 @@ private:
             material_manager->SetBindlessLayout(bindless_texture_manager->GetLayout());
         }
 
+        auto *buffer_manager = graphics_context->GetBufferManager();
+        auto *domain_manager = graphics_context->GetResourceDomainManager();
+        if (!buffer_manager || !domain_manager)
+            return false;
+
         sampler=sampler_manager->CreateSampler();
 
-        for(uint32_t i=0;i<TexCount;i++)
+        // Build SSBO: each slot holds the per-instance data (layer index or similar)
+        const uint32_t stride = material->GetMIDataBytes();
+        if (stride > 0)
         {
-            render_obj[i].mi=material_manager->CreateMaterialInstance(material);
+            mi_ssbo = buffer_manager->CreateSSBO("TextureRectArray:MIData",
+                                                  VkDeviceSize(TexCount) * stride,
+                                                  nullptr, SharingMode::Exclusive);
+            if (!mi_ssbo)
+                return false;
 
-            if(!render_obj[i].mi)
-                return(false);
+            auto *gpu_buf = mi_ssbo->GetGPUBuffer();
+            if (!gpu_buf)
+                return false;
 
-            render_obj[i].mi->WriteMIData(i);
+            auto *dst = static_cast<uint8_t *>(gpu_buf->Map(0, VkDeviceSize(TexCount) * stride));
+            if (!dst)
+                return false;
+
+            memset(dst, 0, size_t(TexCount) * stride);
+            // Write layer index i at slot i (matches original WriteMIData(i) intent).
+            const uint32_t copy_bytes = hgl_min(stride, static_cast<uint32_t>(sizeof(uint32_t)));
+            for (uint32_t i = 0; i < TexCount; ++i)
+            {
+                memcpy(dst + VkDeviceSize(i) * stride, &i, copy_bytes);
+            }
+            gpu_buf->Unmap();
+
+            for (const auto &req : material->GetBindingContract().requirements)
+            {
+                if (req.semantic != mtl::DescriptorSemantic::MaterialInstance)
+                    continue;
+
+                const mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
+                if (!domain_manager->RegisterBuffer(addr, mi_ssbo, TexCount))
+                    return false;
+
+                for (uint32_t i = 0; i < TexCount; ++i)
+                {
+                    render_obj[i].dbs = new DescriptorBindingSet(material, material->GetDefaultVIL());
+                    if (!render_obj[i].dbs)
+                        return false;
+                    render_obj[i].dbs->SetSSBOBinding(req.ssbo_type, req.ssbo_id, i);
+                }
+            }
+        }
+        else
+        {
+            // No per-instance data — create plain DBS per slot
+            for (uint32_t i = 0; i < TexCount; ++i)
+            {
+                render_obj[i].dbs = new DescriptorBindingSet(material, material->GetDefaultVIL());
+                if (!render_obj[i].dbs)
+                    return false;
+            }
         }
 
         return(true);
@@ -211,7 +266,7 @@ private:
             return false;
         geometry_manager->Add(geometry);
 
-        mesh_rect = primitive_manager->CreatePrimitive(geometry, render_obj[0].mi, pipeline);
+        mesh_rect = primitive_manager->CreatePrimitive(geometry, render_obj[0].dbs, pipeline);
 
         if(!mesh_rect)
             return(false);
@@ -255,7 +310,7 @@ private:
             transform->SetMovable(false);
 
             primitive->SetPrimitive(mesh_rect);
-            primitive->SetOverrideMaterial(render_obj[i].mi);
+            primitive->SetDescriptorBindingSet(render_obj[i].dbs);
             primitive->SetVisible(true);
         }
 
@@ -265,6 +320,15 @@ private:
 public:
     TestApp() = default;
     explicit TestApp(std::shared_ptr<ecs::ECSContext> ctx) : WorkObject(std::move(ctx)) {}
+    ~TestApp()
+    {
+        for (auto &obj : render_obj)
+        {
+            delete obj.dbs;
+            obj.dbs = nullptr;
+        }
+        SAFE_CLEAR(mi_ssbo)
+    }
     bool Init() override
     {
         if(!InitTexture())
