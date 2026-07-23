@@ -1,4 +1,4 @@
-﻿#include<hgl/framework/WorkManager.h>
+#include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/graph/geo/Wall.h>
@@ -9,6 +9,9 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/color/Color.h>
 
 // ECS headers
@@ -49,7 +52,8 @@ private:
     mtl::StandardMaterialInstance mi_data;
 
     Material *material = nullptr;
-    MaterialInstance *material_instance = nullptr;
+    DescriptorBindingSet *dbs = nullptr;
+    graph::DeviceBuffer *mi_ssbo = nullptr;
     Pipeline *pipeline = nullptr;
     Sampler *sampler = nullptr;
     Texture2D *base_color_texture = nullptr;
@@ -64,6 +68,8 @@ public:
     {
         SAFE_CLEAR(sampler)
         SAFE_CLEAR(mesh_vdm)
+        delete dbs;   dbs = nullptr;
+        SAFE_CLEAR(mi_ssbo)
     }
 
     bool InitCamera()
@@ -173,17 +179,43 @@ public:
 
         // Bindless registration deferred until ECS context is ready.
 
-        material_instance = material_manager->CreateMaterialInstance(material, (VIL *)nullptr, &mi_data);
-        if(!material_instance) return false;
+        // Create external SSBO + DescriptorBindingSet for Standard material data
+        auto *buffer_manager = graphics_context->GetBufferManager();
+        auto *domain_manager = graphics_context->GetResourceDomainManager();
+        if (!buffer_manager || !domain_manager)
+            return false;
+
+        const uint32_t stride = material->GetMIDataBytes();
+        if (stride > 0)
+        {
+            mi_ssbo = buffer_manager->CreateSSBO("WallsFromPolyline:MIData", stride, nullptr, SharingMode::Exclusive);
+            if (!mi_ssbo)
+                return false;
+
+            if (auto *gpu = mi_ssbo->GetGPUBuffer())
+                gpu->Write(&mi_data, 0, hgl_min(stride, static_cast<uint32_t>(sizeof(mi_data))));
+
+            for (const auto &req : material->GetBindingContract().requirements)
+            {
+                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                    continue;
+
+                const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
+                if (!domain_manager->RegisterBuffer(addr, mi_ssbo, 1))
+                    return false;
+
+                dbs = new DescriptorBindingSet(material, material->GetDefaultVIL());
+                dbs->SetSSBOBinding(req.ssbo_type, req.ssbo_id, 0);
+            }
+        }
+
+        if (!dbs)
+            dbs = new DescriptorBindingSet(material, material->GetDefaultVIL());
 
         auto* render_target = render_context->GetCurrentRenderTarget();
         auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
         pipeline = render_pass ? render_pass->CreatePipeline(material, InlinePipeline::Solid3D) : nullptr;
         if(!pipeline) return false;
-
-        auto* buffer_manager = graphics_context->GetBufferManager();
-        if (!buffer_manager)
-            return false;
 
         mesh_vdm = new VertexDataManager(
             buffer_manager,
@@ -232,7 +264,7 @@ public:
                 if (!primitive_manager)
                     return false;
 
-                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
+                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, dbs, pipeline);
                 if(primitive) wall_meshes.push_back(primitive);
             }
         }
@@ -267,7 +299,7 @@ public:
                 if (!primitive_manager)
                     return false;
 
-                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
+                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, dbs, pipeline);
                 if(primitive) wall_meshes.push_back(primitive);
             }
         }
@@ -301,7 +333,7 @@ public:
                 if (!primitive_manager)
                     return false;
 
-                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
+                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, dbs, pipeline);
                 if(primitive) wall_meshes.push_back(primitive);
             }
         }
@@ -336,7 +368,7 @@ public:
                 if (!primitive_manager)
                     return false;
 
-                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
+                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, dbs, pipeline);
                 if(primitive) wall_meshes.push_back(primitive);
             }
         }

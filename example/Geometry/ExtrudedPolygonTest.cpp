@@ -8,6 +8,9 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/color/Color.h>
 #include<cmath>
 #include<memory>
@@ -46,12 +49,13 @@ private:
 
     Material *          material            = nullptr;
     Pipeline *          pipeline            = nullptr;
+    DescriptorBindingSet *dbs              = nullptr;
+    graph::DeviceBuffer *mi_ssbo           = nullptr;
 
     Geometry *         prim_rect_cube      = nullptr;
     Geometry *         prim_circle_cylinder = nullptr;
     Geometry *         prim_triangle       = nullptr;
     Geometry *         prim_pentagon       = nullptr;
-    MaterialInstance *  material_instance   = nullptr;
 
 private:
 
@@ -66,19 +70,48 @@ private:
             return false;
 
         auto* material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager)
+        auto* buffer_manager   = graphics_context->GetBufferManager();
+        auto* domain_manager   = graphics_context->GetResourceDomainManager();
+        if (!material_manager || !buffer_manager || !domain_manager)
             return false;
 
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
-        material=material_manager->CreateMaterial(mtl::MaterialPreset::Gizmo3D,&cfg);
+        material = material_manager->CreateMaterial(mtl::MaterialPreset::Gizmo3D, &cfg);
+        if (!material)
+            return false;
 
-        Color4f color=GetColor4f(COLOR::BlenderAxisRed);
+        const Color4f color = GetColor4f(COLOR::BlenderAxisRed, 1.0f);
 
-        material_instance = material_manager->CreateMaterialInstance(material,(VIL *)nullptr,&color);
+        const uint32_t stride = material->GetMIDataBytes();
+        if (stride > 0)
+        {
+            mi_ssbo = buffer_manager->CreateSSBO("ExtrudedPolygonTest:MIData", stride, nullptr, SharingMode::Exclusive);
+            if (!mi_ssbo)
+                return false;
+
+            if (auto *gpu = mi_ssbo->GetGPUBuffer())
+                gpu->Write(&color, 0, hgl_min(stride, static_cast<uint32_t>(sizeof(color))));
+
+            for (const auto &req : material->GetBindingContract().requirements)
+            {
+                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                    continue;
+
+                const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
+                if (!domain_manager->RegisterBuffer(addr, mi_ssbo, 1))
+                    return false;
+
+                dbs = new DescriptorBindingSet(material, material->GetDefaultVIL());
+                dbs->SetSSBOBinding(req.ssbo_type, req.ssbo_id, 0);
+            }
+        }
+
+        if (!dbs)
+            dbs = new DescriptorBindingSet(material, material->GetDefaultVIL());
 
         auto* render_target = render_context->GetCurrentRenderTarget();
         auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material_instance, InlinePipeline::Solid3D) : nullptr;
+        pipeline = render_pass ? render_pass->CreatePipeline(material, material->GetDefaultVIL(), InlinePipeline::Solid3D) : nullptr;
 
         return pipeline != nullptr;
     }
@@ -164,7 +197,7 @@ private:
 
     bool CreateMeshEntity(const char *name, Geometry *geometry, const glm::vec3 &pos)
     {
-        if(!ecs_context || !geometry || !material_instance || !pipeline)
+        if(!ecs_context || !geometry || !dbs || !pipeline)
             return false;
 
         auto* render_context = GetRenderContext();
@@ -179,7 +212,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        Primitive *mesh = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
+        Primitive *mesh = primitive_manager->CreatePrimitive(geometry, dbs, pipeline);
         if(!mesh)
             return false;
 
@@ -264,6 +297,8 @@ public:
         SAFE_CLEAR(prim_circle_cylinder);
         SAFE_CLEAR(prim_triangle);
         SAFE_CLEAR(prim_pentagon);
+        delete dbs;  dbs = nullptr;
+        SAFE_CLEAR(mi_ssbo)
     }
 
     bool Init() override
