@@ -194,18 +194,23 @@ namespace hgl::graph
             }
 
             {
-                gizmo_triangle.pipeline=render_pass->CreatePipeline(gizmo_triangle.mtl,InlinePipeline::GizmoOverlay3D);
+                const GeometryVertexFormat gizmo_gvf = CreateGizmoGeometryVertexFormat();
+
+                gizmo_triangle.pipeline=render_pass->CreatePipeline(
+                    gizmo_triangle.mtl,
+                    gizmo_triangle.mtl->GetDefaultVIL(),
+                    InlinePipeline::GizmoOverlay3D,
+                    false,
+                    &gizmo_gvf);
                 if(!gizmo_triangle.pipeline)
                     return(false);
-            }
 
-            if(!InitColorSSBO(&gizmo_triangle))
-                return(false);
+                if(!InitColorSSBO(&gizmo_triangle))
+                    return(false);
 
-            {
                 gizmo_triangle.vdm=new VertexDataManager(
                     buffer_manager,
-                    CreateGizmoGeometryVertexFormat());
+                    gizmo_gvf);
 
                 if(!gizmo_triangle.vdm)
                     return(false);

@@ -1,6 +1,7 @@
 #include<hgl/vk/pipeline/VKPipelineResolver.h>
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/VKDevice.h>
+#include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/util/hash/FNV1a.h>
 #include<cstring>
 
@@ -29,6 +30,33 @@ namespace hgl::graph
             uint64_t hash = hgl::hash::FNV1aInit<uint64_t>();
             hash = hgl::hash::FNV1aAppendValueBytes(hash, count);
             hash = hgl::hash::FNV1aAppendBytes(hash, vif_list, sizeof(VertexInputFormat) * count);
+            return hash;
+        }
+
+        uint64_t HashGeometryVertexFormat(const GeometryVertexFormat *gvf)
+        {
+            if(!gvf)
+                return 0;
+
+            const uint32_t count = gvf->GetCount();
+            if(count == 0)
+                return 0;
+
+            uint64_t hash = hgl::hash::FNV1aInit<uint64_t>();
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, count);
+
+            for(uint32_t i=0;i<count;i++)
+            {
+                const GeometryVertexAttributeFormat *attr = gvf->Get(i);
+                if(!attr)
+                    continue;
+
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, attr->semantic);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, attr->format);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, attr->vec_size);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, attr->stride);
+            }
+
             return hash;
         }
 
@@ -113,11 +141,30 @@ namespace hgl::graph
     {
         out_key = {};
 
-        out_key.vi.format_hash = HashVIL(request.vertex_input_layout);
-        if(request.vertex_input_layout)
+        if(request.geometry_vertex_format)
         {
-            out_key.vi.attribute_count = request.vertex_input_layout->GetVertexAttribCount();
-            out_key.vi.binding_count = request.vertex_input_layout->GetVertexAttribCount();
+            out_key.vi.format_hash = HashGeometryVertexFormat(request.geometry_vertex_format);
+            out_key.vi.attribute_count = request.geometry_vertex_format->GetCount();
+
+            // Phase 2 transition: preserve uniqueness against VIL-era binding layouts.
+            if(request.vertex_input_layout)
+            {
+                out_key.vi.format_hash = hgl::hash::FNV1aAppendValueBytes(out_key.vi.format_hash, HashVIL(request.vertex_input_layout));
+                out_key.vi.binding_count = request.vertex_input_layout->GetVertexAttribCount();
+            }
+            else
+            {
+                out_key.vi.binding_count = out_key.vi.attribute_count;
+            }
+        }
+        else
+        {
+            out_key.vi.format_hash = HashVIL(request.vertex_input_layout);
+            if(request.vertex_input_layout)
+            {
+                out_key.vi.attribute_count = request.vertex_input_layout->GetVertexAttribCount();
+                out_key.vi.binding_count = request.vertex_input_layout->GetVertexAttribCount();
+            }
         }
 
         out_key.pr.shader_program_hash = HashShaderStages(request.shader_stages);

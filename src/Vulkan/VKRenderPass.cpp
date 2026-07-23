@@ -49,7 +49,7 @@ RenderPass::~RenderPass()
     LogInfo("[RenderPass::~RenderPass] RenderPass destroyed");
 }
 
-Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,const ShaderStageCreateInfoList &ssci_list,VkPipelineLayout pl,const VIL *vil)
+Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,const ShaderStageCreateInfoList &ssci_list,VkPipelineLayout pl,const VIL *vil,const GeometryVertexFormat *gvf)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -66,6 +66,7 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,con
     request.shader_stages = &ssci_list;
     request.pipeline_layout = pl;
     request.vertex_input_layout = vil;
+    request.geometry_vertex_format = gvf;
 
     FinalPipelineResolveResult resolve_result{};
     if(!PipelineResolver::ResolveFinalPipeline(request, resolve_result))
@@ -91,13 +92,13 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,con
     return pipeline;
 }
 
-Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const PipelineData *cpd,const bool prim_restart)
+Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const PipelineData *cpd,const bool prim_restart,const GeometryVertexFormat *gvf)
 {
     PipelineData *pd=new PipelineData(cpd);
 
     pd->SetPrim(mtl->GetPrimitiveType(),prim_restart);
 
-    Pipeline *p=CreatePipeline(mtl->GetName(),pd,mtl->GetStageList(),mtl->GetPipelineLayout(),vil);
+    Pipeline *p=CreatePipeline(mtl->GetName(),pd,mtl->GetStageList(),mtl->GetPipelineLayout(),vil,gvf);
 
     if(p)
         pipeline_list.Add(p);
@@ -105,11 +106,11 @@ Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const Pipeline
     return(p);
 }
 
-Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const InlinePipeline &ip,const bool prim_restart)
+Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const InlinePipeline &ip,const bool prim_restart,const GeometryVertexFormat *gvf)
 {
     if(!mtl)return(nullptr);
 
-    return CreatePipeline(mtl,vil,GetPipelineData(ip),prim_restart);
+    return CreatePipeline(mtl,vil,GetPipelineData(ip),prim_restart,gvf);
 }
 
 Pipeline *RenderPass::CreatePipeline(Material *mtl,const PipelineData *pd,const bool prim_restart)
@@ -167,13 +168,14 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
                                      const VIL *vil,
                                      const PipelineData *cpd,
                                      PrimitiveType prim,
-                                     bool prim_restart)
+                                     bool prim_restart,
+                                     const GeometryVertexFormat *gvf)
 {
     PipelineData *pd = new PipelineData(cpd);
 
     pd->SetPrim(prim, prim_restart);
 
-    Pipeline *p = CreatePipeline(name, pd, ssci, layout, vil);
+    Pipeline *p = CreatePipeline(name, pd, ssci, layout, vil, gvf);
 
     if(p)
         pipeline_list.Add(p);
@@ -181,4 +183,3 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
     return p;
 }
 }//namespace hgl::graph
-

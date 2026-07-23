@@ -8,6 +8,8 @@
 
 namespace hgl::graph{
 
+class GeometryVertexFormat;
+
 using VkFormatList=ValueArray<VkFormat>;
 
 /**
@@ -33,7 +35,7 @@ protected:
 
     ManagedArray<Pipeline> pipeline_list;
 
-    Pipeline *CreatePipeline(const AnsiString &,PipelineData *,const ShaderStageCreateInfoList &,VkPipelineLayout,const VIL *);
+    Pipeline *CreatePipeline(const AnsiString &,PipelineData *,const ShaderStageCreateInfoList &,VkPipelineLayout,const VIL *,const GeometryVertexFormat *gvf=nullptr);
 
 private:
 
@@ -65,8 +67,8 @@ public:
 
 public:
 
-    Pipeline *CreatePipeline(Material *,const VIL *,const PipelineData *,   const bool prim_restart=false);
-    Pipeline *CreatePipeline(Material *,const VIL *,const InlinePipeline &, const bool prim_restart=false);
+    Pipeline *CreatePipeline(Material *,const VIL *,const PipelineData *,   const bool prim_restart=false,const GeometryVertexFormat *gvf=nullptr);
+    Pipeline *CreatePipeline(Material *,const VIL *,const InlinePipeline &, const bool prim_restart=false,const GeometryVertexFormat *gvf=nullptr);
 
     Pipeline *CreatePipeline(Material *mtl,         const PipelineData *,   const bool prim_restart=false);
     Pipeline *CreatePipeline(Material *mtl,         const InlinePipeline &, const bool prim_restart=false);
@@ -88,6 +90,7 @@ public:
                              const VIL *vil,
                              const PipelineData *pd,
                              PrimitiveType prim = PrimitiveType::Triangles,
-                             bool prim_restart = false);
+                             bool prim_restart = false,
+                             const GeometryVertexFormat *gvf=nullptr);
 };//class RenderPass
 }//namespace hgl::graph

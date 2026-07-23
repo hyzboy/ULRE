@@ -354,9 +354,10 @@ namespace hgl::ecs
         binding_set_ = &binding_set_storage_;
 
         // ------- Create pipeline -------
+        const graph::GeometryVertexFormat line_gvf = CreateLineGeometryVertexFormat();
         pipeline_ = support_wide_lines_
-            ? rp->CreatePipeline(material_, binding_vil_, graph::InlinePipeline::DynamicLineWidth3D)
-            : rp->CreatePipeline(material_, binding_vil_, graph::InlinePipeline::Solid3D);
+            ? rp->CreatePipeline(material_, binding_vil_, graph::InlinePipeline::DynamicLineWidth3D, false, &line_gvf)
+            : rp->CreatePipeline(material_, binding_vil_, graph::InlinePipeline::Solid3D, false, &line_gvf);
 
         if (!pipeline_)
             return false;

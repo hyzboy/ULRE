@@ -8,6 +8,8 @@
 
 namespace hgl::graph
 {
+    class GeometryVertexFormat;
+
     enum class PipelineMaterializeMode:uint8
     {
         Monolithic = 0,
@@ -113,6 +115,7 @@ namespace hgl::graph
         const ShaderStageCreateInfoList *shader_stages = nullptr;
         VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
         const VIL *vertex_input_layout = nullptr;
+        const GeometryVertexFormat *geometry_vertex_format = nullptr;
     };
 
     struct FinalPipelineResolveResult
