@@ -8,6 +8,8 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
+#include<hgl/graph/DescriptorBindingSet.h>
+#include<hgl/graph/SSBOSlotAllocator.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
@@ -101,7 +103,8 @@ private:
 
     // One MI per cell: col controls metallic, row controls roughness
     mtl::StandardMaterialInstance sphere_mi_data[GRID_SIZE][GRID_SIZE]{};
-    MaterialInstance *               sphere_mi[GRID_SIZE][GRID_SIZE]{};
+    DescriptorBindingSet *           sphere_binding[GRID_SIZE][GRID_SIZE]{};
+    SSBOSlotAllocator                slot_allocator;
 
     // 100 entities, one per sphere
     Entity *sphere_entities[GRID_SIZE][GRID_SIZE]{};
@@ -293,22 +296,6 @@ private:
 
     bool CreateStandardMaterialInstances()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context) {
-            printf("[ERROR] CreateStandardMaterialInstances: No render_context\n");
-            return false;
-        }
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context) {
-            printf("[ERROR] CreateStandardMaterialInstances: No graphics_context\n");
-            return false;
-        }
-        auto* material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager) {
-            printf("[ERROR] CreateStandardMaterialInstances: No material_manager\n");
-            return false;
-        }
-
         for (uint row = 0; row < GRID_SIZE; ++row)
         {
             for (uint col = 0; col < GRID_SIZE; ++col)
@@ -330,13 +317,7 @@ private:
                 store.roughness = d.roughness;
                 store.normal_scale = d.normal_scale;
 
-                sphere_mi[row][col] = material_manager->CreateMaterialInstance(
-                    material, (VIL *)nullptr, &d);
-
-                if (!sphere_mi[row][col]) {
-                    printf("[ERROR] CreateStandardMaterialInstances: Failed to create MI for [%u][%u]\n", row, col);
-                    return false;
-                }
+                sphere_binding[row][col] = nullptr;
             }
         }
 
@@ -376,28 +357,17 @@ private:
         const uint32_t mi_data_bytes = material->GetMIDataBytes();
         if (mi_data_bytes == 0)
             return true;
-
-        int max_mi_id = -1;
-        for (uint row = 0; row < GRID_SIZE; ++row)
-        {
-            for (uint col = 0; col < GRID_SIZE; ++col)
-            {
-                auto *mi = sphere_mi[row][col];
-                if (!mi)
-                    continue;
-
-                const int mi_id = mi->GetMIID();
-                if (mi_id > max_mi_id)
-                    max_mi_id = mi_id;
-            }
-        }
-
-        if (max_mi_id < 0) {
-            printf("[ERROR] InitMISSBO: No material instances found\n");
+        if (mi_data_bytes != sizeof(mtl::StandardMaterialInstance)) {
+            printf("[ERROR] InitMISSBO: Unexpected MI struct size %u\n", mi_data_bytes);
             return false;
         }
 
-        const uint32_t mi_count = static_cast<uint32_t>(max_mi_id + 1);
+        if (!slot_allocator.Init(GRID_SIZE * GRID_SIZE)) {
+            printf("[ERROR] InitMISSBO: Failed to init slot allocator\n");
+            return false;
+        }
+
+        const uint32_t mi_count = GRID_SIZE * GRID_SIZE;
         const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * mi_data_bytes;
 
         mi_ssbo = buffer_manager->CreateSSBO("PBRSpheres:PBRSurface:MIData", ssbo_size, nullptr, SharingMode::Exclusive);
@@ -424,39 +394,58 @@ private:
         {
             for (uint col = 0; col < GRID_SIZE; ++col)
             {
-                auto *mi = sphere_mi[row][col];
-                if (!mi)
-                    continue;
+                uint32_t slot_index = 0;
+                if (!slot_allocator.Allocate(slot_index)) {
+                    printf("[ERROR] InitMISSBO: Slot allocation failed at [%u][%u]\n", row, col);
+                    return false;
+                }
 
-                const int mi_id = mi->GetMIID();
-                if (mi_id < 0)
-                    continue;
+                memcpy(dst + static_cast<VkDeviceSize>(slot_index) * mi_data_bytes,
+                       &sphere_mi_data[row][col],
+                       mi_data_bytes);
 
-                void *src = material->GetMIData(mi_id);
-                if (!src)
-                    continue;
-
-                memcpy(dst + static_cast<VkDeviceSize>(mi_id) * mi_data_bytes, src, mi_data_bytes);
+                sphere_binding[row][col] = new DescriptorBindingSet(material, material->GetDefaultVIL());
+                if (!sphere_binding[row][col]) {
+                    printf("[ERROR] InitMISSBO: Failed to allocate DescriptorBindingSet for [%u][%u]\n", row, col);
+                    return false;
+                }
             }
         }
 
         gpu_buf->Unmap();
 
-        const uint32_t ssbo_id = graph::mtl::MakeRecipeSSBOId(0);
-        if (!rdbs->RegisterMaterialStructLayout(graph::mtl::SSBOType::PBRSurface, ssbo_id, mi_data_bytes)) {
-            printf("[ERROR] InitMISSBO: RegisterMaterialStructLayout failed\n");
-            return false;
-        }
+        bool has_struct_binding = false;
+        for (const auto &req : material->GetBindingContract().requirements)
+        {
+            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                continue;
 
-        const graph::mtl::SSBOAddress addr{graph::mtl::SSBOType::PBRSurface, ssbo_id, 0};
-        if (!domain_manager->RegisterBuffer(addr, mi_ssbo, mi_count)) {
-            printf("[ERROR] InitMISSBO: RegisterBuffer failed\n");
-            return false;
+            has_struct_binding = true;
+            if (!rdbs->RegisterMaterialStructLayout(req.ssbo_type, req.ssbo_id, mi_data_bytes)) {
+                printf("[ERROR] InitMISSBO: RegisterMaterialStructLayout failed\n");
+                return false;
+            }
+
+            const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
+            if (!domain_manager->RegisterBuffer(addr, mi_ssbo, mi_count)) {
+                printf("[ERROR] InitMISSBO: RegisterBuffer failed\n");
+                return false;
+            }
+
+            for (uint row = 0; row < GRID_SIZE; ++row)
+            {
+                for (uint col = 0; col < GRID_SIZE; ++col)
+                {
+                    const uint32_t slot_index = row * GRID_SIZE + col;
+                    if (!sphere_binding[row][col]->SetSSBOBinding(req.ssbo_type, req.ssbo_id, slot_index))
+                        return false;
+                }
+            }
         }
 
         std::cout << "[PBRSpheres::InitMISSBO] registered PBRSurface SSBO: count=" << mi_count
-                  << ", stride=" << mi_data_bytes << ", ssbo_id=" << ssbo_id << std::endl;
-        return true;
+                  << ", stride=" << mi_data_bytes << std::endl;
+        return has_struct_binding;
     }
 
     bool InitTextureLayerSSBO(const uint32_t base_color_handle, const uint32_t normal_handle)
@@ -489,27 +478,7 @@ private:
             return false;
         }
 
-        int max_mi_id = -1;
-        for (uint row = 0; row < GRID_SIZE; ++row)
-        {
-            for (uint col = 0; col < GRID_SIZE; ++col)
-            {
-                auto *mi = sphere_mi[row][col];
-                if (!mi)
-                    continue;
-
-                const int mi_id = mi->GetMIID();
-                if (mi_id > max_mi_id)
-                    max_mi_id = mi_id;
-            }
-        }
-
-        if (max_mi_id < 0) {
-            printf("[ERROR] InitTextureLayerSSBO: No material instances found\n");
-            return false;
-        }
-
-        const uint32_t row_count = static_cast<uint32_t>(max_mi_id + 1);
+        const uint32_t row_count = GRID_SIZE * GRID_SIZE;
         const uint32_t slot_count = static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE);
         const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(row_count) * slot_count * sizeof(uint32_t);
 
@@ -533,20 +502,16 @@ private:
 
         memset(dst, 0, static_cast<size_t>(ssbo_size));
 
-        // TextureLayer rows reuse the same index space as mtl (mi_id).
+        // TextureLayer rows reuse the same external slot index space as mtl.
         for (uint row = 0; row < GRID_SIZE; ++row)
         {
             for (uint col = 0; col < GRID_SIZE; ++col)
             {
-                auto *mi = sphere_mi[row][col];
-                if (!mi)
+                auto *binding = sphere_binding[row][col];
+                if (!binding)
                     continue;
 
-                const int mi_id = mi->GetMIID();
-                if (mi_id < 0)
-                    continue;
-
-                const size_t base = static_cast<size_t>(mi_id) * slot_count;
+                const size_t base = static_cast<size_t>(binding->GetSlotIndex(graph::mtl::SSBOType::PBRSurface)) * slot_count;
                 dst[base + static_cast<uint32_t>(graph::mtl::TextureSlot::BaseColor)] = base_color_handle;
                 dst[base + static_cast<uint32_t>(graph::mtl::TextureSlot::Normal)] = normal_handle;
                 // TEXTURE_SLOT_CUSTOM0 carries the Texture2DArray layer index (= PBR folder row).
@@ -735,9 +700,13 @@ private:
 
         for (uint i = 0; i < GEOMETRY_VARIANT_COUNT; ++i)
         {
-            // Per-entity override material is still applied in InitECS.
+            if (!sphere_binding[0][i]) {
+                printf("[ERROR] CreateBasePrimitives: sphere_binding[0][%u] is null\n", i);
+                return false;
+            }
+
             base_primitives[i] = primitive_manager->CreatePrimitive(
-                builtin_geometries[i], sphere_mi[0][i], pipeline);
+                builtin_geometries[i], sphere_binding[0][i], pipeline);
 
             if (!base_primitives[i]) {
                 printf("[ERROR] CreateBasePrimitives: Failed to create primitive %u\n", i);
@@ -797,6 +766,9 @@ private:
         if (!InitTextureLayerSSBO(base_color_handle, normal_handle))
             return false;
 
+        if (!CreateBasePrimitives())
+            return false;
+
         // 计算网格原点，使整体居中于世界原点
         const float offset = (GRID_SIZE - 1) * SPHERE_SPACING * 0.5f;
 
@@ -824,7 +796,7 @@ private:
 
                 auto prim_comp = e->AddComponent<hgl::ecs::PrimitiveComponent>();
                 prim_comp->SetPrimitive(base_primitives[col]);
-                prim_comp->SetOverrideMaterial(sphere_mi[row][col]);
+                prim_comp->SetDescriptorBindingSet(sphere_binding[row][col]);
                 prim_comp->SetVisible(true);
             }
         }
@@ -893,12 +865,17 @@ public:
             SAFE_CLEAR(builtin_geometries[i])
         }
 
+        for (uint row = 0; row < GRID_SIZE; ++row)
+        {
+            for (uint col = 0; col < GRID_SIZE; ++col)
+                delete sphere_binding[row][col];
+        }
+
         SAFE_CLEAR(mesh_vdm)
         SAFE_CLEAR(mi_ssbo)
         SAFE_CLEAR(texture_layer_ssbo)
         SAFE_CLEAR(base_color_texture)
         SAFE_CLEAR(normal_texture)
-        SAFE_CLEAR(sampler)
     }
 
     bool Init() override
@@ -918,9 +895,6 @@ public:
             return false;
 
         if (!CreateBuiltinGeometries())
-            return false;
-
-        if (!CreateBasePrimitives())
             return false;
 
         if (!InitECS())

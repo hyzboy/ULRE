@@ -11,6 +11,8 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/DescriptorBindingSet.h>
+#include<hgl/graph/SSBOSlotAllocator.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/core/GraphicsContext.h>
@@ -95,18 +97,20 @@ private:
     RenderContext *render_context = nullptr;
 
     Material *mtl = nullptr;
-    MaterialInstance *mi = nullptr;
+    DescriptorBindingSet *binding_set = nullptr;
     Pipeline *pipeline = nullptr;
     Geometry *geometry = nullptr;
     Primitive *primitive = nullptr;
     graph::DeviceBuffer *mi_ssbo = nullptr;
+    SSBOSlotAllocator slot_allocator;
+    Color4f sphere_color_data{};
 
 
     bool InitMISSBO(ECSContext *world)
     {
-        GLogInfo("[RenderToTexture][OffscreenPass::InitMISSBO] begin world=%p mtl=%p mi=%p",
-                 (void *)world, (void *)mtl, (void *)mi);
-        if (!world || !mtl || !mi)
+        GLogInfo("[RenderToTexture][OffscreenPass::InitMISSBO] begin world=%p mtl=%p binding_set=%p",
+                 (void *)world, (void *)mtl, (void *)binding_set);
+        if (!world || !mtl)
             return LogStageFail("OffscreenPass::InitMISSBO", "invalid input pointers");
 
         auto *gc = world->GetGraphicsContext();
@@ -139,14 +143,17 @@ private:
             return true;
         }
 
-        const int mi_id = mi->GetMIID();
-        if (mi_id < 0)
-            return LogStageFail("OffscreenPass::InitMISSBO", "material instance id invalid");
+        if (!slot_allocator.Init(1))
+            return LogStageFail("OffscreenPass::InitMISSBO", "slot allocator init failed");
 
-        const uint32_t mi_count = static_cast<uint32_t>(mi_id + 1);
+        uint32_t slot_index = 0;
+        if (!slot_allocator.Allocate(slot_index))
+            return LogStageFail("OffscreenPass::InitMISSBO", "slot allocator allocate failed");
+
+        const uint32_t mi_count = 1;
         const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * mi_data_bytes;
-        GLogInfo("[RenderToTexture][OffscreenPass::InitMISSBO] mi_id=%d mi_bytes=%u mi_count=%u ssbo_size=%llu",
-                 mi_id, mi_data_bytes, mi_count, static_cast<unsigned long long>(ssbo_size));
+        GLogInfo("[RenderToTexture][OffscreenPass::InitMISSBO] slot=%u mi_bytes=%u mi_count=%u ssbo_size=%llu",
+                 slot_index, mi_data_bytes, mi_count, static_cast<unsigned long long>(ssbo_size));
 
         mi_ssbo = buffer_manager->CreateSSBO("RenderToTexture:OffscreenPass:MIData", ssbo_size, nullptr, SharingMode::Exclusive);
         if (!mi_ssbo)
@@ -161,10 +168,12 @@ private:
             return LogStageFail("OffscreenPass::InitMISSBO", "SSBO map failed");
 
         memset(dst, 0, static_cast<size_t>(ssbo_size));
-        void *src = mtl->GetMIData(mi_id);
-        if (src)
-            memcpy(dst + static_cast<VkDeviceSize>(mi_id) * mi_data_bytes, src, mi_data_bytes);
+        memcpy(dst + static_cast<VkDeviceSize>(slot_index) * mi_data_bytes, &sphere_color_data, mi_data_bytes);
         gpu_buf->Unmap();
+
+        binding_set = new DescriptorBindingSet(mtl, mtl->GetDefaultVIL());
+        if (!binding_set)
+            return LogStageFail("OffscreenPass::InitMISSBO", "binding set allocation failed");
 
         bool has_struct_binding = false;
         for (const auto &req : mtl->GetBindingContract().requirements)
@@ -179,6 +188,9 @@ private:
             const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
             if (!domain_manager->RegisterBuffer(addr, mi_ssbo, mi_count))
                 return LogStageFail("OffscreenPass::InitMISSBO", "RegisterBuffer failed");
+
+            if (!binding_set->SetSSBOBinding(req.ssbo_type, req.ssbo_id, slot_index))
+                return LogStageFail("OffscreenPass::InitMISSBO", "SetSSBOBinding failed");
         }
 
         if (!has_struct_binding)
@@ -213,16 +225,15 @@ public:
 
             if (auto *mm = gc->GetMaterialManager())
             {
-                if (mi)
-                    mm->Destroy(mi);
-                if (mtl)
-                    mm->Destroy(mtl);
+            if (mtl)
+                mm->Destroy(mtl);
             }
         }
 
         primitive = nullptr;
         geometry = nullptr;
-        mi = nullptr;
+        delete binding_set;
+        binding_set = nullptr;
         mi_ssbo = nullptr;
         mtl = nullptr;
         pipeline = nullptr;
@@ -290,10 +301,7 @@ public:
         if (!pipeline)
             return LogStageFail("OffscreenPass::BuildSphere", "CreatePipeline failed");
 
-        Color4f sphere_color = GetColor4f(COLOR::SkyBlue, 1.0f);
-        mi = mm->CreateMaterialInstance(mtl, (VIL*)nullptr, &sphere_color);
-        if (!mi)
-            return LogStageFail("OffscreenPass::BuildSphere", "CreateMaterialInstance failed");
+        sphere_color_data = GetColor4f(COLOR::SkyBlue, 1.0f);
 
         if (!InitMISSBO(runtime.GetWorld()))
             return LogStageFail("OffscreenPass::BuildSphere", "InitMISSBO failed");
@@ -307,7 +315,7 @@ public:
 
         gm->Add(geometry);
 
-        primitive = pm->CreatePrimitive(geometry, mi, pipeline);
+        primitive = pm->CreatePrimitive(geometry, binding_set, pipeline);
         if (!primitive)
             return LogStageFail("OffscreenPass::BuildSphere", "CreatePrimitive failed");
 
@@ -322,6 +330,7 @@ public:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitive(primitive);
+        prim_comp->SetDescriptorBindingSet(binding_set);
         prim_comp->SetVisible(true);
 
         Entity *camera_entity = world->CreateEntity<Entity>("OffscreenCamera");
@@ -364,11 +373,13 @@ private:
     Entity *cube_entity = nullptr;
 
     Material *cube_mtl = nullptr;
-    MaterialInstance *cube_mi = nullptr;
+    DescriptorBindingSet *cube_binding_set = nullptr;
     graph::DeviceBuffer *cube_mi_ssbo = nullptr;
     Pipeline *cube_pipeline = nullptr;
     Sampler *cube_sampler = nullptr;
     Primitive *cube_primitive = nullptr;
+    SSBOSlotAllocator cube_slot_allocator;
+    mtl::StandardMaterialInstance cube_mi_data{};
 
     Texture2D *base_tex = nullptr;
     Texture2D *fallback_albedo = nullptr;
@@ -517,15 +528,10 @@ private:
         if (!cube_pipeline)
             return LogStageFail("RenderToTextureApp::CreateCube", "CreatePipeline failed");
 
-        mtl::StandardMaterialInstance cube_mi_data{};
         cube_mi_data.base_color = 0xFFFFFFFFu;
         cube_mi_data.metallic = 0.08f;
         cube_mi_data.roughness = 0.92f;
         cube_mi_data.normal_scale = 0.35f;
-
-        cube_mi = mm->CreateMaterialInstance(cube_mtl, (VIL*)nullptr, &cube_mi_data);
-        if (!cube_mi)
-            return LogStageFail("RenderToTextureApp::CreateCube", "CreateMaterialInstance failed");
 
         if (!InitCubeMISSBO())
             return LogStageFail("RenderToTextureApp::CreateCube", "InitCubeMISSBO failed");
@@ -543,7 +549,7 @@ private:
 
         gm->Add(cube_geometry);
 
-        cube_primitive = pm->CreatePrimitive(cube_geometry, cube_mi, cube_pipeline);
+        cube_primitive = pm->CreatePrimitive(cube_geometry, cube_binding_set, cube_pipeline);
         if (!cube_primitive)
             return LogStageFail("RenderToTextureApp::CreateCube", "CreatePrimitive failed");
 
@@ -557,15 +563,16 @@ private:
         cube_transform->SetMovable(true);
 
         cube_prim_comp->SetPrimitive(cube_primitive);
+        cube_prim_comp->SetDescriptorBindingSet(cube_binding_set);
         cube_prim_comp->SetVisible(true);
         LogStage("RenderToTextureApp::CreateCube", "success");
         return true;
     }
     bool InitCubeMISSBO()
     {
-        GLogInfo("[RenderToTexture][RenderToTextureApp::InitCubeMISSBO] begin ecs=%p mtl=%p mi=%p",
-                 (void *)ecs_context, (void *)cube_mtl, (void *)cube_mi);
-        if (!ecs_context || !cube_mtl || !cube_mi)
+        GLogInfo("[RenderToTexture][RenderToTextureApp::InitCubeMISSBO] begin ecs=%p mtl=%p binding_set=%p",
+                 (void *)ecs_context, (void *)cube_mtl, (void *)cube_binding_set);
+        if (!ecs_context || !cube_mtl)
             return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "invalid input pointers");
 
         auto *rc = GetRenderContext();
@@ -592,14 +599,17 @@ private:
             return true;
         }
 
-        const int mi_id = cube_mi->GetMIID();
-        if (mi_id < 0)
-            return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "material instance id invalid");
+        if (!cube_slot_allocator.Init(1))
+            return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "slot allocator init failed");
 
-        const uint32_t mi_count = static_cast<uint32_t>(mi_id + 1);
+        uint32_t slot_index = 0;
+        if (!cube_slot_allocator.Allocate(slot_index))
+            return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "slot allocator allocate failed");
+
+        const uint32_t mi_count = 1;
         const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * mi_data_bytes;
-        GLogInfo("[RenderToTexture][RenderToTextureApp::InitCubeMISSBO] mi_id=%d mi_bytes=%u mi_count=%u ssbo_size=%llu",
-                 mi_id, mi_data_bytes, mi_count, static_cast<unsigned long long>(ssbo_size));
+        GLogInfo("[RenderToTexture][RenderToTextureApp::InitCubeMISSBO] slot=%u mi_bytes=%u mi_count=%u ssbo_size=%llu",
+                 slot_index, mi_data_bytes, mi_count, static_cast<unsigned long long>(ssbo_size));
 
         cube_mi_ssbo = buffer_manager->CreateSSBO("RenderToTexture:MainScene:MIData", ssbo_size, nullptr, SharingMode::Exclusive);
         if (!cube_mi_ssbo)
@@ -614,10 +624,12 @@ private:
             return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "SSBO map failed");
 
         memset(dst, 0, static_cast<size_t>(ssbo_size));
-        void *src = cube_mtl->GetMIData(mi_id);
-        if (src)
-            memcpy(dst + static_cast<VkDeviceSize>(mi_id) * mi_data_bytes, src, mi_data_bytes);
+        memcpy(dst + static_cast<VkDeviceSize>(slot_index) * mi_data_bytes, &cube_mi_data, mi_data_bytes);
         gpu_buf->Unmap();
+
+        cube_binding_set = new DescriptorBindingSet(cube_mtl, cube_mtl->GetDefaultVIL());
+        if (!cube_binding_set)
+            return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "binding set allocation failed");
 
         bool has_struct_binding = false;
         for (const auto &req : cube_mtl->GetBindingContract().requirements)
@@ -632,6 +644,9 @@ private:
             const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
             if (!domain_manager->RegisterBuffer(addr, cube_mi_ssbo, mi_count))
                 return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "RegisterBuffer failed");
+
+            if (!cube_binding_set->SetSSBOBinding(req.ssbo_type, req.ssbo_id, slot_index))
+                return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "SetSSBOBinding failed");
         }
 
         if (!has_struct_binding)
@@ -657,8 +672,6 @@ public:
 
             if (auto *mm = gc ? gc->GetMaterialManager() : nullptr)
             {
-                if (cube_mi)
-                    mm->Destroy(cube_mi);
                 if (cube_mtl)
                     mm->Destroy(cube_mtl);
             }
@@ -671,7 +684,8 @@ public:
         }
 
         cube_primitive = nullptr;
-        cube_mi = nullptr;
+        delete cube_binding_set;
+        cube_binding_set = nullptr;
         cube_mi_ssbo = nullptr;
         cube_mtl = nullptr;
         cube_sampler = nullptr;
