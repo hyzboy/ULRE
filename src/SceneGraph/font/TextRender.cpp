@@ -200,11 +200,11 @@ namespace hgl::graph
         mtl_fs=mtl_manager->CreateMaterial(mtl::MaterialPreset::Text2D,&mtl_cfg);
         if(!mtl_fs)return(false);
 
-        // Build VIL: Position uses RG16I (integer 2D coords)
+        const GeometryVertexFormat text_gvf = CreateTextGeometryVertexFormat();
+
+        // Build VIL from geometry vertex format
         {
-            VILConfig vil_config;
-            vil_config.Add("Position", VF_V2I16);
-            binding_vil = mtl_fs->CreateVIL(&vil_config);
+            binding_vil = mtl_fs->CreateVIL(text_gvf);
             if (!binding_vil) return false;
         }
 
@@ -242,7 +242,6 @@ namespace hgl::graph
             binding_set->SetSSBOBinding(req.ssbo_type, req.ssbo_id, 0);
         }
 
-        const GeometryVertexFormat text_gvf = CreateTextGeometryVertexFormat();
         pipeline = rp->CreatePipeline(mtl_fs, binding_vil, InlinePipeline::Solid2D, false, &text_gvf);
         if (!pipeline) return false;
 

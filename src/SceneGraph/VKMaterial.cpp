@@ -2,9 +2,11 @@
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/vk/VKVertexInput.h>
+#include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/vk/pipeline/VKPipelineLayoutData.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/vk/VKBuffer.h>
+#include<hgl/graph/geo/GeometryVertexFormat.h>
 
 namespace hgl::graph{
 
@@ -58,6 +60,24 @@ const VIL *Material::GetDefaultVIL()const
 VIL *Material::CreateVIL(const VILConfig *format_map)
 {
     return vertex_input->CreateVIL(format_map);
+}
+
+VIL *Material::CreateVIL(const GeometryVertexFormat &geometry_vertex_format)
+{
+    if(geometry_vertex_format.GetCount() <= 0)
+        return CreateVIL((const VILConfig *)nullptr);
+
+    VILConfig vil_config;
+    for(uint32_t i=0;i<geometry_vertex_format.GetCount();++i)
+    {
+        const GeometryVertexAttributeFormat *attribute = geometry_vertex_format.Get(i);
+        if(!attribute)
+            continue;
+
+        vil_config.Add(attribute->semantic, VAConfig(attribute->format, VK_VERTEX_INPUT_RATE_VERTEX));
+    }
+
+    return CreateVIL(&vil_config);
 }
 
 bool Material::Release(VIL *vil)

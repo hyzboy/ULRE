@@ -12,6 +12,7 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialCreatePrecheckAdapter.h>
 #include<hgl/graph/module/MaterialFinalizeFlowAdapter.h>
+#include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
@@ -25,6 +26,19 @@ namespace hgl::graph{
 
 namespace
 {
+    bool TryInferPositionFormatFromGeometryVertexFormat(const GeometryVertexFormat &geometry_vertex_format,VkFormat &position_format)
+    {
+        const GeometryVertexAttributeFormat *position_attribute = geometry_vertex_format.Find(VertexSemantic::Position);
+        if(!position_attribute)
+            return false;
+
+        if(position_attribute->format==VK_FORMAT_UNDEFINED)
+            return false;
+
+        position_format = position_attribute->format;
+        return true;
+    }
+
     void CreateShaderStageList(ValueArray<VkPipelineShaderStageCreateInfo> &shader_stage_list,ShaderModuleMap *shader_maps)
     {
         const ShaderModule *sm;
@@ -482,6 +496,37 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
     return mi;
 }
 
+MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const GeometryVertexFormat &geometry_vertex_format)
+{
+    return CreateMaterialInstance(mtl,geometry_vertex_format,nullptr,0);
+}
+
+MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const GeometryVertexFormat &geometry_vertex_format,const void *mi_data,const uint32 mi_bytes)
+{
+    HGL_CAPTURE_SCOPE();
+
+    if(!mtl)return(nullptr);
+
+    MaterialInstance *mi=mtl->CreateMI(geometry_vertex_format);
+
+    if(mi)
+    {
+        Add(mi);
+        VulkanDevice *device = GetDevice();
+        if(device)
+            device->TrackObject(VK_OBJECT_TYPE_UNKNOWN, (uint64_t)(uintptr_t)mi,
+                              ObjectNameBuilder(mtl->GetName()).Append(ObjectTypeTag::MaterialInstance));
+    }
+
+    if(mi_data&&mi_bytes>0)
+    {
+        // WriteMIData is deprecated in the new path (data lives in external SSBO).
+        // Legacy callers that still pass data will silently have it dropped here.
+    }
+
+    return mi;
+}
+
 MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VIL *vil,const void *mi_data,const uint32 mi_bytes)
 {
     HGL_CAPTURE_SCOPE();
@@ -554,6 +599,56 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPre
         return(nullptr);
 
     return CreateMaterialInstance(mtl,vil_cfg,data,data_size);
+}
+
+MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format,const void *data,const uint32 data_size)
+{
+    HGL_CAPTURE_SCOPE();
+
+    if(!mcc)
+        return nullptr;
+
+    VkFormat position_format = VK_FORMAT_UNDEFINED;
+    if(!TryInferPositionFormatFromGeometryVertexFormat(geometry_vertex_format,position_format))
+    {
+        GLogError("[MaterialManager] Can't infer Material2D position_format from GeometryVertexFormat: missing Position semantic");
+        return nullptr;
+    }
+
+    mtl::Material2DCreateConfig inferred_cfg = *mcc;
+    inferred_cfg.position_format = position_format;
+
+    Material *mtl=this->CreateMaterial(mtl_id,&inferred_cfg);
+
+    if(!mtl)
+        return(nullptr);
+
+    return CreateMaterialInstance(mtl,geometry_vertex_format,data,data_size);
+}
+
+MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format,const void *data,const uint32 data_size)
+{
+    HGL_CAPTURE_SCOPE();
+
+    if(!mcc)
+        return nullptr;
+
+    VkFormat position_format = VK_FORMAT_UNDEFINED;
+    if(!TryInferPositionFormatFromGeometryVertexFormat(geometry_vertex_format,position_format))
+    {
+        GLogError("[MaterialManager] Can't infer Material3D position_format from GeometryVertexFormat: missing Position semantic");
+        return nullptr;
+    }
+
+    mtl::Material3DCreateConfig inferred_cfg = *mcc;
+    inferred_cfg.position_format = position_format;
+
+    Material *mtl=this->CreateMaterial(mtl_id,&inferred_cfg);
+
+    if(!mtl)
+        return(nullptr);
+
+    return CreateMaterialInstance(mtl,geometry_vertex_format,data,data_size);
 }
 
 }//namespace hgl::graph

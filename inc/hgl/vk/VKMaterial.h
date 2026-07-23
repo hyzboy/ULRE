@@ -11,6 +11,7 @@
 namespace hgl::graph{
 
 class IGPUBuffer;
+class GeometryVertexFormat;
 
 namespace mtl
 {
@@ -88,6 +89,7 @@ public:
 
     const   VIL *                               GetDefaultVIL()const;
             VIL *                               CreateVIL(const VILConfig *format_map=nullptr);
+            VIL *                               CreateVIL(const GeometryVertexFormat &geometry_vertex_format);
             bool                                Release(VIL *);
     const   uint                                GetVILCount();
 
@@ -121,6 +123,7 @@ public:
 
     MaterialInstance *CreateMI(const VIL *);
     MaterialInstance *CreateMI(const VILConfig *vil_cfg=nullptr);
+    MaterialInstance *CreateMI(const GeometryVertexFormat &geometry_vertex_format);
 };//class Material
 
 using MaterialSet=std::unordered_set<Material *>;

@@ -339,13 +339,10 @@ namespace hgl::ecs
         if (auto rdbs = context_->GetSystem<RenderDescriptorBindingSystem>())
             rdbs->RegisterPipelineMaterial(material_);
 
+        const graph::GeometryVertexFormat line_gvf = CreateLineGeometryVertexFormat();
+
         // ------- Create descriptor binding set -------
-        graph::VILConfig vil;
-        vil.Add(graph::VertexSemantic::Color, VF_V1U8);
-        vil.Add(graph::Assign::TransformID::VIS_SEMANTIC,
-            graph::VAConfig(graph::Assign::TransformID::VAB_FMT,
-                    VK_VERTEX_INPUT_RATE_VERTEX));
-        binding_vil_ = material_->CreateVIL(&vil);
+        binding_vil_ = material_->CreateVIL(line_gvf);
         if (!binding_vil_)
             return false;
 
@@ -354,7 +351,6 @@ namespace hgl::ecs
         binding_set_ = &binding_set_storage_;
 
         // ------- Create pipeline -------
-        const graph::GeometryVertexFormat line_gvf = CreateLineGeometryVertexFormat();
         pipeline_ = support_wide_lines_
             ? rp->CreatePipeline(material_, binding_vil_, graph::InlinePipeline::DynamicLineWidth3D, false, &line_gvf)
             : rp->CreatePipeline(material_, binding_vil_, graph::InlinePipeline::Solid3D, false, &line_gvf);

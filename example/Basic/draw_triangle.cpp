@@ -8,7 +8,6 @@
 // 4. ECS与传统渲染系统的集成
 
 #include<hgl/framework/WorkManager.h>
-#include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -55,7 +54,6 @@ constexpr float color_data[VERTEX_COUNT][4]=
     {0.0f,0.0f,1.0f,1.0f}
 };
 
-constexpr VkFormat POSITION_SHADER_FORMAT   =VK_FORMAT_R32G32_SINT;
 constexpr VkFormat POSITION_DATA_FORMAT     =VF_V2I;
 
 constexpr VkFormat COLOR_DATA_FORMAT        =VF_V4F;
@@ -94,17 +92,8 @@ private:
                                         CoordinateSystem2D::Ortho,
                                         mtl::WithLocalToWorld::Without);
 
-        VILConfig vil_config;
-
-        cfg.position_format     =       POSITION_SHADER_FORMAT;     //这里指定shader中使用ivec2当做顶点输入格式
-                                //      ^
-                                //      +  这上下两种格式要配套，否则会出错
-                                //      v
-        vil_config.Add(VAN::Position,   POSITION_DATA_FORMAT);     //这里指定VAB中使用RG32I当做顶点数据格式
-
-        vil_config.Add(VAN::Color,      COLOR_DATA_FORMAT);        //这里指定VAB中使用RGBA32F当做颜色数据格式
-
-        material_instance=material_manager->CreateMaterialInstance(mtl::MaterialPreset::VertexColor2D,&cfg,&vil_config);
+        const GeometryVertexFormat triangle_gvf = CreateDrawTriangleGeometryVertexFormat();
+        material_instance=material_manager->CreateMaterialInstance(mtl::MaterialPreset::VertexColor2D,&cfg,triangle_gvf);
 
         if(!material_instance)
             return(false);

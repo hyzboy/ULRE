@@ -14,6 +14,11 @@ MaterialInstance *Material::CreateMI(const VILConfig *vil_cfg)
     return CreateMI(CreateVIL(vil_cfg));
 }
 
+MaterialInstance *Material::CreateMI(const GeometryVertexFormat &geometry_vertex_format)
+{
+    return CreateMI(CreateVIL(geometry_vertex_format));
+}
+
 MaterialInstance::MaterialInstance(Material *mtl,const VIL *v,const int id)
 {
     material=mtl;

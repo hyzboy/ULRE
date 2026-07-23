@@ -15,6 +15,7 @@ namespace hgl::graph{
 
 class ShaderCreateInfo;
 class ShaderCreateInfoMap;
+class GeometryVertexFormat;
 
 namespace mtl
 {
@@ -157,6 +158,8 @@ public: //MaterialInstance
     MaterialInstance *  CreateMaterialInstance(Material *);
     MaterialInstance *  CreateMaterialInstance(Material *, const VIL *vil);
     MaterialInstance *  CreateMaterialInstance(Material *, const VILConfig *vil_cfg);
+    MaterialInstance *  CreateMaterialInstance(Material *, const GeometryVertexFormat &geometry_vertex_format);
+    MaterialInstance *  CreateMaterialInstance(Material *, const GeometryVertexFormat &geometry_vertex_format, const void *, const uint32);
 
     MaterialInstance *  CreateMaterialInstance(Material *, const VIL *vil, const void *, const uint32);
     MaterialInstance *  CreateMaterialInstance(Material *, const VILConfig *vil_cfg, const void *, const uint32);
@@ -178,11 +181,21 @@ public: //MaterialInstance
     {
         return CreateMaterialInstance(mtl_id,mcc,vil_cfg,nullptr,0);
     }
+    MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format,const void *data,const uint32 data_size);
+    MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format)
+    {
+        return CreateMaterialInstance(mtl_id,mcc,geometry_vertex_format,nullptr,0);
+    }
 
     MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size);
     MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg=nullptr)
     {
         return CreateMaterialInstance(mtl_id,mcc,vil_cfg,nullptr,0);
+    }
+    MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format,const void *data,const uint32 data_size);
+    MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format)
+    {
+        return CreateMaterialInstance(mtl_id,mcc,geometry_vertex_format,nullptr,0);
     }
 
 };//class MaterialManager

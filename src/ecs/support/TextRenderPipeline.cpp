@@ -307,9 +307,8 @@ namespace hgl::ecs
             return nullptr;
 
         {
-            graph::VILConfig vil_config;
-            vil_config.Add("Position", VF_V2I16);
-            guard.binding_vil = guard.material->CreateVIL(&vil_config);
+            const graph::GeometryVertexFormat text_gvf = graph::CreateTextGeometryVertexFormat();
+            guard.binding_vil = guard.material->CreateVIL(text_gvf);
             if (!guard.binding_vil)
                 return nullptr;
         }
