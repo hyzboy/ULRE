@@ -500,7 +500,11 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
                           ObjectNameBuilder(mtl->GetName()).Append(ObjectTypeTag::MaterialInstance));
 
     if(mi_data&&mi_bytes>0)
-        mi->WriteMIData(mi_data,mi_bytes);
+    {
+        // WriteMIData is deprecated in the new path (data lives in external SSBO).
+        // Legacy callers that still pass data will silently have it dropped here.
+        // Migrate to DescriptorBindingSet + external SSBO for correct behavior.
+    }
 
     return mi;
 }
@@ -521,7 +525,9 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
     // No need to track with ObjectTracker
 
     if(mi_data&&mi_bytes>0)
-        mi->WriteMIData(mi_data,mi_bytes);
+    {
+        // WriteMIData is deprecated — silently dropped.
+    }
 
     return mi;
 }

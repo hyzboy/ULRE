@@ -296,8 +296,9 @@ namespace hgl::ecs
         {
             if (!out_recipe.domain.empty())
                 out_recipe.domain += "|";
-            out_recipe.domain += "mi:";
-            out_recipe.domain += std::to_string(mi->GetMIID());
+            // Legacy MI path: mi_id is now always -1. Use material name as domain key instead.
+            out_recipe.domain += "mi-legacy:";
+            out_recipe.domain += mi->GetMaterial() ? mi->GetMaterial()->GetName().c_str() : "null";
         }
 
         return true;

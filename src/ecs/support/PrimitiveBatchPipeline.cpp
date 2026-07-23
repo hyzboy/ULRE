@@ -628,7 +628,12 @@ namespace hgl::ecs
                                     mi_index = binding_set->GetSlotIndex(primary_ssbo_type);
                             }
                             else if (auto *mi = item->GetMaterialInstance())
-                                mi_index = static_cast<uint32_t>(mi->GetMIID());
+                            {
+                                const int mi_id = mi->GetMIID();
+                                // mi_id is now always -1 (legacy path, no material-owned data store).
+                                // Keep mi_index at 0 so the shader reads slot 0 rather than wrapping to UINT32_MAX.
+                                mi_index = (mi_id >= 0) ? static_cast<uint32_t>(mi_id) : 0u;
+                            }
                         }
                         row_ptr[i] = mi_index;
                     }
