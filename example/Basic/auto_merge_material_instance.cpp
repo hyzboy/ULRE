@@ -287,7 +287,7 @@ private:
         auto* domain_manager  = graphics_context->GetResourceDomainManager();
         if (!buffer_manager || !domain_manager) return false;
 
-        auto rdbs = ecs_world->GetSystem<RenderDescriptorBindingSystem>();
+           auto rdbs = ecs_world->GetSystem<RenderDescriptorBindingSystem>();
         if (!rdbs) return false;
 
         if (!slot_allocator.Init(DRAW_OBJECT_COUNT))

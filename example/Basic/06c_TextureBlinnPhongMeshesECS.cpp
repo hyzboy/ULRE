@@ -1,6 +1,8 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
+#include<hgl/graph/DescriptorBindingSet.h>
+#include<hgl/graph/SSBOSlotAllocator.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
@@ -65,10 +67,11 @@ private:
     Entity* camera_entity = nullptr;
 
     Material* material = nullptr;
-    MaterialInstance* material_instance = nullptr;
+    DescriptorBindingSet* binding_set = nullptr;
     graph::DeviceBuffer* mi_ssbo = nullptr;
     Pipeline* pipeline = nullptr;
     VertexDataManager* mesh_vdm = nullptr;
+    SSBOSlotAllocator slot_allocator;
 
     RenderMesh* rm_floor = nullptr;
 
@@ -136,16 +139,6 @@ private:
 
         // Bindless registration is deferred to InitScene() after ECS systems are ready.
 
-        mtl::StandardMaterialInstance mi_data{};
-        mi_data.base_color = 0xFFFFFFFFu;
-        mi_data.metallic = 0.08f;
-        mi_data.roughness = 0.92f;
-        mi_data.normal_scale = 0.35f;
-
-        material_instance = material_manager->CreateMaterialInstance(material, (VIL*)nullptr, &mi_data);
-        if (!material_instance)
-            return false;
-
         auto* render_target = render_context->GetCurrentRenderTarget();
         auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
         pipeline = render_pass ? render_pass->CreatePipeline(material, InlinePipeline::Solid3D) : nullptr;
@@ -186,12 +179,14 @@ private:
 
     bool InitMISSBO()
     {
-        if (!ecs_context || !material || !material_instance)
+        if (!ecs_context || !material)
             return false;
 
         const uint32_t mi_data_bytes = material->GetMIDataBytes();
         if (mi_data_bytes == 0)
             return true;
+        if (mi_data_bytes != sizeof(mtl::StandardMaterialInstance))
+            return false;
 
         auto* render_context = GetRenderContext();
         if (!render_context)
@@ -210,11 +205,14 @@ private:
         if (!rdbs)
             return false;
 
-        const int mi_id = material_instance->GetMIID();
-        if (mi_id < 0)
+        if (!slot_allocator.Init(1))
             return false;
 
-        const uint32_t mi_count = static_cast<uint32_t>(mi_id + 1);
+        uint32_t slot_index = 0;
+        if (!slot_allocator.Allocate(slot_index))
+            return false;
+
+        const uint32_t mi_count = 1;
         const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * mi_data_bytes;
 
         mi_ssbo = buffer_manager->CreateSSBO("06c:PBRSurface:MIData", ssbo_size, nullptr, SharingMode::Exclusive);
@@ -230,24 +228,40 @@ private:
             return false;
 
         memset(dst, 0, static_cast<size_t>(ssbo_size));
-
-        void* src = material->GetMIData(mi_id);
-        if (src)
-            memcpy(dst + static_cast<VkDeviceSize>(mi_id) * mi_data_bytes, src, mi_data_bytes);
+        mtl::StandardMaterialInstance mi_data{};
+        mi_data.base_color = 0xFFFFFFFFu;
+        mi_data.metallic = 0.08f;
+        mi_data.roughness = 0.92f;
+        mi_data.normal_scale = 0.35f;
+        memcpy(dst + static_cast<VkDeviceSize>(slot_index) * mi_data_bytes, &mi_data, mi_data_bytes);
 
         gpu_buf->Unmap();
 
-        const uint32_t ssbo_id = graph::mtl::MakeRecipeSSBOId(0);
-        if (!rdbs->RegisterMaterialStructLayout(graph::mtl::SSBOType::PBRSurface, ssbo_id, mi_data_bytes))
+        binding_set = new DescriptorBindingSet(material, material->GetDefaultVIL());
+        if (!binding_set)
             return false;
 
-        const graph::mtl::SSBOAddress addr{graph::mtl::SSBOType::PBRSurface, ssbo_id, 0};
-        if (!domain_manager->RegisterBuffer(addr, mi_ssbo, mi_count))
-            return false;
+        bool has_struct_binding = false;
+        for (const auto &req : material->GetBindingContract().requirements)
+        {
+            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                continue;
+
+            has_struct_binding = true;
+            if (!rdbs->RegisterMaterialStructLayout(req.ssbo_type, req.ssbo_id, mi_data_bytes))
+                return false;
+
+            const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
+            if (!domain_manager->RegisterBuffer(addr, mi_ssbo, mi_count))
+                return false;
+
+            if (!binding_set->SetSSBOBinding(req.ssbo_type, req.ssbo_id, slot_index))
+                return false;
+        }
 
         std::cout << "[06c::InitMISSBO] registered PBRSurface SSBO: count=" << mi_count
-                  << ", stride=" << mi_data_bytes << ", ssbo_id=" << ssbo_id << std::endl;
-        return true;
+                  << ", stride=" << mi_data_bytes << std::endl;
+        return has_struct_binding;
     }
 
     bool InitVDM()
@@ -278,7 +292,7 @@ private:
 
     RenderMesh* CreateRenderMesh(Geometry* geometry)
     {
-        if (!geometry || !material_instance)
+        if (!geometry || !binding_set)
             return nullptr;
 
         auto* render_context = GetRenderContext();
@@ -296,7 +310,7 @@ private:
 
         geometry_manager->Add(geometry);
 
-        Primitive* primitive = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
+        Primitive* primitive = primitive_manager->CreatePrimitive(geometry, binding_set, pipeline);
         if (!primitive)
             return nullptr;
 
@@ -530,6 +544,7 @@ private:
             transform->SetMovable(false);
 
             primitive_comp->SetPrimitive(rm_floor->primitive);
+            primitive_comp->SetDescriptorBindingSet(binding_set);
             primitive_comp->SetVisible(true);
         }
 
@@ -557,6 +572,7 @@ private:
             transform->SetMovable(false);
 
             primitive_comp->SetPrimitive(rm->primitive);
+            primitive_comp->SetDescriptorBindingSet(binding_set);
             primitive_comp->SetVisible(true);
 
             ++index;
@@ -612,6 +628,8 @@ private:
 public:
     ~TextureBlinnPhongMeshesECSApp()
     {
+        delete binding_set;
+        SAFE_CLEAR(mi_ssbo)
         SAFE_CLEAR(mesh_vdm)
     }
 
