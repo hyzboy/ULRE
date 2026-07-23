@@ -1,4 +1,4 @@
-﻿#include<hgl/vk/VKRenderTargetData.h>
+#include<hgl/vk/VKRenderTargetData.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKSemaphore.h>
 #include<hgl/vk/VKFramebuffer.h>
@@ -82,3 +82,4 @@ void RenderTargetData::Clear()
 }
 
 }//namespace hgl::graph
+

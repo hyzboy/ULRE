@@ -7,6 +7,8 @@
 namespace hgl::graph{
 namespace
 {
+    constexpr bool FORCE_DISABLE_GRAPHICS_PIPELINE_LIBRARY = true;
+
     void debug_queue_family_properties_out(const char *front,const ValueArray<VkQueueFamilyProperties> &qfp_list)
     {
         constexpr const char *queue_bit_name[]=
@@ -258,7 +260,9 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
     mem_zero(graphics_pipeline_library_features);
     mem_zero(graphics_pipeline_library_properties);
 
-    if(CheckExtensionSupport(VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME))
+    if(!FORCE_DISABLE_GRAPHICS_PIPELINE_LIBRARY
+    && CheckExtensionSupport(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME)
+    && CheckExtensionSupport(VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME))
     {
         auto get_features2=(PFN_vkGetPhysicalDeviceFeatures2KHR)vkGetInstanceProcAddr(inst,"vkGetPhysicalDeviceFeatures2KHR");
         if(get_features2)
@@ -400,4 +404,5 @@ VkFormat VulkanPhyDevice::GetDepthStencilFormat(bool lower_to_high)const
     return result;
 }
 }//namespace hgl::graph
+
 

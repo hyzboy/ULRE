@@ -1,4 +1,4 @@
-﻿#include<hgl/vk/VKRenderTargetSwapchain.h>
+#include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKSemaphore.h>
 #include<hgl/log/Log.h>
@@ -28,7 +28,7 @@ SwapchainRenderTarget::~SwapchainRenderTarget()
 bool SwapchainRenderTarget::NextFrame()
 {
     auto start = std::chrono::high_resolution_clock::now();
-    LogInfo("[SWAPCHAIN] NextFrame START current_frame=%u semaphore=%p", current_frame, (void*)present_complete_semaphore);
+    LogWarning("[SWAPCHAIN] NextFrame START current_frame=%u acquire_sem=%p", current_frame, present_complete_semaphore?(void*)(VkSemaphore)(*present_complete_semaphore):nullptr);
 
     VkResult result = vkAcquireNextImageKHR(GetVkDevice(),
                                  swapchain->swap_chain,
@@ -54,10 +54,31 @@ bool SwapchainRenderTarget::NextFrame()
     return false;
 }
 
+bool SwapchainRenderTarget::WaitFence()
+{
+    bool all_ok = true;
+
+    for(uint32_t i=0;i<frame_number;i++)
+    {
+        auto *q = rtd_list[i].queue;
+        if(!q)
+            continue;
+
+        const bool ok = q->WaitLastSubmitFence();
+        if(!ok)
+        {
+            LogWarning("[SWAPCHAIN] WaitFence failed on frame=%u queue=%p", i, (void*)q);
+            all_ok = false;
+        }
+    }
+
+    return all_ok;
+}
+
 bool SwapchainRenderTarget::Submit()
 {
     auto submit_start = std::chrono::high_resolution_clock::now();
-    LogInfo("[SWAPCHAIN] Submit START frame=%u", current_frame);
+    LogWarning("[SWAPCHAIN] Submit START frame=%u acquire_sem=%p", current_frame, present_complete_semaphore?(void*)(VkSemaphore)(*present_complete_semaphore):nullptr);
 
     RenderTargetData *rtd=rtd_list+current_frame;
 

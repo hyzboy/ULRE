@@ -1,7 +1,9 @@
 #pragma once
 
 #include<hgl/vk/VK.h>
+#include<hgl/vk/pipeline/VKPipelineData.h>
 #include<hgl/vk/VKPrimitiveType.h>
+#include<hgl/type/String.h>
 #include<cstdint>
 
 namespace hgl::graph
@@ -92,13 +94,43 @@ namespace hgl::graph
         PipelineMaterializeMode preferred_materialize_mode = PipelineMaterializeMode::Monolithic;
     };
 
+    class VulkanDevice;
     class VulkanPhyDevice;
+
+    struct FinalPipelineResolveRequest
+    {
+        VulkanDevice *device = nullptr;
+        VkPipelineCache pipeline_cache = VK_NULL_HANDLE;
+        VkRenderPass render_pass = VK_NULL_HANDLE;
+        uint32_t subpass = 0;
+
+        const VkFormat *color_formats = nullptr;
+        uint32_t color_attachment_count = 0;
+        VkFormat depth_stencil_format = VK_FORMAT_UNDEFINED;
+
+        const AnsiString *debug_name = nullptr;
+        PipelineData *pipeline_data = nullptr;
+        const ShaderStageCreateInfoList *shader_stages = nullptr;
+        VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
+        const VIL *vertex_input_layout = nullptr;
+    };
+
+    struct FinalPipelineResolveResult
+    {
+        FinalPipelineKey key{};
+        PipelineCapabilityInfo capability{};
+        PipelineMaterializeMode materialize_mode = PipelineMaterializeMode::Monolithic;
+        VkPipeline pipeline = VK_NULL_HANDLE;
+    };
 
     class PipelineResolver
     {
     public:
         static PipelineCapabilityInfo BuildCapabilityInfo(const VulkanPhyDevice *physical_device);
         static PipelineMaterializeMode ResolveMaterializeMode(const VulkanPhyDevice *physical_device);
+        static bool BuildFinalPipelineKey(const FinalPipelineResolveRequest &request, FinalPipelineKey &out_key);
         static bool HasCompleteFinalKey(const FinalPipelineKey &key);
+        static bool MaterializeMonolithic(const FinalPipelineResolveRequest &request, VkPipeline &out_pipeline);
+        static bool ResolveFinalPipeline(const FinalPipelineResolveRequest &request, FinalPipelineResolveResult &out_result);
     };
 }//namespace hgl::graph

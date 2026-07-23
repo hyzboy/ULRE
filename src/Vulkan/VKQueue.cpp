@@ -1,4 +1,4 @@
-﻿#include<hgl/vk/VKQueue.h>
+#include<hgl/vk/VKQueue.h>
 #include<hgl/vk/VKSemaphore.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKDevice.h>
@@ -165,3 +165,4 @@ bool DeviceQueue::Submit(VulkanCmdBuffer *cmd_buf,Semaphore *wait_sem,Semaphore 
     return Submit(&vk_cmd,1,wait_sem,complete_sem);
 }
 }//namespace hgl::graph
+

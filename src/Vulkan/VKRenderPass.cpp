@@ -1,8 +1,9 @@
-﻿#include<hgl/vk/VKRenderPass.h>
+#include<hgl/vk/VKRenderPass.h>
 #include<hgl/vk/VKDevice.h>
 #include<cstdint>
 #include<hgl/vk/pipeline/VKInlinePipeline.h>
 #include<hgl/vk/pipeline/VKPipelineData.h>
+#include<hgl/vk/pipeline/VKPipelineResolver.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/object/ObjectTracker.h>
@@ -52,38 +53,37 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,con
 {
     HGL_CAPTURE_SCOPE();
 
-    //以后要做一个缓冲，以Material为基准创建一个pipeline，其它MaterialInstance的pipeline全部以它为基础，这样可以提升性能。
+    FinalPipelineResolveRequest request{};
+    request.device = device;
+    request.pipeline_cache = pipeline_cache;
+    request.render_pass = render_pass;
+    request.subpass = 0;
+    request.color_formats = color_formats.GetData();
+    request.color_attachment_count = color_formats.GetCount();
+    request.depth_stencil_format = depth_format;
+    request.debug_name = &name;
+    request.pipeline_data = pd;
+    request.shader_stages = &ssci_list;
+    request.pipeline_layout = pl;
+    request.vertex_input_layout = vil;
 
-    VkPipeline graphicsPipeline;
-
-    pd->InitShaderStage(ssci_list);
-    pd->InitVertexInputState(vil);
-
-    pd->SetColorAttachments(color_formats.GetCount());
-
-    pd->pipeline_info.layout = pl;
-
+    FinalPipelineResolveResult resolve_result{};
+    if(!PipelineResolver::ResolveFinalPipeline(request, resolve_result))
     {
-        pd->pipeline_info.renderPass = render_pass;
-        pd->pipeline_info.subpass = 0;                   //subpass由于还不知道有什么用，所以暂时写0，待知道功用后，需改进
-    }
-
-    if (vkCreateGraphicsPipelines(  *device,
-        pipeline_cache,
-        1,&pd->pipeline_info,
-        nullptr,
-        &graphicsPipeline) != VK_SUCCESS)
-    {
-        //有一种常见问题就是PipelineData未调用SetPrim
-
         delete pd;
         return(nullptr);
     }
 
+    VkPipeline graphicsPipeline = resolve_result.pipeline;
+
     Pipeline *pipeline = new Pipeline(name,*device,graphicsPipeline,vil,pd);
 
-    LogInfo("[RenderPass::CreatePipeline] Created Pipeline '%s' in RenderPass '%s' (VkPipeline=0x%llx, Pipeline*=0x%llx)",
-             name.c_str(), this->name.c_str(), (unsigned long long)(uintptr_t)graphicsPipeline, (unsigned long long)(uintptr_t)pipeline);
+    const char *mode_name = resolve_result.materialize_mode == PipelineMaterializeMode::GraphicsPipelineLibrary
+                          ? "GPL-skeleton"
+                          : "Monolithic";
+
+    LogInfo("[RenderPass::CreatePipeline] Created Pipeline '%s' in RenderPass '%s' (VkPipeline=0x%llx, mode=%s, Pipeline*=0x%llx)",
+             name.c_str(), this->name.c_str(), (unsigned long long)(uintptr_t)graphicsPipeline, mode_name, (unsigned long long)(uintptr_t)pipeline);
 
     if (device)
         device->TrackObject(VK_OBJECT_TYPE_PIPELINE, (uint64_t)(uintptr_t)graphicsPipeline, ObjectNameBuilder(name).Append(ObjectTypeTag::VKPipeline));
@@ -181,3 +181,4 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
     return p;
 }
 }//namespace hgl::graph
+

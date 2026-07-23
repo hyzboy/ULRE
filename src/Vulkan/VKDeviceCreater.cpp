@@ -37,6 +37,8 @@ void LogSurfaceFormat(const VkSurfaceFormatList &surface_formats_list)
 
 namespace
 {
+    constexpr bool FORCE_DISABLE_GRAPHICS_PIPELINE_LIBRARY = true;
+
     void SetDeviceExtension(CharPointerList *ext_list,const VulkanPhyDevice *physical_device,const VulkanHardwareRequirement &require)
     {
         ext_list->Add(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
@@ -57,6 +59,8 @@ namespace
 //            VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME,
 //            VK_AMD_DISPLAY_NATIVE_HDR_EXTENSION_NAME,
             VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+            // VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,       // forced off while stabilizing non-GPL path
+            // VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME,
 
 //            VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME,
 
@@ -246,7 +250,8 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     }
 
 
-    if(physical_device->SupportGraphicsPipelineLibrary())
+    if(!FORCE_DISABLE_GRAPHICS_PIPELINE_LIBRARY
+    && physical_device->SupportGraphicsPipelineLibrary())
     {
         graphics_pipeline_library_features.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT;
         graphics_pipeline_library_features.pNext=const_cast<void*>(static_cast<const void*>(create_info.pNext));
@@ -355,7 +360,8 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
         device_attr->wide_lines = true;
     }
 
-    device_attr->graphics_pipeline_library = physical_device->SupportGraphicsPipelineLibrary();
+    device_attr->graphics_pipeline_library = !FORCE_DISABLE_GRAPHICS_PIPELINE_LIBRARY
+                                           && physical_device->SupportGraphicsPipelineLibrary();
 
     device_attr->surface_format=surface_format;
 
@@ -541,5 +547,4 @@ VulkanDevice *VulkanDeviceCreater::Create()
     return device;
 }
 }//namespace hgl::graph
-
 

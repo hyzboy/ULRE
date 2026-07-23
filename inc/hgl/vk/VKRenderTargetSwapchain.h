@@ -35,6 +35,13 @@ public:
     bool Submit     ()override;                             ///<提交当前帧的渲染，交推送到前台
 
     /**
+     * Swapchain paths may share descriptor sets across multiple in-flight frames.
+     * We must wait all frame queues before descriptor updates to avoid
+     * vkUpdateDescriptorSets-on-pending-command-buffer validation errors.
+     */
+    bool WaitFence  ()override;
+
+    /**
      * Release swapchain-owned resources (Swapchain and present_complete_semaphore)
      * Must be called by SwapchainModule before destroying this object
      */
