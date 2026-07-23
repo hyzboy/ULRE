@@ -8,11 +8,6 @@
 #include<hgl/log/Log.h>
 #include<unordered_set>
 
-namespace hgl
-{
-    class ActiveMemoryBlockManager;
-}
-
 namespace hgl::graph{
 
 class IGPUBuffer;
@@ -52,10 +47,8 @@ class Material
 
     MaterialParameters *mp_array[DESCRIPTOR_SET_TYPE_COUNT];
 
-    uint32_t mi_data_bytes;             ///<实例数据大小
+    uint32_t mi_data_bytes;             ///<实例数据结构体大小（只读，供外部创建SSBO时计算容量）
     uint32_t mi_max_count;              ///<实例一次渲染最大数量限制
-
-    ActiveMemoryBlockManager *mi_data_manager;
 
     bool has_l2w_matrix;                ///<是否有LocalToWorld矩阵
 
@@ -125,9 +118,6 @@ public:
     const bool      hasMI           ()const{return mi_data_bytes>0;}
     const uint32_t  GetMIDataBytes  ()const{return mi_data_bytes;}
     const uint32_t  GetMIMaxCount   ()const{return mi_max_count;}
-
-    void ReleaseMI(int);    ///<释放材质实例
-    void *GetMIData(int);   ///<取得指定ID号的材质实例数据访问指针
 
     MaterialInstance *CreateMI(const VIL *);
     MaterialInstance *CreateMI(const VILConfig *vil_cfg=nullptr);

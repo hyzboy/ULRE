@@ -67,14 +67,14 @@ public:
 
     virtual ~MaterialInstance()
     {
-        material->ReleaseMI(mi_id);
+        // mi_id is always -1 in the new path (no Material-owned data store)
     }
 
-    const   int     GetMIID     ()const{return mi_id;}                          ///<取得材质实例ID
-            void *  GetMIData   (){return material->GetMIData(mi_id);}          ///<取得材质实例数据
-            void    WriteMIData (const void *data,const uint32 size);           ///<写入材质实例数据
+    const   int     GetMIID     ()const{return mi_id;}              ///<材质实例槽号（新路径恒为-1）
+            void *  GetMIData   (){ return nullptr; }               ///<已弃用：数据区已迁移到外部SSBO
+            void    WriteMIData (const void *, const uint32){}      ///<已弃用：数据直接写入外部SSBO
 
         template<typename T>
-            void    WriteMIData (const T &data){WriteMIData(&data,sizeof(T));}  ///<写入材质实例数据
+            void    WriteMIData (const T &){}                       ///<已弃用
 };//class MaterialInstance
 }//namespace hgl::graph

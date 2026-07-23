@@ -1,18 +1,12 @@
 ﻿#include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKMaterialInstance.h>
-#include<hgl/type/ActiveMemoryBlockManager.h>
 
 namespace hgl::graph{
 MaterialInstance *Material::CreateMI(const VIL *vil)
 {
-    int mi_id=-1;
-
-    if(mi_data_manager)
-        mi_data_manager->GetOrCreate(&mi_id,1);
-    else
-        mi_id=-1;
-
-    return(new MaterialInstance(this,vil?vil:GetDefaultVIL(),mi_id));
+    // In the new path Material no longer owns a data store.
+    // mi_id is always -1; data lives in an external SSBO managed by the caller.
+    return new MaterialInstance(this, vil ? vil : GetDefaultVIL(), -1);
 }
 
 MaterialInstance *Material::CreateMI(const VILConfig *vil_cfg)
@@ -20,37 +14,10 @@ MaterialInstance *Material::CreateMI(const VILConfig *vil_cfg)
     return CreateMI(CreateVIL(vil_cfg));
 }
 
-void Material::ReleaseMI(int mi_id)
-{
-    if(mi_id<0||!mi_data_manager)return;
-
-    mi_data_manager->Release(&mi_id,1);
-}
-
-void *Material::GetMIData(int id)
-{
-    if(!mi_data_manager)
-        return(nullptr);
-
-    return mi_data_manager->GetData(id);
-}
-
-void MaterialInstance::WriteMIData(const void *data,const uint32 size)
-{
-    if(!data||!size||size>material->GetMIDataBytes())return;
-
-    void *tp=GetMIData();
-
-    if(tp)
-        memcpy(tp,data,size);
-}
-
 MaterialInstance::MaterialInstance(Material *mtl,const VIL *v,const int id)
 {
     material=mtl;
-
     vil=v;
-
     mi_id=id;
 }
 }//namespace hgl::graph
