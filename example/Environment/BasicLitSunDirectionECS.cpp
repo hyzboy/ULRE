@@ -9,6 +9,10 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/DescriptorBindingSet.h>
+#include<hgl/graph/SSBOSlotAllocator.h>
 
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
@@ -77,10 +81,13 @@ private:
 
     Pipeline* sky_pipeline = nullptr;
     Geometry* sky_geometry = nullptr;
-    MaterialInstance* sky_material_instance = nullptr;
+    Material* sky_material = nullptr;
+    DescriptorBindingSet* sky_binding = nullptr;
 
     Material* material = nullptr;
-    MaterialInstance* material_instance = nullptr;
+    DescriptorBindingSet* material_binding = nullptr;
+    DeviceBuffer* material_ssbo = nullptr;
+    SSBOSlotAllocator material_slot_allocator;
     Pipeline* pipeline = nullptr;
     VertexDataManager* mesh_vdm = nullptr;
 
@@ -148,13 +155,17 @@ private:
             return false;
 
         mtl::SkyMinimalCreateConfig cfg;
-        sky_material_instance = material_manager->CreateMaterialInstance(mtl::MaterialPreset::SkyMinimal, &cfg);
-        if (!sky_material_instance)
+        sky_material = material_manager->CreateMaterial(mtl::MaterialPreset::SkyMinimal, &cfg);
+        if (!sky_material)
+            return false;
+
+        sky_binding = new DescriptorBindingSet(sky_material, sky_material->GetDefaultVIL());
+        if (!sky_binding)
             return false;
 
         auto* render_target = render_context->GetCurrentRenderTarget();
         auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-        sky_pipeline = render_pass ? render_pass->CreatePipeline(sky_material_instance, InlinePipeline::Sky) : nullptr;
+        sky_pipeline = render_pass ? render_pass->CreatePipeline(sky_material, sky_material->GetDefaultVIL(), InlinePipeline::Sky) : nullptr;
         if (!sky_pipeline)
             return false;
 
@@ -243,8 +254,45 @@ private:
         mi_data.roughness = 0.92f;
         mi_data.normal_scale = 0.35f;
 
-        material_instance = material_manager->CreateMaterialInstance(material, (VIL*)nullptr, &mi_data);
-        if (!material_instance)
+        // Create external SSBO + DescriptorBindingSet for Standard material data.
+        auto *buffer_manager = graphics_context->GetBufferManager();
+        auto *domain_manager = graphics_context->GetResourceDomainManager();
+        if (!buffer_manager || !domain_manager)
+            return false;
+
+        const uint32_t stride = material->GetMIDataBytes();
+        if (stride > 0)
+        {
+            material_ssbo = buffer_manager->CreateSSBO("BasicLitSunDir:Standard:MI", stride, nullptr, SharingMode::Exclusive);
+            if (!material_ssbo)
+                return false;
+
+            if (auto *gpu = material_ssbo->GetGPUBuffer())
+                gpu->Write(&mi_data, 0, hgl_min(stride, static_cast<uint32_t>(sizeof(mi_data))));
+
+            for (const auto &req : material->GetBindingContract().requirements)
+            {
+                if (req.semantic != mtl::DescriptorSemantic::MaterialInstance)
+                    continue;
+
+                const mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
+                if (!domain_manager->RegisterBuffer(addr, material_ssbo, 1))
+                    return false;
+
+                material_slot_allocator.Init(1);
+                uint32_t slot = 0;
+                material_slot_allocator.Allocate(slot);
+
+                material_binding = new DescriptorBindingSet(material, material->GetDefaultVIL());
+                material_binding->SetSSBOBinding(req.ssbo_type, req.ssbo_id, slot);
+            }
+        }
+        else
+        {
+            material_binding = new DescriptorBindingSet(material, material->GetDefaultVIL());
+        }
+
+        if (!material_binding)
             return false;
 
         return true;
@@ -309,7 +357,7 @@ private:
 
     RenderMesh* CreateRenderMesh(Geometry* geometry)
     {
-        if (!geometry || !material_instance)
+        if (!geometry || !material_binding)
             return nullptr;
 
         auto* render_context = GetRenderContext();
@@ -327,7 +375,7 @@ private:
 
         geometry_manager->Add(geometry);
 
-        Primitive* primitive = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
+        Primitive* primitive = primitive_manager->CreatePrimitive(geometry, material_binding, pipeline);
         if (!primitive)
             return nullptr;
 
@@ -427,7 +475,7 @@ private:
 
     bool InitSceneEntities()
     {
-        if (!ecs_context || !rm_floor || !sky_geometry || !sky_material_instance || !sky_pipeline)
+        if (!ecs_context || !rm_floor || !sky_geometry || !sky_binding || !sky_pipeline)
             return false;
 
         {
@@ -443,7 +491,7 @@ private:
             if (!primitive_manager)
                 return false;
 
-            Primitive* sky_primitive = primitive_manager->CreatePrimitive(sky_geometry, sky_material_instance, sky_pipeline);
+            Primitive* sky_primitive = primitive_manager->CreatePrimitive(sky_geometry, sky_binding, sky_pipeline);
             if (!sky_primitive)
                 return false;
 
@@ -556,6 +604,21 @@ private:
 public:
     ~BasicLitSunDirectionECSApp()
     {
+        delete sky_binding;
+        sky_binding = nullptr;
+
+        delete material_binding;
+        material_binding = nullptr;
+
+        auto* rc = GetRenderContext();
+        auto* gc = rc ? rc->GetGraphicsContext() : nullptr;
+        if (gc && material_ssbo)
+        {
+            if (auto *bm = gc->GetBufferManager())
+                bm->Release(material_ssbo);
+            material_ssbo = nullptr;
+        }
+
         SAFE_CLEAR(mesh_vdm)
     }
 

@@ -10,10 +10,14 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
+#include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/SamplerManager.h>
+#include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKRenderPass.h>
+#include<hgl/vk/VKBuffer.h>
 #include<hgl/type/AlignUtil.h>
 #include<hgl/vk/VKFormat.h>
 #include<hgl/color/Color.h>
@@ -47,22 +51,24 @@ namespace hgl::graph
 
     TextRender::TextRender(GraphicsContext *gc,TileFont *tf)
     {
-        device = gc ? gc->GetDevice() : nullptr;
-
-        primitive_manager = gc ? gc->GetPrimitiveManager() : nullptr;
-        mtl_manager = gc ? gc->GetMaterialManager() : nullptr;
-        tl_engine = new layout::TextLayout(tf);
+        device              = gc ? gc->GetDevice() : nullptr;
+        graphics_context    = gc;
+        primitive_manager   = gc ? gc->GetPrimitiveManager() : nullptr;
+        mtl_manager         = gc ? gc->GetMaterialManager() : nullptr;
+        tl_engine           = new layout::TextLayout(tf);
 
         mtl_fs      =nullptr;
         sampler     =nullptr;
         pipeline    =nullptr;
         tile_font   =tf;
 
+        binding_vil =nullptr;
+        binding_set =nullptr;
+        mi_ssbo     =nullptr;
+
         fixed_style.CharColor=GetColor4ub(COLOR::White);
 
         SetDrawStyle(text_draw_style,&para_style,(float)tile_font->GetFontSource()->GetCharHeight());
-
-        mi_fs=nullptr;
     }
 
     void TextRender::SetFixedStyle(const layout::CharStyle &cs)
@@ -71,7 +77,14 @@ namespace hgl::graph
             return;
 
         fixed_style=cs;
-        mi_fs->WriteMIData(fixed_style);
+
+        // Write updated CharStyle directly to the external SSBO.
+        if (mi_ssbo)
+        {
+            if (auto *gpu = mi_ssbo->GetGPUBuffer())
+                gpu->Write(&fixed_style, 0, hgl_min(static_cast<uint32_t>(sizeof(fixed_style)),
+                                                    mtl_fs ? mtl_fs->GetMIDataBytes() : uint32_t(0)));
+        }
     }
 
     void TextRender::SetParagraphStyle(const layout::ParagraphStyle *ps)
@@ -93,9 +106,24 @@ namespace hgl::graph
 
         text_geometry_set.Clear();
 
+        delete binding_set;
+        binding_set = nullptr;
+
+        if (mi_ssbo && graphics_context)
+        {
+            if (auto *buf_mgr = graphics_context->GetBufferManager())
+                buf_mgr->Release(mi_ssbo);
+        }
+        mi_ssbo = nullptr;
+
+        if (binding_vil && mtl_fs)
+        {
+            mtl_fs->Release(const_cast<VIL *>(binding_vil));
+            binding_vil = nullptr;
+        }
+
         SAFE_CLEAR(tl_engine);
         SAFE_CLEAR(tile_font);
-        // render resource removed
     }
 
     namespace
@@ -172,26 +200,58 @@ namespace hgl::graph
         mtl_fs=mtl_manager->CreateMaterial(mtl::MaterialPreset::Text2D,&mtl_cfg);
         if(!mtl_fs)return(false);
 
-        //文本渲染Position坐标全部是使用整数，这里强制要求Position输入流使用RG16I格式
+        // Build VIL: Position uses RG16I (integer 2D coords)
         {
             VILConfig vil_config;
-
-            vil_config.Add("Position",VF_V2I16);
-
-            mi_fs=mtl_manager->CreateMaterialInstance(mtl_fs,&vil_config,&fixed_style,sizeof(fixed_style));
-            if(!mi_fs)return(false);
+            vil_config.Add("Position", VF_V2I16);
+            binding_vil = mtl_fs->CreateVIL(&vil_config);
+            if (!binding_vil) return false;
         }
 
-        pipeline=rp->CreatePipeline(mi_fs,InlinePipeline::Solid2D);
-        if(!pipeline)return(false);
+        // Create external SSBO for CharStyle data (one slot)
+        auto *buffer_manager = graphics_context ? graphics_context->GetBufferManager() : nullptr;
+        auto *domain_manager = graphics_context ? graphics_context->GetResourceDomainManager() : nullptr;
 
-        if(!mtl_fs->BindTextureSampler(  DescriptorSetType::Material,
-                                            mtl::SamplerName::Text,
-                                            tile_font->GetTexture(),
-                                            sampler))
-            return(false);
+        const uint32_t mi_bytes = mtl_fs->GetMIDataBytes();
+        if (mi_bytes > 0 && buffer_manager && domain_manager)
+        {
+            mi_ssbo = buffer_manager->CreateSSBO("TextRender:FixedStyle", mi_bytes, nullptr, SharingMode::Exclusive);
+            if (!mi_ssbo) return false;
 
-        return(true);
+            // Write initial CharStyle data
+            if (auto *gpu = mi_ssbo->GetGPUBuffer())
+                gpu->Write(&fixed_style, 0, hgl_min(static_cast<uint32_t>(sizeof(fixed_style)), mi_bytes));
+
+            // Register in domain manager so RenderDescriptorBindingSystem can resolve it
+            for (const auto &req : mtl_fs->GetBindingContract().requirements)
+            {
+                if (req.semantic != mtl::DescriptorSemantic::MaterialInstance)
+                    continue;
+                const mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
+                domain_manager->RegisterBuffer(addr, mi_ssbo, 1);
+            }
+        }
+
+        // Build DescriptorBindingSet
+        binding_set = new DescriptorBindingSet(mtl_fs, binding_vil);
+        if (!binding_set) return false;
+        for (const auto &req : mtl_fs->GetBindingContract().requirements)
+        {
+            if (req.semantic != mtl::DescriptorSemantic::MaterialInstance)
+                continue;
+            binding_set->SetSSBOBinding(req.ssbo_type, req.ssbo_id, 0);
+        }
+
+        pipeline = rp->CreatePipeline(mtl_fs, binding_vil, InlinePipeline::Solid2D);
+        if (!pipeline) return false;
+
+        if (!mtl_fs->BindTextureSampler(DescriptorSetType::Material,
+                                        mtl::SamplerName::Text,
+                                        tile_font->GetTexture(),
+                                        sampler))
+            return false;
+
+        return true;
     }
 
     bool TextRender::Init(RenderPass *rp,Sampler *text_sampler)
@@ -262,8 +322,8 @@ namespace hgl::graph
 
     Primitive *TextRender::CreatePrimitive(TextGeometry *text_geometry)
     {
-        if(primitive_manager)
-            return primitive_manager->CreatePrimitive(text_geometry,mi_fs,pipeline);
+        if(primitive_manager && binding_set)
+            return primitive_manager->CreatePrimitive(text_geometry, binding_set, pipeline);
 
         return(nullptr);
     }

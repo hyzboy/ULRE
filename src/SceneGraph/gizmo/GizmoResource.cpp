@@ -1,5 +1,4 @@
-﻿#include<hgl/vk/VKMaterialInstance.h>
-#include<hgl/vk/pipeline/VKPipeline.h>
+﻿#include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -129,25 +128,14 @@ namespace hgl::graph
 
             memset(dst, 0, static_cast<size_t>(ssbo_size));
 
-            // Write each color at its own slot (color_index * stride).
-            // We temporarily create an MI per color just to get the color data bytes,
-            // then immediately release it.
+            // Write Color4f directly at each slot — no need for scratch MaterialInstance.
+            // PureColor3D MI data is exactly one Color4f; if stride has alignment padding
+            // the extra bytes remain zero (already memset above).
+            const uint32_t copy_bytes = hgl_min(stride, static_cast<uint32_t>(sizeof(Color4f)));
             for (uint32_t i = 0; i < color_count; ++i)
             {
                 const Color4f color = GetColor4f(gizmo_color[i], 1.0f);
-                // Material stores MI data internally; use a scratch MI to retrieve the bytes.
-                auto *tmp_mi = gizmo_mtl_manager->CreateMaterialInstance(gr->mtl, (VIL *)nullptr, &color);
-                if (tmp_mi)
-                {
-                    const int mi_id = tmp_mi->GetMIID();
-                    if (mi_id >= 0)
-                    {
-                        void *src = gr->mtl->GetMIData(mi_id);
-                        if (src)
-                            memcpy(dst + VkDeviceSize(i) * stride, src, stride);
-                    }
-                    gizmo_mtl_manager->Release(tmp_mi);
-                }
+                memcpy(dst + VkDeviceSize(i) * stride, &color, copy_bytes);
             }
 
             gpu_buf->Unmap();
