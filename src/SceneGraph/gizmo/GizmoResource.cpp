@@ -14,6 +14,7 @@
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/mesh/Primitive.h>
+#include<hgl/graph/DescriptorBindingSet.h>
 #include"GizmoResource.h"
 
 namespace hgl::graph
@@ -40,7 +41,8 @@ namespace hgl::graph
         struct GizmoResource
         {
             Material *          mtl;
-            MaterialInstance *  mi[size_t(GizmoColor::RANGE_SIZE)];
+            const VIL *         binding_vil;
+            DescriptorBindingSet *binding_sets[size_t(GizmoColor::RANGE_SIZE)];
             Pipeline *          pipeline;
             DeviceBuffer *      mi_ssbo;
             VertexDataManager * vdm;
@@ -63,19 +65,10 @@ namespace hgl::graph
                 if (graphics_context)
                 {
                     auto *primitive_manager = graphics_context->GetPrimitiveManager();
-                    primitive = primitive_manager ? primitive_manager->CreatePrimitive(geometry,gizmo_triangle.mi[0],gizmo_triangle.pipeline) : nullptr;
+                    auto *dbs = gizmo_triangle.binding_sets[0];
+                    primitive = primitive_manager ? primitive_manager->CreatePrimitive(geometry, dbs, gizmo_triangle.pipeline) : nullptr;
                     if (!primitive)
-                    {
-                        const GeometryVertexFormatMatch match =
-                            QueryGeometryVertexCompatibility(geometry, gizmo_triangle.mi[0]);
-                        const GeometryVertexFailureSummary summary = match.BuildFailureSummary();
-                        GLogError(AnsiString("[GizmoResource] CreatePrimitive failed: ") +
-                                  "HandlingPath(" + summary.GetHandlingPathName() + ")" +
-                                  " FailureKind(" + summary.GetFailureKindName() + ")" +
-                                  " FirstFailureSemantic(" +
-                                  (summary.first_failure ?
-                                      GetVertexSemanticName(summary.first_failure->semantic) : "None") + ")");
-                    }
+                        GLogError("[GizmoResource] CreatePrimitive failed for descriptor binding path");
                 }
                 else
                 {
@@ -100,27 +93,9 @@ namespace hgl::graph
             gizmo_mesh[size_t(gs)].Create(geometry);
         }
 
-        bool InitMI(GizmoResource *gr)
-        {
-            if(!gr||!gr->mtl)
-                return(false);
-
-            Color4f color;
-
-            for(uint i=0;i<uint(GizmoColor::RANGE_SIZE);i++)
-            {
-                color=GetColor4f(gizmo_color[i],1.0);
-
-                gr->mi[i]=gizmo_mtl_manager->CreateMaterialInstance(gr->mtl,(VIL *)nullptr,&color);
-
-                if(!gr->mi[i])
-                    return(false);
-            }
-
-            return(true);
-        }
-
-        bool InitMISSBO(GizmoResource *gr)
+        // Create the SSBO holding one color-struct per GizmoColor slot.
+        // slot_index = color enum value (0=Black, 1=White, 2=Red, …)
+        bool InitColorSSBO(GizmoResource *gr)
         {
             if (!gr || !gr->mtl)
                 return false;
@@ -133,26 +108,12 @@ namespace hgl::graph
             if (!buffer_manager || !domain_manager)
                 return false;
 
-            const uint32_t mi_data_bytes = gr->mtl->GetMIDataBytes();
-            if (mi_data_bytes == 0)
+            const uint32_t stride = gr->mtl->GetMIDataBytes();
+            if (stride == 0)
                 return true;
 
-            int max_mi_id = -1;
-            for (size_t i = 0; i < size_t(GizmoColor::RANGE_SIZE); ++i)
-            {
-                if (!gr->mi[i])
-                    continue;
-
-                const int mi_id = gr->mi[i]->GetMIID();
-                if (mi_id >= 0 && mi_id > max_mi_id)
-                    max_mi_id = mi_id;
-            }
-
-            if (max_mi_id < 0)
-                return false;
-
-            const uint32_t mi_count = static_cast<uint32_t>(max_mi_id + 1);
-            const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * mi_data_bytes;
+            const uint32_t color_count = uint32_t(GizmoColor::RANGE_SIZE);
+            const VkDeviceSize ssbo_size = VkDeviceSize(color_count) * stride;
 
             gr->mi_ssbo = buffer_manager->CreateSSBO("GizmoResource:PureColor3D:MIData", ssbo_size, nullptr, SharingMode::Exclusive);
             if (!gr->mi_ssbo)
@@ -168,21 +129,25 @@ namespace hgl::graph
 
             memset(dst, 0, static_cast<size_t>(ssbo_size));
 
-            for (size_t i = 0; i < size_t(GizmoColor::RANGE_SIZE); ++i)
+            // Write each color at its own slot (color_index * stride).
+            // We temporarily create an MI per color just to get the color data bytes,
+            // then immediately release it.
+            for (uint32_t i = 0; i < color_count; ++i)
             {
-                auto *mi = gr->mi[i];
-                if (!mi)
-                    continue;
-
-                const int mi_id = mi->GetMIID();
-                if (mi_id < 0)
-                    continue;
-
-                void *src = gr->mtl->GetMIData(mi_id);
-                if (!src)
-                    continue;
-
-                memcpy(dst + static_cast<VkDeviceSize>(mi_id) * mi_data_bytes, src, mi_data_bytes);
+                const Color4f color = GetColor4f(gizmo_color[i], 1.0f);
+                // Material stores MI data internally; use a scratch MI to retrieve the bytes.
+                auto *tmp_mi = gizmo_mtl_manager->CreateMaterialInstance(gr->mtl, (VIL *)nullptr, &color);
+                if (tmp_mi)
+                {
+                    const int mi_id = tmp_mi->GetMIID();
+                    if (mi_id >= 0)
+                    {
+                        void *src = gr->mtl->GetMIData(mi_id);
+                        if (src)
+                            memcpy(dst + VkDeviceSize(i) * stride, src, stride);
+                    }
+                    gizmo_mtl_manager->Release(tmp_mi);
+                }
             }
 
             gpu_buf->Unmap();
@@ -195,8 +160,19 @@ namespace hgl::graph
 
                 has_struct_binding = true;
                 const mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
-                if (!domain_manager->RegisterBuffer(addr, gr->mi_ssbo, mi_count))
+                if (!domain_manager->RegisterBuffer(addr, gr->mi_ssbo, color_count))
                     return false;
+
+                // Create one DescriptorBindingSet per color, each pointing at the same
+                // SSBO but with a different slot_index.
+                gr->binding_vil = gr->mtl->GetDefaultVIL();
+                for (uint32_t c = 0; c < color_count; ++c)
+                {
+                    gr->binding_sets[c] = new DescriptorBindingSet(gr->mtl, gr->binding_vil);
+                    if (!gr->binding_sets[c])
+                        return false;
+                    gr->binding_sets[c]->SetSSBOBinding(req.ssbo_type, req.ssbo_id, c);
+                }
             }
 
             return has_struct_binding;
@@ -235,10 +211,7 @@ namespace hgl::graph
                     return(false);
             }
 
-            if(!InitMI(&gizmo_triangle))
-                return(false);
-
-            if(!InitMISSBO(&gizmo_triangle))
+            if(!InitColorSSBO(&gizmo_triangle))
                 return(false);
 
             {
@@ -357,9 +330,6 @@ namespace hgl::graph
 
     void FreeGizmoResource()
     {
-        //ClearGizmoRotateMesh();
-        //ClearGizmoScaleMesh();
-
         for(GizmoMesh &gr:gizmo_mesh)
             gr.Clear();
 
@@ -367,21 +337,31 @@ namespace hgl::graph
         SAFE_CLEAR(gizmo_triangle.vdm);
         SAFE_CLEAR(gizmo_triangle.mi_ssbo);
 
+        for (size_t i = 0; i < size_t(GizmoColor::RANGE_SIZE); ++i)
+        {
+            delete gizmo_triangle.binding_sets[i];
+            gizmo_triangle.binding_sets[i] = nullptr;
+        }
+        gizmo_triangle.binding_vil = nullptr;
+
         gizmo_triangle.pipeline = nullptr;
         gizmo_triangle.mtl = nullptr;
-        for (size_t i = 0; i < size_t(GizmoColor::RANGE_SIZE); ++i)
-            gizmo_triangle.mi[i] = nullptr;
 
         gizmo_mtl_manager = nullptr;
         gizmo_render_pass = nullptr;
         graphics_context = nullptr;
     }
 
-    MaterialInstance *GetGizmoMI3D(const GizmoColor &color)
+    DescriptorBindingSet *GetGizmoBindingSet3D(const GizmoColor &color)
     {
         RANGE_CHECK_RETURN_NULLPTR(color)
+        return gizmo_triangle.binding_sets[size_t(color)];
+    }
 
-        return gizmo_triangle.mi[size_t(color)];
+    // Legacy alias kept for backward compatibility — returns nullptr in new path.
+    MaterialInstance *GetGizmoMI3D(const GizmoColor &)
+    {
+        return nullptr;
     }
 
     Primitive *GetGizmoMeshPrimitive(const GizmoShape &shape)

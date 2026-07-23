@@ -61,9 +61,16 @@ namespace hgl::ecs
 
     hgl::graph::Material* PrimitiveComponent::GetMaterial() const
     {
-        // Return override material's base if set
         if (overrideMaterial)
             return overrideMaterial->GetMaterial();
+
+        // Override DBS also provides a material (e.g. gizmo color-swap uses same material, diff slot_index)
+        if (descriptorBindingSet)
+        {
+            auto *dbs_mat = descriptorBindingSet->GetMaterial();
+            if (dbs_mat)
+                return dbs_mat;
+        }
 
         if (!primitive)
             return nullptr;

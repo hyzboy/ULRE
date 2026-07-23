@@ -22,7 +22,8 @@ namespace hgl
         class Material;
         class Primitive;
         class TextGeometry;
-        class MaterialInstance;
+        class DescriptorBindingSet;
+        class VertexInputLayout;
         class Pipeline;
         class Sampler;
         class DeviceBuffer;
@@ -49,7 +50,8 @@ namespace hgl
                 graph::layout::CharStyle char_style{};
                 graph::TextGeometry* geometry = nullptr;
                 graph::Primitive* primitive = nullptr;
-                graph::MaterialInstance* material_instance = nullptr;
+                graph::VertexInputLayout* binding_vil = nullptr;
+                graph::DescriptorBindingSet* descriptor_binding_set = nullptr;
 
                 uint32_t last_draw_char_count = 0;
                 uint32_t last_string_count = 0;

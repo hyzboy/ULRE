@@ -4,6 +4,7 @@
 
 namespace hgl::graph
 {
+    class DescriptorBindingSet;
     // Global resident state for gizmo system
     struct GizmoSystemResidentState
     {
@@ -83,7 +84,8 @@ namespace hgl::graph
     void ForceReleaseGizmoSystemResources();
     bool IsGizmoSystemResourcesResident();
 
-    MaterialInstance *GetGizmoMI3D(const GizmoColor &);
+    MaterialInstance *GetGizmoMI3D(const GizmoColor &);          ///< Legacy alias; returns nullptr in new path
+    DescriptorBindingSet *GetGizmoBindingSet3D(const GizmoColor &);
     Primitive *GetGizmoMeshPrimitive(const GizmoShape &shape);
 
     // 辅助函数

@@ -12,6 +12,7 @@
 #include <hgl/graph/render/RenderContext.h>
 #include <hgl/graph/module/MaterialManager.h>
 #include <hgl/graph/module/BufferManager.h>
+#include <hgl/graph/DescriptorBindingSet.h>
 #include <hgl/graph/geo/GeometryCreater.h>
 #include <hgl/graph/mesh/Primitive.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
@@ -95,7 +96,7 @@ namespace hgl::ecs
     bool LineRenderPipeline::LineWidthSlot::EnsureCapacity(
         uint32_t needed,
         graph::VulkanDevice*     dev,
-        graph::MaterialInstance* mi,
+        graph::DescriptorBindingSet* binding_set,
         graph::Pipeline*         p,
         uint32_t                 width)
     {
@@ -123,18 +124,10 @@ namespace hgl::ecs
         if (!geometry)
             return false;
 
-        primitive = graph::DirectCreatePrimitive(geometry, mi, p);
+        primitive = graph::DirectCreatePrimitive(geometry, binding_set, p);
         if (!primitive)
         {
-            const graph::GeometryVertexFormatMatch match =
-                graph::QueryGeometryVertexCompatibility(geometry, mi);
-            const graph::GeometryVertexFailureSummary summary = match.BuildFailureSummary();
-            GLogError(graph::AnsiString("[LineRenderPipeline] DirectCreatePrimitive failed: ") +
-                      "HandlingPath(" + summary.GetHandlingPathName() + ")" +
-                      " FailureKind(" + summary.GetFailureKindName() + ")" +
-                      " FirstFailureSemantic(" +
-                      (summary.first_failure ?
-                          graph::GetVertexSemanticName(summary.first_failure->semantic) : "None") + ")");
+            GLogError("[LineRenderPipeline] DirectCreatePrimitive failed for descriptor binding path");
             SAFE_CLEAR(geometry);
             return false;
         }
@@ -346,20 +339,24 @@ namespace hgl::ecs
         if (auto rdbs = context_->GetSystem<RenderDescriptorBindingSystem>())
             rdbs->RegisterPipelineMaterial(material_);
 
-        // ------- Create material instance -------
+        // ------- Create descriptor binding set -------
         graph::VILConfig vil;
         vil.Add(graph::VertexSemantic::Color, VF_V1U8);
         vil.Add(graph::Assign::TransformID::VIS_SEMANTIC,
             graph::VAConfig(graph::Assign::TransformID::VAB_FMT,
                     VK_VERTEX_INPUT_RATE_VERTEX));
-        mi_ = mat_mgr->CreateMaterialInstance(material_, &vil);
-        if (!mi_)
+        binding_vil_ = material_->CreateVIL(&vil);
+        if (!binding_vil_)
             return false;
+
+        binding_set_storage_.SetMaterial(material_);
+        binding_set_storage_.SetVIL(binding_vil_);
+        binding_set_ = &binding_set_storage_;
 
         // ------- Create pipeline -------
         pipeline_ = support_wide_lines_
-            ? rp->CreatePipeline(mi_, graph::InlinePipeline::DynamicLineWidth3D)
-            : rp->CreatePipeline(mi_, graph::InlinePipeline::Solid3D);
+            ? rp->CreatePipeline(material_, binding_vil_, graph::InlinePipeline::DynamicLineWidth3D)
+            : rp->CreatePipeline(material_, binding_vil_, graph::InlinePipeline::Solid3D);
 
         if (!pipeline_)
             return false;
@@ -584,7 +581,7 @@ namespace hgl::ecs
         {
             if (slot_counts[i] == 0)
                 continue;
-            if (!slots_[i].EnsureCapacity(slot_counts[i], device_, mi_, pipeline_, i + 1))
+            if (!slots_[i].EnsureCapacity(slot_counts[i], device_, binding_set_, pipeline_, i + 1))
             {
                 GLogWarning("[LineRenderPipeline] EnsureCapacity failed: slot=%u need=%u cap=%u",
                             i + 1,
@@ -751,15 +748,15 @@ namespace hgl::ecs
             return;
         }
 
-        if (!pipeline_ || !mi_)
+        if (!pipeline_ || !binding_set_)
         {
-            GLogWarning("[LineRenderPipeline] Render skipped: invalid render resources (pipeline=%p mi=%p)",
+            GLogWarning("[LineRenderPipeline] Render skipped: invalid render resources (pipeline=%p binding_set=%p)",
                         pipeline_,
-                        mi_);
+                        binding_set_);
             return;
         }
 
-        auto* mat = mi_->GetMaterial();
+        auto* mat = binding_set_->GetMaterial();
         if (mat)
             cmd->BindDescriptorSets(mat);
 
@@ -812,7 +809,14 @@ namespace hgl::ecs
             auto* mat_mgr = gc->GetMaterialManager();
             if (mat_mgr)
             {
-                if (mi_)       { mat_mgr->Destroy(mi_); mi_ = nullptr; }
+                if (material_ && binding_vil_)
+                {
+                    material_->Release(binding_vil_);
+                    binding_vil_ = nullptr;
+                }
+                binding_set_storage_.SetVIL(nullptr);
+                binding_set_storage_.SetMaterial(nullptr);
+                binding_set_ = nullptr;
                 if (material_)
                 {
                     if (auto rdbs = context_->GetSystem<RenderDescriptorBindingSystem>())

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <hgl/ecs/support/RenderPipelineBase.h>
+#include <hgl/graph/DescriptorBindingSet.h>
 #include <hgl/vk/VKBufferAccessor.h>
 #include <hgl/vk/VKRenderAssign.h>
 #include <hgl/color/Color4f.h>
@@ -18,6 +19,7 @@ namespace hgl
         class Material;
         class MaterialInstance;
         class Pipeline;
+        class VertexInputLayout;
         class Geometry;
         class Primitive;
         class RenderCmdBuffer;
@@ -74,7 +76,9 @@ namespace hgl::ecs
         // ------- GPU resources (created in Initialize()) -------
         graph::VulkanDevice*    device_         = nullptr;
         graph::Material*        material_       = nullptr;
-        graph::MaterialInstance* mi_            = nullptr;
+        graph::VertexInputLayout* binding_vil_  = nullptr;
+        graph::DescriptorBindingSet binding_set_storage_{};
+        graph::DescriptorBindingSet* binding_set_ = nullptr;
         graph::Pipeline*        pipeline_       = nullptr;
 
         // Palette UBO (owned; buf_ is the raw GPU buffer handle)
@@ -104,7 +108,7 @@ namespace hgl::ecs
             void Clear();
             bool EnsureCapacity(uint32_t needed,
                                 graph::VulkanDevice*     dev,
-                                graph::MaterialInstance* mi,
+                                graph::DescriptorBindingSet* binding_set,
                                 graph::Pipeline*         p,
                                 uint32_t                 width);
             bool AddSegment(const hgl::math::Vector3f& from,

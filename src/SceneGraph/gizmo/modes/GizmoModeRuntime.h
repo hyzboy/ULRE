@@ -16,7 +16,7 @@ namespace hgl::ecs
 
 namespace hgl::graph
 {
-    class MaterialInstance;
+    class DescriptorBindingSet;
 
     // 由 `GizmoMode` 对象拥有的可视原语条目。
     // （原为 `GizmoECS::AssetVisualPrimitive` — 已提取以便各 Mode 类可以拥有自己的列表。）
@@ -24,7 +24,7 @@ namespace hgl::graph
     {
         std::shared_ptr<hgl::ecs::PrimitiveComponent>  primitive;
         std::shared_ptr<hgl::ecs::TransformComponent>  transform;
-        MaterialInstance *base_material = nullptr;
+        DescriptorBindingSet *base_binding = nullptr;
         GizmoShape        shape         = GizmoShape::Sphere;
         int               group_id      = -1;
     };

@@ -19,6 +19,8 @@
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/vk/VKRenderPass.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/tile/TileData.h>
@@ -120,14 +122,14 @@ namespace hgl::ecs
                 res.primitive = nullptr;
             }
 
-            if (res.material_instance && material_manager)
-            {
-                material_manager->Release(res.material_instance);
-                res.material_instance = nullptr;
-            }
-
             if (res.material && material_manager)
             {
+                if (res.binding_vil)
+                {
+                    res.material->Release(res.binding_vil);
+                    res.binding_vil = nullptr;
+                }
+
                 if (descriptor_binding_system)
                 {
                     descriptor_binding_system->UnregisterPipelineMaterial(res.material);
@@ -136,6 +138,12 @@ namespace hgl::ecs
 
                 material_manager->Release(res.material);
                 res.material = nullptr;
+            }
+
+            if (res.descriptor_binding_set)
+            {
+                delete res.descriptor_binding_set;
+                res.descriptor_binding_set = nullptr;
             }
 
             if (res.sampler && sampler_manager)
@@ -243,6 +251,8 @@ namespace hgl::ecs
             graph::MaterialManager* material_manager = nullptr;
             graph::SamplerManager* sampler_manager = nullptr;
             graph::Material* material = nullptr;
+            graph::VIL* binding_vil = nullptr;
+            graph::DescriptorBindingSet* descriptor_binding_set = nullptr;
             graph::Sampler* sampler = nullptr;
             graph::BufferManager* buffer_manager = nullptr;
             graph::DeviceBuffer* material_instance_buffer = nullptr;
@@ -259,6 +269,12 @@ namespace hgl::ecs
 
                 if (material_instance_buffer && buffer_manager)
                     buffer_manager->Release(material_instance_buffer);
+
+                if (descriptor_binding_set)
+                    delete descriptor_binding_set;
+
+                if (material && binding_vil)
+                    material->Release(binding_vil);
 
                 if (material && material_manager)
                     material_manager->Release(material);
@@ -288,6 +304,18 @@ namespace hgl::ecs
 
         guard.material = material_manager->CreateMaterial(graph::mtl::MaterialPreset::Text2D, &mtl_cfg);
         if (!guard.material)
+            return nullptr;
+
+        {
+            graph::VILConfig vil_config;
+            vil_config.Add("Position", VF_V2I16);
+            guard.binding_vil = guard.material->CreateVIL(&vil_config);
+            if (!guard.binding_vil)
+                return nullptr;
+        }
+
+        guard.descriptor_binding_set = new graph::DescriptorBindingSet(guard.material, guard.binding_vil);
+        if (!guard.descriptor_binding_set)
             return nullptr;
 
         sampler_manager = graphics_context->GetSamplerManager();
@@ -330,6 +358,24 @@ namespace hgl::ecs
 #endif
 
             resources.material_instance_buffer = guard.material_instance_buffer;
+
+            auto *domain_manager = graphics_context->GetResourceDomainManager();
+            if (!domain_manager)
+                return nullptr;
+
+            for (const auto &req : guard.material->GetBindingContract().requirements)
+            {
+                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                    continue;
+
+                const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
+                if (!domain_manager->RegisterBuffer(addr, guard.material_instance_buffer, 1))
+                    return nullptr;
+
+                if (!guard.descriptor_binding_set->SetSSBOBinding(req.ssbo_type, req.ssbo_id, 0))
+                    return nullptr;
+            }
+
             guard.material_instance_buffer = nullptr;
         }
 
@@ -353,7 +399,11 @@ namespace hgl::ecs
 
         resources.tile_font = guard.tile_font.release();
         resources.material = guard.material;
+        resources.binding_vil = guard.binding_vil;
+        resources.descriptor_binding_set = guard.descriptor_binding_set;
         resources.sampler = guard.sampler;
+        guard.binding_vil = nullptr;
+        guard.descriptor_binding_set = nullptr;
         guard.committed = true;
 
         resources_by_font.Add(font_source, resources);
@@ -456,19 +506,9 @@ namespace hgl::ecs
                 input.dirty = true;
             }
 
-            graph::MaterialInstance* mi = resources->material_instance;
-            if (!mi)
-            {
-                graph::VILConfig vil_config;
-                vil_config.Add("Position", VF_V2I16);
-
-                mi = material_manager->CreateMaterialInstance(resources->material, &vil_config);
-                if (!mi)
-                    continue;
-
-                resources->material_instance = mi;
-                input.dirty = true;
-            }
+            auto *binding_set = resources->descriptor_binding_set;
+            if (!binding_set || !resources->binding_vil)
+                continue;
 
             if (input.dirty)
             {
@@ -483,7 +523,9 @@ namespace hgl::ecs
 
             if (!resources->pipeline)
             {
-                resources->pipeline = render_pass->CreatePipeline(mi, graph::InlinePipeline::Solid2D);
+                resources->pipeline = render_pass->CreatePipeline(resources->material,
+                                                                  resources->binding_vil,
+                                                                  graph::InlinePipeline::Solid2D);
                 if (!resources->pipeline)
                     continue;
             }
@@ -533,18 +575,10 @@ namespace hgl::ecs
             graph::Primitive* primitive = resources->primitive;
             if (!primitive)
             {
-                primitive = primitive_manager->CreatePrimitive(geometry, mi, resources->pipeline);
+                primitive = primitive_manager->CreatePrimitive(geometry, binding_set, resources->pipeline);
                 if (!primitive)
                 {
-                    const graph::GeometryVertexFormatMatch match =
-                        graph::QueryGeometryVertexCompatibility(geometry, mi);
-                    const graph::GeometryVertexFailureSummary summary = match.BuildFailureSummary();
-                    GLogError(graph::AnsiString("[TextRenderPipeline] CreatePrimitive failed: ") +
-                              "HandlingPath(" + summary.GetHandlingPathName() + ")" +
-                              " FailureKind(" + summary.GetFailureKindName() + ")" +
-                              " FirstFailureSemantic(" +
-                              (summary.first_failure ?
-                                  graph::GetVertexSemanticName(summary.first_failure->semantic) : "None") + ")");
+                    GLogError("[TextRenderPipeline] CreatePrimitive failed for descriptor binding path");
                     continue;
                 }
 
