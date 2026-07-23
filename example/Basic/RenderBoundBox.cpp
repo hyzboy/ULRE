@@ -18,6 +18,7 @@
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/DescriptorBindingSet.h>
 
 #include<hgl/color/Color.h>
 #include<hgl/math/geometry/AABB.h>
@@ -96,8 +97,17 @@ private:
         const VIL *         vil               = nullptr;
 
         Pipeline *          pipeline          = nullptr;
-        MaterialInstance *  mi[COLOR_COUNT]{};
+        DescriptorBindingSet *dbs[COLOR_COUNT]{};
         graph::DeviceBuffer * mi_ssbo = nullptr;
+
+        void FreeDBS()
+        {
+            for (auto *&b : dbs)
+            {
+                delete b;
+                b = nullptr;
+            }
+        }
     };
 
     struct RenderMesh
@@ -141,43 +151,86 @@ private:
 
 private:
 
-    bool InitMaterialInstance(MaterialData *md)
+    // Create per-color SSBO and DescriptorBindingSet array for a MaterialData.
+    // Color data is written directly at slot i (no scratch MI needed).
+    bool InitMaterialForDBS(MaterialData *md, const char *tag, InlinePipeline inline_pipeline)
     {
-        if(!md)
+        if (!md || !md->material)
             return false;
 
-        auto* render_context = GetRenderContext();
+        auto *render_context = GetRenderContext();
         if (!render_context)
             return false;
 
-        auto* graphics_context = render_context->GetGraphicsContext();
+        auto *graphics_context = render_context->GetGraphicsContext();
         if (!graphics_context)
             return false;
 
-        auto* material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager)
+        auto *buffer_manager = graphics_context->GetBufferManager();
+        auto *domain_manager = graphics_context->GetResourceDomainManager();
+        if (!buffer_manager || !domain_manager)
             return false;
-
-        Color4f color;
-
-        for(size_t i=0;i<COLOR_COUNT;i++)
-        {
-            color = GetColor4f(TestColor[i],1.0f);
-
-            md->mi[i] = material_manager->CreateMaterialInstance(md->material,(VIL *)nullptr,&color);
-
-            if(!md->mi[i])
-                return false;
-        }
 
         md->vil = md->material->GetDefaultVIL();
-
-        if(!md->vil)
+        if (!md->vil)
             return false;
 
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-        md->pipeline = render_pass ? render_pass->CreatePipeline(md->material, InlinePipeline::Solid3D) : nullptr;
+        const uint32_t stride      = md->material->GetMIDataBytes();
+        const uint32_t color_count = static_cast<uint32_t>(COLOR_COUNT);
+
+        if (stride > 0)
+        {
+            const VkDeviceSize ssbo_size = VkDeviceSize(color_count) * stride;
+            md->mi_ssbo = buffer_manager->CreateSSBO(tag, ssbo_size, nullptr, SharingMode::Exclusive);
+            if (!md->mi_ssbo)
+                return false;
+
+            auto *gpu_buf = md->mi_ssbo->GetGPUBuffer();
+            if (!gpu_buf)
+                return false;
+
+            auto *dst = static_cast<uint8_t *>(gpu_buf->Map(0, ssbo_size));
+            if (!dst)
+                return false;
+
+            memset(dst, 0, static_cast<size_t>(ssbo_size));
+            const uint32_t copy_bytes = hgl_min(stride, static_cast<uint32_t>(sizeof(Color4f)));
+            for (uint32_t i = 0; i < color_count; ++i)
+            {
+                const Color4f color = GetColor4f(TestColor[i], 1.0f);
+                memcpy(dst + VkDeviceSize(i) * stride, &color, copy_bytes);
+            }
+            gpu_buf->Unmap();
+
+            for (const auto &req : md->material->GetBindingContract().requirements)
+            {
+                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                    continue;
+
+                const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
+                if (!domain_manager->RegisterBuffer(addr, md->mi_ssbo, color_count))
+                    return false;
+
+                for (uint32_t c = 0; c < color_count; ++c)
+                {
+                    md->dbs[c] = new DescriptorBindingSet(md->material, md->vil);
+                    if (!md->dbs[c])
+                        return false;
+                    md->dbs[c]->SetSSBOBinding(req.ssbo_type, req.ssbo_id, c);
+                }
+            }
+        }
+
+        // Fallback: DBS with no SSBO binding (vertex-color-only materials)
+        for (uint32_t c = 0; c < color_count; ++c)
+        {
+            if (!md->dbs[c])
+                md->dbs[c] = new DescriptorBindingSet(md->material, md->vil);
+        }
+
+        auto *render_target = render_context->GetCurrentRenderTarget();
+        auto *render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        md->pipeline = render_pass ? render_pass->CreatePipeline(md->material, md->vil, inline_pipeline) : nullptr;
 
         return md->pipeline != nullptr;
     }
@@ -197,9 +250,11 @@ private:
             return false;
 
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
-        solid.material = material_manager->CreateMaterial(mtl::MaterialPreset::Gizmo3D,&cfg);
+        solid.material = material_manager->CreateMaterial(mtl::MaterialPreset::Gizmo3D, &cfg);
+        if (!solid.material)
+            return false;
 
-        return InitMaterialInstance(&solid);
+        return InitMaterialForDBS(&solid, "RenderBoundBox:SolidMIData", InlinePipeline::Solid3D);
     }
 
     bool InitWireMDP()
@@ -217,105 +272,13 @@ private:
             return false;
 
         mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
-        wire.material = material_manager->CreateMaterial(mtl::MaterialPreset::PureColor3D,&cfg);
+        wire.material = material_manager->CreateMaterial(mtl::MaterialPreset::PureColor3D, &cfg);
+        if (!wire.material)
+            return false;
 
-        return InitMaterialInstance(&wire);
+        return InitMaterialForDBS(&wire, "RenderBoundBox:WireMIData", InlinePipeline::Solid3D);
     }
 
-    bool InitMISSBOForMaterial(MaterialData *md, const char *tag)
-    {
-        if (!ecs_context || !md || !md->material)
-            return false;
-
-        auto *render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto *graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto *buffer_manager = graphics_context->GetBufferManager();
-        auto *domain_manager = graphics_context->GetResourceDomainManager();
-        if (!buffer_manager || !domain_manager)
-            return false;
-
-        auto rdbs = ecs_context->GetSystem<RenderDescriptorBindingSystem>();
-        if (!rdbs)
-            return false;
-
-        const uint32_t mi_data_bytes = md->material->GetMIDataBytes();
-        if (mi_data_bytes == 0)
-            return true;
-
-        int max_mi_id = -1;
-        for (size_t i = 0; i < COLOR_COUNT; ++i)
-        {
-            auto *inst = md->mi[i];
-            if (!inst)
-                continue;
-
-            const int mi_id = inst->GetMIID();
-            if (mi_id > max_mi_id)
-                max_mi_id = mi_id;
-        }
-
-        if (max_mi_id < 0)
-            return false;
-
-        const uint32_t mi_count = static_cast<uint32_t>(max_mi_id + 1);
-        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * mi_data_bytes;
-
-        md->mi_ssbo = buffer_manager->CreateSSBO(tag ? tag : "RenderBoundBox:MIData", ssbo_size, nullptr, SharingMode::Exclusive);
-        if (!md->mi_ssbo)
-            return false;
-
-        auto *gpu_buf = md->mi_ssbo->GetGPUBuffer();
-        if (!gpu_buf)
-            return false;
-
-        auto *dst = static_cast<uint8_t *>(gpu_buf->Map(0, ssbo_size));
-        if (!dst)
-            return false;
-
-        memset(dst, 0, static_cast<size_t>(ssbo_size));
-
-        for (size_t i = 0; i < COLOR_COUNT; ++i)
-        {
-            auto *inst = md->mi[i];
-            if (!inst)
-                continue;
-
-            const int mi_id = inst->GetMIID();
-            if (mi_id < 0)
-                continue;
-
-            void *src = md->material->GetMIData(mi_id);
-            if (!src)
-                continue;
-
-            memcpy(dst + static_cast<VkDeviceSize>(mi_id) * mi_data_bytes, src, mi_data_bytes);
-        }
-
-        gpu_buf->Unmap();
-
-        bool has_struct_binding = false;
-        for (const auto &req : md->material->GetBindingContract().requirements)
-        {
-            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
-                continue;
-
-            has_struct_binding = true;
-            if (!rdbs->RegisterMaterialStructLayout(req.ssbo_type, req.ssbo_id, mi_data_bytes))
-                return false;
-
-            const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
-            if (!domain_manager->RegisterBuffer(addr, md->mi_ssbo, mi_count))
-                return false;
-        }
-
-        return has_struct_binding;
-    }
     bool InitVDM()
     {
         auto* render_context = GetRenderContext();
@@ -357,7 +320,7 @@ private:
         if (!primitive_manager)
             return nullptr;
 
-        Primitive *primitive = primitive_manager->CreatePrimitive(geometry,md->mi[color],md->pipeline);
+        Primitive *primitive = primitive_manager->CreatePrimitive(geometry, md->dbs[color], md->pipeline);
 
         if(!primitive)
             return nullptr;
@@ -656,7 +619,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        bbox_primitive = primitive_manager->CreatePrimitive(bbox_geometry,wire.mi[5],wire.pipeline);
+        bbox_primitive = primitive_manager->CreatePrimitive(bbox_geometry, wire.dbs[5], wire.pipeline);
         return bbox_primitive != nullptr;
     }
 
@@ -664,12 +627,6 @@ private:
     {
         ecs_context = GetECSContext();
         if(!ecs_context)
-            return false;
-
-        if (!InitMISSBOForMaterial(&solid, "RenderBoundBox:SolidMIData"))
-            return false;
-
-        if (!InitMISSBOForMaterial(&wire, "RenderBoundBox:WireMIData"))
             return false;
 
         if(!CreateGeometryMesh())
@@ -733,7 +690,7 @@ private:
             rm->transform->SetMovable(false);
 
             rm->primitive_comp->SetPrimitive(rm->primitive);
-            rm->primitive_comp->SetOverrideMaterial(solid.mi[index % COLOR_COUNT]);
+            rm->primitive_comp->SetDescriptorBindingSet(solid.dbs[index % COLOR_COUNT]);
             rm->primitive_comp->SetVisible(true);
 
             ++index;
@@ -773,7 +730,7 @@ private:
             bbox->transform->SetMovable(false);
 
             bbox->primitive_comp->SetPrimitive(bbox_primitive);
-            bbox->primitive_comp->SetOverrideMaterial(wire.mi[i % COLOR_COUNT]);
+            bbox->primitive_comp->SetDescriptorBindingSet(wire.dbs[i % COLOR_COUNT]);
             bbox->primitive_comp->SetVisible(true);
 
             bounding_boxes.push_back(std::move(bbox));
@@ -808,10 +765,11 @@ private:
 public:
     ~TestApp()
     {
-        // RenderMesh destruction may touch VDM-backed geometry resources.
         render_mesh.clear();
         rm_floor = nullptr;
 
+        solid.FreeDBS();
+        wire.FreeDBS();
         SAFE_CLEAR(wire.mi_ssbo)
         SAFE_CLEAR(solid.mi_ssbo)
         SAFE_CLEAR(mesh_vdm)

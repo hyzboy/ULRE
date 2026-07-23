@@ -13,6 +13,7 @@
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/color/Color.h>
 
 #include<hgl/ecs/core/Context.h>
@@ -54,7 +55,7 @@ private:
     Entity *camera_entity = nullptr;
 
     Material *material = nullptr;
-    MaterialInstance *mi = nullptr;
+    DescriptorBindingSet *dbs = nullptr;
     graph::DeviceBuffer *mi_ssbo = nullptr;
     Pipeline *pipeline = nullptr;
 
@@ -127,94 +128,49 @@ private:
             return false;
 
         auto *material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager)
+        auto *buffer_manager   = graphics_context->GetBufferManager();
+        auto *domain_manager   = graphics_context->GetResourceDomainManager();
+        if (!material_manager || !buffer_manager || !domain_manager)
             return false;
 
         material = material_manager->CreateMaterial(mtl::MaterialPreset::Gizmo3D, &cfg);
         if (!material)
             return false;
 
-        Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-        mi = material_manager->CreateMaterialInstance(material, (VIL *)nullptr, &color);
-        if (!mi)
-            return false;
+        const Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
+
+        const uint32_t stride = material->GetMIDataBytes();
+        if (stride > 0)
+        {
+            mi_ssbo = buffer_manager->CreateSSBO("RecursiveCube:MIData", stride, nullptr, SharingMode::Exclusive);
+            if (!mi_ssbo)
+                return false;
+
+            if (auto *gpu = mi_ssbo->GetGPUBuffer())
+                gpu->Write(&color, 0, hgl_min(stride, static_cast<uint32_t>(sizeof(color))));
+
+            for (const auto &req : material->GetBindingContract().requirements)
+            {
+                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                    continue;
+
+                const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
+                if (!domain_manager->RegisterBuffer(addr, mi_ssbo, 1))
+                    return false;
+
+                dbs = new DescriptorBindingSet(material, material->GetDefaultVIL());
+                dbs->SetSSBOBinding(req.ssbo_type, req.ssbo_id, 0);
+            }
+        }
+
+        if (!dbs)
+            dbs = new DescriptorBindingSet(material, material->GetDefaultVIL());
 
         auto *render_target = render_context->GetCurrentRenderTarget();
         auto *render_pass = render_target ? render_target->GetRenderPass() : nullptr;
         pipeline = render_pass ? render_pass->CreatePipeline(material, InlinePipeline::Solid3D) : nullptr;
 
         return pipeline != nullptr;
-    }
-
-    bool InitMISSBO()
-    {
-        if (!ecs_context || !material || !mi)
-            return false;
-
-        auto *render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto *graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto *buffer_manager = graphics_context->GetBufferManager();
-        auto *domain_manager = graphics_context->GetResourceDomainManager();
-        if (!buffer_manager || !domain_manager)
-            return false;
-
-        auto rdbs = ecs_context->GetSystem<RenderDescriptorBindingSystem>();
-        if (!rdbs)
-            return false;
-
-        const uint32_t mi_data_bytes = material->GetMIDataBytes();
-        if (mi_data_bytes == 0)
-            return true;
-
-        const int mi_id = mi->GetMIID();
-        if (mi_id < 0)
-            return false;
-
-        const uint32_t mi_count = static_cast<uint32_t>(mi_id + 1);
-        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * mi_data_bytes;
-
-        mi_ssbo = buffer_manager->CreateSSBO("RecursiveCube:MIData", ssbo_size, nullptr, SharingMode::Exclusive);
-        if (!mi_ssbo)
-            return false;
-
-        auto *gpu_buf = mi_ssbo->GetGPUBuffer();
-        if (!gpu_buf)
-            return false;
-
-        auto *dst = static_cast<uint8_t *>(gpu_buf->Map(0, ssbo_size));
-        if (!dst)
-            return false;
-
-        memset(dst, 0, static_cast<size_t>(ssbo_size));
-
-        void *src = material->GetMIData(mi_id);
-        if (src)
-            memcpy(dst + static_cast<VkDeviceSize>(mi_id) * mi_data_bytes, src, mi_data_bytes);
-
-        gpu_buf->Unmap();
-
-        bool has_struct_binding = false;
-        for (const auto &req : material->GetBindingContract().requirements)
-        {
-            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
-                continue;
-
-            has_struct_binding = true;
-            if (!rdbs->RegisterMaterialStructLayout(req.ssbo_type, req.ssbo_id, mi_data_bytes))
-                return false;
-
-            const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
-            if (!domain_manager->RegisterBuffer(addr, mi_ssbo, mi_count))
-                return false;
-        }
-
-        return has_struct_binding;
     }
     bool CreateCubeGeometry()
     {
@@ -259,7 +215,7 @@ private:
                              bool animate,
                              EntityID parent_id)
     {
-        if (!ecs_context || !primitive_manager || !geometry || !mi || !pipeline)
+        if (!ecs_context || !primitive_manager || !geometry || !dbs || !pipeline)
             return nullptr;
 
         auto *entity = ecs_context->CreateEntity<Entity>(name);
@@ -271,7 +227,7 @@ private:
         transform->SetLocalScale(glm::vec3(scale, scale, scale));
         transform->SetMovable(animate);
 
-        auto prim = primitive_manager->CreatePrimitive(geometry, mi, pipeline);
+        auto prim = primitive_manager->CreatePrimitive(geometry, dbs, pipeline);
         if (!prim)
             return nullptr;
 
@@ -332,9 +288,6 @@ private:
         if (!primitive_manager)
             return false;
 
-        if (!InitMISSBO())
-            return false;
-
         // Base cube at origin
         Entity *root = CreateCubeEntity(glm::vec3(0.0f, 0.0f, 0.0f), 1.0f, "RootCube", false, EntityID());
         if (!root)
@@ -390,6 +343,8 @@ public:
             SAFE_CLEAR(prim)
         SAFE_CLEAR(geometry)
         SAFE_CLEAR(mi_ssbo)
+        delete dbs;
+        dbs = nullptr;
     }
 
     bool Init() override
