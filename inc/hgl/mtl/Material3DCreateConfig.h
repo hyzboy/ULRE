@@ -15,8 +15,6 @@ struct Material3DCreateConfig:public MaterialCreateConfig
 
     bool                sky;                    ///<是否包含天空信息(主要是太阳光和大气散射相关)
 
-    VkFormat            position_format;        ///<position格式
-
     SkyLightAmbientModel sky_ambient_model;     ///<天空环境光实现方式（按材质配置）
 
 //    bool                reverse_depth;          ///<使用反向深度
@@ -37,8 +35,6 @@ public:
 
         sky=(s==WithSky::With);
 
-        position_format=VK_FORMAT_R32G32B32_SFLOAT;
-
         sky_ambient_model=SkyLightAmbientModel::Simple;
 
 //        reverse_depth=false;
@@ -58,7 +54,7 @@ public:
         if(auto cmp=sky_ambient_model<=>cfg.sky_ambient_model; cmp!=0)
             return cmp;
 
-        return position_format <=> cfg.position_format;
+        return std::strong_ordering::equal;
     }
 
     std::string ToHashStdString() override;

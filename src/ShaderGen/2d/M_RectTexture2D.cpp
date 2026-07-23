@@ -13,14 +13,14 @@ MaterialCreateInfo *CreateRectTexture2D(const contract::PhysicalDeviceProfileLit
 
     mtl::Material2DCreateConfig inner=*cfg;
     inner.prim=PrimitiveType::Triangles;
-    inner.position_format=VK_FORMAT_R32G32_SFLOAT;
     inner.shader_stage_flag_bit&=~(uint32_t)ShaderStage::Geometry;
+    const VkFormat position_format = ResolveMaterialPositionFormat(cfg, VK_FORMAT_R32G32_SFLOAT);
 
     // Build DEF
-    auto preamble = build2d::Build2DPreamble(&inner, true, false);
+    auto preamble = build2d::Build2DPreamble(&inner, true, false, position_format);
 
     std::vector<FixedVertexEntry> vertices;
-    build2d::PushBaseVertexEntries(vertices, &inner);
+    build2d::PushBaseVertexEntries(vertices, &inner, position_format);
     vertices.push_back({ VK_FORMAT_R32G32_SFLOAT, VertexSemantic::TexCoord });
 
     std::vector<FixedDescriptorEntry> descriptors;
@@ -44,4 +44,3 @@ MaterialCreateInfo *CreateRectTexture2D(const contract::PhysicalDeviceProfileLit
     return mci;
 }
 }//namespace hgl::graph::mtl
-

@@ -26,18 +26,28 @@ namespace hgl::graph{
 
 namespace
 {
-    bool TryInferPositionFormatFromGeometryVertexFormat(const GeometryVertexFormat &geometry_vertex_format,VkFormat &position_format)
+    class ScopedMaterialGeometryBinding
     {
-        const GeometryVertexAttributeFormat *position_attribute = geometry_vertex_format.Find(VertexSemantic::Position);
-        if(!position_attribute)
-            return false;
+    private:
+        mtl::MaterialCreateConfig *cfg_=nullptr;
+        const GeometryVertexFormat *prev_=nullptr;
 
-        if(position_attribute->format==VK_FORMAT_UNDEFINED)
-            return false;
+    public:
+        ScopedMaterialGeometryBinding(mtl::MaterialCreateConfig *cfg,const GeometryVertexFormat *gvf):cfg_(cfg)
+        {
+            if(cfg_)
+            {
+                prev_=cfg_->geometry_vertex_format;
+                cfg_->SetGeometryVertexFormat(gvf);
+            }
+        }
 
-        position_format = position_attribute->format;
-        return true;
-    }
+        ~ScopedMaterialGeometryBinding()
+        {
+            if(cfg_)
+                cfg_->SetGeometryVertexFormat(prev_);
+        }
+    };
 
     void CreateShaderStageList(ValueArray<VkPipelineShaderStageCreateInfo> &shader_stage_list,ShaderModuleMap *shader_maps)
     {
@@ -424,6 +434,24 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl
     return CreateMaterial(preset,cfg);
 }
 
+Material *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *cfg,const GeometryVertexFormat &geometry_vertex_format)
+{
+    if(!cfg)
+        return nullptr;
+
+    ScopedMaterialGeometryBinding scoped_binding(cfg,&geometry_vertex_format);
+    return CreateMaterial(mtl_id,cfg);
+}
+
+Material *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *cfg,const GeometryVertexFormat &geometry_vertex_format)
+{
+    if(!cfg)
+        return nullptr;
+
+    ScopedMaterialGeometryBinding scoped_binding(cfg,&geometry_vertex_format);
+    return CreateMaterial(mtl_id,cfg);
+}
+
 Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl::Material3DCreateConfig *cfg)
 {
     if (!cfg)
@@ -608,17 +636,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPre
     if(!mcc)
         return nullptr;
 
-    VkFormat position_format = VK_FORMAT_UNDEFINED;
-    if(!TryInferPositionFormatFromGeometryVertexFormat(geometry_vertex_format,position_format))
-    {
-        GLogError("[MaterialManager] Can't infer Material2D position_format from GeometryVertexFormat: missing Position semantic");
-        return nullptr;
-    }
-
-    mtl::Material2DCreateConfig inferred_cfg = *mcc;
-    inferred_cfg.position_format = position_format;
-
-    Material *mtl=this->CreateMaterial(mtl_id,&inferred_cfg);
+    Material *mtl=this->CreateMaterial(mtl_id,mcc,geometry_vertex_format);
 
     if(!mtl)
         return(nullptr);
@@ -633,17 +651,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPre
     if(!mcc)
         return nullptr;
 
-    VkFormat position_format = VK_FORMAT_UNDEFINED;
-    if(!TryInferPositionFormatFromGeometryVertexFormat(geometry_vertex_format,position_format))
-    {
-        GLogError("[MaterialManager] Can't infer Material3D position_format from GeometryVertexFormat: missing Position semantic");
-        return nullptr;
-    }
-
-    mtl::Material3DCreateConfig inferred_cfg = *mcc;
-    inferred_cfg.position_format = position_format;
-
-    Material *mtl=this->CreateMaterial(mtl_id,&inferred_cfg);
+    Material *mtl=this->CreateMaterial(mtl_id,mcc,geometry_vertex_format);
 
     if(!mtl)
         return(nullptr);

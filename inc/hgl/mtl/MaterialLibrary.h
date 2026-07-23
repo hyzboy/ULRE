@@ -8,6 +8,7 @@
 #include<hgl/mtl/MaterializationResolver.h>
 #include<hgl/mtl/MaterializationPools.h>
 #include<hgl/mtl/new/MaterialVariantKey.h>
+#include<hgl/common/VertexAttribDef.h>
 
 namespace hgl::graph::mtl{
 
@@ -50,6 +51,10 @@ inline MaterialCreateInfo *Create##name(const contract::PhysicalDeviceProfileLit
 MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
                                              const MaterialPreset mtl_id,
                                              MaterialCreateConfig *cfg);
+
+VkFormat ResolveMaterialVertexSemanticFormat(const MaterialCreateConfig *cfg, VertexSemantic semantic, VkFormat fallback_format);
+
+VkFormat ResolveMaterialPositionFormat(const MaterialCreateConfig *cfg, VkFormat fallback_format);
 
 const char *GetMaterialPresetName(const MaterialPreset mtl_id);
 

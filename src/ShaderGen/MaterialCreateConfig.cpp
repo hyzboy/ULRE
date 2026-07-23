@@ -1,7 +1,7 @@
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/common/PrimitiveTypeDef.h>
-#include <hgl/vk/VKFormat.h>
 #include<string>
 
 namespace hgl::graph::mtl{
@@ -61,6 +61,27 @@ std::string MaterialCreateConfig::ToHashStdString()
         }
     }
 
+    if(geometry_vertex_format&&geometry_vertex_format->GetCount()>0)
+    {
+        hash+="_GVF";
+
+        for(uint32 i=0;i<geometry_vertex_format->GetCount();++i)
+        {
+            const GeometryVertexAttributeFormat *attribute=geometry_vertex_format->Get(i);
+            if(!attribute)
+                continue;
+
+            hash+="_";
+            hash+=GetVertexSemanticName(attribute->semantic);
+            hash+="_F";
+            hash+=std::to_string((uint32_t)attribute->format);
+            hash+="_V";
+            hash+=std::to_string((uint32_t)attribute->vec_size);
+            hash+="_S";
+            hash+=std::to_string(attribute->stride);
+        }
+    }
+
     return hash;
 }
 
@@ -75,12 +96,6 @@ std::string Material2DCreateConfig::ToHashStdString()
 
     if(local_to_world)
         hash+="_L2W";
-
-    hash+="_";
-    if(const char *fmt_name=hgl::graph::GetVulkanFormatName(position_format))
-        hash+=fmt_name;
-    else
-        hash+="UnknownFmt";
 
     return hash;
 }
@@ -101,12 +116,6 @@ std::string Material3DCreateConfig::ToHashStdString()
 
     if(local_to_world)
         hash+="_L2W";
-
-    hash+="_";
-    if(const char *fmt_name=hgl::graph::GetVulkanFormatName(position_format))
-        hash+=fmt_name;
-    else
-        hash+="UnknownFmt";
 
     return hash;
 }

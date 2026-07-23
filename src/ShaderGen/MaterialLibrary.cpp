@@ -1,9 +1,26 @@
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
 
 namespace hgl::graph::mtl{
+VkFormat ResolveMaterialVertexSemanticFormat(const MaterialCreateConfig *cfg, VertexSemantic semantic, VkFormat fallback_format)
+{
+    if(!cfg||!cfg->geometry_vertex_format)
+        return fallback_format;
+
+    const GeometryVertexAttributeFormat *attribute=cfg->geometry_vertex_format->Find(semantic);
+    if(!attribute||attribute->format==VK_FORMAT_UNDEFINED)
+        return fallback_format;
+
+    return attribute->format;
+}
+
+VkFormat ResolveMaterialPositionFormat(const MaterialCreateConfig *cfg, VkFormat fallback_format)
+{
+    return ResolveMaterialVertexSemanticFormat(cfg, VertexSemantic::Position, fallback_format);
+}
 
 MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
 {

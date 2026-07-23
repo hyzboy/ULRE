@@ -79,9 +79,8 @@ private:
         mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
 
         cfg.local_to_world=true;
-        cfg.position_format=VK_FORMAT_R32G32_SFLOAT;
-
-        material = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg);
+        const GeometryVertexFormat plane_grid_gvf = CreateVertexLuminance2DGeometryVertexFormat();
+        material = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg, plane_grid_gvf);
         if(!material)return(false);
 
         VILConfig vil_config;

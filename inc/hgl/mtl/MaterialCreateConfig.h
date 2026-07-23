@@ -9,6 +9,11 @@
 #include<hgl/mtl/ShaderBufferSource.h>
 #include<cstring>
 
+namespace hgl::graph
+{
+    class GeometryVertexFormat;
+}
+
 namespace hgl::graph::mtl{
 class MaterialCreateInfo;
 
@@ -25,6 +30,8 @@ struct MaterialCreateConfig
 
     PrimitiveType               prim;                       ///<图元类型
 
+    const GeometryVertexFormat *geometry_vertex_format;     ///<可选：用于推导 shader 顶点输入格式的 GeometryVertexFormat
+
     bool                        local_to_world;             ///<包含LocalToWorld矩阵
 
     const ShaderBufferSource *const * private_shader_buffer_sources;       ///<私有ShaderBufferSource列表（材质独占）
@@ -36,6 +43,11 @@ public:
     {
         private_shader_buffer_sources=list;
         private_shader_buffer_source_count=count;
+    }
+
+    void SetGeometryVertexFormat(const GeometryVertexFormat *gvf)
+    {
+        geometry_vertex_format=gvf;
     }
 
     const ShaderBufferSource *FindPrivateShaderBufferSourceByStructName(const char *struct_name)const
@@ -80,6 +92,8 @@ public:
         shader_stage_flag_bit=(uint32_t)ShaderStage::VertexFragment;
 
         prim=p;
+
+        geometry_vertex_format=nullptr;
 
         local_to_world=l2w;
 

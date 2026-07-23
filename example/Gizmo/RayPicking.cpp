@@ -130,9 +130,8 @@ private:
         vil_config.Add(VAN::Luminance,VF_V1UN8);
 
         {
-            cfg.position_format=VK_FORMAT_R32G32_SFLOAT;
-
-            mtl_plane_grid = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg);
+            const GeometryVertexFormat plane_grid_gvf = CreateVertexLuminance2DGeometryVertexFormat();
+            mtl_plane_grid = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg, plane_grid_gvf);
             if(!mtl_plane_grid)return(false);
             vil_plane_grid = mtl_plane_grid->CreateVIL(&vil_config);
             if(!vil_plane_grid)return(false);
@@ -144,9 +143,8 @@ private:
         }
 
         {
-            cfg.position_format=VK_FORMAT_R32G32B32_SFLOAT;
-
-            mtl_line = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg);
+            const GeometryVertexFormat line_gvf = CreateVertexLuminance3DGeometryVertexFormat();
+            mtl_line = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg, line_gvf);
             if(!mtl_line)return(false);
             vil_line = mtl_line->CreateVIL(&vil_config);
             if(!vil_line)return(false);

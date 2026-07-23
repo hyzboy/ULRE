@@ -15,14 +15,14 @@ MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *prof
 
     Text2DMaterialCreateConfig new_cfg=*cfg;
     new_cfg.prim=PrimitiveType::Triangles;
-    new_cfg.position_format=VK_FORMAT_R32G32_SINT;
     new_cfg.shader_stage_flag_bit&=~(uint32_t)ShaderStage::Geometry;
+    const VkFormat position_format = ResolveMaterialPositionFormat(cfg, VK_FORMAT_R32G32_SINT);
 
     // Build DEF
-    auto preamble = build2d::Build2DPreamble(&new_cfg, true, true);
+    auto preamble = build2d::Build2DPreamble(&new_cfg, true, true, position_format);
 
     std::vector<FixedVertexEntry> vertices;
-    build2d::PushBaseVertexEntries(vertices, &new_cfg);
+    build2d::PushBaseVertexEntries(vertices, &new_cfg, position_format);
     vertices.push_back({ VK_FORMAT_R32G32_SFLOAT, VertexSemantic::TexCoord });
 
     std::vector<FixedDescriptorEntry> descriptors;
@@ -46,4 +46,3 @@ MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *prof
     return mci;
 }
 }//namespace hgl::graph::mtl
-

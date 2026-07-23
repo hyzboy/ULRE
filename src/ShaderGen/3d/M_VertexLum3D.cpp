@@ -59,7 +59,8 @@ MaterialCreateInfo *CreateVertexLuminance3D(const contract::PhysicalDeviceProfil
 {
     cfg->material_instance=true;
 
-    const bool use_vec2_position = cfg && cfg->position_format == VK_FORMAT_R32G32_SFLOAT;
+    const VkFormat position_format = ResolveMaterialPositionFormat(cfg, VK_FORMAT_R32G32B32_SFLOAT);
+    const bool use_vec2_position = position_format == VK_FORMAT_R32G32_SFLOAT;
 
     const FixedMaterialDef &fixed_def = use_vec2_position
         ? VERTEX_LUMINANCE_3D_DEF_VEC2
@@ -102,5 +103,4 @@ MaterialCreateInfo *CreateVertexLuminance3D(const contract::PhysicalDeviceProfil
     return mci;
 }
 }//namespace hgl::graph::mtl
-
 

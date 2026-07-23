@@ -112,9 +112,8 @@ private:
         {
             mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
             cfg.local_to_world = true;
-            cfg.position_format = VK_FORMAT_R32G32_SFLOAT;
-
-            grid_material = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg);
+            const GeometryVertexFormat grid_gvf = CreateVertexLuminance2DGeometryVertexFormat();
+            grid_material = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg, grid_gvf);
             if(!grid_material)
                 return false;
 

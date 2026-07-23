@@ -93,13 +93,17 @@ inline std::string BuildDescriptorDefines(
 //   std::string fs = preamble + "#include \"2d/xxx.frag.glsl\"\n";
 // ─────────────────────────────────────────────────────────────
 
-inline std::string Build2DPreamble(const Material2DCreateConfig *cfg, bool has_texture, bool has_mi)
+inline std::string Build2DPreamble(const Material2DCreateConfig *cfg, bool has_texture, bool has_mi, VkFormat position_format_override = VK_FORMAT_UNDEFINED)
 {
     std::string p = "#version 450\n\n";
     p += BuildDescriptorDefines(cfg, has_texture, has_mi);
 
+    const VkFormat position_format = (position_format_override!=VK_FORMAT_UNDEFINED)
+                                   ? position_format_override
+                                   : ResolveMaterialPositionFormat(cfg, VK_FORMAT_R32G32_SFLOAT);
+
     p += "#define POSITION_FORMAT ";
-    p += GLSLInputType(cfg->position_format);
+    p += GLSLInputType(position_format);
     p += "\n";
 
     switch(cfg->coordinate_system)
@@ -120,10 +124,14 @@ inline std::string Build2DPreamble(const Material2DCreateConfig *cfg, bool has_t
 // Common FixedVertexEntry builders
 // ─────────────────────────────────────────────────────────────
 
-inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Material2DCreateConfig *cfg)
+inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Material2DCreateConfig *cfg, VkFormat position_format_override = VK_FORMAT_UNDEFINED)
 {
+    const VkFormat position_format = (position_format_override!=VK_FORMAT_UNDEFINED)
+                                   ? position_format_override
+                                   : ResolveMaterialPositionFormat(cfg, VK_FORMAT_R32G32_SFLOAT);
+
     // Position
-    v.push_back({ cfg->position_format, VertexSemantic::Position });
+    v.push_back({ position_format, VertexSemantic::Position });
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -160,4 +168,3 @@ inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, cons
 
 }//namespace build2d
 }//namespace hgl::graph::mtl
-

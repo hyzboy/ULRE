@@ -10,8 +10,6 @@ struct Material2DCreateConfig:public MaterialCreateConfig
 {
     CoordinateSystem2D  coordinate_system;      ///<使用的坐标系
 
-    VkFormat            position_format;        ///<position格式
-
 public:
 
     Material2DCreateConfig(const PrimitiveType &p=PrimitiveType::Lines,
@@ -24,8 +22,6 @@ public:
         rt_output.stencil=false;    //不输出stencil
 
         coordinate_system=cs;
-
-        position_format=VK_FORMAT_R32G32_SFLOAT;
     }
 
     std::strong_ordering operator<=>(const Material2DCreateConfig &cfg)const
@@ -36,7 +32,7 @@ public:
         if(auto cmp=coordinate_system<=>cfg.coordinate_system; cmp!=0)
             return cmp;
 
-        return position_format <=> cfg.position_format;
+        return std::strong_ordering::equal;
     }
 
     std::string ToHashStdString() override;
@@ -56,8 +52,6 @@ public:
     Text2DMaterialCreateConfig():Material2DCreateConfig(PrimitiveType::Triangles,CoordinateSystem2D::Ortho,WithLocalToWorld::Without)
     {
         material_instance=true;        //包含材质实例
-
-        position_format=VK_FORMAT_R32G32_SINT;
     }
 };
 
