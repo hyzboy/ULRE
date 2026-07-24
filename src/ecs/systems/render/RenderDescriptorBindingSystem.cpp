@@ -941,7 +941,10 @@ namespace hgl::ecs
                 return nullptr;
 
             if (batch->batch_descriptor_mp[set_index])
+            {
+                batch->has_batch_descriptor_overrides = true;
                 return batch->batch_descriptor_mp[set_index];
+            }
 
             if (!batch->device)
                 return nullptr;

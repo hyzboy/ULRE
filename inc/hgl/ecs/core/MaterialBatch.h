@@ -79,15 +79,7 @@ namespace hgl::ecs
         MaterialBatch(const MaterialPipelineKey& k, graph::VulkanDevice* dev = nullptr, graph::BufferManager* bm = nullptr);
         ~MaterialBatch();
 
-        void Clear()
-        {
-            items.clear();
-            static_count = 0;
-            draw_batches.clear();
-            draw_batches_count = 0;
-            texture_slot_handles.fill(0);
-            has_texture_slot_handles = false;
-        }
+        void Clear();
         void AddItem(RenderItem* item);
         bool HasMovableRange() const { return static_count < items.size(); }
     };

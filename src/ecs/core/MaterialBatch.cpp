@@ -56,6 +56,23 @@ namespace hgl::ecs
             delete renderer;
     }
 
+    void MaterialBatch::Clear()
+    {
+        items.clear();
+        static_count = 0;
+        draw_batches.clear();
+        draw_batches_count = 0;
+        texture_slot_handles.fill(0);
+        has_texture_slot_handles = false;
+
+        has_batch_descriptor_overrides = false;
+        for (size_t i = 0; i < graph::DESCRIPTOR_SET_TYPE_COUNT; ++i)
+        {
+            if (batch_descriptor_mp[i] && batch_descriptor_mp[i]->GetDescriptorSet())
+                batch_descriptor_mp[i]->GetDescriptorSet()->Clear();
+        }
+    }
+
     void MaterialBatch::AddItem(RenderItem* item)
     {
         if (!item)
