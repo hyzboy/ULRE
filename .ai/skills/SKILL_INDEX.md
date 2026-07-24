@@ -1,6 +1,6 @@
 # ECS Render System SKILL合集
 
-本目录包含7个SKILL文档，涵盖HGL自有库类型参考、CMCoreType底层库完整参考、添加新Component/System、系统分组、ExecutionPhase、RenderGraph和快速参考。
+本目录包含10个SKILL文档，涵盖HGL自有库类型参考、CMCoreType底层库完整参考、**CMMath数学库参考**、HGL日志系统、文件系统与IO流、添加新Component/System、系统分组、ExecutionPhase、RenderGraph和快速参考。
 
 ## ⚠️ 首先必读
 
@@ -31,10 +31,52 @@
 
 ---
 
-### 0.1 [SKILL_CMCORETYPE_REFERENCE.md](SKILL_CMCORETYPE_REFERENCE.md)
-**适用：查找CMCoreType底层库的基础类型、内存/对齐/枚举工具、数学、颜色、时间常量等**
+### 0.2 [SKILL_LOGGING_REFERENCE.md](SKILL_LOGGING_REFERENCE.md)
+**适用：输出日志信息（替代 printf/cout/cerr）**
 
-- 🔢 基础类型别名（int8/uint8/f32/f64/u8char 等）
+- 🪵 4种日志模式：OBJECT_LOGGER / GLogXxx / MLogXxx / FLogXxx
+- 📋 日志级别对照表（Verbose/Debug/Info/Notice/Warning/Error/Fatal）
+- 💡 各模式完整代码示例
+- ❌ 常见错误（错误使用 printf / LOG_INFO 等不存在宏）vs ✅ 正确写法
+
+**快速导航：**
+```
+类方法中需要输出日志？         → OBJECT_LOGGER + LogInfo/LogError
+全局函数/main中输出日志？      → GLogInfo/GLogError
+多类共享模块名输出日志？        → DEFINE_LOGGER_MODULE + MLogInfo
+单文件自由函数输出日志？        → USE_MODULE_LOGGER + FLogInfo
+→ 使用这个SKILL
+```
+
+---
+
+### 0.3 [SKILL_FILESYSTEM_IO_REFERENCE.md](SKILL_FILESYSTEM_IO_REFERENCE.md)
+**适用：文件系统操作、IO流读写（替代 std::ifstream / std::ofstream / std::filesystem）**
+
+- 📁 FileSystem.h：文件增删改查、整体加载/保存、目录创建/删除
+- 🗂️ Filename.h / Path 类：路径拼接、扩展名操作、规范化
+- 🔍 CollectFiles / EnumFile：模式匹配文件枚举、递归遍历
+- 📖 FileInputStream / FileOutputStream：RAII 辅助类用法
+- 💾 MemoryInputStream / MemoryOutputStream：内存缓冲区流
+- 🔢 DataInputStream / DataOutputStream：类型化结构体读写
+- 📝 TextInputStream / LoadStringFromTextFile：文本逐行解析
+- 🗺️ MMapFile：内存映射文件
+- ❌ 常见错误（不存在的 GetFileSize / MakeDirectory / OpenFileInputStream函数等）
+
+**快速导航：**
+```
+读文件？             → OpenFileInputStream（RAII类）
+写文件？             → CreateFileOutputStream 或 OpenFileOutputStream
+内存流？             → MemoryOutputStream / MemoryInputStream
+路径操作？           → Filename.h 自由函数 或 Path 类
+文件枚举/收集？      → CollectFiles（通配符/正则）或 EnumFile（继承扩展）
+加载文本文件？       → hgl::LoadStringFromTextFile
+内存映射大文件？     → OpenMMapFileOnlyRead / OpenMMapFile
+→ 使用这个SKILL
+```
+
+---
+**适用：查找CMCoreType底层库的基础类型、内存/对齐/枚举工具、数学、颜色、时间常量等**
 - 🧹 内存安全宏（SAFE_CLEAR, SAFE_FREE 等）
 - 🏗️ 平台宏（NO_COPY, NO_MOVE, OS/CPU 检测）
 - ⚙️ 对齐工具（align_to, align_up, divide_ceil）
@@ -55,6 +97,59 @@
 需要枚举工具 ToInt / RangeCheck？
 需要颜色类型 Color4f？
 需要浮点验证 IsNaN / IsValid？
+→ 使用这个SKILL
+```
+
+---
+
+### 0.4 [SKILL_CMCORE_REFERENCE.md](SKILL_CMCORE_REFERENCE.md)
+**适用：CMCore基础库中的线程/并发、时间、字符编码、队列/栈/LRU缓存、内存管理、智能指针等**
+
+- 🧵 线程：`Thread`、`ThreadMutex`、`RWLock`、`Semaphore`、`CondVar`
+- ⚛️ 原子：`atom<T>` / `atom_int` / `atom_bool`（替代 `std::atomic`）
+- 🔄 线程安全集合：`SwapData`、`SwapList`、`SemSwapData`、`RingBuffer`
+- ⏱️ 时间：`GetTimeSec`、`GetUptimeSec`、`SleepSecond`、`Timestamp` 类
+- 🔤 字符编码：`Endian`（字节序）、`Charset`（字符集转换）、`utf.h`（UTF-8↔UTF-16）
+- 📦 集合扩展：`Queue<T>`、`Stack<T>`、`LRUCache`、`FlatOrderedMap`、`OrderedMap`
+- 💾 内存管理：`MemoryBlock`、`BlockAllocator`、`SharedPtr`/`WeakPtr`
+- 📋 STL→HGL线程/时间速查表（位于文档末尾）
+
+**快速导航：**
+```
+需要线程？                → Thread + ThreadMutex / RWLock
+需要原子变量？            → atom<T> / atom_int / atom_bool
+需要线程安全队列交换？    → SwapData / SemSwapData / SwapList
+需要时间戳/计时？         → GetUptimeSec() / Timestamp
+需要 UTF-8/UTF-16 转换？  → utf.h: to_u16 / to_u8 / ToOSString
+需要队列/栈/LRU缓存？     → Queue<T> / Stack<T> / LRUCache<K,V>
+需要有序Map高频增删？      → OrderedMap（B树）
+需要静态有序Map序列化？   → FlatOrderedMap
+需要内存块管理？          → MemoryBlock / BlockAllocator
+→ 使用这个SKILL
+```
+
+---
+
+### 0.5 [SKILL_CMMATH_REFERENCE.md](SKILL_CMMATH_REFERENCE.md)
+**适用：向量、矩阵、投影/视图矩阵、四元数、变换（Transform）、几何体（AABB/OBB/Frustum）等数学运算**
+
+- 🎯 坐标系约定：Z轴向上、右手系、Vulkan NDC（深度[0,1]、Y向下）
+- 📐 向量类型（Vector2f/3f/4f/整型）与基础运算（Dot/Cross/Normalized）
+- 🔢 矩阵构建（TranslateMatrix/ScaleMatrix/AxisRotate/MakeMatrix）
+- 🎥 投影矩阵（OrthoMatrix/PerspectiveMatrix/LookAtMatrix）
+- 🔄 四元数（Quatf/QuatFromAxisAngle/SLerp）
+- 📦 Transform类（TRS懒计算、版本号追踪）
+- 🔷 几何体（AABB/OBB/Frustum/BoundingSphere/Ray）
+- ⚠️ **已知Bug列表**（PerspectiveMatrix X轴取反、GetRotateMatrix签名不匹配等）
+
+**快速导航：**
+```
+需要构建视图/投影矩阵？        → LookAtMatrix / PerspectiveMatrix（⚠️ 有Bug）
+需要坐标系转换？               → TransformPosition / TransformDirection
+需要 AABB/OBB 可见性裁剪？     → Frustum + GetFrustumPlanes
+需要 TRS 变换？                → Transform 类
+需要四元数旋转/插值？          → QuatFromAxisAngle / SLerpQuat
+了解矩阵 Bug？                 → SKILL_CMMATH_REFERENCE §⚠️已知Bug
 → 使用这个SKILL
 ```
 
@@ -239,17 +334,16 @@
 
 ```
 .ai/skills/ 目录结构
-├── SKILL_*.md (本集合，6个文件)
-│   ├── SKILL_HGL_TYPES_REFERENCE.md  ← 新增：HGL类型参考（必读）
-│   ├── SKILL_CMCORETYPE_REFERENCE.md ← 新增：CMCoreType底层库完整参考
+├── SKILL_*.md (本集合，7个文件)
+│   ├── SKILL_HGL_TYPES_REFERENCE.md  ← HGL类型参考（必读）
+│   ├── SKILL_CMCORETYPE_REFERENCE.md ← CMCoreType底层库完整参考
+│   ├── SKILL_CMCORE_REFERENCE.md     ← CMCore完整参考（线程/时间/队列等）
 │   ├── SKILL_ADD_NEW_RENDER_COMPONENT.md
 │   ├── SKILL_SYSTEM_GROUPING_AND_ENABLEMENT.md
 │   ├── SKILL_EXECUTION_PHASE_ORDERING.md
 │   ├── SKILL_RENDERGRAPH_USAGE.md
 │   ├── SKILL_QUICK_REFERENCE.md
 │   └── SKILL_INDEX.md (本文件)
-│
-├── RENDER_SYSTEM_SIMPLIFICATION_PLAN.md ← 背景/历史
 │
 └── 未来扩展 (计划)
     ├── SKILL_PARTICLE_SYSTEM_IMPL.md
@@ -258,6 +352,12 @@
     └── SKILL_DEFERRED_RENDERING.md
 
 源码位置 (参考)
+├── CMCore/inc/hgl/          ← 基础库（极少修改）
+│   ├── thread/              ← 线程/并发
+│   ├── time/                ← 时间
+│   ├── type/                ← 集合/内存/智能指针
+│   ├── io/                  ← IO流
+│   └── filesystem/          ← 文件系统
 ├── inc/hgl/ecs/core/
 │   ├── Component.h
 │   ├── System.h (ExecutionPhase定义)
@@ -293,6 +393,7 @@ A: 可能。这些SKILL针对ULRE的ECS系统设计。如果修改了架构，�
 |------|------|------|------|------|
 | SKILL_HGL_TYPES_REFERENCE.md | 📊 浅 | 5 min | ⭐ | ✓ |
 | SKILL_CMCORETYPE_REFERENCE.md | 📊 深 | 10 min | ⭐ | ✓ |
+| SKILL_CMCORE_REFERENCE.md | 📊 深 | 10 min | ⭐ | ✓ |
 | SKILL_QUICK_REFERENCE.md | 📊 浅 | 5 min | ⭐ | ✓ |
 | SKILL_ADD_NEW_RENDER_COMPONENT.md | 📘 深 | 20 min | ⭐⭐ | ✓✓ |
 | SKILL_SYSTEM_GROUPING_AND_ENABLEMENT.md | 📗 中等 | 15 min | ⭐⭐ | ✓ |
@@ -305,7 +406,35 @@ A: 可能。这些SKILL针对ULRE的ECS系统设计。如果修改了架构，�
 
 | 主题 | 相关SKILL | 快速用法 |
 |------|---------|---------|
-| 字符串/AnsiString | HGL_TYPES_REFERENCE | 字符串章节 |
+| Thread / 线程           | CMCORE_REFERENCE | §1.2 Thread |
+| ThreadMutex / 互斥锁   | CMCORE_REFERENCE | §1.3 ThreadMutex |
+| RWLock / 读写锁         | CMCORE_REFERENCE | §1.4 RWLock |
+| Semaphore / 信号量      | CMCORE_REFERENCE | §1.5 Semaphore |
+| CondVar / 条件变量      | CMCORE_REFERENCE | §1.6 CondVar |
+| SwapData / 双缓冲交换   | CMCORE_REFERENCE | §1.7 SwapData |
+| SwapList/SemSwapList    | CMCORE_REFERENCE | §1.8 SwapColl |
+| atom<T> / 原子变量      | CMCORE_REFERENCE | §1.1 Atomic |
+| GetTimeSec/GetUptimeSec | CMCORE_REFERENCE | §2.1 Time.h |
+| Timestamp 时间戳类      | CMCORE_REFERENCE | §2.2 Timestamp |
+| SleepSecond             | CMCORE_REFERENCE | §2.1 Time.h |
+| EndianSwap/BOM检测      | CMCORE_REFERENCE | §3.1 Endian |
+| to_u16/to_u8/ToOSString | CMCORE_REFERENCE | §3.3 utf.h |
+| Queue<T>                | CMCORE_REFERENCE | §4.1 Queue |
+| Stack<T>                | CMCORE_REFERENCE | §4.2 Stack |
+| LRUCache                | CMCORE_REFERENCE | §4.3 LRUCache |
+| FlatOrderedMap          | CMCORE_REFERENCE | §4.4 FlatOrderedMap |
+| FlatOrderedSet          | CMCORE_REFERENCE | §4.5 FlatOrderedSet |
+| OrderedMap（B树）        | CMCORE_REFERENCE | §4.6 OrderedMap |
+| OrderedSet（B树）        | CMCORE_REFERENCE | §4.7 OrderedSet |
+| AnsiStringView          | CMCORE_REFERENCE | §4.8 StringView |
+| MemoryBlock             | CMCORE_REFERENCE | §5.1 MemoryBlock |
+| BlockAllocator          | CMCORE_REFERENCE | §5.2 BlockAllocator |
+| SharedPtr/WeakPtr       | CMCORE_REFERENCE | §6 Smart |
+| EnumFile（递归枚举）     | CMCORE_REFERENCE | §8.1 EnumFile |
+| TextInputStream逐行     | CMCORE_REFERENCE | §9.1 TextInputStream |
+| TextOutputStream        | CMCORE_REFERENCE | §9.2 TextOutputStream |
+| LoadStringFromTextFile  | CMCORE_REFERENCE | §9.3 LoadString |
+| 字符串/AnsiString        | HGL_TYPES_REFERENCE | 字符串章节 |
 | 动态数组/集合 | HGL_TYPES_REFERENCE | 集合章节 |
 | FNV1a哈希 | HGL_TYPES_REFERENCE | 哈希章节 |
 | 文件IO | HGL_TYPES_REFERENCE | IO章节 |
@@ -329,6 +458,33 @@ A: 可能。这些SKILL针对ULRE的ECS系统设计。如果修改了架构，�
 | HashMergeGolden64 | CMCORETYPE_REFERENCE | §17 HashMerge |
 | DefEvent/SetEventCall | CMCORETYPE_REFERENCE | §18 EventFunc |
 | Property<T> | CMCORETYPE_REFERENCE | §18 Property |
+| OBJECT_LOGGER（类内日志） | LOGGING_REFERENCE | 模式1 |
+| GLogInfo/GLogError（全局） | LOGGING_REFERENCE | 模式2 |
+| DEFINE_LOGGER_MODULE（模块定义） | LOGGING_REFERENCE | 模式3 |
+| EXTERN_LOGGER_MODULE（模块声明） | LOGGING_REFERENCE | 模式3 |
+| MLogInfo/MLogError（模块日志） | LOGGING_REFERENCE | 模式3 |
+| USE_MODULE_LOGGER（文件绑定） | LOGGING_REFERENCE | 模式4 |
+| FLogInfo/FLogError（文件级日志） | LOGGING_REFERENCE | 模式4 |
+| 日志级别选择 | LOGGING_REFERENCE | §日志级别 |
+| FileExist/FileDelete/FileCopy | FILESYSTEM_IO_REFERENCE | §1 FileSystem.h |
+| LoadFileToMemory/SaveMemoryToFile | FILESYSTEM_IO_REFERENCE | §1 FileSystem.h |
+| MakePath/DeletePath/DeleteTree | FILESYSTEM_IO_REFERENCE | §1 FileSystem.h |
+| GetFileInfo/FileInfo.size | FILESYSTEM_IO_REFERENCE | §1 FileSystem.h |
+| GetFilename/GetExtension/GetStem | FILESYSTEM_IO_REFERENCE | §2 Filename.h |
+| JoinPathWithFilename/SplitPath | FILESYSTEM_IO_REFERENCE | §2 Filename.h |
+| Path 类（/ 运算符拼路径） | FILESYSTEM_IO_REFERENCE | §2 Path |
+| CollectFiles（通配符/正则收集） | FILESYSTEM_IO_REFERENCE | §3 CollectFiles |
+| EnumFile（递归枚举继承） | FILESYSTEM_IO_REFERENCE | §3 EnumFile |
+| OpenFileInputStream（RAII读文件） | FILESYSTEM_IO_REFERENCE | §5 FileInputStream |
+| CreateFileOutputStream（工厂写文件） | FILESYSTEM_IO_REFERENCE | §5 FileOutputStream |
+| MemoryOutputStream/GetData/Tell | FILESYSTEM_IO_REFERENCE | §6 MemoryStream |
+| DataInputStream/ReadInt32/ReadFloat | FILESYSTEM_IO_REFERENCE | §7 DataInputStream |
+| DataOutputStream/WriteInt32/WriteFloat | FILESYSTEM_IO_REFERENCE | §7 DataOutputStream |
+| LoadStringFromTextFile | FILESYSTEM_IO_REFERENCE | §8 文本IO |
+| LoadStringListFromTextFile | FILESYSTEM_IO_REFERENCE | §8 文本IO |
+| TextInputStream（逐行解析） | FILESYSTEM_IO_REFERENCE | §8 TextInputStream |
+| RandomAccessFile（读写共用） | FILESYSTEM_IO_REFERENCE | §9 RandomAccessFile |
+| OpenMMapFileOnlyRead/MMapFile | FILESYSTEM_IO_REFERENCE | §10 MMapFile |
 | 创建新Component | ADD_NEW_RENDER_COMPONENT | 第2步 |
 | 创建新System | ADD_NEW_RENDER_COMPONENT | 第3步 |
 | SetRenderElementType() | SYSTEM_GROUPING_AND_ENABLEMENT | API参考 |
@@ -340,6 +496,26 @@ A: 可能。这些SKILL针对ULRE的ECS系统设计。如果修改了架构，�
 | 自定义RenderGraph | RENDERGRAPH_USAGE | 场景1-3 |
 | 代码模板 | QUICK_REFERENCE | 代码模板速查 |
 | Checklist | QUICK_REFERENCE | 完整Checklist |
+| Vector2f/3f/4f 向量类型 | CMMATH_REFERENCE | §2 向量类型 |
+| Dot/Cross/Normalized/Distance | CMMATH_REFERENCE | §3 向量运算 |
+| TranslateMatrix/ScaleMatrix/AxisRotate | CMMATH_REFERENCE | §4 矩阵构建 |
+| MakeMatrix（TRS组合）| CMMATH_REFERENCE | §4 矩阵构建 |
+| Inverse/Transpose/DecomposeTransform | CMMATH_REFERENCE | §4 矩阵运算 |
+| LookAtMatrix（视图矩阵）| CMMATH_REFERENCE | §5 视图矩阵 |
+| OrthoMatrix（正交投影）| CMMATH_REFERENCE | §5 正交投影 |
+| PerspectiveMatrix（透视投影，⚠️有Bug）| CMMATH_REFERENCE | §5 透视投影 |
+| PerspectiveMatrixReversedZ | CMMATH_REFERENCE | §5 透视投影 |
+| MakeInfiniteReversedZProj | CMMATH_REFERENCE | §5 透视投影 |
+| ProjectToScreen/UnProjectToWorld | CMMATH_REFERENCE | §5 坐标投影 |
+| Quatf/QuatFromAxisAngle | CMMATH_REFERENCE | §6 四元数 |
+| SLerpQuat/LerpQuat | CMMATH_REFERENCE | §6 四元数插值 |
+| GetRotateMatrix/GetRotateQuat（⚠️签名Bug）| CMMATH_REFERENCE | §6+§4 |
+| Transform类（TRS懒计算）| CMMATH_REFERENCE | §7 Transform |
+| AABB/OBB | CMMATH_REFERENCE | §8 几何体 |
+| Frustum/GetFrustumPlanes | CMMATH_REFERENCE | §8 几何体 |
+| BoundingSphere/Ray/Plane | CMMATH_REFERENCE | §8 几何体 |
+| DualQuaternion/SkeletonMath | CMMATH_REFERENCE | §9 动画数学 |
+| CameraInfo结构体 | CMMATH_REFERENCE | §5+§12 |
 
 ---
 
@@ -356,7 +532,7 @@ A: 可能。这些SKILL针对ULRE的ECS系统设计。如果修改了架构，�
 
 ## ✨ 总结
 
-这7个SKILL文档提供了从零到精通的**完整路径**，支持：
+这9个SKILL文档提供了从零到精通的**完整路径**，支持：
 
 - ✅ 快速上手（QUICK_REFERENCE）
 - ✅ 详细学习（各topic SKILL）

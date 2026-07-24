@@ -19,8 +19,15 @@
 #include <unordered_map>
 #include <set>
 #include <unordered_set>
+#include <queue>
+#include <stack>
 #include <thread>
 #include <mutex>
+#include <shared_mutex>
+#include <atomic>
+#include <condition_variable>
+#include <semaphore>
+#include <chrono>
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -28,8 +35,10 @@
 ```
 
 ❌ 禁止手写FNV1a或任何哈希函数实现  
-❌ 禁止使用 `std::string`、`std::vector`、`std::thread`、`std::mutex` 等STL类型  
-❌ 禁止使用 `new`/`delete` 手动内存管理（使用HGL的智能指针或池）
+❌ 禁止使用 `std::string`、`std::vector`、`std::thread`、`std::mutex`、`std::atomic` 等STL类型  
+❌ 禁止使用 `std::chrono`，时间相关功能必须使用 `<hgl/time/Time.h>` 或 `<hgl/time/Timestamp.h>`  
+❌ 禁止使用 `new`/`delete` 手动内存管理（使用HGL的智能指针或池）  
+❌ 禁止使用 `printf`、`std::cout`、`std::cerr`、`fprintf` 输出日志（使用HGL日志宏）
 
 ---
 
@@ -51,12 +60,31 @@
 | `std::shared_ptr<T>`         | HGL智能指针                            | `<hgl/type/Smart.h>`                |
 | 手写FNV1a                    | `hgl::hash::FNV1aInit` + Append系列    | `<hgl/util/hash/FNV1a.h>`           |
 | 其他哈希函数                  | `hgl::hash::Hash`                      | `<hgl/util/hash/Hash.h>`            |
-| `std::ifstream`              | `hgl::io::FileInputStream`             | `<hgl/io/FileInputStream.h>`        |
-| `std::ofstream`              | `hgl::io::FileOutputStream`            | `<hgl/io/FileOutputStream.h>`       |
-| `std::istringstream`         | `hgl::io::MemoryInputStream`           | `<hgl/io/MemoryInputStream.h>`      |
-| `std::ostringstream`         | `hgl::io::MemoryOutputStream`          | `<hgl/io/MemoryOutputStream.h>`     |
-| 文件系统操作                  | `hgl::filesystem::*`                   | `<hgl/filesystem/FileSystem.h>`     |
-| 日志输出                      | `LOG_INFO` / `LOG_ERROR` 等宏          | `<hgl/log/Log.h>`                   |
+| `std::ifstream`              | `hgl::io::FileInputStream` + `OpenFileInputStream`  | `<hgl/io/FileInputStream.h>`        |
+| `std::ofstream`              | `hgl::io::FileOutputStream` + `CreateFileOutputStream` | `<hgl/io/FileOutputStream.h>`    |
+| `std::istringstream`         | `hgl::io::MemoryInputStream`                        | `<hgl/io/MemoryInputStream.h>`      |
+| `std::ostringstream`         | `hgl::io::MemoryOutputStream`                       | `<hgl/io/MemoryOutputStream.h>`     |
+| `std::fstream`               | `hgl::io::RandomAccessFile`                         | `<hgl/io/RandomAccessFile.h>`       |
+| `std::filesystem::path`      | `hgl::filesystem::Path`                             | `<hgl/filesystem/Path.h>`           |
+| `std::filesystem::exists`    | `hgl::filesystem::FileExist`                        | `<hgl/filesystem/FileSystem.h>`     |
+| `std::filesystem::create_directories` | `hgl::filesystem::MakePath`              | `<hgl/filesystem/FileSystem.h>`     |
+| `std::filesystem::remove_all`| `hgl::filesystem::DeleteTree`                       | `<hgl/filesystem/FileSystem.h>`     |
+| 文件系统操作                  | `hgl::filesystem::*`                                | `<hgl/filesystem/FileSystem.h>`     |
+| `std::thread`                | `hgl::Thread`                                       | `<hgl/thread/Thread.h>`             |
+| `std::mutex`                 | `hgl::ThreadMutex`                                  | `<hgl/thread/ThreadMutex.h>`        |
+| `std::lock_guard<mutex>`     | `hgl::ThreadMutexLock`                              | `<hgl/thread/ThreadMutex.h>`        |
+| `std::shared_mutex`          | `hgl::RWLock`                                       | `<hgl/thread/RWLock.h>`             |
+| `std::shared_lock`           | `hgl::OnlyReadLock`                                 | `<hgl/thread/RWLock.h>`             |
+| `std::unique_lock<shared_mutex>` | `hgl::OnlyWriteLock`                            | `<hgl/thread/RWLock.h>`             |
+| `std::atomic<T>`             | `hgl::atom<T>`                                      | `<hgl/thread/Atomic.h>`             |
+| `std::counting_semaphore`    | `hgl::Semaphore`                                    | `<hgl/thread/Semaphore.h>`          |
+| `std::condition_variable`    | `hgl::CondVar`                                      | `<hgl/thread/CondVar.h>`            |
+| `std::queue<T>`              | `hgl::Queue<T>`                                     | `<hgl/type/Queue.h>`                |
+| `std::stack<T>`              | `hgl::Stack<T>`                                     | `<hgl/type/Stack.h>`                |
+| `std::chrono::*` 时间        | `hgl::GetTimeSec()` / `hgl::GetUptimeSec()`         | `<hgl/time/Time.h>`                 |
+| 时间戳对象                    | `hgl::Timestamp`                                    | `<hgl/time/Timestamp.h>`            |
+| `this_thread::sleep_for`     | `hgl::SleepSecond(seconds)`                         | `<hgl/time/Time.h>`                 |
+| 日志输出                      | `LogInfo` / `GLogInfo` / `FLogInfo` 等宏 | `<hgl/log/Log.h>`                   |
 
 ---
 
@@ -129,18 +157,25 @@ int *val = map.Find("key");  // 找不到返回 nullptr
 
 ```cpp
 #include <hgl/io/FileInputStream.h>
+#include <hgl/io/FileOutputStream.h>
 #include <hgl/io/MemoryOutputStream.h>
 
-// 读文件
-hgl::io::FileInputStream *fis = hgl::io::OpenFileInputStream(filename);
-if (fis) {
-    // 读取操作
-    delete fis;
-}
+// ── 读文件：OpenFileInputStream 是 RAII 类（不是函数！）──────
+hgl::io::OpenFileInputStream opener(OS_TEXT("path/to/file.bin"));
+if (!opener) { GLogError(u8"打开失败"); return false; }
+opener->Read(buf, size);
+// 析构时自动关闭
 
-// 内存流（替代 std::ostringstream）
+// ── 写文件 ────────────────────────────────────────────────────
+hgl::io::FileOutputStream *fos =
+    hgl::io::CreateFileOutputStream(OS_TEXT("out.bin")); // 默认 CreateTrunc
+if (!fos) return false;
+fos->Write(data, size);
+delete fos;
+
+// ── 内存流（替代 std::ostringstream）─────────────────────────
 hgl::io::MemoryOutputStream mos;
-// 写入数据后获取缓冲
+mos.Write(data, size);
 const void *buf = mos.GetData();
 int64 len = mos.Tell();
 ```
@@ -149,21 +184,120 @@ int64 len = mos.Tell();
 
 ## 📝 日志正确用法
 
+❌ 永远不要使用 `printf`、`std::cout`、`std::cerr`、`fprintf`、`puts` 等输出日志。  
+✅ 必须使用 `<hgl/log/Log.h>` 中的宏，根据使用场景选择以下4种模式之一：
+
+### 模式1：类成员日志（最常用）
+
+在头文件类定义中声明 `OBJECT_LOGGER`，类方法中用 `LogXxx(...)` 输出：
+
+```cpp
+// MyClass.h
+#include <hgl/log/Log.h>
+
+class MyClass
+{
+    OBJECT_LOGGER   // 展开为：::hgl::logger::ObjectLogger Log{&typeid(*this)};
+public:
+    void DoWork();
+};
+
+// MyClass.cpp
+void MyClass::DoWork()
+{
+    LogInfo(u8"开始工作");
+    LogWarning(u8"资源不足，剩余 %d", count);
+    LogError(u8"初始化失败：%s", name);
+}
+```
+
+可用宏：`LogVerbose` `LogDebug` `LogInfo` `LogNotice` `LogWarning` `LogError` `LogFatal`  
+（`LogVerbose`/`LogDebug` 在 Release 模式下自动为空操作）
+
+---
+
+### 模式2：全局 / 自由函数（少量散落调用）
+
+无需任何声明，直接使用 `GLogXxx(...)` 调用全局 logger：
+
 ```cpp
 #include <hgl/log/Log.h>
 
-LOG_INFO("Some info message");
-LOG_ERROR("Error: " + AnsiString::numberOf(error_code));
-// 不要使用 std::cout、printf（调试日志除外）
+void SomeGlobalFunc()
+{
+    GLogInfo(u8"全局信息");
+    GLogError(u8"全局错误：%d", code);
+}
 ```
+
+可用宏：`GLogVerbose` `GLogDebug` `GLogInfo` `GLogNotice` `GLogWarning` `GLogError` `GLogFatal`
+
+---
+
+### 模式3：模块日志（多文件/多类共享模块名）
+
+适合一个模块有多个类的场景，所有输出都带模块名前缀：
+
+```cpp
+// Render.cpp（或模块入口 .cpp）
+#include <hgl/log/Log.h>
+DEFINE_LOGGER_MODULE(Render)   // 定义 hgl::logger::LogRender
+
+// RenderHelper.h（其他需要此 logger 的头文件）
+#include <hgl/log/Log.h>
+EXTERN_LOGGER_MODULE(Render)   // extern 声明
+
+// 任意 .cpp 中直接使用（需已 include 含 EXTERN 的头文件）
+MLogInfo(Render, u8"渲染帧开始");
+MLogError(Render, u8"着色器编译失败：%s", name);
+```
+
+可用宏：`MLogVerbose(name,...)` `MLogDebug(name,...)` `MLogInfo(name,...)` `MLogNotice(name,...)`  
+`MLogWarning(name,...)` `MLogError(name,...)` `MLogFatal(name,...)`
+
+---
+
+### 模式4：文件级模块绑定（自由函数、单文件绑定）
+
+在 `.cpp` 顶部用 `USE_MODULE_LOGGER` 绑定，之后用 `FLogXxx(...)` 无前缀调用：
+
+```cpp
+// Render.cpp — 先定义模块
+#include <hgl/log/Log.h>
+DEFINE_LOGGER_MODULE(Render)
+USE_MODULE_LOGGER(Render)   // 生成 GetModuleLogger() 内联函数
+
+// 之后同文件内的自由函数直接使用 FLogXxx
+static void CompileShader(const OSString &path)
+{
+    FLogInfo(u8"编译着色器：%s", path.c_str());
+    FLogError(u8"编译失败");
+}
+```
+
+可用宏：`FLogVerbose` `FLogDebug` `FLogInfo` `FLogNotice` `FLogWarning` `FLogError` `FLogFatal`
+
+---
+
+### 选择指南
+
+| 场景 | 使用模式 |
+|------|---------|
+| 类方法中输出 | `OBJECT_LOGGER` + `LogXxx` |
+| 全局/工具函数（少量） | `GLogXxx` |
+| 多类共享同一模块名 | `DEFINE_LOGGER_MODULE` + `EXTERN_LOGGER_MODULE` + `MLogXxx` |
+| 单文件自由函数绑定模块 | `DEFINE_LOGGER_MODULE` + `USE_MODULE_LOGGER` + `FLogXxx` |
+
+> 📌 详细参考：`.ai/skills/SKILL_LOGGING_REFERENCE.md`
 
 ---
 
 ## 🔍 遇到不确定的HGL类型时
 
 1. 优先查阅 `.ai/skills/SKILL_HGL_TYPES_REFERENCE.md` 获取完整示例
-2. 搜索 `inc/hgl/type/`、`inc/hgl/io/`、`inc/hgl/util/` 等目录下的头文件
-3. 参照已有代码中的 `#include <hgl/...>` 用法模式
+2. 线程/时间/队列/栈/LRU等类型 → `.ai/skills/SKILL_CMCORE_REFERENCE.md`
+3. 搜索 `CMCore/inc/hgl/` 目录下的头文件（该库极少修改，内容稳定）
+4. 参照已有代码中的 `#include <hgl/...>` 用法模式
 
 ---
 
@@ -172,6 +306,9 @@ LOG_ERROR("Error: " + AnsiString::numberOf(error_code));
 遇到新任务时，先查看 `.ai/skills/SKILL_INDEX.md` 了解可用的工作流指南：
 - 添加新渲染组件/系统 → `SKILL_ADD_NEW_RENDER_COMPONENT.md`
 - HGL类型完整参考 → `SKILL_HGL_TYPES_REFERENCE.md`
+- **CMCore完整参考（线程/时间/队列/编码等）** → `SKILL_CMCORE_REFERENCE.md`
+- **HGL日志系统** → `SKILL_LOGGING_REFERENCE.md`
+- **文件系统与IO流** → `SKILL_FILESYSTEM_IO_REFERENCE.md`
 - 系统分组和启用 → `SKILL_SYSTEM_GROUPING_AND_ENABLEMENT.md`
 - 执行阶段排序 → `SKILL_EXECUTION_PHASE_ORDERING.md`
 - RenderGraph用法 → `SKILL_RENDERGRAPH_USAGE.md`
