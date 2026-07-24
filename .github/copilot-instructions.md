@@ -52,11 +52,16 @@
 | `std::shared_ptr<T>`         | HGL智能指针                            | `<hgl/type/Smart.h>`                |
 | 手写FNV1a                    | `hgl::hash::FNV1aInit` + Append系列    | `<hgl/util/hash/FNV1a.h>`           |
 | 其他哈希函数                  | `hgl::hash::Hash`                      | `<hgl/util/hash/Hash.h>`            |
-| `std::ifstream`              | `hgl::io::FileInputStream`             | `<hgl/io/FileInputStream.h>`        |
-| `std::ofstream`              | `hgl::io::FileOutputStream`            | `<hgl/io/FileOutputStream.h>`       |
-| `std::istringstream`         | `hgl::io::MemoryInputStream`           | `<hgl/io/MemoryInputStream.h>`      |
-| `std::ostringstream`         | `hgl::io::MemoryOutputStream`          | `<hgl/io/MemoryOutputStream.h>`     |
-| 文件系统操作                  | `hgl::filesystem::*`                   | `<hgl/filesystem/FileSystem.h>`     |
+| `std::ifstream`              | `hgl::io::FileInputStream` + `OpenFileInputStream`  | `<hgl/io/FileInputStream.h>`        |
+| `std::ofstream`              | `hgl::io::FileOutputStream` + `CreateFileOutputStream` | `<hgl/io/FileOutputStream.h>`    |
+| `std::istringstream`         | `hgl::io::MemoryInputStream`                        | `<hgl/io/MemoryInputStream.h>`      |
+| `std::ostringstream`         | `hgl::io::MemoryOutputStream`                       | `<hgl/io/MemoryOutputStream.h>`     |
+| `std::fstream`               | `hgl::io::RandomAccessFile`                         | `<hgl/io/RandomAccessFile.h>`       |
+| `std::filesystem::path`      | `hgl::filesystem::Path`                             | `<hgl/filesystem/Path.h>`           |
+| `std::filesystem::exists`    | `hgl::filesystem::FileExist`                        | `<hgl/filesystem/FileSystem.h>`     |
+| `std::filesystem::create_directories` | `hgl::filesystem::MakePath`              | `<hgl/filesystem/FileSystem.h>`     |
+| `std::filesystem::remove_all`| `hgl::filesystem::DeleteTree`                       | `<hgl/filesystem/FileSystem.h>`     |
+| 文件系统操作                  | `hgl::filesystem::*`                                | `<hgl/filesystem/FileSystem.h>`     |
 | 日志输出                      | `LogInfo` / `GLogInfo` / `FLogInfo` 等宏 | `<hgl/log/Log.h>`                   |
 
 ---
@@ -130,18 +135,25 @@ int *val = map.Find("key");  // 找不到返回 nullptr
 
 ```cpp
 #include <hgl/io/FileInputStream.h>
+#include <hgl/io/FileOutputStream.h>
 #include <hgl/io/MemoryOutputStream.h>
 
-// 读文件
-hgl::io::FileInputStream *fis = hgl::io::OpenFileInputStream(filename);
-if (fis) {
-    // 读取操作
-    delete fis;
-}
+// ── 读文件：OpenFileInputStream 是 RAII 类（不是函数！）──────
+hgl::io::OpenFileInputStream opener(OS_TEXT("path/to/file.bin"));
+if (!opener) { GLogError(u8"打开失败"); return false; }
+opener->Read(buf, size);
+// 析构时自动关闭
 
-// 内存流（替代 std::ostringstream）
+// ── 写文件 ────────────────────────────────────────────────────
+hgl::io::FileOutputStream *fos =
+    hgl::io::CreateFileOutputStream(OS_TEXT("out.bin")); // 默认 CreateTrunc
+if (!fos) return false;
+fos->Write(data, size);
+delete fos;
+
+// ── 内存流（替代 std::ostringstream）─────────────────────────
 hgl::io::MemoryOutputStream mos;
-// 写入数据后获取缓冲
+mos.Write(data, size);
 const void *buf = mos.GetData();
 int64 len = mos.Tell();
 ```
@@ -272,6 +284,7 @@ static void CompileShader(const OSString &path)
 - 添加新渲染组件/系统 → `SKILL_ADD_NEW_RENDER_COMPONENT.md`
 - HGL类型完整参考 → `SKILL_HGL_TYPES_REFERENCE.md`
 - **HGL日志系统** → `SKILL_LOGGING_REFERENCE.md`
+- **文件系统与IO流** → `SKILL_FILESYSTEM_IO_REFERENCE.md`
 - 系统分组和启用 → `SKILL_SYSTEM_GROUPING_AND_ENABLEMENT.md`
 - 执行阶段排序 → `SKILL_EXECUTION_PHASE_ORDERING.md`
 - RenderGraph用法 → `SKILL_RENDERGRAPH_USAGE.md`

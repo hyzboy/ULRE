@@ -1,6 +1,6 @@
 # ECS Render System SKILL合集
 
-本目录包含8个SKILL文档，涵盖HGL自有库类型参考、CMCoreType底层库完整参考、HGL日志系统、添加新Component/System、系统分组、ExecutionPhase、RenderGraph和快速参考。
+本目录包含9个SKILL文档，涵盖HGL自有库类型参考、CMCoreType底层库完整参考、HGL日志系统、文件系统与IO流、添加新Component/System、系统分组、ExecutionPhase、RenderGraph和快速参考。
 
 ## ⚠️ 首先必读
 
@@ -50,7 +50,32 @@
 
 ---
 
-### 0.1 [SKILL_CMCORETYPE_REFERENCE.md](SKILL_CMCORETYPE_REFERENCE.md)
+### 0.3 [SKILL_FILESYSTEM_IO_REFERENCE.md](SKILL_FILESYSTEM_IO_REFERENCE.md)
+**适用：文件系统操作、IO流读写（替代 std::ifstream / std::ofstream / std::filesystem）**
+
+- 📁 FileSystem.h：文件增删改查、整体加载/保存、目录创建/删除
+- 🗂️ Filename.h / Path 类：路径拼接、扩展名操作、规范化
+- 🔍 CollectFiles / EnumFile：模式匹配文件枚举、递归遍历
+- 📖 FileInputStream / FileOutputStream：RAII 辅助类用法
+- 💾 MemoryInputStream / MemoryOutputStream：内存缓冲区流
+- 🔢 DataInputStream / DataOutputStream：类型化结构体读写
+- 📝 TextInputStream / LoadStringFromTextFile：文本逐行解析
+- 🗺️ MMapFile：内存映射文件
+- ❌ 常见错误（不存在的 GetFileSize / MakeDirectory / OpenFileInputStream函数等）
+
+**快速导航：**
+```
+读文件？             → OpenFileInputStream（RAII类）
+写文件？             → CreateFileOutputStream 或 OpenFileOutputStream
+内存流？             → MemoryOutputStream / MemoryInputStream
+路径操作？           → Filename.h 自由函数 或 Path 类
+文件枚举/收集？      → CollectFiles（通配符/正则）或 EnumFile（继承扩展）
+加载文本文件？       → hgl::LoadStringFromTextFile
+内存映射大文件？     → OpenMMapFileOnlyRead / OpenMMapFile
+→ 使用这个SKILL
+```
+
+---
 **适用：查找CMCoreType底层库的基础类型、内存/对齐/枚举工具、数学、颜色、时间常量等**
 
 - 🔢 基础类型别名（int8/uint8/f32/f64/u8char 等）
@@ -356,6 +381,25 @@ A: 可能。这些SKILL针对ULRE的ECS系统设计。如果修改了架构，�
 | USE_MODULE_LOGGER（文件绑定） | LOGGING_REFERENCE | 模式4 |
 | FLogInfo/FLogError（文件级日志） | LOGGING_REFERENCE | 模式4 |
 | 日志级别选择 | LOGGING_REFERENCE | §日志级别 |
+| FileExist/FileDelete/FileCopy | FILESYSTEM_IO_REFERENCE | §1 FileSystem.h |
+| LoadFileToMemory/SaveMemoryToFile | FILESYSTEM_IO_REFERENCE | §1 FileSystem.h |
+| MakePath/DeletePath/DeleteTree | FILESYSTEM_IO_REFERENCE | §1 FileSystem.h |
+| GetFileInfo/FileInfo.size | FILESYSTEM_IO_REFERENCE | §1 FileSystem.h |
+| GetFilename/GetExtension/GetStem | FILESYSTEM_IO_REFERENCE | §2 Filename.h |
+| JoinPathWithFilename/SplitPath | FILESYSTEM_IO_REFERENCE | §2 Filename.h |
+| Path 类（/ 运算符拼路径） | FILESYSTEM_IO_REFERENCE | §2 Path |
+| CollectFiles（通配符/正则收集） | FILESYSTEM_IO_REFERENCE | §3 CollectFiles |
+| EnumFile（递归枚举继承） | FILESYSTEM_IO_REFERENCE | §3 EnumFile |
+| OpenFileInputStream（RAII读文件） | FILESYSTEM_IO_REFERENCE | §5 FileInputStream |
+| CreateFileOutputStream（工厂写文件） | FILESYSTEM_IO_REFERENCE | §5 FileOutputStream |
+| MemoryOutputStream/GetData/Tell | FILESYSTEM_IO_REFERENCE | §6 MemoryStream |
+| DataInputStream/ReadInt32/ReadFloat | FILESYSTEM_IO_REFERENCE | §7 DataInputStream |
+| DataOutputStream/WriteInt32/WriteFloat | FILESYSTEM_IO_REFERENCE | §7 DataOutputStream |
+| LoadStringFromTextFile | FILESYSTEM_IO_REFERENCE | §8 文本IO |
+| LoadStringListFromTextFile | FILESYSTEM_IO_REFERENCE | §8 文本IO |
+| TextInputStream（逐行解析） | FILESYSTEM_IO_REFERENCE | §8 TextInputStream |
+| RandomAccessFile（读写共用） | FILESYSTEM_IO_REFERENCE | §9 RandomAccessFile |
+| OpenMMapFileOnlyRead/MMapFile | FILESYSTEM_IO_REFERENCE | §10 MMapFile |
 | 创建新Component | ADD_NEW_RENDER_COMPONENT | 第2步 |
 | 创建新System | ADD_NEW_RENDER_COMPONENT | 第3步 |
 | SetRenderElementType() | SYSTEM_GROUPING_AND_ENABLEMENT | API参考 |
@@ -383,7 +427,7 @@ A: 可能。这些SKILL针对ULRE的ECS系统设计。如果修改了架构，�
 
 ## ✨ 总结
 
-这8个SKILL文档提供了从零到精通的**完整路径**，支持：
+这9个SKILL文档提供了从零到精通的**完整路径**，支持：
 
 - ✅ 快速上手（QUICK_REFERENCE）
 - ✅ 详细学习（各topic SKILL）

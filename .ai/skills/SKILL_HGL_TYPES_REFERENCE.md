@@ -308,29 +308,31 @@ uint64 h = hgl::hash::Hash64(data_ptr, byte_count);
 
 ## 4. IO 输入输出
 
+> 详细完整参考：[SKILL_FILESYSTEM_IO_REFERENCE.md](SKILL_FILESYSTEM_IO_REFERENCE.md)
+
 ### 文件读取
 
 ```cpp
 #include <hgl/io/FileInputStream.h>
 #include <hgl/io/DataInputStream.h>
 
-// 打开文件（失败返回 nullptr）
-hgl::io::FileInputStream *fis = hgl::io::OpenFileInputStream(OS_TEXT("path/to/file"));
-if (!fis) return false;
+// ── 推荐：RAII 辅助类 OpenFileInputStream ──────────────────────
+// 注意：OpenFileInputStream 是 RAII 类，不是全局函数！
+hgl::io::OpenFileInputStream opener(OS_TEXT("path/to/file.bin"));
+if (!opener) return false;
 
 // 读取原始字节
 uint8 buf[256];
-int64 bytes_read = fis->Read(buf, sizeof(buf));
+int64 bytes_read = opener->Read(buf, sizeof(buf));
+int64 file_size  = opener->GetSize();
 
 // 包装为 DataInputStream 读结构化数据
-hgl::io::DataInputStream dis(fis);
+hgl::io::DataInputStream dis(opener);  // opener 隐式转换为 FileInputStream*
 int32 val;
 dis.ReadInt32(val);
-
 float f;
 dis.ReadFloat(f);
-
-delete fis;
+// opener 析构时自动 delete FileInputStream
 ```
 
 ### 文件写入
@@ -339,14 +341,21 @@ delete fis;
 #include <hgl/io/FileOutputStream.h>
 #include <hgl/io/DataOutputStream.h>
 
-hgl::io::FileOutputStream *fos = hgl::io::CreateFileOutputStream(OS_TEXT("path/to/file"));
+// ── 工厂函数（失败返回 nullptr，需手动 delete） ─────────────────
+hgl::io::FileOutputStream *fos =
+    hgl::io::CreateFileOutputStream(OS_TEXT("path/to/file.bin")); // 默认 CreateTrunc
 if (!fos) return false;
 
 hgl::io::DataOutputStream dos(fos);
 dos.WriteInt32(42);
 dos.WriteFloat(3.14f);
-
 delete fos;
+
+// ── 其他打开模式 ──────────────────────────────────────────────
+hgl::io::FileOutputStream fos2;
+fos2.OpenAppend(OS_TEXT("log.txt"));   // 追加
+fos2.Create    (OS_TEXT("new.bin"));   // 创建（已存在则失败）
+fos2.Close();
 ```
 
 ### 内存流（替代 `std::ostringstream` / `std::istringstream`）
@@ -355,33 +364,31 @@ delete fos;
 #include <hgl/io/MemoryOutputStream.h>
 #include <hgl/io/MemoryInputStream.h>
 
-// 写内存流
+// 写内存流（自动扩容）
 hgl::io::MemoryOutputStream mos;
 hgl::io::DataOutputStream dos(&mos);
 dos.WriteInt32(1);
 dos.WriteInt32(2);
-
 const void *buf = mos.GetData();
 int64 size = mos.Tell();
 
 // 读内存流
 hgl::io::MemoryInputStream mis(buf, size);
-hgl::io::DataInputStream dis(&mis);
+hgl::io::DataInputStream dis2(&mis);
 int32 a, b;
-dis.ReadInt32(a);  // a == 1
-dis.ReadInt32(b);  // b == 2
+dis2.ReadInt32(a);  // a == 1
+dis2.ReadInt32(b);  // b == 2
 ```
 
-### 加载字符串文件
+### 加载文本文件
 
 ```cpp
 #include <hgl/io/LoadString.h>
 
-// 加载文本文件为字符串
-AnsiString content;
-if (hgl::io::LoadStringFromFile(OS_TEXT("file.txt"), content)) {
-    // 使用 content
-}
+// 注意：函数在 hgl:: 命名空间，参数是 (输出字符串, 路径)
+hgl::U8String content;
+int result = hgl::LoadStringFromTextFile(content, OS_TEXT("file.txt"));
+if (result < 0) GLogError(u8"加载失败");
 ```
 
 ### 文件系统操作
@@ -392,12 +399,15 @@ if (hgl::io::LoadStringFromFile(OS_TEXT("file.txt"), content)) {
 // 检查文件是否存在
 bool exists = hgl::filesystem::FileExist(OS_TEXT("path/to/file"));
 
-// 获取文件大小
-int64 size = hgl::filesystem::GetFileSize(OS_TEXT("path/to/file"));
+// 获取文件信息（大小等）
+hgl::filesystem::FileInfo fi;
+hgl::filesystem::GetFileInfo(OS_TEXT("path/to/file"), fi);
+int64 file_size = fi.size;           // 注意：不是 GetFileSize()，该函数不存在
 
-// 目录操作
-hgl::filesystem::MakeDirectory(OS_TEXT("path/to/dir"));
-bool is_dir = hgl::filesystem::DirectoryExist(OS_TEXT("path/to/dir"));
+// 目录操作（注意：不是 MakeDirectory，是 MakePath）
+bool ok     = hgl::filesystem::MakePath   (OS_TEXT("path/to/dir"));   // 递归创建目录
+bool is_dir = hgl::filesystem::IsDirectory(OS_TEXT("path/to/dir"));   // 判断目录（不是 DirectoryExist）
+hgl::filesystem::DeleteTree(OS_TEXT("path/to/dir"));                  // 递归删除目录树
 ```
 
 ---
