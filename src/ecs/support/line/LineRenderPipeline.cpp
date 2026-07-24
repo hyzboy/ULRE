@@ -746,17 +746,15 @@ namespace hgl::ecs
             return;
         }
 
-        if (!pipeline_ || !binding_set_)
+        if (!pipeline_ || !material_)
         {
-            GLogWarning("[LineRenderPipeline] Render skipped: invalid render resources (pipeline=%p binding_set=%p)",
+            GLogWarning("[LineRenderPipeline] Render skipped: invalid render resources (pipeline=%p material=%p)",
                         pipeline_,
-                        binding_set_);
+                        material_);
             return;
         }
 
-        auto* mat = binding_set_->GetMaterial();
-        if (mat)
-            cmd->BindDescriptorSets(mat);
+        cmd->BindDescriptorSets(material_);
 
         cmd->BindPipeline(pipeline_);
 
