@@ -323,7 +323,7 @@ namespace hgl::graph
     Primitive *TextRender::CreatePrimitive(TextGeometry *text_geometry)
     {
         if(primitive_manager && binding_set)
-            return primitive_manager->CreatePrimitive(text_geometry, binding_set, pipeline);
+            return primitive_manager->CreatePrimitive(text_geometry, mtl_fs, binding_set, pipeline);
 
         return(nullptr);
     }

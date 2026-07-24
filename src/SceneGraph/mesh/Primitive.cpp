@@ -197,6 +197,18 @@ Primitive *DirectCreatePrimitive(Geometry *geom,Material *material,DescriptorBin
 {
     if(!geom||!material||!dbs||!p)return(nullptr);
 
+    Material *current_material = dbs->GetMaterial();
+    if (current_material != material)
+    {
+        if (current_material)
+        {
+            GLogWarning("[Primitive] DBS material mismatch, override to explicit target material. old=%s new=%s",
+                        current_material->GetName().c_str(),
+                        material->GetName().c_str());
+        }
+        dbs->SetMaterial(material);
+    }
+
     const VIL *vil = dbs->GetVIL();
 
     if(!material||!vil)

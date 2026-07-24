@@ -65,7 +65,7 @@ namespace hgl::graph
                 {
                     auto *primitive_manager = graphics_context->GetPrimitiveManager();
                     auto *dbs = gizmo_triangle.binding_sets[0];
-                    primitive = primitive_manager ? primitive_manager->CreatePrimitive(geometry, dbs, gizmo_triangle.pipeline) : nullptr;
+                    primitive = primitive_manager ? primitive_manager->CreatePrimitive(geometry, gizmo_triangle.mtl, dbs, gizmo_triangle.pipeline) : nullptr;
                     if (!primitive)
                         GLogError("[GizmoResource] CreatePrimitive failed for descriptor binding path");
                 }

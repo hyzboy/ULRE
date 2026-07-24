@@ -577,7 +577,7 @@ namespace hgl::ecs
             graph::Primitive* primitive = resources->primitive;
             if (!primitive)
             {
-                primitive = primitive_manager->CreatePrimitive(geometry, binding_set, resources->pipeline);
+                primitive = primitive_manager->CreatePrimitive(geometry, resources->material, binding_set, resources->pipeline);
                 if (!primitive)
                 {
                     GLogError("[TextRenderPipeline] CreatePrimitive failed for descriptor binding path");
