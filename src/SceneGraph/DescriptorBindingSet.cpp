@@ -216,4 +216,9 @@ namespace hgl::graph
 
         return SatisfiesContract(material->GetBindingContract(), material->GetName().c_str());
     }
+
+    bool DescriptorBindingSet::HasRequiredContractBindings(const mtl::BindingContract &contract, const char *contract_owner_name) const
+    {
+        return SatisfiesContract(contract, contract_owner_name);
+    }
 }

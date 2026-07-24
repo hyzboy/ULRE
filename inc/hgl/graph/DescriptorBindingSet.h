@@ -63,6 +63,7 @@ namespace hgl
             void ClearTextureBinding(mtl::TextureSlot slot);
 
             bool SatisfiesContract(const mtl::BindingContract &contract, const char *contract_owner_name = nullptr) const;
+            bool HasRequiredContractBindings(const mtl::BindingContract &contract, const char *contract_owner_name = nullptr) const;
             bool HasRequiredContractBindings() const;
         };
     }//namespace graph
