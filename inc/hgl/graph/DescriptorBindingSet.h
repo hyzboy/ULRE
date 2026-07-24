@@ -9,6 +9,11 @@ namespace hgl
 {
     namespace graph
     {
+        namespace mtl
+        {
+            struct BindingContract;
+        }
+
         class Material;
         class Texture;
         class Sampler;
@@ -57,6 +62,7 @@ namespace hgl
             bool GetTextureBinding(mtl::TextureSlot slot, TextureBinding &out_binding) const;
             void ClearTextureBinding(mtl::TextureSlot slot);
 
+            bool SatisfiesContract(const mtl::BindingContract &contract, const char *contract_owner_name = nullptr) const;
             bool HasRequiredContractBindings() const;
         };
     }//namespace graph

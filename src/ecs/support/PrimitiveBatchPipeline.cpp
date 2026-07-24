@@ -676,17 +676,17 @@ namespace hgl::ecs
             if (!item || !item->isVisible)
                 continue;
 
-            if (auto *binding_set = item->GetDescriptorBindingSet())
-            {
-                if (!binding_set->HasRequiredContractBindings())
-                    continue;
-            }
-
             auto* material = item->GetMaterial();
             auto* pipeline = item->GetPipeline();
 
             if (!material || !pipeline)
                 continue;
+
+            if (auto *binding_set = item->GetDescriptorBindingSet())
+            {
+                if (!binding_set->SatisfiesContract(material->GetBindingContract(), material->GetName().c_str()))
+                    continue;
+            }
 
             uint64_t program_signature = 0;
             uint64_t binding_signature = 0;

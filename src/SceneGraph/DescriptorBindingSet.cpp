@@ -134,12 +134,12 @@ namespace hgl::graph
         texture_bindings[index] = {};
     }
 
-    bool DescriptorBindingSet::HasRequiredContractBindings() const
+    bool DescriptorBindingSet::SatisfiesContract(const mtl::BindingContract &contract, const char *contract_owner_name) const
     {
-        if (!material)
-            return false;
+        const char *owner_name = (contract_owner_name && *contract_owner_name)
+                               ? contract_owner_name
+                               : (material ? material->GetName().c_str() : "<unknown>");
 
-        const auto &contract = material->GetBindingContract();
         for (const auto &req : contract.requirements)
         {
             if (!req.required)
@@ -157,7 +157,7 @@ namespace hgl::graph
                     GLogError("[DBS] Missing required SSBO binding, semantic=%s ssbo_type=%u material=%s",
                               mtl::GetDescriptorSemanticName(req.semantic),
                               uint32_t(req.ssbo_type),
-                              material->GetName().c_str());
+                              owner_name);
                     return false;
                 }
 
@@ -167,7 +167,7 @@ namespace hgl::graph
                               mtl::GetDescriptorSemanticName(req.semantic),
                               req.ssbo_id,
                               binding.ssbo_id,
-                              material->GetName().c_str());
+                              owner_name);
                     return false;
                 }
                 break;
@@ -181,7 +181,7 @@ namespace hgl::graph
                     GLogError("[DBS] Missing required texture binding, semantic=%s texture_slot=%u material=%s",
                               mtl::GetDescriptorSemanticName(req.semantic),
                               uint32_t(req.texture_slot),
-                              material->GetName().c_str());
+                              owner_name);
                     return false;
                 }
 
@@ -189,14 +189,14 @@ namespace hgl::graph
                 {
                     GLogError("[DBS] Required texture is null, texture_slot=%u material=%s",
                               uint32_t(req.texture_slot),
-                              material->GetName().c_str());
+                              owner_name);
                     return false;
                 }
                 if (req.semantic == mtl::DescriptorSemantic::MaterialSampler && !binding.sampler)
                 {
                     GLogError("[DBS] Required sampler is null, texture_slot=%u material=%s",
                               uint32_t(req.texture_slot),
-                              material->GetName().c_str());
+                              owner_name);
                     return false;
                 }
                 break;
@@ -207,5 +207,13 @@ namespace hgl::graph
         }
 
         return true;
+    }
+
+    bool DescriptorBindingSet::HasRequiredContractBindings() const
+    {
+        if (!material)
+            return false;
+
+        return SatisfiesContract(material->GetBindingContract(), material->GetName().c_str());
     }
 }
