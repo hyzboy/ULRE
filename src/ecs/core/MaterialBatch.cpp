@@ -64,6 +64,7 @@ namespace hgl::ecs
         draw_batches_count = 0;
         texture_slot_handles.fill(0);
         has_texture_slot_handles = false;
+        descriptor_bind_valid = true;
 
         has_batch_descriptor_overrides = false;
         for (size_t i = 0; i < graph::DESCRIPTOR_SET_TYPE_COUNT; ++i)

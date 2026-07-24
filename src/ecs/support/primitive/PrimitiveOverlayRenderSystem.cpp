@@ -51,6 +51,9 @@ namespace hgl::ecs
             if (!batch || batch->items.empty())
                 continue;
 
+            if (!batch->descriptor_bind_valid)
+                continue;
+
             if (!IsOverlayLikeBatch(batch))
                 continue;
 
