@@ -198,6 +198,9 @@ Primitive *DirectCreatePrimitive(Geometry *geom,DescriptorBindingSet *dbs,Pipeli
     if(!material||!vil)
         return(nullptr);
 
+    if(!dbs->HasRequiredContractBindings())
+        return(nullptr);
+
     if(*vil!=*p->GetVIL())
         return(nullptr);
 

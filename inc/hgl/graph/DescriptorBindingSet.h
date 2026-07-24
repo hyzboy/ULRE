@@ -56,6 +56,8 @@ namespace hgl
             bool SetTextureBinding(mtl::TextureSlot slot, Texture *texture, Sampler *sampler = nullptr);
             bool GetTextureBinding(mtl::TextureSlot slot, TextureBinding &out_binding) const;
             void ClearTextureBinding(mtl::TextureSlot slot);
+
+            bool HasRequiredContractBindings() const;
         };
     }//namespace graph
 }//namespace hgl

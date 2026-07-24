@@ -1,5 +1,6 @@
 #include <hgl/graph/DescriptorBindingSet.h>
 #include <hgl/vk/VKMaterial.h>
+#include <hgl/log/Log.h>
 
 namespace hgl::graph
 {
@@ -131,5 +132,80 @@ namespace hgl::graph
             return;
 
         texture_bindings[index] = {};
+    }
+
+    bool DescriptorBindingSet::HasRequiredContractBindings() const
+    {
+        if (!material)
+            return false;
+
+        const auto &contract = material->GetBindingContract();
+        for (const auto &req : contract.requirements)
+        {
+            if (!req.required)
+                continue;
+
+            switch (req.semantic)
+            {
+            case mtl::DescriptorSemantic::MaterialInstance:
+            case mtl::DescriptorSemantic::MaterialTextureLayerTable:
+            case mtl::DescriptorSemantic::MaterialDataIndexTable:
+            {
+                SSBOBinding binding;
+                if (!GetSSBOBinding(req.ssbo_type, binding))
+                {
+                    GLogError("[DBS] Missing required SSBO binding, semantic=%s ssbo_type=%u material=%s",
+                              mtl::GetDescriptorSemanticName(req.semantic),
+                              uint32_t(req.ssbo_type),
+                              material->GetName().c_str());
+                    return false;
+                }
+
+                if (binding.ssbo_id != req.ssbo_id)
+                {
+                    GLogError("[DBS] SSBO id mismatch, semantic=%s expected=%u actual=%u material=%s",
+                              mtl::GetDescriptorSemanticName(req.semantic),
+                              req.ssbo_id,
+                              binding.ssbo_id,
+                              material->GetName().c_str());
+                    return false;
+                }
+                break;
+            }
+            case mtl::DescriptorSemantic::MaterialTexture:
+            case mtl::DescriptorSemantic::MaterialSampler:
+            {
+                TextureBinding binding;
+                if (!GetTextureBinding(req.texture_slot, binding))
+                {
+                    GLogError("[DBS] Missing required texture binding, semantic=%s texture_slot=%u material=%s",
+                              mtl::GetDescriptorSemanticName(req.semantic),
+                              uint32_t(req.texture_slot),
+                              material->GetName().c_str());
+                    return false;
+                }
+
+                if (req.semantic == mtl::DescriptorSemantic::MaterialTexture && !binding.texture)
+                {
+                    GLogError("[DBS] Required texture is null, texture_slot=%u material=%s",
+                              uint32_t(req.texture_slot),
+                              material->GetName().c_str());
+                    return false;
+                }
+                if (req.semantic == mtl::DescriptorSemantic::MaterialSampler && !binding.sampler)
+                {
+                    GLogError("[DBS] Required sampler is null, texture_slot=%u material=%s",
+                              uint32_t(req.texture_slot),
+                              material->GetName().c_str());
+                    return false;
+                }
+                break;
+            }
+            default:
+                break;
+            }
+        }
+
+        return true;
     }
 }
