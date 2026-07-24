@@ -149,7 +149,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        primitive = primitive_manager->CreatePrimitive(geometry, binding_set ? binding_set->GetMaterial() : nullptr, binding_set, pipeline);
+        primitive = primitive_manager->CreatePrimitive(geometry, material, binding_set, pipeline);
         return primitive != nullptr;
     }
 

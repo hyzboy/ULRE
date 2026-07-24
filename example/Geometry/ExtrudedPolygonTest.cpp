@@ -212,7 +212,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        Primitive *mesh = primitive_manager->CreatePrimitive(geometry, dbs ? dbs->GetMaterial() : nullptr, dbs, pipeline);
+        Primitive *mesh = primitive_manager->CreatePrimitive(geometry, material, dbs, pipeline);
         if(!mesh)
             return false;
 

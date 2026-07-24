@@ -144,7 +144,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        Primitive *ri=primitive_manager->CreatePrimitive(geom_plane_grid,dbs ? dbs->GetMaterial() : nullptr,dbs,pipeline);
+        Primitive *ri=primitive_manager->CreatePrimitive(geom_plane_grid,material,dbs,pipeline);
 
         if(!ri)
             return false;

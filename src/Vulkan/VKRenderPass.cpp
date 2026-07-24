@@ -58,9 +58,9 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,con
     request.pipeline_cache = pipeline_cache;
     request.render_pass = render_pass;
     request.subpass = 0;
-    request.color_formats = color_formats.GetData();
-    request.color_attachment_count = color_formats.GetCount();
-    request.depth_stencil_format = depth_format;
+    request.frame_output.color_formats = color_formats.GetData();
+    request.frame_output.color_attachment_count = color_formats.GetCount();
+    request.frame_output.depth_stencil_format = depth_format;
     request.debug_name = &name;
     request.pipeline_data = pd;
     request.shader_stages = &ssci_list;

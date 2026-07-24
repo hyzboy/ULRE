@@ -707,7 +707,7 @@ private:
 
             base_primitives[i] = primitive_manager->CreatePrimitive(
                 builtin_geometries[i],
-                sphere_binding[0][i] ? sphere_binding[0][i]->GetMaterial() : nullptr,
+                material,
                 sphere_binding[0][i],
                 pipeline);
 

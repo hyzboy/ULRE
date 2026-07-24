@@ -102,19 +102,132 @@ namespace hgl::graph
                 return 0;
 
             uint64_t hash = hgl::hash::FNV1aInit<uint64_t>();
-            if(pd->multi_sample)
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->multi_sample->rasterizationSamples);
-            if(pd->depth_stencil)
-                hash = hgl::hash::FNV1aAppendBytes(hash, pd->depth_stencil, sizeof(VkPipelineDepthStencilStateCreateInfo));
+
+            const bool has_multisample = pd->multi_sample != nullptr;
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, has_multisample);
+            if(has_multisample)
+            {
+                const VkPipelineMultisampleStateCreateInfo *ms = pd->multi_sample;
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ms->flags);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ms->rasterizationSamples);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ms->sampleShadingEnable);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ms->minSampleShading);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ms->alphaToCoverageEnable);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ms->alphaToOneEnable);
+
+                const uint32_t sample_count = static_cast<uint32_t>(ms->rasterizationSamples);
+                const uint32_t sample_mask_word_count = (sample_count + 31u) / 32u;
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, sample_mask_word_count);
+
+                if(sample_mask_word_count > 0 && ms->pSampleMask)
+                    hash = hgl::hash::FNV1aAppendBytes(hash, ms->pSampleMask, sizeof(VkSampleMask) * sample_mask_word_count);
+            }
+
+            const bool has_depth_stencil = pd->depth_stencil != nullptr;
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, has_depth_stencil);
+            if(has_depth_stencil)
+            {
+                const VkPipelineDepthStencilStateCreateInfo *ds = pd->depth_stencil;
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->flags);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->depthTestEnable);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->depthWriteEnable);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->depthCompareOp);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->depthBoundsTestEnable);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->stencilTestEnable);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->front.failOp);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->front.passOp);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->front.depthFailOp);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->front.compareOp);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->front.compareMask);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->front.writeMask);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->front.reference);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->back.failOp);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->back.passOp);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->back.depthFailOp);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->back.compareOp);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->back.compareMask);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->back.writeMask);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->back.reference);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->minDepthBounds);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->maxDepthBounds);
+            }
+
+            const bool has_color_blend = pd->color_blend != nullptr;
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, has_color_blend);
             if(pd->color_blend)
             {
                 hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->color_blend->attachmentCount);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->color_blend->flags);
                 hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->color_blend->logicOpEnable);
                 hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->color_blend->logicOp);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->color_blend->blendConstants[0]);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->color_blend->blendConstants[1]);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->color_blend->blendConstants[2]);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->color_blend->blendConstants[3]);
             }
             if(pd->color_blend_attachments && pd->color_blend)
                 hash = hgl::hash::FNV1aAppendBytes(hash, pd->color_blend_attachments, sizeof(VkPipelineColorBlendAttachmentState) * pd->color_blend->attachmentCount);
             return hash;
+        }
+
+        struct FinalPipelineCacheEntry
+        {
+            VulkanDevice *device = nullptr;
+            VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
+            FinalPipelineKey key{};
+            VkPipeline pipeline = VK_NULL_HANDLE;
+
+            bool operator == (const FinalPipelineCacheEntry &rhs) const
+            {
+                return device == rhs.device
+                    && pipeline_layout == rhs.pipeline_layout
+                    && key == rhs.key
+                    && pipeline == rhs.pipeline;
+            }
+        };
+
+        ValueArray<FinalPipelineCacheEntry> g_final_pipeline_cache;
+
+        bool TryGetCachedFinalPipeline(const FinalPipelineResolveRequest &request,
+                                       const FinalPipelineKey &key,
+                                       VkPipeline &out_pipeline)
+        {
+            if(!request.device || request.pipeline_layout == VK_NULL_HANDLE)
+                return false;
+
+            const int count = g_final_pipeline_cache.GetCount();
+            for(int i = 0; i < count; ++i)
+            {
+                const FinalPipelineCacheEntry &entry = g_final_pipeline_cache[i];
+                if(entry.device != request.device)
+                    continue;
+                if(entry.pipeline_layout != request.pipeline_layout)
+                    continue;
+                if(!(entry.key == key))
+                    continue;
+                if(entry.pipeline == VK_NULL_HANDLE)
+                    continue;
+
+                out_pipeline = entry.pipeline;
+                return true;
+            }
+
+            return false;
+        }
+
+        void CacheFinalPipeline(const FinalPipelineResolveRequest &request,
+                                const FinalPipelineKey &key,
+                                VkPipeline pipeline)
+        {
+            if(!request.device || request.pipeline_layout == VK_NULL_HANDLE || pipeline == VK_NULL_HANDLE)
+                return;
+
+            FinalPipelineCacheEntry entry{};
+            entry.device = request.device;
+            entry.pipeline_layout = request.pipeline_layout;
+            entry.key = key;
+            entry.pipeline = pipeline;
+            g_final_pipeline_cache.Add(entry);
         }
     }
 
@@ -177,11 +290,11 @@ namespace hgl::graph
         out_key.fs.shader_program_hash = HashShaderStages(request.shader_stages);
         out_key.fs.variant_hash = request.debug_name ? HashBytes(request.debug_name->c_str(), request.debug_name->Length()) : 0;
 
-        out_key.fo.color_attachment_count = request.color_attachment_count;
-        out_key.fo.color_formats_hash = (request.color_formats && request.color_attachment_count > 0)
-                                      ? HashBytes(request.color_formats, sizeof(VkFormat) * request.color_attachment_count)
+        out_key.fo.color_attachment_count = request.frame_output.color_attachment_count;
+        out_key.fo.color_formats_hash = (request.frame_output.color_formats && request.frame_output.color_attachment_count > 0)
+                                      ? HashBytes(request.frame_output.color_formats, sizeof(VkFormat) * request.frame_output.color_attachment_count)
                                       : 0;
-        out_key.fo.depth_stencil_format = request.depth_stencil_format;
+        out_key.fo.depth_stencil_format = request.frame_output.depth_stencil_format;
         out_key.fo.output_state_hash = HashFragmentOutputState(request.pipeline_data);
         if(request.pipeline_data && request.pipeline_data->multi_sample)
             out_key.fo.sample_count = static_cast<uint32_t>(request.pipeline_data->multi_sample->rasterizationSamples);
@@ -213,7 +326,7 @@ namespace hgl::graph
         PipelineData *pd = request.pipeline_data;
         pd->InitShaderStage(*request.shader_stages);
         pd->InitVertexInputState(request.vertex_input_layout);
-        pd->SetColorAttachments(request.color_attachment_count);
+        pd->SetColorAttachments(request.frame_output.color_attachment_count);
         pd->pipeline_info.layout = request.pipeline_layout;
         pd->pipeline_info.renderPass = request.render_pass;
         pd->pipeline_info.subpass = request.subpass;
@@ -237,14 +350,23 @@ namespace hgl::graph
         if(!HasCompleteFinalKey(out_result.key))
             return false;
 
+        if(TryGetCachedFinalPipeline(request, out_result.key, out_result.pipeline))
+            return true;
+
         switch(out_result.materialize_mode)
         {
         case PipelineMaterializeMode::GraphicsPipelineLibrary:
             // Phase 1 skeleton: route through the same monolithic materialization until GPL caches/linking land.
-            return MaterializeMonolithic(request, out_result.pipeline);
+            if(!MaterializeMonolithic(request, out_result.pipeline))
+                return false;
+            CacheFinalPipeline(request, out_result.key, out_result.pipeline);
+            return true;
         case PipelineMaterializeMode::Monolithic:
         default:
-            return MaterializeMonolithic(request, out_result.pipeline);
+            if(!MaterializeMonolithic(request, out_result.pipeline))
+                return false;
+            CacheFinalPipeline(request, out_result.key, out_result.pipeline);
+            return true;
         }
     }
 }//namespace hgl::graph

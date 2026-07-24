@@ -341,7 +341,7 @@ private:
         // === 创建12个刻度（Static Transform） ===
         for (uint i = 0; i < TICK_COUNT; i++)
         {
-            ticks[i].primitive = primitive_manager->CreatePrimitive(geometry, tick_binding_set ? tick_binding_set->GetMaterial() : nullptr, tick_binding_set, pipeline);
+            ticks[i].primitive = primitive_manager->CreatePrimitive(geometry, material, tick_binding_set, pipeline);
 
             if (!ticks[i].primitive)
             {

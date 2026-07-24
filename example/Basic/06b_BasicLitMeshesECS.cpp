@@ -315,7 +315,7 @@ private:
 
         geometry_manager->Add(geometry);
 
-        Primitive* primitive = primitive_manager->CreatePrimitive(geometry, binding_set ? binding_set->GetMaterial() : nullptr, binding_set, pipeline);
+        Primitive* primitive = primitive_manager->CreatePrimitive(geometry, material, binding_set, pipeline);
         if (!primitive)
             return nullptr;
 

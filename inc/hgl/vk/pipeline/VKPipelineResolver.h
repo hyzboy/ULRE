@@ -74,6 +74,13 @@ namespace hgl::graph
         }
     };
 
+    struct FrameOutputConfig
+    {
+        const VkFormat *color_formats = nullptr;
+        uint32_t color_attachment_count = 0;
+        VkFormat depth_stencil_format = VK_FORMAT_UNDEFINED;
+    };
+
     struct FinalPipelineKey
     {
         VertexInterfaceKey vi;
@@ -106,9 +113,7 @@ namespace hgl::graph
         VkRenderPass render_pass = VK_NULL_HANDLE;
         uint32_t subpass = 0;
 
-        const VkFormat *color_formats = nullptr;
-        uint32_t color_attachment_count = 0;
-        VkFormat depth_stencil_format = VK_FORMAT_UNDEFINED;
+        FrameOutputConfig frame_output{};
 
         const AnsiString *debug_name = nullptr;
         PipelineData *pipeline_data = nullptr;

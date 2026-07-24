@@ -315,7 +315,7 @@ public:
 
         gm->Add(geometry);
 
-        primitive = pm->CreatePrimitive(geometry, binding_set ? binding_set->GetMaterial() : nullptr, binding_set, pipeline);
+        primitive = pm->CreatePrimitive(geometry, mtl, binding_set, pipeline);
         if (!primitive)
             return LogStageFail("OffscreenPass::BuildSphere", "CreatePrimitive failed");
 
