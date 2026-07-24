@@ -1260,10 +1260,47 @@ namespace hgl::ecs
             }
             case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
             {
+                uint32_t resolved_ssbo_id = req.ssbo_id;
+                bool found_binding_set = false;
+                bool inconsistent_binding_set = false;
+
+                if (batch)
+                {
+                    for (RenderItem *item : batch->items)
+                    {
+                        if (!item)
+                            continue;
+
+                        auto *binding_set = item->GetDescriptorBindingSet();
+                        if (!binding_set || !binding_set->HasSSBOBinding(req.ssbo_type))
+                            continue;
+
+                        const uint32_t ssbo_id = binding_set->GetSSBOID(req.ssbo_type);
+                        if (!found_binding_set)
+                        {
+                            resolved_ssbo_id = ssbo_id;
+                            found_binding_set = true;
+                        }
+                        else if (resolved_ssbo_id != ssbo_id)
+                        {
+                            inconsistent_binding_set = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (inconsistent_binding_set)
+                {
+                    log_missing_ssbo_once(material, req, "mixed descriptor binding sets in one batch", static_cast<int32_t>(req.texture_slot));
+                    if (batch && req.required)
+                        batch->descriptor_bind_valid = false;
+                    break;
+                }
+
                 const graph::IGPUBuffer *table_buffer = resolve_domain_ssbo(
                     graph::mtl::SSBOAddress{
                         req.ssbo_type,
-                        req.ssbo_id,
+                        resolved_ssbo_id,
                         static_cast<uint32_t>(req.texture_slot)},
                     "MaterialTextureLayerTable");
 
@@ -1282,6 +1319,43 @@ namespace hgl::ecs
             }
             case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
             {
+                uint32_t resolved_ssbo_id = req.ssbo_id;
+                bool found_binding_set = false;
+                bool inconsistent_binding_set = false;
+
+                if (batch)
+                {
+                    for (RenderItem *item : batch->items)
+                    {
+                        if (!item)
+                            continue;
+
+                        auto *binding_set = item->GetDescriptorBindingSet();
+                        if (!binding_set || !binding_set->HasSSBOBinding(req.ssbo_type))
+                            continue;
+
+                        const uint32_t ssbo_id = binding_set->GetSSBOID(req.ssbo_type);
+                        if (!found_binding_set)
+                        {
+                            resolved_ssbo_id = ssbo_id;
+                            found_binding_set = true;
+                        }
+                        else if (resolved_ssbo_id != ssbo_id)
+                        {
+                            inconsistent_binding_set = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (inconsistent_binding_set)
+                {
+                    log_missing_ssbo_once(material, req, "mixed descriptor binding sets in one batch", static_cast<int32_t>(req.data_slot));
+                    if (batch && req.required)
+                        batch->descriptor_bind_valid = false;
+                    break;
+                }
+
                 const graph::IGPUBuffer *table_buffer = nullptr;
 
                 // Prefer per-batch DataIndex rows SSBO (written in draw order by PrimitiveBatchPipeline).
@@ -1294,7 +1368,7 @@ namespace hgl::ecs
                     table_buffer = resolve_domain_ssbo(
                         graph::mtl::SSBOAddress{
                             req.ssbo_type,
-                            req.ssbo_id,
+                            resolved_ssbo_id,
                             static_cast<uint32_t>(req.data_slot)},
                         "MaterialDataIndexTable");
                 }
