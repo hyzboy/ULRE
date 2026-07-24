@@ -9,9 +9,9 @@ namespace hgl::graph
 
         // Reversed-Z infinite far plane projection matrix (Vulkan NDC: depth [0,1])
         // Maps: near → 1.0, ∞ → 0.0
-        // Signs match PerspectiveMatrix convention (negative X & Y for engine coordinate system)
+        // Signs match PerspectiveMatrix convention (positive X, negative Y for this engine)
         Matrix4f m(0.0f);
-        m[0][0] = -f / aspect;
+        m[0][0] = f / aspect;
         m[1][1] = -f;
         m[2][2] = 0.0f;
         m[2][3] = -1.0f;

@@ -109,7 +109,7 @@ PipelineData::PipelineData(const uint32_t color_attachment_count)
     rasterization->rasterizerDiscardEnable = VK_FALSE;
     rasterization->polygonMode = VK_POLYGON_MODE_FILL;
     rasterization->cullMode = VK_CULL_MODE_BACK_BIT;
-    rasterization->frontFace = VK_FRONT_FACE_CLOCKWISE;
+    rasterization->frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterization->depthBiasEnable = VK_FALSE;
     rasterization->depthBiasConstantFactor = 0;
     rasterization->depthBiasClamp = 0;
