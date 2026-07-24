@@ -266,7 +266,10 @@ private:
             return false;
         geometry_manager->Add(geometry);
 
-        mesh_rect = primitive_manager->CreatePrimitive(geometry, render_obj[0].dbs, pipeline);
+        mesh_rect = primitive_manager->CreatePrimitive(geometry,
+                                                       render_obj[0].dbs ? render_obj[0].dbs->GetMaterial() : nullptr,
+                                                       render_obj[0].dbs,
+                                                       pipeline);
 
         if(!mesh_rect)
             return(false);

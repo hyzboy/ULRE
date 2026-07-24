@@ -375,7 +375,10 @@ private:
 
         geometry_manager->Add(geometry);
 
-        Primitive* primitive = primitive_manager->CreatePrimitive(geometry, material_binding, pipeline);
+        Primitive* primitive = primitive_manager->CreatePrimitive(geometry,
+                                                                  material_binding ? material_binding->GetMaterial() : nullptr,
+                                                                  material_binding,
+                                                                  pipeline);
         if (!primitive)
             return nullptr;
 
@@ -491,7 +494,10 @@ private:
             if (!primitive_manager)
                 return false;
 
-            Primitive* sky_primitive = primitive_manager->CreatePrimitive(sky_geometry, sky_binding, sky_pipeline);
+            Primitive* sky_primitive = primitive_manager->CreatePrimitive(sky_geometry,
+                                                                          sky_binding ? sky_binding->GetMaterial() : nullptr,
+                                                                          sky_binding,
+                                                                          sky_pipeline);
             if (!sky_primitive)
                 return false;
 

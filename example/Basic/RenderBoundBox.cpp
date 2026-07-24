@@ -320,7 +320,10 @@ private:
         if (!primitive_manager)
             return nullptr;
 
-        Primitive *primitive = primitive_manager->CreatePrimitive(geometry, md->dbs[color], md->pipeline);
+        Primitive *primitive = primitive_manager->CreatePrimitive(geometry,
+                                                                  md->dbs[color] ? md->dbs[color]->GetMaterial() : nullptr,
+                                                                  md->dbs[color],
+                                                                  md->pipeline);
 
         if(!primitive)
             return nullptr;
@@ -619,7 +622,10 @@ private:
         if (!primitive_manager)
             return false;
 
-        bbox_primitive = primitive_manager->CreatePrimitive(bbox_geometry, wire.dbs[5], wire.pipeline);
+        bbox_primitive = primitive_manager->CreatePrimitive(bbox_geometry,
+                                                            wire.dbs[5] ? wire.dbs[5]->GetMaterial() : nullptr,
+                                                            wire.dbs[5],
+                                                            wire.pipeline);
         return bbox_primitive != nullptr;
     }
 
@@ -807,4 +813,3 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Render Bounding Box (ECS)"),argc,argv,1280,720);
 }
-

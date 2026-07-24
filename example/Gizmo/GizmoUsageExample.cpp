@@ -174,7 +174,7 @@ private:
 
             geometry_manager->Add(grid_geometry);
 
-            grid_primitive = primitive_manager->CreatePrimitive(grid_geometry, grid_dbs, grid_pipeline);
+            grid_primitive = primitive_manager->CreatePrimitive(grid_geometry, grid_dbs ? grid_dbs->GetMaterial() : nullptr, grid_dbs, grid_pipeline);
             if(!grid_primitive)
                 return false;
         }
@@ -234,7 +234,7 @@ private:
 
             geometry_manager->Add(cube_geometry);
 
-            cube_primitive = primitive_manager->CreatePrimitive(cube_geometry, cube_dbs, cube_pipeline);
+            cube_primitive = primitive_manager->CreatePrimitive(cube_geometry, cube_dbs ? cube_dbs->GetMaterial() : nullptr, cube_dbs, cube_pipeline);
             if(!cube_primitive)
                 return false;
         }

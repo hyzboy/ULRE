@@ -227,7 +227,7 @@ private:
         transform->SetLocalScale(glm::vec3(scale, scale, scale));
         transform->SetMovable(animate);
 
-        auto prim = primitive_manager->CreatePrimitive(geometry, dbs, pipeline);
+        auto prim = primitive_manager->CreatePrimitive(geometry, dbs ? dbs->GetMaterial() : nullptr, dbs, pipeline);
         if (!prim)
             return nullptr;
 
@@ -402,7 +402,6 @@ int os_main(int argc, os_char **argv)
 {
     return RunFramework<RecursiveCubeApp>(OS_TEXT("Recursive Cube (ECS)"), argc, argv, 1280, 720);
 }
-
 
 
 

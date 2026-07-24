@@ -30,7 +30,6 @@ private:
 
     friend Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,Pipeline *);
     friend Primitive *DirectCreatePrimitive(Geometry *,Material *,DescriptorBindingSet *,Pipeline *);
-    friend Primitive *DirectCreatePrimitive(Geometry *,DescriptorBindingSet *,Pipeline *);
 
     Primitive(Geometry *,MaterialInstance *,Pipeline *,GeometryDataBuffer *);
     Primitive(Geometry *,DescriptorBindingSet *,Pipeline *,GeometryDataBuffer *);
@@ -77,7 +76,6 @@ public:
 
 Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,Pipeline *);
 Primitive *DirectCreatePrimitive(Geometry *,Material *,DescriptorBindingSet *,Pipeline *);
-Primitive *DirectCreatePrimitive(Geometry *,DescriptorBindingSet *,Pipeline *);
 
 // Pre-flight compatibility check: matches geometry vertex format against the
 // material's VIL and returns the full failure summary without creating a primitive.

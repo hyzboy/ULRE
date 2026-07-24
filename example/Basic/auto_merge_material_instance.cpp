@@ -204,7 +204,10 @@ private:
             if (!primitive_manager)
                 return false;
 
-            triangles[i].primitive = primitive_manager->CreatePrimitive(geometry, triangles[i].dbs, pipeline);
+            triangles[i].primitive = primitive_manager->CreatePrimitive(geometry,
+                                                                        triangles[i].dbs ? triangles[i].dbs->GetMaterial() : nullptr,
+                                                                        triangles[i].dbs,
+                                                                        pipeline);
 
             if (!triangles[i].primitive)
             {

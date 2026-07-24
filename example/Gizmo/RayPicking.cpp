@@ -338,7 +338,10 @@ private:
             if (!primitive_manager)
                 return false;
 
-            Primitive* prim_plane = primitive_manager->CreatePrimitive(geom_plane_grid, dbs_plane_grid, pipeline_plane_grid);
+            Primitive* prim_plane = primitive_manager->CreatePrimitive(geom_plane_grid,
+                                                                       dbs_plane_grid ? dbs_plane_grid->GetMaterial() : nullptr,
+                                                                       dbs_plane_grid,
+                                                                       pipeline_plane_grid);
             if(!prim_plane)
                 return false;
 
@@ -364,7 +367,10 @@ private:
             if (!primitive_manager)
                 return false;
 
-            prim_line = primitive_manager->CreatePrimitive(geom_line, dbs_line, pipeline_line);
+            prim_line = primitive_manager->CreatePrimitive(geom_line,
+                                                           dbs_line ? dbs_line->GetMaterial() : nullptr,
+                                                           dbs_line,
+                                                           pipeline_line);
             if(!prim_line)
                 return false;
 

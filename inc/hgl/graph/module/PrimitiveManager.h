@@ -45,8 +45,6 @@ public: // Create
     Primitive *CreatePrimitive(GeometryCreater *pc, MaterialInstance *mi, Pipeline *p);
     Primitive *CreatePrimitive(Geometry *r, Material *material, DescriptorBindingSet *dbs, Pipeline *p);
     Primitive *CreatePrimitive(GeometryCreater *pc, Material *material, DescriptorBindingSet *dbs, Pipeline *p);
-    Primitive *CreatePrimitive(Geometry *r, DescriptorBindingSet *dbs, Pipeline *p);
-    Primitive *CreatePrimitive(GeometryCreater *pc, DescriptorBindingSet *dbs, Pipeline *p);
 };
 
 }//namespace hgl::graph

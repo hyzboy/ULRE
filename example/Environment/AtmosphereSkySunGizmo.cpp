@@ -134,7 +134,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        Primitive *ri = primitive_manager->CreatePrimitive(prim_sky_sphere, sky_dbs, mtl_pipeline);
+        Primitive *ri = primitive_manager->CreatePrimitive(prim_sky_sphere, sky_dbs ? sky_dbs->GetMaterial() : nullptr, sky_dbs, mtl_pipeline);
         if(!ri)
             return false;
 

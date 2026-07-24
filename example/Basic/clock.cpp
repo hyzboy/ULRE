@@ -341,7 +341,7 @@ private:
         // === 创建12个刻度（Static Transform） ===
         for (uint i = 0; i < TICK_COUNT; i++)
         {
-            ticks[i].primitive = primitive_manager->CreatePrimitive(geometry, tick_binding_set, pipeline);
+            ticks[i].primitive = primitive_manager->CreatePrimitive(geometry, tick_binding_set ? tick_binding_set->GetMaterial() : nullptr, tick_binding_set, pipeline);
 
             if (!ticks[i].primitive)
             {
@@ -389,7 +389,10 @@ private:
 
         for (uint i = 0; i < 3; i++)
         {
-            hands[i].primitive = primitive_manager->CreatePrimitive(geometry, hand_binding_sets[i], pipeline);
+            hands[i].primitive = primitive_manager->CreatePrimitive(geometry,
+                                                                    hand_binding_sets[i] ? hand_binding_sets[i]->GetMaterial() : nullptr,
+                                                                    hand_binding_sets[i],
+                                                                    pipeline);
 
             if (!hands[i].primitive)
             {
@@ -524,4 +527,3 @@ int os_main(int argc, os_char** argv)
 {
     return RunFramework<ClockApp>(OS_TEXT("Clock (Static and Movable Transform Separation with ECS)"), argc, argv, 1024, 1024);
 }
-

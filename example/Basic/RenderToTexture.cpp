@@ -315,7 +315,7 @@ public:
 
         gm->Add(geometry);
 
-        primitive = pm->CreatePrimitive(geometry, binding_set, pipeline);
+        primitive = pm->CreatePrimitive(geometry, binding_set ? binding_set->GetMaterial() : nullptr, binding_set, pipeline);
         if (!primitive)
             return LogStageFail("OffscreenPass::BuildSphere", "CreatePrimitive failed");
 
@@ -549,7 +549,10 @@ private:
 
         gm->Add(cube_geometry);
 
-        cube_primitive = pm->CreatePrimitive(cube_geometry, cube_binding_set, cube_pipeline);
+        cube_primitive = pm->CreatePrimitive(cube_geometry,
+                                             cube_binding_set ? cube_binding_set->GetMaterial() : nullptr,
+                                             cube_binding_set,
+                                             cube_pipeline);
         if (!cube_primitive)
             return LogStageFail("RenderToTextureApp::CreateCube", "CreatePrimitive failed");
 

@@ -706,7 +706,10 @@ private:
             }
 
             base_primitives[i] = primitive_manager->CreatePrimitive(
-                builtin_geometries[i], sphere_binding[0][i], pipeline);
+                builtin_geometries[i],
+                sphere_binding[0][i] ? sphere_binding[0][i]->GetMaterial() : nullptr,
+                sphere_binding[0][i],
+                pipeline);
 
             if (!base_primitives[i]) {
                 printf("[ERROR] CreateBasePrimitives: Failed to create primitive %u\n", i);

@@ -188,11 +188,6 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
     return(new Primitive(geom,mi,p,geom_data_buffer));
 }
 
-Primitive *DirectCreatePrimitive(Geometry *geom,DescriptorBindingSet *dbs,Pipeline *p)
-{
-    return DirectCreatePrimitive(geom, dbs ? dbs->GetMaterial() : nullptr, dbs, p);
-}
-
 Primitive *DirectCreatePrimitive(Geometry *geom,Material *material,DescriptorBindingSet *dbs,Pipeline *p)
 {
     if(!geom||!material||!dbs||!p)return(nullptr);
