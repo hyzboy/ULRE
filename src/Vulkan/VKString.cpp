@@ -360,7 +360,7 @@ namespace
     template<> const Vk##VK_TYPE String2VkEnum(const char *str){return (Vk##VK_TYPE)Vk##VK_TYPE##ESL.to(str);}
 
     VK_ENUM_STRING_LIST(PolygonMode,        polygon_mode,   VK_POLYGON_MODE_FILL)
-    VK_ENUM_STRING_LIST(FrontFace,          front_face,     VK_FRONT_FACE_CLOCKWISE)
+    VK_ENUM_STRING_LIST(FrontFace,          front_face,     VK_FRONT_FACE_COUNTER_CLOCKWISE)
     VK_ENUM_STRING_LIST(StencilOp,          stencil_op,     VK_STENCIL_OP_KEEP)
     VK_ENUM_STRING_LIST(CompareOp,          compare_op,     VK_COMPARE_OP_NEVER)
     VK_ENUM_STRING_LIST(LogicOp,            logic_op,       VK_LOGIC_OP_CLEAR)
