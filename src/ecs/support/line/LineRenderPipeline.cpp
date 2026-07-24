@@ -96,6 +96,7 @@ namespace hgl::ecs
     bool LineRenderPipeline::LineWidthSlot::EnsureCapacity(
         uint32_t needed,
         graph::VulkanDevice*     dev,
+        graph::Material*         material,
         graph::DescriptorBindingSet* binding_set,
         graph::Pipeline*         p,
         uint32_t                 width)
@@ -124,7 +125,7 @@ namespace hgl::ecs
         if (!geometry)
             return false;
 
-        primitive = graph::DirectCreatePrimitive(geometry, binding_set, p);
+        primitive = graph::DirectCreatePrimitive(geometry, material, binding_set, p);
         if (!primitive)
         {
             GLogError("[LineRenderPipeline] DirectCreatePrimitive failed for descriptor binding path");
@@ -578,7 +579,7 @@ namespace hgl::ecs
         {
             if (slot_counts[i] == 0)
                 continue;
-            if (!slots_[i].EnsureCapacity(slot_counts[i], device_, binding_set_, pipeline_, i + 1))
+            if (!slots_[i].EnsureCapacity(slot_counts[i], device_, material_, binding_set_, pipeline_, i + 1))
             {
                 GLogWarning("[LineRenderPipeline] EnsureCapacity failed: slot=%u need=%u cap=%u",
                             i + 1,

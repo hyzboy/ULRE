@@ -108,6 +108,7 @@ namespace hgl::ecs
             void Clear();
             bool EnsureCapacity(uint32_t needed,
                                 graph::VulkanDevice*     dev,
+                                graph::Material*         material,
                                 graph::DescriptorBindingSet* binding_set,
                                 graph::Pipeline*         p,
                                 uint32_t                 width);
