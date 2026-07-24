@@ -12,16 +12,6 @@ namespace
     constexpr const char VERTEX_LUMINANCE_3D_MI_CODES[] = "vec4 Color;";
     constexpr const uint32_t VERTEX_LUMINANCE_3D_MI_BYTES = sizeof(hgl::math::Vector4f);
 
-    constexpr FixedVertexEntry VERTEX_LUMINANCE_3D_VERTEX_VEC3[] = {
-        { VK_FORMAT_R32G32B32_SFLOAT, VertexSemantic::Position },
-        { VK_FORMAT_R32_SFLOAT,       VertexSemantic::Luminance },
-    };
-
-    constexpr FixedVertexEntry VERTEX_LUMINANCE_3D_VERTEX_VEC2[] = {
-        { VK_FORMAT_R32G32_SFLOAT, VertexSemantic::Position },
-        { VK_FORMAT_R32_SFLOAT,    VertexSemantic::Luminance },
-    };
-
       constexpr FixedDescriptorEntry VERTEX_LUMINANCE_3D_DESCRIPTORS[] = {
         { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::UBO},
         { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera", "CameraInfo", nullptr, DescriptorSemantic::CameraInfo, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::UBO},
@@ -31,28 +21,6 @@ namespace
         { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl_data_index_rows", "DataIndexRows", nullptr, DescriptorSemantic::MaterialDataIndexTable, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO},
         { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl_texture_layer_rows", "TextureLayerRows", nullptr, DescriptorSemantic::MaterialTextureLayerTable, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO},
     };
-
-    constexpr FixedMaterialDef VERTEX_LUMINANCE_3D_DEF_VEC3 {
-        "VertexLuminance3D",
-        PrimitiveType::Triangles,
-        VERTEX_LUMINANCE_3D_VERTEX_VEC3,
-        uint32_t(sizeof(VERTEX_LUMINANCE_3D_VERTEX_VEC3) / sizeof(VERTEX_LUMINANCE_3D_VERTEX_VEC3[0])),
-        VERTEX_LUMINANCE_3D_DESCRIPTORS,
-        uint32_t(sizeof(VERTEX_LUMINANCE_3D_DESCRIPTORS) / sizeof(VERTEX_LUMINANCE_3D_DESCRIPTORS[0])),
-        VERTEX_LUMINANCE_3D_MI_CODES,
-        VERTEX_LUMINANCE_3D_MI_BYTES,
-    };
-
-    constexpr FixedMaterialDef VERTEX_LUMINANCE_3D_DEF_VEC2 {
-        "VertexLuminance3D",
-        PrimitiveType::Triangles,
-        VERTEX_LUMINANCE_3D_VERTEX_VEC2,
-        uint32_t(sizeof(VERTEX_LUMINANCE_3D_VERTEX_VEC2) / sizeof(VERTEX_LUMINANCE_3D_VERTEX_VEC2[0])),
-        VERTEX_LUMINANCE_3D_DESCRIPTORS,
-        uint32_t(sizeof(VERTEX_LUMINANCE_3D_DESCRIPTORS) / sizeof(VERTEX_LUMINANCE_3D_DESCRIPTORS[0])),
-        VERTEX_LUMINANCE_3D_MI_CODES,
-        VERTEX_LUMINANCE_3D_MI_BYTES,
-    };
 }
 
 MaterialCreateInfo *CreateVertexLuminance3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
@@ -61,10 +29,23 @@ MaterialCreateInfo *CreateVertexLuminance3D(const contract::PhysicalDeviceProfil
 
     const VkFormat position_format = ResolveMaterialPositionFormat(cfg, VK_FORMAT_R32G32B32_SFLOAT);
     const bool use_vec2_position = position_format == VK_FORMAT_R32G32_SFLOAT;
+    const VkFormat luminance_format = ResolveMaterialVertexSemanticFormat(cfg, VertexSemantic::Luminance, VK_FORMAT_R32_SFLOAT);
 
-    const FixedMaterialDef &fixed_def = use_vec2_position
-        ? VERTEX_LUMINANCE_3D_DEF_VEC2
-        : VERTEX_LUMINANCE_3D_DEF_VEC3;
+    FixedVertexEntry vertex_luminance_3d_vertex[] = {
+        { position_format,   VertexSemantic::Position },
+        { luminance_format,  VertexSemantic::Luminance },
+    };
+
+    FixedMaterialDef dynamic_def {
+        "VertexLuminance3D",
+        PrimitiveType::Triangles,
+        vertex_luminance_3d_vertex,
+        uint32_t(sizeof(vertex_luminance_3d_vertex) / sizeof(vertex_luminance_3d_vertex[0])),
+        VERTEX_LUMINANCE_3D_DESCRIPTORS,
+        uint32_t(sizeof(VERTEX_LUMINANCE_3D_DESCRIPTORS) / sizeof(VERTEX_LUMINANCE_3D_DESCRIPTORS[0])),
+        VERTEX_LUMINANCE_3D_MI_CODES,
+        VERTEX_LUMINANCE_3D_MI_BYTES,
+    };
 
     // 通过 CompositorAssembler 从 .glsl 模板文件组装 VS/FS
     CompositorAssembler assembler("ShaderLibrary");
@@ -93,7 +74,7 @@ MaterialCreateInfo *CreateVertexLuminance3D(const contract::PhysicalDeviceProfil
 
     MaterialCreateInfo *mci = CompileCompositorMaterial(
         profile,
-        fixed_def,
+        dynamic_def,
         result.vertex_glsl,
         result.fragment_glsl,
         cfg);
@@ -103,4 +84,3 @@ MaterialCreateInfo *CreateVertexLuminance3D(const contract::PhysicalDeviceProfil
     return mci;
 }
 }//namespace hgl::graph::mtl
-

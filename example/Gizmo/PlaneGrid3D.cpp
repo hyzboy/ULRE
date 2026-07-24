@@ -83,11 +83,7 @@ private:
         material = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg, plane_grid_gvf);
         if(!material)return(false);
 
-        VILConfig vil_config;
-
-        vil_config.Add(VAN::Luminance,VF_V1UN8);
-
-        material_vil = material->CreateVIL(&vil_config);
+        material_vil = material->CreateVIL(plane_grid_gvf);
         if(!material_vil)
             return false;
 

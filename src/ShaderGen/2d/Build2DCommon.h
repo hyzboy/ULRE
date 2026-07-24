@@ -134,6 +134,14 @@ inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Materi
     v.push_back({ position_format, VertexSemantic::Position });
 }
 
+inline void PushSemanticVertexEntry(std::vector<FixedVertexEntry> &v,
+                                    const Material2DCreateConfig *cfg,
+                                    const VertexSemantic semantic,
+                                    const VkFormat fallback_format)
+{
+    v.push_back({ ResolveMaterialVertexSemanticFormat(cfg, semantic, fallback_format), semantic });
+}
+
 // ─────────────────────────────────────────────────────────────
 // Common FixedDescriptorEntry builders
 // ─────────────────────────────────────────────────────────────

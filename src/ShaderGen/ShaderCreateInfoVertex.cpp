@@ -35,6 +35,27 @@ namespace {
     {
         switch (fmt)
         {
+        case VK_FORMAT_R8_UNORM:               out_basetype=VertexAttribBaseType::Float;  out_vec_size=1; return true;
+        case VK_FORMAT_R8G8_UNORM:             out_basetype=VertexAttribBaseType::Float;  out_vec_size=2; return true;
+        case VK_FORMAT_R8G8B8A8_UNORM:         out_basetype=VertexAttribBaseType::Float;  out_vec_size=4; return true;
+        case VK_FORMAT_R8_SNORM:               out_basetype=VertexAttribBaseType::Float;  out_vec_size=1; return true;
+        case VK_FORMAT_R8G8_SNORM:             out_basetype=VertexAttribBaseType::Float;  out_vec_size=2; return true;
+        case VK_FORMAT_R8G8B8A8_SNORM:         out_basetype=VertexAttribBaseType::Float;  out_vec_size=4; return true;
+        case VK_FORMAT_R8_UINT:                out_basetype=VertexAttribBaseType::UInt;   out_vec_size=1; return true;
+        case VK_FORMAT_R8G8_UINT:              out_basetype=VertexAttribBaseType::UInt;   out_vec_size=2; return true;
+        case VK_FORMAT_R8G8B8A8_UINT:          out_basetype=VertexAttribBaseType::UInt;   out_vec_size=4; return true;
+        case VK_FORMAT_R8_SINT:                out_basetype=VertexAttribBaseType::Int;    out_vec_size=1; return true;
+        case VK_FORMAT_R8G8_SINT:              out_basetype=VertexAttribBaseType::Int;    out_vec_size=2; return true;
+        case VK_FORMAT_R8G8B8A8_SINT:          out_basetype=VertexAttribBaseType::Int;    out_vec_size=4; return true;
+        case VK_FORMAT_R16_UNORM:              out_basetype=VertexAttribBaseType::Float;  out_vec_size=1; return true;
+        case VK_FORMAT_R16G16_UNORM:           out_basetype=VertexAttribBaseType::Float;  out_vec_size=2; return true;
+        case VK_FORMAT_R16G16B16A16_UNORM:     out_basetype=VertexAttribBaseType::Float;  out_vec_size=4; return true;
+        case VK_FORMAT_R16_SNORM:              out_basetype=VertexAttribBaseType::Float;  out_vec_size=1; return true;
+        case VK_FORMAT_R16G16_SNORM:           out_basetype=VertexAttribBaseType::Float;  out_vec_size=2; return true;
+        case VK_FORMAT_R16G16B16A16_SNORM:     out_basetype=VertexAttribBaseType::Float;  out_vec_size=4; return true;
+        case VK_FORMAT_R16_SFLOAT:             out_basetype=VertexAttribBaseType::Float;  out_vec_size=1; return true;
+        case VK_FORMAT_R16G16_SFLOAT:          out_basetype=VertexAttribBaseType::Float;  out_vec_size=2; return true;
+        case VK_FORMAT_R16G16B16A16_SFLOAT:    out_basetype=VertexAttribBaseType::Float;  out_vec_size=4; return true;
         case VK_FORMAT_R32_SFLOAT:              out_basetype=VertexAttribBaseType::Float;  out_vec_size=1; return true;
         case VK_FORMAT_R32G32_SFLOAT:           out_basetype=VertexAttribBaseType::Float;  out_vec_size=2; return true;
         case VK_FORMAT_R32G32B32_SFLOAT:        out_basetype=VertexAttribBaseType::Float;  out_vec_size=3; return true;
@@ -47,9 +68,13 @@ namespace {
         case VK_FORMAT_R32G32_UINT:             out_basetype=VertexAttribBaseType::UInt;   out_vec_size=2; return true;
         case VK_FORMAT_R32G32B32_UINT:          out_basetype=VertexAttribBaseType::UInt;   out_vec_size=3; return true;
         case VK_FORMAT_R32G32B32A32_UINT:       out_basetype=VertexAttribBaseType::UInt;   out_vec_size=4; return true;
-        // 16-bit uint: shader still sees it as uint (uint with stride 2)
+        // 16-bit int/uint formats
+        case VK_FORMAT_R16_SINT:                out_basetype=VertexAttribBaseType::Int;    out_vec_size=1; return true;
+        case VK_FORMAT_R16G16_SINT:             out_basetype=VertexAttribBaseType::Int;    out_vec_size=2; return true;
+        case VK_FORMAT_R16G16B16A16_SINT:       out_basetype=VertexAttribBaseType::Int;    out_vec_size=4; return true;
         case VK_FORMAT_R16_UINT:                out_basetype=VertexAttribBaseType::UInt;   out_vec_size=1; return true;
         case VK_FORMAT_R16G16_UINT:             out_basetype=VertexAttribBaseType::UInt;   out_vec_size=2; return true;
+        case VK_FORMAT_R16G16B16A16_UINT:       out_basetype=VertexAttribBaseType::UInt;   out_vec_size=4; return true;
         default:
             out_basetype=VertexAttribBaseType::Float;
             out_vec_size=4;

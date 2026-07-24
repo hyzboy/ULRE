@@ -23,7 +23,7 @@ MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *prof
 
     std::vector<FixedVertexEntry> vertices;
     build2d::PushBaseVertexEntries(vertices, &new_cfg, position_format);
-    vertices.push_back({ VK_FORMAT_R32G32_SFLOAT, VertexSemantic::TexCoord });
+    build2d::PushSemanticVertexEntry(vertices, &new_cfg, VertexSemantic::TexCoord, VK_FORMAT_R32G32_SFLOAT);
 
     std::vector<FixedDescriptorEntry> descriptors;
     build2d::PushBaseDescriptorEntries(descriptors, &new_cfg);
