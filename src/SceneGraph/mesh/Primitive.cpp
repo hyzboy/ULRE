@@ -190,9 +190,13 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
 
 Primitive *DirectCreatePrimitive(Geometry *geom,DescriptorBindingSet *dbs,Pipeline *p)
 {
-    if(!geom||!dbs||!p)return(nullptr);
+    return DirectCreatePrimitive(geom, dbs ? dbs->GetMaterial() : nullptr, dbs, p);
+}
 
-    Material *material = dbs->GetMaterial();
+Primitive *DirectCreatePrimitive(Geometry *geom,Material *material,DescriptorBindingSet *dbs,Pipeline *p)
+{
+    if(!geom||!material||!dbs||!p)return(nullptr);
+
     const VIL *vil = dbs->GetVIL();
 
     if(!material||!vil)

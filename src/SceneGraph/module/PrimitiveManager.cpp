@@ -45,10 +45,15 @@ Primitive *PrimitiveManager::CreatePrimitive(GeometryCreater *pc, MaterialInstan
 
 Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, DescriptorBindingSet *dbs, Pipeline *p)
 {
-    if(!p||!dbs||!r)
+    return CreatePrimitive(r, dbs ? dbs->GetMaterial() : nullptr, dbs, p);
+}
+
+Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, Material *material, DescriptorBindingSet *dbs, Pipeline *p)
+{
+    if(!p||!dbs||!r||!material)
         return(nullptr);
 
-    Primitive *ri=hgl::graph::DirectCreatePrimitive(r,dbs,p);
+    Primitive *ri=hgl::graph::DirectCreatePrimitive(r,material,dbs,p);
 
     if(ri)
         Add(ri);
@@ -58,7 +63,12 @@ Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, DescriptorBindingSet *
 
 Primitive *PrimitiveManager::CreatePrimitive(GeometryCreater *pc, DescriptorBindingSet *dbs, Pipeline *p)
 {
-    if(!p||!dbs||!pc)
+    return CreatePrimitive(pc, dbs ? dbs->GetMaterial() : nullptr, dbs, p);
+}
+
+Primitive *PrimitiveManager::CreatePrimitive(GeometryCreater *pc, Material *material, DescriptorBindingSet *dbs, Pipeline *p)
+{
+    if(!p||!dbs||!pc||!material)
         return(nullptr);
 
     Geometry *geometry=pc->Create();
@@ -66,7 +76,7 @@ Primitive *PrimitiveManager::CreatePrimitive(GeometryCreater *pc, DescriptorBind
     if(!geometry)
         return(nullptr);
 
-    Primitive *ri=hgl::graph::DirectCreatePrimitive(geometry,dbs,p);
+    Primitive *ri=hgl::graph::DirectCreatePrimitive(geometry,material,dbs,p);
 
     if(ri)
     {

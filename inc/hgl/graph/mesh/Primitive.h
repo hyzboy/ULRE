@@ -29,6 +29,7 @@ class Primitive
 private:
 
     friend Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,Pipeline *);
+    friend Primitive *DirectCreatePrimitive(Geometry *,Material *,DescriptorBindingSet *,Pipeline *);
     friend Primitive *DirectCreatePrimitive(Geometry *,DescriptorBindingSet *,Pipeline *);
 
     Primitive(Geometry *,MaterialInstance *,Pipeline *,GeometryDataBuffer *);
@@ -75,6 +76,7 @@ public:
 };//class Primitive
 
 Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,Pipeline *);
+Primitive *DirectCreatePrimitive(Geometry *,Material *,DescriptorBindingSet *,Pipeline *);
 Primitive *DirectCreatePrimitive(Geometry *,DescriptorBindingSet *,Pipeline *);
 
 // Pre-flight compatibility check: matches geometry vertex format against the
@@ -83,4 +85,3 @@ Primitive *DirectCreatePrimitive(Geometry *,DescriptorBindingSet *,Pipeline *);
 // of calling DirectCreatePrimitive.
 GeometryVertexFormatMatch QueryGeometryVertexCompatibility(const Geometry *geom, const MaterialInstance *mi);
 }//namespace hgl::graph
-
