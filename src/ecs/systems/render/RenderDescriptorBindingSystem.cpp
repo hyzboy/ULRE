@@ -876,7 +876,6 @@ namespace hgl::ecs
 
         const auto &cache = context->GetRenderFrameCache();
 
-        std::unordered_set<graph::Material *> l2w_bound_materials;
         std::unordered_set<const graph::Material *> active_materials;
 
         std::unordered_set<std::string> missing_ssbo_warned_keys;
@@ -929,6 +928,30 @@ namespace hgl::ecs
                             reason ? reason : "unknown");
             }
         };
+        auto log_bind_failure = [&](graph::Material *material,
+                                    const graph::mtl::DescriptorRequirement &req,
+                                    const char *reason)
+        {
+            if (!material || !req.name || !*req.name)
+                return;
+
+            if (req.required)
+            {
+                GLogError("[DescriptorBinding] Bind failed: material=%s semantic=%s descriptor=%s reason=%s",
+                          material->GetName().c_str(),
+                          graph::mtl::GetDescriptorSemanticName(req.semantic),
+                          req.name,
+                          reason ? reason : "unknown");
+            }
+            else
+            {
+                GLogWarning("[DescriptorBinding] Optional bind failed: material=%s semantic=%s descriptor=%s reason=%s",
+                            material->GetName().c_str(),
+                            graph::mtl::GetDescriptorSemanticName(req.semantic),
+                            req.name,
+                            reason ? reason : "unknown");
+            }
+        };
         auto ensure_batch_mp = [&](graph::Material *material,
                                    MaterialBatch *batch,
                                    const graph::DescriptorSetType set_type) -> graph::MaterialParameters *
@@ -975,6 +998,7 @@ namespace hgl::ecs
             {
                 if (auto *mp = ensure_batch_mp(material, batch, req.set_type))
                     return mp->BindUBO(req.name, gpu, false);
+                return false;
             }
 
             return material->BindUBO(req.set_type, req.name, gpu, false);
@@ -992,6 +1016,7 @@ namespace hgl::ecs
             {
                 if (auto *mp = ensure_batch_mp(material, batch, req.set_type))
                     return mp->BindSSBO(req.name, gpu, false);
+                return false;
             }
 
             return material->BindSSBO(req.set_type, req.name, gpu, false);
@@ -1009,6 +1034,7 @@ namespace hgl::ecs
             {
                 if (auto *mp = ensure_batch_mp(material, batch, req.set_type))
                     return mp->BindTexture(req.name, texture);
+                return false;
             }
 
             return material->BindTexture(req.set_type, req.name, texture);
@@ -1027,6 +1053,7 @@ namespace hgl::ecs
             {
                 if (auto *mp = ensure_batch_mp(material, batch, req.set_type))
                     return mp->BindTextureSampler(req.name, texture, sampler);
+                return false;
             }
 
             return material->BindTextureSampler(req.set_type, req.name, texture, sampler);
@@ -1041,26 +1068,38 @@ namespace hgl::ecs
             case graph::mtl::DescriptorSemantic::ViewportInfo:
             {
                 if (viewport_ubo)
-                    bind_ubo(material, batch, req, viewport_ubo);
+                {
+                    if (!bind_ubo(material, batch, req, viewport_ubo))
+                        log_bind_failure(material, req, "bind viewport UBO failed");
+                }
                 break;
             }
             case graph::mtl::DescriptorSemantic::CameraInfo:
             {
                 if (camera_ubo)
-                    bind_ubo(material, batch, req, camera_ubo);
+                {
+                    if (!bind_ubo(material, batch, req, camera_ubo))
+                        log_bind_failure(material, req, "bind camera UBO failed");
+                }
                 break;
             }
             case graph::mtl::DescriptorSemantic::SkyInfo:
             {
                 if (sky_ubo)
-                    bind_ubo(material, batch, req, sky_ubo);
+                {
+                    if (!bind_ubo(material, batch, req, sky_ubo))
+                        log_bind_failure(material, req, "bind sky UBO failed");
+                }
                 break;
             }
             case graph::mtl::DescriptorSemantic::SkyCubemapSampler:
             {
                 const auto *binding = FindMaterialResourceBinding(material, req.name);
                 if (binding && binding->texture && binding->sampler)
-                    bind_texture_sampler(material, batch, req, binding->texture, binding->sampler);
+                {
+                    if (!bind_texture_sampler(material, batch, req, binding->texture, binding->sampler))
+                        log_bind_failure(material, req, "bind sky cubemap sampler failed");
+                }
                 break;
             }
             case graph::mtl::DescriptorSemantic::LocalToWorld:
@@ -1077,24 +1116,17 @@ namespace hgl::ecs
 #ifdef HGL_L2W_USE_UBO
                         if (req.kind == graph::mtl::DescriptorKind::UBO)
                         {
-                            bind_ubo(material, batch, req, transform_gpu_buffer);
+                            if (!bind_ubo(material, batch, req, transform_gpu_buffer))
+                                log_bind_failure(material, req, "bind LocalToWorld UBO failed");
                             break;
                         }
 #endif
 #ifdef HGL_L2W_USE_SSBO
-                        bind_ssbo(material, batch, req, transform_gpu_buffer);
+                        if (!bind_ssbo(material, batch, req, transform_gpu_buffer))
+                            log_bind_failure(material, req, "bind LocalToWorld SSBO failed");
                         break;
 #endif
                     }
-                }
-
-                if (batch
-                 && batch->transform_buffer
-                 && material->hasLocalToWorld()
-                 && !l2w_bound_materials.contains(material))
-                {
-                    batch->transform_buffer->BindTransform(material);
-                    l2w_bound_materials.insert(material);
                 }
                 break;
             }
@@ -1161,7 +1193,10 @@ namespace hgl::ecs
                 }
 
                 if (table_buffer)
-                    bind_ssbo(material, batch, req, table_buffer);
+                {
+                    if (!bind_ssbo(material, batch, req, table_buffer))
+                        log_bind_failure(material, req, "bind LocalToWorldIndexTable failed");
+                }
                 break;
             }
             case graph::mtl::DescriptorSemantic::MaterialInstance:
@@ -1205,7 +1240,10 @@ namespace hgl::ecs
                     graph::mtl::SSBOAddress{req.ssbo_type, resolved_ssbo_id, 0},
                     "MaterialInstance");
                 if (mi_ssbo)
-                    bind_ssbo(material, batch, req, mi_ssbo);
+                {
+                    if (!bind_ssbo(material, batch, req, mi_ssbo))
+                        log_bind_failure(material, req, "bind MaterialInstance failed");
+                }
                 else
                     log_missing_ssbo_once(material, req, "domain binding not found", 0);
                 break;
@@ -1220,7 +1258,10 @@ namespace hgl::ecs
                     "MaterialTextureLayerTable");
 
                 if (table_buffer)
-                    bind_ssbo(material, batch, req, table_buffer);
+                {
+                    if (!bind_ssbo(material, batch, req, table_buffer))
+                        log_bind_failure(material, req, "bind MaterialTextureLayerTable failed");
+                }
                 else
                     log_missing_ssbo_once(material, req, "domain binding not found", static_cast<int32_t>(req.texture_slot));
                 break;
@@ -1245,7 +1286,10 @@ namespace hgl::ecs
                 }
 
                 if (table_buffer)
-                    bind_ssbo(material, batch, req, table_buffer);
+                {
+                    if (!bind_ssbo(material, batch, req, table_buffer))
+                        log_bind_failure(material, req, "bind MaterialDataIndexTable failed");
+                }
                 else
                     log_missing_ssbo_once(material, req, batch ? "batch rows missing and domain binding not found" : "domain binding not found", static_cast<int32_t>(req.data_slot));
                 break;
@@ -1254,14 +1298,20 @@ namespace hgl::ecs
             {
                 const auto *binding = FindMaterialResourceBinding(material, req.name);
                 if (binding && binding->texture)
-                    bind_texture(material, batch, req, binding->texture);
+                {
+                    if (!bind_texture(material, batch, req, binding->texture))
+                        log_bind_failure(material, req, "bind MaterialTexture failed");
+                }
                 break;
             }
             case graph::mtl::DescriptorSemantic::MaterialSampler:
             {
                 const auto *binding = FindMaterialResourceBinding(material, req.name);
                 if (binding && binding->texture && binding->sampler)
-                    bind_texture_sampler(material, batch, req, binding->texture, binding->sampler);
+                {
+                    if (!bind_texture_sampler(material, batch, req, binding->texture, binding->sampler))
+                        log_bind_failure(material, req, "bind MaterialSampler failed");
+                }
                 break;
             }
             case graph::mtl::DescriptorSemantic::MaterialColorPalette:
