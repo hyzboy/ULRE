@@ -433,20 +433,52 @@ manager.Delete("name");
 
 ## 6. 日志
 
+> 详细完整参考：[SKILL_LOGGING_REFERENCE.md](SKILL_LOGGING_REFERENCE.md)
+
+❌ 禁止：`printf` / `std::cout` / `std::cerr` / `LOG_INFO` / `LOG_ERROR`（这些宏不存在）  
+✅ 必须使用 `<hgl/log/Log.h>` 中的宏，根据场景选择：
+
 ```cpp
 #include <hgl/log/Log.h>
 
-// 基本日志
-LOG_INFO("启动完成");
-LOG_WARNING("资源未找到");
-LOG_ERROR("严重错误");
+// ── 模式1：类成员日志（最常用）──────────────────────────────
+// 头文件类定义中：
+class MyClass {
+    OBJECT_LOGGER   // 添加 Log 成员
+    ...
+};
+// 类方法中：
+void MyClass::DoWork() {
+    LogInfo(u8"开始处理，数量：%d", count);
+    LogError(u8"处理失败：%s", name.c_str());
+    LogWarning(u8"资源不足");
+}
 
-// 带参数（使用字符串拼接）
-LOG_INFO("加载材质: " + material_name);
-LOG_ERROR("错误码: " + AnsiString::numberOf(error_code));
+// ── 模式2：全局/自由函数 ────────────────────────────────────
+void FreeFunc() {
+    GLogInfo(u8"全局信息");
+    GLogError(u8"全局错误：%d", code);
+}
 
-// 不要使用 std::cout 或 printf（调试除外）
+// ── 模式3：模块多类共享（.cpp 定义 / .h 声明）────────────────
+// Render.cpp:
+DEFINE_LOGGER_MODULE(Render)
+// RenderModule.h:
+EXTERN_LOGGER_MODULE(Render)
+// 任意 .cpp 中使用（需 include 含 EXTERN 的 .h）：
+MLogInfo(Render, u8"渲染开始");
+MLogError(Render, u8"渲染失败：%s", msg);
+
+// ── 模式4：单文件绑定（自由函数文件顶部绑定）────────────────
+DEFINE_LOGGER_MODULE(Shader)
+USE_MODULE_LOGGER(Shader)   // 绑定到本文件
+// 同文件内无需写模块名：
+FLogInfo(u8"编译着色器");
+FLogError(u8"编译失败：%s", path.c_str());
 ```
+
+**日志级别**（均有对应宏后缀，如 `LogInfo`/`GLogInfo`/`MLogInfo(X,...)`/`FLogInfo`）：  
+`Verbose`（仅Debug）→ `Debug`（仅Debug）→ `Info` → `Notice` → `Warning` → `Error` → `Fatal`
 
 ---
 

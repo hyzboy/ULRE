@@ -1,6 +1,6 @@
 # ECS Render System SKILL合集
 
-本目录包含7个SKILL文档，涵盖HGL自有库类型参考、CMCoreType底层库完整参考、添加新Component/System、系统分组、ExecutionPhase、RenderGraph和快速参考。
+本目录包含8个SKILL文档，涵盖HGL自有库类型参考、CMCoreType底层库完整参考、HGL日志系统、添加新Component/System、系统分组、ExecutionPhase、RenderGraph和快速参考。
 
 ## ⚠️ 首先必读
 
@@ -26,6 +26,25 @@
 需要动态数组/Map？
 需要哈希计算？
 需要文件IO？
+→ 使用这个SKILL
+```
+
+---
+
+### 0.2 [SKILL_LOGGING_REFERENCE.md](SKILL_LOGGING_REFERENCE.md)
+**适用：输出日志信息（替代 printf/cout/cerr）**
+
+- 🪵 4种日志模式：OBJECT_LOGGER / GLogXxx / MLogXxx / FLogXxx
+- 📋 日志级别对照表（Verbose/Debug/Info/Notice/Warning/Error/Fatal）
+- 💡 各模式完整代码示例
+- ❌ 常见错误（错误使用 printf / LOG_INFO 等不存在宏）vs ✅ 正确写法
+
+**快速导航：**
+```
+类方法中需要输出日志？         → OBJECT_LOGGER + LogInfo/LogError
+全局函数/main中输出日志？      → GLogInfo/GLogError
+多类共享模块名输出日志？        → DEFINE_LOGGER_MODULE + MLogInfo
+单文件自由函数输出日志？        → USE_MODULE_LOGGER + FLogInfo
 → 使用这个SKILL
 ```
 
@@ -329,6 +348,14 @@ A: 可能。这些SKILL针对ULRE的ECS系统设计。如果修改了架构，�
 | HashMergeGolden64 | CMCORETYPE_REFERENCE | §17 HashMerge |
 | DefEvent/SetEventCall | CMCORETYPE_REFERENCE | §18 EventFunc |
 | Property<T> | CMCORETYPE_REFERENCE | §18 Property |
+| OBJECT_LOGGER（类内日志） | LOGGING_REFERENCE | 模式1 |
+| GLogInfo/GLogError（全局） | LOGGING_REFERENCE | 模式2 |
+| DEFINE_LOGGER_MODULE（模块定义） | LOGGING_REFERENCE | 模式3 |
+| EXTERN_LOGGER_MODULE（模块声明） | LOGGING_REFERENCE | 模式3 |
+| MLogInfo/MLogError（模块日志） | LOGGING_REFERENCE | 模式3 |
+| USE_MODULE_LOGGER（文件绑定） | LOGGING_REFERENCE | 模式4 |
+| FLogInfo/FLogError（文件级日志） | LOGGING_REFERENCE | 模式4 |
+| 日志级别选择 | LOGGING_REFERENCE | §日志级别 |
 | 创建新Component | ADD_NEW_RENDER_COMPONENT | 第2步 |
 | 创建新System | ADD_NEW_RENDER_COMPONENT | 第3步 |
 | SetRenderElementType() | SYSTEM_GROUPING_AND_ENABLEMENT | API参考 |
@@ -356,7 +383,7 @@ A: 可能。这些SKILL针对ULRE的ECS系统设计。如果修改了架构，�
 
 ## ✨ 总结
 
-这7个SKILL文档提供了从零到精通的**完整路径**，支持：
+这8个SKILL文档提供了从零到精通的**完整路径**，支持：
 
 - ✅ 快速上手（QUICK_REFERENCE）
 - ✅ 详细学习（各topic SKILL）

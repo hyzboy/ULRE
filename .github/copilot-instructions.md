@@ -29,7 +29,8 @@
 
 ❌ 禁止手写FNV1a或任何哈希函数实现  
 ❌ 禁止使用 `std::string`、`std::vector`、`std::thread`、`std::mutex` 等STL类型  
-❌ 禁止使用 `new`/`delete` 手动内存管理（使用HGL的智能指针或池）
+❌ 禁止使用 `new`/`delete` 手动内存管理（使用HGL的智能指针或池）  
+❌ 禁止使用 `printf`、`std::cout`、`std::cerr`、`fprintf` 输出日志（使用HGL日志宏）
 
 ---
 
@@ -56,7 +57,7 @@
 | `std::istringstream`         | `hgl::io::MemoryInputStream`           | `<hgl/io/MemoryInputStream.h>`      |
 | `std::ostringstream`         | `hgl::io::MemoryOutputStream`          | `<hgl/io/MemoryOutputStream.h>`     |
 | 文件系统操作                  | `hgl::filesystem::*`                   | `<hgl/filesystem/FileSystem.h>`     |
-| 日志输出                      | `LOG_INFO` / `LOG_ERROR` 等宏          | `<hgl/log/Log.h>`                   |
+| 日志输出                      | `LogInfo` / `GLogInfo` / `FLogInfo` 等宏 | `<hgl/log/Log.h>`                   |
 
 ---
 
@@ -149,13 +150,111 @@ int64 len = mos.Tell();
 
 ## 📝 日志正确用法
 
+❌ 永远不要使用 `printf`、`std::cout`、`std::cerr`、`fprintf`、`puts` 等输出日志。  
+✅ 必须使用 `<hgl/log/Log.h>` 中的宏，根据使用场景选择以下4种模式之一：
+
+### 模式1：类成员日志（最常用）
+
+在头文件类定义中声明 `OBJECT_LOGGER`，类方法中用 `LogXxx(...)` 输出：
+
+```cpp
+// MyClass.h
+#include <hgl/log/Log.h>
+
+class MyClass
+{
+    OBJECT_LOGGER   // 展开为：::hgl::logger::ObjectLogger Log{&typeid(*this)};
+public:
+    void DoWork();
+};
+
+// MyClass.cpp
+void MyClass::DoWork()
+{
+    LogInfo(u8"开始工作");
+    LogWarning(u8"资源不足，剩余 %d", count);
+    LogError(u8"初始化失败：%s", name);
+}
+```
+
+可用宏：`LogVerbose` `LogDebug` `LogInfo` `LogNotice` `LogWarning` `LogError` `LogFatal`  
+（`LogVerbose`/`LogDebug` 在 Release 模式下自动为空操作）
+
+---
+
+### 模式2：全局 / 自由函数（少量散落调用）
+
+无需任何声明，直接使用 `GLogXxx(...)` 调用全局 logger：
+
 ```cpp
 #include <hgl/log/Log.h>
 
-LOG_INFO("Some info message");
-LOG_ERROR("Error: " + AnsiString::numberOf(error_code));
-// 不要使用 std::cout、printf（调试日志除外）
+void SomeGlobalFunc()
+{
+    GLogInfo(u8"全局信息");
+    GLogError(u8"全局错误：%d", code);
+}
 ```
+
+可用宏：`GLogVerbose` `GLogDebug` `GLogInfo` `GLogNotice` `GLogWarning` `GLogError` `GLogFatal`
+
+---
+
+### 模式3：模块日志（多文件/多类共享模块名）
+
+适合一个模块有多个类的场景，所有输出都带模块名前缀：
+
+```cpp
+// Render.cpp（或模块入口 .cpp）
+#include <hgl/log/Log.h>
+DEFINE_LOGGER_MODULE(Render)   // 定义 hgl::logger::LogRender
+
+// RenderHelper.h（其他需要此 logger 的头文件）
+#include <hgl/log/Log.h>
+EXTERN_LOGGER_MODULE(Render)   // extern 声明
+
+// 任意 .cpp 中直接使用（需已 include 含 EXTERN 的头文件）
+MLogInfo(Render, u8"渲染帧开始");
+MLogError(Render, u8"着色器编译失败：%s", name);
+```
+
+可用宏：`MLogVerbose(name,...)` `MLogDebug(name,...)` `MLogInfo(name,...)` `MLogNotice(name,...)`  
+`MLogWarning(name,...)` `MLogError(name,...)` `MLogFatal(name,...)`
+
+---
+
+### 模式4：文件级模块绑定（自由函数、单文件绑定）
+
+在 `.cpp` 顶部用 `USE_MODULE_LOGGER` 绑定，之后用 `FLogXxx(...)` 无前缀调用：
+
+```cpp
+// Render.cpp — 先定义模块
+#include <hgl/log/Log.h>
+DEFINE_LOGGER_MODULE(Render)
+USE_MODULE_LOGGER(Render)   // 生成 GetModuleLogger() 内联函数
+
+// 之后同文件内的自由函数直接使用 FLogXxx
+static void CompileShader(const OSString &path)
+{
+    FLogInfo(u8"编译着色器：%s", path.c_str());
+    FLogError(u8"编译失败");
+}
+```
+
+可用宏：`FLogVerbose` `FLogDebug` `FLogInfo` `FLogNotice` `FLogWarning` `FLogError` `FLogFatal`
+
+---
+
+### 选择指南
+
+| 场景 | 使用模式 |
+|------|---------|
+| 类方法中输出 | `OBJECT_LOGGER` + `LogXxx` |
+| 全局/工具函数（少量） | `GLogXxx` |
+| 多类共享同一模块名 | `DEFINE_LOGGER_MODULE` + `EXTERN_LOGGER_MODULE` + `MLogXxx` |
+| 单文件自由函数绑定模块 | `DEFINE_LOGGER_MODULE` + `USE_MODULE_LOGGER` + `FLogXxx` |
+
+> 📌 详细参考：`.ai/skills/SKILL_LOGGING_REFERENCE.md`
 
 ---
 
@@ -172,6 +271,7 @@ LOG_ERROR("Error: " + AnsiString::numberOf(error_code));
 遇到新任务时，先查看 `.ai/skills/SKILL_INDEX.md` 了解可用的工作流指南：
 - 添加新渲染组件/系统 → `SKILL_ADD_NEW_RENDER_COMPONENT.md`
 - HGL类型完整参考 → `SKILL_HGL_TYPES_REFERENCE.md`
+- **HGL日志系统** → `SKILL_LOGGING_REFERENCE.md`
 - 系统分组和启用 → `SKILL_SYSTEM_GROUPING_AND_ENABLEMENT.md`
 - 执行阶段排序 → `SKILL_EXECUTION_PHASE_ORDERING.md`
 - RenderGraph用法 → `SKILL_RENDERGRAPH_USAGE.md`
