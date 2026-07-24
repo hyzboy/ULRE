@@ -1344,6 +1344,88 @@ namespace hgl::ecs
             }
         };
 
+        auto validate_required_batch_bindings = [&](graph::Material *material,
+                                                    MaterialBatch *batch,
+                                                    const graph::mtl::BindingContract &contract) -> bool
+        {
+            if (!material || !batch)
+                return true;
+
+            bool valid = true;
+
+            for (const auto &req : contract.requirements)
+            {
+                if (!req.required)
+                    continue;
+
+                switch (req.semantic)
+                {
+                case graph::mtl::DescriptorSemantic::MaterialInstance:
+                case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
+                case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
+                    break;
+                default:
+                    continue;
+                }
+
+                bool found_binding = false;
+                bool found_missing = false;
+                bool has_reference_ssbo = false;
+                uint32_t reference_ssbo_id = 0;
+
+                for (RenderItem *item : batch->items)
+                {
+                    if (!item)
+                        continue;
+
+                    auto *binding_set = item->GetDescriptorBindingSet();
+                    graph::DescriptorBindingSet::SSBOBinding binding{};
+                    if (!binding_set || !binding_set->GetSSBOBinding(req.ssbo_type, binding))
+                    {
+                        found_missing = true;
+                        continue;
+                    }
+
+                    found_binding = true;
+
+                    if (!has_reference_ssbo)
+                    {
+                        reference_ssbo_id = binding.ssbo_id;
+                        has_reference_ssbo = true;
+                        continue;
+                    }
+
+                    if (reference_ssbo_id != binding.ssbo_id)
+                    {
+                        GLogError("[DescriptorBinding] Batch contract mismatch: material=%s semantic=%s descriptor=%s expected_ssbo_id=%u actual_ssbo_id=%u. Required resource identity must be consistent within one batch.",
+                                  material->GetName().c_str(),
+                                  graph::mtl::GetDescriptorSemanticName(req.semantic),
+                                  req.name,
+                                  reference_ssbo_id,
+                                  binding.ssbo_id);
+                        valid = false;
+                        break;
+                    }
+                }
+
+                if (!valid)
+                    break;
+
+                if (found_binding && found_missing)
+                {
+                    GLogWarning("[DescriptorBinding] Batch contract mixed binding mode: material=%s semantic=%s descriptor=%s. Some items provide required SSBO in DBS while others rely on fallback/domain lookup.",
+                                material->GetName().c_str(),
+                                graph::mtl::GetDescriptorSemanticName(req.semantic),
+                                req.name);
+                }
+            }
+
+            if (!valid)
+                batch->descriptor_bind_valid = false;
+
+            return valid;
+        };
+
         for (const auto &pair : cache.materialBatches)
         {
             graph::Material *material = pair.first.material;
@@ -1357,6 +1439,9 @@ namespace hgl::ecs
                 batch->descriptor_bind_valid = true;
 
             const auto &contract = material->GetBindingContract();
+
+            if (batch && !validate_required_batch_bindings(material, batch, contract))
+                continue;
 
             for (const auto &req : contract.requirements)
             {
