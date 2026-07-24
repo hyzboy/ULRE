@@ -21,11 +21,6 @@ namespace
     )";
     constexpr const uint32_t mi_bytes = sizeof(uint32_t) + sizeof(float) * 3;
 
-    constexpr FixedVertexEntry STANDARD_ARRAY_VERTEX[] = {
-        { VK_FORMAT_R32G32B32_SFLOAT, VertexSemantic::Position },
-        { VK_FORMAT_R32G32_SFLOAT,    VertexSemantic::TexCoord },
-        { VK_FORMAT_R32G32B32_SFLOAT, VertexSemantic::Normal },
-    };
 }
 
 MaterialCreateInfo *CreateStandardTextureArray(const contract::PhysicalDeviceProfileLite *profile, const Material3DCreateConfig *cfg)
@@ -44,11 +39,17 @@ MaterialCreateInfo *CreateStandardTextureArray(const contract::PhysicalDevicePro
         dynamic_descriptors,
         unused_resources);
 
+    FixedVertexEntry standard_array_vertex[] = {
+        { ResolveMaterialVertexSemanticFormat(&cfg_with_mi, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
+        { ResolveMaterialVertexSemanticFormat(&cfg_with_mi, VertexSemantic::TexCoord, VK_FORMAT_R32G32_SFLOAT),    VertexSemantic::TexCoord },
+        { ResolveMaterialVertexSemanticFormat(&cfg_with_mi, VertexSemantic::Normal,   VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Normal },
+    };
+
     FixedMaterialDef dynamic_def {
         "StandardTextureArray_v1",
         PrimitiveType::Triangles,
-        STANDARD_ARRAY_VERTEX,
-        uint32_t(sizeof(STANDARD_ARRAY_VERTEX) / sizeof(STANDARD_ARRAY_VERTEX[0])),
+        standard_array_vertex,
+        uint32_t(sizeof(standard_array_vertex) / sizeof(standard_array_vertex[0])),
         dynamic_descriptors.data(),
         uint32_t(dynamic_descriptors.size()),
         mi_codes,

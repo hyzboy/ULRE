@@ -9,32 +9,32 @@
 namespace hgl::graph::mtl{
 namespace
 {
-    constexpr FixedVertexEntry VERTEX_COLOR_3D_VERTEX[] = {
-        { VK_FORMAT_R32G32B32_SFLOAT, VertexSemantic::Position },
-        { VK_FORMAT_R32G32B32A32_SFLOAT, VertexSemantic::Color },
-    };
-
-        constexpr FixedDescriptorEntry VERTEX_COLOR_3D_DESCRIPTORS[] = {
+    constexpr FixedDescriptorEntry VERTEX_COLOR_3D_DESCRIPTORS[] = {
         { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::UBO},
         { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera", "CameraInfo", nullptr, DescriptorSemantic::CameraInfo, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::UBO},
         { DescriptorSetType::Transform, TransformDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr, DescriptorSemantic::LocalToWorld, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, GetDescriptorSemanticLayerByKind(TransformDescriptorKind) },
         { DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w_index_rows", "LocalToWorldIndexRows", nullptr, DescriptorSemantic::LocalToWorldIndexTable, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO},
     };
+}
 
-    constexpr FixedMaterialDef VERTEX_COLOR_3D_DEF {
+MaterialCreateInfo *CreateVertexColor3D(const contract::PhysicalDeviceProfileLite *profile,const Material3DCreateConfig *cfg)
+{
+    FixedVertexEntry vertex_color_3d_vertex[] = {
+        { ResolveMaterialVertexSemanticFormat(cfg, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT),    VertexSemantic::Position },
+        { ResolveMaterialVertexSemanticFormat(cfg, VertexSemantic::Color,    VK_FORMAT_R32G32B32A32_SFLOAT), VertexSemantic::Color },
+    };
+
+    FixedMaterialDef dynamic_def {
         "VertexColor3D",
         PrimitiveType::Triangles,
-        VERTEX_COLOR_3D_VERTEX,
-        uint32_t(sizeof(VERTEX_COLOR_3D_VERTEX) / sizeof(VERTEX_COLOR_3D_VERTEX[0])),
+        vertex_color_3d_vertex,
+        uint32_t(sizeof(vertex_color_3d_vertex) / sizeof(vertex_color_3d_vertex[0])),
         VERTEX_COLOR_3D_DESCRIPTORS,
         uint32_t(sizeof(VERTEX_COLOR_3D_DESCRIPTORS) / sizeof(VERTEX_COLOR_3D_DESCRIPTORS[0])),
         nullptr,
         0,
     };
-}
 
-MaterialCreateInfo *CreateVertexColor3D(const contract::PhysicalDeviceProfileLite *profile,const Material3DCreateConfig *cfg)
-{
     // 通过 CompositorAssembler 从 .glsl 模板文件组装 VS/FS
     CompositorAssembler assembler("ShaderLibrary");
 
@@ -58,7 +58,7 @@ MaterialCreateInfo *CreateVertexColor3D(const contract::PhysicalDeviceProfileLit
 
     MaterialCreateInfo *mci = CompileCompositorMaterial(
         profile,
-        VERTEX_COLOR_3D_DEF,
+        dynamic_def,
         result.vertex_glsl,
         result.fragment_glsl,
         cfg);
@@ -68,5 +68,4 @@ MaterialCreateInfo *CreateVertexColor3D(const contract::PhysicalDeviceProfileLit
     return mci;
 }
 }//namespace hgl::graph::mtl
-
 

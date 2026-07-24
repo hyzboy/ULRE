@@ -14,11 +14,6 @@ namespace
     // 顶点输入和描述符定义
     // ─────────────────────────────────────────────────────────────────────────────
 
-    constexpr FixedVertexEntry GIZMO_3D_VERTEX[] = {
-        { VK_FORMAT_R32G32B32_SFLOAT, VertexSemantic::Position },
-        { VK_FORMAT_R32G32B32_SFLOAT, VertexSemantic::Normal },
-    };
-
     constexpr FixedDescriptorEntry GIZMO_3D_DESCRIPTORS[] = {
         { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::UBO},
         { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera", "CameraInfo", nullptr, DescriptorSemantic::CameraInfo, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::UBO},
@@ -36,16 +31,6 @@ namespace
     constexpr const char GIZMO_3D_MI_GLSL[] = "vec4 Color;";
     constexpr uint32_t GIZMO_3D_MI_BYTES = sizeof(math::Vector4f);
 
-    constexpr FixedMaterialDef GIZMO_3D_DEF {
-        "Gizmo3D",
-        PrimitiveType::Triangles,
-        GIZMO_3D_VERTEX,
-        uint32_t(sizeof(GIZMO_3D_VERTEX) / sizeof(GIZMO_3D_VERTEX[0])),
-        GIZMO_3D_DESCRIPTORS,
-        uint32_t(sizeof(GIZMO_3D_DESCRIPTORS) / sizeof(GIZMO_3D_DESCRIPTORS[0])),
-        GIZMO_3D_MI_GLSL,
-        GIZMO_3D_MI_BYTES,
-    };
 }
 
 MaterialCreateInfo *CreateGizmo3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
@@ -74,9 +59,25 @@ MaterialCreateInfo *CreateGizmo3D(const contract::PhysicalDeviceProfileLite *pro
     if(cfg)
         cfg->material_instance=true;
 
+    FixedVertexEntry gizmo_3d_vertex[] = {
+        { ResolveMaterialVertexSemanticFormat(cfg, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
+        { ResolveMaterialVertexSemanticFormat(cfg, VertexSemantic::Normal,   VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Normal },
+    };
+
+    FixedMaterialDef dynamic_def {
+        "Gizmo3D",
+        PrimitiveType::Triangles,
+        gizmo_3d_vertex,
+        uint32_t(sizeof(gizmo_3d_vertex) / sizeof(gizmo_3d_vertex[0])),
+        GIZMO_3D_DESCRIPTORS,
+        uint32_t(sizeof(GIZMO_3D_DESCRIPTORS) / sizeof(GIZMO_3D_DESCRIPTORS[0])),
+        GIZMO_3D_MI_GLSL,
+        GIZMO_3D_MI_BYTES,
+    };
+
     MaterialCreateInfo *mci = CompileCompositorMaterial(
         profile,
-        GIZMO_3D_DEF,
+        dynamic_def,
         result.vertex_glsl,
         result.fragment_glsl,
         cfg);
@@ -86,5 +87,4 @@ MaterialCreateInfo *CreateGizmo3D(const contract::PhysicalDeviceProfileLite *pro
     return mci;
 }
 }//namespace hgl::graph::mtl
-
 

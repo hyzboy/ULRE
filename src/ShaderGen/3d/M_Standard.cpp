@@ -21,11 +21,6 @@ namespace
     )";
     constexpr const uint32_t mi_bytes = sizeof(uint32_t) + sizeof(float) * 3;
 
-    constexpr FixedVertexEntry STANDARD_VERTEX[] = {
-        { VK_FORMAT_R32G32B32_SFLOAT, VertexSemantic::Position },
-        { VK_FORMAT_R32G32_SFLOAT,    VertexSemantic::TexCoord },
-        { VK_FORMAT_R32G32B32_SFLOAT, VertexSemantic::Normal },
-    };
 }
 
 MaterialCreateInfo *CreateStandard(const contract::PhysicalDeviceProfileLite *profile, const Material3DCreateConfig *cfg)
@@ -44,14 +39,17 @@ MaterialCreateInfo *CreateStandard(const contract::PhysicalDeviceProfileLite *pr
         dynamic_descriptors,
         unused_resources);
 
-    constexpr FixedVertexEntry *vertex_ptr = nullptr; // unused, captured below
-    (void)vertex_ptr;
+    FixedVertexEntry standard_vertex[] = {
+        { ResolveMaterialVertexSemanticFormat(&cfg_with_mi, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
+        { ResolveMaterialVertexSemanticFormat(&cfg_with_mi, VertexSemantic::TexCoord, VK_FORMAT_R32G32_SFLOAT),    VertexSemantic::TexCoord },
+        { ResolveMaterialVertexSemanticFormat(&cfg_with_mi, VertexSemantic::Normal,   VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Normal },
+    };
 
     FixedMaterialDef dynamic_def {
         "Standard_v1",
         PrimitiveType::Triangles,
-        STANDARD_VERTEX,
-        uint32_t(sizeof(STANDARD_VERTEX) / sizeof(STANDARD_VERTEX[0])),
+        standard_vertex,
+        uint32_t(sizeof(standard_vertex) / sizeof(standard_vertex[0])),
         dynamic_descriptors.data(),
         uint32_t(dynamic_descriptors.size()),
         mi_codes,

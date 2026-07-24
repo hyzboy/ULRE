@@ -271,7 +271,7 @@ namespace
             rasterizer->rasterizerDiscardEnable  =ToBool(u8"Discard",false);
             rasterizer->polygonMode              =ToEnum<VkPolygonMode>(polygon_mode,u8"PolygonMode",VK_POLYGON_MODE_FILL);
             rasterizer->cullMode                 =ToEnum<VkCullModeFlags>(cull_mode,u8"Cull",VK_CULL_MODE_BACK_BIT);
-            rasterizer->frontFace                =ToEnum<VkFrontFace>(front_face,u8"FrontFace",VK_FRONT_FACE_CLOCKWISE);
+            rasterizer->frontFace                =ToEnum<VkFrontFace>(front_face,u8"FrontFace",VK_FRONT_FACE_COUNTER_CLOCKWISE);
 
             rasterizer->lineWidth                =ToFloat(u8"LineWidth",1.0);
 

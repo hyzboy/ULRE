@@ -19,12 +19,6 @@ namespace
     )";
     constexpr const uint32_t mi_bytes = sizeof(uint32_t) + sizeof(float) * 2;
 
-    constexpr FixedVertexEntry PBR_COLOR_3D_VERTEX[] = {
-        { VK_FORMAT_R32G32B32_SFLOAT, VertexSemantic::Position },
-        { VK_FORMAT_R32G32_SFLOAT,    VertexSemantic::TexCoord },
-        { VK_FORMAT_R32G32B32_SFLOAT, VertexSemantic::Normal },
-    };
-
     constexpr FixedDescriptorEntry PBR_COLOR_3D_DESCRIPTORS[] = {
         { DescriptorSetType::Scene,      DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo",        nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::UBO},
         { DescriptorSetType::Scene,      DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera",   "CameraInfo",          nullptr, DescriptorSemantic::CameraInfo, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::UBO},
@@ -34,17 +28,6 @@ namespace
         { DescriptorSetType::Material,   MaterialInstanceDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl",      "MaterialInstanceData", nullptr, DescriptorSemantic::MaterialInstance, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::PBRSurface, GetDescriptorSemanticLayerByKind(MaterialInstanceDescriptorKind) },
         { DescriptorSetType::Material,   DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl_data_index_rows", "DataIndexRows", nullptr, DescriptorSemantic::MaterialDataIndexTable, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO},
         { DescriptorSetType::Material,   DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl_texture_layer_rows", "TextureLayerRows", nullptr, DescriptorSemantic::MaterialTextureLayerTable, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO},
-    };
-
-    constexpr FixedMaterialDef PBR_COLOR_3D_DEF {
-        "PBRColor3D",
-        PrimitiveType::Triangles,
-        PBR_COLOR_3D_VERTEX,
-        uint32_t(sizeof(PBR_COLOR_3D_VERTEX)      / sizeof(PBR_COLOR_3D_VERTEX[0])),
-        PBR_COLOR_3D_DESCRIPTORS,
-        uint32_t(sizeof(PBR_COLOR_3D_DESCRIPTORS) / sizeof(PBR_COLOR_3D_DESCRIPTORS[0])),
-        mi_codes,
-        mi_bytes,
     };
 
 }//namespace
@@ -67,9 +50,22 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
         dynamic_descriptors,
         unused_resources);
 
-    FixedMaterialDef dynamic_def = PBR_COLOR_3D_DEF;
-    dynamic_def.descriptor_entries      = dynamic_descriptors.data();
-    dynamic_def.descriptor_entry_count  = uint32_t(dynamic_descriptors.size());
+    FixedVertexEntry pbr_color_3d_vertex[] = {
+        { ResolveMaterialVertexSemanticFormat(cfg, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
+        { ResolveMaterialVertexSemanticFormat(cfg, VertexSemantic::TexCoord, VK_FORMAT_R32G32_SFLOAT),    VertexSemantic::TexCoord },
+        { ResolveMaterialVertexSemanticFormat(cfg, VertexSemantic::Normal,   VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Normal },
+    };
+
+    FixedMaterialDef dynamic_def {
+        "PBRColor3D",
+        PrimitiveType::Triangles,
+        pbr_color_3d_vertex,
+        uint32_t(sizeof(pbr_color_3d_vertex) / sizeof(pbr_color_3d_vertex[0])),
+        dynamic_descriptors.data(),
+        uint32_t(dynamic_descriptors.size()),
+        mi_codes,
+        mi_bytes,
+    };
 
     // Assemble GLSL from templates
     CompositorAssembler assembler("ShaderLibrary");
@@ -106,5 +102,4 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
 }
 
 }//namespace hgl::graph::mtl
-
 

@@ -8,10 +8,6 @@
 namespace hgl::graph::mtl{
 namespace
 {
-    constexpr FixedVertexEntry SKY_MINIMAL_VERTEX[] = {
-        { VK_FORMAT_R32G32B32_SFLOAT, VertexSemantic::Position },
-    };
-
     constexpr FixedDescriptorEntry SKY_MINIMAL_DESCRIPTORS[] = {
         { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::UBO},
         { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera", "CameraInfo", nullptr, DescriptorSemantic::CameraInfo, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::UBO},
@@ -20,20 +16,25 @@ namespace
         { DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w_index_rows", "LocalToWorldIndexRows", nullptr, DescriptorSemantic::LocalToWorldIndexTable, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO},
     };
 
-    constexpr FixedMaterialDef SKY_MINIMAL_DEF {
+}//namespace
+
+MaterialCreateInfo *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *profile, const SkyMinimalCreateConfig *cfg)
+{
+    FixedVertexEntry sky_minimal_vertex[] = {
+        { ResolveMaterialVertexSemanticFormat(cfg, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
+    };
+
+    FixedMaterialDef dynamic_def {
         "SkyMinimal",
         PrimitiveType::Triangles,
-        SKY_MINIMAL_VERTEX,
-        uint32_t(sizeof(SKY_MINIMAL_VERTEX) / sizeof(SKY_MINIMAL_VERTEX[0])),
+        sky_minimal_vertex,
+        uint32_t(sizeof(sky_minimal_vertex) / sizeof(sky_minimal_vertex[0])),
         SKY_MINIMAL_DESCRIPTORS,
         uint32_t(sizeof(SKY_MINIMAL_DESCRIPTORS) / sizeof(SKY_MINIMAL_DESCRIPTORS[0])),
         nullptr,
         0,
     };
-}//namespace
 
-MaterialCreateInfo *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *profile, const SkyMinimalCreateConfig *cfg)
-{
     CompositorAssembler assembler("ShaderLibrary");
 
     auto result = assembler.Assemble(
@@ -56,7 +57,7 @@ MaterialCreateInfo *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *
 
     MaterialCreateInfo *mci = CompileCompositorMaterial(
         profile,
-        SKY_MINIMAL_DEF,
+        dynamic_def,
         result.vertex_glsl,
         result.fragment_glsl,
         cfg);
@@ -66,5 +67,4 @@ MaterialCreateInfo *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *
     return mci;
 }
 }//namespace hgl::graph::mtl
-
 

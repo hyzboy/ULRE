@@ -20,12 +20,6 @@
 namespace hgl::graph::mtl{
 namespace
 {
-    constexpr FixedVertexEntry VERTEX_PATTLE_COLOR_3D_VERTEX[] = {
-        { VK_FORMAT_R32G32B32_SFLOAT,    VertexSemantic::Position },
-        { VK_FORMAT_R32_UINT,            VertexSemantic::Color },
-        { Assign::TransformID::VAB_FMT,  Assign::TransformID::VIS_SEMANTIC },
-    };
-
     constexpr FixedDescriptorEntry VERTEX_PATTLE_COLOR_3D_DESCRIPTORS[] = {
         { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::UBO},
         { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera", "CameraInfo", nullptr, DescriptorSemantic::CameraInfo, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::UBO},
@@ -34,16 +28,6 @@ namespace
         { DescriptorSetType::Material, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "color_pattle", "ColorPattle", nullptr, DescriptorSemantic::MaterialColorPalette, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
     };
 
-    constexpr FixedMaterialDef VERTEX_PATTLE_COLOR_3D_DEF {
-        "VertexPattleColor3D",
-        PrimitiveType::Triangles,
-        VERTEX_PATTLE_COLOR_3D_VERTEX,
-        uint32_t(sizeof(VERTEX_PATTLE_COLOR_3D_VERTEX) / sizeof(VERTEX_PATTLE_COLOR_3D_VERTEX[0])),
-        VERTEX_PATTLE_COLOR_3D_DESCRIPTORS,
-        uint32_t(sizeof(VERTEX_PATTLE_COLOR_3D_DESCRIPTORS) / sizeof(VERTEX_PATTLE_COLOR_3D_DESCRIPTORS[0])),
-        nullptr,
-        0,
-    };
 }//namespace
 
 MaterialCreateInfo *CreateVertexPattleColor3D(const contract::PhysicalDeviceProfileLite *profile,const Material3DCreateConfig *cfg)
@@ -55,6 +39,23 @@ MaterialCreateInfo *CreateVertexPattleColor3D(const contract::PhysicalDeviceProf
         &SBS_ColorPattle
     };
     local_cfg.SetPrivateShaderBufferSources(private_sbs_list,1);
+
+    FixedVertexEntry vertex_pattle_color_3d_vertex[] = {
+        { ResolveMaterialVertexSemanticFormat(&local_cfg, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
+        { ResolveMaterialVertexSemanticFormat(&local_cfg, VertexSemantic::Color,    VK_FORMAT_R32_UINT),          VertexSemantic::Color },
+        { Assign::TransformID::VAB_FMT,  Assign::TransformID::VIS_SEMANTIC },
+    };
+
+    FixedMaterialDef dynamic_def {
+        "VertexPattleColor3D",
+        PrimitiveType::Triangles,
+        vertex_pattle_color_3d_vertex,
+        uint32_t(sizeof(vertex_pattle_color_3d_vertex) / sizeof(vertex_pattle_color_3d_vertex[0])),
+        VERTEX_PATTLE_COLOR_3D_DESCRIPTORS,
+        uint32_t(sizeof(VERTEX_PATTLE_COLOR_3D_DESCRIPTORS) / sizeof(VERTEX_PATTLE_COLOR_3D_DESCRIPTORS[0])),
+        nullptr,
+        0,
+    };
 
     CompositorAssembler assembler("ShaderLibrary");
 
@@ -78,7 +79,7 @@ MaterialCreateInfo *CreateVertexPattleColor3D(const contract::PhysicalDeviceProf
 
     MaterialCreateInfo *mci = CompileCompositorMaterial(
         profile,
-        VERTEX_PATTLE_COLOR_3D_DEF,
+        dynamic_def,
         result.vertex_glsl,
         result.fragment_glsl,
         &local_cfg);
@@ -88,4 +89,3 @@ MaterialCreateInfo *CreateVertexPattleColor3D(const contract::PhysicalDeviceProf
     return mci;
 }
 }//namespace hgl::graph::mtl
-
