@@ -65,6 +65,15 @@
       "tags": ["string", "collection", "hash", "io", "types", "no-stl", "fnv1a", "reference"],
       "difficulty": "beginner",
       "estimated_time_minutes": 5
+    },
+    {
+      "id": "cmmath-reference",
+      "name": "CMMath Math Library Reference",
+      "path": "SKILL_CMMATH_REFERENCE.md",
+      "description": "Complete reference for CMMath: vectors, matrices, projection/view matrices (Vulkan RH Z-up), quaternions, Transform class, AABB/OBB/Frustum geometry. Includes known bugs (PerspectiveMatrix X-flip, GetRotateMatrix signature mismatch).",
+      "tags": ["math", "matrix", "vector", "projection", "camera", "vulkan", "z-up", "right-hand", "quaternion", "aabb", "frustum", "transform", "reference"],
+      "difficulty": "intermediate",
+      "estimated_time_minutes": 10
     }
   ],
   "learning_paths": [

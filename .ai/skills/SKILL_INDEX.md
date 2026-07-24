@@ -1,6 +1,6 @@
 # ECS Render System SKILL合集
 
-本目录包含9个SKILL文档，涵盖HGL自有库类型参考、CMCoreType底层库完整参考、HGL日志系统、文件系统与IO流、添加新Component/System、系统分组、ExecutionPhase、RenderGraph和快速参考。
+本目录包含10个SKILL文档，涵盖HGL自有库类型参考、CMCoreType底层库完整参考、**CMMath数学库参考**、HGL日志系统、文件系统与IO流、添加新Component/System、系统分组、ExecutionPhase、RenderGraph和快速参考。
 
 ## ⚠️ 首先必读
 
@@ -125,6 +125,31 @@
 需要有序Map高频增删？      → OrderedMap（B树）
 需要静态有序Map序列化？   → FlatOrderedMap
 需要内存块管理？          → MemoryBlock / BlockAllocator
+→ 使用这个SKILL
+```
+
+---
+
+### 0.5 [SKILL_CMMATH_REFERENCE.md](SKILL_CMMATH_REFERENCE.md)
+**适用：向量、矩阵、投影/视图矩阵、四元数、变换（Transform）、几何体（AABB/OBB/Frustum）等数学运算**
+
+- 🎯 坐标系约定：Z轴向上、右手系、Vulkan NDC（深度[0,1]、Y向下）
+- 📐 向量类型（Vector2f/3f/4f/整型）与基础运算（Dot/Cross/Normalized）
+- 🔢 矩阵构建（TranslateMatrix/ScaleMatrix/AxisRotate/MakeMatrix）
+- 🎥 投影矩阵（OrthoMatrix/PerspectiveMatrix/LookAtMatrix）
+- 🔄 四元数（Quatf/QuatFromAxisAngle/SLerp）
+- 📦 Transform类（TRS懒计算、版本号追踪）
+- 🔷 几何体（AABB/OBB/Frustum/BoundingSphere/Ray）
+- ⚠️ **已知Bug列表**（PerspectiveMatrix X轴取反、GetRotateMatrix签名不匹配等）
+
+**快速导航：**
+```
+需要构建视图/投影矩阵？        → LookAtMatrix / PerspectiveMatrix（⚠️ 有Bug）
+需要坐标系转换？               → TransformPosition / TransformDirection
+需要 AABB/OBB 可见性裁剪？     → Frustum + GetFrustumPlanes
+需要 TRS 变换？                → Transform 类
+需要四元数旋转/插值？          → QuatFromAxisAngle / SLerpQuat
+了解矩阵 Bug？                 → SKILL_CMMATH_REFERENCE §⚠️已知Bug
 → 使用这个SKILL
 ```
 
@@ -471,6 +496,26 @@ A: 可能。这些SKILL针对ULRE的ECS系统设计。如果修改了架构，�
 | 自定义RenderGraph | RENDERGRAPH_USAGE | 场景1-3 |
 | 代码模板 | QUICK_REFERENCE | 代码模板速查 |
 | Checklist | QUICK_REFERENCE | 完整Checklist |
+| Vector2f/3f/4f 向量类型 | CMMATH_REFERENCE | §2 向量类型 |
+| Dot/Cross/Normalized/Distance | CMMATH_REFERENCE | §3 向量运算 |
+| TranslateMatrix/ScaleMatrix/AxisRotate | CMMATH_REFERENCE | §4 矩阵构建 |
+| MakeMatrix（TRS组合）| CMMATH_REFERENCE | §4 矩阵构建 |
+| Inverse/Transpose/DecomposeTransform | CMMATH_REFERENCE | §4 矩阵运算 |
+| LookAtMatrix（视图矩阵）| CMMATH_REFERENCE | §5 视图矩阵 |
+| OrthoMatrix（正交投影）| CMMATH_REFERENCE | §5 正交投影 |
+| PerspectiveMatrix（透视投影，⚠️有Bug）| CMMATH_REFERENCE | §5 透视投影 |
+| PerspectiveMatrixReversedZ | CMMATH_REFERENCE | §5 透视投影 |
+| MakeInfiniteReversedZProj | CMMATH_REFERENCE | §5 透视投影 |
+| ProjectToScreen/UnProjectToWorld | CMMATH_REFERENCE | §5 坐标投影 |
+| Quatf/QuatFromAxisAngle | CMMATH_REFERENCE | §6 四元数 |
+| SLerpQuat/LerpQuat | CMMATH_REFERENCE | §6 四元数插值 |
+| GetRotateMatrix/GetRotateQuat（⚠️签名Bug）| CMMATH_REFERENCE | §6+§4 |
+| Transform类（TRS懒计算）| CMMATH_REFERENCE | §7 Transform |
+| AABB/OBB | CMMATH_REFERENCE | §8 几何体 |
+| Frustum/GetFrustumPlanes | CMMATH_REFERENCE | §8 几何体 |
+| BoundingSphere/Ray/Plane | CMMATH_REFERENCE | §8 几何体 |
+| DualQuaternion/SkeletonMath | CMMATH_REFERENCE | §9 动画数学 |
+| CameraInfo结构体 | CMMATH_REFERENCE | §5+§12 |
 
 ---
 
