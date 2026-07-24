@@ -1062,6 +1062,88 @@ namespace hgl::ecs
 
             return material->BindTextureSampler(req.set_type, req.name, texture, sampler);
         };
+        auto resolve_batch_texture_binding = [&](graph::Material *material,
+                                                 MaterialBatch *batch,
+                                                 const graph::mtl::DescriptorRequirement &req,
+                                                 graph::Texture *&out_texture,
+                                                 graph::Sampler *&out_sampler) -> bool
+        {
+            out_texture = nullptr;
+            out_sampler = nullptr;
+
+            if (!material || !batch)
+                return false;
+
+            bool found_binding = false;
+            bool found_missing = false;
+            graph::Texture *reference_texture = nullptr;
+            graph::Sampler *reference_sampler = nullptr;
+
+            for (RenderItem *item : batch->items)
+            {
+                if (!item)
+                    continue;
+
+                auto *binding_set = item->GetDescriptorBindingSet();
+                graph::DescriptorBindingSet::TextureBinding binding{};
+                if (!binding_set || !binding_set->GetTextureBinding(req.texture_slot, binding))
+                {
+                    found_missing = true;
+                    continue;
+                }
+
+                const bool texture_ok = binding.texture != nullptr;
+                const bool sampler_ok = binding.sampler != nullptr;
+                const bool semantic_ok = (req.semantic == graph::mtl::DescriptorSemantic::MaterialTexture)
+                                       ? texture_ok
+                                       : (texture_ok && sampler_ok);
+                if (!semantic_ok)
+                {
+                    found_missing = true;
+                    continue;
+                }
+
+                if (!found_binding)
+                {
+                    reference_texture = binding.texture;
+                    reference_sampler = binding.sampler;
+                    found_binding = true;
+                    continue;
+                }
+
+                bool consistent = (reference_texture == binding.texture);
+                if (consistent && req.semantic == graph::mtl::DescriptorSemantic::MaterialSampler)
+                    consistent = (reference_sampler == binding.sampler);
+
+                if (!consistent)
+                {
+                    GLogError("[DescriptorBinding] Batch texture mismatch: material=%s semantic=%s descriptor=%s texture_slot=%u. Required resource identity must be consistent within one batch.",
+                              material->GetName().c_str(),
+                              graph::mtl::GetDescriptorSemanticName(req.semantic),
+                              req.name,
+                              static_cast<uint32_t>(req.texture_slot));
+                    if (req.required)
+                        batch->descriptor_bind_valid = false;
+                    return false;
+                }
+            }
+
+            if (found_binding && found_missing)
+            {
+                GLogWarning("[DescriptorBinding] Batch contract mixed texture mode: material=%s semantic=%s descriptor=%s texture_slot=%u. Some items provide DBS texture binding while others rely on material-level binding.",
+                            material->GetName().c_str(),
+                            graph::mtl::GetDescriptorSemanticName(req.semantic),
+                            req.name,
+                            static_cast<uint32_t>(req.texture_slot));
+            }
+
+            if (!found_binding)
+                return false;
+
+            out_texture = reference_texture;
+            out_sampler = reference_sampler;
+            return true;
+        };
 
         auto apply_requirement = [&](graph::Material *material,
                                      MaterialBatch *batch,
@@ -1388,21 +1470,57 @@ namespace hgl::ecs
             }
             case graph::mtl::DescriptorSemantic::MaterialTexture:
             {
+                graph::Texture *resolved_texture = nullptr;
+                graph::Sampler *resolved_sampler = nullptr;
+                const bool has_batch_binding = resolve_batch_texture_binding(material,
+                                                                             batch,
+                                                                             req,
+                                                                             resolved_texture,
+                                                                             resolved_sampler);
+                if (has_batch_binding && resolved_texture)
+                {
+                    if (!bind_texture(material, batch, req, resolved_texture))
+                        log_bind_failure(material, batch, req, "bind MaterialTexture failed");
+                    break;
+                }
+
                 const auto *binding = FindMaterialResourceBinding(material, req.name);
                 if (binding && binding->texture)
                 {
                     if (!bind_texture(material, batch, req, binding->texture))
                         log_bind_failure(material, batch, req, "bind MaterialTexture failed");
                 }
+                else if (req.required)
+                {
+                    log_bind_failure(material, batch, req, "missing required MaterialTexture binding");
+                }
                 break;
             }
             case graph::mtl::DescriptorSemantic::MaterialSampler:
             {
+                graph::Texture *resolved_texture = nullptr;
+                graph::Sampler *resolved_sampler = nullptr;
+                const bool has_batch_binding = resolve_batch_texture_binding(material,
+                                                                             batch,
+                                                                             req,
+                                                                             resolved_texture,
+                                                                             resolved_sampler);
+                if (has_batch_binding && resolved_texture && resolved_sampler)
+                {
+                    if (!bind_texture_sampler(material, batch, req, resolved_texture, resolved_sampler))
+                        log_bind_failure(material, batch, req, "bind MaterialSampler failed");
+                    break;
+                }
+
                 const auto *binding = FindMaterialResourceBinding(material, req.name);
                 if (binding && binding->texture && binding->sampler)
                 {
                     if (!bind_texture_sampler(material, batch, req, binding->texture, binding->sampler))
                         log_bind_failure(material, batch, req, "bind MaterialSampler failed");
+                }
+                else if (req.required)
+                {
+                    log_bind_failure(material, batch, req, "missing required MaterialSampler binding");
                 }
                 break;
             }
