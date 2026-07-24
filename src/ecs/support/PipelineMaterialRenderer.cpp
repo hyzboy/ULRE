@@ -6,10 +6,12 @@
 
 #include<hgl/ecs/support/PipelineMaterialRenderer.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
+#include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKVertexInput.h>
 #include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<iostream>
 
@@ -169,7 +171,8 @@ namespace hgl::ecs
                                               uint32_t batch_count,
                                               TransformAssignmentBuffer* transform_buffer,
                                               graph::IndirectDrawBuffer* icb_draw,
-                                              graph::IndirectDrawIndexedBuffer* icb_draw_indexed)
+                                              graph::IndirectDrawIndexedBuffer* icb_draw_indexed,
+                                              const MaterialBatch *owner_batch)
     {
         // 前置条件检查
         if (!rcb)
@@ -203,8 +206,27 @@ namespace hgl::ecs
             transform_buffer=nullptr;
         }
 
-        // 绑定材质描述符集
-        cmd_buf->BindDescriptorSets(material);
+        if (owner_batch && owner_batch->has_batch_descriptor_overrides)
+        {
+            const VkPipelineLayout layout = material->GetPipelineLayout();
+            for (uint32_t set_index = 0; set_index < graph::DESCRIPTOR_SET_TYPE_COUNT; ++set_index)
+            {
+                auto *mp = owner_batch->batch_descriptor_mp[set_index];
+                if (!mp)
+                    mp = material->GetMP(static_cast<graph::DescriptorSetType>(set_index));
+                if (!mp)
+                    continue;
+
+                mp->Update();
+                const VkDescriptorSet ds = mp->GetVkDescriptorSet();
+                cmd_buf->BindDescriptorSets(layout, set_index, &ds, 1, nullptr, 0);
+            }
+        }
+        else
+        {
+            // 绑定材质描述符集
+            cmd_buf->BindDescriptorSets(material);
+        }
 
         // 遍历绘制批次
         DrawBatch* batch = const_cast<DrawBatch*>(batches.data());

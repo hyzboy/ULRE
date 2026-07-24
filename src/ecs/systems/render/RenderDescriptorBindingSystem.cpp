@@ -11,7 +11,9 @@
 #include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKCommandBuffer.h>
+#include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
@@ -927,8 +929,108 @@ namespace hgl::ecs
                             reason ? reason : "unknown");
             }
         };
+        auto ensure_batch_mp = [&](graph::Material *material,
+                                   MaterialBatch *batch,
+                                   const graph::DescriptorSetType set_type) -> graph::MaterialParameters *
+        {
+            if (!material || !batch)
+                return nullptr;
+
+            const size_t set_index = size_t(set_type);
+            if (set_index >= graph::DESCRIPTOR_SET_TYPE_COUNT)
+                return nullptr;
+
+            if (batch->batch_descriptor_mp[set_index])
+                return batch->batch_descriptor_mp[set_index];
+
+            if (!batch->device)
+                return nullptr;
+
+            const auto *desc_manager = material->GetDescriptorManager();
+            const auto *pipeline_layout_data = material->GetPipelineLayoutData();
+            if (!desc_manager || !pipeline_layout_data)
+                return nullptr;
+
+            auto *mp = batch->device->CreateMP(desc_manager, pipeline_layout_data, set_type);
+            if (!mp)
+                return nullptr;
+
+            batch->batch_descriptor_mp[set_index] = mp;
+            batch->has_batch_descriptor_overrides = true;
+            return mp;
+        };
+
+        auto bind_ubo = [&](graph::Material *material,
+                            MaterialBatch *batch,
+                            const graph::mtl::DescriptorRequirement &req,
+                            const graph::IGPUBuffer *gpu) -> bool
+        {
+            if (!material || !gpu)
+                return false;
+
+            if (batch)
+            {
+                if (auto *mp = ensure_batch_mp(material, batch, req.set_type))
+                    return mp->BindUBO(req.name, gpu, false);
+            }
+
+            return material->BindUBO(req.set_type, req.name, gpu, false);
+        };
+
+        auto bind_ssbo = [&](graph::Material *material,
+                             MaterialBatch *batch,
+                             const graph::mtl::DescriptorRequirement &req,
+                             const graph::IGPUBuffer *gpu) -> bool
+        {
+            if (!material || !gpu)
+                return false;
+
+            if (batch)
+            {
+                if (auto *mp = ensure_batch_mp(material, batch, req.set_type))
+                    return mp->BindSSBO(req.name, gpu, false);
+            }
+
+            return material->BindSSBO(req.set_type, req.name, gpu, false);
+        };
+
+        auto bind_texture = [&](graph::Material *material,
+                                MaterialBatch *batch,
+                                const graph::mtl::DescriptorRequirement &req,
+                                graph::Texture *texture) -> bool
+        {
+            if (!material || !texture)
+                return false;
+
+            if (batch)
+            {
+                if (auto *mp = ensure_batch_mp(material, batch, req.set_type))
+                    return mp->BindTexture(req.name, texture);
+            }
+
+            return material->BindTexture(req.set_type, req.name, texture);
+        };
+
+        auto bind_texture_sampler = [&](graph::Material *material,
+                                        MaterialBatch *batch,
+                                        const graph::mtl::DescriptorRequirement &req,
+                                        graph::Texture *texture,
+                                        graph::Sampler *sampler) -> bool
+        {
+            if (!material || !texture || !sampler)
+                return false;
+
+            if (batch)
+            {
+                if (auto *mp = ensure_batch_mp(material, batch, req.set_type))
+                    return mp->BindTextureSampler(req.name, texture, sampler);
+            }
+
+            return material->BindTextureSampler(req.set_type, req.name, texture, sampler);
+        };
+
         auto apply_requirement = [&](graph::Material *material,
-                                     const MaterialBatch *batch,
+                                     MaterialBatch *batch,
                                      const graph::mtl::DescriptorRequirement &req)
         {
             switch (req.semantic)
@@ -936,30 +1038,53 @@ namespace hgl::ecs
             case graph::mtl::DescriptorSemantic::ViewportInfo:
             {
                 if (viewport_ubo)
-                    material->BindUBO(req.set_type, req.name, viewport_ubo, false);
+                    bind_ubo(material, batch, req, viewport_ubo);
                 break;
             }
             case graph::mtl::DescriptorSemantic::CameraInfo:
             {
                 if (camera_ubo)
-                    material->BindUBO(req.set_type, req.name, camera_ubo, false);
+                    bind_ubo(material, batch, req, camera_ubo);
                 break;
             }
             case graph::mtl::DescriptorSemantic::SkyInfo:
             {
                 if (sky_ubo)
-                    material->BindUBO(req.set_type, req.name, sky_ubo, false);
+                    bind_ubo(material, batch, req, sky_ubo);
                 break;
             }
             case graph::mtl::DescriptorSemantic::SkyCubemapSampler:
             {
                 const auto *binding = FindMaterialResourceBinding(material, req.name);
                 if (binding && binding->texture && binding->sampler)
-                    material->BindTextureSampler(req.set_type, req.name, binding->texture, binding->sampler);
+                    bind_texture_sampler(material, batch, req, binding->texture, binding->sampler);
                 break;
             }
             case graph::mtl::DescriptorSemantic::LocalToWorld:
             {
+                if (batch
+                 && batch->transform_buffer
+                 && material->hasLocalToWorld())
+                {
+                    auto *transform_data_buffer = batch->transform_buffer->GetTransformDataBuffer();
+                    const auto *transform_gpu_buffer = transform_data_buffer ? transform_data_buffer->GetGPUBuffer() : nullptr;
+
+                    if (transform_gpu_buffer)
+                    {
+#ifdef HGL_L2W_USE_UBO
+                        if (req.kind == graph::mtl::DescriptorKind::UBO)
+                        {
+                            bind_ubo(material, batch, req, transform_gpu_buffer);
+                            break;
+                        }
+#endif
+#ifdef HGL_L2W_USE_SSBO
+                        bind_ssbo(material, batch, req, transform_gpu_buffer);
+                        break;
+#endif
+                    }
+                }
+
                 if (batch
                  && batch->transform_buffer
                  && material->hasLocalToWorld()
@@ -1033,7 +1158,7 @@ namespace hgl::ecs
                 }
 
                 if (table_buffer)
-                    material->BindSSBO(req.set_type, req.name, table_buffer, false);
+                    bind_ssbo(material, batch, req, table_buffer);
                 break;
             }
             case graph::mtl::DescriptorSemantic::MaterialInstance:
@@ -1077,7 +1202,7 @@ namespace hgl::ecs
                     graph::mtl::SSBOAddress{req.ssbo_type, resolved_ssbo_id, 0},
                     "MaterialInstance");
                 if (mi_ssbo)
-                    material->BindSSBO(req.set_type, req.name, mi_ssbo, false);
+                    bind_ssbo(material, batch, req, mi_ssbo);
                 else
                     log_missing_ssbo_once(material, req, "domain binding not found", 0);
                 break;
@@ -1092,7 +1217,7 @@ namespace hgl::ecs
                     "MaterialTextureLayerTable");
 
                 if (table_buffer)
-                    material->BindSSBO(req.set_type, req.name, table_buffer, false);
+                    bind_ssbo(material, batch, req, table_buffer);
                 else
                     log_missing_ssbo_once(material, req, "domain binding not found", static_cast<int32_t>(req.texture_slot));
                 break;
@@ -1117,7 +1242,7 @@ namespace hgl::ecs
                 }
 
                 if (table_buffer)
-                    material->BindSSBO(req.set_type, req.name, table_buffer, false);
+                    bind_ssbo(material, batch, req, table_buffer);
                 else
                     log_missing_ssbo_once(material, req, batch ? "batch rows missing and domain binding not found" : "domain binding not found", static_cast<int32_t>(req.data_slot));
                 break;
@@ -1126,14 +1251,14 @@ namespace hgl::ecs
             {
                 const auto *binding = FindMaterialResourceBinding(material, req.name);
                 if (binding && binding->texture)
-                    material->BindTexture(req.set_type, req.name, binding->texture);
+                    bind_texture(material, batch, req, binding->texture);
                 break;
             }
             case graph::mtl::DescriptorSemantic::MaterialSampler:
             {
                 const auto *binding = FindMaterialResourceBinding(material, req.name);
                 if (binding && binding->texture && binding->sampler)
-                    material->BindTextureSampler(req.set_type, req.name, binding->texture, binding->sampler);
+                    bind_texture_sampler(material, batch, req, binding->texture, binding->sampler);
                 break;
             }
             case graph::mtl::DescriptorSemantic::MaterialColorPalette:
@@ -1156,7 +1281,7 @@ namespace hgl::ecs
 
             active_materials.insert(material);
 
-            const MaterialBatch *batch = pair.second.get();
+            MaterialBatch *batch = pair.second.get();
 
             const auto &contract = material->GetBindingContract();
 
@@ -1383,4 +1508,3 @@ namespace hgl::ecs
         }
     }
 }
-

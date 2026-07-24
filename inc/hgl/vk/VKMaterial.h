@@ -74,7 +74,8 @@ public:
 
 //    const   MaterialDescriptorManager *         GetDescriptorManager    ()const{return desc_manager;}
     const   VkPipelineLayout                    GetPipelineLayout       ()const;
-//    const   PipelineLayoutData *                GetPipelineLayoutData   ()const{return pipeline_layout_data;}
+    const   MaterialDescriptorManager *         GetDescriptorManager    ()const{return desc_manager;}
+    const   PipelineLayoutData *                GetPipelineLayoutData   ()const{return pipeline_layout_data;}
 
 public:
 

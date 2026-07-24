@@ -3,6 +3,7 @@
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
+#include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/ecs/support/PipelineMaterialRenderer.h>
 
@@ -26,6 +27,13 @@ namespace hgl::ecs
 
     MaterialBatch::~MaterialBatch()
     {
+        for (size_t i = 0; i < graph::DESCRIPTOR_SET_TYPE_COUNT; ++i)
+        {
+            delete batch_descriptor_mp[i];
+            batch_descriptor_mp[i] = nullptr;
+        }
+        has_batch_descriptor_overrides = false;
+
         if (icb_draw_indexed)
             delete icb_draw_indexed;
         if (icb_draw)

@@ -2,6 +2,7 @@
 
 #include<hgl/ecs/core/MaterialPipelineKey.h>
 #include<hgl/ecs/support/PipelineMaterialRenderer.h>
+#include<hgl/common/DescriptorSetTypeDef.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/vk/VK.h>
 #include<array>
@@ -16,6 +17,7 @@ namespace hgl
         class VulkanDevice;
         class IndirectDrawBuffer;
         class IndirectDrawIndexedBuffer;
+        class MaterialParameters;
     }
 
     namespace ecs
@@ -64,6 +66,8 @@ namespace hgl::ecs
         TransformAssignmentBuffer *          transform_buffer        = nullptr;          ///<Transform分配缓冲(非拥有)
         std::array<uint32_t, static_cast<size_t>(graph::mtl::TextureSlot::RANGE_SIZE)> texture_slot_handles{}; ///<每材质纹理槽的 bindless handle（用于实例纹理行表）
         bool                                  has_texture_slot_handles = false;
+        graph::MaterialParameters *           batch_descriptor_mp[graph::DESCRIPTOR_SET_TYPE_COUNT]{}; ///<批次级描述符参数（按 set type）
+        bool                                  has_batch_descriptor_overrides = false;            ///<是否启用批次级描述符覆盖
 
         DrawBatchArray                          draw_batches;                               ///<绘制批次数组
         uint32_t                                draw_batches_count      = 0;                ///<有效批次数量

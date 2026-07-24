@@ -36,6 +36,8 @@ namespace hgl
 
 namespace hgl::ecs
 {
+    struct MaterialBatch;
+
     /**
      * 绘制批次：将使用相同几何数据的节点合并为一个批次
      */
@@ -127,6 +129,7 @@ namespace hgl::ecs
                     uint32_t batch_count,
                     TransformAssignmentBuffer* transform_buffer,
                     graph::IndirectDrawBuffer* icb_draw,
-                    graph::IndirectDrawIndexedBuffer* icb_draw_indexed);
+                    graph::IndirectDrawIndexedBuffer* icb_draw_indexed,
+                    const MaterialBatch *owner_batch = nullptr);
     };
 }//namespace hgl::ecs

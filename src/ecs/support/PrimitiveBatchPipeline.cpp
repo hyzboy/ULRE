@@ -682,9 +682,10 @@ namespace hgl::ecs
             if (!material || !pipeline)
                 continue;
 
+            const auto &binding_contract = material->GetBindingContract();
             if (auto *binding_set = item->GetDescriptorBindingSet())
             {
-                if (!binding_set->SatisfiesContract(material->GetBindingContract(), material->GetName().c_str()))
+                if (!binding_set->SatisfiesContract(binding_contract, material->GetName().c_str()))
                     continue;
             }
 
