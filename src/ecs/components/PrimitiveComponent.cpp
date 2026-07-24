@@ -64,18 +64,18 @@ namespace hgl::ecs
         if (overrideMaterial)
             return overrideMaterial->GetMaterial();
 
-        // Override DBS also provides a material (e.g. gizmo color-swap uses same material, diff slot_index)
-        if (descriptorBindingSet)
+        if (primitive)
         {
-            auto *dbs_mat = descriptorBindingSet->GetMaterial();
-            if (dbs_mat)
-                return dbs_mat;
+            auto *prim_mat = primitive->GetMaterial();
+            if (prim_mat)
+                return prim_mat;
         }
 
-        if (!primitive)
-            return nullptr;
+        // Fallback only when primitive path has no material.
+        if (descriptorBindingSet)
+            return descriptorBindingSet->GetMaterial();
 
-        return primitive->GetMaterial();
+        return nullptr;
     }
 
     hgl::graph::Pipeline* PrimitiveComponent::GetPipeline() const
@@ -141,5 +141,4 @@ namespace hgl::ecs
         overridePipeline = nullptr;
     }
 }//namespace hgl::ecs
-
 
