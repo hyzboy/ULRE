@@ -17,6 +17,7 @@
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/MaterializationPools.h>
 #include<hgl/object/ObjectTracker.h>
+#include<hgl/util/hash/FNV1a.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
@@ -35,6 +36,66 @@ namespace hgl::ecs
 {
     namespace
     {
+        uint64_t HashDBSContractBindingSignature(const graph::DescriptorBindingSet *binding_set,
+                                                 const graph::mtl::BindingContract &contract)
+        {
+            if (!binding_set)
+                return 0;
+
+            uint64_t hash = hgl::hash::FNV1aInit<uint64_t>();
+            uint32_t count = 0;
+
+            for (const auto &req : contract.requirements)
+            {
+                if (!req.required)
+                    continue;
+
+                switch (req.semantic)
+                {
+                case graph::mtl::DescriptorSemantic::MaterialInstance:
+                case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
+                case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
+                {
+                    graph::DescriptorBindingSet::SSBOBinding binding{};
+                    if (!binding_set->GetSSBOBinding(req.ssbo_type, binding))
+                        continue;
+
+                    hash = hgl::hash::FNV1aAppendValueBytes(hash, req.semantic);
+                    hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.ssbo_type);
+                    hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.ssbo_id);
+                    hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.slot_index);
+                    ++count;
+                    break;
+                }
+                case graph::mtl::DescriptorSemantic::MaterialTexture:
+                case graph::mtl::DescriptorSemantic::MaterialSampler:
+                {
+                    graph::DescriptorBindingSet::TextureBinding binding{};
+                    if (!binding_set->GetTextureBinding(req.texture_slot, binding))
+                        continue;
+
+                    hash = hgl::hash::FNV1aAppendValueBytes(hash, req.semantic);
+                    hash = hgl::hash::FNV1aAppendValueBytes(hash, req.texture_slot);
+
+                    const uint64_t texture_ptr = uint64_t(uintptr_t(binding.texture));
+                    const uint64_t sampler_ptr = uint64_t(uintptr_t(binding.sampler));
+                    hash = hgl::hash::FNV1aAppendValueBytes(hash, texture_ptr);
+                    hash = hgl::hash::FNV1aAppendValueBytes(hash, sampler_ptr);
+                    ++count;
+                    break;
+                }
+                default:
+                    break;
+                }
+            }
+
+            if (count == 0)
+                return 0;
+
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, count);
+            return hash;
+        }
+
         void WriteICB(VkDrawIndirectCommand* draw_cmd, DrawBatch* batch)
         {
             if (!draw_cmd || !batch || !batch->geom_draw_range)
@@ -683,7 +744,8 @@ namespace hgl::ecs
                 continue;
 
             const auto &binding_contract = material->GetBindingContract();
-            if (auto *binding_set = item->GetDescriptorBindingSet())
+            auto *binding_set = item->GetDescriptorBindingSet();
+            if (binding_set)
             {
                 if (!binding_set->SatisfiesContract(binding_contract, material->GetName().c_str()))
                     continue;
@@ -748,6 +810,18 @@ namespace hgl::ecs
                     cache_value.texture_slot_handles = texture_slot_handles;
                     cache_value.has_texture_slot_handles = has_texture_slot_handles;
                     material_spec_hash_cache.emplace(material, std::move(cache_value));
+                }
+            }
+
+            if (binding_set)
+            {
+                const uint64_t dbs_binding_signature = HashDBSContractBindingSignature(binding_set, binding_contract);
+                if (dbs_binding_signature != 0)
+                {
+                    uint64_t merged_signature = hgl::hash::FNV1aInit<uint64_t>();
+                    merged_signature = hgl::hash::FNV1aAppendValueBytes(merged_signature, binding_signature);
+                    merged_signature = hgl::hash::FNV1aAppendValueBytes(merged_signature, dbs_binding_signature);
+                    binding_signature = merged_signature;
                 }
             }
 
