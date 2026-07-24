@@ -19,8 +19,15 @@
 #include <unordered_map>
 #include <set>
 #include <unordered_set>
+#include <queue>
+#include <stack>
 #include <thread>
 #include <mutex>
+#include <shared_mutex>
+#include <atomic>
+#include <condition_variable>
+#include <semaphore>
+#include <chrono>
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -28,7 +35,8 @@
 ```
 
 ❌ 禁止手写FNV1a或任何哈希函数实现  
-❌ 禁止使用 `std::string`、`std::vector`、`std::thread`、`std::mutex` 等STL类型  
+❌ 禁止使用 `std::string`、`std::vector`、`std::thread`、`std::mutex`、`std::atomic` 等STL类型  
+❌ 禁止使用 `std::chrono`，时间相关功能必须使用 `<hgl/time/Time.h>` 或 `<hgl/time/Timestamp.h>`  
 ❌ 禁止使用 `new`/`delete` 手动内存管理（使用HGL的智能指针或池）  
 ❌ 禁止使用 `printf`、`std::cout`、`std::cerr`、`fprintf` 输出日志（使用HGL日志宏）
 
@@ -62,6 +70,20 @@
 | `std::filesystem::create_directories` | `hgl::filesystem::MakePath`              | `<hgl/filesystem/FileSystem.h>`     |
 | `std::filesystem::remove_all`| `hgl::filesystem::DeleteTree`                       | `<hgl/filesystem/FileSystem.h>`     |
 | 文件系统操作                  | `hgl::filesystem::*`                                | `<hgl/filesystem/FileSystem.h>`     |
+| `std::thread`                | `hgl::Thread`                                       | `<hgl/thread/Thread.h>`             |
+| `std::mutex`                 | `hgl::ThreadMutex`                                  | `<hgl/thread/ThreadMutex.h>`        |
+| `std::lock_guard<mutex>`     | `hgl::ThreadMutexLock`                              | `<hgl/thread/ThreadMutex.h>`        |
+| `std::shared_mutex`          | `hgl::RWLock`                                       | `<hgl/thread/RWLock.h>`             |
+| `std::shared_lock`           | `hgl::OnlyReadLock`                                 | `<hgl/thread/RWLock.h>`             |
+| `std::unique_lock<shared_mutex>` | `hgl::OnlyWriteLock`                            | `<hgl/thread/RWLock.h>`             |
+| `std::atomic<T>`             | `hgl::atom<T>`                                      | `<hgl/thread/Atomic.h>`             |
+| `std::counting_semaphore`    | `hgl::Semaphore`                                    | `<hgl/thread/Semaphore.h>`          |
+| `std::condition_variable`    | `hgl::CondVar`                                      | `<hgl/thread/CondVar.h>`            |
+| `std::queue<T>`              | `hgl::Queue<T>`                                     | `<hgl/type/Queue.h>`                |
+| `std::stack<T>`              | `hgl::Stack<T>`                                     | `<hgl/type/Stack.h>`                |
+| `std::chrono::*` 时间        | `hgl::GetTimeSec()` / `hgl::GetUptimeSec()`         | `<hgl/time/Time.h>`                 |
+| 时间戳对象                    | `hgl::Timestamp`                                    | `<hgl/time/Timestamp.h>`            |
+| `this_thread::sleep_for`     | `hgl::SleepSecond(seconds)`                         | `<hgl/time/Time.h>`                 |
 | 日志输出                      | `LogInfo` / `GLogInfo` / `FLogInfo` 等宏 | `<hgl/log/Log.h>`                   |
 
 ---
@@ -273,8 +295,9 @@ static void CompileShader(const OSString &path)
 ## 🔍 遇到不确定的HGL类型时
 
 1. 优先查阅 `.ai/skills/SKILL_HGL_TYPES_REFERENCE.md` 获取完整示例
-2. 搜索 `inc/hgl/type/`、`inc/hgl/io/`、`inc/hgl/util/` 等目录下的头文件
-3. 参照已有代码中的 `#include <hgl/...>` 用法模式
+2. 线程/时间/队列/栈/LRU等类型 → `.ai/skills/SKILL_CMCORE_REFERENCE.md`
+3. 搜索 `CMCore/inc/hgl/` 目录下的头文件（该库极少修改，内容稳定）
+4. 参照已有代码中的 `#include <hgl/...>` 用法模式
 
 ---
 
@@ -283,6 +306,7 @@ static void CompileShader(const OSString &path)
 遇到新任务时，先查看 `.ai/skills/SKILL_INDEX.md` 了解可用的工作流指南：
 - 添加新渲染组件/系统 → `SKILL_ADD_NEW_RENDER_COMPONENT.md`
 - HGL类型完整参考 → `SKILL_HGL_TYPES_REFERENCE.md`
+- **CMCore完整参考（线程/时间/队列/编码等）** → `SKILL_CMCORE_REFERENCE.md`
 - **HGL日志系统** → `SKILL_LOGGING_REFERENCE.md`
 - **文件系统与IO流** → `SKILL_FILESYSTEM_IO_REFERENCE.md`
 - 系统分组和启用 → `SKILL_SYSTEM_GROUPING_AND_ENABLEMENT.md`
