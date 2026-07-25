@@ -50,10 +50,11 @@ namespace hgl::ecs
             }
         }
 
-        void SyncLegacyMaterialRuntime(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+        void SyncLegacyMaterialRuntime(ECSContext *world,
+                                       const std::shared_ptr<PrimitiveComponent> &primitive_comp,
                                        const std::shared_ptr<MaterialComponent> &material_comp)
         {
-            if (!primitive_comp || !material_comp)
+            if (!world || !primitive_comp || !material_comp)
                 return;
 
             if (!material_comp->program)
@@ -65,13 +66,29 @@ namespace hgl::ecs
                 }
             }
 
-            if (!material_comp->dbs_compat)
-                material_comp->dbs_compat = primitive_comp->GetDescriptorBindingSet();
+            if (auto *prim_dbs = primitive_comp->GetDescriptorBindingSet())
+                material_comp->dbs_compat = prim_dbs;
+            else if (!material_comp->dbs_compat)
+                material_comp->dbs_compat = nullptr;
 
             auto *program = material_comp->program;
             auto *dbs = material_comp->dbs_compat;
             if (!program || !dbs)
                 return;
+
+            if (auto rdbs = world->GetSystem<RenderDescriptorBindingSystem>())
+            {
+                const uint32_t mi_data_bytes = program->GetMIDataBytes();
+                if (mi_data_bytes > 0)
+                {
+                    for (const auto &req : program->GetBindingContract().requirements)
+                    {
+                        if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                            continue;
+                        rdbs->RegisterMaterialStructLayout(req.ssbo_type, req.ssbo_id, mi_data_bytes);
+                    }
+                }
+            }
 
             for (const auto &req : program->GetBindingContract().requirements)
             {
@@ -358,8 +375,8 @@ namespace hgl::ecs
               || primitiveComp->GetDescriptorBindingSet()))
                 material_comp = entity->AddComponent<MaterialComponent>();
 
-            if (material_comp)
-                SyncLegacyMaterialRuntime(primitiveComp, material_comp);
+            if (material_comp && !primitiveComp->HasMaterialRecipe())
+                SyncLegacyMaterialRuntime(world, primitiveComp, material_comp);
 
             if (material_comp && primitiveComp->HasMaterialRecipe())
             {

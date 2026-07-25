@@ -56,6 +56,12 @@ namespace hgl::ecs
 
     hgl::graph::DescriptorBindingSet* PrimitiveRenderItem::GetDescriptorBindingSet() const
     {
+        if (primitiveComp)
+        {
+            if (auto *prim_dbs = primitiveComp->GetDescriptorBindingSet())
+                return prim_dbs;
+        }
+
         if (auto *entity = GetEntity())
         {
             auto material_comp = entity->GetComponent<MaterialComponent>();
@@ -63,7 +69,7 @@ namespace hgl::ecs
                 return material_comp->dbs_compat;
         }
 
-        return primitiveComp ? primitiveComp->GetDescriptorBindingSet() : nullptr;
+        return nullptr;
     }
 
     hgl::graph::MaterialProgram* PrimitiveRenderItem::GetMaterialProgram() const

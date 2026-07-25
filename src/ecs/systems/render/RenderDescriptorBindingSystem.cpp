@@ -7,6 +7,8 @@
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/core/RenderItem.h>
+#include<hgl/ecs/core/PrimitiveRenderItem.h>
+#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/vk/VKRenderTarget.h>
@@ -288,33 +290,43 @@ namespace hgl::ecs
         if (!BuildMaterialRecipeForMaterial(material, out_recipe))
             return false;
 
-        graph::MaterialInstance *mi = item->GetMaterialInstance();
-        if (auto *binding_set = item->GetDescriptorBindingSet())
+        bool uses_recipe_runtime = false;
+        if (auto *primitive_item = dynamic_cast<const PrimitiveRenderItem *>(item))
         {
-            for (uint32_t i = 0; i < uint32_t(graph::mtl::SSBOType::RANGE_SIZE); ++i)
-            {
-                const auto ssbo_type = static_cast<graph::mtl::SSBOType>(i);
-                graph::DescriptorBindingSet::SSBOBinding binding{};
-                if (!binding_set->GetSSBOBinding(ssbo_type, binding))
-                    continue;
+            auto primitive_comp = primitive_item->GetPrimitiveComponent();
+            uses_recipe_runtime = primitive_comp && primitive_comp->HasMaterialRecipe();
+        }
 
+        graph::MaterialInstance *mi = item->GetMaterialInstance();
+        if (!uses_recipe_runtime)
+        {
+            if (auto *binding_set = item->GetDescriptorBindingSet())
+            {
+                for (uint32_t i = 0; i < uint32_t(graph::mtl::SSBOType::RANGE_SIZE); ++i)
+                {
+                    const auto ssbo_type = static_cast<graph::mtl::SSBOType>(i);
+                    graph::DescriptorBindingSet::SSBOBinding binding{};
+                    if (!binding_set->GetSSBOBinding(ssbo_type, binding))
+                        continue;
+
+                    if (!out_recipe.domain.empty())
+                        out_recipe.domain += "|";
+                    out_recipe.domain += "dbs:";
+                    out_recipe.domain += std::to_string(static_cast<uint32_t>(binding.ssbo_type));
+                    out_recipe.domain += ":";
+                    out_recipe.domain += std::to_string(binding.ssbo_id);
+                    out_recipe.domain += ":";
+                    out_recipe.domain += std::to_string(binding.slot_index);
+                }
+            }
+            else if (mi)
+            {
                 if (!out_recipe.domain.empty())
                     out_recipe.domain += "|";
-                out_recipe.domain += "dbs:";
-                out_recipe.domain += std::to_string(static_cast<uint32_t>(binding.ssbo_type));
-                out_recipe.domain += ":";
-                out_recipe.domain += std::to_string(binding.ssbo_id);
-                out_recipe.domain += ":";
-                out_recipe.domain += std::to_string(binding.slot_index);
+                // Legacy MI path: mi_id is now always -1. Use material name as domain key instead.
+                out_recipe.domain += "mi-legacy:";
+                out_recipe.domain += mi->GetMaterialProgram() ? mi->GetMaterialProgram()->GetName().c_str() : "null";
             }
-        }
-        else if (mi)
-        {
-            if (!out_recipe.domain.empty())
-                out_recipe.domain += "|";
-            // Legacy MI path: mi_id is now always -1. Use material name as domain key instead.
-            out_recipe.domain += "mi-legacy:";
-            out_recipe.domain += mi->GetMaterialProgram() ? mi->GetMaterialProgram()->GetName().c_str() : "null";
         }
 
         return true;
@@ -1158,6 +1170,24 @@ namespace hgl::ecs
             out_sampler = reference_sampler;
             return true;
         };
+        auto batch_uses_recipe_runtime = [&](MaterialBatch *batch) -> bool
+        {
+            if (!batch)
+                return false;
+
+            for (RenderItem *item : batch->items)
+            {
+                auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(item);
+                if (!primitive_item)
+                    continue;
+
+                auto primitive_comp = primitive_item->GetPrimitiveComponent();
+                if (primitive_comp && primitive_comp->HasMaterialRecipe())
+                    return true;
+            }
+
+            return false;
+        };
 
         auto apply_requirement = [&](graph::MaterialProgram *material,
                                      MaterialBatch *batch,
@@ -1301,12 +1331,16 @@ namespace hgl::ecs
             }
             case graph::mtl::DescriptorSemantic::MaterialInstance:
             {
-                uint32_t resolved_ssbo_id = req.ssbo_id;
-                bool found_binding_set = false;
-                bool inconsistent_binding_set = false;
+                const graph::IGPUBuffer *mi_ssbo = resolve_domain_ssbo(
+                    graph::mtl::SSBOAddress{req.ssbo_type, req.ssbo_id, 0},
+                    "MaterialInstance");
 
-                if (batch)
+                if (!mi_ssbo && batch && !batch_uses_recipe_runtime(batch))
                 {
+                    uint32_t fallback_ssbo_id = 0;
+                    bool found_binding_set = false;
+                    bool inconsistent_binding_set = false;
+
                     for (RenderItem *item : batch->items)
                     {
                         if (!item)
@@ -1319,28 +1353,32 @@ namespace hgl::ecs
                         const uint32_t ssbo_id = binding_set->GetSSBOID(req.ssbo_type);
                         if (!found_binding_set)
                         {
-                            resolved_ssbo_id = ssbo_id;
+                            fallback_ssbo_id = ssbo_id;
                             found_binding_set = true;
                         }
-                        else if (resolved_ssbo_id != ssbo_id)
+                        else if (fallback_ssbo_id != ssbo_id)
                         {
                             inconsistent_binding_set = true;
                             break;
                         }
                     }
+
+                    if (inconsistent_binding_set)
+                    {
+                        log_missing_ssbo_once(material, req, "mixed descriptor binding sets in one batch", 0);
+                        if (req.required)
+                            batch->descriptor_bind_valid = false;
+                        break;
+                    }
+
+                    if (found_binding_set && fallback_ssbo_id != req.ssbo_id)
+                    {
+                        mi_ssbo = resolve_domain_ssbo(
+                            graph::mtl::SSBOAddress{req.ssbo_type, fallback_ssbo_id, 0},
+                            "MaterialInstance");
+                    }
                 }
 
-                if (inconsistent_binding_set)
-                {
-                    log_missing_ssbo_once(material, req, "mixed descriptor binding sets in one batch", 0);
-                    if (batch && req.required)
-                        batch->descriptor_bind_valid = false;
-                    break;
-                }
-
-                const graph::IGPUBuffer *mi_ssbo = resolve_domain_ssbo(
-                    graph::mtl::SSBOAddress{req.ssbo_type, resolved_ssbo_id, 0},
-                    "MaterialInstance");
                 if (mi_ssbo)
                 {
                     if (!bind_ssbo(material, batch, req, mi_ssbo))
@@ -1356,12 +1394,19 @@ namespace hgl::ecs
             }
             case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
             {
-                uint32_t resolved_ssbo_id = req.ssbo_id;
-                bool found_binding_set = false;
-                bool inconsistent_binding_set = false;
+                const graph::IGPUBuffer *table_buffer = resolve_domain_ssbo(
+                    graph::mtl::SSBOAddress{
+                        req.ssbo_type,
+                        req.ssbo_id,
+                        static_cast<uint32_t>(req.texture_slot)},
+                    "MaterialTextureLayerTable");
 
-                if (batch)
+                if (!table_buffer && batch && !batch_uses_recipe_runtime(batch))
                 {
+                    uint32_t fallback_ssbo_id = 0;
+                    bool found_binding_set = false;
+                    bool inconsistent_binding_set = false;
+
                     for (RenderItem *item : batch->items)
                     {
                         if (!item)
@@ -1374,31 +1419,34 @@ namespace hgl::ecs
                         const uint32_t ssbo_id = binding_set->GetSSBOID(req.ssbo_type);
                         if (!found_binding_set)
                         {
-                            resolved_ssbo_id = ssbo_id;
+                            fallback_ssbo_id = ssbo_id;
                             found_binding_set = true;
                         }
-                        else if (resolved_ssbo_id != ssbo_id)
+                        else if (fallback_ssbo_id != ssbo_id)
                         {
                             inconsistent_binding_set = true;
                             break;
                         }
                     }
-                }
 
-                if (inconsistent_binding_set)
-                {
-                    log_missing_ssbo_once(material, req, "mixed descriptor binding sets in one batch", static_cast<int32_t>(req.texture_slot));
-                    if (batch && req.required)
-                        batch->descriptor_bind_valid = false;
-                    break;
-                }
+                    if (inconsistent_binding_set)
+                    {
+                        log_missing_ssbo_once(material, req, "mixed descriptor binding sets in one batch", static_cast<int32_t>(req.texture_slot));
+                        if (req.required)
+                            batch->descriptor_bind_valid = false;
+                        break;
+                    }
 
-                const graph::IGPUBuffer *table_buffer = resolve_domain_ssbo(
-                    graph::mtl::SSBOAddress{
-                        req.ssbo_type,
-                        resolved_ssbo_id,
-                        static_cast<uint32_t>(req.texture_slot)},
-                    "MaterialTextureLayerTable");
+                    if (found_binding_set && fallback_ssbo_id != req.ssbo_id)
+                    {
+                        table_buffer = resolve_domain_ssbo(
+                            graph::mtl::SSBOAddress{
+                                req.ssbo_type,
+                                fallback_ssbo_id,
+                                static_cast<uint32_t>(req.texture_slot)},
+                            "MaterialTextureLayerTable");
+                    }
+                }
 
                 if (table_buffer)
                 {
@@ -1415,43 +1463,6 @@ namespace hgl::ecs
             }
             case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
             {
-                uint32_t resolved_ssbo_id = req.ssbo_id;
-                bool found_binding_set = false;
-                bool inconsistent_binding_set = false;
-
-                if (batch)
-                {
-                    for (RenderItem *item : batch->items)
-                    {
-                        if (!item)
-                            continue;
-
-                        auto *binding_set = item->GetDescriptorBindingSet();
-                        if (!binding_set || !binding_set->HasSSBOBinding(req.ssbo_type))
-                            continue;
-
-                        const uint32_t ssbo_id = binding_set->GetSSBOID(req.ssbo_type);
-                        if (!found_binding_set)
-                        {
-                            resolved_ssbo_id = ssbo_id;
-                            found_binding_set = true;
-                        }
-                        else if (resolved_ssbo_id != ssbo_id)
-                        {
-                            inconsistent_binding_set = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (inconsistent_binding_set)
-                {
-                    log_missing_ssbo_once(material, req, "mixed descriptor binding sets in one batch", static_cast<int32_t>(req.data_slot));
-                    if (batch && req.required)
-                        batch->descriptor_bind_valid = false;
-                    break;
-                }
-
                 const graph::IGPUBuffer *table_buffer = nullptr;
 
                 // Prefer per-batch DataIndex rows SSBO (written in draw order by PrimitiveBatchPipeline).
@@ -1464,9 +1475,56 @@ namespace hgl::ecs
                     table_buffer = resolve_domain_ssbo(
                         graph::mtl::SSBOAddress{
                             req.ssbo_type,
-                            resolved_ssbo_id,
+                            req.ssbo_id,
                             static_cast<uint32_t>(req.data_slot)},
                         "MaterialDataIndexTable");
+                }
+
+                if (!table_buffer && batch && !batch_uses_recipe_runtime(batch))
+                {
+                    uint32_t fallback_ssbo_id = 0;
+                    bool found_binding_set = false;
+                    bool inconsistent_binding_set = false;
+
+                    for (RenderItem *item : batch->items)
+                    {
+                        if (!item)
+                            continue;
+
+                        auto *binding_set = item->GetDescriptorBindingSet();
+                        if (!binding_set || !binding_set->HasSSBOBinding(req.ssbo_type))
+                            continue;
+
+                        const uint32_t ssbo_id = binding_set->GetSSBOID(req.ssbo_type);
+                        if (!found_binding_set)
+                        {
+                            fallback_ssbo_id = ssbo_id;
+                            found_binding_set = true;
+                        }
+                        else if (fallback_ssbo_id != ssbo_id)
+                        {
+                            inconsistent_binding_set = true;
+                            break;
+                        }
+                    }
+
+                    if (inconsistent_binding_set)
+                    {
+                        log_missing_ssbo_once(material, req, "mixed descriptor binding sets in one batch", static_cast<int32_t>(req.data_slot));
+                        if (req.required)
+                            batch->descriptor_bind_valid = false;
+                        break;
+                    }
+
+                    if (found_binding_set && fallback_ssbo_id != req.ssbo_id)
+                    {
+                        table_buffer = resolve_domain_ssbo(
+                            graph::mtl::SSBOAddress{
+                                req.ssbo_type,
+                                fallback_ssbo_id,
+                                static_cast<uint32_t>(req.data_slot)},
+                            "MaterialDataIndexTable");
+                    }
                 }
 
                 if (table_buffer)
@@ -1573,6 +1631,9 @@ namespace hgl::ecs
                 default:
                     continue;
                 }
+
+                if (batch_uses_recipe_runtime(batch))
+                    continue;
 
                 bool found_binding = false;
                 bool found_missing = false;
@@ -1713,14 +1774,6 @@ namespace hgl::ecs
                     bindless_mgr->BindToCmd(*current_cmd, pipeline_layout, bindless_set);
                 }
             }
-        }
-
-        for (auto it = material_resource_bindings.begin(); it != material_resource_bindings.end();)
-        {
-            if (active_materials.find(it->first) == active_materials.end())
-                it = material_resource_bindings.erase(it);
-            else
-                ++it;
         }
 
         for (auto it = contract_last_ok.begin(); it != contract_last_ok.end();)

@@ -884,7 +884,8 @@ namespace hgl::ecs
                 }
             }
 
-            if (binding_set)
+            const bool uses_recipe_runtime = (prim_comp && prim_comp->HasMaterialRecipe());
+            if (binding_set && !uses_recipe_runtime)
             {
                 const uint64_t dbs_binding_signature = HashDBSContractBindingSignature(binding_set, binding_contract);
                 if (dbs_binding_signature != 0)
