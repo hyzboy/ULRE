@@ -170,7 +170,7 @@ private:
         memcpy(dst + static_cast<VkDeviceSize>(slot_index) * mi_data_bytes, &sphere_color_data, mi_data_bytes);
         gpu_buf->Unmap();
 
-        binding_set = new DescriptorBindingSet(mtl, mtl->GetDefaultVIL());
+        binding_set = new DescriptorBindingSet(mtl);
         if (!binding_set)
             return LogStageFail("OffscreenPass::InitMISSBO", "binding set allocation failed");
 
@@ -615,7 +615,7 @@ private:
         memcpy(dst + static_cast<VkDeviceSize>(slot_index) * mi_data_bytes, &cube_mi_data, mi_data_bytes);
         gpu_buf->Unmap();
 
-        cube_binding_set = new DescriptorBindingSet(cube_mtl, cube_mtl->GetDefaultVIL());
+        cube_binding_set = new DescriptorBindingSet(cube_mtl);
         if (!cube_binding_set)
             return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "binding set allocation failed");
 

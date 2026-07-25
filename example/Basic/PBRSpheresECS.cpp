@@ -248,11 +248,11 @@ private:
                                                                    probe_base->GetFormat(),
                                                                    true);
         normal_texture = texture_manager->CreateTexture2DArray("pbr_normal_array",
-                                                                probe_normal->GetWidth(),
-                                                                probe_normal->GetHeight(),
-                                                                GRID_SIZE,
-                                                                probe_normal->GetFormat(),
-                                                                true);
+                                                                 probe_normal->GetWidth(),
+                                                                 probe_normal->GetHeight(),
+                                                                 GRID_SIZE,
+                                                                 probe_normal->GetFormat(),
+                                                                 true);
 
         SAFE_CLEAR(probe_base)
         SAFE_CLEAR(probe_normal)
@@ -395,7 +395,7 @@ private:
                        &sphere_mi_data[row][col],
                        mi_data_bytes);
 
-                sphere_binding[row][col] = new DescriptorBindingSet(material, material->GetDefaultVIL());
+                sphere_binding[row][col] = new DescriptorBindingSet(material);
                 if (!sphere_binding[row][col]) {
                     printf("[ERROR] InitMISSBO: Failed to allocate DescriptorBindingSet for [%u][%u]\n", row, col);
                     return false;

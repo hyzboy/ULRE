@@ -53,7 +53,6 @@ private:
 
     Material *          material            =nullptr;
     graph::DeviceBuffer *mi_ssbo            =nullptr;
-    const VIL *         material_vil        =nullptr;
     DescriptorBindingSet *binding_set[3]{};
     SSBOSlotAllocator   slot_allocator;
 
@@ -81,10 +80,6 @@ private:
         const GeometryVertexFormat plane_grid_gvf = CreateVertexLuminance2DGeometryVertexFormat();
         material = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg, plane_grid_gvf);
         if(!material)return(false);
-
-        material_vil = material->CreateVIL(plane_grid_gvf);
-        if(!material_vil)
-            return false;
 
         return material;
     }
@@ -235,7 +230,7 @@ private:
 
             memcpy(dst + static_cast<VkDeviceSize>(slot_index) * mi_data_bytes, &grid_color, mi_data_bytes);
 
-            binding_set[i] = new DescriptorBindingSet(material, material_vil);
+            binding_set[i] = new DescriptorBindingSet(material);
             if (!binding_set[i])
                 return false;
 
@@ -314,8 +309,6 @@ public:
     {
         for (auto *dbs : binding_set)
             delete dbs;
-        if (material && material_vil)
-            material->Release(const_cast<VIL *>(material_vil));
         SAFE_CLEAR(geom_plane_grid);
         SAFE_CLEAR(mi_ssbo);
     }

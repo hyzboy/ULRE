@@ -143,7 +143,7 @@ private:
         for (size_t i = 0; i < COLOR_COUNT; i++)
         {
             const Color4f mi_color = GetColor4f(TestColor[i], 1.0f);
-            md->mi[i] = material_manager->CreateMaterialInstance(md->material, (VIL *)nullptr, &mi_color);
+            md->mi[i] = material_manager->CreateMaterialInstance(md->material, md->geometry_vertex_format, &mi_color, sizeof(mi_color));
             if (!md->mi[i])
                 return false;
         }
@@ -186,7 +186,7 @@ private:
 
                 for (uint32_t c = 0; c < color_count; ++c)
                 {
-                    md->dbs[c] = new DescriptorBindingSet(md->material, md->vil);
+                    md->dbs[c] = new DescriptorBindingSet(md->material);
                     if (!md->dbs[c])
                         return false;
                     md->dbs[c]->SetSSBOBinding(req.ssbo_type, req.ssbo_id, c);
@@ -198,7 +198,7 @@ private:
         for (uint32_t c = 0; c < color_count; ++c)
         {
             if (!md->dbs[c])
-                md->dbs[c] = new DescriptorBindingSet(md->material, md->vil);
+                md->dbs[c] = new DescriptorBindingSet(md->material);
         }
 
         return true;

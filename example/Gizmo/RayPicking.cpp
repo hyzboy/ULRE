@@ -85,13 +85,11 @@ private:
 
     // 传统渲染资源
     Material *          mtl_plane_grid      =nullptr;
-    const VIL *         vil_plane_grid      =nullptr;
     DescriptorBindingSet *dbs_plane_grid    =nullptr;
     Geometry *          geom_plane_grid     =nullptr;
     graph::DeviceBuffer *mi_shared_ssbo      =nullptr;
 
     Material *          mtl_line            =nullptr;
-    const VIL *         vil_line            =nullptr;
     DescriptorBindingSet *dbs_line          =nullptr;
     Geometry *          geom_line           =nullptr;
     Primitive *         prim_line           =nullptr;
@@ -123,24 +121,16 @@ private:
 
         cfg.local_to_world=true;
 
-        VILConfig vil_config;
-
-        vil_config.Add(VAN::Luminance,VF_V1UN8);
-
         {
             const GeometryVertexFormat plane_grid_gvf = CreateVertexLuminance2DGeometryVertexFormat();
             mtl_plane_grid = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg, plane_grid_gvf);
             if(!mtl_plane_grid)return(false);
-            vil_plane_grid = mtl_plane_grid->CreateVIL(&vil_config);
-            if(!vil_plane_grid)return(false);
         }
 
         {
             const GeometryVertexFormat line_gvf = CreateVertexLuminance3DGeometryVertexFormat();
             mtl_line = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg, line_gvf);
             if(!mtl_line)return(false);
-            vil_line = mtl_line->CreateVIL(&vil_config);
-            if(!vil_line)return(false);
         }
 
         return(true);
@@ -276,8 +266,8 @@ private:
 
         gpu_buf->Unmap();
 
-        dbs_plane_grid = new DescriptorBindingSet(mtl_plane_grid, vil_plane_grid);
-        dbs_line = new DescriptorBindingSet(mtl_line, vil_line);
+        dbs_plane_grid = new DescriptorBindingSet(mtl_plane_grid);
+        dbs_line = new DescriptorBindingSet(mtl_line);
         if (!dbs_plane_grid || !dbs_line)
             return false;
 
@@ -419,10 +409,6 @@ public:
     {
         delete dbs_plane_grid;
         delete dbs_line;
-        if (mtl_plane_grid && vil_plane_grid)
-            mtl_plane_grid->Release(const_cast<VIL *>(vil_plane_grid));
-        if (mtl_line && vil_line)
-            mtl_line->Release(const_cast<VIL *>(vil_line));
         SAFE_CLEAR(geom_plane_grid);
         SAFE_CLEAR(geom_line);
         SAFE_CLEAR(mi_shared_ssbo);

@@ -71,7 +71,6 @@ private:
     std::shared_ptr<TransformGizmoSystem> gizmo_system;
 
     Material *grid_material = nullptr;
-    const VIL *grid_vil = nullptr;
     DescriptorBindingSet *grid_dbs = nullptr;
     graph::DeviceBuffer *grid_mi_ssbo = nullptr;
     Geometry *grid_geometry = nullptr;
@@ -110,13 +109,6 @@ private:
             if(!grid_material)
                 return false;
 
-            VILConfig vil_config;
-            vil_config.Add(VAN::Luminance, VF_V1UN8);
-
-            grid_vil = grid_material->CreateVIL(&vil_config);
-            if (!grid_vil)
-                return false;
-
             // Grid uses per-instance color; create SSBO + DBS if material has MI data
             auto *buffer_manager = graphics_context->GetBufferManager();
             auto *domain_manager = graphics_context->GetResourceDomainManager();
@@ -140,12 +132,12 @@ private:
                         continue;
                     const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
                     domain_manager->RegisterBuffer(addr, grid_mi_ssbo, 1);
-                    grid_dbs = new DescriptorBindingSet(grid_material, grid_vil);
+                    grid_dbs = new DescriptorBindingSet(grid_material);
                     grid_dbs->SetSSBOBinding(req.ssbo_type, req.ssbo_id, 0);
                 }
             }
             if (!grid_dbs)
-                grid_dbs = new DescriptorBindingSet(grid_material, grid_vil);
+                grid_dbs = new DescriptorBindingSet(grid_material);
 
             auto pc = std::make_unique<GeometryCreater>(
                 device,
@@ -197,12 +189,12 @@ private:
                         continue;
                     const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
                     domain_manager->RegisterBuffer(addr, cube_mi_ssbo, 1);
-                    cube_dbs = new DescriptorBindingSet(cube_material, cube_material->GetDefaultVIL());
+                    cube_dbs = new DescriptorBindingSet(cube_material);
                     cube_dbs->SetSSBOBinding(req.ssbo_type, req.ssbo_id, 0);
                 }
             }
             if (!cube_dbs)
-                cube_dbs = new DescriptorBindingSet(cube_material, cube_material->GetDefaultVIL());
+                cube_dbs = new DescriptorBindingSet(cube_material);
 
             auto pc = std::make_unique<GeometryCreater>(
                 device,
@@ -392,7 +384,6 @@ public:
         delete cube_dbs;   cube_dbs = nullptr;
         SAFE_CLEAR(grid_mi_ssbo)
         SAFE_CLEAR(cube_mi_ssbo)
-        if (grid_vil && grid_material) { grid_material->Release(const_cast<VIL*>(grid_vil)); grid_vil = nullptr; }
     }
 
     void Tick(double delta) override

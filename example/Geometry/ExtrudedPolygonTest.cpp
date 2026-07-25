@@ -100,13 +100,13 @@ private:
                 if (!domain_manager->RegisterBuffer(addr, mi_ssbo, 1))
                     return false;
 
-                dbs = new DescriptorBindingSet(material, material->GetDefaultVIL());
+                dbs = new DescriptorBindingSet(material);
                 dbs->SetSSBOBinding(req.ssbo_type, req.ssbo_id, 0);
             }
         }
 
         if (!dbs)
-            dbs = new DescriptorBindingSet(material, material->GetDefaultVIL());
+            dbs = new DescriptorBindingSet(material);
 
         return true;
     }

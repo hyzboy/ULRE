@@ -212,7 +212,7 @@ private:
 
                 for (uint32_t c = 0; c < color_count; ++c)
                 {
-                    md->dbs[c] = new DescriptorBindingSet(md->material, md->vil);
+                    md->dbs[c] = new DescriptorBindingSet(md->material);
                     if (!md->dbs[c])
                         return false;
                     md->dbs[c]->SetSSBOBinding(req.ssbo_type, req.ssbo_id, c);
@@ -224,7 +224,7 @@ private:
         for (uint32_t c = 0; c < color_count; ++c)
         {
             if (!md->dbs[c])
-                md->dbs[c] = new DescriptorBindingSet(md->material, md->vil);
+                md->dbs[c] = new DescriptorBindingSet(md->material);
         }
 
         return true;

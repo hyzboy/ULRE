@@ -208,7 +208,7 @@ private:
 
                 for (uint32_t i = 0; i < TexCount; ++i)
                 {
-                    render_obj[i].dbs = new DescriptorBindingSet(material, material->GetDefaultVIL());
+                    render_obj[i].dbs = new DescriptorBindingSet(material);
                     if (!render_obj[i].dbs)
                         return false;
                     render_obj[i].dbs->SetSSBOBinding(req.ssbo_type, req.ssbo_id, i);
@@ -220,7 +220,7 @@ private:
             // No per-instance data — create plain DBS per slot
             for (uint32_t i = 0; i < TexCount; ++i)
             {
-                render_obj[i].dbs = new DescriptorBindingSet(material, material->GetDefaultVIL());
+                render_obj[i].dbs = new DescriptorBindingSet(material);
                 if (!render_obj[i].dbs)
                     return false;
             }

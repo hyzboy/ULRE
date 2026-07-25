@@ -157,13 +157,13 @@ private:
                 if (!domain_manager->RegisterBuffer(addr, mi_ssbo, 1))
                     return false;
 
-                dbs = new DescriptorBindingSet(material, material->GetDefaultVIL());
+                dbs = new DescriptorBindingSet(material);
                 dbs->SetSSBOBinding(req.ssbo_type, req.ssbo_id, 0);
             }
         }
 
         if (!dbs)
-            dbs = new DescriptorBindingSet(material, material->GetDefaultVIL());
+            dbs = new DescriptorBindingSet(material);
 
         return true;
     }
@@ -398,5 +398,4 @@ int os_main(int argc, os_char **argv)
 {
     return RunFramework<RecursiveCubeApp>(OS_TEXT("Recursive Cube (ECS)"), argc, argv, 1280, 720);
 }
-
 

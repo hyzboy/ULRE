@@ -157,7 +157,7 @@ private:
         if (!sky_material)
             return false;
 
-        sky_binding = new DescriptorBindingSet(sky_material, sky_material->GetDefaultVIL());
+        sky_binding = new DescriptorBindingSet(sky_material);
         if (!sky_binding)
             return false;
 
@@ -269,13 +269,13 @@ private:
                 uint32_t slot = 0;
                 material_slot_allocator.Allocate(slot);
 
-                material_binding = new DescriptorBindingSet(material, material->GetDefaultVIL());
+                material_binding = new DescriptorBindingSet(material);
                 material_binding->SetSSBOBinding(req.ssbo_type, req.ssbo_id, slot);
             }
         }
         else
         {
-            material_binding = new DescriptorBindingSet(material, material->GetDefaultVIL());
+            material_binding = new DescriptorBindingSet(material);
         }
 
         if (!material_binding)

@@ -232,7 +232,7 @@ private:
 
         gpu_buf->Unmap();
 
-        binding_set = new DescriptorBindingSet(material, material->GetDefaultVIL());
+        binding_set = new DescriptorBindingSet(material);
         if (!binding_set)
             return false;
 

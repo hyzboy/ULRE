@@ -18,9 +18,9 @@ CreateProject(03_auto_merge_material_instance   auto_merge_material_instance.cpp
 CreateProject(04_clock_use                      clock.cpp)
 CreateProject(06_SimpleCube                     SimpleCube.cpp)
 CreateProject(06d_PBRSpheresECS                 PBRSpheresECS.cpp)
+CreateProject(06e_SingleSphereMaterialSwitchECS SingleSphereMaterialSwitchECS.cpp)
 CreateProject(06b_BasicLitMeshesECS             06b_BasicLitMeshesECS.cpp)
 CreateProject(06c_TextureBlinnPhongMeshesECS    06c_TextureBlinnPhongMeshesECS.cpp)
 CreateProject(07_RenderBoundBox                 RenderBoundBox.cpp)
 CreateProject(08_RenderToTexture                RenderToTexture.cpp)
 CreateProject(09_RecursiveCube                  RecursiveCube.cpp)
-

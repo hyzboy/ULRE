@@ -73,7 +73,7 @@ private:
         if (!mtl_sky)
             return false;
 
-        sky_dbs = new DescriptorBindingSet(mtl_sky, mtl_sky->GetDefaultVIL());
+        sky_dbs = new DescriptorBindingSet(mtl_sky);
         if (!sky_dbs)
             return false;
 
