@@ -856,17 +856,6 @@ namespace hgl::ecs
                     {
                         if (!recipe.structs.empty() || !recipe.textures.empty())
                         {
-                            const uint32_t mi_data_bytes = material->GetMIDataBytes();
-                            if (mi_data_bytes > 0)
-                            {
-                                for (const auto &struct_ref : recipe.structs)
-                                {
-                                    descriptor_binding_system->RegisterMaterialStructLayout(struct_ref.ssbo_type,
-                                                                                           struct_ref.ssbo_id,
-                                                                                           mi_data_bytes);
-                                }
-                            }
-
                             if (descriptor_binding_system->ResolveMaterialRecipe(recipe, spec, nullptr, nullptr))
                             {
                                 program_signature = graph::mtl::HashMaterializationProgramSignature(spec);
