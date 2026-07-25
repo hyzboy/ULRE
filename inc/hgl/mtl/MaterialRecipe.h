@@ -8,6 +8,22 @@
 
 namespace hgl::graph::mtl
 {
+    // 材质语义层：渲染技术模型（作者层主入口）。
+    enum class ShadingModel : uint8_t
+    {
+        Unknown = 0,
+        Unlit,
+        Standard,
+        Sky,
+        Text,
+        Legacy,
+        Custom,
+
+        ENUM_CLASS_RANGE(Unknown, Custom)
+    };
+
+    constexpr uint32_t InvalidMaterialPresetHint = 0xffffffffu;
+
     // 逻辑纹理槽位（与具体 descriptor set/binding 解耦）。
     // Resolve 阶段会把这些语义槽映射到 bindless handle + 运行时索引。
     enum class TextureSlot : uint8_t
@@ -190,9 +206,10 @@ namespace hgl::graph::mtl
     // 纯声明式材质输入（不含 Vulkan/运行时句柄），是 MaterializationSpec 的上游输入。
     struct MaterialRecipe
     {
-        std::string recipe_name;   // 配方名称（人类可读）
-        std::string shading_model; // 着色模型标识（如 "PBR"、"Unlit"）
-        std::string domain;        // 资源/缓存域（用于隔离不同管线空间）
+        std::string recipe_name;               // 配方名称（人类可读）
+        ShadingModel shading_model = ShadingModel::Unknown; // 着色模型语义
+        uint32_t preset_hint = InvalidMaterialPresetHint;   // 过渡期提示（MaterialPreset 序号）
+        std::string domain;                    // 资源/缓存域（用于隔离不同管线空间）
 
         bool double_sided = false; // 双面渲染开关
         bool alpha_test = false;   // 是否启用 alpha test
@@ -213,8 +230,8 @@ namespace hgl::graph::mtl
 
         if (!recipe.recipe_name.empty())
             hash = hgl::hash::FNV1aAppendBytes(hash, recipe.recipe_name.data(), recipe.recipe_name.size());
-        if (!recipe.shading_model.empty())
-            hash = hgl::hash::FNV1aAppendBytes(hash, recipe.shading_model.data(), recipe.shading_model.size());
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.shading_model);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.preset_hint);
         if (!recipe.domain.empty())
             hash = hgl::hash::FNV1aAppendBytes(hash, recipe.domain.data(), recipe.domain.size());
 

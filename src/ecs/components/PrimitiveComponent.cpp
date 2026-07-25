@@ -9,6 +9,22 @@
 
 namespace hgl::ecs
 {
+    namespace
+    {
+        void ResetMaterialRecipe(hgl::graph::mtl::MaterialRecipe &recipe)
+        {
+            recipe.recipe_name.clear();
+            recipe.shading_model = hgl::graph::mtl::ShadingModel::Unknown;
+            recipe.preset_hint = hgl::graph::mtl::InvalidMaterialPresetHint;
+            recipe.domain.clear();
+            recipe.double_sided = false;
+            recipe.alpha_test = false;
+            recipe.alpha_cutoff = 0.5f;
+            recipe.textures.clear();
+            recipe.structs.clear();
+        }
+    }
+
     void PrimitiveComponent::SetPrimitive(hgl::graph::Primitive* prim)
     {
         if (primitive != prim)
@@ -59,7 +75,7 @@ namespace hgl::ecs
 
     void PrimitiveComponent::ClearMaterialRecipe()
     {
-        materialRecipe = {};
+        ResetMaterialRecipe(materialRecipe);
         hasMaterialRecipe = false;
     }
 
@@ -180,7 +196,7 @@ namespace hgl::ecs
         overrideMaterial = nullptr;
         descriptorBindingSet = nullptr;
         overridePipeline = nullptr;
-        materialRecipe = {};
+        ResetMaterialRecipe(materialRecipe);
         hasMaterialRecipe = false;
         resolvedRuntimePipeline = nullptr;
         resolvedRuntimeRenderPass = nullptr;

@@ -33,6 +33,19 @@ namespace hgl::ecs
 {
     namespace
     {
+        void ResetMaterialRecipe(graph::mtl::MaterialRecipe &recipe)
+        {
+            recipe.recipe_name.clear();
+            recipe.shading_model = graph::mtl::ShadingModel::Unknown;
+            recipe.preset_hint = graph::mtl::InvalidMaterialPresetHint;
+            recipe.domain.clear();
+            recipe.double_sided = false;
+            recipe.alpha_test = false;
+            recipe.alpha_cutoff = 0.5f;
+            recipe.textures.clear();
+            recipe.structs.clear();
+        }
+
         std::string ToBindingKey(const char *name)
         {
             return name ? std::string(name) : std::string();
@@ -183,7 +196,7 @@ namespace hgl::ecs
     bool RenderDescriptorBindingSystem::BuildMaterialRecipeForMaterial(const graph::MaterialProgram *material,
                                                                        graph::mtl::MaterialRecipe &out_recipe) const
     {
-        out_recipe = {};
+        ResetMaterialRecipe(out_recipe);
         if (!material)
             return false;
 
@@ -193,7 +206,8 @@ namespace hgl::ecs
         else
             out_recipe.recipe_name = "MaterialProgram@" + std::to_string(reinterpret_cast<uintptr_t>(material));
 
-        out_recipe.shading_model = "Legacy";
+        out_recipe.shading_model = graph::mtl::ShadingModel::Legacy;
+        out_recipe.preset_hint = graph::mtl::InvalidMaterialPresetHint;
         out_recipe.domain = "ECS";
 
         const auto &contract = material->GetBindingContract();
@@ -266,7 +280,7 @@ namespace hgl::ecs
     bool RenderDescriptorBindingSystem::BuildMaterialRecipeForRenderItem(const RenderItem *item,
                                                                          graph::mtl::MaterialRecipe &out_recipe) const
     {
-        out_recipe = {};
+        ResetMaterialRecipe(out_recipe);
         if (!item)
             return false;
 

@@ -20,26 +20,16 @@ namespace hgl::ecs
 {
     namespace
     {
-        bool TryResolvePresetByName(const std::string &name, graph::mtl::MaterialPreset &out_preset)
+        bool TryResolvePresetByHint(const uint32_t hint, graph::mtl::MaterialPreset &out_preset)
         {
-            if (name.empty())
+            if (hint == graph::mtl::InvalidMaterialPresetHint)
                 return false;
 
-            const uint32_t preset_count = static_cast<uint32_t>(graph::mtl::MaterialPreset::RANGE_SIZE);
-            for (uint32_t i = 0; i < preset_count; ++i)
-            {
-                const auto preset = static_cast<graph::mtl::MaterialPreset>(i);
-                const char *preset_name = graph::mtl::GetMaterialPresetName(preset);
-                if (!preset_name)
-                    continue;
-                if (name == preset_name)
-                {
-                    out_preset = preset;
-                    return true;
-                }
-            }
+            if (hint >= static_cast<uint32_t>(graph::mtl::MaterialPreset::RANGE_SIZE))
+                return false;
 
-            return false;
+            out_preset = static_cast<graph::mtl::MaterialPreset>(hint);
+            return true;
         }
 
         bool Is2DPreset(const graph::mtl::MaterialPreset preset)
@@ -93,13 +83,56 @@ namespace hgl::ecs
         if (!material_manager)
             return false;
 
-        graph::mtl::MaterialPreset preset{};
-        if (!TryResolvePresetByName(recipe->shading_model, preset))
-            return false;
-
         graph::PrimitiveType primitive_type = graph::PrimitiveType::Triangles;
         if (auto *legacy_program = primitive_comp->GetMaterialProgram())
             primitive_type = legacy_program->GetPrimitiveType();
+
+        graph::mtl::MaterialPreset preset{};
+        bool resolved_by_model = false;
+        switch (recipe->shading_model)
+        {
+            case graph::mtl::ShadingModel::Text:
+                preset = graph::mtl::MaterialPreset::Text2D;
+                resolved_by_model = true;
+                break;
+            case graph::mtl::ShadingModel::Sky:
+                preset = graph::mtl::MaterialPreset::SkyMinimal;
+                resolved_by_model = true;
+                break;
+            case graph::mtl::ShadingModel::Standard:
+                preset = graph::mtl::MaterialPreset::Standard;
+                resolved_by_model = true;
+                break;
+            case graph::mtl::ShadingModel::Unlit:
+                preset = graph::mtl::MaterialPreset::Gizmo3D;
+                resolved_by_model = true;
+                break;
+            case graph::mtl::ShadingModel::Legacy:
+            case graph::mtl::ShadingModel::Custom:
+            case graph::mtl::ShadingModel::Unknown:
+            default:
+                break;
+        }
+
+        // Fallback bridge: use preset_hint only when shading-model policy is insufficient.
+        if (!resolved_by_model)
+        {
+            if (!TryResolvePresetByHint(recipe->preset_hint, preset))
+                return false;
+        }
+        else if (recipe->preset_hint != graph::mtl::InvalidMaterialPresetHint)
+        {
+            graph::mtl::MaterialPreset hinted{};
+            if (TryResolvePresetByHint(recipe->preset_hint, hinted))
+            {
+                // For ambiguous models (e.g. Standard / Unlit), hint can refine concrete template.
+                if (recipe->shading_model == graph::mtl::ShadingModel::Standard
+                 || recipe->shading_model == graph::mtl::ShadingModel::Unlit)
+                {
+                    preset = hinted;
+                }
+            }
+        }
 
         graph::MaterialProgram *resolved_program = nullptr;
         if (Is2DPreset(preset))

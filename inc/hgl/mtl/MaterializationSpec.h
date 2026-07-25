@@ -38,7 +38,7 @@ namespace hgl::graph::mtl
         uint64_t recipe_hash = 0; // 上游 Recipe 的稳定哈希（输入身份）
         uint64_t spec_hash = 0;   // 物化后 Spec 哈希（输出身份，可作缓存键）
 
-        std::string shading_model; // 最终采用的着色模型标识
+        ShadingModel shading_model = ShadingModel::Unknown; // 最终采用的着色模型语义
 
         bool double_sided = false; // 光栅双面开关
         bool alpha_test = false;   // 是否启用 alpha test
@@ -56,8 +56,7 @@ namespace hgl::graph::mtl
         uint64 hash = hgl::hash::FNV1aInit<uint64>();
 
         hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.recipe_hash);
-        if (!spec.shading_model.empty())
-            hash = hgl::hash::FNV1aAppendBytes(hash, spec.shading_model.data(), spec.shading_model.size());
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.shading_model);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.double_sided);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.alpha_test);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.alpha_cutoff);
@@ -93,8 +92,7 @@ namespace hgl::graph::mtl
     {
         uint64 hash = hgl::hash::FNV1aInit<uint64>();
 
-        if (!spec.shading_model.empty())
-            hash = hgl::hash::FNV1aAppendBytes(hash, spec.shading_model.data(), spec.shading_model.size());
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.shading_model);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.double_sided);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.alpha_test);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.alpha_cutoff);

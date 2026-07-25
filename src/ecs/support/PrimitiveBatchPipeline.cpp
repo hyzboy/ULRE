@@ -66,7 +66,12 @@ namespace hgl::ecs
                     hash = hgl::hash::FNV1aAppendValueBytes(hash, req.semantic);
                     hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.ssbo_type);
                     hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.ssbo_id);
-                    hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.slot_index);
+                    // MaterialInstance slot index is per-instance data-row identity.
+                    // It must be written to the batch DataIndexRows table, not treated as
+                    // a batch split key; otherwise same material + same SSBO gets split
+                    // into one batch per color/slot (e.g. Gizmo RGB + center white).
+                    if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                        hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.slot_index);
                     ++count;
                     break;
                 }

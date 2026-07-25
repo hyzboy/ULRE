@@ -41,14 +41,6 @@ using namespace hgl::graph;
 
 namespace
 {
-    GeometryVertexFormat CreateVertexLuminance2DGeometryVertexFormat()
-    {
-        GeometryVertexFormat gvf;
-        gvf.Add(VertexSemantic::Position, VF_V2F, 2, sizeof(float) * 2);
-        gvf.Add(VertexSemantic::Luminance, VF_V1UN8, 1, sizeof(uint8));
-        return gvf;
-    }
-
     GeometryVertexFormat CreateGizmo3DGeometryVertexFormat()
     {
         GeometryVertexFormat gvf;
@@ -81,6 +73,9 @@ private:
     graph::DeviceBuffer *cube_mi_ssbo = nullptr;
     Geometry *cube_geometry = nullptr;
     Primitive *cube_primitive = nullptr;
+    bool grid_mi_binding_registered = false;
+    graph::mtl::SSBOType grid_mi_ssbo_type = graph::mtl::SSBOType::UserDefined;
+    uint32_t grid_mi_ssbo_id = 0;
 
     std::string debug_cache;
 
@@ -102,11 +97,14 @@ private:
             return false;
 
         {
-            mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
+            mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
             cfg.local_to_world = true;
-            const GeometryVertexFormat grid_gvf = CreateVertexLuminance2DGeometryVertexFormat();
-            grid_material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::VertexLuminance3D, &cfg, grid_gvf);
+            grid_material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Gizmo3D, &cfg);
             if(!grid_material)
+                return false;
+
+            grid_dbs = new DescriptorBindingSet(grid_material);
+            if(!grid_dbs)
                 return false;
 
             // Grid uses per-instance color; create SSBO + DBS if material has MI data
@@ -119,7 +117,11 @@ private:
             const uint32_t stride = grid_material->GetMIDataBytes();
             if (stride > 0)
             {
-                grid_mi_ssbo = buffer_manager->CreateSSBO("GizmoUsage:GridMIData", stride, nullptr, SharingMode::Exclusive);
+                const uint32_t grid_slot_count = 1;
+                grid_mi_ssbo = buffer_manager->CreateSSBO("GizmoUsage:GridMIData",
+                                                          stride * grid_slot_count,
+                                                          nullptr,
+                                                          SharingMode::Exclusive);
                 if (!grid_mi_ssbo)
                     return false;
 
@@ -131,25 +133,21 @@ private:
                     if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
                         continue;
                     const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
-                    domain_manager->RegisterBuffer(addr, grid_mi_ssbo, 1);
-                    grid_dbs = new DescriptorBindingSet(grid_material);
-                    grid_dbs->SetSSBOBinding(req.ssbo_type, req.ssbo_id, 0);
+                    if(!domain_manager->RegisterBuffer(addr, grid_mi_ssbo, grid_slot_count))
+                        return false;
+                    if(!grid_dbs->SetSSBOBinding(req.ssbo_type, req.ssbo_id, 0))
+                        return false;
+                    grid_mi_binding_registered = true;
+                    grid_mi_ssbo_type = req.ssbo_type;
+                    grid_mi_ssbo_id = req.ssbo_id;
                 }
             }
-            if (!grid_dbs)
-                grid_dbs = new DescriptorBindingSet(grid_material);
 
             auto pc = std::make_unique<GeometryCreater>(
                 device,
-                CreateVertexLuminance2DGeometryVertexFormat());
+                CreateGizmo3DGeometryVertexFormat());
 
-            inline_geometry::PlaneGridCreateInfo pgci;
-            pgci.grid_size.Set(64, 64);
-            pgci.sub_count.Set(8, 8);
-            pgci.lum = 80;
-            pgci.sub_lum = 128;
-
-            grid_geometry = inline_geometry::CreatePlaneGrid2D(pc.get(), &pgci);
+            grid_geometry = inline_geometry::CreatePlaneSqaure(pc.get());
             if(!grid_geometry)
                 return false;
 
@@ -165,6 +163,10 @@ private:
 
             cube_material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Gizmo3D, &cfg);
             if(!cube_material)
+                return false;
+
+            cube_dbs = new DescriptorBindingSet(cube_material);
+            if(!cube_dbs)
                 return false;
 
             auto *buffer_manager = graphics_context->GetBufferManager();
@@ -187,14 +189,33 @@ private:
                 {
                     if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
                         continue;
+
+                    if (grid_mi_binding_registered
+                     && req.ssbo_type == grid_mi_ssbo_type
+                     && req.ssbo_id == grid_mi_ssbo_id)
+                    {
+                        if(!cube_dbs->SetSSBOBinding(req.ssbo_type, req.ssbo_id, 0))
+                            return false;
+                        continue;
+                    }
+
+                    if (!cube_mi_ssbo)
+                    {
+                        cube_mi_ssbo = buffer_manager->CreateSSBO("GizmoUsage:CubeMIData", stride, nullptr, SharingMode::Exclusive);
+                        if (!cube_mi_ssbo)
+                            return false;
+
+                        if (auto *gpu = cube_mi_ssbo->GetGPUBuffer())
+                            gpu->Write(&blue, 0, hgl_min(stride, static_cast<uint32_t>(sizeof(blue))));
+                    }
+
                     const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
-                    domain_manager->RegisterBuffer(addr, cube_mi_ssbo, 1);
-                    cube_dbs = new DescriptorBindingSet(cube_material);
-                    cube_dbs->SetSSBOBinding(req.ssbo_type, req.ssbo_id, 0);
+                    if(!domain_manager->RegisterBuffer(addr, cube_mi_ssbo, 1))
+                        return false;
+                    if(!cube_dbs->SetSSBOBinding(req.ssbo_type, req.ssbo_id, 0))
+                        return false;
                 }
             }
-            if (!cube_dbs)
-                cube_dbs = new DescriptorBindingSet(cube_material);
 
             auto pc = std::make_unique<GeometryCreater>(
                 device,
@@ -229,7 +250,7 @@ private:
             return false;
 
         auto plane_transform = plane_entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Static);
-        plane_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
+        plane_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(64.0f));
 
         auto plane_primitive_comp = plane_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         plane_primitive_comp->SetPrimitive(grid_primitive);
@@ -380,10 +401,12 @@ public:
     ~GizmoExampleApp()
     {
         gizmo_system.reset();
-        delete grid_dbs;   grid_dbs = nullptr;
-        delete cube_dbs;   cube_dbs = nullptr;
-        SAFE_CLEAR(grid_mi_ssbo)
-        SAFE_CLEAR(cube_mi_ssbo)
+        // graph modules own GPU resources and release them during graphics shutdown.
+        // Keep raw pointers non-owning here to avoid teardown order double-free.
+        grid_dbs = nullptr;
+        cube_dbs = nullptr;
+        grid_mi_ssbo = nullptr;
+        cube_mi_ssbo = nullptr;
     }
 
     void Tick(double delta) override
@@ -404,4 +427,3 @@ int os_main(int argc, os_char **argv)
 {
     return RunFramework<GizmoExampleApp>(OS_TEXT("Gizmo Usage Example"), argc, argv, 1280, 720);
 }
-
