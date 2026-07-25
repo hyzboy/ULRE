@@ -133,8 +133,12 @@ namespace hgl::ecs
             if (!item)
                 return 0;
 
+            bool uses_recipe_runtime = false;
             if (auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(item))
             {
+                auto primitive_comp = primitive_item->GetPrimitiveComponent();
+                uses_recipe_runtime = (primitive_comp && primitive_comp->HasMaterialRecipe());
+
                 if (auto *entity = primitive_item->GetEntity())
                 {
                     auto material_comp = entity->GetComponent<MaterialComponent>();
@@ -149,18 +153,21 @@ namespace hgl::ecs
                 }
             }
 
-            if (auto *binding_set = item->GetDescriptorBindingSet())
+            if (!uses_recipe_runtime)
             {
-                if (binding_set->HasSSBOBinding(primary_ssbo_type))
-                    return binding_set->GetSlotIndex(primary_ssbo_type);
-            }
-            else if (auto *mi = item->GetMaterialInstance())
-            {
-                const int mi_id = mi->GetMIID();
-                // mi_id is now always -1 (legacy path, no material-owned data store).
-                // Keep row at 0 so shader reads slot 0 rather than wrapping to UINT32_MAX.
-                if (mi_id >= 0)
-                    return static_cast<uint32_t>(mi_id);
+                if (auto *binding_set = item->GetDescriptorBindingSet())
+                {
+                    if (binding_set->HasSSBOBinding(primary_ssbo_type))
+                        return binding_set->GetSlotIndex(primary_ssbo_type);
+                }
+                else if (auto *mi = item->GetMaterialInstance())
+                {
+                    const int mi_id = mi->GetMIID();
+                    // mi_id is now always -1 (legacy path, no material-owned data store).
+                    // Keep row at 0 so shader reads slot 0 rather than wrapping to UINT32_MAX.
+                    if (mi_id >= 0)
+                        return static_cast<uint32_t>(mi_id);
+                }
             }
 
             return 0;
@@ -774,6 +781,7 @@ namespace hgl::ecs
             auto* pipeline = item->GetPipeline();
             auto* prim_item = dynamic_cast<PrimitiveRenderItem*>(item);
             auto prim_comp = prim_item ? prim_item->GetPrimitiveComponent() : nullptr;
+            const bool uses_recipe_runtime = (prim_comp && prim_comp->HasMaterialRecipe());
 
             // Output interface changed (different RenderPass): invalidate previous runtime-resolved pipeline.
             if (prim_comp
@@ -827,7 +835,7 @@ namespace hgl::ecs
 
             const auto &binding_contract = material->GetBindingContract();
             auto *binding_set = item->GetDescriptorBindingSet();
-            if (binding_set)
+            if (binding_set && !uses_recipe_runtime)
             {
                 if (!binding_set->SatisfiesContract(binding_contract, material->GetName().c_str()))
                     continue;
@@ -884,7 +892,6 @@ namespace hgl::ecs
                 }
             }
 
-            const bool uses_recipe_runtime = (prim_comp && prim_comp->HasMaterialRecipe());
             if (binding_set && !uses_recipe_runtime)
             {
                 const uint64_t dbs_binding_signature = HashDBSContractBindingSignature(binding_set, binding_contract);

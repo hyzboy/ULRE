@@ -380,6 +380,7 @@ namespace hgl::ecs
 
             if (material_comp && primitiveComp->HasMaterialRecipe())
             {
+                material_comp->dbs_compat = nullptr;
                 ResolveMaterialProgramForPrimitive(primitiveComp, material_comp);
                 MaterializeRecipeRowsForPrimitive(primitiveComp, material_comp);
             }

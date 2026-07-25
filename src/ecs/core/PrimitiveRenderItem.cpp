@@ -65,7 +65,8 @@ namespace hgl::ecs
         if (auto *entity = GetEntity())
         {
             auto material_comp = entity->GetComponent<MaterialComponent>();
-            if (material_comp && material_comp->dbs_compat)
+            if (material_comp && material_comp->dbs_compat
+             && (!primitiveComp || !primitiveComp->HasMaterialRecipe()))
                 return material_comp->dbs_compat;
         }
 
