@@ -39,7 +39,6 @@
 #include<hgl/ecs/components/MaterialComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -188,10 +187,6 @@ private:
         if (!buffer_manager || !domain_manager)
             return false;
 
-        auto descriptor_system = ecs_context->GetSystem<RenderDescriptorBindingSystem>();
-        if (!descriptor_system)
-            return false;
-
         if (!slot_allocator.Init(1))
             return false;
 
@@ -232,9 +227,6 @@ private:
                 continue;
 
             has_struct_binding = true;
-            if (!descriptor_system->RegisterMaterialStructLayout(req.ssbo_type, req.ssbo_id, mi_data_bytes))
-                return false;
-
             const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
             if (!domain_manager->RegisterBuffer(addr, mi_ssbo, mi_count))
                 return false;
@@ -274,9 +266,6 @@ private:
         auto material_comp = cube_entity->AddComponent<hgl::ecs::MaterialComponent>();
         if (!material_comp)
             return false;
-
-        material_comp->program = material;
-        material_comp->dbs_compat = binding_set;
 
         if (!cube_entity->GetComponent<hgl::ecs::MaterialComponent>())
             return false;

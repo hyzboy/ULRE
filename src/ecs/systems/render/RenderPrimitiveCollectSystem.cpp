@@ -171,6 +171,21 @@ namespace hgl::ecs
         if (!resolved_program)
             return false;
 
+        if (auto rdbs = world->GetSystem<RenderDescriptorBindingSystem>())
+        {
+            const uint32_t mi_data_bytes = resolved_program->GetMIDataBytes();
+            if (mi_data_bytes > 0)
+            {
+                for (const auto &req : resolved_program->GetBindingContract().requirements)
+                {
+                    if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                        continue;
+
+                    rdbs->RegisterMaterialStructLayout(req.ssbo_type, req.ssbo_id, mi_data_bytes);
+                }
+            }
+        }
+
         material_comp->program = resolved_program;
         material_comp->program_dirty = false;
         return true;
@@ -185,6 +200,12 @@ namespace hgl::ecs
         const auto *recipe = primitive_comp->GetMaterialRecipe();
         if (!recipe)
             return false;
+
+        if (!material_comp->bindings_dirty
+         && !material_comp->resources_dirty
+         && material_comp->data_index_row != uint32_t(-1)
+         && material_comp->texture_layer_row != uint32_t(-1))
+            return true;
 
         auto rdbs = world->GetSystem<RenderDescriptorBindingSystem>();
         if (!rdbs)
