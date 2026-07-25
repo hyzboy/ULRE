@@ -908,7 +908,9 @@ namespace hgl::ecs
                 }
             }
 
-            const uint8_t runtime_mode = uses_recipe_runtime ? 1u : 0u;
+            const MaterialRuntimeMode runtime_mode = uses_recipe_runtime
+                                                   ? MaterialRuntimeMode::Recipe
+                                                   : MaterialRuntimeMode::Legacy;
             MaterialPipelineKey key(material, pipeline, program_signature, binding_signature, runtime_mode);
             auto* batch_ptr = cache.materialBatches.GetValuePointer(key);
 

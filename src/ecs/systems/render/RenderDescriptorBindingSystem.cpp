@@ -1100,7 +1100,7 @@ namespace hgl::ecs
             if (!material || !batch)
                 return false;
 
-            if (batch->key.runtime_mode != 0u)
+            if (!batch->key.IsLegacyRuntime())
                 return false;
 
             bool found_binding = false;
@@ -1178,7 +1178,7 @@ namespace hgl::ecs
             if (!batch)
                 return false;
 
-            return batch->key.runtime_mode != 0u;
+            return batch->key.IsRecipeRuntime();
         };
 
         auto apply_requirement = [&](graph::MaterialProgram *material,
