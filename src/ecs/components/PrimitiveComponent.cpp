@@ -64,6 +64,7 @@ namespace hgl::ecs
 
     void PrimitiveComponent::SetMaterialRecipe(const hgl::graph::mtl::MaterialRecipe &recipe)
     {
+        InvalidateResolvedRuntimePipeline();
         materialRecipe = recipe;
         hasMaterialRecipe = true;
     }
@@ -75,6 +76,7 @@ namespace hgl::ecs
 
     void PrimitiveComponent::ClearMaterialRecipe()
     {
+        InvalidateResolvedRuntimePipeline();
         ResetMaterialRecipe(materialRecipe);
         hasMaterialRecipe = false;
     }

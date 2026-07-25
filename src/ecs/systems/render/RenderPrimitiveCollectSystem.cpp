@@ -50,6 +50,26 @@ namespace hgl::ecs
             }
         }
 
+        void InvalidateRecipeRuntime(const std::shared_ptr<MaterialComponent> &material_comp,
+                                     const bool clear_program)
+        {
+            if (!material_comp)
+                return;
+
+            material_comp->material_instance_row = uint32_t(-1);
+            material_comp->texture_layer_row = uint32_t(-1);
+            material_comp->data_index_row = uint32_t(-1);
+            material_comp->bindings_dirty = true;
+            material_comp->resources_dirty = true;
+            material_comp->valid = false;
+
+            if (clear_program)
+            {
+                material_comp->program = nullptr;
+                material_comp->program_dirty = true;
+            }
+        }
+
         void SyncLegacyMaterialRuntime(ECSContext *world,
                                        const std::shared_ptr<PrimitiveComponent> &primitive_comp,
                                        const std::shared_ptr<MaterialComponent> &material_comp)
@@ -383,8 +403,17 @@ namespace hgl::ecs
 
             if (material_comp && primitiveComp->HasMaterialRecipe())
             {
-                ResolveMaterialProgramForPrimitive(primitiveComp, material_comp);
-                MaterializeRecipeRowsForPrimitive(primitiveComp, material_comp);
+                const bool resolved_program = ResolveMaterialProgramForPrimitive(primitiveComp, material_comp);
+                if (!resolved_program)
+                {
+                    InvalidateRecipeRuntime(material_comp, true);
+                }
+                else
+                {
+                    const bool materialized_rows = MaterializeRecipeRowsForPrimitive(primitiveComp, material_comp);
+                    if (!materialized_rows)
+                        InvalidateRecipeRuntime(material_comp, false);
+                }
             }
 
             auto transform = entity->GetComponent<TransformComponent>();
