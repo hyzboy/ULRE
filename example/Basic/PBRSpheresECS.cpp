@@ -28,6 +28,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/MaterialComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -103,6 +104,7 @@ private:
     // One MI per cell: col controls metallic, row controls roughness
     mtl::StandardMaterialInstance sphere_mi_data[GRID_SIZE][GRID_SIZE]{};
     DescriptorBindingSet *           sphere_binding[GRID_SIZE][GRID_SIZE]{};
+    uint32_t                         sphere_slot_rows[GRID_SIZE][GRID_SIZE]{};
     SSBOSlotAllocator                slot_allocator;
 
     // 100 entities, one per sphere
@@ -309,6 +311,7 @@ private:
                 store.normal_scale = d.normal_scale;
 
                 sphere_binding[row][col] = nullptr;
+                sphere_slot_rows[row][col] = uint32_t(-1);
             }
         }
 
@@ -390,6 +393,7 @@ private:
                     printf("[ERROR] InitMISSBO: Slot allocation failed at [%u][%u]\n", row, col);
                     return false;
                 }
+                sphere_slot_rows[row][col] = slot_index;
 
                 memcpy(dst + static_cast<VkDeviceSize>(slot_index) * mi_data_bytes,
                        &sphere_mi_data[row][col],
@@ -412,11 +416,6 @@ private:
                 continue;
 
             has_struct_binding = true;
-            if (!rdbs->RegisterMaterialStructLayout(req.ssbo_type, req.ssbo_id, mi_data_bytes)) {
-                printf("[ERROR] InitMISSBO: RegisterMaterialStructLayout failed\n");
-                return false;
-            }
-
             const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
             if (!domain_manager->RegisterBuffer(addr, mi_ssbo, mi_count)) {
                 printf("[ERROR] InitMISSBO: RegisterBuffer failed\n");
@@ -427,7 +426,7 @@ private:
             {
                 for (uint col = 0; col < GRID_SIZE; ++col)
                 {
-                    const uint32_t slot_index = row * GRID_SIZE + col;
+                    const uint32_t slot_index = sphere_slot_rows[row][col];
                     if (!sphere_binding[row][col]->SetSSBOBinding(req.ssbo_type, req.ssbo_id, slot_index))
                         return false;
                 }
@@ -498,11 +497,11 @@ private:
         {
             for (uint col = 0; col < GRID_SIZE; ++col)
             {
-                auto *binding = sphere_binding[row][col];
-                if (!binding)
+                const uint32_t slot_index = sphere_slot_rows[row][col];
+                if (slot_index == uint32_t(-1))
                     continue;
 
-                const size_t base = static_cast<size_t>(binding->GetSlotIndex(graph::mtl::SSBOType::PBRSurface)) * slot_count;
+                const size_t base = static_cast<size_t>(slot_index) * slot_count;
                 dst[base + static_cast<uint32_t>(graph::mtl::TextureSlot::BaseColor)] = base_color_handle;
                 dst[base + static_cast<uint32_t>(graph::mtl::TextureSlot::Normal)] = normal_handle;
                 // TEXTURE_SLOT_CUSTOM0 carries the Texture2DArray layer index (= PBR folder row).
@@ -514,11 +513,6 @@ private:
 
         const uint32_t ssbo_id = graph::mtl::MakeRecipeSSBOId(0);
         const uint32_t row_stride = slot_count * sizeof(uint32_t);
-        if (!rdbs->RegisterMaterialStructLayout(graph::mtl::SSBOType::TextureLayer, ssbo_id, row_stride)) {
-            printf("[ERROR] InitTextureLayerSSBO: RegisterMaterialStructLayout failed\n");
-            return false;
-        }
-
         const graph::mtl::SSBOAddress addr{graph::mtl::SSBOType::TextureLayer, ssbo_id, 0};
         if (!domain_manager->RegisterBuffer(addr, texture_layer_ssbo, row_count)) {
             printf("[ERROR] InitTextureLayerSSBO: RegisterBuffer failed\n");
@@ -790,9 +784,18 @@ private:
 
                 auto prim_comp = e->AddComponent<hgl::ecs::PrimitiveComponent>();
                 prim_comp->SetPrimitive(base_primitives[col]);
-                prim_comp->SetDescriptorBindingSet(sphere_binding[row][col]);
                 prim_comp->RequestPipeline(InlinePipeline::Solid3D);
                 prim_comp->SetVisible(true);
+
+                auto material_comp = e->AddComponent<hgl::ecs::MaterialComponent>();
+                if (material_comp)
+                {
+                    const uint32_t row_index = sphere_slot_rows[row][col];
+                    material_comp->program = material;
+                    material_comp->material_instance_row = row_index;
+                    material_comp->texture_layer_row = row_index;
+                    material_comp->data_index_row = row_index;
+                }
             }
         }
 
@@ -933,4 +936,3 @@ int os_main(int argc, os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Standard BuiltinGeometry x Albedo+Normal 10x10 (ECS)"), argc, argv, 1280, 720);
 }
-

@@ -698,10 +698,18 @@ namespace hgl::ecs
                                 if (auto *entity = primitive_item->GetEntity())
                                 {
                                     auto material_comp = entity->GetComponent<MaterialComponent>();
-                                    if (material_comp && material_comp->data_index_row != uint32_t(-1))
+                                    if (material_comp)
                                     {
-                                        mi_index = material_comp->data_index_row;
-                                        resolved_from_material_component = true;
+                                        if (material_comp->data_index_row != uint32_t(-1))
+                                        {
+                                            mi_index = material_comp->data_index_row;
+                                            resolved_from_material_component = true;
+                                        }
+                                        else if (material_comp->material_instance_row != uint32_t(-1))
+                                        {
+                                            mi_index = material_comp->material_instance_row;
+                                            resolved_from_material_component = true;
+                                        }
                                     }
                                 }
                             }

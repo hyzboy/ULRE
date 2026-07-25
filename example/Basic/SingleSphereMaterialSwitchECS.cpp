@@ -394,9 +394,6 @@ private:
             return LogFail("InitRenderResources", "create texture layer SSBO failed");
 
         const uint32_t texture_ssbo_id = graph::mtl::MakeRecipeSSBOId(0);
-        if (!rdbs->RegisterMaterialStructLayout(graph::mtl::SSBOType::TextureLayer, texture_ssbo_id, texture_row_stride))
-            return LogFail("InitRenderResources", "register texture layer struct layout failed");
-
         const graph::mtl::SSBOAddress texture_addr{graph::mtl::SSBOType::TextureLayer, texture_ssbo_id, 0};
         if (!domain_manager->RegisterBuffer(texture_addr, texture_layer_ssbo, 1))
             return LogFail("InitRenderResources", "register texture layer buffer domain failed");

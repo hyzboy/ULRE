@@ -692,7 +692,6 @@ private:
             rm->transform->SetMovable(false);
 
             rm->primitive_comp->SetPrimitive(rm->primitive);
-            rm->primitive_comp->SetDescriptorBindingSet(solid.dbs[index % COLOR_COUNT]);
             rm->primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             rm->primitive_comp->SetVisible(true);
 
@@ -733,7 +732,6 @@ private:
             bbox->transform->SetMovable(false);
 
             bbox->primitive_comp->SetPrimitive(bbox_primitive);
-            bbox->primitive_comp->SetDescriptorBindingSet(wire.dbs[i % COLOR_COUNT]);
             bbox->primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             bbox->primitive_comp->SetVisible(true);
 
@@ -811,4 +809,3 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Render Bounding Box (ECS)"),argc,argv,1280,720);
 }
-

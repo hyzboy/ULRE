@@ -231,7 +231,6 @@ private:
             // 每个实体使用不同的Primitive（不同的MaterialInstance）
             auto primitive_comp = triangles[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitive(triangles[i].primitive);
-            primitive_comp->SetDescriptorBindingSet(triangles[i].dbs);
             primitive_comp->RequestPipeline(InlinePipeline::Solid2D);
             primitive_comp->SetVisible(true);
 
@@ -331,8 +330,6 @@ private:
                 continue;
 
             has_struct_binding = true;
-            rdbs->RegisterMaterialStructLayout(req.ssbo_type, ssbo_id, mi_data_bytes);
-
             const graph::mtl::SSBOAddress addr{req.ssbo_type, ssbo_id, 0};
             domain_manager->RegisterBuffer(addr, mi_ssbo, DRAW_OBJECT_COUNT);
 
@@ -405,4 +402,3 @@ int os_main(int argc, os_char** argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Auto Merge MaterialProgram Instance (ECS Version)"), argc, argv, 1024, 1024);
 }
-

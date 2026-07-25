@@ -181,9 +181,6 @@ private:
                 continue;
 
             has_struct_binding = true;
-            if (!rdbs->RegisterMaterialStructLayout(req.ssbo_type, req.ssbo_id, mi_data_bytes))
-                return LogStageFail("OffscreenPass::InitMISSBO", "RegisterMaterialStructLayout failed");
-
             const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
             if (!domain_manager->RegisterBuffer(addr, mi_ssbo, mi_count))
                 return LogStageFail("OffscreenPass::InitMISSBO", "RegisterBuffer failed");
@@ -323,7 +320,6 @@ public:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitive(primitive);
-        prim_comp->SetDescriptorBindingSet(binding_set);
         prim_comp->RequestPipeline(InlinePipeline::Solid3D);
         prim_comp->SetVisible(true);
 
@@ -550,7 +546,6 @@ private:
         cube_transform->SetMovable(true);
 
         cube_prim_comp->SetPrimitive(cube_primitive);
-        cube_prim_comp->SetDescriptorBindingSet(cube_binding_set);
         cube_prim_comp->RequestPipeline(InlinePipeline::Solid3D);
         cube_prim_comp->SetVisible(true);
         LogStage("RenderToTextureApp::CreateCube", "success");
@@ -626,9 +621,6 @@ private:
                 continue;
 
             has_struct_binding = true;
-            if (!rdbs->RegisterMaterialStructLayout(req.ssbo_type, req.ssbo_id, mi_data_bytes))
-                return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "RegisterMaterialStructLayout failed");
-
             const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
             if (!domain_manager->RegisterBuffer(addr, cube_mi_ssbo, mi_count))
                 return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "RegisterBuffer failed");
@@ -735,4 +727,3 @@ int os_main(int argc, os_char **argv)
 {
     return RunFramework<RenderToTextureApp>(OS_TEXT("Render To Texture (ECS)"), argc, argv, 1280, 720);
 }
-

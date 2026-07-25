@@ -271,9 +271,6 @@ private:
                 continue;
 
             has_struct_binding = true;
-            if (!descriptor_system->RegisterMaterialStructLayout(req.ssbo_type, req.ssbo_id, mi_data_bytes))
-                return false;
-
             const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
             if (!domain_manager->RegisterBuffer(addr, mi_ssbo, mi_count))
                 return false;
@@ -363,7 +360,6 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = ticks[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitive(ticks[i].primitive);
-            primitive_comp->SetDescriptorBindingSet(tick_binding_set);
             primitive_comp->RequestPipeline(InlinePipeline::Solid2D);
             primitive_comp->SetVisible(true);
 
@@ -406,7 +402,6 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = hands[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitive(hands[i].primitive);
-            primitive_comp->SetDescriptorBindingSet(hand_binding_sets[i]);
             primitive_comp->RequestPipeline(InlinePipeline::Solid2D);
             primitive_comp->SetVisible(true);
 
@@ -516,4 +511,3 @@ int os_main(int argc, os_char** argv)
 {
     return RunFramework<ClockApp>(OS_TEXT("Clock (Static and Movable Transform Separation with ECS)"), argc, argv, 1024, 1024);
 }
-
