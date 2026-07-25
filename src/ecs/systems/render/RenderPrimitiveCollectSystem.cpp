@@ -146,6 +146,10 @@ namespace hgl::ecs
                 }
             }
 
+            uint32_t material_instance_row = uint32_t(-1);
+            uint32_t texture_layer_row = uint32_t(-1);
+            uint32_t data_index_row = uint32_t(-1);
+
             for (const auto &req : program->GetBindingContract().requirements)
             {
                 graph::DescriptorBindingSet::SSBOBinding binding{};
@@ -155,23 +159,24 @@ namespace hgl::ecs
                 switch (req.semantic)
                 {
                     case graph::mtl::DescriptorSemantic::MaterialInstance:
-                        if (material_comp->material_instance_row == uint32_t(-1))
-                            material_comp->material_instance_row = binding.slot_index;
-                        if (material_comp->data_index_row == uint32_t(-1))
-                            material_comp->data_index_row = binding.slot_index;
+                        material_instance_row = binding.slot_index;
+                        if (data_index_row == uint32_t(-1))
+                            data_index_row = binding.slot_index;
                         break;
                     case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
-                        if (material_comp->texture_layer_row == uint32_t(-1))
-                            material_comp->texture_layer_row = binding.slot_index;
+                        texture_layer_row = binding.slot_index;
                         break;
                     case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
-                        if (material_comp->data_index_row == uint32_t(-1))
-                            material_comp->data_index_row = binding.slot_index;
+                        data_index_row = binding.slot_index;
                         break;
                     default:
                         break;
                 }
             }
+
+            material_comp->material_instance_row = material_instance_row;
+            material_comp->texture_layer_row = texture_layer_row;
+            material_comp->data_index_row = data_index_row;
         }
     }
 
