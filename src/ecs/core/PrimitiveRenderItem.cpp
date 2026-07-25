@@ -51,6 +51,9 @@ namespace hgl::ecs
 
     hgl::graph::MaterialInstance* PrimitiveRenderItem::GetMaterialInstance() const
     {
+        if (primitiveComp && primitiveComp->HasMaterialRecipe())
+            return nullptr;
+
         return primitiveComp ? primitiveComp->GetMaterialInstance() : nullptr;
     }
 
