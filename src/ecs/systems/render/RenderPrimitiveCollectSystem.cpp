@@ -157,6 +157,13 @@ namespace hgl::ecs
         if (!recipe)
             return false;
 
+        const uint64_t recipe_hash = graph::mtl::HashMaterialRecipe(*recipe);
+        if (material_comp->recipe_hash != recipe_hash)
+        {
+            material_comp->program_dirty = true;
+            InvalidateRecipeRuntime(material_comp, false);
+        }
+
         if (!material_comp->program_dirty && material_comp->program)
             return true;
 
@@ -255,6 +262,10 @@ namespace hgl::ecs
         if (!resolved_program)
             return false;
 
+        const bool program_changed = (material_comp->program != resolved_program);
+        if (program_changed)
+            InvalidateRecipeRuntime(material_comp, false);
+
         if (auto rdbs = world->GetSystem<RenderDescriptorBindingSystem>())
         {
             const uint32_t mi_data_bytes = resolved_program->GetMIDataBytes();
@@ -272,6 +283,7 @@ namespace hgl::ecs
 
         material_comp->program = resolved_program;
         material_comp->program_dirty = false;
+        material_comp->recipe_hash = recipe_hash;
         return true;
     }
 

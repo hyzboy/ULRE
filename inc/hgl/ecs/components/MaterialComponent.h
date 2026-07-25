@@ -27,6 +27,7 @@ namespace hgl::ecs
         bool resources_dirty = true;
         bool valid = false;
         uint32_t runtime_revision = 0;
+        uint64_t recipe_hash = 0;
 
     public:
 

@@ -45,6 +45,7 @@ namespace hgl::ecs
         bindings_dirty = true;
         resources_dirty = true;
         valid = false;
+        recipe_hash = 0;
     }
 
     void MaterialComponent::OnDetach()
@@ -57,5 +58,6 @@ namespace hgl::ecs
         bindings_dirty = true;
         resources_dirty = true;
         valid = false;
+        recipe_hash = 0;
     }
 }//namespace hgl::ecs

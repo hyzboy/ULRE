@@ -72,12 +72,17 @@ namespace hgl::ecs
 
     hgl::graph::MaterialProgram* PrimitiveRenderItem::GetMaterialProgram() const
     {
+        const bool uses_recipe_runtime = (primitiveComp && primitiveComp->HasMaterialRecipe());
+
         if (auto *entity = GetEntity())
         {
             auto material_comp = entity->GetComponent<MaterialComponent>();
             if (material_comp && material_comp->program)
                 return material_comp->program;
         }
+
+        if (uses_recipe_runtime)
+            return nullptr;
 
         return primitiveComp ? primitiveComp->GetMaterialProgram() : nullptr;
     }
