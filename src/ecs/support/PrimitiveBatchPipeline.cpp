@@ -40,6 +40,8 @@ namespace hgl::ecs
 {
     namespace
     {
+        constexpr uint32_t InvalidBatchDataIndexRow = uint32_t(-1);
+
         uint64_t HashDBSContractBindingSignature(const graph::DescriptorBindingSet *binding_set,
                                                  const graph::mtl::BindingContract &contract)
         {
@@ -169,6 +171,9 @@ namespace hgl::ecs
                         return static_cast<uint32_t>(mi_id);
                 }
             }
+
+            if (uses_recipe_runtime)
+                return InvalidBatchDataIndexRow;
 
             return 0;
         }
@@ -730,9 +735,21 @@ namespace hgl::ecs
                     mi_gpu->Map(0, static_cast<VkDeviceSize>(item_count) * sizeof(uint32_t)));
                 if (row_ptr)
                 {
+                    bool warned_missing_recipe_row = false;
                     for (size_t i = 0; i < item_count; ++i)
                     {
-                        row_ptr[i] = ResolveMaterialDataIndexRow(batch.items[i], primary_ssbo_type);
+                        uint32_t row = ResolveMaterialDataIndexRow(batch.items[i], primary_ssbo_type);
+                        if (row == InvalidBatchDataIndexRow)
+                        {
+                            if (!warned_missing_recipe_row)
+                            {
+                                warned_missing_recipe_row = true;
+                                LogWarning("[PrimitiveBatchPipeline] Missing recipe data_index_row in batch write, fallback to row0. material=%s",
+                                           batch.key.material ? batch.key.material->GetName().c_str() : "<null>");
+                            }
+                            row = 0;
+                        }
+                        row_ptr[i] = row;
                     }
                     mi_gpu->Unmap();
                 }
@@ -782,6 +799,25 @@ namespace hgl::ecs
             auto* prim_item = dynamic_cast<PrimitiveRenderItem*>(item);
             auto prim_comp = prim_item ? prim_item->GetPrimitiveComponent() : nullptr;
             const bool uses_recipe_runtime = (prim_comp && prim_comp->HasMaterialRecipe());
+            std::shared_ptr<MaterialComponent> material_comp;
+            if (prim_item)
+            {
+                if (auto *entity = prim_item->GetEntity())
+                    material_comp = entity->GetComponent<MaterialComponent>();
+            }
+
+            if (uses_recipe_runtime)
+            {
+                const bool missing_rows = (!material_comp
+                                        || material_comp->data_index_row == uint32_t(-1)
+                                        || material_comp->texture_layer_row == uint32_t(-1));
+                if (missing_rows)
+                {
+                    LogWarning("[PrimitiveBatchPipeline] Skip recipe runtime item: unresolved material rows. material=%s",
+                               material ? material->GetName().c_str() : "<null>");
+                    continue;
+                }
+            }
 
             // Output interface changed (different RenderPass): invalidate previous runtime-resolved pipeline.
             if (prim_comp
