@@ -302,7 +302,7 @@ namespace hgl::ecs
 
         guard.material_manager = material_manager;
 
-        guard.material = material_manager->CreateMaterial(graph::mtl::MaterialPreset::Text2D, &mtl_cfg);
+        guard.material = material_manager->AcquireMaterialProgram(graph::mtl::MaterialPreset::Text2D, &mtl_cfg);
         if (!guard.material)
             return nullptr;
 
@@ -600,3 +600,4 @@ namespace hgl::ecs
         }
     }
 }
+

@@ -126,7 +126,7 @@ private:
                                             CoordinateSystem2D::NDC,
                                             mtl::WithLocalToWorld::With);
 
-            material = material_manager->CreateMaterial(mtl::MaterialPreset::PureColor2D, &cfg);
+            material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::PureColor2D, &cfg);
 
             if (!material)
                 return false;
@@ -516,3 +516,4 @@ int os_main(int argc, os_char** argv)
 {
     return RunFramework<ClockApp>(OS_TEXT("Clock (Static and Movable Transform Separation with ECS)"), argc, argv, 1024, 1024);
 }
+

@@ -165,7 +165,7 @@ public:
         mi_data.roughness=0.95f;
         mi_data.normal_scale=0.35f;
 
-        material = material_manager->CreateMaterial(mtl::MaterialPreset::Standard, &cfg);
+        material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Standard, &cfg);
         if(!material) return false;
 
         // Standard surface (QUALITY_TIER=Medium) samples TexAlbedo; bind a fallback texture.
@@ -404,3 +404,4 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Walls From Polyline Example - Complex"), argc, argv, 1280, 720);
 }
+

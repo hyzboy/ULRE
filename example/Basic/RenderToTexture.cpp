@@ -290,9 +290,9 @@ public:
                                           mtl::WithLocalToWorld::With,
                                           mtl::WithSky::Without);
 
-        mtl = mm->CreateMaterial(mtl::MaterialPreset::Gizmo3D, &cfg3d);
+        mtl = mm->AcquireMaterialProgram(mtl::MaterialPreset::Gizmo3D, &cfg3d);
         if (!mtl)
-            return LogStageFail("OffscreenPass::BuildSphere", "CreateMaterial(Gizmo3D) failed");
+            return LogStageFail("OffscreenPass::BuildSphere", "AcquireMaterialProgram(Gizmo3D) failed");
 
         sphere_color_data = GetColor4f(COLOR::SkyBlue, 1.0f);
 
@@ -455,9 +455,9 @@ private:
                                           mtl::WithLocalToWorld::With,
                                           mtl::WithSky::With);
 
-        cube_mtl = mm->CreateMaterial(mtl::MaterialPreset::Standard, &cfg3d);
+        cube_mtl = mm->AcquireMaterialProgram(mtl::MaterialPreset::Standard, &cfg3d);
         if (!cube_mtl)
-            return LogStageFail("RenderToTextureApp::CreateCube", "CreateMaterial(Standard) failed");
+            return LogStageFail("RenderToTextureApp::CreateCube", "AcquireMaterialProgram(Standard) failed");
 
         cube_sampler = sm->CreateSampler();
         if (!cube_sampler)
@@ -735,3 +735,4 @@ int os_main(int argc, os_char **argv)
 {
     return RunFramework<RenderToTextureApp>(OS_TEXT("Render To Texture (ECS)"), argc, argv, 1280, 720);
 }
+

@@ -333,7 +333,7 @@ namespace hgl::ecs
         if (!mat_mgr)
             return false;
 
-        material_ = mat_mgr->CreateMaterial(graph::mtl::MaterialPreset::VertexPattleColor3D, &cfg);
+        material_ = mat_mgr->AcquireMaterialProgram(graph::mtl::MaterialPreset::VertexPattleColor3D, &cfg);
         if (!material_)
             return false;
 
@@ -920,3 +920,4 @@ namespace hgl::ecs
     }
 
 }  // namespace hgl::ecs
+

@@ -1,4 +1,4 @@
-﻿#include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/vk/pipeline/VKPipelineLayoutData.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
@@ -313,7 +313,7 @@ bool MaterialManager::ExecuteMaterialBuildPipeline(Material *mtl,
     return true;
 }
 
-Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci)
+Material *MaterialManager::AcquireMaterialProgram(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -350,7 +350,7 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
     return mtl.Finish();
 }
 
-Material *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *cfg)
+Material *MaterialManager::AcquireMaterialProgram(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *cfg)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -368,7 +368,7 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::
     hash_name+="?";
     hash_name+=cfg->ToHashStdString().c_str();
 
-    return this->CreateMaterial(hash_name,mci);
+    return this->AcquireMaterialProgram(hash_name,mci);
 }
 
 void MaterialManager::ResetShaderGenProfiler()
@@ -401,7 +401,7 @@ std::map<std::string, uint32_t> MaterialManager::GetShaderGenRecentValidationCat
     return {};
 }
 
-Material *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *cfg)
+Material *MaterialManager::AcquireMaterialProgram(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *cfg)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -419,10 +419,10 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::
     hash_name+="?";
     hash_name+=cfg->ToHashStdString().c_str();
 
-    return this->CreateMaterial(hash_name,mci);
+    return this->AcquireMaterialProgram(hash_name,mci);
 }
 
-Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl::Material2DCreateConfig *cfg)
+Material *MaterialManager::AcquireMaterialProgram(const mtl::MaterialVariantKey &key,mtl::Material2DCreateConfig *cfg)
 {
     if (!cfg)
         return nullptr;
@@ -431,28 +431,28 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl
     if (!mtl::TryMapVariantKeyToPreset2D(key, preset))
         return nullptr;
 
-    return CreateMaterial(preset,cfg);
+    return AcquireMaterialProgram(preset,cfg);
 }
 
-Material *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *cfg,const GeometryVertexFormat &geometry_vertex_format)
+Material *MaterialManager::AcquireMaterialProgram(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *cfg,const GeometryVertexFormat &geometry_vertex_format)
 {
     if(!cfg)
         return nullptr;
 
     ScopedMaterialGeometryBinding scoped_binding(cfg,&geometry_vertex_format);
-    return CreateMaterial(mtl_id,cfg);
+    return AcquireMaterialProgram(mtl_id,cfg);
 }
 
-Material *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *cfg,const GeometryVertexFormat &geometry_vertex_format)
+Material *MaterialManager::AcquireMaterialProgram(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *cfg,const GeometryVertexFormat &geometry_vertex_format)
 {
     if(!cfg)
         return nullptr;
 
     ScopedMaterialGeometryBinding scoped_binding(cfg,&geometry_vertex_format);
-    return CreateMaterial(mtl_id,cfg);
+    return AcquireMaterialProgram(mtl_id,cfg);
 }
 
-Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl::Material3DCreateConfig *cfg)
+Material *MaterialManager::AcquireMaterialProgram(const mtl::MaterialVariantKey &key,mtl::Material3DCreateConfig *cfg)
 {
     if (!cfg)
         return nullptr;
@@ -461,7 +461,7 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl
     if (!mtl::TryMapVariantKeyToPreset3D(key, preset))
         return nullptr;
 
-    return CreateMaterial(preset,cfg);
+    return AcquireMaterialProgram(preset,cfg);
 }
 
 MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl)
@@ -609,7 +609,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPre
 {
     HGL_CAPTURE_SCOPE();
 
-    Material *mtl=this->CreateMaterial(mtl_id,mcc);
+    Material *mtl=this->AcquireMaterialProgram(mtl_id,mcc);
 
     if(!mtl)
         return(nullptr);
@@ -621,7 +621,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPre
 {
     HGL_CAPTURE_SCOPE();
 
-    Material *mtl=this->CreateMaterial(mtl_id,mcc);
+    Material *mtl=this->AcquireMaterialProgram(mtl_id,mcc);
 
     if(!mtl)
         return(nullptr);
@@ -636,7 +636,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPre
     if(!mcc)
         return nullptr;
 
-    Material *mtl=this->CreateMaterial(mtl_id,mcc,geometry_vertex_format);
+    Material *mtl=this->AcquireMaterialProgram(mtl_id,mcc,geometry_vertex_format);
 
     if(!mtl)
         return(nullptr);
@@ -651,7 +651,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPre
     if(!mcc)
         return nullptr;
 
-    Material *mtl=this->CreateMaterial(mtl_id,mcc,geometry_vertex_format);
+    Material *mtl=this->AcquireMaterialProgram(mtl_id,mcc,geometry_vertex_format);
 
     if(!mtl)
         return(nullptr);
@@ -660,3 +660,4 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPre
 }
 
 }//namespace hgl::graph
+

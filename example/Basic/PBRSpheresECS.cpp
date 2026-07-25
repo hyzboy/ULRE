@@ -168,7 +168,7 @@ private:
                         mtl::WithCamera::With,
                         mtl::WithLocalToWorld::With,
                         mtl::WithSky::With);
-        material = material_manager->CreateMaterial(mtl::MaterialPreset::StandardTextureArray, &cfg);
+        material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::StandardTextureArray, &cfg);
         if (!material) {
             printf("[ERROR] InitMaterial: Failed to create StandardTextureArray material\n");
             return false;
@@ -933,3 +933,4 @@ int os_main(int argc, os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Standard BuiltinGeometry x Albedo+Normal 10x10 (ECS)"), argc, argv, 1280, 720);
 }
+

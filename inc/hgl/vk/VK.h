@@ -244,6 +244,7 @@ class ShaderModuleMap;
 class MaterialDescriptorManager;
 
 class Material;
+using MaterialProgram = Material;
 class MaterialParameters;
 class MaterialInstance;
 struct PipelineData;

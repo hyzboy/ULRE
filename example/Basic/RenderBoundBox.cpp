@@ -245,7 +245,7 @@ private:
             return false;
 
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
-        solid.material = material_manager->CreateMaterial(mtl::MaterialPreset::Gizmo3D, &cfg);
+        solid.material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Gizmo3D, &cfg);
         if (!solid.material)
             return false;
 
@@ -267,7 +267,7 @@ private:
             return false;
 
         mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
-        wire.material = material_manager->CreateMaterial(mtl::MaterialPreset::PureColor3D, &cfg);
+        wire.material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::PureColor3D, &cfg);
         if (!wire.material)
             return false;
 
@@ -811,3 +811,4 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Render Bounding Box (ECS)"),argc,argv,1280,720);
 }
+

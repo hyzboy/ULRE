@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/graph/module/GraphModule.h>
 #include<hgl/vk/VKMaterial.h>
@@ -53,7 +53,7 @@ private:
 
 private: // Helper methods with integrated DebugUtils
 
-    Material *CreateMaterial(const AnsiString &, const mtl::MaterialCreateInfo *);
+    Material *AcquireMaterialProgram(const AnsiString &, const mtl::MaterialCreateInfo *);
     class PipelineLayoutData *CreateMaterialPipelineLayoutData(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager);
     class MaterialParameters *CreateMaterialMP(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager, const class PipelineLayoutData *pld, const DescriptorSetType &desc_set_type);
     void ApplyMaterialFinalizePlan(Material *mtl, const AnsiString &mtl_name, const mtl::MaterialCreateInfo &mci);
@@ -148,12 +148,12 @@ public: //ShaderGen Profiler (debug entry, collect-only)
 
 public: //Material
 
-    Material *          CreateMaterial  (const mtl::MaterialPreset, mtl::Material2DCreateConfig *);  ///<基于内置材质ID创建2D材质
-    Material *          CreateMaterial  (const mtl::MaterialPreset, mtl::Material3DCreateConfig *);  ///<基于内置材质ID创建3D材质
-    Material *          CreateMaterial  (const mtl::MaterialPreset, mtl::Material2DCreateConfig *, const GeometryVertexFormat &);  ///<基于 GeometryVertexFormat 上下文创建2D材质
-    Material *          CreateMaterial  (const mtl::MaterialPreset, mtl::Material3DCreateConfig *, const GeometryVertexFormat &);  ///<基于 GeometryVertexFormat 上下文创建3D材质
-    Material *          CreateMaterial  (const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *); ///<基于variant key创建2D材质（Phase-A兼容）
-    Material *          CreateMaterial  (const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *); ///<基于variant key创建3D材质（Phase-A兼容）
+    Material *          AcquireMaterialProgram(const mtl::MaterialPreset, mtl::Material2DCreateConfig *);  ///<基于内置材质ID创建2D材质
+    Material *          AcquireMaterialProgram(const mtl::MaterialPreset, mtl::Material3DCreateConfig *);  ///<基于内置材质ID创建3D材质
+    Material *          AcquireMaterialProgram(const mtl::MaterialPreset, mtl::Material2DCreateConfig *, const GeometryVertexFormat &);  ///<基于 GeometryVertexFormat 上下文创建2D材质
+    Material *          AcquireMaterialProgram(const mtl::MaterialPreset, mtl::Material3DCreateConfig *, const GeometryVertexFormat &);  ///<基于 GeometryVertexFormat 上下文创建3D材质
+    Material *          AcquireMaterialProgram(const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *); ///<基于variant key创建2D材质（Phase-A兼容）
+    Material *          AcquireMaterialProgram(const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *); ///<基于variant key创建3D材质（Phase-A兼容）
 
 public: //MaterialInstance
 
@@ -203,3 +203,4 @@ public: //MaterialInstance
 };//class MaterialManager
 
 }//namespace hgl::graph
+

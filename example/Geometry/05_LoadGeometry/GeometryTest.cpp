@@ -242,7 +242,7 @@ private:
             return false;
 
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
-        solid.material = material_manager->CreateMaterial(mtl::MaterialPreset::Gizmo3D,&cfg);
+        solid.material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Gizmo3D,&cfg);
 
         return InitMaterialForDBS(&solid, "LoadGeometry:SolidMIData");
     }
@@ -262,7 +262,7 @@ private:
             return false;
 
         mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
-        wire.material=material_manager->CreateMaterial(mtl::MaterialPreset::PureColor3D,&cfg);
+        wire.material=material_manager->AcquireMaterialProgram(mtl::MaterialPreset::PureColor3D,&cfg);
 
         return InitMaterialForDBS(&wire, "LoadGeometry:WireMIData");
     }
@@ -520,3 +520,4 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Load Geometry"),argc,argv,1280,720);
 }
+

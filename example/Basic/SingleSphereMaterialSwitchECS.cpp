@@ -184,8 +184,8 @@ private:
                                         mtl::WithCamera::With,
                                         mtl::WithLocalToWorld::With,
                                         mtl::WithSky::With);
-        near_material = material_manager->CreateMaterial(mtl::MaterialPreset::StandardTextureArray, &cfg);
-        far_material = material_manager->CreateMaterial(mtl::MaterialPreset::Standard, &cfg);
+        near_material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::StandardTextureArray, &cfg);
+        far_material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Standard, &cfg);
         if (!near_material || !far_material)
             return LogFail("InitMaterials", "failed to create near/far materials");
 
@@ -574,3 +574,4 @@ int os_main(int argc, os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Single Sphere Material Switch (ECS)"), argc, argv, 1280, 720);
 }
+

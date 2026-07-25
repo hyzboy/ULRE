@@ -1,4 +1,4 @@
-﻿// ExtrudedPolygonTest.cpp
+// ExtrudedPolygonTest.cpp
 // 测试2D多边形挤压为3D多边形功能
 
 #include<hgl/framework/WorkManager.h>
@@ -75,7 +75,7 @@ private:
             return false;
 
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
-        material = material_manager->CreateMaterial(mtl::MaterialPreset::Gizmo3D, &cfg);
+        material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Gizmo3D, &cfg);
         if (!material)
             return false;
 
@@ -316,3 +316,4 @@ int os_main(int argc, os_char **argv)
 {
     return RunFramework<ExtrudedPolygonTestApp>(OS_TEXT("Extruded Polygon"),argc,argv,1280,720);
 }
+

@@ -1,4 +1,4 @@
-﻿/*
+/*
  TransformGizmoSystem 使用示例
 
  展示如何使用 TransformGizmoSystem 控制物体变换
@@ -105,7 +105,7 @@ private:
             mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
             cfg.local_to_world = true;
             const GeometryVertexFormat grid_gvf = CreateVertexLuminance2DGeometryVertexFormat();
-            grid_material = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg, grid_gvf);
+            grid_material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::VertexLuminance3D, &cfg, grid_gvf);
             if(!grid_material)
                 return false;
 
@@ -163,7 +163,7 @@ private:
         {
             mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
 
-            cube_material = material_manager->CreateMaterial(mtl::MaterialPreset::Gizmo3D, &cfg);
+            cube_material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Gizmo3D, &cfg);
             if(!cube_material)
                 return false;
 
@@ -404,3 +404,4 @@ int os_main(int argc, os_char **argv)
 {
     return RunFramework<GizmoExampleApp>(OS_TEXT("Gizmo Usage Example"), argc, argv, 1280, 720);
 }
+

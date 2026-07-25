@@ -1,4 +1,4 @@
-﻿#include<hgl/vk/pipeline/VKPipeline.h>
+#include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -186,7 +186,7 @@ namespace hgl::graph
                 cfg.local_to_world=true;
                 cfg.material_instance=true;
 
-                gizmo_triangle.mtl=gizmo_mtl_manager->CreateMaterial(mtl::MaterialPreset::PureColor3D,&cfg);
+                gizmo_triangle.mtl=gizmo_mtl_manager->AcquireMaterialProgram(mtl::MaterialPreset::PureColor3D,&cfg);
                 if(!gizmo_triangle.mtl)
                     return(false);
 
@@ -367,3 +367,4 @@ namespace hgl::graph
         return gizmo_mesh[size_t(shape)].primitive;
     }
 }//namespace hgl::graph
+

@@ -153,7 +153,7 @@ private:
             return false;
 
         mtl::SkyMinimalCreateConfig cfg;
-        sky_material = material_manager->CreateMaterial(mtl::MaterialPreset::SkyMinimal, &cfg);
+        sky_material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::SkyMinimal, &cfg);
         if (!sky_material)
             return false;
 
@@ -212,7 +212,7 @@ private:
                         mtl::WithCamera::With,
                         mtl::WithLocalToWorld::With,
                         mtl::WithSky::With);
-        material = material_manager->CreateMaterial(mtl::MaterialPreset::Standard, &cfg);
+        material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Standard, &cfg);
         if (!material)
             return false;
 
@@ -638,3 +638,4 @@ int os_main(int argc, os_char** argv)
 {
     return RunFramework<BasicLitSunDirectionECSApp>(OS_TEXT("Standard Sun Direction ECS"), argc, argv, 1280, 720);
 }
+

@@ -123,13 +123,13 @@ private:
 
         {
             const GeometryVertexFormat plane_grid_gvf = CreateVertexLuminance2DGeometryVertexFormat();
-            mtl_plane_grid = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg, plane_grid_gvf);
+            mtl_plane_grid = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::VertexLuminance3D, &cfg, plane_grid_gvf);
             if(!mtl_plane_grid)return(false);
         }
 
         {
             const GeometryVertexFormat line_gvf = CreateVertexLuminance3DGeometryVertexFormat();
-            mtl_line = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg, line_gvf);
+            mtl_line = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::VertexLuminance3D, &cfg, line_gvf);
             if(!mtl_line)return(false);
         }
 
@@ -476,3 +476,4 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("RayPicking (ECS Version)"),argc,argv,1280,720);
 }
+

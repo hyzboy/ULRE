@@ -219,7 +219,7 @@ private:
             return false;
 
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
-        solid.material = material_manager->CreateMaterial(mtl::MaterialPreset::Gizmo3D,&cfg);
+        solid.material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Gizmo3D,&cfg);
 
         return InitMaterialForDBS(&solid, "LoadScene:SolidMIData");
     }
@@ -370,3 +370,4 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Load Scene"),argc,argv,1280,720);
 }
+

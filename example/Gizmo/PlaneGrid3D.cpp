@@ -1,4 +1,4 @@
-﻿// PlaneGrid3D
+// PlaneGrid3D
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
@@ -78,7 +78,7 @@ private:
 
         cfg.local_to_world=true;
         const GeometryVertexFormat plane_grid_gvf = CreateVertexLuminance2DGeometryVertexFormat();
-        material = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg, plane_grid_gvf);
+        material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::VertexLuminance3D, &cfg, plane_grid_gvf);
         if(!material)return(false);
 
         return material;
@@ -332,3 +332,4 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("PlaneGrid3D"),argc,argv,1280,720);
 }
+

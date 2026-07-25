@@ -62,7 +62,7 @@ private:
 
         mtl::SkyMinimalCreateConfig cfg;
 
-        mtl_sky_sphere = material_manager->CreateMaterial(mtl::MaterialPreset::SkyMinimal, &cfg);
+        mtl_sky_sphere = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::SkyMinimal, &cfg);
         if (!mtl_sky_sphere)
             return false;
 
@@ -214,3 +214,4 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("SimplestAtmosphere"),argc,argv,1280,720);
 }
+

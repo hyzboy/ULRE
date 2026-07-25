@@ -89,7 +89,7 @@ private:
                                         CoordinateSystem2D::NDC,
                                         mtl::WithLocalToWorld::Without);
 
-        material=material_manager->CreateMaterial(mtl::MaterialPreset::PureTexture2D,&cfg);
+        material=material_manager->AcquireMaterialProgram(mtl::MaterialPreset::PureTexture2D,&cfg);
 
         if(!material)
             return(false);
@@ -211,3 +211,4 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Draw a quad with texture"),argc,argv,256,256);
 }
+

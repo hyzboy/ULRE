@@ -117,7 +117,7 @@ private:
                         mtl::WithCamera::With,
                         mtl::WithLocalToWorld::With,
                         mtl::WithSky::With);
-        material = material_manager->CreateMaterial(mtl::MaterialPreset::Standard, &cfg);
+        material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Standard, &cfg);
         if (!material)
             return false;
 
@@ -654,3 +654,4 @@ int os_main(int argc, os_char** argv)
 {
     return RunFramework<BasicLitMeshesECSApp>(OS_TEXT("Standard Meshes ECS"), argc, argv, 1280, 720);
 }
+

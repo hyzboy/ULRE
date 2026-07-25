@@ -197,7 +197,7 @@ namespace hgl::graph
     {
         mtl::Text2DMaterialCreateConfig mtl_cfg;
 
-        mtl_fs=mtl_manager->CreateMaterial(mtl::MaterialPreset::Text2D,&mtl_cfg);
+        mtl_fs=mtl_manager->AcquireMaterialProgram(mtl::MaterialPreset::Text2D,&mtl_cfg);
         if(!mtl_fs)return(false);
 
         const GeometryVertexFormat text_gvf = CreateTextGeometryVertexFormat();
@@ -342,3 +342,4 @@ namespace hgl::graph
     }
 
 }//namespace hgl::graph
+

@@ -132,7 +132,7 @@ private:
         if (!material_manager || !buffer_manager || !domain_manager)
             return false;
 
-        material = material_manager->CreateMaterial(mtl::MaterialPreset::Gizmo3D, &cfg);
+        material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Gizmo3D, &cfg);
         if (!material)
             return false;
 
@@ -398,4 +398,5 @@ int os_main(int argc, os_char **argv)
 {
     return RunFramework<RecursiveCubeApp>(OS_TEXT("Recursive Cube (ECS)"), argc, argv, 1280, 720);
 }
+
 
