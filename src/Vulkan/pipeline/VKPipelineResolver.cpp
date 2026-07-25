@@ -3,6 +3,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/util/hash/FNV1a.h>
+#include<hgl/log/Log.h>
 #include<cstring>
 
 namespace hgl::graph
@@ -186,19 +187,209 @@ namespace hgl::graph
             }
         };
 
-        ValueArray<FinalPipelineCacheEntry> g_final_pipeline_cache;
+        ValueArray<FinalPipelineCacheEntry> g_monolithic_pipeline_cache;
+        ValueArray<FinalPipelineCacheEntry> g_gpl_link_pipeline_cache;
+        ValueArray<VertexInterfaceKey> g_vi_library_cache;
+        ValueArray<PreRasterPipelineKey> g_pr_library_cache;
+        ValueArray<FragmentShaderKey> g_fs_library_cache;
+        ValueArray<FragmentOutputKey> g_fo_library_cache;
 
-        bool TryGetCachedFinalPipeline(const FinalPipelineResolveRequest &request,
+        struct PipelineResolveStats
+        {
+            uint64_t requests = 0;
+            uint64_t invalid_request = 0;
+            uint64_t incomplete_key = 0;
+            uint64_t fo_mismatch = 0;
+            uint64_t final_cache_hit = 0;
+            uint64_t final_cache_miss = 0;
+            uint64_t materialize_success = 0;
+            uint64_t materialize_failed = 0;
+            uint64_t vi_library_hit = 0;
+            uint64_t vi_library_miss = 0;
+            uint64_t pr_library_hit = 0;
+            uint64_t pr_library_miss = 0;
+            uint64_t fs_library_hit = 0;
+            uint64_t fs_library_miss = 0;
+            uint64_t fo_library_hit = 0;
+            uint64_t fo_library_miss = 0;
+        };
+
+        enum class ResolveError:uint8
+        {
+            None = 0,
+            MissingDevice,
+            MissingPipelineData,
+            MissingShaderStages,
+            MissingPipelineLayout,
+            MissingRenderPass,
+            MissingColorAttachmentConfig,
+            FOColorBlendAttachmentMismatch
+        };
+
+        PipelineResolveStats g_resolve_stats;
+
+        const char *ResolveErrorText(const ResolveError error)
+        {
+            switch(error)
+            {
+            case ResolveError::MissingDevice: return "missing device";
+            case ResolveError::MissingPipelineData: return "missing pipeline_data";
+            case ResolveError::MissingShaderStages: return "missing shader_stages";
+            case ResolveError::MissingPipelineLayout: return "missing pipeline_layout";
+            case ResolveError::MissingRenderPass: return "missing render_pass";
+            case ResolveError::MissingColorAttachmentConfig: return "missing frame_output color attachments";
+            case ResolveError::FOColorBlendAttachmentMismatch: return "fo mismatch: color_blend attachment count differs from frame_output";
+            default: return "none";
+            }
+        }
+
+        ResolveError ValidateResolveRequest(const FinalPipelineResolveRequest &request)
+        {
+            if(!request.device)
+                return ResolveError::MissingDevice;
+
+            if(!request.pipeline_data)
+                return ResolveError::MissingPipelineData;
+
+            if(!request.shader_stages || request.shader_stages->IsEmpty())
+                return ResolveError::MissingShaderStages;
+
+            if(request.pipeline_layout == VK_NULL_HANDLE)
+                return ResolveError::MissingPipelineLayout;
+
+            if(request.render_pass == VK_NULL_HANDLE)
+                return ResolveError::MissingRenderPass;
+
+            if(request.frame_output.color_attachment_count == 0 || !request.frame_output.color_formats)
+                return ResolveError::MissingColorAttachmentConfig;
+
+            if(request.pipeline_data->color_blend)
+            {
+                const uint32_t blend_attachment_count = request.pipeline_data->color_blend->attachmentCount;
+                if(blend_attachment_count > 0
+                && blend_attachment_count != request.frame_output.color_attachment_count)
+                    return ResolveError::FOColorBlendAttachmentMismatch;
+            }
+
+            return ResolveError::None;
+        }
+
+        bool TouchVILibraryCache(const VertexInterfaceKey &key, bool &hit)
+        {
+            const int count = g_vi_library_cache.GetCount();
+            for(int i = 0; i < count; ++i)
+            {
+                if(g_vi_library_cache[i] == key)
+                {
+                    hit = true;
+                    return true;
+                }
+            }
+
+            hit = false;
+            return g_vi_library_cache.Add(key);
+        }
+
+        bool TouchPRLibraryCache(const PreRasterPipelineKey &key, bool &hit)
+        {
+            const int count = g_pr_library_cache.GetCount();
+            for(int i = 0; i < count; ++i)
+            {
+                if(g_pr_library_cache[i] == key)
+                {
+                    hit = true;
+                    return true;
+                }
+            }
+
+            hit = false;
+            return g_pr_library_cache.Add(key);
+        }
+
+        bool TouchFSLibraryCache(const FragmentShaderKey &key, bool &hit)
+        {
+            const int count = g_fs_library_cache.GetCount();
+            for(int i = 0; i < count; ++i)
+            {
+                if(g_fs_library_cache[i] == key)
+                {
+                    hit = true;
+                    return true;
+                }
+            }
+
+            hit = false;
+            return g_fs_library_cache.Add(key);
+        }
+
+        bool TouchFOLibraryCache(const FragmentOutputKey &key, bool &hit)
+        {
+            const int count = g_fo_library_cache.GetCount();
+            for(int i = 0; i < count; ++i)
+            {
+                if(g_fo_library_cache[i] == key)
+                {
+                    hit = true;
+                    return true;
+                }
+            }
+
+            hit = false;
+            return g_fo_library_cache.Add(key);
+        }
+
+        void UpdateLibraryHitStats(const bool vi_hit,
+                                   const bool pr_hit,
+                                   const bool fs_hit,
+                                   const bool fo_hit)
+        {
+            if(vi_hit) ++g_resolve_stats.vi_library_hit; else ++g_resolve_stats.vi_library_miss;
+            if(pr_hit) ++g_resolve_stats.pr_library_hit; else ++g_resolve_stats.pr_library_miss;
+            if(fs_hit) ++g_resolve_stats.fs_library_hit; else ++g_resolve_stats.fs_library_miss;
+            if(fo_hit) ++g_resolve_stats.fo_library_hit; else ++g_resolve_stats.fo_library_miss;
+        }
+
+        void LogResolveStatsIfNeeded()
+        {
+            if((g_resolve_stats.requests % 64u) != 0u)
+                return;
+
+            GLogInfo("[PipelineResolver] req=%llu invalid=%llu incomplete_key=%llu fo_mismatch=%llu final_cache(h/m)=%llu/%llu materialize(ok/fail)=%llu/%llu segment_hits vi/pr/fs/fo=%llu/%llu/%llu/%llu",
+                     (unsigned long long)g_resolve_stats.requests,
+                     (unsigned long long)g_resolve_stats.invalid_request,
+                     (unsigned long long)g_resolve_stats.incomplete_key,
+                     (unsigned long long)g_resolve_stats.fo_mismatch,
+                     (unsigned long long)g_resolve_stats.final_cache_hit,
+                     (unsigned long long)g_resolve_stats.final_cache_miss,
+                     (unsigned long long)g_resolve_stats.materialize_success,
+                     (unsigned long long)g_resolve_stats.materialize_failed,
+                     (unsigned long long)g_resolve_stats.vi_library_hit,
+                     (unsigned long long)g_resolve_stats.pr_library_hit,
+                     (unsigned long long)g_resolve_stats.fs_library_hit,
+                     (unsigned long long)g_resolve_stats.fo_library_hit);
+        }
+
+        ValueArray<FinalPipelineCacheEntry> &GetFinalPipelineCache(const PipelineMaterializeMode mode)
+        {
+            return mode == PipelineMaterializeMode::GraphicsPipelineLibrary
+                 ? g_gpl_link_pipeline_cache
+                 : g_monolithic_pipeline_cache;
+        }
+
+        bool TryGetCachedFinalPipeline(const PipelineMaterializeMode mode,
+                                       const FinalPipelineResolveRequest &request,
                                        const FinalPipelineKey &key,
                                        VkPipeline &out_pipeline)
         {
             if(!request.device || request.pipeline_layout == VK_NULL_HANDLE)
                 return false;
 
-            const int count = g_final_pipeline_cache.GetCount();
+            ValueArray<FinalPipelineCacheEntry> &cache = GetFinalPipelineCache(mode);
+
+            const int count = cache.GetCount();
             for(int i = 0; i < count; ++i)
             {
-                const FinalPipelineCacheEntry &entry = g_final_pipeline_cache[i];
+                const FinalPipelineCacheEntry &entry = cache[i];
                 if(entry.device != request.device)
                     continue;
                 if(entry.pipeline_layout != request.pipeline_layout)
@@ -215,7 +406,8 @@ namespace hgl::graph
             return false;
         }
 
-        void CacheFinalPipeline(const FinalPipelineResolveRequest &request,
+        void CacheFinalPipeline(const PipelineMaterializeMode mode,
+                                const FinalPipelineResolveRequest &request,
                                 const FinalPipelineKey &key,
                                 VkPipeline pipeline)
         {
@@ -227,7 +419,7 @@ namespace hgl::graph
             entry.pipeline_layout = request.pipeline_layout;
             entry.key = key;
             entry.pipeline = pipeline;
-            g_final_pipeline_cache.Add(entry);
+            GetFinalPipelineCache(mode).Add(entry);
         }
     }
 
@@ -342,30 +534,79 @@ namespace hgl::graph
     bool PipelineResolver::ResolveFinalPipeline(const FinalPipelineResolveRequest &request, FinalPipelineResolveResult &out_result)
     {
         out_result = {};
+        ++g_resolve_stats.requests;
+
+        const ResolveError request_error = ValidateResolveRequest(request);
+        if(request_error != ResolveError::None)
+        {
+            ++g_resolve_stats.invalid_request;
+            if(request_error == ResolveError::FOColorBlendAttachmentMismatch)
+                ++g_resolve_stats.fo_mismatch;
+
+            GLogError("[PipelineResolver] Resolve failed: %s", ResolveErrorText(request_error));
+            LogResolveStatsIfNeeded();
+            return false;
+        }
+
         const VulkanPhyDevice *physical_device = request.device ? request.device->GetPhyDevice() : nullptr;
         out_result.capability = BuildCapabilityInfo(physical_device);
         out_result.materialize_mode = out_result.capability.preferred_materialize_mode;
 
         BuildFinalPipelineKey(request, out_result.key);
         if(!HasCompleteFinalKey(out_result.key))
+        {
+            ++g_resolve_stats.incomplete_key;
+            GLogError("[PipelineResolver] Resolve failed: incomplete FinalPipelineKey");
+            LogResolveStatsIfNeeded();
             return false;
+        }
 
-        if(TryGetCachedFinalPipeline(request, out_result.key, out_result.pipeline))
+        bool vi_hit = false;
+        bool pr_hit = false;
+        bool fs_hit = false;
+        bool fo_hit = false;
+        TouchVILibraryCache(out_result.key.vi, vi_hit);
+        TouchPRLibraryCache(out_result.key.pr, pr_hit);
+        TouchFSLibraryCache(out_result.key.fs, fs_hit);
+        TouchFOLibraryCache(out_result.key.fo, fo_hit);
+        UpdateLibraryHitStats(vi_hit, pr_hit, fs_hit, fo_hit);
+
+        if(TryGetCachedFinalPipeline(out_result.materialize_mode, request, out_result.key, out_result.pipeline))
+        {
+            ++g_resolve_stats.final_cache_hit;
+            LogResolveStatsIfNeeded();
             return true;
+        }
+
+        ++g_resolve_stats.final_cache_miss;
 
         switch(out_result.materialize_mode)
         {
         case PipelineMaterializeMode::GraphicsPipelineLibrary:
             // Phase 1 skeleton: route through the same monolithic materialization until GPL caches/linking land.
             if(!MaterializeMonolithic(request, out_result.pipeline))
+            {
+                ++g_resolve_stats.materialize_failed;
+                GLogError("[PipelineResolver] Materialize failed in GPL mode fallback");
+                LogResolveStatsIfNeeded();
                 return false;
-            CacheFinalPipeline(request, out_result.key, out_result.pipeline);
+            }
+            ++g_resolve_stats.materialize_success;
+            CacheFinalPipeline(out_result.materialize_mode, request, out_result.key, out_result.pipeline);
+            LogResolveStatsIfNeeded();
             return true;
         case PipelineMaterializeMode::Monolithic:
         default:
             if(!MaterializeMonolithic(request, out_result.pipeline))
+            {
+                ++g_resolve_stats.materialize_failed;
+                GLogError("[PipelineResolver] Materialize failed in monolithic mode");
+                LogResolveStatsIfNeeded();
                 return false;
-            CacheFinalPipeline(request, out_result.key, out_result.pipeline);
+            }
+            ++g_resolve_stats.materialize_success;
+            CacheFinalPipeline(out_result.materialize_mode, request, out_result.key, out_result.pipeline);
+            LogResolveStatsIfNeeded();
             return true;
         }
     }
