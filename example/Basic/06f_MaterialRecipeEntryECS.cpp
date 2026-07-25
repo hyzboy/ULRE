@@ -265,7 +265,7 @@ private:
         primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
         graph::mtl::MaterialRecipe recipe{};
         recipe.recipe_name = "Phase2.MaterialRecipeEntry.Cube";
-        recipe.shading_model = "Preset";
+        recipe.shading_model = "Gizmo3D";
         recipe.domain = "Phase2AuthoringTest";
         primitive_comp->SetMaterialRecipe(recipe);
         primitive_comp->SetVisible(true);

@@ -13,6 +13,8 @@ namespace hgl
 namespace hgl::ecs
 {
     class ECSContext;
+    class PrimitiveComponent;
+    class MaterialComponent;
 
     /**
      * RenderPrimitiveCollectSystem
@@ -25,6 +27,8 @@ namespace hgl::ecs
 
         ECSContext* world = nullptr;
         const graph::CameraInfo* cameraInfo = nullptr;
+        bool ResolveMaterialProgramForPrimitive(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+                                                const std::shared_ptr<MaterialComponent> &material_comp);
 
     public:
 
@@ -40,4 +44,3 @@ namespace hgl::ecs
         void Update(float deltaTime) override;
     };
 }//namespace hgl::ecs
-

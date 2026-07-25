@@ -2,6 +2,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/MaterialComponent.h>
 #include<hgl/ecs/components/RenderableComponent.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/graph/DescriptorBindingSet.h>
@@ -55,11 +56,25 @@ namespace hgl::ecs
 
     hgl::graph::DescriptorBindingSet* PrimitiveRenderItem::GetDescriptorBindingSet() const
     {
+        if (auto *entity = GetEntity())
+        {
+            auto material_comp = entity->GetComponent<MaterialComponent>();
+            if (material_comp && material_comp->dbs_compat)
+                return material_comp->dbs_compat;
+        }
+
         return primitiveComp ? primitiveComp->GetDescriptorBindingSet() : nullptr;
     }
 
     hgl::graph::MaterialProgram* PrimitiveRenderItem::GetMaterialProgram() const
     {
+        if (auto *entity = GetEntity())
+        {
+            auto material_comp = entity->GetComponent<MaterialComponent>();
+            if (material_comp && material_comp->program)
+                return material_comp->program;
+        }
+
         return primitiveComp ? primitiveComp->GetMaterialProgram() : nullptr;
     }
 
