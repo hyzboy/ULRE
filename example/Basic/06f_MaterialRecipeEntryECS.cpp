@@ -253,7 +253,6 @@ private:
 
         auto primitive_comp = cube_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         primitive_comp->SetPrimitive(primitive);
-        primitive_comp->SetDescriptorBindingSet(binding_set);
         primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
         graph::mtl::MaterialRecipe recipe{};
         recipe.recipe_name = "Phase2.MaterialRecipeEntry.Cube";
