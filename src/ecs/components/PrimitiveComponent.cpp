@@ -2,7 +2,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/graph/mesh/Primitive.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKMaterialProgram.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/math/geometry/BoundingVolumes.h>
@@ -82,21 +82,21 @@ namespace hgl::ecs
         return primitive->GetDescriptorBindingSet();
     }
 
-    hgl::graph::Material* PrimitiveComponent::GetMaterial() const
+    hgl::graph::MaterialProgram* PrimitiveComponent::GetMaterialProgram() const
     {
         if (overrideMaterial)
-            return overrideMaterial->GetMaterial();
+            return overrideMaterial->GetMaterialProgram();
 
         if (primitive)
         {
-            auto *prim_mat = primitive->GetMaterial();
+            auto *prim_mat = primitive->GetMaterialProgram();
             if (prim_mat)
                 return prim_mat;
         }
 
         // Fallback only when primitive path has no material.
         if (descriptorBindingSet)
-            return descriptorBindingSet->GetMaterial();
+            return descriptorBindingSet->GetMaterialProgram();
 
         return nullptr;
     }

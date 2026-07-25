@@ -19,7 +19,7 @@ namespace hgl
         class VulkanDevice;
         class FontSource;
         class TileFont;
-        class Material;
+        class MaterialProgram;
         class Primitive;
         class TextGeometry;
         class DescriptorBindingSet;
@@ -42,7 +42,7 @@ namespace hgl
             struct RenderResources
             {
                 graph::TileFont* tile_font = nullptr;
-                graph::Material* material = nullptr;
+                graph::MaterialProgram* material = nullptr;
                 graph::Pipeline* pipeline = nullptr;
                 graph::Sampler* sampler = nullptr;
                 graph::DeviceBuffer* material_instance_buffer = nullptr;

@@ -1,5 +1,5 @@
 #include <hgl/graph/DescriptorBindingSet.h>
-#include <hgl/vk/VKMaterial.h>
+#include <hgl/vk/VKMaterialProgram.h>
 #include <hgl/log/Log.h>
 
 namespace hgl::graph
@@ -17,13 +17,13 @@ namespace hgl::graph
         }
     }
 
-    DescriptorBindingSet::DescriptorBindingSet(Material *mtl, const VIL *binding_vil)
+    DescriptorBindingSet::DescriptorBindingSet(MaterialProgram *mtl, const VIL *binding_vil)
     {
         material = mtl;
         vil = binding_vil ? binding_vil : (material ? material->GetDefaultVIL() : nullptr);
     }
 
-    void DescriptorBindingSet::SetMaterial(Material *mtl)
+    void DescriptorBindingSet::SetMaterial(MaterialProgram *mtl)
     {
         material = mtl;
         if (!vil && material)

@@ -96,7 +96,7 @@ private:
 
     RenderContext *render_context = nullptr;
 
-    Material *mtl = nullptr;
+    MaterialProgram *mtl = nullptr;
     DescriptorBindingSet *binding_set = nullptr;
     Geometry *geometry = nullptr;
     Primitive *primitive = nullptr;
@@ -366,7 +366,7 @@ private:
     Entity *camera_entity = nullptr;
     Entity *cube_entity = nullptr;
 
-    Material *cube_mtl = nullptr;
+    MaterialProgram *cube_mtl = nullptr;
     DescriptorBindingSet *cube_binding_set = nullptr;
     graph::DeviceBuffer *cube_mi_ssbo = nullptr;
     Sampler *cube_sampler = nullptr;

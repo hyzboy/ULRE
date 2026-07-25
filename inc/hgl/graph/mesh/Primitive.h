@@ -4,7 +4,7 @@
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/vk/VKDescriptorSet.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKMaterialProgram.h>
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/graph/DescriptorBindingSet.h>
@@ -29,7 +29,7 @@ class Primitive
 private:
 
     friend Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,Pipeline *);
-    friend Primitive *DirectCreatePrimitive(Geometry *,Material *,DescriptorBindingSet *,Pipeline *);
+    friend Primitive *DirectCreatePrimitive(Geometry *,MaterialProgram *,DescriptorBindingSet *,Pipeline *);
 
     Primitive(Geometry *,MaterialInstance *,Pipeline *,GeometryDataBuffer *);
     Primitive(Geometry *,DescriptorBindingSet *,Pipeline *,GeometryDataBuffer *);
@@ -44,8 +44,8 @@ public:
     }
 
             Pipeline *          GetPipeline         (){return pipeline;}
-            VkPipelineLayout    GetPipelineLayout   (){return GetMaterial()?GetMaterial()->GetPipelineLayout():VK_NULL_HANDLE;}
-            Material *          GetMaterial         (){return mat_inst?mat_inst->GetMaterial():(binding_set?binding_set->GetMaterial():nullptr);}
+            VkPipelineLayout    GetPipelineLayout   (){return GetMaterialProgram()?GetMaterialProgram()->GetPipelineLayout():VK_NULL_HANDLE;}
+            MaterialProgram *   GetMaterialProgram  (){return mat_inst?mat_inst->GetMaterialProgram():(binding_set?binding_set->GetMaterialProgram():nullptr);}
             MaterialInstance *  GetMaterialInstance (){return mat_inst;}
             DescriptorBindingSet *GetDescriptorBindingSet(){return binding_set;}
             Geometry *          GetGeometry         (){return geometry;}
@@ -75,7 +75,7 @@ public:
 };//class Primitive
 
 Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,Pipeline * = nullptr);
-Primitive *DirectCreatePrimitive(Geometry *,Material *,DescriptorBindingSet *,Pipeline * = nullptr);
+Primitive *DirectCreatePrimitive(Geometry *,MaterialProgram *,DescriptorBindingSet *,Pipeline * = nullptr);
 
 // Pre-flight compatibility check: matches geometry vertex format against the
 // material's VIL and returns the full failure summary without creating a primitive.

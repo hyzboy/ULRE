@@ -362,7 +362,7 @@ namespace hgl
             bool GetMaterialBindingRegistryStats(uint32_t &materials_registered,
                                                  uint32_t &binding_entries) const;
 
-            bool GetMaterialBindingKeys(const hgl::graph::Material *material,
+            bool GetMaterialBindingKeys(const hgl::graph::MaterialProgram *material,
                                         std::vector<std::string> &out_keys) const;
 
             bool GetMaterialBindingKeysByName(const AnsiString &material_name,

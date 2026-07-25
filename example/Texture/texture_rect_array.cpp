@@ -80,7 +80,7 @@ private:
 
     Texture2DArray *    texture             = nullptr;
     Sampler *           sampler             = nullptr;
-    Material *          material            = nullptr;
+    MaterialProgram *          material            = nullptr;
     Primitive *         mesh_rect           = nullptr;
     DeviceBuffer *      mi_ssbo             = nullptr;
     std::unique_ptr<BindlessTextureManager> bindless_texture_manager;

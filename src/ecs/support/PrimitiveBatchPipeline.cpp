@@ -21,7 +21,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKMaterialProgram.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderPass.h>
@@ -732,7 +732,7 @@ namespace hgl::ecs
             bool has_texture_slot_handles = false;
         };
 
-        std::unordered_map<graph::Material *, MaterialSpecCacheValue> material_spec_hash_cache;
+        std::unordered_map<graph::MaterialProgram *, MaterialSpecCacheValue> material_spec_hash_cache;
 
         auto* render_ctx = world ? world->GetRenderContext() : nullptr;
         auto* rt = render_ctx ? render_ctx->GetCurrentRenderTarget() : nullptr;
@@ -744,7 +744,7 @@ namespace hgl::ecs
             if (!item || !item->isVisible)
                 continue;
 
-            auto* material = item->GetMaterial();
+            auto* material = item->GetMaterialProgram();
             auto* pipeline = item->GetPipeline();
             auto* prim_item = dynamic_cast<PrimitiveRenderItem*>(item);
             auto prim_comp = prim_item ? prim_item->GetPrimitiveComponent() : nullptr;

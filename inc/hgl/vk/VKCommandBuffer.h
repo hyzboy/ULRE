@@ -177,7 +177,7 @@ public:
         return(true);
     }
 
-    bool BindDescriptorSets(Material *);
+    bool BindDescriptorSets(MaterialProgram *);
 
     bool PushDescriptorSet(VkPipelineLayout pipeline_layout,uint32_t set,uint32_t count,const VkWriteDescriptorSet *write_desc_set)
     {
@@ -253,7 +253,7 @@ public:
         if(!ri)return;
 
         BindPipeline(ri->GetPipeline());
-        BindDescriptorSets(ri->GetMaterial());
+        BindDescriptorSets(ri->GetMaterialProgram());
         BindDataBuffer(ri->GetDataBuffer());
 
         Draw(ri->GetDataBuffer(),ri->GetRenderData());

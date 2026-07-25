@@ -43,7 +43,7 @@ Primitive *PrimitiveManager::CreatePrimitive(GeometryCreater *pc, MaterialInstan
     return(nullptr);
 }
 
-Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, Material *material, DescriptorBindingSet *dbs, Pipeline *p)
+Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, MaterialProgram *material, DescriptorBindingSet *dbs, Pipeline *p)
 {
     if(!dbs||!r||!material)
         return(nullptr);
@@ -56,7 +56,7 @@ Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, Material *material, De
     return ri;
 }
 
-Primitive *PrimitiveManager::CreatePrimitive(GeometryCreater *pc, Material *material, DescriptorBindingSet *dbs, Pipeline *p)
+Primitive *PrimitiveManager::CreatePrimitive(GeometryCreater *pc, MaterialProgram *material, DescriptorBindingSet *dbs, Pipeline *p)
 {
     if(!dbs||!pc||!material)
         return(nullptr);

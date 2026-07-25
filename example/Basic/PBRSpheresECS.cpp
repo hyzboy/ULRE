@@ -88,7 +88,7 @@ private:
     ECSContext *  ecs_world     = nullptr;
     Entity *      camera_entity = nullptr;
 
-    Material *          material  = nullptr;
+    MaterialProgram *          material  = nullptr;
     graph::DeviceBuffer * mi_ssbo = nullptr;
     graph::DeviceBuffer * texture_layer_ssbo = nullptr;
     Texture2DArray *    base_color_texture = nullptr;

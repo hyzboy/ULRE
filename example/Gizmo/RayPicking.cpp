@@ -84,12 +84,12 @@ private:
     Entity* ray_line_entity = nullptr;
 
     // 传统渲染资源
-    Material *          mtl_plane_grid      =nullptr;
+    MaterialProgram *          mtl_plane_grid      =nullptr;
     DescriptorBindingSet *dbs_plane_grid    =nullptr;
     Geometry *          geom_plane_grid     =nullptr;
     graph::DeviceBuffer *mi_shared_ssbo      =nullptr;
 
-    Material *          mtl_line            =nullptr;
+    MaterialProgram *          mtl_line            =nullptr;
     DescriptorBindingSet *dbs_line          =nullptr;
     Geometry *          geom_line           =nullptr;
     Primitive *         prim_line           =nullptr;
@@ -271,7 +271,7 @@ private:
         if (!dbs_plane_grid || !dbs_line)
             return false;
 
-        auto bind_material_mi = [&](Material *material, DescriptorBindingSet *binding_set, const uint32_t slot_index) -> bool
+        auto bind_material_mi = [&](MaterialProgram *material, DescriptorBindingSet *binding_set, const uint32_t slot_index) -> bool
         {
             bool has_struct_binding = false;
             for (const auto &req : material->GetBindingContract().requirements)

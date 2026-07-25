@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKMaterialProgram.h>
 
 namespace hgl::graph{
 
@@ -8,11 +8,11 @@ namespace hgl::graph{
 * MaterialInstance — 材质 VIL 持有者（Phase 3 精简后）
 *
 * 历史上 MaterialInstance 同时持有：
-*   1. Material 合约签发的 VIL（顶点输入布局）
-*   2. Material 内部分配的 per-instance 数据区（mi_id → mi_data_manager）
+*   1. MaterialProgram 合约签发的 VIL（顶点输入布局）
+*   2. MaterialProgram 内部分配的 per-instance 数据区（mi_id → mi_data_manager）
 *
 * Phase 3 后，per-instance 数据区已完全迁移到外部 SSBO + DescriptorBindingSet。
-* MaterialInstance 现在只是 (Material*, VIL*) 的轻量包装，mi_id 恒为 -1。
+* MaterialInstance 现在只是 (MaterialProgram*, VIL*) 的轻量包装，mi_id 恒为 -1。
 *
 * 新代码请使用 DescriptorBindingSet 路径。MaterialInstance 保留是为了：
 *   - 旧 API 签名兼容（LoadStaticMeshScene 等）
@@ -22,29 +22,29 @@ class MaterialInstance
 {
 protected:
 
-    Material *material;
+    MaterialProgram *material;
 
     const VIL *vil;
 
-    int mi_id;  ///< 恒为 -1（Phase 3 后 Material 不再分配数据槽）
+    int mi_id;  ///< 恒为 -1（Phase 3 后 MaterialProgram 不再分配数据槽）
 
 public:
 
-            Material *  GetMaterial ()      {return material;}
+            MaterialProgram *  GetMaterialProgram ()      {return material;}
 
     const   VIL *       GetVIL      ()const {return vil;}
 
 private:
 
-    friend class Material;
+    friend class MaterialProgram;
 
-    MaterialInstance(Material *,const VIL *,const int);
+    MaterialInstance(MaterialProgram *,const VIL *,const int);
 
 public:
 
     virtual ~MaterialInstance()
     {
-        // mi_id is always -1 in the new path (no Material-owned data store)
+        // mi_id is always -1 in the new path (no MaterialProgram-owned data store)
     }
 
     const int GetMIID() const { return mi_id; }

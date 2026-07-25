@@ -10,7 +10,7 @@ namespace hgl
     namespace graph
     {
         class Primitive;
-        class Material;
+        class MaterialProgram;
         class MaterialInstance;
         class DescriptorBindingSet;
         class Pipeline;
@@ -67,7 +67,7 @@ namespace hgl::ecs
         graph::Primitive*        GetPrimitive()        const override { return primitive; }
         graph::MaterialInstance* GetMaterialInstance() const override;
         graph::DescriptorBindingSet* GetDescriptorBindingSet() const override;
-        graph::Material*         GetMaterial()         const override;
+        graph::MaterialProgram*         GetMaterialProgram()         const override;
         graph::Pipeline*         GetPipeline()         const override;
 
         // ---- Asset-specific ----

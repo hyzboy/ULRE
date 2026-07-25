@@ -70,13 +70,13 @@ private:
 
     std::shared_ptr<TransformGizmoSystem> gizmo_system;
 
-    Material *grid_material = nullptr;
+    MaterialProgram *grid_material = nullptr;
     DescriptorBindingSet *grid_dbs = nullptr;
     graph::DeviceBuffer *grid_mi_ssbo = nullptr;
     Geometry *grid_geometry = nullptr;
     Primitive *grid_primitive = nullptr;
 
-    Material *cube_material = nullptr;
+    MaterialProgram *cube_material = nullptr;
     DescriptorBindingSet *cube_dbs = nullptr;
     graph::DeviceBuffer *cube_mi_ssbo = nullptr;
     Geometry *cube_geometry = nullptr;

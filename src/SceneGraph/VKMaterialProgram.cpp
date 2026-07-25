@@ -1,4 +1,4 @@
-﻿#include<hgl/vk/VKMaterial.h>
+﻿#include<hgl/vk/VKMaterialProgram.h>
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/vk/VKVertexInput.h>
@@ -12,7 +12,7 @@ namespace hgl::graph{
 
 void ReleaseVertexInput(VertexInput *vi);
 
-Material::Material(const AnsiString &n,const mtl::MaterialCreateInfo *mci)
+MaterialProgram::MaterialProgram(const AnsiString &n,const mtl::MaterialCreateInfo *mci)
 {
     name=n;
     geometry=mci->GetPrimitiveType();
@@ -31,7 +31,7 @@ Material::Material(const AnsiString &n,const mtl::MaterialCreateInfo *mci)
     has_l2w_matrix=mci->HasLocalToWorld();
 }
 
-Material::~Material()
+MaterialProgram::~MaterialProgram()
 {
     ReleaseVertexInput(vertex_input);
     delete shader_maps;             //不用SAFE_CLEAR是因为这个一定会有
@@ -42,27 +42,27 @@ Material::~Material()
         SAFE_CLEAR(mp);
 }
 
-const VkPipelineLayout Material::GetPipelineLayout()const
+const VkPipelineLayout MaterialProgram::GetPipelineLayout()const
 {
     return pipeline_layout_data->pipeline_layout;
 }
 
-const bool Material::hasSet(const DescriptorSetType &dst)const
+const bool MaterialProgram::hasSet(const DescriptorSetType &dst)const
 {
     return desc_manager->hasSet(dst);
 }
 
-const VIL *Material::GetDefaultVIL()const
+const VIL *MaterialProgram::GetDefaultVIL()const
 {
     return vertex_input->GetDefaultVIL();
 }
 
-VIL *Material::CreateVIL(const VILConfig *format_map)
+VIL *MaterialProgram::CreateVIL(const VILConfig *format_map)
 {
     return vertex_input->CreateVIL(format_map);
 }
 
-VIL *Material::CreateVIL(const GeometryVertexFormat &geometry_vertex_format)
+VIL *MaterialProgram::CreateVIL(const GeometryVertexFormat &geometry_vertex_format)
 {
     if(geometry_vertex_format.GetCount() <= 0)
         return CreateVIL((const VILConfig *)nullptr);
@@ -80,17 +80,17 @@ VIL *Material::CreateVIL(const GeometryVertexFormat &geometry_vertex_format)
     return CreateVIL(&vil_config);
 }
 
-bool Material::Release(VIL *vil)
+bool MaterialProgram::Release(VIL *vil)
 {
     return vertex_input->Release(vil);
 }
 
-const uint Material::GetVILCount()
+const uint MaterialProgram::GetVILCount()
 {
     return vertex_input->GetInstanceCount();
 }
 
-bool Material::BindUBO(const DescriptorSetType &type,const AnsiString &name,const IGPUBuffer *gpu,bool dynamic)
+bool MaterialProgram::BindUBO(const DescriptorSetType &type,const AnsiString &name,const IGPUBuffer *gpu,bool dynamic)
 {
     MaterialParameters *mp=GetMP(type);
 
@@ -100,7 +100,7 @@ bool Material::BindUBO(const DescriptorSetType &type,const AnsiString &name,cons
     return mp->BindUBO(name,gpu,dynamic);
 }
 
-bool Material::BindSSBO(const DescriptorSetType &type,const AnsiString &name,const IGPUBuffer *gpu,bool dynamic)
+bool MaterialProgram::BindSSBO(const DescriptorSetType &type,const AnsiString &name,const IGPUBuffer *gpu,bool dynamic)
 {
     MaterialParameters *mp=GetMP(type);
 
@@ -110,7 +110,7 @@ bool Material::BindSSBO(const DescriptorSetType &type,const AnsiString &name,con
     return mp->BindSSBO(name,gpu,dynamic);
 }
 
-bool Material::BindTexture(const DescriptorSetType &type,const AnsiString &name,Texture *tex)
+bool MaterialProgram::BindTexture(const DescriptorSetType &type,const AnsiString &name,Texture *tex)
 {
     MaterialParameters *mp = GetMP(type);
 
@@ -120,7 +120,7 @@ bool Material::BindTexture(const DescriptorSetType &type,const AnsiString &name,
     return mp->BindTexture(name,tex);
 }
 
-bool Material::BindTextureSampler(const DescriptorSetType &type,const AnsiString &name,Texture *tex,Sampler *sampler)
+bool MaterialProgram::BindTextureSampler(const DescriptorSetType &type,const AnsiString &name,Texture *tex,Sampler *sampler)
 {
     MaterialParameters *mp=GetMP(type);
 
@@ -130,7 +130,7 @@ bool Material::BindTextureSampler(const DescriptorSetType &type,const AnsiString
     return mp->BindTextureSampler(name,tex,sampler);
 }
 
-void Material::Update()
+void MaterialProgram::Update()
 {
     for(auto &mp:mp_array)
     {

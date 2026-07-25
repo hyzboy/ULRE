@@ -16,7 +16,7 @@ namespace hgl
     {
         class VulkanDevice;
         class DeviceBuffer;
-        class Material;
+        class MaterialProgram;
         class MaterialInstance;
         class Pipeline;
         class VertexInputLayout;
@@ -75,7 +75,7 @@ namespace hgl::ecs
 
         // ------- GPU resources (created in Initialize()) -------
         graph::VulkanDevice*    device_         = nullptr;
-        graph::Material*        material_       = nullptr;
+        graph::MaterialProgram*        material_       = nullptr;
         graph::VertexInputLayout* binding_vil_  = nullptr;
         graph::DescriptorBindingSet binding_set_storage_{};
         graph::DescriptorBindingSet* binding_set_ = nullptr;
@@ -108,7 +108,7 @@ namespace hgl::ecs
             void Clear();
             bool EnsureCapacity(uint32_t needed,
                                 graph::VulkanDevice*     dev,
-                                graph::Material*         material,
+                                graph::MaterialProgram*         material,
                                 graph::DescriptorBindingSet* binding_set,
                                 graph::Pipeline*         p,
                                 uint32_t                 width);

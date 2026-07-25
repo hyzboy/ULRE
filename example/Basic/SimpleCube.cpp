@@ -58,7 +58,7 @@ private:
     Entity *      cube_entity    =nullptr;
     Entity *      camera_entity  =nullptr;
 
-    Material *          material        = nullptr;
+    MaterialProgram *          material        = nullptr;
     DescriptorBindingSet *binding_set   = nullptr;
 
     Geometry *          geometry        = nullptr;

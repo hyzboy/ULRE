@@ -1,7 +1,7 @@
 #pragma once
 
 #include<hgl/graph/module/GraphModule.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKMaterialProgram.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/type/UnorderedMap.h>
@@ -37,9 +37,9 @@ GRAPH_MODULE_CLASS(MaterialManager)
 private:
 
     ShaderModuleMapByName shader_module_by_name[VK_SHADER_STAGE_TYPE_COUNT];
-    UnorderedMap<AnsiString,Material *> material_by_name;
+    UnorderedMap<AnsiString,MaterialProgram *> material_by_name;
 
-    AutoIdObjectManager<MaterialID,             Material>           rm_material;                ///<材质合集
+    AutoIdObjectManager<MaterialID,             MaterialProgram>           rm_material;                ///<材质合集
     AutoIdObjectManager<MaterialInstanceID,     MaterialInstance>   rm_material_instance;       ///<材质实例合集
 
 private:
@@ -53,19 +53,19 @@ private:
 
 private: // Helper methods with integrated DebugUtils
 
-    Material *AcquireMaterialProgram(const AnsiString &, const mtl::MaterialCreateInfo *);
+    MaterialProgram *AcquireMaterialProgram(const AnsiString &, const mtl::MaterialCreateInfo *);
     class PipelineLayoutData *CreateMaterialPipelineLayoutData(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager);
     class MaterialParameters *CreateMaterialMP(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager, const class PipelineLayoutData *pld, const DescriptorSetType &desc_set_type);
-    void ApplyMaterialFinalizePlan(Material *mtl, const AnsiString &mtl_name, const mtl::MaterialCreateInfo &mci);
-    Material *TryGetCachedMaterial(const AnsiString &name);
-    bool ExecuteMaterialBuildPipeline(Material *mtl,
+    void ApplyMaterialFinalizePlan(MaterialProgram *mtl, const AnsiString &mtl_name, const mtl::MaterialCreateInfo &mci);
+    MaterialProgram *TryGetCachedMaterial(const AnsiString &name);
+    bool ExecuteMaterialBuildPipeline(MaterialProgram *mtl,
                                       const AnsiString &mtl_name,
                                       const mtl::MaterialCreateInfo *mci,
                                       const ShaderCreateInfoMap &sci_map);
 
 public: //Add
 
-    MaterialID              Add(Material *          mtl ){return rm_material.Add(mtl);}
+    MaterialID              Add(MaterialProgram *          mtl ){return rm_material.Add(mtl);}
     MaterialInstanceID      Add(MaterialInstance *  mi  ){return rm_material_instance.Add(mi);}
 
     /** 设置全局 Bindless Texture Set 布局（必须在创建任何材质前调用）*/
@@ -73,15 +73,15 @@ public: //Add
 
 public: //Get
 
-    Material *          GetMaterial         (const MaterialID           &id){return rm_material.Get(id);}
+    MaterialProgram *          GetMaterialProgram         (const MaterialID           &id){return rm_material.Get(id);}
     MaterialInstance *  GetMaterialInstance (const MaterialInstanceID   &id){return rm_material_instance.Get(id);}
 
 public: //Release
 
-    void Release(Material *         mtl ){rm_material.Release(mtl);}
+    void Release(MaterialProgram *         mtl ){rm_material.Release(mtl);}
     void Release(MaterialInstance * mi  ){rm_material_instance.Release(mi);}
 
-    void Destroy(Material *mtl)
+    void Destroy(MaterialProgram *mtl)
     {
         if (!mtl)
             return;
@@ -146,34 +146,34 @@ public: //ShaderGen Profiler (debug entry, collect-only)
 
     std::map<std::string, uint32_t> GetShaderGenRecentValidationCategoryHistogram(const uint32_t max_count = 128) const;
 
-public: //Material
+public: //MaterialProgram
 
-    Material *          AcquireMaterialProgram(const mtl::MaterialPreset, mtl::Material2DCreateConfig *);  ///<基于内置材质ID创建2D材质
-    Material *          AcquireMaterialProgram(const mtl::MaterialPreset, mtl::Material3DCreateConfig *);  ///<基于内置材质ID创建3D材质
-    Material *          AcquireMaterialProgram(const mtl::MaterialPreset, mtl::Material2DCreateConfig *, const GeometryVertexFormat &);  ///<基于 GeometryVertexFormat 上下文创建2D材质
-    Material *          AcquireMaterialProgram(const mtl::MaterialPreset, mtl::Material3DCreateConfig *, const GeometryVertexFormat &);  ///<基于 GeometryVertexFormat 上下文创建3D材质
-    Material *          AcquireMaterialProgram(const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *); ///<基于variant key创建2D材质（Phase-A兼容）
-    Material *          AcquireMaterialProgram(const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *); ///<基于variant key创建3D材质（Phase-A兼容）
+    MaterialProgram *          AcquireMaterialProgram(const mtl::MaterialPreset, mtl::Material2DCreateConfig *);  ///<基于内置材质ID创建2D材质
+    MaterialProgram *          AcquireMaterialProgram(const mtl::MaterialPreset, mtl::Material3DCreateConfig *);  ///<基于内置材质ID创建3D材质
+    MaterialProgram *          AcquireMaterialProgram(const mtl::MaterialPreset, mtl::Material2DCreateConfig *, const GeometryVertexFormat &);  ///<基于 GeometryVertexFormat 上下文创建2D材质
+    MaterialProgram *          AcquireMaterialProgram(const mtl::MaterialPreset, mtl::Material3DCreateConfig *, const GeometryVertexFormat &);  ///<基于 GeometryVertexFormat 上下文创建3D材质
+    MaterialProgram *          AcquireMaterialProgram(const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *); ///<基于variant key创建2D材质（Phase-A兼容）
+    MaterialProgram *          AcquireMaterialProgram(const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *); ///<基于variant key创建3D材质（Phase-A兼容）
 
 public: //MaterialInstance
 
-    MaterialInstance *  CreateMaterialInstance(Material *);
-    MaterialInstance *  CreateMaterialInstance(Material *, const VIL *vil);
-    MaterialInstance *  CreateMaterialInstance(Material *, const VILConfig *vil_cfg);
-    MaterialInstance *  CreateMaterialInstance(Material *, const GeometryVertexFormat &geometry_vertex_format);
-    MaterialInstance *  CreateMaterialInstance(Material *, const GeometryVertexFormat &geometry_vertex_format, const void *, const uint32);
+    MaterialInstance *  CreateMaterialInstance(MaterialProgram *);
+    MaterialInstance *  CreateMaterialInstance(MaterialProgram *, const VIL *vil);
+    MaterialInstance *  CreateMaterialInstance(MaterialProgram *, const VILConfig *vil_cfg);
+    MaterialInstance *  CreateMaterialInstance(MaterialProgram *, const GeometryVertexFormat &geometry_vertex_format);
+    MaterialInstance *  CreateMaterialInstance(MaterialProgram *, const GeometryVertexFormat &geometry_vertex_format, const void *, const uint32);
 
-    MaterialInstance *  CreateMaterialInstance(Material *, const VIL *vil, const void *, const uint32);
-    MaterialInstance *  CreateMaterialInstance(Material *, const VILConfig *vil_cfg, const void *, const uint32);
+    MaterialInstance *  CreateMaterialInstance(MaterialProgram *, const VIL *vil, const void *, const uint32);
+    MaterialInstance *  CreateMaterialInstance(MaterialProgram *, const VILConfig *vil_cfg, const void *, const uint32);
 
     template<typename T>
-    MaterialInstance *  CreateMaterialInstance(Material *mtl, const VIL *vil, const T *data)
+    MaterialInstance *  CreateMaterialInstance(MaterialProgram *mtl, const VIL *vil, const T *data)
     {
         return CreateMaterialInstance(mtl,vil,data,sizeof(T));
     }
 
     template<typename T>
-    MaterialInstance *  CreateMaterialInstance(Material *mtl, const VILConfig *vil_cfg, const T *data)
+    MaterialInstance *  CreateMaterialInstance(MaterialProgram *mtl, const VILConfig *vil_cfg, const T *data)
     {
         return CreateMaterialInstance(mtl,vil_cfg,data,sizeof(T));
     }

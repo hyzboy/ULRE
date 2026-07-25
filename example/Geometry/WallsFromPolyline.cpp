@@ -51,7 +51,7 @@ private:
 
     mtl::StandardMaterialInstance mi_data;
 
-    Material *material = nullptr;
+    MaterialProgram *material = nullptr;
     DescriptorBindingSet *dbs = nullptr;
     graph::DeviceBuffer *mi_ssbo = nullptr;
     Sampler *sampler = nullptr;

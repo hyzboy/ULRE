@@ -67,7 +67,7 @@ private:
     ECSContext* ecs_world = nullptr;   // 由默认 ECSContext 统一维护
 
     // 传统渲染资源
-    Material* material = nullptr;
+    MaterialProgram* material = nullptr;
     Geometry* geometry = nullptr;
 
     // MI 结构体 SSBO（由本示例创建并注册进 ResourceDomainManager）
@@ -111,8 +111,8 @@ private:
                 return false;
 
             std::cout << "[TestApp::InitMaterial] Created material: " << (void*)material << std::endl;
-            std::cout << "[TestApp::InitMaterial] Material has MI: " << material->hasMI() << std::endl;
-            std::cout << "[TestApp::InitMaterial] Material MI data bytes: " << material->GetMIDataBytes() << std::endl;
+            std::cout << "[TestApp::InitMaterial] MaterialProgram has MI: " << material->hasMI() << std::endl;
+            std::cout << "[TestApp::InitMaterial] MaterialProgram MI data bytes: " << material->GetMIDataBytes() << std::endl;
 
             // 仅创建材质；外部 SSBO + DescriptorBindingSet 在 InitMISSBO 中配置
             for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
@@ -242,7 +242,7 @@ private:
         std::cout << "[TestApp::InitECS] Created " << DRAW_OBJECT_COUNT << " entities" << std::endl;
         std::cout << "[TestApp::InitECS] Each entity uses a different MaterialInstance (different color)" << std::endl;
         std::cout << "[TestApp::InitECS] RenderCollector will automatically merge them into batches" << std::endl;
-        std::cout << "[TestApp::InitECS] Material index tables are bound by strict SSBOType+ssbo_id routing" << std::endl;
+        std::cout << "[TestApp::InitECS] MaterialProgram index tables are bound by strict SSBOType+ssbo_id routing" << std::endl;
 
         return true;
     }
@@ -403,6 +403,6 @@ public:
 
 int os_main(int argc, os_char** argv)
 {
-    return RunFramework<TestApp>(OS_TEXT("Auto Merge Material Instance (ECS Version)"), argc, argv, 1024, 1024);
+    return RunFramework<TestApp>(OS_TEXT("Auto Merge MaterialProgram Instance (ECS Version)"), argc, argv, 1024, 1024);
 }
 

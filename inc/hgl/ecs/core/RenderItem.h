@@ -11,7 +11,7 @@ namespace hgl
     namespace graph
     {
         class Primitive;
-        class Material;
+        class MaterialProgram;
         class MaterialInstance;
         class DescriptorBindingSet;
         class Pipeline;
@@ -57,7 +57,7 @@ namespace hgl::ecs
         virtual hgl::graph::Primitive* GetPrimitive() const = 0;
         virtual hgl::graph::MaterialInstance* GetMaterialInstance() const = 0;
         virtual hgl::graph::DescriptorBindingSet* GetDescriptorBindingSet() const = 0;
-        virtual hgl::graph::Material* GetMaterial() const = 0;
+        virtual hgl::graph::MaterialProgram* GetMaterialProgram() const = 0;
         virtual hgl::graph::Pipeline* GetPipeline() const = 0;
 
         // Unified transform ingress for R08 (behavior stays unchanged until strategy rollout)

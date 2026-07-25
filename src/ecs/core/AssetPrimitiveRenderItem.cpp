@@ -4,7 +4,7 @@
 #include <hgl/ecs/components/TransformComponent.h>
 #include <hgl/graph/DescriptorBindingSet.h>
 #include <hgl/graph/mesh/Primitive.h>
-#include <hgl/vk/VKMaterial.h>
+#include <hgl/vk/VKMaterialProgram.h>
 #include <hgl/vk/VKMaterialInstance.h>
 #include <hgl/vk/pipeline/VKPipeline.h>
 
@@ -47,9 +47,9 @@ namespace hgl::ecs
         return primitive ? primitive->GetDescriptorBindingSet() : nullptr;
     }
 
-    graph::Material* AssetPrimitiveRenderItem::GetMaterial() const
+    graph::MaterialProgram* AssetPrimitiveRenderItem::GetMaterialProgram() const
     {
-        return primitive ? primitive->GetMaterial() : nullptr;
+        return primitive ? primitive->GetMaterialProgram() : nullptr;
     }
 
     graph::Pipeline* AssetPrimitiveRenderItem::GetPipeline() const

@@ -5,7 +5,7 @@
 #include<hgl/common/RenderOptions.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKMaterialProgram.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/module/BufferManager.h>
@@ -187,11 +187,11 @@ namespace hgl::ecs
         all_instances.push_back(this);
     }
 
-    void TransformAssignmentBuffer::BindTransform(graph::Material* mtl) const
+    void TransformAssignmentBuffer::BindTransform(graph::MaterialProgram* mtl) const
     {
         if (!mtl)
         {
-            std::cout << "[TransformAssignmentBuffer::BindTransform] WARNING: Material is null" << std::endl;
+            std::cout << "[TransformAssignmentBuffer::BindTransform] WARNING: MaterialProgram is null" << std::endl;
             return;
         }
 

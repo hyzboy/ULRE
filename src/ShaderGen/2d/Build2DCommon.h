@@ -34,14 +34,14 @@ inline const char *GLSLInputType(const VkFormat fmt)
 
 // ─────────────────────────────────────────────────────────────
 // Descriptor layout macros for fixed descriptor set plan.
-// Set IDs are now stable (Scene=0, Transform=1, Material=2...),
+// Set IDs are now stable (Scene=0, Transform=1, MaterialProgram=2...),
 // so we generate matching #define lines for GLSL to reference.
 //
 // Produced macros (only when the feature is active):
 //   SCENE_SET    / VIEWPORT_BINDING  — Scene set (Ortho only)
 //   L2W_SET      / L2W_BINDING       — Transform set (L2W only)
-//   TEX_SET      / TEX_BINDING        — texture in Material set
-//   MI_SET       / MI_BINDING         — MI SSBO in Material set
+//   TEX_SET      / TEX_BINDING        — texture in MaterialProgram set
+//   MI_SET       / MI_BINDING         — MI SSBO in MaterialProgram set
 // ─────────────────────────────────────────────────────────────
 
 inline std::string BuildDescriptorDefines(

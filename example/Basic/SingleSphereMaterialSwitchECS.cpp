@@ -3,7 +3,7 @@
 // It is NOT the production path for material LOD.
 //
 // Planned production path:
-// 1) Material LOD policy is configured in top-level material definitions.
+// 1) MaterialProgram LOD policy is configured in top-level material definitions.
 // 2) Runtime selection/switching is performed automatically by ECS and/or GPUSCENE.
 // 3) Application/demo code should not manually own final material LOD decision logic.
 
@@ -69,8 +69,8 @@ private:
     TransformComponent *sphere_transform = nullptr;
     PrimitiveComponent *sphere_primitive_component = nullptr;
 
-    Material *near_material = nullptr;
-    Material *far_material = nullptr;
+    MaterialProgram *near_material = nullptr;
+    MaterialProgram *far_material = nullptr;
     MaterialInstance *far_material_instance = nullptr;
 
     DescriptorBindingSet *sphere_binding = nullptr;
@@ -572,6 +572,6 @@ public:
 
 int os_main(int argc, os_char **argv)
 {
-    return RunFramework<TestApp>(OS_TEXT("Single Sphere Material Switch (ECS)"), argc, argv, 1280, 720);
+    return RunFramework<TestApp>(OS_TEXT("Single Sphere MaterialProgram Switch (ECS)"), argc, argv, 1280, 720);
 }
 

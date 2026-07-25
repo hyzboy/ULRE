@@ -11,7 +11,7 @@ using PrimitiveID = int;
 // Forward declarations to avoid header ordering issues
 class GeometryCreater;
 class Geometry;
-class Material;
+class MaterialProgram;
 class MaterialInstance;
 class DescriptorBindingSet;
 class Pipeline;
@@ -43,8 +43,8 @@ public: // Create
 
     Primitive *CreatePrimitive(Geometry *r, MaterialInstance *mi, Pipeline *p=nullptr);
     Primitive *CreatePrimitive(GeometryCreater *pc, MaterialInstance *mi, Pipeline *p=nullptr);
-    Primitive *CreatePrimitive(Geometry *r, Material *material, DescriptorBindingSet *dbs, Pipeline *p=nullptr);
-    Primitive *CreatePrimitive(GeometryCreater *pc, Material *material, DescriptorBindingSet *dbs, Pipeline *p=nullptr);
+    Primitive *CreatePrimitive(Geometry *r, MaterialProgram *material, DescriptorBindingSet *dbs, Pipeline *p=nullptr);
+    Primitive *CreatePrimitive(GeometryCreater *pc, MaterialProgram *material, DescriptorBindingSet *dbs, Pipeline *p=nullptr);
 };
 
 }//namespace hgl::graph

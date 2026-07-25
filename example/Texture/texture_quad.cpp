@@ -62,7 +62,7 @@ private:
 
     Texture2D *         texture             = nullptr;
     Sampler *           sampler             = nullptr;
-    Material *          material            = nullptr;
+    MaterialProgram *          material            = nullptr;
     MaterialInstance *  material_instance   = nullptr;
     Primitive *         prim_quad           = nullptr;
     std::unique_ptr<BindlessTextureManager> bindless_texture_manager;

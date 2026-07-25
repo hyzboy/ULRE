@@ -67,7 +67,7 @@ private:
     ECSContext* ecs_context = nullptr;
     Entity* camera_entity = nullptr;
 
-    Material* material = nullptr;
+    MaterialProgram* material = nullptr;
     DescriptorBindingSet* binding_set = nullptr;
     graph::DeviceBuffer* mi_ssbo = nullptr;
     VertexDataManager* mesh_vdm = nullptr;

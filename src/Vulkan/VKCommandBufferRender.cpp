@@ -110,7 +110,7 @@ bool RenderCmdBuffer::BeginRenderPass()
     return(true);
 }
 
-bool RenderCmdBuffer::BindDescriptorSets(Material *mtl)
+bool RenderCmdBuffer::BindDescriptorSets(MaterialProgram *mtl)
 {
     if(!mtl)return(false);
 

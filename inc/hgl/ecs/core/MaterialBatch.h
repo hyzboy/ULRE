@@ -33,7 +33,7 @@ namespace hgl::ecs
     class RenderItem;
 
     /**
-     * Material batch - holds render items with same material/pipeline
+     * MaterialProgram batch - holds render items with same material/pipeline
      * Similar to hgl::graph::PipelineMaterialBatch
      *
      * Manages rendering of all items with the same material/pipeline combination

@@ -3,7 +3,7 @@
 
 namespace hgl::graph
 {
-    Pipeline* RenderContext::CreatePipeline(Material* material,
+    Pipeline* RenderContext::CreatePipeline(MaterialProgram* material,
                                             const VertexInputLayout* vil,
                                             const PipelineData* pd,
                                             bool prim_restart)

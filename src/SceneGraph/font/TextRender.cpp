@@ -15,7 +15,7 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/DescriptorBindingSet.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKMaterialProgram.h>
 #include<hgl/vk/VKRenderPass.h>
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/type/AlignUtil.h>

@@ -93,7 +93,7 @@ private:
 
     struct MaterialData
     {
-        Material *          material          = nullptr;
+        MaterialProgram *          material          = nullptr;
         const VIL *         vil               = nullptr;
 
         DescriptorBindingSet *dbs[COLOR_COUNT]{};

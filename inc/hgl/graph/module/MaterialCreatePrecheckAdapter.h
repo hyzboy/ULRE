@@ -5,7 +5,7 @@
 
 namespace hgl::graph
 {
-    class Material;
+    class MaterialProgram;
     class ShaderCreateInfoMap;
 
     namespace mtl
@@ -22,12 +22,12 @@ namespace hgl::graph
 
     struct MaterialCreatePrecheckResult
     {
-        Material *cached_material = nullptr;
+        MaterialProgram *cached_material = nullptr;
         const ShaderCreateInfoMap *shader_map = nullptr;
     };
 
     MaterialCreatePrecheckDecision RunMaterialCreatePrecheck(const mtl::MaterialCreateInfo *mci,
                                                              const AnsiString &material_name,
-                                                             const std::function<Material *(const AnsiString &)> &find_cached_material,
+                                                             const std::function<MaterialProgram *(const AnsiString &)> &find_cached_material,
                                                              MaterialCreatePrecheckResult &out_result);
 }

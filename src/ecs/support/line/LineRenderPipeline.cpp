@@ -18,7 +18,7 @@
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/vk/VKDevice.h>
-#include <hgl/vk/VKMaterial.h>
+#include <hgl/vk/VKMaterialProgram.h>
 #include <hgl/vk/VKBuffer.h>
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/vk/VKRenderTarget.h>
@@ -96,7 +96,7 @@ namespace hgl::ecs
     bool LineRenderPipeline::LineWidthSlot::EnsureCapacity(
         uint32_t needed,
         graph::VulkanDevice*     dev,
-        graph::Material*         material,
+        graph::MaterialProgram*         material,
         graph::DescriptorBindingSet* binding_set,
         graph::Pipeline*         p,
         uint32_t                 width)

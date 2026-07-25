@@ -10,14 +10,14 @@
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKVertexInput.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKMaterialProgram.h>
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<iostream>
 
 namespace hgl::ecs
 {
-    PipelineMaterialRenderer::PipelineMaterialRenderer(graph::Material* m, graph::Pipeline* p)
+    PipelineMaterialRenderer::PipelineMaterialRenderer(graph::MaterialProgram* m, graph::Pipeline* p)
         : material(m)
         , pipeline(p)
         , cmd_buf(nullptr)

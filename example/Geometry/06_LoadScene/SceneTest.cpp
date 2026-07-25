@@ -81,7 +81,7 @@ private:
 
     struct MaterialData
     {
-        Material *material = nullptr;
+        MaterialProgram *material = nullptr;
         const VIL *vil = nullptr;
         GeometryVertexFormat geometry_vertex_format;
         MaterialInstance *mi[COLOR_COUNT]{};   // kept for LoadStaticMeshScene compat

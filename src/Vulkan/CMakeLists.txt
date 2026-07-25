@@ -276,7 +276,7 @@ SET(GEOMETRY_VERTEX_DATA_FILES  ${VK_INCLUDE_PATH}/VertexAttribDataAccess.h
 SOURCE_GROUP("VertexData" FILES ${GEOMETRY_VERTEX_DATA_FILES})
 
 # --- 14. High-level Headers (SceneGraph/ECS 仍使用，但头文件在 vk 目录) ---
-SET(VK_HIGH_LEVEL_HEADERS       ${VK_INCLUDE_PATH}/VKMaterial.h
+SET(VK_HIGH_LEVEL_HEADERS       ${VK_INCLUDE_PATH}/VKMaterialProgram.h
                                 ${VK_INCLUDE_PATH}/VKMaterialParameters.h
                                 ${VK_INCLUDE_PATH}/VKMaterialInstance.h
                                 ${VK_INCLUDE_PATH}/VKMaterialDescriptorManager.h

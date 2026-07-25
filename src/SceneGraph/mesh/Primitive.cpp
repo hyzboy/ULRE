@@ -1,6 +1,6 @@
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKMaterialInstance.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKMaterialProgram.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
@@ -97,7 +97,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
         return(nullptr);
 
     const uint32_t input_count=vil->GetVertexAttribCount();
-    const AnsiString &mtl_name=mi->GetMaterial()->GetName();
+    const AnsiString &mtl_name=mi->GetMaterialProgram()->GetName();
     const GeometryVertexFormatMatch match_result=MatchGeometryVertexFormat(
                                                     geom->GetGeometryVertexFormat(),
                                                     vil->GetVIFList(),
@@ -105,7 +105,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
 
     if(geom->GetVABCount()<input_count)        //小于材质要求的数量？那自然是不行的
     {
-        GLogError("[FATAL ERROR] input buffer count of Primitive lesser than Material, Material name: "+mtl_name);
+        GLogError("[FATAL ERROR] input buffer count of Primitive lesser than MaterialProgram, MaterialProgram name: "+mtl_name);
 
         return(nullptr);
     }
@@ -121,7 +121,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
         // by forking to an explicit pre-processing step, but only after an explicit sign-off.
         if(first_issue)
         {
-            GLogError(  "[FATAL ERROR] GeometryVertexFormat can't satisfy Material vertex input, Material(")+mtl_name+
+            GLogError(  "[FATAL ERROR] GeometryVertexFormat can't satisfy MaterialProgram vertex input, MaterialProgram(")+mtl_name+
                         AnsiString(") Attribute(")+AnsiString(GetVertexSemanticName(first_issue->semantic))+
                         AnsiString(") Match(")+GetGeometryVertexMatchKindName(first_issue->kind)+
                         AnsiString(") Semantic(")+GetVertexSemanticName(first_issue->semantic)+
@@ -147,7 +147,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
         }
         else
         {
-            GLogError("[FATAL ERROR] GeometryVertexFormat can't satisfy Material vertex input, Material: "+mtl_name);
+            GLogError("[FATAL ERROR] GeometryVertexFormat can't satisfy MaterialProgram vertex input, MaterialProgram: "+mtl_name);
         }
 
         return(nullptr);
@@ -175,7 +175,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
 
         if(!vab)
         {
-            GLogError("[FATAL ERROR] not found VAB \""+AnsiString(GetVertexSemanticName(vif->semantic))+"\" in Material: "+mtl_name);
+            GLogError("[FATAL ERROR] not found VAB \""+AnsiString(GetVertexSemanticName(vif->semantic))+"\" in MaterialProgram: "+mtl_name);
             return(nullptr);
         }
 
@@ -188,11 +188,11 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
     return(new Primitive(geom,mi,p,geom_data_buffer));
 }
 
-Primitive *DirectCreatePrimitive(Geometry *geom,Material *material,DescriptorBindingSet *dbs,Pipeline *p)
+Primitive *DirectCreatePrimitive(Geometry *geom,MaterialProgram *material,DescriptorBindingSet *dbs,Pipeline *p)
 {
     if(!geom||!material||!dbs)return(nullptr);
 
-    Material *current_material = dbs->GetMaterial();
+    MaterialProgram *current_material = dbs->GetMaterialProgram();
     if (current_material != material)
     {
         if (current_material)
@@ -226,7 +226,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,Material *material,DescriptorBin
 
     if(geom->GetVABCount()<input_count)
     {
-        GLogError("[FATAL ERROR] input buffer count of Primitive lesser than Material, Material name: "+mtl_name);
+        GLogError("[FATAL ERROR] input buffer count of Primitive lesser than MaterialProgram, MaterialProgram name: "+mtl_name);
         return(nullptr);
     }
 
@@ -237,7 +237,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,Material *material,DescriptorBin
 
         if(first_issue)
         {
-            GLogError(  "[FATAL ERROR] GeometryVertexFormat can't satisfy Material vertex input, Material(")+mtl_name+
+            GLogError(  "[FATAL ERROR] GeometryVertexFormat can't satisfy MaterialProgram vertex input, MaterialProgram(")+mtl_name+
                         AnsiString(") Attribute(")+AnsiString(GetVertexSemanticName(first_issue->semantic))+
                         AnsiString(") Match(")+GetGeometryVertexMatchKindName(first_issue->kind)+
                         AnsiString(") Semantic(")+GetVertexSemanticName(first_issue->semantic)+
@@ -263,7 +263,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,Material *material,DescriptorBin
         }
         else
         {
-            GLogError("[FATAL ERROR] GeometryVertexFormat can't satisfy Material vertex input, Material: "+mtl_name);
+            GLogError("[FATAL ERROR] GeometryVertexFormat can't satisfy MaterialProgram vertex input, MaterialProgram: "+mtl_name);
         }
 
         return(nullptr);
@@ -286,7 +286,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,Material *material,DescriptorBin
 
         if(!vab)
         {
-            GLogError("[FATAL ERROR] not found VAB \""+AnsiString(GetVertexSemanticName(vif->semantic))+"\" in Material: "+mtl_name);
+            GLogError("[FATAL ERROR] not found VAB \""+AnsiString(GetVertexSemanticName(vif->semantic))+"\" in MaterialProgram: "+mtl_name);
             return(nullptr);
         }
 

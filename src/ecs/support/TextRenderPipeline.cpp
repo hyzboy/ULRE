@@ -11,7 +11,7 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKMaterialProgram.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
@@ -250,7 +250,7 @@ namespace hgl::ecs
         {
             graph::MaterialManager* material_manager = nullptr;
             graph::SamplerManager* sampler_manager = nullptr;
-            graph::Material* material = nullptr;
+            graph::MaterialProgram* material = nullptr;
             graph::VIL* binding_vil = nullptr;
             graph::DescriptorBindingSet* descriptor_binding_set = nullptr;
             graph::Sampler* sampler = nullptr;

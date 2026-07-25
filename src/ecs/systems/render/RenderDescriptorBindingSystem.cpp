@@ -12,7 +12,7 @@
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKMaterialProgram.h>
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/vk/VKTexture.h>
@@ -168,7 +168,7 @@ namespace hgl::ecs
         }
     }
 
-    bool RenderDescriptorBindingSystem::RegisterMaterialTexture(graph::Material *material,
+    bool RenderDescriptorBindingSystem::RegisterMaterialTexture(graph::MaterialProgram *material,
                                                                 const AnsiString &name,
                                                                 graph::Texture *texture)
     {
@@ -180,7 +180,7 @@ namespace hgl::ecs
         return true;
     }
 
-    bool RenderDescriptorBindingSystem::BuildMaterialRecipeForMaterial(const graph::Material *material,
+    bool RenderDescriptorBindingSystem::BuildMaterialRecipeForMaterial(const graph::MaterialProgram *material,
                                                                        graph::mtl::MaterialRecipe &out_recipe) const
     {
         out_recipe = {};
@@ -191,7 +191,7 @@ namespace hgl::ecs
         if (material_name && *material_name)
             out_recipe.recipe_name = material_name;
         else
-            out_recipe.recipe_name = "Material@" + std::to_string(reinterpret_cast<uintptr_t>(material));
+            out_recipe.recipe_name = "MaterialProgram@" + std::to_string(reinterpret_cast<uintptr_t>(material));
 
         out_recipe.shading_model = "Legacy";
         out_recipe.domain = "ECS";
@@ -270,7 +270,7 @@ namespace hgl::ecs
         if (!item)
             return false;
 
-        graph::Material *material = item->GetMaterial();
+        graph::MaterialProgram *material = item->GetMaterialProgram();
         if (!BuildMaterialRecipeForMaterial(material, out_recipe))
             return false;
 
@@ -300,13 +300,13 @@ namespace hgl::ecs
                 out_recipe.domain += "|";
             // Legacy MI path: mi_id is now always -1. Use material name as domain key instead.
             out_recipe.domain += "mi-legacy:";
-            out_recipe.domain += mi->GetMaterial() ? mi->GetMaterial()->GetName().c_str() : "null";
+            out_recipe.domain += mi->GetMaterialProgram() ? mi->GetMaterialProgram()->GetName().c_str() : "null";
         }
 
         return true;
     }
 
-    bool RenderDescriptorBindingSystem::RegisterMaterialTextureSampler(graph::Material *material,
+    bool RenderDescriptorBindingSystem::RegisterMaterialTextureSampler(graph::MaterialProgram *material,
                                                                        const AnsiString &name,
                                                                        graph::Texture *texture,
                                                                        graph::Sampler *sampler)
@@ -322,7 +322,7 @@ namespace hgl::ecs
         return true;
     }
 
-    void RenderDescriptorBindingSystem::RemoveMaterialBinding(graph::Material *material, const AnsiString &name)
+    void RenderDescriptorBindingSystem::RemoveMaterialBinding(graph::MaterialProgram *material, const AnsiString &name)
     {
         if (!material || name.IsEmpty())
             return;
@@ -336,7 +336,7 @@ namespace hgl::ecs
             material_resource_bindings.erase(material_it);
     }
 
-    void RenderDescriptorBindingSystem::ClearMaterialBindings(graph::Material *material)
+    void RenderDescriptorBindingSystem::ClearMaterialBindings(graph::MaterialProgram *material)
     {
         if (!material)
             return;
@@ -344,13 +344,13 @@ namespace hgl::ecs
         material_resource_bindings.erase(material);
     }
 
-    void RenderDescriptorBindingSystem::RegisterPipelineMaterial(graph::Material *material)
+    void RenderDescriptorBindingSystem::RegisterPipelineMaterial(graph::MaterialProgram *material)
     {
         if (material)
             pipeline_materials.insert(material);
     }
 
-    void RenderDescriptorBindingSystem::UnregisterPipelineMaterial(graph::Material *material)
+    void RenderDescriptorBindingSystem::UnregisterPipelineMaterial(graph::MaterialProgram *material)
     {
         if (material)
             pipeline_materials.erase(material);
@@ -679,7 +679,7 @@ namespace hgl::ecs
         materialization_index_tables_dirty = false;
     }
 
-    const RenderDescriptorBindingSystem::MaterialResourceBinding *RenderDescriptorBindingSystem::FindMaterialResourceBinding(const graph::Material *material, const char *name) const
+    const RenderDescriptorBindingSystem::MaterialResourceBinding *RenderDescriptorBindingSystem::FindMaterialResourceBinding(const graph::MaterialProgram *material, const char *name) const
     {
         if (!material || !name || !*name)
             return nullptr;
@@ -876,11 +876,11 @@ namespace hgl::ecs
 
         const auto &cache = context->GetRenderFrameCache();
 
-        std::unordered_set<const graph::Material *> active_materials;
+        std::unordered_set<const graph::MaterialProgram *> active_materials;
 
         std::unordered_set<std::string> missing_ssbo_warned_keys;
 
-        auto log_missing_ssbo_once = [&](graph::Material *material,
+        auto log_missing_ssbo_once = [&](graph::MaterialProgram *material,
                                          const graph::mtl::DescriptorRequirement &req,
                                          const char *reason,
                                          int32_t slot = -1)
@@ -928,7 +928,7 @@ namespace hgl::ecs
                             reason ? reason : "unknown");
             }
         };
-        auto log_bind_failure = [&](graph::Material *material,
+        auto log_bind_failure = [&](graph::MaterialProgram *material,
                                     MaterialBatch *batch,
                                     const graph::mtl::DescriptorRequirement &req,
                                     const char *reason)
@@ -956,7 +956,7 @@ namespace hgl::ecs
                             reason ? reason : "unknown");
             }
         };
-        auto ensure_batch_mp = [&](graph::Material *material,
+        auto ensure_batch_mp = [&](graph::MaterialProgram *material,
                                    MaterialBatch *batch,
                                    const graph::DescriptorSetType set_type) -> graph::MaterialParameters *
         {
@@ -990,7 +990,7 @@ namespace hgl::ecs
             return mp;
         };
 
-        auto bind_ubo = [&](graph::Material *material,
+        auto bind_ubo = [&](graph::MaterialProgram *material,
                             MaterialBatch *batch,
                             const graph::mtl::DescriptorRequirement &req,
                             const graph::IGPUBuffer *gpu) -> bool
@@ -1008,7 +1008,7 @@ namespace hgl::ecs
             return material->BindUBO(req.set_type, req.name, gpu, false);
         };
 
-        auto bind_ssbo = [&](graph::Material *material,
+        auto bind_ssbo = [&](graph::MaterialProgram *material,
                              MaterialBatch *batch,
                              const graph::mtl::DescriptorRequirement &req,
                              const graph::IGPUBuffer *gpu) -> bool
@@ -1026,7 +1026,7 @@ namespace hgl::ecs
             return material->BindSSBO(req.set_type, req.name, gpu, false);
         };
 
-        auto bind_texture = [&](graph::Material *material,
+        auto bind_texture = [&](graph::MaterialProgram *material,
                                 MaterialBatch *batch,
                                 const graph::mtl::DescriptorRequirement &req,
                                 graph::Texture *texture) -> bool
@@ -1044,7 +1044,7 @@ namespace hgl::ecs
             return material->BindTexture(req.set_type, req.name, texture);
         };
 
-        auto bind_texture_sampler = [&](graph::Material *material,
+        auto bind_texture_sampler = [&](graph::MaterialProgram *material,
                                         MaterialBatch *batch,
                                         const graph::mtl::DescriptorRequirement &req,
                                         graph::Texture *texture,
@@ -1062,7 +1062,7 @@ namespace hgl::ecs
 
             return material->BindTextureSampler(req.set_type, req.name, texture, sampler);
         };
-        auto resolve_batch_texture_binding = [&](graph::Material *material,
+        auto resolve_batch_texture_binding = [&](graph::MaterialProgram *material,
                                                  MaterialBatch *batch,
                                                  const graph::mtl::DescriptorRequirement &req,
                                                  graph::Texture *&out_texture,
@@ -1145,7 +1145,7 @@ namespace hgl::ecs
             return true;
         };
 
-        auto apply_requirement = [&](graph::Material *material,
+        auto apply_requirement = [&](graph::MaterialProgram *material,
                                      MaterialBatch *batch,
                                      const graph::mtl::DescriptorRequirement &req)
         {
@@ -1536,7 +1536,7 @@ namespace hgl::ecs
             }
         };
 
-        auto validate_required_batch_bindings = [&](graph::Material *material,
+        auto validate_required_batch_bindings = [&](graph::MaterialProgram *material,
                                                     MaterialBatch *batch,
                                                     const graph::mtl::BindingContract &contract) -> bool
         {
@@ -1620,7 +1620,7 @@ namespace hgl::ecs
 
         for (const auto &pair : cache.materialBatches)
         {
-            graph::Material *material = pair.first.material;
+            graph::MaterialProgram *material = pair.first.material;
             if (!material)
                 continue;
 
@@ -1646,7 +1646,7 @@ namespace hgl::ecs
 
         // Bind scene-level UBOs to pipeline-registered materials (Line, Terrain, etc.)
         // These materials bypass the normal materialBatches path.
-        for (graph::Material *material : pipeline_materials)
+        for (graph::MaterialProgram *material : pipeline_materials)
         {
             if (!material)
                 continue;
@@ -1674,7 +1674,7 @@ namespace hgl::ecs
             {
                 constexpr uint32_t bindless_set = static_cast<uint32_t>(graph::DescriptorSetType::Bindless);
 
-                for (const graph::Material *material : active_materials)
+                for (const graph::MaterialProgram *material : active_materials)
                 {
                     if (!material)
                         continue;
@@ -1771,7 +1771,7 @@ namespace hgl::ecs
         for (const auto &pair : cache.materialBatches)
         {
             const auto &key = pair.first;
-            const graph::Material *material = key.material;
+            const graph::MaterialProgram *material = key.material;
             if (!material)
                 continue;
 

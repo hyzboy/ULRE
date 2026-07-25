@@ -1,7 +1,7 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKMaterialProgram.h>
 #include<algorithm>
 #include<limits>
 #include<set>
@@ -91,7 +91,7 @@ namespace hgl
         #endif
         }
 
-        bool ECSContext::GetMaterialBindingKeys(const hgl::graph::Material *material,
+        bool ECSContext::GetMaterialBindingKeys(const hgl::graph::MaterialProgram *material,
                                                 std::vector<std::string> &out_keys) const
         {
             out_keys.clear();
@@ -118,11 +118,11 @@ namespace hgl
         #if !ULRE_ECS_DEBUG_API
             return false;
         #else
-            const hgl::graph::Material *matched_material = nullptr;
+            const hgl::graph::MaterialProgram *matched_material = nullptr;
 
             for (const auto &pair : render_frame_cache.materialBatches)
             {
-                const hgl::graph::Material *material = pair.first.material;
+                const hgl::graph::MaterialProgram *material = pair.first.material;
                 if (!material)
                     continue;
 
@@ -142,7 +142,7 @@ namespace hgl
 
                     for (const auto &pair : render_frame_cache.materialBatches)
                     {
-                        const hgl::graph::Material *material = pair.first.material;
+                        const hgl::graph::MaterialProgram *material = pair.first.material;
                         if (!material)
                             continue;
 
@@ -194,7 +194,7 @@ namespace hgl
         #if !ULRE_ECS_DEBUG_API
             return false;
         #else
-            using MaterialPipelinePair = std::pair<const hgl::graph::Material *, const hgl::graph::Pipeline *>;
+            using MaterialPipelinePair = std::pair<const hgl::graph::MaterialProgram *, const hgl::graph::Pipeline *>;
 
             std::set<MaterialPipelinePair> unique_pairs;
             std::set<uint64_t> unique_spec_hashes;

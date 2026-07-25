@@ -18,7 +18,7 @@ namespace hgl
     {
         class DescriptorBindingSet;
         class Primitive;
-        class Material;
+        class MaterialProgram;
         class MaterialInstance;
         class Pipeline;
         class RenderPass;
@@ -36,7 +36,7 @@ namespace hgl::ecs
      * Features:
      * - Holds reference to hgl::graph::Primitive
      * - Supports MaterialInstance override
-     * - Provides access to Material, Pipeline, and AABB data
+     * - Provides access to MaterialProgram, Pipeline, and AABB data
      * - Compatible with RenderCollector for batched rendering
      */
     class PrimitiveComponent : public RenderableComponent
@@ -82,7 +82,7 @@ namespace hgl::ecs
         void SetPrimitive(hgl::graph::Primitive* prim);
         hgl::graph::Primitive* GetPrimitive() const { return primitive; }
 
-        // Material override
+        // MaterialProgram override
         void SetOverrideMaterial(hgl::graph::MaterialInstance* mi);
         hgl::graph::MaterialInstance* GetOverrideMaterial() const { return overrideMaterial; }
         void ClearOverrideMaterial() { SetOverrideMaterial(nullptr); }
@@ -131,9 +131,9 @@ namespace hgl::ecs
         void SetPositionSourceSpec(PositionSourceSpec spec) { positionSourceSpec = spec; }
         PositionSourceSpec GetPositionSourceSpec() const { return positionSourceSpec; }
 
-        // Material access (returns override if set, otherwise primitive's material)
+        // MaterialProgram access (returns override if set, otherwise primitive's material)
         hgl::graph::MaterialInstance* GetMaterialInstance() const;
-        hgl::graph::Material* GetMaterial() const;
+        hgl::graph::MaterialProgram* GetMaterialProgram() const;
 
         // Pipeline access: override → primitive's pre-baked → runtime resolved
         hgl::graph::Pipeline* GetPipeline() const;

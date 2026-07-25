@@ -50,7 +50,7 @@ private:
     std::shared_ptr<hgl::graph::SunDirectionControlSystem> sun_gizmo_system;
 
     Geometry *prim_sky_sphere = nullptr;
-    Material *mtl_sky = nullptr;
+    MaterialProgram *mtl_sky = nullptr;
     DescriptorBindingSet *sky_dbs = nullptr;
 
 private:

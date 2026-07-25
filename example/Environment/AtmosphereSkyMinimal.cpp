@@ -39,7 +39,7 @@ private:
     hgl::ecs::Entity *sky_entity = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
 
-    Material *          mtl_sky_sphere      =nullptr;
+    MaterialProgram *          mtl_sky_sphere      =nullptr;
     DescriptorBindingSet *sky_dbs           =nullptr;
 
     Geometry *          prim_sky_sphere     =nullptr;

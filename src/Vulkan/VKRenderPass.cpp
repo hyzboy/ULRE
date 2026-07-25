@@ -4,7 +4,7 @@
 #include<hgl/vk/pipeline/VKInlinePipeline.h>
 #include<hgl/vk/pipeline/VKPipelineData.h>
 #include<hgl/vk/pipeline/VKPipelineResolver.h>
-#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKMaterialProgram.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/object/ObjectTracker.h>
 #include<hgl/log/Log.h>
@@ -109,7 +109,7 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,con
     return pipeline;
 }
 
-Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const PipelineData *cpd,const bool prim_restart,const GeometryVertexFormat *gvf)
+Pipeline *RenderPass::CreatePipeline(MaterialProgram *mtl,const VIL *vil,const PipelineData *cpd,const bool prim_restart,const GeometryVertexFormat *gvf)
 {
     PipelineData *pd=new PipelineData(cpd);
 
@@ -123,19 +123,19 @@ Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const Pipeline
     return(p);
 }
 
-Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const InlinePipeline &ip,const bool prim_restart,const GeometryVertexFormat *gvf)
+Pipeline *RenderPass::CreatePipeline(MaterialProgram *mtl,const VIL *vil,const InlinePipeline &ip,const bool prim_restart,const GeometryVertexFormat *gvf)
 {
     if(!mtl)return(nullptr);
 
     return CreatePipeline(mtl,vil,GetPipelineData(ip),prim_restart,gvf);
 }
 
-Pipeline *RenderPass::CreatePipeline(Material *mtl,const PipelineData *pd,const bool prim_restart)
+Pipeline *RenderPass::CreatePipeline(MaterialProgram *mtl,const PipelineData *pd,const bool prim_restart)
 {
     return CreatePipeline(mtl,mtl->GetDefaultVIL(),pd,prim_restart);
 }
 
-Pipeline *RenderPass::CreatePipeline(Material *mtl,const InlinePipeline &ip,const bool prim_restart)
+Pipeline *RenderPass::CreatePipeline(MaterialProgram *mtl,const InlinePipeline &ip,const bool prim_restart)
 {
     return CreatePipeline(mtl,mtl->GetDefaultVIL(),ip,prim_restart);
 }
@@ -144,12 +144,12 @@ Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const InlinePipeline &
 {
     if(!mi)return(nullptr);
 
-    return CreatePipeline(mi->GetMaterial(),mi->GetVIL(),ip,prim_restart);
+    return CreatePipeline(mi->GetMaterialProgram(),mi->GetVIL(),ip,prim_restart);
 }
 
 Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const PipelineData *cpd,const bool prim_restart)
 {
-    return CreatePipeline(mi->GetMaterial(),mi->GetVIL(),cpd,prim_restart);
+    return CreatePipeline(mi->GetMaterialProgram(),mi->GetVIL(),cpd,prim_restart);
 }
 
 Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const OSString &pipeline_filename,const bool prim_restart)
@@ -167,7 +167,7 @@ Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const InlinePipeline &
 
     const VIL *vil=(fetch_mode==GeometryFetchMode::SSBO)?nullptr:mi->GetVIL();
 
-    return CreatePipeline(mi->GetMaterial(),vil,ip,prim_restart);
+    return CreatePipeline(mi->GetMaterialProgram(),vil,ip,prim_restart);
 }
 
 Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const PipelineData *pd,GeometryFetchMode fetch_mode,const bool prim_restart)
@@ -176,7 +176,7 @@ Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const PipelineData *pd
 
     const VIL *vil=(fetch_mode==GeometryFetchMode::SSBO)?nullptr:mi->GetVIL();
 
-    return CreatePipeline(mi->GetMaterial(),vil,pd,prim_restart);
+    return CreatePipeline(mi->GetMaterialProgram(),vil,pd,prim_restart);
 }
 
 Pipeline *RenderPass::CreatePipeline(const AnsiString &name,

@@ -74,7 +74,7 @@ private:
     ECSContext* ecs_world = nullptr;
 
     // 传统渲染资源
-    Material* material = nullptr;
+    MaterialProgram* material = nullptr;
     Geometry* geometry = nullptr;
     graph::DeviceBuffer* mi_ssbo = nullptr;
     DescriptorBindingSet *tick_binding_set = nullptr;

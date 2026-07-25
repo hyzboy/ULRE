@@ -39,7 +39,7 @@ namespace hgl::graph
 
         struct GizmoResource
         {
-            Material *          mtl;
+            MaterialProgram *          mtl;
             const VIL *         binding_vil;
             DescriptorBindingSet *binding_sets[size_t(GizmoColor::RANGE_SIZE)];
             Pipeline *          pipeline;

@@ -14,7 +14,7 @@ namespace hgl
             struct BindingContract;
         }
 
-        class Material;
+        class MaterialProgram;
         class Texture;
         class Sampler;
 
@@ -37,16 +37,16 @@ namespace hgl
             };
 
         private:
-            Material *material = nullptr;
+            MaterialProgram *material = nullptr;
             const VIL *vil = nullptr;
             SSBOBinding ssbo_bindings[size_t(mtl::SSBOType::RANGE_SIZE)]{};
             TextureBinding texture_bindings[size_t(mtl::TextureSlot::RANGE_SIZE)]{};
 
         public:
-            DescriptorBindingSet(Material *mtl = nullptr, const VIL *binding_vil = nullptr);
+            DescriptorBindingSet(MaterialProgram *mtl = nullptr, const VIL *binding_vil = nullptr);
 
-            void SetMaterial(Material *mtl);
-            Material *GetMaterial() const { return material; }
+            void SetMaterial(MaterialProgram *mtl);
+            MaterialProgram *GetMaterialProgram() const { return material; }
 
             void SetVIL(const VIL *binding_vil) { vil = binding_vil; }
             const VIL *GetVIL() const;

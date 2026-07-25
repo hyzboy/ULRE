@@ -51,7 +51,7 @@ private:
     hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
 
-    Material *          material            =nullptr;
+    MaterialProgram *    material            =nullptr;
     graph::DeviceBuffer *mi_ssbo            =nullptr;
     DescriptorBindingSet *binding_set[3]{};
     SSBOSlotAllocator   slot_allocator;

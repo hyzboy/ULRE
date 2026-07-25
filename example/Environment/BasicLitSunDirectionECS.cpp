@@ -80,10 +80,10 @@ private:
     std::shared_ptr<SunDirectionControlSystem> sun_gizmo_system;
 
     Geometry* sky_geometry = nullptr;
-    Material* sky_material = nullptr;
+    MaterialProgram* sky_material = nullptr;
     DescriptorBindingSet* sky_binding = nullptr;
 
-    Material* material = nullptr;
+    MaterialProgram* material = nullptr;
     DescriptorBindingSet* material_binding = nullptr;
     DeviceBuffer* material_ssbo = nullptr;
     SSBOSlotAllocator material_slot_allocator;
