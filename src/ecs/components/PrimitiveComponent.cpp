@@ -46,6 +46,23 @@ namespace hgl::ecs
         overrideMaterial = mi;
     }
 
+    void PrimitiveComponent::SetMaterialRecipe(const hgl::graph::mtl::MaterialRecipe &recipe)
+    {
+        materialRecipe = recipe;
+        hasMaterialRecipe = true;
+    }
+
+    const hgl::graph::mtl::MaterialRecipe *PrimitiveComponent::GetMaterialRecipe() const
+    {
+        return hasMaterialRecipe ? &materialRecipe : nullptr;
+    }
+
+    void PrimitiveComponent::ClearMaterialRecipe()
+    {
+        materialRecipe = {};
+        hasMaterialRecipe = false;
+    }
+
     void PrimitiveComponent::InvalidateResolvedRuntimePipeline()
     {
         const bool runtime_resolve_in_use = (resolvedRuntimePipeline != nullptr) || hasPendingPipelinePreset;
@@ -163,6 +180,8 @@ namespace hgl::ecs
         overrideMaterial = nullptr;
         descriptorBindingSet = nullptr;
         overridePipeline = nullptr;
+        materialRecipe = {};
+        hasMaterialRecipe = false;
         resolvedRuntimePipeline = nullptr;
         resolvedRuntimeRenderPass = nullptr;
         hasPendingPipelinePreset = false;

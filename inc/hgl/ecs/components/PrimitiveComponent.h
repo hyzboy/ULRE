@@ -3,6 +3,7 @@
 #include<hgl/ecs/components/RenderableComponent.h>
 #include<hgl/ecs/support/PositionSourceSpec.h>
 #include<hgl/ecs/support/TransformPolicySpec.h>
+#include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/vk/pipeline/VKInlinePipeline.h>
 #include<glm/glm.hpp>
 
@@ -47,6 +48,8 @@ namespace hgl::ecs
         hgl::graph::MaterialInstance* overrideMaterial;   // Optional material override (not owned)
         hgl::graph::DescriptorBindingSet* descriptorBindingSet; // Optional explicit binding set (not owned)
         hgl::graph::Pipeline* overridePipeline;           // Optional pipeline override (not owned)
+        bool hasMaterialRecipe = false;
+        hgl::graph::mtl::MaterialRecipe materialRecipe;
 
         // Late-resolve pipeline slot:
         // Populated at render-time if primitive has no pre-baked pipeline.
@@ -130,6 +133,13 @@ namespace hgl::ecs
         const TransformPolicySpec& GetTransformPolicySpec() const { return transformPolicySpec; }
         void SetPositionSourceSpec(PositionSourceSpec spec) { positionSourceSpec = spec; }
         PositionSourceSpec GetPositionSourceSpec() const { return positionSourceSpec; }
+
+        // Authoring entry (Phase 2): recipe stores intent only.
+        // Runtime resolve/materialize is handled by ECS in later phases.
+        void SetMaterialRecipe(const hgl::graph::mtl::MaterialRecipe &recipe);
+        const hgl::graph::mtl::MaterialRecipe *GetMaterialRecipe() const;
+        bool HasMaterialRecipe() const { return hasMaterialRecipe; }
+        void ClearMaterialRecipe();
 
         // MaterialProgram access (returns override if set, otherwise primitive's material)
         hgl::graph::MaterialInstance* GetMaterialInstance() const;
