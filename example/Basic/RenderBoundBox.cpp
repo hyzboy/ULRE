@@ -321,7 +321,7 @@ private:
             return nullptr;
 
         Primitive *primitive = primitive_manager->CreatePrimitive(geometry,
-                                                                  md->dbs[color] ? md->dbs[color]->GetMaterial() : nullptr,
+                                                                  md->material,
                                                                   md->dbs[color],
                                                                   md->pipeline);
 
@@ -623,7 +623,7 @@ private:
             return false;
 
         bbox_primitive = primitive_manager->CreatePrimitive(bbox_geometry,
-                                                            wire.dbs[5] ? wire.dbs[5]->GetMaterial() : nullptr,
+                                                            wire.material,
                                                             wire.dbs[5],
                                                             wire.pipeline);
         return bbox_primitive != nullptr;

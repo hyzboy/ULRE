@@ -550,7 +550,7 @@ private:
         gm->Add(cube_geometry);
 
         cube_primitive = pm->CreatePrimitive(cube_geometry,
-                                             cube_binding_set ? cube_binding_set->GetMaterial() : nullptr,
+                                             cube_mtl,
                                              cube_binding_set,
                                              cube_pipeline);
         if (!cube_primitive)

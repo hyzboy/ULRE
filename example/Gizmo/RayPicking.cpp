@@ -339,7 +339,7 @@ private:
                 return false;
 
             Primitive* prim_plane = primitive_manager->CreatePrimitive(geom_plane_grid,
-                                                                       dbs_plane_grid ? dbs_plane_grid->GetMaterial() : nullptr,
+                                                                       mtl_plane_grid,
                                                                        dbs_plane_grid,
                                                                        pipeline_plane_grid);
             if(!prim_plane)
@@ -368,7 +368,7 @@ private:
                 return false;
 
             prim_line = primitive_manager->CreatePrimitive(geom_line,
-                                                           dbs_line ? dbs_line->GetMaterial() : nullptr,
+                                                           mtl_line,
                                                            dbs_line,
                                                            pipeline_line);
             if(!prim_line)

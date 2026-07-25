@@ -267,7 +267,7 @@ private:
         geometry_manager->Add(geometry);
 
         mesh_rect = primitive_manager->CreatePrimitive(geometry,
-                                                       render_obj[0].dbs ? render_obj[0].dbs->GetMaterial() : nullptr,
+                                                       material,
                                                        render_obj[0].dbs,
                                                        pipeline);
 

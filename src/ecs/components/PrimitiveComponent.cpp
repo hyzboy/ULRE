@@ -11,6 +11,11 @@ namespace hgl::ecs
 {
     void PrimitiveComponent::SetPrimitive(hgl::graph::Primitive* prim)
     {
+        if (primitive != prim)
+        {
+            InvalidateResolvedRuntimePipeline();
+        }
+
         primitive = prim;
 
         // Update bounding radius based on primitive's bounding volume
@@ -33,7 +38,25 @@ namespace hgl::ecs
 
     void PrimitiveComponent::SetOverrideMaterial(hgl::graph::MaterialInstance* mi)
     {
+        if (overrideMaterial != mi)
+        {
+            InvalidateResolvedRuntimePipeline();
+        }
+
         overrideMaterial = mi;
+    }
+
+    void PrimitiveComponent::InvalidateResolvedRuntimePipeline()
+    {
+        const bool runtime_resolve_in_use = (resolvedRuntimePipeline != nullptr) || hasPendingPipelinePreset;
+
+        resolvedRuntimePipeline = nullptr;
+        resolvedRuntimeRenderPass = nullptr;
+
+        if (runtime_resolve_in_use)
+        {
+            hasPendingPipelinePreset = true;
+        }
     }
 
     hgl::graph::MaterialInstance* PrimitiveComponent::GetMaterialInstance() const
@@ -141,7 +164,7 @@ namespace hgl::ecs
         descriptorBindingSet = nullptr;
         overridePipeline = nullptr;
         resolvedRuntimePipeline = nullptr;
+        resolvedRuntimeRenderPass = nullptr;
         hasPendingPipelinePreset = false;
     }
 }//namespace hgl::ecs
-

@@ -734,6 +734,10 @@ namespace hgl::ecs
 
         std::unordered_map<graph::Material *, MaterialSpecCacheValue> material_spec_hash_cache;
 
+        auto* render_ctx = world ? world->GetRenderContext() : nullptr;
+        auto* rt = render_ctx ? render_ctx->GetCurrentRenderTarget() : nullptr;
+        auto* current_render_pass = rt ? rt->GetRenderPass() : nullptr;
+
         for (auto& itemPtr : cache.renderItems)
         {
             RenderItem* item = itemPtr.get();
@@ -742,39 +746,38 @@ namespace hgl::ecs
 
             auto* material = item->GetMaterial();
             auto* pipeline = item->GetPipeline();
+            auto* prim_item = dynamic_cast<PrimitiveRenderItem*>(item);
+            auto prim_comp = prim_item ? prim_item->GetPrimitiveComponent() : nullptr;
+
+            // Output interface changed (different RenderPass): invalidate previous runtime-resolved pipeline.
+            if (prim_comp
+             && prim_comp->GetResolvedRuntimePipeline()
+             && current_render_pass
+             && prim_comp->GetResolvedRuntimeRenderPass() != current_render_pass)
+            {
+                prim_comp->ClearResolvedRuntimePipeline();
+                pipeline = item->GetPipeline();
+            }
 
             // Late-resolve pipeline: if no pre-baked or previously resolved pipeline exists
             // and the item's PrimitiveComponent has a pending preset, try to resolve now.
-            if (!pipeline)
+            if (!pipeline && prim_comp && prim_comp->HasPendingPipelinePreset() && material && current_render_pass)
             {
-                auto* prim_item = dynamic_cast<PrimitiveRenderItem*>(item);
-                auto prim_comp = prim_item ? prim_item->GetPrimitiveComponent() : nullptr;
+                auto* dbs = item->GetDescriptorBindingSet();
+                const graph::VIL* vil = dbs ? dbs->GetVIL() : material->GetDefaultVIL();
 
-                if (prim_comp && prim_comp->HasPendingPipelinePreset() && material)
+                graph::Pipeline* resolved = current_render_pass->CreatePipeline(
+                    material, vil,
+                    prim_comp->GetPendingPipelinePreset());
+
+                if (resolved)
                 {
-                    auto* render_ctx = world ? world->GetRenderContext() : nullptr;
-                    auto* rt = render_ctx ? render_ctx->GetCurrentRenderTarget() : nullptr;
-                    auto* rp = rt ? rt->GetRenderPass() : nullptr;
-
-                    if (rp)
-                    {
-                        auto* dbs = item->GetDescriptorBindingSet();
-                        const graph::VIL* vil = dbs ? dbs->GetVIL() : material->GetDefaultVIL();
-
-                        graph::Pipeline* resolved = rp->CreatePipeline(
-                            material, vil,
-                            prim_comp->GetPendingPipelinePreset());
-
-                        if (resolved)
-                        {
-                            prim_comp->SetResolvedRuntimePipeline(resolved);
-                            pipeline = resolved;
-                        }
-                        else
-                        {
-                            LogWarning("[PrimitiveBatchPipeline] Late-resolve pipeline failed for material %s", material->GetName().c_str());
-                        }
-                    }
+                    prim_comp->SetResolvedRuntimePipeline(resolved, current_render_pass);
+                    pipeline = resolved;
+                }
+                else
+                {
+                    LogWarning("[PrimitiveBatchPipeline] Late-resolve pipeline failed for material %s", material->GetName().c_str());
                 }
             }
 

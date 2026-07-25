@@ -21,6 +21,7 @@ namespace hgl
         class Material;
         class MaterialInstance;
         class Pipeline;
+        class RenderPass;
     }
 }
 
@@ -50,8 +51,10 @@ namespace hgl::ecs
         // Late-resolve pipeline slot:
         // Populated at render-time if primitive has no pre-baked pipeline.
         hgl::graph::Pipeline* resolvedRuntimePipeline = nullptr; // (not owned)
+        hgl::graph::RenderPass* resolvedRuntimeRenderPass = nullptr; // (not owned)
         bool hasPendingPipelinePreset = false;
         hgl::graph::InlinePipeline pendingPipelinePreset = hgl::graph::InlinePipeline::Solid3D;
+        void InvalidateResolvedRuntimePipeline();
 
         PositionSourceSpec positionSourceSpec;            // Unified position source ingress policy
         TransformPolicySpec transformPolicySpec;           // Unified transform policy ingress
@@ -82,11 +85,19 @@ namespace hgl::ecs
         // Material override
         void SetOverrideMaterial(hgl::graph::MaterialInstance* mi);
         hgl::graph::MaterialInstance* GetOverrideMaterial() const { return overrideMaterial; }
-        void ClearOverrideMaterial() { overrideMaterial = nullptr; }
+        void ClearOverrideMaterial() { SetOverrideMaterial(nullptr); }
 
-        void SetDescriptorBindingSet(hgl::graph::DescriptorBindingSet* set) { descriptorBindingSet = set; }
+        void SetDescriptorBindingSet(hgl::graph::DescriptorBindingSet* set)
+        {
+            if (descriptorBindingSet != set)
+            {
+                InvalidateResolvedRuntimePipeline();
+            }
+
+            descriptorBindingSet = set;
+        }
         hgl::graph::DescriptorBindingSet* GetDescriptorBindingSet() const;
-        void ClearDescriptorBindingSet() { descriptorBindingSet = nullptr; }
+        void ClearDescriptorBindingSet() { SetDescriptorBindingSet(nullptr); }
 
         void SetOverridePipeline(hgl::graph::Pipeline* p) { overridePipeline = p; }
         hgl::graph::Pipeline* GetOverridePipeline() const { return overridePipeline; }
@@ -104,14 +115,16 @@ namespace hgl::ecs
         bool HasPendingPipelinePreset() const { return hasPendingPipelinePreset; }
         hgl::graph::InlinePipeline GetPendingPipelinePreset() const { return pendingPipelinePreset; }
 
-        void SetResolvedRuntimePipeline(hgl::graph::Pipeline *p)
+        void SetResolvedRuntimePipeline(hgl::graph::Pipeline *p, hgl::graph::RenderPass *rp = nullptr)
         {
             resolvedRuntimePipeline = p;
+            resolvedRuntimeRenderPass = rp;
             if(p) hasPendingPipelinePreset = false;
         }
 
         hgl::graph::Pipeline* GetResolvedRuntimePipeline() const { return resolvedRuntimePipeline; }
-        void ClearResolvedRuntimePipeline() { resolvedRuntimePipeline = nullptr; hasPendingPipelinePreset = true; }
+        hgl::graph::RenderPass* GetResolvedRuntimeRenderPass() const { return resolvedRuntimeRenderPass; }
+        void ClearResolvedRuntimePipeline() { resolvedRuntimePipeline = nullptr; resolvedRuntimeRenderPass = nullptr; hasPendingPipelinePreset = true; }
 
         void SetTransformPolicySpec(const TransformPolicySpec& spec) { transformPolicySpec = spec; }
         const TransformPolicySpec& GetTransformPolicySpec() const { return transformPolicySpec; }

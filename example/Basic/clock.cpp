@@ -390,7 +390,7 @@ private:
         for (uint i = 0; i < 3; i++)
         {
             hands[i].primitive = primitive_manager->CreatePrimitive(geometry,
-                                                                    hand_binding_sets[i] ? hand_binding_sets[i]->GetMaterial() : nullptr,
+                                                                    material,
                                                                     hand_binding_sets[i],
                                                                     pipeline);
 
