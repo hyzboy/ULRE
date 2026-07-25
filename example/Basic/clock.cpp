@@ -75,7 +75,6 @@ private:
 
     // 传统渲染资源
     Material* material = nullptr;
-    Pipeline* pipeline = nullptr;
     Geometry* geometry = nullptr;
     graph::DeviceBuffer* mi_ssbo = nullptr;
     DescriptorBindingSet *tick_binding_set = nullptr;
@@ -137,18 +136,6 @@ private:
 
         {
         }
-
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material, InlinePipeline::Solid2D) : nullptr;
-
-        if (!pipeline)
-        {
-            std::cout << "[ClockApp::InitMaterial] ERROR: Failed to create pipeline!" << std::endl;
-            return false;
-        }
-
-        std::cout << "[ClockApp::InitMaterial] Created pipeline: " << (void*)pipeline << std::endl;
 
         return true;
     }
@@ -341,7 +328,7 @@ private:
         // === 创建12个刻度（Static Transform） ===
         for (uint i = 0; i < TICK_COUNT; i++)
         {
-            ticks[i].primitive = primitive_manager->CreatePrimitive(geometry, material, tick_binding_set, pipeline);
+            ticks[i].primitive = primitive_manager->CreatePrimitive(geometry, material, tick_binding_set, nullptr);
 
             if (!ticks[i].primitive)
             {
@@ -377,6 +364,7 @@ private:
             auto primitive_comp = ticks[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitive(ticks[i].primitive);
             primitive_comp->SetDescriptorBindingSet(tick_binding_set);
+            primitive_comp->RequestPipeline(InlinePipeline::Solid2D);
             primitive_comp->SetVisible(true);
 
             std::cout << "[ClockApp::InitECS] Created static tick [" << i << "] at angle " << (30.0f * i) << " degrees" << std::endl;
@@ -392,7 +380,7 @@ private:
             hands[i].primitive = primitive_manager->CreatePrimitive(geometry,
                                                                     material,
                                                                     hand_binding_sets[i],
-                                                                    pipeline);
+                                                                    nullptr);
 
             if (!hands[i].primitive)
             {
@@ -419,6 +407,7 @@ private:
             auto primitive_comp = hands[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitive(hands[i].primitive);
             primitive_comp->SetDescriptorBindingSet(hand_binding_sets[i]);
+            primitive_comp->RequestPipeline(InlinePipeline::Solid2D);
             primitive_comp->SetVisible(true);
 
             std::cout << "[ClockApp::InitECS] Created movable hand [" << i << "] (" << hand_names[i] << ")" << std::endl;

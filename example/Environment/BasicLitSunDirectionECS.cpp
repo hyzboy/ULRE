@@ -79,7 +79,6 @@ private:
     std::shared_ptr<EnvironmentSystem> environment_system;
     std::shared_ptr<SunDirectionControlSystem> sun_gizmo_system;
 
-    Pipeline* sky_pipeline = nullptr;
     Geometry* sky_geometry = nullptr;
     Material* sky_material = nullptr;
     DescriptorBindingSet* sky_binding = nullptr;
@@ -88,7 +87,6 @@ private:
     DescriptorBindingSet* material_binding = nullptr;
     DeviceBuffer* material_ssbo = nullptr;
     SSBOSlotAllocator material_slot_allocator;
-    Pipeline* pipeline = nullptr;
     VertexDataManager* mesh_vdm = nullptr;
 
     RenderMesh* rm_floor = nullptr;
@@ -163,12 +161,6 @@ private:
         if (!sky_binding)
             return false;
 
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-        sky_pipeline = render_pass ? render_pass->CreatePipeline(sky_material, sky_material->GetDefaultVIL(), InlinePipeline::Sky) : nullptr;
-        if (!sky_pipeline)
-            return false;
-
         using namespace inline_geometry;
 
         auto pc = std::make_unique<GeometryCreater>(
@@ -241,12 +233,6 @@ private:
             return false;
 
         // Bindless registration is deferred until ECS systems are ready.
-
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material, InlinePipeline::Solid3D) : nullptr;
-        if (!pipeline)
-            return false;
 
         mtl::StandardMaterialInstance mi_data{};
         mi_data.base_color = 0xFFFFFFFFu;
@@ -378,7 +364,7 @@ private:
         Primitive* primitive = primitive_manager->CreatePrimitive(geometry,
                                                                   material,
                                                                   material_binding,
-                                                                  pipeline);
+                                                                  nullptr);
         if (!primitive)
             return nullptr;
 
@@ -478,7 +464,7 @@ private:
 
     bool InitSceneEntities()
     {
-        if (!ecs_context || !rm_floor || !sky_geometry || !sky_binding || !sky_pipeline)
+        if (!ecs_context || !rm_floor || !sky_geometry || !sky_binding)
             return false;
 
         {
@@ -497,7 +483,7 @@ private:
             Primitive* sky_primitive = primitive_manager->CreatePrimitive(sky_geometry,
                                                                           sky_material,
                                                                           sky_binding,
-                                                                          sky_pipeline);
+                                                                          nullptr);
             if (!sky_primitive)
                 return false;
 
@@ -511,6 +497,7 @@ private:
             transform->SetMovable(false);
 
             primitive_comp->SetPrimitive(sky_primitive);
+            primitive_comp->RequestPipeline(InlinePipeline::Sky);
             primitive_comp->SetVisible(true);
         }
 
@@ -525,6 +512,7 @@ private:
             transform->SetMovable(false);
 
             primitive_comp->SetPrimitive(rm_floor->primitive);
+            primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             primitive_comp->SetVisible(true);
         }
 
@@ -552,6 +540,7 @@ private:
             transform->SetMovable(false);
 
             primitive_comp->SetPrimitive(rm->primitive);
+            primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             primitive_comp->SetVisible(true);
 
             ++index;

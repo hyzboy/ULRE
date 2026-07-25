@@ -89,11 +89,11 @@ bool Primitive::UpdateGeometry()
 Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p)
 //用Direct这个前缀是为了区别于MeshManager/WorkObject等路径上的CreateMesh()
 {
-    if(!geom||!mi||!p)return(nullptr);
+    if(!geom||!mi)return(nullptr);
 
     const VIL *vil=mi->GetVIL();
 
-    if(*vil!=*p->GetVIL())
+    if(p && *vil!=*p->GetVIL())
         return(nullptr);
 
     const uint32_t input_count=vil->GetVertexAttribCount();

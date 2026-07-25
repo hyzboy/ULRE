@@ -70,7 +70,6 @@ private:
     Material* material = nullptr;
     DescriptorBindingSet* binding_set = nullptr;
     graph::DeviceBuffer* mi_ssbo = nullptr;
-    Pipeline* pipeline = nullptr;
     VertexDataManager* mesh_vdm = nullptr;
     SSBOSlotAllocator slot_allocator;
 
@@ -139,12 +138,6 @@ private:
             return false;
 
         // Bindless registration will be done after ECS systems are ready in InitScene().
-
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material, InlinePipeline::Solid3D) : nullptr;
-        if (!pipeline)
-            return false;
 
         return true;
     }
@@ -315,7 +308,7 @@ private:
 
         geometry_manager->Add(geometry);
 
-        Primitive* primitive = primitive_manager->CreatePrimitive(geometry, material, binding_set, pipeline);
+        Primitive* primitive = primitive_manager->CreatePrimitive(geometry, material, binding_set, nullptr);
         if (!primitive)
             return nullptr;
 
@@ -550,6 +543,7 @@ private:
 
             primitive_comp->SetPrimitive(rm_floor->primitive);
             primitive_comp->SetDescriptorBindingSet(binding_set);
+            primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             primitive_comp->SetVisible(true);
         }
 
@@ -578,6 +572,7 @@ private:
 
             primitive_comp->SetPrimitive(rm->primitive);
             primitive_comp->SetDescriptorBindingSet(binding_set);
+            primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             primitive_comp->SetVisible(true);
 
             ++index;

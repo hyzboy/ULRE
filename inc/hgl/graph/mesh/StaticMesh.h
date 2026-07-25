@@ -73,7 +73,7 @@ public: // Primitive 管理
     const int                   GetPrimitiveCount   ()const{ return primitive_list.GetCount(); }
     const PrimitiveList &       GetPrimitiveList    ()const{ return primitive_list; }
 
-    Primitive *                 CreatePrimitive     (Geometry *geometry, MaterialInstance *mi, Pipeline *p);            ///< 创建并添加一个 Primitive(为该 Primitive 指定 Geometry / MaterialInstance / Pipeline)
+    Primitive *                 CreatePrimitive     (Geometry *geometry, MaterialInstance *mi, Pipeline *p=nullptr);    ///< 创建并添加一个 Primitive(可不预绑定 Pipeline，留给运行时晚解析)
 
     bool                        AddPrimitive        (Primitive *sm);                                                    ///< 添加一个已有的 Primitive(StaticMesh 将接管其生命周期)
 
@@ -103,4 +103,3 @@ public: // 场景树
 
 };//class StaticMesh
 }//namespace hgl::graph
-

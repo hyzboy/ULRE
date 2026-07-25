@@ -41,10 +41,10 @@ public: // Add/Get/Release
 
 public: // Create
 
-    Primitive *CreatePrimitive(Geometry *r, MaterialInstance *mi, Pipeline *p);
-    Primitive *CreatePrimitive(GeometryCreater *pc, MaterialInstance *mi, Pipeline *p);
-    Primitive *CreatePrimitive(Geometry *r, Material *material, DescriptorBindingSet *dbs, Pipeline *p);
-    Primitive *CreatePrimitive(GeometryCreater *pc, Material *material, DescriptorBindingSet *dbs, Pipeline *p);
+    Primitive *CreatePrimitive(Geometry *r, MaterialInstance *mi, Pipeline *p=nullptr);
+    Primitive *CreatePrimitive(GeometryCreater *pc, MaterialInstance *mi, Pipeline *p=nullptr);
+    Primitive *CreatePrimitive(Geometry *r, Material *material, DescriptorBindingSet *dbs, Pipeline *p=nullptr);
+    Primitive *CreatePrimitive(GeometryCreater *pc, Material *material, DescriptorBindingSet *dbs, Pipeline *p=nullptr);
 };
 
 }//namespace hgl::graph

@@ -74,8 +74,8 @@ public:
             uint32_t            GetDataIndexCount()const{return draw_range.data_index_count;}
 };//class Primitive
 
-Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,Pipeline *);
-Primitive *DirectCreatePrimitive(Geometry *,Material *,DescriptorBindingSet *,Pipeline *);
+Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,Pipeline * = nullptr);
+Primitive *DirectCreatePrimitive(Geometry *,Material *,DescriptorBindingSet *,Pipeline * = nullptr);
 
 // Pre-flight compatibility check: matches geometry vertex format against the
 // material's VIL and returns the full failure summary without creating a primitive.

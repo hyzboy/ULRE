@@ -13,7 +13,7 @@ StaticMesh::~StaticMesh()
 // Primitive 管理
 Primitive *StaticMesh::CreatePrimitive(Geometry *geometry, MaterialInstance *mi, Pipeline *p)
 {
-    if(!geometry || !mi || !p)
+    if(!geometry || !mi)
         return nullptr;
 
     Primitive *sm = DirectCreatePrimitive(geometry, mi, p);
@@ -25,7 +25,8 @@ Primitive *StaticMesh::CreatePrimitive(Geometry *geometry, MaterialInstance *mi,
     // 跟踪资源
     geometry_set.Add(geometry);
     mat_inst_set.Add(mi);
-    pipeline_set.Add(p);
+    if(p)
+        pipeline_set.Add(p);
 
     // 累积包围盒
     RefreshBoundingVolumes();

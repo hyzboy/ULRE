@@ -70,7 +70,6 @@ private:
     // 传统渲染资源
     MaterialInstance *  material_instance   =nullptr;
     Primitive *         prim_triangle       =nullptr;
-    Pipeline *          pipeline            =nullptr;
 
 private:
 
@@ -98,19 +97,7 @@ private:
         if(!material_instance)
             return(false);
 
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material_instance, InlinePipeline::Solid2D) : nullptr;
-
-        if (pipeline)
-            std::cout << "[TestApp::InitMaterial] Created Pipeline in RenderPass (render_pass*=0x" << std::hex << (uintptr_t)render_pass
-                      << ", VkPipeline=0x" << (VkPipeline)(*pipeline) << std::dec
-                      << ", Pipeline*=0x" << (uintptr_t)pipeline << ")" << std::endl;
-        else
-            std::cout << "[TestApp::InitMaterial] FAILED to create Pipeline (render_target=0x" << std::hex << (uintptr_t)render_target
-                      << ", render_pass=0x" << (uintptr_t)render_pass << std::dec << ")" << std::endl;
-
-        return pipeline != nullptr;
+        return true;
     }
 
     bool InitVBO()
@@ -150,7 +137,7 @@ private:
             return false;
         geometry_manager->Add(geometry);
 
-        prim_triangle = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
+        prim_triangle = primitive_manager->CreatePrimitive(geometry, material_instance, nullptr);
 
         if(!prim_triangle)
             return(false);
@@ -191,6 +178,7 @@ private:
         HGL_TRACK_ALLOCATION("TrianglePrimitive", hgl::core::ObjectTypeTag::FrameResource);
         auto ecs_primitive = triangle_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         ecs_primitive->SetPrimitive(prim_triangle);
+        ecs_primitive->RequestPipeline(InlinePipeline::Solid2D);
         ecs_primitive->SetVisible(true);
 
         return true;

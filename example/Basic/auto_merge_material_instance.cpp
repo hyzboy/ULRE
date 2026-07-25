@@ -68,7 +68,6 @@ private:
 
     // 传统渲染资源
     Material* material = nullptr;
-    Pipeline* pipeline = nullptr;
     Geometry* geometry = nullptr;
 
     // MI 结构体 SSBO（由本示例创建并注册进 ResourceDomainManager）
@@ -124,18 +123,6 @@ private:
                           << "R=" << color.r << ", G=" << color.g << ", B=" << color.b << ", A=" << color.a << std::endl;
             }
         }
-
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material, InlinePipeline::Solid2D) : nullptr;
-
-        if (!pipeline)
-        {
-            std::cout << "[TestApp::InitMaterial] ERROR: Failed to create pipeline!" << std::endl;
-            return false;
-        }
-
-        std::cout << "[TestApp::InitMaterial] Created pipeline: " << (void*)pipeline << std::endl;
 
         return true;
     }
@@ -207,7 +194,7 @@ private:
             triangles[i].primitive = primitive_manager->CreatePrimitive(geometry,
                                                                         material,
                                                                         triangles[i].dbs,
-                                                                        pipeline);
+                                                                        nullptr);
 
             if (!triangles[i].primitive)
             {
@@ -245,6 +232,7 @@ private:
             auto primitive_comp = triangles[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitive(triangles[i].primitive);
             primitive_comp->SetDescriptorBindingSet(triangles[i].dbs);
+            primitive_comp->RequestPipeline(InlinePipeline::Solid2D);
             primitive_comp->SetVisible(true);
 
             std::cout << "[TestApp::InitECS] Entity[" << i << "] setup complete" << std::endl;

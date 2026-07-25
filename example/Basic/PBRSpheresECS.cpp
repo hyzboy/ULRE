@@ -91,7 +91,6 @@ private:
     Material *          material  = nullptr;
     graph::DeviceBuffer * mi_ssbo = nullptr;
     graph::DeviceBuffer * texture_layer_ssbo = nullptr;
-    Pipeline *          pipeline  = nullptr;
     Texture2DArray *    base_color_texture = nullptr;
     Texture2DArray *    normal_texture = nullptr;
     Sampler *           sampler = nullptr;
@@ -193,14 +192,6 @@ private:
             material_manager->SetBindlessLayout(bindless_texture_manager->GetLayout());
         }
 
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass   = render_target ? render_target->GetRenderPass() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material, InlinePipeline::Solid3D) : nullptr;
-
-        if (!pipeline) {
-            printf("[ERROR] InitMaterial: Failed to create pipeline\n");
-            return false;
-        }
         return true;
     }
 
@@ -709,7 +700,7 @@ private:
                 builtin_geometries[i],
                 material,
                 sphere_binding[0][i],
-                pipeline);
+                nullptr);
 
             if (!base_primitives[i]) {
                 printf("[ERROR] CreateBasePrimitives: Failed to create primitive %u\n", i);
@@ -800,6 +791,7 @@ private:
                 auto prim_comp = e->AddComponent<hgl::ecs::PrimitiveComponent>();
                 prim_comp->SetPrimitive(base_primitives[col]);
                 prim_comp->SetDescriptorBindingSet(sphere_binding[row][col]);
+                prim_comp->RequestPipeline(InlinePipeline::Solid3D);
                 prim_comp->SetVisible(true);
             }
         }

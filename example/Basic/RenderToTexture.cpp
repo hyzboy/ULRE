@@ -98,7 +98,6 @@ private:
 
     Material *mtl = nullptr;
     DescriptorBindingSet *binding_set = nullptr;
-    Pipeline *pipeline = nullptr;
     Geometry *geometry = nullptr;
     Primitive *primitive = nullptr;
     graph::DeviceBuffer *mi_ssbo = nullptr;
@@ -236,7 +235,6 @@ public:
         binding_set = nullptr;
         mi_ssbo = nullptr;
         mtl = nullptr;
-        pipeline = nullptr;
     }
 
     Texture2D *GetColorTexture() const
@@ -296,11 +294,6 @@ public:
         if (!mtl)
             return LogStageFail("OffscreenPass::BuildSphere", "CreateMaterial(Gizmo3D) failed");
 
-        auto *rp = runtime.GetRenderTarget()->GetRenderPass();
-        pipeline = rp ? rp->CreatePipeline(mtl, InlinePipeline::Solid3D) : nullptr;
-        if (!pipeline)
-            return LogStageFail("OffscreenPass::BuildSphere", "CreatePipeline failed");
-
         sphere_color_data = GetColor4f(COLOR::SkyBlue, 1.0f);
 
         if (!InitMISSBO(runtime.GetWorld()))
@@ -315,7 +308,7 @@ public:
 
         gm->Add(geometry);
 
-        primitive = pm->CreatePrimitive(geometry, mtl, binding_set, pipeline);
+        primitive = pm->CreatePrimitive(geometry, mtl, binding_set, nullptr);
         if (!primitive)
             return LogStageFail("OffscreenPass::BuildSphere", "CreatePrimitive failed");
 
@@ -331,6 +324,7 @@ public:
 
         prim_comp->SetPrimitive(primitive);
         prim_comp->SetDescriptorBindingSet(binding_set);
+        prim_comp->RequestPipeline(InlinePipeline::Solid3D);
         prim_comp->SetVisible(true);
 
         Entity *camera_entity = world->CreateEntity<Entity>("OffscreenCamera");
@@ -375,7 +369,6 @@ private:
     Material *cube_mtl = nullptr;
     DescriptorBindingSet *cube_binding_set = nullptr;
     graph::DeviceBuffer *cube_mi_ssbo = nullptr;
-    Pipeline *cube_pipeline = nullptr;
     Sampler *cube_sampler = nullptr;
     Primitive *cube_primitive = nullptr;
     SSBOSlotAllocator cube_slot_allocator;
@@ -519,15 +512,6 @@ private:
 
         LogTextureInfo("onscreen_bind_basecolor", base_tex);
 
-        auto *render_target = rc->GetCurrentRenderTarget();
-        if (!render_target && ecs_context)
-            render_target = ecs_context->GetRenderTarget();
-
-        auto *rp = render_target ? render_target->GetRenderPass() : nullptr;
-        cube_pipeline = rp ? rp->CreatePipeline(cube_mtl, InlinePipeline::Solid3D) : nullptr;
-        if (!cube_pipeline)
-            return LogStageFail("RenderToTextureApp::CreateCube", "CreatePipeline failed");
-
         cube_mi_data.base_color = 0xFFFFFFFFu;
         cube_mi_data.metallic = 0.08f;
         cube_mi_data.roughness = 0.92f;
@@ -552,7 +536,7 @@ private:
         cube_primitive = pm->CreatePrimitive(cube_geometry,
                                              cube_mtl,
                                              cube_binding_set,
-                                             cube_pipeline);
+                                             nullptr);
         if (!cube_primitive)
             return LogStageFail("RenderToTextureApp::CreateCube", "CreatePrimitive failed");
 
@@ -567,6 +551,7 @@ private:
 
         cube_prim_comp->SetPrimitive(cube_primitive);
         cube_prim_comp->SetDescriptorBindingSet(cube_binding_set);
+        cube_prim_comp->RequestPipeline(InlinePipeline::Solid3D);
         cube_prim_comp->SetVisible(true);
         LogStage("RenderToTextureApp::CreateCube", "success");
         return true;
@@ -692,7 +677,6 @@ public:
         cube_mi_ssbo = nullptr;
         cube_mtl = nullptr;
         cube_sampler = nullptr;
-        cube_pipeline = nullptr;
         base_tex = nullptr;
         fallback_albedo = nullptr;
         normal_tex = nullptr;

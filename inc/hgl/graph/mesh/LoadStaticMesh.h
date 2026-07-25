@@ -10,9 +10,6 @@ namespace hgl::graph
     class GeometryVertexFormat;
     class MaterialInstance;
 
-    // Forward-declared in VKPipeline.h
-    class Pipeline;
-
     /**
      * LoadStaticMeshScene - 从 .scene minipack 文件加载场景树到 StaticMesh
      *
@@ -21,7 +18,6 @@ namespace hgl::graph
      * @param geometry_vertex_format 几何顶点格式，必须与材质输入语义匹配
      * @param mi_array        材质实例数组，按 material_index % mi_count 路由颜色
      * @param mi_count        数组长度
-     * @param default_pipeline 默认管线，对所有 primitive 使用同一管线
      * @param pack_path       .scene minipack 文件的完整路径
      * @param base_dir        .geometry 文件所在目录（通常就是 pack 文件所在目录）
      *
@@ -35,7 +31,6 @@ namespace hgl::graph
         const GeometryVertexFormat &geometry_vertex_format,
         MaterialInstance * const *mi_array,
         int                       mi_count,
-        Pipeline                 *default_pipeline,
         const OSString           &pack_path,
         const OSString           &base_dir);
 

@@ -9,7 +9,7 @@ GRAPH_MODULE_CONSTRUCT(PrimitiveManager)
 
 Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, MaterialInstance *mi, Pipeline *p)
 {
-    if(!p||!mi||!r)
+    if(!mi||!r)
         return(nullptr);
 
     Primitive *ri=hgl::graph::DirectCreatePrimitive(r,mi,p);
@@ -22,7 +22,7 @@ Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, MaterialInstance *mi, 
 
 Primitive *PrimitiveManager::CreatePrimitive(GeometryCreater *pc, MaterialInstance *mi, Pipeline *p)
 {
-    if(!p||!mi||!pc)
+    if(!mi||!pc)
         return(nullptr);
 
     Geometry *geometry=pc->Create();
@@ -45,7 +45,7 @@ Primitive *PrimitiveManager::CreatePrimitive(GeometryCreater *pc, MaterialInstan
 
 Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, Material *material, DescriptorBindingSet *dbs, Pipeline *p)
 {
-    if(!p||!dbs||!r||!material)
+    if(!dbs||!r||!material)
         return(nullptr);
 
     Primitive *ri=hgl::graph::DirectCreatePrimitive(r,material,dbs,p);
@@ -58,7 +58,7 @@ Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, Material *material, De
 
 Primitive *PrimitiveManager::CreatePrimitive(GeometryCreater *pc, Material *material, DescriptorBindingSet *dbs, Pipeline *p)
 {
-    if(!p||!dbs||!pc||!material)
+    if(!dbs||!pc||!material)
         return(nullptr);
 
     Geometry *geometry=pc->Create();

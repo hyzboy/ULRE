@@ -60,7 +60,6 @@ private:
 
     Material *          material        = nullptr;
     DescriptorBindingSet *binding_set   = nullptr;
-    Pipeline *          pipeline        = nullptr;
 
     Geometry *          geometry        = nullptr;
     Primitive *         primitive       = nullptr;
@@ -90,11 +89,7 @@ private:
         if(!material)
             return false;
 
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material, InlinePipeline::Solid3D) : nullptr;
-
-        return pipeline != nullptr;
+        return true;
     }
 
     bool CreateCubeGeometry()
@@ -149,7 +144,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        primitive = primitive_manager->CreatePrimitive(geometry, material, binding_set, pipeline);
+        primitive = primitive_manager->CreatePrimitive(geometry, material, binding_set, nullptr);
         return primitive != nullptr;
     }
 
@@ -256,6 +251,7 @@ private:
         auto primitive_comp = cube_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         primitive_comp->SetPrimitive(primitive);
         primitive_comp->SetDescriptorBindingSet(binding_set);
+        primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
         primitive_comp->SetVisible(true);
 
         return true;
