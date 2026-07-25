@@ -7,6 +7,7 @@
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/tick/VisibilitySystem.h>
+#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<hgl/ecs/support/VisibilityDataStorage.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/graph/core/GraphicsContext.h>
@@ -172,7 +173,37 @@ namespace hgl::ecs
 
         material_comp->program = resolved_program;
         material_comp->program_dirty = false;
-        material_comp->MarkValid();
+        return true;
+    }
+
+    bool RenderPrimitiveCollectSystem::MaterializeRecipeRowsForPrimitive(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+                                                                         const std::shared_ptr<MaterialComponent> &material_comp)
+    {
+        if (!world || !primitive_comp || !material_comp)
+            return false;
+
+        const auto *recipe = primitive_comp->GetMaterialRecipe();
+        if (!recipe)
+            return false;
+
+        auto rdbs = world->GetSystem<RenderDescriptorBindingSystem>();
+        if (!rdbs)
+            return false;
+
+        graph::mtl::MaterializationSpec spec{};
+        uint32_t texture_layer_row = uint32_t(-1);
+        uint32_t data_index_row = uint32_t(-1);
+        if (!rdbs->ResolveMaterialRecipe(*recipe, spec, &texture_layer_row, &data_index_row))
+            return false;
+
+        // Bridge stage: DataIndexRow is the per-instance lookup row consumed by
+        // ResolveDataIndexID(gl_InstanceIndex). Keep material_instance_row aligned.
+        material_comp->texture_layer_row = texture_layer_row;
+        material_comp->data_index_row = data_index_row;
+        material_comp->material_instance_row = data_index_row;
+        material_comp->bindings_dirty = false;
+        material_comp->resources_dirty = false;
+        material_comp->valid = true;
         return true;
     }
 
@@ -252,7 +283,10 @@ namespace hgl::ecs
                 material_comp = entity->AddComponent<MaterialComponent>();
 
             if (material_comp && primitiveComp->HasMaterialRecipe())
+            {
                 ResolveMaterialProgramForPrimitive(primitiveComp, material_comp);
+                MaterializeRecipeRowsForPrimitive(primitiveComp, material_comp);
+            }
 
             auto transform = entity->GetComponent<TransformComponent>();
             if (!transform)

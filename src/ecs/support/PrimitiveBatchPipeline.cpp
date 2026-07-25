@@ -5,6 +5,7 @@
 #include<hgl/ecs/components/BoundingBoxComponent.h>
 #include<hgl/ecs/systems/tick/BoundingBoxUpdateSystem.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/MaterialComponent.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
@@ -691,6 +692,26 @@ namespace hgl::ecs
                         uint32_t mi_index = 0;
                         if (item)
                         {
+                            bool resolved_from_material_component = false;
+                            if (auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(item))
+                            {
+                                if (auto *entity = primitive_item->GetEntity())
+                                {
+                                    auto material_comp = entity->GetComponent<MaterialComponent>();
+                                    if (material_comp && material_comp->data_index_row != uint32_t(-1))
+                                    {
+                                        mi_index = material_comp->data_index_row;
+                                        resolved_from_material_component = true;
+                                    }
+                                }
+                            }
+
+                            if (resolved_from_material_component)
+                            {
+                                row_ptr[i] = mi_index;
+                                continue;
+                            }
+
                             if (auto *binding_set = item->GetDescriptorBindingSet())
                             {
                                 if (binding_set->HasSSBOBinding(primary_ssbo_type))

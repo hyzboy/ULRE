@@ -29,6 +29,8 @@ namespace hgl::ecs
         const graph::CameraInfo* cameraInfo = nullptr;
         bool ResolveMaterialProgramForPrimitive(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
                                                 const std::shared_ptr<MaterialComponent> &material_comp);
+        bool MaterializeRecipeRowsForPrimitive(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+                                               const std::shared_ptr<MaterialComponent> &material_comp);
 
     public:
 
