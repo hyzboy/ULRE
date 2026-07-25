@@ -66,13 +66,8 @@ namespace hgl::ecs
                 }
             }
 
-            if (auto *prim_dbs = primitive_comp->GetDescriptorBindingSet())
-                material_comp->dbs_compat = prim_dbs;
-            else if (!material_comp->dbs_compat)
-                material_comp->dbs_compat = nullptr;
-
             auto *program = material_comp->program;
-            auto *dbs = material_comp->dbs_compat;
+            auto *dbs = primitive_comp->GetDescriptorBindingSet();
             if (!program || !dbs)
                 return;
 
@@ -371,8 +366,7 @@ namespace hgl::ecs
             auto material_comp = entity->GetComponent<MaterialComponent>();
             if (!material_comp
              && (primitiveComp->HasMaterialRecipe()
-              || primitiveComp->GetMaterialProgram()
-              || primitiveComp->GetDescriptorBindingSet()))
+              || primitiveComp->GetMaterialProgram()))
                 material_comp = entity->AddComponent<MaterialComponent>();
 
             if (material_comp && !primitiveComp->HasMaterialRecipe())
@@ -380,7 +374,6 @@ namespace hgl::ecs
 
             if (material_comp && primitiveComp->HasMaterialRecipe())
             {
-                material_comp->dbs_compat = nullptr;
                 ResolveMaterialProgramForPrimitive(primitiveComp, material_comp);
                 MaterializeRecipeRowsForPrimitive(primitiveComp, material_comp);
             }

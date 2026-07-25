@@ -5,7 +5,6 @@
 namespace hgl::graph
 {
     class MaterialProgram;
-    class DescriptorBindingSet;
 }
 
 namespace hgl::ecs
@@ -29,9 +28,6 @@ namespace hgl::ecs
         bool valid = false;
         uint32_t runtime_revision = 0;
 
-        // Compatibility bridge (internal-use transitional field).
-        hgl::graph::DescriptorBindingSet *dbs_compat = nullptr;
-
     public:
 
         MaterialComponent(const std::string &name = "MaterialRuntime");
@@ -49,4 +45,3 @@ namespace hgl::ecs
         void OnDetach() override;
     };
 }//namespace hgl::ecs
-

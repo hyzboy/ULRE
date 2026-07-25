@@ -797,13 +797,12 @@ namespace hgl::ecs
             // and the item's PrimitiveComponent has a pending preset, try to resolve now.
             if (!pipeline
              && prim_comp
-             && !uses_recipe_runtime
              && prim_comp->HasPendingPipelinePreset()
              && material
              && current_render_pass)
             {
+                const graph::VIL* vil = material->GetDefaultVIL();
                 auto* dbs = item->GetDescriptorBindingSet();
-                const graph::VIL* vil = nullptr;
                 if (dbs)
                 {
                     vil = dbs->GetVIL();
@@ -909,7 +908,8 @@ namespace hgl::ecs
                 }
             }
 
-            MaterialPipelineKey key(material, pipeline, program_signature, binding_signature);
+            const uint8_t runtime_mode = uses_recipe_runtime ? 1u : 0u;
+            MaterialPipelineKey key(material, pipeline, program_signature, binding_signature, runtime_mode);
             auto* batch_ptr = cache.materialBatches.GetValuePointer(key);
 
             if (!batch_ptr)

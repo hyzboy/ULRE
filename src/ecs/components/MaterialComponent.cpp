@@ -50,7 +50,6 @@ namespace hgl::ecs
     void MaterialComponent::OnDetach()
     {
         program = nullptr;
-        dbs_compat = nullptr;
         material_instance_row = uint32_t(-1);
         texture_layer_row = uint32_t(-1);
         data_index_row = uint32_t(-1);
@@ -60,4 +59,3 @@ namespace hgl::ecs
         valid = false;
     }
 }//namespace hgl::ecs
-
