@@ -36,6 +36,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/MaterialComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
@@ -268,6 +269,16 @@ private:
         recipe.domain = "Phase2AuthoringTest";
         primitive_comp->SetMaterialRecipe(recipe);
         primitive_comp->SetVisible(true);
+
+        auto material_comp = cube_entity->AddComponent<hgl::ecs::MaterialComponent>();
+        if (!material_comp)
+            return false;
+
+        material_comp->program = material;
+        material_comp->dbs_compat = binding_set;
+
+        if (!cube_entity->GetComponent<hgl::ecs::MaterialComponent>())
+            return false;
 
         return true;
     }

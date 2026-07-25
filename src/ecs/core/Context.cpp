@@ -7,6 +7,7 @@
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/components/RenderableComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/MaterialComponent.h>
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 // TextRenderPipeline.h removed — now owned by TextRenderPipelineAdapter
@@ -84,6 +85,7 @@ namespace hgl
         {
             RegisterComponentQueryBase<RenderableComponent>();
             RegisterComponentQueryBase<PrimitiveComponent>();
+            RegisterComponentQueryBase<MaterialComponent>();
 
             // Ensure TransformSystem is registered and bound to this world
             {

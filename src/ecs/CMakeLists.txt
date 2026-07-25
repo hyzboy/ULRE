@@ -131,6 +131,8 @@ set(ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES
     systems/render/RenderPrimitiveCollectSystem.cpp
     ${ECS_INCLUDE_PATH}/components/PrimitiveComponent.h
     components/PrimitiveComponent.cpp
+    ${ECS_INCLUDE_PATH}/components/MaterialComponent.h
+    components/MaterialComponent.cpp
     ${ECS_INCLUDE_PATH}/components/RenderableComponent.h
 )
 
