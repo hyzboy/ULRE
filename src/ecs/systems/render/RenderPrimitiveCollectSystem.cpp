@@ -9,6 +9,7 @@
 #include<hgl/ecs/systems/tick/VisibilitySystem.h>
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<hgl/ecs/support/VisibilityDataStorage.h>
+#include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialManager.h>
@@ -46,6 +47,57 @@ namespace hgl::ecs
                     return true;
                 default:
                     return false;
+            }
+        }
+
+        void SyncLegacyMaterialRuntime(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+                                       const std::shared_ptr<MaterialComponent> &material_comp)
+        {
+            if (!primitive_comp || !material_comp)
+                return;
+
+            if (!material_comp->program)
+            {
+                if (auto *program = primitive_comp->GetMaterialProgram())
+                {
+                    material_comp->program = program;
+                    material_comp->program_dirty = false;
+                }
+            }
+
+            if (!material_comp->dbs_compat)
+                material_comp->dbs_compat = primitive_comp->GetDescriptorBindingSet();
+
+            auto *program = material_comp->program;
+            auto *dbs = material_comp->dbs_compat;
+            if (!program || !dbs)
+                return;
+
+            for (const auto &req : program->GetBindingContract().requirements)
+            {
+                graph::DescriptorBindingSet::SSBOBinding binding{};
+                if (!dbs->GetSSBOBinding(req.ssbo_type, binding))
+                    continue;
+
+                switch (req.semantic)
+                {
+                    case graph::mtl::DescriptorSemantic::MaterialInstance:
+                        if (material_comp->material_instance_row == uint32_t(-1))
+                            material_comp->material_instance_row = binding.slot_index;
+                        if (material_comp->data_index_row == uint32_t(-1))
+                            material_comp->data_index_row = binding.slot_index;
+                        break;
+                    case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
+                        if (material_comp->texture_layer_row == uint32_t(-1))
+                            material_comp->texture_layer_row = binding.slot_index;
+                        break;
+                    case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
+                        if (material_comp->data_index_row == uint32_t(-1))
+                            material_comp->data_index_row = binding.slot_index;
+                        break;
+                    default:
+                        break;
+                }
             }
         }
     }
@@ -300,8 +352,14 @@ namespace hgl::ecs
                 continue;
 
             auto material_comp = entity->GetComponent<MaterialComponent>();
-            if (!material_comp && primitiveComp->HasMaterialRecipe())
+            if (!material_comp
+             && (primitiveComp->HasMaterialRecipe()
+              || primitiveComp->GetMaterialProgram()
+              || primitiveComp->GetDescriptorBindingSet()))
                 material_comp = entity->AddComponent<MaterialComponent>();
+
+            if (material_comp)
+                SyncLegacyMaterialRuntime(primitiveComp, material_comp);
 
             if (material_comp && primitiveComp->HasMaterialRecipe())
             {
