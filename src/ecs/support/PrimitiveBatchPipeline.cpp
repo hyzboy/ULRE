@@ -809,6 +809,7 @@ namespace hgl::ecs
             if (uses_recipe_runtime)
             {
                 const bool missing_rows = (!material_comp
+                                        || material_comp->material_instance_row == uint32_t(-1)
                                         || material_comp->data_index_row == uint32_t(-1)
                                         || material_comp->texture_layer_row == uint32_t(-1));
                 if (missing_rows)

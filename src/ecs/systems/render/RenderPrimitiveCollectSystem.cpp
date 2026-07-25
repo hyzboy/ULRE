@@ -268,7 +268,8 @@ namespace hgl::ecs
         if (!material_comp->bindings_dirty
          && !material_comp->resources_dirty
          && material_comp->data_index_row != uint32_t(-1)
-         && material_comp->texture_layer_row != uint32_t(-1))
+         && material_comp->texture_layer_row != uint32_t(-1)
+         && material_comp->material_instance_row != uint32_t(-1))
             return true;
 
         auto rdbs = world->GetSystem<RenderDescriptorBindingSystem>();
@@ -280,6 +281,14 @@ namespace hgl::ecs
         uint32_t data_index_row = uint32_t(-1);
         if (!rdbs->ResolveMaterialRecipe(*recipe, spec, &texture_layer_row, &data_index_row))
             return false;
+
+        if (texture_layer_row == uint32_t(-1) || data_index_row == uint32_t(-1))
+        {
+            GLogWarning("[RenderPrimitiveCollectSystem] ResolveMaterialRecipe returned invalid rows. tex=%u data=%u",
+                        texture_layer_row,
+                        data_index_row);
+            return false;
+        }
 
         // Bridge stage: DataIndexRow is the per-instance lookup row consumed by
         // ResolveDataIndexID(gl_InstanceIndex). Keep material_instance_row aligned.
