@@ -795,7 +795,12 @@ namespace hgl::ecs
 
             // Late-resolve pipeline: if no pre-baked or previously resolved pipeline exists
             // and the item's PrimitiveComponent has a pending preset, try to resolve now.
-            if (!pipeline && prim_comp && prim_comp->HasPendingPipelinePreset() && material && current_render_pass)
+            if (!pipeline
+             && prim_comp
+             && !uses_recipe_runtime
+             && prim_comp->HasPendingPipelinePreset()
+             && material
+             && current_render_pass)
             {
                 auto* dbs = item->GetDescriptorBindingSet();
                 const graph::VIL* vil = nullptr;
@@ -834,8 +839,8 @@ namespace hgl::ecs
                 continue;
 
             const auto &binding_contract = material->GetBindingContract();
-            auto *binding_set = item->GetDescriptorBindingSet();
-            if (binding_set && !uses_recipe_runtime)
+            auto *binding_set = uses_recipe_runtime ? nullptr : item->GetDescriptorBindingSet();
+            if (binding_set)
             {
                 if (!binding_set->SatisfiesContract(binding_contract, material->GetName().c_str()))
                     continue;
@@ -892,7 +897,7 @@ namespace hgl::ecs
                 }
             }
 
-            if (binding_set && !uses_recipe_runtime)
+            if (binding_set)
             {
                 const uint64_t dbs_binding_signature = HashDBSContractBindingSignature(binding_set, binding_contract);
                 if (dbs_binding_signature != 0)
