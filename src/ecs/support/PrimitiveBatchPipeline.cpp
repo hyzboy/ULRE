@@ -128,6 +128,43 @@ namespace hgl::ecs
             indexed_draw_cmd->firstInstance = batch->first_instance;
         }
 
+        uint32_t ResolveMaterialDataIndexRow(RenderItem *item, const graph::mtl::SSBOType primary_ssbo_type)
+        {
+            if (!item)
+                return 0;
+
+            if (auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(item))
+            {
+                if (auto *entity = primitive_item->GetEntity())
+                {
+                    auto material_comp = entity->GetComponent<MaterialComponent>();
+                    if (material_comp)
+                    {
+                        if (material_comp->data_index_row != uint32_t(-1))
+                            return material_comp->data_index_row;
+
+                        if (material_comp->material_instance_row != uint32_t(-1))
+                            return material_comp->material_instance_row;
+                    }
+                }
+            }
+
+            if (auto *binding_set = item->GetDescriptorBindingSet())
+            {
+                if (binding_set->HasSSBOBinding(primary_ssbo_type))
+                    return binding_set->GetSlotIndex(primary_ssbo_type);
+            }
+            else if (auto *mi = item->GetMaterialInstance())
+            {
+                const int mi_id = mi->GetMIID();
+                // mi_id is now always -1 (legacy path, no material-owned data store).
+                // Keep row at 0 so shader reads slot 0 rather than wrapping to UINT32_MAX.
+                if (mi_id >= 0)
+                    return static_cast<uint32_t>(mi_id);
+            }
+
+            return 0;
+        }
     }
 
     bool PrimitiveBatchPipeline::PrepareFrame(ECSContext* ctx)
@@ -688,52 +725,7 @@ namespace hgl::ecs
                 {
                     for (size_t i = 0; i < item_count; ++i)
                     {
-                        RenderItem *item = batch.items[i];
-                        uint32_t mi_index = 0;
-                        if (item)
-                        {
-                            bool resolved_from_material_component = false;
-                            if (auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(item))
-                            {
-                                if (auto *entity = primitive_item->GetEntity())
-                                {
-                                    auto material_comp = entity->GetComponent<MaterialComponent>();
-                                    if (material_comp)
-                                    {
-                                        if (material_comp->data_index_row != uint32_t(-1))
-                                        {
-                                            mi_index = material_comp->data_index_row;
-                                            resolved_from_material_component = true;
-                                        }
-                                        else if (material_comp->material_instance_row != uint32_t(-1))
-                                        {
-                                            mi_index = material_comp->material_instance_row;
-                                            resolved_from_material_component = true;
-                                        }
-                                    }
-                                }
-                            }
-
-                            if (resolved_from_material_component)
-                            {
-                                row_ptr[i] = mi_index;
-                                continue;
-                            }
-
-                            if (auto *binding_set = item->GetDescriptorBindingSet())
-                            {
-                                if (binding_set->HasSSBOBinding(primary_ssbo_type))
-                                    mi_index = binding_set->GetSlotIndex(primary_ssbo_type);
-                            }
-                            else if (auto *mi = item->GetMaterialInstance())
-                            {
-                                const int mi_id = mi->GetMIID();
-                                // mi_id is now always -1 (legacy path, no material-owned data store).
-                                // Keep mi_index at 0 so the shader reads slot 0 rather than wrapping to UINT32_MAX.
-                                mi_index = (mi_id >= 0) ? static_cast<uint32_t>(mi_id) : 0u;
-                            }
-                        }
-                        row_ptr[i] = mi_index;
+                        row_ptr[i] = ResolveMaterialDataIndexRow(batch.items[i], primary_ssbo_type);
                     }
                     mi_gpu->Unmap();
                 }
