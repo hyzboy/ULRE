@@ -374,9 +374,6 @@ private:
                 continue;
 
             has_struct_binding = true;
-            if (!rdbs->RegisterMaterialStructLayout(req.ssbo_type, req.ssbo_id, mi_data_bytes))
-                return LogFail("InitRenderResources", "register MI struct layout failed");
-
             const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
             if (!domain_manager->RegisterBuffer(addr, mi_ssbo, 1))
                 return LogFail("InitRenderResources", "register MI buffer domain failed");
@@ -456,7 +453,6 @@ private:
         sphere_transform->SetMovable(true);
 
         sphere_primitive_component->SetPrimitive(sphere_primitive);
-        sphere_primitive_component->SetDescriptorBindingSet(sphere_binding);
         sphere_primitive_component->RequestPipeline(InlinePipeline::Solid3D);
         sphere_primitive_component->SetVisible(true);
 
@@ -574,4 +570,3 @@ int os_main(int argc, os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Single Sphere MaterialProgram Switch (ECS)"), argc, argv, 1280, 720);
 }
-

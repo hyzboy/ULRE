@@ -243,9 +243,6 @@ private:
                 continue;
 
             has_struct_binding = true;
-            if (!rdbs->RegisterMaterialStructLayout(req.ssbo_type, req.ssbo_id, mi_data_bytes))
-                return false;
-
             const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
             if (!domain_manager->RegisterBuffer(addr, mi_ssbo, mi_count))
                 return false;
@@ -539,7 +536,6 @@ private:
             transform->SetMovable(false);
 
             primitive_comp->SetPrimitive(rm_floor->primitive);
-            primitive_comp->SetDescriptorBindingSet(binding_set);
             primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             primitive_comp->SetVisible(true);
         }
@@ -568,7 +564,6 @@ private:
             transform->SetMovable(false);
 
             primitive_comp->SetPrimitive(rm->primitive);
-            primitive_comp->SetDescriptorBindingSet(binding_set);
             primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             primitive_comp->SetVisible(true);
 
@@ -651,4 +646,3 @@ int os_main(int argc, os_char** argv)
 {
     return RunFramework<TextureBlinnPhongMeshesECSApp>(OS_TEXT("Standard Meshes ECS (Texture Set)"), argc, argv, 1280, 720);
 }
-
