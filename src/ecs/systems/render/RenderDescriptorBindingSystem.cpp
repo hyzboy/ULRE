@@ -1100,6 +1100,17 @@ namespace hgl::ecs
             if (!material || !batch)
                 return false;
 
+            for (RenderItem *item : batch->items)
+            {
+                auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(item);
+                if (!primitive_item)
+                    continue;
+
+                auto primitive_comp = primitive_item->GetPrimitiveComponent();
+                if (primitive_comp && primitive_comp->HasMaterialRecipe())
+                    return false;
+            }
+
             bool found_binding = false;
             bool found_missing = false;
             graph::Texture *reference_texture = nullptr;
