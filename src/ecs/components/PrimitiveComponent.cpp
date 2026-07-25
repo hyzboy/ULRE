@@ -83,10 +83,11 @@ namespace hgl::ecs
         if (overridePipeline)
             return overridePipeline;
 
-        if (!primitive)
-            return nullptr;
+        if (primitive && primitive->GetPipeline())
+            return primitive->GetPipeline();
 
-        return primitive->GetPipeline();
+        // Return runtime-resolved pipeline if available (late-resolve path).
+        return resolvedRuntimePipeline;
     }
 
     bool PrimitiveComponent::GetLocalAABB(hgl::math::AABB& outAABB) const
@@ -139,6 +140,8 @@ namespace hgl::ecs
         overrideMaterial = nullptr;
         descriptorBindingSet = nullptr;
         overridePipeline = nullptr;
+        resolvedRuntimePipeline = nullptr;
+        hasPendingPipelinePreset = false;
     }
 }//namespace hgl::ecs
 

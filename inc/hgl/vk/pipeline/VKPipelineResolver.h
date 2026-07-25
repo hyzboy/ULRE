@@ -131,6 +131,32 @@ namespace hgl::graph
         VkPipeline pipeline = VK_NULL_HANDLE;
     };
 
+    struct PipelineResolverQueryStats
+    {
+        uint64_t requests                = 0;
+        uint64_t invalid_request         = 0;
+        uint64_t incomplete_key          = 0;
+        uint64_t fo_mismatch             = 0;
+        uint64_t final_cache_hit         = 0;
+        uint64_t final_cache_miss        = 0;
+        uint64_t materialize_success     = 0;
+        uint64_t materialize_failed      = 0;
+        uint64_t vi_library_hit          = 0;
+        uint64_t vi_library_miss         = 0;
+        uint64_t pr_library_hit          = 0;
+        uint64_t pr_library_miss         = 0;
+        uint64_t fs_library_hit          = 0;
+        uint64_t fs_library_miss         = 0;
+        uint64_t fo_library_hit          = 0;
+        uint64_t fo_library_miss         = 0;
+        uint32_t monolithic_cache_entries = 0;
+        uint32_t gpl_cache_entries        = 0;
+        uint32_t vi_library_entries       = 0;
+        uint32_t pr_library_entries       = 0;
+        uint32_t fs_library_entries       = 0;
+        uint32_t fo_library_entries       = 0;
+    };
+
     class PipelineResolver
     {
     public:
@@ -140,5 +166,12 @@ namespace hgl::graph
         static bool HasCompleteFinalKey(const FinalPipelineKey &key);
         static bool MaterializeMonolithic(const FinalPipelineResolveRequest &request, VkPipeline &out_pipeline);
         static bool ResolveFinalPipeline(const FinalPipelineResolveRequest &request, FinalPipelineResolveResult &out_result);
+
+        /// Remove all cached pipelines created for the given device.
+        /// Must be called before the device is destroyed.
+        static void ClearCacheForDevice(VulkanDevice *device);
+
+        /// Query accumulated resolver statistics (thread-unsafe snapshot).
+        static PipelineResolverQueryStats QueryStats();
     };
 }//namespace hgl::graph

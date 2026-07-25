@@ -23,6 +23,9 @@
 #include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/vk/VKRenderTarget.h>
+#include<hgl/vk/VKRenderPass.h>
+#include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/log/Log.h>
 #include<algorithm>
@@ -739,6 +742,41 @@ namespace hgl::ecs
 
             auto* material = item->GetMaterial();
             auto* pipeline = item->GetPipeline();
+
+            // Late-resolve pipeline: if no pre-baked or previously resolved pipeline exists
+            // and the item's PrimitiveComponent has a pending preset, try to resolve now.
+            if (!pipeline)
+            {
+                auto* prim_item = dynamic_cast<PrimitiveRenderItem*>(item);
+                auto prim_comp = prim_item ? prim_item->GetPrimitiveComponent() : nullptr;
+
+                if (prim_comp && prim_comp->HasPendingPipelinePreset() && material)
+                {
+                    auto* render_ctx = world ? world->GetRenderContext() : nullptr;
+                    auto* rt = render_ctx ? render_ctx->GetCurrentRenderTarget() : nullptr;
+                    auto* rp = rt ? rt->GetRenderPass() : nullptr;
+
+                    if (rp)
+                    {
+                        auto* dbs = item->GetDescriptorBindingSet();
+                        const graph::VIL* vil = dbs ? dbs->GetVIL() : material->GetDefaultVIL();
+
+                        graph::Pipeline* resolved = rp->CreatePipeline(
+                            material, vil,
+                            prim_comp->GetPendingPipelinePreset());
+
+                        if (resolved)
+                        {
+                            prim_comp->SetResolvedRuntimePipeline(resolved);
+                            pipeline = resolved;
+                        }
+                        else
+                        {
+                            LogWarning("[PrimitiveBatchPipeline] Late-resolve pipeline failed for material %s", material->GetName().c_str());
+                        }
+                    }
+                }
+            }
 
             if (!material || !pipeline)
                 continue;

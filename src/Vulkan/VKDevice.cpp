@@ -4,6 +4,7 @@
 #include<hgl/vk/VKQueue.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/pipeline/VKComputePipeline.h>
+#include<hgl/vk/pipeline/VKPipelineResolver.h>
 #include<hgl/vk/VKObjectName.h>
 #include<hgl/vk/IGPUBuffer.h>
 #include<hgl/log/Log.h>
@@ -67,6 +68,8 @@ VulkanDevice::VulkanDevice(VulkanDevAttr *da)
 
 VulkanDevice::~VulkanDevice()
 {
+    PipelineResolver::ClearCacheForDevice(this);
+
     if(attr && attr->device)
         g_device_map.erase(attr->device);
 

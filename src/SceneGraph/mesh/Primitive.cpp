@@ -190,7 +190,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
 
 Primitive *DirectCreatePrimitive(Geometry *geom,Material *material,DescriptorBindingSet *dbs,Pipeline *p)
 {
-    if(!geom||!material||!dbs||!p)return(nullptr);
+    if(!geom||!material||!dbs)return(nullptr);
 
     Material *current_material = dbs->GetMaterial();
     if (current_material != material)
@@ -212,7 +212,9 @@ Primitive *DirectCreatePrimitive(Geometry *geom,Material *material,DescriptorBin
     if(!dbs->HasRequiredContractBindings(material->GetBindingContract(), material->GetName().c_str()))
         return(nullptr);
 
-    if(*vil!=*p->GetVIL())
+    // VIL/pipeline consistency check: only performed when a pre-baked pipeline is provided.
+    // When p==null, the pipeline will be resolved lazily at render time via the late-resolve path.
+    if(p && *vil!=*p->GetVIL())
         return(nullptr);
 
     const uint32_t input_count=vil->GetVertexAttribCount();

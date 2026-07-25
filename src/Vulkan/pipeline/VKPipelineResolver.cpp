@@ -610,4 +610,63 @@ namespace hgl::graph
             return true;
         }
     }
+
+    void PipelineResolver::ClearCacheForDevice(VulkanDevice *device)
+    {
+        if(!device)
+            return;
+
+        auto ClearFromCache = [device](ValueArray<FinalPipelineCacheEntry> &cache)
+        {
+            int write = 0;
+            const int count = cache.GetCount();
+            for(int i = 0; i < count; ++i)
+            {
+                if(cache[i].device != device)
+                {
+                    if(write != i)
+                        cache[write] = cache[i];
+                    ++write;
+                }
+            }
+            while(cache.GetCount() > write)
+                cache.Delete(cache.GetCount() - 1);
+        };
+
+        ClearFromCache(g_monolithic_pipeline_cache);
+        ClearFromCache(g_gpl_link_pipeline_cache);
+
+        GLogInfo("[PipelineResolver] Cleared caches for device %p. Remaining: monolithic=%d gpl=%d",
+                 (void *)device,
+                 g_monolithic_pipeline_cache.GetCount(),
+                 g_gpl_link_pipeline_cache.GetCount());
+    }
+
+    PipelineResolverQueryStats PipelineResolver::QueryStats()
+    {
+        PipelineResolverQueryStats out{};
+        out.requests               = g_resolve_stats.requests;
+        out.invalid_request        = g_resolve_stats.invalid_request;
+        out.incomplete_key         = g_resolve_stats.incomplete_key;
+        out.fo_mismatch            = g_resolve_stats.fo_mismatch;
+        out.final_cache_hit        = g_resolve_stats.final_cache_hit;
+        out.final_cache_miss       = g_resolve_stats.final_cache_miss;
+        out.materialize_success    = g_resolve_stats.materialize_success;
+        out.materialize_failed     = g_resolve_stats.materialize_failed;
+        out.vi_library_hit         = g_resolve_stats.vi_library_hit;
+        out.vi_library_miss        = g_resolve_stats.vi_library_miss;
+        out.pr_library_hit         = g_resolve_stats.pr_library_hit;
+        out.pr_library_miss        = g_resolve_stats.pr_library_miss;
+        out.fs_library_hit         = g_resolve_stats.fs_library_hit;
+        out.fs_library_miss        = g_resolve_stats.fs_library_miss;
+        out.fo_library_hit         = g_resolve_stats.fo_library_hit;
+        out.fo_library_miss        = g_resolve_stats.fo_library_miss;
+        out.monolithic_cache_entries = static_cast<uint32_t>(g_monolithic_pipeline_cache.GetCount());
+        out.gpl_cache_entries        = static_cast<uint32_t>(g_gpl_link_pipeline_cache.GetCount());
+        out.vi_library_entries       = static_cast<uint32_t>(g_vi_library_cache.GetCount());
+        out.pr_library_entries       = static_cast<uint32_t>(g_pr_library_cache.GetCount());
+        out.fs_library_entries       = static_cast<uint32_t>(g_fs_library_cache.GetCount());
+        out.fo_library_entries       = static_cast<uint32_t>(g_fo_library_cache.GetCount());
+        return out;
+    }
 }//namespace hgl::graph

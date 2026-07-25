@@ -3,6 +3,7 @@
 #include<hgl/ecs/components/RenderableComponent.h>
 #include<hgl/ecs/support/PositionSourceSpec.h>
 #include<hgl/ecs/support/TransformPolicySpec.h>
+#include<hgl/vk/pipeline/VKInlinePipeline.h>
 #include<glm/glm.hpp>
 
 // Forward declarations to avoid heavy includes
@@ -45,6 +46,13 @@ namespace hgl::ecs
         hgl::graph::MaterialInstance* overrideMaterial;   // Optional material override (not owned)
         hgl::graph::DescriptorBindingSet* descriptorBindingSet; // Optional explicit binding set (not owned)
         hgl::graph::Pipeline* overridePipeline;           // Optional pipeline override (not owned)
+
+        // Late-resolve pipeline slot:
+        // Populated at render-time if primitive has no pre-baked pipeline.
+        hgl::graph::Pipeline* resolvedRuntimePipeline = nullptr; // (not owned)
+        bool hasPendingPipelinePreset = false;
+        hgl::graph::InlinePipeline pendingPipelinePreset = hgl::graph::InlinePipeline::Solid3D;
+
         PositionSourceSpec positionSourceSpec;            // Unified position source ingress policy
         TransformPolicySpec transformPolicySpec;           // Unified transform policy ingress
 
@@ -84,6 +92,27 @@ namespace hgl::ecs
         hgl::graph::Pipeline* GetOverridePipeline() const { return overridePipeline; }
         void ClearOverridePipeline() { overridePipeline = nullptr; }
 
+        // Late-resolve pipeline request:
+        // Call this when creating a Primitive without a pre-baked pipeline.
+        // The render path will call RenderPass::CreatePipeline(material, vil, preset) on first batch.
+        void RequestPipeline(const hgl::graph::InlinePipeline preset)
+        {
+            pendingPipelinePreset = preset;
+            hasPendingPipelinePreset = true;
+        }
+
+        bool HasPendingPipelinePreset() const { return hasPendingPipelinePreset; }
+        hgl::graph::InlinePipeline GetPendingPipelinePreset() const { return pendingPipelinePreset; }
+
+        void SetResolvedRuntimePipeline(hgl::graph::Pipeline *p)
+        {
+            resolvedRuntimePipeline = p;
+            if(p) hasPendingPipelinePreset = false;
+        }
+
+        hgl::graph::Pipeline* GetResolvedRuntimePipeline() const { return resolvedRuntimePipeline; }
+        void ClearResolvedRuntimePipeline() { resolvedRuntimePipeline = nullptr; hasPendingPipelinePreset = true; }
+
         void SetTransformPolicySpec(const TransformPolicySpec& spec) { transformPolicySpec = spec; }
         const TransformPolicySpec& GetTransformPolicySpec() const { return transformPolicySpec; }
         void SetPositionSourceSpec(PositionSourceSpec spec) { positionSourceSpec = spec; }
@@ -93,7 +122,7 @@ namespace hgl::ecs
         hgl::graph::MaterialInstance* GetMaterialInstance() const;
         hgl::graph::Material* GetMaterial() const;
 
-        // Pipeline access
+        // Pipeline access: override → primitive's pre-baked → runtime resolved
         hgl::graph::Pipeline* GetPipeline() const;
 
         // Bounding volume
