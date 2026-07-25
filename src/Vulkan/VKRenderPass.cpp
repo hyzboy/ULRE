@@ -77,6 +77,23 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,con
 
     VkPipeline graphicsPipeline = resolve_result.pipeline;
 
+    // Resolver may return an already-cached VkPipeline handle for identical final keys.
+    // Reuse existing wrapper to keep one owner per VkPipeline handle.
+    for(int i=0;i<pipeline_list.GetCount();++i)
+    {
+        Pipeline *existing_pipeline = pipeline_list[i];
+        if(existing_pipeline && VkPipeline(*existing_pipeline) == graphicsPipeline)
+        {
+            delete pd;
+            LogDebug("[RenderPass::CreatePipeline] Reuse existing Pipeline wrapper '%s' in RenderPass '%s' (VkPipeline=0x%llx, Pipeline*=0x%llx)",
+                     existing_pipeline->GetName().c_str(),
+                     this->name.c_str(),
+                     (unsigned long long)(uintptr_t)graphicsPipeline,
+                     (unsigned long long)(uintptr_t)existing_pipeline);
+            return existing_pipeline;
+        }
+    }
+
     Pipeline *pipeline = new Pipeline(name,*device,graphicsPipeline,vil,pd);
 
     const char *mode_name = resolve_result.materialize_mode == PipelineMaterializeMode::GraphicsPipelineLibrary
@@ -100,7 +117,7 @@ Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const Pipeline
 
     Pipeline *p=CreatePipeline(mtl->GetName(),pd,mtl->GetStageList(),mtl->GetPipelineLayout(),vil,gvf);
 
-    if(p)
+    if(p && !pipeline_list.Contains(p))
         pipeline_list.Add(p);
 
     return(p);
@@ -177,7 +194,7 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
 
     Pipeline *p = CreatePipeline(name, pd, ssci, layout, vil, gvf);
 
-    if(p)
+    if(p && !pipeline_list.Contains(p))
         pipeline_list.Add(p);
 
     return p;

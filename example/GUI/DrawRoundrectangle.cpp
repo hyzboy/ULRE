@@ -64,7 +64,6 @@ private:
     Sampler *           sampler             =nullptr;
     Material *          material            =nullptr;
     MaterialInstance *  material_instance   =nullptr;
-    Pipeline *          pipeline            =nullptr;
 
 private:
 
@@ -91,14 +90,6 @@ private:
         material=material_manager->CreateMaterial(mtl::MaterialPreset::RectTexture2D,&cfg);
 
         if(!material)
-            return(false);
-
-        //        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material, InlinePipeline::Solid2D) : nullptr;
-
-        if(!pipeline)
             return(false);
 
         texture=texture_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
@@ -153,7 +144,7 @@ private:
             return false;
         geometry_manager->Add(geometry);
 
-        Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
+        Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance, nullptr);
 
         if(!primitive)
             return false;
@@ -171,6 +162,7 @@ private:
             return false;
 
         prim_comp->SetPrimitive(primitive);
+        prim_comp->RequestPipeline(InlinePipeline::Solid2D);
         prim_comp->SetVisible(true);
 
         return true;

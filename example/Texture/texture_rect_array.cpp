@@ -81,8 +81,6 @@ private:
     Texture2DArray *    texture             = nullptr;
     Sampler *           sampler             = nullptr;
     Material *          material            = nullptr;
-
-    Pipeline *          pipeline            = nullptr;
     Primitive *         mesh_rect           = nullptr;
     DeviceBuffer *      mi_ssbo             = nullptr;
     std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
@@ -153,13 +151,6 @@ private:
         material=material_manager->CreateMaterial(mtl::MaterialPreset::RectTexture2DArray,&cfg);
 
         if(!material)
-            return(false);
-
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material, InlinePipeline::Solid2D) : nullptr;
-
-        if(!pipeline)
             return(false);
 
         if (!bindless_texture_manager)
@@ -269,7 +260,7 @@ private:
         mesh_rect = primitive_manager->CreatePrimitive(geometry,
                                                        material,
                                                        render_obj[0].dbs,
-                                                       pipeline);
+                                                       nullptr);
 
         if(!mesh_rect)
             return(false);
@@ -314,6 +305,7 @@ private:
 
             primitive->SetPrimitive(mesh_rect);
             primitive->SetDescriptorBindingSet(render_obj[i].dbs);
+            primitive->RequestPipeline(InlinePipeline::Solid2D);
             primitive->SetVisible(true);
         }
 

@@ -46,7 +46,6 @@ private:
     hgl::ecs::Entity *camera_entity = nullptr;
 
     Material *          material            =nullptr;
-    Pipeline *          pipeline            =nullptr;
 
     Geometry *         prim_axis           =nullptr;
     MaterialInstance *  material_instance   =nullptr;
@@ -73,11 +72,7 @@ private:
 
         material_instance=material_manager->CreateMaterialInstance(mtl::MaterialPreset::VertexColor3D,&cfg);
 
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material_instance, InlinePipeline::Solid3D) : nullptr;
-
-        return pipeline;
+        return material_instance;
     }
 
     bool CreateRenderObject()
@@ -127,7 +122,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        Primitive *ri=primitive_manager->CreatePrimitive(prim_axis,material_instance,pipeline);
+        Primitive *ri=primitive_manager->CreatePrimitive(prim_axis,material_instance,nullptr);
         if(!ri)
             return false;
 
@@ -141,6 +136,7 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitive(ri);
+        prim_comp->RequestPipeline(InlinePipeline::Solid3D);
         prim_comp->SetVisible(true);
 
         return true;

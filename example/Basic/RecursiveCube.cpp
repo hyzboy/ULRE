@@ -57,7 +57,6 @@ private:
     Material *material = nullptr;
     DescriptorBindingSet *dbs = nullptr;
     graph::DeviceBuffer *mi_ssbo = nullptr;
-    Pipeline *pipeline = nullptr;
 
     Geometry *geometry = nullptr;
     std::vector<Primitive *> primitives;
@@ -166,11 +165,7 @@ private:
         if (!dbs)
             dbs = new DescriptorBindingSet(material, material->GetDefaultVIL());
 
-        auto *render_target = render_context->GetCurrentRenderTarget();
-        auto *render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material, InlinePipeline::Solid3D) : nullptr;
-
-        return pipeline != nullptr;
+        return true;
     }
     bool CreateCubeGeometry()
     {
@@ -215,7 +210,7 @@ private:
                              bool animate,
                              EntityID parent_id)
     {
-        if (!ecs_context || !primitive_manager || !geometry || !dbs || !pipeline)
+        if (!ecs_context || !primitive_manager || !geometry || !dbs)
             return nullptr;
 
         auto *entity = ecs_context->CreateEntity<Entity>(name);
@@ -227,7 +222,7 @@ private:
         transform->SetLocalScale(glm::vec3(scale, scale, scale));
         transform->SetMovable(animate);
 
-        auto prim = primitive_manager->CreatePrimitive(geometry, material, dbs, pipeline);
+        auto prim = primitive_manager->CreatePrimitive(geometry, material, dbs, nullptr);
         if (!prim)
             return nullptr;
 
@@ -235,6 +230,7 @@ private:
 
         auto primitive_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         primitive_comp->SetPrimitive(prim);
+        primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
         primitive_comp->SetVisible(true);
 
         if (animate)
@@ -402,6 +398,5 @@ int os_main(int argc, os_char **argv)
 {
     return RunFramework<RecursiveCubeApp>(OS_TEXT("Recursive Cube (ECS)"), argc, argv, 1280, 720);
 }
-
 
 

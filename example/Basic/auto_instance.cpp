@@ -65,7 +65,6 @@ private:
     // 传统渲染资源（共享）
     MaterialInstance *  material_instance   =nullptr;
     Primitive *         prim_triangle       =nullptr;
-    Pipeline *          pipeline            =nullptr;
 
     // 存储所有创建的实体
     std::vector<Entity*> triangle_entities;
@@ -91,21 +90,14 @@ private:
                                             CoordinateSystem2D::NDC,
                                             mtl::WithLocalToWorld::With);
 
-            VILConfig vil_config;
-
-            vil_config.Add(VAN::Color,VF_V4UN8);
-
-            material_instance=material_manager->CreateMaterialInstance(mtl::MaterialPreset::VertexColor2D,&cfg,&vil_config);
+            const GeometryVertexFormat gvf = CreateAutoInstanceGeometryVertexFormat();
+            material_instance = material_manager->CreateMaterialInstance(mtl::MaterialPreset::VertexColor2D, &cfg, gvf);
         }
 
         if(!material_instance)
             return(false);
 
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material_instance, InlinePipeline::Solid2D) : nullptr;
-
-        return pipeline;
+        return true;
     }
 
     bool InitVBO()
@@ -136,7 +128,7 @@ private:
             return false;
         geometry_manager->Add(geometry);
 
-        prim_triangle = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
+        prim_triangle = primitive_manager->CreatePrimitive(geometry, material_instance, nullptr);
 
         if(!prim_triangle)
             return(false);
@@ -187,6 +179,7 @@ private:
             // RenderCollector会检测到这一点并自动使用Instance渲染
             auto primitive_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitive(prim_triangle);
+            primitive_comp->RequestPipeline(InlinePipeline::Solid2D);
             primitive_comp->SetVisible(true);
 
             // 保存实体引用

@@ -764,7 +764,22 @@ namespace hgl::ecs
             if (!pipeline && prim_comp && prim_comp->HasPendingPipelinePreset() && material && current_render_pass)
             {
                 auto* dbs = item->GetDescriptorBindingSet();
-                const graph::VIL* vil = dbs ? dbs->GetVIL() : material->GetDefaultVIL();
+                const graph::VIL* vil = nullptr;
+                if (dbs)
+                {
+                    vil = dbs->GetVIL();
+                }
+                else if (auto *mi = item->GetMaterialInstance())
+                {
+                    vil = mi->GetVIL();
+                }
+
+                if(!vil)
+                {
+                    LogError("[PrimitiveBatchPipeline] Late-resolve pipeline failed: missing effective VIL for material %s",
+                             material->GetName().c_str());
+                    continue;
+                }
 
                 graph::Pipeline* resolved = current_render_pass->CreatePipeline(
                     material, vil,

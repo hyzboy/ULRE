@@ -54,7 +54,6 @@ private:
     Material *material = nullptr;
     DescriptorBindingSet *dbs = nullptr;
     graph::DeviceBuffer *mi_ssbo = nullptr;
-    Pipeline *pipeline = nullptr;
     Sampler *sampler = nullptr;
     Texture2D *base_color_texture = nullptr;
     std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
@@ -116,6 +115,7 @@ public:
             transform->SetMovable(false);
 
             prim_comp->SetPrimitive(primitive);
+            prim_comp->RequestPipeline(InlinePipeline::Solid3D);
             prim_comp->SetVisible(true);
         }
 
@@ -212,11 +212,6 @@ public:
         if (!dbs)
             dbs = new DescriptorBindingSet(material, material->GetDefaultVIL());
 
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material, InlinePipeline::Solid3D) : nullptr;
-        if(!pipeline) return false;
-
         mesh_vdm = new VertexDataManager(
             buffer_manager,
             CreateStandardGeometryVertexFormat());
@@ -264,7 +259,7 @@ public:
                 if (!primitive_manager)
                     return false;
 
-                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material, dbs, pipeline);
+                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material, dbs, nullptr);
                 if(primitive) wall_meshes.push_back(primitive);
             }
         }
@@ -299,7 +294,7 @@ public:
                 if (!primitive_manager)
                     return false;
 
-                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material, dbs, pipeline);
+                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material, dbs, nullptr);
                 if(primitive) wall_meshes.push_back(primitive);
             }
         }
@@ -333,7 +328,7 @@ public:
                 if (!primitive_manager)
                     return false;
 
-                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material, dbs, pipeline);
+                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material, dbs, nullptr);
                 if(primitive) wall_meshes.push_back(primitive);
             }
         }
@@ -368,7 +363,7 @@ public:
                 if (!primitive_manager)
                     return false;
 
-                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material, dbs, pipeline);
+                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material, dbs, nullptr);
                 if(primitive) wall_meshes.push_back(primitive);
             }
         }

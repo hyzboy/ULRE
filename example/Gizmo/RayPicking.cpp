@@ -87,14 +87,12 @@ private:
     Material *          mtl_plane_grid      =nullptr;
     const VIL *         vil_plane_grid      =nullptr;
     DescriptorBindingSet *dbs_plane_grid    =nullptr;
-    Pipeline *          pipeline_plane_grid =nullptr;
     Geometry *          geom_plane_grid     =nullptr;
     graph::DeviceBuffer *mi_shared_ssbo      =nullptr;
 
     Material *          mtl_line            =nullptr;
     const VIL *         vil_line            =nullptr;
     DescriptorBindingSet *dbs_line          =nullptr;
-    Pipeline *          pipeline_line       =nullptr;
     Geometry *          geom_line           =nullptr;
     Primitive *         prim_line           =nullptr;
     VAB *               prim_line_vab       =nullptr;
@@ -135,11 +133,6 @@ private:
             if(!mtl_plane_grid)return(false);
             vil_plane_grid = mtl_plane_grid->CreateVIL(&vil_config);
             if(!vil_plane_grid)return(false);
-
-            auto* render_target = render_context->GetCurrentRenderTarget();
-            auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-            pipeline_plane_grid = render_pass ? render_pass->CreatePipeline(mtl_plane_grid, vil_plane_grid, InlinePipeline::Solid3D) : nullptr;
-            if(!pipeline_plane_grid)return(false);
         }
 
         {
@@ -148,13 +141,6 @@ private:
             if(!mtl_line)return(false);
             vil_line = mtl_line->CreateVIL(&vil_config);
             if(!vil_line)return(false);
-
-            auto* render_target = render_context->GetCurrentRenderTarget();
-            auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-            pipeline_line = render_pass ? render_pass->CreatePipeline(mtl_line, vil_line, InlinePipeline::Solid3D) : nullptr;
-
-            if(!pipeline_line)
-                return(false);
         }
 
         return(true);
@@ -341,7 +327,7 @@ private:
             Primitive* prim_plane = primitive_manager->CreatePrimitive(geom_plane_grid,
                                                                        mtl_plane_grid,
                                                                        dbs_plane_grid,
-                                                                       pipeline_plane_grid);
+                                                                       nullptr);
             if(!prim_plane)
                 return false;
 
@@ -355,6 +341,7 @@ private:
             auto primitive_comp = plane_grid_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitive(prim_plane);
             primitive_comp->SetDescriptorBindingSet(dbs_plane_grid);
+            primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             primitive_comp->SetVisible(true);
         }
 
@@ -370,7 +357,7 @@ private:
             prim_line = primitive_manager->CreatePrimitive(geom_line,
                                                            mtl_line,
                                                            dbs_line,
-                                                           pipeline_line);
+                                                           nullptr);
             if(!prim_line)
                 return false;
 
@@ -387,6 +374,7 @@ private:
             auto primitive_comp = ray_line_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitive(prim_line);
             primitive_comp->SetDescriptorBindingSet(dbs_line);
+            primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             primitive_comp->SetVisible(true);
         }
 

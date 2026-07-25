@@ -64,7 +64,6 @@ private:
     Sampler *           sampler             = nullptr;
     Material *          material            = nullptr;
     MaterialInstance *  material_instance   = nullptr;
-    Pipeline *          pipeline            = nullptr;
     Primitive *         prim_quad           = nullptr;
     std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
 
@@ -93,13 +92,6 @@ private:
         material=material_manager->CreateMaterial(mtl::MaterialPreset::PureTexture2D,&cfg);
 
         if(!material)
-            return(false);
-
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material, InlinePipeline::Solid2D) : nullptr;
-
-        if(!pipeline)
             return(false);
 
         auto* device = graphics_context->GetDevice();
@@ -155,7 +147,7 @@ private:
             return false;
         geometry_manager->Add(geometry);
 
-        prim_quad = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
+        prim_quad = primitive_manager->CreatePrimitive(geometry, material_instance, nullptr);
 
         if(!prim_quad)
             return(false);
@@ -193,6 +185,7 @@ private:
         quad_transform->SetMovable(false);
 
         quad_primitive->SetPrimitive(prim_quad);
+        quad_primitive->RequestPipeline(InlinePipeline::Solid2D);
         quad_primitive->SetVisible(true);
 
         return true;

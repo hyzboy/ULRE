@@ -96,7 +96,6 @@ private:
         Material *          material          = nullptr;
         const VIL *         vil               = nullptr;
 
-        Pipeline *          pipeline          = nullptr;
         DescriptorBindingSet *dbs[COLOR_COUNT]{};
         graph::DeviceBuffer * mi_ssbo = nullptr;
 
@@ -153,7 +152,7 @@ private:
 
     // Create per-color SSBO and DescriptorBindingSet array for a MaterialData.
     // Color data is written directly at slot i (no scratch MI needed).
-    bool InitMaterialForDBS(MaterialData *md, const char *tag, InlinePipeline inline_pipeline)
+    bool InitMaterialForDBS(MaterialData *md, const char *tag)
     {
         if (!md || !md->material)
             return false;
@@ -228,11 +227,7 @@ private:
                 md->dbs[c] = new DescriptorBindingSet(md->material, md->vil);
         }
 
-        auto *render_target = render_context->GetCurrentRenderTarget();
-        auto *render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-        md->pipeline = render_pass ? render_pass->CreatePipeline(md->material, md->vil, inline_pipeline) : nullptr;
-
-        return md->pipeline != nullptr;
+        return true;
     }
 
     bool InitSolidMDP()
@@ -254,7 +249,7 @@ private:
         if (!solid.material)
             return false;
 
-        return InitMaterialForDBS(&solid, "RenderBoundBox:SolidMIData", InlinePipeline::Solid3D);
+        return InitMaterialForDBS(&solid, "RenderBoundBox:SolidMIData");
     }
 
     bool InitWireMDP()
@@ -276,7 +271,7 @@ private:
         if (!wire.material)
             return false;
 
-        return InitMaterialForDBS(&wire, "RenderBoundBox:WireMIData", InlinePipeline::Solid3D);
+        return InitMaterialForDBS(&wire, "RenderBoundBox:WireMIData");
     }
 
     bool InitVDM()
@@ -323,7 +318,7 @@ private:
         Primitive *primitive = primitive_manager->CreatePrimitive(geometry,
                                                                   md->material,
                                                                   md->dbs[color],
-                                                                  md->pipeline);
+                                                                  nullptr);
 
         if(!primitive)
             return nullptr;
@@ -625,7 +620,7 @@ private:
         bbox_primitive = primitive_manager->CreatePrimitive(bbox_geometry,
                                                             wire.material,
                                                             wire.dbs[5],
-                                                            wire.pipeline);
+                                                            nullptr);
         return bbox_primitive != nullptr;
     }
 
@@ -669,6 +664,7 @@ private:
             rm_floor->transform->SetMovable(false);
 
             rm_floor->primitive_comp->SetPrimitive(rm_floor->primitive);
+            rm_floor->primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             rm_floor->primitive_comp->SetVisible(true);
         }
 
@@ -697,6 +693,7 @@ private:
 
             rm->primitive_comp->SetPrimitive(rm->primitive);
             rm->primitive_comp->SetDescriptorBindingSet(solid.dbs[index % COLOR_COUNT]);
+            rm->primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             rm->primitive_comp->SetVisible(true);
 
             ++index;
@@ -737,6 +734,7 @@ private:
 
             bbox->primitive_comp->SetPrimitive(bbox_primitive);
             bbox->primitive_comp->SetDescriptorBindingSet(wire.dbs[i % COLOR_COUNT]);
+            bbox->primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             bbox->primitive_comp->SetVisible(true);
 
             bounding_boxes.push_back(std::move(bbox));

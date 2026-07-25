@@ -74,14 +74,12 @@ private:
     const VIL *grid_vil = nullptr;
     DescriptorBindingSet *grid_dbs = nullptr;
     graph::DeviceBuffer *grid_mi_ssbo = nullptr;
-    Pipeline *grid_pipeline = nullptr;
     Geometry *grid_geometry = nullptr;
     Primitive *grid_primitive = nullptr;
 
     Material *cube_material = nullptr;
     DescriptorBindingSet *cube_dbs = nullptr;
     graph::DeviceBuffer *cube_mi_ssbo = nullptr;
-    Pipeline *cube_pipeline = nullptr;
     Geometry *cube_geometry = nullptr;
     Primitive *cube_primitive = nullptr;
 
@@ -102,11 +100,6 @@ private:
         auto *primitive_manager = graphics_context->GetPrimitiveManager();
         auto *device = graphics_context->GetDevice();
         if(!material_manager || !geometry_manager || !primitive_manager || !device)
-            return false;
-
-        auto *render_target = render_context->GetCurrentRenderTarget();
-        auto *render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-        if(!render_pass)
             return false;
 
         {
@@ -154,10 +147,6 @@ private:
             if (!grid_dbs)
                 grid_dbs = new DescriptorBindingSet(grid_material, grid_vil);
 
-            grid_pipeline = render_pass->CreatePipeline(grid_material, grid_vil, InlinePipeline::Solid3D);
-            if(!grid_pipeline)
-                return false;
-
             auto pc = std::make_unique<GeometryCreater>(
                 device,
                 CreateVertexLuminance2DGeometryVertexFormat());
@@ -174,7 +163,7 @@ private:
 
             geometry_manager->Add(grid_geometry);
 
-            grid_primitive = primitive_manager->CreatePrimitive(grid_geometry, grid_material, grid_dbs, grid_pipeline);
+            grid_primitive = primitive_manager->CreatePrimitive(grid_geometry, grid_material, grid_dbs, nullptr);
             if(!grid_primitive)
                 return false;
         }
@@ -215,10 +204,6 @@ private:
             if (!cube_dbs)
                 cube_dbs = new DescriptorBindingSet(cube_material, cube_material->GetDefaultVIL());
 
-            cube_pipeline = render_pass->CreatePipeline(cube_material, InlinePipeline::Solid3D);
-            if(!cube_pipeline)
-                return false;
-
             auto pc = std::make_unique<GeometryCreater>(
                 device,
                 CreateGizmo3DGeometryVertexFormat());
@@ -234,7 +219,7 @@ private:
 
             geometry_manager->Add(cube_geometry);
 
-            cube_primitive = primitive_manager->CreatePrimitive(cube_geometry, cube_material, cube_dbs, cube_pipeline);
+            cube_primitive = primitive_manager->CreatePrimitive(cube_geometry, cube_material, cube_dbs, nullptr);
             if(!cube_primitive)
                 return false;
         }
@@ -256,6 +241,7 @@ private:
 
         auto plane_primitive_comp = plane_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         plane_primitive_comp->SetPrimitive(grid_primitive);
+        plane_primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
         plane_primitive_comp->SetVisible(true);
 
         cube_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("Cube");
@@ -267,6 +253,7 @@ private:
 
         auto cube_primitive_comp = cube_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         cube_primitive_comp->SetPrimitive(cube_primitive);
+        cube_primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
         cube_primitive_comp->SetVisible(true);
 
         return true;

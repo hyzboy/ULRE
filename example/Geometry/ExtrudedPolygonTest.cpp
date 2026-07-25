@@ -48,7 +48,6 @@ private:
     hgl::ecs::Entity *camera_entity = nullptr;
 
     Material *          material            = nullptr;
-    Pipeline *          pipeline            = nullptr;
     DescriptorBindingSet *dbs              = nullptr;
     graph::DeviceBuffer *mi_ssbo           = nullptr;
 
@@ -109,11 +108,7 @@ private:
         if (!dbs)
             dbs = new DescriptorBindingSet(material, material->GetDefaultVIL());
 
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material, material->GetDefaultVIL(), InlinePipeline::Solid3D) : nullptr;
-
-        return pipeline != nullptr;
+        return true;
     }
 
     bool CreateRenderObjects()
@@ -197,7 +192,7 @@ private:
 
     bool CreateMeshEntity(const char *name, Geometry *geometry, const glm::vec3 &pos)
     {
-        if(!ecs_context || !geometry || !dbs || !pipeline)
+        if(!ecs_context || !geometry || !dbs)
             return false;
 
         auto* render_context = GetRenderContext();
@@ -212,7 +207,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        Primitive *mesh = primitive_manager->CreatePrimitive(geometry, material, dbs, pipeline);
+        Primitive *mesh = primitive_manager->CreatePrimitive(geometry, material, dbs, nullptr);
         if(!mesh)
             return false;
 
@@ -226,6 +221,7 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitive(mesh);
+        prim_comp->RequestPipeline(InlinePipeline::Solid3D);
         prim_comp->SetVisible(true);
 
         return true;

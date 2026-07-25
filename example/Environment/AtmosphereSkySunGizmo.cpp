@@ -49,7 +49,6 @@ private:
     std::shared_ptr<hgl::ecs::EnvironmentSystem> environment_system;
     std::shared_ptr<hgl::graph::SunDirectionControlSystem> sun_gizmo_system;
 
-    Pipeline *mtl_pipeline = nullptr;
     Geometry *prim_sky_sphere = nullptr;
     Material *mtl_sky = nullptr;
     DescriptorBindingSet *sky_dbs = nullptr;
@@ -78,11 +77,7 @@ private:
         if (!sky_dbs)
             return false;
 
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-        mtl_pipeline = render_pass ? render_pass->CreatePipeline(mtl_sky, mtl_sky->GetDefaultVIL(), InlinePipeline::Sky) : nullptr;
-
-        return mtl_pipeline != nullptr;
+        return true;
     }
 
     bool CreateRenderObject()
@@ -119,7 +114,7 @@ private:
 
     bool InitECSScene()
     {
-        if(!ecs_context || !prim_sky_sphere || !sky_dbs || !mtl_pipeline)
+        if(!ecs_context || !prim_sky_sphere || !sky_dbs)
             return false;
 
         auto* render_context = GetRenderContext();
@@ -134,7 +129,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        Primitive *ri = primitive_manager->CreatePrimitive(prim_sky_sphere, mtl_sky, sky_dbs, mtl_pipeline);
+        Primitive *ri = primitive_manager->CreatePrimitive(prim_sky_sphere, mtl_sky, sky_dbs, nullptr);
         if(!ri)
             return false;
 
@@ -148,6 +143,7 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitive(ri);
+        prim_comp->RequestPipeline(InlinePipeline::Sky);
         prim_comp->SetVisible(true);
 
         return true;

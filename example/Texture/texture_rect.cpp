@@ -67,7 +67,6 @@ private:
     Sampler *           sampler             = nullptr;
     Material *          material            = nullptr;
     MaterialInstance *  material_instance   = nullptr;
-    Pipeline *          pipeline            = nullptr;
     Primitive *         prim_rect           = nullptr;
     std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
 
@@ -97,13 +96,6 @@ private:
         material=material_manager->CreateMaterial(mtl::MaterialPreset::RectTexture2D,&cfg);
 
         if(!material)
-            return(false);
-
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-        pipeline = render_pass ? render_pass->CreatePipeline(material, InlinePipeline::Solid2D) : nullptr;
-
-        if(!pipeline)
             return(false);
 
         if (!bindless_texture_manager)
@@ -155,7 +147,7 @@ private:
             return false;
         geometry_manager->Add(geometry);
 
-        prim_rect = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
+        prim_rect = primitive_manager->CreatePrimitive(geometry, material_instance, nullptr);
 
         if(!prim_rect)
             return(false);
@@ -193,6 +185,7 @@ private:
         rect_transform->SetMovable(false);
 
         rect_primitive->SetPrimitive(prim_rect);
+        rect_primitive->RequestPipeline(InlinePipeline::Solid2D);
         rect_primitive->SetVisible(true);
 
         return true;
