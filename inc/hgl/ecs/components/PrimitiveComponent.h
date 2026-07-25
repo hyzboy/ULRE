@@ -90,15 +90,7 @@ namespace hgl::ecs
         hgl::graph::MaterialInstance* GetOverrideMaterial() const { return overrideMaterial; }
         void ClearOverrideMaterial() { SetOverrideMaterial(nullptr); }
 
-        void SetDescriptorBindingSet(hgl::graph::DescriptorBindingSet* set)
-        {
-            if (descriptorBindingSet != set)
-            {
-                InvalidateResolvedRuntimePipeline();
-            }
-
-            descriptorBindingSet = set;
-        }
+        void SetDescriptorBindingSet(hgl::graph::DescriptorBindingSet* set);
         hgl::graph::DescriptorBindingSet* GetDescriptorBindingSet() const;
         void ClearDescriptorBindingSet() { SetDescriptorBindingSet(nullptr); }
 

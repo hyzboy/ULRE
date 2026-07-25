@@ -11,6 +11,7 @@
 #include<hgl/ecs/support/VisibilityDataStorage.h>
 #include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/graph/CameraInfo.h>
+#include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
@@ -70,6 +71,22 @@ namespace hgl::ecs
             }
         }
 
+        void ResetMaterialRuntimeForLegacy(const std::shared_ptr<MaterialComponent> &material_comp)
+        {
+            if (!material_comp)
+                return;
+
+            material_comp->program = nullptr;
+            material_comp->program_dirty = true;
+            material_comp->material_instance_row = uint32_t(-1);
+            material_comp->texture_layer_row = uint32_t(-1);
+            material_comp->data_index_row = uint32_t(-1);
+            material_comp->bindings_dirty = true;
+            material_comp->resources_dirty = true;
+            material_comp->valid = false;
+            material_comp->recipe_hash = 0;
+        }
+
         void SyncLegacyMaterialRuntime(ECSContext *world,
                                        const std::shared_ptr<PrimitiveComponent> &primitive_comp,
                                        const std::shared_ptr<MaterialComponent> &material_comp)
@@ -77,19 +94,43 @@ namespace hgl::ecs
             if (!world || !primitive_comp || !material_comp)
                 return;
 
-            if (!material_comp->program)
+            auto *current_program = primitive_comp->GetMaterialProgram();
+            if (!current_program)
             {
-                if (auto *program = primitive_comp->GetMaterialProgram())
-                {
-                    material_comp->program = program;
-                    material_comp->program_dirty = false;
-                }
+                ResetMaterialRuntimeForLegacy(material_comp);
+                return;
             }
 
-            auto *program = material_comp->program;
+            if (material_comp->program != current_program)
+            {
+                material_comp->program = current_program;
+                material_comp->program_dirty = false;
+                material_comp->material_instance_row = uint32_t(-1);
+                material_comp->texture_layer_row = uint32_t(-1);
+                material_comp->data_index_row = uint32_t(-1);
+                material_comp->bindings_dirty = true;
+                material_comp->resources_dirty = true;
+                material_comp->valid = false;
+            }
+
+            auto *program = current_program;
             auto *dbs = primitive_comp->GetDescriptorBindingSet();
-            if (!program || !dbs)
+            if (!program)
+            {
+                ResetMaterialRuntimeForLegacy(material_comp);
                 return;
+            }
+
+            if (!dbs)
+            {
+                material_comp->material_instance_row = uint32_t(-1);
+                material_comp->texture_layer_row = uint32_t(-1);
+                material_comp->data_index_row = uint32_t(-1);
+                material_comp->bindings_dirty = true;
+                material_comp->resources_dirty = true;
+                material_comp->valid = false;
+                return;
+            }
 
             if (auto rdbs = world->GetSystem<RenderDescriptorBindingSystem>())
             {
@@ -176,8 +217,11 @@ namespace hgl::ecs
             return false;
 
         graph::PrimitiveType primitive_type = graph::PrimitiveType::Triangles;
-        if (auto *legacy_program = primitive_comp->GetMaterialProgram())
-            primitive_type = legacy_program->GetPrimitiveType();
+        if (auto *primitive = primitive_comp->GetPrimitive())
+        {
+            if (auto *primitive_program = primitive->GetMaterialProgram())
+                primitive_type = primitive_program->GetPrimitiveType();
+        }
 
         graph::mtl::MaterialPreset preset{};
         bool resolved_by_model = false;
@@ -411,7 +455,11 @@ namespace hgl::ecs
                 material_comp = entity->AddComponent<MaterialComponent>();
 
             if (material_comp && !primitiveComp->HasMaterialRecipe())
+            {
+                if (material_comp->recipe_hash != 0)
+                    ResetMaterialRuntimeForLegacy(material_comp);
                 SyncLegacyMaterialRuntime(world, primitiveComp, material_comp);
+            }
 
             if (material_comp && primitiveComp->HasMaterialRecipe())
             {

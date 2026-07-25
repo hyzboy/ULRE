@@ -6,6 +6,7 @@
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/math/geometry/BoundingVolumes.h>
+#include<hgl/log/Log.h>
 
 namespace hgl::ecs
 {
@@ -54,6 +55,12 @@ namespace hgl::ecs
 
     void PrimitiveComponent::SetOverrideMaterial(hgl::graph::MaterialInstance* mi)
     {
+        if (hasMaterialRecipe && mi)
+        {
+            GLogWarning("[PrimitiveComponent] Ignore SetOverrideMaterial while recipe runtime is enabled.");
+            return;
+        }
+
         if (overrideMaterial != mi)
         {
             InvalidateResolvedRuntimePipeline();
@@ -65,6 +72,9 @@ namespace hgl::ecs
     void PrimitiveComponent::SetMaterialRecipe(const hgl::graph::mtl::MaterialRecipe &recipe)
     {
         InvalidateResolvedRuntimePipeline();
+        // Recipe runtime is exclusive with legacy per-node overrides.
+        overrideMaterial = nullptr;
+        descriptorBindingSet = nullptr;
         materialRecipe = recipe;
         hasMaterialRecipe = true;
     }
@@ -96,6 +106,9 @@ namespace hgl::ecs
 
     hgl::graph::MaterialInstance* PrimitiveComponent::GetMaterialInstance() const
     {
+        if (hasMaterialRecipe)
+            return nullptr;
+
         // Return override material if set, otherwise primitive's material
         if (overrideMaterial)
             return overrideMaterial;
@@ -108,6 +121,9 @@ namespace hgl::ecs
 
     hgl::graph::DescriptorBindingSet* PrimitiveComponent::GetDescriptorBindingSet() const
     {
+        if (hasMaterialRecipe)
+            return nullptr;
+
         if (descriptorBindingSet)
             return descriptorBindingSet;
 
@@ -119,6 +135,9 @@ namespace hgl::ecs
 
     hgl::graph::MaterialProgram* PrimitiveComponent::GetMaterialProgram() const
     {
+        if (hasMaterialRecipe)
+            return nullptr;
+
         if (overrideMaterial)
             return overrideMaterial->GetMaterialProgram();
 
@@ -203,5 +222,21 @@ namespace hgl::ecs
         resolvedRuntimePipeline = nullptr;
         resolvedRuntimeRenderPass = nullptr;
         hasPendingPipelinePreset = false;
+    }
+
+    void PrimitiveComponent::SetDescriptorBindingSet(hgl::graph::DescriptorBindingSet* set)
+    {
+        if (hasMaterialRecipe && set)
+        {
+            GLogWarning("[PrimitiveComponent] Ignore SetDescriptorBindingSet while recipe runtime is enabled.");
+            return;
+        }
+
+        if (descriptorBindingSet != set)
+        {
+            InvalidateResolvedRuntimePipeline();
+        }
+
+        descriptorBindingSet = set;
     }
 }//namespace hgl::ecs
