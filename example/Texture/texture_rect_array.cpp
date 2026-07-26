@@ -102,11 +102,11 @@ private:
         if (!render_context)
             return false;
 
-        auto* graphics_context = render_context->GetGraphicsContext();
+        auto* graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return false;
 
-        auto* tex_manager = graphics_context->GetTextureManager();
+        auto* tex_manager = GetManager<TextureManager>();
         if (!tex_manager)
             return false;
 
@@ -137,12 +137,12 @@ private:
         if (!render_context)
             return false;
 
-        auto* graphics_context = render_context->GetGraphicsContext();
+        auto* graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return false;
 
-        auto* material_manager = graphics_context->GetMaterialManager();
-        auto* sampler_manager = graphics_context->GetSamplerManager();
+        auto* material_manager = GetManager<MaterialManager>();
+        auto* sampler_manager = GetManager<SamplerManager>();
         auto* device = graphics_context->GetDevice();
         if (!material_manager || !sampler_manager || !device)
             return false;
@@ -156,17 +156,7 @@ private:
         if(!material)
             return(false);
 
-        if (!bindless_texture_manager)
-        {
-            bindless_texture_manager = std::make_unique<BindlessTextureManager>();
-            if (!bindless_texture_manager->Init(VkDevice(*device)))
-                return false;
-
-            render_context->SetBindlessTextureManager(bindless_texture_manager.get());
-            material_manager->SetBindlessLayout(bindless_texture_manager->GetLayout());
-        }
-
-        auto *buffer_manager = graphics_context->GetBufferManager();
+        auto *buffer_manager = GetManager<BufferManager>();
         if (!buffer_manager)
             return false;
 
@@ -223,14 +213,14 @@ private:
         if (!render_context)
             return false;
 
-        auto* graphics_context = render_context->GetGraphicsContext();
+        auto* graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return false;
 
         auto* device = graphics_context->GetDevice();
-        auto* buffer_manager = graphics_context->GetBufferManager();
-        auto* geometry_manager = graphics_context->GetGeometryManager();
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        auto* buffer_manager = GetManager<BufferManager>();
+        auto* geometry_manager = GetManager<GeometryManager>();
+        auto* primitive_manager = GetManager<PrimitiveManager>();
         if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
             return false;
 

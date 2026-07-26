@@ -1790,7 +1790,7 @@ namespace hgl::ecs
         // declare the bindless texture-layer indirection table semantic.
         if (auto *render_context = context->GetRenderContext())
         {
-            auto *bindless_mgr = render_context->GetBindlessTextureManager();
+            auto *bindless_mgr = render_context->GetManager<graph::BindlessTextureManager>();
             auto *current_cmd = cmd ? cmd : render_context->GetCurrentRenderCmdBuffer();
 
             if (bindless_mgr && bindless_mgr->IsValid() && current_cmd)

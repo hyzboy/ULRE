@@ -65,7 +65,7 @@ private:
 
     Texture2D *         texture             = nullptr;
     Sampler *           sampler             = nullptr;
-    MaterialProgram *          material            = nullptr;
+    MaterialProgram *   material            = nullptr;
     Primitive *         prim_rect           = nullptr;
     std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
 
@@ -73,19 +73,10 @@ private:
 
     bool InitMaterial()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        auto* sampler_manager = graphics_context->GetSamplerManager();
-        auto* tex_manager = graphics_context->GetTextureManager();
-        auto* device = graphics_context->GetDevice();
-        if (!material_manager || !sampler_manager || !tex_manager || !device)
+        auto* material_manager = GetManager<MaterialManager>();
+        auto* sampler_manager = GetManager<SamplerManager>();
+        auto* tex_manager = GetManager<TextureManager>();
+        if (!material_manager || !sampler_manager || !tex_manager )
             return false;
 
         mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
@@ -96,16 +87,6 @@ private:
 
         if(!material)
             return(false);
-
-        if (!bindless_texture_manager)
-        {
-            bindless_texture_manager = std::make_unique<BindlessTextureManager>();
-            if (!bindless_texture_manager->Init(VkDevice(*device)))
-                return false;
-
-            render_context->SetBindlessTextureManager(bindless_texture_manager.get());
-            material_manager->SetBindlessLayout(bindless_texture_manager->GetLayout());
-        }
 
         texture=tex_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
 
@@ -122,14 +103,14 @@ private:
         if (!render_context)
             return false;
 
-        auto* graphics_context = render_context->GetGraphicsContext();
+        auto* graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return false;
 
         auto* device = graphics_context->GetDevice();
-        auto* buffer_manager = graphics_context->GetBufferManager();
-        auto* geometry_manager = graphics_context->GetGeometryManager();
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        auto* buffer_manager = GetManager<BufferManager>();
+        auto* geometry_manager = GetManager<GeometryManager>();
+        auto* primitive_manager = GetManager<PrimitiveManager>();
         if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
             return false;
 

@@ -58,15 +58,7 @@ private:
         if (!geom_plane_grid)
             return false;
 
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
+        auto* material_manager = GetManager<MaterialManager>();
         if (!material_manager)
             return false;
 
@@ -82,16 +74,8 @@ private:
 
     bool CreateRenderObject()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* device = graphics_context->GetDevice();
-        auto* geometry_manager = graphics_context->GetGeometryManager();
+        auto* device = GetDevice();
+        auto* geometry_manager = GetManager<GeometryManager>();
         if (!device || !geometry_manager)
             return false;
 
@@ -123,15 +107,7 @@ private:
 
     bool Add(const char *name,const uint32_t struct_index,const glm::quat &rotation)
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        auto* primitive_manager = GetManager<PrimitiveManager>();
         if (!primitive_manager)
             return false;
 
@@ -207,7 +183,7 @@ private:
         if (!graphics_context)
             return false;
 
-        auto *buffer_manager = graphics_context->GetBufferManager();
+        auto *buffer_manager = GetManager<BufferManager>();
         if (!buffer_manager)
             return false;
 

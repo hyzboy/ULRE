@@ -67,12 +67,12 @@ private:
         if (!render_context)
             return false;
 
-        auto* graphics_context = render_context->GetGraphicsContext();
+        auto* graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return false;
 
-        auto* material_manager = graphics_context->GetMaterialManager();
-        auto* buffer_manager   = graphics_context->GetBufferManager();
+        auto* material_manager = GetManager<MaterialManager>();
+        auto* buffer_manager   = GetManager<BufferManager>();
         if (!material_manager || !buffer_manager)
             return false;
 
@@ -124,7 +124,7 @@ private:
             return false;
 
         auto* device = graphics_context->GetDevice();
-        auto* geometry_manager = graphics_context->GetGeometryManager();
+        auto* geometry_manager = GetManager<GeometryManager>();
         if (!device || !geometry_manager)
             return false;
 
@@ -201,11 +201,11 @@ private:
         if (!render_context)
             return false;
 
-        auto* graphics_context = render_context->GetGraphicsContext();
+        auto* graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return false;
 
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        auto* primitive_manager = GetManager<PrimitiveManager>();
         if (!primitive_manager)
             return false;
 

@@ -151,26 +151,16 @@ public:
         if (!graphics_context)
             return false;
 
-        auto* material_manager = graphics_context->GetMaterialManager();
-        auto* texture_manager = graphics_context->GetTextureManager();
-        auto* sampler_manager = graphics_context->GetSamplerManager();
+        auto* material_manager = GetManager<MaterialManager>();
+        auto* texture_manager = GetManager<TextureManager>();
+        auto* sampler_manager = GetManager<SamplerManager>();
         auto* device = graphics_context->GetDevice();
         if (!material_manager)
             return false;
         if (!texture_manager || !sampler_manager || !device)
             return false;
 
-        if (!bindless_texture_manager)
-        {
-            bindless_texture_manager = std::make_unique<BindlessTextureManager>();
-            if (!bindless_texture_manager->Init(VkDevice(*device)))
-                return false;
-
-            render_context->SetBindlessTextureManager(bindless_texture_manager.get());
-            material_manager->SetBindlessLayout(bindless_texture_manager->GetLayout());
-        }
-
-        auto* geometry_manager = graphics_context->GetGeometryManager();
+        auto* geometry_manager = GetManager<GeometryManager>();
         if (!geometry_manager)
             return false;
 
@@ -199,7 +189,7 @@ public:
         // Bindless registration deferred until ECS context is ready.
 
         // Create external SSBO for Standard material data; runtime binding is driven by recipe authoring.
-        auto *buffer_manager = graphics_context->GetBufferManager();
+        auto *buffer_manager = GetManager<BufferManager>();
         if (!buffer_manager)
             return false;
 
@@ -276,7 +266,7 @@ public:
             if(geometry)
             {
                 geometry_manager->Add(geometry);
-                auto* primitive_manager = graphics_context->GetPrimitiveManager();
+                auto* primitive_manager = GetManager<PrimitiveManager>();
                 if (!primitive_manager)
                     return false;
 
@@ -311,7 +301,7 @@ public:
             if(geometry)
             {
                 geometry_manager->Add(geometry);
-                auto* primitive_manager = graphics_context->GetPrimitiveManager();
+                auto* primitive_manager = GetManager<PrimitiveManager>();
                 if (!primitive_manager)
                     return false;
 
@@ -345,7 +335,7 @@ public:
             if(geometry)
             {
                 geometry_manager->Add(geometry);
-                auto* primitive_manager = graphics_context->GetPrimitiveManager();
+                auto* primitive_manager = GetManager<PrimitiveManager>();
                 if (!primitive_manager)
                     return false;
 
@@ -380,7 +370,7 @@ public:
             if(geometry)
             {
                 geometry_manager->Add(geometry);
-                auto* primitive_manager = graphics_context->GetPrimitiveManager();
+                auto* primitive_manager = GetManager<PrimitiveManager>();
                 if (!primitive_manager)
                     return false;
 

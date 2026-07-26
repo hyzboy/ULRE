@@ -7,6 +7,7 @@
 #include<hgl/ecs/support/PipelineMaterialRenderer.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/ecs/core/MaterialBatch.h>
+#include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
@@ -15,6 +16,7 @@
 #include<hgl/vk/VKMaterialProgram.h>
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
+#include<hgl/vk/VKBindlessTextureManager.h>
 #include<iostream>
 
 namespace hgl::ecs
@@ -233,7 +235,7 @@ namespace hgl::ecs
 
         if (render_context)
         {
-            auto *bindless_mgr = render_context->GetBindlessTextureManager();
+            auto *bindless_mgr = render_context->GetManager<graph::BindlessTextureManager>();
             if (bindless_mgr && bindless_mgr->IsValid())
             {
                 bool needs_bindless_set = false;

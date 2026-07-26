@@ -81,7 +81,7 @@ private:
         if (!graphics_context)
             return false;
 
-        auto* material_manager = graphics_context->GetMaterialManager();
+        auto* material_manager = GetManager<MaterialManager>();
         if (!material_manager)
             return false;
 
@@ -105,7 +105,7 @@ private:
         if (!graphics_context)
             return false;
 
-        auto* geometry_manager = graphics_context->GetGeometryManager();
+        auto* geometry_manager = GetManager<GeometryManager>();
         if (!geometry_manager)
             return false;
 
@@ -141,7 +141,7 @@ private:
         if (!graphics_context)
             return false;
 
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        auto* primitive_manager = GetManager<PrimitiveManager>();
         if (!primitive_manager)
             return false;
 
@@ -173,7 +173,7 @@ private:
         if (!graphics_context)
             return false;
 
-        auto* buffer_manager = graphics_context->GetBufferManager();
+        auto* buffer_manager = GetManager<BufferManager>();
         if (!buffer_manager)
             return false;
         bool has_struct_binding = false;

@@ -302,13 +302,13 @@ public:
         if (!rc)
             return LogStageFail("OffscreenPass::BuildSphere", "render context is null");
 
-        GraphicsContext *gc = rc->GetGraphicsContext();
+        GraphicsContext *gc = owner->GetGraphicsContext();
         if (!gc)
             return LogStageFail("OffscreenPass::BuildSphere", "graphics context is null");
 
-        auto *mm = gc->GetMaterialManager();
-        auto *gm = gc->GetGeometryManager();
-        auto *pm = gc->GetPrimitiveManager();
+        auto *mm = owner->GetManager<MaterialManager>();
+        auto *gm = owner->GetManager<GeometryManager>();
+        auto *pm = owner->GetManager<PrimitiveManager>();
         auto *device = gc->GetDevice();
         if (!mm || !gm || !pm || !device)
             return LogStageFail("OffscreenPass::BuildSphere", "required managers/device missing");
@@ -499,15 +499,15 @@ private:
         if (!rc)
             return LogStageFail("RenderToTextureApp::CreateCube", "render context is null");
 
-        auto *gc = rc->GetGraphicsContext();
+        auto *gc = GetGraphicsContext();
         if (!gc)
             return LogStageFail("RenderToTextureApp::CreateCube", "graphics context is null");
 
-        auto *mm = gc->GetMaterialManager();
-        auto *sm = gc->GetSamplerManager();
-        auto *tm = gc->GetTextureManager();
-        auto *gm = gc->GetGeometryManager();
-        auto *pm = gc->GetPrimitiveManager();
+        auto *mm = GetManager<MaterialManager>();
+        auto *sm = GetManager<SamplerManager>();
+        auto *tm = GetManager<TextureManager>();
+        auto *gm = GetManager<GeometryManager>();
+        auto *pm = GetManager<PrimitiveManager>();
         auto *device = gc->GetDevice();
         if (!mm || !sm || !tm || !gm || !pm || !device)
             return LogStageFail("RenderToTextureApp::CreateCube", "required managers/device missing");
@@ -538,16 +538,6 @@ private:
 
         if (!base_tex || !normal_tex || !roughness_tex)
             return LogStageFail("RenderToTextureApp::CreateCube", "required textures missing");
-
-        if (!bindless_texture_manager)
-        {
-            bindless_texture_manager = std::make_unique<BindlessTextureManager>();
-            if (!bindless_texture_manager->Init(VkDevice(*device)))
-                return LogStageFail("RenderToTextureApp::CreateCube", "BindlessTextureManager::Init failed");
-
-            rc->SetBindlessTextureManager(bindless_texture_manager.get());
-            mm->SetBindlessLayout(bindless_texture_manager->GetLayout());
-        }
 
         LogTextureInfo("onscreen_bind_basecolor", base_tex);
 
@@ -622,11 +612,11 @@ private:
         if (!rc)
             return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "render context is null");
 
-        auto *gc = rc->GetGraphicsContext();
+        auto *gc = GetGraphicsContext();
         if (!gc)
             return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "graphics context is null");
 
-        auto *buffer_manager = gc->GetBufferManager();
+        auto *buffer_manager = GetManager<BufferManager>();
         if (!buffer_manager)
             return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "buffer manager is null");
 

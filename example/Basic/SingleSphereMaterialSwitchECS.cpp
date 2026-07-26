@@ -118,11 +118,11 @@ private:
         if (!render_context)
             return LogFail("InitTextures", "render context is null");
 
-        auto *graphics_context = render_context->GetGraphicsContext();
+        auto *graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return LogFail("InitTextures", "graphics context is null");
 
-        auto *texture_manager = graphics_context->GetTextureManager();
+        auto *texture_manager = GetManager<TextureManager>();
         if (!texture_manager)
             return LogFail("InitTextures", "texture manager is null");
 
@@ -165,12 +165,12 @@ private:
         if (!render_context)
             return LogFail("InitMaterials", "render context is null");
 
-        auto *graphics_context = render_context->GetGraphicsContext();
+        auto *graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return LogFail("InitMaterials", "graphics context is null");
 
-        auto *material_manager = graphics_context->GetMaterialManager();
-        auto *sampler_manager = graphics_context->GetSamplerManager();
+        auto *material_manager = GetManager<MaterialManager>();
+        auto *sampler_manager = GetManager<SamplerManager>();
         auto *device = graphics_context->GetDevice();
         if (!material_manager || !sampler_manager || !device)
             return LogFail("InitMaterials", "required manager/device is null");
@@ -191,16 +191,6 @@ private:
         if (!sampler)
             return LogFail("InitMaterials", "failed to create sampler");
 
-        if (!bindless_texture_manager)
-        {
-            bindless_texture_manager = new BindlessTextureManager();
-            if (!bindless_texture_manager->Init(VkDevice(*device)))
-                return LogFail("InitMaterials", "failed to init bindless texture manager");
-
-            render_context->SetBindlessTextureManager(bindless_texture_manager);
-            material_manager->SetBindlessLayout(bindless_texture_manager->GetLayout());
-        }
-
         return true;
     }
 
@@ -210,11 +200,11 @@ private:
         if (!render_context)
             return LogFail("InitGeometry", "render context is null");
 
-        auto *graphics_context = render_context->GetGraphicsContext();
+        auto *graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return LogFail("InitGeometry", "graphics context is null");
 
-        auto *buffer_manager = graphics_context->GetBufferManager();
+        auto *buffer_manager = GetManager<BufferManager>();
         if (!buffer_manager)
             return LogFail("InitGeometry", "buffer manager is null");
 
@@ -302,8 +292,8 @@ private:
         if (!graphics_context)
             return LogFail("InitRenderResources", "graphics context is null");
 
-        auto *buffer_manager = graphics_context->GetBufferManager();
-        auto *primitive_manager = graphics_context->GetPrimitiveManager();
+        auto *buffer_manager = GetManager<BufferManager>();
+        auto *primitive_manager = GetManager<PrimitiveManager>();
         if (!buffer_manager || !primitive_manager)
             return LogFail("InitRenderResources", "required runtime manager is null");
 

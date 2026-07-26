@@ -102,7 +102,7 @@ private:
         if (!graphics_context)
             return false;
 
-        auto* material_manager = graphics_context->GetMaterialManager();
+        auto* material_manager = GetManager<MaterialManager>();
         if (!material_manager)
             return false;
 
@@ -146,8 +146,8 @@ private:
             return false;
 
         auto* device = graphics_context->GetDevice();
-        auto* buffer_manager = graphics_context->GetBufferManager();
-        auto* geometry_manager = graphics_context->GetGeometryManager();
+        auto* buffer_manager = GetManager<BufferManager>();
+        auto* geometry_manager = GetManager<GeometryManager>();
         if (!device || !buffer_manager || !geometry_manager)
             return false;
 
@@ -195,7 +195,7 @@ private:
         for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
         {
             // 为每个三角形创建Primitive（共享Geometry/MaterialProgram，由 ECS 绑定不同结构体行）
-            auto* primitive_manager = graphics_context->GetPrimitiveManager();
+            auto* primitive_manager = GetManager<PrimitiveManager>();
             if (!primitive_manager)
                 return false;
 
@@ -295,7 +295,7 @@ private:
         auto* graphics_context = render_context->GetGraphicsContext();
         if (!graphics_context) return false;
 
-        auto* buffer_manager  = graphics_context->GetBufferManager();
+        auto* buffer_manager  = GetManager<BufferManager>();
         if (!buffer_manager) return false;
 
         if (!slot_allocator.Init(DRAW_OBJECT_COUNT))

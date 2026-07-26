@@ -4,22 +4,16 @@
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKVertexInput.h>
 #include<hgl/vk/VKVertexInputLayout.h>
+#include <hgl/graph/core/GraphicsContext.h>
 #include<hgl/mtl/new/NewDescriptorSetLayoutFactory.h>
-#include<hgl/vk/VKBindlessTextureManager.h>
-
-namespace hgl
+namespace hgl::graph
 {
-    namespace graph
+    namespace mtl
     {
-        class VILConfig;
-        class GraphicsContext;
-
-        namespace mtl
-        {
-            class MaterialCreateInfo;
-            struct Material2DCreateConfig;
-            struct Material3DCreateConfig;
-        }
+        class MaterialCreateInfo;
+        struct Material2DCreateConfig;
+        struct Material3DCreateConfig;
+    }
 
     /**
      * RenderContext: 渲染执行上下文
@@ -48,8 +42,8 @@ namespace hgl
       * auto mat_mgr = graphics ? graphics->GetMaterialManager() : nullptr;
      * ```
      */
-        class RenderContext
-        {
+    class RenderContext
+    {
     private:
         GraphicsContext* graphics_context = nullptr;
 
@@ -59,9 +53,6 @@ namespace hgl
 
         // 新 4-Set 管线布局 (与旧布局双轨共存)
         NewPipelineLayoutData* new_pipeline_layout_data_ = nullptr;
-
-        // 全局 Bindless 纹理管理器（Set 4）
-        BindlessTextureManager* bindless_texture_manager_ = nullptr;
 
     public:
         RenderContext() = default;
@@ -126,11 +117,10 @@ namespace hgl
         VkPipelineLayout GetNewPipelineLayout() const { return new_pipeline_layout_data_ ? new_pipeline_layout_data_->pipeline_layout : VK_NULL_HANDLE; }
 
     public:
-        // ===== 全局 Bindless 纹理管理器 =====
-        void SetBindlessTextureManager(BindlessTextureManager* mgr) { bindless_texture_manager_ = mgr; }
-        BindlessTextureManager* GetBindlessTextureManager() const { return bindless_texture_manager_; }
 
-        }; // class RenderContext
-
-    } // namespace graph
-} // namespace hgl
+        template<typename T> T *GetManager()
+        {
+            return graphics_context?graphics_context->GetManager<T>():nullptr;
+        }
+    }; // class RenderContext
+} // namespace hgl::graph

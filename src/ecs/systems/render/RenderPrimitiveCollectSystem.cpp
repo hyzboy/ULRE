@@ -262,7 +262,7 @@ namespace hgl::ecs
             auto *render_context = world->GetRenderContext();
             auto *graphics_context = render_context ? render_context->GetGraphicsContext() : world->GetGraphicsContext();
             auto *domain_manager = graphics_context ? graphics_context->GetResourceDomainManager() : nullptr;
-            auto *bindless_mgr = render_context ? render_context->GetBindlessTextureManager() : nullptr;
+            auto *bindless_mgr = graphics_context ? graphics_context->GetBindlessTextureManager() : nullptr;
             if (!rdbs || !domain_manager)
                 return false;
 

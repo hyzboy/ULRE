@@ -118,7 +118,7 @@ private:
         if (!graphics_context)
             return false;
 
-        auto *buffer_manager   = graphics_context->GetBufferManager();
+        auto *buffer_manager   = GetManager<BufferManager>();
         if (!buffer_manager)
             return false;
 
@@ -187,7 +187,7 @@ private:
         if (!graphics_context)
             return false;
 
-        auto* material_manager = graphics_context->GetMaterialManager();
+        auto* material_manager = GetManager<MaterialManager>();
         if (!material_manager)
             return false;
 

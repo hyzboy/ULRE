@@ -78,15 +78,7 @@ private:
         if (!geom_triangle)
             return false;
 
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
+        auto* material_manager = GetManager<MaterialManager>();
         if (!material_manager)
             return false;
 
@@ -107,18 +99,10 @@ private:
 
     bool CreateRenderObject()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* device = graphics_context->GetDevice();
-        auto* buffer_manager = graphics_context->GetBufferManager();
-        auto* geometry_manager = graphics_context->GetGeometryManager();
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        auto* device = GetDevice();
+        auto* buffer_manager = GetManager<BufferManager>();
+        auto* geometry_manager = GetManager<GeometryManager>();
+        auto* primitive_manager = GetManager<PrimitiveManager>();
         if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
             return false;
 
@@ -141,15 +125,7 @@ private:
         if(!geom_triangle || !material)
             return false;
 
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        auto* primitive_manager = GetManager<PrimitiveManager>();
         if (!primitive_manager)
             return false;
 

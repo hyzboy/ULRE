@@ -158,8 +158,8 @@ private:
             return false;
         }
 
-        auto* material_manager = graphics_context->GetMaterialManager();
-        auto* sampler_manager = graphics_context->GetSamplerManager();
+        auto* material_manager = GetManager<MaterialManager>();
+        auto* sampler_manager = GetManager<SamplerManager>();
         auto* device = graphics_context->GetDevice();
         if (!material_manager || !sampler_manager || !base_color_texture || !normal_texture || !device) {
             printf("[ERROR] InitMaterial: Failed manager/texture checks - material_mgr=%p sampler_mgr=%p base=%p normal=%p\n",
@@ -183,18 +183,6 @@ private:
             return false;
         }
 
-        if (!bindless_texture_manager)
-        {
-            bindless_texture_manager = std::make_unique<BindlessTextureManager>();
-            if (!bindless_texture_manager->Init(VkDevice(*device))) {
-                printf("[ERROR] InitMaterial: Failed to init bindless texture manager\n");
-                return false;
-            }
-
-            render_context->SetBindlessTextureManager(bindless_texture_manager.get());
-            material_manager->SetBindlessLayout(bindless_texture_manager->GetLayout());
-        }
-
         return true;
     }
 
@@ -212,7 +200,7 @@ private:
             return false;
         }
 
-        auto* texture_manager = graphics_context->GetTextureManager();
+        auto* texture_manager = GetManager<TextureManager>();
         if (!texture_manager) {
             printf("[ERROR] InitTextures: No texture_manager\n");
             return false;
@@ -335,7 +323,7 @@ private:
             return false;
         }
 
-        auto *buffer_manager = graphics_context->GetBufferManager();
+        auto *buffer_manager = GetManager<BufferManager>();
         if (!buffer_manager) {
             printf("[ERROR] InitMISSBO: Missing buffer manager\n");
             return false;
@@ -424,7 +412,7 @@ private:
             return false;
         }
 
-        auto* buffer_manager = graphics_context->GetBufferManager();
+        auto* buffer_manager = GetManager<BufferManager>();
         if (!buffer_manager) {
             printf("[ERROR] InitVDM: No buffer_manager\n");
             return false;
@@ -561,7 +549,7 @@ private:
             return false;
         }
 
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        auto* primitive_manager = GetManager<PrimitiveManager>();
         if (!primitive_manager) {
             printf("[ERROR] CreateBasePrimitives: No primitive_manager\n");
             return false;

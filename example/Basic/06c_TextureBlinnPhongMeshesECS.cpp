@@ -97,22 +97,12 @@ private:
         if (!graphics_context)
             return false;
 
-        auto* material_manager = graphics_context->GetMaterialManager();
-        auto* texture_manager = graphics_context->GetTextureManager();
-        auto* sampler_manager = graphics_context->GetSamplerManager();
+        auto* material_manager = GetManager<MaterialManager>();
+        auto* texture_manager = GetManager<TextureManager>();
+        auto* sampler_manager = GetManager<SamplerManager>();
         auto* device = graphics_context->GetDevice();
         if (!material_manager || !texture_manager || !sampler_manager || !device)
             return false;
-
-        if (!bindless_texture_manager)
-        {
-            bindless_texture_manager = std::make_unique<BindlessTextureManager>();
-            if (!bindless_texture_manager->Init(VkDevice(*device)))
-                return false;
-
-            render_context->SetBindlessTextureManager(bindless_texture_manager.get());
-            material_manager->SetBindlessLayout(bindless_texture_manager->GetLayout());
-        }
 
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles,
                                         mtl::WithCamera::With,
@@ -163,7 +153,7 @@ private:
         if (!graphics_context)
             return false;
 
-        auto* buffer_manager = graphics_context->GetBufferManager();
+        auto* buffer_manager = GetManager<BufferManager>();
         if (!buffer_manager)
             return false;
 
@@ -221,7 +211,7 @@ private:
         if (!graphics_context)
             return false;
 
-        auto* buffer_manager = graphics_context->GetBufferManager();
+        auto* buffer_manager = GetManager<BufferManager>();
         if (!buffer_manager)
             return false;
 
@@ -250,8 +240,8 @@ private:
         if (!graphics_context)
             return nullptr;
 
-        auto* geometry_manager = graphics_context->GetGeometryManager();
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        auto* geometry_manager = GetManager<GeometryManager>();
+        auto* primitive_manager = GetManager<PrimitiveManager>();
         if (!geometry_manager || !primitive_manager)
             return nullptr;
 

@@ -23,6 +23,7 @@ namespace hgl
         class TextureCube;
         class Geometry;
         class GeometryCreater;
+        class PrimitiveManager;
         class Sampler;
         class Texture;
 
@@ -63,44 +64,35 @@ namespace hgl
 
         ecs::ECSContext *           GetECSContext       (){return world.get();}
         graph::RenderContext *      GetRenderContext    (){return render_context;}
-
-        graph::VulkanDevice *       GetDevice           ()
+        graph::GraphicsContext *    GetGraphicsContext  ()
         {
             if (render_context)
             {
                 if (auto *gc = render_context->GetGraphicsContext())
-                    return gc->GetDevice();
+                    return gc;
             }
+            if (world)
+                return world->GetGraphicsContext();
+            return nullptr;
+        }
+
+        graph::VulkanDevice *       GetDevice           ()
+        {
+            if (auto *gc = GetGraphicsContext())
+                return gc->GetDevice();
             if (world && world->GetGPUDevice())
                 return world->GetGPUDevice();
             return nullptr;
+        }
+        template<typename T> T *    GetManager          ()
+        {
+            auto *gc = GetGraphicsContext();
+            return gc ? gc->GetManager<T>() : nullptr;
         }
         graph::VulkanDevAttr *      GetDevAttr          ()
         {
             auto *device = GetDevice();
             return device ? device->GetDevAttr() : nullptr;
-        }
-        graph::TextureManager *     GetTextureManager   ()
-        {
-            if (render_context)
-            {
-                if (auto *gc = render_context->GetGraphicsContext())
-                    return gc->GetTextureManager();
-            }
-            if (world)
-                return world->GetGraphicsContext() ? world->GetGraphicsContext()->GetTextureManager() : nullptr;
-            return nullptr;
-        }
-        graph::BufferManager *      GetBufferManager    ()
-        {
-            if (render_context)
-            {
-                if (auto *gc = render_context->GetGraphicsContext())
-                    return gc->GetBufferManager();
-            }
-            if (world)
-                return world->GetGraphicsContext() ? world->GetGraphicsContext()->GetBufferManager() : nullptr;
-            return nullptr;
         }
 
         const VkExtent2D *          GetExtent           ();

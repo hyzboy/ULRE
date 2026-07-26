@@ -113,7 +113,7 @@ private:
         if (!graphics_context)
             return false;
 
-        auto* material_manager = graphics_context->GetMaterialManager();
+        auto* material_manager = GetManager<MaterialManager>();
         auto* device = graphics_context->GetDevice();
         if (!material_manager)
             return false;
@@ -150,7 +150,7 @@ private:
             return false;
 
         auto* device = graphics_context->GetDevice();
-        auto* geometry_manager = graphics_context->GetGeometryManager();
+        auto* geometry_manager = GetManager<GeometryManager>();
         if (!device || !geometry_manager)
             return false;
 
@@ -181,8 +181,8 @@ private:
         // === 创建射线线段几何体 ===
         {
             auto* device = graphics_context->GetDevice();
-            auto* buffer_manager = graphics_context->GetBufferManager();
-            auto* geometry_manager = graphics_context->GetGeometryManager();
+            auto* buffer_manager = GetManager<BufferManager>();
+            auto* geometry_manager = GetManager<GeometryManager>();
             if (!device || !buffer_manager || !geometry_manager)
                 return false;
 
@@ -218,7 +218,7 @@ private:
         if(!ecs_world)
             return false;
 
-        auto *buffer_manager = graphics_context->GetBufferManager();
+        auto *buffer_manager = GetManager<BufferManager>();
         if (!buffer_manager)
             return false;
 
@@ -277,7 +277,7 @@ private:
             plane_grid_entity = ecs_world->CreateEntity<Entity>("PlaneGrid");
 
             // 创建Primitive
-            auto* primitive_manager = graphics_context->GetPrimitiveManager();
+            auto* primitive_manager = GetManager<PrimitiveManager>();
             if (!primitive_manager)
                 return false;
 
@@ -321,7 +321,7 @@ private:
             ray_line_entity = ecs_world->CreateEntity<Entity>("RayLine");
 
             // 创建Primitive
-            auto* primitive_manager = graphics_context->GetPrimitiveManager();
+            auto* primitive_manager = GetManager<PrimitiveManager>();
             if (!primitive_manager)
                 return false;
 

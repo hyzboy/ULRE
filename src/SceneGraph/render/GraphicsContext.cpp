@@ -11,6 +11,7 @@
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/graph/module/PrimitiveManager.h>
 #include <hgl/graph/module/ResourceDomainManager.h>
+#include <hgl/vk/VKBindlessTextureManager.h>
 
 namespace hgl::graph
 {
@@ -67,6 +68,15 @@ namespace hgl::graph
         if (!resource_domain_manager)
             return false;
 
+        bindless_texture_manager_ = new BindlessTextureManager();
+        if (!bindless_texture_manager_)
+            return false;
+
+        if (!bindless_texture_manager_->Init(device->GetDevice()))
+            return false;
+
+        material_manager->SetBindlessLayout(bindless_texture_manager_->GetLayout());
+
         // Set graphics context for module manager
         module_manager->SetGraphicsContext(this);
 
@@ -94,6 +104,8 @@ namespace hgl::graph
         geometry_manager = nullptr;
         primitive_manager = nullptr;
         resource_domain_manager = nullptr;
+
+        SAFE_CLEAR(bindless_texture_manager_)
     }
 
     void GraphicsContext::OnResize(const VkExtent2D &extent)

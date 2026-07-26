@@ -89,8 +89,8 @@ private:
             return false;
 
         auto* device = graphics_context->GetDevice();
-        auto* buffer_manager = graphics_context->GetBufferManager();
-        auto* geometry_manager = graphics_context->GetGeometryManager();
+        auto* buffer_manager = GetManager<BufferManager>();
+        auto* geometry_manager = GetManager<GeometryManager>();
         if (!device || !buffer_manager || !geometry_manager)
             return false;
 
@@ -121,10 +121,10 @@ private:
         if (!graphics_context)
             return false;
 
-        auto* material_manager = graphics_context->GetMaterialManager();
-        auto* texture_manager = graphics_context->GetTextureManager();
-        auto* sampler_manager = graphics_context->GetSamplerManager();
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        auto* material_manager = GetManager<MaterialManager>();
+        auto* texture_manager = GetManager<TextureManager>();
+        auto* sampler_manager = GetManager<SamplerManager>();
+        auto* primitive_manager = GetManager<PrimitiveManager>();
         auto* device = graphics_context->GetDevice();
         if (!material_manager || !texture_manager || !sampler_manager || !primitive_manager || !device)
             return false;
@@ -139,16 +139,6 @@ private:
 
         if(!material)
             return false;
-
-        if (!bindless_texture_manager)
-        {
-            bindless_texture_manager = std::make_unique<BindlessTextureManager>();
-            if (!bindless_texture_manager->Init(VkDevice(*device)))
-                return false;
-
-            render_context->SetBindlessTextureManager(bindless_texture_manager.get());
-            material_manager->SetBindlessLayout(bindless_texture_manager->GetLayout());
-        }
 
         texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"), true);
         if(!texture)

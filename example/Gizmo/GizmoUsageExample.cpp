@@ -104,9 +104,9 @@ private:
         if(!graphics_context)
             return false;
 
-        auto *material_manager = graphics_context->GetMaterialManager();
-        auto *geometry_manager = graphics_context->GetGeometryManager();
-        auto *primitive_manager = graphics_context->GetPrimitiveManager();
+        auto *material_manager = GetManager<MaterialManager>();
+        auto *geometry_manager = GetManager<GeometryManager>();
+        auto *primitive_manager = GetManager<PrimitiveManager>();
         auto *device = graphics_context->GetDevice();
         if(!material_manager || !geometry_manager || !primitive_manager || !device)
             return false;
@@ -136,7 +136,7 @@ private:
             if(!grid_material)
                 return false;
 
-            auto *buffer_manager = graphics_context->GetBufferManager();
+            auto *buffer_manager = GetManager<BufferManager>();
             if (!buffer_manager)
                 return false;
 
@@ -173,7 +173,7 @@ private:
         }
 
         {
-            auto *buffer_manager = graphics_context->GetBufferManager();
+            auto *buffer_manager = GetManager<BufferManager>();
             if (!buffer_manager)
                 return false;
 

@@ -39,6 +39,7 @@ namespace hgl::graph
     class GeometryManager;
     class PrimitiveManager;
     class ResourceDomainManager;
+    class BindlessTextureManager;
 
     /**
      * GraphicsContext - Vulkan图形资源管理器聚合类
@@ -71,6 +72,7 @@ namespace hgl::graph
         GeometryManager *geometry_manager = nullptr;
         PrimitiveManager *primitive_manager = nullptr;
         ResourceDomainManager *resource_domain_manager = nullptr;
+        BindlessTextureManager *bindless_texture_manager_ = nullptr;
 
     public:
         explicit GraphicsContext(VulkanDevice *dev);
@@ -101,6 +103,9 @@ namespace hgl::graph
         void OnResize(const VkExtent2D &extent);
 
     public:
+        template<typename T> T *GetManager();
+        template<typename T> T *Get() { return GetManager<T>(); }
+
         // Device访问
         VulkanDevice *GetDevice() const { return device; }
         VulkanDevAttr *GetDevAttr() const;
@@ -117,6 +122,8 @@ namespace hgl::graph
         GeometryManager *GetGeometryManager() { return geometry_manager; }
         PrimitiveManager *GetPrimitiveManager() { return primitive_manager; }
         ResourceDomainManager *GetResourceDomainManager() { return resource_domain_manager; }
+        BindlessTextureManager *GetBindlessTextureManager() { return bindless_texture_manager_; }
+        const BindlessTextureManager *GetBindlessTextureManager() const { return bindless_texture_manager_; }
 
         // 扩展访问（不常用）
         GraphModuleManager *GetModuleManager() { return module_manager; }
@@ -134,5 +141,77 @@ namespace hgl::graph
 
     // 向后兼容别名
     using IGraphicsContext = GraphicsContext;
+
+    template<typename T>
+    inline T *GraphicsContext::GetManager()
+    {
+        return nullptr;
+    }
+
+    template<>
+    inline RenderPassManager *GraphicsContext::GetManager<RenderPassManager>()
+    {
+        return GetRenderPassManager();
+    }
+
+    template<>
+    inline TextureManager *GraphicsContext::GetManager<TextureManager>()
+    {
+        return GetTextureManager();
+    }
+
+    template<>
+    inline RenderTargetManager *GraphicsContext::GetManager<RenderTargetManager>()
+    {
+        return GetRenderTargetManager();
+    }
+
+    template<>
+    inline MaterialManager *GraphicsContext::GetManager<MaterialManager>()
+    {
+        return GetMaterialManager();
+    }
+
+    template<>
+    inline BufferManager *GraphicsContext::GetManager<BufferManager>()
+    {
+        return GetBufferManager();
+    }
+
+    template<>
+    inline SamplerManager *GraphicsContext::GetManager<SamplerManager>()
+    {
+        return GetSamplerManager();
+    }
+
+    template<>
+    inline GeometryManager *GraphicsContext::GetManager<GeometryManager>()
+    {
+        return GetGeometryManager();
+    }
+
+    template<>
+    inline PrimitiveManager *GraphicsContext::GetManager<PrimitiveManager>()
+    {
+        return GetPrimitiveManager();
+    }
+
+    template<>
+    inline ResourceDomainManager *GraphicsContext::GetManager<ResourceDomainManager>()
+    {
+        return GetResourceDomainManager();
+    }
+
+    template<>
+    inline GraphModuleManager *GraphicsContext::GetManager<GraphModuleManager>()
+    {
+        return GetModuleManager();
+    }
+
+    template<>
+    inline BindlessTextureManager *GraphicsContext::GetManager<BindlessTextureManager>()
+    {
+        return GetBindlessTextureManager();
+    }
 
 } // namespace hgl::graph
