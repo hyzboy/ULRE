@@ -25,6 +25,18 @@ namespace hgl::ecs
 {
     namespace
     {
+        const char *GetPrimitiveOwnerName(const std::shared_ptr<PrimitiveComponent> &primitive_comp)
+        {
+            if (!primitive_comp)
+                return "<null-primitive>";
+
+            auto *owner = primitive_comp->GetOwner();
+            if (!owner)
+                return "<no-owner>";
+
+            return owner->GetName().c_str();
+        }
+
         bool TryResolvePresetByHint(const uint32_t hint, graph::mtl::MaterialPreset &out_preset)
         {
             if (hint == graph::mtl::InvalidMaterialPresetHint)
@@ -51,6 +63,21 @@ namespace hgl::ecs
                 default:
                     return false;
             }
+        }
+
+        bool HasResourceSemantic(const graph::MaterialProgram *material,
+                                 const graph::mtl::DescriptorSemantic semantic)
+        {
+            if (!material)
+                return false;
+
+            for (const auto &req : material->GetMaterialResourceLayout().requirements)
+            {
+                if (req.semantic == semantic)
+                    return true;
+            }
+
+            return false;
         }
 
         std::string BuildTextureResourceId(graph::Texture *texture)
@@ -417,7 +444,11 @@ namespace hgl::ecs
 
         graph::mtl::MaterialRecipe effective_recipe{};
         if (!BuildEffectiveMaterialRecipe(primitive_comp, effective_recipe))
+        {
+            GLogWarning("[RenderPrimitiveCollectSystem] BuildEffectiveMaterialRecipe failed for %s",
+                        GetPrimitiveOwnerName(primitive_comp));
             return false;
+        }
 
         const uint64_t recipe_hash = graph::mtl::HashMaterialRecipe(effective_recipe);
         if (material_comp->recipe_hash != recipe_hash)
@@ -431,17 +462,34 @@ namespace hgl::ecs
 
         auto *graphics = world->GetGraphicsContext();
         if (!graphics)
+        {
+            auto *render_context = world->GetRenderContext();
+            graphics = render_context ? render_context->GetGraphicsContext() : nullptr;
+        }
+        if (!graphics)
+        {
+            GLogWarning("[RenderPrimitiveCollectSystem] ResolveMaterialProgram failed: graphics context null for %s",
+                        GetPrimitiveOwnerName(primitive_comp));
             return false;
+        }
 
         auto *material_manager = graphics->GetMaterialManager();
         if (!material_manager)
+        {
+            GLogWarning("[RenderPrimitiveCollectSystem] ResolveMaterialProgram failed: material manager null for %s",
+                        GetPrimitiveOwnerName(primitive_comp));
             return false;
+        }
 
         graph::PrimitiveType primitive_type = graph::PrimitiveType::Triangles;
+        graph::MaterialProgram *reference_program = nullptr;
         if (auto *primitive = primitive_comp->GetPrimitive())
         {
             if (auto *primitive_program = primitive->GetMaterialProgram())
+            {
                 primitive_type = primitive_program->GetPrimitiveType();
+                reference_program = primitive_program;
+            }
         }
 
         graph::mtl::MaterialPreset preset{};
@@ -475,7 +523,12 @@ namespace hgl::ecs
         if (!resolved_by_model)
         {
             if (!TryResolvePresetByHint(effective_recipe.preset_hint, preset))
+            {
+                GLogWarning("[RenderPrimitiveCollectSystem] ResolveMaterialProgram failed: no preset for %s recipe=%s",
+                            GetPrimitiveOwnerName(primitive_comp),
+                            effective_recipe.recipe_name.c_str());
                 return false;
+            }
         }
         else if (effective_recipe.preset_hint != graph::mtl::InvalidMaterialPresetHint)
         {
@@ -516,16 +569,36 @@ namespace hgl::ecs
             }
             else
             {
+                const graph::mtl::WithCamera with_camera =
+                    HasResourceSemantic(reference_program, graph::mtl::DescriptorSemantic::CameraInfo)
+                    ? graph::mtl::WithCamera::With
+                    : graph::mtl::WithCamera::Without;
+                const graph::mtl::WithLocalToWorld with_l2w =
+                    (reference_program && reference_program->hasLocalToWorld())
+                    ? graph::mtl::WithLocalToWorld::With
+                    : graph::mtl::WithLocalToWorld::Without;
+                const graph::mtl::WithSky with_sky =
+                    (HasResourceSemantic(reference_program, graph::mtl::DescriptorSemantic::SkyInfo)
+                  || HasResourceSemantic(reference_program, graph::mtl::DescriptorSemantic::SkyCubemapSampler))
+                    ? graph::mtl::WithSky::With
+                    : graph::mtl::WithSky::Without;
+
                 graph::mtl::Material3DCreateConfig cfg(primitive_type,
-                                                       graph::mtl::WithCamera::With,
-                                                       graph::mtl::WithLocalToWorld::With,
-                                                       graph::mtl::WithSky::With);
+                                                       with_camera,
+                                                       with_l2w,
+                                                       with_sky);
                 resolved_program = material_manager->AcquireMaterialProgram(preset, &cfg);
             }
         }
 
         if (!resolved_program)
+        {
+            GLogWarning("[RenderPrimitiveCollectSystem] AcquireMaterialProgram failed for %s recipe=%s preset=%u",
+                        GetPrimitiveOwnerName(primitive_comp),
+                        effective_recipe.recipe_name.c_str(),
+                        static_cast<uint32_t>(preset));
             return false;
+        }
 
         const bool program_changed = (material_comp->program != resolved_program);
         if (program_changed)
@@ -560,7 +633,11 @@ namespace hgl::ecs
 
         graph::mtl::MaterialRecipe effective_recipe{};
         if (!BuildEffectiveMaterialRecipe(primitive_comp, effective_recipe))
+        {
+            GLogWarning("[RenderPrimitiveCollectSystem] Materialize failed: BuildEffectiveMaterialRecipe failed for %s",
+                        GetPrimitiveOwnerName(primitive_comp));
             return false;
+        }
 
         if (!material_comp->bindings_dirty
          && !material_comp->resources_dirty
@@ -571,13 +648,22 @@ namespace hgl::ecs
 
         auto rdbs = world->GetSystem<RenderDescriptorBindingSystem>();
         if (!rdbs)
+        {
+            GLogWarning("[RenderPrimitiveCollectSystem] Materialize failed: RenderDescriptorBindingSystem missing for %s",
+                        GetPrimitiveOwnerName(primitive_comp));
             return false;
+        }
 
         graph::mtl::MaterializationSpec spec{};
         uint32_t texture_layer_row = uint32_t(-1);
         uint32_t data_index_row = uint32_t(-1);
         if (!rdbs->ResolveMaterialRecipe(effective_recipe, spec, &texture_layer_row, &data_index_row))
+        {
+            GLogWarning("[RenderPrimitiveCollectSystem] ResolveMaterialRecipe failed for %s recipe=%s",
+                        GetPrimitiveOwnerName(primitive_comp),
+                        effective_recipe.recipe_name.c_str());
             return false;
+        }
 
         if (texture_layer_row == uint32_t(-1) || data_index_row == uint32_t(-1))
         {
@@ -686,6 +772,8 @@ namespace hgl::ecs
             {
                 if (!PrepareRecipeAuthoringResources(world, primitiveComp, nullptr))
                 {
+                    GLogWarning("[RenderPrimitiveCollectSystem] PrepareRecipeAuthoringResources(pre-resolve) failed for %s",
+                                primitiveComp->GetOwner() ? primitiveComp->GetOwner()->GetName().c_str() : "<no-owner>");
                     InvalidateRecipeRuntime(material_comp, true);
                 }
                 else
@@ -693,19 +781,29 @@ namespace hgl::ecs
                     const bool resolved_program = ResolveMaterialProgramForPrimitive(primitiveComp, material_comp);
                     if (!resolved_program)
                     {
+                        GLogWarning("[RenderPrimitiveCollectSystem] ResolveMaterialProgramForPrimitive failed for %s",
+                                    primitiveComp->GetOwner() ? primitiveComp->GetOwner()->GetName().c_str() : "<no-owner>");
                         InvalidateRecipeRuntime(material_comp, true);
                     }
                     else
                     {
                         if (!PrepareRecipeAuthoringResources(world, primitiveComp, material_comp->program))
                         {
+                            GLogWarning("[RenderPrimitiveCollectSystem] PrepareRecipeAuthoringResources(post-resolve) failed for %s program=%s",
+                                        primitiveComp->GetOwner() ? primitiveComp->GetOwner()->GetName().c_str() : "<no-owner>",
+                                        material_comp->program ? material_comp->program->GetName().c_str() : "<null>");
                             InvalidateRecipeRuntime(material_comp, false);
                         }
                         else
                         {
                             const bool materialized_rows = MaterializeRecipeRowsForPrimitive(primitiveComp, material_comp);
                             if (!materialized_rows)
+                            {
+                                GLogWarning("[RenderPrimitiveCollectSystem] MaterializeRecipeRowsForPrimitive failed for %s program=%s",
+                                            primitiveComp->GetOwner() ? primitiveComp->GetOwner()->GetName().c_str() : "<no-owner>",
+                                            material_comp->program ? material_comp->program->GetName().c_str() : "<null>");
                                 InvalidateRecipeRuntime(material_comp, false);
+                            }
                         }
                     }
                 }
