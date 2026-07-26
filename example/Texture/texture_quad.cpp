@@ -14,7 +14,6 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -64,7 +63,6 @@ private:
     Texture2D *         texture             = nullptr;
     Sampler *           sampler             = nullptr;
     MaterialProgram *          material            = nullptr;
-    MaterialInstance *  material_instance   = nullptr;
     Primitive *         prim_quad           = nullptr;
     std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
 
@@ -115,8 +113,6 @@ private:
 
         sampler=sampler_manager->CreateSampler();
 
-        material_instance=material_manager->CreateMaterialInstance(material);
-
         return(true);
     }
 
@@ -148,7 +144,7 @@ private:
             return false;
         geometry_manager->Add(geometry);
 
-        prim_quad = primitive_manager->CreatePrimitive(geometry, material_instance, nullptr);
+        prim_quad = primitive_manager->CreatePrimitive(geometry, material, nullptr, nullptr);
 
         if(!prim_quad)
             return(false);
@@ -162,20 +158,6 @@ private:
         if(!ecs_world)
             return false;
 
-        auto rdbs = ecs_world->GetSystem<RenderDescriptorBindingSystem>();
-        if (!rdbs)
-            return false;
-
-        auto* render_context = GetRenderContext();
-        auto* bindless_mgr = render_context ? render_context->GetBindlessTextureManager() : nullptr;
-        if (!bindless_mgr)
-            return false;
-
-        if (rdbs->RegisterTexture2DResource("", texture, sampler, bindless_mgr) == 0)
-            return false;
-        if (!rdbs->RegisterMaterialTextureSampler(material, mtl::SamplerName::BaseColor, texture, sampler))
-            return false;
-
         quad_entity = ecs_world->CreateEntity<Entity>("TextureQuad");
         auto quad_transform = quad_entity->AddComponent<TransformComponent>(Mobility::Static);
         auto quad_primitive = quad_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
@@ -186,6 +168,13 @@ private:
         quad_transform->SetMovable(false);
 
         quad_primitive->SetPrimitive(prim_quad);
+        graph::mtl::MaterialRecipe recipe{};
+        recipe.recipe_name = "TextureQuad.PureTexture2D";
+        recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::PureTexture2D);
+        recipe.domain = "TextureQuad";
+        quad_primitive->SetMaterialRecipe(recipe);
+        quad_primitive->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, texture, sampler);
         quad_primitive->RequestPipeline(InlinePipeline::Solid2D);
         quad_primitive->SetVisible(true);
 

@@ -11,15 +11,12 @@
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/ResourceDomainManager.h>
-#include<hgl/graph/DescriptorBindingSet.h>
 
 // ECS headers
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
-#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -31,6 +28,8 @@ using namespace hgl::ecs;
 
 namespace
 {
+    constexpr uint32_t kTextureRectArraySsboId = hgl::graph::mtl::MakeRecipeSSBOId(8201);
+
     GeometryVertexFormat CreateRectTexture2DArrayGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
@@ -85,11 +84,14 @@ private:
     Primitive *         mesh_rect           = nullptr;
     DeviceBuffer *      mi_ssbo             = nullptr;
     std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
+    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::UserDefined;
+    uint32_t material_ssbo_id = 0;
+    uint32_t material_ssbo_count = 0;
+    uint32_t material_ssbo_stride = 0;
 
     struct
     {
-        Entity *              entity;
-        DescriptorBindingSet *dbs;
+        Entity *entity;
     }render_obj[TexCount]{};
 
 private:
@@ -165,8 +167,7 @@ private:
         }
 
         auto *buffer_manager = graphics_context->GetBufferManager();
-        auto *domain_manager = graphics_context->GetResourceDomainManager();
-        if (!buffer_manager || !domain_manager)
+        if (!buffer_manager)
             return false;
 
         sampler=sampler_manager->CreateSampler();
@@ -175,6 +176,8 @@ private:
         const uint32_t stride = material->GetMIDataBytes();
         if (stride > 0)
         {
+            material_ssbo_count = TexCount;
+            material_ssbo_stride = stride;
             mi_ssbo = buffer_manager->CreateSSBO("TextureRectArray:MIData",
                                                   VkDeviceSize(TexCount) * stride,
                                                   nullptr, SharingMode::Exclusive);
@@ -202,29 +205,13 @@ private:
             {
                 if (req.semantic != mtl::DescriptorSemantic::MaterialInstance)
                     continue;
-
-                const mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
-                if (!domain_manager->RegisterBuffer(addr, mi_ssbo, TexCount))
-                    return false;
-
-                for (uint32_t i = 0; i < TexCount; ++i)
-                {
-                    render_obj[i].dbs = new DescriptorBindingSet(material);
-                    if (!render_obj[i].dbs)
-                        return false;
-                    render_obj[i].dbs->SetSSBOBinding(req.ssbo_type, req.ssbo_id, i);
-                }
+                material_ssbo_type = req.ssbo_type;
+                material_ssbo_id = kTextureRectArraySsboId;
+                break;
             }
-        }
-        else
-        {
-            // No per-instance data — create plain DBS per slot
-            for (uint32_t i = 0; i < TexCount; ++i)
-            {
-                render_obj[i].dbs = new DescriptorBindingSet(material);
-                if (!render_obj[i].dbs)
-                    return false;
-            }
+
+            if (material_ssbo_id == 0)
+                return false;
         }
 
         return(true);
@@ -260,7 +247,7 @@ private:
 
         mesh_rect = primitive_manager->CreatePrimitive(geometry,
                                                        material,
-                                                       render_obj[0].dbs,
+                                                       nullptr,
                                                        nullptr);
 
         if(!mesh_rect)
@@ -273,20 +260,6 @@ private:
     {
         ecs_world = GetECSContext();
         if(!ecs_world)
-            return false;
-
-        auto rdbs = ecs_world->GetSystem<RenderDescriptorBindingSystem>();
-        if (!rdbs)
-            return false;
-
-        auto* render_context = GetRenderContext();
-        auto* bindless_mgr = render_context ? render_context->GetBindlessTextureManager() : nullptr;
-        if (!bindless_mgr)
-            return false;
-
-        if (rdbs->RegisterTexture2DArrayResource("", texture, sampler, bindless_mgr) == 0)
-            return false;
-        if (!rdbs->RegisterMaterialTextureSampler(material, mtl::SamplerName::BaseColor, texture, sampler))
             return false;
 
         math::Vector3f offset(1.0f/float(TexCount),0,0);
@@ -305,7 +278,25 @@ private:
             transform->SetMovable(false);
 
             primitive->SetPrimitive(mesh_rect);
-            primitive->SetDescriptorBindingSet(render_obj[i].dbs);
+            graph::mtl::MaterialRecipe recipe{};
+            recipe.recipe_name = "TextureRectArray.RectTexture2DArray";
+            recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+            recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::RectTexture2DArray);
+            recipe.domain = "TextureRectArray";
+            primitive->SetMaterialRecipe(recipe);
+            primitive->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor,
+                                                  texture,
+                                                  sampler,
+                                                  PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray);
+            primitive->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
+                                                material_ssbo_type,
+                                                material_ssbo_id,
+                                                mi_ssbo,
+                                                material_ssbo_count,
+                                                material_ssbo_stride,
+                                                i,
+                                                true,
+                                                false);
             primitive->RequestPipeline(InlinePipeline::Solid2D);
             primitive->SetVisible(true);
         }
@@ -318,11 +309,6 @@ public:
     explicit TestApp(std::shared_ptr<ecs::ECSContext> ctx) : WorkObject(std::move(ctx)) {}
     ~TestApp()
     {
-        for (auto &obj : render_obj)
-        {
-            delete obj.dbs;
-            obj.dbs = nullptr;
-        }
         SAFE_CLEAR(mi_ssbo)
     }
     bool Init() override
