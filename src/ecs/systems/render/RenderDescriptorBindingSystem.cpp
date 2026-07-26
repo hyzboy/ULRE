@@ -745,13 +745,13 @@ namespace hgl::ecs
         }
 
         if (run_contract_diagnostics)
-            ValidateContractsSideChannel();
+            ValidateResourceLayoutsSideChannel();
 
         UploadMaterializationIndexTables();
 
         EnsureViewportUBO();
 
-        ApplyContractBindings(cmd);
+        ApplyResourceLayoutBindings(cmd);
 
     }
 
@@ -804,7 +804,7 @@ namespace hgl::ecs
         return sky_ubo->GetGPUBuffer();
     }
 
-    void RenderDescriptorBindingSystem::ApplyContractBindings(graph::RenderCmdBuffer *cmd)
+    void RenderDescriptorBindingSystem::ApplyResourceLayoutBindings(graph::RenderCmdBuffer *cmd)
     {
         if (!context)
             return;
@@ -1824,10 +1824,10 @@ namespace hgl::ecs
             }
         }
 
-        for (auto it = contract_last_ok.begin(); it != contract_last_ok.end();)
+        for (auto it = resource_layout_last_ok.begin(); it != resource_layout_last_ok.end();)
         {
             if (active_materials.find(it->first) == active_materials.end())
-                it = contract_last_ok.erase(it);
+                it = resource_layout_last_ok.erase(it);
             else
                 ++it;
         }
@@ -1875,13 +1875,13 @@ namespace hgl::ecs
         }
     }
 
-    void RenderDescriptorBindingSystem::ValidateContractsSideChannel()
+    void RenderDescriptorBindingSystem::ValidateResourceLayoutsSideChannel()
     {
-        if (!contract_diagnostics_enabled || !context)
+        if (!resource_layout_diagnostics_enabled || !context)
             return;
 
         const auto &cache = context->GetRenderFrameCache();
-        ContractDiagStats frame_stats;
+        ResourceLayoutDiagStats frame_stats;
 
         for (const auto &pair : cache.materialBatches)
         {
@@ -1923,10 +1923,10 @@ namespace hgl::ecs
                 }
             }
 
-            auto it = contract_last_ok.find(material);
-            if (it == contract_last_ok.end())
+            auto it = resource_layout_last_ok.find(material);
+            if (it == resource_layout_last_ok.end())
             {
-                contract_last_ok.emplace(material, all_required_ok);
+                resource_layout_last_ok.emplace(material, all_required_ok);
 
                 if (!all_required_ok)
                     ++frame_stats.materials_unresolved;

@@ -42,7 +42,7 @@ namespace hgl::ecs
     {
         constexpr uint32_t InvalidBatchDataIndexRow = uint32_t(-1);
 
-        uint64_t HashDBSContractBindingSignature(const graph::DescriptorBindingSet *binding_set,
+        uint64_t HashDBSResourceLayoutBindingSignature(const graph::DescriptorBindingSet *binding_set,
                                                  const graph::mtl::MaterialResourceLayout &contract)
         {
             if (!binding_set)
@@ -935,7 +935,7 @@ namespace hgl::ecs
 
             if (binding_set)
             {
-                const uint64_t dbs_binding_signature = HashDBSContractBindingSignature(binding_set, material_resource_layout);
+                const uint64_t dbs_binding_signature = HashDBSResourceLayoutBindingSignature(binding_set, material_resource_layout);
                 if (dbs_binding_signature != 0)
                 {
                     uint64_t merged_signature = hgl::hash::FNV1aInit<uint64_t>();

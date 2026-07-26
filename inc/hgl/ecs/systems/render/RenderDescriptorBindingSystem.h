@@ -52,7 +52,7 @@ namespace hgl::ecs
             graph::Sampler *sampler = nullptr;
         };
 
-        struct ContractDiagStats
+        struct ResourceLayoutDiagStats
         {
             uint32_t materials_checked = 0;
             uint32_t materials_unresolved = 0;
@@ -60,7 +60,7 @@ namespace hgl::ecs
             uint32_t optional_missing = 0;
             uint32_t fallback_hits = 0;
 
-            bool operator==(const ContractDiagStats &rhs) const
+            bool operator==(const ResourceLayoutDiagStats &rhs) const
             {
                 return materials_checked == rhs.materials_checked
                     && materials_unresolved == rhs.materials_unresolved
@@ -69,7 +69,7 @@ namespace hgl::ecs
                     && fallback_hits == rhs.fallback_hits;
             }
 
-            bool operator!=(const ContractDiagStats &rhs) const
+            bool operator!=(const ResourceLayoutDiagStats &rhs) const
             {
                 return !(*this == rhs);
             }
@@ -86,10 +86,10 @@ namespace hgl::ecs
         graph::StructuredBufferAccessor<graph::ViewportInfo> *viewport_ubo = nullptr;
         uint32_t pending_viewport_width  = 0;
         uint32_t pending_viewport_height = 0;
-        std::unordered_map<const graph::MaterialProgram *, bool> contract_last_ok;
+        std::unordered_map<const graph::MaterialProgram *, bool> resource_layout_last_ok;
         std::unordered_map<const graph::MaterialProgram *, std::unordered_map<std::string, MaterialResourceBinding>> material_resource_bindings;
-        bool contract_diagnostics_enabled = true;
-        ContractDiagStats last_contract_stats{};
+        bool resource_layout_diagnostics_enabled = true;
+        ResourceLayoutDiagStats last_contract_stats{};
         std::unordered_set<graph::MaterialProgram *> pipeline_materials;
         graph::mtl::BindlessTexturePool materialization_texture_pool;
         graph::mtl::StructDataPool materialization_struct_pool;
@@ -187,7 +187,7 @@ namespace hgl::ecs
         void EnsureViewportUBO();
         void ReleaseViewportUBO();
         void SyncBindingsForCurrentCommand(graph::RenderCmdBuffer *cmd, bool run_contract_diagnostics);
-        void ApplyContractBindings(graph::RenderCmdBuffer *cmd);
+        void ApplyResourceLayoutBindings(graph::RenderCmdBuffer *cmd);
         const graph::IGPUBuffer *ResolveViewportUBO() const;
         const graph::IGPUBuffer *ResolveCameraUBO() const;
         const graph::IGPUBuffer *ResolveSkyUBO();
@@ -195,7 +195,7 @@ namespace hgl::ecs
         void ReleaseMaterializationIndexBuffers();
         void UploadMaterializationIndexTables();
         const MaterialResourceBinding *FindMaterialResourceBinding(const graph::MaterialProgram *material, const char *name) const;
-        void ValidateContractsSideChannel();
+        void ValidateResourceLayoutsSideChannel();
         bool IsSemanticResolvable(graph::mtl::DescriptorSemantic semantic) const;
     };
 }
