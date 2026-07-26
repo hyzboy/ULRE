@@ -4,6 +4,7 @@
 #include<hgl/WorkManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/math/Math.h>
 
 #include<hgl/ecs/core/Context.h>
@@ -63,54 +64,14 @@ private:
 
     Texture2D *         texture             =nullptr;
     Sampler *           sampler             =nullptr;
-    Material *          material            =nullptr;
-    MaterialInstance *  material_instance   =nullptr;
+    MaterialProgram *   material            =nullptr;
+    Geometry *          geometry            =nullptr;
+    Primitive *         primitive           =nullptr;
+    std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
 
 private:
 
-    bool InitMaterial()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        auto* texture_manager = graphics_context->GetTextureManager();
-        auto* sampler_manager = graphics_context->GetSamplerManager();
-        if (!material_manager || !texture_manager || !sampler_manager)
-            return false;
-
-        mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
-                                        CoordinateSystem2D::ZeroToOne,
-                                        mtl::WithLocalToWorld::Without);
-
-        material=material_manager->AcquireMaterialProgram(mtl::MaterialPreset::RectTexture2D,&cfg);
-
-        if(!material)
-            return(false);
-
-        texture=texture_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
-
-        if(!texture)return(false);
-
-        sampler=sampler_manager->CreateSampler();
-
-        if(!material->BindImageSampler( DescriptorSetType::Material,     ///<描述符合集
-           mtl::SamplerName::BaseColor,        ///<采样器名称
-           texture,                            ///<纹理
-           sampler))                           ///<采样器
-            return(false);
-
-        material_instance=material_manager->CreateMaterialInstance(material);
-
-        return(true);
-    }
-
-    bool InitVBO()
+    bool CreateRenderObject()
     {
         if(!ecs_world)
         {
@@ -130,8 +91,7 @@ private:
         auto* device = graphics_context->GetDevice();
         auto* buffer_manager = graphics_context->GetBufferManager();
         auto* geometry_manager = graphics_context->GetGeometryManager();
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
-        if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
+        if (!device || !buffer_manager || !geometry_manager)
             return false;
 
         GeometryCreater pc(device, CreateRectTexture2DGeometryVertexFormat(), buffer_manager);
@@ -140,13 +100,65 @@ private:
             !pc.WriteVAB(VAN::TexCoord, VF_V2F, tex_coord_data))
             return false;
 
-        auto* geometry = pc.Create();
+        geometry = pc.Create();
         if (!geometry)
             return false;
         geometry_manager->Add(geometry);
 
-        Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance, nullptr);
+        return true;
+    }
 
+    bool InitMaterial()
+    {
+        if(!geometry)
+            return false;
+
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
+        auto* material_manager = graphics_context->GetMaterialManager();
+        auto* texture_manager = graphics_context->GetTextureManager();
+        auto* sampler_manager = graphics_context->GetSamplerManager();
+        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        auto* device = graphics_context->GetDevice();
+        if (!material_manager || !texture_manager || !sampler_manager || !primitive_manager || !device)
+            return false;
+
+        mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
+                                        CoordinateSystem2D::ZeroToOne,
+                                        mtl::WithLocalToWorld::Without);
+
+        material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::RectTexture2D,
+                                                            &cfg,
+                                                            geometry->GetGeometryVertexFormat());
+
+        if(!material)
+            return false;
+
+        if (!bindless_texture_manager)
+        {
+            bindless_texture_manager = std::make_unique<BindlessTextureManager>();
+            if (!bindless_texture_manager->Init(VkDevice(*device)))
+                return false;
+
+            render_context->SetBindlessTextureManager(bindless_texture_manager.get());
+            material_manager->SetBindlessLayout(bindless_texture_manager->GetLayout());
+        }
+
+        texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"), true);
+        if(!texture)
+            return false;
+
+        sampler = sampler_manager->CreateSampler();
+        if(!sampler)
+            return false;
+
+        primitive = primitive_manager->CreatePrimitive(geometry, material, nullptr, nullptr);
         if(!primitive)
             return false;
 
@@ -163,6 +175,13 @@ private:
             return false;
 
         prim_comp->SetPrimitive(primitive);
+        graph::mtl::MaterialRecipe recipe{};
+        recipe.recipe_name = "DrawRoundrectangle.RectTexture2D";
+        recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::RectTexture2D);
+        recipe.domain = "DrawRoundrectangle";
+        prim_comp->SetMaterialRecipe(recipe);
+        prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, texture, sampler);
         prim_comp->RequestPipeline(InlinePipeline::Solid2D);
         prim_comp->SetVisible(true);
 
@@ -176,10 +195,10 @@ public:
         if(!ecs_world)
             return false;
 
-        if(!InitMaterial())
+        if(!CreateRenderObject())
             return(false);
 
-        if(!InitVBO())
+        if(!InitMaterial())
             return(false);
 
         return(true);

@@ -8,8 +8,7 @@
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/ResourceDomainManager.h>
-#include<hgl/graph/DescriptorBindingSet.h>
+#include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/color/Color.h>
 #include<cstring>
 #include<hgl/math/geometry/AABB.h>
@@ -83,6 +82,8 @@ constexpr const COLOR TestColor[] =
 };
 
 constexpr const size_t COLOR_COUNT = sizeof(TestColor) / sizeof(COLOR);
+constexpr uint32_t kLoadGeometrySolidSsboId = hgl::graph::mtl::MakeRecipeSSBOId(5101);
+constexpr uint32_t kLoadGeometryWireSsboId = hgl::graph::mtl::MakeRecipeSSBOId(5102);
 
 class TestApp:public WorkObject
 {
@@ -96,18 +97,11 @@ private:
         MaterialProgram *material = nullptr;
         const VIL *vil = nullptr;
         GeometryVertexFormat geometry_vertex_format;
-
-        DescriptorBindingSet *dbs[COLOR_COUNT]{};
         graph::DeviceBuffer *mi_ssbo = nullptr;
-
-        void FreeDBS()
-        {
-            for (auto *&b : dbs)
-            {
-                delete b;
-                b = nullptr;
-            }
-        }
+        graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::UserDefined;
+        uint32_t ssbo_id = 0;
+        uint32_t ssbo_count = 0;
+        uint32_t ssbo_stride = 0;
     };
 
     MaterialData solid;
@@ -117,6 +111,7 @@ private:
     {
         Geometry *geometry;
         Primitive *primitive;
+        uint32_t color_index = 0;
 
         hgl::ecs::Entity *entity = nullptr;
         std::shared_ptr<hgl::ecs::TransformComponent> transform;
@@ -146,7 +141,7 @@ private:
 
 private:
 
-    bool InitMaterialForDBS(MaterialData *md, const char *tag)
+    bool InitMaterialRuntimeData(MaterialData *md, const char *tag, const uint32_t ssbo_id)
     {
         if (!md || !md->material)
             return false;
@@ -160,8 +155,7 @@ private:
             return false;
 
         auto *buffer_manager = graphics_context->GetBufferManager();
-        auto *domain_manager = graphics_context->GetResourceDomainManager();
-        if (!buffer_manager || !domain_manager)
+        if (!buffer_manager)
             return false;
 
         md->vil = md->material->GetDefaultVIL();
@@ -177,6 +171,22 @@ private:
 
         if (stride > 0)
         {
+            bool has_struct_binding = false;
+            for (const auto &req : md->material->GetMaterialResourceLayout().requirements)
+            {
+                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                    continue;
+
+                has_struct_binding = true;
+                md->material_ssbo_type = req.ssbo_type;
+                md->ssbo_id = ssbo_id;
+                break;
+            }
+            if (!has_struct_binding)
+                return false;
+
+            md->ssbo_count = color_count;
+            md->ssbo_stride = stride;
             const VkDeviceSize ssbo_size = VkDeviceSize(color_count) * stride;
             md->mi_ssbo = buffer_manager->CreateSSBO(tag, ssbo_size, nullptr, SharingMode::Exclusive);
             if (!md->mi_ssbo)
@@ -198,31 +208,6 @@ private:
                 memcpy(dst + VkDeviceSize(i) * stride, &color, copy_bytes);
             }
             gpu_buf->Unmap();
-
-            for (const auto &req : md->material->GetMaterialResourceLayout().requirements)
-            {
-                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
-                    continue;
-
-                const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
-                if (!domain_manager->RegisterBuffer(addr, md->mi_ssbo, color_count))
-                    return false;
-
-                for (uint32_t c = 0; c < color_count; ++c)
-                {
-                    md->dbs[c] = new DescriptorBindingSet(md->material);
-                    if (!md->dbs[c])
-                        return false;
-                    md->dbs[c]->SetSSBOBinding(req.ssbo_type, req.ssbo_id, c);
-                }
-            }
-        }
-
-        // Fallback: DBS with no SSBO binding (vertex-color-only materials)
-        for (uint32_t c = 0; c < color_count; ++c)
-        {
-            if (!md->dbs[c])
-                md->dbs[c] = new DescriptorBindingSet(md->material);
         }
 
         return true;
@@ -245,7 +230,7 @@ private:
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
         solid.material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Gizmo3D,&cfg);
 
-        return InitMaterialForDBS(&solid, "LoadGeometry:SolidMIData");
+        return InitMaterialRuntimeData(&solid, "LoadGeometry:SolidMIData", kLoadGeometrySolidSsboId);
     }
 
     bool InitWireMDP()
@@ -265,7 +250,7 @@ private:
         mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
         wire.material=material_manager->AcquireMaterialProgram(mtl::MaterialPreset::PureColor3D,&cfg);
 
-        return InitMaterialForDBS(&wire, "LoadGeometry:WireMIData");
+        return InitMaterialRuntimeData(&wire, "LoadGeometry:WireMIData", kLoadGeometryWireSsboId);
     }
 
     bool CreateBoundingBoxMesh()
@@ -300,7 +285,7 @@ private:
 
         bbox_primitive = primitive_manager->CreatePrimitive(bbox_geometry,
                                                             wire.material,
-                                                            wire.dbs[5],
+                                                            nullptr,
                                                             nullptr);
         return bbox_primitive != nullptr;
     }
@@ -324,7 +309,7 @@ private:
 
         Primitive *primitive = primitive_manager->CreatePrimitive(geometry,
                                                                   md->material,
-                                                                  md->dbs[color],
+                                                                  nullptr,
                                                                   nullptr);
 
         if(!primitive)
@@ -333,6 +318,7 @@ private:
         auto rm = std::make_unique<RenderMesh>();
         rm->geometry = geometry;
         rm->primitive = primitive;
+        rm->color_index = static_cast<uint32_t>(color);
 
         RenderMesh *result = rm.get();
         render_mesh.push_back(std::move(rm));
@@ -398,7 +384,21 @@ private:
             bbox->transform->SetMovable(false);
 
             bbox->primitive_comp->SetPrimitive(bbox_primitive);
-            bbox->primitive_comp->SetDescriptorBindingSet(wire.dbs[i % COLOR_COUNT]);
+            graph::mtl::MaterialRecipe recipe{};
+            recipe.recipe_name = "LoadGeometry.Wire";
+            recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+            recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::PureColor3D);
+            recipe.domain = "LoadGeometry";
+            bbox->primitive_comp->SetMaterialRecipe(recipe);
+            bbox->primitive_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
+                                                            wire.material_ssbo_type,
+                                                            wire.ssbo_id,
+                                                            wire.mi_ssbo,
+                                                            wire.ssbo_count,
+                                                            wire.ssbo_stride,
+                                                            static_cast<uint32_t>(i % COLOR_COUNT),
+                                                            true,
+                                                            true);
             bbox->primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             bbox->primitive_comp->SetVisible(true);
 
@@ -435,7 +435,21 @@ private:
             rm->transform->SetMovable(false);
 
             rm->primitive_comp->SetPrimitive(rm->primitive);
-            rm->primitive_comp->SetDescriptorBindingSet(solid.dbs[i % COLOR_COUNT]);
+            graph::mtl::MaterialRecipe recipe{};
+            recipe.recipe_name = "LoadGeometry.Gizmo3D";
+            recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+            recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Gizmo3D);
+            recipe.domain = "LoadGeometry";
+            rm->primitive_comp->SetMaterialRecipe(recipe);
+            rm->primitive_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
+                                                          solid.material_ssbo_type,
+                                                          solid.ssbo_id,
+                                                          solid.mi_ssbo,
+                                                          solid.ssbo_count,
+                                                          solid.ssbo_stride,
+                                                          rm->color_index,
+                                                          true,
+                                                          true);
             rm->primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             rm->primitive_comp->SetVisible(true);
         }
@@ -490,8 +504,6 @@ public:
     {
         delete bbox_primitive;
         delete bbox_geometry;
-        solid.FreeDBS();
-        wire.FreeDBS();
         SAFE_CLEAR(wire.mi_ssbo)
         SAFE_CLEAR(solid.mi_ssbo)
     }

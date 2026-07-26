@@ -18,7 +18,6 @@
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
-#include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/color/Color.h>
 
@@ -42,6 +41,7 @@ using namespace hgl::graph;
 namespace
 {
     constexpr uint32_t kGizmoUsageGridSsboId = hgl::graph::mtl::MakeRecipeSSBOId(8101);
+    constexpr uint32_t kGizmoUsageCubeSsboId = hgl::graph::mtl::MakeRecipeSSBOId(8102);
 
     GeometryVertexFormat CreateVertexLuminance2DGeometryVertexFormat()
     {
@@ -75,21 +75,22 @@ private:
     std::shared_ptr<TransformGizmoSystem> gizmo_system;
 
     MaterialProgram *grid_material = nullptr;
-    DescriptorBindingSet *grid_dbs = nullptr;
     graph::DeviceBuffer *grid_mi_ssbo = nullptr;
     Geometry *grid_geometry = nullptr;
     Primitive *grid_primitive = nullptr;
 
     MaterialProgram *cube_material = nullptr;
-    DescriptorBindingSet *cube_dbs = nullptr;
     graph::DeviceBuffer *cube_mi_ssbo = nullptr;
     Geometry *cube_geometry = nullptr;
     Primitive *cube_primitive = nullptr;
-    bool grid_mi_binding_registered = false;
     graph::mtl::SSBOType grid_mi_ssbo_type = graph::mtl::SSBOType::UserDefined;
     uint32_t grid_mi_ssbo_id = 0;
     uint32_t grid_mi_ssbo_count = 0;
     uint32_t grid_mi_ssbo_stride = 0;
+    graph::mtl::SSBOType cube_mi_ssbo_type = graph::mtl::SSBOType::UserDefined;
+    uint32_t cube_mi_ssbo_id = 0;
+    uint32_t cube_mi_ssbo_count = 0;
+    uint32_t cube_mi_ssbo_stride = 0;
 
     std::string debug_cache;
 
@@ -172,63 +173,9 @@ private:
         }
 
         {
-            mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
-
-            cube_material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Gizmo3D, &cfg);
-            if(!cube_material)
-                return false;
-
-            cube_dbs = new DescriptorBindingSet(cube_material);
-            if(!cube_dbs)
-                return false;
-
             auto *buffer_manager = graphics_context->GetBufferManager();
-            auto *domain_manager = graphics_context->GetResourceDomainManager();
-            if (!buffer_manager || !domain_manager)
+            if (!buffer_manager)
                 return false;
-
-            const Color4f blue = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-            const uint32_t stride = cube_material->GetMIDataBytes();
-            if (stride > 0)
-            {
-                cube_mi_ssbo = buffer_manager->CreateSSBO("GizmoUsage:CubeMIData", stride, nullptr, SharingMode::Exclusive);
-                if (!cube_mi_ssbo)
-                    return false;
-
-                if (auto *gpu = cube_mi_ssbo->GetGPUBuffer())
-                    gpu->Write(&blue, 0, hgl_min(stride, static_cast<uint32_t>(sizeof(blue))));
-
-                for (const auto &req : cube_material->GetMaterialResourceLayout().requirements)
-                {
-                    if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
-                        continue;
-
-                    if (grid_mi_binding_registered
-                     && req.ssbo_type == grid_mi_ssbo_type
-                     && req.ssbo_id == grid_mi_ssbo_id)
-                    {
-                        if(!cube_dbs->SetSSBOBinding(req.ssbo_type, req.ssbo_id, 0))
-                            return false;
-                        continue;
-                    }
-
-                    if (!cube_mi_ssbo)
-                    {
-                        cube_mi_ssbo = buffer_manager->CreateSSBO("GizmoUsage:CubeMIData", stride, nullptr, SharingMode::Exclusive);
-                        if (!cube_mi_ssbo)
-                            return false;
-
-                        if (auto *gpu = cube_mi_ssbo->GetGPUBuffer())
-                            gpu->Write(&blue, 0, hgl_min(stride, static_cast<uint32_t>(sizeof(blue))));
-                    }
-
-                    const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
-                    if(!domain_manager->RegisterBuffer(addr, cube_mi_ssbo, 1))
-                        return false;
-                    if(!cube_dbs->SetSSBOBinding(req.ssbo_type, req.ssbo_id, 0))
-                        return false;
-                }
-            }
 
             auto pc = std::make_unique<GeometryCreater>(
                 device,
@@ -245,7 +192,38 @@ private:
 
             geometry_manager->Add(cube_geometry);
 
-            cube_primitive = primitive_manager->CreatePrimitive(cube_geometry, cube_material, cube_dbs, nullptr);
+            mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
+            cube_material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Gizmo3D,
+                                                                     &cfg,
+                                                                     cube_geometry->GetGeometryVertexFormat());
+            if(!cube_material)
+                return false;
+
+            const Color4f blue = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
+            const uint32_t stride = cube_material->GetMIDataBytes();
+            if (stride > 0)
+            {
+                cube_mi_ssbo_count = 1;
+                cube_mi_ssbo_stride = stride;
+                cube_mi_ssbo = buffer_manager->CreateSSBO("GizmoUsage:CubeMIData", stride, nullptr, SharingMode::Exclusive);
+                if (!cube_mi_ssbo)
+                    return false;
+
+                if (auto *gpu = cube_mi_ssbo->GetGPUBuffer())
+                    gpu->Write(&blue, 0, hgl_min(stride, static_cast<uint32_t>(sizeof(blue))));
+
+                for (const auto &req : cube_material->GetMaterialResourceLayout().requirements)
+                {
+                    if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                        continue;
+
+                    cube_mi_ssbo_type = req.ssbo_type;
+                    cube_mi_ssbo_id = kGizmoUsageCubeSsboId;
+                    break;
+                }
+            }
+
+            cube_primitive = primitive_manager->CreatePrimitive(cube_geometry, cube_material, nullptr, nullptr);
             if(!cube_primitive)
                 return false;
         }
@@ -294,6 +272,21 @@ private:
 
         auto cube_primitive_comp = cube_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         cube_primitive_comp->SetPrimitive(cube_primitive);
+        graph::mtl::MaterialRecipe cube_recipe{};
+        cube_recipe.recipe_name = "GizmoUsageExample.Gizmo3D";
+        cube_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        cube_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Gizmo3D);
+        cube_recipe.domain = "GizmoUsageExample";
+        cube_primitive_comp->SetMaterialRecipe(cube_recipe);
+        cube_primitive_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
+                                                       cube_mi_ssbo_type,
+                                                       cube_mi_ssbo_id,
+                                                       cube_mi_ssbo,
+                                                       cube_mi_ssbo_count,
+                                                       cube_mi_ssbo_stride,
+                                                       0,
+                                                       true,
+                                                       true);
         cube_primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
         cube_primitive_comp->SetVisible(true);
 
@@ -431,8 +424,6 @@ public:
         gizmo_system.reset();
         // graph modules own GPU resources and release them during graphics shutdown.
         // Keep raw pointers non-owning here to avoid teardown order double-free.
-        grid_dbs = nullptr;
-        cube_dbs = nullptr;
         grid_mi_ssbo = nullptr;
         cube_mi_ssbo = nullptr;
     }
