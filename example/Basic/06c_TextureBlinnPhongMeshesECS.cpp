@@ -67,10 +67,12 @@ private:
     Entity* camera_entity = nullptr;
 
     MaterialProgram* material = nullptr;
-    DescriptorBindingSet* binding_set = nullptr;
     graph::DeviceBuffer* mi_ssbo = nullptr;
     VertexDataManager* mesh_vdm = nullptr;
-    SSBOSlotAllocator slot_allocator;
+    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::UserDefined;
+    uint32_t material_ssbo_id = 0;
+    uint32_t material_ssbo_count = 0;
+    uint32_t material_ssbo_stride = 0;
 
     RenderMesh* rm_floor = nullptr;
 
@@ -141,40 +143,9 @@ private:
         return true;
     }
 
-    bool InitBindlessTextureResources()
-    {
-        if (!ecs_context || !material || !base_texture || !normal_texture || !roughness_texture || !sampler)
-            return false;
-
-        auto rdbs = ecs_context->GetSystem<RenderDescriptorBindingSystem>();
-        if (!rdbs)
-            return false;
-
-        auto* render_context = GetRenderContext();
-        auto* bindless_mgr = render_context ? render_context->GetBindlessTextureManager() : nullptr;
-        if (!bindless_mgr)
-            return false;
-
-        if (rdbs->RegisterTexture2DResource("", base_texture, sampler, bindless_mgr) == 0)
-            return false;
-        if (rdbs->RegisterTexture2DResource("", normal_texture, sampler, bindless_mgr) == 0)
-            return false;
-        if (rdbs->RegisterTexture2DResource("", roughness_texture, sampler, bindless_mgr) == 0)
-            return false;
-
-        if (!rdbs->RegisterMaterialTexture(material, mtl::SamplerName::BaseColor, base_texture))
-            return false;
-        if (!rdbs->RegisterMaterialTexture(material, "TextureNormal", normal_texture))
-            return false;
-        if (!rdbs->RegisterMaterialTexture(material, "TextureRoughness", roughness_texture))
-            return false;
-
-        return true;
-    }
-
     bool InitMISSBO()
     {
-        if (!ecs_context || !material)
+        if (!material)
             return false;
 
         const uint32_t mi_data_bytes = material->GetMIDataBytes();
@@ -192,23 +163,28 @@ private:
             return false;
 
         auto* buffer_manager = graphics_context->GetBufferManager();
-        auto* domain_manager = graphics_context->GetResourceDomainManager();
-        if (!buffer_manager || !domain_manager)
+        if (!buffer_manager)
             return false;
 
-        auto rdbs = ecs_context->GetSystem<RenderDescriptorBindingSystem>();
-        if (!rdbs)
+        bool has_struct_binding = false;
+        for (const auto &req : material->GetBindingContract().requirements)
+        {
+            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                continue;
+
+            has_struct_binding = true;
+            material_ssbo_type = req.ssbo_type;
+            material_ssbo_id = req.ssbo_id;
+            break;
+        }
+
+        if (!has_struct_binding)
             return false;
 
-        if (!slot_allocator.Init(1))
-            return false;
-
-        uint32_t slot_index = 0;
-        if (!slot_allocator.Allocate(slot_index))
-            return false;
-
-        const uint32_t mi_count = 1;
+        const uint32_t mi_count = material_ssbo_id + 1;
         const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * mi_data_bytes;
+        material_ssbo_count = mi_count;
+        material_ssbo_stride = mi_data_bytes;
 
         mi_ssbo = buffer_manager->CreateSSBO("06c:PBRSurface:MIData", ssbo_size, nullptr, SharingMode::Exclusive);
         if (!mi_ssbo)
@@ -228,32 +204,10 @@ private:
         mi_data.metallic = 0.08f;
         mi_data.roughness = 0.92f;
         mi_data.normal_scale = 0.35f;
-        memcpy(dst + static_cast<VkDeviceSize>(slot_index) * mi_data_bytes, &mi_data, mi_data_bytes);
+        memcpy(dst + static_cast<VkDeviceSize>(material_ssbo_id) * mi_data_bytes, &mi_data, mi_data_bytes);
 
         gpu_buf->Unmap();
-
-        binding_set = new DescriptorBindingSet(material);
-        if (!binding_set)
-            return false;
-
-        bool has_struct_binding = false;
-        for (const auto &req : material->GetBindingContract().requirements)
-        {
-            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
-                continue;
-
-            has_struct_binding = true;
-            const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
-            if (!domain_manager->RegisterBuffer(addr, mi_ssbo, mi_count))
-                return false;
-
-            if (!binding_set->SetSSBOBinding(req.ssbo_type, req.ssbo_id, slot_index))
-                return false;
-        }
-
-        std::cout << "[06c::InitMISSBO] registered PBRSurface SSBO: count=" << mi_count
-                  << ", stride=" << mi_data_bytes << std::endl;
-        return has_struct_binding;
+        return true;
     }
 
     bool InitVDM()
@@ -284,7 +238,7 @@ private:
 
     RenderMesh* CreateRenderMesh(Geometry* geometry)
     {
-        if (!geometry || !binding_set)
+        if (!geometry)
             return nullptr;
 
         auto* render_context = GetRenderContext();
@@ -302,7 +256,7 @@ private:
 
         geometry_manager->Add(geometry);
 
-        Primitive* primitive = primitive_manager->CreatePrimitive(geometry, material, binding_set, nullptr);
+        Primitive* primitive = primitive_manager->CreatePrimitive(geometry, material, nullptr, nullptr);
         if (!primitive)
             return nullptr;
 
@@ -537,6 +491,21 @@ private:
 
             primitive_comp->SetPrimitive(rm_floor->primitive);
             primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
+            graph::mtl::MaterialRecipe recipe{};
+            recipe.recipe_name = "06c.TextureBlinnPhong.Standard";
+            recipe.shading_model = graph::mtl::ShadingModel::Standard;
+            recipe.domain = "06c.TextureBlinnPhong";
+            primitive_comp->SetMaterialRecipe(recipe);
+            primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_texture, sampler);
+            primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal, normal_texture, sampler);
+            primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_texture, sampler);
+            primitive_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
+                                                      material_ssbo_type,
+                                                      material_ssbo_id,
+                                                      mi_ssbo,
+                                                      material_ssbo_count,
+                                                      material_ssbo_stride,
+                                                      true);
             primitive_comp->SetVisible(true);
         }
 
@@ -565,6 +534,21 @@ private:
 
             primitive_comp->SetPrimitive(rm->primitive);
             primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
+            graph::mtl::MaterialRecipe recipe{};
+            recipe.recipe_name = "06c.TextureBlinnPhong.Standard";
+            recipe.shading_model = graph::mtl::ShadingModel::Standard;
+            recipe.domain = "06c.TextureBlinnPhong";
+            primitive_comp->SetMaterialRecipe(recipe);
+            primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_texture, sampler);
+            primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal, normal_texture, sampler);
+            primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_texture, sampler);
+            primitive_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
+                                                      material_ssbo_type,
+                                                      material_ssbo_id,
+                                                      mi_ssbo,
+                                                      material_ssbo_count,
+                                                      material_ssbo_stride,
+                                                      true);
             primitive_comp->SetVisible(true);
 
             ++index;
@@ -577,9 +561,6 @@ private:
     {
         ecs_context = GetECSContext();
         if (!ecs_context)
-            return false;
-
-        if (!InitBindlessTextureResources())
             return false;
 
         if (!InitMISSBO())
@@ -620,7 +601,6 @@ private:
 public:
     ~TextureBlinnPhongMeshesECSApp()
     {
-        delete binding_set;
         SAFE_CLEAR(mi_ssbo)
         SAFE_CLEAR(mesh_vdm)
     }

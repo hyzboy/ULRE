@@ -410,26 +410,47 @@ private:
         gpu_buf->Unmap();
 
         bool has_struct_binding = false;
+        bool has_data_index_binding = false;
         for (const auto &req : material->GetBindingContract().requirements)
         {
-            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
-                continue;
-
-            has_struct_binding = true;
-            const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
-            if (!domain_manager->RegisterBuffer(addr, mi_ssbo, mi_count)) {
-                printf("[ERROR] InitMISSBO: RegisterBuffer failed\n");
-                return false;
-            }
-
-            for (uint row = 0; row < GRID_SIZE; ++row)
+            switch (req.semantic)
             {
-                for (uint col = 0; col < GRID_SIZE; ++col)
+                case graph::mtl::DescriptorSemantic::MaterialInstance:
                 {
-                    const uint32_t slot_index = sphere_slot_rows[row][col];
-                    if (!sphere_binding[row][col]->SetSSBOBinding(req.ssbo_type, req.ssbo_id, slot_index))
+                    has_struct_binding = true;
+                    const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
+                    if (!domain_manager->RegisterBuffer(addr, mi_ssbo, mi_count)) {
+                        printf("[ERROR] InitMISSBO: RegisterBuffer failed\n");
                         return false;
+                    }
+
+                    for (uint row = 0; row < GRID_SIZE; ++row)
+                    {
+                        for (uint col = 0; col < GRID_SIZE; ++col)
+                        {
+                            const uint32_t slot_index = sphere_slot_rows[row][col];
+                            if (!sphere_binding[row][col]->SetSSBOBinding(req.ssbo_type, req.ssbo_id, slot_index))
+                                return false;
+                        }
+                    }
+                    break;
                 }
+                case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
+                {
+                    has_data_index_binding = true;
+                    for (uint row = 0; row < GRID_SIZE; ++row)
+                    {
+                        for (uint col = 0; col < GRID_SIZE; ++col)
+                        {
+                            const uint32_t slot_index = sphere_slot_rows[row][col];
+                            if (!sphere_binding[row][col]->SetSSBOBinding(req.ssbo_type, req.ssbo_id, slot_index))
+                                return false;
+                        }
+                    }
+                    break;
+                }
+                default:
+                    break;
             }
         }
 
@@ -511,16 +532,44 @@ private:
 
         gpu_buf->Unmap();
 
-        const uint32_t ssbo_id = graph::mtl::MakeRecipeSSBOId(0);
+        uint32_t ssbo_id = graph::mtl::MakeRecipeSSBOId(0);
         const uint32_t row_stride = slot_count * sizeof(uint32_t);
-        const graph::mtl::SSBOAddress addr{graph::mtl::SSBOType::TextureLayer, ssbo_id, 0};
-        if (!domain_manager->RegisterBuffer(addr, texture_layer_ssbo, row_count)) {
-            printf("[ERROR] InitTextureLayerSSBO: RegisterBuffer failed\n");
+        bool has_texture_layer_binding = false;
+        for (const auto &req : material->GetBindingContract().requirements)
+        {
+            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialTextureLayerTable)
+                continue;
+
+            has_texture_layer_binding = true;
+            ssbo_id = req.ssbo_id;
+            const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
+            if (!domain_manager->RegisterBuffer(addr, texture_layer_ssbo, row_count)) {
+                printf("[ERROR] InitTextureLayerSSBO: RegisterBuffer failed\n");
+                return false;
+            }
+
+            for (uint row = 0; row < GRID_SIZE; ++row)
+            {
+                for (uint col = 0; col < GRID_SIZE; ++col)
+                {
+                    const uint32_t slot_index = sphere_slot_rows[row][col];
+                    if (slot_index == uint32_t(-1))
+                        continue;
+
+                    if (!sphere_binding[row][col]->SetSSBOBinding(req.ssbo_type, req.ssbo_id, slot_index))
+                        return false;
+                }
+            }
+        }
+
+        if (!has_texture_layer_binding) {
+            printf("[ERROR] InitTextureLayerSSBO: Material has no texture layer contract binding\n");
             return false;
         }
 
         std::cout << "[PBRSpheres::InitTextureLayerSSBO] registered TextureLayer SSBO: rows=" << row_count
                   << ", stride=" << row_stride
+                  << ", ssbo_id=" << ssbo_id
                   << ", base_handle=" << base_color_handle
                   << ", normal_handle=" << normal_handle << std::endl;
         return true;
@@ -784,18 +833,9 @@ private:
 
                 auto prim_comp = e->AddComponent<hgl::ecs::PrimitiveComponent>();
                 prim_comp->SetPrimitive(base_primitives[col]);
+                prim_comp->SetDescriptorBindingSet(sphere_binding[row][col]);
                 prim_comp->RequestPipeline(InlinePipeline::Solid3D);
                 prim_comp->SetVisible(true);
-
-                auto material_comp = e->AddComponent<hgl::ecs::MaterialComponent>();
-                if (material_comp)
-                {
-                    const uint32_t row_index = sphere_slot_rows[row][col];
-                    material_comp->program = material;
-                    material_comp->material_instance_row = row_index;
-                    material_comp->texture_layer_row = row_index;
-                    material_comp->data_index_row = row_index;
-                }
             }
         }
 

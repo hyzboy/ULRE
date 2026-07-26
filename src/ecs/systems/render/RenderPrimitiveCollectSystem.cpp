@@ -14,6 +14,8 @@
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/render/RenderContext.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/log/Log.h>
@@ -49,6 +51,192 @@ namespace hgl::ecs
                 default:
                     return false;
             }
+        }
+
+        std::string BuildTextureResourceId(graph::Texture *texture)
+        {
+            if (!texture)
+                return {};
+
+            return "texid:" + std::to_string(texture->GetID());
+        }
+
+        void UpsertRecipeTextureBinding(graph::mtl::MaterialRecipe &recipe,
+                                        graph::mtl::TextureSlot slot,
+                                        const std::string &resource_id,
+                                        const bool required)
+        {
+            for (auto &binding : recipe.textures)
+            {
+                if (binding.slot != slot)
+                    continue;
+
+                binding.resource_id = resource_id;
+                binding.required = required;
+                return;
+            }
+
+            graph::mtl::RecipeTextureBinding binding{};
+            binding.slot = slot;
+            binding.resource_id = resource_id;
+            binding.required = required;
+            recipe.textures.emplace_back(std::move(binding));
+        }
+
+        void UpsertRecipeStructBinding(graph::mtl::MaterialRecipe &recipe,
+                                       graph::mtl::DataSlot slot,
+                                       graph::mtl::SSBOType ssbo_type,
+                                       const uint32_t ssbo_id,
+                                       const bool shared_across_instances)
+        {
+            for (auto &binding : recipe.structs)
+            {
+                if (binding.slot != slot)
+                    continue;
+
+                binding.ssbo_type = ssbo_type;
+                binding.ssbo_id = ssbo_id;
+                binding.shared_across_instances = shared_across_instances;
+                return;
+            }
+
+            graph::mtl::RecipeStructBinding binding{};
+            binding.slot = slot;
+            binding.ssbo_type = ssbo_type;
+            binding.ssbo_id = ssbo_id;
+            binding.shared_across_instances = shared_across_instances;
+            recipe.structs.emplace_back(std::move(binding));
+        }
+
+        bool BuildEffectiveMaterialRecipe(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+                                          graph::mtl::MaterialRecipe &out_recipe)
+        {
+            if (!primitive_comp)
+                return false;
+
+            const auto *base_recipe = primitive_comp->GetMaterialRecipe();
+            if (!base_recipe)
+                return false;
+
+            out_recipe = *base_recipe;
+
+            for (size_t i = 0; i < static_cast<size_t>(graph::mtl::TextureSlot::RANGE_SIZE); ++i)
+            {
+                const auto slot = static_cast<graph::mtl::TextureSlot>(i);
+                const auto *resource = primitive_comp->GetMaterialTextureResource(slot);
+                if (!resource)
+                    continue;
+
+                const std::string resource_id = resource->resource_id.empty()
+                                              ? BuildTextureResourceId(resource->texture)
+                                              : resource->resource_id;
+                if (resource_id.empty())
+                    continue;
+
+                UpsertRecipeTextureBinding(out_recipe, slot, resource_id, resource->required);
+            }
+
+            for (size_t i = 0; i < static_cast<size_t>(graph::mtl::DataSlot::RANGE_SIZE); ++i)
+            {
+                const auto slot = static_cast<graph::mtl::DataSlot>(i);
+                const auto *resource = primitive_comp->GetMaterialStructResource(slot);
+                if (!resource)
+                    continue;
+
+                UpsertRecipeStructBinding(out_recipe,
+                                         slot,
+                                         resource->ssbo_type,
+                                         resource->ssbo_id,
+                                         resource->shared_across_instances);
+            }
+
+            return true;
+        }
+
+        bool PrepareRecipeAuthoringResources(ECSContext *world,
+                                             const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+                                             graph::MaterialProgram *material_program)
+        {
+            if (!world || !primitive_comp)
+                return false;
+
+            auto rdbs = world->GetSystem<RenderDescriptorBindingSystem>();
+            auto *render_context = world->GetRenderContext();
+            auto *graphics_context = render_context ? render_context->GetGraphicsContext() : world->GetGraphicsContext();
+            auto *domain_manager = graphics_context ? graphics_context->GetResourceDomainManager() : nullptr;
+            auto *bindless_mgr = render_context ? render_context->GetBindlessTextureManager() : nullptr;
+            if (!rdbs || !domain_manager)
+                return false;
+
+            for (size_t i = 0; i < static_cast<size_t>(graph::mtl::TextureSlot::RANGE_SIZE); ++i)
+            {
+                const auto slot = static_cast<graph::mtl::TextureSlot>(i);
+                const auto *resource = primitive_comp->GetMaterialTextureResource(slot);
+                if (!resource)
+                    continue;
+
+                const std::string resource_id = resource->resource_id.empty()
+                                              ? BuildTextureResourceId(resource->texture)
+                                              : resource->resource_id;
+                if (resource_id.empty() || !bindless_mgr)
+                    return false;
+
+                uint32_t handle = 0;
+                switch (resource->kind)
+                {
+                    case PrimitiveComponent::MaterialTextureResourceKind::Texture2D:
+                        handle = rdbs->RegisterTexture2DResource(resource_id, resource->texture, resource->sampler, bindless_mgr);
+                        break;
+                    case PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray:
+                        handle = rdbs->RegisterTexture2DArrayResource(resource_id, resource->texture, resource->sampler, bindless_mgr);
+                        break;
+                    default:
+                        break;
+                }
+
+                if (handle == 0)
+                    return false;
+
+                if (!material_program)
+                    continue;
+
+                for (const auto &req : material_program->GetBindingContract().requirements)
+                {
+                    if (req.texture_slot != slot || !req.name || !*req.name)
+                        continue;
+
+                    switch (req.semantic)
+                    {
+                        case graph::mtl::DescriptorSemantic::MaterialTexture:
+                            if (!rdbs->RegisterMaterialTexture(material_program, req.name, resource->texture))
+                                return false;
+                            break;
+                        case graph::mtl::DescriptorSemantic::MaterialSampler:
+                            if (!rdbs->RegisterMaterialTextureSampler(material_program, req.name, resource->texture, resource->sampler))
+                                return false;
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+
+            for (size_t i = 0; i < static_cast<size_t>(graph::mtl::DataSlot::RANGE_SIZE); ++i)
+            {
+                const auto slot = static_cast<graph::mtl::DataSlot>(i);
+                const auto *resource = primitive_comp->GetMaterialStructResource(slot);
+                if (!resource)
+                    continue;
+
+                if (!rdbs->RegisterMaterialStructLayout(resource->ssbo_type, resource->ssbo_id, resource->byte_stride))
+                    return false;
+
+                const graph::mtl::SSBOAddress address{resource->ssbo_type, resource->ssbo_id, 0};
+                if (!domain_manager->RegisterBuffer(address, resource->buffer, resource->element_capacity))
+                    return false;
+            }
+
+            return true;
         }
 
         void InvalidateRecipeRuntime(const std::shared_ptr<MaterialComponent> &material_comp,
@@ -199,11 +387,11 @@ namespace hgl::ecs
         if (!world || !primitive_comp || !material_comp)
             return false;
 
-        const auto *recipe = primitive_comp->GetMaterialRecipe();
-        if (!recipe)
+        graph::mtl::MaterialRecipe effective_recipe{};
+        if (!BuildEffectiveMaterialRecipe(primitive_comp, effective_recipe))
             return false;
 
-        const uint64_t recipe_hash = graph::mtl::HashMaterialRecipe(*recipe);
+        const uint64_t recipe_hash = graph::mtl::HashMaterialRecipe(effective_recipe);
         if (material_comp->recipe_hash != recipe_hash)
         {
             material_comp->program_dirty = true;
@@ -230,7 +418,7 @@ namespace hgl::ecs
 
         graph::mtl::MaterialPreset preset{};
         bool resolved_by_model = false;
-        switch (recipe->shading_model)
+        switch (effective_recipe.shading_model)
         {
             case graph::mtl::ShadingModel::Text:
                 preset = graph::mtl::MaterialPreset::Text2D;
@@ -258,17 +446,17 @@ namespace hgl::ecs
         // Fallback bridge: use preset_hint only when shading-model policy is insufficient.
         if (!resolved_by_model)
         {
-            if (!TryResolvePresetByHint(recipe->preset_hint, preset))
+            if (!TryResolvePresetByHint(effective_recipe.preset_hint, preset))
                 return false;
         }
-        else if (recipe->preset_hint != graph::mtl::InvalidMaterialPresetHint)
+        else if (effective_recipe.preset_hint != graph::mtl::InvalidMaterialPresetHint)
         {
             graph::mtl::MaterialPreset hinted{};
-            if (TryResolvePresetByHint(recipe->preset_hint, hinted))
+            if (TryResolvePresetByHint(effective_recipe.preset_hint, hinted))
             {
                 // For ambiguous models (e.g. Standard / Unlit), hint can refine concrete template.
-                if (recipe->shading_model == graph::mtl::ShadingModel::Standard
-                 || recipe->shading_model == graph::mtl::ShadingModel::Unlit)
+                if (effective_recipe.shading_model == graph::mtl::ShadingModel::Standard
+                 || effective_recipe.shading_model == graph::mtl::ShadingModel::Unlit)
                 {
                     preset = hinted;
                 }
@@ -342,8 +530,8 @@ namespace hgl::ecs
         if (!world || !primitive_comp || !material_comp)
             return false;
 
-        const auto *recipe = primitive_comp->GetMaterialRecipe();
-        if (!recipe)
+        graph::mtl::MaterialRecipe effective_recipe{};
+        if (!BuildEffectiveMaterialRecipe(primitive_comp, effective_recipe))
             return false;
 
         if (!material_comp->bindings_dirty
@@ -360,7 +548,7 @@ namespace hgl::ecs
         graph::mtl::MaterializationSpec spec{};
         uint32_t texture_layer_row = uint32_t(-1);
         uint32_t data_index_row = uint32_t(-1);
-        if (!rdbs->ResolveMaterialRecipe(*recipe, spec, &texture_layer_row, &data_index_row))
+        if (!rdbs->ResolveMaterialRecipe(effective_recipe, spec, &texture_layer_row, &data_index_row))
             return false;
 
         if (texture_layer_row == uint32_t(-1) || data_index_row == uint32_t(-1))
@@ -468,16 +656,30 @@ namespace hgl::ecs
 
             if (material_comp && primitiveComp->HasMaterialRecipe())
             {
-                const bool resolved_program = ResolveMaterialProgramForPrimitive(primitiveComp, material_comp);
-                if (!resolved_program)
+                if (!PrepareRecipeAuthoringResources(world, primitiveComp, nullptr))
                 {
                     InvalidateRecipeRuntime(material_comp, true);
                 }
                 else
                 {
-                    const bool materialized_rows = MaterializeRecipeRowsForPrimitive(primitiveComp, material_comp);
-                    if (!materialized_rows)
-                        InvalidateRecipeRuntime(material_comp, false);
+                    const bool resolved_program = ResolveMaterialProgramForPrimitive(primitiveComp, material_comp);
+                    if (!resolved_program)
+                    {
+                        InvalidateRecipeRuntime(material_comp, true);
+                    }
+                    else
+                    {
+                        if (!PrepareRecipeAuthoringResources(world, primitiveComp, material_comp->program))
+                        {
+                            InvalidateRecipeRuntime(material_comp, false);
+                        }
+                        else
+                        {
+                            const bool materialized_rows = MaterializeRecipeRowsForPrimitive(primitiveComp, material_comp);
+                            if (!materialized_rows)
+                                InvalidateRecipeRuntime(material_comp, false);
+                        }
+                    }
                 }
             }
 

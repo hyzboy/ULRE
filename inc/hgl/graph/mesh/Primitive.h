@@ -20,6 +20,7 @@ class Primitive
 {
     Pipeline *          pipeline;
     MaterialInstance *  mat_inst;
+    MaterialProgram *   material_program;
     DescriptorBindingSet *binding_set;
     Geometry *          geometry;
 
@@ -32,7 +33,7 @@ private:
     friend Primitive *DirectCreatePrimitive(Geometry *,MaterialProgram *,DescriptorBindingSet *,Pipeline *);
 
     Primitive(Geometry *,MaterialInstance *,Pipeline *,GeometryDataBuffer *);
-    Primitive(Geometry *,DescriptorBindingSet *,Pipeline *,GeometryDataBuffer *);
+    Primitive(Geometry *,MaterialProgram *,DescriptorBindingSet *,Pipeline *,GeometryDataBuffer *);
 
 public:
 
@@ -45,7 +46,7 @@ public:
 
             Pipeline *          GetPipeline         (){return pipeline;}
             VkPipelineLayout    GetPipelineLayout   (){return GetMaterialProgram()?GetMaterialProgram()->GetPipelineLayout():VK_NULL_HANDLE;}
-            MaterialProgram *   GetMaterialProgram  (){return mat_inst?mat_inst->GetMaterialProgram():(binding_set?binding_set->GetMaterialProgram():nullptr);}
+            MaterialProgram *   GetMaterialProgram  (){return mat_inst?mat_inst->GetMaterialProgram():(binding_set?binding_set->GetMaterialProgram():material_program);}
             MaterialInstance *  GetMaterialInstance (){return mat_inst;}
             DescriptorBindingSet *GetDescriptorBindingSet(){return binding_set;}
             Geometry *          GetGeometry         (){return geometry;}
@@ -75,7 +76,7 @@ public:
 };//class Primitive
 
 Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,Pipeline * = nullptr);
-Primitive *DirectCreatePrimitive(Geometry *,MaterialProgram *,DescriptorBindingSet *,Pipeline * = nullptr);
+Primitive *DirectCreatePrimitive(Geometry *,MaterialProgram *,DescriptorBindingSet * = nullptr,Pipeline * = nullptr);
 
 // Pre-flight compatibility check: matches geometry vertex format against the
 // material's VIL and returns the full failure summary without creating a primitive.

@@ -5,6 +5,7 @@
 #include<hgl/ecs/support/TransformPolicySpec.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/vk/pipeline/VKInlinePipeline.h>
+#include<array>
 #include<glm/glm.hpp>
 
 // Forward declarations to avoid heavy includes
@@ -18,11 +19,14 @@ namespace hgl
     namespace graph
     {
         class DescriptorBindingSet;
+        class DeviceBuffer;
         class Primitive;
         class MaterialProgram;
         class MaterialInstance;
         class Pipeline;
         class RenderPass;
+        class Sampler;
+        class Texture;
     }
 }
 
@@ -42,6 +46,32 @@ namespace hgl::ecs
      */
     class PrimitiveComponent : public RenderableComponent
     {
+    public:
+        enum class MaterialTextureResourceKind : uint8_t
+        {
+            Texture2D = 0,
+            Texture2DArray
+        };
+
+        struct MaterialTextureAuthoringResource
+        {
+            std::string resource_id;
+            hgl::graph::Texture *texture = nullptr;
+            hgl::graph::Sampler *sampler = nullptr;
+            MaterialTextureResourceKind kind = MaterialTextureResourceKind::Texture2D;
+            bool required = false;
+        };
+
+        struct MaterialStructAuthoringResource
+        {
+            hgl::graph::mtl::SSBOType ssbo_type = hgl::graph::mtl::SSBOType::UserDefined;
+            uint32_t ssbo_id = 0;
+            hgl::graph::DeviceBuffer *buffer = nullptr;
+            uint32_t element_capacity = 0;
+            uint32_t byte_stride = 0;
+            bool shared_across_instances = false;
+        };
+
     private:
 
         hgl::graph::Primitive* primitive;                // The primitive to render (not owned)
@@ -50,6 +80,8 @@ namespace hgl::ecs
         hgl::graph::Pipeline* overridePipeline;           // Optional pipeline override (not owned)
         bool hasMaterialRecipe = false;
         hgl::graph::mtl::MaterialRecipe materialRecipe;
+        std::array<MaterialTextureAuthoringResource, static_cast<size_t>(hgl::graph::mtl::TextureSlot::RANGE_SIZE)> materialTextureResources{};
+        std::array<MaterialStructAuthoringResource, static_cast<size_t>(hgl::graph::mtl::DataSlot::RANGE_SIZE)> materialStructResources{};
 
         // Late-resolve pipeline slot:
         // Populated at render-time if primitive has no pre-baked pipeline.
@@ -132,6 +164,24 @@ namespace hgl::ecs
         const hgl::graph::mtl::MaterialRecipe *GetMaterialRecipe() const;
         bool HasMaterialRecipe() const { return hasMaterialRecipe; }
         void ClearMaterialRecipe();
+        void SetMaterialTextureResource(hgl::graph::mtl::TextureSlot slot,
+                                        hgl::graph::Texture *texture,
+                                        hgl::graph::Sampler *sampler,
+                                        MaterialTextureResourceKind kind = MaterialTextureResourceKind::Texture2D,
+                                        const std::string &resource_id = std::string(),
+                                        bool required = false);
+        const MaterialTextureAuthoringResource *GetMaterialTextureResource(hgl::graph::mtl::TextureSlot slot) const;
+        void ClearMaterialTextureResource(hgl::graph::mtl::TextureSlot slot);
+        void SetMaterialStructResource(hgl::graph::mtl::DataSlot slot,
+                                       hgl::graph::mtl::SSBOType ssbo_type,
+                                       uint32_t ssbo_id,
+                                       hgl::graph::DeviceBuffer *buffer,
+                                       uint32_t element_capacity,
+                                       uint32_t byte_stride,
+                                       bool shared_across_instances = false);
+        const MaterialStructAuthoringResource *GetMaterialStructResource(hgl::graph::mtl::DataSlot slot) const;
+        void ClearMaterialStructResource(hgl::graph::mtl::DataSlot slot);
+        void ClearMaterialAuthoringResources();
 
         // MaterialProgram access (returns override if set, otherwise primitive's material)
         hgl::graph::MaterialInstance* GetMaterialInstance() const;

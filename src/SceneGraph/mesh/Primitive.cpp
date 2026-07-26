@@ -54,17 +54,19 @@ Primitive::Primitive(Geometry *r,MaterialInstance *mi,Pipeline *p,GeometryDataBu
     geometry=r;
     pipeline=p;
     mat_inst=mi;
+    material_program = mi ? mi->GetMaterialProgram() : nullptr;
     binding_set=nullptr;
 
     data_buffer=gdb;
     draw_range.Set(geometry);
 }
 
-Primitive::Primitive(Geometry *r,DescriptorBindingSet *dbs,Pipeline *p,GeometryDataBuffer *gdb)
+Primitive::Primitive(Geometry *r,MaterialProgram *material,DescriptorBindingSet *dbs,Pipeline *p,GeometryDataBuffer *gdb)
 {
     geometry=r;
     pipeline=p;
     mat_inst=nullptr;
+    material_program = material;
     binding_set=dbs;
 
     data_buffer=gdb;
@@ -82,7 +84,7 @@ bool Primitive::UpdateGeometry()
     if(draw_range.index_count>draw_range.data_index_count)
         draw_range.index_count = draw_range.data_index_count;
 
-    const VIL *vil = mat_inst ? mat_inst->GetVIL() : (binding_set ? binding_set->GetVIL() : nullptr);
+    const VIL *vil = mat_inst ? mat_inst->GetVIL() : (binding_set ? binding_set->GetVIL() : (material_program ? material_program->GetDefaultVIL() : nullptr));
     return data_buffer->Update(geometry, vil ? vil->GetVIFList() : nullptr, vil ? vil->GetVertexAttribCount() : 0);
 }
 
@@ -190,26 +192,29 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
 
 Primitive *DirectCreatePrimitive(Geometry *geom,MaterialProgram *material,DescriptorBindingSet *dbs,Pipeline *p)
 {
-    if(!geom||!material||!dbs)return(nullptr);
+    if(!geom||!material)return(nullptr);
 
-    MaterialProgram *current_material = dbs->GetMaterialProgram();
-    if (current_material != material)
+    if (dbs)
     {
-        if (current_material)
+        MaterialProgram *current_material = dbs->GetMaterialProgram();
+        if (current_material != material)
         {
-            GLogWarning("[Primitive] DBS material mismatch, override to explicit target material. old=%s new=%s",
-                        current_material->GetName().c_str(),
-                        material->GetName().c_str());
+            if (current_material)
+            {
+                GLogWarning("[Primitive] DBS material mismatch, override to explicit target material. old=%s new=%s",
+                            current_material->GetName().c_str(),
+                            material->GetName().c_str());
+            }
+            dbs->SetMaterial(material);
         }
-        dbs->SetMaterial(material);
     }
 
-    const VIL *vil = dbs->GetVIL();
+    const VIL *vil = dbs ? dbs->GetVIL() : material->GetDefaultVIL();
 
     if(!material||!vil)
         return(nullptr);
 
-    if(!dbs->HasRequiredContractBindings(material->GetBindingContract(), material->GetName().c_str()))
+    if(dbs && !dbs->HasRequiredContractBindings(material->GetBindingContract(), material->GetName().c_str()))
         return(nullptr);
 
     // VIL/pipeline consistency check: only performed when a pre-baked pipeline is provided.
@@ -296,7 +301,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialProgram *material,Descri
         ++vif;
     }
 
-    return(new Primitive(geom,dbs,p,geom_data_buffer));
+    return(new Primitive(geom,material,dbs,p,geom_data_buffer));
 }
 
 GeometryVertexFormatMatch QueryGeometryVertexCompatibility(const Geometry *geom, const MaterialInstance *mi)

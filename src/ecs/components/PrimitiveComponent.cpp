@@ -4,6 +4,7 @@
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKMaterialProgram.h>
 #include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/vk/VKTexture.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/math/geometry/BoundingVolumes.h>
 #include<hgl/log/Log.h>
@@ -12,6 +13,14 @@ namespace hgl::ecs
 {
     namespace
     {
+        std::string BuildTextureResourceId(hgl::graph::Texture *texture)
+        {
+            if (!texture)
+                return {};
+
+            return "texid:" + std::to_string(texture->GetID());
+        }
+
         void ResetMaterialRecipe(hgl::graph::mtl::MaterialRecipe &recipe)
         {
             recipe.recipe_name.clear();
@@ -23,6 +32,25 @@ namespace hgl::ecs
             recipe.alpha_cutoff = 0.5f;
             recipe.textures.clear();
             recipe.structs.clear();
+        }
+
+        void ResetMaterialTextureAuthoringResource(PrimitiveComponent::MaterialTextureAuthoringResource &resource)
+        {
+            resource.resource_id.clear();
+            resource.texture = nullptr;
+            resource.sampler = nullptr;
+            resource.kind = PrimitiveComponent::MaterialTextureResourceKind::Texture2D;
+            resource.required = false;
+        }
+
+        void ResetMaterialStructAuthoringResource(PrimitiveComponent::MaterialStructAuthoringResource &resource)
+        {
+            resource.ssbo_type = hgl::graph::mtl::SSBOType::UserDefined;
+            resource.ssbo_id = 0;
+            resource.buffer = nullptr;
+            resource.element_capacity = 0;
+            resource.byte_stride = 0;
+            resource.shared_across_instances = false;
         }
     }
 
@@ -89,6 +117,106 @@ namespace hgl::ecs
         InvalidateResolvedRuntimePipeline();
         ResetMaterialRecipe(materialRecipe);
         hasMaterialRecipe = false;
+        ClearMaterialAuthoringResources();
+    }
+
+    void PrimitiveComponent::SetMaterialTextureResource(hgl::graph::mtl::TextureSlot slot,
+                                                        hgl::graph::Texture *texture,
+                                                        hgl::graph::Sampler *sampler,
+                                                        MaterialTextureResourceKind kind,
+                                                        const std::string &resource_id,
+                                                        bool required)
+    {
+        const size_t index = static_cast<size_t>(slot);
+        if (index >= materialTextureResources.size())
+            return;
+
+        auto &resource = materialTextureResources[index];
+        if (!texture || !sampler)
+        {
+            ResetMaterialTextureAuthoringResource(resource);
+            return;
+        }
+
+        resource.texture = texture;
+        resource.sampler = sampler;
+        resource.kind = kind;
+        resource.required = required;
+        resource.resource_id = resource_id.empty() ? BuildTextureResourceId(texture) : resource_id;
+    }
+
+    const PrimitiveComponent::MaterialTextureAuthoringResource *PrimitiveComponent::GetMaterialTextureResource(hgl::graph::mtl::TextureSlot slot) const
+    {
+        const size_t index = static_cast<size_t>(slot);
+        if (index >= materialTextureResources.size())
+            return nullptr;
+
+        const auto &resource = materialTextureResources[index];
+        return (resource.texture && resource.sampler) ? &resource : nullptr;
+    }
+
+    void PrimitiveComponent::ClearMaterialTextureResource(hgl::graph::mtl::TextureSlot slot)
+    {
+        const size_t index = static_cast<size_t>(slot);
+        if (index >= materialTextureResources.size())
+            return;
+
+        ResetMaterialTextureAuthoringResource(materialTextureResources[index]);
+    }
+
+    void PrimitiveComponent::SetMaterialStructResource(hgl::graph::mtl::DataSlot slot,
+                                                       hgl::graph::mtl::SSBOType ssbo_type,
+                                                       uint32_t ssbo_id,
+                                                       hgl::graph::DeviceBuffer *buffer,
+                                                       uint32_t element_capacity,
+                                                       uint32_t byte_stride,
+                                                       bool shared_across_instances)
+    {
+        const size_t index = static_cast<size_t>(slot);
+        if (index >= materialStructResources.size())
+            return;
+
+        auto &resource = materialStructResources[index];
+        if (!buffer || byte_stride == 0)
+        {
+            ResetMaterialStructAuthoringResource(resource);
+            return;
+        }
+
+        resource.ssbo_type = ssbo_type;
+        resource.ssbo_id = ssbo_id;
+        resource.buffer = buffer;
+        resource.element_capacity = element_capacity;
+        resource.byte_stride = byte_stride;
+        resource.shared_across_instances = shared_across_instances;
+    }
+
+    const PrimitiveComponent::MaterialStructAuthoringResource *PrimitiveComponent::GetMaterialStructResource(hgl::graph::mtl::DataSlot slot) const
+    {
+        const size_t index = static_cast<size_t>(slot);
+        if (index >= materialStructResources.size())
+            return nullptr;
+
+        const auto &resource = materialStructResources[index];
+        return resource.buffer ? &resource : nullptr;
+    }
+
+    void PrimitiveComponent::ClearMaterialStructResource(hgl::graph::mtl::DataSlot slot)
+    {
+        const size_t index = static_cast<size_t>(slot);
+        if (index >= materialStructResources.size())
+            return;
+
+        ResetMaterialStructAuthoringResource(materialStructResources[index]);
+    }
+
+    void PrimitiveComponent::ClearMaterialAuthoringResources()
+    {
+        for (auto &resource : materialTextureResources)
+            ResetMaterialTextureAuthoringResource(resource);
+
+        for (auto &resource : materialStructResources)
+            ResetMaterialStructAuthoringResource(resource);
     }
 
     void PrimitiveComponent::InvalidateResolvedRuntimePipeline()
@@ -219,6 +347,7 @@ namespace hgl::ecs
         overridePipeline = nullptr;
         ResetMaterialRecipe(materialRecipe);
         hasMaterialRecipe = false;
+        ClearMaterialAuthoringResources();
         resolvedRuntimePipeline = nullptr;
         resolvedRuntimeRenderPass = nullptr;
         hasPendingPipelinePreset = false;
