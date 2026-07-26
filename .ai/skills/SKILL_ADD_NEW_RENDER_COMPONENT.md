@@ -10,6 +10,31 @@
 
 ## 工作流程
 
+### 0️⃣ **Geometry → GVF → 最终 VIL（硬规则）**
+
+对所有示例、RenderComponent、Primitive 创建路径，统一遵守以下顺序：
+
+1. **先创建 Geometry**
+2. **从 Geometry 读取 `GeometryVertexFormat`**
+3. **结合材质需求生成最终 `VIL`**
+4. **再创建 Primitive / Pipeline**
+
+#### 强制约束
+
+- **不要**默认假设 `MaterialProgram::GetDefaultVIL()` 一定适合当前几何体
+- **不要**因为示例里“材质看起来固定”就跳过 `GeometryVertexFormat` → `VIL` 这一步
+- 对 `vec2 Position`、`Luminance`、特殊顶点输入、2D 几何映射到 3D 的场景（如 `PlaneGrid3D`），必须走这条路径
+- 对 **无 DBS** 的 `MaterialProgram` primitive 创建路径，`Primitive` 内部应优先基于 `geometry->GetGeometryVertexFormat()` 调用 `material->CreateVIL(...)`
+- `late-resolve pipeline` 也必须优先使用 `Primitive` 当前实际持有的 `VIL`，而不是盲用 `GetDefaultVIL()`
+
+#### 设计意图
+
+- `MaterialProgram` 只表达“材质需要哪些顶点语义”
+- `Geometry` 才表达“当前几何实际提供了什么顶点格式”
+- `VIL` 是二者在当前 primitive 上的**最终匹配结果**
+
+> 结论：**VIL 属于 geometry × material 的结果，不属于 material 单方默认值。**
+
 ### 1️⃣ **创建Component类** 
 ```cpp
 // inc/hgl/ecs/components/MyElementComponent.h

@@ -40,10 +40,11 @@ namespace
 {
     GeometryVertexFormat CreateStandardGeometryVertexFormat()
     {
-        GeometryVertexFormat gvf;
-        gvf.Add(VertexSemantic::Position, VF_V3F, 3, sizeof(float) * 3);
-        gvf.Add(VertexSemantic::TexCoord, VF_V2F, 2, sizeof(float) * 2);
-        gvf.Add(VertexSemantic::Normal, VF_V3F, 3, sizeof(float) * 3);
+        GeometryVertexFormat gvf{
+            {VertexSemantic::Position, VF_V3F},
+            {VertexSemantic::TexCoord, VF_V2F},
+            {VertexSemantic::Normal,   VF_V3F},
+        };
         return gvf;
     }
 }

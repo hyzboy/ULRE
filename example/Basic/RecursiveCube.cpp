@@ -41,9 +41,10 @@ namespace
 {
     GeometryVertexFormat CreateGizmo3DGeometryVertexFormat()
     {
-        GeometryVertexFormat gvf;
-        gvf.Add(VertexSemantic::Position, VF_V3F, 3, sizeof(float) * 3);
-        gvf.Add(VertexSemantic::Normal, VF_V3F, 3, sizeof(float) * 3);
+        GeometryVertexFormat gvf{
+            {VertexSemantic::Position, VF_V3F},
+            {VertexSemantic::Normal,   VF_V3F},
+        };
         return gvf;
     }
 }
@@ -398,5 +399,4 @@ int os_main(int argc, os_char **argv)
 {
     return RunFramework<RecursiveCubeApp>(OS_TEXT("Recursive Cube (ECS)"), argc, argv, 1280, 720);
 }
-
 

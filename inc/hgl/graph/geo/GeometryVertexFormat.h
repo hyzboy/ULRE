@@ -2,7 +2,9 @@
 
 #include <hgl/common/VertexAttribDef.h>
 #include <hgl/graph/geo/AttributeCompatibility.h>
+#include <hgl/vk/VKFormat.h>
 #include <hgl/vk/VKVertexInputFormat.h>
+#include <initializer_list>
 #include <vector>
 #include <cstring>
 
@@ -16,6 +18,72 @@ namespace hgl::graph
         uint32_t stride = 0;
     };
 
+    namespace detail
+    {
+        inline uint8_t InferVecSizeFromFormat(const VkFormat format)
+        {
+            switch (format)
+            {
+            case VF_V2F:
+            case VF_V2HF:
+            case VF_V2I:
+            case VF_V2I16:
+            case VF_V2I8:
+            case VF_V2U:
+            case VF_V2U8:
+            case VF_V2U16:
+            case VF_V2UN8:
+            case VF_V2UN16:
+            case VF_V2SN8:
+            case VF_V2SN16:
+                return 2;
+            case VF_V3F:
+            case VF_V3HF:
+            case VF_V3I:
+            case VF_V3I16:
+            case VF_V3I8:
+            case VF_V3U:
+            case VF_V3U8:
+            case VF_V3U16:
+            case VF_V3UN8:
+            case VF_V3UN16:
+            case VF_V3SN8:
+            case VF_V3SN16:
+                return 3;
+            case VF_V4F:
+            case VF_V4HF:
+            case VF_V4I:
+            case VF_V4I16:
+            case VF_V4I8:
+            case VF_V4U:
+            case VF_V4U8:
+            case VF_V4U16:
+            case VF_V4UN8:
+            case VF_V4UN16:
+            case VF_V4SN8:
+            case VF_V4SN16:
+                return 4;
+            case VF_V1F:
+            case VF_V1HF:
+            case VF_V1I:
+            case VF_V1I16:
+            case VF_V1I8:
+            case VF_V1U:
+            case VF_V1U8:
+            case VF_V1U16:
+            case VF_V1UN8:
+            case VF_V1UN16:
+            case VF_V1SN8:
+            case VF_V1SN16:
+                return 1;
+            default:
+                break;
+            }
+
+            return 0;
+        }
+    }
+
     class GeometryVertexFormat
     {
     private:
@@ -23,6 +91,14 @@ namespace hgl::graph
         std::vector<GeometryVertexAttributeFormat> attributes;
 
     public:
+
+        GeometryVertexFormat() = default;
+
+        GeometryVertexFormat(std::initializer_list<GeometryVertexAttributeFormat> init)
+        {
+            for (const auto &attribute : init)
+                Add(attribute.semantic, attribute.format, attribute.vec_size, attribute.stride);
+        }
 
         void Clear()
         {
@@ -58,14 +134,24 @@ namespace hgl::graph
             if (semantic == VertexSemantic::Unknown || Find(semantic))
                 return false;
 
+            const uint8_t final_vec_size = vec_size ? vec_size : detail::InferVecSizeFromFormat(format);
+            const uint32_t final_stride = stride ? stride : GetStrideByFormat(format);
+            if (final_vec_size == 0 || final_stride == 0)
+                return false;
+
             GeometryVertexAttributeFormat attribute;
             attribute.semantic = semantic;
             attribute.format = format;
-            attribute.vec_size = vec_size;
-            attribute.stride = stride;
+            attribute.vec_size = final_vec_size;
+            attribute.stride = final_stride;
 
             attributes.push_back(attribute);
             return true;
+        }
+
+        bool Add(const VertexSemantic semantic, const VkFormat format)
+        {
+            return Add(semantic, format, 0, 0);
         }
 
     };

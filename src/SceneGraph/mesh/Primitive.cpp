@@ -56,18 +56,22 @@ Primitive::Primitive(Geometry *r,MaterialInstance *mi,Pipeline *p,GeometryDataBu
     mat_inst=mi;
     material_program = mi ? mi->GetMaterialProgram() : nullptr;
     binding_set=nullptr;
+    binding_vil = mi ? mi->GetVIL() : nullptr;
+    owns_binding_vil = false;
 
     data_buffer=gdb;
     draw_range.Set(geometry);
 }
 
-Primitive::Primitive(Geometry *r,MaterialProgram *material,DescriptorBindingSet *dbs,Pipeline *p,GeometryDataBuffer *gdb)
+Primitive::Primitive(Geometry *r,MaterialProgram *material,DescriptorBindingSet *dbs,const VIL *vil,bool own_vil,Pipeline *p,GeometryDataBuffer *gdb)
 {
     geometry=r;
     pipeline=p;
     mat_inst=nullptr;
     material_program = material;
     binding_set=dbs;
+    binding_vil = vil;
+    owns_binding_vil = own_vil;
 
     data_buffer=gdb;
     draw_range.Set(geometry);
@@ -84,7 +88,7 @@ bool Primitive::UpdateGeometry()
     if(draw_range.index_count>draw_range.data_index_count)
         draw_range.index_count = draw_range.data_index_count;
 
-    const VIL *vil = mat_inst ? mat_inst->GetVIL() : (binding_set ? binding_set->GetVIL() : (material_program ? material_program->GetDefaultVIL() : nullptr));
+    const VIL *vil = GetVIL();
     return data_buffer->Update(geometry, vil ? vil->GetVIFList() : nullptr, vil ? vil->GetVertexAttribCount() : 0);
 }
 
@@ -194,6 +198,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialProgram *material,Descri
 {
     if(!geom||!material)return(nullptr);
 
+    VIL *owned_vil = nullptr;
     if (dbs)
     {
         MaterialProgram *current_material = dbs->GetMaterialProgram();
@@ -209,18 +214,39 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialProgram *material,Descri
         }
     }
 
-    const VIL *vil = dbs ? dbs->GetVIL() : material->GetDefaultVIL();
+    const VIL *vil = nullptr;
+    if (dbs)
+    {
+        vil = dbs->GetVIL();
+    }
+    else
+    {
+        owned_vil = material->CreateVIL(geom->GetGeometryVertexFormat());
+        vil = owned_vil ? owned_vil : material->GetDefaultVIL();
+    }
 
     if(!material||!vil)
+    {
+        if (owned_vil)
+            material->Release(owned_vil);
         return(nullptr);
+    }
 
     if(dbs && !dbs->HasRequiredResourceBindings(material->GetMaterialResourceLayout(), material->GetName().c_str()))
+    {
+        if (owned_vil)
+            material->Release(owned_vil);
         return(nullptr);
+    }
 
     // VIL/pipeline consistency check: only performed when a pre-baked pipeline is provided.
     // When p==null, the pipeline will be resolved lazily at render time via the late-resolve path.
     if(p && *vil!=*p->GetVIL())
+    {
+        if (owned_vil)
+            material->Release(owned_vil);
         return(nullptr);
+    }
 
     const uint32_t input_count=vil->GetVertexAttribCount();
     const AnsiString &mtl_name=material->GetName();
@@ -232,6 +258,8 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialProgram *material,Descri
     if(geom->GetVABCount()<input_count)
     {
         GLogError("[FATAL ERROR] input buffer count of Primitive lesser than MaterialProgram, MaterialProgram name: "+mtl_name);
+        if (owned_vil)
+            material->Release(owned_vil);
         return(nullptr);
     }
 
@@ -271,6 +299,8 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialProgram *material,Descri
             GLogError("[FATAL ERROR] GeometryVertexFormat can't satisfy MaterialProgram vertex input, MaterialProgram: "+mtl_name);
         }
 
+        if (owned_vil)
+            material->Release(owned_vil);
         return(nullptr);
     }
 
@@ -292,6 +322,8 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialProgram *material,Descri
         if(!vab)
         {
             GLogError("[FATAL ERROR] not found VAB \""+AnsiString(GetVertexSemanticName(vif->semantic))+"\" in MaterialProgram: "+mtl_name);
+            if (owned_vil)
+                material->Release(owned_vil);
             return(nullptr);
         }
 
@@ -301,7 +333,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialProgram *material,Descri
         ++vif;
     }
 
-    return(new Primitive(geom,material,dbs,p,geom_data_buffer));
+    return(new Primitive(geom,material,dbs,owned_vil,owned_vil!=nullptr,p,geom_data_buffer));
 }
 
 GeometryVertexFormatMatch QueryGeometryVertexCompatibility(const Geometry *geom, const MaterialInstance *mi)

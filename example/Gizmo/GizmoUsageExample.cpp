@@ -41,11 +41,23 @@ using namespace hgl::graph;
 
 namespace
 {
+    constexpr uint32_t kGizmoUsageGridSsboId = hgl::graph::mtl::MakeRecipeSSBOId(8101);
+
+    GeometryVertexFormat CreateVertexLuminance2DGeometryVertexFormat()
+    {
+        GeometryVertexFormat gvf{
+            {VertexSemantic::Position,  VF_V2F},
+            {VertexSemantic::Luminance, VF_V1UN8},
+        };
+        return gvf;
+    }
+
     GeometryVertexFormat CreateGizmo3DGeometryVertexFormat()
     {
-        GeometryVertexFormat gvf;
-        gvf.Add(VertexSemantic::Position, VF_V3F, 3, sizeof(float) * 3);
-        gvf.Add(VertexSemantic::Normal, VF_V3F, 3, sizeof(float) * 3);
+        GeometryVertexFormat gvf{
+            {VertexSemantic::Position, VF_V3F},
+            {VertexSemantic::Normal,   VF_V3F},
+        };
         return gvf;
     }
 }
@@ -76,6 +88,8 @@ private:
     bool grid_mi_binding_registered = false;
     graph::mtl::SSBOType grid_mi_ssbo_type = graph::mtl::SSBOType::UserDefined;
     uint32_t grid_mi_ssbo_id = 0;
+    uint32_t grid_mi_ssbo_count = 0;
+    uint32_t grid_mi_ssbo_stride = 0;
 
     std::string debug_cache;
 
@@ -97,20 +111,32 @@ private:
             return false;
 
         {
-            mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
+            inline_geometry::PlaneGridCreateInfo pgci;
+            pgci.grid_size.Set(32, 32);
+            pgci.sub_count.Set(8, 8);
+            pgci.lum = 180;
+            pgci.sub_lum = 255;
+
+            auto pc = std::make_unique<GeometryCreater>(
+                device,
+                CreateVertexLuminance2DGeometryVertexFormat());
+
+            grid_geometry = inline_geometry::CreatePlaneGrid2D(pc.get(), &pgci);
+            if(!grid_geometry)
+                return false;
+
+            geometry_manager->Add(grid_geometry);
+
+            mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
             cfg.local_to_world = true;
-            grid_material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Gizmo3D, &cfg);
+            grid_material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::VertexLuminance3D,
+                                                                     &cfg,
+                                                                     grid_geometry->GetGeometryVertexFormat());
             if(!grid_material)
                 return false;
 
-            grid_dbs = new DescriptorBindingSet(grid_material);
-            if(!grid_dbs)
-                return false;
-
-            // Grid uses per-instance color; create SSBO + DBS if material has MI data
             auto *buffer_manager = graphics_context->GetBufferManager();
-            auto *domain_manager = graphics_context->GetResourceDomainManager();
-            if (!buffer_manager || !domain_manager)
+            if (!buffer_manager)
                 return false;
 
             const Color4f white = GetColor4f(COLOR::White, 1.0f);
@@ -118,6 +144,8 @@ private:
             if (stride > 0)
             {
                 const uint32_t grid_slot_count = 1;
+                grid_mi_ssbo_count = grid_slot_count;
+                grid_mi_ssbo_stride = stride;
                 grid_mi_ssbo = buffer_manager->CreateSSBO("GizmoUsage:GridMIData",
                                                           stride * grid_slot_count,
                                                           nullptr,
@@ -132,28 +160,13 @@ private:
                 {
                     if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
                         continue;
-                    const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
-                    if(!domain_manager->RegisterBuffer(addr, grid_mi_ssbo, grid_slot_count))
-                        return false;
-                    if(!grid_dbs->SetSSBOBinding(req.ssbo_type, req.ssbo_id, 0))
-                        return false;
-                    grid_mi_binding_registered = true;
                     grid_mi_ssbo_type = req.ssbo_type;
-                    grid_mi_ssbo_id = req.ssbo_id;
+                    grid_mi_ssbo_id = kGizmoUsageGridSsboId;
+                    break;
                 }
             }
 
-            auto pc = std::make_unique<GeometryCreater>(
-                device,
-                CreateGizmo3DGeometryVertexFormat());
-
-            grid_geometry = inline_geometry::CreatePlaneSqaure(pc.get());
-            if(!grid_geometry)
-                return false;
-
-            geometry_manager->Add(grid_geometry);
-
-            grid_primitive = primitive_manager->CreatePrimitive(grid_geometry, grid_material, grid_dbs, nullptr);
+            grid_primitive = primitive_manager->CreatePrimitive(grid_geometry, grid_material, nullptr, nullptr);
             if(!grid_primitive)
                 return false;
         }
@@ -250,10 +263,25 @@ private:
             return false;
 
         auto plane_transform = plane_entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Static);
-        plane_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(64.0f));
+        plane_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
 
         auto plane_primitive_comp = plane_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         plane_primitive_comp->SetPrimitive(grid_primitive);
+        graph::mtl::MaterialRecipe recipe{};
+        recipe.recipe_name = "GizmoUsageExample.VertexLuminance3D";
+        recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::VertexLuminance3D);
+        recipe.domain = "GizmoUsageExample";
+        plane_primitive_comp->SetMaterialRecipe(recipe);
+        plane_primitive_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
+                                                        grid_mi_ssbo_type,
+                                                        grid_mi_ssbo_id,
+                                                        grid_mi_ssbo,
+                                                        grid_mi_ssbo_count,
+                                                        grid_mi_ssbo_stride,
+                                                        0,
+                                                        true,
+                                                        true);
         plane_primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
         plane_primitive_comp->SetVisible(true);
 

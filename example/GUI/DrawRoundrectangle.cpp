@@ -21,9 +21,10 @@ namespace
 {
     GeometryVertexFormat CreateRectTexture2DGeometryVertexFormat()
     {
-        GeometryVertexFormat gvf;
-        gvf.Add(VertexSemantic::Position, VF_V2F, 2, sizeof(float) * 2);
-        gvf.Add(VertexSemantic::TexCoord, VF_V2F, 2, sizeof(float) * 2);
+        GeometryVertexFormat gvf{
+            {VertexSemantic::Position, VF_V2F},
+            {VertexSemantic::TexCoord, VF_V2F},
+        };
         return gvf;
     }
 }
@@ -189,4 +190,3 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Draw a rectangle with texture"),argc,argv,256,256);
 }
-

@@ -42,8 +42,9 @@ namespace
 {
     GeometryVertexFormat CreateClockGeometryVertexFormat()
     {
-        GeometryVertexFormat gvf;
-        gvf.Add(VertexSemantic::Position, VF_V2F, 2, sizeof(float) * 2);
+        GeometryVertexFormat gvf{
+            {VertexSemantic::Position, VF_V2F},
+        };
         return gvf;
     }
 }

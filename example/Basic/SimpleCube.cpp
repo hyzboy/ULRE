@@ -41,9 +41,10 @@ namespace
 {
     GeometryVertexFormat CreateGizmo3DGeometryVertexFormat()
     {
-        GeometryVertexFormat gvf;
-        gvf.Add(VertexSemantic::Position, VF_V3F, 3, sizeof(float) * 3);
-        gvf.Add(VertexSemantic::Normal, VF_V3F, 3, sizeof(float) * 3);
+        GeometryVertexFormat gvf{
+            {VertexSemantic::Position, VF_V3F},
+            {VertexSemantic::Normal,   VF_V3F},
+        };
         return gvf;
     }
 }

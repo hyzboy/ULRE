@@ -838,7 +838,11 @@ namespace hgl::ecs
              && material
              && current_render_pass)
             {
-                const graph::VIL* vil = material->GetDefaultVIL();
+                const graph::VIL* vil = nullptr;
+                if (auto *primitive = prim_comp->GetPrimitive())
+                    vil = primitive->GetVIL();
+                if (!vil)
+                    vil = material->GetDefaultVIL();
                 auto* dbs = item->GetDescriptorBindingSet();
                 if (dbs)
                 {

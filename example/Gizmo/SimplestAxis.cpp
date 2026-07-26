@@ -31,9 +31,10 @@ namespace
 {
     GeometryVertexFormat CreateVertexColor3DGeometryVertexFormat()
     {
-        GeometryVertexFormat gvf;
-        gvf.Add(VertexSemantic::Position, VF_V3F, 3, sizeof(float) * 3);
-        gvf.Add(VertexSemantic::Color, VF_V4F, 4, sizeof(float) * 4);
+        GeometryVertexFormat gvf{
+            {VertexSemantic::Position, VF_V3F},
+            {VertexSemantic::Color,    VF_V4F},
+        };
         return gvf;
     }
 }

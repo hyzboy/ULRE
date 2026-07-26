@@ -11,14 +11,13 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
-#include<hgl/graph/DescriptorBindingSet.h>
-#include<hgl/graph/SSBOSlotAllocator.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/camera/Camera.h>
 #include<hgl/math/geometry/Ray.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/VKVertexInputConfig.h>
@@ -46,19 +45,23 @@ using namespace hgl::ecs;
 
 namespace
 {
+    constexpr uint32_t kRayPickingSsboId = hgl::graph::mtl::MakeRecipeSSBOId(8001);
+
     GeometryVertexFormat CreateVertexLuminance2DGeometryVertexFormat()
     {
-        GeometryVertexFormat gvf;
-        gvf.Add(VertexSemantic::Position, VF_V2F, 2, sizeof(float) * 2);
-        gvf.Add(VertexSemantic::Luminance, VF_V1UN8, 1, sizeof(uint8));
+        GeometryVertexFormat gvf{
+            {VertexSemantic::Position,  VF_V2F},
+            {VertexSemantic::Luminance, VF_V1UN8},
+        };
         return gvf;
     }
 
     GeometryVertexFormat CreateVertexLuminance3DGeometryVertexFormat()
     {
-        GeometryVertexFormat gvf;
-        gvf.Add(VertexSemantic::Position, VF_V3F, 3, sizeof(float) * 3);
-        gvf.Add(VertexSemantic::Luminance, VF_V1UN8, 1, sizeof(uint8));
+        GeometryVertexFormat gvf{
+            {VertexSemantic::Position,  VF_V3F},
+            {VertexSemantic::Luminance, VF_V1UN8},
+        };
         return gvf;
     }
 }
@@ -85,16 +88,16 @@ private:
 
     // 传统渲染资源
     MaterialProgram *          mtl_plane_grid      =nullptr;
-    DescriptorBindingSet *dbs_plane_grid    =nullptr;
     Geometry *          geom_plane_grid     =nullptr;
     graph::DeviceBuffer *mi_shared_ssbo      =nullptr;
+    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::UserDefined;
+    uint32_t             material_ssbo_count = 0;
+    uint32_t             material_ssbo_stride = 0;
 
     MaterialProgram *          mtl_line            =nullptr;
-    DescriptorBindingSet *dbs_line          =nullptr;
     Geometry *          geom_line           =nullptr;
     Primitive *         prim_line           =nullptr;
     VAB *               prim_line_vab       =nullptr;
-    SSBOSlotAllocator   slot_allocator;
 
     math::Ray           ray;
 
@@ -216,12 +219,7 @@ private:
             return false;
 
         auto *buffer_manager = graphics_context->GetBufferManager();
-        auto *domain_manager = graphics_context->GetResourceDomainManager();
-        if (!buffer_manager || !domain_manager)
-            return false;
-
-        auto rdbs = ecs_world->GetSystem<RenderDescriptorBindingSystem>();
-        if (!rdbs)
+        if (!buffer_manager)
             return false;
 
         if (!mtl_plane_grid || !mtl_line)
@@ -234,16 +232,13 @@ private:
         if (plane_mi_bytes != sizeof(Color4f))
             return false;
 
-        if (!slot_allocator.Init(2))
-            return false;
-
-        uint32_t plane_slot = 0;
-        uint32_t line_slot = 0;
-        if (!slot_allocator.Allocate(plane_slot) || !slot_allocator.Allocate(line_slot))
-            return false;
+        const uint32_t plane_slot = 0;
+        const uint32_t line_slot = 1;
 
         const uint32_t mi_count = (std::max)(plane_slot, line_slot) + 1;
         const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * plane_mi_bytes;
+        material_ssbo_count = mi_count;
+        material_ssbo_stride = plane_mi_bytes;
         GLogInfo("[RayPicking] MI setup: plane_slot=%u line_slot=%u stride=%u count=%u bytes=%llu",
                  plane_slot, line_slot, plane_mi_bytes, mi_count,
                  static_cast<unsigned long long>(ssbo_size));
@@ -266,43 +261,15 @@ private:
 
         gpu_buf->Unmap();
 
-        dbs_plane_grid = new DescriptorBindingSet(mtl_plane_grid);
-        dbs_line = new DescriptorBindingSet(mtl_line);
-        if (!dbs_plane_grid || !dbs_line)
-            return false;
-
-        auto bind_material_mi = [&](MaterialProgram *material, DescriptorBindingSet *binding_set, const uint32_t slot_index) -> bool
+        for (const auto &req : mtl_plane_grid->GetMaterialResourceLayout().requirements)
         {
-            bool has_struct_binding = false;
-            for (const auto &req : material->GetMaterialResourceLayout().requirements)
-            {
-                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
-                    continue;
+            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                continue;
 
-                has_struct_binding = true;
-                if (!rdbs->RegisterMaterialStructLayout(req.ssbo_type, req.ssbo_id, plane_mi_bytes))
-                    return false;
-
-                const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
-                if (!domain_manager->RegisterBuffer(addr, mi_shared_ssbo, mi_count))
-                    return false;
-
-                GLogInfo("[RayPicking] Bound MI SSBO: material=%s semantic=%s type=%s ssbo_id=%u count=%u",
-                         material->GetName().c_str(),
-                         graph::mtl::GetDescriptorSemanticName(req.semantic),
-                         graph::mtl::GetSSBOTypeName(req.ssbo_type),
-                         req.ssbo_id,
-                         mi_count);
-
-                if (!binding_set->SetSSBOBinding(req.ssbo_type, req.ssbo_id, slot_index))
-                    return false;
-            }
-            return has_struct_binding;
-        };
-
-        if (!bind_material_mi(mtl_plane_grid, dbs_plane_grid, plane_slot))
-            return false;
-        if (!bind_material_mi(mtl_line, dbs_line, line_slot))
+            material_ssbo_type = req.ssbo_type;
+            break;
+        }
+        if (material_ssbo_type == graph::mtl::SSBOType::UserDefined)
             return false;
 
         // === 步骤2: 创建平面网格实体 ===
@@ -316,7 +283,7 @@ private:
 
             Primitive* prim_plane = primitive_manager->CreatePrimitive(geom_plane_grid,
                                                                        mtl_plane_grid,
-                                                                       dbs_plane_grid,
+                                                                       nullptr,
                                                                        nullptr);
             if(!prim_plane)
                 return false;
@@ -330,7 +297,21 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = plane_grid_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitive(prim_plane);
-            primitive_comp->SetDescriptorBindingSet(dbs_plane_grid);
+            graph::mtl::MaterialRecipe recipe{};
+            recipe.recipe_name = "RayPicking.PlaneGrid";
+            recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+            recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::VertexLuminance3D);
+            recipe.domain = "RayPicking";
+            primitive_comp->SetMaterialRecipe(recipe);
+            primitive_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
+                                                      material_ssbo_type,
+                                                      kRayPickingSsboId,
+                                                      mi_shared_ssbo,
+                                                      material_ssbo_count,
+                                                      material_ssbo_stride,
+                                                      plane_slot,
+                                                      true,
+                                                      true);
             primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             primitive_comp->SetVisible(true);
         }
@@ -346,7 +327,7 @@ private:
 
             prim_line = primitive_manager->CreatePrimitive(geom_line,
                                                            mtl_line,
-                                                           dbs_line,
+                                                           nullptr,
                                                            nullptr);
             if(!prim_line)
                 return false;
@@ -363,7 +344,21 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = ray_line_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitive(prim_line);
-            primitive_comp->SetDescriptorBindingSet(dbs_line);
+            graph::mtl::MaterialRecipe recipe{};
+            recipe.recipe_name = "RayPicking.Line";
+            recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+            recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::VertexLuminance3D);
+            recipe.domain = "RayPicking";
+            primitive_comp->SetMaterialRecipe(recipe);
+            primitive_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
+                                                      material_ssbo_type,
+                                                      kRayPickingSsboId,
+                                                      mi_shared_ssbo,
+                                                      material_ssbo_count,
+                                                      material_ssbo_stride,
+                                                      line_slot,
+                                                      true,
+                                                      true);
             primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             primitive_comp->SetVisible(true);
         }
@@ -407,8 +402,6 @@ private:
 public:
     ~TestApp()
     {
-        delete dbs_plane_grid;
-        delete dbs_line;
         SAFE_CLEAR(geom_plane_grid);
         SAFE_CLEAR(geom_line);
         SAFE_CLEAR(mi_shared_ssbo);
@@ -476,4 +469,3 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("RayPicking (ECS Version)"),argc,argv,1280,720);
 }
-

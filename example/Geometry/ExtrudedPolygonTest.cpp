@@ -9,8 +9,7 @@
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/ResourceDomainManager.h>
-#include<hgl/graph/DescriptorBindingSet.h>
+#include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/color/Color.h>
 #include<cmath>
 #include<memory>
@@ -33,9 +32,10 @@ namespace
 {
     GeometryVertexFormat CreateGizmo3DGeometryVertexFormat()
     {
-        GeometryVertexFormat gvf;
-        gvf.Add(VertexSemantic::Position, VF_V3F, 3, sizeof(float) * 3);
-        gvf.Add(VertexSemantic::Normal, VF_V3F, 3, sizeof(float) * 3);
+        GeometryVertexFormat gvf{
+            {VertexSemantic::Position, VF_V3F},
+            {VertexSemantic::Normal,   VF_V3F},
+        };
         return gvf;
     }
 }
@@ -48,8 +48,11 @@ private:
     hgl::ecs::Entity *camera_entity = nullptr;
 
     MaterialProgram *          material            = nullptr;
-    DescriptorBindingSet *dbs              = nullptr;
     graph::DeviceBuffer *mi_ssbo           = nullptr;
+    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::UserDefined;
+    uint32_t material_ssbo_id = 0;
+    uint32_t material_ssbo_count = 0;
+    uint32_t material_ssbo_stride = 0;
 
     Geometry *         prim_rect_cube      = nullptr;
     Geometry *         prim_circle_cylinder = nullptr;
@@ -70,8 +73,7 @@ private:
 
         auto* material_manager = graphics_context->GetMaterialManager();
         auto* buffer_manager   = graphics_context->GetBufferManager();
-        auto* domain_manager   = graphics_context->GetResourceDomainManager();
-        if (!material_manager || !buffer_manager || !domain_manager)
+        if (!material_manager || !buffer_manager)
             return false;
 
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
@@ -84,29 +86,29 @@ private:
         const uint32_t stride = material->GetMIDataBytes();
         if (stride > 0)
         {
+            bool has_struct_binding = false;
+            for (const auto &req : material->GetMaterialResourceLayout().requirements)
+            {
+                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                    continue;
+
+                has_struct_binding = true;
+                material_ssbo_type = req.ssbo_type;
+                material_ssbo_id = req.ssbo_id;
+                break;
+            }
+            if (!has_struct_binding)
+                return false;
+
+            material_ssbo_count = material_ssbo_id + 1;
+            material_ssbo_stride = stride;
             mi_ssbo = buffer_manager->CreateSSBO("ExtrudedPolygonTest:MIData", stride, nullptr, SharingMode::Exclusive);
             if (!mi_ssbo)
                 return false;
 
             if (auto *gpu = mi_ssbo->GetGPUBuffer())
                 gpu->Write(&color, 0, hgl_min(stride, static_cast<uint32_t>(sizeof(color))));
-
-            for (const auto &req : material->GetMaterialResourceLayout().requirements)
-            {
-                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
-                    continue;
-
-                const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
-                if (!domain_manager->RegisterBuffer(addr, mi_ssbo, 1))
-                    return false;
-
-                dbs = new DescriptorBindingSet(material);
-                dbs->SetSSBOBinding(req.ssbo_type, req.ssbo_id, 0);
-            }
         }
-
-        if (!dbs)
-            dbs = new DescriptorBindingSet(material);
 
         return true;
     }
@@ -192,7 +194,7 @@ private:
 
     bool CreateMeshEntity(const char *name, Geometry *geometry, const glm::vec3 &pos)
     {
-        if(!ecs_context || !geometry || !dbs)
+        if(!ecs_context || !geometry)
             return false;
 
         auto* render_context = GetRenderContext();
@@ -207,7 +209,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        Primitive *mesh = primitive_manager->CreatePrimitive(geometry, material, dbs, nullptr);
+        Primitive *mesh = primitive_manager->CreatePrimitive(geometry, material, nullptr, nullptr);
         if(!mesh)
             return false;
 
@@ -221,6 +223,21 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitive(mesh);
+        graph::mtl::MaterialRecipe recipe{};
+        recipe.recipe_name = "ExtrudedPolygonTest.Gizmo3D";
+        recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Gizmo3D);
+        recipe.domain = "ExtrudedPolygonTest";
+        prim_comp->SetMaterialRecipe(recipe);
+        prim_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
+                                             material_ssbo_type,
+                                             material_ssbo_id,
+                                             mi_ssbo,
+                                             material_ssbo_count,
+                                             material_ssbo_stride,
+                                             material_ssbo_id,
+                                             true,
+                                             true);
         prim_comp->RequestPipeline(InlinePipeline::Solid3D);
         prim_comp->SetVisible(true);
 
@@ -293,7 +310,6 @@ public:
         SAFE_CLEAR(prim_circle_cylinder);
         SAFE_CLEAR(prim_triangle);
         SAFE_CLEAR(prim_pentagon);
-        delete dbs;  dbs = nullptr;
         SAFE_CLEAR(mi_ssbo)
     }
 
@@ -316,4 +332,3 @@ int os_main(int argc, os_char **argv)
 {
     return RunFramework<ExtrudedPolygonTestApp>(OS_TEXT("Extruded Polygon"),argc,argv,1280,720);
 }
-

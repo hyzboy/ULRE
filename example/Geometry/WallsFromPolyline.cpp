@@ -10,8 +10,7 @@
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/ResourceDomainManager.h>
-#include<hgl/graph/DescriptorBindingSet.h>
+#include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/color/Color.h>
 
 // ECS headers
@@ -32,12 +31,15 @@ using namespace hgl::graph;
 
 namespace
 {
+    constexpr uint32_t kWallsFromPolylineSsboId = hgl::graph::mtl::MakeRecipeSSBOId(6001);
+
     GeometryVertexFormat CreateStandardGeometryVertexFormat()
     {
-        GeometryVertexFormat gvf;
-        gvf.Add(VertexSemantic::Position, VF_V3F, 3, sizeof(float) * 3);
-        gvf.Add(VertexSemantic::TexCoord, VF_V2F, 2, sizeof(float) * 2);
-        gvf.Add(VertexSemantic::Normal, VF_V3F, 3, sizeof(float) * 3);
+        GeometryVertexFormat gvf{
+            {VertexSemantic::Position, VF_V3F},
+            {VertexSemantic::TexCoord, VF_V2F},
+            {VertexSemantic::Normal,   VF_V3F},
+        };
         return gvf;
     }
 }
@@ -52,8 +54,11 @@ private:
     mtl::StandardMaterialInstance mi_data;
 
     MaterialProgram *material = nullptr;
-    DescriptorBindingSet *dbs = nullptr;
     graph::DeviceBuffer *mi_ssbo = nullptr;
+    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::UserDefined;
+    uint32_t material_ssbo_id = 0;
+    uint32_t material_ssbo_count = 0;
+    uint32_t material_ssbo_stride = 0;
     Sampler *sampler = nullptr;
     Texture2D *base_color_texture = nullptr;
     std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
@@ -67,7 +72,6 @@ public:
     {
         SAFE_CLEAR(sampler)
         SAFE_CLEAR(mesh_vdm)
-        delete dbs;   dbs = nullptr;
         SAFE_CLEAR(mi_ssbo)
     }
 
@@ -115,6 +119,21 @@ public:
             transform->SetMovable(false);
 
             prim_comp->SetPrimitive(primitive);
+            graph::mtl::MaterialRecipe recipe{};
+            recipe.recipe_name = "WallsFromPolyline.Standard";
+            recipe.shading_model = graph::mtl::ShadingModel::Standard;
+            recipe.domain = "WallsFromPolyline";
+            prim_comp->SetMaterialRecipe(recipe);
+            prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_color_texture, sampler);
+            prim_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
+                                                 material_ssbo_type,
+                                                 material_ssbo_id,
+                                                 mi_ssbo,
+                                                 material_ssbo_count,
+                                                 material_ssbo_stride,
+                                                 0,
+                                                 true,
+                                                 true);
             prim_comp->RequestPipeline(InlinePipeline::Solid3D);
             prim_comp->SetVisible(true);
         }
@@ -179,38 +198,40 @@ public:
 
         // Bindless registration deferred until ECS context is ready.
 
-        // Create external SSBO + DescriptorBindingSet for Standard material data
+        // Create external SSBO for Standard material data; runtime binding is driven by recipe authoring.
         auto *buffer_manager = graphics_context->GetBufferManager();
-        auto *domain_manager = graphics_context->GetResourceDomainManager();
-        if (!buffer_manager || !domain_manager)
+        if (!buffer_manager)
             return false;
 
         const uint32_t stride = material->GetMIDataBytes();
         if (stride > 0)
         {
-            mi_ssbo = buffer_manager->CreateSSBO("WallsFromPolyline:MIData", stride, nullptr, SharingMode::Exclusive);
-            if (!mi_ssbo)
-                return false;
-
-            if (auto *gpu = mi_ssbo->GetGPUBuffer())
-                gpu->Write(&mi_data, 0, hgl_min(stride, static_cast<uint32_t>(sizeof(mi_data))));
-
+            bool has_struct_binding = false;
             for (const auto &req : material->GetMaterialResourceLayout().requirements)
             {
                 if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
                     continue;
 
-                const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
-                if (!domain_manager->RegisterBuffer(addr, mi_ssbo, 1))
-                    return false;
-
-                dbs = new DescriptorBindingSet(material);
-                dbs->SetSSBOBinding(req.ssbo_type, req.ssbo_id, 0);
+                has_struct_binding = true;
+                material_ssbo_type = req.ssbo_type;
+                material_ssbo_id = kWallsFromPolylineSsboId;
+                break;
             }
-        }
+            if (!has_struct_binding)
+                return false;
 
-        if (!dbs)
-            dbs = new DescriptorBindingSet(material);
+            material_ssbo_count = 1;
+            material_ssbo_stride = stride;
+            mi_ssbo = buffer_manager->CreateSSBO("WallsFromPolyline:MIData",
+                                                 stride,
+                                                 nullptr,
+                                                 SharingMode::Exclusive);
+            if (!mi_ssbo)
+                return false;
+
+            if (auto *gpu = mi_ssbo->GetGPUBuffer())
+                gpu->Write(&mi_data, 0, hgl_min(stride, static_cast<uint32_t>(sizeof(mi_data))));
+        }
 
         mesh_vdm = new VertexDataManager(
             buffer_manager,
@@ -259,7 +280,7 @@ public:
                 if (!primitive_manager)
                     return false;
 
-                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material, dbs, nullptr);
+                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material, nullptr, nullptr);
                 if(primitive) wall_meshes.push_back(primitive);
             }
         }
@@ -294,7 +315,7 @@ public:
                 if (!primitive_manager)
                     return false;
 
-                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material, dbs, nullptr);
+                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material, nullptr, nullptr);
                 if(primitive) wall_meshes.push_back(primitive);
             }
         }
@@ -328,7 +349,7 @@ public:
                 if (!primitive_manager)
                     return false;
 
-                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material, dbs, nullptr);
+                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material, nullptr, nullptr);
                 if(primitive) wall_meshes.push_back(primitive);
             }
         }
@@ -363,7 +384,7 @@ public:
                 if (!primitive_manager)
                     return false;
 
-                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material, dbs, nullptr);
+                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material, nullptr, nullptr);
                 if(primitive) wall_meshes.push_back(primitive);
             }
         }
@@ -372,23 +393,6 @@ public:
 
         ecs_context = GetECSContext();
         if(!ecs_context) return false;
-
-        {
-            auto rdbs = ecs_context->GetSystem<hgl::ecs::RenderDescriptorBindingSystem>();
-            if (!rdbs)
-                return false;
-
-            auto* render_context2 = GetRenderContext();
-            auto* bindless_mgr = render_context2 ? render_context2->GetBindlessTextureManager() : nullptr;
-            if (!bindless_mgr)
-                return false;
-
-            if (rdbs->RegisterTexture2DResource("", base_color_texture, sampler, bindless_mgr) == 0)
-                return false;
-            if (!rdbs->RegisterMaterialTexture(material, mtl::SamplerName::BaseColor, base_color_texture))
-                return false;
-        }
-
 
         if(!InitECSScene())
             return false;
@@ -404,4 +408,3 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Walls From Polyline Example - Complex"), argc, argv, 1280, 720);
 }
-

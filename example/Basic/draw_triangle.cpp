@@ -29,9 +29,10 @@ namespace
 {
     GeometryVertexFormat CreateDrawTriangleGeometryVertexFormat()
     {
-        GeometryVertexFormat gvf;
-        gvf.Add(VertexSemantic::Position, VF_V2I, 2, sizeof(int32) * 2);
-        gvf.Add(VertexSemantic::Color, VF_V4F, 4, sizeof(float) * 4);
+        GeometryVertexFormat gvf{
+            {VertexSemantic::Position, VF_V2I},
+            {VertexSemantic::Color,    VF_V4F},
+        };
         return gvf;
     }
 }

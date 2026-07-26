@@ -30,9 +30,10 @@ namespace
 {
     GeometryVertexFormat CreateAutoInstanceGeometryVertexFormat()
     {
-        GeometryVertexFormat gvf;
-        gvf.Add(VertexSemantic::Position, VF_V2F, 2, sizeof(float) * 2);
-        gvf.Add(VertexSemantic::Color, VF_V4UN8, 4, sizeof(uint8) * 4);
+        GeometryVertexFormat gvf{
+            {VertexSemantic::Position, VF_V2F},
+            {VertexSemantic::Color,    VF_V4UN8},
+        };
         return gvf;
     }
 }

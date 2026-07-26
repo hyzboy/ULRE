@@ -16,10 +16,12 @@
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/render/RenderContext.h>
+#include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/log/Log.h>
 #include<glm/glm.hpp>
+#include<cstring>
 
 namespace hgl::ecs
 {
@@ -78,6 +80,24 @@ namespace hgl::ecs
             }
 
             return false;
+        }
+
+        bool ReferenceProgramMatchesPreset(const graph::MaterialProgram *material,
+                                           const graph::mtl::MaterialPreset preset)
+        {
+            if (!material)
+                return false;
+
+            const char *material_name = material->GetName().c_str();
+            const char *preset_name = graph::mtl::GetMaterialPresetName(preset);
+            if (!material_name || !preset_name)
+                return false;
+
+            const size_t preset_name_len = std::strlen(preset_name);
+            if (preset_name_len == 0)
+                return false;
+
+            return std::strncmp(material_name, preset_name, preset_name_len) == 0;
         }
 
         std::string BuildTextureResourceId(graph::Texture *texture)
@@ -545,7 +565,10 @@ namespace hgl::ecs
         }
 
         graph::MaterialProgram *resolved_program = nullptr;
-        if (Is2DPreset(preset))
+        if (ReferenceProgramMatchesPreset(reference_program, preset))
+            resolved_program = reference_program;
+
+        if (!resolved_program && Is2DPreset(preset))
         {
             if (preset == graph::mtl::MaterialPreset::Text2D)
             {
@@ -559,7 +582,7 @@ namespace hgl::ecs
                 resolved_program = material_manager->AcquireMaterialProgram(preset, &cfg);
             }
         }
-        else
+        else if (!resolved_program)
         {
             if (preset == graph::mtl::MaterialPreset::SkyMinimal)
             {

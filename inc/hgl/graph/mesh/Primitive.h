@@ -22,6 +22,8 @@ class Primitive
     MaterialInstance *  mat_inst;
     MaterialProgram *   material_program;
     DescriptorBindingSet *binding_set;
+    const VIL *         binding_vil;
+    bool                owns_binding_vil = false;
     Geometry *          geometry;
 
     GeometryDataBuffer *data_buffer;
@@ -33,7 +35,7 @@ private:
     friend Primitive *DirectCreatePrimitive(Geometry *,MaterialProgram *,DescriptorBindingSet *,Pipeline *);
 
     Primitive(Geometry *,MaterialInstance *,Pipeline *,GeometryDataBuffer *);
-    Primitive(Geometry *,MaterialProgram *,DescriptorBindingSet *,Pipeline *,GeometryDataBuffer *);
+    Primitive(Geometry *,MaterialProgram *,DescriptorBindingSet *,const VIL *,bool,Pipeline *,GeometryDataBuffer *);
 
 public:
 
@@ -49,6 +51,7 @@ public:
             MaterialProgram *   GetMaterialProgram  (){return mat_inst?mat_inst->GetMaterialProgram():(binding_set?binding_set->GetMaterialProgram():material_program);}
             MaterialInstance *  GetMaterialInstance (){return mat_inst;}
             DescriptorBindingSet *GetDescriptorBindingSet(){return binding_set;}
+    const   VIL *               GetVIL              ()const{return binding_vil ? binding_vil : (mat_inst ? mat_inst->GetVIL() : (binding_set ? binding_set->GetVIL() : (material_program ? material_program->GetDefaultVIL() : nullptr)));}
             Geometry *          GetGeometry         (){return geometry;}
             AnsiString          GetGeometryName     (){return geometry->GetName();}
     const   BoundingVolumes &   GetBoundingVolumes  ()const{return geometry->GetBoundingVolumes();}

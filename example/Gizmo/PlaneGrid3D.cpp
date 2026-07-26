@@ -2,8 +2,6 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
-#include<hgl/graph/DescriptorBindingSet.h>
-#include<hgl/graph/SSBOSlotAllocator.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
@@ -12,7 +10,7 @@
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/color/Color.h>
 
@@ -35,13 +33,7 @@ using namespace hgl::graph;
 
 namespace
 {
-    GeometryVertexFormat CreateVertexLuminance2DGeometryVertexFormat()
-    {
-        GeometryVertexFormat gvf;
-        gvf.Add(VertexSemantic::Position, VF_V2F, 2, sizeof(float) * 2);
-        gvf.Add(VertexSemantic::Luminance, VF_V1UN8, 1, sizeof(uint8));
-        return gvf;
-    }
+    constexpr uint32_t kPlaneGrid3DSsboId = hgl::graph::mtl::MakeRecipeSSBOId(7001);
 }
 
 class TestApp:public WorkObject
@@ -50,11 +42,12 @@ private:
 
     hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
-
     MaterialProgram *    material            =nullptr;
     graph::DeviceBuffer *mi_ssbo            =nullptr;
-    DescriptorBindingSet *binding_set[3]{};
-    SSBOSlotAllocator   slot_allocator;
+    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::UserDefined;
+    uint32_t             material_ssbo_id = 0;
+    uint32_t             material_ssbo_count = 0;
+    uint32_t             material_ssbo_stride = 0;
 
     Geometry *         geom_plane_grid     =nullptr;
 
@@ -62,6 +55,9 @@ private:
 
     bool InitMDP()
     {
+        if (!geom_plane_grid)
+            return false;
+
         auto* render_context = GetRenderContext();
         if (!render_context)
             return false;
@@ -77,7 +73,7 @@ private:
         mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
 
         cfg.local_to_world=true;
-        const GeometryVertexFormat plane_grid_gvf = CreateVertexLuminance2DGeometryVertexFormat();
+        const GeometryVertexFormat &plane_grid_gvf = geom_plane_grid->GetGeometryVertexFormat();
         material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::VertexLuminance3D, &cfg, plane_grid_gvf);
         if(!material)return(false);
 
@@ -109,9 +105,14 @@ private:
         pgci.lum=180;
         pgci.sub_lum=255;
 
+        GeometryVertexFormat plane_grid_gvf{
+            {VertexSemantic::Position,  VF_V2F},
+            {VertexSemantic::Luminance, VF_V1UN8},
+        };
+
         auto pc = std::make_unique<GeometryCreater>(
             device,
-            CreateVertexLuminance2DGeometryVertexFormat());
+            plane_grid_gvf);
 
         geom_plane_grid=CreatePlaneGrid2D(pc.get(),&pgci);
         if (geom_plane_grid)
@@ -120,7 +121,7 @@ private:
         return geom_plane_grid;
     }
 
-    bool Add(const char *name,DescriptorBindingSet *dbs,const glm::quat &rotation)
+    bool Add(const char *name,const uint32_t struct_index,const glm::quat &rotation)
     {
         auto* render_context = GetRenderContext();
         if (!render_context)
@@ -134,7 +135,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        Primitive *ri=primitive_manager->CreatePrimitive(geom_plane_grid,material,dbs,nullptr);
+        Primitive *ri=primitive_manager->CreatePrimitive(geom_plane_grid,material,nullptr,nullptr);
 
         if(!ri)
             return false;
@@ -149,7 +150,21 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitive(ri);
-        prim_comp->SetDescriptorBindingSet(dbs);
+        graph::mtl::MaterialRecipe recipe{};
+        recipe.recipe_name = "PlaneGrid3D.VertexLuminance3D";
+        recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::VertexLuminance3D);
+        recipe.domain = "PlaneGrid3D";
+        prim_comp->SetMaterialRecipe(recipe);
+        prim_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
+                                             material_ssbo_type,
+                                             material_ssbo_id,
+                                             mi_ssbo,
+                                             material_ssbo_count,
+                                             material_ssbo_stride,
+                                             struct_index,
+                                             true,
+                                             true);
         prim_comp->RequestPipeline(InlinePipeline::Solid3D);
         prim_comp->SetVisible(true);
 
@@ -161,13 +176,13 @@ private:
         if(!ecs_context)
             return false;
 
-        if(!Add("PlaneXY", binding_set[0], glm::quat(1.0f, 0.0f, 0.0f, 0.0f)))
+        if(!Add("PlaneXY", 0, glm::quat(1.0f, 0.0f, 0.0f, 0.0f)))
             return false;
 
         const float rot90 = glm::radians(90.0f);
-        if(!Add("PlaneYZ", binding_set[1], glm::angleAxis(rot90, glm::vec3(0.0f, 1.0f, 0.0f))))
+        if(!Add("PlaneYZ", 1, glm::angleAxis(rot90, glm::vec3(0.0f, 1.0f, 0.0f))))
             return false;
-        if(!Add("PlaneXZ", binding_set[2], glm::angleAxis(rot90, glm::vec3(1.0f, 0.0f, 0.0f))))
+        if(!Add("PlaneXZ", 2, glm::angleAxis(rot90, glm::vec3(1.0f, 0.0f, 0.0f))))
             return false;
 
         return true;
@@ -193,19 +208,28 @@ private:
             return false;
 
         auto *buffer_manager = graphics_context->GetBufferManager();
-        auto *domain_manager = graphics_context->GetResourceDomainManager();
-        if (!buffer_manager || !domain_manager)
-            return false;
-
-        auto rdbs = ecs_context->GetSystem<hgl::ecs::RenderDescriptorBindingSystem>();
-        if (!rdbs)
-            return false;
-
-        if (!slot_allocator.Init(3))
+        if (!buffer_manager)
             return false;
 
         const uint32_t mi_count = 3;
         const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * mi_data_bytes;
+        material_ssbo_count = mi_count;
+        material_ssbo_stride = mi_data_bytes;
+
+        bool has_struct_binding = false;
+        for (const auto &req : material->GetMaterialResourceLayout().requirements)
+        {
+            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                continue;
+
+            has_struct_binding = true;
+            material_ssbo_type = req.ssbo_type;
+            material_ssbo_id = kPlaneGrid3DSsboId;
+            break;
+        }
+
+        if (!has_struct_binding)
+            return false;
 
         mi_ssbo = buffer_manager->CreateSSBO("PlaneGrid3D:MIData", ssbo_size, nullptr, SharingMode::Exclusive);
         if (!mi_ssbo)
@@ -224,40 +248,11 @@ private:
         Color4f grid_color = GetColor4f(COLOR::BlenderAxisRed,1.0f);
         for (uint32_t i = 0; i < 3; ++i)
         {
-            uint32_t slot_index = 0;
-            if (!slot_allocator.Allocate(slot_index))
-                return false;
-
-            memcpy(dst + static_cast<VkDeviceSize>(slot_index) * mi_data_bytes, &grid_color, mi_data_bytes);
-
-            binding_set[i] = new DescriptorBindingSet(material);
-            if (!binding_set[i])
-                return false;
+            memcpy(dst + static_cast<VkDeviceSize>(i) * mi_data_bytes, &grid_color, mi_data_bytes);
 
             grid_color = GetColor4f(COLOR(int(COLOR::BlenderAxisRed) + int(i) + 1), 1.0f);
         }
         gpu_buf->Unmap();
-
-        bool has_struct_binding = false;
-        for (const auto &req : material->GetMaterialResourceLayout().requirements)
-        {
-            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
-                continue;
-
-            has_struct_binding = true;
-            if (!rdbs->RegisterMaterialStructLayout(req.ssbo_type, req.ssbo_id, mi_data_bytes))
-                return false;
-
-            const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
-            if (!domain_manager->RegisterBuffer(addr, mi_ssbo, mi_count))
-                return false;
-
-            for (uint32_t i = 0; i < 3; ++i)
-            {
-                if (!binding_set[i] || !binding_set[i]->SetSSBOBinding(req.ssbo_type, req.ssbo_id, i))
-                    return false;
-            }
-        }
 
         return has_struct_binding;
     }
@@ -307,18 +302,16 @@ private:
 public:
     ~TestApp()
     {
-        for (auto *dbs : binding_set)
-            delete dbs;
         SAFE_CLEAR(geom_plane_grid);
         SAFE_CLEAR(mi_ssbo);
     }
 
     bool Init() override
     {
-        if(!InitMDP())
+        if(!CreateRenderObject())
             return(false);
 
-        if(!CreateRenderObject())
+        if(!InitMDP())
             return(false);
 
         if(!InitECS())
@@ -332,4 +325,3 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("PlaneGrid3D"),argc,argv,1280,720);
 }
-
