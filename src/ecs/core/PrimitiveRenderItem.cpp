@@ -64,7 +64,7 @@ namespace hgl::ecs
             if (primitiveComp->HasMaterialRecipe())
                 return nullptr;
 
-            if (auto *prim_dbs = primitiveComp->GetDescriptorBindingSet())
+            if (auto *prim_dbs = primitiveComp->GetInternalDescriptorBindingSet())
                 return prim_dbs;
         }
         return nullptr;

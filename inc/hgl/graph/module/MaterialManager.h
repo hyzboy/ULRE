@@ -155,52 +155,51 @@ public: //MaterialProgram
     MaterialProgram *          AcquireMaterialProgram(const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *); ///<基于variant key创建2D材质（Phase-A兼容）
     MaterialProgram *          AcquireMaterialProgram(const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *); ///<基于variant key创建3D材质（Phase-A兼容）
 
-public: //MaterialInstance
+private: // Legacy MaterialInstance bridge — internal engine use only during Phase 7 migration
 
-    MaterialInstance *  CreateMaterialInstance(MaterialProgram *);
-    MaterialInstance *  CreateMaterialInstance(MaterialProgram *, const VIL *vil);
-    MaterialInstance *  CreateMaterialInstance(MaterialProgram *, const VILConfig *vil_cfg);
-    MaterialInstance *  CreateMaterialInstance(MaterialProgram *, const GeometryVertexFormat &geometry_vertex_format);
-    MaterialInstance *  CreateMaterialInstance(MaterialProgram *, const GeometryVertexFormat &geometry_vertex_format, const void *, const uint32);
+    MaterialInstance *  CreateMaterialInstanceInternal(MaterialProgram *);
+    MaterialInstance *  CreateMaterialInstanceInternal(MaterialProgram *, const VIL *vil);
+    MaterialInstance *  CreateMaterialInstanceInternal(MaterialProgram *, const VILConfig *vil_cfg);
+    MaterialInstance *  CreateMaterialInstanceInternal(MaterialProgram *, const GeometryVertexFormat &geometry_vertex_format);
+    MaterialInstance *  CreateMaterialInstanceInternal(MaterialProgram *, const GeometryVertexFormat &geometry_vertex_format, const void *, const uint32);
 
-    MaterialInstance *  CreateMaterialInstance(MaterialProgram *, const VIL *vil, const void *, const uint32);
-    MaterialInstance *  CreateMaterialInstance(MaterialProgram *, const VILConfig *vil_cfg, const void *, const uint32);
-
-    template<typename T>
-    MaterialInstance *  CreateMaterialInstance(MaterialProgram *mtl, const VIL *vil, const T *data)
-    {
-        return CreateMaterialInstance(mtl,vil,data,sizeof(T));
-    }
+    MaterialInstance *  CreateMaterialInstanceInternal(MaterialProgram *, const VIL *vil, const void *, const uint32);
+    MaterialInstance *  CreateMaterialInstanceInternal(MaterialProgram *, const VILConfig *vil_cfg, const void *, const uint32);
 
     template<typename T>
-    MaterialInstance *  CreateMaterialInstance(MaterialProgram *mtl, const VILConfig *vil_cfg, const T *data)
+    MaterialInstance *  CreateMaterialInstanceInternal(MaterialProgram *mtl, const VIL *vil, const T *data)
     {
-        return CreateMaterialInstance(mtl,vil_cfg,data,sizeof(T));
+        return CreateMaterialInstanceInternal(mtl,vil,data,sizeof(T));
     }
 
-    MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size);
-    MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg=nullptr)
+    template<typename T>
+    MaterialInstance *  CreateMaterialInstanceInternal(MaterialProgram *mtl, const VILConfig *vil_cfg, const T *data)
     {
-        return CreateMaterialInstance(mtl_id,mcc,vil_cfg,nullptr,0);
-    }
-    MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format,const void *data,const uint32 data_size);
-    MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format)
-    {
-        return CreateMaterialInstance(mtl_id,mcc,geometry_vertex_format,nullptr,0);
+        return CreateMaterialInstanceInternal(mtl,vil_cfg,data,sizeof(T));
     }
 
-    MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size);
-    MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg=nullptr)
+    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size);
+    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg=nullptr)
     {
-        return CreateMaterialInstance(mtl_id,mcc,vil_cfg,nullptr,0);
+        return CreateMaterialInstanceInternal(mtl_id,mcc,vil_cfg,nullptr,0);
     }
-    MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format,const void *data,const uint32 data_size);
-    MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format)
+    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format,const void *data,const uint32 data_size);
+    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format)
     {
-        return CreateMaterialInstance(mtl_id,mcc,geometry_vertex_format,nullptr,0);
+        return CreateMaterialInstanceInternal(mtl_id,mcc,geometry_vertex_format,nullptr,0);
+    }
+
+    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size);
+    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg=nullptr)
+    {
+        return CreateMaterialInstanceInternal(mtl_id,mcc,vil_cfg,nullptr,0);
+    }
+    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format,const void *data,const uint32 data_size);
+    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format)
+    {
+        return CreateMaterialInstanceInternal(mtl_id,mcc,geometry_vertex_format,nullptr,0);
     }
 
 };//class MaterialManager
 
 }//namespace hgl::graph
-

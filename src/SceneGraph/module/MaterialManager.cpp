@@ -464,7 +464,7 @@ MaterialProgram *MaterialManager::AcquireMaterialProgram(const mtl::MaterialVari
     return AcquireMaterialProgram(preset,cfg);
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(MaterialProgram *mtl)
+MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(MaterialProgram *mtl)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -484,7 +484,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(MaterialProgram *mtl)
     return mi;
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(MaterialProgram *mtl,const VIL *vil)
+MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(MaterialProgram *mtl,const VIL *vil)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -504,7 +504,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(MaterialProgram *mtl,c
     return mi;
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(MaterialProgram *mtl,const VILConfig *vil_cfg)
+MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(MaterialProgram *mtl,const VILConfig *vil_cfg)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -524,12 +524,12 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(MaterialProgram *mtl,c
     return mi;
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(MaterialProgram *mtl,const GeometryVertexFormat &geometry_vertex_format)
+MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(MaterialProgram *mtl,const GeometryVertexFormat &geometry_vertex_format)
 {
-    return CreateMaterialInstance(mtl,geometry_vertex_format,nullptr,0);
+    return CreateMaterialInstanceInternal(mtl,geometry_vertex_format,nullptr,0);
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(MaterialProgram *mtl,const GeometryVertexFormat &geometry_vertex_format,const void *mi_data,const uint32 mi_bytes)
+MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(MaterialProgram *mtl,const GeometryVertexFormat &geometry_vertex_format,const void *mi_data,const uint32 mi_bytes)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -555,7 +555,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(MaterialProgram *mtl,c
     return mi;
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(MaterialProgram *mtl,const VIL *vil,const void *mi_data,const uint32 mi_bytes)
+MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(MaterialProgram *mtl,const VIL *vil,const void *mi_data,const uint32 mi_bytes)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -582,7 +582,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(MaterialProgram *mtl,c
     return mi;
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(MaterialProgram *mtl,const VILConfig *vil_cfg,const void *mi_data,const uint32 mi_bytes)
+MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(MaterialProgram *mtl,const VILConfig *vil_cfg,const void *mi_data,const uint32 mi_bytes)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -605,7 +605,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(MaterialProgram *mtl,c
     return mi;
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
+MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -614,10 +614,10 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPre
     if(!mtl)
         return(nullptr);
 
-    return CreateMaterialInstance(mtl,vil_cfg,data,data_size);
+    return CreateMaterialInstanceInternal(mtl,vil_cfg,data,data_size);
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
+MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -626,10 +626,10 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPre
     if(!mtl)
         return(nullptr);
 
-    return CreateMaterialInstance(mtl,vil_cfg,data,data_size);
+    return CreateMaterialInstanceInternal(mtl,vil_cfg,data,data_size);
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format,const void *data,const uint32 data_size)
+MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format,const void *data,const uint32 data_size)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -641,10 +641,10 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPre
     if(!mtl)
         return(nullptr);
 
-    return CreateMaterialInstance(mtl,geometry_vertex_format,data,data_size);
+    return CreateMaterialInstanceInternal(mtl,geometry_vertex_format,data,data_size);
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format,const void *data,const uint32 data_size)
+MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format,const void *data,const uint32 data_size)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -656,8 +656,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPre
     if(!mtl)
         return(nullptr);
 
-    return CreateMaterialInstance(mtl,geometry_vertex_format,data,data_size);
+    return CreateMaterialInstanceInternal(mtl,geometry_vertex_format,data,data_size);
 }
 
 }//namespace hgl::graph
-

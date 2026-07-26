@@ -403,7 +403,7 @@ namespace hgl::ecs
             }
 
             auto *program = current_program;
-            auto *dbs = primitive_comp->GetDescriptorBindingSet();
+            auto *dbs = primitive_comp->GetInternalDescriptorBindingSet();
             if (!program)
             {
                 ResetMaterialRuntimeForLegacy(material_comp);

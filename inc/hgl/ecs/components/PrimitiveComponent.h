@@ -121,14 +121,14 @@ namespace hgl::ecs
         void SetPrimitive(hgl::graph::Primitive* prim);
         hgl::graph::Primitive* GetPrimitive() const { return primitive; }
 
-        // MaterialProgram override
-        void SetOverrideMaterial(hgl::graph::MaterialInstance* mi);
-        hgl::graph::MaterialInstance* GetOverrideMaterial() const { return overrideMaterial; }
-        void ClearOverrideMaterial() { SetOverrideMaterial(nullptr); }
+        // Legacy runtime bridge — internal engine use only during Phase 7 migration.
+        void SetInternalOverrideMaterial(hgl::graph::MaterialInstance* mi);
+        hgl::graph::MaterialInstance* GetInternalOverrideMaterial() const { return overrideMaterial; }
+        void ClearInternalOverrideMaterial() { SetInternalOverrideMaterial(nullptr); }
 
-        void SetDescriptorBindingSet(hgl::graph::DescriptorBindingSet* set);
-        hgl::graph::DescriptorBindingSet* GetDescriptorBindingSet() const;
-        void ClearDescriptorBindingSet() { SetDescriptorBindingSet(nullptr); }
+        void SetInternalDescriptorBindingSet(hgl::graph::DescriptorBindingSet* set);
+        hgl::graph::DescriptorBindingSet* GetInternalDescriptorBindingSet() const;
+        void ClearInternalDescriptorBindingSet() { SetInternalDescriptorBindingSet(nullptr); }
 
         void SetOverridePipeline(hgl::graph::Pipeline* p) { overridePipeline = p; }
         hgl::graph::Pipeline* GetOverridePipeline() const { return overridePipeline; }

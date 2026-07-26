@@ -34,9 +34,9 @@ void ScaleGizmoMode::UpdateHover(const GizmoFrameInput &input,
 
         const bool in_group = (best_group >= 0 && p.group_id == best_group);
         if (static_cast<int>(i) == best_index || in_group)
-            p.primitive->SetDescriptorBindingSet(GetGizmoBindingSet3D(GizmoColor::Yellow));
+            p.primitive->SetInternalDescriptorBindingSet(GetGizmoBindingSet3D(GizmoColor::Yellow));
         else
-            p.primitive->SetDescriptorBindingSet(p.base_binding);
+            p.primitive->SetInternalDescriptorBindingSet(p.base_binding);
     }
 }
 

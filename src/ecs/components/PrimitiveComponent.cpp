@@ -85,11 +85,11 @@ namespace hgl::ecs
         }
     }
 
-    void PrimitiveComponent::SetOverrideMaterial(hgl::graph::MaterialInstance* mi)
+    void PrimitiveComponent::SetInternalOverrideMaterial(hgl::graph::MaterialInstance* mi)
     {
         if (hasMaterialRecipe && mi)
         {
-            GLogWarning("[PrimitiveComponent] Ignore SetOverrideMaterial while recipe runtime is enabled.");
+            GLogWarning("[PrimitiveComponent] Ignore SetInternalOverrideMaterial while recipe runtime is enabled.");
             return;
         }
 
@@ -269,7 +269,7 @@ namespace hgl::ecs
         return primitive->GetMaterialInstance();
     }
 
-    hgl::graph::DescriptorBindingSet* PrimitiveComponent::GetDescriptorBindingSet() const
+    hgl::graph::DescriptorBindingSet* PrimitiveComponent::GetInternalDescriptorBindingSet() const
     {
         if (hasMaterialRecipe)
             return nullptr;
@@ -375,11 +375,11 @@ namespace hgl::ecs
         hasPendingPipelinePreset = false;
     }
 
-    void PrimitiveComponent::SetDescriptorBindingSet(hgl::graph::DescriptorBindingSet* set)
+    void PrimitiveComponent::SetInternalDescriptorBindingSet(hgl::graph::DescriptorBindingSet* set)
     {
         if (hasMaterialRecipe && set)
         {
-            GLogWarning("[PrimitiveComponent] Ignore SetDescriptorBindingSet while recipe runtime is enabled.");
+            GLogWarning("[PrimitiveComponent] Ignore SetInternalDescriptorBindingSet while recipe runtime is enabled.");
             return;
         }
 

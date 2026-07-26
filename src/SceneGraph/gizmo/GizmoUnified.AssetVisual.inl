@@ -51,7 +51,7 @@ static bool AttachAssetModePrimitive(std::vector<GizmoVisualPrimitive> &out_list
         return false;
 
     prim_comp->SetPrimitive(primitive);
-    prim_comp->SetDescriptorBindingSet(base_binding);
+    prim_comp->SetInternalDescriptorBindingSet(base_binding);
     prim_comp->SetVisible(false);
 
     GizmoVisualPrimitive item;
@@ -111,8 +111,8 @@ static void SetAssetVisualHighlight(GizmoECS *gizmo, bool highlighted)
             if (!entry.primitive)
                 continue;
 
-            entry.primitive->SetDescriptorBindingSet(highlighted ? GetGizmoBindingSet3D(GizmoColor::Yellow)
-                                                                 : entry.base_binding);
+            entry.primitive->SetInternalDescriptorBindingSet(highlighted ? GetGizmoBindingSet3D(GizmoColor::Yellow)
+                                                                         : entry.base_binding);
         }
     };
 
@@ -281,4 +281,3 @@ static int PickBestAssetVisualIndex(const std::vector<GizmoVisualPrimitive> &ite
         return -1;
     return PickBestAssetVisualIndex(items, gizmo->root_transform, input);
 }
-
