@@ -13,8 +13,9 @@
 #include<hgl/graph/mesh/GeometryDrawRange.h>
 
 namespace hgl::graph{
+class PrimitiveAsset;
 /**
-* 图元(渲染中的最小渲染单位，一个几何体配一个材质)
+* 图元(当前仍为运行时绘制单元，后续将与 PrimitiveAsset 资产语义继续拆分)
 */
 class Primitive
 {
@@ -80,6 +81,7 @@ public:
 
 Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,Pipeline * = nullptr);
 Primitive *DirectCreatePrimitive(Geometry *,MaterialProgram *,DescriptorBindingSet * = nullptr,Pipeline * = nullptr);
+Primitive *CreatePrimitiveRuntime(Geometry *,MaterialProgram *,Pipeline * = nullptr);
 
 // Pre-flight compatibility check: matches geometry vertex format against the
 // material's VIL and returns the full failure summary without creating a primitive.

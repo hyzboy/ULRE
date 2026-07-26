@@ -336,6 +336,11 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialProgram *material,Descri
     return(new Primitive(geom,material,dbs,owned_vil,owned_vil!=nullptr,p,geom_data_buffer));
 }
 
+Primitive *CreatePrimitiveRuntime(Geometry *geom, MaterialProgram *material, Pipeline *p)
+{
+    return DirectCreatePrimitive(geom, material, nullptr, p);
+}
+
 GeometryVertexFormatMatch QueryGeometryVertexCompatibility(const Geometry *geom, const MaterialInstance *mi)
 {
     if (!geom || !mi)

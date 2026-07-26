@@ -11,9 +11,11 @@
 #include<hgl/ecs/support/VisibilityDataStorage.h>
 #include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/graph/CameraInfo.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/mtl/MaterialLibrary.h>
@@ -80,6 +82,57 @@ namespace hgl::ecs
             }
 
             return false;
+        }
+
+        bool EnsureRuntimePrimitiveFromAsset(ECSContext *world,
+                                             const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+                                             const std::shared_ptr<MaterialComponent> &material_comp)
+        {
+            if (!world || !primitive_comp || !material_comp)
+                return false;
+
+            const auto *asset = primitive_comp->GetPrimitiveAsset();
+            if (!asset)
+                return true;
+
+            auto *geometry = asset->GetGeometry();
+            auto *material = material_comp->program;
+            if (!geometry || !material)
+                return false;
+
+            auto *graphics = world->GetGraphicsContext();
+            if (!graphics)
+            {
+                auto *render_context = world->GetRenderContext();
+                graphics = render_context ? render_context->GetGraphicsContext() : nullptr;
+            }
+            if (!graphics)
+                return false;
+
+            auto *primitive_manager = graphics->GetPrimitiveManager();
+            if (!primitive_manager)
+                return false;
+
+            if (auto *current_primitive = primitive_comp->GetPrimitive())
+            {
+                if (!primitive_comp->HasInternalAssetRuntimePrimitive())
+                    return true;
+
+                const bool same_geometry = (current_primitive->GetGeometry() == geometry);
+                const bool same_program = (current_primitive->GetMaterialProgram() == material);
+                if (same_geometry && same_program)
+                    return true;
+
+                primitive_manager->Release(current_primitive);
+                primitive_comp->SetInternalAssetRuntimePrimitive(nullptr);
+            }
+
+            auto *runtime_primitive = primitive_manager->CreateRuntimePrimitive(asset, material, nullptr);
+            if (!runtime_primitive)
+                return false;
+
+            primitive_comp->SetInternalAssetRuntimePrimitive(runtime_primitive);
+            return true;
         }
 
         uint32_t ResolvePrimaryStructIndex(const graph::MaterialProgram *material,
@@ -529,13 +582,23 @@ namespace hgl::ecs
 
         graph::PrimitiveType primitive_type = graph::PrimitiveType::Triangles;
         graph::MaterialProgram *reference_program = nullptr;
+        const graph::GeometryVertexFormat *geometry_vertex_format = nullptr;
         if (auto *primitive = primitive_comp->GetPrimitive())
         {
+            if (auto *primitive_geometry = primitive->GetGeometry())
+                geometry_vertex_format = &primitive_geometry->GetGeometryVertexFormat();
+
             if (auto *primitive_program = primitive->GetMaterialProgram())
             {
                 primitive_type = primitive_program->GetPrimitiveType();
                 reference_program = primitive_program;
             }
+        }
+        else if (const auto *asset = primitive_comp->GetPrimitiveAsset())
+        {
+            if (auto *asset_geometry = asset->GetGeometry())
+                geometry_vertex_format = &asset_geometry->GetGeometryVertexFormat();
+            primitive_type = asset->GetPrimitiveType();
         }
 
         graph::mtl::MaterialPreset preset{};
@@ -605,7 +668,9 @@ namespace hgl::ecs
             else
             {
                 graph::mtl::Material2DCreateConfig cfg(primitive_type, graph::CoordinateSystem2D::NDC, graph::mtl::WithLocalToWorld::With);
-                resolved_program = material_manager->AcquireMaterialProgram(preset, &cfg);
+                resolved_program = geometry_vertex_format
+                                 ? material_manager->AcquireMaterialProgram(preset, &cfg, *geometry_vertex_format)
+                                 : material_manager->AcquireMaterialProgram(preset, &cfg);
             }
         }
         else if (!resolved_program)
@@ -636,7 +701,9 @@ namespace hgl::ecs
                                                        with_camera,
                                                        with_l2w,
                                                        with_sky);
-                resolved_program = material_manager->AcquireMaterialProgram(preset, &cfg);
+                resolved_program = geometry_vertex_format
+                                 ? material_manager->AcquireMaterialProgram(preset, &cfg, *geometry_vertex_format)
+                                 : material_manager->AcquireMaterialProgram(preset, &cfg);
             }
         }
 
@@ -856,6 +923,11 @@ namespace hgl::ecs
                                             primitiveComp->GetOwner() ? primitiveComp->GetOwner()->GetName().c_str() : "<no-owner>",
                                             material_comp->program ? material_comp->program->GetName().c_str() : "<null>");
                                 InvalidateRecipeRuntime(material_comp, false);
+                            }
+                            else if (!EnsureRuntimePrimitiveFromAsset(world, primitiveComp, material_comp))
+                            {
+                                GLogWarning("[RenderPrimitiveCollectSystem] EnsureRuntimePrimitiveFromAsset failed for %s",
+                                            primitiveComp->GetOwner() ? primitiveComp->GetOwner()->GetName().c_str() : "<no-owner>");
                             }
                         }
                     }

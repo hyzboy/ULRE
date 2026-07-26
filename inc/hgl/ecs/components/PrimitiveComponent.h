@@ -81,6 +81,8 @@ namespace hgl::ecs
 
         hgl::graph::Primitive* primitive;                // The primitive to render (not owned)
         const hgl::graph::PrimitiveAsset* primitiveAsset = nullptr;  // Asset-level geometry+recipe pairing (not owned)
+        uint32_t primitiveVariantIndex = 0;
+        bool runtimePrimitiveFromAsset = false;
         hgl::graph::MaterialInstance* overrideMaterial;   // Optional material override (not owned)
         hgl::graph::DescriptorBindingSet* descriptorBindingSet; // Optional explicit binding set (not owned)
         hgl::graph::Pipeline* overridePipeline;           // Optional pipeline override (not owned)
@@ -122,9 +124,13 @@ namespace hgl::ecs
 
         void SetPrimitive(hgl::graph::Primitive* prim);
         hgl::graph::Primitive* GetPrimitive() const { return primitive; }
-        void SetPrimitiveAsset(const hgl::graph::PrimitiveAsset *asset) { primitiveAsset = asset; }
+        void SetPrimitiveAsset(const hgl::graph::PrimitiveAsset *asset);
         const hgl::graph::PrimitiveAsset *GetPrimitiveAsset() const { return primitiveAsset; }
-        void ClearPrimitiveAsset() { primitiveAsset = nullptr; }
+        void ClearPrimitiveAsset() { SetPrimitiveAsset(nullptr); }
+        void SetPrimitiveVariantIndex(const uint32_t index) { primitiveVariantIndex = index; }
+        uint32_t GetPrimitiveVariantIndex() const { return primitiveVariantIndex; }
+        void SetInternalAssetRuntimePrimitive(hgl::graph::Primitive *prim);
+        bool HasInternalAssetRuntimePrimitive() const { return runtimePrimitiveFromAsset; }
 
         // Legacy runtime bridge — internal engine use only during Phase 7 migration.
         void SetInternalOverrideMaterial(hgl::graph::MaterialInstance* mi);
@@ -171,7 +177,7 @@ namespace hgl::ecs
         // Runtime resolve/materialize is handled by ECS in later phases.
         void SetMaterialRecipe(const hgl::graph::mtl::MaterialRecipe &recipe);
         const hgl::graph::mtl::MaterialRecipe *GetMaterialRecipe() const;
-        bool HasMaterialRecipe() const { return hasMaterialRecipe; }
+        bool HasMaterialRecipe() const { return GetMaterialRecipe() != nullptr; }
         void ClearMaterialRecipe();
         void SetMaterialTextureResource(hgl::graph::mtl::TextureSlot slot,
                                         hgl::graph::Texture *texture,

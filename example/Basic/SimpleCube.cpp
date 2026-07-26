@@ -8,11 +8,11 @@
 // 4. CameraSystem配置为ViewModel控制模式
 
 #include<hgl/framework/WorkManager.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/mtl/MaterialRecipe.h>
@@ -60,24 +60,30 @@ private:
     MaterialProgram *          material        = nullptr;
 
     Geometry *          geometry        = nullptr;
-    Primitive *         primitive       = nullptr;
     graph::DeviceBuffer *mi_ssbo        = nullptr;
     graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::UserDefined;
     uint32_t             material_ssbo_id = 0;
     uint32_t             material_ssbo_count = 0;
     uint32_t             material_ssbo_stride = 0;
+    graph::mtl::MaterialRecipe cube_recipe{};
+    PrimitiveAsset             cube_asset{};
 
 private:
 
     bool InitMaterial()
     {
+        if (!geometry)
+            return false;
+
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
 
         auto* material_manager = GetManager<MaterialManager>();
         if (!material_manager)
             return false;
 
-        material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Gizmo3D, &cfg);
+        material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Gizmo3D,
+                                                            &cfg,
+                                                            geometry->GetGeometryVertexFormat());
 
         if(!material)
             return false;
@@ -113,16 +119,6 @@ private:
 
         geometry_manager->Add(geometry);
         return true;
-    }
-
-    bool InitPrimitive()
-    {
-        auto* primitive_manager = GetManager<PrimitiveManager>();
-        if (!primitive_manager)
-            return false;
-
-        primitive = primitive_manager->CreatePrimitive(geometry, material, nullptr, nullptr);
-        return primitive != nullptr;
     }
 
     bool InitMISSBO()
@@ -200,14 +196,13 @@ private:
         transform->SetMovable(false);
 
         auto primitive_comp = cube_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
-        primitive_comp->SetPrimitive(primitive);
         primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
-        graph::mtl::MaterialRecipe recipe{};
-        recipe.recipe_name = "SimpleCube.Gizmo3D";
-        recipe.shading_model = graph::mtl::ShadingModel::Unlit;
-        recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Gizmo3D);
-        recipe.domain = "SimpleCube";
-        primitive_comp->SetMaterialRecipe(recipe);
+        cube_recipe.recipe_name = "SimpleCube.Gizmo3D";
+        cube_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        cube_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Gizmo3D);
+        cube_recipe.domain = "SimpleCube";
+        cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
+        primitive_comp->SetPrimitiveAsset(&cube_asset);
         primitive_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
                                                   material_ssbo_type,
                                                   material_ssbo_id,
@@ -249,7 +244,6 @@ public:
     ~TestApp()
     {
         SAFE_CLEAR(mi_ssbo)
-        SAFE_CLEAR(primitive)
         SAFE_CLEAR(geometry)
     }
 
@@ -257,16 +251,13 @@ public:
     {
         SetClearColor(Color4f(0.2f, 0.2f, 0.2f, 1.0f));
 
-        if(!InitMaterial())
-            return false;
-
         if(!CreateCubeGeometry())
             return false;
 
-        if(!InitMISSBO())
+        if(!InitMaterial())
             return false;
 
-        if(!InitPrimitive())
+        if(!InitMISSBO())
             return false;
 
         if(!InitECS())

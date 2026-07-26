@@ -9,6 +9,7 @@ namespace hgl::graph{
 using PrimitiveID = int;
 
 // Forward declarations to avoid header ordering issues
+class PrimitiveAsset;
 class GeometryCreater;
 class Geometry;
 class MaterialProgram;
@@ -45,6 +46,11 @@ public: // Create
     Primitive *CreatePrimitive(GeometryCreater *pc, MaterialInstance *mi, Pipeline *p=nullptr);
     Primitive *CreatePrimitive(Geometry *r, MaterialProgram *material, DescriptorBindingSet *dbs, Pipeline *p=nullptr);
     Primitive *CreatePrimitive(GeometryCreater *pc, MaterialProgram *material, DescriptorBindingSet *dbs, Pipeline *p=nullptr);
+
+public: // Runtime draw-unit creation (new naming, Phase 7 bridge)
+
+    Primitive *CreateRuntimePrimitive(Geometry *r, MaterialProgram *material, Pipeline *p=nullptr);
+    Primitive *CreateRuntimePrimitive(const PrimitiveAsset *asset, MaterialProgram *material, Pipeline *p=nullptr);
 };
 
 }//namespace hgl::graph

@@ -1,5 +1,6 @@
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/core/Entity.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKMaterialProgram.h>
@@ -66,6 +67,7 @@ namespace hgl::ecs
         }
 
         primitive = prim;
+        runtimePrimitiveFromAsset = false;
 
         // Update bounding radius based on primitive's bounding volume
         if (primitive)
@@ -85,9 +87,63 @@ namespace hgl::ecs
         }
     }
 
+    void PrimitiveComponent::SetInternalAssetRuntimePrimitive(hgl::graph::Primitive *prim)
+    {
+        if (primitive != prim)
+            InvalidateResolvedRuntimePipeline();
+
+        primitive = prim;
+        runtimePrimitiveFromAsset = (prim != nullptr);
+
+        if (primitive)
+        {
+            const auto &bv = primitive->GetBoundingVolumes();
+            auto extents = bv.aabb.GetLength();
+            float radius = math::Length(extents) * 0.5f;
+            SetBoundingRadius(radius);
+        }
+        else if (primitiveAsset && primitiveAsset->GetGeometry())
+        {
+            const auto &bv = primitiveAsset->GetGeometry()->GetBoundingVolumes();
+            auto extents = bv.aabb.GetLength();
+            float radius = math::Length(extents) * 0.5f;
+            SetBoundingRadius(radius);
+        }
+        else
+        {
+            SetBoundingRadius(0.0f);
+        }
+    }
+
+    void PrimitiveComponent::SetPrimitiveAsset(const hgl::graph::PrimitiveAsset *asset)
+    {
+        if (primitiveAsset != asset)
+            InvalidateResolvedRuntimePipeline();
+
+        primitiveAsset = asset;
+
+        if (primitiveAsset && primitiveAsset->GetMaterialRecipe())
+        {
+            overrideMaterial = nullptr;
+            descriptorBindingSet = nullptr;
+        }
+
+        if (!primitive && primitiveAsset && primitiveAsset->GetGeometry())
+        {
+            const auto &bv = primitiveAsset->GetGeometry()->GetBoundingVolumes();
+            auto extents = bv.aabb.GetLength();
+            float radius = math::Length(extents) * 0.5f;
+            SetBoundingRadius(radius);
+        }
+        else if (!primitive)
+        {
+            SetBoundingRadius(0.0f);
+        }
+    }
+
     void PrimitiveComponent::SetInternalOverrideMaterial(hgl::graph::MaterialInstance* mi)
     {
-        if (hasMaterialRecipe && mi)
+        if (HasMaterialRecipe() && mi)
         {
             GLogWarning("[PrimitiveComponent] Ignore SetInternalOverrideMaterial while recipe runtime is enabled.");
             return;
@@ -113,7 +169,16 @@ namespace hgl::ecs
 
     const hgl::graph::mtl::MaterialRecipe *PrimitiveComponent::GetMaterialRecipe() const
     {
-        return hasMaterialRecipe ? &materialRecipe : nullptr;
+        if (hasMaterialRecipe)
+            return &materialRecipe;
+
+        if (!primitiveAsset)
+            return nullptr;
+
+        if (const auto *variant = primitiveAsset->GetVariant(primitiveVariantIndex))
+            return variant->material_recipe;
+
+        return primitiveAsset->GetMaterialRecipe();
     }
 
     void PrimitiveComponent::ClearMaterialRecipe()
@@ -256,7 +321,7 @@ namespace hgl::ecs
 
     hgl::graph::MaterialInstance* PrimitiveComponent::GetMaterialInstance() const
     {
-        if (hasMaterialRecipe)
+        if (HasMaterialRecipe())
             return nullptr;
 
         // Return override material if set, otherwise primitive's material
@@ -271,7 +336,7 @@ namespace hgl::ecs
 
     hgl::graph::DescriptorBindingSet* PrimitiveComponent::GetInternalDescriptorBindingSet() const
     {
-        if (hasMaterialRecipe)
+        if (HasMaterialRecipe())
             return nullptr;
 
         if (descriptorBindingSet)
@@ -285,7 +350,7 @@ namespace hgl::ecs
 
     hgl::graph::MaterialProgram* PrimitiveComponent::GetMaterialProgram() const
     {
-        if (hasMaterialRecipe)
+        if (HasMaterialRecipe())
             return nullptr;
 
         if (overrideMaterial)
@@ -319,17 +384,24 @@ namespace hgl::ecs
 
     bool PrimitiveComponent::GetLocalAABB(hgl::math::AABB& outAABB) const
     {
-        if (!primitive)
+        if (primitive)
+        {
+            const auto& bv = primitive->GetBoundingVolumes();
+            outAABB = bv.aabb;
+            return true;
+        }
+
+        if (!primitiveAsset || !primitiveAsset->GetGeometry())
             return false;
 
-        const auto& bv = primitive->GetBoundingVolumes();
+        const auto &bv = primitiveAsset->GetGeometry()->GetBoundingVolumes();
         outAABB = bv.aabb;
         return true;
     }
 
     bool PrimitiveComponent::CanRender() const
     {
-        return primitive != nullptr && IsVisible();
+        return (primitive != nullptr || primitiveAsset != nullptr) && IsVisible();
     }
 
     void PrimitiveComponent::Render(const glm::mat4& worldMatrix)
@@ -364,6 +436,9 @@ namespace hgl::ecs
         // Don't delete primitive or material - they're managed externally
         // Just clear our references
         primitive = nullptr;
+        primitiveAsset = nullptr;
+        primitiveVariantIndex = 0;
+        runtimePrimitiveFromAsset = false;
         overrideMaterial = nullptr;
         descriptorBindingSet = nullptr;
         overridePipeline = nullptr;
@@ -377,7 +452,7 @@ namespace hgl::ecs
 
     void PrimitiveComponent::SetInternalDescriptorBindingSet(hgl::graph::DescriptorBindingSet* set)
     {
-        if (hasMaterialRecipe && set)
+        if (HasMaterialRecipe() && set)
         {
             GLogWarning("[PrimitiveComponent] Ignore SetInternalDescriptorBindingSet while recipe runtime is enabled.");
             return;

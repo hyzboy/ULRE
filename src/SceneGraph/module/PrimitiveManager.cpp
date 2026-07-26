@@ -1,4 +1,5 @@
 ﻿#include<hgl/graph/module/PrimitiveManager.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 
 namespace hgl::graph{
@@ -76,6 +77,26 @@ Primitive *PrimitiveManager::CreatePrimitive(GeometryCreater *pc, MaterialProgra
 
     delete geometry;
     return(nullptr);
+}
+
+Primitive *PrimitiveManager::CreateRuntimePrimitive(Geometry *r, MaterialProgram *material, Pipeline *p)
+{
+    if (!r || !material)
+        return nullptr;
+
+    Primitive *ri = hgl::graph::CreatePrimitiveRuntime(r, material, p);
+    if (ri)
+        Add(ri);
+
+    return ri;
+}
+
+Primitive *PrimitiveManager::CreateRuntimePrimitive(const PrimitiveAsset *asset, MaterialProgram *material, Pipeline *p)
+{
+    if (!asset || !material)
+        return nullptr;
+
+    return CreateRuntimePrimitive(asset->GetGeometry(), material, p);
 }
 
 }//namespace hgl::graph
