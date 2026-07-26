@@ -21,6 +21,7 @@ namespace hgl
         class DescriptorBindingSet;
         class DeviceBuffer;
         class Primitive;
+        class PrimitiveAsset;
         class MaterialProgram;
         class MaterialInstance;
         class Pipeline;
@@ -79,6 +80,7 @@ namespace hgl::ecs
     private:
 
         hgl::graph::Primitive* primitive;                // The primitive to render (not owned)
+        const hgl::graph::PrimitiveAsset* primitiveAsset = nullptr;  // Asset-level geometry+recipe pairing (not owned)
         hgl::graph::MaterialInstance* overrideMaterial;   // Optional material override (not owned)
         hgl::graph::DescriptorBindingSet* descriptorBindingSet; // Optional explicit binding set (not owned)
         hgl::graph::Pipeline* overridePipeline;           // Optional pipeline override (not owned)
@@ -120,6 +122,9 @@ namespace hgl::ecs
 
         void SetPrimitive(hgl::graph::Primitive* prim);
         hgl::graph::Primitive* GetPrimitive() const { return primitive; }
+        void SetPrimitiveAsset(const hgl::graph::PrimitiveAsset *asset) { primitiveAsset = asset; }
+        const hgl::graph::PrimitiveAsset *GetPrimitiveAsset() const { return primitiveAsset; }
+        void ClearPrimitiveAsset() { primitiveAsset = nullptr; }
 
         // Legacy runtime bridge — internal engine use only during Phase 7 migration.
         void SetInternalOverrideMaterial(hgl::graph::MaterialInstance* mi);
