@@ -1180,6 +1180,58 @@ namespace hgl::ecs
 
             return batch->key.IsRecipeRuntime();
         };
+        auto resolve_recipe_batch_struct_ssbo_id = [&](graph::MaterialProgram *material,
+                                                       MaterialBatch *batch,
+                                                       const graph::mtl::DescriptorRequirement &req,
+                                                       uint32_t &out_ssbo_id) -> bool
+        {
+            if (!batch || !batch->key.IsRecipeRuntime())
+                return false;
+
+            bool found = false;
+            uint32_t ssbo_id = 0;
+
+            for (RenderItem *item : batch->items)
+            {
+                auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(item);
+                if (!primitive_item)
+                    continue;
+
+                auto primitive_comp = primitive_item->GetPrimitiveComponent();
+                if (!primitive_comp)
+                    continue;
+
+                const auto *resource = primitive_comp->GetMaterialStructResource(req.data_slot);
+                if (!resource || resource->ssbo_type != req.ssbo_type)
+                    continue;
+
+                if (!found)
+                {
+                    ssbo_id = resource->ssbo_id;
+                    found = true;
+                    continue;
+                }
+
+                if (ssbo_id != resource->ssbo_id)
+                {
+                    GLogError("[DescriptorBinding] Recipe batch struct mismatch: material=%s semantic=%s descriptor=%s slot=%u expected_ssbo_id=%u actual_ssbo_id=%u.",
+                              material->GetName().c_str(),
+                              graph::mtl::GetDescriptorSemanticName(req.semantic),
+                              req.name,
+                              static_cast<uint32_t>(req.data_slot),
+                              ssbo_id,
+                              resource->ssbo_id);
+                    batch->descriptor_bind_valid = false;
+                    return false;
+                }
+            }
+
+            if (!found)
+                return false;
+
+            out_ssbo_id = ssbo_id;
+            return true;
+        };
 
         auto apply_requirement = [&](graph::MaterialProgram *material,
                                      MaterialBatch *batch,
@@ -1323,8 +1375,12 @@ namespace hgl::ecs
             }
             case graph::mtl::DescriptorSemantic::MaterialInstance:
             {
+                uint32_t resolved_ssbo_id = req.ssbo_id;
+                if (batch && batch_uses_recipe_runtime(batch))
+                    resolve_recipe_batch_struct_ssbo_id(material, batch, req, resolved_ssbo_id);
+
                 const graph::IGPUBuffer *mi_ssbo = resolve_domain_ssbo(
-                    graph::mtl::SSBOAddress{req.ssbo_type, req.ssbo_id, 0},
+                    graph::mtl::SSBOAddress{req.ssbo_type, resolved_ssbo_id, 0},
                     "MaterialInstance");
 
                 if (!mi_ssbo && batch && !batch_uses_recipe_runtime(batch))

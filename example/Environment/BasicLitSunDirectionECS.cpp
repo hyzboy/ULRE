@@ -12,7 +12,7 @@
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/DescriptorBindingSet.h>
-#include<hgl/graph/SSBOSlotAllocator.h>
+#include<hgl/mtl/MaterialRecipe.h>
 
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
@@ -36,6 +36,11 @@
 using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
+
+namespace
+{
+    constexpr uint32_t kBasicLitSunDirectionStandardSsboId = hgl::graph::mtl::MakeRecipeSSBOId(1001);
+}
 
 namespace
 {
@@ -84,9 +89,11 @@ private:
     DescriptorBindingSet* sky_binding = nullptr;
 
     MaterialProgram* material = nullptr;
-    DescriptorBindingSet* material_binding = nullptr;
     DeviceBuffer* material_ssbo = nullptr;
-    SSBOSlotAllocator material_slot_allocator;
+    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::UserDefined;
+    uint32_t material_ssbo_id = 0;
+    uint32_t material_ssbo_count = 0;
+    uint32_t material_ssbo_stride = 0;
     VertexDataManager* mesh_vdm = nullptr;
 
     RenderMesh* rm_floor = nullptr;
@@ -242,44 +249,41 @@ private:
 
         // Create external SSBO + DescriptorBindingSet for Standard material data.
         auto *buffer_manager = graphics_context->GetBufferManager();
-        auto *domain_manager = graphics_context->GetResourceDomainManager();
-        if (!buffer_manager || !domain_manager)
+        if (!buffer_manager)
             return false;
 
         const uint32_t stride = material->GetMIDataBytes();
         if (stride > 0)
         {
-            material_ssbo = buffer_manager->CreateSSBO("BasicLitSunDir:Standard:MI", stride, nullptr, SharingMode::Exclusive);
-            if (!material_ssbo)
-                return false;
-
-            if (auto *gpu = material_ssbo->GetGPUBuffer())
-                gpu->Write(&mi_data, 0, hgl_min(stride, static_cast<uint32_t>(sizeof(mi_data))));
-
+            bool has_struct_binding = false;
             for (const auto &req : material->GetBindingContract().requirements)
             {
                 if (req.semantic != mtl::DescriptorSemantic::MaterialInstance)
                     continue;
 
-                const mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
-                if (!domain_manager->RegisterBuffer(addr, material_ssbo, 1))
-                    return false;
-
-                material_slot_allocator.Init(1);
-                uint32_t slot = 0;
-                material_slot_allocator.Allocate(slot);
-
-                material_binding = new DescriptorBindingSet(material);
-                material_binding->SetSSBOBinding(req.ssbo_type, req.ssbo_id, slot);
+                has_struct_binding = true;
+                material_ssbo_type = req.ssbo_type;
+                material_ssbo_id = kBasicLitSunDirectionStandardSsboId;
+                break;
             }
-        }
-        else
-        {
-            material_binding = new DescriptorBindingSet(material);
-        }
 
-        if (!material_binding)
-            return false;
+            if (!has_struct_binding)
+                return false;
+
+            material_ssbo_stride = stride;
+            material_ssbo_count = 1;
+            material_ssbo = buffer_manager->CreateSSBO("BasicLitSunDir:Standard:MI",
+                                                       static_cast<VkDeviceSize>(material_ssbo_count) * stride,
+                                                       nullptr,
+                                                       SharingMode::Exclusive);
+            if (!material_ssbo)
+                return false;
+
+            if (auto *gpu = material_ssbo->GetGPUBuffer())
+                gpu->Write(&mi_data,
+                           0,
+                           hgl_min(stride, static_cast<uint32_t>(sizeof(mi_data))));
+        }
 
         return true;
     }
@@ -343,7 +347,7 @@ private:
 
     RenderMesh* CreateRenderMesh(Geometry* geometry)
     {
-        if (!geometry || !material_binding)
+        if (!geometry)
             return nullptr;
 
         auto* render_context = GetRenderContext();
@@ -363,7 +367,7 @@ private:
 
         Primitive* primitive = primitive_manager->CreatePrimitive(geometry,
                                                                   material,
-                                                                  material_binding,
+                                                                  nullptr,
                                                                   nullptr);
         if (!primitive)
             return nullptr;
@@ -512,6 +516,23 @@ private:
             transform->SetMovable(false);
 
             primitive_comp->SetPrimitive(rm_floor->primitive);
+            graph::mtl::MaterialRecipe recipe{};
+            recipe.recipe_name = "BasicLitSunDirection.Standard";
+            recipe.shading_model = graph::mtl::ShadingModel::Standard;
+            recipe.domain = "BasicLitSunDirection";
+            primitive_comp->SetMaterialRecipe(recipe);
+            primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_texture, sampler);
+            primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal, normal_texture, sampler);
+            primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_texture, sampler);
+            primitive_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
+                                                      material_ssbo_type,
+                                                      material_ssbo_id,
+                                                      material_ssbo,
+                                                      material_ssbo_count,
+                                                      material_ssbo_stride,
+                                                      0,
+                                                      true,
+                                                      true);
             primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             primitive_comp->SetVisible(true);
         }
@@ -540,6 +561,23 @@ private:
             transform->SetMovable(false);
 
             primitive_comp->SetPrimitive(rm->primitive);
+            graph::mtl::MaterialRecipe recipe{};
+            recipe.recipe_name = "BasicLitSunDirection.Standard";
+            recipe.shading_model = graph::mtl::ShadingModel::Standard;
+            recipe.domain = "BasicLitSunDirection";
+            primitive_comp->SetMaterialRecipe(recipe);
+            primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_texture, sampler);
+            primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal, normal_texture, sampler);
+            primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_texture, sampler);
+            primitive_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
+                                                      material_ssbo_type,
+                                                      material_ssbo_id,
+                                                      material_ssbo,
+                                                      material_ssbo_count,
+                                                      material_ssbo_stride,
+                                                      0,
+                                                      true,
+                                                      true);
             primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             primitive_comp->SetVisible(true);
 
@@ -602,9 +640,6 @@ public:
         delete sky_binding;
         sky_binding = nullptr;
 
-        delete material_binding;
-        material_binding = nullptr;
-
         auto* rc = GetRenderContext();
         auto* gc = rc ? rc->GetGraphicsContext() : nullptr;
         if (gc && material_ssbo)
@@ -638,4 +673,3 @@ int os_main(int argc, os_char** argv)
 {
     return RunFramework<BasicLitSunDirectionECSApp>(OS_TEXT("Standard Sun Direction ECS"), argc, argv, 1280, 720);
 }
-
