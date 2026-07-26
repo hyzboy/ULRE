@@ -10,10 +10,10 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
-#include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/filesystem/Filename.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/module/TextureManager.h>
@@ -71,12 +71,11 @@ private:
 
     MaterialProgram *near_material = nullptr;
     MaterialProgram *far_material = nullptr;
-    MaterialInstance *far_material_instance = nullptr;
-
-    DescriptorBindingSet *sphere_binding = nullptr;
 
     DeviceBuffer *mi_ssbo = nullptr;
-    DeviceBuffer *texture_layer_ssbo = nullptr;
+    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::UserDefined;
+    uint32_t material_ssbo_id = 0;
+    uint32_t material_ssbo_stride = 0;
 
     Texture2DArray *near_base_color_array = nullptr;
     Texture2DArray *near_normal_array = nullptr;
@@ -89,11 +88,6 @@ private:
     VertexDataManager *mesh_vdm = nullptr;
     Geometry *sphere_geometry = nullptr;
     Primitive *sphere_primitive = nullptr;
-
-    uint32_t near_base_color_handle = 0;
-    uint32_t near_normal_handle = 0;
-    uint32_t far_base_color_handle = 0;
-    uint32_t far_normal_handle = 0;
 
     bool use_far_material = false;
     double elapsed_time = 0.0;
@@ -192,10 +186,6 @@ private:
         if (near_material->GetMIDataBytes() != far_material->GetMIDataBytes())
             return LogFail("InitMaterials", "near/far MI layout mismatch");
 
-        far_material_instance = material_manager->CreateMaterialInstance(far_material, CreateStandardGeometryVertexFormat());
-        if (!far_material_instance)
-            return LogFail("InitMaterials", "failed to create far material instance");
-
         sampler = sampler_manager->CreateSampler();
         if (!sampler)
             return LogFail("InitMaterials", "failed to create sampler");
@@ -246,57 +236,56 @@ private:
         return true;
     }
 
-    bool UploadTextureLayerRow()
-    {
-        if (!texture_layer_ssbo || !sphere_binding)
-            return LogFail("UploadTextureLayerRow", "texture layer ssbo or descriptor binding is null");
-
-        auto *gpu_buf = texture_layer_ssbo->GetGPUBuffer();
-        if (!gpu_buf)
-            return LogFail("UploadTextureLayerRow", "gpu buffer is null");
-
-        const uint32_t slot_count = static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE);
-        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(slot_count) * sizeof(uint32_t);
-        auto *dst = static_cast<uint32_t *>(gpu_buf->Map(0, ssbo_size));
-        if (!dst)
-            return LogFail("UploadTextureLayerRow", "map texture layer ssbo failed");
-
-        memset(dst, 0, static_cast<size_t>(ssbo_size));
-
-        const size_t base = static_cast<size_t>(sphere_binding->GetSlotIndex(graph::mtl::SSBOType::PBRSurface)) * slot_count;
-        if (use_far_material)
-        {
-            dst[base + static_cast<uint32_t>(graph::mtl::TextureSlot::BaseColor)] = far_base_color_handle;
-            dst[base + static_cast<uint32_t>(graph::mtl::TextureSlot::Normal)] = far_normal_handle;
-            dst[base + static_cast<uint32_t>(graph::mtl::TextureSlot::Custom0)] = 0u;
-        }
-        else
-        {
-            dst[base + static_cast<uint32_t>(graph::mtl::TextureSlot::BaseColor)] = near_base_color_handle;
-            dst[base + static_cast<uint32_t>(graph::mtl::TextureSlot::Normal)] = near_normal_handle;
-            dst[base + static_cast<uint32_t>(graph::mtl::TextureSlot::Custom0)] = 0u;
-        }
-
-        gpu_buf->Unmap();
-        return true;
-    }
-
     bool ApplyMaterialMode(const bool far_mode)
     {
-        if (use_far_material == far_mode && sphere_primitive_component)
+        if (use_far_material == far_mode && sphere_primitive_component && sphere_primitive_component->HasMaterialRecipe())
             return true;
 
         use_far_material = far_mode;
 
-        if (sphere_primitive_component)
+        if (!sphere_primitive_component)
+            return true;
+
+        graph::mtl::MaterialRecipe recipe{};
+        recipe.recipe_name = use_far_material ? "06e.SingleSphereSwitch.Far" : "06e.SingleSphereSwitch.Near";
+        recipe.shading_model = graph::mtl::ShadingModel::Standard;
+        recipe.preset_hint = static_cast<uint32_t>(use_far_material
+                                                 ? graph::mtl::MaterialPreset::Standard
+                                                 : graph::mtl::MaterialPreset::StandardTextureArray);
+        recipe.domain = "06e.SingleSphereSwitch";
+        sphere_primitive_component->SetMaterialRecipe(recipe);
+
+        if (use_far_material)
         {
-            if (use_far_material)
-                sphere_primitive_component->SetOverrideMaterial(far_material_instance);
-            else
-                sphere_primitive_component->ClearOverrideMaterial();
+            sphere_primitive_component->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor,
+                                                                  far_base_color_texture,
+                                                                  sampler,
+                                                                  PrimitiveComponent::MaterialTextureResourceKind::Texture2D);
+            sphere_primitive_component->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal,
+                                                                  far_normal_texture,
+                                                                  sampler,
+                                                                  PrimitiveComponent::MaterialTextureResourceKind::Texture2D);
+        }
+        else
+        {
+            sphere_primitive_component->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor,
+                                                                  near_base_color_array,
+                                                                  sampler,
+                                                                  PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray);
+            sphere_primitive_component->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal,
+                                                                  near_normal_array,
+                                                                  sampler,
+                                                                  PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray);
         }
 
-        return UploadTextureLayerRow();
+        sphere_primitive_component->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
+                                                              material_ssbo_type,
+                                                              material_ssbo_id,
+                                                              mi_ssbo,
+                                                              1,
+                                                              material_ssbo_stride,
+                                                              true);
+        return true;
     }
 
     bool InitRenderResources()
@@ -313,39 +302,28 @@ private:
             return LogFail("InitRenderResources", "graphics context is null");
 
         auto *buffer_manager = graphics_context->GetBufferManager();
-        auto *domain_manager = graphics_context->GetResourceDomainManager();
         auto *primitive_manager = graphics_context->GetPrimitiveManager();
-        auto *bindless_mgr = render_context->GetBindlessTextureManager();
-        if (!buffer_manager || !domain_manager || !primitive_manager || !bindless_mgr)
+        if (!buffer_manager || !primitive_manager)
             return LogFail("InitRenderResources", "required runtime manager is null");
-
-        auto rdbs = ecs_world->GetSystem<RenderDescriptorBindingSystem>();
-        if (!rdbs)
-            return LogFail("InitRenderResources", "RenderDescriptorBindingSystem is null");
-
-        near_base_color_handle = rdbs->RegisterTexture2DArrayResource("", near_base_color_array, sampler, bindless_mgr);
-        near_normal_handle = rdbs->RegisterTexture2DArrayResource("", near_normal_array, sampler, bindless_mgr);
-        far_base_color_handle = rdbs->RegisterTexture2DResource("", far_base_color_texture, sampler, bindless_mgr);
-        far_normal_handle = rdbs->RegisterTexture2DResource("", far_normal_texture, sampler, bindless_mgr);
-        if (near_base_color_handle == 0 || near_normal_handle == 0 || far_base_color_handle == 0 || far_normal_handle == 0)
-            return LogFail("InitRenderResources", "bindless texture registration failed");
-
-        if (!rdbs->RegisterMaterialTexture(near_material, mtl::SamplerName::BaseColor, near_base_color_array))
-            return LogFail("InitRenderResources", "near material base color binding failed");
-        if (!rdbs->RegisterMaterialTexture(near_material, "TextureNormal", near_normal_array))
-            return LogFail("InitRenderResources", "near material normal binding failed");
-        if (!rdbs->RegisterMaterialTexture(far_material, mtl::SamplerName::BaseColor, far_base_color_texture))
-            return LogFail("InitRenderResources", "far material base color binding failed");
-        if (!rdbs->RegisterMaterialTexture(far_material, "TextureNormal", far_normal_texture))
-            return LogFail("InitRenderResources", "far material normal binding failed");
-
-        sphere_binding = new DescriptorBindingSet(near_material);
-        if (!sphere_binding)
-            return LogFail("InitRenderResources", "create descriptor binding set failed");
 
         const uint32_t mi_data_bytes = near_material->GetMIDataBytes();
         if (mi_data_bytes == 0 || mi_data_bytes != sizeof(mtl::StandardMaterialInstance))
             return LogFail("InitRenderResources", "unexpected MI struct size");
+        material_ssbo_stride = mi_data_bytes;
+
+        bool has_struct_binding = false;
+        for (const auto &req : near_material->GetBindingContract().requirements)
+        {
+            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                continue;
+
+            has_struct_binding = true;
+            material_ssbo_type = req.ssbo_type;
+            material_ssbo_id = req.ssbo_id;
+            break;
+        }
+        if (!has_struct_binding)
+            return LogFail("InitRenderResources", "material has no MI contract binding");
 
         mtl::StandardMaterialInstance mi_data{};
         mi_data.base_color = PackRGBA8Float(0.72f, 0.72f, 0.72f, 1.0f);
@@ -367,38 +345,7 @@ private:
         memcpy(mi_dst, &mi_data, mi_data_bytes);
         mi_gpu->Unmap();
 
-        bool has_struct_binding = false;
-        for (const auto &req : near_material->GetBindingContract().requirements)
-        {
-            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
-                continue;
-
-            has_struct_binding = true;
-            const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
-            if (!domain_manager->RegisterBuffer(addr, mi_ssbo, 1))
-                return LogFail("InitRenderResources", "register MI buffer domain failed");
-
-            if (!sphere_binding->SetSSBOBinding(req.ssbo_type, req.ssbo_id, 0))
-                return LogFail("InitRenderResources", "bind MI slot to descriptor binding set failed");
-        }
-        if (!has_struct_binding)
-            return LogFail("InitRenderResources", "material has no MI contract binding");
-
-        const uint32_t texture_slot_count = static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE);
-        const uint32_t texture_row_stride = texture_slot_count * sizeof(uint32_t);
-        texture_layer_ssbo = buffer_manager->CreateSSBO("SingleSphereSwitch:TextureLayerRows",
-                                                        texture_row_stride,
-                                                        nullptr,
-                                                        SharingMode::Exclusive);
-        if (!texture_layer_ssbo)
-            return LogFail("InitRenderResources", "create texture layer SSBO failed");
-
-        const uint32_t texture_ssbo_id = graph::mtl::MakeRecipeSSBOId(0);
-        const graph::mtl::SSBOAddress texture_addr{graph::mtl::SSBOType::TextureLayer, texture_ssbo_id, 0};
-        if (!domain_manager->RegisterBuffer(texture_addr, texture_layer_ssbo, 1))
-            return LogFail("InitRenderResources", "register texture layer buffer domain failed");
-
-        sphere_primitive = primitive_manager->CreatePrimitive(sphere_geometry, near_material, sphere_binding, nullptr);
+        sphere_primitive = primitive_manager->CreatePrimitive(sphere_geometry, near_material, nullptr, nullptr);
         if (!sphere_primitive)
             return LogFail("InitRenderResources", "create primitive failed");
 
@@ -498,11 +445,7 @@ public:
         SAFE_CLEAR(sphere_geometry)
         SAFE_CLEAR(mesh_vdm)
 
-        delete sphere_binding;
-        sphere_binding = nullptr;
-
         SAFE_CLEAR(mi_ssbo)
-        SAFE_CLEAR(texture_layer_ssbo)
 
         SAFE_CLEAR(near_base_color_array)
         SAFE_CLEAR(near_normal_array)
