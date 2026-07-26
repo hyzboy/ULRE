@@ -153,6 +153,7 @@ static bool TryLoadScene(
     const GeometryVertexFormat &geometry_vertex_format,
     MaterialInstance * const *mi_array,
     int                       mi_count,
+    MaterialProgram          *material_program,
     const OSString           &pack_path,
     const OSString           &base_dir,
     std::vector<Primitive *> &prim_list,
@@ -424,8 +425,14 @@ static bool TryLoadScene(
                 continue;
             }
 
-            MaterialInstance *mi = mi_array[(pp[i].material_index >= 0 ? pp[i].material_index : 0) % mi_count];
-            Primitive *prim = DirectCreatePrimitive(geo, mi, nullptr);
+            Primitive *prim = nullptr;
+            if (material_program)
+                prim = DirectCreatePrimitive(geo, material_program, nullptr, nullptr);
+            else
+            {
+                MaterialInstance *mi = mi_array[(pp[i].material_index >= 0 ? pp[i].material_index : 0) % mi_count];
+                prim = DirectCreatePrimitive(geo, mi, nullptr);
+            }
             if (!prim)
             {
                 MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: DirectCreatePrimitive failed for primitive #") + OSString::numberOf(i) + OS_TEXT(" in ") + pack_path);
@@ -724,6 +731,7 @@ StaticMesh *LoadStaticMeshScene(
                 geometry_vertex_format,
                 mi_array,
                 mi_count,
+                nullptr,
                 pack_path,
                 base_dir,
                 prim_list,
@@ -906,6 +914,196 @@ StaticMesh *LoadStaticMeshScene(
     if (!root_nodes.empty())
         sm->SetRootNodes(std::move(root_nodes));
 
+    return sm;
+}
+
+StaticMesh *LoadStaticMeshScene(
+    VulkanDevice             *device,
+    GeometryManager          *geo_mgr,
+    const GeometryVertexFormat &geometry_vertex_format,
+    MaterialProgram          *material_program,
+    const OSString           &pack_path,
+    const OSString           &base_dir)
+{
+    using namespace hgl::io::minipack;
+    using namespace hgl::math;
+
+    if (!device || !geo_mgr || geometry_vertex_format.GetCount() == 0 || !material_program)
+    {
+        MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene(material): null argument"));
+        return nullptr;
+    }
+
+    MiniPackMemory *mpm = GetMiniPackMemory(pack_path);
+    if (!mpm)
+    {
+        MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene(material): cannot open pack: ") + pack_path);
+        return nullptr;
+    }
+
+    {
+        std::vector<Primitive *> prim_list;
+        std::vector<StaticMeshNode> scene_nodes;
+        std::vector<int32_t> root_nodes;
+
+        if (TryLoadScene(
+                mpm,
+                device,
+                geo_mgr,
+                geometry_vertex_format,
+                nullptr,
+                0,
+                material_program,
+                pack_path,
+                base_dir,
+                prim_list,
+                scene_nodes,
+                root_nodes))
+        {
+            delete mpm;
+
+            StaticMesh *sm = new StaticMesh();
+            for (Primitive *prim : prim_list)
+            {
+                if (prim)
+                    sm->AddPrimitive(prim);
+            }
+            for (StaticMeshNode &node : scene_nodes)
+                sm->AddNode(std::move(node));
+            if (!root_nodes.empty())
+                sm->SetRootNodes(std::move(root_nodes));
+            return sm;
+        }
+    }
+
+    MLogInfo(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene(material): ScenePackV2 not available, fallback to V1"));
+
+    std::vector<std::string> names;
+    {
+        const int32 idx = mpm->FindFile(AnsiStringView("NameTable"));
+        if (idx >= 0)
+            names = ParseNameTable(mpm->Map(idx), mpm->GetFileLength(idx));
+    }
+
+    std::vector<Primitive *> prim_list;
+    {
+        const int32 idx = mpm->FindFile(AnsiStringView("PrimitiveList"));
+        if (idx >= 0)
+        {
+            const uint8_t *buf = reinterpret_cast<const uint8_t *>(mpm->Map(idx));
+            const uint8_t *end = buf + mpm->GetFileLength(idx);
+
+            while (buf + 3 * sizeof(int32_t) + sizeof(uint32_t) <= end)
+            {
+                int32_t originalIndex, geoIndex, matIndex;
+                uint32_t fileLen;
+                std::memcpy(&originalIndex, buf, sizeof(int32_t));  buf += sizeof(int32_t);
+                std::memcpy(&geoIndex,      buf, sizeof(int32_t));  buf += sizeof(int32_t);
+                std::memcpy(&matIndex,      buf, sizeof(int32_t));  buf += sizeof(int32_t);
+                std::memcpy(&fileLen,       buf, sizeof(uint32_t)); buf += sizeof(uint32_t);
+
+                if (buf + fileLen > end)
+                {
+                    MLogError(LoadStaticMesh,
+                        OS_TEXT("LoadStaticMeshScene(material): PrimitiveList entry truncated in ") + pack_path);
+                    break;
+                }
+
+                std::string geo_file(reinterpret_cast<const char *>(buf), fileLen);
+                buf += fileLen;
+
+                const OSString geo_path = base_dir + OS_TEXT("/") + hgl::ToOSString(geo_file);
+
+                Geometry *geo = LoadGeometry(device, geometry_vertex_format, geo_path);
+                if (!geo)
+                {
+                    MLogError(LoadStaticMesh,
+                        OS_TEXT("LoadStaticMeshScene(material): failed to load geometry: ") + geo_path);
+                    prim_list.push_back(nullptr);
+                    continue;
+                }
+
+                geo_mgr->Add(geo);
+
+                Primitive *prim = DirectCreatePrimitive(geo, material_program, nullptr, nullptr);
+                if (!prim)
+                {
+                    MLogError(LoadStaticMesh,
+                        OS_TEXT("LoadStaticMeshScene(material): DirectCreatePrimitive failed for ") + geo_path);
+                    prim_list.push_back(nullptr);
+                    continue;
+                }
+
+                prim_list.push_back(prim);
+            }
+        }
+    }
+
+    const Matrix4f *matrices     = nullptr;
+    uint32          matrix_count = 0;
+    {
+        const int32 idx = mpm->FindFile(AnsiStringView("MatrixTable"));
+        if (idx >= 0)
+        {
+            matrices     = reinterpret_cast<const Matrix4f *>(mpm->Map(idx));
+            matrix_count = mpm->GetFileLength(idx) / static_cast<uint32>(sizeof(Matrix4f));
+        }
+    }
+
+    const PackedTRS *trs_arr  = nullptr;
+    uint32           trs_count = 0;
+    {
+        const int32 idx = mpm->FindFile(AnsiStringView("TRSTable"));
+        if (idx >= 0)
+        {
+            trs_arr   = reinterpret_cast<const PackedTRS *>(mpm->Map(idx));
+            trs_count = mpm->GetFileLength(idx) / static_cast<uint32>(sizeof(PackedTRS));
+        }
+    }
+
+    const BoundingVolumesData *bounds_arr  = nullptr;
+    uint32                     bounds_count = 0;
+    {
+        const int32 idx = mpm->FindFile(AnsiStringView("BoundsTable"));
+        if (idx >= 0)
+        {
+            bounds_arr   = reinterpret_cast<const BoundingVolumesData *>(mpm->Map(idx));
+            bounds_count = mpm->GetFileLength(idx) / static_cast<uint32>(sizeof(BoundingVolumesData));
+        }
+    }
+
+    std::vector<StaticMeshNode> scene_nodes;
+    {
+        const int32 idx = mpm->FindFile(AnsiStringView("NodeList"));
+        if (idx >= 0)
+        {
+            scene_nodes = ParseNodeList(
+                mpm->Map(idx), mpm->GetFileLength(idx),
+                names,
+                matrices,   matrix_count,
+                trs_arr,    trs_count,
+                bounds_arr, bounds_count);
+        }
+    }
+    std::vector<int32_t> root_nodes;
+    for (int32_t i = 0; i < int32_t(scene_nodes.size()); ++i)
+    {
+        if (scene_nodes[i].parentIndex < 0)
+            root_nodes.push_back(i);
+    }
+
+    delete mpm;
+
+    StaticMesh *sm = new StaticMesh();
+    for (Primitive *prim : prim_list)
+    {
+        if (prim)
+            sm->AddPrimitive(prim);
+    }
+    for (StaticMeshNode &node : scene_nodes)
+        sm->AddNode(std::move(node));
+    if (!root_nodes.empty())
+        sm->SetRootNodes(std::move(root_nodes));
     return sm;
 }
 

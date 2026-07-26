@@ -4,11 +4,10 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/ResourceDomainManager.h>
-#include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/graph/mesh/LoadStaticMesh.h>
 #include<hgl/vk/VKVertexInputLayout.h>
+#include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/color/Color.h>
 #include<hgl/type/StdString.h>
 #include<cstring>
@@ -71,6 +70,7 @@ constexpr const COLOR TestColor[] =
 };
 
 constexpr const size_t COLOR_COUNT = sizeof(TestColor) / sizeof(COLOR);
+constexpr uint32_t kLoadSceneSolidSsboId = hgl::graph::mtl::MakeRecipeSSBOId(5001);
 
 class TestApp:public WorkObject
 {
@@ -84,18 +84,11 @@ private:
         MaterialProgram *material = nullptr;
         const VIL *vil = nullptr;
         GeometryVertexFormat geometry_vertex_format;
-        MaterialInstance *mi[COLOR_COUNT]{};   // kept for LoadStaticMeshScene compat
-        DescriptorBindingSet *dbs[COLOR_COUNT]{};
         graph::DeviceBuffer *mi_ssbo = nullptr;
-
-        void FreeDBS()
-        {
-            for (auto *&b : dbs)
-            {
-                delete b;
-                b = nullptr;
-            }
-        }
+        graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::UserDefined;
+        uint32_t ssbo_id = 0;
+        uint32_t ssbo_count = 0;
+        uint32_t ssbo_stride = 0;
     };
 
     MaterialData solid;
@@ -125,10 +118,8 @@ private:
         if (!graphics_context)
             return false;
 
-        auto *material_manager = graphics_context->GetMaterialManager();
         auto *buffer_manager   = graphics_context->GetBufferManager();
-        auto *domain_manager   = graphics_context->GetResourceDomainManager();
-        if (!material_manager || !buffer_manager || !domain_manager)
+        if (!buffer_manager)
             return false;
 
         md->vil = md->material->GetDefaultVIL();
@@ -139,20 +130,27 @@ private:
         if (md->geometry_vertex_format.GetCount() == 0)
             return false;
 
-        // Populate MI array for LoadStaticMeshScene compatibility
-        for (size_t i = 0; i < COLOR_COUNT; i++)
-        {
-            const Color4f mi_color = GetColor4f(TestColor[i], 1.0f);
-            md->mi[i] = material_manager->CreateMaterialInstance(md->material, md->geometry_vertex_format, &mi_color, sizeof(mi_color));
-            if (!md->mi[i])
-                return false;
-        }
-
         const uint32_t stride      = md->material->GetMIDataBytes();
         const uint32_t color_count = static_cast<uint32_t>(COLOR_COUNT);
 
         if (stride > 0)
         {
+            bool has_struct_binding = false;
+            for (const auto &req : md->material->GetMaterialResourceLayout().requirements)
+            {
+                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                    continue;
+
+                has_struct_binding = true;
+                md->material_ssbo_type = req.ssbo_type;
+                md->ssbo_id = kLoadSceneSolidSsboId;
+                break;
+            }
+            if (!has_struct_binding)
+                return false;
+
+            md->ssbo_stride = stride;
+            md->ssbo_count = color_count;
             const VkDeviceSize ssbo_size = VkDeviceSize(color_count) * stride;
             md->mi_ssbo = buffer_manager->CreateSSBO(tag, ssbo_size, nullptr, SharingMode::Exclusive);
             if (!md->mi_ssbo)
@@ -174,31 +172,6 @@ private:
                 memcpy(dst + VkDeviceSize(i) * stride, &color, copy_bytes);
             }
             gpu_buf->Unmap();
-
-            for (const auto &req : md->material->GetMaterialResourceLayout().requirements)
-            {
-                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
-                    continue;
-
-                const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
-                if (!domain_manager->RegisterBuffer(addr, md->mi_ssbo, color_count))
-                    return false;
-
-                for (uint32_t c = 0; c < color_count; ++c)
-                {
-                    md->dbs[c] = new DescriptorBindingSet(md->material);
-                    if (!md->dbs[c])
-                        return false;
-                    md->dbs[c]->SetSSBOBinding(req.ssbo_type, req.ssbo_id, c);
-                }
-            }
-        }
-
-        // Fallback: DBS with no SSBO binding (vertex-color-only materials)
-        for (uint32_t c = 0; c < color_count; ++c)
-        {
-            if (!md->dbs[c])
-                md->dbs[c] = new DescriptorBindingSet(md->material);
         }
 
         return true;
@@ -248,7 +221,7 @@ private:
 
         scene_mesh_ = LoadStaticMeshScene(
             device, geo_mgr,
-            solid.geometry_vertex_format, solid.mi, (int)COLOR_COUNT,
+            solid.geometry_vertex_format, solid.material,
             pack_path, base_dir);
 
         return scene_mesh_ != nullptr;
@@ -292,7 +265,21 @@ private:
                 se.transform->SetMovable(false);
 
                 se.primitive_comp->SetPrimitive(prim);
-                se.primitive_comp->SetDescriptorBindingSet(solid.dbs[(entity_idx - 1) % COLOR_COUNT]);
+                graph::mtl::MaterialRecipe recipe{};
+                recipe.recipe_name = "LoadScene.Gizmo3D";
+                recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+                recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Gizmo3D);
+                recipe.domain = "LoadScene";
+                se.primitive_comp->SetMaterialRecipe(recipe);
+                se.primitive_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
+                                                             solid.material_ssbo_type,
+                                                             solid.ssbo_id,
+                                                             solid.mi_ssbo,
+                                                             solid.ssbo_count,
+                                                             solid.ssbo_stride,
+                                                             (entity_idx - 1) % COLOR_COUNT,
+                                                             true,
+                                                             true);
                 se.primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
                 se.primitive_comp->SetVisible(true);
 
@@ -347,7 +334,6 @@ public:
     {
         scene_entities_.clear();
         delete scene_mesh_;
-        solid.FreeDBS();
         SAFE_CLEAR(solid.mi_ssbo)
     }
 
@@ -370,4 +356,3 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Load Scene"),argc,argv,1280,720);
 }
-

@@ -8,6 +8,7 @@ namespace hgl::graph
     class VulkanDevice;
     class GeometryManager;
     class GeometryVertexFormat;
+    class MaterialProgram;
     class MaterialInstance;
 
     /**
@@ -31,6 +32,14 @@ namespace hgl::graph
         const GeometryVertexFormat &geometry_vertex_format,
         MaterialInstance * const *mi_array,
         int                       mi_count,
+        const OSString           &pack_path,
+        const OSString           &base_dir);
+
+    StaticMesh *LoadStaticMeshScene(
+        VulkanDevice             *device,
+        GeometryManager          *geo_mgr,
+        const GeometryVertexFormat &geometry_vertex_format,
+        MaterialProgram          *material_program,
         const OSString           &pack_path,
         const OSString           &base_dir);
 
