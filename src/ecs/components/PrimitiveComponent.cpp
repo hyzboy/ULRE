@@ -40,6 +40,8 @@ namespace hgl::ecs
             resource.texture = nullptr;
             resource.sampler = nullptr;
             resource.kind = PrimitiveComponent::MaterialTextureResourceKind::Texture2D;
+            resource.direct_value = 0;
+            resource.use_direct_value = false;
             resource.required = false;
         }
 
@@ -50,6 +52,8 @@ namespace hgl::ecs
             resource.buffer = nullptr;
             resource.element_capacity = 0;
             resource.byte_stride = 0;
+            resource.struct_index = 0;
+            resource.use_struct_index = false;
             resource.shared_across_instances = false;
         }
     }
@@ -141,8 +145,22 @@ namespace hgl::ecs
         resource.texture = texture;
         resource.sampler = sampler;
         resource.kind = kind;
+        resource.direct_value = 0;
+        resource.use_direct_value = false;
         resource.required = required;
         resource.resource_id = resource_id.empty() ? BuildTextureResourceId(texture) : resource_id;
+    }
+
+    void PrimitiveComponent::SetMaterialTextureValue(hgl::graph::mtl::TextureSlot slot, uint32_t value)
+    {
+        const size_t index = static_cast<size_t>(slot);
+        if (index >= materialTextureResources.size())
+            return;
+
+        auto &resource = materialTextureResources[index];
+        ResetMaterialTextureAuthoringResource(resource);
+        resource.direct_value = value;
+        resource.use_direct_value = true;
     }
 
     const PrimitiveComponent::MaterialTextureAuthoringResource *PrimitiveComponent::GetMaterialTextureResource(hgl::graph::mtl::TextureSlot slot) const
@@ -152,7 +170,7 @@ namespace hgl::ecs
             return nullptr;
 
         const auto &resource = materialTextureResources[index];
-        return (resource.texture && resource.sampler) ? &resource : nullptr;
+        return (resource.use_direct_value || (resource.texture && resource.sampler)) ? &resource : nullptr;
     }
 
     void PrimitiveComponent::ClearMaterialTextureResource(hgl::graph::mtl::TextureSlot slot)
@@ -170,6 +188,8 @@ namespace hgl::ecs
                                                        hgl::graph::DeviceBuffer *buffer,
                                                        uint32_t element_capacity,
                                                        uint32_t byte_stride,
+                                                       uint32_t struct_index,
+                                                       bool use_struct_index,
                                                        bool shared_across_instances)
     {
         const size_t index = static_cast<size_t>(slot);
@@ -188,6 +208,8 @@ namespace hgl::ecs
         resource.buffer = buffer;
         resource.element_capacity = element_capacity;
         resource.byte_stride = byte_stride;
+        resource.struct_index = struct_index;
+        resource.use_struct_index = use_struct_index;
         resource.shared_across_instances = shared_across_instances;
     }
 

@@ -64,7 +64,9 @@ namespace hgl::ecs
         void UpsertRecipeTextureBinding(graph::mtl::MaterialRecipe &recipe,
                                         graph::mtl::TextureSlot slot,
                                         const std::string &resource_id,
-                                        const bool required)
+                                        const bool required,
+                                        const uint32_t direct_value = 0,
+                                        const bool use_direct_value = false)
         {
             for (auto &binding : recipe.textures)
             {
@@ -72,6 +74,8 @@ namespace hgl::ecs
                     continue;
 
                 binding.resource_id = resource_id;
+                binding.direct_value = direct_value;
+                binding.use_direct_value = use_direct_value;
                 binding.required = required;
                 return;
             }
@@ -79,6 +83,8 @@ namespace hgl::ecs
             graph::mtl::RecipeTextureBinding binding{};
             binding.slot = slot;
             binding.resource_id = resource_id;
+            binding.direct_value = direct_value;
+            binding.use_direct_value = use_direct_value;
             binding.required = required;
             recipe.textures.emplace_back(std::move(binding));
         }
@@ -87,6 +93,8 @@ namespace hgl::ecs
                                        graph::mtl::DataSlot slot,
                                        graph::mtl::SSBOType ssbo_type,
                                        const uint32_t ssbo_id,
+                                       const uint32_t struct_index,
+                                       const bool use_struct_index,
                                        const bool shared_across_instances)
         {
             for (auto &binding : recipe.structs)
@@ -96,6 +104,8 @@ namespace hgl::ecs
 
                 binding.ssbo_type = ssbo_type;
                 binding.ssbo_id = ssbo_id;
+                binding.struct_index = struct_index;
+                binding.use_struct_index = use_struct_index;
                 binding.shared_across_instances = shared_across_instances;
                 return;
             }
@@ -104,6 +114,8 @@ namespace hgl::ecs
             binding.slot = slot;
             binding.ssbo_type = ssbo_type;
             binding.ssbo_id = ssbo_id;
+            binding.struct_index = struct_index;
+            binding.use_struct_index = use_struct_index;
             binding.shared_across_instances = shared_across_instances;
             recipe.structs.emplace_back(std::move(binding));
         }
@@ -127,6 +139,17 @@ namespace hgl::ecs
                 if (!resource)
                     continue;
 
+                if (resource->use_direct_value)
+                {
+                    UpsertRecipeTextureBinding(out_recipe,
+                                               slot,
+                                               std::string(),
+                                               resource->required,
+                                               resource->direct_value,
+                                               true);
+                    continue;
+                }
+
                 const std::string resource_id = resource->resource_id.empty()
                                               ? BuildTextureResourceId(resource->texture)
                                               : resource->resource_id;
@@ -147,6 +170,8 @@ namespace hgl::ecs
                                          slot,
                                          resource->ssbo_type,
                                          resource->ssbo_id,
+                                         resource->struct_index,
+                                         resource->use_struct_index,
                                          resource->shared_across_instances);
             }
 
@@ -173,6 +198,9 @@ namespace hgl::ecs
                 const auto slot = static_cast<graph::mtl::TextureSlot>(i);
                 const auto *resource = primitive_comp->GetMaterialTextureResource(slot);
                 if (!resource)
+                    continue;
+
+                if (resource->use_direct_value)
                     continue;
 
                 const std::string resource_id = resource->resource_id.empty()

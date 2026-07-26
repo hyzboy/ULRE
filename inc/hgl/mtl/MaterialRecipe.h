@@ -191,6 +191,8 @@ namespace hgl::graph::mtl
     {
         TextureSlot slot = TextureSlot::BaseColor; // 目标语义槽
         std::string resource_id;                   // 资源标识（路径/资产ID/逻辑名）
+        uint32_t direct_value = 0;                // 直接写入 TextureLayerRow 的原始值（例如 array layer）
+        bool use_direct_value = false;            // true 时忽略 resource_id，直接使用 direct_value
         bool required = false;                     // true 时缺失应触发显式错误
     };
 
@@ -200,6 +202,8 @@ namespace hgl::graph::mtl
         DataSlot slot = DataSlot::PBRSurface;              // 目标数据语义槽
         SSBOType ssbo_type = SSBOType::UserDefined;        // 结构体所属 SSBO 类型（主字段）
         uint32_t ssbo_id = 0;                              // 结构体 SSBO 资源 ID（主字段，P1.55）
+        uint32_t struct_index = 0;                         // 结构体行索引（默认与 ssbo_id 同步；可显式重载）
+        bool use_struct_index = false;                     // true 时使用 struct_index 覆盖默认索引
         bool shared_across_instances = false;              // true: 多实例共享同一结构体数据
     };
 
@@ -246,6 +250,8 @@ namespace hgl::graph::mtl
             hash = hgl::hash::FNV1aAppendValueBytes(hash, texture.slot);
             if (!texture.resource_id.empty())
                 hash = hgl::hash::FNV1aAppendBytes(hash, texture.resource_id.data(), texture.resource_id.size());
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, texture.direct_value);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, texture.use_direct_value);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, texture.required);
         }
 
@@ -256,6 +262,8 @@ namespace hgl::graph::mtl
             hash = hgl::hash::FNV1aAppendValueBytes(hash, s.slot);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, s.ssbo_type);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, s.ssbo_id);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, s.struct_index);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, s.use_struct_index);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, s.shared_across_instances);
         }
 

@@ -277,6 +277,14 @@ namespace hgl::graph::mtl
 
         callbacks.resolve_texture = [&texture_pool](const RecipeTextureBinding &input, ResolvedResource &output)
         {
+            if (input.use_direct_value)
+            {
+                output.slot = input.slot;
+                output.bindless_handle = input.direct_value;
+                output.texture_layer = input.direct_value;
+                return true;
+            }
+
             if (input.resource_id.empty())
                 return false;
 
@@ -297,7 +305,7 @@ namespace hgl::graph::mtl
             output.ssbo_type = alloc.ssbo_type;
             output.ssbo_id = alloc.ssbo_id;
             output.ssbo_binding = static_cast<uint32_t>(alloc.ssbo_type); // 临时默认映射，后续由布局系统接管
-            output.struct_index = alloc.struct_index;
+            output.struct_index = input.use_struct_index ? input.struct_index : alloc.struct_index;
             output.byte_stride = alloc.byte_stride;
             return true;
         };

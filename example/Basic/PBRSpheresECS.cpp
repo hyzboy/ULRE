@@ -8,11 +8,10 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
-#include<hgl/graph/DescriptorBindingSet.h>
-#include<hgl/graph/SSBOSlotAllocator.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/filesystem/Filename.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/module/TextureManager.h>
@@ -91,7 +90,10 @@ private:
 
     MaterialProgram *          material  = nullptr;
     graph::DeviceBuffer * mi_ssbo = nullptr;
-    graph::DeviceBuffer * texture_layer_ssbo = nullptr;
+    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::UserDefined;
+    uint32_t material_ssbo_id = 0;
+    uint32_t material_ssbo_count = 0;
+    uint32_t material_ssbo_stride = 0;
     Texture2DArray *    base_color_texture = nullptr;
     Texture2DArray *    normal_texture = nullptr;
     Sampler *           sampler = nullptr;
@@ -103,9 +105,7 @@ private:
 
     // One MI per cell: col controls metallic, row controls roughness
     mtl::StandardMaterialInstance sphere_mi_data[GRID_SIZE][GRID_SIZE]{};
-    DescriptorBindingSet *           sphere_binding[GRID_SIZE][GRID_SIZE]{};
     uint32_t                         sphere_slot_rows[GRID_SIZE][GRID_SIZE]{};
-    SSBOSlotAllocator                slot_allocator;
 
     // 100 entities, one per sphere
     Entity *sphere_entities[GRID_SIZE][GRID_SIZE]{};
@@ -310,7 +310,6 @@ private:
                 store.roughness = d.roughness;
                 store.normal_scale = d.normal_scale;
 
-                sphere_binding[row][col] = nullptr;
                 sphere_slot_rows[row][col] = uint32_t(-1);
             }
         }
@@ -336,15 +335,8 @@ private:
         }
 
         auto *buffer_manager = graphics_context->GetBufferManager();
-        auto *domain_manager = graphics_context->GetResourceDomainManager();
-        if (!buffer_manager || !domain_manager) {
-            printf("[ERROR] InitMISSBO: Missing buffer/domain manager\n");
-            return false;
-        }
-
-        auto rdbs = ecs_world->GetSystem<RenderDescriptorBindingSystem>();
-        if (!rdbs) {
-            printf("[ERROR] InitMISSBO: No RenderDescriptorBindingSystem\n");
+        if (!buffer_manager) {
+            printf("[ERROR] InitMISSBO: Missing buffer manager\n");
             return false;
         }
 
@@ -356,13 +348,26 @@ private:
             return false;
         }
 
-        if (!slot_allocator.Init(GRID_SIZE * GRID_SIZE)) {
-            printf("[ERROR] InitMISSBO: Failed to init slot allocator\n");
-            return false;
-        }
-
         const uint32_t mi_count = GRID_SIZE * GRID_SIZE;
         const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * mi_data_bytes;
+        material_ssbo_count = mi_count;
+        material_ssbo_stride = mi_data_bytes;
+
+        bool has_struct_binding = false;
+        for (const auto &req : material->GetBindingContract().requirements)
+        {
+            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                continue;
+
+            has_struct_binding = true;
+            material_ssbo_type = req.ssbo_type;
+            material_ssbo_id = req.ssbo_id;
+            break;
+        }
+        if (!has_struct_binding) {
+            printf("[ERROR] InitMISSBO: material has no MI contract binding\n");
+            return false;
+        }
 
         mi_ssbo = buffer_manager->CreateSSBO("PBRSpheres:PBRSurface:MIData", ssbo_size, nullptr, SharingMode::Exclusive);
         if (!mi_ssbo) {
@@ -388,191 +393,20 @@ private:
         {
             for (uint col = 0; col < GRID_SIZE; ++col)
             {
-                uint32_t slot_index = 0;
-                if (!slot_allocator.Allocate(slot_index)) {
-                    printf("[ERROR] InitMISSBO: Slot allocation failed at [%u][%u]\n", row, col);
-                    return false;
-                }
+                const uint32_t slot_index = row * GRID_SIZE + col;
                 sphere_slot_rows[row][col] = slot_index;
 
                 memcpy(dst + static_cast<VkDeviceSize>(slot_index) * mi_data_bytes,
                        &sphere_mi_data[row][col],
                        mi_data_bytes);
-
-                sphere_binding[row][col] = new DescriptorBindingSet(material);
-                if (!sphere_binding[row][col]) {
-                    printf("[ERROR] InitMISSBO: Failed to allocate DescriptorBindingSet for [%u][%u]\n", row, col);
-                    return false;
-                }
             }
         }
 
         gpu_buf->Unmap();
-
-        bool has_struct_binding = false;
-        bool has_data_index_binding = false;
-        for (const auto &req : material->GetBindingContract().requirements)
-        {
-            switch (req.semantic)
-            {
-                case graph::mtl::DescriptorSemantic::MaterialInstance:
-                {
-                    has_struct_binding = true;
-                    const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
-                    if (!domain_manager->RegisterBuffer(addr, mi_ssbo, mi_count)) {
-                        printf("[ERROR] InitMISSBO: RegisterBuffer failed\n");
-                        return false;
-                    }
-
-                    for (uint row = 0; row < GRID_SIZE; ++row)
-                    {
-                        for (uint col = 0; col < GRID_SIZE; ++col)
-                        {
-                            const uint32_t slot_index = sphere_slot_rows[row][col];
-                            if (!sphere_binding[row][col]->SetSSBOBinding(req.ssbo_type, req.ssbo_id, slot_index))
-                                return false;
-                        }
-                    }
-                    break;
-                }
-                case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
-                {
-                    has_data_index_binding = true;
-                    for (uint row = 0; row < GRID_SIZE; ++row)
-                    {
-                        for (uint col = 0; col < GRID_SIZE; ++col)
-                        {
-                            const uint32_t slot_index = sphere_slot_rows[row][col];
-                            if (!sphere_binding[row][col]->SetSSBOBinding(req.ssbo_type, req.ssbo_id, slot_index))
-                                return false;
-                        }
-                    }
-                    break;
-                }
-                default:
-                    break;
-            }
-        }
 
         std::cout << "[PBRSpheres::InitMISSBO] registered PBRSurface SSBO: count=" << mi_count
                   << ", stride=" << mi_data_bytes << std::endl;
         return has_struct_binding;
-    }
-
-    bool InitTextureLayerSSBO(const uint32_t base_color_handle, const uint32_t normal_handle)
-    {
-        if (!ecs_world || !material)
-            return false;
-
-        auto *render_context = GetRenderContext();
-        if (!render_context) {
-            printf("[ERROR] InitTextureLayerSSBO: No render_context\n");
-            return false;
-        }
-
-        auto *graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context) {
-            printf("[ERROR] InitTextureLayerSSBO: No graphics_context\n");
-            return false;
-        }
-
-        auto *buffer_manager = graphics_context->GetBufferManager();
-        auto *domain_manager = graphics_context->GetResourceDomainManager();
-        if (!buffer_manager || !domain_manager) {
-            printf("[ERROR] InitTextureLayerSSBO: Missing buffer/domain manager\n");
-            return false;
-        }
-
-        auto rdbs = ecs_world->GetSystem<RenderDescriptorBindingSystem>();
-        if (!rdbs) {
-            printf("[ERROR] InitTextureLayerSSBO: No RenderDescriptorBindingSystem\n");
-            return false;
-        }
-
-        const uint32_t row_count = GRID_SIZE * GRID_SIZE;
-        const uint32_t slot_count = static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE);
-        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(row_count) * slot_count * sizeof(uint32_t);
-
-        texture_layer_ssbo = buffer_manager->CreateSSBO("PBRSpheres:TextureLayerRows", ssbo_size, nullptr, SharingMode::Exclusive);
-        if (!texture_layer_ssbo) {
-            printf("[ERROR] InitTextureLayerSSBO: Failed to create SSBO\n");
-            return false;
-        }
-
-        auto *gpu_buf = texture_layer_ssbo->GetGPUBuffer();
-        if (!gpu_buf) {
-            printf("[ERROR] InitTextureLayerSSBO: Failed to get GPU buffer\n");
-            return false;
-        }
-
-        auto *dst = static_cast<uint32_t *>(gpu_buf->Map(0, ssbo_size));
-        if (!dst) {
-            printf("[ERROR] InitTextureLayerSSBO: Failed to map SSBO\n");
-            return false;
-        }
-
-        memset(dst, 0, static_cast<size_t>(ssbo_size));
-
-        // TextureLayer rows reuse the same external slot index space as mtl.
-        for (uint row = 0; row < GRID_SIZE; ++row)
-        {
-            for (uint col = 0; col < GRID_SIZE; ++col)
-            {
-                const uint32_t slot_index = sphere_slot_rows[row][col];
-                if (slot_index == uint32_t(-1))
-                    continue;
-
-                const size_t base = static_cast<size_t>(slot_index) * slot_count;
-                dst[base + static_cast<uint32_t>(graph::mtl::TextureSlot::BaseColor)] = base_color_handle;
-                dst[base + static_cast<uint32_t>(graph::mtl::TextureSlot::Normal)] = normal_handle;
-                // TEXTURE_SLOT_CUSTOM0 carries the Texture2DArray layer index (= PBR folder row).
-                dst[base + static_cast<uint32_t>(graph::mtl::TextureSlot::Custom0)] = row;
-            }
-        }
-
-        gpu_buf->Unmap();
-
-        uint32_t ssbo_id = graph::mtl::MakeRecipeSSBOId(0);
-        const uint32_t row_stride = slot_count * sizeof(uint32_t);
-        bool has_texture_layer_binding = false;
-        for (const auto &req : material->GetBindingContract().requirements)
-        {
-            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialTextureLayerTable)
-                continue;
-
-            has_texture_layer_binding = true;
-            ssbo_id = req.ssbo_id;
-            const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
-            if (!domain_manager->RegisterBuffer(addr, texture_layer_ssbo, row_count)) {
-                printf("[ERROR] InitTextureLayerSSBO: RegisterBuffer failed\n");
-                return false;
-            }
-
-            for (uint row = 0; row < GRID_SIZE; ++row)
-            {
-                for (uint col = 0; col < GRID_SIZE; ++col)
-                {
-                    const uint32_t slot_index = sphere_slot_rows[row][col];
-                    if (slot_index == uint32_t(-1))
-                        continue;
-
-                    if (!sphere_binding[row][col]->SetSSBOBinding(req.ssbo_type, req.ssbo_id, slot_index))
-                        return false;
-                }
-            }
-        }
-
-        if (!has_texture_layer_binding) {
-            printf("[ERROR] InitTextureLayerSSBO: Material has no texture layer contract binding\n");
-            return false;
-        }
-
-        std::cout << "[PBRSpheres::InitTextureLayerSSBO] registered TextureLayer SSBO: rows=" << row_count
-                  << ", stride=" << row_stride
-                  << ", ssbo_id=" << ssbo_id
-                  << ", base_handle=" << base_color_handle
-                  << ", normal_handle=" << normal_handle << std::endl;
-        return true;
     }
 
     bool InitVDM()
@@ -734,15 +568,10 @@ private:
 
         for (uint i = 0; i < GEOMETRY_VARIANT_COUNT; ++i)
         {
-            if (!sphere_binding[0][i]) {
-                printf("[ERROR] CreateBasePrimitives: sphere_binding[0][%u] is null\n", i);
-                return false;
-            }
-
             base_primitives[i] = primitive_manager->CreatePrimitive(
                 builtin_geometries[i],
                 material,
-                sphere_binding[0][i],
+                nullptr,
                 nullptr);
 
             if (!base_primitives[i]) {
@@ -762,45 +591,7 @@ private:
             return false;
         }
 
-        auto rdbs = ecs_world->GetSystem<RenderDescriptorBindingSystem>();
-        if (!rdbs) {
-            printf("[ERROR] InitECS: No RenderDescriptorBindingSystem\n");
-            return false;
-        }
-
         if (!InitMISSBO())
-            return false;
-
-        auto* render_context = GetRenderContext();
-        auto* bindless_mgr = render_context ? render_context->GetBindlessTextureManager() : nullptr;
-        if (!bindless_mgr) {
-            printf("[ERROR] InitECS: No bindless texture manager\n");
-            return false;
-        }
-
-        // S8: ECS main path no longer depends on RegisterMaterialTextureSampler.
-        // Keep only bindless resource registration + semantic texture mapping.
-        const uint32_t base_color_handle = rdbs->RegisterTexture2DArrayResource("", base_color_texture, sampler, bindless_mgr);
-        if (base_color_handle == 0) {
-            printf("[ERROR] InitECS: Failed to register base color 2DArray bindless resource\n");
-            return false;
-        }
-        if (!rdbs->RegisterMaterialTexture(material, mtl::SamplerName::BaseColor, base_color_texture)) {
-            printf("[ERROR] InitECS: Failed to map base color texture to material\n");
-            return false;
-        }
-
-        const uint32_t normal_handle = rdbs->RegisterTexture2DArrayResource("", normal_texture, sampler, bindless_mgr);
-        if (normal_handle == 0) {
-            printf("[ERROR] InitECS: Failed to register normal 2DArray bindless resource\n");
-            return false;
-        }
-        if (!rdbs->RegisterMaterialTexture(material, "TextureNormal", normal_texture)) {
-            printf("[ERROR] InitECS: Failed to map normal texture to material\n");
-            return false;
-        }
-
-        if (!InitTextureLayerSSBO(base_color_handle, normal_handle))
             return false;
 
         if (!CreateBasePrimitives())
@@ -833,7 +624,30 @@ private:
 
                 auto prim_comp = e->AddComponent<hgl::ecs::PrimitiveComponent>();
                 prim_comp->SetPrimitive(base_primitives[col]);
-                prim_comp->SetDescriptorBindingSet(sphere_binding[row][col]);
+                graph::mtl::MaterialRecipe recipe{};
+                recipe.recipe_name = "PBRSpheres.StandardTextureArray";
+                recipe.shading_model = graph::mtl::ShadingModel::Standard;
+                recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::StandardTextureArray);
+                recipe.domain = "PBRSpheres";
+                prim_comp->SetMaterialRecipe(recipe);
+                prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor,
+                                                      base_color_texture,
+                                                      sampler,
+                                                      PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray);
+                prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal,
+                                                      normal_texture,
+                                                      sampler,
+                                                      PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray);
+                prim_comp->SetMaterialTextureValue(graph::mtl::TextureSlot::Custom0, row);
+                prim_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
+                                                     material_ssbo_type,
+                                                     material_ssbo_id,
+                                                     mi_ssbo,
+                                                     material_ssbo_count,
+                                                     material_ssbo_stride,
+                                                     sphere_slot_rows[row][col],
+                                                     true,
+                                                     false);
                 prim_comp->RequestPipeline(InlinePipeline::Solid3D);
                 prim_comp->SetVisible(true);
             }
@@ -903,15 +717,8 @@ public:
             SAFE_CLEAR(builtin_geometries[i])
         }
 
-        for (uint row = 0; row < GRID_SIZE; ++row)
-        {
-            for (uint col = 0; col < GRID_SIZE; ++col)
-                delete sphere_binding[row][col];
-        }
-
         SAFE_CLEAR(mesh_vdm)
         SAFE_CLEAR(mi_ssbo)
-        SAFE_CLEAR(texture_layer_ssbo)
         SAFE_CLEAR(base_color_texture)
         SAFE_CLEAR(normal_texture)
     }

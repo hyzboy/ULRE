@@ -59,6 +59,8 @@ namespace hgl::ecs
             hgl::graph::Texture *texture = nullptr;
             hgl::graph::Sampler *sampler = nullptr;
             MaterialTextureResourceKind kind = MaterialTextureResourceKind::Texture2D;
+            uint32_t direct_value = 0;
+            bool use_direct_value = false;
             bool required = false;
         };
 
@@ -69,6 +71,8 @@ namespace hgl::ecs
             hgl::graph::DeviceBuffer *buffer = nullptr;
             uint32_t element_capacity = 0;
             uint32_t byte_stride = 0;
+            uint32_t struct_index = 0;
+            bool use_struct_index = false;
             bool shared_across_instances = false;
         };
 
@@ -170,6 +174,7 @@ namespace hgl::ecs
                                         MaterialTextureResourceKind kind = MaterialTextureResourceKind::Texture2D,
                                         const std::string &resource_id = std::string(),
                                         bool required = false);
+        void SetMaterialTextureValue(hgl::graph::mtl::TextureSlot slot, uint32_t value);
         const MaterialTextureAuthoringResource *GetMaterialTextureResource(hgl::graph::mtl::TextureSlot slot) const;
         void ClearMaterialTextureResource(hgl::graph::mtl::TextureSlot slot);
         void SetMaterialStructResource(hgl::graph::mtl::DataSlot slot,
@@ -178,6 +183,8 @@ namespace hgl::ecs
                                        hgl::graph::DeviceBuffer *buffer,
                                        uint32_t element_capacity,
                                        uint32_t byte_stride,
+                                       uint32_t struct_index = 0,
+                                       bool use_struct_index = false,
                                        bool shared_across_instances = false);
         const MaterialStructAuthoringResource *GetMaterialStructResource(hgl::graph::mtl::DataSlot slot) const;
         void ClearMaterialStructResource(hgl::graph::mtl::DataSlot slot);
