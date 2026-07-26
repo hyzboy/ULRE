@@ -98,10 +98,6 @@ private:
 
     bool InitTexture()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
         auto* graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return false;
@@ -133,10 +129,6 @@ private:
 
     bool InitMaterial()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
         auto* graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return false;
@@ -209,10 +201,6 @@ private:
 
     bool InitVBOAndRenderList()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
         auto* graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return false;

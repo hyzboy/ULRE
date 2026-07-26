@@ -114,7 +114,7 @@ private:
         if (!render_context)
             return false;
 
-        auto *graphics_context = render_context->GetGraphicsContext();
+        auto *graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return false;
 
@@ -183,7 +183,7 @@ private:
         if (!render_context)
             return false;
 
-        auto* graphics_context = render_context->GetGraphicsContext();
+        auto* graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return false;
 
@@ -210,7 +210,7 @@ private:
 
         auto *render_context = GetRenderContext();
         if (!render_context) return false;
-        auto *gfx_ctx = render_context->GetGraphicsContext();
+        auto *gfx_ctx = GetGraphicsContext();
         if (!gfx_ctx) return false;
         auto *device    = gfx_ctx->GetDevice();
         auto *geo_mgr   = gfx_ctx->GetGeometryManager();

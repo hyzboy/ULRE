@@ -128,7 +128,7 @@ private:
         if (!render_context)
             return false;
 
-        auto *graphics_context = render_context->GetGraphicsContext();
+        auto *graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return false;
 
@@ -178,7 +178,7 @@ private:
         if (!render_context)
             return false;
 
-        auto *graphics_context = render_context->GetGraphicsContext();
+        auto *graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return false;
 
@@ -297,7 +297,7 @@ private:
         if (!render_context)
             return false;
 
-        auto *graphics_context = render_context->GetGraphicsContext();
+        auto *graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return false;
 

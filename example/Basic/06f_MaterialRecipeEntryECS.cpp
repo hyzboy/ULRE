@@ -81,11 +81,7 @@ private:
     {
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
 
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
+        auto* graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return false;
 
@@ -105,11 +101,7 @@ private:
     {
         using namespace inline_geometry;
 
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
+        auto* graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return false;
 
@@ -141,11 +133,7 @@ private:
 
     bool InitPrimitive()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
+        auto* graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return false;
 
@@ -173,11 +161,7 @@ private:
         if (mi_data_bytes != sizeof(Color4f))
             return false;
 
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
+        auto* graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return false;
 

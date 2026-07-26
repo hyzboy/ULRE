@@ -156,11 +156,7 @@ private:
         if (!ecs_context)
             return false;
 
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
+        auto* graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return false;
 
@@ -201,11 +197,7 @@ private:
 
     bool InitMaterial()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
+        auto* graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return false;
 
@@ -291,11 +283,7 @@ private:
 
     bool InitVDM()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
+        auto* graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return false;
 
@@ -320,11 +308,7 @@ private:
         if (!geometry)
             return nullptr;
 
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return nullptr;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
+        auto* graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return nullptr;
 
@@ -450,7 +434,7 @@ private:
             if (!render_context)
                 return false;
 
-            auto* graphics_context = render_context->GetGraphicsContext();
+            auto* graphics_context = GetGraphicsContext();
             if (!graphics_context)
                 return false;
 

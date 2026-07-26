@@ -288,7 +288,7 @@ private:
         if (!render_context)
             return LogFail("InitRenderResources", "render context is null");
 
-        auto *graphics_context = render_context->GetGraphicsContext();
+        auto *graphics_context = GetGraphicsContext();
         if (!graphics_context)
             return LogFail("InitRenderResources", "graphics context is null");
 

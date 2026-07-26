@@ -152,7 +152,7 @@ private:
             return false;
         }
 
-        auto* graphics_context = render_context->GetGraphicsContext();
+        auto* graphics_context = GetGraphicsContext();
         if (!graphics_context) {
             printf("[ERROR] InitMaterial: No graphics_context\n");
             return false;
@@ -194,7 +194,7 @@ private:
             return false;
         }
 
-        auto* graphics_context = render_context->GetGraphicsContext();
+        auto* graphics_context = GetGraphicsContext();
         if (!graphics_context) {
             printf("[ERROR] InitTextures: No graphics_context\n");
             return false;
@@ -317,7 +317,7 @@ private:
             return false;
         }
 
-        auto *graphics_context = render_context->GetGraphicsContext();
+        auto *graphics_context = GetGraphicsContext();
         if (!graphics_context) {
             printf("[ERROR] InitMISSBO: No graphics_context\n");
             return false;
@@ -406,7 +406,7 @@ private:
             return false;
         }
 
-        auto* graphics_context = render_context->GetGraphicsContext();
+        auto* graphics_context = GetGraphicsContext();
         if (!graphics_context) {
             printf("[ERROR] InitVDM: No graphics_context\n");
             return false;
@@ -543,7 +543,7 @@ private:
             return false;
         }
 
-        auto* graphics_context = render_context->GetGraphicsContext();
+        auto* graphics_context = GetGraphicsContext();
         if (!graphics_context) {
             printf("[ERROR] CreateBasePrimitives: No graphics_context\n");
             return false;

@@ -73,14 +73,6 @@ private:
     {
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
 
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         auto* material_manager = GetManager<MaterialManager>();
         if (!material_manager)
             return false;
@@ -97,19 +89,11 @@ private:
     {
         using namespace inline_geometry;
 
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         auto* geometry_manager = GetManager<GeometryManager>();
         if (!geometry_manager)
             return false;
 
-        auto* device = graphics_context->GetDevice();
+        auto* device = GetDevice();
         if (!device)
             return false;
 
@@ -133,14 +117,6 @@ private:
 
     bool InitPrimitive()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         auto* primitive_manager = GetManager<PrimitiveManager>();
         if (!primitive_manager)
             return false;
@@ -163,14 +139,6 @@ private:
         if (mi_data_bytes == 0)
             return true;
         if (mi_data_bytes != sizeof(Color4f))
-            return false;
-
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
             return false;
 
         auto* buffer_manager = GetManager<BufferManager>();

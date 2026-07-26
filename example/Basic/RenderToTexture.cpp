@@ -672,17 +672,15 @@ public:
     {
         SAFE_CLEAR(offscreen)
 
-        if (auto *rc = GetRenderContext())
+        if (auto *gc = GetGraphicsContext())
         {
-            auto *gc = rc->GetGraphicsContext();
-
             if (cube_primitive)
             {
-                if (auto *pm = gc ? gc->GetPrimitiveManager() : nullptr)
+                if (auto *pm = gc->GetManager<PrimitiveManager>())
                     pm->Release(cube_primitive);
             }
 
-            if (auto *mm = gc ? gc->GetMaterialManager() : nullptr)
+            if (auto *mm = gc->GetManager<MaterialManager>())
             {
                 if (cube_mtl)
                     mm->Destroy(cube_mtl);
@@ -690,7 +688,7 @@ public:
 
             if (cube_sampler)
             {
-                if (auto *sm = gc ? gc->GetSamplerManager() : nullptr)
+                if (auto *sm = gc->GetManager<SamplerManager>())
                     sm->Release(cube_sampler);
             }
         }
