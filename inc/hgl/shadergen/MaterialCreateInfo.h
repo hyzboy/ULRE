@@ -77,7 +77,7 @@ namespace hgl::graph
             const MaterialDescriptorInfo &GetDescriptorInfo()const{return descriptor_db;}
             const MaterialResourceLayout &GetMaterialResourceLayout()const{return material_resource_layout;}
 
-            void SetBindingContract(const MaterialResourceLayout &contract){material_resource_layout=contract;}
+            void SetMaterialResourceLayout(const MaterialResourceLayout &contract){material_resource_layout=contract;}
 
             const uint32_t GetMaterialInstanceStride   ()const{return material_instance_stride;}
             const uint32_t GetMaterialInstanceMaxCount  ()const{return material_instance_max_count;}

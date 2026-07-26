@@ -878,7 +878,7 @@ namespace hgl::ecs
             auto *binding_set = uses_recipe_runtime ? nullptr : item->GetDescriptorBindingSet();
             if (binding_set)
             {
-                if (!binding_set->SatisfiesContract(material_resource_layout, material->GetName().c_str()))
+                if (!binding_set->SatisfiesResourceLayout(material_resource_layout, material->GetName().c_str()))
                     continue;
             }
 

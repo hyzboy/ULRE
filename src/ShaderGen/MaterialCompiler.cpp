@@ -298,7 +298,7 @@ MaterialCreateInfo *CompileCompositorMaterial(
         return FailAfterMci("MaterialResourceLayout validation failed");
     }
 
-    mci->SetBindingContract(material_resource_layout);
+    mci->SetMaterialResourceLayout(material_resource_layout);
 
     // ─────────────────────────────────────────────────────────────
     // Step 7: Compile directly → SPV

@@ -2,7 +2,7 @@
 
 // StandardSharedSpec — 共享 descriptor spec（Standard / StandardTextureArray 双形态公共部分）。
 //
-// 两种形态的 contract shape 等价（已由 BindingContractRegressionGate D case 验证）：
+// 两种形态的 resource layout shape 等价（已由 MaterialResourceLayoutRegressionGate D case 验证）：
 //   - UBO/SSBO descriptor 定义完全一致
 //   - MaterialTexture 语义/slot 完全一致
 //   - 唯一受控差异：glsl_type（"sampler2D" vs "sampler2DArray"），以及 surface shader 文件
@@ -81,5 +81,4 @@ inline std::vector<FixedDescriptorEntry> BuildStandardDescriptors(const char *te
 }
 
 } // namespace hgl::graph::mtl
-
 

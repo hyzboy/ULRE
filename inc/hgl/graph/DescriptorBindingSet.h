@@ -62,9 +62,9 @@ namespace hgl
             bool GetTextureBinding(mtl::TextureSlot slot, TextureBinding &out_binding) const;
             void ClearTextureBinding(mtl::TextureSlot slot);
 
-            bool SatisfiesContract(const mtl::MaterialResourceLayout &contract, const char *contract_owner_name = nullptr) const;
-            bool HasRequiredContractBindings(const mtl::MaterialResourceLayout &contract, const char *contract_owner_name = nullptr) const;
-            bool HasRequiredContractBindings() const;
+            bool SatisfiesResourceLayout(const mtl::MaterialResourceLayout &resource_layout, const char *resource_layout_owner_name = nullptr) const;
+            bool HasRequiredResourceBindings(const mtl::MaterialResourceLayout &resource_layout, const char *resource_layout_owner_name = nullptr) const;
+            bool HasRequiredResourceBindings() const;
         };
     }//namespace graph
 }//namespace hgl
