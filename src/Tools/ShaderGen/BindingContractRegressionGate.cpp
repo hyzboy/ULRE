@@ -1,4 +1,4 @@
-#include <hgl/mtl/DescriptorBindingContract.h>
+#include <hgl/mtl/MaterialResourceLayout.h>
 #include <hgl/common/RenderOptions.h>
 
 #include <algorithm>
@@ -20,7 +20,7 @@ namespace
         std::vector<std::string> diagnostics;
     };
 
-    static std::vector<std::string> SummarizeConstraintShape(const BindingContract &contract)
+    static std::vector<std::string> SummarizeConstraintShape(const MaterialResourceLayout &contract)
     {
         std::vector<std::string> rows;
         rows.reserve(contract.requirements.size());
@@ -59,8 +59,8 @@ namespace
         GateResult result;
         result.name = name ? name : "<unnamed>";
 
-        const BindingContract contract = BuildBindingContract(entries, count);
-        result.passed = (ValidateBindingContract(contract, result.diagnostics) == expected_pass);
+        const MaterialResourceLayout contract = BuildMaterialResourceLayout(entries, count);
+        result.passed = (ValidateMaterialResourceLayout(contract, result.diagnostics) == expected_pass);
         return result;
     }
 
@@ -101,11 +101,11 @@ namespace
 
         std::vector<std::string> diagnostics_standard;
         std::vector<std::string> diagnostics_array;
-        const BindingContract standard_contract = BuildBindingContract(standard_entries, uint32_t(std::size(standard_entries)));
-        const BindingContract array_contract = BuildBindingContract(array_entries, uint32_t(std::size(array_entries)));
+        const MaterialResourceLayout standard_contract = BuildMaterialResourceLayout(standard_entries, uint32_t(std::size(standard_entries)));
+        const MaterialResourceLayout array_contract = BuildMaterialResourceLayout(array_entries, uint32_t(std::size(array_entries)));
 
-        const bool standard_ok = ValidateBindingContract(standard_contract, diagnostics_standard);
-        const bool array_ok = ValidateBindingContract(array_contract, diagnostics_array);
+        const bool standard_ok = ValidateMaterialResourceLayout(standard_contract, diagnostics_standard);
+        const bool array_ok = ValidateMaterialResourceLayout(array_contract, diagnostics_array);
         if (!standard_ok || !array_ok)
         {
             result.passed = false;

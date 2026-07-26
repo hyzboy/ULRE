@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/shadergen/MaterialDescriptorInfo.h>
-#include<hgl/mtl/DescriptorBindingContract.h>
+#include<hgl/mtl/MaterialResourceLayout.h>
 #include<hgl/shadergen/ShaderCreateInfoMap.h>
 #include<hgl/mtl/MaterialCreateConfig.h>
 #include <hgl/common/TextureSamplerTypeDef.h>
@@ -32,7 +32,7 @@ namespace hgl::graph
             uint32_t ssbo_range;
 
             MaterialDescriptorInfo descriptor_db;                    ///<材质描述符管理器
-            BindingContract binding_contract;                       ///<descriptor semantic contract (phase 2)
+            MaterialResourceLayout material_resource_layout;                       ///<descriptor semantic contract (phase 2)
 
             std::string material_instance_glsl;                     ///<MaterialInstance代码
             uint32_t material_instance_stride;                      ///<MaterialInstance数据长度
@@ -75,9 +75,9 @@ namespace hgl::graph
         public:
 
             const MaterialDescriptorInfo &GetDescriptorInfo()const{return descriptor_db;}
-            const BindingContract &GetBindingContract()const{return binding_contract;}
+            const MaterialResourceLayout &GetMaterialResourceLayout()const{return material_resource_layout;}
 
-            void SetBindingContract(const BindingContract &contract){binding_contract=contract;}
+            void SetBindingContract(const MaterialResourceLayout &contract){material_resource_layout=contract;}
 
             const uint32_t GetMaterialInstanceStride   ()const{return material_instance_stride;}
             const uint32_t GetMaterialInstanceMaxCount  ()const{return material_instance_max_count;}

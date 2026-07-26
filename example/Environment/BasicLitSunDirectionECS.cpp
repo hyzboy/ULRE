@@ -256,7 +256,7 @@ private:
         if (stride > 0)
         {
             bool has_struct_binding = false;
-            for (const auto &req : material->GetBindingContract().requirements)
+            for (const auto &req : material->GetMaterialResourceLayout().requirements)
             {
                 if (req.semantic != mtl::DescriptorSemantic::MaterialInstance)
                     continue;

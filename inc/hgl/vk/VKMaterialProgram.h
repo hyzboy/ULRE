@@ -3,7 +3,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/type/String.h>
 #include<hgl/vk/VKShaderModuleMap.h>
-#include<hgl/mtl/DescriptorBindingContract.h>
+#include<hgl/mtl/MaterialResourceLayout.h>
 #include<hgl/mtl/ShaderBufferSource.h>
 #include<hgl/log/Log.h>
 #include<unordered_set>
@@ -40,7 +40,7 @@ class MaterialProgram
     ShaderModuleMap *shader_maps;
 
     MaterialDescriptorManager *desc_manager;
-    mtl::BindingContract binding_contract;
+    mtl::MaterialResourceLayout material_resource_layout;
 
     ShaderStageCreateInfoList shader_stage_list;
 
@@ -64,7 +64,7 @@ public:
     virtual ~MaterialProgram();
 
     const   AnsiString &                        GetName                 ()const{return name;}
-    const   mtl::BindingContract &              GetBindingContract      ()const{return binding_contract;}
+    const   mtl::MaterialResourceLayout &              GetMaterialResourceLayout      ()const{return material_resource_layout;}
 
     const   PrimitiveType &                     GetPrimitiveType        ()const{return geometry;}
 

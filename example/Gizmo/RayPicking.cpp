@@ -274,7 +274,7 @@ private:
         auto bind_material_mi = [&](MaterialProgram *material, DescriptorBindingSet *binding_set, const uint32_t slot_index) -> bool
         {
             bool has_struct_binding = false;
-            for (const auto &req : material->GetBindingContract().requirements)
+            for (const auto &req : material->GetMaterialResourceLayout().requirements)
             {
                 if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
                     continue;

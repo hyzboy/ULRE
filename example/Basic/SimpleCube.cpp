@@ -215,7 +215,7 @@ private:
             return false;
 
         bool has_struct_binding = false;
-        for (const auto &req : material->GetBindingContract().requirements)
+        for (const auto &req : material->GetMaterialResourceLayout().requirements)
         {
             if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
                 continue;

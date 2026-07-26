@@ -128,7 +128,7 @@ private:
                 if (auto *gpu = grid_mi_ssbo->GetGPUBuffer())
                     gpu->Write(&white, 0, hgl_min(stride, static_cast<uint32_t>(sizeof(white))));
 
-                for (const auto &req : grid_material->GetBindingContract().requirements)
+                for (const auto &req : grid_material->GetMaterialResourceLayout().requirements)
                 {
                     if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
                         continue;
@@ -185,7 +185,7 @@ private:
                 if (auto *gpu = cube_mi_ssbo->GetGPUBuffer())
                     gpu->Write(&blue, 0, hgl_min(stride, static_cast<uint32_t>(sizeof(blue))));
 
-                for (const auto &req : cube_material->GetBindingContract().requirements)
+                for (const auto &req : cube_material->GetMaterialResourceLayout().requirements)
                 {
                     if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
                         continue;

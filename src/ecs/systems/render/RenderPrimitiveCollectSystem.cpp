@@ -228,7 +228,7 @@ namespace hgl::ecs
                 if (!material_program)
                     continue;
 
-                for (const auto &req : material_program->GetBindingContract().requirements)
+                for (const auto &req : material_program->GetMaterialResourceLayout().requirements)
                 {
                     if (req.texture_slot != slot || !req.name || !*req.name)
                         continue;
@@ -353,7 +353,7 @@ namespace hgl::ecs
                 const uint32_t mi_data_bytes = program->GetMIDataBytes();
                 if (mi_data_bytes > 0)
                 {
-                    for (const auto &req : program->GetBindingContract().requirements)
+                    for (const auto &req : program->GetMaterialResourceLayout().requirements)
                     {
                         if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
                             continue;
@@ -366,7 +366,7 @@ namespace hgl::ecs
             uint32_t texture_layer_row = uint32_t(-1);
             uint32_t data_index_row = uint32_t(-1);
 
-            for (const auto &req : program->GetBindingContract().requirements)
+            for (const auto &req : program->GetMaterialResourceLayout().requirements)
             {
                 graph::DescriptorBindingSet::SSBOBinding binding{};
                 if (!dbs->GetSSBOBinding(req.ssbo_type, binding))
@@ -536,7 +536,7 @@ namespace hgl::ecs
             const uint32_t mi_data_bytes = resolved_program->GetMIDataBytes();
             if (mi_data_bytes > 0)
             {
-                for (const auto &req : resolved_program->GetBindingContract().requirements)
+                for (const auto &req : resolved_program->GetMaterialResourceLayout().requirements)
                 {
                     if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
                         continue;

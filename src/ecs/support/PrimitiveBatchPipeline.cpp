@@ -43,7 +43,7 @@ namespace hgl::ecs
         constexpr uint32_t InvalidBatchDataIndexRow = uint32_t(-1);
 
         uint64_t HashDBSContractBindingSignature(const graph::DescriptorBindingSet *binding_set,
-                                                 const graph::mtl::BindingContract &contract)
+                                                 const graph::mtl::MaterialResourceLayout &contract)
         {
             if (!binding_set)
                 return 0;
@@ -721,7 +721,7 @@ namespace hgl::ecs
                 graph::mtl::SSBOType primary_ssbo_type = graph::mtl::SSBOType::PBRSurface;
                 if (batch.key.material)
                 {
-                    for (const auto &req : batch.key.material->GetBindingContract().requirements)
+                    for (const auto &req : batch.key.material->GetMaterialResourceLayout().requirements)
                     {
                         if (req.semantic == graph::mtl::DescriptorSemantic::MaterialInstance)
                         {
@@ -874,11 +874,11 @@ namespace hgl::ecs
             if (!material || !pipeline)
                 continue;
 
-            const auto &binding_contract = material->GetBindingContract();
+            const auto &material_resource_layout = material->GetMaterialResourceLayout();
             auto *binding_set = uses_recipe_runtime ? nullptr : item->GetDescriptorBindingSet();
             if (binding_set)
             {
-                if (!binding_set->SatisfiesContract(binding_contract, material->GetName().c_str()))
+                if (!binding_set->SatisfiesContract(material_resource_layout, material->GetName().c_str()))
                     continue;
             }
 
@@ -935,7 +935,7 @@ namespace hgl::ecs
 
             if (binding_set)
             {
-                const uint64_t dbs_binding_signature = HashDBSContractBindingSignature(binding_set, binding_contract);
+                const uint64_t dbs_binding_signature = HashDBSContractBindingSignature(binding_set, material_resource_layout);
                 if (dbs_binding_signature != 0)
                 {
                     uint64_t merged_signature = hgl::hash::FNV1aInit<uint64_t>();

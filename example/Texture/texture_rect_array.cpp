@@ -197,7 +197,7 @@ private:
             }
             gpu_buf->Unmap();
 
-            for (const auto &req : material->GetBindingContract().requirements)
+            for (const auto &req : material->GetMaterialResourceLayout().requirements)
             {
                 if (req.semantic != mtl::DescriptorSemantic::MaterialInstance)
                     continue;

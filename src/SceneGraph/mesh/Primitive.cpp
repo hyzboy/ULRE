@@ -214,7 +214,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialProgram *material,Descri
     if(!material||!vil)
         return(nullptr);
 
-    if(dbs && !dbs->HasRequiredContractBindings(material->GetBindingContract(), material->GetName().c_str()))
+    if(dbs && !dbs->HasRequiredContractBindings(material->GetMaterialResourceLayout(), material->GetName().c_str()))
         return(nullptr);
 
     // VIL/pipeline consistency check: only performed when a pre-baked pipeline is provided.

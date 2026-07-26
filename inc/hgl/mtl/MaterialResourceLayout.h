@@ -8,7 +8,7 @@
 
 namespace hgl::graph::mtl
 {
-    struct DescriptorRequirement
+    struct MaterialResourceRequirement
     {
         DescriptorSemantic semantic = DescriptorSemantic::Unknown;
         DescriptorSemanticLayer semantic_layer = DescriptorSemanticLayer::Unknown;
@@ -27,9 +27,9 @@ namespace hgl::graph::mtl
         bool allow_fallback = false;
     };
 
-    struct BindingContract
+    struct MaterialResourceLayout
     {
-        std::vector<DescriptorRequirement> requirements;
+        std::vector<MaterialResourceRequirement> requirements;
     };
 
     inline bool IsSemanticRequired(DescriptorSemantic semantic)
@@ -164,10 +164,10 @@ namespace hgl::graph::mtl
         }
     }
 
-    inline BindingContract BuildBindingContract(const FixedDescriptorEntry *descriptor_entries,
+    inline MaterialResourceLayout BuildMaterialResourceLayout(const FixedDescriptorEntry *descriptor_entries,
                                                 const uint32_t descriptor_entry_count)
     {
-        BindingContract contract;
+        MaterialResourceLayout contract;
         if (!descriptor_entries || descriptor_entry_count == 0)
             return contract;
 
@@ -177,7 +177,7 @@ namespace hgl::graph::mtl
         {
             const FixedDescriptorEntry &entry = descriptor_entries[i];
 
-            DescriptorRequirement req;
+            MaterialResourceRequirement req;
             req.semantic = entry.semantic;
             req.semantic_layer = NormalizeSemanticLayer(entry);
             req.set_type = entry.set_type;
@@ -271,11 +271,11 @@ namespace hgl::graph::mtl
         return "Unknown";
     }
 
-    inline bool ValidateBindingContract(const BindingContract &contract, std::vector<std::string> &diagnostics)
+    inline bool ValidateMaterialResourceLayout(const MaterialResourceLayout &contract, std::vector<std::string> &diagnostics)
     {
         diagnostics.clear();
 
-        auto BuildEntryContext = [](const DescriptorRequirement &req) -> std::string
+        auto BuildEntryContext = [](const MaterialResourceRequirement &req) -> std::string
         {
             std::string message = "semantic=";
             message += GetDescriptorSemanticName(req.semantic);
@@ -290,7 +290,7 @@ namespace hgl::graph::mtl
             return message;
         };
 
-        for (const DescriptorRequirement &req : contract.requirements)
+        for (const MaterialResourceRequirement &req : contract.requirements)
         {
             const std::string context = BuildEntryContext(req);
 

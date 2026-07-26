@@ -312,7 +312,7 @@ private:
         material_ssbo_stride = mi_data_bytes;
 
         bool has_struct_binding = false;
-        for (const auto &req : near_material->GetBindingContract().requirements)
+        for (const auto &req : near_material->GetMaterialResourceLayout().requirements)
         {
             if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
                 continue;

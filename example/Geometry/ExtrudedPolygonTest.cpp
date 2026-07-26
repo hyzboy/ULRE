@@ -91,7 +91,7 @@ private:
             if (auto *gpu = mi_ssbo->GetGPUBuffer())
                 gpu->Write(&color, 0, hgl_min(stride, static_cast<uint32_t>(sizeof(color))));
 
-            for (const auto &req : material->GetBindingContract().requirements)
+            for (const auto &req : material->GetMaterialResourceLayout().requirements)
             {
                 if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
                     continue;

@@ -362,7 +362,7 @@ namespace hgl::ecs
             if (!domain_manager)
                 return nullptr;
 
-            for (const auto &req : guard.material->GetBindingContract().requirements)
+            for (const auto &req : guard.material->GetMaterialResourceLayout().requirements)
             {
                 if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
                     continue;

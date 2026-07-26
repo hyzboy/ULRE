@@ -16,7 +16,7 @@ MaterialProgram::MaterialProgram(const AnsiString &n,const mtl::MaterialCreateIn
 {
     name=n;
     geometry=mci->GetPrimitiveType();
-    binding_contract=mci->GetBindingContract();
+    material_resource_layout=mci->GetMaterialResourceLayout();
 
     vertex_input=nullptr;
     shader_maps=new ShaderModuleMap;

@@ -212,7 +212,7 @@ namespace hgl::ecs
         out_recipe.preset_hint = graph::mtl::InvalidMaterialPresetHint;
         out_recipe.domain = "ECS";
 
-        const auto &contract = material->GetBindingContract();
+        const auto &contract = material->GetMaterialResourceLayout();
 
         constexpr size_t texture_slot_count = static_cast<size_t>(graph::mtl::TextureSlot::RANGE_SIZE);
         std::array<bool, texture_slot_count> used_texture_slots{};
@@ -907,7 +907,7 @@ namespace hgl::ecs
         std::unordered_set<std::string> missing_ssbo_warned_keys;
 
         auto log_missing_ssbo_once = [&](graph::MaterialProgram *material,
-                                         const graph::mtl::DescriptorRequirement &req,
+                                         const graph::mtl::MaterialResourceRequirement &req,
                                          const char *reason,
                                          int32_t slot = -1)
         {
@@ -956,7 +956,7 @@ namespace hgl::ecs
         };
         auto log_bind_failure = [&](graph::MaterialProgram *material,
                                     MaterialBatch *batch,
-                                    const graph::mtl::DescriptorRequirement &req,
+                                    const graph::mtl::MaterialResourceRequirement &req,
                                     const char *reason)
         {
             if (!material || !req.name || !*req.name)
@@ -1018,7 +1018,7 @@ namespace hgl::ecs
 
         auto bind_ubo = [&](graph::MaterialProgram *material,
                             MaterialBatch *batch,
-                            const graph::mtl::DescriptorRequirement &req,
+                            const graph::mtl::MaterialResourceRequirement &req,
                             const graph::IGPUBuffer *gpu) -> bool
         {
             if (!material || !gpu)
@@ -1036,7 +1036,7 @@ namespace hgl::ecs
 
         auto bind_ssbo = [&](graph::MaterialProgram *material,
                              MaterialBatch *batch,
-                             const graph::mtl::DescriptorRequirement &req,
+                             const graph::mtl::MaterialResourceRequirement &req,
                              const graph::IGPUBuffer *gpu) -> bool
         {
             if (!material || !gpu)
@@ -1054,7 +1054,7 @@ namespace hgl::ecs
 
         auto bind_texture = [&](graph::MaterialProgram *material,
                                 MaterialBatch *batch,
-                                const graph::mtl::DescriptorRequirement &req,
+                                const graph::mtl::MaterialResourceRequirement &req,
                                 graph::Texture *texture) -> bool
         {
             if (!material || !texture)
@@ -1072,7 +1072,7 @@ namespace hgl::ecs
 
         auto bind_texture_sampler = [&](graph::MaterialProgram *material,
                                         MaterialBatch *batch,
-                                        const graph::mtl::DescriptorRequirement &req,
+                                        const graph::mtl::MaterialResourceRequirement &req,
                                         graph::Texture *texture,
                                         graph::Sampler *sampler) -> bool
         {
@@ -1090,7 +1090,7 @@ namespace hgl::ecs
         };
         auto resolve_batch_texture_binding = [&](graph::MaterialProgram *material,
                                                  MaterialBatch *batch,
-                                                 const graph::mtl::DescriptorRequirement &req,
+                                                 const graph::mtl::MaterialResourceRequirement &req,
                                                  graph::Texture *&out_texture,
                                                  graph::Sampler *&out_sampler) -> bool
         {
@@ -1182,7 +1182,7 @@ namespace hgl::ecs
         };
         auto resolve_recipe_batch_struct_ssbo_id = [&](graph::MaterialProgram *material,
                                                        MaterialBatch *batch,
-                                                       const graph::mtl::DescriptorRequirement &req,
+                                                       const graph::mtl::MaterialResourceRequirement &req,
                                                        uint32_t &out_ssbo_id) -> bool
         {
             if (!batch || !batch->key.IsRecipeRuntime())
@@ -1235,7 +1235,7 @@ namespace hgl::ecs
 
         auto apply_requirement = [&](graph::MaterialProgram *material,
                                      MaterialBatch *batch,
-                                     const graph::mtl::DescriptorRequirement &req)
+                                     const graph::mtl::MaterialResourceRequirement &req)
         {
             switch (req.semantic)
             {
@@ -1658,7 +1658,7 @@ namespace hgl::ecs
 
         auto validate_required_batch_bindings = [&](graph::MaterialProgram *material,
                                                     MaterialBatch *batch,
-                                                    const graph::mtl::BindingContract &contract) -> bool
+                                                    const graph::mtl::MaterialResourceLayout &contract) -> bool
         {
             if (!material || !batch)
                 return true;
@@ -1753,7 +1753,7 @@ namespace hgl::ecs
             if (batch)
                 batch->descriptor_bind_valid = true;
 
-            const auto &contract = material->GetBindingContract();
+            const auto &contract = material->GetMaterialResourceLayout();
 
             if (batch && !validate_required_batch_bindings(material, batch, contract))
                 continue;
@@ -1776,7 +1776,7 @@ namespace hgl::ecs
 
             active_materials.insert(material);
 
-            const auto &contract = material->GetBindingContract();
+            const auto &contract = material->GetMaterialResourceLayout();
 
             for (const auto &req : contract.requirements)
             {
@@ -1803,7 +1803,7 @@ namespace hgl::ecs
                         continue;
 
                     bool needs_bindless_set = false;
-                    const auto &contract = material->GetBindingContract();
+                    const auto &contract = material->GetMaterialResourceLayout();
                     for (const auto &req : contract.requirements)
                     {
                         if (req.semantic == graph::mtl::DescriptorSemantic::MaterialTextureLayerTable)
@@ -1892,7 +1892,7 @@ namespace hgl::ecs
 
             ++frame_stats.materials_checked;
 
-            const auto &contract = material->GetBindingContract();
+            const auto &contract = material->GetMaterialResourceLayout();
 
             bool all_required_ok = true;
             std::string first_error;

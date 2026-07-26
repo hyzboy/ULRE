@@ -1,7 +1,7 @@
 #pragma once
 
 #include<hgl/ecs/core/System.h>
-#include<hgl/mtl/DescriptorBindingContract.h>
+#include<hgl/mtl/MaterialResourceLayout.h>
 #include<hgl/mtl/MaterializationPools.h>
 #include<hgl/type/String.h>
 #include<limits>

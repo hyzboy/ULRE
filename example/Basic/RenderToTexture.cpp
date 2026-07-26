@@ -175,7 +175,7 @@ private:
             return LogStageFail("OffscreenPass::InitMISSBO", "binding set allocation failed");
 
         bool has_struct_binding = false;
-        for (const auto &req : mtl->GetBindingContract().requirements)
+        for (const auto &req : mtl->GetMaterialResourceLayout().requirements)
         {
             if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
                 continue;
@@ -615,7 +615,7 @@ private:
             return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "binding set allocation failed");
 
         bool has_struct_binding = false;
-        for (const auto &req : cube_mtl->GetBindingContract().requirements)
+        for (const auto &req : cube_mtl->GetMaterialResourceLayout().requirements)
         {
             if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
                 continue;

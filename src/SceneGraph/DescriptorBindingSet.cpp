@@ -134,7 +134,7 @@ namespace hgl::graph
         texture_bindings[index] = {};
     }
 
-    bool DescriptorBindingSet::SatisfiesContract(const mtl::BindingContract &contract, const char *contract_owner_name) const
+    bool DescriptorBindingSet::SatisfiesContract(const mtl::MaterialResourceLayout &contract, const char *contract_owner_name) const
     {
         const char *owner_name = (contract_owner_name && *contract_owner_name)
                                ? contract_owner_name
@@ -214,10 +214,10 @@ namespace hgl::graph
         if (!material)
             return false;
 
-        return SatisfiesContract(material->GetBindingContract(), material->GetName().c_str());
+        return SatisfiesContract(material->GetMaterialResourceLayout(), material->GetName().c_str());
     }
 
-    bool DescriptorBindingSet::HasRequiredContractBindings(const mtl::BindingContract &contract, const char *contract_owner_name) const
+    bool DescriptorBindingSet::HasRequiredContractBindings(const mtl::MaterialResourceLayout &contract, const char *contract_owner_name) const
     {
         return SatisfiesContract(contract, contract_owner_name);
     }

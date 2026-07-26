@@ -141,7 +141,7 @@ namespace hgl::graph
             gpu_buf->Unmap();
 
             bool has_struct_binding = false;
-            for (const auto &req : gr->mtl->GetBindingContract().requirements)
+            for (const auto &req : gr->mtl->GetMaterialResourceLayout().requirements)
             {
                 if (req.semantic != mtl::DescriptorSemantic::MaterialInstance)
                     continue;
