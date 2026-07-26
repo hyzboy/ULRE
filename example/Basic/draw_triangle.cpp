@@ -69,13 +69,17 @@ private:
     uint64_t entity_id          =0;          // 对象追踪ID
 
     // 传统渲染资源
-    MaterialInstance *  material_instance   =nullptr;
+    MaterialProgram *   material            =nullptr;
+    Geometry *          geom_triangle       =nullptr;
     Primitive *         prim_triangle       =nullptr;
 
 private:
 
     bool InitMaterial()
     {
+        if (!geom_triangle)
+            return false;
+
         auto* render_context = GetRenderContext();
         if (!render_context)
             return false;
@@ -92,16 +96,16 @@ private:
                                         CoordinateSystem2D::Ortho,
                                         mtl::WithLocalToWorld::Without);
 
-        const GeometryVertexFormat triangle_gvf = CreateDrawTriangleGeometryVertexFormat();
-        material_instance=material_manager->CreateMaterialInstance(mtl::MaterialPreset::VertexColor2D,&cfg,triangle_gvf);
+        const GeometryVertexFormat &triangle_gvf = geom_triangle->GetGeometryVertexFormat();
+        material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::VertexColor2D, &cfg, triangle_gvf);
 
-        if(!material_instance)
+        if(!material)
             return(false);
 
         return true;
     }
 
-    bool InitVBO()
+    bool CreateRenderObject()
     {
         const auto ext=GetExtent();
 
@@ -133,12 +137,32 @@ private:
             !pc.WriteVAB(VAN::Color, COLOR_DATA_FORMAT, color_data))
             return false;
 
-        auto* geometry = pc.Create();
-        if (!geometry)
+        geom_triangle = pc.Create();
+        if (!geom_triangle)
             return false;
-        geometry_manager->Add(geometry);
+        geometry_manager->Add(geom_triangle);
 
-        prim_triangle = primitive_manager->CreatePrimitive(geometry, material_instance, nullptr);
+        return true;
+    }
+
+    bool InitPrimitive()
+    {
+        if(!geom_triangle || !material)
+            return false;
+
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
+        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        if (!primitive_manager)
+            return false;
+
+        prim_triangle = primitive_manager->CreatePrimitive(geom_triangle, material, nullptr, nullptr);
 
         if(!prim_triangle)
             return(false);
@@ -179,6 +203,12 @@ private:
         HGL_TRACK_ALLOCATION("TrianglePrimitive", hgl::core::ObjectTypeTag::FrameResource);
         auto ecs_primitive = triangle_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         ecs_primitive->SetPrimitive(prim_triangle);
+        graph::mtl::MaterialRecipe recipe{};
+        recipe.recipe_name = "DrawTriangle.VertexColor2D";
+        recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::VertexColor2D);
+        recipe.domain = "DrawTriangle";
+        ecs_primitive->SetMaterialRecipe(recipe);
         ecs_primitive->RequestPipeline(InlinePipeline::Solid2D);
         ecs_primitive->SetVisible(true);
 
@@ -191,10 +221,13 @@ public:
     {
         HGL_CAPTURE_SCOPE();  // 记录应用初始化的调用栈
 
+        if(!CreateRenderObject())
+            return(false);
+
         if(!InitMaterial())
             return(false);
 
-        if(!InitVBO())
+        if(!InitPrimitive())
             return(false);
 
         if(!InitECS())

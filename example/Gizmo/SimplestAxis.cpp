@@ -46,15 +46,17 @@ private:
     hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
 
-    MaterialProgram *          material            =nullptr;
-
-    Geometry *         prim_axis           =nullptr;
-    MaterialInstance *  material_instance   =nullptr;
+    MaterialProgram *   material            =nullptr;
+    Geometry *          geom_axis           =nullptr;
+    Primitive *         prim_axis           =nullptr;
 
 private:
 
     bool InitMDP()
     {
+        if (!geom_axis)
+            return false;
+
         auto* render_context = GetRenderContext();
         if (!render_context)
             return false;
@@ -71,9 +73,10 @@ private:
 
         cfg.local_to_world=true;
 
-        material_instance=material_manager->CreateMaterialInstance(mtl::MaterialPreset::VertexColor3D,&cfg);
+        const GeometryVertexFormat &axis_gvf = geom_axis->GetGeometryVertexFormat();
+        material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::VertexColor3D, &cfg, axis_gvf);
 
-        return material_instance;
+        return material;
     }
 
     bool CreateRenderObject()
@@ -99,11 +102,11 @@ private:
 
         inline_geometry::AxisCreateInfo aci;
 
-        prim_axis=CreateAxis(pc.get(),&aci);
-        if (prim_axis)
-            geometry_manager->Add(prim_axis);
+        geom_axis=CreateAxis(pc.get(),&aci);
+        if (geom_axis)
+            geometry_manager->Add(geom_axis);
 
-        return prim_axis;
+        return geom_axis;
     }
 
     bool InitScene()
@@ -123,7 +126,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        Primitive *ri=primitive_manager->CreatePrimitive(prim_axis,material_instance,nullptr);
+        Primitive *ri=primitive_manager->CreatePrimitive(geom_axis, material, nullptr, nullptr);
         if(!ri)
             return false;
 
@@ -137,6 +140,12 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitive(ri);
+        graph::mtl::MaterialRecipe recipe{};
+        recipe.recipe_name = "SimplestAxis.VertexColor3D";
+        recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::VertexColor3D);
+        recipe.domain = "SimplestAxis";
+        prim_comp->SetMaterialRecipe(recipe);
         prim_comp->RequestPipeline(InlinePipeline::Solid3D);
         prim_comp->SetVisible(true);
 
@@ -185,15 +194,15 @@ private:
 public:
     ~TestApp()
     {
-        SAFE_CLEAR(prim_axis);
+        SAFE_CLEAR(geom_axis);
     }
 
     bool Init() override
     {
-        if(!InitMDP())
+        if(!CreateRenderObject())
             return(false);
 
-        if(!CreateRenderObject())
+        if(!InitMDP())
             return(false);
 
         if(!InitECS())

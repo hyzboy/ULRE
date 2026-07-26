@@ -64,7 +64,8 @@ private:
     ECSContext *  ecs_world      =nullptr;   // 由默认 ECSContext 统一维护
 
     // 传统渲染资源（共享）
-    MaterialInstance *  material_instance   =nullptr;
+    MaterialProgram *   material            =nullptr;
+    Geometry *          geom_triangle       =nullptr;
     Primitive *         prim_triangle       =nullptr;
 
     // 存储所有创建的实体
@@ -74,6 +75,9 @@ private:
 
     bool InitMaterial()
     {
+        if (!geom_triangle)
+            return false;
+
         auto* render_context = GetRenderContext();
         if (!render_context)
             return false;
@@ -91,17 +95,17 @@ private:
                                             CoordinateSystem2D::NDC,
                                             mtl::WithLocalToWorld::With);
 
-            const GeometryVertexFormat gvf = CreateAutoInstanceGeometryVertexFormat();
-            material_instance = material_manager->CreateMaterialInstance(mtl::MaterialPreset::VertexColor2D, &cfg, gvf);
+            const GeometryVertexFormat &gvf = geom_triangle->GetGeometryVertexFormat();
+            material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::VertexColor2D, &cfg, gvf);
         }
 
-        if(!material_instance)
+        if(!material)
             return(false);
 
         return true;
     }
 
-    bool InitVBO()
+    bool CreateRenderObject()
     {
         auto* render_context = GetRenderContext();
         if (!render_context)
@@ -124,12 +128,32 @@ private:
             !pc.WriteVAB(VAN::Color, VF_V4UN8, color_data))
             return false;
 
-        auto* geometry = pc.Create();
-        if (!geometry)
+        geom_triangle = pc.Create();
+        if (!geom_triangle)
             return false;
-        geometry_manager->Add(geometry);
+        geometry_manager->Add(geom_triangle);
 
-        prim_triangle = primitive_manager->CreatePrimitive(geometry, material_instance, nullptr);
+        return true;
+    }
+
+    bool InitPrimitive()
+    {
+        if(!geom_triangle || !material)
+            return false;
+
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
+        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        if (!primitive_manager)
+            return false;
+
+        prim_triangle = primitive_manager->CreatePrimitive(geom_triangle, material, nullptr, nullptr);
 
         if(!prim_triangle)
             return(false);
@@ -180,6 +204,12 @@ private:
             // RenderCollector会检测到这一点并自动使用Instance渲染
             auto primitive_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitive(prim_triangle);
+            graph::mtl::MaterialRecipe recipe{};
+            recipe.recipe_name = "AutoInstance.VertexColor2D";
+            recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+            recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::VertexColor2D);
+            recipe.domain = "AutoInstance";
+            primitive_comp->SetMaterialRecipe(recipe);
             primitive_comp->RequestPipeline(InlinePipeline::Solid2D);
             primitive_comp->SetVisible(true);
 
@@ -195,10 +225,13 @@ public:
     {
         SetClearColor(Color4f(0.2f,0.2f,0.2f,1.0f));
 
+        if(!CreateRenderObject())
+            return(false);
+
         if(!InitMaterial())
             return(false);
 
-        if(!InitVBO())
+        if(!InitPrimitive())
             return(false);
 
         if(!InitECS())

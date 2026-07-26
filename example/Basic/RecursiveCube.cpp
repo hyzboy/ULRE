@@ -12,8 +12,6 @@
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/ResourceDomainManager.h>
-#include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/color/Color.h>
 
 #include<hgl/ecs/core/Context.h>
@@ -22,7 +20,6 @@
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -39,6 +36,8 @@ using namespace hgl::ecs;
 
 namespace
 {
+    constexpr uint32_t kRecursiveCubeSsboId = hgl::graph::mtl::MakeRecipeSSBOId(8302);
+
     GeometryVertexFormat CreateGizmo3DGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
@@ -56,8 +55,11 @@ private:
     Entity *camera_entity = nullptr;
 
     MaterialProgram *material = nullptr;
-    DescriptorBindingSet *dbs = nullptr;
     graph::DeviceBuffer *mi_ssbo = nullptr;
+    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::UserDefined;
+    uint32_t material_ssbo_id = 0;
+    uint32_t material_ssbo_count = 0;
+    uint32_t material_ssbo_stride = 0;
 
     Geometry *geometry = nullptr;
     std::vector<Primitive *> primitives;
@@ -117,6 +119,9 @@ private:
 private:
     bool InitMaterial()
     {
+        if (!geometry)
+            return false;
+
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
 
         auto *render_context = GetRenderContext();
@@ -129,11 +134,12 @@ private:
 
         auto *material_manager = graphics_context->GetMaterialManager();
         auto *buffer_manager   = graphics_context->GetBufferManager();
-        auto *domain_manager   = graphics_context->GetResourceDomainManager();
-        if (!material_manager || !buffer_manager || !domain_manager)
+        if (!material_manager || !buffer_manager)
             return false;
 
-        material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Gizmo3D, &cfg);
+        material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Gizmo3D,
+                                                            &cfg,
+                                                            geometry->GetGeometryVertexFormat());
         if (!material)
             return false;
 
@@ -142,6 +148,8 @@ private:
         const uint32_t stride = material->GetMIDataBytes();
         if (stride > 0)
         {
+            material_ssbo_count = 1;
+            material_ssbo_stride = stride;
             mi_ssbo = buffer_manager->CreateSSBO("RecursiveCube:MIData", stride, nullptr, SharingMode::Exclusive);
             if (!mi_ssbo)
                 return false;
@@ -154,17 +162,11 @@ private:
                 if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
                     continue;
 
-                const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
-                if (!domain_manager->RegisterBuffer(addr, mi_ssbo, 1))
-                    return false;
-
-                dbs = new DescriptorBindingSet(material);
-                dbs->SetSSBOBinding(req.ssbo_type, req.ssbo_id, 0);
+                material_ssbo_type = req.ssbo_type;
+                material_ssbo_id = kRecursiveCubeSsboId;
+                break;
             }
         }
-
-        if (!dbs)
-            dbs = new DescriptorBindingSet(material);
 
         return true;
     }
@@ -211,7 +213,7 @@ private:
                              bool animate,
                              EntityID parent_id)
     {
-        if (!ecs_context || !primitive_manager || !geometry || !dbs)
+        if (!ecs_context || !primitive_manager || !geometry || !material)
             return nullptr;
 
         auto *entity = ecs_context->CreateEntity<Entity>(name);
@@ -223,7 +225,7 @@ private:
         transform->SetLocalScale(glm::vec3(scale, scale, scale));
         transform->SetMovable(animate);
 
-        auto prim = primitive_manager->CreatePrimitive(geometry, material, dbs, nullptr);
+        auto prim = primitive_manager->CreatePrimitive(geometry, material, nullptr, nullptr);
         if (!prim)
             return nullptr;
 
@@ -231,6 +233,24 @@ private:
 
         auto primitive_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         primitive_comp->SetPrimitive(prim);
+        graph::mtl::MaterialRecipe recipe{};
+        recipe.recipe_name = "RecursiveCube.Gizmo3D";
+        recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Gizmo3D);
+        recipe.domain = "RecursiveCube";
+        primitive_comp->SetMaterialRecipe(recipe);
+        if (mi_ssbo && material_ssbo_id != 0)
+        {
+            primitive_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
+                                                      material_ssbo_type,
+                                                      material_ssbo_id,
+                                                      mi_ssbo,
+                                                      material_ssbo_count,
+                                                      material_ssbo_stride,
+                                                      0,
+                                                      true,
+                                                      true);
+        }
         primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
         primitive_comp->SetVisible(true);
 
@@ -340,18 +360,16 @@ public:
             SAFE_CLEAR(prim)
         SAFE_CLEAR(geometry)
         SAFE_CLEAR(mi_ssbo)
-        delete dbs;
-        dbs = nullptr;
     }
 
     bool Init() override
     {
         SetClearColor(Color4f(0.1f, 0.1f, 0.1f, 1.0f));
 
-        if (!InitMaterial())
+        if (!CreateCubeGeometry())
             return false;
 
-        if (!CreateCubeGeometry())
+        if (!InitMaterial())
             return false;
 
         if (!InitECS())
@@ -399,4 +417,3 @@ int os_main(int argc, os_char **argv)
 {
     return RunFramework<RecursiveCubeApp>(OS_TEXT("Recursive Cube (ECS)"), argc, argv, 1280, 720);
 }
-
