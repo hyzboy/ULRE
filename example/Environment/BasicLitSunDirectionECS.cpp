@@ -11,7 +11,6 @@
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
-#include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/mtl/MaterialRecipe.h>
 
 #include<hgl/ecs/core/Context.h>
@@ -21,7 +20,6 @@
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
-#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 
 #include<hgl/graph/gizmo/SunDirectionControlSystem.h>
 
@@ -63,6 +61,9 @@ namespace
     }
 }
 
+#define DRAW_SKY_SPHERE
+#define DRAW_GIZMO
+
 class BasicLitSunDirectionECSApp : public WorkObject
 {
 private:
@@ -80,15 +81,18 @@ private:
     };
 
     ECSContext* ecs_context = nullptr;
-    Entity* sky_entity = nullptr;
     Entity* camera_entity = nullptr;
 
+#ifdef DRAW_SKY_SPHERE
+    Entity* sky_entity = nullptr;
     std::shared_ptr<EnvironmentSystem> environment_system;
-    std::shared_ptr<SunDirectionControlSystem> sun_gizmo_system;
-
     Geometry* sky_geometry = nullptr;
     MaterialProgram* sky_material = nullptr;
-    DescriptorBindingSet* sky_binding = nullptr;
+#endif//DRAW_SKY_SPHERE
+
+#ifdef DRAW_GIZMO
+    std::shared_ptr<SunDirectionControlSystem> sun_gizmo_system;
+#endif//DRAW_GIZMO
 
     MaterialProgram* material = nullptr;
     DeviceBuffer* material_ssbo = nullptr;
@@ -115,6 +119,7 @@ private:
         if (!ecs_context)
             return false;
 
+    #ifdef DRAW_SKY_SPHERE
         environment_system = ecs_context->GetSystem<EnvironmentSystem>();
         if (!environment_system)
             environment_system = ecs_context->RegisterRenderSystem<EnvironmentSystem>();
@@ -128,7 +133,9 @@ private:
         }
         environment_system->MarkSkyDirty();
         environment_system->SyncSkyUBO();
+    #endif//DRAW_SKY_SPHERE
 
+    #ifdef DRAW_GIZMO
         sun_gizmo_system = ecs_context->GetSystem<SunDirectionControlSystem>();
         if (!sun_gizmo_system)
             sun_gizmo_system = ecs_context->RegisterTickSystem<SunDirectionControlSystem>();
@@ -138,10 +145,12 @@ private:
 
         sun_gizmo_system->SetEnvironmentSystem(environment_system.get());
         sun_gizmo_system->SetGizmoPosition(math::Vector3f(0.0f, 0.0f, 0.0f));
+    #endif//DRAW_GIZMO
 
         return true;
     }
 
+#ifdef DRAW_SKY_SPHERE
     bool InitSkySphereResource()
     {
         if (!ecs_context)
@@ -161,15 +170,6 @@ private:
         if (!material_manager || !geometry_manager || !device)
             return false;
 
-        mtl::SkyMinimalCreateConfig cfg;
-        sky_material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::SkyMinimal, &cfg);
-        if (!sky_material)
-            return false;
-
-        sky_binding = new DescriptorBindingSet(sky_material);
-        if (!sky_binding)
-            return false;
-
         using namespace inline_geometry;
 
         auto pc = std::make_unique<GeometryCreater>(
@@ -187,8 +187,17 @@ private:
             return false;
 
         geometry_manager->Add(sky_geometry);
+
+        mtl::SkyMinimalCreateConfig cfg;
+        sky_material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::SkyMinimal,
+                                                                &cfg,
+                                                                sky_geometry->GetGeometryVertexFormat());
+        if (!sky_material)
+            return false;
+
         return true;
     }
+#endif//DRAW_SKY_SPHERE
 
     bool InitMaterial()
     {
@@ -286,37 +295,6 @@ private:
                            0,
                            hgl_min(stride, static_cast<uint32_t>(sizeof(mi_data))));
         }
-
-        return true;
-    }
-
-    bool InitBindlessTextureResources()
-    {
-        if (!ecs_context || !material || !base_texture || !normal_texture || !roughness_texture || !sampler)
-            return false;
-
-        auto rdbs = ecs_context->GetSystem<RenderDescriptorBindingSystem>();
-        if (!rdbs)
-            return false;
-
-        auto* render_context = GetRenderContext();
-        auto* bindless_mgr = render_context ? render_context->GetBindlessTextureManager() : nullptr;
-        if (!bindless_mgr)
-            return false;
-
-        if (rdbs->RegisterTexture2DResource("", base_texture, sampler, bindless_mgr) == 0)
-            return false;
-        if (rdbs->RegisterTexture2DResource("", normal_texture, sampler, bindless_mgr) == 0)
-            return false;
-        if (rdbs->RegisterTexture2DResource("", roughness_texture, sampler, bindless_mgr) == 0)
-            return false;
-
-        if (!rdbs->RegisterMaterialTexture(material, mtl::SamplerName::BaseColor, base_texture))
-            return false;
-        if (!rdbs->RegisterMaterialTexture(material, "TextureNormal", normal_texture))
-            return false;
-        if (!rdbs->RegisterMaterialTexture(material, "TextureRoughness", roughness_texture))
-            return false;
 
         return true;
     }
@@ -470,9 +448,13 @@ private:
 
     bool InitSceneEntities()
     {
-        if (!ecs_context || !rm_floor || !sky_geometry || !sky_binding)
+        if (!ecs_context || !rm_floor )
             return false;
 
+    #ifdef DRAW_SKY_SPHERE
+        if (!sky_geometry || !sky_material)
+            return false;
+    #endif//
         {
             auto* render_context = GetRenderContext();
             if (!render_context)
@@ -486,9 +468,10 @@ private:
             if (!primitive_manager)
                 return false;
 
+        #ifdef DRAW_SKY_SPHERE
             Primitive* sky_primitive = primitive_manager->CreatePrimitive(sky_geometry,
                                                                           sky_material,
-                                                                          sky_binding,
+                                                                          nullptr,
                                                                           nullptr);
             if (!sky_primitive)
                 return false;
@@ -503,8 +486,15 @@ private:
             transform->SetMovable(false);
 
             primitive_comp->SetPrimitive(sky_primitive);
+            graph::mtl::MaterialRecipe recipe{};
+            recipe.recipe_name = "BasicLitSunDirection.Sky";
+            recipe.shading_model = graph::mtl::ShadingModel::Sky;
+            recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::SkyMinimal);
+            recipe.domain = "BasicLitSunDirection";
+            primitive_comp->SetMaterialRecipe(recipe);
             primitive_comp->RequestPipeline(InlinePipeline::Sky);
             primitive_comp->SetVisible(true);
+        #endif//DRAW_SKY_SPHERE
         }
 
         {
@@ -595,14 +585,13 @@ private:
         if (!ecs_context)
             return false;
 
-        if (!InitBindlessTextureResources())
-            return false;
-
         if (!InitEnvironmentControl())
             return false;
 
+    #ifdef DRAW_SKY_SPHERE
         if (!InitSkySphereResource())
             return false;
+    #endif//DRAW_SKY_SPHERE
 
         if (!InitVDM())
             return false;
@@ -639,9 +628,6 @@ private:
 public:
     ~BasicLitSunDirectionECSApp()
     {
-        delete sky_binding;
-        sky_binding = nullptr;
-
         auto* rc = GetRenderContext();
         auto* gc = rc ? rc->GetGraphicsContext() : nullptr;
         if (gc && material_ssbo)

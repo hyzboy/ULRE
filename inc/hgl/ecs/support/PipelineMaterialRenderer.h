@@ -18,6 +18,7 @@ namespace hgl
 {
     namespace graph
     {
+        class RenderContext;
         class MaterialProgram;
         class Pipeline;
         class RenderCmdBuffer;
@@ -130,6 +131,7 @@ namespace hgl::ecs
                     TransformAssignmentBuffer* transform_buffer,
                     graph::IndirectDrawBuffer* icb_draw,
                     graph::IndirectDrawIndexedBuffer* icb_draw_indexed,
-                    const MaterialBatch *owner_batch = nullptr);
+                    const MaterialBatch *owner_batch = nullptr,
+                    graph::RenderContext *render_context = nullptr);
     };
 }//namespace hgl::ecs

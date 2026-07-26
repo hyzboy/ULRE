@@ -21,5 +21,18 @@ namespace hgl::graph
             if (desc_manager->hasSet(set_type))
                 out_plan.mp_set_types.push_back(set_type);
         }
+
+        bool has_vertex_data_set = false;
+        for (const auto set_type : out_plan.mp_set_types)
+        {
+            if (set_type == DescriptorSetType::VertexData)
+            {
+                has_vertex_data_set = true;
+                break;
+            }
+        }
+
+        if (!has_vertex_data_set)
+            out_plan.mp_set_types.push_back(DescriptorSetType::VertexData);
     }
 }

@@ -11,7 +11,6 @@
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/graph/module/MaterialManager.h>
-#include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<memory>
@@ -52,11 +51,13 @@ private:
 
     Geometry *prim_sky_sphere = nullptr;
     MaterialProgram *mtl_sky = nullptr;
-    DescriptorBindingSet *sky_dbs = nullptr;
 
 private:
     bool InitMDP()
     {
+        if (!prim_sky_sphere)
+            return false;
+
         auto* render_context = GetRenderContext();
         if (!render_context)
             return false;
@@ -70,12 +71,10 @@ private:
             return false;
 
         mtl::SkyMinimalCreateConfig cfg;
-        mtl_sky = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::SkyMinimal, &cfg);
+        mtl_sky = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::SkyMinimal,
+                                                           &cfg,
+                                                           prim_sky_sphere->GetGeometryVertexFormat());
         if (!mtl_sky)
-            return false;
-
-        sky_dbs = new DescriptorBindingSet(mtl_sky);
-        if (!sky_dbs)
             return false;
 
         return true;
@@ -115,7 +114,7 @@ private:
 
     bool InitECSScene()
     {
-        if(!ecs_context || !prim_sky_sphere || !sky_dbs)
+        if(!ecs_context || !prim_sky_sphere || !mtl_sky)
             return false;
 
         auto* render_context = GetRenderContext();
@@ -130,7 +129,7 @@ private:
         if (!primitive_manager)
             return false;
 
-        Primitive *ri = primitive_manager->CreatePrimitive(prim_sky_sphere, mtl_sky, sky_dbs, nullptr);
+        Primitive *ri = primitive_manager->CreatePrimitive(prim_sky_sphere, mtl_sky, nullptr, nullptr);
         if(!ri)
             return false;
 
@@ -144,6 +143,12 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitive(ri);
+        graph::mtl::MaterialRecipe recipe{};
+        recipe.recipe_name = "AtmosphereSkySunGizmo.Sky";
+        recipe.shading_model = graph::mtl::ShadingModel::Sky;
+        recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::SkyMinimal);
+        recipe.domain = "AtmosphereSkySunGizmo";
+        prim_comp->SetMaterialRecipe(recipe);
         prim_comp->RequestPipeline(InlinePipeline::Sky);
         prim_comp->SetVisible(true);
 
@@ -216,10 +221,10 @@ private:
 public:
     bool Init() override
     {
-        if(!InitMDP())
+        if(!CreateRenderObject())
             return false;
 
-        if(!CreateRenderObject())
+        if(!InitMDP())
             return false;
 
         if(!InitECS())

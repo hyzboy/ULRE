@@ -11,7 +11,6 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
-#include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/graph/SSBOSlotAllocator.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/color/Color.h>
@@ -22,7 +21,6 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/module/ResourceDomainManager.h>
 #include<cmath>
 #include<cstring>
 
@@ -32,7 +30,6 @@
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
-#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -40,6 +37,8 @@ using namespace hgl::ecs;
 
 namespace
 {
+    constexpr uint32_t kClockSsboId = hgl::graph::mtl::MakeRecipeSSBOId(8303);
+
     GeometryVertexFormat CreateClockGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
@@ -78,8 +77,13 @@ private:
     MaterialProgram* material = nullptr;
     Geometry* geometry = nullptr;
     graph::DeviceBuffer* mi_ssbo = nullptr;
-    DescriptorBindingSet *tick_binding_set = nullptr;
     SSBOSlotAllocator slot_allocator;
+    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::UserDefined;
+    uint32_t material_ssbo_id = 0;
+    uint32_t material_ssbo_count = 0;
+    uint32_t material_ssbo_stride = 0;
+    uint32_t tick_slot = 0;
+    uint32_t hand_slots[3]{};
 
     // 刻度数据
     struct TickData
@@ -90,13 +94,10 @@ private:
 
     TickData ticks[TICK_COUNT];
 
-    MaterialInstance *mi_tick;
-
     // 指针数据
     struct HandData
     {
         Entity* entity;
-        MaterialInstance* mi;
         Primitive* primitive;
         TransformComponent* transform;
         float length_scale;  // 指针长度倍数
@@ -104,12 +105,14 @@ private:
 
     enum HandType { Hour, Minute, Second };
     HandData hands[3];  // 0=hour, 1=minute, 2=second
-    DescriptorBindingSet *hand_binding_sets[3]{};
 
 private:
 
     bool InitMaterial()
     {
+        if (!geometry)
+            return false;
+
         auto* render_context = GetRenderContext();
         if (!render_context)
             return false;
@@ -127,7 +130,9 @@ private:
                                             CoordinateSystem2D::NDC,
                                             mtl::WithLocalToWorld::With);
 
-            material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::PureColor2D, &cfg);
+            material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::PureColor2D,
+                                                                &cfg,
+                                                                geometry->GetGeometryVertexFormat());
 
             if (!material)
                 return false;
@@ -202,12 +207,7 @@ private:
             return false;
 
         auto* buffer_manager = graphics_context->GetBufferManager();
-        auto* domain_manager = graphics_context->GetResourceDomainManager();
-        if (!buffer_manager || !domain_manager)
-            return false;
-
-        auto descriptor_system = ecs_world->GetSystem<RenderDescriptorBindingSystem>();
-        if (!descriptor_system)
+        if (!buffer_manager)
             return false;
 
         if (!slot_allocator.Init(4))
@@ -215,6 +215,8 @@ private:
 
         const uint32_t mi_count = 4;
         const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * mi_data_bytes;
+        material_ssbo_count = mi_count;
+        material_ssbo_stride = mi_data_bytes;
 
         mi_ssbo = buffer_manager->CreateSSBO("Clock:PBRSurface:MIData", ssbo_size, nullptr, SharingMode::Exclusive);
         if (!mi_ssbo)
@@ -233,7 +235,6 @@ private:
 
         memset(dst, 0, static_cast<size_t>(ssbo_size));
 
-        uint32_t tick_slot = 0;
         if (!slot_allocator.Allocate(tick_slot))
             return false;
 
@@ -245,7 +246,6 @@ private:
             Color4f(0.0f, 1.0f, 0.0f, 1.0f),
             Color4f(0.0f, 0.0f, 1.0f, 1.0f)
         };
-        uint32_t hand_slots[3]{};
         for (uint i = 0; i < 3; ++i)
         {
             if (!slot_allocator.Allocate(hand_slots[i]))
@@ -255,16 +255,6 @@ private:
 
         gpu_buf->Unmap();
 
-        tick_binding_set = new DescriptorBindingSet(material);
-        if (!tick_binding_set)
-            return false;
-        for (uint i = 0; i < 3; ++i)
-        {
-            hand_binding_sets[i] = new DescriptorBindingSet(material);
-            if (!hand_binding_sets[i])
-                return false;
-        }
-
         bool has_struct_binding = false;
         for (const auto &req : material->GetMaterialResourceLayout().requirements)
         {
@@ -272,17 +262,9 @@ private:
                 continue;
 
             has_struct_binding = true;
-            const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
-            if (!domain_manager->RegisterBuffer(addr, mi_ssbo, mi_count))
-                return false;
-
-            if (!tick_binding_set->SetSSBOBinding(req.ssbo_type, req.ssbo_id, tick_slot))
-                return false;
-            for (uint i = 0; i < 3; ++i)
-            {
-                if (!hand_binding_sets[i]->SetSSBOBinding(req.ssbo_type, req.ssbo_id, hand_slots[i]))
-                    return false;
-            }
+            material_ssbo_type = req.ssbo_type;
+            material_ssbo_id = kClockSsboId;
+            break;
         }
 
         std::cout << "[ClockApp::InitMISSBO] registered PBRSurface SSBO: count=" << mi_count
@@ -326,7 +308,7 @@ private:
         // === 创建12个刻度（Static Transform） ===
         for (uint i = 0; i < TICK_COUNT; i++)
         {
-            ticks[i].primitive = primitive_manager->CreatePrimitive(geometry, material, tick_binding_set, nullptr);
+            ticks[i].primitive = primitive_manager->CreatePrimitive(geometry, material, nullptr, nullptr);
 
             if (!ticks[i].primitive)
             {
@@ -361,6 +343,21 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = ticks[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitive(ticks[i].primitive);
+            graph::mtl::MaterialRecipe recipe{};
+            recipe.recipe_name = "Clock.PureColor2D";
+            recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+            recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::PureColor2D);
+            recipe.domain = "Clock";
+            primitive_comp->SetMaterialRecipe(recipe);
+            primitive_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
+                                                      material_ssbo_type,
+                                                      material_ssbo_id,
+                                                      mi_ssbo,
+                                                      material_ssbo_count,
+                                                      material_ssbo_stride,
+                                                      tick_slot,
+                                                      true,
+                                                      false);
             primitive_comp->RequestPipeline(InlinePipeline::Solid2D);
             primitive_comp->SetVisible(true);
 
@@ -376,7 +373,7 @@ private:
         {
             hands[i].primitive = primitive_manager->CreatePrimitive(geometry,
                                                                     material,
-                                                                    hand_binding_sets[i],
+                                                                    nullptr,
                                                                     nullptr);
 
             if (!hands[i].primitive)
@@ -403,6 +400,21 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = hands[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitive(hands[i].primitive);
+            graph::mtl::MaterialRecipe recipe{};
+            recipe.recipe_name = "Clock.PureColor2D";
+            recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+            recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::PureColor2D);
+            recipe.domain = "Clock";
+            primitive_comp->SetMaterialRecipe(recipe);
+            primitive_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
+                                                      material_ssbo_type,
+                                                      material_ssbo_id,
+                                                      mi_ssbo,
+                                                      material_ssbo_count,
+                                                      material_ssbo_stride,
+                                                      hand_slots[i],
+                                                      true,
+                                                      false);
             primitive_comp->RequestPipeline(InlinePipeline::Solid2D);
             primitive_comp->SetVisible(true);
 
@@ -423,15 +435,15 @@ public:
 
         std::cout << "[ClockApp::Init] === Initializing Clock Application ===" << std::endl;
 
-        if (!InitMaterial())
-        {
-            std::cout << "[ClockApp::Init] ERROR: InitMaterial failed!" << std::endl;
-            return false;
-        }
-
         if (!InitGeometry())
         {
             std::cout << "[ClockApp::Init] ERROR: InitGeometry failed!" << std::endl;
+            return false;
+        }
+
+        if (!InitMaterial())
+        {
+            std::cout << "[ClockApp::Init] ERROR: InitMaterial failed!" << std::endl;
             return false;
         }
 
@@ -501,9 +513,6 @@ public:
 
     ~ClockApp()
     {
-        delete tick_binding_set;
-        for (auto *dbs : hand_binding_sets)
-            delete dbs;
         SAFE_CLEAR(mi_ssbo)
     }
 };//class ClockApp:public WorkObject

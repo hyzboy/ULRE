@@ -146,11 +146,11 @@ namespace hgl::ecs
                     auto material_comp = entity->GetComponent<MaterialComponent>();
                     if (material_comp)
                     {
-                        if (material_comp->data_index_row != uint32_t(-1))
-                            return material_comp->data_index_row;
-
                         if (material_comp->material_instance_row != uint32_t(-1))
                             return material_comp->material_instance_row;
+
+                        if (material_comp->data_index_row != uint32_t(-1))
+                            return material_comp->data_index_row;
                     }
                 }
             }

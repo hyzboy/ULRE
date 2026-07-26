@@ -19,9 +19,6 @@ namespace
 
         const uint32_t vab_count=pld->vab_count[size_t(type)];
 
-        if(!vab_count)
-            return(nullptr);
-
         DescriptorSetAllocateInfo alloc_info;
 
         alloc_info.descriptorPool       = desc_pool;

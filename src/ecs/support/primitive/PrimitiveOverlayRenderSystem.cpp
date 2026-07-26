@@ -74,7 +74,8 @@ namespace hgl::ecs
                              batch->transform_buffer,
                              batch->icb_draw,
                              batch->icb_draw_indexed,
-                             batch);
+                             batch,
+                             context->GetRenderContext());
         }
     }
 }

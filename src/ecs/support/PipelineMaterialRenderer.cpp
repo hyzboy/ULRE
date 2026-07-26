@@ -8,6 +8,8 @@
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/graph/mesh/Primitive.h>
+#include<hgl/graph/render/RenderContext.h>
+#include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKVertexInput.h>
 #include<hgl/vk/VKMaterialProgram.h>
@@ -172,7 +174,8 @@ namespace hgl::ecs
                                               TransformAssignmentBuffer* transform_buffer,
                                               graph::IndirectDrawBuffer* icb_draw,
                                               graph::IndirectDrawIndexedBuffer* icb_draw_indexed,
-                                              const MaterialBatch *owner_batch)
+                                              const MaterialBatch *owner_batch,
+                                              graph::RenderContext *render_context)
     {
         // 前置条件检查
         if (!rcb)
@@ -226,6 +229,30 @@ namespace hgl::ecs
         {
             // 绑定材质描述符集
             cmd_buf->BindDescriptorSets(material);
+        }
+
+        if (render_context)
+        {
+            auto *bindless_mgr = render_context->GetBindlessTextureManager();
+            if (bindless_mgr && bindless_mgr->IsValid())
+            {
+                bool needs_bindless_set = false;
+                const auto &contract = material->GetMaterialResourceLayout();
+                for (const auto &req : contract.requirements)
+                {
+                    if (req.semantic == graph::mtl::DescriptorSemantic::MaterialTextureLayerTable)
+                    {
+                        needs_bindless_set = true;
+                        break;
+                    }
+                }
+
+                if (needs_bindless_set)
+                {
+                    constexpr uint32_t bindless_set = static_cast<uint32_t>(graph::DescriptorSetType::Bindless);
+                    bindless_mgr->BindToCmd(*cmd_buf, material->GetPipelineLayout(), bindless_set);
+                }
+            }
         }
 
         // 遍历绘制批次

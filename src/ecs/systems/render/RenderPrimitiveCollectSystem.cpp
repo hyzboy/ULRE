@@ -82,6 +82,32 @@ namespace hgl::ecs
             return false;
         }
 
+        uint32_t ResolvePrimaryStructIndex(const graph::MaterialProgram *material,
+                                           const graph::mtl::MaterializationSpec &spec,
+                                           const uint32_t fallback_row)
+        {
+            if (material)
+            {
+                const auto &contract = material->GetMaterialResourceLayout();
+                for (const auto &req : contract.requirements)
+                {
+                    if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                        continue;
+
+                    for (const auto &ref : spec.struct_refs)
+                    {
+                        if (ref.slot == req.data_slot && ref.ssbo_type == req.ssbo_type)
+                            return ref.struct_index;
+                    }
+                }
+            }
+
+            if (!spec.struct_refs.empty())
+                return spec.struct_refs.front().struct_index;
+
+            return fallback_row;
+        }
+
         bool ReferenceProgramMatchesPreset(const graph::MaterialProgram *material,
                                            const graph::mtl::MaterialPreset preset)
         {
@@ -696,11 +722,15 @@ namespace hgl::ecs
             return false;
         }
 
-        // Bridge stage: DataIndexRow is the per-instance lookup row consumed by
-        // ResolveDataIndexID(gl_InstanceIndex). Keep material_instance_row aligned.
+        const uint32_t material_instance_row = ResolvePrimaryStructIndex(material_comp->program,
+                                                                         spec,
+                                                                         data_index_row);
+
+        // data_index_row keeps the indirection-table row identity.
+        // material_instance_row is the concrete struct_index that shaders use as mtl.mi[miID].
         material_comp->texture_layer_row = texture_layer_row;
         material_comp->data_index_row = data_index_row;
-        material_comp->material_instance_row = data_index_row;
+        material_comp->material_instance_row = material_instance_row;
         material_comp->bindings_dirty = false;
         material_comp->resources_dirty = false;
         material_comp->valid = true;
