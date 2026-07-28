@@ -177,6 +177,26 @@ namespace hgl::graph::mtl
         uint32_t slot = 0;
     };
 
+    /**
+     * SSBO 资源最小身份标识 —— 仅含 type 与 id，无 slot/name 等附加字段。
+     *
+     * CN: 作为 SSBOArrayAccessor::GetSSBOBinding() 的返回值类型，也可作为
+     *     UpsertRecipeSSBOAssetBinding 等接口的统一入参，避免 type/id 分开传。
+     *
+     * EN: Minimal SSBO identity (type + id).  Returned by SSBOArrayAccessor::GetSSBOBinding()
+     *     and accepted by overloads of UpsertRecipeSSBOAssetBinding() for a unified call style.
+     */
+    struct SSBOBinding
+    {
+        SSBOType ssbo_type = SSBOType::UserDefined;
+        uint32_t ssbo_id   = 0;
+
+        bool IsValid() const
+        {
+            return ssbo_id != 0 || ssbo_type != SSBOType::UserDefined;
+        }
+    };
+
     inline SSBOAddress MakeSSBOAddress(const SSBOType ssbo_type, const uint32_t ssbo_id, const DataSlot slot) noexcept
     {
         return SSBOAddress{ssbo_type, ssbo_id, static_cast<uint32_t>(slot)};
@@ -302,6 +322,19 @@ namespace hgl::graph::mtl
         asset.ssbo_type = ssbo_type;
         asset.ssbo_id = ssbo_id;
         recipe.ssbo_assets.emplace_back(std::move(asset));
+    }
+
+    /**
+     * CN: UpsertRecipeSSBOAssetBinding 的统一重载 —— 接受 SSBOBinding，
+     *     无需将 type/id 分开传。配合 SSBOArrayAccessor::GetSSBOBinding() 使用：
+     *       UpsertRecipeSSBOAssetBinding(recipe, name, accessor->GetSSBOBinding());
+     * EN: Unified overload accepting SSBOBinding so type/id need not be passed separately.
+     */
+    inline void UpsertRecipeSSBOAssetBinding(MaterialRecipe &recipe,
+                                             const std::string &ssbo_name,
+                                             const SSBOBinding &binding)
+    {
+        UpsertRecipeSSBOAssetBinding(recipe, ssbo_name, binding.ssbo_type, binding.ssbo_id);
     }
 
     inline void ApplyBaseMaterialInfoDefaults(MaterialRecipe &recipe,

@@ -88,8 +88,6 @@ constexpr const COLOR TestColor[]=
 };
 
 constexpr const size_t COLOR_COUNT=sizeof(TestColor)/sizeof(COLOR);
-constexpr uint32_t kRenderBoundBoxSolidSsboId = hgl::graph::mtl::MakeRecipeSSBOId(2001);
-constexpr uint32_t kRenderBoundBoxWireSsboId  = hgl::graph::mtl::MakeRecipeSSBOId(2002);
 
 class TestApp:public WorkObject
 {
@@ -97,13 +95,16 @@ private:
 
     struct MaterialData
     {
-        MaterialProgram *          material          = nullptr;
-        const VIL *         vil               = nullptr;
-        graph::DeviceBuffer * mi_ssbo = nullptr;
-        graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::UserDefined;
-        uint32_t ssbo_id = 0;
+        MaterialProgram *                   material            = nullptr;
+        const VIL *                         vil                 = nullptr;
+        graph::SSBOArrayAccessor<Color4f> * mi_ssbo_accessor    = nullptr;
         uint32_t ssbo_count = 0;
-        uint32_t ssbo_stride = 0;
+
+        ~MaterialData()
+        {
+            delete mi_ssbo_accessor;
+            mi_ssbo_accessor = nullptr;
+        }
     };
 
     struct RenderMesh
@@ -161,51 +162,34 @@ private:
         if (!md->vil)
             return false;
 
-        const uint32_t stride      = md->material->GetMIDataBytes();
-        const uint32_t color_count = static_cast<uint32_t>(COLOR_COUNT);
-
-        if (stride > 0)
+        if (md->material->GetMIDataBytes() > 0)
         {
-            const VkDeviceSize ssbo_size = VkDeviceSize(color_count) * stride;
+            const uint32_t color_count = static_cast<uint32_t>(COLOR_COUNT);
             bool has_struct_binding = false;
+            graph::mtl::SSBOType ssbo_type = graph::mtl::SSBOType::UserDefined;
             for (const auto &req : md->material->GetMaterialResourceLayout().requirements)
             {
                 if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
                     continue;
 
                 has_struct_binding = true;
-                md->material_ssbo_type = req.ssbo_type;
+                ssbo_type = req.ssbo_type;
                 break;
             }
             if (!has_struct_binding)
                 return false;
 
-            md->ssbo_stride = stride;
             md->ssbo_count = color_count;
-            md->mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{md->material_ssbo_type, md->ssbo_id, 0},
-                                                       tag,
-                                                       ssbo_size,
-                                                       md->ssbo_count,
-                                                       SharingMode::Exclusive);
-            if (!md->mi_ssbo)
+            md->mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+                ssbo_type,
+                tag,
+                color_count);
+            if (!md->mi_ssbo_accessor)
                 return false;
 
-            auto *gpu_buf = md->mi_ssbo->GetGPUBuffer();
-            if (!gpu_buf)
-                return false;
-
-            auto *dst = static_cast<uint8_t *>(gpu_buf->Map(0, ssbo_size));
-            if (!dst)
-                return false;
-
-            memset(dst, 0, static_cast<size_t>(ssbo_size));
-            const uint32_t copy_bytes = hgl_min(stride, static_cast<uint32_t>(sizeof(Color4f)));
             for (uint32_t i = 0; i < color_count; ++i)
-            {
-                const Color4f color = GetColor4f(TestColor[i], 1.0f);
-                memcpy(dst + VkDeviceSize(i) * stride, &color, copy_bytes);
-            }
-            gpu_buf->Unmap();
+                (*md->mi_ssbo_accessor)[i] = GetColor4f(TestColor[i], 1.0f);
+            md->mi_ssbo_accessor->Commit();
         }
 
         return true;
@@ -222,7 +206,6 @@ private:
         solid.material = (material_manager->*acquire_mtl3d)(mtl::MaterialPreset::Gizmo3D, &cfg);
         if (!solid.material)
             return false;
-        solid.ssbo_id = kRenderBoundBoxSolidSsboId;
 
         return InitMaterialForDBS(&solid, "RenderBoundBox:SolidMIData");
     }
@@ -238,7 +221,6 @@ private:
         wire.material = (material_manager->*acquire_mtl3d)(mtl::MaterialPreset::PureColor3D, &cfg);
         if (!wire.material)
             return false;
-        wire.ssbo_id = kRenderBoundBoxWireSsboId;
 
         return InitMaterialForDBS(&wire, "RenderBoundBox:WireMIData");
     }
@@ -618,7 +600,7 @@ private:
             rm_floor->primitive_comp->SetMaterialRecipe(recipe);
             hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource floor_struct{};
             floor_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
-            floor_struct.ssbo_id = solid.ssbo_id;
+            floor_struct.ssbo_id = solid.mi_ssbo_accessor->GetSSBOId();
             floor_struct.struct_index = rm_floor->color_index;
             floor_struct.use_struct_index = true;
             floor_struct.shared_across_instances = true;
@@ -659,7 +641,7 @@ private:
             rm->primitive_comp->SetMaterialRecipe(recipe);
             hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource mesh_struct{};
             mesh_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
-            mesh_struct.ssbo_id = solid.ssbo_id;
+            mesh_struct.ssbo_id = solid.mi_ssbo_accessor->GetSSBOId();
             mesh_struct.struct_index = rm->color_index;
             mesh_struct.use_struct_index = true;
             mesh_struct.shared_across_instances = true;
@@ -712,7 +694,7 @@ private:
             bbox->primitive_comp->SetMaterialRecipe(recipe);
             hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource bbox_struct{};
             bbox_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
-            bbox_struct.ssbo_id = wire.ssbo_id;
+            bbox_struct.ssbo_id = wire.mi_ssbo_accessor->GetSSBOId();
             bbox_struct.struct_index = 5;
             bbox_struct.use_struct_index = true;
             bbox_struct.shared_across_instances = true;
@@ -755,8 +737,6 @@ public:
         render_mesh.clear();
         rm_floor = nullptr;
 
-        SAFE_CLEAR(wire.mi_ssbo)
-        SAFE_CLEAR(solid.mi_ssbo)
         SAFE_CLEAR(mesh_vdm)
     }
 

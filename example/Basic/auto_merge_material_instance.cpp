@@ -33,8 +33,6 @@ using namespace hgl::ecs;
 
 namespace
 {
-    constexpr uint32_t kAutoMergeMaterialSsboId = hgl::graph::mtl::MakeRecipeSSBOId(8301);
-
     GeometryVertexFormat CreateAutoMergeGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
@@ -70,12 +68,8 @@ private:
     graph::mtl::MaterialRecipe triangle_recipe{};
     PrimitiveAsset triangle_asset{};
 
-    // MI 结构体 SSBO（由本示例创建并注册进 ResourceDomainManager）
-    graph::DeviceBuffer* mi_ssbo = nullptr;
-    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::PBRSurface;
-    uint32_t material_ssbo_id = kAutoMergeMaterialSsboId;
-    uint32_t material_ssbo_count = 0;
-    uint32_t material_ssbo_stride = 0;
+    // MI 结构体 SSBO
+    graph::SSBOArrayAccessor<Color4f>* mi_ssbo_accessor = nullptr;
 
     // 每个三角形的数据
     struct TriangleData
@@ -98,12 +92,11 @@ private:
         triangle_recipe.domain = "AutoMergeMaterialInstance";
         graph::mtl::UpsertRecipeSSBOAssetBinding(triangle_recipe,
                                                  graph::mtl::SBS_MaterialInstance.name,
-                                                 material_ssbo_type,
-                                                 material_ssbo_id);
+                                                 mi_ssbo_accessor->GetSSBOBinding());
 
         triangle_asset = PrimitiveAsset(geometry, &triangle_recipe, PrimitiveType::Triangles);
 
-        std::cout << "[TestApp::InitRecipe] Recipe initialized with ssbo_id=" << material_ssbo_id << std::endl;
+        std::cout << "[TestApp::InitRecipe] Recipe initialized with ssbo_id=" << mi_ssbo_accessor->GetSSBOId() << std::endl;
 
         return true;
     }
@@ -179,7 +172,7 @@ private:
             primitive_comp->SetPrimitiveAsset(&triangle_asset);
             hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource tri_struct{};
             tri_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
-            tri_struct.ssbo_id = material_ssbo_id;
+            tri_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             tri_struct.struct_index = i;
             tri_struct.use_struct_index = true;
             tri_struct.shared_across_instances = false;
@@ -207,59 +200,28 @@ private:
      */
     bool InitMISSBO()
     {
-        const uint32_t mi_data_bytes = sizeof(Color4f);
-
         if (!ecs_world)
             ecs_world = GetECSContext();
         if (!ecs_world)
-        {
-            std::cout << "[TestApp::InitMISSBO] ERROR: Failed to get ECS context!" << std::endl;
             return false;
-        }
 
-        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(DRAW_OBJECT_COUNT) * mi_data_bytes;
-        material_ssbo_count = DRAW_OBJECT_COUNT;
-        material_ssbo_stride = mi_data_bytes;
         auto *domain_manager = GetManager<ResourceDomainManager>();
         if (!domain_manager)
             return false;
 
-        mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{material_ssbo_type, material_ssbo_id, 0},
-                                               "Example:PBRSurface:MIData",
-                                               ssbo_size,
-                                               material_ssbo_count,
-                                               SharingMode::Exclusive);
-        if (!mi_ssbo)
-        {
-            std::cout << "[TestApp::InitMISSBO] ERROR: failed to create PBRSurface SSBO" << std::endl;
+        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+            graph::mtl::SSBOType::PBRSurface,
+            "Example:PBRSurface:MIData",
+            DRAW_OBJECT_COUNT);
+        if (!mi_ssbo_accessor)
             return false;
-        }
 
-        auto* gpu_buf = mi_ssbo->GetGPUBuffer();
-        if (!gpu_buf)
-        {
-            std::cout << "[TestApp::InitMISSBO] ERROR: no GPU buffer" << std::endl;
-            return false;
-        }
-        uint8_t* ptr = static_cast<uint8_t*>(gpu_buf->Map(0, ssbo_size));
-        if (!ptr)
-        {
-            std::cout << "[TestApp::InitMISSBO] ERROR: map failed" << std::endl;
-            return false;
-        }
-        memset(ptr, 0, static_cast<size_t>(ssbo_size));
         for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
         {
-            Color4f color = GetColor4f((COLOR)(i + int(COLOR::Blue)), 1.0f);
-            memcpy(ptr + static_cast<VkDeviceSize>(i) * mi_data_bytes, &color, mi_data_bytes);
-
+            (*mi_ssbo_accessor)[i] = GetColor4f((COLOR)(i + int(COLOR::Blue)), 1.0f);
             triangles[i].entity = nullptr;
         }
-        gpu_buf->Unmap();
-
-        std::cout << "[TestApp::InitMISSBO] PBRSurface SSBO registered: "
-                  << DRAW_OBJECT_COUNT << " instances x " << mi_data_bytes << " bytes"
-                  << ", ssbo_id=" << material_ssbo_id << std::endl;
+        mi_ssbo_accessor->Commit();
 
         return true;
     }
@@ -277,15 +239,15 @@ public:
             return false;
         }
 
-        if (!InitRecipe())
-        {
-            std::cout << "[TestApp::Init] ERROR: InitRecipe failed!" << std::endl;
-            return false;
-        }
-
         if (!InitMISSBO())
         {
             std::cout << "[TestApp::Init] ERROR: InitMISSBO failed!" << std::endl;
+            return false;
+        }
+
+        if (!InitRecipe())
+        {
+            std::cout << "[TestApp::Init] ERROR: InitRecipe failed!" << std::endl;
             return false;
         }
 
@@ -309,7 +271,7 @@ public:
 
     ~TestApp()
     {
-        SAFE_CLEAR(mi_ssbo)
+        SAFE_CLEAR(mi_ssbo_accessor)
     }
 };//class TestApp:public WorkObject
 

@@ -43,8 +43,6 @@ using namespace hgl::ecs;
 
 namespace
 {
-    constexpr uint32_t kRayPickingSsboId = hgl::graph::mtl::MakeRecipeSSBOId(8001);
-
     GeometryVertexFormat CreateVertexLuminance2DGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
@@ -88,10 +86,7 @@ private:
     Geometry *          geom_plane_grid     =nullptr;
     graph::mtl::MaterialRecipe plane_recipe{};
     PrimitiveAsset             plane_asset{};
-    graph::DeviceBuffer *mi_shared_ssbo      =nullptr;
-    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::PBRSurface;
-    uint32_t             material_ssbo_count = 0;
-    uint32_t             material_ssbo_stride = sizeof(Color4f);
+    graph::SSBOArrayAccessor<Color4f>* mi_ssbo_accessor = nullptr;
 
     Geometry *          geom_line           =nullptr;
     graph::mtl::MaterialRecipe line_recipe{};
@@ -108,10 +103,6 @@ private:
         plane_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
         plane_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::VertexLuminance3D);
         plane_recipe.domain = "RayPicking";
-        graph::mtl::UpsertRecipeSSBOAssetBinding(plane_recipe,
-                                                 graph::mtl::SBS_MaterialInstance.name,
-                                                 material_ssbo_type,
-                                                 kRayPickingSsboId);
         line_recipe = plane_recipe;
         line_recipe.recipe_name = "RayPicking.Line";
         return(true);
@@ -188,35 +179,25 @@ private:
 
         const uint32_t plane_slot = 0;
         const uint32_t line_slot = 1;
-
         const uint32_t mi_count = (std::max)(plane_slot, line_slot) + 1;
-        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * material_ssbo_stride;
-        material_ssbo_count = mi_count;
-        GLogInfo("[RayPicking] MI setup: plane_slot=%u line_slot=%u stride=%u count=%u bytes=%llu",
-                 plane_slot, line_slot, material_ssbo_stride, mi_count,
-                 static_cast<unsigned long long>(ssbo_size));
 
-        mi_shared_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{material_ssbo_type, kRayPickingSsboId, 0},
-                                                      "RayPicking:SharedMIData",
-                                                      ssbo_size,
-                                                      material_ssbo_count,
-                                                      SharingMode::Exclusive);
-        if (!mi_shared_ssbo)
+        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+            graph::mtl::SSBOType::PBRSurface,
+            "RayPicking:SharedMIData",
+            mi_count);
+        if (!mi_ssbo_accessor)
             return false;
 
-        auto *gpu_buf = mi_shared_ssbo->GetGPUBuffer();
-        if (!gpu_buf)
-            return false;
+        graph::mtl::UpsertRecipeSSBOAssetBinding(plane_recipe,
+                                                 graph::mtl::SBS_MaterialInstance.name,
+                                                 mi_ssbo_accessor->GetSSBOBinding());
+        graph::mtl::UpsertRecipeSSBOAssetBinding(line_recipe,
+                                                 graph::mtl::SBS_MaterialInstance.name,
+                                                 mi_ssbo_accessor->GetSSBOBinding());
 
-        auto *dst = static_cast<uint8_t *>(gpu_buf->Map(0, ssbo_size));
-        if (!dst)
-            return false;
-
-        memset(dst, 0, static_cast<size_t>(ssbo_size));
-        memcpy(dst + static_cast<VkDeviceSize>(plane_slot) * material_ssbo_stride, &white_color, material_ssbo_stride);
-        memcpy(dst + static_cast<VkDeviceSize>(line_slot) * material_ssbo_stride, &yellow_color, material_ssbo_stride);
-
-        gpu_buf->Unmap();
+        (*mi_ssbo_accessor)[plane_slot] = white_color;
+        (*mi_ssbo_accessor)[line_slot]  = yellow_color;
+        mi_ssbo_accessor->Commit();
 
         // === 步骤2: 创建平面网格实体 ===
         {
@@ -233,7 +214,7 @@ private:
             primitive_comp->SetPrimitiveAsset(&plane_asset);
             hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource plane_struct{};
             plane_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
-            plane_struct.ssbo_id = kRayPickingSsboId;
+            plane_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             plane_struct.struct_index = plane_slot;
             plane_struct.use_struct_index = true;
             plane_struct.shared_across_instances = true;
@@ -258,7 +239,7 @@ private:
             primitive_comp->SetPrimitiveAsset(&line_asset);
             hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource line_struct{};
             line_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
-            line_struct.ssbo_id = kRayPickingSsboId;
+            line_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             line_struct.struct_index = line_slot;
             line_struct.use_struct_index = true;
             line_struct.shared_across_instances = true;
@@ -308,7 +289,7 @@ public:
     {
         SAFE_CLEAR(geom_plane_grid);
         SAFE_CLEAR(geom_line);
-        SAFE_CLEAR(mi_shared_ssbo);
+        SAFE_CLEAR(mi_ssbo_accessor);
     }
 
     bool Init() override

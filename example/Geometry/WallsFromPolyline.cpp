@@ -32,8 +32,6 @@ using namespace hgl::graph;
 
 namespace
 {
-    constexpr uint32_t kWallsFromPolylineSsboId = hgl::graph::mtl::MakeRecipeSSBOId(6001);
-
     GeometryVertexFormat CreateStandardGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
@@ -54,11 +52,7 @@ private:
 
     mtl::StandardMaterialInstance mi_data;
     graph::mtl::MaterialRecipe wall_recipe{};
-    graph::DeviceBuffer *mi_ssbo = nullptr;
-    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::PBRSurface;
-    uint32_t material_ssbo_id = kWallsFromPolylineSsboId;
-    uint32_t material_ssbo_count = 0;
-    uint32_t material_ssbo_stride = sizeof(mtl::StandardMaterialInstance);
+    graph::SSBOArrayAccessor<mtl::StandardMaterialInstance>* mi_ssbo_accessor = nullptr;
     Sampler *sampler = nullptr;
     Texture2D *base_color_texture = nullptr;
     std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
@@ -72,7 +66,7 @@ public:
     {
         SAFE_CLEAR(sampler)
         SAFE_CLEAR(mesh_vdm)
-        SAFE_CLEAR(mi_ssbo)
+        SAFE_CLEAR(mi_ssbo_accessor)
     }
 
     bool InitCamera()
@@ -118,7 +112,7 @@ public:
             prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_color_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource wall_struct{};
             wall_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
-            wall_struct.ssbo_id = material_ssbo_id;
+            wall_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             wall_struct.struct_index = 0;
             wall_struct.use_struct_index = true;
             wall_struct.shared_across_instances = true;
@@ -149,10 +143,26 @@ public:
         wall_recipe.shading_model = graph::mtl::ShadingModel::Standard;
         wall_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Standard);
         wall_recipe.domain = "WallsFromPolyline";
+
+        // Allocate SSBO first so the ID is available before UpsertRecipe.
+        auto *domain_manager = GetManager<ResourceDomainManager>();
+        auto *buffer_manager = GetManager<BufferManager>();
+        if (!domain_manager || !buffer_manager)
+            return false;
+
+        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<mtl::StandardMaterialInstance>(
+            graph::mtl::SSBOType::PBRSurface,
+            "WallsFromPolyline:MIData",
+            1);
+        if (!mi_ssbo_accessor)
+            return false;
+
+        (*mi_ssbo_accessor)[0] = mi_data;
+        mi_ssbo_accessor->Commit();
+
         graph::mtl::UpsertRecipeSSBOAssetBinding(wall_recipe,
                                                  graph::mtl::SBS_MaterialInstance.name,
-                                                 material_ssbo_type,
-                                                 material_ssbo_id);
+                                                 mi_ssbo_accessor->GetSSBOBinding());
 
         // Standard surface (QUALITY_TIER=Medium) samples TexAlbedo; bind a fallback texture.
         base_color_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
@@ -164,24 +174,6 @@ public:
             return false;
 
         // Bindless registration deferred until ECS context is ready.
-
-        // Create external SSBO for Standard material data; runtime binding is driven by recipe authoring.
-        auto *domain_manager = GetManager<ResourceDomainManager>();
-        auto *buffer_manager = GetManager<BufferManager>();
-        if (!domain_manager || !buffer_manager)
-            return false;
-
-        material_ssbo_count = 1;
-        mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{material_ssbo_type, material_ssbo_id, 0},
-                                               "WallsFromPolyline:MIData",
-                                               material_ssbo_stride,
-                                               material_ssbo_count,
-                                               SharingMode::Exclusive);
-        if (!mi_ssbo)
-            return false;
-
-        if (auto *gpu = mi_ssbo->GetGPUBuffer())
-            gpu->Write(&mi_data, 0, hgl_min(material_ssbo_stride, static_cast<uint32_t>(sizeof(mi_data))));
 
         mesh_vdm = new VertexDataManager(
             buffer_manager,

@@ -31,8 +31,6 @@ using namespace hgl::graph;
 
 namespace
 {
-    constexpr uint32_t kExtrudedPolygonSsboId = hgl::graph::mtl::MakeRecipeSSBOId(8501);
-
     GeometryVertexFormat CreateGizmo3DGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
@@ -51,11 +49,7 @@ private:
     hgl::ecs::Entity *camera_entity = nullptr;
 
     graph::mtl::MaterialRecipe mesh_recipe{};
-    graph::DeviceBuffer *mi_ssbo           = nullptr;
-    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::PBRSurface;
-    uint32_t material_ssbo_id = kExtrudedPolygonSsboId;
-    uint32_t material_ssbo_count = 0;
-    uint32_t material_ssbo_stride = sizeof(Color4f);
+    graph::SSBOArrayAccessor<Color4f>* mi_ssbo_accessor = nullptr;
 
     Geometry *         prim_rect_cube      = nullptr;
     Geometry *         prim_circle_cylinder = nullptr;
@@ -74,18 +68,15 @@ private:
         if (!domain_manager)
             return false;
 
-        const Color4f color = GetColor4f(COLOR::BlenderAxisRed, 1.0f);
-        material_ssbo_count = 1;
-        mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{material_ssbo_type, material_ssbo_id, 0},
-                                               "ExtrudedPolygonTest:MIData",
-                                               material_ssbo_stride,
-                                               material_ssbo_count,
-                                               SharingMode::Exclusive);
-        if (!mi_ssbo)
+        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+            graph::mtl::SSBOType::PBRSurface,
+            "ExtrudedPolygonTest:MIData",
+            1);
+        if (!mi_ssbo_accessor)
             return false;
 
-        if (auto *gpu = mi_ssbo->GetGPUBuffer())
-            gpu->Write(&color, 0, hgl_min(material_ssbo_stride, static_cast<uint32_t>(sizeof(color))));
+        (*mi_ssbo_accessor)[0] = GetColor4f(COLOR::BlenderAxisRed, 1.0f);
+        mi_ssbo_accessor->Commit();
 
         mesh_recipe.recipe_name = "ExtrudedPolygonTest.Gizmo3D";
         mesh_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
@@ -93,8 +84,7 @@ private:
         mesh_recipe.domain = "ExtrudedPolygonTest";
         graph::mtl::UpsertRecipeSSBOAssetBinding(mesh_recipe,
                                                  graph::mtl::SBS_MaterialInstance.name,
-                                                 material_ssbo_type,
-                                                 material_ssbo_id);
+                                                 mi_ssbo_accessor->GetSSBOBinding());
 
         return true;
     }
@@ -199,7 +189,7 @@ private:
         prim_comp->SetPrimitiveAsset(mesh_asset);
         hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource mesh_struct{};
         mesh_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
-        mesh_struct.ssbo_id = material_ssbo_id;
+        mesh_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
         mesh_struct.struct_index = 0;
         mesh_struct.use_struct_index = true;
         mesh_struct.shared_across_instances = true;
@@ -276,7 +266,7 @@ public:
         SAFE_CLEAR(prim_circle_cylinder);
         SAFE_CLEAR(prim_triangle);
         SAFE_CLEAR(prim_pentagon);
-        SAFE_CLEAR(mi_ssbo)
+        SAFE_CLEAR(mi_ssbo_accessor)
     }
 
     bool Init() override

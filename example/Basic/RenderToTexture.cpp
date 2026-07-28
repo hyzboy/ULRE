@@ -44,9 +44,6 @@ using namespace hgl::ecs;
 
 namespace
 {
-    constexpr uint32_t kRenderToTextureOffscreenSsboId = hgl::graph::mtl::MakeRecipeSSBOId(3001);
-    constexpr uint32_t kRenderToTextureCubeSsboId = hgl::graph::mtl::MakeRecipeSSBOId(3002);
-
     GeometryVertexFormat CreateGizmo3DGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
@@ -104,11 +101,8 @@ private:
     MaterialProgram *mtl = nullptr;
     Geometry *geometry = nullptr;
     Primitive *primitive = nullptr;
-    graph::DeviceBuffer *mi_ssbo = nullptr;
+    graph::SSBOArrayAccessor<Color4f>* mi_ssbo_accessor = nullptr;
     graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::UserDefined;
-    uint32_t material_ssbo_id = 0;
-    uint32_t material_ssbo_count = 0;
-    uint32_t material_ssbo_stride = 0;
     Color4f sphere_color_data{};
     Entity *sphere_entity = nullptr;
     std::shared_ptr<PrimitiveComponent> sphere_primitive_comp;
@@ -181,8 +175,7 @@ private:
         if (!domain_manager)
             return LogStageFail("OffscreenPass::InitMISSBO", "resource domain manager is null");
 
-        const uint32_t mi_data_bytes = mtl->GetMIDataBytes();
-        if (mi_data_bytes == 0)
+        if (mtl->GetMIDataBytes() == 0)
         {
             LogStage("OffscreenPass::InitMISSBO", "mi_data_bytes is zero, skip SSBO");
             return true;
@@ -196,38 +189,20 @@ private:
 
             has_struct_binding = true;
             material_ssbo_type = req.ssbo_type;
-            material_ssbo_id = kRenderToTextureOffscreenSsboId;
             break;
         }
         if (!has_struct_binding)
             return LogStageFail("OffscreenPass::InitMISSBO", "MaterialInstance resource layout not found");
 
-        const uint32_t mi_count = 1;
-        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * mi_data_bytes;
-        material_ssbo_count = mi_count;
-        material_ssbo_stride = mi_data_bytes;
-        GLogInfo("[RenderToTexture][OffscreenPass::InitMISSBO] slot=%u mi_bytes=%u mi_count=%u ssbo_size=%llu",
-                 0u, mi_data_bytes, mi_count, static_cast<unsigned long long>(ssbo_size));
-
-        mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{material_ssbo_type, material_ssbo_id, 0},
-                                               "RenderToTexture:OffscreenPass:MIData",
-                                               ssbo_size,
-                                               material_ssbo_count,
-                                               SharingMode::Exclusive);
-        if (!mi_ssbo)
+        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+            material_ssbo_type,
+            "RenderToTexture:OffscreenPass:MIData",
+            1);
+        if (!mi_ssbo_accessor)
             return LogStageFail("OffscreenPass::InitMISSBO", "CreateSSBO failed");
 
-        auto *gpu_buf = mi_ssbo->GetGPUBuffer();
-        if (!gpu_buf)
-            return LogStageFail("OffscreenPass::InitMISSBO", "GetGPUBuffer failed");
-
-        auto *dst = static_cast<uint8_t *>(gpu_buf->Map(0, ssbo_size));
-        if (!dst)
-            return LogStageFail("OffscreenPass::InitMISSBO", "SSBO map failed");
-
-        memset(dst, 0, static_cast<size_t>(ssbo_size));
-        memcpy(dst, &sphere_color_data, mi_data_bytes);
-        gpu_buf->Unmap();
+        (*mi_ssbo_accessor)[0] = sphere_color_data;
+        mi_ssbo_accessor->Commit();
 
         LogStage("OffscreenPass::InitMISSBO", "success");
         return has_struct_binding;
@@ -263,9 +238,10 @@ public:
             }
         }
 
+        delete mi_ssbo_accessor;
+        mi_ssbo_accessor = nullptr;
         primitive = nullptr;
         geometry = nullptr;
-        mi_ssbo = nullptr;
         mtl = nullptr;
     }
 
@@ -364,7 +340,7 @@ public:
         prim_comp->SetMaterialRecipe(recipe);
         hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource sphere_struct{};
         sphere_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
-        sphere_struct.ssbo_id = material_ssbo_id;
+        sphere_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
         sphere_struct.struct_index = 0;
         sphere_struct.use_struct_index = true;
         sphere_struct.shared_across_instances = true;
@@ -430,13 +406,10 @@ private:
     Entity *cube_entity = nullptr;
 
     MaterialProgram *cube_mtl = nullptr;
-    graph::DeviceBuffer *cube_mi_ssbo = nullptr;
+    graph::SSBOArrayAccessor<mtl::StandardMaterialInstance>* cube_mi_ssbo_accessor = nullptr;
     Sampler *cube_sampler = nullptr;
     Primitive *cube_primitive = nullptr;
     graph::mtl::SSBOType cube_ssbo_type = graph::mtl::SSBOType::UserDefined;
-    uint32_t cube_ssbo_id = 0;
-    uint32_t cube_ssbo_count = 0;
-    uint32_t cube_ssbo_stride = 0;
     mtl::StandardMaterialInstance cube_mi_data{};
 
     Texture2D *base_tex = nullptr;
@@ -593,7 +566,7 @@ private:
         cube_prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_tex, cube_sampler);
         hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource cube_struct{};
         cube_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
-        cube_struct.ssbo_id = cube_ssbo_id;
+        cube_struct.ssbo_id = cube_mi_ssbo_accessor->GetSSBOId();
         cube_struct.struct_index = 0;
         cube_struct.use_struct_index = true;
         cube_struct.shared_across_instances = true;
@@ -622,8 +595,7 @@ private:
         if (!domain_manager)
             return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "resource domain manager is null");
 
-        const uint32_t mi_data_bytes = cube_mtl->GetMIDataBytes();
-        if (mi_data_bytes == 0)
+        if (cube_mtl->GetMIDataBytes() == 0)
         {
             LogStage("RenderToTextureApp::InitCubeMISSBO", "mi_data_bytes is zero, skip SSBO");
             return true;
@@ -637,38 +609,20 @@ private:
 
             has_struct_binding = true;
             cube_ssbo_type = req.ssbo_type;
-            cube_ssbo_id = kRenderToTextureCubeSsboId;
             break;
         }
         if (!has_struct_binding)
             return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "MaterialInstance resource layout not found");
 
-        const uint32_t mi_count = 1;
-        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * mi_data_bytes;
-        cube_ssbo_count = mi_count;
-        cube_ssbo_stride = mi_data_bytes;
-        GLogInfo("[RenderToTexture][RenderToTextureApp::InitCubeMISSBO] slot=%u mi_bytes=%u mi_count=%u ssbo_size=%llu",
-                 0u, mi_data_bytes, mi_count, static_cast<unsigned long long>(ssbo_size));
-
-        cube_mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{cube_ssbo_type, cube_ssbo_id, 0},
-                                                    "RenderToTexture:MainScene:MIData",
-                                                    ssbo_size,
-                                                    cube_ssbo_count,
-                                                    SharingMode::Exclusive);
-        if (!cube_mi_ssbo)
+        cube_mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<mtl::StandardMaterialInstance>(
+            cube_ssbo_type,
+            "RenderToTexture:MainScene:MIData",
+            1);
+        if (!cube_mi_ssbo_accessor)
             return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "CreateSSBO failed");
 
-        auto *gpu_buf = cube_mi_ssbo->GetGPUBuffer();
-        if (!gpu_buf)
-            return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "GetGPUBuffer failed");
-
-        auto *dst = static_cast<uint8_t *>(gpu_buf->Map(0, ssbo_size));
-        if (!dst)
-            return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "SSBO map failed");
-
-        memset(dst, 0, static_cast<size_t>(ssbo_size));
-        memcpy(dst, &cube_mi_data, mi_data_bytes);
-        gpu_buf->Unmap();
+        (*cube_mi_ssbo_accessor)[0] = cube_mi_data;
+        cube_mi_ssbo_accessor->Commit();
 
         LogStage("RenderToTextureApp::InitCubeMISSBO", "success");
         return has_struct_binding;
@@ -700,7 +654,7 @@ public:
         }
 
         cube_primitive = nullptr;
-        cube_mi_ssbo = nullptr;
+        SAFE_CLEAR(cube_mi_ssbo_accessor)
         cube_mtl = nullptr;
         cube_sampler = nullptr;
         base_tex = nullptr;

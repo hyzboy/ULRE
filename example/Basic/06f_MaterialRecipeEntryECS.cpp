@@ -48,8 +48,6 @@ using namespace hgl::ecs;
 
 namespace
 {
-    constexpr uint32_t kMaterialRecipeEntrySsboId = hgl::graph::mtl::MakeRecipeSSBOId(8402);
-
     GeometryVertexFormat CreateGizmo3DGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
@@ -69,11 +67,7 @@ private:
     Entity *      camera_entity  =nullptr;
 
     Geometry *          geometry        = nullptr;
-    graph::DeviceBuffer *mi_ssbo        = nullptr;
-    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::PBRSurface;
-    uint32_t             material_ssbo_id = kMaterialRecipeEntrySsboId;
-    uint32_t             material_ssbo_count = 0;
-    uint32_t             material_ssbo_stride = sizeof(Color4f);
+    graph::SSBOArrayAccessor<Color4f>* mi_ssbo_accessor = nullptr;
     graph::mtl::MaterialRecipe cube_recipe{};
     PrimitiveAsset             cube_asset{};
 
@@ -119,42 +113,19 @@ private:
 
     bool InitMISSBO()
     {
-        if (!ecs_context)
-            ecs_context = GetECSContext();
-        if (!ecs_context)
-            return false;
-
         auto* domain_manager = GetManager<ResourceDomainManager>();
         if (!domain_manager)
             return false;
 
-        const uint32_t mi_count = 1;
-        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * material_ssbo_stride;
-        material_ssbo_count = mi_count;
-
-        mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{material_ssbo_type, material_ssbo_id, 0},
-                                               "SimpleCube:PBRSurface:MIData",
-                                               ssbo_size,
-                                               material_ssbo_count,
-                                               SharingMode::Exclusive);
-        if (!mi_ssbo)
+        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+            graph::mtl::SSBOType::PBRSurface,
+            "MaterialRecipeEntry:PBRSurface:MIData",
+            1);
+        if (!mi_ssbo_accessor)
             return false;
 
-        auto *gpu_buf = mi_ssbo->GetGPUBuffer();
-        if (!gpu_buf)
-            return false;
-
-        uint8_t *dst = static_cast<uint8_t *>(gpu_buf->Map(0, ssbo_size));
-        if (!dst)
-            return false;
-
-        memset(dst, 0, static_cast<size_t>(ssbo_size));
-
-        const Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-        memcpy(dst, &color, material_ssbo_stride);
-
-        gpu_buf->Unmap();
-
+        (*mi_ssbo_accessor)[0] = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
+        mi_ssbo_accessor->Commit();
         return true;
     }
     bool InitECS()
@@ -179,13 +150,12 @@ private:
         cube_recipe.domain = "Phase2AuthoringTest";
         graph::mtl::UpsertRecipeSSBOAssetBinding(cube_recipe,
                                                  graph::mtl::SBS_MaterialInstance.name,
-                                                 material_ssbo_type,
-                                                 material_ssbo_id);
+                                                 mi_ssbo_accessor->GetSSBOBinding());
         cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
         primitive_comp->SetPrimitiveAsset(&cube_asset);
         hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource named_struct{};
         named_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
-        named_struct.ssbo_id = material_ssbo_id;
+        named_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
         named_struct.struct_index = 0;
         named_struct.use_struct_index = false;
         named_struct.shared_across_instances = true;
@@ -221,7 +191,7 @@ private:
 public:
     ~TestApp()
     {
-        SAFE_CLEAR(mi_ssbo)
+        SAFE_CLEAR(mi_ssbo_accessor)
         SAFE_CLEAR(geometry)
     }
 

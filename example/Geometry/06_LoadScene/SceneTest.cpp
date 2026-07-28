@@ -71,7 +71,6 @@ constexpr const COLOR TestColor[] =
 };
 
 constexpr const size_t COLOR_COUNT = sizeof(TestColor) / sizeof(COLOR);
-constexpr uint32_t kLoadSceneSolidSsboId = hgl::graph::mtl::MakeRecipeSSBOId(5001);
 
 class TestApp:public WorkObject
 {
@@ -85,11 +84,14 @@ private:
         MaterialProgram *material = nullptr;
         const VIL *vil = nullptr;
         GeometryVertexFormat geometry_vertex_format;
-        graph::DeviceBuffer *mi_ssbo = nullptr;
-        graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::UserDefined;
-        uint32_t ssbo_id = 0;
+        graph::SSBOArrayAccessor<Color4f>* mi_ssbo_accessor = nullptr;
         uint32_t ssbo_count = 0;
-        uint32_t ssbo_stride = 0;
+
+        ~MaterialData()
+        {
+            delete mi_ssbo_accessor;
+            mi_ssbo_accessor = nullptr;
+        }
     };
 
     MaterialData solid;
@@ -123,52 +125,34 @@ private:
         if (md->geometry_vertex_format.GetCount() == 0)
             return false;
 
-        const uint32_t stride      = md->material->GetMIDataBytes();
-        const uint32_t color_count = static_cast<uint32_t>(COLOR_COUNT);
-
-        if (stride > 0)
+        if (md->material->GetMIDataBytes() > 0)
         {
+            const uint32_t color_count = static_cast<uint32_t>(COLOR_COUNT);
             bool has_struct_binding = false;
+            graph::mtl::SSBOType ssbo_type = graph::mtl::SSBOType::UserDefined;
             for (const auto &req : md->material->GetMaterialResourceLayout().requirements)
             {
                 if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
                     continue;
 
                 has_struct_binding = true;
-                md->material_ssbo_type = req.ssbo_type;
-                md->ssbo_id = kLoadSceneSolidSsboId;
+                ssbo_type = req.ssbo_type;
                 break;
             }
             if (!has_struct_binding)
                 return false;
 
-            md->ssbo_stride = stride;
             md->ssbo_count = color_count;
-            const VkDeviceSize ssbo_size = VkDeviceSize(color_count) * stride;
-            md->mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{md->material_ssbo_type, md->ssbo_id, 0},
-                                                       tag,
-                                                       ssbo_size,
-                                                       md->ssbo_count,
-                                                       SharingMode::Exclusive);
-            if (!md->mi_ssbo)
+            md->mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+                ssbo_type,
+                tag,
+                color_count);
+            if (!md->mi_ssbo_accessor)
                 return false;
 
-            auto *gpu_buf = md->mi_ssbo->GetGPUBuffer();
-            if (!gpu_buf)
-                return false;
-
-            auto *dst = static_cast<uint8_t *>(gpu_buf->Map(0, ssbo_size));
-            if (!dst)
-                return false;
-
-            memset(dst, 0, static_cast<size_t>(ssbo_size));
-            const uint32_t copy_bytes = hgl_min(stride, static_cast<uint32_t>(sizeof(Color4f)));
             for (uint32_t i = 0; i < color_count; ++i)
-            {
-                const Color4f color = GetColor4f(TestColor[i], 1.0f);
-                memcpy(dst + VkDeviceSize(i) * stride, &color, copy_bytes);
-            }
-            gpu_buf->Unmap();
+                (*md->mi_ssbo_accessor)[i] = GetColor4f(TestColor[i], 1.0f);
+            md->mi_ssbo_accessor->Commit();
         }
 
         return true;
@@ -259,7 +243,7 @@ private:
                 se.primitive_comp->SetMaterialRecipe(recipe);
                 hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource scene_struct{};
                 scene_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
-                scene_struct.ssbo_id = solid.ssbo_id;
+                scene_struct.ssbo_id = solid.mi_ssbo_accessor->GetSSBOId();
                 scene_struct.struct_index = (entity_idx - 1) % COLOR_COUNT;
                 scene_struct.use_struct_index = true;
                 scene_struct.shared_across_instances = true;
@@ -318,7 +302,6 @@ public:
     {
         scene_entities_.clear();
         delete scene_mesh_;
-        SAFE_CLEAR(solid.mi_ssbo)
     }
 
     bool Init() override

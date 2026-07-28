@@ -38,9 +38,6 @@ using namespace hgl::graph;
 
 namespace
 {
-    constexpr uint32_t kGizmoUsageGridSsboId = hgl::graph::mtl::MakeRecipeSSBOId(8101);
-    constexpr uint32_t kGizmoUsageCubeSsboId = hgl::graph::mtl::MakeRecipeSSBOId(8102);
-
     GeometryVertexFormat CreateVertexLuminance2DGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
@@ -74,21 +71,13 @@ private:
 
     graph::mtl::MaterialRecipe grid_recipe{};
     PrimitiveAsset             grid_asset{};
-    graph::DeviceBuffer *grid_mi_ssbo = nullptr;
+    graph::SSBOArrayAccessor<Color4f>* grid_mi_ssbo_accessor = nullptr;
     Geometry *grid_geometry = nullptr;
 
     graph::mtl::MaterialRecipe cube_recipe{};
     PrimitiveAsset             cube_asset{};
-    graph::DeviceBuffer *cube_mi_ssbo = nullptr;
+    graph::SSBOArrayAccessor<Color4f>* cube_mi_ssbo_accessor = nullptr;
     Geometry *cube_geometry = nullptr;
-    graph::mtl::SSBOType grid_mi_ssbo_type = graph::mtl::SSBOType::PBRSurface;
-    uint32_t grid_mi_ssbo_id = kGizmoUsageGridSsboId;
-    uint32_t grid_mi_ssbo_count = 0;
-    uint32_t grid_mi_ssbo_stride = sizeof(Color4f);
-    graph::mtl::SSBOType cube_mi_ssbo_type = graph::mtl::SSBOType::PBRSurface;
-    uint32_t cube_mi_ssbo_id = kGizmoUsageCubeSsboId;
-    uint32_t cube_mi_ssbo_count = 0;
-    uint32_t cube_mi_ssbo_stride = sizeof(Color4f);
 
     std::string debug_cache;
 
@@ -120,18 +109,15 @@ private:
             if (!domain_manager)
                 return false;
 
-            const Color4f white = GetColor4f(COLOR::White, 1.0f);
-            const uint32_t grid_slot_count = 1;
-            grid_mi_ssbo_count = grid_slot_count;
-            grid_mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{grid_mi_ssbo_type, grid_mi_ssbo_id, 0},
-                                                        "GizmoUsage:GridMIData",
-                                                        grid_mi_ssbo_stride * grid_slot_count,
-                                                        grid_mi_ssbo_count,
-                                                        SharingMode::Exclusive);
-            if (!grid_mi_ssbo)
+            grid_mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+                graph::mtl::SSBOType::PBRSurface,
+                "GizmoUsage:GridMIData",
+                1);
+            if (!grid_mi_ssbo_accessor)
                 return false;
-            if (auto *gpu = grid_mi_ssbo->GetGPUBuffer())
-                gpu->Write(&white, 0, hgl_min(grid_mi_ssbo_stride, static_cast<uint32_t>(sizeof(white))));
+
+            (*grid_mi_ssbo_accessor)[0] = GetColor4f(COLOR::White, 1.0f);
+            grid_mi_ssbo_accessor->Commit();
 
             grid_recipe.recipe_name = "GizmoUsageExample.VertexLuminance3D";
             grid_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
@@ -139,8 +125,7 @@ private:
             grid_recipe.domain = "GizmoUsageExample";
             graph::mtl::UpsertRecipeSSBOAssetBinding(grid_recipe,
                                                      graph::mtl::SBS_MaterialInstance.name,
-                                                     grid_mi_ssbo_type,
-                                                     grid_mi_ssbo_id);
+                                                     grid_mi_ssbo_accessor->GetSSBOBinding());
             grid_asset = PrimitiveAsset(grid_geometry, &grid_recipe, PrimitiveType::Lines);
         }
 
@@ -164,17 +149,15 @@ private:
 
             geometry_manager->Add(cube_geometry);
 
-            const Color4f blue = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-            cube_mi_ssbo_count = 1;
-            cube_mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{cube_mi_ssbo_type, cube_mi_ssbo_id, 0},
-                                                        "GizmoUsage:CubeMIData",
-                                                        cube_mi_ssbo_stride,
-                                                        cube_mi_ssbo_count,
-                                                        SharingMode::Exclusive);
-            if (!cube_mi_ssbo)
+            cube_mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+                graph::mtl::SSBOType::PBRSurface,
+                "GizmoUsage:CubeMIData",
+                1);
+            if (!cube_mi_ssbo_accessor)
                 return false;
-            if (auto *gpu = cube_mi_ssbo->GetGPUBuffer())
-                gpu->Write(&blue, 0, hgl_min(cube_mi_ssbo_stride, static_cast<uint32_t>(sizeof(blue))));
+
+            (*cube_mi_ssbo_accessor)[0] = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
+            cube_mi_ssbo_accessor->Commit();
 
             cube_recipe.recipe_name = "GizmoUsageExample.Gizmo3D";
             cube_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
@@ -182,8 +165,7 @@ private:
             cube_recipe.domain = "GizmoUsageExample";
             graph::mtl::UpsertRecipeSSBOAssetBinding(cube_recipe,
                                                      graph::mtl::SBS_MaterialInstance.name,
-                                                     cube_mi_ssbo_type,
-                                                     cube_mi_ssbo_id);
+                                                     cube_mi_ssbo_accessor->GetSSBOBinding());
             cube_asset = PrimitiveAsset(cube_geometry, &cube_recipe, PrimitiveType::Triangles);
         }
 
@@ -206,7 +188,7 @@ private:
         plane_primitive_comp->SetPrimitiveAsset(&grid_asset);
         hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource plane_struct{};
         plane_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
-        plane_struct.ssbo_id = grid_mi_ssbo_id;
+        plane_struct.ssbo_id = grid_mi_ssbo_accessor->GetSSBOId();
         plane_struct.struct_index = 0;
         plane_struct.use_struct_index = true;
         plane_struct.shared_across_instances = true;
@@ -225,7 +207,7 @@ private:
         cube_primitive_comp->SetPrimitiveAsset(&cube_asset);
         hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource cube_struct{};
         cube_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
-        cube_struct.ssbo_id = cube_mi_ssbo_id;
+        cube_struct.ssbo_id = cube_mi_ssbo_accessor->GetSSBOId();
         cube_struct.struct_index = 0;
         cube_struct.use_struct_index = true;
         cube_struct.shared_across_instances = true;
@@ -367,8 +349,8 @@ public:
         gizmo_system.reset();
         // graph modules own GPU resources and release them during graphics shutdown.
         // Keep raw pointers non-owning here to avoid teardown order double-free.
-        grid_mi_ssbo = nullptr;
-        cube_mi_ssbo = nullptr;
+        SAFE_CLEAR(grid_mi_ssbo_accessor)
+        SAFE_CLEAR(cube_mi_ssbo_accessor)
     }
 
     void Tick(double delta) override

@@ -29,22 +29,13 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-namespace
-{
-    constexpr uint32_t kPlaneGrid3DSsboId = hgl::graph::mtl::MakeRecipeSSBOId(7001);
-}
-
 class TestApp:public WorkObject
 {
 private:
 
     hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
-    graph::DeviceBuffer *mi_ssbo            =nullptr;
-    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::PBRSurface;
-    uint32_t             material_ssbo_id = kPlaneGrid3DSsboId;
-    uint32_t             material_ssbo_count = 0;
-    uint32_t             material_ssbo_stride = sizeof(Color4f);
+    graph::SSBOArrayAccessor<Color4f>* mi_ssbo_accessor = nullptr;
 
     Geometry *         geom_plane_grid     =nullptr;
     graph::mtl::MaterialRecipe plane_grid_recipe{};
@@ -97,7 +88,7 @@ private:
         prim_comp->SetPrimitiveAsset(&plane_grid_asset);
         hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource named_struct{};
         named_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
-        named_struct.ssbo_id = material_ssbo_id;
+        named_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
         named_struct.struct_index = struct_index;
         named_struct.use_struct_index = true;
         named_struct.shared_across_instances = true;
@@ -117,7 +108,7 @@ private:
         plane_grid_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
         plane_grid_recipe.base_material_info_name = "VertexLuminance3D";
         plane_grid_recipe.domain = "PlaneGrid3D";
-        plane_grid_recipe.ssbo_assets.push_back({graph::mtl::SBS_MaterialInstance.name, material_ssbo_type, material_ssbo_id});
+        graph::mtl::UpsertRecipeSSBOAssetBinding(plane_grid_recipe, graph::mtl::SBS_MaterialInstance.name, mi_ssbo_accessor->GetSSBOBinding());
         plane_grid_asset = PrimitiveAsset(geom_plane_grid, &plane_grid_recipe, PrimitiveType::Lines);
 
         if(!Add("PlaneXY", 0, glm::quat(1.0f, 0.0f, 0.0f, 0.0f)))
@@ -137,40 +128,24 @@ private:
         if (!ecs_context)
             return false;
 
-        const uint32_t mi_count = 3;
-        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * material_ssbo_stride;
-        material_ssbo_count = mi_count;
-
         auto *domain_manager = GetManager<ResourceDomainManager>();
         if (!domain_manager)
             return false;
 
-        mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{material_ssbo_type, material_ssbo_id, 0},
-                                               "PlaneGrid3D:MIData",
-                                               ssbo_size,
-                                               mi_count,
-                                               SharingMode::Exclusive);
-        if (!mi_ssbo)
+        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+            graph::mtl::SSBOType::PBRSurface,
+            "PlaneGrid3D:MIData",
+            3);
+        if (!mi_ssbo_accessor)
             return false;
 
-        auto *gpu_buf = mi_ssbo->GetGPUBuffer();
-        if (!gpu_buf)
-            return false;
-
-        auto *dst = static_cast<uint8_t *>(gpu_buf->Map(0, ssbo_size));
-        if (!dst)
-            return false;
-
-        memset(dst, 0, static_cast<size_t>(ssbo_size));
-
-        Color4f grid_color = GetColor4f(COLOR::BlenderAxisRed,1.0f);
+        Color4f grid_color = GetColor4f(COLOR::BlenderAxisRed, 1.0f);
         for (uint32_t i = 0; i < 3; ++i)
         {
-            memcpy(dst + static_cast<VkDeviceSize>(i) * material_ssbo_stride, &grid_color, material_ssbo_stride);
-
+            (*mi_ssbo_accessor)[i] = grid_color;
             grid_color = GetColor4f(COLOR(int(COLOR::BlenderAxisRed) + int(i) + 1), 1.0f);
         }
-        gpu_buf->Unmap();
+        mi_ssbo_accessor->Commit();
 
         return true;
     }
@@ -220,6 +195,7 @@ private:
 public:
     ~TestApp()
     {
+        SAFE_CLEAR(mi_ssbo_accessor)
         SAFE_CLEAR(geom_plane_grid);
     }
 

@@ -668,43 +668,39 @@ namespace hgl::ecs
                                 materialization_data_index_capacity,
                                 static_cast<uint32_t>(graph::mtl::DataSlot::RANGE_SIZE));
 
-        if (texture_rows > 0 && materialization_texture_layer_ssbo && materialization_texture_layer_ssbo->GetGPUBuffer())
+        if (texture_rows > 0 && materialization_texture_layer_ssbo)
         {
-            auto *gpu = materialization_texture_layer_ssbo->GetGPUBuffer();
-            auto *dst = static_cast<std::uint8_t *>(gpu->Map(0, static_cast<VkDeviceSize>(texture_rows) * sizeof(graph::mtl::TextureLayerRow)));
-            if (dst)
+            auto *acc = graph::SSBOArrayAccessor<graph::mtl::TextureLayerRow>::Create(
+                materialization_texture_layer_ssbo, texture_rows);
+            if (acc)
             {
                 for (uint32_t i = 0; i < texture_rows; ++i)
                 {
                     const auto *row = materialization_index_tables.GetTextureLayerRow(i);
-                    if (!row)
-                        break;
-
-                    std::memcpy(dst + static_cast<size_t>(i) * sizeof(graph::mtl::TextureLayerRow),
-                                row,
-                                sizeof(graph::mtl::TextureLayerRow));
+                    if (!row) break;
+                    (*acc)[i] = *row;
                 }
-                gpu->Unmap();
+                acc->MarkDirty();
+                acc->Commit();
+                delete acc;
             }
         }
 
-        if (data_rows > 0 && materialization_data_index_ssbo && materialization_data_index_ssbo->GetGPUBuffer())
+        if (data_rows > 0 && materialization_data_index_ssbo)
         {
-            auto *gpu = materialization_data_index_ssbo->GetGPUBuffer();
-            auto *dst = static_cast<std::uint8_t *>(gpu->Map(0, static_cast<VkDeviceSize>(data_rows) * sizeof(graph::mtl::DataIndexRow)));
-            if (dst)
+            auto *acc = graph::SSBOArrayAccessor<graph::mtl::DataIndexRow>::Create(
+                materialization_data_index_ssbo, data_rows);
+            if (acc)
             {
                 for (uint32_t i = 0; i < data_rows; ++i)
                 {
                     const auto *row = materialization_index_tables.GetDataIndexRow(i);
-                    if (!row)
-                        break;
-
-                    std::memcpy(dst + static_cast<size_t>(i) * sizeof(graph::mtl::DataIndexRow),
-                                row,
-                                sizeof(graph::mtl::DataIndexRow));
+                    if (!row) break;
+                    (*acc)[i] = *row;
                 }
-                gpu->Unmap();
+                acc->MarkDirty();
+                acc->Commit();
+                delete acc;
             }
         }
 

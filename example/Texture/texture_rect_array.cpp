@@ -28,8 +28,6 @@ using namespace hgl::ecs;
 
 namespace
 {
-    constexpr uint32_t kTextureRectArraySsboId = hgl::graph::mtl::MakeRecipeSSBOId(8201);
-
     GeometryVertexFormat CreateRectTexture2DArrayGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
@@ -82,12 +80,8 @@ private:
     Sampler *           sampler             = nullptr;
     graph::mtl::MaterialRecipe rect_recipe{};
     PrimitiveAsset      rect_asset{};
-    DeviceBuffer *      mi_ssbo             = nullptr;
+    graph::SSBOArrayAccessor<uint32_t>* mi_ssbo_accessor = nullptr;
     std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
-    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::PBRSurface;
-    uint32_t material_ssbo_id = kTextureRectArraySsboId;
-    uint32_t material_ssbo_count = 0;
-    uint32_t material_ssbo_stride = sizeof(uint32_t);
 
     struct
     {
@@ -135,29 +129,16 @@ private:
 
         sampler=sampler_manager->CreateSampler();
 
-        material_ssbo_count = TexCount;
-        mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{material_ssbo_type, material_ssbo_id, 0},
-                                               "TextureRectArray:MIData",
-                                               VkDeviceSize(TexCount) * material_ssbo_stride,
-                                               material_ssbo_count,
-                                               SharingMode::Exclusive);
-        if (!mi_ssbo)
+        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<uint32_t>(
+            graph::mtl::SSBOType::PBRSurface,
+            "TextureRectArray:MIData",
+            TexCount);
+        if (!mi_ssbo_accessor)
             return false;
 
-        auto *gpu_buf = mi_ssbo->GetGPUBuffer();
-        if (!gpu_buf)
-            return false;
-
-        auto *dst = static_cast<uint8_t *>(gpu_buf->Map(0, VkDeviceSize(TexCount) * material_ssbo_stride));
-        if (!dst)
-            return false;
-
-        memset(dst, 0, size_t(TexCount) * material_ssbo_stride);
         for (uint32_t i = 0; i < TexCount; ++i)
-        {
-            memcpy(dst + VkDeviceSize(i) * material_ssbo_stride, &i, sizeof(uint32_t));
-        }
-        gpu_buf->Unmap();
+            (*mi_ssbo_accessor)[i] = i;
+        mi_ssbo_accessor->Commit();
 
         rect_recipe.recipe_name = "TextureRectArray.RectTexture2DArray";
         rect_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
@@ -167,8 +148,7 @@ private:
         rect_recipe.domain = "TextureRectArray";
         graph::mtl::UpsertRecipeSSBOAssetBinding(rect_recipe,
                                                  graph::mtl::SBS_MaterialInstance.name,
-                                                 material_ssbo_type,
-                                                 material_ssbo_id);
+                                                 mi_ssbo_accessor->GetSSBOBinding());
 
         return(true);
     }
@@ -224,7 +204,7 @@ private:
                                                   PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray);
             hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource rect_struct{};
             rect_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
-            rect_struct.ssbo_id = material_ssbo_id;
+            rect_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             rect_struct.struct_index = i;
             rect_struct.use_struct_index = true;
             rect_struct.shared_across_instances = false;
@@ -241,7 +221,7 @@ public:
     explicit TestApp(std::shared_ptr<ecs::ECSContext> ctx) : WorkObject(std::move(ctx)) {}
     ~TestApp()
     {
-        SAFE_CLEAR(mi_ssbo)
+        SAFE_CLEAR(mi_ssbo_accessor)
     }
     bool Init() override
     {

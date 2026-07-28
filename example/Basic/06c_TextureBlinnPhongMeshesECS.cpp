@@ -66,12 +66,8 @@ private:
     Entity* camera_entity = nullptr;
 
     graph::mtl::MaterialRecipe mesh_recipe{};
-    graph::DeviceBuffer* mi_ssbo = nullptr;
+    graph::SSBOArrayAccessor<mtl::StandardMaterialInstance>* mi_ssbo_accessor = nullptr;
     VertexDataManager* mesh_vdm = nullptr;
-    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::PBRSurface;
-    uint32_t material_ssbo_id = hgl::graph::mtl::MakeRecipeSSBOId(8602);
-    uint32_t material_ssbo_count = 0;
-    uint32_t material_ssbo_stride = sizeof(mtl::StandardMaterialInstance);
 
     RenderMesh* rm_floor = nullptr;
 
@@ -97,8 +93,7 @@ private:
         mesh_recipe.domain = "06c.TextureBlinnPhong";
         graph::mtl::UpsertRecipeSSBOAssetBinding(mesh_recipe,
                                                  graph::mtl::SBS_MaterialInstance.name,
-                                                 material_ssbo_type,
-                                                 material_ssbo_id);
+                                                 mi_ssbo_accessor->GetSSBOBinding());
 
         base_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
         if (!base_texture)
@@ -127,35 +122,21 @@ private:
         if (!domain_manager)
             return false;
 
-        const uint32_t mi_count = 1;
-        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * material_ssbo_stride;
-        material_ssbo_count = mi_count;
-
-        mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{material_ssbo_type, material_ssbo_id, 0},
-                                               "06c:PBRSurface:MIData",
-                                               ssbo_size,
-                                               material_ssbo_count,
-                                               SharingMode::Exclusive);
-        if (!mi_ssbo)
-            return false;
-
-        auto* gpu_buf = mi_ssbo->GetGPUBuffer();
-        if (!gpu_buf)
-            return false;
-
-        uint8_t* dst = static_cast<uint8_t*>(gpu_buf->Map(0, ssbo_size));
-        if (!dst)
-            return false;
-
-        memset(dst, 0, static_cast<size_t>(ssbo_size));
         mtl::StandardMaterialInstance mi_data{};
-        mi_data.base_color = 0xFFFFFFFFu;
-        mi_data.metallic = 0.08f;
-        mi_data.roughness = 0.92f;
+        mi_data.base_color  = 0xFFFFFFFFu;
+        mi_data.metallic    = 0.08f;
+        mi_data.roughness   = 0.92f;
         mi_data.normal_scale = 0.35f;
-        memcpy(dst, &mi_data, material_ssbo_stride);
 
-        gpu_buf->Unmap();
+        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<mtl::StandardMaterialInstance>(
+            graph::mtl::SSBOType::PBRSurface,
+            "06c:PBRSurface:MIData",
+            1);
+        if (!mi_ssbo_accessor)
+            return false;
+
+        (*mi_ssbo_accessor)[0] = mi_data;
+        mi_ssbo_accessor->Commit();
         return true;
     }
 
@@ -424,7 +405,7 @@ private:
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource floor_struct{};
             floor_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
-            floor_struct.ssbo_id = material_ssbo_id;
+            floor_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             floor_struct.struct_index = 0;
             floor_struct.use_struct_index = false;
             floor_struct.shared_across_instances = false;
@@ -462,7 +443,7 @@ private:
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource mesh_struct{};
             mesh_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
-            mesh_struct.ssbo_id = material_ssbo_id;
+            mesh_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             mesh_struct.struct_index = 0;
             mesh_struct.use_struct_index = false;
             mesh_struct.shared_across_instances = false;
@@ -479,9 +460,6 @@ private:
     {
         ecs_context = GetECSContext();
         if (!ecs_context)
-            return false;
-
-        if (!InitMISSBO())
             return false;
 
         if (!InitVDM())
@@ -519,13 +497,16 @@ private:
 public:
     ~TextureBlinnPhongMeshesECSApp()
     {
-        SAFE_CLEAR(mi_ssbo)
+        SAFE_CLEAR(mi_ssbo_accessor)
         SAFE_CLEAR(mesh_vdm)
     }
 
     bool Init() override
     {
         SetClearColor(Color4f(0.18f, 0.18f, 0.20f, 1.0f));
+
+        if (!InitMISSBO())
+            return false;
 
         if (!InitMaterial())
             return false;

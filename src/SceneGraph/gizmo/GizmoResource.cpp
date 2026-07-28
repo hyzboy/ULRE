@@ -92,8 +92,8 @@ namespace hgl::graph
             gizmo_mesh[size_t(gs)].Create(geometry);
         }
 
-        // Create the SSBO holding one color-struct per GizmoColor slot.
-        // slot_index = color enum value (0=Black, 1=White, 2=Red, …)
+        // Create the SSBO holding one Color4f per GizmoColor slot.
+        // PureColor3D MI data is exactly one Color4f (16 bytes, std430 vec4).
         bool InitColorSSBO(GizmoResource *gr)
         {
             if (!gr || !gr->mtl)
@@ -107,38 +107,30 @@ namespace hgl::graph
             if (!buffer_manager || !domain_manager)
                 return false;
 
-            const uint32_t stride = gr->mtl->GetMIDataBytes();
-            if (stride == 0)
+            if (gr->mtl->GetMIDataBytes() == 0)
                 return true;
 
             const uint32_t color_count = uint32_t(GizmoColor::RANGE_SIZE);
-            const VkDeviceSize ssbo_size = VkDeviceSize(color_count) * stride;
 
-            gr->mi_ssbo = buffer_manager->CreateSSBO("GizmoResource:PureColor3D:MIData", ssbo_size, nullptr, SharingMode::Exclusive);
+            gr->mi_ssbo = buffer_manager->CreateSSBO(
+                "GizmoResource:PureColor3D:MIData",
+                VkDeviceSize(sizeof(Color4f)) * color_count,
+                nullptr,
+                SharingMode::Exclusive);
             if (!gr->mi_ssbo)
                 return false;
 
-            auto *gpu_buf = gr->mi_ssbo->GetGPUBuffer();
-            if (!gpu_buf)
-                return false;
-
-            auto *dst = static_cast<uint8_t *>(gpu_buf->Map(0, ssbo_size));
-            if (!dst)
-                return false;
-
-            memset(dst, 0, static_cast<size_t>(ssbo_size));
-
-            // Write Color4f directly at each slot — no need for scratch MaterialInstance.
-            // PureColor3D MI data is exactly one Color4f; if stride has alignment padding
-            // the extra bytes remain zero (already memset above).
-            const uint32_t copy_bytes = hgl_min(stride, static_cast<uint32_t>(sizeof(Color4f)));
-            for (uint32_t i = 0; i < color_count; ++i)
             {
-                const Color4f color = GetColor4f(gizmo_color[i], 1.0f);
-                memcpy(dst + VkDeviceSize(i) * stride, &color, copy_bytes);
-            }
+                // 临时 accessor 用于写入颜色数据 / Temporary accessor for color write
+                auto *acc = SSBOArrayAccessor<Color4f>::Create(gr->mi_ssbo, color_count);
+                if (!acc)
+                    return false;
 
-            gpu_buf->Unmap();
+                for (uint32_t i = 0; i < color_count; ++i)
+                    (*acc)[i] = GetColor4f(gizmo_color[i], 1.0f);
+                acc->Commit();
+                delete acc;
+            }
 
             bool has_struct_binding = false;
             for (const auto &req : gr->mtl->GetMaterialResourceLayout().requirements)
@@ -151,8 +143,6 @@ namespace hgl::graph
                 if (!domain_manager->RegisterBuffer(addr, gr->mi_ssbo, color_count))
                     return false;
 
-                // Create one DescriptorBindingSet per color, each pointing at the same
-                // SSBO but with a different slot_index.
                 gr->binding_vil = gr->mtl->GetDefaultVIL();
                 for (uint32_t c = 0; c < color_count; ++c)
                 {

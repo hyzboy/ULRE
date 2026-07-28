@@ -35,11 +35,6 @@ using namespace hgl::ecs;
 
 namespace
 {
-    constexpr uint32_t kBasicLitSunDirectionStandardSsboId = hgl::graph::mtl::MakeRecipeSSBOId(1001);
-}
-
-namespace
-{
     GeometryVertexFormat CreateSkyMinimalGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
@@ -93,11 +88,7 @@ private:
 #endif//DRAW_GIZMO
 
     graph::mtl::MaterialRecipe mesh_recipe{};
-    DeviceBuffer* material_ssbo = nullptr;
-    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::PBRSurface;
-    uint32_t material_ssbo_id = kBasicLitSunDirectionStandardSsboId;
-    uint32_t material_ssbo_count = 0;
-    uint32_t material_ssbo_stride = sizeof(mtl::StandardMaterialInstance);
+    graph::SSBOArrayAccessor<mtl::StandardMaterialInstance>* mi_ssbo_accessor = nullptr;
     VertexDataManager* mesh_vdm = nullptr;
 
     RenderMesh* rm_floor = nullptr;
@@ -221,29 +212,25 @@ private:
         mesh_recipe.shading_model = graph::mtl::ShadingModel::Standard;
         mesh_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Standard);
         mesh_recipe.domain = "BasicLitSunDirection";
-        graph::mtl::UpsertRecipeSSBOAssetBinding(mesh_recipe,
-                                                 graph::mtl::SBS_MaterialInstance.name,
-                                                 material_ssbo_type,
-                                                 material_ssbo_id);
 
-        // Ensure domain-managed SSBO for Standard material data.
+        // Allocate SSBO first so the ID is available before UpsertRecipe.
         auto *domain_manager = GetManager<ResourceDomainManager>();
         if (!domain_manager)
             return false;
 
-        material_ssbo_count = 1;
-        material_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{material_ssbo_type, material_ssbo_id, 0},
-                                                     "BasicLitSunDir:Standard:MI",
-                                                     static_cast<VkDeviceSize>(material_ssbo_count) * material_ssbo_stride,
-                                                     material_ssbo_count,
-                                                     SharingMode::Exclusive);
-        if (!material_ssbo)
+        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<mtl::StandardMaterialInstance>(
+            graph::mtl::SSBOType::PBRSurface,
+            "BasicLitSunDir:Standard:MI",
+            1);
+        if (!mi_ssbo_accessor)
             return false;
 
-        if (auto *gpu = material_ssbo->GetGPUBuffer())
-            gpu->Write(&mi_data,
-                       0,
-                       hgl_min(material_ssbo_stride, static_cast<uint32_t>(sizeof(mi_data))));
+        graph::mtl::UpsertRecipeSSBOAssetBinding(mesh_recipe,
+                                                 graph::mtl::SBS_MaterialInstance.name,
+                                                 mi_ssbo_accessor->GetSSBOBinding());
+
+        (*mi_ssbo_accessor)[0] = mi_data;
+        mi_ssbo_accessor->Commit();
 
         return true;
     }
@@ -413,7 +400,7 @@ private:
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource floor_struct{};
             floor_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
-            floor_struct.ssbo_id = material_ssbo_id;
+            floor_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             floor_struct.struct_index = 0;
             floor_struct.use_struct_index = true;
             floor_struct.shared_across_instances = true;
@@ -451,7 +438,7 @@ private:
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource mesh_struct{};
             mesh_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
-            mesh_struct.ssbo_id = material_ssbo_id;
+            mesh_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             mesh_struct.struct_index = 0;
             mesh_struct.use_struct_index = true;
             mesh_struct.shared_across_instances = true;
@@ -516,11 +503,10 @@ public:
     {
         auto* rc = GetRenderContext();
         auto* gc = rc ? rc->GetGraphicsContext() : nullptr;
-        if (gc && material_ssbo)
+        if (mi_ssbo_accessor)
         {
-            if (auto *bm = gc->GetBufferManager())
-                bm->Release(material_ssbo);
-            material_ssbo = nullptr;
+            delete mi_ssbo_accessor;
+            mi_ssbo_accessor = nullptr;
         }
 
         SAFE_CLEAR(mesh_vdm)

@@ -44,8 +44,6 @@ using namespace hgl::ecs;
 
 namespace
 {
-    constexpr uint32_t kPBRSpheresSsboId = hgl::graph::mtl::MakeRecipeSSBOId(8604);
-
     GeometryVertexFormat CreateStandardTextureArrayGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
@@ -92,11 +90,7 @@ private:
     Entity *      camera_entity = nullptr;
 
     graph::mtl::MaterialRecipe sphere_recipe{};
-    graph::DeviceBuffer * mi_ssbo = nullptr;
-    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::PBRSurface;
-    uint32_t material_ssbo_id = kPBRSpheresSsboId;
-    uint32_t material_ssbo_count = 0;
-    uint32_t material_ssbo_stride = sizeof(mtl::StandardMaterialInstance);
+    graph::SSBOArrayAccessor<mtl::StandardMaterialInstance>* mi_ssbo_accessor = nullptr;
     Texture2DArray *    base_color_texture = nullptr;
     Texture2DArray *    normal_texture = nullptr;
     Sampler *           sampler = nullptr;
@@ -158,10 +152,6 @@ private:
         sphere_recipe.shading_model = graph::mtl::ShadingModel::Standard;
         sphere_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::StandardTextureArray);
         sphere_recipe.domain = "PBRSpheres";
-        graph::mtl::UpsertRecipeSSBOAssetBinding(sphere_recipe,
-                                                 graph::mtl::SBS_MaterialInstance.name,
-                                                 material_ssbo_type,
-                                                 material_ssbo_id);
 
         sampler = sampler_manager->CreateSampler();
         if (!sampler) {
@@ -286,38 +276,17 @@ private:
             return false;
 
         auto *domain_manager = GetManager<ResourceDomainManager>();
-        if (!domain_manager) {
-            printf("[ERROR] InitMISSBO: Missing resource domain manager\n");
+        if (!domain_manager)
             return false;
-        }
 
         const uint32_t mi_count = GRID_SIZE * GRID_SIZE;
-        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * material_ssbo_stride;
-        material_ssbo_count = mi_count;
 
-        mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{material_ssbo_type, material_ssbo_id, 0},
-                                               "PBRSpheres:PBRSurface:MIData",
-                                               ssbo_size,
-                                               material_ssbo_count,
-                                               SharingMode::Exclusive);
-        if (!mi_ssbo) {
-            printf("[ERROR] InitMISSBO: Failed to create SSBO\n");
+        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<mtl::StandardMaterialInstance>(
+            graph::mtl::SSBOType::PBRSurface,
+            "PBRSpheres:PBRSurface:MIData",
+            mi_count);
+        if (!mi_ssbo_accessor)
             return false;
-        }
-
-        auto *gpu_buf = mi_ssbo->GetGPUBuffer();
-        if (!gpu_buf) {
-            printf("[ERROR] InitMISSBO: Failed to get GPU buffer\n");
-            return false;
-        }
-
-        auto *dst = static_cast<uint8_t *>(gpu_buf->Map(0, ssbo_size));
-        if (!dst) {
-            printf("[ERROR] InitMISSBO: Failed to map SSBO\n");
-            return false;
-        }
-
-        memset(dst, 0, static_cast<size_t>(ssbo_size));
 
         for (uint row = 0; row < GRID_SIZE; ++row)
         {
@@ -325,17 +294,10 @@ private:
             {
                 const uint32_t slot_index = row * GRID_SIZE + col;
                 sphere_slot_rows[row][col] = slot_index;
-
-                memcpy(dst + static_cast<VkDeviceSize>(slot_index) * material_ssbo_stride,
-                       &sphere_mi_data[row][col],
-                       material_ssbo_stride);
+                (*mi_ssbo_accessor)[slot_index] = sphere_mi_data[row][col];
             }
         }
-
-        gpu_buf->Unmap();
-
-        std::cout << "[PBRSpheres::InitMISSBO] registered PBRSurface SSBO: count=" << mi_count
-                  << ", stride=" << material_ssbo_stride << std::endl;
+        mi_ssbo_accessor->Commit();
         return true;
     }
 
@@ -489,6 +451,10 @@ private:
         if (!InitMISSBO())
             return false;
 
+        graph::mtl::UpsertRecipeSSBOAssetBinding(sphere_recipe,
+                                                 graph::mtl::SBS_MaterialInstance.name,
+                                                 mi_ssbo_accessor->GetSSBOBinding());
+
         if (!CreateBasePrimitives())
             return false;
 
@@ -530,7 +496,7 @@ private:
                 prim_comp->SetMaterialTextureValue(graph::mtl::TextureSlot::Custom0, row);
                 hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource sphere_struct{};
                 sphere_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
-                sphere_struct.ssbo_id = material_ssbo_id;
+                sphere_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
                 sphere_struct.struct_index = sphere_slot_rows[row][col];
                 sphere_struct.use_struct_index = true;
                 sphere_struct.shared_across_instances = false;
@@ -604,7 +570,7 @@ public:
         }
 
         SAFE_CLEAR(mesh_vdm)
-        SAFE_CLEAR(mi_ssbo)
+        SAFE_CLEAR(mi_ssbo_accessor)
         SAFE_CLEAR(base_color_texture)
         SAFE_CLEAR(normal_texture)
     }

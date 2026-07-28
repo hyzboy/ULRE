@@ -36,6 +36,11 @@ GRAPH_MODULE_CONSTRUCT(ResourceDomainManager)
 {
 }
 
+uint32_t ResourceDomainManager::AllocateSSBOId()
+{
+    return mtl::MakeRecipeSSBOId(next_ssbo_id++);
+}
+
 uint64_t ResourceDomainManager::MakeKey(const mtl::SSBOAddress &address) noexcept
 {
     return (static_cast<uint64_t>(address.ssbo_type) << 32) | static_cast<uint64_t>(address.ssbo_id);

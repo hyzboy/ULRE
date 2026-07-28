@@ -45,8 +45,6 @@ using namespace hgl::ecs;
 
 namespace
 {
-    constexpr uint32_t kSingleSphereSwitchSsboId = hgl::graph::mtl::MakeRecipeSSBOId(8601);
-
     GeometryVertexFormat CreateStandardGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
@@ -77,10 +75,7 @@ private:
     graph::mtl::MaterialRecipe near_recipe{};
     graph::mtl::MaterialRecipe far_recipe{};
 
-    DeviceBuffer *mi_ssbo = nullptr;
-    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::PBRSurface;
-    uint32_t material_ssbo_id = kSingleSphereSwitchSsboId;
-    uint32_t material_ssbo_stride = sizeof(mtl::StandardMaterialInstance);
+    graph::SSBOArrayAccessor<mtl::StandardMaterialInstance>* mi_ssbo_accessor = nullptr;
 
     Texture2DArray *near_base_color_array = nullptr;
     Texture2DArray *near_normal_array = nullptr;
@@ -165,14 +160,21 @@ private:
         if (!sampler)
             return LogFail("InitMaterials", "failed to create sampler");
 
+        auto* domain_manager = GetManager<ResourceDomainManager>();
+        if (!domain_manager)
+            return LogFail("InitMaterials", "domain manager null");
+        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<mtl::StandardMaterialInstance>(
+            graph::mtl::SSBOType::PBRSurface, "SingleSphereSwitch:MIData", 1);
+        if (!mi_ssbo_accessor)
+            return LogFail("InitMaterials", "SSBO allocation failed");
+
         near_recipe.recipe_name = "06e.SingleSphereSwitch.Near";
         near_recipe.shading_model = graph::mtl::ShadingModel::Standard;
         near_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::StandardTextureArray);
         near_recipe.domain = "06e.SingleSphereSwitch";
         graph::mtl::UpsertRecipeSSBOAssetBinding(near_recipe,
                                                  graph::mtl::SBS_MaterialInstance.name,
-                                                 material_ssbo_type,
-                                                 material_ssbo_id);
+                                                 mi_ssbo_accessor->GetSSBOBinding());
 
         far_recipe = near_recipe;
         far_recipe.recipe_name = "06e.SingleSphereSwitch.Far";
@@ -243,7 +245,7 @@ private:
 
         hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource sphere_struct{};
         sphere_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
-        sphere_struct.ssbo_id = material_ssbo_id;
+        sphere_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
         sphere_struct.struct_index = 0;
         sphere_struct.use_struct_index = false;
         sphere_struct.shared_across_instances = false;
@@ -256,9 +258,8 @@ private:
         if (!near_base_color_array || !near_normal_array || !far_base_color_texture || !far_normal_texture)
             return LogFail("InitRenderResources", "required material/texture is null");
 
-        auto *domain_manager = GetManager<ResourceDomainManager>();
-        if (!domain_manager)
-            return LogFail("InitRenderResources", "required runtime manager is null");
+        if (!mi_ssbo_accessor)
+            return LogFail("InitRenderResources", "SSBO not allocated");
 
         mtl::StandardMaterialInstance mi_data{};
         mi_data.base_color = PackRGBA8Float(0.72f, 0.72f, 0.72f, 1.0f);
@@ -266,23 +267,8 @@ private:
         mi_data.roughness = 0.25f;
         mi_data.normal_scale = 0.35f;
 
-        mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{material_ssbo_type, material_ssbo_id, 0},
-                                               "SingleSphereSwitch:MIData",
-                                               material_ssbo_stride,
-                                               1,
-                                               SharingMode::Exclusive);
-        if (!mi_ssbo)
-            return LogFail("InitRenderResources", "create MI SSBO failed");
-
-        auto *mi_gpu = mi_ssbo->GetGPUBuffer();
-        if (!mi_gpu)
-            return LogFail("InitRenderResources", "MI GPU buffer is null");
-
-        auto *mi_dst = static_cast<uint8_t *>(mi_gpu->Map(0, material_ssbo_stride));
-        if (!mi_dst)
-            return LogFail("InitRenderResources", "map MI SSBO failed");
-        memcpy(mi_dst, &mi_data, material_ssbo_stride);
-        mi_gpu->Unmap();
+        (*mi_ssbo_accessor)[0] = mi_data;
+        mi_ssbo_accessor->Commit();
         sphere_asset = PrimitiveAsset(sphere_geometry, &near_recipe, PrimitiveType::Triangles);
 
         return true;
@@ -384,7 +370,7 @@ public:
         SAFE_CLEAR(sphere_geometry)
         SAFE_CLEAR(mesh_vdm)
 
-        SAFE_CLEAR(mi_ssbo)
+        SAFE_CLEAR(mi_ssbo_accessor)
 
         SAFE_CLEAR(near_base_color_array)
         SAFE_CLEAR(near_normal_array)

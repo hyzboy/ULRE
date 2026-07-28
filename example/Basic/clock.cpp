@@ -37,8 +37,6 @@ using namespace hgl::ecs;
 
 namespace
 {
-    constexpr uint32_t kClockSsboId = hgl::graph::mtl::MakeRecipeSSBOId(8303);
-
     GeometryVertexFormat CreateClockGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
@@ -77,12 +75,8 @@ private:
     Geometry* geometry = nullptr;
     graph::mtl::MaterialRecipe clock_recipe{};
     PrimitiveAsset clock_asset{};
-    graph::DeviceBuffer* mi_ssbo = nullptr;
+    graph::SSBOArrayAccessor<Color4f>* mi_ssbo_accessor = nullptr;
     SSBOSlotAllocator slot_allocator;
-    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::PBRSurface;
-    uint32_t material_ssbo_id = kClockSsboId;
-    uint32_t material_ssbo_count = 0;
-    uint32_t material_ssbo_stride = sizeof(Color4f);
     uint32_t tick_slot = 0;
     uint32_t hand_slots[3]{};
 
@@ -120,8 +114,7 @@ private:
         clock_recipe.domain = "Clock";
         graph::mtl::UpsertRecipeSSBOAssetBinding(clock_recipe,
                                                  graph::mtl::SBS_MaterialInstance.name,
-                                                 material_ssbo_type,
-                                                 material_ssbo_id);
+                                                 mi_ssbo_accessor->GetSSBOBinding());
         clock_asset = PrimitiveAsset(geometry, &clock_recipe, PrimitiveType::Triangles);
 
         return true;
@@ -169,36 +162,17 @@ private:
         if (!slot_allocator.Init(4))
             return false;
 
-        const uint32_t mi_count = 4;
-        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * material_ssbo_stride;
-        material_ssbo_count = mi_count;
-
-        mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{material_ssbo_type, material_ssbo_id, 0},
-                                               "Clock:PBRSurface:MIData",
-                                               ssbo_size,
-                                               material_ssbo_count,
-                                               SharingMode::Exclusive);
-        if (!mi_ssbo)
-        {
-            std::cout << "[ClockApp::InitMISSBO] ERROR: failed to create MI SSBO" << std::endl;
+        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+            graph::mtl::SSBOType::PBRSurface,
+            "Clock:PBRSurface:MIData",
+            4);
+        if (!mi_ssbo_accessor)
             return false;
-        }
-
-        auto *gpu_buf = mi_ssbo->GetGPUBuffer();
-        if (!gpu_buf)
-            return false;
-
-        uint8_t *dst = static_cast<uint8_t *>(gpu_buf->Map(0, ssbo_size));
-        if (!dst)
-            return false;
-
-        memset(dst, 0, static_cast<size_t>(ssbo_size));
 
         if (!slot_allocator.Allocate(tick_slot))
             return false;
 
-        const Color4f tick_color(1.0f, 1.0f, 1.0f, 1.0f);
-        memcpy(dst + static_cast<VkDeviceSize>(tick_slot) * material_ssbo_stride, &tick_color, material_ssbo_stride);
+        (*mi_ssbo_accessor)[tick_slot] = Color4f(1.0f, 1.0f, 1.0f, 1.0f);
 
         Color4f hand_colors[3] = {
             Color4f(1.0f, 0.0f, 0.0f, 1.0f),
@@ -209,13 +183,10 @@ private:
         {
             if (!slot_allocator.Allocate(hand_slots[i]))
                 return false;
-            memcpy(dst + static_cast<VkDeviceSize>(hand_slots[i]) * material_ssbo_stride, &hand_colors[i], material_ssbo_stride);
+            (*mi_ssbo_accessor)[hand_slots[i]] = hand_colors[i];
         }
 
-        gpu_buf->Unmap();
-
-        std::cout << "[ClockApp::InitMISSBO] registered PBRSurface SSBO: count=" << mi_count
-                  << ", stride=" << material_ssbo_stride << std::endl;
+        mi_ssbo_accessor->Commit();
         return true;
     }
 
@@ -263,7 +234,7 @@ private:
             primitive_comp->SetPrimitiveAsset(&clock_asset);
             hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource tick_struct{};
             tick_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
-            tick_struct.ssbo_id = material_ssbo_id;
+            tick_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             tick_struct.struct_index = tick_slot;
             tick_struct.use_struct_index = true;
             tick_struct.shared_across_instances = false;
@@ -301,7 +272,7 @@ private:
             primitive_comp->SetPrimitiveAsset(&clock_asset);
             hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource hand_struct{};
             hand_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
-            hand_struct.ssbo_id = material_ssbo_id;
+            hand_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             hand_struct.struct_index = hand_slots[i];
             hand_struct.use_struct_index = true;
             hand_struct.shared_across_instances = false;
@@ -332,15 +303,15 @@ public:
             return false;
         }
 
-        if (!InitMaterial())
-        {
-            std::cout << "[ClockApp::Init] ERROR: InitMaterial failed!" << std::endl;
-            return false;
-        }
-
         if (!InitMISSBO())
         {
             std::cout << "[ClockApp::Init] ERROR: InitMISSBO failed!" << std::endl;
+            return false;
+        }
+
+        if (!InitMaterial())
+        {
+            std::cout << "[ClockApp::Init] ERROR: InitMaterial failed!" << std::endl;
             return false;
         }
 
@@ -404,7 +375,7 @@ public:
 
     ~ClockApp()
     {
-        SAFE_CLEAR(mi_ssbo)
+        SAFE_CLEAR(mi_ssbo_accessor)
     }
 };//class ClockApp:public WorkObject
 

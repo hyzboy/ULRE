@@ -326,7 +326,7 @@ namespace hgl::ecs
             if (recipe.ssbo_assets.empty())
             {
                 for (const auto &binding : recipe.structs)
-                    graph::mtl::UpsertRecipeSSBOAssetBinding(recipe, "mtl", binding.ssbo_type, binding.ssbo_id);
+                    graph::mtl::UpsertRecipeSSBOAssetBinding(recipe, "mtl", graph::mtl::SSBOBinding{binding.ssbo_type, binding.ssbo_id});
             }
         }
 
