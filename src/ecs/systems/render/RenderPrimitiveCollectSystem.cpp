@@ -357,7 +357,7 @@ namespace hgl::ecs
                                                resource->required,
                                                resource->direct_value,
                                                true);
-                    GLogInfo("[TexTrace] BuildEffectiveRecipe slot=%zu direct_value=%u", i, resource->direct_value);
+                    // GLogInfo("[TexTrace] BuildEffectiveRecipe slot=%zu direct_value=%u", i, resource->direct_value);
                     continue;
                 }
 
@@ -370,7 +370,7 @@ namespace hgl::ecs
                     continue;
                 }
 
-                GLogInfo("[TexTrace] BuildEffectiveRecipe slot=%zu resource_id=%s", i, resource_id.c_str());
+                // GLogInfo("[TexTrace] BuildEffectiveRecipe slot=%zu resource_id=%s", i, resource_id.c_str());
                 UpsertRecipeTextureBinding(out_recipe, slot, resource_id, resource->required);
             }
 
@@ -390,8 +390,8 @@ namespace hgl::ecs
                                          resource->shared_across_instances);
             }
 
-            GLogInfo("[TexTrace] BuildEffectiveRecipe result: recipe=%s tex_bindings=%zu struct_bindings=%zu",
-                     out_recipe.recipe_name.c_str(), out_recipe.textures.size(), out_recipe.structs.size());
+            // GLogInfo("[TexTrace] BuildEffectiveRecipe result: recipe=%s tex_bindings=%zu struct_bindings=%zu",
+            //          out_recipe.recipe_name.c_str(), out_recipe.textures.size(), out_recipe.structs.size());
 
             NormalizeRecipeWithBaseMaterialInfo(out_recipe);
 
@@ -418,7 +418,7 @@ namespace hgl::ecs
                 return false;
 
             const char *prim_owner = GetPrimitiveOwnerName(primitive_comp);
-            GLogInfo("[TexTrace] PrepareRecipeAuthoringResources for %s bindless_mgr=%p", prim_owner, (void*)bindless_mgr);
+            // GLogInfo("[TexTrace] PrepareRecipeAuthoringResources for %s bindless_mgr=%p", prim_owner, (void*)bindless_mgr);
 
             for (size_t i = 0; i < static_cast<size_t>(graph::mtl::TextureSlot::RANGE_SIZE); ++i)
             {
@@ -426,13 +426,13 @@ namespace hgl::ecs
                 const auto *resource = primitive_comp->GetMaterialTextureResource(slot);
                 if (!resource)
                 {
-                    GLogInfo("[TexTrace]   slot=%zu: no resource", i);
+                    // GLogInfo("[TexTrace]   slot=%zu: no resource", i);
                     continue;
                 }
 
                 if (resource->use_direct_value)
                 {
-                    GLogInfo("[TexTrace]   slot=%zu: direct_value=%u (skip bindless)", i, resource->direct_value);
+                    // GLogInfo("[TexTrace]   slot=%zu: direct_value=%u (skip bindless)", i, resource->direct_value);
                     continue;
                 }
 
@@ -450,11 +450,11 @@ namespace hgl::ecs
                 {
                     case PrimitiveComponent::MaterialTextureResourceKind::Texture2D:
                         handle = rdbs->RegisterTexture2DResource(resource_id, resource->texture, resource->sampler, bindless_mgr);
-                        GLogInfo("[TexTrace]   slot=%zu Texture2D resource_id=%s handle=%u", i, resource_id.c_str(), handle);
+                        // GLogInfo("[TexTrace]   slot=%zu Texture2D resource_id=%s handle=%u", i, resource_id.c_str(), handle);
                         break;
                     case PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray:
                         handle = rdbs->RegisterTexture2DArrayResource(resource_id, resource->texture, resource->sampler, bindless_mgr);
-                        GLogInfo("[TexTrace]   slot=%zu Texture2DArray resource_id=%s handle=%u", i, resource_id.c_str(), handle);
+                        // GLogInfo("[TexTrace]   slot=%zu Texture2DArray resource_id=%s handle=%u", i, resource_id.c_str(), handle);
                         break;
                     default:
                         GLogWarning("[TexTrace]   slot=%zu unknown kind=%d", i, (int)resource->kind);
@@ -469,7 +469,7 @@ namespace hgl::ecs
 
                 if (!material_program)
                 {
-                    GLogInfo("[TexTrace]   slot=%zu: no material_program, skip per-descriptor register", i);
+                    // GLogInfo("[TexTrace]   slot=%zu: no material_program, skip per-descriptor register", i);
                     continue;
                 }
 
@@ -481,7 +481,7 @@ namespace hgl::ecs
                     switch (req.semantic)
                     {
                         case graph::mtl::DescriptorSemantic::MaterialTexture:
-                            GLogInfo("[TexTrace]   slot=%zu: RegisterMaterialTexture descriptor=%s", i, req.name);
+                            // GLogInfo("[TexTrace]   slot=%zu: RegisterMaterialTexture descriptor=%s", i, req.name);
                             if (!rdbs->RegisterMaterialTexture(material_program, req.name, resource->texture))
                             {
                                 GLogError("[TexTrace]   RegisterMaterialTexture FAILED descriptor=%s", req.name);
@@ -489,7 +489,7 @@ namespace hgl::ecs
                             }
                             break;
                         case graph::mtl::DescriptorSemantic::MaterialSampler:
-                            GLogInfo("[TexTrace]   slot=%zu: RegisterMaterialTextureSampler descriptor=%s", i, req.name);
+                            // GLogInfo("[TexTrace]   slot=%zu: RegisterMaterialTextureSampler descriptor=%s", i, req.name);
                             if (!rdbs->RegisterMaterialTextureSampler(material_program, req.name, resource->texture, resource->sampler))
                             {
                                 GLogError("[TexTrace]   RegisterMaterialTextureSampler FAILED descriptor=%s", req.name);

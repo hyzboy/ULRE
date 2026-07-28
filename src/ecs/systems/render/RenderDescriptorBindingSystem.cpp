@@ -1629,6 +1629,9 @@ namespace hgl::ecs
             }
             case graph::mtl::DescriptorSemantic::MaterialTexture:
             {
+                if (batch && batch_uses_recipe_runtime(batch))
+                    break;
+
                 graph::Texture *resolved_texture = nullptr;
                 graph::Sampler *resolved_sampler = nullptr;
                 const bool has_batch_binding = resolve_batch_texture_binding(material,
@@ -1638,23 +1641,25 @@ namespace hgl::ecs
                                                                              resolved_sampler);
                 if (has_batch_binding && resolved_texture)
                 {
-                    GLogInfo("[TexTrace] ApplyBinding MaterialTexture descriptor=%s: batch_binding path, texture=%p", req.name, (void*)resolved_texture);
-                    if (!bind_texture(material, batch, req, resolved_texture))
-                        log_bind_failure(material, batch, req, "bind MaterialTexture failed");
+                    const bool bind_ok = resolved_sampler
+                                       ? bind_texture_sampler(material, batch, req, resolved_texture, resolved_sampler)
+                                       : bind_texture(material, batch, req, resolved_texture);
+                    if (!bind_ok)
+                        log_bind_failure(material, batch, req, resolved_sampler ? "bind MaterialTexture(Sampler) failed" : "bind MaterialTexture failed");
                     break;
                 }
 
                 const auto *binding = FindMaterialResourceBinding(material, req.name);
                 if (binding && binding->texture)
                 {
-                    GLogInfo("[TexTrace] ApplyBinding MaterialTexture descriptor=%s: material_binding path, texture=%p", req.name, (void*)binding->texture);
-                    if (!bind_texture(material, batch, req, binding->texture))
-                        log_bind_failure(material, batch, req, "bind MaterialTexture failed");
+                    const bool bind_ok = binding->sampler
+                                       ? bind_texture_sampler(material, batch, req, binding->texture, binding->sampler)
+                                       : bind_texture(material, batch, req, binding->texture);
+                    if (!bind_ok)
+                        log_bind_failure(material, batch, req, binding->sampler ? "bind MaterialTexture(Sampler) failed" : "bind MaterialTexture failed");
                 }
                 else
                 {
-                    GLogWarning("[TexTrace] ApplyBinding MaterialTexture descriptor=%s: NO binding found (batch=%d has_batch_binding=%d binding_ptr=%p)",
-                                req.name, batch?1:0, has_batch_binding?1:0, (void*)binding);
                     if (req.required)
                         log_bind_failure(material, batch, req, "missing required MaterialTexture binding");
                 }
@@ -1662,6 +1667,9 @@ namespace hgl::ecs
             }
             case graph::mtl::DescriptorSemantic::MaterialSampler:
             {
+                if (batch && batch_uses_recipe_runtime(batch))
+                    break;
+
                 graph::Texture *resolved_texture = nullptr;
                 graph::Sampler *resolved_sampler = nullptr;
                 const bool has_batch_binding = resolve_batch_texture_binding(material,
@@ -1671,7 +1679,6 @@ namespace hgl::ecs
                                                                              resolved_sampler);
                 if (has_batch_binding && resolved_texture && resolved_sampler)
                 {
-                    GLogInfo("[TexTrace] ApplyBinding MaterialSampler descriptor=%s: batch_binding path", req.name);
                     if (!bind_texture_sampler(material, batch, req, resolved_texture, resolved_sampler))
                         log_bind_failure(material, batch, req, "bind MaterialSampler failed");
                     break;
@@ -1680,16 +1687,11 @@ namespace hgl::ecs
                 const auto *binding = FindMaterialResourceBinding(material, req.name);
                 if (binding && binding->texture && binding->sampler)
                 {
-                    GLogInfo("[TexTrace] ApplyBinding MaterialSampler descriptor=%s: material_binding path, texture=%p sampler=%p", req.name, (void*)binding->texture, (void*)binding->sampler);
                     if (!bind_texture_sampler(material, batch, req, binding->texture, binding->sampler))
                         log_bind_failure(material, batch, req, "bind MaterialSampler failed");
                 }
                 else
                 {
-                    GLogWarning("[TexTrace] ApplyBinding MaterialSampler descriptor=%s: NO binding found (binding_ptr=%p tex=%p sampler=%p)",
-                                req.name, (void*)binding,
-                                binding?(void*)binding->texture:nullptr,
-                                binding?(void*)binding->sampler:nullptr);
                     if (req.required)
                         log_bind_failure(material, batch, req, "missing required MaterialSampler binding");
                 }
