@@ -8,6 +8,16 @@
 namespace hgl::graph::mtl{
 namespace
 {
+    const bool kRegisteredSkyMinimalBmi = []() -> bool
+    {
+        BaseMaterialInfo bmi{};
+        bmi.bmi_name = "SkyMinimal";
+        bmi.shading_model = ShadingModel::Sky;
+        bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::SkyMinimal);
+        RegisterBaseMaterialInfo(MaterialPreset::SkyMinimal, bmi);
+        return true;
+    }();
+
     constexpr FixedDescriptorEntry SKY_MINIMAL_DESCRIPTORS[] = {
         { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::UBO},
         { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera", "CameraInfo", nullptr, DescriptorSemantic::CameraInfo, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::UBO},
@@ -67,4 +77,3 @@ MaterialCreateInfo *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *
     return mci;
 }
 }//namespace hgl::graph::mtl
-

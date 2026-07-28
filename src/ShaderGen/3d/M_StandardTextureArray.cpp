@@ -13,6 +13,16 @@
 namespace hgl::graph::mtl{
 namespace
 {
+    const bool kRegisteredStandardTextureArrayBmi = []() -> bool
+    {
+        BaseMaterialInfo bmi{};
+        bmi.bmi_name = "StandardTextureArray";
+        bmi.shading_model = ShadingModel::Standard;
+        bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::StandardTextureArray);
+        RegisterBaseMaterialInfo(MaterialPreset::StandardTextureArray, bmi);
+        return true;
+    }();
+
     constexpr const char mi_codes[] = R"(
         uint  base_color;
         float metallic;

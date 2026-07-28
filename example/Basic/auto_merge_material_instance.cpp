@@ -11,13 +11,12 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
-#include<hgl/graph/SSBOSlotAllocator.h>
-#include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/color/Color.h>
-#include<hgl/graph/module/MaterialManager.h>
+#include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
 
 // 引入几何创建器
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -67,14 +66,14 @@ private:
     ECSContext* ecs_world = nullptr;   // 由默认 ECSContext 统一维护
 
     // 传统渲染资源
-    MaterialProgram* material = nullptr;
     Geometry* geometry = nullptr;
+    graph::mtl::MaterialRecipe triangle_recipe{};
+    PrimitiveAsset triangle_asset{};
 
     // MI 结构体 SSBO（由本示例创建并注册进 ResourceDomainManager）
     graph::DeviceBuffer* mi_ssbo = nullptr;
-    SSBOSlotAllocator slot_allocator;
-    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::UserDefined;
-    uint32_t material_ssbo_id = 0;
+    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::PBRSurface;
+    uint32_t material_ssbo_id = kAutoMergeMaterialSsboId;
     uint32_t material_ssbo_count = 0;
     uint32_t material_ssbo_stride = 0;
 
@@ -82,51 +81,29 @@ private:
     struct TriangleData
     {
         Entity* entity;
-        Primitive* primitive;
     };
 
     TriangleData triangles[DRAW_OBJECT_COUNT];
 
 private:
 
-    bool InitMaterial()
+    bool InitRecipe()
     {
         if (!geometry)
             return false;
 
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
+        triangle_recipe.recipe_name = "AutoMergeMaterialInstance.PureColor2D";
+        triangle_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        triangle_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::PureColor2D);
+        triangle_recipe.domain = "AutoMergeMaterialInstance";
+        graph::mtl::UpsertRecipeSSBOAssetBinding(triangle_recipe,
+                                                 graph::mtl::SBS_MaterialInstance.name,
+                                                 material_ssbo_type,
+                                                 material_ssbo_id);
 
-        auto* material_manager = GetManager<MaterialManager>();
-        if (!material_manager)
-            return false;
+        triangle_asset = PrimitiveAsset(geometry, &triangle_recipe, PrimitiveType::Triangles);
 
-        {
-            mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
-                                            CoordinateSystem2D::NDC,
-                                            mtl::WithLocalToWorld::With);
-
-            material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::PureColor2D,
-                                                                &cfg,
-                                                                geometry->GetGeometryVertexFormat());
-
-            if (!material)
-                return false;
-
-            std::cout << "[TestApp::InitMaterial] Created material: " << (void*)material << std::endl;
-            std::cout << "[TestApp::InitMaterial] MaterialProgram has MI: " << material->hasMI() << std::endl;
-            std::cout << "[TestApp::InitMaterial] MaterialProgram MI data bytes: " << material->GetMIDataBytes() << std::endl;
-
-            // 仅创建材质；外部 SSBO 在 InitMISSBO 中配置
-            for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
-            {
-                Color4f color = GetColor4f((COLOR)(i + int(COLOR::Blue)), 1.0f);
-
-                std::cout << "[TestApp::InitMaterial] Triangle[" << i << "] color: "
-                          << "R=" << color.r << ", G=" << color.g << ", B=" << color.b << ", A=" << color.a << std::endl;
-            }
-        }
+        std::cout << "[TestApp::InitRecipe] Recipe initialized with ssbo_id=" << material_ssbo_id << std::endl;
 
         return true;
     }
@@ -182,24 +159,6 @@ private:
         // === 步骤2: 创建12个三角形实体，每个使用不同的结构体行 ===
         for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
         {
-            // 为每个三角形创建Primitive（共享Geometry/MaterialProgram，由 ECS 绑定不同结构体行）
-            auto* primitive_manager = GetManager<PrimitiveManager>();
-            if (!primitive_manager)
-                return false;
-
-            triangles[i].primitive = primitive_manager->CreatePrimitive(geometry,
-                                                                        material,
-                                                                        nullptr,
-                                                                        nullptr);
-
-            if (!triangles[i].primitive)
-            {
-                std::cout << "[TestApp::InitECS] ERROR: Failed to create primitive " << i << std::endl;
-                return false;
-            }
-
-            std::cout << "[TestApp::InitECS] Created primitive[" << i << "]: " << (void*)triangles[i].primitive << std::endl;
-
             // 创建实体
             triangles[i].entity = ecs_world->CreateEntity<Entity>("ColoredTriangle_" + std::to_string(i));
 
@@ -223,24 +182,16 @@ private:
             std::cout << "[TestApp::InitECS] Entity[" << i << "] rotation angle: " << (TRI_ROTATE_ANGLE * i) << " degrees" << std::endl;
 
             // === 步骤4: 添加PrimitiveComponent ===
-            // 每个实体使用不同的Primitive（颜色来自不同结构体行）
+            // 每个实体共享同一 PrimitiveAsset，颜色来自不同结构体行
             auto primitive_comp = triangles[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
-            primitive_comp->SetPrimitive(triangles[i].primitive);
-            graph::mtl::MaterialRecipe recipe{};
-            recipe.recipe_name = "AutoMergeMaterialInstance.PureColor2D";
-            recipe.shading_model = graph::mtl::ShadingModel::Unlit;
-            recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::PureColor2D);
-            recipe.domain = "AutoMergeMaterialInstance";
-            primitive_comp->SetMaterialRecipe(recipe);
-            primitive_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
-                                                      material_ssbo_type,
-                                                      material_ssbo_id,
-                                                      mi_ssbo,
-                                                      material_ssbo_count,
-                                                      material_ssbo_stride,
-                                                      i,
-                                                      true,
-                                                      false);
+            primitive_comp->SetPrimitiveAsset(&triangle_asset);
+            hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource tri_struct{};
+            tri_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+            tri_struct.ssbo_id = material_ssbo_id;
+            tri_struct.struct_index = i;
+            tri_struct.use_struct_index = true;
+            tri_struct.shared_across_instances = false;
+            primitive_comp->SetMaterialStructResource(tri_struct);
             primitive_comp->RequestPipeline(InlinePipeline::Solid2D);
             primitive_comp->SetVisible(true);
 
@@ -264,11 +215,7 @@ private:
      */
     bool InitMISSBO()
     {
-        const uint32_t mi_data_bytes = material->GetMIDataBytes();
-        if (mi_data_bytes == 0)
-            return true;  // 材质无 MI 数据，无需创建
-        if (mi_data_bytes != sizeof(Color4f))
-            return false;
+        const uint32_t mi_data_bytes = sizeof(Color4f);
 
         if (!ecs_world)
             ecs_world = GetECSContext();
@@ -281,16 +228,18 @@ private:
         auto* graphics_context = GetGraphicsContext();
         if (!graphics_context) return false;
 
-        auto* buffer_manager  = GetManager<BufferManager>();
-        if (!buffer_manager) return false;
-
-        if (!slot_allocator.Init(DRAW_OBJECT_COUNT))
-            return false;
-
         const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(DRAW_OBJECT_COUNT) * mi_data_bytes;
         material_ssbo_count = DRAW_OBJECT_COUNT;
         material_ssbo_stride = mi_data_bytes;
-        mi_ssbo = buffer_manager->CreateSSBO("Example:PBRSurface:MIData", ssbo_size);
+        auto *domain_manager = GetManager<ResourceDomainManager>();
+        if (!domain_manager)
+            return false;
+
+        mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{material_ssbo_type, material_ssbo_id, 0},
+                                               "Example:PBRSurface:MIData",
+                                               ssbo_size,
+                                               material_ssbo_count,
+                                               SharingMode::Exclusive);
         if (!mi_ssbo)
         {
             std::cout << "[TestApp::InitMISSBO] ERROR: failed to create PBRSurface SSBO" << std::endl;
@@ -312,35 +261,18 @@ private:
         memset(ptr, 0, static_cast<size_t>(ssbo_size));
         for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
         {
-            uint32_t slot_index = 0;
-            if (!slot_allocator.Allocate(slot_index))
-                return false;
-
             Color4f color = GetColor4f((COLOR)(i + int(COLOR::Blue)), 1.0f);
-            memcpy(ptr + static_cast<VkDeviceSize>(slot_index) * mi_data_bytes, &color, mi_data_bytes);
+            memcpy(ptr + static_cast<VkDeviceSize>(i) * mi_data_bytes, &color, mi_data_bytes);
 
             triangles[i].entity = nullptr;
-            triangles[i].primitive = nullptr;
         }
         gpu_buf->Unmap();
-
-        bool has_struct_binding = false;
-        for (const auto &req : material->GetMaterialResourceLayout().requirements)
-        {
-            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
-                continue;
-
-            has_struct_binding = true;
-            material_ssbo_type = req.ssbo_type;
-            material_ssbo_id = kAutoMergeMaterialSsboId;
-            break;
-        }
 
         std::cout << "[TestApp::InitMISSBO] PBRSurface SSBO registered: "
                   << DRAW_OBJECT_COUNT << " instances x " << mi_data_bytes << " bytes"
                   << ", ssbo_id=" << material_ssbo_id << std::endl;
 
-        return has_struct_binding;
+        return true;
     }
 
 public:
@@ -356,9 +288,9 @@ public:
             return false;
         }
 
-        if (!InitMaterial())
+        if (!InitRecipe())
         {
-            std::cout << "[TestApp::Init] ERROR: InitMaterial failed!" << std::endl;
+            std::cout << "[TestApp::Init] ERROR: InitRecipe failed!" << std::endl;
             return false;
         }
 

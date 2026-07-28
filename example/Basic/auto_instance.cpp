@@ -11,10 +11,9 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
 
 // 引入ECS相关头文件
 #include<hgl/ecs/core/Context.h>
@@ -64,9 +63,9 @@ private:
     ECSContext *  ecs_world      =nullptr;   // 由默认 ECSContext 统一维护
 
     // 传统渲染资源（共享）
-    MaterialProgram *   material            =nullptr;
     Geometry *          geom_triangle       =nullptr;
-    Primitive *         prim_triangle       =nullptr;
+    graph::mtl::MaterialRecipe triangle_recipe{};
+    PrimitiveAsset             triangle_asset{};
 
     // 存储所有创建的实体
     std::vector<Entity*> triangle_entities;
@@ -78,21 +77,11 @@ private:
         if (!geom_triangle)
             return false;
 
-        auto* material_manager = GetManager<MaterialManager>();
-        if (!material_manager)
-            return false;
-
-        {
-            mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
-                                            CoordinateSystem2D::NDC,
-                                            mtl::WithLocalToWorld::With);
-
-            const GeometryVertexFormat &gvf = geom_triangle->GetGeometryVertexFormat();
-            material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::VertexColor2D, &cfg, gvf);
-        }
-
-        if(!material)
-            return(false);
+        triangle_recipe.recipe_name = "AutoInstance.VertexColor2D";
+        triangle_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        triangle_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::VertexColor2D);
+        triangle_recipe.domain = "AutoInstance";
+        triangle_asset = PrimitiveAsset(geom_triangle, &triangle_recipe, PrimitiveType::Triangles);
 
         return true;
     }
@@ -118,23 +107,6 @@ private:
         geometry_manager->Add(geom_triangle);
 
         return true;
-    }
-
-    bool InitPrimitive()
-    {
-        if(!geom_triangle || !material)
-            return false;
-
-        auto* primitive_manager = GetManager<PrimitiveManager>();
-        if (!primitive_manager)
-            return false;
-
-        prim_triangle = primitive_manager->CreatePrimitive(geom_triangle, material, nullptr, nullptr);
-
-        if(!prim_triangle)
-            return(false);
-
-        return(true);
     }
 
     bool InitECS()
@@ -179,13 +151,7 @@ private:
             // 所有实体共享同一个Primitive
             // RenderCollector会检测到这一点并自动使用Instance渲染
             auto primitive_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
-            primitive_comp->SetPrimitive(prim_triangle);
-            graph::mtl::MaterialRecipe recipe{};
-            recipe.recipe_name = "AutoInstance.VertexColor2D";
-            recipe.shading_model = graph::mtl::ShadingModel::Unlit;
-            recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::VertexColor2D);
-            recipe.domain = "AutoInstance";
-            primitive_comp->SetMaterialRecipe(recipe);
+            primitive_comp->SetPrimitiveAsset(&triangle_asset);
             primitive_comp->RequestPipeline(InlinePipeline::Solid2D);
             primitive_comp->SetVisible(true);
 
@@ -205,9 +171,6 @@ public:
             return(false);
 
         if(!InitMaterial())
-            return(false);
-
-        if(!InitPrimitive())
             return(false);
 
         if(!InitECS())

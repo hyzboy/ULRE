@@ -5,6 +5,22 @@
 #include<hgl/shadergen/contract/ShaderGenContract.h>
 
 namespace hgl::graph::mtl{
+namespace
+{
+    struct BaseMaterialInfoRegistryEntry
+    {
+        bool has_preset = false;
+        MaterialPreset preset = MaterialPreset::VertexColor2D;
+        BaseMaterialInfo bmi{};
+    };
+
+    std::vector<BaseMaterialInfoRegistryEntry> &GetBaseMaterialInfoRegistry()
+    {
+        static std::vector<BaseMaterialInfoRegistryEntry> registry;
+        return registry;
+    }
+}
+
 VkFormat ResolveMaterialVertexSemanticFormat(const MaterialCreateConfig *cfg, VertexSemantic semantic, VkFormat fallback_format)
 {
     if(!cfg||!cfg->geometry_vertex_format)
@@ -20,6 +36,89 @@ VkFormat ResolveMaterialVertexSemanticFormat(const MaterialCreateConfig *cfg, Ve
 VkFormat ResolveMaterialPositionFormat(const MaterialCreateConfig *cfg, VkFormat fallback_format)
 {
     return ResolveMaterialVertexSemanticFormat(cfg, VertexSemantic::Position, fallback_format);
+}
+
+void RegisterBaseMaterialInfo(const BaseMaterialInfo &bmi)
+{
+    if (bmi.bmi_name.empty())
+        return;
+
+    auto &registry = GetBaseMaterialInfoRegistry();
+    for (auto &entry : registry)
+    {
+        if (entry.bmi.bmi_name == bmi.bmi_name)
+        {
+            entry.bmi = bmi;
+            return;
+        }
+    }
+
+    BaseMaterialInfoRegistryEntry entry{};
+    entry.bmi = bmi;
+    registry.emplace_back(std::move(entry));
+}
+
+void RegisterBaseMaterialInfo(const MaterialPreset preset, const BaseMaterialInfo &bmi)
+{
+    BaseMaterialInfo normalized = bmi;
+    if (normalized.bmi_name.empty())
+    {
+        const char *preset_name = GetMaterialPresetName(preset);
+        if (preset_name && *preset_name)
+            normalized.bmi_name = preset_name;
+    }
+
+    if (normalized.bmi_name.empty())
+        return;
+
+    auto &registry = GetBaseMaterialInfoRegistry();
+    for (auto &entry : registry)
+    {
+        if (entry.has_preset && entry.preset == preset)
+        {
+            entry.bmi = normalized;
+            return;
+        }
+    }
+
+    BaseMaterialInfoRegistryEntry entry{};
+    entry.has_preset = true;
+    entry.preset = preset;
+    entry.bmi = normalized;
+    registry.emplace_back(std::move(entry));
+}
+
+bool TryGetBaseMaterialInfoByName(const std::string &name, BaseMaterialInfo &out_bmi)
+{
+    if (name.empty())
+        return false;
+
+    const auto &registry = GetBaseMaterialInfoRegistry();
+    for (const auto &entry : registry)
+    {
+        if (entry.bmi.bmi_name == name)
+        {
+            out_bmi = entry.bmi;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool TryGetBaseMaterialInfoByPreset(const MaterialPreset preset, BaseMaterialInfo &out_bmi)
+{
+    const auto &registry = GetBaseMaterialInfoRegistry();
+    for (const auto &entry : registry)
+    {
+        if (entry.has_preset && entry.preset == preset)
+        {
+            out_bmi = entry.bmi;
+            return true;
+        }
+    }
+
+    return false;
 }
 
 MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)

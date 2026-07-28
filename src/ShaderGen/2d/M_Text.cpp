@@ -5,6 +5,20 @@
 #include<cstdio>
 
 namespace hgl::graph::mtl{
+namespace
+{
+    const bool kRegisteredText2DBmi = []() -> bool
+    {
+        BaseMaterialInfo bmi{};
+        bmi.bmi_name = "Text2D";
+        bmi.shading_model = ShadingModel::Text;
+        bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::Text2D);
+        bmi.coordinate_system_2d = CoordinateSystem2D::Ortho;
+        bmi.local_to_world_2d = false;
+        RegisterBaseMaterialInfo(MaterialPreset::Text2D, bmi);
+        return true;
+    }();
+}
 
 MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *profile,const Text2DMaterialCreateConfig *cfg)
 {

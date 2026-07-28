@@ -177,9 +177,9 @@ private:
         if (!gc)
             return LogStageFail("OffscreenPass::InitMISSBO", "graphics context is null");
 
-        auto *buffer_manager = gc->GetBufferManager();
-        if (!buffer_manager)
-            return LogStageFail("OffscreenPass::InitMISSBO", "buffer manager is null");
+        auto *domain_manager = gc->GetResourceDomainManager();
+        if (!domain_manager)
+            return LogStageFail("OffscreenPass::InitMISSBO", "resource domain manager is null");
 
         const uint32_t mi_data_bytes = mtl->GetMIDataBytes();
         if (mi_data_bytes == 0)
@@ -209,7 +209,11 @@ private:
         GLogInfo("[RenderToTexture][OffscreenPass::InitMISSBO] slot=%u mi_bytes=%u mi_count=%u ssbo_size=%llu",
                  0u, mi_data_bytes, mi_count, static_cast<unsigned long long>(ssbo_size));
 
-        mi_ssbo = buffer_manager->CreateSSBO("RenderToTexture:OffscreenPass:MIData", ssbo_size, nullptr, SharingMode::Exclusive);
+        mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{material_ssbo_type, material_ssbo_id, 0},
+                                               "RenderToTexture:OffscreenPass:MIData",
+                                               ssbo_size,
+                                               material_ssbo_count,
+                                               SharingMode::Exclusive);
         if (!mi_ssbo)
             return LogStageFail("OffscreenPass::InitMISSBO", "CreateSSBO failed");
 
@@ -318,9 +322,10 @@ public:
                                           mtl::WithLocalToWorld::With,
                                           mtl::WithSky::Without);
 
-        mtl = mm->AcquireMaterialProgram(mtl::MaterialPreset::Gizmo3D, &cfg3d);
+        const auto acquire_mtl3d = static_cast<MaterialProgram *(MaterialManager::*)(const mtl::MaterialPreset, mtl::Material3DCreateConfig *)>(&MaterialManager::AcquireMaterialProgram);
+        mtl = (mm->*acquire_mtl3d)(mtl::MaterialPreset::Gizmo3D, &cfg3d);
         if (!mtl)
-            return LogStageFail("OffscreenPass::BuildSphere", "AcquireMaterialProgram(Gizmo3D) failed");
+            return LogStageFail("OffscreenPass::BuildSphere", "create Gizmo3D material failed");
 
         sphere_color_data = GetColor4f(COLOR::SkyBlue, 1.0f);
 
@@ -357,15 +362,13 @@ public:
         recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Gizmo3D);
         recipe.domain = "RenderToTexture.Offscreen";
         prim_comp->SetMaterialRecipe(recipe);
-        prim_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
-                                             material_ssbo_type,
-                                             material_ssbo_id,
-                                             mi_ssbo,
-                                             material_ssbo_count,
-                                             material_ssbo_stride,
-                                             0,
-                                             true,
-                                             true);
+        hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource sphere_struct{};
+        sphere_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+        sphere_struct.ssbo_id = material_ssbo_id;
+        sphere_struct.struct_index = 0;
+        sphere_struct.use_struct_index = true;
+        sphere_struct.shared_across_instances = true;
+        prim_comp->SetMaterialStructResource(sphere_struct);
         prim_comp->RequestPipeline(InlinePipeline::Solid3D);
         prim_comp->SetVisible(true);
 
@@ -517,9 +520,10 @@ private:
                                           mtl::WithLocalToWorld::With,
                                           mtl::WithSky::With);
 
-        cube_mtl = mm->AcquireMaterialProgram(mtl::MaterialPreset::Standard, &cfg3d);
+        const auto acquire_mtl3d = static_cast<MaterialProgram *(MaterialManager::*)(const mtl::MaterialPreset, mtl::Material3DCreateConfig *)>(&MaterialManager::AcquireMaterialProgram);
+        cube_mtl = (mm->*acquire_mtl3d)(mtl::MaterialPreset::Standard, &cfg3d);
         if (!cube_mtl)
-            return LogStageFail("RenderToTextureApp::CreateCube", "AcquireMaterialProgram(Standard) failed");
+            return LogStageFail("RenderToTextureApp::CreateCube", "create Standard material failed");
 
         cube_sampler = sm->CreateSampler();
         if (!cube_sampler)
@@ -587,15 +591,13 @@ private:
         cube_prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_tex, cube_sampler);
         cube_prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal, normal_tex, cube_sampler);
         cube_prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_tex, cube_sampler);
-        cube_prim_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
-                                                  cube_ssbo_type,
-                                                  cube_ssbo_id,
-                                                  cube_mi_ssbo,
-                                                  cube_ssbo_count,
-                                                  cube_ssbo_stride,
-                                                  0,
-                                                  true,
-                                                  true);
+        hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource cube_struct{};
+        cube_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+        cube_struct.ssbo_id = cube_ssbo_id;
+        cube_struct.struct_index = 0;
+        cube_struct.use_struct_index = true;
+        cube_struct.shared_across_instances = true;
+        cube_prim_comp->SetMaterialStructResource(cube_struct);
         cube_prim_comp->RequestPipeline(InlinePipeline::Solid3D);
         cube_prim_comp->SetVisible(true);
         LogStage("RenderToTextureApp::CreateCube", "success");
@@ -616,9 +618,9 @@ private:
         if (!gc)
             return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "graphics context is null");
 
-        auto *buffer_manager = GetManager<BufferManager>();
-        if (!buffer_manager)
-            return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "buffer manager is null");
+        auto *domain_manager = GetManager<ResourceDomainManager>();
+        if (!domain_manager)
+            return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "resource domain manager is null");
 
         const uint32_t mi_data_bytes = cube_mtl->GetMIDataBytes();
         if (mi_data_bytes == 0)
@@ -648,7 +650,11 @@ private:
         GLogInfo("[RenderToTexture][RenderToTextureApp::InitCubeMISSBO] slot=%u mi_bytes=%u mi_count=%u ssbo_size=%llu",
                  0u, mi_data_bytes, mi_count, static_cast<unsigned long long>(ssbo_size));
 
-        cube_mi_ssbo = buffer_manager->CreateSSBO("RenderToTexture:MainScene:MIData", ssbo_size, nullptr, SharingMode::Exclusive);
+        cube_mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{cube_ssbo_type, cube_ssbo_id, 0},
+                                                    "RenderToTexture:MainScene:MIData",
+                                                    ssbo_size,
+                                                    cube_ssbo_count,
+                                                    SharingMode::Exclusive);
         if (!cube_mi_ssbo)
             return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "CreateSSBO failed");
 

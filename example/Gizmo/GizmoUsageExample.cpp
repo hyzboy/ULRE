@@ -9,13 +9,11 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/gizmo/TransformGizmoSystem.h>
 #include<hgl/math/VectorTypes.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/vk/VKVertexInputConfig.h>
@@ -74,23 +72,23 @@ private:
 
     std::shared_ptr<TransformGizmoSystem> gizmo_system;
 
-    MaterialProgram *grid_material = nullptr;
+    graph::mtl::MaterialRecipe grid_recipe{};
+    PrimitiveAsset             grid_asset{};
     graph::DeviceBuffer *grid_mi_ssbo = nullptr;
     Geometry *grid_geometry = nullptr;
-    Primitive *grid_primitive = nullptr;
 
-    MaterialProgram *cube_material = nullptr;
+    graph::mtl::MaterialRecipe cube_recipe{};
+    PrimitiveAsset             cube_asset{};
     graph::DeviceBuffer *cube_mi_ssbo = nullptr;
     Geometry *cube_geometry = nullptr;
-    Primitive *cube_primitive = nullptr;
-    graph::mtl::SSBOType grid_mi_ssbo_type = graph::mtl::SSBOType::UserDefined;
-    uint32_t grid_mi_ssbo_id = 0;
+    graph::mtl::SSBOType grid_mi_ssbo_type = graph::mtl::SSBOType::PBRSurface;
+    uint32_t grid_mi_ssbo_id = kGizmoUsageGridSsboId;
     uint32_t grid_mi_ssbo_count = 0;
-    uint32_t grid_mi_ssbo_stride = 0;
-    graph::mtl::SSBOType cube_mi_ssbo_type = graph::mtl::SSBOType::UserDefined;
-    uint32_t cube_mi_ssbo_id = 0;
+    uint32_t grid_mi_ssbo_stride = sizeof(Color4f);
+    graph::mtl::SSBOType cube_mi_ssbo_type = graph::mtl::SSBOType::PBRSurface;
+    uint32_t cube_mi_ssbo_id = kGizmoUsageCubeSsboId;
     uint32_t cube_mi_ssbo_count = 0;
-    uint32_t cube_mi_ssbo_stride = 0;
+    uint32_t cube_mi_ssbo_stride = sizeof(Color4f);
 
     std::string debug_cache;
 
@@ -104,11 +102,9 @@ private:
         if(!graphics_context)
             return false;
 
-        auto *material_manager = GetManager<MaterialManager>();
         auto *geometry_manager = GetManager<GeometryManager>();
-        auto *primitive_manager = GetManager<PrimitiveManager>();
         auto *device = graphics_context->GetDevice();
-        if(!material_manager || !geometry_manager || !primitive_manager || !device)
+        if(!geometry_manager || !device)
             return false;
 
         {
@@ -128,53 +124,37 @@ private:
 
             geometry_manager->Add(grid_geometry);
 
-            mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
-            cfg.local_to_world = true;
-            grid_material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::VertexLuminance3D,
-                                                                     &cfg,
-                                                                     grid_geometry->GetGeometryVertexFormat());
-            if(!grid_material)
-                return false;
-
-            auto *buffer_manager = GetManager<BufferManager>();
-            if (!buffer_manager)
+            auto *domain_manager = GetManager<ResourceDomainManager>();
+            if (!domain_manager)
                 return false;
 
             const Color4f white = GetColor4f(COLOR::White, 1.0f);
-            const uint32_t stride = grid_material->GetMIDataBytes();
-            if (stride > 0)
-            {
-                const uint32_t grid_slot_count = 1;
-                grid_mi_ssbo_count = grid_slot_count;
-                grid_mi_ssbo_stride = stride;
-                grid_mi_ssbo = buffer_manager->CreateSSBO("GizmoUsage:GridMIData",
-                                                          stride * grid_slot_count,
-                                                          nullptr,
-                                                          SharingMode::Exclusive);
-                if (!grid_mi_ssbo)
-                    return false;
-
-                if (auto *gpu = grid_mi_ssbo->GetGPUBuffer())
-                    gpu->Write(&white, 0, hgl_min(stride, static_cast<uint32_t>(sizeof(white))));
-
-                for (const auto &req : grid_material->GetMaterialResourceLayout().requirements)
-                {
-                    if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
-                        continue;
-                    grid_mi_ssbo_type = req.ssbo_type;
-                    grid_mi_ssbo_id = kGizmoUsageGridSsboId;
-                    break;
-                }
-            }
-
-            grid_primitive = primitive_manager->CreatePrimitive(grid_geometry, grid_material, nullptr, nullptr);
-            if(!grid_primitive)
+            const uint32_t grid_slot_count = 1;
+            grid_mi_ssbo_count = grid_slot_count;
+            grid_mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{grid_mi_ssbo_type, grid_mi_ssbo_id, 0},
+                                                        "GizmoUsage:GridMIData",
+                                                        grid_mi_ssbo_stride * grid_slot_count,
+                                                        grid_mi_ssbo_count,
+                                                        SharingMode::Exclusive);
+            if (!grid_mi_ssbo)
                 return false;
+            if (auto *gpu = grid_mi_ssbo->GetGPUBuffer())
+                gpu->Write(&white, 0, hgl_min(grid_mi_ssbo_stride, static_cast<uint32_t>(sizeof(white))));
+
+            grid_recipe.recipe_name = "GizmoUsageExample.VertexLuminance3D";
+            grid_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+            grid_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::VertexLuminance3D);
+            grid_recipe.domain = "GizmoUsageExample";
+            graph::mtl::UpsertRecipeSSBOAssetBinding(grid_recipe,
+                                                     graph::mtl::SBS_MaterialInstance.name,
+                                                     grid_mi_ssbo_type,
+                                                     grid_mi_ssbo_id);
+            grid_asset = PrimitiveAsset(grid_geometry, &grid_recipe, PrimitiveType::Lines);
         }
 
         {
-            auto *buffer_manager = GetManager<BufferManager>();
-            if (!buffer_manager)
+            auto *domain_manager = GetManager<ResourceDomainManager>();
+            if (!domain_manager)
                 return false;
 
             auto pc = std::make_unique<GeometryCreater>(
@@ -192,40 +172,27 @@ private:
 
             geometry_manager->Add(cube_geometry);
 
-            mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
-            cube_material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Gizmo3D,
-                                                                     &cfg,
-                                                                     cube_geometry->GetGeometryVertexFormat());
-            if(!cube_material)
-                return false;
-
             const Color4f blue = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-            const uint32_t stride = cube_material->GetMIDataBytes();
-            if (stride > 0)
-            {
-                cube_mi_ssbo_count = 1;
-                cube_mi_ssbo_stride = stride;
-                cube_mi_ssbo = buffer_manager->CreateSSBO("GizmoUsage:CubeMIData", stride, nullptr, SharingMode::Exclusive);
-                if (!cube_mi_ssbo)
-                    return false;
-
-                if (auto *gpu = cube_mi_ssbo->GetGPUBuffer())
-                    gpu->Write(&blue, 0, hgl_min(stride, static_cast<uint32_t>(sizeof(blue))));
-
-                for (const auto &req : cube_material->GetMaterialResourceLayout().requirements)
-                {
-                    if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
-                        continue;
-
-                    cube_mi_ssbo_type = req.ssbo_type;
-                    cube_mi_ssbo_id = kGizmoUsageCubeSsboId;
-                    break;
-                }
-            }
-
-            cube_primitive = primitive_manager->CreatePrimitive(cube_geometry, cube_material, nullptr, nullptr);
-            if(!cube_primitive)
+            cube_mi_ssbo_count = 1;
+            cube_mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{cube_mi_ssbo_type, cube_mi_ssbo_id, 0},
+                                                        "GizmoUsage:CubeMIData",
+                                                        cube_mi_ssbo_stride,
+                                                        cube_mi_ssbo_count,
+                                                        SharingMode::Exclusive);
+            if (!cube_mi_ssbo)
                 return false;
+            if (auto *gpu = cube_mi_ssbo->GetGPUBuffer())
+                gpu->Write(&blue, 0, hgl_min(cube_mi_ssbo_stride, static_cast<uint32_t>(sizeof(blue))));
+
+            cube_recipe.recipe_name = "GizmoUsageExample.Gizmo3D";
+            cube_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+            cube_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Gizmo3D);
+            cube_recipe.domain = "GizmoUsageExample";
+            graph::mtl::UpsertRecipeSSBOAssetBinding(cube_recipe,
+                                                     graph::mtl::SBS_MaterialInstance.name,
+                                                     cube_mi_ssbo_type,
+                                                     cube_mi_ssbo_id);
+            cube_asset = PrimitiveAsset(cube_geometry, &cube_recipe, PrimitiveType::Triangles);
         }
 
         return true;
@@ -233,7 +200,7 @@ private:
 
     bool InitSceneEntities()
     {
-        if(!ecs_context || !grid_primitive || !cube_primitive || !gizmo_system)
+        if(!ecs_context || !gizmo_system)
             return false;
 
         plane_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("PlaneGrid");
@@ -244,22 +211,14 @@ private:
         plane_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
 
         auto plane_primitive_comp = plane_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
-        plane_primitive_comp->SetPrimitive(grid_primitive);
-        graph::mtl::MaterialRecipe recipe{};
-        recipe.recipe_name = "GizmoUsageExample.VertexLuminance3D";
-        recipe.shading_model = graph::mtl::ShadingModel::Unlit;
-        recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::VertexLuminance3D);
-        recipe.domain = "GizmoUsageExample";
-        plane_primitive_comp->SetMaterialRecipe(recipe);
-        plane_primitive_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
-                                                        grid_mi_ssbo_type,
-                                                        grid_mi_ssbo_id,
-                                                        grid_mi_ssbo,
-                                                        grid_mi_ssbo_count,
-                                                        grid_mi_ssbo_stride,
-                                                        0,
-                                                        true,
-                                                        true);
+        plane_primitive_comp->SetPrimitiveAsset(&grid_asset);
+        hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource plane_struct{};
+        plane_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+        plane_struct.ssbo_id = grid_mi_ssbo_id;
+        plane_struct.struct_index = 0;
+        plane_struct.use_struct_index = true;
+        plane_struct.shared_across_instances = true;
+        plane_primitive_comp->SetMaterialStructResource(plane_struct);
         plane_primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
         plane_primitive_comp->SetVisible(true);
 
@@ -271,22 +230,14 @@ private:
         cube_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(3.0f));
 
         auto cube_primitive_comp = cube_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
-        cube_primitive_comp->SetPrimitive(cube_primitive);
-        graph::mtl::MaterialRecipe cube_recipe{};
-        cube_recipe.recipe_name = "GizmoUsageExample.Gizmo3D";
-        cube_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
-        cube_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Gizmo3D);
-        cube_recipe.domain = "GizmoUsageExample";
-        cube_primitive_comp->SetMaterialRecipe(cube_recipe);
-        cube_primitive_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
-                                                       cube_mi_ssbo_type,
-                                                       cube_mi_ssbo_id,
-                                                       cube_mi_ssbo,
-                                                       cube_mi_ssbo_count,
-                                                       cube_mi_ssbo_stride,
-                                                       0,
-                                                       true,
-                                                       true);
+        cube_primitive_comp->SetPrimitiveAsset(&cube_asset);
+        hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource cube_struct{};
+        cube_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+        cube_struct.ssbo_id = cube_mi_ssbo_id;
+        cube_struct.struct_index = 0;
+        cube_struct.use_struct_index = true;
+        cube_struct.shared_across_instances = true;
+        cube_primitive_comp->SetMaterialStructResource(cube_struct);
         cube_primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
         cube_primitive_comp->SetVisible(true);
 

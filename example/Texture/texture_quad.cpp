@@ -2,10 +2,10 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 
@@ -62,8 +62,8 @@ private:
 
     Texture2D *         texture             = nullptr;
     Sampler *           sampler             = nullptr;
-    MaterialProgram *          material            = nullptr;
-    Primitive *         prim_quad           = nullptr;
+    graph::mtl::MaterialRecipe quad_recipe{};
+    PrimitiveAsset      quad_asset{};
     std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
 
 private:
@@ -74,20 +74,10 @@ private:
         if (!graphics_context)
             return false;
 
-        auto* material_manager = GetManager<MaterialManager>();
         auto* sampler_manager = GetManager<SamplerManager>();
         auto* tex_manager = GetManager<TextureManager>();
-        if (!material_manager || !sampler_manager || !tex_manager)
+        if (!sampler_manager || !tex_manager)
             return false;
-
-        mtl::Material2DCreateConfig cfg(PrimitiveType::Fan,
-                                        CoordinateSystem2D::NDC,
-                                        mtl::WithLocalToWorld::Without);
-
-        material=material_manager->AcquireMaterialProgram(mtl::MaterialPreset::PureTexture2D,&cfg);
-
-        if(!material)
-            return(false);
 
         auto* device = graphics_context->GetDevice();
         if (!device)
@@ -111,8 +101,7 @@ private:
         auto* device = graphics_context->GetDevice();
         auto* buffer_manager = GetManager<BufferManager>();
         auto* geometry_manager = GetManager<GeometryManager>();
-        auto* primitive_manager = GetManager<PrimitiveManager>();
-        if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
+        if (!device || !buffer_manager || !geometry_manager)
             return false;
 
         GeometryCreater pc(device, CreatePureTexture2DGeometryVertexFormat(), buffer_manager);
@@ -125,11 +114,11 @@ private:
         if (!geometry)
             return false;
         geometry_manager->Add(geometry);
-
-        prim_quad = primitive_manager->CreatePrimitive(geometry, material, nullptr, nullptr);
-
-        if(!prim_quad)
-            return(false);
+        quad_recipe.recipe_name = "TextureQuad.PureTexture2D";
+        quad_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        quad_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::PureTexture2D);
+        quad_recipe.domain = "TextureQuad";
+        quad_asset = PrimitiveAsset(geometry, &quad_recipe, PrimitiveType::Fan);
 
         return(true);
     }
@@ -149,13 +138,7 @@ private:
         quad_transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         quad_transform->SetMovable(false);
 
-        quad_primitive->SetPrimitive(prim_quad);
-        graph::mtl::MaterialRecipe recipe{};
-        recipe.recipe_name = "TextureQuad.PureTexture2D";
-        recipe.shading_model = graph::mtl::ShadingModel::Unlit;
-        recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::PureTexture2D);
-        recipe.domain = "TextureQuad";
-        quad_primitive->SetMaterialRecipe(recipe);
+        quad_primitive->SetPrimitiveAsset(&quad_asset);
         quad_primitive->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, texture, sampler);
         quad_primitive->RequestPipeline(InlinePipeline::Solid2D);
         quad_primitive->SetVisible(true);

@@ -10,6 +10,16 @@ namespace hgl::graph::mtl
 {
 namespace
 {
+    const bool kRegisteredGizmo3DBmi = []() -> bool
+    {
+        BaseMaterialInfo bmi{};
+        bmi.bmi_name = "Gizmo3D";
+        bmi.shading_model = ShadingModel::Unlit;
+        bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::Gizmo3D);
+        RegisterBaseMaterialInfo(MaterialPreset::Gizmo3D, bmi);
+        return true;
+    }();
+
     // ─────────────────────────────────────────────────────────────────────────────
     // 顶点输入和描述符定义
     // ─────────────────────────────────────────────────────────────────────────────
@@ -87,4 +97,3 @@ MaterialCreateInfo *CreateGizmo3D(const contract::PhysicalDeviceProfileLite *pro
     return mci;
 }
 }//namespace hgl::graph::mtl
-

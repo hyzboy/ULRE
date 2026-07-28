@@ -1,15 +1,16 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/Wall.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/color/Color.h>
 
@@ -52,20 +53,19 @@ private:
     hgl::ecs::Entity *camera_entity = nullptr;
 
     mtl::StandardMaterialInstance mi_data;
-
-    MaterialProgram *material = nullptr;
+    graph::mtl::MaterialRecipe wall_recipe{};
     graph::DeviceBuffer *mi_ssbo = nullptr;
-    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::UserDefined;
-    uint32_t material_ssbo_id = 0;
+    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::PBRSurface;
+    uint32_t material_ssbo_id = kWallsFromPolylineSsboId;
     uint32_t material_ssbo_count = 0;
-    uint32_t material_ssbo_stride = 0;
+    uint32_t material_ssbo_stride = sizeof(mtl::StandardMaterialInstance);
     Sampler *sampler = nullptr;
     Texture2D *base_color_texture = nullptr;
     std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
 
     VertexDataManager *mesh_vdm = nullptr;
 
-    std::vector<Primitive*> wall_meshes;
+    std::vector<PrimitiveAsset> wall_meshes;
 
 public:
     ~TestApp()
@@ -105,10 +105,6 @@ public:
 
         for(size_t i = 0; i < wall_meshes.size(); ++i)
         {
-            Primitive *primitive = wall_meshes[i];
-            if(!primitive)
-                continue;
-
             auto entity = ecs_context->CreateEntity<hgl::ecs::Entity>("Wall_" + std::to_string(i));
             auto transform = entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
             auto prim_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
@@ -118,22 +114,15 @@ public:
             transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             transform->SetMovable(false);
 
-            prim_comp->SetPrimitive(primitive);
-            graph::mtl::MaterialRecipe recipe{};
-            recipe.recipe_name = "WallsFromPolyline.Standard";
-            recipe.shading_model = graph::mtl::ShadingModel::Standard;
-            recipe.domain = "WallsFromPolyline";
-            prim_comp->SetMaterialRecipe(recipe);
+            prim_comp->SetPrimitiveAsset(&wall_meshes[i]);
             prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_color_texture, sampler);
-            prim_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
-                                                 material_ssbo_type,
-                                                 material_ssbo_id,
-                                                 mi_ssbo,
-                                                 material_ssbo_count,
-                                                 material_ssbo_stride,
-                                                 0,
-                                                 true,
-                                                 true);
+            hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource wall_struct{};
+            wall_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+            wall_struct.ssbo_id = material_ssbo_id;
+            wall_struct.struct_index = 0;
+            wall_struct.use_struct_index = true;
+            wall_struct.shared_across_instances = true;
+            prim_comp->SetMaterialStructResource(wall_struct);
             prim_comp->RequestPipeline(InlinePipeline::Solid3D);
             prim_comp->SetVisible(true);
         }
@@ -151,12 +140,9 @@ public:
         if (!graphics_context)
             return false;
 
-        auto* material_manager = GetManager<MaterialManager>();
         auto* texture_manager = GetManager<TextureManager>();
         auto* sampler_manager = GetManager<SamplerManager>();
         auto* device = graphics_context->GetDevice();
-        if (!material_manager)
-            return false;
         if (!texture_manager || !sampler_manager || !device)
             return false;
 
@@ -164,18 +150,18 @@ public:
         if (!geometry_manager)
             return false;
 
-        mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles,
-                        mtl::WithCamera::With,
-                        mtl::WithLocalToWorld::With,
-                        mtl::WithSky::With);
-
         mi_data.base_color = GetRGBA(COLOR::FireBrick);
         mi_data.metallic=0;
         mi_data.roughness=0.95f;
         mi_data.normal_scale=0.35f;
-
-        material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Standard, &cfg);
-        if(!material) return false;
+        wall_recipe.recipe_name = "WallsFromPolyline.Standard";
+        wall_recipe.shading_model = graph::mtl::ShadingModel::Standard;
+        wall_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Standard);
+        wall_recipe.domain = "WallsFromPolyline";
+        graph::mtl::UpsertRecipeSSBOAssetBinding(wall_recipe,
+                                                 graph::mtl::SBS_MaterialInstance.name,
+                                                 material_ssbo_type,
+                                                 material_ssbo_id);
 
         // Standard surface (QUALITY_TIER=Medium) samples TexAlbedo; bind a fallback texture.
         base_color_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
@@ -189,39 +175,22 @@ public:
         // Bindless registration deferred until ECS context is ready.
 
         // Create external SSBO for Standard material data; runtime binding is driven by recipe authoring.
+        auto *domain_manager = GetManager<ResourceDomainManager>();
         auto *buffer_manager = GetManager<BufferManager>();
-        if (!buffer_manager)
+        if (!domain_manager || !buffer_manager)
             return false;
 
-        const uint32_t stride = material->GetMIDataBytes();
-        if (stride > 0)
-        {
-            bool has_struct_binding = false;
-            for (const auto &req : material->GetMaterialResourceLayout().requirements)
-            {
-                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
-                    continue;
+        material_ssbo_count = 1;
+        mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{material_ssbo_type, material_ssbo_id, 0},
+                                               "WallsFromPolyline:MIData",
+                                               material_ssbo_stride,
+                                               material_ssbo_count,
+                                               SharingMode::Exclusive);
+        if (!mi_ssbo)
+            return false;
 
-                has_struct_binding = true;
-                material_ssbo_type = req.ssbo_type;
-                material_ssbo_id = kWallsFromPolylineSsboId;
-                break;
-            }
-            if (!has_struct_binding)
-                return false;
-
-            material_ssbo_count = 1;
-            material_ssbo_stride = stride;
-            mi_ssbo = buffer_manager->CreateSSBO("WallsFromPolyline:MIData",
-                                                 stride,
-                                                 nullptr,
-                                                 SharingMode::Exclusive);
-            if (!mi_ssbo)
-                return false;
-
-            if (auto *gpu = mi_ssbo->GetGPUBuffer())
-                gpu->Write(&mi_data, 0, hgl_min(stride, static_cast<uint32_t>(sizeof(mi_data))));
-        }
+        if (auto *gpu = mi_ssbo->GetGPUBuffer())
+            gpu->Write(&mi_data, 0, hgl_min(material_ssbo_stride, static_cast<uint32_t>(sizeof(mi_data))));
 
         mesh_vdm = new VertexDataManager(
             buffer_manager,
@@ -266,12 +235,7 @@ public:
             if(geometry)
             {
                 geometry_manager->Add(geometry);
-                auto* primitive_manager = GetManager<PrimitiveManager>();
-                if (!primitive_manager)
-                    return false;
-
-                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material, nullptr, nullptr);
-                if(primitive) wall_meshes.push_back(primitive);
+                wall_meshes.push_back(PrimitiveAsset(geometry, &wall_recipe, PrimitiveType::Triangles));
             }
         }
 
@@ -301,12 +265,7 @@ public:
             if(geometry)
             {
                 geometry_manager->Add(geometry);
-                auto* primitive_manager = GetManager<PrimitiveManager>();
-                if (!primitive_manager)
-                    return false;
-
-                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material, nullptr, nullptr);
-                if(primitive) wall_meshes.push_back(primitive);
+                wall_meshes.push_back(PrimitiveAsset(geometry, &wall_recipe, PrimitiveType::Triangles));
             }
         }
 
@@ -335,12 +294,7 @@ public:
             if(geometry)
             {
                 geometry_manager->Add(geometry);
-                auto* primitive_manager = GetManager<PrimitiveManager>();
-                if (!primitive_manager)
-                    return false;
-
-                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material, nullptr, nullptr);
-                if(primitive) wall_meshes.push_back(primitive);
+                wall_meshes.push_back(PrimitiveAsset(geometry, &wall_recipe, PrimitiveType::Triangles));
             }
         }
 
@@ -370,12 +324,7 @@ public:
             if(geometry)
             {
                 geometry_manager->Add(geometry);
-                auto* primitive_manager = GetManager<PrimitiveManager>();
-                if (!primitive_manager)
-                    return false;
-
-                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material, nullptr, nullptr);
-                if(primitive) wall_meshes.push_back(primitive);
+                wall_meshes.push_back(PrimitiveAsset(geometry, &wall_recipe, PrimitiveType::Triangles));
             }
         }
 

@@ -4,6 +4,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/graph/mesh/LoadStaticMesh.h>
 #include<hgl/vk/VKVertexInputLayout.h>
@@ -118,8 +119,8 @@ private:
         if (!graphics_context)
             return false;
 
-        auto *buffer_manager   = GetManager<BufferManager>();
-        if (!buffer_manager)
+        auto *domain_manager = GetManager<ResourceDomainManager>();
+        if (!domain_manager)
             return false;
 
         md->vil = md->material->GetDefaultVIL();
@@ -152,7 +153,11 @@ private:
             md->ssbo_stride = stride;
             md->ssbo_count = color_count;
             const VkDeviceSize ssbo_size = VkDeviceSize(color_count) * stride;
-            md->mi_ssbo = buffer_manager->CreateSSBO(tag, ssbo_size, nullptr, SharingMode::Exclusive);
+            md->mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{md->material_ssbo_type, md->ssbo_id, 0},
+                                                       tag,
+                                                       ssbo_size,
+                                                       md->ssbo_count,
+                                                       SharingMode::Exclusive);
             if (!md->mi_ssbo)
                 return false;
 
@@ -192,7 +197,8 @@ private:
             return false;
 
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
-        solid.material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Gizmo3D,&cfg);
+        const auto acquire_mtl3d = static_cast<MaterialProgram *(MaterialManager::*)(const mtl::MaterialPreset, mtl::Material3DCreateConfig *)>(&MaterialManager::AcquireMaterialProgram);
+        solid.material = (material_manager->*acquire_mtl3d)(mtl::MaterialPreset::Gizmo3D, &cfg);
 
         return InitMaterialForDBS(&solid, "LoadScene:SolidMIData");
     }
@@ -271,15 +277,13 @@ private:
                 recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Gizmo3D);
                 recipe.domain = "LoadScene";
                 se.primitive_comp->SetMaterialRecipe(recipe);
-                se.primitive_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
-                                                             solid.material_ssbo_type,
-                                                             solid.ssbo_id,
-                                                             solid.mi_ssbo,
-                                                             solid.ssbo_count,
-                                                             solid.ssbo_stride,
-                                                             (entity_idx - 1) % COLOR_COUNT,
-                                                             true,
-                                                             true);
+                hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource scene_struct{};
+                scene_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+                scene_struct.ssbo_id = solid.ssbo_id;
+                scene_struct.struct_index = (entity_idx - 1) % COLOR_COUNT;
+                scene_struct.use_struct_index = true;
+                scene_struct.shared_across_instances = true;
+                se.primitive_comp->SetMaterialStructResource(scene_struct);
                 se.primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
                 se.primitive_comp->SetVisible(true);
 

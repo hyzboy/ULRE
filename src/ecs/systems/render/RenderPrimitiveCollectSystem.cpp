@@ -69,6 +69,63 @@ namespace hgl::ecs
             }
         }
 
+        bool Is2DInlinePipeline(const graph::InlinePipeline pipeline)
+        {
+            switch (pipeline)
+            {
+                case graph::InlinePipeline::Solid2D:
+                case graph::InlinePipeline::Alpha2D:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        bool IsLikely2DPrimitive(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+                                 const graph::GeometryVertexFormat *geometry_vertex_format)
+        {
+            if (primitive_comp && primitive_comp->HasPendingPipelinePreset())
+                return Is2DInlinePipeline(primitive_comp->GetPendingPipelinePreset());
+
+            const auto *position = geometry_vertex_format ? geometry_vertex_format->Find(graph::VertexSemantic::Position) : nullptr;
+            return position && position->vec_size == 2;
+        }
+
+        bool TryResolveUnlitPresetFromGeometry(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+                                               const graph::GeometryVertexFormat *geometry_vertex_format,
+                                               graph::mtl::MaterialPreset &out_preset)
+        {
+            if (!geometry_vertex_format)
+                return false;
+
+            const bool is_2d = IsLikely2DPrimitive(primitive_comp, geometry_vertex_format);
+
+            if (geometry_vertex_format->Find(graph::VertexSemantic::Luminance))
+            {
+                if (is_2d)
+                    return false;
+
+                out_preset = graph::mtl::MaterialPreset::VertexLuminance3D;
+                return true;
+            }
+
+            if (geometry_vertex_format->Find(graph::VertexSemantic::Color))
+            {
+                out_preset = is_2d
+                           ? graph::mtl::MaterialPreset::VertexColor2D
+                           : graph::mtl::MaterialPreset::VertexColor3D;
+                return true;
+            }
+
+            if (geometry_vertex_format->Find(graph::VertexSemantic::Normal))
+            {
+                out_preset = graph::mtl::MaterialPreset::Gizmo3D;
+                return true;
+            }
+
+            return false;
+        }
+
         bool HasResourceSemantic(const graph::MaterialProgram *material,
                                  const graph::mtl::DescriptorSemantic semantic)
         {
@@ -246,6 +303,33 @@ namespace hgl::ecs
             recipe.structs.emplace_back(std::move(binding));
         }
 
+        void NormalizeRecipeWithBaseMaterialInfo(graph::mtl::MaterialRecipe &recipe)
+        {
+            graph::mtl::BaseMaterialInfo bmi{};
+            bool has_bmi = false;
+
+            if (!recipe.base_material_info_name.empty())
+            {
+                has_bmi = graph::mtl::TryGetBaseMaterialInfoByName(recipe.base_material_info_name, bmi);
+            }
+            else if (recipe.preset_hint != graph::mtl::InvalidMaterialPresetHint
+                  && recipe.preset_hint < static_cast<uint32_t>(graph::mtl::MaterialPreset::RANGE_SIZE))
+            {
+                const graph::mtl::MaterialPreset preset = static_cast<graph::mtl::MaterialPreset>(recipe.preset_hint);
+                has_bmi = graph::mtl::TryGetBaseMaterialInfoByPreset(preset, bmi);
+            }
+
+            if (has_bmi)
+                graph::mtl::ApplyBaseMaterialInfoDefaults(recipe, bmi, false);
+
+            // Auto-derive SSBO name mapping from struct slot declarations when authoring didn't provide assets.
+            if (recipe.ssbo_assets.empty())
+            {
+                for (const auto &binding : recipe.structs)
+                    graph::mtl::UpsertRecipeSSBOAssetBinding(recipe, "mtl", binding.ssbo_type, binding.ssbo_id);
+            }
+        }
+
         bool BuildEffectiveMaterialRecipe(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
                                           graph::mtl::MaterialRecipe &out_recipe)
         {
@@ -273,6 +357,7 @@ namespace hgl::ecs
                                                resource->required,
                                                resource->direct_value,
                                                true);
+                    GLogInfo("[TexTrace] BuildEffectiveRecipe slot=%zu direct_value=%u", i, resource->direct_value);
                     continue;
                 }
 
@@ -280,8 +365,12 @@ namespace hgl::ecs
                                               ? BuildTextureResourceId(resource->texture)
                                               : resource->resource_id;
                 if (resource_id.empty())
+                {
+                    GLogWarning("[TexTrace] BuildEffectiveRecipe slot=%zu texture=%p resource_id EMPTY (skip)", i, (void*)resource->texture);
                     continue;
+                }
 
+                GLogInfo("[TexTrace] BuildEffectiveRecipe slot=%zu resource_id=%s", i, resource_id.c_str());
                 UpsertRecipeTextureBinding(out_recipe, slot, resource_id, resource->required);
             }
 
@@ -301,6 +390,11 @@ namespace hgl::ecs
                                          resource->shared_across_instances);
             }
 
+            GLogInfo("[TexTrace] BuildEffectiveRecipe result: recipe=%s tex_bindings=%zu struct_bindings=%zu",
+                     out_recipe.recipe_name.c_str(), out_recipe.textures.size(), out_recipe.structs.size());
+
+            NormalizeRecipeWithBaseMaterialInfo(out_recipe);
+
             return true;
         }
 
@@ -311,6 +405,10 @@ namespace hgl::ecs
             if (!world || !primitive_comp)
                 return false;
 
+            graph::mtl::MaterialRecipe effective_recipe{};
+            if (!BuildEffectiveMaterialRecipe(primitive_comp, effective_recipe))
+                return false;
+
             auto rdbs = world->GetSystem<RenderDescriptorBindingSystem>();
             auto *render_context = world->GetRenderContext();
             auto *graphics_context = render_context ? render_context->GetGraphicsContext() : world->GetGraphicsContext();
@@ -319,40 +417,61 @@ namespace hgl::ecs
             if (!rdbs || !domain_manager)
                 return false;
 
+            const char *prim_owner = GetPrimitiveOwnerName(primitive_comp);
+            GLogInfo("[TexTrace] PrepareRecipeAuthoringResources for %s bindless_mgr=%p", prim_owner, (void*)bindless_mgr);
+
             for (size_t i = 0; i < static_cast<size_t>(graph::mtl::TextureSlot::RANGE_SIZE); ++i)
             {
                 const auto slot = static_cast<graph::mtl::TextureSlot>(i);
                 const auto *resource = primitive_comp->GetMaterialTextureResource(slot);
                 if (!resource)
+                {
+                    GLogInfo("[TexTrace]   slot=%zu: no resource", i);
                     continue;
+                }
 
                 if (resource->use_direct_value)
+                {
+                    GLogInfo("[TexTrace]   slot=%zu: direct_value=%u (skip bindless)", i, resource->direct_value);
                     continue;
+                }
 
                 const std::string resource_id = resource->resource_id.empty()
                                               ? BuildTextureResourceId(resource->texture)
                                               : resource->resource_id;
                 if (resource_id.empty() || !bindless_mgr)
+                {
+                    GLogError("[TexTrace]   slot=%zu: FAIL resource_id_empty=%d bindless_mgr_null=%d", i, resource_id.empty()?1:0, !bindless_mgr?1:0);
                     return false;
+                }
 
                 uint32_t handle = 0;
                 switch (resource->kind)
                 {
                     case PrimitiveComponent::MaterialTextureResourceKind::Texture2D:
                         handle = rdbs->RegisterTexture2DResource(resource_id, resource->texture, resource->sampler, bindless_mgr);
+                        GLogInfo("[TexTrace]   slot=%zu Texture2D resource_id=%s handle=%u", i, resource_id.c_str(), handle);
                         break;
                     case PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray:
                         handle = rdbs->RegisterTexture2DArrayResource(resource_id, resource->texture, resource->sampler, bindless_mgr);
+                        GLogInfo("[TexTrace]   slot=%zu Texture2DArray resource_id=%s handle=%u", i, resource_id.c_str(), handle);
                         break;
                     default:
+                        GLogWarning("[TexTrace]   slot=%zu unknown kind=%d", i, (int)resource->kind);
                         break;
                 }
 
                 if (handle == 0)
+                {
+                    GLogError("[TexTrace]   slot=%zu: RegisterTexture returned handle=0, FAIL", i);
                     return false;
+                }
 
                 if (!material_program)
+                {
+                    GLogInfo("[TexTrace]   slot=%zu: no material_program, skip per-descriptor register", i);
                     continue;
+                }
 
                 for (const auto &req : material_program->GetMaterialResourceLayout().requirements)
                 {
@@ -362,12 +481,20 @@ namespace hgl::ecs
                     switch (req.semantic)
                     {
                         case graph::mtl::DescriptorSemantic::MaterialTexture:
+                            GLogInfo("[TexTrace]   slot=%zu: RegisterMaterialTexture descriptor=%s", i, req.name);
                             if (!rdbs->RegisterMaterialTexture(material_program, req.name, resource->texture))
+                            {
+                                GLogError("[TexTrace]   RegisterMaterialTexture FAILED descriptor=%s", req.name);
                                 return false;
+                            }
                             break;
                         case graph::mtl::DescriptorSemantic::MaterialSampler:
+                            GLogInfo("[TexTrace]   slot=%zu: RegisterMaterialTextureSampler descriptor=%s", i, req.name);
                             if (!rdbs->RegisterMaterialTextureSampler(material_program, req.name, resource->texture, resource->sampler))
+                            {
+                                GLogError("[TexTrace]   RegisterMaterialTextureSampler FAILED descriptor=%s", req.name);
                                 return false;
+                            }
                             break;
                         default:
                             break;
@@ -382,11 +509,69 @@ namespace hgl::ecs
                 if (!resource)
                     continue;
 
-                if (!rdbs->RegisterMaterialStructLayout(resource->ssbo_type, resource->ssbo_id, resource->byte_stride))
+                const graph::mtl::SSBOAddress address{resource->ssbo_type, resource->ssbo_id, 0};
+                if (resource->buffer)
+                {
+                    if (!rdbs->RegisterMaterialStructLayout(resource->ssbo_type, resource->ssbo_id, resource->byte_stride))
+                        return false;
+
+                    if (!domain_manager->RegisterBuffer(address, resource->buffer, resource->element_capacity))
+                        return false;
+                }
+                else
+                {
+                    graph::ResourceDomainBinding binding{};
+                    if (!domain_manager->TryGetBinding(address, binding) || !binding.buffer || binding.element_stride == 0)
+                        return false;
+
+                    if (!rdbs->RegisterMaterialStructLayout(resource->ssbo_type, resource->ssbo_id, binding.element_stride))
+                        return false;
+                }
+            }
+
+            if (!material_program)
+                return true;
+
+            for (const auto &req : material_program->GetMaterialResourceLayout().requirements)
+            {
+                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                    continue;
+
+                const auto *asset_binding = graph::mtl::FindRecipeSSBOAssetBinding(effective_recipe, req.name, req.ssbo_type);
+                const auto *named_struct_resource = primitive_comp->GetMaterialStructResource(std::string(req.name ? req.name : ""));
+
+                if (!asset_binding && named_struct_resource)
+                {
+                    graph::mtl::UpsertRecipeSSBOAssetBinding(effective_recipe,
+                                                             req.name ? std::string(req.name) : std::string(),
+                                                             req.ssbo_type,
+                                                             named_struct_resource->ssbo_id);
+
+                    asset_binding = graph::mtl::FindRecipeSSBOAssetBinding(effective_recipe, req.name, req.ssbo_type);
+                }
+
+                if (!primitive_comp->GetMaterialStructResource(req.data_slot) && named_struct_resource)
+                {
+                    primitive_comp->SetMaterialStructResource(req.data_slot,
+                                                              req.ssbo_type,
+                                                              named_struct_resource->ssbo_id,
+                                                              nullptr,
+                                                              0,
+                                                              0,
+                                                              named_struct_resource->struct_index,
+                                                              named_struct_resource->use_struct_index,
+                                                              named_struct_resource->shared_across_instances);
+                }
+
+                if (!asset_binding)
+                    continue;
+
+                const graph::mtl::SSBOAddress address{req.ssbo_type, asset_binding->ssbo_id, 0};
+                graph::ResourceDomainBinding binding{};
+                if (!domain_manager->TryGetBinding(address, binding) || !binding.buffer || binding.element_stride == 0)
                     return false;
 
-                const graph::mtl::SSBOAddress address{resource->ssbo_type, resource->ssbo_id, 0};
-                if (!domain_manager->RegisterBuffer(address, resource->buffer, resource->element_capacity))
+                if (!rdbs->RegisterMaterialStructLayout(req.ssbo_type, asset_binding->ssbo_id, binding.element_stride))
                     return false;
             }
 
@@ -618,7 +803,8 @@ namespace hgl::ecs
                 resolved_by_model = true;
                 break;
             case graph::mtl::ShadingModel::Unlit:
-                preset = graph::mtl::MaterialPreset::Gizmo3D;
+                if (!TryResolveUnlitPresetFromGeometry(primitive_comp, geometry_vertex_format, preset))
+                    preset = graph::mtl::MaterialPreset::Gizmo3D;
                 resolved_by_model = true;
                 break;
             case graph::mtl::ShadingModel::Legacy:
@@ -667,7 +853,14 @@ namespace hgl::ecs
             }
             else
             {
-                graph::mtl::Material2DCreateConfig cfg(primitive_type, graph::CoordinateSystem2D::NDC, graph::mtl::WithLocalToWorld::With);
+                const graph::mtl::WithLocalToWorld with_l2w =
+                    effective_recipe.local_to_world_2d
+                  ? graph::mtl::WithLocalToWorld::With
+                  : graph::mtl::WithLocalToWorld::Without;
+
+                graph::mtl::Material2DCreateConfig cfg(primitive_type,
+                                                       effective_recipe.coordinate_system_2d,
+                                                       with_l2w);
                 resolved_program = geometry_vertex_format
                                  ? material_manager->AcquireMaterialProgram(preset, &cfg, *geometry_vertex_format)
                                  : material_manager->AcquireMaterialProgram(preset, &cfg);

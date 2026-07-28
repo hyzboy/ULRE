@@ -6,13 +6,12 @@
 */
 
 #include<hgl/framework/WorkManager.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/UBOCommon.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
 #include<memory>
 
 #include<hgl/ecs/core/Context.h>
@@ -50,25 +49,19 @@ private:
     std::shared_ptr<hgl::graph::SunDirectionControlSystem> sun_gizmo_system;
 
     Geometry *prim_sky_sphere = nullptr;
-    MaterialProgram *mtl_sky = nullptr;
+    graph::mtl::MaterialRecipe sky_recipe{};
+    PrimitiveAsset             sky_asset{};
 
 private:
-    bool InitMDP()
+    bool InitRecipe()
     {
         if (!prim_sky_sphere)
             return false;
-
-        auto* material_manager = GetManager<MaterialManager>();
-        if (!material_manager)
-            return false;
-
-        mtl::SkyMinimalCreateConfig cfg;
-        mtl_sky = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::SkyMinimal,
-                                                           &cfg,
-                                                           prim_sky_sphere->GetGeometryVertexFormat());
-        if (!mtl_sky)
-            return false;
-
+        sky_recipe.recipe_name = "AtmosphereSkySunGizmo.Sky";
+        sky_recipe.shading_model = graph::mtl::ShadingModel::Sky;
+        sky_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::SkyMinimal);
+        sky_recipe.domain = "AtmosphereSkySunGizmo";
+        sky_asset = PrimitiveAsset(prim_sky_sphere, &sky_recipe, PrimitiveType::Triangles);
         return true;
     }
 
@@ -98,15 +91,7 @@ private:
 
     bool InitECSScene()
     {
-        if(!ecs_context || !prim_sky_sphere || !mtl_sky)
-            return false;
-
-        auto* primitive_manager = GetManager<PrimitiveManager>();
-        if (!primitive_manager)
-            return false;
-
-        Primitive *ri = primitive_manager->CreatePrimitive(prim_sky_sphere, mtl_sky, nullptr, nullptr);
-        if(!ri)
+        if(!ecs_context || !prim_sky_sphere)
             return false;
 
         sky_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("SkySphere");
@@ -118,13 +103,7 @@ private:
         transform->SetLocalScale(glm::vec3(1.0f));
         transform->SetMovable(false);
 
-        prim_comp->SetPrimitive(ri);
-        graph::mtl::MaterialRecipe recipe{};
-        recipe.recipe_name = "AtmosphereSkySunGizmo.Sky";
-        recipe.shading_model = graph::mtl::ShadingModel::Sky;
-        recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::SkyMinimal);
-        recipe.domain = "AtmosphereSkySunGizmo";
-        prim_comp->SetMaterialRecipe(recipe);
+        prim_comp->SetPrimitiveAsset(&sky_asset);
         prim_comp->RequestPipeline(InlinePipeline::Sky);
         prim_comp->SetVisible(true);
 
@@ -200,7 +179,7 @@ public:
         if(!CreateRenderObject())
             return false;
 
-        if(!InitMDP())
+        if(!InitRecipe())
             return false;
 
         if(!InitECS())

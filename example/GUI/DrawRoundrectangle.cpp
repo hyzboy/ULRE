@@ -3,6 +3,7 @@
 
 #include<hgl/WorkManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/math/Math.h>
@@ -64,9 +65,9 @@ private:
 
     Texture2D *         texture             =nullptr;
     Sampler *           sampler             =nullptr;
-    MaterialProgram *   material            =nullptr;
     Geometry *          geometry            =nullptr;
-    Primitive *         primitive           =nullptr;
+    graph::mtl::MaterialRecipe rect_recipe{};
+    PrimitiveAsset             rect_asset{};
     std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
 
 private:
@@ -121,23 +122,10 @@ private:
         if (!graphics_context)
             return false;
 
-        auto* material_manager = GetManager<MaterialManager>();
         auto* texture_manager = GetManager<TextureManager>();
         auto* sampler_manager = GetManager<SamplerManager>();
-        auto* primitive_manager = GetManager<PrimitiveManager>();
         auto* device = graphics_context->GetDevice();
-        if (!material_manager || !texture_manager || !sampler_manager || !primitive_manager || !device)
-            return false;
-
-        mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
-                                        CoordinateSystem2D::ZeroToOne,
-                                        mtl::WithLocalToWorld::Without);
-
-        material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::RectTexture2D,
-                                                            &cfg,
-                                                            geometry->GetGeometryVertexFormat());
-
-        if(!material)
+        if (!texture_manager || !sampler_manager || !device)
             return false;
 
         texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"), true);
@@ -148,9 +136,11 @@ private:
         if(!sampler)
             return false;
 
-        primitive = primitive_manager->CreatePrimitive(geometry, material, nullptr, nullptr);
-        if(!primitive)
-            return false;
+        rect_recipe.recipe_name = "DrawRoundrectangle.RectTexture2D";
+        rect_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        rect_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::RectTexture2D);
+        rect_recipe.domain = "DrawRoundrectangle";
+        rect_asset = PrimitiveAsset(geometry, &rect_recipe, PrimitiveType::Triangles);
 
         rect_entity = ecs_world->CreateEntity<hgl::ecs::Entity>("Rect2D");
         if(!rect_entity)
@@ -164,13 +154,7 @@ private:
         if(!prim_comp)
             return false;
 
-        prim_comp->SetPrimitive(primitive);
-        graph::mtl::MaterialRecipe recipe{};
-        recipe.recipe_name = "DrawRoundrectangle.RectTexture2D";
-        recipe.shading_model = graph::mtl::ShadingModel::Unlit;
-        recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::RectTexture2D);
-        recipe.domain = "DrawRoundrectangle";
-        prim_comp->SetMaterialRecipe(recipe);
+        prim_comp->SetPrimitiveAsset(&rect_asset);
         prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, texture, sampler);
         prim_comp->RequestPipeline(InlinePipeline::Solid2D);
         prim_comp->SetVisible(true);

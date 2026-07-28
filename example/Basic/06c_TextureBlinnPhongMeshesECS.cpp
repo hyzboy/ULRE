@@ -1,16 +1,15 @@
 #include<hgl/framework/WorkManager.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
-#include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/graph/SSBOSlotAllocator.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 
@@ -55,11 +54,10 @@ private:
     struct RenderMesh
     {
         Geometry* geometry = nullptr;
-        Primitive* primitive = nullptr;
+        PrimitiveAsset asset{};
 
         ~RenderMesh()
         {
-            delete primitive;
             delete geometry;
         }
     };
@@ -67,13 +65,13 @@ private:
     ECSContext* ecs_context = nullptr;
     Entity* camera_entity = nullptr;
 
-    MaterialProgram* material = nullptr;
+    graph::mtl::MaterialRecipe mesh_recipe{};
     graph::DeviceBuffer* mi_ssbo = nullptr;
     VertexDataManager* mesh_vdm = nullptr;
-    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::UserDefined;
-    uint32_t material_ssbo_id = 0;
+    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::PBRSurface;
+    uint32_t material_ssbo_id = hgl::graph::mtl::MakeRecipeSSBOId(8602);
     uint32_t material_ssbo_count = 0;
-    uint32_t material_ssbo_stride = 0;
+    uint32_t material_ssbo_stride = sizeof(mtl::StandardMaterialInstance);
 
     RenderMesh* rm_floor = nullptr;
 
@@ -97,21 +95,19 @@ private:
         if (!graphics_context)
             return false;
 
-        auto* material_manager = GetManager<MaterialManager>();
         auto* texture_manager = GetManager<TextureManager>();
         auto* sampler_manager = GetManager<SamplerManager>();
         auto* device = graphics_context->GetDevice();
-        if (!material_manager || !texture_manager || !sampler_manager || !device)
+        if (!texture_manager || !sampler_manager || !device)
             return false;
-
-        mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles,
-                                        mtl::WithCamera::With,
-                                        mtl::WithLocalToWorld::With,
-                                        mtl::WithSky::With);
-
-        material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Standard, &cfg);
-        if (!material)
-            return false;
+        mesh_recipe.recipe_name = "06c.TextureBlinnPhong.Standard";
+        mesh_recipe.shading_model = graph::mtl::ShadingModel::Standard;
+        mesh_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Standard);
+        mesh_recipe.domain = "06c.TextureBlinnPhong";
+        graph::mtl::UpsertRecipeSSBOAssetBinding(mesh_recipe,
+                                                 graph::mtl::SBS_MaterialInstance.name,
+                                                 material_ssbo_type,
+                                                 material_ssbo_id);
 
         base_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
         if (!base_texture)
@@ -136,15 +132,6 @@ private:
 
     bool InitMISSBO()
     {
-        if (!material)
-            return false;
-
-        const uint32_t mi_data_bytes = material->GetMIDataBytes();
-        if (mi_data_bytes == 0)
-            return true;
-        if (mi_data_bytes != sizeof(mtl::StandardMaterialInstance))
-            return false;
-
         auto* render_context = GetRenderContext();
         if (!render_context)
             return false;
@@ -153,31 +140,19 @@ private:
         if (!graphics_context)
             return false;
 
-        auto* buffer_manager = GetManager<BufferManager>();
-        if (!buffer_manager)
+        auto* domain_manager = GetManager<ResourceDomainManager>();
+        if (!domain_manager)
             return false;
 
-        bool has_struct_binding = false;
-        for (const auto &req : material->GetMaterialResourceLayout().requirements)
-        {
-            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
-                continue;
-
-            has_struct_binding = true;
-            material_ssbo_type = req.ssbo_type;
-            material_ssbo_id = req.ssbo_id;
-            break;
-        }
-
-        if (!has_struct_binding)
-            return false;
-
-        const uint32_t mi_count = material_ssbo_id + 1;
-        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * mi_data_bytes;
+        const uint32_t mi_count = 1;
+        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * material_ssbo_stride;
         material_ssbo_count = mi_count;
-        material_ssbo_stride = mi_data_bytes;
 
-        mi_ssbo = buffer_manager->CreateSSBO("06c:PBRSurface:MIData", ssbo_size, nullptr, SharingMode::Exclusive);
+        mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{material_ssbo_type, material_ssbo_id, 0},
+                                               "06c:PBRSurface:MIData",
+                                               ssbo_size,
+                                               material_ssbo_count,
+                                               SharingMode::Exclusive);
         if (!mi_ssbo)
             return false;
 
@@ -195,7 +170,7 @@ private:
         mi_data.metallic = 0.08f;
         mi_data.roughness = 0.92f;
         mi_data.normal_scale = 0.35f;
-        memcpy(dst + static_cast<VkDeviceSize>(material_ssbo_id) * mi_data_bytes, &mi_data, mi_data_bytes);
+        memcpy(dst, &mi_data, material_ssbo_stride);
 
         gpu_buf->Unmap();
         return true;
@@ -241,19 +216,14 @@ private:
             return nullptr;
 
         auto* geometry_manager = GetManager<GeometryManager>();
-        auto* primitive_manager = GetManager<PrimitiveManager>();
-        if (!geometry_manager || !primitive_manager)
+        if (!geometry_manager)
             return nullptr;
 
         geometry_manager->Add(geometry);
 
-        Primitive* primitive = primitive_manager->CreatePrimitive(geometry, material, nullptr, nullptr);
-        if (!primitive)
-            return nullptr;
-
         auto mesh = std::make_unique<RenderMesh>();
         mesh->geometry = geometry;
-        mesh->primitive = primitive;
+        mesh->asset = PrimitiveAsset(geometry, &mesh_recipe, PrimitiveType::Triangles);
 
         RenderMesh* result = mesh.get();
         meshes.push_back(std::move(mesh));
@@ -480,23 +450,18 @@ private:
             transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             transform->SetMovable(false);
 
-            primitive_comp->SetPrimitive(rm_floor->primitive);
+            primitive_comp->SetPrimitiveAsset(&rm_floor->asset);
             primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
-            graph::mtl::MaterialRecipe recipe{};
-            recipe.recipe_name = "06c.TextureBlinnPhong.Standard";
-            recipe.shading_model = graph::mtl::ShadingModel::Standard;
-            recipe.domain = "06c.TextureBlinnPhong";
-            primitive_comp->SetMaterialRecipe(recipe);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_texture, sampler);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal, normal_texture, sampler);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_texture, sampler);
-            primitive_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
-                                                      material_ssbo_type,
-                                                      material_ssbo_id,
-                                                      mi_ssbo,
-                                                      material_ssbo_count,
-                                                      material_ssbo_stride,
-                                                      true);
+            hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource floor_struct{};
+            floor_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+            floor_struct.ssbo_id = material_ssbo_id;
+            floor_struct.struct_index = 0;
+            floor_struct.use_struct_index = false;
+            floor_struct.shared_across_instances = false;
+            primitive_comp->SetMaterialStructResource(floor_struct);
             primitive_comp->SetVisible(true);
         }
 
@@ -523,23 +488,18 @@ private:
             transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             transform->SetMovable(false);
 
-            primitive_comp->SetPrimitive(rm->primitive);
+            primitive_comp->SetPrimitiveAsset(&rm->asset);
             primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
-            graph::mtl::MaterialRecipe recipe{};
-            recipe.recipe_name = "06c.TextureBlinnPhong.Standard";
-            recipe.shading_model = graph::mtl::ShadingModel::Standard;
-            recipe.domain = "06c.TextureBlinnPhong";
-            primitive_comp->SetMaterialRecipe(recipe);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_texture, sampler);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal, normal_texture, sampler);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_texture, sampler);
-            primitive_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
-                                                      material_ssbo_type,
-                                                      material_ssbo_id,
-                                                      mi_ssbo,
-                                                      material_ssbo_count,
-                                                      material_ssbo_stride,
-                                                      true);
+            hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource mesh_struct{};
+            mesh_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+            mesh_struct.ssbo_id = material_ssbo_id;
+            mesh_struct.struct_index = 0;
+            mesh_struct.use_struct_index = false;
+            mesh_struct.shared_across_instances = false;
+            primitive_comp->SetMaterialStructResource(mesh_struct);
             primitive_comp->SetVisible(true);
 
             ++index;

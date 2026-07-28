@@ -3,14 +3,14 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/filesystem/Filename.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
 
 // ECS headers
 #include<hgl/ecs/core/Context.h>
@@ -80,14 +80,14 @@ private:
 
     Texture2DArray *    texture             = nullptr;
     Sampler *           sampler             = nullptr;
-    MaterialProgram *          material            = nullptr;
-    Primitive *         mesh_rect           = nullptr;
+    graph::mtl::MaterialRecipe rect_recipe{};
+    PrimitiveAsset      rect_asset{};
     DeviceBuffer *      mi_ssbo             = nullptr;
     std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
-    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::UserDefined;
-    uint32_t material_ssbo_id = 0;
+    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::PBRSurface;
+    uint32_t material_ssbo_id = kTextureRectArraySsboId;
     uint32_t material_ssbo_count = 0;
-    uint32_t material_ssbo_stride = 0;
+    uint32_t material_ssbo_stride = sizeof(uint32_t);
 
     struct
     {
@@ -133,68 +133,50 @@ private:
         if (!graphics_context)
             return false;
 
-        auto* material_manager = GetManager<MaterialManager>();
         auto* sampler_manager = GetManager<SamplerManager>();
-        auto* device = graphics_context->GetDevice();
-        if (!material_manager || !sampler_manager || !device)
+        if (!sampler_manager)
             return false;
 
-        mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
-                                        CoordinateSystem2D::ZeroToOne,
-                                        mtl::WithLocalToWorld::With);
-
-        material=material_manager->AcquireMaterialProgram(mtl::MaterialPreset::RectTexture2DArray,&cfg);
-
-        if(!material)
-            return(false);
-
-        auto *buffer_manager = GetManager<BufferManager>();
-        if (!buffer_manager)
+        auto *domain_manager = GetManager<ResourceDomainManager>();
+        if (!domain_manager)
             return false;
 
         sampler=sampler_manager->CreateSampler();
 
-        // Build SSBO: each slot holds the per-instance data (layer index or similar)
-        const uint32_t stride = material->GetMIDataBytes();
-        if (stride > 0)
+        material_ssbo_count = TexCount;
+        mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{material_ssbo_type, material_ssbo_id, 0},
+                                               "TextureRectArray:MIData",
+                                               VkDeviceSize(TexCount) * material_ssbo_stride,
+                                               material_ssbo_count,
+                                               SharingMode::Exclusive);
+        if (!mi_ssbo)
+            return false;
+
+        auto *gpu_buf = mi_ssbo->GetGPUBuffer();
+        if (!gpu_buf)
+            return false;
+
+        auto *dst = static_cast<uint8_t *>(gpu_buf->Map(0, VkDeviceSize(TexCount) * material_ssbo_stride));
+        if (!dst)
+            return false;
+
+        memset(dst, 0, size_t(TexCount) * material_ssbo_stride);
+        for (uint32_t i = 0; i < TexCount; ++i)
         {
-            material_ssbo_count = TexCount;
-            material_ssbo_stride = stride;
-            mi_ssbo = buffer_manager->CreateSSBO("TextureRectArray:MIData",
-                                                  VkDeviceSize(TexCount) * stride,
-                                                  nullptr, SharingMode::Exclusive);
-            if (!mi_ssbo)
-                return false;
-
-            auto *gpu_buf = mi_ssbo->GetGPUBuffer();
-            if (!gpu_buf)
-                return false;
-
-            auto *dst = static_cast<uint8_t *>(gpu_buf->Map(0, VkDeviceSize(TexCount) * stride));
-            if (!dst)
-                return false;
-
-            memset(dst, 0, size_t(TexCount) * stride);
-            // Write layer index i at slot i (matches original WriteMIData(i) intent).
-            const uint32_t copy_bytes = hgl_min(stride, static_cast<uint32_t>(sizeof(uint32_t)));
-            for (uint32_t i = 0; i < TexCount; ++i)
-            {
-                memcpy(dst + VkDeviceSize(i) * stride, &i, copy_bytes);
-            }
-            gpu_buf->Unmap();
-
-            for (const auto &req : material->GetMaterialResourceLayout().requirements)
-            {
-                if (req.semantic != mtl::DescriptorSemantic::MaterialInstance)
-                    continue;
-                material_ssbo_type = req.ssbo_type;
-                material_ssbo_id = kTextureRectArraySsboId;
-                break;
-            }
-
-            if (material_ssbo_id == 0)
-                return false;
+            memcpy(dst + VkDeviceSize(i) * material_ssbo_stride, &i, sizeof(uint32_t));
         }
+        gpu_buf->Unmap();
+
+        rect_recipe.recipe_name = "TextureRectArray.RectTexture2DArray";
+        rect_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        rect_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::RectTexture2DArray);
+        rect_recipe.coordinate_system_2d = graph::CoordinateSystem2D::ZeroToOne;
+        rect_recipe.local_to_world_2d = true;
+        rect_recipe.domain = "TextureRectArray";
+        graph::mtl::UpsertRecipeSSBOAssetBinding(rect_recipe,
+                                                 graph::mtl::SBS_MaterialInstance.name,
+                                                 material_ssbo_type,
+                                                 material_ssbo_id);
 
         return(true);
     }
@@ -208,8 +190,7 @@ private:
         auto* device = graphics_context->GetDevice();
         auto* buffer_manager = GetManager<BufferManager>();
         auto* geometry_manager = GetManager<GeometryManager>();
-        auto* primitive_manager = GetManager<PrimitiveManager>();
-        if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
+        if (!device || !buffer_manager || !geometry_manager)
             return false;
 
         GeometryCreater pc(device, CreateRectTexture2DArrayGeometryVertexFormat(), buffer_manager);
@@ -222,14 +203,7 @@ private:
         if (!geometry)
             return false;
         geometry_manager->Add(geometry);
-
-        mesh_rect = primitive_manager->CreatePrimitive(geometry,
-                                                       material,
-                                                       nullptr,
-                                                       nullptr);
-
-        if(!mesh_rect)
-            return(false);
+        rect_asset = PrimitiveAsset(geometry, &rect_recipe, PrimitiveType::Triangles);
 
         return(true);
     }
@@ -255,26 +229,18 @@ private:
             transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             transform->SetMovable(false);
 
-            primitive->SetPrimitive(mesh_rect);
-            graph::mtl::MaterialRecipe recipe{};
-            recipe.recipe_name = "TextureRectArray.RectTexture2DArray";
-            recipe.shading_model = graph::mtl::ShadingModel::Unlit;
-            recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::RectTexture2DArray);
-            recipe.domain = "TextureRectArray";
-            primitive->SetMaterialRecipe(recipe);
+            primitive->SetPrimitiveAsset(&rect_asset);
             primitive->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor,
                                                   texture,
                                                   sampler,
                                                   PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray);
-            primitive->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
-                                                material_ssbo_type,
-                                                material_ssbo_id,
-                                                mi_ssbo,
-                                                material_ssbo_count,
-                                                material_ssbo_stride,
-                                                i,
-                                                true,
-                                                false);
+            hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource rect_struct{};
+            rect_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+            rect_struct.ssbo_id = material_ssbo_id;
+            rect_struct.struct_index = i;
+            rect_struct.use_struct_index = true;
+            rect_struct.shared_across_instances = false;
+            primitive->SetMaterialStructResource(rect_struct);
             primitive->RequestPipeline(InlinePipeline::Solid2D);
             primitive->SetVisible(true);
         }

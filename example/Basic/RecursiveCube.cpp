@@ -5,13 +5,13 @@
 // then places a child cube with 0.9x scale. Repeats for 10 layers.
 
 #include<hgl/framework/WorkManager.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/color/Color.h>
 
 #include<hgl/ecs/core/Context.h>
@@ -54,15 +54,15 @@ private:
     ECSContext *ecs_context = nullptr;
     Entity *camera_entity = nullptr;
 
-    MaterialProgram *material = nullptr;
+    graph::mtl::MaterialRecipe cube_recipe{};
+    PrimitiveAsset             cube_asset{};
     graph::DeviceBuffer *mi_ssbo = nullptr;
-    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::UserDefined;
-    uint32_t material_ssbo_id = 0;
+    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::PBRSurface;
+    uint32_t material_ssbo_id = kRecursiveCubeSsboId;
     uint32_t material_ssbo_count = 0;
-    uint32_t material_ssbo_stride = 0;
+    uint32_t material_ssbo_stride = sizeof(Color4f);
 
     Geometry *geometry = nullptr;
-    std::vector<Primitive *> primitives;
     struct CubeNode
     {
         TransformComponent *transform = nullptr;
@@ -73,8 +73,6 @@ private:
         int dir = 1;
     };
     std::vector<CubeNode> nodes;
-
-    PrimitiveManager *primitive_manager = nullptr;
 
     static constexpr int kMaxDepth = 20;
     static constexpr float kChildScale = 0.99f;
@@ -122,8 +120,6 @@ private:
         if (!geometry)
             return false;
 
-        mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
-
         auto *render_context = GetRenderContext();
         if (!render_context)
             return false;
@@ -132,41 +128,33 @@ private:
         if (!graphics_context)
             return false;
 
-        auto *material_manager = GetManager<MaterialManager>();
-        auto *buffer_manager   = GetManager<BufferManager>();
-        if (!material_manager || !buffer_manager)
+        auto *domain_manager = GetManager<ResourceDomainManager>();
+        if (!domain_manager)
             return false;
 
-        material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Gizmo3D,
-                                                            &cfg,
-                                                            geometry->GetGeometryVertexFormat());
-        if (!material)
-            return false;
+        cube_recipe.recipe_name = "RecursiveCube.Gizmo3D";
+        cube_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        cube_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Gizmo3D);
+        cube_recipe.domain = "RecursiveCube";
+        graph::mtl::UpsertRecipeSSBOAssetBinding(cube_recipe,
+                                                 graph::mtl::SBS_MaterialInstance.name,
+                                                 material_ssbo_type,
+                                                 material_ssbo_id);
+        cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
 
         const Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
 
-        const uint32_t stride = material->GetMIDataBytes();
-        if (stride > 0)
-        {
-            material_ssbo_count = 1;
-            material_ssbo_stride = stride;
-            mi_ssbo = buffer_manager->CreateSSBO("RecursiveCube:MIData", stride, nullptr, SharingMode::Exclusive);
-            if (!mi_ssbo)
-                return false;
+        material_ssbo_count = 1;
+        mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{material_ssbo_type, material_ssbo_id, 0},
+                                               "RecursiveCube:MIData",
+                                               material_ssbo_stride,
+                                               material_ssbo_count,
+                                               SharingMode::Exclusive);
+        if (!mi_ssbo)
+            return false;
 
-            if (auto *gpu = mi_ssbo->GetGPUBuffer())
-                gpu->Write(&color, 0, hgl_min(stride, static_cast<uint32_t>(sizeof(color))));
-
-            for (const auto &req : material->GetMaterialResourceLayout().requirements)
-            {
-                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
-                    continue;
-
-                material_ssbo_type = req.ssbo_type;
-                material_ssbo_id = kRecursiveCubeSsboId;
-                break;
-            }
-        }
+        if (auto *gpu = mi_ssbo->GetGPUBuffer())
+            gpu->Write(&color, 0, hgl_min(material_ssbo_stride, static_cast<uint32_t>(sizeof(color))));
 
         return true;
     }
@@ -213,7 +201,7 @@ private:
                              bool animate,
                              EntityID parent_id)
     {
-        if (!ecs_context || !primitive_manager || !geometry || !material)
+        if (!ecs_context || !geometry)
             return nullptr;
 
         auto *entity = ecs_context->CreateEntity<Entity>(name);
@@ -225,31 +213,17 @@ private:
         transform->SetLocalScale(glm::vec3(scale, scale, scale));
         transform->SetMovable(animate);
 
-        auto prim = primitive_manager->CreatePrimitive(geometry, material, nullptr, nullptr);
-        if (!prim)
-            return nullptr;
-
-        primitives.push_back(prim);
-
         auto primitive_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
-        primitive_comp->SetPrimitive(prim);
-        graph::mtl::MaterialRecipe recipe{};
-        recipe.recipe_name = "RecursiveCube.Gizmo3D";
-        recipe.shading_model = graph::mtl::ShadingModel::Unlit;
-        recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Gizmo3D);
-        recipe.domain = "RecursiveCube";
-        primitive_comp->SetMaterialRecipe(recipe);
+        primitive_comp->SetPrimitiveAsset(&cube_asset);
         if (mi_ssbo && material_ssbo_id != 0)
         {
-            primitive_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
-                                                      material_ssbo_type,
-                                                      material_ssbo_id,
-                                                      mi_ssbo,
-                                                      material_ssbo_count,
-                                                      material_ssbo_stride,
-                                                      0,
-                                                      true,
-                                                      true);
+            hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource cube_struct{};
+            cube_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+            cube_struct.ssbo_id = material_ssbo_id;
+            cube_struct.struct_index = 0;
+            cube_struct.use_struct_index = true;
+            cube_struct.shared_across_instances = true;
+            primitive_comp->SetMaterialStructResource(cube_struct);
         }
         primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
         primitive_comp->SetVisible(true);
@@ -299,10 +273,6 @@ private:
 
         auto *graphics_context = GetGraphicsContext();
         if (!graphics_context)
-            return false;
-
-        primitive_manager = GetManager<PrimitiveManager>();
-        if (!primitive_manager)
             return false;
 
         // Base cube at origin
@@ -356,8 +326,6 @@ private:
 public:
     ~RecursiveCubeApp()
     {
-        for (auto *prim : primitives)
-            SAFE_CLEAR(prim)
         SAFE_CLEAR(geometry)
         SAFE_CLEAR(mi_ssbo)
     }

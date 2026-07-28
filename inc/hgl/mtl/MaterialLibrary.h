@@ -64,4 +64,11 @@ bool TryMapVariantKeyToPreset2D(const MaterialVariantKey &key, MaterialPreset &o
 bool TryMapVariantKeyToPreset3D(const MaterialVariantKey &key, MaterialPreset &out_preset);
 bool TryMapVariantKeyToPreset(const MaterialVariantKey &key, MaterialPreset &out_preset);
 
+// BaseMaterialInfo registry:
+// Material implementation .cpp files register their BMI defaults here.
+void RegisterBaseMaterialInfo(const BaseMaterialInfo &bmi);
+void RegisterBaseMaterialInfo(const MaterialPreset preset, const BaseMaterialInfo &bmi);
+bool TryGetBaseMaterialInfoByName(const std::string &name, BaseMaterialInfo &out_bmi);
+bool TryGetBaseMaterialInfoByPreset(const MaterialPreset preset, BaseMaterialInfo &out_bmi);
+
 }//namespace hgl::graph::mtl

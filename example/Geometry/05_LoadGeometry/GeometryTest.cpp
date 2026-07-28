@@ -8,6 +8,7 @@
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/color/Color.h>
 #include<cstring>
@@ -154,8 +155,8 @@ private:
         if (!graphics_context)
             return false;
 
-        auto *buffer_manager = GetManager<BufferManager>();
-        if (!buffer_manager)
+        auto *domain_manager = GetManager<ResourceDomainManager>();
+        if (!domain_manager)
             return false;
 
         md->vil = md->material->GetDefaultVIL();
@@ -188,7 +189,11 @@ private:
             md->ssbo_count = color_count;
             md->ssbo_stride = stride;
             const VkDeviceSize ssbo_size = VkDeviceSize(color_count) * stride;
-            md->mi_ssbo = buffer_manager->CreateSSBO(tag, ssbo_size, nullptr, SharingMode::Exclusive);
+            md->mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{md->material_ssbo_type, md->ssbo_id, 0},
+                                                       tag,
+                                                       ssbo_size,
+                                                       md->ssbo_count,
+                                                       SharingMode::Exclusive);
             if (!md->mi_ssbo)
                 return false;
 
@@ -228,7 +233,8 @@ private:
             return false;
 
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
-        solid.material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Gizmo3D,&cfg);
+        const auto acquire_mtl3d = static_cast<MaterialProgram *(MaterialManager::*)(const mtl::MaterialPreset, mtl::Material3DCreateConfig *)>(&MaterialManager::AcquireMaterialProgram);
+        solid.material = (material_manager->*acquire_mtl3d)(mtl::MaterialPreset::Gizmo3D, &cfg);
 
         return InitMaterialRuntimeData(&solid, "LoadGeometry:SolidMIData", kLoadGeometrySolidSsboId);
     }
@@ -248,7 +254,8 @@ private:
             return false;
 
         mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
-        wire.material=material_manager->AcquireMaterialProgram(mtl::MaterialPreset::PureColor3D,&cfg);
+        const auto acquire_mtl3d = static_cast<MaterialProgram *(MaterialManager::*)(const mtl::MaterialPreset, mtl::Material3DCreateConfig *)>(&MaterialManager::AcquireMaterialProgram);
+        wire.material = (material_manager->*acquire_mtl3d)(mtl::MaterialPreset::PureColor3D, &cfg);
 
         return InitMaterialRuntimeData(&wire, "LoadGeometry:WireMIData", kLoadGeometryWireSsboId);
     }
@@ -390,15 +397,13 @@ private:
             recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::PureColor3D);
             recipe.domain = "LoadGeometry";
             bbox->primitive_comp->SetMaterialRecipe(recipe);
-            bbox->primitive_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
-                                                            wire.material_ssbo_type,
-                                                            wire.ssbo_id,
-                                                            wire.mi_ssbo,
-                                                            wire.ssbo_count,
-                                                            wire.ssbo_stride,
-                                                            static_cast<uint32_t>(i % COLOR_COUNT),
-                                                            true,
-                                                            true);
+            hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource bbox_struct{};
+            bbox_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+            bbox_struct.ssbo_id = wire.ssbo_id;
+            bbox_struct.struct_index = static_cast<uint32_t>(i % COLOR_COUNT);
+            bbox_struct.use_struct_index = true;
+            bbox_struct.shared_across_instances = true;
+            bbox->primitive_comp->SetMaterialStructResource(bbox_struct);
             bbox->primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             bbox->primitive_comp->SetVisible(true);
 
@@ -441,15 +446,13 @@ private:
             recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Gizmo3D);
             recipe.domain = "LoadGeometry";
             rm->primitive_comp->SetMaterialRecipe(recipe);
-            rm->primitive_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
-                                                          solid.material_ssbo_type,
-                                                          solid.ssbo_id,
-                                                          solid.mi_ssbo,
-                                                          solid.ssbo_count,
-                                                          solid.ssbo_stride,
-                                                          rm->color_index,
-                                                          true,
-                                                          true);
+            hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource mesh_struct{};
+            mesh_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+            mesh_struct.ssbo_id = solid.ssbo_id;
+            mesh_struct.struct_index = rm->color_index;
+            mesh_struct.use_struct_index = true;
+            mesh_struct.shared_across_instances = true;
+            rm->primitive_comp->SetMaterialStructResource(mesh_struct);
             rm->primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             rm->primitive_comp->SetVisible(true);
         }

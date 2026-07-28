@@ -3,10 +3,10 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 
@@ -65,28 +65,18 @@ private:
 
     Texture2D *         texture             = nullptr;
     Sampler *           sampler             = nullptr;
-    MaterialProgram *   material            = nullptr;
-    Primitive *         prim_rect           = nullptr;
+    graph::mtl::MaterialRecipe rect_recipe{};
+    PrimitiveAsset      rect_asset{};
     std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
 
 private:
 
     bool InitMaterial()
     {
-        auto* material_manager = GetManager<MaterialManager>();
         auto* sampler_manager = GetManager<SamplerManager>();
         auto* tex_manager = GetManager<TextureManager>();
-        if (!material_manager || !sampler_manager || !tex_manager )
+        if (!sampler_manager || !tex_manager )
             return false;
-
-        mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
-                                        CoordinateSystem2D::ZeroToOne,
-                                        mtl::WithLocalToWorld::Without);
-
-        material=material_manager->AcquireMaterialProgram(mtl::MaterialPreset::RectTexture2D,&cfg);
-
-        if(!material)
-            return(false);
 
         texture=tex_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
 
@@ -110,8 +100,7 @@ private:
         auto* device = graphics_context->GetDevice();
         auto* buffer_manager = GetManager<BufferManager>();
         auto* geometry_manager = GetManager<GeometryManager>();
-        auto* primitive_manager = GetManager<PrimitiveManager>();
-        if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
+        if (!device || !buffer_manager || !geometry_manager)
             return false;
 
         GeometryCreater pc(device, CreateRectTexture2DGeometryVertexFormat(), buffer_manager);
@@ -124,11 +113,13 @@ private:
         if (!geometry)
             return false;
         geometry_manager->Add(geometry);
-
-        prim_rect = primitive_manager->CreatePrimitive(geometry, material, nullptr, nullptr);
-
-        if(!prim_rect)
-            return(false);
+        rect_recipe.recipe_name = "TextureRect.RectTexture2D";
+        rect_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        rect_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::RectTexture2D);
+        rect_recipe.coordinate_system_2d = graph::CoordinateSystem2D::ZeroToOne;
+        rect_recipe.local_to_world_2d = true;
+        rect_recipe.domain = "TextureRect";
+        rect_asset = PrimitiveAsset(geometry, &rect_recipe, PrimitiveType::Triangles);
 
         return(true);
     }
@@ -148,13 +139,7 @@ private:
         rect_transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         rect_transform->SetMovable(false);
 
-        rect_primitive->SetPrimitive(prim_rect);
-        graph::mtl::MaterialRecipe recipe{};
-        recipe.recipe_name = "TextureRect.RectTexture2D";
-        recipe.shading_model = graph::mtl::ShadingModel::Unlit;
-        recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::RectTexture2D);
-        recipe.domain = "TextureRect";
-        rect_primitive->SetMaterialRecipe(recipe);
+        rect_primitive->SetPrimitiveAsset(&rect_asset);
         rect_primitive->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, texture, sampler);
         rect_primitive->RequestPipeline(InlinePipeline::Solid2D);
         rect_primitive->SetVisible(true);

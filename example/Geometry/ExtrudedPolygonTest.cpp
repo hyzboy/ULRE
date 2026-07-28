@@ -2,13 +2,14 @@
 // 测试2D多边形挤压为3D多边形功能
 
 #include<hgl/framework/WorkManager.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/Extruded.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/color/Color.h>
 #include<cmath>
@@ -30,6 +31,8 @@ using namespace hgl::graph;
 
 namespace
 {
+    constexpr uint32_t kExtrudedPolygonSsboId = hgl::graph::mtl::MakeRecipeSSBOId(8501);
+
     GeometryVertexFormat CreateGizmo3DGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
@@ -47,17 +50,21 @@ private:
     hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
 
-    MaterialProgram *          material            = nullptr;
+    graph::mtl::MaterialRecipe mesh_recipe{};
     graph::DeviceBuffer *mi_ssbo           = nullptr;
-    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::UserDefined;
-    uint32_t material_ssbo_id = 0;
+    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::PBRSurface;
+    uint32_t material_ssbo_id = kExtrudedPolygonSsboId;
     uint32_t material_ssbo_count = 0;
-    uint32_t material_ssbo_stride = 0;
+    uint32_t material_ssbo_stride = sizeof(Color4f);
 
     Geometry *         prim_rect_cube      = nullptr;
     Geometry *         prim_circle_cylinder = nullptr;
     Geometry *         prim_triangle       = nullptr;
     Geometry *         prim_pentagon       = nullptr;
+    PrimitiveAsset     asset_rect_cube{};
+    PrimitiveAsset     asset_circle_cylinder{};
+    PrimitiveAsset     asset_triangle{};
+    PrimitiveAsset     asset_pentagon{};
 
 private:
 
@@ -71,44 +78,31 @@ private:
         if (!graphics_context)
             return false;
 
-        auto* material_manager = GetManager<MaterialManager>();
-        auto* buffer_manager   = GetManager<BufferManager>();
-        if (!material_manager || !buffer_manager)
-            return false;
-
-        mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
-        material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Gizmo3D, &cfg);
-        if (!material)
+        auto* domain_manager = GetManager<ResourceDomainManager>();
+        if (!domain_manager)
             return false;
 
         const Color4f color = GetColor4f(COLOR::BlenderAxisRed, 1.0f);
+        material_ssbo_count = 1;
+        mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{material_ssbo_type, material_ssbo_id, 0},
+                                               "ExtrudedPolygonTest:MIData",
+                                               material_ssbo_stride,
+                                               material_ssbo_count,
+                                               SharingMode::Exclusive);
+        if (!mi_ssbo)
+            return false;
 
-        const uint32_t stride = material->GetMIDataBytes();
-        if (stride > 0)
-        {
-            bool has_struct_binding = false;
-            for (const auto &req : material->GetMaterialResourceLayout().requirements)
-            {
-                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
-                    continue;
+        if (auto *gpu = mi_ssbo->GetGPUBuffer())
+            gpu->Write(&color, 0, hgl_min(material_ssbo_stride, static_cast<uint32_t>(sizeof(color))));
 
-                has_struct_binding = true;
-                material_ssbo_type = req.ssbo_type;
-                material_ssbo_id = req.ssbo_id;
-                break;
-            }
-            if (!has_struct_binding)
-                return false;
-
-            material_ssbo_count = material_ssbo_id + 1;
-            material_ssbo_stride = stride;
-            mi_ssbo = buffer_manager->CreateSSBO("ExtrudedPolygonTest:MIData", stride, nullptr, SharingMode::Exclusive);
-            if (!mi_ssbo)
-                return false;
-
-            if (auto *gpu = mi_ssbo->GetGPUBuffer())
-                gpu->Write(&color, 0, hgl_min(stride, static_cast<uint32_t>(sizeof(color))));
-        }
+        mesh_recipe.recipe_name = "ExtrudedPolygonTest.Gizmo3D";
+        mesh_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        mesh_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Gizmo3D);
+        mesh_recipe.domain = "ExtrudedPolygonTest";
+        graph::mtl::UpsertRecipeSSBOAssetBinding(mesh_recipe,
+                                                 graph::mtl::SBS_MaterialInstance.name,
+                                                 material_ssbo_type,
+                                                 material_ssbo_id);
 
         return true;
     }
@@ -137,12 +131,18 @@ private:
         // 测试1: 矩形挤压成立方体
         prim_rect_cube = CreateExtrudedRectangle(pc.get(), 2.0f, 1.5f, 1.0f, math::Vector3f(0, 0, 1));
         if (prim_rect_cube)
+        {
             geometry_manager->Add(prim_rect_cube);
+            asset_rect_cube = PrimitiveAsset(prim_rect_cube, &mesh_recipe, PrimitiveType::Triangles);
+        }
 
         // 测试2: 圆形挤压成圆柱体
         prim_circle_cylinder = CreateExtrudedCircle(pc.get(), 0.8f, 1.5f, 16, math::Vector3f(0, 0, 1));
         if (prim_circle_cylinder)
+        {
             geometry_manager->Add(prim_circle_cylinder);
+            asset_circle_cylinder = PrimitiveAsset(prim_circle_cylinder, &mesh_recipe, PrimitiveType::Triangles);
+        }
 
         // 测试3: 三角形挤压
         math::Vector2f triangleVertices[3] =
@@ -163,7 +163,10 @@ private:
 
         prim_triangle = CreateExtrudedPolygon(pc.get(), &triangleEpci);
         if (prim_triangle)
+        {
             geometry_manager->Add(prim_triangle);
+            asset_triangle = PrimitiveAsset(prim_triangle, &mesh_recipe, PrimitiveType::Triangles);
+        }
 
         // 测试4: 五边形挤压
         math::Vector2f pentagonVertices[5];
@@ -187,14 +190,17 @@ private:
 
         prim_pentagon = CreateExtrudedPolygon(pc.get(), &pentagonEpci);
         if (prim_pentagon)
+        {
             geometry_manager->Add(prim_pentagon);
+            asset_pentagon = PrimitiveAsset(prim_pentagon, &mesh_recipe, PrimitiveType::Triangles);
+        }
 
         return prim_rect_cube && prim_circle_cylinder && prim_triangle && prim_pentagon;
     }
 
-    bool CreateMeshEntity(const char *name, Geometry *geometry, const glm::vec3 &pos)
+    bool CreateMeshEntity(const char *name, const PrimitiveAsset *mesh_asset, const glm::vec3 &pos)
     {
-        if(!ecs_context || !geometry)
+        if(!ecs_context || !mesh_asset)
             return false;
 
         auto* render_context = GetRenderContext();
@@ -203,14 +209,6 @@ private:
 
         auto* graphics_context = GetGraphicsContext();
         if (!graphics_context)
-            return false;
-
-        auto* primitive_manager = GetManager<PrimitiveManager>();
-        if (!primitive_manager)
-            return false;
-
-        Primitive *mesh = primitive_manager->CreatePrimitive(geometry, material, nullptr, nullptr);
-        if(!mesh)
             return false;
 
         auto entity = ecs_context->CreateEntity<hgl::ecs::Entity>(name);
@@ -222,22 +220,14 @@ private:
         transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         transform->SetMovable(false);
 
-        prim_comp->SetPrimitive(mesh);
-        graph::mtl::MaterialRecipe recipe{};
-        recipe.recipe_name = "ExtrudedPolygonTest.Gizmo3D";
-        recipe.shading_model = graph::mtl::ShadingModel::Unlit;
-        recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Gizmo3D);
-        recipe.domain = "ExtrudedPolygonTest";
-        prim_comp->SetMaterialRecipe(recipe);
-        prim_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
-                                             material_ssbo_type,
-                                             material_ssbo_id,
-                                             mi_ssbo,
-                                             material_ssbo_count,
-                                             material_ssbo_stride,
-                                             material_ssbo_id,
-                                             true,
-                                             true);
+        prim_comp->SetPrimitiveAsset(mesh_asset);
+        hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource mesh_struct{};
+        mesh_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+        mesh_struct.ssbo_id = material_ssbo_id;
+        mesh_struct.struct_index = 0;
+        mesh_struct.use_struct_index = true;
+        mesh_struct.shared_across_instances = true;
+        prim_comp->SetMaterialStructResource(mesh_struct);
         prim_comp->RequestPipeline(InlinePipeline::Solid3D);
         prim_comp->SetVisible(true);
 
@@ -249,16 +239,16 @@ private:
         if(!ecs_context)
             return false;
 
-        if(!CreateMeshEntity("RectCube", prim_rect_cube, glm::vec3(-3.0f, 0.0f, 0.0f)))
+        if(!CreateMeshEntity("RectCube", &asset_rect_cube, glm::vec3(-3.0f, 0.0f, 0.0f)))
             return false;
 
-        if(!CreateMeshEntity("CircleCylinder", prim_circle_cylinder, glm::vec3(3.0f, 0.0f, 0.0f)))
+        if(!CreateMeshEntity("CircleCylinder", &asset_circle_cylinder, glm::vec3(3.0f, 0.0f, 0.0f)))
             return false;
 
-        if(!CreateMeshEntity("TrianglePrism", prim_triangle, glm::vec3(0.0f, 3.0f, 0.0f)))
+        if(!CreateMeshEntity("TrianglePrism", &asset_triangle, glm::vec3(0.0f, 3.0f, 0.0f)))
             return false;
 
-        if(!CreateMeshEntity("PentagonPrism", prim_pentagon, glm::vec3(0.0f, -3.0f, 0.0f)))
+        if(!CreateMeshEntity("PentagonPrism", &asset_pentagon, glm::vec3(0.0f, -3.0f, 0.0f)))
             return false;
 
         return true;

@@ -8,17 +8,17 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/filesystem/Filename.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/color/ColorPacking.h>
@@ -44,6 +44,8 @@ using namespace hgl::ecs;
 
 namespace
 {
+    constexpr uint32_t kPBRSpheresSsboId = hgl::graph::mtl::MakeRecipeSSBOId(8604);
+
     GeometryVertexFormat CreateStandardTextureArrayGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
@@ -89,12 +91,12 @@ private:
     ECSContext *  ecs_world     = nullptr;
     Entity *      camera_entity = nullptr;
 
-    MaterialProgram *          material  = nullptr;
+    graph::mtl::MaterialRecipe sphere_recipe{};
     graph::DeviceBuffer * mi_ssbo = nullptr;
-    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::UserDefined;
-    uint32_t material_ssbo_id = 0;
+    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::PBRSurface;
+    uint32_t material_ssbo_id = kPBRSpheresSsboId;
     uint32_t material_ssbo_count = 0;
-    uint32_t material_ssbo_stride = 0;
+    uint32_t material_ssbo_stride = sizeof(mtl::StandardMaterialInstance);
     Texture2DArray *    base_color_texture = nullptr;
     Texture2DArray *    normal_texture = nullptr;
     Sampler *           sampler = nullptr;
@@ -102,7 +104,7 @@ private:
 
     VertexDataManager * mesh_vdm = nullptr;
     Geometry *          builtin_geometries[GEOMETRY_VARIANT_COUNT]{};
-    Primitive *         base_primitives[GEOMETRY_VARIANT_COUNT]{};
+    PrimitiveAsset      base_primitives[GEOMETRY_VARIANT_COUNT]{};
 
     // One MI per cell: col controls metallic, row controls roughness
     mtl::StandardMaterialInstance sphere_mi_data[GRID_SIZE][GRID_SIZE]{};
@@ -158,24 +160,21 @@ private:
             return false;
         }
 
-        auto* material_manager = GetManager<MaterialManager>();
         auto* sampler_manager = GetManager<SamplerManager>();
         auto* device = graphics_context->GetDevice();
-        if (!material_manager || !sampler_manager || !base_color_texture || !normal_texture || !device) {
+        if (!sampler_manager || !base_color_texture || !normal_texture || !device) {
             printf("[ERROR] InitMaterial: Failed manager/texture checks - material_mgr=%p sampler_mgr=%p base=%p normal=%p\n",
-                   material_manager, sampler_manager, base_color_texture, normal_texture);
+                   nullptr, sampler_manager, base_color_texture, normal_texture);
             return false;
         }
-
-        mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles,
-                        mtl::WithCamera::With,
-                        mtl::WithLocalToWorld::With,
-                        mtl::WithSky::With);
-        material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::StandardTextureArray, &cfg);
-        if (!material) {
-            printf("[ERROR] InitMaterial: Failed to create StandardTextureArray material\n");
-            return false;
-        }
+        sphere_recipe.recipe_name = "PBRSpheres.StandardTextureArray";
+        sphere_recipe.shading_model = graph::mtl::ShadingModel::Standard;
+        sphere_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::StandardTextureArray);
+        sphere_recipe.domain = "PBRSpheres";
+        graph::mtl::UpsertRecipeSSBOAssetBinding(sphere_recipe,
+                                                 graph::mtl::SBS_MaterialInstance.name,
+                                                 material_ssbo_type,
+                                                 material_ssbo_id);
 
         sampler = sampler_manager->CreateSampler();
         if (!sampler) {
@@ -308,7 +307,7 @@ private:
 
     bool InitMISSBO()
     {
-        if (!ecs_world || !material)
+        if (!ecs_world)
             return false;
 
         auto *render_context = GetRenderContext();
@@ -323,42 +322,21 @@ private:
             return false;
         }
 
-        auto *buffer_manager = GetManager<BufferManager>();
-        if (!buffer_manager) {
-            printf("[ERROR] InitMISSBO: Missing buffer manager\n");
-            return false;
-        }
-
-        const uint32_t mi_data_bytes = material->GetMIDataBytes();
-        if (mi_data_bytes == 0)
-            return true;
-        if (mi_data_bytes != sizeof(mtl::StandardMaterialInstance)) {
-            printf("[ERROR] InitMISSBO: Unexpected MI struct size %u\n", mi_data_bytes);
+        auto *domain_manager = GetManager<ResourceDomainManager>();
+        if (!domain_manager) {
+            printf("[ERROR] InitMISSBO: Missing resource domain manager\n");
             return false;
         }
 
         const uint32_t mi_count = GRID_SIZE * GRID_SIZE;
-        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * mi_data_bytes;
+        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * material_ssbo_stride;
         material_ssbo_count = mi_count;
-        material_ssbo_stride = mi_data_bytes;
 
-        bool has_struct_binding = false;
-        for (const auto &req : material->GetMaterialResourceLayout().requirements)
-        {
-            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
-                continue;
-
-            has_struct_binding = true;
-            material_ssbo_type = req.ssbo_type;
-            material_ssbo_id = req.ssbo_id;
-            break;
-        }
-        if (!has_struct_binding) {
-            printf("[ERROR] InitMISSBO: material has no MI contract binding\n");
-            return false;
-        }
-
-        mi_ssbo = buffer_manager->CreateSSBO("PBRSpheres:PBRSurface:MIData", ssbo_size, nullptr, SharingMode::Exclusive);
+        mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{material_ssbo_type, material_ssbo_id, 0},
+                                               "PBRSpheres:PBRSurface:MIData",
+                                               ssbo_size,
+                                               material_ssbo_count,
+                                               SharingMode::Exclusive);
         if (!mi_ssbo) {
             printf("[ERROR] InitMISSBO: Failed to create SSBO\n");
             return false;
@@ -385,17 +363,17 @@ private:
                 const uint32_t slot_index = row * GRID_SIZE + col;
                 sphere_slot_rows[row][col] = slot_index;
 
-                memcpy(dst + static_cast<VkDeviceSize>(slot_index) * mi_data_bytes,
+                memcpy(dst + static_cast<VkDeviceSize>(slot_index) * material_ssbo_stride,
                        &sphere_mi_data[row][col],
-                       mi_data_bytes);
+                       material_ssbo_stride);
             }
         }
 
         gpu_buf->Unmap();
 
         std::cout << "[PBRSpheres::InitMISSBO] registered PBRSurface SSBO: count=" << mi_count
-                  << ", stride=" << mi_data_bytes << std::endl;
-        return has_struct_binding;
+                  << ", stride=" << material_ssbo_stride << std::endl;
+        return true;
     }
 
     bool InitVDM()
@@ -549,24 +527,13 @@ private:
             return false;
         }
 
-        auto* primitive_manager = GetManager<PrimitiveManager>();
-        if (!primitive_manager) {
-            printf("[ERROR] CreateBasePrimitives: No primitive_manager\n");
-            return false;
-        }
-
         for (uint i = 0; i < GEOMETRY_VARIANT_COUNT; ++i)
         {
-            base_primitives[i] = primitive_manager->CreatePrimitive(
-                builtin_geometries[i],
-                material,
-                nullptr,
-                nullptr);
-
-            if (!base_primitives[i]) {
+            if (!builtin_geometries[i]) {
                 printf("[ERROR] CreateBasePrimitives: Failed to create primitive %u\n", i);
                 return false;
             }
+            base_primitives[i] = PrimitiveAsset(builtin_geometries[i], &sphere_recipe, PrimitiveType::Triangles);
         }
 
         return true;
@@ -612,13 +579,7 @@ private:
                 transform->SetMovable(true);
 
                 auto prim_comp = e->AddComponent<hgl::ecs::PrimitiveComponent>();
-                prim_comp->SetPrimitive(base_primitives[col]);
-                graph::mtl::MaterialRecipe recipe{};
-                recipe.recipe_name = "PBRSpheres.StandardTextureArray";
-                recipe.shading_model = graph::mtl::ShadingModel::Standard;
-                recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::StandardTextureArray);
-                recipe.domain = "PBRSpheres";
-                prim_comp->SetMaterialRecipe(recipe);
+                prim_comp->SetPrimitiveAsset(&base_primitives[col]);
                 prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor,
                                                       base_color_texture,
                                                       sampler,
@@ -628,15 +589,13 @@ private:
                                                       sampler,
                                                       PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray);
                 prim_comp->SetMaterialTextureValue(graph::mtl::TextureSlot::Custom0, row);
-                prim_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
-                                                     material_ssbo_type,
-                                                     material_ssbo_id,
-                                                     mi_ssbo,
-                                                     material_ssbo_count,
-                                                     material_ssbo_stride,
-                                                     sphere_slot_rows[row][col],
-                                                     true,
-                                                     false);
+                hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource sphere_struct{};
+                sphere_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+                sphere_struct.ssbo_id = material_ssbo_id;
+                sphere_struct.struct_index = sphere_slot_rows[row][col];
+                sphere_struct.use_struct_index = true;
+                sphere_struct.shared_across_instances = false;
+                prim_comp->SetMaterialStructResource(sphere_struct);
                 prim_comp->RequestPipeline(InlinePipeline::Solid3D);
                 prim_comp->SetVisible(true);
             }
@@ -702,7 +661,6 @@ public:
     {
         for (uint i = 0; i < GEOMETRY_VARIANT_COUNT; ++i)
         {
-            SAFE_CLEAR(base_primitives[i])
             SAFE_CLEAR(builtin_geometries[i])
         }
 

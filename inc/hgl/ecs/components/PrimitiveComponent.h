@@ -75,6 +75,17 @@ namespace hgl::ecs
             uint32_t struct_index = 0;
             bool use_struct_index = false;
             bool shared_across_instances = false;
+            bool authored = false;
+        };
+
+        struct MaterialStructNamedAuthoringResource
+        {
+            std::string ssbo_name;
+            uint32_t ssbo_id = 0;
+            uint32_t struct_index = 0;
+            bool use_struct_index = false;
+            bool shared_across_instances = false;
+            bool authored = false;
         };
 
     private:
@@ -90,6 +101,7 @@ namespace hgl::ecs
         hgl::graph::mtl::MaterialRecipe materialRecipe;
         std::array<MaterialTextureAuthoringResource, static_cast<size_t>(hgl::graph::mtl::TextureSlot::RANGE_SIZE)> materialTextureResources{};
         std::array<MaterialStructAuthoringResource, static_cast<size_t>(hgl::graph::mtl::DataSlot::RANGE_SIZE)> materialStructResources{};
+        std::vector<MaterialStructNamedAuthoringResource> materialStructNamedResources{};
 
         // Late-resolve pipeline slot:
         // Populated at render-time if primitive has no pre-baked pipeline.
@@ -199,6 +211,9 @@ namespace hgl::ecs
                                        bool shared_across_instances = false);
         const MaterialStructAuthoringResource *GetMaterialStructResource(hgl::graph::mtl::DataSlot slot) const;
         void ClearMaterialStructResource(hgl::graph::mtl::DataSlot slot);
+        void SetMaterialStructResource(const MaterialStructNamedAuthoringResource &resource);
+        const MaterialStructNamedAuthoringResource *GetMaterialStructResource(const std::string &ssbo_name) const;
+        void ClearMaterialStructResource(const std::string &ssbo_name);
         void ClearMaterialAuthoringResources();
 
         // MaterialProgram access (returns override if set, otherwise primitive's material)

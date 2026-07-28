@@ -2,15 +2,13 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
-#include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/module/MaterialManager.h>
-#include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/mtl/MaterialRecipe.h>
+#include<hgl/mtl/UBOCommon.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/color/Color.h>
 
@@ -42,35 +40,15 @@ private:
 
     hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
-    MaterialProgram *    material            =nullptr;
     graph::DeviceBuffer *mi_ssbo            =nullptr;
-    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::UserDefined;
-    uint32_t             material_ssbo_id = 0;
+    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::PBRSurface;
+    uint32_t             material_ssbo_id = kPlaneGrid3DSsboId;
     uint32_t             material_ssbo_count = 0;
-    uint32_t             material_ssbo_stride = 0;
+    uint32_t             material_ssbo_stride = sizeof(Color4f);
 
     Geometry *         geom_plane_grid     =nullptr;
-
-private:
-
-    bool InitMDP()
-    {
-        if (!geom_plane_grid)
-            return false;
-
-        auto* material_manager = GetManager<MaterialManager>();
-        if (!material_manager)
-            return false;
-
-        mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
-
-        cfg.local_to_world=true;
-        const GeometryVertexFormat &plane_grid_gvf = geom_plane_grid->GetGeometryVertexFormat();
-        material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::VertexLuminance3D, &cfg, plane_grid_gvf);
-        if(!material)return(false);
-
-        return material;
-    }
+    graph::mtl::MaterialRecipe plane_grid_recipe{};
+    PrimitiveAsset             plane_grid_asset{};
 
     bool CreateRenderObject()
     {
@@ -107,15 +85,6 @@ private:
 
     bool Add(const char *name,const uint32_t struct_index,const glm::quat &rotation)
     {
-        auto* primitive_manager = GetManager<PrimitiveManager>();
-        if (!primitive_manager)
-            return false;
-
-        Primitive *ri=primitive_manager->CreatePrimitive(geom_plane_grid,material,nullptr,nullptr);
-
-        if(!ri)
-            return false;
-
         auto entity = ecs_context->CreateEntity<hgl::ecs::Entity>(name);
         auto transform = entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         auto prim_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
@@ -125,22 +94,14 @@ private:
         transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         transform->SetMovable(false);
 
-        prim_comp->SetPrimitive(ri);
-        graph::mtl::MaterialRecipe recipe{};
-        recipe.recipe_name = "PlaneGrid3D.VertexLuminance3D";
-        recipe.shading_model = graph::mtl::ShadingModel::Unlit;
-        recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::VertexLuminance3D);
-        recipe.domain = "PlaneGrid3D";
-        prim_comp->SetMaterialRecipe(recipe);
-        prim_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
-                                             material_ssbo_type,
-                                             material_ssbo_id,
-                                             mi_ssbo,
-                                             material_ssbo_count,
-                                             material_ssbo_stride,
-                                             struct_index,
-                                             true,
-                                             true);
+        prim_comp->SetPrimitiveAsset(&plane_grid_asset);
+        hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource named_struct{};
+        named_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+        named_struct.ssbo_id = material_ssbo_id;
+        named_struct.struct_index = struct_index;
+        named_struct.use_struct_index = true;
+        named_struct.shared_across_instances = true;
+        prim_comp->SetMaterialStructResource(named_struct);
         prim_comp->RequestPipeline(InlinePipeline::Solid3D);
         prim_comp->SetVisible(true);
 
@@ -151,6 +112,13 @@ private:
     {
         if(!ecs_context)
             return false;
+
+        plane_grid_recipe.recipe_name = "PlaneGrid3D.VertexLuminance3D";
+        plane_grid_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        plane_grid_recipe.base_material_info_name = "VertexLuminance3D";
+        plane_grid_recipe.domain = "PlaneGrid3D";
+        plane_grid_recipe.ssbo_assets.push_back({graph::mtl::SBS_MaterialInstance.name, material_ssbo_type, material_ssbo_id});
+        plane_grid_asset = PrimitiveAsset(geom_plane_grid, &plane_grid_recipe, PrimitiveType::Lines);
 
         if(!Add("PlaneXY", 0, glm::quat(1.0f, 0.0f, 0.0f, 0.0f)))
             return false;
@@ -166,48 +134,22 @@ private:
 
     bool InitMISSBO()
     {
-        if (!ecs_context || !material)
-            return false;
-
-        const uint32_t mi_data_bytes = material->GetMIDataBytes();
-        if (mi_data_bytes == 0)
-            return true;
-        if (mi_data_bytes != sizeof(Color4f))
-            return false;
-
-        auto *render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto *graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto *buffer_manager = GetManager<BufferManager>();
-        if (!buffer_manager)
+        if (!ecs_context)
             return false;
 
         const uint32_t mi_count = 3;
-        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * mi_data_bytes;
+        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * material_ssbo_stride;
         material_ssbo_count = mi_count;
-        material_ssbo_stride = mi_data_bytes;
 
-        bool has_struct_binding = false;
-        for (const auto &req : material->GetMaterialResourceLayout().requirements)
-        {
-            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
-                continue;
-
-            has_struct_binding = true;
-            material_ssbo_type = req.ssbo_type;
-            material_ssbo_id = kPlaneGrid3DSsboId;
-            break;
-        }
-
-        if (!has_struct_binding)
+        auto *domain_manager = GetManager<ResourceDomainManager>();
+        if (!domain_manager)
             return false;
 
-        mi_ssbo = buffer_manager->CreateSSBO("PlaneGrid3D:MIData", ssbo_size, nullptr, SharingMode::Exclusive);
+        mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{material_ssbo_type, material_ssbo_id, 0},
+                                               "PlaneGrid3D:MIData",
+                                               ssbo_size,
+                                               mi_count,
+                                               SharingMode::Exclusive);
         if (!mi_ssbo)
             return false;
 
@@ -224,13 +166,13 @@ private:
         Color4f grid_color = GetColor4f(COLOR::BlenderAxisRed,1.0f);
         for (uint32_t i = 0; i < 3; ++i)
         {
-            memcpy(dst + static_cast<VkDeviceSize>(i) * mi_data_bytes, &grid_color, mi_data_bytes);
+            memcpy(dst + static_cast<VkDeviceSize>(i) * material_ssbo_stride, &grid_color, material_ssbo_stride);
 
             grid_color = GetColor4f(COLOR(int(COLOR::BlenderAxisRed) + int(i) + 1), 1.0f);
         }
         gpu_buf->Unmap();
 
-        return has_struct_binding;
+        return true;
     }
 
     bool InitCamera()
@@ -279,15 +221,11 @@ public:
     ~TestApp()
     {
         SAFE_CLEAR(geom_plane_grid);
-        SAFE_CLEAR(mi_ssbo);
     }
 
     bool Init() override
     {
         if(!CreateRenderObject())
-            return(false);
-
-        if(!InitMDP())
             return(false);
 
         if(!InitECS())

@@ -10,9 +10,11 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/filesystem/Filename.h>
 #include<hgl/filesystem/FileSystem.h>
@@ -43,6 +45,8 @@ using namespace hgl::ecs;
 
 namespace
 {
+    constexpr uint32_t kSingleSphereSwitchSsboId = hgl::graph::mtl::MakeRecipeSSBOId(8601);
+
     GeometryVertexFormat CreateStandardGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
@@ -70,13 +74,13 @@ private:
     TransformComponent *sphere_transform = nullptr;
     PrimitiveComponent *sphere_primitive_component = nullptr;
 
-    MaterialProgram *near_material = nullptr;
-    MaterialProgram *far_material = nullptr;
+    graph::mtl::MaterialRecipe near_recipe{};
+    graph::mtl::MaterialRecipe far_recipe{};
 
     DeviceBuffer *mi_ssbo = nullptr;
-    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::UserDefined;
-    uint32_t material_ssbo_id = 0;
-    uint32_t material_ssbo_stride = 0;
+    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::PBRSurface;
+    uint32_t material_ssbo_id = kSingleSphereSwitchSsboId;
+    uint32_t material_ssbo_stride = sizeof(mtl::StandardMaterialInstance);
 
     Texture2DArray *near_base_color_array = nullptr;
     Texture2DArray *near_normal_array = nullptr;
@@ -88,7 +92,7 @@ private:
 
     VertexDataManager *mesh_vdm = nullptr;
     Geometry *sphere_geometry = nullptr;
-    Primitive *sphere_primitive = nullptr;
+    PrimitiveAsset sphere_asset{};
 
     bool use_far_material = false;
     double elapsed_time = 0.0;
@@ -169,27 +173,26 @@ private:
         if (!graphics_context)
             return LogFail("InitMaterials", "graphics context is null");
 
-        auto *material_manager = GetManager<MaterialManager>();
         auto *sampler_manager = GetManager<SamplerManager>();
-        auto *device = graphics_context->GetDevice();
-        if (!material_manager || !sampler_manager || !device)
+        if (!sampler_manager)
             return LogFail("InitMaterials", "required manager/device is null");
-
-        mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles,
-                                        mtl::WithCamera::With,
-                                        mtl::WithLocalToWorld::With,
-                                        mtl::WithSky::With);
-        near_material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::StandardTextureArray, &cfg);
-        far_material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Standard, &cfg);
-        if (!near_material || !far_material)
-            return LogFail("InitMaterials", "failed to create near/far materials");
-
-        if (near_material->GetMIDataBytes() != far_material->GetMIDataBytes())
-            return LogFail("InitMaterials", "near/far MI layout mismatch");
 
         sampler = sampler_manager->CreateSampler();
         if (!sampler)
             return LogFail("InitMaterials", "failed to create sampler");
+
+        near_recipe.recipe_name = "06e.SingleSphereSwitch.Near";
+        near_recipe.shading_model = graph::mtl::ShadingModel::Standard;
+        near_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::StandardTextureArray);
+        near_recipe.domain = "06e.SingleSphereSwitch";
+        graph::mtl::UpsertRecipeSSBOAssetBinding(near_recipe,
+                                                 graph::mtl::SBS_MaterialInstance.name,
+                                                 material_ssbo_type,
+                                                 material_ssbo_id);
+
+        far_recipe = near_recipe;
+        far_recipe.recipe_name = "06e.SingleSphereSwitch.Far";
+        far_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Standard);
 
         return true;
     }
@@ -237,14 +240,7 @@ private:
         if (!sphere_primitive_component)
             return true;
 
-        graph::mtl::MaterialRecipe recipe{};
-        recipe.recipe_name = use_far_material ? "06e.SingleSphereSwitch.Far" : "06e.SingleSphereSwitch.Near";
-        recipe.shading_model = graph::mtl::ShadingModel::Standard;
-        recipe.preset_hint = static_cast<uint32_t>(use_far_material
-                                                 ? graph::mtl::MaterialPreset::Standard
-                                                 : graph::mtl::MaterialPreset::StandardTextureArray);
-        recipe.domain = "06e.SingleSphereSwitch";
-        sphere_primitive_component->SetMaterialRecipe(recipe);
+        sphere_primitive_component->SetMaterialRecipe(use_far_material ? far_recipe : near_recipe);
 
         if (use_far_material)
         {
@@ -269,19 +265,19 @@ private:
                                                                   PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray);
         }
 
-        sphere_primitive_component->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
-                                                              material_ssbo_type,
-                                                              material_ssbo_id,
-                                                              mi_ssbo,
-                                                              1,
-                                                              material_ssbo_stride,
-                                                              true);
+        hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource sphere_struct{};
+        sphere_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+        sphere_struct.ssbo_id = material_ssbo_id;
+        sphere_struct.struct_index = 0;
+        sphere_struct.use_struct_index = false;
+        sphere_struct.shared_across_instances = false;
+        sphere_primitive_component->SetMaterialStructResource(sphere_struct);
         return true;
     }
 
     bool InitRenderResources()
     {
-        if (!near_material || !far_material || !near_base_color_array || !near_normal_array || !far_base_color_texture || !far_normal_texture)
+        if (!near_base_color_array || !near_normal_array || !far_base_color_texture || !far_normal_texture)
             return LogFail("InitRenderResources", "required material/texture is null");
 
         auto *render_context = GetRenderContext();
@@ -292,29 +288,9 @@ private:
         if (!graphics_context)
             return LogFail("InitRenderResources", "graphics context is null");
 
-        auto *buffer_manager = GetManager<BufferManager>();
-        auto *primitive_manager = GetManager<PrimitiveManager>();
-        if (!buffer_manager || !primitive_manager)
+        auto *domain_manager = GetManager<ResourceDomainManager>();
+        if (!domain_manager)
             return LogFail("InitRenderResources", "required runtime manager is null");
-
-        const uint32_t mi_data_bytes = near_material->GetMIDataBytes();
-        if (mi_data_bytes == 0 || mi_data_bytes != sizeof(mtl::StandardMaterialInstance))
-            return LogFail("InitRenderResources", "unexpected MI struct size");
-        material_ssbo_stride = mi_data_bytes;
-
-        bool has_struct_binding = false;
-        for (const auto &req : near_material->GetMaterialResourceLayout().requirements)
-        {
-            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
-                continue;
-
-            has_struct_binding = true;
-            material_ssbo_type = req.ssbo_type;
-            material_ssbo_id = req.ssbo_id;
-            break;
-        }
-        if (!has_struct_binding)
-            return LogFail("InitRenderResources", "material has no MI contract binding");
 
         mtl::StandardMaterialInstance mi_data{};
         mi_data.base_color = PackRGBA8Float(0.72f, 0.72f, 0.72f, 1.0f);
@@ -322,7 +298,11 @@ private:
         mi_data.roughness = 0.25f;
         mi_data.normal_scale = 0.35f;
 
-        mi_ssbo = buffer_manager->CreateSSBO("SingleSphereSwitch:MIData", mi_data_bytes, nullptr, SharingMode::Exclusive);
+        mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{material_ssbo_type, material_ssbo_id, 0},
+                                               "SingleSphereSwitch:MIData",
+                                               material_ssbo_stride,
+                                               1,
+                                               SharingMode::Exclusive);
         if (!mi_ssbo)
             return LogFail("InitRenderResources", "create MI SSBO failed");
 
@@ -330,15 +310,12 @@ private:
         if (!mi_gpu)
             return LogFail("InitRenderResources", "MI GPU buffer is null");
 
-        auto *mi_dst = static_cast<uint8_t *>(mi_gpu->Map(0, mi_data_bytes));
+        auto *mi_dst = static_cast<uint8_t *>(mi_gpu->Map(0, material_ssbo_stride));
         if (!mi_dst)
             return LogFail("InitRenderResources", "map MI SSBO failed");
-        memcpy(mi_dst, &mi_data, mi_data_bytes);
+        memcpy(mi_dst, &mi_data, material_ssbo_stride);
         mi_gpu->Unmap();
-
-        sphere_primitive = primitive_manager->CreatePrimitive(sphere_geometry, near_material, nullptr, nullptr);
-        if (!sphere_primitive)
-            return LogFail("InitRenderResources", "create primitive failed");
+        sphere_asset = PrimitiveAsset(sphere_geometry, &near_recipe, PrimitiveType::Triangles);
 
         return true;
     }
@@ -387,12 +364,16 @@ private:
         sphere_transform->SetLocalScale(glm::vec3(1.6f, 1.6f, 1.6f));
         sphere_transform->SetMovable(true);
 
-        sphere_primitive_component->SetPrimitive(sphere_primitive);
         sphere_primitive_component->RequestPipeline(InlinePipeline::Solid3D);
         sphere_primitive_component->SetVisible(true);
 
+        // ApplyMaterialMode must be called BEFORE SetPrimitiveAsset.
+        // If SetPrimitiveAsset is called first, HasMaterialRecipe() returns true via the
+        // asset's recipe, causing ApplyMaterialMode's early-return to skip texture/struct setup.
         if (!ApplyMaterialMode(false))
             return false;
+
+        sphere_primitive_component->SetPrimitiveAsset(&sphere_asset);
 
         return true;
     }
@@ -432,7 +413,6 @@ public:
 
     ~TestApp()
     {
-        SAFE_CLEAR(sphere_primitive)
         SAFE_CLEAR(sphere_geometry)
         SAFE_CLEAR(mesh_vdm)
 

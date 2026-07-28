@@ -9,6 +9,16 @@
 namespace hgl::graph::mtl{
 namespace
 {
+    const bool kRegisteredVertexColor3DBmi = []() -> bool
+    {
+        BaseMaterialInfo bmi{};
+        bmi.bmi_name = "VertexColor3D";
+        bmi.shading_model = ShadingModel::Unlit;
+        bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::VertexColor3D);
+        RegisterBaseMaterialInfo(MaterialPreset::VertexColor3D, bmi);
+        return true;
+    }();
+
     constexpr FixedDescriptorEntry VERTEX_COLOR_3D_DESCRIPTORS[] = {
         { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::UBO},
         { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera", "CameraInfo", nullptr, DescriptorSemantic::CameraInfo, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::UBO},
@@ -68,4 +78,3 @@ MaterialCreateInfo *CreateVertexColor3D(const contract::PhysicalDeviceProfileLit
     return mci;
 }
 }//namespace hgl::graph::mtl
-

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <hgl/mtl/MaterializationResolver.h>
+#include <hgl/log/Log.h>
 #include <array>
 #include <cstdint>
 #include <string>
@@ -132,7 +133,9 @@ namespace hgl::graph::mtl
                 return false;
 
             const auto &state = it->second;
-            const uint32_t index = state.layout.ssbo_id;
+            // Default to row 0 for domain-managed per-id buffers.
+            // Explicit row selection must be provided by authoring (use_struct_index=true).
+            const uint32_t index = 0;
 
             out_alloc.ssbo_type = state.layout.ssbo_type;
             out_alloc.ssbo_id = state.layout.ssbo_id;
@@ -286,12 +289,27 @@ namespace hgl::graph::mtl
             }
 
             if (input.resource_id.empty())
+            {
+                GLogWarning("[TexTrace] resolve_texture: slot=%u resource_id EMPTY -> fail",
+                            static_cast<uint32_t>(input.slot));
                 return false;
+            }
+
+            BindlessTextureEntry existing_entry{};
+            const bool already_registered = texture_pool.TryGet(input.resource_id, existing_entry);
+            if (!already_registered)
+            {
+                GLogWarning("[TexTrace] resolve_texture: slot=%u resource_id=%s NOT in pool (Acquire will create placeholder handle)",
+                            static_cast<uint32_t>(input.slot), input.resource_id.c_str());
+            }
 
             const auto &entry = texture_pool.Acquire(input.resource_id);
             output.slot = input.slot;
             output.bindless_handle = entry.bindless_handle;
             output.texture_layer = entry.texture_layer;
+            GLogInfo("[TexTrace] resolve_texture: slot=%u resource_id=%s handle=%u layer=%u (pool_had_entry=%d)",
+                     static_cast<uint32_t>(input.slot), input.resource_id.c_str(),
+                     entry.bindless_handle, entry.texture_layer, already_registered ? 1 : 0);
             return true;
         };
 

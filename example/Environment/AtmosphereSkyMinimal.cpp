@@ -1,11 +1,10 @@
 #include<hgl/framework/WorkManager.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/UBOCommon.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
 #include<memory>
 
 // ECS headers
@@ -38,29 +37,22 @@ private:
     hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *sky_entity = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
-    MaterialProgram *          mtl_sky_sphere      =nullptr;
 
     Geometry *          prim_sky_sphere     =nullptr;
+    graph::mtl::MaterialRecipe sky_recipe{};
+    PrimitiveAsset             sky_asset{};
 
 private:
 
-    bool InitMDP()
+    bool InitRecipe()
     {
         if (!prim_sky_sphere)
             return false;
-
-        auto* material_manager = GetManager<MaterialManager>();
-        if (!material_manager)
-            return false;
-
-        mtl::SkyMinimalCreateConfig cfg;
-
-        mtl_sky_sphere = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::SkyMinimal,
-                                                                  &cfg,
-                                                                  prim_sky_sphere->GetGeometryVertexFormat());
-        if (!mtl_sky_sphere)
-            return false;
-
+        sky_recipe.recipe_name = "AtmosphereSkyMinimal.Sky";
+        sky_recipe.shading_model = graph::mtl::ShadingModel::Sky;
+        sky_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::SkyMinimal);
+        sky_recipe.domain = "AtmosphereSkyMinimal";
+        sky_asset = PrimitiveAsset(prim_sky_sphere, &sky_recipe, PrimitiveType::Triangles);
         return true;
     }
 
@@ -94,15 +86,7 @@ private:
         if(!ecs_context)
             return false;
 
-        if(!prim_sky_sphere || !mtl_sky_sphere)
-            return false;
-
-        auto* primitive_manager = GetManager<PrimitiveManager>();
-        if (!primitive_manager)
-            return false;
-
-        Primitive *ri=primitive_manager->CreatePrimitive(prim_sky_sphere, mtl_sky_sphere, nullptr, nullptr);
-        if(!ri)
+        if(!prim_sky_sphere)
             return false;
 
         sky_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("SkySphere");
@@ -114,13 +98,7 @@ private:
         transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         transform->SetMovable(false);
 
-        prim_comp->SetPrimitive(ri);
-        graph::mtl::MaterialRecipe recipe{};
-        recipe.recipe_name = "AtmosphereSkyMinimal.Sky";
-        recipe.shading_model = graph::mtl::ShadingModel::Sky;
-        recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::SkyMinimal);
-        recipe.domain = "AtmosphereSkyMinimal";
-        prim_comp->SetMaterialRecipe(recipe);
+        prim_comp->SetPrimitiveAsset(&sky_asset);
         prim_comp->RequestPipeline(InlinePipeline::Sky);
         prim_comp->SetVisible(true);
 
@@ -181,7 +159,7 @@ public:
         if(!CreateRenderObject())
             return(false);
 
-        if(!InitMDP())
+        if(!InitRecipe())
             return(false);
 
         if(!InitECS())

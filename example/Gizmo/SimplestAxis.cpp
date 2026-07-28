@@ -3,12 +3,10 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/color/Color.h>
 
@@ -46,30 +44,11 @@ private:
     hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
 
-    MaterialProgram *   material            =nullptr;
     Geometry *          geom_axis           =nullptr;
-    Primitive *         prim_axis           =nullptr;
+    graph::mtl::MaterialRecipe axis_recipe{};
+    PrimitiveAsset             axis_asset{};
 
 private:
-
-    bool InitMDP()
-    {
-        if (!geom_axis)
-            return false;
-
-        auto* material_manager = GetManager<MaterialManager>();
-        if (!material_manager)
-            return false;
-
-        mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
-
-        cfg.local_to_world=true;
-
-        const GeometryVertexFormat &axis_gvf = geom_axis->GetGeometryVertexFormat();
-        material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::VertexColor3D, &cfg, axis_gvf);
-
-        return material;
-    }
 
     bool CreateRenderObject()
     {
@@ -98,14 +77,6 @@ private:
         if(!ecs_context)
             return false;
 
-        auto* primitive_manager = GetManager<PrimitiveManager>();
-        if (!primitive_manager)
-            return false;
-
-        Primitive *ri=primitive_manager->CreatePrimitive(geom_axis, material, nullptr, nullptr);
-        if(!ri)
-            return false;
-
         auto entity = ecs_context->CreateEntity<hgl::ecs::Entity>("Axis");
         auto transform = entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         auto prim_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
@@ -115,13 +86,11 @@ private:
         transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         transform->SetMovable(false);
 
-        prim_comp->SetPrimitive(ri);
-        graph::mtl::MaterialRecipe recipe{};
-        recipe.recipe_name = "SimplestAxis.VertexColor3D";
-        recipe.shading_model = graph::mtl::ShadingModel::Unlit;
-        recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::VertexColor3D);
-        recipe.domain = "SimplestAxis";
-        prim_comp->SetMaterialRecipe(recipe);
+        axis_recipe.recipe_name = "SimplestAxis.VertexColor3D";
+        axis_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        axis_recipe.domain = "SimplestAxis";
+        axis_asset = PrimitiveAsset(geom_axis, &axis_recipe, PrimitiveType::Lines);
+        prim_comp->SetPrimitiveAsset(&axis_asset);
         prim_comp->RequestPipeline(InlinePipeline::Solid3D);
         prim_comp->SetVisible(true);
 
@@ -176,9 +145,6 @@ public:
     bool Init() override
     {
         if(!CreateRenderObject())
-            return(false);
-
-        if(!InitMDP())
             return(false);
 
         if(!InitECS())

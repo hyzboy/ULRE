@@ -9,6 +9,16 @@
 namespace hgl::graph::mtl{
 namespace
 {
+    const bool kRegisteredVertexLuminance3DBmi = []() -> bool
+    {
+        BaseMaterialInfo bmi{};
+        bmi.bmi_name = "VertexLuminance3D";
+        bmi.shading_model = ShadingModel::Unlit;
+        bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::VertexLuminance3D);
+        RegisterBaseMaterialInfo(MaterialPreset::VertexLuminance3D, bmi);
+        return true;
+    }();
+
     constexpr const char VERTEX_LUMINANCE_3D_MI_CODES[] = "vec4 Color;";
     constexpr const uint32_t VERTEX_LUMINANCE_3D_MI_BYTES = sizeof(hgl::math::Vector4f);
 

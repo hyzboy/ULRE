@@ -15,6 +15,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/mtl/MaterialRecipe.h>
 
 #include<hgl/color/Color.h>
@@ -39,6 +40,8 @@ using namespace hgl::ecs;
 
 namespace
 {
+    constexpr uint32_t kSimpleCubeSsboId = hgl::graph::mtl::MakeRecipeSSBOId(8401);
+
     GeometryVertexFormat CreateGizmo3DGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
@@ -57,12 +60,10 @@ private:
     Entity *      cube_entity    =nullptr;
     Entity *      camera_entity  =nullptr;
 
-    MaterialProgram *          material        = nullptr;
-
     Geometry *          geometry        = nullptr;
     graph::DeviceBuffer *mi_ssbo        = nullptr;
-    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::UserDefined;
-    uint32_t             material_ssbo_id = 0;
+    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::PBRSurface;
+    uint32_t             material_ssbo_id = kSimpleCubeSsboId;
     uint32_t             material_ssbo_count = 0;
     uint32_t             material_ssbo_stride = 0;
     graph::mtl::MaterialRecipe cube_recipe{};
@@ -72,22 +73,6 @@ private:
 
     bool InitMaterial()
     {
-        if (!geometry)
-            return false;
-
-        mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
-
-        auto* material_manager = GetManager<MaterialManager>();
-        if (!material_manager)
-            return false;
-
-        material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Gizmo3D,
-                                                            &cfg,
-                                                            geometry->GetGeometryVertexFormat());
-
-        if(!material)
-            return false;
-
         return true;
     }
 
@@ -123,44 +108,28 @@ private:
 
     bool InitMISSBO()
     {
-        if (!material)
-            return false;
-
         if (!ecs_context)
             ecs_context = GetECSContext();
         if (!ecs_context)
             return false;
 
-        const uint32_t mi_data_bytes = material->GetMIDataBytes();
-        if (mi_data_bytes == 0)
-            return true;
+        const uint32_t mi_data_bytes = sizeof(Color4f);
         if (mi_data_bytes != sizeof(Color4f))
             return false;
 
-        auto* buffer_manager = GetManager<BufferManager>();
-        if (!buffer_manager)
+        auto* domain_manager = GetManager<ResourceDomainManager>();
+        if (!domain_manager)
             return false;
-        bool has_struct_binding = false;
-        for (const auto &req : material->GetMaterialResourceLayout().requirements)
-        {
-            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
-                continue;
-
-            has_struct_binding = true;
-            material_ssbo_type = req.ssbo_type;
-            material_ssbo_id = req.ssbo_id;
-            break;
-        }
-
-        if (!has_struct_binding)
-            return false;
-
-        const uint32_t mi_count = material_ssbo_id + 1;
+        const uint32_t mi_count = 1;
         const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * mi_data_bytes;
         material_ssbo_count = mi_count;
         material_ssbo_stride = mi_data_bytes;
 
-        mi_ssbo = buffer_manager->CreateSSBO("SimpleCube:PBRSurface:MIData", ssbo_size, nullptr, SharingMode::Exclusive);
+        mi_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{material_ssbo_type, material_ssbo_id, 0},
+                                               "SimpleCube:PBRSurface:MIData",
+                                               ssbo_size,
+                                               material_ssbo_count,
+                                               SharingMode::Exclusive);
         if (!mi_ssbo)
             return false;
 
@@ -175,11 +144,11 @@ private:
         memset(dst, 0, static_cast<size_t>(ssbo_size));
 
         const Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-        memcpy(dst + static_cast<VkDeviceSize>(material_ssbo_id) * mi_data_bytes, &color, mi_data_bytes);
+        memcpy(dst, &color, mi_data_bytes);
 
         gpu_buf->Unmap();
 
-        return has_struct_binding;
+        return true;
     }
     bool InitECS()
     {
@@ -203,15 +172,13 @@ private:
         cube_recipe.domain = "SimpleCube";
         cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
         primitive_comp->SetPrimitiveAsset(&cube_asset);
-        primitive_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
-                                                  material_ssbo_type,
-                                                  material_ssbo_id,
-                                                  mi_ssbo,
-                                                  material_ssbo_count,
-                                                  material_ssbo_stride,
-                                                  material_ssbo_id,
-                                                  true,
-                                                  true);
+        hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource named_struct{};
+        named_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+        named_struct.ssbo_id = material_ssbo_id;
+        named_struct.struct_index = 0;
+        named_struct.use_struct_index = true;
+        named_struct.shared_across_instances = true;
+        primitive_comp->SetMaterialStructResource(named_struct);
         primitive_comp->SetVisible(true);
 
         return true;

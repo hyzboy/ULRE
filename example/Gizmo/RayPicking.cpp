@@ -11,19 +11,17 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/camera/Camera.h>
 #include<hgl/math/geometry/Ray.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/log/Log.h>
@@ -87,16 +85,17 @@ private:
     Entity* ray_line_entity = nullptr;
 
     // 传统渲染资源
-    MaterialProgram *          mtl_plane_grid      =nullptr;
     Geometry *          geom_plane_grid     =nullptr;
+    graph::mtl::MaterialRecipe plane_recipe{};
+    PrimitiveAsset             plane_asset{};
     graph::DeviceBuffer *mi_shared_ssbo      =nullptr;
-    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::UserDefined;
+    graph::mtl::SSBOType material_ssbo_type = graph::mtl::SSBOType::PBRSurface;
     uint32_t             material_ssbo_count = 0;
-    uint32_t             material_ssbo_stride = 0;
+    uint32_t             material_ssbo_stride = sizeof(Color4f);
 
-    MaterialProgram *          mtl_line            =nullptr;
     Geometry *          geom_line           =nullptr;
-    Primitive *         prim_line           =nullptr;
+    graph::mtl::MaterialRecipe line_recipe{};
+    PrimitiveAsset             line_asset{};
     VAB *               prim_line_vab       =nullptr;
 
     math::Ray           ray;
@@ -105,37 +104,16 @@ private:
 
     bool InitMaterialAndPipeline()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* material_manager = GetManager<MaterialManager>();
-        auto* device = graphics_context->GetDevice();
-        if (!material_manager)
-            return false;
-        if (!device)
-            return false;
-
-        mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
-
-        cfg.local_to_world=true;
-
-        {
-            const GeometryVertexFormat plane_grid_gvf = CreateVertexLuminance2DGeometryVertexFormat();
-            mtl_plane_grid = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::VertexLuminance3D, &cfg, plane_grid_gvf);
-            if(!mtl_plane_grid)return(false);
-        }
-
-        {
-            const GeometryVertexFormat line_gvf = CreateVertexLuminance3DGeometryVertexFormat();
-            mtl_line = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::VertexLuminance3D, &cfg, line_gvf);
-            if(!mtl_line)return(false);
-        }
-
+        plane_recipe.recipe_name = "RayPicking.PlaneGrid";
+        plane_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        plane_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::VertexLuminance3D);
+        plane_recipe.domain = "RayPicking";
+        graph::mtl::UpsertRecipeSSBOAssetBinding(plane_recipe,
+                                                 graph::mtl::SBS_MaterialInstance.name,
+                                                 material_ssbo_type,
+                                                 kRayPickingSsboId);
+        line_recipe = plane_recipe;
+        line_recipe.recipe_name = "RayPicking.Line";
         return(true);
     }
 
@@ -176,6 +154,7 @@ private:
                 return(false);
 
             geometry_manager->Add(geom_plane_grid);
+            plane_asset = PrimitiveAsset(geom_plane_grid, &plane_recipe, PrimitiveType::Lines);
         }
 
         // === 创建射线线段几何体 ===
@@ -198,6 +177,7 @@ private:
             if (!geom_line)
                 return false;
             geometry_manager->Add(geom_line);
+            line_asset = PrimitiveAsset(geom_line, &line_recipe, PrimitiveType::Lines);
         }
 
         return(true);
@@ -218,32 +198,25 @@ private:
         if(!ecs_world)
             return false;
 
-        auto *buffer_manager = GetManager<BufferManager>();
-        if (!buffer_manager)
-            return false;
-
-        if (!mtl_plane_grid || !mtl_line)
-            return false;
-
-        const uint32_t plane_mi_bytes = mtl_plane_grid->GetMIDataBytes();
-        const uint32_t line_mi_bytes = mtl_line->GetMIDataBytes();
-        if (plane_mi_bytes == 0 || line_mi_bytes == 0 || plane_mi_bytes != line_mi_bytes)
-            return false;
-        if (plane_mi_bytes != sizeof(Color4f))
+        auto *domain_manager = GetManager<ResourceDomainManager>();
+        if (!domain_manager)
             return false;
 
         const uint32_t plane_slot = 0;
         const uint32_t line_slot = 1;
 
         const uint32_t mi_count = (std::max)(plane_slot, line_slot) + 1;
-        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * plane_mi_bytes;
+        const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(mi_count) * material_ssbo_stride;
         material_ssbo_count = mi_count;
-        material_ssbo_stride = plane_mi_bytes;
         GLogInfo("[RayPicking] MI setup: plane_slot=%u line_slot=%u stride=%u count=%u bytes=%llu",
-                 plane_slot, line_slot, plane_mi_bytes, mi_count,
+                 plane_slot, line_slot, material_ssbo_stride, mi_count,
                  static_cast<unsigned long long>(ssbo_size));
 
-        mi_shared_ssbo = buffer_manager->CreateSSBO("RayPicking:SharedMIData", ssbo_size, nullptr, SharingMode::Exclusive);
+        mi_shared_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{material_ssbo_type, kRayPickingSsboId, 0},
+                                                      "RayPicking:SharedMIData",
+                                                      ssbo_size,
+                                                      material_ssbo_count,
+                                                      SharingMode::Exclusive);
         if (!mi_shared_ssbo)
             return false;
 
@@ -256,37 +229,14 @@ private:
             return false;
 
         memset(dst, 0, static_cast<size_t>(ssbo_size));
-        memcpy(dst + static_cast<VkDeviceSize>(plane_slot) * plane_mi_bytes, &white_color, plane_mi_bytes);
-        memcpy(dst + static_cast<VkDeviceSize>(line_slot) * plane_mi_bytes, &yellow_color, plane_mi_bytes);
+        memcpy(dst + static_cast<VkDeviceSize>(plane_slot) * material_ssbo_stride, &white_color, material_ssbo_stride);
+        memcpy(dst + static_cast<VkDeviceSize>(line_slot) * material_ssbo_stride, &yellow_color, material_ssbo_stride);
 
         gpu_buf->Unmap();
-
-        for (const auto &req : mtl_plane_grid->GetMaterialResourceLayout().requirements)
-        {
-            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
-                continue;
-
-            material_ssbo_type = req.ssbo_type;
-            break;
-        }
-        if (material_ssbo_type == graph::mtl::SSBOType::UserDefined)
-            return false;
 
         // === 步骤2: 创建平面网格实体 ===
         {
             plane_grid_entity = ecs_world->CreateEntity<Entity>("PlaneGrid");
-
-            // 创建Primitive
-            auto* primitive_manager = GetManager<PrimitiveManager>();
-            if (!primitive_manager)
-                return false;
-
-            Primitive* prim_plane = primitive_manager->CreatePrimitive(geom_plane_grid,
-                                                                       mtl_plane_grid,
-                                                                       nullptr,
-                                                                       nullptr);
-            if(!prim_plane)
-                return false;
 
             // 添加TransformComponent
             auto transform = plane_grid_entity->AddComponent<TransformComponent>(Mobility::Static);
@@ -296,22 +246,14 @@ private:
 
             // 添加PrimitiveComponent
             auto primitive_comp = plane_grid_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
-            primitive_comp->SetPrimitive(prim_plane);
-            graph::mtl::MaterialRecipe recipe{};
-            recipe.recipe_name = "RayPicking.PlaneGrid";
-            recipe.shading_model = graph::mtl::ShadingModel::Unlit;
-            recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::VertexLuminance3D);
-            recipe.domain = "RayPicking";
-            primitive_comp->SetMaterialRecipe(recipe);
-            primitive_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
-                                                      material_ssbo_type,
-                                                      kRayPickingSsboId,
-                                                      mi_shared_ssbo,
-                                                      material_ssbo_count,
-                                                      material_ssbo_stride,
-                                                      plane_slot,
-                                                      true,
-                                                      true);
+            primitive_comp->SetPrimitiveAsset(&plane_asset);
+            hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource plane_struct{};
+            plane_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+            plane_struct.ssbo_id = kRayPickingSsboId;
+            plane_struct.struct_index = plane_slot;
+            plane_struct.use_struct_index = true;
+            plane_struct.shared_across_instances = true;
+            primitive_comp->SetMaterialStructResource(plane_struct);
             primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             primitive_comp->SetVisible(true);
         }
@@ -319,21 +261,7 @@ private:
         // === 步骤3: 创建射线线段实体 ===
         {
             ray_line_entity = ecs_world->CreateEntity<Entity>("RayLine");
-
-            // 创建Primitive
-            auto* primitive_manager = GetManager<PrimitiveManager>();
-            if (!primitive_manager)
-                return false;
-
-            prim_line = primitive_manager->CreatePrimitive(geom_line,
-                                                           mtl_line,
-                                                           nullptr,
-                                                           nullptr);
-            if(!prim_line)
-                return false;
-
-            // 获取VAB用于后续动态更新顶点数据
-            prim_line_vab = prim_line->GetVAB(VAN::Position);
+            prim_line_vab = geom_line ? geom_line->GetVAB(VAN::Position) : nullptr;
 
             // 添加TransformComponent
             auto transform = ray_line_entity->AddComponent<TransformComponent>(Mobility::Static);//线段虽然会动，但我们改的是VAB不是Transform
@@ -343,22 +271,14 @@ private:
 
             // 添加PrimitiveComponent
             auto primitive_comp = ray_line_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
-            primitive_comp->SetPrimitive(prim_line);
-            graph::mtl::MaterialRecipe recipe{};
-            recipe.recipe_name = "RayPicking.Line";
-            recipe.shading_model = graph::mtl::ShadingModel::Unlit;
-            recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::VertexLuminance3D);
-            recipe.domain = "RayPicking";
-            primitive_comp->SetMaterialRecipe(recipe);
-            primitive_comp->SetMaterialStructResource(graph::mtl::DataSlot::PBRSurface,
-                                                      material_ssbo_type,
-                                                      kRayPickingSsboId,
-                                                      mi_shared_ssbo,
-                                                      material_ssbo_count,
-                                                      material_ssbo_stride,
-                                                      line_slot,
-                                                      true,
-                                                      true);
+            primitive_comp->SetPrimitiveAsset(&line_asset);
+            hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource line_struct{};
+            line_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+            line_struct.ssbo_id = kRayPickingSsboId;
+            line_struct.struct_index = line_slot;
+            line_struct.use_struct_index = true;
+            line_struct.shared_across_instances = true;
+            primitive_comp->SetMaterialStructResource(line_struct);
             primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             primitive_comp->SetVisible(true);
         }

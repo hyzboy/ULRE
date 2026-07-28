@@ -40,12 +40,18 @@ namespace hgl::ecs
             recipe.recipe_name.clear();
             recipe.shading_model = graph::mtl::ShadingModel::Unknown;
             recipe.preset_hint = graph::mtl::InvalidMaterialPresetHint;
+            recipe.base_material_info_name.clear();
             recipe.domain.clear();
+            recipe.coordinate_system_2d = graph::CoordinateSystem2D::NDC;
+            recipe.local_to_world_2d = true;
+            recipe.material_lod = 0;
+            recipe.material_quality_tier = 0;
             recipe.double_sided = false;
             recipe.alpha_test = false;
             recipe.alpha_cutoff = 0.5f;
             recipe.textures.clear();
             recipe.structs.clear();
+            recipe.ssbo_assets.clear();
         }
 
         std::string ToBindingKey(const char *name)
@@ -430,6 +436,12 @@ namespace hgl::ecs
         EnsureMaterializationCallbacks();
 
         const uint64_t recipe_hash = graph::mtl::HashMaterialRecipe(recipe);
+        GLogInfo("[TexTrace] ResolveMaterialRecipe recipe=%s tex_count=%zu struct_count=%zu hash=%llu",
+                 recipe.recipe_name.c_str(),
+                 recipe.textures.size(),
+                 recipe.structs.size(),
+                 static_cast<unsigned long long>(recipe_hash));
+
         auto cache_it = materialization_resolve_cache.find(recipe_hash);
         if (cache_it != materialization_resolve_cache.end())
         {
@@ -441,11 +453,21 @@ namespace hgl::ecs
             if (out_data_index_row)
                 *out_data_index_row = cache_it->second.data_index_row;
 
+            GLogInfo("[TexTrace]   cache hit: tex_row=%u data_row=%u resolved_tex=%zu",
+                     cache_it->second.texture_layer_row,
+                     cache_it->second.data_index_row,
+                     out_spec.resources.size());
             return true;
         }
 
         if (!graph::mtl::ResolveMaterializationSpec(recipe, materialization_callbacks, out_spec))
+        {
+            GLogError("[TexTrace]   ResolveMaterializationSpec FAILED for recipe=%s", recipe.recipe_name.c_str());
             return false;
+        }
+
+        GLogInfo("[TexTrace]   ResolveMaterializationSpec OK resolved_tex=%zu resolved_struct=%zu",
+                 out_spec.resources.size(), out_spec.struct_refs.size());
 
         uint32_t texture_row = 0;
         uint32_t data_row = 0;
@@ -1201,18 +1223,39 @@ namespace hgl::ecs
                 if (!primitive_comp)
                     continue;
 
-                const auto *resource = primitive_comp->GetMaterialStructResource(req.data_slot);
-                if (!resource || resource->ssbo_type != req.ssbo_type)
+                uint32_t candidate_ssbo_id = 0;
+                bool has_candidate = false;
+
+                if (const auto *recipe = primitive_comp->GetMaterialRecipe())
+                {
+                    if (const auto *asset = graph::mtl::FindRecipeSSBOAssetBinding(*recipe, req.name, req.ssbo_type))
+                    {
+                        candidate_ssbo_id = asset->ssbo_id;
+                        has_candidate = true;
+                    }
+                }
+
+                if (!has_candidate)
+                {
+                    const auto *resource = primitive_comp->GetMaterialStructResource(req.data_slot);
+                    if (!resource || resource->ssbo_type != req.ssbo_type)
+                        continue;
+
+                    candidate_ssbo_id = resource->ssbo_id;
+                    has_candidate = true;
+                }
+
+                if (!has_candidate)
                     continue;
 
                 if (!found)
                 {
-                    ssbo_id = resource->ssbo_id;
+                    ssbo_id = candidate_ssbo_id;
                     found = true;
                     continue;
                 }
 
-                if (ssbo_id != resource->ssbo_id)
+                if (ssbo_id != candidate_ssbo_id)
                 {
                     GLogError("[DescriptorBinding] Recipe batch struct mismatch: material=%s semantic=%s descriptor=%s slot=%u expected_ssbo_id=%u actual_ssbo_id=%u.",
                               material->GetName().c_str(),
@@ -1220,7 +1263,7 @@ namespace hgl::ecs
                               req.name,
                               static_cast<uint32_t>(req.data_slot),
                               ssbo_id,
-                              resource->ssbo_id);
+                              candidate_ssbo_id);
                     batch->descriptor_bind_valid = false;
                     return false;
                 }
@@ -1599,6 +1642,7 @@ namespace hgl::ecs
                                                                              resolved_sampler);
                 if (has_batch_binding && resolved_texture)
                 {
+                    GLogInfo("[TexTrace] ApplyBinding MaterialTexture descriptor=%s: batch_binding path, texture=%p", req.name, (void*)resolved_texture);
                     if (!bind_texture(material, batch, req, resolved_texture))
                         log_bind_failure(material, batch, req, "bind MaterialTexture failed");
                     break;
@@ -1607,12 +1651,16 @@ namespace hgl::ecs
                 const auto *binding = FindMaterialResourceBinding(material, req.name);
                 if (binding && binding->texture)
                 {
+                    GLogInfo("[TexTrace] ApplyBinding MaterialTexture descriptor=%s: material_binding path, texture=%p", req.name, (void*)binding->texture);
                     if (!bind_texture(material, batch, req, binding->texture))
                         log_bind_failure(material, batch, req, "bind MaterialTexture failed");
                 }
-                else if (req.required)
+                else
                 {
-                    log_bind_failure(material, batch, req, "missing required MaterialTexture binding");
+                    GLogWarning("[TexTrace] ApplyBinding MaterialTexture descriptor=%s: NO binding found (batch=%d has_batch_binding=%d binding_ptr=%p)",
+                                req.name, batch?1:0, has_batch_binding?1:0, (void*)binding);
+                    if (req.required)
+                        log_bind_failure(material, batch, req, "missing required MaterialTexture binding");
                 }
                 break;
             }
@@ -1627,6 +1675,7 @@ namespace hgl::ecs
                                                                              resolved_sampler);
                 if (has_batch_binding && resolved_texture && resolved_sampler)
                 {
+                    GLogInfo("[TexTrace] ApplyBinding MaterialSampler descriptor=%s: batch_binding path", req.name);
                     if (!bind_texture_sampler(material, batch, req, resolved_texture, resolved_sampler))
                         log_bind_failure(material, batch, req, "bind MaterialSampler failed");
                     break;
@@ -1635,12 +1684,18 @@ namespace hgl::ecs
                 const auto *binding = FindMaterialResourceBinding(material, req.name);
                 if (binding && binding->texture && binding->sampler)
                 {
+                    GLogInfo("[TexTrace] ApplyBinding MaterialSampler descriptor=%s: material_binding path, texture=%p sampler=%p", req.name, (void*)binding->texture, (void*)binding->sampler);
                     if (!bind_texture_sampler(material, batch, req, binding->texture, binding->sampler))
                         log_bind_failure(material, batch, req, "bind MaterialSampler failed");
                 }
-                else if (req.required)
+                else
                 {
-                    log_bind_failure(material, batch, req, "missing required MaterialSampler binding");
+                    GLogWarning("[TexTrace] ApplyBinding MaterialSampler descriptor=%s: NO binding found (binding_ptr=%p tex=%p sampler=%p)",
+                                req.name, (void*)binding,
+                                binding?(void*)binding->texture:nullptr,
+                                binding?(void*)binding->sampler:nullptr);
+                    if (req.required)
+                        log_bind_failure(material, batch, req, "missing required MaterialSampler binding");
                 }
                 break;
             }
