@@ -110,11 +110,7 @@ private:
 
     bool CreateGeometry()
     {
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* device = graphics_context->GetDevice();
+        auto* device = GetDevice();
         auto* buffer_manager = GetManager<BufferManager>();
         auto* geometry_manager = GetManager<GeometryManager>();
         if (!device || !buffer_manager || !geometry_manager)
@@ -142,10 +138,6 @@ private:
 
     bool InitECS()
     {
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         // === 步骤1: 获取ECS世界 ===
         ecs_world = GetECSContext();
         if (!ecs_world)
@@ -224,9 +216,6 @@ private:
             std::cout << "[TestApp::InitMISSBO] ERROR: Failed to get ECS context!" << std::endl;
             return false;
         }
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context) return false;
 
         const VkDeviceSize ssbo_size = static_cast<VkDeviceSize>(DRAW_OBJECT_COUNT) * mi_data_bytes;
         material_ssbo_count = DRAW_OBJECT_COUNT;

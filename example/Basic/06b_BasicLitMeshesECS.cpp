@@ -88,14 +88,6 @@ private:
 
     bool InitMaterial()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         auto* texture_manager = GetManager<TextureManager>();
         auto* sampler_manager = GetManager<SamplerManager>();
 
@@ -171,14 +163,6 @@ private:
 
     bool InitVDM()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         auto* buffer_manager = GetManager<BufferManager>();
         if (!buffer_manager)
             return false;
@@ -198,14 +182,6 @@ private:
     RenderMesh* CreateRenderMesh(Geometry* geometry)
     {
         if (!geometry)
-            return nullptr;
-
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return nullptr;
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
             return nullptr;
 
         auto* geometry_manager = GetManager<GeometryManager>();

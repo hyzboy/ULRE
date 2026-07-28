@@ -89,15 +89,7 @@ private:
 
     bool InitVBO()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* device = graphics_context->GetDevice();
+        auto* device = GetDevice();
         auto* buffer_manager = GetManager<BufferManager>();
         auto* geometry_manager = GetManager<GeometryManager>();
         if (!device || !buffer_manager || !geometry_manager)

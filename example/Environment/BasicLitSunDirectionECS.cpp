@@ -154,12 +154,8 @@ private:
         if (!ecs_context)
             return false;
 
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         auto* geometry_manager = GetManager<GeometryManager>();
-        auto* device = graphics_context->GetDevice();
+        auto* device = GetDevice();
         if (!geometry_manager || !device)
             return false;
 
@@ -193,14 +189,9 @@ private:
 
     bool InitMaterial()
     {
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         auto* texture_manager = GetManager<TextureManager>();
         auto* sampler_manager = GetManager<SamplerManager>();
-        auto* device = graphics_context->GetDevice();
-        if (!texture_manager || !sampler_manager || !device)
+        if (!texture_manager || !sampler_manager)
             return false;
 
         base_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
@@ -259,10 +250,6 @@ private:
 
     bool InitVDM()
     {
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         auto* buffer_manager = GetManager<BufferManager>();
         if (!buffer_manager)
             return false;
@@ -282,10 +269,6 @@ private:
     RenderMesh* CreateRenderMesh(Geometry* geometry)
     {
         if (!geometry)
-            return nullptr;
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
             return nullptr;
 
         auto* geometry_manager = GetManager<GeometryManager>();
@@ -398,14 +381,6 @@ private:
             return false;
     #endif//
         {
-            auto* render_context = GetRenderContext();
-            if (!render_context)
-                return false;
-
-            auto* graphics_context = GetGraphicsContext();
-            if (!graphics_context)
-                return false;
-
         #ifdef DRAW_SKY_SPHERE
             sky_entity = ecs_context->CreateEntity<Entity>("SkySphere");
             auto transform = sky_entity->AddComponent<TransformComponent>(Mobility::Movable);

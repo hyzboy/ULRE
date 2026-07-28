@@ -70,14 +70,6 @@ private:
 
     bool InitMDP()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         auto* domain_manager = GetManager<ResourceDomainManager>();
         if (!domain_manager)
             return false;
@@ -109,15 +101,7 @@ private:
 
     bool CreateRenderObjects()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* device = graphics_context->GetDevice();
+        auto* device = GetDevice();
         auto* geometry_manager = GetManager<GeometryManager>();
         if (!device || !geometry_manager)
             return false;
@@ -201,14 +185,6 @@ private:
     bool CreateMeshEntity(const char *name, const PrimitiveAsset *mesh_asset, const glm::vec3 &pos)
     {
         if(!ecs_context || !mesh_asset)
-            return false;
-
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
             return false;
 
         auto entity = ecs_context->CreateEntity<hgl::ecs::Entity>(name);

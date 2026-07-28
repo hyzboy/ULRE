@@ -119,15 +119,7 @@ private:
 
     bool CreateGeometry()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* device = graphics_context->GetDevice();
+        auto* device = GetDevice();
         auto* geometry_manager = GetManager<GeometryManager>();
         if (!device || !geometry_manager)
             return false;
@@ -159,7 +151,7 @@ private:
 
         // === 创建射线线段几何体 ===
         {
-            auto* device = graphics_context->GetDevice();
+            auto* device = GetDevice();
             auto* buffer_manager = GetManager<BufferManager>();
             auto* geometry_manager = GetManager<GeometryManager>();
             if (!device || !buffer_manager || !geometry_manager)
@@ -185,14 +177,6 @@ private:
 
     bool InitECS()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         // === 步骤1: 获取ECS世界 ===
         ecs_world = GetECSContext();
         if(!ecs_world)

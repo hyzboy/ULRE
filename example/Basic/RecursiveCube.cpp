@@ -120,14 +120,6 @@ private:
         if (!geometry)
             return false;
 
-        auto *render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto *graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         auto *domain_manager = GetManager<ResourceDomainManager>();
         if (!domain_manager)
             return false;
@@ -162,19 +154,11 @@ private:
     {
         using namespace inline_geometry;
 
-        auto *render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto *graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         auto *geometry_manager = GetManager<GeometryManager>();
         if (!geometry_manager)
             return false;
 
-        auto *device = graphics_context->GetDevice();
+        auto *device = GetDevice();
         if (!device)
             return false;
 
@@ -265,14 +249,6 @@ private:
         ecs_context = GetECSContext();
 
         if (!ecs_context)
-            return false;
-
-        auto *render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto *graphics_context = GetGraphicsContext();
-        if (!graphics_context)
             return false;
 
         // Base cube at origin

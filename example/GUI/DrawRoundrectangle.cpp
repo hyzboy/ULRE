@@ -81,15 +81,7 @@ private:
                 return false;
         }
 
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* device = graphics_context->GetDevice();
+        auto* device = GetDevice();
         auto* buffer_manager = GetManager<BufferManager>();
         auto* geometry_manager = GetManager<GeometryManager>();
         if (!device || !buffer_manager || !geometry_manager)
@@ -114,18 +106,9 @@ private:
         if(!geometry)
             return false;
 
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         auto* texture_manager = GetManager<TextureManager>();
         auto* sampler_manager = GetManager<SamplerManager>();
-        auto* device = graphics_context->GetDevice();
-        if (!texture_manager || !sampler_manager || !device)
+        if (!texture_manager || !sampler_manager)
             return false;
 
         texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"), true);

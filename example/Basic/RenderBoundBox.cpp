@@ -153,14 +153,6 @@ private:
         if (!md || !md->material)
             return false;
 
-        auto *render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto *graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         auto *domain_manager = GetManager<ResourceDomainManager>();
         if (!domain_manager)
             return false;
@@ -221,14 +213,6 @@ private:
 
     bool InitSolidMDP()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         auto* material_manager = GetManager<MaterialManager>();
         if (!material_manager)
             return false;
@@ -245,14 +229,6 @@ private:
 
     bool InitWireMDP()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         auto* material_manager = GetManager<MaterialManager>();
         if (!material_manager)
             return false;
@@ -269,14 +245,6 @@ private:
 
     bool InitVDM()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         auto* buffer_manager = GetManager<BufferManager>();
         if (!buffer_manager)
             return false;
@@ -294,14 +262,6 @@ private:
     RenderMesh *CreateRenderMesh(Geometry *geometry,MaterialData *md,const int color)
     {
         if(!geometry)
-            return nullptr;
-
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return nullptr;
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
             return nullptr;
 
         auto* primitive_manager = GetManager<PrimitiveManager>();
@@ -581,15 +541,7 @@ private:
 
     bool CreateBoundingBoxMesh()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* device = graphics_context->GetDevice();
+        auto* device = GetDevice();
         auto* geometry_manager = GetManager<GeometryManager>();
         if (!device || !geometry_manager)
             return false;

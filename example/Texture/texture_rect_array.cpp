@@ -98,10 +98,6 @@ private:
 
     bool InitTexture()
     {
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         auto* tex_manager = GetManager<TextureManager>();
         if (!tex_manager)
             return false;
@@ -129,10 +125,6 @@ private:
 
     bool InitMaterial()
     {
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         auto* sampler_manager = GetManager<SamplerManager>();
         if (!sampler_manager)
             return false;
@@ -183,11 +175,7 @@ private:
 
     bool InitVBOAndRenderList()
     {
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* device = graphics_context->GetDevice();
+        auto* device = GetDevice();
         auto* buffer_manager = GetManager<BufferManager>();
         auto* geometry_manager = GetManager<GeometryManager>();
         if (!device || !buffer_manager || !geometry_manager)

@@ -70,17 +70,9 @@ private:
 
     bool InitMaterial()
     {
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         auto* sampler_manager = GetManager<SamplerManager>();
         auto* tex_manager = GetManager<TextureManager>();
         if (!sampler_manager || !tex_manager)
-            return false;
-
-        auto* device = graphics_context->GetDevice();
-        if (!device)
             return false;
 
         texture=tex_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
@@ -94,11 +86,7 @@ private:
 
     bool InitVBO()
     {
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* device = graphics_context->GetDevice();
+        auto* device = GetDevice();
         auto* buffer_manager = GetManager<BufferManager>();
         auto* geometry_manager = GetManager<GeometryManager>();
         if (!device || !buffer_manager || !geometry_manager)

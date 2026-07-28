@@ -87,18 +87,9 @@ private:
 
     bool InitMaterial()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         auto* texture_manager = GetManager<TextureManager>();
         auto* sampler_manager = GetManager<SamplerManager>();
-        auto* device = graphics_context->GetDevice();
-        if (!texture_manager || !sampler_manager || !device)
+        if (!texture_manager || !sampler_manager)
             return false;
         mesh_recipe.recipe_name = "06c.TextureBlinnPhong.Standard";
         mesh_recipe.shading_model = graph::mtl::ShadingModel::Standard;
@@ -132,14 +123,6 @@ private:
 
     bool InitMISSBO()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         auto* domain_manager = GetManager<ResourceDomainManager>();
         if (!domain_manager)
             return false;
@@ -178,14 +161,6 @@ private:
 
     bool InitVDM()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         auto* buffer_manager = GetManager<BufferManager>();
         if (!buffer_manager)
             return false;
@@ -205,14 +180,6 @@ private:
     RenderMesh* CreateRenderMesh(Geometry* geometry)
     {
         if (!geometry)
-            return nullptr;
-
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return nullptr;
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
             return nullptr;
 
         auto* geometry_manager = GetManager<GeometryManager>();

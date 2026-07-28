@@ -114,14 +114,6 @@ private:
         if (!geometry)
             return false;
 
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         clock_recipe.recipe_name = "Clock.PureColor2D";
         clock_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
         clock_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::PureColor2D);
@@ -137,15 +129,7 @@ private:
 
     bool InitGeometry()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
-        auto* device = graphics_context->GetDevice();
+        auto* device = GetDevice();
         auto* buffer_manager = GetManager<BufferManager>();
         auto* geometry_manager = GetManager<GeometryManager>();
         if (!device || !buffer_manager || !geometry_manager)
@@ -237,20 +221,6 @@ private:
 
     bool InitECS()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-        {
-            std::cout << "[ClockApp::InitECS] ERROR: Missing RenderContext!" << std::endl;
-            return false;
-        }
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-        {
-            std::cout << "[ClockApp::InitECS] ERROR: Missing GraphicsContext!" << std::endl;
-            return false;
-        }
-
         // === 获取ECS世界 ===
         ecs_world = GetECSContext();
         if (!ecs_world)

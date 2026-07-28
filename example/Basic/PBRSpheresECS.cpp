@@ -148,21 +148,8 @@ private:
 
     bool InitMaterial()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context) {
-            printf("[ERROR] InitMaterial: No render_context\n");
-            return false;
-        }
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context) {
-            printf("[ERROR] InitMaterial: No graphics_context\n");
-            return false;
-        }
-
         auto* sampler_manager = GetManager<SamplerManager>();
-        auto* device = graphics_context->GetDevice();
-        if (!sampler_manager || !base_color_texture || !normal_texture || !device) {
+        if (!sampler_manager || !base_color_texture || !normal_texture) {
             printf("[ERROR] InitMaterial: Failed manager/texture checks - material_mgr=%p sampler_mgr=%p base=%p normal=%p\n",
                    nullptr, sampler_manager, base_color_texture, normal_texture);
             return false;
@@ -187,18 +174,6 @@ private:
 
     bool InitTextures()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context) {
-            printf("[ERROR] InitTextures: No render_context\n");
-            return false;
-        }
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context) {
-            printf("[ERROR] InitTextures: No graphics_context\n");
-            return false;
-        }
-
         auto* texture_manager = GetManager<TextureManager>();
         if (!texture_manager) {
             printf("[ERROR] InitTextures: No texture_manager\n");
@@ -310,18 +285,6 @@ private:
         if (!ecs_world)
             return false;
 
-        auto *render_context = GetRenderContext();
-        if (!render_context) {
-            printf("[ERROR] InitMISSBO: No render_context\n");
-            return false;
-        }
-
-        auto *graphics_context = GetGraphicsContext();
-        if (!graphics_context) {
-            printf("[ERROR] InitMISSBO: No graphics_context\n");
-            return false;
-        }
-
         auto *domain_manager = GetManager<ResourceDomainManager>();
         if (!domain_manager) {
             printf("[ERROR] InitMISSBO: Missing resource domain manager\n");
@@ -378,18 +341,6 @@ private:
 
     bool InitVDM()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context) {
-            printf("[ERROR] InitVDM: No render_context\n");
-            return false;
-        }
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context) {
-            printf("[ERROR] InitVDM: No graphics_context\n");
-            return false;
-        }
-
         auto* buffer_manager = GetManager<BufferManager>();
         if (!buffer_manager) {
             printf("[ERROR] InitVDM: No buffer_manager\n");
@@ -515,18 +466,6 @@ private:
 
     bool CreateBasePrimitives()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context) {
-            printf("[ERROR] CreateBasePrimitives: No render_context\n");
-            return false;
-        }
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context) {
-            printf("[ERROR] CreateBasePrimitives: No graphics_context\n");
-            return false;
-        }
-
         for (uint i = 0; i < GEOMETRY_VARIANT_COUNT; ++i)
         {
             if (!builtin_geometries[i]) {

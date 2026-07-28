@@ -118,14 +118,6 @@ private:
 
     bool InitTextures()
     {
-        auto *render_context = GetRenderContext();
-        if (!render_context)
-            return LogFail("InitTextures", "render context is null");
-
-        auto *graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return LogFail("InitTextures", "graphics context is null");
-
         auto *texture_manager = GetManager<TextureManager>();
         if (!texture_manager)
             return LogFail("InitTextures", "texture manager is null");
@@ -165,14 +157,6 @@ private:
 
     bool InitMaterials()
     {
-        auto *render_context = GetRenderContext();
-        if (!render_context)
-            return LogFail("InitMaterials", "render context is null");
-
-        auto *graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return LogFail("InitMaterials", "graphics context is null");
-
         auto *sampler_manager = GetManager<SamplerManager>();
         if (!sampler_manager)
             return LogFail("InitMaterials", "required manager/device is null");
@@ -199,14 +183,6 @@ private:
 
     bool InitGeometry()
     {
-        auto *render_context = GetRenderContext();
-        if (!render_context)
-            return LogFail("InitGeometry", "render context is null");
-
-        auto *graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return LogFail("InitGeometry", "graphics context is null");
-
         auto *buffer_manager = GetManager<BufferManager>();
         if (!buffer_manager)
             return LogFail("InitGeometry", "buffer manager is null");
@@ -279,14 +255,6 @@ private:
     {
         if (!near_base_color_array || !near_normal_array || !far_base_color_texture || !far_normal_texture)
             return LogFail("InitRenderResources", "required material/texture is null");
-
-        auto *render_context = GetRenderContext();
-        if (!render_context)
-            return LogFail("InitRenderResources", "render context is null");
-
-        auto *graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return LogFail("InitRenderResources", "graphics context is null");
 
         auto *domain_manager = GetManager<ResourceDomainManager>();
         if (!domain_manager)

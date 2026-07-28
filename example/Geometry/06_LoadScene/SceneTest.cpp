@@ -111,14 +111,6 @@ private:
         if (!md || !md->material)
             return false;
 
-        auto *render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto *graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         auto *domain_manager = GetManager<ResourceDomainManager>();
         if (!domain_manager)
             return false;
@@ -184,14 +176,6 @@ private:
 
     bool InitSolidMDP()
     {
-        auto* render_context = GetRenderContext();
-        if (!render_context)
-            return false;
-
-        auto* graphics_context = GetGraphicsContext();
-        if (!graphics_context)
-            return false;
-
         auto* material_manager = GetManager<MaterialManager>();
         if (!material_manager)
             return false;
@@ -214,12 +198,8 @@ private:
 
         const path scene_dir = scene_path.parent_path();
 
-        auto *render_context = GetRenderContext();
-        if (!render_context) return false;
-        auto *gfx_ctx = GetGraphicsContext();
-        if (!gfx_ctx) return false;
-        auto *device    = gfx_ctx->GetDevice();
-        auto *geo_mgr   = gfx_ctx->GetGeometryManager();
+        auto *device    = GetDevice();
+        auto *geo_mgr   = GetManager<GeometryManager>();
         if (!device || !geo_mgr) return false;
 
         const OSString pack_path = hgl::ToOSString(scene_path.string());
