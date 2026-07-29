@@ -4,7 +4,6 @@
 
 #include <hgl/graph/mesh/LoadStaticMesh.h>
 #include <hgl/graph/mesh/StaticMesh.h>
-#include <hgl/graph/mesh/Primitive.h>
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/io/MiniPack.h>
 #include <hgl/type/StdString.h>
@@ -151,12 +150,9 @@ static bool TryLoadScene(
     VulkanDevice             *device,
     GeometryManager          *geo_mgr,
     const GeometryVertexFormat &geometry_vertex_format,
-    MaterialInstance * const *mi_array,
-    int                       mi_count,
-    MaterialProgram          *material_program,
     const OSString           &pack_path,
     const OSString           &base_dir,
-    std::vector<Primitive *> &prim_list,
+    std::vector<Geometry *>  &geometry_list,
     std::vector<StaticMeshNode> &scene_nodes,
     std::vector<int32_t> &root_nodes)
 {
@@ -346,7 +342,7 @@ static bool TryLoadScene(
         }
     }
 
-    prim_list.clear();
+    geometry_list.clear();
     {
         const uint8_t *ptr = nullptr;
         uint32_t size = 0;
@@ -357,7 +353,7 @@ static bool TryLoadScene(
 
         const auto *pp = reinterpret_cast<const PackedPrimitive *>(ptr);
         const uint32_t pcount = size / static_cast<uint32_t>(sizeof(PackedPrimitive));
-        prim_list.reserve(pcount);
+        geometry_list.reserve(pcount);
         MLogInfo(LoadStaticMesh, OS_TEXT("[V2] PrimitiveTable: count=") + OSString::numberOf(pcount)
             + OS_TEXT(" raw_size=") + OSString::numberOf(size)
             + OS_TEXT(" entry_size=") + OSString::numberOf((uint32_t)sizeof(PackedPrimitive)));
@@ -398,7 +394,7 @@ static bool TryLoadScene(
                         if (!read_pool_string(pp[i].geometry_file_offset, pp[i].geometry_file_length, geo_file))
                         {
                             MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: invalid V2 geometry filename range in ") + pack_path);
-                            prim_list.push_back(nullptr);
+                            geometry_list.push_back(nullptr);
                             continue;
                         }
 
@@ -408,7 +404,7 @@ static bool TryLoadScene(
                         if (!geo)
                         {
                             MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: failed to load geometry: ") + geo_path);
-                            prim_list.push_back(nullptr);
+                            geometry_list.push_back(nullptr);
                             continue;
                         }
 
@@ -421,26 +417,11 @@ static bool TryLoadScene(
             if (!geo)
             {
                 MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: missing geometry for primitive #") + OSString::numberOf(i) + OS_TEXT(" in ") + pack_path);
-                prim_list.push_back(nullptr);
+                geometry_list.push_back(nullptr);
                 continue;
             }
 
-            Primitive *prim = nullptr;
-            if (material_program)
-                prim = DirectCreatePrimitive(geo, material_program, nullptr, nullptr);
-            else
-            {
-                MaterialInstance *mi = mi_array[(pp[i].material_index >= 0 ? pp[i].material_index : 0) % mi_count];
-                prim = DirectCreatePrimitive(geo, mi, nullptr);
-            }
-            if (!prim)
-            {
-                MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: DirectCreatePrimitive failed for primitive #") + OSString::numberOf(i) + OS_TEXT(" in ") + pack_path);
-                prim_list.push_back(nullptr);
-                continue;
-            }
-
-            prim_list.push_back(prim);
+            geometry_list.push_back(geo);
         }
     }
 
@@ -693,425 +674,10 @@ std::vector<StaticMeshNode> ParseNodeList(
 
 // ---- Public API -------------------------------------------------------------
 
-StaticMesh *LoadStaticMeshScene(
-    VulkanDevice             *device,
-    GeometryManager          *geo_mgr,
-    const GeometryVertexFormat &geometry_vertex_format,
-    MaterialInstance * const *mi_array,
-    int                       mi_count,
-    const OSString           &pack_path,
-    const OSString           &base_dir)
-{
-    using namespace hgl::io::minipack;
-    using namespace hgl::math;
-
-    if (!device || !geo_mgr || geometry_vertex_format.GetCount() == 0 || !mi_array || mi_count <= 0)
-    {
-        MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: null argument"));
-        return nullptr;
-    }
-
-    MiniPackMemory *mpm = GetMiniPackMemory(pack_path);
-    if (!mpm)
-    {
-        MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: cannot open pack: ") + pack_path);
-        return nullptr;
-    }
-
-    // ---- Fast path: ScenePackV2 (header + payload) -------------------------
-    {
-        std::vector<Primitive *>   prim_list;
-        std::vector<StaticMeshNode> scene_nodes;
-        std::vector<int32_t>       root_nodes;
-
-        if (TryLoadScene(
-                mpm,
-                device,
-                geo_mgr,
-                geometry_vertex_format,
-                mi_array,
-                mi_count,
-                nullptr,
-                pack_path,
-                base_dir,
-                prim_list,
-                scene_nodes,
-                root_nodes))
-        {
-            delete mpm;
-
-            StaticMesh *sm = new StaticMesh();
-
-            for (Primitive *prim : prim_list)
-            {
-                if (prim)
-                    sm->AddPrimitive(prim);
-            }
-
-            for (StaticMeshNode &node : scene_nodes)
-                sm->AddNode(std::move(node));
-
-            if (!root_nodes.empty())
-                sm->SetRootNodes(std::move(root_nodes));
-
-            return sm;
-        }
-    }
-
-    MLogInfo(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: ScenePackV2 not available, fallback to V1"));
-
-    // ---- 1. NameTable -------------------------------------------------------
-    std::vector<std::string> names;
-    {
-        const int32 idx = mpm->FindFile(AnsiStringView("NameTable"));
-        if (idx >= 0)
-            names = ParseNameTable(mpm->Map(idx), mpm->GetFileLength(idx));
-    }
-
-    // ---- 2. MatrixTable (raw glm::mat4 array) --------------------------------
-    const Matrix4f *matrices     = nullptr;
-    uint32          matrix_count = 0;
-    {
-        const int32 idx = mpm->FindFile(AnsiStringView("MatrixTable"));
-        if (idx >= 0)
-        {
-            matrices     = reinterpret_cast<const Matrix4f *>(mpm->Map(idx));
-            matrix_count = mpm->GetFileLength(idx) / static_cast<uint32>(sizeof(Matrix4f));
-        }
-    }
-
-    // ---- 3. TRSTable (raw PackedTRS array, 40 bytes each) -------------------
-    const PackedTRS *trs_arr  = nullptr;
-    uint32           trs_count = 0;
-    {
-        const int32 idx = mpm->FindFile(AnsiStringView("TRSTable"));
-        if (idx >= 0)
-        {
-            trs_arr   = reinterpret_cast<const PackedTRS *>(mpm->Map(idx));
-            trs_count = mpm->GetFileLength(idx) / static_cast<uint32>(sizeof(PackedTRS));
-        }
-    }
-
-    // ---- 4. BoundsTable (raw BoundingVolumesData array, 100 bytes each) -----
-    const BoundingVolumesData *bounds_arr  = nullptr;
-    uint32                     bounds_count = 0;
-    {
-        const int32 idx = mpm->FindFile(AnsiStringView("BoundsTable"));
-        if (idx >= 0)
-        {
-            bounds_arr   = reinterpret_cast<const BoundingVolumesData *>(mpm->Map(idx));
-            bounds_count = mpm->GetFileLength(idx) / static_cast<uint32>(sizeof(BoundingVolumesData));
-        }
-    }
-
-    // ---- 5. RootList (int32 count + int32[count]) ---------------------------
-    std::vector<int32_t> root_nodes;
-    {
-        const int32 idx = mpm->FindFile(AnsiStringView("RootList"));
-        if (idx >= 0)
-        {
-            const int32_t *data     = reinterpret_cast<const int32_t *>(mpm->Map(idx));
-            const uint32   byte_len = mpm->GetFileLength(idx);
-            if (data && byte_len >= sizeof(int32_t))
-            {
-                const int32_t count = data[0];
-                const int32_t max_readable = static_cast<int32_t>(byte_len / sizeof(int32_t)) - 1;
-                root_nodes.reserve(count);
-                for (int32_t j = 0; j < count && j < max_readable; ++j)
-                    root_nodes.push_back(data[j + 1]);
-            }
-        }
-    }
-
-    // ---- 6. PrimitiveList → load Geometry + create Primitive ----------------
-    // Per entry (byte stream): int32 originalIndex, int32 geoIndex, int32 matIndex,
-    //                          uint32 fileLen, char[fileLen]  (no NUL terminator)
-    std::vector<Primitive *> prim_list;
-    {
-        const int32 idx = mpm->FindFile(AnsiStringView("PrimitiveList"));
-        if (idx >= 0)
-        {
-            const uint8_t *buf = reinterpret_cast<const uint8_t *>(mpm->Map(idx));
-            const uint8_t *end = buf + mpm->GetFileLength(idx);
-
-            while (buf + 3 * sizeof(int32_t) + sizeof(uint32_t) <= end)
-            {
-                int32_t  originalIndex, geoIndex, matIndex;
-                uint32_t fileLen;
-
-                std::memcpy(&originalIndex, buf, sizeof(int32_t));  buf += sizeof(int32_t);
-                std::memcpy(&geoIndex,      buf, sizeof(int32_t));  buf += sizeof(int32_t);
-                std::memcpy(&matIndex,      buf, sizeof(int32_t));  buf += sizeof(int32_t);
-                std::memcpy(&fileLen,       buf, sizeof(uint32_t)); buf += sizeof(uint32_t);
-
-                if (buf + fileLen > end)
-                {
-                    MLogError(LoadStaticMesh,
-                        OS_TEXT("LoadStaticMeshScene: PrimitiveList entry truncated in ") + pack_path);
-                    break;
-                }
-
-                std::string geo_file(reinterpret_cast<const char *>(buf), fileLen);
-                buf += fileLen;
-
-                const OSString geo_path = base_dir + OS_TEXT("/") + hgl::ToOSString(geo_file);
-
-                Geometry *geo = LoadGeometry(device, geometry_vertex_format, geo_path);
-                if (!geo)
-                {
-                    MLogError(LoadStaticMesh,
-                        OS_TEXT("LoadStaticMeshScene: failed to load geometry: ") + geo_path);
-                    prim_list.push_back(nullptr);
-                    continue;
-                }
-
-                geo_mgr->Add(geo);
-
-                MaterialInstance *mi = mi_array[(matIndex >= 0 ? matIndex : 0) % mi_count];
-                Primitive *prim = DirectCreatePrimitive(geo, mi, nullptr);
-                if (!prim)
-                {
-                    MLogError(LoadStaticMesh,
-                        OS_TEXT("LoadStaticMeshScene: DirectCreatePrimitive failed for ") + geo_path);
-                    prim_list.push_back(nullptr);
-                    continue;
-                }
-
-                prim_list.push_back(prim);
-            }
-        }
-    }
-
-    // ---- 7. NodeList --------------------------------------------------------
-    std::vector<StaticMeshNode> scene_nodes;
-    {
-        const int32 idx = mpm->FindFile(AnsiStringView("NodeList"));
-        if (idx >= 0)
-        {
-            scene_nodes = ParseNodeList(
-                mpm->Map(idx), mpm->GetFileLength(idx),
-                names,
-                matrices,   matrix_count,
-                trs_arr,    trs_count,
-                bounds_arr, bounds_count);
-        }
-    }
-
-    delete mpm;
-
-    // ---- 8. Assemble StaticMesh ---------------------------------------------
-    StaticMesh *sm = new StaticMesh();
-
-    for (Primitive *prim : prim_list)
-    {
-        if (prim)
-            sm->AddPrimitive(prim);
-    }
-
-    for (StaticMeshNode &node : scene_nodes)
-        sm->AddNode(std::move(node));
-
-    if (!root_nodes.empty())
-        sm->SetRootNodes(std::move(root_nodes));
-
-    return sm;
-}
-
-StaticMesh *LoadStaticMeshScene(
-    VulkanDevice             *device,
-    GeometryManager          *geo_mgr,
-    const GeometryVertexFormat &geometry_vertex_format,
-    MaterialProgram          *material_program,
-    const OSString           &pack_path,
-    const OSString           &base_dir)
-{
-    using namespace hgl::io::minipack;
-    using namespace hgl::math;
-
-    if (!device || !geo_mgr || geometry_vertex_format.GetCount() == 0 || !material_program)
-    {
-        MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene(material): null argument"));
-        return nullptr;
-    }
-
-    MiniPackMemory *mpm = GetMiniPackMemory(pack_path);
-    if (!mpm)
-    {
-        MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene(material): cannot open pack: ") + pack_path);
-        return nullptr;
-    }
-
-    {
-        std::vector<Primitive *> prim_list;
-        std::vector<StaticMeshNode> scene_nodes;
-        std::vector<int32_t> root_nodes;
-
-        if (TryLoadScene(
-                mpm,
-                device,
-                geo_mgr,
-                geometry_vertex_format,
-                nullptr,
-                0,
-                material_program,
-                pack_path,
-                base_dir,
-                prim_list,
-                scene_nodes,
-                root_nodes))
-        {
-            delete mpm;
-
-            StaticMesh *sm = new StaticMesh();
-            for (Primitive *prim : prim_list)
-            {
-                if (prim)
-                    sm->AddPrimitive(prim);
-            }
-            for (StaticMeshNode &node : scene_nodes)
-                sm->AddNode(std::move(node));
-            if (!root_nodes.empty())
-                sm->SetRootNodes(std::move(root_nodes));
-            return sm;
-        }
-    }
-
-    MLogInfo(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene(material): ScenePackV2 not available, fallback to V1"));
-
-    std::vector<std::string> names;
-    {
-        const int32 idx = mpm->FindFile(AnsiStringView("NameTable"));
-        if (idx >= 0)
-            names = ParseNameTable(mpm->Map(idx), mpm->GetFileLength(idx));
-    }
-
-    std::vector<Primitive *> prim_list;
-    {
-        const int32 idx = mpm->FindFile(AnsiStringView("PrimitiveList"));
-        if (idx >= 0)
-        {
-            const uint8_t *buf = reinterpret_cast<const uint8_t *>(mpm->Map(idx));
-            const uint8_t *end = buf + mpm->GetFileLength(idx);
-
-            while (buf + 3 * sizeof(int32_t) + sizeof(uint32_t) <= end)
-            {
-                int32_t originalIndex, geoIndex, matIndex;
-                uint32_t fileLen;
-                std::memcpy(&originalIndex, buf, sizeof(int32_t));  buf += sizeof(int32_t);
-                std::memcpy(&geoIndex,      buf, sizeof(int32_t));  buf += sizeof(int32_t);
-                std::memcpy(&matIndex,      buf, sizeof(int32_t));  buf += sizeof(int32_t);
-                std::memcpy(&fileLen,       buf, sizeof(uint32_t)); buf += sizeof(uint32_t);
-
-                if (buf + fileLen > end)
-                {
-                    MLogError(LoadStaticMesh,
-                        OS_TEXT("LoadStaticMeshScene(material): PrimitiveList entry truncated in ") + pack_path);
-                    break;
-                }
-
-                std::string geo_file(reinterpret_cast<const char *>(buf), fileLen);
-                buf += fileLen;
-
-                const OSString geo_path = base_dir + OS_TEXT("/") + hgl::ToOSString(geo_file);
-
-                Geometry *geo = LoadGeometry(device, geometry_vertex_format, geo_path);
-                if (!geo)
-                {
-                    MLogError(LoadStaticMesh,
-                        OS_TEXT("LoadStaticMeshScene(material): failed to load geometry: ") + geo_path);
-                    prim_list.push_back(nullptr);
-                    continue;
-                }
-
-                geo_mgr->Add(geo);
-
-                Primitive *prim = DirectCreatePrimitive(geo, material_program, nullptr, nullptr);
-                if (!prim)
-                {
-                    MLogError(LoadStaticMesh,
-                        OS_TEXT("LoadStaticMeshScene(material): DirectCreatePrimitive failed for ") + geo_path);
-                    prim_list.push_back(nullptr);
-                    continue;
-                }
-
-                prim_list.push_back(prim);
-            }
-        }
-    }
-
-    const Matrix4f *matrices     = nullptr;
-    uint32          matrix_count = 0;
-    {
-        const int32 idx = mpm->FindFile(AnsiStringView("MatrixTable"));
-        if (idx >= 0)
-        {
-            matrices     = reinterpret_cast<const Matrix4f *>(mpm->Map(idx));
-            matrix_count = mpm->GetFileLength(idx) / static_cast<uint32>(sizeof(Matrix4f));
-        }
-    }
-
-    const PackedTRS *trs_arr  = nullptr;
-    uint32           trs_count = 0;
-    {
-        const int32 idx = mpm->FindFile(AnsiStringView("TRSTable"));
-        if (idx >= 0)
-        {
-            trs_arr   = reinterpret_cast<const PackedTRS *>(mpm->Map(idx));
-            trs_count = mpm->GetFileLength(idx) / static_cast<uint32>(sizeof(PackedTRS));
-        }
-    }
-
-    const BoundingVolumesData *bounds_arr  = nullptr;
-    uint32                     bounds_count = 0;
-    {
-        const int32 idx = mpm->FindFile(AnsiStringView("BoundsTable"));
-        if (idx >= 0)
-        {
-            bounds_arr   = reinterpret_cast<const BoundingVolumesData *>(mpm->Map(idx));
-            bounds_count = mpm->GetFileLength(idx) / static_cast<uint32>(sizeof(BoundingVolumesData));
-        }
-    }
-
-    std::vector<StaticMeshNode> scene_nodes;
-    {
-        const int32 idx = mpm->FindFile(AnsiStringView("NodeList"));
-        if (idx >= 0)
-        {
-            scene_nodes = ParseNodeList(
-                mpm->Map(idx), mpm->GetFileLength(idx),
-                names,
-                matrices,   matrix_count,
-                trs_arr,    trs_count,
-                bounds_arr, bounds_count);
-        }
-    }
-    std::vector<int32_t> root_nodes;
-    for (int32_t i = 0; i < int32_t(scene_nodes.size()); ++i)
-    {
-        if (scene_nodes[i].parentIndex < 0)
-            root_nodes.push_back(i);
-    }
-
-    delete mpm;
-
-    StaticMesh *sm = new StaticMesh();
-    for (Primitive *prim : prim_list)
-    {
-        if (prim)
-            sm->AddPrimitive(prim);
-    }
-    for (StaticMeshNode &node : scene_nodes)
-        sm->AddNode(std::move(node));
-    if (!root_nodes.empty())
-        sm->SetRootNodes(std::move(root_nodes));
-    return sm;
-}
-
 bool LoadStaticMeshSceneAsPrimitiveAssets(
     VulkanDevice                     *device,
     GeometryManager                  *geo_mgr,
     const GeometryVertexFormat       &geometry_vertex_format,
-    MaterialProgram                  *material_program,
     const mtl::MaterialRecipe        *recipe,
     const OSString                   &pack_path,
     const OSString                   &base_dir,
@@ -1119,40 +685,166 @@ bool LoadStaticMeshSceneAsPrimitiveAssets(
     std::vector<StaticMeshNode>      &out_nodes,
     std::vector<int32_t>             &out_root_nodes)
 {
+    using namespace hgl::io::minipack;
+    using namespace hgl::math;
+
     out_assets.clear();
     out_nodes.clear();
     out_root_nodes.clear();
 
-    if (!recipe)
-        return false;
-
-    StaticMesh *sm = LoadStaticMeshScene(device,
-                                         geo_mgr,
-                                         geometry_vertex_format,
-                                         material_program,
-                                         pack_path,
-                                         base_dir);
-    if (!sm)
-        return false;
-
-    const auto &prim_list = sm->GetPrimitiveList();
-    out_assets.reserve(static_cast<size_t>(prim_list.GetCount()));
-    for (int i = 0; i < prim_list.GetCount(); ++i)
+    if (!device || !geo_mgr || geometry_vertex_format.GetCount() == 0 || !recipe)
     {
-        Primitive *prim = prim_list[i];
-        if (!prim || !prim->GetGeometry())
+        MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshSceneAsPrimitiveAssets: invalid argument"));
+        return false;
+    }
+
+    MiniPackMemory *mpm = GetMiniPackMemory(pack_path);
+    if (!mpm)
+    {
+        MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshSceneAsPrimitiveAssets: cannot open pack: ") + pack_path);
+        return false;
+    }
+
+    std::vector<Geometry *> geometry_list;
+    std::vector<StaticMeshNode> scene_nodes;
+    std::vector<int32_t> root_nodes;
+
+    if (!TryLoadScene(
+            mpm,
+            device,
+            geo_mgr,
+            geometry_vertex_format,
+            pack_path,
+            base_dir,
+            geometry_list,
+            scene_nodes,
+            root_nodes))
+    {
+        MLogInfo(LoadStaticMesh, OS_TEXT("LoadStaticMeshSceneAsPrimitiveAssets: ScenePackV2 not available, fallback to V1"));
+
+        std::vector<std::string> names;
+        {
+            const int32 idx = mpm->FindFile(AnsiStringView("NameTable"));
+            if (idx >= 0)
+                names = ParseNameTable(mpm->Map(idx), mpm->GetFileLength(idx));
+        }
+
+        const Matrix4f *matrices     = nullptr;
+        uint32          matrix_count = 0;
+        {
+            const int32 idx = mpm->FindFile(AnsiStringView("MatrixTable"));
+            if (idx >= 0)
+            {
+                matrices     = reinterpret_cast<const Matrix4f *>(mpm->Map(idx));
+                matrix_count = mpm->GetFileLength(idx) / static_cast<uint32>(sizeof(Matrix4f));
+            }
+        }
+
+        const PackedTRS *trs_arr  = nullptr;
+        uint32           trs_count = 0;
+        {
+            const int32 idx = mpm->FindFile(AnsiStringView("TRSTable"));
+            if (idx >= 0)
+            {
+                trs_arr   = reinterpret_cast<const PackedTRS *>(mpm->Map(idx));
+                trs_count = mpm->GetFileLength(idx) / static_cast<uint32>(sizeof(PackedTRS));
+            }
+        }
+
+        const BoundingVolumesData *bounds_arr  = nullptr;
+        uint32                     bounds_count = 0;
+        {
+            const int32 idx = mpm->FindFile(AnsiStringView("BoundsTable"));
+            if (idx >= 0)
+            {
+                bounds_arr   = reinterpret_cast<const BoundingVolumesData *>(mpm->Map(idx));
+                bounds_count = mpm->GetFileLength(idx) / static_cast<uint32>(sizeof(BoundingVolumesData));
+            }
+        }
+
+        {
+            const int32 idx = mpm->FindFile(AnsiStringView("PrimitiveList"));
+            if (idx >= 0)
+            {
+                const uint8_t *buf = reinterpret_cast<const uint8_t *>(mpm->Map(idx));
+                const uint8_t *end = buf + mpm->GetFileLength(idx);
+
+                while (buf + 3 * sizeof(int32_t) + sizeof(uint32_t) <= end)
+                {
+                    int32_t originalIndex, geoIndex, matIndex;
+                    uint32_t fileLen;
+                    std::memcpy(&originalIndex, buf, sizeof(int32_t));  buf += sizeof(int32_t);
+                    std::memcpy(&geoIndex,      buf, sizeof(int32_t));  buf += sizeof(int32_t);
+                    std::memcpy(&matIndex,      buf, sizeof(int32_t));  buf += sizeof(int32_t);
+                    std::memcpy(&fileLen,       buf, sizeof(uint32_t)); buf += sizeof(uint32_t);
+                    (void)originalIndex;
+                    (void)geoIndex;
+                    (void)matIndex;
+
+                    if (buf + fileLen > end)
+                    {
+                        MLogError(LoadStaticMesh,
+                            OS_TEXT("LoadStaticMeshSceneAsPrimitiveAssets: PrimitiveList entry truncated in ") + pack_path);
+                        break;
+                    }
+
+                    std::string geo_file(reinterpret_cast<const char *>(buf), fileLen);
+                    buf += fileLen;
+
+                    const OSString geo_path = base_dir + OS_TEXT("/") + hgl::ToOSString(geo_file);
+
+                    Geometry *geo = LoadGeometry(device, geometry_vertex_format, geo_path);
+                    if (!geo)
+                    {
+                        MLogError(LoadStaticMesh,
+                            OS_TEXT("LoadStaticMeshSceneAsPrimitiveAssets: failed to load geometry: ") + geo_path);
+                        geometry_list.push_back(nullptr);
+                        continue;
+                    }
+
+                    geo_mgr->Add(geo);
+                    geometry_list.push_back(geo);
+                }
+            }
+        }
+
+        {
+            const int32 idx = mpm->FindFile(AnsiStringView("NodeList"));
+            if (idx >= 0)
+            {
+                scene_nodes = ParseNodeList(
+                    mpm->Map(idx), mpm->GetFileLength(idx),
+                    names,
+                    matrices,   matrix_count,
+                    trs_arr,    trs_count,
+                    bounds_arr, bounds_count);
+            }
+        }
+
+        for (int32_t i = 0; i < int32_t(scene_nodes.size()); ++i)
+        {
+            if (scene_nodes[i].parentIndex < 0)
+                root_nodes.push_back(i);
+        }
+    }
+
+    delete mpm;
+
+    out_assets.reserve(geometry_list.size());
+    for (Geometry *geo : geometry_list)
+    {
+        if (!geo)
         {
             out_assets.emplace_back();
             continue;
         }
 
-        out_assets.emplace_back(prim->GetGeometry(), recipe, PrimitiveType::Triangles);
+        out_assets.emplace_back(geo, recipe, PrimitiveType::Triangles);
     }
 
-    out_nodes = sm->GetNodes();
-    out_root_nodes = sm->GetRootNodes();
+    out_nodes = std::move(scene_nodes);
+    out_root_nodes = std::move(root_nodes);
 
-    delete sm;
     return true;
 }
 

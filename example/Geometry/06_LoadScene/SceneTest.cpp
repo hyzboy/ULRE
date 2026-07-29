@@ -173,7 +173,6 @@ private:
             device,
             geo_mgr,
             solid.geometry_vertex_format,
-            solid.material,
             &scene_recipe,
             pack_path,
             base_dir,
