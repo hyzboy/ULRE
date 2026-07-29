@@ -2,7 +2,6 @@
 // 通过控制尺寸、每个角的半径，可绘制出正圆、矩形、圆角矩形
 
 #include<hgl/WorkManager.h>
-#include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/vk/VKBindlessTextureManager.h>

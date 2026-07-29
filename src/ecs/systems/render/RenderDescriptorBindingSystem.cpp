@@ -1198,6 +1198,27 @@ namespace hgl::ecs
 
             return batch->key.IsRecipeRuntime();
         };
+        auto recipe_runtime_has_layer_table_for_texture_slot = [&](graph::MaterialProgram *material,
+                                                                    MaterialBatch *batch,
+                                                                    const graph::mtl::MaterialResourceRequirement &req) -> bool
+        {
+            if (!material || !batch_uses_recipe_runtime(batch))
+                return false;
+
+            const auto &contract = material->GetMaterialResourceLayout();
+            for (const auto &candidate : contract.requirements)
+            {
+                if (candidate.semantic != graph::mtl::DescriptorSemantic::MaterialTextureLayerTable)
+                    continue;
+
+                if (candidate.texture_slot != req.texture_slot)
+                    continue;
+
+                return true;
+            }
+
+            return false;
+        };
         auto resolve_recipe_batch_struct_ssbo_id = [&](graph::MaterialProgram *material,
                                                        MaterialBatch *batch,
                                                        const graph::mtl::MaterialResourceRequirement &req,
@@ -1629,8 +1650,7 @@ namespace hgl::ecs
             }
             case graph::mtl::DescriptorSemantic::MaterialTexture:
             {
-                if (batch && batch_uses_recipe_runtime(batch))
-                    break;
+                const bool allow_indirect_fallback = recipe_runtime_has_layer_table_for_texture_slot(material, batch, req);
 
                 graph::Texture *resolved_texture = nullptr;
                 graph::Sampler *resolved_sampler = nullptr;
@@ -1660,15 +1680,14 @@ namespace hgl::ecs
                 }
                 else
                 {
-                    if (req.required)
+                    if (req.required && !allow_indirect_fallback)
                         log_bind_failure(material, batch, req, "missing required MaterialTexture binding");
                 }
                 break;
             }
             case graph::mtl::DescriptorSemantic::MaterialSampler:
             {
-                if (batch && batch_uses_recipe_runtime(batch))
-                    break;
+                const bool allow_indirect_fallback = recipe_runtime_has_layer_table_for_texture_slot(material, batch, req);
 
                 graph::Texture *resolved_texture = nullptr;
                 graph::Sampler *resolved_sampler = nullptr;
@@ -1692,7 +1711,7 @@ namespace hgl::ecs
                 }
                 else
                 {
-                    if (req.required)
+                    if (req.required && !allow_indirect_fallback)
                         log_bind_failure(material, batch, req, "missing required MaterialSampler binding");
                 }
                 break;

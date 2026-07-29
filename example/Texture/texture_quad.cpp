@@ -1,6 +1,5 @@
 // 画一个带纹理的四边形 (ECS)
 #include<hgl/framework/WorkManager.h>
-#include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -8,6 +7,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/SamplerManager.h>
+#include<hgl/mtl/MaterialLibrary.h>
 
 // ECS headers
 #include<hgl/ecs/core/Context.h>

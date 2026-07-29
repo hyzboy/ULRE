@@ -434,6 +434,14 @@ MaterialProgram *MaterialManager::AcquireMaterialProgram(const mtl::MaterialVari
     return AcquireMaterialProgram(preset,cfg);
 }
 
+MaterialProgram *MaterialManager::AcquireMaterialProgram(const mtl::MaterialPreset mtl_id,const GeometryVertexFormat &geometry_vertex_format)
+{
+    mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
+
+    ScopedMaterialGeometryBinding scoped_binding(&cfg,&geometry_vertex_format);
+    return AcquireMaterialProgram(mtl_id,&cfg);
+}
+
 MaterialProgram *MaterialManager::AcquireMaterialProgram(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *cfg,const GeometryVertexFormat &geometry_vertex_format)
 {
     if(!cfg)

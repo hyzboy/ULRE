@@ -13,7 +13,6 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/SSBOSlotAllocator.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
-#include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/color/Color.h>
 #include<ctime>
 #include<chrono>
@@ -21,6 +20,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/mtl/MaterialLibrary.h>
 #include<cmath>
 #include<cstring>
 

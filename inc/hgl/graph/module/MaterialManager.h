@@ -150,6 +150,7 @@ public: //MaterialProgram
 
     MaterialProgram *          AcquireMaterialProgram(const mtl::MaterialPreset, mtl::Material2DCreateConfig *);  ///<基于内置材质ID创建2D材质
     MaterialProgram *          AcquireMaterialProgram(const mtl::MaterialPreset, mtl::Material3DCreateConfig *);  ///<基于内置材质ID创建3D材质
+    MaterialProgram *          AcquireMaterialProgram(const mtl::MaterialPreset, const GeometryVertexFormat &);   ///<基于 GeometryVertexFormat 上下文创建默认3D材质
     MaterialProgram *          AcquireMaterialProgram(const mtl::MaterialPreset, mtl::Material2DCreateConfig *, const GeometryVertexFormat &);  ///<基于 GeometryVertexFormat 上下文创建2D材质
     MaterialProgram *          AcquireMaterialProgram(const mtl::MaterialPreset, mtl::Material3DCreateConfig *, const GeometryVertexFormat &);  ///<基于 GeometryVertexFormat 上下文创建3D材质
     MaterialProgram *          AcquireMaterialProgram(const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *); ///<基于variant key创建2D材质（Phase-A兼容）

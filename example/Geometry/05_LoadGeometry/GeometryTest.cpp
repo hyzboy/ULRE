@@ -1,12 +1,9 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/vk/VKVertexInputLayout.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/mtl/MaterialRecipe.h>
@@ -36,21 +33,12 @@ using namespace hgl::graph;
 
 namespace
 {
-    GeometryVertexFormat CreateGeometryVertexFormatFromVIL(const VIL *vil)
+    GeometryVertexFormat CreateGizmo3DGeometryVertexFormat()
     {
-        GeometryVertexFormat gvf;
-        if(!vil)
-            return gvf;
-
-        const uint32_t count = vil->GetVertexAttribCount();
-        const VertexInputFormat *vif_list = vil->GetVIFList();
-
-        for(uint32_t i=0;i<count;i++)
-        {
-            const VertexInputFormat &vif = vif_list[i];
-            gvf.Add(vif.semantic, vif.format, uint8_t(vif.vec_size), uint32_t(vif.stride));
-        }
-
+        GeometryVertexFormat gvf{
+            {VertexSemantic::Position, VF_V3F},
+            {VertexSemantic::Normal,   VF_V3F},
+        };
         return gvf;
     }
 
@@ -93,8 +81,6 @@ private:
 
     struct MaterialData
     {
-        MaterialProgram *material = nullptr;
-        const VIL *vil = nullptr;
         GeometryVertexFormat geometry_vertex_format;
         graph::SSBOArrayAccessor<Color4f>* mi_ssbo_accessor = nullptr;
         uint32_t ssbo_count = 0;
@@ -108,11 +94,13 @@ private:
 
     MaterialData solid;
     MaterialData wire;
+    graph::mtl::MaterialRecipe solid_recipe{};
+    graph::mtl::MaterialRecipe wire_recipe{};
 
     struct RenderMesh
     {
         Geometry *geometry;
-        Primitive *primitive;
+        PrimitiveAsset asset;
         uint32_t color_index = 0;
 
         hgl::ecs::Entity *entity = nullptr;
@@ -123,7 +111,6 @@ private:
 
         ~RenderMesh()
         {
-            delete primitive;
             delete geometry;
         }
     };
@@ -139,84 +126,69 @@ private:
     std::vector<std::unique_ptr<BoundingBoxMesh>> bounding_boxes;
 
     Geometry *bbox_geometry = nullptr;
-    Primitive *bbox_primitive = nullptr;
+    PrimitiveAsset bbox_asset;
 
 private:
 
-    bool InitMaterialRuntimeData(MaterialData *md, const char *tag)
+    bool InitMaterialRuntimeData(MaterialData *md,
+                                 const char *tag,
+                                 const GeometryVertexFormat &gvf,
+                                 const graph::mtl::SSBOType ssbo_type)
     {
-        if (!md || !md->material)
+        if (!md)
             return false;
 
         auto *domain_manager = GetManager<ResourceDomainManager>();
         if (!domain_manager)
             return false;
 
-        md->vil = md->material->GetDefaultVIL();
-        if (!md->vil)
-            return false;
-
-        md->geometry_vertex_format = CreateGeometryVertexFormatFromVIL(md->vil);
+        md->geometry_vertex_format = gvf;
         if (md->geometry_vertex_format.GetCount() == 0)
             return false;
 
-        if (md->material->GetMIDataBytes() > 0)
-        {
-            const uint32_t color_count = static_cast<uint32_t>(COLOR_COUNT);
-            bool has_struct_binding = false;
-            graph::mtl::SSBOType ssbo_type = graph::mtl::SSBOType::UserDefined;
-            for (const auto &req : md->material->GetMaterialResourceLayout().requirements)
-            {
-                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
-                    continue;
+        const uint32_t color_count = static_cast<uint32_t>(COLOR_COUNT);
+        md->ssbo_count = color_count;
+        md->mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+            ssbo_type,
+            tag,
+            color_count);
+        if (!md->mi_ssbo_accessor)
+            return false;
 
-                has_struct_binding = true;
-                ssbo_type = req.ssbo_type;
-                break;
-            }
-            if (!has_struct_binding)
-                return false;
-
-            md->ssbo_count = color_count;
-            md->mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
-                ssbo_type,
-                tag,
-                color_count);
-            if (!md->mi_ssbo_accessor)
-                return false;
-
-            for (uint32_t i = 0; i < color_count; ++i)
-                (*md->mi_ssbo_accessor)[i] = GetColor4f(TestColor[i], 1.0f);
-            md->mi_ssbo_accessor->Commit();
-        }
+        for (uint32_t i = 0; i < color_count; ++i)
+            (*md->mi_ssbo_accessor)[i] = GetColor4f(TestColor[i], 1.0f);
+        md->mi_ssbo_accessor->Commit();
 
         return true;
     }
 
+    void InitMaterialRecipes()
+    {
+        solid_recipe.recipe_name = "LoadGeometry.Gizmo3D";
+        solid_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        solid_recipe.domain = "LoadGeometry";
+
+        wire_recipe.recipe_name = "LoadGeometry.Wire";
+        wire_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        wire_recipe.domain = "LoadGeometry";
+    }
+
     bool InitSolidMDP()
     {
-        auto* material_manager = GetManager<MaterialManager>();
-        if (!material_manager)
-            return false;
-
-        mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
-        const auto acquire_mtl3d = static_cast<MaterialProgram *(MaterialManager::*)(const mtl::MaterialPreset, mtl::Material3DCreateConfig *)>(&MaterialManager::AcquireMaterialProgram);
-        solid.material = (material_manager->*acquire_mtl3d)(mtl::MaterialPreset::Gizmo3D, &cfg);
-
-        return InitMaterialRuntimeData(&solid, "LoadGeometry:SolidMIData");
+        return InitMaterialRuntimeData(
+            &solid,
+            "LoadGeometry:SolidMIData",
+            CreateGizmo3DGeometryVertexFormat(),
+            graph::mtl::SSBOType::PBRSurface);
     }
 
     bool InitWireMDP()
     {
-        auto* material_manager = GetManager<MaterialManager>();
-        if (!material_manager)
-            return false;
-
-        mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
-        const auto acquire_mtl3d = static_cast<MaterialProgram *(MaterialManager::*)(const mtl::MaterialPreset, mtl::Material3DCreateConfig *)>(&MaterialManager::AcquireMaterialProgram);
-        wire.material = (material_manager->*acquire_mtl3d)(mtl::MaterialPreset::PureColor3D, &cfg);
-
-        return InitMaterialRuntimeData(&wire, "LoadGeometry:WireMIData");
+        return InitMaterialRuntimeData(
+            &wire,
+            "LoadGeometry:WireMIData",
+            CreatePureColor3DGeometryVertexFormat(),
+            graph::mtl::SSBOType::PBRSurface);
     }
 
     bool CreateBoundingBoxMesh()
@@ -237,37 +209,20 @@ private:
             return false;
 
         geometry_manager->Add(bbox_geometry);
-        auto* primitive_manager = GetManager<PrimitiveManager>();
-        if (!primitive_manager)
-            return false;
-
-        bbox_primitive = primitive_manager->CreatePrimitive(bbox_geometry,
-                                                            wire.material,
-                                                            nullptr,
-                                                            nullptr);
-        return bbox_primitive != nullptr;
+        bbox_asset = PrimitiveAsset(bbox_geometry, &wire_recipe, PrimitiveType::Lines);
+        return bbox_asset.IsValid();
     }
 
-    RenderMesh *CreateRenderMesh(Geometry *geometry,MaterialData *md,const int color)
+    RenderMesh *CreateRenderMesh(Geometry *geometry,const int color)
     {
         if(!geometry)
             return(nullptr);
 
-        auto* primitive_manager = GetManager<PrimitiveManager>();
-        if (!primitive_manager)
-            return nullptr;
-
-        Primitive *primitive = primitive_manager->CreatePrimitive(geometry,
-                                                                  md->material,
-                                                                  nullptr,
-                                                                  nullptr);
-
-        if(!primitive)
-            return nullptr;
-
         auto rm = std::make_unique<RenderMesh>();
         rm->geometry = geometry;
-        rm->primitive = primitive;
+        rm->asset = PrimitiveAsset(geometry, &solid_recipe, PrimitiveType::Triangles);
+        if (!rm->asset.IsValid())
+            return nullptr;
         rm->color_index = static_cast<uint32_t>(color);
 
         RenderMesh *result = rm.get();
@@ -289,7 +244,7 @@ private:
             if(!geo)
                 continue;
 
-            RenderMesh *rm=CreateRenderMesh(geo,&solid,i);
+            RenderMesh *rm=CreateRenderMesh(geo,i);
 
             if(!rm)
             {
@@ -305,7 +260,7 @@ private:
 
     bool InitBoundingBoxScene()
     {
-        if(!bbox_primitive)
+        if(!bbox_asset.IsValid())
             return false;
 
         for(size_t i = 0; i < render_mesh.size(); ++i)
@@ -333,13 +288,7 @@ private:
             bbox->transform->SetLocalScale(glm::vec3(size.x, size.y, size.z));
             bbox->transform->SetMovable(false);
 
-            bbox->primitive_comp->SetPrimitive(bbox_primitive);
-            graph::mtl::MaterialRecipe recipe{};
-            recipe.recipe_name = "LoadGeometry.Wire";
-            recipe.shading_model = graph::mtl::ShadingModel::Unlit;
-            recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::PureColor3D);
-            recipe.domain = "LoadGeometry";
-            bbox->primitive_comp->SetMaterialRecipe(recipe);
+            bbox->primitive_comp->SetPrimitiveAsset(&bbox_asset);
             hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource bbox_struct{};
             bbox_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
             bbox_struct.ssbo_id = wire.mi_ssbo_accessor->GetSSBOId();
@@ -366,7 +315,7 @@ private:
         for(size_t i = 0; i < render_mesh.size(); ++i)
         {
             auto *rm = render_mesh[i].get();
-            if(!rm || !rm->primitive)
+            if(!rm || !rm->asset.IsValid())
                 continue;
 
             rm->entity = ecs_context->CreateEntity<hgl::ecs::Entity>("Mesh_" + std::to_string(i));
@@ -382,13 +331,7 @@ private:
             rm->transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             rm->transform->SetMovable(false);
 
-            rm->primitive_comp->SetPrimitive(rm->primitive);
-            graph::mtl::MaterialRecipe recipe{};
-            recipe.recipe_name = "LoadGeometry.Gizmo3D";
-            recipe.shading_model = graph::mtl::ShadingModel::Unlit;
-            recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Gizmo3D);
-            recipe.domain = "LoadGeometry";
-            rm->primitive_comp->SetMaterialRecipe(recipe);
+            rm->primitive_comp->SetPrimitiveAsset(&rm->asset);
             hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource mesh_struct{};
             mesh_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
             mesh_struct.ssbo_id = solid.mi_ssbo_accessor->GetSSBOId();
@@ -448,12 +391,13 @@ private:
 public:
     ~TestApp()
     {
-        delete bbox_primitive;
         delete bbox_geometry;
     }
 
     bool Init() override
     {
+        InitMaterialRecipes();
+
         if(!InitSolidMDP())
             return(false);
 

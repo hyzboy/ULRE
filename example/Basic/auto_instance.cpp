@@ -10,10 +10,10 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VKVertexInputConfig.h>
-#include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
+#include<hgl/mtl/MaterialLibrary.h>
 
 // 引入ECS相关头文件
 #include<hgl/ecs/core/Context.h>

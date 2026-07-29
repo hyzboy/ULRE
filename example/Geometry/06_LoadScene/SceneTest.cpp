@@ -1,13 +1,12 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/graph/mesh/LoadStaticMesh.h>
-#include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/color/Color.h>
 #include<hgl/type/StdString.h>
@@ -36,21 +35,12 @@ using namespace hgl::graph;
 
 namespace
 {
-    GeometryVertexFormat CreateGeometryVertexFormatFromVIL(const VIL *vil)
+    GeometryVertexFormat CreateGizmo3DGeometryVertexFormat()
     {
-        GeometryVertexFormat gvf;
-        if(!vil)
-            return gvf;
-
-        const uint32_t count = vil->GetVertexAttribCount();
-        const VertexInputFormat *vif_list = vil->GetVIFList();
-
-        for(uint32_t i=0;i<count;i++)
-        {
-            const VertexInputFormat &vif = vif_list[i];
-            gvf.Add(vif.semantic, vif.format, uint8_t(vif.vec_size), uint32_t(vif.stride));
-        }
-
+        GeometryVertexFormat gvf{
+            {VertexSemantic::Position, VF_V3F},
+            {VertexSemantic::Normal,   VF_V3F},
+        };
         return gvf;
     }
 }
@@ -82,7 +72,6 @@ private:
     struct MaterialData
     {
         MaterialProgram *material = nullptr;
-        const VIL *vil = nullptr;
         GeometryVertexFormat geometry_vertex_format;
         graph::SSBOArrayAccessor<Color4f>* mi_ssbo_accessor = nullptr;
         uint32_t ssbo_count = 0;
@@ -117,43 +106,22 @@ private:
         if (!domain_manager)
             return false;
 
-        md->vil = md->material->GetDefaultVIL();
-        if (!md->vil)
-            return false;
-
-        md->geometry_vertex_format = CreateGeometryVertexFormatFromVIL(md->vil);
+        md->geometry_vertex_format = CreateGizmo3DGeometryVertexFormat();
         if (md->geometry_vertex_format.GetCount() == 0)
             return false;
 
-        if (md->material->GetMIDataBytes() > 0)
-        {
-            const uint32_t color_count = static_cast<uint32_t>(COLOR_COUNT);
-            bool has_struct_binding = false;
-            graph::mtl::SSBOType ssbo_type = graph::mtl::SSBOType::UserDefined;
-            for (const auto &req : md->material->GetMaterialResourceLayout().requirements)
-            {
-                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
-                    continue;
+        const uint32_t color_count = static_cast<uint32_t>(COLOR_COUNT);
+        md->ssbo_count = color_count;
+        md->mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+            graph::mtl::SSBOType::PBRSurface,
+            tag,
+            color_count);
+        if (!md->mi_ssbo_accessor)
+            return false;
 
-                has_struct_binding = true;
-                ssbo_type = req.ssbo_type;
-                break;
-            }
-            if (!has_struct_binding)
-                return false;
-
-            md->ssbo_count = color_count;
-            md->mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
-                ssbo_type,
-                tag,
-                color_count);
-            if (!md->mi_ssbo_accessor)
-                return false;
-
-            for (uint32_t i = 0; i < color_count; ++i)
-                (*md->mi_ssbo_accessor)[i] = GetColor4f(TestColor[i], 1.0f);
-            md->mi_ssbo_accessor->Commit();
-        }
+        for (uint32_t i = 0; i < color_count; ++i)
+            (*md->mi_ssbo_accessor)[i] = GetColor4f(TestColor[i], 1.0f);
+        md->mi_ssbo_accessor->Commit();
 
         return true;
     }
@@ -164,9 +132,13 @@ private:
         if (!material_manager)
             return false;
 
-        mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
-        const auto acquire_mtl3d = static_cast<MaterialProgram *(MaterialManager::*)(const mtl::MaterialPreset, mtl::Material3DCreateConfig *)>(&MaterialManager::AcquireMaterialProgram);
-        solid.material = (material_manager->*acquire_mtl3d)(mtl::MaterialPreset::Gizmo3D, &cfg);
+        solid.geometry_vertex_format = CreateGizmo3DGeometryVertexFormat();
+        if (solid.geometry_vertex_format.GetCount() == 0)
+            return false;
+
+        solid.material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Gizmo3D, solid.geometry_vertex_format);
+        if (!solid.material)
+            return false;
 
         return InitMaterialForDBS(&solid, "LoadScene:SolidMIData");
     }
