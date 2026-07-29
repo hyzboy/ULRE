@@ -27,7 +27,6 @@
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderPass.h>
 #include<hgl/vk/VKVertexInputLayout.h>
-#include<hgl/graph/mesh/Primitive.h>
 #include<hgl/log/Log.h>
 #include<algorithm>
 #include<array>
@@ -504,9 +503,10 @@ namespace hgl::ecs
 
         DrawBatch* draw_batch = batch.draw_batches.data();
         RenderItem* item = batch.items[0];
-        graph::Primitive* primitive = item ? item->GetPrimitive() : nullptr;
+        const graph::GeometryDataBuffer *data_buffer = item ? item->GetGeometryDataBuffer() : nullptr;
+        const graph::GeometryDrawRange *draw_range = item ? item->GetGeometryDrawRange() : nullptr;
 
-        if (!primitive)
+        if (!data_buffer || !draw_range)
         {
             batch.icb_draw->Unmap();
             batch.icb_draw_indexed->Unmap();
@@ -518,7 +518,7 @@ namespace hgl::ecs
         batch.draw_batches_count = 1;
         draw_batch->first_instance = base_instance;
         draw_batch->instance_count = 1;
-        draw_batch->Set(primitive);
+        draw_batch->Set(data_buffer, draw_range);
 
         const graph::GeometryDataBuffer* current_data_buffer = draw_batch->geom_data_buffer;
         const graph::GeometryDrawRange* current_draw_range = draw_batch->geom_draw_range;
@@ -526,13 +526,14 @@ namespace hgl::ecs
         for (size_t i = 1; i < count; i++)
         {
             item = batch.items[i];
-            primitive = item ? item->GetPrimitive() : nullptr;
+            data_buffer = item ? item->GetGeometryDataBuffer() : nullptr;
+            draw_range = item ? item->GetGeometryDrawRange() : nullptr;
 
-            if (!primitive)
+            if (!data_buffer || !draw_range)
                 continue;
 
-            const graph::GeometryDataBuffer* item_data_buf = primitive->GetDataBuffer();
-            const graph::GeometryDrawRange* item_draw_range = primitive->GetRenderData();
+            const graph::GeometryDataBuffer* item_data_buf = data_buffer;
+            const graph::GeometryDrawRange* item_draw_range = draw_range;
 
             if (*current_data_buffer == *item_data_buf &&
                 *current_draw_range == *item_draw_range)
@@ -554,7 +555,7 @@ namespace hgl::ecs
 
             draw_batch->first_instance = base_instance + static_cast<uint32_t>(i);
             draw_batch->instance_count = 1;
-            draw_batch->Set(primitive);
+            draw_batch->Set(data_buffer, draw_range);
 
             current_data_buffer = draw_batch->geom_data_buffer;
             current_draw_range = draw_batch->geom_draw_range;
@@ -839,8 +840,7 @@ namespace hgl::ecs
              && current_render_pass)
             {
                 const graph::VIL* vil = nullptr;
-                if (auto *primitive = prim_comp->GetPrimitive())
-                    vil = primitive->GetVIL();
+                vil = item->GetGeometryBindingVIL();
                 if (!vil)
                     vil = material->GetDefaultVIL();
                 auto* dbs = item->GetDescriptorBindingSet();

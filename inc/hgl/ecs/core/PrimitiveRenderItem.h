@@ -60,6 +60,9 @@ namespace hgl::ecs
         hgl::graph::DescriptorBindingSet* GetDescriptorBindingSet() const override;
         hgl::graph::MaterialProgram* GetMaterialProgram() const override;
         hgl::graph::Pipeline* GetPipeline() const override;
+        const hgl::graph::GeometryDataBuffer *GetGeometryDataBuffer() const override;
+        const hgl::graph::GeometryDrawRange *GetGeometryDrawRange() const override;
+        const hgl::graph::VertexInputLayout *GetGeometryBindingVIL() const override;
         TransformPolicySpec GetTransformPolicySpec() const override;
         PositionSourceSpec GetPositionSourceSpec() const override;
 

@@ -37,7 +37,6 @@ namespace hgl::graph
     class BufferManager;
     class SamplerManager;
     class GeometryManager;
-    class PrimitiveManager;
     class ResourceDomainManager;
     class BindlessTextureManager;
 
@@ -70,7 +69,6 @@ namespace hgl::graph
         BufferManager *buffer_manager = nullptr;
         SamplerManager *sampler_manager = nullptr;
         GeometryManager *geometry_manager = nullptr;
-        PrimitiveManager *primitive_manager = nullptr;
         ResourceDomainManager *resource_domain_manager = nullptr;
         BindlessTextureManager *bindless_texture_manager_ = nullptr;
 
@@ -120,7 +118,6 @@ namespace hgl::graph
         BufferManager *GetBufferManager() { return buffer_manager; }
         SamplerManager *GetSamplerManager() { return sampler_manager; }
         GeometryManager *GetGeometryManager() { return geometry_manager; }
-        PrimitiveManager *GetPrimitiveManager() { return primitive_manager; }
         ResourceDomainManager *GetResourceDomainManager() { return resource_domain_manager; }
         BindlessTextureManager *GetBindlessTextureManager() { return bindless_texture_manager_; }
         const BindlessTextureManager *GetBindlessTextureManager() const { return bindless_texture_manager_; }
@@ -188,12 +185,6 @@ namespace hgl::graph
     inline GeometryManager *GraphicsContext::GetManager<GeometryManager>()
     {
         return GetGeometryManager();
-    }
-
-    template<>
-    inline PrimitiveManager *GraphicsContext::GetManager<PrimitiveManager>()
-    {
-        return GetPrimitiveManager();
     }
 
     template<>

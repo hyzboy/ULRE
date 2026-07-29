@@ -6,6 +6,7 @@
 
 #include<hgl/math/geometry/Frustum.h>
 #include<hgl/ecs/core/MaterialBatch.h>
+#include<hgl/log/Log.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
 
 namespace hgl

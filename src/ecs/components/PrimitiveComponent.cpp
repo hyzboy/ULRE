@@ -2,6 +2,8 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/DescriptorBindingSet.h>
+#include<hgl/graph/mesh/GeometryDataBuffer.h>
+#include<hgl/graph/mesh/GeometryDrawRange.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKMaterialProgram.h>
 #include<hgl/vk/VKMaterialInstance.h>
@@ -84,7 +86,8 @@ namespace hgl::ecs
         }
 
         primitive = prim;
-        runtimePrimitiveFromAsset = false;
+        if (primitive)
+            ClearRuntimeGeometryBinding();
 
         // Update bounding radius based on primitive's bounding volume
         if (primitive)
@@ -104,38 +107,109 @@ namespace hgl::ecs
         }
     }
 
-    void PrimitiveComponent::SetInternalAssetRuntimePrimitive(hgl::graph::Primitive *prim)
+    bool PrimitiveComponent::EnsureRuntimeGeometryBinding(hgl::graph::MaterialProgram *material)
     {
-        if (primitive != prim)
-            InvalidateResolvedRuntimePipeline();
+        if (!primitiveAsset || !material)
+            return false;
 
-        primitive = prim;
-        runtimePrimitiveFromAsset = (prim != nullptr);
+        auto *geometry = primitiveAsset->GetGeometry();
+        if (!geometry)
+            return false;
 
+        const auto *vil = material->GetDefaultVIL();
+        if (!vil)
+            return false;
+
+        if (!runtime_draw_range)
+            runtime_draw_range = new hgl::graph::GeometryDrawRange();
+
+        if (!runtime_draw_range)
+            return false;
+
+        const bool needs_rebuild =
+            (!runtime_data_buffer)
+         || (runtime_geometry != geometry)
+         || (runtime_material != material)
+         || (!runtime_vil);
+
+        if (needs_rebuild)
+        {
+            if (runtime_vil_owned && runtime_material && runtime_vil)
+                runtime_material->Release(const_cast<hgl::graph::VIL *>(runtime_vil));
+
+            runtime_vil = material->CreateVIL(geometry->GetGeometryVertexFormat());
+            runtime_vil_owned = (runtime_vil != nullptr);
+            if (!runtime_vil)
+            {
+                runtime_vil = material->GetDefaultVIL();
+                runtime_vil_owned = false;
+            }
+            if (!runtime_vil)
+                return false;
+
+            SAFE_CLEAR(runtime_data_buffer);
+
+            runtime_data_buffer = new hgl::graph::GeometryDataBuffer(runtime_vil->GetVertexAttribCount(),
+                                                                     geometry->GetIBO(),
+                                                                     geometry->GetVDM());
+            if (!runtime_data_buffer)
+                return false;
+
+            runtime_geometry = geometry;
+            runtime_material = material;
+        }
+
+        if (!runtime_data_buffer->Update(geometry, runtime_vil->GetVIFList(), runtime_vil->GetVertexAttribCount()))
+            return false;
+
+        runtime_draw_range->Set(geometry);
+        return true;
+    }
+
+    void PrimitiveComponent::ClearRuntimeGeometryBinding()
+    {
+        if (runtime_vil_owned && runtime_material && runtime_vil)
+            runtime_material->Release(const_cast<hgl::graph::VIL *>(runtime_vil));
+
+        SAFE_CLEAR(runtime_data_buffer);
+        SAFE_CLEAR(runtime_draw_range);
+        runtime_geometry = nullptr;
+        runtime_material = nullptr;
+        runtime_vil = nullptr;
+        runtime_vil_owned = false;
+    }
+
+    const hgl::graph::GeometryDataBuffer *PrimitiveComponent::GetRuntimeGeometryDataBuffer() const
+    {
         if (primitive)
-        {
-            const auto &bv = primitive->GetBoundingVolumes();
-            auto extents = bv.aabb.GetLength();
-            float radius = math::Length(extents) * 0.5f;
-            SetBoundingRadius(radius);
-        }
-        else if (primitiveAsset && primitiveAsset->GetGeometry())
-        {
-            const auto &bv = primitiveAsset->GetGeometry()->GetBoundingVolumes();
-            auto extents = bv.aabb.GetLength();
-            float radius = math::Length(extents) * 0.5f;
-            SetBoundingRadius(radius);
-        }
-        else
-        {
-            SetBoundingRadius(0.0f);
-        }
+            return primitive->GetDataBuffer();
+
+        return runtime_data_buffer;
+    }
+
+    const hgl::graph::GeometryDrawRange *PrimitiveComponent::GetRuntimeGeometryDrawRange() const
+    {
+        if (primitive)
+            return primitive->GetRenderData();
+
+        return runtime_draw_range;
+    }
+
+    const hgl::graph::VertexInputLayout *PrimitiveComponent::GetRuntimeVIL() const
+    {
+        if (primitive)
+            return primitive->GetVIL();
+
+        return runtime_vil;
     }
 
     void PrimitiveComponent::SetPrimitiveAsset(const hgl::graph::PrimitiveAsset *asset)
     {
         if (primitiveAsset != asset)
+        {
             InvalidateResolvedRuntimePipeline();
+            ClearRuntimeGeometryBinding();
+        }
 
         primitiveAsset = asset;
 
@@ -525,7 +599,7 @@ namespace hgl::ecs
         primitive = nullptr;
         primitiveAsset = nullptr;
         primitiveVariantIndex = 0;
-        runtimePrimitiveFromAsset = false;
+        ClearRuntimeGeometryBinding();
         overrideMaterial = nullptr;
         descriptorBindingSet = nullptr;
         overridePipeline = nullptr;

@@ -1,23 +1,27 @@
 ﻿#include<hgl/ecs/core/RenderItem.h>
-#include<hgl/graph/mesh/Primitive.h>
+#include<hgl/graph/mesh/GeometryDataBuffer.h>
+#include<hgl/graph/mesh/GeometryDrawRange.h>
 
 namespace hgl::ecs
 {
     // RenderItem base class implementation
     int RenderItem::Compare(const RenderItem& other) const
     {
-        // Compare by primitive geometry first (for batching)
-        auto* prim1 = GetPrimitive();
-        auto* prim2 = other.GetPrimitive();
-
-        if (prim1 && prim2)
+        // Compare by geometry binding first (for batching)
+        auto *data_1 = GetGeometryDataBuffer();
+        auto *data_2 = other.GetGeometryDataBuffer();
+        if (data_1 != data_2)
         {
-            // Compare geometry pointers for batching efficiency
-            auto* geom1 = prim1->GetGeometry();
-            auto* geom2 = prim2->GetGeometry();
+            if (data_1 < data_2) return -1;
+            if (data_1 > data_2) return 1;
+        }
 
-            if (geom1 < geom2) return -1;
-            if (geom1 > geom2) return 1;
+        auto *range_1 = GetGeometryDrawRange();
+        auto *range_2 = other.GetGeometryDrawRange();
+        if (range_1 && range_2)
+        {
+            if (auto cmp = *range_1 <=> *range_2; cmp < 0) return -1;
+            if (auto cmp = *range_1 <=> *range_2; cmp > 0) return 1;
         }
 
         // Then compare by distance to camera
@@ -28,4 +32,3 @@ namespace hgl::ecs
         return 0;
     }
 }//namespace hgl::ecs
-

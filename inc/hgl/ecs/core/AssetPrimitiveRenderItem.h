@@ -14,6 +14,9 @@ namespace hgl
         class MaterialInstance;
         class DescriptorBindingSet;
         class Pipeline;
+        struct GeometryDataBuffer;
+        struct GeometryDrawRange;
+        class VertexInputLayout;
     }
 }
 
@@ -69,6 +72,9 @@ namespace hgl::ecs
         graph::DescriptorBindingSet* GetDescriptorBindingSet() const override;
         graph::MaterialProgram*         GetMaterialProgram()         const override;
         graph::Pipeline*         GetPipeline()         const override;
+        const graph::GeometryDataBuffer *GetGeometryDataBuffer() const override;
+        const graph::GeometryDrawRange *GetGeometryDrawRange() const override;
+        const graph::VertexInputLayout *GetGeometryBindingVIL() const override;
 
         // ---- Asset-specific ----
 

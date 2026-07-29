@@ -57,6 +57,21 @@ namespace hgl::ecs
         return primitive ? primitive->GetPipeline() : nullptr;
     }
 
+    const graph::GeometryDataBuffer *AssetPrimitiveRenderItem::GetGeometryDataBuffer() const
+    {
+        return primitive ? primitive->GetDataBuffer() : nullptr;
+    }
+
+    const graph::GeometryDrawRange *AssetPrimitiveRenderItem::GetGeometryDrawRange() const
+    {
+        return primitive ? primitive->GetRenderData() : nullptr;
+    }
+
+    const graph::VertexInputLayout *AssetPrimitiveRenderItem::GetGeometryBindingVIL() const
+    {
+        return primitive ? primitive->GetVIL() : nullptr;
+    }
+
     void AssetPrimitiveRenderItem::UpdateWorldMatrix()
     {
         if (transform)

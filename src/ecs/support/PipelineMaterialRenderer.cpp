@@ -8,7 +8,6 @@
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/graph/core/GraphicsContext.h>
-#include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/vk/VKCommandBuffer.h>

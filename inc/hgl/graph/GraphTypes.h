@@ -11,7 +11,6 @@ namespace hgl::graph
     class RenderPassManager;
     class GeometryManager;
     class MaterialManager;
-    class PrimitiveManager;
     class RenderTargetManager;
     class TextureManager;
 

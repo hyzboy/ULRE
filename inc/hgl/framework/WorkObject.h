@@ -23,7 +23,6 @@ namespace hgl
         class TextureCube;
         class Geometry;
         class GeometryCreater;
-        class PrimitiveManager;
         class Sampler;
         class Texture;
 

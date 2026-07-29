@@ -91,8 +91,7 @@ private:
         auto* device = GetDevice();
         auto* buffer_manager = GetManager<BufferManager>();
         auto* geometry_manager = GetManager<GeometryManager>();
-        auto* primitive_manager = GetManager<PrimitiveManager>();
-        if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
+        if (!device || !buffer_manager || !geometry_manager)
             return false;
 
         GeometryCreater pc(device, CreateAutoInstanceGeometryVertexFormat(), buffer_manager);

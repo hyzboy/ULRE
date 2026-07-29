@@ -15,7 +15,6 @@
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/mtl/MaterialLibrary.h>
@@ -141,9 +140,9 @@ namespace hgl::ecs
             return false;
         }
 
-        bool EnsureRuntimePrimitiveFromAsset(ECSContext *world,
-                                             const std::shared_ptr<PrimitiveComponent> &primitive_comp,
-                                             const std::shared_ptr<MaterialComponent> &material_comp)
+        bool EnsureRuntimeGeometryFromAsset(ECSContext *world,
+                                            const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+                                            const std::shared_ptr<MaterialComponent> &material_comp)
         {
             if (!world || !primitive_comp || !material_comp)
                 return false;
@@ -152,44 +151,10 @@ namespace hgl::ecs
             if (!asset)
                 return true;
 
-            auto *geometry = asset->GetGeometry();
             auto *material = material_comp->program;
-            if (!geometry || !material)
+            if (!material)
                 return false;
-
-            auto *graphics = world->GetGraphicsContext();
-            if (!graphics)
-            {
-                auto *render_context = world->GetRenderContext();
-                graphics = render_context ? render_context->GetGraphicsContext() : nullptr;
-            }
-            if (!graphics)
-                return false;
-
-            auto *primitive_manager = graphics->GetPrimitiveManager();
-            if (!primitive_manager)
-                return false;
-
-            if (auto *current_primitive = primitive_comp->GetPrimitive())
-            {
-                if (!primitive_comp->HasInternalAssetRuntimePrimitive())
-                    return true;
-
-                const bool same_geometry = (current_primitive->GetGeometry() == geometry);
-                const bool same_program = (current_primitive->GetMaterialProgram() == material);
-                if (same_geometry && same_program)
-                    return true;
-
-                primitive_manager->Release(current_primitive);
-                primitive_comp->SetInternalAssetRuntimePrimitive(nullptr);
-            }
-
-            auto *runtime_primitive = primitive_manager->CreateRuntimePrimitive(asset, material, nullptr);
-            if (!runtime_primitive)
-                return false;
-
-            primitive_comp->SetInternalAssetRuntimePrimitive(runtime_primitive);
-            return true;
+            return primitive_comp->EnsureRuntimeGeometryBinding(material);
         }
 
         uint32_t ResolvePrimaryStructIndex(const graph::MaterialProgram *material,
@@ -1117,9 +1082,9 @@ namespace hgl::ecs
                                             material_comp->program ? material_comp->program->GetName().c_str() : "<null>");
                                 InvalidateRecipeRuntime(material_comp, false);
                             }
-                            else if (!EnsureRuntimePrimitiveFromAsset(world, primitiveComp, material_comp))
+                            else if (!EnsureRuntimeGeometryFromAsset(world, primitiveComp, material_comp))
                             {
-                                GLogWarning("[RenderPrimitiveCollectSystem] EnsureRuntimePrimitiveFromAsset failed for %s",
+                                GLogWarning("[RenderPrimitiveCollectSystem] EnsureRuntimeGeometryFromAsset failed for %s",
                                             primitiveComp->GetOwner() ? primitiveComp->GetOwner()->GetName().c_str() : "<no-owner>");
                             }
                         }

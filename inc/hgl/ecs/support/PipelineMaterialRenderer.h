@@ -12,7 +12,6 @@
 #pragma once
 
 #include<hgl/vk/VK.h>
-#include<hgl/graph/mesh/Primitive.h>
 
 namespace hgl
 {
@@ -44,16 +43,17 @@ namespace hgl::ecs
      */
     struct DrawBatch
     {
-                uint32_t                first_instance;     ///<第一个绘制实例(和instance渲染无关,对应InstanceRate的VAB)
-                uint32_t                instance_count;     ///<此批次包含的实例数量
+                uint32_t                first_instance = 0;     ///<第一个绘制实例(和instance渲染无关,对应InstanceRate的VAB)
+                uint32_t                instance_count = 0;     ///<此批次包含的实例数量
 
-        const   graph::GeometryDataBuffer *    geom_data_buffer;   ///<几何数据缓冲
-        const   graph::GeometryDrawRange *     geom_draw_range;    ///<绘制范围（顶点/索引偏移和数量）
+        const   graph::GeometryDataBuffer *    geom_data_buffer = nullptr;   ///<几何数据缓冲
+        const   graph::GeometryDrawRange *     geom_draw_range = nullptr;    ///<绘制范围（顶点/索引偏移和数量）
 
-        void Set(class graph::Primitive *prim)
+        void Set(const graph::GeometryDataBuffer *data_buffer,
+                 const graph::GeometryDrawRange *draw_range)
         {
-            geom_data_buffer = prim->GetDataBuffer();
-            geom_draw_range = prim->GetRenderData();
+            geom_data_buffer = data_buffer;
+            geom_draw_range = draw_range;
         }
     };//struct DrawBatch
 

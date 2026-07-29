@@ -9,7 +9,6 @@
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/module/SamplerManager.h>
 #include <hgl/graph/module/GeometryManager.h>
-#include <hgl/graph/module/PrimitiveManager.h>
 #include <hgl/graph/module/ResourceDomainManager.h>
 #include <hgl/vk/VKBindlessTextureManager.h>
 
@@ -50,10 +49,6 @@ namespace hgl::graph
 
         geometry_manager = module_manager->GetOrCreate<GeometryManager>();
         if (!geometry_manager)
-            return false;
-
-        primitive_manager = module_manager->GetOrCreate<PrimitiveManager>();
-        if (!primitive_manager)
             return false;
 
         material_manager = module_manager->GetOrCreate<MaterialManager>();
@@ -102,7 +97,6 @@ namespace hgl::graph
         buffer_manager = nullptr;
         sampler_manager = nullptr;
         geometry_manager = nullptr;
-        primitive_manager = nullptr;
         resource_domain_manager = nullptr;
 
         SAFE_CLEAR(bindless_texture_manager_)
@@ -121,7 +115,6 @@ namespace hgl::graph
         if (buffer_manager) buffer_manager->OnResize(extent);
         if (sampler_manager) sampler_manager->OnResize(extent);
         if (geometry_manager) geometry_manager->OnResize(extent);
-        if (primitive_manager) primitive_manager->OnResize(extent);
     }
 
     VulkanDevAttr *GraphicsContext::GetDevAttr() const

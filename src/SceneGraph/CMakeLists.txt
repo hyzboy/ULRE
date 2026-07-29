@@ -27,7 +27,6 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         ${SG_INCLUDE_PATH}/module/BufferManager.h
                         ${SG_INCLUDE_PATH}/module/RenderTargetManager.h
                         ${SG_INCLUDE_PATH}/module/GeometryManager.h
-                        ${SG_INCLUDE_PATH}/module/PrimitiveManager.h
                         ${SG_INCLUDE_PATH}/module/ResourceDomainManager.h
                         ${SG_INCLUDE_PATH}/module/RenderModule.h
                         ${SG_INCLUDE_PATH}/module/SwapchainModule.h
@@ -42,7 +41,6 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         module/BufferManager.cpp
                         module/RenderTargetManager.cpp
                         module/GeometryManager.cpp
-                        module/PrimitiveManager.cpp
                         module/ResourceDomainManager.cpp
                         module/SwapChainModule.cpp)
 

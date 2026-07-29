@@ -20,6 +20,9 @@ namespace hgl
     {
         class DescriptorBindingSet;
         class DeviceBuffer;
+        struct GeometryDataBuffer;
+        struct GeometryDrawRange;
+        class Geometry;
         class Primitive;
         class PrimitiveAsset;
         class MaterialProgram;
@@ -28,6 +31,7 @@ namespace hgl
         class RenderPass;
         class Sampler;
         class Texture;
+        class VertexInputLayout;
     }
 }
 
@@ -93,7 +97,12 @@ namespace hgl::ecs
         hgl::graph::Primitive* primitive;                // The primitive to render (not owned)
         const hgl::graph::PrimitiveAsset* primitiveAsset = nullptr;  // Asset-level geometry+recipe pairing (not owned)
         uint32_t primitiveVariantIndex = 0;
-        bool runtimePrimitiveFromAsset = false;
+        hgl::graph::GeometryDataBuffer *runtime_data_buffer = nullptr;
+        hgl::graph::GeometryDrawRange *runtime_draw_range = nullptr;
+        hgl::graph::Geometry *runtime_geometry = nullptr;
+        hgl::graph::MaterialProgram *runtime_material = nullptr;
+        const hgl::graph::VertexInputLayout *runtime_vil = nullptr;
+        bool runtime_vil_owned = false;
         hgl::graph::MaterialInstance* overrideMaterial;   // Optional material override (not owned)
         hgl::graph::DescriptorBindingSet* descriptorBindingSet; // Optional explicit binding set (not owned)
         hgl::graph::Pipeline* overridePipeline;           // Optional pipeline override (not owned)
@@ -141,8 +150,11 @@ namespace hgl::ecs
         void ClearPrimitiveAsset() { SetPrimitiveAsset(nullptr); }
         void SetPrimitiveVariantIndex(const uint32_t index) { primitiveVariantIndex = index; }
         uint32_t GetPrimitiveVariantIndex() const { return primitiveVariantIndex; }
-        void SetInternalAssetRuntimePrimitive(hgl::graph::Primitive *prim);
-        bool HasInternalAssetRuntimePrimitive() const { return runtimePrimitiveFromAsset; }
+        bool EnsureRuntimeGeometryBinding(hgl::graph::MaterialProgram *material);
+        void ClearRuntimeGeometryBinding();
+        const hgl::graph::GeometryDataBuffer *GetRuntimeGeometryDataBuffer() const;
+        const hgl::graph::GeometryDrawRange *GetRuntimeGeometryDrawRange() const;
+        const hgl::graph::VertexInputLayout *GetRuntimeVIL() const;
 
         // Legacy runtime bridge — internal engine use only during Phase 7 migration.
         void SetInternalOverrideMaterial(hgl::graph::MaterialInstance* mi);

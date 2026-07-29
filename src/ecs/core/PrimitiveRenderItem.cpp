@@ -92,6 +92,21 @@ namespace hgl::ecs
         return primitiveComp ? primitiveComp->GetPipeline() : nullptr;
     }
 
+    const hgl::graph::GeometryDataBuffer *PrimitiveRenderItem::GetGeometryDataBuffer() const
+    {
+        return primitiveComp ? primitiveComp->GetRuntimeGeometryDataBuffer() : nullptr;
+    }
+
+    const hgl::graph::GeometryDrawRange *PrimitiveRenderItem::GetGeometryDrawRange() const
+    {
+        return primitiveComp ? primitiveComp->GetRuntimeGeometryDrawRange() : nullptr;
+    }
+
+    const hgl::graph::VertexInputLayout *PrimitiveRenderItem::GetGeometryBindingVIL() const
+    {
+        return primitiveComp ? primitiveComp->GetRuntimeVIL() : nullptr;
+    }
+
     TransformPolicySpec PrimitiveRenderItem::GetTransformPolicySpec() const
     {
         return primitiveComp ? primitiveComp->GetTransformPolicySpec() : TransformPolicySpec{};
