@@ -84,6 +84,7 @@ private:
     };
 
     MaterialData solid;
+    graph::mtl::MaterialRecipe scene_recipe{};
 
     struct SceneEntity
     {
@@ -92,7 +93,9 @@ private:
         std::shared_ptr<hgl::ecs::PrimitiveComponent>  primitive_comp;
     };
 
-    StaticMesh                    *scene_mesh_     = nullptr;
+    std::vector<PrimitiveAsset>    scene_assets_;
+    std::vector<StaticMeshNode>    scene_nodes_;
+    std::vector<int32_t>           scene_root_nodes_;
     std::vector<SceneEntity>       scene_entities_;
 
 private:
@@ -161,12 +164,22 @@ private:
         const OSString pack_path = hgl::ToOSString(scene_path.string());
         const OSString base_dir  = hgl::ToOSString(scene_dir.string());
 
-        scene_mesh_ = LoadStaticMeshScene(
-            device, geo_mgr,
-            solid.geometry_vertex_format, solid.material,
-            pack_path, base_dir);
+        scene_recipe.recipe_name = "LoadScene.Gizmo3D";
+        scene_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        scene_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Gizmo3D);
+        scene_recipe.domain = "LoadScene";
 
-        return scene_mesh_ != nullptr;
+        return LoadStaticMeshSceneAsPrimitiveAssets(
+            device,
+            geo_mgr,
+            solid.geometry_vertex_format,
+            solid.material,
+            &scene_recipe,
+            pack_path,
+            base_dir,
+            scene_assets_,
+            scene_nodes_,
+            scene_root_nodes_);
     }
 
     bool InitScene()
@@ -174,21 +187,19 @@ private:
         if(!ecs_context)
             return false;
 
-        if (!scene_mesh_ || !scene_mesh_->HasSceneTree())
+        if (scene_nodes_.empty())
             return false;
 
-        const auto &nodes     = scene_mesh_->GetNodes();
-        const auto &prim_list = scene_mesh_->GetPrimitiveList();
         size_t entity_idx = 0;
 
-        for (const auto &node : nodes)
+        for (const auto &node : scene_nodes_)
         {
             for (int32_t pi : node.primitiveIndices)
             {
-                if (pi < 0 || pi >= prim_list.GetCount())
+                if (pi < 0 || pi >= static_cast<int32_t>(scene_assets_.size()))
                     continue;
-                Primitive *prim = prim_list[pi];
-                if (!prim)
+                PrimitiveAsset &asset = scene_assets_[pi];
+                if (!asset.IsValid())
                     continue;
 
                 SceneEntity se;
@@ -206,13 +217,7 @@ private:
                     glm::length(glm::vec3(node.worldMatrix[2]))));
                 se.transform->SetMovable(false);
 
-                se.primitive_comp->SetPrimitive(prim);
-                graph::mtl::MaterialRecipe recipe{};
-                recipe.recipe_name = "LoadScene.Gizmo3D";
-                recipe.shading_model = graph::mtl::ShadingModel::Unlit;
-                recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Gizmo3D);
-                recipe.domain = "LoadScene";
-                se.primitive_comp->SetMaterialRecipe(recipe);
+                se.primitive_comp->SetPrimitiveAsset(&asset);
                 hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource scene_struct{};
                 scene_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
                 scene_struct.ssbo_id = solid.mi_ssbo_accessor->GetSSBOId();
@@ -273,7 +278,9 @@ public:
     ~TestApp()
     {
         scene_entities_.clear();
-        delete scene_mesh_;
+        scene_assets_.clear();
+        scene_nodes_.clear();
+        scene_root_nodes_.clear();
     }
 
     bool Init() override

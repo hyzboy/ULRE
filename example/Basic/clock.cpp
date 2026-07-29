@@ -84,7 +84,6 @@ private:
     struct TickData
     {
         Entity* entity;
-        Primitive* primitive;
     };
 
     TickData ticks[TICK_COUNT];
@@ -93,7 +92,6 @@ private:
     struct HandData
     {
         Entity* entity;
-        Primitive* primitive;
         TransformComponent* transform;
         float length_scale;  // 指针长度倍数
     };

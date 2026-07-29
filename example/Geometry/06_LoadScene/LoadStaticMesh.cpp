@@ -1107,4 +1107,53 @@ StaticMesh *LoadStaticMeshScene(
     return sm;
 }
 
-}  // namespace hgl::graph
+bool LoadStaticMeshSceneAsPrimitiveAssets(
+    VulkanDevice                     *device,
+    GeometryManager                  *geo_mgr,
+    const GeometryVertexFormat       &geometry_vertex_format,
+    MaterialProgram                  *material_program,
+    const mtl::MaterialRecipe        *recipe,
+    const OSString                   &pack_path,
+    const OSString                   &base_dir,
+    std::vector<PrimitiveAsset>      &out_assets,
+    std::vector<StaticMeshNode>      &out_nodes,
+    std::vector<int32_t>             &out_root_nodes)
+{
+    out_assets.clear();
+    out_nodes.clear();
+    out_root_nodes.clear();
+
+    if (!recipe)
+        return false;
+
+    StaticMesh *sm = LoadStaticMeshScene(device,
+                                         geo_mgr,
+                                         geometry_vertex_format,
+                                         material_program,
+                                         pack_path,
+                                         base_dir);
+    if (!sm)
+        return false;
+
+    const auto &prim_list = sm->GetPrimitiveList();
+    out_assets.reserve(static_cast<size_t>(prim_list.GetCount()));
+    for (int i = 0; i < prim_list.GetCount(); ++i)
+    {
+        Primitive *prim = prim_list[i];
+        if (!prim || !prim->GetGeometry())
+        {
+            out_assets.emplace_back();
+            continue;
+        }
+
+        out_assets.emplace_back(prim->GetGeometry(), recipe, PrimitiveType::Triangles);
+    }
+
+    out_nodes = sm->GetNodes();
+    out_root_nodes = sm->GetRootNodes();
+
+    delete sm;
+    return true;
+}
+
+}//namespace hgl::graph
