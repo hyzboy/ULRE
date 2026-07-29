@@ -48,12 +48,6 @@ namespace hgl::ecs
         impl_->RunBatching();
     }
 
-    void PrimitiveRenderPipeline::GetRenderPrimitives(std::vector<hgl::graph::Primitive*>& /*out*/) const
-    {
-        // Primitive rendering uses MaterialBatch cache, not a primitive list.
-        // Draw calls are handled in Render() by iterating render_frame_cache.materialBatches.
-    }
-
     void PrimitiveRenderPipeline::Render(hgl::graph::RenderCmdBuffer* /*cmd*/)
     {
         // Draw commands are recorded by PrimitiveRenderSystem which reads from

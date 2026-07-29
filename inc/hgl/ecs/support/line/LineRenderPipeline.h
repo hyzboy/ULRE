@@ -144,7 +144,6 @@ namespace hgl::ecs
         void RunSort()        override {}   // Not used for lines
         void RunBuild()       override;
         void RunSync()        override {}   // Not used for lines
-        void GetRenderPrimitives(std::vector<hgl::graph::Primitive*>& out) const override {}
         void Render(hgl::graph::RenderCmdBuffer* cmd) override;
         void Shutdown()       override;
 

@@ -4,9 +4,6 @@
 #include <hgl/ecs/support/TextRenderPipeline.h>
 #include <memory>
 #include <string>
-#include <vector>
-
-namespace hgl::graph { class Primitive; }
 
 namespace hgl::ecs
 {
@@ -39,7 +36,6 @@ namespace hgl::ecs
         void RunSort()      override {}    // Not used for Text
         void RunBuild()     override;
         void RunSync()      override;
-        void GetRenderPrimitives(std::vector<hgl::graph::Primitive*>& out) const override;
         void Render(hgl::graph::RenderCmdBuffer* cmd) override;
         void Shutdown()     override {}
     };

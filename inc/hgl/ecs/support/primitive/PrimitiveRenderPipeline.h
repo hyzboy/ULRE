@@ -36,7 +36,6 @@ namespace hgl::ecs
         void RunSort() override;
         void RunBuild() override;
         void RunSync() override {}       // Not used for Primitive
-        void GetRenderPrimitives(std::vector<hgl::graph::Primitive*>& out_primitives) const override;
         void Render(hgl::graph::RenderCmdBuffer* cmd) override;
         void Shutdown() override;
 

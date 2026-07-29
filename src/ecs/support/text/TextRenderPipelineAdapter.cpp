@@ -51,11 +51,6 @@ namespace hgl::ecs
         impl_->RunSync();
     }
 
-    void TextRenderPipelineAdapter::GetRenderPrimitives(std::vector<hgl::graph::Primitive*>& out) const
-    {
-        (void)out;
-    }
-
     void TextRenderPipelineAdapter::Render(hgl::graph::RenderCmdBuffer* cmd)
     {
         if (!cmd)
