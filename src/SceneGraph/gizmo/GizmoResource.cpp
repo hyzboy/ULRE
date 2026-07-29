@@ -9,11 +9,9 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
-#include<hgl/graph/mesh/Primitive.h>
-#include<hgl/graph/DescriptorBindingSet.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
 #include"GizmoResource.h"
 
 namespace hgl::graph
@@ -40,11 +38,10 @@ namespace hgl::graph
         struct GizmoResource
         {
             MaterialProgram *          mtl;
-            const VIL *         binding_vil;
-            DescriptorBindingSet *binding_sets[size_t(GizmoColor::RANGE_SIZE)];
             Pipeline *          pipeline;
             DeviceBuffer *      mi_ssbo;
             VertexDataManager * vdm;
+            mtl::MaterialRecipe color_recipe[size_t(GizmoColor::RANGE_SIZE)]{};
 
             GeometryCreater *  prim_creater;
         };
@@ -54,30 +51,19 @@ namespace hgl::graph
         struct GizmoMesh
         {
             Geometry *geometry;
-            Primitive *primitive;
+            PrimitiveAsset asset;
 
         public:
 
             void Create(Geometry *p)
             {
                 geometry=p;
-                if (graphics_context)
-                {
-                    auto *primitive_manager = graphics_context->GetPrimitiveManager();
-                    auto *dbs = gizmo_triangle.binding_sets[0];
-                    primitive = primitive_manager ? primitive_manager->CreatePrimitive(geometry, gizmo_triangle.mtl, dbs, gizmo_triangle.pipeline) : nullptr;
-                    if (!primitive)
-                        GLogError("[GizmoResource] CreatePrimitive failed for descriptor binding path");
-                }
-                else
-                {
-                    primitive = nullptr;
-                }
+                asset = PrimitiveAsset(geometry, static_cast<const mtl::MaterialRecipe *>(nullptr), PrimitiveType::Triangles);
             }
 
             void Clear()
             {
-                primitive=nullptr;
+                asset = PrimitiveAsset();
                 geometry=nullptr;
             }
         };//class GizmoMesh
@@ -143,13 +129,25 @@ namespace hgl::graph
                 if (!domain_manager->RegisterBuffer(addr, gr->mi_ssbo, color_count))
                     return false;
 
-                gr->binding_vil = gr->mtl->GetDefaultVIL();
                 for (uint32_t c = 0; c < color_count; ++c)
                 {
-                    gr->binding_sets[c] = new DescriptorBindingSet(gr->mtl, gr->binding_vil);
-                    if (!gr->binding_sets[c])
-                        return false;
-                    gr->binding_sets[c]->SetSSBOBinding(req.ssbo_type, req.ssbo_id, c);
+                    auto &recipe = gr->color_recipe[c];
+                    recipe = mtl::MaterialRecipe{};
+                    recipe.recipe_name = "GizmoColor_" + std::to_string(c);
+                    recipe.shading_model = mtl::ShadingModel::Unknown;
+                    recipe.preset_hint = static_cast<uint32_t>(mtl::MaterialPreset::PureColor3D);
+                    recipe.structs.clear();
+                    recipe.textures.clear();
+                    recipe.ssbo_assets.clear();
+
+                    mtl::RecipeStructBinding struct_binding{};
+                    struct_binding.slot = req.data_slot;
+                    struct_binding.ssbo_type = req.ssbo_type;
+                    struct_binding.ssbo_id = req.ssbo_id;
+                    struct_binding.struct_index = c;
+                    struct_binding.use_struct_index = true;
+                    struct_binding.shared_across_instances = true;
+                    recipe.structs.emplace_back(std::move(struct_binding));
                 }
             }
 
@@ -320,13 +318,6 @@ namespace hgl::graph
         SAFE_CLEAR(gizmo_triangle.vdm);
         SAFE_CLEAR(gizmo_triangle.mi_ssbo);
 
-        for (size_t i = 0; i < size_t(GizmoColor::RANGE_SIZE); ++i)
-        {
-            delete gizmo_triangle.binding_sets[i];
-            gizmo_triangle.binding_sets[i] = nullptr;
-        }
-        gizmo_triangle.binding_vil = nullptr;
-
         gizmo_triangle.pipeline = nullptr;
         gizmo_triangle.mtl = nullptr;
 
@@ -335,10 +326,10 @@ namespace hgl::graph
         graphics_context = nullptr;
     }
 
-    DescriptorBindingSet *GetGizmoBindingSet3D(const GizmoColor &color)
+    const mtl::MaterialRecipe *GetGizmoRecipe3D(const GizmoColor &color)
     {
         RANGE_CHECK_RETURN_NULLPTR(color)
-        return gizmo_triangle.binding_sets[size_t(color)];
+        return gizmo_triangle.color_recipe + size_t(color);
     }
 
     // Legacy alias kept for backward compatibility — returns nullptr in new path.
@@ -347,14 +338,13 @@ namespace hgl::graph
         return nullptr;
     }
 
-    Primitive *GetGizmoMeshPrimitive(const GizmoShape &shape)
+    const PrimitiveAsset *GetGizmoMeshAsset(const GizmoShape &shape)
     {
         if(!graphics_context)
             return nullptr;
 
         RANGE_CHECK_RETURN_NULLPTR(shape)
 
-        return gizmo_mesh[size_t(shape)].primitive;
+        return &(gizmo_mesh[size_t(shape)].asset);
     }
 }//namespace hgl::graph
-

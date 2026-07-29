@@ -16,16 +16,15 @@ namespace hgl::ecs
 
 namespace hgl::graph
 {
-    class DescriptorBindingSet;
-
     // 由 `GizmoMode` 对象拥有的可视原语条目。
     // （原为 `GizmoECS::AssetVisualPrimitive` — 已提取以便各 Mode 类可以拥有自己的列表。）
     struct GizmoVisualPrimitive
     {
         std::shared_ptr<hgl::ecs::PrimitiveComponent>  primitive;
         std::shared_ptr<hgl::ecs::TransformComponent>  transform;
-        DescriptorBindingSet *base_binding = nullptr;
         GizmoShape        shape         = GizmoShape::Sphere;
+        GizmoColor        base_color    = GizmoColor::White;
+        GizmoColor        applied_color = GizmoColor::White;
         int               group_id      = -1;
     };
 

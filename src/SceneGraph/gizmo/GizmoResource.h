@@ -36,6 +36,7 @@ constexpr const float GIZMO_TWO_AXIS_OFFSET     =5.0F;                          
 
 constexpr const float GIZMO_FIXED_PIXEL_DIAMETER=320.0f;                                                                ///<Gizmo目标像素直径(固定屏幕尺寸)
 
-Primitive *GetGizmoMesh(const GizmoShape &gs,const GizmoColor &);
+const PrimitiveAsset *GetGizmoMeshAsset(const GizmoShape &shape);
+const mtl::MaterialRecipe *GetGizmoRecipe3D(const GizmoColor &color);
 
 }//namespace hgl::graph

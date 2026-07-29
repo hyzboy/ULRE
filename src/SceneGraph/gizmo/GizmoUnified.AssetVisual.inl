@@ -38,27 +38,29 @@ static bool AttachAssetModePrimitive(std::vector<GizmoVisualPrimitive> &out_list
     if (!entity)
         return false;
 
-    auto primitive = GetGizmoMeshPrimitive(shape);
-    if (!primitive)
+    const auto *asset = GetGizmoMeshAsset(shape);
+    if (!asset)
         return false;
 
-    auto *base_binding = GetGizmoBindingSet3D(color);
-    if (!base_binding)
+    const auto *recipe = GetGizmoRecipe3D(color);
+    if (!recipe)
         return false;
 
     auto prim_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
     if (!prim_comp)
         return false;
 
-    prim_comp->SetPrimitive(primitive);
-    prim_comp->SetInternalDescriptorBindingSet(base_binding);
+    prim_comp->SetPrimitiveAsset(asset);
+    prim_comp->SetMaterialRecipe(*recipe);
+    prim_comp->RequestPipeline(InlinePipeline::GizmoOverlay3D);
     prim_comp->SetVisible(false);
 
     GizmoVisualPrimitive item;
     item.primitive = prim_comp;
     item.transform = entity->GetComponent<hgl::ecs::TransformComponent>();
-    item.base_binding = base_binding;
     item.shape = shape;
+    item.base_color = color;
+    item.applied_color = color;
     item.group_id = group_id;
     out_list.push_back(item);
     return true;
@@ -87,6 +89,20 @@ static void SetPrimitivesVisible(std::vector<GizmoVisualPrimitive> &primitives, 
     }
 }
 
+static void ApplyGizmoVisualColor(GizmoVisualPrimitive &entry, const GizmoColor color)
+{
+    if (!entry.primitive)
+        return;
+
+    const auto *recipe = GetGizmoRecipe3D(color);
+    if (!recipe)
+        return;
+
+    entry.primitive->SetMaterialRecipe(*recipe);
+    entry.primitive->RequestPipeline(InlinePipeline::GizmoOverlay3D);
+    entry.applied_color = color;
+}
+
 static std::vector<GizmoVisualPrimitive> *GetActiveAssetVisualList(GizmoECS *gizmo)
 {
     if (!gizmo)
@@ -108,11 +124,7 @@ static void SetAssetVisualHighlight(GizmoECS *gizmo, bool highlighted)
     {
         for (auto &entry : items)
         {
-            if (!entry.primitive)
-                continue;
-
-            entry.primitive->SetInternalDescriptorBindingSet(highlighted ? GetGizmoBindingSet3D(GizmoColor::Yellow)
-                                                                         : entry.base_binding);
+            ApplyGizmoVisualColor(entry, highlighted ? GizmoColor::Yellow : entry.base_color);
         }
     };
 
