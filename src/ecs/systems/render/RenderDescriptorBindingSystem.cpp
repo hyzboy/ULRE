@@ -1067,18 +1067,11 @@ namespace hgl::ecs
 
             return material->BindTextureSampler(req.set_type, req.name, texture, sampler);
         };
-        auto batch_uses_recipe_runtime = [&](MaterialBatch *batch) -> bool
-        {
-            if (!batch)
-                return false;
-
-            return batch->key.IsRecipeRuntime();
-        };
         auto recipe_runtime_has_layer_table_for_texture_slot = [&](graph::MaterialProgram *material,
                                                                     MaterialBatch *batch,
                                                                     const graph::mtl::MaterialResourceRequirement &req) -> bool
         {
-            if (!material || !batch_uses_recipe_runtime(batch))
+            if (!material || !batch)
                 return false;
 
             const auto &contract = material->GetMaterialResourceLayout();
@@ -1100,7 +1093,7 @@ namespace hgl::ecs
                                                        const graph::mtl::MaterialResourceRequirement &req,
                                                        uint32_t &out_ssbo_id) -> bool
         {
-            if (!batch || !batch->key.IsRecipeRuntime())
+            if (!batch)
                 return false;
 
             bool found = false;
@@ -1312,7 +1305,7 @@ namespace hgl::ecs
             case graph::mtl::DescriptorSemantic::MaterialInstance:
             {
                 uint32_t resolved_ssbo_id = req.ssbo_id;
-                if (batch && batch_uses_recipe_runtime(batch))
+                if (batch)
                     resolve_recipe_batch_struct_ssbo_id(material, batch, req, resolved_ssbo_id);
 
                 const graph::IGPUBuffer *mi_ssbo = resolve_domain_ssbo(

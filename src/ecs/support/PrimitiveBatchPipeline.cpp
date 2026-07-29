@@ -837,10 +837,7 @@ namespace hgl::ecs
                 }
             }
 
-            const MaterialRuntimeMode runtime_mode = uses_recipe_runtime
-                                                   ? MaterialRuntimeMode::Recipe
-                                                   : MaterialRuntimeMode::Legacy;
-            MaterialPipelineKey key(material, pipeline, program_signature, binding_signature, runtime_mode);
+            MaterialPipelineKey key(material, pipeline, program_signature, binding_signature);
             auto* batch_ptr = cache.materialBatches.GetValuePointer(key);
 
             if (!batch_ptr)
