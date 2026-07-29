@@ -1067,24 +1067,6 @@ namespace hgl::ecs
 
             return material->BindTextureSampler(req.set_type, req.name, texture, sampler);
         };
-        auto resolve_batch_texture_binding = [&](graph::MaterialProgram *material,
-                                                 MaterialBatch *batch,
-                                                 const graph::mtl::MaterialResourceRequirement &req,
-                                                 graph::Texture *&out_texture,
-                                                 graph::Sampler *&out_sampler) -> bool
-        {
-            out_texture = nullptr;
-            out_sampler = nullptr;
-
-            if (!material || !batch)
-                return false;
-
-            if (!batch->key.IsLegacyRuntime())
-                return false;
-
-            // Legacy DBS texture path is no longer active.
-            return false;
-        };
         auto batch_uses_recipe_runtime = [&](MaterialBatch *batch) -> bool
         {
             if (!batch)
@@ -1408,23 +1390,6 @@ namespace hgl::ecs
             {
                 const bool allow_indirect_fallback = recipe_runtime_has_layer_table_for_texture_slot(material, batch, req);
 
-                graph::Texture *resolved_texture = nullptr;
-                graph::Sampler *resolved_sampler = nullptr;
-                const bool has_batch_binding = resolve_batch_texture_binding(material,
-                                                                             batch,
-                                                                             req,
-                                                                             resolved_texture,
-                                                                             resolved_sampler);
-                if (has_batch_binding && resolved_texture)
-                {
-                    const bool bind_ok = resolved_sampler
-                                       ? bind_texture_sampler(material, batch, req, resolved_texture, resolved_sampler)
-                                       : bind_texture(material, batch, req, resolved_texture);
-                    if (!bind_ok)
-                        log_bind_failure(material, batch, req, resolved_sampler ? "bind MaterialTexture(Sampler) failed" : "bind MaterialTexture failed");
-                    break;
-                }
-
                 const auto *binding = FindMaterialResourceBinding(material, req.name);
                 if (binding && binding->texture)
                 {
@@ -1444,20 +1409,6 @@ namespace hgl::ecs
             case graph::mtl::DescriptorSemantic::MaterialSampler:
             {
                 const bool allow_indirect_fallback = recipe_runtime_has_layer_table_for_texture_slot(material, batch, req);
-
-                graph::Texture *resolved_texture = nullptr;
-                graph::Sampler *resolved_sampler = nullptr;
-                const bool has_batch_binding = resolve_batch_texture_binding(material,
-                                                                             batch,
-                                                                             req,
-                                                                             resolved_texture,
-                                                                             resolved_sampler);
-                if (has_batch_binding && resolved_texture && resolved_sampler)
-                {
-                    if (!bind_texture_sampler(material, batch, req, resolved_texture, resolved_sampler))
-                        log_bind_failure(material, batch, req, "bind MaterialSampler failed");
-                    break;
-                }
 
                 const auto *binding = FindMaterialResourceBinding(material, req.name);
                 if (binding && binding->texture && binding->sampler)

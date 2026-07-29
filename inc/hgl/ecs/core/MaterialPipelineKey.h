@@ -36,7 +36,7 @@ namespace hgl::ecs
                             hgl::graph::Pipeline* p = nullptr,
                             uint64_t program_signature = 0,
                             uint64_t binding_signature = 0,
-                            MaterialRuntimeMode mode = MaterialRuntimeMode::Legacy)
+                            MaterialRuntimeMode mode = MaterialRuntimeMode::Recipe)
             : material(m), pipeline(p), materialization_spec_hash(program_signature), materialization_domain_signature(binding_signature), runtime_mode(mode) {}
 
         bool IsLegacyRuntime() const { return runtime_mode == MaterialRuntimeMode::Legacy; }
