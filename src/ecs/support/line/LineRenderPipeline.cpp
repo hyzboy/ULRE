@@ -14,7 +14,8 @@
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/DescriptorBindingSet.h>
 #include <hgl/graph/geo/GeometryCreater.h>
-#include <hgl/graph/mesh/Primitive.h>
+#include <hgl/graph/mesh/GeometryDataBuffer.h>
+#include <hgl/graph/mesh/GeometryDrawRange.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/vk/VKDevice.h>
@@ -79,7 +80,7 @@ namespace hgl::ecs
         if (pos_valid)   va_pos.Seek(0);
         if (color_valid) va_color.Seek(0);
         if (transform_valid) va_transform.Seek(0);
-        if (primitive)   primitive->SetDrawCounts(0);
+        if (draw_range)  draw_range->vertex_count = 0;
     }
 
     void LineRenderPipeline::LineWidthSlot::Clear()
@@ -87,7 +88,8 @@ namespace hgl::ecs
         va_pos.Bind(nullptr);
         va_color.Bind(nullptr);
         va_transform.Bind(nullptr);
-        SAFE_CLEAR(primitive);
+        SAFE_CLEAR(data_buffer);
+        SAFE_CLEAR(draw_range);
         SAFE_CLEAR(geometry);
         line_count   = 0;
         gpu_capacity = 0;
@@ -96,9 +98,7 @@ namespace hgl::ecs
     bool LineRenderPipeline::LineWidthSlot::EnsureCapacity(
         uint32_t needed,
         graph::VulkanDevice*     dev,
-        graph::MaterialProgram*         material,
         graph::DescriptorBindingSet* binding_set,
-        graph::Pipeline*         p,
         uint32_t                 width)
     {
         if (needed <= gpu_capacity)
@@ -112,7 +112,8 @@ namespace hgl::ecs
         // Release old resources
         va_pos.Bind(nullptr);
         va_color.Bind(nullptr);
-        SAFE_CLEAR(primitive);
+        SAFE_CLEAR(data_buffer);
+        SAFE_CLEAR(draw_range);
         SAFE_CLEAR(geometry);
 
         // Create new geometry (2 verts per line)
@@ -125,13 +126,36 @@ namespace hgl::ecs
         if (!geometry)
             return false;
 
-        primitive = graph::DirectCreatePrimitive(geometry, material, binding_set, p);
-        if (!primitive)
+        if (!binding_set || !binding_set->GetVIL())
         {
-            GLogError("[LineRenderPipeline] DirectCreatePrimitive failed for descriptor binding path");
+            GLogError("[LineRenderPipeline] EnsureCapacity failed: binding_set/vil is null");
             SAFE_CLEAR(geometry);
             return false;
         }
+
+        data_buffer = new graph::GeometryDataBuffer(binding_set->GetVIL()->GetVertexAttribCount(),
+                                                    geometry->GetIBO(),
+                                                    geometry->GetVDM());
+        if (!data_buffer
+         || !data_buffer->Update(geometry,
+                                 binding_set->GetVIL()->GetVIFList(),
+                                 binding_set->GetVIL()->GetVertexAttribCount()))
+        {
+            GLogError("[LineRenderPipeline] GeometryDataBuffer::Update failed");
+            SAFE_CLEAR(data_buffer);
+            SAFE_CLEAR(geometry);
+            return false;
+        }
+
+        draw_range = new graph::GeometryDrawRange();
+        if (!draw_range)
+        {
+            SAFE_CLEAR(data_buffer);
+            SAFE_CLEAR(geometry);
+            return false;
+        }
+        draw_range->Set(geometry);
+        draw_range->vertex_count = 0;
 
         const int pos_idx   = geometry->GetVABIndex(graph::VertexSemantic::Position);
         const int color_idx = geometry->GetVABIndex(graph::VertexSemantic::Color);
@@ -139,7 +163,8 @@ namespace hgl::ecs
 
         if (pos_idx < 0 || color_idx < 0 || transform_idx < 0)
         {
-            SAFE_CLEAR(primitive);
+            SAFE_CLEAR(data_buffer);
+            SAFE_CLEAR(draw_range);
             SAFE_CLEAR(geometry);
             return false;
         }
@@ -161,7 +186,8 @@ namespace hgl::ecs
                         va_pos.IsValid() ? 1 : 0,
                         va_color.IsValid() ? 1 : 0,
                         va_transform.IsValid() ? 1 : 0);
-            SAFE_CLEAR(primitive);
+            SAFE_CLEAR(data_buffer);
+            SAFE_CLEAR(draw_range);
             SAFE_CLEAR(geometry);
             return false;
         }
@@ -207,8 +233,8 @@ namespace hgl::ecs
             return false;
 
         ++line_count;
-        if (primitive)
-            primitive->SetDrawCounts(line_count * 2);
+        if (draw_range)
+            draw_range->vertex_count = line_count * 2;
         return true;
     }
 
@@ -223,13 +249,12 @@ namespace hgl::ecs
         if (line_count == 0)
             return;
 
-        if (!primitive)
+        if (!data_buffer || !draw_range)
         {
-            GLogWarning("[LineRenderPipeline] Draw skipped: primitive is null while line_count=%u", line_count);
+            GLogWarning("[LineRenderPipeline] Draw skipped: data_buffer/draw_range null while line_count=%u", line_count);
             return;
         }
 
-        const graph::GeometryDataBuffer *data_buffer = primitive->GetDataBuffer();
         bool bound_ok = false;
 
         if (data_buffer && geometry)
@@ -258,11 +283,11 @@ namespace hgl::ecs
         if (!bound_ok)
             cmd->BindDataBuffer(data_buffer);
 
-        cmd->Draw(primitive->GetDataBuffer(), primitive->GetRenderData());
+        cmd->Draw(data_buffer, draw_range);
 
-        GLogInfo("[LineRenderPipeline] Draw issued: primitive=%p data_buffer=%p line_count=%u vertex_count=%u bound_with_tid=%d",
-                 primitive,
+        GLogInfo("[LineRenderPipeline] Draw issued: data_buffer=%p draw_range=%p line_count=%u vertex_count=%u bound_with_tid=%d",
                  data_buffer,
+                 draw_range,
                  line_count,
                  line_count * 2u,
                  bound_ok ? 1 : 0);
@@ -579,7 +604,7 @@ namespace hgl::ecs
         {
             if (slot_counts[i] == 0)
                 continue;
-            if (!slots_[i].EnsureCapacity(slot_counts[i], device_, material_, binding_set_, pipeline_, i + 1))
+            if (!slots_[i].EnsureCapacity(slot_counts[i], device_, binding_set_, i + 1))
             {
                 GLogWarning("[LineRenderPipeline] EnsureCapacity failed: slot=%u need=%u cap=%u",
                             i + 1,
@@ -773,11 +798,11 @@ namespace hgl::ecs
             if (support_wide_lines_)
                 cmd->SetLineWidth(static_cast<float>(i + 1));
 
-            GLogInfo("[LineRenderPipeline] Render slot: slot=%u line_count=%u capacity=%u primitive=%p",
+            GLogInfo("[LineRenderPipeline] Render slot: slot=%u line_count=%u capacity=%u data_buffer=%p",
                      i + 1,
                      slots_[i].line_count,
                      slots_[i].gpu_capacity,
-                     slots_[i].primitive);
+                     slots_[i].data_buffer);
             slots_[i].Draw(cmd);
             draw_lines += slots_[i].line_count;
         }
@@ -920,4 +945,3 @@ namespace hgl::ecs
     }
 
 }  // namespace hgl::ecs
-

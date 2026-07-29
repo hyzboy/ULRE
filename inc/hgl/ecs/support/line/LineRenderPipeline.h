@@ -21,7 +21,8 @@ namespace hgl
         class Pipeline;
         class VertexInputLayout;
         class Geometry;
-        class Primitive;
+        struct GeometryDataBuffer;
+        struct GeometryDrawRange;
         class RenderCmdBuffer;
     }
     namespace ecs
@@ -98,7 +99,8 @@ namespace hgl::ecs
             uint32_t gpu_capacity = 0;   ///< current VAB capacity in line-count
 
             graph::Geometry*  geometry  = nullptr;
-            graph::Primitive* primitive = nullptr;
+            graph::GeometryDataBuffer* data_buffer = nullptr;
+            graph::GeometryDrawRange*  draw_range  = nullptr;
 
             graph::BufferAccessor3f  va_pos;   ///< maps to StagedBuffer for positions
             graph::BufferAccessor1u8 va_color; ///< maps to StagedBuffer for color indices
@@ -108,9 +110,7 @@ namespace hgl::ecs
             void Clear();
             bool EnsureCapacity(uint32_t needed,
                                 graph::VulkanDevice*     dev,
-                                graph::MaterialProgram*         material,
                                 graph::DescriptorBindingSet* binding_set,
-                                graph::Pipeline*         p,
                                 uint32_t                 width);
             bool AddSegment(const hgl::math::Vector3f& from,
                             const hgl::math::Vector3f& to,
