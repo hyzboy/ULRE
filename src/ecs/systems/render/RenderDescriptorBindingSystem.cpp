@@ -1337,11 +1337,6 @@ namespace hgl::ecs
                     graph::mtl::SSBOAddress{req.ssbo_type, resolved_ssbo_id, 0},
                     "MaterialInstance");
 
-                if (!mi_ssbo && batch && !batch_uses_recipe_runtime(batch))
-                {
-                    // Legacy DBS SSBO fallback is no longer active.
-                }
-
                 if (mi_ssbo)
                 {
                     if (!bind_ssbo(material, batch, req, mi_ssbo))
@@ -1363,11 +1358,6 @@ namespace hgl::ecs
                         req.ssbo_id,
                         static_cast<uint32_t>(req.texture_slot)},
                     "MaterialTextureLayerTable");
-
-                if (!table_buffer && batch && !batch_uses_recipe_runtime(batch))
-                {
-                    // Legacy DBS SSBO fallback is no longer active.
-                }
 
                 if (table_buffer)
                 {
@@ -1399,11 +1389,6 @@ namespace hgl::ecs
                             req.ssbo_id,
                             static_cast<uint32_t>(req.data_slot)},
                         "MaterialDataIndexTable");
-                }
-
-                if (!table_buffer && batch && !batch_uses_recipe_runtime(batch))
-                {
-                    // Legacy DBS SSBO fallback is no longer active.
                 }
 
                 if (table_buffer)
@@ -1499,17 +1484,6 @@ namespace hgl::ecs
             }
         };
 
-        auto validate_required_batch_bindings = [&](graph::MaterialProgram *material,
-                                                    MaterialBatch *batch,
-                                                    const graph::mtl::MaterialResourceLayout &contract) -> bool
-        {
-            if (!material || !batch)
-                return true;
-
-            // Legacy DBS validation no longer applies; all active batches use recipe runtime.
-            return true;
-        };
-
         for (const auto &pair : cache.materialBatches)
         {
             graph::MaterialProgram *material = pair.first.material;
@@ -1523,9 +1497,6 @@ namespace hgl::ecs
                 batch->descriptor_bind_valid = true;
 
             const auto &contract = material->GetMaterialResourceLayout();
-
-            if (batch && !validate_required_batch_bindings(material, batch, contract))
-                continue;
 
             for (const auto &req : contract.requirements)
             {

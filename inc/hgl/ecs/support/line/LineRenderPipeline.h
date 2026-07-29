@@ -17,7 +17,6 @@ namespace hgl
         class VulkanDevice;
         class DeviceBuffer;
         class MaterialProgram;
-        class MaterialInstance;
         class Pipeline;
         class VertexInputLayout;
         class Geometry;

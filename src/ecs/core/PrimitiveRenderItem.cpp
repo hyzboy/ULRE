@@ -5,7 +5,6 @@
 #include<hgl/ecs/components/MaterialComponent.h>
 #include<hgl/ecs/components/RenderableComponent.h>
 #include<hgl/ecs/components/TransformComponent.h>
-#include<hgl/graph/DescriptorBindingSet.h>
 
 namespace hgl::ecs
 {

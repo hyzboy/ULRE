@@ -9,7 +9,6 @@
 #include<hgl/ecs/systems/tick/VisibilitySystem.h>
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<hgl/ecs/support/VisibilityDataStorage.h>
-#include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/core/GraphicsContext.h>

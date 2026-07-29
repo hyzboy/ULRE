@@ -10,7 +10,6 @@
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
-#include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
@@ -87,11 +86,6 @@ namespace hgl::ecs
                             return material_comp->data_index_row;
                     }
                 }
-            }
-
-            if (!uses_recipe_runtime)
-            {
-                // Legacy DBS path is no longer active; return 0 as default row.
             }
 
             if (uses_recipe_runtime)

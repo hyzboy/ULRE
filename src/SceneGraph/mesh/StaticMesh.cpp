@@ -16,7 +16,7 @@ Primitive *StaticMesh::CreatePrimitive(Geometry *geometry, MaterialProgram *mate
     if(!geometry || !material)
         return nullptr;
 
-    Primitive *sm = DirectCreatePrimitive(geometry, material, nullptr, p);
+    Primitive *sm = DirectCreatePrimitive(geometry, material, p);
     if(!sm)
         return nullptr;
 

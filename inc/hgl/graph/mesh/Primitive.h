@@ -6,7 +6,6 @@
 #include<hgl/vk/VKDescriptorSet.h>
 #include<hgl/vk/VKMaterialProgram.h>
 #include<hgl/vk/VKMaterialParameters.h>
-#include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/graph/mesh/GeometryDataBuffer.h>
 #include<hgl/graph/mesh/GeometryDrawRange.h>
@@ -14,13 +13,13 @@
 namespace hgl::graph{
 class PrimitiveAsset;
 /**
-* 图元 — 运行时绘制单元（geometry + material_program + 绑定状态）
+* 图元 — 运行时绘制单元（geometry + material_program + VIL + pipeline）
+* 不持有 DescriptorBindingSet；所有资源绑定由 ECS recipe runtime 负责。
 */
 class Primitive
 {
     Pipeline *          pipeline;
     MaterialProgram *   material_program;
-    DescriptorBindingSet *binding_set;
     const VIL *         binding_vil;
     bool                owns_binding_vil = false;
     Geometry *          geometry;
@@ -30,9 +29,9 @@ class Primitive
 
 private:
 
-    friend Primitive *DirectCreatePrimitive(Geometry *,MaterialProgram *,DescriptorBindingSet *,Pipeline *);
+    friend Primitive *DirectCreatePrimitive(Geometry *,MaterialProgram *,Pipeline *);
 
-    Primitive(Geometry *,MaterialProgram *,DescriptorBindingSet *,const VIL *,bool,Pipeline *,GeometryDataBuffer *);
+    Primitive(Geometry *,MaterialProgram *,const VIL *,bool,Pipeline *,GeometryDataBuffer *);
 
 public:
 
@@ -46,9 +45,8 @@ public:
 
             Pipeline *          GetPipeline         (){return pipeline;}
             VkPipelineLayout    GetPipelineLayout   (){return material_program ? material_program->GetPipelineLayout() : VK_NULL_HANDLE;}
-            MaterialProgram *   GetMaterialProgram  (){return binding_set ? binding_set->GetMaterialProgram() : material_program;}
-            DescriptorBindingSet *GetDescriptorBindingSet(){return binding_set;}
-    const   VIL *               GetVIL              ()const{return binding_vil ? binding_vil : (binding_set ? binding_set->GetVIL() : (material_program ? material_program->GetDefaultVIL() : nullptr));}
+            MaterialProgram *   GetMaterialProgram  (){return material_program;}
+    const   VIL *               GetVIL              ()const{return binding_vil ? binding_vil : (material_program ? material_program->GetDefaultVIL() : nullptr);}
             Geometry *          GetGeometry         (){return geometry;}
             AnsiString          GetGeometryName     (){return geometry->GetName();}
     const   BoundingVolumes &   GetBoundingVolumes  ()const{return geometry->GetBoundingVolumes();}
@@ -75,6 +73,6 @@ public:
             uint32_t            GetDataIndexCount()const{return draw_range.data_index_count;}
 };//class Primitive
 
-Primitive *DirectCreatePrimitive(Geometry *,MaterialProgram *,DescriptorBindingSet * = nullptr,Pipeline * = nullptr);
+Primitive *DirectCreatePrimitive(Geometry *,MaterialProgram *,Pipeline * = nullptr);
 Primitive *CreatePrimitiveRuntime(Geometry *,MaterialProgram *,Pipeline * = nullptr);
 }//namespace hgl::graph

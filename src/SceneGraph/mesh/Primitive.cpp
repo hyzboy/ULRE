@@ -48,12 +48,11 @@ void GeometryDrawRange::Set(const Geometry *geometry)
     first_index     = geometry->GetFirstIndex();
 }
 
-Primitive::Primitive(Geometry *r,MaterialProgram *material,DescriptorBindingSet *dbs,const VIL *vil,bool own_vil,Pipeline *p,GeometryDataBuffer *gdb)
+Primitive::Primitive(Geometry *r,MaterialProgram *material,const VIL *vil,bool own_vil,Pipeline *p,GeometryDataBuffer *gdb)
 {
     geometry=r;
     pipeline=p;
     material_program = material;
-    binding_set=dbs;
     binding_vil = vil;
     owns_binding_vil = own_vil;
 
@@ -76,45 +75,14 @@ bool Primitive::UpdateGeometry()
     return data_buffer->Update(geometry, vil ? vil->GetVIFList() : nullptr, vil ? vil->GetVertexAttribCount() : 0);
 }
 
-Primitive *DirectCreatePrimitive(Geometry *geom,MaterialProgram *material,DescriptorBindingSet *dbs,Pipeline *p)
+Primitive *DirectCreatePrimitive(Geometry *geom,MaterialProgram *material,Pipeline *p)
 {
     if(!geom||!material)return(nullptr);
 
-    VIL *owned_vil = nullptr;
-    if (dbs)
-    {
-        MaterialProgram *current_material = dbs->GetMaterialProgram();
-        if (current_material != material)
-        {
-            if (current_material)
-            {
-                GLogWarning("[Primitive] DBS material mismatch, override to explicit target material. old=%s new=%s",
-                            current_material->GetName().c_str(),
-                            material->GetName().c_str());
-            }
-            dbs->SetMaterial(material);
-        }
-    }
-
-    const VIL *vil = nullptr;
-    if (dbs)
-    {
-        vil = dbs->GetVIL();
-    }
-    else
-    {
-        owned_vil = material->CreateVIL(geom->GetGeometryVertexFormat());
-        vil = owned_vil ? owned_vil : material->GetDefaultVIL();
-    }
+    VIL *owned_vil = material->CreateVIL(geom->GetGeometryVertexFormat());
+    const VIL *vil = owned_vil ? owned_vil : material->GetDefaultVIL();
 
     if(!material||!vil)
-    {
-        if (owned_vil)
-            material->Release(owned_vil);
-        return(nullptr);
-    }
-
-    if(dbs && !dbs->HasRequiredResourceBindings(material->GetMaterialResourceLayout(), material->GetName().c_str()))
     {
         if (owned_vil)
             material->Release(owned_vil);
@@ -215,12 +183,12 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialProgram *material,Descri
         ++vif;
     }
 
-    return(new Primitive(geom,material,dbs,owned_vil,owned_vil!=nullptr,p,geom_data_buffer));
+    return(new Primitive(geom,material,owned_vil,owned_vil!=nullptr,p,geom_data_buffer));
 }
 
 Primitive *CreatePrimitiveRuntime(Geometry *geom, MaterialProgram *material, Pipeline *p)
 {
-    return DirectCreatePrimitive(geom, material, nullptr, p);
+    return DirectCreatePrimitive(geom, material, p);
 }
 
 bool GeometryDataBuffer::Update(const Geometry *geom,const VertexInputFormat *vif_list,uint32_t vif_count)
