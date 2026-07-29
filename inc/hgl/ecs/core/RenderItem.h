@@ -10,7 +10,6 @@ namespace hgl
 {
     namespace graph
     {
-        class Primitive;
         class MaterialProgram;
         class MaterialInstance;
         class DescriptorBindingSet;
@@ -57,8 +56,6 @@ namespace hgl::ecs
         virtual glm::mat4 GetWorldMatrix() const = 0;
 
         // For material batching support
-        // Note: GetPrimitive() is retained for legacy SetPrimitive path (may be null for PrimitiveAsset path).
-        virtual hgl::graph::Primitive* GetPrimitive() const { return nullptr; }
         // Note: GetMaterialInstance() is retained for legacy path compatibility but returns nullptr
         // on all current code paths (Primitive no longer holds a MaterialInstance).
         virtual hgl::graph::MaterialInstance* GetMaterialInstance() const { return nullptr; }

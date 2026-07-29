@@ -12,7 +12,6 @@
 #include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
-#include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
@@ -733,18 +732,7 @@ namespace hgl::ecs
         graph::PrimitiveType primitive_type = graph::PrimitiveType::Triangles;
         graph::MaterialProgram *reference_program = nullptr;
         const graph::GeometryVertexFormat *geometry_vertex_format = nullptr;
-        if (auto *primitive = primitive_comp->GetPrimitive())
-        {
-            if (auto *primitive_geometry = primitive->GetGeometry())
-                geometry_vertex_format = &primitive_geometry->GetGeometryVertexFormat();
-
-            if (auto *primitive_program = primitive->GetMaterialProgram())
-            {
-                primitive_type = primitive_program->GetPrimitiveType();
-                reference_program = primitive_program;
-            }
-        }
-        else if (const auto *asset = primitive_comp->GetPrimitiveAsset())
+        if (const auto *asset = primitive_comp->GetPrimitiveAsset())
         {
             if (auto *asset_geometry = asset->GetGeometry())
                 geometry_vertex_format = &asset_geometry->GetGeometryVertexFormat();

@@ -6,7 +6,6 @@ namespace hgl
 {
     namespace graph
     {
-        class Primitive;
         class MaterialProgram;
         class MaterialInstance;
         class DescriptorBindingSet;
@@ -55,7 +54,6 @@ namespace hgl::ecs
         std::shared_ptr<PrimitiveComponent> GetPrimitiveComponent() const { return primitiveComp; }
 
         // MaterialProgram batching interface
-        hgl::graph::Primitive* GetPrimitive() const override;
         hgl::graph::DescriptorBindingSet* GetDescriptorBindingSet() const override;
         hgl::graph::MaterialProgram* GetMaterialProgram() const override;
         hgl::graph::Pipeline* GetPipeline() const override;

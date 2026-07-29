@@ -4,7 +4,6 @@
 #include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/graph/mesh/GeometryDataBuffer.h>
 #include<hgl/graph/mesh/GeometryDrawRange.h>
-#include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKMaterialProgram.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKTexture.h>
@@ -75,35 +74,6 @@ namespace hgl::ecs
             resource.use_struct_index = false;
             resource.shared_across_instances = false;
             resource.authored = false;
-        }
-    }
-
-    void PrimitiveComponent::SetPrimitive(hgl::graph::Primitive* prim)
-    {
-        if (primitive != prim)
-        {
-            InvalidateResolvedRuntimePipeline();
-        }
-
-        primitive = prim;
-        if (primitive)
-            ClearRuntimeGeometryBinding();
-
-        // Update bounding radius based on primitive's bounding volume
-        if (primitive)
-        {
-            const auto& bv = primitive->GetBoundingVolumes();
-
-            // Calculate bounding radius from AABB for frustum culling
-            // Use the length (diagonal) of the AABB as the bounding radius
-            auto extents = bv.aabb.GetLength();
-            float radius = math::Length(extents) * 0.5f; // Half diagonal
-
-            SetBoundingRadius(radius);
-        }
-        else
-        {
-            SetBoundingRadius(0.0f);
         }
     }
 
@@ -181,25 +151,16 @@ namespace hgl::ecs
 
     const hgl::graph::GeometryDataBuffer *PrimitiveComponent::GetRuntimeGeometryDataBuffer() const
     {
-        if (primitive)
-            return primitive->GetDataBuffer();
-
         return runtime_data_buffer;
     }
 
     const hgl::graph::GeometryDrawRange *PrimitiveComponent::GetRuntimeGeometryDrawRange() const
     {
-        if (primitive)
-            return primitive->GetRenderData();
-
         return runtime_draw_range;
     }
 
     const hgl::graph::VertexInputLayout *PrimitiveComponent::GetRuntimeVIL() const
     {
-        if (primitive)
-            return primitive->GetVIL();
-
         return runtime_vil;
     }
 
@@ -219,14 +180,14 @@ namespace hgl::ecs
             descriptorBindingSet = nullptr;
         }
 
-        if (!primitive && primitiveAsset && primitiveAsset->GetGeometry())
+        if (primitiveAsset && primitiveAsset->GetGeometry())
         {
             const auto &bv = primitiveAsset->GetGeometry()->GetBoundingVolumes();
             auto extents = bv.aabb.GetLength();
             float radius = math::Length(extents) * 0.5f;
             SetBoundingRadius(radius);
         }
-        else if (!primitive)
+        else
         {
             SetBoundingRadius(0.0f);
         }
@@ -498,11 +459,7 @@ namespace hgl::ecs
 
         if (descriptorBindingSet)
             return descriptorBindingSet;
-
-        if (!primitive)
-            return nullptr;
-
-        return primitive->GetDescriptorBindingSet();
+        return nullptr;
     }
 
     hgl::graph::MaterialProgram* PrimitiveComponent::GetMaterialProgram() const
@@ -513,14 +470,6 @@ namespace hgl::ecs
         if (overrideMaterial)
             return overrideMaterial->GetMaterialProgram();
 
-        if (primitive)
-        {
-            auto *prim_mat = primitive->GetMaterialProgram();
-            if (prim_mat)
-                return prim_mat;
-        }
-
-        // Fallback only when primitive path has no material.
         if (descriptorBindingSet)
             return descriptorBindingSet->GetMaterialProgram();
 
@@ -532,22 +481,12 @@ namespace hgl::ecs
         if (overridePipeline)
             return overridePipeline;
 
-        if (primitive && primitive->GetPipeline())
-            return primitive->GetPipeline();
-
         // Return runtime-resolved pipeline if available (late-resolve path).
         return resolvedRuntimePipeline;
     }
 
     bool PrimitiveComponent::GetLocalAABB(hgl::math::AABB& outAABB) const
     {
-        if (primitive)
-        {
-            const auto& bv = primitive->GetBoundingVolumes();
-            outAABB = bv.aabb;
-            return true;
-        }
-
         if (!primitiveAsset || !primitiveAsset->GetGeometry())
             return false;
 
@@ -558,7 +497,7 @@ namespace hgl::ecs
 
     bool PrimitiveComponent::CanRender() const
     {
-        return (primitive != nullptr || primitiveAsset != nullptr) && IsVisible();
+        return primitiveAsset != nullptr && IsVisible();
     }
 
     void PrimitiveComponent::Render(const glm::mat4& worldMatrix)
@@ -570,8 +509,7 @@ namespace hgl::ecs
             return;
 
         // In a real implementation, this would submit draw commands
-        // to a command buffer or render queue using the primitive,
-        // material instance, and world matrix
+        // to a command buffer or render queue using resolved runtime bindings.
     }
 
     void PrimitiveComponent::OnAttach()
@@ -590,9 +528,7 @@ namespace hgl::ecs
     {
         RenderableComponent::OnDetach();
 
-        // Don't delete primitive or material - they're managed externally
-        // Just clear our references
-        primitive = nullptr;
+        // Don't delete resources here; they are managed externally.
         primitiveAsset = nullptr;
         primitiveVariantIndex = 0;
         ClearRuntimeGeometryBinding();

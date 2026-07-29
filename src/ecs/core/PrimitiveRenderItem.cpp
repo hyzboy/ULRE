@@ -6,7 +6,6 @@
 #include<hgl/ecs/components/RenderableComponent.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/graph/DescriptorBindingSet.h>
-#include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKMaterialProgram.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
@@ -42,11 +41,6 @@ namespace hgl::ecs
     std::shared_ptr<RenderableComponent> PrimitiveRenderItem::GetRenderable() const
     {
         return std::static_pointer_cast<RenderableComponent>(primitiveComp);
-    }
-
-    hgl::graph::Primitive* PrimitiveRenderItem::GetPrimitive() const
-    {
-        return primitiveComp ? primitiveComp->GetPrimitive() : nullptr;
     }
 
     hgl::graph::DescriptorBindingSet* PrimitiveRenderItem::GetDescriptorBindingSet() const

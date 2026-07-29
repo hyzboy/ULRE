@@ -23,7 +23,6 @@ namespace hgl
         struct GeometryDataBuffer;
         struct GeometryDrawRange;
         class Geometry;
-        class Primitive;
         class PrimitiveAsset;
         class MaterialProgram;
         class MaterialInstance;
@@ -40,11 +39,11 @@ namespace hgl::ecs
     /**
      * PrimitiveComponent - Renderable component for static mesh rendering
      *
-     * Manages a single Primitive (geometry + material) for rendering.
+     * Manages a single PrimitiveAsset (geometry + recipe) for rendering.
      * Derived from RenderableComponent to provide rendering capabilities.
      *
      * Features:
-     * - Holds reference to hgl::graph::Primitive
+     * - Holds reference to hgl::graph::PrimitiveAsset
      * - Supports MaterialInstance override
      * - Provides access to MaterialProgram, Pipeline, and AABB data
      * - Compatible with RenderCollector for batched rendering
@@ -94,7 +93,6 @@ namespace hgl::ecs
 
     private:
 
-        hgl::graph::Primitive* primitive;                // The primitive to render (not owned)
         const hgl::graph::PrimitiveAsset* primitiveAsset = nullptr;  // Asset-level geometry+recipe pairing (not owned)
         uint32_t primitiveVariantIndex = 0;
         hgl::graph::GeometryDataBuffer *runtime_data_buffer = nullptr;
@@ -127,7 +125,6 @@ namespace hgl::ecs
 
         explicit PrimitiveComponent(const std::string& name = "Primitive")
             : RenderableComponent(name)
-            , primitive(nullptr)
             , overrideMaterial(nullptr)
             , descriptorBindingSet(nullptr)
             , overridePipeline(nullptr)
@@ -143,8 +140,6 @@ namespace hgl::ecs
         // Primitive management
         const char* GetSystemGroupName() const override { return "Primitive"; }
 
-        void SetPrimitive(hgl::graph::Primitive* prim);
-        hgl::graph::Primitive* GetPrimitive() const { return primitive; }
         void SetPrimitiveAsset(const hgl::graph::PrimitiveAsset *asset);
         const hgl::graph::PrimitiveAsset *GetPrimitiveAsset() const { return primitiveAsset; }
         void ClearPrimitiveAsset() { SetPrimitiveAsset(nullptr); }
@@ -228,11 +223,11 @@ namespace hgl::ecs
         void ClearMaterialStructResource(const std::string &ssbo_name);
         void ClearMaterialAuthoringResources();
 
-        // MaterialProgram access (returns override if set, otherwise primitive's material)
+        // MaterialProgram access (returns override if set, otherwise descriptor-bound material)
         hgl::graph::MaterialInstance* GetMaterialInstance() const;
         hgl::graph::MaterialProgram* GetMaterialProgram() const;
 
-        // Pipeline access: override → primitive's pre-baked → runtime resolved
+        // Pipeline access: override → runtime resolved
         hgl::graph::Pipeline* GetPipeline() const;
 
         // Bounding volume
