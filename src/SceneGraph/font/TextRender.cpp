@@ -9,7 +9,6 @@
 #include<hgl/framework/AppFramework.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/module/TextureManager.h>
@@ -53,7 +52,6 @@ namespace hgl::graph
     {
         device              = gc ? gc->GetDevice() : nullptr;
         graphics_context    = gc;
-        primitive_manager   = gc ? gc->GetPrimitiveManager() : nullptr;
         mtl_manager         = gc ? gc->GetMaterialManager() : nullptr;
         tl_engine           = new layout::TextLayout(tf);
 
@@ -320,14 +318,6 @@ namespace hgl::graph
         return(result);
     }
 
-    Primitive *TextRender::CreatePrimitive(TextGeometry *text_geometry)
-    {
-        if(primitive_manager && binding_set)
-            return primitive_manager->CreatePrimitive(text_geometry, mtl_fs, binding_set, pipeline);
-
-        return(nullptr);
-    }
-
     void TextRender::Release(TextGeometry *tr)
     {
         if(!tr)return;
@@ -342,4 +332,3 @@ namespace hgl::graph
     }
 
 }//namespace hgl::graph
-

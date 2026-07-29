@@ -53,7 +53,7 @@ namespace hgl::ecs
 
     void TextRenderPipelineAdapter::GetRenderPrimitives(std::vector<hgl::graph::Primitive*>& out) const
     {
-        impl_->GetRenderPrimitives(out);
+        (void)out;
     }
 
     void TextRenderPipelineAdapter::Render(hgl::graph::RenderCmdBuffer* cmd)
@@ -61,14 +61,7 @@ namespace hgl::ecs
         if (!cmd)
             return;
 
-        std::vector<hgl::graph::Primitive*> primitives;
-        impl_->GetRenderPrimitives(primitives);
-
-        for (auto* primitive : primitives)
-        {
-            if (primitive)
-                cmd->Render(primitive);
-        }
+        impl_->Render(cmd);
     }
 
 }  // namespace hgl::ecs

@@ -20,15 +20,16 @@ namespace hgl
         class FontSource;
         class TileFont;
         class MaterialProgram;
-        class Primitive;
         class TextGeometry;
         class DescriptorBindingSet;
         class VertexInputLayout;
         class Pipeline;
         class Sampler;
         class DeviceBuffer;
+        struct GeometryDataBuffer;
+        struct GeometryDrawRange;
         class MaterialManager;
-        class PrimitiveManager;
+        class RenderCmdBuffer;
     }
 
     namespace ecs
@@ -49,7 +50,8 @@ namespace hgl
 
                 graph::layout::CharStyle char_style{};
                 graph::TextGeometry* geometry = nullptr;
-                graph::Primitive* primitive = nullptr;
+                graph::GeometryDataBuffer* data_buffer = nullptr;
+                graph::GeometryDrawRange* draw_range = nullptr;
                 graph::VertexInputLayout* binding_vil = nullptr;
                 graph::DescriptorBindingSet* descriptor_binding_set = nullptr;
 
@@ -76,7 +78,6 @@ namespace hgl
             std::unordered_map<graph::FontSource*, BatchInput> frame_inputs;
             graph::GraphicsContext* frame_graphics_context = nullptr;
             graph::MaterialManager* frame_material_manager = nullptr;
-            graph::PrimitiveManager* frame_primitive_manager = nullptr;
             graph::RenderPass* frame_render_pass = nullptr;
             graph::VulkanDevice* frame_device = nullptr;
             graph::IRenderTarget* frame_render_target = nullptr;
@@ -92,15 +93,13 @@ namespace hgl
             void RunCollect();
             void RunBuild();
             void RunSync();
-
-            void GetRenderPrimitives(std::vector<graph::Primitive*>& out_primitives) const;
+            void Render(graph::RenderCmdBuffer* cmd);
 
         private:
             RenderResources* GetOrCreateResources(graph::FontSource* font_source, uint32_t estimate_chars);
 
             bool PrepareFrameResources(graph::GraphicsContext*& graphics_context,
                                        graph::MaterialManager*& material_manager,
-                                       graph::PrimitiveManager*& primitive_manager,
                                        graph::RenderPass*& render_pass,
                                        graph::VulkanDevice*& device,
                                        graph::IRenderTarget*& render_target);
@@ -109,8 +108,6 @@ namespace hgl
                              std::unordered_map<graph::FontSource*, BatchInput>& inputs);
 
             void ProcessInputs(std::unordered_map<graph::FontSource*, BatchInput>& inputs,
-                               graph::MaterialManager* material_manager,
-                               graph::PrimitiveManager* primitive_manager,
                                graph::RenderPass* render_pass,
                                graph::VulkanDevice* device);
 

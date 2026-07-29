@@ -16,16 +16,17 @@
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/graph/module/MaterialManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/vk/VKRenderPass.h>
-#include<hgl/graph/mesh/Primitive.h>
+#include<hgl/graph/mesh/GeometryDataBuffer.h>
+#include<hgl/graph/mesh/GeometryDrawRange.h>
 #include<hgl/graph/tile/TileData.h>
 #include<hgl/vk/VKFormat.h>
 #include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/VKCommandBuffer.h>
 
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/common/RenderOptions.h>
@@ -100,7 +101,6 @@ namespace hgl::ecs
             render_context = world->GetRenderContext();
 
         auto* graphics_context = render_context ? render_context->GetGraphicsContext() : nullptr;
-        auto* primitive_manager = graphics_context ? graphics_context->GetPrimitiveManager() : nullptr;
         auto* material_manager = graphics_context ? graphics_context->GetMaterialManager() : nullptr;
         auto* sampler_manager = graphics_context ? graphics_context->GetSamplerManager() : nullptr;
         auto* buffer_manager = graphics_context ? graphics_context->GetBufferManager() : nullptr;
@@ -116,11 +116,8 @@ namespace hgl::ecs
                 res.geometry = nullptr;
             }
 
-            if (res.primitive && primitive_manager)
-            {
-                primitive_manager->Release(res.primitive);
-                res.primitive = nullptr;
-            }
+            SAFE_CLEAR(res.data_buffer);
+            SAFE_CLEAR(res.draw_range);
 
             if (res.material && material_manager)
             {
@@ -183,7 +180,6 @@ namespace hgl::ecs
 
         if (!PrepareFrameResources(frame_graphics_context,
                                    frame_material_manager,
-                                   frame_primitive_manager,
                                    frame_render_pass,
                                    frame_device,
                                    frame_render_target))
@@ -202,8 +198,6 @@ namespace hgl::ecs
     void TextRenderPipeline::RunBuild()
     {
         ProcessInputs(frame_inputs,
-                      frame_material_manager,
-                      frame_primitive_manager,
                       frame_render_pass,
                       frame_device);
     }
@@ -213,12 +207,22 @@ namespace hgl::ecs
         ClearChanges(frame_texts);
     }
 
-    void TextRenderPipeline::GetRenderPrimitives(std::vector<graph::Primitive*>& out_primitives) const
+    void TextRenderPipeline::Render(graph::RenderCmdBuffer* cmd)
     {
-        for (const auto& pair : resources_by_font)
+        if (!cmd)
+            return;
+
+        for (auto &pair : resources_by_font)
         {
-            if (pair.second.primitive)
-                out_primitives.push_back(pair.second.primitive);
+            auto &res = pair.second;
+
+            if (!res.pipeline || !res.material || !res.data_buffer || !res.draw_range || res.last_draw_char_count == 0)
+                continue;
+
+            cmd->BindPipeline(res.pipeline);
+            cmd->BindDescriptorSets(res.material);
+            cmd->BindDataBuffer(res.data_buffer);
+            cmd->Draw(res.data_buffer, res.draw_range);
         }
     }
 
@@ -411,7 +415,6 @@ namespace hgl::ecs
 
     bool TextRenderPipeline::PrepareFrameResources(graph::GraphicsContext*& graphics_context,
                                                    graph::MaterialManager*& material_manager,
-                                                   graph::PrimitiveManager*& primitive_manager,
                                                    graph::RenderPass*& render_pass,
                                                    graph::VulkanDevice*& device,
                                                    graph::IRenderTarget*& render_target)
@@ -434,7 +437,6 @@ namespace hgl::ecs
             return false;
 
         material_manager = graphics_context ? graphics_context->GetMaterialManager() : nullptr;
-        primitive_manager = graphics_context ? graphics_context->GetPrimitiveManager() : nullptr;
 
         render_target = render_context->GetCurrentRenderTarget();
         if (!render_target && world)
@@ -442,7 +444,7 @@ namespace hgl::ecs
 
         render_pass = render_target ? render_target->GetRenderPass() : nullptr;
 
-        if (!material_manager || !primitive_manager || !render_pass)
+        if (!material_manager || !render_pass)
             return false;
 
         return true;
@@ -480,8 +482,6 @@ namespace hgl::ecs
     }
 
     void TextRenderPipeline::ProcessInputs(std::unordered_map<graph::FontSource*, BatchInput>& inputs,
-                                           graph::MaterialManager* material_manager,
-                                           graph::PrimitiveManager* primitive_manager,
                                            graph::RenderPass* render_pass,
                                            graph::VulkanDevice* device)
     {
@@ -566,27 +566,44 @@ namespace hgl::ecs
                     if (draw_count > 0)
                     {
                         resources->last_draw_char_count = static_cast<uint32_t>(draw_count);
-
-                        auto* prim = resources->primitive;
-                        if (prim)
-                            prim->UpdateGeometry();
                     }
+                    else
+                        resources->last_draw_char_count = 0;
                 }
             }
 
-            graph::Primitive* primitive = resources->primitive;
-            if (!primitive)
+            if (!resources->data_buffer || !resources->draw_range)
             {
-                primitive = primitive_manager->CreatePrimitive(geometry, resources->material, binding_set, resources->pipeline);
-                if (!primitive)
+                SAFE_CLEAR(resources->data_buffer);
+                SAFE_CLEAR(resources->draw_range);
+
+                resources->data_buffer = new graph::GeometryDataBuffer(resources->binding_vil->GetVertexAttribCount(),
+                                                                       geometry->GetIBO(),
+                                                                       geometry->GetVDM());
+                if (!resources->data_buffer)
                 {
-                    GLogError("[TextRenderPipeline] CreatePrimitive failed for descriptor binding path");
+                    GLogError("[TextRenderPipeline] Create GeometryDataBuffer failed");
                     continue;
                 }
 
-                resources->primitive = primitive;
+                resources->draw_range = new graph::GeometryDrawRange();
+                if (!resources->draw_range)
+                {
+                    SAFE_CLEAR(resources->data_buffer);
+                    GLogError("[TextRenderPipeline] Create GeometryDrawRange failed");
+                    continue;
+                }
             }
 
+            if (!resources->data_buffer->Update(geometry,
+                                                resources->binding_vil->GetVIFList(),
+                                                resources->binding_vil->GetVertexAttribCount()))
+            {
+                GLogError("[TextRenderPipeline] GeometryDataBuffer::Update failed");
+                continue;
+            }
+
+            resources->draw_range->Set(geometry);
             resources->last_string_count = static_cast<uint32_t>(input.texts.size());
         }
     }
@@ -600,4 +617,3 @@ namespace hgl::ecs
         }
     }
 }
-

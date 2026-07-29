@@ -19,7 +19,6 @@ namespace hgl::graph
     class TileFont;
     class TextGeometry;
     class MaterialManager;
-    class PrimitiveManager;
     class DescriptorBindingSet;
     class DeviceBuffer;
 
@@ -47,7 +46,6 @@ namespace hgl::graph
         VulkanDevice *      device;
         GraphicsContext *   graphics_context;
 
-        PrimitiveManager *  primitive_manager;
         MaterialManager *   mtl_manager;
 
         Sampler *           sampler;
@@ -108,8 +106,6 @@ namespace hgl::graph
     public:
 
         TextGeometry *CreateGeometry(const TextGeometryType &tpt,const U16StringView&str);                              ///<创建一个文本几何体，并进行简单排版
-
-        Primitive *CreatePrimitive(TextGeometry *text_geometry);                                                        ///<创建一个网格对象用于渲染指定的文本几何体
 
         void Release(TextGeometry *);                                                                                   ///<释放一个文本几何体
     };//class TextRender
