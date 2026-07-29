@@ -11,7 +11,6 @@ namespace hgl
     namespace graph
     {
         class MaterialProgram;
-        class MaterialInstance;
         class DescriptorBindingSet;
         class Pipeline;
         struct GeometryDataBuffer;
@@ -56,10 +55,6 @@ namespace hgl::ecs
         virtual glm::mat4 GetWorldMatrix() const = 0;
 
         // For material batching support
-        // Note: GetMaterialInstance() is retained for legacy path compatibility but returns nullptr
-        // on all current code paths (Primitive no longer holds a MaterialInstance).
-        virtual hgl::graph::MaterialInstance* GetMaterialInstance() const { return nullptr; }
-        virtual hgl::graph::DescriptorBindingSet* GetDescriptorBindingSet() const = 0;
         virtual hgl::graph::MaterialProgram* GetMaterialProgram() const = 0;
         virtual hgl::graph::Pipeline* GetPipeline() const = 0;
         virtual const hgl::graph::GeometryDataBuffer *GetGeometryDataBuffer() const = 0;

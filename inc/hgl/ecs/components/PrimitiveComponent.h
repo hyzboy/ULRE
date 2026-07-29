@@ -224,7 +224,6 @@ namespace hgl::ecs
         void ClearMaterialAuthoringResources();
 
         // MaterialProgram access (returns override if set, otherwise descriptor-bound material)
-        hgl::graph::MaterialInstance* GetMaterialInstance() const;
         hgl::graph::MaterialProgram* GetMaterialProgram() const;
 
         // Pipeline access: override → runtime resolved

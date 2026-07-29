@@ -41,6 +41,22 @@ namespace hgl::ecs
     {
         constexpr uint32_t InvalidBatchDataIndexRow = uint32_t(-1);
 
+        graph::DescriptorBindingSet *GetLegacyDescriptorBindingSet(RenderItem *item)
+        {
+            if (!item)
+                return nullptr;
+
+            auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(item);
+            if (!primitive_item)
+                return nullptr;
+
+            auto primitive_comp = primitive_item->GetPrimitiveComponent();
+            if (!primitive_comp || primitive_comp->HasMaterialRecipe())
+                return nullptr;
+
+            return primitive_comp->GetInternalDescriptorBindingSet();
+        }
+
         uint64_t HashDBSResourceLayoutBindingSignature(const graph::DescriptorBindingSet *binding_set,
                                                  const graph::mtl::MaterialResourceLayout &contract)
         {
@@ -156,7 +172,7 @@ namespace hgl::ecs
 
             if (!uses_recipe_runtime)
             {
-                if (auto *binding_set = item->GetDescriptorBindingSet())
+                if (auto *binding_set = GetLegacyDescriptorBindingSet(item))
                 {
                     if (binding_set->HasSSBOBinding(primary_ssbo_type))
                         return binding_set->GetSlotIndex(primary_ssbo_type);
@@ -835,7 +851,7 @@ namespace hgl::ecs
                 vil = item->GetGeometryBindingVIL();
                 if (!vil)
                     vil = material->GetDefaultVIL();
-                auto* dbs = item->GetDescriptorBindingSet();
+                auto* dbs = GetLegacyDescriptorBindingSet(item);
                 if (dbs)
                 {
                     vil = dbs->GetVIL();
@@ -867,7 +883,7 @@ namespace hgl::ecs
                 continue;
 
             const auto &material_resource_layout = material->GetMaterialResourceLayout();
-            auto *binding_set = uses_recipe_runtime ? nullptr : item->GetDescriptorBindingSet();
+            auto *binding_set = uses_recipe_runtime ? nullptr : GetLegacyDescriptorBindingSet(item);
             if (binding_set)
             {
                 if (!binding_set->SatisfiesResourceLayout(material_resource_layout, material->GetName().c_str()))

@@ -35,6 +35,22 @@ namespace hgl::ecs
 {
     namespace
     {
+        graph::DescriptorBindingSet *GetLegacyDescriptorBindingSet(const RenderItem *item)
+        {
+            if (!item)
+                return nullptr;
+
+            auto *primitive_item = dynamic_cast<const PrimitiveRenderItem *>(item);
+            if (!primitive_item)
+                return nullptr;
+
+            auto primitive_comp = primitive_item->GetPrimitiveComponent();
+            if (!primitive_comp || primitive_comp->HasMaterialRecipe())
+                return nullptr;
+
+            return primitive_comp->GetInternalDescriptorBindingSet();
+        }
+
         void ResetMaterialRecipe(graph::mtl::MaterialRecipe &recipe)
         {
             recipe.recipe_name.clear();
@@ -305,7 +321,7 @@ namespace hgl::ecs
 
         if (!uses_recipe_runtime)
         {
-            if (auto *binding_set = item->GetDescriptorBindingSet())
+            if (auto *binding_set = GetLegacyDescriptorBindingSet(item))
             {
                 for (uint32_t i = 0; i < uint32_t(graph::mtl::SSBOType::RANGE_SIZE); ++i)
                 {
@@ -1122,7 +1138,7 @@ namespace hgl::ecs
                 if (!item)
                     continue;
 
-                auto *binding_set = item->GetDescriptorBindingSet();
+                auto *binding_set = GetLegacyDescriptorBindingSet(item);
                 graph::DescriptorBindingSet::TextureBinding binding{};
                 if (!binding_set || !binding_set->GetTextureBinding(req.texture_slot, binding))
                 {
@@ -1445,7 +1461,7 @@ namespace hgl::ecs
                         if (!item)
                             continue;
 
-                        auto *binding_set = item->GetDescriptorBindingSet();
+                        auto *binding_set = GetLegacyDescriptorBindingSet(item);
                         if (!binding_set || !binding_set->HasSSBOBinding(req.ssbo_type))
                             continue;
 
@@ -1511,7 +1527,7 @@ namespace hgl::ecs
                         if (!item)
                             continue;
 
-                        auto *binding_set = item->GetDescriptorBindingSet();
+                        auto *binding_set = GetLegacyDescriptorBindingSet(item);
                         if (!binding_set || !binding_set->HasSSBOBinding(req.ssbo_type))
                             continue;
 
@@ -1590,7 +1606,7 @@ namespace hgl::ecs
                         if (!item)
                             continue;
 
-                        auto *binding_set = item->GetDescriptorBindingSet();
+                        auto *binding_set = GetLegacyDescriptorBindingSet(item);
                         if (!binding_set || !binding_set->HasSSBOBinding(req.ssbo_type))
                             continue;
 
@@ -1756,7 +1772,7 @@ namespace hgl::ecs
                     if (!item)
                         continue;
 
-                    auto *binding_set = item->GetDescriptorBindingSet();
+                    auto *binding_set = GetLegacyDescriptorBindingSet(item);
                     graph::DescriptorBindingSet::SSBOBinding binding{};
                     if (!binding_set || !binding_set->GetSSBOBinding(req.ssbo_type, binding))
                     {

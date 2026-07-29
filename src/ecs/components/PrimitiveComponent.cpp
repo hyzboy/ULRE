@@ -441,17 +441,6 @@ namespace hgl::ecs
         }
     }
 
-    hgl::graph::MaterialInstance* PrimitiveComponent::GetMaterialInstance() const
-    {
-        if (HasMaterialRecipe())
-            return nullptr;
-
-        if (overrideMaterial)
-            return overrideMaterial;
-
-        return nullptr;
-    }
-
     hgl::graph::DescriptorBindingSet* PrimitiveComponent::GetInternalDescriptorBindingSet() const
     {
         if (HasMaterialRecipe())
