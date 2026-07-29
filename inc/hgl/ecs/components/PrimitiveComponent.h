@@ -18,14 +18,12 @@ namespace hgl
 
     namespace graph
     {
-        class DescriptorBindingSet;
         class DeviceBuffer;
         struct GeometryDataBuffer;
         struct GeometryDrawRange;
         class Geometry;
         class PrimitiveAsset;
         class MaterialProgram;
-        class MaterialInstance;
         class Pipeline;
         class RenderPass;
         class Sampler;
@@ -44,7 +42,6 @@ namespace hgl::ecs
      *
      * Features:
      * - Holds reference to hgl::graph::PrimitiveAsset
-     * - Supports MaterialInstance override
      * - Provides access to MaterialProgram, Pipeline, and AABB data
      * - Compatible with RenderCollector for batched rendering
      */
@@ -101,9 +98,7 @@ namespace hgl::ecs
         hgl::graph::MaterialProgram *runtime_material = nullptr;
         const hgl::graph::VertexInputLayout *runtime_vil = nullptr;
         bool runtime_vil_owned = false;
-        hgl::graph::MaterialInstance* overrideMaterial;   // Optional material override (not owned)
-        hgl::graph::DescriptorBindingSet* descriptorBindingSet; // Optional explicit binding set (not owned)
-        hgl::graph::Pipeline* overridePipeline;           // Optional pipeline override (not owned)
+        hgl::graph::Pipeline* overridePipeline = nullptr;  // Optional pipeline override (not owned)
         bool hasMaterialRecipe = false;
         hgl::graph::mtl::MaterialRecipe materialRecipe;
         std::array<MaterialTextureAuthoringResource, static_cast<size_t>(hgl::graph::mtl::TextureSlot::RANGE_SIZE)> materialTextureResources{};
@@ -125,8 +120,6 @@ namespace hgl::ecs
 
         explicit PrimitiveComponent(const std::string& name = "Primitive")
             : RenderableComponent(name)
-            , overrideMaterial(nullptr)
-            , descriptorBindingSet(nullptr)
             , overridePipeline(nullptr)
             , positionSourceSpec(PositionSourceSpec::MeshVertex)
             , transformPolicySpec{}
@@ -150,15 +143,6 @@ namespace hgl::ecs
         const hgl::graph::GeometryDataBuffer *GetRuntimeGeometryDataBuffer() const;
         const hgl::graph::GeometryDrawRange *GetRuntimeGeometryDrawRange() const;
         const hgl::graph::VertexInputLayout *GetRuntimeVIL() const;
-
-        // Legacy runtime bridge — internal engine use only during Phase 7 migration.
-        void SetInternalOverrideMaterial(hgl::graph::MaterialInstance* mi);
-        hgl::graph::MaterialInstance* GetInternalOverrideMaterial() const { return overrideMaterial; }
-        void ClearInternalOverrideMaterial() { SetInternalOverrideMaterial(nullptr); }
-
-        void SetInternalDescriptorBindingSet(hgl::graph::DescriptorBindingSet* set);
-        hgl::graph::DescriptorBindingSet* GetInternalDescriptorBindingSet() const;
-        void ClearInternalDescriptorBindingSet() { SetInternalDescriptorBindingSet(nullptr); }
 
         void SetOverridePipeline(hgl::graph::Pipeline* p) { overridePipeline = p; }
         hgl::graph::Pipeline* GetOverridePipeline() const { return overridePipeline; }

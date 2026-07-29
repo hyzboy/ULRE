@@ -41,87 +41,6 @@ namespace hgl::ecs
     {
         constexpr uint32_t InvalidBatchDataIndexRow = uint32_t(-1);
 
-        graph::DescriptorBindingSet *GetLegacyDescriptorBindingSet(RenderItem *item)
-        {
-            if (!item)
-                return nullptr;
-
-            auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(item);
-            if (!primitive_item)
-                return nullptr;
-
-            auto primitive_comp = primitive_item->GetPrimitiveComponent();
-            if (!primitive_comp || primitive_comp->HasMaterialRecipe())
-                return nullptr;
-
-            return primitive_comp->GetInternalDescriptorBindingSet();
-        }
-
-        uint64_t HashDBSResourceLayoutBindingSignature(const graph::DescriptorBindingSet *binding_set,
-                                                 const graph::mtl::MaterialResourceLayout &contract)
-        {
-            if (!binding_set)
-                return 0;
-
-            uint64_t hash = hgl::hash::FNV1aInit<uint64_t>();
-            uint32_t count = 0;
-
-            for (const auto &req : contract.requirements)
-            {
-                if (!req.required)
-                    continue;
-
-                switch (req.semantic)
-                {
-                case graph::mtl::DescriptorSemantic::MaterialInstance:
-                case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
-                case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
-                {
-                    graph::DescriptorBindingSet::SSBOBinding binding{};
-                    if (!binding_set->GetSSBOBinding(req.ssbo_type, binding))
-                        continue;
-
-                    hash = hgl::hash::FNV1aAppendValueBytes(hash, req.semantic);
-                    hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.ssbo_type);
-                    hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.ssbo_id);
-                    // MaterialInstance slot index is per-instance data-row identity.
-                    // It must be written to the batch DataIndexRows table, not treated as
-                    // a batch split key; otherwise same material + same SSBO gets split
-                    // into one batch per color/slot (e.g. Gizmo RGB + center white).
-                    if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
-                        hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.slot_index);
-                    ++count;
-                    break;
-                }
-                case graph::mtl::DescriptorSemantic::MaterialTexture:
-                case graph::mtl::DescriptorSemantic::MaterialSampler:
-                {
-                    graph::DescriptorBindingSet::TextureBinding binding{};
-                    if (!binding_set->GetTextureBinding(req.texture_slot, binding))
-                        continue;
-
-                    hash = hgl::hash::FNV1aAppendValueBytes(hash, req.semantic);
-                    hash = hgl::hash::FNV1aAppendValueBytes(hash, req.texture_slot);
-
-                    const uint64_t texture_ptr = uint64_t(uintptr_t(binding.texture));
-                    const uint64_t sampler_ptr = uint64_t(uintptr_t(binding.sampler));
-                    hash = hgl::hash::FNV1aAppendValueBytes(hash, texture_ptr);
-                    hash = hgl::hash::FNV1aAppendValueBytes(hash, sampler_ptr);
-                    ++count;
-                    break;
-                }
-                default:
-                    break;
-                }
-            }
-
-            if (count == 0)
-                return 0;
-
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, count);
-            return hash;
-        }
-
         void WriteICB(VkDrawIndirectCommand* draw_cmd, DrawBatch* batch)
         {
             if (!draw_cmd || !batch || !batch->geom_draw_range)
@@ -172,11 +91,7 @@ namespace hgl::ecs
 
             if (!uses_recipe_runtime)
             {
-                if (auto *binding_set = GetLegacyDescriptorBindingSet(item))
-                {
-                    if (binding_set->HasSSBOBinding(primary_ssbo_type))
-                        return binding_set->GetSlotIndex(primary_ssbo_type);
-                }
+                // Legacy DBS path is no longer active; return 0 as default row.
             }
 
             if (uses_recipe_runtime)
@@ -851,11 +766,6 @@ namespace hgl::ecs
                 vil = item->GetGeometryBindingVIL();
                 if (!vil)
                     vil = material->GetDefaultVIL();
-                auto* dbs = GetLegacyDescriptorBindingSet(item);
-                if (dbs)
-                {
-                    vil = dbs->GetVIL();
-                }
 
                 if(!vil)
                 {
@@ -881,14 +791,6 @@ namespace hgl::ecs
 
             if (!material || !pipeline)
                 continue;
-
-            const auto &material_resource_layout = material->GetMaterialResourceLayout();
-            auto *binding_set = uses_recipe_runtime ? nullptr : GetLegacyDescriptorBindingSet(item);
-            if (binding_set)
-            {
-                if (!binding_set->SatisfiesResourceLayout(material_resource_layout, material->GetName().c_str()))
-                    continue;
-            }
 
             uint64_t program_signature = 0;
             uint64_t binding_signature = 0;
@@ -938,18 +840,6 @@ namespace hgl::ecs
                     cache_value.texture_slot_handles = texture_slot_handles;
                     cache_value.has_texture_slot_handles = has_texture_slot_handles;
                     material_spec_hash_cache.emplace(material, std::move(cache_value));
-                }
-            }
-
-            if (binding_set)
-            {
-                const uint64_t dbs_binding_signature = HashDBSResourceLayoutBindingSignature(binding_set, material_resource_layout);
-                if (dbs_binding_signature != 0)
-                {
-                    uint64_t merged_signature = hgl::hash::FNV1aInit<uint64_t>();
-                    merged_signature = hgl::hash::FNV1aAppendValueBytes(merged_signature, binding_signature);
-                    merged_signature = hgl::hash::FNV1aAppendValueBytes(merged_signature, dbs_binding_signature);
-                    binding_signature = merged_signature;
                 }
             }
 

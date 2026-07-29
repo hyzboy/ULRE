@@ -35,22 +35,6 @@ namespace hgl::ecs
 {
     namespace
     {
-        graph::DescriptorBindingSet *GetLegacyDescriptorBindingSet(const RenderItem *item)
-        {
-            if (!item)
-                return nullptr;
-
-            auto *primitive_item = dynamic_cast<const PrimitiveRenderItem *>(item);
-            if (!primitive_item)
-                return nullptr;
-
-            auto primitive_comp = primitive_item->GetPrimitiveComponent();
-            if (!primitive_comp || primitive_comp->HasMaterialRecipe())
-                return nullptr;
-
-            return primitive_comp->GetInternalDescriptorBindingSet();
-        }
-
         void ResetMaterialRecipe(graph::mtl::MaterialRecipe &recipe)
         {
             recipe.recipe_name.clear();
@@ -311,36 +295,6 @@ namespace hgl::ecs
         graph::MaterialProgram *material = item->GetMaterialProgram();
         if (!BuildMaterialRecipeForMaterial(material, out_recipe))
             return false;
-
-        bool uses_recipe_runtime = false;
-        if (auto *primitive_item = dynamic_cast<const PrimitiveRenderItem *>(item))
-        {
-            auto primitive_comp = primitive_item->GetPrimitiveComponent();
-            uses_recipe_runtime = primitive_comp && primitive_comp->HasMaterialRecipe();
-        }
-
-        if (!uses_recipe_runtime)
-        {
-            if (auto *binding_set = GetLegacyDescriptorBindingSet(item))
-            {
-                for (uint32_t i = 0; i < uint32_t(graph::mtl::SSBOType::RANGE_SIZE); ++i)
-                {
-                    const auto ssbo_type = static_cast<graph::mtl::SSBOType>(i);
-                    graph::DescriptorBindingSet::SSBOBinding binding{};
-                    if (!binding_set->GetSSBOBinding(ssbo_type, binding))
-                        continue;
-
-                    if (!out_recipe.domain.empty())
-                        out_recipe.domain += "|";
-                    out_recipe.domain += "dbs:";
-                    out_recipe.domain += std::to_string(static_cast<uint32_t>(binding.ssbo_type));
-                    out_recipe.domain += ":";
-                    out_recipe.domain += std::to_string(binding.ssbo_id);
-                    out_recipe.domain += ":";
-                    out_recipe.domain += std::to_string(binding.slot_index);
-                }
-            }
-        }
 
         return true;
     }
@@ -1128,75 +1082,8 @@ namespace hgl::ecs
             if (!batch->key.IsLegacyRuntime())
                 return false;
 
-            bool found_binding = false;
-            bool found_missing = false;
-            graph::Texture *reference_texture = nullptr;
-            graph::Sampler *reference_sampler = nullptr;
-
-            for (RenderItem *item : batch->items)
-            {
-                if (!item)
-                    continue;
-
-                auto *binding_set = GetLegacyDescriptorBindingSet(item);
-                graph::DescriptorBindingSet::TextureBinding binding{};
-                if (!binding_set || !binding_set->GetTextureBinding(req.texture_slot, binding))
-                {
-                    found_missing = true;
-                    continue;
-                }
-
-                const bool texture_ok = binding.texture != nullptr;
-                const bool sampler_ok = binding.sampler != nullptr;
-                const bool semantic_ok = (req.semantic == graph::mtl::DescriptorSemantic::MaterialTexture)
-                                       ? texture_ok
-                                       : (texture_ok && sampler_ok);
-                if (!semantic_ok)
-                {
-                    found_missing = true;
-                    continue;
-                }
-
-                if (!found_binding)
-                {
-                    reference_texture = binding.texture;
-                    reference_sampler = binding.sampler;
-                    found_binding = true;
-                    continue;
-                }
-
-                bool consistent = (reference_texture == binding.texture);
-                if (consistent && req.semantic == graph::mtl::DescriptorSemantic::MaterialSampler)
-                    consistent = (reference_sampler == binding.sampler);
-
-                if (!consistent)
-                {
-                    GLogError("[DescriptorBinding] Batch texture mismatch: material=%s semantic=%s descriptor=%s texture_slot=%u. Required resource identity must be consistent within one batch.",
-                              material->GetName().c_str(),
-                              graph::mtl::GetDescriptorSemanticName(req.semantic),
-                              req.name,
-                              static_cast<uint32_t>(req.texture_slot));
-                    if (req.required)
-                        batch->descriptor_bind_valid = false;
-                    return false;
-                }
-            }
-
-            if (found_binding && found_missing)
-            {
-                GLogWarning("[DescriptorBinding] Batch contract mixed texture mode: material=%s semantic=%s descriptor=%s texture_slot=%u. Some items provide DBS texture binding while others rely on material-level binding.",
-                            material->GetName().c_str(),
-                            graph::mtl::GetDescriptorSemanticName(req.semantic),
-                            req.name,
-                            static_cast<uint32_t>(req.texture_slot));
-            }
-
-            if (!found_binding)
-                return false;
-
-            out_texture = reference_texture;
-            out_sampler = reference_sampler;
-            return true;
+            // Legacy DBS texture path is no longer active.
+            return false;
         };
         auto batch_uses_recipe_runtime = [&](MaterialBatch *batch) -> bool
         {
@@ -1452,46 +1339,7 @@ namespace hgl::ecs
 
                 if (!mi_ssbo && batch && !batch_uses_recipe_runtime(batch))
                 {
-                    uint32_t fallback_ssbo_id = 0;
-                    bool found_binding_set = false;
-                    bool inconsistent_binding_set = false;
-
-                    for (RenderItem *item : batch->items)
-                    {
-                        if (!item)
-                            continue;
-
-                        auto *binding_set = GetLegacyDescriptorBindingSet(item);
-                        if (!binding_set || !binding_set->HasSSBOBinding(req.ssbo_type))
-                            continue;
-
-                        const uint32_t ssbo_id = binding_set->GetSSBOID(req.ssbo_type);
-                        if (!found_binding_set)
-                        {
-                            fallback_ssbo_id = ssbo_id;
-                            found_binding_set = true;
-                        }
-                        else if (fallback_ssbo_id != ssbo_id)
-                        {
-                            inconsistent_binding_set = true;
-                            break;
-                        }
-                    }
-
-                    if (inconsistent_binding_set)
-                    {
-                        log_missing_ssbo_once(material, req, "mixed descriptor binding sets in one batch", 0);
-                        if (req.required)
-                            batch->descriptor_bind_valid = false;
-                        break;
-                    }
-
-                    if (found_binding_set && fallback_ssbo_id != req.ssbo_id)
-                    {
-                        mi_ssbo = resolve_domain_ssbo(
-                            graph::mtl::SSBOAddress{req.ssbo_type, fallback_ssbo_id, 0},
-                            "MaterialInstance");
-                    }
+                    // Legacy DBS SSBO fallback is no longer active.
                 }
 
                 if (mi_ssbo)
@@ -1518,49 +1366,7 @@ namespace hgl::ecs
 
                 if (!table_buffer && batch && !batch_uses_recipe_runtime(batch))
                 {
-                    uint32_t fallback_ssbo_id = 0;
-                    bool found_binding_set = false;
-                    bool inconsistent_binding_set = false;
-
-                    for (RenderItem *item : batch->items)
-                    {
-                        if (!item)
-                            continue;
-
-                        auto *binding_set = GetLegacyDescriptorBindingSet(item);
-                        if (!binding_set || !binding_set->HasSSBOBinding(req.ssbo_type))
-                            continue;
-
-                        const uint32_t ssbo_id = binding_set->GetSSBOID(req.ssbo_type);
-                        if (!found_binding_set)
-                        {
-                            fallback_ssbo_id = ssbo_id;
-                            found_binding_set = true;
-                        }
-                        else if (fallback_ssbo_id != ssbo_id)
-                        {
-                            inconsistent_binding_set = true;
-                            break;
-                        }
-                    }
-
-                    if (inconsistent_binding_set)
-                    {
-                        log_missing_ssbo_once(material, req, "mixed descriptor binding sets in one batch", static_cast<int32_t>(req.texture_slot));
-                        if (req.required)
-                            batch->descriptor_bind_valid = false;
-                        break;
-                    }
-
-                    if (found_binding_set && fallback_ssbo_id != req.ssbo_id)
-                    {
-                        table_buffer = resolve_domain_ssbo(
-                            graph::mtl::SSBOAddress{
-                                req.ssbo_type,
-                                fallback_ssbo_id,
-                                static_cast<uint32_t>(req.texture_slot)},
-                            "MaterialTextureLayerTable");
-                    }
+                    // Legacy DBS SSBO fallback is no longer active.
                 }
 
                 if (table_buffer)
@@ -1597,49 +1403,7 @@ namespace hgl::ecs
 
                 if (!table_buffer && batch && !batch_uses_recipe_runtime(batch))
                 {
-                    uint32_t fallback_ssbo_id = 0;
-                    bool found_binding_set = false;
-                    bool inconsistent_binding_set = false;
-
-                    for (RenderItem *item : batch->items)
-                    {
-                        if (!item)
-                            continue;
-
-                        auto *binding_set = GetLegacyDescriptorBindingSet(item);
-                        if (!binding_set || !binding_set->HasSSBOBinding(req.ssbo_type))
-                            continue;
-
-                        const uint32_t ssbo_id = binding_set->GetSSBOID(req.ssbo_type);
-                        if (!found_binding_set)
-                        {
-                            fallback_ssbo_id = ssbo_id;
-                            found_binding_set = true;
-                        }
-                        else if (fallback_ssbo_id != ssbo_id)
-                        {
-                            inconsistent_binding_set = true;
-                            break;
-                        }
-                    }
-
-                    if (inconsistent_binding_set)
-                    {
-                        log_missing_ssbo_once(material, req, "mixed descriptor binding sets in one batch", static_cast<int32_t>(req.data_slot));
-                        if (req.required)
-                            batch->descriptor_bind_valid = false;
-                        break;
-                    }
-
-                    if (found_binding_set && fallback_ssbo_id != req.ssbo_id)
-                    {
-                        table_buffer = resolve_domain_ssbo(
-                            graph::mtl::SSBOAddress{
-                                req.ssbo_type,
-                                fallback_ssbo_id,
-                                static_cast<uint32_t>(req.data_slot)},
-                            "MaterialDataIndexTable");
-                    }
+                    // Legacy DBS SSBO fallback is no longer active.
                 }
 
                 if (table_buffer)
@@ -1742,82 +1506,8 @@ namespace hgl::ecs
             if (!material || !batch)
                 return true;
 
-            bool valid = true;
-
-            for (const auto &req : contract.requirements)
-            {
-                if (!req.required)
-                    continue;
-
-                switch (req.semantic)
-                {
-                case graph::mtl::DescriptorSemantic::MaterialInstance:
-                case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
-                case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
-                    break;
-                default:
-                    continue;
-                }
-
-                if (batch_uses_recipe_runtime(batch))
-                    continue;
-
-                bool found_binding = false;
-                bool found_missing = false;
-                bool has_reference_ssbo = false;
-                uint32_t reference_ssbo_id = 0;
-
-                for (RenderItem *item : batch->items)
-                {
-                    if (!item)
-                        continue;
-
-                    auto *binding_set = GetLegacyDescriptorBindingSet(item);
-                    graph::DescriptorBindingSet::SSBOBinding binding{};
-                    if (!binding_set || !binding_set->GetSSBOBinding(req.ssbo_type, binding))
-                    {
-                        found_missing = true;
-                        continue;
-                    }
-
-                    found_binding = true;
-
-                    if (!has_reference_ssbo)
-                    {
-                        reference_ssbo_id = binding.ssbo_id;
-                        has_reference_ssbo = true;
-                        continue;
-                    }
-
-                    if (reference_ssbo_id != binding.ssbo_id)
-                    {
-                        GLogError("[DescriptorBinding] Batch contract mismatch: material=%s semantic=%s descriptor=%s expected_ssbo_id=%u actual_ssbo_id=%u. Required resource identity must be consistent within one batch.",
-                                  material->GetName().c_str(),
-                                  graph::mtl::GetDescriptorSemanticName(req.semantic),
-                                  req.name,
-                                  reference_ssbo_id,
-                                  binding.ssbo_id);
-                        valid = false;
-                        break;
-                    }
-                }
-
-                if (!valid)
-                    break;
-
-                if (found_binding && found_missing)
-                {
-                    GLogWarning("[DescriptorBinding] Batch contract mixed binding mode: material=%s semantic=%s descriptor=%s. Some items provide required SSBO in DBS while others rely on fallback/domain lookup.",
-                                material->GetName().c_str(),
-                                graph::mtl::GetDescriptorSemanticName(req.semantic),
-                                req.name);
-                }
-            }
-
-            if (!valid)
-                batch->descriptor_bind_valid = false;
-
-            return valid;
+            // Legacy DBS validation no longer applies; all active batches use recipe runtime.
+            return true;
         };
 
         for (const auto &pair : cache.materialBatches)

@@ -561,114 +561,6 @@ namespace hgl::ecs
                 material_comp->program_dirty = true;
             }
         }
-
-        void ResetMaterialRuntimeForLegacy(const std::shared_ptr<MaterialComponent> &material_comp)
-        {
-            if (!material_comp)
-                return;
-
-            material_comp->program = nullptr;
-            material_comp->program_dirty = true;
-            material_comp->material_instance_row = uint32_t(-1);
-            material_comp->texture_layer_row = uint32_t(-1);
-            material_comp->data_index_row = uint32_t(-1);
-            material_comp->bindings_dirty = true;
-            material_comp->resources_dirty = true;
-            material_comp->valid = false;
-            material_comp->recipe_hash = 0;
-        }
-
-        void SyncLegacyMaterialRuntime(ECSContext *world,
-                                       const std::shared_ptr<PrimitiveComponent> &primitive_comp,
-                                       const std::shared_ptr<MaterialComponent> &material_comp)
-        {
-            if (!world || !primitive_comp || !material_comp)
-                return;
-
-            auto *current_program = primitive_comp->GetMaterialProgram();
-            if (!current_program)
-            {
-                ResetMaterialRuntimeForLegacy(material_comp);
-                return;
-            }
-
-            if (material_comp->program != current_program)
-            {
-                material_comp->program = current_program;
-                material_comp->program_dirty = false;
-                material_comp->material_instance_row = uint32_t(-1);
-                material_comp->texture_layer_row = uint32_t(-1);
-                material_comp->data_index_row = uint32_t(-1);
-                material_comp->bindings_dirty = true;
-                material_comp->resources_dirty = true;
-                material_comp->valid = false;
-            }
-
-            auto *program = current_program;
-            auto *dbs = primitive_comp->GetInternalDescriptorBindingSet();
-            if (!program)
-            {
-                ResetMaterialRuntimeForLegacy(material_comp);
-                return;
-            }
-
-            if (!dbs)
-            {
-                material_comp->material_instance_row = uint32_t(-1);
-                material_comp->texture_layer_row = uint32_t(-1);
-                material_comp->data_index_row = uint32_t(-1);
-                material_comp->bindings_dirty = true;
-                material_comp->resources_dirty = true;
-                material_comp->valid = false;
-                return;
-            }
-
-            if (auto rdbs = world->GetSystem<RenderDescriptorBindingSystem>())
-            {
-                const uint32_t mi_data_bytes = program->GetMIDataBytes();
-                if (mi_data_bytes > 0)
-                {
-                    for (const auto &req : program->GetMaterialResourceLayout().requirements)
-                    {
-                        if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
-                            continue;
-                        rdbs->RegisterMaterialStructLayout(req.ssbo_type, req.ssbo_id, mi_data_bytes);
-                    }
-                }
-            }
-
-            uint32_t material_instance_row = uint32_t(-1);
-            uint32_t texture_layer_row = uint32_t(-1);
-            uint32_t data_index_row = uint32_t(-1);
-
-            for (const auto &req : program->GetMaterialResourceLayout().requirements)
-            {
-                graph::DescriptorBindingSet::SSBOBinding binding{};
-                if (!dbs->GetSSBOBinding(req.ssbo_type, binding))
-                    continue;
-
-                switch (req.semantic)
-                {
-                    case graph::mtl::DescriptorSemantic::MaterialInstance:
-                        material_instance_row = binding.slot_index;
-                        if (data_index_row == uint32_t(-1))
-                            data_index_row = binding.slot_index;
-                        break;
-                    case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
-                        texture_layer_row = binding.slot_index;
-                        break;
-                    case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
-                        data_index_row = binding.slot_index;
-                        break;
-                    default:
-                        break;
-                }
-            }
-
-            material_comp->material_instance_row = material_instance_row;
-            material_comp->texture_layer_row = texture_layer_row;
-            material_comp->data_index_row = data_index_row;
-        }
     }
 
     RenderPrimitiveCollectSystem::RenderPrimitiveCollectSystem(const std::string& name)
@@ -1022,17 +914,8 @@ namespace hgl::ecs
                 continue;
 
             auto material_comp = entity->GetComponent<MaterialComponent>();
-            if (!material_comp
-             && (primitiveComp->HasMaterialRecipe()
-              || primitiveComp->GetMaterialProgram()))
+            if (!material_comp && primitiveComp->HasMaterialRecipe())
                 material_comp = entity->AddComponent<MaterialComponent>();
-
-            if (material_comp && !primitiveComp->HasMaterialRecipe())
-            {
-                if (material_comp->recipe_hash != 0)
-                    ResetMaterialRuntimeForLegacy(material_comp);
-                SyncLegacyMaterialRuntime(world, primitiveComp, material_comp);
-            }
 
             if (material_comp && primitiveComp->HasMaterialRecipe())
             {
