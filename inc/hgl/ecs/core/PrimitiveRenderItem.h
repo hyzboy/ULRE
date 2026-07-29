@@ -56,8 +56,7 @@ namespace hgl::ecs
 
         // MaterialProgram batching interface
         hgl::graph::Primitive* GetPrimitive() const override;
-        hgl::graph::MaterialInstance* GetMaterialInstance() const override;
-        hgl::graph::DescriptorBindingSet* GetDescriptorBindingSet() const override;
+        hgl::graph::MaterialInstance* GetMaterialInstance() const override;        hgl::graph::DescriptorBindingSet* GetDescriptorBindingSet() const override;
         hgl::graph::MaterialProgram* GetMaterialProgram() const override;
         hgl::graph::Pipeline* GetPipeline() const override;
         const hgl::graph::GeometryDataBuffer *GetGeometryDataBuffer() const override;

@@ -57,7 +57,8 @@ namespace hgl::ecs
         virtual glm::mat4 GetWorldMatrix() const = 0;
 
         // For material batching support
-        virtual hgl::graph::Primitive* GetPrimitive() const = 0;
+        // Note: GetPrimitive() is retained for legacy SetPrimitive path (may be null for PrimitiveAsset path).
+        virtual hgl::graph::Primitive* GetPrimitive() const { return nullptr; }
         virtual hgl::graph::MaterialInstance* GetMaterialInstance() const = 0;
         virtual hgl::graph::DescriptorBindingSet* GetDescriptorBindingSet() const = 0;
         virtual hgl::graph::MaterialProgram* GetMaterialProgram() const = 0;
