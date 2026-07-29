@@ -11,24 +11,21 @@ StaticMesh::~StaticMesh()
 }
 
 // Primitive 管理
-Primitive *StaticMesh::CreatePrimitive(Geometry *geometry, MaterialInstance *mi, Pipeline *p)
+Primitive *StaticMesh::CreatePrimitive(Geometry *geometry, MaterialProgram *material, Pipeline *p)
 {
-    if(!geometry || !mi)
+    if(!geometry || !material)
         return nullptr;
 
-    Primitive *sm = DirectCreatePrimitive(geometry, mi, p);
+    Primitive *sm = DirectCreatePrimitive(geometry, material, nullptr, p);
     if(!sm)
         return nullptr;
 
     primitive_list.Add(sm);
 
-    // 跟踪资源
     geometry_set.Add(geometry);
-    mat_inst_set.Add(mi);
     if(p)
         pipeline_set.Add(p);
 
-    // 累积包围盒
     RefreshBoundingVolumes();
     return sm;
 }
@@ -42,7 +39,6 @@ bool StaticMesh::AddPrimitive(Primitive *sm)
 
     // 跟踪资源
     geometry_set.Add(sm->GetGeometry());
-    if (auto mi = sm->GetMaterialInstance()) mat_inst_set.Add(mi);
     if (auto pl = sm->GetPipeline())         pipeline_set.Add(pl);
 
     RefreshBoundingVolumes();
@@ -68,7 +64,6 @@ void StaticMesh::ClearPrimitives()
 
     // 清空集合
     geometry_set.Clear();
-    mat_inst_set.Clear();
     pipeline_set.Clear();
 
     bounding_volumes.Clear();
@@ -123,7 +118,6 @@ void StaticMesh::RefreshBoundingVolumes()
 void StaticMesh::RebuildResourceSets()
 {
     geometry_set.Clear();
-    mat_inst_set.Clear();
     pipeline_set.Clear();
 
     for(Primitive *sm : primitive_list)
@@ -131,9 +125,8 @@ void StaticMesh::RebuildResourceSets()
         if(!sm)
             continue;
 
-        if (auto geom = sm->GetGeometry())          geometry_set.Add(geom);
-        if (auto mi   = sm->GetMaterialInstance())  mat_inst_set.Add(mi);
-        if (auto p    = sm->GetPipeline())          pipeline_set.Add(p);
+        if (auto geom = sm->GetGeometry()) geometry_set.Add(geom);
+        if (auto p    = sm->GetPipeline()) pipeline_set.Add(p);
     }
 }
 

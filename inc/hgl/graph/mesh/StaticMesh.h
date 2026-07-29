@@ -31,7 +31,6 @@ struct StaticMeshNode
 };//struct StaticMeshNode
 
 using GeometryPtrSet        =OrderedSet<Geometry *>;
-using MaterialInstanceSet   =OrderedSet<MaterialInstance *>;
 using PipelinePtrSet        =OrderedSet<Pipeline *>;
 using PrimitiveList         =ManagedArray<Primitive>;
 
@@ -43,7 +42,6 @@ class StaticMesh
 {
     // Primitive / 资源集合
     GeometryPtrSet          geometry_set;                                                                               ///< 关联的 Geometry 集合(仅持引用)
-    MaterialInstanceSet     mat_inst_set;                                                                               ///< 使用到的材质实例集合(仅持引用)
     PipelinePtrSet          pipeline_set;                                                                               ///< 使用到的管线集合(仅持引用)
 
     PrimitiveList           primitive_list;                                                                             ///< Primitive列表
@@ -64,8 +62,6 @@ public: // Geometry / MaterialInstance / Pipeline(仅保存引用,便于统计/�
     bool                        AttachGeometry      (Geometry *geometry);
     void                        DetachGeometry      (Geometry *geometry);
     const GeometryPtrSet &      GetGeometries       () const { return geometry_set; }
-
-    const MaterialInstanceSet & GetMaterialInstances() const { return mat_inst_set; }
     const PipelinePtrSet &      GetPipelines        () const { return pipeline_set; }
 
 public: // Primitive 管理
@@ -73,7 +69,7 @@ public: // Primitive 管理
     const int                   GetPrimitiveCount   ()const{ return primitive_list.GetCount(); }
     const PrimitiveList &       GetPrimitiveList    ()const{ return primitive_list; }
 
-    Primitive *                 CreatePrimitive     (Geometry *geometry, MaterialInstance *mi, Pipeline *p=nullptr);    ///< 创建并添加一个 Primitive(可不预绑定 Pipeline，留给运行时晚解析)
+    Primitive *                 CreatePrimitive     (Geometry *geometry, MaterialProgram *material, Pipeline *p=nullptr); ///< 创建并添加一个 Primitive
 
     bool                        AddPrimitive        (Primitive *sm);                                                    ///< 添加一个已有的 Primitive(StaticMesh 将接管其生命周期)
 

@@ -161,14 +161,6 @@ namespace hgl::ecs
                     if (binding_set->HasSSBOBinding(primary_ssbo_type))
                         return binding_set->GetSlotIndex(primary_ssbo_type);
                 }
-                else if (auto *mi = item->GetMaterialInstance())
-                {
-                    const int mi_id = mi->GetMIID();
-                    // mi_id is now always -1 (legacy path, no material-owned data store).
-                    // Keep row at 0 so shader reads slot 0 rather than wrapping to UINT32_MAX.
-                    if (mi_id >= 0)
-                        return static_cast<uint32_t>(mi_id);
-                }
             }
 
             if (uses_recipe_runtime)
@@ -847,10 +839,6 @@ namespace hgl::ecs
                 if (dbs)
                 {
                     vil = dbs->GetVIL();
-                }
-                else if (auto *mi = item->GetMaterialInstance())
-                {
-                    vil = mi->GetVIL();
                 }
 
                 if(!vil)

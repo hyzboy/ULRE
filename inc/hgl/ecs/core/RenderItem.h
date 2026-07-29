@@ -59,7 +59,9 @@ namespace hgl::ecs
         // For material batching support
         // Note: GetPrimitive() is retained for legacy SetPrimitive path (may be null for PrimitiveAsset path).
         virtual hgl::graph::Primitive* GetPrimitive() const { return nullptr; }
-        virtual hgl::graph::MaterialInstance* GetMaterialInstance() const = 0;
+        // Note: GetMaterialInstance() is retained for legacy path compatibility but returns nullptr
+        // on all current code paths (Primitive no longer holds a MaterialInstance).
+        virtual hgl::graph::MaterialInstance* GetMaterialInstance() const { return nullptr; }
         virtual hgl::graph::DescriptorBindingSet* GetDescriptorBindingSet() const = 0;
         virtual hgl::graph::MaterialProgram* GetMaterialProgram() const = 0;
         virtual hgl::graph::Pipeline* GetPipeline() const = 0;

@@ -6,7 +6,6 @@
 #include<hgl/vk/VKDescriptorSet.h>
 #include<hgl/vk/VKMaterialProgram.h>
 #include<hgl/vk/VKMaterialParameters.h>
-#include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/graph/mesh/GeometryDataBuffer.h>
@@ -15,12 +14,11 @@
 namespace hgl::graph{
 class PrimitiveAsset;
 /**
-* 图元(当前仍为运行时绘制单元，后续将与 PrimitiveAsset 资产语义继续拆分)
+* 图元 — 运行时绘制单元（geometry + material_program + 绑定状态）
 */
 class Primitive
 {
     Pipeline *          pipeline;
-    MaterialInstance *  mat_inst;
     MaterialProgram *   material_program;
     DescriptorBindingSet *binding_set;
     const VIL *         binding_vil;
@@ -32,27 +30,25 @@ class Primitive
 
 private:
 
-    friend Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,Pipeline *);
     friend Primitive *DirectCreatePrimitive(Geometry *,MaterialProgram *,DescriptorBindingSet *,Pipeline *);
 
-    Primitive(Geometry *,MaterialInstance *,Pipeline *,GeometryDataBuffer *);
     Primitive(Geometry *,MaterialProgram *,DescriptorBindingSet *,const VIL *,bool,Pipeline *,GeometryDataBuffer *);
 
 public:
 
     virtual ~Primitive()
     {
-        //需要在这里添加删除pipeline/desc_sets/primitive引用计数的代码
+        if (owns_binding_vil && binding_vil && material_program)
+            material_program->Release(const_cast<VIL *>(binding_vil));
 
         SAFE_CLEAR(data_buffer);
     }
 
             Pipeline *          GetPipeline         (){return pipeline;}
-            VkPipelineLayout    GetPipelineLayout   (){return GetMaterialProgram()?GetMaterialProgram()->GetPipelineLayout():VK_NULL_HANDLE;}
-            MaterialProgram *   GetMaterialProgram  (){return mat_inst?mat_inst->GetMaterialProgram():(binding_set?binding_set->GetMaterialProgram():material_program);}
-            MaterialInstance *  GetMaterialInstance (){return mat_inst;}
+            VkPipelineLayout    GetPipelineLayout   (){return material_program ? material_program->GetPipelineLayout() : VK_NULL_HANDLE;}
+            MaterialProgram *   GetMaterialProgram  (){return binding_set ? binding_set->GetMaterialProgram() : material_program;}
             DescriptorBindingSet *GetDescriptorBindingSet(){return binding_set;}
-    const   VIL *               GetVIL              ()const{return binding_vil ? binding_vil : (mat_inst ? mat_inst->GetVIL() : (binding_set ? binding_set->GetVIL() : (material_program ? material_program->GetDefaultVIL() : nullptr)));}
+    const   VIL *               GetVIL              ()const{return binding_vil ? binding_vil : (binding_set ? binding_set->GetVIL() : (material_program ? material_program->GetDefaultVIL() : nullptr));}
             Geometry *          GetGeometry         (){return geometry;}
             AnsiString          GetGeometryName     (){return geometry->GetName();}
     const   BoundingVolumes &   GetBoundingVolumes  ()const{return geometry->GetBoundingVolumes();}
@@ -79,13 +75,6 @@ public:
             uint32_t            GetDataIndexCount()const{return draw_range.data_index_count;}
 };//class Primitive
 
-Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,Pipeline * = nullptr);
 Primitive *DirectCreatePrimitive(Geometry *,MaterialProgram *,DescriptorBindingSet * = nullptr,Pipeline * = nullptr);
 Primitive *CreatePrimitiveRuntime(Geometry *,MaterialProgram *,Pipeline * = nullptr);
-
-// Pre-flight compatibility check: matches geometry vertex format against the
-// material's VIL and returns the full failure summary without creating a primitive.
-// Useful for callsites that want to emit context-rich diagnostics before or instead
-// of calling DirectCreatePrimitive.
-GeometryVertexFormatMatch QueryGeometryVertexCompatibility(const Geometry *geom, const MaterialInstance *mi);
 }//namespace hgl::graph

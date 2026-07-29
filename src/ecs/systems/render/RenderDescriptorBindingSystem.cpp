@@ -303,7 +303,6 @@ namespace hgl::ecs
             uses_recipe_runtime = primitive_comp && primitive_comp->HasMaterialRecipe();
         }
 
-        graph::MaterialInstance *mi = item->GetMaterialInstance();
         if (!uses_recipe_runtime)
         {
             if (auto *binding_set = item->GetDescriptorBindingSet())
@@ -324,14 +323,6 @@ namespace hgl::ecs
                     out_recipe.domain += ":";
                     out_recipe.domain += std::to_string(binding.slot_index);
                 }
-            }
-            else if (mi)
-            {
-                if (!out_recipe.domain.empty())
-                    out_recipe.domain += "|";
-                // Legacy MI path: mi_id is now always -1. Use material name as domain key instead.
-                out_recipe.domain += "mi-legacy:";
-                out_recipe.domain += mi->GetMaterialProgram() ? mi->GetMaterialProgram()->GetName().c_str() : "null";
             }
         }
 

@@ -485,14 +485,10 @@ namespace hgl::ecs
         if (HasMaterialRecipe())
             return nullptr;
 
-        // Return override material if set, otherwise primitive's material
         if (overrideMaterial)
             return overrideMaterial;
 
-        if (!primitive)
-            return nullptr;
-
-        return primitive->GetMaterialInstance();
+        return nullptr;
     }
 
     hgl::graph::DescriptorBindingSet* PrimitiveComponent::GetInternalDescriptorBindingSet() const

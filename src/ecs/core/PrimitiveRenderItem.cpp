@@ -49,14 +49,6 @@ namespace hgl::ecs
         return primitiveComp ? primitiveComp->GetPrimitive() : nullptr;
     }
 
-    hgl::graph::MaterialInstance* PrimitiveRenderItem::GetMaterialInstance() const
-    {
-        if (primitiveComp && primitiveComp->HasMaterialRecipe())
-            return nullptr;
-
-        return primitiveComp ? primitiveComp->GetMaterialInstance() : nullptr;
-    }
-
     hgl::graph::DescriptorBindingSet* PrimitiveRenderItem::GetDescriptorBindingSet() const
     {
         if (primitiveComp)
