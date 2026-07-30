@@ -15,7 +15,25 @@ namespace
         bmi.bmi_name = "PureColor3D";
         bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::PureColor3D);
         bmi.source_kind = BMISourceKind::BuiltIn;
+        bmi.usage_tag   = BMIUsageTag::Fallback;
         RegisterBaseMaterialInfo(MaterialPreset::PureColor3D, bmi);
+
+        // builtin/fallback_3d: 3D 无材质保底
+        {
+            BaseMaterialInfo alias = bmi;
+            alias.bmi_id = BUILTIN_BMI_FALLBACK_3D;
+            alias.bmi_name = "builtin/fallback_3d";
+            RegisterBaseMaterialInfo(alias);
+        }
+
+        // builtin/missing_material: 缺失材质（当前与 fallback_3d 相同，未来可换成棋盘格）
+        {
+            BaseMaterialInfo alias = bmi;
+            alias.bmi_id = BUILTIN_BMI_MISSING_MATERIAL;
+            alias.bmi_name = "builtin/missing_material";
+            RegisterBaseMaterialInfo(alias);
+        }
+
         return true;
     }();
 

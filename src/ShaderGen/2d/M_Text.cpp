@@ -15,7 +15,14 @@ namespace
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.usage_tag = BMIUsageTag::Text;
         bmi.coordinate_system_2d = CoordinateSystem2D::Ortho;
+        bmi.local_to_world_2d = false;
         RegisterBaseMaterialInfo(MaterialPreset::Text2D, bmi);
+
+        BaseMaterialInfo alias = bmi;
+        alias.bmi_id = BUILTIN_BMI_TEXT;
+        alias.bmi_name = "builtin/text";
+        RegisterBaseMaterialInfo(alias);
+
         return true;
     }();
 }

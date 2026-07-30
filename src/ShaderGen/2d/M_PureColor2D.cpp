@@ -13,7 +13,15 @@ namespace
         bmi.bmi_name = "PureColor2D";
         bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::PureColor2D);
         bmi.source_kind = BMISourceKind::BuiltIn;
+        bmi.usage_tag   = BMIUsageTag::Fallback;
         RegisterBaseMaterialInfo(MaterialPreset::PureColor2D, bmi);
+
+        // Register builtin alias so fallback code can look up by canonical id.
+        BaseMaterialInfo fallback_alias = bmi;
+        fallback_alias.bmi_id = BUILTIN_BMI_FALLBACK_2D;
+        fallback_alias.bmi_name = "builtin/fallback_2d";
+        RegisterBaseMaterialInfo(fallback_alias);
+
         return true;
     }();
 }

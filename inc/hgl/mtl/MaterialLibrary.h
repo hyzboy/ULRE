@@ -84,4 +84,21 @@ bool TryGetBaseMaterialInfoByName(const std::string &name, BaseMaterialInfo &out
 bool TryGetBaseMaterialInfoByPreset(const MaterialPreset preset, BaseMaterialInfo &out_bmi);
 bool TryResolveMaterialPresetByBMIId(const std::string &bmi_id, MaterialPreset &out_preset);
 
+// ── built-in fallback BMI ID 常量 ─────────────────────────────────────────────
+// 所有 fallback 材质统一走 BMI 标识接口，差别只在来源（built-in）而不是调用面。
+// 命名规则：builtin/<category>
+constexpr const char *BUILTIN_BMI_FALLBACK_2D       = "builtin/fallback_2d";      // 2D 无材质保底（PureColor2D）
+constexpr const char *BUILTIN_BMI_FALLBACK_3D       = "builtin/fallback_3d";      // 3D 无材质保底（PureColor3D）
+constexpr const char *BUILTIN_BMI_MISSING_MATERIAL  = "builtin/missing_material"; // 缺失材质（PureColor3D + 红色提示）
+constexpr const char *BUILTIN_BMI_ERROR_CHECKER     = "builtin/error_checker";    // 错误棋盘格（未来独立实现）
+constexpr const char *BUILTIN_BMI_TEXT              = "builtin/text";             // 文字专用（Text2D）
+constexpr const char *BUILTIN_BMI_SKY               = "builtin/sky";              // 天空保底（SkyMinimal）
+
+/// 返回指定场景下的 fallback bmi_id。
+/// 当正常材质加载失败时，调用此函数获取保底材质标识，再走统一 BMI 查询接口。
+inline const char *GetFallbackBMIId(const bool is_2d = false)
+{
+    return is_2d ? BUILTIN_BMI_FALLBACK_2D : BUILTIN_BMI_FALLBACK_3D;
+}
+
 }//namespace hgl::graph::mtl

@@ -16,6 +16,12 @@ namespace
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.usage_tag = BMIUsageTag::Sky;
         RegisterBaseMaterialInfo(MaterialPreset::SkyMinimal, bmi);
+
+        BaseMaterialInfo alias = bmi;
+        alias.bmi_id = BUILTIN_BMI_SKY;
+        alias.bmi_name = "builtin/sky";
+        RegisterBaseMaterialInfo(alias);
+
         return true;
     }();
 
