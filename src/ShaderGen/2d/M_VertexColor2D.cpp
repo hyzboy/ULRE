@@ -11,11 +11,11 @@ namespace
         MaterialDefinition bmi{};
         bmi.definition_name = "VertexColor2D";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::VertexColor2D);
-        bmi.source_kind = BMISourceKind::BuiltIn;
+        bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
         bmi.is_2d = true;
         bmi.coordinate_system_2d = CoordinateSystem2D::NDC;
         bmi.local_to_world_2d = true;
-        RegisterBaseMaterialInfo(BuiltinMaterialCreatorID::VertexColor2D, bmi);
+        RegisterMaterialDefinition(BuiltinMaterialCreatorID::VertexColor2D, bmi);
         return true;
     }();
 }
@@ -49,5 +49,6 @@ ShaderProgramBuildSpec *CreateVertexColor2D(const contract::PhysicalDeviceProfil
 }
 
 }//namespace hgl::graph::mtl
+
 
 

@@ -18,11 +18,11 @@ namespace
         MaterialDefinition bmi{};
         bmi.definition_name = "Standard";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::Standard);
-        bmi.source_kind = BMISourceKind::BuiltIn;
+        bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
         bmi.with_camera       = true;
         bmi.with_local_to_world = true;
         bmi.with_sky          = true;   // Standard 使用 SkyInfo
-        RegisterBaseMaterialInfo(BuiltinMaterialCreatorID::Standard, bmi);
+        RegisterMaterialDefinition(BuiltinMaterialCreatorID::Standard, bmi);
         return true;
     }();
 
@@ -102,5 +102,6 @@ ShaderProgramBuildSpec *CreateStandard(const contract::PhysicalDeviceProfileLite
 }
 
 }//namespace hgl::graph::mtl
+
 
 

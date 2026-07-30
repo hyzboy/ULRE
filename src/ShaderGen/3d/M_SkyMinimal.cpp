@@ -13,17 +13,17 @@ namespace
         MaterialDefinition bmi{};
         bmi.definition_name = "SkyMinimal";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::SkyMinimal);
-        bmi.source_kind = BMISourceKind::BuiltIn;
-        bmi.usage_tag = BMIUsageTag::Sky;
+        bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
+        bmi.usage_tag = MaterialDefinitionUsageTag::Sky;
         bmi.with_camera       = true;
         bmi.with_local_to_world = true;
         bmi.with_sky          = true;
-        RegisterBaseMaterialInfo(BuiltinMaterialCreatorID::SkyMinimal, bmi);
+        RegisterMaterialDefinition(BuiltinMaterialCreatorID::SkyMinimal, bmi);
 
         MaterialDefinition alias = bmi;
         alias.definition_id = BUILTIN_MTL_DEF_SKY;
         alias.definition_name = "builtin/sky";
-        RegisterBaseMaterialInfo(alias);
+        RegisterMaterialDefinition(alias);
 
         return true;
     }();
@@ -87,5 +87,6 @@ ShaderProgramBuildSpec *CreateSkyMinimal(const contract::PhysicalDeviceProfileLi
     return mci;
 }
 }//namespace hgl::graph::mtl
+
 
 

@@ -9,6 +9,12 @@
 #include<hgl/mtl/MaterializationPools.h>
 #include<hgl/common/VertexAttribDef.h>
 
+namespace hgl::graph
+{
+    class GeometryVertexFormat;
+}
+
+
 namespace hgl::graph::mtl{
 
 struct MaterialCreateConfig;
@@ -39,6 +45,14 @@ enum class BuiltinMaterialCreatorID:uint8
     ENUM_CLASS_RANGE(VertexColor2D,PBRColor3D)
 };
 
+struct MaterialDefinitionBuildRequest
+{
+    std::string mtl_def_id;
+    MaterialRecipe recipe;
+    PrimitiveType primitive_type = PrimitiveType::Triangles;
+    const GeometryVertexFormat *geometry_vertex_format = nullptr;
+};
+
 /// 仅声明材质创建函数，不产生任何注册或全局常量副作用。
 #define DECLARE_MATERIAL_CREATOR(name,cfg_type) \
 ShaderProgramBuildSpec *Create##name(const contract::PhysicalDeviceProfileLite *profile,cfg_type *); \
@@ -60,10 +74,10 @@ VkFormat ResolveMaterialPositionFormat(const MaterialCreateConfig *cfg, VkFormat
 const char *GetBuiltinMaterialCreatorIDName(const BuiltinMaterialCreatorID mtl_id);
 
 // BMI registry
-void RegisterBaseMaterialInfo(const MaterialDefinition &bmi);
-void RegisterBaseMaterialInfo(const BuiltinMaterialCreatorID preset, const MaterialDefinition &bmi);
-bool TryGetBaseMaterialInfoByBMIId(const std::string &mtl_def_id, MaterialDefinition &out_bmi);
-bool TryGetBaseMaterialInfoByBuiltinMaterialCreatorID(const BuiltinMaterialCreatorID preset, MaterialDefinition &out_bmi);
+void RegisterMaterialDefinition(const MaterialDefinition &bmi);
+void RegisterMaterialDefinition(const BuiltinMaterialCreatorID preset, const MaterialDefinition &bmi);
+bool TryGetMaterialDefinitionByID(const std::string &mtl_def_id, MaterialDefinition &out_bmi);
+bool TryGetMaterialDefinitionByBuiltinMaterialCreatorID(const BuiltinMaterialCreatorID preset, MaterialDefinition &out_bmi);
 
 // ── built-in fallback BMI ID 常量 ─────────────────────────────────────────────
 constexpr const char *BUILTIN_MTL_DEF_FALLBACK_2D       = "builtin/fallback_2d";
@@ -73,10 +87,9 @@ constexpr const char *BUILTIN_MTL_DEF_ERROR_CHECKER     = "builtin/error_checker
 constexpr const char *BUILTIN_MTL_DEF_TEXT              = "builtin/text";
 constexpr const char *BUILTIN_MTL_DEF_SKY               = "builtin/sky";
 
-inline const char *GetFallbackBMIId(const bool is_2d = false)
+inline const char *GetFallbackMaterialDefinitionID(const bool is_2d = false)
 {
     return is_2d ? BUILTIN_MTL_DEF_FALLBACK_2D : BUILTIN_MTL_DEF_FALLBACK_3D;
 }
 
 }//namespace hgl::graph::mtl
-

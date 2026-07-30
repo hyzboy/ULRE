@@ -22,6 +22,7 @@ namespace mtl
     enum class BuiltinMaterialCreatorID:uint8;
     struct Material2DCreateConfig;
     struct Material3DCreateConfig;
+    struct MaterialDefinitionBuildRequest;
     class ShaderProgramBuildSpec;
 }//namespace mtl
 
@@ -149,6 +150,7 @@ public: //ShaderProgram
 
     ShaderProgram *   AcquireMaterialProgram(const mtl::BuiltinMaterialCreatorID, mtl::Material2DCreateConfig *);
     ShaderProgram *   AcquireMaterialProgram(const mtl::BuiltinMaterialCreatorID, mtl::Material3DCreateConfig *);
+    ShaderProgram *   AcquireMaterialProgram(const mtl::MaterialDefinitionBuildRequest &request);
     ShaderProgram *   AcquireMaterialProgram(const std::string &mtl_def_id,
                                                   const mtl::MaterialRecipe &recipe,
                                                   PrimitiveType prim_type,

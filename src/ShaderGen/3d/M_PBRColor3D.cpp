@@ -17,11 +17,11 @@ namespace
         MaterialDefinition bmi{};
         bmi.definition_name = "PBRColor3D";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::PBRColor3D);
-        bmi.source_kind = BMISourceKind::BuiltIn;
+        bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
         bmi.with_camera       = true;
         bmi.with_local_to_world = true;
         bmi.with_sky          = true;
-        RegisterBaseMaterialInfo(BuiltinMaterialCreatorID::PBRColor3D, bmi);
+        RegisterMaterialDefinition(BuiltinMaterialCreatorID::PBRColor3D, bmi);
         return true;
     }();
 
@@ -115,5 +115,6 @@ ShaderProgramBuildSpec *CreatePBRColor3D(const contract::PhysicalDeviceProfileLi
 }
 
 }//namespace hgl::graph::mtl
+
 
 

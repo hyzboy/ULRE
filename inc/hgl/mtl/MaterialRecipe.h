@@ -222,14 +222,14 @@ namespace hgl::graph::mtl
     };
 
     // BMI 来源标记：区分 built-in 硬编码实现与未来的文件化实现。
-    enum class BMISourceKind : uint8_t
+    enum class MaterialDefinitionSourceKind : uint8_t
     {
         BuiltIn = 0,  // M_* 硬编码 creator（用于 fallback 与少量保底材质）
         File,         // 外部 BMI 文件（未来主路径）
     };
 
     // BMI 用途标签：辅助调试 / 统计 / fallback 降级判断。
-    enum class BMIUsageTag : uint8_t
+    enum class MaterialDefinitionUsageTag : uint8_t
     {
         General = 0,   // 普通材质
         Fallback,      // 错误/缺失材质保底
@@ -244,8 +244,8 @@ namespace hgl::graph::mtl
         std::string definition_id;                                   // 正式主键（字符串 ID / 未来文件名）
         std::string definition_name;                                 // 人类可读名称
         uint32_t    builtin_creator_id = InvalidBuiltinMaterialCreatorIDHint;         // 当前阶段过渡字段（enum 序号）
-        BMISourceKind source_kind = BMISourceKind::BuiltIn;         // 来源类型
-        BMIUsageTag   usage_tag  = BMIUsageTag::General;            // 用途标签
+        MaterialDefinitionSourceKind source_kind = MaterialDefinitionSourceKind::BuiltIn;         // 来源类型
+        MaterialDefinitionUsageTag   usage_tag  = MaterialDefinitionUsageTag::General;            // 用途标签
 
         // Lod / 质量包络
         uint16_t default_lod   = 0;
@@ -429,5 +429,6 @@ namespace hgl::graph::mtl
         return static_cast<uint64_t>(hash);
     }
 }
+
 
 

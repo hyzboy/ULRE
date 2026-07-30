@@ -14,19 +14,19 @@ namespace
         MaterialDefinition bmi{};
         bmi.definition_name = "PureColor3D";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::PureColor3D);
-        bmi.source_kind = BMISourceKind::BuiltIn;
+        bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
         bmi.with_camera       = true;
         bmi.with_local_to_world = true;
         bmi.with_sky          = false;
-        bmi.usage_tag   = BMIUsageTag::Fallback;
-        RegisterBaseMaterialInfo(BuiltinMaterialCreatorID::PureColor3D, bmi);
+        bmi.usage_tag   = MaterialDefinitionUsageTag::Fallback;
+        RegisterMaterialDefinition(BuiltinMaterialCreatorID::PureColor3D, bmi);
 
         // builtin/fallback_3d: 3D 无材质保底
         {
             MaterialDefinition alias = bmi;
             alias.definition_id = BUILTIN_MTL_DEF_FALLBACK_3D;
             alias.definition_name = "builtin/fallback_3d";
-            RegisterBaseMaterialInfo(alias);
+            RegisterMaterialDefinition(alias);
         }
 
         // builtin/missing_material: 缺失材质（当前与 fallback_3d 相同，未来可换成棋盘格）
@@ -34,7 +34,7 @@ namespace
             MaterialDefinition alias = bmi;
             alias.definition_id = BUILTIN_MTL_DEF_MISSING_MATERIAL;
             alias.definition_name = "builtin/missing_material";
-            RegisterBaseMaterialInfo(alias);
+            RegisterMaterialDefinition(alias);
         }
 
         return true;
@@ -102,5 +102,6 @@ ShaderProgramBuildSpec *CreatePureColor3D(const contract::PhysicalDeviceProfileL
     return mci;
 }
 }//namespace hgl::graph::mtl
+
 
 

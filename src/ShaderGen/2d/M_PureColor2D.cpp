@@ -12,18 +12,18 @@ namespace
         MaterialDefinition bmi{};
         bmi.definition_name = "PureColor2D";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::PureColor2D);
-        bmi.source_kind = BMISourceKind::BuiltIn;
+        bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
         bmi.is_2d = true;
         bmi.coordinate_system_2d = CoordinateSystem2D::NDC;
         bmi.local_to_world_2d = true;
-        bmi.usage_tag   = BMIUsageTag::Fallback;
-        RegisterBaseMaterialInfo(BuiltinMaterialCreatorID::PureColor2D, bmi);
+        bmi.usage_tag   = MaterialDefinitionUsageTag::Fallback;
+        RegisterMaterialDefinition(BuiltinMaterialCreatorID::PureColor2D, bmi);
 
         // Register builtin alias so fallback code can look up by canonical id.
         MaterialDefinition fallback_alias = bmi;
         fallback_alias.definition_id = BUILTIN_MTL_DEF_FALLBACK_2D;
         fallback_alias.definition_name = "builtin/fallback_2d";
-        RegisterBaseMaterialInfo(fallback_alias);
+        RegisterMaterialDefinition(fallback_alias);
 
         return true;
     }();
@@ -62,5 +62,6 @@ ShaderProgramBuildSpec *CreatePureColor2D(const contract::PhysicalDeviceProfileL
     return mci;
 }
 }//namespace hgl::graph::mtl
+
 
 

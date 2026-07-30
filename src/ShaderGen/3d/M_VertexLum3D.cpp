@@ -14,11 +14,11 @@ namespace
         MaterialDefinition bmi{};
         bmi.definition_name = "VertexLuminance3D";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::VertexLuminance3D);
-        bmi.source_kind = BMISourceKind::BuiltIn;
+        bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
         bmi.with_camera       = true;
         bmi.with_local_to_world = true;
         bmi.with_sky          = false;
-        RegisterBaseMaterialInfo(BuiltinMaterialCreatorID::VertexLuminance3D, bmi);
+        RegisterMaterialDefinition(BuiltinMaterialCreatorID::VertexLuminance3D, bmi);
         return true;
     }();
 
@@ -97,5 +97,6 @@ ShaderProgramBuildSpec *CreateVertexLuminance3D(const contract::PhysicalDevicePr
     return mci;
 }
 }//namespace hgl::graph::mtl
+
 
 

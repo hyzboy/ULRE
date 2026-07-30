@@ -12,11 +12,11 @@ namespace
         MaterialDefinition bmi{};
         bmi.definition_name = "RectTexture2DArray";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::RectTexture2DArray);
-        bmi.source_kind = BMISourceKind::BuiltIn;
+        bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
         bmi.is_2d = true;
         bmi.coordinate_system_2d = CoordinateSystem2D::NDC;
         bmi.local_to_world_2d = true;
-        RegisterBaseMaterialInfo(BuiltinMaterialCreatorID::RectTexture2DArray, bmi);
+        RegisterMaterialDefinition(BuiltinMaterialCreatorID::RectTexture2DArray, bmi);
         return true;
     }();
 }
@@ -62,5 +62,6 @@ ShaderProgramBuildSpec *CreateRectTexture2DArray(const contract::PhysicalDeviceP
     return mci;
 }
 }//namespace hgl::graph::mtl
+
 
 

@@ -12,18 +12,18 @@ namespace
         MaterialDefinition bmi{};
         bmi.definition_name = "Text2D";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::Text2D);
-        bmi.source_kind = BMISourceKind::BuiltIn;
-        bmi.usage_tag = BMIUsageTag::Text;
+        bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
+        bmi.usage_tag = MaterialDefinitionUsageTag::Text;
         bmi.is_text = true;          // Text2DMaterialCreateConfig
         bmi.is_2d = true;
         bmi.coordinate_system_2d = CoordinateSystem2D::Ortho;
         bmi.local_to_world_2d = false;
-        RegisterBaseMaterialInfo(BuiltinMaterialCreatorID::Text2D, bmi);
+        RegisterMaterialDefinition(BuiltinMaterialCreatorID::Text2D, bmi);
 
         MaterialDefinition alias = bmi;
         alias.definition_id = BUILTIN_MTL_DEF_TEXT;
         alias.definition_name = "builtin/text";
-        RegisterBaseMaterialInfo(alias);
+        RegisterMaterialDefinition(alias);
 
         return true;
     }();
@@ -69,5 +69,6 @@ ShaderProgramBuildSpec *CreateText2D(const contract::PhysicalDeviceProfileLite *
     return mci;
 }
 }//namespace hgl::graph::mtl
+
 
 

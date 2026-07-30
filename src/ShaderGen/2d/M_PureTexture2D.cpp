@@ -12,11 +12,11 @@ namespace
         MaterialDefinition bmi{};
         bmi.definition_name = "PureTexture2D";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::PureTexture2D);
-        bmi.source_kind = BMISourceKind::BuiltIn;
+        bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
         bmi.is_2d = true;
         bmi.coordinate_system_2d = CoordinateSystem2D::NDC;
         bmi.local_to_world_2d = true;
-        RegisterBaseMaterialInfo(BuiltinMaterialCreatorID::PureTexture2D, bmi);
+        RegisterMaterialDefinition(BuiltinMaterialCreatorID::PureTexture2D, bmi);
         return true;
     }();
 }
@@ -50,5 +50,6 @@ ShaderProgramBuildSpec *CreatePureTexture2D(const contract::PhysicalDeviceProfil
     return mci;
 }
 }//namespace hgl::graph::mtl
+
 
 

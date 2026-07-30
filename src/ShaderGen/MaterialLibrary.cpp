@@ -38,7 +38,7 @@ VkFormat ResolveMaterialPositionFormat(const MaterialCreateConfig *cfg, VkFormat
     return ResolveMaterialVertexSemanticFormat(cfg, VertexSemantic::Position, fallback_format);
 }
 
-void RegisterBaseMaterialInfo(const MaterialDefinition &bmi)
+void RegisterMaterialDefinition(const MaterialDefinition &bmi)
 {
     MaterialDefinition normalized = bmi;
     if (normalized.definition_id.empty())
@@ -66,7 +66,7 @@ void RegisterBaseMaterialInfo(const MaterialDefinition &bmi)
     registry.emplace_back(std::move(entry));
 }
 
-void RegisterBaseMaterialInfo(const BuiltinMaterialCreatorID preset, const MaterialDefinition &bmi)
+void RegisterMaterialDefinition(const BuiltinMaterialCreatorID preset, const MaterialDefinition &bmi)
 {
     MaterialDefinition normalized = bmi;
     const char *preset_name = GetBuiltinMaterialCreatorIDName(preset);
@@ -103,7 +103,7 @@ void RegisterBaseMaterialInfo(const BuiltinMaterialCreatorID preset, const Mater
     registry.emplace_back(std::move(entry));
 }
 
-bool TryGetBaseMaterialInfoByBMIId(const std::string &mtl_def_id, MaterialDefinition &out_bmi)
+bool TryGetMaterialDefinitionByID(const std::string &mtl_def_id, MaterialDefinition &out_bmi)
 {
     if (mtl_def_id.empty())
         return false;
@@ -122,7 +122,7 @@ bool TryGetBaseMaterialInfoByBMIId(const std::string &mtl_def_id, MaterialDefini
 }
 
 
-bool TryGetBaseMaterialInfoByBuiltinMaterialCreatorID(const BuiltinMaterialCreatorID preset, MaterialDefinition &out_bmi)
+bool TryGetMaterialDefinitionByBuiltinMaterialCreatorID(const BuiltinMaterialCreatorID preset, MaterialDefinition &out_bmi)
 {
     const auto &registry = GetBaseMaterialInfoRegistry();
     for (const auto &entry : registry)
@@ -192,4 +192,5 @@ ShaderProgramBuildSpec *CreateMaterialCreateInfo(const contract::PhysicalDeviceP
     }
 }
 }//namespace hgl::graph::mtl
+
 

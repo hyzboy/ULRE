@@ -427,12 +427,27 @@ ShaderProgram *MaterialManager::AcquireMaterialProgram(const std::string &mtl_de
                                                                PrimitiveType prim_type,
                                                                const GeometryVertexFormat *geometry_vertex_format)
 {
+    mtl::MaterialDefinitionBuildRequest request{};
+    request.mtl_def_id = mtl_def_id;
+    request.recipe = recipe;
+    request.primitive_type = prim_type;
+    request.geometry_vertex_format = geometry_vertex_format;
+    return AcquireMaterialProgram(request);
+}
+
+ShaderProgram *MaterialManager::AcquireMaterialProgram(const mtl::MaterialDefinitionBuildRequest &request)
+{
+    const std::string &mtl_def_id = request.mtl_def_id;
+    const mtl::MaterialRecipe &recipe = request.recipe;
+    const PrimitiveType prim_type = request.primitive_type;
+    const GeometryVertexFormat *geometry_vertex_format = request.geometry_vertex_format;
+
     // 1. 查询 BMI：按 mtl_def_id 主键；失败则用 3D 通用保底
     mtl::MaterialDefinition bmi{};
-    bool has_bmi = mtl::TryGetBaseMaterialInfoByBMIId(mtl_def_id, bmi);
+    bool has_bmi = mtl::TryGetMaterialDefinitionByID(mtl_def_id, bmi);
 
     if (!has_bmi)
-        has_bmi = mtl::TryGetBaseMaterialInfoByBMIId(mtl::BUILTIN_MTL_DEF_FALLBACK_3D, bmi);
+        has_bmi = mtl::TryGetMaterialDefinitionByID(mtl::BUILTIN_MTL_DEF_FALLBACK_3D, bmi);
 
     if (!has_bmi)
         return nullptr;
@@ -684,4 +699,3 @@ MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(const mtl::Bui
 }
 
 }//namespace hgl::graph
-

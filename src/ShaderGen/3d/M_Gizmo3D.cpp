@@ -15,11 +15,11 @@ namespace
         MaterialDefinition bmi{};
         bmi.definition_name = "Gizmo3D";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::Gizmo3D);
-        bmi.source_kind = BMISourceKind::BuiltIn;
+        bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
         bmi.with_camera       = true;
         bmi.with_local_to_world = true;
         bmi.with_sky          = false;
-        RegisterBaseMaterialInfo(BuiltinMaterialCreatorID::Gizmo3D, bmi);
+        RegisterMaterialDefinition(BuiltinMaterialCreatorID::Gizmo3D, bmi);
         return true;
     }();
 
@@ -100,5 +100,6 @@ ShaderProgramBuildSpec *CreateGizmo3D(const contract::PhysicalDeviceProfileLite 
     return mci;
 }
 }//namespace hgl::graph::mtl
+
 
 

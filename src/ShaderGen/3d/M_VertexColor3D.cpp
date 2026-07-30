@@ -14,11 +14,11 @@ namespace
         MaterialDefinition bmi{};
         bmi.definition_name = "VertexColor3D";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::VertexColor3D);
-        bmi.source_kind = BMISourceKind::BuiltIn;
+        bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
         bmi.with_camera       = true;
         bmi.with_local_to_world = true;
         bmi.with_sky          = false;
-        RegisterBaseMaterialInfo(BuiltinMaterialCreatorID::VertexColor3D, bmi);
+        RegisterMaterialDefinition(BuiltinMaterialCreatorID::VertexColor3D, bmi);
         return true;
     }();
 
@@ -81,5 +81,6 @@ ShaderProgramBuildSpec *CreateVertexColor3D(const contract::PhysicalDeviceProfil
     return mci;
 }
 }//namespace hgl::graph::mtl
+
 
 

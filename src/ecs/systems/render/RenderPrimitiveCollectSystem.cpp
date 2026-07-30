@@ -153,7 +153,7 @@ namespace hgl::ecs
                 return;
 
             graph::mtl::MaterialDefinition bmi{};
-            if (graph::mtl::TryGetBaseMaterialInfoByBMIId(recipe.mtl_def_id, bmi))
+            if (graph::mtl::TryGetMaterialDefinitionByID(recipe.mtl_def_id, bmi))
                 graph::mtl::ApplyBaseMaterialInfoDefaults(recipe, bmi, false);
 
             // Auto-derive SSBO name mapping from struct slot declarations when authoring didn't provide assets.
@@ -763,4 +763,5 @@ namespace hgl::ecs
         //}
     }
 }//namespace hgl::ecs
+
 
