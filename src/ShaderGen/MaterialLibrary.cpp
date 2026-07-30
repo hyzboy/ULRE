@@ -191,6 +191,95 @@ ShaderProgramBuildSpec *CreateMaterialCreateInfo(const contract::PhysicalDeviceP
         default:                                    return nullptr;
     }
 }
+
+static void ApplyBuildRequestToLegacyConfig(MaterialCreateConfig &cfg,const MaterialDefinitionBuildRequest &request)
+{
+    cfg.prim = request.primitive_type;
+    cfg.SetGeometryVertexFormat(request.geometry_vertex_format);
+
+    if(request.override_shader_stage_bits)
+        cfg.shader_stage_flag_bit = request.shader_stage_flag_bit;
+
+    if(request.override_rt_output)
+        cfg.rt_output = request.rt_output;
+
+    if(request.private_shader_buffer_sources && request.private_shader_buffer_source_count>0)
+        cfg.SetPrivateShaderBufferSources(request.private_shader_buffer_sources,request.private_shader_buffer_source_count);
+}
+
+static ShaderProgramBuildSpec *CreateMaterialCreateInfoFromRequest(const contract::PhysicalDeviceProfileLite *profile,
+                                                                   const BuiltinMaterialCreatorID mtl_id,
+                                                                   const MaterialDefinition &definition,
+                                                                   const MaterialDefinitionBuildRequest &request)
+{
+    if(definition.is_text)
+    {
+        Text2DMaterialCreateConfig cfg;
+        ApplyBuildRequestToLegacyConfig(cfg, request);
+        return CreateMaterialCreateInfo(profile, mtl_id, &cfg);
+    }
+
+    if(definition.is_2d)
+    {
+        const WithLocalToWorld with_l2w =
+            request.recipe.local_to_world_2d ? WithLocalToWorld::With : WithLocalToWorld::Without;
+        Material2DCreateConfig cfg(request.primitive_type, request.recipe.coordinate_system_2d, with_l2w);
+        ApplyBuildRequestToLegacyConfig(cfg, request);
+        return CreateMaterialCreateInfo(profile, mtl_id, &cfg);
+    }
+
+    const WithCamera wc = definition.with_camera ? WithCamera::With : WithCamera::Without;
+    const WithLocalToWorld wl = definition.with_local_to_world ? WithLocalToWorld::With : WithLocalToWorld::Without;
+    const WithSky ws = definition.with_sky ? WithSky::With : WithSky::Without;
+    Material3DCreateConfig cfg(request.primitive_type, wc, wl, ws);
+    ApplyBuildRequestToLegacyConfig(cfg, request);
+    if(request.override_sky_ambient_model)
+        cfg.sky_ambient_model = request.sky_ambient_model;
+    return CreateMaterialCreateInfo(profile, mtl_id, &cfg);
+}
+
+static std::string BuildBuiltinMaterialCreatorRequestHashImpl(const BuiltinMaterialCreatorID mtl_id,
+                                                              const MaterialDefinition &definition,
+                                                              const MaterialDefinitionBuildRequest &request)
+{
+    if(definition.is_text)
+    {
+        Text2DMaterialCreateConfig cfg;
+        ApplyBuildRequestToLegacyConfig(cfg, request);
+        return std::string(GetBuiltinMaterialCreatorIDName(mtl_id)) + "?" + cfg.ToHashStdString();
+    }
+
+    if(definition.is_2d)
+    {
+        const WithLocalToWorld with_l2w =
+            request.recipe.local_to_world_2d ? WithLocalToWorld::With : WithLocalToWorld::Without;
+        Material2DCreateConfig cfg(request.primitive_type, request.recipe.coordinate_system_2d, with_l2w);
+        ApplyBuildRequestToLegacyConfig(cfg, request);
+        return std::string(GetBuiltinMaterialCreatorIDName(mtl_id)) + "?" + cfg.ToHashStdString();
+    }
+
+    const WithCamera wc = definition.with_camera ? WithCamera::With : WithCamera::Without;
+    const WithLocalToWorld wl = definition.with_local_to_world ? WithLocalToWorld::With : WithLocalToWorld::Without;
+    const WithSky ws = definition.with_sky ? WithSky::With : WithSky::Without;
+    Material3DCreateConfig cfg(request.primitive_type, wc, wl, ws);
+    ApplyBuildRequestToLegacyConfig(cfg, request);
+    if(request.override_sky_ambient_model)
+        cfg.sky_ambient_model = request.sky_ambient_model;
+    return std::string(GetBuiltinMaterialCreatorIDName(mtl_id)) + "?" + cfg.ToHashStdString();
+}
+
+ShaderProgramBuildSpec *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
+                                              const BuiltinMaterialCreatorID mtl_id,
+                                              const MaterialDefinition &definition,
+                                              const MaterialDefinitionBuildRequest &request)
+{
+    return CreateMaterialCreateInfoFromRequest(profile, mtl_id, definition, request);
+}
+
+std::string BuildBuiltinMaterialCreatorRequestHash(const BuiltinMaterialCreatorID mtl_id,
+                                                 const MaterialDefinition &definition,
+                                                 const MaterialDefinitionBuildRequest &request)
+{
+    return BuildBuiltinMaterialCreatorRequestHashImpl(mtl_id, definition, request);
+}
 }//namespace hgl::graph::mtl
-
-

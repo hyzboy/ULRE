@@ -453,9 +453,6 @@ ShaderProgram *MaterialManager::AcquireMaterialProgram(const std::string &mtl_de
 ShaderProgram *MaterialManager::AcquireMaterialProgram(const mtl::MaterialDefinitionBuildRequest &request)
 {
     const std::string &mtl_def_id = request.mtl_def_id;
-    const mtl::MaterialRecipe &recipe = request.recipe;
-    const PrimitiveType prim_type = request.primitive_type;
-    const GeometryVertexFormat *geometry_vertex_format = request.geometry_vertex_format;
 
     // 1. 查询 BMI：按 mtl_def_id 主键；失败则用 3D 通用保底
     mtl::MaterialDefinition bmi{};
@@ -467,42 +464,20 @@ ShaderProgram *MaterialManager::AcquireMaterialProgram(const mtl::MaterialDefini
     if (!has_bmi)
         return nullptr;
 
-    // 2. Part-C: 解析 preset（当前阶段映射到具体 M_* 创建函数）
+    // 2. Part-C: 解析内置 creator（当前阶段映射到具体 M_* 创建函数）
     if (bmi.builtin_creator_id == mtl::InvalidBuiltinMaterialCreatorIDHint
      || bmi.builtin_creator_id >= static_cast<uint32_t>(mtl::BuiltinMaterialCreatorID::RANGE_SIZE))
         return nullptr;
 
     const mtl::BuiltinMaterialCreatorID preset = static_cast<mtl::BuiltinMaterialCreatorID>(bmi.builtin_creator_id);
+    const auto *profile = GetPhysicalDeviceProfile();
+    AutoDelete<mtl::ShaderProgramBuildSpec> mci = mtl::CreateMaterialCreateInfo(profile, preset, bmi, request);
+    if(!mci)
+        return nullptr;
 
-    // 3. Part-C: 从 BMI 字段直接读取所需配置——无任何推断
-    if (bmi.is_text)
-    {
-        mtl::Text2DMaterialCreateConfig cfg;
-        ApplyBuildRequestToLegacyCreateConfig(cfg, request);
-        return AcquireMaterialProgram(preset, &cfg);
-    }
-
-    if (bmi.is_2d)
-    {
-        const mtl::WithLocalToWorld with_l2w =
-            recipe.local_to_world_2d ? mtl::WithLocalToWorld::With : mtl::WithLocalToWorld::Without;
-        mtl::Material2DCreateConfig cfg(prim_type, recipe.coordinate_system_2d, with_l2w);
-        ApplyBuildRequestToLegacyCreateConfig(cfg, request);
-        return AcquireMaterialProgram(preset, &cfg);
-    }
-
-    {
-        // 3D（包括 Sky 材质）：完全由 BMI 字段驱动，无任何推断
-        const mtl::WithCamera      wc = bmi.with_camera        ? mtl::WithCamera::With      : mtl::WithCamera::Without;
-        const mtl::WithLocalToWorld wl = bmi.with_local_to_world ? mtl::WithLocalToWorld::With : mtl::WithLocalToWorld::Without;
-        const mtl::WithSky         ws = bmi.with_sky           ? mtl::WithSky::With         : mtl::WithSky::Without;
-
-        mtl::Material3DCreateConfig cfg(prim_type, wc, wl, ws);
-        ApplyBuildRequestToLegacyCreateConfig(cfg, request);
-        if(request.override_sky_ambient_model)
-            cfg.sky_ambient_model = request.sky_ambient_model;
-        return AcquireMaterialProgram(preset, &cfg);
-    }
+    const std::string hash_std = mtl::BuildBuiltinMaterialCreatorRequestHash(preset, bmi, request);
+    AnsiString hash_name = hash_std.c_str();
+    return this->AcquireMaterialProgram(hash_name, mci);
 }
 
 MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(ShaderProgram *mtl)
