@@ -1,4 +1,4 @@
-#include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/ShaderProgramBuildSpec.h>
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
@@ -11,14 +11,14 @@ namespace
 {
     const bool kRegisteredVertexColor3DBmi = []() -> bool
     {
-        BaseMaterialInfo bmi{};
+        MaterialDefinition bmi{};
         bmi.bmi_name = "VertexColor3D";
-        bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::VertexColor3D);
+        bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::VertexColor3D);
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.with_camera       = true;
         bmi.with_local_to_world = true;
         bmi.with_sky          = false;
-        RegisterBaseMaterialInfo(MaterialPreset::VertexColor3D, bmi);
+        RegisterBaseMaterialInfo(BuiltinMaterialCreatorID::VertexColor3D, bmi);
         return true;
     }();
 
@@ -30,7 +30,7 @@ namespace
     };
 }
 
-MaterialCreateInfo *CreateVertexColor3D(const contract::PhysicalDeviceProfileLite *profile,const Material3DCreateConfig *cfg)
+ShaderProgramBuildSpec *CreateVertexColor3D(const contract::PhysicalDeviceProfileLite *profile,const Material3DCreateConfig *cfg)
 {
     FixedVertexEntry vertex_color_3d_vertex[] = {
         { ResolveMaterialVertexSemanticFormat(cfg, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT),    VertexSemantic::Position },
@@ -69,7 +69,7 @@ MaterialCreateInfo *CreateVertexColor3D(const contract::PhysicalDeviceProfileLit
         return nullptr;
     }
 
-    MaterialCreateInfo *mci = CompileCompositorMaterial(
+    ShaderProgramBuildSpec *mci = CompileCompositorMaterial(
         profile,
         dynamic_def,
         result.vertex_glsl,
@@ -81,3 +81,4 @@ MaterialCreateInfo *CreateVertexColor3D(const contract::PhysicalDeviceProfileLit
     return mci;
 }
 }//namespace hgl::graph::mtl
+

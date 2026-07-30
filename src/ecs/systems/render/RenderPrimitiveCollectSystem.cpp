@@ -152,7 +152,7 @@ namespace hgl::ecs
             if (recipe.bmi_id.empty())
                 return;
 
-            graph::mtl::BaseMaterialInfo bmi{};
+            graph::mtl::MaterialDefinition bmi{};
             if (graph::mtl::TryGetBaseMaterialInfoByBMIId(recipe.bmi_id, bmi))
                 graph::mtl::ApplyBaseMaterialInfoDefaults(recipe, bmi, false);
 
@@ -511,7 +511,7 @@ namespace hgl::ecs
 
         if (!resolved_program)
         {
-            GLogWarning("[RenderPrimitiveCollectSystem] AcquireMaterialProgramByBMI failed for %s recipe=%s bmi_id=%s preset_hint=%u",
+            GLogWarning("[RenderPrimitiveCollectSystem] AcquireMaterialProgramByBMI failed for %s recipe=%s bmi_id=%s builtin_creator_id=%u",
                         GetPrimitiveOwnerName(primitive_comp),
                         effective_recipe.recipe_name.c_str(),
                         effective_recipe.bmi_id.c_str());
@@ -763,3 +763,4 @@ namespace hgl::ecs
         //}
     }
 }//namespace hgl::ecs
+

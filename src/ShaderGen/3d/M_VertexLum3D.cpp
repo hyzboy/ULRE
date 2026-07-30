@@ -1,4 +1,4 @@
-#include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/ShaderProgramBuildSpec.h>
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
@@ -11,14 +11,14 @@ namespace
 {
     const bool kRegisteredVertexLuminance3DBmi = []() -> bool
     {
-        BaseMaterialInfo bmi{};
+        MaterialDefinition bmi{};
         bmi.bmi_name = "VertexLuminance3D";
-        bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::VertexLuminance3D);
+        bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::VertexLuminance3D);
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.with_camera       = true;
         bmi.with_local_to_world = true;
         bmi.with_sky          = false;
-        RegisterBaseMaterialInfo(MaterialPreset::VertexLuminance3D, bmi);
+        RegisterBaseMaterialInfo(BuiltinMaterialCreatorID::VertexLuminance3D, bmi);
         return true;
     }();
 
@@ -36,7 +36,7 @@ namespace
     };
 }
 
-MaterialCreateInfo *CreateVertexLuminance3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
+ShaderProgramBuildSpec *CreateVertexLuminance3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
 {
     cfg->material_instance=true;
 
@@ -85,7 +85,7 @@ MaterialCreateInfo *CreateVertexLuminance3D(const contract::PhysicalDeviceProfil
         return nullptr;
     }
 
-    MaterialCreateInfo *mci = CompileCompositorMaterial(
+    ShaderProgramBuildSpec *mci = CompileCompositorMaterial(
         profile,
         dynamic_def,
         result.vertex_glsl,
@@ -97,3 +97,4 @@ MaterialCreateInfo *CreateVertexLuminance3D(const contract::PhysicalDeviceProfil
     return mci;
 }
 }//namespace hgl::graph::mtl
+

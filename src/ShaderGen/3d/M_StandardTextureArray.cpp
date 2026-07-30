@@ -1,4 +1,4 @@
-#include <hgl/shadergen/MaterialCreateInfo.h>
+#include <hgl/shadergen/ShaderProgramBuildSpec.h>
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/shadergen/CompositorAssembler.h>
@@ -15,14 +15,14 @@ namespace
 {
     const bool kRegisteredStandardTextureArrayBmi = []() -> bool
     {
-        BaseMaterialInfo bmi{};
+        MaterialDefinition bmi{};
         bmi.bmi_name = "StandardTextureArray";
-        bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::StandardTextureArray);
+        bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::StandardTextureArray);
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.with_camera       = true;
         bmi.with_local_to_world = true;
         bmi.with_sky          = true;
-        RegisterBaseMaterialInfo(MaterialPreset::StandardTextureArray, bmi);
+        RegisterBaseMaterialInfo(BuiltinMaterialCreatorID::StandardTextureArray, bmi);
         return true;
     }();
 
@@ -36,7 +36,7 @@ namespace
 
 }
 
-MaterialCreateInfo *CreateStandardTextureArray(const contract::PhysicalDeviceProfileLite *profile, const Material3DCreateConfig *cfg)
+ShaderProgramBuildSpec *CreateStandardTextureArray(const contract::PhysicalDeviceProfileLite *profile, const Material3DCreateConfig *cfg)
 {
     Material3DCreateConfig cfg_with_mi = cfg ? *cfg : Material3DCreateConfig();
     cfg_with_mi.material_instance = true;
@@ -89,7 +89,7 @@ MaterialCreateInfo *CreateStandardTextureArray(const contract::PhysicalDevicePro
         return nullptr;
     }
 
-    MaterialCreateInfo *mci = CompileCompositorMaterial(
+    ShaderProgramBuildSpec *mci = CompileCompositorMaterial(
         profile,
         dynamic_def,
         result.vertex_glsl,
@@ -102,3 +102,4 @@ MaterialCreateInfo *CreateStandardTextureArray(const contract::PhysicalDevicePro
 }
 
 }//namespace hgl::graph::mtl
+

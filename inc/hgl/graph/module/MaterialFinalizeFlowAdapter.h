@@ -10,7 +10,7 @@ namespace hgl::graph
 
     namespace mtl
     {
-        class MaterialCreateInfo;
+        class ShaderProgramBuildSpec;
     }
 
     struct MaterialFinalizePlan
@@ -21,6 +21,6 @@ namespace hgl::graph
     };
 
     void BuildMaterialFinalizePlan(const MaterialDescriptorManager *desc_manager,
-                                   const mtl::MaterialCreateInfo &mci,
+                                   const mtl::ShaderProgramBuildSpec &mci,
                                    MaterialFinalizePlan &out_plan);
 }

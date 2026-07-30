@@ -1,5 +1,5 @@
 #include"Build2DCommon.h"
-#include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/ShaderProgramBuildSpec.h>
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<cstdio>
 
@@ -8,19 +8,19 @@ namespace
 {
     const bool kRegisteredVertexColor2DBmi = []() -> bool
     {
-        BaseMaterialInfo bmi{};
+        MaterialDefinition bmi{};
         bmi.bmi_name = "VertexColor2D";
-        bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::VertexColor2D);
+        bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::VertexColor2D);
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.is_2d = true;
         bmi.coordinate_system_2d = CoordinateSystem2D::NDC;
         bmi.local_to_world_2d = true;
-        RegisterBaseMaterialInfo(MaterialPreset::VertexColor2D, bmi);
+        RegisterBaseMaterialInfo(BuiltinMaterialCreatorID::VertexColor2D, bmi);
         return true;
     }();
 }
 
-MaterialCreateInfo *CreateVertexColor2D(const contract::PhysicalDeviceProfileLite *profile,const Material2DCreateConfig *cfg)
+ShaderProgramBuildSpec *CreateVertexColor2D(const contract::PhysicalDeviceProfileLite *profile,const Material2DCreateConfig *cfg)
 {
     auto preamble = build2d::Build2DPreamble(cfg, false, false);
 
@@ -42,10 +42,11 @@ MaterialCreateInfo *CreateVertexColor2D(const contract::PhysicalDeviceProfileLit
     std::string vs = preamble + "#include \"2d/vertexcolor2d.vert.glsl\"\n";
     std::string fs = preamble + "#include \"2d/vertexcolor2d.frag.glsl\"\n";
 
-    MaterialCreateInfo *mci = CompileCompositorMaterial(profile, def, vs, fs, cfg);
+    ShaderProgramBuildSpec *mci = CompileCompositorMaterial(profile, def, vs, fs, cfg);
     if(!mci)
         std::fprintf(stderr, "[VertexColor2D] CompileCompositorMaterial failed\n");
     return mci;
 }
 
 }//namespace hgl::graph::mtl
+

@@ -15,7 +15,7 @@ namespace hgl::graph
 }
 
 namespace hgl::graph::mtl{
-class MaterialCreateInfo;
+class ShaderProgramBuildSpec;
 
 /**
  * 材质配置结构

@@ -1,4 +1,4 @@
-/// MaterialCompiler.cpp — FixedMaterialDef → MaterialCreateInfo 编译器实现
+/// MaterialCompiler.cpp — FixedMaterialDef → ShaderProgramBuildSpec 编译器实现
 ///
 /// 流程：
 ///   1. 从 FixedDescriptorEntry[] 构建 MaterialDescriptorInfo（描述符布局）
@@ -9,7 +9,7 @@
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/mtl/Material2DCreateConfig.h>
 #include <hgl/mtl/MaterialResourceLayout.h>
-#include <hgl/shadergen/MaterialCreateInfo.h>
+#include <hgl/shadergen/ShaderProgramBuildSpec.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/mtl/MaterialRecipe.h>
@@ -44,12 +44,12 @@ static bool HasDescriptorSemantic(const FixedMaterialDef &def, const DescriptorS
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CompileCompositorMaterial — Compositor 模板完整 GLSL → MaterialCreateInfo
+// CompileCompositorMaterial — Compositor 模板完整 GLSL → ShaderProgramBuildSpec
 //
 // 使用 SetFinalGLSL + CreateShaderDirect 直接编译。
 // ═══════════════════════════════════════════════════════════════════════════
 
-MaterialCreateInfo *CompileCompositorMaterial(
+ShaderProgramBuildSpec *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
     const FixedMaterialDef &    def,
     const std::string &         vs_glsl,
@@ -84,14 +84,14 @@ MaterialCreateInfo *CompileCompositorMaterial(
     cfg.material_instance = cfg.material_instance || infer_has_mi;
 
     // ─────────────────────────────────────────────────────────────
-    // Step 2: Create MaterialCreateInfo
+    // Step 2: Create ShaderProgramBuildSpec
     // ─────────────────────────────────────────────────────────────
 
-    MaterialCreateInfo *mci = new MaterialCreateInfo(&cfg);
+    ShaderProgramBuildSpec *mci = new ShaderProgramBuildSpec(&cfg);
     if (profile)
         mci->SetDevice(profile);
 
-    auto FailAfterMci = [&](const char *reason) -> MaterialCreateInfo *
+    auto FailAfterMci = [&](const char *reason) -> ShaderProgramBuildSpec *
     {
         std::fprintf(stderr,
             "[CompileCompositorMaterial] material=%s failed: %s\n",
@@ -316,7 +316,7 @@ MaterialCreateInfo *CompileCompositorMaterial(
 // CompileCompositorMaterial — 2D 材质重载
 // ═══════════════════════════════════════════════════════════════════════════
 
-MaterialCreateInfo *CompileCompositorMaterial(
+ShaderProgramBuildSpec *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
     const FixedMaterialDef &    def,
     const std::string &         vs_glsl,

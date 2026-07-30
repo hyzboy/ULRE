@@ -28,7 +28,7 @@ namespace hgl
 
         namespace mtl
         {
-            class MaterialCreateInfo;
+            class ShaderProgramBuildSpec;
             struct Material2DCreateConfig;
             struct Material3DCreateConfig;
         }

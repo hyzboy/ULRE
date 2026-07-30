@@ -19,10 +19,10 @@ class GeometryVertexFormat;
 
 namespace mtl
 {
-    enum class MaterialPreset:uint8;
+    enum class BuiltinMaterialCreatorID:uint8;
     struct Material2DCreateConfig;
     struct Material3DCreateConfig;
-    class MaterialCreateInfo;
+    class ShaderProgramBuildSpec;
 }//namespace mtl
 
 using MaterialID            = int;
@@ -52,14 +52,14 @@ private:
 
 private: // Helper methods with integrated DebugUtils
 
-    MaterialProgram *AcquireMaterialProgram(const AnsiString &, const mtl::MaterialCreateInfo *);
+    MaterialProgram *AcquireMaterialProgram(const AnsiString &, const mtl::ShaderProgramBuildSpec *);
     class PipelineLayoutData *CreateMaterialPipelineLayoutData(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager);
     class MaterialParameters *CreateMaterialMP(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager, const class PipelineLayoutData *pld, const DescriptorSetType &desc_set_type);
-    void ApplyMaterialFinalizePlan(MaterialProgram *mtl, const AnsiString &mtl_name, const mtl::MaterialCreateInfo &mci);
+    void ApplyMaterialFinalizePlan(MaterialProgram *mtl, const AnsiString &mtl_name, const mtl::ShaderProgramBuildSpec &mci);
     MaterialProgram *TryGetCachedMaterial(const AnsiString &name);
     bool ExecuteMaterialBuildPipeline(MaterialProgram *mtl,
                                       const AnsiString &mtl_name,
-                                      const mtl::MaterialCreateInfo *mci,
+                                      const mtl::ShaderProgramBuildSpec *mci,
                                       const ShaderCreateInfoMap &sci_map);
 
 public: //Add
@@ -147,8 +147,8 @@ public: //ShaderGen Profiler (debug entry, collect-only)
 
 public: //MaterialProgram
 
-    MaterialProgram *          AcquireMaterialProgram(const mtl::MaterialPreset, mtl::Material2DCreateConfig *);
-    MaterialProgram *          AcquireMaterialProgram(const mtl::MaterialPreset, mtl::Material3DCreateConfig *);
+    MaterialProgram *          AcquireMaterialProgram(const mtl::BuiltinMaterialCreatorID, mtl::Material2DCreateConfig *);
+    MaterialProgram *          AcquireMaterialProgram(const mtl::BuiltinMaterialCreatorID, mtl::Material3DCreateConfig *);
     MaterialProgram *AcquireMaterialProgramByBMI(const std::string &bmi_id,
                                                   const mtl::MaterialRecipe &recipe,
                                                   PrimitiveType prim_type,
@@ -177,24 +177,24 @@ private: // Legacy MaterialInstance bridge — internal engine use only during P
         return CreateMaterialInstanceInternal(mtl,vil_cfg,data,sizeof(T));
     }
 
-    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size);
-    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg=nullptr)
+    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size);
+    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg=nullptr)
     {
         return CreateMaterialInstanceInternal(mtl_id,mcc,vil_cfg,nullptr,0);
     }
-    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format,const void *data,const uint32 data_size);
-    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format)
+    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material2DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format,const void *data,const uint32 data_size);
+    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material2DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format)
     {
         return CreateMaterialInstanceInternal(mtl_id,mcc,geometry_vertex_format,nullptr,0);
     }
 
-    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size);
-    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg=nullptr)
+    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size);
+    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg=nullptr)
     {
         return CreateMaterialInstanceInternal(mtl_id,mcc,vil_cfg,nullptr,0);
     }
-    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format,const void *data,const uint32 data_size);
-    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format)
+    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material3DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format,const void *data,const uint32 data_size);
+    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material3DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format)
     {
         return CreateMaterialInstanceInternal(mtl_id,mcc,geometry_vertex_format,nullptr,0);
     }

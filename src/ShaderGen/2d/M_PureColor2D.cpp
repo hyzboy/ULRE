@@ -1,5 +1,5 @@
 #include"Build2DCommon.h"
-#include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/ShaderProgramBuildSpec.h>
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/math/Vector.h>
 #include<cstdio>
@@ -9,19 +9,19 @@ namespace
 {
     const bool kRegisteredPureColor2DBmi = []() -> bool
     {
-        BaseMaterialInfo bmi{};
+        MaterialDefinition bmi{};
         bmi.bmi_name = "PureColor2D";
-        bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::PureColor2D);
+        bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::PureColor2D);
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.is_2d = true;
         bmi.coordinate_system_2d = CoordinateSystem2D::NDC;
         bmi.local_to_world_2d = true;
         bmi.usage_tag   = BMIUsageTag::Fallback;
-        RegisterBaseMaterialInfo(MaterialPreset::PureColor2D, bmi);
+        RegisterBaseMaterialInfo(BuiltinMaterialCreatorID::PureColor2D, bmi);
 
         // Register builtin alias so fallback code can look up by canonical id.
-        BaseMaterialInfo fallback_alias = bmi;
-        fallback_alias.bmi_id = BUILTIN_BMI_FALLBACK_2D;
+        MaterialDefinition fallback_alias = bmi;
+        fallback_alias.bmi_id = BUILTIN_MTL_DEF_FALLBACK_2D;
         fallback_alias.bmi_name = "builtin/fallback_2d";
         RegisterBaseMaterialInfo(fallback_alias);
 
@@ -29,7 +29,7 @@ namespace
     }();
 }
 
-MaterialCreateInfo *CreatePureColor2D(const contract::PhysicalDeviceProfileLite *profile,Material2DCreateConfig *cfg)
+ShaderProgramBuildSpec *CreatePureColor2D(const contract::PhysicalDeviceProfileLite *profile,Material2DCreateConfig *cfg)
 {
     constexpr const char mi_codes[]="vec4 Color;";
     constexpr const uint32_t mi_bytes=sizeof(math::Vector4f);
@@ -56,9 +56,10 @@ MaterialCreateInfo *CreatePureColor2D(const contract::PhysicalDeviceProfileLite 
     std::string vs = preamble + "#include \"2d/purecolor2d.vert.glsl\"\n";
     std::string fs = preamble + "#include \"2d/purecolor2d.frag.glsl\"\n";
 
-    MaterialCreateInfo *mci = CompileCompositorMaterial(profile, def, vs, fs, cfg);
+    ShaderProgramBuildSpec *mci = CompileCompositorMaterial(profile, def, vs, fs, cfg);
     if(!mci)
         std::fprintf(stderr, "[PureColor2D] CompileCompositorMaterial failed\n");
     return mci;
 }
 }//namespace hgl::graph::mtl
+

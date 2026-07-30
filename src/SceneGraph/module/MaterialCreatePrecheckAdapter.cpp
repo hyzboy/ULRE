@@ -1,9 +1,9 @@
 #include <hgl/graph/module/MaterialCreatePrecheckAdapter.h>
-#include <hgl/shadergen/MaterialCreateInfo.h>
+#include <hgl/shadergen/ShaderProgramBuildSpec.h>
 
 namespace hgl::graph
 {
-    MaterialCreatePrecheckDecision RunMaterialCreatePrecheck(const mtl::MaterialCreateInfo *mci,
+    MaterialCreatePrecheckDecision RunMaterialCreatePrecheck(const mtl::ShaderProgramBuildSpec *mci,
                                                              const AnsiString &material_name,
                                                              const std::function<MaterialProgram *(const AnsiString &)> &find_cached_material,
                                                              MaterialCreatePrecheckResult &out_result)

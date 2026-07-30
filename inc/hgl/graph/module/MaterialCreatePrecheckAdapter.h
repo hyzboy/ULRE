@@ -10,7 +10,7 @@ namespace hgl::graph
 
     namespace mtl
     {
-        class MaterialCreateInfo;
+        class ShaderProgramBuildSpec;
     }
 
     enum class MaterialCreatePrecheckDecision
@@ -26,7 +26,7 @@ namespace hgl::graph
         const ShaderCreateInfoMap *shader_map = nullptr;
     };
 
-    MaterialCreatePrecheckDecision RunMaterialCreatePrecheck(const mtl::MaterialCreateInfo *mci,
+    MaterialCreatePrecheckDecision RunMaterialCreatePrecheck(const mtl::ShaderProgramBuildSpec *mci,
                                                              const AnsiString &material_name,
                                                              const std::function<MaterialProgram *(const AnsiString &)> &find_cached_material,
                                                              MaterialCreatePrecheckResult &out_result);

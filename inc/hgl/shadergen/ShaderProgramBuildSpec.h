@@ -23,7 +23,7 @@ namespace hgl::graph
             struct PhysicalDeviceProfileLite;
         }
 
-        class MaterialCreateInfo
+        class ShaderProgramBuildSpec
         {
         protected:
 
@@ -86,8 +86,8 @@ namespace hgl::graph
 
         public:
 
-            MaterialCreateInfo(const MaterialCreateConfig *);
-            ~MaterialCreateInfo();  // Need explicit destructor to properly clean up shader_map
+            ShaderProgramBuildSpec(const MaterialCreateConfig *);
+            ~ShaderProgramBuildSpec();  // Need explicit destructor to properly clean up shader_map
 
             void SetDevice(const contract::PhysicalDeviceProfileLite *profile);
 
@@ -144,6 +144,6 @@ namespace hgl::graph
             }
 
             bool CreateShaderDirect();               ///< 直接编译各阶段的 FinalGLSL 到 SPV
-        };//class MaterialCreateInfo
+        };//class ShaderProgramBuildSpec
     }//namespace mtl
 }//namespace hgl::graph

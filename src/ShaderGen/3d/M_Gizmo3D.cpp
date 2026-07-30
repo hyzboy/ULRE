@@ -1,4 +1,4 @@
-#include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/ShaderProgramBuildSpec.h>
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
@@ -12,14 +12,14 @@ namespace
 {
     const bool kRegisteredGizmo3DBmi = []() -> bool
     {
-        BaseMaterialInfo bmi{};
+        MaterialDefinition bmi{};
         bmi.bmi_name = "Gizmo3D";
-        bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::Gizmo3D);
+        bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::Gizmo3D);
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.with_camera       = true;
         bmi.with_local_to_world = true;
         bmi.with_sky          = false;
-        RegisterBaseMaterialInfo(MaterialPreset::Gizmo3D, bmi);
+        RegisterBaseMaterialInfo(BuiltinMaterialCreatorID::Gizmo3D, bmi);
         return true;
     }();
 
@@ -46,7 +46,7 @@ namespace
 
 }
 
-MaterialCreateInfo *CreateGizmo3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
+ShaderProgramBuildSpec *CreateGizmo3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
 {
     // 通过 CompositorAssembler 从 .glsl 模板文件组装 VS/FS
     CompositorAssembler assembler("ShaderLibrary");
@@ -88,7 +88,7 @@ MaterialCreateInfo *CreateGizmo3D(const contract::PhysicalDeviceProfileLite *pro
         GIZMO_3D_MI_BYTES,
     };
 
-    MaterialCreateInfo *mci = CompileCompositorMaterial(
+    ShaderProgramBuildSpec *mci = CompileCompositorMaterial(
         profile,
         dynamic_def,
         result.vertex_glsl,
@@ -100,3 +100,4 @@ MaterialCreateInfo *CreateGizmo3D(const contract::PhysicalDeviceProfileLite *pro
     return mci;
 }
 }//namespace hgl::graph::mtl
+

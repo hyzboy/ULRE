@@ -1,4 +1,4 @@
-#include <hgl/shadergen/MaterialCreateInfo.h>
+#include <hgl/shadergen/ShaderProgramBuildSpec.h>
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/shadergen/CompositorAssembler.h>
@@ -14,14 +14,14 @@ namespace
 {
     const bool kRegisteredPBRColor3DBmi = []() -> bool
     {
-        BaseMaterialInfo bmi{};
+        MaterialDefinition bmi{};
         bmi.bmi_name = "PBRColor3D";
-        bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::PBRColor3D);
+        bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::PBRColor3D);
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.with_camera       = true;
         bmi.with_local_to_world = true;
         bmi.with_sky          = true;
-        RegisterBaseMaterialInfo(MaterialPreset::PBRColor3D, bmi);
+        RegisterBaseMaterialInfo(BuiltinMaterialCreatorID::PBRColor3D, bmi);
         return true;
     }();
 
@@ -45,7 +45,7 @@ namespace
 
 }//namespace
 
-MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *profile, PBRColor3DMaterialCreateConfig *cfg)
+ShaderProgramBuildSpec *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *profile, PBRColor3DMaterialCreateConfig *cfg)
 {
     if (cfg)
         cfg->material_instance = true;
@@ -101,7 +101,7 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
         return nullptr;
     }
 
-    MaterialCreateInfo *mci = CompileCompositorMaterial(
+    ShaderProgramBuildSpec *mci = CompileCompositorMaterial(
         profile,
         dynamic_def,
         result.vertex_glsl,
@@ -115,3 +115,4 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
 }
 
 }//namespace hgl::graph::mtl
+

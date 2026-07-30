@@ -1,5 +1,5 @@
 #include"Build2DCommon.h"
-#include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/ShaderProgramBuildSpec.h>
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/mtl/SamplerName.h>
 #include<cstdio>
@@ -9,19 +9,19 @@ namespace
 {
     const bool kRegisteredText2DBmi = []() -> bool
     {
-        BaseMaterialInfo bmi{};
+        MaterialDefinition bmi{};
         bmi.bmi_name = "Text2D";
-        bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::Text2D);
+        bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::Text2D);
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.usage_tag = BMIUsageTag::Text;
         bmi.is_text = true;          // Text2DMaterialCreateConfig
         bmi.is_2d = true;
         bmi.coordinate_system_2d = CoordinateSystem2D::Ortho;
         bmi.local_to_world_2d = false;
-        RegisterBaseMaterialInfo(MaterialPreset::Text2D, bmi);
+        RegisterBaseMaterialInfo(BuiltinMaterialCreatorID::Text2D, bmi);
 
-        BaseMaterialInfo alias = bmi;
-        alias.bmi_id = BUILTIN_BMI_TEXT;
+        MaterialDefinition alias = bmi;
+        alias.bmi_id = BUILTIN_MTL_DEF_TEXT;
         alias.bmi_name = "builtin/text";
         RegisterBaseMaterialInfo(alias);
 
@@ -29,7 +29,7 @@ namespace
     }();
 }
 
-MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *profile,const Text2DMaterialCreateConfig *cfg)
+ShaderProgramBuildSpec *CreateText2D(const contract::PhysicalDeviceProfileLite *profile,const Text2DMaterialCreateConfig *cfg)
 {
     constexpr const char mi_codes[]="uint TextColor;";
     constexpr const uint32_t mi_bytes=sizeof(uint32);
@@ -63,9 +63,10 @@ MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *prof
     std::string vs = preamble + "#include \"2d/text2d.vert.glsl\"\n";
     std::string fs = preamble + "#include \"2d/text2d.frag.glsl\"\n";
 
-    MaterialCreateInfo *mci = CompileCompositorMaterial(profile, def, vs, fs, &new_cfg);
+    ShaderProgramBuildSpec *mci = CompileCompositorMaterial(profile, def, vs, fs, &new_cfg);
     if(!mci)
         std::fprintf(stderr, "[Text2D] CompileCompositorMaterial failed\n");
     return mci;
 }
 }//namespace hgl::graph::mtl
+

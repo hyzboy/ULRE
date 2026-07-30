@@ -15,11 +15,11 @@ SET(SHADER_CREATER_SOURCE_FILES ShaderCreateInfo.cpp
 SOURCE_GROUP("Material Create Info\\Shader" FILES   ${SHADER_CREATER_HEADER_FILES}
                                                     ${SHADER_CREATER_SOURCE_FILES})
 
-SET(MATERIAL_CREATE_INFO_HEADER_FILES ${SHADERGEN_INCLUDE_PATH}/MaterialCreateInfo.h)
-SET(MATERIAL_CREATE_INFO_SOURCE_FILES MaterialCreateInfo.cpp)
+SET(SHADER_PROGRAM_BUILD_SPEC_HEADER_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderProgramBuildSpec.h)
+SET(SHADER_PROGRAM_BUILD_SPEC_SOURCE_FILES ShaderProgramBuildSpec.cpp)
 
-SOURCE_GROUP("Material Create Info" FILES   ${MATERIAL_CREATE_INFO_HEADER_FILES}
-                                            ${MATERIAL_CREATE_INFO_SOURCE_FILES})
+SOURCE_GROUP("ShaderProgram Build Spec" FILES   ${SHADER_PROGRAM_BUILD_SPEC_HEADER_FILES}
+                                                ${SHADER_PROGRAM_BUILD_SPEC_SOURCE_FILES})
 
 SET(DESC_INFO_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/ShaderDescriptorInfo.h
                             ${SHADERGEN_INCLUDE_PATH}/MaterialDescriptorInfo.h)
@@ -145,8 +145,8 @@ add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_INCLUDE_PATH}
 
                                         ${DESC_INFO_HEADER_FILES}
                                         ${DESC_INFO_SOURCE_FILES}
-                                        ${MATERIAL_CREATE_INFO_HEADER_FILES}
-                                        ${MATERIAL_CREATE_INFO_SOURCE_FILES}
+                                        ${SHADER_PROGRAM_BUILD_SPEC_HEADER_FILES}
+                                        ${SHADER_PROGRAM_BUILD_SPEC_SOURCE_FILES}
                                         ${SHADER_CREATER_HEADER_FILES}
                                         ${SHADER_CREATER_SOURCE_FILES}
                                         ${GLSL_COMPILER_SOURCE}

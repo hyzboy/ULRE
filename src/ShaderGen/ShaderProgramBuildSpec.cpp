@@ -1,4 +1,4 @@
-#include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/ShaderProgramBuildSpec.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
@@ -151,7 +151,7 @@ static const TextureSamplerDescriptor *ResolveTextureSamplerDescriptor(
     return mdi.AddTextureSampler((uint32_t)flag_bit,set_type,image_sampler);
 }
 
-MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
+ShaderProgramBuildSpec::ShaderProgramBuildSpec(const MaterialCreateConfig *mc)
     : config(*mc)
 {
     if(hasVertex    ())shader_map.Add(new ShaderCreateInfoVertex(&descriptor_db));
@@ -174,7 +174,7 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
     has_local_to_world=config.local_to_world;
 }
 
-MaterialCreateInfo::~MaterialCreateInfo()
+ShaderProgramBuildSpec::~ShaderProgramBuildSpec()
 {
     // Explicitly clear the shader_map to properly clean up ShaderCreateInfo objects
     // This ensures proper destructor ordering and prevents crashes with UnorderedMap
@@ -186,7 +186,7 @@ MaterialCreateInfo::~MaterialCreateInfo()
     shader_map.Clear();
 }
 
-bool MaterialCreateInfo::AddStruct(const std::string &struct_name,const std::string &codes)
+bool ShaderProgramBuildSpec::AddStruct(const std::string &struct_name,const std::string &codes)
 {
     if(struct_name.empty())
         return(false);
@@ -194,7 +194,7 @@ bool MaterialCreateInfo::AddStruct(const std::string &struct_name,const std::str
     return descriptor_db.AddStruct(struct_name,codes);
 }
 
-bool MaterialCreateInfo::AddUBO(const ShaderStage flag_bit,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name)
+bool ShaderProgramBuildSpec::AddUBO(const ShaderStage flag_bit,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name)
 {
     if(!shader_map.ContainsKey(flag_bit))
         return(false);
@@ -214,7 +214,7 @@ bool MaterialCreateInfo::AddUBO(const ShaderStage flag_bit,const DescriptorSetTy
     return sc->AddUBO(set_type,ubo);
 }
 
-bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name)
+bool ShaderProgramBuildSpec::AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name)
 {
     if(flag_bits==0)return(false);          //没有任何SHADER用?
 
@@ -228,7 +228,7 @@ bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSetType
         });
 }
 
-bool MaterialCreateInfo::AddUBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss)
+bool ShaderProgramBuildSpec::AddUBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss)
 {
     if(!AddStruct(ss.struct_name,""))
         return(false);
@@ -236,7 +236,7 @@ bool MaterialCreateInfo::AddUBOStruct(const uint32_t flag_bits,const ShaderBuffe
     return AddUBO(flag_bits,ss.set_type,ss.struct_name,ss.name);
 }
 
-bool MaterialCreateInfo::AddSSBO(const ShaderStage flag_bit,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name)
+bool ShaderProgramBuildSpec::AddSSBO(const ShaderStage flag_bit,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name)
 {
     if(!shader_map.ContainsKey(flag_bit))
         return(false);
@@ -256,7 +256,7 @@ bool MaterialCreateInfo::AddSSBO(const ShaderStage flag_bit,const DescriptorSetT
     return sc->AddSSBO(set_type,ssbo);
 }
 
-bool MaterialCreateInfo::AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name)
+bool ShaderProgramBuildSpec::AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name)
 {
     if(flag_bits==0)return(false);          //没有任何SHADER用?
 
@@ -270,7 +270,7 @@ bool MaterialCreateInfo::AddSSBO(const uint32_t flag_bits,const DescriptorSetTyp
         });
 }
 
-bool MaterialCreateInfo::AddSSBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss)
+bool ShaderProgramBuildSpec::AddSSBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss)
 {
     if(!AddStruct(ss.struct_name,""))
         return(false);
@@ -278,7 +278,7 @@ bool MaterialCreateInfo::AddSSBOStruct(const uint32_t flag_bits,const ShaderBuff
     return AddSSBO(flag_bits,ss.set_type,ss.struct_name,ss.name);
 }
 
-bool MaterialCreateInfo::AddTexture(const ShaderStage flag_bit,const DescriptorSetType set_type,const TextureType &tt,const std::string &name)
+bool ShaderProgramBuildSpec::AddTexture(const ShaderStage flag_bit,const DescriptorSetType set_type,const TextureType &tt,const std::string &name)
 {
     if(!shader_map.ContainsKey(flag_bit))
         return(false);
@@ -299,7 +299,7 @@ bool MaterialCreateInfo::AddTexture(const ShaderStage flag_bit,const DescriptorS
     return sc->AddTexture(set_type,texture);
 }
 
-bool MaterialCreateInfo::AddTextureSampler(const ShaderStage flag_bit,const DescriptorSetType set_type,const SamplerType &st,const std::string &name)
+bool ShaderProgramBuildSpec::AddTextureSampler(const ShaderStage flag_bit,const DescriptorSetType set_type,const SamplerType &st,const std::string &name)
 {
     if(!shader_map.ContainsKey(flag_bit))
         return(false);
@@ -327,7 +327,7 @@ bool MaterialCreateInfo::AddTextureSampler(const ShaderStage flag_bit,const Desc
 * @param shader_stage_flag_bits   具体使用材质实例的shader
 * @return 是否设置成功
 */
-bool MaterialCreateInfo::SetMaterialInstance(const std::string &glsl_codes,const uint32_t data_bytes,const uint32_t shader_stage_flag_bits)
+bool ShaderProgramBuildSpec::SetMaterialInstance(const std::string &glsl_codes,const uint32_t data_bytes,const uint32_t shader_stage_flag_bits)
 {
     if(material_instance_stride>0)return(false);           //已经有数据了
 
@@ -375,7 +375,7 @@ bool MaterialCreateInfo::SetMaterialInstance(const std::string &glsl_codes,const
     return(true);
 }
 
-bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
+bool ShaderProgramBuildSpec::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
 {
     if(shader_stage_flag_bits==0)return(false);
 
@@ -402,7 +402,7 @@ bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
     return(true);
 }
 //
-void MaterialCreateInfo::SetDevice(const contract::PhysicalDeviceProfileLite *profile)
+void ShaderProgramBuildSpec::SetDevice(const contract::PhysicalDeviceProfileLite *profile)
 {
     if(!profile)
     {
@@ -419,7 +419,7 @@ void MaterialCreateInfo::SetDevice(const contract::PhysicalDeviceProfileLite *pr
     ssbo_range=static_cast<uint32_t>((profile_ssbo>max_u32)?max_u32:profile_ssbo);
 }
 
-bool MaterialCreateInfo::CreateShaderDirect()
+bool ShaderProgramBuildSpec::CreateShaderDirect()
 {
     if(shader_map.IsEmpty())
         return(false);

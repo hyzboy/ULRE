@@ -1,5 +1,5 @@
 #include"Build2DCommon.h"
-#include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/ShaderProgramBuildSpec.h>
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/mtl/SamplerName.h>
 #include<cstdio>
@@ -9,19 +9,19 @@ namespace
 {
     const bool kRegisteredRectTexture2DArrayBmi = []() -> bool
     {
-        BaseMaterialInfo bmi{};
+        MaterialDefinition bmi{};
         bmi.bmi_name = "RectTexture2DArray";
-        bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::RectTexture2DArray);
+        bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::RectTexture2DArray);
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.is_2d = true;
         bmi.coordinate_system_2d = CoordinateSystem2D::NDC;
         bmi.local_to_world_2d = true;
-        RegisterBaseMaterialInfo(MaterialPreset::RectTexture2DArray, bmi);
+        RegisterBaseMaterialInfo(BuiltinMaterialCreatorID::RectTexture2DArray, bmi);
         return true;
     }();
 }
 
-MaterialCreateInfo *CreateRectTexture2DArray(const contract::PhysicalDeviceProfileLite *profile,const mtl::Material2DCreateConfig *cfg)
+ShaderProgramBuildSpec *CreateRectTexture2DArray(const contract::PhysicalDeviceProfileLite *profile,const mtl::Material2DCreateConfig *cfg)
 {
     constexpr const char mi_codes[]="uvec4 id;";
     constexpr const uint32_t mi_bytes=sizeof(math::Vector4u);
@@ -56,9 +56,10 @@ MaterialCreateInfo *CreateRectTexture2DArray(const contract::PhysicalDeviceProfi
     std::string vs = preamble + "#include \"2d/recttexture2darray.vert.glsl\"\n";
     std::string fs = preamble + "#include \"2d/recttexture2darray.frag.glsl\"\n";
 
-    MaterialCreateInfo *mci = CompileCompositorMaterial(profile, def, vs, fs, &inner);
+    ShaderProgramBuildSpec *mci = CompileCompositorMaterial(profile, def, vs, fs, &inner);
     if(!mci)
         std::fprintf(stderr, "[RectTexture2DArray] CompileCompositorMaterial failed\n");
     return mci;
 }
 }//namespace hgl::graph::mtl
+

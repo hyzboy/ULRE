@@ -15,7 +15,7 @@ class GeometryVertexFormat;
 
 namespace mtl
 {
-    class MaterialCreateInfo;
+    class ShaderProgramBuildSpec;
 }
 
 class MaterialParameters;
@@ -57,7 +57,7 @@ private:
 
     friend class MaterialManager;
 
-    MaterialProgram(const AnsiString &,const mtl::MaterialCreateInfo *);
+    MaterialProgram(const AnsiString &,const mtl::ShaderProgramBuildSpec *);
 
 public:
 

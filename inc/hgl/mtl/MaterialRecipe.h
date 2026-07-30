@@ -9,7 +9,7 @@
 
 namespace hgl::graph::mtl
 {
-    constexpr uint32_t InvalidMaterialPresetHint = 0xffffffffu;
+    constexpr uint32_t InvalidBuiltinMaterialCreatorIDHint = 0xffffffffu;
 
     // 逻辑纹理槽位（与具体 descriptor set/binding 解耦）。
     // Resolve 阶段会把这些语义槽映射到 bindless handle + 运行时索引。
@@ -238,12 +238,12 @@ namespace hgl::graph::mtl
         Sky,           // 天空专用
     };
 
-    struct BaseMaterialInfo
+    struct MaterialDefinition
     {
         // Part-A: 基础语义/元信息
         std::string bmi_id;                                          // 正式主键（字符串 ID / 未来文件名）
         std::string bmi_name;                                        // 人类可读名称
-        uint32_t    preset_hint = InvalidMaterialPresetHint;         // 当前阶段过渡字段（enum 序号）
+        uint32_t    builtin_creator_id = InvalidBuiltinMaterialCreatorIDHint;         // 当前阶段过渡字段（enum 序号）
         BMISourceKind source_kind = BMISourceKind::BuiltIn;         // 来源类型
         BMIUsageTag   usage_tag  = BMIUsageTag::General;            // 用途标签
 
@@ -349,7 +349,7 @@ namespace hgl::graph::mtl
     }
 
     inline void ApplyBaseMaterialInfoDefaults(MaterialRecipe &recipe,
-                                              const BaseMaterialInfo &bmi,
+                                              const MaterialDefinition &bmi,
                                               const bool overwrite_existing = false)
     {
         if (recipe.bmi_id.empty())
@@ -429,3 +429,4 @@ namespace hgl::graph::mtl
         return static_cast<uint64_t>(hash);
     }
 }
+

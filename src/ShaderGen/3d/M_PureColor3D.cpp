@@ -1,4 +1,4 @@
-#include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/ShaderProgramBuildSpec.h>
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
@@ -11,28 +11,28 @@ namespace
 {
     const bool kRegisteredPureColor3DBmi = []() -> bool
     {
-        BaseMaterialInfo bmi{};
+        MaterialDefinition bmi{};
         bmi.bmi_name = "PureColor3D";
-        bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::PureColor3D);
+        bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::PureColor3D);
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.with_camera       = true;
         bmi.with_local_to_world = true;
         bmi.with_sky          = false;
         bmi.usage_tag   = BMIUsageTag::Fallback;
-        RegisterBaseMaterialInfo(MaterialPreset::PureColor3D, bmi);
+        RegisterBaseMaterialInfo(BuiltinMaterialCreatorID::PureColor3D, bmi);
 
         // builtin/fallback_3d: 3D 无材质保底
         {
-            BaseMaterialInfo alias = bmi;
-            alias.bmi_id = BUILTIN_BMI_FALLBACK_3D;
+            MaterialDefinition alias = bmi;
+            alias.bmi_id = BUILTIN_MTL_DEF_FALLBACK_3D;
             alias.bmi_name = "builtin/fallback_3d";
             RegisterBaseMaterialInfo(alias);
         }
 
         // builtin/missing_material: 缺失材质（当前与 fallback_3d 相同，未来可换成棋盘格）
         {
-            BaseMaterialInfo alias = bmi;
-            alias.bmi_id = BUILTIN_BMI_MISSING_MATERIAL;
+            MaterialDefinition alias = bmi;
+            alias.bmi_id = BUILTIN_MTL_DEF_MISSING_MATERIAL;
             alias.bmi_name = "builtin/missing_material";
             RegisterBaseMaterialInfo(alias);
         }
@@ -55,7 +55,7 @@ namespace
 
 }
 
-MaterialCreateInfo *CreatePureColor3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
+ShaderProgramBuildSpec *CreatePureColor3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
 {
     FixedVertexEntry pure_color_3d_vertex[] = {
         { ResolveMaterialVertexSemanticFormat(cfg, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
@@ -90,7 +90,7 @@ MaterialCreateInfo *CreatePureColor3D(const contract::PhysicalDeviceProfileLite 
         return nullptr;
     }
 
-    MaterialCreateInfo *mci = CompileCompositorMaterial(
+    ShaderProgramBuildSpec *mci = CompileCompositorMaterial(
         profile,
         dynamic_def,
         result.vertex_glsl,
@@ -102,3 +102,4 @@ MaterialCreateInfo *CreatePureColor3D(const contract::PhysicalDeviceProfileLite 
     return mci;
 }
 }//namespace hgl::graph::mtl
+

@@ -1,4 +1,4 @@
-#include <hgl/shadergen/MaterialCreateInfo.h>
+#include <hgl/shadergen/ShaderProgramBuildSpec.h>
 #include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
@@ -10,18 +10,18 @@ namespace
 {
     const bool kRegisteredSkyMinimalBmi = []() -> bool
     {
-        BaseMaterialInfo bmi{};
+        MaterialDefinition bmi{};
         bmi.bmi_name = "SkyMinimal";
-        bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::SkyMinimal);
+        bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::SkyMinimal);
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.usage_tag = BMIUsageTag::Sky;
         bmi.with_camera       = true;
         bmi.with_local_to_world = true;
         bmi.with_sky          = true;
-        RegisterBaseMaterialInfo(MaterialPreset::SkyMinimal, bmi);
+        RegisterBaseMaterialInfo(BuiltinMaterialCreatorID::SkyMinimal, bmi);
 
-        BaseMaterialInfo alias = bmi;
-        alias.bmi_id = BUILTIN_BMI_SKY;
+        MaterialDefinition alias = bmi;
+        alias.bmi_id = BUILTIN_MTL_DEF_SKY;
         alias.bmi_name = "builtin/sky";
         RegisterBaseMaterialInfo(alias);
 
@@ -38,7 +38,7 @@ namespace
 
 }//namespace
 
-MaterialCreateInfo *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *profile, const SkyMinimalCreateConfig *cfg)
+ShaderProgramBuildSpec *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *profile, const SkyMinimalCreateConfig *cfg)
 {
     FixedVertexEntry sky_minimal_vertex[] = {
         { ResolveMaterialVertexSemanticFormat(cfg, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
@@ -75,7 +75,7 @@ MaterialCreateInfo *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *
         return nullptr;
     }
 
-    MaterialCreateInfo *mci = CompileCompositorMaterial(
+    ShaderProgramBuildSpec *mci = CompileCompositorMaterial(
         profile,
         dynamic_def,
         result.vertex_glsl,
@@ -87,3 +87,4 @@ MaterialCreateInfo *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *
     return mci;
 }
 }//namespace hgl::graph::mtl
+

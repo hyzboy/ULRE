@@ -13,7 +13,7 @@
 #include<hgl/graph/module/MaterialCreatePrecheckAdapter.h>
 #include<hgl/graph/module/MaterialFinalizeFlowAdapter.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
-#include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/ShaderProgramBuildSpec.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
@@ -95,7 +95,7 @@ namespace
         return true;
     }
 
-    std::vector<ShaderDescriptor> CollectLegacyDescriptors(const mtl::MaterialCreateInfo *mci)
+    std::vector<ShaderDescriptor> CollectLegacyDescriptors(const mtl::ShaderProgramBuildSpec *mci)
     {
         std::vector<ShaderDescriptor> legacy_descriptors;
         if (!mci)
@@ -253,7 +253,7 @@ MaterialParameters *MaterialManager::CreateMaterialMP(const AnsiString &mtl_name
     return mp;
 }
 
-void MaterialManager::ApplyMaterialFinalizePlan(MaterialProgram *mtl, const AnsiString &mtl_name, const mtl::MaterialCreateInfo &mci)
+void MaterialManager::ApplyMaterialFinalizePlan(MaterialProgram *mtl, const AnsiString &mtl_name, const mtl::ShaderProgramBuildSpec &mci)
 {
     if(!mtl)
         return;
@@ -283,7 +283,7 @@ MaterialProgram *MaterialManager::TryGetCachedMaterial(const AnsiString &name)
 
 bool MaterialManager::ExecuteMaterialBuildPipeline(MaterialProgram *mtl,
                                                    const AnsiString &mtl_name,
-                                                   const mtl::MaterialCreateInfo *mci,
+                                                   const mtl::ShaderProgramBuildSpec *mci,
                                                    const ShaderCreateInfoMap &sci_map)
 {
     if(!mtl || !mci)
@@ -313,7 +313,7 @@ bool MaterialManager::ExecuteMaterialBuildPipeline(MaterialProgram *mtl,
     return true;
 }
 
-MaterialProgram *MaterialManager::AcquireMaterialProgram(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci)
+MaterialProgram *MaterialManager::AcquireMaterialProgram(const AnsiString &mtl_name,const mtl::ShaderProgramBuildSpec *mci)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -350,7 +350,7 @@ MaterialProgram *MaterialManager::AcquireMaterialProgram(const AnsiString &mtl_n
     return mtl.Finish();
 }
 
-MaterialProgram *MaterialManager::AcquireMaterialProgram(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *cfg)
+MaterialProgram *MaterialManager::AcquireMaterialProgram(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material2DCreateConfig *cfg)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -359,12 +359,12 @@ MaterialProgram *MaterialManager::AcquireMaterialProgram(const mtl::MaterialPres
 
     const auto *profile=GetPhysicalDeviceProfile();
 
-    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateMaterialCreateInfo(profile,mtl_id,cfg);
+    AutoDelete<mtl::ShaderProgramBuildSpec> mci=mtl::CreateMaterialCreateInfo(profile,mtl_id,cfg);
 
     if(!mci)
         return(nullptr);
 
-    AnsiString hash_name=mtl::GetMaterialPresetName(mtl_id);
+    AnsiString hash_name=mtl::GetBuiltinMaterialCreatorIDName(mtl_id);
     hash_name+="?";
     hash_name+=cfg->ToHashStdString().c_str();
 
@@ -401,7 +401,7 @@ std::map<std::string, uint32_t> MaterialManager::GetShaderGenRecentValidationCat
     return {};
 }
 
-MaterialProgram *MaterialManager::AcquireMaterialProgram(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *cfg)
+MaterialProgram *MaterialManager::AcquireMaterialProgram(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material3DCreateConfig *cfg)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -410,12 +410,12 @@ MaterialProgram *MaterialManager::AcquireMaterialProgram(const mtl::MaterialPres
 
     const auto *profile=GetPhysicalDeviceProfile();
 
-    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateMaterialCreateInfo(profile,mtl_id,cfg);
+    AutoDelete<mtl::ShaderProgramBuildSpec> mci=mtl::CreateMaterialCreateInfo(profile,mtl_id,cfg);
 
     if(!mci)
         return(nullptr);
 
-    AnsiString hash_name=mtl::GetMaterialPresetName(mtl_id);
+    AnsiString hash_name=mtl::GetBuiltinMaterialCreatorIDName(mtl_id);
     hash_name+="?";
     hash_name+=cfg->ToHashStdString().c_str();
 
@@ -428,21 +428,21 @@ MaterialProgram *MaterialManager::AcquireMaterialProgramByBMI(const std::string 
                                                                const GeometryVertexFormat *geometry_vertex_format)
 {
     // 1. 查询 BMI：按 bmi_id 主键；失败则用 3D 通用保底
-    mtl::BaseMaterialInfo bmi{};
+    mtl::MaterialDefinition bmi{};
     bool has_bmi = mtl::TryGetBaseMaterialInfoByBMIId(bmi_id, bmi);
 
     if (!has_bmi)
-        has_bmi = mtl::TryGetBaseMaterialInfoByBMIId(mtl::BUILTIN_BMI_FALLBACK_3D, bmi);
+        has_bmi = mtl::TryGetBaseMaterialInfoByBMIId(mtl::BUILTIN_MTL_DEF_FALLBACK_3D, bmi);
 
     if (!has_bmi)
         return nullptr;
 
     // 2. Part-C: 解析 preset（当前阶段映射到具体 M_* 创建函数）
-    if (bmi.preset_hint == mtl::InvalidMaterialPresetHint
-     || bmi.preset_hint >= static_cast<uint32_t>(mtl::MaterialPreset::RANGE_SIZE))
+    if (bmi.builtin_creator_id == mtl::InvalidBuiltinMaterialCreatorIDHint
+     || bmi.builtin_creator_id >= static_cast<uint32_t>(mtl::BuiltinMaterialCreatorID::RANGE_SIZE))
         return nullptr;
 
-    const mtl::MaterialPreset preset = static_cast<mtl::MaterialPreset>(bmi.preset_hint);
+    const mtl::BuiltinMaterialCreatorID preset = static_cast<mtl::BuiltinMaterialCreatorID>(bmi.builtin_creator_id);
 
     // 3. Part-C: 从 BMI 字段直接读取所需配置——无任何推断
     if (bmi.is_text)
@@ -627,7 +627,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(MaterialProgra
     return mi;
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
+MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -639,7 +639,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(const mtl::Mat
     return CreateMaterialInstanceInternal(mtl,vil_cfg,data,data_size);
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
+MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -651,7 +651,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(const mtl::Mat
     return CreateMaterialInstanceInternal(mtl,vil_cfg,data,data_size);
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format,const void *data,const uint32 data_size)
+MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material2DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format,const void *data,const uint32 data_size)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -667,7 +667,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(const mtl::Mat
     return CreateMaterialInstanceInternal(mtl,geometry_vertex_format,data,data_size);
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format,const void *data,const uint32 data_size)
+MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material3DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format,const void *data,const uint32 data_size)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -684,3 +684,4 @@ MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(const mtl::Mat
 }
 
 }//namespace hgl::graph
+

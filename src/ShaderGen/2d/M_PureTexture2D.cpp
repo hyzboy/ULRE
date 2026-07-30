@@ -1,5 +1,5 @@
 #include"Build2DCommon.h"
-#include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/ShaderProgramBuildSpec.h>
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/mtl/SamplerName.h>
 #include<cstdio>
@@ -9,19 +9,19 @@ namespace
 {
     const bool kRegisteredPureTexture2DBmi = []() -> bool
     {
-        BaseMaterialInfo bmi{};
+        MaterialDefinition bmi{};
         bmi.bmi_name = "PureTexture2D";
-        bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::PureTexture2D);
+        bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::PureTexture2D);
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.is_2d = true;
         bmi.coordinate_system_2d = CoordinateSystem2D::NDC;
         bmi.local_to_world_2d = true;
-        RegisterBaseMaterialInfo(MaterialPreset::PureTexture2D, bmi);
+        RegisterBaseMaterialInfo(BuiltinMaterialCreatorID::PureTexture2D, bmi);
         return true;
     }();
 }
 
-MaterialCreateInfo *CreatePureTexture2D(const contract::PhysicalDeviceProfileLite *profile,const mtl::Material2DCreateConfig *cfg)
+ShaderProgramBuildSpec *CreatePureTexture2D(const contract::PhysicalDeviceProfileLite *profile,const mtl::Material2DCreateConfig *cfg)
 {
     auto preamble = build2d::Build2DPreamble(cfg, true, false);
 
@@ -44,9 +44,10 @@ MaterialCreateInfo *CreatePureTexture2D(const contract::PhysicalDeviceProfileLit
     std::string vs = preamble + "#include \"2d/puretexture2d.vert.glsl\"\n";
     std::string fs = preamble + "#include \"2d/puretexture2d.frag.glsl\"\n";
 
-    MaterialCreateInfo *mci = CompileCompositorMaterial(profile, def, vs, fs, cfg);
+    ShaderProgramBuildSpec *mci = CompileCompositorMaterial(profile, def, vs, fs, cfg);
     if(!mci)
         std::fprintf(stderr, "[PureTexture2D] CompileCompositorMaterial failed\n");
     return mci;
 }
 }//namespace hgl::graph::mtl
+

@@ -4,7 +4,7 @@
 #include<hgl/vk/VKVertexInput.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/vk/pipeline/VKPipelineLayoutData.h>
-#include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/ShaderProgramBuildSpec.h>
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 
@@ -12,7 +12,7 @@ namespace hgl::graph{
 
 void ReleaseVertexInput(VertexInput *vi);
 
-MaterialProgram::MaterialProgram(const AnsiString &n,const mtl::MaterialCreateInfo *mci)
+MaterialProgram::MaterialProgram(const AnsiString &n,const mtl::ShaderProgramBuildSpec *mci)
 {
     name=n;
     geometry=mci->GetPrimitiveType();

@@ -9,7 +9,7 @@
 *   然后输入的一个R8UI顶点属性来指定使用那个颜色。
 */
 
-#include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/ShaderProgramBuildSpec.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
@@ -22,14 +22,14 @@ namespace
 {
     const bool kRegisteredVertexPattleColor3DBmi = []() -> bool
     {
-        BaseMaterialInfo bmi{};
+        MaterialDefinition bmi{};
         bmi.bmi_name = "VertexPattleColor3D";
-        bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::VertexPattleColor3D);
+        bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::VertexPattleColor3D);
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.with_camera       = true;
         bmi.with_local_to_world = true;
         bmi.with_sky          = false;
-        RegisterBaseMaterialInfo(MaterialPreset::VertexPattleColor3D, bmi);
+        RegisterBaseMaterialInfo(BuiltinMaterialCreatorID::VertexPattleColor3D, bmi);
         return true;
     }();
 
@@ -43,7 +43,7 @@ namespace
 
 }//namespace
 
-MaterialCreateInfo *CreateVertexPattleColor3D(const contract::PhysicalDeviceProfileLite *profile,const Material3DCreateConfig *cfg)
+ShaderProgramBuildSpec *CreateVertexPattleColor3D(const contract::PhysicalDeviceProfileLite *profile,const Material3DCreateConfig *cfg)
 {
     Material3DCreateConfig local_cfg = cfg ? *cfg : Material3DCreateConfig();
 
@@ -90,7 +90,7 @@ MaterialCreateInfo *CreateVertexPattleColor3D(const contract::PhysicalDeviceProf
         return nullptr;
     }
 
-    MaterialCreateInfo *mci = CompileCompositorMaterial(
+    ShaderProgramBuildSpec *mci = CompileCompositorMaterial(
         profile,
         dynamic_def,
         result.vertex_glsl,
@@ -102,3 +102,4 @@ MaterialCreateInfo *CreateVertexPattleColor3D(const contract::PhysicalDeviceProf
     return mci;
 }
 }//namespace hgl::graph::mtl
+

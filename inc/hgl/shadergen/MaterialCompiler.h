@@ -1,12 +1,12 @@
 #pragma once
 
-/// MaterialCompiler.h — FixedMaterialDef → MaterialCreateInfo 编译器接口
+/// MaterialCompiler.h — FixedMaterialDef → ShaderProgramBuildSpec 编译器接口
 ///
 /// 使用 CompileCompositorMaterial 编译 Compositor 模板产出的完整 GLSL。
 /// 内部流程：
 ///   1. 按 def.descriptor_entries[] 构建 MaterialDescriptorInfo（顺序固定，无动态排序）
 ///   2. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
-///   3. 填充并返回 MaterialCreateInfo*
+///   3. 填充并返回 ShaderProgramBuildSpec*
 
 #include<hgl/mtl/FixedMaterialDef.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
@@ -16,10 +16,10 @@ namespace hgl::graph::mtl{
 
 struct Material3DCreateConfig;
 struct Material2DCreateConfig;
-class MaterialCreateInfo;
+class ShaderProgramBuildSpec;
 
 /**
- * 编译 Compositor 模板产出的完整 GLSL → MaterialCreateInfo*。
+ * 编译 Compositor 模板产出的完整 GLSL → ShaderProgramBuildSpec*。
  *
  * 使用 SetFinalGLSL() + CreateShaderDirect() 直接编译。
  *
@@ -28,9 +28,9 @@ class MaterialCreateInfo;
  * @param vs_glsl   完整的 vertex shader GLSL（含 #version, layout, main）
  * @param fs_glsl   完整的 fragment shader GLSL（含 #version, layout, main）
  * @param config    运行时配置（可选）
- * @return          编译好的 MaterialCreateInfo*; 失败返回 nullptr
+ * @return          编译好的 ShaderProgramBuildSpec*; 失败返回 nullptr
  */
-MaterialCreateInfo *CompileCompositorMaterial(
+ShaderProgramBuildSpec *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
     const FixedMaterialDef &    def,
     const std::string &         vs_glsl,
@@ -43,7 +43,7 @@ MaterialCreateInfo *CompileCompositorMaterial(
  * 将 Material2DCreateConfig 映射到内部 Material3DCreateConfig 后调用主版本。
  * camera/sky 默认关闭，其余字段从 2D 配置继承。
  */
-MaterialCreateInfo *CompileCompositorMaterial(
+ShaderProgramBuildSpec *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
     const FixedMaterialDef &    def,
     const std::string &         vs_glsl,
