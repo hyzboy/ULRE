@@ -1,9 +1,10 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/shadergen/MaterialDescriptorInfo.h>
 #include<hgl/mtl/MaterialResourceLayout.h>
 #include<hgl/shadergen/ShaderCreateInfoMap.h>
-#include<hgl/mtl/MaterialCreateConfig.h>
+#include<hgl/common/PrimitiveTypeDef.h>
+#include<hgl/common/ShaderStageDef.h>
 #include <hgl/common/TextureSamplerTypeDef.h>
 #include<string>
 
@@ -27,7 +28,8 @@ namespace hgl::graph
         {
         protected:
 
-            MaterialCreateConfig config;
+            PrimitiveType primitive_type = PrimitiveType::Triangles;
+            uint32_t shader_stage_flag_bits = 0;
             uint32_t ubo_range;
             uint32_t ssbo_range;
 
@@ -52,11 +54,11 @@ namespace hgl::graph
 
         public:
 
-            const PrimitiveType GetPrimitiveType()const{return config.prim;}
+            const PrimitiveType GetPrimitiveType()const{return primitive_type;}
 
-            const   uint32      GetShaderStage  ()const{return config.shader_stage_flag_bit;}
+            const   uint32      GetShaderStage  ()const{return shader_stage_flag_bits;}
 
-                    bool        hasShader       (const ShaderStage ss)const{return config.shader_stage_flag_bit&(uint32)ss;}
+                    bool        hasShader       (const ShaderStage ss)const{return shader_stage_flag_bits&(uint32)ss;}
 
                     bool        hasVertex       ()const{return hasShader(ShaderStage::Vertex);}
         //          bool        hasTessCtrl     ()const{return hasShader(ShaderStage::TessControl);}
@@ -86,7 +88,7 @@ namespace hgl::graph
 
         public:
 
-            ShaderProgramBuildSpec(const MaterialCreateConfig *);
+            ShaderProgramBuildSpec(const PrimitiveType primitive_type, const uint32_t shader_stage_bits, const bool has_local_to_world);
             ~ShaderProgramBuildSpec();  // Need explicit destructor to properly clean up shader_map
 
             void SetDevice(const contract::PhysicalDeviceProfileLite *profile);

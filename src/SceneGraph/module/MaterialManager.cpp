@@ -499,6 +499,8 @@ ShaderProgram *MaterialManager::AcquireMaterialProgram(const mtl::MaterialDefini
 
         mtl::Material3DCreateConfig cfg(prim_type, wc, wl, ws);
         ApplyBuildRequestToLegacyCreateConfig(cfg, request);
+        if(request.override_sky_ambient_model)
+            cfg.sky_ambient_model = request.sky_ambient_model;
         return AcquireMaterialProgram(preset, &cfg);
     }
 }

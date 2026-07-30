@@ -151,8 +151,8 @@ static const TextureSamplerDescriptor *ResolveTextureSamplerDescriptor(
     return mdi.AddTextureSampler((uint32_t)flag_bit,set_type,image_sampler);
 }
 
-ShaderProgramBuildSpec::ShaderProgramBuildSpec(const MaterialCreateConfig *mc)
-    : config(*mc)
+ShaderProgramBuildSpec::ShaderProgramBuildSpec(const PrimitiveType primitive_type_value,const uint32_t shader_stage_bits,const bool has_local_to_world_value)
+    : primitive_type(primitive_type_value), shader_stage_flag_bits(shader_stage_bits), has_local_to_world(has_local_to_world_value)
 {
     if(hasVertex    ())shader_map.Add(new ShaderCreateInfoVertex(&descriptor_db));
     if(hasFragment  ())shader_map.Add(new ShaderCreateInfo(new FragmentShaderDescriptorInfo(),&descriptor_db));
@@ -171,7 +171,6 @@ ShaderProgramBuildSpec::ShaderProgramBuildSpec(const MaterialCreateConfig *mc)
     local_to_world_ssbo=nullptr;
     local_to_world_ubo=nullptr;
 
-    has_local_to_world=config.local_to_world;
 }
 
 ShaderProgramBuildSpec::~ShaderProgramBuildSpec()

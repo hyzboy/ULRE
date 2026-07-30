@@ -9,6 +9,7 @@
 #include<hgl/mtl/MaterializationPools.h>
 #include<hgl/common/VertexAttribDef.h>
 #include<hgl/common/RenderTargetOutputConfig.h>
+#include<hgl/mtl/SkyLight.h>
 
 namespace hgl::graph
 {
@@ -59,6 +60,9 @@ struct MaterialDefinitionBuildRequest
 
     bool override_rt_output = false;
     RenderTargetOutputConfig rt_output{};
+
+    bool override_sky_ambient_model = false;
+    SkyLightAmbientModel sky_ambient_model = SkyLightAmbientModel::Simple;
 
     const ShaderBufferSource *const *private_shader_buffer_sources = nullptr;
     uint32 private_shader_buffer_source_count = 0;

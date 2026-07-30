@@ -87,7 +87,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     // Step 2: Create ShaderProgramBuildSpec
     // ─────────────────────────────────────────────────────────────
 
-    ShaderProgramBuildSpec *mci = new ShaderProgramBuildSpec(&cfg);
+    ShaderProgramBuildSpec *mci = new ShaderProgramBuildSpec(cfg.prim, cfg.shader_stage_flag_bit, cfg.local_to_world);
     if (profile)
         mci->SetDevice(profile);
 
