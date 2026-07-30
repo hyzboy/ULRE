@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/MaterialComponent.h>
@@ -16,8 +16,6 @@
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/mtl/MaterialLibrary.h>
-#include<hgl/mtl/Material2DCreateConfig.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/log/Log.h>
 #include<glm/glm.hpp>
 #include<cstring>
@@ -38,57 +36,13 @@ namespace hgl::ecs
             return owner->GetName().c_str();
         }
 
-        bool TryResolvePresetByHint(const uint32_t hint, graph::mtl::MaterialPreset &out_preset)
+
+        std::string BuildTextureResourceId(graph::Texture *texture)
         {
-            if (hint == graph::mtl::InvalidMaterialPresetHint)
-                return false;
+            if (!texture)
+                return {};
 
-            if (hint >= static_cast<uint32_t>(graph::mtl::MaterialPreset::RANGE_SIZE))
-                return false;
-
-            out_preset = static_cast<graph::mtl::MaterialPreset>(hint);
-            return true;
-        }
-
-        bool TryResolvePresetForRecipe(const graph::mtl::MaterialRecipe &recipe,
-                                       graph::mtl::MaterialPreset &out_preset)
-        {
-            if (!recipe.bmi_id.empty()
-             && graph::mtl::TryResolveMaterialPresetByBMIId(recipe.bmi_id, out_preset))
-                return true;
-
-            return TryResolvePresetByHint(recipe.preset_hint, out_preset);
-        }
-
-        bool Is2DPreset(const graph::mtl::MaterialPreset preset)
-        {
-            switch (preset)
-            {
-                case graph::mtl::MaterialPreset::VertexColor2D:
-                case graph::mtl::MaterialPreset::PureColor2D:
-                case graph::mtl::MaterialPreset::PureTexture2D:
-                case graph::mtl::MaterialPreset::RectTexture2D:
-                case graph::mtl::MaterialPreset::RectTexture2DArray:
-                case graph::mtl::MaterialPreset::Text2D:
-                    return true;
-                default:
-                    return false;
-            }
-        }
-
-        bool HasResourceSemantic(const graph::MaterialProgram *material,
-                                 const graph::mtl::DescriptorSemantic semantic)
-        {
-            if (!material)
-                return false;
-
-            for (const auto &req : material->GetMaterialResourceLayout().requirements)
-            {
-                if (req.semantic == semantic)
-                    return true;
-            }
-
-            return false;
+            return "texid:" + std::to_string(texture->GetID());
         }
 
         bool EnsureRuntimeGeometryFromAsset(ECSContext *world,
@@ -132,32 +86,6 @@ namespace hgl::ecs
                 return spec.struct_refs.front().struct_index;
 
             return fallback_row;
-        }
-
-        bool ReferenceProgramMatchesPreset(const graph::MaterialProgram *material,
-                                           const graph::mtl::MaterialPreset preset)
-        {
-            if (!material)
-                return false;
-
-            const char *material_name = material->GetName().c_str();
-            const char *preset_name = graph::mtl::GetMaterialPresetName(preset);
-            if (!material_name || !preset_name)
-                return false;
-
-            const size_t preset_name_len = std::strlen(preset_name);
-            if (preset_name_len == 0)
-                return false;
-
-            return std::strncmp(material_name, preset_name, preset_name_len) == 0;
-        }
-
-        std::string BuildTextureResourceId(graph::Texture *texture)
-        {
-            if (!texture)
-                return {};
-
-            return "texid:" + std::to_string(texture->GetID());
         }
 
         void UpsertRecipeTextureBinding(graph::mtl::MaterialRecipe &recipe,
@@ -578,7 +506,6 @@ namespace hgl::ecs
         }
 
         graph::PrimitiveType primitive_type = graph::PrimitiveType::Triangles;
-        graph::MaterialProgram *reference_program = nullptr;
         const graph::GeometryVertexFormat *geometry_vertex_format = nullptr;
         if (const auto *asset = primitive_comp->GetPrimitiveAsset())
         {
