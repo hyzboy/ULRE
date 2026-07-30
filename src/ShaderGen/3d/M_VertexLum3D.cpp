@@ -15,6 +15,9 @@ namespace
         bmi.bmi_name = "VertexLuminance3D";
         bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::VertexLuminance3D);
         bmi.source_kind = BMISourceKind::BuiltIn;
+        bmi.with_camera       = true;
+        bmi.with_local_to_world = true;
+        bmi.with_sky          = false;
         RegisterBaseMaterialInfo(MaterialPreset::VertexLuminance3D, bmi);
         return true;
     }();

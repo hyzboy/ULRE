@@ -15,6 +15,9 @@ namespace
         bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::SkyMinimal);
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.usage_tag = BMIUsageTag::Sky;
+        bmi.with_camera       = true;
+        bmi.with_local_to_world = true;
+        bmi.with_sky          = true;
         RegisterBaseMaterialInfo(MaterialPreset::SkyMinimal, bmi);
 
         BaseMaterialInfo alias = bmi;

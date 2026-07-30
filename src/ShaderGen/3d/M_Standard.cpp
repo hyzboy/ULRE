@@ -19,6 +19,9 @@ namespace
         bmi.bmi_name = "Standard";
         bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::Standard);
         bmi.source_kind = BMISourceKind::BuiltIn;
+        bmi.with_camera       = true;
+        bmi.with_local_to_world = true;
+        bmi.with_sky          = true;   // Standard 使用 SkyInfo
         RegisterBaseMaterialInfo(MaterialPreset::Standard, bmi);
         return true;
     }();

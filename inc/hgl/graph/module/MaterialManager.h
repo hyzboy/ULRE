@@ -156,6 +156,14 @@ public: //MaterialProgram
     MaterialProgram *          AcquireMaterialProgram(const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *); ///<基于variant key创建2D材质（Phase-A兼容）
     MaterialProgram *          AcquireMaterialProgram(const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *); ///<基于variant key创建3D材质（Phase-A兼容）
 
+    /// 统一 BMI 入口：根据 bmi_id 查找 BaseMaterialInfo，从 BMI 元数据构建合适的 config，
+    /// 最终调用 AcquireMaterialProgram(preset, cfg)。调用方无需知道 2D/3D/Sky 细节。
+    /// 当 bmi_id 未找到时，自动尝试 preset_hint 兼容路径，再失败则尝试 builtin fallback。
+    MaterialProgram *AcquireMaterialProgramByBMI(const std::string &bmi_id,
+                                                  const mtl::MaterialRecipe &recipe,
+                                                  PrimitiveType prim_type,
+                                                  const GeometryVertexFormat *geometry_vertex_format = nullptr);
+
 private: // Legacy MaterialInstance bridge — internal engine use only during Phase 7 migration
 
     MaterialInstance *  CreateMaterialInstanceInternal(MaterialProgram *);

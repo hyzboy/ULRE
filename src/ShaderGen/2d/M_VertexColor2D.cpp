@@ -12,6 +12,7 @@ namespace
         bmi.bmi_name = "VertexColor2D";
         bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::VertexColor2D);
         bmi.source_kind = BMISourceKind::BuiltIn;
+        bmi.is_2d = true;
         bmi.coordinate_system_2d = CoordinateSystem2D::NDC;
         bmi.local_to_world_2d = true;
         RegisterBaseMaterialInfo(MaterialPreset::VertexColor2D, bmi);

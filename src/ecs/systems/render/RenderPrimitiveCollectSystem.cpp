@@ -587,84 +587,22 @@ namespace hgl::ecs
             primitive_type = asset->GetPrimitiveType();
         }
 
-        graph::mtl::MaterialPreset preset{};
-        if (!TryResolvePresetForRecipe(effective_recipe, preset))
+        // 统一 BMI 入口：由 AcquireMaterialProgramByBMI 内部处理 2D/3D/Text/Sky 分支，
+        // ECS 不再持有材质 config 细节知识。
+        graph::MaterialProgram *resolved_program =
+            material_manager->AcquireMaterialProgramByBMI(
+                effective_recipe.bmi_id,
+                effective_recipe,
+                primitive_type,
+                geometry_vertex_format);
+
+        if (!resolved_program)
         {
-            GLogWarning("[RenderPrimitiveCollectSystem] ResolveMaterialProgram failed: unresolved BMI key for %s recipe=%s bmi_id=%s preset_hint=%u",
+            GLogWarning("[RenderPrimitiveCollectSystem] AcquireMaterialProgramByBMI failed for %s recipe=%s bmi_id=%s preset_hint=%u",
                         GetPrimitiveOwnerName(primitive_comp),
                         effective_recipe.recipe_name.c_str(),
                         effective_recipe.bmi_id.c_str(),
                         effective_recipe.preset_hint);
-            return false;
-        }
-
-        graph::MaterialProgram *resolved_program = nullptr;
-        if (ReferenceProgramMatchesPreset(reference_program, preset))
-            resolved_program = reference_program;
-
-        if (!resolved_program && Is2DPreset(preset))
-        {
-            if (preset == graph::mtl::MaterialPreset::Text2D)
-            {
-                graph::mtl::Text2DMaterialCreateConfig cfg;
-                cfg.prim = primitive_type;
-                resolved_program = material_manager->AcquireMaterialProgram(preset, &cfg);
-            }
-            else
-            {
-                const graph::mtl::WithLocalToWorld with_l2w =
-                    effective_recipe.local_to_world_2d
-                  ? graph::mtl::WithLocalToWorld::With
-                  : graph::mtl::WithLocalToWorld::Without;
-
-                graph::mtl::Material2DCreateConfig cfg(primitive_type,
-                                                       effective_recipe.coordinate_system_2d,
-                                                       with_l2w);
-                resolved_program = geometry_vertex_format
-                                 ? material_manager->AcquireMaterialProgram(preset, &cfg, *geometry_vertex_format)
-                                 : material_manager->AcquireMaterialProgram(preset, &cfg);
-            }
-        }
-        else if (!resolved_program)
-        {
-            if (preset == graph::mtl::MaterialPreset::SkyMinimal)
-            {
-                graph::mtl::SkyMinimalCreateConfig cfg(graph::mtl::WithCamera::With);
-                cfg.prim = primitive_type;
-                resolved_program = material_manager->AcquireMaterialProgram(preset, &cfg);
-            }
-            else
-            {
-                const graph::mtl::WithCamera with_camera =
-                    HasResourceSemantic(reference_program, graph::mtl::DescriptorSemantic::CameraInfo)
-                    ? graph::mtl::WithCamera::With
-                    : graph::mtl::WithCamera::Without;
-                const graph::mtl::WithLocalToWorld with_l2w =
-                    (reference_program && reference_program->hasLocalToWorld())
-                    ? graph::mtl::WithLocalToWorld::With
-                    : graph::mtl::WithLocalToWorld::Without;
-                const graph::mtl::WithSky with_sky =
-                    (HasResourceSemantic(reference_program, graph::mtl::DescriptorSemantic::SkyInfo)
-                  || HasResourceSemantic(reference_program, graph::mtl::DescriptorSemantic::SkyCubemapSampler))
-                    ? graph::mtl::WithSky::With
-                    : graph::mtl::WithSky::Without;
-
-                graph::mtl::Material3DCreateConfig cfg(primitive_type,
-                                                       with_camera,
-                                                       with_l2w,
-                                                       with_sky);
-                resolved_program = geometry_vertex_format
-                                 ? material_manager->AcquireMaterialProgram(preset, &cfg, *geometry_vertex_format)
-                                 : material_manager->AcquireMaterialProgram(preset, &cfg);
-            }
-        }
-
-        if (!resolved_program)
-        {
-            GLogWarning("[RenderPrimitiveCollectSystem] AcquireMaterialProgram failed for %s recipe=%s preset=%u",
-                        GetPrimitiveOwnerName(primitive_comp),
-                        effective_recipe.recipe_name.c_str(),
-                        static_cast<uint32_t>(preset));
             return false;
         }
 

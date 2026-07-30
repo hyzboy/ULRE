@@ -247,10 +247,6 @@ namespace hgl::graph::mtl
         BMISourceKind source_kind = BMISourceKind::BuiltIn;         // 来源类型
         BMIUsageTag   usage_tag  = BMIUsageTag::General;            // 用途标签
 
-        // 2D 作者层默认值
-        CoordinateSystem2D coordinate_system_2d = CoordinateSystem2D::NDC;
-        bool local_to_world_2d = true;
-
         // Lod / 质量包络
         uint16_t default_lod   = 0;
         uint16_t lod_count     = 1;
@@ -259,8 +255,16 @@ namespace hgl::graph::mtl
         // Part-B: 资源契约（当前阶段仅 SSBO；Texture/VAB 由 recipe 按需声明）
         std::vector<RecipeSSBOAssetBinding> required_ssbo_assets;
 
-        // Part-C: 创建绑定（当前阶段：指向 M_* 创建函数的 preset 数值；未来：文件化 creator 描述）
-        // 当前通过 preset_hint 间接传达，未来会扩展为独立 creator_key 或 shader_descriptor 字段。
+        // Part-C: config 构建参数（MaterialCreateConfig 所需全部选项显式存储，
+        //         不允许调用方根据名字/枚举范围做任何推断）
+        bool is_2d            = false;  // 使用 Material2DCreateConfig
+        bool is_text          = false;  // 使用 Text2DMaterialCreateConfig（优先级高于 is_2d）
+        bool with_camera      = true;   // 3D 材质包含 Camera UBO
+        bool with_local_to_world = true;// 包含 LocalToWorld 变换
+        bool with_sky         = false;  // 包含 Sky/大气 UBO
+        // 2D 专用（仅 is_2d=true 时有效）
+        CoordinateSystem2D coordinate_system_2d = CoordinateSystem2D::NDC;
+        bool local_to_world_2d = true;
     };
 
     // 纯声明式材质输入（不含 Vulkan/运行时句柄），是 MaterializationSpec 的上游输入。
@@ -359,6 +363,9 @@ namespace hgl::graph::mtl
         if (recipe.preset_hint == InvalidMaterialPresetHint || overwrite_existing)
             recipe.preset_hint = bmi.preset_hint;
 
+        // coordinate_system_2d/local_to_world_2d：
+        // NDC 是 MaterialRecipe 的零值默认，无法区分"用户显式设了 NDC"和"未设置"。
+        // 保守策略：只在 overwrite 时才从 BMI 复写（用户显式赋值优先）。
         if (overwrite_existing)
         {
             recipe.coordinate_system_2d = bmi.coordinate_system_2d;

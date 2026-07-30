@@ -26,6 +26,9 @@ namespace
         bmi.bmi_name = "VertexPattleColor3D";
         bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::VertexPattleColor3D);
         bmi.source_kind = BMISourceKind::BuiltIn;
+        bmi.with_camera       = true;
+        bmi.with_local_to_world = true;
+        bmi.with_sky          = false;
         RegisterBaseMaterialInfo(MaterialPreset::VertexPattleColor3D, bmi);
         return true;
     }();
