@@ -13,7 +13,7 @@ namespace
     const bool kRegisteredGizmo3DBmi = []() -> bool
     {
         MaterialDefinition bmi{};
-        bmi.bmi_name = "Gizmo3D";
+        bmi.definition_name = "Gizmo3D";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::Gizmo3D);
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.with_camera       = true;
@@ -100,4 +100,5 @@ ShaderProgramBuildSpec *CreateGizmo3D(const contract::PhysicalDeviceProfileLite 
     return mci;
 }
 }//namespace hgl::graph::mtl
+
 

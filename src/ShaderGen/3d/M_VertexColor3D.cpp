@@ -12,7 +12,7 @@ namespace
     const bool kRegisteredVertexColor3DBmi = []() -> bool
     {
         MaterialDefinition bmi{};
-        bmi.bmi_name = "VertexColor3D";
+        bmi.definition_name = "VertexColor3D";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::VertexColor3D);
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.with_camera       = true;
@@ -81,4 +81,5 @@ ShaderProgramBuildSpec *CreateVertexColor3D(const contract::PhysicalDeviceProfil
     return mci;
 }
 }//namespace hgl::graph::mtl
+
 

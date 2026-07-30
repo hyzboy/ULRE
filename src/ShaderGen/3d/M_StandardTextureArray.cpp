@@ -16,7 +16,7 @@ namespace
     const bool kRegisteredStandardTextureArrayBmi = []() -> bool
     {
         MaterialDefinition bmi{};
-        bmi.bmi_name = "StandardTextureArray";
+        bmi.definition_name = "StandardTextureArray";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::StandardTextureArray);
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.with_camera       = true;
@@ -102,4 +102,5 @@ ShaderProgramBuildSpec *CreateStandardTextureArray(const contract::PhysicalDevic
 }
 
 }//namespace hgl::graph::mtl
+
 

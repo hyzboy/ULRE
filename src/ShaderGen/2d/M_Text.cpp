@@ -10,7 +10,7 @@ namespace
     const bool kRegisteredText2DBmi = []() -> bool
     {
         MaterialDefinition bmi{};
-        bmi.bmi_name = "Text2D";
+        bmi.definition_name = "Text2D";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::Text2D);
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.usage_tag = BMIUsageTag::Text;
@@ -21,8 +21,8 @@ namespace
         RegisterBaseMaterialInfo(BuiltinMaterialCreatorID::Text2D, bmi);
 
         MaterialDefinition alias = bmi;
-        alias.bmi_id = BUILTIN_MTL_DEF_TEXT;
-        alias.bmi_name = "builtin/text";
+        alias.definition_id = BUILTIN_MTL_DEF_TEXT;
+        alias.definition_name = "builtin/text";
         RegisterBaseMaterialInfo(alias);
 
         return true;
@@ -69,4 +69,5 @@ ShaderProgramBuildSpec *CreateText2D(const contract::PhysicalDeviceProfileLite *
     return mci;
 }
 }//namespace hgl::graph::mtl
+
 

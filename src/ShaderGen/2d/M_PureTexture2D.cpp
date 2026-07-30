@@ -10,7 +10,7 @@ namespace
     const bool kRegisteredPureTexture2DBmi = []() -> bool
     {
         MaterialDefinition bmi{};
-        bmi.bmi_name = "PureTexture2D";
+        bmi.definition_name = "PureTexture2D";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::PureTexture2D);
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.is_2d = true;
@@ -50,4 +50,5 @@ ShaderProgramBuildSpec *CreatePureTexture2D(const contract::PhysicalDeviceProfil
     return mci;
 }
 }//namespace hgl::graph::mtl
+
 

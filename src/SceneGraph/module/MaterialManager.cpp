@@ -427,7 +427,7 @@ MaterialProgram *MaterialManager::AcquireMaterialProgramByBMI(const std::string 
                                                                PrimitiveType prim_type,
                                                                const GeometryVertexFormat *geometry_vertex_format)
 {
-    // 1. 查询 BMI：按 bmi_id 主键；失败则用 3D 通用保底
+    // 1. 查询 BMI：按 mtl_def_id 主键；失败则用 3D 通用保底
     mtl::MaterialDefinition bmi{};
     bool has_bmi = mtl::TryGetBaseMaterialInfoByBMIId(bmi_id, bmi);
 

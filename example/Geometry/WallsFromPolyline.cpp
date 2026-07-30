@@ -140,7 +140,7 @@ public:
         mi_data.roughness=0.95f;
         mi_data.normal_scale=0.35f;
         wall_recipe.recipe_name = "WallsFromPolyline.Standard";
-        wall_recipe.bmi_id = "Standard";
+        wall_recipe.mtl_def_id = "Standard";
         wall_recipe.domain = "WallsFromPolyline";
 
         // Allocate SSBO first so the ID is available before UpsertRecipe.

@@ -11,7 +11,7 @@ namespace
     const bool kRegisteredSkyMinimalBmi = []() -> bool
     {
         MaterialDefinition bmi{};
-        bmi.bmi_name = "SkyMinimal";
+        bmi.definition_name = "SkyMinimal";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::SkyMinimal);
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.usage_tag = BMIUsageTag::Sky;
@@ -21,8 +21,8 @@ namespace
         RegisterBaseMaterialInfo(BuiltinMaterialCreatorID::SkyMinimal, bmi);
 
         MaterialDefinition alias = bmi;
-        alias.bmi_id = BUILTIN_MTL_DEF_SKY;
-        alias.bmi_name = "builtin/sky";
+        alias.definition_id = BUILTIN_MTL_DEF_SKY;
+        alias.definition_name = "builtin/sky";
         RegisterBaseMaterialInfo(alias);
 
         return true;
@@ -87,4 +87,5 @@ ShaderProgramBuildSpec *CreateSkyMinimal(const contract::PhysicalDeviceProfileLi
     return mci;
 }
 }//namespace hgl::graph::mtl
+
 

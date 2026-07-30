@@ -241,8 +241,8 @@ namespace hgl::graph::mtl
     struct MaterialDefinition
     {
         // Part-A: 基础语义/元信息
-        std::string bmi_id;                                          // 正式主键（字符串 ID / 未来文件名）
-        std::string bmi_name;                                        // 人类可读名称
+        std::string definition_id;                                   // 正式主键（字符串 ID / 未来文件名）
+        std::string definition_name;                                 // 人类可读名称
         uint32_t    builtin_creator_id = InvalidBuiltinMaterialCreatorIDHint;         // 当前阶段过渡字段（enum 序号）
         BMISourceKind source_kind = BMISourceKind::BuiltIn;         // 来源类型
         BMIUsageTag   usage_tag  = BMIUsageTag::General;            // 用途标签
@@ -271,7 +271,7 @@ namespace hgl::graph::mtl
     struct MaterialRecipe
     {
         std::string recipe_name;               // 配方名称（人类可读）
-        std::string bmi_id;                    // BMI 字符串主键（材质标识 / 未来文件名）
+        std::string mtl_def_id;                // MaterialDefinition字符串主键（材质标识 / 未来文件名）
         std::string domain;                    // 资源/缓存域（用于隔离不同管线空间）
         CoordinateSystem2D coordinate_system_2d = CoordinateSystem2D::NDC; // 2D 材质坐标系作者意图
         bool local_to_world_2d = true;        // 2D 材质是否需要 L2W 变换
@@ -352,8 +352,8 @@ namespace hgl::graph::mtl
                                               const MaterialDefinition &bmi,
                                               const bool overwrite_existing = false)
     {
-        if (recipe.bmi_id.empty())
-            recipe.bmi_id = bmi.bmi_id;
+        if (recipe.mtl_def_id.empty())
+            recipe.mtl_def_id = bmi.definition_id;
 
         // coordinate_system_2d/local_to_world_2d：保守策略，只在 overwrite 时复写。
         if (overwrite_existing)
@@ -379,8 +379,8 @@ namespace hgl::graph::mtl
 
         if (!recipe.recipe_name.empty())
             hash = hgl::hash::FNV1aAppendBytes(hash, recipe.recipe_name.data(), recipe.recipe_name.size());
-        if (!recipe.bmi_id.empty())
-            hash = hgl::hash::FNV1aAppendBytes(hash, recipe.bmi_id.data(), recipe.bmi_id.size());
+        if (!recipe.mtl_def_id.empty())
+            hash = hgl::hash::FNV1aAppendBytes(hash, recipe.mtl_def_id.data(), recipe.mtl_def_id.size());
         if (!recipe.domain.empty())
             hash = hgl::hash::FNV1aAppendBytes(hash, recipe.domain.data(), recipe.domain.size());
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.coordinate_system_2d);
@@ -429,4 +429,5 @@ namespace hgl::graph::mtl
         return static_cast<uint64_t>(hash);
     }
 }
+
 

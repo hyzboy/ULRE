@@ -103,7 +103,7 @@ private:
             return false;
         geometry_manager->Add(geometry);
         quad_recipe.recipe_name = "TextureQuad.PureTexture2D";
-        quad_recipe.bmi_id = "PureTexture2D";
+        quad_recipe.mtl_def_id = "PureTexture2D";
         quad_recipe.domain = "TextureQuad";
         quad_asset = PrimitiveAsset(geometry, &quad_recipe, PrimitiveType::Fan);
 

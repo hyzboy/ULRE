@@ -136,7 +136,7 @@ private:
         auto primitive_comp = cube_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
         cube_recipe.recipe_name = "SimpleCube.Gizmo3D";
-        cube_recipe.bmi_id = "Gizmo3D";
+        cube_recipe.mtl_def_id = "Gizmo3D";
         cube_recipe.domain = "SimpleCube";
         cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
         primitive_comp->SetPrimitiveAsset(&cube_asset);

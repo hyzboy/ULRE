@@ -41,20 +41,20 @@ VkFormat ResolveMaterialPositionFormat(const MaterialCreateConfig *cfg, VkFormat
 void RegisterBaseMaterialInfo(const MaterialDefinition &bmi)
 {
     MaterialDefinition normalized = bmi;
-    if (normalized.bmi_id.empty())
+    if (normalized.definition_id.empty())
     {
-        if (!normalized.bmi_name.empty())
-            normalized.bmi_id = normalized.bmi_name;
+        if (!normalized.definition_name.empty())
+            normalized.definition_id = normalized.definition_name;
     }
 
-    if (normalized.bmi_name.empty() && normalized.bmi_id.empty())
+    if (normalized.definition_name.empty() && normalized.definition_id.empty())
         return;
 
     auto &registry = GetBaseMaterialInfoRegistry();
     for (auto &entry : registry)
     {
-        if ((!normalized.bmi_id.empty() && entry.bmi.bmi_id == normalized.bmi_id)
-         || (!normalized.bmi_name.empty() && entry.bmi.bmi_name == normalized.bmi_name))
+        if ((!normalized.definition_id.empty() && entry.bmi.definition_id == normalized.definition_id)
+         || (!normalized.definition_name.empty() && entry.bmi.definition_name == normalized.definition_name))
         {
             entry.bmi = normalized;
             return;
@@ -71,19 +71,19 @@ void RegisterBaseMaterialInfo(const BuiltinMaterialCreatorID preset, const Mater
     MaterialDefinition normalized = bmi;
     const char *preset_name = GetBuiltinMaterialCreatorIDName(preset);
 
-    if (normalized.bmi_id.empty())
+    if (normalized.definition_id.empty())
     {
         if (preset_name && *preset_name)
-            normalized.bmi_id = preset_name;
+            normalized.definition_id = preset_name;
     }
 
-    if (normalized.bmi_name.empty())
+    if (normalized.definition_name.empty())
     {
         if (preset_name && *preset_name)
-            normalized.bmi_name = preset_name;
+            normalized.definition_name = preset_name;
     }
 
-    if (normalized.bmi_name.empty() && normalized.bmi_id.empty())
+    if (normalized.definition_name.empty() && normalized.definition_id.empty())
         return;
 
     auto &registry = GetBaseMaterialInfoRegistry();
@@ -111,7 +111,7 @@ bool TryGetBaseMaterialInfoByBMIId(const std::string &bmi_id, MaterialDefinition
     const auto &registry = GetBaseMaterialInfoRegistry();
     for (const auto &entry : registry)
     {
-        if (entry.bmi.bmi_id == bmi_id)
+        if (entry.bmi.definition_id == bmi_id)
         {
             out_bmi = entry.bmi;
             return true;
@@ -192,3 +192,4 @@ ShaderProgramBuildSpec *CreateMaterialCreateInfo(const contract::PhysicalDeviceP
     }
 }
 }//namespace hgl::graph::mtl
+

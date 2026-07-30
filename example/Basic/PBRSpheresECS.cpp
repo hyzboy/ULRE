@@ -149,7 +149,7 @@ private:
             return false;
         }
         sphere_recipe.recipe_name = "PBRSpheres.StandardTextureArray";
-        sphere_recipe.bmi_id = "StandardTextureArray";
+        sphere_recipe.mtl_def_id = "StandardTextureArray";
         sphere_recipe.domain = "PBRSpheres";
 
         sampler = sampler_manager->CreateSampler();

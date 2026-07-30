@@ -138,7 +138,7 @@ private:
         HGL_TRACK_ALLOCATION("TrianglePrimitive", hgl::core::ObjectTypeTag::FrameResource);
         auto ecs_primitive = triangle_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         triangle_recipe.recipe_name = "DrawTriangle.VertexColor2D";
-        triangle_recipe.bmi_id = "VertexColor2D";
+        triangle_recipe.mtl_def_id = "VertexColor2D";
         triangle_recipe.domain = "DrawTriangle";
         triangle_recipe.coordinate_system_2d = graph::CoordinateSystem2D::Ortho;
         triangle_recipe.local_to_world_2d = false;

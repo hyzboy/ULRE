@@ -37,7 +37,7 @@ namespace hgl::ecs
         void ResetMaterialRecipe(graph::mtl::MaterialRecipe &recipe)
         {
             recipe.recipe_name.clear();
-            recipe.bmi_id.clear();
+            recipe.mtl_def_id.clear();
             recipe.domain.clear();
             recipe.coordinate_system_2d = graph::CoordinateSystem2D::NDC;
             recipe.local_to_world_2d = true;

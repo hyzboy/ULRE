@@ -134,7 +134,7 @@ namespace hgl::graph
                     auto &recipe = gr->color_recipe[c];
                     recipe = mtl::MaterialRecipe{};
                     recipe.recipe_name = "GizmoColor_" + std::to_string(c);
-                    recipe.bmi_id = "PureColor3D";
+                    recipe.mtl_def_id = "PureColor3D";
                     recipe.structs.clear();
                     recipe.textures.clear();
                     recipe.ssbo_assets.clear();
@@ -169,9 +169,9 @@ namespace hgl::graph
 
             {
                 mtl::MaterialRecipe recipe{};
-                recipe.bmi_id = "PureColor3D";
+                recipe.mtl_def_id = "PureColor3D";
 
-                gizmo_triangle.mtl=gizmo_mtl_manager->AcquireMaterialProgramByBMI(recipe.bmi_id,recipe,PrimitiveType::Triangles);
+                gizmo_triangle.mtl=gizmo_mtl_manager->AcquireMaterialProgramByBMI(recipe.mtl_def_id,recipe,PrimitiveType::Triangles);
                 if(!gizmo_triangle.mtl)
                     return(false);
 

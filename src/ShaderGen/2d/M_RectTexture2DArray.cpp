@@ -10,7 +10,7 @@ namespace
     const bool kRegisteredRectTexture2DArrayBmi = []() -> bool
     {
         MaterialDefinition bmi{};
-        bmi.bmi_name = "RectTexture2DArray";
+        bmi.definition_name = "RectTexture2DArray";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::RectTexture2DArray);
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.is_2d = true;
@@ -62,4 +62,5 @@ ShaderProgramBuildSpec *CreateRectTexture2DArray(const contract::PhysicalDeviceP
     return mci;
 }
 }//namespace hgl::graph::mtl
+
 

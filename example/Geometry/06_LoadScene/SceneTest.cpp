@@ -151,7 +151,7 @@ private:
         const OSString base_dir  = hgl::ToOSString(scene_dir.string());
 
         scene_recipe.recipe_name = "LoadScene.Gizmo3D";
-        scene_recipe.bmi_id = "Gizmo3D";
+        scene_recipe.mtl_def_id = "Gizmo3D";
         scene_recipe.domain = "LoadScene";
 
         return LoadStaticMeshSceneAsPrimitiveAssets(

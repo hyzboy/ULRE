@@ -349,13 +349,13 @@ namespace hgl::ecs
 
         // ------- Create material -------
         graph::mtl::MaterialRecipe recipe{};
-        recipe.bmi_id = "VertexPattleColor3D";
+        recipe.mtl_def_id = "VertexPattleColor3D";
 
         auto* mat_mgr = gc->GetMaterialManager();
         if (!mat_mgr)
             return false;
 
-        material_ = mat_mgr->AcquireMaterialProgramByBMI(recipe.bmi_id, recipe, graph::PrimitiveType::Lines);
+        material_ = mat_mgr->AcquireMaterialProgramByBMI(recipe.mtl_def_id, recipe, graph::PrimitiveType::Lines);
         if (!material_)
             return false;
 

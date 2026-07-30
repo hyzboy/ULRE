@@ -166,11 +166,11 @@ private:
     void InitMaterialRecipes()
     {
         solid_recipe.recipe_name = "LoadGeometry.Gizmo3D";
-        solid_recipe.bmi_id = "Gizmo3D";
+        solid_recipe.mtl_def_id = "Gizmo3D";
         solid_recipe.domain = "LoadGeometry";
 
         wire_recipe.recipe_name = "LoadGeometry.Wire";
-        wire_recipe.bmi_id = "PureColor3D";
+        wire_recipe.mtl_def_id = "PureColor3D";
         wire_recipe.domain = "LoadGeometry";
     }
 

@@ -300,7 +300,7 @@ namespace hgl::ecs
             return nullptr;
 
         graph::mtl::MaterialRecipe recipe{};
-        recipe.bmi_id = "Text2D";
+        recipe.mtl_def_id = "Text2D";
 
         material_manager = graphics_context->GetMaterialManager();
         if (!material_manager)
@@ -308,7 +308,7 @@ namespace hgl::ecs
 
         guard.material_manager = material_manager;
 
-        guard.material = material_manager->AcquireMaterialProgramByBMI(recipe.bmi_id, recipe, graph::PrimitiveType::Triangles);
+        guard.material = material_manager->AcquireMaterialProgramByBMI(recipe.mtl_def_id, recipe, graph::PrimitiveType::Triangles);
         if (!guard.material)
             return nullptr;
 

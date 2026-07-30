@@ -23,7 +23,7 @@ namespace
     const bool kRegisteredVertexPattleColor3DBmi = []() -> bool
     {
         MaterialDefinition bmi{};
-        bmi.bmi_name = "VertexPattleColor3D";
+        bmi.definition_name = "VertexPattleColor3D";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::VertexPattleColor3D);
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.with_camera       = true;
@@ -102,4 +102,5 @@ ShaderProgramBuildSpec *CreateVertexPattleColor3D(const contract::PhysicalDevice
     return mci;
 }
 }//namespace hgl::graph::mtl
+
 

@@ -12,7 +12,7 @@ namespace
     const bool kRegisteredPureColor3DBmi = []() -> bool
     {
         MaterialDefinition bmi{};
-        bmi.bmi_name = "PureColor3D";
+        bmi.definition_name = "PureColor3D";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::PureColor3D);
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.with_camera       = true;
@@ -24,16 +24,16 @@ namespace
         // builtin/fallback_3d: 3D 无材质保底
         {
             MaterialDefinition alias = bmi;
-            alias.bmi_id = BUILTIN_MTL_DEF_FALLBACK_3D;
-            alias.bmi_name = "builtin/fallback_3d";
+            alias.definition_id = BUILTIN_MTL_DEF_FALLBACK_3D;
+            alias.definition_name = "builtin/fallback_3d";
             RegisterBaseMaterialInfo(alias);
         }
 
         // builtin/missing_material: 缺失材质（当前与 fallback_3d 相同，未来可换成棋盘格）
         {
             MaterialDefinition alias = bmi;
-            alias.bmi_id = BUILTIN_MTL_DEF_MISSING_MATERIAL;
-            alias.bmi_name = "builtin/missing_material";
+            alias.definition_id = BUILTIN_MTL_DEF_MISSING_MATERIAL;
+            alias.definition_name = "builtin/missing_material";
             RegisterBaseMaterialInfo(alias);
         }
 
@@ -102,4 +102,5 @@ ShaderProgramBuildSpec *CreatePureColor3D(const contract::PhysicalDeviceProfileL
     return mci;
 }
 }//namespace hgl::graph::mtl
+
 

@@ -195,8 +195,8 @@ namespace hgl::graph
     bool TextRender::InitMaterial(RenderPass *rp)
     {
         mtl::MaterialRecipe recipe{};
-        recipe.bmi_id = "Text2D";
-        mtl_fs=mtl_manager->AcquireMaterialProgramByBMI(recipe.bmi_id,recipe,PrimitiveType::Triangles);
+        recipe.mtl_def_id = "Text2D";
+        mtl_fs=mtl_manager->AcquireMaterialProgramByBMI(recipe.mtl_def_id,recipe,PrimitiveType::Triangles);
         if(!mtl_fs)return(false);
 
         const GeometryVertexFormat text_gvf = CreateTextGeometryVertexFormat();

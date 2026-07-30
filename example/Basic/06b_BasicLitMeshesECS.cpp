@@ -90,7 +90,7 @@ private:
         if (!texture_manager || !sampler_manager )
             return false;
         mesh_recipe.recipe_name = "06b.BasicLit.Standard";
-        mesh_recipe.bmi_id = "Standard";
+        mesh_recipe.mtl_def_id = "Standard";
         mesh_recipe.domain = "06b.BasicLit";
         graph::mtl::UpsertRecipeSSBOAssetBinding(mesh_recipe,
                                                  graph::mtl::SBS_MaterialInstance.name,

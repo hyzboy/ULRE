@@ -107,7 +107,7 @@ private:
             return false;
 
         clock_recipe.recipe_name = "Clock.PureColor2D";
-        clock_recipe.bmi_id = "PureColor2D";
+        clock_recipe.mtl_def_id = "PureColor2D";
         clock_recipe.domain = "Clock";
         graph::mtl::UpsertRecipeSSBOAssetBinding(clock_recipe,
                                                  graph::mtl::SBS_MaterialInstance.name,

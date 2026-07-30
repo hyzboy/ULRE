@@ -149,11 +149,11 @@ namespace hgl::ecs
 
         void NormalizeRecipeWithBaseMaterialInfo(graph::mtl::MaterialRecipe &recipe)
         {
-            if (recipe.bmi_id.empty())
+            if (recipe.mtl_def_id.empty())
                 return;
 
             graph::mtl::MaterialDefinition bmi{};
-            if (graph::mtl::TryGetBaseMaterialInfoByBMIId(recipe.bmi_id, bmi))
+            if (graph::mtl::TryGetBaseMaterialInfoByBMIId(recipe.mtl_def_id, bmi))
                 graph::mtl::ApplyBaseMaterialInfoDefaults(recipe, bmi, false);
 
             // Auto-derive SSBO name mapping from struct slot declarations when authoring didn't provide assets.
@@ -504,17 +504,17 @@ namespace hgl::ecs
         // ECS 不再持有材质 config 细节知识。
         graph::MaterialProgram *resolved_program =
             material_manager->AcquireMaterialProgramByBMI(
-                effective_recipe.bmi_id,
+                effective_recipe.mtl_def_id,
                 effective_recipe,
                 primitive_type,
                 geometry_vertex_format);
 
         if (!resolved_program)
         {
-            GLogWarning("[RenderPrimitiveCollectSystem] AcquireMaterialProgramByBMI failed for %s recipe=%s bmi_id=%s builtin_creator_id=%u",
+            GLogWarning("[RenderPrimitiveCollectSystem] AcquireMaterialProgramByBMI failed for %s recipe=%s mtl_def_id=%s builtin_creator_id=%u",
                         GetPrimitiveOwnerName(primitive_comp),
                         effective_recipe.recipe_name.c_str(),
-                        effective_recipe.bmi_id.c_str());
+                        effective_recipe.mtl_def_id.c_str());
             return false;
         }
 

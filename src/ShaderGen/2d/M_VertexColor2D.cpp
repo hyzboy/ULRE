@@ -9,7 +9,7 @@ namespace
     const bool kRegisteredVertexColor2DBmi = []() -> bool
     {
         MaterialDefinition bmi{};
-        bmi.bmi_name = "VertexColor2D";
+        bmi.definition_name = "VertexColor2D";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::VertexColor2D);
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.is_2d = true;
@@ -49,4 +49,5 @@ ShaderProgramBuildSpec *CreateVertexColor2D(const contract::PhysicalDeviceProfil
 }
 
 }//namespace hgl::graph::mtl
+
 

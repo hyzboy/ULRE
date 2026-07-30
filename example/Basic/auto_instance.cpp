@@ -78,7 +78,7 @@ private:
             return false;
 
         triangle_recipe.recipe_name = "AutoInstance.VertexColor2D";
-        triangle_recipe.bmi_id = "VertexColor2D";
+        triangle_recipe.mtl_def_id = "VertexColor2D";
         triangle_recipe.domain = "AutoInstance";
         triangle_asset = PrimitiveAsset(geom_triangle, &triangle_recipe, PrimitiveType::Triangles);
 

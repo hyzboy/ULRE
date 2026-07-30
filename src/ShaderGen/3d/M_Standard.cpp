@@ -16,7 +16,7 @@ namespace
     const bool kRegisteredStandardBmi = []() -> bool
     {
         MaterialDefinition bmi{};
-        bmi.bmi_name = "Standard";
+        bmi.definition_name = "Standard";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::Standard);
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.with_camera       = true;
@@ -102,4 +102,5 @@ ShaderProgramBuildSpec *CreateStandard(const contract::PhysicalDeviceProfileLite
 }
 
 }//namespace hgl::graph::mtl
+
 

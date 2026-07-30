@@ -12,7 +12,7 @@ namespace
     const bool kRegisteredVertexLuminance3DBmi = []() -> bool
     {
         MaterialDefinition bmi{};
-        bmi.bmi_name = "VertexLuminance3D";
+        bmi.definition_name = "VertexLuminance3D";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::VertexLuminance3D);
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.with_camera       = true;
@@ -97,4 +97,5 @@ ShaderProgramBuildSpec *CreateVertexLuminance3D(const contract::PhysicalDevicePr
     return mci;
 }
 }//namespace hgl::graph::mtl
+
 

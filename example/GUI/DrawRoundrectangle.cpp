@@ -119,7 +119,7 @@ private:
             return false;
 
         rect_recipe.recipe_name = "DrawRoundrectangle.RectTexture2D";
-        rect_recipe.bmi_id = "RectTexture2D";
+        rect_recipe.mtl_def_id = "RectTexture2D";
         rect_recipe.domain = "DrawRoundrectangle";
         rect_asset = PrimitiveAsset(geometry, &rect_recipe, PrimitiveType::Triangles);
 
@@ -164,3 +164,4 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Draw a rectangle with texture"),argc,argv,256,256);
 }
+

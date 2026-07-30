@@ -15,7 +15,7 @@ namespace
     const bool kRegisteredPBRColor3DBmi = []() -> bool
     {
         MaterialDefinition bmi{};
-        bmi.bmi_name = "PBRColor3D";
+        bmi.definition_name = "PBRColor3D";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::PBRColor3D);
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.with_camera       = true;
@@ -115,4 +115,5 @@ ShaderProgramBuildSpec *CreatePBRColor3D(const contract::PhysicalDeviceProfileLi
 }
 
 }//namespace hgl::graph::mtl
+
 

@@ -10,7 +10,7 @@ namespace
     const bool kRegisteredPureColor2DBmi = []() -> bool
     {
         MaterialDefinition bmi{};
-        bmi.bmi_name = "PureColor2D";
+        bmi.definition_name = "PureColor2D";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::PureColor2D);
         bmi.source_kind = BMISourceKind::BuiltIn;
         bmi.is_2d = true;
@@ -21,8 +21,8 @@ namespace
 
         // Register builtin alias so fallback code can look up by canonical id.
         MaterialDefinition fallback_alias = bmi;
-        fallback_alias.bmi_id = BUILTIN_MTL_DEF_FALLBACK_2D;
-        fallback_alias.bmi_name = "builtin/fallback_2d";
+        fallback_alias.definition_id = BUILTIN_MTL_DEF_FALLBACK_2D;
+        fallback_alias.definition_name = "builtin/fallback_2d";
         RegisterBaseMaterialInfo(fallback_alias);
 
         return true;
@@ -62,4 +62,5 @@ ShaderProgramBuildSpec *CreatePureColor2D(const contract::PhysicalDeviceProfileL
     return mci;
 }
 }//namespace hgl::graph::mtl
+
 
