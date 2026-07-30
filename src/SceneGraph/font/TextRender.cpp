@@ -5,7 +5,8 @@
 #include<hgl/graph/font/TextLayoutEngine.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKVertexInputConfig.h>
-#include<hgl/mtl/Material2DCreateConfig.h>
+#include<hgl/mtl/MaterialRecipe.h>
+#include<hgl/mtl/SamplerName.h>
 #include<hgl/framework/AppFramework.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialManager.h>
@@ -193,9 +194,9 @@ namespace hgl::graph
 
     bool TextRender::InitMaterial(RenderPass *rp)
     {
-        mtl::Text2DMaterialCreateConfig mtl_cfg;
-
-        mtl_fs=mtl_manager->AcquireMaterialProgram(mtl::MaterialPreset::Text2D,&mtl_cfg);
+        mtl::MaterialRecipe recipe{};
+        recipe.bmi_id = "Text2D";
+        mtl_fs=mtl_manager->AcquireMaterialProgramByBMI(recipe.bmi_id,recipe,PrimitiveType::Triangles);
         if(!mtl_fs)return(false);
 
         const GeometryVertexFormat text_gvf = CreateTextGeometryVertexFormat();

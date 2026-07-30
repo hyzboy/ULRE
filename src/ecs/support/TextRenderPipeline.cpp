@@ -10,7 +10,7 @@
 #include<hgl/graph/font/TextLayoutEngine.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/mtl/Material2DCreateConfig.h>
+#include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/vk/VKMaterialProgram.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKVertexInputConfig.h>
@@ -28,6 +28,7 @@
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/vk/VKCommandBuffer.h>
 
+#include<hgl/mtl/SamplerName.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/common/RenderOptions.h>
 #include<hgl/type/String.h>
@@ -298,7 +299,8 @@ namespace hgl::ecs
         if (!guard.tile_font)
             return nullptr;
 
-        graph::mtl::Text2DMaterialCreateConfig mtl_cfg;
+        graph::mtl::MaterialRecipe recipe{};
+        recipe.bmi_id = "Text2D";
 
         material_manager = graphics_context->GetMaterialManager();
         if (!material_manager)
@@ -306,7 +308,7 @@ namespace hgl::ecs
 
         guard.material_manager = material_manager;
 
-        guard.material = material_manager->AcquireMaterialProgram(graph::mtl::MaterialPreset::Text2D, &mtl_cfg);
+        guard.material = material_manager->AcquireMaterialProgramByBMI(recipe.bmi_id, recipe, graph::PrimitiveType::Triangles);
         if (!guard.material)
             return nullptr;
 

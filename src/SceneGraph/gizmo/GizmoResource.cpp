@@ -2,7 +2,7 @@
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKRenderPass.h>
 #include<hgl/color/Color.h>
@@ -168,12 +168,10 @@ namespace hgl::graph
             gizmo_mtl_manager=graphics_context->GetMaterialManager();
 
             {
-                mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
+                mtl::MaterialRecipe recipe{};
+                recipe.bmi_id = "PureColor3D";
 
-                cfg.local_to_world=true;
-                cfg.material_instance=true;
-
-                gizmo_triangle.mtl=gizmo_mtl_manager->AcquireMaterialProgram(mtl::MaterialPreset::PureColor3D,&cfg);
+                gizmo_triangle.mtl=gizmo_mtl_manager->AcquireMaterialProgramByBMI(recipe.bmi_id,recipe,PrimitiveType::Triangles);
                 if(!gizmo_triangle.mtl)
                     return(false);
 

@@ -16,7 +16,7 @@
 #include <hgl/graph/geo/GeometryCreater.h>
 #include <hgl/graph/mesh/GeometryDataBuffer.h>
 #include <hgl/graph/mesh/GeometryDrawRange.h>
-#include <hgl/mtl/Material3DCreateConfig.h>
+#include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/VKMaterialProgram.h>
@@ -348,17 +348,14 @@ namespace hgl::ecs
         support_wide_lines_ = device_->GetDevAttr() && device_->GetDevAttr()->wide_lines;
 
         // ------- Create material -------
-        graph::mtl::Material3DCreateConfig cfg(
-            graph::PrimitiveType::Lines,
-            graph::mtl::WithCamera::With,
-            graph::mtl::WithLocalToWorld::With,
-            graph::mtl::WithSky::Without);
+        graph::mtl::MaterialRecipe recipe{};
+        recipe.bmi_id = "VertexPattleColor3D";
 
         auto* mat_mgr = gc->GetMaterialManager();
         if (!mat_mgr)
             return false;
 
-        material_ = mat_mgr->AcquireMaterialProgram(graph::mtl::MaterialPreset::VertexPattleColor3D, &cfg);
+        material_ = mat_mgr->AcquireMaterialProgramByBMI(recipe.bmi_id, recipe, graph::PrimitiveType::Lines);
         if (!material_)
             return false;
 
