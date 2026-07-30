@@ -3,7 +3,7 @@
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/mesh/GeometryDataBuffer.h>
 #include<hgl/graph/mesh/GeometryDrawRange.h>
-#include<hgl/vk/VKMaterialProgram.h>
+#include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/math/geometry/BoundingVolumes.h>
@@ -73,7 +73,7 @@ namespace hgl::ecs
         }
     }
 
-    bool PrimitiveComponent::EnsureRuntimeGeometryBinding(hgl::graph::MaterialProgram *material)
+    bool PrimitiveComponent::EnsureRuntimeGeometryBinding(hgl::graph::ShaderProgram *material)
     {
         if (!primitiveAsset || !material)
             return false;
@@ -412,7 +412,7 @@ namespace hgl::ecs
         }
     }
 
-    hgl::graph::MaterialProgram* PrimitiveComponent::GetMaterialProgram() const
+    hgl::graph::ShaderProgram* PrimitiveComponent::GetMaterialProgram() const
     {
         // Recipe runtime resolves program via MaterialComponent; non-recipe items have no program.
         return nullptr;

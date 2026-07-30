@@ -28,12 +28,12 @@
 ///
 /// **示例（伪输入 -> 输出）**：
 ///   输入 entries:
-///     [set=MaterialProgram, kind=SSBO, name=mtl]
-///     [set=MaterialProgram, kind=TextureSampler, name=albedo_tex]
+///     [set=ShaderProgram, kind=SSBO, name=mtl]
+///     [set=ShaderProgram, kind=TextureSampler, name=albedo_tex]
 ///     [set=Global,   kind=UBO,  name=camera]
 ///   可能输出:
-///     layout(set=<MaterialProgram>, binding=0, std430) buffer ... mtl;
-///     layout(set=<MaterialProgram>, binding=1) uniform sampler2D albedo_tex;
+///     layout(set=<ShaderProgram>, binding=0, std430) buffer ... mtl;
+///     layout(set=<ShaderProgram>, binding=1) uniform sampler2D albedo_tex;
 ///     layout(set=<Global>,   binding=0) uniform CameraUBO ... camera;
 
 #include<hgl/type/String.h>

@@ -11,7 +11,7 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/mtl/MaterialRecipe.h>
-#include<hgl/vk/VKMaterialProgram.h>
+#include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
@@ -255,7 +255,7 @@ namespace hgl::ecs
         {
             graph::MaterialManager* material_manager = nullptr;
             graph::SamplerManager* sampler_manager = nullptr;
-            graph::MaterialProgram* material = nullptr;
+            graph::ShaderProgram* material = nullptr;
             graph::VIL* binding_vil = nullptr;
             graph::DescriptorBindingSet* descriptor_binding_set = nullptr;
             graph::Sampler* sampler = nullptr;
@@ -308,7 +308,7 @@ namespace hgl::ecs
 
         guard.material_manager = material_manager;
 
-        guard.material = material_manager->AcquireMaterialProgramByBMI(recipe.mtl_def_id, recipe, graph::PrimitiveType::Triangles);
+        guard.material = material_manager->AcquireMaterialProgram(recipe.mtl_def_id, recipe, graph::PrimitiveType::Triangles);
         if (!guard.material)
             return nullptr;
 

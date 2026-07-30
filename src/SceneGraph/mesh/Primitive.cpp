@@ -1,5 +1,5 @@
 #include<hgl/graph/mesh/Primitive.h>
-#include<hgl/vk/VKMaterialProgram.h>
+#include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
@@ -48,7 +48,7 @@ void GeometryDrawRange::Set(const Geometry *geometry)
     first_index     = geometry->GetFirstIndex();
 }
 
-Primitive::Primitive(Geometry *r,MaterialProgram *material,const VIL *vil,bool own_vil,Pipeline *p,GeometryDataBuffer *gdb)
+Primitive::Primitive(Geometry *r,ShaderProgram *material,const VIL *vil,bool own_vil,Pipeline *p,GeometryDataBuffer *gdb)
 {
     geometry=r;
     pipeline=p;
@@ -75,7 +75,7 @@ bool Primitive::UpdateGeometry()
     return data_buffer->Update(geometry, vil ? vil->GetVIFList() : nullptr, vil ? vil->GetVertexAttribCount() : 0);
 }
 
-Primitive *DirectCreatePrimitive(Geometry *geom,MaterialProgram *material,Pipeline *p)
+Primitive *DirectCreatePrimitive(Geometry *geom,ShaderProgram *material,Pipeline *p)
 {
     if(!geom||!material)return(nullptr);
 
@@ -107,7 +107,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialProgram *material,Pipeli
 
     if(geom->GetVABCount()<input_count)
     {
-        GLogError("[FATAL ERROR] input buffer count of Primitive lesser than MaterialProgram, MaterialProgram name: "+mtl_name);
+        GLogError("[FATAL ERROR] input buffer count of Primitive lesser than ShaderProgram, ShaderProgram name: "+mtl_name);
         if (owned_vil)
             material->Release(owned_vil);
         return(nullptr);
@@ -120,7 +120,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialProgram *material,Pipeli
 
         if(first_issue)
         {
-            GLogError(  "[FATAL ERROR] GeometryVertexFormat can't satisfy MaterialProgram vertex input, MaterialProgram(")+mtl_name+
+            GLogError(  "[FATAL ERROR] GeometryVertexFormat can't satisfy ShaderProgram vertex input, ShaderProgram(")+mtl_name+
                         AnsiString(") Attribute(")+AnsiString(GetVertexSemanticName(first_issue->semantic))+
                         AnsiString(") Match(")+GetGeometryVertexMatchKindName(first_issue->kind)+
                         AnsiString(") Semantic(")+GetVertexSemanticName(first_issue->semantic)+
@@ -146,7 +146,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialProgram *material,Pipeli
         }
         else
         {
-            GLogError("[FATAL ERROR] GeometryVertexFormat can't satisfy MaterialProgram vertex input, MaterialProgram: "+mtl_name);
+            GLogError("[FATAL ERROR] GeometryVertexFormat can't satisfy ShaderProgram vertex input, ShaderProgram: "+mtl_name);
         }
 
         if (owned_vil)
@@ -171,7 +171,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialProgram *material,Pipeli
 
         if(!vab)
         {
-            GLogError("[FATAL ERROR] not found VAB \""+AnsiString(GetVertexSemanticName(vif->semantic))+"\" in MaterialProgram: "+mtl_name);
+            GLogError("[FATAL ERROR] not found VAB \""+AnsiString(GetVertexSemanticName(vif->semantic))+"\" in ShaderProgram: "+mtl_name);
             if (owned_vil)
                 material->Release(owned_vil);
             return(nullptr);
@@ -186,7 +186,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialProgram *material,Pipeli
     return(new Primitive(geom,material,owned_vil,owned_vil!=nullptr,p,geom_data_buffer));
 }
 
-Primitive *CreatePrimitiveRuntime(Geometry *geom, MaterialProgram *material, Pipeline *p)
+Primitive *CreatePrimitiveRuntime(Geometry *geom, ShaderProgram *material, Pipeline *p)
 {
     return DirectCreatePrimitive(geom, material, p);
 }

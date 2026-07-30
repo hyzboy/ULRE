@@ -15,7 +15,7 @@ struct MaterialCreateConfig;
 class ShaderProgramBuildSpec;
 
 // BuiltinMaterialCreatorID：内部创建派发键，与 M_* 创建函数一一对应。
-// 作者层不直接使用此 enum；通过 bmi_id 字符串主键识别材质。
+// 作者层不直接使用此 enum；通过 mtl_def_id 字符串主键识别材质。
 enum class BuiltinMaterialCreatorID:uint8
 {
     VertexColor2D,
@@ -62,7 +62,7 @@ const char *GetBuiltinMaterialCreatorIDName(const BuiltinMaterialCreatorID mtl_i
 // BMI registry
 void RegisterBaseMaterialInfo(const MaterialDefinition &bmi);
 void RegisterBaseMaterialInfo(const BuiltinMaterialCreatorID preset, const MaterialDefinition &bmi);
-bool TryGetBaseMaterialInfoByBMIId(const std::string &bmi_id, MaterialDefinition &out_bmi);
+bool TryGetBaseMaterialInfoByBMIId(const std::string &mtl_def_id, MaterialDefinition &out_bmi);
 bool TryGetBaseMaterialInfoByBuiltinMaterialCreatorID(const BuiltinMaterialCreatorID preset, MaterialDefinition &out_bmi);
 
 // ── built-in fallback BMI ID 常量 ─────────────────────────────────────────────

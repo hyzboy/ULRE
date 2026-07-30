@@ -12,7 +12,7 @@
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKVertexInput.h>
-#include<hgl/vk/VKMaterialProgram.h>
+#include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
@@ -20,7 +20,7 @@
 
 namespace hgl::ecs
 {
-    PipelineMaterialRenderer::PipelineMaterialRenderer(graph::MaterialProgram* m, graph::Pipeline* p)
+    PipelineMaterialRenderer::PipelineMaterialRenderer(graph::ShaderProgram* m, graph::Pipeline* p)
         : material(m)
         , pipeline(p)
         , cmd_buf(nullptr)

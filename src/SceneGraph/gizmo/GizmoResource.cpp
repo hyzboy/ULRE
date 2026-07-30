@@ -37,7 +37,7 @@ namespace hgl::graph
 
         struct GizmoResource
         {
-            MaterialProgram *          mtl;
+            ShaderProgram *          mtl;
             Pipeline *          pipeline;
             DeviceBuffer *      mi_ssbo;
             VertexDataManager * vdm;
@@ -171,7 +171,7 @@ namespace hgl::graph
                 mtl::MaterialRecipe recipe{};
                 recipe.mtl_def_id = "PureColor3D";
 
-                gizmo_triangle.mtl=gizmo_mtl_manager->AcquireMaterialProgramByBMI(recipe.mtl_def_id,recipe,PrimitiveType::Triangles);
+                gizmo_triangle.mtl=gizmo_mtl_manager->AcquireMaterialProgram(recipe.mtl_def_id,recipe,PrimitiveType::Triangles);
                 if(!gizmo_triangle.mtl)
                     return(false);
 

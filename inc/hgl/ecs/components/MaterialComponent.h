@@ -4,7 +4,7 @@
 
 namespace hgl::graph
 {
-    class MaterialProgram;
+    class ShaderProgram;
 }
 
 namespace hgl::ecs
@@ -14,7 +14,7 @@ namespace hgl::ecs
     public:
 
         // Runtime shared program, resolved by ECS.
-        hgl::graph::MaterialProgram *program = nullptr;
+        hgl::graph::ShaderProgram *program = nullptr;
 
         // Runtime row indices, materialized by ECS.
         uint32_t material_instance_row = uint32_t(-1);

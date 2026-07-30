@@ -1,4 +1,4 @@
-﻿#include<hgl/vk/VKMaterialProgram.h>
+﻿#include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/vk/VKVertexInput.h>
@@ -12,7 +12,7 @@ namespace hgl::graph{
 
 void ReleaseVertexInput(VertexInput *vi);
 
-MaterialProgram::MaterialProgram(const AnsiString &n,const mtl::ShaderProgramBuildSpec *mci)
+ShaderProgram::ShaderProgram(const AnsiString &n,const mtl::ShaderProgramBuildSpec *mci)
 {
     name=n;
     geometry=mci->GetPrimitiveType();
@@ -31,7 +31,7 @@ MaterialProgram::MaterialProgram(const AnsiString &n,const mtl::ShaderProgramBui
     has_l2w_matrix=mci->HasLocalToWorld();
 }
 
-MaterialProgram::~MaterialProgram()
+ShaderProgram::~ShaderProgram()
 {
     ReleaseVertexInput(vertex_input);
     delete shader_maps;             //不用SAFE_CLEAR是因为这个一定会有
@@ -42,27 +42,27 @@ MaterialProgram::~MaterialProgram()
         SAFE_CLEAR(mp);
 }
 
-const VkPipelineLayout MaterialProgram::GetPipelineLayout()const
+const VkPipelineLayout ShaderProgram::GetPipelineLayout()const
 {
     return pipeline_layout_data->pipeline_layout;
 }
 
-const bool MaterialProgram::hasSet(const DescriptorSetType &dst)const
+const bool ShaderProgram::hasSet(const DescriptorSetType &dst)const
 {
     return desc_manager->hasSet(dst);
 }
 
-const VIL *MaterialProgram::GetDefaultVIL()const
+const VIL *ShaderProgram::GetDefaultVIL()const
 {
     return vertex_input->GetDefaultVIL();
 }
 
-VIL *MaterialProgram::CreateVIL(const VILConfig *format_map)
+VIL *ShaderProgram::CreateVIL(const VILConfig *format_map)
 {
     return vertex_input->CreateVIL(format_map);
 }
 
-VIL *MaterialProgram::CreateVIL(const GeometryVertexFormat &geometry_vertex_format)
+VIL *ShaderProgram::CreateVIL(const GeometryVertexFormat &geometry_vertex_format)
 {
     if(geometry_vertex_format.GetCount() <= 0)
         return CreateVIL((const VILConfig *)nullptr);
@@ -80,17 +80,17 @@ VIL *MaterialProgram::CreateVIL(const GeometryVertexFormat &geometry_vertex_form
     return CreateVIL(&vil_config);
 }
 
-bool MaterialProgram::Release(VIL *vil)
+bool ShaderProgram::Release(VIL *vil)
 {
     return vertex_input->Release(vil);
 }
 
-const uint MaterialProgram::GetVILCount()
+const uint ShaderProgram::GetVILCount()
 {
     return vertex_input->GetInstanceCount();
 }
 
-bool MaterialProgram::BindUBO(const DescriptorSetType &type,const AnsiString &name,const IGPUBuffer *gpu,bool dynamic)
+bool ShaderProgram::BindUBO(const DescriptorSetType &type,const AnsiString &name,const IGPUBuffer *gpu,bool dynamic)
 {
     MaterialParameters *mp=GetMP(type);
 
@@ -100,7 +100,7 @@ bool MaterialProgram::BindUBO(const DescriptorSetType &type,const AnsiString &na
     return mp->BindUBO(name,gpu,dynamic);
 }
 
-bool MaterialProgram::BindSSBO(const DescriptorSetType &type,const AnsiString &name,const IGPUBuffer *gpu,bool dynamic)
+bool ShaderProgram::BindSSBO(const DescriptorSetType &type,const AnsiString &name,const IGPUBuffer *gpu,bool dynamic)
 {
     MaterialParameters *mp=GetMP(type);
 
@@ -110,7 +110,7 @@ bool MaterialProgram::BindSSBO(const DescriptorSetType &type,const AnsiString &n
     return mp->BindSSBO(name,gpu,dynamic);
 }
 
-bool MaterialProgram::BindTexture(const DescriptorSetType &type,const AnsiString &name,Texture *tex)
+bool ShaderProgram::BindTexture(const DescriptorSetType &type,const AnsiString &name,Texture *tex)
 {
     MaterialParameters *mp = GetMP(type);
 
@@ -120,7 +120,7 @@ bool MaterialProgram::BindTexture(const DescriptorSetType &type,const AnsiString
     return mp->BindTexture(name,tex);
 }
 
-bool MaterialProgram::BindTextureSampler(const DescriptorSetType &type,const AnsiString &name,Texture *tex,Sampler *sampler)
+bool ShaderProgram::BindTextureSampler(const DescriptorSetType &type,const AnsiString &name,Texture *tex,Sampler *sampler)
 {
     MaterialParameters *mp=GetMP(type);
 
@@ -130,7 +130,7 @@ bool MaterialProgram::BindTextureSampler(const DescriptorSetType &type,const Ans
     return mp->BindTextureSampler(name,tex,sampler);
 }
 
-void MaterialProgram::Update()
+void ShaderProgram::Update()
 {
     for(auto &mp:mp_array)
     {

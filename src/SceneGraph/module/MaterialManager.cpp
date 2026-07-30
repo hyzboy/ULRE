@@ -2,7 +2,7 @@
 #include<hgl/vk/pipeline/VKPipelineLayoutData.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
-#include<hgl/vk/VKMaterialProgram.h>
+#include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKShaderModule.h>
@@ -253,7 +253,7 @@ MaterialParameters *MaterialManager::CreateMaterialMP(const AnsiString &mtl_name
     return mp;
 }
 
-void MaterialManager::ApplyMaterialFinalizePlan(MaterialProgram *mtl, const AnsiString &mtl_name, const mtl::ShaderProgramBuildSpec &mci)
+void MaterialManager::ApplyMaterialFinalizePlan(ShaderProgram *mtl, const AnsiString &mtl_name, const mtl::ShaderProgramBuildSpec &mci)
 {
     if(!mtl)
         return;
@@ -272,16 +272,16 @@ void MaterialManager::ApplyMaterialFinalizePlan(MaterialProgram *mtl, const Ansi
     mtl->mi_max_count  = finalize_plan.mi_max_count;
 }
 
-MaterialProgram *MaterialManager::TryGetCachedMaterial(const AnsiString &name)
+ShaderProgram *MaterialManager::TryGetCachedMaterial(const AnsiString &name)
 {
-    MaterialProgram *cached = nullptr;
+    ShaderProgram *cached = nullptr;
     if(material_by_name.Get(name, cached))
         return cached;
 
     return nullptr;
 }
 
-bool MaterialManager::ExecuteMaterialBuildPipeline(MaterialProgram *mtl,
+bool MaterialManager::ExecuteMaterialBuildPipeline(ShaderProgram *mtl,
                                                    const AnsiString &mtl_name,
                                                    const mtl::ShaderProgramBuildSpec *mci,
                                                    const ShaderCreateInfoMap &sci_map)
@@ -313,7 +313,7 @@ bool MaterialManager::ExecuteMaterialBuildPipeline(MaterialProgram *mtl,
     return true;
 }
 
-MaterialProgram *MaterialManager::AcquireMaterialProgram(const AnsiString &mtl_name,const mtl::ShaderProgramBuildSpec *mci)
+ShaderProgram *MaterialManager::AcquireMaterialProgram(const AnsiString &mtl_name,const mtl::ShaderProgramBuildSpec *mci)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -324,7 +324,7 @@ MaterialProgram *MaterialManager::AcquireMaterialProgram(const AnsiString &mtl_n
     const MaterialCreatePrecheckDecision precheck_decision = RunMaterialCreatePrecheck(
         mci,
         mtl_name,
-        [&](const AnsiString &name)->MaterialProgram * { return TryGetCachedMaterial(name); },
+        [&](const AnsiString &name)->ShaderProgram * { return TryGetCachedMaterial(name); },
         precheck_result);
 
     if(precheck_decision == MaterialCreatePrecheckDecision::UseCached)
@@ -335,7 +335,7 @@ MaterialProgram *MaterialManager::AcquireMaterialProgram(const AnsiString &mtl_n
 
     const ShaderCreateInfoMap &sci_map = *precheck_result.shader_map;
 
-    AutoDelete<MaterialProgram> mtl=new MaterialProgram(mtl_name,mci);
+    AutoDelete<ShaderProgram> mtl=new ShaderProgram(mtl_name,mci);
     if(!ExecuteMaterialBuildPipeline(mtl,
                                      mtl_name,
                                      mci,
@@ -345,12 +345,12 @@ MaterialProgram *MaterialManager::AcquireMaterialProgram(const AnsiString &mtl_n
     Add(mtl);
 
     material_by_name.Add(mtl_name,mtl);
-    // MaterialProgram is a C++ object managed by MaterialManager, not a Vulkan object
+    // ShaderProgram is a C++ object managed by MaterialManager, not a Vulkan object
     // No need to track with ObjectTracker
     return mtl.Finish();
 }
 
-MaterialProgram *MaterialManager::AcquireMaterialProgram(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material2DCreateConfig *cfg)
+ShaderProgram *MaterialManager::AcquireMaterialProgram(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material2DCreateConfig *cfg)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -401,7 +401,7 @@ std::map<std::string, uint32_t> MaterialManager::GetShaderGenRecentValidationCat
     return {};
 }
 
-MaterialProgram *MaterialManager::AcquireMaterialProgram(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material3DCreateConfig *cfg)
+ShaderProgram *MaterialManager::AcquireMaterialProgram(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material3DCreateConfig *cfg)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -422,14 +422,14 @@ MaterialProgram *MaterialManager::AcquireMaterialProgram(const mtl::BuiltinMater
     return this->AcquireMaterialProgram(hash_name,mci);
 }
 
-MaterialProgram *MaterialManager::AcquireMaterialProgramByBMI(const std::string &bmi_id,
+ShaderProgram *MaterialManager::AcquireMaterialProgram(const std::string &mtl_def_id,
                                                                const mtl::MaterialRecipe &recipe,
                                                                PrimitiveType prim_type,
                                                                const GeometryVertexFormat *geometry_vertex_format)
 {
     // 1. 查询 BMI：按 mtl_def_id 主键；失败则用 3D 通用保底
     mtl::MaterialDefinition bmi{};
-    bool has_bmi = mtl::TryGetBaseMaterialInfoByBMIId(bmi_id, bmi);
+    bool has_bmi = mtl::TryGetBaseMaterialInfoByBMIId(mtl_def_id, bmi);
 
     if (!has_bmi)
         has_bmi = mtl::TryGetBaseMaterialInfoByBMIId(mtl::BUILTIN_MTL_DEF_FALLBACK_3D, bmi);
@@ -486,7 +486,7 @@ MaterialProgram *MaterialManager::AcquireMaterialProgramByBMI(const std::string 
     }
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(MaterialProgram *mtl)
+MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(ShaderProgram *mtl)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -506,7 +506,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(MaterialProgra
     return mi;
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(MaterialProgram *mtl,const VIL *vil)
+MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(ShaderProgram *mtl,const VIL *vil)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -526,7 +526,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(MaterialProgra
     return mi;
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(MaterialProgram *mtl,const VILConfig *vil_cfg)
+MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(ShaderProgram *mtl,const VILConfig *vil_cfg)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -546,12 +546,12 @@ MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(MaterialProgra
     return mi;
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(MaterialProgram *mtl,const GeometryVertexFormat &geometry_vertex_format)
+MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(ShaderProgram *mtl,const GeometryVertexFormat &geometry_vertex_format)
 {
     return CreateMaterialInstanceInternal(mtl,geometry_vertex_format,nullptr,0);
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(MaterialProgram *mtl,const GeometryVertexFormat &geometry_vertex_format,const void *mi_data,const uint32 mi_bytes)
+MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(ShaderProgram *mtl,const GeometryVertexFormat &geometry_vertex_format,const void *mi_data,const uint32 mi_bytes)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -577,7 +577,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(MaterialProgra
     return mi;
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(MaterialProgram *mtl,const VIL *vil,const void *mi_data,const uint32 mi_bytes)
+MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(ShaderProgram *mtl,const VIL *vil,const void *mi_data,const uint32 mi_bytes)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -604,7 +604,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(MaterialProgra
     return mi;
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(MaterialProgram *mtl,const VILConfig *vil_cfg,const void *mi_data,const uint32 mi_bytes)
+MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(ShaderProgram *mtl,const VILConfig *vil_cfg,const void *mi_data,const uint32 mi_bytes)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -631,7 +631,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(const mtl::Bui
 {
     HGL_CAPTURE_SCOPE();
 
-    MaterialProgram *mtl=this->AcquireMaterialProgram(mtl_id,mcc);
+    ShaderProgram *mtl=this->AcquireMaterialProgram(mtl_id,mcc);
 
     if(!mtl)
         return(nullptr);
@@ -643,7 +643,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(const mtl::Bui
 {
     HGL_CAPTURE_SCOPE();
 
-    MaterialProgram *mtl=this->AcquireMaterialProgram(mtl_id,mcc);
+    ShaderProgram *mtl=this->AcquireMaterialProgram(mtl_id,mcc);
 
     if(!mtl)
         return(nullptr);
@@ -659,7 +659,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(const mtl::Bui
         return nullptr;
 
     ScopedMaterialGeometryBinding scoped(mcc, &geometry_vertex_format);
-    MaterialProgram *mtl=this->AcquireMaterialProgram(mtl_id,mcc);
+    ShaderProgram *mtl=this->AcquireMaterialProgram(mtl_id,mcc);
 
     if(!mtl)
         return(nullptr);
@@ -675,7 +675,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(const mtl::Bui
         return nullptr;
 
     ScopedMaterialGeometryBinding scoped(mcc, &geometry_vertex_format);
-    MaterialProgram *mtl=this->AcquireMaterialProgram(mtl_id,mcc);
+    ShaderProgram *mtl=this->AcquireMaterialProgram(mtl_id,mcc);
 
     if(!mtl)
         return(nullptr);

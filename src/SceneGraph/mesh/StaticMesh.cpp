@@ -11,7 +11,7 @@ StaticMesh::~StaticMesh()
 }
 
 // Primitive 管理
-Primitive *StaticMesh::CreatePrimitive(Geometry *geometry, MaterialProgram *material, Pipeline *p)
+Primitive *StaticMesh::CreatePrimitive(Geometry *geometry, ShaderProgram *material, Pipeline *p)
 {
     if(!geometry || !material)
         return nullptr;

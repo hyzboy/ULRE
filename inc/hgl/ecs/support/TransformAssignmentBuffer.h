@@ -120,7 +120,7 @@ namespace hgl::ecs
         /**
          * 绑定Transform数据到材质
          */
-        void BindTransform(graph::MaterialProgram* mtl) const;
+        void BindTransform(graph::ShaderProgram* mtl) const;
 
         void EnsureCapacity(const uint32_t static_count,const uint32_t dynamic_count,graph::BufferAllocPolicy policy);
         uint32_t GetDynamicBaseIndex(const uint32_t static_count,const uint32_t dynamic_count) const;

@@ -15,7 +15,7 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/DescriptorBindingSet.h>
-#include<hgl/vk/VKMaterialProgram.h>
+#include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKRenderPass.h>
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/type/AlignUtil.h>
@@ -196,7 +196,7 @@ namespace hgl::graph
     {
         mtl::MaterialRecipe recipe{};
         recipe.mtl_def_id = "Text2D";
-        mtl_fs=mtl_manager->AcquireMaterialProgramByBMI(recipe.mtl_def_id,recipe,PrimitiveType::Triangles);
+        mtl_fs=mtl_manager->AcquireMaterialProgram(recipe.mtl_def_id,recipe,PrimitiveType::Triangles);
         if(!mtl_fs)return(false);
 
         const GeometryVertexFormat text_gvf = CreateTextGeometryVertexFormat();

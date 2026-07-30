@@ -14,7 +14,7 @@ namespace hgl
             struct MaterialResourceLayout;
         }
 
-        class MaterialProgram;
+        class ShaderProgram;
         class Texture;
         class Sampler;
 
@@ -37,16 +37,16 @@ namespace hgl
             };
 
         private:
-            MaterialProgram *material = nullptr;
+            ShaderProgram *material = nullptr;
             const VIL *vil = nullptr;
             SSBOBinding ssbo_bindings[size_t(mtl::SSBOType::RANGE_SIZE)]{};
             TextureBinding texture_bindings[size_t(mtl::TextureSlot::RANGE_SIZE)]{};
 
         public:
-            DescriptorBindingSet(MaterialProgram *mtl = nullptr, const VIL *binding_vil = nullptr);
+            DescriptorBindingSet(ShaderProgram *mtl = nullptr, const VIL *binding_vil = nullptr);
 
-            void SetMaterial(MaterialProgram *mtl);
-            MaterialProgram *GetMaterialProgram() const { return material; }
+            void SetMaterial(ShaderProgram *mtl);
+            ShaderProgram *GetMaterialProgram() const { return material; }
 
             void SetVIL(const VIL *binding_vil) { vil = binding_vil; }
             const VIL *GetVIL() const;

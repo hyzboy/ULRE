@@ -16,7 +16,7 @@ namespace hgl
     {
         class VulkanDevice;
         class DeviceBuffer;
-        class MaterialProgram;
+        class ShaderProgram;
         class Pipeline;
         class VertexInputLayout;
         class Geometry;
@@ -75,7 +75,7 @@ namespace hgl::ecs
 
         // ------- GPU resources (created in Initialize()) -------
         graph::VulkanDevice*    device_         = nullptr;
-        graph::MaterialProgram*        material_       = nullptr;
+        graph::ShaderProgram*        material_       = nullptr;
         graph::VertexInputLayout* binding_vil_  = nullptr;
         graph::DescriptorBindingSet binding_set_storage_{};
         graph::DescriptorBindingSet* binding_set_ = nullptr;

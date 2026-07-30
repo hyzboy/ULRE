@@ -24,7 +24,7 @@ namespace hgl::graph
         uint32          mi_struct_size;     // MI 数据字节数
         TextureSlotDef  texture_slots[8];   // 最多 8 个纹理槽
         uint8           texture_slot_count;
-        SurfaceType     fallback_surface_type;      // MaterialProgram LOD 降级目标
+        SurfaceType     fallback_surface_type;      // ShaderProgram LOD 降级目标
         QualityTier     unique_feature_min_tier;    // 低于此档位 fallback 到 fallback_surface_type
     };
 }

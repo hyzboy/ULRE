@@ -39,7 +39,7 @@ namespace hgl::ecs
         return std::static_pointer_cast<RenderableComponent>(primitiveComp);
     }
 
-    hgl::graph::MaterialProgram* PrimitiveRenderItem::GetMaterialProgram() const
+    hgl::graph::ShaderProgram* PrimitiveRenderItem::GetMaterialProgram() const
     {
         if (auto *entity = GetEntity())
         {

@@ -5,7 +5,7 @@ namespace hgl::graph
 {
     MaterialCreatePrecheckDecision RunMaterialCreatePrecheck(const mtl::ShaderProgramBuildSpec *mci,
                                                              const AnsiString &material_name,
-                                                             const std::function<MaterialProgram *(const AnsiString &)> &find_cached_material,
+                                                             const std::function<ShaderProgram *(const AnsiString &)> &find_cached_material,
                                                              MaterialCreatePrecheckResult &out_result)
     {
         out_result.cached_material = nullptr;

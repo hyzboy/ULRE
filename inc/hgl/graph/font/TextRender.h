@@ -62,7 +62,7 @@ namespace hgl::graph
 
         layout::CharStyle   fixed_style;                    ///<固定字符风格
 
-        MaterialProgram *          mtl_fs;                         ///<固定风格材质
+        ShaderProgram *          mtl_fs;                         ///<固定风格材质
         const VIL *         binding_vil;                    ///<VIL for the fixed-style pipeline
         DescriptorBindingSet *binding_set;                  ///<descriptor binding for font rendering
         DeviceBuffer *      mi_ssbo;                        ///<SSBO holding CharStyle data

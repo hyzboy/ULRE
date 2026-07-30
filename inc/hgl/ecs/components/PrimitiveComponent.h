@@ -23,7 +23,7 @@ namespace hgl
         struct GeometryDrawRange;
         class Geometry;
         class PrimitiveAsset;
-        class MaterialProgram;
+        class ShaderProgram;
         class Pipeline;
         class RenderPass;
         class Sampler;
@@ -42,7 +42,7 @@ namespace hgl::ecs
      *
      * Features:
      * - Holds reference to hgl::graph::PrimitiveAsset
-     * - Provides access to MaterialProgram, Pipeline, and AABB data
+     * - Provides access to ShaderProgram, Pipeline, and AABB data
      * - Compatible with RenderCollector for batched rendering
      */
     class PrimitiveComponent : public RenderableComponent
@@ -95,7 +95,7 @@ namespace hgl::ecs
         hgl::graph::GeometryDataBuffer *runtime_data_buffer = nullptr;
         hgl::graph::GeometryDrawRange *runtime_draw_range = nullptr;
         hgl::graph::Geometry *runtime_geometry = nullptr;
-        hgl::graph::MaterialProgram *runtime_material = nullptr;
+        hgl::graph::ShaderProgram *runtime_material = nullptr;
         const hgl::graph::VertexInputLayout *runtime_vil = nullptr;
         bool runtime_vil_owned = false;
         hgl::graph::Pipeline* overridePipeline = nullptr;  // Optional pipeline override (not owned)
@@ -138,7 +138,7 @@ namespace hgl::ecs
         void ClearPrimitiveAsset() { SetPrimitiveAsset(nullptr); }
         void SetPrimitiveVariantIndex(const uint32_t index) { primitiveVariantIndex = index; }
         uint32_t GetPrimitiveVariantIndex() const { return primitiveVariantIndex; }
-        bool EnsureRuntimeGeometryBinding(hgl::graph::MaterialProgram *material);
+        bool EnsureRuntimeGeometryBinding(hgl::graph::ShaderProgram *material);
         void ClearRuntimeGeometryBinding();
         const hgl::graph::GeometryDataBuffer *GetRuntimeGeometryDataBuffer() const;
         const hgl::graph::GeometryDrawRange *GetRuntimeGeometryDrawRange() const;
@@ -207,8 +207,8 @@ namespace hgl::ecs
         void ClearMaterialStructResource(const std::string &ssbo_name);
         void ClearMaterialAuthoringResources();
 
-        // MaterialProgram access (returns override if set, otherwise descriptor-bound material)
-        hgl::graph::MaterialProgram* GetMaterialProgram() const;
+        // ShaderProgram access (returns override if set, otherwise descriptor-bound material)
+        hgl::graph::ShaderProgram* GetMaterialProgram() const;
 
         // Pipeline access: override → runtime resolved
         hgl::graph::Pipeline* GetPipeline() const;

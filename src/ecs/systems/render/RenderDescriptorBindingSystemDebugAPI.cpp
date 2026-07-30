@@ -46,7 +46,7 @@ namespace hgl::ecs
     #endif
     }
 
-    bool RenderDescriptorBindingSystem::GetMaterialBindingKeys(const graph::MaterialProgram *material,
+    bool RenderDescriptorBindingSystem::GetMaterialBindingKeys(const graph::ShaderProgram *material,
                                                                std::vector<std::string> &out_keys) const
     {
         out_keys.clear();

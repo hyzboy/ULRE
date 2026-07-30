@@ -6,7 +6,7 @@ namespace hgl
 {
     namespace graph
     {
-        class MaterialProgram;
+        class ShaderProgram;
         class DescriptorBindingSet;
         class Pipeline;
     }
@@ -52,8 +52,8 @@ namespace hgl::ecs
         // PrimitiveComponent-specific accessors
         std::shared_ptr<PrimitiveComponent> GetPrimitiveComponent() const { return primitiveComp; }
 
-        // MaterialProgram batching interface
-        hgl::graph::MaterialProgram* GetMaterialProgram() const override;
+        // ShaderProgram batching interface
+        hgl::graph::ShaderProgram* GetMaterialProgram() const override;
         hgl::graph::Pipeline* GetPipeline() const override;
         const hgl::graph::GeometryDataBuffer *GetGeometryDataBuffer() const override;
         const hgl::graph::GeometryDrawRange *GetGeometryDrawRange() const override;

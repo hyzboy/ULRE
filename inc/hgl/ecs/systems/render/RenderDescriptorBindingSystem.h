@@ -23,7 +23,7 @@ namespace hgl::graph {
 namespace hgl::graph
 {
     class RenderCmdBuffer;
-    class MaterialProgram;
+    class ShaderProgram;
     class IRenderTarget;
     class IGPUBuffer;
     class Texture;
@@ -86,11 +86,11 @@ namespace hgl::ecs
         graph::StructuredBufferAccessor<graph::ViewportInfo> *viewport_ubo = nullptr;
         uint32_t pending_viewport_width  = 0;
         uint32_t pending_viewport_height = 0;
-        std::unordered_map<const graph::MaterialProgram *, bool> resource_layout_last_ok;
-        std::unordered_map<const graph::MaterialProgram *, std::unordered_map<std::string, MaterialResourceBinding>> material_resource_bindings;
+        std::unordered_map<const graph::ShaderProgram *, bool> resource_layout_last_ok;
+        std::unordered_map<const graph::ShaderProgram *, std::unordered_map<std::string, MaterialResourceBinding>> material_resource_bindings;
         bool resource_layout_diagnostics_enabled = true;
         ResourceLayoutDiagStats last_contract_stats{};
-        std::unordered_set<graph::MaterialProgram *> pipeline_materials;
+        std::unordered_set<graph::ShaderProgram *> pipeline_materials;
         graph::mtl::BindlessTexturePool materialization_texture_pool;
         graph::mtl::StructDataPool materialization_struct_pool;
         graph::mtl::MaterializationIndexTables materialization_index_tables;
@@ -120,19 +120,19 @@ namespace hgl::ecs
                                         uint32_t &fallback_hits) const;
         bool GetMaterialBindingRegistryStats(uint32_t &materials_registered,
                              uint32_t &binding_entries) const;
-        bool GetMaterialBindingKeys(const graph::MaterialProgram *material,
+        bool GetMaterialBindingKeys(const graph::ShaderProgram *material,
                         std::vector<std::string> &out_keys) const;
-        bool RegisterMaterialTexture(graph::MaterialProgram *material,
+        bool RegisterMaterialTexture(graph::ShaderProgram *material,
                          const AnsiString &name,
                          graph::Texture *texture);
-        bool RegisterMaterialTextureSampler(graph::MaterialProgram *material,
+        bool RegisterMaterialTextureSampler(graph::ShaderProgram *material,
                             const AnsiString &name,
                             graph::Texture *texture,
                             graph::Sampler *sampler);
-        void RemoveMaterialBinding(graph::MaterialProgram *material, const AnsiString &name);
-        void ClearMaterialBindings(graph::MaterialProgram *material);
-        void RegisterPipelineMaterial(graph::MaterialProgram *material);
-        void UnregisterPipelineMaterial(graph::MaterialProgram *material);
+        void RemoveMaterialBinding(graph::ShaderProgram *material, const AnsiString &name);
+        void ClearMaterialBindings(graph::ShaderProgram *material);
+        void RegisterPipelineMaterial(graph::ShaderProgram *material);
+        void UnregisterPipelineMaterial(graph::ShaderProgram *material);
         bool RegisterMaterialStructLayout(graph::mtl::SSBOType ssbo_type,
                                           uint32_t ssbo_id,
                                           uint32_t byte_stride);
@@ -190,7 +190,7 @@ namespace hgl::ecs
         void EnsureMaterializationCallbacks();
         void ReleaseMaterializationIndexBuffers();
         void UploadMaterializationIndexTables();
-        const MaterialResourceBinding *FindMaterialResourceBinding(const graph::MaterialProgram *material, const char *name) const;
+        const MaterialResourceBinding *FindMaterialResourceBinding(const graph::ShaderProgram *material, const char *name) const;
         void ValidateResourceLayoutsSideChannel();
         bool IsSemanticResolvable(graph::mtl::DescriptorSemantic semantic) const;
     };

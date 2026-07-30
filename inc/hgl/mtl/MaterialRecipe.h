@@ -284,7 +284,7 @@ namespace hgl::graph::mtl
 
         std::vector<RecipeTextureBinding> textures; // 所有纹理语义绑定
         std::vector<RecipeStructBinding> structs;   // 所有结构体语义绑定
-        std::vector<RecipeSSBOAssetBinding> ssbo_assets; // 供最终 MaterialProgram 通过描述符名解析的 SSBO 资产 ID
+        std::vector<RecipeSSBOAssetBinding> ssbo_assets; // 供最终 ShaderProgram 通过描述符名解析的 SSBO 资产 ID
     };
 
     inline const RecipeSSBOAssetBinding *FindRecipeSSBOAssetBinding(const MaterialRecipe &recipe,

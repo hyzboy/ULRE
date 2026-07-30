@@ -103,15 +103,15 @@ void RegisterBaseMaterialInfo(const BuiltinMaterialCreatorID preset, const Mater
     registry.emplace_back(std::move(entry));
 }
 
-bool TryGetBaseMaterialInfoByBMIId(const std::string &bmi_id, MaterialDefinition &out_bmi)
+bool TryGetBaseMaterialInfoByBMIId(const std::string &mtl_def_id, MaterialDefinition &out_bmi)
 {
-    if (bmi_id.empty())
+    if (mtl_def_id.empty())
         return false;
 
     const auto &registry = GetBaseMaterialInfoRegistry();
     for (const auto &entry : registry)
     {
-        if (entry.bmi.definition_id == bmi_id)
+        if (entry.bmi.definition_id == mtl_def_id)
         {
             out_bmi = entry.bmi;
             return true;

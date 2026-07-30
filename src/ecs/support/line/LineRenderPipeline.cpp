@@ -19,7 +19,7 @@
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/vk/VKDevice.h>
-#include <hgl/vk/VKMaterialProgram.h>
+#include <hgl/vk/VKShaderProgram.h>
 #include <hgl/vk/VKBuffer.h>
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/vk/VKRenderTarget.h>
@@ -355,7 +355,7 @@ namespace hgl::ecs
         if (!mat_mgr)
             return false;
 
-        material_ = mat_mgr->AcquireMaterialProgramByBMI(recipe.mtl_def_id, recipe, graph::PrimitiveType::Lines);
+        material_ = mat_mgr->AcquireMaterialProgram(recipe.mtl_def_id, recipe, graph::PrimitiveType::Lines);
         if (!material_)
             return false;
 

@@ -4,7 +4,7 @@
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/vk/VKDescriptorSet.h>
-#include<hgl/vk/VKMaterialProgram.h>
+#include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/graph/mesh/GeometryDataBuffer.h>
@@ -19,7 +19,7 @@ class PrimitiveAsset;
 class Primitive
 {
     Pipeline *          pipeline;
-    MaterialProgram *   material_program;
+    ShaderProgram *   material_program;
     const VIL *         binding_vil;
     bool                owns_binding_vil = false;
     Geometry *          geometry;
@@ -29,9 +29,9 @@ class Primitive
 
 private:
 
-    friend Primitive *DirectCreatePrimitive(Geometry *,MaterialProgram *,Pipeline *);
+    friend Primitive *DirectCreatePrimitive(Geometry *,ShaderProgram *,Pipeline *);
 
-    Primitive(Geometry *,MaterialProgram *,const VIL *,bool,Pipeline *,GeometryDataBuffer *);
+    Primitive(Geometry *,ShaderProgram *,const VIL *,bool,Pipeline *,GeometryDataBuffer *);
 
 public:
 
@@ -45,7 +45,7 @@ public:
 
             Pipeline *          GetPipeline         (){return pipeline;}
             VkPipelineLayout    GetPipelineLayout   (){return material_program ? material_program->GetPipelineLayout() : VK_NULL_HANDLE;}
-            MaterialProgram *   GetMaterialProgram  (){return material_program;}
+            ShaderProgram *   GetMaterialProgram  (){return material_program;}
     const   VIL *               GetVIL              ()const{return binding_vil ? binding_vil : (material_program ? material_program->GetDefaultVIL() : nullptr);}
             Geometry *          GetGeometry         (){return geometry;}
             AnsiString          GetGeometryName     (){return geometry->GetName();}
@@ -73,6 +73,6 @@ public:
             uint32_t            GetDataIndexCount()const{return draw_range.data_index_count;}
 };//class Primitive
 
-Primitive *DirectCreatePrimitive(Geometry *,MaterialProgram *,Pipeline * = nullptr);
-Primitive *CreatePrimitiveRuntime(Geometry *,MaterialProgram *,Pipeline * = nullptr);
+Primitive *DirectCreatePrimitive(Geometry *,ShaderProgram *,Pipeline * = nullptr);
+Primitive *CreatePrimitiveRuntime(Geometry *,ShaderProgram *,Pipeline * = nullptr);
 }//namespace hgl::graph

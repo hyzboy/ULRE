@@ -62,7 +62,7 @@ namespace hgl::ecs
             return primitive_comp->EnsureRuntimeGeometryBinding(material);
         }
 
-        uint32_t ResolvePrimaryStructIndex(const graph::MaterialProgram *material,
+        uint32_t ResolvePrimaryStructIndex(const graph::ShaderProgram *material,
                                            const graph::mtl::MaterializationSpec &spec,
                                            const uint32_t fallback_row)
         {
@@ -234,7 +234,7 @@ namespace hgl::ecs
 
         bool PrepareRecipeAuthoringResources(ECSContext *world,
                                              const std::shared_ptr<PrimitiveComponent> &primitive_comp,
-                                             graph::MaterialProgram *material_program)
+                                             graph::ShaderProgram *material_program)
         {
             if (!world || !primitive_comp)
                 return false;
@@ -500,10 +500,10 @@ namespace hgl::ecs
             primitive_type = asset->GetPrimitiveType();
         }
 
-        // 统一 BMI 入口：由 AcquireMaterialProgramByBMI 内部处理 2D/3D/Text/Sky 分支，
+        // 统一 BMI 入口：由 AcquireMaterialProgram 内部处理 2D/3D/Text/Sky 分支，
         // ECS 不再持有材质 config 细节知识。
-        graph::MaterialProgram *resolved_program =
-            material_manager->AcquireMaterialProgramByBMI(
+        graph::ShaderProgram *resolved_program =
+            material_manager->AcquireMaterialProgram(
                 effective_recipe.mtl_def_id,
                 effective_recipe,
                 primitive_type,
@@ -511,7 +511,7 @@ namespace hgl::ecs
 
         if (!resolved_program)
         {
-            GLogWarning("[RenderPrimitiveCollectSystem] AcquireMaterialProgramByBMI failed for %s recipe=%s mtl_def_id=%s builtin_creator_id=%u",
+            GLogWarning("[RenderPrimitiveCollectSystem] AcquireMaterialProgram failed for %s recipe=%s mtl_def_id=%s builtin_creator_id=%u",
                         GetPrimitiveOwnerName(primitive_comp),
                         effective_recipe.recipe_name.c_str(),
                         effective_recipe.mtl_def_id.c_str());

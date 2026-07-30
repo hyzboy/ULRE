@@ -5,7 +5,7 @@
 
 namespace hgl::graph{
 
-class MaterialProgram;
+class ShaderProgram;
 
 /**
  * Compute Pipeline类

@@ -4,7 +4,7 @@
 #include<hgl/vk/pipeline/VKInlinePipeline.h>
 #include<hgl/vk/pipeline/VKPipelineData.h>
 #include<hgl/vk/pipeline/VKPipelineResolver.h>
-#include<hgl/vk/VKMaterialProgram.h>
+#include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/object/ObjectTracker.h>
 #include<hgl/log/Log.h>
@@ -109,7 +109,7 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,con
     return pipeline;
 }
 
-Pipeline *RenderPass::CreatePipeline(MaterialProgram *mtl,const VIL *vil,const PipelineData *cpd,const bool prim_restart,const GeometryVertexFormat *gvf)
+Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const VIL *vil,const PipelineData *cpd,const bool prim_restart,const GeometryVertexFormat *gvf)
 {
     PipelineData *pd=new PipelineData(cpd);
 
@@ -123,19 +123,19 @@ Pipeline *RenderPass::CreatePipeline(MaterialProgram *mtl,const VIL *vil,const P
     return(p);
 }
 
-Pipeline *RenderPass::CreatePipeline(MaterialProgram *mtl,const VIL *vil,const InlinePipeline &ip,const bool prim_restart,const GeometryVertexFormat *gvf)
+Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const VIL *vil,const InlinePipeline &ip,const bool prim_restart,const GeometryVertexFormat *gvf)
 {
     if(!mtl)return(nullptr);
 
     return CreatePipeline(mtl,vil,GetPipelineData(ip),prim_restart,gvf);
 }
 
-Pipeline *RenderPass::CreatePipeline(MaterialProgram *mtl,const PipelineData *pd,const bool prim_restart)
+Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const PipelineData *pd,const bool prim_restart)
 {
     return CreatePipeline(mtl,mtl->GetDefaultVIL(),pd,prim_restart);
 }
 
-Pipeline *RenderPass::CreatePipeline(MaterialProgram *mtl,const InlinePipeline &ip,const bool prim_restart)
+Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const InlinePipeline &ip,const bool prim_restart)
 {
     return CreatePipeline(mtl,mtl->GetDefaultVIL(),ip,prim_restart);
 }

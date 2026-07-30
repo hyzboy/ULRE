@@ -34,7 +34,7 @@ namespace hgl::graph
      * - shared by multiple entities / runtime draw objects
      *
      * It intentionally does NOT carry runtime-only state such as:
-     * - MaterialProgram / MaterialInstance
+     * - ShaderProgram / MaterialInstance
      * - DescriptorBindingSet
      * - Pipeline / VIL
      * - SSBO rows / bindless handles

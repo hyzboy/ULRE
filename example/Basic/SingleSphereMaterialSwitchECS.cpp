@@ -3,7 +3,7 @@
 // It is NOT the production path for material LOD.
 //
 // Planned production path:
-// 1) MaterialProgram LOD policy is configured in top-level material definitions.
+// 1) ShaderProgram LOD policy is configured in top-level material definitions.
 // 2) Runtime selection/switching is performed automatically by ECS and/or GPUSCENE.
 // 3) Application/demo code should not manually own final material LOD decision logic.
 
@@ -431,5 +431,5 @@ public:
 
 int os_main(int argc, os_char **argv)
 {
-    return RunFramework<TestApp>(OS_TEXT("Single Sphere MaterialProgram Switch (ECS)"), argc, argv, 1280, 720);
+    return RunFramework<TestApp>(OS_TEXT("Single Sphere ShaderProgram Switch (ECS)"), argc, argv, 1280, 720);
 }

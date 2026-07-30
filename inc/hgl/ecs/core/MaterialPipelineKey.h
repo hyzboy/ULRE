@@ -7,7 +7,7 @@ namespace hgl
 {
     namespace graph
     {
-        class MaterialProgram;
+        class ShaderProgram;
         class Pipeline;
     }
 }
@@ -15,17 +15,17 @@ namespace hgl
 namespace hgl::ecs
 {
     /**
-     * MaterialProgram/Pipeline index for batching.
+     * ShaderProgram/Pipeline index for batching.
      * All active batches are recipe runtime batches.
      */
     struct MaterialPipelineKey
     {
-        hgl::graph::MaterialProgram* material;
+        hgl::graph::ShaderProgram* material;
         hgl::graph::Pipeline* pipeline;
         uint64_t materialization_spec_hash;        // ProgramSignature（不含 domain/offset）
         uint64_t materialization_domain_signature; // BindingSignature（含 domain/资源身份）
 
-        MaterialPipelineKey(hgl::graph::MaterialProgram* m = nullptr,
+        MaterialPipelineKey(hgl::graph::ShaderProgram* m = nullptr,
                             hgl::graph::Pipeline* p = nullptr,
                             uint64_t program_signature = 0,
                             uint64_t binding_signature = 0)
@@ -60,7 +60,7 @@ namespace std
     {
         size_t operator()(const hgl::ecs::MaterialPipelineKey& key) const noexcept
         {
-            size_t h1 = std::hash<hgl::graph::MaterialProgram*>{}(key.material);
+            size_t h1 = std::hash<hgl::graph::ShaderProgram*>{}(key.material);
             size_t h2 = std::hash<hgl::graph::Pipeline*>{}(key.pipeline);
             size_t h3 = std::hash<uint64_t>{}(key.materialization_spec_hash);
             size_t h4 = std::hash<uint64_t>{}(key.materialization_domain_signature);

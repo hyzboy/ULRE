@@ -69,7 +69,7 @@ public: // Primitive 管理
     const int                   GetPrimitiveCount   ()const{ return primitive_list.GetCount(); }
     const PrimitiveList &       GetPrimitiveList    ()const{ return primitive_list; }
 
-    Primitive *                 CreatePrimitive     (Geometry *geometry, MaterialProgram *material, Pipeline *p=nullptr); ///< 创建并添加一个 Primitive
+    Primitive *                 CreatePrimitive     (Geometry *geometry, ShaderProgram *material, Pipeline *p=nullptr); ///< 创建并添加一个 Primitive
 
     bool                        AddPrimitive        (Primitive *sm);                                                    ///< 添加一个已有的 Primitive(StaticMesh 将接管其生命周期)
 

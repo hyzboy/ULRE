@@ -67,11 +67,11 @@ public:
 
 public:
 
-    Pipeline *CreatePipeline(MaterialProgram *,const VIL *,const PipelineData *,   const bool prim_restart=false,const GeometryVertexFormat *gvf=nullptr);
-    Pipeline *CreatePipeline(MaterialProgram *,const VIL *,const InlinePipeline &, const bool prim_restart=false,const GeometryVertexFormat *gvf=nullptr);
+    Pipeline *CreatePipeline(ShaderProgram *,const VIL *,const PipelineData *,   const bool prim_restart=false,const GeometryVertexFormat *gvf=nullptr);
+    Pipeline *CreatePipeline(ShaderProgram *,const VIL *,const InlinePipeline &, const bool prim_restart=false,const GeometryVertexFormat *gvf=nullptr);
 
-    Pipeline *CreatePipeline(MaterialProgram *mtl,         const PipelineData *,   const bool prim_restart=false);
-    Pipeline *CreatePipeline(MaterialProgram *mtl,         const InlinePipeline &, const bool prim_restart=false);
+    Pipeline *CreatePipeline(ShaderProgram *mtl,         const PipelineData *,   const bool prim_restart=false);
+    Pipeline *CreatePipeline(ShaderProgram *mtl,         const InlinePipeline &, const bool prim_restart=false);
 
     Pipeline *CreatePipeline(MaterialInstance *,    const InlinePipeline &, const bool prim_restart=false);
     Pipeline *CreatePipeline(MaterialInstance *,    const PipelineData *,   const bool prim_restart=false);

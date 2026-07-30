@@ -1,7 +1,7 @@
 #pragma once
 
 #include<hgl/graph/module/GraphModule.h>
-#include<hgl/vk/VKMaterialProgram.h>
+#include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/type/UnorderedMap.h>
@@ -36,9 +36,9 @@ GRAPH_MODULE_CLASS(MaterialManager)
 private:
 
     ShaderModuleMapByName shader_module_by_name[VK_SHADER_STAGE_TYPE_COUNT];
-    UnorderedMap<AnsiString,MaterialProgram *> material_by_name;
+    UnorderedMap<AnsiString,ShaderProgram *> material_by_name;
 
-    AutoIdObjectManager<MaterialID,             MaterialProgram>           rm_material;                ///<材质合集
+    AutoIdObjectManager<MaterialID,             ShaderProgram>           rm_material;                ///<材质合集
     AutoIdObjectManager<MaterialInstanceID,     MaterialInstance>   rm_material_instance;       ///<材质实例合集
 
 private:
@@ -52,19 +52,19 @@ private:
 
 private: // Helper methods with integrated DebugUtils
 
-    MaterialProgram *AcquireMaterialProgram(const AnsiString &, const mtl::ShaderProgramBuildSpec *);
+    ShaderProgram *AcquireMaterialProgram(const AnsiString &, const mtl::ShaderProgramBuildSpec *);
     class PipelineLayoutData *CreateMaterialPipelineLayoutData(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager);
     class MaterialParameters *CreateMaterialMP(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager, const class PipelineLayoutData *pld, const DescriptorSetType &desc_set_type);
-    void ApplyMaterialFinalizePlan(MaterialProgram *mtl, const AnsiString &mtl_name, const mtl::ShaderProgramBuildSpec &mci);
-    MaterialProgram *TryGetCachedMaterial(const AnsiString &name);
-    bool ExecuteMaterialBuildPipeline(MaterialProgram *mtl,
+    void ApplyMaterialFinalizePlan(ShaderProgram *mtl, const AnsiString &mtl_name, const mtl::ShaderProgramBuildSpec &mci);
+    ShaderProgram *TryGetCachedMaterial(const AnsiString &name);
+    bool ExecuteMaterialBuildPipeline(ShaderProgram *mtl,
                                       const AnsiString &mtl_name,
                                       const mtl::ShaderProgramBuildSpec *mci,
                                       const ShaderCreateInfoMap &sci_map);
 
 public: //Add
 
-    MaterialID              Add(MaterialProgram *          mtl ){return rm_material.Add(mtl);}
+    MaterialID              Add(ShaderProgram *          mtl ){return rm_material.Add(mtl);}
     MaterialInstanceID      Add(MaterialInstance *  mi  ){return rm_material_instance.Add(mi);}
 
     /** 设置全局 Bindless Texture Set 布局（必须在创建任何材质前调用）*/
@@ -72,15 +72,15 @@ public: //Add
 
 public: //Get
 
-    MaterialProgram *          GetMaterialProgram         (const MaterialID           &id){return rm_material.Get(id);}
+    ShaderProgram *          GetMaterialProgram         (const MaterialID           &id){return rm_material.Get(id);}
     MaterialInstance *  GetMaterialInstance (const MaterialInstanceID   &id){return rm_material_instance.Get(id);}
 
 public: //Release
 
-    void Release(MaterialProgram *         mtl ){rm_material.Release(mtl);}
+    void Release(ShaderProgram *         mtl ){rm_material.Release(mtl);}
     void Release(MaterialInstance * mi  ){rm_material_instance.Release(mi);}
 
-    void Destroy(MaterialProgram *mtl)
+    void Destroy(ShaderProgram *mtl)
     {
         if (!mtl)
             return;
@@ -145,34 +145,34 @@ public: //ShaderGen Profiler (debug entry, collect-only)
 
     std::map<std::string, uint32_t> GetShaderGenRecentValidationCategoryHistogram(const uint32_t max_count = 128) const;
 
-public: //MaterialProgram
+public: //ShaderProgram
 
-    MaterialProgram *          AcquireMaterialProgram(const mtl::BuiltinMaterialCreatorID, mtl::Material2DCreateConfig *);
-    MaterialProgram *          AcquireMaterialProgram(const mtl::BuiltinMaterialCreatorID, mtl::Material3DCreateConfig *);
-    MaterialProgram *AcquireMaterialProgramByBMI(const std::string &bmi_id,
+    ShaderProgram *   AcquireMaterialProgram(const mtl::BuiltinMaterialCreatorID, mtl::Material2DCreateConfig *);
+    ShaderProgram *   AcquireMaterialProgram(const mtl::BuiltinMaterialCreatorID, mtl::Material3DCreateConfig *);
+    ShaderProgram *   AcquireMaterialProgram(const std::string &mtl_def_id,
                                                   const mtl::MaterialRecipe &recipe,
                                                   PrimitiveType prim_type,
                                                   const GeometryVertexFormat *geometry_vertex_format = nullptr);
 
 private: // Legacy MaterialInstance bridge — internal engine use only during Phase 7 migration
 
-    MaterialInstance *  CreateMaterialInstanceInternal(MaterialProgram *);
-    MaterialInstance *  CreateMaterialInstanceInternal(MaterialProgram *, const VIL *vil);
-    MaterialInstance *  CreateMaterialInstanceInternal(MaterialProgram *, const VILConfig *vil_cfg);
-    MaterialInstance *  CreateMaterialInstanceInternal(MaterialProgram *, const GeometryVertexFormat &geometry_vertex_format);
-    MaterialInstance *  CreateMaterialInstanceInternal(MaterialProgram *, const GeometryVertexFormat &geometry_vertex_format, const void *, const uint32);
+    MaterialInstance *  CreateMaterialInstanceInternal(ShaderProgram *);
+    MaterialInstance *  CreateMaterialInstanceInternal(ShaderProgram *, const VIL *vil);
+    MaterialInstance *  CreateMaterialInstanceInternal(ShaderProgram *, const VILConfig *vil_cfg);
+    MaterialInstance *  CreateMaterialInstanceInternal(ShaderProgram *, const GeometryVertexFormat &geometry_vertex_format);
+    MaterialInstance *  CreateMaterialInstanceInternal(ShaderProgram *, const GeometryVertexFormat &geometry_vertex_format, const void *, const uint32);
 
-    MaterialInstance *  CreateMaterialInstanceInternal(MaterialProgram *, const VIL *vil, const void *, const uint32);
-    MaterialInstance *  CreateMaterialInstanceInternal(MaterialProgram *, const VILConfig *vil_cfg, const void *, const uint32);
+    MaterialInstance *  CreateMaterialInstanceInternal(ShaderProgram *, const VIL *vil, const void *, const uint32);
+    MaterialInstance *  CreateMaterialInstanceInternal(ShaderProgram *, const VILConfig *vil_cfg, const void *, const uint32);
 
     template<typename T>
-    MaterialInstance *  CreateMaterialInstanceInternal(MaterialProgram *mtl, const VIL *vil, const T *data)
+    MaterialInstance *  CreateMaterialInstanceInternal(ShaderProgram *mtl, const VIL *vil, const T *data)
     {
         return CreateMaterialInstanceInternal(mtl,vil,data,sizeof(T));
     }
 
     template<typename T>
-    MaterialInstance *  CreateMaterialInstanceInternal(MaterialProgram *mtl, const VILConfig *vil_cfg, const T *data)
+    MaterialInstance *  CreateMaterialInstanceInternal(ShaderProgram *mtl, const VILConfig *vil_cfg, const T *data)
     {
         return CreateMaterialInstanceInternal(mtl,vil_cfg,data,sizeof(T));
     }

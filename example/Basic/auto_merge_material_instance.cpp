@@ -186,7 +186,7 @@ private:
         std::cout << "[TestApp::InitECS] Created " << DRAW_OBJECT_COUNT << " entities" << std::endl;
         std::cout << "[TestApp::InitECS] Each entity uses a different struct row (different color)" << std::endl;
         std::cout << "[TestApp::InitECS] RenderCollector will automatically merge them into batches" << std::endl;
-        std::cout << "[TestApp::InitECS] MaterialProgram index tables are bound by strict SSBOType+ssbo_id routing" << std::endl;
+        std::cout << "[TestApp::InitECS] ShaderProgram index tables are bound by strict SSBOType+ssbo_id routing" << std::endl;
 
         return true;
     }
@@ -276,5 +276,5 @@ public:
 
 int os_main(int argc, os_char** argv)
 {
-    return RunFramework<TestApp>(OS_TEXT("Auto Merge MaterialProgram Instance (ECS Version)"), argc, argv, 1024, 1024);
+    return RunFramework<TestApp>(OS_TEXT("Auto Merge ShaderProgram Instance (ECS Version)"), argc, argv, 1024, 1024);
 }

@@ -74,7 +74,7 @@ namespace hgl::graph
          * @param prim_restart 是否启用基元重启
          * @return 管线指针，失败返回 nullptr
          */
-        Pipeline* CreatePipeline(MaterialProgram* material,
+        Pipeline* CreatePipeline(ShaderProgram* material,
                                 const VertexInputLayout* vil,
                                 const PipelineData* pd,
                                 bool prim_restart = false);

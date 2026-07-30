@@ -177,7 +177,7 @@ public:
         return(true);
     }
 
-    bool BindDescriptorSets(MaterialProgram *);
+    bool BindDescriptorSets(ShaderProgram *);
 
     bool PushDescriptorSet(VkPipelineLayout pipeline_layout,uint32_t set,uint32_t count,const VkWriteDescriptorSet *write_desc_set)
     {
