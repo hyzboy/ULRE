@@ -50,6 +50,16 @@ namespace hgl::ecs
             return true;
         }
 
+        bool TryResolvePresetForRecipe(const graph::mtl::MaterialRecipe &recipe,
+                                       graph::mtl::MaterialPreset &out_preset)
+        {
+            if (!recipe.bmi_id.empty()
+             && graph::mtl::TryResolveMaterialPresetByBMIId(recipe.bmi_id, out_preset))
+                return true;
+
+            return TryResolvePresetByHint(recipe.preset_hint, out_preset);
+        }
+
         bool Is2DPreset(const graph::mtl::MaterialPreset preset)
         {
             switch (preset)
@@ -214,7 +224,11 @@ namespace hgl::ecs
             graph::mtl::BaseMaterialInfo bmi{};
             bool has_bmi = false;
 
-            if (!recipe.base_material_info_name.empty())
+            if (!recipe.bmi_id.empty())
+            {
+                has_bmi = graph::mtl::TryGetBaseMaterialInfoByBMIId(recipe.bmi_id, bmi);
+            }
+            else if (!recipe.base_material_info_name.empty())
             {
                 has_bmi = graph::mtl::TryGetBaseMaterialInfoByName(recipe.base_material_info_name, bmi);
             }
@@ -574,11 +588,13 @@ namespace hgl::ecs
         }
 
         graph::mtl::MaterialPreset preset{};
-        if (!TryResolvePresetByHint(effective_recipe.preset_hint, preset))
+        if (!TryResolvePresetForRecipe(effective_recipe, preset))
         {
-            GLogWarning("[RenderPrimitiveCollectSystem] ResolveMaterialProgram failed: preset_hint invalid for %s recipe=%s",
+            GLogWarning("[RenderPrimitiveCollectSystem] ResolveMaterialProgram failed: unresolved BMI key for %s recipe=%s bmi_id=%s preset_hint=%u",
                         GetPrimitiveOwnerName(primitive_comp),
-                        effective_recipe.recipe_name.c_str());
+                        effective_recipe.recipe_name.c_str(),
+                        effective_recipe.bmi_id.c_str(),
+                        effective_recipe.preset_hint);
             return false;
         }
 

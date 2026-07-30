@@ -57,6 +57,7 @@ VkFormat ResolveMaterialVertexSemanticFormat(const MaterialCreateConfig *cfg, Ve
 VkFormat ResolveMaterialPositionFormat(const MaterialCreateConfig *cfg, VkFormat fallback_format);
 
 const char *GetMaterialPresetName(const MaterialPreset mtl_id);
+const char *GetMaterialPresetBMIId(const MaterialPreset mtl_id);
 
 // Phase-A migration helpers: preset <-> variant mapping.
 MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id);
@@ -68,7 +69,9 @@ bool TryMapVariantKeyToPreset(const MaterialVariantKey &key, MaterialPreset &out
 // Material implementation .cpp files register their BMI defaults here.
 void RegisterBaseMaterialInfo(const BaseMaterialInfo &bmi);
 void RegisterBaseMaterialInfo(const MaterialPreset preset, const BaseMaterialInfo &bmi);
+bool TryGetBaseMaterialInfoByBMIId(const std::string &bmi_id, BaseMaterialInfo &out_bmi);
 bool TryGetBaseMaterialInfoByName(const std::string &name, BaseMaterialInfo &out_bmi);
 bool TryGetBaseMaterialInfoByPreset(const MaterialPreset preset, BaseMaterialInfo &out_bmi);
+bool TryResolveMaterialPresetByBMIId(const std::string &bmi_id, MaterialPreset &out_preset);
 
 }//namespace hgl::graph::mtl

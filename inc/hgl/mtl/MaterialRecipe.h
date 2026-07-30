@@ -223,6 +223,7 @@ namespace hgl::graph::mtl
 
     struct BaseMaterialInfo
     {
+        std::string bmi_id;
         std::string bmi_name;
         uint32_t preset_hint = InvalidMaterialPresetHint;
 
@@ -243,6 +244,7 @@ namespace hgl::graph::mtl
     struct MaterialRecipe
     {
         std::string recipe_name;               // 配方名称（人类可读）
+        std::string bmi_id;                    // 未来正式主键：BMI 字符串 ID / 文件名
         uint32_t preset_hint = InvalidMaterialPresetHint;   // 材质入口（MaterialPreset 序号）
         std::string base_material_info_name;   // 作者层基材质定义名（BMI）
         std::string domain;                    // 资源/缓存域（用于隔离不同管线空间）
@@ -325,6 +327,9 @@ namespace hgl::graph::mtl
                                               const BaseMaterialInfo &bmi,
                                               const bool overwrite_existing = false)
     {
+        if (recipe.bmi_id.empty())
+            recipe.bmi_id = bmi.bmi_id;
+
         if (recipe.base_material_info_name.empty())
             recipe.base_material_info_name = bmi.bmi_name;
 
@@ -359,6 +364,8 @@ namespace hgl::graph::mtl
 
         if (!recipe.recipe_name.empty())
             hash = hgl::hash::FNV1aAppendBytes(hash, recipe.recipe_name.data(), recipe.recipe_name.size());
+        if (!recipe.bmi_id.empty())
+            hash = hgl::hash::FNV1aAppendBytes(hash, recipe.bmi_id.data(), recipe.bmi_id.size());
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.preset_hint);
         if (!recipe.base_material_info_name.empty())
             hash = hgl::hash::FNV1aAppendBytes(hash, recipe.base_material_info_name.data(), recipe.base_material_info_name.size());

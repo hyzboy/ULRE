@@ -24,6 +24,7 @@ namespace hgl::ecs
         void ResetMaterialRecipe(hgl::graph::mtl::MaterialRecipe &recipe)
         {
             recipe.recipe_name.clear();
+            recipe.bmi_id.clear();
             recipe.preset_hint = hgl::graph::mtl::InvalidMaterialPresetHint;
             recipe.base_material_info_name.clear();
             recipe.domain.clear();

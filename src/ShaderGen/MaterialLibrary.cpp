@@ -40,35 +40,50 @@ VkFormat ResolveMaterialPositionFormat(const MaterialCreateConfig *cfg, VkFormat
 
 void RegisterBaseMaterialInfo(const BaseMaterialInfo &bmi)
 {
-    if (bmi.bmi_name.empty())
+    BaseMaterialInfo normalized = bmi;
+    if (normalized.bmi_id.empty())
+    {
+        if (!normalized.bmi_name.empty())
+            normalized.bmi_id = normalized.bmi_name;
+    }
+
+    if (normalized.bmi_name.empty() && normalized.bmi_id.empty())
         return;
 
     auto &registry = GetBaseMaterialInfoRegistry();
     for (auto &entry : registry)
     {
-        if (entry.bmi.bmi_name == bmi.bmi_name)
+        if ((!normalized.bmi_id.empty() && entry.bmi.bmi_id == normalized.bmi_id)
+         || (!normalized.bmi_name.empty() && entry.bmi.bmi_name == normalized.bmi_name))
         {
-            entry.bmi = bmi;
+            entry.bmi = normalized;
             return;
         }
     }
 
     BaseMaterialInfoRegistryEntry entry{};
-    entry.bmi = bmi;
+    entry.bmi = normalized;
     registry.emplace_back(std::move(entry));
 }
 
 void RegisterBaseMaterialInfo(const MaterialPreset preset, const BaseMaterialInfo &bmi)
 {
     BaseMaterialInfo normalized = bmi;
+    const char *preset_name = GetMaterialPresetName(preset);
+
+    if (normalized.bmi_id.empty())
+    {
+        if (preset_name && *preset_name)
+            normalized.bmi_id = preset_name;
+    }
+
     if (normalized.bmi_name.empty())
     {
-        const char *preset_name = GetMaterialPresetName(preset);
         if (preset_name && *preset_name)
             normalized.bmi_name = preset_name;
     }
 
-    if (normalized.bmi_name.empty())
+    if (normalized.bmi_name.empty() && normalized.bmi_id.empty())
         return;
 
     auto &registry = GetBaseMaterialInfoRegistry();
@@ -86,6 +101,24 @@ void RegisterBaseMaterialInfo(const MaterialPreset preset, const BaseMaterialInf
     entry.preset = preset;
     entry.bmi = normalized;
     registry.emplace_back(std::move(entry));
+}
+
+bool TryGetBaseMaterialInfoByBMIId(const std::string &bmi_id, BaseMaterialInfo &out_bmi)
+{
+    if (bmi_id.empty())
+        return false;
+
+    const auto &registry = GetBaseMaterialInfoRegistry();
+    for (const auto &entry : registry)
+    {
+        if (entry.bmi.bmi_id == bmi_id)
+        {
+            out_bmi = entry.bmi;
+            return true;
+        }
+    }
+
+    return false;
 }
 
 bool TryGetBaseMaterialInfoByName(const std::string &name, BaseMaterialInfo &out_bmi)
@@ -116,6 +149,27 @@ bool TryGetBaseMaterialInfoByPreset(const MaterialPreset preset, BaseMaterialInf
             out_bmi = entry.bmi;
             return true;
         }
+    }
+
+    return false;
+}
+
+bool TryResolveMaterialPresetByBMIId(const std::string &bmi_id, MaterialPreset &out_preset)
+{
+    if (bmi_id.empty())
+        return false;
+
+    const auto &registry = GetBaseMaterialInfoRegistry();
+    for (const auto &entry : registry)
+    {
+        if (!entry.has_preset)
+            continue;
+
+        if (entry.bmi.bmi_id != bmi_id)
+            continue;
+
+        out_preset = entry.preset;
+        return true;
     }
 
     return false;
@@ -307,6 +361,11 @@ const char *GetMaterialPresetName(const MaterialPreset mtl_id)
         case MaterialPreset::PBRColor3D:            return "PBRColor3D";
         default:                                    return nullptr;
     }
+}
+
+const char *GetMaterialPresetBMIId(const MaterialPreset mtl_id)
+{
+    return GetMaterialPresetName(mtl_id);
 }
 
 MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
