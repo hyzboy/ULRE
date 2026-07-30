@@ -12,8 +12,9 @@ namespace
         BaseMaterialInfo bmi{};
         bmi.bmi_name = "Text2D";
         bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::Text2D);
+        bmi.source_kind = BMISourceKind::BuiltIn;
+        bmi.usage_tag = BMIUsageTag::Text;
         bmi.coordinate_system_2d = CoordinateSystem2D::Ortho;
-        bmi.local_to_world_2d = false;
         RegisterBaseMaterialInfo(MaterialPreset::Text2D, bmi);
         return true;
     }();

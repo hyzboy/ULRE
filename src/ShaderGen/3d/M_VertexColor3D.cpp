@@ -14,6 +14,7 @@ namespace
         BaseMaterialInfo bmi{};
         bmi.bmi_name = "VertexColor3D";
         bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::VertexColor3D);
+        bmi.source_kind = BMISourceKind::BuiltIn;
         RegisterBaseMaterialInfo(MaterialPreset::VertexColor3D, bmi);
         return true;
     }();

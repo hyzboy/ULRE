@@ -1,4 +1,4 @@
-﻿// SimplestAxis
+// SimplestAxis
 // 直接从0,0,0向三个方向画一条直线，用于确认坐标轴方向
 
 #include<hgl/framework/WorkManager.h>
@@ -88,7 +88,7 @@ private:
         transform->SetMovable(false);
 
         axis_recipe.recipe_name = "SimplestAxis.VertexColor3D";
-        axis_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::VertexColor3D);
+        graph::mtl::SetRecipePreset(axis_recipe, graph::mtl::MaterialPreset::VertexColor3D);
         axis_recipe.domain = "SimplestAxis";
         axis_asset = PrimitiveAsset(geom_axis, &axis_recipe, PrimitiveType::Lines);
         prim_comp->SetPrimitiveAsset(&axis_asset);

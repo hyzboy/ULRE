@@ -12,6 +12,7 @@ namespace
         BaseMaterialInfo bmi{};
         bmi.bmi_name = "RectTexture2DArray";
         bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::RectTexture2DArray);
+        bmi.source_kind = BMISourceKind::BuiltIn;
         RegisterBaseMaterialInfo(MaterialPreset::RectTexture2DArray, bmi);
         return true;
     }();

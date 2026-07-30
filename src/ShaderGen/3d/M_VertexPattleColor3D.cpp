@@ -25,6 +25,7 @@ namespace
         BaseMaterialInfo bmi{};
         bmi.bmi_name = "VertexPattleColor3D";
         bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::VertexPattleColor3D);
+        bmi.source_kind = BMISourceKind::BuiltIn;
         RegisterBaseMaterialInfo(MaterialPreset::VertexPattleColor3D, bmi);
         return true;
     }();

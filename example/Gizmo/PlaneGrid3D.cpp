@@ -106,7 +106,7 @@ private:
             return false;
 
         plane_grid_recipe.recipe_name = "PlaneGrid3D.VertexLuminance3D";
-        plane_grid_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::VertexLuminance3D);
+        graph::mtl::SetRecipePreset(plane_grid_recipe, graph::mtl::MaterialPreset::VertexLuminance3D);
         plane_grid_recipe.base_material_info_name = "VertexLuminance3D";
         plane_grid_recipe.domain = "PlaneGrid3D";
         graph::mtl::UpsertRecipeSSBOAssetBinding(plane_grid_recipe, graph::mtl::SBS_MaterialInstance.name, mi_ssbo_accessor->GetSSBOBinding());

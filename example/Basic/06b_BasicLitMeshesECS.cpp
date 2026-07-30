@@ -90,7 +90,7 @@ private:
         if (!texture_manager || !sampler_manager )
             return false;
         mesh_recipe.recipe_name = "06b.BasicLit.Standard";
-        mesh_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Standard);
+        graph::mtl::SetRecipePreset(mesh_recipe, graph::mtl::MaterialPreset::Standard);
         mesh_recipe.domain = "06b.BasicLit";
         graph::mtl::UpsertRecipeSSBOAssetBinding(mesh_recipe,
                                                  graph::mtl::SBS_MaterialInstance.name,

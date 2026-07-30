@@ -221,23 +221,46 @@ namespace hgl::graph::mtl
         uint32_t ssbo_id = 0;
     };
 
+    // BMI 来源标记：区分 built-in 硬编码实现与未来的文件化实现。
+    enum class BMISourceKind : uint8_t
+    {
+        BuiltIn = 0,  // M_* 硬编码 creator（用于 fallback 与少量保底材质）
+        File,         // 外部 BMI 文件（未来主路径）
+    };
+
+    // BMI 用途标签：辅助调试 / 统计 / fallback 降级判断。
+    enum class BMIUsageTag : uint8_t
+    {
+        General = 0,   // 普通材质
+        Fallback,      // 错误/缺失材质保底
+        Debug,         // 调试/编辑器专用
+        Text,          // 文字渲染专用
+        Sky,           // 天空专用
+    };
+
     struct BaseMaterialInfo
     {
-        std::string bmi_id;
-        std::string bmi_name;
-        uint32_t preset_hint = InvalidMaterialPresetHint;
+        // Part-A: 基础语义/元信息
+        std::string bmi_id;                                          // 正式主键（字符串 ID / 未来文件名）
+        std::string bmi_name;                                        // 人类可读名称
+        uint32_t    preset_hint = InvalidMaterialPresetHint;         // 当前阶段过渡字段（enum 序号）
+        BMISourceKind source_kind = BMISourceKind::BuiltIn;         // 来源类型
+        BMIUsageTag   usage_tag  = BMIUsageTag::General;            // 用途标签
 
-        // 2D authoring defaults
+        // 2D 作者层默认值
         CoordinateSystem2D coordinate_system_2d = CoordinateSystem2D::NDC;
         bool local_to_world_2d = true;
 
-        // Variant/Lod authoring envelope (base definition >= concrete program usage)
-        uint16_t default_lod = 0;
-        uint16_t lod_count = 1;
-        uint16_t quality_tier = 0;
+        // Lod / 质量包络
+        uint16_t default_lod   = 0;
+        uint16_t lod_count     = 1;
+        uint16_t quality_tier  = 0;
 
-        // Required semantic assets for this base material definition.
+        // Part-B: 资源契约（当前阶段仅 SSBO；Texture/VAB 由 recipe 按需声明）
         std::vector<RecipeSSBOAssetBinding> required_ssbo_assets;
+
+        // Part-C: 创建绑定（当前阶段：指向 M_* 创建函数的 preset 数值；未来：文件化 creator 描述）
+        // 当前通过 preset_hint 间接传达，未来会扩展为独立 creator_key 或 shader_descriptor 字段。
     };
 
     // 纯声明式材质输入（不含 Vulkan/运行时句柄），是 MaterializationSpec 的上游输入。

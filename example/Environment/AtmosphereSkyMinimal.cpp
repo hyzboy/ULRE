@@ -48,7 +48,7 @@ private:
         if (!prim_sky_sphere)
             return false;
         sky_recipe.recipe_name = "AtmosphereSkyMinimal.Sky";
-        sky_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::SkyMinimal);
+        graph::mtl::SetRecipePreset(sky_recipe, graph::mtl::MaterialPreset::SkyMinimal);
         sky_recipe.domain = "AtmosphereSkyMinimal";
         sky_asset = PrimitiveAsset(prim_sky_sphere, &sky_recipe, PrimitiveType::Triangles);
         return true;

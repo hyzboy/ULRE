@@ -87,7 +87,7 @@ private:
             return false;
 
         triangle_recipe.recipe_name = "AutoMergeMaterialInstance.PureColor2D";
-        triangle_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::PureColor2D);
+        graph::mtl::SetRecipePreset(triangle_recipe, graph::mtl::MaterialPreset::PureColor2D);
         triangle_recipe.domain = "AutoMergeMaterialInstance";
         graph::mtl::UpsertRecipeSSBOAssetBinding(triangle_recipe,
                                                  graph::mtl::SBS_MaterialInstance.name,

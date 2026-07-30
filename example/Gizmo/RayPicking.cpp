@@ -100,7 +100,7 @@ private:
     bool InitMaterialAndPipeline()
     {
         plane_recipe.recipe_name = "RayPicking.PlaneGrid";
-        plane_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::VertexLuminance3D);
+        graph::mtl::SetRecipePreset(plane_recipe, graph::mtl::MaterialPreset::VertexLuminance3D);
         plane_recipe.domain = "RayPicking";
         line_recipe = plane_recipe;
         line_recipe.recipe_name = "RayPicking.Line";

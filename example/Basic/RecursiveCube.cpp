@@ -123,7 +123,7 @@ private:
             return false;
 
         cube_recipe.recipe_name = "RecursiveCube.Gizmo3D";
-        cube_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Gizmo3D);
+        graph::mtl::SetRecipePreset(cube_recipe, graph::mtl::MaterialPreset::Gizmo3D);
         cube_recipe.domain = "RecursiveCube";
         graph::mtl::UpsertRecipeSSBOAssetBinding(cube_recipe,
                                                  graph::mtl::SBS_MaterialInstance.name,

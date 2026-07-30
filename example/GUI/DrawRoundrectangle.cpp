@@ -119,7 +119,7 @@ private:
             return false;
 
         rect_recipe.recipe_name = "DrawRoundrectangle.RectTexture2D";
-        rect_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::RectTexture2D);
+        graph::mtl::SetRecipePreset(rect_recipe, graph::mtl::MaterialPreset::RectTexture2D);
         rect_recipe.domain = "DrawRoundrectangle";
         rect_asset = PrimitiveAsset(geometry, &rect_recipe, PrimitiveType::Triangles);
 

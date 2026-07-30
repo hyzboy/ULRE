@@ -59,6 +59,16 @@ VkFormat ResolveMaterialPositionFormat(const MaterialCreateConfig *cfg, VkFormat
 const char *GetMaterialPresetName(const MaterialPreset mtl_id);
 const char *GetMaterialPresetBMIId(const MaterialPreset mtl_id);
 
+/// 便利入口：同时设置 recipe.bmi_id（正式主键）与 recipe.preset_hint（当前阶段兼容字段）。
+/// 所有作者层代码应统一用此函数代替直接赋 preset_hint。
+inline void SetRecipePreset(MaterialRecipe &recipe, const MaterialPreset preset)
+{
+    const char *bmi_id = GetMaterialPresetBMIId(preset);
+    if (bmi_id && *bmi_id)
+        recipe.bmi_id = bmi_id;
+    recipe.preset_hint = static_cast<uint32_t>(preset);
+}
+
 // Phase-A migration helpers: preset <-> variant mapping.
 MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id);
 bool TryMapVariantKeyToPreset2D(const MaterialVariantKey &key, MaterialPreset &out_preset);

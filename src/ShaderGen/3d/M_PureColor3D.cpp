@@ -14,6 +14,7 @@ namespace
         BaseMaterialInfo bmi{};
         bmi.bmi_name = "PureColor3D";
         bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::PureColor3D);
+        bmi.source_kind = BMISourceKind::BuiltIn;
         RegisterBaseMaterialInfo(MaterialPreset::PureColor3D, bmi);
         return true;
     }();

@@ -12,6 +12,7 @@ namespace
         BaseMaterialInfo bmi{};
         bmi.bmi_name = "PureTexture2D";
         bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::PureTexture2D);
+        bmi.source_kind = BMISourceKind::BuiltIn;
         RegisterBaseMaterialInfo(MaterialPreset::PureTexture2D, bmi);
         return true;
     }();

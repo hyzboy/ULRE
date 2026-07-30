@@ -18,6 +18,7 @@ namespace
         BaseMaterialInfo bmi{};
         bmi.bmi_name = "StandardTextureArray";
         bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::StandardTextureArray);
+        bmi.source_kind = BMISourceKind::BuiltIn;
         RegisterBaseMaterialInfo(MaterialPreset::StandardTextureArray, bmi);
         return true;
     }();

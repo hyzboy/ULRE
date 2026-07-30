@@ -120,7 +120,7 @@ private:
             grid_mi_ssbo_accessor->Commit();
 
             grid_recipe.recipe_name = "GizmoUsageExample.VertexLuminance3D";
-            grid_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::VertexLuminance3D);
+            graph::mtl::SetRecipePreset(grid_recipe, graph::mtl::MaterialPreset::VertexLuminance3D);
             grid_recipe.domain = "GizmoUsageExample";
             graph::mtl::UpsertRecipeSSBOAssetBinding(grid_recipe,
                                                      graph::mtl::SBS_MaterialInstance.name,
@@ -159,7 +159,7 @@ private:
             cube_mi_ssbo_accessor->Commit();
 
             cube_recipe.recipe_name = "GizmoUsageExample.Gizmo3D";
-            cube_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Gizmo3D);
+            graph::mtl::SetRecipePreset(cube_recipe, graph::mtl::MaterialPreset::Gizmo3D);
             cube_recipe.domain = "GizmoUsageExample";
             graph::mtl::UpsertRecipeSSBOAssetBinding(cube_recipe,
                                                      graph::mtl::SBS_MaterialInstance.name,

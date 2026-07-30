@@ -13,6 +13,8 @@ namespace
         BaseMaterialInfo bmi{};
         bmi.bmi_name = "SkyMinimal";
         bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::SkyMinimal);
+        bmi.source_kind = BMISourceKind::BuiltIn;
+        bmi.usage_tag = BMIUsageTag::Sky;
         RegisterBaseMaterialInfo(MaterialPreset::SkyMinimal, bmi);
         return true;
     }();

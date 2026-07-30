@@ -134,7 +134,7 @@ namespace hgl::graph
                     auto &recipe = gr->color_recipe[c];
                     recipe = mtl::MaterialRecipe{};
                     recipe.recipe_name = "GizmoColor_" + std::to_string(c);
-                    recipe.preset_hint = static_cast<uint32_t>(mtl::MaterialPreset::PureColor3D);
+                    mtl::SetRecipePreset(recipe, mtl::MaterialPreset::PureColor3D);
                     recipe.structs.clear();
                     recipe.textures.clear();
                     recipe.ssbo_assets.clear();

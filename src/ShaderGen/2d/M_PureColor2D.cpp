@@ -12,6 +12,7 @@ namespace
         BaseMaterialInfo bmi{};
         bmi.bmi_name = "PureColor2D";
         bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::PureColor2D);
+        bmi.source_kind = BMISourceKind::BuiltIn;
         RegisterBaseMaterialInfo(MaterialPreset::PureColor2D, bmi);
         return true;
     }();
