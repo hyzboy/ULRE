@@ -169,7 +169,7 @@ private:
         geometry_manager->Add(sky_geometry);
 
         sky_recipe.recipe_name = "BasicLitSunDirection.Sky";
-        graph::mtl::SetRecipePreset(sky_recipe, graph::mtl::MaterialPreset::SkyMinimal);
+        sky_recipe.bmi_id = "SkyMinimal";
         sky_recipe.domain = "BasicLitSunDirection";
         sky_asset = PrimitiveAsset(sky_geometry, &sky_recipe, PrimitiveType::Triangles);
 
@@ -208,7 +208,7 @@ private:
         mi_data.roughness = 0.92f;
         mi_data.normal_scale = 0.35f;
         mesh_recipe.recipe_name = "BasicLitSunDirection.Standard";
-        graph::mtl::SetRecipePreset(mesh_recipe, graph::mtl::MaterialPreset::Standard);
+        mesh_recipe.bmi_id = "Standard";
         mesh_recipe.domain = "BasicLitSunDirection";
 
         // Allocate SSBO first so the ID is available before UpsertRecipe.

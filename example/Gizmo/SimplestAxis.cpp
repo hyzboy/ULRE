@@ -88,7 +88,7 @@ private:
         transform->SetMovable(false);
 
         axis_recipe.recipe_name = "SimplestAxis.VertexColor3D";
-        graph::mtl::SetRecipePreset(axis_recipe, graph::mtl::MaterialPreset::VertexColor3D);
+        axis_recipe.bmi_id = "VertexColor3D";
         axis_recipe.domain = "SimplestAxis";
         axis_asset = PrimitiveAsset(geom_axis, &axis_recipe, PrimitiveType::Lines);
         prim_comp->SetPrimitiveAsset(&axis_asset);

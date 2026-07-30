@@ -176,11 +176,11 @@ private:
     void InitMaterialRecipes()
     {
         solid_recipe.recipe_name = "RenderBoundBox.Solid";
-        mtl::SetRecipePreset(solid_recipe, mtl::MaterialPreset::Gizmo3D);
+        solid_recipe.bmi_id = "Gizmo3D";
         solid_recipe.domain = "RenderBoundBox.Solid";
 
         wire_recipe.recipe_name = "RenderBoundBox.Wire";
-        mtl::SetRecipePreset(wire_recipe, mtl::MaterialPreset::PureColor3D);
+        wire_recipe.bmi_id = "PureColor3D";
         wire_recipe.domain = "RenderBoundBox.Wire";
     }
 

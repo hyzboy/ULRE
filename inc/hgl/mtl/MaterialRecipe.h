@@ -271,9 +271,7 @@ namespace hgl::graph::mtl
     struct MaterialRecipe
     {
         std::string recipe_name;               // 配方名称（人类可读）
-        std::string bmi_id;                    // 未来正式主键：BMI 字符串 ID / 文件名
-        uint32_t preset_hint = InvalidMaterialPresetHint;   // 材质入口（MaterialPreset 序号）
-        std::string base_material_info_name;   // 作者层基材质定义名（BMI）
+        std::string bmi_id;                    // BMI 字符串主键（材质标识 / 未来文件名）
         std::string domain;                    // 资源/缓存域（用于隔离不同管线空间）
         CoordinateSystem2D coordinate_system_2d = CoordinateSystem2D::NDC; // 2D 材质坐标系作者意图
         bool local_to_world_2d = true;        // 2D 材质是否需要 L2W 变换
@@ -357,15 +355,7 @@ namespace hgl::graph::mtl
         if (recipe.bmi_id.empty())
             recipe.bmi_id = bmi.bmi_id;
 
-        if (recipe.base_material_info_name.empty())
-            recipe.base_material_info_name = bmi.bmi_name;
-
-        if (recipe.preset_hint == InvalidMaterialPresetHint || overwrite_existing)
-            recipe.preset_hint = bmi.preset_hint;
-
-        // coordinate_system_2d/local_to_world_2d：
-        // NDC 是 MaterialRecipe 的零值默认，无法区分"用户显式设了 NDC"和"未设置"。
-        // 保守策略：只在 overwrite 时才从 BMI 复写（用户显式赋值优先）。
+        // coordinate_system_2d/local_to_world_2d：保守策略，只在 overwrite 时复写。
         if (overwrite_existing)
         {
             recipe.coordinate_system_2d = bmi.coordinate_system_2d;
@@ -383,11 +373,6 @@ namespace hgl::graph::mtl
             UpsertRecipeSSBOAssetBinding(recipe, asset.ssbo_name, asset.ssbo_type, asset.ssbo_id);
     }
 
-    // 计算 MaterialRecipe 的稳定内容哈希（只看声明内容，不依赖运行时句柄）。
-    // 该哈希可用于：
-    // 1) Recipe 去重/缓存；
-    // 2) MaterializationSpec::recipe_hash 的来源值；
-    // 3) “同输入应产出同 spec”的一致性校验。
     inline uint64_t HashMaterialRecipe(const MaterialRecipe &recipe) noexcept
     {
         uint64 hash = hgl::hash::FNV1aInit<uint64>();
@@ -396,9 +381,6 @@ namespace hgl::graph::mtl
             hash = hgl::hash::FNV1aAppendBytes(hash, recipe.recipe_name.data(), recipe.recipe_name.size());
         if (!recipe.bmi_id.empty())
             hash = hgl::hash::FNV1aAppendBytes(hash, recipe.bmi_id.data(), recipe.bmi_id.size());
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.preset_hint);
-        if (!recipe.base_material_info_name.empty())
-            hash = hgl::hash::FNV1aAppendBytes(hash, recipe.base_material_info_name.data(), recipe.base_material_info_name.size());
         if (!recipe.domain.empty())
             hash = hgl::hash::FNV1aAppendBytes(hash, recipe.domain.data(), recipe.domain.size());
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.coordinate_system_2d);

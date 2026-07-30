@@ -166,11 +166,11 @@ private:
     void InitMaterialRecipes()
     {
         solid_recipe.recipe_name = "LoadGeometry.Gizmo3D";
-        graph::mtl::SetRecipePreset(solid_recipe, graph::mtl::MaterialPreset::Gizmo3D);
+        solid_recipe.bmi_id = "Gizmo3D";
         solid_recipe.domain = "LoadGeometry";
 
         wire_recipe.recipe_name = "LoadGeometry.Wire";
-        graph::mtl::SetRecipePreset(wire_recipe, graph::mtl::MaterialPreset::PureColor3D);
+        wire_recipe.bmi_id = "PureColor3D";
         wire_recipe.domain = "LoadGeometry";
     }
 

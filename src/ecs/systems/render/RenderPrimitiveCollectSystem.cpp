@@ -149,25 +149,11 @@ namespace hgl::ecs
 
         void NormalizeRecipeWithBaseMaterialInfo(graph::mtl::MaterialRecipe &recipe)
         {
+            if (recipe.bmi_id.empty())
+                return;
+
             graph::mtl::BaseMaterialInfo bmi{};
-            bool has_bmi = false;
-
-            if (!recipe.bmi_id.empty())
-            {
-                has_bmi = graph::mtl::TryGetBaseMaterialInfoByBMIId(recipe.bmi_id, bmi);
-            }
-            else if (!recipe.base_material_info_name.empty())
-            {
-                has_bmi = graph::mtl::TryGetBaseMaterialInfoByName(recipe.base_material_info_name, bmi);
-            }
-            else if (recipe.preset_hint != graph::mtl::InvalidMaterialPresetHint
-                  && recipe.preset_hint < static_cast<uint32_t>(graph::mtl::MaterialPreset::RANGE_SIZE))
-            {
-                const graph::mtl::MaterialPreset preset = static_cast<graph::mtl::MaterialPreset>(recipe.preset_hint);
-                has_bmi = graph::mtl::TryGetBaseMaterialInfoByPreset(preset, bmi);
-            }
-
-            if (has_bmi)
+            if (graph::mtl::TryGetBaseMaterialInfoByBMIId(recipe.bmi_id, bmi))
                 graph::mtl::ApplyBaseMaterialInfoDefaults(recipe, bmi, false);
 
             // Auto-derive SSBO name mapping from struct slot declarations when authoring didn't provide assets.
@@ -528,8 +514,7 @@ namespace hgl::ecs
             GLogWarning("[RenderPrimitiveCollectSystem] AcquireMaterialProgramByBMI failed for %s recipe=%s bmi_id=%s preset_hint=%u",
                         GetPrimitiveOwnerName(primitive_comp),
                         effective_recipe.recipe_name.c_str(),
-                        effective_recipe.bmi_id.c_str(),
-                        effective_recipe.preset_hint);
+                        effective_recipe.bmi_id.c_str());
             return false;
         }
 

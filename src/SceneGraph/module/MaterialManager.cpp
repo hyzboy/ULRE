@@ -422,75 +422,14 @@ MaterialProgram *MaterialManager::AcquireMaterialProgram(const mtl::MaterialPres
     return this->AcquireMaterialProgram(hash_name,mci);
 }
 
-MaterialProgram *MaterialManager::AcquireMaterialProgram(const mtl::MaterialVariantKey &key,mtl::Material2DCreateConfig *cfg)
-{
-    if (!cfg)
-        return nullptr;
-
-    mtl::MaterialPreset preset;
-    if (!mtl::TryMapVariantKeyToPreset2D(key, preset))
-        return nullptr;
-
-    return AcquireMaterialProgram(preset,cfg);
-}
-
-MaterialProgram *MaterialManager::AcquireMaterialProgram(const mtl::MaterialPreset mtl_id,const GeometryVertexFormat &geometry_vertex_format)
-{
-    mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
-
-    ScopedMaterialGeometryBinding scoped_binding(&cfg,&geometry_vertex_format);
-    return AcquireMaterialProgram(mtl_id,&cfg);
-}
-
-MaterialProgram *MaterialManager::AcquireMaterialProgram(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *cfg,const GeometryVertexFormat &geometry_vertex_format)
-{
-    if(!cfg)
-        return nullptr;
-
-    ScopedMaterialGeometryBinding scoped_binding(cfg,&geometry_vertex_format);
-    return AcquireMaterialProgram(mtl_id,cfg);
-}
-
-MaterialProgram *MaterialManager::AcquireMaterialProgram(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *cfg,const GeometryVertexFormat &geometry_vertex_format)
-{
-    if(!cfg)
-        return nullptr;
-
-    ScopedMaterialGeometryBinding scoped_binding(cfg,&geometry_vertex_format);
-    return AcquireMaterialProgram(mtl_id,cfg);
-}
-
-MaterialProgram *MaterialManager::AcquireMaterialProgram(const mtl::MaterialVariantKey &key,mtl::Material3DCreateConfig *cfg)
-{
-    if (!cfg)
-        return nullptr;
-
-    mtl::MaterialPreset preset;
-    if (!mtl::TryMapVariantKeyToPreset3D(key, preset))
-        return nullptr;
-
-    return AcquireMaterialProgram(preset,cfg);
-}
-
 MaterialProgram *MaterialManager::AcquireMaterialProgramByBMI(const std::string &bmi_id,
                                                                const mtl::MaterialRecipe &recipe,
                                                                PrimitiveType prim_type,
                                                                const GeometryVertexFormat *geometry_vertex_format)
 {
-    // 1. 查询 BMI（优先按 bmi_id，其次按 preset_hint，最后 3D 通用保底）
+    // 1. 查询 BMI：按 bmi_id 主键；失败则用 3D 通用保底
     mtl::BaseMaterialInfo bmi{};
-    bool has_bmi = false;
-
-    if (!bmi_id.empty())
-        has_bmi = mtl::TryGetBaseMaterialInfoByBMIId(bmi_id, bmi);
-
-    if (!has_bmi
-     && recipe.preset_hint != mtl::InvalidMaterialPresetHint
-     && recipe.preset_hint < static_cast<uint32_t>(mtl::MaterialPreset::RANGE_SIZE))
-    {
-        has_bmi = mtl::TryGetBaseMaterialInfoByPreset(
-            static_cast<mtl::MaterialPreset>(recipe.preset_hint), bmi);
-    }
+    bool has_bmi = mtl::TryGetBaseMaterialInfoByBMIId(bmi_id, bmi);
 
     if (!has_bmi)
         has_bmi = mtl::TryGetBaseMaterialInfoByBMIId(mtl::BUILTIN_BMI_FALLBACK_3D, bmi);
@@ -520,14 +459,14 @@ MaterialProgram *MaterialManager::AcquireMaterialProgramByBMI(const std::string 
 
     if (bmi.is_2d)
     {
-        // coordinate_system_2d 与 local_to_world_2d：recipe 是 per-instance 主权，
-        // BMI 值只是"ApplyBaseMaterialInfoDefaults"阶段的参考默认。
-        // 这里读 recipe，保证用户显式设置的坐标系不被 BMI 默认值覆盖。
         const mtl::WithLocalToWorld with_l2w =
             recipe.local_to_world_2d ? mtl::WithLocalToWorld::With : mtl::WithLocalToWorld::Without;
         mtl::Material2DCreateConfig cfg(prim_type, recipe.coordinate_system_2d, with_l2w);
         if (geometry_vertex_format)
-            return AcquireMaterialProgram(preset, &cfg, *geometry_vertex_format);
+        {
+            ScopedMaterialGeometryBinding scoped(&cfg, geometry_vertex_format);
+            return AcquireMaterialProgram(preset, &cfg);
+        }
         return AcquireMaterialProgram(preset, &cfg);
     }
 
@@ -539,7 +478,10 @@ MaterialProgram *MaterialManager::AcquireMaterialProgramByBMI(const std::string 
 
         mtl::Material3DCreateConfig cfg(prim_type, wc, wl, ws);
         if (geometry_vertex_format)
-            return AcquireMaterialProgram(preset, &cfg, *geometry_vertex_format);
+        {
+            ScopedMaterialGeometryBinding scoped(&cfg, geometry_vertex_format);
+            return AcquireMaterialProgram(preset, &cfg);
+        }
         return AcquireMaterialProgram(preset, &cfg);
     }
 }
@@ -716,7 +658,8 @@ MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(const mtl::Mat
     if(!mcc)
         return nullptr;
 
-    MaterialProgram *mtl=this->AcquireMaterialProgram(mtl_id,mcc,geometry_vertex_format);
+    ScopedMaterialGeometryBinding scoped(mcc, &geometry_vertex_format);
+    MaterialProgram *mtl=this->AcquireMaterialProgram(mtl_id,mcc);
 
     if(!mtl)
         return(nullptr);
@@ -731,7 +674,8 @@ MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(const mtl::Mat
     if(!mcc)
         return nullptr;
 
-    MaterialProgram *mtl=this->AcquireMaterialProgram(mtl_id,mcc,geometry_vertex_format);
+    ScopedMaterialGeometryBinding scoped(mcc, &geometry_vertex_format);
+    MaterialProgram *mtl=this->AcquireMaterialProgram(mtl_id,mcc);
 
     if(!mtl)
         return(nullptr);

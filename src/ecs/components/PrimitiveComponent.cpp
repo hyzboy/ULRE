@@ -25,8 +25,6 @@ namespace hgl::ecs
         {
             recipe.recipe_name.clear();
             recipe.bmi_id.clear();
-            recipe.preset_hint = hgl::graph::mtl::InvalidMaterialPresetHint;
-            recipe.base_material_info_name.clear();
             recipe.domain.clear();
             recipe.coordinate_system_2d = hgl::graph::CoordinateSystem2D::NDC;
             recipe.local_to_world_2d = true;

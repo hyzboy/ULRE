@@ -20,7 +20,6 @@ class GeometryVertexFormat;
 namespace mtl
 {
     enum class MaterialPreset:uint8;
-    struct MaterialVariantKey;
     struct Material2DCreateConfig;
     struct Material3DCreateConfig;
     class MaterialCreateInfo;
@@ -148,17 +147,8 @@ public: //ShaderGen Profiler (debug entry, collect-only)
 
 public: //MaterialProgram
 
-    MaterialProgram *          AcquireMaterialProgram(const mtl::MaterialPreset, mtl::Material2DCreateConfig *);  ///<基于内置材质ID创建2D材质
-    MaterialProgram *          AcquireMaterialProgram(const mtl::MaterialPreset, mtl::Material3DCreateConfig *);  ///<基于内置材质ID创建3D材质
-    MaterialProgram *          AcquireMaterialProgram(const mtl::MaterialPreset, const GeometryVertexFormat &);   ///<基于 GeometryVertexFormat 上下文创建默认3D材质
-    MaterialProgram *          AcquireMaterialProgram(const mtl::MaterialPreset, mtl::Material2DCreateConfig *, const GeometryVertexFormat &);  ///<基于 GeometryVertexFormat 上下文创建2D材质
-    MaterialProgram *          AcquireMaterialProgram(const mtl::MaterialPreset, mtl::Material3DCreateConfig *, const GeometryVertexFormat &);  ///<基于 GeometryVertexFormat 上下文创建3D材质
-    MaterialProgram *          AcquireMaterialProgram(const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *); ///<基于variant key创建2D材质（Phase-A兼容）
-    MaterialProgram *          AcquireMaterialProgram(const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *); ///<基于variant key创建3D材质（Phase-A兼容）
-
-    /// 统一 BMI 入口：根据 bmi_id 查找 BaseMaterialInfo，从 BMI 元数据构建合适的 config，
-    /// 最终调用 AcquireMaterialProgram(preset, cfg)。调用方无需知道 2D/3D/Sky 细节。
-    /// 当 bmi_id 未找到时，自动尝试 preset_hint 兼容路径，再失败则尝试 builtin fallback。
+    MaterialProgram *          AcquireMaterialProgram(const mtl::MaterialPreset, mtl::Material2DCreateConfig *);
+    MaterialProgram *          AcquireMaterialProgram(const mtl::MaterialPreset, mtl::Material3DCreateConfig *);
     MaterialProgram *AcquireMaterialProgramByBMI(const std::string &bmi_id,
                                                   const mtl::MaterialRecipe &recipe,
                                                   PrimitiveType prim_type,

@@ -139,7 +139,7 @@ private:
         if (solid.geometry_vertex_format.GetCount() == 0)
             return false;
 
-        solid.material = material_manager->AcquireMaterialProgram(mtl::MaterialPreset::Gizmo3D, solid.geometry_vertex_format);
+        solid.material = material_manager->AcquireMaterialProgramByBMI("Gizmo3D", scene_recipe, PrimitiveType::Triangles, &solid.geometry_vertex_format);
         if (!solid.material)
             return false;
 
@@ -165,7 +165,7 @@ private:
         const OSString base_dir  = hgl::ToOSString(scene_dir.string());
 
         scene_recipe.recipe_name = "LoadScene.Gizmo3D";
-        graph::mtl::SetRecipePreset(scene_recipe, graph::mtl::MaterialPreset::Gizmo3D);
+        scene_recipe.bmi_id = "Gizmo3D";
         scene_recipe.domain = "LoadScene";
 
         return LoadStaticMeshSceneAsPrimitiveAssets(
