@@ -107,7 +107,6 @@ private:
             return false;
 
         clock_recipe.recipe_name = "Clock.PureColor2D";
-        clock_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
         clock_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::PureColor2D);
         clock_recipe.domain = "Clock";
         graph::mtl::UpsertRecipeSSBOAssetBinding(clock_recipe,

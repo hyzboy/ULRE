@@ -5,6 +5,17 @@
 #include<cstdio>
 
 namespace hgl::graph::mtl{
+namespace
+{
+    const bool kRegisteredPureTexture2DBmi = []() -> bool
+    {
+        BaseMaterialInfo bmi{};
+        bmi.bmi_name = "PureTexture2D";
+        bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::PureTexture2D);
+        RegisterBaseMaterialInfo(MaterialPreset::PureTexture2D, bmi);
+        return true;
+    }();
+}
 
 MaterialCreateInfo *CreatePureTexture2D(const contract::PhysicalDeviceProfileLite *profile,const mtl::Material2DCreateConfig *cfg)
 {

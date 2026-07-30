@@ -20,6 +20,15 @@
 namespace hgl::graph::mtl{
 namespace
 {
+    const bool kRegisteredVertexPattleColor3DBmi = []() -> bool
+    {
+        BaseMaterialInfo bmi{};
+        bmi.bmi_name = "VertexPattleColor3D";
+        bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::VertexPattleColor3D);
+        RegisterBaseMaterialInfo(MaterialPreset::VertexPattleColor3D, bmi);
+        return true;
+    }();
+
     constexpr FixedDescriptorEntry VERTEX_PATTLE_COLOR_3D_DESCRIPTORS[] = {
         { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::UBO},
         { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera", "CameraInfo", nullptr, DescriptorSemantic::CameraInfo, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::UBO},

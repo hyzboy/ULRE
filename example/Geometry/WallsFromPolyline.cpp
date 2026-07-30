@@ -140,7 +140,6 @@ public:
         mi_data.roughness=0.95f;
         mi_data.normal_scale=0.35f;
         wall_recipe.recipe_name = "WallsFromPolyline.Standard";
-        wall_recipe.shading_model = graph::mtl::ShadingModel::Standard;
         wall_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Standard);
         wall_recipe.domain = "WallsFromPolyline";
 

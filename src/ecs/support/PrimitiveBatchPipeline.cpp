@@ -8,7 +8,6 @@
 #include<hgl/ecs/components/MaterialComponent.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/components/TransformComponent.h>
-#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/graph/render/RenderContext.h>
@@ -28,7 +27,6 @@
 #include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/log/Log.h>
 #include<algorithm>
-#include<array>
 #include<chrono>
 #include<cstdint>
 #include<string>
@@ -68,12 +66,8 @@ namespace hgl::ecs
             if (!item)
                 return 0;
 
-            bool uses_recipe_runtime = false;
             if (auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(item))
             {
-                auto primitive_comp = primitive_item->GetPrimitiveComponent();
-                uses_recipe_runtime = (primitive_comp && primitive_comp->HasMaterialRecipe());
-
                 if (auto *entity = primitive_item->GetEntity())
                 {
                     auto material_comp = entity->GetComponent<MaterialComponent>();
@@ -86,10 +80,9 @@ namespace hgl::ecs
                             return material_comp->data_index_row;
                     }
                 }
-            }
 
-            if (uses_recipe_runtime)
                 return InvalidBatchDataIndexRow;
+            }
 
             return 0;
         }
@@ -689,19 +682,6 @@ namespace hgl::ecs
         }
 
         auto buffer_manager = GetBufferManager();
-        std::shared_ptr<RenderDescriptorBindingSystem> descriptor_binding_system{};
-        if (world)
-            descriptor_binding_system = world->GetSystem<RenderDescriptorBindingSystem>();
-        struct MaterialSpecCacheValue
-        {
-            uint64_t program_signature = 0;
-            uint64_t binding_signature = 0;
-            std::array<uint32_t, static_cast<size_t>(graph::mtl::TextureSlot::RANGE_SIZE)> texture_slot_handles{};
-            bool has_texture_slot_handles = false;
-        };
-
-        std::unordered_map<graph::MaterialProgram *, MaterialSpecCacheValue> material_spec_hash_cache;
-
         auto* render_ctx = world ? world->GetRenderContext() : nullptr;
         auto* rt = render_ctx ? render_ctx->GetCurrentRenderTarget() : nullptr;
         auto* current_render_pass = rt ? rt->GetRenderPass() : nullptr;
@@ -716,7 +696,6 @@ namespace hgl::ecs
             auto* pipeline = item->GetPipeline();
             auto* prim_item = dynamic_cast<PrimitiveRenderItem*>(item);
             auto prim_comp = prim_item ? prim_item->GetPrimitiveComponent() : nullptr;
-            const bool uses_recipe_runtime = (prim_comp && prim_comp->HasMaterialRecipe());
             std::shared_ptr<MaterialComponent> material_comp;
             if (prim_item)
             {
@@ -724,7 +703,7 @@ namespace hgl::ecs
                     material_comp = entity->GetComponent<MaterialComponent>();
             }
 
-            if (uses_recipe_runtime)
+            if (prim_item)
             {
                 const bool missing_rows = (!material_comp
                                         || material_comp->material_instance_row == uint32_t(-1)
@@ -732,7 +711,7 @@ namespace hgl::ecs
                                         || material_comp->texture_layer_row == uint32_t(-1));
                 if (missing_rows)
                 {
-                    LogWarning("[PrimitiveBatchPipeline] Skip recipe runtime item: unresolved material rows. material=%s",
+                    LogWarning("[PrimitiveBatchPipeline] Skip primitive item: unresolved recipe rows. material=%s",
                                material ? material->GetName().c_str() : "<null>");
                     continue;
                 }
@@ -788,54 +767,6 @@ namespace hgl::ecs
 
             uint64_t program_signature = 0;
             uint64_t binding_signature = 0;
-            if (descriptor_binding_system)
-            {
-                auto it = material_spec_hash_cache.find(material);
-                if (it != material_spec_hash_cache.end())
-                {
-                    program_signature = it->second.program_signature;
-                    binding_signature = it->second.binding_signature;
-                }
-                else
-                {
-                    graph::mtl::MaterialRecipe recipe{};
-                    graph::mtl::MaterializationSpec spec{};
-                    std::array<uint32_t, static_cast<size_t>(graph::mtl::TextureSlot::RANGE_SIZE)> texture_slot_handles{};
-                    bool has_texture_slot_handles = false;
-
-                    // 批处理分桶必须使用“材质级”语义，不能带实例身份（如 MIID），
-                    // 否则会把本可合并的实例拆成 1 instance / batch。
-                    if (descriptor_binding_system->BuildMaterialRecipeForMaterial(material, recipe))
-                    {
-                        if (!recipe.structs.empty() || !recipe.textures.empty())
-                        {
-                            if (descriptor_binding_system->ResolveMaterialRecipe(recipe, spec, nullptr, nullptr))
-                            {
-                                program_signature = graph::mtl::HashMaterializationProgramSignature(spec);
-                                binding_signature = graph::mtl::HashMaterializationBindingSignature(spec);
-
-                                for (const auto &resolved : spec.resources)
-                                {
-                                    const size_t slot = static_cast<size_t>(resolved.slot);
-                                    if (slot >= texture_slot_handles.size())
-                                        continue;
-
-                                    texture_slot_handles[slot] = resolved.bindless_handle;
-                                    if (resolved.bindless_handle != 0)
-                                        has_texture_slot_handles = true;
-                                }
-                            }
-                        }
-                    }
-
-                    MaterialSpecCacheValue cache_value{};
-                    cache_value.program_signature = program_signature;
-                    cache_value.binding_signature = binding_signature;
-                    cache_value.texture_slot_handles = texture_slot_handles;
-                    cache_value.has_texture_slot_handles = has_texture_slot_handles;
-                    material_spec_hash_cache.emplace(material, std::move(cache_value));
-                }
-            }
 
             MaterialPipelineKey key(material, pipeline, program_signature, binding_signature);
             auto* batch_ptr = cache.materialBatches.GetValuePointer(key);
@@ -845,15 +776,6 @@ namespace hgl::ecs
                 auto batch = std::make_unique<MaterialBatch>(key, device, buffer_manager);
                 batch->cameraInfo = camera_info;
                 batch->transform_buffer = shared_transform_buffer;
-                if (descriptor_binding_system)
-                {
-                    auto cache_it = material_spec_hash_cache.find(material);
-                    if (cache_it != material_spec_hash_cache.end())
-                    {
-                        batch->texture_slot_handles = cache_it->second.texture_slot_handles;
-                        batch->has_texture_slot_handles = cache_it->second.has_texture_slot_handles;
-                    }
-                }
                 batch->AddItem(item);
                 cache.materialBatches[key] = std::move(batch);
             }
@@ -861,15 +783,6 @@ namespace hgl::ecs
             {
                 (*batch_ptr)->buffer_manager = buffer_manager;
                 (*batch_ptr)->transform_buffer = shared_transform_buffer;
-                if (descriptor_binding_system)
-                {
-                    auto cache_it = material_spec_hash_cache.find(material);
-                    if (cache_it != material_spec_hash_cache.end())
-                    {
-                        (*batch_ptr)->texture_slot_handles = cache_it->second.texture_slot_handles;
-                        (*batch_ptr)->has_texture_slot_handles = cache_it->second.has_texture_slot_handles;
-                    }
-                }
                 (*batch_ptr)->AddItem(item);
             }
         }

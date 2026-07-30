@@ -88,7 +88,6 @@ private:
         if (!texture_manager || !sampler_manager)
             return false;
         mesh_recipe.recipe_name = "06c.TextureBlinnPhong.Standard";
-        mesh_recipe.shading_model = graph::mtl::ShadingModel::Standard;
         mesh_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Standard);
         mesh_recipe.domain = "06c.TextureBlinnPhong";
         graph::mtl::UpsertRecipeSSBOAssetBinding(mesh_recipe,

@@ -141,7 +141,6 @@ private:
         mi_ssbo_accessor->Commit();
 
         rect_recipe.recipe_name = "TextureRectArray.RectTexture2DArray";
-        rect_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
         rect_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::RectTexture2DArray);
         rect_recipe.coordinate_system_2d = graph::CoordinateSystem2D::ZeroToOne;
         rect_recipe.local_to_world_2d = true;

@@ -165,7 +165,6 @@ private:
         const OSString base_dir  = hgl::ToOSString(scene_dir.string());
 
         scene_recipe.recipe_name = "LoadScene.Gizmo3D";
-        scene_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
         scene_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Gizmo3D);
         scene_recipe.domain = "LoadScene";
 

@@ -38,8 +38,6 @@ namespace hgl::graph::mtl
         uint64_t recipe_hash = 0; // 上游 Recipe 的稳定哈希（输入身份）
         uint64_t spec_hash = 0;   // 物化后 Spec 哈希（输出身份，可作缓存键）
 
-        ShadingModel shading_model = ShadingModel::Unknown; // 最终采用的着色模型语义
-
         bool double_sided = false; // 光栅双面开关
         bool alpha_test = false;   // 是否启用 alpha test
         float alpha_cutoff = 0.5f; // alpha test 阈值
@@ -56,7 +54,6 @@ namespace hgl::graph::mtl
         uint64 hash = hgl::hash::FNV1aInit<uint64>();
 
         hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.recipe_hash);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.shading_model);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.double_sided);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.alpha_test);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.alpha_cutoff);
@@ -92,7 +89,6 @@ namespace hgl::graph::mtl
     {
         uint64 hash = hgl::hash::FNV1aInit<uint64>();
 
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.shading_model);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.double_sided);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.alpha_test);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.alpha_cutoff);
@@ -153,7 +149,6 @@ namespace hgl::graph::mtl
         MaterializationSpec spec;
 
         spec.recipe_hash = HashMaterialRecipe(recipe);
-        spec.shading_model = recipe.shading_model;
         spec.double_sided = recipe.double_sided;
         spec.alpha_test = recipe.alpha_test;
         spec.alpha_cutoff = recipe.alpha_cutoff;

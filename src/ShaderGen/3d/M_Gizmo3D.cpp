@@ -14,7 +14,6 @@ namespace
     {
         BaseMaterialInfo bmi{};
         bmi.bmi_name = "Gizmo3D";
-        bmi.shading_model = ShadingModel::Unlit;
         bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::Gizmo3D);
         RegisterBaseMaterialInfo(MaterialPreset::Gizmo3D, bmi);
         return true;

@@ -169,7 +169,6 @@ private:
         geometry_manager->Add(sky_geometry);
 
         sky_recipe.recipe_name = "BasicLitSunDirection.Sky";
-        sky_recipe.shading_model = graph::mtl::ShadingModel::Sky;
         sky_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::SkyMinimal);
         sky_recipe.domain = "BasicLitSunDirection";
         sky_asset = PrimitiveAsset(sky_geometry, &sky_recipe, PrimitiveType::Triangles);
@@ -209,7 +208,6 @@ private:
         mi_data.roughness = 0.92f;
         mi_data.normal_scale = 0.35f;
         mesh_recipe.recipe_name = "BasicLitSunDirection.Standard";
-        mesh_recipe.shading_model = graph::mtl::ShadingModel::Standard;
         mesh_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Standard);
         mesh_recipe.domain = "BasicLitSunDirection";
 

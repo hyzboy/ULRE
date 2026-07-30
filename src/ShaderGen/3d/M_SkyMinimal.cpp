@@ -12,7 +12,6 @@ namespace
     {
         BaseMaterialInfo bmi{};
         bmi.bmi_name = "SkyMinimal";
-        bmi.shading_model = ShadingModel::Sky;
         bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::SkyMinimal);
         RegisterBaseMaterialInfo(MaterialPreset::SkyMinimal, bmi);
         return true;

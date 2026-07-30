@@ -250,7 +250,7 @@ public:
         gm->Add(geometry);
 
         sphere_recipe.recipe_name = "RenderToTexture.OffscreenSphere";
-        sphere_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        sphere_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Gizmo3D);
         sphere_recipe.domain = "RenderToTexture.Offscreen";
         sphere_asset = PrimitiveAsset(geometry, &sphere_recipe, PrimitiveType::Triangles);
         if (!sphere_asset.IsValid())
@@ -438,7 +438,7 @@ private:
         gm->Add(cube_geometry);
 
         cube_recipe.recipe_name = "RenderToTexture.Cube";
-        cube_recipe.shading_model = graph::mtl::ShadingModel::Standard;
+        cube_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Standard);
         cube_recipe.domain = "RenderToTexture.MainScene";
         cube_asset = PrimitiveAsset(cube_geometry, &cube_recipe, PrimitiveType::Triangles);
         if (!cube_asset.IsValid())

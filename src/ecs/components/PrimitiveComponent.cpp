@@ -24,7 +24,6 @@ namespace hgl::ecs
         void ResetMaterialRecipe(hgl::graph::mtl::MaterialRecipe &recipe)
         {
             recipe.recipe_name.clear();
-            recipe.shading_model = hgl::graph::mtl::ShadingModel::Unknown;
             recipe.preset_hint = hgl::graph::mtl::InvalidMaterialPresetHint;
             recipe.base_material_info_name.clear();
             recipe.domain.clear();

@@ -9,20 +9,6 @@
 
 namespace hgl::graph::mtl
 {
-    // 材质语义层：渲染技术模型（作者层主入口）。
-    enum class ShadingModel : uint8_t
-    {
-        Unknown = 0,
-        Unlit,
-        Standard,
-        Sky,
-        Text,
-        Legacy,
-        Custom,
-
-        ENUM_CLASS_RANGE(Unknown, Custom)
-    };
-
     constexpr uint32_t InvalidMaterialPresetHint = 0xffffffffu;
 
     // 逻辑纹理槽位（与具体 descriptor set/binding 解耦）。
@@ -238,7 +224,6 @@ namespace hgl::graph::mtl
     struct BaseMaterialInfo
     {
         std::string bmi_name;
-        ShadingModel shading_model = ShadingModel::Unknown;
         uint32_t preset_hint = InvalidMaterialPresetHint;
 
         // 2D authoring defaults
@@ -258,8 +243,7 @@ namespace hgl::graph::mtl
     struct MaterialRecipe
     {
         std::string recipe_name;               // 配方名称（人类可读）
-        ShadingModel shading_model = ShadingModel::Unknown; // 着色模型语义
-        uint32_t preset_hint = InvalidMaterialPresetHint;   // 过渡期提示（MaterialPreset 序号）
+        uint32_t preset_hint = InvalidMaterialPresetHint;   // 材质入口（MaterialPreset 序号）
         std::string base_material_info_name;   // 作者层基材质定义名（BMI）
         std::string domain;                    // 资源/缓存域（用于隔离不同管线空间）
         CoordinateSystem2D coordinate_system_2d = CoordinateSystem2D::NDC; // 2D 材质坐标系作者意图
@@ -344,9 +328,6 @@ namespace hgl::graph::mtl
         if (recipe.base_material_info_name.empty())
             recipe.base_material_info_name = bmi.bmi_name;
 
-        if (recipe.shading_model == ShadingModel::Unknown || overwrite_existing)
-            recipe.shading_model = bmi.shading_model;
-
         if (recipe.preset_hint == InvalidMaterialPresetHint || overwrite_existing)
             recipe.preset_hint = bmi.preset_hint;
 
@@ -378,7 +359,6 @@ namespace hgl::graph::mtl
 
         if (!recipe.recipe_name.empty())
             hash = hgl::hash::FNV1aAppendBytes(hash, recipe.recipe_name.data(), recipe.recipe_name.size());
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.shading_model);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.preset_hint);
         if (!recipe.base_material_info_name.empty())
             hash = hgl::hash::FNV1aAppendBytes(hash, recipe.base_material_info_name.data(), recipe.base_material_info_name.size());

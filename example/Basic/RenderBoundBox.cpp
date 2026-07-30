@@ -176,12 +176,10 @@ private:
     void InitMaterialRecipes()
     {
         solid_recipe.recipe_name = "RenderBoundBox.Solid";
-        solid_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
         solid_recipe.preset_hint = static_cast<uint32_t>(mtl::MaterialPreset::Gizmo3D);
         solid_recipe.domain = "RenderBoundBox.Solid";
 
         wire_recipe.recipe_name = "RenderBoundBox.Wire";
-        wire_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
         wire_recipe.preset_hint = static_cast<uint32_t>(mtl::MaterialPreset::PureColor3D);
         wire_recipe.domain = "RenderBoundBox.Wire";
     }

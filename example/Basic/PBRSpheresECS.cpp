@@ -149,7 +149,6 @@ private:
             return false;
         }
         sphere_recipe.recipe_name = "PBRSpheres.StandardTextureArray";
-        sphere_recipe.shading_model = graph::mtl::ShadingModel::Standard;
         sphere_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::StandardTextureArray);
         sphere_recipe.domain = "PBRSpheres";
 

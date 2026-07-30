@@ -11,6 +11,7 @@
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
+#include<hgl/mtl/MaterialLibrary.h>
 
  // 引入ECS相关头文件
  #include<hgl/ecs/core/Context.h>
@@ -137,7 +138,7 @@ private:
         HGL_TRACK_ALLOCATION("TrianglePrimitive", hgl::core::ObjectTypeTag::FrameResource);
         auto ecs_primitive = triangle_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         triangle_recipe.recipe_name = "DrawTriangle.VertexColor2D";
-        triangle_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        triangle_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::VertexColor2D);
         triangle_recipe.domain = "DrawTriangle";
         triangle_recipe.coordinate_system_2d = graph::CoordinateSystem2D::Ortho;
         triangle_recipe.local_to_world_2d = false;

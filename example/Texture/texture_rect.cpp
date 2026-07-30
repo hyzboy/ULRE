@@ -106,7 +106,6 @@ private:
             return false;
         geometry_manager->Add(geometry);
         rect_recipe.recipe_name = "TextureRect.RectTexture2D";
-        rect_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
         rect_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::RectTexture2D);
         rect_recipe.coordinate_system_2d = graph::CoordinateSystem2D::ZeroToOne;
         rect_recipe.local_to_world_2d = true;

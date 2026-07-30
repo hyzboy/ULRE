@@ -66,63 +66,6 @@ namespace hgl::ecs
             }
         }
 
-        bool Is2DInlinePipeline(const graph::InlinePipeline pipeline)
-        {
-            switch (pipeline)
-            {
-                case graph::InlinePipeline::Solid2D:
-                case graph::InlinePipeline::Alpha2D:
-                    return true;
-                default:
-                    return false;
-            }
-        }
-
-        bool IsLikely2DPrimitive(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
-                                 const graph::GeometryVertexFormat *geometry_vertex_format)
-        {
-            if (primitive_comp && primitive_comp->HasPendingPipelinePreset())
-                return Is2DInlinePipeline(primitive_comp->GetPendingPipelinePreset());
-
-            const auto *position = geometry_vertex_format ? geometry_vertex_format->Find(graph::VertexSemantic::Position) : nullptr;
-            return position && position->vec_size == 2;
-        }
-
-        bool TryResolveUnlitPresetFromGeometry(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
-                                               const graph::GeometryVertexFormat *geometry_vertex_format,
-                                               graph::mtl::MaterialPreset &out_preset)
-        {
-            if (!geometry_vertex_format)
-                return false;
-
-            const bool is_2d = IsLikely2DPrimitive(primitive_comp, geometry_vertex_format);
-
-            if (geometry_vertex_format->Find(graph::VertexSemantic::Luminance))
-            {
-                if (is_2d)
-                    return false;
-
-                out_preset = graph::mtl::MaterialPreset::VertexLuminance3D;
-                return true;
-            }
-
-            if (geometry_vertex_format->Find(graph::VertexSemantic::Color))
-            {
-                out_preset = is_2d
-                           ? graph::mtl::MaterialPreset::VertexColor2D
-                           : graph::mtl::MaterialPreset::VertexColor3D;
-                return true;
-            }
-
-            if (geometry_vertex_format->Find(graph::VertexSemantic::Normal))
-            {
-                out_preset = graph::mtl::MaterialPreset::Gizmo3D;
-                return true;
-            }
-
-            return false;
-        }
-
         bool HasResourceSemantic(const graph::MaterialProgram *material,
                                  const graph::mtl::DescriptorSemantic semantic)
         {
@@ -631,56 +574,12 @@ namespace hgl::ecs
         }
 
         graph::mtl::MaterialPreset preset{};
-        bool resolved_by_model = false;
-        switch (effective_recipe.shading_model)
+        if (!TryResolvePresetByHint(effective_recipe.preset_hint, preset))
         {
-            case graph::mtl::ShadingModel::Text:
-                preset = graph::mtl::MaterialPreset::Text2D;
-                resolved_by_model = true;
-                break;
-            case graph::mtl::ShadingModel::Sky:
-                preset = graph::mtl::MaterialPreset::SkyMinimal;
-                resolved_by_model = true;
-                break;
-            case graph::mtl::ShadingModel::Standard:
-                preset = graph::mtl::MaterialPreset::Standard;
-                resolved_by_model = true;
-                break;
-            case graph::mtl::ShadingModel::Unlit:
-                if (!TryResolveUnlitPresetFromGeometry(primitive_comp, geometry_vertex_format, preset))
-                    preset = graph::mtl::MaterialPreset::Gizmo3D;
-                resolved_by_model = true;
-                break;
-            case graph::mtl::ShadingModel::Legacy:
-            case graph::mtl::ShadingModel::Custom:
-            case graph::mtl::ShadingModel::Unknown:
-            default:
-                break;
-        }
-
-        // Fallback bridge: use preset_hint only when shading-model policy is insufficient.
-        if (!resolved_by_model)
-        {
-            if (!TryResolvePresetByHint(effective_recipe.preset_hint, preset))
-            {
-                GLogWarning("[RenderPrimitiveCollectSystem] ResolveMaterialProgram failed: no preset for %s recipe=%s",
-                            GetPrimitiveOwnerName(primitive_comp),
-                            effective_recipe.recipe_name.c_str());
-                return false;
-            }
-        }
-        else if (effective_recipe.preset_hint != graph::mtl::InvalidMaterialPresetHint)
-        {
-            graph::mtl::MaterialPreset hinted{};
-            if (TryResolvePresetByHint(effective_recipe.preset_hint, hinted))
-            {
-                // For ambiguous models (e.g. Standard / Unlit), hint can refine concrete template.
-                if (effective_recipe.shading_model == graph::mtl::ShadingModel::Standard
-                 || effective_recipe.shading_model == graph::mtl::ShadingModel::Unlit)
-                {
-                    preset = hinted;
-                }
-            }
+            GLogWarning("[RenderPrimitiveCollectSystem] ResolveMaterialProgram failed: preset_hint invalid for %s recipe=%s",
+                        GetPrimitiveOwnerName(primitive_comp),
+                        effective_recipe.recipe_name.c_str());
+            return false;
         }
 
         graph::MaterialProgram *resolved_program = nullptr;
@@ -912,12 +811,17 @@ namespace hgl::ecs
             if (!world->IsEntityRenderEnabled(entity))
                 continue;
 
-            auto material_comp = entity->GetComponent<MaterialComponent>();
-            if (!material_comp && primitiveComp->HasMaterialRecipe())
-                material_comp = entity->AddComponent<MaterialComponent>();
-
-            if (material_comp && primitiveComp->HasMaterialRecipe())
+            if (!primitiveComp->HasMaterialRecipe())
             {
+                GLogWarning("[RenderPrimitiveCollectSystem] Skip primitive without recipe: %s",
+                            primitiveComp->GetOwner() ? primitiveComp->GetOwner()->GetName().c_str() : "<no-owner>");
+            }
+            else
+            {
+                auto material_comp = entity->GetComponent<MaterialComponent>();
+                if (!material_comp)
+                    material_comp = entity->AddComponent<MaterialComponent>();
+
                 if (!PrepareRecipeAuthoringResources(world, primitiveComp, nullptr))
                 {
                     GLogWarning("[RenderPrimitiveCollectSystem] PrepareRecipeAuthoringResources(pre-resolve) failed for %s",

@@ -17,7 +17,6 @@ namespace
     {
         BaseMaterialInfo bmi{};
         bmi.bmi_name = "Standard";
-        bmi.shading_model = ShadingModel::Standard;
         bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::Standard);
         RegisterBaseMaterialInfo(MaterialPreset::Standard, bmi);
         return true;

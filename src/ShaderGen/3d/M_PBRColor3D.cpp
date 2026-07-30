@@ -12,6 +12,15 @@
 namespace hgl::graph::mtl{
 namespace
 {
+    const bool kRegisteredPBRColor3DBmi = []() -> bool
+    {
+        BaseMaterialInfo bmi{};
+        bmi.bmi_name = "PBRColor3D";
+        bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::PBRColor3D);
+        RegisterBaseMaterialInfo(MaterialPreset::PBRColor3D, bmi);
+        return true;
+    }();
+
     constexpr const char mi_codes[] = R"(
         uint  base_color;
         float metallic;
@@ -102,4 +111,3 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
 }
 
 }//namespace hgl::graph::mtl
-

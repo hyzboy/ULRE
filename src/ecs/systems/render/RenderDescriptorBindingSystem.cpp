@@ -25,7 +25,6 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/mtl/UBOCommon.h>
-#include<array>
 #include<cstdint>
 #include<cstring>
 #include<unordered_set>
@@ -38,7 +37,6 @@ namespace hgl::ecs
         void ResetMaterialRecipe(graph::mtl::MaterialRecipe &recipe)
         {
             recipe.recipe_name.clear();
-            recipe.shading_model = graph::mtl::ShadingModel::Unknown;
             recipe.preset_hint = graph::mtl::InvalidMaterialPresetHint;
             recipe.base_material_info_name.clear();
             recipe.domain.clear();
@@ -198,104 +196,6 @@ namespace hgl::ecs
 
         auto &slot = material_resource_bindings[material][ToBindingKey(name)];
         slot.texture = texture;
-        return true;
-    }
-
-    bool RenderDescriptorBindingSystem::BuildMaterialRecipeForMaterial(const graph::MaterialProgram *material,
-                                                                       graph::mtl::MaterialRecipe &out_recipe) const
-    {
-        ResetMaterialRecipe(out_recipe);
-        if (!material)
-            return false;
-
-        const char *material_name = material->GetName().c_str();
-        if (material_name && *material_name)
-            out_recipe.recipe_name = material_name;
-        else
-            out_recipe.recipe_name = "MaterialProgram@" + std::to_string(reinterpret_cast<uintptr_t>(material));
-
-        out_recipe.shading_model = graph::mtl::ShadingModel::Legacy;
-        out_recipe.preset_hint = graph::mtl::InvalidMaterialPresetHint;
-        out_recipe.domain = "ECS";
-
-        const auto &contract = material->GetMaterialResourceLayout();
-
-        constexpr size_t texture_slot_count = static_cast<size_t>(graph::mtl::TextureSlot::RANGE_SIZE);
-        std::array<bool, texture_slot_count> used_texture_slots{};
-        std::unordered_set<std::string> emitted_texture_keys;
-
-        for (const auto &req : contract.requirements)
-        {
-            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialTexture
-             && req.semantic != graph::mtl::DescriptorSemantic::MaterialSampler)
-                continue;
-
-            if (!req.name || !*req.name)
-                continue;
-
-            const std::string key = ToBindingKey(req.name);
-            if (key.empty())
-                continue;
-
-            if (emitted_texture_keys.find(key) != emitted_texture_keys.end())
-                continue;
-            emitted_texture_keys.insert(key);
-
-            const MaterialResourceBinding *binding = FindMaterialResourceBinding(material, req.name);
-            std::string resource_id = binding ? BuildTextureResourceId(binding->texture) : std::string();
-
-            if (resource_id.empty() && !req.required)
-                continue;
-
-            const graph::mtl::TextureSlot slot = req.texture_slot;
-
-            const size_t slot_index = static_cast<size_t>(slot);
-            if (slot_index >= used_texture_slots.size() || used_texture_slots[slot_index])
-                continue;
-            used_texture_slots[slot_index] = true;
-
-            graph::mtl::RecipeTextureBinding texture_binding{};
-            texture_binding.slot = slot;
-            texture_binding.resource_id = std::move(resource_id);
-            texture_binding.required = req.required;
-            out_recipe.textures.emplace_back(std::move(texture_binding));
-        }
-
-        std::unordered_set<std::string> emitted_struct_keys;
-        for (const auto &req : contract.requirements)
-        {
-            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
-                continue;
-
-            const std::string struct_key = std::to_string(static_cast<uint32_t>(req.ssbo_type))
-                                         + ":" + std::to_string(req.ssbo_id)
-                                         + ":" + std::to_string(static_cast<uint32_t>(req.data_slot));
-            if (emitted_struct_keys.find(struct_key) != emitted_struct_keys.end())
-                continue;
-            emitted_struct_keys.insert(struct_key);
-
-            graph::mtl::RecipeStructBinding struct_binding{};
-            struct_binding.slot = req.data_slot;
-            struct_binding.ssbo_type = req.ssbo_type;
-            struct_binding.ssbo_id = req.ssbo_id;
-            struct_binding.shared_across_instances = false;
-            out_recipe.structs.emplace_back(std::move(struct_binding));
-        }
-
-        return true;
-    }
-
-    bool RenderDescriptorBindingSystem::BuildMaterialRecipeForRenderItem(const RenderItem *item,
-                                                                         graph::mtl::MaterialRecipe &out_recipe) const
-    {
-        ResetMaterialRecipe(out_recipe);
-        if (!item)
-            return false;
-
-        graph::MaterialProgram *material = item->GetMaterialProgram();
-        if (!BuildMaterialRecipeForMaterial(material, out_recipe))
-            return false;
-
         return true;
     }
 

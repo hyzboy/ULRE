@@ -7,6 +7,7 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
+#include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/color/Color.h>
 
@@ -87,7 +88,7 @@ private:
         transform->SetMovable(false);
 
         axis_recipe.recipe_name = "SimplestAxis.VertexColor3D";
-        axis_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        axis_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::VertexColor3D);
         axis_recipe.domain = "SimplestAxis";
         axis_asset = PrimitiveAsset(geom_axis, &axis_recipe, PrimitiveType::Lines);
         prim_comp->SetPrimitiveAsset(&axis_asset);

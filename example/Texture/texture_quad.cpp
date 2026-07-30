@@ -103,7 +103,6 @@ private:
             return false;
         geometry_manager->Add(geometry);
         quad_recipe.recipe_name = "TextureQuad.PureTexture2D";
-        quad_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
         quad_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::PureTexture2D);
         quad_recipe.domain = "TextureQuad";
         quad_asset = PrimitiveAsset(geometry, &quad_recipe, PrimitiveType::Fan);

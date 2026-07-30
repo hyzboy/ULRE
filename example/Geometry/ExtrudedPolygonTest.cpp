@@ -78,7 +78,6 @@ private:
         mi_ssbo_accessor->Commit();
 
         mesh_recipe.recipe_name = "ExtrudedPolygonTest.Gizmo3D";
-        mesh_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
         mesh_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Gizmo3D);
         mesh_recipe.domain = "ExtrudedPolygonTest";
         graph::mtl::UpsertRecipeSSBOAssetBinding(mesh_recipe,

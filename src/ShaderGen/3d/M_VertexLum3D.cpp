@@ -13,7 +13,6 @@ namespace
     {
         BaseMaterialInfo bmi{};
         bmi.bmi_name = "VertexLuminance3D";
-        bmi.shading_model = ShadingModel::Unlit;
         bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::VertexLuminance3D);
         RegisterBaseMaterialInfo(MaterialPreset::VertexLuminance3D, bmi);
         return true;

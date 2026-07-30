@@ -168,7 +168,6 @@ private:
             return LogFail("InitMaterials", "SSBO allocation failed");
 
         near_recipe.recipe_name = "06e.SingleSphereSwitch.Near";
-        near_recipe.shading_model = graph::mtl::ShadingModel::Standard;
         near_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::StandardTextureArray);
         near_recipe.domain = "06e.SingleSphereSwitch";
         graph::mtl::UpsertRecipeSSBOAssetBinding(near_recipe,

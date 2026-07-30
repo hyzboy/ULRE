@@ -5,6 +5,17 @@
 #include<cstdio>
 
 namespace hgl::graph::mtl{
+namespace
+{
+    const bool kRegisteredPureColor2DBmi = []() -> bool
+    {
+        BaseMaterialInfo bmi{};
+        bmi.bmi_name = "PureColor2D";
+        bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::PureColor2D);
+        RegisterBaseMaterialInfo(MaterialPreset::PureColor2D, bmi);
+        return true;
+    }();
+}
 
 MaterialCreateInfo *CreatePureColor2D(const contract::PhysicalDeviceProfileLite *profile,Material2DCreateConfig *cfg)
 {

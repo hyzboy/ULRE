@@ -9,6 +9,15 @@
 namespace hgl::graph::mtl{
 namespace
 {
+    const bool kRegisteredPureColor3DBmi = []() -> bool
+    {
+        BaseMaterialInfo bmi{};
+        bmi.bmi_name = "PureColor3D";
+        bmi.preset_hint = static_cast<uint32_t>(MaterialPreset::PureColor3D);
+        RegisterBaseMaterialInfo(MaterialPreset::PureColor3D, bmi);
+        return true;
+    }();
+
     constexpr const char pure_color_3d_mi_codes[] = "vec4 Color;";
     constexpr const uint32_t pure_color_3d_mi_bytes = 16;
 
@@ -71,4 +80,3 @@ MaterialCreateInfo *CreatePureColor3D(const contract::PhysicalDeviceProfileLite 
     return mci;
 }
 }//namespace hgl::graph::mtl
-

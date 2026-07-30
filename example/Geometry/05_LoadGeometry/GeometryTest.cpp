@@ -6,6 +6,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/color/Color.h>
 #include<cstring>
@@ -165,11 +166,11 @@ private:
     void InitMaterialRecipes()
     {
         solid_recipe.recipe_name = "LoadGeometry.Gizmo3D";
-        solid_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        solid_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::Gizmo3D);
         solid_recipe.domain = "LoadGeometry";
 
         wire_recipe.recipe_name = "LoadGeometry.Wire";
-        wire_recipe.shading_model = graph::mtl::ShadingModel::Unlit;
+        wire_recipe.preset_hint = static_cast<uint32_t>(graph::mtl::MaterialPreset::PureColor3D);
         wire_recipe.domain = "LoadGeometry";
     }
 
