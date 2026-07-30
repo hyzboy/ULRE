@@ -8,10 +8,12 @@
 #include<hgl/mtl/MaterializationResolver.h>
 #include<hgl/mtl/MaterializationPools.h>
 #include<hgl/common/VertexAttribDef.h>
+#include<hgl/common/RenderTargetOutputConfig.h>
 
 namespace hgl::graph
 {
     class GeometryVertexFormat;
+    struct ShaderBufferSource;
 }
 
 
@@ -51,6 +53,21 @@ struct MaterialDefinitionBuildRequest
     MaterialRecipe recipe;
     PrimitiveType primitive_type = PrimitiveType::Triangles;
     const GeometryVertexFormat *geometry_vertex_format = nullptr;
+
+    bool override_shader_stage_bits = false;
+    uint32 shader_stage_flag_bit = 0;
+
+    bool override_rt_output = false;
+    RenderTargetOutputConfig rt_output{};
+
+    const ShaderBufferSource *const *private_shader_buffer_sources = nullptr;
+    uint32 private_shader_buffer_source_count = 0;
+
+    void SetPrivateShaderBufferSources(const ShaderBufferSource *const *list,const uint32 count)
+    {
+        private_shader_buffer_sources=list;
+        private_shader_buffer_source_count=count;
+    }
 };
 
 /// 仅声明材质创建函数，不产生任何注册或全局常量副作用。

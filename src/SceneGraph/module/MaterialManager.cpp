@@ -49,6 +49,21 @@ namespace
         }
     };
 
+    void ApplyBuildRequestToLegacyCreateConfig(mtl::MaterialCreateConfig &cfg,const mtl::MaterialDefinitionBuildRequest &request)
+    {
+        cfg.prim = request.primitive_type;
+        cfg.SetGeometryVertexFormat(request.geometry_vertex_format);
+
+        if(request.override_shader_stage_bits)
+            cfg.shader_stage_flag_bit = request.shader_stage_flag_bit;
+
+        if(request.override_rt_output)
+            cfg.rt_output = request.rt_output;
+
+        if(request.private_shader_buffer_sources && request.private_shader_buffer_source_count>0)
+            cfg.SetPrivateShaderBufferSources(request.private_shader_buffer_sources,request.private_shader_buffer_source_count);
+    }
+
     void CreateShaderStageList(ValueArray<VkPipelineShaderStageCreateInfo> &shader_stage_list,ShaderModuleMap *shader_maps)
     {
         const ShaderModule *sm;
@@ -463,12 +478,7 @@ ShaderProgram *MaterialManager::AcquireMaterialProgram(const mtl::MaterialDefini
     if (bmi.is_text)
     {
         mtl::Text2DMaterialCreateConfig cfg;
-        cfg.prim = prim_type;
-        if (geometry_vertex_format)
-        {
-            ScopedMaterialGeometryBinding scoped(&cfg, geometry_vertex_format);
-            return AcquireMaterialProgram(preset, &cfg);
-        }
+        ApplyBuildRequestToLegacyCreateConfig(cfg, request);
         return AcquireMaterialProgram(preset, &cfg);
     }
 
@@ -477,11 +487,7 @@ ShaderProgram *MaterialManager::AcquireMaterialProgram(const mtl::MaterialDefini
         const mtl::WithLocalToWorld with_l2w =
             recipe.local_to_world_2d ? mtl::WithLocalToWorld::With : mtl::WithLocalToWorld::Without;
         mtl::Material2DCreateConfig cfg(prim_type, recipe.coordinate_system_2d, with_l2w);
-        if (geometry_vertex_format)
-        {
-            ScopedMaterialGeometryBinding scoped(&cfg, geometry_vertex_format);
-            return AcquireMaterialProgram(preset, &cfg);
-        }
+        ApplyBuildRequestToLegacyCreateConfig(cfg, request);
         return AcquireMaterialProgram(preset, &cfg);
     }
 
@@ -492,11 +498,7 @@ ShaderProgram *MaterialManager::AcquireMaterialProgram(const mtl::MaterialDefini
         const mtl::WithSky         ws = bmi.with_sky           ? mtl::WithSky::With         : mtl::WithSky::Without;
 
         mtl::Material3DCreateConfig cfg(prim_type, wc, wl, ws);
-        if (geometry_vertex_format)
-        {
-            ScopedMaterialGeometryBinding scoped(&cfg, geometry_vertex_format);
-            return AcquireMaterialProgram(preset, &cfg);
-        }
+        ApplyBuildRequestToLegacyCreateConfig(cfg, request);
         return AcquireMaterialProgram(preset, &cfg);
     }
 }
