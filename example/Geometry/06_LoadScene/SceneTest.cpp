@@ -2,7 +2,6 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/mesh/StaticMesh.h>
@@ -71,7 +70,6 @@ private:
 
     struct MaterialData
     {
-        MaterialProgram *material = nullptr;
         GeometryVertexFormat geometry_vertex_format;
         graph::SSBOArrayAccessor<Color4f>* mi_ssbo_accessor = nullptr;
         uint32_t ssbo_count = 0;
@@ -102,15 +100,11 @@ private:
 
     bool InitMaterialForDBS(MaterialData *md, const char *tag)
     {
-        if (!md || !md->material)
+        if (!md)
             return false;
 
         auto *domain_manager = GetManager<ResourceDomainManager>();
         if (!domain_manager)
-            return false;
-
-        md->geometry_vertex_format = CreateGizmo3DGeometryVertexFormat();
-        if (md->geometry_vertex_format.GetCount() == 0)
             return false;
 
         const uint32_t color_count = static_cast<uint32_t>(COLOR_COUNT);
@@ -131,16 +125,8 @@ private:
 
     bool InitSolidMDP()
     {
-        auto* material_manager = GetManager<MaterialManager>();
-        if (!material_manager)
-            return false;
-
         solid.geometry_vertex_format = CreateGizmo3DGeometryVertexFormat();
         if (solid.geometry_vertex_format.GetCount() == 0)
-            return false;
-
-        solid.material = material_manager->AcquireMaterialProgramByBMI("Gizmo3D", scene_recipe, PrimitiveType::Triangles, &solid.geometry_vertex_format);
-        if (!solid.material)
             return false;
 
         return InitMaterialForDBS(&solid, "LoadScene:SolidMIData");
