@@ -9,10 +9,31 @@
 ///   3. 填充并返回 ShaderProgramBuildSpec*
 
 #include<hgl/mtl/FixedMaterialDef.h>
+#include<hgl/mtl/SkyLight.h>
+#include<hgl/common/ShaderStageDef.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
 #include <string>
 
+namespace hgl::graph
+{
+    struct ShaderBufferSource;
+}
+
 namespace hgl::graph::mtl{
+
+struct CompositorMaterialBuildConfig
+{
+    PrimitiveType primitive_type = PrimitiveType::Triangles;
+    uint32_t shader_stage_flag_bits = uint32_t(ShaderStage::VertexFragment);
+    bool material_instance = false;
+    bool with_local_to_world = false;
+    bool with_camera = false;
+    bool with_sky = false;
+    SkyLightAmbientModel sky_ambient_model = SkyLightAmbientModel::Simple;
+    const ::hgl::graph::ShaderBufferSource *const *private_shader_buffer_sources = nullptr;
+    uint32_t private_shader_buffer_source_count = 0;
+};
+
 
 struct Material3DCreateConfig;
 struct Material2DCreateConfig;
@@ -27,9 +48,16 @@ class ShaderProgramBuildSpec;
  * @param def       材质定义（descriptor/vertex/MI 元数据）
  * @param vs_glsl   完整的 vertex shader GLSL（含 #version, layout, main）
  * @param fs_glsl   完整的 fragment shader GLSL（含 #version, layout, main）
- * @param config    运行时配置（可选）
+ * @param config    编译期配置视图
  * @return          编译好的 ShaderProgramBuildSpec*; 失败返回 nullptr
  */
+ShaderProgramBuildSpec *CompileCompositorMaterial(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const FixedMaterialDef &    def,
+    const std::string &         vs_glsl,
+    const std::string &         fs_glsl,
+    const CompositorMaterialBuildConfig &config);
+
 ShaderProgramBuildSpec *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
     const FixedMaterialDef &    def,

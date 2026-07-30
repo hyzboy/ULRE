@@ -43,6 +43,39 @@ static bool HasDescriptorSemantic(const FixedMaterialDef &def, const DescriptorS
     return false;
 }
 
+static CompositorMaterialBuildConfig ToCompositorMaterialBuildConfig(
+    const Material3DCreateConfig *config,
+    const PrimitiveType default_primitive_type)
+{
+    CompositorMaterialBuildConfig out;
+    out.primitive_type = config ? config->prim : default_primitive_type;
+    out.shader_stage_flag_bits = config ? config->shader_stage_flag_bit : uint32_t(ShaderStage::VertexFragment);
+    out.material_instance = config ? config->material_instance : false;
+    out.with_local_to_world = config ? config->local_to_world : false;
+    out.with_camera = config ? config->camera : false;
+    out.with_sky = config ? config->sky : false;
+    out.sky_ambient_model = config ? config->sky_ambient_model : SkyLightAmbientModel::Simple;
+    out.private_shader_buffer_sources = config ? config->private_shader_buffer_sources : nullptr;
+    out.private_shader_buffer_source_count = config ? config->private_shader_buffer_source_count : 0;
+    return out;
+}
+
+static CompositorMaterialBuildConfig ToCompositorMaterialBuildConfig(
+    const Material2DCreateConfig *config,
+    const PrimitiveType default_primitive_type)
+{
+    CompositorMaterialBuildConfig out;
+    out.primitive_type = config ? config->prim : default_primitive_type;
+    out.shader_stage_flag_bits = config ? config->shader_stage_flag_bit : uint32_t(ShaderStage::VertexFragment);
+    out.material_instance = config ? config->material_instance : false;
+    out.with_local_to_world = config ? config->local_to_world : false;
+    out.with_camera = false;
+    out.with_sky = false;
+    out.sky_ambient_model = SkyLightAmbientModel::Simple;
+    out.private_shader_buffer_sources = config ? config->private_shader_buffer_sources : nullptr;
+    out.private_shader_buffer_source_count = config ? config->private_shader_buffer_source_count : 0;
+    return out;
+}
 // ═══════════════════════════════════════════════════════════════════════════
 // CompileCompositorMaterial — Compositor 模板完整 GLSL → ShaderProgramBuildSpec
 //
@@ -54,7 +87,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     const FixedMaterialDef &    def,
     const std::string &         vs_glsl,
     const std::string &         fs_glsl,
-    const Material3DCreateConfig *config)
+    const CompositorMaterialBuildConfig &config)
 {
     if (vs_glsl.empty() || fs_glsl.empty())
     {
@@ -68,9 +101,8 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     // Step 1: Config
     // ─────────────────────────────────────────────────────────────
 
-    Material3DCreateConfig cfg = config ? *config : Material3DCreateConfig();
-    cfg.prim = config ? config->prim : def.primitive_type;
-    cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+    const PrimitiveType primitive_type = config.primitive_type;
+    const uint32_t shader_stage_bits = config.shader_stage_flag_bits != 0 ? config.shader_stage_flag_bits : uint32_t(ShaderStage::VertexFragment);
 
     const bool infer_has_camera = HasDescriptorSemantic(def, DescriptorSemantic::CameraInfo);
     const bool infer_has_sky    = HasDescriptorSemantic(def, DescriptorSemantic::SkyInfo);
@@ -78,16 +110,16 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     const bool infer_has_mi     = HasDescriptorSemantic(def, DescriptorSemantic::MaterialInstance)
                                || (def.mi_glsl_codes && def.mi_struct_bytes > 0);
 
-    cfg.camera           = cfg.camera           || infer_has_camera;
-    cfg.sky              = cfg.sky              || infer_has_sky;
-    cfg.local_to_world   = cfg.local_to_world   || infer_has_l2w;
-    cfg.material_instance = cfg.material_instance || infer_has_mi;
+    const bool with_camera = config.with_camera || infer_has_camera;
+    const bool with_sky = config.with_sky || infer_has_sky;
+    const bool with_local_to_world = config.with_local_to_world || infer_has_l2w;
+    const bool material_instance = config.material_instance || infer_has_mi;
 
     // ─────────────────────────────────────────────────────────────
     // Step 2: Create ShaderProgramBuildSpec
     // ─────────────────────────────────────────────────────────────
 
-    ShaderProgramBuildSpec *mci = new ShaderProgramBuildSpec(cfg.prim, cfg.shader_stage_flag_bit, cfg.local_to_world);
+    ShaderProgramBuildSpec *mci = new ShaderProgramBuildSpec(primitive_type, shader_stage_bits, with_local_to_world);
     if (profile)
         mci->SetDevice(profile);
 
@@ -312,6 +344,17 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     return mci;
 }
 
+ShaderProgramBuildSpec *CompileCompositorMaterial(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const FixedMaterialDef &    def,
+    const std::string &         vs_glsl,
+    const std::string &         fs_glsl,
+    const Material3DCreateConfig *config)
+{
+    const CompositorMaterialBuildConfig build_config = ToCompositorMaterialBuildConfig(config, def.primitive_type);
+    return CompileCompositorMaterial(profile, def, vs_glsl, fs_glsl, build_config);
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // CompileCompositorMaterial — 2D 材质重载
 // ═══════════════════════════════════════════════════════════════════════════
@@ -323,22 +366,8 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     const std::string &         fs_glsl,
     const Material2DCreateConfig *config)
 {
-    Material3DCreateConfig cfg3d(
-        config ? config->prim : def.primitive_type,
-        WithCamera::Without,
-        config && config->local_to_world ? WithLocalToWorld::With : WithLocalToWorld::Without,
-        WithSky::Without);
-
-    if (config)
-    {
-        cfg3d.rt_output                         = config->rt_output;
-        cfg3d.material_instance                 = config->material_instance;
-        cfg3d.shader_stage_flag_bit             = config->shader_stage_flag_bit;
-        cfg3d.private_shader_buffer_sources     = config->private_shader_buffer_sources;
-        cfg3d.private_shader_buffer_source_count= config->private_shader_buffer_source_count;
-    }
-
-    return CompileCompositorMaterial(profile, def, vs_glsl, fs_glsl, &cfg3d);
+    const CompositorMaterialBuildConfig build_config = ToCompositorMaterialBuildConfig(config, def.primitive_type);
+    return CompileCompositorMaterial(profile, def, vs_glsl, fs_glsl, build_config);
 }
 
 }  // namespace hgl::graph::mtl
