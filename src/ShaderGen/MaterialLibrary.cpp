@@ -213,19 +213,20 @@ static ShaderProgramBuildSpec *CreateMaterialCreateInfoFromRequest(const contrac
                                                                    const MaterialDefinitionBuildRequest &request)
 {
     if(definition.is_text)
-    {
-        Text2DMaterialCreateConfig cfg;
-        ApplyBuildRequestToLegacyConfig(cfg, request);
-        return CreateMaterialCreateInfo(profile, mtl_id, &cfg);
-    }
+        return CreateText2D(profile, request, definition);
 
     if(definition.is_2d)
     {
-        const WithLocalToWorld with_l2w =
-            request.recipe.local_to_world_2d ? WithLocalToWorld::With : WithLocalToWorld::Without;
-        Material2DCreateConfig cfg(request.primitive_type, request.recipe.coordinate_system_2d, with_l2w);
-        ApplyBuildRequestToLegacyConfig(cfg, request);
-        return CreateMaterialCreateInfo(profile, mtl_id, &cfg);
+        switch(mtl_id)
+        {
+            case BuiltinMaterialCreatorID::VertexColor2D:      return CreateVertexColor2D(profile, request, definition);
+            case BuiltinMaterialCreatorID::PureColor2D:        return CreatePureColor2D(profile, request, definition);
+            case BuiltinMaterialCreatorID::PureTexture2D:      return CreatePureTexture2D(profile, request, definition);
+            case BuiltinMaterialCreatorID::RectTexture2D:      return CreateRectTexture2D(profile, request, definition);
+            case BuiltinMaterialCreatorID::RectTexture2DArray: return CreateRectTexture2DArray(profile, request, definition);
+            case BuiltinMaterialCreatorID::Text2D:             return CreateText2D(profile, request, definition);
+            default:                                           break;
+        }
     }
 
     const WithCamera wc = definition.with_camera ? WithCamera::With : WithCamera::Without;
@@ -245,7 +246,12 @@ static std::string BuildBuiltinMaterialCreatorRequestHashImpl(const BuiltinMater
     if(definition.is_text)
     {
         Text2DMaterialCreateConfig cfg;
-        ApplyBuildRequestToLegacyConfig(cfg, request);
+        cfg.prim = request.primitive_type;
+        cfg.coordinate_system = definition.coordinate_system_2d;
+        cfg.local_to_world = definition.local_to_world_2d;
+        cfg.SetGeometryVertexFormat(request.geometry_vertex_format);
+        if(request.override_shader_stage_bits)
+            cfg.shader_stage_flag_bit = request.shader_stage_flag_bit;
         return std::string(GetBuiltinMaterialCreatorIDName(mtl_id)) + "?" + cfg.ToHashStdString();
     }
 

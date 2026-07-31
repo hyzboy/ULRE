@@ -77,6 +77,7 @@ struct MaterialDefinitionBuildRequest
 /// 仅声明材质创建函数，不产生任何注册或全局常量副作用。
 #define DECLARE_MATERIAL_CREATOR(name,cfg_type) \
 ShaderProgramBuildSpec *Create##name(const contract::PhysicalDeviceProfileLite *profile,cfg_type *); \
+ShaderProgramBuildSpec *Create##name(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition); \
 \
 inline ShaderProgramBuildSpec *Create##name(const contract::PhysicalDeviceProfileLite *profile)  \
 {   \
@@ -98,7 +99,6 @@ std::string BuildBuiltinMaterialCreatorRequestHash(const BuiltinMaterialCreatorI
                                                  const MaterialDefinitionBuildRequest &request);
 
 VkFormat ResolveMaterialVertexSemanticFormat(const MaterialCreateConfig *cfg, VertexSemantic semantic, VkFormat fallback_format);
-
 VkFormat ResolveMaterialPositionFormat(const MaterialCreateConfig *cfg, VkFormat fallback_format);
 
 const char *GetBuiltinMaterialCreatorIDName(const BuiltinMaterialCreatorID mtl_id);

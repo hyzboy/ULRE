@@ -68,7 +68,16 @@ ShaderProgramBuildSpec *CreateText2D(const contract::PhysicalDeviceProfileLite *
         std::fprintf(stderr, "[Text2D] CompileCompositorMaterial failed\n");
     return mci;
 }
+
+ShaderProgramBuildSpec *CreateText2D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
+{
+    Text2DMaterialCreateConfig cfg;
+    cfg.prim = request.primitive_type;
+    cfg.coordinate_system = definition.coordinate_system_2d;
+    cfg.local_to_world = definition.local_to_world_2d;
+    cfg.SetGeometryVertexFormat(request.geometry_vertex_format);
+    if(request.override_shader_stage_bits)
+        cfg.shader_stage_flag_bit = request.shader_stage_flag_bit;
+    return CreateText2D(profile, &cfg);
+}
 }//namespace hgl::graph::mtl
-
-
-

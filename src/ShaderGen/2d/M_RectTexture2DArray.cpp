@@ -61,7 +61,14 @@ ShaderProgramBuildSpec *CreateRectTexture2DArray(const contract::PhysicalDeviceP
         std::fprintf(stderr, "[RectTexture2DArray] CompileCompositorMaterial failed\n");
     return mci;
 }
+
+ShaderProgramBuildSpec *CreateRectTexture2DArray(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
+{
+    (void)definition;
+    Material2DCreateConfig cfg(PrimitiveType::Triangles,
+                               request.recipe.coordinate_system_2d,
+                               request.recipe.local_to_world_2d ? WithLocalToWorld::With : WithLocalToWorld::Without);
+    cfg.SetGeometryVertexFormat(request.geometry_vertex_format);
+    return CreateRectTexture2DArray(profile, &cfg);
+}
 }//namespace hgl::graph::mtl
-
-
-

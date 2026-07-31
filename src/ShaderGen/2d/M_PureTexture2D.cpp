@@ -49,7 +49,14 @@ ShaderProgramBuildSpec *CreatePureTexture2D(const contract::PhysicalDeviceProfil
         std::fprintf(stderr, "[PureTexture2D] CompileCompositorMaterial failed\n");
     return mci;
 }
+
+ShaderProgramBuildSpec *CreatePureTexture2D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
+{
+    (void)definition;
+    Material2DCreateConfig cfg(request.primitive_type,
+                               request.recipe.coordinate_system_2d,
+                               request.recipe.local_to_world_2d ? WithLocalToWorld::With : WithLocalToWorld::Without);
+    cfg.SetGeometryVertexFormat(request.geometry_vertex_format);
+    return CreatePureTexture2D(profile, &cfg);
+}
 }//namespace hgl::graph::mtl
-
-
-
