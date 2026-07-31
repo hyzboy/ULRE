@@ -102,7 +102,7 @@ namespace hgl::ecs
         bool hasMaterialRecipe = false;
         hgl::graph::mtl::MaterialRecipe materialRecipe;
         std::array<MaterialTextureAuthoringResource, static_cast<size_t>(hgl::graph::mtl::TextureSlot::RANGE_SIZE)> materialTextureResources{};
-        std::array<MaterialStructAuthoringResource, static_cast<size_t>(hgl::graph::mtl::MaterialStructSlotCount)> materialStructResources{};
+        std::array<MaterialStructAuthoringResource, static_cast<size_t>(hgl::graph::mtl::MaterialSSBOSlotCount)> materialStructResources{};
         std::vector<MaterialStructNamedAuthoringResource> materialStructNamedResources{};
 
         // Late-resolve pipeline slot:

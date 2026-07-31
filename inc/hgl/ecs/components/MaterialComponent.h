@@ -19,7 +19,7 @@ namespace hgl::ecs
         // Runtime row indices, materialized by ECS.
         uint32_t material_instance_row = uint32_t(-1);
         uint32_t texture_layer_row = uint32_t(-1);
-        uint32_t data_index_row = uint32_t(-1);
+        uint32_t ssbo_index_row = uint32_t(-1);
 
         // Dirty/lifecycle flags.
         bool program_dirty = true;

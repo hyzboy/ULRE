@@ -23,9 +23,9 @@ namespace hgl::graph::mtl
     };
 
     using SSBOCategory = SSBOType;
-    constexpr uint32_t MaterialStructSlotCount = 6;
+    constexpr uint32_t MaterialSSBOSlotCount = 6;
 
-    constexpr bool IsMaterialStructSSBOType(const SSBOType type) noexcept
+    constexpr bool IsMaterialSSBOType(const SSBOType type) noexcept
     {
         switch (type)
         {
@@ -40,7 +40,7 @@ namespace hgl::graph::mtl
         }
     }
 
-    constexpr uint32_t GetMaterialStructSlotIndex(const SSBOType type) noexcept
+    constexpr uint32_t GetSSBOSlotByType(const SSBOType type) noexcept
     {
         switch (type)
         {
@@ -52,7 +52,7 @@ namespace hgl::graph::mtl
         }
     }
 
-    constexpr SSBOType GetMaterialStructSSBOTypeBySlotIndex(const uint32_t ssbo_slot) noexcept
+    constexpr SSBOType GetSSBOTypeBySlot(const uint32_t ssbo_slot) noexcept
     {
         switch (ssbo_slot)
         {
@@ -69,7 +69,7 @@ namespace hgl::graph::mtl
         switch (type)
         {
         case SSBOType::TextureLayer: return "TextureLayer";
-        case SSBOType::MaterialSSBOIndexTable: return "DataIndex";
+        case SSBOType::MaterialSSBOIndexTable: return "MaterialSSBOIndexTable";
         case SSBOType::PBRSurface: return "PBRSurface";
         case SSBOType::EmissiveSurface: return "EmissiveSurface";
         case SSBOType::ClearCoatSurface: return "ClearCoatSurface";
@@ -104,7 +104,7 @@ namespace hgl::graph::mtl
         case SSBOType::TextureLayer:
             return sizeof(uint32_t) * static_cast<uint32_t>(TextureSlot::RANGE_SIZE);
         case SSBOType::MaterialSSBOIndexTable:
-            return sizeof(uint32_t) * MaterialStructSlotCount;
+            return sizeof(uint32_t) * MaterialSSBOSlotCount;
         case SSBOType::TransformIndexRows:
             return sizeof(uint32_t);
         case SSBOType::LocalToWorld:

@@ -123,7 +123,7 @@ namespace hgl::ecs
                                        const bool use_ssbo_element_index,
                                        const bool shared_across_instances)
         {
-            const uint32_t ssbo_slot = graph::mtl::GetMaterialStructSlotIndex(ssbo_type);
+            const uint32_t ssbo_slot = graph::mtl::GetSSBOSlotByType(ssbo_type);
             for (auto &binding : recipe.structs)
             {
                 if (binding.ssbo_slot != ssbo_slot || binding.ssbo_type != ssbo_type)
@@ -208,9 +208,9 @@ namespace hgl::ecs
                 UpsertRecipeTextureBinding(out_recipe, slot, resource_id, resource->required);
             }
 
-            for (size_t i = 0; i < static_cast<size_t>(graph::mtl::MaterialStructSlotCount); ++i)
+            for (size_t i = 0; i < static_cast<size_t>(graph::mtl::MaterialSSBOSlotCount); ++i)
             {
-                const auto ssbo_type = graph::mtl::GetMaterialStructSSBOTypeBySlotIndex(static_cast<uint32_t>(i));
+                const auto ssbo_type = graph::mtl::GetSSBOTypeBySlot(static_cast<uint32_t>(i));
                 const auto *resource = primitive_comp->GetMaterialStructResource(ssbo_type);
                 if (!resource)
                     continue;
@@ -335,9 +335,9 @@ namespace hgl::ecs
                 }
             }
 
-            for (size_t i = 0; i < static_cast<size_t>(graph::mtl::MaterialStructSlotCount); ++i)
+            for (size_t i = 0; i < static_cast<size_t>(graph::mtl::MaterialSSBOSlotCount); ++i)
             {
-                const auto ssbo_type = graph::mtl::GetMaterialStructSSBOTypeBySlotIndex(static_cast<uint32_t>(i));
+                const auto ssbo_type = graph::mtl::GetSSBOTypeBySlot(static_cast<uint32_t>(i));
                 const auto *resource = primitive_comp->GetMaterialStructResource(ssbo_type);
                 if (!resource)
                     continue;
@@ -418,7 +418,7 @@ namespace hgl::ecs
 
             material_comp->material_instance_row = uint32_t(-1);
             material_comp->texture_layer_row = uint32_t(-1);
-            material_comp->data_index_row = uint32_t(-1);
+            material_comp->ssbo_index_row = uint32_t(-1);
             material_comp->bindings_dirty = true;
             material_comp->resources_dirty = true;
             material_comp->valid = false;
@@ -557,7 +557,7 @@ namespace hgl::ecs
 
         if (!material_comp->bindings_dirty
          && !material_comp->resources_dirty
-         && material_comp->data_index_row != uint32_t(-1)
+         && material_comp->ssbo_index_row != uint32_t(-1)
          && material_comp->texture_layer_row != uint32_t(-1)
          && material_comp->material_instance_row != uint32_t(-1))
             return true;
@@ -572,8 +572,8 @@ namespace hgl::ecs
 
         graph::mtl::MaterializationSpec spec{};
         uint32_t texture_layer_row = uint32_t(-1);
-        uint32_t data_index_row = uint32_t(-1);
-        if (!rdbs->ResolveMaterialRecipe(effective_recipe, spec, &texture_layer_row, &data_index_row))
+        uint32_t ssbo_index_row = uint32_t(-1);
+        if (!rdbs->ResolveMaterialRecipe(effective_recipe, spec, &texture_layer_row, &ssbo_index_row))
         {
             GLogWarning("[RenderPrimitiveCollectSystem] ResolveMaterialRecipe failed for %s recipe=%s",
                         GetPrimitiveOwnerName(primitive_comp),
@@ -581,22 +581,22 @@ namespace hgl::ecs
             return false;
         }
 
-        if (texture_layer_row == uint32_t(-1) || data_index_row == uint32_t(-1))
+        if (texture_layer_row == uint32_t(-1) || ssbo_index_row == uint32_t(-1))
         {
             GLogWarning("[RenderPrimitiveCollectSystem] ResolveMaterialRecipe returned invalid rows. tex=%u data=%u",
                         texture_layer_row,
-                        data_index_row);
+                        ssbo_index_row);
             return false;
         }
 
         const uint32_t material_instance_row = ResolvePrimaryStructIndex(material_comp->program,
                                                                          spec,
-                                                                         data_index_row);
+                                                                         ssbo_index_row);
 
-        // data_index_row keeps the indirection-table row identity.
+        // ssbo_index_row keeps the indirection-table row identity.
         // material_instance_row is the concrete ssbo_element_index that shaders use as mtl.mi[miID].
         material_comp->texture_layer_row = texture_layer_row;
-        material_comp->data_index_row = data_index_row;
+        material_comp->ssbo_index_row = ssbo_index_row;
         material_comp->material_instance_row = material_instance_row;
         material_comp->bindings_dirty = false;
         material_comp->resources_dirty = false;

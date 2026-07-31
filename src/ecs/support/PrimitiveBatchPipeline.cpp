@@ -76,8 +76,8 @@ namespace hgl::ecs
                         if (material_comp->material_instance_row != uint32_t(-1))
                             return material_comp->material_instance_row;
 
-                        if (material_comp->data_index_row != uint32_t(-1))
-                            return material_comp->data_index_row;
+                        if (material_comp->ssbo_index_row != uint32_t(-1))
+                            return material_comp->ssbo_index_row;
                     }
                 }
 
@@ -570,24 +570,24 @@ namespace hgl::ecs
         // Per-batch DataIndex rows SSBO — shader consumes this as a flat uint[] by instance index.
         if (batch.key.material && batch.key.material->hasMI())
         {
-            if (!batch.mi_data_index_rows_buffer || batch.mi_data_index_rows_capacity < item_count)
+            if (!batch.mi_ssbo_index_rows_buffer || batch.mi_ssbo_index_rows_capacity < item_count)
             {
-                batch.mi_data_index_rows_capacity = new_node_count;
+                batch.mi_ssbo_index_rows_capacity = new_node_count;
 
-                if (batch.mi_data_index_rows_buffer)
+                if (batch.mi_ssbo_index_rows_buffer)
                 {
                     if (batch.buffer_manager)
-                        batch.buffer_manager->Release(batch.mi_data_index_rows_buffer);
+                        batch.buffer_manager->Release(batch.mi_ssbo_index_rows_buffer);
                     else
-                        delete batch.mi_data_index_rows_buffer;
-                    batch.mi_data_index_rows_buffer = nullptr;
+                        delete batch.mi_ssbo_index_rows_buffer;
+                    batch.mi_ssbo_index_rows_buffer = nullptr;
                 }
 
                 if (batch.buffer_manager)
                 {
-                    const VkDeviceSize byte_size = static_cast<VkDeviceSize>(batch.mi_data_index_rows_capacity) * sizeof(uint32_t);
-                    batch.mi_data_index_rows_buffer = batch.buffer_manager->CreateSSBO(
-                        "ECS:Batch:MIDataIndexRows", byte_size, nullptr, graph::SharingMode::Exclusive);
+                    const VkDeviceSize byte_size = static_cast<VkDeviceSize>(batch.mi_ssbo_index_rows_capacity) * sizeof(uint32_t);
+                    batch.mi_ssbo_index_rows_buffer = batch.buffer_manager->CreateSSBO(
+                        "ECS:Batch:MISSBOIndexRows", byte_size, nullptr, graph::SharingMode::Exclusive);
                 }
             }
         }
@@ -624,9 +624,9 @@ namespace hgl::ecs
 
         // Write per-batch DataIndex rows SSBO in draw order.
         // mtl_data_index_rows is declared as uint values[] in shader, so this must be tightly packed uint.
-        if (batch.mi_data_index_rows_buffer)
+        if (batch.mi_ssbo_index_rows_buffer)
         {
-            auto *mi_gpu = batch.mi_data_index_rows_buffer->GetGPUBuffer();
+            auto *mi_gpu = batch.mi_ssbo_index_rows_buffer->GetGPUBuffer();
             if (mi_gpu)
             {
                 graph::mtl::SSBOType primary_ssbo_type = graph::mtl::SSBOType::PBRSurface;
@@ -655,7 +655,7 @@ namespace hgl::ecs
                             if (!warned_missing_recipe_row)
                             {
                                 warned_missing_recipe_row = true;
-                                LogWarning("[PrimitiveBatchPipeline] Missing recipe data_index_row in batch write, fallback to row0. material=%s",
+                                LogWarning("[PrimitiveBatchPipeline] Missing recipe ssbo_index_row in batch write, fallback to row0. material=%s",
                                            batch.key.material ? batch.key.material->GetName().c_str() : "<null>");
                             }
                             row = 0;
@@ -707,7 +707,7 @@ namespace hgl::ecs
             {
                 const bool missing_rows = (!material_comp
                                         || material_comp->material_instance_row == uint32_t(-1)
-                                        || material_comp->data_index_row == uint32_t(-1)
+                                        || material_comp->ssbo_index_row == uint32_t(-1)
                                         || material_comp->texture_layer_row == uint32_t(-1));
                 if (missing_rows)
                 {

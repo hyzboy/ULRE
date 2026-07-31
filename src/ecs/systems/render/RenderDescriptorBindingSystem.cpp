@@ -281,7 +281,7 @@ namespace hgl::ecs
     bool RenderDescriptorBindingSystem::ResolveMaterialRecipe(const graph::mtl::MaterialRecipe &recipe,
                                                               graph::mtl::MaterializationSpec &out_spec,
                                                               uint32_t *out_texture_layer_row,
-                                                              uint32_t *out_data_index_row)
+                                                              uint32_t *out_ssbo_index_row)
     {
         if (context)
         {
@@ -310,12 +310,12 @@ namespace hgl::ecs
             if (out_texture_layer_row)
                 *out_texture_layer_row = cache_it->second.texture_layer_row;
 
-            if (out_data_index_row)
-                *out_data_index_row = cache_it->second.data_index_row;
+            if (out_ssbo_index_row)
+                *out_ssbo_index_row = cache_it->second.ssbo_index_row;
 
             GLogInfo("[TexTrace]   cache hit: tex_row=%u data_row=%u resolved_tex=%zu",
                      cache_it->second.texture_layer_row,
-                     cache_it->second.data_index_row,
+                     cache_it->second.ssbo_index_row,
                      out_spec.resources.size());
             return true;
         }
@@ -337,13 +337,13 @@ namespace hgl::ecs
         if (out_texture_layer_row)
             *out_texture_layer_row = texture_row;
 
-        if (out_data_index_row)
-            *out_data_index_row = data_row;
+        if (out_ssbo_index_row)
+            *out_ssbo_index_row = data_row;
 
         MaterializationResolveCacheEntry cache_entry{};
         cache_entry.spec = out_spec;
         cache_entry.texture_layer_row = texture_row;
-        cache_entry.data_index_row = data_row;
+        cache_entry.ssbo_index_row = data_row;
         materialization_resolve_cache[recipe_hash] = std::move(cache_entry);
         materialization_index_tables_dirty = true;
 
@@ -353,12 +353,12 @@ namespace hgl::ecs
     bool RenderDescriptorBindingSystem::GetMaterializationPoolStats(uint32_t &texture_count,
                                                                     uint32_t &struct_layout_count,
                                                                     uint32_t &texture_layer_rows,
-                                                                    uint32_t &data_index_rows) const
+                                                                    uint32_t &ssbo_index_rows) const
     {
         texture_count = static_cast<uint32_t>(materialization_texture_pool.GetCount());
         struct_layout_count = static_cast<uint32_t>(materialization_struct_pool.GetLayoutCount());
         texture_layer_rows = static_cast<uint32_t>(materialization_index_tables.GetTextureLayerRowCount());
-        data_index_rows = static_cast<uint32_t>(materialization_index_tables.GetMaterialSSBOIndexRowCount());
+        ssbo_index_rows = static_cast<uint32_t>(materialization_index_tables.GetMaterialSSBOIndexRowCount());
         return true;
     }
 
@@ -427,7 +427,7 @@ namespace hgl::ecs
                 domain_manager->ClearDomain(graph::mtl::SSBOAddress{graph::mtl::SSBOType::TextureLayer, alias_ssbo_id, slot});
             }
 
-            for (uint32_t slot = 1; slot < graph::mtl::MaterialStructSlotCount; ++slot)
+            for (uint32_t slot = 1; slot < graph::mtl::MaterialSSBOSlotCount; ++slot)
             {
                 const uint32_t alias_ssbo_id = graph::mtl::MakeRecipeSSBOId(slot);
                 domain_manager->ClearDomain(graph::mtl::SSBOAddress{graph::mtl::SSBOType::MaterialSSBOIndexTable, alias_ssbo_id, slot});
@@ -435,9 +435,9 @@ namespace hgl::ecs
         }
 
         materialization_texture_layer_ssbo = nullptr;
-        materialization_data_index_ssbo = nullptr;
+        materialization_ssbo_index_table_buffer = nullptr;
         materialization_texture_layer_capacity = 0;
-        materialization_data_index_capacity = 0;
+        materialization_ssbo_index_table_capacity = 0;
     }
 
     void RenderDescriptorBindingSystem::UploadMaterializationIndexTables()
@@ -484,17 +484,17 @@ namespace hgl::ecs
         if (data_capacity > 0)
         {
             const VkDeviceSize byte_size = static_cast<VkDeviceSize>(data_capacity) * sizeof(graph::mtl::MaterialSSBOIndexRow);
-            materialization_data_index_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{graph::mtl::SSBOType::MaterialSSBOIndexTable, 0, 0},
-                                                                            "ECS:Materialization:DataIndexRows",
+            materialization_ssbo_index_table_buffer = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{graph::mtl::SSBOType::MaterialSSBOIndexTable, 0, 0},
+                                                                            "ECS:Materialization:MaterialSSBOIndexRows",
                                                                             byte_size,
                                                                             data_capacity,
                                                                             graph::SharingMode::Exclusive);
         }
         else
         {
-            materialization_data_index_ssbo = domain_manager->GetBuffer(graph::mtl::SSBOAddress{graph::mtl::SSBOType::MaterialSSBOIndexTable, 0, 0});
+            materialization_ssbo_index_table_buffer = domain_manager->GetBuffer(graph::mtl::SSBOAddress{graph::mtl::SSBOType::MaterialSSBOIndexTable, 0, 0});
         }
-        materialization_data_index_capacity = domain_manager->GetElementCapacity(graph::mtl::SSBOAddress{graph::mtl::SSBOType::MaterialSSBOIndexTable, 0, 0});
+        materialization_ssbo_index_table_capacity = domain_manager->GetElementCapacity(graph::mtl::SSBOAddress{graph::mtl::SSBOType::MaterialSSBOIndexTable, 0, 0});
 
         auto register_domain_aliases = [&](const graph::mtl::SSBOType ssbo_type,
                                            graph::DeviceBuffer *buffer,
@@ -523,9 +523,9 @@ namespace hgl::ecs
                                 materialization_texture_layer_capacity,
                                 static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE));
         register_domain_aliases(graph::mtl::SSBOType::MaterialSSBOIndexTable,
-                                materialization_data_index_ssbo,
-                                materialization_data_index_capacity,
-                                graph::mtl::MaterialStructSlotCount);
+                                materialization_ssbo_index_table_buffer,
+                                materialization_ssbo_index_table_capacity,
+                                graph::mtl::MaterialSSBOSlotCount);
 
         if (texture_rows > 0 && materialization_texture_layer_ssbo)
         {
@@ -545,10 +545,10 @@ namespace hgl::ecs
             }
         }
 
-        if (data_rows > 0 && materialization_data_index_ssbo)
+        if (data_rows > 0 && materialization_ssbo_index_table_buffer)
         {
             auto *acc = graph::SSBOArrayAccessor<graph::mtl::MaterialSSBOIndexRow>::Create(
-                materialization_data_index_ssbo, data_rows);
+                materialization_ssbo_index_table_buffer, data_rows);
             if (acc)
             {
                 for (uint32_t i = 0; i < data_rows; ++i)
@@ -572,8 +572,8 @@ namespace hgl::ecs
                 {
                     if (materialization_texture_layer_ssbo)
                         du->SetBuffer(materialization_texture_layer_ssbo->GetBuffer(), "ECS.Materialization.TextureLayerRows");
-                    if (materialization_data_index_ssbo)
-                        du->SetBuffer(materialization_data_index_ssbo->GetBuffer(), "ECS.Materialization.DataIndexRows");
+                    if (materialization_ssbo_index_table_buffer)
+                        du->SetBuffer(materialization_ssbo_index_table_buffer->GetBuffer(), "ECS.Materialization.MaterialSSBOIndexRows");
                 }
             }
         }
@@ -1250,8 +1250,8 @@ namespace hgl::ecs
                 const graph::IGPUBuffer *table_buffer = nullptr;
 
                 // Prefer per-batch DataIndex rows SSBO (written in draw order by PrimitiveBatchPipeline).
-                if (batch && batch->mi_data_index_rows_buffer)
-                    table_buffer = batch->mi_data_index_rows_buffer->GetGPUBuffer();
+                if (batch && batch->mi_ssbo_index_rows_buffer)
+                    table_buffer = batch->mi_ssbo_index_rows_buffer->GetGPUBuffer();
 
                 // Fall back to domain SSBO.
                 if (!table_buffer)

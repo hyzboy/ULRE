@@ -15,7 +15,7 @@ namespace hgl::graph::mtl
         DescriptorSetType set_type = DescriptorSetType::Unknow;
         DescriptorKind kind = DescriptorKind::UBO;
         TextureSlot texture_slot = TextureSlot::BaseColor;
-        uint32_t ssbo_slot = GetMaterialStructSlotIndex(SSBOType::PBRSurface);
+        uint32_t ssbo_slot = GetSSBOSlotByType(SSBOType::PBRSurface);
         SSBOType ssbo_type = SSBOType::UserDefined;
         uint32_t ssbo_id = MakeRecipeSSBOId(0);
 
@@ -210,7 +210,7 @@ namespace hgl::graph::mtl
                 req.ssbo_type = entry.ssbo_type;
                 if (req.ssbo_type == SSBOType::UserDefined)
                 {
-                    req.ssbo_type = DefaultSSBOTypeForSlotIndex(req.ssbo_slot);
+                    req.ssbo_type = GetSSBOTypeBySlot(req.ssbo_slot);
                     if (req.ssbo_type == SSBOType::UserDefined)
                         req.ssbo_type = SSBOType::PBRSurface;
                 }
@@ -364,7 +364,7 @@ namespace hgl::graph::mtl
              || req.semantic == DescriptorSemantic::MaterialSSBOIndexTable;
             if (requires_data_ssbo)
             {
-                if (req.ssbo_slot >= MaterialStructSlotCount)
+                if (req.ssbo_slot >= MaterialSSBOSlotCount)
                 {
                     std::string message = "Descriptor ssbo_slot is invalid for material SSBO semantic: ";
                     message += context;

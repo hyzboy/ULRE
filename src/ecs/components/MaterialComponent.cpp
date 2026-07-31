@@ -53,7 +53,7 @@ namespace hgl::ecs
         program = nullptr;
         material_instance_row = uint32_t(-1);
         texture_layer_row = uint32_t(-1);
-        data_index_row = uint32_t(-1);
+        ssbo_index_row = uint32_t(-1);
         program_dirty = true;
         bindings_dirty = true;
         resources_dirty = true;

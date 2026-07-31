@@ -45,12 +45,12 @@ namespace hgl::ecs
             else
                 delete l2w_index_rows_buffer;
         }
-        if (mi_data_index_rows_buffer)
+        if (mi_ssbo_index_rows_buffer)
         {
             if (buffer_manager)
-                buffer_manager->Release(mi_data_index_rows_buffer);
+                buffer_manager->Release(mi_ssbo_index_rows_buffer);
             else
-                delete mi_data_index_rows_buffer;
+                delete mi_ssbo_index_rows_buffer;
         }
         if (renderer)
             delete renderer;

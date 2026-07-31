@@ -79,7 +79,7 @@ namespace hgl::ecs
         {
             graph::mtl::MaterializationSpec spec;
             uint32_t texture_layer_row = 0;
-            uint32_t data_index_row = 0;
+            uint32_t ssbo_index_row = 0;
         };
 
         // Viewport UBO — owned here, stable across swapchain resize.
@@ -98,9 +98,9 @@ namespace hgl::ecs
         std::unordered_map<uint64_t, MaterializationResolveCacheEntry> materialization_resolve_cache;
         uint32_t materialization_last_reset_frame = std::numeric_limits<uint32_t>::max();
         graph::DeviceBuffer *materialization_texture_layer_ssbo = nullptr;
-        graph::DeviceBuffer *materialization_data_index_ssbo = nullptr;
+        graph::DeviceBuffer *materialization_ssbo_index_table_buffer = nullptr;
         uint32_t materialization_texture_layer_capacity = 0;
-        uint32_t materialization_data_index_capacity = 0;
+        uint32_t materialization_ssbo_index_table_capacity = 0;
         bool materialization_index_tables_dirty = false;
 
     public:
@@ -140,11 +140,11 @@ namespace hgl::ecs
         bool ResolveMaterialRecipe(const graph::mtl::MaterialRecipe &recipe,
                                    graph::mtl::MaterializationSpec &out_spec,
                                    uint32_t *out_texture_layer_row = nullptr,
-                                   uint32_t *out_data_index_row = nullptr);
+                                   uint32_t *out_ssbo_index_row = nullptr);
         bool GetMaterializationPoolStats(uint32_t &texture_count,
                                          uint32_t &struct_layout_count,
                                          uint32_t &texture_layer_rows,
-                                         uint32_t &data_index_rows) const;
+                                         uint32_t &ssbo_index_rows) const;
 
         /**
          * 向 bindless 纹理池预注册一个逻辑资源 ID 与 bindless handle 的映射。

@@ -28,7 +28,7 @@ namespace hgl::graph::mtl
     // Recipe 中的结构体绑定声明（告诉 Resolve 需要哪类参数结构）。
     struct RecipeStructBinding
     {
-        uint32_t ssbo_slot = GetMaterialStructSlotIndex(SSBOType::PBRSurface); // DataIndex 行槽位
+        uint32_t ssbo_slot = GetSSBOSlotByType(SSBOType::PBRSurface); // DataIndex 行槽位
         SSBOType ssbo_type = SSBOType::UserDefined;        // 结构体所属 SSBO 类型（主字段）
         uint32_t ssbo_id = 0;                              // 结构体 SSBO 资源 ID（主字段，P1.55）
         uint32_t ssbo_element_index = 0;                         // 结构体行索引（默认 0；可通过 use_ssbo_element_index 显式重载）

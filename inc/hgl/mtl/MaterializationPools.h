@@ -205,7 +205,7 @@ namespace hgl::graph::mtl
     // MaterialSSBOIndexTable SSBO 的单实例行（每个结构体槽位一个 ssbo_element_index）。
     struct MaterialSSBOIndexRow
     {
-        std::array<uint32_t, static_cast<size_t>(MaterialStructSlotCount)> values{};
+        std::array<uint32_t, static_cast<size_t>(MaterialSSBOSlotCount)> values{};
     };
     static_assert(sizeof(MaterialSSBOIndexRow::values[0]) == sizeof(uint32_t),
                   "MaterialSSBOIndexRow values must remain uint32_t for SSBO row format stability.");
@@ -255,14 +255,11 @@ namespace hgl::graph::mtl
     };
 
     // 将 MaterialSSBOIndexTable 槽位映射到默认 SSBO 分类（可在后续阶段替换为可配置策略）。
+    // 已由 GetSSBOTypeBySlot 替代，此处仅保留向后兼容别名。
+    [[deprecated("Use GetSSBOTypeBySlot instead")]]
     inline SSBOType DefaultSSBOTypeForSlotIndex(const uint32_t ssbo_slot) noexcept
     {
-        return GetMaterialStructSSBOTypeBySlotIndex(ssbo_slot);
-    }
-
-    inline SSBOCategory DefaultCategoryForSlotIndex(const uint32_t ssbo_slot) noexcept
-    {
-        return DefaultSSBOTypeForSlotIndex(ssbo_slot);
+        return GetSSBOTypeBySlot(ssbo_slot);
     }
 
     // 用池对象构建 Recipe->Spec 解析回调。

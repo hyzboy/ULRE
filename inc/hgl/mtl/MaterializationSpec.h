@@ -21,7 +21,7 @@ namespace hgl::graph::mtl
     // 作用：把 Recipe 的结构体槽位映射到具体 SSBO 池与结构体偏移/步长。
     struct ResolvedStructRef
     {
-        uint32_t ssbo_slot = GetMaterialStructSlotIndex(SSBOType::PBRSurface); // DataIndex 行槽位
+        uint32_t ssbo_slot = GetSSBOSlotByType(SSBOType::PBRSurface); // DataIndex 行槽位
         SSBOType ssbo_type = SSBOType::UserDefined; // 目标 SSBO 类型（契约主字段）
         uint32_t ssbo_id = 0;                       // 目标 SSBO 资源 ID（主字段，P1.55）
         uint32_t ssbo_binding = 0;                  // 目标 SSBO binding（管线布局侧）
