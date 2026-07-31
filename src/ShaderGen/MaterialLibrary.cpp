@@ -131,6 +131,19 @@ bool TryGetMaterialDefinitionByBuiltinMaterialCreatorID(const BuiltinMaterialCre
     return false;
 }
 
+bool ShouldUse2DFallbackMaterial(const MaterialDefinitionBuildRequest &request)
+{
+    const GeometryVertexFormat *gvf = request.geometry_vertex_format;
+    if (!gvf)
+        return false;
+
+    const GeometryVertexAttributeFormat *position = gvf->Find(VertexSemantic::Position);
+    if (!position)
+        return false;
+
+    return position->vec_size == 2;
+}
+
 
 const char *GetBuiltinMaterialCreatorIDName(const BuiltinMaterialCreatorID mtl_id)
 {

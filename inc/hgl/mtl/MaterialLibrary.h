@@ -129,4 +129,6 @@ inline const char *GetFallbackMaterialDefinitionID(const bool is_2d = false)
     return is_2d ? BUILTIN_MTL_DEF_FALLBACK_2D : BUILTIN_MTL_DEF_FALLBACK_3D;
 }
 
+bool ShouldUse2DFallbackMaterial(const MaterialDefinitionBuildRequest &request);
+
 }//namespace hgl::graph::mtl

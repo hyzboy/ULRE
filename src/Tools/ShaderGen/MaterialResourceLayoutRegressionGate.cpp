@@ -1,5 +1,7 @@
 #include <hgl/mtl/MaterialResourceLayout.h>
+#include <hgl/mtl/MaterialLibrary.h>
 #include <hgl/common/RenderOptions.h>
+#include <hgl/graph/geo/GeometryVertexFormat.h>
 
 #include <algorithm>
 #include <cstdio>
@@ -125,6 +127,102 @@ namespace
         result.passed = true;
         return result;
     }
+
+    static GateResult RunBuiltinRegistryCoverageCase()
+    {
+        GateResult result;
+        result.name = "E.builtin-registry-coverage";
+
+        struct ExpectedEntry
+        {
+            const char *definition_id;
+            BuiltinMaterialCreatorID builtin_id;
+            bool is_2d = false;
+            bool is_text = false;
+            bool with_sky = false;
+        };
+
+        static const ExpectedEntry expected[] =
+        {
+            { BUILTIN_MTL_DEF_FALLBACK_2D, BuiltinMaterialCreatorID::PureColor2D, true,  false, false },
+            { BUILTIN_MTL_DEF_FALLBACK_3D, BuiltinMaterialCreatorID::PureColor3D, false, false, false },
+            { BUILTIN_MTL_DEF_MISSING_MATERIAL, BuiltinMaterialCreatorID::PureColor3D, false, false, false },
+            { BUILTIN_MTL_DEF_TEXT, BuiltinMaterialCreatorID::Text2D, true, true, false },
+            { BUILTIN_MTL_DEF_SKY, BuiltinMaterialCreatorID::SkyMinimal, false, false, true },
+            { "Standard", BuiltinMaterialCreatorID::Standard, false, false, true },
+            { "StandardTextureArray", BuiltinMaterialCreatorID::StandardTextureArray, false, false, true },
+            { "PBRColor3D", BuiltinMaterialCreatorID::PBRColor3D, false, false, true },
+            { "Gizmo3D", BuiltinMaterialCreatorID::Gizmo3D, false, false, false },
+            { "RectTexture2D", BuiltinMaterialCreatorID::RectTexture2D, true, false, false },
+            { "RectTexture2DArray", BuiltinMaterialCreatorID::RectTexture2DArray, true, false, false },
+        };
+
+        for (const auto &entry : expected)
+        {
+            MaterialDefinition bmi{};
+            if (!TryGetMaterialDefinitionByID(entry.definition_id, bmi))
+            {
+                result.diagnostics.emplace_back(std::string("Missing material definition: ") + entry.definition_id);
+                continue;
+            }
+
+            if (bmi.builtin_creator_id != static_cast<uint32_t>(entry.builtin_id))
+            {
+                result.diagnostics.emplace_back(std::string("Builtin creator mismatch: ") + entry.definition_id);
+                continue;
+            }
+
+            if (bmi.is_2d != entry.is_2d)
+            {
+                result.diagnostics.emplace_back(std::string("is_2d mismatch: ") + entry.definition_id);
+                continue;
+            }
+
+            if (bmi.is_text != entry.is_text)
+            {
+                result.diagnostics.emplace_back(std::string("is_text mismatch: ") + entry.definition_id);
+                continue;
+            }
+
+            if (bmi.with_sky != entry.with_sky)
+                result.diagnostics.emplace_back(std::string("with_sky mismatch: ") + entry.definition_id);
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
+    static GateResult RunFallbackInferenceCase()
+    {
+        GateResult result;
+        result.name = "F.fallback-dimension-inference";
+
+        GeometryVertexFormat gvf_2d{};
+        gvf_2d.Add(VertexSemantic::Position, VK_FORMAT_R32G32_SFLOAT, 2, sizeof(float) * 2);
+
+        GeometryVertexFormat gvf_3d{};
+        gvf_3d.Add(VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT, 3, sizeof(float) * 3);
+
+        MaterialDefinitionBuildRequest request_2d{};
+        request_2d.geometry_vertex_format = &gvf_2d;
+
+        MaterialDefinitionBuildRequest request_3d{};
+        request_3d.geometry_vertex_format = &gvf_3d;
+
+        MaterialDefinitionBuildRequest request_unknown{};
+
+        if (!ShouldUse2DFallbackMaterial(request_2d))
+            result.diagnostics.emplace_back("2D position format must select fallback_2d.");
+
+        if (ShouldUse2DFallbackMaterial(request_3d))
+            result.diagnostics.emplace_back("3D position format must not select fallback_2d.");
+
+        if (ShouldUse2DFallbackMaterial(request_unknown))
+            result.diagnostics.emplace_back("Missing geometry hint must default to 3D fallback.");
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
 }
 
 int main()
@@ -165,6 +263,8 @@ int main()
     results.push_back(RunValidationCase("C.material-color-palette-explicit", palette_explicit, 1, true));
 
     results.push_back(RunBindlessEquivalenceCase());
+    results.push_back(RunBuiltinRegistryCoverageCase());
+    results.push_back(RunFallbackInferenceCase());
 
     bool all_passed = true;
     for (const auto &result : results)

@@ -372,12 +372,15 @@ ShaderProgram *MaterialManager::AcquireMaterialProgram(const mtl::MaterialDefini
 {
     const std::string &mtl_def_id = request.mtl_def_id;
 
-    // 1. 查询 BMI：按 mtl_def_id 主键；失败则用 3D 通用保底
+    // 1. 查询 BMI：按 mtl_def_id 主键；失败时按几何维度选择 2D/3D 保底
     mtl::MaterialDefinition bmi{};
     bool has_bmi = mtl::TryGetMaterialDefinitionByID(mtl_def_id, bmi);
 
     if (!has_bmi)
-        has_bmi = mtl::TryGetMaterialDefinitionByID(mtl::BUILTIN_MTL_DEF_FALLBACK_3D, bmi);
+    {
+        const char *fallback_def_id = mtl::GetFallbackMaterialDefinitionID(mtl::ShouldUse2DFallbackMaterial(request));
+        has_bmi = mtl::TryGetMaterialDefinitionByID(fallback_def_id, bmi);
+    }
 
     if (!has_bmi)
         return nullptr;

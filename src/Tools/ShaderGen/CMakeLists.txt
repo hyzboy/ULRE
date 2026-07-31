@@ -35,6 +35,7 @@ add_executable(MaterialResourceLayoutRegressionGate
 
 target_link_libraries(MaterialResourceLayoutRegressionGate
     PRIVATE ULRE.ShaderGen
+            ULRE.Vulkan
             CMCore
             CMMath
             CMCoreType)
