@@ -19,9 +19,6 @@ class GeometryVertexFormat;
 
 namespace mtl
 {
-    enum class BuiltinMaterialCreatorID:uint8;
-    struct Material2DCreateConfig;
-    struct Material3DCreateConfig;
     struct MaterialDefinitionBuildRequest;
     class ShaderProgramBuildSpec;
 }//namespace mtl
@@ -154,7 +151,7 @@ public: //ShaderProgram
                                                   PrimitiveType prim_type,
                                                   const GeometryVertexFormat *geometry_vertex_format = nullptr);
 
-private: // Legacy MaterialInstance bridge — internal engine use only during Phase 7 migration
+private:
 
     MaterialInstance *  CreateMaterialInstanceInternal(ShaderProgram *);
     MaterialInstance *  CreateMaterialInstanceInternal(ShaderProgram *, const VIL *vil);
@@ -175,28 +172,6 @@ private: // Legacy MaterialInstance bridge — internal engine use only during P
     MaterialInstance *  CreateMaterialInstanceInternal(ShaderProgram *mtl, const VILConfig *vil_cfg, const T *data)
     {
         return CreateMaterialInstanceInternal(mtl,vil_cfg,data,sizeof(T));
-    }
-
-    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size);
-    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg=nullptr)
-    {
-        return CreateMaterialInstanceInternal(mtl_id,mcc,vil_cfg,nullptr,0);
-    }
-    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material2DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format,const void *data,const uint32 data_size);
-    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material2DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format)
-    {
-        return CreateMaterialInstanceInternal(mtl_id,mcc,geometry_vertex_format,nullptr,0);
-    }
-
-    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size);
-    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg=nullptr)
-    {
-        return CreateMaterialInstanceInternal(mtl_id,mcc,vil_cfg,nullptr,0);
-    }
-    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material3DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format,const void *data,const uint32 data_size);
-    MaterialInstance *  CreateMaterialInstanceInternal(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material3DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format)
-    {
-        return CreateMaterialInstanceInternal(mtl_id,mcc,geometry_vertex_format,nullptr,0);
     }
 
 };//class MaterialManager

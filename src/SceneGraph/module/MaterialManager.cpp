@@ -15,8 +15,6 @@
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/shadergen/ShaderProgramBuildSpec.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
-#include<hgl/mtl/Material2DCreateConfig.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/object/ObjectTracker.h>
 #include<cstdint>
@@ -26,59 +24,6 @@ namespace hgl::graph{
 
 namespace
 {
-    bool InitLegacyRequestFromConfig(const mtl::BuiltinMaterialCreatorID mtl_id,
-                                     const mtl::MaterialCreateConfig &cfg,
-                                     mtl::MaterialDefinitionBuildRequest &request)
-    {
-        mtl::MaterialDefinition definition{};
-        if(mtl::TryGetMaterialDefinitionByBuiltinMaterialCreatorID(mtl_id,definition)
-        && !definition.definition_id.empty())
-        {
-            request.mtl_def_id = definition.definition_id;
-        }
-        else
-        {
-            const char *creator_name = mtl::GetBuiltinMaterialCreatorIDName(mtl_id);
-            if(!creator_name || !*creator_name)
-                return false;
-
-            request.mtl_def_id = creator_name;
-        }
-
-        request.primitive_type = cfg.prim;
-        request.geometry_vertex_format = cfg.geometry_vertex_format;
-        request.override_shader_stage_bits = true;
-        request.shader_stage_flag_bit = cfg.shader_stage_flag_bit;
-        request.override_rt_output = true;
-        request.rt_output = cfg.rt_output;
-        request.SetPrivateShaderBufferSources(cfg.private_shader_buffer_sources,cfg.private_shader_buffer_source_count);
-        return true;
-    }
-
-    bool BuildLegacyRequest(const mtl::BuiltinMaterialCreatorID mtl_id,
-                            const mtl::Material2DCreateConfig &cfg,
-                            mtl::MaterialDefinitionBuildRequest &request)
-    {
-        if(!InitLegacyRequestFromConfig(mtl_id,cfg,request))
-            return false;
-
-        request.recipe.coordinate_system_2d = cfg.coordinate_system;
-        request.recipe.local_to_world_2d = cfg.local_to_world;
-        return true;
-    }
-
-    bool BuildLegacyRequest(const mtl::BuiltinMaterialCreatorID mtl_id,
-                            const mtl::Material3DCreateConfig &cfg,
-                            mtl::MaterialDefinitionBuildRequest &request)
-    {
-        if(!InitLegacyRequestFromConfig(mtl_id,cfg,request))
-            return false;
-
-        request.override_sky_ambient_model = true;
-        request.sky_ambient_model = cfg.sky_ambient_model;
-        return true;
-    }
-
     void CreateShaderStageList(ValueArray<VkPipelineShaderStageCreateInfo> &shader_stage_list,ShaderModuleMap *shader_maps)
     {
         const ShaderModule *sm;
@@ -592,82 +537,6 @@ MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(ShaderProgram 
     }
 
     return mi;
-}
-
-MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
-{
-    HGL_CAPTURE_SCOPE();
-
-    if(!mcc)
-        return nullptr;
-
-    mtl::MaterialDefinitionBuildRequest request{};
-    if(!BuildLegacyRequest(mtl_id,*mcc,request))
-        return nullptr;
-
-    ShaderProgram *mtl = AcquireMaterialProgram(request);
-
-    if(!mtl)
-        return(nullptr);
-
-    return CreateMaterialInstanceInternal(mtl,vil_cfg,data,data_size);
-}
-
-MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
-{
-    HGL_CAPTURE_SCOPE();
-
-    if(!mcc)
-        return nullptr;
-
-    mtl::MaterialDefinitionBuildRequest request{};
-    if(!BuildLegacyRequest(mtl_id,*mcc,request))
-        return nullptr;
-
-    ShaderProgram *mtl = AcquireMaterialProgram(request);
-
-    if(!mtl)
-        return(nullptr);
-
-    return CreateMaterialInstanceInternal(mtl,vil_cfg,data,data_size);
-}
-
-MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material2DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format,const void *data,const uint32 data_size)
-{
-    HGL_CAPTURE_SCOPE();
-
-    if(!mcc)
-        return nullptr;
-
-    mtl::MaterialDefinitionBuildRequest request{};
-    if(!BuildLegacyRequest(mtl_id,*mcc,request))
-        return nullptr;
-    request.geometry_vertex_format = &geometry_vertex_format;
-    ShaderProgram *mtl = AcquireMaterialProgram(request);
-
-    if(!mtl)
-        return(nullptr);
-
-    return CreateMaterialInstanceInternal(mtl,geometry_vertex_format,data,data_size);
-}
-
-MaterialInstance *MaterialManager::CreateMaterialInstanceInternal(const mtl::BuiltinMaterialCreatorID mtl_id,mtl::Material3DCreateConfig *mcc,const GeometryVertexFormat &geometry_vertex_format,const void *data,const uint32 data_size)
-{
-    HGL_CAPTURE_SCOPE();
-
-    if(!mcc)
-        return nullptr;
-
-    mtl::MaterialDefinitionBuildRequest request{};
-    if(!BuildLegacyRequest(mtl_id,*mcc,request))
-        return nullptr;
-    request.geometry_vertex_format = &geometry_vertex_format;
-    ShaderProgram *mtl = AcquireMaterialProgram(request);
-
-    if(!mtl)
-        return(nullptr);
-
-    return CreateMaterialInstanceInternal(mtl,geometry_vertex_format,data,data_size);
 }
 
 }//namespace hgl::graph
