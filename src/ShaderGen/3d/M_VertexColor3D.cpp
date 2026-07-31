@@ -30,11 +30,11 @@ namespace
     };
 }
 
-ShaderProgramBuildSpec *CreateVertexColor3D(const contract::PhysicalDeviceProfileLite *profile,const Material3DCreateConfig *cfg)
+static ShaderProgramBuildSpec *CreateVertexColor3DImpl(const contract::PhysicalDeviceProfileLite *profile, const CompositorMaterialBuildConfig &bc)
 {
     FixedVertexEntry vertex_color_3d_vertex[] = {
-        { ResolveMaterialVertexSemanticFormat(cfg, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT),    VertexSemantic::Position },
-        { ResolveMaterialVertexSemanticFormat(cfg, VertexSemantic::Color,    VK_FORMAT_R32G32B32A32_SFLOAT), VertexSemantic::Color },
+        { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT),    VertexSemantic::Position },
+        { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Color,    VK_FORMAT_R32G32B32A32_SFLOAT), VertexSemantic::Color },
     };
 
     FixedMaterialDef dynamic_def {
@@ -48,7 +48,6 @@ ShaderProgramBuildSpec *CreateVertexColor3D(const contract::PhysicalDeviceProfil
         0,
     };
 
-    // 通过 CompositorAssembler 从 .glsl 模板文件组装 VS/FS
     CompositorAssembler assembler("ShaderLibrary");
 
     auto result = assembler.Assemble(
@@ -57,9 +56,9 @@ ShaderProgramBuildSpec *CreateVertexColor3D(const contract::PhysicalDeviceProfil
         PassType::ForwardOpaque,
         QualityTier::Medium,
         PlatformBackend::PC,
-        "compositor/main_forward_unlit_vertexcolor.vert.glsl",  // VS: Pos+Color+TID
-        "compositor/main_forward_unlit_vertexcolor.frag.glsl",  // FS: vertexColor, 无 MI
-        "surface/unlit_vertexcolor_surface.glsl"                // Surface: 顶点色直通
+        "compositor/main_forward_unlit_vertexcolor.vert.glsl",
+        "compositor/main_forward_unlit_vertexcolor.frag.glsl",
+        "surface/unlit_vertexcolor_surface.glsl"
     );
 
     if (!result.success)
@@ -74,20 +73,20 @@ ShaderProgramBuildSpec *CreateVertexColor3D(const contract::PhysicalDeviceProfil
         dynamic_def,
         result.vertex_glsl,
         result.fragment_glsl,
-        cfg);
+        bc);
 
     if (!mci)
         std::fprintf(stderr, "[VertexColor3D] CompileCompositorMaterial failed\n");
     return mci;
 }
 
+ShaderProgramBuildSpec *CreateVertexColor3D(const contract::PhysicalDeviceProfileLite *profile,const Material3DCreateConfig *cfg)
+{
+    return CreateVertexColor3DImpl(profile, ToCompositorBuildConfig(cfg));
+}
+
 ShaderProgramBuildSpec *CreateVertexColor3D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {
-    Material3DCreateConfig cfg(request.primitive_type,
-                               definition.with_camera ? WithCamera::With : WithCamera::Without,
-                               definition.with_local_to_world ? WithLocalToWorld::With : WithLocalToWorld::Without,
-                               definition.with_sky ? WithSky::With : WithSky::Without);
-    cfg.SetGeometryVertexFormat(request.geometry_vertex_format);
-    return CreateVertexColor3D(profile, &cfg);
+    return CreateVertexColor3DImpl(profile, ToCompositorBuildConfig3D(request, definition));
 }
 }//namespace hgl::graph::mtl

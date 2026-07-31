@@ -148,8 +148,6 @@ public: //ShaderGen Profiler (debug entry, collect-only)
 
 public: //ShaderProgram
 
-    ShaderProgram *   AcquireMaterialProgram(const mtl::BuiltinMaterialCreatorID, mtl::Material2DCreateConfig *);
-    ShaderProgram *   AcquireMaterialProgram(const mtl::BuiltinMaterialCreatorID, mtl::Material3DCreateConfig *);
     ShaderProgram *   AcquireMaterialProgram(const mtl::MaterialDefinitionBuildRequest &request);
     ShaderProgram *   AcquireMaterialProgram(const std::string &mtl_def_id,
                                                   const mtl::MaterialRecipe &recipe,

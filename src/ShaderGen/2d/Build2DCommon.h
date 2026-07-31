@@ -10,10 +10,64 @@
 #include<hgl/mtl/FixedMaterialDef.h>
 #include<hgl/common/RenderAssignDef.h>
 #include<hgl/mtl/UBOCommon.h>
+#include<hgl/shadergen/MaterialCompiler.h>
 #include<string>
 #include<vector>
 
 namespace hgl::graph::mtl{
+
+/// 2D 材质内部构建参数——从 MaterialDefinitionBuildRequest/MaterialDefinition 或
+/// Material2DCreateConfig 转换而来；不再直接传 config 指针到 helper 函数。
+struct Material2DBuildParams
+{
+    PrimitiveType           prim                = PrimitiveType::Triangles;
+    CoordinateSystem2D      coordinate_system   = CoordinateSystem2D::NDC;
+    bool                    local_to_world      = true;
+    bool                    material_instance   = false;
+    uint32_t                shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+    const GeometryVertexFormat *geometry_vertex_format = nullptr;
+    const ShaderBufferSource *const *private_shader_buffer_sources = nullptr;
+    uint32_t                private_shader_buffer_source_count = 0;
+
+    static Material2DBuildParams From(const Material2DCreateConfig &cfg)
+    {
+        Material2DBuildParams p;
+        p.prim                              = cfg.prim;
+        p.coordinate_system                 = cfg.coordinate_system;
+        p.local_to_world                    = cfg.local_to_world;
+        p.material_instance                 = cfg.material_instance;
+        p.shader_stage_flag_bit             = cfg.shader_stage_flag_bit;
+        p.geometry_vertex_format            = cfg.geometry_vertex_format;
+        p.private_shader_buffer_sources     = cfg.private_shader_buffer_sources;
+        p.private_shader_buffer_source_count = cfg.private_shader_buffer_source_count;
+        return p;
+    }
+
+    static Material2DBuildParams From(const MaterialDefinitionBuildRequest &request,
+                                      const MaterialDefinition &definition)
+    {
+        Material2DBuildParams p;
+        p.prim              = request.primitive_type;
+        p.coordinate_system = definition.is_text
+            ? definition.coordinate_system_2d
+            : request.recipe.coordinate_system_2d;
+        p.local_to_world    = definition.is_text
+            ? definition.local_to_world_2d
+            : request.recipe.local_to_world_2d;
+        p.material_instance = false;  // creators set this explicitly when needed
+        if(request.override_shader_stage_bits)
+            p.shader_stage_flag_bit = request.shader_stage_flag_bit;
+        p.geometry_vertex_format            = request.geometry_vertex_format;
+        p.private_shader_buffer_sources     = request.private_shader_buffer_sources;
+        p.private_shader_buffer_source_count = request.private_shader_buffer_source_count;
+        if(request.override_rt_output)
+        {
+            // rt_output override not stored in Material2DBuildParams (not needed by build helpers)
+        }
+        return p;
+    }
+};
+
 namespace build2d{
 
 // ─────────────────────────────────────────────────────────────
@@ -34,31 +88,23 @@ inline const char *GLSLInputType(const VkFormat fmt)
 
 // ─────────────────────────────────────────────────────────────
 // Descriptor layout macros for fixed descriptor set plan.
-// Set IDs are now stable (Scene=0, Transform=1, ShaderProgram=2...),
-// so we generate matching #define lines for GLSL to reference.
-//
-// Produced macros (only when the feature is active):
-//   SCENE_SET    / VIEWPORT_BINDING  — Scene set (Ortho only)
-//   L2W_SET      / L2W_BINDING       — Transform set (L2W only)
-//   TEX_SET      / TEX_BINDING        — texture in ShaderProgram set
-//   MI_SET       / MI_BINDING         — MI SSBO in ShaderProgram set
 // ─────────────────────────────────────────────────────────────
 
 inline std::string BuildDescriptorDefines(
-    const Material2DCreateConfig *cfg,
+    const Material2DBuildParams &p,
     bool has_texture,
     bool has_mi)
 {
     std::string defs;
     const int tex_binding = has_mi ? 3 : 0;
 
-    if(cfg->coordinate_system == CoordinateSystem2D::Ortho)
+    if(p.coordinate_system == CoordinateSystem2D::Ortho)
     {
         defs += "#define SCENE_SET 0\n";
         defs += "#define VIEWPORT_BINDING 2\n";
     }
 
-    if(cfg->local_to_world)
+    if(p.local_to_world)
     {
         defs += "#define L2W_SET 1\n";
         defs += "#define L2W_BINDING 0\n";
@@ -85,53 +131,76 @@ inline std::string BuildDescriptorDefines(
     return defs;
 }
 
+// Legacy overload kept during transition — prefer the params version above
+inline std::string BuildDescriptorDefines(
+    const Material2DCreateConfig *cfg,
+    bool has_texture,
+    bool has_mi)
+{
+    return BuildDescriptorDefines(Material2DBuildParams::From(*cfg), has_texture, has_mi);
+}
+
 // ─────────────────────────────────────────────────────────────
-// Shader preamble builder — #version + #define lines
-// C++ only produces the preamble; GLSL code lives in files.
-//
-//   std::string vs = preamble + "#include \"2d/xxx.vert.glsl\"\n";
-//   std::string fs = preamble + "#include \"2d/xxx.frag.glsl\"\n";
+// Shader preamble builder
 // ─────────────────────────────────────────────────────────────
 
-inline std::string Build2DPreamble(const Material2DCreateConfig *cfg, bool has_texture, bool has_mi, VkFormat position_format_override = VK_FORMAT_UNDEFINED)
+inline std::string Build2DPreamble(const Material2DBuildParams &p, bool has_texture, bool has_mi, VkFormat position_format_override = VK_FORMAT_UNDEFINED)
 {
-    std::string p = "#version 450\n\n";
-    p += BuildDescriptorDefines(cfg, has_texture, has_mi);
+    std::string pr = "#version 450\n\n";
+    pr += BuildDescriptorDefines(p, has_texture, has_mi);
 
     const VkFormat position_format = (position_format_override!=VK_FORMAT_UNDEFINED)
                                    ? position_format_override
-                                   : ResolveMaterialPositionFormat(cfg, VK_FORMAT_R32G32_SFLOAT);
+                                   : ResolveMaterialPositionFormat(p.geometry_vertex_format, VK_FORMAT_R32G32_SFLOAT);
 
-    p += "#define POSITION_FORMAT ";
-    p += GLSLInputType(position_format);
-    p += "\n";
+    pr += "#define POSITION_FORMAT ";
+    pr += GLSLInputType(position_format);
+    pr += "\n";
 
-    switch(cfg->coordinate_system)
+    switch(p.coordinate_system)
     {
-        case CoordinateSystem2D::NDC:       p += "#define COORD_NDC\n"; break;
-        case CoordinateSystem2D::ZeroToOne: p += "#define COORD_ZEROTOONE\n"; break;
-        case CoordinateSystem2D::Ortho:     p += "#define COORD_ORTHO\n"; break;
+        case CoordinateSystem2D::NDC:       pr += "#define COORD_NDC\n"; break;
+        case CoordinateSystem2D::ZeroToOne: pr += "#define COORD_ZEROTOONE\n"; break;
+        case CoordinateSystem2D::Ortho:     pr += "#define COORD_ORTHO\n"; break;
     }
 
-    if(cfg->local_to_world)     p += "#define HAS_L2W\n";
-    if(cfg->material_instance)  p += "#define HAS_MI\n";
+    if(p.local_to_world)    pr += "#define HAS_L2W\n";
+    if(p.material_instance) pr += "#define HAS_MI\n";
 
-    p += "\n";
-    return p;
+    pr += "\n";
+    return pr;
+}
+
+// Legacy overload
+inline std::string Build2DPreamble(const Material2DCreateConfig *cfg, bool has_texture, bool has_mi, VkFormat position_format_override = VK_FORMAT_UNDEFINED)
+{
+    return Build2DPreamble(Material2DBuildParams::From(*cfg), has_texture, has_mi, position_format_override);
 }
 
 // ─────────────────────────────────────────────────────────────
 // Common FixedVertexEntry builders
 // ─────────────────────────────────────────────────────────────
 
-inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Material2DCreateConfig *cfg, VkFormat position_format_override = VK_FORMAT_UNDEFINED)
+inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Material2DBuildParams &p, VkFormat position_format_override = VK_FORMAT_UNDEFINED)
 {
     const VkFormat position_format = (position_format_override!=VK_FORMAT_UNDEFINED)
                                    ? position_format_override
-                                   : ResolveMaterialPositionFormat(cfg, VK_FORMAT_R32G32_SFLOAT);
+                                   : ResolveMaterialPositionFormat(p.geometry_vertex_format, VK_FORMAT_R32G32_SFLOAT);
 
-    // Position
     v.push_back({ position_format, VertexSemantic::Position });
+}
+
+inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Material2DCreateConfig *cfg, VkFormat position_format_override = VK_FORMAT_UNDEFINED)
+{
+    PushBaseVertexEntries(v, Material2DBuildParams::From(*cfg), position_format_override);
+}
+
+inline void PushSemanticVertexEntry(std::vector<FixedVertexEntry> &v,
+                                    const Material2DBuildParams &p,
+                                    const VertexSemantic semantic,
+                                    const VkFormat fallback_format)
+{
+    v.push_back({ ResolveMaterialVertexSemanticFormat(p.geometry_vertex_format, semantic, fallback_format), semantic });
 }
 
 inline void PushSemanticVertexEntry(std::vector<FixedVertexEntry> &v,
@@ -139,7 +208,7 @@ inline void PushSemanticVertexEntry(std::vector<FixedVertexEntry> &v,
                                     const VertexSemantic semantic,
                                     const VkFormat fallback_format)
 {
-    v.push_back({ ResolveMaterialVertexSemanticFormat(cfg, semantic, fallback_format), semantic });
+    PushSemanticVertexEntry(v, Material2DBuildParams::From(*cfg), semantic, fallback_format);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -153,25 +222,50 @@ inline void PushSemanticVertexEntry(std::vector<FixedVertexEntry> &v,
     constexpr DescriptorKind L2W_KIND_2D = DescriptorKind::UBO;
 #endif
 
-inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, const Material2DCreateConfig *cfg)
+inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, const Material2DBuildParams &p)
 {
     // Viewport (Scene set) — only for Ortho
-    if(cfg->coordinate_system == CoordinateSystem2D::Ortho)
+    if(p.coordinate_system == CoordinateSystem2D::Ortho)
         v.push_back({DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::UBO});
 
     // L2W (Transform set) — only if L2W
-    if(cfg->local_to_world)
+    if(p.local_to_world)
     {
         v.push_back({DescriptorSetType::Transform, L2W_KIND_2D, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr, DescriptorSemantic::LocalToWorld, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, GetDescriptorSemanticLayerByKind(L2W_KIND_2D)});
         v.push_back({DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w_index_rows", "LocalToWorldIndexRows", nullptr, DescriptorSemantic::LocalToWorldIndexTable, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO});
     }
 
-    if(cfg->material_instance)
+    if(p.material_instance)
     {
         v.push_back({DescriptorSetType::Material, MaterialInstanceDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl", "MaterialInstanceData", nullptr, DescriptorSemantic::MaterialInstance, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::PBRSurface, GetDescriptorSemanticLayerByKind(MaterialInstanceDescriptorKind)});
         v.push_back({DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl_data_index_rows", "DataIndexRows", nullptr, DescriptorSemantic::MaterialDataIndexTable, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO});
         v.push_back({DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl_texture_layer_rows", "TextureLayerRows", nullptr, DescriptorSemantic::MaterialTextureLayerTable, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO});
     }
+}
+
+inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, const Material2DCreateConfig *cfg)
+{
+    PushBaseDescriptorEntries(v, Material2DBuildParams::From(*cfg));
+}
+
+// ─────────────────────────────────────────────────────────────
+// Convert Material2DBuildParams → CompositorMaterialBuildConfig (2D: no camera/sky)
+// ─────────────────────────────────────────────────────────────
+
+inline CompositorMaterialBuildConfig ToCompositorBuildConfig2D(const Material2DBuildParams &p)
+{
+    CompositorMaterialBuildConfig bc;
+    bc.primitive_type                  = p.prim;
+    bc.shader_stage_flag_bits          = p.shader_stage_flag_bit;
+    bc.material_instance               = p.material_instance;
+    bc.with_local_to_world             = p.local_to_world;
+    bc.with_camera                     = false;
+    bc.with_sky                        = false;
+    bc.sky_ambient_model               = SkyLightAmbientModel::Simple;
+    bc.private_shader_buffer_sources   = p.private_shader_buffer_sources;
+    bc.private_shader_buffer_source_count = p.private_shader_buffer_source_count;
+    bc.geometry_vertex_format          = p.geometry_vertex_format;
+    return bc;
 }
 
 }//namespace build2d

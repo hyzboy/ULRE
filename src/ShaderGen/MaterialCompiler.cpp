@@ -43,7 +43,7 @@ static bool HasDescriptorSemantic(const FixedMaterialDef &def, const DescriptorS
     return false;
 }
 
-static CompositorMaterialBuildConfig ToCompositorMaterialBuildConfig(
+CompositorMaterialBuildConfig ToCompositorBuildConfig(
     const Material3DCreateConfig *config,
     const PrimitiveType default_primitive_type)
 {
@@ -57,6 +57,7 @@ static CompositorMaterialBuildConfig ToCompositorMaterialBuildConfig(
     out.sky_ambient_model = config ? config->sky_ambient_model : SkyLightAmbientModel::Simple;
     out.private_shader_buffer_sources = config ? config->private_shader_buffer_sources : nullptr;
     out.private_shader_buffer_source_count = config ? config->private_shader_buffer_source_count : 0;
+    out.geometry_vertex_format = config ? config->geometry_vertex_format : nullptr;
     return out;
 }
 
@@ -74,6 +75,7 @@ static CompositorMaterialBuildConfig ToCompositorMaterialBuildConfig(
     out.sky_ambient_model = SkyLightAmbientModel::Simple;
     out.private_shader_buffer_sources = config ? config->private_shader_buffer_sources : nullptr;
     out.private_shader_buffer_source_count = config ? config->private_shader_buffer_source_count : 0;
+    out.geometry_vertex_format = config ? config->geometry_vertex_format : nullptr;
     return out;
 }
 // ═══════════════════════════════════════════════════════════════════════════
@@ -351,7 +353,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     const std::string &         fs_glsl,
     const Material3DCreateConfig *config)
 {
-    const CompositorMaterialBuildConfig build_config = ToCompositorMaterialBuildConfig(config, def.primitive_type);
+    const CompositorMaterialBuildConfig build_config = ToCompositorBuildConfig(config, def.primitive_type);
     return CompileCompositorMaterial(profile, def, vs_glsl, fs_glsl, build_config);
 }
 

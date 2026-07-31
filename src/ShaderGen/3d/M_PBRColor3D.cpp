@@ -45,13 +45,11 @@ namespace
 
 }//namespace
 
-ShaderProgramBuildSpec *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *profile, PBRColor3DMaterialCreateConfig *cfg)
+static ShaderProgramBuildSpec *CreatePBRColor3DImpl(const contract::PhysicalDeviceProfileLite *profile, CompositorMaterialBuildConfig bc)
 {
-    if (cfg)
-        cfg->material_instance = true;
+    bc.material_instance = true;
 
-    // Dynamic descriptor injection for non-Simple sky models
-    SkyLightAmbientModel ambient = cfg ? cfg->sky_ambient_model : SkyLightAmbientModel::Simple;
+    SkyLightAmbientModel ambient = bc.sky_ambient_model;
 
     std::vector<FixedDescriptorEntry> dynamic_descriptors(
         PBR_COLOR_3D_DESCRIPTORS,
@@ -64,9 +62,9 @@ ShaderProgramBuildSpec *CreatePBRColor3D(const contract::PhysicalDeviceProfileLi
         unused_resources);
 
     FixedVertexEntry pbr_color_3d_vertex[] = {
-        { ResolveMaterialVertexSemanticFormat(cfg, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
-        { ResolveMaterialVertexSemanticFormat(cfg, VertexSemantic::TexCoord, VK_FORMAT_R32G32_SFLOAT),    VertexSemantic::TexCoord },
-        { ResolveMaterialVertexSemanticFormat(cfg, VertexSemantic::Normal,   VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Normal },
+        { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
+        { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::TexCoord, VK_FORMAT_R32G32_SFLOAT),    VertexSemantic::TexCoord },
+        { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Normal,   VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Normal },
     };
 
     FixedMaterialDef dynamic_def {
@@ -80,7 +78,6 @@ ShaderProgramBuildSpec *CreatePBRColor3D(const contract::PhysicalDeviceProfileLi
         mi_bytes,
     };
 
-    // Assemble GLSL from templates
     CompositorAssembler assembler("ShaderLibrary");
 
     auto result = assembler.Assemble(
@@ -106,7 +103,7 @@ ShaderProgramBuildSpec *CreatePBRColor3D(const contract::PhysicalDeviceProfileLi
         dynamic_def,
         result.vertex_glsl,
         result.fragment_glsl,
-        cfg);
+        bc);
 
     if (!mci)
         std::fprintf(stderr, "[PBRColor3D] CompileCompositorMaterial failed\n");
@@ -114,13 +111,14 @@ ShaderProgramBuildSpec *CreatePBRColor3D(const contract::PhysicalDeviceProfileLi
     return mci;
 }
 
+ShaderProgramBuildSpec *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *profile, PBRColor3DMaterialCreateConfig *cfg)
+{
+    return CreatePBRColor3DImpl(profile, ToCompositorBuildConfig(cfg));
+}
+
 
 ShaderProgramBuildSpec *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {
-    PBRColor3DMaterialCreateConfig cfg;
-    cfg.prim = request.primitive_type;
-    cfg.SetGeometryVertexFormat(request.geometry_vertex_format);
-    if(request.override_sky_ambient_model) cfg.sky_ambient_model = request.sky_ambient_model;
-    return CreatePBRColor3D(profile, &cfg);
+    return CreatePBRColor3DImpl(profile, ToCompositorBuildConfig3D(request, definition, true));
 }
 }//namespace hgl::graph::mtl

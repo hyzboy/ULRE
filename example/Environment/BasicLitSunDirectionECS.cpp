@@ -10,6 +10,7 @@
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/mtl/MaterialRecipe.h>
+#include<hgl/graph/ssbo/StandardMaterialInstance.h>
 
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
@@ -88,7 +89,7 @@ private:
 #endif//DRAW_GIZMO
 
     graph::mtl::MaterialRecipe mesh_recipe{};
-    graph::SSBOArrayAccessor<mtl::StandardMaterialInstance>* mi_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<ssbo::StandardMaterialInstance>* mi_ssbo_accessor = nullptr;
     VertexDataManager* mesh_vdm = nullptr;
 
     RenderMesh* rm_floor = nullptr;
@@ -202,7 +203,7 @@ private:
 
         // Bindless registration is deferred until ECS systems are ready.
 
-        mtl::StandardMaterialInstance mi_data{};
+        ssbo::StandardMaterialInstance mi_data{};
         mi_data.base_color = 0xFFFFFFFFu;
         mi_data.metallic = 0.08f;
         mi_data.roughness = 0.92f;
@@ -216,7 +217,7 @@ private:
         if (!domain_manager)
             return false;
 
-        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<mtl::StandardMaterialInstance>(
+        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::StandardMaterialInstance>(
             graph::mtl::SSBOType::PBRSurface,
             "BasicLitSunDir:Standard:MI",
             1);

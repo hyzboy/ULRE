@@ -38,10 +38,10 @@ namespace
 
 }//namespace
 
-ShaderProgramBuildSpec *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *profile, const SkyMinimalCreateConfig *cfg)
+static ShaderProgramBuildSpec *CreateSkyMinimalImpl(const contract::PhysicalDeviceProfileLite *profile, const CompositorMaterialBuildConfig &bc)
 {
     FixedVertexEntry sky_minimal_vertex[] = {
-        { ResolveMaterialVertexSemanticFormat(cfg, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
+        { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
     };
 
     FixedMaterialDef dynamic_def {
@@ -80,19 +80,20 @@ ShaderProgramBuildSpec *CreateSkyMinimal(const contract::PhysicalDeviceProfileLi
         dynamic_def,
         result.vertex_glsl,
         result.fragment_glsl,
-        cfg);
+        bc);
 
     if (!mci)
         std::fprintf(stderr, "[SkyMinimal] CompileCompositorMaterial failed\n");
     return mci;
 }
 
+ShaderProgramBuildSpec *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *profile, const SkyMinimalCreateConfig *cfg)
+{
+    return CreateSkyMinimalImpl(profile, ToCompositorBuildConfig(cfg));
+}
+
 ShaderProgramBuildSpec *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {
-    SkyMinimalCreateConfig cfg(definition.with_camera ? WithCamera::With : WithCamera::Without);
-    cfg.prim = request.primitive_type;
-    cfg.SetGeometryVertexFormat(request.geometry_vertex_format);
-    if(request.override_sky_ambient_model) cfg.sky_ambient_model = request.sky_ambient_model;
-    return CreateSkyMinimal(profile, &cfg);
+    return CreateSkyMinimalImpl(profile, ToCompositorBuildConfig3D(request, definition));
 }
 }//namespace hgl::graph::mtl

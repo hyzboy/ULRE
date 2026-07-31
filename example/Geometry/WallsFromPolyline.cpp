@@ -50,9 +50,9 @@ private:
     hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
 
-    mtl::StandardMaterialInstance mi_data;
+    ssbo::StandardMaterialInstance mi_data;
     graph::mtl::MaterialRecipe wall_recipe{};
-    graph::SSBOArrayAccessor<mtl::StandardMaterialInstance>* mi_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<ssbo::StandardMaterialInstance>* mi_ssbo_accessor = nullptr;
     Sampler *sampler = nullptr;
     Texture2D *base_color_texture = nullptr;
     std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
@@ -149,7 +149,7 @@ public:
         if (!domain_manager || !buffer_manager)
             return false;
 
-        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<mtl::StandardMaterialInstance>(
+        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::StandardMaterialInstance>(
             graph::mtl::SSBOType::PBRSurface,
             "WallsFromPolyline:MIData",
             1);

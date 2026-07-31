@@ -1,4 +1,4 @@
-﻿set(SHADERGEN_INCLUDE_PATH  ${ROOT_INCLUDE_PATH}/hgl/shadergen)
+set(SHADERGEN_INCLUDE_PATH  ${ROOT_INCLUDE_PATH}/hgl/shadergen)
 
 # Add inja include path
 include_directories(${ULRE_3RDPTY_ROOT_PATH}/inja/single_include)
@@ -50,6 +50,13 @@ SOURCE_GROUP("Common" FILES ${SHADERGEN_COMMON_FILES})
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
+set(SSBO_HEADER_PATH ${ROOT_INCLUDE_PATH}/hgl/graph/ssbo)
+
+SET(SSBO_STRUCT_FILES   ${SSBO_HEADER_PATH}/StandardMaterialInstance.h
+                        ${SSBO_HEADER_PATH}/StandardTextureArrayMaterialInstance.h
+                        ${SSBO_HEADER_PATH}/PBRColor3DMaterialInstance.h)
+
+SOURCE_GROUP("Standard Material\\SSBO" FILES ${SSBO_STRUCT_FILES})
 SET(BLINN_PHONG_HEADER_FILES ${STD_MTL_HEADER_PATH}/BlinnPhong.h)
 
 SET(STD_MTL_2D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material2DCreateConfig.h
@@ -156,6 +163,7 @@ add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_INCLUDE_PATH}
                                         ${BLINN_PHONG_HEADER_FILES}
                                         ${STD_MTL_2D_SOURCE_FILES}
                                         ${STD_MTL_3D_SOURCE_FILES}
+                                        ${SSBO_STRUCT_FILES}
                                         ${FIXED_MTL_FILES}
                                         ${SHADER_TEMPLATE_ENGINE_HEADER_FILES}
                                         ${MATERIAL_COMPILER_FILES}
@@ -163,3 +171,6 @@ add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_INCLUDE_PATH}
                                         ${COMPOSITOR_SOURCE_FILES}
                                         ${NEW_MTL_TYPE_FILES}
 )
+
+
+

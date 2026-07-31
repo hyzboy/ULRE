@@ -87,10 +87,6 @@ inline ShaderProgramBuildSpec *Create##name(const contract::PhysicalDeviceProfil
 
 ShaderProgramBuildSpec *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
                                              const BuiltinMaterialCreatorID mtl_id,
-                                             MaterialCreateConfig *cfg);
-
-ShaderProgramBuildSpec *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
-                                             const BuiltinMaterialCreatorID mtl_id,
                                              const MaterialDefinition &definition,
                                              const MaterialDefinitionBuildRequest &request);
 
@@ -98,8 +94,14 @@ std::string BuildBuiltinMaterialCreatorRequestHash(const BuiltinMaterialCreatorI
                                                  const MaterialDefinition &definition,
                                                  const MaterialDefinitionBuildRequest &request);
 
-VkFormat ResolveMaterialVertexSemanticFormat(const MaterialCreateConfig *cfg, VertexSemantic semantic, VkFormat fallback_format);
-VkFormat ResolveMaterialPositionFormat(const MaterialCreateConfig *cfg, VkFormat fallback_format);
+void ApplyMaterialBuildRequestToLegacyConfig(MaterialCreateConfig &cfg,
+                                             const MaterialDefinitionBuildRequest &request);
+
+VkFormat ResolveMaterialVertexSemanticFormat(const GeometryVertexFormat *gvf, VertexSemantic semantic, VkFormat fallback_format);
+inline VkFormat ResolveMaterialPositionFormat(const GeometryVertexFormat *gvf, VkFormat fallback_format)
+{
+    return ResolveMaterialVertexSemanticFormat(gvf, VertexSemantic::Position, fallback_format);
+}
 
 const char *GetBuiltinMaterialCreatorIDName(const BuiltinMaterialCreatorID mtl_id);
 

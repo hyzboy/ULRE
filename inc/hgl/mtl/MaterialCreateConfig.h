@@ -138,4 +138,20 @@ public:
 
     virtual std::string ToHashStdString();
 };//struct MaterialCreateConfig
+
+}//namespace hgl::graph::mtl
+
+// ── Legacy resolve helpers — only visible when MaterialCreateConfig is fully defined ──
+// They forward to the GeometryVertexFormat* overloads declared in MaterialLibrary.h
+// Include MaterialLibrary.h after MaterialCreateConfig.h to get all overloads.
+#include<hgl/mtl/MaterialLibrary.h>
+namespace hgl::graph::mtl{
+inline VkFormat ResolveMaterialVertexSemanticFormat(const MaterialCreateConfig *cfg, VertexSemantic semantic, VkFormat fallback_format)
+{
+    return ResolveMaterialVertexSemanticFormat(cfg ? cfg->geometry_vertex_format : nullptr, semantic, fallback_format);
+}
+inline VkFormat ResolveMaterialPositionFormat(const MaterialCreateConfig *cfg, VkFormat fallback_format)
+{
+    return ResolveMaterialPositionFormat(cfg ? cfg->geometry_vertex_format : nullptr, fallback_format);
+}
 }//namespace hgl::graph::mtl

@@ -36,13 +36,13 @@ namespace
     };
 }
 
-ShaderProgramBuildSpec *CreateVertexLuminance3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
+static ShaderProgramBuildSpec *CreateVertexLuminance3DImpl(const contract::PhysicalDeviceProfileLite *profile, CompositorMaterialBuildConfig bc)
 {
-    cfg->material_instance=true;
+    bc.material_instance = true;
 
-    const VkFormat position_format = ResolveMaterialPositionFormat(cfg, VK_FORMAT_R32G32B32_SFLOAT);
+    const VkFormat position_format = ResolveMaterialPositionFormat(bc.geometry_vertex_format, VK_FORMAT_R32G32B32_SFLOAT);
     const bool use_vec2_position = position_format == VK_FORMAT_R32G32_SFLOAT;
-    const VkFormat luminance_format = ResolveMaterialVertexSemanticFormat(cfg, VertexSemantic::Luminance, VK_FORMAT_R32_SFLOAT);
+    const VkFormat luminance_format = ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Luminance, VK_FORMAT_R32_SFLOAT);
 
     FixedVertexEntry vertex_luminance_3d_vertex[] = {
         { position_format,   VertexSemantic::Position },
@@ -60,7 +60,6 @@ ShaderProgramBuildSpec *CreateVertexLuminance3D(const contract::PhysicalDevicePr
         VERTEX_LUMINANCE_3D_MI_BYTES,
     };
 
-    // 通过 CompositorAssembler 从 .glsl 模板文件组装 VS/FS
     CompositorAssembler assembler("ShaderLibrary");
 
     const char *vs_template = use_vec2_position
@@ -73,9 +72,9 @@ ShaderProgramBuildSpec *CreateVertexLuminance3D(const contract::PhysicalDevicePr
         PassType::ForwardOpaque,
         QualityTier::Medium,
         PlatformBackend::PC,
-        vs_template,                                            // VS: Pos+Lum+TID+MIID
-        "compositor/main_forward_unlit_luminance.frag.glsl",    // FS: luminance+MIID
-        "surface/unlit_luminance_surface.glsl"                  // Surface: MI color × luminance
+        vs_template,
+        "compositor/main_forward_unlit_luminance.frag.glsl",
+        "surface/unlit_luminance_surface.glsl"
     );
 
     if (!result.success)
@@ -90,20 +89,20 @@ ShaderProgramBuildSpec *CreateVertexLuminance3D(const contract::PhysicalDevicePr
         dynamic_def,
         result.vertex_glsl,
         result.fragment_glsl,
-        cfg);
+        bc);
 
     if (!mci)
         std::fprintf(stderr, "[VertexLuminance3D] CompileCompositorMaterial failed\n");
     return mci;
 }
 
+ShaderProgramBuildSpec *CreateVertexLuminance3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
+{
+    return CreateVertexLuminance3DImpl(profile, ToCompositorBuildConfig(cfg));
+}
+
 ShaderProgramBuildSpec *CreateVertexLuminance3D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {
-    Material3DCreateConfig cfg(request.primitive_type,
-                               definition.with_camera ? WithCamera::With : WithCamera::Without,
-                               definition.with_local_to_world ? WithLocalToWorld::With : WithLocalToWorld::Without,
-                               definition.with_sky ? WithSky::With : WithSky::Without);
-    cfg.SetGeometryVertexFormat(request.geometry_vertex_format);
-    return CreateVertexLuminance3D(profile, &cfg);
+    return CreateVertexLuminance3DImpl(profile, ToCompositorBuildConfig3D(request, definition));
 }
 }//namespace hgl::graph::mtl

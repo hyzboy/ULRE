@@ -67,7 +67,7 @@ private:
     Entity* camera_entity = nullptr;
 
     graph::mtl::MaterialRecipe mesh_recipe{};
-    graph::SSBOArrayAccessor<mtl::StandardMaterialInstance>* mi_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<ssbo::StandardMaterialInstance>* mi_ssbo_accessor = nullptr;
     VertexDataManager* mesh_vdm = nullptr;
 
     RenderMesh* rm_floor = nullptr;
@@ -123,13 +123,13 @@ private:
         if (!domain_manager)
             return false;
 
-        mtl::StandardMaterialInstance mi_data{};
+        ssbo::StandardMaterialInstance mi_data{};
         mi_data.base_color  = 0xFFFFFFFFu;
         mi_data.metallic    = 0.08f;
         mi_data.roughness   = 0.92f;
         mi_data.normal_scale = 0.35f;
 
-        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<mtl::StandardMaterialInstance>(
+        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::StandardMaterialInstance>(
             graph::mtl::SSBOType::PBRSurface,
             "06b:PBRSurface:MIData",
             1);

@@ -20,20 +20,20 @@ namespace
     }();
 }
 
-ShaderProgramBuildSpec *CreateVertexColor2D(const contract::PhysicalDeviceProfileLite *profile,const Material2DCreateConfig *cfg)
+static ShaderProgramBuildSpec *CreateVertexColor2DImpl(const contract::PhysicalDeviceProfileLite *profile, const Material2DBuildParams &p)
 {
-    auto preamble = build2d::Build2DPreamble(cfg, false, false);
+    auto preamble = build2d::Build2DPreamble(p, false, false);
 
     std::vector<FixedVertexEntry> vertices;
-    build2d::PushBaseVertexEntries(vertices, cfg);
-    build2d::PushSemanticVertexEntry(vertices, cfg, VertexSemantic::Color, VK_FORMAT_R32G32B32A32_SFLOAT);
+    build2d::PushBaseVertexEntries(vertices, p);
+    build2d::PushSemanticVertexEntry(vertices, p, VertexSemantic::Color, VK_FORMAT_R32G32B32A32_SFLOAT);
 
     std::vector<FixedDescriptorEntry> descriptors;
-    build2d::PushBaseDescriptorEntries(descriptors, cfg);
+    build2d::PushBaseDescriptorEntries(descriptors, p);
 
     FixedMaterialDef def {
         "VertexColor2D",
-        cfg->prim,
+        p.prim,
         vertices.data(), uint32_t(vertices.size()),
         descriptors.data(), uint32_t(descriptors.size()),
         nullptr, 0,
@@ -42,20 +42,19 @@ ShaderProgramBuildSpec *CreateVertexColor2D(const contract::PhysicalDeviceProfil
     std::string vs = preamble + "#include \"2d/vertexcolor2d.vert.glsl\"\n";
     std::string fs = preamble + "#include \"2d/vertexcolor2d.frag.glsl\"\n";
 
-    ShaderProgramBuildSpec *mci = CompileCompositorMaterial(profile, def, vs, fs, cfg);
+    ShaderProgramBuildSpec *mci = CompileCompositorMaterial(profile, def, vs, fs, build2d::ToCompositorBuildConfig2D(p));
     if(!mci)
         std::fprintf(stderr, "[VertexColor2D] CompileCompositorMaterial failed\n");
     return mci;
 }
 
+ShaderProgramBuildSpec *CreateVertexColor2D(const contract::PhysicalDeviceProfileLite *profile,const Material2DCreateConfig *cfg)
+{
+    return CreateVertexColor2DImpl(profile, Material2DBuildParams::From(*cfg));
+}
 
 ShaderProgramBuildSpec *CreateVertexColor2D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {
-    (void)definition;
-    Material2DCreateConfig cfg(request.primitive_type,
-                               request.recipe.coordinate_system_2d,
-                               request.recipe.local_to_world_2d ? WithLocalToWorld::With : WithLocalToWorld::Without);
-    cfg.SetGeometryVertexFormat(request.geometry_vertex_format);
-    return CreateVertexColor2D(profile, &cfg);
+    return CreateVertexColor2DImpl(profile, Material2DBuildParams::From(request, definition));
 }
 }//namespace hgl::graph::mtl

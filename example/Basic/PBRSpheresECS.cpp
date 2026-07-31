@@ -90,7 +90,7 @@ private:
     Entity *      camera_entity = nullptr;
 
     graph::mtl::MaterialRecipe sphere_recipe{};
-    graph::SSBOArrayAccessor<mtl::StandardMaterialInstance>* mi_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<ssbo::StandardMaterialInstance>* mi_ssbo_accessor = nullptr;
     Texture2DArray *    base_color_texture = nullptr;
     Texture2DArray *    normal_texture = nullptr;
     Sampler *           sampler = nullptr;
@@ -101,7 +101,7 @@ private:
     PrimitiveAsset      base_primitives[GEOMETRY_VARIANT_COUNT]{};
 
     // One MI per cell: col controls metallic, row controls roughness
-    mtl::StandardMaterialInstance sphere_mi_data[GRID_SIZE][GRID_SIZE]{};
+    ssbo::StandardMaterialInstance sphere_mi_data[GRID_SIZE][GRID_SIZE]{};
     uint32_t                         sphere_slot_rows[GRID_SIZE][GRID_SIZE]{};
 
     // 100 entities, one per sphere
@@ -280,7 +280,7 @@ private:
 
         const uint32_t mi_count = GRID_SIZE * GRID_SIZE;
 
-        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<mtl::StandardMaterialInstance>(
+        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::StandardMaterialInstance>(
             graph::mtl::SSBOType::PBRSurface,
             "PBRSpheres:PBRSurface:MIData",
             mi_count);

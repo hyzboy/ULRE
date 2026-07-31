@@ -36,14 +36,12 @@ namespace
 
 }
 
-ShaderProgramBuildSpec *CreateStandard(const contract::PhysicalDeviceProfileLite *profile, const Material3DCreateConfig *cfg)
+static ShaderProgramBuildSpec *CreateStandardImpl(const contract::PhysicalDeviceProfileLite *profile, CompositorMaterialBuildConfig bc)
 {
-    Material3DCreateConfig cfg_with_mi = cfg ? *cfg : Material3DCreateConfig();
-    cfg_with_mi.material_instance = true;
+    bc.material_instance = true;
 
-    SkyLightAmbientModel ambient = cfg_with_mi.sky_ambient_model;
+    SkyLightAmbientModel ambient = bc.sky_ambient_model;
 
-    // Adapter layer: only difference from StandardTextureArray is "sampler2D".
     std::vector<FixedDescriptorEntry> dynamic_descriptors = BuildStandardDescriptors("sampler2D");
 
     std::vector<const char *> unused_resources;
@@ -53,9 +51,9 @@ ShaderProgramBuildSpec *CreateStandard(const contract::PhysicalDeviceProfileLite
         unused_resources);
 
     FixedVertexEntry standard_vertex[] = {
-        { ResolveMaterialVertexSemanticFormat(&cfg_with_mi, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
-        { ResolveMaterialVertexSemanticFormat(&cfg_with_mi, VertexSemantic::TexCoord, VK_FORMAT_R32G32_SFLOAT),    VertexSemantic::TexCoord },
-        { ResolveMaterialVertexSemanticFormat(&cfg_with_mi, VertexSemantic::Normal,   VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Normal },
+        { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
+        { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::TexCoord, VK_FORMAT_R32G32_SFLOAT),    VertexSemantic::TexCoord },
+        { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Normal,   VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Normal },
     };
 
     FixedMaterialDef dynamic_def {
@@ -79,7 +77,7 @@ ShaderProgramBuildSpec *CreateStandard(const contract::PhysicalDeviceProfileLite
         PlatformBackend::PC,
         "compositor/main_forward_lit.vert.glsl",
         "compositor/main_forward_lit.frag.glsl",
-        "surface/standard_surface.glsl"  // adapter: 2D surface
+        "surface/standard_surface.glsl"
     );
 
     if (!result.success)
@@ -94,22 +92,23 @@ ShaderProgramBuildSpec *CreateStandard(const contract::PhysicalDeviceProfileLite
         dynamic_def,
         result.vertex_glsl,
         result.fragment_glsl,
-        &cfg_with_mi);
+        bc);
 
     if (!mci)
         std::fprintf(stderr, "[Standard] CompileCompositorMaterial failed\n");
     return mci;
 }
 
+ShaderProgramBuildSpec *CreateStandard(const contract::PhysicalDeviceProfileLite *profile, const Material3DCreateConfig *cfg)
+{
+    CompositorMaterialBuildConfig bc = ToCompositorBuildConfig(cfg);
+    bc.material_instance = true;
+    return CreateStandardImpl(profile, bc);
+}
+
 
 ShaderProgramBuildSpec *CreateStandard(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {
-    Material3DCreateConfig cfg(request.primitive_type,
-                               definition.with_camera ? WithCamera::With : WithCamera::Without,
-                               definition.with_local_to_world ? WithLocalToWorld::With : WithLocalToWorld::Without,
-                               definition.with_sky ? WithSky::With : WithSky::Without);
-    cfg.SetGeometryVertexFormat(request.geometry_vertex_format);
-    if(request.override_sky_ambient_model) cfg.sky_ambient_model = request.sky_ambient_model;
-    return CreateStandard(profile, &cfg);
+    return CreateStandardImpl(profile, ToCompositorBuildConfig3D(request, definition, true));
 }
 }//namespace hgl::graph::mtl

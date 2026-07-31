@@ -46,9 +46,8 @@ namespace
 
 }
 
-ShaderProgramBuildSpec *CreateGizmo3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
+static ShaderProgramBuildSpec *CreateGizmo3DImpl(const contract::PhysicalDeviceProfileLite *profile, CompositorMaterialBuildConfig bc)
 {
-    // 通过 CompositorAssembler 从 .glsl 模板文件组装 VS/FS
     CompositorAssembler assembler("ShaderLibrary");
 
     auto result = assembler.Assemble(
@@ -57,9 +56,9 @@ ShaderProgramBuildSpec *CreateGizmo3D(const contract::PhysicalDeviceProfileLite 
         PassType::ForwardOpaque,
         QualityTier::Medium,
         PlatformBackend::PC,
-        "compositor/main_forward_unlit_normal.vert.glsl",   // VS: Pos+Normal+TID+MIID
-        "compositor/main_forward_unlit_normal.frag.glsl",   // FS: worldPos+worldNormal+MIID + camera
-        "surface/gizmo3d_surface.glsl"                      // Surface: MI color + Blinn-Phong
+        "compositor/main_forward_unlit_normal.vert.glsl",
+        "compositor/main_forward_unlit_normal.frag.glsl",
+        "surface/gizmo3d_surface.glsl"
     );
 
     if (!result.success)
@@ -69,12 +68,11 @@ ShaderProgramBuildSpec *CreateGizmo3D(const contract::PhysicalDeviceProfileLite 
         return nullptr;
     }
 
-    if(cfg)
-        cfg->material_instance=true;
+    bc.material_instance = true;
 
     FixedVertexEntry gizmo_3d_vertex[] = {
-        { ResolveMaterialVertexSemanticFormat(cfg, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
-        { ResolveMaterialVertexSemanticFormat(cfg, VertexSemantic::Normal,   VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Normal },
+        { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
+        { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Normal,   VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Normal },
     };
 
     FixedMaterialDef dynamic_def {
@@ -93,20 +91,20 @@ ShaderProgramBuildSpec *CreateGizmo3D(const contract::PhysicalDeviceProfileLite 
         dynamic_def,
         result.vertex_glsl,
         result.fragment_glsl,
-        cfg);
+        bc);
 
     if (!mci)
         std::fprintf(stderr, "[Gizmo3D] CompileCompositorMaterial failed\n");
     return mci;
 }
 
+ShaderProgramBuildSpec *CreateGizmo3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
+{
+    return CreateGizmo3DImpl(profile, ToCompositorBuildConfig(cfg));
+}
+
 ShaderProgramBuildSpec *CreateGizmo3D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {
-    Material3DCreateConfig cfg(request.primitive_type,
-                               definition.with_camera ? WithCamera::With : WithCamera::Without,
-                               definition.with_local_to_world ? WithLocalToWorld::With : WithLocalToWorld::Without,
-                               definition.with_sky ? WithSky::With : WithSky::Without);
-    cfg.SetGeometryVertexFormat(request.geometry_vertex_format);
-    return CreateGizmo3D(profile, &cfg);
+    return CreateGizmo3DImpl(profile, ToCompositorBuildConfig3D(request, definition));
 }
 }//namespace hgl::graph::mtl

@@ -21,21 +21,21 @@ namespace
     }();
 }
 
-ShaderProgramBuildSpec *CreatePureTexture2D(const contract::PhysicalDeviceProfileLite *profile,const mtl::Material2DCreateConfig *cfg)
+static ShaderProgramBuildSpec *CreatePureTexture2DImpl(const contract::PhysicalDeviceProfileLite *profile, const Material2DBuildParams &p)
 {
-    auto preamble = build2d::Build2DPreamble(cfg, true, false);
+    auto preamble = build2d::Build2DPreamble(p, true, false);
 
     std::vector<FixedVertexEntry> vertices;
-    build2d::PushBaseVertexEntries(vertices, cfg);
-    build2d::PushSemanticVertexEntry(vertices, cfg, VertexSemantic::TexCoord, VK_FORMAT_R32G32_SFLOAT);
+    build2d::PushBaseVertexEntries(vertices, p);
+    build2d::PushSemanticVertexEntry(vertices, p, VertexSemantic::TexCoord, VK_FORMAT_R32G32_SFLOAT);
 
     std::vector<FixedDescriptorEntry> descriptors;
-    build2d::PushBaseDescriptorEntries(descriptors, cfg);
+    build2d::PushBaseDescriptorEntries(descriptors, p);
     descriptors.push_back({DescriptorSetType::Material, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), SamplerName::BaseColor, nullptr, "sampler2D", DescriptorSemantic::MaterialSampler, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::Sampler});
 
     FixedMaterialDef def {
         "PureTexture2D",
-        cfg->prim,
+        p.prim,
         vertices.data(), uint32_t(vertices.size()),
         descriptors.data(), uint32_t(descriptors.size()),
         nullptr, 0,
@@ -44,19 +44,20 @@ ShaderProgramBuildSpec *CreatePureTexture2D(const contract::PhysicalDeviceProfil
     std::string vs = preamble + "#include \"2d/puretexture2d.vert.glsl\"\n";
     std::string fs = preamble + "#include \"2d/puretexture2d.frag.glsl\"\n";
 
-    ShaderProgramBuildSpec *mci = CompileCompositorMaterial(profile, def, vs, fs, cfg);
+    ShaderProgramBuildSpec *mci = CompileCompositorMaterial(profile, def, vs, fs, build2d::ToCompositorBuildConfig2D(p));
     if(!mci)
         std::fprintf(stderr, "[PureTexture2D] CompileCompositorMaterial failed\n");
     return mci;
 }
 
+ShaderProgramBuildSpec *CreatePureTexture2D(const contract::PhysicalDeviceProfileLite *profile,const mtl::Material2DCreateConfig *cfg)
+{
+    return CreatePureTexture2DImpl(profile, Material2DBuildParams::From(*cfg));
+}
+
 ShaderProgramBuildSpec *CreatePureTexture2D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {
     (void)definition;
-    Material2DCreateConfig cfg(request.primitive_type,
-                               request.recipe.coordinate_system_2d,
-                               request.recipe.local_to_world_2d ? WithLocalToWorld::With : WithLocalToWorld::Without);
-    cfg.SetGeometryVertexFormat(request.geometry_vertex_format);
-    return CreatePureTexture2D(profile, &cfg);
+    return CreatePureTexture2DImpl(profile, Material2DBuildParams::From(request, definition));
 }
 }//namespace hgl::graph::mtl

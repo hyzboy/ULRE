@@ -21,33 +21,32 @@ namespace
     }();
 }
 
-ShaderProgramBuildSpec *CreateRectTexture2DArray(const contract::PhysicalDeviceProfileLite *profile,const mtl::Material2DCreateConfig *cfg)
+static ShaderProgramBuildSpec *CreateRectTexture2DArrayImpl(const contract::PhysicalDeviceProfileLite *profile, Material2DBuildParams p)
 {
     constexpr const char mi_codes[]="uvec4 id;";
     constexpr const uint32_t mi_bytes=sizeof(math::Vector4u);
-    if(!cfg)
+    if(!profile)
         return(nullptr);
 
-    mtl::Material2DCreateConfig inner=*cfg;
-    inner.prim=PrimitiveType::Triangles;
-    inner.material_instance=true;
-    inner.shader_stage_flag_bit&=~(uint32_t)ShaderStage::Geometry;
-    const VkFormat position_format = ResolveMaterialPositionFormat(cfg, VK_FORMAT_R32G32_SFLOAT);
+    p.prim = PrimitiveType::Triangles;
+    p.material_instance = true;
+    p.shader_stage_flag_bit &= ~(uint32_t)ShaderStage::Geometry;
 
-    // Build DEF
-    auto preamble = build2d::Build2DPreamble(&inner, true, true, position_format);
+    const VkFormat position_format = ResolveMaterialPositionFormat(p.geometry_vertex_format, VK_FORMAT_R32G32_SFLOAT);
+
+    auto preamble = build2d::Build2DPreamble(p, true, true, position_format);
 
     std::vector<FixedVertexEntry> vertices;
-    build2d::PushBaseVertexEntries(vertices, &inner, position_format);
-    build2d::PushSemanticVertexEntry(vertices, &inner, VertexSemantic::TexCoord, VK_FORMAT_R32G32_SFLOAT);
+    build2d::PushBaseVertexEntries(vertices, p, position_format);
+    build2d::PushSemanticVertexEntry(vertices, p, VertexSemantic::TexCoord, VK_FORMAT_R32G32_SFLOAT);
 
     std::vector<FixedDescriptorEntry> descriptors;
-    build2d::PushBaseDescriptorEntries(descriptors, &inner);
+    build2d::PushBaseDescriptorEntries(descriptors, p);
     descriptors.push_back({DescriptorSetType::Material, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), SamplerName::BaseColor, nullptr, "sampler2DArray", DescriptorSemantic::MaterialSampler, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::Sampler});
 
     FixedMaterialDef def {
         "RectTexture2DArray",
-        inner.prim,
+        p.prim,
         vertices.data(), uint32_t(vertices.size()),
         descriptors.data(), uint32_t(descriptors.size()),
         mi_codes, mi_bytes,
@@ -56,19 +55,22 @@ ShaderProgramBuildSpec *CreateRectTexture2DArray(const contract::PhysicalDeviceP
     std::string vs = preamble + "#include \"2d/recttexture2darray.vert.glsl\"\n";
     std::string fs = preamble + "#include \"2d/recttexture2darray.frag.glsl\"\n";
 
-    ShaderProgramBuildSpec *mci = CompileCompositorMaterial(profile, def, vs, fs, &inner);
+    ShaderProgramBuildSpec *mci = CompileCompositorMaterial(profile, def, vs, fs, build2d::ToCompositorBuildConfig2D(p));
     if(!mci)
         std::fprintf(stderr, "[RectTexture2DArray] CompileCompositorMaterial failed\n");
     return mci;
 }
 
+ShaderProgramBuildSpec *CreateRectTexture2DArray(const contract::PhysicalDeviceProfileLite *profile,const mtl::Material2DCreateConfig *cfg)
+{
+    if(!cfg)
+        return(nullptr);
+    return CreateRectTexture2DArrayImpl(profile, Material2DBuildParams::From(*cfg));
+}
+
 ShaderProgramBuildSpec *CreateRectTexture2DArray(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {
     (void)definition;
-    Material2DCreateConfig cfg(PrimitiveType::Triangles,
-                               request.recipe.coordinate_system_2d,
-                               request.recipe.local_to_world_2d ? WithLocalToWorld::With : WithLocalToWorld::Without);
-    cfg.SetGeometryVertexFormat(request.geometry_vertex_format);
-    return CreateRectTexture2DArray(profile, &cfg);
+    return CreateRectTexture2DArrayImpl(profile, Material2DBuildParams::From(request, definition));
 }
 }//namespace hgl::graph::mtl

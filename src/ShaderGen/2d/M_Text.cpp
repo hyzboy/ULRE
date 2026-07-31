@@ -29,32 +29,32 @@ namespace
     }();
 }
 
-ShaderProgramBuildSpec *CreateText2D(const contract::PhysicalDeviceProfileLite *profile,const Text2DMaterialCreateConfig *cfg)
+static ShaderProgramBuildSpec *CreateText2DImpl(const contract::PhysicalDeviceProfileLite *profile, Material2DBuildParams p)
 {
     constexpr const char mi_codes[]="uint TextColor;";
     constexpr const uint32_t mi_bytes=sizeof(uint32);
-    if(!profile||!cfg)
+    if(!profile)
         return(nullptr);
 
-    Text2DMaterialCreateConfig new_cfg=*cfg;
-    new_cfg.prim=PrimitiveType::Triangles;
-    new_cfg.shader_stage_flag_bit&=~(uint32_t)ShaderStage::Geometry;
-    const VkFormat position_format = ResolveMaterialPositionFormat(cfg, VK_FORMAT_R32G32_SINT);
+    p.prim = PrimitiveType::Triangles;
+    p.shader_stage_flag_bit &= ~(uint32_t)ShaderStage::Geometry;
+    p.material_instance = true;
 
-    // Build DEF
-    auto preamble = build2d::Build2DPreamble(&new_cfg, true, true, position_format);
+    const VkFormat position_format = ResolveMaterialPositionFormat(p.geometry_vertex_format, VK_FORMAT_R32G32_SINT);
+
+    auto preamble = build2d::Build2DPreamble(p, true, true, position_format);
 
     std::vector<FixedVertexEntry> vertices;
-    build2d::PushBaseVertexEntries(vertices, &new_cfg, position_format);
-    build2d::PushSemanticVertexEntry(vertices, &new_cfg, VertexSemantic::TexCoord, VK_FORMAT_R32G32_SFLOAT);
+    build2d::PushBaseVertexEntries(vertices, p, position_format);
+    build2d::PushSemanticVertexEntry(vertices, p, VertexSemantic::TexCoord, VK_FORMAT_R32G32_SFLOAT);
 
     std::vector<FixedDescriptorEntry> descriptors;
-    build2d::PushBaseDescriptorEntries(descriptors, &new_cfg);
+    build2d::PushBaseDescriptorEntries(descriptors, p);
     descriptors.push_back({DescriptorSetType::Material, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), SamplerName::Text, nullptr, "sampler2D", DescriptorSemantic::MaterialSampler, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::Sampler});
 
     FixedMaterialDef def {
         "Text2D",
-        new_cfg.prim,
+        p.prim,
         vertices.data(), uint32_t(vertices.size()),
         descriptors.data(), uint32_t(descriptors.size()),
         mi_codes, mi_bytes,
@@ -63,21 +63,22 @@ ShaderProgramBuildSpec *CreateText2D(const contract::PhysicalDeviceProfileLite *
     std::string vs = preamble + "#include \"2d/text2d.vert.glsl\"\n";
     std::string fs = preamble + "#include \"2d/text2d.frag.glsl\"\n";
 
-    ShaderProgramBuildSpec *mci = CompileCompositorMaterial(profile, def, vs, fs, &new_cfg);
+    ShaderProgramBuildSpec *mci = CompileCompositorMaterial(profile, def, vs, fs, build2d::ToCompositorBuildConfig2D(p));
     if(!mci)
         std::fprintf(stderr, "[Text2D] CompileCompositorMaterial failed\n");
     return mci;
 }
 
+ShaderProgramBuildSpec *CreateText2D(const contract::PhysicalDeviceProfileLite *profile,const Text2DMaterialCreateConfig *cfg)
+{
+    if(!profile||!cfg)
+        return(nullptr);
+    Material2DBuildParams p = Material2DBuildParams::From(*cfg);
+    return CreateText2DImpl(profile, p);
+}
+
 ShaderProgramBuildSpec *CreateText2D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {
-    Text2DMaterialCreateConfig cfg;
-    cfg.prim = request.primitive_type;
-    cfg.coordinate_system = definition.coordinate_system_2d;
-    cfg.local_to_world = definition.local_to_world_2d;
-    cfg.SetGeometryVertexFormat(request.geometry_vertex_format);
-    if(request.override_shader_stage_bits)
-        cfg.shader_stage_flag_bit = request.shader_stage_flag_bit;
-    return CreateText2D(profile, &cfg);
+    return CreateText2DImpl(profile, Material2DBuildParams::From(request, definition));
 }
 }//namespace hgl::graph::mtl

@@ -55,10 +55,10 @@ namespace
 
 }
 
-ShaderProgramBuildSpec *CreatePureColor3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
+static ShaderProgramBuildSpec *CreatePureColor3DImpl(const contract::PhysicalDeviceProfileLite *profile, const CompositorMaterialBuildConfig &bc)
 {
     FixedVertexEntry pure_color_3d_vertex[] = {
-        { ResolveMaterialVertexSemanticFormat(cfg, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
+        { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
     };
 
     FixedMaterialDef dynamic_def {
@@ -72,7 +72,6 @@ ShaderProgramBuildSpec *CreatePureColor3D(const contract::PhysicalDeviceProfileL
         pure_color_3d_mi_bytes,
     };
 
-    // 通过 CompositorAssembler 从 .glsl 模板文件组装 VS/FS
     CompositorAssembler assembler("ShaderLibrary");
 
     auto result = assembler.Assemble(
@@ -95,21 +94,23 @@ ShaderProgramBuildSpec *CreatePureColor3D(const contract::PhysicalDeviceProfileL
         dynamic_def,
         result.vertex_glsl,
         result.fragment_glsl,
-        cfg);
+        bc);
 
     if (!mci)
         std::fprintf(stderr, "[PureColor3D] CompileCompositorMaterial failed\n");
     return mci;
 }
 
+ShaderProgramBuildSpec *CreatePureColor3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
+{
+    CompositorMaterialBuildConfig bc = ToCompositorBuildConfig(cfg);
+    bc.material_instance = true;
+    return CreatePureColor3DImpl(profile, bc);
+}
+
 ShaderProgramBuildSpec *CreatePureColor3D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {
-    Material3DCreateConfig cfg(request.primitive_type,
-                               definition.with_camera ? WithCamera::With : WithCamera::Without,
-                               definition.with_local_to_world ? WithLocalToWorld::With : WithLocalToWorld::Without,
-                               definition.with_sky ? WithSky::With : WithSky::Without);
-    cfg.SetGeometryVertexFormat(request.geometry_vertex_format);
-    if(request.override_sky_ambient_model) cfg.sky_ambient_model = request.sky_ambient_model;
-    return CreatePureColor3D(profile, &cfg);
+    CompositorMaterialBuildConfig bc = ToCompositorBuildConfig3D(request, definition, true);
+    return CreatePureColor3DImpl(profile, bc);
 }
 }//namespace hgl::graph::mtl

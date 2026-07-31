@@ -16,6 +16,8 @@
 #include<hgl/log/Log.h>
 #include<hgl/mtl/MaterialRecipe.h>
 
+#include<hgl/graph/ssbo/StandardMaterialInstance.h>
+
 #include "../common/OffscreenWorldRuntime.h"
 
 #include<hgl/ecs/core/Context.h>
@@ -322,9 +324,9 @@ private:
 
     PrimitiveAsset cube_asset;
     graph::mtl::MaterialRecipe cube_recipe{};
-    graph::SSBOArrayAccessor<mtl::StandardMaterialInstance>* cube_mi_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<ssbo::StandardMaterialInstance>* cube_mi_ssbo_accessor = nullptr;
     Sampler *cube_sampler = nullptr;
-    mtl::StandardMaterialInstance cube_mi_data{};
+    ssbo::StandardMaterialInstance cube_mi_data{};
 
     Texture2D *base_tex = nullptr;
     Texture2D *fallback_albedo = nullptr;
@@ -480,7 +482,7 @@ private:
         if (!domain_manager)
             return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "resource domain manager is null");
 
-        cube_mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<mtl::StandardMaterialInstance>(
+        cube_mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::StandardMaterialInstance>(
             graph::mtl::SSBOType::PBRSurface,
             "RenderToTexture:MainScene:MIData",
             1);

@@ -21,21 +21,16 @@ namespace
     }
 }
 
-VkFormat ResolveMaterialVertexSemanticFormat(const MaterialCreateConfig *cfg, VertexSemantic semantic, VkFormat fallback_format)
+VkFormat ResolveMaterialVertexSemanticFormat(const GeometryVertexFormat *gvf, VertexSemantic semantic, VkFormat fallback_format)
 {
-    if(!cfg||!cfg->geometry_vertex_format)
+    if(!gvf)
         return fallback_format;
 
-    const GeometryVertexAttributeFormat *attribute=cfg->geometry_vertex_format->Find(semantic);
+    const GeometryVertexAttributeFormat *attribute=gvf->Find(semantic);
     if(!attribute||attribute->format==VK_FORMAT_UNDEFINED)
         return fallback_format;
 
     return attribute->format;
-}
-
-VkFormat ResolveMaterialPositionFormat(const MaterialCreateConfig *cfg, VkFormat fallback_format)
-{
-    return ResolveMaterialVertexSemanticFormat(cfg, VertexSemantic::Position, fallback_format);
 }
 
 void RegisterMaterialDefinition(const MaterialDefinition &bmi)
@@ -162,37 +157,7 @@ const char *GetBuiltinMaterialCreatorIDName(const BuiltinMaterialCreatorID mtl_i
 }
 
 
-ShaderProgramBuildSpec *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
-                                             const BuiltinMaterialCreatorID mtl_id,
-                                             MaterialCreateConfig *cfg)
-{
-    if(!cfg)
-        return(nullptr);
-
-    switch(mtl_id)
-    {
-        case BuiltinMaterialCreatorID::VertexColor2D:         return CreateVertexColor2D      (profile,(const Material2DCreateConfig *)cfg);
-        case BuiltinMaterialCreatorID::PureColor2D:           return CreatePureColor2D        (profile,(Material2DCreateConfig *)cfg);
-        case BuiltinMaterialCreatorID::PureTexture2D:         return CreatePureTexture2D      (profile,(const Material2DCreateConfig *)cfg);
-        case BuiltinMaterialCreatorID::RectTexture2D:         return CreateRectTexture2D      (profile,(Material2DCreateConfig *)cfg);
-        case BuiltinMaterialCreatorID::RectTexture2DArray:    return CreateRectTexture2DArray (profile,(Material2DCreateConfig *)cfg);
-        case BuiltinMaterialCreatorID::Text2D:                return CreateText2D             (profile,(const Text2DMaterialCreateConfig *)cfg);
-
-        case BuiltinMaterialCreatorID::PureColor3D:           return CreatePureColor3D        (profile,(Material3DCreateConfig *)cfg);
-        case BuiltinMaterialCreatorID::VertexColor3D:         return CreateVertexColor3D      (profile,(const Material3DCreateConfig *)cfg);
-        case BuiltinMaterialCreatorID::VertexLuminance3D:     return CreateVertexLuminance3D  (profile,(Material3DCreateConfig *)cfg);
-        case BuiltinMaterialCreatorID::VertexPattleColor3D:   return CreateVertexPattleColor3D(profile,(const Material3DCreateConfig *)cfg);
-        case BuiltinMaterialCreatorID::Gizmo3D:               return CreateGizmo3D            (profile,(Material3DCreateConfig *)cfg);
-        case BuiltinMaterialCreatorID::SkyMinimal:            return CreateSkyMinimal         (profile,(const SkyMinimalCreateConfig *)cfg);
-        case BuiltinMaterialCreatorID::Standard:              return CreateStandard           (profile,(const Material3DCreateConfig *)cfg);
-        case BuiltinMaterialCreatorID::StandardTextureArray:  return CreateStandardTextureArray(profile,(const Material3DCreateConfig *)cfg);
-        case BuiltinMaterialCreatorID::PBRColor3D:            return CreatePBRColor3D         (profile,(PBRColor3DMaterialCreateConfig *)cfg);
-
-        default:                                    return nullptr;
-    }
-}
-
-static void ApplyBuildRequestToLegacyConfig(MaterialCreateConfig &cfg,const MaterialDefinitionBuildRequest &request)
+void ApplyMaterialBuildRequestToLegacyConfig(MaterialCreateConfig &cfg,const MaterialDefinitionBuildRequest &request)
 {
     cfg.prim = request.primitive_type;
     cfg.SetGeometryVertexFormat(request.geometry_vertex_format);
@@ -266,7 +231,7 @@ static std::string BuildBuiltinMaterialCreatorRequestHashImpl(const BuiltinMater
         const WithLocalToWorld with_l2w =
             request.recipe.local_to_world_2d ? WithLocalToWorld::With : WithLocalToWorld::Without;
         Material2DCreateConfig cfg(request.primitive_type, request.recipe.coordinate_system_2d, with_l2w);
-        ApplyBuildRequestToLegacyConfig(cfg, request);
+        ApplyMaterialBuildRequestToLegacyConfig(cfg, request);
         return std::string(GetBuiltinMaterialCreatorIDName(mtl_id)) + "?" + cfg.ToHashStdString();
     }
 
@@ -274,7 +239,7 @@ static std::string BuildBuiltinMaterialCreatorRequestHashImpl(const BuiltinMater
     const WithLocalToWorld wl = definition.with_local_to_world ? WithLocalToWorld::With : WithLocalToWorld::Without;
     const WithSky ws = definition.with_sky ? WithSky::With : WithSky::Without;
     Material3DCreateConfig cfg(request.primitive_type, wc, wl, ws);
-    ApplyBuildRequestToLegacyConfig(cfg, request);
+    ApplyMaterialBuildRequestToLegacyConfig(cfg, request);
     if(request.override_sky_ambient_model)
         cfg.sky_ambient_model = request.sky_ambient_model;
     return std::string(GetBuiltinMaterialCreatorIDName(mtl_id)) + "?" + cfg.ToHashStdString();

@@ -74,7 +74,7 @@ private:
     graph::mtl::MaterialRecipe near_recipe{};
     graph::mtl::MaterialRecipe far_recipe{};
 
-    graph::SSBOArrayAccessor<mtl::StandardMaterialInstance>* mi_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<ssbo::StandardMaterialInstance>* mi_ssbo_accessor = nullptr;
 
     Texture2DArray *near_base_color_array = nullptr;
     Texture2DArray *near_normal_array = nullptr;
@@ -162,7 +162,7 @@ private:
         auto* domain_manager = GetManager<ResourceDomainManager>();
         if (!domain_manager)
             return LogFail("InitMaterials", "domain manager null");
-        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<mtl::StandardMaterialInstance>(
+        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::StandardMaterialInstance>(
             graph::mtl::SSBOType::PBRSurface, "SingleSphereSwitch:MIData", 1);
         if (!mi_ssbo_accessor)
             return LogFail("InitMaterials", "SSBO allocation failed");
@@ -259,7 +259,7 @@ private:
         if (!mi_ssbo_accessor)
             return LogFail("InitRenderResources", "SSBO not allocated");
 
-        mtl::StandardMaterialInstance mi_data{};
+        ssbo::StandardMaterialInstance mi_data{};
         mi_data.base_color = PackRGBA8Float(0.72f, 0.72f, 0.72f, 1.0f);
         mi_data.metallic = 0.15f;
         mi_data.roughness = 0.25f;

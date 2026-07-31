@@ -3,11 +3,14 @@
 #include<hgl/mtl/SkyLight.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/mtl/MaterialCreateConfig.h>
+#include<hgl/graph/ssbo/StandardMaterialInstance.h>
+#include<hgl/graph/ssbo/StandardTextureArrayMaterialInstance.h>
+#include<hgl/graph/ssbo/PBRColor3DMaterialInstance.h>
 #include<vulkan/vulkan.h>
 
 namespace hgl::graph::mtl{
 
-constexpr float DefaultNormalStrength = 0.35f;
+constexpr float DefaultNormalStrength = ::hgl::graph::ssbo::kDefaultMaterialNormalStrength;
 
 struct Material3DCreateConfig:public MaterialCreateConfig
 {
@@ -80,34 +83,14 @@ public:
 
 DECLARE_MATERIAL_CREATOR(SkyMinimal,        const SkyMinimalCreateConfig)
 
-struct StandardMaterialInstance
-{
-    uint32 base_color;      ///<基础颜色
-    float  metallic;        ///<金属度
-    float  roughness;       ///<粗糙度
-    float  normal_scale = DefaultNormalStrength; ///<法线强度(运行时可调)
-};
+using StandardMaterialInstance = ::hgl::graph::ssbo::StandardMaterialInstance;
+constexpr const size_t StandardMaterialInstanceBytes = ::hgl::graph::ssbo::StandardMaterialInstanceBytes;
 
-constexpr const size_t StandardMaterialInstanceBytes=sizeof(StandardMaterialInstance);
+using StandardTextureArrayMaterialInstance = ::hgl::graph::ssbo::StandardTextureArrayMaterialInstance;
+constexpr const size_t StandardTextureArrayMaterialInstanceBytes = ::hgl::graph::ssbo::StandardTextureArrayMaterialInstanceBytes;
 
-struct StandardTextureArrayMaterialInstance
-{
-    uint32 base_color;      ///<基础颜色
-    float  metallic;        ///<金属度
-    float  roughness;       ///<粗糙度
-    float  normal_scale = DefaultNormalStrength; ///<法线强度(运行时可调)
-};
-
-constexpr const size_t StandardTextureArrayMaterialInstanceBytes=sizeof(StandardTextureArrayMaterialInstance);
-
-struct PBRColor3DMaterialInstance
-{
-    uint32 base_color;      ///<基础颜色 (RGBA packed, unpackUnorm4x8 in shader)
-    float  metallic;        ///<金属度 [0, 1]
-    float  roughness;       ///<粗糙度 [0.04, 1]
-};
-
-constexpr const size_t PBRColor3DMaterialInstanceBytes = sizeof(PBRColor3DMaterialInstance);
+using PBRColor3DMaterialInstance = ::hgl::graph::ssbo::PBRColor3DMaterialInstance;
+constexpr const size_t PBRColor3DMaterialInstanceBytes = ::hgl::graph::ssbo::PBRColor3DMaterialInstanceBytes;
 
 struct PBRColor3DMaterialCreateConfig : public Material3DCreateConfig
 {

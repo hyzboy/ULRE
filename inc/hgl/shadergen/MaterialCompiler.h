@@ -17,6 +17,7 @@
 namespace hgl::graph
 {
     struct ShaderBufferSource;
+    class GeometryVertexFormat;
 }
 
 namespace hgl::graph::mtl{
@@ -32,6 +33,7 @@ struct CompositorMaterialBuildConfig
     SkyLightAmbientModel sky_ambient_model = SkyLightAmbientModel::Simple;
     const ::hgl::graph::ShaderBufferSource *const *private_shader_buffer_sources = nullptr;
     uint32_t private_shader_buffer_source_count = 0;
+    const ::hgl::graph::GeometryVertexFormat *geometry_vertex_format = nullptr;
 };
 
 
@@ -77,5 +79,40 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     const std::string &         vs_glsl,
     const std::string &         fs_glsl,
     const Material2DCreateConfig *config);
+
+}//namespace hgl::graph::mtl
+
+// ── MaterialLibrary.h must be included for MaterialDefinitionBuildRequest and MaterialDefinition ──
+#include<hgl/mtl/MaterialLibrary.h>
+#include<hgl/mtl/Material3DCreateConfig.h>
+
+namespace hgl::graph::mtl{
+
+CompositorMaterialBuildConfig ToCompositorBuildConfig(const Material3DCreateConfig *config,
+                                                      PrimitiveType default_primitive_type = PrimitiveType::Triangles);
+
+/// Build a CompositorMaterialBuildConfig for a 3D/sky material from a request + definition.
+/// material_instance controls whether MI is enabled (caller sets true when needed).
+inline CompositorMaterialBuildConfig ToCompositorBuildConfig3D(
+    const MaterialDefinitionBuildRequest &request,
+    const MaterialDefinition &definition,
+    bool material_instance = false)
+{
+    CompositorMaterialBuildConfig bc;
+    bc.primitive_type       = request.primitive_type;
+    bc.material_instance    = material_instance;
+    bc.with_camera          = definition.with_camera;
+    bc.with_local_to_world  = definition.with_local_to_world;
+    bc.with_sky             = definition.with_sky;
+    bc.sky_ambient_model    = request.override_sky_ambient_model
+        ? request.sky_ambient_model
+        : SkyLightAmbientModel::Simple;
+    if(request.override_shader_stage_bits)
+        bc.shader_stage_flag_bits = request.shader_stage_flag_bit;
+    bc.geometry_vertex_format            = request.geometry_vertex_format;
+    bc.private_shader_buffer_sources     = request.private_shader_buffer_sources;
+    bc.private_shader_buffer_source_count = request.private_shader_buffer_source_count;
+    return bc;
+}
 
 }//namespace hgl::graph::mtl

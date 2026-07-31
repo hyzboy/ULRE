@@ -43,19 +43,15 @@ namespace
 
 }//namespace
 
-ShaderProgramBuildSpec *CreateVertexPattleColor3D(const contract::PhysicalDeviceProfileLite *profile,const Material3DCreateConfig *cfg)
+static ShaderProgramBuildSpec *CreateVertexPattleColor3DImpl(const contract::PhysicalDeviceProfileLite *profile, CompositorMaterialBuildConfig bc)
 {
-    Material3DCreateConfig local_cfg = cfg ? *cfg : Material3DCreateConfig();
-
-    static const ShaderBufferSource * const private_sbs_list[] =
-    {
-        &SBS_ColorPattle
-    };
-    local_cfg.SetPrivateShaderBufferSources(private_sbs_list,1);
+    static const ShaderBufferSource * const private_sbs_list[] = { &SBS_ColorPattle };
+    bc.private_shader_buffer_sources = private_sbs_list;
+    bc.private_shader_buffer_source_count = 1;
 
     FixedVertexEntry vertex_pattle_color_3d_vertex[] = {
-        { ResolveMaterialVertexSemanticFormat(&local_cfg, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
-        { ResolveMaterialVertexSemanticFormat(&local_cfg, VertexSemantic::Color,    VK_FORMAT_R32_UINT),          VertexSemantic::Color },
+        { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
+        { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Color,    VK_FORMAT_R32_UINT),          VertexSemantic::Color },
         { Assign::TransformID::VAB_FMT,  Assign::TransformID::VIS_SEMANTIC },
     };
 
@@ -95,22 +91,20 @@ ShaderProgramBuildSpec *CreateVertexPattleColor3D(const contract::PhysicalDevice
         dynamic_def,
         result.vertex_glsl,
         result.fragment_glsl,
-        &local_cfg);
+        bc);
 
     if (!mci)
         std::fprintf(stderr, "[VertexPattleColor3D] CompileCompositorMaterial failed\n");
     return mci;
 }
 
+ShaderProgramBuildSpec *CreateVertexPattleColor3D(const contract::PhysicalDeviceProfileLite *profile,const Material3DCreateConfig *cfg)
+{
+    return CreateVertexPattleColor3DImpl(profile, ToCompositorBuildConfig(cfg));
+}
+
 ShaderProgramBuildSpec *CreateVertexPattleColor3D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {
-    Material3DCreateConfig cfg(request.primitive_type,
-                               definition.with_camera ? WithCamera::With : WithCamera::Without,
-                               definition.with_local_to_world ? WithLocalToWorld::With : WithLocalToWorld::Without,
-                               definition.with_sky ? WithSky::With : WithSky::Without);
-    cfg.SetGeometryVertexFormat(request.geometry_vertex_format);
-    if(request.private_shader_buffer_sources && request.private_shader_buffer_source_count>0)
-        cfg.SetPrivateShaderBufferSources(request.private_shader_buffer_sources,request.private_shader_buffer_source_count);
-    return CreateVertexPattleColor3D(profile, &cfg);
+    return CreateVertexPattleColor3DImpl(profile, ToCompositorBuildConfig3D(request, definition));
 }
 }//namespace hgl::graph::mtl

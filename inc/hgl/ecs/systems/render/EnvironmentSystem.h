@@ -5,7 +5,6 @@
 #include<hgl/graph/env/SkyInfo.h>
 #include<hgl/mtl/SkyLight.h>
 #include<hgl/mtl/MaterialLibrary.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
 
 namespace hgl
 {
@@ -134,13 +133,6 @@ namespace hgl
             {
                 request.override_sky_ambient_model = true;
                 request.sky_ambient_model = skylight_model;
-            }
-
-            /// 兼容旧入口：仍可把 EnvironmentSystem 的天光策略投影到 Material3DCreateConfig。
-            void ApplySkyLightToMaterialConfig(graph::mtl::Material3DCreateConfig &cfg) const
-            {
-                cfg.sky = true;
-                cfg.sky_ambient_model = skylight_model;
             }
 
             void Initialize() override;
