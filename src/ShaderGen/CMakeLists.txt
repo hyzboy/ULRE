@@ -54,7 +54,9 @@ set(SSBO_HEADER_PATH ${ROOT_INCLUDE_PATH}/hgl/graph/ssbo)
 
 SET(SSBO_STRUCT_FILES   ${SSBO_HEADER_PATH}/StandardMaterialInstance.h
                         ${SSBO_HEADER_PATH}/StandardTextureArrayMaterialInstance.h
-                        ${SSBO_HEADER_PATH}/PBRColor3DMaterialInstance.h)
+                        ${SSBO_HEADER_PATH}/PBRColor3DMaterialInstance.h
+                        ${SSBO_HEADER_PATH}/TextureSlot.h
+                        ${SSBO_HEADER_PATH}/SSBOTypes.h)
 
 SOURCE_GROUP("Standard Material\\SSBO" FILES ${SSBO_STRUCT_FILES})
 SET(BLINN_PHONG_HEADER_FILES ${STD_MTL_HEADER_PATH}/BlinnPhong.h)
