@@ -15,6 +15,7 @@
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/common/RenderAssignDef.h>
+#include "Build3DCommon.h"
 #include<cstdio>
 
 namespace hgl::graph::mtl{
@@ -100,7 +101,7 @@ static ShaderProgramBuildSpec *CreateVertexPattleColor3DImpl(const contract::Phy
 
 ShaderProgramBuildSpec *CreateVertexPattleColor3D(const contract::PhysicalDeviceProfileLite *profile,const Material3DCreateConfig *cfg)
 {
-    return CreateVertexPattleColor3DImpl(profile, ToCompositorBuildConfig(cfg));
+    return CreateVertexPattleColor3DImpl(profile, ToCompositorBuildConfigLegacy3D(cfg));
 }
 
 ShaderProgramBuildSpec *CreateVertexPattleColor3D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)

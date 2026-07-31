@@ -3,6 +3,7 @@
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/common/RenderAssignDef.h>
+#include "Build3DCommon.h"
 #include<cstdio>
 #include<string>
 
@@ -103,7 +104,7 @@ static ShaderProgramBuildSpec *CreatePureColor3DImpl(const contract::PhysicalDev
 
 ShaderProgramBuildSpec *CreatePureColor3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
 {
-    CompositorMaterialBuildConfig bc = ToCompositorBuildConfig(cfg);
+    CompositorMaterialBuildConfig bc = ToCompositorBuildConfigLegacy3D(cfg);
     bc.material_instance = true;
     return CreatePureColor3DImpl(profile, bc);
 }

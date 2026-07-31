@@ -3,6 +3,7 @@
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/common/RenderAssignDef.h>
+#include "Build3DCommon.h"
 #include<cstdio>
 #include<string>
 
@@ -100,7 +101,7 @@ static ShaderProgramBuildSpec *CreateGizmo3DImpl(const contract::PhysicalDeviceP
 
 ShaderProgramBuildSpec *CreateGizmo3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
 {
-    return CreateGizmo3DImpl(profile, ToCompositorBuildConfig(cfg));
+    return CreateGizmo3DImpl(profile, ToCompositorBuildConfigLegacy3D(cfg));
 }
 
 ShaderProgramBuildSpec *CreateGizmo3D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)

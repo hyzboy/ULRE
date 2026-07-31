@@ -3,6 +3,7 @@
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/common/RenderAssignDef.h>
+#include "Build3DCommon.h"
 #include<cstdio>
 #include<string>
 
@@ -98,7 +99,7 @@ static ShaderProgramBuildSpec *CreateVertexLuminance3DImpl(const contract::Physi
 
 ShaderProgramBuildSpec *CreateVertexLuminance3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
 {
-    return CreateVertexLuminance3DImpl(profile, ToCompositorBuildConfig(cfg));
+    return CreateVertexLuminance3DImpl(profile, ToCompositorBuildConfigLegacy3D(cfg));
 }
 
 ShaderProgramBuildSpec *CreateVertexLuminance3D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)

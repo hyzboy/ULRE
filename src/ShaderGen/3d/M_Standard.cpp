@@ -6,6 +6,7 @@
 #include <hgl/common/RenderAssignDef.h>
 #include <cstdio>
 #include <vector>
+#include "Build3DCommon.h"
 
 #include "../common/MFSkyLight.h"
 #include "StandardSharedSpec.h"
@@ -101,7 +102,7 @@ static ShaderProgramBuildSpec *CreateStandardImpl(const contract::PhysicalDevice
 
 ShaderProgramBuildSpec *CreateStandard(const contract::PhysicalDeviceProfileLite *profile, const Material3DCreateConfig *cfg)
 {
-    CompositorMaterialBuildConfig bc = ToCompositorBuildConfig(cfg);
+    CompositorMaterialBuildConfig bc = ToCompositorBuildConfigLegacy3D(cfg);
     bc.material_instance = true;
     return CreateStandardImpl(profile, bc);
 }

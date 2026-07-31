@@ -3,6 +3,7 @@
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/common/RenderAssignDef.h>
+#include "Build3DCommon.h"
 #include <cstdio>
 
 namespace hgl::graph::mtl{
@@ -89,7 +90,7 @@ static ShaderProgramBuildSpec *CreateSkyMinimalImpl(const contract::PhysicalDevi
 
 ShaderProgramBuildSpec *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *profile, const SkyMinimalCreateConfig *cfg)
 {
-    return CreateSkyMinimalImpl(profile, ToCompositorBuildConfig(cfg));
+    return CreateSkyMinimalImpl(profile, ToCompositorBuildConfigLegacy3D(cfg));
 }
 
 ShaderProgramBuildSpec *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)

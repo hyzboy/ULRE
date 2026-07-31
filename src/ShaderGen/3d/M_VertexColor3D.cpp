@@ -3,6 +3,7 @@
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/common/RenderAssignDef.h>
+#include "Build3DCommon.h"
 #include<cstdio>
 #include<string>
 
@@ -82,7 +83,7 @@ static ShaderProgramBuildSpec *CreateVertexColor3DImpl(const contract::PhysicalD
 
 ShaderProgramBuildSpec *CreateVertexColor3D(const contract::PhysicalDeviceProfileLite *profile,const Material3DCreateConfig *cfg)
 {
-    return CreateVertexColor3DImpl(profile, ToCompositorBuildConfig(cfg));
+    return CreateVertexColor3DImpl(profile, ToCompositorBuildConfigLegacy3D(cfg));
 }
 
 ShaderProgramBuildSpec *CreateVertexColor3D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)

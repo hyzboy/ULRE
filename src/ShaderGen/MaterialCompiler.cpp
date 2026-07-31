@@ -6,8 +6,6 @@
 ///   3. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
 
 #include <hgl/shadergen/MaterialCompiler.h>
-#include <hgl/mtl/Material3DCreateConfig.h>
-#include <hgl/mtl/Material2DCreateConfig.h>
 #include <hgl/mtl/MaterialResourceLayout.h>
 #include <hgl/shadergen/ShaderProgramBuildSpec.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
@@ -43,41 +41,6 @@ static bool HasDescriptorSemantic(const FixedMaterialDef &def, const DescriptorS
     return false;
 }
 
-CompositorMaterialBuildConfig ToCompositorBuildConfig(
-    const Material3DCreateConfig *config,
-    const PrimitiveType default_primitive_type)
-{
-    CompositorMaterialBuildConfig out;
-    out.primitive_type = config ? config->prim : default_primitive_type;
-    out.shader_stage_flag_bits = config ? config->shader_stage_flag_bit : uint32_t(ShaderStage::VertexFragment);
-    out.material_instance = config ? config->material_instance : false;
-    out.with_local_to_world = config ? config->local_to_world : false;
-    out.with_camera = config ? config->camera : false;
-    out.with_sky = config ? config->sky : false;
-    out.sky_ambient_model = config ? config->sky_ambient_model : SkyLightAmbientModel::Simple;
-    out.private_shader_buffer_sources = config ? config->private_shader_buffer_sources : nullptr;
-    out.private_shader_buffer_source_count = config ? config->private_shader_buffer_source_count : 0;
-    out.geometry_vertex_format = config ? config->geometry_vertex_format : nullptr;
-    return out;
-}
-
-static CompositorMaterialBuildConfig ToCompositorMaterialBuildConfig(
-    const Material2DCreateConfig *config,
-    const PrimitiveType default_primitive_type)
-{
-    CompositorMaterialBuildConfig out;
-    out.primitive_type = config ? config->prim : default_primitive_type;
-    out.shader_stage_flag_bits = config ? config->shader_stage_flag_bit : uint32_t(ShaderStage::VertexFragment);
-    out.material_instance = config ? config->material_instance : false;
-    out.with_local_to_world = config ? config->local_to_world : false;
-    out.with_camera = false;
-    out.with_sky = false;
-    out.sky_ambient_model = SkyLightAmbientModel::Simple;
-    out.private_shader_buffer_sources = config ? config->private_shader_buffer_sources : nullptr;
-    out.private_shader_buffer_source_count = config ? config->private_shader_buffer_source_count : 0;
-    out.geometry_vertex_format = config ? config->geometry_vertex_format : nullptr;
-    return out;
-}
 // ═══════════════════════════════════════════════════════════════════════════
 // CompileCompositorMaterial — Compositor 模板完整 GLSL → ShaderProgramBuildSpec
 //
@@ -344,32 +307,6 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     }
 
     return mci;
-}
-
-ShaderProgramBuildSpec *CompileCompositorMaterial(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const FixedMaterialDef &    def,
-    const std::string &         vs_glsl,
-    const std::string &         fs_glsl,
-    const Material3DCreateConfig *config)
-{
-    const CompositorMaterialBuildConfig build_config = ToCompositorBuildConfig(config, def.primitive_type);
-    return CompileCompositorMaterial(profile, def, vs_glsl, fs_glsl, build_config);
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// CompileCompositorMaterial — 2D 材质重载
-// ═══════════════════════════════════════════════════════════════════════════
-
-ShaderProgramBuildSpec *CompileCompositorMaterial(
-    const contract::PhysicalDeviceProfileLite *profile,
-    const FixedMaterialDef &    def,
-    const std::string &         vs_glsl,
-    const std::string &         fs_glsl,
-    const Material2DCreateConfig *config)
-{
-    const CompositorMaterialBuildConfig build_config = ToCompositorMaterialBuildConfig(config, def.primitive_type);
-    return CompileCompositorMaterial(profile, def, vs_glsl, fs_glsl, build_config);
 }
 
 }  // namespace hgl::graph::mtl

@@ -6,6 +6,7 @@
 #include <hgl/common/RenderAssignDef.h>
 #include <cstdio>
 #include <vector>
+#include "Build3DCommon.h"
 
 #include "../common/MFSkyLight.h"
 
@@ -113,7 +114,7 @@ static ShaderProgramBuildSpec *CreatePBRColor3DImpl(const contract::PhysicalDevi
 
 ShaderProgramBuildSpec *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *profile, PBRColor3DMaterialCreateConfig *cfg)
 {
-    return CreatePBRColor3DImpl(profile, ToCompositorBuildConfig(cfg));
+    return CreatePBRColor3DImpl(profile, ToCompositorBuildConfigLegacy3D(cfg));
 }
 
 
