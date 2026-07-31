@@ -28,7 +28,7 @@ namespace hgl::graph::mtl
     // Recipe 中的结构体绑定声明（告诉 Resolve 需要哪类参数结构）。
     struct RecipeStructBinding
     {
-        DataSlot slot = DataSlot::PBRSurface;              // 目标数据语义槽
+        uint32_t slot_index = GetMaterialStructSlotIndex(SSBOType::PBRSurface); // DataIndex 行槽位
         SSBOType ssbo_type = SSBOType::UserDefined;        // 结构体所属 SSBO 类型（主字段）
         uint32_t ssbo_id = 0;                              // 结构体 SSBO 资源 ID（主字段，P1.55）
         uint32_t struct_index = 0;                         // 结构体行索引（默认 0；可通过 use_struct_index 显式重载）
@@ -77,10 +77,10 @@ namespace hgl::graph::mtl
         // Part-B: 资源契约（当前阶段仅 SSBO；Texture/VAB 由 recipe 按需声明）
         std::vector<RecipeSSBOAssetBinding> required_ssbo_assets;
 
-        // Part-C: config 构建参数（MaterialCreateConfig 所需全部选项显式存储，
+        // Part-C: request 构建参数（构建所需选项显式存储，
         //         不允许调用方根据名字/枚举范围做任何推断）
-        bool is_2d            = false;  // 使用 Material2DCreateConfig
-        bool is_text          = false;  // 使用 Text2DMaterialCreateConfig（优先级高于 is_2d）
+        bool is_2d            = false;  // 2D 材质
+        bool is_text          = false;  // text 材质（优先级高于 is_2d）
         bool with_camera      = true;   // 3D 材质包含 Camera UBO
         bool with_local_to_world = true;// 包含 LocalToWorld 变换
         bool with_sky         = false;  // 包含 Sky/大气 UBO
@@ -230,7 +230,7 @@ namespace hgl::graph::mtl
         hash = hgl::hash::FNV1aAppendValueBytes(hash, struct_count);
         for (const auto &s : recipe.structs)
         {
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, s.slot);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, s.slot_index);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, s.ssbo_type);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, s.ssbo_id);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, s.struct_index);
@@ -251,6 +251,4 @@ namespace hgl::graph::mtl
         return static_cast<uint64_t>(hash);
     }
 }
-
-
 

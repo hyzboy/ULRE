@@ -202,10 +202,10 @@ namespace hgl::graph::mtl
         std::array<uint32_t, static_cast<size_t>(TextureSlot::RANGE_SIZE)> values{};
     };
 
-    // DataIndex SSBO 的单实例行（每个语义槽一个 struct_index）。
+    // DataIndex SSBO 的单实例行（每个结构体槽位一个 struct_index）。
     struct DataIndexRow
     {
-        std::array<uint32_t, static_cast<size_t>(DataSlot::RANGE_SIZE)> values{};
+        std::array<uint32_t, static_cast<size_t>(MaterialStructSlotCount)> values{};
     };
     static_assert(sizeof(DataIndexRow::values[0]) == sizeof(uint32_t),
                   "DataIndexRow values must remain uint32_t for SSBO row format stability.");
@@ -254,22 +254,15 @@ namespace hgl::graph::mtl
         size_t GetDataIndexRowCount() const { return data_index_rows.size(); }
     };
 
-    // 将 DataSlot 映射到默认 SSBO 分类（可在后续阶段替换为可配置策略）。
-    inline SSBOType DefaultSSBOTypeForDataSlot(const DataSlot slot) noexcept
+    // 将 DataIndex 槽位映射到默认 SSBO 分类（可在后续阶段替换为可配置策略）。
+    inline SSBOType DefaultSSBOTypeForSlotIndex(const uint32_t slot_index) noexcept
     {
-        switch (slot)
-        {
-        case DataSlot::PBRSurface: return SSBOType::PBRSurface;
-        case DataSlot::EmissiveSurface: return SSBOType::EmissiveSurface;
-        case DataSlot::ClearCoatSurface: return SSBOType::ClearCoatSurface;
-        case DataSlot::TransmissionSurface: return SSBOType::TransmissionSurface;
-        default: return SSBOType::UserDefined;
-        }
+        return GetMaterialStructSSBOTypeBySlotIndex(slot_index);
     }
 
-    inline SSBOCategory DefaultCategoryForDataSlot(const DataSlot slot) noexcept
+    inline SSBOCategory DefaultCategoryForSlotIndex(const uint32_t slot_index) noexcept
     {
-        return DefaultSSBOTypeForDataSlot(slot);
+        return DefaultSSBOTypeForSlotIndex(slot_index);
     }
 
     // 用池对象构建 Recipe->Spec 解析回调。
@@ -319,7 +312,7 @@ namespace hgl::graph::mtl
             if (!struct_pool.TryResolve(input.ssbo_type, input.ssbo_id, alloc))
                 return false;
 
-            output.slot = input.slot;
+            output.slot_index = input.slot_index;
             output.ssbo_type = alloc.ssbo_type;
             output.ssbo_id = alloc.ssbo_id;
             output.ssbo_binding = static_cast<uint32_t>(alloc.ssbo_type); // 临时默认映射，后续由布局系统接管
@@ -350,7 +343,7 @@ namespace hgl::graph::mtl
         DataIndexRow row{};
         for (const auto &ref : spec.struct_refs)
         {
-            const size_t idx = static_cast<size_t>(ref.slot);
+            const size_t idx = static_cast<size_t>(ref.slot_index);
             if (idx < row.values.size())
                 row.values[idx] = ref.struct_index;
         }

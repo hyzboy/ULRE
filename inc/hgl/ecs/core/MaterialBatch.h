@@ -58,8 +58,8 @@ namespace hgl::ecs
         graph::DeviceBuffer *                   l2w_index_rows_buffer       = nullptr;      ///<每批 L2W 行表 SSBO（draw order）
         uint32_t                                l2w_index_rows_capacity     = 0;            ///<L2W 行表容量（元素数）
 
-        // Per-batch DataIndex rows SSBO — each row carries one DataSlot struct_index per instance.
-        // row[i].values[DataSlot::PBRSurface] = MaterialInstance::GetMIID() of items[i].
+        // Per-batch DataIndex rows SSBO — each row carries one struct slot index per instance.
+        // row[i].values[GetMaterialStructSlotIndex(SSBOType::PBRSurface)] = MaterialInstance::GetMIID() of items[i].
         graph::DeviceBuffer *                   mi_data_index_rows_buffer   = nullptr;      ///<每批 DataIndex 行表 SSBO（draw order）
         uint32_t                                mi_data_index_rows_capacity = 0;            ///<DataIndex 行表容量（元素数）
 

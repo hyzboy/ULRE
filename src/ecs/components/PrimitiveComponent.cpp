@@ -270,8 +270,7 @@ namespace hgl::ecs
         ResetMaterialTextureAuthoringResource(materialTextureResources[index]);
     }
 
-    void PrimitiveComponent::SetMaterialStructResource(hgl::graph::mtl::DataSlot slot,
-                                                       hgl::graph::mtl::SSBOType ssbo_type,
+    void PrimitiveComponent::SetMaterialStructResource(hgl::graph::mtl::SSBOType ssbo_type,
                                                        uint32_t ssbo_id,
                                                        hgl::graph::DeviceBuffer *buffer,
                                                        uint32_t element_capacity,
@@ -280,7 +279,10 @@ namespace hgl::ecs
                                                        bool use_struct_index,
                                                        bool shared_across_instances)
     {
-        const size_t index = static_cast<size_t>(slot);
+        if (!hgl::graph::mtl::IsMaterialStructSSBOType(ssbo_type))
+            return;
+
+        const size_t index = static_cast<size_t>(hgl::graph::mtl::GetMaterialStructSlotIndex(ssbo_type));
         if (index >= materialStructResources.size())
             return;
 
@@ -312,9 +314,12 @@ namespace hgl::ecs
         resource.authored = true;
     }
 
-    const PrimitiveComponent::MaterialStructAuthoringResource *PrimitiveComponent::GetMaterialStructResource(hgl::graph::mtl::DataSlot slot) const
+    const PrimitiveComponent::MaterialStructAuthoringResource *PrimitiveComponent::GetMaterialStructResource(hgl::graph::mtl::SSBOType ssbo_type) const
     {
-        const size_t index = static_cast<size_t>(slot);
+        if (!hgl::graph::mtl::IsMaterialStructSSBOType(ssbo_type))
+            return nullptr;
+
+        const size_t index = static_cast<size_t>(hgl::graph::mtl::GetMaterialStructSlotIndex(ssbo_type));
         if (index >= materialStructResources.size())
             return nullptr;
 
@@ -377,9 +382,12 @@ namespace hgl::ecs
         }
     }
 
-    void PrimitiveComponent::ClearMaterialStructResource(hgl::graph::mtl::DataSlot slot)
+    void PrimitiveComponent::ClearMaterialStructResource(hgl::graph::mtl::SSBOType ssbo_type)
     {
-        const size_t index = static_cast<size_t>(slot);
+        if (!hgl::graph::mtl::IsMaterialStructSSBOType(ssbo_type))
+            return;
+
+        const size_t index = static_cast<size_t>(hgl::graph::mtl::GetMaterialStructSlotIndex(ssbo_type));
         if (index >= materialStructResources.size())
             return;
 

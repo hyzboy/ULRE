@@ -76,7 +76,7 @@ namespace hgl::ecs
 
                     for (const auto &ref : spec.struct_refs)
                     {
-                        if (ref.slot == req.data_slot && ref.ssbo_type == req.ssbo_type)
+                        if (ref.slot_index == req.slot_index && ref.ssbo_type == req.ssbo_type)
                             return ref.struct_index;
                     }
                 }
@@ -117,16 +117,16 @@ namespace hgl::ecs
         }
 
         void UpsertRecipeStructBinding(graph::mtl::MaterialRecipe &recipe,
-                                       graph::mtl::DataSlot slot,
                                        graph::mtl::SSBOType ssbo_type,
                                        const uint32_t ssbo_id,
                                        const uint32_t struct_index,
                                        const bool use_struct_index,
                                        const bool shared_across_instances)
         {
+            const uint32_t slot_index = graph::mtl::GetMaterialStructSlotIndex(ssbo_type);
             for (auto &binding : recipe.structs)
             {
-                if (binding.slot != slot)
+                if (binding.slot_index != slot_index || binding.ssbo_type != ssbo_type)
                     continue;
 
                 binding.ssbo_type = ssbo_type;
@@ -138,7 +138,7 @@ namespace hgl::ecs
             }
 
             graph::mtl::RecipeStructBinding binding{};
-            binding.slot = slot;
+            binding.slot_index = slot_index;
             binding.ssbo_type = ssbo_type;
             binding.ssbo_id = ssbo_id;
             binding.struct_index = struct_index;
@@ -208,15 +208,14 @@ namespace hgl::ecs
                 UpsertRecipeTextureBinding(out_recipe, slot, resource_id, resource->required);
             }
 
-            for (size_t i = 0; i < static_cast<size_t>(graph::mtl::DataSlot::RANGE_SIZE); ++i)
+            for (size_t i = 0; i < static_cast<size_t>(graph::mtl::MaterialStructSlotCount); ++i)
             {
-                const auto slot = static_cast<graph::mtl::DataSlot>(i);
-                const auto *resource = primitive_comp->GetMaterialStructResource(slot);
+                const auto ssbo_type = graph::mtl::GetMaterialStructSSBOTypeBySlotIndex(static_cast<uint32_t>(i));
+                const auto *resource = primitive_comp->GetMaterialStructResource(ssbo_type);
                 if (!resource)
                     continue;
 
                 UpsertRecipeStructBinding(out_recipe,
-                                         slot,
                                          resource->ssbo_type,
                                          resource->ssbo_id,
                                          resource->struct_index,
@@ -336,10 +335,10 @@ namespace hgl::ecs
                 }
             }
 
-            for (size_t i = 0; i < static_cast<size_t>(graph::mtl::DataSlot::RANGE_SIZE); ++i)
+            for (size_t i = 0; i < static_cast<size_t>(graph::mtl::MaterialStructSlotCount); ++i)
             {
-                const auto slot = static_cast<graph::mtl::DataSlot>(i);
-                const auto *resource = primitive_comp->GetMaterialStructResource(slot);
+                const auto ssbo_type = graph::mtl::GetMaterialStructSSBOTypeBySlotIndex(static_cast<uint32_t>(i));
+                const auto *resource = primitive_comp->GetMaterialStructResource(ssbo_type);
                 if (!resource)
                     continue;
 
@@ -384,10 +383,9 @@ namespace hgl::ecs
                     asset_binding = graph::mtl::FindRecipeSSBOAssetBinding(effective_recipe, req.name, req.ssbo_type);
                 }
 
-                if (!primitive_comp->GetMaterialStructResource(req.data_slot) && named_struct_resource)
+                if (!primitive_comp->GetMaterialStructResource(req.ssbo_type) && named_struct_resource)
                 {
-                    primitive_comp->SetMaterialStructResource(req.data_slot,
-                                                              req.ssbo_type,
+                    primitive_comp->SetMaterialStructResource(req.ssbo_type,
                                                               named_struct_resource->ssbo_id,
                                                               nullptr,
                                                               0,
@@ -763,5 +761,4 @@ namespace hgl::ecs
         //}
     }
 }//namespace hgl::ecs
-
 

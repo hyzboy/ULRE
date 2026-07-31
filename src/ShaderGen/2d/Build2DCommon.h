@@ -6,7 +6,6 @@
 /// 供各 M_Xxx2D.cpp 工厂函数使用。
 /// GLSL 代码已移至 ShaderLibrary/2d/ 目录下的文件。
 
-#include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/FixedMaterialDef.h>
 #include<hgl/common/RenderAssignDef.h>
 #include<hgl/mtl/UBOCommon.h>
@@ -16,8 +15,7 @@
 
 namespace hgl::graph::mtl{
 
-/// 2D 材质内部构建参数——从 MaterialDefinitionBuildRequest/MaterialDefinition 或
-/// Material2DCreateConfig 转换而来；不再直接传 config 指针到 helper 函数。
+/// 2D 材质内部构建参数——从 MaterialDefinitionBuildRequest/MaterialDefinition 转换而来。
 struct Material2DBuildParams
 {
     PrimitiveType           prim                = PrimitiveType::Triangles;
@@ -28,20 +26,6 @@ struct Material2DBuildParams
     const GeometryVertexFormat *geometry_vertex_format = nullptr;
     const ShaderBufferSource *const *private_shader_buffer_sources = nullptr;
     uint32_t                private_shader_buffer_source_count = 0;
-
-    static Material2DBuildParams From(const Material2DCreateConfig &cfg)
-    {
-        Material2DBuildParams p;
-        p.prim                              = cfg.prim;
-        p.coordinate_system                 = cfg.coordinate_system;
-        p.local_to_world                    = cfg.local_to_world;
-        p.material_instance                 = cfg.material_instance;
-        p.shader_stage_flag_bit             = cfg.shader_stage_flag_bit;
-        p.geometry_vertex_format            = cfg.geometry_vertex_format;
-        p.private_shader_buffer_sources     = cfg.private_shader_buffer_sources;
-        p.private_shader_buffer_source_count = cfg.private_shader_buffer_source_count;
-        return p;
-    }
 
     static Material2DBuildParams From(const MaterialDefinitionBuildRequest &request,
                                       const MaterialDefinition &definition)
@@ -131,15 +115,6 @@ inline std::string BuildDescriptorDefines(
     return defs;
 }
 
-// Legacy overload kept during transition — prefer the params version above
-inline std::string BuildDescriptorDefines(
-    const Material2DCreateConfig *cfg,
-    bool has_texture,
-    bool has_mi)
-{
-    return BuildDescriptorDefines(Material2DBuildParams::From(*cfg), has_texture, has_mi);
-}
-
 // ─────────────────────────────────────────────────────────────
 // Shader preamble builder
 // ─────────────────────────────────────────────────────────────
@@ -171,12 +146,6 @@ inline std::string Build2DPreamble(const Material2DBuildParams &p, bool has_text
     return pr;
 }
 
-// Legacy overload
-inline std::string Build2DPreamble(const Material2DCreateConfig *cfg, bool has_texture, bool has_mi, VkFormat position_format_override = VK_FORMAT_UNDEFINED)
-{
-    return Build2DPreamble(Material2DBuildParams::From(*cfg), has_texture, has_mi, position_format_override);
-}
-
 // ─────────────────────────────────────────────────────────────
 // Common FixedVertexEntry builders
 // ─────────────────────────────────────────────────────────────
@@ -190,25 +159,12 @@ inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Materi
     v.push_back({ position_format, VertexSemantic::Position });
 }
 
-inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Material2DCreateConfig *cfg, VkFormat position_format_override = VK_FORMAT_UNDEFINED)
-{
-    PushBaseVertexEntries(v, Material2DBuildParams::From(*cfg), position_format_override);
-}
-
 inline void PushSemanticVertexEntry(std::vector<FixedVertexEntry> &v,
                                     const Material2DBuildParams &p,
                                     const VertexSemantic semantic,
                                     const VkFormat fallback_format)
 {
     v.push_back({ ResolveMaterialVertexSemanticFormat(p.geometry_vertex_format, semantic, fallback_format), semantic });
-}
-
-inline void PushSemanticVertexEntry(std::vector<FixedVertexEntry> &v,
-                                    const Material2DCreateConfig *cfg,
-                                    const VertexSemantic semantic,
-                                    const VkFormat fallback_format)
-{
-    PushSemanticVertexEntry(v, Material2DBuildParams::From(*cfg), semantic, fallback_format);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -226,26 +182,21 @@ inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, cons
 {
     // Viewport (Scene set) — only for Ortho
     if(p.coordinate_system == CoordinateSystem2D::Ortho)
-        v.push_back({DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::UBO});
+        v.push_back({DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, GetMaterialStructSlotIndex(SSBOType::PBRSurface), SSBOType::UserDefined, DescriptorSemanticLayer::UBO});
 
     // L2W (Transform set) — only if L2W
     if(p.local_to_world)
     {
-        v.push_back({DescriptorSetType::Transform, L2W_KIND_2D, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr, DescriptorSemantic::LocalToWorld, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, GetDescriptorSemanticLayerByKind(L2W_KIND_2D)});
-        v.push_back({DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w_index_rows", "LocalToWorldIndexRows", nullptr, DescriptorSemantic::LocalToWorldIndexTable, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO});
+        v.push_back({DescriptorSetType::Transform, L2W_KIND_2D, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr, DescriptorSemantic::LocalToWorld, TextureSlot::BaseColor, GetMaterialStructSlotIndex(SSBOType::PBRSurface), SSBOType::UserDefined, GetDescriptorSemanticLayerByKind(L2W_KIND_2D)});
+        v.push_back({DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w_index_rows", "LocalToWorldIndexRows", nullptr, DescriptorSemantic::LocalToWorldIndexTable, TextureSlot::BaseColor, GetMaterialStructSlotIndex(SSBOType::PBRSurface), SSBOType::UserDefined, DescriptorSemanticLayer::SSBO});
     }
 
     if(p.material_instance)
     {
-        v.push_back({DescriptorSetType::Material, MaterialInstanceDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl", "MaterialInstanceData", nullptr, DescriptorSemantic::MaterialInstance, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::PBRSurface, GetDescriptorSemanticLayerByKind(MaterialInstanceDescriptorKind)});
-        v.push_back({DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl_data_index_rows", "DataIndexRows", nullptr, DescriptorSemantic::MaterialDataIndexTable, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO});
-        v.push_back({DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl_texture_layer_rows", "TextureLayerRows", nullptr, DescriptorSemantic::MaterialTextureLayerTable, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO});
+        v.push_back({DescriptorSetType::Material, MaterialInstanceDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl", "MaterialInstanceData", nullptr, DescriptorSemantic::MaterialInstance, TextureSlot::BaseColor, GetMaterialStructSlotIndex(SSBOType::PBRSurface), SSBOType::PBRSurface, GetDescriptorSemanticLayerByKind(MaterialInstanceDescriptorKind)});
+        v.push_back({DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl_data_index_rows", "DataIndexRows", nullptr, DescriptorSemantic::MaterialDataIndexTable, TextureSlot::BaseColor, GetMaterialStructSlotIndex(SSBOType::PBRSurface), SSBOType::UserDefined, DescriptorSemanticLayer::SSBO});
+        v.push_back({DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl_texture_layer_rows", "TextureLayerRows", nullptr, DescriptorSemantic::MaterialTextureLayerTable, TextureSlot::BaseColor, GetMaterialStructSlotIndex(SSBOType::PBRSurface), SSBOType::UserDefined, DescriptorSemanticLayer::SSBO});
     }
-}
-
-inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, const Material2DCreateConfig *cfg)
-{
-    PushBaseDescriptorEntries(v, Material2DBuildParams::From(*cfg));
 }
 
 // ─────────────────────────────────────────────────────────────

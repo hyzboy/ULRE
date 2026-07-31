@@ -61,11 +61,6 @@ static ShaderProgramBuildSpec *CreatePureColor2DImpl(const contract::PhysicalDev
     return mci;
 }
 
-ShaderProgramBuildSpec *CreatePureColor2D(const contract::PhysicalDeviceProfileLite *profile,Material2DCreateConfig *cfg)
-{
-    return CreatePureColor2DImpl(profile, Material2DBuildParams::From(*cfg));
-}
-
 ShaderProgramBuildSpec *CreatePureColor2D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {
     (void)definition;

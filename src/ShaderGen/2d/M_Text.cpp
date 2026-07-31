@@ -14,7 +14,7 @@ namespace
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::Text2D);
         bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
         bmi.usage_tag = MaterialDefinitionUsageTag::Text;
-        bmi.is_text = true;          // Text2DMaterialCreateConfig
+        bmi.is_text = true;          // text 材质语义标记
         bmi.is_2d = true;
         bmi.coordinate_system_2d = CoordinateSystem2D::Ortho;
         bmi.local_to_world_2d = false;
@@ -50,7 +50,7 @@ static ShaderProgramBuildSpec *CreateText2DImpl(const contract::PhysicalDevicePr
 
     std::vector<FixedDescriptorEntry> descriptors;
     build2d::PushBaseDescriptorEntries(descriptors, p);
-    descriptors.push_back({DescriptorSetType::Material, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), SamplerName::Text, nullptr, "sampler2D", DescriptorSemantic::MaterialSampler, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::Sampler});
+    descriptors.push_back({DescriptorSetType::Material, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), SamplerName::Text, nullptr, "sampler2D", DescriptorSemantic::MaterialSampler, TextureSlot::BaseColor, GetMaterialStructSlotIndex(SSBOType::PBRSurface), SSBOType::UserDefined, DescriptorSemanticLayer::Sampler});
 
     FixedMaterialDef def {
         "Text2D",
@@ -67,14 +67,6 @@ static ShaderProgramBuildSpec *CreateText2DImpl(const contract::PhysicalDevicePr
     if(!mci)
         std::fprintf(stderr, "[Text2D] CompileCompositorMaterial failed\n");
     return mci;
-}
-
-ShaderProgramBuildSpec *CreateText2D(const contract::PhysicalDeviceProfileLite *profile,const Text2DMaterialCreateConfig *cfg)
-{
-    if(!profile||!cfg)
-        return(nullptr);
-    Material2DBuildParams p = Material2DBuildParams::From(*cfg);
-    return CreateText2DImpl(profile, p);
 }
 
 ShaderProgramBuildSpec *CreateText2D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)

@@ -15,7 +15,7 @@ namespace hgl::graph::mtl
         DescriptorSetType set_type = DescriptorSetType::Unknow;
         DescriptorKind kind = DescriptorKind::UBO;
         TextureSlot texture_slot = TextureSlot::BaseColor;
-        DataSlot data_slot = DataSlot::PBRSurface;
+        uint32_t slot_index = GetMaterialStructSlotIndex(SSBOType::PBRSurface);
         SSBOType ssbo_type = SSBOType::UserDefined;
         uint32_t ssbo_id = MakeRecipeSSBOId(0);
 
@@ -183,7 +183,7 @@ namespace hgl::graph::mtl
             req.set_type = entry.set_type;
             req.kind = entry.kind;
             req.texture_slot = entry.texture_slot;
-            req.data_slot = entry.data_slot;
+            req.slot_index = entry.slot_index;
             req.ssbo_type = entry.ssbo_type;
             req.ssbo_id = entry.ssbo_id;
             req.name = entry.name;
@@ -206,12 +206,16 @@ namespace hgl::graph::mtl
 
             if (req.semantic == DescriptorSemantic::MaterialInstance)
             {
-                req.data_slot = entry.data_slot;
-                req.ssbo_type = (entry.ssbo_type == SSBOType::UserDefined)
-                              ? DefaultSSBOTypeForDataSlot(req.data_slot)
-                              : entry.ssbo_type;
+                req.slot_index = entry.slot_index;
+                req.ssbo_type = entry.ssbo_type;
+                if (req.ssbo_type == SSBOType::UserDefined)
+                {
+                    req.ssbo_type = DefaultSSBOTypeForSlotIndex(req.slot_index);
+                    if (req.ssbo_type == SSBOType::UserDefined)
+                        req.ssbo_type = SSBOType::PBRSurface;
+                }
                 if (req.ssbo_id == MakeRecipeSSBOId(0))
-                    req.ssbo_id = MakeRecipeSSBOId(static_cast<uint32_t>(req.data_slot));
+                    req.ssbo_id = MakeRecipeSSBOId(req.slot_index);
             }
 
             if (req.semantic == DescriptorSemantic::MaterialTextureLayerTable
@@ -233,7 +237,7 @@ namespace hgl::graph::mtl
             if (req.semantic == DescriptorSemantic::MaterialDataIndexTable
              && req.ssbo_id == MakeRecipeSSBOId(0))
             {
-                req.ssbo_id = MakeRecipeSSBOId(static_cast<uint32_t>(req.data_slot));
+                req.ssbo_id = MakeRecipeSSBOId(req.slot_index);
             }
 
             if (req.semantic == DescriptorSemantic::LocalToWorldIndexTable
@@ -360,11 +364,9 @@ namespace hgl::graph::mtl
              || req.semantic == DescriptorSemantic::MaterialDataIndexTable;
             if (requires_data_ssbo)
             {
-                const auto data_slot_value = static_cast<uint32_t>(req.data_slot);
-                const auto data_slot_limit = static_cast<uint32_t>(DataSlot::RANGE_SIZE);
-                if (data_slot_value >= data_slot_limit)
+                if (req.slot_index >= MaterialStructSlotCount)
                 {
-                    std::string message = "Descriptor data_slot is invalid for material SSBO semantic: ";
+                    std::string message = "Descriptor slot_index is invalid for material SSBO semantic: ";
                     message += context;
                     diagnostics.push_back(std::move(message));
                     continue;

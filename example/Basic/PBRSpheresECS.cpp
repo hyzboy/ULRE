@@ -13,7 +13,8 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/mtl/MaterialRecipe.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/ssbo/StandardMaterialInstance.h>
+#include<hgl/graph/ssbo/StandardTextureArrayMaterialInstance.h>
 #include<hgl/filesystem/Filename.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/module/TextureManager.h>
@@ -250,7 +251,7 @@ private:
                 float metallic  = float(col) / float(GRID_SIZE - 1);
                 float roughness = 0.05f + float(row) / float(GRID_SIZE - 1) * 0.95f;
 
-                mtl::StandardTextureArrayMaterialInstance d{};
+                ssbo::StandardTextureArrayMaterialInstance d{};
                 d.base_color = PackRGBA8Float(BASE_COLOR_R, BASE_COLOR_G, BASE_COLOR_B, 1.0f);
                 d.metallic   = metallic;
                 d.roughness  = roughness;

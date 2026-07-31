@@ -140,7 +140,7 @@ namespace hgl::graph
                     recipe.ssbo_assets.clear();
 
                     mtl::RecipeStructBinding struct_binding{};
-                    struct_binding.slot = req.data_slot;
+                    struct_binding.slot_index = req.slot_index;
                     struct_binding.ssbo_type = req.ssbo_type;
                     struct_binding.ssbo_id = req.ssbo_id;
                     struct_binding.struct_index = c;

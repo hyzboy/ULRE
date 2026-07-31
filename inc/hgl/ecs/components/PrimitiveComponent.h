@@ -102,7 +102,7 @@ namespace hgl::ecs
         bool hasMaterialRecipe = false;
         hgl::graph::mtl::MaterialRecipe materialRecipe;
         std::array<MaterialTextureAuthoringResource, static_cast<size_t>(hgl::graph::mtl::TextureSlot::RANGE_SIZE)> materialTextureResources{};
-        std::array<MaterialStructAuthoringResource, static_cast<size_t>(hgl::graph::mtl::DataSlot::RANGE_SIZE)> materialStructResources{};
+        std::array<MaterialStructAuthoringResource, static_cast<size_t>(hgl::graph::mtl::MaterialStructSlotCount)> materialStructResources{};
         std::vector<MaterialStructNamedAuthoringResource> materialStructNamedResources{};
 
         // Late-resolve pipeline slot:
@@ -191,8 +191,7 @@ namespace hgl::ecs
         void SetMaterialTextureValue(hgl::graph::mtl::TextureSlot slot, uint32_t value);
         const MaterialTextureAuthoringResource *GetMaterialTextureResource(hgl::graph::mtl::TextureSlot slot) const;
         void ClearMaterialTextureResource(hgl::graph::mtl::TextureSlot slot);
-        void SetMaterialStructResource(hgl::graph::mtl::DataSlot slot,
-                                       hgl::graph::mtl::SSBOType ssbo_type,
+        void SetMaterialStructResource(hgl::graph::mtl::SSBOType ssbo_type,
                                        uint32_t ssbo_id,
                                        hgl::graph::DeviceBuffer *buffer,
                                        uint32_t element_capacity,
@@ -200,8 +199,8 @@ namespace hgl::ecs
                                        uint32_t struct_index = 0,
                                        bool use_struct_index = false,
                                        bool shared_across_instances = false);
-        const MaterialStructAuthoringResource *GetMaterialStructResource(hgl::graph::mtl::DataSlot slot) const;
-        void ClearMaterialStructResource(hgl::graph::mtl::DataSlot slot);
+        const MaterialStructAuthoringResource *GetMaterialStructResource(hgl::graph::mtl::SSBOType ssbo_type) const;
+        void ClearMaterialStructResource(hgl::graph::mtl::SSBOType ssbo_type);
         void SetMaterialStructResource(const MaterialStructNamedAuthoringResource &resource);
         const MaterialStructNamedAuthoringResource *GetMaterialStructResource(const std::string &ssbo_name) const;
         void ClearMaterialStructResource(const std::string &ssbo_name);

@@ -427,8 +427,7 @@ namespace hgl::ecs
                 domain_manager->ClearDomain(graph::mtl::SSBOAddress{graph::mtl::SSBOType::TextureLayer, alias_ssbo_id, slot});
             }
 
-            const uint32_t data_slot_count = static_cast<uint32_t>(graph::mtl::DataSlot::RANGE_SIZE);
-            for (uint32_t slot = 1; slot < data_slot_count; ++slot)
+            for (uint32_t slot = 1; slot < graph::mtl::MaterialStructSlotCount; ++slot)
             {
                 const uint32_t alias_ssbo_id = graph::mtl::MakeRecipeSSBOId(slot);
                 domain_manager->ClearDomain(graph::mtl::SSBOAddress{graph::mtl::SSBOType::DataIndex, alias_ssbo_id, slot});
@@ -526,7 +525,7 @@ namespace hgl::ecs
         register_domain_aliases(graph::mtl::SSBOType::DataIndex,
                                 materialization_data_index_ssbo,
                                 materialization_data_index_capacity,
-                                static_cast<uint32_t>(graph::mtl::DataSlot::RANGE_SIZE));
+                                graph::mtl::MaterialStructSlotCount);
 
         if (texture_rows > 0 && materialization_texture_layer_ssbo)
         {
@@ -1022,7 +1021,7 @@ namespace hgl::ecs
 
                 if (!has_candidate)
                 {
-                    const auto *resource = primitive_comp->GetMaterialStructResource(req.data_slot);
+                    const auto *resource = primitive_comp->GetMaterialStructResource(req.ssbo_type);
                     if (!resource || resource->ssbo_type != req.ssbo_type)
                         continue;
 
@@ -1046,7 +1045,7 @@ namespace hgl::ecs
                               material->GetName().c_str(),
                               graph::mtl::GetDescriptorSemanticName(req.semantic),
                               req.name,
-                              static_cast<uint32_t>(req.data_slot),
+                              req.slot_index,
                               ssbo_id,
                               candidate_ssbo_id);
                     batch->descriptor_bind_valid = false;
@@ -1261,7 +1260,7 @@ namespace hgl::ecs
                         graph::mtl::SSBOAddress{
                             req.ssbo_type,
                             req.ssbo_id,
-                            static_cast<uint32_t>(req.data_slot)},
+                            req.slot_index},
                         "MaterialDataIndexTable");
                 }
 
@@ -1272,7 +1271,7 @@ namespace hgl::ecs
                 }
                 else
                 {
-                    log_missing_ssbo_once(material, req, batch ? "batch rows missing and domain binding not found" : "domain binding not found", static_cast<int32_t>(req.data_slot));
+                    log_missing_ssbo_once(material, req, batch ? "batch rows missing and domain binding not found" : "domain binding not found", static_cast<int32_t>(req.slot_index));
                     if (batch && req.required)
                         batch->descriptor_bind_valid = false;
                 }

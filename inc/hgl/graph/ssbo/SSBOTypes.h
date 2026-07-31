@@ -6,19 +6,6 @@
 
 namespace hgl::graph::mtl
 {
-    // 逻辑结构体数据槽位（用于声明“实例参数属于哪一类数据语义”）。
-    enum class DataSlot : uint8_t
-    {
-        PBRSurface = 0,
-        EmissiveSurface,
-        ClearCoatSurface,
-        TransmissionSurface,
-        User0,
-        User1,
-
-        ENUM_CLASS_RANGE(PBRSurface, User1)
-    };
-
     // SSBO 类型枚举：用于在 Recipe/Spec 中以稳定整数传递“结构体数据落在哪类缓冲”。
     enum class SSBOType : uint16_t
     {
@@ -36,6 +23,46 @@ namespace hgl::graph::mtl
     };
 
     using SSBOCategory = SSBOType;
+    constexpr uint32_t MaterialStructSlotCount = 6;
+
+    constexpr bool IsMaterialStructSSBOType(const SSBOType type) noexcept
+    {
+        switch (type)
+        {
+        case SSBOType::PBRSurface:
+        case SSBOType::EmissiveSurface:
+        case SSBOType::ClearCoatSurface:
+        case SSBOType::TransmissionSurface:
+        case SSBOType::UserDefined:
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    constexpr uint32_t GetMaterialStructSlotIndex(const SSBOType type) noexcept
+    {
+        switch (type)
+        {
+        case SSBOType::PBRSurface: return 0;
+        case SSBOType::EmissiveSurface: return 1;
+        case SSBOType::ClearCoatSurface: return 2;
+        case SSBOType::TransmissionSurface: return 3;
+        default: return 4;
+        }
+    }
+
+    constexpr SSBOType GetMaterialStructSSBOTypeBySlotIndex(const uint32_t slot_index) noexcept
+    {
+        switch (slot_index)
+        {
+        case 0: return SSBOType::PBRSurface;
+        case 1: return SSBOType::EmissiveSurface;
+        case 2: return SSBOType::ClearCoatSurface;
+        case 3: return SSBOType::TransmissionSurface;
+        default: return SSBOType::UserDefined;
+        }
+    }
 
     inline const char *GetSSBOTypeName(const SSBOType type) noexcept
     {
@@ -77,7 +104,7 @@ namespace hgl::graph::mtl
         case SSBOType::TextureLayer:
             return sizeof(uint32_t) * static_cast<uint32_t>(TextureSlot::RANGE_SIZE);
         case SSBOType::DataIndex:
-            return sizeof(uint32_t) * static_cast<uint32_t>(DataSlot::RANGE_SIZE);
+            return sizeof(uint32_t) * MaterialStructSlotCount;
         case SSBOType::TransformIndexRows:
             return sizeof(uint32_t);
         case SSBOType::LocalToWorld:
@@ -140,9 +167,9 @@ namespace hgl::graph::mtl
         }
     };
 
-    inline SSBOAddress MakeSSBOAddress(const SSBOType ssbo_type, const uint32_t ssbo_id, const DataSlot slot) noexcept
+    inline SSBOAddress MakeSSBOAddress(const SSBOType ssbo_type, const uint32_t ssbo_id, const uint32_t slot_index) noexcept
     {
-        return SSBOAddress{ssbo_type, ssbo_id, static_cast<uint32_t>(slot)};
+        return SSBOAddress{ssbo_type, ssbo_id, slot_index};
     }
 
     inline SSBOAddress MakeSSBOAddress(const SSBOType ssbo_type, const uint32_t ssbo_id, const TextureSlot slot) noexcept

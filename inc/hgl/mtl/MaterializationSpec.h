@@ -18,10 +18,10 @@ namespace hgl::graph::mtl
     };
 
     // Resolve 阶段产出的“结构体数据引用结果”。
-    // 作用：把 Recipe 的 DataSlot 映射到具体 SSBO 池与结构体偏移/步长。
+    // 作用：把 Recipe 的结构体槽位映射到具体 SSBO 池与结构体偏移/步长。
     struct ResolvedStructRef
     {
-        DataSlot slot = DataSlot::PBRSurface;       // 语义数据槽（PBRSurface/ClearCoat...）
+        uint32_t slot_index = GetMaterialStructSlotIndex(SSBOType::PBRSurface); // DataIndex 行槽位
         SSBOType ssbo_type = SSBOType::UserDefined; // 目标 SSBO 类型（契约主字段）
         uint32_t ssbo_id = 0;                       // 目标 SSBO 资源 ID（主字段，P1.55）
         uint32_t ssbo_binding = 0;                  // 目标 SSBO binding（管线布局侧）
@@ -71,7 +71,7 @@ namespace hgl::graph::mtl
         hash = hgl::hash::FNV1aAppendValueBytes(hash, struct_count);
         for (const auto &ref : spec.struct_refs)
         {
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.slot);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.slot_index);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_type);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_id);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_binding);
@@ -102,7 +102,7 @@ namespace hgl::graph::mtl
         hash = hgl::hash::FNV1aAppendValueBytes(hash, struct_count);
         for (const auto &ref : spec.struct_refs)
         {
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.slot);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.slot_index);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_type);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_binding);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.byte_stride);
@@ -132,7 +132,7 @@ namespace hgl::graph::mtl
         hash = hgl::hash::FNV1aAppendValueBytes(hash, struct_count);
         for (const auto &ref : spec.struct_refs)
         {
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.slot);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.slot_index);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_type);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_id);
         }

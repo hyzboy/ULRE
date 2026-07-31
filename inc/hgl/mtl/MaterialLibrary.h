@@ -20,7 +20,6 @@ namespace hgl::graph
 
 namespace hgl::graph::mtl{
 
-struct MaterialCreateConfig;
 class ShaderProgramBuildSpec;
 
 // BuiltinMaterialCreatorID：内部创建派发键，与 M_* 创建函数一一对应。
@@ -74,16 +73,25 @@ struct MaterialDefinitionBuildRequest
     }
 };
 
-/// 仅声明材质创建函数，不产生任何注册或全局常量副作用。
-#define DECLARE_MATERIAL_CREATOR(name,cfg_type) \
-ShaderProgramBuildSpec *Create##name(const contract::PhysicalDeviceProfileLite *profile,cfg_type *); \
-ShaderProgramBuildSpec *Create##name(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition); \
-\
-inline ShaderProgramBuildSpec *Create##name(const contract::PhysicalDeviceProfileLite *profile)  \
-{   \
-    cfg_type cfg;   \
-    return Create##name(profile,&cfg);  \
-}
+/// 仅声明 request 主路径材质创建函数，不产生任何注册或全局常量副作用。
+#define DECLARE_MATERIAL_CREATOR(name) \
+ShaderProgramBuildSpec *Create##name(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition);
+
+DECLARE_MATERIAL_CREATOR(VertexColor2D)
+DECLARE_MATERIAL_CREATOR(PureColor2D)
+DECLARE_MATERIAL_CREATOR(PureTexture2D)
+DECLARE_MATERIAL_CREATOR(RectTexture2D)
+DECLARE_MATERIAL_CREATOR(RectTexture2DArray)
+DECLARE_MATERIAL_CREATOR(Text2D)
+DECLARE_MATERIAL_CREATOR(PureColor3D)
+DECLARE_MATERIAL_CREATOR(VertexColor3D)
+DECLARE_MATERIAL_CREATOR(VertexLuminance3D)
+DECLARE_MATERIAL_CREATOR(VertexPattleColor3D)
+DECLARE_MATERIAL_CREATOR(Gizmo3D)
+DECLARE_MATERIAL_CREATOR(SkyMinimal)
+DECLARE_MATERIAL_CREATOR(Standard)
+DECLARE_MATERIAL_CREATOR(StandardTextureArray)
+DECLARE_MATERIAL_CREATOR(PBRColor3D)
 
 ShaderProgramBuildSpec *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
                                              const BuiltinMaterialCreatorID mtl_id,
@@ -93,9 +101,6 @@ ShaderProgramBuildSpec *CreateMaterialCreateInfo(const contract::PhysicalDeviceP
 std::string BuildBuiltinMaterialCreatorRequestHash(const BuiltinMaterialCreatorID mtl_id,
                                                  const MaterialDefinition &definition,
                                                  const MaterialDefinitionBuildRequest &request);
-
-void ApplyMaterialBuildRequestToLegacyConfig(MaterialCreateConfig &cfg,
-                                             const MaterialDefinitionBuildRequest &request);
 
 VkFormat ResolveMaterialVertexSemanticFormat(const GeometryVertexFormat *gvf, VertexSemantic semantic, VkFormat fallback_format);
 inline VkFormat ResolveMaterialPositionFormat(const GeometryVertexFormat *gvf, VkFormat fallback_format)

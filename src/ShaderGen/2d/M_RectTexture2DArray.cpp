@@ -42,7 +42,7 @@ static ShaderProgramBuildSpec *CreateRectTexture2DArrayImpl(const contract::Phys
 
     std::vector<FixedDescriptorEntry> descriptors;
     build2d::PushBaseDescriptorEntries(descriptors, p);
-    descriptors.push_back({DescriptorSetType::Material, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), SamplerName::BaseColor, nullptr, "sampler2DArray", DescriptorSemantic::MaterialSampler, TextureSlot::BaseColor, DataSlot::PBRSurface, SSBOType::UserDefined, DescriptorSemanticLayer::Sampler});
+    descriptors.push_back({DescriptorSetType::Material, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), SamplerName::BaseColor, nullptr, "sampler2DArray", DescriptorSemantic::MaterialSampler, TextureSlot::BaseColor, GetMaterialStructSlotIndex(SSBOType::PBRSurface), SSBOType::UserDefined, DescriptorSemanticLayer::Sampler});
 
     FixedMaterialDef def {
         "RectTexture2DArray",
@@ -59,13 +59,6 @@ static ShaderProgramBuildSpec *CreateRectTexture2DArrayImpl(const contract::Phys
     if(!mci)
         std::fprintf(stderr, "[RectTexture2DArray] CompileCompositorMaterial failed\n");
     return mci;
-}
-
-ShaderProgramBuildSpec *CreateRectTexture2DArray(const contract::PhysicalDeviceProfileLite *profile,const mtl::Material2DCreateConfig *cfg)
-{
-    if(!cfg)
-        return(nullptr);
-    return CreateRectTexture2DArrayImpl(profile, Material2DBuildParams::From(*cfg));
 }
 
 ShaderProgramBuildSpec *CreateRectTexture2DArray(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)

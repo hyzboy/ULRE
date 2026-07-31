@@ -48,11 +48,6 @@ static ShaderProgramBuildSpec *CreateVertexColor2DImpl(const contract::PhysicalD
     return mci;
 }
 
-ShaderProgramBuildSpec *CreateVertexColor2D(const contract::PhysicalDeviceProfileLite *profile,const Material2DCreateConfig *cfg)
-{
-    return CreateVertexColor2DImpl(profile, Material2DBuildParams::From(*cfg));
-}
-
 ShaderProgramBuildSpec *CreateVertexColor2D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {
     return CreateVertexColor2DImpl(profile, Material2DBuildParams::From(request, definition));

@@ -4,7 +4,7 @@
 ///
 /// 原 StdMaterial 虚函数链已被 CompileCompositorMaterial + FixedMaterialDef 取代。
 /// 本文件仅保留 WithSky/WithCamera/WithLocalToWorld 枚举供
-/// Material2DCreateConfig / Material3DCreateConfig 使用。
+/// request 到构建参数转换阶段复用。
 
 #include<hgl/type/String.h>
 

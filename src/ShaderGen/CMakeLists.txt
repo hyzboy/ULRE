@@ -61,8 +61,7 @@ SET(SSBO_STRUCT_FILES   ${SSBO_HEADER_PATH}/StandardMaterialInstance.h
 SOURCE_GROUP("Standard Material\\SSBO" FILES ${SSBO_STRUCT_FILES})
 SET(BLINN_PHONG_HEADER_FILES ${STD_MTL_HEADER_PATH}/BlinnPhong.h)
 
-SET(STD_MTL_2D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material2DCreateConfig.h
-                            2d/Build2DCommon.h
+SET(STD_MTL_2D_SOURCE_FILES	2d/Build2DCommon.h
                             2d/M_VertexColor2D.cpp
                             2d/M_PureColor2D.cpp
                             2d/M_PureTexture2D.cpp
@@ -71,9 +70,7 @@ SET(STD_MTL_2D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material2DCreateConfig.h
                             2d/M_Text.cpp
 )
 
-SET(STD_MTL_3D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material3DCreateConfig.h
-                            3d/Build3DCommon.h
-                            3d/M_PureColor3D.cpp
+SET(STD_MTL_3D_SOURCE_FILES	3d/M_PureColor3D.cpp
                             3d/M_VertexColor3D.cpp
                             3d/M_VertexLum3D.cpp
                             3d/M_Gizmo3D.cpp
@@ -84,10 +81,8 @@ SET(STD_MTL_3D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material3DCreateConfig.h
                             3d/M_VertexPattleColor3D.cpp
 )
 
-SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/MaterialCreateConfig.h
-                    ${STD_MTL_HEADER_PATH}/StdMaterial.h
+SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/StdMaterial.h
                     ${STD_MTL_HEADER_PATH}/ShaderBufferSource.h
-                    MaterialCreateConfig.cpp
                     GLSLStructSize.cpp
 )
 
@@ -174,5 +169,3 @@ add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_INCLUDE_PATH}
                                         ${COMPOSITOR_SOURCE_FILES}
                                         ${NEW_MTL_TYPE_FILES}
 )
-
-

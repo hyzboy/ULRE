@@ -2,11 +2,9 @@
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/shadergen/CompositorAssembler.h>
-#include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/common/RenderAssignDef.h>
 #include <cstdio>
 #include <vector>
-#include "Build3DCommon.h"
 
 #include "../common/MFSkyLight.h"
 #include "StandardSharedSpec.h"
@@ -99,14 +97,6 @@ static ShaderProgramBuildSpec *CreateStandardTextureArrayImpl(const contract::Ph
         std::fprintf(stderr, "[StandardTextureArray] CompileCompositorMaterial failed\n");
     return mci;
 }
-
-ShaderProgramBuildSpec *CreateStandardTextureArray(const contract::PhysicalDeviceProfileLite *profile, const Material3DCreateConfig *cfg)
-{
-    CompositorMaterialBuildConfig bc = ToCompositorBuildConfigLegacy3D(cfg);
-    bc.material_instance = true;
-    return CreateStandardTextureArrayImpl(profile, bc);
-}
-
 
 ShaderProgramBuildSpec *CreateStandardTextureArray(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {

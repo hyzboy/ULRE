@@ -1,6 +1,5 @@
 #include<hgl/mtl/MaterialLibrary.h>
-#include<hgl/mtl/Material2DCreateConfig.h>
-#include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/ShaderBufferSource.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
 
@@ -156,21 +155,6 @@ const char *GetBuiltinMaterialCreatorIDName(const BuiltinMaterialCreatorID mtl_i
     }
 }
 
-
-void ApplyMaterialBuildRequestToLegacyConfig(MaterialCreateConfig &cfg,const MaterialDefinitionBuildRequest &request)
-{
-    cfg.prim = request.primitive_type;
-    cfg.SetGeometryVertexFormat(request.geometry_vertex_format);
-
-    if(request.override_shader_stage_bits)
-        cfg.shader_stage_flag_bit = request.shader_stage_flag_bit;
-
-    if(request.override_rt_output)
-        cfg.rt_output = request.rt_output;
-
-    if(request.private_shader_buffer_sources && request.private_shader_buffer_source_count>0)
-        cfg.SetPrivateShaderBufferSources(request.private_shader_buffer_sources,request.private_shader_buffer_source_count);
-}
 
 static ShaderProgramBuildSpec *CreateMaterialCreateInfoFromRequest(const contract::PhysicalDeviceProfileLite *profile,
                                                                    const BuiltinMaterialCreatorID mtl_id,
