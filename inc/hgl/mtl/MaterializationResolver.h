@@ -58,13 +58,13 @@ namespace hgl::graph::mtl
                 return false;
 
             ResolvedStructRef resolved{};
-            resolved.slot_index = data_ref.slot_index;
+            resolved.ssbo_slot = data_ref.ssbo_slot;
 
             if (!callbacks.resolve_struct(data_ref, resolved))
                 return false;
 
             // 同上：语义槽位保持由 Recipe 驱动。
-            resolved.slot_index = data_ref.slot_index;
+            resolved.ssbo_slot = data_ref.ssbo_slot;
             out_spec.struct_refs.emplace_back(std::move(resolved));
         }
 

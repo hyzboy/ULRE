@@ -15,7 +15,7 @@ namespace hgl::graph::mtl
         DescriptorSetType set_type = DescriptorSetType::Unknow;
         DescriptorKind kind = DescriptorKind::UBO;
         TextureSlot texture_slot = TextureSlot::BaseColor;
-        uint32_t slot_index = GetMaterialStructSlotIndex(SSBOType::PBRSurface);
+        uint32_t ssbo_slot = GetMaterialStructSlotIndex(SSBOType::PBRSurface);
         SSBOType ssbo_type = SSBOType::UserDefined;
         uint32_t ssbo_id = MakeRecipeSSBOId(0);
 
@@ -41,7 +41,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::MaterialTexture:
         case DescriptorSemantic::MaterialSampler:
         case DescriptorSemantic::MaterialTextureLayerTable:
-        case DescriptorSemantic::MaterialDataIndexTable:
+        case DescriptorSemantic::MaterialSSBOIndexTable:
             return false;
         default:
             return true;
@@ -57,7 +57,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::MaterialTexture:
         case DescriptorSemantic::MaterialSampler:
         case DescriptorSemantic::MaterialTextureLayerTable:
-        case DescriptorSemantic::MaterialDataIndexTable:
+        case DescriptorSemantic::MaterialSSBOIndexTable:
             return true;
         default:
             return false;
@@ -85,7 +85,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::MaterialTexture:
         case DescriptorSemantic::MaterialSampler:
         case DescriptorSemantic::MaterialTextureLayerTable:
-        case DescriptorSemantic::MaterialDataIndexTable:
+        case DescriptorSemantic::MaterialSSBOIndexTable:
             return DescriptorSetType::Material;
 
         default:
@@ -142,7 +142,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::MaterialInstance: return SBS_MaterialInstance.name;
         case DescriptorSemantic::MaterialColorPalette: return SBS_ColorPattle.name;
         case DescriptorSemantic::MaterialTextureLayerTable: return SBS_MaterialTextureLayerRows.name;
-        case DescriptorSemantic::MaterialDataIndexTable: return SBS_MaterialDataIndexRows.name;
+        case DescriptorSemantic::MaterialSSBOIndexTable: return SBS_MaterialDataIndexRows.name;
         default: return nullptr;
         }
     }
@@ -159,7 +159,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::MaterialInstance: return SBS_MaterialInstance.struct_name;
         case DescriptorSemantic::MaterialColorPalette: return SBS_ColorPattle.struct_name;
         case DescriptorSemantic::MaterialTextureLayerTable: return SBS_MaterialTextureLayerRows.struct_name;
-        case DescriptorSemantic::MaterialDataIndexTable: return SBS_MaterialDataIndexRows.struct_name;
+        case DescriptorSemantic::MaterialSSBOIndexTable: return SBS_MaterialDataIndexRows.struct_name;
         default: return nullptr;
         }
     }
@@ -183,7 +183,7 @@ namespace hgl::graph::mtl
             req.set_type = entry.set_type;
             req.kind = entry.kind;
             req.texture_slot = entry.texture_slot;
-            req.slot_index = entry.slot_index;
+            req.ssbo_slot = entry.ssbo_slot;
             req.ssbo_type = entry.ssbo_type;
             req.ssbo_id = entry.ssbo_id;
             req.name = entry.name;
@@ -206,16 +206,16 @@ namespace hgl::graph::mtl
 
             if (req.semantic == DescriptorSemantic::MaterialInstance)
             {
-                req.slot_index = entry.slot_index;
+                req.ssbo_slot = entry.ssbo_slot;
                 req.ssbo_type = entry.ssbo_type;
                 if (req.ssbo_type == SSBOType::UserDefined)
                 {
-                    req.ssbo_type = DefaultSSBOTypeForSlotIndex(req.slot_index);
+                    req.ssbo_type = DefaultSSBOTypeForSlotIndex(req.ssbo_slot);
                     if (req.ssbo_type == SSBOType::UserDefined)
                         req.ssbo_type = SSBOType::PBRSurface;
                 }
                 if (req.ssbo_id == MakeRecipeSSBOId(0))
-                    req.ssbo_id = MakeRecipeSSBOId(req.slot_index);
+                    req.ssbo_id = MakeRecipeSSBOId(req.ssbo_slot);
             }
 
             if (req.semantic == DescriptorSemantic::MaterialTextureLayerTable
@@ -229,15 +229,15 @@ namespace hgl::graph::mtl
                 req.ssbo_id = MakeRecipeSSBOId(static_cast<uint32_t>(req.texture_slot));
             }
 
-            if (req.semantic == DescriptorSemantic::MaterialDataIndexTable
+            if (req.semantic == DescriptorSemantic::MaterialSSBOIndexTable
              && req.ssbo_type == SSBOType::UserDefined)
             {
-                req.ssbo_type = SSBOType::DataIndex;
+                req.ssbo_type = SSBOType::MaterialSSBOIndexTable;
             }
-            if (req.semantic == DescriptorSemantic::MaterialDataIndexTable
+            if (req.semantic == DescriptorSemantic::MaterialSSBOIndexTable
              && req.ssbo_id == MakeRecipeSSBOId(0))
             {
-                req.ssbo_id = MakeRecipeSSBOId(req.slot_index);
+                req.ssbo_id = MakeRecipeSSBOId(req.ssbo_slot);
             }
 
             if (req.semantic == DescriptorSemantic::LocalToWorldIndexTable
@@ -268,7 +268,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::MaterialTexture:  return "MaterialTexture";
         case DescriptorSemantic::MaterialSampler:  return "MaterialSampler";
         case DescriptorSemantic::MaterialTextureLayerTable: return "MaterialTextureLayerTable";
-        case DescriptorSemantic::MaterialDataIndexTable: return "MaterialDataIndexTable";
+        case DescriptorSemantic::MaterialSSBOIndexTable: return "MaterialSSBOIndexTable";
         case DescriptorSemantic::Custom:           return "Custom";
         }
 
@@ -361,12 +361,12 @@ namespace hgl::graph::mtl
             const bool requires_data_ssbo =
                 req.semantic == DescriptorSemantic::MaterialInstance
              || req.semantic == DescriptorSemantic::MaterialTextureLayerTable
-             || req.semantic == DescriptorSemantic::MaterialDataIndexTable;
+             || req.semantic == DescriptorSemantic::MaterialSSBOIndexTable;
             if (requires_data_ssbo)
             {
-                if (req.slot_index >= MaterialStructSlotCount)
+                if (req.ssbo_slot >= MaterialStructSlotCount)
                 {
-                    std::string message = "Descriptor slot_index is invalid for material SSBO semantic: ";
+                    std::string message = "Descriptor ssbo_slot is invalid for material SSBO semantic: ";
                     message += context;
                     diagnostics.push_back(std::move(message));
                     continue;

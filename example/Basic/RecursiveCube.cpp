@@ -189,8 +189,8 @@ private:
             hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource cube_struct{};
             cube_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
             cube_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
-            cube_struct.struct_index = 0;
-            cube_struct.use_struct_index = true;
+            cube_struct.ssbo_element_index = 0;
+            cube_struct.use_ssbo_element_index = true;
             cube_struct.shared_across_instances = true;
             primitive_comp->SetMaterialStructResource(cube_struct);
         }

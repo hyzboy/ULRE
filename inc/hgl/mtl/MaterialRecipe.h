@@ -28,11 +28,11 @@ namespace hgl::graph::mtl
     // Recipe 中的结构体绑定声明（告诉 Resolve 需要哪类参数结构）。
     struct RecipeStructBinding
     {
-        uint32_t slot_index = GetMaterialStructSlotIndex(SSBOType::PBRSurface); // DataIndex 行槽位
+        uint32_t ssbo_slot = GetMaterialStructSlotIndex(SSBOType::PBRSurface); // DataIndex 行槽位
         SSBOType ssbo_type = SSBOType::UserDefined;        // 结构体所属 SSBO 类型（主字段）
         uint32_t ssbo_id = 0;                              // 结构体 SSBO 资源 ID（主字段，P1.55）
-        uint32_t struct_index = 0;                         // 结构体行索引（默认 0；可通过 use_struct_index 显式重载）
-        bool use_struct_index = false;                     // true 时使用 struct_index 覆盖默认索引
+        uint32_t ssbo_element_index = 0;                         // 结构体行索引（默认 0；可通过 use_ssbo_element_index 显式重载）
+        bool use_ssbo_element_index = false;                     // true 时使用 ssbo_element_index 覆盖默认索引
         bool shared_across_instances = false;              // true: 多实例共享同一结构体数据
     };
 
@@ -230,11 +230,11 @@ namespace hgl::graph::mtl
         hash = hgl::hash::FNV1aAppendValueBytes(hash, struct_count);
         for (const auto &s : recipe.structs)
         {
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, s.slot_index);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, s.ssbo_slot);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, s.ssbo_type);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, s.ssbo_id);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, s.struct_index);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, s.use_struct_index);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, s.ssbo_element_index);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, s.use_ssbo_element_index);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, s.shared_across_instances);
         }
 

@@ -152,7 +152,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
             case DescriptorSemantic::MaterialTextureLayerTable:
                 mci->AddSSBOStruct(stage_bits, SBS_MaterialTextureLayerRows);
                 break;
-            case DescriptorSemantic::MaterialDataIndexTable:
+            case DescriptorSemantic::MaterialSSBOIndexTable:
                 mci->AddSSBOStruct(stage_bits, SBS_MaterialDataIndexRows);
                 break;
             default:

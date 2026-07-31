@@ -232,8 +232,8 @@ private:
             hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource tick_struct{};
             tick_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
             tick_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
-            tick_struct.struct_index = tick_slot;
-            tick_struct.use_struct_index = true;
+            tick_struct.ssbo_element_index = tick_slot;
+            tick_struct.use_ssbo_element_index = true;
             tick_struct.shared_across_instances = false;
             primitive_comp->SetMaterialStructResource(tick_struct);
             primitive_comp->RequestPipeline(InlinePipeline::Solid2D);
@@ -270,8 +270,8 @@ private:
             hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource hand_struct{};
             hand_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
             hand_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
-            hand_struct.struct_index = hand_slots[i];
-            hand_struct.use_struct_index = true;
+            hand_struct.ssbo_element_index = hand_slots[i];
+            hand_struct.use_ssbo_element_index = true;
             hand_struct.shared_across_instances = false;
             primitive_comp->SetMaterialStructResource(hand_struct);
             primitive_comp->RequestPipeline(InlinePipeline::Solid2D);

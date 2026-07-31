@@ -106,7 +106,7 @@ namespace hgl::graph::mtl
     {
         SSBOType ssbo_type = SSBOType::UserDefined;
         uint32_t ssbo_id = 0;
-        uint32_t struct_index = 0;
+        uint32_t ssbo_element_index = 0;
         uint32_t byte_stride = 0;
     };
 
@@ -134,12 +134,12 @@ namespace hgl::graph::mtl
 
             const auto &state = it->second;
             // Default to row 0 for domain-managed per-id buffers.
-            // Explicit row selection must be provided by authoring (use_struct_index=true).
+            // Explicit row selection must be provided by authoring (use_ssbo_element_index=true).
             const uint32_t index = 0;
 
             out_alloc.ssbo_type = state.layout.ssbo_type;
             out_alloc.ssbo_id = state.layout.ssbo_id;
-            out_alloc.struct_index = index;
+            out_alloc.ssbo_element_index = index;
             out_alloc.byte_stride = state.layout.byte_stride;
             return true;
         }
@@ -202,20 +202,20 @@ namespace hgl::graph::mtl
         std::array<uint32_t, static_cast<size_t>(TextureSlot::RANGE_SIZE)> values{};
     };
 
-    // DataIndex SSBO 的单实例行（每个结构体槽位一个 struct_index）。
-    struct DataIndexRow
+    // MaterialSSBOIndexTable SSBO 的单实例行（每个结构体槽位一个 ssbo_element_index）。
+    struct MaterialSSBOIndexRow
     {
         std::array<uint32_t, static_cast<size_t>(MaterialStructSlotCount)> values{};
     };
-    static_assert(sizeof(DataIndexRow::values[0]) == sizeof(uint32_t),
-                  "DataIndexRow values must remain uint32_t for SSBO row format stability.");
+    static_assert(sizeof(MaterialSSBOIndexRow::values[0]) == sizeof(uint32_t),
+                  "MaterialSSBOIndexRow values must remain uint32_t for SSBO row format stability.");
 
     // TextureLayer/DataIndex 间接表容器（Phase 3 最小骨架）。
     class MaterializationIndexTables
     {
     private:
         std::vector<TextureLayerRow> texture_layer_rows;
-        std::vector<DataIndexRow> data_index_rows;
+        std::vector<MaterialSSBOIndexRow> data_index_rows;
 
     public:
         void Clear()
@@ -230,7 +230,7 @@ namespace hgl::graph::mtl
             return static_cast<uint32_t>(texture_layer_rows.size() - 1);
         }
 
-        uint32_t PushDataIndexRow(const DataIndexRow &row)
+        uint32_t PushMaterialSSBOIndexRow(const MaterialSSBOIndexRow &row)
         {
             data_index_rows.emplace_back(row);
             return static_cast<uint32_t>(data_index_rows.size() - 1);
@@ -243,7 +243,7 @@ namespace hgl::graph::mtl
             return &texture_layer_rows[index];
         }
 
-        const DataIndexRow *GetDataIndexRow(const uint32_t index) const
+        const MaterialSSBOIndexRow *GetMaterialSSBOIndexRow(const uint32_t index) const
         {
             if (index >= data_index_rows.size())
                 return nullptr;
@@ -251,18 +251,18 @@ namespace hgl::graph::mtl
         }
 
         size_t GetTextureLayerRowCount() const { return texture_layer_rows.size(); }
-        size_t GetDataIndexRowCount() const { return data_index_rows.size(); }
+        size_t GetMaterialSSBOIndexRowCount() const { return data_index_rows.size(); }
     };
 
-    // 将 DataIndex 槽位映射到默认 SSBO 分类（可在后续阶段替换为可配置策略）。
-    inline SSBOType DefaultSSBOTypeForSlotIndex(const uint32_t slot_index) noexcept
+    // 将 MaterialSSBOIndexTable 槽位映射到默认 SSBO 分类（可在后续阶段替换为可配置策略）。
+    inline SSBOType DefaultSSBOTypeForSlotIndex(const uint32_t ssbo_slot) noexcept
     {
-        return GetMaterialStructSSBOTypeBySlotIndex(slot_index);
+        return GetMaterialStructSSBOTypeBySlotIndex(ssbo_slot);
     }
 
-    inline SSBOCategory DefaultCategoryForSlotIndex(const uint32_t slot_index) noexcept
+    inline SSBOCategory DefaultCategoryForSlotIndex(const uint32_t ssbo_slot) noexcept
     {
-        return DefaultSSBOTypeForSlotIndex(slot_index);
+        return DefaultSSBOTypeForSlotIndex(ssbo_slot);
     }
 
     // 用池对象构建 Recipe->Spec 解析回调。
@@ -312,11 +312,11 @@ namespace hgl::graph::mtl
             if (!struct_pool.TryResolve(input.ssbo_type, input.ssbo_id, alloc))
                 return false;
 
-            output.slot_index = input.slot_index;
+            output.ssbo_slot = input.ssbo_slot;
             output.ssbo_type = alloc.ssbo_type;
             output.ssbo_id = alloc.ssbo_id;
             output.ssbo_binding = static_cast<uint32_t>(alloc.ssbo_type); // 临时默认映射，后续由布局系统接管
-            output.struct_index = input.use_struct_index ? input.struct_index : alloc.struct_index;
+            output.ssbo_element_index = input.use_ssbo_element_index ? input.ssbo_element_index : alloc.ssbo_element_index;
             output.byte_stride = alloc.byte_stride;
             return true;
         };
@@ -338,14 +338,14 @@ namespace hgl::graph::mtl
         return row;
     }
 
-    inline DataIndexRow BuildDataIndexRow(const MaterializationSpec &spec)
+    inline MaterialSSBOIndexRow BuildMaterialSSBOIndexRow(const MaterializationSpec &spec)
     {
-        DataIndexRow row{};
+        MaterialSSBOIndexRow row{};
         for (const auto &ref : spec.struct_refs)
         {
-            const size_t idx = static_cast<size_t>(ref.slot_index);
+            const size_t idx = static_cast<size_t>(ref.ssbo_slot);
             if (idx < row.values.size())
-                row.values[idx] = ref.struct_index;
+                row.values[idx] = ref.ssbo_element_index;
         }
         return row;
     }
@@ -357,7 +357,7 @@ namespace hgl::graph::mtl
                                        uint32_t &out_data_index_row)
     {
         out_texture_layer_row = tables.PushTextureLayerRow(BuildTextureLayerRow(spec));
-        out_data_index_row = tables.PushDataIndexRow(BuildDataIndexRow(spec));
+        out_data_index_row = tables.PushMaterialSSBOIndexRow(BuildMaterialSSBOIndexRow(spec));
         return true;
     }
 }

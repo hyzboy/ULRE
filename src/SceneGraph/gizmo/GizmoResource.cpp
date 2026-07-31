@@ -140,11 +140,11 @@ namespace hgl::graph
                     recipe.ssbo_assets.clear();
 
                     mtl::RecipeStructBinding struct_binding{};
-                    struct_binding.slot_index = req.slot_index;
+                    struct_binding.ssbo_slot = req.ssbo_slot;
                     struct_binding.ssbo_type = req.ssbo_type;
                     struct_binding.ssbo_id = req.ssbo_id;
-                    struct_binding.struct_index = c;
-                    struct_binding.use_struct_index = true;
+                    struct_binding.ssbo_element_index = c;
+                    struct_binding.use_ssbo_element_index = true;
                     struct_binding.shared_across_instances = true;
                     recipe.structs.emplace_back(std::move(struct_binding));
                 }

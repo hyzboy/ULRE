@@ -293,8 +293,8 @@ private:
             hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource bbox_struct{};
             bbox_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
             bbox_struct.ssbo_id = wire.mi_ssbo_accessor->GetSSBOId();
-            bbox_struct.struct_index = static_cast<uint32_t>(i % COLOR_COUNT);
-            bbox_struct.use_struct_index = true;
+            bbox_struct.ssbo_element_index = static_cast<uint32_t>(i % COLOR_COUNT);
+            bbox_struct.use_ssbo_element_index = true;
             bbox_struct.shared_across_instances = true;
             bbox->primitive_comp->SetMaterialStructResource(bbox_struct);
             bbox->primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
@@ -336,8 +336,8 @@ private:
             hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource mesh_struct{};
             mesh_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
             mesh_struct.ssbo_id = solid.mi_ssbo_accessor->GetSSBOId();
-            mesh_struct.struct_index = rm->color_index;
-            mesh_struct.use_struct_index = true;
+            mesh_struct.ssbo_element_index = rm->color_index;
+            mesh_struct.use_ssbo_element_index = true;
             mesh_struct.shared_across_instances = true;
             rm->primitive_comp->SetMaterialStructResource(mesh_struct);
             rm->primitive_comp->RequestPipeline(InlinePipeline::Solid3D);

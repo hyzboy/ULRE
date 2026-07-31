@@ -75,7 +75,7 @@ private:
         return geom_plane_grid;
     }
 
-    bool Add(const char *name,const uint32_t struct_index,const glm::quat &rotation)
+    bool Add(const char *name,const uint32_t ssbo_element_index,const glm::quat &rotation)
     {
         auto entity = ecs_context->CreateEntity<hgl::ecs::Entity>(name);
         auto transform = entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
@@ -90,8 +90,8 @@ private:
         hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource named_struct{};
         named_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
         named_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
-        named_struct.struct_index = struct_index;
-        named_struct.use_struct_index = true;
+        named_struct.ssbo_element_index = ssbo_element_index;
+        named_struct.use_ssbo_element_index = true;
         named_struct.shared_across_instances = true;
         prim_comp->SetMaterialStructResource(named_struct);
         prim_comp->RequestPipeline(InlinePipeline::Solid3D);

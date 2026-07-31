@@ -56,8 +56,8 @@ namespace hgl::ecs
             resource.buffer = nullptr;
             resource.element_capacity = 0;
             resource.byte_stride = 0;
-            resource.struct_index = 0;
-            resource.use_struct_index = false;
+            resource.ssbo_element_index = 0;
+            resource.use_ssbo_element_index = false;
             resource.shared_across_instances = false;
             resource.authored = false;
         }
@@ -66,8 +66,8 @@ namespace hgl::ecs
         {
             resource.ssbo_name.clear();
             resource.ssbo_id = 0;
-            resource.struct_index = 0;
-            resource.use_struct_index = false;
+            resource.ssbo_element_index = 0;
+            resource.use_ssbo_element_index = false;
             resource.shared_across_instances = false;
             resource.authored = false;
         }
@@ -275,8 +275,8 @@ namespace hgl::ecs
                                                        hgl::graph::DeviceBuffer *buffer,
                                                        uint32_t element_capacity,
                                                        uint32_t byte_stride,
-                                                       uint32_t struct_index,
-                                                       bool use_struct_index,
+                                                       uint32_t ssbo_element_index,
+                                                       bool use_ssbo_element_index,
                                                        bool shared_across_instances)
     {
         if (!hgl::graph::mtl::IsMaterialStructSSBOType(ssbo_type))
@@ -293,8 +293,8 @@ namespace hgl::ecs
             ssbo_id == 0 &&
             element_capacity == 0 &&
             byte_stride == 0 &&
-            struct_index == 0 &&
-            !use_struct_index &&
+            ssbo_element_index == 0 &&
+            !use_ssbo_element_index &&
             !shared_across_instances;
 
         if (empty_authoring)
@@ -308,8 +308,8 @@ namespace hgl::ecs
         resource.buffer = buffer;
         resource.element_capacity = element_capacity;
         resource.byte_stride = byte_stride;
-        resource.struct_index = struct_index;
-        resource.use_struct_index = use_struct_index;
+        resource.ssbo_element_index = ssbo_element_index;
+        resource.use_ssbo_element_index = use_ssbo_element_index;
         resource.shared_across_instances = shared_across_instances;
         resource.authored = true;
     }
@@ -341,8 +341,8 @@ namespace hgl::ecs
                 continue;
 
             existing.ssbo_id = resource.ssbo_id;
-            existing.struct_index = resource.struct_index;
-            existing.use_struct_index = resource.use_struct_index;
+            existing.ssbo_element_index = resource.ssbo_element_index;
+            existing.use_ssbo_element_index = resource.use_ssbo_element_index;
             existing.shared_across_instances = resource.shared_across_instances;
             existing.authored = true;
             return;

@@ -272,8 +272,8 @@ public:
         hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource sphere_struct{};
         sphere_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
         sphere_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
-        sphere_struct.struct_index = 0;
-        sphere_struct.use_struct_index = true;
+        sphere_struct.ssbo_element_index = 0;
+        sphere_struct.use_ssbo_element_index = true;
         sphere_struct.shared_across_instances = true;
         prim_comp->SetMaterialStructResource(sphere_struct);
         prim_comp->RequestPipeline(InlinePipeline::Solid3D);
@@ -462,8 +462,8 @@ private:
         hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource cube_struct{};
         cube_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
         cube_struct.ssbo_id = cube_mi_ssbo_accessor->GetSSBOId();
-        cube_struct.struct_index = 0;
-        cube_struct.use_struct_index = true;
+        cube_struct.ssbo_element_index = 0;
+        cube_struct.use_ssbo_element_index = true;
         cube_struct.shared_across_instances = true;
         cube_prim_comp->SetMaterialStructResource(cube_struct);
         cube_prim_comp->RequestPipeline(InlinePipeline::Solid3D);

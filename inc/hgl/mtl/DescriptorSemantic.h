@@ -31,7 +31,7 @@ namespace hgl::graph::mtl
         MaterialTexture,
         MaterialSampler,
         MaterialTextureLayerTable,
-        MaterialDataIndexTable,
+        MaterialSSBOIndexTable,
 
         Custom,
     };
@@ -52,7 +52,7 @@ namespace hgl::graph::mtl
         LocalToWorldIndexTable,
         MaterialInstance,
         MaterialTextureLayerTable,
-        MaterialDataIndexTable
+        MaterialSSBOIndexTable
     };
 
     inline const char *GetDescriptorSemanticLayerName(const DescriptorSemanticLayer layer)
@@ -88,7 +88,7 @@ namespace hgl::graph::mtl
 
         case DescriptorSemantic::LocalToWorldIndexTable:
         case DescriptorSemantic::MaterialTextureLayerTable:
-        case DescriptorSemantic::MaterialDataIndexTable:
+        case DescriptorSemantic::MaterialSSBOIndexTable:
             return DescriptorSemanticLayer::SSBO;
 
         case DescriptorSemantic::LocalToWorld:
@@ -137,7 +137,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::LocalToWorldIndexTable: out = SSBODescriptorSemantic::LocalToWorldIndexTable; return true;
         case DescriptorSemantic::MaterialInstance: out = SSBODescriptorSemantic::MaterialInstance; return true;
         case DescriptorSemantic::MaterialTextureLayerTable: out = SSBODescriptorSemantic::MaterialTextureLayerTable; return true;
-        case DescriptorSemantic::MaterialDataIndexTable: out = SSBODescriptorSemantic::MaterialDataIndexTable; return true;
+        case DescriptorSemantic::MaterialSSBOIndexTable: out = SSBODescriptorSemantic::MaterialSSBOIndexTable; return true;
         default: break;
         }
 

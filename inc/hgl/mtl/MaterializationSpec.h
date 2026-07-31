@@ -21,11 +21,11 @@ namespace hgl::graph::mtl
     // 作用：把 Recipe 的结构体槽位映射到具体 SSBO 池与结构体偏移/步长。
     struct ResolvedStructRef
     {
-        uint32_t slot_index = GetMaterialStructSlotIndex(SSBOType::PBRSurface); // DataIndex 行槽位
+        uint32_t ssbo_slot = GetMaterialStructSlotIndex(SSBOType::PBRSurface); // DataIndex 行槽位
         SSBOType ssbo_type = SSBOType::UserDefined; // 目标 SSBO 类型（契约主字段）
         uint32_t ssbo_id = 0;                       // 目标 SSBO 资源 ID（主字段，P1.55）
         uint32_t ssbo_binding = 0;                  // 目标 SSBO binding（管线布局侧）
-        uint32_t struct_index = 0;                  // 结构数据索引（默认 0；可由作者层显式指定）
+        uint32_t ssbo_element_index = 0;                  // 结构数据索引（默认 0；可由作者层显式指定）
         uint32_t byte_stride = 0;                   // 同类结构体的字节步长
     };
 
@@ -48,7 +48,7 @@ namespace hgl::graph::mtl
 
     // 计算 MaterializationSpec 的稳定内容哈希。
     // 目的：作为 Shader/PSO/布局缓存键，保证同内容同 key，不同内容不同 key。
-    // 注意：不纳入 struct_index 等运行时分配位置信息，避免跨帧分配顺序扰动缓存键。
+    // 注意：不纳入 ssbo_element_index 等运行时分配位置信息，避免跨帧分配顺序扰动缓存键。
     inline uint64_t HashMaterializationSpec(const MaterializationSpec &spec) noexcept
     {
         uint64 hash = hgl::hash::FNV1aInit<uint64>();
@@ -71,7 +71,7 @@ namespace hgl::graph::mtl
         hash = hgl::hash::FNV1aAppendValueBytes(hash, struct_count);
         for (const auto &ref : spec.struct_refs)
         {
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.slot_index);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_slot);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_type);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_id);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_binding);
@@ -102,7 +102,7 @@ namespace hgl::graph::mtl
         hash = hgl::hash::FNV1aAppendValueBytes(hash, struct_count);
         for (const auto &ref : spec.struct_refs)
         {
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.slot_index);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_slot);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_type);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_binding);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.byte_stride);
@@ -132,7 +132,7 @@ namespace hgl::graph::mtl
         hash = hgl::hash::FNV1aAppendValueBytes(hash, struct_count);
         for (const auto &ref : spec.struct_refs)
         {
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.slot_index);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_slot);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_type);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_id);
         }

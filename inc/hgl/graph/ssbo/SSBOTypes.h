@@ -10,7 +10,7 @@ namespace hgl::graph::mtl
     enum class SSBOType : uint16_t
     {
         TextureLayer = 0,
-        DataIndex,
+        MaterialSSBOIndexTable,
         PBRSurface,
         EmissiveSurface,
         ClearCoatSurface,
@@ -52,9 +52,9 @@ namespace hgl::graph::mtl
         }
     }
 
-    constexpr SSBOType GetMaterialStructSSBOTypeBySlotIndex(const uint32_t slot_index) noexcept
+    constexpr SSBOType GetMaterialStructSSBOTypeBySlotIndex(const uint32_t ssbo_slot) noexcept
     {
-        switch (slot_index)
+        switch (ssbo_slot)
         {
         case 0: return SSBOType::PBRSurface;
         case 1: return SSBOType::EmissiveSurface;
@@ -69,7 +69,7 @@ namespace hgl::graph::mtl
         switch (type)
         {
         case SSBOType::TextureLayer: return "TextureLayer";
-        case SSBOType::DataIndex: return "DataIndex";
+        case SSBOType::MaterialSSBOIndexTable: return "DataIndex";
         case SSBOType::PBRSurface: return "PBRSurface";
         case SSBOType::EmissiveSurface: return "EmissiveSurface";
         case SSBOType::ClearCoatSurface: return "ClearCoatSurface";
@@ -86,7 +86,7 @@ namespace hgl::graph::mtl
         switch (type)
         {
         case SSBOType::TextureLayer:
-        case SSBOType::DataIndex:
+        case SSBOType::MaterialSSBOIndexTable:
         case SSBOType::TransformIndexRows:
         case SSBOType::LocalToWorld:
             return 1;
@@ -103,7 +103,7 @@ namespace hgl::graph::mtl
         {
         case SSBOType::TextureLayer:
             return sizeof(uint32_t) * static_cast<uint32_t>(TextureSlot::RANGE_SIZE);
-        case SSBOType::DataIndex:
+        case SSBOType::MaterialSSBOIndexTable:
             return sizeof(uint32_t) * MaterialStructSlotCount;
         case SSBOType::TransformIndexRows:
             return sizeof(uint32_t);
@@ -167,9 +167,9 @@ namespace hgl::graph::mtl
         }
     };
 
-    inline SSBOAddress MakeSSBOAddress(const SSBOType ssbo_type, const uint32_t ssbo_id, const uint32_t slot_index) noexcept
+    inline SSBOAddress MakeSSBOAddress(const SSBOType ssbo_type, const uint32_t ssbo_id, const uint32_t ssbo_slot) noexcept
     {
-        return SSBOAddress{ssbo_type, ssbo_id, slot_index};
+        return SSBOAddress{ssbo_type, ssbo_id, ssbo_slot};
     }
 
     inline SSBOAddress MakeSSBOAddress(const SSBOType ssbo_type, const uint32_t ssbo_id, const TextureSlot slot) noexcept

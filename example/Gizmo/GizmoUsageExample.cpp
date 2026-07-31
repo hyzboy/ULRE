@@ -187,8 +187,8 @@ private:
         hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource plane_struct{};
         plane_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
         plane_struct.ssbo_id = grid_mi_ssbo_accessor->GetSSBOId();
-        plane_struct.struct_index = 0;
-        plane_struct.use_struct_index = true;
+        plane_struct.ssbo_element_index = 0;
+        plane_struct.use_ssbo_element_index = true;
         plane_struct.shared_across_instances = true;
         plane_primitive_comp->SetMaterialStructResource(plane_struct);
         plane_primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
@@ -206,8 +206,8 @@ private:
         hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource cube_struct{};
         cube_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
         cube_struct.ssbo_id = cube_mi_ssbo_accessor->GetSSBOId();
-        cube_struct.struct_index = 0;
-        cube_struct.use_struct_index = true;
+        cube_struct.ssbo_element_index = 0;
+        cube_struct.use_ssbo_element_index = true;
         cube_struct.shared_across_instances = true;
         cube_primitive_comp->SetMaterialStructResource(cube_struct);
         cube_primitive_comp->RequestPipeline(InlinePipeline::Solid3D);

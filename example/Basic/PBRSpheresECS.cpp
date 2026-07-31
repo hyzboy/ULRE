@@ -497,8 +497,8 @@ private:
                 hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource sphere_struct{};
                 sphere_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
                 sphere_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
-                sphere_struct.struct_index = sphere_slot_rows[row][col];
-                sphere_struct.use_struct_index = true;
+                sphere_struct.ssbo_element_index = sphere_slot_rows[row][col];
+                sphere_struct.use_ssbo_element_index = true;
                 sphere_struct.shared_across_instances = false;
                 prim_comp->SetMaterialStructResource(sphere_struct);
                 prim_comp->RequestPipeline(InlinePipeline::Solid3D);

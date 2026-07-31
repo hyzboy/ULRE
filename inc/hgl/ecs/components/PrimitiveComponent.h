@@ -72,8 +72,8 @@ namespace hgl::ecs
             hgl::graph::DeviceBuffer *buffer = nullptr;
             uint32_t element_capacity = 0;
             uint32_t byte_stride = 0;
-            uint32_t struct_index = 0;
-            bool use_struct_index = false;
+            uint32_t ssbo_element_index = 0;
+            bool use_ssbo_element_index = false;
             bool shared_across_instances = false;
             bool authored = false;
         };
@@ -82,8 +82,8 @@ namespace hgl::ecs
         {
             std::string ssbo_name;
             uint32_t ssbo_id = 0;
-            uint32_t struct_index = 0;
-            bool use_struct_index = false;
+            uint32_t ssbo_element_index = 0;
+            bool use_ssbo_element_index = false;
             bool shared_across_instances = false;
             bool authored = false;
         };
@@ -196,8 +196,8 @@ namespace hgl::ecs
                                        hgl::graph::DeviceBuffer *buffer,
                                        uint32_t element_capacity,
                                        uint32_t byte_stride,
-                                       uint32_t struct_index = 0,
-                                       bool use_struct_index = false,
+                                       uint32_t ssbo_element_index = 0,
+                                       bool use_ssbo_element_index = false,
                                        bool shared_across_instances = false);
         const MaterialStructAuthoringResource *GetMaterialStructResource(hgl::graph::mtl::SSBOType ssbo_type) const;
         void ClearMaterialStructResource(hgl::graph::mtl::SSBOType ssbo_type);

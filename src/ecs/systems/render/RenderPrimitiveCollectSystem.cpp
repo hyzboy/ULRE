@@ -76,14 +76,14 @@ namespace hgl::ecs
 
                     for (const auto &ref : spec.struct_refs)
                     {
-                        if (ref.slot_index == req.slot_index && ref.ssbo_type == req.ssbo_type)
-                            return ref.struct_index;
+                        if (ref.ssbo_slot == req.ssbo_slot && ref.ssbo_type == req.ssbo_type)
+                            return ref.ssbo_element_index;
                     }
                 }
             }
 
             if (!spec.struct_refs.empty())
-                return spec.struct_refs.front().struct_index;
+                return spec.struct_refs.front().ssbo_element_index;
 
             return fallback_row;
         }
@@ -119,30 +119,30 @@ namespace hgl::ecs
         void UpsertRecipeStructBinding(graph::mtl::MaterialRecipe &recipe,
                                        graph::mtl::SSBOType ssbo_type,
                                        const uint32_t ssbo_id,
-                                       const uint32_t struct_index,
-                                       const bool use_struct_index,
+                                       const uint32_t ssbo_element_index,
+                                       const bool use_ssbo_element_index,
                                        const bool shared_across_instances)
         {
-            const uint32_t slot_index = graph::mtl::GetMaterialStructSlotIndex(ssbo_type);
+            const uint32_t ssbo_slot = graph::mtl::GetMaterialStructSlotIndex(ssbo_type);
             for (auto &binding : recipe.structs)
             {
-                if (binding.slot_index != slot_index || binding.ssbo_type != ssbo_type)
+                if (binding.ssbo_slot != ssbo_slot || binding.ssbo_type != ssbo_type)
                     continue;
 
                 binding.ssbo_type = ssbo_type;
                 binding.ssbo_id = ssbo_id;
-                binding.struct_index = struct_index;
-                binding.use_struct_index = use_struct_index;
+                binding.ssbo_element_index = ssbo_element_index;
+                binding.use_ssbo_element_index = use_ssbo_element_index;
                 binding.shared_across_instances = shared_across_instances;
                 return;
             }
 
             graph::mtl::RecipeStructBinding binding{};
-            binding.slot_index = slot_index;
+            binding.ssbo_slot = ssbo_slot;
             binding.ssbo_type = ssbo_type;
             binding.ssbo_id = ssbo_id;
-            binding.struct_index = struct_index;
-            binding.use_struct_index = use_struct_index;
+            binding.ssbo_element_index = ssbo_element_index;
+            binding.use_ssbo_element_index = use_ssbo_element_index;
             binding.shared_across_instances = shared_across_instances;
             recipe.structs.emplace_back(std::move(binding));
         }
@@ -218,8 +218,8 @@ namespace hgl::ecs
                 UpsertRecipeStructBinding(out_recipe,
                                          resource->ssbo_type,
                                          resource->ssbo_id,
-                                         resource->struct_index,
-                                         resource->use_struct_index,
+                                         resource->ssbo_element_index,
+                                         resource->use_ssbo_element_index,
                                          resource->shared_across_instances);
             }
 
@@ -390,8 +390,8 @@ namespace hgl::ecs
                                                               nullptr,
                                                               0,
                                                               0,
-                                                              named_struct_resource->struct_index,
-                                                              named_struct_resource->use_struct_index,
+                                                              named_struct_resource->ssbo_element_index,
+                                                              named_struct_resource->use_ssbo_element_index,
                                                               named_struct_resource->shared_across_instances);
                 }
 
@@ -594,7 +594,7 @@ namespace hgl::ecs
                                                                          data_index_row);
 
         // data_index_row keeps the indirection-table row identity.
-        // material_instance_row is the concrete struct_index that shaders use as mtl.mi[miID].
+        // material_instance_row is the concrete ssbo_element_index that shaders use as mtl.mi[miID].
         material_comp->texture_layer_row = texture_layer_row;
         material_comp->data_index_row = data_index_row;
         material_comp->material_instance_row = material_instance_row;

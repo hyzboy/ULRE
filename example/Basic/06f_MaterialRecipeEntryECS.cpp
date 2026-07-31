@@ -154,8 +154,8 @@ private:
         hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource named_struct{};
         named_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
         named_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
-        named_struct.struct_index = 0;
-        named_struct.use_struct_index = false;
+        named_struct.ssbo_element_index = 0;
+        named_struct.use_ssbo_element_index = false;
         named_struct.shared_across_instances = true;
         primitive_comp->SetMaterialStructResource(named_struct);
         primitive_comp->SetVisible(true);

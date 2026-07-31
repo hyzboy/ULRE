@@ -358,7 +358,7 @@ namespace hgl::ecs
         texture_count = static_cast<uint32_t>(materialization_texture_pool.GetCount());
         struct_layout_count = static_cast<uint32_t>(materialization_struct_pool.GetLayoutCount());
         texture_layer_rows = static_cast<uint32_t>(materialization_index_tables.GetTextureLayerRowCount());
-        data_index_rows = static_cast<uint32_t>(materialization_index_tables.GetDataIndexRowCount());
+        data_index_rows = static_cast<uint32_t>(materialization_index_tables.GetMaterialSSBOIndexRowCount());
         return true;
     }
 
@@ -418,7 +418,7 @@ namespace hgl::ecs
         if (domain_manager)
         {
             domain_manager->ClearDomain(graph::mtl::SSBOAddress{graph::mtl::SSBOType::TextureLayer, 0, 0});
-            domain_manager->ClearDomain(graph::mtl::SSBOAddress{graph::mtl::SSBOType::DataIndex, 0, 0});
+            domain_manager->ClearDomain(graph::mtl::SSBOAddress{graph::mtl::SSBOType::MaterialSSBOIndexTable, 0, 0});
 
             const uint32_t texture_slot_count = static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE);
             for (uint32_t slot = 1; slot < texture_slot_count; ++slot)
@@ -430,7 +430,7 @@ namespace hgl::ecs
             for (uint32_t slot = 1; slot < graph::mtl::MaterialStructSlotCount; ++slot)
             {
                 const uint32_t alias_ssbo_id = graph::mtl::MakeRecipeSSBOId(slot);
-                domain_manager->ClearDomain(graph::mtl::SSBOAddress{graph::mtl::SSBOType::DataIndex, alias_ssbo_id, slot});
+                domain_manager->ClearDomain(graph::mtl::SSBOAddress{graph::mtl::SSBOType::MaterialSSBOIndexTable, alias_ssbo_id, slot});
             }
         }
 
@@ -450,7 +450,7 @@ namespace hgl::ecs
             return;
 
         const uint32_t texture_rows = static_cast<uint32_t>(materialization_index_tables.GetTextureLayerRowCount());
-        const uint32_t data_rows = static_cast<uint32_t>(materialization_index_tables.GetDataIndexRowCount());
+        const uint32_t data_rows = static_cast<uint32_t>(materialization_index_tables.GetMaterialSSBOIndexRowCount());
 
         auto ensure_capacity = [](uint32_t required) -> uint32_t
         {
@@ -483,8 +483,8 @@ namespace hgl::ecs
 
         if (data_capacity > 0)
         {
-            const VkDeviceSize byte_size = static_cast<VkDeviceSize>(data_capacity) * sizeof(graph::mtl::DataIndexRow);
-            materialization_data_index_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{graph::mtl::SSBOType::DataIndex, 0, 0},
+            const VkDeviceSize byte_size = static_cast<VkDeviceSize>(data_capacity) * sizeof(graph::mtl::MaterialSSBOIndexRow);
+            materialization_data_index_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{graph::mtl::SSBOType::MaterialSSBOIndexTable, 0, 0},
                                                                             "ECS:Materialization:DataIndexRows",
                                                                             byte_size,
                                                                             data_capacity,
@@ -492,9 +492,9 @@ namespace hgl::ecs
         }
         else
         {
-            materialization_data_index_ssbo = domain_manager->GetBuffer(graph::mtl::SSBOAddress{graph::mtl::SSBOType::DataIndex, 0, 0});
+            materialization_data_index_ssbo = domain_manager->GetBuffer(graph::mtl::SSBOAddress{graph::mtl::SSBOType::MaterialSSBOIndexTable, 0, 0});
         }
-        materialization_data_index_capacity = domain_manager->GetElementCapacity(graph::mtl::SSBOAddress{graph::mtl::SSBOType::DataIndex, 0, 0});
+        materialization_data_index_capacity = domain_manager->GetElementCapacity(graph::mtl::SSBOAddress{graph::mtl::SSBOType::MaterialSSBOIndexTable, 0, 0});
 
         auto register_domain_aliases = [&](const graph::mtl::SSBOType ssbo_type,
                                            graph::DeviceBuffer *buffer,
@@ -522,7 +522,7 @@ namespace hgl::ecs
                                 materialization_texture_layer_ssbo,
                                 materialization_texture_layer_capacity,
                                 static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE));
-        register_domain_aliases(graph::mtl::SSBOType::DataIndex,
+        register_domain_aliases(graph::mtl::SSBOType::MaterialSSBOIndexTable,
                                 materialization_data_index_ssbo,
                                 materialization_data_index_capacity,
                                 graph::mtl::MaterialStructSlotCount);
@@ -547,13 +547,13 @@ namespace hgl::ecs
 
         if (data_rows > 0 && materialization_data_index_ssbo)
         {
-            auto *acc = graph::SSBOArrayAccessor<graph::mtl::DataIndexRow>::Create(
+            auto *acc = graph::SSBOArrayAccessor<graph::mtl::MaterialSSBOIndexRow>::Create(
                 materialization_data_index_ssbo, data_rows);
             if (acc)
             {
                 for (uint32_t i = 0; i < data_rows; ++i)
                 {
-                    const auto *row = materialization_index_tables.GetDataIndexRow(i);
+                    const auto *row = materialization_index_tables.GetMaterialSSBOIndexRow(i);
                     if (!row) break;
                     (*acc)[i] = *row;
                 }
@@ -1045,7 +1045,7 @@ namespace hgl::ecs
                               material->GetName().c_str(),
                               graph::mtl::GetDescriptorSemanticName(req.semantic),
                               req.name,
-                              req.slot_index,
+                              req.ssbo_slot,
                               ssbo_id,
                               candidate_ssbo_id);
                     batch->descriptor_bind_valid = false;
@@ -1245,7 +1245,7 @@ namespace hgl::ecs
                 }
                 break;
             }
-            case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
+            case graph::mtl::DescriptorSemantic::MaterialSSBOIndexTable:
             {
                 const graph::IGPUBuffer *table_buffer = nullptr;
 
@@ -1260,18 +1260,18 @@ namespace hgl::ecs
                         graph::mtl::SSBOAddress{
                             req.ssbo_type,
                             req.ssbo_id,
-                            req.slot_index},
-                        "MaterialDataIndexTable");
+                            req.ssbo_slot},
+                        "MaterialSSBOIndexTable");
                 }
 
                 if (table_buffer)
                 {
                     if (!bind_ssbo(material, batch, req, table_buffer))
-                        log_bind_failure(material, batch, req, "bind MaterialDataIndexTable failed");
+                        log_bind_failure(material, batch, req, "bind MaterialSSBOIndexTable failed");
                 }
                 else
                 {
-                    log_missing_ssbo_once(material, req, batch ? "batch rows missing and domain binding not found" : "domain binding not found", static_cast<int32_t>(req.slot_index));
+                    log_missing_ssbo_once(material, req, batch ? "batch rows missing and domain binding not found" : "domain binding not found", static_cast<int32_t>(req.ssbo_slot));
                     if (batch && req.required)
                         batch->descriptor_bind_valid = false;
                 }
@@ -1448,7 +1448,7 @@ namespace hgl::ecs
             return true;
         case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
             return true;
-        case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
+        case graph::mtl::DescriptorSemantic::MaterialSSBOIndexTable:
             return true;
         case graph::mtl::DescriptorSemantic::Unknown:
         case graph::mtl::DescriptorSemantic::Custom:

@@ -172,8 +172,8 @@ private:
             hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource tri_struct{};
             tri_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
             tri_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
-            tri_struct.struct_index = i;
-            tri_struct.use_struct_index = true;
+            tri_struct.ssbo_element_index = i;
+            tri_struct.use_ssbo_element_index = true;
             tri_struct.shared_across_instances = false;
             primitive_comp->SetMaterialStructResource(tri_struct);
             primitive_comp->RequestPipeline(InlinePipeline::Solid2D);
