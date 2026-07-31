@@ -214,35 +214,210 @@ static std::string BuildBuiltinMaterialCreatorRequestHashImpl(const BuiltinMater
                                                               const MaterialDefinition &definition,
                                                               const MaterialDefinitionBuildRequest &request)
 {
+    auto BuildCommonConfigHash = [](const bool material_instance,
+                                    const RenderTargetOutputConfig &rt_output,
+                                    const uint32 shader_stage_flag_bit,
+                                    const PrimitiveType prim,
+                                    const GeometryVertexFormat *geometry_vertex_format,
+                                    const ShaderBufferSource *const *private_shader_buffer_sources,
+                                    const uint32 private_shader_buffer_source_count) -> std::string
+    {
+        std::string hash;
+        hash.reserve(128);
+
+        char str[16];
+        char *p=str;
+
+        *p='M';++p;
+
+        if(material_instance){*p='I';++p;}
+
+        *p='_';++p;
+
+        *p='0'+rt_output.color;++p;
+
+        if(rt_output.depth){*p='D';++p;}
+        if(rt_output.stencil){*p='S';++p;}
+
+        *p='_';++p;
+
+        if(shader_stage_flag_bit&(uint32)ShaderStage::Vertex){*p='V';++p;}
+        if(shader_stage_flag_bit&(uint32)ShaderStage::TessControl){*p='T';++p;}     //tc/te有一个就行了
+        if(shader_stage_flag_bit&(uint32)ShaderStage::Geometry){*p='G';++p;}
+        if(shader_stage_flag_bit&(uint32)ShaderStage::Fragment){*p='F';++p;}
+        if(shader_stage_flag_bit&(uint32)ShaderStage::Compute){*p='C';++p;}
+        if(shader_stage_flag_bit&(uint32)ShaderStage::Mesh){*p='M';++p;}     //mesh/task有一个就行了
+        *p='_';++p;
+
+        *p=0;
+
+        hash=str;
+
+        if(const char *prim_name=GetPrimName(prim))
+            hash+=prim_name;
+        else
+            hash+="UnknownPrim";
+
+        if(private_shader_buffer_source_count>0)
+        {
+            hash+="_PS";
+            const std::string pss_count_str=std::to_string(private_shader_buffer_source_count);
+            hash+=pss_count_str;
+
+            for(uint32 i=0;i<private_shader_buffer_source_count;++i)
+            {
+                hash+="_";
+
+                const ShaderBufferSource *sbs=private_shader_buffer_sources?private_shader_buffer_sources[i]:nullptr;
+                if(sbs&&sbs->struct_name)
+                    hash+=sbs->struct_name;
+                else
+                    hash+="null";
+            }
+        }
+
+        if(geometry_vertex_format&&geometry_vertex_format->GetCount()>0)
+        {
+            hash+="_GVF";
+
+            for(uint32 i=0;i<geometry_vertex_format->GetCount();++i)
+            {
+                const GeometryVertexAttributeFormat *attribute=geometry_vertex_format->Get(i);
+                if(!attribute)
+                    continue;
+
+                hash+="_";
+                hash+=GetVertexSemanticName(attribute->semantic);
+                hash+="_F";
+                hash+=std::to_string((uint32_t)attribute->format);
+                hash+="_V";
+                hash+=std::to_string((uint32_t)attribute->vec_size);
+                hash+="_S";
+                hash+=std::to_string(attribute->stride);
+            }
+        }
+
+        return hash;
+    };
+
+    auto Build2DConfigHash = [&](const bool material_instance,
+                                 const CoordinateSystem2D coordinate_system,
+                                 const bool local_to_world,
+                                 const bool include_rt_and_private_override) -> std::string
+    {
+        RenderTargetOutputConfig rt_output{};
+        rt_output.color = 1;
+        rt_output.depth = false;
+        rt_output.stencil = false;
+
+        if(include_rt_and_private_override && request.override_rt_output)
+            rt_output = request.rt_output;
+
+        uint32 shader_stage_flag_bit = uint32(ShaderStage::VertexFragment);
+        if(request.override_shader_stage_bits)
+            shader_stage_flag_bit = request.shader_stage_flag_bit;
+
+        const ShaderBufferSource *const *private_sbs = nullptr;
+        uint32 private_sbs_count = 0;
+        if(include_rt_and_private_override
+        && request.private_shader_buffer_sources
+        && request.private_shader_buffer_source_count>0)
+        {
+            private_sbs = request.private_shader_buffer_sources;
+            private_sbs_count = request.private_shader_buffer_source_count;
+        }
+
+        std::string hash = BuildCommonConfigHash(material_instance,
+                                                 rt_output,
+                                                 shader_stage_flag_bit,
+                                                 request.primitive_type,
+                                                 request.geometry_vertex_format,
+                                                 private_sbs,
+                                                 private_sbs_count);
+
+        if(const char *cs_name=GetCoordinateSystem2DName(coordinate_system))
+            hash+=cs_name;
+        else
+            hash+="UnknownCS2D";
+
+        if(local_to_world)
+            hash+="_L2W";
+
+        return hash;
+    };
+
+    auto Build3DConfigHash = [&]() -> std::string
+    {
+        RenderTargetOutputConfig rt_output{};
+        rt_output.color = 1;
+        rt_output.depth = true;
+        rt_output.stencil = false;
+        if(request.override_rt_output)
+            rt_output = request.rt_output;
+
+        uint32 shader_stage_flag_bit = uint32(ShaderStage::VertexFragment);
+        if(request.override_shader_stage_bits)
+            shader_stage_flag_bit = request.shader_stage_flag_bit;
+
+        const ShaderBufferSource *const *private_sbs = nullptr;
+        uint32 private_sbs_count = 0;
+        if(request.private_shader_buffer_sources && request.private_shader_buffer_source_count>0)
+        {
+            private_sbs = request.private_shader_buffer_sources;
+            private_sbs_count = request.private_shader_buffer_source_count;
+        }
+
+        std::string hash = BuildCommonConfigHash(false,
+                                                 rt_output,
+                                                 shader_stage_flag_bit,
+                                                 request.primitive_type,
+                                                 request.geometry_vertex_format,
+                                                 private_sbs,
+                                                 private_sbs_count);
+
+        if(definition.with_camera)
+            hash+="_Camera";
+
+        if(definition.with_sky)
+            hash+="_Sky";
+
+        hash+="_Amb";
+        const SkyLightAmbientModel ambient = request.override_sky_ambient_model
+                                           ? request.sky_ambient_model
+                                           : SkyLightAmbientModel::Simple;
+        char amb_model_str[2]={(char)('0'+(uint8)ambient),0};
+        hash+=amb_model_str;
+
+        if(definition.with_local_to_world)
+            hash+="_L2W";
+
+        return hash;
+    };
+
+    const char *creator_name = GetBuiltinMaterialCreatorIDName(mtl_id);
+    if(!creator_name || !*creator_name)
+        creator_name = "UnknownBuiltinMaterialCreatorID";
+
     if(definition.is_text)
     {
-        Text2DMaterialCreateConfig cfg;
-        cfg.prim = request.primitive_type;
-        cfg.coordinate_system = definition.coordinate_system_2d;
-        cfg.local_to_world = definition.local_to_world_2d;
-        cfg.SetGeometryVertexFormat(request.geometry_vertex_format);
-        if(request.override_shader_stage_bits)
-            cfg.shader_stage_flag_bit = request.shader_stage_flag_bit;
-        return std::string(GetBuiltinMaterialCreatorIDName(mtl_id)) + "?" + cfg.ToHashStdString();
+        const std::string hash = Build2DConfigHash(true,
+                                                   definition.coordinate_system_2d,
+                                                   definition.local_to_world_2d,
+                                                   false);
+        return std::string(creator_name) + "?" + hash;
     }
 
     if(definition.is_2d)
     {
-        const WithLocalToWorld with_l2w =
-            request.recipe.local_to_world_2d ? WithLocalToWorld::With : WithLocalToWorld::Without;
-        Material2DCreateConfig cfg(request.primitive_type, request.recipe.coordinate_system_2d, with_l2w);
-        ApplyMaterialBuildRequestToLegacyConfig(cfg, request);
-        return std::string(GetBuiltinMaterialCreatorIDName(mtl_id)) + "?" + cfg.ToHashStdString();
+        const std::string hash = Build2DConfigHash(false,
+                                                   request.recipe.coordinate_system_2d,
+                                                   request.recipe.local_to_world_2d,
+                                                   true);
+        return std::string(creator_name) + "?" + hash;
     }
 
-    const WithCamera wc = definition.with_camera ? WithCamera::With : WithCamera::Without;
-    const WithLocalToWorld wl = definition.with_local_to_world ? WithLocalToWorld::With : WithLocalToWorld::Without;
-    const WithSky ws = definition.with_sky ? WithSky::With : WithSky::Without;
-    Material3DCreateConfig cfg(request.primitive_type, wc, wl, ws);
-    ApplyMaterialBuildRequestToLegacyConfig(cfg, request);
-    if(request.override_sky_ambient_model)
-        cfg.sky_ambient_model = request.sky_ambient_model;
-    return std::string(GetBuiltinMaterialCreatorIDName(mtl_id)) + "?" + cfg.ToHashStdString();
+    const std::string hash = Build3DConfigHash();
+    return std::string(creator_name) + "?" + hash;
 }
 
 ShaderProgramBuildSpec *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
