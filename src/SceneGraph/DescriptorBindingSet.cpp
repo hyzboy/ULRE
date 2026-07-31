@@ -82,7 +82,7 @@ namespace hgl::graph
         return binding.ssbo_id;
     }
 
-    uint32_t DescriptorBindingSet::GetSSOBSlot(const mtl::SSBOType ssbo_type) const
+    uint32_t DescriptorBindingSet::GetSSBOSlot(const mtl::SSBOType ssbo_type) const
     {
         SSBOBinding binding;
         if (!GetSSBOBinding(ssbo_type, binding))

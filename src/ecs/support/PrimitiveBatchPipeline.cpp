@@ -36,7 +36,7 @@ namespace hgl::ecs
 {
     namespace
     {
-        constexpr uint32_t InvalidBatchDataIndexRow = uint32_t(-1);
+        constexpr uint32_t InvalidBatchSSBOIndexRow = uint32_t(-1);
 
         void WriteICB(VkDrawIndirectCommand* draw_cmd, DrawBatch* batch)
         {
@@ -61,7 +61,7 @@ namespace hgl::ecs
             indexed_draw_cmd->firstInstance = batch->first_instance;
         }
 
-        uint32_t ResolveMaterialDataIndexRow(RenderItem *item, const graph::mtl::SSBOType primary_ssbo_type)
+        uint32_t ResolveMaterialSSBOIndexRow(RenderItem *item, const graph::mtl::SSBOType primary_ssbo_type)
         {
             if (!item)
                 return 0;
@@ -81,7 +81,7 @@ namespace hgl::ecs
                     }
                 }
 
-                return InvalidBatchDataIndexRow;
+                return InvalidBatchSSBOIndexRow;
             }
 
             return 0;
@@ -649,8 +649,8 @@ namespace hgl::ecs
                     bool warned_missing_recipe_row = false;
                     for (size_t i = 0; i < item_count; ++i)
                     {
-                        uint32_t row = ResolveMaterialDataIndexRow(batch.items[i], primary_ssbo_type);
-                        if (row == InvalidBatchDataIndexRow)
+                        uint32_t row = ResolveMaterialSSBOIndexRow(batch.items[i], primary_ssbo_type);
+                        if (row == InvalidBatchSSBOIndexRow)
                         {
                             if (!warned_missing_recipe_row)
                             {

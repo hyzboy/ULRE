@@ -55,7 +55,7 @@ namespace hgl
             bool HasSSBOBinding(mtl::SSBOType ssbo_type) const;
             bool GetSSBOBinding(mtl::SSBOType ssbo_type, SSBOBinding &out_binding) const;
             uint32_t GetSSBOID(mtl::SSBOType ssbo_type) const;
-            uint32_t GetSSOBSlot(mtl::SSBOType ssbo_type) const;
+            uint32_t GetSSBOSlot(mtl::SSBOType ssbo_type) const;
             void ClearSSBOBinding(mtl::SSBOType ssbo_type);
 
             bool SetTextureBinding(mtl::TextureSlot slot, Texture *texture, Sampler *sampler = nullptr);

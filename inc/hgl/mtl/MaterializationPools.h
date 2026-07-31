@@ -254,14 +254,6 @@ namespace hgl::graph::mtl
         size_t GetMaterialSSBOIndexRowCount() const { return data_index_rows.size(); }
     };
 
-    // 将 MaterialSSBOIndexTable 槽位映射到默认 SSBO 分类（可在后续阶段替换为可配置策略）。
-    // 已由 GetSSBOTypeBySlot 替代，此处仅保留向后兼容别名。
-    [[deprecated("Use GetSSBOTypeBySlot instead")]]
-    inline SSBOType DefaultSSBOTypeForSlotIndex(const uint32_t ssbo_slot) noexcept
-    {
-        return GetSSBOTypeBySlot(ssbo_slot);
-    }
-
     // 用池对象构建 Recipe->Spec 解析回调。
     inline MaterializationResolveCallbacks MakePoolResolveCallbacks(BindlessTexturePool &texture_pool,
                                                                     StructDataPool &struct_pool)
