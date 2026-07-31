@@ -80,7 +80,14 @@ ShaderProgramBuildSpec *CreateVertexColor3D(const contract::PhysicalDeviceProfil
         std::fprintf(stderr, "[VertexColor3D] CompileCompositorMaterial failed\n");
     return mci;
 }
+
+ShaderProgramBuildSpec *CreateVertexColor3D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
+{
+    Material3DCreateConfig cfg(request.primitive_type,
+                               definition.with_camera ? WithCamera::With : WithCamera::Without,
+                               definition.with_local_to_world ? WithLocalToWorld::With : WithLocalToWorld::Without,
+                               definition.with_sky ? WithSky::With : WithSky::Without);
+    cfg.SetGeometryVertexFormat(request.geometry_vertex_format);
+    return CreateVertexColor3D(profile, &cfg);
+}
 }//namespace hgl::graph::mtl
-
-
-

@@ -86,7 +86,13 @@ ShaderProgramBuildSpec *CreateSkyMinimal(const contract::PhysicalDeviceProfileLi
         std::fprintf(stderr, "[SkyMinimal] CompileCompositorMaterial failed\n");
     return mci;
 }
+
+ShaderProgramBuildSpec *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
+{
+    SkyMinimalCreateConfig cfg(definition.with_camera ? WithCamera::With : WithCamera::Without);
+    cfg.prim = request.primitive_type;
+    cfg.SetGeometryVertexFormat(request.geometry_vertex_format);
+    if(request.override_sky_ambient_model) cfg.sky_ambient_model = request.sky_ambient_model;
+    return CreateSkyMinimal(profile, &cfg);
+}
 }//namespace hgl::graph::mtl
-
-
-

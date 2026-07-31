@@ -229,14 +229,20 @@ static ShaderProgramBuildSpec *CreateMaterialCreateInfoFromRequest(const contrac
         }
     }
 
-    const WithCamera wc = definition.with_camera ? WithCamera::With : WithCamera::Without;
-    const WithLocalToWorld wl = definition.with_local_to_world ? WithLocalToWorld::With : WithLocalToWorld::Without;
-    const WithSky ws = definition.with_sky ? WithSky::With : WithSky::Without;
-    Material3DCreateConfig cfg(request.primitive_type, wc, wl, ws);
-    ApplyBuildRequestToLegacyConfig(cfg, request);
-    if(request.override_sky_ambient_model)
-        cfg.sky_ambient_model = request.sky_ambient_model;
-    return CreateMaterialCreateInfo(profile, mtl_id, &cfg);
+    switch(mtl_id)
+    {
+        case BuiltinMaterialCreatorID::PureColor3D:           return CreatePureColor3D(profile, request, definition);
+        case BuiltinMaterialCreatorID::VertexColor3D:         return CreateVertexColor3D(profile, request, definition);
+        case BuiltinMaterialCreatorID::VertexLuminance3D:     return CreateVertexLuminance3D(profile, request, definition);
+        case BuiltinMaterialCreatorID::VertexPattleColor3D:   return CreateVertexPattleColor3D(profile, request, definition);
+        case BuiltinMaterialCreatorID::Gizmo3D:               return CreateGizmo3D(profile, request, definition);
+        case BuiltinMaterialCreatorID::SkyMinimal:            return CreateSkyMinimal(profile, request, definition);
+        case BuiltinMaterialCreatorID::Standard:              return CreateStandard(profile, request, definition);
+        case BuiltinMaterialCreatorID::StandardTextureArray:  return CreateStandardTextureArray(profile, request, definition);
+        case BuiltinMaterialCreatorID::PBRColor3D:            return CreatePBRColor3D(profile, request, definition);
+        default:                                              break;
+    }
+    return nullptr;
 }
 
 static std::string BuildBuiltinMaterialCreatorRequestHashImpl(const BuiltinMaterialCreatorID mtl_id,

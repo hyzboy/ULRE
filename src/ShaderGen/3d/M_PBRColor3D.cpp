@@ -114,7 +114,13 @@ ShaderProgramBuildSpec *CreatePBRColor3D(const contract::PhysicalDeviceProfileLi
     return mci;
 }
 
+
+ShaderProgramBuildSpec *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
+{
+    PBRColor3DMaterialCreateConfig cfg;
+    cfg.prim = request.primitive_type;
+    cfg.SetGeometryVertexFormat(request.geometry_vertex_format);
+    if(request.override_sky_ambient_model) cfg.sky_ambient_model = request.sky_ambient_model;
+    return CreatePBRColor3D(profile, &cfg);
+}
 }//namespace hgl::graph::mtl
-
-
-
