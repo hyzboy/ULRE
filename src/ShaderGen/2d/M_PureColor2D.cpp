@@ -17,6 +17,7 @@ namespace
         bmi.coordinate_system_2d = CoordinateSystem2D::NDC;
         bmi.local_to_world_2d = true;
         bmi.usage_tag   = MaterialDefinitionUsageTag::Fallback;
+        bmi.ssbo_slot_decls = {{"mtl", SSBOType::UserDefined}};
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::PureColor2D, bmi);
 
         // Register builtin alias so fallback code can look up by canonical id.

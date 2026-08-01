@@ -208,7 +208,7 @@ namespace hgl::ecs
                 UpsertRecipeTextureBinding(out_recipe, slot, resource_id, resource->required);
             }
 
-            for (size_t i = 0; i < static_cast<size_t>(graph::mtl::MaterialSSBOSlotCount); ++i)
+            for (size_t i = 0; i < static_cast<size_t>(primitive_comp->GetMaterialSSBOSlotCount()); ++i)
             {
                 const auto ssbo_slot = static_cast<uint32_t>(i);
                 const auto *resource = primitive_comp->GetMaterialSSBOResourceBySlot(ssbo_slot);
@@ -336,7 +336,7 @@ namespace hgl::ecs
                 }
             }
 
-            for (size_t i = 0; i < static_cast<size_t>(graph::mtl::MaterialSSBOSlotCount); ++i)
+            for (size_t i = 0; i < static_cast<size_t>(primitive_comp->GetMaterialSSBOSlotCount()); ++i)
             {
                 const auto ssbo_slot = static_cast<uint32_t>(i);
                 const auto *resource = primitive_comp->GetMaterialSSBOResourceBySlot(ssbo_slot);

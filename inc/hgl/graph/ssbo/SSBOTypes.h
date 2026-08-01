@@ -23,8 +23,9 @@ namespace hgl::graph::mtl
     };
 
     using SSBOCategory = SSBOType;
-    constexpr uint32_t MaterialSSBOSlotCount = 6;
     constexpr uint32_t DefaultMaterialSSBOSlot = 0;
+    // Hard upper bound for SSBO slot validation; actual count is per-material (ssbo_slot_decls.size()).
+    constexpr uint32_t MaxMaterialSSBOSlotsPerMaterial = 64u;
 
     constexpr bool IsMaterialSSBOType(const SSBOType type) noexcept
     {
@@ -81,7 +82,7 @@ namespace hgl::graph::mtl
         case SSBOType::TextureLayer:
             return sizeof(uint32_t) * static_cast<uint32_t>(TextureSlot::RANGE_SIZE);
         case SSBOType::MaterialSSBOIndexTable:
-            return sizeof(uint32_t) * MaterialSSBOSlotCount;
+            return 0;  // dynamic: stride = ssbo_slot_decls.size() * sizeof(uint32_t) per material
         case SSBOType::TransformIndexRows:
             return sizeof(uint32_t);
         case SSBOType::LocalToWorld:

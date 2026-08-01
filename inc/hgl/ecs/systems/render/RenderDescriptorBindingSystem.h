@@ -101,6 +101,7 @@ namespace hgl::ecs
         graph::DeviceBuffer *materialization_ssbo_index_table_buffer = nullptr;
         uint32_t materialization_texture_layer_capacity = 0;
         uint32_t materialization_ssbo_index_table_capacity = 0;
+        uint32_t materialization_ssbo_slot_count = 0;  // max slot count across all active rows
         bool materialization_index_tables_dirty = false;
 
     public:

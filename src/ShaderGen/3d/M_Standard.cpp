@@ -21,6 +21,7 @@ namespace
         bmi.with_camera       = true;
         bmi.with_local_to_world = true;
         bmi.with_sky          = true;   // Standard 使用 SkyInfo
+        bmi.ssbo_slot_decls   = {{"mtl", SSBOType::PBRSurface}};
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::Standard, bmi);
         return true;
     }();

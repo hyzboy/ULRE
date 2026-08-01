@@ -4,7 +4,7 @@
 ///
 /// 使用 CompileCompositorMaterial 编译 Compositor 模板产出的完整 GLSL。
 /// 内部流程：
-///   1. 按 def.descriptor_entries[] 构建 MaterialDescriptorInfo（顺序固定，无动态排序）
+///   1. 按 def.descriptor_entries[] 构建 MaterialDescriptorInfo（描述符布局）
 ///   2. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
 ///   3. 填充并返回 ShaderProgramBuildSpec*
 
@@ -12,7 +12,9 @@
 #include<hgl/mtl/SkyLight.h>
 #include<hgl/common/ShaderStageDef.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
+#include<hgl/mtl/MaterialRecipe.h>
 #include <string>
+#include <vector>
 
 namespace hgl::graph
 {
@@ -34,6 +36,10 @@ struct CompositorMaterialBuildConfig
     const ::hgl::graph::ShaderBufferSource *const *private_shader_buffer_sources = nullptr;
     uint32_t private_shader_buffer_source_count = 0;
     const ::hgl::graph::GeometryVertexFormat *geometry_vertex_format = nullptr;
+    // Per-material SSBO slot declarations (index == ssbo_slot).
+    // When non-null and non-empty, MaterialCompiler generates MaterialInstance
+    // FixedDescriptorEntry items automatically and injects #define MTL_SSBO_SLOT_COUNT N.
+    const std::vector<MaterialSSBOSlotDecl> *ssbo_slot_decls = nullptr;
 };
 
 class ShaderProgramBuildSpec;

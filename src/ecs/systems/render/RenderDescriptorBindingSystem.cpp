@@ -427,7 +427,7 @@ namespace hgl::ecs
                 domain_manager->ClearDomain(graph::mtl::SSBOAddress{graph::mtl::SSBOType::TextureLayer, alias_ssbo_id, slot});
             }
 
-            for (uint32_t slot = 1; slot < graph::mtl::MaterialSSBOSlotCount; ++slot)
+            for (uint32_t slot = 1; slot < materialization_ssbo_slot_count; ++slot)
             {
                 const uint32_t alias_ssbo_id = graph::mtl::MakeRecipeSSBOId(slot);
                 domain_manager->ClearDomain(graph::mtl::SSBOAddress{graph::mtl::SSBOType::MaterialSSBOIndexTable, alias_ssbo_id, slot});
@@ -481,9 +481,16 @@ namespace hgl::ecs
         }
         materialization_texture_layer_capacity = domain_manager->GetElementCapacity(graph::mtl::SSBOAddress{graph::mtl::SSBOType::TextureLayer, 0, 0});
 
-        if (data_capacity > 0)
+        // Compute per-material SSBO slot count (max across all rows).
+        const uint32_t max_ssbo_slot_count = materialization_index_tables.GetMaxMaterialSSBOSlotCount();
+        materialization_ssbo_slot_count = max_ssbo_slot_count;
+        const VkDeviceSize ssbo_row_stride_bytes = max_ssbo_slot_count > 0
+            ? static_cast<VkDeviceSize>(max_ssbo_slot_count) * sizeof(uint32_t)
+            : sizeof(uint32_t);  // fallback: at least 1 uint32 to keep buffer valid
+
+        if (data_capacity > 0 && max_ssbo_slot_count > 0)
         {
-            const VkDeviceSize byte_size = static_cast<VkDeviceSize>(data_capacity) * sizeof(graph::mtl::MaterialSSBOIndexRow);
+            const VkDeviceSize byte_size = static_cast<VkDeviceSize>(data_capacity) * ssbo_row_stride_bytes;
             materialization_ssbo_index_table_buffer = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{graph::mtl::SSBOType::MaterialSSBOIndexTable, 0, 0},
                                                                             "ECS:Materialization:MaterialSSBOIndexRows",
                                                                             byte_size,
@@ -525,7 +532,7 @@ namespace hgl::ecs
         register_domain_aliases(graph::mtl::SSBOType::MaterialSSBOIndexTable,
                                 materialization_ssbo_index_table_buffer,
                                 materialization_ssbo_index_table_capacity,
-                                graph::mtl::MaterialSSBOSlotCount);
+                                max_ssbo_slot_count);
 
         if (texture_rows > 0 && materialization_texture_layer_ssbo)
         {
@@ -545,17 +552,21 @@ namespace hgl::ecs
             }
         }
 
-        if (data_rows > 0 && materialization_ssbo_index_table_buffer)
+        if (data_rows > 0 && max_ssbo_slot_count > 0 && materialization_ssbo_index_table_buffer)
         {
-            auto *acc = graph::SSBOArrayAccessor<graph::mtl::MaterialSSBOIndexRow>::Create(
-                materialization_ssbo_index_table_buffer, data_rows);
+            // Rows are variable-width; write as flat uint32 array with stride = max_ssbo_slot_count.
+            auto *acc = graph::SSBOArrayAccessor<uint32_t>::Create(
+                materialization_ssbo_index_table_buffer,
+                data_rows * max_ssbo_slot_count);
             if (acc)
             {
                 for (uint32_t i = 0; i < data_rows; ++i)
                 {
                     const auto *row = materialization_index_tables.GetMaterialSSBOIndexRow(i);
                     if (!row) break;
-                    (*acc)[i] = *row;
+                    const uint32_t base = i * max_ssbo_slot_count;
+                    for (uint32_t j = 0; j < max_ssbo_slot_count; ++j)
+                        (*acc)[base + j] = (j < row->values.size()) ? row->values[j] : 0u;
                 }
                 acc->MarkDirty();
                 acc->Commit();

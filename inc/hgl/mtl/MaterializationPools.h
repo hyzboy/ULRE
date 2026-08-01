@@ -203,12 +203,11 @@ namespace hgl::graph::mtl
     };
 
     // MaterialSSBOIndexTable SSBO 的单实例行（每个结构体槽位一个 ssbo_element_index）。
+    // 宽度动态 = 该材质 ssbo_slot_decls.size()。
     struct MaterialSSBOIndexRow
     {
-        std::array<uint32_t, static_cast<size_t>(MaterialSSBOSlotCount)> values{};
+        std::vector<uint32_t> values;  // values[ssbo_slot] = ssbo_element_index
     };
-    static_assert(sizeof(MaterialSSBOIndexRow::values[0]) == sizeof(uint32_t),
-                  "MaterialSSBOIndexRow values must remain uint32_t for SSBO row format stability.");
 
     // TextureLayer/DataIndex 间接表容器（Phase 3 最小骨架）。
     class MaterializationIndexTables
@@ -252,6 +251,15 @@ namespace hgl::graph::mtl
 
         size_t GetTextureLayerRowCount() const { return texture_layer_rows.size(); }
         size_t GetMaterialSSBOIndexRowCount() const { return data_index_rows.size(); }
+
+        uint32_t GetMaxMaterialSSBOSlotCount() const
+        {
+            uint32_t max_count = 0;
+            for (const auto &row : data_index_rows)
+                if (row.values.size() > max_count)
+                    max_count = static_cast<uint32_t>(row.values.size());
+            return max_count;
+        }
     };
 
     // 用池对象构建 Recipe->Spec 解析回调。
@@ -329,12 +337,16 @@ namespace hgl::graph::mtl
 
     inline MaterialSSBOIndexRow BuildMaterialSSBOIndexRow(const MaterializationSpec &spec)
     {
-        MaterialSSBOIndexRow row{};
+        uint32_t max_slot = 0;
+        for (const auto &ref : spec.struct_refs)
+            if (ref.ssbo_slot + 1 > max_slot) max_slot = ref.ssbo_slot + 1;
+
+        MaterialSSBOIndexRow row;
+        row.values.assign(max_slot, 0u);
         for (const auto &ref : spec.struct_refs)
         {
-            const size_t idx = static_cast<size_t>(ref.ssbo_slot);
-            if (idx < row.values.size())
-                row.values[idx] = ref.ssbo_element_index;
+            if (ref.ssbo_slot < max_slot)
+                row.values[ref.ssbo_slot] = ref.ssbo_element_index;
         }
         return row;
     }

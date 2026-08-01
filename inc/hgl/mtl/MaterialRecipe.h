@@ -43,6 +43,14 @@ namespace hgl::graph::mtl
         uint32_t ssbo_id = 0;
     };
 
+    // 每个材质的 SSBO slot 声明（由 MaterialDefinition 显式列出）。
+    // index 即 ssbo_slot；name 同时作为 GLSL 变量名与 C++ 绑定 key。
+    struct MaterialSSBOSlotDecl
+    {
+        std::string name;           // GLSL 变量名 / C++ 绑定 key，如 "pbr_surface" / "pbr_surface_a"
+        SSBOType    ssbo_type = SSBOType::UserDefined; // 数据结构语义
+    };
+
     // BMI 来源标记：区分 built-in 硬编码实现与未来的文件化实现。
     enum class MaterialDefinitionSourceKind : uint8_t
     {
@@ -76,6 +84,11 @@ namespace hgl::graph::mtl
 
         // Part-B: 资源契约（当前阶段仅 SSBO；Texture/VAB 由 recipe 按需声明）
         std::vector<RecipeSSBOAssetBinding> required_ssbo_assets;
+
+        // Part-B2: 材质 SSBO slot 显式声明（index == ssbo_slot）
+        // name 用于 GLSL 变量名 与 C++ SetMaterialSSBOResource(name,...) 绑定。
+        // 无 SSBO 的材质此列表为空。
+        std::vector<MaterialSSBOSlotDecl> ssbo_slot_decls;
 
         // Part-C: request 构建参数（构建所需选项显式存储，
         //         不允许调用方根据名字/枚举范围做任何推断）

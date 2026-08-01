@@ -18,6 +18,7 @@ namespace
         bmi.with_camera       = true;
         bmi.with_local_to_world = true;
         bmi.with_sky          = false;
+        bmi.ssbo_slot_decls   = {{"mtl", SSBOType::PBRSurface}};
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::Gizmo3D, bmi);
         return true;
     }();

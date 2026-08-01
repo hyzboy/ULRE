@@ -26,6 +26,7 @@ struct Material2DBuildParams
     const GeometryVertexFormat *geometry_vertex_format = nullptr;
     const ShaderBufferSource *const *private_shader_buffer_sources = nullptr;
     uint32_t                private_shader_buffer_source_count = 0;
+    const std::vector<MaterialSSBOSlotDecl> *ssbo_slot_decls = nullptr;
 
     static Material2DBuildParams From(const MaterialDefinitionBuildRequest &request,
                                       const MaterialDefinition &definition)
@@ -44,6 +45,7 @@ struct Material2DBuildParams
         p.geometry_vertex_format            = request.geometry_vertex_format;
         p.private_shader_buffer_sources     = request.private_shader_buffer_sources;
         p.private_shader_buffer_source_count = request.private_shader_buffer_source_count;
+        p.ssbo_slot_decls = definition.ssbo_slot_decls.empty() ? nullptr : &definition.ssbo_slot_decls;
         if(request.override_rt_output)
         {
             // rt_output override not stored in Material2DBuildParams (not needed by build helpers)
@@ -216,6 +218,7 @@ inline CompositorMaterialBuildConfig ToCompositorBuildConfig2D(const Material2DB
     bc.private_shader_buffer_sources   = p.private_shader_buffer_sources;
     bc.private_shader_buffer_source_count = p.private_shader_buffer_source_count;
     bc.geometry_vertex_format          = p.geometry_vertex_format;
+    bc.ssbo_slot_decls                 = p.ssbo_slot_decls;
     return bc;
 }
 

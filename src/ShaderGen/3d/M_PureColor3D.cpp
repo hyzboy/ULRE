@@ -18,6 +18,7 @@ namespace
         bmi.with_local_to_world = true;
         bmi.with_sky          = false;
         bmi.usage_tag   = MaterialDefinitionUsageTag::Fallback;
+        bmi.ssbo_slot_decls   = {{"mtl", SSBOType::UserDefined}};
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::PureColor3D, bmi);
 
         // builtin/fallback_3d: 3D 无材质保底

@@ -305,8 +305,9 @@ namespace hgl::ecs
             return;
 
         const size_t index = static_cast<size_t>(ssbo_slot);
+        // Grow the vector on demand.
         if (index >= materialSSBOResources.size())
-            return;
+            materialSSBOResources.resize(index + 1);
 
         auto &resource = materialSSBOResources[index];
         const bool empty_authoring =

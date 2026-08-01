@@ -103,7 +103,7 @@ namespace hgl::ecs
         bool hasMaterialRecipe = false;
         hgl::graph::mtl::MaterialRecipe materialRecipe;
         std::array<MaterialTextureAuthoringResource, static_cast<size_t>(hgl::graph::mtl::TextureSlot::RANGE_SIZE)> materialTextureResources{};
-        std::array<MaterialSSBOAuthoringResource, static_cast<size_t>(hgl::graph::mtl::MaterialSSBOSlotCount)> materialSSBOResources{};
+        std::vector<MaterialSSBOAuthoringResource> materialSSBOResources;
         std::vector<MaterialSSBONamedAuthoringResource> materialSSBONamedResources{};
 
         // Late-resolve pipeline slot:
@@ -209,6 +209,7 @@ namespace hgl::ecs
                                        uint32_t ssbo_element_index = 0,
                                        bool use_ssbo_element_index = false,
                                        bool shared_across_instances = false);
+        uint32_t GetMaterialSSBOSlotCount() const { return static_cast<uint32_t>(materialSSBOResources.size()); }
         const MaterialSSBOAuthoringResource *GetMaterialSSBOResource(hgl::graph::mtl::SSBOType ssbo_type) const;
         const MaterialSSBOAuthoringResource *GetMaterialSSBOResourceBySlot(uint32_t ssbo_slot) const;
         void ClearMaterialSSBOResource(hgl::graph::mtl::SSBOType ssbo_type);

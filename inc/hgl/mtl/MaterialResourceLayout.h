@@ -360,7 +360,7 @@ namespace hgl::graph::mtl
              || req.semantic == DescriptorSemantic::MaterialSSBOIndexTable;
             if (requires_data_ssbo)
             {
-                if (req.ssbo_slot >= MaterialSSBOSlotCount)
+                if (req.ssbo_slot >= MaxMaterialSSBOSlotsPerMaterial)
                 {
                     std::string message = "Descriptor ssbo_slot is invalid for material SSBO semantic: ";
                     message += context;
