@@ -138,6 +138,7 @@ namespace hgl::ecs
                                           uint32_t ssbo_id,
                                           uint32_t byte_stride);
         void ResetMaterializationFrameData();
+        bool WriteTextureLayerRowAt(uint32_t at_index, const graph::mtl::MaterializationSpec &spec);
         bool ResolveMaterialRecipe(const graph::mtl::MaterialRecipe &recipe,
                                    graph::mtl::MaterializationSpec &out_spec,
                                    uint32_t *out_texture_layer_row = nullptr,

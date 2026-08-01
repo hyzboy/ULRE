@@ -245,8 +245,6 @@ namespace hgl::graph::mtl
         {
             hash = hgl::hash::FNV1aAppendValueBytes(hash, s.ssbo_slot);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, s.ssbo_type);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, s.ssbo_id);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, s.ssbo_element_index);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, s.use_ssbo_element_index);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, s.shared_across_instances);
         }
@@ -258,7 +256,6 @@ namespace hgl::graph::mtl
             if (!asset.ssbo_name.empty())
                 hash = hgl::hash::FNV1aAppendBytes(hash, asset.ssbo_name.data(), asset.ssbo_name.size());
             hash = hgl::hash::FNV1aAppendValueBytes(hash, asset.ssbo_type);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, asset.ssbo_id);
         }
 
         return static_cast<uint64_t>(hash);

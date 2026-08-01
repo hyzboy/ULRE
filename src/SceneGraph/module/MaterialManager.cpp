@@ -388,13 +388,20 @@ ShaderProgram *MaterialManager::AcquireMaterialProgram(const mtl::MaterialDefini
         return nullptr;
 
     const mtl::BuiltinMaterialCreatorID preset = static_cast<mtl::BuiltinMaterialCreatorID>(bmi.builtin_creator_id);
+
+    // Compute hash key BEFORE CreateMaterialCreateInfo to avoid triggering
+    // CompositorAssembler/GLSL compilation on every call when already cached.
+    const std::string hash_std = mtl::BuildBuiltinMaterialCreatorRequestHash(preset, bmi, request);
+    const AnsiString hash_name = hash_std.c_str();
+
+    if (ShaderProgram *cached = TryGetCachedMaterial(hash_name))
+        return cached;
+
     const auto *profile = GetPhysicalDeviceProfile();
     AutoDelete<mtl::ShaderProgramBuildSpec> mci = mtl::CreateMaterialCreateInfo(profile, preset, bmi, request);
     if(!mci)
         return nullptr;
 
-    const std::string hash_std = mtl::BuildBuiltinMaterialCreatorRequestHash(preset, bmi, request);
-    AnsiString hash_name = hash_std.c_str();
     return this->AcquireMaterialProgram(hash_name, mci);
 }
 

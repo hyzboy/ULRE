@@ -278,6 +278,14 @@ namespace hgl::ecs
         materialization_index_tables_dirty = true;
     }
 
+    bool RenderDescriptorBindingSystem::WriteTextureLayerRowAt(uint32_t at_index,
+                                                               const graph::mtl::MaterializationSpec &spec)
+    {
+        materialization_index_tables.WriteTextureLayerRowAt(at_index, graph::mtl::BuildTextureLayerRow(spec));
+        materialization_index_tables_dirty = true;
+        return true;
+    }
+
     bool RenderDescriptorBindingSystem::ResolveMaterialRecipe(const graph::mtl::MaterialRecipe &recipe,
                                                               graph::mtl::MaterializationSpec &out_spec,
                                                               uint32_t *out_texture_layer_row,

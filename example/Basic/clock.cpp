@@ -194,7 +194,7 @@ private:
         for (uint i = 0; i < TICK_COUNT; i++)
         {
             // 创建刻度实体
-            ticks[i].entity = ecs_world->CreateEntity<Entity>(AnsiString("ClockTick_") + AnsiString::numberOf((uint)i));
+            ticks[i].entity = ecs_world->CreateEntity<Entity>((AnsiString("ClockTick_") + AnsiString::numberOf((uint)i)).c_str());
 
             // 添加TransformComponent - 静态变换
             auto transform = ticks[i].entity->AddComponent<TransformComponent>(Mobility::Static);

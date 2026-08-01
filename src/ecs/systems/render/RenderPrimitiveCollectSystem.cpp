@@ -591,9 +591,37 @@ namespace hgl::ecs
             return false;
         }
 
-        const uint32_t material_instance_row = ResolvePrimaryStructIndex(material_comp->program,
-                                                                         spec,
-                                                                         ssbo_index_row);
+        // Determine the entity's own ssbo_element_index from the effective recipe.
+        // effective_recipe is always built fresh from primitive_comp, so its struct
+        // bindings carry the correct per-entity ssbo_element_index — unlike the cached
+        // spec which holds the FIRST entity's value for a given recipe hash.
+        uint32_t entity_element_index = uint32_t(-1);
+        for (const auto &struct_binding : effective_recipe.structs)
+        {
+            if (struct_binding.use_ssbo_element_index)
+            {
+                entity_element_index = struct_binding.ssbo_element_index;
+                break;
+            }
+        }
+
+        uint32_t material_instance_row;
+        if (entity_element_index != uint32_t(-1))
+        {
+            // Write texture handles at the entity's own index in the global texture table.
+            // Entities sharing the same recipe hash (same textures) will write the same
+            // data, but at their own distinct ssbo_element_index position.
+            rdbs->WriteTextureLayerRowAt(entity_element_index, spec);
+            material_instance_row = entity_element_index;
+            texture_layer_row = entity_element_index;
+            ssbo_index_row = entity_element_index;
+        }
+        else
+        {
+            material_instance_row = ResolvePrimaryStructIndex(material_comp->program,
+                                                              spec,
+                                                              ssbo_index_row);
+        }
 
         // ssbo_index_row keeps the indirection-table row identity.
         // material_instance_row is the concrete ssbo_element_index that shaders use as mtl.mi[miID].

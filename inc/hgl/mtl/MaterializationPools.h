@@ -229,10 +229,27 @@ namespace hgl::graph::mtl
             return static_cast<uint32_t>(texture_layer_rows.size() - 1);
         }
 
+        // Write (or overwrite) a texture layer row at a specific addressable index.
+        // Resizes the backing vector if necessary, leaving gaps as default-initialized rows.
+        void WriteTextureLayerRowAt(uint32_t index, const TextureLayerRow &row)
+        {
+            if (index >= static_cast<uint32_t>(texture_layer_rows.size()))
+                texture_layer_rows.resize(index + 1);
+            texture_layer_rows[index] = row;
+        }
+
         uint32_t PushMaterialSSBOIndexRow(const MaterialSSBOIndexRow &row)
         {
             data_index_rows.emplace_back(row);
             return static_cast<uint32_t>(data_index_rows.size() - 1);
+        }
+
+        // Write (or overwrite) a material SSBO index row at a specific addressable index.
+        void WriteMaterialSSBOIndexRowAt(uint32_t index, const MaterialSSBOIndexRow &row)
+        {
+            if (index >= static_cast<uint32_t>(data_index_rows.size()))
+                data_index_rows.resize(index + 1);
+            data_index_rows[index] = row;
         }
 
         const TextureLayerRow *GetTextureLayerRow(const uint32_t index) const
@@ -359,6 +376,21 @@ namespace hgl::graph::mtl
     {
         out_texture_layer_row = tables.PushTextureLayerRow(BuildTextureLayerRow(spec));
         out_data_index_row = tables.PushMaterialSSBOIndexRow(BuildMaterialSSBOIndexRow(spec));
+        return true;
+    }
+
+    // 将 spec 写入间接表的指定地址索引（适用于有 SSBO 元素索引的材质，避免稀疏表越界）。
+    // at_index 通常等于 spec.struct_refs[0].ssbo_element_index。
+    inline bool WriteSpecToIndexTablesAt(const MaterializationSpec &spec,
+                                         uint32_t at_index,
+                                         MaterializationIndexTables &tables,
+                                         uint32_t &out_texture_layer_row,
+                                         uint32_t &out_data_index_row)
+    {
+        tables.WriteTextureLayerRowAt(at_index, BuildTextureLayerRow(spec));
+        tables.WriteMaterialSSBOIndexRowAt(at_index, BuildMaterialSSBOIndexRow(spec));
+        out_texture_layer_row = at_index;
+        out_data_index_row = at_index;
         return true;
     }
 }
