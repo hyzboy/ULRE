@@ -1,6 +1,7 @@
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/color/Color.h>
@@ -10,6 +11,7 @@
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
+#include<hgl/mtl/MaterialResourceLayout.h>
 #include"GizmoResource.h"
 
 namespace hgl::graph
@@ -74,9 +76,9 @@ namespace hgl::graph
 
         // Create the SSBO holding one Color4f per GizmoColor slot.
         // PureColor3D MI data is exactly one Color4f (16 bytes, std430 vec4).
-        bool InitColorSSBO(GizmoResource *gr, ShaderProgram *material)
+        bool InitColorSSBO(GizmoResource *gr, const mtl::MaterialResourceLayout &material_layout)
         {
-            if (!gr || !material)
+            if (!gr)
                 return false;
 
             if (!graphics_context)
@@ -88,7 +90,7 @@ namespace hgl::graph
                 return false;
 
             bool has_struct_binding = false;
-            for (const auto &req : material->GetMaterialResourceLayout().requirements)
+            for (const auto &req : material_layout.requirements)
             {
                 if (req.semantic == mtl::DescriptorSemantic::MaterialSSBOSlotData)
                 {
@@ -121,7 +123,7 @@ namespace hgl::graph
                 delete acc;
             }
 
-            for (const auto &req : material->GetMaterialResourceLayout().requirements)
+            for (const auto &req : material_layout.requirements)
             {
                 if (req.semantic != mtl::DescriptorSemantic::MaterialSSBOSlotData)
                     continue;
@@ -170,23 +172,24 @@ namespace hgl::graph
             if(!gizmo_mtl_manager)
                 return(false);
 
-            ShaderProgram *gizmo_material = nullptr;
+            mtl::MaterialResourceLayout gizmo_material_layout{};
 
             {
                 mtl::MaterialRecipe recipe{};
                 recipe.mtl_def_id = "PureColor3D";
+                mtl::MaterialDefinitionBuildRequest request{};
+                request.mtl_def_id = recipe.mtl_def_id;
+                request.recipe = recipe;
+                request.primitive_type = PrimitiveType::Triangles;
 
-                gizmo_material=gizmo_mtl_manager->AcquireMaterialProgram(recipe.mtl_def_id,recipe,PrimitiveType::Triangles);
-                if(!gizmo_material)
+                if(!gizmo_mtl_manager->BuildMaterialResourceLayout(request, gizmo_material_layout))
                     return(false);
-
-                gizmo_material->Update();
             }
 
             {
                 const GeometryVertexFormat gizmo_gvf = CreateGizmoGeometryVertexFormat();
 
-                if(!InitColorSSBO(&gizmo_triangle, gizmo_material))
+                if(!InitColorSSBO(&gizmo_triangle, gizmo_material_layout))
                     return(false);
 
                 gizmo_triangle.vdm=new VertexDataManager(

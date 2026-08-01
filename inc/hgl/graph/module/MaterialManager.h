@@ -134,6 +134,8 @@ public: //ShaderGen Profiler (debug entry, collect-only)
 
 public: //ShaderProgram
 
+    bool            BuildMaterialResourceLayout(const mtl::MaterialDefinitionBuildRequest &request,
+                                                mtl::MaterialResourceLayout &out_layout);
     ShaderProgram *   AcquireMaterialProgram(const mtl::MaterialDefinitionBuildRequest &request);
     ShaderProgram *   AcquireMaterialProgram(const std::string &mtl_def_id,
                                                   const mtl::MaterialRecipe &recipe,

@@ -23,6 +23,30 @@ namespace hgl::graph{
 
 namespace
 {
+    bool ResolveMaterialDefinitionForRequest(const mtl::MaterialDefinitionBuildRequest &request,
+                                             mtl::MaterialDefinition &out_bmi,
+                                             mtl::BuiltinMaterialCreatorID &out_preset)
+    {
+        const std::string &mtl_def_id = request.mtl_def_id;
+
+        bool has_bmi = mtl::TryGetMaterialDefinitionByID(mtl_def_id, out_bmi);
+        if (!has_bmi)
+        {
+            const char *fallback_def_id = mtl::GetFallbackMaterialDefinitionID(mtl::ShouldUse2DFallbackMaterial(request));
+            has_bmi = mtl::TryGetMaterialDefinitionByID(fallback_def_id, out_bmi);
+        }
+
+        if (!has_bmi)
+            return false;
+
+        if (out_bmi.builtin_creator_id == mtl::InvalidBuiltinMaterialCreatorIDHint
+         || out_bmi.builtin_creator_id >= static_cast<uint32_t>(mtl::BuiltinMaterialCreatorID::RANGE_SIZE))
+            return false;
+
+        out_preset = static_cast<mtl::BuiltinMaterialCreatorID>(out_bmi.builtin_creator_id);
+        return true;
+    }
+
     void CreateShaderStageList(ValueArray<VkPipelineShaderStageCreateInfo> &shader_stage_list,ShaderModuleMap *shader_maps)
     {
         const ShaderModule *sm;
@@ -392,29 +416,29 @@ ShaderProgram *MaterialManager::AcquireMaterialProgram(const std::string &mtl_de
     return AcquireMaterialProgram(request);
 }
 
+bool MaterialManager::BuildMaterialResourceLayout(const mtl::MaterialDefinitionBuildRequest &request,
+                                                  mtl::MaterialResourceLayout &out_layout)
+{
+    mtl::MaterialDefinition bmi{};
+    mtl::BuiltinMaterialCreatorID preset = mtl::BuiltinMaterialCreatorID::VertexColor2D;
+    if (!ResolveMaterialDefinitionForRequest(request, bmi, preset))
+        return false;
+
+    const auto *profile = GetPhysicalDeviceProfile();
+    AutoDelete<mtl::ShaderProgramBuildSpec> mci = mtl::CreateMaterialCreateInfo(profile, preset, bmi, request);
+    if (!mci)
+        return false;
+
+    out_layout = mci->GetMaterialResourceLayout();
+    return true;
+}
+
 ShaderProgram *MaterialManager::AcquireMaterialProgram(const mtl::MaterialDefinitionBuildRequest &request)
 {
-    const std::string &mtl_def_id = request.mtl_def_id;
-
-    // 1. 查询 BMI：按 mtl_def_id 主键；失败时按几何维度选择 2D/3D 保底
     mtl::MaterialDefinition bmi{};
-    bool has_bmi = mtl::TryGetMaterialDefinitionByID(mtl_def_id, bmi);
-
-    if (!has_bmi)
-    {
-        const char *fallback_def_id = mtl::GetFallbackMaterialDefinitionID(mtl::ShouldUse2DFallbackMaterial(request));
-        has_bmi = mtl::TryGetMaterialDefinitionByID(fallback_def_id, bmi);
-    }
-
-    if (!has_bmi)
+    mtl::BuiltinMaterialCreatorID preset = mtl::BuiltinMaterialCreatorID::VertexColor2D;
+    if (!ResolveMaterialDefinitionForRequest(request, bmi, preset))
         return nullptr;
-
-    // 2. Part-C: 解析内置 creator（当前阶段映射到具体 M_* 创建函数）
-    if (bmi.builtin_creator_id == mtl::InvalidBuiltinMaterialCreatorIDHint
-     || bmi.builtin_creator_id >= static_cast<uint32_t>(mtl::BuiltinMaterialCreatorID::RANGE_SIZE))
-        return nullptr;
-
-    const mtl::BuiltinMaterialCreatorID preset = static_cast<mtl::BuiltinMaterialCreatorID>(bmi.builtin_creator_id);
 
     // Compute hash key BEFORE CreateMaterialCreateInfo to avoid triggering
     // CompositorAssembler/GLSL compilation on every call when already cached.
