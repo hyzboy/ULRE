@@ -87,13 +87,13 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitiveAsset(&plane_grid_asset);
-        hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource named_struct{};
+        hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource named_struct{};
         named_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
         named_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
         named_struct.ssbo_element_index = ssbo_element_index;
         named_struct.use_ssbo_element_index = true;
         named_struct.shared_across_instances = true;
-        prim_comp->SetMaterialStructResource(named_struct);
+        prim_comp->SetMaterialSSBOResource(named_struct);
         prim_comp->RequestPipeline(InlinePipeline::Solid3D);
         prim_comp->SetVisible(true);
 

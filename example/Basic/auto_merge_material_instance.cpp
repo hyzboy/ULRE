@@ -169,13 +169,13 @@ private:
             // 每个实体共享同一 PrimitiveAsset，颜色来自不同结构体行
             auto primitive_comp = triangles[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&triangle_asset);
-            hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource tri_struct{};
+            hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource tri_struct{};
             tri_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
             tri_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             tri_struct.ssbo_element_index = i;
             tri_struct.use_ssbo_element_index = true;
             tri_struct.shared_across_instances = false;
-            primitive_comp->SetMaterialStructResource(tri_struct);
+            primitive_comp->SetMaterialSSBOResource(tri_struct);
             primitive_comp->RequestPipeline(InlinePipeline::Solid2D);
             primitive_comp->SetVisible(true);
 

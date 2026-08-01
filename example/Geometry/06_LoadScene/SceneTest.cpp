@@ -202,13 +202,13 @@ private:
                 se.transform->SetMovable(false);
 
                 se.primitive_comp->SetPrimitiveAsset(&asset);
-                hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource scene_struct{};
+                hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource scene_struct{};
                 scene_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
                 scene_struct.ssbo_id = solid.mi_ssbo_accessor->GetSSBOId();
                 scene_struct.ssbo_element_index = (entity_idx - 1) % COLOR_COUNT;
                 scene_struct.use_ssbo_element_index = true;
                 scene_struct.shared_across_instances = true;
-                se.primitive_comp->SetMaterialStructResource(scene_struct);
+                se.primitive_comp->SetMaterialSSBOResource(scene_struct);
                 se.primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
                 se.primitive_comp->SetVisible(true);
 

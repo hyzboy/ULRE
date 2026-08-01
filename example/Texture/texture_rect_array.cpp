@@ -201,13 +201,13 @@ private:
                                                   texture,
                                                   sampler,
                                                   PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray);
-            hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource rect_struct{};
+            hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource rect_struct{};
             rect_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
             rect_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             rect_struct.ssbo_element_index = i;
             rect_struct.use_ssbo_element_index = true;
             rect_struct.shared_across_instances = false;
-            primitive->SetMaterialStructResource(rect_struct);
+            primitive->SetMaterialSSBOResource(rect_struct);
             primitive->RequestPipeline(InlinePipeline::Solid2D);
             primitive->SetVisible(true);
         }

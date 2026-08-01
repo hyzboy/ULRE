@@ -185,13 +185,13 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitiveAsset(mesh_asset);
-        hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource mesh_struct{};
+        hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource mesh_struct{};
         mesh_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
         mesh_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
         mesh_struct.ssbo_element_index = 0;
         mesh_struct.use_ssbo_element_index = true;
         mesh_struct.shared_across_instances = true;
-        prim_comp->SetMaterialStructResource(mesh_struct);
+        prim_comp->SetMaterialSSBOResource(mesh_struct);
         prim_comp->RequestPipeline(InlinePipeline::Solid3D);
         prim_comp->SetVisible(true);
 

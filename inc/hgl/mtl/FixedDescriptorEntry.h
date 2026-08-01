@@ -18,7 +18,7 @@ namespace hgl::graph::mtl
         const char *        glsl_type;
         DescriptorSemantic  semantic = DescriptorSemantic::Unknown;
         TextureSlot         texture_slot = TextureSlot::BaseColor;
-        uint32_t            ssbo_slot = GetSSBOSlotByType(SSBOType::PBRSurface);
+        uint32_t            ssbo_slot = DefaultMaterialSSBOSlot;
         SSBOType            ssbo_type = SSBOType::UserDefined;
         DescriptorSemanticLayer semantic_layer = DescriptorSemanticLayer::Unknown;
         uint32_t            ssbo_id = MakeRecipeSSBOId(0);

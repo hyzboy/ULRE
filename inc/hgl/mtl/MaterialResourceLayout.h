@@ -15,7 +15,7 @@ namespace hgl::graph::mtl
         DescriptorSetType set_type = DescriptorSetType::Unknow;
         DescriptorKind kind = DescriptorKind::UBO;
         TextureSlot texture_slot = TextureSlot::BaseColor;
-        uint32_t ssbo_slot = GetSSBOSlotByType(SSBOType::PBRSurface);
+        uint32_t ssbo_slot = DefaultMaterialSSBOSlot;
         SSBOType ssbo_type = SSBOType::UserDefined;
         uint32_t ssbo_id = MakeRecipeSSBOId(0);
 
@@ -209,11 +209,7 @@ namespace hgl::graph::mtl
                 req.ssbo_slot = entry.ssbo_slot;
                 req.ssbo_type = entry.ssbo_type;
                 if (req.ssbo_type == SSBOType::UserDefined)
-                {
-                    req.ssbo_type = GetSSBOTypeBySlot(req.ssbo_slot);
-                    if (req.ssbo_type == SSBOType::UserDefined)
-                        req.ssbo_type = SSBOType::PBRSurface;
-                }
+                    req.ssbo_type = SSBOType::PBRSurface;
                 if (req.ssbo_id == MakeRecipeSSBOId(0))
                     req.ssbo_id = MakeRecipeSSBOId(req.ssbo_slot);
             }

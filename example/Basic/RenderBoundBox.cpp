@@ -544,13 +544,13 @@ private:
             rm_floor->transform->SetMovable(false);
 
             rm_floor->primitive_comp->SetPrimitiveAsset(&rm_floor->asset);
-            hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource floor_struct{};
+            hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource floor_struct{};
             floor_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
             floor_struct.ssbo_id = solid.mi_ssbo_accessor->GetSSBOId();
             floor_struct.ssbo_element_index = rm_floor->color_index;
             floor_struct.use_ssbo_element_index = true;
             floor_struct.shared_across_instances = true;
-            rm_floor->primitive_comp->SetMaterialStructResource(floor_struct);
+            rm_floor->primitive_comp->SetMaterialSSBOResource(floor_struct);
             rm_floor->primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             rm_floor->primitive_comp->SetVisible(true);
         }
@@ -579,13 +579,13 @@ private:
             rm->transform->SetMovable(false);
 
             rm->primitive_comp->SetPrimitiveAsset(&rm->asset);
-            hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource mesh_struct{};
+            hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource mesh_struct{};
             mesh_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
             mesh_struct.ssbo_id = solid.mi_ssbo_accessor->GetSSBOId();
             mesh_struct.ssbo_element_index = rm->color_index;
             mesh_struct.use_ssbo_element_index = true;
             mesh_struct.shared_across_instances = true;
-            rm->primitive_comp->SetMaterialStructResource(mesh_struct);
+            rm->primitive_comp->SetMaterialSSBOResource(mesh_struct);
             rm->primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             rm->primitive_comp->SetVisible(true);
 
@@ -626,13 +626,13 @@ private:
             bbox->transform->SetMovable(false);
 
             bbox->primitive_comp->SetPrimitiveAsset(&bbox_asset);
-            hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource bbox_struct{};
+            hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource bbox_struct{};
             bbox_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
             bbox_struct.ssbo_id = wire.mi_ssbo_accessor->GetSSBOId();
             bbox_struct.ssbo_element_index = 5;
             bbox_struct.use_ssbo_element_index = true;
             bbox_struct.shared_across_instances = true;
-            bbox->primitive_comp->SetMaterialStructResource(bbox_struct);
+            bbox->primitive_comp->SetMaterialSSBOResource(bbox_struct);
             bbox->primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             bbox->primitive_comp->SetVisible(true);
 

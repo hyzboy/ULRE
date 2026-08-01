@@ -241,13 +241,13 @@ private:
                                                                   PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray);
         }
 
-        hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource sphere_struct{};
+        hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource sphere_struct{};
         sphere_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
         sphere_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
         sphere_struct.ssbo_element_index = 0;
         sphere_struct.use_ssbo_element_index = false;
         sphere_struct.shared_across_instances = false;
-        sphere_primitive_component->SetMaterialStructResource(sphere_struct);
+        sphere_primitive_component->SetMaterialSSBOResource(sphere_struct);
         return true;
     }
 

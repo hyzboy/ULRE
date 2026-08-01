@@ -117,13 +117,13 @@ namespace hgl::ecs
         }
 
         void UpsertRecipeStructBinding(graph::mtl::MaterialRecipe &recipe,
+                                       const uint32_t ssbo_slot,
                                        graph::mtl::SSBOType ssbo_type,
                                        const uint32_t ssbo_id,
                                        const uint32_t ssbo_element_index,
                                        const bool use_ssbo_element_index,
                                        const bool shared_across_instances)
         {
-            const uint32_t ssbo_slot = graph::mtl::GetSSBOSlotByType(ssbo_type);
             for (auto &binding : recipe.structs)
             {
                 if (binding.ssbo_slot != ssbo_slot || binding.ssbo_type != ssbo_type)
@@ -210,12 +210,13 @@ namespace hgl::ecs
 
             for (size_t i = 0; i < static_cast<size_t>(graph::mtl::MaterialSSBOSlotCount); ++i)
             {
-                const auto ssbo_type = graph::mtl::GetSSBOTypeBySlot(static_cast<uint32_t>(i));
-                const auto *resource = primitive_comp->GetMaterialStructResource(ssbo_type);
+                const auto ssbo_slot = static_cast<uint32_t>(i);
+                const auto *resource = primitive_comp->GetMaterialSSBOResourceBySlot(ssbo_slot);
                 if (!resource)
                     continue;
 
                 UpsertRecipeStructBinding(out_recipe,
+                                         ssbo_slot,
                                          resource->ssbo_type,
                                          resource->ssbo_id,
                                          resource->ssbo_element_index,
@@ -337,8 +338,8 @@ namespace hgl::ecs
 
             for (size_t i = 0; i < static_cast<size_t>(graph::mtl::MaterialSSBOSlotCount); ++i)
             {
-                const auto ssbo_type = graph::mtl::GetSSBOTypeBySlot(static_cast<uint32_t>(i));
-                const auto *resource = primitive_comp->GetMaterialStructResource(ssbo_type);
+                const auto ssbo_slot = static_cast<uint32_t>(i);
+                const auto *resource = primitive_comp->GetMaterialSSBOResourceBySlot(ssbo_slot);
                 if (!resource)
                     continue;
 
@@ -371,28 +372,29 @@ namespace hgl::ecs
                     continue;
 
                 const auto *asset_binding = graph::mtl::FindRecipeSSBOAssetBinding(effective_recipe, req.name, req.ssbo_type);
-                const auto *named_struct_resource = primitive_comp->GetMaterialStructResource(std::string(req.name ? req.name : ""));
+                const auto *named_ssbo_resource = primitive_comp->GetMaterialSSBOResource(std::string(req.name ? req.name : ""));
 
-                if (!asset_binding && named_struct_resource)
+                if (!asset_binding && named_ssbo_resource)
                 {
                     graph::mtl::UpsertRecipeSSBOAssetBinding(effective_recipe,
                                                              req.name ? std::string(req.name) : std::string(),
                                                              req.ssbo_type,
-                                                             named_struct_resource->ssbo_id);
+                                                             named_ssbo_resource->ssbo_id);
 
                     asset_binding = graph::mtl::FindRecipeSSBOAssetBinding(effective_recipe, req.name, req.ssbo_type);
                 }
 
-                if (!primitive_comp->GetMaterialStructResource(req.ssbo_type) && named_struct_resource)
+                if (!primitive_comp->GetMaterialSSBOResourceBySlot(req.ssbo_slot) && named_ssbo_resource)
                 {
-                    primitive_comp->SetMaterialStructResource(req.ssbo_type,
-                                                              named_struct_resource->ssbo_id,
+                    primitive_comp->SetMaterialSSBOResource(req.ssbo_slot,
+                                                              req.ssbo_type,
+                                                              named_ssbo_resource->ssbo_id,
                                                               nullptr,
                                                               0,
                                                               0,
-                                                              named_struct_resource->ssbo_element_index,
-                                                              named_struct_resource->use_ssbo_element_index,
-                                                              named_struct_resource->shared_across_instances);
+                                                              named_ssbo_resource->ssbo_element_index,
+                                                              named_ssbo_resource->use_ssbo_element_index,
+                                                              named_ssbo_resource->shared_across_instances);
                 }
 
                 if (!asset_binding)
@@ -761,4 +763,3 @@ namespace hgl::ecs
         //}
     }
 }//namespace hgl::ecs
-

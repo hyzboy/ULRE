@@ -186,13 +186,13 @@ private:
         primitive_comp->SetPrimitiveAsset(&cube_asset);
         if (mi_ssbo_accessor && mi_ssbo_accessor->GetSSBOId() != 0)
         {
-            hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource cube_struct{};
+            hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource cube_struct{};
             cube_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
             cube_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             cube_struct.ssbo_element_index = 0;
             cube_struct.use_ssbo_element_index = true;
             cube_struct.shared_across_instances = true;
-            primitive_comp->SetMaterialStructResource(cube_struct);
+            primitive_comp->SetMaterialSSBOResource(cube_struct);
         }
         primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
         primitive_comp->SetVisible(true);

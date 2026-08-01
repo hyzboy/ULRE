@@ -49,8 +49,9 @@ namespace hgl::ecs
             resource.required = false;
         }
 
-        void ResetMaterialStructAuthoringResource(PrimitiveComponent::MaterialStructAuthoringResource &resource)
+        void ResetMaterialSSBOAuthoringResource(PrimitiveComponent::MaterialSSBOAuthoringResource &resource)
         {
+            resource.ssbo_slot = hgl::graph::mtl::DefaultMaterialSSBOSlot;
             resource.ssbo_type = hgl::graph::mtl::SSBOType::UserDefined;
             resource.ssbo_id = 0;
             resource.buffer = nullptr;
@@ -62,7 +63,7 @@ namespace hgl::ecs
             resource.authored = false;
         }
 
-        void ResetMaterialStructNamedAuthoringResource(PrimitiveComponent::MaterialStructNamedAuthoringResource &resource)
+        void ResetMaterialSSBONamedAuthoringResource(PrimitiveComponent::MaterialSSBONamedAuthoringResource &resource)
         {
             resource.ssbo_name.clear();
             resource.ssbo_id = 0;
@@ -270,7 +271,28 @@ namespace hgl::ecs
         ResetMaterialTextureAuthoringResource(materialTextureResources[index]);
     }
 
-    void PrimitiveComponent::SetMaterialStructResource(hgl::graph::mtl::SSBOType ssbo_type,
+    void PrimitiveComponent::SetMaterialSSBOResource(hgl::graph::mtl::SSBOType ssbo_type,
+                                                       uint32_t ssbo_id,
+                                                       hgl::graph::DeviceBuffer *buffer,
+                                                       uint32_t element_capacity,
+                                                       uint32_t byte_stride,
+                                                       uint32_t ssbo_element_index,
+                                                       bool use_ssbo_element_index,
+                                                       bool shared_across_instances)
+    {
+        SetMaterialSSBOResource(hgl::graph::mtl::DefaultMaterialSSBOSlot,
+                                  ssbo_type,
+                                  ssbo_id,
+                                  buffer,
+                                  element_capacity,
+                                  byte_stride,
+                                  ssbo_element_index,
+                                  use_ssbo_element_index,
+                                  shared_across_instances);
+    }
+
+    void PrimitiveComponent::SetMaterialSSBOResource(const uint32_t ssbo_slot,
+                                                       hgl::graph::mtl::SSBOType ssbo_type,
                                                        uint32_t ssbo_id,
                                                        hgl::graph::DeviceBuffer *buffer,
                                                        uint32_t element_capacity,
@@ -282,11 +304,11 @@ namespace hgl::ecs
         if (!hgl::graph::mtl::IsMaterialSSBOType(ssbo_type))
             return;
 
-        const size_t index = static_cast<size_t>(hgl::graph::mtl::GetSSBOSlotByType(ssbo_type));
-        if (index >= materialStructResources.size())
+        const size_t index = static_cast<size_t>(ssbo_slot);
+        if (index >= materialSSBOResources.size())
             return;
 
-        auto &resource = materialStructResources[index];
+        auto &resource = materialSSBOResources[index];
         const bool empty_authoring =
             !buffer &&
             ssbo_type == hgl::graph::mtl::SSBOType::UserDefined &&
@@ -299,10 +321,11 @@ namespace hgl::ecs
 
         if (empty_authoring)
         {
-            ResetMaterialStructAuthoringResource(resource);
+            ResetMaterialSSBOAuthoringResource(resource);
             return;
         }
 
+        resource.ssbo_slot = ssbo_slot;
         resource.ssbo_type = ssbo_type;
         resource.ssbo_id = ssbo_id;
         resource.buffer = buffer;
@@ -314,28 +337,39 @@ namespace hgl::ecs
         resource.authored = true;
     }
 
-    const PrimitiveComponent::MaterialStructAuthoringResource *PrimitiveComponent::GetMaterialStructResource(hgl::graph::mtl::SSBOType ssbo_type) const
+    const PrimitiveComponent::MaterialSSBOAuthoringResource *PrimitiveComponent::GetMaterialSSBOResource(hgl::graph::mtl::SSBOType ssbo_type) const
     {
         if (!hgl::graph::mtl::IsMaterialSSBOType(ssbo_type))
             return nullptr;
 
-        const size_t index = static_cast<size_t>(hgl::graph::mtl::GetSSBOSlotByType(ssbo_type));
-        if (index >= materialStructResources.size())
+        for (const auto &resource : materialSSBOResources)
+        {
+            if (resource.authored && resource.ssbo_type == ssbo_type)
+                return &resource;
+        }
+
+        return nullptr;
+    }
+
+    const PrimitiveComponent::MaterialSSBOAuthoringResource *PrimitiveComponent::GetMaterialSSBOResourceBySlot(const uint32_t ssbo_slot) const
+    {
+        const size_t index = static_cast<size_t>(ssbo_slot);
+        if (index >= materialSSBOResources.size())
             return nullptr;
 
-        const auto &resource = materialStructResources[index];
+        const auto &resource = materialSSBOResources[index];
         return resource.authored ? &resource : nullptr;
     }
 
-    void PrimitiveComponent::SetMaterialStructResource(const MaterialStructNamedAuthoringResource &resource)
+    void PrimitiveComponent::SetMaterialSSBOResource(const MaterialSSBONamedAuthoringResource &resource)
     {
         if (resource.ssbo_name.empty() || resource.ssbo_id == 0)
         {
-            ClearMaterialStructResource(resource.ssbo_name);
+            ClearMaterialSSBOResource(resource.ssbo_name);
             return;
         }
 
-        for (auto &existing : materialStructNamedResources)
+        for (auto &existing : materialSSBONamedResources)
         {
             if (existing.ssbo_name != resource.ssbo_name)
                 continue;
@@ -348,17 +382,17 @@ namespace hgl::ecs
             return;
         }
 
-        MaterialStructNamedAuthoringResource named = resource;
+        MaterialSSBONamedAuthoringResource named = resource;
         named.authored = true;
-        materialStructNamedResources.emplace_back(std::move(named));
+        materialSSBONamedResources.emplace_back(std::move(named));
     }
 
-    const PrimitiveComponent::MaterialStructNamedAuthoringResource *PrimitiveComponent::GetMaterialStructResource(const std::string &ssbo_name) const
+    const PrimitiveComponent::MaterialSSBONamedAuthoringResource *PrimitiveComponent::GetMaterialSSBOResource(const std::string &ssbo_name) const
     {
         if (ssbo_name.empty())
             return nullptr;
 
-        for (const auto &resource : materialStructNamedResources)
+        for (const auto &resource : materialSSBONamedResources)
         {
             if (resource.authored && resource.ssbo_name == ssbo_name)
                 return &resource;
@@ -367,31 +401,40 @@ namespace hgl::ecs
         return nullptr;
     }
 
-    void PrimitiveComponent::ClearMaterialStructResource(const std::string &ssbo_name)
+    void PrimitiveComponent::ClearMaterialSSBOResource(const std::string &ssbo_name)
     {
         if (ssbo_name.empty())
             return;
 
-        for (auto &resource : materialStructNamedResources)
+        for (auto &resource : materialSSBONamedResources)
         {
             if (resource.ssbo_name != ssbo_name)
                 continue;
 
-            ResetMaterialStructNamedAuthoringResource(resource);
+            ResetMaterialSSBONamedAuthoringResource(resource);
             return;
         }
     }
 
-    void PrimitiveComponent::ClearMaterialStructResource(hgl::graph::mtl::SSBOType ssbo_type)
+    void PrimitiveComponent::ClearMaterialSSBOResource(hgl::graph::mtl::SSBOType ssbo_type)
     {
         if (!hgl::graph::mtl::IsMaterialSSBOType(ssbo_type))
             return;
 
-        const size_t index = static_cast<size_t>(hgl::graph::mtl::GetSSBOSlotByType(ssbo_type));
-        if (index >= materialStructResources.size())
+        for (auto &resource : materialSSBOResources)
+        {
+            if (resource.authored && resource.ssbo_type == ssbo_type)
+                ResetMaterialSSBOAuthoringResource(resource);
+        }
+    }
+
+    void PrimitiveComponent::ClearMaterialSSBOResourceBySlot(const uint32_t ssbo_slot)
+    {
+        const size_t index = static_cast<size_t>(ssbo_slot);
+        if (index >= materialSSBOResources.size())
             return;
 
-        ResetMaterialStructAuthoringResource(materialStructResources[index]);
+        ResetMaterialSSBOAuthoringResource(materialSSBOResources[index]);
     }
 
     void PrimitiveComponent::ClearMaterialAuthoringResources()
@@ -399,12 +442,12 @@ namespace hgl::ecs
         for (auto &resource : materialTextureResources)
             ResetMaterialTextureAuthoringResource(resource);
 
-        for (auto &resource : materialStructResources)
-            ResetMaterialStructAuthoringResource(resource);
+        for (auto &resource : materialSSBOResources)
+            ResetMaterialSSBOAuthoringResource(resource);
 
-        for (auto &resource : materialStructNamedResources)
-            ResetMaterialStructNamedAuthoringResource(resource);
-        materialStructNamedResources.clear();
+        for (auto &resource : materialSSBONamedResources)
+            ResetMaterialSSBONamedAuthoringResource(resource);
+        materialSSBONamedResources.clear();
     }
 
     void PrimitiveComponent::InvalidateResolvedRuntimePipeline()

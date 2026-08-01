@@ -1021,7 +1021,7 @@ namespace hgl::ecs
 
                 if (!has_candidate)
                 {
-                    const auto *resource = primitive_comp->GetMaterialStructResource(req.ssbo_type);
+                    const auto *resource = primitive_comp->GetMaterialSSBOResourceBySlot(req.ssbo_slot);
                     if (!resource || resource->ssbo_type != req.ssbo_type)
                         continue;
 

@@ -211,13 +211,13 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = plane_grid_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&plane_asset);
-            hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource plane_struct{};
+            hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource plane_struct{};
             plane_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
             plane_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             plane_struct.ssbo_element_index = plane_slot;
             plane_struct.use_ssbo_element_index = true;
             plane_struct.shared_across_instances = true;
-            primitive_comp->SetMaterialStructResource(plane_struct);
+            primitive_comp->SetMaterialSSBOResource(plane_struct);
             primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             primitive_comp->SetVisible(true);
         }
@@ -236,13 +236,13 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = ray_line_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&line_asset);
-            hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource line_struct{};
+            hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource line_struct{};
             line_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
             line_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             line_struct.ssbo_element_index = line_slot;
             line_struct.use_ssbo_element_index = true;
             line_struct.shared_across_instances = true;
-            primitive_comp->SetMaterialStructResource(line_struct);
+            primitive_comp->SetMaterialSSBOResource(line_struct);
             primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             primitive_comp->SetVisible(true);
         }

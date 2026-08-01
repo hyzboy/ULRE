@@ -404,13 +404,13 @@ private:
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_texture, sampler);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal, normal_texture, sampler);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_texture, sampler);
-            hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource floor_struct{};
+            hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource floor_struct{};
             floor_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
             floor_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             floor_struct.ssbo_element_index = 0;
             floor_struct.use_ssbo_element_index = false;
             floor_struct.shared_across_instances = false;
-            primitive_comp->SetMaterialStructResource(floor_struct);
+            primitive_comp->SetMaterialSSBOResource(floor_struct);
             primitive_comp->SetVisible(true);
         }
 
@@ -442,13 +442,13 @@ private:
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_texture, sampler);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal, normal_texture, sampler);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_texture, sampler);
-            hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource mesh_struct{};
+            hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource mesh_struct{};
             mesh_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
             mesh_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             mesh_struct.ssbo_element_index = 0;
             mesh_struct.use_ssbo_element_index = false;
             mesh_struct.shared_across_instances = false;
-            primitive_comp->SetMaterialStructResource(mesh_struct);
+            primitive_comp->SetMaterialSSBOResource(mesh_struct);
             primitive_comp->SetVisible(true);
 
             ++index;

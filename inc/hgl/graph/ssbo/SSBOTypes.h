@@ -24,6 +24,7 @@ namespace hgl::graph::mtl
 
     using SSBOCategory = SSBOType;
     constexpr uint32_t MaterialSSBOSlotCount = 6;
+    constexpr uint32_t DefaultMaterialSSBOSlot = 0;
 
     constexpr bool IsMaterialSSBOType(const SSBOType type) noexcept
     {
@@ -37,30 +38,6 @@ namespace hgl::graph::mtl
             return true;
         default:
             return false;
-        }
-    }
-
-    constexpr uint32_t GetSSBOSlotByType(const SSBOType type) noexcept
-    {
-        switch (type)
-        {
-        case SSBOType::PBRSurface: return 0;
-        case SSBOType::EmissiveSurface: return 1;
-        case SSBOType::ClearCoatSurface: return 2;
-        case SSBOType::TransmissionSurface: return 3;
-        default: return 4;
-        }
-    }
-
-    constexpr SSBOType GetSSBOTypeBySlot(const uint32_t ssbo_slot) noexcept
-    {
-        switch (ssbo_slot)
-        {
-        case 0: return SSBOType::PBRSurface;
-        case 1: return SSBOType::EmissiveSurface;
-        case 2: return SSBOType::ClearCoatSurface;
-        case 3: return SSBOType::TransmissionSurface;
-        default: return SSBOType::UserDefined;
         }
     }
 

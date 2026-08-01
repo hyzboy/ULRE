@@ -65,8 +65,9 @@ namespace hgl::ecs
             bool required = false;
         };
 
-        struct MaterialStructAuthoringResource
+        struct MaterialSSBOAuthoringResource
         {
+            uint32_t ssbo_slot = hgl::graph::mtl::DefaultMaterialSSBOSlot;
             hgl::graph::mtl::SSBOType ssbo_type = hgl::graph::mtl::SSBOType::UserDefined;
             uint32_t ssbo_id = 0;
             hgl::graph::DeviceBuffer *buffer = nullptr;
@@ -78,7 +79,7 @@ namespace hgl::ecs
             bool authored = false;
         };
 
-        struct MaterialStructNamedAuthoringResource
+        struct MaterialSSBONamedAuthoringResource
         {
             std::string ssbo_name;
             uint32_t ssbo_id = 0;
@@ -102,8 +103,8 @@ namespace hgl::ecs
         bool hasMaterialRecipe = false;
         hgl::graph::mtl::MaterialRecipe materialRecipe;
         std::array<MaterialTextureAuthoringResource, static_cast<size_t>(hgl::graph::mtl::TextureSlot::RANGE_SIZE)> materialTextureResources{};
-        std::array<MaterialStructAuthoringResource, static_cast<size_t>(hgl::graph::mtl::MaterialSSBOSlotCount)> materialStructResources{};
-        std::vector<MaterialStructNamedAuthoringResource> materialStructNamedResources{};
+        std::array<MaterialSSBOAuthoringResource, static_cast<size_t>(hgl::graph::mtl::MaterialSSBOSlotCount)> materialSSBOResources{};
+        std::vector<MaterialSSBONamedAuthoringResource> materialSSBONamedResources{};
 
         // Late-resolve pipeline slot:
         // Populated at render-time if primitive has no pre-baked pipeline.
@@ -191,7 +192,7 @@ namespace hgl::ecs
         void SetMaterialTextureValue(hgl::graph::mtl::TextureSlot slot, uint32_t value);
         const MaterialTextureAuthoringResource *GetMaterialTextureResource(hgl::graph::mtl::TextureSlot slot) const;
         void ClearMaterialTextureResource(hgl::graph::mtl::TextureSlot slot);
-        void SetMaterialStructResource(hgl::graph::mtl::SSBOType ssbo_type,
+        void SetMaterialSSBOResource(hgl::graph::mtl::SSBOType ssbo_type,
                                        uint32_t ssbo_id,
                                        hgl::graph::DeviceBuffer *buffer,
                                        uint32_t element_capacity,
@@ -199,11 +200,22 @@ namespace hgl::ecs
                                        uint32_t ssbo_element_index = 0,
                                        bool use_ssbo_element_index = false,
                                        bool shared_across_instances = false);
-        const MaterialStructAuthoringResource *GetMaterialStructResource(hgl::graph::mtl::SSBOType ssbo_type) const;
-        void ClearMaterialStructResource(hgl::graph::mtl::SSBOType ssbo_type);
-        void SetMaterialStructResource(const MaterialStructNamedAuthoringResource &resource);
-        const MaterialStructNamedAuthoringResource *GetMaterialStructResource(const std::string &ssbo_name) const;
-        void ClearMaterialStructResource(const std::string &ssbo_name);
+        void SetMaterialSSBOResource(uint32_t ssbo_slot,
+                                       hgl::graph::mtl::SSBOType ssbo_type,
+                                       uint32_t ssbo_id,
+                                       hgl::graph::DeviceBuffer *buffer,
+                                       uint32_t element_capacity,
+                                       uint32_t byte_stride,
+                                       uint32_t ssbo_element_index = 0,
+                                       bool use_ssbo_element_index = false,
+                                       bool shared_across_instances = false);
+        const MaterialSSBOAuthoringResource *GetMaterialSSBOResource(hgl::graph::mtl::SSBOType ssbo_type) const;
+        const MaterialSSBOAuthoringResource *GetMaterialSSBOResourceBySlot(uint32_t ssbo_slot) const;
+        void ClearMaterialSSBOResource(hgl::graph::mtl::SSBOType ssbo_type);
+        void ClearMaterialSSBOResourceBySlot(uint32_t ssbo_slot);
+        void SetMaterialSSBOResource(const MaterialSSBONamedAuthoringResource &resource);
+        const MaterialSSBONamedAuthoringResource *GetMaterialSSBOResource(const std::string &ssbo_name) const;
+        void ClearMaterialSSBOResource(const std::string &ssbo_name);
         void ClearMaterialAuthoringResources();
 
         // ShaderProgram access (returns override if set, otherwise descriptor-bound material)

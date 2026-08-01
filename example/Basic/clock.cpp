@@ -229,13 +229,13 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = ticks[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&clock_asset);
-            hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource tick_struct{};
+            hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource tick_struct{};
             tick_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
             tick_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             tick_struct.ssbo_element_index = tick_slot;
             tick_struct.use_ssbo_element_index = true;
             tick_struct.shared_across_instances = false;
-            primitive_comp->SetMaterialStructResource(tick_struct);
+            primitive_comp->SetMaterialSSBOResource(tick_struct);
             primitive_comp->RequestPipeline(InlinePipeline::Solid2D);
             primitive_comp->SetVisible(true);
 
@@ -267,13 +267,13 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = hands[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&clock_asset);
-            hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource hand_struct{};
+            hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource hand_struct{};
             hand_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
             hand_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             hand_struct.ssbo_element_index = hand_slots[i];
             hand_struct.use_ssbo_element_index = true;
             hand_struct.shared_across_instances = false;
-            primitive_comp->SetMaterialStructResource(hand_struct);
+            primitive_comp->SetMaterialSSBOResource(hand_struct);
             primitive_comp->RequestPipeline(InlinePipeline::Solid2D);
             primitive_comp->SetVisible(true);
 

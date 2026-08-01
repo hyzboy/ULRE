@@ -110,13 +110,13 @@ public:
 
             prim_comp->SetPrimitiveAsset(&wall_meshes[i]);
             prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_color_texture, sampler);
-            hgl::ecs::PrimitiveComponent::MaterialStructNamedAuthoringResource wall_struct{};
+            hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource wall_struct{};
             wall_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
             wall_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             wall_struct.ssbo_element_index = 0;
             wall_struct.use_ssbo_element_index = true;
             wall_struct.shared_across_instances = true;
-            prim_comp->SetMaterialStructResource(wall_struct);
+            prim_comp->SetMaterialSSBOResource(wall_struct);
             prim_comp->RequestPipeline(InlinePipeline::Solid3D);
             prim_comp->SetVisible(true);
         }
