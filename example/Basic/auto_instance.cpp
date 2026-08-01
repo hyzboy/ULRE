@@ -179,14 +179,6 @@ public:
 
         return(true);
     }
-
-    void Tick(double delta_time) override
-    {
-        // ECS世界的更新由框架层 Tick 自动调用
-        // 这里可以添加游戏逻辑更新
-
-        WorkObject::Tick(delta_time);
-    }
 };//class TestApp:public WorkObject
 
 int os_main(int argc,os_char **argv)

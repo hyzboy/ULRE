@@ -261,13 +261,6 @@ public:
         return true;
     }
 
-    void Tick(double delta_time) override
-    {
-        // ECS世界的更新由框架层 Tick 自动调用
-
-        WorkObject::Tick(delta_time);
-    }
-
     ~TestApp()
     {
         SAFE_CLEAR(mi_ssbo_accessor)

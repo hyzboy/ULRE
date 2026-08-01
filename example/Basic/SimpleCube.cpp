@@ -203,11 +203,6 @@ public:
 
         return true;
     }
-
-    void Tick(double delta_time) override
-    {
-        WorkObject::Tick(delta_time);
-    }
 };
 
 int os_main(int argc, os_char **argv)

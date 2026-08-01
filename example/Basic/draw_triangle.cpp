@@ -166,15 +166,6 @@ public:
 
          return(true);
      }
-
-     void Tick(double delta_time) override
-     {
-         // 更新ECS世界 - 这会更新所有Entity和Component
-        // 框架层 Tick 会调用 ECSContext::Tick
-
-         WorkObject::Tick(delta_time);
-     }
-
  };//class TestApp:public WorkObject
 
 int os_main(int argc,os_char **argv)
