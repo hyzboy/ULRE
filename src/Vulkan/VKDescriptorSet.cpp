@@ -125,11 +125,48 @@ bool DescriptorSet::BindUBO(const int binding,const VkBufferOwner *buf,const VkD
     if(binding<0||!buf)
         return(false);
 
-    if(binded_sets.Contains(binding))return(false);
-
     const int buf_index=vab_list.Add(DescriptorBufferInfo(buf,offset,range));
 
     const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+
+    if(binded_sets.Contains(binding))return(false);
+
+    const int write_count = wds_list.GetCount();
+    for (int i = 0; i < write_count; ++i)
+    {
+        VkWriteDescriptorSet &wds = wds_list[i];
+        if (static_cast<int>(wds.dstBinding) != binding || wds.descriptorType != desc_type)
+            continue;
+
+        const VkDescriptorBufferInfo new_info = vab_list[buf_index];
+        const int existing_buf_index = (i < wds_buffer_info_indices.GetCount()) ? wds_buffer_info_indices[i] : -1;
+        if (existing_buf_index >= 0 && existing_buf_index < vab_list.GetCount())
+        {
+            if (vab_list[existing_buf_index] == new_info)
+            {
+                vab_list.Delete(buf_index,1);
+                binded_sets.Add(binding);
+                return true;
+            }
+
+            vab_list[existing_buf_index] = new_info;
+            vab_list.Delete(buf_index,1);
+        }
+        else
+        {
+            if (i >= wds_buffer_info_indices.GetCount())
+                wds_buffer_info_indices.Add(buf_index);
+            else
+                wds_buffer_info_indices[i] = buf_index;
+        }
+
+        if (i < wds_image_info_indices.GetCount())
+            wds_image_info_indices[i] = -1;
+        SyncWriteDescriptorInfoPointers();
+        binded_sets.Add(binding);
+        is_dirty=true;
+        return true;
+    }
 
     wds_list.Add(WriteDescriptorSet(desc_set,binding,(const VkDescriptorBufferInfo *)nullptr,desc_type));
     wds_buffer_info_indices.Add(buf_index);
@@ -146,11 +183,48 @@ bool DescriptorSet::BindSSBO(const int binding,const VkBufferOwner *buf,const Vk
     if(binding<0||!buf)
         return(false);
 
-    if(binded_sets.Contains(binding))return(false);
-
     const int buf_index=vab_list.Add(DescriptorBufferInfo(buf,offset,range));
 
     const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+
+    if(binded_sets.Contains(binding))return(false);
+
+    const int write_count = wds_list.GetCount();
+    for (int i = 0; i < write_count; ++i)
+    {
+        VkWriteDescriptorSet &wds = wds_list[i];
+        if (static_cast<int>(wds.dstBinding) != binding || wds.descriptorType != desc_type)
+            continue;
+
+        const VkDescriptorBufferInfo new_info = vab_list[buf_index];
+        const int existing_buf_index = (i < wds_buffer_info_indices.GetCount()) ? wds_buffer_info_indices[i] : -1;
+        if (existing_buf_index >= 0 && existing_buf_index < vab_list.GetCount())
+        {
+            if (vab_list[existing_buf_index] == new_info)
+            {
+                vab_list.Delete(buf_index,1);
+                binded_sets.Add(binding);
+                return true;
+            }
+
+            vab_list[existing_buf_index] = new_info;
+            vab_list.Delete(buf_index,1);
+        }
+        else
+        {
+            if (i >= wds_buffer_info_indices.GetCount())
+                wds_buffer_info_indices.Add(buf_index);
+            else
+                wds_buffer_info_indices[i] = buf_index;
+        }
+
+        if (i < wds_image_info_indices.GetCount())
+            wds_image_info_indices[i] = -1;
+        SyncWriteDescriptorInfoPointers();
+        binded_sets.Add(binding);
+        is_dirty=true;
+        return true;
+    }
 
     wds_list.Add(WriteDescriptorSet(desc_set,binding,(const VkDescriptorBufferInfo *)nullptr,desc_type));
     wds_buffer_info_indices.Add(buf_index);
@@ -180,6 +254,12 @@ bool DescriptorSet::BindUBO(const int binding,const IGPUBuffer *gpu,bool dynamic
         const int existing_buf_index = (i < wds_buffer_info_indices.GetCount()) ? wds_buffer_info_indices[i] : -1;
         if (existing_buf_index >= 0 && existing_buf_index < vab_list.GetCount())
         {
+            if (vab_list[existing_buf_index] == new_info)
+            {
+                binded_sets.Add(binding);
+                return true;
+            }
+
             vab_list[existing_buf_index] = new_info;
         }
         else
@@ -227,6 +307,12 @@ bool DescriptorSet::BindSSBO(const int binding,const IGPUBuffer *gpu,bool dynami
         const int existing_buf_index = (i < wds_buffer_info_indices.GetCount()) ? wds_buffer_info_indices[i] : -1;
         if (existing_buf_index >= 0 && existing_buf_index < vab_list.GetCount())
         {
+            if (vab_list[existing_buf_index] == new_info)
+            {
+                binded_sets.Add(binding);
+                return true;
+            }
+
             vab_list[existing_buf_index] = new_info;
         }
         else
@@ -265,6 +351,41 @@ bool DescriptorSet::BindTexture(const int binding,Texture *tex)
 
     DescriptorImageInfo image_info(tex);
 
+    const int write_count = wds_list.GetCount();
+    for (int i = 0; i < write_count; ++i)
+    {
+        VkWriteDescriptorSet &wds = wds_list[i];
+        if (static_cast<int>(wds.dstBinding) != binding || wds.descriptorType != VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE)
+            continue;
+
+        const int existing_image_index = (i < wds_image_info_indices.GetCount()) ? wds_image_info_indices[i] : -1;
+        if (existing_image_index >= 0 && existing_image_index < image_list.GetCount())
+        {
+            if (image_list[existing_image_index] == image_info)
+            {
+                binded_sets.Add(binding);
+                return true;
+            }
+
+            image_list[existing_image_index] = image_info;
+        }
+        else
+        {
+            const int image_index = image_list.Add(image_info);
+            if (i >= wds_image_info_indices.GetCount())
+                wds_image_info_indices.Add(image_index);
+            else
+                wds_image_info_indices[i] = image_index;
+        }
+
+        if (i < wds_buffer_info_indices.GetCount())
+            wds_buffer_info_indices[i] = -1;
+        SyncWriteDescriptorInfoPointers();
+        binded_sets.Add(binding);
+        is_dirty=true;
+        return true;
+    }
+
     const int image_index = image_list.Add(image_info);
     wds_list.Add(WriteDescriptorSet(desc_set,binding,(const VkDescriptorImageInfo *)nullptr,VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE));
     wds_buffer_info_indices.Add(-1);
@@ -284,6 +405,41 @@ bool DescriptorSet::BindTextureSampler(const int binding,Texture *tex,Sampler *s
     if(binded_sets.Contains(binding))return(false);
 
     DescriptorImageInfo image_info(tex,sampler);
+
+    const int write_count = wds_list.GetCount();
+    for (int i = 0; i < write_count; ++i)
+    {
+        VkWriteDescriptorSet &wds = wds_list[i];
+        if (static_cast<int>(wds.dstBinding) != binding || wds.descriptorType != VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+            continue;
+
+        const int existing_image_index = (i < wds_image_info_indices.GetCount()) ? wds_image_info_indices[i] : -1;
+        if (existing_image_index >= 0 && existing_image_index < image_list.GetCount())
+        {
+            if (image_list[existing_image_index] == image_info)
+            {
+                binded_sets.Add(binding);
+                return true;
+            }
+
+            image_list[existing_image_index] = image_info;
+        }
+        else
+        {
+            const int image_index = image_list.Add(image_info);
+            if (i >= wds_image_info_indices.GetCount())
+                wds_image_info_indices.Add(image_index);
+            else
+                wds_image_info_indices[i] = image_index;
+        }
+
+        if (i < wds_buffer_info_indices.GetCount())
+            wds_buffer_info_indices[i] = -1;
+        SyncWriteDescriptorInfoPointers();
+        binded_sets.Add(binding);
+        is_dirty=true;
+        return true;
+    }
 
     const int image_index = image_list.Add(image_info);
     wds_list.Add(WriteDescriptorSet(desc_set,binding,(const VkDescriptorImageInfo *)nullptr));
@@ -305,6 +461,41 @@ bool DescriptorSet::BindInputAttachment(const int binding,ImageView *iv)
 
     DescriptorImageInfo image_info(iv->GetImageView());
 
+    const int write_count = wds_list.GetCount();
+    for (int i = 0; i < write_count; ++i)
+    {
+        VkWriteDescriptorSet &wds = wds_list[i];
+        if (static_cast<int>(wds.dstBinding) != binding || wds.descriptorType != VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT)
+            continue;
+
+        const int existing_image_index = (i < wds_image_info_indices.GetCount()) ? wds_image_info_indices[i] : -1;
+        if (existing_image_index >= 0 && existing_image_index < image_list.GetCount())
+        {
+            if (image_list[existing_image_index] == image_info)
+            {
+                binded_sets.Add(binding);
+                return true;
+            }
+
+            image_list[existing_image_index] = image_info;
+        }
+        else
+        {
+            const int image_index = image_list.Add(image_info);
+            if (i >= wds_image_info_indices.GetCount())
+                wds_image_info_indices.Add(image_index);
+            else
+                wds_image_info_indices[i] = image_index;
+        }
+
+        if (i < wds_buffer_info_indices.GetCount())
+            wds_buffer_info_indices[i] = -1;
+        SyncWriteDescriptorInfoPointers();
+        binded_sets.Add(binding);
+        is_dirty=true;
+        return true;
+    }
+
     const int image_index = image_list.Add(image_info);
     wds_list.Add(WriteDescriptorSet(desc_set,binding,(const VkDescriptorImageInfo *)nullptr,VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT));
     wds_buffer_info_indices.Add(-1);
@@ -318,7 +509,11 @@ bool DescriptorSet::BindInputAttachment(const int binding,ImageView *iv)
 
 void DescriptorSet::Update()
 {
-    if(!is_dirty)return;
+    if(!is_dirty)
+    {
+        binded_sets.Clear();
+        return;
+    }
 
     SyncWriteDescriptorInfoPointers();
 
@@ -343,6 +538,7 @@ void DescriptorSet::Update()
         vkUpdateDescriptorSets(device,wds_list.GetCount(),wds_list.GetData(),0,nullptr);
     }
 
-    Clear();
+    binded_sets.Clear();
+    is_dirty=false;
 }
 }//namespace hgl::graph

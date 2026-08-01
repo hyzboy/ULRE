@@ -174,7 +174,7 @@ namespace
         VkDescriptorPoolCreateInfo dp_create_info;
         dp_create_info.sType        =VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         dp_create_info.pNext        =nullptr;
-        dp_create_info.flags        =0;
+        dp_create_info.flags        =VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
         dp_create_info.maxSets      =sets_count;
         dp_create_info.poolSizeCount=sizeof(pool_size)/sizeof(VkDescriptorPoolSize);
         dp_create_info.pPoolSizes   =pool_size;
@@ -240,7 +240,10 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     descriptor_indexing_features.shaderSampledImageArrayNonUniformIndexing   = VK_TRUE;
     descriptor_indexing_features.descriptorBindingPartiallyBound             = VK_TRUE;
     descriptor_indexing_features.runtimeDescriptorArray                      = VK_TRUE;
+    descriptor_indexing_features.descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE;
     descriptor_indexing_features.descriptorBindingSampledImageUpdateAfterBind= VK_TRUE;
+    descriptor_indexing_features.descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE;
+    descriptor_indexing_features.descriptorBindingUpdateUnusedWhilePending     = VK_TRUE;
 
     // Chain descriptor indexing features
     {
@@ -547,4 +550,3 @@ VulkanDevice *VulkanDeviceCreater::Create()
     return device;
 }
 }//namespace hgl::graph
-
