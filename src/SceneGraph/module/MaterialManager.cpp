@@ -261,6 +261,25 @@ bool MaterialManager::ExecuteRuntimeMaterialBuildPipeline(ShaderProgram *mtl,
     if(!mtl || !mci)
         return false;
 
+    if(!BuildRuntimeShaderProgramState(mtl, mtl_name, mci, sci_map))
+        return false;
+
+    if(!BuildRuntimeDescriptorState(mtl, mtl_name, mci))
+        return false;
+
+    ApplyMaterialFinalizePlan(mtl, mtl_name, *mci);
+
+    return true;
+}
+
+bool MaterialManager::BuildRuntimeShaderProgramState(ShaderProgram *mtl,
+                                                     const AnsiString &mtl_name,
+                                                     const mtl::ShaderProgramBuildSpec *mci,
+                                                     const ShaderCreateInfoMap &sci_map)
+{
+    if(!mtl || !mci)
+        return false;
+
     if(!BuildShaderModulesFromCreateInfoMap(this,
                                             mtl_name,
                                             sci_map,
@@ -274,13 +293,21 @@ bool MaterialManager::ExecuteRuntimeMaterialBuildPipeline(ShaderProgram *mtl,
     const ShaderCreateInfoVertex *vert = mci->GetVertexShader();
     mtl->vertex_input = vert ? GetVertexInput(vert->GetInput()) : nullptr;
 
+    return true;
+}
+
+bool MaterialManager::BuildRuntimeDescriptorState(ShaderProgram *mtl,
+                                                  const AnsiString &mtl_name,
+                                                  const mtl::ShaderProgramBuildSpec *mci)
+{
+    if(!mtl || !mci)
+        return false;
+
     std::vector<ShaderDescriptor> descriptors = CollectDescriptorsFromBuildSpec(mci);
     if(!descriptors.empty())
         mtl->desc_manager = new MaterialDescriptorManager(mtl_name, descriptors.data(), static_cast<uint>(descriptors.size()));
     else
         mtl->desc_manager = nullptr;
-
-    ApplyMaterialFinalizePlan(mtl, mtl_name, *mci);
 
     return true;
 }
@@ -324,7 +351,7 @@ ShaderProgram *MaterialManager::AcquireMaterialProgram(const AnsiString &mtl_nam
 
 void MaterialManager::ResetShaderGenProfiler()
 {
-    // Legacy-only mode keeps ShaderGen debug APIs as no-op for compatibility.
+    // Runtime path currently keeps ShaderGen debug APIs as no-op for compatibility.
 }
 
 ShaderGenProfilerSnapshot MaterialManager::GetShaderGenProfilerSnapshot() const

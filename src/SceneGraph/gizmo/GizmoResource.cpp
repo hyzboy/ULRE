@@ -1,10 +1,8 @@
-#include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKRenderPass.h>
 #include<hgl/color/Color.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/core/GraphicsContext.h>
@@ -32,13 +30,10 @@ namespace hgl::graph
         }
 
         static GraphicsContext *graphics_context=nullptr;
-        static RenderPass *gizmo_render_pass=nullptr;
-        static MaterialManager *gizmo_mtl_manager=nullptr;
 
         struct GizmoResource
         {
             ShaderProgram *          mtl;
-            Pipeline *          pipeline;
             DeviceBuffer *      mi_ssbo;
             VertexDataManager * vdm;
             mtl::MaterialRecipe color_recipe[size_t(GizmoColor::RANGE_SIZE)]{};
@@ -168,12 +163,13 @@ namespace hgl::graph
 
             VulkanDevice *device=graphics_context->GetDevice();
             auto *buffer_manager = graphics_context->GetBufferManager();
-            RenderPass *render_pass=gizmo_render_pass;
 
-            if(!device || !render_pass)
+            if(!device)
                 return(false);
 
-            gizmo_mtl_manager=graphics_context->GetMaterialManager();
+            auto *gizmo_mtl_manager = graphics_context->GetMaterialManager();
+            if(!gizmo_mtl_manager)
+                return(false);
 
             {
                 mtl::MaterialRecipe recipe{};
@@ -188,15 +184,6 @@ namespace hgl::graph
 
             {
                 const GeometryVertexFormat gizmo_gvf = CreateGizmoGeometryVertexFormat();
-
-                gizmo_triangle.pipeline=render_pass->CreatePipeline(
-                    gizmo_triangle.mtl,
-                    gizmo_triangle.mtl->GetDefaultVIL(),
-                    InlinePipeline::GizmoOverlay3D,
-                    false,
-                    &gizmo_gvf);
-                if(!gizmo_triangle.pipeline)
-                    return(false);
 
                 if(!InitColorSSBO(&gizmo_triangle))
                     return(false);
@@ -301,8 +288,8 @@ namespace hgl::graph
         if(!gc)
             return(false);
 
+        (void)rp;
         graphics_context=gc;
-        gizmo_render_pass=rp;
 
         VulkanDevice *device=graphics_context->GetDevice();
         if(!device)
@@ -323,11 +310,8 @@ namespace hgl::graph
         SAFE_CLEAR(gizmo_triangle.vdm);
         SAFE_CLEAR(gizmo_triangle.mi_ssbo);
 
-        gizmo_triangle.pipeline = nullptr;
         gizmo_triangle.mtl = nullptr;
 
-        gizmo_mtl_manager = nullptr;
-        gizmo_render_pass = nullptr;
         graphics_context = nullptr;
     }
 
