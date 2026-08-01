@@ -1,8 +1,6 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/graph/module/GraphModule.h>
-#include<hgl/vk/VKFrameData.h>
-#include<hgl/vk/VKSwapchainData.h>
 #include<hgl/log/Log.h>
 
 namespace hgl::ecs
@@ -11,9 +9,6 @@ namespace hgl::ecs
 }
 
 namespace hgl::graph{
-
-// Forward declarations
-struct SwapchainData;
 
 GRAPH_MODULE_CLASS(SwapchainModule)
 {
@@ -24,51 +19,33 @@ GRAPH_MODULE_CLASS(SwapchainModule)
     RenderPassManager *     rp_manager          =nullptr;
     hgl::ecs::ECSContext *  ecs_context         =nullptr;
 
-    // New architecture: SwapchainData owns swapchain and frame resources
-    SwapchainData *         swapchain_data      =nullptr;
-    Swapchain *             vk_swapchain        =nullptr;  ///< Keep swapchain alive to maintain sc_image validity
-
-    // Legacy support (will be deprecated)
     RenderPass *            sc_render_pass      =nullptr;
     SwapchainRenderTarget * sc_render_target    =nullptr;
 
 protected:
 
-    bool CreateSwapchainFBO(Swapchain *);
-    Swapchain *CreateSwapchain();
-    bool CreateSwapchainRenderTarget();
-
-    // New methods for cleaner architecture
-    bool CreatePerFrameResources(SwapchainData &sc_data);
-    bool DestroyPerFrameResources(SwapchainData &sc_data);
+    bool        CreateSwapchainFBO(Swapchain *);
+    Swapchain * CreateSwapchain();
+    bool        CreateSwapchainRenderTarget();
 
 public:
 
-    virtual void OnResize(const VkExtent2D &)override;                                              ///<窗口大小改变
+    virtual void OnResize(const VkExtent2D &)override;
 
 public:
 
     SwapchainModule(GraphicsContext *gc,hgl::ecs::ECSContext *ecs_ctx,TextureManager *tm,RenderTargetManager *rtm,RenderPassManager *rpm);
     virtual ~SwapchainModule();
 
-    // New Architecture Methods
-    bool Initialize();                                                      ///< Initialize swapchain with new architecture
-
-    FrameResources *        GetCurrentFrame()  const;                      ///< Get current frame resources
-    FrameResources *        GetFrame(uint32_t index) const;                ///< Get frame resources by index
-    SwapchainData *         GetSwapchainData() const {return swapchain_data;}  ///< Get swapchain data container
-
     void Release() override;
 
 public:
 
-    // Legacy methods (@deprecated - kept for backward compatibility)
     RenderPass *            GetRenderPass   ()const{return sc_render_pass;}
-
-    bool                    GetSwapchainSize(VkExtent2D *)const;
-
     SwapchainRenderTarget * GetRenderTarget ()const{return sc_render_target;}
+    bool                    GetSwapchainSize(VkExtent2D *)const;
     bool                    AcquireNextImage()const;
+
 };//class SwapchainModule:public GraphModule
 
 }//namespace hgl::graph

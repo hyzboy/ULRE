@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/type/ValueArray.h>
 #include<hgl/type/UnorderedMap.h>
@@ -105,7 +105,6 @@ class Framebuffer;
 struct Swapchain;
 class IRenderTarget;
 class RenderTarget;
-class MultiFrameRenderTarget;
 class SwapchainRenderTarget;
 
 struct CopyBufferToImageInfo;
