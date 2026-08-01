@@ -75,6 +75,22 @@ namespace hgl::ecs
             return new graph::TileFont(td, fs);
         }
 
+        uint32_t ResolveMaterialSSBOStride(const graph::ShaderProgram *material)
+        {
+            if (!material)
+                return 0;
+
+            for (const auto &req : material->GetMaterialResourceLayout().requirements)
+            {
+                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialSSBOSlotData)
+                    continue;
+
+                return graph::mtl::GetSSBOTypeStructStride(req.ssbo_type);
+            }
+
+            return 0;
+        }
+
         void BuildDrawStyle(graph::layout::TextDrawStyle& out_style,
                             const graph::layout::ParagraphStyle& para_style,
                             const graph::layout::TEXT_COORD_VEC& start_pos,
@@ -338,7 +354,7 @@ namespace hgl::ecs
 
         guard.buffer_manager = buffer_manager;
 
-        const uint32_t mi_bytes = guard.material->GetMIDataBytes();
+        const uint32_t mi_bytes = ResolveMaterialSSBOStride(guard.material);
         if (mi_bytes > 0)
         {
 #ifdef HGL_MI_USE_SSBO
@@ -514,7 +530,7 @@ namespace hgl::ecs
             {
                 if (resources->material_instance_buffer)
                 {
-                    const uint32_t upload_bytes = hgl_min<uint32_t>(resources->material->GetMIDataBytes(),
+                    const uint32_t upload_bytes = hgl_min<uint32_t>(ResolveMaterialSSBOStride(resources->material),
                                                                     sizeof(graph::layout::CharStyle));
                     if(auto *mgpu = resources->material_instance_buffer->GetGPUBuffer())
                         mgpu->Write(&resources->char_style, 0, upload_bytes);
@@ -618,4 +634,3 @@ namespace hgl::ecs
         }
     }
 }
-

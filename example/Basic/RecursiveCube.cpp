@@ -118,7 +118,7 @@ private:
         if (!domain_manager)
             return false;
 
-        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(graph::mtl::SSBOType::PBRSurface, "RecursiveCube:MIData", 1);
+        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(graph::mtl::SSBOType::EmissiveSurface, "RecursiveCube:MIData", 1);
         if (!mi_ssbo_accessor)
             return false;
 

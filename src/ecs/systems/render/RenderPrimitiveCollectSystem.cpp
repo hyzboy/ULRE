@@ -524,16 +524,16 @@ namespace hgl::ecs
 
         if (auto rdbs = world->GetSystem<RenderDescriptorBindingSystem>())
         {
-            const uint32_t mi_data_bytes = resolved_program->GetMIDataBytes();
-            if (mi_data_bytes > 0)
+            for (const auto &req : resolved_program->GetMaterialResourceLayout().requirements)
             {
-                for (const auto &req : resolved_program->GetMaterialResourceLayout().requirements)
-                {
-                    if (req.semantic != graph::mtl::DescriptorSemantic::MaterialSSBOSlotData)
-                        continue;
+                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialSSBOSlotData)
+                    continue;
 
-                    rdbs->RegisterMaterialStructLayout(req.ssbo_type, req.ssbo_id, mi_data_bytes);
-                }
+                const uint32_t stride = graph::mtl::GetSSBOTypeStructStride(req.ssbo_type);
+                if (stride == 0)
+                    continue;
+
+                rdbs->RegisterMaterialStructLayout(req.ssbo_type, req.ssbo_id, stride);
             }
         }
 
@@ -763,4 +763,3 @@ namespace hgl::ecs
         //}
     }
 }//namespace hgl::ecs
-

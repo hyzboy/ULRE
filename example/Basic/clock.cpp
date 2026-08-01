@@ -160,8 +160,8 @@ private:
             return false;
 
         mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
-            graph::mtl::SSBOType::PBRSurface,
-            "Clock:PBRSurface:MIData",
+            graph::mtl::SSBOType::EmissiveSurface,
+            "Clock:EmissiveSurface:MIData",
             4);
         if (!mi_ssbo_accessor)
             return false;

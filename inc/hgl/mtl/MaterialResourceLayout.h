@@ -5,6 +5,7 @@
 #include<hgl/mtl/UBOCommon.h>
 #include<vector>
 #include<string>
+#include<utility>
 
 namespace hgl::graph::mtl
 {
@@ -30,6 +31,107 @@ namespace hgl::graph::mtl
 
         bool required = true;
         bool allow_fallback = false;
+
+        void RebindOwnedPointers()
+        {
+            if (!owned_name.empty())
+                name = owned_name.c_str();
+
+            if (!owned_struct_name.empty())
+                struct_name = owned_struct_name.c_str();
+        }
+
+        MaterialResourceRequirement() = default;
+
+        MaterialResourceRequirement(const MaterialResourceRequirement &rhs)
+            : semantic(rhs.semantic)
+            , semantic_layer(rhs.semantic_layer)
+            , set_type(rhs.set_type)
+            , kind(rhs.kind)
+            , texture_slot(rhs.texture_slot)
+            , ssbo_slot(rhs.ssbo_slot)
+            , ssbo_type(rhs.ssbo_type)
+            , ssbo_id(rhs.ssbo_id)
+            , name(rhs.name)
+            , struct_name(rhs.struct_name)
+            , glsl_type(rhs.glsl_type)
+            , owned_name(rhs.owned_name)
+            , owned_struct_name(rhs.owned_struct_name)
+            , required(rhs.required)
+            , allow_fallback(rhs.allow_fallback)
+        {
+            RebindOwnedPointers();
+        }
+
+        MaterialResourceRequirement &operator=(const MaterialResourceRequirement &rhs)
+        {
+            if (this == &rhs)
+                return *this;
+
+            semantic = rhs.semantic;
+            semantic_layer = rhs.semantic_layer;
+            set_type = rhs.set_type;
+            kind = rhs.kind;
+            texture_slot = rhs.texture_slot;
+            ssbo_slot = rhs.ssbo_slot;
+            ssbo_type = rhs.ssbo_type;
+            ssbo_id = rhs.ssbo_id;
+            name = rhs.name;
+            struct_name = rhs.struct_name;
+            glsl_type = rhs.glsl_type;
+            owned_name = rhs.owned_name;
+            owned_struct_name = rhs.owned_struct_name;
+            required = rhs.required;
+            allow_fallback = rhs.allow_fallback;
+
+            RebindOwnedPointers();
+            return *this;
+        }
+
+        MaterialResourceRequirement(MaterialResourceRequirement &&rhs) noexcept
+            : semantic(rhs.semantic)
+            , semantic_layer(rhs.semantic_layer)
+            , set_type(rhs.set_type)
+            , kind(rhs.kind)
+            , texture_slot(rhs.texture_slot)
+            , ssbo_slot(rhs.ssbo_slot)
+            , ssbo_type(rhs.ssbo_type)
+            , ssbo_id(rhs.ssbo_id)
+            , name(rhs.name)
+            , struct_name(rhs.struct_name)
+            , glsl_type(rhs.glsl_type)
+            , owned_name(std::move(rhs.owned_name))
+            , owned_struct_name(std::move(rhs.owned_struct_name))
+            , required(rhs.required)
+            , allow_fallback(rhs.allow_fallback)
+        {
+            RebindOwnedPointers();
+        }
+
+        MaterialResourceRequirement &operator=(MaterialResourceRequirement &&rhs) noexcept
+        {
+            if (this == &rhs)
+                return *this;
+
+            semantic = rhs.semantic;
+            semantic_layer = rhs.semantic_layer;
+            set_type = rhs.set_type;
+            kind = rhs.kind;
+            texture_slot = rhs.texture_slot;
+            ssbo_slot = rhs.ssbo_slot;
+            ssbo_type = rhs.ssbo_type;
+            ssbo_id = rhs.ssbo_id;
+            name = rhs.name;
+            struct_name = rhs.struct_name;
+            glsl_type = rhs.glsl_type;
+            owned_name = std::move(rhs.owned_name);
+            owned_struct_name = std::move(rhs.owned_struct_name);
+            required = rhs.required;
+            allow_fallback = rhs.allow_fallback;
+
+            RebindOwnedPointers();
+            return *this;
+        }
     };
 
     struct MaterialResourceLayout
@@ -386,4 +488,3 @@ namespace hgl::graph::mtl
         return diagnostics.empty();
     }
 }
-

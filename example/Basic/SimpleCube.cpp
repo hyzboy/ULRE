@@ -111,7 +111,7 @@ private:
         if (!domain_manager)
             return false;
 
-        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(graph::mtl::SSBOType::PBRSurface, "SimpleCube:PBRSurface:MIData", 1);
+        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(graph::mtl::SSBOType::EmissiveSurface, "SimpleCube:EmissiveSurface:MIData", 1);
         if (!mi_ssbo_accessor)
             return false;
 

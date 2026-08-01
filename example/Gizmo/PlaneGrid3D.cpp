@@ -133,7 +133,7 @@ private:
             return false;
 
         mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
-            graph::mtl::SSBOType::PBRSurface,
+            graph::mtl::SSBOType::EmissiveSurface,
             "PlaneGrid3D:MIData",
             3);
         if (!mi_ssbo_accessor)

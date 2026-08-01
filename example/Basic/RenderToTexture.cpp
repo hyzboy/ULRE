@@ -159,7 +159,7 @@ private:
             return LogStageFail("OffscreenPass::InitMISSBO", "resource domain manager is null");
 
         mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
-            graph::mtl::SSBOType::PBRSurface,
+            graph::mtl::SSBOType::EmissiveSurface,
             "RenderToTexture:OffscreenPass:MIData",
             1);
         if (!mi_ssbo_accessor)
@@ -483,7 +483,7 @@ private:
             return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "resource domain manager is null");
 
         cube_mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::StandardMaterialInstance>(
-            graph::mtl::SSBOType::PBRSurface,
+            graph::mtl::SSBOType::ClearCoatSurface,
             "RenderToTexture:MainScene:MIData",
             1);
         if (!cube_mi_ssbo_accessor)

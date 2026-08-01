@@ -18,7 +18,7 @@ namespace
         bmi.with_local_to_world = true;
         bmi.with_sky          = false;
         bmi.usage_tag   = MaterialDefinitionUsageTag::Fallback;
-        bmi.ssbo_slot_decls   = {{"mtl", SSBOType::UserDefined}};
+        bmi.ssbo_slot_decls   = {{"mtl", SSBOType::EmissiveSurface}};
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::PureColor3D, bmi);
 
         // builtin/fallback_3d: 3D 无材质保底
@@ -107,4 +107,3 @@ ShaderProgramBuildSpec *CreatePureColor3D(const contract::PhysicalDeviceProfileL
     return CreatePureColor3DImpl(profile, bc);
 }
 }//namespace hgl::graph::mtl
-

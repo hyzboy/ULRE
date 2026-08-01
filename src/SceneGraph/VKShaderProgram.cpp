@@ -25,9 +25,6 @@ ShaderProgram::ShaderProgram(const AnsiString &n,const mtl::ShaderProgramBuildSp
 
     mem_zero(mp_array);
 
-    mi_data_bytes=0;
-    mi_max_count=0;
-
     has_l2w_matrix=mci->HasLocalToWorld();
 }
 

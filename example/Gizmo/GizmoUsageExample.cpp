@@ -110,7 +110,7 @@ private:
                 return false;
 
             grid_mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
-                graph::mtl::SSBOType::PBRSurface,
+                graph::mtl::SSBOType::EmissiveSurface,
                 "GizmoUsage:GridMIData",
                 1);
             if (!grid_mi_ssbo_accessor)
@@ -149,7 +149,7 @@ private:
             geometry_manager->Add(cube_geometry);
 
             cube_mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
-                graph::mtl::SSBOType::PBRSurface,
+                graph::mtl::SSBOType::EmissiveSurface,
                 "GizmoUsage:CubeMIData",
                 1);
             if (!cube_mi_ssbo_accessor)

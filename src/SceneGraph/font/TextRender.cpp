@@ -28,6 +28,22 @@ namespace hgl::graph
 
     namespace
     {
+        uint32_t ResolveMaterialSSBOStride(const ShaderProgram *material)
+        {
+            if (!material)
+                return 0;
+
+            for (const auto &req : material->GetMaterialResourceLayout().requirements)
+            {
+                if (req.semantic != mtl::DescriptorSemantic::MaterialSSBOSlotData)
+                    continue;
+
+                return mtl::GetSSBOTypeStructStride(req.ssbo_type);
+            }
+
+            return 0;
+        }
+
         void SetDrawStyle(TextDrawStyle &tda,const ParagraphStyle *t,const float origin_char_height)
         {
             mem_copy(tda.para_style,*t);
@@ -82,7 +98,7 @@ namespace hgl::graph
         {
             if (auto *gpu = mi_ssbo->GetGPUBuffer())
                 gpu->Write(&fixed_style, 0, hgl_min(static_cast<uint32_t>(sizeof(fixed_style)),
-                                                    mtl_fs ? mtl_fs->GetMIDataBytes() : uint32_t(0)));
+                                                    ResolveMaterialSSBOStride(mtl_fs)));
         }
     }
 
@@ -211,7 +227,7 @@ namespace hgl::graph
         auto *buffer_manager = graphics_context ? graphics_context->GetBufferManager() : nullptr;
         auto *domain_manager = graphics_context ? graphics_context->GetResourceDomainManager() : nullptr;
 
-        const uint32_t mi_bytes = mtl_fs->GetMIDataBytes();
+        const uint32_t mi_bytes = ResolveMaterialSSBOStride(mtl_fs);
         if (mi_bytes > 0 && buffer_manager && domain_manager)
         {
             mi_ssbo = buffer_manager->CreateSSBO("TextRender:FixedStyle", mi_bytes, nullptr, SharingMode::Exclusive);
@@ -333,4 +349,3 @@ namespace hgl::graph
     }
 
 }//namespace hgl::graph
-

@@ -16,8 +16,6 @@ namespace hgl::graph
     struct MaterialFinalizePlan
     {
         std::vector<DescriptorSetType> mp_set_types;
-        uint32_t mi_data_bytes = 0;
-        uint32_t mi_max_count = 0;
     };
 
     void BuildMaterialFinalizePlan(const MaterialDescriptorManager *desc_manager,

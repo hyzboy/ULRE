@@ -150,7 +150,7 @@ public:
             return false;
 
         mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::StandardMaterialInstance>(
-            graph::mtl::SSBOType::PBRSurface,
+            graph::mtl::SSBOType::ClearCoatSurface,
             "WallsFromPolyline:MIData",
             1);
         if (!mi_ssbo_accessor)

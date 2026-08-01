@@ -11,6 +11,7 @@
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/mtl/MaterialLibrary.h>
+#include<hgl/math/Vector.h>
 
 // ECS headers
 #include<hgl/ecs/core/Context.h>
@@ -80,7 +81,7 @@ private:
     Sampler *           sampler             = nullptr;
     graph::mtl::MaterialRecipe rect_recipe{};
     PrimitiveAsset      rect_asset{};
-    graph::SSBOArrayAccessor<uint32_t>* mi_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<hgl::math::Vector4u> * mi_ssbo_accessor   =nullptr;
     std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
 
     struct
@@ -129,15 +130,15 @@ private:
 
         sampler=sampler_manager->CreateSampler();
 
-        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<uint32_t>(
-            graph::mtl::SSBOType::PBRSurface,
+        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<hgl::math::Vector4u>(
+            graph::mtl::SSBOType::EmissiveSurface,
             "TextureRectArray:MIData",
             TexCount);
         if (!mi_ssbo_accessor)
             return false;
 
         for (uint32_t i = 0; i < TexCount; ++i)
-            (*mi_ssbo_accessor)[i] = i;
+            (*mi_ssbo_accessor)[i] = hgl::math::Vector4u{i, 0u, 0u, 0u};
         mi_ssbo_accessor->Commit();
 
         rect_recipe.recipe_name = "TextureRectArray.RectTexture2DArray";

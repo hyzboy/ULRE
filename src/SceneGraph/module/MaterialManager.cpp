@@ -242,8 +242,6 @@ void MaterialManager::ApplyMaterialFinalizePlan(ShaderProgram *mtl, const AnsiSt
         mtl->mp_array[(int)set_type] = CreateMaterialMP(mtl_name, mtl->desc_manager, mtl->pipeline_layout_data, set_type);
     }
 
-    mtl->mi_data_bytes = finalize_plan.mi_data_bytes;
-    mtl->mi_max_count  = finalize_plan.mi_max_count;
 }
 
 ShaderProgram *MaterialManager::TryGetCachedMaterial(const AnsiString &name)

@@ -128,8 +128,8 @@ private:
         mi_data.normal_scale = 0.35f;
 
         mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::StandardMaterialInstance>(
-            graph::mtl::SSBOType::PBRSurface,
-            "06c:PBRSurface:MIData",
+            graph::mtl::SSBOType::ClearCoatSurface,
+            "06c:ClearCoatSurface:MIData",
             1);
         if (!mi_ssbo_accessor)
             return false;

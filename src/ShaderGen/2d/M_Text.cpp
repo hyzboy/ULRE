@@ -18,6 +18,7 @@ namespace
         bmi.is_2d = true;
         bmi.coordinate_system_2d = CoordinateSystem2D::Ortho;
         bmi.local_to_world_2d = false;
+        bmi.ssbo_slot_decls = {{"mtl", SSBOType::TransmissionSurface}};
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::Text2D, bmi);
 
         MaterialDefinition alias = bmi;

@@ -181,7 +181,7 @@ private:
         const uint32_t mi_count = (std::max)(plane_slot, line_slot) + 1;
 
         mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
-            graph::mtl::SSBOType::PBRSurface,
+            graph::mtl::SSBOType::EmissiveSurface,
             "RayPicking:SharedMIData",
             mi_count);
         if (!mi_ssbo_accessor)

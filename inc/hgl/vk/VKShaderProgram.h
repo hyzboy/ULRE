@@ -48,9 +48,6 @@ class ShaderProgram
 
     MaterialParameters *mp_array[DESCRIPTOR_SET_TYPE_COUNT];
 
-    uint32_t mi_data_bytes;             ///<实例数据结构体大小（只读，供外部创建SSBO时计算容量）
-    uint32_t mi_max_count;              ///<实例一次渲染最大数量限制
-
     bool has_l2w_matrix;                ///<是否有LocalToWorld矩阵
 
 private:
@@ -117,9 +114,6 @@ public:
 public:
 
     const bool      hasLocalToWorld ()const{return has_l2w_matrix; }
-
-    const uint32_t  GetMIDataBytes  ()const{return mi_data_bytes;}
-    const uint32_t  GetMIMaxCount   ()const{return mi_max_count;}
 
 };//class ShaderProgram
 

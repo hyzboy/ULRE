@@ -180,7 +180,7 @@ private:
             &solid,
             "LoadGeometry:SolidMIData",
             CreateGizmo3DGeometryVertexFormat(),
-            graph::mtl::SSBOType::PBRSurface);
+            graph::mtl::SSBOType::EmissiveSurface);
     }
 
     bool InitWireMDP()
@@ -189,7 +189,7 @@ private:
             &wire,
             "LoadGeometry:WireMIData",
             CreatePureColor3DGeometryVertexFormat(),
-            graph::mtl::SSBOType::PBRSurface);
+            graph::mtl::SSBOType::EmissiveSurface);
     }
 
     bool CreateBoundingBoxMesh()

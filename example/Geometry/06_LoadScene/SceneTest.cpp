@@ -110,7 +110,7 @@ private:
         const uint32_t color_count = static_cast<uint32_t>(COLOR_COUNT);
         md->ssbo_count = color_count;
         md->mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
-            graph::mtl::SSBOType::PBRSurface,
+            graph::mtl::SSBOType::EmissiveSurface,
             tag,
             color_count);
         if (!md->mi_ssbo_accessor)

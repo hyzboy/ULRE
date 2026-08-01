@@ -186,12 +186,12 @@ private:
 
     bool InitSolidMDP()
     {
-        return InitMaterialForDBS(&solid, "RenderBoundBox:SolidMIData", graph::mtl::SSBOType::PBRSurface);
+        return InitMaterialForDBS(&solid, "RenderBoundBox:SolidMIData", graph::mtl::SSBOType::EmissiveSurface);
     }
 
     bool InitWireMDP()
     {
-        return InitMaterialForDBS(&wire, "RenderBoundBox:WireMIData", graph::mtl::SSBOType::PBRSurface);
+        return InitMaterialForDBS(&wire, "RenderBoundBox:WireMIData", graph::mtl::SSBOType::EmissiveSurface);
     }
 
     bool InitVDM()

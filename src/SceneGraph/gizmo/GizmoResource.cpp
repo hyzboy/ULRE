@@ -93,7 +93,16 @@ namespace hgl::graph
             if (!buffer_manager || !domain_manager)
                 return false;
 
-            if (gr->mtl->GetMIDataBytes() == 0)
+            bool has_struct_binding = false;
+            for (const auto &req : gr->mtl->GetMaterialResourceLayout().requirements)
+            {
+                if (req.semantic == mtl::DescriptorSemantic::MaterialSSBOSlotData)
+                {
+                    has_struct_binding = true;
+                    break;
+                }
+            }
+            if (!has_struct_binding)
                 return true;
 
             const uint32_t color_count = uint32_t(GizmoColor::RANGE_SIZE);
@@ -118,7 +127,6 @@ namespace hgl::graph
                 delete acc;
             }
 
-            bool has_struct_binding = false;
             for (const auto &req : gr->mtl->GetMaterialResourceLayout().requirements)
             {
                 if (req.semantic != mtl::DescriptorSemantic::MaterialSSBOSlotData)
@@ -339,4 +347,3 @@ namespace hgl::graph
         return &(gizmo_mesh[size_t(shape)].asset);
     }
 }//namespace hgl::graph
-

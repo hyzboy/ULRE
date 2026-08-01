@@ -17,7 +17,7 @@ namespace
         bmi.with_camera       = true;
         bmi.with_local_to_world = true;
         bmi.with_sky          = false;
-        bmi.ssbo_slot_decls   = {{"mtl", SSBOType::PBRSurface}};
+        bmi.ssbo_slot_decls   = {{"mtl", SSBOType::EmissiveSurface}};
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::VertexLuminance3D, bmi);
         return true;
     }();
@@ -101,4 +101,3 @@ ShaderProgramBuildSpec *CreateVertexLuminance3D(const contract::PhysicalDevicePr
     return CreateVertexLuminance3DImpl(profile, ToCompositorBuildConfig3D(request, definition));
 }
 }//namespace hgl::graph::mtl
-

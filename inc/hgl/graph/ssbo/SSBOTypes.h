@@ -67,6 +67,10 @@ namespace hgl::graph::mtl
         case SSBOType::MaterialSSBOIndexTable:
         case SSBOType::TransformIndexRows:
         case SSBOType::LocalToWorld:
+        case SSBOType::PBRSurface:
+        case SSBOType::EmissiveSurface:
+        case SSBOType::ClearCoatSurface:
+        case SSBOType::TransmissionSurface:
             return 1;
         default:
             break;
@@ -83,6 +87,14 @@ namespace hgl::graph::mtl
             return sizeof(uint32_t) * static_cast<uint32_t>(TextureSlot::RANGE_SIZE);
         case SSBOType::MaterialSSBOIndexTable:
             return 0;  // dynamic: stride = ssbo_slot_decls.size() * sizeof(uint32_t) per material
+        case SSBOType::PBRSurface:
+            return sizeof(uint32_t) + sizeof(float) * 2; // base_color + metallic + roughness
+        case SSBOType::EmissiveSurface:
+            return sizeof(float) * 4;                    // vec4/uvec4 style payload
+        case SSBOType::ClearCoatSurface:
+            return sizeof(uint32_t) + sizeof(float) * 3; // base_color + metallic + roughness + normal_scale
+        case SSBOType::TransmissionSurface:
+            return sizeof(uint32_t);                     // packed uint payload
         case SSBOType::TransformIndexRows:
             return sizeof(uint32_t);
         case SSBOType::LocalToWorld:
