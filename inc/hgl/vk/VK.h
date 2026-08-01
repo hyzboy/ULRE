@@ -245,7 +245,6 @@ class MaterialDescriptorManager;
 
 class ShaderProgram;
 class MaterialParameters;
-class MaterialInstance;
 struct PipelineData;
 enum class InlinePipeline;
 class Pipeline;

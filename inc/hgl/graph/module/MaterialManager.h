@@ -2,7 +2,6 @@
 
 #include<hgl/graph/module/GraphModule.h>
 #include<hgl/vk/VKShaderProgram.h>
-#include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/type/ObjectManager.h>
@@ -24,10 +23,9 @@ namespace mtl
 }//namespace mtl
 
 using MaterialID            = int;
-using MaterialInstanceID    = int;
 using ShaderModuleMapByName = UnorderedMap<AnsiString,ShaderModule *>;
 
-constexpr const size_t VK_SHADER_STAGE_TYPE_COUNT = 20;//GetBitOffset((uint32_t)VK_SHADER_STAGE_CLUSTER_CULLING_BIT_HUAWEI)+1;
+constexpr const size_t VK_SHADER_STAGE_TYPE_COUNT = 20;
 
 GRAPH_MODULE_CLASS(MaterialManager)
 {
@@ -36,8 +34,7 @@ private:
     ShaderModuleMapByName shader_module_by_name[VK_SHADER_STAGE_TYPE_COUNT];
     UnorderedMap<AnsiString,ShaderProgram *> material_by_name;
 
-    AutoIdObjectManager<MaterialID,             ShaderProgram>           rm_material;                ///<材质合集
-    AutoIdObjectManager<MaterialInstanceID,     MaterialInstance>   rm_material_instance;       ///<材质实例合集
+    AutoIdObjectManager<MaterialID, ShaderProgram> rm_material;  ///<材质合集
 
 private:
 
@@ -62,21 +59,18 @@ private: // Helper methods with integrated DebugUtils
 
 public: //Add
 
-    MaterialID              Add(ShaderProgram *          mtl ){return rm_material.Add(mtl);}
-    MaterialInstanceID      Add(MaterialInstance *  mi  ){return rm_material_instance.Add(mi);}
+    MaterialID Add(ShaderProgram *mtl) { return rm_material.Add(mtl); }
 
     /** 设置全局 Bindless Texture Set 布局（必须在创建任何材质前调用）*/
     void SetBindlessLayout(VkDescriptorSetLayout layout) { bindless_layout_ = layout; }
 
 public: //Get
 
-    ShaderProgram *          GetMaterialProgram         (const MaterialID           &id){return rm_material.Get(id);}
-    MaterialInstance *  GetMaterialInstance (const MaterialInstanceID   &id){return rm_material_instance.Get(id);}
+    ShaderProgram *GetMaterialProgram(const MaterialID &id) { return rm_material.Get(id); }
 
 public: //Release
 
-    void Release(ShaderProgram *         mtl ){rm_material.Release(mtl);}
-    void Release(MaterialInstance * mi  ){rm_material_instance.Release(mi);}
+    void Release(ShaderProgram *mtl) { rm_material.Release(mtl); }
 
     void Destroy(ShaderProgram *mtl)
     {
@@ -90,22 +84,10 @@ public: //Release
         rm_material.Release(mtl, true);
     }
 
-    void Destroy(MaterialInstance *mi)
-    {
-        if (!mi)
-            return;
-
-        rm_material_instance.Release(mi, true);
-    }
-
 public: // Override Release from GraphModule - cleanup all resources
 
     void Release() override
     {
-        // 清理所有材质实例
-        if (rm_material_instance.GetCount() > 0)
-            rm_material_instance.Clear();
-
         // 清理所有材质
         if (rm_material.GetCount() > 0)
             rm_material.Clear();
@@ -150,29 +132,6 @@ public: //ShaderProgram
                                                   const mtl::MaterialRecipe &recipe,
                                                   PrimitiveType prim_type,
                                                   const GeometryVertexFormat *geometry_vertex_format = nullptr);
-
-private:
-
-    MaterialInstance *  CreateMaterialInstanceInternal(ShaderProgram *);
-    MaterialInstance *  CreateMaterialInstanceInternal(ShaderProgram *, const VIL *vil);
-    MaterialInstance *  CreateMaterialInstanceInternal(ShaderProgram *, const VILConfig *vil_cfg);
-    MaterialInstance *  CreateMaterialInstanceInternal(ShaderProgram *, const GeometryVertexFormat &geometry_vertex_format);
-    MaterialInstance *  CreateMaterialInstanceInternal(ShaderProgram *, const GeometryVertexFormat &geometry_vertex_format, const void *, const uint32);
-
-    MaterialInstance *  CreateMaterialInstanceInternal(ShaderProgram *, const VIL *vil, const void *, const uint32);
-    MaterialInstance *  CreateMaterialInstanceInternal(ShaderProgram *, const VILConfig *vil_cfg, const void *, const uint32);
-
-    template<typename T>
-    MaterialInstance *  CreateMaterialInstanceInternal(ShaderProgram *mtl, const VIL *vil, const T *data)
-    {
-        return CreateMaterialInstanceInternal(mtl,vil,data,sizeof(T));
-    }
-
-    template<typename T>
-    MaterialInstance *  CreateMaterialInstanceInternal(ShaderProgram *mtl, const VILConfig *vil_cfg, const T *data)
-    {
-        return CreateMaterialInstanceInternal(mtl,vil_cfg,data,sizeof(T));
-    }
 
 };//class MaterialManager
 

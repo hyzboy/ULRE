@@ -71,7 +71,7 @@ namespace hgl::ecs
                 const auto &contract = material->GetMaterialResourceLayout();
                 for (const auto &req : contract.requirements)
                 {
-                    if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                    if (req.semantic != graph::mtl::DescriptorSemantic::MaterialSSBOSlotData)
                         continue;
 
                     for (const auto &ref : spec.struct_refs)
@@ -368,7 +368,7 @@ namespace hgl::ecs
 
             for (const auto &req : material_program->GetMaterialResourceLayout().requirements)
             {
-                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialSSBOSlotData)
                     continue;
 
                 const auto *asset_binding = graph::mtl::FindRecipeSSBOAssetBinding(effective_recipe, req.name, req.ssbo_type);
@@ -529,7 +529,7 @@ namespace hgl::ecs
             {
                 for (const auto &req : resolved_program->GetMaterialResourceLayout().requirements)
                 {
-                    if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                    if (req.semantic != graph::mtl::DescriptorSemantic::MaterialSSBOSlotData)
                         continue;
 
                     rdbs->RegisterMaterialStructLayout(req.ssbo_type, req.ssbo_id, mi_data_bytes);
@@ -763,3 +763,4 @@ namespace hgl::ecs
         //}
     }
 }//namespace hgl::ecs
+

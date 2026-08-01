@@ -73,7 +73,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     const bool infer_has_camera = HasDescriptorSemantic(def, DescriptorSemantic::CameraInfo);
     const bool infer_has_sky    = HasDescriptorSemantic(def, DescriptorSemantic::SkyInfo);
     const bool infer_has_l2w    = HasDescriptorSemantic(def, DescriptorSemantic::LocalToWorld);
-    const bool infer_has_mi     = HasDescriptorSemantic(def, DescriptorSemantic::MaterialInstance)
+    const bool infer_has_mi     = HasDescriptorSemantic(def, DescriptorSemantic::MaterialSSBOSlotData)
                                || (def.mi_glsl_codes && def.mi_struct_bytes > 0);
 
     const bool with_camera = config.with_camera || infer_has_camera;
@@ -114,7 +114,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
         const FixedDescriptorEntry &entry = def.descriptor_entries[i];
 
         // Skip hand-written MaterialInstance entries when slot_decls takes over.
-        if (use_slot_decls && entry.semantic == DescriptorSemantic::MaterialInstance)
+        if (use_slot_decls && entry.semantic == DescriptorSemantic::MaterialSSBOSlotData)
             continue;
 
         const uint32_t stage_bits = entry.stage_flags;
@@ -136,7 +136,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
             case DescriptorSemantic::LocalToWorld:
                 mci->SetLocalToWorld(stage_bits);
                 break;
-            case DescriptorSemantic::MaterialInstance:
+            case DescriptorSemantic::MaterialSSBOSlotData:
                 mi_stage_bits = stage_bits;
                 break;
             case DescriptorSemantic::MaterialColorPalette:
@@ -156,7 +156,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
             case DescriptorSemantic::LocalToWorldIndexTable:
                 mci->AddSSBOStruct(stage_bits, SBS_LocalToWorldIndexRows);
                 break;
-            case DescriptorSemantic::MaterialInstance:
+            case DescriptorSemantic::MaterialSSBOSlotData:
                 mi_stage_bits = stage_bits;
                 break;
             case DescriptorSemantic::MaterialTextureLayerTable:
@@ -291,23 +291,27 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     {
         // Build augmented list: base entries (without old MaterialInstance) + slot_decls entries.
         std::vector<FixedDescriptorEntry> augmented;
+        // Names from ssbo_slot_decls are runtime strings; store them here to ensure lifetime.
+        std::vector<std::string> augmented_names;
         augmented.reserve(def.descriptor_entry_count + config.ssbo_slot_decls->size());
+        augmented_names.reserve(config.ssbo_slot_decls->size());
         for (uint32_t i = 0; i < def.descriptor_entry_count; ++i)
         {
-            if (def.descriptor_entries[i].semantic != DescriptorSemantic::MaterialInstance)
+            if (def.descriptor_entries[i].semantic != DescriptorSemantic::MaterialSSBOSlotData)
                 augmented.push_back(def.descriptor_entries[i]);
         }
         for (uint32_t i = 0; i < static_cast<uint32_t>(config.ssbo_slot_decls->size()); ++i)
         {
             const MaterialSSBOSlotDecl &decl = (*config.ssbo_slot_decls)[i];
+            augmented_names.push_back(decl.name);  // owned copy guarantees lifetime
             FixedDescriptorEntry e{};
             e.set_type      = DescriptorSetType::Material;
             e.kind          = MaterialInstanceDescriptorKind;
             e.stage_flags   = uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS);
-            e.name          = decl.name.c_str();
+            e.name          = augmented_names.back().c_str();  // stable pointer into owned string
             e.struct_name   = "MaterialInstanceData";
             e.glsl_type     = nullptr;
-            e.semantic      = DescriptorSemantic::MaterialInstance;
+            e.semantic      = DescriptorSemantic::MaterialSSBOSlotData;
             e.texture_slot  = TextureSlot::BaseColor;
             e.ssbo_slot     = i;
             e.ssbo_type     = decl.ssbo_type;
@@ -316,6 +320,20 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
             augmented.push_back(e);
         }
         material_resource_layout = BuildMaterialResourceLayout(augmented.data(), static_cast<uint32_t>(augmented.size()));
+
+        // Fix up dangling name pointers: BuildMaterialResourceLayout copied the const char* pointers.
+        // Any requirement whose name pointed into augmented_names must be re-pointed via owned_name.
+        for (auto &req : material_resource_layout.requirements)
+        {
+            if (req.semantic != DescriptorSemantic::MaterialSSBOSlotData)
+                continue;
+            // req.ssbo_slot is the slot index, which matches augmented_names order.
+            if (req.ssbo_slot < static_cast<uint32_t>(augmented_names.size()))
+            {
+                req.owned_name   = augmented_names[req.ssbo_slot];
+                req.name         = req.owned_name.c_str();
+            }
+        }
     }
     else
     {
@@ -350,3 +368,4 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
 }
 
 }  // namespace hgl::graph::mtl
+

@@ -21,7 +21,6 @@
 #include<hgl/vk/VKObjectNameBuilder.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<hgl/vk/VKShaderProgram.h>
-#include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderPass.h>
 #include<hgl/vk/VKVertexInputLayout.h>
@@ -568,7 +567,7 @@ namespace hgl::ecs
         }
 
         // Per-batch DataIndex rows SSBO — shader consumes this as a flat uint[] by instance index.
-        if (batch.key.material && batch.key.material->hasMI())
+        if (batch.key.material && batch.key.material->GetMIDataBytes() > 0)
         {
             if (!batch.mi_ssbo_index_rows_buffer || batch.mi_ssbo_index_rows_capacity < item_count)
             {
@@ -634,7 +633,7 @@ namespace hgl::ecs
                 {
                     for (const auto &req : batch.key.material->GetMaterialResourceLayout().requirements)
                     {
-                        if (req.semantic == graph::mtl::DescriptorSemantic::MaterialInstance)
+                        if (req.semantic == graph::mtl::DescriptorSemantic::MaterialSSBOSlotData)
                         {
                             primary_ssbo_type = req.ssbo_type;
                             break;
@@ -802,3 +801,4 @@ namespace hgl::ecs
         }
     }
 }
+

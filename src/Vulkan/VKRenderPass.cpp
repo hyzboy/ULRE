@@ -5,7 +5,6 @@
 #include<hgl/vk/pipeline/VKPipelineData.h>
 #include<hgl/vk/pipeline/VKPipelineResolver.h>
 #include<hgl/vk/VKShaderProgram.h>
-#include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/object/ObjectTracker.h>
 #include<hgl/log/Log.h>
 namespace hgl::graph{
@@ -138,45 +137,6 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const PipelineData *pd,c
 Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const InlinePipeline &ip,const bool prim_restart)
 {
     return CreatePipeline(mtl,mtl->GetDefaultVIL(),ip,prim_restart);
-}
-
-Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const InlinePipeline &ip,const bool prim_restart)
-{
-    if(!mi)return(nullptr);
-
-    return CreatePipeline(mi->GetMaterialProgram(),mi->GetVIL(),ip,prim_restart);
-}
-
-Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const PipelineData *cpd,const bool prim_restart)
-{
-    return CreatePipeline(mi->GetMaterialProgram(),mi->GetVIL(),cpd,prim_restart);
-}
-
-Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const OSString &pipeline_filename,const bool prim_restart)
-{
-    const PipelineData *pd=GetPipelineData(pipeline_filename);
-
-    if(!pd)return(nullptr);
-
-    return CreatePipeline(mi,pd,prim_restart);
-}
-
-Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const InlinePipeline &ip,GeometryFetchMode fetch_mode,const bool prim_restart)
-{
-    if(!mi)return(nullptr);
-
-    const VIL *vil=(fetch_mode==GeometryFetchMode::SSBO)?nullptr:mi->GetVIL();
-
-    return CreatePipeline(mi->GetMaterialProgram(),vil,ip,prim_restart);
-}
-
-Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const PipelineData *pd,GeometryFetchMode fetch_mode,const bool prim_restart)
-{
-    if(!mi)return(nullptr);
-
-    const VIL *vil=(fetch_mode==GeometryFetchMode::SSBO)?nullptr:mi->GetVIL();
-
-    return CreatePipeline(mi->GetMaterialProgram(),vil,pd,prim_restart);
 }
 
 Pipeline *RenderPass::CreatePipeline(const AnsiString &name,

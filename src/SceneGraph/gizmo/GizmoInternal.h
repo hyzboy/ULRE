@@ -88,7 +88,6 @@ namespace hgl::graph
     void ForceReleaseGizmoSystemResources();
     bool IsGizmoSystemResourcesResident();
 
-    MaterialInstance *GetGizmoMI3D(const GizmoColor &);          ///< Legacy alias; returns nullptr in new path
     const mtl::MaterialRecipe *GetGizmoRecipe3D(const GizmoColor &color);
     const PrimitiveAsset *GetGizmoMeshAsset(const GizmoShape &shape);
 

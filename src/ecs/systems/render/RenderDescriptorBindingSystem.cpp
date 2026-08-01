@@ -1211,7 +1211,7 @@ namespace hgl::ecs
                 }
                 break;
             }
-            case graph::mtl::DescriptorSemantic::MaterialInstance:
+            case graph::mtl::DescriptorSemantic::MaterialSSBOSlotData:
             {
                 uint32_t resolved_ssbo_id = req.ssbo_id;
                 if (batch)
@@ -1453,7 +1453,7 @@ namespace hgl::ecs
         case graph::mtl::DescriptorSemantic::LocalToWorld:
         case graph::mtl::DescriptorSemantic::LocalToWorldIndexTable:
         case graph::mtl::DescriptorSemantic::MaterialColorPalette:
-        case graph::mtl::DescriptorSemantic::MaterialInstance:
+        case graph::mtl::DescriptorSemantic::MaterialSSBOSlotData:
         case graph::mtl::DescriptorSemantic::MaterialTexture:
         case graph::mtl::DescriptorSemantic::MaterialSampler:
             return true;
@@ -1566,3 +1566,4 @@ namespace hgl::ecs
         }
     }
 }
+

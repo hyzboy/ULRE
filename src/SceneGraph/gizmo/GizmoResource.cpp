@@ -121,7 +121,7 @@ namespace hgl::graph
             bool has_struct_binding = false;
             for (const auto &req : gr->mtl->GetMaterialResourceLayout().requirements)
             {
-                if (req.semantic != mtl::DescriptorSemantic::MaterialInstance)
+                if (req.semantic != mtl::DescriptorSemantic::MaterialSSBOSlotData)
                     continue;
 
                 has_struct_binding = true;
@@ -329,12 +329,6 @@ namespace hgl::graph
         return gizmo_triangle.color_recipe + size_t(color);
     }
 
-    // Legacy alias kept for backward compatibility — returns nullptr in new path.
-    MaterialInstance *GetGizmoMI3D(const GizmoColor &)
-    {
-        return nullptr;
-    }
-
     const PrimitiveAsset *GetGizmoMeshAsset(const GizmoShape &shape)
     {
         if(!graphics_context)
@@ -345,3 +339,4 @@ namespace hgl::graph
         return &(gizmo_mesh[size_t(shape)].asset);
     }
 }//namespace hgl::graph
+

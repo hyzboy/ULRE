@@ -147,7 +147,7 @@ namespace hgl::graph
 
             switch (req.semantic)
             {
-            case mtl::DescriptorSemantic::MaterialInstance:
+            case mtl::DescriptorSemantic::MaterialSSBOSlotData:
             case mtl::DescriptorSemantic::MaterialTextureLayerTable:
             case mtl::DescriptorSemantic::MaterialSSBOIndexTable:
             {
@@ -222,3 +222,4 @@ namespace hgl::graph
         return SatisfiesResourceLayout(resource_layout, resource_layout_owner_name);
     }
 }
+

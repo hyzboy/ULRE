@@ -12,7 +12,6 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/vk/VKShaderProgram.h>
-#include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/graph/module/MaterialManager.h>
@@ -370,7 +369,7 @@ namespace hgl::ecs
 
             for (const auto &req : guard.material->GetMaterialResourceLayout().requirements)
             {
-                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialInstance)
+                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialSSBOSlotData)
                     continue;
 
                 const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
@@ -619,3 +618,4 @@ namespace hgl::ecs
         }
     }
 }
+
