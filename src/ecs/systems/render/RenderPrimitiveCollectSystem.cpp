@@ -50,7 +50,13 @@ namespace hgl::ecs
                                             const std::shared_ptr<MaterialComponent> &material_comp)
         {
             if (!world || !primitive_comp || !material_comp)
+            {
+                GLogError("[RenderPrimitiveCollectSystem] EnsureRuntimeGeometryFromAsset precondition failed world=%p primitive=%p material_comp=%p",
+                          world,
+                          primitive_comp.get(),
+                          material_comp.get());
                 return false;
+            }
 
             const auto *asset = primitive_comp->GetPrimitiveAsset();
             if (!asset)
@@ -58,7 +64,15 @@ namespace hgl::ecs
 
             auto *material = material_comp->program;
             if (!material)
+            {
+                GLogError("[RenderPrimitiveCollectSystem] EnsureRuntimeGeometryFromAsset failed: material program null owner=%s valid=%d program_dirty=%d bindings_dirty=%d resources_dirty=%d",
+                          GetPrimitiveOwnerName(primitive_comp),
+                          material_comp->valid ? 1 : 0,
+                          material_comp->program_dirty ? 1 : 0,
+                          material_comp->bindings_dirty ? 1 : 0,
+                          material_comp->resources_dirty ? 1 : 0);
                 return false;
+            }
             return primitive_comp->EnsureRuntimeGeometryBinding(material);
         }
 
@@ -86,6 +100,27 @@ namespace hgl::ecs
                 return spec.struct_refs.front().ssbo_element_index;
 
             return fallback_row;
+        }
+
+        bool MaterialRequiresRecipeRuntimeRows(const graph::ShaderProgram *material)
+        {
+            if (!material)
+                return false;
+
+            for (const auto &req : material->GetMaterialResourceLayout().requirements)
+            {
+                switch (req.semantic)
+                {
+                    case graph::mtl::DescriptorSemantic::MaterialSSBOSlotData:
+                    case graph::mtl::DescriptorSemantic::MaterialSSBOIndexTable:
+                    case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
+                        return true;
+                    default:
+                        break;
+                }
+            }
+
+            return false;
         }
 
         void UpsertRecipeTextureBinding(graph::mtl::MaterialRecipe &recipe,
@@ -548,6 +583,17 @@ namespace hgl::ecs
     {
         if (!world || !primitive_comp || !material_comp)
             return false;
+
+        if (!MaterialRequiresRecipeRuntimeRows(material_comp->program))
+        {
+            material_comp->material_instance_row = 0;
+            material_comp->texture_layer_row = 0;
+            material_comp->ssbo_index_row = 0;
+            material_comp->bindings_dirty = false;
+            material_comp->resources_dirty = false;
+            material_comp->valid = true;
+            return true;
+        }
 
         graph::mtl::MaterialRecipe effective_recipe{};
         if (!BuildEffectiveMaterialRecipe(primitive_comp, effective_recipe))

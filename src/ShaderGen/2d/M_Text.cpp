@@ -1,8 +1,8 @@
 #include"Build2DCommon.h"
 #include<hgl/shadergen/ShaderProgramBuildSpec.h>
 #include<hgl/shadergen/MaterialCompiler.h>
+#include<hgl/log/Log.h>
 #include<hgl/mtl/SamplerName.h>
-#include<cstdio>
 
 namespace hgl::graph::mtl{
 namespace
@@ -66,7 +66,7 @@ static ShaderProgramBuildSpec *CreateText2DImpl(const contract::PhysicalDevicePr
 
     ShaderProgramBuildSpec *mci = CompileCompositorMaterial(profile, def, vs, fs, build2d::ToCompositorBuildConfig2D(p));
     if(!mci)
-        std::fprintf(stderr, "[Text2D] CompileCompositorMaterial failed\n");
+        GLogError("[Text2D] CompileCompositorMaterial failed");
     return mci;
 }
 

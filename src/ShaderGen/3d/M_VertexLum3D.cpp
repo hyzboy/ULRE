@@ -2,7 +2,7 @@
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/common/RenderAssignDef.h>
-#include<cstdio>
+#include<hgl/log/Log.h>
 #include<string>
 
 namespace hgl::graph::mtl{
@@ -79,8 +79,8 @@ static ShaderProgramBuildSpec *CreateVertexLuminance3DImpl(const contract::Physi
 
     if (!result.success)
     {
-        std::fprintf(stderr, "[VertexLuminance3D] CompositorAssembler failed: %s\n",
-            result.error_message.c_str());
+        GLogError("[VertexLuminance3D] CompositorAssembler failed: %s",
+                  result.error_message.c_str());
         return nullptr;
     }
 
@@ -92,7 +92,7 @@ static ShaderProgramBuildSpec *CreateVertexLuminance3DImpl(const contract::Physi
         bc);
 
     if (!mci)
-        std::fprintf(stderr, "[VertexLuminance3D] CompileCompositorMaterial failed\n");
+        GLogError("[VertexLuminance3D] CompileCompositorMaterial failed");
     return mci;
 }
 

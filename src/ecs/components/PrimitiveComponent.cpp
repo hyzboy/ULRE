@@ -3,6 +3,7 @@
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/mesh/GeometryDataBuffer.h>
 #include<hgl/graph/mesh/GeometryDrawRange.h>
+#include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
@@ -77,21 +78,31 @@ namespace hgl::ecs
     bool PrimitiveComponent::EnsureRuntimeGeometryBinding(hgl::graph::ShaderProgram *material)
     {
         if (!primitiveAsset || !material)
+        {
+            GLogError("[PrimitiveComponent] EnsureRuntimeGeometryBinding failed: primitiveAsset=%p material=%p",
+                      primitiveAsset,
+                      material);
             return false;
+        }
 
         auto *geometry = primitiveAsset->GetGeometry();
         if (!geometry)
+        {
+            GLogError("[PrimitiveComponent] EnsureRuntimeGeometryBinding failed: geometry null asset=%p material=%s",
+                      primitiveAsset,
+                      material->GetName().c_str());
             return false;
-
-        const auto *vil = material->GetDefaultVIL();
-        if (!vil)
-            return false;
+        }
 
         if (!runtime_draw_range)
             runtime_draw_range = new hgl::graph::GeometryDrawRange();
 
         if (!runtime_draw_range)
+        {
+            GLogError("[PrimitiveComponent] EnsureRuntimeGeometryBinding failed: alloc GeometryDrawRange failed material=%s",
+                      material->GetName().c_str());
             return false;
+        }
 
         const bool needs_rebuild =
             (!runtime_data_buffer)
@@ -112,22 +123,73 @@ namespace hgl::ecs
                 runtime_vil_owned = false;
             }
             if (!runtime_vil)
+            {
+                GLogError("[PrimitiveComponent] EnsureRuntimeGeometryBinding failed: CreateVIL/default fallback both null material=%s geom_attr_count=%u",
+                          material->GetName().c_str(),
+                          geometry->GetGeometryVertexFormat().GetCount());
                 return false;
+            }
+
+            const uint32_t input_count = runtime_vil->GetVertexAttribCount();
+            if (geometry->GetVABCount() < input_count)
+            {
+                GLogError("[PrimitiveComponent] EnsureRuntimeGeometryBinding failed: geometry VAB count(%u) < VIL input count(%u), material=%s",
+                          geometry->GetVABCount(),
+                          input_count,
+                          material->GetName().c_str());
+                return false;
+            }
+
+            const graph::GeometryVertexFormatMatch match_result =
+                graph::MatchGeometryVertexFormat(geometry->GetGeometryVertexFormat(),
+                                                 runtime_vil->GetVIFList(),
+                                                 input_count);
+            if (!match_result.IsDirectBindSatisfied())
+            {
+                const graph::GeometryVertexFailureSummary failure_summary = match_result.BuildFailureSummary();
+                const graph::GeometryVertexAttributeMatch *first_issue = failure_summary.first_failure;
+                if (first_issue)
+                {
+                    GLogError("[PrimitiveComponent] EnsureRuntimeGeometryBinding failed: vertex format mismatch material=%s semantic=%s kind=%s geom_fmt=%s mtl_fmt=%s",
+                              material->GetName().c_str(),
+                              graph::GetVertexSemanticName(first_issue->semantic),
+                              graph::GetGeometryVertexMatchKindName(first_issue->kind),
+                              graph::GetVulkanFormatName(first_issue->geometry_format),
+                              graph::GetVulkanFormatName(first_issue->material_format));
+                }
+                else
+                {
+                    GLogError("[PrimitiveComponent] EnsureRuntimeGeometryBinding failed: vertex format mismatch material=%s",
+                              material->GetName().c_str());
+                }
+                return false;
+            }
 
             SAFE_CLEAR(runtime_data_buffer);
 
-            runtime_data_buffer = new hgl::graph::GeometryDataBuffer(runtime_vil->GetVertexAttribCount(),
+            runtime_data_buffer = new hgl::graph::GeometryDataBuffer(input_count,
                                                                      geometry->GetIBO(),
                                                                      geometry->GetVDM());
             if (!runtime_data_buffer)
+            {
+                GLogError("[PrimitiveComponent] EnsureRuntimeGeometryBinding failed: alloc GeometryDataBuffer failed material=%s vif_count=%u",
+                          material->GetName().c_str(),
+                          runtime_vil->GetVertexAttribCount());
                 return false;
+            }
 
             runtime_geometry = geometry;
             runtime_material = material;
         }
 
         if (!runtime_data_buffer->Update(geometry, runtime_vil->GetVIFList(), runtime_vil->GetVertexAttribCount()))
+        {
+            GLogError("[PrimitiveComponent] EnsureRuntimeGeometryBinding failed: GeometryDataBuffer::Update failed material=%s vif_count=%u vif_list=%p",
+                      material->GetName().c_str(),
+                      runtime_vil->GetVertexAttribCount(),
+                      runtime_vil->GetVIFList());
             return false;
+        }
 
         runtime_draw_range->Set(geometry);
         return true;

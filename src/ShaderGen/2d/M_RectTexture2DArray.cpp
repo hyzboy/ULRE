@@ -1,8 +1,8 @@
 #include"Build2DCommon.h"
 #include<hgl/shadergen/ShaderProgramBuildSpec.h>
 #include<hgl/shadergen/MaterialCompiler.h>
+#include<hgl/log/Log.h>
 #include<hgl/mtl/SamplerName.h>
-#include<cstdio>
 
 namespace hgl::graph::mtl{
 namespace
@@ -58,7 +58,7 @@ static ShaderProgramBuildSpec *CreateRectTexture2DArrayImpl(const contract::Phys
 
     ShaderProgramBuildSpec *mci = CompileCompositorMaterial(profile, def, vs, fs, build2d::ToCompositorBuildConfig2D(p));
     if(!mci)
-        std::fprintf(stderr, "[RectTexture2DArray] CompileCompositorMaterial failed\n");
+        GLogError("[RectTexture2DArray] CompileCompositorMaterial failed");
     return mci;
 }
 

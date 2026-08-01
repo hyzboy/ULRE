@@ -3,7 +3,7 @@
 #include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/common/RenderAssignDef.h>
-#include <cstdio>
+#include <hgl/log/Log.h>
 #include <vector>
 
 #include "../common/MFSkyLight.h"
@@ -93,8 +93,8 @@ static ShaderProgramBuildSpec *CreatePBRColor3DImpl(const contract::PhysicalDevi
 
     if (!result.success)
     {
-        std::fprintf(stderr, "[PBRColor3D] CompositorAssembler failed: %s\n",
-            result.error_message.c_str());
+        GLogError("[PBRColor3D] CompositorAssembler failed: %s",
+                  result.error_message.c_str());
         return nullptr;
     }
 
@@ -106,7 +106,7 @@ static ShaderProgramBuildSpec *CreatePBRColor3DImpl(const contract::PhysicalDevi
         bc);
 
     if (!mci)
-        std::fprintf(stderr, "[PBRColor3D] CompileCompositorMaterial failed\n");
+        GLogError("[PBRColor3D] CompileCompositorMaterial failed");
 
     return mci;
 }
@@ -116,4 +116,3 @@ ShaderProgramBuildSpec *CreatePBRColor3D(const contract::PhysicalDeviceProfileLi
     return CreatePBRColor3DImpl(profile, ToCompositorBuildConfig3D(request, definition, true));
 }
 }//namespace hgl::graph::mtl
-

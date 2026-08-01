@@ -37,18 +37,52 @@ namespace hgl::ecs
     {
         constexpr uint32_t InvalidBatchSSBOIndexRow = uint32_t(-1);
 
-        bool HasMaterialSSBOSlotData(const graph::ShaderProgram *material)
+        bool MaterialRequiresRecipeRuntimeRows(const graph::ShaderProgram *material)
         {
             if (!material)
                 return false;
 
             for (const auto &req : material->GetMaterialResourceLayout().requirements)
             {
-                if (req.semantic == graph::mtl::DescriptorSemantic::MaterialSSBOSlotData)
+                switch (req.semantic)
+                {
+                    case graph::mtl::DescriptorSemantic::MaterialSSBOSlotData:
+                    case graph::mtl::DescriptorSemantic::MaterialSSBOIndexTable:
+                    case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
+                        return true;
+                    default:
+                        break;
+                }
+            }
+
+            return false;
+        }
+
+        bool BatchRequiresIndirectCommands(const MaterialBatch &batch)
+        {
+            for (auto *item : batch.items)
+            {
+                const auto *data_buffer = item ? item->GetGeometryDataBuffer() : nullptr;
+                if (data_buffer && data_buffer->vdm)
                     return true;
             }
 
             return false;
+        }
+
+        void ReleaseICB(MaterialBatch &batch)
+        {
+            if (batch.icb_draw)
+            {
+                delete batch.icb_draw;
+                batch.icb_draw = nullptr;
+            }
+
+            if (batch.icb_draw_indexed)
+            {
+                delete batch.icb_draw_indexed;
+                batch.icb_draw_indexed = nullptr;
+            }
         }
 
         void WriteICB(VkDrawIndirectCommand* draw_cmd, DrawBatch* batch)
@@ -357,12 +391,7 @@ namespace hgl::ecs
     {
         HGL_CAPTURE_SCOPE();
         if (!device || batch.items.empty())
-        {
-            LogWarning("[ECS::PrimitiveBatchPipeline] Cannot allocate ICB - Device: %p, Items: %zu",
-                       (void*)device,
-                       batch.items.size());
             return;
-        }
 
         uint32_t icb_new_count = 1;
         while (icb_new_count < batch.items.size())
@@ -371,11 +400,7 @@ namespace hgl::ecs
         if (batch.icb_draw && icb_new_count <= batch.icb_draw->GetMaxCount())
             return;
 
-        if (batch.icb_draw)
-            delete batch.icb_draw;
-
-        if (batch.icb_draw_indexed)
-            delete batch.icb_draw_indexed;
+        ReleaseICB(batch);
 
         auto [draw_name, indexed_name] = BuildICBNames();
 
@@ -400,25 +425,39 @@ namespace hgl::ecs
             return;
         }
 
-        ReallocICB(batch);
-
-        if (!batch.icb_draw || !batch.icb_draw_indexed)
+        const bool needs_indirect = BatchRequiresIndirectCommands(batch);
+        if (needs_indirect)
         {
-            batch.draw_batches_count = 0;
-            batch.draw_batches.clear();
-            return;
+            ReallocICB(batch);
+
+            if (!batch.icb_draw || !batch.icb_draw_indexed)
+            {
+                batch.draw_batches_count = 0;
+                batch.draw_batches.clear();
+                return;
+            }
+        }
+        else
+        {
+            ReleaseICB(batch);
         }
 
-        VkDrawIndirectCommand* draw_cmd = batch.icb_draw->MapCmd();
-        VkDrawIndexedIndirectCommand* indexed_draw_cmd = batch.icb_draw_indexed->MapCmd();
+        VkDrawIndirectCommand* draw_cmd = nullptr;
+        VkDrawIndexedIndirectCommand* indexed_draw_cmd = nullptr;
 
-        if (!draw_cmd || !indexed_draw_cmd)
+        if (needs_indirect)
         {
-            batch.icb_draw->Unmap();
-            batch.icb_draw_indexed->Unmap();
-            batch.draw_batches_count = 0;
-            batch.draw_batches.clear();
-            return;
+            draw_cmd = batch.icb_draw->MapCmd();
+            indexed_draw_cmd = batch.icb_draw_indexed->MapCmd();
+
+            if (!draw_cmd || !indexed_draw_cmd)
+            {
+                batch.icb_draw->Unmap();
+                batch.icb_draw_indexed->Unmap();
+                batch.draw_batches_count = 0;
+                batch.draw_batches.clear();
+                return;
+            }
         }
 
         batch.draw_batches.clear();
@@ -465,7 +504,7 @@ namespace hgl::ecs
                 continue;
             }
 
-            if (draw_batch->geom_data_buffer && draw_batch->geom_data_buffer->vdm)
+            if (needs_indirect && draw_batch->geom_data_buffer && draw_batch->geom_data_buffer->vdm)
             {
                 if (draw_batch->geom_data_buffer->ibo)
                     WriteICB(indexed_draw_cmd++, draw_batch);
@@ -484,7 +523,7 @@ namespace hgl::ecs
             current_draw_range = draw_batch->geom_draw_range;
         }
 
-        if (draw_batch->geom_data_buffer && draw_batch->geom_data_buffer->vdm)
+        if (needs_indirect && draw_batch->geom_data_buffer && draw_batch->geom_data_buffer->vdm)
         {
             if (draw_batch->geom_data_buffer->ibo)
                 WriteICB(indexed_draw_cmd, draw_batch);
@@ -492,8 +531,11 @@ namespace hgl::ecs
                 WriteICB(draw_cmd, draw_batch);
         }
 
-        batch.icb_draw->Unmap();
-        batch.icb_draw_indexed->Unmap();
+        if (needs_indirect)
+        {
+            batch.icb_draw->Unmap();
+            batch.icb_draw_indexed->Unmap();
+        }
     }
 
     void PrimitiveBatchPipeline::FinalizeBatch(MaterialBatch& batch)
@@ -581,7 +623,7 @@ namespace hgl::ecs
         }
 
         // Per-batch DataIndex rows SSBO — shader consumes this as a flat uint[] by instance index.
-        if (HasMaterialSSBOSlotData(batch.key.material))
+        if (MaterialRequiresRecipeRuntimeRows(batch.key.material))
         {
             if (!batch.mi_ssbo_index_rows_buffer || batch.mi_ssbo_index_rows_capacity < item_count)
             {
@@ -718,7 +760,9 @@ namespace hgl::ecs
 
             if (prim_item)
             {
-                const bool missing_rows = (!material_comp
+                const bool needs_recipe_rows = MaterialRequiresRecipeRuntimeRows(material);
+                const bool missing_rows = needs_recipe_rows
+                                       && (!material_comp
                                         || material_comp->material_instance_row == uint32_t(-1)
                                         || material_comp->ssbo_index_row == uint32_t(-1)
                                         || material_comp->texture_layer_row == uint32_t(-1));

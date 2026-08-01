@@ -1,4 +1,5 @@
 ﻿#include <hgl/graph/render/RenderContext.h>
+#include <hgl/mtl/new/NewDescriptorSetLayoutFactory.h>
 #include <hgl/vk/VKRenderTarget.h>
 
 namespace hgl::graph
@@ -34,5 +35,20 @@ namespace hgl::graph
     RenderCmdBuffer* RenderContext::GetCurrentRenderCmdBuffer() const
     {
         return current_render_cmd_buf;
+    }
+
+    void RenderContext::SetNewPipelineLayoutData(NewPipelineLayoutData* pld)
+    {
+        new_pipeline_layout_data_ = pld;
+    }
+
+    NewPipelineLayoutData* RenderContext::GetNewPipelineLayoutData() const
+    {
+        return new_pipeline_layout_data_;
+    }
+
+    VkPipelineLayout RenderContext::GetNewPipelineLayout() const
+    {
+        return new_pipeline_layout_data_ ? new_pipeline_layout_data_->pipeline_layout : VK_NULL_HANDLE;
     }
 } // namespace hgl::graph

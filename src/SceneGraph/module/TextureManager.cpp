@@ -19,15 +19,12 @@ GRAPH_MODULE_CONSTRUCT(TextureManager)
 
 TextureManager::~TextureManager()
 {
-    std::cout << "[DEBUG] ~TextureManager() - texture_queue=" << (void*)texture_queue << ", texture_cmd_buf=" << (void*)texture_cmd_buf << std::endl;
     SAFE_CLEAR(texture_queue);
     SAFE_CLEAR(texture_cmd_buf);
-    std::cout << "[DEBUG] ~TextureManager() - complete" << std::endl;
 }
 
 void TextureManager::Release()
 {
-    std::cout << "[DEBUG] TextureManager::Release() - Start, texture_queue=" << (void*)texture_queue << std::endl;
     // Delete using a stable snapshot so destructor-side unregister is safe.
     if (texture_set.GetCount() > 0)
     {
@@ -53,11 +50,8 @@ void TextureManager::Release()
         texture_by_filename.Clear();
 
     // Clean up texture transfer resources (queue holds fences that need cleanup)
-    std::cout << "[DEBUG] TextureManager::Release() - Deleting texture_queue=" << (void*)texture_queue << std::endl;
     SAFE_CLEAR(texture_queue);
-    std::cout << "[DEBUG] TextureManager::Release() - texture_queue deleted, now deleting texture_cmd_buf" << std::endl;
     SAFE_CLEAR(texture_cmd_buf);
-    std::cout << "[DEBUG] TextureManager::Release() - Complete" << std::endl;
 }
 
 void TextureManager::OnGraphicsContextChanged(GraphicsContext *)

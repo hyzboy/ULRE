@@ -2,7 +2,7 @@
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/common/RenderAssignDef.h>
-#include<cstdio>
+#include<hgl/log/Log.h>
 #include<string>
 
 namespace hgl::graph::mtl{
@@ -62,8 +62,8 @@ static ShaderProgramBuildSpec *CreateVertexColor3DImpl(const contract::PhysicalD
 
     if (!result.success)
     {
-        std::fprintf(stderr, "[VertexColor3D] CompositorAssembler failed: %s\n",
-            result.error_message.c_str());
+        GLogError("[VertexColor3D] CompositorAssembler failed: %s",
+                  result.error_message.c_str());
         return nullptr;
     }
 
@@ -75,7 +75,7 @@ static ShaderProgramBuildSpec *CreateVertexColor3DImpl(const contract::PhysicalD
         bc);
 
     if (!mci)
-        std::fprintf(stderr, "[VertexColor3D] CompileCompositorMaterial failed\n");
+        GLogError("[VertexColor3D] CompileCompositorMaterial failed");
     return mci;
 }
 

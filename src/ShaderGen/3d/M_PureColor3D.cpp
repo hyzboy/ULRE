@@ -2,7 +2,7 @@
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/common/RenderAssignDef.h>
-#include<cstdio>
+#include<hgl/log/Log.h>
 #include<string>
 
 namespace hgl::graph::mtl{
@@ -84,8 +84,8 @@ static ShaderProgramBuildSpec *CreatePureColor3DImpl(const contract::PhysicalDev
 
     if (!result.success)
     {
-        std::fprintf(stderr, "[PureColor3D] CompositorAssembler failed: %s\n",
-            result.error_message.c_str());
+        GLogError("[PureColor3D] CompositorAssembler failed: %s",
+                  result.error_message.c_str());
         return nullptr;
     }
 
@@ -97,7 +97,7 @@ static ShaderProgramBuildSpec *CreatePureColor3DImpl(const contract::PhysicalDev
         bc);
 
     if (!mci)
-        std::fprintf(stderr, "[PureColor3D] CompileCompositorMaterial failed\n");
+        GLogError("[PureColor3D] CompileCompositorMaterial failed");
     return mci;
 }
 

@@ -2,7 +2,7 @@
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/common/RenderAssignDef.h>
-#include<cstdio>
+#include<hgl/log/Log.h>
 #include<string>
 
 namespace hgl::graph::mtl
@@ -63,8 +63,8 @@ static ShaderProgramBuildSpec *CreateGizmo3DImpl(const contract::PhysicalDeviceP
 
     if (!result.success)
     {
-        std::fprintf(stderr, "[Gizmo3D] CompositorAssembler failed: %s\n",
-            result.error_message.c_str());
+        GLogError("[Gizmo3D] CompositorAssembler failed: %s",
+                  result.error_message.c_str());
         return nullptr;
     }
 
@@ -94,7 +94,7 @@ static ShaderProgramBuildSpec *CreateGizmo3DImpl(const contract::PhysicalDeviceP
         bc);
 
     if (!mci)
-        std::fprintf(stderr, "[Gizmo3D] CompileCompositorMaterial failed\n");
+        GLogError("[Gizmo3D] CompileCompositorMaterial failed");
     return mci;
 }
 

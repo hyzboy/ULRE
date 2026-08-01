@@ -2,7 +2,7 @@
 #include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/common/RenderAssignDef.h>
-#include <cstdio>
+#include<hgl/log/Log.h>
 
 namespace hgl::graph::mtl{
 namespace
@@ -69,8 +69,8 @@ static ShaderProgramBuildSpec *CreateSkyMinimalImpl(const contract::PhysicalDevi
 
     if (!result.success)
     {
-        std::fprintf(stderr, "[SkyMinimal] CompositorAssembler failed: %s\n",
-            result.error_message.c_str());
+        GLogError("[SkyMinimal] CompositorAssembler failed: %s",
+                  result.error_message.c_str());
         return nullptr;
     }
 
@@ -82,7 +82,7 @@ static ShaderProgramBuildSpec *CreateSkyMinimalImpl(const contract::PhysicalDevi
         bc);
 
     if (!mci)
-        std::fprintf(stderr, "[SkyMinimal] CompileCompositorMaterial failed\n");
+        GLogError("[SkyMinimal] CompileCompositorMaterial failed");
     return mci;
 }
 

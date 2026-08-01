@@ -1,8 +1,8 @@
 #include"Build2DCommon.h"
 #include<hgl/shadergen/ShaderProgramBuildSpec.h>
 #include<hgl/shadergen/MaterialCompiler.h>
+#include<hgl/log/Log.h>
 #include<hgl/math/Vector.h>
-#include<cstdio>
 
 namespace hgl::graph::mtl{
 namespace
@@ -58,7 +58,7 @@ static ShaderProgramBuildSpec *CreatePureColor2DImpl(const contract::PhysicalDev
 
     ShaderProgramBuildSpec *mci = CompileCompositorMaterial(profile, def, vs, fs, build2d::ToCompositorBuildConfig2D(p));
     if(!mci)
-        std::fprintf(stderr, "[PureColor2D] CompileCompositorMaterial failed\n");
+        GLogError("[PureColor2D] CompileCompositorMaterial failed");
     return mci;
 }
 

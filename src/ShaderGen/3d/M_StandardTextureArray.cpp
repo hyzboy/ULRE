@@ -3,7 +3,7 @@
 #include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/common/RenderAssignDef.h>
-#include <cstdio>
+#include <hgl/log/Log.h>
 #include <vector>
 
 #include "../common/MFSkyLight.h"
@@ -82,8 +82,8 @@ static ShaderProgramBuildSpec *CreateStandardTextureArrayImpl(const contract::Ph
 
     if (!result.success)
     {
-        std::fprintf(stderr, "[StandardTextureArray] CompositorAssembler failed: %s\n",
-            result.error_message.c_str());
+        GLogError("[StandardTextureArray] CompositorAssembler failed: %s",
+                  result.error_message.c_str());
         return nullptr;
     }
 
@@ -95,7 +95,7 @@ static ShaderProgramBuildSpec *CreateStandardTextureArrayImpl(const contract::Ph
         bc);
 
     if (!mci)
-        std::fprintf(stderr, "[StandardTextureArray] CompileCompositorMaterial failed\n");
+        GLogError("[StandardTextureArray] CompileCompositorMaterial failed");
     return mci;
 }
 

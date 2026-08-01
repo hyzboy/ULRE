@@ -14,7 +14,7 @@
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/common/RenderAssignDef.h>
-#include<cstdio>
+#include<hgl/log/Log.h>
 
 namespace hgl::graph::mtl{
 namespace
@@ -80,8 +80,8 @@ static ShaderProgramBuildSpec *CreateVertexPattleColor3DImpl(const contract::Phy
 
     if (!result.success)
     {
-        std::fprintf(stderr, "[VertexPattleColor3D] CompositorAssembler failed: %s\n",
-            result.error_message.c_str());
+        GLogError("[VertexPattleColor3D] CompositorAssembler failed: %s",
+                  result.error_message.c_str());
         return nullptr;
     }
 
@@ -93,7 +93,7 @@ static ShaderProgramBuildSpec *CreateVertexPattleColor3DImpl(const contract::Phy
         bc);
 
     if (!mci)
-        std::fprintf(stderr, "[VertexPattleColor3D] CompileCompositorMaterial failed\n");
+        GLogError("[VertexPattleColor3D] CompileCompositorMaterial failed");
     return mci;
 }
 

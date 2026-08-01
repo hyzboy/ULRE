@@ -5,9 +5,10 @@
 #include<hgl/vk/VKVertexInput.h>
 #include<hgl/vk/VKVertexInputLayout.h>
 #include <hgl/graph/core/GraphicsContext.h>
-#include<hgl/mtl/new/NewDescriptorSetLayoutFactory.h>
 namespace hgl::graph
 {
+    struct NewPipelineLayoutData;
+
     namespace mtl
     {
         class ShaderProgramBuildSpec;
@@ -110,9 +111,9 @@ namespace hgl::graph
 
     public:
         // ===== 新 4-Set 管线布局 (双轨共存) =====
-        void SetNewPipelineLayoutData(NewPipelineLayoutData* pld) { new_pipeline_layout_data_ = pld; }
-        NewPipelineLayoutData* GetNewPipelineLayoutData() const { return new_pipeline_layout_data_; }
-        VkPipelineLayout GetNewPipelineLayout() const { return new_pipeline_layout_data_ ? new_pipeline_layout_data_->pipeline_layout : VK_NULL_HANDLE; }
+        void SetNewPipelineLayoutData(NewPipelineLayoutData* pld);
+        NewPipelineLayoutData* GetNewPipelineLayoutData() const;
+        VkPipelineLayout GetNewPipelineLayout() const;
 
     public:
 

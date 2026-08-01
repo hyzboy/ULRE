@@ -3,7 +3,7 @@
 #include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/common/RenderAssignDef.h>
-#include <cstdio>
+#include <hgl/log/Log.h>
 #include <vector>
 
 #include "../common/MFSkyLight.h"
@@ -82,8 +82,8 @@ static ShaderProgramBuildSpec *CreateStandardImpl(const contract::PhysicalDevice
 
     if (!result.success)
     {
-        std::fprintf(stderr, "[Standard] CompositorAssembler failed: %s\n",
-            result.error_message.c_str());
+        GLogError("[Standard] CompositorAssembler failed: %s",
+                  result.error_message.c_str());
         return nullptr;
     }
 
@@ -95,7 +95,7 @@ static ShaderProgramBuildSpec *CreateStandardImpl(const contract::PhysicalDevice
         bc);
 
     if (!mci)
-        std::fprintf(stderr, "[Standard] CompileCompositorMaterial failed\n");
+        GLogError("[Standard] CompileCompositorMaterial failed");
     return mci;
 }
 
