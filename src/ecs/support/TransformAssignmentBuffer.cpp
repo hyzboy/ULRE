@@ -14,9 +14,7 @@
 #include<hgl/log/Log.h>
 #include<algorithm>
 #include<limits>
-#include<iostream>
 #include<cstdint>
-#include<cstdio>
 
 namespace hgl::ecs
 {
@@ -191,13 +189,13 @@ namespace hgl::ecs
     {
         if (!mtl)
         {
-            std::cout << "[TransformAssignmentBuffer::BindTransform] WARNING: ShaderProgram is null" << std::endl;
+            GLogWarning("[TransformAssignmentBuffer::BindTransform] ShaderProgram is null");
             return;
         }
 
         if (!transform_buffer)
         {
-            std::cout << "[TransformAssignmentBuffer::BindTransform] WARNING: Transform buffer not created" << std::endl;
+            GLogWarning("[TransformAssignmentBuffer::BindTransform] Transform buffer not created");
             return;
         }
 
@@ -442,13 +440,6 @@ namespace hgl::ecs
                       static_cast<unsigned long long>(total_written_bytes),
                       tbuf->IsDirty() ? 1 : 0);
 
-            std::fprintf(stderr,
-                         "[TransformAssignmentBuffer] Static L2W flush: ranges=%u dirty_indices=%u bytes=%llu buffer_dirty=%d\n",
-                         static_cast<uint32_t>(flush_ranges.size()),
-                         static_cast<uint32_t>(dirty_indices.size()),
-                         static_cast<unsigned long long>(total_written_bytes),
-                         tbuf->IsDirty() ? 1 : 0);
-
             if (ShouldEmitPeriodicLog(60))
             {
                 GLogInfo("[TransformAssignmentBuffer] Static L2W detail: min=%u max=%u span_offset=%llu span_size=%llu",
@@ -570,19 +561,6 @@ namespace hgl::ecs
                       has_sample ? sample_world_pos.x : 0.0f,
                       has_sample ? sample_world_pos.y : 0.0f,
                       has_sample ? sample_world_pos.z : 0.0f);
-
-            std::fprintf(stderr,
-                         "[TransformAssignmentBuffer] Dynamic L2W flush: static_count=%u base=%u ranges=%u dirty_indices=%u bytes=%llu buffer_dirty=%d sample_handle=%u sample_pos=(%.3f, %.3f, %.3f)\n",
-                         static_count,
-                         base_index,
-                         static_cast<uint32_t>(flush_ranges.size()),
-                         static_cast<uint32_t>(dirty_indices.size()),
-                         static_cast<unsigned long long>(total_written_bytes),
-                         tbuf->IsDirty() ? 1 : 0,
-                         has_sample ? sample_handle_u32 : 0u,
-                         has_sample ? sample_world_pos.x : 0.0f,
-                         has_sample ? sample_world_pos.y : 0.0f,
-                         has_sample ? sample_world_pos.z : 0.0f);
 
             if (ShouldEmitPeriodicLog(60))
             {
@@ -744,13 +722,6 @@ namespace hgl::ecs
                      transform_buffer_max_count,
                      static_cast<unsigned long long>(transform_buffer->GetSize()),
                      static_cast<int>(policy));
-
-            std::fprintf(stderr,
-                         "[TransformAssignmentBuffer] LocalToWorld buffer ready: required=%u capacity=%u bytes=%llu policy=%d\n",
-                         static_cast<uint32_t>(required_count),
-                         transform_buffer_max_count,
-                         static_cast<unsigned long long>(transform_buffer->GetSize()),
-                         static_cast<int>(policy));
 
             LogDeviceBufferSnapshot("[TransformAssignmentBuffer] L2W recreated", transform_buffer);
         }
@@ -977,14 +948,6 @@ namespace hgl::ecs
                   static_cast<unsigned long long>(wbuf->GetSize()),
                   wbuf->IsDirty() ? 1 : 0);
 
-        std::fprintf(stderr,
-                     "[TransformAssignmentBuffer::WriteItems] L2W full write: static=%u dynamic=%u total=%u bytes=%llu dirty=%d\n",
-                     static_count,
-                     dynamic_count,
-                     total_count,
-                     static_cast<unsigned long long>(wbuf->GetSize()),
-                     wbuf->IsDirty() ? 1 : 0);
-
         if (ShouldEmitPeriodicLog(90))
         {
             GLogInfo("[TransformAssignmentBuffer::WriteItems] L2W full context: frame=%u ring_base=%u ring_frames=%u",
@@ -1102,10 +1065,7 @@ namespace hgl::ecs
         const size_t item_count = items.size();
 
         if (item_count == 0)
-        {
-            std::cout << "[TransformAssignmentBuffer::WriteItems] WARNING: No items to write" << std::endl;
             return;
-        }
 
         last_items = &items;
 

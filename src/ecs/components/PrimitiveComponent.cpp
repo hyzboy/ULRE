@@ -496,14 +496,7 @@ namespace hgl::ecs
 
     void PrimitiveComponent::Render(const glm::mat4& worldMatrix)
     {
-        // This is called by RenderCollector or rendering systems
-        // The actual rendering would be done through the graphics API
-        // Here we just verify we can render
-        if (!CanRender())
-            return;
-
-        // In a real implementation, this would submit draw commands
-        // to a command buffer or render queue using resolved runtime bindings.
+        (void)worldMatrix;
     }
 
     void PrimitiveComponent::OnAttach()

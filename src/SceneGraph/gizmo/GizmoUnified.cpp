@@ -26,6 +26,7 @@
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
+#include<hgl/log/Log.h>
 #include<hgl/math/geometry/Ray.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/vk/VKRenderTarget.h>
@@ -35,7 +36,6 @@
 #include<array>
 #include<cstdlib>
 #include<cstring>
-#include<iostream>
 #include<vector>
 #include<utility>
 
@@ -203,17 +203,15 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
 
     auto *gizmo = new GizmoECS;
     gizmo->world = world;
-    std::cout << "[GizmoECS] Create begin name=" << (name ? name : "Gizmo") << std::endl;
 
     // Create root entity for entire Gizmo
     gizmo->root = world->CreateEntity<hgl::ecs::Entity>(name ? name : "Gizmo");
     if (!gizmo->root)
     {
-        std::cout << "[GizmoECS] Create root entity failed" << std::endl;
+        GLogError("[GizmoECS] Create root entity failed");
         delete gizmo;
         return nullptr;
     }
-    std::cout << "[GizmoECS] Root entity id=" << gizmo->root->GetID().index << std::endl;
 
     gizmo->root_transform = gizmo->root->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
     gizmo->root_transform->SetLocalTRS(glm::vec3(position), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
@@ -226,7 +224,7 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
         gizmo->move_mode.entity = world->CreateEntity<hgl::ecs::Entity>("Gizmo_Move");
         if (!gizmo->move_mode.entity)
         {
-            std::cout << "[GizmoECS] Create move entity failed" << std::endl;
+            GLogError("[GizmoECS] Create move entity failed");
             DestroyTransformGizmo(gizmo);
             return nullptr;
         }
@@ -248,7 +246,7 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
         gizmo->rotate_mode.entity = world->CreateEntity<hgl::ecs::Entity>("Gizmo_Rotate");
         if (!gizmo->rotate_mode.entity)
         {
-            std::cout << "[GizmoECS] Create rotate entity failed" << std::endl;
+            GLogError("[GizmoECS] Create rotate entity failed");
             DestroyTransformGizmo(gizmo);
             return nullptr;
         }
@@ -270,7 +268,7 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
         gizmo->scale_mode.entity = world->CreateEntity<hgl::ecs::Entity>("Gizmo_Scale");
         if (!gizmo->scale_mode.entity)
         {
-            std::cout << "[GizmoECS] Create scale entity failed" << std::endl;
+            GLogError("[GizmoECS] Create scale entity failed");
             DestroyTransformGizmo(gizmo);
             return nullptr;
         }
@@ -289,7 +287,6 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
 
     // Initialize with Move mode active
     SetTransformGizmoMode(gizmo, GizmoMode::MoveWorld);
-    std::cout << "[GizmoECS] Create done" << std::endl;
 
     return gizmo;
 }
@@ -312,8 +309,6 @@ void DestroyTransformGizmo(GizmoECS *gizmo)
 {
     if (!gizmo)
         return;
-
-    std::cout << "[GizmoECS] Destroy begin" << std::endl;
 
     gizmo->move_mode.EndDrag();
     gizmo->rotate_mode.EndDrag();
@@ -338,7 +333,6 @@ void DestroyTransformGizmo(GizmoECS *gizmo)
     }
 
     delete gizmo;
-    std::cout << "[GizmoECS] Destroy done" << std::endl;
 }
 
 void SetTransformGizmoMode(GizmoECS *gizmo, GizmoMode mode)
@@ -347,7 +341,6 @@ void SetTransformGizmoMode(GizmoECS *gizmo, GizmoMode mode)
         return;
 
     gizmo->current_mode = mode;
-    std::cout << "[GizmoECS] Set mode=" << static_cast<int>(mode) << std::endl;
 
     SyncGizmoAssetModeBindings(gizmo);
     SyncAssetSubGizmoLocalTransforms(gizmo);
@@ -376,10 +369,7 @@ void SetTransformGizmoVisible(GizmoECS *gizmo, bool visible)
     }
 
     if (vis_comp)
-    {
         vis_comp->SetVisible(visible);
-        std::cout << "[GizmoECS] Set root visible=" << (visible ? 1 : 0) << std::endl;
-    }
 
     SyncGizmoAssetModeBindings(gizmo);
 }
@@ -496,7 +486,6 @@ bool IsGizmoSystemResourcesResident()
 }
 
 }//namespace hgl::graph
-
 
 
 

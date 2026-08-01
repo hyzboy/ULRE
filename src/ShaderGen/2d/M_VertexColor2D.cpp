@@ -1,7 +1,7 @@
 #include"Build2DCommon.h"
 #include<hgl/shadergen/ShaderProgramBuildSpec.h>
 #include<hgl/shadergen/MaterialCompiler.h>
-#include<cstdio>
+#include<hgl/log/Log.h>
 
 namespace hgl::graph::mtl{
 namespace
@@ -44,7 +44,7 @@ static ShaderProgramBuildSpec *CreateVertexColor2DImpl(const contract::PhysicalD
 
     ShaderProgramBuildSpec *mci = CompileCompositorMaterial(profile, def, vs, fs, build2d::ToCompositorBuildConfig2D(p));
     if(!mci)
-        std::fprintf(stderr, "[VertexColor2D] CompileCompositorMaterial failed\n");
+        GLogError("[VertexColor2D] CompileCompositorMaterial failed");
     return mci;
 }
 

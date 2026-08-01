@@ -9,6 +9,7 @@
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/render/RenderContext.h>
+#include<hgl/log/Log.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKVertexInput.h>
@@ -16,7 +17,6 @@
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
-#include<iostream>
 
 namespace hgl::ecs
 {
@@ -40,33 +40,20 @@ namespace hgl::ecs
 
     bool PipelineMaterialRenderer::BindVAB(const DrawBatch* batch)
     {
-        // Log GeometryDataBuffer details
-        //if (batch->geom_data_buffer)
-        //{
-        //    // Log each VAB
-        //    for (uint32_t i = 0; i < batch->geom_data_buffer->vab_count; i++)
-        //    {
-        //        std::cout << "[PipelineMaterialRenderer::BindVAB]   VAB[" << i << "]: buffer="
-        //                  << batch->geom_data_buffer->vab_list[i]
-        //                  << ", offset=" << batch->geom_data_buffer->vab_offset[i] << std::endl;
-        //    }
-        //}
-
         vab_list->Restart();
 
         // 添加几何数据的VAB
         if (!vab_list->Add(batch->geom_data_buffer))
         {
-            std::cout << "[PipelineMaterialRenderer::BindVAB] ERROR: Failed to add geometry data buffer to VABList!" << std::endl;
+            GLogError("[PipelineMaterialRenderer::BindVAB] Failed to add geometry data buffer to VABList");
             return false;
         }
 
         if (!vab_list->IsFull())
         {
-            std::cout << "[PipelineMaterialRenderer::BindVAB] WARNING: VABList not full ("
-                      << vab_list->GetWriteCount() << "/"
-                      << material->GetVertexInput()->GetCount()
-                      << "), padding with VK_NULL_HANDLE" << std::endl;
+            GLogWarning("[PipelineMaterialRenderer::BindVAB] VABList not full (%u/%u), padding with VK_NULL_HANDLE",
+                        vab_list->GetWriteCount(),
+                        material->GetVertexInput()->GetCount());
 
             while (!vab_list->IsFull())
             {
@@ -104,12 +91,6 @@ namespace hgl::ecs
     {
         (void)transform_buffer;
 
-        // if (batch->geom_data_buffer)
-        // {
-        //     std::cout << "[PipelineMaterialRenderer::Draw]   DataBuffer.vdm: " << (void*)batch->geom_data_buffer->vdm << std::endl;
-        //     std::cout << "[PipelineMaterialRenderer::Draw]   DataBuffer.ibo: " << batch->geom_data_buffer->ibo << std::endl;
-        // }
-
         // 检查是否需要切换几何数据缓冲
         const bool need_buffer_switch = !last_data_buffer ||
                                        *(batch->geom_data_buffer) != *last_data_buffer;
@@ -129,7 +110,7 @@ namespace hgl::ecs
             // 绑定新的顶点数组缓冲
             if (!BindVAB(batch))
             {
-                std::cout << "[PipelineMaterialRenderer::Draw] ERROR: BindVAB failed!" << std::endl;
+                GLogError("[PipelineMaterialRenderer::Draw] BindVAB failed");
                 return false;
             }
 
@@ -138,15 +119,7 @@ namespace hgl::ecs
             {
                 cmd_buf->BindIBO(batch->geom_data_buffer->ibo);
             }
-            // else
-            // {
-            //     std::cout << "[PipelineMaterialRenderer::Draw] No IBO to bind" << std::endl;
-            // }
         }
-        // else
-        // {
-        //     std::cout << "[PipelineMaterialRenderer::Draw] Using cached buffer (no switch)" << std::endl;
-        // }
 
         // 提交绘制命令
         if (batch->geom_data_buffer->vdm)
@@ -181,15 +154,12 @@ namespace hgl::ecs
         // 前置条件检查
         if (!rcb)
         {
-            std::cout << "[PipelineMaterialRenderer::Render] ERROR: No render command buffer!" << std::endl;
+            GLogError("[PipelineMaterialRenderer::Render] No render command buffer");
             return;
         }
 
         if (batch_count <= 0)
-        {
-            std::cout << "[PipelineMaterialRenderer::Render] WARNING: No batches to render!" << std::endl;
             return;
-        }
 
         cmd_buf = rcb;
 
