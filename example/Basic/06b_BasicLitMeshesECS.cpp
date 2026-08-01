@@ -2,7 +2,6 @@
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
-#include<hgl/graph/SSBOSlotAllocator.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/MaterialLibrary.h>

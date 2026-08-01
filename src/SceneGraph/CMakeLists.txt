@@ -133,12 +133,9 @@ SOURCE_GROUP("5.Geometry\\Core" FILES ${GEOMETRY_CORE_FILES})
 SET(GEOMETRY_MESH_FILES ${SG_INCLUDE_PATH}/mesh/GeometryDataBuffer.h
                         ${SG_INCLUDE_PATH}/mesh/GeometryDrawRange.h
                         ${SG_INCLUDE_PATH}/DescriptorBindingSet.h
-                        ${SG_INCLUDE_PATH}/SSBOSlotAllocator.h
-                        ${SG_INCLUDE_PATH}/SSBOAllocator.h
                         ${SG_INCLUDE_PATH}/mesh/Primitive.h
                         ${SG_INCLUDE_PATH}/mesh/StaticMesh.h
                         DescriptorBindingSet.cpp
-                        SSBOSlotAllocator.cpp
                         mesh/Primitive.cpp
                         mesh/StaticMesh.cpp)
 

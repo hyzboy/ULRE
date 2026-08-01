@@ -11,16 +11,16 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
-#include<hgl/graph/SSBOSlotAllocator.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/color/Color.h>
-#include<ctime>
-#include<chrono>
+#include<hgl/time/Time.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/mtl/MaterialLibrary.h>
+#include<hgl/log/Log.h>
+#include<ctime>
 #include<cmath>
 #include<cstring>
 
@@ -76,9 +76,8 @@ private:
     graph::mtl::MaterialRecipe clock_recipe{};
     PrimitiveAsset clock_asset{};
     graph::SSBOArrayAccessor<Color4f>* mi_ssbo_accessor = nullptr;
-    SSBOSlotAllocator slot_allocator;
-    uint32_t tick_slot = 0;
-    uint32_t hand_slots[3]{};
+    static constexpr uint32_t tick_slot   = 0;
+    static constexpr uint32_t hand_slots[3] = {1, 2, 3};
 
     // 刻度数据
     struct TickData
@@ -134,11 +133,11 @@ private:
 
         if (!geometry)
         {
-            std::cout << "[ClockApp::InitGeometry] ERROR: Failed to create geometry!" << std::endl;
+            GLogError(u8"[ClockApp::InitGeometry] Failed to create geometry!");
             return false;
         }
 
-        std::cout << "[ClockApp::InitGeometry] Created geometry: " << (void*)geometry << std::endl;
+        GLogInfo(u8"[ClockApp::InitGeometry] Created geometry");
 
         geometry_manager->Add(geometry);
 
@@ -156,17 +155,11 @@ private:
         if (!domain_manager)
             return false;
 
-        if (!slot_allocator.Init(4))
-            return false;
-
         mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
             graph::mtl::SSBOType::EmissiveSurface,
             "Clock:EmissiveSurface:MIData",
             4);
         if (!mi_ssbo_accessor)
-            return false;
-
-        if (!slot_allocator.Allocate(tick_slot))
             return false;
 
         (*mi_ssbo_accessor)[tick_slot] = Color4f(1.0f, 1.0f, 1.0f, 1.0f);
@@ -178,8 +171,6 @@ private:
         };
         for (uint i = 0; i < 3; ++i)
         {
-            if (!slot_allocator.Allocate(hand_slots[i]))
-                return false;
             (*mi_ssbo_accessor)[hand_slots[i]] = hand_colors[i];
         }
 
@@ -193,17 +184,17 @@ private:
         ecs_world = GetECSContext();
         if (!ecs_world)
         {
-            std::cout << "[ClockApp::InitECS] ERROR: Failed to get ECS context!" << std::endl;
+            GLogError(u8"[ClockApp::InitECS] Failed to get ECS context!");
             return false;
         }
 
-        std::cout << "[ClockApp::InitECS] Got ECS context: " << (void*)ecs_world << std::endl;
+        GLogInfo(u8"[ClockApp::InitECS] Got ECS context");
 
         // === 创建12个刻度（Static Transform） ===
         for (uint i = 0; i < TICK_COUNT; i++)
         {
             // 创建刻度实体
-            ticks[i].entity = ecs_world->CreateEntity<Entity>("ClockTick_" + std::to_string(i));
+            ticks[i].entity = ecs_world->CreateEntity<Entity>(AnsiString("ClockTick_") + AnsiString::numberOf((uint)i));
 
             // 添加TransformComponent - 静态变换
             auto transform = ticks[i].entity->AddComponent<TransformComponent>(Mobility::Static);
@@ -239,7 +230,7 @@ private:
             primitive_comp->RequestPipeline(InlinePipeline::Solid2D);
             primitive_comp->SetVisible(true);
 
-            std::cout << "[ClockApp::InitECS] Created static tick [" << i << "] at angle " << (30.0f * i) << " degrees" << std::endl;
+            GLogInfo(u8"[ClockApp::InitECS] Created static tick at angle %f degrees", 30.0f * i);
         }
 
         // === 创建3个指针（Movable Transform） ===
@@ -277,12 +268,12 @@ private:
             primitive_comp->RequestPipeline(InlinePipeline::Solid2D);
             primitive_comp->SetVisible(true);
 
-            std::cout << "[ClockApp::InitECS] Created movable hand [" << i << "] (" << hand_names[i] << ")" << std::endl;
+            GLogInfo(u8"[ClockApp::InitECS] Created movable hand [%u] (%s)", i, hand_names[i]);
         }
 
-        std::cout << "[ClockApp::InitECS] === ECS Setup Complete ===" << std::endl;
-        std::cout << "[ClockApp::InitECS] Created " << TICK_COUNT << " static ticks (offline baked)" << std::endl;
-        std::cout << "[ClockApp::InitECS] Created 3 movable hands (updated every frame)" << std::endl;
+        GLogInfo(u8"[ClockApp::InitECS] === ECS Setup Complete ===");
+        GLogInfo(u8"[ClockApp::InitECS] Created %u static ticks (offline baked)", (uint)TICK_COUNT);
+        GLogInfo(u8"[ClockApp::InitECS] Created 3 movable hands (updated every frame)");
 
         return true;
     }
@@ -292,33 +283,33 @@ public:
     {
         SetClearColor(Color4f(0.1f, 0.1f, 0.1f, 1.0f));
 
-        std::cout << "[ClockApp::Init] === Initializing Clock Application ===" << std::endl;
+        GLogInfo(u8"[ClockApp::Init] === Initializing Clock Application ===");
 
         if (!InitGeometry())
         {
-            std::cout << "[ClockApp::Init] ERROR: InitGeometry failed!" << std::endl;
+        GLogError(u8"[ClockApp::Init] InitGeometry failed!");
             return false;
         }
 
         if (!InitMISSBO())
         {
-            std::cout << "[ClockApp::Init] ERROR: InitMISSBO failed!" << std::endl;
+        GLogError(u8"[ClockApp::Init] InitMISSBO failed!");
             return false;
         }
 
         if (!InitMaterial())
         {
-            std::cout << "[ClockApp::Init] ERROR: InitMaterial failed!" << std::endl;
+        GLogError(u8"[ClockApp::Init] InitMaterial failed!");
             return false;
         }
 
         if (!InitECS())
         {
-            std::cout << "[ClockApp::Init] ERROR: InitECS failed!" << std::endl;
+        GLogError(u8"[ClockApp::Init] InitECS failed!");
             return false;
         }
 
-        std::cout << "[ClockApp::Init] === Initialization Complete ===" << std::endl;
+        GLogInfo(u8"[ClockApp::Init] === Initialization Complete ===");
 
         return true;
     }
@@ -326,17 +317,12 @@ public:
     void Tick(double delta_time) override
     {
         // === 获取当前时间 ===
-        auto now = std::chrono::system_clock::now();
-        auto time_t_now = std::chrono::system_clock::to_time_t(now);
-        struct tm* time_info = std::localtime(&time_t_now);
+        time_t now = time(nullptr);
+        struct tm* time_info = localtime(&now);
 
-        int hour = time_info->tm_hour % 12;
+        int hour   = time_info->tm_hour % 12;
         int minute = time_info->tm_min;
         int second = time_info->tm_sec;
-
-        // 获取毫秒部分用于秒针的平滑移动
-        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-            now.time_since_epoch()) % 1000;
 
         // === 更新指针的旋转角度 ===
 
@@ -350,8 +336,8 @@ public:
         glm::quat minute_rotation = glm::angleAxis(minute_angle, glm::vec3(0.0f, 0.0f, 1.0f));
         hands[Minute].transform->SetLocalRotation(minute_rotation);
 
-        // 秒针：60秒 = 360度，每秒6度 + 毫秒贡献用于平滑（取正值，反向于之前）
-        float second_angle = deg2rad((second * 6.0f) + (ms.count() * 0.006f));
+        // 秒针：60秒 = 360度，每秒6度（无毫秒平滑）
+        float second_angle = deg2rad(second * 6.0f);
         glm::quat second_rotation = glm::angleAxis(second_angle, glm::vec3(0.0f, 0.0f, 1.0f));
         hands[Second].transform->SetLocalRotation(second_rotation);
 
