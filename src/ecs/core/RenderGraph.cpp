@@ -109,20 +109,25 @@ namespace hgl
                 }
             }
 
-            // Standard frame setup (swapchain acquire, then wait the actually acquired frame resources)
+            // Standard frame setup: wait for all in-flight submissions to complete BEFORE
+            // acquiring the next image. A single present_complete_semaphore is shared across
+            // all frames; if any previous submit is still consuming it (pending signal/wait),
+            // calling vkAcquireNextImageKHR again with the same semaphore triggers validation
+            // error VUID-vkAcquireNextImageKHR-semaphore-01779.
+            // Correct order: WaitFence → Acquire → Render → Submit.
             if (auto *rt = GetRenderTarget())
             {
+                LogInfo("[ECS RENDER] Calling WaitFence before AcquireSwapchainImage");
+                if (!rt->WaitFence())
+                {
+                    LogWarning("[ECS RENDER] WaitFence FAILED");
+                    return;
+                }
+
                 LogInfo("[ECS RENDER] Calling AcquireSwapchainImage");
                 if (!AcquireSwapchainImage(0.0f))
                 {
                     LogWarning("[ECS RENDER] AcquireSwapchainImage FAILED");
-                    return;
-                }
-
-                LogInfo("[ECS RENDER] Calling WaitFence for acquired frame=%u", rt->GetCurrentFrameIndex());
-                if (!rt->WaitFence())
-                {
-                    LogWarning("[ECS RENDER] WaitFence FAILED for acquired frame=%u", rt->GetCurrentFrameIndex());
                     return;
                 }
             }
