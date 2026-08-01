@@ -41,8 +41,6 @@ namespace hgl::graph::mtl
         ViewportInfo = 0,
         CameraInfo,
         SkyInfo,
-        LocalToWorld,
-        MaterialInstance,
         MaterialColorPalette
     };
 
@@ -120,8 +118,6 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::ViewportInfo: out = UBODescriptorSemantic::ViewportInfo; return true;
         case DescriptorSemantic::CameraInfo: out = UBODescriptorSemantic::CameraInfo; return true;
         case DescriptorSemantic::SkyInfo: out = UBODescriptorSemantic::SkyInfo; return true;
-        case DescriptorSemantic::LocalToWorld: out = UBODescriptorSemantic::LocalToWorld; return true;
-        case DescriptorSemantic::MaterialInstance: out = UBODescriptorSemantic::MaterialInstance; return true;
         case DescriptorSemantic::MaterialColorPalette: out = UBODescriptorSemantic::MaterialColorPalette; return true;
         default: break;
         }
