@@ -144,10 +144,7 @@ SET(GEOMETRY_MESH_FILES ${SG_INCLUDE_PATH}/mesh/GeometryDataBuffer.h
 
 SOURCE_GROUP("6.Geometry\\Mesh" FILES ${GEOMETRY_MESH_FILES})
 
-SET(ASSET_REGISTRY_FILES    ${SG_INCLUDE_PATH}/asset/AssetWorldDef.h
-                            ${SG_INCLUDE_PATH}/asset/PrimitiveAsset.h
-                            ${SG_INCLUDE_PATH}/asset/AssetWorldRegistry.h
-                            asset/AssetWorldRegistry.cpp)
+SET(ASSET_REGISTRY_FILES    ${SG_INCLUDE_PATH}/asset/PrimitiveAsset.h)
 
 SOURCE_GROUP("6.Asset\\Registry" FILES ${ASSET_REGISTRY_FILES})
 
