@@ -220,7 +220,6 @@ SOURCE_GROUP("RenderPass" FILES ${VK_RENDER_PASS_FILES})
 SET(VK_RENDER_TARGET_FILES      ${VK_INCLUDE_PATH}/VKRenderTarget.h
                                 ${VK_INCLUDE_PATH}/VKRenderTargetData.h
                                 ${VK_INCLUDE_PATH}/VKRenderTargetSingle.h
-                                ${VK_INCLUDE_PATH}/VKRenderTargetMultiFrame.h
                                 ${VK_INCLUDE_PATH}/VKRenderTargetSwapchain.h
                                 ${VK_INCLUDE_PATH}/VKRenderbufferInfo.h
                                 VKRenderTarget.cpp
@@ -323,4 +322,3 @@ if(TARGET Vulkan::Vulkan)
 elseif(WIN32)
     target_link_libraries(ULRE.Vulkan PUBLIC vulkan-1)
 endif()
-

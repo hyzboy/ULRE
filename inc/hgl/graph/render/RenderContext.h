@@ -7,8 +7,6 @@
 #include <hgl/graph/core/GraphicsContext.h>
 namespace hgl::graph
 {
-    struct NewPipelineLayoutData;
-
     namespace mtl
     {
         class ShaderProgramBuildSpec;
@@ -49,9 +47,6 @@ namespace hgl::graph
         // 当前渲染状态
         RenderCmdBuffer* current_render_cmd_buf = nullptr;
         IRenderTarget* current_render_target = nullptr;
-
-        // 新 4-Set 管线布局 (与旧布局双轨共存)
-        NewPipelineLayoutData* new_pipeline_layout_data_ = nullptr;
 
     public:
         RenderContext() = default;
@@ -108,12 +103,6 @@ namespace hgl::graph
     public:
         void SetGraphicsContext(GraphicsContext* ctx) { graphics_context = ctx; }
         GraphicsContext* GetGraphicsContext() const { return graphics_context; }
-
-    public:
-        // ===== 新 4-Set 管线布局 (双轨共存) =====
-        void SetNewPipelineLayoutData(NewPipelineLayoutData* pld);
-        NewPipelineLayoutData* GetNewPipelineLayoutData() const;
-        VkPipelineLayout GetNewPipelineLayout() const;
 
     public:
 

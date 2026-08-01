@@ -52,10 +52,10 @@ private: // Helper methods with integrated DebugUtils
     class MaterialParameters *CreateMaterialMP(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager, const class PipelineLayoutData *pld, const DescriptorSetType &desc_set_type);
     void ApplyMaterialFinalizePlan(ShaderProgram *mtl, const AnsiString &mtl_name, const mtl::ShaderProgramBuildSpec &mci);
     ShaderProgram *TryGetCachedMaterial(const AnsiString &name);
-    bool ExecuteMaterialBuildPipeline(ShaderProgram *mtl,
-                                      const AnsiString &mtl_name,
-                                      const mtl::ShaderProgramBuildSpec *mci,
-                                      const ShaderCreateInfoMap &sci_map);
+    bool ExecuteRuntimeMaterialBuildPipeline(ShaderProgram *mtl,
+                                             const AnsiString &mtl_name,
+                                             const mtl::ShaderProgramBuildSpec *mci,
+                                             const ShaderCreateInfoMap &sci_map);
 
 public: //Add
 

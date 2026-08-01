@@ -41,10 +41,10 @@ namespace
         }
     }
 
-    bool BuildLegacyShaderModules(MaterialManager *manager,
-                                  const AnsiString &mtl_name,
-                                  const ShaderCreateInfoMap &sci_map,
-                                  ShaderModuleMap *shader_maps)
+    bool BuildShaderModulesFromCreateInfoMap(MaterialManager *manager,
+                                             const AnsiString &mtl_name,
+                                             const ShaderCreateInfoMap &sci_map,
+                                             ShaderModuleMap *shader_maps)
     {
         if (!manager || !shader_maps)
             return false;
@@ -69,18 +69,18 @@ namespace
         return true;
     }
 
-    std::vector<ShaderDescriptor> CollectLegacyDescriptors(const mtl::ShaderProgramBuildSpec *mci)
+    std::vector<ShaderDescriptor> CollectDescriptorsFromBuildSpec(const mtl::ShaderProgramBuildSpec *mci)
     {
-        std::vector<ShaderDescriptor> legacy_descriptors;
+        std::vector<ShaderDescriptor> descriptors;
         if (!mci)
-            return legacy_descriptors;
+            return descriptors;
 
         const auto &mdi = mci->GetDescriptorInfo();
         if (mdi.GetCount() == 0)
-            return legacy_descriptors;
+            return descriptors;
 
         const auto &sds_array = mdi.Get();
-        legacy_descriptors.reserve(mdi.GetCount());
+        descriptors.reserve(mdi.GetCount());
 
         for (size_t i = 0; i < DESCRIPTOR_SET_TYPE_COUNT; i++)
         {
@@ -90,11 +90,11 @@ namespace
             for (auto *sd : values)
             {
                 if (sd)
-                    legacy_descriptors.emplace_back(*sd);
+                    descriptors.emplace_back(*sd);
             }
         }
 
-        return legacy_descriptors;
+        return descriptors;
     }
 
 }//namespace
@@ -253,18 +253,18 @@ ShaderProgram *MaterialManager::TryGetCachedMaterial(const AnsiString &name)
     return nullptr;
 }
 
-bool MaterialManager::ExecuteMaterialBuildPipeline(ShaderProgram *mtl,
-                                                   const AnsiString &mtl_name,
-                                                   const mtl::ShaderProgramBuildSpec *mci,
-                                                   const ShaderCreateInfoMap &sci_map)
+bool MaterialManager::ExecuteRuntimeMaterialBuildPipeline(ShaderProgram *mtl,
+                                                          const AnsiString &mtl_name,
+                                                          const mtl::ShaderProgramBuildSpec *mci,
+                                                          const ShaderCreateInfoMap &sci_map)
 {
     if(!mtl || !mci)
         return false;
 
-    if(!BuildLegacyShaderModules(this,
-                                 mtl_name,
-                                 sci_map,
-                                 mtl->shader_maps))
+    if(!BuildShaderModulesFromCreateInfoMap(this,
+                                            mtl_name,
+                                            sci_map,
+                                            mtl->shader_maps))
     {
         return false;
     }
@@ -274,7 +274,7 @@ bool MaterialManager::ExecuteMaterialBuildPipeline(ShaderProgram *mtl,
     const ShaderCreateInfoVertex *vert = mci->GetVertexShader();
     mtl->vertex_input = vert ? GetVertexInput(vert->GetInput()) : nullptr;
 
-    std::vector<ShaderDescriptor> descriptors = CollectLegacyDescriptors(mci);
+    std::vector<ShaderDescriptor> descriptors = CollectDescriptorsFromBuildSpec(mci);
     if(!descriptors.empty())
         mtl->desc_manager = new MaterialDescriptorManager(mtl_name, descriptors.data(), static_cast<uint>(descriptors.size()));
     else
@@ -308,10 +308,10 @@ ShaderProgram *MaterialManager::AcquireMaterialProgram(const AnsiString &mtl_nam
     const ShaderCreateInfoMap &sci_map = *precheck_result.shader_map;
 
     AutoDelete<ShaderProgram> mtl=new ShaderProgram(mtl_name,mci);
-    if(!ExecuteMaterialBuildPipeline(mtl,
-                                     mtl_name,
-                                     mci,
-                                     sci_map))
+    if(!ExecuteRuntimeMaterialBuildPipeline(mtl,
+                                            mtl_name,
+                                            mci,
+                                            sci_map))
         return nullptr;
 
     Add(mtl);

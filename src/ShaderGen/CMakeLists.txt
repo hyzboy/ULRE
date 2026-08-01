@@ -136,11 +136,9 @@ SET(NEW_MTL_TYPE_FILES  ${NEW_MTL_INCLUDE_PATH}/SurfaceType.h
                         ${NEW_MTL_INCLUDE_PATH}/DeviceQualityProfile.h
                         ${NEW_MTL_INCLUDE_PATH}/NewDescriptorSetType.h
                         ${NEW_MTL_INCLUDE_PATH}/DescriptorSetBindings.h
-                        ${NEW_MTL_INCLUDE_PATH}/NewDescriptorSetLayoutFactory.h
                         ${NEW_MTL_INCLUDE_PATH}/NewDescriptorBinding.h
                         NewShaderPermutationKey.cpp
                         DeviceQualityProfile.cpp
-                        NewDescriptorSetLayoutFactory.cpp
                         NewDescriptorBinding.cpp
 )
 
