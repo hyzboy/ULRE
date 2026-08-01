@@ -42,55 +42,58 @@ class DescriptorSet
     OBJECT_LOGGER
 
     VkDevice device;
-    int vab_count;
+    int binding_capacity;
     VkDescriptorSet desc_set;
 
     VkPipelineLayout pipeline_layout;
 
-    ValueArray<VkDescriptorBufferInfo> vab_list;
-    ValueArray<VkDescriptorImageInfo> image_list;
-    ValueArray<VkWriteDescriptorSet> wds_list;
-    ValueArray<int> wds_buffer_info_indices;
-    ValueArray<int> wds_image_info_indices;
+    ValueArray<VkDescriptorBufferInfo> buffer_info_list;
+    ValueArray<VkDescriptorImageInfo> image_info_list;
+    ValueArray<VkWriteDescriptorSet> write_descriptor_sets;
+    ValueArray<int> write_buffer_info_indices;
+    ValueArray<int> write_image_info_indices;
 
-    OrderedSet<uint32_t> binded_sets;
+    OrderedSet<uint32_t> touched_bindings;
 
     bool is_dirty;
 
 private:
 
+    int FindWriteDescriptorIndex(const int binding,const VkDescriptorType desc_type) const;
     void SyncWriteDescriptorInfoPointers();
+    bool UpdateOrAppendBufferBinding(const int binding,const VkDescriptorType desc_type,const VkDescriptorBufferInfo &new_info);
+    bool UpdateOrAppendImageBinding(const int binding,const VkDescriptorType desc_type,const VkDescriptorImageInfo &new_info);
 
 public:
 
     DescriptorSet(VkDevice dev,const int bc,VkPipelineLayout pl,VkDescriptorSet ds)
     {
         device          =dev;
-        vab_count   =bc;
+        binding_capacity=bc;
         desc_set        =ds;
         pipeline_layout =pl;
 
-        vab_list.Reserve(vab_count);
-        image_list.Reserve(vab_count);
-        wds_list.Reserve(vab_count);
-        wds_buffer_info_indices.Reserve(vab_count);
-        wds_image_info_indices.Reserve(vab_count);
+        buffer_info_list.Reserve(binding_capacity);
+        image_info_list.Reserve(binding_capacity);
+        write_descriptor_sets.Reserve(binding_capacity);
+        write_buffer_info_indices.Reserve(binding_capacity);
+        write_image_info_indices.Reserve(binding_capacity);
 
         is_dirty=true;
     }
 
     ~DescriptorSet()=default;
 
-    const uint32_t          GetCount            ()const{return vab_count;}
+    const uint32_t          GetCount            ()const{return binding_capacity;}
     const VkDescriptorSet   GetDescriptorSet    ()const{return desc_set;}
     const VkPipelineLayout  GetPipelineLayout   ()const{return pipeline_layout;}
 
-    const bool              IsReady             ()const{return wds_list.GetCount()==vab_count;}
+    const bool              IsReady             ()const{return write_descriptor_sets.GetCount()==binding_capacity;}
 
     // Debug/Test accessors: used by descriptor lifetime regression tests
-    const ValueArray<VkDescriptorBufferInfo> &DebugGetBufferInfoList() const { return vab_list; }
-    const ValueArray<VkDescriptorImageInfo>  &DebugGetImageInfoList () const { return image_list; }
-    const ValueArray<VkWriteDescriptorSet>   &DebugGetWriteSetList  () const { return wds_list; }
+    const ValueArray<VkDescriptorBufferInfo> &DebugGetBufferInfoList() const { return buffer_info_list; }
+    const ValueArray<VkDescriptorImageInfo>  &DebugGetImageInfoList () const { return image_info_list; }
+    const ValueArray<VkWriteDescriptorSet>   &DebugGetWriteSetList  () const { return write_descriptor_sets; }
 
     void Clear();
 
