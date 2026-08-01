@@ -33,7 +33,6 @@ namespace hgl::graph
 
         struct GizmoResource
         {
-            ShaderProgram *          mtl;
             DeviceBuffer *      mi_ssbo;
             VertexDataManager * vdm;
             mtl::MaterialRecipe color_recipe[size_t(GizmoColor::RANGE_SIZE)]{};
@@ -75,9 +74,9 @@ namespace hgl::graph
 
         // Create the SSBO holding one Color4f per GizmoColor slot.
         // PureColor3D MI data is exactly one Color4f (16 bytes, std430 vec4).
-        bool InitColorSSBO(GizmoResource *gr)
+        bool InitColorSSBO(GizmoResource *gr, ShaderProgram *material)
         {
-            if (!gr || !gr->mtl)
+            if (!gr || !material)
                 return false;
 
             if (!graphics_context)
@@ -89,7 +88,7 @@ namespace hgl::graph
                 return false;
 
             bool has_struct_binding = false;
-            for (const auto &req : gr->mtl->GetMaterialResourceLayout().requirements)
+            for (const auto &req : material->GetMaterialResourceLayout().requirements)
             {
                 if (req.semantic == mtl::DescriptorSemantic::MaterialSSBOSlotData)
                 {
@@ -122,7 +121,7 @@ namespace hgl::graph
                 delete acc;
             }
 
-            for (const auto &req : gr->mtl->GetMaterialResourceLayout().requirements)
+            for (const auto &req : material->GetMaterialResourceLayout().requirements)
             {
                 if (req.semantic != mtl::DescriptorSemantic::MaterialSSBOSlotData)
                     continue;
@@ -171,21 +170,23 @@ namespace hgl::graph
             if(!gizmo_mtl_manager)
                 return(false);
 
+            ShaderProgram *gizmo_material = nullptr;
+
             {
                 mtl::MaterialRecipe recipe{};
                 recipe.mtl_def_id = "PureColor3D";
 
-                gizmo_triangle.mtl=gizmo_mtl_manager->AcquireMaterialProgram(recipe.mtl_def_id,recipe,PrimitiveType::Triangles);
-                if(!gizmo_triangle.mtl)
+                gizmo_material=gizmo_mtl_manager->AcquireMaterialProgram(recipe.mtl_def_id,recipe,PrimitiveType::Triangles);
+                if(!gizmo_material)
                     return(false);
 
-                gizmo_triangle.mtl->Update();
+                gizmo_material->Update();
             }
 
             {
                 const GeometryVertexFormat gizmo_gvf = CreateGizmoGeometryVertexFormat();
 
-                if(!InitColorSSBO(&gizmo_triangle))
+                if(!InitColorSSBO(&gizmo_triangle, gizmo_material))
                     return(false);
 
                 gizmo_triangle.vdm=new VertexDataManager(
@@ -283,12 +284,11 @@ namespace hgl::graph
         }
     }//namespace
 
-    bool InitGizmoResource(GraphicsContext *gc, RenderPass *rp)
+    bool InitGizmoResource(GraphicsContext *gc)
     {
         if(!gc)
             return(false);
 
-        (void)rp;
         graphics_context=gc;
 
         VulkanDevice *device=graphics_context->GetDevice();
@@ -309,8 +309,6 @@ namespace hgl::graph
         SAFE_CLEAR(gizmo_triangle.prim_creater);
         SAFE_CLEAR(gizmo_triangle.vdm);
         SAFE_CLEAR(gizmo_triangle.mi_ssbo);
-
-        gizmo_triangle.mtl = nullptr;
 
         graphics_context = nullptr;
     }

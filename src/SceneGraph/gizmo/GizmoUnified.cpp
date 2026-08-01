@@ -455,14 +455,11 @@ bool EnsureGizmoSystemResources(hgl::ecs::ECSContext *world)
         return false;
 
     auto *graphics = world->GetGraphicsContext();
-    auto *render_context = world->GetRenderContext();
-    auto *render_target = render_context ? render_context->GetCurrentRenderTarget() : nullptr;
-    auto *render_pass = render_target ? render_target->GetRenderPass() : nullptr;
 
-    if (!graphics || !render_pass)
+    if (!graphics)
         return false;
 
-    if (!InitGizmoResource(graphics, render_pass))
+    if (!InitGizmoResource(graphics))
         return false;
 
     g_gizmo_resident_state.resources_ready = true;
@@ -486,7 +483,6 @@ bool IsGizmoSystemResourcesResident()
 }
 
 }//namespace hgl::graph
-
 
 
 
