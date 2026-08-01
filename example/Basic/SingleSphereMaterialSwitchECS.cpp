@@ -208,7 +208,7 @@ private:
 
     bool ApplyMaterialMode(const bool far_mode)
     {
-        if (use_far_material == far_mode && sphere_primitive_component && sphere_primitive_component->HasMaterialRecipe())
+        if (use_far_material == far_mode && sphere_primitive_component && sphere_primitive_component->HasMaterialRecipeOverride())
             return true;
 
         use_far_material = far_mode;
@@ -319,9 +319,6 @@ private:
         sphere_primitive_component->RequestPipeline(InlinePipeline::Solid3D);
         sphere_primitive_component->SetVisible(true);
 
-        // ApplyMaterialMode must be called BEFORE SetPrimitiveAsset.
-        // If SetPrimitiveAsset is called first, HasMaterialRecipe() returns true via the
-        // asset's recipe, causing ApplyMaterialMode's early-return to skip texture/struct setup.
         if (!ApplyMaterialMode(false))
             return false;
 

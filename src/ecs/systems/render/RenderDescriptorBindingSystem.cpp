@@ -1029,9 +1029,10 @@ namespace hgl::ecs
                 uint32_t candidate_ssbo_id = 0;
                 bool has_candidate = false;
 
-                if (const auto *recipe = primitive_comp->GetMaterialRecipe())
+                graph::mtl::MaterialRecipe effective_recipe{};
+                if (primitive_comp->BuildResolvedAuthoringMaterialRecipe(effective_recipe, material))
                 {
-                    if (const auto *asset = graph::mtl::FindRecipeSSBOAssetBinding(*recipe, req.name, req.ssbo_type))
+                    if (const auto *asset = graph::mtl::FindRecipeSSBOAssetBinding(effective_recipe, req.name, req.ssbo_type))
                     {
                         candidate_ssbo_id = asset->ssbo_id;
                         has_candidate = true;
@@ -1574,4 +1575,3 @@ namespace hgl::ecs
         }
     }
 }
-

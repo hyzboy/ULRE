@@ -4,6 +4,7 @@
 #include<hgl/graph/mesh/GeometryDataBuffer.h>
 #include<hgl/graph/mesh/GeometryDrawRange.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
+#include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
@@ -72,6 +73,81 @@ namespace hgl::ecs
             resource.use_ssbo_element_index = false;
             resource.shared_across_instances = false;
             resource.authored = false;
+        }
+
+        void UpsertRecipeTextureBinding(hgl::graph::mtl::MaterialRecipe &recipe,
+                                        hgl::graph::mtl::TextureSlot slot,
+                                        const std::string &resource_id,
+                                        const bool required,
+                                        const uint32_t direct_value = 0,
+                                        const bool use_direct_value = false)
+        {
+            for (auto &binding : recipe.textures)
+            {
+                if (binding.slot != slot)
+                    continue;
+
+                binding.resource_id = resource_id;
+                binding.direct_value = direct_value;
+                binding.use_direct_value = use_direct_value;
+                binding.required = required;
+                return;
+            }
+
+            hgl::graph::mtl::RecipeTextureBinding binding{};
+            binding.slot = slot;
+            binding.resource_id = resource_id;
+            binding.direct_value = direct_value;
+            binding.use_direct_value = use_direct_value;
+            binding.required = required;
+            recipe.textures.emplace_back(std::move(binding));
+        }
+
+        void UpsertRecipeStructBinding(hgl::graph::mtl::MaterialRecipe &recipe,
+                                       const uint32_t ssbo_slot,
+                                       hgl::graph::mtl::SSBOType ssbo_type,
+                                       const uint32_t ssbo_id,
+                                       const uint32_t ssbo_element_index,
+                                       const bool use_ssbo_element_index,
+                                       const bool shared_across_instances)
+        {
+            for (auto &binding : recipe.structs)
+            {
+                if (binding.ssbo_slot != ssbo_slot || binding.ssbo_type != ssbo_type)
+                    continue;
+
+                binding.ssbo_type = ssbo_type;
+                binding.ssbo_id = ssbo_id;
+                binding.ssbo_element_index = ssbo_element_index;
+                binding.use_ssbo_element_index = use_ssbo_element_index;
+                binding.shared_across_instances = shared_across_instances;
+                return;
+            }
+
+            hgl::graph::mtl::RecipeStructBinding binding{};
+            binding.ssbo_slot = ssbo_slot;
+            binding.ssbo_type = ssbo_type;
+            binding.ssbo_id = ssbo_id;
+            binding.ssbo_element_index = ssbo_element_index;
+            binding.use_ssbo_element_index = use_ssbo_element_index;
+            binding.shared_across_instances = shared_across_instances;
+            recipe.structs.emplace_back(std::move(binding));
+        }
+
+        void NormalizeRecipeWithBaseMaterialInfo(hgl::graph::mtl::MaterialRecipe &recipe)
+        {
+            if (recipe.mtl_def_id.empty())
+                return;
+
+            hgl::graph::mtl::MaterialDefinition bmi{};
+            if (hgl::graph::mtl::TryGetMaterialDefinitionByID(recipe.mtl_def_id, bmi))
+                hgl::graph::mtl::ApplyBaseMaterialInfoDefaults(recipe, bmi, false);
+
+            if (recipe.ssbo_assets.empty())
+            {
+                for (const auto &binding : recipe.structs)
+                    hgl::graph::mtl::UpsertRecipeSSBOAssetBinding(recipe, "mtl", hgl::graph::mtl::SSBOBinding{binding.ssbo_type, binding.ssbo_id});
+            }
         }
     }
 
@@ -249,15 +325,25 @@ namespace hgl::ecs
     void PrimitiveComponent::SetMaterialRecipe(const hgl::graph::mtl::MaterialRecipe &recipe)
     {
         InvalidateResolvedRuntimePipeline();
-        materialRecipe = recipe;
-        hasMaterialRecipe = true;
+        materialRecipeOverride = recipe;
+        hasMaterialRecipeOverride = true;
     }
 
     const hgl::graph::mtl::MaterialRecipe *PrimitiveComponent::GetMaterialRecipe() const
     {
-        if (hasMaterialRecipe)
-            return &materialRecipe;
+        return GetMaterialRecipeOverride();
+    }
 
+    const hgl::graph::mtl::MaterialRecipe *PrimitiveComponent::GetMaterialRecipeOverride() const
+    {
+        if (hasMaterialRecipeOverride)
+            return &materialRecipeOverride;
+
+        return nullptr;
+    }
+
+    const hgl::graph::mtl::MaterialRecipe *PrimitiveComponent::GetAssetMaterialRecipe() const
+    {
         if (!primitiveAsset)
             return nullptr;
 
@@ -267,11 +353,103 @@ namespace hgl::ecs
         return primitiveAsset->GetMaterialRecipe();
     }
 
+    bool PrimitiveComponent::BuildResolvedAuthoringMaterialRecipe(hgl::graph::mtl::MaterialRecipe &out_recipe,
+                                                                  const hgl::graph::ShaderProgram *material_program) const
+    {
+        const auto *asset_recipe = GetAssetMaterialRecipe();
+        const auto *override_recipe = GetMaterialRecipeOverride();
+
+        if (asset_recipe)
+            out_recipe = *asset_recipe;
+        else
+        if (override_recipe)
+            out_recipe = *override_recipe;
+        else
+            return false;
+
+        if (asset_recipe && override_recipe)
+            out_recipe = *override_recipe;
+
+        for (size_t i = 0; i < static_cast<size_t>(hgl::graph::mtl::TextureSlot::RANGE_SIZE); ++i)
+        {
+            const auto slot = static_cast<hgl::graph::mtl::TextureSlot>(i);
+            const auto *resource = GetMaterialTextureResource(slot);
+            if (!resource)
+                continue;
+
+            if (resource->use_direct_value)
+            {
+                UpsertRecipeTextureBinding(out_recipe,
+                                           slot,
+                                           std::string(),
+                                           resource->required,
+                                           resource->direct_value,
+                                           true);
+                continue;
+            }
+
+            const std::string resource_id = resource->resource_id.empty()
+                                          ? BuildTextureResourceId(resource->texture)
+                                          : resource->resource_id;
+            if (resource_id.empty())
+                continue;
+
+            UpsertRecipeTextureBinding(out_recipe, slot, resource_id, resource->required);
+        }
+
+        for (size_t i = 0; i < materialSSBOResources.size(); ++i)
+        {
+            const auto *resource = GetMaterialSSBOResourceBySlot(static_cast<uint32_t>(i));
+            if (!resource)
+                continue;
+
+            UpsertRecipeStructBinding(out_recipe,
+                                      static_cast<uint32_t>(i),
+                                      resource->ssbo_type,
+                                      resource->ssbo_id,
+                                      resource->ssbo_element_index,
+                                      resource->use_ssbo_element_index,
+                                      resource->shared_across_instances);
+        }
+
+        if (material_program)
+        {
+            for (const auto &req : material_program->GetMaterialResourceLayout().requirements)
+            {
+                if (req.semantic != hgl::graph::mtl::DescriptorSemantic::MaterialSSBOSlotData || !req.name || !*req.name)
+                    continue;
+
+                const auto *named_resource = GetMaterialSSBOResource(std::string(req.name));
+                if (!named_resource)
+                    continue;
+
+                hgl::graph::mtl::UpsertRecipeSSBOAssetBinding(out_recipe,
+                                                              std::string(req.name),
+                                                              req.ssbo_type,
+                                                              named_resource->ssbo_id);
+
+                if (GetMaterialSSBOResourceBySlot(req.ssbo_slot))
+                    continue;
+
+                UpsertRecipeStructBinding(out_recipe,
+                                          req.ssbo_slot,
+                                          req.ssbo_type,
+                                          named_resource->ssbo_id,
+                                          named_resource->ssbo_element_index,
+                                          named_resource->use_ssbo_element_index,
+                                          named_resource->shared_across_instances);
+            }
+        }
+
+        NormalizeRecipeWithBaseMaterialInfo(out_recipe);
+        return true;
+    }
+
     void PrimitiveComponent::ClearMaterialRecipe()
     {
         InvalidateResolvedRuntimePipeline();
-        ResetMaterialRecipe(materialRecipe);
-        hasMaterialRecipe = false;
+        ResetMaterialRecipe(materialRecipeOverride);
+        hasMaterialRecipeOverride = false;
         ClearMaterialAuthoringResources();
     }
 
@@ -582,8 +760,8 @@ namespace hgl::ecs
         primitiveVariantIndex = 0;
         ClearRuntimeGeometryBinding();
         overridePipeline = nullptr;
-        ResetMaterialRecipe(materialRecipe);
-        hasMaterialRecipe = false;
+        ResetMaterialRecipe(materialRecipeOverride);
+        hasMaterialRecipeOverride = false;
         ClearMaterialAuthoringResources();
         resolvedRuntimePipeline = nullptr;
         resolvedRuntimeRenderPass = nullptr;

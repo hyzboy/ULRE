@@ -17,6 +17,7 @@
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/log/Log.h>
+#include<hgl/vk/VKRenderPass.h>
 #include<glm/glm.hpp>
 #include<cstring>
 
@@ -123,148 +124,14 @@ namespace hgl::ecs
             return false;
         }
 
-        void UpsertRecipeTextureBinding(graph::mtl::MaterialRecipe &recipe,
-                                        graph::mtl::TextureSlot slot,
-                                        const std::string &resource_id,
-                                        const bool required,
-                                        const uint32_t direct_value = 0,
-                                        const bool use_direct_value = false)
-        {
-            for (auto &binding : recipe.textures)
-            {
-                if (binding.slot != slot)
-                    continue;
-
-                binding.resource_id = resource_id;
-                binding.direct_value = direct_value;
-                binding.use_direct_value = use_direct_value;
-                binding.required = required;
-                return;
-            }
-
-            graph::mtl::RecipeTextureBinding binding{};
-            binding.slot = slot;
-            binding.resource_id = resource_id;
-            binding.direct_value = direct_value;
-            binding.use_direct_value = use_direct_value;
-            binding.required = required;
-            recipe.textures.emplace_back(std::move(binding));
-        }
-
-        void UpsertRecipeStructBinding(graph::mtl::MaterialRecipe &recipe,
-                                       const uint32_t ssbo_slot,
-                                       graph::mtl::SSBOType ssbo_type,
-                                       const uint32_t ssbo_id,
-                                       const uint32_t ssbo_element_index,
-                                       const bool use_ssbo_element_index,
-                                       const bool shared_across_instances)
-        {
-            for (auto &binding : recipe.structs)
-            {
-                if (binding.ssbo_slot != ssbo_slot || binding.ssbo_type != ssbo_type)
-                    continue;
-
-                binding.ssbo_type = ssbo_type;
-                binding.ssbo_id = ssbo_id;
-                binding.ssbo_element_index = ssbo_element_index;
-                binding.use_ssbo_element_index = use_ssbo_element_index;
-                binding.shared_across_instances = shared_across_instances;
-                return;
-            }
-
-            graph::mtl::RecipeStructBinding binding{};
-            binding.ssbo_slot = ssbo_slot;
-            binding.ssbo_type = ssbo_type;
-            binding.ssbo_id = ssbo_id;
-            binding.ssbo_element_index = ssbo_element_index;
-            binding.use_ssbo_element_index = use_ssbo_element_index;
-            binding.shared_across_instances = shared_across_instances;
-            recipe.structs.emplace_back(std::move(binding));
-        }
-
-        void NormalizeRecipeWithBaseMaterialInfo(graph::mtl::MaterialRecipe &recipe)
-        {
-            if (recipe.mtl_def_id.empty())
-                return;
-
-            graph::mtl::MaterialDefinition bmi{};
-            if (graph::mtl::TryGetMaterialDefinitionByID(recipe.mtl_def_id, bmi))
-                graph::mtl::ApplyBaseMaterialInfoDefaults(recipe, bmi, false);
-
-            // Auto-derive SSBO name mapping from struct slot declarations when authoring didn't provide assets.
-            if (recipe.ssbo_assets.empty())
-            {
-                for (const auto &binding : recipe.structs)
-                    graph::mtl::UpsertRecipeSSBOAssetBinding(recipe, "mtl", graph::mtl::SSBOBinding{binding.ssbo_type, binding.ssbo_id});
-            }
-        }
-
         bool BuildEffectiveMaterialRecipe(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+                                          const graph::ShaderProgram *material_program,
                                           graph::mtl::MaterialRecipe &out_recipe)
         {
             if (!primitive_comp)
                 return false;
 
-            const auto *base_recipe = primitive_comp->GetMaterialRecipe();
-            if (!base_recipe)
-                return false;
-
-            out_recipe = *base_recipe;
-
-            for (size_t i = 0; i < static_cast<size_t>(graph::mtl::TextureSlot::RANGE_SIZE); ++i)
-            {
-                const auto slot = static_cast<graph::mtl::TextureSlot>(i);
-                const auto *resource = primitive_comp->GetMaterialTextureResource(slot);
-                if (!resource)
-                    continue;
-
-                if (resource->use_direct_value)
-                {
-                    UpsertRecipeTextureBinding(out_recipe,
-                                               slot,
-                                               std::string(),
-                                               resource->required,
-                                               resource->direct_value,
-                                               true);
-                    // GLogInfo("[TexTrace] BuildEffectiveRecipe slot=%zu direct_value=%u", i, resource->direct_value);
-                    continue;
-                }
-
-                const std::string resource_id = resource->resource_id.empty()
-                                              ? BuildTextureResourceId(resource->texture)
-                                              : resource->resource_id;
-                if (resource_id.empty())
-                {
-                    GLogWarning("[TexTrace] BuildEffectiveRecipe slot=%zu texture=%p resource_id EMPTY (skip)", i, (void*)resource->texture);
-                    continue;
-                }
-
-                // GLogInfo("[TexTrace] BuildEffectiveRecipe slot=%zu resource_id=%s", i, resource_id.c_str());
-                UpsertRecipeTextureBinding(out_recipe, slot, resource_id, resource->required);
-            }
-
-            for (size_t i = 0; i < static_cast<size_t>(primitive_comp->GetMaterialSSBOSlotCount()); ++i)
-            {
-                const auto ssbo_slot = static_cast<uint32_t>(i);
-                const auto *resource = primitive_comp->GetMaterialSSBOResourceBySlot(ssbo_slot);
-                if (!resource)
-                    continue;
-
-                UpsertRecipeStructBinding(out_recipe,
-                                         ssbo_slot,
-                                         resource->ssbo_type,
-                                         resource->ssbo_id,
-                                         resource->ssbo_element_index,
-                                         resource->use_ssbo_element_index,
-                                         resource->shared_across_instances);
-            }
-
-            // GLogInfo("[TexTrace] BuildEffectiveRecipe result: recipe=%s tex_bindings=%zu struct_bindings=%zu",
-            //          out_recipe.recipe_name.c_str(), out_recipe.textures.size(), out_recipe.structs.size());
-
-            NormalizeRecipeWithBaseMaterialInfo(out_recipe);
-
-            return true;
+            return primitive_comp->BuildResolvedAuthoringMaterialRecipe(out_recipe, material_program);
         }
 
         bool PrepareRecipeAuthoringResources(ECSContext *world,
@@ -275,7 +142,7 @@ namespace hgl::ecs
                 return false;
 
             graph::mtl::MaterialRecipe effective_recipe{};
-            if (!BuildEffectiveMaterialRecipe(primitive_comp, effective_recipe))
+            if (!BuildEffectiveMaterialRecipe(primitive_comp, material_program, effective_recipe))
                 return false;
 
             auto rdbs = world->GetSystem<RenderDescriptorBindingSystem>();
@@ -407,30 +274,6 @@ namespace hgl::ecs
                     continue;
 
                 const auto *asset_binding = graph::mtl::FindRecipeSSBOAssetBinding(effective_recipe, req.name, req.ssbo_type);
-                const auto *named_ssbo_resource = primitive_comp->GetMaterialSSBOResource(std::string(req.name ? req.name : ""));
-
-                if (!asset_binding && named_ssbo_resource)
-                {
-                    graph::mtl::UpsertRecipeSSBOAssetBinding(effective_recipe,
-                                                             req.name ? std::string(req.name) : std::string(),
-                                                             req.ssbo_type,
-                                                             named_ssbo_resource->ssbo_id);
-
-                    asset_binding = graph::mtl::FindRecipeSSBOAssetBinding(effective_recipe, req.name, req.ssbo_type);
-                }
-
-                if (!primitive_comp->GetMaterialSSBOResourceBySlot(req.ssbo_slot) && named_ssbo_resource)
-                {
-                    primitive_comp->SetMaterialSSBOResource(req.ssbo_slot,
-                                                              req.ssbo_type,
-                                                              named_ssbo_resource->ssbo_id,
-                                                              nullptr,
-                                                              0,
-                                                              0,
-                                                              named_ssbo_resource->ssbo_element_index,
-                                                              named_ssbo_resource->use_ssbo_element_index,
-                                                              named_ssbo_resource->shared_across_instances);
-                }
 
                 if (!asset_binding)
                     continue;
@@ -488,7 +331,7 @@ namespace hgl::ecs
             return false;
 
         graph::mtl::MaterialRecipe effective_recipe{};
-        if (!BuildEffectiveMaterialRecipe(primitive_comp, effective_recipe))
+        if (!BuildEffectiveMaterialRecipe(primitive_comp, nullptr, effective_recipe))
         {
             GLogWarning("[RenderPrimitiveCollectSystem] BuildEffectiveMaterialRecipe failed for %s",
                         GetPrimitiveOwnerName(primitive_comp));
@@ -578,6 +421,60 @@ namespace hgl::ecs
         return true;
     }
 
+    bool RenderPrimitiveCollectSystem::ResolveRuntimePipelineForPrimitive(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+                                                                          const std::shared_ptr<MaterialComponent> &material_comp)
+    {
+        if (!world || !primitive_comp || !material_comp || !material_comp->program)
+            return false;
+
+        if (primitive_comp->GetOverridePipeline())
+            return true;
+
+        auto *render_context = world->GetRenderContext();
+        auto *render_target = render_context ? render_context->GetCurrentRenderTarget() : world->GetRenderTarget();
+        auto *render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        if (!render_pass)
+            return false;
+
+        if (primitive_comp->GetResolvedRuntimePipeline()
+         && primitive_comp->GetResolvedRuntimeRenderPass() != render_pass)
+        {
+            primitive_comp->ClearResolvedRuntimePipeline();
+        }
+
+        if (primitive_comp->GetResolvedRuntimePipeline())
+            return true;
+
+        if (!primitive_comp->HasPendingPipelinePreset())
+            return false;
+
+        const graph::VIL *vil = primitive_comp->GetRuntimeVIL();
+        if (!vil)
+            vil = material_comp->program->GetDefaultVIL();
+
+        if (!vil)
+        {
+            GLogWarning("[RenderPrimitiveCollectSystem] ResolveRuntimePipeline failed: missing effective VIL for %s material=%s",
+                        GetPrimitiveOwnerName(primitive_comp),
+                        material_comp->program ? material_comp->program->GetName().c_str() : "<null>");
+            return false;
+        }
+
+        graph::Pipeline *resolved_pipeline = render_pass->CreatePipeline(material_comp->program,
+                                                                         vil,
+                                                                         primitive_comp->GetPendingPipelinePreset());
+        if (!resolved_pipeline)
+        {
+            GLogWarning("[RenderPrimitiveCollectSystem] ResolveRuntimePipeline failed: CreatePipeline failed for %s material=%s",
+                        GetPrimitiveOwnerName(primitive_comp),
+                        material_comp->program ? material_comp->program->GetName().c_str() : "<null>");
+            return false;
+        }
+
+        primitive_comp->SetResolvedRuntimePipeline(resolved_pipeline, render_pass);
+        return true;
+    }
+
     bool RenderPrimitiveCollectSystem::MaterializeRecipeRowsForPrimitive(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
                                                                          const std::shared_ptr<MaterialComponent> &material_comp)
     {
@@ -596,7 +493,7 @@ namespace hgl::ecs
         }
 
         graph::mtl::MaterialRecipe effective_recipe{};
-        if (!BuildEffectiveMaterialRecipe(primitive_comp, effective_recipe))
+        if (!BuildEffectiveMaterialRecipe(primitive_comp, material_comp->program, effective_recipe))
         {
             GLogWarning("[RenderPrimitiveCollectSystem] Materialize failed: BuildEffectiveMaterialRecipe failed for %s",
                         GetPrimitiveOwnerName(primitive_comp));
@@ -751,7 +648,7 @@ namespace hgl::ecs
             if (!world->IsEntityRenderEnabled(entity))
                 continue;
 
-            if (!primitiveComp->HasMaterialRecipe())
+            if (!primitiveComp->HasAnyMaterialRecipeSource())
             {
                 GLogWarning("[RenderPrimitiveCollectSystem] Skip primitive without recipe: %s",
                             primitiveComp->GetOwner() ? primitiveComp->GetOwner()->GetName().c_str() : "<no-owner>");
@@ -799,6 +696,11 @@ namespace hgl::ecs
                             else if (!EnsureRuntimeGeometryFromAsset(world, primitiveComp, material_comp))
                             {
                                 GLogWarning("[RenderPrimitiveCollectSystem] EnsureRuntimeGeometryFromAsset failed for %s",
+                                            primitiveComp->GetOwner() ? primitiveComp->GetOwner()->GetName().c_str() : "<no-owner>");
+                            }
+                            else if (!ResolveRuntimePipelineForPrimitive(primitiveComp, material_comp))
+                            {
+                                GLogWarning("[RenderPrimitiveCollectSystem] ResolveRuntimePipelineForPrimitive failed for %s",
                                             primitiveComp->GetOwner() ? primitiveComp->GetOwner()->GetName().c_str() : "<no-owner>");
                             }
                         }

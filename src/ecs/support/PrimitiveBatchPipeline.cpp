@@ -774,53 +774,16 @@ namespace hgl::ecs
                 }
             }
 
-            // Output interface changed (different RenderPass): invalidate previous runtime-resolved pipeline.
-            if (prim_comp
-             && prim_comp->GetResolvedRuntimePipeline()
-             && current_render_pass
-             && prim_comp->GetResolvedRuntimeRenderPass() != current_render_pass)
-            {
-                prim_comp->ClearResolvedRuntimePipeline();
-                pipeline = item->GetPipeline();
-            }
-
-            // Late-resolve pipeline: if no pre-baked or previously resolved pipeline exists
-            // and the item's PrimitiveComponent has a pending preset, try to resolve now.
-            if (!pipeline
-             && prim_comp
-             && prim_comp->HasPendingPipelinePreset()
-             && material
-             && current_render_pass)
-            {
-                const graph::VIL* vil = nullptr;
-                vil = item->GetGeometryBindingVIL();
-                if (!vil)
-                    vil = material->GetDefaultVIL();
-
-                if(!vil)
-                {
-                    LogError("[PrimitiveBatchPipeline] Late-resolve pipeline failed: missing effective VIL for material %s",
-                             material->GetName().c_str());
-                    continue;
-                }
-
-                graph::Pipeline* resolved = current_render_pass->CreatePipeline(
-                    material, vil,
-                    prim_comp->GetPendingPipelinePreset());
-
-                if (resolved)
-                {
-                    prim_comp->SetResolvedRuntimePipeline(resolved, current_render_pass);
-                    pipeline = resolved;
-                }
-                else
-                {
-                    LogWarning("[PrimitiveBatchPipeline] Late-resolve pipeline failed for material %s", material->GetName().c_str());
-                }
-            }
-
             if (!material || !pipeline)
+            {
+                if (prim_comp && prim_comp->HasPendingPipelinePreset())
+                {
+                    LogWarning("[PrimitiveBatchPipeline] Skip primitive item: unresolved runtime pipeline. material=%s render_pass=%p",
+                               material ? material->GetName().c_str() : "<null>",
+                               current_render_pass);
+                }
                 continue;
+            }
 
             uint64_t program_signature = 0;
             uint64_t binding_signature = 0;

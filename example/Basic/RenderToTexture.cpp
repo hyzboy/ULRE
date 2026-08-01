@@ -123,10 +123,11 @@ private:
 
         if (sphere_primitive_comp)
         {
-            std::printf("[RenderToTextureDiag][%s] primitive visible=%d hasRecipe=%d primitiveAsset=%p\n",
+            std::printf("[RenderToTextureDiag][%s] primitive visible=%d hasRecipeSource=%d hasRecipeOverride=%d primitiveAsset=%p\n",
                         stage ? stage : "<null>",
                         sphere_primitive_comp->IsVisible() ? 1 : 0,
-                        sphere_primitive_comp->HasMaterialRecipe() ? 1 : 0,
+                        sphere_primitive_comp->HasAnyMaterialRecipeSource() ? 1 : 0,
+                        sphere_primitive_comp->HasMaterialRecipeOverride() ? 1 : 0,
                         (void *)sphere_primitive_comp->GetPrimitiveAsset());
         }
 

@@ -100,8 +100,8 @@ namespace hgl::ecs
         const hgl::graph::VertexInputLayout *runtime_vil = nullptr;
         bool runtime_vil_owned = false;
         hgl::graph::Pipeline* overridePipeline = nullptr;  // Optional pipeline override (not owned)
-        bool hasMaterialRecipe = false;
-        hgl::graph::mtl::MaterialRecipe materialRecipe;
+        bool hasMaterialRecipeOverride = false;
+        hgl::graph::mtl::MaterialRecipe materialRecipeOverride;
         std::array<MaterialTextureAuthoringResource, static_cast<size_t>(hgl::graph::mtl::TextureSlot::RANGE_SIZE)> materialTextureResources{};
         std::vector<MaterialSSBOAuthoringResource> materialSSBOResources;
         std::vector<MaterialSSBONamedAuthoringResource> materialSSBONamedResources{};
@@ -149,9 +149,9 @@ namespace hgl::ecs
         hgl::graph::Pipeline* GetOverridePipeline() const { return overridePipeline; }
         void ClearOverridePipeline() { overridePipeline = nullptr; }
 
-        // Late-resolve pipeline request:
+        // Runtime pipeline request:
         // Call this when creating a Primitive without a pre-baked pipeline.
-        // The render path will call RenderPass::CreatePipeline(material, vil, preset) on first batch.
+        // Collect/resolve stages will materialize the pipeline before batching.
         void RequestPipeline(const hgl::graph::InlinePipeline preset)
         {
             pendingPipelinePreset = preset;
@@ -177,11 +177,17 @@ namespace hgl::ecs
         void SetPositionSourceSpec(PositionSourceSpec spec) { positionSourceSpec = spec; }
         PositionSourceSpec GetPositionSourceSpec() const { return positionSourceSpec; }
 
-        // Authoring entry (Phase 2): recipe stores intent only.
+        // Authoring entry: asset recipe is the default source, component recipe is the override source.
         // Runtime resolve/materialize is handled by ECS in later phases.
         void SetMaterialRecipe(const hgl::graph::mtl::MaterialRecipe &recipe);
         const hgl::graph::mtl::MaterialRecipe *GetMaterialRecipe() const;
-        bool HasMaterialRecipe() const { return GetMaterialRecipe() != nullptr; }
+        const hgl::graph::mtl::MaterialRecipe *GetMaterialRecipeOverride() const;
+        const hgl::graph::mtl::MaterialRecipe *GetAssetMaterialRecipe() const;
+        bool BuildResolvedAuthoringMaterialRecipe(hgl::graph::mtl::MaterialRecipe &out_recipe,
+                                                  const hgl::graph::ShaderProgram *material_program = nullptr) const;
+        bool HasMaterialRecipe() const { return GetMaterialRecipeOverride() != nullptr; }
+        bool HasMaterialRecipeOverride() const { return GetMaterialRecipeOverride() != nullptr; }
+        bool HasAnyMaterialRecipeSource() const { return GetMaterialRecipeOverride() != nullptr || GetAssetMaterialRecipe() != nullptr; }
         void ClearMaterialRecipe();
         void SetMaterialTextureResource(hgl::graph::mtl::TextureSlot slot,
                                         hgl::graph::Texture *texture,
