@@ -40,6 +40,9 @@ struct CompositorMaterialBuildConfig
     // When non-null and non-empty, MaterialCompiler generates MaterialInstance
     // FixedDescriptorEntry items automatically and injects #define MTL_SSBO_SLOT_COUNT N.
     const std::vector<MaterialSSBOSlotDecl> *ssbo_slot_decls = nullptr;
+    // Optional: capability declaration source for development-time subset validation.
+    // When non-null, CompileCompositorMaterial checks Layout requirements ⊆ Definition capabilities.
+    const MaterialDefinition *material_definition = nullptr;
 };
 
 class ShaderProgramBuildSpec;
@@ -92,6 +95,7 @@ inline CompositorMaterialBuildConfig ToCompositorBuildConfig3D(
     bc.private_shader_buffer_sources     = request.private_shader_buffer_sources;
     bc.private_shader_buffer_source_count = request.private_shader_buffer_source_count;
     bc.ssbo_slot_decls                   = definition.ssbo_slot_decls.empty() ? nullptr : &definition.ssbo_slot_decls;
+    bc.material_definition               = &definition;
     return bc;
 }
 

@@ -42,6 +42,91 @@ static bool HasDescriptorSemantic(const FixedMaterialDef &def, const DescriptorS
     return false;
 }
 
+static bool IsTextureSlotDeclared(const MaterialDefinition &definition, const TextureSlot slot) noexcept
+{
+    for (const auto &decl : definition.texture_slot_decls)
+    {
+        if (decl.slot == slot)
+            return true;
+    }
+
+    return false;
+}
+
+static bool ValidateDefinitionCapabilitySubset(
+    const MaterialDefinition &definition,
+    const MaterialResourceLayout &layout,
+    std::vector<std::string> &diagnostics)
+{
+    diagnostics.clear();
+
+    for (const auto &req : layout.requirements)
+    {
+        bool allowed = false;
+
+        switch (req.semantic)
+        {
+        case DescriptorSemantic::ViewportInfo:
+            allowed = HasUBORequirement(definition, UBODescriptorSemantic::ViewportInfo);
+            break;
+        case DescriptorSemantic::CameraInfo:
+            allowed = HasUBORequirement(definition, UBODescriptorSemantic::CameraInfo);
+            break;
+        case DescriptorSemantic::SkyInfo:
+            allowed = HasUBORequirement(definition, UBODescriptorSemantic::SkyInfo);
+            break;
+        case DescriptorSemantic::MaterialColorPalette:
+            allowed = HasUBORequirement(definition, UBODescriptorSemantic::MaterialColorPalette);
+            break;
+
+        case DescriptorSemantic::LocalToWorld:
+        case DescriptorSemantic::LocalToWorldIndexTable:
+            allowed = definition.with_local_to_world;
+            break;
+
+        case DescriptorSemantic::MaterialSSBOSlotData:
+            allowed = req.ssbo_slot < definition.ssbo_slot_decls.size();
+            if (allowed)
+                allowed = definition.ssbo_slot_decls[req.ssbo_slot].ssbo_type == req.ssbo_type;
+            break;
+
+        case DescriptorSemantic::MaterialTextureLayerTable:
+        case DescriptorSemantic::MaterialSSBOIndexTable:
+            allowed = !definition.ssbo_slot_decls.empty();
+            break;
+
+        case DescriptorSemantic::MaterialTexture:
+        case DescriptorSemantic::MaterialSampler:
+            allowed = IsTextureSlotDeclared(definition, req.texture_slot);
+            break;
+
+        // Sky cubemap sampler is injected by sky-light model and is considered
+        // allowed when material declares SkyInfo capability.
+        case DescriptorSemantic::SkyCubemapSampler:
+            allowed = HasUBORequirement(definition, UBODescriptorSemantic::SkyInfo);
+            break;
+
+        case DescriptorSemantic::Unknown:
+        case DescriptorSemantic::Custom:
+            allowed = false;
+            break;
+        }
+
+        if (allowed)
+            continue;
+
+        std::string message = "Definition capability subset violation: semantic=";
+        message += GetDescriptorSemanticName(req.semantic);
+        message += ", name=";
+        message += (req.name && *req.name) ? req.name : "<unnamed>";
+        message += ", def=";
+        message += definition.definition_name.empty() ? "<unnamed>" : definition.definition_name;
+        diagnostics.push_back(std::move(message));
+    }
+
+    return diagnostics.empty();
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // CompileCompositorMaterial — Compositor 模板完整 GLSL → ShaderProgramBuildSpec
 //
@@ -353,6 +438,22 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
         return FailAfterMci("MaterialResourceLayout validation failed");
     }
 
+    if (config.material_definition)
+    {
+        std::vector<std::string> capability_diagnostics;
+        if (!ValidateDefinitionCapabilitySubset(*config.material_definition, material_resource_layout, capability_diagnostics))
+        {
+            for (const auto &diag : capability_diagnostics)
+            {
+                std::fprintf(stderr,
+                    "[CompileCompositorMaterial][DefinitionCapability] material=%s: %s\n",
+                    def.name ? def.name : "<unnamed>",
+                    diag.c_str());
+            }
+            return FailAfterMci("Definition capability subset validation failed");
+        }
+    }
+
     mci->SetMaterialResourceLayout(material_resource_layout);
 
     // ─────────────────────────────────────────────────────────────
@@ -368,4 +469,3 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
 }
 
 }  // namespace hgl::graph::mtl
-
