@@ -17,7 +17,7 @@ namespace
         bmi.ubo_requirements = {UBODescriptorSemantic::ViewportInfo};
         bmi.usage_tag   = MaterialDefinitionUsageTag::Fallback;
         bmi.ssbo_slot_decls = {{"mtl", SSBOType::EmissiveSurface}};
-        bmi.vertex_node_config = MakeNodeConfigFrom2D(CoordinateSystem2D::NDC, true);
+        bmi.vertex_node_config = Make2DNodeConfigNDC(true);
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::PureColor2D, bmi);
 
         // Register builtin alias so fallback code can look up by canonical id.
@@ -55,7 +55,7 @@ static ShaderProgramBuildSpec *CreatePureColor2DImpl(const contract::PhysicalDev
     VertexVaryingConfig varying_cfg;
     varying_cfg.emit_data_index_id = true;
     std::string vs = GenerateVertexShader(
-        MakeNodeConfigFrom2D(p.coordinate_system, p.local_to_world),
+        p.vertex_node_config,
         varying_cfg,
         position_format,
         "",

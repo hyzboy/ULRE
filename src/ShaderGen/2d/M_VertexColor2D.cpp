@@ -14,7 +14,7 @@ namespace
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::VertexColor2D);
         bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
         bmi.ubo_requirements = {UBODescriptorSemantic::ViewportInfo};
-        bmi.vertex_node_config = MakeNodeConfigFrom2D(CoordinateSystem2D::NDC, true);
+        bmi.vertex_node_config = Make2DNodeConfigNDC(true);
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::VertexColor2D, bmi);
         return true;
     }();
@@ -44,7 +44,7 @@ static ShaderProgramBuildSpec *CreateVertexColor2DImpl(const contract::PhysicalD
     varying_cfg.emit_vertex_color = true;
     const std::string extra_attrs = "layout(location=1) in vec4 Color;\n";
     std::string vs = GenerateVertexShader(
-        MakeNodeConfigFrom2D(p.coordinate_system, p.local_to_world),
+        p.vertex_node_config,
         varying_cfg,
         position_format,
         extra_attrs,

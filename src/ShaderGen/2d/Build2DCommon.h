@@ -21,8 +21,7 @@ namespace hgl::graph::mtl{
 struct Material2DBuildParams
 {
     PrimitiveType           prim                = PrimitiveType::Triangles;
-    CoordinateSystem2D      coordinate_system   = CoordinateSystem2D::NDC;
-    bool                    local_to_world      = true;
+    VertexShaderNodeConfig   vertex_node_config  = MakeDefault3DNodeConfig();
     uint32_t                shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
     const GeometryVertexFormat *geometry_vertex_format = nullptr;
     const ShaderBufferSource *const *private_shader_buffer_sources = nullptr;
@@ -36,8 +35,9 @@ struct Material2DBuildParams
     {
         Material2DBuildParams p;
         p.prim              = request.primitive_type;
-        p.coordinate_system = request.recipe.coordinate_system_2d;
-        p.local_to_world    = request.recipe.local_to_world_2d;
+        p.vertex_node_config = request.recipe.vertex_node_config;
+        if (IsDefault3DNodeConfig(p.vertex_node_config) && !IsDefault3DNodeConfig(definition.vertex_node_config))
+            p.vertex_node_config = definition.vertex_node_config;
         if(request.override_shader_stage_bits)
             p.shader_stage_flag_bit = request.shader_stage_flag_bit;
         p.geometry_vertex_format            = request.geometry_vertex_format;
@@ -63,13 +63,16 @@ inline std::string Build2DFragmentPreamble(
     const bool has_ssbo = p.material_definition && !p.material_definition->ssbo_slot_decls.empty();
     const int tex_binding = has_ssbo ? 3 : 0;
 
-    if(p.coordinate_system == CoordinateSystem2D::Ortho)
+    if(p.vertex_node_config.projection == ProjectionMode::OrthoViewport
+    || p.vertex_node_config.projection == ProjectionMode::OrthoThenLocalToWorld)
     {
         defs += "#define SCENE_SET 0\n";
         defs += "#define VIEWPORT_BINDING 2\n";
     }
 
-    if(p.local_to_world)
+    if(p.vertex_node_config.projection == ProjectionMode::LocalToWorldOnly
+    || p.vertex_node_config.projection == ProjectionMode::OrthoThenLocalToWorld
+    || p.vertex_node_config.projection == ProjectionMode::WorldCameraVP)
     {
         defs += "#define L2W_SET 1\n";
         defs += "#define L2W_BINDING 0\n";
@@ -149,11 +152,14 @@ inline void PushSemanticVertexEntry(std::vector<FixedVertexEntry> &v,
 inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, const Material2DBuildParams &p)
 {
     // Viewport (Scene set) — only for Ortho
-    if(p.coordinate_system == CoordinateSystem2D::Ortho)
+    if(p.vertex_node_config.projection == ProjectionMode::OrthoViewport
+    || p.vertex_node_config.projection == ProjectionMode::OrthoThenLocalToWorld)
         descriptor_builder_common::PushViewport(v, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
 
     // L2W (Transform set) — only if L2W
-    if(p.local_to_world)
+    if(p.vertex_node_config.projection == ProjectionMode::LocalToWorldOnly
+    || p.vertex_node_config.projection == ProjectionMode::OrthoThenLocalToWorld
+    || p.vertex_node_config.projection == ProjectionMode::WorldCameraVP)
     {
         descriptor_builder_common::PushLocalToWorld(v, L2W_KIND_2D, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
         descriptor_builder_common::PushLocalToWorldIndexRows(v, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));

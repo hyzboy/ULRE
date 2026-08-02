@@ -140,8 +140,7 @@ private:
         triangle_recipe.recipe_name = "DrawTriangle.VertexColor2D";
         triangle_recipe.mtl_def_id = "VertexColor2D";
         triangle_recipe.domain = "DrawTriangle";
-        triangle_recipe.coordinate_system_2d = graph::CoordinateSystem2D::Ortho;
-        triangle_recipe.local_to_world_2d = false;
+        triangle_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigOrtho(false);
         triangle_recipe.pipeline_preset = PipelinePreset::Solid2D;
         triangle_asset = PrimitiveAsset(geom_triangle, &triangle_recipe, PrimitiveType::Triangles);
         ecs_primitive->SetPrimitiveAsset(&triangle_asset);

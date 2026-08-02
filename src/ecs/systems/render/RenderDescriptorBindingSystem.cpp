@@ -40,8 +40,7 @@ namespace hgl::ecs
             recipe.recipe_name.clear();
             recipe.mtl_def_id.clear();
             recipe.domain.clear();
-            recipe.coordinate_system_2d = graph::CoordinateSystem2D::NDC;
-            recipe.local_to_world_2d = true;
+            recipe.vertex_node_config = graph::mtl::MakeDefault3DNodeConfig();
             recipe.material_lod = 0;
             recipe.material_quality_tier = 0;
             recipe.double_sided = false;

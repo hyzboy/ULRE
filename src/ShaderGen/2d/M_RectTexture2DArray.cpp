@@ -16,7 +16,7 @@ namespace
         bmi.ubo_requirements = {UBODescriptorSemantic::ViewportInfo};
         bmi.texture_slot_decls = {{TextureSlot::BaseColor, GLSLSamplerType::Sampler2DArray, true}};
         bmi.ssbo_slot_decls = {{"mtl", SSBOType::EmissiveSurface}};
-        bmi.vertex_node_config = MakeNodeConfigFrom2D(CoordinateSystem2D::NDC, true);
+        bmi.vertex_node_config = Make2DNodeConfigNDC(true);
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::RectTexture2DArray, bmi);
         return true;
     }();
@@ -56,7 +56,7 @@ static ShaderProgramBuildSpec *CreateRectTexture2DArrayImpl(const contract::Phys
     varying_cfg.emit_uv0 = true;
     const std::string extra_attrs = "layout(location=1) in vec2 TexCoord;\n";
     std::string vs = GenerateVertexShader(
-        MakeNodeConfigFrom2D(p.coordinate_system, p.local_to_world),
+        p.vertex_node_config,
         varying_cfg,
         position_format,
         extra_attrs,

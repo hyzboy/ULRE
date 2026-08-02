@@ -89,6 +89,7 @@ private:
         triangle_recipe.recipe_name = "AutoMergeMaterialInstance.PureColor2D";
         triangle_recipe.mtl_def_id = "PureColor2D";
         triangle_recipe.domain = "AutoMergeMaterialInstance";
+        triangle_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
         graph::mtl::UpsertRecipeSSBOAssetBinding(triangle_recipe,
                                                  graph::mtl::SBS_MaterialInstance.name,
                                                  mi_ssbo_accessor->GetSSBOBinding());

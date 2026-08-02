@@ -18,7 +18,7 @@ namespace
         bmi.ubo_requirements = {UBODescriptorSemantic::ViewportInfo};
         bmi.texture_slot_decls = {{TextureSlot::BaseColor, GLSLSamplerType::Sampler2D, true, SamplerName::Text}};
         bmi.ssbo_slot_decls = {{"mtl", SSBOType::TransmissionSurface}};
-        bmi.vertex_node_config = MakeNodeConfigFrom2D(CoordinateSystem2D::Ortho, false);
+        bmi.vertex_node_config = Make2DNodeConfigOrtho(false);
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::Text2D, bmi);
 
         MaterialDefinition alias = bmi;
@@ -39,8 +39,6 @@ static ShaderProgramBuildSpec *CreateText2DImpl(const contract::PhysicalDevicePr
 
     p.prim = PrimitiveType::Triangles;
     p.shader_stage_flag_bit &= ~(uint32_t)ShaderStage::Geometry;
-    p.coordinate_system = CoordinateSystem2D::Ortho;
-    p.local_to_world = false;
 
     const VkFormat position_format = ResolveMaterialPositionFormat(p.geometry_vertex_format, VK_FORMAT_R32G32_SINT);
     auto preamble = build2d::Build2DFragmentPreamble(p, true);
@@ -65,7 +63,7 @@ static ShaderProgramBuildSpec *CreateText2DImpl(const contract::PhysicalDevicePr
     varying_cfg.emit_uv0 = true;
     const std::string extra_attrs = "layout(location=1) in vec2 TexCoord;\n";
     std::string vs = GenerateVertexShader(
-        MakeNodeConfigFrom2D(p.coordinate_system, p.local_to_world),
+        p.vertex_node_config,
         varying_cfg,
         position_format,
         extra_attrs,

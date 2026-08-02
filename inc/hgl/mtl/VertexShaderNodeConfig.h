@@ -1,8 +1,6 @@
 #pragma once
 
 #include <hgl/type/EnumUtil.h>
-#include <hgl/common/CoordinateSystem.h>
-
 namespace hgl::graph::mtl
 {
     // Stage 1 — 顶点位置输入格式
@@ -25,7 +23,7 @@ namespace hgl::graph::mtl
         LiftXY_X0Y,         // vec4(Position.x, 0.0, Position.y, 1.0)  — 贴地，Y向上
         LiftXY_0XY,         // vec4(0.0, Position, 1.0)
         NDCLift,            // 输入已是 NDC XY，直接升维（同 LiftXY_XY0 语义）
-        ZeroOneToNDC,       // [0,1] → [-1,1]，再升维（CoordinateSystem2D::ZeroToOne）
+        ZeroOneToNDC,       // [0,1] → [-1,1]，再升维
         PixelToLocal,       // 像素坐标输入，直接传递（Ortho 投影前的本地坐标）
         TerrainGrid,        // 程序化地形，依赖 gl_VertexID
 
@@ -85,46 +83,48 @@ namespace hgl::graph::mtl
         };
     }
 
-    // 从旧 CoordinateSystem2D + local_to_world 标志推导节点配置（过渡辅助，Phase 7 删除）
-    inline VertexShaderNodeConfig MakeNodeConfigFrom2D(CoordinateSystem2D cs, bool local_to_world) noexcept
+    inline bool IsDefault3DNodeConfig(const VertexShaderNodeConfig &cfg) noexcept
+    {
+        return cfg.input == VertexInputMode::Vec3Position
+            && cfg.position_mapping == PositionMappingMode::Passthrough3D
+            && cfg.orientation == OrientationMode::World
+            && cfg.scale == ScaleMode::World
+            && cfg.projection == ProjectionMode::WorldCameraVP;
+    }
+
+    inline VertexShaderNodeConfig Make2DNodeConfigNDC(bool local_to_world) noexcept
     {
         VertexShaderNodeConfig cfg;
         cfg.input = VertexInputMode::Vec2Position;
+        cfg.position_mapping = PositionMappingMode::NDCLift;
+        cfg.orientation      = OrientationMode::World;
+        cfg.scale            = ScaleMode::World;
+        cfg.projection       = local_to_world ? ProjectionMode::LocalToWorldOnly
+                                              : ProjectionMode::ClipPassthrough;
+        return cfg;
+    }
 
-        switch (cs)
-        {
-        case CoordinateSystem2D::NDC:
-            cfg.position_mapping = PositionMappingMode::NDCLift;
-            cfg.orientation      = OrientationMode::World;
-            cfg.scale            = ScaleMode::World;
-            cfg.projection       = local_to_world ? ProjectionMode::LocalToWorldOnly
-                                                  : ProjectionMode::ClipPassthrough;
-            break;
+    inline VertexShaderNodeConfig Make2DNodeConfigZeroToOne(bool local_to_world) noexcept
+    {
+        VertexShaderNodeConfig cfg;
+        cfg.input = VertexInputMode::Vec2Position;
+        cfg.position_mapping = PositionMappingMode::ZeroOneToNDC;
+        cfg.orientation      = OrientationMode::World;
+        cfg.scale            = ScaleMode::World;
+        cfg.projection       = local_to_world ? ProjectionMode::LocalToWorldOnly
+                                              : ProjectionMode::ClipPassthrough;
+        return cfg;
+    }
 
-        case CoordinateSystem2D::ZeroToOne:
-            cfg.position_mapping = PositionMappingMode::ZeroOneToNDC;
-            cfg.orientation      = OrientationMode::World;
-            cfg.scale            = ScaleMode::World;
-            cfg.projection       = local_to_world ? ProjectionMode::LocalToWorldOnly
-                                                  : ProjectionMode::ClipPassthrough;
-            break;
-
-        case CoordinateSystem2D::Ortho:
-            cfg.position_mapping = PositionMappingMode::PixelToLocal;
-            cfg.orientation      = OrientationMode::World;
-            cfg.scale            = ScaleMode::World;
-            cfg.projection       = local_to_world ? ProjectionMode::OrthoThenLocalToWorld
-                                                  : ProjectionMode::OrthoViewport;
-            break;
-
-        default:
-            cfg.position_mapping = PositionMappingMode::NDCLift;
-            cfg.orientation      = OrientationMode::World;
-            cfg.scale            = ScaleMode::World;
-            cfg.projection       = ProjectionMode::ClipPassthrough;
-            break;
-        }
-
+    inline VertexShaderNodeConfig Make2DNodeConfigOrtho(bool local_to_world) noexcept
+    {
+        VertexShaderNodeConfig cfg;
+        cfg.input = VertexInputMode::Vec2Position;
+        cfg.position_mapping = PositionMappingMode::PixelToLocal;
+        cfg.orientation      = OrientationMode::World;
+        cfg.scale            = ScaleMode::World;
+        cfg.projection       = local_to_world ? ProjectionMode::OrthoThenLocalToWorld
+                                              : ProjectionMode::OrthoViewport;
         return cfg;
     }
 

@@ -108,6 +108,7 @@ private:
         clock_recipe.recipe_name = "Clock.PureColor2D";
         clock_recipe.mtl_def_id = "PureColor2D";
         clock_recipe.domain = "Clock";
+        clock_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
         graph::mtl::UpsertRecipeSSBOAssetBinding(clock_recipe,
                                                  graph::mtl::SBS_MaterialInstance.name,
                                                  mi_ssbo_accessor->GetSSBOBinding());

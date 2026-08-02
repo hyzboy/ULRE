@@ -1,7 +1,5 @@
 #pragma once
 
-#include <hgl/type/EnumUtil.h>
-#include <hgl/common/CoordinateSystem.h>
 #include <hgl/mtl/VertexShaderNodeConfig.h>
 #include <hgl/graph/PipelinePreset.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
@@ -156,8 +154,7 @@ namespace hgl::graph::mtl
         std::string recipe_name;               // 配方名称（人类可读）
         std::string mtl_def_id;                // MaterialDefinition字符串主键（材质标识 / 未来文件名）
         std::string domain;                    // 资源/缓存域（用于隔离不同管线空间）
-        CoordinateSystem2D coordinate_system_2d = CoordinateSystem2D::NDC; // 2D 材质坐标系作者意图
-        bool local_to_world_2d = true;        // 2D 材质是否需要 L2W 变换
+        VertexShaderNodeConfig vertex_node_config = MakeDefault3DNodeConfig();
         uint16_t material_lod = 0;            // 作者层选择的材质 LOD
         uint16_t material_quality_tier = 0;   // 作者层质量层级（0 为默认）
 
@@ -313,8 +310,7 @@ namespace hgl::graph::mtl
             hash = hgl::hash::FNV1aAppendBytes(hash, recipe.mtl_def_id.data(), recipe.mtl_def_id.size());
         if (!recipe.domain.empty())
             hash = hgl::hash::FNV1aAppendBytes(hash, recipe.domain.data(), recipe.domain.size());
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.coordinate_system_2d);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.local_to_world_2d);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.vertex_node_config);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.material_lod);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.material_quality_tier);
 

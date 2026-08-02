@@ -15,7 +15,7 @@ namespace
         bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
         bmi.ubo_requirements = {UBODescriptorSemantic::ViewportInfo};
         bmi.texture_slot_decls = {{TextureSlot::BaseColor, GLSLSamplerType::Sampler2D, true}};
-        bmi.vertex_node_config = MakeNodeConfigFrom2D(CoordinateSystem2D::NDC, true);
+        bmi.vertex_node_config = Make2DNodeConfigNDC(true);
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::PureTexture2D, bmi);
         return true;
     }();
@@ -45,7 +45,7 @@ static ShaderProgramBuildSpec *CreatePureTexture2DImpl(const contract::PhysicalD
     varying_cfg.emit_uv0 = true;
     const std::string extra_attrs = "layout(location=1) in vec2 TexCoord;\n";
     std::string vs = GenerateVertexShader(
-        MakeNodeConfigFrom2D(p.coordinate_system, p.local_to_world),
+        p.vertex_node_config,
         varying_cfg,
         position_format,
         extra_attrs,

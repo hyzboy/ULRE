@@ -143,8 +143,7 @@ private:
 
         rect_recipe.recipe_name = "TextureRectArray.RectTexture2DArray";
         rect_recipe.mtl_def_id = "RectTexture2DArray";
-        rect_recipe.coordinate_system_2d = graph::CoordinateSystem2D::ZeroToOne;
-        rect_recipe.local_to_world_2d = true;
+        rect_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigZeroToOne(true);
         rect_recipe.domain = "TextureRectArray";
         graph::mtl::UpsertRecipeSSBOAssetBinding(rect_recipe,
                                                  graph::mtl::SBS_MaterialInstance.name,
