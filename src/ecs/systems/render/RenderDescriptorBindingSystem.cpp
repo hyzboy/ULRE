@@ -305,7 +305,7 @@ namespace hgl::ecs
         EnsureMaterializationCallbacks();
 
         const uint64_t recipe_hash = graph::mtl::HashMaterialRecipe(recipe);
-        GLogInfo("[TexTrace] ResolveMaterialRecipe recipe=%s tex_count=%zu ssbo_asset_count=%zu hash=%llu",
+        GLogVerbose("[ResolveMaterialRecipe] recipe=%s tex=%zu ssbo=%zu hash=%llu",
                  recipe.recipe_name.c_str(),
                  recipe.textures.size(),
                  recipe.ssbo_assets.size(),
@@ -322,20 +322,16 @@ namespace hgl::ecs
             if (out_ssbo_index_row)
                 *out_ssbo_index_row = cache_it->second.ssbo_index_row;
 
-            GLogInfo("[TexTrace]   cache hit: tex_row=%u data_row=%u resolved_tex=%zu",
-                     cache_it->second.texture_layer_row,
-                     cache_it->second.ssbo_index_row,
-                     out_spec.resources.size());
             return true;
         }
 
         if (!graph::mtl::ResolveMaterializationSpec(recipe, materialization_callbacks, out_spec))
         {
-            GLogError("[TexTrace]   ResolveMaterializationSpec FAILED for recipe=%s", recipe.recipe_name.c_str());
+            GLogError("[ResolveMaterialRecipe] ResolveMaterializationSpec failed for recipe=%s", recipe.recipe_name.c_str());
             return false;
         }
 
-        GLogInfo("[TexTrace]   ResolveMaterializationSpec OK resolved_tex=%zu resolved_struct=%zu",
+        GLogVerbose("[ResolveMaterialRecipe] resolved tex=%zu struct=%zu",
                  out_spec.resources.size(), out_spec.struct_refs.size());
 
         uint32_t texture_row = 0;

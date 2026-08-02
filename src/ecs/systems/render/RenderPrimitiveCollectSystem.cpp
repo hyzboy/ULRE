@@ -191,30 +191,24 @@ namespace hgl::ecs
                 return false;
 
             const char *prim_owner = GetPrimitiveOwnerName(primitive_comp);
-            // GLogInfo("[TexTrace] PrepareRecipeAuthoringResources for %s bindless_mgr=%p", prim_owner, (void*)bindless_mgr);
 
             for (size_t i = 0; i < static_cast<size_t>(graph::mtl::TextureSlot::RANGE_SIZE); ++i)
             {
                 const auto slot = static_cast<graph::mtl::TextureSlot>(i);
                 const auto *resource = primitive_comp->GetMaterialTextureResource(slot);
                 if (!resource)
-                {
-                    // GLogInfo("[TexTrace]   slot=%zu: no resource", i);
                     continue;
-                }
 
                 if (resource->use_direct_value)
-                {
-                    // GLogInfo("[TexTrace]   slot=%zu: direct_value=%u (skip bindless)", i, resource->direct_value);
                     continue;
-                }
 
                 const std::string resource_id = resource->resource_id.empty()
                                               ? BuildTextureResourceId(resource->texture)
                                               : resource->resource_id;
                 if (resource_id.empty() || !bindless_mgr)
                 {
-                    GLogError("[TexTrace]   slot=%zu: FAIL resource_id_empty=%d bindless_mgr_null=%d", i, resource_id.empty()?1:0, !bindless_mgr?1:0);
+                    GLogError("[PrepareRecipe] %s slot=%zu: resource_id_empty=%d bindless_mgr_null=%d",
+                              prim_owner, i, resource_id.empty()?1:0, !bindless_mgr?1:0);
                     return false;
                 }
 
@@ -223,28 +217,23 @@ namespace hgl::ecs
                 {
                     case PrimitiveComponent::MaterialTextureResourceKind::Texture2D:
                         handle = rdbs->RegisterTexture2DResource(resource_id, resource->texture, resource->sampler, bindless_mgr);
-                        // GLogInfo("[TexTrace]   slot=%zu Texture2D resource_id=%s handle=%u", i, resource_id.c_str(), handle);
                         break;
                     case PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray:
                         handle = rdbs->RegisterTexture2DArrayResource(resource_id, resource->texture, resource->sampler, bindless_mgr);
-                        // GLogInfo("[TexTrace]   slot=%zu Texture2DArray resource_id=%s handle=%u", i, resource_id.c_str(), handle);
                         break;
                     default:
-                        GLogWarning("[TexTrace]   slot=%zu unknown kind=%d", i, (int)resource->kind);
+                        GLogWarning("[PrepareRecipe] %s slot=%zu unknown texture kind=%d", prim_owner, i, (int)resource->kind);
                         break;
                 }
 
                 if (handle == 0)
                 {
-                    GLogError("[TexTrace]   slot=%zu: RegisterTexture returned handle=0, FAIL", i);
+                    GLogError("[PrepareRecipe] %s slot=%zu: RegisterTexture returned handle=0", prim_owner, i);
                     return false;
                 }
 
                 if (!material_program)
-                {
-                    // GLogInfo("[TexTrace]   slot=%zu: no material_program, skip per-descriptor register", i);
                     continue;
-                }
 
                 for (const auto &req : material_program->GetMaterialResourceLayout().requirements)
                 {
@@ -254,18 +243,16 @@ namespace hgl::ecs
                     switch (req.semantic)
                     {
                         case graph::mtl::DescriptorSemantic::MaterialTexture:
-                            // GLogInfo("[TexTrace]   slot=%zu: RegisterMaterialTexture descriptor=%s", i, req.name);
                             if (!rdbs->RegisterMaterialTexture(material_program, req.name, resource->texture))
                             {
-                                GLogError("[TexTrace]   RegisterMaterialTexture FAILED descriptor=%s", req.name);
+                                GLogError("[PrepareRecipe] %s RegisterMaterialTexture FAILED descriptor=%s", prim_owner, req.name);
                                 return false;
                             }
                             break;
                         case graph::mtl::DescriptorSemantic::MaterialSampler:
-                            // GLogInfo("[TexTrace]   slot=%zu: RegisterMaterialTextureSampler descriptor=%s", i, req.name);
                             if (!rdbs->RegisterMaterialTextureSampler(material_program, req.name, resource->texture, resource->sampler))
                             {
-                                GLogError("[TexTrace]   RegisterMaterialTextureSampler FAILED descriptor=%s", req.name);
+                                GLogError("[PrepareRecipe] %s RegisterMaterialTextureSampler FAILED descriptor=%s", prim_owner, req.name);
                                 return false;
                             }
                             break;
