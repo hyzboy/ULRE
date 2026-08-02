@@ -48,7 +48,8 @@ inline std::vector<FixedDescriptorEntry> Build3DDescriptorsFromDefinition(
         }
     }
 
-    if (definition.with_local_to_world)
+    if (definition.vertex_node_config.projection != ProjectionMode::OrthoViewport
+     && definition.vertex_node_config.projection != ProjectionMode::ClipPassthrough)
     {
         descriptor_builder_common::PushLocalToWorld(descriptors, TransformDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
         descriptor_builder_common::PushLocalToWorldIndexRows(descriptors, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));

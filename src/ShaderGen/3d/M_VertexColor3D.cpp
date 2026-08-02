@@ -17,9 +17,6 @@ namespace
         bmi.definition_name = "VertexColor3D";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::VertexColor3D);
         bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
-        bmi.with_camera       = true;
-        bmi.with_local_to_world = true;
-        bmi.with_sky          = false;
         bmi.ubo_requirements  = {UBODescriptorSemantic::ViewportInfo, UBODescriptorSemantic::CameraInfo};
         bmi.vertex_node_config = MakeDefault3DNodeConfig();
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::VertexColor3D, bmi);
@@ -37,7 +34,6 @@ static ShaderProgramBuildSpec *CreateVertexColor3DImpl(const contract::PhysicalD
     };
     const vertex_builder_common::VertexBuildInput vertex_input {
         PrimitiveType::Triangles,
-        vertex_builder_common::VertexTransformIntent::LocalToWorld,
         bc.geometry_vertex_format,
         vertex_decls,
         2

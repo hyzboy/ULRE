@@ -20,9 +20,6 @@ namespace
         bmi.definition_name = "StandardTextureArray";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::StandardTextureArray);
         bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
-        bmi.with_camera       = true;
-        bmi.with_local_to_world = true;
-        bmi.with_sky          = true;
         bmi.ssbo_slot_decls   = {{"mtl", SSBOType::ClearCoatSurface}};
         bmi.ubo_requirements  = {UBODescriptorSemantic::ViewportInfo, UBODescriptorSemantic::CameraInfo, UBODescriptorSemantic::SkyInfo};
         bmi.texture_slot_decls = {
@@ -64,7 +61,6 @@ static ShaderProgramBuildSpec *CreateStandardTextureArrayImpl(const contract::Ph
     };
     const vertex_builder_common::VertexBuildInput vertex_input {
         PrimitiveType::Triangles,
-        vertex_builder_common::VertexTransformIntent::LocalToWorld,
         bc.geometry_vertex_format,
         vertex_decls,
         3

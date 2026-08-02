@@ -207,7 +207,8 @@ static bool ValidateDefinitionCapabilitySubset(
 
         case DescriptorSemantic::LocalToWorld:
         case DescriptorSemantic::LocalToWorldIndexTable:
-            allowed = definition.with_local_to_world;
+            allowed = definition.vertex_node_config.projection != ProjectionMode::OrthoViewport
+                   && definition.vertex_node_config.projection != ProjectionMode::ClipPassthrough;
             break;
 
         case DescriptorSemantic::MaterialSSBOSlotData:
@@ -253,57 +254,6 @@ static bool ValidateDefinitionCapabilitySubset(
     return diagnostics.empty();
 }
 
-static const char *GetCoordinateSystem2DNameSafe(const CoordinateSystem2D cs) noexcept
-{
-    const char *name = GetCoordinateSystem2DName(cs);
-    return (name && *name) ? name : "UnknownCS2D";
-}
-
-static bool Validate2DLayoutConsistency(
-    const CompositorMaterialBuildConfig &config,
-    const MaterialResourceLayout &layout,
-    std::vector<std::string> &diagnostics)
-{
-    diagnostics.clear();
-
-    if (!config.is_2d)
-        return true;
-
-    const bool has_viewport = HasLayoutSemantic(layout, DescriptorSemantic::ViewportInfo);
-    const bool has_l2w = HasLayoutSemantic(layout, DescriptorSemantic::LocalToWorld)
-                      || HasLayoutSemantic(layout, DescriptorSemantic::LocalToWorldIndexTable);
-
-    if (config.coordinate_system_2d == CoordinateSystem2D::Ortho && !has_viewport)
-    {
-        std::string msg = "2D layout mismatch: coordinate_system_2d=";
-        msg += GetCoordinateSystem2DNameSafe(config.coordinate_system_2d);
-        msg += " requires ViewportInfo, but layout does not declare it";
-        diagnostics.push_back(std::move(msg));
-    }
-
-    if (config.coordinate_system_2d != CoordinateSystem2D::Ortho && has_viewport)
-    {
-        std::string msg = "2D layout mismatch: coordinate_system_2d=";
-        msg += GetCoordinateSystem2DNameSafe(config.coordinate_system_2d);
-        msg += " should not emit ViewportInfo, but layout declares it";
-        diagnostics.push_back(std::move(msg));
-    }
-
-    if (config.local_to_world_2d && !has_l2w)
-    {
-        std::string msg = "2D layout mismatch: local_to_world_2d=true requires LocalToWorld descriptors, but layout does not declare them";
-        diagnostics.push_back(std::move(msg));
-    }
-
-    if (!config.local_to_world_2d && has_l2w)
-    {
-        std::string msg = "2D layout mismatch: local_to_world_2d=false should not emit LocalToWorld descriptors, but layout declares them";
-        diagnostics.push_back(std::move(msg));
-    }
-
-    return diagnostics.empty();
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 // CompileCompositorMaterial — Compositor 模板完整 GLSL → ShaderProgramBuildSpec
 //
@@ -332,13 +282,8 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     const PrimitiveType primitive_type = config.primitive_type;
     const uint32_t shader_stage_bits = config.shader_stage_flag_bits != 0 ? config.shader_stage_flag_bits : uint32_t(ShaderStage::VertexFragment);
 
-    const bool infer_has_camera = HasDescriptorSemantic(def, DescriptorSemantic::CameraInfo);
-    const bool infer_has_sky    = HasDescriptorSemantic(def, DescriptorSemantic::SkyInfo);
-    const bool infer_has_l2w    = HasDescriptorSemantic(def, DescriptorSemantic::LocalToWorld);
-
-    const bool with_camera = config.with_camera || infer_has_camera;
-    const bool with_sky = config.with_sky || infer_has_sky;
-    const bool with_local_to_world = config.with_local_to_world || infer_has_l2w;
+    const bool infer_has_l2w = HasDescriptorSemantic(def, DescriptorSemantic::LocalToWorld);
+    const bool with_local_to_world = infer_has_l2w;
 
     // ─────────────────────────────────────────────────────────────
     // Step 2: Create ShaderProgramBuildSpec
@@ -627,22 +572,6 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
                 diag.c_str());
         }
         return FailAfterMci("MaterialResourceLayout validation failed");
-    }
-
-    if (config.is_2d)
-    {
-        std::vector<std::string> diagnostics_2d;
-        if (!Validate2DLayoutConsistency(config, material_resource_layout, diagnostics_2d))
-        {
-            for (const auto &diag : diagnostics_2d)
-            {
-                std::fprintf(stderr,
-                    "[CompileCompositorMaterial][2DLayout] material=%s: %s\n",
-                    def.name ? def.name : "<unnamed>",
-                    diag.c_str());
-            }
-            return FailAfterMci("2D layout consistency validation failed");
-        }
     }
 
     if (config.material_definition)

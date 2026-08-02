@@ -15,14 +15,10 @@ namespace
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::Text2D);
         bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
         bmi.usage_tag = MaterialDefinitionUsageTag::Text;
-        bmi.is_text = true;          // text 材质语义标记
-        bmi.is_2d = true;
-        bmi.coordinate_system_2d = CoordinateSystem2D::Ortho;
-        bmi.local_to_world_2d = false;
         bmi.ubo_requirements = {UBODescriptorSemantic::ViewportInfo};
         bmi.texture_slot_decls = {{TextureSlot::BaseColor, GLSLSamplerType::Sampler2D, true, SamplerName::Text}};
         bmi.ssbo_slot_decls = {{"mtl", SSBOType::TransmissionSurface}};
-        bmi.vertex_node_config = MakeNodeConfigFrom2D(bmi.coordinate_system_2d, bmi.local_to_world_2d);
+        bmi.vertex_node_config = MakeNodeConfigFrom2D(CoordinateSystem2D::Ortho, false);
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::Text2D, bmi);
 
         MaterialDefinition alias = bmi;
@@ -43,6 +39,8 @@ static ShaderProgramBuildSpec *CreateText2DImpl(const contract::PhysicalDevicePr
 
     p.prim = PrimitiveType::Triangles;
     p.shader_stage_flag_bit &= ~(uint32_t)ShaderStage::Geometry;
+    p.coordinate_system = CoordinateSystem2D::Ortho;
+    p.local_to_world = false;
 
     const VkFormat position_format = ResolveMaterialPositionFormat(p.geometry_vertex_format, VK_FORMAT_R32G32_SINT);
     auto preamble = build2d::Build2DFragmentPreamble(p, true);

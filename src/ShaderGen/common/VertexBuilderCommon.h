@@ -7,12 +7,6 @@
 namespace hgl::graph::mtl::vertex_builder_common
 {
 
-enum class VertexTransformIntent : uint8_t
-{
-    None = 0,
-    LocalToWorld,
-};
-
 struct VertexSemanticDecl
 {
     VertexSemantic semantic = VertexSemantic::Position;
@@ -24,7 +18,6 @@ struct VertexSemanticDecl
 struct VertexBuildInput
 {
     PrimitiveType primitive_type = PrimitiveType::Triangles;
-    VertexTransformIntent transform_intent = VertexTransformIntent::None;
     const GeometryVertexFormat *geometry_vertex_format = nullptr;
     const VertexSemanticDecl *semantic_decls = nullptr;
     uint32 semantic_decl_count = 0;
@@ -93,7 +86,6 @@ inline LuminanceVertexBuildResult BuildLuminanceVertexEntries(
     };
     const VertexBuildInput input {
         PrimitiveType::Triangles,
-        VertexTransformIntent::LocalToWorld,
         geometry_vertex_format,
         decls,
         2

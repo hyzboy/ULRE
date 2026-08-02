@@ -133,7 +133,7 @@ namespace hgl::graph::mtl
 
         // Part-B3: UBO 资源能力声明。
         // 显式列出此材质可使用的标准 UBO（ViewportInfo/CameraInfo/SkyInfo/MaterialColorPalette）。
-        // 2D/3D 都走这条声明链路；with_camera/with_sky/with_local_to_world 当前保留为构建包络与旧调用面。
+        // 2D/3D 都走这条声明链路。
         std::vector<UBODescriptorSemantic> ubo_requirements;
 
         // Part-B4: 纹理槽位能力声明。
@@ -141,18 +141,7 @@ namespace hgl::graph::mtl
         // sampler_type 区分 "sampler2D" vs "sampler2DArray" 等 GLSL 采样器变体。
         std::vector<MaterialTextureSlotDecl> texture_slot_decls;
 
-        // Part-C: request 构建参数（构建所需选项显式存储，
-        //         不允许调用方根据名字/枚举范围做任何推断）
-        bool is_2d            = false;  // 2D 材质
-        bool is_text          = false;  // text 材质（优先级高于 is_2d）
-        bool with_camera      = true;   // 3D 材质包含 Camera UBO
-        bool with_local_to_world = true;// 包含 LocalToWorld 变换
-        bool with_sky         = false;  // 包含 Sky/大气 UBO
-        // 2D 专用（仅 is_2d=true 时有效）
-        CoordinateSystem2D coordinate_system_2d = CoordinateSystem2D::NDC;
-        bool local_to_world_2d = true;
-
-        // PCG 顶点节点配置（新路径，Phase 7 完成后将替代上方所有旧字段）
+        // PCG 顶点节点配置（单一真源）
         VertexShaderNodeConfig vertex_node_config;
     };
 
@@ -299,11 +288,8 @@ namespace hgl::graph::mtl
         if (recipe.mtl_def_id.empty())
             recipe.mtl_def_id = bmi.definition_id;
 
-        // coordinate_system_2d/local_to_world_2d：保守策略，只在 overwrite 时复写。
         if (overwrite_existing)
         {
-            recipe.coordinate_system_2d = bmi.coordinate_system_2d;
-            recipe.local_to_world_2d = bmi.local_to_world_2d;
             recipe.material_quality_tier = bmi.quality_tier;
         }
 

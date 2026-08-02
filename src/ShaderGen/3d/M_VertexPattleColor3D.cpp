@@ -28,9 +28,6 @@ namespace
         bmi.definition_name = "VertexPattleColor3D";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::VertexPattleColor3D);
         bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
-        bmi.with_camera       = true;
-        bmi.with_local_to_world = true;
-        bmi.with_sky          = false;
         bmi.ubo_requirements  = {UBODescriptorSemantic::ViewportInfo, UBODescriptorSemantic::CameraInfo, UBODescriptorSemantic::MaterialColorPalette};
         bmi.vertex_node_config = MakeDefault3DNodeConfig();
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::VertexPattleColor3D, bmi);
@@ -77,7 +74,6 @@ static ShaderProgramBuildSpec *CreateVertexPattleColor3DImpl(const contract::Phy
     };
     const vertex_builder_common::VertexBuildInput vertex_input {
         PrimitiveType::Triangles,
-        vertex_builder_common::VertexTransformIntent::LocalToWorld,
         bc.geometry_vertex_format,
         vertex_decls,
         2

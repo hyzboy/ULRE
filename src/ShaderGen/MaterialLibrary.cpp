@@ -168,16 +168,26 @@ const char *GetBuiltinMaterialCreatorIDName(const BuiltinMaterialCreatorID mtl_i
     }
 }
 
+static bool Is2DBuiltinMaterial(const BuiltinMaterialCreatorID mtl_id) noexcept
+{
+    return mtl_id <= BuiltinMaterialCreatorID::Text2D;
+}
+
+static bool IsTextBuiltinMaterial(const BuiltinMaterialCreatorID mtl_id) noexcept
+{
+    return mtl_id == BuiltinMaterialCreatorID::Text2D;
+}
+
 
 static ShaderProgramBuildSpec *CreateMaterialCreateInfoFromRequest(const contract::PhysicalDeviceProfileLite *profile,
                                                                    const BuiltinMaterialCreatorID mtl_id,
                                                                    const MaterialDefinition &definition,
                                                                    const MaterialDefinitionBuildRequest &request)
 {
-    if(definition.is_text)
+    if (IsTextBuiltinMaterial(mtl_id))
         return CreateText2D(profile, request, definition);
 
-    if(definition.is_2d)
+    if (Is2DBuiltinMaterial(mtl_id))
     {
         switch(mtl_id)
         {
@@ -338,6 +348,23 @@ static std::string BuildBuiltinMaterialCreatorRequestHashImpl(const BuiltinMater
         return hash;
     };
 
+    auto BuildNodeConfigHash = [&](const VertexShaderNodeConfig &cfg) -> std::string
+    {
+        std::string hash;
+        hash.reserve(64);
+        hash += "_IN";
+        hash += std::to_string(static_cast<uint32>(cfg.input));
+        hash += "_PM";
+        hash += std::to_string(static_cast<uint32>(cfg.position_mapping));
+        hash += "_OR";
+        hash += std::to_string(static_cast<uint32>(cfg.orientation));
+        hash += "_SC";
+        hash += std::to_string(static_cast<uint32>(cfg.scale));
+        hash += "_PR";
+        hash += std::to_string(static_cast<uint32>(cfg.projection));
+        return hash;
+    };
+
     auto Build3DConfigHash = [&]() -> std::string
     {
         RenderTargetOutputConfig rt_output{};
@@ -367,10 +394,10 @@ static std::string BuildBuiltinMaterialCreatorRequestHashImpl(const BuiltinMater
                                                  private_sbs,
                                                  private_sbs_count);
 
-        if(definition.with_camera)
+        if (HasUBORequirement(definition, UBODescriptorSemantic::CameraInfo))
             hash+="_Camera";
 
-        if(definition.with_sky)
+        if (HasUBORequirement(definition, UBODescriptorSemantic::SkyInfo))
             hash+="_Sky";
 
         hash+="_Amb";
@@ -380,8 +407,11 @@ static std::string BuildBuiltinMaterialCreatorRequestHashImpl(const BuiltinMater
         char amb_model_str[2]={(char)('0'+(uint8)ambient),0};
         hash+=amb_model_str;
 
-        if(definition.with_local_to_world)
+        if (definition.vertex_node_config.projection != ProjectionMode::OrthoViewport
+         && definition.vertex_node_config.projection != ProjectionMode::ClipPassthrough)
             hash+="_L2W";
+
+        hash += BuildNodeConfigHash(definition.vertex_node_config);
 
         return hash;
     };
@@ -390,16 +420,16 @@ static std::string BuildBuiltinMaterialCreatorRequestHashImpl(const BuiltinMater
     if(!creator_name || !*creator_name)
         creator_name = "UnknownBuiltinMaterialCreatorID";
 
-    if(definition.is_text)
+    if (IsTextBuiltinMaterial(mtl_id))
     {
         const std::string hash = Build2DConfigHash(static_cast<uint32>(definition.ssbo_slot_decls.size()),
-                                                   definition.coordinate_system_2d,
-                                                   definition.local_to_world_2d,
+                                                   CoordinateSystem2D::Ortho,
+                                                   false,
                                                    false);
         return std::string(creator_name) + "?" + hash;
     }
 
-    if(definition.is_2d)
+    if (Is2DBuiltinMaterial(mtl_id))
     {
         const std::string hash = Build2DConfigHash(static_cast<uint32>(definition.ssbo_slot_decls.size()),
                                                    request.recipe.coordinate_system_2d,

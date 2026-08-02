@@ -13,13 +13,9 @@ namespace
         bmi.definition_name = "RectTexture2D";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::RectTexture2D);
         bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
-        bmi.is_2d = true;
-        bmi.coordinate_system_2d = CoordinateSystem2D::NDC;
-        bmi.local_to_world_2d = true;
-        bmi.with_local_to_world = true;
         bmi.ubo_requirements = {UBODescriptorSemantic::ViewportInfo};
         bmi.texture_slot_decls = {{TextureSlot::BaseColor, GLSLSamplerType::Sampler2D, true}};
-        bmi.vertex_node_config = MakeNodeConfigFrom2D(bmi.coordinate_system_2d, bmi.local_to_world_2d);
+        bmi.vertex_node_config = MakeNodeConfigFrom2D(CoordinateSystem2D::NDC, true);
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::RectTexture2D, bmi);
         return true;
     }();

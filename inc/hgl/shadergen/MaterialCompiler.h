@@ -28,13 +28,6 @@ struct CompositorMaterialBuildConfig
 {
     PrimitiveType primitive_type = PrimitiveType::Triangles;
     uint32_t shader_stage_flag_bits = uint32_t(ShaderStage::VertexFragment);
-    bool is_2d = false;
-    bool is_text = false;
-    bool with_local_to_world = false;
-    bool with_camera = false;
-    bool with_sky = false;
-    CoordinateSystem2D coordinate_system_2d = CoordinateSystem2D::NDC;
-    bool local_to_world_2d = false;
     SkyLightAmbientModel sky_ambient_model = SkyLightAmbientModel::Simple;
     const ::hgl::graph::ShaderBufferSource *const *private_shader_buffer_sources = nullptr;
     uint32_t private_shader_buffer_source_count = 0;
@@ -83,9 +76,6 @@ inline CompositorMaterialBuildConfig ToCompositorBuildConfig3D(
 {
     CompositorMaterialBuildConfig bc;
     bc.primitive_type       = request.primitive_type;
-    bc.with_camera          = definition.with_camera;
-    bc.with_local_to_world  = definition.with_local_to_world;
-    bc.with_sky             = definition.with_sky;
     bc.sky_ambient_model    = request.override_sky_ambient_model
         ? request.sky_ambient_model
         : SkyLightAmbientModel::Simple;

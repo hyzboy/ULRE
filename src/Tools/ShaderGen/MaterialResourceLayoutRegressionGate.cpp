@@ -172,19 +172,26 @@ namespace
                 continue;
             }
 
-            if (bmi.is_2d != entry.is_2d)
+            const bool is_2d = entry.builtin_id <= BuiltinMaterialCreatorID::Text2D;
+            const bool is_text = entry.builtin_id == BuiltinMaterialCreatorID::Text2D;
+            const bool with_sky = entry.builtin_id == BuiltinMaterialCreatorID::SkyMinimal
+                               || entry.builtin_id == BuiltinMaterialCreatorID::Standard
+                               || entry.builtin_id == BuiltinMaterialCreatorID::StandardTextureArray
+                               || entry.builtin_id == BuiltinMaterialCreatorID::PBRColor3D;
+
+            if (is_2d != entry.is_2d)
             {
                 result.diagnostics.emplace_back(std::string("is_2d mismatch: ") + entry.definition_id);
                 continue;
             }
 
-            if (bmi.is_text != entry.is_text)
+            if (is_text != entry.is_text)
             {
                 result.diagnostics.emplace_back(std::string("is_text mismatch: ") + entry.definition_id);
                 continue;
             }
 
-            if (bmi.with_sky != entry.with_sky)
+            if (with_sky != entry.with_sky)
                 result.diagnostics.emplace_back(std::string("with_sky mismatch: ") + entry.definition_id);
         }
 
@@ -284,4 +291,3 @@ int main()
 
     return all_passed ? 0 : 1;
 }
-

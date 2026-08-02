@@ -36,12 +36,8 @@ struct Material2DBuildParams
     {
         Material2DBuildParams p;
         p.prim              = request.primitive_type;
-        p.coordinate_system = definition.is_text
-            ? definition.coordinate_system_2d
-            : request.recipe.coordinate_system_2d;
-        p.local_to_world    = definition.is_text
-            ? definition.local_to_world_2d
-            : request.recipe.local_to_world_2d;
+        p.coordinate_system = request.recipe.coordinate_system_2d;
+        p.local_to_world    = request.recipe.local_to_world_2d;
         if(request.override_shader_stage_bits)
             p.shader_stage_flag_bit = request.shader_stage_flag_bit;
         p.geometry_vertex_format            = request.geometry_vertex_format;
@@ -115,8 +111,6 @@ inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Materi
     };
     const vertex_builder_common::VertexBuildInput input {
         p.prim,
-        p.local_to_world ? vertex_builder_common::VertexTransformIntent::LocalToWorld
-                         : vertex_builder_common::VertexTransformIntent::None,
         p.geometry_vertex_format,
         decls,
         1
@@ -134,8 +128,6 @@ inline void PushSemanticVertexEntry(std::vector<FixedVertexEntry> &v,
     };
     const vertex_builder_common::VertexBuildInput input {
         p.prim,
-        p.local_to_world ? vertex_builder_common::VertexTransformIntent::LocalToWorld
-                         : vertex_builder_common::VertexTransformIntent::None,
         p.geometry_vertex_format,
         decls,
         1
@@ -199,13 +191,6 @@ inline CompositorMaterialBuildConfig ToCompositorBuildConfig2D(const Material2DB
     CompositorMaterialBuildConfig bc;
     bc.primitive_type                  = p.prim;
     bc.shader_stage_flag_bits          = p.shader_stage_flag_bit;
-    bc.is_2d                           = true;
-    bc.is_text                         = p.material_definition ? p.material_definition->is_text : false;
-    bc.with_local_to_world             = p.local_to_world;
-    bc.with_camera                     = false;
-    bc.with_sky                        = false;
-    bc.coordinate_system_2d            = p.coordinate_system;
-    bc.local_to_world_2d               = p.local_to_world;
     bc.sky_ambient_model               = SkyLightAmbientModel::Simple;
     bc.private_shader_buffer_sources   = p.private_shader_buffer_sources;
     bc.private_shader_buffer_source_count = p.private_shader_buffer_source_count;

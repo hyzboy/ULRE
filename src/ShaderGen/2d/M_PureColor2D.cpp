@@ -14,14 +14,10 @@ namespace
         bmi.definition_name = "PureColor2D";
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::PureColor2D);
         bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
-        bmi.is_2d = true;
-        bmi.coordinate_system_2d = CoordinateSystem2D::NDC;
-        bmi.local_to_world_2d = true;
-        bmi.with_local_to_world = true;
         bmi.ubo_requirements = {UBODescriptorSemantic::ViewportInfo};
         bmi.usage_tag   = MaterialDefinitionUsageTag::Fallback;
         bmi.ssbo_slot_decls = {{"mtl", SSBOType::EmissiveSurface}};
-        bmi.vertex_node_config = MakeNodeConfigFrom2D(bmi.coordinate_system_2d, bmi.local_to_world_2d);
+        bmi.vertex_node_config = MakeNodeConfigFrom2D(CoordinateSystem2D::NDC, true);
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::PureColor2D, bmi);
 
         // Register builtin alias so fallback code can look up by canonical id.
