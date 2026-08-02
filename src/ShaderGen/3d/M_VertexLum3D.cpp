@@ -21,6 +21,7 @@ namespace
         bmi.with_sky          = false;
         bmi.ssbo_slot_decls   = {{"mtl", SSBOType::EmissiveSurface}};
         bmi.ubo_requirements  = {UBODescriptorSemantic::ViewportInfo, UBODescriptorSemantic::CameraInfo};
+        bmi.vertex_node_config = MakeDefault3DNodeConfig();
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::VertexLuminance3D, bmi);
         return true;
     }();

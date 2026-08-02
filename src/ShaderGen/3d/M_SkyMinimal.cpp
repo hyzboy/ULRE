@@ -21,6 +21,7 @@ namespace
         bmi.with_local_to_world = true;
         bmi.with_sky          = true;
         bmi.ubo_requirements  = {UBODescriptorSemantic::ViewportInfo, UBODescriptorSemantic::CameraInfo, UBODescriptorSemantic::SkyInfo};
+        bmi.vertex_node_config = MakeDefault3DNodeConfig();
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::SkyMinimal, bmi);
 
         MaterialDefinition alias = bmi;
@@ -64,6 +65,8 @@ static ShaderProgramBuildSpec *CreateSkyMinimalImpl(const contract::PhysicalDevi
 
     CompositorAssembler assembler("ShaderLibrary");
 
+    // NOTE: SkyMinimal uses a special VS (fragDirection varying), not standard PCG config.
+    // Full PCG migration deferred. Using template-based Assemble() path.
     auto result = assembler.Assemble(
         SurfaceType::Sky,
         BlendMode::Opaque,

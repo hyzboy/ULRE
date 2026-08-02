@@ -84,13 +84,6 @@ bool ShaderCreateInfo::CompileFinalGLSLToSPV()
     if(final_shader.empty())
         return(false);
 
-#ifdef _DEBUG
-    std::string log_text=GetShaderStageNameByStage(shader_stage);
-    log_text+=" shader (direct): \n";
-    log_text+=final_shader;
-    LogInfo(log_text.c_str());
-#endif
-
     if(!CompileToSPV())
         return(false);
 

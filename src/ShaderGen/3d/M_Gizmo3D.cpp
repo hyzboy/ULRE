@@ -5,6 +5,7 @@
 #include<hgl/log/Log.h>
 #include<vector>
 #include "../common/VertexBuilderCommon.h"
+#include "../common/VertexShaderAssembler.h"
 #include "DefinitionDescriptorBuilder3D.h"
 
 namespace hgl::graph::mtl
@@ -22,6 +23,7 @@ namespace
         bmi.with_sky          = false;
         bmi.ssbo_slot_decls   = {{"mtl", SSBOType::EmissiveSurface}};
         bmi.ubo_requirements  = {UBODescriptorSemantic::ViewportInfo, UBODescriptorSemantic::CameraInfo};
+        bmi.vertex_node_config = MakeDefault3DNodeConfig();
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::Gizmo3D, bmi);
         return true;
     }();
@@ -39,21 +41,20 @@ static ShaderProgramBuildSpec *CreateGizmo3DImpl(const contract::PhysicalDeviceP
 {
     CompositorAssembler assembler("ShaderLibrary");
 
-    auto result = assembler.Assemble(
+    auto fs_result = assembler.AssembleFragment(
         SurfaceType::Unlit,
         BlendMode::Opaque,
         PassType::ForwardOpaque,
         QualityTier::Medium,
         PlatformBackend::PC,
-        "compositor/main_forward_unlit_normal.vert.glsl",
         "compositor/main_forward_unlit_normal.frag.glsl",
         "surface/gizmo3d_surface.glsl"
     );
 
-    if (!result.success)
+    if (!fs_result.success)
     {
         GLogError("[Gizmo3D] CompositorAssembler failed: %s",
-                  result.error_message.c_str());
+                  fs_result.error_message.c_str());
         return nullptr;
     }
 
@@ -83,11 +84,27 @@ static ShaderProgramBuildSpec *CreateGizmo3DImpl(const contract::PhysicalDeviceP
         GIZMO_3D_MI_BYTES,
     };
 
+    // emit_world_pos + emit_world_normal: matches main_forward_unlit_normal.frag.glsl interface
+    VertexVaryingConfig varying_cfg;
+    varying_cfg.emit_data_index_id    = true;
+    varying_cfg.emit_texture_layer_id = true;
+    varying_cfg.texture_layer_id_uses_data_index = true;
+    varying_cfg.emit_world_pos        = true;
+    varying_cfg.emit_world_normal     = true;
+    const std::string extra_attrs = "layout(location=1) in vec3 Normal;\n";
+    std::string vs_glsl = GenerateVertexShader(
+        definition.vertex_node_config,
+        varying_cfg,
+        VK_FORMAT_R32G32B32_SFLOAT,
+        extra_attrs,
+        "ShaderLibrary"
+    );
+
     ShaderProgramBuildSpec *mci = CompileCompositorMaterial(
         profile,
         dynamic_def,
-        result.vertex_glsl,
-        result.fragment_glsl,
+        vs_glsl,
+        fs_result.fragment_glsl,
         bc);
 
     if (!mci)

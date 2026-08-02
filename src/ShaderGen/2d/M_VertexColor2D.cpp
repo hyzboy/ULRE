@@ -2,6 +2,7 @@
 #include<hgl/shadergen/ShaderProgramBuildSpec.h>
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/log/Log.h>
+#include "../common/VertexShaderAssembler.h"
 
 namespace hgl::graph::mtl{
 namespace
@@ -17,6 +18,7 @@ namespace
         bmi.local_to_world_2d = true;
         bmi.with_local_to_world = true;
         bmi.ubo_requirements = {UBODescriptorSemantic::ViewportInfo};
+        bmi.vertex_node_config = MakeNodeConfigFrom2D(bmi.coordinate_system_2d, bmi.local_to_world_2d);
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::VertexColor2D, bmi);
         return true;
     }();
@@ -41,7 +43,17 @@ static ShaderProgramBuildSpec *CreateVertexColor2DImpl(const contract::PhysicalD
         nullptr, 0,
     };
 
-    std::string vs = preamble + "#include \"2d/vertexcolor2d.vert.glsl\"\n";
+    const VkFormat position_format = ResolveMaterialPositionFormat(p.geometry_vertex_format, VK_FORMAT_R32G32_SFLOAT);
+    VertexVaryingConfig varying_cfg;
+    varying_cfg.emit_vertex_color = true;
+    const std::string extra_attrs = "layout(location=1) in vec4 Color;\n";
+    std::string vs = GenerateVertexShader(
+        MakeNodeConfigFrom2D(p.coordinate_system, p.local_to_world),
+        varying_cfg,
+        position_format,
+        extra_attrs,
+        "ShaderLibrary"
+    );
     std::string fs = preamble + "#include \"2d/vertexcolor2d.frag.glsl\"\n";
 
     ShaderProgramBuildSpec *mci = CompileCompositorMaterial(profile, def, vs, fs, build2d::ToCompositorBuildConfig2D(p));

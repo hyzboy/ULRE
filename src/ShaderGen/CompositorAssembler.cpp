@@ -231,4 +231,43 @@ namespace hgl::graph
         result.success       = true;
         return result;
     }
+
+    CompositorAssembler::AssembleFragmentResult CompositorAssembler::AssembleFragment(
+        SurfaceType     surface,
+        BlendMode       blend,
+        PassType        pass,
+        QualityTier     tier,
+        PlatformBackend platform,
+        const char     *fs_template_override,
+        const char     *surface_function_override
+    ) const
+    {
+        AssembleFragmentResult result{};
+
+        NewShaderPermutationKey key;
+        key.SetSurfaceType(surface);
+        key.SetQualityTier(tier);
+        key.SetPlatform(platform);
+
+        std::string fs_path = (fs_template_override && fs_template_override[0])
+            ? shader_lib_path_ + "/" + fs_template_override
+            : GetCompositorFSPath(surface, blend, pass);
+        std::string surface_rel = (surface_function_override && surface_function_override[0])
+            ? surface_function_override
+            : GetSurfaceFunctionPath(surface);
+
+        std::string fs_source;
+        if (!ReadFile(fs_path, fs_source, result.error_message))
+        {
+            result.success = false;
+            return result;
+        }
+
+        fs_source = InjectDefines(fs_source, key);
+        fs_source = ReplaceSurfaceInclude(fs_source, surface_rel);
+
+        result.fragment_glsl = std::move(fs_source);
+        result.success       = true;
+        return result;
+    }
 }

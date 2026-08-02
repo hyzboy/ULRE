@@ -1,0 +1,4 @@
+// Stage 2: Pixel to Local — input is pixel-space coordinates (Ortho 2D).
+// No transform applied here; projection stage will apply the ortho matrix.
+// Requires: s1_input_vec2
+vec4 GetLocalPos() { return vec4(Position, 0.0, 1.0); }

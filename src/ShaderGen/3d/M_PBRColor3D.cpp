@@ -8,6 +8,7 @@
 
 #include "../common/MFSkyLight.h"
 #include "../common/VertexBuilderCommon.h"
+#include "../common/VertexShaderAssembler.h"
 #include "DefinitionDescriptorBuilder3D.h"
 
 namespace hgl::graph::mtl{
@@ -24,6 +25,7 @@ namespace
         bmi.with_sky          = true;
         bmi.ssbo_slot_decls   = {{"mtl", SSBOType::PBRSurface}};
         bmi.ubo_requirements  = {UBODescriptorSemantic::ViewportInfo, UBODescriptorSemantic::CameraInfo, UBODescriptorSemantic::SkyInfo};
+        bmi.vertex_node_config = MakeDefault3DNodeConfig();
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::PBRColor3D, bmi);
         return true;
     }();
@@ -76,29 +78,47 @@ static ShaderProgramBuildSpec *CreatePBRColor3DImpl(const contract::PhysicalDevi
 
     CompositorAssembler assembler("ShaderLibrary");
 
-    auto result = assembler.Assemble(
+    auto fs_result = assembler.AssembleFragment(
         SurfaceType::Standard,
         BlendMode::Opaque,
         PassType::ForwardOpaque,
         QualityTier::Medium,
         PlatformBackend::PC,
-        "compositor/main_forward_lit.vert.glsl",
         "compositor/main_forward_lit.frag.glsl",
         "surface/pbrcolor3d_surface.glsl"
     );
 
-    if (!result.success)
+    if (!fs_result.success)
     {
         GLogError("[PBRColor3D] CompositorAssembler failed: %s",
-                  result.error_message.c_str());
+                  fs_result.error_message.c_str());
         return nullptr;
     }
+
+    // lit FS interface: fragDataIndexID(0), fragTextureLayerID(1), fragWorldPos(2), fragWorldNormal(3), fragUV0(4)
+    VertexVaryingConfig varying_cfg;
+    varying_cfg.emit_data_index_id    = true;
+    varying_cfg.emit_texture_layer_id = true;
+    varying_cfg.texture_layer_id_uses_data_index = true;
+    varying_cfg.emit_world_pos        = true;
+    varying_cfg.emit_world_normal     = true;
+    varying_cfg.emit_uv0              = true;
+    const std::string extra_attrs =
+        "layout(location=1) in vec2 TexCoord;\n"
+        "layout(location=2) in vec3 Normal;\n";
+    std::string vs_glsl = GenerateVertexShader(
+        definition.vertex_node_config,
+        varying_cfg,
+        VK_FORMAT_R32G32B32_SFLOAT,
+        extra_attrs,
+        "ShaderLibrary"
+    );
 
     ShaderProgramBuildSpec *mci = CompileCompositorMaterial(
         profile,
         dynamic_def,
-        result.vertex_glsl,
-        result.fragment_glsl,
+        vs_glsl,
+        fs_result.fragment_glsl,
         bc);
 
     if (!mci)

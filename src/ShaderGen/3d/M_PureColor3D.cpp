@@ -5,6 +5,7 @@
 #include<hgl/log/Log.h>
 #include<vector>
 #include "../common/VertexBuilderCommon.h"
+#include "../common/VertexShaderAssembler.h"
 #include "DefinitionDescriptorBuilder3D.h"
 
 namespace hgl::graph::mtl{
@@ -22,6 +23,7 @@ namespace
         bmi.usage_tag   = MaterialDefinitionUsageTag::Fallback;
         bmi.ssbo_slot_decls   = {{"mtl", SSBOType::EmissiveSurface}};
         bmi.ubo_requirements  = {UBODescriptorSemantic::ViewportInfo, UBODescriptorSemantic::CameraInfo};
+        bmi.vertex_node_config = MakeDefault3DNodeConfig();
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::PureColor3D, bmi);
 
         // builtin/fallback_3d: 3D 无材质保底
@@ -77,7 +79,7 @@ static ShaderProgramBuildSpec *CreatePureColor3DImpl(const contract::PhysicalDev
 
     CompositorAssembler assembler("ShaderLibrary");
 
-    auto result = assembler.Assemble(
+    auto fs_result = assembler.AssembleFragment(
         SurfaceType::Unlit,
         BlendMode::Opaque,
         PassType::ForwardOpaque,
@@ -85,18 +87,30 @@ static ShaderProgramBuildSpec *CreatePureColor3DImpl(const contract::PhysicalDev
         PlatformBackend::PC
     );
 
-    if (!result.success)
+    if (!fs_result.success)
     {
         GLogError("[PureColor3D] CompositorAssembler failed: %s",
-                  result.error_message.c_str());
+                  fs_result.error_message.c_str());
         return nullptr;
     }
+
+    VertexVaryingConfig varying_cfg;
+    varying_cfg.emit_data_index_id = true;
+    varying_cfg.emit_texture_layer_id = true;
+    varying_cfg.texture_layer_id_uses_data_index = true;
+    std::string vs_glsl = GenerateVertexShader(
+        definition.vertex_node_config,
+        varying_cfg,
+        VK_FORMAT_R32G32B32_SFLOAT,
+        "",
+        "ShaderLibrary"
+    );
 
     ShaderProgramBuildSpec *mci = CompileCompositorMaterial(
         profile,
         dynamic_def,
-        result.vertex_glsl,
-        result.fragment_glsl,
+        vs_glsl,
+        fs_result.fragment_glsl,
         bc);
 
     if (!mci)

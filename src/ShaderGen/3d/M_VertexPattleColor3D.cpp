@@ -32,6 +32,7 @@ namespace
         bmi.with_local_to_world = true;
         bmi.with_sky          = false;
         bmi.ubo_requirements  = {UBODescriptorSemantic::ViewportInfo, UBODescriptorSemantic::CameraInfo, UBODescriptorSemantic::MaterialColorPalette};
+        bmi.vertex_node_config = MakeDefault3DNodeConfig();
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::VertexPattleColor3D, bmi);
         return true;
     }();

@@ -3,6 +3,7 @@
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/log/Log.h>
 #include<hgl/math/Vector.h>
+#include "../common/VertexShaderAssembler.h"
 
 namespace hgl::graph::mtl{
 namespace
@@ -20,6 +21,7 @@ namespace
         bmi.ubo_requirements = {UBODescriptorSemantic::ViewportInfo};
         bmi.usage_tag   = MaterialDefinitionUsageTag::Fallback;
         bmi.ssbo_slot_decls = {{"mtl", SSBOType::EmissiveSurface}};
+        bmi.vertex_node_config = MakeNodeConfigFrom2D(bmi.coordinate_system_2d, bmi.local_to_world_2d);
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::PureColor2D, bmi);
 
         // Register builtin alias so fallback code can look up by canonical id.
@@ -53,7 +55,16 @@ static ShaderProgramBuildSpec *CreatePureColor2DImpl(const contract::PhysicalDev
         mi_codes, mi_bytes,
     };
 
-    std::string vs = preamble + "#include \"2d/purecolor2d.vert.glsl\"\n";
+    const VkFormat position_format = ResolveMaterialPositionFormat(p.geometry_vertex_format, VK_FORMAT_R32G32_SFLOAT);
+    VertexVaryingConfig varying_cfg;
+    varying_cfg.emit_data_index_id = true;
+    std::string vs = GenerateVertexShader(
+        MakeNodeConfigFrom2D(p.coordinate_system, p.local_to_world),
+        varying_cfg,
+        position_format,
+        "",
+        "ShaderLibrary"
+    );
     std::string fs = preamble + "#include \"2d/purecolor2d.frag.glsl\"\n";
 
     ShaderProgramBuildSpec *mci = CompileCompositorMaterial(profile, def, vs, fs, build2d::ToCompositorBuildConfig2D(p));

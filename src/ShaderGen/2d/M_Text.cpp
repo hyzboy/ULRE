@@ -3,6 +3,7 @@
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/log/Log.h>
 #include<hgl/mtl/SamplerName.h>
+#include "../common/VertexShaderAssembler.h"
 
 namespace hgl::graph::mtl{
 namespace
@@ -21,6 +22,7 @@ namespace
         bmi.ubo_requirements = {UBODescriptorSemantic::ViewportInfo};
         bmi.texture_slot_decls = {{TextureSlot::BaseColor, GLSLSamplerType::Sampler2D, true, SamplerName::Text}};
         bmi.ssbo_slot_decls = {{"mtl", SSBOType::TransmissionSurface}};
+        bmi.vertex_node_config = MakeNodeConfigFrom2D(bmi.coordinate_system_2d, bmi.local_to_world_2d);
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::Text2D, bmi);
 
         MaterialDefinition alias = bmi;
@@ -60,7 +62,17 @@ static ShaderProgramBuildSpec *CreateText2DImpl(const contract::PhysicalDevicePr
         mi_codes, mi_bytes,
     };
 
-    std::string vs = preamble + "#include \"2d/text2d.vert.glsl\"\n";
+    VertexVaryingConfig varying_cfg;
+    varying_cfg.emit_data_index_id = true;
+    varying_cfg.emit_uv0 = true;
+    const std::string extra_attrs = "layout(location=1) in vec2 TexCoord;\n";
+    std::string vs = GenerateVertexShader(
+        MakeNodeConfigFrom2D(p.coordinate_system, p.local_to_world),
+        varying_cfg,
+        position_format,
+        extra_attrs,
+        "ShaderLibrary"
+    );
     std::string fs = preamble + "#include \"2d/text2d.frag.glsl\"\n";
 
     ShaderProgramBuildSpec *mci = CompileCompositorMaterial(profile, def, vs, fs, build2d::ToCompositorBuildConfig2D(p));

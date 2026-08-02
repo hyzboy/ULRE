@@ -2,6 +2,7 @@
 
 #include <hgl/type/EnumUtil.h>
 #include <hgl/common/CoordinateSystem.h>
+#include <hgl/mtl/VertexShaderNodeConfig.h>
 #include <hgl/graph/PipelinePreset.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
 #include <hgl/mtl/DescriptorSemantic.h>
@@ -150,6 +151,9 @@ namespace hgl::graph::mtl
         // 2D 专用（仅 is_2d=true 时有效）
         CoordinateSystem2D coordinate_system_2d = CoordinateSystem2D::NDC;
         bool local_to_world_2d = true;
+
+        // PCG 顶点节点配置（新路径，Phase 7 完成后将替代上方所有旧字段）
+        VertexShaderNodeConfig vertex_node_config;
     };
 
     // ── Layer 2: MaterialRecipe = Instance Input ──────────────────────────────────

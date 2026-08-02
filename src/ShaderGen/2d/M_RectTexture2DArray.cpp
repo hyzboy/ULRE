@@ -2,6 +2,7 @@
 #include<hgl/shadergen/ShaderProgramBuildSpec.h>
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/log/Log.h>
+#include "../common/VertexShaderAssembler.h"
 
 namespace hgl::graph::mtl{
 namespace
@@ -19,6 +20,7 @@ namespace
         bmi.ubo_requirements = {UBODescriptorSemantic::ViewportInfo};
         bmi.texture_slot_decls = {{TextureSlot::BaseColor, GLSLSamplerType::Sampler2DArray, true}};
         bmi.ssbo_slot_decls = {{"mtl", SSBOType::EmissiveSurface}};
+        bmi.vertex_node_config = MakeNodeConfigFrom2D(bmi.coordinate_system_2d, bmi.local_to_world_2d);
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::RectTexture2DArray, bmi);
         return true;
     }();
@@ -52,7 +54,18 @@ static ShaderProgramBuildSpec *CreateRectTexture2DArrayImpl(const contract::Phys
         mi_codes, mi_bytes,
     };
 
-    std::string vs = preamble + "#include \"2d/recttexture2darray.vert.glsl\"\n";
+    VertexVaryingConfig varying_cfg;
+    varying_cfg.emit_data_index_id = true;
+    varying_cfg.emit_texture_layer_id = true;
+    varying_cfg.emit_uv0 = true;
+    const std::string extra_attrs = "layout(location=1) in vec2 TexCoord;\n";
+    std::string vs = GenerateVertexShader(
+        MakeNodeConfigFrom2D(p.coordinate_system, p.local_to_world),
+        varying_cfg,
+        position_format,
+        extra_attrs,
+        "ShaderLibrary"
+    );
     std::string fs = preamble + "#include \"2d/recttexture2darray.frag.glsl\"\n";
 
     ShaderProgramBuildSpec *mci = CompileCompositorMaterial(profile, def, vs, fs, build2d::ToCompositorBuildConfig2D(p));

@@ -33,6 +33,13 @@ namespace hgl::graph
             std::string error_message;
         };
 
+        struct AssembleFragmentResult
+        {
+            std::string fragment_glsl;
+            bool        success;
+            std::string error_message;
+        };
+
         /// shader_library_path: ShaderLibrary 根目录的绝对路径（不带尾部斜杠）
         explicit CompositorAssembler(const std::string &shader_library_path);
 
@@ -46,6 +53,17 @@ namespace hgl::graph
             QualityTier     tier,
             PlatformBackend platform,
             const char     *vs_template_override      = nullptr,
+            const char     *fs_template_override      = nullptr,
+            const char     *surface_function_override  = nullptr
+        ) const;
+
+        /// FS-only variant: used when VS is generated separately by VertexShaderAssembler.
+        AssembleFragmentResult AssembleFragment(
+            SurfaceType     surface,
+            BlendMode       blend,
+            PassType        pass,
+            QualityTier     tier,
+            PlatformBackend platform,
             const char     *fs_template_override      = nullptr,
             const char     *surface_function_override  = nullptr
         ) const;

@@ -5,6 +5,7 @@
 #include<hgl/log/Log.h>
 #include<vector>
 #include "../common/VertexBuilderCommon.h"
+#include "../common/VertexShaderAssembler.h"
 #include "DefinitionDescriptorBuilder3D.h"
 
 namespace hgl::graph::mtl{
@@ -20,6 +21,7 @@ namespace
         bmi.with_local_to_world = true;
         bmi.with_sky          = false;
         bmi.ubo_requirements  = {UBODescriptorSemantic::ViewportInfo, UBODescriptorSemantic::CameraInfo};
+        bmi.vertex_node_config = MakeDefault3DNodeConfig();
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::VertexColor3D, bmi);
         return true;
     }();
@@ -55,29 +57,39 @@ static ShaderProgramBuildSpec *CreateVertexColor3DImpl(const contract::PhysicalD
 
     CompositorAssembler assembler("ShaderLibrary");
 
-    auto result = assembler.Assemble(
+    auto fs_result = assembler.AssembleFragment(
         SurfaceType::Unlit,
         BlendMode::Opaque,
         PassType::ForwardOpaque,
         QualityTier::Medium,
         PlatformBackend::PC,
-        "compositor/main_forward_unlit_vertexcolor.vert.glsl",
         "compositor/main_forward_unlit_vertexcolor.frag.glsl",
         "surface/unlit_vertexcolor_surface.glsl"
     );
 
-    if (!result.success)
+    if (!fs_result.success)
     {
         GLogError("[VertexColor3D] CompositorAssembler failed: %s",
-                  result.error_message.c_str());
+                  fs_result.error_message.c_str());
         return nullptr;
     }
+
+    VertexVaryingConfig varying_cfg;
+    varying_cfg.emit_vertex_color = true;
+    const std::string extra_attrs = "layout(location=1) in vec4 Color;\n";
+    std::string vs_glsl = GenerateVertexShader(
+        definition.vertex_node_config,
+        varying_cfg,
+        VK_FORMAT_R32G32B32_SFLOAT,
+        extra_attrs,
+        "ShaderLibrary"
+    );
 
     ShaderProgramBuildSpec *mci = CompileCompositorMaterial(
         profile,
         dynamic_def,
-        result.vertex_glsl,
-        result.fragment_glsl,
+        vs_glsl,
+        fs_result.fragment_glsl,
         bc);
 
     if (!mci)
