@@ -180,7 +180,7 @@
 
 ## 7. 以时钟示例验证链路
 
-`example/Basic/clock.cpp` 能完整体现该设计：
+`example/Basic/ClockUse.cpp` 能完整体现该设计：
 
 - 12 个刻度：`Mobility::Static`，初始化后不做每帧逻辑更新。
 - 3 根指针：`Mobility::Movable`，每帧根据系统时间旋转并 `MarkDirty()`。

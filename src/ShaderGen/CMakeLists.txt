@@ -103,8 +103,7 @@ SET(FIXED_MTL_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderCompilerProfileAPI.h
                     ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenPhysicalDeviceProfileAdapter.h
                     ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenPhysicalDeviceProfileJson.h
                     ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenProfileTargetVersion.h
-                    ${SHADERGEN_INCLUDE_PATH}/ResourceLayoutGenerator.h
-                    ResourceLayoutGenerator.cpp
+
 )
 
 SOURCE_GROUP("Fixed Material" FILES ${FIXED_MTL_FILES})
@@ -134,12 +133,9 @@ SET(NEW_MTL_TYPE_FILES  ${NEW_MTL_INCLUDE_PATH}/SurfaceType.h
                         ${NEW_MTL_INCLUDE_PATH}/NewShaderPermutationKey.h
                         ${NEW_MTL_INCLUDE_PATH}/MaterialPresetDef.h
                         ${NEW_MTL_INCLUDE_PATH}/DeviceQualityProfile.h
-                        ${NEW_MTL_INCLUDE_PATH}/NewDescriptorSetType.h
                         ${NEW_MTL_INCLUDE_PATH}/DescriptorSetBindings.h
-                        ${NEW_MTL_INCLUDE_PATH}/NewDescriptorBinding.h
                         NewShaderPermutationKey.cpp
                         DeviceQualityProfile.cpp
-                        NewDescriptorBinding.cpp
 )
 
 SOURCE_GROUP("New Material Types" FILES ${NEW_MTL_TYPE_FILES})
