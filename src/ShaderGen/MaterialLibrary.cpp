@@ -211,7 +211,7 @@ static std::string BuildBuiltinMaterialCreatorRequestHashImpl(const BuiltinMater
                                                               const MaterialDefinition &definition,
                                                               const MaterialDefinitionBuildRequest &request)
 {
-    auto BuildCommonConfigHash = [](const bool material_instance,
+    auto BuildCommonConfigHash = [](const uint32 ssbo_slot_count,
                                     const RenderTargetOutputConfig &rt_output,
                                     const uint32 shader_stage_flag_bit,
                                     const PrimitiveType prim,
@@ -221,34 +221,29 @@ static std::string BuildBuiltinMaterialCreatorRequestHashImpl(const BuiltinMater
     {
         std::string hash;
         hash.reserve(128);
+        hash+='M';
 
-        char str[16];
-        char *p=str;
+        if(ssbo_slot_count>0)
+        {
+            hash+='S';
+            hash+=std::to_string(ssbo_slot_count);
+        }
 
-        *p='M';++p;
+        hash+='_';
+        hash+=char('0'+rt_output.color);
 
-        if(material_instance){*p='I';++p;}
+        if(rt_output.depth){hash+='D';}
+        if(rt_output.stencil){hash+='S';}
 
-        *p='_';++p;
+        hash+='_';
 
-        *p='0'+rt_output.color;++p;
-
-        if(rt_output.depth){*p='D';++p;}
-        if(rt_output.stencil){*p='S';++p;}
-
-        *p='_';++p;
-
-        if(shader_stage_flag_bit&(uint32)ShaderStage::Vertex){*p='V';++p;}
-        if(shader_stage_flag_bit&(uint32)ShaderStage::TessControl){*p='T';++p;}     //tc/te有一个就行了
-        if(shader_stage_flag_bit&(uint32)ShaderStage::Geometry){*p='G';++p;}
-        if(shader_stage_flag_bit&(uint32)ShaderStage::Fragment){*p='F';++p;}
-        if(shader_stage_flag_bit&(uint32)ShaderStage::Compute){*p='C';++p;}
-        if(shader_stage_flag_bit&(uint32)ShaderStage::Mesh){*p='M';++p;}     //mesh/task有一个就行了
-        *p='_';++p;
-
-        *p=0;
-
-        hash=str;
+        if(shader_stage_flag_bit&(uint32)ShaderStage::Vertex){hash+='V';}
+        if(shader_stage_flag_bit&(uint32)ShaderStage::TessControl){hash+='T';}     //tc/te有一个就行了
+        if(shader_stage_flag_bit&(uint32)ShaderStage::Geometry){hash+='G';}
+        if(shader_stage_flag_bit&(uint32)ShaderStage::Fragment){hash+='F';}
+        if(shader_stage_flag_bit&(uint32)ShaderStage::Compute){hash+='C';}
+        if(shader_stage_flag_bit&(uint32)ShaderStage::Mesh){hash+='M';}     //mesh/task有一个就行了
+        hash+='_';
 
         if(const char *prim_name=GetPrimName(prim))
             hash+=prim_name;
@@ -297,7 +292,7 @@ static std::string BuildBuiltinMaterialCreatorRequestHashImpl(const BuiltinMater
         return hash;
     };
 
-    auto Build2DConfigHash = [&](const bool material_instance,
+    auto Build2DConfigHash = [&](const uint32 ssbo_slot_count,
                                  const CoordinateSystem2D coordinate_system,
                                  const bool local_to_world,
                                  const bool include_rt_and_private_override) -> std::string
@@ -324,7 +319,7 @@ static std::string BuildBuiltinMaterialCreatorRequestHashImpl(const BuiltinMater
             private_sbs_count = request.private_shader_buffer_source_count;
         }
 
-        std::string hash = BuildCommonConfigHash(material_instance,
+        std::string hash = BuildCommonConfigHash(ssbo_slot_count,
                                                  rt_output,
                                                  shader_stage_flag_bit,
                                                  request.primitive_type,
@@ -364,7 +359,7 @@ static std::string BuildBuiltinMaterialCreatorRequestHashImpl(const BuiltinMater
             private_sbs_count = request.private_shader_buffer_source_count;
         }
 
-        std::string hash = BuildCommonConfigHash(false,
+        std::string hash = BuildCommonConfigHash(static_cast<uint32>(definition.ssbo_slot_decls.size()),
                                                  rt_output,
                                                  shader_stage_flag_bit,
                                                  request.primitive_type,
@@ -397,7 +392,7 @@ static std::string BuildBuiltinMaterialCreatorRequestHashImpl(const BuiltinMater
 
     if(definition.is_text)
     {
-        const std::string hash = Build2DConfigHash(true,
+        const std::string hash = Build2DConfigHash(static_cast<uint32>(definition.ssbo_slot_decls.size()),
                                                    definition.coordinate_system_2d,
                                                    definition.local_to_world_2d,
                                                    false);
@@ -406,7 +401,7 @@ static std::string BuildBuiltinMaterialCreatorRequestHashImpl(const BuiltinMater
 
     if(definition.is_2d)
     {
-        const std::string hash = Build2DConfigHash(false,
+        const std::string hash = Build2DConfigHash(static_cast<uint32>(definition.ssbo_slot_decls.size()),
                                                    request.recipe.coordinate_system_2d,
                                                    request.recipe.local_to_world_2d,
                                                    true);
