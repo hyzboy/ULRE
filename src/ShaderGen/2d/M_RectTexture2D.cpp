@@ -16,6 +16,9 @@ namespace
         bmi.is_2d = true;
         bmi.coordinate_system_2d = CoordinateSystem2D::NDC;
         bmi.local_to_world_2d = true;
+        bmi.with_local_to_world = true;
+        bmi.ubo_requirements = {UBODescriptorSemantic::ViewportInfo};
+        bmi.texture_slot_decls = {{TextureSlot::BaseColor, GLSLSamplerType::Sampler2D, true}};
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::RectTexture2D, bmi);
         return true;
     }();
@@ -65,7 +68,6 @@ static ShaderProgramBuildSpec *CreateRectTexture2DImpl(const contract::PhysicalD
 
 ShaderProgramBuildSpec *CreateRectTexture2D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {
-    (void)definition;
     return CreateRectTexture2DImpl(profile, Material2DBuildParams::From(request, definition));
 }
 }//namespace hgl::graph::mtl

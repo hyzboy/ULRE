@@ -16,6 +16,9 @@ namespace
         bmi.is_2d = true;
         bmi.coordinate_system_2d = CoordinateSystem2D::NDC;
         bmi.local_to_world_2d = true;
+        bmi.with_local_to_world = true;
+        bmi.ubo_requirements = {UBODescriptorSemantic::ViewportInfo};
+        bmi.texture_slot_decls = {{TextureSlot::BaseColor, GLSLSamplerType::Sampler2DArray, true}};
         bmi.ssbo_slot_decls = {{"mtl", SSBOType::EmissiveSurface}};
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::RectTexture2DArray, bmi);
         return true;
@@ -64,7 +67,6 @@ static ShaderProgramBuildSpec *CreateRectTexture2DArrayImpl(const contract::Phys
 
 ShaderProgramBuildSpec *CreateRectTexture2DArray(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {
-    (void)definition;
     return CreateRectTexture2DArrayImpl(profile, Material2DBuildParams::From(request, definition));
 }
 }//namespace hgl::graph::mtl

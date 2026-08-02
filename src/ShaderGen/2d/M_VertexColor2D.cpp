@@ -15,6 +15,8 @@ namespace
         bmi.is_2d = true;
         bmi.coordinate_system_2d = CoordinateSystem2D::NDC;
         bmi.local_to_world_2d = true;
+        bmi.with_local_to_world = true;
+        bmi.ubo_requirements = {UBODescriptorSemantic::ViewportInfo};
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::VertexColor2D, bmi);
         return true;
     }();

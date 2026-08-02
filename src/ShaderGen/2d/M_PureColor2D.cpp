@@ -16,6 +16,8 @@ namespace
         bmi.is_2d = true;
         bmi.coordinate_system_2d = CoordinateSystem2D::NDC;
         bmi.local_to_world_2d = true;
+        bmi.with_local_to_world = true;
+        bmi.ubo_requirements = {UBODescriptorSemantic::ViewportInfo};
         bmi.usage_tag   = MaterialDefinitionUsageTag::Fallback;
         bmi.ssbo_slot_decls = {{"mtl", SSBOType::EmissiveSurface}};
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::PureColor2D, bmi);
@@ -64,7 +66,6 @@ static ShaderProgramBuildSpec *CreatePureColor2DImpl(const contract::PhysicalDev
 
 ShaderProgramBuildSpec *CreatePureColor2D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {
-    (void)definition;
     return CreatePureColor2DImpl(profile, Material2DBuildParams::From(request, definition));
 }
 }//namespace hgl::graph::mtl
