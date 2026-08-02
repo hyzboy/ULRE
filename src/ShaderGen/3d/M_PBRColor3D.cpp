@@ -38,8 +38,6 @@ namespace
 
 static ShaderProgramBuildSpec *CreatePBRColor3DImpl(const contract::PhysicalDeviceProfileLite *profile, CompositorMaterialBuildConfig bc, const MaterialDefinition &definition)
 {
-    bc.material_instance = true;
-
     SkyLightAmbientModel ambient = bc.sky_ambient_model;
 
     std::vector<FixedDescriptorEntry> dynamic_descriptors = Build3DDescriptorsFromDefinition(definition);
@@ -102,6 +100,6 @@ static ShaderProgramBuildSpec *CreatePBRColor3DImpl(const contract::PhysicalDevi
 
 ShaderProgramBuildSpec *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {
-    return CreatePBRColor3DImpl(profile, ToCompositorBuildConfig3D(request, definition, true), definition);
+    return CreatePBRColor3DImpl(profile, ToCompositorBuildConfig3D(request, definition), definition);
 }
 }//namespace hgl::graph::mtl

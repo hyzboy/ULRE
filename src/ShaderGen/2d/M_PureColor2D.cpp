@@ -37,9 +37,7 @@ static ShaderProgramBuildSpec *CreatePureColor2DImpl(const contract::PhysicalDev
     constexpr const char mi_codes[]="vec4 Color;";
     constexpr const uint32_t mi_bytes=sizeof(math::Vector4f);
 
-    p.material_instance = true;
-
-    auto preamble = build2d::Build2DPreamble(p, false, true);
+    auto preamble = build2d::Build2DPreamble(p, false);
 
     std::vector<FixedVertexEntry> vertices;
     build2d::PushBaseVertexEntries(vertices, p);

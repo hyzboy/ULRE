@@ -32,12 +32,10 @@ static ShaderProgramBuildSpec *CreateRectTexture2DArrayImpl(const contract::Phys
         return(nullptr);
 
     p.prim = PrimitiveType::Triangles;
-    p.material_instance = true;
     p.shader_stage_flag_bit &= ~(uint32_t)ShaderStage::Geometry;
 
     const VkFormat position_format = ResolveMaterialPositionFormat(p.geometry_vertex_format, VK_FORMAT_R32G32_SFLOAT);
-
-    auto preamble = build2d::Build2DPreamble(p, true, true, position_format);
+    auto preamble = build2d::Build2DPreamble(p, true, position_format);
 
     std::vector<FixedVertexEntry> vertices;
     build2d::PushBaseVertexEntries(vertices, p, position_format);

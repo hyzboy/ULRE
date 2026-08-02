@@ -33,7 +33,7 @@ static ShaderProgramBuildSpec *CreateRectTexture2DImpl(const contract::PhysicalD
 
     const VkFormat position_format = ResolveMaterialPositionFormat(p.geometry_vertex_format, VK_FORMAT_R32G32_SFLOAT);
 
-    auto preamble = build2d::Build2DPreamble(p, true, false, position_format);
+    auto preamble = build2d::Build2DPreamble(p, true, position_format);
 
     std::vector<FixedVertexEntry> vertices;
     build2d::PushBaseVertexEntries(vertices, p, position_format);

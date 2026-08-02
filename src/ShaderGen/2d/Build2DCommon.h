@@ -22,7 +22,6 @@ struct Material2DBuildParams
     PrimitiveType           prim                = PrimitiveType::Triangles;
     CoordinateSystem2D      coordinate_system   = CoordinateSystem2D::NDC;
     bool                    local_to_world      = true;
-    bool                    material_instance   = false;
     uint32_t                shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
     const GeometryVertexFormat *geometry_vertex_format = nullptr;
     const ShaderBufferSource *const *private_shader_buffer_sources = nullptr;
@@ -42,7 +41,6 @@ struct Material2DBuildParams
         p.local_to_world    = definition.is_text
             ? definition.local_to_world_2d
             : request.recipe.local_to_world_2d;
-        p.material_instance = false;  // creators set this explicitly when needed
         if(request.override_shader_stage_bits)
             p.shader_stage_flag_bit = request.shader_stage_flag_bit;
         p.geometry_vertex_format            = request.geometry_vertex_format;
@@ -82,11 +80,11 @@ inline const char *GLSLInputType(const VkFormat fmt)
 
 inline std::string BuildDescriptorDefines(
     const Material2DBuildParams &p,
-    bool has_texture,
-    bool has_mi)
+    bool has_texture)
 {
     std::string defs;
-    const int tex_binding = has_mi ? 3 : 0;
+    const bool has_ssbo = p.material_definition && !p.material_definition->ssbo_slot_decls.empty();
+    const int tex_binding = has_ssbo ? 3 : 0;
 
     if(p.coordinate_system == CoordinateSystem2D::Ortho)
     {
@@ -108,7 +106,7 @@ inline std::string BuildDescriptorDefines(
         defs += "#define TEX_BINDING " + std::to_string(tex_binding) + "\n";
     }
 
-    if(has_mi)
+    if(has_ssbo)
     {
         defs += "#define MI_SET 2\n";
         defs += "#define MI_BINDING 0\n";
@@ -125,10 +123,10 @@ inline std::string BuildDescriptorDefines(
 // Shader preamble builder
 // ─────────────────────────────────────────────────────────────
 
-inline std::string Build2DPreamble(const Material2DBuildParams &p, bool has_texture, bool has_mi, VkFormat position_format_override = VK_FORMAT_UNDEFINED)
+inline std::string Build2DPreamble(const Material2DBuildParams &p, bool has_texture, VkFormat position_format_override = VK_FORMAT_UNDEFINED)
 {
     std::string pr = "#version 450\n\n";
-    pr += BuildDescriptorDefines(p, has_texture, has_mi);
+    pr += BuildDescriptorDefines(p, has_texture);
 
     const VkFormat position_format = (position_format_override!=VK_FORMAT_UNDEFINED)
                                    ? position_format_override
@@ -145,8 +143,9 @@ inline std::string Build2DPreamble(const Material2DBuildParams &p, bool has_text
         case CoordinateSystem2D::Ortho:     pr += "#define COORD_ORTHO\n"; break;
     }
 
-    if(p.local_to_world)    pr += "#define HAS_L2W\n";
-    if(p.material_instance) pr += "#define HAS_MI\n";
+    if(p.local_to_world) pr += "#define HAS_L2W\n";
+    if(p.material_definition && !p.material_definition->ssbo_slot_decls.empty())
+        pr += "#define HAS_MI\n";
 
     pr += "\n";
     return pr;
@@ -197,9 +196,11 @@ inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, cons
         descriptor_builder_common::PushLocalToWorldIndexRows(v, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
     }
 
-    if(p.material_instance)
+    // MaterialInstance — definition-driven (E4): driven by ssbo_slot_decls, same as 3D path.
+    if (p.material_definition && !p.material_definition->ssbo_slot_decls.empty())
     {
-        descriptor_builder_common::PushMaterialInstance(v, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), SSBOType::PBRSurface);
+        const SSBOType ssbo_type = p.material_definition->ssbo_slot_decls.front().ssbo_type;
+        descriptor_builder_common::PushMaterialInstance(v, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), ssbo_type);
         descriptor_builder_common::PushMaterialDataIndexRows(v, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
         descriptor_builder_common::PushMaterialTextureLayerRows(v, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
     }
@@ -227,7 +228,6 @@ inline CompositorMaterialBuildConfig ToCompositorBuildConfig2D(const Material2DB
     CompositorMaterialBuildConfig bc;
     bc.primitive_type                  = p.prim;
     bc.shader_stage_flag_bits          = p.shader_stage_flag_bit;
-    bc.material_instance               = p.material_instance;
     bc.with_local_to_world             = p.local_to_world;
     bc.with_camera                     = false;
     bc.with_sky                        = false;

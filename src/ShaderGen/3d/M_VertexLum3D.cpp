@@ -31,7 +31,6 @@ namespace
 
 static ShaderProgramBuildSpec *CreateVertexLuminance3DImpl(const contract::PhysicalDeviceProfileLite *profile, CompositorMaterialBuildConfig bc, const MaterialDefinition &definition)
 {
-    bc.material_instance = true;
     std::vector<FixedDescriptorEntry> dynamic_descriptors = Build3DDescriptorsFromDefinition(definition);
 
     const VkFormat position_format = ResolveMaterialPositionFormat(bc.geometry_vertex_format, VK_FORMAT_R32G32B32_SFLOAT);

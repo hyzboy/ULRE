@@ -44,8 +44,6 @@ namespace
 
 static ShaderProgramBuildSpec *CreateStandardTextureArrayImpl(const contract::PhysicalDeviceProfileLite *profile, CompositorMaterialBuildConfig bc, const MaterialDefinition &definition)
 {
-    bc.material_instance = true;
-
     SkyLightAmbientModel ambient = bc.sky_ambient_model;
 
     std::vector<FixedDescriptorEntry> dynamic_descriptors = Build3DDescriptorsFromDefinition(definition);
@@ -107,6 +105,6 @@ static ShaderProgramBuildSpec *CreateStandardTextureArrayImpl(const contract::Ph
 
 ShaderProgramBuildSpec *CreateStandardTextureArray(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {
-    return CreateStandardTextureArrayImpl(profile, ToCompositorBuildConfig3D(request, definition, true), definition);
+    return CreateStandardTextureArrayImpl(profile, ToCompositorBuildConfig3D(request, definition), definition);
 }
 }//namespace hgl::graph::mtl

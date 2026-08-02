@@ -44,8 +44,6 @@ namespace
 
 static ShaderProgramBuildSpec *CreateStandardImpl(const contract::PhysicalDeviceProfileLite *profile, CompositorMaterialBuildConfig bc, const MaterialDefinition &definition)
 {
-    bc.material_instance = true;
-
     SkyLightAmbientModel ambient = bc.sky_ambient_model;
 
     std::vector<FixedDescriptorEntry> dynamic_descriptors = Build3DDescriptorsFromDefinition(definition);
@@ -107,6 +105,6 @@ static ShaderProgramBuildSpec *CreateStandardImpl(const contract::PhysicalDevice
 
 ShaderProgramBuildSpec *CreateStandard(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {
-    return CreateStandardImpl(profile, ToCompositorBuildConfig3D(request, definition, true), definition);
+    return CreateStandardImpl(profile, ToCompositorBuildConfig3D(request, definition), definition);
 }
 }//namespace hgl::graph::mtl

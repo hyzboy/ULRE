@@ -56,7 +56,6 @@ static ShaderProgramBuildSpec *CreateGizmo3DImpl(const contract::PhysicalDeviceP
         return nullptr;
     }
 
-    bc.material_instance = true;
     std::vector<FixedDescriptorEntry> dynamic_descriptors = Build3DDescriptorsFromDefinition(definition);
 
     FixedVertexEntry gizmo_3d_vertex[] = {

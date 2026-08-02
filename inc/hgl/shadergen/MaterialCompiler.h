@@ -28,7 +28,6 @@ struct CompositorMaterialBuildConfig
 {
     PrimitiveType primitive_type = PrimitiveType::Triangles;
     uint32_t shader_stage_flag_bits = uint32_t(ShaderStage::VertexFragment);
-    bool material_instance = false;
     bool with_local_to_world = false;
     bool with_camera = false;
     bool with_sky = false;
@@ -74,15 +73,12 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
 namespace hgl::graph::mtl{
 
 /// Build a CompositorMaterialBuildConfig for a 3D/sky material from a request + definition.
-/// material_instance controls whether MI is enabled (caller sets true when needed).
 inline CompositorMaterialBuildConfig ToCompositorBuildConfig3D(
     const MaterialDefinitionBuildRequest &request,
-    const MaterialDefinition &definition,
-    bool material_instance = false)
+    const MaterialDefinition &definition)
 {
     CompositorMaterialBuildConfig bc;
     bc.primitive_type       = request.primitive_type;
-    bc.material_instance    = material_instance;
     bc.with_camera          = definition.with_camera;
     bc.with_local_to_world  = definition.with_local_to_world;
     bc.with_sky             = definition.with_sky;

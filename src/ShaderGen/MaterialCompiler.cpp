@@ -273,13 +273,10 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     const bool infer_has_camera = HasDescriptorSemantic(def, DescriptorSemantic::CameraInfo);
     const bool infer_has_sky    = HasDescriptorSemantic(def, DescriptorSemantic::SkyInfo);
     const bool infer_has_l2w    = HasDescriptorSemantic(def, DescriptorSemantic::LocalToWorld);
-    const bool infer_has_mi     = HasDescriptorSemantic(def, DescriptorSemantic::MaterialSSBOSlotData)
-                               || (def.mi_glsl_codes && def.mi_struct_bytes > 0);
 
     const bool with_camera = config.with_camera || infer_has_camera;
     const bool with_sky = config.with_sky || infer_has_sky;
     const bool with_local_to_world = config.with_local_to_world || infer_has_l2w;
-    const bool material_instance = config.material_instance || infer_has_mi;
 
     // ─────────────────────────────────────────────────────────────
     // Step 2: Create ShaderProgramBuildSpec

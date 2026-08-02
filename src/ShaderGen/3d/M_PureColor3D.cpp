@@ -97,7 +97,7 @@ static ShaderProgramBuildSpec *CreatePureColor3DImpl(const contract::PhysicalDev
 
 ShaderProgramBuildSpec *CreatePureColor3D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {
-    CompositorMaterialBuildConfig bc = ToCompositorBuildConfig3D(request, definition, true);
+    CompositorMaterialBuildConfig bc = ToCompositorBuildConfig3D(request, definition);
     return CreatePureColor3DImpl(profile, bc, definition);
 }
 }//namespace hgl::graph::mtl
