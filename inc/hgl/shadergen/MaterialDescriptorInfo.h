@@ -88,10 +88,18 @@ public:
     SSBODescriptor *GetSSBO(const std::string &name);
     TextureDescriptor *GetTexture(const std::string &name);
     TextureSamplerDescriptor *GetTextureSampler(const std::string &name);
+    const UBODescriptor *GetUBO(const std::string &name)const{return const_cast<MaterialDescriptorInfo *>(this)->GetUBO(name);}
+    const SSBODescriptor *GetSSBO(const std::string &name)const{return const_cast<MaterialDescriptorInfo *>(this)->GetSSBO(name);}
+    const TextureDescriptor *GetTexture(const std::string &name)const{return const_cast<MaterialDescriptorInfo *>(this)->GetTexture(name);}
+    const TextureSamplerDescriptor *GetTextureSampler(const std::string &name)const{return const_cast<MaterialDescriptorInfo *>(this)->GetTextureSampler(name);}
     UBODescriptor *GetUBO(const char *name){return GetUBO(std::string(name?name:""));}
     SSBODescriptor *GetSSBO(const char *name){return GetSSBO(std::string(name?name:""));}
     TextureDescriptor *GetTexture(const char *name){return GetTexture(std::string(name?name:""));}
     TextureSamplerDescriptor *GetTextureSampler(const char *name){return GetTextureSampler(std::string(name?name:""));}
+    const UBODescriptor *GetUBO(const char *name)const{return GetUBO(std::string(name?name:""));}
+    const SSBODescriptor *GetSSBO(const char *name)const{return GetSSBO(std::string(name?name:""));}
+    const TextureDescriptor *GetTexture(const char *name)const{return GetTexture(std::string(name?name:""));}
+    const TextureSamplerDescriptor *GetTextureSampler(const char *name)const{return GetTextureSampler(std::string(name?name:""));}
 
     const DescriptorSetType GetSetType(const std::string &name)const;
     const DescriptorSetType GetSetType(const char *name)const

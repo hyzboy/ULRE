@@ -37,8 +37,8 @@ namespace
             "DATA_INDEX_ROWS_SSBO;\n\n";
 
         vs += use_vec2_position
-            ? "#include \"vertex/s1_input_vec2.glsl\"\n"
-            : "#include \"vertex/s1_input_vec3.glsl\"\n";
+            ? "layout(location=0) in vec2 Position;\n"
+            : "layout(location=0) in vec3 Position;\n";
 
         vs += "layout(location=1) in float Luminance;\n";
         vs += use_vec2_position

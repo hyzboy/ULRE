@@ -40,7 +40,7 @@ namespace
             "L2W_SSBO;\n"
             "#include \"common/instance_rows_ssbo.glsl\"\n"
             "L2W_INDEX_ROWS_SSBO;\n\n"
-            "#include \"vertex/s1_input_vec3.glsl\"\n"
+            "layout(location=0) in vec3 Position;\n"
             "#include \"vertex/s2_passthrough3d.glsl\"\n"
             "#include \"vertex/helpers/orient_world.glsl\"\n\n"
             "layout(location=0) out vec3 fragDirection;\n\n"

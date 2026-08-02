@@ -195,9 +195,7 @@ static bool AddMaterialSSBOSlotDescriptor(ShaderProgramBuildSpec &mci,
     if (!mci.AddStruct(struct_name, glsl_codes))
         return false;
 
-    return mci.AddSSBO(stage_bits, DescriptorSetType::Material, struct_name, decl.name);
-
-    return false;
+    return mci.AddSSBO(stage_bits, DescriptorSetType::Material, struct_name, decl.name, int(ssbo_slot));
 }
 
 static bool ValidateDefinitionCapabilitySubset(
@@ -351,6 +349,10 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     }
 #endif
 
+    const uint32_t declared_material_ssbo_slot_count = use_slot_decls ? static_cast<uint32_t>(config.ssbo_slot_decls->size()) : 0u;
+
+    std::string primary_sampler_name;
+
     for (uint32_t i = 0; i < def.descriptor_entry_count; ++i)
     {
         const FixedDescriptorEntry &entry = def.descriptor_entries[i];
@@ -402,10 +404,44 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
                 material_ssbo_stage_bits = stage_bits;
                 break;
             case DescriptorSemantic::MaterialTextureLayerTable:
-                mci->AddSSBOStruct(stage_bits, SBS_MaterialTextureLayerRows);
+                if (use_slot_decls)
+                {
+                    if (!mci->AddStruct(SBS_MaterialTextureLayerRows.struct_name, ""))
+                        return FailAfterMci("failed to add MaterialTextureLayerRows struct");
+                    if (!mci->AddSSBO(stage_bits,
+                                      DescriptorSetType::Material,
+                                      SBS_MaterialTextureLayerRows.struct_name,
+                                      SBS_MaterialTextureLayerRows.name,
+                                      int(declared_material_ssbo_slot_count + 1u)))
+                    {
+                        return FailAfterMci("failed to add MaterialTextureLayerRows SSBO");
+                    }
+                }
+                else
+                {
+                    if (!mci->AddSSBOStruct(stage_bits, SBS_MaterialTextureLayerRows))
+                        return FailAfterMci("failed to add MaterialTextureLayerRows SSBO");
+                }
                 break;
             case DescriptorSemantic::MaterialSSBOIndexTable:
-                mci->AddSSBOStruct(stage_bits, SBS_MaterialDataIndexRows);
+                if (use_slot_decls)
+                {
+                    if (!mci->AddStruct(SBS_MaterialDataIndexRows.struct_name, ""))
+                        return FailAfterMci("failed to add MaterialDataIndexRows struct");
+                    if (!mci->AddSSBO(stage_bits,
+                                      DescriptorSetType::Material,
+                                      SBS_MaterialDataIndexRows.struct_name,
+                                      SBS_MaterialDataIndexRows.name,
+                                      int(declared_material_ssbo_slot_count)))
+                    {
+                        return FailAfterMci("failed to add MaterialDataIndexRows SSBO");
+                    }
+                }
+                else
+                {
+                    if (!mci->AddSSBOStruct(stage_bits, SBS_MaterialDataIndexRows))
+                        return FailAfterMci("failed to add MaterialDataIndexRows SSBO");
+                }
                 break;
             default:
                 break;
@@ -436,6 +472,9 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
         case DescriptorKind::TextureSampler:
             if (entry.glsl_type)
             {
+                if (primary_sampler_name.empty() && entry.name && *entry.name)
+                    primary_sampler_name = entry.name;
+
                 TextureType tt;
                 SamplerType st = SamplerType::Sampler2D;
                 const char *glsl_type_str = entry.glsl_type;
@@ -495,6 +534,66 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     // Inject per-material SSBO slot count when declared via ssbo_slot_decls.
     if (use_slot_decls)
         binding_preamble += "#define MTL_SSBO_SLOT_COUNT " + std::to_string(config.ssbo_slot_decls->size()) + "u\n";
+
+    auto AppendDescriptorBindingDefine = [&](const char *macro_name, const ShaderDescriptor *sd)
+    {
+        if (!macro_name || !sd || sd->set < 0 || sd->binding < 0)
+            return;
+        binding_preamble += "#define ";
+        binding_preamble += macro_name;
+        binding_preamble += " ";
+        binding_preamble += std::to_string(sd->set);
+        binding_preamble += "\n";
+        binding_preamble += "#define ";
+        binding_preamble += std::string(macro_name).replace(std::string(macro_name).find("_SET"), 4, "_BINDING");
+        binding_preamble += " ";
+        binding_preamble += std::to_string(sd->binding);
+        binding_preamble += "\n";
+    };
+
+    const MaterialDescriptorInfo &descriptor_info = mci->GetDescriptorInfo();
+
+    const char *material_data_name = "mtl";
+    if (use_slot_decls && config.ssbo_slot_decls && !config.ssbo_slot_decls->empty())
+        material_data_name = (*config.ssbo_slot_decls)[0].name.c_str();
+
+    AppendDescriptorBindingDefine("MI_SET", descriptor_info.GetSSBO(material_data_name));
+    AppendDescriptorBindingDefine("MI_DATA_INDEX_ROWS_SET", descriptor_info.GetSSBO(SBS_MaterialDataIndexRows.name));
+    AppendDescriptorBindingDefine("MI_TEXTURE_LAYER_ROWS_SET", descriptor_info.GetSSBO(SBS_MaterialTextureLayerRows.name));
+    AppendDescriptorBindingDefine("L2W_SET", descriptor_info.GetSSBO(SBS_LocalToWorld.name));
+    AppendDescriptorBindingDefine("L2W_INDEX_ROWS_SET", descriptor_info.GetSSBO(SBS_LocalToWorldIndexRows.name));
+    AppendDescriptorBindingDefine("VIEWPORT_SET", descriptor_info.GetUBO(SBS_ViewportInfo.name));
+    AppendDescriptorBindingDefine("CAMERA_SET", descriptor_info.GetUBO(SBS_CameraInfo.name));
+    AppendDescriptorBindingDefine("SKY_SET", descriptor_info.GetUBO(SBS_SkyInfo.name));
+
+    const TextureSamplerDescriptor *primary_sampler = nullptr;
+    if (!primary_sampler_name.empty())
+        primary_sampler = descriptor_info.GetTextureSampler(primary_sampler_name.c_str());
+
+    if (!primary_sampler)
+        primary_sampler = descriptor_info.GetTextureSampler("TextureBaseColor");
+
+    if (!primary_sampler && config.material_definition)
+    {
+        for (const auto &slot_decl : config.material_definition->texture_slot_decls)
+        {
+            if (!slot_decl.name || !*slot_decl.name)
+                continue;
+
+            primary_sampler = descriptor_info.GetTextureSampler(slot_decl.name);
+            if (primary_sampler)
+                break;
+        }
+    }
+
+    if (primary_sampler)
+    {
+        if (primary_sampler->set >= 0 && primary_sampler->binding >= 0)
+        {
+            binding_preamble += "#define TEX_SET " + std::to_string(primary_sampler->set) + "\n";
+            binding_preamble += "#define TEX_BINDING " + std::to_string(primary_sampler->binding) + "\n";
+        }
+    }
 
     // GLSL requires #version to be the very first token.
     auto InsertAfterVersionLine = [](const std::string &glsl, const std::string &inject) -> std::string

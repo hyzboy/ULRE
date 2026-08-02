@@ -18,6 +18,7 @@ namespace hgl::graph
 
         int set;
         int binding;
+        int preferred_binding;
         uint32_t stage_flag;
 
     private:
@@ -29,6 +30,7 @@ namespace hgl::graph
             set_type=DescriptorSetType::Unknow;
             set=-1;
             binding=-1;
+            preferred_binding=-1;
             stage_flag=0;
         }
 
@@ -52,6 +54,7 @@ namespace hgl::graph
                 set_type    =sr->set_type;
                 set         =sr->set;
                 binding     =sr->binding;
+                preferred_binding = sr->preferred_binding;
                 stage_flag  =sr->stage_flag;
             }
         }

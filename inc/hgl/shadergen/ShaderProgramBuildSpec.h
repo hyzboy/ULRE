@@ -107,6 +107,8 @@ namespace hgl::graph
 
             bool AddSSBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name);
             bool AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name);
+            bool AddSSBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name,const int preferred_binding);
+            bool AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name,const int preferred_binding);
             bool AddSSBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const char *struct_name,const char *name)
             {
                 return AddSSBO(flag_bits,set_type,std::string(struct_name?struct_name:""),std::string(name?name:""));
@@ -114,6 +116,14 @@ namespace hgl::graph
             bool AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const char *struct_name,const char *name)
             {
                 return AddSSBO(flag_bits,set_type,std::string(struct_name?struct_name:""),std::string(name?name:""));
+            }
+            bool AddSSBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const char *struct_name,const char *name,const int preferred_binding)
+            {
+                return AddSSBO(flag_bits,set_type,std::string(struct_name?struct_name:""),std::string(name?name:""),preferred_binding);
+            }
+            bool AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const char *struct_name,const char *name,const int preferred_binding)
+            {
+                return AddSSBO(flag_bits,set_type,std::string(struct_name?struct_name:""),std::string(name?name:""),preferred_binding);
             }
 
             bool AddSSBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss);

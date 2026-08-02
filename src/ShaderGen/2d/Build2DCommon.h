@@ -60,45 +60,9 @@ inline std::string Build2DFragmentPreamble(
     const Material2DBuildParams &p,
     bool has_texture)
 {
-    std::string defs = "#version 450\n\n";
-    const bool has_ssbo = p.material_definition && !p.material_definition->ssbo_slot_decls.empty();
-    const int tex_binding = has_ssbo ? 3 : 0;
-
-    if(p.vertex_node_config.projection == ProjectionMode::OrthoViewport
-    || p.vertex_node_config.projection == ProjectionMode::OrthoThenLocalToWorld)
-    {
-        defs += "#define SCENE_SET 0\n";
-        defs += "#define VIEWPORT_BINDING 2\n";
-    }
-
-    if(p.vertex_node_config.projection == ProjectionMode::LocalToWorldOnly
-    || p.vertex_node_config.projection == ProjectionMode::OrthoThenLocalToWorld
-    || p.vertex_node_config.projection == ProjectionMode::WorldCameraVP)
-    {
-        defs += "#define L2W_SET 1\n";
-        defs += "#define L2W_BINDING 0\n";
-        defs += "#define L2W_INDEX_ROWS_SET 1\n";
-        defs += "#define L2W_INDEX_ROWS_BINDING 1\n";
-    }
-
-    if(has_texture)
-    {
-        defs += "#define TEX_SET 2\n";
-        defs += "#define TEX_BINDING " + std::to_string(tex_binding) + "\n";
-    }
-
-    if(has_ssbo)
-    {
-        defs += "#define MI_SET 2\n";
-        defs += "#define MI_BINDING 0\n";
-        defs += "#define MI_DATA_INDEX_ROWS_SET 2\n";
-        defs += "#define MI_DATA_INDEX_ROWS_BINDING 1\n";
-        defs += "#define MI_TEXTURE_LAYER_ROWS_SET 2\n";
-        defs += "#define MI_TEXTURE_LAYER_ROWS_BINDING 2\n";
-    }
-
-    defs += "\n";
-    return defs;
+    (void)p;
+    (void)has_texture;
+    return "#version 450\n\n";
 }
 
 // ─────────────────────────────────────────────────────────────

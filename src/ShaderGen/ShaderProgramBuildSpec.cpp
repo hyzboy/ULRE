@@ -79,7 +79,8 @@ static const SSBODescriptor *ResolveSSBODescriptor(
     const ShaderStage flag_bit,
     const DescriptorSetType set_type,
     const std::string &struct_name,
-    const std::string &name)
+    const std::string &name,
+    const int preferred_binding)
 {
     SSBODescriptor *ssbo=mdi.GetSSBO(name);
 
@@ -89,12 +90,15 @@ static const SSBODescriptor *ResolveSSBODescriptor(
             return nullptr;
 
         ssbo->stage_flag|=(uint32_t)flag_bit;
+        if(preferred_binding>=0)
+            ssbo->preferred_binding=preferred_binding;
         return ssbo;
     }
 
     ssbo=new SSBODescriptor();
     ssbo->type=struct_name.c_str();
     hgl::strcpy(ssbo->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
+    ssbo->preferred_binding=preferred_binding;
 
     return mdi.AddSSBO((uint32_t)flag_bit,set_type,ssbo);
 }
@@ -226,6 +230,11 @@ bool ShaderProgramBuildSpec::AddUBOStruct(const uint32_t flag_bits,const ShaderB
 
 bool ShaderProgramBuildSpec::AddSSBO(const ShaderStage flag_bit,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name)
 {
+    return AddSSBO(flag_bit,set_type,struct_name,name,-1);
+}
+
+bool ShaderProgramBuildSpec::AddSSBO(const ShaderStage flag_bit,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name,const int preferred_binding)
+{
     if(!shader_map.ContainsKey(flag_bit))
         return(false);
 
@@ -237,7 +246,7 @@ bool ShaderProgramBuildSpec::AddSSBO(const ShaderStage flag_bit,const Descriptor
     if(!sc)
         return(false);
 
-    const SSBODescriptor *ssbo=ResolveSSBODescriptor(descriptor_db,flag_bit,set_type,struct_name,name);
+    const SSBODescriptor *ssbo=ResolveSSBODescriptor(descriptor_db,flag_bit,set_type,struct_name,name,preferred_binding);
     if(!ssbo)
         return false;
 
@@ -245,6 +254,11 @@ bool ShaderProgramBuildSpec::AddSSBO(const ShaderStage flag_bit,const Descriptor
 }
 
 bool ShaderProgramBuildSpec::AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name)
+{
+    return AddSSBO(flag_bits,set_type,struct_name,name,-1);
+}
+
+bool ShaderProgramBuildSpec::AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name,const int preferred_binding)
 {
     if(flag_bits==0)return(false);          //没有任何SHADER用?
 
@@ -254,7 +268,7 @@ bool ShaderProgramBuildSpec::AddSSBO(const uint32_t flag_bits,const DescriptorSe
     return ExecuteOnShadersByStage(shader_map,flag_bits,
         [&](const ShaderStage stage)
         {
-            return AddSSBO(stage,set_type,struct_name,name);
+            return AddSSBO(stage,set_type,struct_name,name,preferred_binding);
         });
 }
 

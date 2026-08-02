@@ -108,17 +108,17 @@ namespace hgl::graph::mtl
         switch (effective_input)
         {
         case VertexInputMode::Vec2Position:
-            vs += "#include \"vertex/s1_input_vec2.glsl\"\n";
+            vs += "layout(location=0) in vec2 Position;\n";
             break;
         case VertexInputMode::Vec2IntPosition:
-            vs += "#include \"vertex/s1_input_ivec2.glsl\"\n";
+            vs += "layout(location=0) in ivec2 Position;\n";
             break;
         case VertexInputMode::Procedural:
             vs += "#include \"vertex/s1_input_procedural.glsl\"\n";
             break;
         case VertexInputMode::Vec3Position:
         default:
-            vs += "#include \"vertex/s1_input_vec3.glsl\"\n";
+            vs += "layout(location=0) in vec3 Position;\n";
             break;
         }
 

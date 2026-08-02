@@ -39,21 +39,6 @@ namespace
             return false;
 
         case DescriptorSetType::Material:
-            if (strcmp(name, "mtl") == 0)
-            {
-                out_binding = 0;
-                return true;
-            }
-            if (strcmp(name, "mtl_data_index_rows") == 0)
-            {
-                out_binding = 1;
-                return true;
-            }
-            if (strcmp(name, "mtl_texture_layer_rows") == 0)
-            {
-                out_binding = 2;
-                return true;
-            }
             return false;
 
         default:
@@ -93,6 +78,24 @@ namespace
 
             sd->set_type = set_desc.set_type;
             sd->set = int(set_desc.set_type);
+            sd->binding = -1;
+        }
+
+        // 1) Explicit preferred binding from compiler contract (highest priority).
+        for (auto *sd : values)
+        {
+            if (!sd || sd->preferred_binding < 0)
+                continue;
+
+            sd->binding = sd->preferred_binding;
+            used_bindings.insert(sd->preferred_binding);
+        }
+
+        // 2) Legacy fixed binding by well-known descriptor names.
+        for (auto *sd : values)
+        {
+            if (!sd || sd->binding >= 0)
+                continue;
 
             int fixed_binding = -1;
             if (TryGetFixedBinding(set_desc.set_type, sd->name, fixed_binding))

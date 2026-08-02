@@ -45,7 +45,7 @@ namespace
             "#include \"common/l2w_ssbo.glsl\"\n"
             "L2W_SSBO;\n\n"
             "layout(scalar, set=MATERIAL_SET, binding=0) uniform ColorPattle { vec4 color[256]; } color_pattle;\n"
-            "#include \"vertex/s1_input_vec3.glsl\"\n"
+            "layout(location=0) in vec3 Position;\n"
             "layout(location=1) in uint ColorIndex;\n"
             "layout(location=2) in uint TransformID;\n"
             "#include \"vertex/s2_passthrough3d.glsl\"\n\n"
