@@ -27,7 +27,7 @@ namespace
                                              mtl::MaterialDefinition &out_bmi,
                                              mtl::BuiltinMaterialCreatorID &out_preset)
     {
-        const std::string &mtl_def_id = request.mtl_def_id;
+        const std::string &mtl_def_id = request.recipe.mtl_def_id;
 
         bool has_bmi = mtl::TryGetMaterialDefinitionByID(mtl_def_id, out_bmi);
         if (!has_bmi)
@@ -403,19 +403,6 @@ std::map<std::string, uint32_t> MaterialManager::GetShaderGenRecentValidationCat
     return {};
 }
 
-ShaderProgram *MaterialManager::AcquireMaterialProgram(const std::string &mtl_def_id,
-                                                               const mtl::MaterialRecipe &recipe,
-                                                               PrimitiveType prim_type,
-                                                               const GeometryVertexFormat *geometry_vertex_format)
-{
-    mtl::MaterialDefinitionBuildRequest request{};
-    request.mtl_def_id = mtl_def_id;
-    request.recipe = recipe;
-    request.primitive_type = prim_type;
-    request.geometry_vertex_format = geometry_vertex_format;
-    return AcquireMaterialProgram(request);
-}
-
 bool MaterialManager::BuildMaterialResourceLayout(const mtl::MaterialDefinitionBuildRequest &request,
                                                   mtl::MaterialResourceLayout &out_layout)
 {
@@ -435,21 +422,29 @@ bool MaterialManager::BuildMaterialResourceLayout(const mtl::MaterialDefinitionB
 
 ShaderProgram *MaterialManager::AcquireMaterialProgram(const mtl::MaterialDefinitionBuildRequest &request)
 {
+    // Ensure recipe defaults are filled in before lookup, in case the caller skipped normalization.
+    // This call is idempotent; PrimitiveComponent-initiated paths will have already normalized.
+    mtl::MaterialRecipe normalized_recipe = request.recipe;
+    mtl::NormalizeRecipe(normalized_recipe);
+
+    mtl::MaterialDefinitionBuildRequest normalized_request = request;
+    normalized_request.recipe = normalized_recipe;
+
     mtl::MaterialDefinition bmi{};
     mtl::BuiltinMaterialCreatorID preset = mtl::BuiltinMaterialCreatorID::VertexColor2D;
-    if (!ResolveMaterialDefinitionForRequest(request, bmi, preset))
+    if (!ResolveMaterialDefinitionForRequest(normalized_request, bmi, preset))
         return nullptr;
 
     // Compute hash key BEFORE CreateMaterialCreateInfo to avoid triggering
     // CompositorAssembler/GLSL compilation on every call when already cached.
-    const std::string hash_std = mtl::BuildBuiltinMaterialCreatorRequestHash(preset, bmi, request);
+    const std::string hash_std = mtl::BuildBuiltinMaterialCreatorRequestHash(preset, bmi, normalized_request);
     const AnsiString hash_name = hash_std.c_str();
 
     if (ShaderProgram *cached = TryGetCachedMaterial(hash_name))
         return cached;
 
     const auto *profile = GetPhysicalDeviceProfile();
-    AutoDelete<mtl::ShaderProgramBuildSpec> mci = mtl::CreateMaterialCreateInfo(profile, preset, bmi, request);
+    AutoDelete<mtl::ShaderProgramBuildSpec> mci = mtl::CreateMaterialCreateInfo(profile, preset, bmi, normalized_request);
     if(!mci)
         return nullptr;
 

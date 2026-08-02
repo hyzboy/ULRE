@@ -178,7 +178,6 @@ namespace hgl::graph
                 mtl::MaterialRecipe recipe{};
                 recipe.mtl_def_id = "PureColor3D";
                 mtl::MaterialDefinitionBuildRequest request{};
-                request.mtl_def_id = recipe.mtl_def_id;
                 request.recipe = recipe;
                 request.primitive_type = PrimitiveType::Triangles;
 

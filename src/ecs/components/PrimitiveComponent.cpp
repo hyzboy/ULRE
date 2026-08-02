@@ -137,18 +137,7 @@ namespace hgl::ecs
 
         void NormalizeRecipeWithBaseMaterialInfo(hgl::graph::mtl::MaterialRecipe &recipe)
         {
-            if (recipe.mtl_def_id.empty())
-                return;
-
-            hgl::graph::mtl::MaterialDefinition bmi{};
-            if (hgl::graph::mtl::TryGetMaterialDefinitionByID(recipe.mtl_def_id, bmi))
-                hgl::graph::mtl::ApplyBaseMaterialInfoDefaults(recipe, bmi, false);
-
-            if (recipe.ssbo_assets.empty())
-            {
-                for (const auto &binding : recipe.structs)
-                    hgl::graph::mtl::UpsertRecipeSSBOAssetBinding(recipe, "mtl", hgl::graph::mtl::SSBOBinding{binding.ssbo_type, binding.ssbo_id});
-            }
+            hgl::graph::mtl::NormalizeRecipe(recipe);
         }
     }
 

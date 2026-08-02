@@ -71,6 +71,12 @@ namespace hgl::graph::mtl
 
     struct MaterialDefinition
     {
+        // ── Layer 1: MaterialDefinition = Capability Superset ─────────────────────────
+        // 描述一个材质"能做什么"，由材质文件（未来）或 M_* 内置工厂注册。
+        // 包含资源需求声明（required_ssbo_assets）和渲染选项包络。
+        // 不含任何运行时句柄或 Vulkan 对象。
+        // ─────────────────────────────────────────────────────────────────────────────
+
         // Part-A: 基础语义/元信息
         std::string definition_id;                                   // 正式主键（字符串 ID / 未来文件名）
         std::string definition_name;                                 // 人类可读名称
@@ -103,6 +109,11 @@ namespace hgl::graph::mtl
         bool local_to_world_2d = true;
     };
 
+    // ── Layer 2: MaterialRecipe = Instance Input ──────────────────────────────────
+    // 描述"这次渲染想要什么"。由上层作者按需填写，不含 Vulkan 句柄。
+    // mtl_def_id 是唯一与 MaterialDefinition 对接的字段。
+    // 调用 mtl::NormalizeRecipe() 后，definition 的默认值会被合入此结构。
+    // ─────────────────────────────────────────────────────────────────────────────
     // 纯声明式材质输入（不含 Vulkan/运行时句柄），是 MaterializationSpec 的上游输入。
     struct MaterialRecipe
     {

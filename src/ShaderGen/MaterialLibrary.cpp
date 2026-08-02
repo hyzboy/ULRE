@@ -431,4 +431,23 @@ std::string BuildBuiltinMaterialCreatorRequestHash(const BuiltinMaterialCreatorI
 {
     return BuildBuiltinMaterialCreatorRequestHashImpl(mtl_id, definition, request);
 }
+
+void NormalizeRecipe(MaterialRecipe &recipe)
+{
+    if (recipe.mtl_def_id.empty())
+        return;
+
+    MaterialDefinition bmi{};
+    if (TryGetMaterialDefinitionByID(recipe.mtl_def_id, bmi))
+        ApplyBaseMaterialInfoDefaults(recipe, bmi, false);
+
+    // Legacy bridge: if ssbo_assets is empty, derive initial entries from recipe.structs
+    // so that RenderDescriptorBindingSystem can find SSBO resources by name.
+    if (recipe.ssbo_assets.empty())
+    {
+        for (const auto &binding : recipe.structs)
+            UpsertRecipeSSBOAssetBinding(recipe, "mtl", SSBOBinding{binding.ssbo_type, binding.ssbo_id});
+    }
+}
+
 }//namespace hgl::graph::mtl

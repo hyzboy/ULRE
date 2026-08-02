@@ -11,6 +11,7 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/mtl/MaterialRecipe.h>
+#include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
@@ -323,7 +324,12 @@ namespace hgl::ecs
 
         guard.material_manager = material_manager;
 
-        guard.material = material_manager->AcquireMaterialProgram(recipe.mtl_def_id, recipe, graph::PrimitiveType::Triangles);
+        {
+            graph::mtl::MaterialDefinitionBuildRequest mtl_request{};
+            mtl_request.recipe = recipe;
+            mtl_request.primitive_type = graph::PrimitiveType::Triangles;
+            guard.material = material_manager->AcquireMaterialProgram(mtl_request);
+        }
         if (!guard.material)
             return nullptr;
 

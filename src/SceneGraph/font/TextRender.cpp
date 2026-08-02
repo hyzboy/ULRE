@@ -6,6 +6,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/mtl/MaterialRecipe.h>
+#include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/mtl/SamplerName.h>
 #include<hgl/framework/AppFramework.h>
 #include<hgl/graph/core/GraphicsContext.h>
@@ -212,7 +213,12 @@ namespace hgl::graph
     {
         mtl::MaterialRecipe recipe{};
         recipe.mtl_def_id = "Text2D";
-        mtl_fs=mtl_manager->AcquireMaterialProgram(recipe.mtl_def_id,recipe,PrimitiveType::Triangles);
+        {
+            mtl::MaterialDefinitionBuildRequest mtl_request{};
+            mtl_request.recipe = recipe;
+            mtl_request.primitive_type = PrimitiveType::Triangles;
+            mtl_fs = mtl_manager->AcquireMaterialProgram(mtl_request);
+        }
         if(!mtl_fs)return(false);
 
         const GeometryVertexFormat text_gvf = CreateTextGeometryVertexFormat();

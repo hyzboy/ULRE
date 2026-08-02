@@ -47,9 +47,13 @@ enum class BuiltinMaterialCreatorID:uint8
     ENUM_CLASS_RANGE(VertexColor2D,PBRColor3D)
 };
 
+// ── Layer 3: MaterialDefinitionBuildRequest = Build Context ──────────────────
+// 描述"构建此帧 ShaderProgram 时的额外上下文"。包含 recipe（Layer 2）加上
+// 构建期覆写项（几何格式、RT 输出配置、私有 ShaderBufferSource 等）。
+// recipe.mtl_def_id 是材质标识的唯一来源；此结构不再持有独立的 mtl_def_id 字段。
+// ─────────────────────────────────────────────────────────────────────────────
 struct MaterialDefinitionBuildRequest
 {
-    std::string mtl_def_id;
     MaterialRecipe recipe;
     PrimitiveType primitive_type = PrimitiveType::Triangles;
     const GeometryVertexFormat *geometry_vertex_format = nullptr;
@@ -130,5 +134,16 @@ inline const char *GetFallbackMaterialDefinitionID(const bool is_2d = false)
 }
 
 bool ShouldUse2DFallbackMaterial(const MaterialDefinitionBuildRequest &request);
+
+/**
+ * Normalize a MaterialRecipe in-place:
+ *   1. Fills mtl_def_id, lod, quality_tier from the matched MaterialDefinition if they are unset.
+ *   2. Propagates required_ssbo_assets from the definition into recipe.ssbo_assets.
+ *   3. Populates recipe.ssbo_assets from recipe.structs when ssbo_assets is empty (legacy path).
+ *
+ * This is the canonical pre-processing step that must be called before the recipe is stored
+ * in a PrimitiveComponent or passed to RenderDescriptorBindingSystem.  It is idempotent.
+ */
+void NormalizeRecipe(MaterialRecipe &recipe);
 
 }//namespace hgl::graph::mtl

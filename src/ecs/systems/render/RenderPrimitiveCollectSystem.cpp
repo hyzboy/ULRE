@@ -420,12 +420,12 @@ namespace hgl::ecs
 
         // 统一 BMI 入口：由 AcquireMaterialProgram 内部处理 2D/3D/Text/Sky 分支，
         // ECS 不再持有材质 config 细节知识。
+        graph::mtl::MaterialDefinitionBuildRequest mtl_request{};
+        mtl_request.recipe = effective_recipe;
+        mtl_request.primitive_type = primitive_type;
+        mtl_request.geometry_vertex_format = geometry_vertex_format;
         graph::ShaderProgram *resolved_program =
-            material_manager->AcquireMaterialProgram(
-                effective_recipe.mtl_def_id,
-                effective_recipe,
-                primitive_type,
-                geometry_vertex_format);
+            material_manager->AcquireMaterialProgram(mtl_request);
 
         if (!resolved_program)
         {

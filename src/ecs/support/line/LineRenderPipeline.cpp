@@ -17,6 +17,7 @@
 #include <hgl/graph/mesh/GeometryDataBuffer.h>
 #include <hgl/graph/mesh/GeometryDrawRange.h>
 #include <hgl/mtl/MaterialRecipe.h>
+#include <hgl/mtl/MaterialLibrary.h>
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/VKShaderProgram.h>
@@ -355,7 +356,12 @@ namespace hgl::ecs
         if (!mat_mgr)
             return false;
 
-        material_ = mat_mgr->AcquireMaterialProgram(recipe.mtl_def_id, recipe, graph::PrimitiveType::Lines);
+        {
+            graph::mtl::MaterialDefinitionBuildRequest mtl_request{};
+            mtl_request.recipe = recipe;
+            mtl_request.primitive_type = graph::PrimitiveType::Lines;
+            material_ = mat_mgr->AcquireMaterialProgram(mtl_request);
+        }
         if (!material_)
             return false;
 
