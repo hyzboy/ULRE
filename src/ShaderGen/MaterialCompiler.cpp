@@ -42,6 +42,121 @@ static bool HasDescriptorSemantic(const FixedMaterialDef &def, const DescriptorS
     return false;
 }
 
+#if defined(_DEBUG)
+struct DescriptorShapeKey
+{
+    DescriptorSetType set_type;
+    DescriptorKind kind;
+    uint32_t stage_flags;
+    DescriptorSemantic semantic;
+    TextureSlot texture_slot;
+};
+
+static bool ValidateDescriptorShapeExact(
+    const char *material_name,
+    const FixedDescriptorEntry *entries,
+    const uint32_t count,
+    const DescriptorShapeKey *expected,
+    const uint32_t expected_count,
+    std::vector<std::string> &diagnostics)
+{
+    diagnostics.clear();
+
+    if (count != expected_count)
+    {
+        std::string msg = "E0 shape mismatch: descriptor count changed, material=";
+        msg += material_name ? material_name : "<unnamed>";
+        msg += ", expected=" + std::to_string(expected_count);
+        msg += ", actual=" + std::to_string(count);
+        diagnostics.push_back(std::move(msg));
+        return false;
+    }
+
+    for (uint32_t i = 0; i < expected_count; ++i)
+    {
+        const auto &a = entries[i];
+        const auto &e = expected[i];
+        if (a.set_type == e.set_type
+         && a.kind == e.kind
+         && a.stage_flags == e.stage_flags
+         && a.semantic == e.semantic
+         && a.texture_slot == e.texture_slot)
+        {
+            continue;
+        }
+
+        std::string msg = "E0 shape mismatch: entry[" + std::to_string(i) + "] changed, material=";
+        msg += material_name ? material_name : "<unnamed>";
+        diagnostics.push_back(std::move(msg));
+        return false;
+    }
+
+    return true;
+}
+
+static bool ValidateE0DescriptorShapeBaseline(
+    const FixedMaterialDef &def,
+    const CompositorMaterialBuildConfig &config,
+    std::vector<std::string> &diagnostics)
+{
+    const char *name = def.name ? def.name : "";
+
+    if (std::strcmp(name, "PureColor2D") == 0)
+    {
+        const DescriptorShapeKey expected[] = {
+            { DescriptorSetType::Transform, TransformDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::LocalToWorld,           TextureSlot::BaseColor },
+            { DescriptorSetType::Transform, DescriptorKind::SSBO,    uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::LocalToWorldIndexTable, TextureSlot::BaseColor },
+            { DescriptorSetType::Material,  MaterialInstanceDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::MaterialSSBOSlotData,    TextureSlot::BaseColor },
+            { DescriptorSetType::Material,  DescriptorKind::SSBO,    uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::MaterialSSBOIndexTable,  TextureSlot::BaseColor },
+            { DescriptorSetType::Material,  DescriptorKind::SSBO,    uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::MaterialTextureLayerTable,TextureSlot::BaseColor },
+        };
+        return ValidateDescriptorShapeExact(name, def.descriptor_entries, def.descriptor_entry_count, expected, uint32_t(sizeof(expected) / sizeof(expected[0])), diagnostics);
+    }
+
+    if (std::strcmp(name, "RectTexture2D") == 0)
+    {
+        const DescriptorShapeKey expected[] = {
+            { DescriptorSetType::Transform, TransformDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::LocalToWorld,           TextureSlot::BaseColor },
+            { DescriptorSetType::Transform, DescriptorKind::SSBO,    uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::LocalToWorldIndexTable, TextureSlot::BaseColor },
+            { DescriptorSetType::Material,  DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), DescriptorSemantic::MaterialSampler, TextureSlot::BaseColor },
+        };
+        return ValidateDescriptorShapeExact(name, def.descriptor_entries, def.descriptor_entry_count, expected, uint32_t(sizeof(expected) / sizeof(expected[0])), diagnostics);
+    }
+
+    if (std::strcmp(name, "Text2D") == 0)
+    {
+        const DescriptorShapeKey expected[] = {
+            { DescriptorSetType::Scene,     DescriptorKind::UBO,     uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::ViewportInfo,          TextureSlot::BaseColor },
+            { DescriptorSetType::Material,  MaterialInstanceDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::MaterialSSBOSlotData,    TextureSlot::BaseColor },
+            { DescriptorSetType::Material,  DescriptorKind::SSBO,    uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::MaterialSSBOIndexTable,  TextureSlot::BaseColor },
+            { DescriptorSetType::Material,  DescriptorKind::SSBO,    uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::MaterialTextureLayerTable,TextureSlot::BaseColor },
+            { DescriptorSetType::Material,  DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), DescriptorSemantic::MaterialSampler, TextureSlot::BaseColor },
+        };
+        return ValidateDescriptorShapeExact(name, def.descriptor_entries, def.descriptor_entry_count, expected, uint32_t(sizeof(expected) / sizeof(expected[0])), diagnostics);
+    }
+
+    if (std::strcmp(name, "Standard_v1") == 0 || std::strcmp(name, "PBRColor3D") == 0)
+    {
+        const bool with_cubemap = GetSkyLightDataRequirement(config.sky_ambient_model).need_sky_cubemap;
+        const uint32_t base_count = (std::strcmp(name, "Standard_v1") == 0) ? 11u : 8u;
+        const uint32_t expect_count = with_cubemap ? (base_count + 1u) : base_count;
+        if (def.descriptor_entry_count != expect_count)
+        {
+            diagnostics.clear();
+            std::string msg = "E0 shape mismatch: descriptor count changed, material=";
+            msg += name;
+            msg += ", expected=" + std::to_string(expect_count);
+            msg += ", actual=" + std::to_string(def.descriptor_entry_count);
+            diagnostics.push_back(std::move(msg));
+            return false;
+        }
+        return true;
+    }
+
+    return true;
+}
+#endif
+
 static bool IsTextureSlotDeclared(const MaterialDefinition &definition, const TextureSlot slot) noexcept
 {
     for (const auto &decl : definition.texture_slot_decls)
@@ -193,6 +308,23 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     // ─────────────────────────────────────────────────────────────
 
     const bool use_slot_decls = config.ssbo_slot_decls && !config.ssbo_slot_decls->empty();
+
+#if defined(_DEBUG)
+    {
+        std::vector<std::string> e0_diagnostics;
+        if (!ValidateE0DescriptorShapeBaseline(def, config, e0_diagnostics))
+        {
+            for (const auto &diag : e0_diagnostics)
+            {
+                std::fprintf(stderr,
+                    "[CompileCompositorMaterial][E0Baseline] material=%s: %s\n",
+                    def.name ? def.name : "<unnamed>",
+                    diag.c_str());
+            }
+            return FailAfterMci("E0 descriptor shape baseline validation failed");
+        }
+    }
+#endif
 
     for (uint32_t i = 0; i < def.descriptor_entry_count; ++i)
     {
