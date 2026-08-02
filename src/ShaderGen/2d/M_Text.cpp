@@ -51,7 +51,12 @@ static ShaderProgramBuildSpec *CreateText2DImpl(const contract::PhysicalDevicePr
 
     std::vector<FixedDescriptorEntry> descriptors;
     build2d::PushBaseDescriptorEntries(descriptors, p);
-    descriptors.push_back({DescriptorSetType::Material, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), SamplerName::Text, nullptr, "sampler2D", DescriptorSemantic::MaterialSampler, TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::Sampler});
+    descriptor_builder_common::PushMaterialSampler(
+        descriptors,
+        SamplerName::Text,
+        TextureSlot::BaseColor,
+        "sampler2D",
+        uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT));
 
     FixedMaterialDef def {
         "Text2D",

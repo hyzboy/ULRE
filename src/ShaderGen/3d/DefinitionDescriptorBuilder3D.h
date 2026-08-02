@@ -5,6 +5,7 @@
 #include <hgl/common/RenderOptions.h>
 #include <hgl/common/RenderAssignDef.h>
 #include <vector>
+#include "../common/DescriptorBuilderCommon.h"
 
 namespace hgl::graph::mtl
 {
@@ -16,17 +17,6 @@ struct Build3DDescriptorOptions
     uint32_t texture_stage_flags = uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT);
     uint32_t material_texture_layer_table_stage_flags = uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS);
 };
-
-inline const char *GetTextureNameBySlot(const TextureSlot slot) noexcept
-{
-    switch (slot)
-    {
-    case TextureSlot::BaseColor: return "TextureBaseColor";
-    case TextureSlot::Normal: return "TextureNormal";
-    case TextureSlot::Roughness: return "TextureRoughness";
-    default: return "TextureCustom";
-    }
-}
 
 inline std::vector<FixedDescriptorEntry> Build3DDescriptorsFromDefinition(
     const MaterialDefinition &definition,
@@ -40,25 +30,13 @@ inline std::vector<FixedDescriptorEntry> Build3DDescriptorsFromDefinition(
         switch (semantic)
         {
         case UBODescriptorSemantic::ViewportInfo:
-            descriptors.push_back({
-                DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
-                "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo,
-                TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO
-            });
+            descriptor_builder_common::PushViewport(descriptors, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
             break;
         case UBODescriptorSemantic::CameraInfo:
-            descriptors.push_back({
-                DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
-                "camera", "CameraInfo", nullptr, DescriptorSemantic::CameraInfo,
-                TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO
-            });
+            descriptor_builder_common::PushCamera(descriptors, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
             break;
         case UBODescriptorSemantic::SkyInfo:
-            descriptors.push_back({
-                DescriptorSetType::Scene, DescriptorKind::UBO, opt.sky_stage_flags,
-                "sky", "SkyInfo", nullptr, DescriptorSemantic::SkyInfo,
-                TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO
-            });
+            descriptor_builder_common::PushSky(descriptors, opt.sky_stage_flags);
             break;
         case UBODescriptorSemantic::MaterialColorPalette:
             descriptors.push_back({
@@ -72,46 +50,24 @@ inline std::vector<FixedDescriptorEntry> Build3DDescriptorsFromDefinition(
 
     if (definition.with_local_to_world)
     {
-        descriptors.push_back({
-            DescriptorSetType::Transform, TransformDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
-            "l2w", "LocalToWorldData", nullptr, DescriptorSemantic::LocalToWorld,
-            TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined,
-            GetDescriptorSemanticLayerByKind(TransformDescriptorKind)
-        });
-        descriptors.push_back({
-            DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
-            "l2w_index_rows", "LocalToWorldIndexRows", nullptr, DescriptorSemantic::LocalToWorldIndexTable,
-            TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO
-        });
+        descriptor_builder_common::PushLocalToWorld(descriptors, TransformDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
+        descriptor_builder_common::PushLocalToWorldIndexRows(descriptors, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
     }
 
     if (!definition.ssbo_slot_decls.empty())
     {
-        descriptors.push_back({
-            DescriptorSetType::Material, MaterialInstanceDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
-            "mtl", "MaterialInstanceData", nullptr, DescriptorSemantic::MaterialSSBOSlotData,
-            TextureSlot::BaseColor, DefaultMaterialSSBOSlot, definition.ssbo_slot_decls.front().ssbo_type,
-            GetDescriptorSemanticLayerByKind(MaterialInstanceDescriptorKind)
-        });
-        descriptors.push_back({
-            DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
-            "mtl_data_index_rows", "DataIndexRows", nullptr, DescriptorSemantic::MaterialSSBOIndexTable,
-            TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO
-        });
-        descriptors.push_back({
-            DescriptorSetType::Material, DescriptorKind::SSBO, opt.material_texture_layer_table_stage_flags,
-            "mtl_texture_layer_rows", "TextureLayerRows", nullptr, DescriptorSemantic::MaterialTextureLayerTable,
-            TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO
-        });
+        descriptor_builder_common::PushMaterialInstance(descriptors, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), definition.ssbo_slot_decls.front().ssbo_type);
+        descriptor_builder_common::PushMaterialDataIndexRows(descriptors, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
+        descriptor_builder_common::PushMaterialTextureLayerRows(descriptors, opt.material_texture_layer_table_stage_flags);
     }
 
     for (const auto &tex : definition.texture_slot_decls)
     {
-        descriptors.push_back({
-            DescriptorSetType::Material, DescriptorKind::Texture, opt.texture_stage_flags,
-            GetTextureNameBySlot(tex.slot), nullptr, ToGLSLSamplerTypeName(tex.sampler_type), DescriptorSemantic::MaterialTexture,
-            tex.slot, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::Texture
-        });
+        descriptor_builder_common::PushMaterialTexture(
+            descriptors,
+            tex.slot,
+            ToGLSLSamplerTypeName(tex.sampler_type),
+            opt.texture_stage_flags);
     }
 
     return descriptors;
