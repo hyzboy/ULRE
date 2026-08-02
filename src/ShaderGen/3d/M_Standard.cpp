@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "../common/MFSkyLight.h"
+#include "../common/VertexBuilderCommon.h"
 #include "DefinitionDescriptorBuilder3D.h"
 
 namespace hgl::graph::mtl{
@@ -54,17 +55,25 @@ static ShaderProgramBuildSpec *CreateStandardImpl(const contract::PhysicalDevice
         dynamic_descriptors,
         unused_resources);
 
-    FixedVertexEntry standard_vertex[] = {
-        { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
-        { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::TexCoord, VK_FORMAT_R32G32_SFLOAT),    VertexSemantic::TexCoord },
-        { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Normal,   VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Normal },
+    const vertex_builder_common::VertexSemanticDecl vertex_decls[] = {
+        { VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT },
+        { VertexSemantic::TexCoord, VK_FORMAT_R32G32_SFLOAT },
+        { VertexSemantic::Normal,   VK_FORMAT_R32G32B32_SFLOAT },
     };
+    const vertex_builder_common::VertexBuildInput vertex_input {
+        PrimitiveType::Triangles,
+        vertex_builder_common::VertexTransformIntent::LocalToWorld,
+        bc.geometry_vertex_format,
+        vertex_decls,
+        3
+    };
+    std::vector<FixedVertexEntry> standard_vertex = vertex_builder_common::BuildVertexEntries(vertex_input);
 
     FixedMaterialDef dynamic_def {
         "Standard_v1",
         PrimitiveType::Triangles,
-        standard_vertex,
-        uint32_t(sizeof(standard_vertex) / sizeof(standard_vertex[0])),
+        standard_vertex.data(),
+        uint32_t(standard_vertex.size()),
         dynamic_descriptors.data(),
         uint32_t(dynamic_descriptors.size()),
         mi_codes,

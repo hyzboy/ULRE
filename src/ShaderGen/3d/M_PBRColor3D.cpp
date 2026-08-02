@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "../common/MFSkyLight.h"
+#include "../common/VertexBuilderCommon.h"
 #include "DefinitionDescriptorBuilder3D.h"
 
 namespace hgl::graph::mtl{
@@ -48,17 +49,25 @@ static ShaderProgramBuildSpec *CreatePBRColor3DImpl(const contract::PhysicalDevi
         dynamic_descriptors,
         unused_resources);
 
-    FixedVertexEntry pbr_color_3d_vertex[] = {
-        { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
-        { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::TexCoord, VK_FORMAT_R32G32_SFLOAT),    VertexSemantic::TexCoord },
-        { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Normal,   VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Normal },
+    const vertex_builder_common::VertexSemanticDecl vertex_decls[] = {
+        { VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT },
+        { VertexSemantic::TexCoord, VK_FORMAT_R32G32_SFLOAT },
+        { VertexSemantic::Normal,   VK_FORMAT_R32G32B32_SFLOAT },
     };
+    const vertex_builder_common::VertexBuildInput vertex_input {
+        PrimitiveType::Triangles,
+        vertex_builder_common::VertexTransformIntent::LocalToWorld,
+        bc.geometry_vertex_format,
+        vertex_decls,
+        3
+    };
+    std::vector<FixedVertexEntry> pbr_color_3d_vertex = vertex_builder_common::BuildVertexEntries(vertex_input);
 
     FixedMaterialDef dynamic_def {
         "PBRColor3D",
         PrimitiveType::Triangles,
-        pbr_color_3d_vertex,
-        uint32_t(sizeof(pbr_color_3d_vertex) / sizeof(pbr_color_3d_vertex[0])),
+        pbr_color_3d_vertex.data(),
+        uint32_t(pbr_color_3d_vertex.size()),
         dynamic_descriptors.data(),
         uint32_t(dynamic_descriptors.size()),
         mi_codes,

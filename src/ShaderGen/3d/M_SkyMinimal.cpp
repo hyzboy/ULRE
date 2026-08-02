@@ -4,6 +4,7 @@
 #include <hgl/common/RenderAssignDef.h>
 #include<hgl/log/Log.h>
 #include<vector>
+#include "../common/VertexBuilderCommon.h"
 #include "DefinitionDescriptorBuilder3D.h"
 
 namespace hgl::graph::mtl{
@@ -38,15 +39,23 @@ static ShaderProgramBuildSpec *CreateSkyMinimalImpl(const contract::PhysicalDevi
     options.sky_stage_flags = uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT);
     std::vector<FixedDescriptorEntry> dynamic_descriptors = Build3DDescriptorsFromDefinition(definition, options);
 
-    FixedVertexEntry sky_minimal_vertex[] = {
-        { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
+    const vertex_builder_common::VertexSemanticDecl vertex_decls[] = {
+        { VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT },
     };
+    const vertex_builder_common::VertexBuildInput vertex_input {
+        PrimitiveType::Triangles,
+        vertex_builder_common::VertexTransformIntent::LocalToWorld,
+        bc.geometry_vertex_format,
+        vertex_decls,
+        1
+    };
+    std::vector<FixedVertexEntry> sky_minimal_vertex = vertex_builder_common::BuildVertexEntries(vertex_input);
 
     FixedMaterialDef dynamic_def {
         "SkyMinimal",
         PrimitiveType::Triangles,
-        sky_minimal_vertex,
-        uint32_t(sizeof(sky_minimal_vertex) / sizeof(sky_minimal_vertex[0])),
+        sky_minimal_vertex.data(),
+        uint32_t(sky_minimal_vertex.size()),
         dynamic_descriptors.data(),
         uint32_t(dynamic_descriptors.size()),
         nullptr,

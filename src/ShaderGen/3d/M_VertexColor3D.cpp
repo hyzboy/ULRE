@@ -4,6 +4,7 @@
 #include<hgl/common/RenderAssignDef.h>
 #include<hgl/log/Log.h>
 #include<vector>
+#include "../common/VertexBuilderCommon.h"
 #include "DefinitionDescriptorBuilder3D.h"
 
 namespace hgl::graph::mtl{
@@ -28,16 +29,24 @@ static ShaderProgramBuildSpec *CreateVertexColor3DImpl(const contract::PhysicalD
 {
     std::vector<FixedDescriptorEntry> dynamic_descriptors = Build3DDescriptorsFromDefinition(definition);
 
-    FixedVertexEntry vertex_color_3d_vertex[] = {
-        { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT),    VertexSemantic::Position },
-        { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Color,    VK_FORMAT_R32G32B32A32_SFLOAT), VertexSemantic::Color },
+    const vertex_builder_common::VertexSemanticDecl vertex_decls[] = {
+        { VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT },
+        { VertexSemantic::Color,    VK_FORMAT_R32G32B32A32_SFLOAT },
     };
+    const vertex_builder_common::VertexBuildInput vertex_input {
+        PrimitiveType::Triangles,
+        vertex_builder_common::VertexTransformIntent::LocalToWorld,
+        bc.geometry_vertex_format,
+        vertex_decls,
+        2
+    };
+    std::vector<FixedVertexEntry> vertex_color_3d_vertex = vertex_builder_common::BuildVertexEntries(vertex_input);
 
     FixedMaterialDef dynamic_def {
         "VertexColor3D",
         PrimitiveType::Triangles,
-        vertex_color_3d_vertex,
-        uint32_t(sizeof(vertex_color_3d_vertex) / sizeof(vertex_color_3d_vertex[0])),
+        vertex_color_3d_vertex.data(),
+        uint32_t(vertex_color_3d_vertex.size()),
         dynamic_descriptors.data(),
         uint32_t(dynamic_descriptors.size()),
         nullptr,

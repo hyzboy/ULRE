@@ -11,6 +11,7 @@
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/shadergen/MaterialCompiler.h>
 #include "../common/DescriptorBuilderCommon.h"
+#include "../common/VertexBuilderCommon.h"
 #include<string>
 #include<vector>
 
@@ -160,8 +161,18 @@ inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Materi
     const VkFormat position_format = (position_format_override!=VK_FORMAT_UNDEFINED)
                                    ? position_format_override
                                    : ResolveMaterialPositionFormat(p.geometry_vertex_format, VK_FORMAT_R32G32_SFLOAT);
-
-    v.push_back({ position_format, VertexSemantic::Position });
+    const vertex_builder_common::VertexSemanticDecl decls[] = {
+        { VertexSemantic::Position, position_format, true, false },
+    };
+    const vertex_builder_common::VertexBuildInput input {
+        p.prim,
+        p.local_to_world ? vertex_builder_common::VertexTransformIntent::LocalToWorld
+                         : vertex_builder_common::VertexTransformIntent::None,
+        p.geometry_vertex_format,
+        decls,
+        1
+    };
+    vertex_builder_common::BuildVertexEntries(v, input);
 }
 
 inline void PushSemanticVertexEntry(std::vector<FixedVertexEntry> &v,
@@ -169,7 +180,18 @@ inline void PushSemanticVertexEntry(std::vector<FixedVertexEntry> &v,
                                     const VertexSemantic semantic,
                                     const VkFormat fallback_format)
 {
-    v.push_back({ ResolveMaterialVertexSemanticFormat(p.geometry_vertex_format, semantic, fallback_format), semantic });
+    const vertex_builder_common::VertexSemanticDecl decls[] = {
+        { semantic, fallback_format, false, false },
+    };
+    const vertex_builder_common::VertexBuildInput input {
+        p.prim,
+        p.local_to_world ? vertex_builder_common::VertexTransformIntent::LocalToWorld
+                         : vertex_builder_common::VertexTransformIntent::None,
+        p.geometry_vertex_format,
+        decls,
+        1
+    };
+    vertex_builder_common::BuildVertexEntries(v, input);
 }
 
 // ─────────────────────────────────────────────────────────────

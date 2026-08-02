@@ -4,6 +4,7 @@
 #include<hgl/common/RenderAssignDef.h>
 #include<hgl/log/Log.h>
 #include<vector>
+#include "../common/VertexBuilderCommon.h"
 #include "DefinitionDescriptorBuilder3D.h"
 
 namespace hgl::graph::mtl
@@ -58,16 +59,24 @@ static ShaderProgramBuildSpec *CreateGizmo3DImpl(const contract::PhysicalDeviceP
 
     std::vector<FixedDescriptorEntry> dynamic_descriptors = Build3DDescriptorsFromDefinition(definition);
 
-    FixedVertexEntry gizmo_3d_vertex[] = {
-        { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
-        { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Normal,   VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Normal },
+    const vertex_builder_common::VertexSemanticDecl vertex_decls[] = {
+        { VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT },
+        { VertexSemantic::Normal,   VK_FORMAT_R32G32B32_SFLOAT },
     };
+    const vertex_builder_common::VertexBuildInput vertex_input {
+        PrimitiveType::Triangles,
+        vertex_builder_common::VertexTransformIntent::LocalToWorld,
+        bc.geometry_vertex_format,
+        vertex_decls,
+        2
+    };
+    std::vector<FixedVertexEntry> gizmo_3d_vertex = vertex_builder_common::BuildVertexEntries(vertex_input);
 
     FixedMaterialDef dynamic_def {
         "Gizmo3D",
         PrimitiveType::Triangles,
-        gizmo_3d_vertex,
-        uint32_t(sizeof(gizmo_3d_vertex) / sizeof(gizmo_3d_vertex[0])),
+        gizmo_3d_vertex.data(),
+        uint32_t(gizmo_3d_vertex.size()),
         dynamic_descriptors.data(),
         uint32_t(dynamic_descriptors.size()),
         GIZMO_3D_MI_GLSL,

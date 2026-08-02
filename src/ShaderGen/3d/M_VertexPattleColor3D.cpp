@@ -16,6 +16,7 @@
 #include<hgl/common/RenderAssignDef.h>
 #include<hgl/log/Log.h>
 #include<vector>
+#include "../common/VertexBuilderCommon.h"
 #include "DefinitionDescriptorBuilder3D.h"
 
 namespace hgl::graph::mtl{
@@ -44,17 +45,25 @@ static ShaderProgramBuildSpec *CreateVertexPattleColor3DImpl(const contract::Phy
     bc.private_shader_buffer_source_count = 1;
     std::vector<FixedDescriptorEntry> dynamic_descriptors = Build3DDescriptorsFromDefinition(definition);
 
-    FixedVertexEntry vertex_pattle_color_3d_vertex[] = {
-        { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
-        { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Color,    VK_FORMAT_R32_UINT),          VertexSemantic::Color },
-        { Assign::TransformID::VAB_FMT,  Assign::TransformID::VIS_SEMANTIC },
+    const vertex_builder_common::VertexSemanticDecl vertex_decls[] = {
+        { VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT },
+        { VertexSemantic::Color,    VK_FORMAT_R32_UINT },
     };
+    const vertex_builder_common::VertexBuildInput vertex_input {
+        PrimitiveType::Triangles,
+        vertex_builder_common::VertexTransformIntent::LocalToWorld,
+        bc.geometry_vertex_format,
+        vertex_decls,
+        2
+    };
+    std::vector<FixedVertexEntry> vertex_pattle_color_3d_vertex = vertex_builder_common::BuildVertexEntries(vertex_input);
+    vertex_pattle_color_3d_vertex.push_back({ Assign::TransformID::VAB_FMT,  Assign::TransformID::VIS_SEMANTIC });
 
     FixedMaterialDef dynamic_def {
         "VertexPattleColor3D",
         PrimitiveType::Triangles,
-        vertex_pattle_color_3d_vertex,
-        uint32_t(sizeof(vertex_pattle_color_3d_vertex) / sizeof(vertex_pattle_color_3d_vertex[0])),
+        vertex_pattle_color_3d_vertex.data(),
+        uint32_t(vertex_pattle_color_3d_vertex.size()),
         dynamic_descriptors.data(),
         uint32_t(dynamic_descriptors.size()),
         nullptr,
