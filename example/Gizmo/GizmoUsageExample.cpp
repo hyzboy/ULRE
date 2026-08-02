@@ -123,7 +123,7 @@ private:
             grid_recipe.mtl_def_id = "VertexLuminance3D";
             grid_recipe.domain = "GizmoUsageExample";
             graph::mtl::UpsertRecipeSSBOAssetBinding(grid_recipe,
-                                                     graph::mtl::SBS_MaterialInstance.name,
+                                                     graph::mtl::DefaultMaterialSSBOName,
                                                      grid_mi_ssbo_accessor->GetSSBOBinding());
             grid_asset = PrimitiveAsset(grid_geometry, &grid_recipe, PrimitiveType::Lines);
         }
@@ -162,7 +162,7 @@ private:
             cube_recipe.mtl_def_id = "Gizmo3D";
             cube_recipe.domain = "GizmoUsageExample";
             graph::mtl::UpsertRecipeSSBOAssetBinding(cube_recipe,
-                                                     graph::mtl::SBS_MaterialInstance.name,
+                                                     graph::mtl::DefaultMaterialSSBOName,
                                                      cube_mi_ssbo_accessor->GetSSBOBinding());
             cube_asset = PrimitiveAsset(cube_geometry, &cube_recipe, PrimitiveType::Triangles);
         }
@@ -185,7 +185,7 @@ private:
         auto plane_primitive_comp = plane_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         plane_primitive_comp->SetPrimitiveAsset(&grid_asset);
         hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource plane_struct{};
-        plane_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+        plane_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
         plane_struct.ssbo_id = grid_mi_ssbo_accessor->GetSSBOId();
         plane_struct.ssbo_element_index = 0;
         plane_struct.use_ssbo_element_index = true;
@@ -203,7 +203,7 @@ private:
         auto cube_primitive_comp = cube_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         cube_primitive_comp->SetPrimitiveAsset(&cube_asset);
         hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource cube_struct{};
-        cube_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+        cube_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
         cube_struct.ssbo_id = cube_mi_ssbo_accessor->GetSSBOId();
         cube_struct.ssbo_element_index = 0;
         cube_struct.use_ssbo_element_index = true;

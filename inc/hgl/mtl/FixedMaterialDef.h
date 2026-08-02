@@ -17,9 +17,6 @@ struct FixedMaterialDef
 
     const FixedDescriptorEntry *descriptor_entries;
     uint32_t                    descriptor_entry_count;
-
-    const char *                mi_glsl_codes;
-    uint32_t                    mi_struct_bytes;
 };
 
 }//namespace hgl::graph::mtl

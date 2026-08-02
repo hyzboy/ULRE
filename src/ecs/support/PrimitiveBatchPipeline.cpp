@@ -115,17 +115,14 @@ namespace hgl::ecs
 
             if (auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(item))
             {
-                if (auto *entity = primitive_item->GetEntity())
+                auto material_comp = primitive_item->GetMaterialComponent();
+                if (material_comp)
                 {
-                    auto material_comp = entity->GetComponent<MaterialComponent>();
-                    if (material_comp)
-                    {
-                        if (material_comp->material_instance_row != uint32_t(-1))
-                            return material_comp->material_instance_row;
+                    if (material_comp->material_instance_row != uint32_t(-1))
+                        return material_comp->material_instance_row;
 
-                        if (material_comp->ssbo_index_row != uint32_t(-1))
-                            return material_comp->ssbo_index_row;
-                    }
+                    if (material_comp->ssbo_index_row != uint32_t(-1))
+                        return material_comp->ssbo_index_row;
                 }
 
                 return InvalidBatchSSBOIndexRow;
@@ -751,12 +748,7 @@ namespace hgl::ecs
             auto* pipeline = item->GetPipeline();
             auto* prim_item = dynamic_cast<PrimitiveRenderItem*>(item);
             auto prim_comp = prim_item ? prim_item->GetPrimitiveComponent() : nullptr;
-            std::shared_ptr<MaterialComponent> material_comp;
-            if (prim_item)
-            {
-                if (auto *entity = prim_item->GetEntity())
-                    material_comp = entity->GetComponent<MaterialComponent>();
-            }
+            const std::shared_ptr<MaterialComponent> material_comp = prim_item ? prim_item->GetMaterialComponent() : nullptr;
 
             if (prim_item)
             {

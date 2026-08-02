@@ -24,8 +24,6 @@ namespace
 
 static ShaderProgramBuildSpec *CreateRectTexture2DArrayImpl(const contract::PhysicalDeviceProfileLite *profile, Material2DBuildParams p)
 {
-    constexpr const char mi_codes[]="uvec4 id;";
-    constexpr const uint32_t mi_bytes=sizeof(math::Vector4u);
     if(!profile)
         return(nullptr);
 
@@ -47,7 +45,6 @@ static ShaderProgramBuildSpec *CreateRectTexture2DArrayImpl(const contract::Phys
         p.prim,
         vertices.data(), uint32_t(vertices.size()),
         descriptors.data(), uint32_t(descriptors.size()),
-        mi_codes, mi_bytes,
     };
 
     VertexVaryingConfig varying_cfg;

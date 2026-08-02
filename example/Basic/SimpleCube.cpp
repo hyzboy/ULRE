@@ -140,7 +140,7 @@ private:
         cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
         primitive_comp->SetPrimitiveAsset(&cube_asset);
         hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource named_struct{};
-        named_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+        named_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
         named_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
         named_struct.ssbo_element_index = 0;
         named_struct.use_ssbo_element_index = true;

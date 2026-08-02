@@ -2,7 +2,6 @@
 #include<hgl/shadergen/ShaderProgramBuildSpec.h>
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/log/Log.h>
-#include<hgl/math/Vector.h>
 #include "../common/VertexShaderAssembler.h"
 
 namespace hgl::graph::mtl{
@@ -32,9 +31,6 @@ namespace
 
 static ShaderProgramBuildSpec *CreatePureColor2DImpl(const contract::PhysicalDeviceProfileLite *profile, Material2DBuildParams p)
 {
-    constexpr const char mi_codes[]="vec4 Color;";
-    constexpr const uint32_t mi_bytes=sizeof(math::Vector4f);
-
     auto preamble = build2d::Build2DFragmentPreamble(p, false);
 
     std::vector<FixedVertexEntry> vertices;
@@ -48,7 +44,6 @@ static ShaderProgramBuildSpec *CreatePureColor2DImpl(const contract::PhysicalDev
         p.prim,
         vertices.data(), uint32_t(vertices.size()),
         descriptors.data(), uint32_t(descriptors.size()),
-        mi_codes, mi_bytes,
     };
 
     const VkFormat position_format = ResolveMaterialPositionFormat(p.geometry_vertex_format, VK_FORMAT_R32G32_SFLOAT);

@@ -1,14 +1,14 @@
 // RectTexture2DArray fragment shader
 
-#include "common/material_instance_ssbo.glsl"
-
-struct MaterialInstance {
+struct TextureRectArraySurfaceData {
     uvec4 id;
 };
 
 layout(set=TEX_SET, binding=TEX_BINDING) uniform sampler2DArray TextureBaseColor;
 
-MI_SSBO;
+layout(set=MI_SET, binding=MI_BINDING) readonly buffer TextureRectArraySurfaceBuffer {
+    TextureRectArraySurfaceData mi[];
+} mtl;
 
 layout(location=0) flat in uint fragDataIndexID;
 layout(location=1) flat in uint fragTextureLayerID;
@@ -18,7 +18,7 @@ layout(location=0) out vec4 FragColor;
 
 void main()
 {
-    MaterialInstance mi = mtl.mi[fragDataIndexID];
+    TextureRectArraySurfaceData mi = mtl.mi[fragDataIndexID];
     uint layer = fragTextureLayerID;
     if (layer == 0u && mi.id.x != 0u)
         layer = mi.id.x;

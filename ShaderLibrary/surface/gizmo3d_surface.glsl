@@ -3,18 +3,18 @@
 // 自带简易 Blinn-Phong 光照（硬编码太阳方向）
 
 #include "common/surface_interface.glsl"
-#include "common/material_instance_ssbo.glsl"
-
-struct MaterialInstance
+struct EmissiveSurfaceData
 {
     vec4 color;
 };
 
-MI_SSBO;
+layout(set=MI_SET, binding=MI_BINDING) readonly buffer EmissiveSurfaceBuffer {
+    EmissiveSurfaceData mi[];
+} mtl;
 
 SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
 {
-    MaterialInstance mi = mtl.mi[materialInstanceID];
+    EmissiveSurfaceData mi = mtl.mi[materialInstanceID];
 
     const vec3 SUN_DIRECTION = vec3(0.655386, 0.491539, 0.573462);
     const vec3 SUN_COLOR     = vec3(1.0, 1.0, 1.0);

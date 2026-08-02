@@ -19,6 +19,7 @@ namespace hgl::ecs
     class ECSContext;
     class TransformComponent;
     class PrimitiveComponent;
+    class MaterialComponent;
 
     /**
      * PrimitiveRenderItem - specialized RenderItem for PrimitiveComponent
@@ -31,6 +32,7 @@ namespace hgl::ecs
         ECSContext* context = nullptr;
         std::shared_ptr<TransformComponent> transform;
         std::shared_ptr<PrimitiveComponent> primitiveComp;
+        std::shared_ptr<MaterialComponent> materialComp;
         glm::mat4 worldMatrix;
 
     public:
@@ -38,6 +40,7 @@ namespace hgl::ecs
             EntityID ent_id,
             std::shared_ptr<TransformComponent> trans,
             std::shared_ptr<PrimitiveComponent> prim,
+            std::shared_ptr<MaterialComponent> mat = nullptr,
             ECSContext* ctx = nullptr);
 
         virtual ~PrimitiveRenderItem() = default;
@@ -51,6 +54,7 @@ namespace hgl::ecs
 
         // PrimitiveComponent-specific accessors
         std::shared_ptr<PrimitiveComponent> GetPrimitiveComponent() const { return primitiveComp; }
+        std::shared_ptr<MaterialComponent> GetMaterialComponent() const { return materialComp; }
 
         // ShaderProgram batching interface
         hgl::graph::ShaderProgram* GetMaterialProgram() const override;

@@ -27,13 +27,6 @@ namespace
         return true;
     }();
 
-    constexpr const char mi_codes[] = R"(
-        uint  base_color;
-        float metallic;
-        float roughness;
-    )";
-    constexpr const uint32_t mi_bytes = sizeof(uint32_t) + sizeof(float) * 2;
-
 }//namespace
 
 static ShaderProgramBuildSpec *CreatePBRColor3DImpl(const contract::PhysicalDeviceProfileLite *profile, CompositorMaterialBuildConfig bc, const MaterialDefinition &definition)
@@ -68,8 +61,6 @@ static ShaderProgramBuildSpec *CreatePBRColor3DImpl(const contract::PhysicalDevi
         uint32_t(pbr_color_3d_vertex.size()),
         dynamic_descriptors.data(),
         uint32_t(dynamic_descriptors.size()),
-        mi_codes,
-        mi_bytes,
     };
 
     CompositorAssembler assembler("ShaderLibrary");
@@ -78,8 +69,6 @@ static ShaderProgramBuildSpec *CreatePBRColor3DImpl(const contract::PhysicalDevi
         SurfaceType::Standard,
         BlendMode::Opaque,
         PassType::ForwardOpaque,
-        QualityTier::Medium,
-        PlatformBackend::PC,
         "compositor/main_forward_lit.frag.glsl",
         "surface/pbrcolor3d_surface.glsl"
     );

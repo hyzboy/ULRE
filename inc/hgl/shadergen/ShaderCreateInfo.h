@@ -58,9 +58,6 @@ public:
     bool AddTexture(DescriptorSetType type,const TextureDescriptor *sd);
     bool AddTextureSampler(DescriptorSetType type,const TextureSamplerDescriptor *sd);
 
-    void SetMaterialInstance(UBODescriptor *);
-    void SetMaterialInstance(SSBODescriptor *);
-
     const std::string &GetFinalGLSL()const{return final_shader;}
     const std::string &GetShaderSource()const{return GetFinalGLSL();}   ///< compatibility alias
 

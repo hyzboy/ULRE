@@ -146,7 +146,7 @@ private:
         rect_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigZeroToOne(true);
         rect_recipe.domain = "TextureRectArray";
         graph::mtl::UpsertRecipeSSBOAssetBinding(rect_recipe,
-                                                 graph::mtl::SBS_MaterialInstance.name,
+                                                 graph::mtl::DefaultMaterialSSBOName,
                                                  mi_ssbo_accessor->GetSSBOBinding());
 
         return(true);
@@ -202,7 +202,7 @@ private:
                                                   sampler,
                                                   PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray);
             hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource rect_struct{};
-            rect_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+            rect_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
             rect_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             rect_struct.ssbo_element_index = i;
             rect_struct.use_ssbo_element_index = true;

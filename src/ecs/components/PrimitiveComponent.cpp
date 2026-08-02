@@ -30,7 +30,6 @@ namespace hgl::ecs
             recipe.domain.clear();
             recipe.vertex_node_config = hgl::graph::mtl::MakeDefault3DNodeConfig();
             recipe.material_lod = 0;
-            recipe.material_quality_tier = 0;
             recipe.double_sided = false;
             recipe.alpha_test = false;
             recipe.alpha_cutoff = 0.5f;

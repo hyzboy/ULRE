@@ -42,7 +42,6 @@ namespace hgl::ecs
             recipe.domain.clear();
             recipe.vertex_node_config = graph::mtl::MakeDefault3DNodeConfig();
             recipe.material_lod = 0;
-            recipe.material_quality_tier = 0;
             recipe.double_sided = false;
             recipe.alpha_test = false;
             recipe.alpha_cutoff = 0.5f;
@@ -1147,19 +1146,9 @@ namespace hgl::ecs
 
                     if (transform_gpu_buffer)
                     {
-#ifdef HGL_L2W_USE_UBO
-                        if (req.kind == graph::mtl::DescriptorKind::UBO)
-                        {
-                            if (!bind_ubo(material, batch, req, transform_gpu_buffer))
-                                log_bind_failure(material, batch, req, "bind LocalToWorld UBO failed");
-                            break;
-                        }
-#endif
-#ifdef HGL_L2W_USE_SSBO
                         if (!bind_ssbo(material, batch, req, transform_gpu_buffer))
                             log_bind_failure(material, batch, req, "bind LocalToWorld SSBO failed");
                         break;
-#endif
                     }
                 }
                 break;

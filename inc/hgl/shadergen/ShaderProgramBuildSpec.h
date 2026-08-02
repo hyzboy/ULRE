@@ -6,6 +6,7 @@
 #include<hgl/common/PrimitiveTypeDef.h>
 #include<hgl/common/ShaderStageDef.h>
 #include <hgl/common/TextureSamplerTypeDef.h>
+#include <hgl/graph/ssbo/SSBOTypes.h>
 #include<string>
 
 namespace hgl::graph
@@ -36,17 +37,9 @@ namespace hgl::graph
             MaterialDescriptorInfo descriptor_db;                    ///<材质描述符管理器
             MaterialResourceLayout material_resource_layout;                       ///<descriptor semantic contract (phase 2)
 
-            std::string material_instance_glsl;                     ///<MaterialInstance代码
-            uint32_t material_instance_stride;                      ///<MaterialInstance数据长度
-            uint32_t material_instance_stage_bits;                  ///<MaterialInstance着色器阶段
-            uint32_t material_instance_max_count;
-            SSBODescriptor *material_instance_ssbo;
-            UBODescriptor *material_instance_ubo;
-
             uint32_t local_to_world_max_count;
             uint32_t local_to_world_stage_bits;
             SSBODescriptor *local_to_world_ssbo;
-            UBODescriptor *local_to_world_ubo;
 
             ShaderCreateInfoMap shader_map;                         ///<着色器列表
 
@@ -81,9 +74,6 @@ namespace hgl::graph
 
             void SetMaterialResourceLayout(const MaterialResourceLayout &contract){material_resource_layout=contract;}
 
-            const uint32_t GetMaterialInstanceStride   ()const{return material_instance_stride;}
-            const uint32_t GetMaterialInstanceMaxCount  ()const{return material_instance_max_count;}
-
             const bool HasLocalToWorld                  ()const{return has_local_to_world;}
 
         public:
@@ -92,12 +82,6 @@ namespace hgl::graph
             ~ShaderProgramBuildSpec();  // Need explicit destructor to properly clean up shader_map
 
             void SetDevice(const contract::PhysicalDeviceProfileLite *profile);
-
-            bool SetMaterialInstance(const std::string &mi_glsl_codes,const uint32_t mi_struct_bytes,const uint32_t shader_stage_flag_bits);
-            bool SetMaterialInstance(const char *mi_glsl_codes,const uint32_t mi_struct_bytes,const uint32_t shader_stage_flag_bits)
-            {
-                return SetMaterialInstance(std::string(mi_glsl_codes?mi_glsl_codes:""),mi_struct_bytes,shader_stage_flag_bits);
-            }
 
             bool SetLocalToWorld(const uint32_t shader_stage_flag_bits);
             //bool SetWorldPosition(const uint32_t shader_stage_flag_bits);

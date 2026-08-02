@@ -56,16 +56,6 @@ constexpr const ShaderBufferSource SBS_ColorPattle =
     "ColorPattle"
 };
 
-constexpr const char MaterialInstanceStruct[]="MaterialInstance";
-
-constexpr const ShaderBufferSource SBS_MaterialInstance=
-{
-    DescriptorSetType::Material,
-
-    "mtl",
-    "MaterialInstanceData"
-};
-
 constexpr const ShaderBufferSource SBS_MaterialTextureLayerRows=
 {
     DescriptorSetType::Material,

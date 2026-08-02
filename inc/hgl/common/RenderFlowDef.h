@@ -1,7 +1,6 @@
 #pragma once
 
 #include <hgl/type/EnumUtil.h>
-#include <hgl/mtl/new/QualityTier.h>
 #include <cstdint>
 #include <cstdio>
 #include <string>
@@ -98,8 +97,7 @@ namespace hgl::graph::mtl
         ENUM_CLASS_RANGE(EarlyZ_Solid, Debug_Visualization)
     };
 
-    // 使用 hgl::graph::QualityTier（定义在 <hgl/mtl/new/QualityTier.h>）
-    using hgl::graph::QualityTier;
+    // 使用 uint8_t 表示质量档位（0=Low, 1=Medium, 2=High 等）
 
     struct RenderPassDefinition
     {
@@ -133,8 +131,8 @@ namespace hgl::graph::mtl
         uint32_t pass_count;
         bool mobile_optimized;
         bool requires_compute_shader;
-        QualityTier min_required_quality;
-        QualityTier max_supported_quality;
+        uint8_t min_required_quality;
+        uint8_t max_supported_quality;
 
         struct ResourceRequirement
         {

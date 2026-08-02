@@ -203,7 +203,7 @@ private:
 
                 se.primitive_comp->SetPrimitiveAsset(&asset);
                 hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource scene_struct{};
-                scene_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+                scene_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
                 scene_struct.ssbo_id = solid.mi_ssbo_accessor->GetSSBOId();
                 scene_struct.ssbo_element_index = (entity_idx - 1) % COLOR_COUNT;
                 scene_struct.use_ssbo_element_index = true;

@@ -110,7 +110,7 @@ private:
         clock_recipe.domain = "Clock";
         clock_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
         graph::mtl::UpsertRecipeSSBOAssetBinding(clock_recipe,
-                                                 graph::mtl::SBS_MaterialInstance.name,
+                                                 graph::mtl::DefaultMaterialSSBOName,
                                                  mi_ssbo_accessor->GetSSBOBinding());
         clock_asset = PrimitiveAsset(geometry, &clock_recipe, PrimitiveType::Triangles);
 
@@ -222,7 +222,7 @@ private:
             auto primitive_comp = ticks[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&clock_asset);
             hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource tick_struct{};
-            tick_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+            tick_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
             tick_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             tick_struct.ssbo_element_index = tick_slot;
             tick_struct.use_ssbo_element_index = true;
@@ -259,7 +259,7 @@ private:
             auto primitive_comp = hands[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&clock_asset);
             hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource hand_struct{};
-            hand_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+            hand_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
             hand_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             hand_struct.ssbo_element_index = hand_slots[i];
             hand_struct.use_ssbo_element_index = true;

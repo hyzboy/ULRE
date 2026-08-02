@@ -12,6 +12,7 @@
 namespace hgl::graph::mtl
 {
     constexpr uint32_t InvalidBuiltinMaterialCreatorIDHint = 0xffffffffu;
+    constexpr const char DefaultMaterialSSBOName[] = "mtl";
 
     // 逻辑纹理槽位（与具体 descriptor set/binding 解耦）。
     // Resolve 阶段会把这些语义槽映射到 bindless handle + 运行时索引。
@@ -119,7 +120,6 @@ namespace hgl::graph::mtl
         // Lod / 质量包络
         uint16_t default_lod   = 0;
         uint16_t lod_count     = 1;
-        uint16_t quality_tier  = 0;
 
         // Part-B: 资源契约（Definition 侧的静态资产需求；运行时绑定由 recipe 提供）
         std::vector<RecipeSSBOAssetBinding> required_ssbo_assets;
@@ -156,7 +156,6 @@ namespace hgl::graph::mtl
         std::string domain;                    // 资源/缓存域（用于隔离不同管线空间）
         VertexShaderNodeConfig vertex_node_config = MakeDefault3DNodeConfig();
         uint16_t material_lod = 0;            // 作者层选择的材质 LOD
-        uint16_t material_quality_tier = 0;   // 作者层质量层级（0 为默认）
 
         bool double_sided = false; // 双面渲染开关
         bool alpha_test = false;   // 是否启用 alpha test
@@ -285,16 +284,8 @@ namespace hgl::graph::mtl
         if (recipe.mtl_def_id.empty())
             recipe.mtl_def_id = bmi.definition_id;
 
-        if (overwrite_existing)
-        {
-            recipe.material_quality_tier = bmi.quality_tier;
-        }
-
         if (bmi.lod_count > 0 && recipe.material_lod >= bmi.lod_count)
             recipe.material_lod = bmi.default_lod;
-
-        if (recipe.material_quality_tier == 0)
-            recipe.material_quality_tier = bmi.quality_tier;
 
         for (const auto &asset : bmi.required_ssbo_assets)
             UpsertRecipeSSBOAssetBinding(recipe, asset.ssbo_name, asset.ssbo_type, asset.ssbo_id);
@@ -312,7 +303,6 @@ namespace hgl::graph::mtl
             hash = hgl::hash::FNV1aAppendBytes(hash, recipe.domain.data(), recipe.domain.size());
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.vertex_node_config);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.material_lod);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.material_quality_tier);
 
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.double_sided);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.alpha_test);

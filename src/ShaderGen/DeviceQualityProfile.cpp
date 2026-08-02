@@ -13,10 +13,6 @@ DeviceQualityProfile DetectDeviceQuality(const VulkanPhyDevice &phy_device)
     const auto &limits  = props.limits;
     const auto &feat10  = phy_device.GetFeatures10();
 
-    // ---- Platform 判断 ----
-    // 简化版：仅区分 PC vs 移动端；Apple 需额外端外信息，暂归 PC
-    profile.platform = PlatformBackend::PC;
-
     // ---- 基础能力检测 ----
     profile.support_compute         = true;   // Vulkan 1.0 保证 compute queue
     profile.support_indirect_draw   = feat10.multiDrawIndirect == VK_TRUE;
@@ -43,37 +39,16 @@ DeviceQualityProfile DetectDeviceQuality(const VulkanPhyDevice &phy_device)
     profile.max_shadow_cascade  = 4;
     profile.max_point_lights    = 64;
 
-    // ---- QualityTier 推断 ----
+    // ---- 能力标志设置完毕，geometry_fetch 已确定 ----
     const bool is_discrete = (props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);
     const uint32_t ssbo_range = limits.maxStorageBufferRange;
 
-    if(is_discrete && ssbo_range >= 1024u * 1024 * 1024)           // 1 GB SSBO range
-    {
-        profile.quality_tier = QualityTier::Ultra;
-        profile.render_scale = 1.0f;
-    }
-    else if(is_discrete && ssbo_range >= 128u * 1024 * 1024)       // 128 MB
-    {
-        profile.quality_tier = QualityTier::High;
-        profile.render_scale = 1.0f;
-    }
-    else if(ssbo_range >= 64u * 1024 * 1024)                       // 64 MB (集成 GPU 等)
-    {
-        profile.quality_tier = QualityTier::Medium;
-        profile.render_scale = 0.75f;
-        profile.max_shadow_cascade = 2;
-        profile.max_point_lights   = 32;
-    }
-    else
-    {
-        profile.quality_tier = QualityTier::Low;
-        profile.render_scale = 0.5f;
-        profile.max_shadow_cascade = 1;
-        profile.max_point_lights   = 16;
-        profile.support_hzb        = false;
-        profile.support_vbuffer    = false;
-        profile.support_clustered  = false;
-    }
+    profile.render_scale = 1.0f;
+    profile.max_shadow_cascade = 3;
+    profile.max_point_lights   = 16;
+    profile.support_hzb        = false;
+    profile.support_vbuffer    = false;
+    profile.support_clustered  = false;
 
     // ---- GeometryFetchMode ----
     profile.geometry_fetch = profile.support_ssbo_vertex ? GeometryFetchMode::SSBO

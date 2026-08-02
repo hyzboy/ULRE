@@ -91,7 +91,7 @@ private:
         triangle_recipe.domain = "AutoMergeMaterialInstance";
         triangle_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
         graph::mtl::UpsertRecipeSSBOAssetBinding(triangle_recipe,
-                                                 graph::mtl::SBS_MaterialInstance.name,
+                                                 graph::mtl::DefaultMaterialSSBOName,
                                                  mi_ssbo_accessor->GetSSBOBinding());
 
         triangle_asset = PrimitiveAsset(geometry, &triangle_recipe, PrimitiveType::Triangles);
@@ -171,7 +171,7 @@ private:
             auto primitive_comp = triangles[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&triangle_asset);
             hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource tri_struct{};
-            tri_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+            tri_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
             tri_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             tri_struct.ssbo_element_index = i;
             tri_struct.use_ssbo_element_index = true;

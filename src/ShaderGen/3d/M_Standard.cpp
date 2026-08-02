@@ -32,14 +32,6 @@ namespace
         return true;
     }();
 
-    constexpr const char mi_codes[] = R"(
-        uint  base_color;
-        float metallic;
-        float roughness;
-        float normal_scale;
-    )";
-    constexpr const uint32_t mi_bytes = sizeof(uint32_t) + sizeof(float) * 3;
-
 }
 
 static ShaderProgramBuildSpec *CreateStandardImpl(const contract::PhysicalDeviceProfileLite *profile, CompositorMaterialBuildConfig bc, const MaterialDefinition &definition)
@@ -74,8 +66,6 @@ static ShaderProgramBuildSpec *CreateStandardImpl(const contract::PhysicalDevice
         uint32_t(standard_vertex.size()),
         dynamic_descriptors.data(),
         uint32_t(dynamic_descriptors.size()),
-        mi_codes,
-        mi_bytes,
     };
 
     CompositorAssembler assembler("ShaderLibrary");
@@ -84,8 +74,6 @@ static ShaderProgramBuildSpec *CreateStandardImpl(const contract::PhysicalDevice
         SurfaceType::Standard,
         BlendMode::Opaque,
         PassType::ForwardOpaque,
-        QualityTier::Medium,
-        PlatformBackend::PC,
         "compositor/main_forward_lit.frag.glsl",
         "surface/standard_surface.glsl"
     );

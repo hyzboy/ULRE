@@ -8,6 +8,7 @@
 
 #include<hgl/mtl/FixedMaterialDef.h>
 #include<hgl/common/RenderAssignDef.h>
+#include <hgl/graph/ssbo/MaterialInstanceLayout.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/shadergen/MaterialCompiler.h>
 #include "../common/DescriptorBuilderCommon.h"
@@ -142,13 +143,6 @@ inline void PushSemanticVertexEntry(std::vector<FixedVertexEntry> &v,
 // Common FixedDescriptorEntry builders
 // ─────────────────────────────────────────────────────────────
 
-#ifdef HGL_L2W_USE_SSBO
-    constexpr DescriptorKind L2W_KIND_2D = DescriptorKind::SSBO;
-#endif
-#ifdef HGL_L2W_USE_UBO
-    constexpr DescriptorKind L2W_KIND_2D = DescriptorKind::UBO;
-#endif
-
 inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, const Material2DBuildParams &p)
 {
     // Viewport (Scene set) — only for Ortho
@@ -161,15 +155,24 @@ inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, cons
     || p.vertex_node_config.projection == ProjectionMode::OrthoThenLocalToWorld
     || p.vertex_node_config.projection == ProjectionMode::WorldCameraVP)
     {
-        descriptor_builder_common::PushLocalToWorld(v, L2W_KIND_2D, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
+        descriptor_builder_common::PushLocalToWorld(v, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
         descriptor_builder_common::PushLocalToWorldIndexRows(v, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
     }
 
     // MaterialInstance — definition-driven (E4): driven by ssbo_slot_decls, same as 3D path.
     if (p.material_definition && !p.material_definition->ssbo_slot_decls.empty())
     {
-        const SSBOType ssbo_type = p.material_definition->ssbo_slot_decls.front().ssbo_type;
-        descriptor_builder_common::PushMaterialInstance(v, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), ssbo_type);
+        for (uint32_t i = 0; i < static_cast<uint32_t>(p.material_definition->ssbo_slot_decls.size()); ++i)
+        {
+            const auto &decl = p.material_definition->ssbo_slot_decls[i];
+            descriptor_builder_common::PushMaterialInstance(
+                v,
+                uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
+                decl.name.c_str(),
+                ssbo::GetMaterialSSBOStructName(decl.ssbo_type),
+                i,
+                decl.ssbo_type);
+        }
         descriptor_builder_common::PushMaterialDataIndexRows(v, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
         descriptor_builder_common::PushMaterialTextureLayerRows(v, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
     }

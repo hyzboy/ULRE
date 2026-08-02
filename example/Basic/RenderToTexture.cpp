@@ -271,7 +271,7 @@ public:
 
         prim_comp->SetPrimitiveAsset(&sphere_asset);
         hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource sphere_struct{};
-        sphere_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+        sphere_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
         sphere_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
         sphere_struct.ssbo_element_index = 0;
         sphere_struct.use_ssbo_element_index = true;
@@ -460,7 +460,7 @@ private:
         cube_prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal, normal_tex, cube_sampler);
         cube_prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_tex, cube_sampler);
         hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource cube_struct{};
-        cube_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+        cube_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
         cube_struct.ssbo_id = cube_mi_ssbo_accessor->GetSSBOId();
         cube_struct.ssbo_element_index = 0;
         cube_struct.use_ssbo_element_index = true;

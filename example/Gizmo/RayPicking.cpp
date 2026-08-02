@@ -188,10 +188,10 @@ private:
             return false;
 
         graph::mtl::UpsertRecipeSSBOAssetBinding(plane_recipe,
-                                                 graph::mtl::SBS_MaterialInstance.name,
+                                                 graph::mtl::DefaultMaterialSSBOName,
                                                  mi_ssbo_accessor->GetSSBOBinding());
         graph::mtl::UpsertRecipeSSBOAssetBinding(line_recipe,
-                                                 graph::mtl::SBS_MaterialInstance.name,
+                                                 graph::mtl::DefaultMaterialSSBOName,
                                                  mi_ssbo_accessor->GetSSBOBinding());
 
         (*mi_ssbo_accessor)[plane_slot] = white_color;
@@ -212,7 +212,7 @@ private:
             auto primitive_comp = plane_grid_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&plane_asset);
             hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource plane_struct{};
-            plane_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+            plane_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
             plane_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             plane_struct.ssbo_element_index = plane_slot;
             plane_struct.use_ssbo_element_index = true;
@@ -236,7 +236,7 @@ private:
             auto primitive_comp = ray_line_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&line_asset);
             hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource line_struct{};
-            line_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+            line_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
             line_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             line_struct.ssbo_element_index = line_slot;
             line_struct.use_ssbo_element_index = true;

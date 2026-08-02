@@ -172,7 +172,7 @@ private:
         near_recipe.domain = "06e.SingleSphereSwitch";
         near_recipe.pipeline_preset = PipelinePreset::Solid3D;
         graph::mtl::UpsertRecipeSSBOAssetBinding(near_recipe,
-                                                 graph::mtl::SBS_MaterialInstance.name,
+                                                 graph::mtl::DefaultMaterialSSBOName,
                                                  mi_ssbo_accessor->GetSSBOBinding());
 
         far_recipe = near_recipe;
@@ -243,7 +243,7 @@ private:
         }
 
         hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource sphere_struct{};
-        sphere_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+        sphere_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
         sphere_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
         sphere_struct.ssbo_element_index = 0;
         sphere_struct.use_ssbo_element_index = false;

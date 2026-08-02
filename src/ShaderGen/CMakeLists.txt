@@ -1,9 +1,5 @@
 set(SHADERGEN_INCLUDE_PATH  ${ROOT_INCLUDE_PATH}/hgl/shadergen)
 
-# Add inja include path
-include_directories(${ULRE_3RDPTY_ROOT_PATH}/inja/single_include)
-include_directories(${ULRE_3RDPTY_ROOT_PATH}/inja/third_party/include)
-
 SET(SHADER_CREATER_HEADER_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfo.h
                                 ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfoMap.h
                                 ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfoVertex.h)
@@ -42,7 +38,6 @@ SET(SHADERGEN_COMMON_FILES  ${STD_MTL_HEADER_PATH}/UBOCommon.h
                             ${STD_MTL_HEADER_PATH}/ShaderVariableType.h
                             ShaderVariableType.cpp
                             common/UBOCommon.cpp
-                            common/MFCommon.h
                             common/MFCamera.h
 )
 
@@ -59,7 +54,6 @@ SET(SSBO_STRUCT_FILES   ${SSBO_HEADER_PATH}/StandardMaterialInstance.h
                         ${SSBO_HEADER_PATH}/SSBOTypes.h)
 
 SOURCE_GROUP("Standard Material\\SSBO" FILES ${SSBO_STRUCT_FILES})
-SET(BLINN_PHONG_HEADER_FILES ${STD_MTL_HEADER_PATH}/BlinnPhong.h)
 
 SET(STD_MTL_2D_SOURCE_FILES	2d/Build2DCommon.h
                             2d/M_VertexColor2D.cpp
@@ -88,8 +82,6 @@ SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/StdMaterial.h
 
 SOURCE_GROUP("Standard Material" FILES ${STD_MTL_SOURCE})
 
-SOURCE_GROUP("Standard Material\\Light Model\\Blinn Phong" FILES ${BLINN_PHONG_HEADER_FILES})
-
 SOURCE_GROUP("Standard Material\\2D" FILES ${STD_MTL_2D_SOURCE_FILES})
 SOURCE_GROUP("Standard Material\\3D" FILES ${STD_MTL_3D_SOURCE_FILES})
 
@@ -108,16 +100,13 @@ SET(FIXED_MTL_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderCompilerProfileAPI.h
 
 SOURCE_GROUP("Fixed Material" FILES ${FIXED_MTL_FILES})
 
-SET(MATERIAL_COMPILER_FILES	 MaterialCompiler.cpp)
+SET(MATERIAL_COMPILER_FILES  ${SHADERGEN_INCLUDE_PATH}/MaterialCompiler.h
+                             MaterialCompiler.cpp)
 
 SOURCE_GROUP("Material Compiler" FILES ${MATERIAL_COMPILER_FILES})
 
-SET(COMPOSITOR_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/CompositorAssembler.h
-                             ${SHADERGEN_INCLUDE_PATH}/PresetShaderCompiler.h
-                             ${SHADERGEN_INCLUDE_PATH}/SPVCache.h)
-SET(COMPOSITOR_SOURCE_FILES  CompositorAssembler.cpp
-                             PresetShaderCompiler.cpp
-                             SPVCache.cpp)
+SET(COMPOSITOR_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/CompositorAssembler.h)
+SET(COMPOSITOR_SOURCE_FILES  CompositorAssembler.cpp)
 
 SOURCE_GROUP("Compositor" FILES ${COMPOSITOR_HEADER_FILES}
                                 ${COMPOSITOR_SOURCE_FILES})
@@ -125,13 +114,10 @@ SOURCE_GROUP("Compositor" FILES ${COMPOSITOR_HEADER_FILES}
 set(NEW_MTL_INCLUDE_PATH ${ROOT_INCLUDE_PATH}/hgl/mtl/new)
 
 SET(NEW_MTL_TYPE_FILES  ${NEW_MTL_INCLUDE_PATH}/SurfaceType.h
-                        ${NEW_MTL_INCLUDE_PATH}/QualityTier.h
                         ${NEW_MTL_INCLUDE_PATH}/BlendMode.h
                         ${NEW_MTL_INCLUDE_PATH}/PassType.h
-                        ${NEW_MTL_INCLUDE_PATH}/PlatformBackend.h
                         ${NEW_MTL_INCLUDE_PATH}/MaterialCategory.h
                         ${NEW_MTL_INCLUDE_PATH}/NewShaderPermutationKey.h
-                        ${NEW_MTL_INCLUDE_PATH}/MaterialPresetDef.h
                         ${NEW_MTL_INCLUDE_PATH}/DeviceQualityProfile.h
                         ${NEW_MTL_INCLUDE_PATH}/DescriptorSetBindings.h
                         NewShaderPermutationKey.cpp
@@ -152,12 +138,10 @@ add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_INCLUDE_PATH}
                                         ${SHADERGEN_COMMON_FILES}
                                         ${SHADER_LIBRARY_FILES}
                                         ${STD_MTL_SOURCE}
-                                        ${BLINN_PHONG_HEADER_FILES}
                                         ${STD_MTL_2D_SOURCE_FILES}
                                         ${STD_MTL_3D_SOURCE_FILES}
                                         ${SSBO_STRUCT_FILES}
                                         ${FIXED_MTL_FILES}
-                                        ${SHADER_TEMPLATE_ENGINE_HEADER_FILES}
                                         ${MATERIAL_COMPILER_FILES}
                                         ${COMPOSITOR_HEADER_FILES}
                                         ${COMPOSITOR_SOURCE_FILES}

@@ -146,12 +146,12 @@ private:
         cube_recipe.mtl_def_id = "Gizmo3D";
         cube_recipe.domain = "Phase2AuthoringTest";
         graph::mtl::UpsertRecipeSSBOAssetBinding(cube_recipe,
-                                                 graph::mtl::SBS_MaterialInstance.name,
+                                                 graph::mtl::DefaultMaterialSSBOName,
                                                  mi_ssbo_accessor->GetSSBOBinding());
         cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
         primitive_comp->SetPrimitiveAsset(&cube_asset);
         hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource named_struct{};
-        named_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+        named_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
         named_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
         named_struct.ssbo_element_index = 0;
         named_struct.use_ssbo_element_index = false;

@@ -23,9 +23,6 @@ namespace
         return true;
     }();
 
-    constexpr const char VERTEX_LUMINANCE_3D_MI_CODES[] = "vec4 Color;";
-    constexpr const uint32_t VERTEX_LUMINANCE_3D_MI_BYTES = sizeof(hgl::math::Vector4f);
-
     static std::string BuildVertexLuminance3DVertexShader(const bool use_vec2_position)
     {
         std::string vs =
@@ -77,8 +74,6 @@ static ShaderProgramBuildSpec *CreateVertexLuminance3DImpl(const contract::Physi
         uint32_t(vertex_result.entries.size()),
         dynamic_descriptors.data(),
         uint32_t(dynamic_descriptors.size()),
-        VERTEX_LUMINANCE_3D_MI_CODES,
-        VERTEX_LUMINANCE_3D_MI_BYTES,
     };
 
     CompositorAssembler assembler("ShaderLibrary");
@@ -86,8 +81,6 @@ static ShaderProgramBuildSpec *CreateVertexLuminance3DImpl(const contract::Physi
         SurfaceType::Unlit,
         BlendMode::Opaque,
         PassType::ForwardOpaque,
-        QualityTier::Medium,
-        PlatformBackend::PC,
         "compositor/main_forward_unlit_luminance.frag.glsl",
         "surface/unlit_luminance_surface.glsl"
     );

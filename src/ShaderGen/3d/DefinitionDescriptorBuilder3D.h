@@ -4,6 +4,7 @@
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/common/RenderAssignDef.h>
+#include <hgl/graph/ssbo/MaterialInstanceLayout.h>
 #include <vector>
 #include "../common/DescriptorBuilderCommon.h"
 
@@ -51,13 +52,23 @@ inline std::vector<FixedDescriptorEntry> Build3DDescriptorsFromDefinition(
     if (definition.vertex_node_config.projection != ProjectionMode::OrthoViewport
      && definition.vertex_node_config.projection != ProjectionMode::ClipPassthrough)
     {
-        descriptor_builder_common::PushLocalToWorld(descriptors, TransformDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
+        descriptor_builder_common::PushLocalToWorld(descriptors, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
         descriptor_builder_common::PushLocalToWorldIndexRows(descriptors, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
     }
 
     if (!definition.ssbo_slot_decls.empty())
     {
-        descriptor_builder_common::PushMaterialInstance(descriptors, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), definition.ssbo_slot_decls.front().ssbo_type);
+        for (uint32_t i = 0; i < static_cast<uint32_t>(definition.ssbo_slot_decls.size()); ++i)
+        {
+            const auto &decl = definition.ssbo_slot_decls[i];
+            descriptor_builder_common::PushMaterialInstance(
+                descriptors,
+                uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
+                decl.name.c_str(),
+                ssbo::GetMaterialSSBOStructName(decl.ssbo_type),
+                i,
+                decl.ssbo_type);
+        }
         descriptor_builder_common::PushMaterialDataIndexRows(descriptors, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
         descriptor_builder_common::PushMaterialTextureLayerRows(descriptors, opt.material_texture_layer_table_stage_flags);
     }

@@ -549,13 +549,6 @@ namespace hgl::ecs
             material_comp->SetResolvedSSBOBinding(req.ssbo_slot, req.ssbo_type, resolved_ssbo_id);
         }
 
-        if (!material_comp->bindings_dirty
-         && !material_comp->resources_dirty
-         && material_comp->ssbo_index_row != uint32_t(-1)
-         && material_comp->texture_layer_row != uint32_t(-1)
-         && material_comp->material_instance_row != uint32_t(-1))
-            return true;
-
         auto rdbs = world->GetSystem<RenderDescriptorBindingSystem>();
         if (!rdbs)
         {
@@ -600,12 +593,17 @@ namespace hgl::ecs
         uint32_t material_instance_row;
         if (entity_element_index != uint32_t(-1))
         {
-            // Write texture handles at the entity's own index in the global texture table.
-            // Entities sharing the same recipe hash (same textures) will write the same
-            // data, but at their own distinct ssbo_element_index position.
-            rdbs->WriteTextureLayerRowAt(entity_element_index, spec);
+            // Only texture-using materials need the legacy "texture row == MI row" mirror.
+            // Untextured materials (for example gizmo/pure-color) may legally reuse the same
+            // ssbo_element_index values as textured materials; writing an all-zero texture row
+            // here would clobber the textured material's global handle table entry.
+            if (!effective_recipe.textures.empty())
+            {
+                rdbs->WriteTextureLayerRowAt(entity_element_index, spec);
+                texture_layer_row = entity_element_index;
+            }
+
             material_instance_row = entity_element_index;
-            texture_layer_row = entity_element_index;
             ssbo_index_row = entity_element_index;
         }
         else
@@ -764,7 +762,8 @@ namespace hgl::ecs
                 continue;
             }
 
-            auto item = std::make_unique<PrimitiveRenderItem>(entity_id, transform, primitiveComp, world);
+            auto material_for_item = entity->GetComponent<MaterialComponent>();
+            auto item = std::make_unique<PrimitiveRenderItem>(entity_id, transform, primitiveComp, material_for_item, world);
 
             glm::vec3 worldPos = transform->GetWorldPosition();
             item->worldPosition = worldPos;

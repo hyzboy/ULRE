@@ -1,14 +1,11 @@
 #pragma once
 
-#include "QualityTier.h"
-#include "PlatformBackend.h"
+#include "GeometryFetchMode.h"
 
 namespace hgl::graph
 {
     struct DeviceQualityProfile
     {
-        QualityTier         quality_tier;
-        PlatformBackend     platform;
         GeometryFetchMode   geometry_fetch;
 
         // 特性掩码
@@ -28,9 +25,7 @@ namespace hgl::graph
 
         // 默认构造 — PC High
         DeviceQualityProfile()
-            : quality_tier(QualityTier::High)
-            , platform(PlatformBackend::PC)
-            , geometry_fetch(GeometryFetchMode::SSBO)
+            : geometry_fetch(GeometryFetchMode::SSBO)
             , support_ssbo_vertex(true)
             , support_meshlet(false)
             , support_hzb(true)

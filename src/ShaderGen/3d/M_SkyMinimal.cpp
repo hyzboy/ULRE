@@ -79,8 +79,6 @@ static ShaderProgramBuildSpec *CreateSkyMinimalImpl(const contract::PhysicalDevi
         uint32_t(sky_minimal_vertex.size()),
         dynamic_descriptors.data(),
         uint32_t(dynamic_descriptors.size()),
-        nullptr,
-        0,
     };
 
     CompositorAssembler assembler("ShaderLibrary");
@@ -88,8 +86,6 @@ static ShaderProgramBuildSpec *CreateSkyMinimalImpl(const contract::PhysicalDevi
         SurfaceType::Sky,
         BlendMode::Opaque,
         PassType::ForwardOpaque,
-        QualityTier::Medium,
-        PlatformBackend::PC,
         "compositor/main_forward_sky.frag.glsl",
         "surface/sky_minimal_surface.glsl"
     );

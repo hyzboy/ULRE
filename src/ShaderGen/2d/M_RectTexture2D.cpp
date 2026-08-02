@@ -45,7 +45,6 @@ static ShaderProgramBuildSpec *CreateRectTexture2DImpl(const contract::PhysicalD
         p.prim,
         vertices.data(), uint32_t(vertices.size()),
         descriptors.data(), uint32_t(descriptors.size()),
-        nullptr, 0,
     };
 
     VertexVaryingConfig varying_cfg;

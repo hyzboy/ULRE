@@ -3,14 +3,15 @@
 // Material set bindings: mtl=0
 
 // MI SSBO
-#include "common/material_instance_ssbo.glsl"
-struct MaterialInstance
+struct PBRSurfaceData
 {
     uint  base_color;    // packed RGBA8_UNORM
     float metallic;      // [0, 1]
     float roughness;     // [0.04, 1]
 };
-MI_SSBO;
+layout(set=MI_SET, binding=MI_BINDING) readonly buffer PBRSurfaceBuffer {
+    PBRSurfaceData mi[];
+} mtl;
 
 // Sky light
 #include "common/skylight_simple.glsl"
@@ -63,7 +64,7 @@ vec3 PBR_ApplyNormalMap(vec3 worldPos, vec2 uv, vec3 n_geom, vec3 normal_ts)
 
 SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
 {
-    MaterialInstance mi = mtl.mi[miID];
+    PBRSurfaceData mi = mtl.mi[miID];
 
     vec4 albedo     = unpackUnorm4x8(mi.base_color);
     float metallic  = clamp(mi.metallic,  0.0,  1.0);
@@ -111,4 +112,3 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
     so.alpha     = 1.0;
     return so;
 }
-

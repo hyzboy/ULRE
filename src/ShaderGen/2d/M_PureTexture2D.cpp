@@ -37,7 +37,6 @@ static ShaderProgramBuildSpec *CreatePureTexture2DImpl(const contract::PhysicalD
         p.prim,
         vertices.data(), uint32_t(vertices.size()),
         descriptors.data(), uint32_t(descriptors.size()),
-        nullptr, 0,
     };
 
     const VkFormat position_format = ResolveMaterialPositionFormat(p.geometry_vertex_format, VK_FORMAT_R32G32_SFLOAT);

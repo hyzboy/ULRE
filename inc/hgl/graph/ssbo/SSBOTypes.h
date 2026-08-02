@@ -13,6 +13,7 @@ namespace hgl::graph::mtl
         MaterialSSBOIndexTable,
         PBRSurface,
         EmissiveSurface,
+        TextureRectArraySurface,
         ClearCoatSurface,
         TransmissionSurface,
         TransformIndexRows,
@@ -33,6 +34,7 @@ namespace hgl::graph::mtl
         {
         case SSBOType::PBRSurface:
         case SSBOType::EmissiveSurface:
+        case SSBOType::TextureRectArraySurface:
         case SSBOType::ClearCoatSurface:
         case SSBOType::TransmissionSurface:
         case SSBOType::UserDefined:
@@ -50,6 +52,7 @@ namespace hgl::graph::mtl
         case SSBOType::MaterialSSBOIndexTable: return "MaterialSSBOIndexTable";
         case SSBOType::PBRSurface: return "PBRSurface";
         case SSBOType::EmissiveSurface: return "EmissiveSurface";
+        case SSBOType::TextureRectArraySurface: return "TextureRectArraySurface";
         case SSBOType::ClearCoatSurface: return "ClearCoatSurface";
         case SSBOType::TransmissionSurface: return "TransmissionSurface";
         case SSBOType::TransformIndexRows: return "TransformIndexRows";
@@ -69,6 +72,7 @@ namespace hgl::graph::mtl
         case SSBOType::LocalToWorld:
         case SSBOType::PBRSurface:
         case SSBOType::EmissiveSurface:
+        case SSBOType::TextureRectArraySurface:
         case SSBOType::ClearCoatSurface:
         case SSBOType::TransmissionSurface:
             return 1;
@@ -91,6 +95,8 @@ namespace hgl::graph::mtl
             return sizeof(uint32_t) + sizeof(float) * 2; // base_color + metallic + roughness
         case SSBOType::EmissiveSurface:
             return sizeof(float) * 4;                    // vec4/uvec4 style payload
+        case SSBOType::TextureRectArraySurface:
+            return sizeof(uint32_t) * 4;                // uvec4 id
         case SSBOType::ClearCoatSurface:
             return sizeof(uint32_t) + sizeof(float) * 3; // base_color + metallic + roughness + normal_scale
         case SSBOType::TransmissionSurface:
@@ -134,9 +140,9 @@ namespace hgl::graph::mtl
         constexpr uint32_t TransformIndexRows   = MakeECSSSBOId(1);
         constexpr uint32_t LocalToWorldData     = MakeECSSSBOId(2);
 
-        constexpr uint32_t MaterialInstanceRows = MakeECSSSBOId(3);
-        constexpr uint32_t MaterialInstanceData = MakeECSSSBOId(4);
-        constexpr uint32_t TextureLayerRows     = MakeECSSSBOId(5);
+        constexpr uint32_t MaterialDataIndexRows = MakeECSSSBOId(3);
+        constexpr uint32_t MaterialSSBOData      = MakeECSSSBOId(4);
+        constexpr uint32_t TextureLayerRows      = MakeECSSSBOId(5);
     }
 
     struct SSBOAddress

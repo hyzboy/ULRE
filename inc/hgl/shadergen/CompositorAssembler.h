@@ -3,8 +3,7 @@
 #include <hgl/mtl/new/SurfaceType.h>
 #include <hgl/mtl/new/BlendMode.h>
 #include <hgl/mtl/new/PassType.h>
-#include <hgl/mtl/new/QualityTier.h>
-#include <hgl/mtl/new/PlatformBackend.h>
+#include <hgl/mtl/new/GeometryFetchMode.h>
 #include <hgl/mtl/new/NewShaderPermutationKey.h>
 #include <string>
 
@@ -14,7 +13,7 @@ namespace hgl::graph
      * CompositorAssembler — 组合 Compositor Template + Surface Function 生成完整 GLSL
      *
      * 第一版最小实现：
-     *   1. 输入：SurfaceType, BlendMode, PassType, QualityTier, PlatformBackend
+     *   1. 输入：SurfaceType, BlendMode, PassType
      *   2. 查表选择 FS Compositor Template 文件路径
      *   3. 读取模板文件内容
      *   4. 注入 #define 宏（NewShaderPermutationKey::AppendGLSLDefines()）
@@ -41,8 +40,6 @@ namespace hgl::graph
             SurfaceType     surface,
             BlendMode       blend,
             PassType        pass,
-            QualityTier     tier,
-            PlatformBackend platform,
             const char     *fs_template_override      = nullptr,
             const char     *surface_function_override  = nullptr
         ) const;

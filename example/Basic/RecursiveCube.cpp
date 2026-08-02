@@ -126,7 +126,7 @@ private:
         cube_recipe.mtl_def_id = "Gizmo3D";
         cube_recipe.domain = "RecursiveCube";
         graph::mtl::UpsertRecipeSSBOAssetBinding(cube_recipe,
-                                                 graph::mtl::SBS_MaterialInstance.name,
+                                                 graph::mtl::DefaultMaterialSSBOName,
                                                  mi_ssbo_accessor->GetSSBOBinding());
         cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
 
@@ -187,7 +187,7 @@ private:
         if (mi_ssbo_accessor && mi_ssbo_accessor->GetSSBOId() != 0)
         {
             hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource cube_struct{};
-            cube_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+            cube_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
             cube_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             cube_struct.ssbo_element_index = 0;
             cube_struct.use_ssbo_element_index = true;

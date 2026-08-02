@@ -92,7 +92,7 @@ private:
         mesh_recipe.mtl_def_id = "Standard";
         mesh_recipe.domain = "06b.BasicLit";
         graph::mtl::UpsertRecipeSSBOAssetBinding(mesh_recipe,
-                                                 graph::mtl::SBS_MaterialInstance.name,
+                                                 graph::mtl::DefaultMaterialSSBOName,
                                                  mi_ssbo_accessor->GetSSBOBinding());
 
         base_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
@@ -403,7 +403,7 @@ private:
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal, normal_texture, sampler);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource floor_struct{};
-            floor_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+            floor_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
             floor_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             floor_struct.ssbo_element_index = 0;
             floor_struct.use_ssbo_element_index = false;
@@ -440,7 +440,7 @@ private:
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal, normal_texture, sampler);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource mesh_struct{};
-            mesh_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+            mesh_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
             mesh_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
             mesh_struct.ssbo_element_index = 0;
             mesh_struct.use_ssbo_element_index = false;

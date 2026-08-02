@@ -20,7 +20,6 @@ namespace hgl::graph
         const mtl::MaterialRecipe *material_recipe = nullptr;
         PrimitiveVariantPurpose purpose = PrimitiveVariantPurpose::Surface;
         uint16_t lod_index = 0;
-        uint16_t quality_tier = 0;
 
         bool IsValid() const { return material_recipe != nullptr; }
     };

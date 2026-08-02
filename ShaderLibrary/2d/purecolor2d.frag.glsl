@@ -1,12 +1,12 @@
 // PureColor2D fragment shader
 
-#include "common/material_instance_ssbo.glsl"
-
-struct MaterialInstance {
-    vec4 Color;
+struct EmissiveSurfaceData {
+    vec4 color;
 };
 
-MI_SSBO;
+layout(set=MI_SET, binding=MI_BINDING) readonly buffer EmissiveSurfaceBuffer {
+    EmissiveSurfaceData mi[];
+} mtl;
 
 layout(location=0) flat in uint fragDataIndexID;
 
@@ -14,5 +14,5 @@ layout(location=0) out vec4 FragColor;
 
 void main()
 {
-    FragColor = mtl.mi[fragDataIndexID].Color;
+    FragColor = mtl.mi[fragDataIndexID].color;
 }

@@ -44,7 +44,6 @@ const ShaderBufferSource *FindShaderBufferSourceByStructName(const char *struct_
     if(CStrEq(struct_name,SBS_CameraInfo.struct_name))       return &SBS_CameraInfo;
     if(CStrEq(struct_name,SBS_LocalToWorld.struct_name))     return &SBS_LocalToWorld;
     if(CStrEq(struct_name,SBS_LocalToWorldIndexRows.struct_name)) return &SBS_LocalToWorldIndexRows;
-    if(CStrEq(struct_name,SBS_MaterialInstance.struct_name)) return &SBS_MaterialInstance;
     if(CStrEq(struct_name,SBS_MaterialTextureLayerRows.struct_name)) return &SBS_MaterialTextureLayerRows;
     if(CStrEq(struct_name,SBS_MaterialDataIndexRows.struct_name))    return &SBS_MaterialDataIndexRows;
     if(CStrEq(struct_name,SBS_JointInfo.struct_name))        return &SBS_JointInfo;

@@ -47,8 +47,6 @@ static ShaderProgramBuildSpec *CreateVertexColor3DImpl(const contract::PhysicalD
         uint32_t(vertex_color_3d_vertex.size()),
         dynamic_descriptors.data(),
         uint32_t(dynamic_descriptors.size()),
-        nullptr,
-        0,
     };
 
     CompositorAssembler assembler("ShaderLibrary");
@@ -57,8 +55,6 @@ static ShaderProgramBuildSpec *CreateVertexColor3DImpl(const contract::PhysicalD
         SurfaceType::Unlit,
         BlendMode::Opaque,
         PassType::ForwardOpaque,
-        QualityTier::Medium,
-        PlatformBackend::PC,
         "compositor/main_forward_unlit_vertexcolor.frag.glsl",
         "surface/unlit_vertexcolor_surface.glsl"
     );

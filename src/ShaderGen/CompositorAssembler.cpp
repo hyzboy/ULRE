@@ -138,8 +138,6 @@ namespace hgl::graph
         SurfaceType     surface,
         BlendMode       blend,
         PassType        pass,
-        QualityTier     tier,
-        PlatformBackend platform,
         const char     *fs_template_override,
         const char     *surface_function_override
     ) const
@@ -149,8 +147,6 @@ namespace hgl::graph
         // 1. 构建 permutation key
         NewShaderPermutationKey key;
         key.SetSurfaceType(surface);
-        key.SetQualityTier(tier);
-        key.SetPlatform(platform);
 
         // 2. 获取模板文件路径（支持覆盖）
         std::string fs_path = (fs_template_override && fs_template_override[0])

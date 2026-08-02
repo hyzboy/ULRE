@@ -42,9 +42,6 @@ namespace
         return true;
     }();
 
-    constexpr const char pure_color_3d_mi_codes[] = "vec4 Color;";
-    constexpr const uint32_t pure_color_3d_mi_bytes = 16;
-
 }
 
 static ShaderProgramBuildSpec *CreatePureColor3DImpl(const contract::PhysicalDeviceProfileLite *profile, const CompositorMaterialBuildConfig &bc, const MaterialDefinition &definition)
@@ -69,8 +66,6 @@ static ShaderProgramBuildSpec *CreatePureColor3DImpl(const contract::PhysicalDev
         uint32_t(pure_color_3d_vertex.size()),
         dynamic_descriptors.data(),
         uint32_t(dynamic_descriptors.size()),
-        pure_color_3d_mi_codes,
-        pure_color_3d_mi_bytes,
     };
 
     CompositorAssembler assembler("ShaderLibrary");
@@ -78,9 +73,7 @@ static ShaderProgramBuildSpec *CreatePureColor3DImpl(const contract::PhysicalDev
     auto fs_result = assembler.Assemble(
         SurfaceType::Unlit,
         BlendMode::Opaque,
-        PassType::ForwardOpaque,
-        QualityTier::Medium,
-        PlatformBackend::PC
+        PassType::ForwardOpaque
     );
 
     if (!fs_result.success)

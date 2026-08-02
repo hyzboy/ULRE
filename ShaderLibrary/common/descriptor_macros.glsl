@@ -47,6 +47,14 @@
 
 // ── Material set rows (instance-index indirection) ──
 
+#ifndef MI_SET
+#define MI_SET MATERIAL_SET
+#endif
+
+#ifndef MI_BINDING
+#define MI_BINDING 0
+#endif
+
 #ifndef MI_DATA_INDEX_ROWS_SET
 #define MI_DATA_INDEX_ROWS_SET MATERIAL_SET
 #endif

@@ -13,11 +13,13 @@ namespace hgl::ecs
         EntityID ent_id,
         std::shared_ptr<TransformComponent> trans,
         std::shared_ptr<PrimitiveComponent> prim,
+        std::shared_ptr<MaterialComponent> mat,
         ECSContext* ctx)
         : entity_id(ent_id)
         , context(ctx)
         , transform(trans)
         , primitiveComp(prim)
+        , materialComp(mat)
         , worldMatrix(1.0f)
     {
         if (transform)
@@ -41,12 +43,8 @@ namespace hgl::ecs
 
     hgl::graph::ShaderProgram* PrimitiveRenderItem::GetMaterialProgram() const
     {
-        if (auto *entity = GetEntity())
-        {
-            auto material_comp = entity->GetComponent<MaterialComponent>();
-            if (material_comp && material_comp->program)
-                return material_comp->program;
-        }
+        if (materialComp && materialComp->program)
+            return materialComp->program;
 
         return primitiveComp ? primitiveComp->GetMaterialProgram() : nullptr;
     }

@@ -37,7 +37,7 @@ void main()
     si.uv0         = fragUV0;
     si.uv1         = vec2(0.0);
     si.vertexColor = vec4(1.0);
-    si.viewDir     = normalize(-fragWorldPos); // camera at origin (camera-relative)
+    si.viewDir     = normalize(camera.pos - fragWorldPos);
     si.screenPos   = gl_FragCoord.xy;
     si.luminance   = 0.0;
     si.textureLayerID = fragTextureLayerID;

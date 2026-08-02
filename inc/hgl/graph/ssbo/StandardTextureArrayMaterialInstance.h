@@ -16,4 +16,3 @@ namespace hgl::graph::ssbo
 
     constexpr const size_t StandardTextureArrayMaterialInstanceBytes = sizeof(StandardTextureArrayMaterialInstance);
 }
-

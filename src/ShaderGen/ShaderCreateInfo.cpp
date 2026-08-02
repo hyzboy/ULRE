@@ -5,8 +5,6 @@
 #include<string>
 
 #include"GLSLCompiler.h"
-#include"common/MFCommon.h"
-
 namespace hgl{namespace graph{
 
 static const char *GetShaderStageNameByStage(const ShaderStage stage)
@@ -65,18 +63,6 @@ bool ShaderCreateInfo::AddTexture(DescriptorSetType type,const TextureDescriptor
 bool ShaderCreateInfo::AddTextureSampler(DescriptorSetType type,const TextureSamplerDescriptor *sd)
 {
     return GetShaderDescriptorInfo()->AddTextureSampler(type,sd);
-}
-
-void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo)
-{
-    AddUBO(DescriptorSetType::Material,ubo);
-    AddStruct(mtl::MaterialInstanceStruct);
-}
-
-void ShaderCreateInfo::SetMaterialInstance(SSBODescriptor *ssbo)
-{
-    AddSSBO(DescriptorSetType::Material,ssbo);
-    AddStruct(mtl::MaterialInstanceStruct);
 }
 
 bool ShaderCreateInfo::CompileFinalGLSLToSPV()

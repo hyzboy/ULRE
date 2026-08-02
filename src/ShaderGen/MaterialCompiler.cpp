@@ -12,6 +12,7 @@
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/common/RenderOptions.h>
+#include <hgl/graph/ssbo/MaterialInstanceLayout.h>
 #include <cstring>
 #include <cstdio>
 #include <cstdint>
@@ -104,9 +105,9 @@ static bool ValidateE0DescriptorShapeBaseline(
     if (std::strcmp(name, "PureColor2D") == 0)
     {
         const DescriptorShapeKey expected[] = {
-            { DescriptorSetType::Transform, TransformDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::LocalToWorld,           TextureSlot::BaseColor },
+            { DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::LocalToWorld,           TextureSlot::BaseColor },
             { DescriptorSetType::Transform, DescriptorKind::SSBO,    uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::LocalToWorldIndexTable, TextureSlot::BaseColor },
-            { DescriptorSetType::Material,  MaterialInstanceDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::MaterialSSBOSlotData,    TextureSlot::BaseColor },
+            { DescriptorSetType::Material,  DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::MaterialSSBOSlotData,    TextureSlot::BaseColor },
             { DescriptorSetType::Material,  DescriptorKind::SSBO,    uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::MaterialSSBOIndexTable,  TextureSlot::BaseColor },
             { DescriptorSetType::Material,  DescriptorKind::SSBO,    uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::MaterialTextureLayerTable,TextureSlot::BaseColor },
         };
@@ -116,7 +117,7 @@ static bool ValidateE0DescriptorShapeBaseline(
     if (std::strcmp(name, "RectTexture2D") == 0)
     {
         const DescriptorShapeKey expected[] = {
-            { DescriptorSetType::Transform, TransformDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::LocalToWorld,           TextureSlot::BaseColor },
+            { DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::LocalToWorld,           TextureSlot::BaseColor },
             { DescriptorSetType::Transform, DescriptorKind::SSBO,    uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::LocalToWorldIndexTable, TextureSlot::BaseColor },
             { DescriptorSetType::Material,  DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), DescriptorSemantic::MaterialSampler, TextureSlot::BaseColor },
         };
@@ -127,7 +128,7 @@ static bool ValidateE0DescriptorShapeBaseline(
     {
         const DescriptorShapeKey expected[] = {
             { DescriptorSetType::Scene,     DescriptorKind::UBO,     uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::ViewportInfo,          TextureSlot::BaseColor },
-            { DescriptorSetType::Material,  MaterialInstanceDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::MaterialSSBOSlotData,    TextureSlot::BaseColor },
+            { DescriptorSetType::Material,  DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::MaterialSSBOSlotData,    TextureSlot::BaseColor },
             { DescriptorSetType::Material,  DescriptorKind::SSBO,    uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::MaterialSSBOIndexTable,  TextureSlot::BaseColor },
             { DescriptorSetType::Material,  DescriptorKind::SSBO,    uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::MaterialTextureLayerTable,TextureSlot::BaseColor },
             { DescriptorSetType::Material,  DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), DescriptorSemantic::MaterialSampler, TextureSlot::BaseColor },
@@ -175,6 +176,26 @@ static bool HasLayoutSemantic(const MaterialResourceLayout &layout, const Descri
         if (req.semantic == semantic)
             return true;
     }
+
+    return false;
+}
+
+static bool AddMaterialSSBOSlotDescriptor(ShaderProgramBuildSpec &mci,
+                                          const MaterialSSBOSlotDecl &decl,
+                                          const uint32_t ssbo_slot,
+                                          const uint32_t stage_bits)
+{
+    const char *struct_name = nullptr;
+    const char *glsl_codes = nullptr;
+    uint32_t struct_bytes = 0;
+
+    if (!ssbo::TryGetMaterialInstanceLayout(decl.ssbo_type, struct_name, glsl_codes, struct_bytes))
+        return false;
+
+    if (!mci.AddStruct(struct_name, glsl_codes))
+        return false;
+
+    return mci.AddSSBO(stage_bits, DescriptorSetType::Material, struct_name, decl.name);
 
     return false;
 }
@@ -303,12 +324,12 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
         return nullptr;
     };
 
-    uint32_t mi_stage_bits = uint32_t(ShaderStage::Fragment);
+    uint32_t material_ssbo_stage_bits = uint32_t(ShaderStage::Fragment);
 
     // ─────────────────────────────────────────────────────────────
     // Step 3: Add Descriptors from FixedDescriptorEntry[]
-    // When config.ssbo_slot_decls is provided, MaterialInstance entries are
-    // generated from it; any hand-written MaterialInstance entries in def are skipped.
+    // When config.ssbo_slot_decls is provided, material SSBO entries are
+    // generated from it; any baked single-slot entries in def are skipped.
     // ─────────────────────────────────────────────────────────────
 
     const bool use_slot_decls = config.ssbo_slot_decls && !config.ssbo_slot_decls->empty();
@@ -334,7 +355,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     {
         const FixedDescriptorEntry &entry = def.descriptor_entries[i];
 
-        // Skip hand-written MaterialInstance entries when slot_decls takes over.
+        // Skip baked material-SSBO entries when slot_decls takes over.
         if (use_slot_decls && entry.semantic == DescriptorSemantic::MaterialSSBOSlotData)
             continue;
 
@@ -358,7 +379,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
                 mci->SetLocalToWorld(stage_bits);
                 break;
             case DescriptorSemantic::MaterialSSBOSlotData:
-                mi_stage_bits = stage_bits;
+                material_ssbo_stage_bits = stage_bits;
                 break;
             case DescriptorSemantic::MaterialColorPalette:
                 mci->AddUBOStruct(stage_bits, SBS_ColorPattle);
@@ -378,7 +399,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
                 mci->AddSSBOStruct(stage_bits, SBS_LocalToWorldIndexRows);
                 break;
             case DescriptorSemantic::MaterialSSBOSlotData:
-                mi_stage_bits = stage_bits;
+                material_ssbo_stage_bits = stage_bits;
                 break;
             case DescriptorSemantic::MaterialTextureLayerTable:
                 mci->AddSSBOStruct(stage_bits, SBS_MaterialTextureLayerRows);
@@ -453,16 +474,13 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
         }
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // Step 5: MaterialInstance
-    // ─────────────────────────────────────────────────────────────
-
-    if (def.mi_glsl_codes && def.mi_struct_bytes > 0)
+    if (use_slot_decls)
     {
-        mci->SetMaterialInstance(
-            def.mi_glsl_codes,
-            def.mi_struct_bytes,
-            mi_stage_bits);
+        for (uint32_t i = 0; i < static_cast<uint32_t>(config.ssbo_slot_decls->size()); ++i)
+        {
+            if (!AddMaterialSSBOSlotDescriptor(*mci, (*config.ssbo_slot_decls)[i], i, material_ssbo_stage_bits))
+                return FailAfterMci("failed to add declared material ssbo slot descriptor");
+        }
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -503,14 +521,14 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
 
     // ─────────────────────────────────────────────────────────────
     // Step 6b: Build MaterialResourceLayout from descriptor entries.
-    // When ssbo_slot_decls is provided, MaterialInstance entries are
+    // When ssbo_slot_decls is provided, material SSBO entries are
     // generated from it and merged with the rest of def.descriptor_entries.
     // ─────────────────────────────────────────────────────────────
 
     MaterialResourceLayout material_resource_layout;
     if (use_slot_decls)
     {
-        // Build augmented list: base entries (without old MaterialInstance) + slot_decls entries.
+        // Build augmented list: base entries (without legacy single-slot material SSBO) + slot_decls entries.
         std::vector<FixedDescriptorEntry> augmented;
         // Names from ssbo_slot_decls are runtime strings; store them here to ensure lifetime.
         std::vector<std::string> augmented_names;
@@ -527,10 +545,10 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
             augmented_names.push_back(decl.name);  // owned copy guarantees lifetime
             FixedDescriptorEntry e{};
             e.set_type      = DescriptorSetType::Material;
-            e.kind          = MaterialInstanceDescriptorKind;
+            e.kind          = DescriptorKind::SSBO;
             e.stage_flags   = uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS);
             e.name          = augmented_names.back().c_str();  // stable pointer into owned string
-            e.struct_name   = "MaterialInstanceData";
+            e.struct_name   = ssbo::GetMaterialSSBOStructName(decl.ssbo_type);
             e.glsl_type     = nullptr;
             e.semantic      = DescriptorSemantic::MaterialSSBOSlotData;
             e.texture_slot  = TextureSlot::BaseColor;

@@ -88,7 +88,7 @@ private:
 
         prim_comp->SetPrimitiveAsset(&plane_grid_asset);
         hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource named_struct{};
-        named_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+        named_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
         named_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
         named_struct.ssbo_element_index = ssbo_element_index;
         named_struct.use_ssbo_element_index = true;
@@ -107,7 +107,7 @@ private:
         plane_grid_recipe.recipe_name = "PlaneGrid3D.VertexLuminance3D";
         plane_grid_recipe.mtl_def_id = "VertexLuminance3D";
         plane_grid_recipe.domain = "PlaneGrid3D";
-        graph::mtl::UpsertRecipeSSBOAssetBinding(plane_grid_recipe, graph::mtl::SBS_MaterialInstance.name, mi_ssbo_accessor->GetSSBOBinding());
+        graph::mtl::UpsertRecipeSSBOAssetBinding(plane_grid_recipe, graph::mtl::DefaultMaterialSSBOName, mi_ssbo_accessor->GetSSBOBinding());
         plane_grid_asset = PrimitiveAsset(geom_plane_grid, &plane_grid_recipe, PrimitiveType::Lines);
 
         if(!Add("PlaneXY", 0, glm::quat(1.0f, 0.0f, 0.0f, 0.0f)))

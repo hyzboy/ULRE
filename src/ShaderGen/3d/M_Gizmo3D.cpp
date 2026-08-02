@@ -25,13 +25,6 @@ namespace
         return true;
     }();
 
-    // ─────────────────────────────────────────────────────────────────────────────
-    // 材质实例定义
-    // ─────────────────────────────────────────────────────────────────────────────
-
-    constexpr const char GIZMO_3D_MI_GLSL[] = "vec4 Color;";
-    constexpr uint32_t GIZMO_3D_MI_BYTES = sizeof(math::Vector4f);
-
 }
 
 static ShaderProgramBuildSpec *CreateGizmo3DImpl(const contract::PhysicalDeviceProfileLite *profile, CompositorMaterialBuildConfig bc, const MaterialDefinition &definition)
@@ -42,8 +35,6 @@ static ShaderProgramBuildSpec *CreateGizmo3DImpl(const contract::PhysicalDeviceP
         SurfaceType::Unlit,
         BlendMode::Opaque,
         PassType::ForwardOpaque,
-        QualityTier::Medium,
-        PlatformBackend::PC,
         "compositor/main_forward_unlit_normal.frag.glsl",
         "surface/gizmo3d_surface.glsl"
     );
@@ -76,8 +67,6 @@ static ShaderProgramBuildSpec *CreateGizmo3DImpl(const contract::PhysicalDeviceP
         uint32_t(gizmo_3d_vertex.size()),
         dynamic_descriptors.data(),
         uint32_t(dynamic_descriptors.size()),
-        GIZMO_3D_MI_GLSL,
-        GIZMO_3D_MI_BYTES,
     };
 
     // emit_world_pos + emit_world_normal: matches main_forward_unlit_normal.frag.glsl interface

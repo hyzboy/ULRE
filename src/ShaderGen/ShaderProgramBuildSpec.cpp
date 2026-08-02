@@ -6,8 +6,6 @@
 #include<hgl/math/Matrix.h>
 #include<string>
 #include<limits>
-#include"common/MFCommon.h"
-
 using namespace hgl;
 using namespace hgl::graph;
 
@@ -160,16 +158,7 @@ ShaderProgramBuildSpec::ShaderProgramBuildSpec(const PrimitiveType primitive_typ
     ubo_range=0;
     ssbo_range=0;
 
-    {
-        material_instance_stride=0;
-        material_instance_stage_bits=0;
-        material_instance_max_count=0;
-        material_instance_ssbo=nullptr;
-        material_instance_ubo=nullptr;
-    }
-
     local_to_world_ssbo=nullptr;
-    local_to_world_ubo=nullptr;
 
 }
 
@@ -319,82 +308,16 @@ bool ShaderProgramBuildSpec::AddTextureSampler(const ShaderStage flag_bit,const 
     return sc->AddTextureSampler(set_type,image_sampler);
 }
 
-/**
-* 设置材质实例代码与数据长度
-* @param glsl_codes     材质实例GLSL代码
-* @param data_bytes     单个材质实例数据长度
-* @param shader_stage_flag_bits   具体使用材质实例的shader
-* @return 是否设置成功
-*/
-bool ShaderProgramBuildSpec::SetMaterialInstance(const std::string &glsl_codes,const uint32_t data_bytes,const uint32_t shader_stage_flag_bits)
-{
-    if(material_instance_stride>0)return(false);           //已经有数据了
-
-    if(shader_stage_flag_bits==0)return(false);
-
-    if(data_bytes>0&&glsl_codes.size()<4)return(false);
-
-    material_instance_stride=data_bytes;
-
-    if(data_bytes>0)
-        material_instance_glsl=glsl_codes;
-
-    descriptor_db.AddStruct(MaterialInstanceStruct,material_instance_glsl); //外部指定的 struct MaterialInstance代码
-
-    descriptor_db.AddStruct(SBS_MaterialInstance);            //MaterialInstance mi[...];
-
-#ifdef HGL_MI_USE_SSBO
-    material_instance_max_count=std::min<uint32_t>(ssbo_range/data_bytes,HGL_U16_MAX);
-
-    material_instance_ssbo=CreateSSBODescriptor(SBS_MaterialInstance,shader_stage_flag_bits);
-
-    descriptor_db.AddSSBO(shader_stage_flag_bits,SBS_MaterialInstance.set_type,material_instance_ssbo);
-#endif
-#ifdef HGL_MI_USE_UBO
-    material_instance_max_count=std::min<uint32_t>(ubo_range/data_bytes,HGL_U16_MAX);
-
-    material_instance_ubo=CreateUBODescriptor(SBS_MaterialInstance,shader_stage_flag_bits);
-
-    descriptor_db.AddUBO(shader_stage_flag_bits,SBS_MaterialInstance.set_type,material_instance_ubo);
-#endif
-
-    ForEachShaderByStage(shader_map,shader_stage_flag_bits,
-        [&](ShaderCreateInfo &shader,ShaderStage)
-        {
-#ifdef HGL_MI_USE_SSBO
-        shader.SetMaterialInstance(material_instance_ssbo);
-#endif
-#ifdef HGL_MI_USE_UBO
-        shader.SetMaterialInstance(material_instance_ubo);
-#endif
-        });
-
-    material_instance_stage_bits=shader_stage_flag_bits;
-
-    return(true);
-}
-
 bool ShaderProgramBuildSpec::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
 {
     if(shader_stage_flag_bits==0)return(false);
 
-#ifdef HGL_L2W_USE_SSBO
     local_to_world_max_count=std::min<uint32_t>(ssbo_range/sizeof(math::Matrix4f),HGL_U16_MAX);
 
     if(!AddSSBOStruct(shader_stage_flag_bits,SBS_LocalToWorld))
         return(false);
 
     local_to_world_ssbo=descriptor_db.GetSSBO(SBS_LocalToWorld.name);
-#endif
-#ifdef HGL_L2W_USE_UBO
-    local_to_world_max_count=std::min<uint32_t>(ubo_range/sizeof(math::Matrix4f),HGL_U16_MAX);
-
-    descriptor_db.AddStruct(SBS_LocalToWorld);
-
-    local_to_world_ubo=CreateUBODescriptor(SBS_LocalToWorld,shader_stage_flag_bits);
-
-    descriptor_db.AddUBO(shader_stage_flag_bits,SBS_LocalToWorld.set_type,local_to_world_ubo);
-#endif
 
     local_to_world_stage_bits=shader_stage_flag_bits;
 

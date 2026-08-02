@@ -452,7 +452,7 @@ private:
             return false;
 
         graph::mtl::UpsertRecipeSSBOAssetBinding(sphere_recipe,
-                                                 graph::mtl::SBS_MaterialInstance.name,
+                                                 graph::mtl::DefaultMaterialSSBOName,
                                                  mi_ssbo_accessor->GetSSBOBinding());
 
         if (!CreateBasePrimitives())
@@ -495,7 +495,7 @@ private:
                                                       PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray);
                 prim_comp->SetMaterialTextureValue(graph::mtl::TextureSlot::Custom0, row);
                 hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource sphere_struct{};
-                sphere_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+                sphere_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
                 sphere_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
                 sphere_struct.ssbo_element_index = sphere_slot_rows[row][col];
                 sphere_struct.use_ssbo_element_index = true;

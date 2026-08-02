@@ -137,7 +137,7 @@ bool ShouldUse2DFallbackMaterial(const MaterialDefinitionBuildRequest &request);
 
 /**
  * Normalize a MaterialRecipe in-place:
- *   1. Fills mtl_def_id, lod, quality_tier from the matched MaterialDefinition if they are unset.
+ *   1. Fills mtl_def_id and lod from the matched MaterialDefinition if they are unset.
  *   2. Propagates required_ssbo_assets from the definition into recipe.ssbo_assets.
  *
  * This is the canonical pre-processing step that must be called before the recipe is stored

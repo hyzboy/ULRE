@@ -6,15 +6,16 @@
 // This aligns with the general texture-layer architecture (no texture_id in MI).
 
 #include "common/surface_interface.glsl"
-#include "common/material_instance_ssbo.glsl"
-struct MaterialInstance
+struct ClearCoatSurfaceData
 {
     uint  base_color;
     float metallic;
     float roughness;
     float normal_scale;
 };
-MI_SSBO;
+layout(set=MI_SET, binding=MI_BINDING) readonly buffer ClearCoatSurfaceBuffer {
+    ClearCoatSurfaceData mi[];
+} mtl;
 
 // Bindless 2DArray rows + bindless sampler arrays
 #include "common/instance_rows_ssbo.glsl"
@@ -28,8 +29,6 @@ float halfLambertDiffuse(vec3 N, vec3 L)
     float h = dot(N, L) * 0.5 + 0.5;
     return h * h;
 }
-
-#if QUALITY_TIER >= 4
 
 float D_GGX(float NdotH, float alpha2)
 {
@@ -50,11 +49,9 @@ vec3 F_Schlick(float VdotH, vec3 F0)
     return F0 + (1.0 - F0) * pow(clamp(1.0 - VdotH, 0.0, 1.0), 5.0);
 }
 
-#endif
-
 SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
 {
-    MaterialInstance mi = mtl.mi[miID];
+    ClearCoatSurfaceData mi = mtl.mi[miID];
 
     vec3 N = normalize(si.worldNormal);
     vec3 V = si.viewDir;
@@ -69,22 +66,27 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
     float layer = float(GetTextureHandle(iid, TEXTURE_SLOT_CUSTOM0));
 
     vec3 albedo = unpackUnorm4x8(mi.base_color).rgb;
-    albedo *= SampleBindless2DArray(GetTextureHandle(iid, TEXTURE_SLOT_BASE_COLOR), si.uv0, layer).rgb;
+    const uint base_color_handle = GetTextureHandle(iid, TEXTURE_SLOT_BASE_COLOR);
+    if (base_color_handle != 0u)
+        albedo *= SampleBindless2DArray(base_color_handle, si.uv0, layer).rgb;
 
     float metallic  = clamp(mi.metallic,  0.0, 1.0);
     float roughness = clamp(mi.roughness, 0.04, 1.0);
 
-#if QUALITY_TIER >= 2
-    vec3 nm = SampleBindless2DArray(GetTextureHandle(iid, TEXTURE_SLOT_NORMAL), si.uv0, layer).xyz * 2.0 - 1.0;
-    nm.y = -nm.y;
-    N = normalize(N + vec3(nm.xy, 0.0) * mi.normal_scale);
-#endif
+    const uint normal_handle = GetTextureHandle(iid, TEXTURE_SLOT_NORMAL);
+    if (normal_handle != 0u)
+    {
+        vec3 nm = SampleBindless2DArray(normal_handle, si.uv0, layer).xyz * 2.0 - 1.0;
+        nm.y = -nm.y;
+        N = normalize(N + vec3(nm.xy, 0.0) * mi.normal_scale);
+    }
 
-#if QUALITY_TIER >= 4
-    // TEXTURE_SLOT_METALLIC stores the combined metallic-roughness (r=metallic, g=roughness).
-    vec2 mr    = SampleBindless2DArray(GetTextureHandle(iid, TEXTURE_SLOT_METALLIC), si.uv0, layer).rg;
-    metallic   = clamp(metallic  * mr.r, 0.0, 1.0);
-    roughness  = clamp(roughness * mr.g, 0.04, 1.0);
+    const uint roughness_handle = GetTextureHandle(iid, TEXTURE_SLOT_ROUGHNESS);
+    if (roughness_handle != 0u)
+    {
+        const float roughness_tex = SampleBindless2DArray(roughness_handle, si.uv0, layer).r;
+        roughness = clamp(roughness * roughness_tex, 0.04, 1.0);
+    }
 
     float NdotL  = max(dot(N, L), 0.0);
     float NdotV  = max(dot(N, V), 1e-4);
@@ -104,19 +106,6 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
 
     vec3 color  = (diffuse + specular) * sunColor;
     color      += skyAmbient * albedo * (1.0 - metallic) * 0.2;
-
-#else
-    float hl        = halfLambertDiffuse(N, L);
-    vec3  H         = normalize(V + L);
-    float shininess = mix(256.0, 8.0, roughness);
-    float spec      = pow(max(dot(N, H), 0.0), shininess);
-    float specScale = metallic * (1.0 - roughness * 0.9);
-    vec3  specColor = mix(vec3(spec), albedo * spec, metallic);
-
-    vec3 color  = albedo * hl * sunColor;
-    color      += specColor * specScale * sunColor;
-    color      += skyAmbient * albedo * 0.25;
-#endif
 
     SurfaceOutput so;
     so.baseColor = color;

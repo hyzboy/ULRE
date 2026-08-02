@@ -545,7 +545,7 @@ private:
 
             rm_floor->primitive_comp->SetPrimitiveAsset(&rm_floor->asset);
             hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource floor_struct{};
-            floor_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+            floor_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
             floor_struct.ssbo_id = solid.mi_ssbo_accessor->GetSSBOId();
             floor_struct.ssbo_element_index = rm_floor->color_index;
             floor_struct.use_ssbo_element_index = true;
@@ -579,7 +579,7 @@ private:
 
             rm->primitive_comp->SetPrimitiveAsset(&rm->asset);
             hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource mesh_struct{};
-            mesh_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+            mesh_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
             mesh_struct.ssbo_id = solid.mi_ssbo_accessor->GetSSBOId();
             mesh_struct.ssbo_element_index = rm->color_index;
             mesh_struct.use_ssbo_element_index = true;
@@ -625,7 +625,7 @@ private:
 
             bbox->primitive_comp->SetPrimitiveAsset(&bbox_asset);
             hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource bbox_struct{};
-            bbox_struct.ssbo_name = graph::mtl::SBS_MaterialInstance.name;
+            bbox_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
             bbox_struct.ssbo_id = wire.mi_ssbo_accessor->GetSSBOId();
             bbox_struct.ssbo_element_index = 5;
             bbox_struct.use_ssbo_element_index = true;
