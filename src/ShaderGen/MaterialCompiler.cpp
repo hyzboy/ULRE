@@ -168,6 +168,17 @@ static bool IsTextureSlotDeclared(const MaterialDefinition &definition, const Te
     return false;
 }
 
+static bool HasLayoutSemantic(const MaterialResourceLayout &layout, const DescriptorSemantic semantic) noexcept
+{
+    for (const auto &req : layout.requirements)
+    {
+        if (req.semantic == semantic)
+            return true;
+    }
+
+    return false;
+}
+
 static bool ValidateDefinitionCapabilitySubset(
     const MaterialDefinition &definition,
     const MaterialResourceLayout &layout,
@@ -237,6 +248,57 @@ static bool ValidateDefinitionCapabilitySubset(
         message += ", def=";
         message += definition.definition_name.empty() ? "<unnamed>" : definition.definition_name;
         diagnostics.push_back(std::move(message));
+    }
+
+    return diagnostics.empty();
+}
+
+static const char *GetCoordinateSystem2DNameSafe(const CoordinateSystem2D cs) noexcept
+{
+    const char *name = GetCoordinateSystem2DName(cs);
+    return (name && *name) ? name : "UnknownCS2D";
+}
+
+static bool Validate2DLayoutConsistency(
+    const CompositorMaterialBuildConfig &config,
+    const MaterialResourceLayout &layout,
+    std::vector<std::string> &diagnostics)
+{
+    diagnostics.clear();
+
+    if (!config.is_2d)
+        return true;
+
+    const bool has_viewport = HasLayoutSemantic(layout, DescriptorSemantic::ViewportInfo);
+    const bool has_l2w = HasLayoutSemantic(layout, DescriptorSemantic::LocalToWorld)
+                      || HasLayoutSemantic(layout, DescriptorSemantic::LocalToWorldIndexTable);
+
+    if (config.coordinate_system_2d == CoordinateSystem2D::Ortho && !has_viewport)
+    {
+        std::string msg = "2D layout mismatch: coordinate_system_2d=";
+        msg += GetCoordinateSystem2DNameSafe(config.coordinate_system_2d);
+        msg += " requires ViewportInfo, but layout does not declare it";
+        diagnostics.push_back(std::move(msg));
+    }
+
+    if (config.coordinate_system_2d != CoordinateSystem2D::Ortho && has_viewport)
+    {
+        std::string msg = "2D layout mismatch: coordinate_system_2d=";
+        msg += GetCoordinateSystem2DNameSafe(config.coordinate_system_2d);
+        msg += " should not emit ViewportInfo, but layout declares it";
+        diagnostics.push_back(std::move(msg));
+    }
+
+    if (config.local_to_world_2d && !has_l2w)
+    {
+        std::string msg = "2D layout mismatch: local_to_world_2d=true requires LocalToWorld descriptors, but layout does not declare them";
+        diagnostics.push_back(std::move(msg));
+    }
+
+    if (!config.local_to_world_2d && has_l2w)
+    {
+        std::string msg = "2D layout mismatch: local_to_world_2d=false should not emit LocalToWorld descriptors, but layout declares them";
+        diagnostics.push_back(std::move(msg));
     }
 
     return diagnostics.empty();
@@ -565,6 +627,22 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
                 diag.c_str());
         }
         return FailAfterMci("MaterialResourceLayout validation failed");
+    }
+
+    if (config.is_2d)
+    {
+        std::vector<std::string> diagnostics_2d;
+        if (!Validate2DLayoutConsistency(config, material_resource_layout, diagnostics_2d))
+        {
+            for (const auto &diag : diagnostics_2d)
+            {
+                std::fprintf(stderr,
+                    "[CompileCompositorMaterial][2DLayout] material=%s: %s\n",
+                    def.name ? def.name : "<unnamed>",
+                    diag.c_str());
+            }
+            return FailAfterMci("2D layout consistency validation failed");
+        }
     }
 
     if (config.material_definition)

@@ -250,9 +250,13 @@ inline CompositorMaterialBuildConfig ToCompositorBuildConfig2D(const Material2DB
     CompositorMaterialBuildConfig bc;
     bc.primitive_type                  = p.prim;
     bc.shader_stage_flag_bits          = p.shader_stage_flag_bit;
+    bc.is_2d                           = true;
+    bc.is_text                         = p.material_definition ? p.material_definition->is_text : false;
     bc.with_local_to_world             = p.local_to_world;
     bc.with_camera                     = false;
     bc.with_sky                        = false;
+    bc.coordinate_system_2d            = p.coordinate_system;
+    bc.local_to_world_2d               = p.local_to_world;
     bc.sky_ambient_model               = SkyLightAmbientModel::Simple;
     bc.private_shader_buffer_sources   = p.private_shader_buffer_sources;
     bc.private_shader_buffer_source_count = p.private_shader_buffer_source_count;
