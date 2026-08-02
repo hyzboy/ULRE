@@ -203,6 +203,19 @@ inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, cons
         descriptor_builder_common::PushMaterialDataIndexRows(v, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
         descriptor_builder_common::PushMaterialTextureLayerRows(v, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
     }
+
+    // Definition-driven texture/sampler slots (E3+)
+    if (p.material_definition)
+    {
+        for (const auto &decl : p.material_definition->texture_slot_decls)
+        {
+            const char *name = decl.name ? decl.name : descriptor_builder_common::GetTextureNameBySlot(decl.slot);
+            descriptor_builder_common::PushMaterialSampler(
+                v, name, decl.slot,
+                ToGLSLSamplerTypeName(decl.sampler_type),
+                uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT));
+        }
+    }
 }
 
 // ─────────────────────────────────────────────────────────────

@@ -2,7 +2,6 @@
 #include<hgl/shadergen/ShaderProgramBuildSpec.h>
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/log/Log.h>
-#include<hgl/mtl/SamplerName.h>
 
 namespace hgl::graph::mtl{
 namespace
@@ -42,12 +41,6 @@ static ShaderProgramBuildSpec *CreateRectTexture2DImpl(const contract::PhysicalD
 
     std::vector<FixedDescriptorEntry> descriptors;
     build2d::PushBaseDescriptorEntries(descriptors, p);
-    descriptor_builder_common::PushMaterialSampler(
-        descriptors,
-        SamplerName::BaseColor,
-        TextureSlot::BaseColor,
-        "sampler2D",
-        uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT));
 
     FixedMaterialDef def {
         "RectTexture2D",

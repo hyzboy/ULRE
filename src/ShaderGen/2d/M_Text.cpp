@@ -19,7 +19,7 @@ namespace
         bmi.coordinate_system_2d = CoordinateSystem2D::Ortho;
         bmi.local_to_world_2d = false;
         bmi.ubo_requirements = {UBODescriptorSemantic::ViewportInfo};
-        bmi.texture_slot_decls = {{TextureSlot::BaseColor, GLSLSamplerType::Sampler2D, true}};
+        bmi.texture_slot_decls = {{TextureSlot::BaseColor, GLSLSamplerType::Sampler2D, true, SamplerName::Text}};
         bmi.ssbo_slot_decls = {{"mtl", SSBOType::TransmissionSurface}};
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::Text2D, bmi);
 
@@ -53,12 +53,6 @@ static ShaderProgramBuildSpec *CreateText2DImpl(const contract::PhysicalDevicePr
 
     std::vector<FixedDescriptorEntry> descriptors;
     build2d::PushBaseDescriptorEntries(descriptors, p);
-    descriptor_builder_common::PushMaterialSampler(
-        descriptors,
-        SamplerName::Text,
-        TextureSlot::BaseColor,
-        "sampler2D",
-        uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT));
 
     FixedMaterialDef def {
         "Text2D",

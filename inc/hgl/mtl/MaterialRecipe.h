@@ -88,6 +88,8 @@ namespace hgl::graph::mtl
         TextureSlot      slot         = TextureSlot::BaseColor;       // 纹理语义槽
         GLSLSamplerType  sampler_type = GLSLSamplerType::Sampler2D;   // GLSL 采样器类型
         bool             required     = false;                         // true: 缺失应触发错误；false: 可选
+        // GLSL binding name override. nullptr = derive from slot via GetTextureNameBySlot().
+        const char *     name         = nullptr;
     };
 
     // BMI 来源标记：区分 built-in 硬编码实现与未来的文件化实现。
