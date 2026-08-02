@@ -4,6 +4,7 @@
 #include<hgl/common/RenderAssignDef.h>
 #include<hgl/log/Log.h>
 #include<string>
+#include "SharedDescriptors3D.h"
 
 namespace hgl::graph::mtl{
 namespace
@@ -20,14 +21,7 @@ namespace
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::VertexColor3D, bmi);
         return true;
     }();
-
-    constexpr FixedDescriptorEntry VERTEX_COLOR_3D_DESCRIPTORS[] = {
-        { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO},
-        { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera", "CameraInfo", nullptr, DescriptorSemantic::CameraInfo, TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO},
-        { DescriptorSetType::Transform, TransformDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr, DescriptorSemantic::LocalToWorld, TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, GetDescriptorSemanticLayerByKind(TransformDescriptorKind) },
-        { DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w_index_rows", "LocalToWorldIndexRows", nullptr, DescriptorSemantic::LocalToWorldIndexTable, TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO},
-    };
-}
+}// anonymous namespace
 
 static ShaderProgramBuildSpec *CreateVertexColor3DImpl(const contract::PhysicalDeviceProfileLite *profile, const CompositorMaterialBuildConfig &bc)
 {
@@ -41,8 +35,8 @@ static ShaderProgramBuildSpec *CreateVertexColor3DImpl(const contract::PhysicalD
         PrimitiveType::Triangles,
         vertex_color_3d_vertex,
         uint32_t(sizeof(vertex_color_3d_vertex) / sizeof(vertex_color_3d_vertex[0])),
-        VERTEX_COLOR_3D_DESCRIPTORS,
-        uint32_t(sizeof(VERTEX_COLOR_3D_DESCRIPTORS) / sizeof(VERTEX_COLOR_3D_DESCRIPTORS[0])),
+        kBase3DDescriptors,
+        kBase3DDescriptorCount,
         nullptr,
         0,
     };
