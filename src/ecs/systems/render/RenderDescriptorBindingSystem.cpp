@@ -306,9 +306,10 @@ namespace hgl::ecs
         EnsureMaterializationCallbacks();
 
         const uint64_t recipe_hash = graph::mtl::HashMaterialRecipe(recipe);
-        GLogInfo("[TexTrace] ResolveMaterialRecipe recipe=%s tex_count=%zu struct_count=%zu hash=%llu",
+        GLogInfo("[TexTrace] ResolveMaterialRecipe recipe=%s tex_count=%zu ssbo_asset_count=%zu struct_count=%zu hash=%llu",
                  recipe.recipe_name.c_str(),
                  recipe.textures.size(),
+                 recipe.ssbo_assets.size(),
                  recipe.structs.size(),
                  static_cast<unsigned long long>(recipe_hash));
 
@@ -1055,18 +1056,6 @@ namespace hgl::ecs
                         {
                             candidate_ssbo_id = asset->ssbo_id;
                             has_candidate = true;
-                        }
-                        else
-                        {
-                            for (const auto &binding : effective_recipe.structs)
-                            {
-                                if (binding.ssbo_slot != req.ssbo_slot || binding.ssbo_type != req.ssbo_type)
-                                    continue;
-
-                                candidate_ssbo_id = binding.ssbo_id;
-                                has_candidate = true;
-                                break;
-                            }
                         }
 
                         if (has_candidate)

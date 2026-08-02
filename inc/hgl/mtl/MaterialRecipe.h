@@ -376,7 +376,10 @@ namespace hgl::graph::mtl
         {
             if (!asset.ssbo_name.empty())
                 hash = hgl::hash::FNV1aAppendBytes(hash, asset.ssbo_name.data(), asset.ssbo_name.size());
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, asset.ssbo_slot);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, asset.ssbo_type);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, asset.use_ssbo_element_index);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, asset.shared_across_instances);
         }
 
         return static_cast<uint64_t>(hash);

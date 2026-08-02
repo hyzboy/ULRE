@@ -52,7 +52,32 @@ namespace hgl::graph::mtl
             out_spec.resources.emplace_back(std::move(resolved));
         }
 
-        for (const auto &data_ref : recipe.structs)
+        if (!recipe.ssbo_assets.empty())
+        {
+            for (const auto &asset : recipe.ssbo_assets)
+            {
+                if (!callbacks.resolve_struct)
+                    return false;
+
+                RecipeStructBinding data_ref{};
+                data_ref.ssbo_slot = asset.ssbo_slot;
+                data_ref.ssbo_type = asset.ssbo_type;
+                data_ref.ssbo_id = asset.ssbo_id;
+                data_ref.ssbo_element_index = asset.ssbo_element_index;
+                data_ref.use_ssbo_element_index = asset.use_ssbo_element_index;
+                data_ref.shared_across_instances = asset.shared_across_instances;
+
+                ResolvedStructRef resolved{};
+                resolved.ssbo_slot = data_ref.ssbo_slot;
+
+                if (!callbacks.resolve_struct(data_ref, resolved))
+                    return false;
+
+                resolved.ssbo_slot = data_ref.ssbo_slot;
+                out_spec.struct_refs.emplace_back(std::move(resolved));
+            }
+        }
+        else for (const auto &data_ref : recipe.structs)
         {
             if (!callbacks.resolve_struct)
                 return false;

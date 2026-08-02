@@ -119,15 +119,6 @@ namespace hgl::ecs
                 return true;
             }
 
-            for (const auto &binding : recipe.structs)
-            {
-                if (binding.ssbo_slot != req.ssbo_slot || binding.ssbo_type != req.ssbo_type)
-                    continue;
-
-                out_ssbo_id = binding.ssbo_id;
-                return true;
-            }
-
             return false;
         }
 
@@ -606,9 +597,9 @@ namespace hgl::ecs
         }
 
         // Determine the entity's own ssbo_element_index from the effective recipe.
-        // effective_recipe is always built fresh from primitive_comp, so its struct
-        // bindings carry the correct per-entity ssbo_element_index — unlike the cached
-        // spec which holds the FIRST entity's value for a given recipe hash.
+        // effective_recipe is always built fresh from primitive_comp, so its ssbo_assets
+        // carry the correct per-entity ssbo_element_index — unlike the cached spec which
+        // holds the FIRST entity's value for a given recipe hash.
         uint32_t entity_element_index = uint32_t(-1);
         for (const auto &asset_binding : effective_recipe.ssbo_assets)
         {
@@ -616,18 +607,6 @@ namespace hgl::ecs
             {
                 entity_element_index = asset_binding.ssbo_element_index;
                 break;
-            }
-        }
-
-        if (entity_element_index == uint32_t(-1))
-        {
-            for (const auto &struct_binding : effective_recipe.structs)
-            {
-                if (struct_binding.use_ssbo_element_index)
-                {
-                    entity_element_index = struct_binding.ssbo_element_index;
-                    break;
-                }
             }
         }
 
