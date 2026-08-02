@@ -90,7 +90,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,ShaderProgram *material,Pipeline
     }
 
     // VIL/pipeline consistency check: only performed when a pre-baked pipeline is provided.
-    // When p==null, the pipeline will be resolved lazily at render time via the late-resolve path.
+    // When p==null, the runtime render path is expected to resolve a compatible pipeline earlier.
     if(p && *vil!=*p->GetVIL())
     {
         if (owned_vil)

@@ -9,6 +9,7 @@
 #include<hgl/ecs/core/RenderItem.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/MaterialComponent.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/graph/DescriptorBindingSet.h>
 #include<hgl/vk/VKRenderTarget.h>
@@ -1029,28 +1030,18 @@ namespace hgl::ecs
                 uint32_t candidate_ssbo_id = 0;
                 bool has_candidate = false;
 
-                graph::mtl::MaterialRecipe effective_recipe{};
-                if (primitive_comp->BuildResolvedAuthoringMaterialRecipe(effective_recipe, material))
+                if (auto *entity = primitive_item->GetEntity())
                 {
-                    if (const auto *asset = graph::mtl::FindRecipeSSBOAssetBinding(effective_recipe, req.name, req.ssbo_type))
+                    auto material_comp = entity->GetComponent<MaterialComponent>();
+                    if (const auto *resolved = material_comp ? material_comp->FindResolvedSSBOBinding(req.ssbo_slot, req.ssbo_type) : nullptr)
                     {
-                        candidate_ssbo_id = asset->ssbo_id;
+                        candidate_ssbo_id = resolved->ssbo_id;
                         has_candidate = true;
                     }
                 }
 
                 if (!has_candidate)
-                {
-                    const auto *resource = primitive_comp->GetMaterialSSBOResourceBySlot(req.ssbo_slot);
-                    if (!resource || resource->ssbo_type != req.ssbo_type)
-                        continue;
-
-                    candidate_ssbo_id = resource->ssbo_id;
-                    has_candidate = true;
-                }
-
-                if (!has_candidate)
-                    continue;
+                    return false;
 
                 if (!found)
                 {
@@ -1224,7 +1215,13 @@ namespace hgl::ecs
             {
                 uint32_t resolved_ssbo_id = req.ssbo_id;
                 if (batch)
-                    resolve_recipe_batch_struct_ssbo_id(material, batch, req, resolved_ssbo_id);
+                {
+                    if (!resolve_recipe_batch_struct_ssbo_id(material, batch, req, resolved_ssbo_id))
+                    {
+                        log_bind_failure(material, batch, req, "unresolved MaterialSSBOSlotData binding");
+                        break;
+                    }
+                }
 
                 const graph::IGPUBuffer *mi_ssbo = resolve_domain_ssbo(
                     graph::mtl::SSBOAddress{req.ssbo_type, resolved_ssbo_id, 0},

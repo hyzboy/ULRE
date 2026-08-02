@@ -103,6 +103,28 @@ namespace hgl::ecs
             return fallback_row;
         }
 
+        bool ResolveRecipeSSBOBindingId(const graph::mtl::MaterialRecipe &recipe,
+                                        const graph::mtl::MaterialResourceRequirement &req,
+                                        uint32_t &out_ssbo_id)
+        {
+            if (const auto *asset = graph::mtl::FindRecipeSSBOAssetBinding(recipe, req.name, req.ssbo_type))
+            {
+                out_ssbo_id = asset->ssbo_id;
+                return true;
+            }
+
+            for (const auto &binding : recipe.structs)
+            {
+                if (binding.ssbo_slot != req.ssbo_slot || binding.ssbo_type != req.ssbo_type)
+                    continue;
+
+                out_ssbo_id = binding.ssbo_id;
+                return true;
+            }
+
+            return false;
+        }
+
         bool MaterialRequiresRecipeRuntimeRows(const graph::ShaderProgram *material)
         {
             if (!material)
@@ -498,6 +520,26 @@ namespace hgl::ecs
             GLogWarning("[RenderPrimitiveCollectSystem] Materialize failed: BuildEffectiveMaterialRecipe failed for %s",
                         GetPrimitiveOwnerName(primitive_comp));
             return false;
+        }
+
+        material_comp->ClearResolvedSSBOBindings();
+        for (const auto &req : material_comp->program->GetMaterialResourceLayout().requirements)
+        {
+            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialSSBOSlotData)
+                continue;
+
+            uint32_t resolved_ssbo_id = 0;
+            if (!ResolveRecipeSSBOBindingId(effective_recipe, req, resolved_ssbo_id))
+            {
+                GLogWarning("[RenderPrimitiveCollectSystem] Materialize failed: unresolved SSBO binding for %s descriptor=%s slot=%u type=%s",
+                            GetPrimitiveOwnerName(primitive_comp),
+                            req.name ? req.name : "<unnamed>",
+                            req.ssbo_slot,
+                            graph::mtl::GetSSBOTypeName(req.ssbo_type));
+                return false;
+            }
+
+            material_comp->SetResolvedSSBOBinding(req.ssbo_slot, req.ssbo_type, resolved_ssbo_id);
         }
 
         if (!material_comp->bindings_dirty

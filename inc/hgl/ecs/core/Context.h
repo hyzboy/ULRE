@@ -208,6 +208,17 @@ namespace hgl
             void RunRenderSystemsInRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
             void RunSystemUpdate(System *system, float deltaTime);
             void RegisterComponentInstanceInternal(size_t type_hash, const std::shared_ptr<Component>& comp);
+            bool EnsureRenderCoreInitialized();
+            bool BeginManagedRenderFrame(float deltaTime);
+            void EndManagedRenderFrame(float deltaTime);
+            void RecordPreparedRenderPhaseRange(ExecutionPhase minPhase,
+                                               ExecutionPhase maxPhase,
+                                               float deltaTime,
+                                               bool submit_transforms,
+                                               const char *log_prefix);
+            void ExecuteRenderGraphPasses(const RenderGraph& graph,
+                                          float deltaTime,
+                                          const std::function<void(float)> &pre_render);
         public:
 
             struct AssetInstance
@@ -232,13 +243,12 @@ namespace hgl
             /// Tick all non-render systems and entities
             void Tick(float deltaTime);
 
-            /// Run all render systems
+            /// Compatibility entry for recording into an existing command buffer.
+            /// Preferred public frame driver is Render(float).
             void Render(graph::RenderCmdBuffer *cmd, float deltaTime);
 
-            /// Run only draw-phase render systems (Collect..Stat), skipping Update() phases.
-            /// Use this when PrepareRenderPassSetup() (or PrepareSubWorld()) was already called
-            /// before BeginRenderPass — prevents duplicate CPU work and StagedBuffer upload
-            /// inside the render pass.
+            /// Internal-style draw-only recording entry kept for compatibility with
+            /// prepared-frame callers such as subworld/offscreen helpers.
             void RenderDrawOnly(graph::RenderCmdBuffer *cmd, float deltaTime);
 
             /// Run a full render frame (Begin/Render/End/Sync)

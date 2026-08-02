@@ -394,6 +394,112 @@ namespace hgl
             }
         }
 
+        bool ECSContext::EnsureRenderCoreInitialized()
+        {
+            if (render_core)
+                return true;
+
+            render_core = std::make_unique<RenderSystemCore>(this);
+            if (!render_core->Initialize())
+            {
+                render_core.reset();
+                return false;
+            }
+
+            return true;
+        }
+
+        bool ECSContext::BeginManagedRenderFrame(float deltaTime)
+        {
+            if (!active)
+                return false;
+
+            if (!EnsureRenderCoreInitialized())
+                return false;
+
+            if (GetRenderTarget())
+            {
+                LogInfo("[ECS RENDER] Calling AcquireSwapchainImage");
+                if (!AcquireSwapchainImage(deltaTime))
+                {
+                    LogWarning("[ECS RENDER] AcquireSwapchainImage FAILED");
+                    return false;
+                }
+            }
+
+            LogInfo("[ECS RENDER] Calling RenderPreBeginFrame");
+            RenderPreBeginFrame(deltaTime);
+            SyncRenderTargetViewport();
+
+            render_core->SetClearColor(clear_color);
+
+            LogInfo("[ECS RENDER] Calling BeginFrame");
+            if (!render_core->BeginFrame())
+            {
+                LogWarning("[ECS RENDER] BeginFrame FAILED");
+                return false;
+            }
+
+            SetCurrentRenderCmd(render_core->GetRenderCmd());
+            PrepareRenderPassSetup(render_core->GetSwapchainImageIndex(), deltaTime);
+
+            LogInfo("[ECS RENDER] Calling BeginRenderPass");
+            if (!render_core->BeginRenderPass())
+            {
+                LogWarning("[ECS RENDER] BeginRenderPass FAILED");
+                render_core->EndFrame();
+                SetCurrentRenderCmd(nullptr);
+                return false;
+            }
+
+            return true;
+        }
+
+        void ECSContext::EndManagedRenderFrame(float deltaTime)
+        {
+            if (!render_core)
+                return;
+
+            LogInfo("[ECS RENDER] Calling EndFrame");
+            render_core->EndFrame();
+
+            SetCurrentRenderCmd(nullptr);
+
+            LogInfo("[ECS RENDER] Calling SubmitFrameToRenderTarget");
+            if (!SubmitFrameToRenderTarget(deltaTime))
+                LogError("[ECS RENDER] SubmitFrameToRenderTarget FAILED");
+
+            if (wait_idle_enabled)
+            {
+                LogInfo("[ECS RENDER] Calling WaitIdle");
+                if (auto *device = GetGPUDevice())
+                    device->WaitIdle();
+            }
+        }
+
+        void ECSContext::RecordPreparedRenderPhaseRange(ExecutionPhase minPhase,
+                                                        ExecutionPhase maxPhase,
+                                                        float deltaTime,
+                                                        bool submit_transforms,
+                                                        const char *log_prefix)
+        {
+            if (submit_transforms)
+            {
+                if (auto transform_system = GetSystem<TransformSystem>())
+                    transform_system->SubmitTransformUpdates();
+            }
+
+            if (log_prefix)
+            {
+                LogDebug("%s phase range %d to %d",
+                         log_prefix,
+                         static_cast<int>(minPhase),
+                         static_cast<int>(maxPhase));
+            }
+
+            RunRenderSystemsInRange(minPhase, maxPhase, deltaTime);
+        }
+
         void ECSContext::Render(graph::RenderCmdBuffer *cmd, float deltaTime)
         {
             if (!active)
@@ -406,7 +512,7 @@ namespace hgl
             if (!cmd && !current_render_cmd && !warned_missing_cmd_once)
             {
                 LogWarning("[ECSContext::Render(cmd)] called without command buffer. "
-                           "Preferred entry is ECSContext::Render(float) frame driver path.");
+                           "Use ECSContext::Render(float) for the canonical frame-driver path.");
                 warned_missing_cmd_once = true;
             }
 
@@ -424,31 +530,11 @@ namespace hgl
             RunRenderUpdatesRange(ExecutionPhase::RenderCollect,
                                   ExecutionPhase::RenderBatch,
                                   deltaTime);
-
-            if (auto transform_system = GetSystem<TransformSystem>())
-            {
-                transform_system->SubmitTransformUpdates();
-            }
-
-            for (auto& entry : render_system_order)
-            {
-                if (!entry.system)
-                    continue;
-
-                if (entry.phase < static_cast<int>(ExecutionPhase::RenderCollect))
-                    continue;
-
-                if (entry.phase > static_cast<int>(ExecutionPhase::RenderStat))
-                    continue;
-
-                if (entry.system)
-                {
-                    HGL_CAPTURE_SCOPE();
-                    LogDebug("[ECS] Render Begin: %s", entry.system->GetName().c_str());
-                    entry.system->Render(cmd, deltaTime);
-                    LogDebug("[ECS] Render End: %s", entry.system->GetName().c_str());
-                }
-            }
+            RecordPreparedRenderPhaseRange(ExecutionPhase::RenderCollect,
+                                           ExecutionPhase::RenderStat,
+                                           deltaTime,
+                                           true,
+                                           "[ECSContext::Render(cmd)]");
 
             // (Phase 1) 清除当前命令缓冲区（如果是我们设置的）
             if (current_render_cmd == cmd) {
@@ -466,24 +552,11 @@ namespace hgl
             if (!current_render_cmd && cmd)
                 current_render_cmd = cmd;
 
-            if (auto transform_system = GetSystem<TransformSystem>())
-                transform_system->SubmitTransformUpdates();
-
-            for (auto& entry : render_system_order)
-            {
-                if (!entry.system)
-                    continue;
-
-                if (entry.phase < static_cast<int>(ExecutionPhase::RenderCollect))
-                    continue;
-
-                if (entry.phase > static_cast<int>(ExecutionPhase::RenderStat))
-                    continue;
-
-                HGL_CAPTURE_SCOPE();
-                LogDebug("[ECS] RenderDrawOnly: %s", entry.system->GetName().c_str());
-                entry.system->Render(cmd, deltaTime);
-            }
+            RecordPreparedRenderPhaseRange(ExecutionPhase::RenderCollect,
+                                           ExecutionPhase::RenderStat,
+                                           deltaTime,
+                                           true,
+                                           "[ECSContext::RenderDrawOnly]");
 
             if (current_render_cmd == cmd)
                 current_render_cmd = nullptr;

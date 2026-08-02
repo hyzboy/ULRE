@@ -91,91 +91,33 @@ namespace hgl
             Render(deltaTime, graph, nullptr);
         }
 
-        void ECSContext::Render(float deltaTime, const RenderGraph& graph, const std::function<void(float)>& pre_render)
+        void ECSContext::ExecuteRenderGraphPasses(const RenderGraph& graph,
+                                                  float deltaTime,
+                                                  const std::function<void(float)>& pre_render)
         {
-            if (!active)
-                return;
-
-            // Canonical frame entry with RenderGraph
-            LogInfo("[ECS RENDER] ===== Frame Start (RenderGraph with %zu passes) =====", graph.GetEnabledPassCount());
-
-            if (!render_core)
-            {
-                render_core = std::make_unique<RenderSystemCore>(this);
-                if (!render_core->Initialize())
-                {
-                    render_core.reset();
-                    return;
-                }
-            }
-
-            // SwapchainRenderTarget::NextFrame() handles per-slot fence waiting internally
-            // before vkAcquireNextImageKHR, so no explicit WaitFence is needed here.
-            if (GetRenderTarget())
-            {
-                LogInfo("[ECS RENDER] Calling AcquireSwapchainImage");
-                if (!AcquireSwapchainImage(0.0f))
-                {
-                    LogWarning("[ECS RENDER] AcquireSwapchainImage FAILED");
-                    return;
-                }
-            }
-            LogInfo("[ECS RENDER] Calling RenderPreBeginFrame");
-            RenderPreBeginFrame(0.0f);
-
-            SyncRenderTargetViewport();
-
-            render_core->SetClearColor(clear_color);
-
-            LogInfo("[ECS RENDER] Calling BeginFrame");
-            if (!render_core->BeginFrame())
-            {
-                LogWarning("[ECS RENDER] BeginFrame FAILED");
-                return;
-            }
-
-            SetCurrentRenderCmd(render_core->GetRenderCmd());
-            PrepareRenderPassSetup(render_core->GetSwapchainImageIndex(), 0.0f);
-
-            LogInfo("[ECS RENDER] Calling BeginRenderPass");
-            if (!render_core->BeginRenderPass())
-            {
-                LogWarning("[ECS RENDER] BeginRenderPass FAILED");
-                render_core->EndFrame();
-                SetCurrentRenderCmd(nullptr);
-                return;
-            }
-
             if (pre_render)
                 pre_render(deltaTime);
 
-            // Execute each render pass in the graph
             for (size_t pass_idx = 0; pass_idx < graph.passes.size(); ++pass_idx)
             {
                 const auto& pass = graph.passes[pass_idx];
 
                 if (!pass.enabled)
                 {
-                    LogDebug("[ECS RENDER] Skipping disabled pass %zu (phases %d-%d)", 
+                    LogDebug("[ECS RENDER] Skipping disabled pass %zu (phases %d-%d)",
                              pass_idx, static_cast<int>(pass.startPhase), static_cast<int>(pass.endPhase));
                     continue;
                 }
 
-                LogInfo("[ECS RENDER] Executing pass %zu (phases %d-%d)", 
+                LogInfo("[ECS RENDER] Executing pass %zu (phases %d-%d)",
                         pass_idx, static_cast<int>(pass.startPhase), static_cast<int>(pass.endPhase));
 
-                // Invoke before-pass callback
                 if (pass.onBeforePass)
                 {
                     LogDebug("[ECS RENDER] Invoking onBeforePass for pass %zu", pass_idx);
                     pass.onBeforePass(*this, pass);
                 }
 
-                // Step 1: optional Update() pass — inside the render pass only dispatch
-                // phases from RenderDrawSubmit onward.  Collect/Batch/Upload/FrameSync
-                // were already executed by PrepareRenderPassSetup before BeginRenderPass;
-                // re-running them here would duplicate CPU work and, for RenderBufferUpload,
-                // issue vkCmdCopyBuffer inside a Vulkan render pass (spec violation).
                 if (pass.runUpdate)
                 {
                     const ExecutionPhase update_min =
@@ -190,24 +132,22 @@ namespace hgl
                     }
                 }
 
-                // Step 2: optional transform submit before Render()
+                if (pass.runRender)
+                {
+                    HGL_CAPTURE_SCOPE();
+                    RecordPreparedRenderPhaseRange(pass.startPhase,
+                                                   pass.endPhase,
+                                                   deltaTime,
+                                                   pass.submitTransforms,
+                                                   "[ECS RENDER] Render");
+                }
+                else
                 if (pass.submitTransforms)
                 {
-                    LogDebug("[ECS RENDER] Submitting transform updates");
                     if (auto transform_system = GetSystem<TransformSystem>())
                         transform_system->SubmitTransformUpdates();
                 }
 
-                // Step 3: optional Render() pass — record GPU draw commands
-                if (pass.runRender)
-                {
-                    HGL_CAPTURE_SCOPE();
-                    LogDebug("[ECS RENDER] Render phase range %d to %d", 
-                            static_cast<int>(pass.startPhase), static_cast<int>(pass.endPhase));
-                    RunRenderSystemsInRange(pass.startPhase, pass.endPhase, deltaTime);
-                }
-
-                // Invoke after-pass callback
                 if (pass.onAfterPass)
                 {
                     LogDebug("[ECS RENDER] Invoking onAfterPass for pass %zu", pass_idx);
@@ -216,22 +156,21 @@ namespace hgl
 
                 LogDebug("[ECS RENDER] Completed pass %zu", pass_idx);
             }
+        }
 
-            LogInfo("[ECS RENDER] Calling EndFrame");
-            render_core->EndFrame();
+        void ECSContext::Render(float deltaTime, const RenderGraph& graph, const std::function<void(float)>& pre_render)
+        {
+            if (!active)
+                return;
 
-            SetCurrentRenderCmd(nullptr);
+            // Canonical frame entry with RenderGraph
+            LogInfo("[ECS RENDER] ===== Frame Start (RenderGraph with %zu passes) =====", graph.GetEnabledPassCount());
 
-            LogInfo("[ECS RENDER] Calling SubmitFrameToRenderTarget");
-            if (!SubmitFrameToRenderTarget(0.0f))
-                LogError("[ECS RENDER] SubmitFrameToRenderTarget FAILED");
+            if (!BeginManagedRenderFrame(0.0f))
+                return;
 
-            if (wait_idle_enabled)
-            {
-                LogInfo("[ECS RENDER] Calling WaitIdle");
-                if (auto *device = GetGPUDevice())
-                    device->WaitIdle();
-            }
+            ExecuteRenderGraphPasses(graph, deltaTime, pre_render);
+            EndManagedRenderFrame(0.0f);
 
             LogInfo("[ECS RENDER] ===== Frame End (RenderGraph) =====");
         }

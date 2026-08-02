@@ -715,7 +715,7 @@ namespace hgl::ecs
         if (overridePipeline)
             return overridePipeline;
 
-        // Return runtime-resolved pipeline if available (late-resolve path).
+        // Return the pipeline resolved during collect/prepare phases.
         return resolvedRuntimePipeline;
     }
 
