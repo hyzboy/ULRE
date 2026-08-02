@@ -2,7 +2,7 @@
 
 #include<hgl/vk/VK.h>
 #include<hgl/vk/pipeline/VKPipelineData.h>
-#include<hgl/vk/pipeline/VKInlinePipeline.h>
+#include<hgl/graph/PipelinePreset.h>
 #include<hgl/io/DataOutputStream.h>
 
 namespace hgl::graph{

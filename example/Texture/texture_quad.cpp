@@ -127,7 +127,6 @@ private:
 
         quad_primitive->SetPrimitiveAsset(&quad_asset);
         quad_primitive->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, texture, sampler);
-        quad_primitive->RequestPipeline(InlinePipeline::Solid2D);
         quad_primitive->SetVisible(true);
 
         return true;

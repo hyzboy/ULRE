@@ -132,7 +132,6 @@ private:
 
         rect_primitive->SetPrimitiveAsset(&rect_asset);
         rect_primitive->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, texture, sampler);
-        rect_primitive->RequestPipeline(InlinePipeline::Solid2D);
         rect_primitive->SetVisible(true);
 
         return true;

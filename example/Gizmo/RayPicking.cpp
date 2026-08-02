@@ -218,7 +218,6 @@ private:
             plane_struct.use_ssbo_element_index = true;
             plane_struct.shared_across_instances = true;
             primitive_comp->SetMaterialSSBOResource(plane_struct);
-            primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             primitive_comp->SetVisible(true);
         }
 
@@ -243,7 +242,6 @@ private:
             line_struct.use_ssbo_element_index = true;
             line_struct.shared_across_instances = true;
             primitive_comp->SetMaterialSSBOResource(line_struct);
-            primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             primitive_comp->SetVisible(true);
         }
 

@@ -170,6 +170,7 @@ private:
         near_recipe.recipe_name = "06e.SingleSphereSwitch.Near";
         near_recipe.mtl_def_id = "StandardTextureArray";
         near_recipe.domain = "06e.SingleSphereSwitch";
+        near_recipe.pipeline_preset = PipelinePreset::Solid3D;
         graph::mtl::UpsertRecipeSSBOAssetBinding(near_recipe,
                                                  graph::mtl::SBS_MaterialInstance.name,
                                                  mi_ssbo_accessor->GetSSBOBinding());
@@ -316,7 +317,6 @@ private:
         sphere_transform->SetLocalScale(glm::vec3(1.6f, 1.6f, 1.6f));
         sphere_transform->SetMovable(true);
 
-        sphere_primitive_component->RequestPipeline(InlinePipeline::Solid3D);
         sphere_primitive_component->SetVisible(true);
 
         if (!ApplyMaterialMode(false))

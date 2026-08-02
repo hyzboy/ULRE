@@ -191,7 +191,6 @@ private:
         plane_struct.use_ssbo_element_index = true;
         plane_struct.shared_across_instances = true;
         plane_primitive_comp->SetMaterialSSBOResource(plane_struct);
-        plane_primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
         plane_primitive_comp->SetVisible(true);
 
         cube_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("Cube");
@@ -210,7 +209,6 @@ private:
         cube_struct.use_ssbo_element_index = true;
         cube_struct.shared_across_instances = true;
         cube_primitive_comp->SetMaterialSSBOResource(cube_struct);
-        cube_primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
         cube_primitive_comp->SetVisible(true);
 
         return true;

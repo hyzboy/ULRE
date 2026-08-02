@@ -776,7 +776,7 @@ namespace hgl::ecs
 
             if (!material || !pipeline)
             {
-                if (prim_comp && prim_comp->HasPendingPipelinePreset())
+                if (prim_comp && prim_comp->HasAnyMaterialRecipeSource())
                 {
                     LogWarning("[PrimitiveBatchPipeline] Skip primitive item: unresolved runtime pipeline. material=%s render_pass=%p",
                                material ? material->GetName().c_str() : "<null>",

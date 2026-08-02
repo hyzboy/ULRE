@@ -542,7 +542,7 @@ namespace hgl::ecs
                 const graph::GeometryVertexFormat text_gvf = graph::CreateTextGeometryVertexFormat();
                 resources->pipeline = render_pass->CreatePipeline(resources->material,
                                                                   resources->binding_vil,
-                                                                  graph::InlinePipeline::Solid2D,
+                                                                  graph::PipelinePreset::Solid2D,
                                                                   false,
                                                                   &text_gvf);
                 if (!resources->pipeline)

@@ -176,7 +176,6 @@ private:
             tri_struct.use_ssbo_element_index = true;
             tri_struct.shared_across_instances = false;
             primitive_comp->SetMaterialSSBOResource(tri_struct);
-            primitive_comp->RequestPipeline(InlinePipeline::Solid2D);
             primitive_comp->SetVisible(true);
 
             std::cout << "[TestApp::InitECS] Entity[" << i << "] setup complete" << std::endl;

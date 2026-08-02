@@ -257,7 +257,7 @@ namespace hgl::graph
             binding_set->SetSSBOBinding(req.ssbo_type, req.ssbo_id, 0);
         }
 
-        pipeline = rp->CreatePipeline(mtl_fs, binding_vil, InlinePipeline::Solid2D, false, &text_gvf);
+        pipeline = rp->CreatePipeline(mtl_fs, binding_vil, PipelinePreset::Solid2D, false, &text_gvf);
         if (!pipeline) return false;
 
         if (!mtl_fs->BindTextureSampler(DescriptorSetType::Material,

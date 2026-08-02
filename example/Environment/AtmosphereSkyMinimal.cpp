@@ -97,7 +97,6 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitiveAsset(&sky_asset);
-        prim_comp->RequestPipeline(InlinePipeline::Sky);
         prim_comp->SetVisible(true);
 
         return true;

@@ -399,7 +399,6 @@ private:
             transform->SetMovable(false);
 
             primitive_comp->SetPrimitiveAsset(&rm_floor->asset);
-            primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_texture, sampler);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal, normal_texture, sampler);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_texture, sampler);
@@ -437,7 +436,6 @@ private:
             transform->SetMovable(false);
 
             primitive_comp->SetPrimitiveAsset(&rm->asset);
-            primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_texture, sampler);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal, normal_texture, sampler);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_texture, sampler);

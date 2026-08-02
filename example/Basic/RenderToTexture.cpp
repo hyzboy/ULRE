@@ -277,7 +277,6 @@ public:
         sphere_struct.use_ssbo_element_index = true;
         sphere_struct.shared_across_instances = true;
         prim_comp->SetMaterialSSBOResource(sphere_struct);
-        prim_comp->RequestPipeline(InlinePipeline::Solid3D);
         prim_comp->SetVisible(true);
 
         sphere_primitive_comp = prim_comp;
@@ -467,7 +466,6 @@ private:
         cube_struct.use_ssbo_element_index = true;
         cube_struct.shared_across_instances = true;
         cube_prim_comp->SetMaterialSSBOResource(cube_struct);
-        cube_prim_comp->RequestPipeline(InlinePipeline::Solid3D);
         cube_prim_comp->SetVisible(true);
         LogStage("RenderToTextureApp::CreateCube", "success");
         return true;

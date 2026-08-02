@@ -156,6 +156,24 @@ namespace hgl::ecs
             return primitive_comp->BuildResolvedAuthoringMaterialRecipe(out_recipe, material_program);
         }
 
+        graph::PipelinePreset ResolvePipelinePresetFromRecipe(const graph::mtl::MaterialRecipe &recipe)
+        {
+            if (recipe.pipeline_preset != graph::PipelinePreset::Auto)
+                return recipe.pipeline_preset;
+
+            graph::mtl::MaterialDefinition bmi{};
+            if (graph::mtl::TryGetMaterialDefinitionByID(recipe.mtl_def_id, bmi))
+            {
+                if (bmi.usage_tag == graph::mtl::MaterialDefinitionUsageTag::Sky)
+                    return graph::PipelinePreset::Sky;
+
+                if (bmi.is_2d || bmi.is_text)
+                    return graph::PipelinePreset::Solid2D;
+            }
+
+            return graph::PipelinePreset::Solid3D;
+        }
+
         bool PrepareRecipeAuthoringResources(ECSContext *world,
                                              const std::shared_ptr<PrimitiveComponent> &primitive_comp,
                                              graph::ShaderProgram *material_program)
@@ -467,8 +485,11 @@ namespace hgl::ecs
         if (primitive_comp->GetResolvedRuntimePipeline())
             return true;
 
-        if (!primitive_comp->HasPendingPipelinePreset())
+        graph::mtl::MaterialRecipe effective_recipe{};
+        if (!BuildEffectiveMaterialRecipe(primitive_comp, material_comp->program, effective_recipe))
             return false;
+
+        const graph::PipelinePreset pipeline_preset = ResolvePipelinePresetFromRecipe(effective_recipe);
 
         const graph::VIL *vil = primitive_comp->GetRuntimeVIL();
         if (!vil)
@@ -484,7 +505,7 @@ namespace hgl::ecs
 
         graph::Pipeline *resolved_pipeline = render_pass->CreatePipeline(material_comp->program,
                                                                          vil,
-                                                                         primitive_comp->GetPendingPipelinePreset());
+                                                                         pipeline_preset);
         if (!resolved_pipeline)
         {
             GLogWarning("[RenderPrimitiveCollectSystem] ResolveRuntimePipeline failed: CreatePipeline failed for %s material=%s",

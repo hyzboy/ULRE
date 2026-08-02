@@ -4,7 +4,6 @@
 #include<hgl/ecs/support/PositionSourceSpec.h>
 #include<hgl/ecs/support/TransformPolicySpec.h>
 #include<hgl/mtl/MaterialRecipe.h>
-#include<hgl/vk/pipeline/VKInlinePipeline.h>
 #include<array>
 #include<glm/glm.hpp>
 
@@ -110,8 +109,6 @@ namespace hgl::ecs
         // Populated at render-time if primitive has no pre-baked pipeline.
         hgl::graph::Pipeline* resolvedRuntimePipeline = nullptr; // (not owned)
         hgl::graph::RenderPass* resolvedRuntimeRenderPass = nullptr; // (not owned)
-        bool hasPendingPipelinePreset = false;
-        hgl::graph::InlinePipeline pendingPipelinePreset = hgl::graph::InlinePipeline::Solid3D;
         void InvalidateResolvedRuntimePipeline();
 
         PositionSourceSpec positionSourceSpec;            // Unified position source ingress policy
@@ -149,28 +146,15 @@ namespace hgl::ecs
         hgl::graph::Pipeline* GetOverridePipeline() const { return overridePipeline; }
         void ClearOverridePipeline() { overridePipeline = nullptr; }
 
-        // Runtime pipeline request:
-        // Call this when creating a Primitive without a pre-baked pipeline.
-        // Collect/resolve stages will materialize the pipeline before batching.
-        void RequestPipeline(const hgl::graph::InlinePipeline preset)
-        {
-            pendingPipelinePreset = preset;
-            hasPendingPipelinePreset = true;
-        }
-
-        bool HasPendingPipelinePreset() const { return hasPendingPipelinePreset; }
-        hgl::graph::InlinePipeline GetPendingPipelinePreset() const { return pendingPipelinePreset; }
-
         void SetResolvedRuntimePipeline(hgl::graph::Pipeline *p, hgl::graph::RenderPass *rp = nullptr)
         {
             resolvedRuntimePipeline = p;
             resolvedRuntimeRenderPass = rp;
-            if(p) hasPendingPipelinePreset = false;
         }
 
         hgl::graph::Pipeline* GetResolvedRuntimePipeline() const { return resolvedRuntimePipeline; }
         hgl::graph::RenderPass* GetResolvedRuntimeRenderPass() const { return resolvedRuntimeRenderPass; }
-        void ClearResolvedRuntimePipeline() { resolvedRuntimePipeline = nullptr; resolvedRuntimeRenderPass = nullptr; hasPendingPipelinePreset = true; }
+        void ClearResolvedRuntimePipeline() { resolvedRuntimePipeline = nullptr; resolvedRuntimeRenderPass = nullptr; }
 
         void SetTransformPolicySpec(const TransformPolicySpec& spec) { transformPolicySpec = spec; }
         const TransformPolicySpec& GetTransformPolicySpec() const { return transformPolicySpec; }

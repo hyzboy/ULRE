@@ -227,7 +227,6 @@ private:
             tick_struct.use_ssbo_element_index = true;
             tick_struct.shared_across_instances = false;
             primitive_comp->SetMaterialSSBOResource(tick_struct);
-            primitive_comp->RequestPipeline(InlinePipeline::Solid2D);
             primitive_comp->SetVisible(true);
 
             GLogInfo(u8"[ClockApp::InitECS] Created static tick at angle %f degrees", 30.0f * i);
@@ -265,7 +264,6 @@ private:
             hand_struct.use_ssbo_element_index = true;
             hand_struct.shared_across_instances = false;
             primitive_comp->SetMaterialSSBOResource(hand_struct);
-            primitive_comp->RequestPipeline(InlinePipeline::Solid2D);
             primitive_comp->SetVisible(true);
 
             GLogInfo(u8"[ClockApp::InitECS] Created movable hand [%u] (%s)", i, hand_names[i]);

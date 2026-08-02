@@ -551,7 +551,6 @@ private:
             floor_struct.use_ssbo_element_index = true;
             floor_struct.shared_across_instances = true;
             rm_floor->primitive_comp->SetMaterialSSBOResource(floor_struct);
-            rm_floor->primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             rm_floor->primitive_comp->SetVisible(true);
         }
 
@@ -586,7 +585,6 @@ private:
             mesh_struct.use_ssbo_element_index = true;
             mesh_struct.shared_across_instances = true;
             rm->primitive_comp->SetMaterialSSBOResource(mesh_struct);
-            rm->primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             rm->primitive_comp->SetVisible(true);
 
             ++index;
@@ -633,7 +631,6 @@ private:
             bbox_struct.use_ssbo_element_index = true;
             bbox_struct.shared_across_instances = true;
             bbox->primitive_comp->SetMaterialSSBOResource(bbox_struct);
-            bbox->primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             bbox->primitive_comp->SetVisible(true);
 
             bounding_boxes.push_back(std::move(bbox));

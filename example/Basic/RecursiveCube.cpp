@@ -194,7 +194,6 @@ private:
             cube_struct.shared_across_instances = true;
             primitive_comp->SetMaterialSSBOResource(cube_struct);
         }
-        primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
         primitive_comp->SetVisible(true);
 
         if (animate)

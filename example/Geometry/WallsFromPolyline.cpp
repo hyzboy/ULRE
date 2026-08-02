@@ -117,7 +117,6 @@ public:
             wall_struct.use_ssbo_element_index = true;
             wall_struct.shared_across_instances = true;
             prim_comp->SetMaterialSSBOResource(wall_struct);
-            prim_comp->RequestPipeline(InlinePipeline::Solid3D);
             prim_comp->SetVisible(true);
         }
 

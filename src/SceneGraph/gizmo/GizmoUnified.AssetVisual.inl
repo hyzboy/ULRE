@@ -51,8 +51,9 @@ static bool AttachAssetModePrimitive(std::vector<GizmoVisualPrimitive> &out_list
         return false;
 
     prim_comp->SetPrimitiveAsset(asset);
-    prim_comp->SetMaterialRecipe(*recipe);
-    prim_comp->RequestPipeline(InlinePipeline::GizmoOverlay3D);
+    graph::mtl::MaterialRecipe visual_recipe = *recipe;
+    visual_recipe.pipeline_preset = graph::PipelinePreset::GizmoOverlay3D;
+    prim_comp->SetMaterialRecipe(visual_recipe);
     prim_comp->SetVisible(false);
 
     GizmoVisualPrimitive item;
@@ -98,8 +99,9 @@ static void ApplyGizmoVisualColor(GizmoVisualPrimitive &entry, const GizmoColor 
     if (!recipe)
         return;
 
-    entry.primitive->SetMaterialRecipe(*recipe);
-    entry.primitive->RequestPipeline(InlinePipeline::GizmoOverlay3D);
+    graph::mtl::MaterialRecipe visual_recipe = *recipe;
+    visual_recipe.pipeline_preset = graph::PipelinePreset::GizmoOverlay3D;
+    entry.primitive->SetMaterialRecipe(visual_recipe);
     entry.applied_color = color;
 }
 

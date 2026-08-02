@@ -501,7 +501,6 @@ private:
                 sphere_struct.use_ssbo_element_index = true;
                 sphere_struct.shared_across_instances = false;
                 prim_comp->SetMaterialSSBOResource(sphere_struct);
-                prim_comp->RequestPipeline(InlinePipeline::Solid3D);
                 prim_comp->SetVisible(true);
             }
         }

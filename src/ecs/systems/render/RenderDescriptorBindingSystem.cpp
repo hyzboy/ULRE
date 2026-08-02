@@ -47,6 +47,7 @@ namespace hgl::ecs
             recipe.double_sided = false;
             recipe.alpha_test = false;
             recipe.alpha_cutoff = 0.5f;
+            recipe.pipeline_preset = graph::PipelinePreset::Auto;
             recipe.textures.clear();
             recipe.structs.clear();
             recipe.ssbo_assets.clear();
@@ -1041,6 +1042,40 @@ namespace hgl::ecs
                 }
 
                 if (!has_candidate)
+                {
+                    graph::mtl::MaterialRecipe effective_recipe{};
+                    if (primitive_comp->BuildResolvedAuthoringMaterialRecipe(effective_recipe, material))
+                    {
+                        if (const auto *asset = graph::mtl::FindRecipeSSBOAssetBinding(effective_recipe, req.name, req.ssbo_type))
+                        {
+                            candidate_ssbo_id = asset->ssbo_id;
+                            has_candidate = true;
+                        }
+                        else
+                        {
+                            for (const auto &binding : effective_recipe.structs)
+                            {
+                                if (binding.ssbo_slot != req.ssbo_slot || binding.ssbo_type != req.ssbo_type)
+                                    continue;
+
+                                candidate_ssbo_id = binding.ssbo_id;
+                                has_candidate = true;
+                                break;
+                            }
+                        }
+
+                        if (has_candidate)
+                        {
+                            if (auto *entity = primitive_item->GetEntity())
+                            {
+                                if (auto material_comp = entity->GetComponent<MaterialComponent>())
+                                    material_comp->SetResolvedSSBOBinding(req.ssbo_slot, req.ssbo_type, candidate_ssbo_id);
+                            }
+                        }
+                    }
+                }
+
+                if (!has_candidate)
                     return false;
 
                 if (!found)
@@ -1349,11 +1384,12 @@ namespace hgl::ecs
             if (!material)
                 continue;
 
-            active_materials.insert(material);
-
             MaterialBatch *batch = pair.second.get();
-            if (batch)
-                batch->descriptor_bind_valid = true;
+            if (!batch || batch->items.empty())
+                continue;
+
+            active_materials.insert(material);
+            batch->descriptor_bind_valid = true;
 
             const auto &contract = material->GetMaterialResourceLayout();
 

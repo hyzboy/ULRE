@@ -137,7 +137,6 @@ private:
 
         prim_comp->SetPrimitiveAsset(&rect_asset);
         prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, texture, sampler);
-        prim_comp->RequestPipeline(InlinePipeline::Solid2D);
         prim_comp->SetVisible(true);
 
         return true;
@@ -164,4 +163,3 @@ int os_main(int argc,os_char **argv)
 {
     return RunFramework<TestApp>(OS_TEXT("Draw a rectangle with texture"),argc,argv,256,256);
 }
-

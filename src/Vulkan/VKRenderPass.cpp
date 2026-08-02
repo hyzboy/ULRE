@@ -1,7 +1,7 @@
 #include<hgl/vk/VKRenderPass.h>
 #include<hgl/vk/VKDevice.h>
 #include<cstdint>
-#include<hgl/vk/pipeline/VKInlinePipeline.h>
+#include<hgl/vk/pipeline/VKPipelinePreset.h>
 #include<hgl/vk/pipeline/VKPipelineData.h>
 #include<hgl/vk/pipeline/VKPipelineResolver.h>
 #include<hgl/vk/VKShaderProgram.h>
@@ -122,7 +122,7 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const VIL *vil,const Pip
     return(p);
 }
 
-Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const VIL *vil,const InlinePipeline &ip,const bool prim_restart,const GeometryVertexFormat *gvf)
+Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const VIL *vil,const PipelinePreset &ip,const bool prim_restart,const GeometryVertexFormat *gvf)
 {
     if(!mtl)return(nullptr);
 
@@ -134,7 +134,7 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const PipelineData *pd,c
     return CreatePipeline(mtl,mtl->GetDefaultVIL(),pd,prim_restart);
 }
 
-Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const InlinePipeline &ip,const bool prim_restart)
+Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const PipelinePreset &ip,const bool prim_restart)
 {
     return CreatePipeline(mtl,mtl->GetDefaultVIL(),ip,prim_restart);
 }

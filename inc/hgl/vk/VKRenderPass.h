@@ -68,10 +68,10 @@ public:
 public:
 
     Pipeline *CreatePipeline(ShaderProgram *,const VIL *,const PipelineData *,   const bool prim_restart=false,const GeometryVertexFormat *gvf=nullptr);
-    Pipeline *CreatePipeline(ShaderProgram *,const VIL *,const InlinePipeline &, const bool prim_restart=false,const GeometryVertexFormat *gvf=nullptr);
+    Pipeline *CreatePipeline(ShaderProgram *,const VIL *,const PipelinePreset &, const bool prim_restart=false,const GeometryVertexFormat *gvf=nullptr);
 
     Pipeline *CreatePipeline(ShaderProgram *mtl,         const PipelineData *,   const bool prim_restart=false);
-    Pipeline *CreatePipeline(ShaderProgram *mtl,         const InlinePipeline &, const bool prim_restart=false);
+    Pipeline *CreatePipeline(ShaderProgram *mtl,         const PipelinePreset &, const bool prim_restart=false);
 
     /**
      * 从原始着色器阶段 + Pipeline Layout + VIL 创建管线（供 Compositor 系统使用）

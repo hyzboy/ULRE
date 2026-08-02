@@ -142,7 +142,6 @@ private:
         transform->SetMovable(false);
 
         auto primitive_comp = cube_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
-        primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
         cube_recipe.recipe_name = "Phase2.MaterialRecipeEntry.Cube";
         cube_recipe.mtl_def_id = "Gizmo3D";
         cube_recipe.domain = "Phase2AuthoringTest";

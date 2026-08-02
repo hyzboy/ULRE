@@ -94,7 +94,6 @@ private:
         named_struct.use_ssbo_element_index = true;
         named_struct.shared_across_instances = true;
         prim_comp->SetMaterialSSBOResource(named_struct);
-        prim_comp->RequestPipeline(InlinePipeline::Solid3D);
         prim_comp->SetVisible(true);
 
         return true;

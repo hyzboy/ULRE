@@ -209,7 +209,6 @@ private:
             rect_struct.use_ssbo_element_index = true;
             rect_struct.shared_across_instances = false;
             primitive->SetMaterialSSBOResource(rect_struct);
-            primitive->RequestPipeline(InlinePipeline::Solid2D);
             primitive->SetVisible(true);
         }
 

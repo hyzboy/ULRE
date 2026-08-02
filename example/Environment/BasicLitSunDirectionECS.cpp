@@ -378,7 +378,6 @@ private:
             transform->SetMovable(false);
 
             primitive_comp->SetPrimitiveAsset(&sky_asset);
-            primitive_comp->RequestPipeline(InlinePipeline::Sky);
             primitive_comp->SetVisible(true);
         #endif//DRAW_SKY_SPHERE
         }
@@ -404,7 +403,6 @@ private:
             floor_struct.use_ssbo_element_index = true;
             floor_struct.shared_across_instances = true;
             primitive_comp->SetMaterialSSBOResource(floor_struct);
-            primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             primitive_comp->SetVisible(true);
         }
 
@@ -442,7 +440,6 @@ private:
             mesh_struct.use_ssbo_element_index = true;
             mesh_struct.shared_across_instances = true;
             primitive_comp->SetMaterialSSBOResource(mesh_struct);
-            primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
             primitive_comp->SetVisible(true);
 
             ++index;

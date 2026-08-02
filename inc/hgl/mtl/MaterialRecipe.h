@@ -2,6 +2,7 @@
 
 #include <hgl/type/EnumUtil.h>
 #include <hgl/common/CoordinateSystem.h>
+#include <hgl/graph/PipelinePreset.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <cstdint>
@@ -116,6 +117,7 @@ namespace hgl::graph::mtl
         bool double_sided = false; // 双面渲染开关
         bool alpha_test = false;   // 是否启用 alpha test
         float alpha_cutoff = 0.5f; // alpha test 阈值（alpha < cutoff 丢弃）
+        hgl::graph::PipelinePreset pipeline_preset = hgl::graph::PipelinePreset::Auto; // Auto: 按 MaterialDefinition 推导
 
         std::vector<RecipeTextureBinding> textures; // 所有纹理语义绑定
         std::vector<RecipeStructBinding> structs;   // 所有结构体语义绑定
@@ -226,6 +228,7 @@ namespace hgl::graph::mtl
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.double_sided);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.alpha_test);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.alpha_cutoff);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.pipeline_preset);
 
         const uint32_t texture_count = static_cast<uint32_t>(recipe.textures.size());
         hash = hgl::hash::FNV1aAppendValueBytes(hash, texture_count);

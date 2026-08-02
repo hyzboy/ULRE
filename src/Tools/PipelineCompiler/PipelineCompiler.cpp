@@ -1,6 +1,6 @@
 ﻿#include<hgl/type/String.h>
 #include<hgl/graph/pipeline/VKPipelineData.h>
-#include<hgl/graph/pipeline/VKInlinePipeline.h>
+#include<hgl/vk/pipeline/VKPipelinePreset.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<iostream>
 
@@ -36,7 +36,7 @@ namespace hgl::graph{
             return;
         }
 
-    #define SAVE_PIPELINE_TO_FILE(name) SaveToToml(filesystem::JoinPathWithFilename(pathname,OS_TEXT(#name) OS_TEXT(".pipeline.toml")),GetPipelineData(InlinePipeline::name));
+    #define SAVE_PIPELINE_TO_FILE(name) SaveToToml(filesystem::JoinPathWithFilename(pathname,OS_TEXT(#name) OS_TEXT(".pipeline.toml")),GetPipelineData(PipelinePreset::name));
 
         SAVE_PIPELINE_TO_FILE(Solid3D)
         SAVE_PIPELINE_TO_FILE(Alpha3D)

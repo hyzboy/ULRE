@@ -142,9 +142,9 @@ private:
         triangle_recipe.domain = "DrawTriangle";
         triangle_recipe.coordinate_system_2d = graph::CoordinateSystem2D::Ortho;
         triangle_recipe.local_to_world_2d = false;
+        triangle_recipe.pipeline_preset = PipelinePreset::Solid2D;
         triangle_asset = PrimitiveAsset(geom_triangle, &triangle_recipe, PrimitiveType::Triangles);
         ecs_primitive->SetPrimitiveAsset(&triangle_asset);
-        ecs_primitive->RequestPipeline(InlinePipeline::Solid2D);
         ecs_primitive->SetVisible(true);
 
         return true;

@@ -92,7 +92,6 @@ private:
         axis_recipe.domain = "SimplestAxis";
         axis_asset = PrimitiveAsset(geom_axis, &axis_recipe, PrimitiveType::Lines);
         prim_comp->SetPrimitiveAsset(&axis_asset);
-        prim_comp->RequestPipeline(InlinePipeline::Solid3D);
         prim_comp->SetVisible(true);
 
         return true;

@@ -209,7 +209,6 @@ private:
                 scene_struct.use_ssbo_element_index = true;
                 scene_struct.shared_across_instances = true;
                 se.primitive_comp->SetMaterialSSBOResource(scene_struct);
-                se.primitive_comp->RequestPipeline(InlinePipeline::Solid3D);
                 se.primitive_comp->SetVisible(true);
 
                 scene_entities_.push_back(std::move(se));

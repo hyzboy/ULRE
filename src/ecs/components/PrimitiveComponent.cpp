@@ -35,6 +35,7 @@ namespace hgl::ecs
             recipe.double_sided = false;
             recipe.alpha_test = false;
             recipe.alpha_cutoff = 0.5f;
+            recipe.pipeline_preset = hgl::graph::PipelinePreset::Auto;
             recipe.textures.clear();
             recipe.structs.clear();
             recipe.ssbo_assets.clear();
@@ -693,15 +694,8 @@ namespace hgl::ecs
 
     void PrimitiveComponent::InvalidateResolvedRuntimePipeline()
     {
-        const bool runtime_resolve_in_use = (resolvedRuntimePipeline != nullptr) || hasPendingPipelinePreset;
-
         resolvedRuntimePipeline = nullptr;
         resolvedRuntimeRenderPass = nullptr;
-
-        if (runtime_resolve_in_use)
-        {
-            hasPendingPipelinePreset = true;
-        }
     }
 
     hgl::graph::ShaderProgram* PrimitiveComponent::GetMaterialProgram() const
@@ -765,6 +759,5 @@ namespace hgl::ecs
         ClearMaterialAuthoringResources();
         resolvedRuntimePipeline = nullptr;
         resolvedRuntimeRenderPass = nullptr;
-        hasPendingPipelinePreset = false;
     }
 }//namespace hgl::ecs
