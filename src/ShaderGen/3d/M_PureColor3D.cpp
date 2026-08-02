@@ -20,6 +20,7 @@ namespace
         bmi.with_sky          = false;
         bmi.usage_tag   = MaterialDefinitionUsageTag::Fallback;
         bmi.ssbo_slot_decls   = {{"mtl", SSBOType::EmissiveSurface}};
+        bmi.ubo_requirements  = {UBODescriptorSemantic::ViewportInfo, UBODescriptorSemantic::CameraInfo};
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::PureColor3D, bmi);
 
         // builtin/fallback_3d: 3D 无材质保底

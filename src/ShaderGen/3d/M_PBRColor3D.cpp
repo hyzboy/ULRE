@@ -21,6 +21,7 @@ namespace
         bmi.with_local_to_world = true;
         bmi.with_sky          = true;
         bmi.ssbo_slot_decls   = {{"mtl", SSBOType::PBRSurface}};
+        bmi.ubo_requirements  = {UBODescriptorSemantic::ViewportInfo, UBODescriptorSemantic::CameraInfo, UBODescriptorSemantic::SkyInfo};
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::PBRColor3D, bmi);
         return true;
     }();

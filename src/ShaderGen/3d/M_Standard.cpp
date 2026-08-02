@@ -22,6 +22,12 @@ namespace
         bmi.with_local_to_world = true;
         bmi.with_sky          = true;   // Standard 使用 SkyInfo
         bmi.ssbo_slot_decls   = {{"mtl", SSBOType::ClearCoatSurface}};
+        bmi.ubo_requirements  = {UBODescriptorSemantic::ViewportInfo, UBODescriptorSemantic::CameraInfo, UBODescriptorSemantic::SkyInfo};
+        bmi.texture_slot_decls = {
+            {TextureSlot::BaseColor, GLSLSamplerType::Sampler2D, false},
+            {TextureSlot::Normal,    GLSLSamplerType::Sampler2D, false},
+            {TextureSlot::Roughness, GLSLSamplerType::Sampler2D, false},
+        };
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::Standard, bmi);
         return true;
     }();

@@ -22,6 +22,12 @@ namespace
         bmi.with_local_to_world = true;
         bmi.with_sky          = true;
         bmi.ssbo_slot_decls   = {{"mtl", SSBOType::ClearCoatSurface}};
+        bmi.ubo_requirements  = {UBODescriptorSemantic::ViewportInfo, UBODescriptorSemantic::CameraInfo, UBODescriptorSemantic::SkyInfo};
+        bmi.texture_slot_decls = {
+            {TextureSlot::BaseColor, GLSLSamplerType::Sampler2DArray, false},
+            {TextureSlot::Normal,    GLSLSamplerType::Sampler2DArray, false},
+            {TextureSlot::Roughness, GLSLSamplerType::Sampler2DArray, false},
+        };
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::StandardTextureArray, bmi);
         return true;
     }();

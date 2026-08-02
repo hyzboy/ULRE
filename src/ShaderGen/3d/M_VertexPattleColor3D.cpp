@@ -28,6 +28,7 @@ namespace
         bmi.with_camera       = true;
         bmi.with_local_to_world = true;
         bmi.with_sky          = false;
+        bmi.ubo_requirements  = {UBODescriptorSemantic::ViewportInfo, UBODescriptorSemantic::CameraInfo, UBODescriptorSemantic::MaterialColorPalette};
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::VertexPattleColor3D, bmi);
         return true;
     }();

@@ -4,6 +4,7 @@
 #include <hgl/common/CoordinateSystem.h>
 #include <hgl/graph/PipelinePreset.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
+#include <hgl/mtl/DescriptorSemantic.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <cstdint>
 #include <string>
@@ -52,6 +53,43 @@ namespace hgl::graph::mtl
         SSBOType    ssbo_type = SSBOType::UserDefined; // 数据结构语义
     };
 
+    // 纹理槽位能力声明（由 MaterialDefinition 显式列出）。
+    // 供 Step C 的 Definition→FixedDescriptorEntry 推导使用。
+    // 无纹理材质此列表为空。
+
+    // GLSL 采样器类型枚举，避免传裸字符串指针。
+    // ToGLSLSamplerTypeName() 将此值转换为 GLSL 类型名称字符串。
+    enum class GLSLSamplerType : uint8_t
+    {
+        Sampler2D = 0,        // "sampler2D"
+        Sampler2DArray,       // "sampler2DArray"
+        Sampler2DShadow,      // "sampler2DShadow"
+        SamplerCube,          // "samplerCube"
+        SamplerCubeArray,     // "samplerCubeArray"
+        Sampler3D,            // "sampler3D"
+    };
+
+    inline const char *ToGLSLSamplerTypeName(const GLSLSamplerType t) noexcept
+    {
+        switch (t)
+        {
+        case GLSLSamplerType::Sampler2D:        return "sampler2D";
+        case GLSLSamplerType::Sampler2DArray:   return "sampler2DArray";
+        case GLSLSamplerType::Sampler2DShadow:  return "sampler2DShadow";
+        case GLSLSamplerType::SamplerCube:      return "samplerCube";
+        case GLSLSamplerType::SamplerCubeArray: return "samplerCubeArray";
+        case GLSLSamplerType::Sampler3D:        return "sampler3D";
+        }
+        return "sampler2D";
+    }
+
+    struct MaterialTextureSlotDecl
+    {
+        TextureSlot      slot         = TextureSlot::BaseColor;       // 纹理语义槽
+        GLSLSamplerType  sampler_type = GLSLSamplerType::Sampler2D;   // GLSL 采样器类型
+        bool             required     = false;                         // true: 缺失应触发错误；false: 可选
+    };
+
     // BMI 来源标记：区分 built-in 硬编码实现与未来的文件化实现。
     enum class MaterialDefinitionSourceKind : uint8_t
     {
@@ -97,6 +135,17 @@ namespace hgl::graph::mtl
         // 无 SSBO 的材质此列表为空。
         std::vector<MaterialSSBOSlotDecl> ssbo_slot_decls;
 
+        // Part-B3: UBO 资源能力声明（与 with_camera/with_sky 布尔标志并列）。
+        // 显式列出此材质需要哪些标准 UBO（ViewportInfo/CameraInfo/SkyInfo/MaterialColorPalette）。
+        // Step C 将从此列表推导 FixedDescriptorEntry，届时布尔标志可退场。
+        // 2D 材质暂留空（2D 路径 UBO 机制独立，待 Step E 统一）。
+        std::vector<UBODescriptorSemantic> ubo_requirements;
+
+        // Part-B4: 纹理槽位能力声明。
+        // 无纹理材质（PureColor3D、VertexColor3D 等）此列表为空。
+        // glsl_type 区分 "sampler2D" vs "sampler2DArray" 等变体（由 sampler_type 枚举表达）。
+        std::vector<MaterialTextureSlotDecl> texture_slot_decls;
+
         // Part-C: request 构建参数（构建所需选项显式存储，
         //         不允许调用方根据名字/枚举范围做任何推断）
         bool is_2d            = false;  // 2D 材质
@@ -134,6 +183,13 @@ namespace hgl::graph::mtl
         std::vector<RecipeStructBinding> structs;   // 所有结构体语义绑定
         std::vector<RecipeSSBOAssetBinding> ssbo_assets; // 供最终 ShaderProgram 通过描述符名解析的 SSBO 资产 ID
     };
+
+    inline bool HasUBORequirement(const MaterialDefinition &def, UBODescriptorSemantic s) noexcept
+    {
+        for (const auto &r : def.ubo_requirements)
+            if (r == s) return true;
+        return false;
+    }
 
     inline const RecipeSSBOAssetBinding *FindRecipeSSBOAssetBinding(const MaterialRecipe &recipe,
                                                                     const char *ssbo_name,

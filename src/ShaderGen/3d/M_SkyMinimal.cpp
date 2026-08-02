@@ -17,6 +17,7 @@ namespace
         bmi.with_camera       = true;
         bmi.with_local_to_world = true;
         bmi.with_sky          = true;
+        bmi.ubo_requirements  = {UBODescriptorSemantic::ViewportInfo, UBODescriptorSemantic::CameraInfo, UBODescriptorSemantic::SkyInfo};
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::SkyMinimal, bmi);
 
         MaterialDefinition alias = bmi;
