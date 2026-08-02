@@ -433,7 +433,8 @@ void NormalizeRecipe(MaterialRecipe &recipe)
         return;
 
     MaterialDefinition bmi{};
-    if (TryGetMaterialDefinitionByID(recipe.mtl_def_id, bmi))
+    const bool has_definition = TryGetMaterialDefinitionByID(recipe.mtl_def_id, bmi);
+    if (has_definition)
         ApplyBaseMaterialInfoDefaults(recipe, bmi, false);
 
     // Legacy bridge: if ssbo_assets is empty, derive initial entries from recipe.structs
@@ -441,7 +442,13 @@ void NormalizeRecipe(MaterialRecipe &recipe)
     if (recipe.ssbo_assets.empty())
     {
         for (const auto &binding : recipe.structs)
-            UpsertRecipeSSBOAssetBinding(recipe, "mtl", SSBOBinding{binding.ssbo_type, binding.ssbo_id});
+        {
+            std::string ssbo_name = "mtl";
+            if (has_definition && binding.ssbo_slot < bmi.ssbo_slot_decls.size() && !bmi.ssbo_slot_decls[binding.ssbo_slot].name.empty())
+                ssbo_name = bmi.ssbo_slot_decls[binding.ssbo_slot].name;
+
+            UpsertRecipeSSBOAssetBinding(recipe, ssbo_name, binding);
+        }
     }
 }
 

@@ -139,7 +139,9 @@ bool ShouldUse2DFallbackMaterial(const MaterialDefinitionBuildRequest &request);
  * Normalize a MaterialRecipe in-place:
  *   1. Fills mtl_def_id, lod, quality_tier from the matched MaterialDefinition if they are unset.
  *   2. Propagates required_ssbo_assets from the definition into recipe.ssbo_assets.
- *   3. Populates recipe.ssbo_assets from recipe.structs when ssbo_assets is empty (legacy path).
+ *   3. If recipe.ssbo_assets is empty, mirrors entries from recipe.structs into ssbo_assets.
+ *      This compatibility bridge is still required by current ECS/runtime struct routing and
+ *      must not be deleted until that path is migrated.
  *
  * This is the canonical pre-processing step that must be called before the recipe is stored
  * in a PrimitiveComponent or passed to RenderDescriptorBindingSystem.  It is idempotent.

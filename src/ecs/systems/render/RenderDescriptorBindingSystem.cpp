@@ -1051,6 +1051,11 @@ namespace hgl::ecs
                             candidate_ssbo_id = asset->ssbo_id;
                             has_candidate = true;
                         }
+                        else if (const auto *asset = graph::mtl::FindRecipeSSBOAssetBindingBySlot(effective_recipe, req.ssbo_slot, req.ssbo_type))
+                        {
+                            candidate_ssbo_id = asset->ssbo_id;
+                            has_candidate = true;
+                        }
                         else
                         {
                             for (const auto &binding : effective_recipe.structs)

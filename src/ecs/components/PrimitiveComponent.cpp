@@ -416,7 +416,11 @@ namespace hgl::ecs
                 hgl::graph::mtl::UpsertRecipeSSBOAssetBinding(out_recipe,
                                                               std::string(req.name),
                                                               req.ssbo_type,
-                                                              named_resource->ssbo_id);
+                                                              named_resource->ssbo_id,
+                                                              req.ssbo_slot,
+                                                              named_resource->ssbo_element_index,
+                                                              named_resource->use_ssbo_element_index,
+                                                              named_resource->shared_across_instances);
 
                 if (GetMaterialSSBOResourceBySlot(req.ssbo_slot))
                     continue;

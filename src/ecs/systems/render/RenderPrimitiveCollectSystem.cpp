@@ -113,6 +113,12 @@ namespace hgl::ecs
                 return true;
             }
 
+            if (const auto *asset = graph::mtl::FindRecipeSSBOAssetBindingBySlot(recipe, req.ssbo_slot, req.ssbo_type))
+            {
+                out_ssbo_id = asset->ssbo_id;
+                return true;
+            }
+
             for (const auto &binding : recipe.structs)
             {
                 if (binding.ssbo_slot != req.ssbo_slot || binding.ssbo_type != req.ssbo_type)
@@ -314,6 +320,8 @@ namespace hgl::ecs
                     continue;
 
                 const auto *asset_binding = graph::mtl::FindRecipeSSBOAssetBinding(effective_recipe, req.name, req.ssbo_type);
+                if (!asset_binding)
+                    asset_binding = graph::mtl::FindRecipeSSBOAssetBindingBySlot(effective_recipe, req.ssbo_slot, req.ssbo_type);
 
                 if (!asset_binding)
                     continue;
@@ -602,12 +610,24 @@ namespace hgl::ecs
         // bindings carry the correct per-entity ssbo_element_index — unlike the cached
         // spec which holds the FIRST entity's value for a given recipe hash.
         uint32_t entity_element_index = uint32_t(-1);
-        for (const auto &struct_binding : effective_recipe.structs)
+        for (const auto &asset_binding : effective_recipe.ssbo_assets)
         {
-            if (struct_binding.use_ssbo_element_index)
+            if (asset_binding.use_ssbo_element_index)
             {
-                entity_element_index = struct_binding.ssbo_element_index;
+                entity_element_index = asset_binding.ssbo_element_index;
                 break;
+            }
+        }
+
+        if (entity_element_index == uint32_t(-1))
+        {
+            for (const auto &struct_binding : effective_recipe.structs)
+            {
+                if (struct_binding.use_ssbo_element_index)
+                {
+                    entity_element_index = struct_binding.ssbo_element_index;
+                    break;
+                }
             }
         }
 

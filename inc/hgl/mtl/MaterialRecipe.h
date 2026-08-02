@@ -41,8 +41,12 @@ namespace hgl::graph::mtl
     struct RecipeSSBOAssetBinding
     {
         std::string ssbo_name;
+        uint32_t ssbo_slot = DefaultMaterialSSBOSlot;
         SSBOType ssbo_type = SSBOType::UserDefined;
         uint32_t ssbo_id = 0;
+        uint32_t ssbo_element_index = 0;
+        bool use_ssbo_element_index = false;
+        bool shared_across_instances = false;
     };
 
     // 每个材质的 SSBO slot 声明（由 MaterialDefinition 显式列出）。
@@ -120,7 +124,7 @@ namespace hgl::graph::mtl
         // Part-A: 基础语义/元信息
         std::string definition_id;                                   // 正式主键（字符串 ID / 未来文件名）
         std::string definition_name;                                 // 人类可读名称
-        uint32_t    builtin_creator_id = InvalidBuiltinMaterialCreatorIDHint;         // 当前阶段过渡字段（enum 序号）
+        uint32_t    builtin_creator_id = InvalidBuiltinMaterialCreatorIDHint;         // 当前内置 creator 路由字段（enum 序号）
         MaterialDefinitionSourceKind source_kind = MaterialDefinitionSourceKind::BuiltIn;         // 来源类型
         MaterialDefinitionUsageTag   usage_tag  = MaterialDefinitionUsageTag::General;            // 用途标签
 
@@ -129,7 +133,7 @@ namespace hgl::graph::mtl
         uint16_t lod_count     = 1;
         uint16_t quality_tier  = 0;
 
-        // Part-B: 资源契约（当前阶段仅 SSBO；Texture/VAB 由 recipe 按需声明）
+        // Part-B: 资源契约（Definition 侧的静态资产需求；运行时绑定由 recipe 提供）
         std::vector<RecipeSSBOAssetBinding> required_ssbo_assets;
 
         // Part-B2: 材质 SSBO slot 显式声明（index == ssbo_slot）
@@ -137,15 +141,14 @@ namespace hgl::graph::mtl
         // 无 SSBO 的材质此列表为空。
         std::vector<MaterialSSBOSlotDecl> ssbo_slot_decls;
 
-        // Part-B3: UBO 资源能力声明（与 with_camera/with_sky 布尔标志并列）。
-        // 显式列出此材质需要哪些标准 UBO（ViewportInfo/CameraInfo/SkyInfo/MaterialColorPalette）。
-        // Step C 将从此列表推导 FixedDescriptorEntry，届时布尔标志可退场。
-        // 2D 材质暂留空（2D 路径 UBO 机制独立，待 Step E 统一）。
+        // Part-B3: UBO 资源能力声明。
+        // 显式列出此材质可使用的标准 UBO（ViewportInfo/CameraInfo/SkyInfo/MaterialColorPalette）。
+        // 2D/3D 都走这条声明链路；with_camera/with_sky/with_local_to_world 当前保留为构建包络与旧调用面。
         std::vector<UBODescriptorSemantic> ubo_requirements;
 
         // Part-B4: 纹理槽位能力声明。
         // 无纹理材质（PureColor3D、VertexColor3D 等）此列表为空。
-        // glsl_type 区分 "sampler2D" vs "sampler2DArray" 等变体（由 sampler_type 枚举表达）。
+        // sampler_type 区分 "sampler2D" vs "sampler2DArray" 等 GLSL 采样器变体。
         std::vector<MaterialTextureSlotDecl> texture_slot_decls;
 
         // Part-C: request 构建参数（构建所需选项显式存储，
@@ -216,10 +219,34 @@ namespace hgl::graph::mtl
         return nullptr;
     }
 
+    inline const RecipeSSBOAssetBinding *FindRecipeSSBOAssetBindingBySlot(const MaterialRecipe &recipe,
+                                                                          const uint32_t ssbo_slot,
+                                                                          const SSBOType ssbo_type) noexcept
+    {
+        for (const auto &asset : recipe.ssbo_assets)
+        {
+            if (asset.ssbo_slot != ssbo_slot)
+                continue;
+
+            if (asset.ssbo_type != SSBOType::UserDefined
+             && ssbo_type != SSBOType::UserDefined
+             && asset.ssbo_type != ssbo_type)
+                continue;
+
+            return &asset;
+        }
+
+        return nullptr;
+    }
+
     inline void UpsertRecipeSSBOAssetBinding(MaterialRecipe &recipe,
                                              const std::string &ssbo_name,
                                              const SSBOType ssbo_type,
-                                             const uint32_t ssbo_id)
+                                             const uint32_t ssbo_id,
+                                             const uint32_t ssbo_slot = DefaultMaterialSSBOSlot,
+                                             const uint32_t ssbo_element_index = 0,
+                                             const bool use_ssbo_element_index = false,
+                                             const bool shared_across_instances = false)
     {
         if (ssbo_name.empty())
             return;
@@ -231,13 +258,21 @@ namespace hgl::graph::mtl
 
             asset.ssbo_type = ssbo_type;
             asset.ssbo_id = ssbo_id;
+            asset.ssbo_slot = ssbo_slot;
+            asset.ssbo_element_index = ssbo_element_index;
+            asset.use_ssbo_element_index = use_ssbo_element_index;
+            asset.shared_across_instances = shared_across_instances;
             return;
         }
 
         RecipeSSBOAssetBinding asset{};
         asset.ssbo_name = ssbo_name;
+        asset.ssbo_slot = ssbo_slot;
         asset.ssbo_type = ssbo_type;
         asset.ssbo_id = ssbo_id;
+        asset.ssbo_element_index = ssbo_element_index;
+        asset.use_ssbo_element_index = use_ssbo_element_index;
+        asset.shared_across_instances = shared_across_instances;
         recipe.ssbo_assets.emplace_back(std::move(asset));
     }
 
@@ -252,6 +287,20 @@ namespace hgl::graph::mtl
                                              const SSBOBinding &binding)
     {
         UpsertRecipeSSBOAssetBinding(recipe, ssbo_name, binding.ssbo_type, binding.ssbo_id);
+    }
+
+    inline void UpsertRecipeSSBOAssetBinding(MaterialRecipe &recipe,
+                                             const std::string &ssbo_name,
+                                             const RecipeStructBinding &binding)
+    {
+        UpsertRecipeSSBOAssetBinding(recipe,
+                                     ssbo_name,
+                                     binding.ssbo_type,
+                                     binding.ssbo_id,
+                                     binding.ssbo_slot,
+                                     binding.ssbo_element_index,
+                                     binding.use_ssbo_element_index,
+                                     binding.shared_across_instances);
     }
 
     inline void ApplyBaseMaterialInfoDefaults(MaterialRecipe &recipe,
