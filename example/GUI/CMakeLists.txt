@@ -1,5 +1,5 @@
 ﻿macro(CreateProject name)
-    add_executable(${name} ${ARGN} GUIAppFramework.h)
+    add_executable(${name} ${ARGN})
     target_link_libraries(${name} ${ULRE})
 
     IF(WIN32)
@@ -9,8 +9,5 @@
     set_property(TARGET ${name} PROPERTY FOLDER "ULRE/Example/GUI")
 endmacro()
 
-#CreateProject(00.control_point_2d   control_point_2d.cpp)
-#CreateProject(01.align_test         align_test.cpp)
-CreateProject(04.TextDrawTest_ECS       DrawText_ECS.cpp)
-CreateProject(05.DrawMultiLineText_ECS  DrawMultiLineText_ECS.cpp)
-#CreateProject(06.DrawRoundrectangle DrawRoundrectangle.cpp)
+CreateProject(TextDrawTest           TextDrawTest.cpp)
+CreateProject(DrawMultiLineText      DrawMultiLineText.cpp)

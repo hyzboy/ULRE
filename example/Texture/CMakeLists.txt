@@ -10,7 +10,7 @@
     set_property(TARGET ${name} PROPERTY FOLDER "ULRE/Example/Texture")
 endmacro()
 
-CreateProject(05_texture_format     texture_format_list.cpp)
-CreateProject(06_texture_quad       texture_quad.cpp)
-CreateProject(07_texture_rect       texture_rect.cpp)
-CreateProject(08_texture_rect_array texture_rect_array.cpp)
+CreateProject(TextureFormat      TextureFormat.cpp)
+CreateProject(TextureQuad        TextureQuad.cpp)
+CreateProject(TextureRect        TextureRect.cpp)
+CreateProject(TextureRectArray   TextureRectArray.cpp)

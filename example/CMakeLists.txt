@@ -4,8 +4,3 @@ add_subdirectory(Gizmo)
 add_subdirectory(GUI)
 add_subdirectory(Geometry)
 add_subdirectory(Environment)
-
-add_subdirectory(GLTF)
-
-#add_subdirectory(Landscape)
-

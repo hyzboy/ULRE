@@ -11,8 +11,8 @@
     set_property(TARGET ${name} PROPERTY FOLDER "ULRE/Example/Environment")
 endmacro()
 
-CreateProject(01_AtmosphereSkyMinimal           AtmosphereSkyMinimal.cpp)
+CreateProject(AtmosphereSkyMinimal              AtmosphereSkyMinimal.cpp)
 
-CreateProject(02_AtmosphereSkySunGizmo          AtmosphereSkySunGizmo.cpp)
+CreateProject(AtmosphereSkySunGizmo             AtmosphereSkySunGizmo.cpp)
 
-CreateProject(03_BasicLitSunDirectionECS        BasicLitSunDirectionECS.cpp)
+CreateProject(BasicLitSunDirection              BasicLitSunDirection.cpp)

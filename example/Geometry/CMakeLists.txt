@@ -13,13 +13,13 @@ endmacro()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../src/SceneGraph/Vulkan)        # For GeometryTest, 未来LoadGeometry.cpp移到SceneGraph目录下，此行即可删除
 
-CreateProject(01_ExtrudedPolygonTest            ExtrudedPolygonTest.cpp)
+CreateProject(ExtrudedPolygonTest               ExtrudedPolygonTest.cpp)
 
-CreateProject(03_WallsFromPolyline              WallsFromPolyline.cpp)
-#CreateProject(03_WallsFromPolyline_Texture      WallsFromPolyline_Texture.cpp)
+CreateProject(WallsFromPolyline                 WallsFromPolyline.cpp)
+#CreateProject(WallsFromPolyline_Texture        WallsFromPolyline_Texture.cpp)
 
-CreateProject(04_LineRenderTest                 LineRenderTest.cpp)
+CreateProject(LineRenderTest                    LineRenderTest.cpp)
 
 
-add_subdirectory(05_LoadGeometry)
-add_subdirectory(06_LoadScene)
+add_subdirectory(LoadGeometry)
+add_subdirectory(LoadScene)
