@@ -84,7 +84,7 @@ static ShaderProgramBuildSpec *CreateStandardImpl(const contract::PhysicalDevice
 
     CompositorAssembler assembler("ShaderLibrary");
 
-    auto fs_result = assembler.AssembleFragment(
+    auto fs_result = assembler.Assemble(
         SurfaceType::Standard,
         BlendMode::Opaque,
         PassType::ForwardOpaque,

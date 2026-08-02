@@ -57,7 +57,7 @@ static ShaderProgramBuildSpec *CreateVertexColor3DImpl(const contract::PhysicalD
 
     CompositorAssembler assembler("ShaderLibrary");
 
-    auto fs_result = assembler.AssembleFragment(
+    auto fs_result = assembler.Assemble(
         SurfaceType::Unlit,
         BlendMode::Opaque,
         PassType::ForwardOpaque,

@@ -79,7 +79,7 @@ static ShaderProgramBuildSpec *CreatePureColor3DImpl(const contract::PhysicalDev
 
     CompositorAssembler assembler("ShaderLibrary");
 
-    auto fs_result = assembler.AssembleFragment(
+    auto fs_result = assembler.Assemble(
         SurfaceType::Unlit,
         BlendMode::Opaque,
         PassType::ForwardOpaque,

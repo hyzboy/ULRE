@@ -37,6 +37,31 @@ namespace
         return true;
     }();
 
+    static std::string BuildVertexPattleColor3DVertexShader()
+    {
+        return
+            "#version 450\n"
+            "#extension GL_EXT_scalar_block_layout : require\n\n"
+            "#include \"common/descriptor_macros.glsl\"\n"
+            "#include \"common/scene_ubo.glsl\"\n"
+            "SCENE_CAMERA_UBO;\n"
+            "#include \"common/l2w_ssbo.glsl\"\n"
+            "L2W_SSBO;\n\n"
+            "layout(scalar, set=MATERIAL_SET, binding=0) uniform ColorPattle { vec4 color[256]; } color_pattle;\n"
+            "#include \"vertex/s1_input_vec3.glsl\"\n"
+            "layout(location=1) in uint ColorIndex;\n"
+            "layout(location=2) in uint TransformID;\n"
+            "#include \"vertex/s2_passthrough3d.glsl\"\n\n"
+            "layout(location=0) out vec4 fragVertexColor;\n\n"
+            "void main()\n"
+            "{\n"
+            "    mat4 l2w_mat = l2w.mats[TransformID];\n"
+            "    vec4 world_pos = l2w_mat * GetLocalPos();\n"
+            "    fragVertexColor = color_pattle.color[ColorIndex];\n"
+            "    gl_Position = camera.vp * world_pos;\n"
+            "}\n";
+    }
+
 }//namespace
 
 static ShaderProgramBuildSpec *CreateVertexPattleColor3DImpl(const contract::PhysicalDeviceProfileLite *profile, CompositorMaterialBuildConfig bc, const MaterialDefinition &definition)
@@ -72,30 +97,30 @@ static ShaderProgramBuildSpec *CreateVertexPattleColor3DImpl(const contract::Phy
     };
 
     CompositorAssembler assembler("ShaderLibrary");
-
-    auto result = assembler.Assemble(
+    auto fs_result = assembler.Assemble(
         SurfaceType::Unlit,
         BlendMode::Opaque,
         PassType::ForwardOpaque,
         QualityTier::Medium,
         PlatformBackend::PC,
-        "compositor/main_forward_unlit_pattle.vert.glsl",
         "compositor/main_forward_unlit_vertexcolor.frag.glsl",
         "surface/unlit_vertexcolor_surface.glsl"
     );
 
-    if (!result.success)
+    if (!fs_result.success)
     {
         GLogError("[VertexPattleColor3D] CompositorAssembler failed: %s",
-                  result.error_message.c_str());
+                  fs_result.error_message.c_str());
         return nullptr;
     }
+
+    const std::string vs_glsl = BuildVertexPattleColor3DVertexShader();
 
     ShaderProgramBuildSpec *mci = CompileCompositorMaterial(
         profile,
         dynamic_def,
-        result.vertex_glsl,
-        result.fragment_glsl,
+        vs_glsl,
+        fs_result.fragment_glsl,
         bc);
 
     if (!mci)

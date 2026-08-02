@@ -27,7 +27,7 @@ namespace
 
 static ShaderProgramBuildSpec *CreatePureTexture2DImpl(const contract::PhysicalDeviceProfileLite *profile, const Material2DBuildParams &p)
 {
-    auto preamble = build2d::Build2DPreamble(p, true);
+    auto preamble = build2d::Build2DFragmentPreamble(p, true);
 
     std::vector<FixedVertexEntry> vertices;
     build2d::PushBaseVertexEntries(vertices, p);

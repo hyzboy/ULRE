@@ -41,7 +41,7 @@ static ShaderProgramBuildSpec *CreateGizmo3DImpl(const contract::PhysicalDeviceP
 {
     CompositorAssembler assembler("ShaderLibrary");
 
-    auto fs_result = assembler.AssembleFragment(
+    auto fs_result = assembler.Assemble(
         SurfaceType::Unlit,
         BlendMode::Opaque,
         PassType::ForwardOpaque,

@@ -26,7 +26,7 @@ namespace
 
 static ShaderProgramBuildSpec *CreateVertexColor2DImpl(const contract::PhysicalDeviceProfileLite *profile, const Material2DBuildParams &p)
 {
-    auto preamble = build2d::Build2DPreamble(p, false);
+    auto preamble = build2d::Build2DFragmentPreamble(p, false);
 
     std::vector<FixedVertexEntry> vertices;
     build2d::PushBaseVertexEntries(vertices, p);

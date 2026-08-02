@@ -22,45 +22,6 @@ namespace hgl::graph
         return true;
     }
 
-    std::string CompositorAssembler::GetCompositorVSPath(SurfaceType surface, PassType pass) const
-    {
-        // Unlit 表面使用精简 VS（仅 Position + 双 ID，无 Normal/UV）
-        if (surface == SurfaceType::Unlit)
-        {
-            switch (pass)
-            {
-            case PassType::ForwardOpaque:
-            case PassType::ForwardMasked:
-            case PassType::ForwardTransparent:
-                return shader_lib_path_ + "/compositor/main_forward_unlit.vert.glsl";
-            default:
-                return shader_lib_path_ + "/compositor/main_forward_unlit.vert.glsl";
-            }
-        }
-
-        // Lit 表面走完整 VS（Position + Normal + UV + 双 ID）
-        switch (pass)
-        {
-        case PassType::ForwardOpaque:
-        case PassType::ForwardMasked:
-            return shader_lib_path_ + "/compositor/main_forward_opaque.vert.glsl";
-
-        case PassType::ShadowOpaque:
-        case PassType::ShadowMasked:
-            return shader_lib_path_ + "/compositor/main_shadow.vert.glsl"; // 后续实现
-
-        case PassType::EarlyZSolid:
-        case PassType::EarlyZMasked:
-            return shader_lib_path_ + "/compositor/main_earlyz.vert.glsl"; // 后续实现
-
-        case PassType::VBufferID:
-            return shader_lib_path_ + "/compositor/main_vbuffer.vert.glsl"; // 后续实现
-
-        default:
-            return shader_lib_path_ + "/compositor/main_forward_opaque.vert.glsl";
-        }
-    }
-
     std::string CompositorAssembler::GetCompositorFSPath(SurfaceType surface, BlendMode blend, PassType pass) const
     {
         // Unlit 表面类型使用专用 FS 模板（无光照）
@@ -179,7 +140,6 @@ namespace hgl::graph
         PassType        pass,
         QualityTier     tier,
         PlatformBackend platform,
-        const char     *vs_template_override,
         const char     *fs_template_override,
         const char     *surface_function_override
     ) const
@@ -193,9 +153,6 @@ namespace hgl::graph
         key.SetPlatform(platform);
 
         // 2. 获取模板文件路径（支持覆盖）
-        std::string vs_path = (vs_template_override && vs_template_override[0])
-            ? shader_lib_path_ + "/" + vs_template_override
-            : GetCompositorVSPath(surface, pass);
         std::string fs_path = (fs_template_override && fs_template_override[0])
             ? shader_lib_path_ + "/" + fs_template_override
             : GetCompositorFSPath(surface, blend, pass);
@@ -203,15 +160,7 @@ namespace hgl::graph
             ? surface_function_override
             : GetSurfaceFunctionPath(surface);
 
-        // 3. 读取 VS 模板
-        std::string vs_source;
-        if (!ReadFile(vs_path, vs_source, result.error_message))
-        {
-            result.success = false;
-            return result;
-        }
-
-        // 4. 读取 FS 模板
+        // 3. 读取 FS 模板
         std::string fs_source;
         if (!ReadFile(fs_path, fs_source, result.error_message))
         {
@@ -219,51 +168,10 @@ namespace hgl::graph
             return result;
         }
 
-        // 5. 注入 #define
-        vs_source = InjectDefines(vs_source, key);
+        // 4. 注入 #define
         fs_source = InjectDefines(fs_source, key);
 
-        // 6. 替换 FS 中的 SURFACE_FUNCTION_FILE
-        fs_source = ReplaceSurfaceInclude(fs_source, surface_rel);
-
-        result.vertex_glsl   = std::move(vs_source);
-        result.fragment_glsl = std::move(fs_source);
-        result.success       = true;
-        return result;
-    }
-
-    CompositorAssembler::AssembleFragmentResult CompositorAssembler::AssembleFragment(
-        SurfaceType     surface,
-        BlendMode       blend,
-        PassType        pass,
-        QualityTier     tier,
-        PlatformBackend platform,
-        const char     *fs_template_override,
-        const char     *surface_function_override
-    ) const
-    {
-        AssembleFragmentResult result{};
-
-        NewShaderPermutationKey key;
-        key.SetSurfaceType(surface);
-        key.SetQualityTier(tier);
-        key.SetPlatform(platform);
-
-        std::string fs_path = (fs_template_override && fs_template_override[0])
-            ? shader_lib_path_ + "/" + fs_template_override
-            : GetCompositorFSPath(surface, blend, pass);
-        std::string surface_rel = (surface_function_override && surface_function_override[0])
-            ? surface_function_override
-            : GetSurfaceFunctionPath(surface);
-
-        std::string fs_source;
-        if (!ReadFile(fs_path, fs_source, result.error_message))
-        {
-            result.success = false;
-            return result;
-        }
-
-        fs_source = InjectDefines(fs_source, key);
+        // 5. 替换 FS 中的 SURFACE_FUNCTION_FILE
         fs_source = ReplaceSurfaceInclude(fs_source, surface_rel);
 
         result.fragment_glsl = std::move(fs_source);

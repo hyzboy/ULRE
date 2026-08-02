@@ -45,7 +45,7 @@ static ShaderProgramBuildSpec *CreateText2DImpl(const contract::PhysicalDevicePr
     p.shader_stage_flag_bit &= ~(uint32_t)ShaderStage::Geometry;
 
     const VkFormat position_format = ResolveMaterialPositionFormat(p.geometry_vertex_format, VK_FORMAT_R32G32_SINT);
-    auto preamble = build2d::Build2DPreamble(p, true, position_format);
+    auto preamble = build2d::Build2DFragmentPreamble(p, true);
 
     std::vector<FixedVertexEntry> vertices;
     build2d::PushBaseVertexEntries(vertices, p, position_format);

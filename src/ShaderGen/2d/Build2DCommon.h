@@ -2,7 +2,7 @@
 
 /// Build2DCommon.h — 2D 材质转换公共辅助
 ///
-/// 提供 Build2DPreamble、DEF 构建等工具，
+/// 提供 2D FS preamble、DEF 构建等工具，
 /// 供各 M_Xxx2D.cpp 工厂函数使用。
 /// GLSL 代码已移至 ShaderLibrary/2d/ 目录下的文件。
 
@@ -59,31 +59,11 @@ struct Material2DBuildParams
 
 namespace build2d{
 
-// ─────────────────────────────────────────────────────────────
-// GLSL type string from VkFormat
-// ─────────────────────────────────────────────────────────────
-
-inline const char *GLSLInputType(const VkFormat fmt)
-{
-    switch (fmt)
-    {
-    case VK_FORMAT_R32G32_SINT:             return "ivec2";
-    case VK_FORMAT_R32G32_SFLOAT:           return "vec2";
-    case VK_FORMAT_R32G32B32_SFLOAT:        return "vec3";
-    case VK_FORMAT_R32G32B32A32_SFLOAT:     return "vec4";
-    default:                                return "vec2";
-    }
-}
-
-// ─────────────────────────────────────────────────────────────
-// Descriptor layout macros for fixed descriptor set plan.
-// ─────────────────────────────────────────────────────────────
-
-inline std::string BuildDescriptorDefines(
+inline std::string Build2DFragmentPreamble(
     const Material2DBuildParams &p,
     bool has_texture)
 {
-    std::string defs;
+    std::string defs = "#version 450\n\n";
     const bool has_ssbo = p.material_definition && !p.material_definition->ssbo_slot_decls.empty();
     const int tex_binding = has_ssbo ? 3 : 0;
 
@@ -117,39 +97,8 @@ inline std::string BuildDescriptorDefines(
         defs += "#define MI_TEXTURE_LAYER_ROWS_BINDING 2\n";
     }
 
+    defs += "\n";
     return defs;
-}
-
-// ─────────────────────────────────────────────────────────────
-// Shader preamble builder
-// ─────────────────────────────────────────────────────────────
-
-inline std::string Build2DPreamble(const Material2DBuildParams &p, bool has_texture, VkFormat position_format_override = VK_FORMAT_UNDEFINED)
-{
-    std::string pr = "#version 450\n\n";
-    pr += BuildDescriptorDefines(p, has_texture);
-
-    const VkFormat position_format = (position_format_override!=VK_FORMAT_UNDEFINED)
-                                   ? position_format_override
-                                   : ResolveMaterialPositionFormat(p.geometry_vertex_format, VK_FORMAT_R32G32_SFLOAT);
-
-    pr += "#define POSITION_FORMAT ";
-    pr += GLSLInputType(position_format);
-    pr += "\n";
-
-    switch(p.coordinate_system)
-    {
-        case CoordinateSystem2D::NDC:       pr += "#define COORD_NDC\n"; break;
-        case CoordinateSystem2D::ZeroToOne: pr += "#define COORD_ZEROTOONE\n"; break;
-        case CoordinateSystem2D::Ortho:     pr += "#define COORD_ORTHO\n"; break;
-    }
-
-    if(p.local_to_world) pr += "#define HAS_L2W\n";
-    if(p.material_definition && !p.material_definition->ssbo_slot_decls.empty())
-        pr += "#define HAS_MI\n";
-
-    pr += "\n";
-    return pr;
 }
 
 // ─────────────────────────────────────────────────────────────

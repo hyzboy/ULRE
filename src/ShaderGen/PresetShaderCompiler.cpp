@@ -1,5 +1,6 @@
 #include <hgl/shadergen/PresetShaderCompiler.h>
 #include "GLSLCompiler.h"
+#include "common/VertexShaderAssembler.h"
 
 // Vulkan shader stage bits for CompileShader()
 #ifndef VK_SHADER_STAGE_VERTEX_BIT
@@ -11,6 +12,80 @@
 
 namespace hgl::graph
 {
+    namespace
+    {
+        using namespace hgl::graph::mtl;
+
+        static std::string BuildPresetSkyVertexShader()
+        {
+            return
+                "#version 450\n\n"
+                "#include \"common/descriptor_macros.glsl\"\n"
+                "#include \"common/scene_ubo.glsl\"\n"
+                "SCENE_CAMERA_UBO;\n"
+                "#include \"common/l2w_ssbo.glsl\"\n"
+                "L2W_SSBO;\n"
+                "#include \"common/instance_rows_ssbo.glsl\"\n"
+                "L2W_INDEX_ROWS_SSBO;\n\n"
+                "#include \"vertex/s1_input_vec3.glsl\"\n"
+                "#include \"vertex/s2_passthrough3d.glsl\"\n"
+                "#include \"vertex/helpers/orient_world.glsl\"\n\n"
+                "layout(location=0) out vec3 fragDirection;\n\n"
+                "void main()\n"
+                "{\n"
+                "    vec4 local_pos = GetLocalPos();\n"
+                "    vec4 world_pos = GetL2W() * local_pos;\n"
+                "    fragDirection = normalize(Position);\n"
+                "    gl_Position = camera.vp * world_pos;\n"
+                "}\n";
+        }
+
+        static std::string BuildPresetVertexShader(const SurfaceType surface)
+        {
+            if (surface == SurfaceType::Sky)
+                return BuildPresetSkyVertexShader();
+
+            VertexShaderNodeConfig node_cfg = MakeDefault3DNodeConfig();
+            VertexVaryingConfig varying_cfg;
+            std::string extra_attrs;
+
+            switch (surface)
+            {
+            case SurfaceType::Standard:
+            case SurfaceType::Skin:
+            case SurfaceType::Hair:
+            case SurfaceType::Cloth:
+            case SurfaceType::Eye:
+            case SurfaceType::Foliage:
+            case SurfaceType::ClearCoat:
+            case SurfaceType::Water:
+                varying_cfg.emit_data_index_id = true;
+                varying_cfg.emit_texture_layer_id = true;
+                varying_cfg.texture_layer_id_uses_data_index = true;
+                varying_cfg.emit_world_pos = true;
+                varying_cfg.emit_world_normal = true;
+                varying_cfg.emit_uv0 = true;
+                extra_attrs =
+                    "layout(location=1) in vec3 Normal;\n"
+                    "layout(location=2) in vec2 TexCoord;\n";
+                break;
+            case SurfaceType::Unlit:
+            default:
+                varying_cfg.emit_data_index_id = true;
+                varying_cfg.emit_texture_layer_id = true;
+                varying_cfg.texture_layer_id_uses_data_index = true;
+                break;
+            }
+
+            return GenerateVertexShader(
+                node_cfg,
+                varying_cfg,
+                VK_FORMAT_R32G32B32_SFLOAT,
+                extra_attrs,
+                "ShaderLibrary");
+        }
+    }
+
     PresetShaderCompiler::PresetShaderCompiler(const CompositorAssembler &assembler)
         : assembler_(assembler)
     {}
@@ -39,8 +114,10 @@ namespace hgl::graph
             return result;
         }
 
+        const std::string vertex_glsl = BuildPresetVertexShader(preset.surface_type);
+
         // 2. 编译 VS
-        SPVData *vs_spv = CompileShader(VK_SHADER_STAGE_VERTEX_BIT, assembled.vertex_glsl.c_str());
+        SPVData *vs_spv = CompileShader(VK_SHADER_STAGE_VERTEX_BIT, vertex_glsl.c_str());
         if (!vs_spv || !vs_spv->result)
         {
             result.error_message = "VS compile failed";

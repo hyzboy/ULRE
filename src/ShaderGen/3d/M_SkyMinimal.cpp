@@ -32,6 +32,30 @@ namespace
         return true;
     }();
 
+    static std::string BuildSkyMinimalVertexShader()
+    {
+        return
+            "#version 450\n\n"
+            "#include \"common/descriptor_macros.glsl\"\n"
+            "#include \"common/scene_ubo.glsl\"\n"
+            "SCENE_CAMERA_UBO;\n"
+            "#include \"common/l2w_ssbo.glsl\"\n"
+            "L2W_SSBO;\n"
+            "#include \"common/instance_rows_ssbo.glsl\"\n"
+            "L2W_INDEX_ROWS_SSBO;\n\n"
+            "#include \"vertex/s1_input_vec3.glsl\"\n"
+            "#include \"vertex/s2_passthrough3d.glsl\"\n"
+            "#include \"vertex/helpers/orient_world.glsl\"\n\n"
+            "layout(location=0) out vec3 fragDirection;\n\n"
+            "void main()\n"
+            "{\n"
+            "    vec4 local_pos = GetLocalPos();\n"
+            "    vec4 world_pos = GetL2W() * local_pos;\n"
+            "    fragDirection = normalize(Position);\n"
+            "    gl_Position = camera.vp * world_pos;\n"
+            "}\n";
+    }
+
 }//namespace
 
 static ShaderProgramBuildSpec *CreateSkyMinimalImpl(const contract::PhysicalDeviceProfileLite *profile, const CompositorMaterialBuildConfig &bc, const MaterialDefinition &definition)
@@ -64,32 +88,30 @@ static ShaderProgramBuildSpec *CreateSkyMinimalImpl(const contract::PhysicalDevi
     };
 
     CompositorAssembler assembler("ShaderLibrary");
-
-    // NOTE: SkyMinimal uses a special VS (fragDirection varying), not standard PCG config.
-    // Full PCG migration deferred. Using template-based Assemble() path.
-    auto result = assembler.Assemble(
+    auto fs_result = assembler.Assemble(
         SurfaceType::Sky,
         BlendMode::Opaque,
         PassType::ForwardOpaque,
         QualityTier::Medium,
         PlatformBackend::PC,
-        "compositor/main_forward_sky.vert.glsl",
         "compositor/main_forward_sky.frag.glsl",
         "surface/sky_minimal_surface.glsl"
     );
 
-    if (!result.success)
+    if (!fs_result.success)
     {
         GLogError("[SkyMinimal] CompositorAssembler failed: %s",
-                  result.error_message.c_str());
+                  fs_result.error_message.c_str());
         return nullptr;
     }
+
+    const std::string vs_glsl = BuildSkyMinimalVertexShader();
 
     ShaderProgramBuildSpec *mci = CompileCompositorMaterial(
         profile,
         dynamic_def,
-        result.vertex_glsl,
-        result.fragment_glsl,
+        vs_glsl,
+        fs_result.fragment_glsl,
         bc);
 
     if (!mci)
