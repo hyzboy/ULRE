@@ -128,9 +128,9 @@ constexpr const char *BUILTIN_MTL_DEF_ERROR_CHECKER     = "builtin/error_checker
 constexpr const char *BUILTIN_MTL_DEF_TEXT              = "builtin/text";
 constexpr const char *BUILTIN_MTL_DEF_SKY               = "builtin/sky";
 
-inline const char *GetFallbackMaterialDefinitionID(const bool is_2d = false)
+inline const char *GetFallbackMaterialDefinitionID(const bool use_2d_fallback = false)
 {
-    return is_2d ? BUILTIN_MTL_DEF_FALLBACK_2D : BUILTIN_MTL_DEF_FALLBACK_3D;
+    return use_2d_fallback ? BUILTIN_MTL_DEF_FALLBACK_2D : BUILTIN_MTL_DEF_FALLBACK_3D;
 }
 
 bool ShouldUse2DFallbackMaterial(const MaterialDefinitionBuildRequest &request);
