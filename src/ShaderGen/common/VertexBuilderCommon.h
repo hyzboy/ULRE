@@ -30,6 +30,14 @@ struct VertexBuildInput
     uint32 semantic_decl_count = 0;
 };
 
+struct LuminanceVertexBuildResult
+{
+    std::vector<FixedVertexEntry> entries;
+    VkFormat position_format = VK_FORMAT_UNDEFINED;
+    VkFormat luminance_format = VK_FORMAT_UNDEFINED;
+    bool use_vec2_position = false;
+};
+
 inline VkFormat ResolveVertexFormat(const GeometryVertexFormat *geometry_vertex_format,
                                     const VertexSemanticDecl &decl)
 {
@@ -62,6 +70,36 @@ inline std::vector<FixedVertexEntry> BuildVertexEntries(const VertexBuildInput &
     std::vector<FixedVertexEntry> entries;
     BuildVertexEntries(entries, input);
     return entries;
+}
+
+inline void AppendTransformIDVertexEntry(std::vector<FixedVertexEntry> &out)
+{
+    out.push_back({ Assign::TransformID::VAB_FMT, Assign::TransformID::VIS_SEMANTIC });
+}
+
+inline LuminanceVertexBuildResult BuildLuminanceVertexEntries(
+    const GeometryVertexFormat *geometry_vertex_format,
+    const VkFormat position_fallback = VK_FORMAT_R32G32B32_SFLOAT,
+    const VkFormat luminance_fallback = VK_FORMAT_R32_SFLOAT)
+{
+    LuminanceVertexBuildResult result;
+    result.position_format = ResolveMaterialPositionFormat(geometry_vertex_format, position_fallback);
+    result.luminance_format = ResolveMaterialVertexSemanticFormat(geometry_vertex_format, VertexSemantic::Luminance, luminance_fallback);
+    result.use_vec2_position = result.position_format == VK_FORMAT_R32G32_SFLOAT;
+
+    const VertexSemanticDecl decls[] = {
+        { VertexSemantic::Position,  result.position_format,  true,  false },
+        { VertexSemantic::Luminance, result.luminance_format, true,  false },
+    };
+    const VertexBuildInput input {
+        PrimitiveType::Triangles,
+        VertexTransformIntent::LocalToWorld,
+        geometry_vertex_format,
+        decls,
+        2
+    };
+    result.entries = BuildVertexEntries(input);
+    return result;
 }
 
 } // namespace hgl::graph::mtl::vertex_builder_common

@@ -57,7 +57,7 @@ static ShaderProgramBuildSpec *CreateVertexPattleColor3DImpl(const contract::Phy
         2
     };
     std::vector<FixedVertexEntry> vertex_pattle_color_3d_vertex = vertex_builder_common::BuildVertexEntries(vertex_input);
-    vertex_pattle_color_3d_vertex.push_back({ Assign::TransformID::VAB_FMT,  Assign::TransformID::VIS_SEMANTIC });
+    vertex_builder_common::AppendTransformIDVertexEntry(vertex_pattle_color_3d_vertex);
 
     FixedMaterialDef dynamic_def {
         "VertexPattleColor3D",

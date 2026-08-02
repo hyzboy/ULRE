@@ -4,6 +4,7 @@
 #include<hgl/common/RenderAssignDef.h>
 #include<hgl/log/Log.h>
 #include<vector>
+#include "../common/VertexBuilderCommon.h"
 #include "DefinitionDescriptorBuilder3D.h"
 
 namespace hgl::graph::mtl{
@@ -32,21 +33,14 @@ namespace
 static ShaderProgramBuildSpec *CreateVertexLuminance3DImpl(const contract::PhysicalDeviceProfileLite *profile, CompositorMaterialBuildConfig bc, const MaterialDefinition &definition)
 {
     std::vector<FixedDescriptorEntry> dynamic_descriptors = Build3DDescriptorsFromDefinition(definition);
-
-    const VkFormat position_format = ResolveMaterialPositionFormat(bc.geometry_vertex_format, VK_FORMAT_R32G32B32_SFLOAT);
-    const bool use_vec2_position = position_format == VK_FORMAT_R32G32_SFLOAT;
-    const VkFormat luminance_format = ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Luminance, VK_FORMAT_R32_SFLOAT);
-
-    FixedVertexEntry vertex_luminance_3d_vertex[] = {
-        { position_format,   VertexSemantic::Position },
-        { luminance_format,  VertexSemantic::Luminance },
-    };
+    const vertex_builder_common::LuminanceVertexBuildResult vertex_result =
+        vertex_builder_common::BuildLuminanceVertexEntries(bc.geometry_vertex_format);
 
     FixedMaterialDef dynamic_def {
         "VertexLuminance3D",
         PrimitiveType::Triangles,
-        vertex_luminance_3d_vertex,
-        uint32_t(sizeof(vertex_luminance_3d_vertex) / sizeof(vertex_luminance_3d_vertex[0])),
+        vertex_result.entries.data(),
+        uint32_t(vertex_result.entries.size()),
         dynamic_descriptors.data(),
         uint32_t(dynamic_descriptors.size()),
         VERTEX_LUMINANCE_3D_MI_CODES,
@@ -55,7 +49,7 @@ static ShaderProgramBuildSpec *CreateVertexLuminance3DImpl(const contract::Physi
 
     CompositorAssembler assembler("ShaderLibrary");
 
-    const char *vs_template = use_vec2_position
+    const char *vs_template = vertex_result.use_vec2_position
         ? "compositor/main_forward_unlit_luminance_2d.vert.glsl"
         : "compositor/main_forward_unlit_luminance.vert.glsl";
 
