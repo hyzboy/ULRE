@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "../common/MFSkyLight.h"
+#include "DefinitionDescriptorBuilder3D.h"
 
 namespace hgl::graph::mtl{
 namespace
@@ -33,28 +34,15 @@ namespace
     )";
     constexpr const uint32_t mi_bytes = sizeof(uint32_t) + sizeof(float) * 2;
 
-    constexpr FixedDescriptorEntry PBR_COLOR_3D_DESCRIPTORS[] = {
-        { DescriptorSetType::Scene,      DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo",        nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO},
-        { DescriptorSetType::Scene,      DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera",   "CameraInfo",          nullptr, DescriptorSemantic::CameraInfo, TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO},
-        { DescriptorSetType::Scene,      DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "sky",      "SkyInfo",             nullptr, DescriptorSemantic::SkyInfo, TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO},
-        { DescriptorSetType::Transform,  TransformDescriptorKind,uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w",      "LocalToWorldData",    nullptr, DescriptorSemantic::LocalToWorld, TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, GetDescriptorSemanticLayerByKind(TransformDescriptorKind) },
-        { DescriptorSetType::Transform,  DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w_index_rows", "LocalToWorldIndexRows", nullptr, DescriptorSemantic::LocalToWorldIndexTable, TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO},
-        { DescriptorSetType::Material,   MaterialInstanceDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl",      "MaterialInstanceData", nullptr, DescriptorSemantic::MaterialSSBOSlotData, TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::PBRSurface, GetDescriptorSemanticLayerByKind(MaterialInstanceDescriptorKind) },
-        { DescriptorSetType::Material,   DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl_data_index_rows", "DataIndexRows", nullptr, DescriptorSemantic::MaterialSSBOIndexTable, TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO},
-        { DescriptorSetType::Material,   DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl_texture_layer_rows", "TextureLayerRows", nullptr, DescriptorSemantic::MaterialTextureLayerTable, TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO},
-    };
-
 }//namespace
 
-static ShaderProgramBuildSpec *CreatePBRColor3DImpl(const contract::PhysicalDeviceProfileLite *profile, CompositorMaterialBuildConfig bc)
+static ShaderProgramBuildSpec *CreatePBRColor3DImpl(const contract::PhysicalDeviceProfileLite *profile, CompositorMaterialBuildConfig bc, const MaterialDefinition &definition)
 {
     bc.material_instance = true;
 
     SkyLightAmbientModel ambient = bc.sky_ambient_model;
 
-    std::vector<FixedDescriptorEntry> dynamic_descriptors(
-        PBR_COLOR_3D_DESCRIPTORS,
-        PBR_COLOR_3D_DESCRIPTORS + uint32_t(sizeof(PBR_COLOR_3D_DESCRIPTORS) / sizeof(PBR_COLOR_3D_DESCRIPTORS[0])));
+    std::vector<FixedDescriptorEntry> dynamic_descriptors = Build3DDescriptorsFromDefinition(definition);
 
     std::vector<const char *> unused_resources;
     ApplySkyLightResourceInjection(
@@ -114,6 +102,6 @@ static ShaderProgramBuildSpec *CreatePBRColor3DImpl(const contract::PhysicalDevi
 
 ShaderProgramBuildSpec *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {
-    return CreatePBRColor3DImpl(profile, ToCompositorBuildConfig3D(request, definition, true));
+    return CreatePBRColor3DImpl(profile, ToCompositorBuildConfig3D(request, definition, true), definition);
 }
 }//namespace hgl::graph::mtl

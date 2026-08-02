@@ -3,6 +3,8 @@
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/common/RenderAssignDef.h>
 #include<hgl/log/Log.h>
+#include<vector>
+#include "DefinitionDescriptorBuilder3D.h"
 
 namespace hgl::graph::mtl{
 namespace
@@ -28,18 +30,14 @@ namespace
         return true;
     }();
 
-    constexpr FixedDescriptorEntry SKY_MINIMAL_DESCRIPTORS[] = {
-        { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO},
-        { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera", "CameraInfo", nullptr, DescriptorSemantic::CameraInfo, TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO},
-        { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "sky", "SkyInfo", nullptr, DescriptorSemantic::SkyInfo, TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO},
-        { DescriptorSetType::Transform, TransformDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr, DescriptorSemantic::LocalToWorld, TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, GetDescriptorSemanticLayerByKind(TransformDescriptorKind) },
-        { DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w_index_rows", "LocalToWorldIndexRows", nullptr, DescriptorSemantic::LocalToWorldIndexTable, TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO},
-    };
-
 }//namespace
 
-static ShaderProgramBuildSpec *CreateSkyMinimalImpl(const contract::PhysicalDeviceProfileLite *profile, const CompositorMaterialBuildConfig &bc)
+static ShaderProgramBuildSpec *CreateSkyMinimalImpl(const contract::PhysicalDeviceProfileLite *profile, const CompositorMaterialBuildConfig &bc, const MaterialDefinition &definition)
 {
+    Build3DDescriptorOptions options{};
+    options.sky_stage_flags = uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT);
+    std::vector<FixedDescriptorEntry> dynamic_descriptors = Build3DDescriptorsFromDefinition(definition, options);
+
     FixedVertexEntry sky_minimal_vertex[] = {
         { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
     };
@@ -49,8 +47,8 @@ static ShaderProgramBuildSpec *CreateSkyMinimalImpl(const contract::PhysicalDevi
         PrimitiveType::Triangles,
         sky_minimal_vertex,
         uint32_t(sizeof(sky_minimal_vertex) / sizeof(sky_minimal_vertex[0])),
-        SKY_MINIMAL_DESCRIPTORS,
-        uint32_t(sizeof(SKY_MINIMAL_DESCRIPTORS) / sizeof(SKY_MINIMAL_DESCRIPTORS[0])),
+        dynamic_descriptors.data(),
+        uint32_t(dynamic_descriptors.size()),
         nullptr,
         0,
     };
@@ -89,6 +87,6 @@ static ShaderProgramBuildSpec *CreateSkyMinimalImpl(const contract::PhysicalDevi
 
 ShaderProgramBuildSpec *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {
-    return CreateSkyMinimalImpl(profile, ToCompositorBuildConfig3D(request, definition));
+    return CreateSkyMinimalImpl(profile, ToCompositorBuildConfig3D(request, definition), definition);
 }
 }//namespace hgl::graph::mtl

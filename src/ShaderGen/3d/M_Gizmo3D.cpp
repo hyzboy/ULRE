@@ -3,8 +3,8 @@
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/common/RenderAssignDef.h>
 #include<hgl/log/Log.h>
-#include<string>
-#include "SharedDescriptors3D.h"
+#include<vector>
+#include "DefinitionDescriptorBuilder3D.h"
 
 namespace hgl::graph::mtl
 {
@@ -34,7 +34,7 @@ namespace
 
 }
 
-static ShaderProgramBuildSpec *CreateGizmo3DImpl(const contract::PhysicalDeviceProfileLite *profile, CompositorMaterialBuildConfig bc)
+static ShaderProgramBuildSpec *CreateGizmo3DImpl(const contract::PhysicalDeviceProfileLite *profile, CompositorMaterialBuildConfig bc, const MaterialDefinition &definition)
 {
     CompositorAssembler assembler("ShaderLibrary");
 
@@ -57,6 +57,7 @@ static ShaderProgramBuildSpec *CreateGizmo3DImpl(const contract::PhysicalDeviceP
     }
 
     bc.material_instance = true;
+    std::vector<FixedDescriptorEntry> dynamic_descriptors = Build3DDescriptorsFromDefinition(definition);
 
     FixedVertexEntry gizmo_3d_vertex[] = {
         { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
@@ -68,8 +69,8 @@ static ShaderProgramBuildSpec *CreateGizmo3DImpl(const contract::PhysicalDeviceP
         PrimitiveType::Triangles,
         gizmo_3d_vertex,
         uint32_t(sizeof(gizmo_3d_vertex) / sizeof(gizmo_3d_vertex[0])),
-        kBase3DWithMIDescriptors,
-        kBase3DWithMIDescriptorCount,
+        dynamic_descriptors.data(),
+        uint32_t(dynamic_descriptors.size()),
         GIZMO_3D_MI_GLSL,
         GIZMO_3D_MI_BYTES,
     };
@@ -88,6 +89,6 @@ static ShaderProgramBuildSpec *CreateGizmo3DImpl(const contract::PhysicalDeviceP
 
 ShaderProgramBuildSpec *CreateGizmo3D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {
-    return CreateGizmo3DImpl(profile, ToCompositorBuildConfig3D(request, definition));
+    return CreateGizmo3DImpl(profile, ToCompositorBuildConfig3D(request, definition), definition);
 }
 }//namespace hgl::graph::mtl

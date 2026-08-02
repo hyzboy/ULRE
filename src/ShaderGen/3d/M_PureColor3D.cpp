@@ -3,8 +3,8 @@
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/common/RenderAssignDef.h>
 #include<hgl/log/Log.h>
-#include<string>
-#include "SharedDescriptors3D.h"
+#include<vector>
+#include "DefinitionDescriptorBuilder3D.h"
 
 namespace hgl::graph::mtl{
 namespace
@@ -47,8 +47,10 @@ namespace
 
 }
 
-static ShaderProgramBuildSpec *CreatePureColor3DImpl(const contract::PhysicalDeviceProfileLite *profile, const CompositorMaterialBuildConfig &bc)
+static ShaderProgramBuildSpec *CreatePureColor3DImpl(const contract::PhysicalDeviceProfileLite *profile, const CompositorMaterialBuildConfig &bc, const MaterialDefinition &definition)
 {
+    std::vector<FixedDescriptorEntry> dynamic_descriptors = Build3DDescriptorsFromDefinition(definition);
+
     FixedVertexEntry pure_color_3d_vertex[] = {
         { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
     };
@@ -58,8 +60,8 @@ static ShaderProgramBuildSpec *CreatePureColor3DImpl(const contract::PhysicalDev
         PrimitiveType::Triangles,
         pure_color_3d_vertex,
         uint32_t(sizeof(pure_color_3d_vertex) / sizeof(pure_color_3d_vertex[0])),
-        kBase3DWithMIDescriptors,
-        kBase3DWithMIDescriptorCount,
+        dynamic_descriptors.data(),
+        uint32_t(dynamic_descriptors.size()),
         pure_color_3d_mi_codes,
         pure_color_3d_mi_bytes,
     };
@@ -96,6 +98,6 @@ static ShaderProgramBuildSpec *CreatePureColor3DImpl(const contract::PhysicalDev
 ShaderProgramBuildSpec *CreatePureColor3D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {
     CompositorMaterialBuildConfig bc = ToCompositorBuildConfig3D(request, definition, true);
-    return CreatePureColor3DImpl(profile, bc);
+    return CreatePureColor3DImpl(profile, bc, definition);
 }
 }//namespace hgl::graph::mtl

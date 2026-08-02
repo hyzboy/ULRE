@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "../common/MFSkyLight.h"
-#include "StandardSharedSpec.h"
+#include "DefinitionDescriptorBuilder3D.h"
 
 namespace hgl::graph::mtl{
 namespace
@@ -42,13 +42,13 @@ namespace
 
 }
 
-static ShaderProgramBuildSpec *CreateStandardImpl(const contract::PhysicalDeviceProfileLite *profile, CompositorMaterialBuildConfig bc)
+static ShaderProgramBuildSpec *CreateStandardImpl(const contract::PhysicalDeviceProfileLite *profile, CompositorMaterialBuildConfig bc, const MaterialDefinition &definition)
 {
     bc.material_instance = true;
 
     SkyLightAmbientModel ambient = bc.sky_ambient_model;
 
-    std::vector<FixedDescriptorEntry> dynamic_descriptors = BuildStandardDescriptors("sampler2D");
+    std::vector<FixedDescriptorEntry> dynamic_descriptors = Build3DDescriptorsFromDefinition(definition);
 
     std::vector<const char *> unused_resources;
     ApplySkyLightResourceInjection(
@@ -107,6 +107,6 @@ static ShaderProgramBuildSpec *CreateStandardImpl(const contract::PhysicalDevice
 
 ShaderProgramBuildSpec *CreateStandard(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {
-    return CreateStandardImpl(profile, ToCompositorBuildConfig3D(request, definition, true));
+    return CreateStandardImpl(profile, ToCompositorBuildConfig3D(request, definition, true), definition);
 }
 }//namespace hgl::graph::mtl

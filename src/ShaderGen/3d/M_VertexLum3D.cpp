@@ -3,8 +3,8 @@
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/common/RenderAssignDef.h>
 #include<hgl/log/Log.h>
-#include<string>
-#include "SharedDescriptors3D.h"
+#include<vector>
+#include "DefinitionDescriptorBuilder3D.h"
 
 namespace hgl::graph::mtl{
 namespace
@@ -29,9 +29,10 @@ namespace
 
 }
 
-static ShaderProgramBuildSpec *CreateVertexLuminance3DImpl(const contract::PhysicalDeviceProfileLite *profile, CompositorMaterialBuildConfig bc)
+static ShaderProgramBuildSpec *CreateVertexLuminance3DImpl(const contract::PhysicalDeviceProfileLite *profile, CompositorMaterialBuildConfig bc, const MaterialDefinition &definition)
 {
     bc.material_instance = true;
+    std::vector<FixedDescriptorEntry> dynamic_descriptors = Build3DDescriptorsFromDefinition(definition);
 
     const VkFormat position_format = ResolveMaterialPositionFormat(bc.geometry_vertex_format, VK_FORMAT_R32G32B32_SFLOAT);
     const bool use_vec2_position = position_format == VK_FORMAT_R32G32_SFLOAT;
@@ -47,8 +48,8 @@ static ShaderProgramBuildSpec *CreateVertexLuminance3DImpl(const contract::Physi
         PrimitiveType::Triangles,
         vertex_luminance_3d_vertex,
         uint32_t(sizeof(vertex_luminance_3d_vertex) / sizeof(vertex_luminance_3d_vertex[0])),
-        kBase3DWithMIDescriptors,
-        kBase3DWithMIDescriptorCount,
+        dynamic_descriptors.data(),
+        uint32_t(dynamic_descriptors.size()),
         VERTEX_LUMINANCE_3D_MI_CODES,
         VERTEX_LUMINANCE_3D_MI_BYTES,
     };
@@ -91,6 +92,6 @@ static ShaderProgramBuildSpec *CreateVertexLuminance3DImpl(const contract::Physi
 
 ShaderProgramBuildSpec *CreateVertexLuminance3D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {
-    return CreateVertexLuminance3DImpl(profile, ToCompositorBuildConfig3D(request, definition));
+    return CreateVertexLuminance3DImpl(profile, ToCompositorBuildConfig3D(request, definition), definition);
 }
 }//namespace hgl::graph::mtl

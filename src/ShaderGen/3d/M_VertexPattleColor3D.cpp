@@ -15,6 +15,8 @@
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/common/RenderAssignDef.h>
 #include<hgl/log/Log.h>
+#include<vector>
+#include "DefinitionDescriptorBuilder3D.h"
 
 namespace hgl::graph::mtl{
 namespace
@@ -33,21 +35,14 @@ namespace
         return true;
     }();
 
-    constexpr FixedDescriptorEntry VERTEX_PATTLE_COLOR_3D_DESCRIPTORS[] = {
-        { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO},
-        { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera", "CameraInfo", nullptr, DescriptorSemantic::CameraInfo, TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO},
-        { DescriptorSetType::Transform, TransformDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr, DescriptorSemantic::LocalToWorld, TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, GetDescriptorSemanticLayerByKind(TransformDescriptorKind) },
-        { DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w_index_rows", "LocalToWorldIndexRows", nullptr, DescriptorSemantic::LocalToWorldIndexTable, TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO},
-        { DescriptorSetType::Material, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "color_pattle", "ColorPattle", nullptr, DescriptorSemantic::MaterialColorPalette, TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
-    };
-
 }//namespace
 
-static ShaderProgramBuildSpec *CreateVertexPattleColor3DImpl(const contract::PhysicalDeviceProfileLite *profile, CompositorMaterialBuildConfig bc)
+static ShaderProgramBuildSpec *CreateVertexPattleColor3DImpl(const contract::PhysicalDeviceProfileLite *profile, CompositorMaterialBuildConfig bc, const MaterialDefinition &definition)
 {
     static const ShaderBufferSource * const private_sbs_list[] = { &SBS_ColorPattle };
     bc.private_shader_buffer_sources = private_sbs_list;
     bc.private_shader_buffer_source_count = 1;
+    std::vector<FixedDescriptorEntry> dynamic_descriptors = Build3DDescriptorsFromDefinition(definition);
 
     FixedVertexEntry vertex_pattle_color_3d_vertex[] = {
         { ResolveMaterialVertexSemanticFormat(bc.geometry_vertex_format, VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT), VertexSemantic::Position },
@@ -60,8 +55,8 @@ static ShaderProgramBuildSpec *CreateVertexPattleColor3DImpl(const contract::Phy
         PrimitiveType::Triangles,
         vertex_pattle_color_3d_vertex,
         uint32_t(sizeof(vertex_pattle_color_3d_vertex) / sizeof(vertex_pattle_color_3d_vertex[0])),
-        VERTEX_PATTLE_COLOR_3D_DESCRIPTORS,
-        uint32_t(sizeof(VERTEX_PATTLE_COLOR_3D_DESCRIPTORS) / sizeof(VERTEX_PATTLE_COLOR_3D_DESCRIPTORS[0])),
+        dynamic_descriptors.data(),
+        uint32_t(dynamic_descriptors.size()),
         nullptr,
         0,
     };
@@ -100,6 +95,6 @@ static ShaderProgramBuildSpec *CreateVertexPattleColor3DImpl(const contract::Phy
 
 ShaderProgramBuildSpec *CreateVertexPattleColor3D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
 {
-    return CreateVertexPattleColor3DImpl(profile, ToCompositorBuildConfig3D(request, definition));
+    return CreateVertexPattleColor3DImpl(profile, ToCompositorBuildConfig3D(request, definition), definition);
 }
 }//namespace hgl::graph::mtl
