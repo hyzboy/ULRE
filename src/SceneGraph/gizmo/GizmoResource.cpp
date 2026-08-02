@@ -139,18 +139,17 @@ namespace hgl::graph
                     recipe = mtl::MaterialRecipe{};
                     recipe.recipe_name = "GizmoColor_" + std::to_string(c);
                     recipe.mtl_def_id = "PureColor3D";
-                    recipe.structs.clear();
                     recipe.textures.clear();
                     recipe.ssbo_assets.clear();
 
-                    mtl::RecipeStructBinding struct_binding{};
-                    struct_binding.ssbo_slot = req.ssbo_slot;
-                    struct_binding.ssbo_type = req.ssbo_type;
-                    struct_binding.ssbo_id = req.ssbo_id;
-                    struct_binding.ssbo_element_index = c;
-                    struct_binding.use_ssbo_element_index = true;
-                    struct_binding.shared_across_instances = true;
-                    recipe.structs.emplace_back(std::move(struct_binding));
+                    mtl::UpsertRecipeSSBOAssetBinding(recipe,
+                                                      std::string(),
+                                                      req.ssbo_type,
+                                                      req.ssbo_id,
+                                                      req.ssbo_slot,
+                                                      c,
+                                                      true,
+                                                      true);
                 }
             }
 

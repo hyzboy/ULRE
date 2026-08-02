@@ -437,19 +437,6 @@ void NormalizeRecipe(MaterialRecipe &recipe)
     if (has_definition)
         ApplyBaseMaterialInfoDefaults(recipe, bmi, false);
 
-    // Legacy bridge: if ssbo_assets is empty, derive initial entries from recipe.structs
-    // so that RenderDescriptorBindingSystem can find SSBO resources by name.
-    if (recipe.ssbo_assets.empty())
-    {
-        for (const auto &binding : recipe.structs)
-        {
-            std::string ssbo_name = "mtl";
-            if (has_definition && binding.ssbo_slot < bmi.ssbo_slot_decls.size() && !bmi.ssbo_slot_decls[binding.ssbo_slot].name.empty())
-                ssbo_name = bmi.ssbo_slot_decls[binding.ssbo_slot].name;
-
-            UpsertRecipeSSBOAssetBinding(recipe, ssbo_name, binding);
-        }
-    }
 }
 
 }//namespace hgl::graph::mtl

@@ -37,7 +37,6 @@ namespace hgl::ecs
             recipe.alpha_cutoff = 0.5f;
             recipe.pipeline_preset = hgl::graph::PipelinePreset::Auto;
             recipe.textures.clear();
-            recipe.structs.clear();
             recipe.ssbo_assets.clear();
         }
 
@@ -102,37 +101,6 @@ namespace hgl::ecs
             binding.use_direct_value = use_direct_value;
             binding.required = required;
             recipe.textures.emplace_back(std::move(binding));
-        }
-
-        void UpsertRecipeStructBinding(hgl::graph::mtl::MaterialRecipe &recipe,
-                                       const uint32_t ssbo_slot,
-                                       hgl::graph::mtl::SSBOType ssbo_type,
-                                       const uint32_t ssbo_id,
-                                       const uint32_t ssbo_element_index,
-                                       const bool use_ssbo_element_index,
-                                       const bool shared_across_instances)
-        {
-            for (auto &binding : recipe.structs)
-            {
-                if (binding.ssbo_slot != ssbo_slot || binding.ssbo_type != ssbo_type)
-                    continue;
-
-                binding.ssbo_type = ssbo_type;
-                binding.ssbo_id = ssbo_id;
-                binding.ssbo_element_index = ssbo_element_index;
-                binding.use_ssbo_element_index = use_ssbo_element_index;
-                binding.shared_across_instances = shared_across_instances;
-                return;
-            }
-
-            hgl::graph::mtl::RecipeStructBinding binding{};
-            binding.ssbo_slot = ssbo_slot;
-            binding.ssbo_type = ssbo_type;
-            binding.ssbo_id = ssbo_id;
-            binding.ssbo_element_index = ssbo_element_index;
-            binding.use_ssbo_element_index = use_ssbo_element_index;
-            binding.shared_across_instances = shared_across_instances;
-            recipe.structs.emplace_back(std::move(binding));
         }
 
         void NormalizeRecipeWithBaseMaterialInfo(hgl::graph::mtl::MaterialRecipe &recipe)
@@ -393,13 +361,14 @@ namespace hgl::ecs
             if (!resource)
                 continue;
 
-            UpsertRecipeStructBinding(out_recipe,
-                                      static_cast<uint32_t>(i),
-                                      resource->ssbo_type,
-                                      resource->ssbo_id,
-                                      resource->ssbo_element_index,
-                                      resource->use_ssbo_element_index,
-                                      resource->shared_across_instances);
+            hgl::graph::mtl::UpsertRecipeSSBOAssetBinding(out_recipe,
+                                                          std::string(),
+                                                          resource->ssbo_type,
+                                                          resource->ssbo_id,
+                                                          static_cast<uint32_t>(i),
+                                                          resource->ssbo_element_index,
+                                                          resource->use_ssbo_element_index,
+                                                          resource->shared_across_instances);
         }
 
         if (material_program)
@@ -422,16 +391,6 @@ namespace hgl::ecs
                                                               named_resource->use_ssbo_element_index,
                                                               named_resource->shared_across_instances);
 
-                if (GetMaterialSSBOResourceBySlot(req.ssbo_slot))
-                    continue;
-
-                UpsertRecipeStructBinding(out_recipe,
-                                          req.ssbo_slot,
-                                          req.ssbo_type,
-                                          named_resource->ssbo_id,
-                                          named_resource->ssbo_element_index,
-                                          named_resource->use_ssbo_element_index,
-                                          named_resource->shared_across_instances);
             }
         }
 

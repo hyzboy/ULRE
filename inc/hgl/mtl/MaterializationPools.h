@@ -320,7 +320,7 @@ namespace hgl::graph::mtl
             return true;
         };
 
-        callbacks.resolve_struct = [&struct_pool](const RecipeStructBinding &input, ResolvedStructRef &output)
+        callbacks.resolve_struct = [&struct_pool](const RecipeSSBOAssetBinding &input, ResolvedStructRef &output)
         {
             StructPoolAllocation alloc{};
             if (!struct_pool.TryResolve(input.ssbo_type, input.ssbo_id, alloc))

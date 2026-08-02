@@ -49,7 +49,6 @@ namespace hgl::ecs
             recipe.alpha_cutoff = 0.5f;
             recipe.pipeline_preset = graph::PipelinePreset::Auto;
             recipe.textures.clear();
-            recipe.structs.clear();
             recipe.ssbo_assets.clear();
         }
 
@@ -306,11 +305,10 @@ namespace hgl::ecs
         EnsureMaterializationCallbacks();
 
         const uint64_t recipe_hash = graph::mtl::HashMaterialRecipe(recipe);
-        GLogInfo("[TexTrace] ResolveMaterialRecipe recipe=%s tex_count=%zu ssbo_asset_count=%zu struct_count=%zu hash=%llu",
+        GLogInfo("[TexTrace] ResolveMaterialRecipe recipe=%s tex_count=%zu ssbo_asset_count=%zu hash=%llu",
                  recipe.recipe_name.c_str(),
                  recipe.textures.size(),
                  recipe.ssbo_assets.size(),
-                 recipe.structs.size(),
                  static_cast<unsigned long long>(recipe_hash));
 
         auto cache_it = materialization_resolve_cache.find(recipe_hash);
