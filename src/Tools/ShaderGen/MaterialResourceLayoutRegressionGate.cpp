@@ -1,5 +1,6 @@
 #include <hgl/mtl/MaterialResourceLayout.h>
 #include <hgl/mtl/MaterialLibrary.h>
+#include <hgl/graph/glsl/GLSLCodeModule.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 
@@ -228,6 +229,66 @@ namespace
         result.passed = result.diagnostics.empty();
         return result;
     }
+
+    static GateResult RunGLSLCodeModuleRegistryCase()
+    {
+        GateResult result;
+        result.name = "G.glsl-code-module-registry";
+
+        const GLSLCodeModuleDefinition *header =
+            FindGLSLCodeModuleDefinition(GLSLCodeModuleID::SkyLightHeader);
+        const GLSLCodeModuleDefinition *simple =
+            FindGLSLCodeModuleDefinition(GLSLCodeModuleID::SkyLightSimple);
+        const GLSLCodeModuleDefinition *cubemap =
+            FindGLSLCodeModuleDefinition(GLSLCodeModuleID::SkyLightCubeMap);
+
+        if (!header || !header->glsl_code || !header->glsl_code[0])
+            result.diagnostics.emplace_back("SkyLightHeader module is not registered with GLSL code.");
+
+        if (!simple || !simple->glsl_code || !simple->glsl_code[0])
+            result.diagnostics.emplace_back("SkyLightSimple module is not registered with GLSL code.");
+        else
+        {
+            if (simple->ubo_requirement_count != 1
+             || !simple->ubo_requirements
+             || simple->ubo_requirements[0].semantic != UBODescriptorSemantic::SkyInfo)
+                result.diagnostics.emplace_back("SkyLightSimple must require exactly SkyInfo.");
+
+            if (simple->texture_requirement_count != 0)
+                result.diagnostics.emplace_back("SkyLightSimple must not require a cubemap texture.");
+
+            if (simple->code_module_requirement_count != 1
+             || !simple->code_module_requirements
+             || simple->code_module_requirements[0] != GLSLCodeModuleID::SkyLightHeader)
+                result.diagnostics.emplace_back("SkyLightSimple must depend on SkyLightHeader.");
+        }
+
+        if (!cubemap || !cubemap->glsl_code || !cubemap->glsl_code[0])
+            result.diagnostics.emplace_back("SkyLightCubeMap module is not registered with GLSL code.");
+        else
+        {
+            if (cubemap->ubo_requirement_count != 1
+             || !cubemap->ubo_requirements
+             || cubemap->ubo_requirements[0].semantic != UBODescriptorSemantic::SkyInfo)
+                result.diagnostics.emplace_back("SkyLightCubeMap must require exactly SkyInfo.");
+
+            if (cubemap->texture_requirement_count != 1
+             || !cubemap->texture_requirements
+             || cubemap->texture_requirements[0].semantic != DescriptorSemantic::SkyCubemapSampler
+             || cubemap->texture_requirements[0].slot != TextureSlot::Custom0
+             || !cubemap->texture_requirements[0].glsl_type
+             || std::string(cubemap->texture_requirements[0].glsl_type) != "samplerCube")
+                result.diagnostics.emplace_back("SkyLightCubeMap must require SkyCubemap samplerCube.");
+
+            if (cubemap->code_module_requirement_count != 1
+             || !cubemap->code_module_requirements
+             || cubemap->code_module_requirements[0] != GLSLCodeModuleID::SkyLightHeader)
+                result.diagnostics.emplace_back("SkyLightCubeMap must depend on SkyLightHeader.");
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
 }
 
 int main()
@@ -270,6 +331,7 @@ int main()
     results.push_back(RunBindlessEquivalenceCase());
     results.push_back(RunBuiltinRegistryCoverageCase());
     results.push_back(RunFallbackInferenceCase());
+    results.push_back(RunGLSLCodeModuleRegistryCase());
 
     bool all_passed = true;
     for (const auto &result : results)
