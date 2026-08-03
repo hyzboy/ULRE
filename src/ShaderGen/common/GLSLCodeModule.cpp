@@ -157,4 +157,28 @@ vec3 ULRE_F_Schlick(float VdotH, vec3 F0)
         const GLSLCodeModuleDefinition *definition = FindGLSLCodeModuleDefinition(id);
         return definition ? definition->name : "Unknown";
     }
+
+    uint64 GetGLSLCodeModuleDefinitionHash(const GLSLCodeModuleID id) noexcept
+    {
+        const GLSLCodeModuleDefinition *definition = FindGLSLCodeModuleDefinition(id);
+        if (!definition)
+            return 0;
+
+        uint64 hash = hgl::hash::FNV1aInit<uint64>();
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, definition->id);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, definition->kind);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, definition->priority);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, definition->flags);
+
+        for (uint32 i = 0; i < definition->semantic_requirement_count; ++i)
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, definition->semantic_requirements[i]);
+
+        for (uint32 i = 0; i < definition->semantic_provide_count; ++i)
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, definition->semantic_provides[i]);
+
+        for (uint32 i = 0; i < definition->code_module_requirement_count; ++i)
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, definition->code_module_requirements[i]);
+
+        return hash;
+    }
 }

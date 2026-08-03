@@ -91,6 +91,7 @@ namespace hgl::graph::mtl
     {
         ShaderStage stage = ShaderStage::Vertex;
         uint64 definition_hash = 0;
+        uint64 glsl_module_graph_hash = 0;
         uint64 compiler_hash = 0;
 
         ValueArray<ShaderStageInterfaceVariable> inputs;
@@ -118,6 +119,7 @@ namespace hgl::graph::mtl
             ShaderStageKey key;
             key.stage = stage;
             key.definition_hash = definition_hash;
+            key.glsl_module_graph_hash = glsl_module_graph_hash;
             key.interface_hash = GetInterfaceHash();
             key.resource_hash = GetResourceHash();
             key.compiler_hash = compiler_hash;
