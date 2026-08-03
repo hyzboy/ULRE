@@ -133,15 +133,8 @@ const ShaderModule *ShaderProgramManager::CreateShaderModule(const AnsiString &s
     if(!device)return(nullptr);
     if(sm_name.IsEmpty())return(nullptr);
 
-    const int bit_offset=GetBitOffset((uint32_t)sci->GetShaderStage());
-
-    if(bit_offset<0||bit_offset>VK_SHADER_STAGE_TYPE_COUNT)return(nullptr);
-
-    ShaderModule *sm;
-
-    ShaderModuleMapByName &sm_map=shader_module_by_name[bit_offset];
-
-    if(sm_map.Get(sm_name,sm))
+    ShaderModule *sm = shader_module_cache.FindName(sci->GetShaderStage(), sm_name);
+    if(sm)
         return sm;
 
     sm=device->CreateShaderModule((VkShaderStageFlagBits)sci->GetShaderStage(),sci->GetSPVData(),sci->GetSPVSize());
@@ -149,7 +142,7 @@ const ShaderModule *ShaderProgramManager::CreateShaderModule(const AnsiString &s
     if(!sm)
         return(nullptr);
 
-    sm_map.Add(sm_name,sm);
+    shader_module_cache.AddName(sci->GetShaderStage(), sm_name, sm);
 
     #ifdef _DEBUG
         {
@@ -166,6 +159,15 @@ const ShaderModule *ShaderProgramManager::CreateShaderModule(const AnsiString &s
     return sm;
 }
 
+const ShaderModule *ShaderProgramManager::CreateShaderModule(const mtl::ShaderStageKey &key,
+                                                             const ShaderCreateInfo *sci)
+{
+    if (!sci || key.stage != sci->GetShaderStage())
+        return nullptr;
+
+    return CreateShaderModule(key.ToString(), sci);
+}
+
 const ShaderModule *ShaderProgramManager::CreateShaderModuleFromSPV(const AnsiString &sm_name,
                                                                 const VkShaderStageFlagBits stage,
                                                                 const uint32_t *spv_data,
@@ -176,15 +178,8 @@ const ShaderModule *ShaderProgramManager::CreateShaderModuleFromSPV(const AnsiSt
     if(sm_name.IsEmpty())return(nullptr);
     if(!spv_data||spv_size==0)return(nullptr);
 
-    const int bit_offset=GetBitOffset((uint32_t)stage);
-
-    if(bit_offset<0||bit_offset>VK_SHADER_STAGE_TYPE_COUNT)return(nullptr);
-
-    ShaderModule *sm;
-
-    ShaderModuleMapByName &sm_map=shader_module_by_name[bit_offset];
-
-    if(sm_map.Get(sm_name,sm))
+    ShaderModule *sm = shader_module_cache.FindName(static_cast<ShaderStage>(stage), sm_name);
+    if(sm)
         return sm;
 
     sm=device->CreateShaderModule(stage,spv_data,spv_size);
@@ -192,7 +187,7 @@ const ShaderModule *ShaderProgramManager::CreateShaderModuleFromSPV(const AnsiSt
     if(!sm)
         return(nullptr);
 
-    sm_map.Add(sm_name,sm);
+    shader_module_cache.AddName(static_cast<ShaderStage>(stage), sm_name, sm);
 
     #ifdef _DEBUG
         {
@@ -207,6 +202,16 @@ const ShaderModule *ShaderProgramManager::CreateShaderModuleFromSPV(const AnsiSt
     #endif//_DEBUG
 
     return sm;
+}
+
+const ShaderModule *ShaderProgramManager::CreateShaderModuleFromSPV(const mtl::ShaderStageKey &key,
+                                                                     const uint32_t *spv_data,
+                                                                     const size_t spv_size)
+{
+    return CreateShaderModuleFromSPV(key.ToString(),
+                                     static_cast<VkShaderStageFlagBits>(key.stage),
+                                     spv_data,
+                                     spv_size);
 }
 
 PipelineLayoutData *ShaderProgramManager::CreateMaterialPipelineLayoutData(const AnsiString &mtl_name, const MaterialDescriptorManager *desc_manager)
@@ -270,11 +275,18 @@ void ShaderProgramManager::ApplyMaterialFinalizePlan(ShaderProgram *mtl, const A
 
 ShaderProgram *ShaderProgramManager::TryGetCachedMaterial(const AnsiString &name)
 {
-    ShaderProgram *cached = nullptr;
-    if(material_by_name.Get(name, cached))
-        return cached;
+    return shader_program_cache.FindName(name);
+}
 
-    return nullptr;
+ShaderProgram *ShaderProgramManager::TryGetCachedShaderProgram(const mtl::ShaderProgramKey &key)
+{
+    return shader_program_cache.Find(key);
+}
+
+bool ShaderProgramManager::RegisterShaderProgram(const mtl::ShaderProgramKey &key,
+                                                 ShaderProgram *program)
+{
+    return shader_program_cache.Add(key, program);
 }
 
 bool ShaderProgramManager::ExecuteRuntimeMaterialBuildPipeline(ShaderProgram *mtl,
@@ -367,7 +379,7 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(const AnsiString &mtl_
 
     Add(mtl);
 
-    material_by_name.Add(mtl_name,mtl);
+    shader_program_cache.AddName(mtl_name,mtl);
     // ShaderProgram is a C++ object managed by ShaderProgramManager, not a Vulkan object
     // No need to track with ObjectTracker
     return mtl.Finish();

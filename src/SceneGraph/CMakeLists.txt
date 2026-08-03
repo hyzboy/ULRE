@@ -22,6 +22,8 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         ${SG_INCLUDE_PATH}/module/TextureManager.h
                         ${SG_INCLUDE_PATH}/module/SamplerManager.h
                         ${SG_INCLUDE_PATH}/module/ShaderProgramManager.h
+                        ${SG_INCLUDE_PATH}/module/ShaderProgramLinkCache.h
+                        ${SG_INCLUDE_PATH}/module/ShaderStageModuleCache.h
                         ${SG_INCLUDE_PATH}/module/ShaderProgramCreatePrecheckAdapter.h
                         ${SG_INCLUDE_PATH}/module/ShaderProgramFinalizeFlowAdapter.h
                         ${SG_INCLUDE_PATH}/module/BufferManager.h

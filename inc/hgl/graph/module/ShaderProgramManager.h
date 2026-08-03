@@ -1,6 +1,8 @@
 #pragma once
 
 #include<hgl/graph/module/GraphModule.h>
+#include<hgl/graph/module/ShaderProgramLinkCache.h>
+#include<hgl/graph/module/ShaderStageModuleCache.h>
 #include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/type/UnorderedMap.h>
@@ -22,17 +24,14 @@ namespace mtl
     class ShaderProgramBuildSpec;
 }//namespace mtl
 
-using ShaderProgramID       = int;
-using ShaderModuleMapByName = UnorderedMap<AnsiString,ShaderModule *>;
-
-constexpr const size_t VK_SHADER_STAGE_TYPE_COUNT = 20;
+using ShaderProgramID = int;
 
 GRAPH_MODULE_CLASS(ShaderProgramManager)
 {
 private:
 
-    ShaderModuleMapByName shader_module_by_name[VK_SHADER_STAGE_TYPE_COUNT];
-    UnorderedMap<AnsiString,ShaderProgram *> material_by_name;
+    ShaderStageModuleCache shader_module_cache;
+    ShaderProgramLinkCache shader_program_cache;
 
     AutoIdObjectManager<ShaderProgramID, ShaderProgram> rm_material;  ///<材质合集
 
@@ -52,6 +51,8 @@ private: // Helper methods with integrated DebugUtils
     class MaterialParameters *CreateMaterialMP(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager, const class PipelineLayoutData *pld, const DescriptorSetType &desc_set_type);
     void ApplyMaterialFinalizePlan(ShaderProgram *mtl, const AnsiString &mtl_name, const mtl::ShaderProgramBuildSpec &mci);
     ShaderProgram *TryGetCachedMaterial(const AnsiString &name);
+    ShaderProgram *TryGetCachedShaderProgram(const mtl::ShaderProgramKey &key);
+    bool RegisterShaderProgram(const mtl::ShaderProgramKey &key, ShaderProgram *program);
     bool BuildRuntimeShaderProgramState(ShaderProgram *mtl,
                                         const AnsiString &mtl_name,
                                         const mtl::ShaderProgramBuildSpec *mci,
@@ -86,7 +87,7 @@ public: //Release
 
         const AnsiString &name = mtl->GetName();
         if (!name.IsEmpty())
-            material_by_name.DeleteByKey(name);
+            shader_program_cache.RemoveName(name);
 
         rm_material.Release(mtl, true);
     }
@@ -99,24 +100,26 @@ public: // Override Release from GraphModule - cleanup all resources
         if (rm_material.GetCount() > 0)
             rm_material.Clear();
 
-        if (material_by_name.GetCount() > 0)
-            material_by_name.Clear();
+        shader_program_cache.Clear();
 
-        for (auto &stage_map : shader_module_by_name)
+        ValueArray<ShaderModule *> shader_modules;
+        shader_module_cache.GetValues(shader_modules);
+        for (int i = 0; i < shader_modules.GetCount(); ++i)
         {
-            for (auto &kv : stage_map)
-            {
-                delete kv.second;
-            }
-            stage_map.Clear();
+            delete shader_modules[i];
         }
+        shader_module_cache.Clear();
     }
 
 public: //Shader
 
     const ShaderModule *CreateShaderModule(const AnsiString &shader_module_name, const ShaderCreateInfo *);
+    const ShaderModule *CreateShaderModule(const mtl::ShaderStageKey &, const ShaderCreateInfo *);
     const ShaderModule *CreateShaderModuleFromSPV(const AnsiString &shader_module_name,
                                                   const VkShaderStageFlagBits stage,
+                                                  const uint32_t *spv_data,
+                                                  const size_t spv_size);
+    const ShaderModule *CreateShaderModuleFromSPV(const mtl::ShaderStageKey &,
                                                   const uint32_t *spv_data,
                                                   const size_t spv_size);
 
