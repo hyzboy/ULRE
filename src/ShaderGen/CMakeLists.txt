@@ -21,7 +21,9 @@ SET(SHADER_ARTIFACT_CONTRACT_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderStageKey.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderProgramKey.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderArtifactContract.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderStageBuildSpec.h
-                                   ${SHADERGEN_INCLUDE_PATH}/ShaderProgramLinkSpec.h)
+                                   ${SHADERGEN_INCLUDE_PATH}/ShaderProgramLinkSpec.h
+                                   ${SHADERGEN_INCLUDE_PATH}/ShaderArtifactStore.h
+                                   ShaderArtifactStore.cpp)
 
 SOURCE_GROUP("Shader Artifact Contract" FILES ${SHADER_ARTIFACT_CONTRACT_FILES})
 
