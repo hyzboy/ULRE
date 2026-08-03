@@ -41,6 +41,9 @@ struct CompositorMaterialBuildConfig
     // Optional: capability declaration source for development-time subset validation.
     // When non-null, CompileCompositorMaterial checks Layout requirements ⊆ Definition capabilities.
     const MaterialDefinition *material_definition = nullptr;
+    // Optional unified stage/link contract. When supplied, the compiler
+    // validates the declared VS/FS interface before compiling the local SPV.
+    const ShaderProgramLinkSpec *program_link = nullptr;
     const ShaderResourceManifest *resource_manifest = nullptr;
 };
 
@@ -89,6 +92,7 @@ inline CompositorMaterialBuildConfig ToCompositorBuildConfig3D(
     bc.private_shader_buffer_source_count = request.private_shader_buffer_source_count;
     bc.ssbo_slot_decls                   = definition.ssbo_slot_decls.empty() ? nullptr : &definition.ssbo_slot_decls;
     bc.material_definition               = &definition;
+    bc.program_link                      = &definition.program_link;
     return bc;
 }
 

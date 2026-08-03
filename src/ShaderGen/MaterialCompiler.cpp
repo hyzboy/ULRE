@@ -65,101 +65,6 @@ static bool HasDescriptorSemantic(const FixedMaterialDef &def, const DescriptorS
     return false;
 }
 
-#if defined(_DEBUG)
-struct DescriptorShapeKey
-{
-    DescriptorSetType set_type;
-    DescriptorKind kind;
-    uint32_t stage_flags;
-    DescriptorSemantic semantic;
-    TextureSlot texture_slot;
-};
-
-static bool ValidateDescriptorShapeExact(
-    const char *material_name,
-    const FixedDescriptorEntry *entries,
-    const uint32_t count,
-    const DescriptorShapeKey *expected,
-    const uint32_t expected_count,
-    std::vector<std::string> &diagnostics)
-{
-    diagnostics.clear();
-
-    if (count != expected_count)
-    {
-        std::string msg = "E0 shape mismatch: descriptor count changed, material=";
-        msg += material_name ? material_name : "<unnamed>";
-        msg += ", expected=" + std::to_string(expected_count);
-        msg += ", actual=" + std::to_string(count);
-        diagnostics.push_back(std::move(msg));
-        return false;
-    }
-
-    for (uint32_t i = 0; i < expected_count; ++i)
-    {
-        const auto &a = entries[i];
-        const auto &e = expected[i];
-        if (a.set_type == e.set_type
-         && a.kind == e.kind
-         && a.stage_flags == e.stage_flags
-         && a.semantic == e.semantic
-         && a.texture_slot == e.texture_slot)
-        {
-            continue;
-        }
-
-        std::string msg = "E0 shape mismatch: entry[" + std::to_string(i) + "] changed, material=";
-        msg += material_name ? material_name : "<unnamed>";
-        diagnostics.push_back(std::move(msg));
-        return false;
-    }
-
-    return true;
-}
-
-static bool ValidateE0DescriptorShapeBaseline(
-    const FixedMaterialDef &def,
-    const CompositorMaterialBuildConfig &config,
-    std::vector<std::string> &diagnostics)
-{
-    const char *name = def.name ? def.name : "";
-
-    if (std::strcmp(name, "PureColor2D") == 0)
-    {
-        const DescriptorShapeKey expected[] = {
-            { DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::LocalToWorld,           TextureSlot::BaseColor },
-            { DescriptorSetType::Transform, DescriptorKind::SSBO,    uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::LocalToWorldIndexTable, TextureSlot::BaseColor },
-            { DescriptorSetType::Material,  DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::MaterialSSBOSlotData,    TextureSlot::BaseColor },
-            { DescriptorSetType::Material,  DescriptorKind::SSBO,    uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::MaterialSSBOIndexTable,  TextureSlot::BaseColor },
-        };
-        return ValidateDescriptorShapeExact(name, def.descriptor_entries, def.descriptor_entry_count, expected, uint32_t(sizeof(expected) / sizeof(expected[0])), diagnostics);
-    }
-
-    if (std::strcmp(name, "RectTexture2D") == 0)
-    {
-        const DescriptorShapeKey expected[] = {
-            { DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::LocalToWorld,           TextureSlot::BaseColor },
-            { DescriptorSetType::Transform, DescriptorKind::SSBO,    uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::LocalToWorldIndexTable, TextureSlot::BaseColor },
-            { DescriptorSetType::Material,  DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), DescriptorSemantic::MaterialSampler, TextureSlot::BaseColor },
-        };
-        return ValidateDescriptorShapeExact(name, def.descriptor_entries, def.descriptor_entry_count, expected, uint32_t(sizeof(expected) / sizeof(expected[0])), diagnostics);
-    }
-
-    if (std::strcmp(name, "Text2D") == 0)
-    {
-        const DescriptorShapeKey expected[] = {
-            { DescriptorSetType::Scene,     DescriptorKind::UBO,     uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::ViewportInfo,          TextureSlot::BaseColor },
-            { DescriptorSetType::Material,  DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::MaterialSSBOSlotData,    TextureSlot::BaseColor },
-            { DescriptorSetType::Material,  DescriptorKind::SSBO,    uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::MaterialSSBOIndexTable,  TextureSlot::BaseColor },
-            { DescriptorSetType::Material,  DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), DescriptorSemantic::MaterialSampler, TextureSlot::BaseColor },
-        };
-        return ValidateDescriptorShapeExact(name, def.descriptor_entries, def.descriptor_entry_count, expected, uint32_t(sizeof(expected) / sizeof(expected[0])), diagnostics);
-    }
-
-    return true;
-}
-#endif
-
 static bool IsTextureSlotDeclared(const MaterialDefinition &definition, const TextureSlot slot) noexcept
 {
     for (const auto &decl : definition.texture_slot_decls)
@@ -333,23 +238,6 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     // ─────────────────────────────────────────────────────────────
 
     const bool use_slot_decls = config.ssbo_slot_decls && !config.ssbo_slot_decls->empty();
-
-#if defined(_DEBUG)
-    {
-        std::vector<std::string> e0_diagnostics;
-        if (!ValidateE0DescriptorShapeBaseline(def, config, e0_diagnostics))
-        {
-            for (const auto &diag : e0_diagnostics)
-            {
-                std::fprintf(stderr,
-                    "[CompileCompositorMaterial][E0Baseline] material=%s: %s\n",
-                    def.name ? def.name : "<unnamed>",
-                    diag.c_str());
-            }
-            return FailAfterMci("E0 descriptor shape baseline validation failed");
-        }
-    }
-#endif
 
     const uint32_t declared_material_ssbo_slot_count = use_slot_decls ? static_cast<uint32_t>(config.ssbo_slot_decls->size()) : 0u;
 
@@ -812,8 +700,31 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
 
     if (config.material_definition)
     {
+        const MaterialDefinition &material_definition = *config.material_definition;
+        const bool has_stage_contract =
+            !material_definition.vertex_stage.inputs.IsEmpty()
+            || !material_definition.vertex_stage.outputs.IsEmpty()
+            || !material_definition.fragment_stage.inputs.IsEmpty()
+            || !material_definition.fragment_stage.outputs.IsEmpty();
+        if (has_stage_contract)
+        {
+            if (material_definition.vertex_stage.stage != ShaderStage::Vertex
+             || material_definition.fragment_stage.stage != ShaderStage::Fragment
+             || !HasCompatibleStageInterface(material_definition.vertex_stage,
+                                              material_definition.fragment_stage))
+                return FailAfterMci("MaterialDefinition stage interface contract is invalid");
+
+            ShaderProgramLinkSpec link = material_definition.program_link;
+            if (!link.IsValid())
+            {
+                link.vertex_stage = material_definition.vertex_stage.BuildKey();
+                link.fragment_stage = material_definition.fragment_stage.BuildKey();
+            }
+            (void)link.BuildKey();
+        }
+
         std::vector<std::string> capability_diagnostics;
-        if (!ValidateDefinitionCapabilitySubset(*config.material_definition, material_resource_layout, capability_diagnostics))
+        if (!ValidateDefinitionCapabilitySubset(material_definition, material_resource_layout, capability_diagnostics))
         {
             for (const auto &diag : capability_diagnostics)
             {

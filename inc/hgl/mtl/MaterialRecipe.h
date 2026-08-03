@@ -4,7 +4,14 @@
 #include <hgl/graph/PipelinePreset.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
 #include <hgl/mtl/DescriptorSemantic.h>
+#include <hgl/common/VertexAttribDef.h>
+#include <hgl/vk/VK.h>
 #include <hgl/graph/glsl/GLSLCodeModule.h>
+#include <hgl/shadergen/ShaderStageBuildSpec.h>
+#include <hgl/shadergen/ShaderProgramLinkSpec.h>
+#include <hgl/mtl/new/SurfaceType.h>
+#include <hgl/mtl/new/BlendMode.h>
+#include <hgl/mtl/new/PassType.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <cstdint>
 #include <string>
@@ -86,6 +93,50 @@ namespace hgl::graph::mtl
         const char *     name         = nullptr;
     };
 
+    // Static vertex-input contract. This describes the shader ABI rather than
+    // a runtime Vulkan binding.
+    struct MaterialVertexAttributeDefinition
+    {
+        VertexSemantic semantic = VertexSemantic::Position;
+        uint32 location = 0;
+        VkFormat format = VK_FORMAT_UNDEFINED;
+        const char *glsl_declaration = nullptr;
+
+        bool operator==(const MaterialVertexAttributeDefinition &rhs) const noexcept
+        {
+            return semantic == rhs.semantic && location == rhs.location && format == rhs.format
+                && glsl_declaration == rhs.glsl_declaration;
+        }
+    };
+
+    struct MaterialVertexVaryingConfig
+    {
+        bool emit_data_index_id = false;
+        bool emit_texture_layer_id = false;
+        bool texture_layer_id_uses_data_index = false;
+        bool emit_vertex_color = false;
+        bool emit_uv0 = false;
+        bool emit_world_pos = false;
+        bool emit_world_normal = false;
+        bool emit_luminance = false;
+        bool emit_frag_direction = false;
+        bool use_transform_id_attr = false;
+        bool emit_vertex_color_from_pattle = false;
+    };
+
+    enum class MaterialShaderDomain : uint8
+    {
+        Generic = 0,
+        Screen2D,
+        World3D
+    };
+
+    enum class MaterialFragmentProgramMode : uint8
+    {
+        DirectInclude = 0,
+        Compositor
+    };
+
     // BMI 来源标记：区分 built-in 硬编码实现与未来的文件化实现。
     enum class MaterialDefinitionSourceKind : uint8_t
     {
@@ -144,7 +195,155 @@ namespace hgl::graph::mtl
 
         // PCG 顶点节点配置（单一真源）
         VertexShaderNodeConfig vertex_node_config;
+
+        // Unified shader ABI/program contract shared by built-in and
+        // file-backed definitions. The generator must not infer this from
+        // the material name.
+        ValueArray<MaterialVertexAttributeDefinition> vertex_attributes;
+        ShaderStageBuildSpec vertex_stage;
+        ShaderStageBuildSpec fragment_stage;
+        ShaderProgramLinkSpec program_link;
+        const char *fragment_program_module = nullptr;
+        const char *fragment_surface_module = nullptr;
+        MaterialVertexVaryingConfig vertex_varying;
+        MaterialShaderDomain shader_domain = MaterialShaderDomain::Generic;
+        MaterialFragmentProgramMode fragment_program_mode = MaterialFragmentProgramMode::Compositor;
+        SurfaceType compositor_surface = SurfaceType::Unlit;
+        BlendMode compositor_blend = BlendMode::Opaque;
+        PassType compositor_pass = PassType::ForwardOpaque;
     };
+
+    inline void ConfigureSimpleMaterialShaderContract(MaterialDefinition &definition,
+                                                       const char *fragment_module,
+                                                       const bool has_data_index,
+                                                       const bool has_uv,
+                                                       const bool has_color,
+                                                       const bool is_3d,
+                                                       const bool has_texture_layer = false)
+    {
+        definition.fragment_program_module = fragment_module;
+        definition.shader_domain = is_3d ? MaterialShaderDomain::World3D
+                                         : MaterialShaderDomain::Screen2D;
+        definition.fragment_program_mode = is_3d
+            ? MaterialFragmentProgramMode::Compositor
+            : MaterialFragmentProgramMode::DirectInclude;
+        definition.vertex_stage.stage = ShaderStage::Vertex;
+        definition.fragment_stage.stage = ShaderStage::Fragment;
+
+        MaterialVertexAttributeDefinition position{};
+        position.semantic = VertexSemantic::Position;
+        position.location = 0;
+        position.format = is_3d ? VK_FORMAT_R32G32B32_SFLOAT : VK_FORMAT_R32G32_SFLOAT;
+        definition.vertex_attributes.Add(position);
+        definition.vertex_stage.inputs.Add({0, is_3d ? ShaderStageValueType::Vec3
+                                                      : ShaderStageValueType::Vec2, 0, 0});
+
+        uint32 location = 0;
+        if (has_data_index)
+        {
+            const ShaderStageInterfaceVariable v{0, ShaderStageValueType::UInt, location++, uint32(ShaderStageInterfaceFlags::Flat)};
+            definition.vertex_stage.outputs.Add(v);
+            definition.fragment_stage.inputs.Add(v);
+        }
+        if (has_uv)
+        {
+            MaterialVertexAttributeDefinition attribute{};
+            attribute.semantic = VertexSemantic::TexCoord;
+            attribute.location = 1;
+            attribute.format = VK_FORMAT_R32G32_SFLOAT;
+            attribute.glsl_declaration = "layout(location=1) in vec2 TexCoord;\n";
+            definition.vertex_attributes.Add(attribute);
+            definition.vertex_stage.inputs.Add({0, ShaderStageValueType::Vec2, 1, 0});
+            const ShaderStageInterfaceVariable v{0, ShaderStageValueType::Vec2, location++, 0};
+            definition.vertex_stage.outputs.Add(v);
+            definition.fragment_stage.inputs.Add(v);
+        }
+        if (has_color)
+        {
+            MaterialVertexAttributeDefinition attribute{};
+            attribute.semantic = VertexSemantic::Color;
+            attribute.location = 1;
+            attribute.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+            attribute.glsl_declaration = "layout(location=1) in vec4 Color;\n";
+            definition.vertex_attributes.Add(attribute);
+            definition.vertex_stage.inputs.Add({0, ShaderStageValueType::Vec4, 1, 0});
+            const ShaderStageInterfaceVariable v{0, ShaderStageValueType::Vec4, location++, 0};
+            definition.vertex_stage.outputs.Add(v);
+            definition.fragment_stage.inputs.Add(v);
+        }
+
+        definition.vertex_varying.emit_data_index_id = has_data_index;
+        definition.vertex_varying.emit_texture_layer_id = has_texture_layer;
+        definition.vertex_varying.texture_layer_id_uses_data_index = has_texture_layer;
+        definition.vertex_varying.emit_uv0 = has_uv;
+        definition.vertex_varying.emit_vertex_color = has_color;
+
+        definition.program_link.vertex_stage = definition.vertex_stage.BuildKey();
+        definition.program_link.fragment_stage = definition.fragment_stage.BuildKey();
+    }
+
+    inline void ConfigureMaterialDefinitionContract(
+        MaterialDefinition &definition,
+        const char *fragment_module,
+        const char *surface_module,
+        const VkFormat position_format,
+        const MaterialVertexVaryingConfig &varying,
+        const MaterialVertexAttributeDefinition *attributes,
+        const uint32 attribute_count)
+    {
+        definition.fragment_program_module = fragment_module;
+        definition.fragment_surface_module = surface_module;
+        definition.fragment_program_mode = MaterialFragmentProgramMode::Compositor;
+        definition.vertex_varying = varying;
+        definition.vertex_stage.stage = ShaderStage::Vertex;
+        definition.fragment_stage.stage = ShaderStage::Fragment;
+
+        MaterialVertexAttributeDefinition position{};
+        position.semantic = VertexSemantic::Position;
+        position.location = 0;
+        position.format = position_format;
+        definition.vertex_attributes.Add(position);
+        definition.vertex_stage.inputs.Add({
+            0,
+            (position_format == VK_FORMAT_R32G32_SFLOAT || position_format == VK_FORMAT_R32G32_SINT)
+                ? ShaderStageValueType::Vec2 : ShaderStageValueType::Vec3,
+            0, 0
+        });
+
+        for (uint32 i = 0; i < attribute_count; ++i)
+        {
+            definition.vertex_attributes.Add(attributes[i]);
+            definition.vertex_stage.inputs.Add({0, ShaderStageValueType::Unknown,
+                                                  attributes[i].location, 0});
+        }
+
+        uint32 location = 0;
+        auto add_output = [&](const ShaderStageValueType type, const uint32 flags)
+        {
+            const ShaderStageInterfaceVariable value{0, type, location++, flags};
+            definition.vertex_stage.outputs.Add(value);
+            definition.fragment_stage.inputs.Add(value);
+        };
+        if (varying.emit_data_index_id)
+            add_output(ShaderStageValueType::UInt, uint32(ShaderStageInterfaceFlags::Flat));
+        if (varying.emit_texture_layer_id)
+            add_output(ShaderStageValueType::UInt, uint32(ShaderStageInterfaceFlags::Flat));
+        if (varying.emit_world_pos)
+            add_output(ShaderStageValueType::Vec3, 0);
+        if (varying.emit_world_normal)
+            add_output(ShaderStageValueType::Vec3, 0);
+        if (varying.emit_uv0)
+            add_output(ShaderStageValueType::Vec2, 0);
+        if (varying.emit_vertex_color || varying.emit_vertex_color_from_pattle)
+            add_output(ShaderStageValueType::Vec4, 0);
+        if (varying.emit_frag_direction)
+            add_output(ShaderStageValueType::Vec3, 0);
+        if (varying.emit_luminance)
+            add_output(ShaderStageValueType::Float, 0);
+
+        definition.program_link.vertex_stage = definition.vertex_stage.BuildKey();
+        definition.program_link.fragment_stage = definition.fragment_stage.BuildKey();
+    }
 
     // ── Layer 2: MaterialRecipe = Instance Input ──────────────────────────────────
     // 描述"这次渲染想要什么"。由上层作者按需填写，不含 Vulkan 句柄。

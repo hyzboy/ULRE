@@ -21,84 +21,24 @@ namespace
         bmi.ssbo_slot_decls   = {{"mtl", SSBOType::EmissiveSurface}};
         bmi.ubo_requirements  = {UBODescriptorSemantic::ViewportInfo, UBODescriptorSemantic::CameraInfo};
         bmi.vertex_node_config = MakeDefault3DNodeConfig();
+        const MaterialVertexAttributeDefinition attrs[] = {
+            {VertexSemantic::Normal, 1, VK_FORMAT_R32G32B32_SFLOAT, "layout(location=1) in vec3 Normal;\n"}
+        };
+        MaterialVertexVaryingConfig varying{};
+        varying.emit_data_index_id = true;
+        varying.emit_texture_layer_id = true;
+        varying.texture_layer_id_uses_data_index = true;
+        varying.emit_world_pos = true;
+        varying.emit_world_normal = true;
+        ConfigureMaterialDefinitionContract(bmi, "compositor/main_forward_unlit_normal.frag.glsl",
+                                             "surface/gizmo3d_surface.glsl",
+                                             VK_FORMAT_R32G32B32_SFLOAT, varying, attrs, 1);
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::Gizmo3D, bmi);
         return true;
     }();
 
 }
 
-static ShaderProgramBuildSpec *CreateGizmo3DImpl(const contract::PhysicalDeviceProfileLite *profile, CompositorMaterialBuildConfig bc, const MaterialDefinition &definition)
-{
-    CompositorAssembler assembler("ShaderLibrary");
+void ForceLinkGizmo3DMaterialDefinition() {}
 
-    auto fs_result = assembler.Assemble(
-        SurfaceType::Unlit,
-        BlendMode::Opaque,
-        PassType::ForwardOpaque,
-        "compositor/main_forward_unlit_normal.frag.glsl",
-        "surface/gizmo3d_surface.glsl"
-    );
-
-    if (!fs_result.success)
-    {
-        GLogError("[Gizmo3D] CompositorAssembler failed: %s",
-                  fs_result.error_message.c_str());
-        return nullptr;
-    }
-
-    std::vector<FixedDescriptorEntry> dynamic_descriptors = Build3DDescriptorsFromDefinition(definition);
-
-    const vertex_builder_common::VertexSemanticDecl vertex_decls[] = {
-        { VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT },
-        { VertexSemantic::Normal,   VK_FORMAT_R32G32B32_SFLOAT },
-    };
-    const vertex_builder_common::VertexBuildInput vertex_input {
-        PrimitiveType::Triangles,
-        bc.geometry_vertex_format,
-        vertex_decls,
-        2
-    };
-    std::vector<FixedVertexEntry> gizmo_3d_vertex = vertex_builder_common::BuildVertexEntries(vertex_input);
-
-    FixedMaterialDef dynamic_def {
-        "Gizmo3D",
-        PrimitiveType::Triangles,
-        gizmo_3d_vertex.data(),
-        uint32_t(gizmo_3d_vertex.size()),
-        dynamic_descriptors.data(),
-        uint32_t(dynamic_descriptors.size()),
-    };
-
-    // emit_world_pos + emit_world_normal: matches main_forward_unlit_normal.frag.glsl interface
-    VertexVaryingConfig varying_cfg;
-    varying_cfg.emit_data_index_id    = true;
-    varying_cfg.emit_texture_layer_id = true;
-    varying_cfg.texture_layer_id_uses_data_index = true;
-    varying_cfg.emit_world_pos        = true;
-    varying_cfg.emit_world_normal     = true;
-    const std::string extra_attrs = "layout(location=1) in vec3 Normal;\n";
-    std::string vs_glsl = GenerateVertexShader(
-        definition.vertex_node_config,
-        varying_cfg,
-        VK_FORMAT_R32G32B32_SFLOAT,
-        extra_attrs,
-        "ShaderLibrary"
-    );
-
-    ShaderProgramBuildSpec *mci = CompileCompositorMaterial(
-        profile,
-        dynamic_def,
-        vs_glsl,
-        fs_result.fragment_glsl,
-        bc);
-
-    if (!mci)
-        GLogError("[Gizmo3D] CompileCompositorMaterial failed");
-    return mci;
-}
-
-ShaderProgramBuildSpec *CreateGizmo3D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
-{
-    return CreateGizmo3DImpl(profile, ToCompositorBuildConfig3D(request, definition), definition);
-}
 }//namespace hgl::graph::mtl

@@ -1,15 +1,22 @@
 ﻿#include<hgl/vk/VKCommandBuffer.h>
 
 namespace hgl::graph{
-void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspectFlags aspect_mask,VkExtent3D extent,const uint32_t mipLevels,const uint32 layer_count)
+void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,
+                     VkImage image,
+                     VkImageAspectFlags aspect_mask,
+                     VkExtent3D extent,
+                     const uint32_t mipLevels,
+                     const uint32_t base_array_layer,
+                     const uint32_t layer_count)
 {
     ImageSubresourceRange subresourceRange(aspect_mask,1,layer_count);
+    subresourceRange.baseArrayLayer = base_array_layer;
 
     VkImageBlit blit;
 
     blit.srcOffsets[0] = {0, 0, 0};
     blit.srcSubresource.aspectMask = aspect_mask;
-    blit.srcSubresource.baseArrayLayer = 0;
+    blit.srcSubresource.baseArrayLayer = base_array_layer;
     blit.srcSubresource.layerCount = layer_count;
 
     blit.dstOffsets[0] = {0, 0, 0};
@@ -66,5 +73,15 @@ void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspe
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         subresourceRange);
+}
+
+void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,
+                     VkImage image,
+                     VkImageAspectFlags aspect_mask,
+                     VkExtent3D extent,
+                     const uint32_t mipLevels,
+                     const uint32 layer_count)
+{
+    GenerateMipmaps(texture_cmd_buf, image, aspect_mask, extent, mipLevels, 0, layer_count);
 }
 }//namespace hgl::graph

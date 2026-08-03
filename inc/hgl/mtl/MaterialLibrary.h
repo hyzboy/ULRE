@@ -76,33 +76,10 @@ struct MaterialDefinitionBuildRequest
     }
 };
 
-/// 仅声明 request 主路径材质创建函数，不产生任何注册或全局常量副作用。
-#define DECLARE_MATERIAL_CREATOR(name) \
-ShaderProgramBuildSpec *Create##name(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition);
-
-DECLARE_MATERIAL_CREATOR(VertexColor2D)
-DECLARE_MATERIAL_CREATOR(PureColor2D)
-DECLARE_MATERIAL_CREATOR(PureTexture2D)
-DECLARE_MATERIAL_CREATOR(RectTexture2D)
-DECLARE_MATERIAL_CREATOR(RectTexture2DArray)
-DECLARE_MATERIAL_CREATOR(Text2D)
-DECLARE_MATERIAL_CREATOR(PureColor3D)
-DECLARE_MATERIAL_CREATOR(VertexColor3D)
-DECLARE_MATERIAL_CREATOR(VertexLuminance3D)
-DECLARE_MATERIAL_CREATOR(VertexPattleColor3D)
-DECLARE_MATERIAL_CREATOR(Gizmo3D)
-DECLARE_MATERIAL_CREATOR(SkyMinimal)
-DECLARE_MATERIAL_CREATOR(Standard)
-DECLARE_MATERIAL_CREATOR(StandardTextureArray)
-
-ShaderProgramBuildSpec *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
-                                             const BuiltinMaterialCreatorID mtl_id,
-                                             const MaterialDefinition &definition,
-                                             const MaterialDefinitionBuildRequest &request);
-
-std::string BuildBuiltinMaterialCreatorRequestHash(const BuiltinMaterialCreatorID mtl_id,
-                                                 const MaterialDefinition &definition,
-                                                 const MaterialDefinitionBuildRequest &request);
+ShaderProgramBuildSpec *CreateMaterialFromDefinition(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const MaterialDefinition &definition,
+    const MaterialDefinitionBuildRequest &request);
 
 VkFormat ResolveMaterialVertexSemanticFormat(const GeometryVertexFormat *gvf, VertexSemantic semantic, VkFormat fallback_format);
 inline VkFormat ResolveMaterialPositionFormat(const GeometryVertexFormat *gvf, VkFormat fallback_format)

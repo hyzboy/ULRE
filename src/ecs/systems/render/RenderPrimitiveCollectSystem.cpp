@@ -415,7 +415,7 @@ namespace hgl::ecs
 
         if (!resolved_program)
         {
-            GLogWarning("[RenderPrimitiveCollectSystem] AcquireShaderProgram failed for %s recipe=%s mtl_def_id=%s builtin_creator_id=%u",
+            GLogWarning("[RenderPrimitiveCollectSystem] AcquireShaderProgram failed for %s recipe=%s mtl_def_id=%s",
                         GetPrimitiveOwnerName(primitive_comp),
                         effective_recipe.recipe_name.c_str(),
                         effective_recipe.mtl_def_id.c_str());

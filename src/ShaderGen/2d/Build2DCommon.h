@@ -169,6 +169,7 @@ inline CompositorMaterialBuildConfig ToCompositorBuildConfig2D(const Material2DB
     bc.geometry_vertex_format          = p.geometry_vertex_format;
     bc.ssbo_slot_decls                 = p.ssbo_slot_decls;
     bc.material_definition             = p.material_definition;
+    bc.program_link                    = p.material_definition ? &p.material_definition->program_link : nullptr;
     return bc;
 }
 

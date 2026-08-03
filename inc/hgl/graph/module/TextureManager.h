@@ -129,6 +129,7 @@ public: // Load
 
     Texture2DArray *    CreateTexture2DArray(const AnsiString &name,const uint32_t width,const uint32_t height,const uint32_t layer,const VkFormat &fmt,bool auto_mipmaps=false);
     bool                LoadTexture2DArray(Texture2DArray *,const uint32_t layer,const OSString &);
+    bool                GenerateTexture2DArrayMipmaps(Texture2DArray *,const uint32_t layer);
 
 public: //TileData
 

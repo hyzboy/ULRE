@@ -2,10 +2,184 @@
 #include<hgl/mtl/ShaderBufferSource.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
+#include <hgl/shadergen/MaterialCompiler.h>
+#include <hgl/shadergen/CompositorAssembler.h>
+#include <hgl/shadergen/ShaderProgramBuildSpec.h>
+#include <hgl/log/Log.h>
+#include "2d/Build2DCommon.h"
+#include "3d/DefinitionDescriptorBuilder3D.h"
+#include "common/VertexShaderAssembler.h"
+#include "common/VertexBuilderCommon.h"
+#include <vector>
+#include <string>
 
 namespace hgl::graph::mtl{
+void ForceLinkVertexColor2DMaterialDefinition();
+void ForceLinkPureColor2DMaterialDefinition();
+void ForceLinkPureTexture2DMaterialDefinition();
+void ForceLinkRectTexture2DMaterialDefinition();
+void ForceLinkRectTexture2DArrayMaterialDefinition();
+void ForceLinkText2DMaterialDefinition();
+void ForceLinkPureColor3DMaterialDefinition();
+void ForceLinkVertexColor3DMaterialDefinition();
+void ForceLinkVertexLuminance3DMaterialDefinition();
+void ForceLinkVertexPattleColor3DMaterialDefinition();
+void ForceLinkGizmo3DMaterialDefinition();
+void ForceLinkSkyMinimalMaterialDefinition();
+void ForceLinkStandardMaterialDefinition();
+void ForceLinkStandardTextureArrayMaterialDefinition();
+
 namespace
 {
+    void EnsureBuiltinMaterialDefinitionsLinked()
+    {
+        static const bool linked = []() -> bool
+        {
+            ForceLinkVertexColor2DMaterialDefinition();
+            ForceLinkPureColor2DMaterialDefinition();
+            ForceLinkPureTexture2DMaterialDefinition();
+            ForceLinkRectTexture2DMaterialDefinition();
+            ForceLinkRectTexture2DArrayMaterialDefinition();
+            ForceLinkText2DMaterialDefinition();
+            ForceLinkPureColor3DMaterialDefinition();
+            ForceLinkVertexColor3DMaterialDefinition();
+            ForceLinkVertexLuminance3DMaterialDefinition();
+            ForceLinkVertexPattleColor3DMaterialDefinition();
+            ForceLinkGizmo3DMaterialDefinition();
+            ForceLinkSkyMinimalMaterialDefinition();
+            ForceLinkStandardMaterialDefinition();
+            ForceLinkStandardTextureArrayMaterialDefinition();
+            return true;
+        }();
+        (void)linked;
+    }
+
+    static ShaderProgramBuildSpec *BuildGenericMaterial(
+        const contract::PhysicalDeviceProfileLite *profile,
+        const MaterialDefinitionBuildRequest &request,
+        const MaterialDefinition &definition)
+    {
+        if (!definition.fragment_program_module
+         || definition.vertex_stage.stage != ShaderStage::Vertex
+         || definition.fragment_stage.stage != ShaderStage::Fragment
+         || definition.vertex_attributes.IsEmpty())
+        {
+            GLogError("[ShaderGen] Generic material contract invalid: name=%s fragment=%p vertex_stage=%u fragment_stage=%u attributes=%d",
+                      definition.definition_name.c_str(),
+                      definition.fragment_program_module,
+                      static_cast<uint32>(definition.vertex_stage.stage),
+                      static_cast<uint32>(definition.fragment_stage.stage),
+                      definition.vertex_attributes.GetCount());
+            return nullptr;
+        }
+
+        VertexVaryingConfig varying{};
+        varying.emit_data_index_id = definition.vertex_varying.emit_data_index_id;
+        varying.emit_texture_layer_id = definition.vertex_varying.emit_texture_layer_id;
+        varying.texture_layer_id_uses_data_index = definition.vertex_varying.texture_layer_id_uses_data_index;
+        varying.emit_vertex_color = definition.vertex_varying.emit_vertex_color;
+        varying.emit_uv0 = definition.vertex_varying.emit_uv0;
+        varying.emit_world_pos = definition.vertex_varying.emit_world_pos;
+        varying.emit_world_normal = definition.vertex_varying.emit_world_normal;
+        varying.emit_luminance = definition.vertex_varying.emit_luminance;
+        varying.emit_frag_direction = definition.vertex_varying.emit_frag_direction;
+        varying.use_transform_id_attr = definition.vertex_varying.use_transform_id_attr;
+        varying.emit_vertex_color_from_pattle = definition.vertex_varying.emit_vertex_color_from_pattle;
+
+        std::vector<FixedVertexEntry> vertices;
+        std::vector<FixedDescriptorEntry> descriptors;
+        VertexShaderNodeConfig vertex_node_config = request.recipe.vertex_node_config;
+        if (IsDefault3DNodeConfig(vertex_node_config)
+         && !IsDefault3DNodeConfig(definition.vertex_node_config))
+        {
+            vertex_node_config = definition.vertex_node_config;
+        }
+        vertex_builder_common::VertexSemanticDecl declarations[8]{};
+        uint32 declaration_count = 0;
+        std::string extra_attributes;
+        for (int i = 0; i < definition.vertex_attributes.GetCount() && declaration_count < 8; ++i)
+        {
+            const MaterialVertexAttributeDefinition &attribute = definition.vertex_attributes[i];
+            declarations[declaration_count++] = {attribute.semantic, attribute.format};
+            if (attribute.glsl_declaration)
+                extra_attributes += attribute.glsl_declaration;
+        }
+        const vertex_builder_common::VertexBuildInput input{
+            request.primitive_type, request.geometry_vertex_format,
+            declarations, declaration_count
+        };
+        vertices = vertex_builder_common::BuildVertexEntries(input);
+        const VkFormat position_format = ResolveMaterialVertexSemanticFormat(
+            request.geometry_vertex_format,
+            definition.vertex_attributes[0].semantic,
+            definition.vertex_attributes[0].format);
+        ShaderResourceManifest manifest{};
+        if (definition.fragment_program_mode == MaterialFragmentProgramMode::Compositor)
+        {
+            if (!Build3DShaderResourceManifest(definition, request.override_sky_ambient_model
+                ? request.sky_ambient_model : SkyLightAmbientModel::Simple, manifest))
+            {
+                GLogError("[ShaderGen] Generic material resource manifest failed: name=%s",
+                          definition.definition_name.c_str());
+                return nullptr;
+            }
+            descriptors = Build3DDescriptorsFromDefinition(definition, manifest);
+        }
+        else
+        {
+            Material2DBuildParams params = Material2DBuildParams::From(request, definition);
+            build2d::PushBaseDescriptorEntries(descriptors, params);
+        }
+        std::string vs = GenerateVertexShader(vertex_node_config, varying,
+                                               position_format,
+                                               extra_attributes, "ShaderLibrary");
+
+        std::string fs;
+        if (definition.fragment_program_mode == MaterialFragmentProgramMode::Compositor)
+        {
+            CompositorAssembler assembler("ShaderLibrary");
+            const auto assembled = assembler.Assemble(
+                definition.compositor_surface,
+                definition.compositor_blend,
+                definition.compositor_pass,
+                definition.fragment_program_module,
+                definition.fragment_surface_module);
+            if (!assembled.success)
+            {
+                GLogError("[ShaderGen] Generic material compositor assembly failed: name=%s error=%s",
+                          definition.definition_name.c_str(),
+                          assembled.error_message.c_str());
+                return nullptr;
+            }
+            fs = assembled.fragment_glsl;
+        }
+        else
+        {
+            fs = "#version 450\n#include \"" + std::string(definition.fragment_program_module) + "\"\n";
+        }
+
+        FixedMaterialDef fixed_definition{
+            definition.definition_name.c_str(),
+            request.primitive_type,
+            vertices.data(), static_cast<uint32>(vertices.size()),
+            descriptors.data(), static_cast<uint32>(descriptors.size())
+        };
+        CompositorMaterialBuildConfig config{};
+        config.primitive_type = request.primitive_type;
+        config.shader_stage_flag_bits = request.override_shader_stage_bits
+            ? request.shader_stage_flag_bit : uint32(ShaderStage::VertexFragment);
+        config.geometry_vertex_format = request.geometry_vertex_format;
+        config.material_definition = &definition;
+        config.resource_manifest = manifest.IsValid() ? &manifest : nullptr;
+        config.ssbo_slot_decls = definition.ssbo_slot_decls.empty()
+            ? nullptr : &definition.ssbo_slot_decls;
+        ShaderProgramBuildSpec *result = CompileCompositorMaterial(profile, fixed_definition, vs, fs, config);
+        if (!result)
+            GLogError("[ShaderGen] Generic material compilation failed: name=%s",
+                      definition.definition_name.c_str());
+        return result;
+    }
+
     struct BaseMaterialInfoRegistryEntry
     {
         bool has_preset = false;
@@ -15,6 +189,7 @@ namespace
 
     std::vector<BaseMaterialInfoRegistryEntry> &GetBaseMaterialInfoRegistry()
     {
+        EnsureBuiltinMaterialDefinitionsLinked();
         static std::vector<BaseMaterialInfoRegistryEntry> registry;
         return registry;
     }
@@ -147,274 +322,24 @@ bool ShouldUse2DFallbackMaterial(const MaterialDefinitionBuildRequest &request)
 
 const char *GetBuiltinMaterialCreatorIDName(const BuiltinMaterialCreatorID mtl_id)
 {
-    switch(mtl_id)
-    {
-        case BuiltinMaterialCreatorID::VertexColor2D:         return "VertexColor2D";
-        case BuiltinMaterialCreatorID::PureColor2D:           return "PureColor2D";
-        case BuiltinMaterialCreatorID::PureTexture2D:         return "PureTexture2D";
-        case BuiltinMaterialCreatorID::RectTexture2D:         return "RectTexture2D";
-        case BuiltinMaterialCreatorID::RectTexture2DArray:    return "RectTexture2DArray";
-        case BuiltinMaterialCreatorID::Text2D:                return "Text2D";
-        case BuiltinMaterialCreatorID::PureColor3D:           return "PureColor3D";
-        case BuiltinMaterialCreatorID::VertexColor3D:         return "VertexColor3D";
-        case BuiltinMaterialCreatorID::VertexLuminance3D:     return "VertexLuminance3D";
-        case BuiltinMaterialCreatorID::VertexPattleColor3D:   return "VertexPattleColor3D";
-        case BuiltinMaterialCreatorID::Gizmo3D:               return "Gizmo3D";
-        case BuiltinMaterialCreatorID::SkyMinimal:            return "SkyMinimal";
-        case BuiltinMaterialCreatorID::Standard:              return "Standard";
-        case BuiltinMaterialCreatorID::StandardTextureArray:  return "StandardTextureArray";
-        default:                                    return nullptr;
-    }
-}
-
-static bool Is2DBuiltinMaterial(const BuiltinMaterialCreatorID mtl_id) noexcept
-{
-    return mtl_id <= BuiltinMaterialCreatorID::Text2D;
-}
-
-static ShaderProgramBuildSpec *CreateMaterialCreateInfoFromRequest(const contract::PhysicalDeviceProfileLite *profile,
-                                                                   const BuiltinMaterialCreatorID mtl_id,
-                                                                   const MaterialDefinition &definition,
-                                                                   const MaterialDefinitionBuildRequest &request)
-{
-    if (Is2DBuiltinMaterial(mtl_id))
-    {
-        if (mtl_id == BuiltinMaterialCreatorID::Text2D)
-            return CreateText2D(profile, request, definition);
-
-        switch(mtl_id)
-        {
-            case BuiltinMaterialCreatorID::VertexColor2D:      return CreateVertexColor2D(profile, request, definition);
-            case BuiltinMaterialCreatorID::PureColor2D:        return CreatePureColor2D(profile, request, definition);
-            case BuiltinMaterialCreatorID::PureTexture2D:      return CreatePureTexture2D(profile, request, definition);
-            case BuiltinMaterialCreatorID::RectTexture2D:      return CreateRectTexture2D(profile, request, definition);
-            case BuiltinMaterialCreatorID::RectTexture2DArray: return CreateRectTexture2DArray(profile, request, definition);
-            case BuiltinMaterialCreatorID::Text2D:             return CreateText2D(profile, request, definition);
-            default:                                           break;
-        }
-    }
-
-    switch(mtl_id)
-    {
-        case BuiltinMaterialCreatorID::PureColor3D:           return CreatePureColor3D(profile, request, definition);
-        case BuiltinMaterialCreatorID::VertexColor3D:         return CreateVertexColor3D(profile, request, definition);
-        case BuiltinMaterialCreatorID::VertexLuminance3D:     return CreateVertexLuminance3D(profile, request, definition);
-        case BuiltinMaterialCreatorID::VertexPattleColor3D:   return CreateVertexPattleColor3D(profile, request, definition);
-        case BuiltinMaterialCreatorID::Gizmo3D:               return CreateGizmo3D(profile, request, definition);
-        case BuiltinMaterialCreatorID::SkyMinimal:            return CreateSkyMinimal(profile, request, definition);
-        case BuiltinMaterialCreatorID::Standard:              return CreateStandard(profile, request, definition);
-        case BuiltinMaterialCreatorID::StandardTextureArray:  return CreateStandardTextureArray(profile, request, definition);
-        default:                                              break;
-    }
-    return nullptr;
-}
-
-static std::string BuildBuiltinMaterialCreatorRequestHashImpl(const BuiltinMaterialCreatorID mtl_id,
-                                                              const MaterialDefinition &definition,
-                                                              const MaterialDefinitionBuildRequest &request)
-{
-    auto BuildCommonConfigHash = [](const uint32 ssbo_slot_count,
-                                    const RenderTargetOutputConfig &rt_output,
-                                    const uint32 shader_stage_flag_bit,
-                                    const PrimitiveType prim,
-                                    const GeometryVertexFormat *geometry_vertex_format,
-                                    const ShaderBufferSource *const *private_shader_buffer_sources,
-                                    const uint32 private_shader_buffer_source_count) -> std::string
-    {
-        std::string hash;
-        hash.reserve(128);
-        hash+='M';
-
-        if(ssbo_slot_count>0)
-        {
-            hash+='S';
-            hash+=std::to_string(ssbo_slot_count);
-        }
-
-        hash+='_';
-        hash+=char('0'+rt_output.color);
-
-        if(rt_output.depth){hash+='D';}
-        if(rt_output.stencil){hash+='S';}
-
-        hash+='_';
-
-        if(shader_stage_flag_bit&(uint32)ShaderStage::Vertex){hash+='V';}
-        if(shader_stage_flag_bit&(uint32)ShaderStage::TessControl){hash+='T';}     //tc/te有一个就行了
-        if(shader_stage_flag_bit&(uint32)ShaderStage::Geometry){hash+='G';}
-        if(shader_stage_flag_bit&(uint32)ShaderStage::Fragment){hash+='F';}
-        if(shader_stage_flag_bit&(uint32)ShaderStage::Compute){hash+='C';}
-        if(shader_stage_flag_bit&(uint32)ShaderStage::Mesh){hash+='M';}     //mesh/task有一个就行了
-        hash+='_';
-
-        if(const char *prim_name=GetPrimName(prim))
-            hash+=prim_name;
-        else
-            hash+="UnknownPrim";
-
-        if(private_shader_buffer_source_count>0)
-        {
-            hash+="_PS";
-            const std::string pss_count_str=std::to_string(private_shader_buffer_source_count);
-            hash+=pss_count_str;
-
-            for(uint32 i=0;i<private_shader_buffer_source_count;++i)
-            {
-                hash+="_";
-
-                const ShaderBufferSource *sbs=private_shader_buffer_sources?private_shader_buffer_sources[i]:nullptr;
-                if(sbs&&sbs->struct_name)
-                    hash+=sbs->struct_name;
-                else
-                    hash+="null";
-            }
-        }
-
-        if(geometry_vertex_format&&geometry_vertex_format->GetCount()>0)
-        {
-            hash+="_GVF";
-
-            for(uint32 i=0;i<geometry_vertex_format->GetCount();++i)
-            {
-                const GeometryVertexAttributeFormat *attribute=geometry_vertex_format->Get(i);
-                if(!attribute)
-                    continue;
-
-                hash+="_";
-                hash+=GetVertexSemanticName(attribute->semantic);
-                hash+="_F";
-                hash+=std::to_string((uint32_t)attribute->format);
-                hash+="_V";
-                hash+=std::to_string((uint32_t)attribute->vec_size);
-                hash+="_S";
-                hash+=std::to_string(attribute->stride);
-            }
-        }
-
-        return hash;
+    static const char *const names[] = {
+        "VertexColor2D", "PureColor2D", "PureTexture2D",
+        "RectTexture2D", "RectTexture2DArray", "Text2D",
+        "PureColor3D", "VertexColor3D", "VertexLuminance3D",
+        "VertexPattleColor3D", "Gizmo3D", "SkyMinimal",
+        "Standard", "StandardTextureArray"
     };
-
-    auto BuildNodeConfigHash = [&](const VertexShaderNodeConfig &cfg) -> std::string
-    {
-       std::string hash;
-        hash.reserve(64);
-        hash += "_IN";
-        hash += std::to_string(static_cast<uint32>(cfg.input));
-        hash += "_PM";
-        hash += std::to_string(static_cast<uint32>(cfg.position_mapping));
-        hash += "_OR";
-        hash += std::to_string(static_cast<uint32>(cfg.orientation));
-        hash += "_SC";
-        hash += std::to_string(static_cast<uint32>(cfg.scale));
-        hash += "_PR";
-        hash += std::to_string(static_cast<uint32>(cfg.projection));
-        return hash;
-    };
-
-    auto Build3DConfigHash = [&]() -> std::string
-    {
-        RenderTargetOutputConfig rt_output{};
-        rt_output.color = 1;
-        rt_output.depth = true;
-        rt_output.stencil = false;
-        if(request.override_rt_output)
-            rt_output = request.rt_output;
-
-        uint32 shader_stage_flag_bit = uint32(ShaderStage::VertexFragment);
-        if(request.override_shader_stage_bits)
-            shader_stage_flag_bit = request.shader_stage_flag_bit;
-
-        const ShaderBufferSource *const *private_sbs = nullptr;
-        uint32 private_sbs_count = 0;
-        if(request.private_shader_buffer_sources && request.private_shader_buffer_source_count>0)
-        {
-            private_sbs = request.private_shader_buffer_sources;
-            private_sbs_count = request.private_shader_buffer_source_count;
-        }
-
-        std::string hash = BuildCommonConfigHash(static_cast<uint32>(definition.ssbo_slot_decls.size()),
-                                                 rt_output,
-                                                 shader_stage_flag_bit,
-                                                 request.primitive_type,
-                                                 request.geometry_vertex_format,
-                                                 private_sbs,
-                                                 private_sbs_count);
-
-        if (HasUBORequirement(definition, UBODescriptorSemantic::CameraInfo))
-            hash+="_Camera";
-
-        if (HasUBORequirement(definition, UBODescriptorSemantic::SkyInfo))
-            hash+="_Sky";
-
-        hash+="_Amb";
-        const SkyLightAmbientModel ambient = request.override_sky_ambient_model
-                                           ? request.sky_ambient_model
-                                           : SkyLightAmbientModel::Simple;
-        char amb_model_str[2]={(char)('0'+(uint8)ambient),0};
-        hash+=amb_model_str;
-
-        if (definition.vertex_node_config.projection != ProjectionMode::OrthoViewport
-         && definition.vertex_node_config.projection != ProjectionMode::ClipPassthrough)
-            hash+="_L2W";
-
-        hash += BuildNodeConfigHash(definition.vertex_node_config);
-
-        return hash;
-    };
-
-    const char *creator_name = GetBuiltinMaterialCreatorIDName(mtl_id);
-    if(!creator_name || !*creator_name)
-        creator_name = "UnknownBuiltinMaterialCreatorID";
-
-    if (Is2DBuiltinMaterial(mtl_id))
-    {
-    RenderTargetOutputConfig rt_output{};
-    rt_output.color = 1;
-    rt_output.depth = false;
-    rt_output.stencil = false;
-
-    uint32 shader_stage_flag_bit = uint32(ShaderStage::VertexFragment);
-    if(request.override_shader_stage_bits)
-        shader_stage_flag_bit = request.shader_stage_flag_bit;
-
-    const ShaderBufferSource *const *private_sbs = nullptr;
-    uint32 private_sbs_count = 0;
-    if(request.override_rt_output)
-        rt_output = request.rt_output;
-    if(request.private_shader_buffer_sources && request.private_shader_buffer_source_count>0)
-    {
-        private_sbs = request.private_shader_buffer_sources;
-        private_sbs_count = request.private_shader_buffer_source_count;
-    }
-
-    std::string hash = BuildCommonConfigHash(static_cast<uint32>(definition.ssbo_slot_decls.size()),
-                                             rt_output,
-                                             shader_stage_flag_bit,
-                                             request.primitive_type,
-                                             request.geometry_vertex_format,
-                                             private_sbs,
-                                             private_sbs_count);
-    hash += BuildNodeConfigHash(request.recipe.vertex_node_config);
-    return std::string(creator_name) + "?" + hash;
-    }
-
-    const std::string hash = Build3DConfigHash();
-    return std::string(creator_name) + "?" + hash;
+    const uint32 index = static_cast<uint32>(mtl_id);
+    return index < static_cast<uint32>(sizeof(names) / sizeof(names[0]))
+        ? names[index] : nullptr;
 }
 
-ShaderProgramBuildSpec *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
-                                              const BuiltinMaterialCreatorID mtl_id,
-                                              const MaterialDefinition &definition,
-                                              const MaterialDefinitionBuildRequest &request)
+ShaderProgramBuildSpec *CreateMaterialFromDefinition(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const MaterialDefinition &definition,
+    const MaterialDefinitionBuildRequest &request)
 {
-    return CreateMaterialCreateInfoFromRequest(profile, mtl_id, definition, request);
-}
-
-std::string BuildBuiltinMaterialCreatorRequestHash(const BuiltinMaterialCreatorID mtl_id,
-                                                 const MaterialDefinition &definition,
-                                                 const MaterialDefinitionBuildRequest &request)
-{
-    return BuildBuiltinMaterialCreatorRequestHashImpl(mtl_id, definition, request);
+    return BuildGenericMaterial(profile, request, definition);
 }
 
 void NormalizeRecipe(MaterialRecipe &recipe)

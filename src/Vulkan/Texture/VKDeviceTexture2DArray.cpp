@@ -7,6 +7,13 @@
 #include"CopyBufferToImage.h"
 namespace hgl::graph{
 void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspectFlags aspect_mask,VkExtent3D extent,const uint32_t mipLevels,const uint32_t layer_count);
+void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,
+                     VkImage image,
+                     VkImageAspectFlags aspect_mask,
+                     VkExtent3D extent,
+                     const uint32_t mipLevels,
+                     const uint32_t base_array_layer,
+                     const uint32_t layer_count);
 
 Texture2DArray *TextureManager::CreateTexture2DArray(TextureData *tex_data)
 {
@@ -249,5 +256,33 @@ bool TextureManager::ChangeTexture2DArray(Texture2DArray *tex,const void *data,c
 
     delete buf;
     return(result);
+}
+
+bool TextureManager::GenerateTexture2DArrayMipmaps(Texture2DArray *tex, const uint32_t layer)
+{
+    if (!tex || tex->GetMipLevel() <= 1 || layer >= tex->GetLayer() || !texture_cmd_buf || !texture_queue)
+        return true;
+
+    ImageSubresourceRange range(tex->GetAspect(), tex->GetMipLevel(), 1);
+    range.baseArrayLayer = layer;
+
+    texture_cmd_buf->Begin();
+    texture_cmd_buf->ImageMemoryBarrier(tex->GetImage(),
+                                        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                        VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                        VK_ACCESS_SHADER_READ_BIT,
+                                        VK_ACCESS_TRANSFER_WRITE_BIT,
+                                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                        range);
+    GenerateMipmaps(texture_cmd_buf,
+                    tex->GetImage(),
+                    tex->GetAspect(),
+                    *tex->GetExtent(),
+                    tex->GetMipLevel(),
+                    layer,
+                    1);
+    texture_cmd_buf->End();
+    return SubmitTexture(*texture_cmd_buf);
 }
 }//namespace hgl::graph

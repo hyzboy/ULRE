@@ -37,6 +37,7 @@ bool LoadTexture2DLayerFromFile(TextureManager *tm,Texture2DArray *ta,const uint
     scope.Width=ta->GetWidth();
     scope.Height=ta->GetHeight();
 
-    return tm->ChangeTexture2DArray(ta,buf,scope,layer,1);
+    return tm->ChangeTexture2DArray(ta,buf,scope,layer,1)
+        && tm->GenerateTexture2DArrayMipmaps(ta,layer);
 }
 }//namespace hgl::graph

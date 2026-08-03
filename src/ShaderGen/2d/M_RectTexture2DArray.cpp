@@ -17,58 +17,20 @@ namespace
         bmi.texture_slot_decls = {{TextureSlot::BaseColor, GLSLSamplerType::Sampler2DArray, true}};
         bmi.ssbo_slot_decls = {{"mtl", SSBOType::TextureRectArraySurface}};
         bmi.vertex_node_config = Make2DNodeConfigNDC(true);
+        const MaterialVertexAttributeDefinition attrs[] = {
+            {VertexSemantic::TexCoord, 1, VK_FORMAT_R32G32_SFLOAT, "layout(location=1) in vec2 TexCoord;\n"}
+        };
+        MaterialVertexVaryingConfig varying{};
+        varying.emit_data_index_id = true;
+        varying.emit_uv0 = true;
+        ConfigureMaterialDefinitionContract(bmi, "2d/recttexture2darray.frag.glsl", nullptr,
+                                             VK_FORMAT_R32G32_SFLOAT, varying, attrs, 1);
+        bmi.fragment_program_mode = MaterialFragmentProgramMode::DirectInclude;
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::RectTexture2DArray, bmi);
         return true;
     }();
 }
 
-static ShaderProgramBuildSpec *CreateRectTexture2DArrayImpl(const contract::PhysicalDeviceProfileLite *profile, Material2DBuildParams p)
-{
-    if(!profile)
-        return(nullptr);
+void ForceLinkRectTexture2DArrayMaterialDefinition() {}
 
-    p.prim = PrimitiveType::Triangles;
-    p.shader_stage_flag_bit &= ~(uint32_t)ShaderStage::Geometry;
-
-    const VkFormat position_format = ResolveMaterialPositionFormat(p.geometry_vertex_format, VK_FORMAT_R32G32_SFLOAT);
-    auto preamble = build2d::Build2DFragmentPreamble(p, true);
-
-    std::vector<FixedVertexEntry> vertices;
-    build2d::PushBaseVertexEntries(vertices, p, position_format);
-    build2d::PushSemanticVertexEntry(vertices, p, VertexSemantic::TexCoord, VK_FORMAT_R32G32_SFLOAT);
-
-    std::vector<FixedDescriptorEntry> descriptors;
-    build2d::PushBaseDescriptorEntries(descriptors, p);
-
-    FixedMaterialDef def {
-        "RectTexture2DArray",
-        p.prim,
-        vertices.data(), uint32_t(vertices.size()),
-        descriptors.data(), uint32_t(descriptors.size()),
-    };
-
-    VertexVaryingConfig varying_cfg;
-    varying_cfg.emit_data_index_id = true;
-    varying_cfg.emit_uv0 = true;
-    // layer 由 mi.id.x 提供（0-based 真层索引），不经过 bindless texture layer rows。
-    const std::string extra_attrs = "layout(location=1) in vec2 TexCoord;\n";
-    std::string vs = GenerateVertexShader(
-        p.vertex_node_config,
-        varying_cfg,
-        position_format,
-        extra_attrs,
-        "ShaderLibrary"
-    );
-    std::string fs = preamble + "#include \"2d/recttexture2darray.frag.glsl\"\n";
-
-    ShaderProgramBuildSpec *mci = CompileCompositorMaterial(profile, def, vs, fs, build2d::ToCompositorBuildConfig2D(p));
-    if(!mci)
-        GLogError("[RectTexture2DArray] CompileCompositorMaterial failed");
-    return mci;
-}
-
-ShaderProgramBuildSpec *CreateRectTexture2DArray(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
-{
-    return CreateRectTexture2DArrayImpl(profile, Material2DBuildParams::From(request, definition));
-}
 }//namespace hgl::graph::mtl

@@ -1,5 +1,6 @@
 #include <hgl/graph/module/ShaderProgramCreatePrecheckAdapter.h>
 #include <hgl/shadergen/ShaderProgramBuildSpec.h>
+#include <hgl/log/Log.h>
 
 namespace hgl::graph
 {
@@ -12,7 +13,10 @@ namespace hgl::graph
         out_result.shader_map = nullptr;
 
         if (!mci)
+        {
+            GLogError("[ShaderProgramPrecheck] null build spec: name=%s", material_name.c_str());
             return ShaderProgramCreatePrecheckDecision::Abort;
+        }
 
         if (find_cached_material)
         {
@@ -23,10 +27,17 @@ namespace hgl::graph
 
         const ShaderCreateInfoMap &sci_map = mci->GetShaderMap();
         if (sci_map.GetCount() < 2)
+        {
+            GLogError("[ShaderProgramPrecheck] incomplete shader map: name=%s count=%d",
+                      material_name.c_str(), sci_map.GetCount());
             return ShaderProgramCreatePrecheckDecision::Abort;
+        }
 
         if (!mci->GetStageShader(ShaderStage::Fragment))
+        {
+            GLogError("[ShaderProgramPrecheck] fragment stage missing: name=%s", material_name.c_str());
             return ShaderProgramCreatePrecheckDecision::Abort;
+        }
 
         out_result.shader_map = &sci_map;
         return ShaderProgramCreatePrecheckDecision::Proceed;

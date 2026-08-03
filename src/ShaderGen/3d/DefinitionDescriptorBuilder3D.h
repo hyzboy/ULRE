@@ -77,8 +77,9 @@ inline std::vector<FixedDescriptorEntry> Build3DDescriptorsFromDefinition(
 
     for (const auto &tex : definition.texture_slot_decls)
     {
-        descriptor_builder_common::PushMaterialTexture(
+        descriptor_builder_common::PushMaterialSampler(
             descriptors,
+            descriptor_builder_common::GetTextureNameBySlot(tex.slot),
             tex.slot,
             ToGLSLSamplerTypeName(tex.sampler_type),
             opt.texture_stage_flags);

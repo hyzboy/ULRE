@@ -126,18 +126,20 @@ inline void PushManifestTexture(std::vector<FixedDescriptorEntry> &v,
 {
     const bool is_scene_sampler = texture.semantic == DescriptorSemantic::SkyCubemapSampler
                                || texture.semantic == DescriptorSemantic::MaterialSampler;
+    const bool is_material_sampler = texture.semantic == DescriptorSemantic::MaterialTexture
+                                 || texture.semantic == DescriptorSemantic::MaterialSampler;
     v.push_back({
         is_scene_sampler ? DescriptorSetType::Scene : DescriptorSetType::Material,
-        is_scene_sampler ? DescriptorKind::TextureSampler : DescriptorKind::Texture,
+        is_scene_sampler || is_material_sampler ? DescriptorKind::TextureSampler : DescriptorKind::Texture,
         texture.stage_flags,
         texture.name,
         nullptr,
         texture.glsl_type,
-        texture.semantic,
+        is_material_sampler ? DescriptorSemantic::MaterialSampler : texture.semantic,
         texture.slot,
         DefaultMaterialSSBOSlot,
         SSBOType::UserDefined,
-        is_scene_sampler ? DescriptorSemanticLayer::Sampler : DescriptorSemanticLayer::Texture
+        is_scene_sampler || is_material_sampler ? DescriptorSemanticLayer::Sampler : DescriptorSemanticLayer::Texture
     });
 }
 

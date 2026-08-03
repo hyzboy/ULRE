@@ -16,50 +16,12 @@ namespace
         bmi.ubo_requirements = {UBODescriptorSemantic::ViewportInfo};
         bmi.texture_slot_decls = {{TextureSlot::BaseColor, GLSLSamplerType::Sampler2D, true}};
         bmi.vertex_node_config = Make2DNodeConfigNDC(true);
+        ConfigureSimpleMaterialShaderContract(bmi, "2d/puretexture2d.frag.glsl", false, true, false, false);
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::PureTexture2D, bmi);
         return true;
     }();
 }
 
-static ShaderProgramBuildSpec *CreatePureTexture2DImpl(const contract::PhysicalDeviceProfileLite *profile, const Material2DBuildParams &p)
-{
-    auto preamble = build2d::Build2DFragmentPreamble(p, true);
+void ForceLinkPureTexture2DMaterialDefinition() {}
 
-    std::vector<FixedVertexEntry> vertices;
-    build2d::PushBaseVertexEntries(vertices, p);
-    build2d::PushSemanticVertexEntry(vertices, p, VertexSemantic::TexCoord, VK_FORMAT_R32G32_SFLOAT);
-
-    std::vector<FixedDescriptorEntry> descriptors;
-    build2d::PushBaseDescriptorEntries(descriptors, p);
-
-    FixedMaterialDef def {
-        "PureTexture2D",
-        p.prim,
-        vertices.data(), uint32_t(vertices.size()),
-        descriptors.data(), uint32_t(descriptors.size()),
-    };
-
-    const VkFormat position_format = ResolveMaterialPositionFormat(p.geometry_vertex_format, VK_FORMAT_R32G32_SFLOAT);
-    VertexVaryingConfig varying_cfg;
-    varying_cfg.emit_uv0 = true;
-    const std::string extra_attrs = "layout(location=1) in vec2 TexCoord;\n";
-    std::string vs = GenerateVertexShader(
-        p.vertex_node_config,
-        varying_cfg,
-        position_format,
-        extra_attrs,
-        "ShaderLibrary"
-    );
-    std::string fs = preamble + "#include \"2d/puretexture2d.frag.glsl\"\n";
-
-    ShaderProgramBuildSpec *mci = CompileCompositorMaterial(profile, def, vs, fs, build2d::ToCompositorBuildConfig2D(p));
-    if(!mci)
-        GLogError("[PureTexture2D] CompileCompositorMaterial failed");
-    return mci;
-}
-
-ShaderProgramBuildSpec *CreatePureTexture2D(const contract::PhysicalDeviceProfileLite *profile,const MaterialDefinitionBuildRequest &request,const MaterialDefinition &definition)
-{
-    return CreatePureTexture2DImpl(profile, Material2DBuildParams::From(request, definition));
-}
 }//namespace hgl::graph::mtl

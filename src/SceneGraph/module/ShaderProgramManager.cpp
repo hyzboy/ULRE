@@ -24,8 +24,7 @@ namespace hgl::graph{
 namespace
 {
     bool ResolveMaterialDefinitionForRequest(const mtl::MaterialDefinitionBuildRequest &request,
-                                             mtl::MaterialDefinition &out_bmi,
-                                             mtl::BuiltinMaterialCreatorID &out_preset)
+                                             mtl::MaterialDefinition &out_bmi)
     {
         const std::string &mtl_def_id = request.recipe.mtl_def_id;
 
@@ -39,11 +38,6 @@ namespace
         if (!has_bmi)
             return false;
 
-        if (out_bmi.builtin_creator_id == mtl::InvalidBuiltinMaterialCreatorIDHint
-         || out_bmi.builtin_creator_id >= static_cast<uint32_t>(mtl::BuiltinMaterialCreatorID::RANGE_SIZE))
-            return false;
-
-        out_preset = static_cast<mtl::BuiltinMaterialCreatorID>(out_bmi.builtin_creator_id);
         return true;
     }
 
@@ -366,7 +360,12 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(const AnsiString &mtl_
         return precheck_result.cached_material;
 
     if(precheck_decision != ShaderProgramCreatePrecheckDecision::Proceed)
+    {
+        GLogError("[ShaderProgramManager] shader program precheck rejected: name=%s decision=%u",
+                  mtl_name.c_str(),
+                  static_cast<uint32>(precheck_decision));
         return nullptr;
+    }
 
     const ShaderCreateInfoMap &sci_map = *precheck_result.shader_map;
 
@@ -419,14 +418,18 @@ bool ShaderProgramManager::BuildMaterialResourceLayout(const mtl::MaterialDefini
                                                   mtl::MaterialResourceLayout &out_layout)
 {
     mtl::MaterialDefinition bmi{};
-    mtl::BuiltinMaterialCreatorID preset = mtl::BuiltinMaterialCreatorID::VertexColor2D;
-    if (!ResolveMaterialDefinitionForRequest(request, bmi, preset))
+    if (!ResolveMaterialDefinitionForRequest(request, bmi))
         return false;
 
     const auto *profile = GetPhysicalDeviceProfile();
-    AutoDelete<mtl::ShaderProgramBuildSpec> mci = mtl::CreateMaterialCreateInfo(profile, preset, bmi, request);
+    AutoDelete<mtl::ShaderProgramBuildSpec> mci = mtl::CreateMaterialFromDefinition(profile, bmi, request);
     if (!mci)
+    {
+        GLogError("[ShaderProgramManager] Material definition build failed: id=%s name=%s",
+                  bmi.definition_id.c_str(),
+                  bmi.definition_name.c_str());
         return false;
+    }
 
     out_layout = mci->GetMaterialResourceLayout();
     return true;
@@ -443,22 +446,27 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(const mtl::MaterialDef
     normalized_request.recipe = normalized_recipe;
 
     mtl::MaterialDefinition bmi{};
-    mtl::BuiltinMaterialCreatorID preset = mtl::BuiltinMaterialCreatorID::VertexColor2D;
-    if (!ResolveMaterialDefinitionForRequest(normalized_request, bmi, preset))
+    if (!ResolveMaterialDefinitionForRequest(normalized_request, bmi))
         return nullptr;
 
-    // Compute hash key BEFORE CreateMaterialCreateInfo to avoid triggering
+    // Compute hash key BEFORE generic shader compilation to avoid triggering
     // CompositorAssembler/GLSL compilation on every call when already cached.
-    const std::string hash_std = mtl::BuildBuiltinMaterialCreatorRequestHash(preset, bmi, normalized_request);
+    const std::string hash_std = bmi.definition_id + "?"
+        + std::to_string(mtl::HashMaterialRecipe(normalized_request.recipe));
     const AnsiString hash_name = hash_std.c_str();
 
     if (ShaderProgram *cached = TryGetCachedMaterial(hash_name))
         return cached;
 
     const auto *profile = GetPhysicalDeviceProfile();
-    AutoDelete<mtl::ShaderProgramBuildSpec> mci = mtl::CreateMaterialCreateInfo(profile, preset, bmi, normalized_request);
+    AutoDelete<mtl::ShaderProgramBuildSpec> mci = mtl::CreateMaterialFromDefinition(profile, bmi, normalized_request);
     if(!mci)
+    {
+        GLogError("[ShaderProgramManager] Material definition build failed: id=%s name=%s",
+                  bmi.definition_id.c_str(),
+                  bmi.definition_name.c_str());
         return nullptr;
+    }
 
     return this->AcquireShaderProgram(hash_name, mci);
 }
