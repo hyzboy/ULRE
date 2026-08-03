@@ -4,8 +4,10 @@
 // 2D 生成器或自定义材质可在 #include 之前 #define 覆盖默认值。
 //
 // 固定布局：set 间按 Scene(0) < Transform(1) < Material(2) < VertexData(3)。
-// Material 内固定行表绑定：mtl_data_index_rows=1, mtl_texture_layer_rows=2。
-// 材质实例 mtl SSBO 的 struct/buffer 声明由 CompileCompositorMaterial 统一生成并注入，不再写死在 .glsl。
+// Material 内行表绑定（mtl_data_index_rows / mtl_texture_layer_rows）不在此定义默认值：
+// 由 CompileCompositorMaterial 依据 descriptor_info 注入 MI_DATA_INDEX_ROWS_SET/BINDING、
+// MI_TEXTURE_LAYER_ROWS_SET/BINDING 宏（声明统一生成，不再写死在 .glsl）。
+// 材质实例 mtl SSBO 的 struct/buffer 声明同样由 CompileCompositorMaterial 统一生成并注入。
 
 #ifndef DESCRIPTOR_MACROS_GLSL
 #define DESCRIPTOR_MACROS_GLSL
@@ -44,24 +46,6 @@
 
 #ifndef L2W_INDEX_ROWS_BINDING
 #define L2W_INDEX_ROWS_BINDING 1
-#endif
-
-// ── Material set rows (instance-index indirection) ──
-
-#ifndef MI_DATA_INDEX_ROWS_SET
-#define MI_DATA_INDEX_ROWS_SET MATERIAL_SET
-#endif
-
-#ifndef MI_DATA_INDEX_ROWS_BINDING
-#define MI_DATA_INDEX_ROWS_BINDING 1
-#endif
-
-#ifndef MI_TEXTURE_LAYER_ROWS_SET
-#define MI_TEXTURE_LAYER_ROWS_SET MATERIAL_SET
-#endif
-
-#ifndef MI_TEXTURE_LAYER_ROWS_BINDING
-#define MI_TEXTURE_LAYER_ROWS_BINDING 2
 #endif
 
 // ── Scene set ──
