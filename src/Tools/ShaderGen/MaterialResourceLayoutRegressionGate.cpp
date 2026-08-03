@@ -151,7 +151,6 @@ namespace
             { BUILTIN_MTL_DEF_SKY, BuiltinMaterialCreatorID::SkyMinimal, false, false, true },
             { "Standard", BuiltinMaterialCreatorID::Standard, false, false, true },
             { "StandardTextureArray", BuiltinMaterialCreatorID::StandardTextureArray, false, false, true },
-            { "PBRColor3D", BuiltinMaterialCreatorID::PBRColor3D, false, false, true },
             { "Gizmo3D", BuiltinMaterialCreatorID::Gizmo3D, false, false, false },
             { "RectTexture2D", BuiltinMaterialCreatorID::RectTexture2D, true, false, false },
             { "RectTexture2DArray", BuiltinMaterialCreatorID::RectTexture2DArray, true, false, false },
@@ -176,8 +175,7 @@ namespace
             const bool is_text = entry.builtin_id == BuiltinMaterialCreatorID::Text2D;
             const bool with_sky = entry.builtin_id == BuiltinMaterialCreatorID::SkyMinimal
                                || entry.builtin_id == BuiltinMaterialCreatorID::Standard
-                               || entry.builtin_id == BuiltinMaterialCreatorID::StandardTextureArray
-                               || entry.builtin_id == BuiltinMaterialCreatorID::PBRColor3D;
+                               || entry.builtin_id == BuiltinMaterialCreatorID::StandardTextureArray;
 
             if (is_2d != entry.is_2d)
             {

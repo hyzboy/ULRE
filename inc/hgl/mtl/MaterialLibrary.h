@@ -42,9 +42,8 @@ enum class BuiltinMaterialCreatorID:uint8
     SkyMinimal,
     Standard,
     StandardTextureArray,
-    PBRColor3D,
 
-    ENUM_CLASS_RANGE(VertexColor2D,PBRColor3D)
+    ENUM_CLASS_RANGE(VertexColor2D,StandardTextureArray)
 };
 
 // ── Layer 3: MaterialDefinitionBuildRequest = Build Context ──────────────────
@@ -95,7 +94,6 @@ DECLARE_MATERIAL_CREATOR(Gizmo3D)
 DECLARE_MATERIAL_CREATOR(SkyMinimal)
 DECLARE_MATERIAL_CREATOR(Standard)
 DECLARE_MATERIAL_CREATOR(StandardTextureArray)
-DECLARE_MATERIAL_CREATOR(PBRColor3D)
 
 ShaderProgramBuildSpec *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
                                              const BuiltinMaterialCreatorID mtl_id,

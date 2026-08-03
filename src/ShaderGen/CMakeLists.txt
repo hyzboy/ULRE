@@ -49,7 +49,6 @@ set(SSBO_HEADER_PATH ${ROOT_INCLUDE_PATH}/hgl/graph/ssbo)
 
 SET(SSBO_STRUCT_FILES   ${SSBO_HEADER_PATH}/StandardMaterialInstance.h
                         ${SSBO_HEADER_PATH}/StandardTextureArrayMaterialInstance.h
-                        ${SSBO_HEADER_PATH}/PBRColor3DMaterialInstance.h
                         ${SSBO_HEADER_PATH}/TextureSlot.h
                         ${SSBO_HEADER_PATH}/SSBOTypes.h)
 
@@ -71,7 +70,6 @@ SET(STD_MTL_3D_SOURCE_FILES	3d/M_PureColor3D.cpp
                             3d/M_SkyMinimal.cpp
                             3d/M_Standard.cpp
                             3d/M_StandardTextureArray.cpp
-                            3d/M_PBRColor3D.cpp
                             3d/M_VertexPattleColor3D.cpp
 )
 

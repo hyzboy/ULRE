@@ -134,10 +134,10 @@ static bool ValidateE0DescriptorShapeBaseline(
         return ValidateDescriptorShapeExact(name, def.descriptor_entries, def.descriptor_entry_count, expected, uint32_t(sizeof(expected) / sizeof(expected[0])), diagnostics);
     }
 
-    if (std::strcmp(name, "Standard_v1") == 0 || std::strcmp(name, "PBRColor3D") == 0)
+    if (std::strcmp(name, "Standard_v1") == 0)
     {
         const bool with_cubemap = GetSkyLightDataRequirement(config.sky_ambient_model).need_sky_cubemap;
-        const uint32_t base_count = (std::strcmp(name, "Standard_v1") == 0) ? 11u : 8u;
+        constexpr uint32_t base_count = 11u;
         const uint32_t expect_count = with_cubemap ? (base_count + 1u) : base_count;
         if (def.descriptor_entry_count != expect_count)
         {

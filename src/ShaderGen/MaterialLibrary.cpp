@@ -163,7 +163,6 @@ const char *GetBuiltinMaterialCreatorIDName(const BuiltinMaterialCreatorID mtl_i
         case BuiltinMaterialCreatorID::SkyMinimal:            return "SkyMinimal";
         case BuiltinMaterialCreatorID::Standard:              return "Standard";
         case BuiltinMaterialCreatorID::StandardTextureArray:  return "StandardTextureArray";
-        case BuiltinMaterialCreatorID::PBRColor3D:            return "PBRColor3D";
         default:                                    return nullptr;
     }
 }
@@ -205,7 +204,6 @@ static ShaderProgramBuildSpec *CreateMaterialCreateInfoFromRequest(const contrac
         case BuiltinMaterialCreatorID::SkyMinimal:            return CreateSkyMinimal(profile, request, definition);
         case BuiltinMaterialCreatorID::Standard:              return CreateStandard(profile, request, definition);
         case BuiltinMaterialCreatorID::StandardTextureArray:  return CreateStandardTextureArray(profile, request, definition);
-        case BuiltinMaterialCreatorID::PBRColor3D:            return CreatePBRColor3D(profile, request, definition);
         default:                                              break;
     }
     return nullptr;
