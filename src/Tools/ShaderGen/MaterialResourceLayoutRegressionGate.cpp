@@ -1,6 +1,7 @@
 #include <hgl/mtl/MaterialResourceLayout.h>
 #include <hgl/mtl/MaterialLibrary.h>
 #include <hgl/graph/glsl/GLSLCodeModule.h>
+#include <hgl/graph/glsl/ShaderResourceManifest.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 
@@ -289,6 +290,66 @@ namespace
         result.passed = result.diagnostics.empty();
         return result;
     }
+
+    static GateResult RunShaderResourceManifestCase()
+    {
+        GateResult result;
+        result.name = "H.shader-resource-manifest";
+
+        constexpr GLSLCodeModuleID roots[] =
+        {
+            GLSLCodeModuleID::SkyLightSimple,
+            GLSLCodeModuleID::SkyLightCubeMap
+        };
+
+        ShaderResourceManifest manifest{};
+        if (!BuildShaderResourceManifest(manifest.code_modules, 0, manifest))
+            result.diagnostics.emplace_back("Empty root list must produce a valid manifest.");
+
+        if (!BuildShaderResourceManifest(roots, uint32_t(std::size(roots)), manifest))
+        {
+            result.diagnostics.emplace_back(
+                std::string("Combined SkyLight manifest failed: ")
+                + GetShaderResourceManifestErrorName(manifest.error));
+        }
+        else
+        {
+            if (manifest.code_module_count != 3)
+                result.diagnostics.emplace_back("Shared SkyLightHeader must be deduplicated.");
+
+            if (manifest.ubo_count != 1
+             || manifest.ubos[0].semantic != UBODescriptorSemantic::SkyInfo)
+                result.diagnostics.emplace_back("Combined SkyLight modules must produce one SkyInfo UBO.");
+
+            if (manifest.texture_count != 1
+             || manifest.textures[0].semantic != DescriptorSemantic::SkyCubemapSampler)
+                result.diagnostics.emplace_back("Combined SkyLight modules must produce one SkyCubemap texture.");
+
+            if (manifest.stable_hash == 0)
+                result.diagnostics.emplace_back("Valid manifest must produce a non-zero stable hash.");
+        }
+
+        ShaderResourceManifest simple_manifest{};
+        ShaderResourceManifest cubemap_manifest{};
+        const GLSLCodeModuleID simple_root = GLSLCodeModuleID::SkyLightSimple;
+        const GLSLCodeModuleID cubemap_root = GLSLCodeModuleID::SkyLightCubeMap;
+        if (!BuildShaderResourceManifest(&simple_root, 1, simple_manifest)
+         || !BuildShaderResourceManifest(&cubemap_root, 1, cubemap_manifest))
+        {
+            result.diagnostics.emplace_back("Individual SkyLight manifests must resolve.");
+        }
+        else if (simple_manifest.stable_hash == cubemap_manifest.stable_hash)
+        {
+            result.diagnostics.emplace_back("Different SkyLight resource closures must hash differently.");
+        }
+
+        if (BuildShaderResourceManifest(nullptr, 1, manifest)
+         || manifest.error != ShaderResourceManifestError::NullRootList)
+            result.diagnostics.emplace_back("Null root list must fail explicitly.");
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
 }
 
 int main()
@@ -332,6 +393,7 @@ int main()
     results.push_back(RunBuiltinRegistryCoverageCase());
     results.push_back(RunFallbackInferenceCase());
     results.push_back(RunGLSLCodeModuleRegistryCase());
+    results.push_back(RunShaderResourceManifestCase());
 
     bool all_passed = true;
     for (const auto &result : results)

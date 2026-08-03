@@ -39,8 +39,10 @@ SET(SHADERGEN_COMMON_FILES  ${STD_MTL_HEADER_PATH}/UBOCommon.h
                             ShaderVariableType.cpp
                             common/UBOCommon.cpp
                             common/GLSLCodeModule.cpp
+                            common/ShaderResourceManifest.cpp
                             common/MFCamera.h
                             ${ROOT_INCLUDE_PATH}/hgl/graph/glsl/GLSLCodeModule.h
+                            ${ROOT_INCLUDE_PATH}/hgl/graph/glsl/ShaderResourceManifest.h
 )
 
 SOURCE_GROUP("Common" FILES ${SHADERGEN_COMMON_FILES})
