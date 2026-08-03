@@ -27,7 +27,7 @@ using ShaderModuleMapByName = UnorderedMap<AnsiString,ShaderModule *>;
 
 constexpr const size_t VK_SHADER_STAGE_TYPE_COUNT = 20;
 
-GRAPH_MODULE_CLASS(MaterialManager)
+GRAPH_MODULE_CLASS(ShaderProgramManager)
 {
 private:
 
@@ -40,8 +40,8 @@ private:
 
     VkDescriptorSetLayout bindless_layout_ = VK_NULL_HANDLE;   ///< 全局 Bindless Texture Set 布局（Set 4）
 
-    MaterialManager(GraphicsContext *);
-    ~MaterialManager()=default;
+    ShaderProgramManager(GraphicsContext *);
+    ~ShaderProgramManager()=default;
 
     friend class GraphModuleManager;
 
@@ -138,6 +138,6 @@ public: //ShaderProgram
                                                 mtl::MaterialResourceLayout &out_layout);
     ShaderProgram *   AcquireMaterialProgram(const mtl::MaterialDefinitionBuildRequest &request);
 
-};//class MaterialManager
+};//class ShaderProgramManager
 
 }//namespace hgl::graph

@@ -52,7 +52,7 @@ class ShaderProgram
 
 private:
 
-    friend class MaterialManager;
+    friend class ShaderProgramManager;
 
     ShaderProgram(const AnsiString &,const mtl::ShaderProgramBuildSpec *);
 

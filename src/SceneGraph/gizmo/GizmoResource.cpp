@@ -7,7 +7,7 @@
 #include<hgl/color/Color.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/core/GraphicsContext.h>
-#include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>

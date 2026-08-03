@@ -1,4 +1,4 @@
-#include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/vk/pipeline/VKPipelineLayoutData.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
@@ -9,8 +9,8 @@
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/vk/VKVertexInput.h>
 #include<hgl/graph/core/GraphicsContext.h>
-#include<hgl/graph/module/MaterialCreatePrecheckAdapter.h>
-#include<hgl/graph/module/MaterialFinalizeFlowAdapter.h>
+#include<hgl/graph/module/ShaderProgramCreatePrecheckAdapter.h>
+#include<hgl/graph/module/ShaderProgramFinalizeFlowAdapter.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/shadergen/ShaderProgramBuildSpec.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
@@ -65,7 +65,7 @@ namespace
         }
     }
 
-    bool BuildShaderModulesFromCreateInfoMap(MaterialManager *manager,
+    bool BuildShaderModulesFromCreateInfoMap(ShaderProgramManager *manager,
                                              const AnsiString &mtl_name,
                                              const ShaderCreateInfoMap &sci_map,
                                              ShaderModuleMap *shader_maps)
@@ -123,11 +123,11 @@ namespace
 
 }//namespace
 
-GRAPH_MODULE_CONSTRUCT(MaterialManager)
+GRAPH_MODULE_CONSTRUCT(ShaderProgramManager)
 {
 }
 
-const ShaderModule *MaterialManager::CreateShaderModule(const AnsiString &sm_name,const ShaderCreateInfo *sci)
+const ShaderModule *ShaderProgramManager::CreateShaderModule(const AnsiString &sm_name,const ShaderCreateInfo *sci)
 {
     VulkanDevice *device = GetDevice();
     if(!device)return(nullptr);
@@ -166,7 +166,7 @@ const ShaderModule *MaterialManager::CreateShaderModule(const AnsiString &sm_nam
     return sm;
 }
 
-const ShaderModule *MaterialManager::CreateShaderModuleFromSPV(const AnsiString &sm_name,
+const ShaderModule *ShaderProgramManager::CreateShaderModuleFromSPV(const AnsiString &sm_name,
                                                                 const VkShaderStageFlagBits stage,
                                                                 const uint32_t *spv_data,
                                                                 const size_t spv_size)
@@ -209,7 +209,7 @@ const ShaderModule *MaterialManager::CreateShaderModuleFromSPV(const AnsiString 
     return sm;
 }
 
-PipelineLayoutData *MaterialManager::CreateMaterialPipelineLayoutData(const AnsiString &mtl_name, const MaterialDescriptorManager *desc_manager)
+PipelineLayoutData *ShaderProgramManager::CreateMaterialPipelineLayoutData(const AnsiString &mtl_name, const MaterialDescriptorManager *desc_manager)
 {
     VulkanDevice *device = GetDevice();
     if(!device) return nullptr;
@@ -228,7 +228,7 @@ PipelineLayoutData *MaterialManager::CreateMaterialPipelineLayoutData(const Ansi
     return pld;
 }
 
-MaterialParameters *MaterialManager::CreateMaterialMP(const AnsiString &mtl_name, const MaterialDescriptorManager *desc_manager, const PipelineLayoutData *pld, const DescriptorSetType &desc_set_type)
+MaterialParameters *ShaderProgramManager::CreateMaterialMP(const AnsiString &mtl_name, const MaterialDescriptorManager *desc_manager, const PipelineLayoutData *pld, const DescriptorSetType &desc_set_type)
 {
     VulkanDevice *device = GetDevice();
     if(!device) return nullptr;
@@ -251,13 +251,13 @@ MaterialParameters *MaterialManager::CreateMaterialMP(const AnsiString &mtl_name
     return mp;
 }
 
-void MaterialManager::ApplyMaterialFinalizePlan(ShaderProgram *mtl, const AnsiString &mtl_name, const mtl::ShaderProgramBuildSpec &mci)
+void ShaderProgramManager::ApplyMaterialFinalizePlan(ShaderProgram *mtl, const AnsiString &mtl_name, const mtl::ShaderProgramBuildSpec &mci)
 {
     if(!mtl)
         return;
 
-    MaterialFinalizePlan finalize_plan;
-    BuildMaterialFinalizePlan(mtl->desc_manager, mci, finalize_plan);
+    ShaderProgramFinalizePlan finalize_plan;
+    BuildShaderProgramFinalizePlan(mtl->desc_manager, mci, finalize_plan);
 
     mtl->pipeline_layout_data = CreateMaterialPipelineLayoutData(mtl_name, mtl->desc_manager);
 
@@ -268,7 +268,7 @@ void MaterialManager::ApplyMaterialFinalizePlan(ShaderProgram *mtl, const AnsiSt
 
 }
 
-ShaderProgram *MaterialManager::TryGetCachedMaterial(const AnsiString &name)
+ShaderProgram *ShaderProgramManager::TryGetCachedMaterial(const AnsiString &name)
 {
     ShaderProgram *cached = nullptr;
     if(material_by_name.Get(name, cached))
@@ -277,7 +277,7 @@ ShaderProgram *MaterialManager::TryGetCachedMaterial(const AnsiString &name)
     return nullptr;
 }
 
-bool MaterialManager::ExecuteRuntimeMaterialBuildPipeline(ShaderProgram *mtl,
+bool ShaderProgramManager::ExecuteRuntimeMaterialBuildPipeline(ShaderProgram *mtl,
                                                           const AnsiString &mtl_name,
                                                           const mtl::ShaderProgramBuildSpec *mci,
                                                           const ShaderCreateInfoMap &sci_map)
@@ -296,7 +296,7 @@ bool MaterialManager::ExecuteRuntimeMaterialBuildPipeline(ShaderProgram *mtl,
     return true;
 }
 
-bool MaterialManager::BuildRuntimeShaderProgramState(ShaderProgram *mtl,
+bool ShaderProgramManager::BuildRuntimeShaderProgramState(ShaderProgram *mtl,
                                                      const AnsiString &mtl_name,
                                                      const mtl::ShaderProgramBuildSpec *mci,
                                                      const ShaderCreateInfoMap &sci_map)
@@ -320,7 +320,7 @@ bool MaterialManager::BuildRuntimeShaderProgramState(ShaderProgram *mtl,
     return true;
 }
 
-bool MaterialManager::BuildRuntimeDescriptorState(ShaderProgram *mtl,
+bool ShaderProgramManager::BuildRuntimeDescriptorState(ShaderProgram *mtl,
                                                   const AnsiString &mtl_name,
                                                   const mtl::ShaderProgramBuildSpec *mci)
 {
@@ -336,24 +336,24 @@ bool MaterialManager::BuildRuntimeDescriptorState(ShaderProgram *mtl,
     return true;
 }
 
-ShaderProgram *MaterialManager::AcquireMaterialProgram(const AnsiString &mtl_name,const mtl::ShaderProgramBuildSpec *mci)
+ShaderProgram *ShaderProgramManager::AcquireMaterialProgram(const AnsiString &mtl_name,const mtl::ShaderProgramBuildSpec *mci)
 {
     HGL_CAPTURE_SCOPE();
 
     if(!mci)
         return(nullptr);
 
-    MaterialCreatePrecheckResult precheck_result;
-    const MaterialCreatePrecheckDecision precheck_decision = RunMaterialCreatePrecheck(
+    ShaderProgramCreatePrecheckResult precheck_result;
+    const ShaderProgramCreatePrecheckDecision precheck_decision = RunShaderProgramCreatePrecheck(
         mci,
         mtl_name,
         [&](const AnsiString &name)->ShaderProgram * { return TryGetCachedMaterial(name); },
         precheck_result);
 
-    if(precheck_decision == MaterialCreatePrecheckDecision::UseCached)
+    if(precheck_decision == ShaderProgramCreatePrecheckDecision::UseCached)
         return precheck_result.cached_material;
 
-    if(precheck_decision != MaterialCreatePrecheckDecision::Proceed)
+    if(precheck_decision != ShaderProgramCreatePrecheckDecision::Proceed)
         return nullptr;
 
     const ShaderCreateInfoMap &sci_map = *precheck_result.shader_map;
@@ -368,22 +368,22 @@ ShaderProgram *MaterialManager::AcquireMaterialProgram(const AnsiString &mtl_nam
     Add(mtl);
 
     material_by_name.Add(mtl_name,mtl);
-    // ShaderProgram is a C++ object managed by MaterialManager, not a Vulkan object
+    // ShaderProgram is a C++ object managed by ShaderProgramManager, not a Vulkan object
     // No need to track with ObjectTracker
     return mtl.Finish();
 }
 
-void MaterialManager::ResetShaderGenProfiler()
+void ShaderProgramManager::ResetShaderGenProfiler()
 {
     // Runtime path currently keeps ShaderGen debug APIs as no-op for compatibility.
 }
 
-ShaderGenProfilerSnapshot MaterialManager::GetShaderGenProfilerSnapshot() const
+ShaderGenProfilerSnapshot ShaderProgramManager::GetShaderGenProfilerSnapshot() const
 {
     return {};
 }
 
-bool MaterialManager::GetShaderGenLastValidationReport(ShaderGenValidationReport &out_report, std::string *out_material_name) const
+bool ShaderProgramManager::GetShaderGenLastValidationReport(ShaderGenValidationReport &out_report, std::string *out_material_name) const
 {
     out_report = {};
     if (out_material_name)
@@ -391,19 +391,19 @@ bool MaterialManager::GetShaderGenLastValidationReport(ShaderGenValidationReport
     return false;
 }
 
-std::vector<ShaderGenValidationReportRecord> MaterialManager::GetShaderGenRecentValidationReports(const uint32_t max_count) const
+std::vector<ShaderGenValidationReportRecord> ShaderProgramManager::GetShaderGenRecentValidationReports(const uint32_t max_count) const
 {
     (void)max_count;
     return {};
 }
 
-std::map<std::string, uint32_t> MaterialManager::GetShaderGenRecentValidationCategoryHistogram(const uint32_t max_count) const
+std::map<std::string, uint32_t> ShaderProgramManager::GetShaderGenRecentValidationCategoryHistogram(const uint32_t max_count) const
 {
     (void)max_count;
     return {};
 }
 
-bool MaterialManager::BuildMaterialResourceLayout(const mtl::MaterialDefinitionBuildRequest &request,
+bool ShaderProgramManager::BuildMaterialResourceLayout(const mtl::MaterialDefinitionBuildRequest &request,
                                                   mtl::MaterialResourceLayout &out_layout)
 {
     mtl::MaterialDefinition bmi{};
@@ -420,7 +420,7 @@ bool MaterialManager::BuildMaterialResourceLayout(const mtl::MaterialDefinitionB
     return true;
 }
 
-ShaderProgram *MaterialManager::AcquireMaterialProgram(const mtl::MaterialDefinitionBuildRequest &request)
+ShaderProgram *ShaderProgramManager::AcquireMaterialProgram(const mtl::MaterialDefinitionBuildRequest &request)
 {
     // Ensure recipe defaults are filled in before lookup, in case the caller skipped normalization.
     // This call is idempotent; PrimitiveComponent-initiated paths will have already normalized.

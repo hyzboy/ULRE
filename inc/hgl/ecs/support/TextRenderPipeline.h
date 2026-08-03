@@ -28,7 +28,7 @@ namespace hgl
         class DeviceBuffer;
         struct GeometryDataBuffer;
         struct GeometryDrawRange;
-        class MaterialManager;
+        class ShaderProgramManager;
         class RenderCmdBuffer;
     }
 
@@ -77,7 +77,7 @@ namespace hgl
             std::vector<std::shared_ptr<TextComponent>> frame_texts;
             std::unordered_map<graph::FontSource*, BatchInput> frame_inputs;
             graph::GraphicsContext* frame_graphics_context = nullptr;
-            graph::MaterialManager* frame_material_manager = nullptr;
+            graph::ShaderProgramManager* frame_material_manager = nullptr;
             graph::RenderPass* frame_render_pass = nullptr;
             graph::VulkanDevice* frame_device = nullptr;
             graph::IRenderTarget* frame_render_target = nullptr;
@@ -99,7 +99,7 @@ namespace hgl
             RenderResources* GetOrCreateResources(graph::FontSource* font_source, uint32_t estimate_chars);
 
             bool PrepareFrameResources(graph::GraphicsContext*& graphics_context,
-                                       graph::MaterialManager*& material_manager,
+                                       graph::ShaderProgramManager*& material_manager,
                                        graph::RenderPass*& render_pass,
                                        graph::VulkanDevice*& device,
                                        graph::IRenderTarget*& render_target);

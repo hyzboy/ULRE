@@ -21,9 +21,9 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         ${SG_INCLUDE_PATH}/module/RenderPassManager.h
                         ${SG_INCLUDE_PATH}/module/TextureManager.h
                         ${SG_INCLUDE_PATH}/module/SamplerManager.h
-                        ${SG_INCLUDE_PATH}/module/MaterialManager.h
-                        ${SG_INCLUDE_PATH}/module/MaterialCreatePrecheckAdapter.h
-                        ${SG_INCLUDE_PATH}/module/MaterialFinalizeFlowAdapter.h
+                        ${SG_INCLUDE_PATH}/module/ShaderProgramManager.h
+                        ${SG_INCLUDE_PATH}/module/ShaderProgramCreatePrecheckAdapter.h
+                        ${SG_INCLUDE_PATH}/module/ShaderProgramFinalizeFlowAdapter.h
                         ${SG_INCLUDE_PATH}/module/BufferManager.h
                         ${SG_INCLUDE_PATH}/module/RenderTargetManager.h
                         ${SG_INCLUDE_PATH}/module/GeometryManager.h
@@ -35,9 +35,9 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         module/RenderPassManager.cpp
                         module/TextureManager.cpp
                         module/SamplerManager.cpp
-                        module/MaterialManager.cpp
-                        module/MaterialCreatePrecheckAdapter.cpp
-                        module/MaterialFinalizeFlowAdapter.cpp
+                        module/ShaderProgramManager.cpp
+                        module/ShaderProgramCreatePrecheckAdapter.cpp
+                        module/ShaderProgramFinalizeFlowAdapter.cpp
                         module/BufferManager.cpp
                         module/RenderTargetManager.cpp
                         module/GeometryManager.cpp

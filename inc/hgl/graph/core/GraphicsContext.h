@@ -33,7 +33,7 @@ namespace hgl::graph
     class RenderPassManager;
     class TextureManager;
     class RenderTargetManager;
-    class MaterialManager;
+    class ShaderProgramManager;
     class BufferManager;
     class SamplerManager;
     class GeometryManager;
@@ -65,7 +65,7 @@ namespace hgl::graph
         RenderPassManager *rp_manager = nullptr;
         TextureManager *tex_manager = nullptr;
         RenderTargetManager *rt_manager = nullptr;
-        MaterialManager *material_manager = nullptr;
+        ShaderProgramManager *material_manager = nullptr;
         BufferManager *buffer_manager = nullptr;
         SamplerManager *sampler_manager = nullptr;
         GeometryManager *geometry_manager = nullptr;
@@ -114,7 +114,7 @@ namespace hgl::graph
         // 模块管理器访问
         RenderPassManager *GetRenderPassManager() { return rp_manager; }
         TextureManager *GetTextureManager() { return tex_manager; }
-        MaterialManager *GetMaterialManager() { return material_manager; }
+        ShaderProgramManager *GetMaterialManager() { return material_manager; }
         BufferManager *GetBufferManager() { return buffer_manager; }
         SamplerManager *GetSamplerManager() { return sampler_manager; }
         GeometryManager *GetGeometryManager() { return geometry_manager; }
@@ -164,7 +164,7 @@ namespace hgl::graph
     }
 
     template<>
-    inline MaterialManager *GraphicsContext::GetManager<MaterialManager>()
+    inline ShaderProgramManager *GraphicsContext::GetManager<ShaderProgramManager>()
     {
         return GetMaterialManager();
     }

@@ -13,12 +13,12 @@ namespace hgl::graph
         class ShaderProgramBuildSpec;
     }
 
-    struct MaterialFinalizePlan
+    struct ShaderProgramFinalizePlan
     {
         std::vector<DescriptorSetType> mp_set_types;
     };
 
-    void BuildMaterialFinalizePlan(const MaterialDescriptorManager *desc_manager,
+    void BuildShaderProgramFinalizePlan(const MaterialDescriptorManager *desc_manager,
                                    const mtl::ShaderProgramBuildSpec &mci,
-                                   MaterialFinalizePlan &out_plan);
+                                   ShaderProgramFinalizePlan &out_plan);
 }

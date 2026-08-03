@@ -18,7 +18,7 @@ namespace hgl::graph
     class RenderPass;
     class TileFont;
     class TextGeometry;
-    class MaterialManager;
+    class ShaderProgramManager;
     class DescriptorBindingSet;
     class DeviceBuffer;
 
@@ -46,7 +46,7 @@ namespace hgl::graph
         VulkanDevice *      device;
         GraphicsContext *   graphics_context;
 
-        MaterialManager *   mtl_manager;
+        ShaderProgramManager *   mtl_manager;
 
         Sampler *           sampler;
 

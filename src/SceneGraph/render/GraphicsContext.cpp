@@ -5,7 +5,7 @@
 #include <hgl/graph/module/RenderPassManager.h>
 #include <hgl/graph/module/TextureManager.h>
 #include <hgl/graph/module/RenderTargetManager.h>
-#include <hgl/graph/module/MaterialManager.h>
+#include <hgl/graph/module/ShaderProgramManager.h>
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/module/SamplerManager.h>
 #include <hgl/graph/module/GeometryManager.h>
@@ -51,7 +51,7 @@ namespace hgl::graph
         if (!geometry_manager)
             return false;
 
-        material_manager = module_manager->GetOrCreate<MaterialManager>();
+        material_manager = module_manager->GetOrCreate<ShaderProgramManager>();
         if (!material_manager)
             return false;
 

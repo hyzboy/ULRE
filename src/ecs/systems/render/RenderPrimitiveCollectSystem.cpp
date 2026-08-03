@@ -12,7 +12,7 @@
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/core/GraphicsContext.h>
-#include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/mtl/MaterialLibrary.h>

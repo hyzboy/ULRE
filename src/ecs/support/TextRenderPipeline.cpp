@@ -15,7 +15,7 @@
 #include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
-#include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
@@ -263,13 +263,13 @@ namespace hgl::ecs
             return entry;
 
         RenderResources resources;
-        graph::MaterialManager* material_manager = nullptr;
+        graph::ShaderProgramManager* material_manager = nullptr;
         graph::SamplerManager* sampler_manager = nullptr;
         graph::BufferManager* buffer_manager = nullptr;
 
         struct BuildGuard
         {
-            graph::MaterialManager* material_manager = nullptr;
+            graph::ShaderProgramManager* material_manager = nullptr;
             graph::SamplerManager* sampler_manager = nullptr;
             graph::ShaderProgram* material = nullptr;
             graph::VIL* binding_vil = nullptr;
@@ -426,7 +426,7 @@ namespace hgl::ecs
     }
 
     bool TextRenderPipeline::PrepareFrameResources(graph::GraphicsContext*& graphics_context,
-                                                   graph::MaterialManager*& material_manager,
+                                                   graph::ShaderProgramManager*& material_manager,
                                                    graph::RenderPass*& render_pass,
                                                    graph::VulkanDevice*& device,
                                                    graph::IRenderTarget*& render_target)
