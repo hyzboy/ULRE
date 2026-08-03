@@ -122,6 +122,11 @@ private:
             grid_recipe.recipe_name = "GizmoUsageExample.VertexLuminance3D";
             grid_recipe.mtl_def_id = "VertexLuminance3D";
             grid_recipe.domain = "GizmoUsageExample";
+            grid_recipe.vertex_node_config.input = graph::mtl::VertexInputMode::Vec2Position;
+            grid_recipe.vertex_node_config.position_mapping = graph::mtl::PositionMappingMode::LiftXY_XY0;
+            grid_recipe.vertex_node_config.orientation = graph::mtl::OrientationMode::World;
+            grid_recipe.vertex_node_config.scale = graph::mtl::ScaleMode::World;
+            grid_recipe.vertex_node_config.projection = graph::mtl::ProjectionMode::WorldCameraVP;
             graph::mtl::UpsertRecipeSSBOAssetBinding(grid_recipe,
                                                      graph::mtl::DefaultMaterialSSBOName,
                                                      grid_mi_ssbo_accessor->GetSSBOBinding());

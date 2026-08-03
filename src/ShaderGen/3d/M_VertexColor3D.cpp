@@ -19,7 +19,23 @@ namespace
         bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
         bmi.ubo_requirements  = {UBODescriptorSemantic::ViewportInfo, UBODescriptorSemantic::CameraInfo};
         bmi.vertex_node_config = MakeDefault3DNodeConfig();
-        ConfigureSimpleMaterialShaderContract(bmi, "compositor/main_forward_unlit_vertexcolor.frag.glsl", false, false, true, true);
+        const MaterialVertexAttributeDefinition attributes[] = {
+            {VertexSemantic::Position, 0, VK_FORMAT_R32G32B32_SFLOAT, nullptr},
+            {VertexSemantic::Color, 1, VK_FORMAT_R32G32B32A32_SFLOAT, "layout(location=1) in vec4 Color;\n"}
+        };
+        const ShaderStageInterfaceVariable inputs[] = {
+            {0, ShaderStageValueType::Vec3, 0, 0},
+            {0, ShaderStageValueType::Vec4, 1, 0}
+        };
+        const ShaderStageInterfaceVariable outputs[] = {
+            {0, ShaderStageValueType::Vec4, 0, 0}
+        };
+        MaterialVertexVaryingConfig varying{};
+        varying.emit_vertex_color = true;
+        ConfigureMaterialShaderContract(bmi, "compositor/main_forward_unlit_vertexcolor.frag.glsl",
+                                         MaterialShaderDomain::World3D,
+                                         MaterialFragmentProgramMode::Compositor,
+                                         attributes, 2, inputs, 2, outputs, 1, varying);
         bmi.fragment_surface_module = "surface/unlit_vertexcolor_surface.glsl";
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::VertexColor3D, bmi);
         return true;

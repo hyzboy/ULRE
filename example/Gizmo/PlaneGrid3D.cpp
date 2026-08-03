@@ -107,6 +107,11 @@ private:
         plane_grid_recipe.recipe_name = "PlaneGrid3D.VertexLuminance3D";
         plane_grid_recipe.mtl_def_id = "VertexLuminance3D";
         plane_grid_recipe.domain = "PlaneGrid3D";
+        plane_grid_recipe.vertex_node_config.input = graph::mtl::VertexInputMode::Vec2Position;
+        plane_grid_recipe.vertex_node_config.position_mapping = graph::mtl::PositionMappingMode::LiftXY_XY0;
+        plane_grid_recipe.vertex_node_config.orientation = graph::mtl::OrientationMode::World;
+        plane_grid_recipe.vertex_node_config.scale = graph::mtl::ScaleMode::World;
+        plane_grid_recipe.vertex_node_config.projection = graph::mtl::ProjectionMode::WorldCameraVP;
         graph::mtl::UpsertRecipeSSBOAssetBinding(plane_grid_recipe, graph::mtl::DefaultMaterialSSBOName, mi_ssbo_accessor->GetSSBOBinding());
         plane_grid_asset = PrimitiveAsset(geom_plane_grid, &plane_grid_recipe, PrimitiveType::Lines);
 

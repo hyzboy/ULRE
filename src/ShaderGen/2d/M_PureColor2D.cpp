@@ -17,7 +17,21 @@ namespace
         bmi.usage_tag   = MaterialDefinitionUsageTag::Fallback;
         bmi.ssbo_slot_decls = {{"mtl", SSBOType::EmissiveSurface}};
         bmi.vertex_node_config = Make2DNodeConfigNDC(true);
-        ConfigureSimpleMaterialShaderContract(bmi, "2d/purecolor2d.frag.glsl", true, false, false, false);
+        const MaterialVertexAttributeDefinition attributes[] = {
+            {VertexSemantic::Position, 0, VK_FORMAT_R32G32_SFLOAT, nullptr}
+        };
+        const ShaderStageInterfaceVariable inputs[] = {
+            {0, ShaderStageValueType::Vec2, 0, 0}
+        };
+        const ShaderStageInterfaceVariable outputs[] = {
+            {0, ShaderStageValueType::UInt, 0, uint32(ShaderStageInterfaceFlags::Flat)}
+        };
+        MaterialVertexVaryingConfig varying{};
+        varying.emit_data_index_id = true;
+        ConfigureMaterialShaderContract(bmi, "2d/purecolor2d.frag.glsl",
+                                         MaterialShaderDomain::Screen2D,
+                                         MaterialFragmentProgramMode::DirectInclude,
+                                         attributes, 1, inputs, 1, outputs, 1, varying);
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::PureColor2D, bmi);
         // Register builtin alias so fallback code can look up by canonical id.
         MaterialDefinition fallback_alias = bmi;

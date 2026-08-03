@@ -88,6 +88,10 @@ namespace
 
         std::vector<FixedVertexEntry> vertices;
         std::vector<FixedDescriptorEntry> descriptors;
+        const VkFormat position_format = ResolveMaterialVertexSemanticFormat(
+            request.geometry_vertex_format,
+            definition.vertex_attributes[0].semantic,
+            definition.vertex_attributes[0].format);
         VertexShaderNodeConfig vertex_node_config = request.recipe.vertex_node_config;
         if (IsDefault3DNodeConfig(vertex_node_config)
          && !IsDefault3DNodeConfig(definition.vertex_node_config))
@@ -100,7 +104,11 @@ namespace
         for (int i = 0; i < definition.vertex_attributes.GetCount() && declaration_count < 8; ++i)
         {
             const MaterialVertexAttributeDefinition &attribute = definition.vertex_attributes[i];
-            declarations[declaration_count++] = {attribute.semantic, attribute.format};
+            const VkFormat resolved_format = ResolveMaterialVertexSemanticFormat(
+                request.geometry_vertex_format,
+                attribute.semantic,
+                attribute.format);
+            declarations[declaration_count++] = {attribute.semantic, resolved_format};
             if (attribute.glsl_declaration)
                 extra_attributes += attribute.glsl_declaration;
         }
@@ -109,10 +117,6 @@ namespace
             declarations, declaration_count
         };
         vertices = vertex_builder_common::BuildVertexEntries(input);
-        const VkFormat position_format = ResolveMaterialVertexSemanticFormat(
-            request.geometry_vertex_format,
-            definition.vertex_attributes[0].semantic,
-            definition.vertex_attributes[0].format);
         ShaderResourceManifest manifest{};
         if (definition.fragment_program_mode == MaterialFragmentProgramMode::Compositor)
         {

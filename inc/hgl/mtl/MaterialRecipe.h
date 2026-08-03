@@ -213,70 +213,37 @@ namespace hgl::graph::mtl
         PassType compositor_pass = PassType::ForwardOpaque;
     };
 
-    inline void ConfigureSimpleMaterialShaderContract(MaterialDefinition &definition,
-                                                       const char *fragment_module,
-                                                       const bool has_data_index,
-                                                       const bool has_uv,
-                                                       const bool has_color,
-                                                       const bool is_3d,
-                                                       const bool has_texture_layer = false)
+    inline void ConfigureMaterialShaderContract(
+        MaterialDefinition &definition,
+        const char *fragment_module,
+        const MaterialShaderDomain shader_domain,
+        const MaterialFragmentProgramMode fragment_program_mode,
+        const MaterialVertexAttributeDefinition *attributes,
+        const uint32 attribute_count,
+        const ShaderStageInterfaceVariable *vertex_inputs,
+        const uint32 vertex_input_count,
+        const ShaderStageInterfaceVariable *stage_outputs,
+        const uint32 stage_output_count,
+        const MaterialVertexVaryingConfig &varying)
     {
         definition.fragment_program_module = fragment_module;
-        definition.shader_domain = is_3d ? MaterialShaderDomain::World3D
-                                         : MaterialShaderDomain::Screen2D;
-        definition.fragment_program_mode = is_3d
-            ? MaterialFragmentProgramMode::Compositor
-            : MaterialFragmentProgramMode::DirectInclude;
+        definition.shader_domain = shader_domain;
+        definition.fragment_program_mode = fragment_program_mode;
         definition.vertex_stage.stage = ShaderStage::Vertex;
         definition.fragment_stage.stage = ShaderStage::Fragment;
+        definition.vertex_varying = varying;
 
-        MaterialVertexAttributeDefinition position{};
-        position.semantic = VertexSemantic::Position;
-        position.location = 0;
-        position.format = is_3d ? VK_FORMAT_R32G32B32_SFLOAT : VK_FORMAT_R32G32_SFLOAT;
-        definition.vertex_attributes.Add(position);
-        definition.vertex_stage.inputs.Add({0, is_3d ? ShaderStageValueType::Vec3
-                                                      : ShaderStageValueType::Vec2, 0, 0});
+        for (uint32 i = 0; i < attribute_count; ++i)
+            definition.vertex_attributes.Add(attributes[i]);
 
-        uint32 location = 0;
-        if (has_data_index)
-        {
-            const ShaderStageInterfaceVariable v{0, ShaderStageValueType::UInt, location++, uint32(ShaderStageInterfaceFlags::Flat)};
-            definition.vertex_stage.outputs.Add(v);
-            definition.fragment_stage.inputs.Add(v);
-        }
-        if (has_uv)
-        {
-            MaterialVertexAttributeDefinition attribute{};
-            attribute.semantic = VertexSemantic::TexCoord;
-            attribute.location = 1;
-            attribute.format = VK_FORMAT_R32G32_SFLOAT;
-            attribute.glsl_declaration = "layout(location=1) in vec2 TexCoord;\n";
-            definition.vertex_attributes.Add(attribute);
-            definition.vertex_stage.inputs.Add({0, ShaderStageValueType::Vec2, 1, 0});
-            const ShaderStageInterfaceVariable v{0, ShaderStageValueType::Vec2, location++, 0};
-            definition.vertex_stage.outputs.Add(v);
-            definition.fragment_stage.inputs.Add(v);
-        }
-        if (has_color)
-        {
-            MaterialVertexAttributeDefinition attribute{};
-            attribute.semantic = VertexSemantic::Color;
-            attribute.location = 1;
-            attribute.format = VK_FORMAT_R32G32B32A32_SFLOAT;
-            attribute.glsl_declaration = "layout(location=1) in vec4 Color;\n";
-            definition.vertex_attributes.Add(attribute);
-            definition.vertex_stage.inputs.Add({0, ShaderStageValueType::Vec4, 1, 0});
-            const ShaderStageInterfaceVariable v{0, ShaderStageValueType::Vec4, location++, 0};
-            definition.vertex_stage.outputs.Add(v);
-            definition.fragment_stage.inputs.Add(v);
-        }
+        for (uint32 i = 0; i < vertex_input_count; ++i)
+            definition.vertex_stage.inputs.Add(vertex_inputs[i]);
 
-        definition.vertex_varying.emit_data_index_id = has_data_index;
-        definition.vertex_varying.emit_texture_layer_id = has_texture_layer;
-        definition.vertex_varying.texture_layer_id_uses_data_index = has_texture_layer;
-        definition.vertex_varying.emit_uv0 = has_uv;
-        definition.vertex_varying.emit_vertex_color = has_color;
+        for (uint32 i = 0; i < stage_output_count; ++i)
+        {
+            definition.vertex_stage.outputs.Add(stage_outputs[i]);
+            definition.fragment_stage.inputs.Add(stage_outputs[i]);
+        }
 
         definition.program_link.vertex_stage = definition.vertex_stage.BuildKey();
         definition.program_link.fragment_stage = definition.fragment_stage.BuildKey();

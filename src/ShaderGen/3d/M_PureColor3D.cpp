@@ -21,7 +21,24 @@ namespace
         bmi.ssbo_slot_decls   = {{"mtl", SSBOType::EmissiveSurface}};
         bmi.ubo_requirements  = {UBODescriptorSemantic::ViewportInfo, UBODescriptorSemantic::CameraInfo};
         bmi.vertex_node_config = MakeDefault3DNodeConfig();
-        ConfigureSimpleMaterialShaderContract(bmi, "compositor/main_forward_unlit.frag.glsl", true, false, false, true, true);
+        const MaterialVertexAttributeDefinition attributes[] = {
+            {VertexSemantic::Position, 0, VK_FORMAT_R32G32B32_SFLOAT, nullptr}
+        };
+        const ShaderStageInterfaceVariable inputs[] = {
+            {0, ShaderStageValueType::Vec3, 0, 0}
+        };
+        const ShaderStageInterfaceVariable outputs[] = {
+            {0, ShaderStageValueType::UInt, 0, uint32(ShaderStageInterfaceFlags::Flat)},
+            {0, ShaderStageValueType::UInt, 1, uint32(ShaderStageInterfaceFlags::Flat)}
+        };
+        MaterialVertexVaryingConfig varying{};
+        varying.emit_data_index_id = true;
+        varying.emit_texture_layer_id = true;
+        varying.texture_layer_id_uses_data_index = true;
+        ConfigureMaterialShaderContract(bmi, "compositor/main_forward_unlit.frag.glsl",
+                                         MaterialShaderDomain::World3D,
+                                         MaterialFragmentProgramMode::Compositor,
+                                         attributes, 1, inputs, 1, outputs, 2, varying);
         bmi.fragment_surface_module = "surface/unlit_color3d_surface.glsl";
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::PureColor3D, bmi);
         // builtin/fallback_3d: 3D 无材质保底
