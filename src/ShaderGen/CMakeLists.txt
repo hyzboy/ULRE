@@ -17,6 +17,12 @@ SET(SHADER_PROGRAM_BUILD_SPEC_SOURCE_FILES ShaderProgramBuildSpec.cpp)
 SOURCE_GROUP("ShaderProgram Build Spec" FILES   ${SHADER_PROGRAM_BUILD_SPEC_HEADER_FILES}
                                                 ${SHADER_PROGRAM_BUILD_SPEC_SOURCE_FILES})
 
+SET(SHADER_ARTIFACT_CONTRACT_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderStageKey.h
+                                   ${SHADERGEN_INCLUDE_PATH}/ShaderProgramKey.h
+                                   ${SHADERGEN_INCLUDE_PATH}/ShaderArtifactContract.h)
+
+SOURCE_GROUP("Shader Artifact Contract" FILES ${SHADER_ARTIFACT_CONTRACT_FILES})
+
 SET(DESC_INFO_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/ShaderDescriptorInfo.h
                             ${SHADERGEN_INCLUDE_PATH}/MaterialDescriptorInfo.h)
 
@@ -137,6 +143,7 @@ add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_INCLUDE_PATH}
                                         ${DESC_INFO_SOURCE_FILES}
                                         ${SHADER_PROGRAM_BUILD_SPEC_HEADER_FILES}
                                         ${SHADER_PROGRAM_BUILD_SPEC_SOURCE_FILES}
+                                        ${SHADER_ARTIFACT_CONTRACT_FILES}
                                         ${SHADER_CREATER_HEADER_FILES}
                                         ${SHADER_CREATER_SOURCE_FILES}
                                         ${GLSL_COMPILER_SOURCE}
