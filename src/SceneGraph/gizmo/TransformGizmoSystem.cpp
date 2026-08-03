@@ -8,7 +8,7 @@
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/graph/CameraInfo.h>
-#include<hgl/graph/camera/ViewportInfo.h>
+#include<hgl/graph/ubo/ViewportInfo.h>
 #include<hgl/io/event/KeyboardEvent.h>
 
 namespace hgl::graph{

@@ -25,7 +25,7 @@
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/render/RenderContext.h>
-#include<hgl/mtl/UBOCommon.h>
+#include<hgl/graph/ShaderBufferSources.h>
 #include<cstdint>
 #include<cstring>
 #include<unordered_set>

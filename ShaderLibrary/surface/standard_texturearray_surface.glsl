@@ -12,7 +12,6 @@
 //（GetTextureHandle 宏依赖该 buffer），不再在此处 #include 展开。
 #include "common/bindless_textures.glsl"
 
-#include "common/skylight_simple.glsl"
 
 float halfLambertDiffuse(vec3 N, vec3 L)
 {

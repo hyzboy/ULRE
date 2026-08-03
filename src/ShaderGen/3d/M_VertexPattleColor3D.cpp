@@ -10,7 +10,7 @@
 */
 
 #include<hgl/shadergen/ShaderProgramBuildSpec.h>
-#include<hgl/mtl/UBOCommon.h>
+#include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/common/RenderAssignDef.h>

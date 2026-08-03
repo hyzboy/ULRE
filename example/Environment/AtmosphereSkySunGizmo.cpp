@@ -9,7 +9,7 @@
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/mtl/UBOCommon.h>
+#include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<memory>
 

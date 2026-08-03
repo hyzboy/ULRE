@@ -9,7 +9,7 @@
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
 #include<hgl/graph/CameraInfo.h>
-#include<hgl/graph/camera/ViewportInfo.h>
+#include<hgl/graph/ubo/ViewportInfo.h>
 #include<glm/gtc/quaternion.hpp>
 #include<hgl/math/Quaternion.h>
 

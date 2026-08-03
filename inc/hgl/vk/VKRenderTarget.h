@@ -6,7 +6,7 @@
 #include<hgl/vk/VKSwapchain.h>
 #include<hgl/vk/VKQueue.h>
 #include<hgl/vk/VKBuffer.h>
-#include<hgl/graph/camera/ViewportInfo.h>
+#include<hgl/graph/ubo/ViewportInfo.h>
 #include<hgl/vk/StructuredBufferAccessor.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/vk/VKCommandBuffer.h>

@@ -2,7 +2,7 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/log/Log.h>
 #include<hgl/graph/CameraInfo.h>
-#include<hgl/graph/camera/ViewportInfo.h>
+#include<hgl/graph/ubo/ViewportInfo.h>
 #include<algorithm>
 #include<array>
 #include<cmath>
@@ -678,5 +678,4 @@ namespace hgl
         }
     }//namespace ecs
 }//namespace hgl
-
 

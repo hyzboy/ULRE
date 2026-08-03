@@ -4,6 +4,7 @@
 #include <hgl/graph/PipelinePreset.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
 #include <hgl/mtl/DescriptorSemantic.h>
+#include <hgl/graph/glsl/GLSLCodeModule.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <cstdint>
 #include <string>
@@ -138,6 +139,8 @@ namespace hgl::graph::mtl
         // 无纹理材质（PureColor3D、VertexColor3D 等）此列表为空。
         // sampler_type 区分 "sampler2D" vs "sampler2DArray" 等 GLSL 采样器变体。
         std::vector<MaterialTextureSlotDecl> texture_slot_decls;
+
+        std::vector<GLSLCodeModuleID> code_module_requirements;
 
         // PCG 顶点节点配置（单一真源）
         VertexShaderNodeConfig vertex_node_config;

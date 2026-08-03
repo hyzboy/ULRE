@@ -6,7 +6,7 @@
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKShaderProgram.h>
-#include<hgl/mtl/UBOCommon.h>
+#include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>

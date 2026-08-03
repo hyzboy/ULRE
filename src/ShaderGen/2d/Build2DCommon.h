@@ -9,7 +9,7 @@
 #include<hgl/mtl/FixedMaterialDef.h>
 #include<hgl/common/RenderAssignDef.h>
 #include <hgl/graph/ssbo/MaterialInstanceLayout.h>
-#include<hgl/mtl/UBOCommon.h>
+#include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/shadergen/MaterialCompiler.h>
 #include "../common/DescriptorBuilderCommon.h"
 #include "../common/VertexBuilderCommon.h"

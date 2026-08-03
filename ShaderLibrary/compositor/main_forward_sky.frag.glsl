@@ -9,7 +9,7 @@
 
 // Scene UBO — sky for procedural sky parameters
 #include "common/descriptor_macros.glsl"
-#include "common/scene_ubo.glsl"
+#include "ubo/sky_info.glsl"
 SCENE_SKY_UBO;
 
 // Surface interface

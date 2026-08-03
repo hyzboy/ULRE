@@ -1,6 +1,7 @@
 #pragma once
 
 #include <hgl/mtl/FixedDescriptorEntry.h>
+#include <hgl/graph/glsl/ShaderResourceManifest.h>
 #include <hgl/common/RenderOptions.h>
 #include <vector>
 
@@ -117,6 +118,26 @@ inline void PushMaterialSampler(std::vector<FixedDescriptorEntry> &v,
         DescriptorSetType::Material, DescriptorKind::TextureSampler, stage_flags,
         name, nullptr, glsl_type, DescriptorSemantic::MaterialSampler,
         slot, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::Sampler
+    });
+}
+
+inline void PushManifestTexture(std::vector<FixedDescriptorEntry> &v,
+                                const GLSLCodeModuleTextureRequirement &texture)
+{
+    const bool is_scene_sampler = texture.semantic == DescriptorSemantic::SkyCubemapSampler
+                               || texture.semantic == DescriptorSemantic::MaterialSampler;
+    v.push_back({
+        is_scene_sampler ? DescriptorSetType::Scene : DescriptorSetType::Material,
+        is_scene_sampler ? DescriptorKind::TextureSampler : DescriptorKind::Texture,
+        texture.stage_flags,
+        texture.name,
+        nullptr,
+        texture.glsl_type,
+        texture.semantic,
+        texture.slot,
+        DefaultMaterialSSBOSlot,
+        SSBOType::UserDefined,
+        is_scene_sampler ? DescriptorSemanticLayer::Sampler : DescriptorSemanticLayer::Texture
     });
 }
 

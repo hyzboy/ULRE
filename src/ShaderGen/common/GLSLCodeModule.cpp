@@ -56,7 +56,12 @@ vec3 ULRE_GetSkyLightColor()
 {
     return sky.sun_color.rgb * sky.sun_intensity;
 }
-)GLSL",
+                vec3 ULRE_GetSkyAmbientColor()
+                {
+                    float h = clamp(normalize(sky.sun_direction.xyz).z * 0.5 + 0.5, 0.0, 1.0);
+                    return sky.base_sky_color.rgb * exp2(-(1.0 - h) * 0.8);
+                }
+                )GLSL",
                 SKY_LIGHT_UBO_REQUIREMENT,
                 uint32(sizeof(SKY_LIGHT_UBO_REQUIREMENT) / sizeof(SKY_LIGHT_UBO_REQUIREMENT[0])),
                 nullptr,
@@ -71,6 +76,10 @@ vec3 ULRE_GetSkyLightColor()
                 "SkyLightCubeMap",
                 R"GLSL(
 vec3 ULRE_GetSkyLightColor()
+{
+    return texture(SkyCubemap, ULRE_GetSkyLightDir()).rgb;
+}
+vec3 ULRE_GetSkyAmbientColor()
 {
     return texture(SkyCubemap, ULRE_GetSkyLightDir()).rgb;
 }

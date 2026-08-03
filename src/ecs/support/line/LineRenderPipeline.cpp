@@ -18,7 +18,7 @@
 #include <hgl/graph/mesh/GeometryDrawRange.h>
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/MaterialLibrary.h>
-#include <hgl/mtl/UBOCommon.h>
+#include <hgl/graph/ShaderBufferSources.h>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/VKShaderProgram.h>
 #include <hgl/vk/VKBuffer.h>

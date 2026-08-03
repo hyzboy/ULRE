@@ -8,7 +8,7 @@
 
 // Scene UBO (for specular half-vector)
 #include "common/descriptor_macros.glsl"
-#include "common/scene_ubo.glsl"
+#include "ubo/camera_info.glsl"
 SCENE_CAMERA_UBO;
 
 // Input from VS

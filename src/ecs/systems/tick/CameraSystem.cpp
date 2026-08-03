@@ -8,8 +8,8 @@
 #include<hgl/vk/StructuredBufferAccessor.h>
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/vk/VKMemory.h>
-#include<hgl/graph/camera/ViewportInfo.h>
-#include<hgl/mtl/UBOCommon.h>
+#include<hgl/graph/ubo/ViewportInfo.h>
+#include<hgl/graph/ShaderBufferSources.h>
 #include<glm/gtc/quaternion.hpp>
 #include<glm/gtx/quaternion.hpp>
 #include<cmath>
@@ -676,4 +676,3 @@ namespace hgl::ecs
         up = normalize(cross(right, forward));
     }
 }//namespace hgl::ecs
-

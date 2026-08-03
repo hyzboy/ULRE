@@ -9,10 +9,11 @@
 #include <hgl/mtl/MaterialResourceLayout.h>
 #include <hgl/shadergen/ShaderProgramBuildSpec.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
-#include <hgl/mtl/UBOCommon.h>
+#include <hgl/graph/ShaderBufferSources.h>
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/graph/ssbo/MaterialInstanceLayout.h>
+#include <hgl/graph/glsl/GLSLCodeModule.h>
 #include <cstring>
 #include <cstdio>
 #include <cstdint>
@@ -29,6 +30,27 @@ static bool CStrEq(const char *lhs, const char *rhs)
     if (rhs && reinterpret_cast<uintptr_t>(rhs) < 0x10000u)
         return false;
     return lhs && rhs && std::strcmp(lhs, rhs) == 0;
+}
+
+static std::string BuildCodeModuleGLSL(const ShaderResourceManifest *manifest)
+{
+    if (!manifest || !manifest->IsValid())
+        return {};
+
+    std::string result;
+    for (uint32 i = 0; i < manifest->code_module_count; ++i)
+    {
+        const GLSLCodeModuleDefinition *module =
+            FindGLSLCodeModuleDefinition(manifest->code_modules[i]);
+        if (!module || !module->glsl_code)
+            continue;
+        result += "\n// GLSLCodeModule: ";
+        result += module->name ? module->name : "Unknown";
+        result += "\n";
+        result += module->glsl_code;
+        result += "\n";
+    }
+    return result;
 }
 
 static bool HasDescriptorSemantic(const FixedMaterialDef &def, const DescriptorSemantic semantic)
@@ -704,8 +726,25 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
         return glsl.substr(0, pos + 1) + inject + glsl.substr(pos + 1);
     };
 
+    auto InsertBeforeSurfaceFunction = [](const std::string &glsl, const std::string &inject) -> std::string
+    {
+        if (inject.empty())
+            return glsl;
+        const std::string marker = "#include SURFACE_FUNCTION_FILE";
+        auto pos = glsl.find(marker);
+        if (pos == std::string::npos)
+        {
+            const auto include_pos = glsl.find("#include \"surface/");
+            pos = include_pos;
+        }
+        if (pos == std::string::npos)
+            return glsl + "\n" + inject;
+        return glsl.substr(0, pos) + inject + "\n" + glsl.substr(pos);
+    };
+
     std::string vs_final = InsertAfterVersionLine(vs_glsl, binding_preamble + vs_index_table_decls);
     std::string fs_final = InsertAfterVersionLine(fs_glsl, binding_preamble + fs_index_table_decls + material_ssbo_decls);
+    fs_final = InsertBeforeSurfaceFunction(fs_final, BuildCodeModuleGLSL(config.resource_manifest));
 
     ShaderCreateInfoVertex   *vert = mci->GetVertexShader();
     ShaderCreateInfo         *frag = mci->GetStageShader(ShaderStage::Fragment);

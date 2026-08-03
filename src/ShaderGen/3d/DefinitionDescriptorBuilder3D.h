@@ -5,6 +5,8 @@
 #include <hgl/common/RenderOptions.h>
 #include <hgl/common/RenderAssignDef.h>
 #include <hgl/graph/ssbo/MaterialInstanceLayout.h>
+#include <hgl/graph/glsl/ShaderResourceManifest.h>
+#include <cstring>
 #include <vector>
 #include "../common/DescriptorBuilderCommon.h"
 
@@ -80,6 +82,110 @@ inline std::vector<FixedDescriptorEntry> Build3DDescriptorsFromDefinition(
             tex.slot,
             ToGLSLSamplerTypeName(tex.sampler_type),
             opt.texture_stage_flags);
+    }
+
+    return descriptors;
+}
+
+inline bool Build3DShaderResourceManifest(
+    const MaterialDefinition &definition,
+    const SkyLightAmbientModel ambient_model,
+    ShaderResourceManifest &manifest)
+{
+    GLSLCodeModuleID roots[64]{};
+    uint32 root_count = 0;
+
+    for (const GLSLCodeModuleID id : definition.code_module_requirements)
+    {
+        if (root_count >= 64u)
+            return false;
+        roots[root_count++] = id;
+    }
+
+    bool has_sky_root = false;
+    for (uint32 i = 0; i < root_count; ++i)
+    {
+        if (roots[i] == GLSLCodeModuleID::SkyLightHeader
+         || roots[i] == GLSLCodeModuleID::SkyLightSimple
+         || roots[i] == GLSLCodeModuleID::SkyLightCubeMap)
+        {
+            has_sky_root = true;
+            break;
+        }
+    }
+
+    if (has_sky_root)
+    {
+        if (root_count >= 64u)
+            return false;
+        roots[root_count++] = ambient_model == SkyLightAmbientModel::CubeMap
+            ? GLSLCodeModuleID::SkyLightCubeMap
+            : GLSLCodeModuleID::SkyLightSimple;
+    }
+
+    return BuildShaderResourceManifest(roots, root_count, manifest);
+}
+
+inline std::vector<FixedDescriptorEntry> Build3DDescriptorsFromDefinition(
+    const MaterialDefinition &definition,
+    const ShaderResourceManifest &manifest,
+    const Build3DDescriptorOptions &opt = {})
+{
+    std::vector<FixedDescriptorEntry> descriptors = Build3DDescriptorsFromDefinition(definition, opt);
+
+    for (uint32 i = 0; i < manifest.ubo_count; ++i)
+    {
+        const UBODescriptorSemantic semantic = manifest.ubos[i].semantic;
+        bool exists = false;
+        for (const auto &entry : descriptors)
+        {
+            UBODescriptorSemantic existing{};
+            if (entry.kind == DescriptorKind::UBO
+             && TryGetUBODescriptorSemantic(entry.semantic, existing)
+             && existing == semantic)
+            {
+                exists = true;
+                break;
+            }
+        }
+        if (exists)
+            continue;
+
+        switch (semantic)
+        {
+        case UBODescriptorSemantic::ViewportInfo:
+            descriptor_builder_common::PushViewport(descriptors, manifest.ubos[i].stage_flags);
+            break;
+        case UBODescriptorSemantic::CameraInfo:
+            descriptor_builder_common::PushCamera(descriptors, manifest.ubos[i].stage_flags);
+            break;
+        case UBODescriptorSemantic::SkyInfo:
+            descriptor_builder_common::PushSky(descriptors, manifest.ubos[i].stage_flags);
+            break;
+        case UBODescriptorSemantic::MaterialColorPalette:
+            descriptors.push_back({
+                DescriptorSetType::Material, DescriptorKind::UBO, manifest.ubos[i].stage_flags,
+                "color_pattle", "ColorPattle", nullptr, DescriptorSemantic::MaterialColorPalette,
+                TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO
+            });
+            break;
+        }
+    }
+
+    for (uint32 i = 0; i < manifest.texture_count; ++i)
+    {
+        bool exists = false;
+        for (const auto &entry : descriptors)
+        {
+            if (entry.name && manifest.textures[i].name
+             && std::strcmp(entry.name, manifest.textures[i].name) == 0)
+            {
+                exists = true;
+                break;
+            }
+        }
+        if (!exists)
+            descriptor_builder_common::PushManifestTexture(descriptors, manifest.textures[i]);
     }
 
     return descriptors;

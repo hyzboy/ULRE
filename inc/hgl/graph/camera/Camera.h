@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/graph/camera/ViewportInfo.h>
+#include<hgl/graph/ubo/ViewportInfo.h>
 #include<hgl/graph/CameraInfo.h>
 
 namespace hgl::graph

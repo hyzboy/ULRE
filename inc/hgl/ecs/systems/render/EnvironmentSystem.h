@@ -2,7 +2,7 @@
 
 #include<hgl/ecs/core/System.h>
 #include<hgl/vk/StructuredBufferAccessor.h>
-#include<hgl/graph/env/SkyInfo.h>
+#include<hgl/graph/ubo/SkyInfo.h>
 #include<hgl/mtl/SkyLight.h>
 #include<hgl/mtl/MaterialLibrary.h>
 

@@ -4,8 +4,6 @@
 
 namespace hgl::graph::mtl
 {
-    // UBO resource metadata is kept beside the graph UBO definitions. The
-    // legacy mtl/UBOCommon.h header re-exports these symbols for compatibility.
     constexpr const ShaderBufferSource SBS_ViewportInfo =
     {
         DescriptorSetType::Scene,

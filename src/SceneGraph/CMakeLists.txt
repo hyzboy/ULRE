@@ -3,7 +3,7 @@
 SET(CM_SG_HEADER    ${SG_INCLUDE_PATH}/data/BitmapData.h
                     ${SG_INCLUDE_PATH}/data/ImageRegion.h
                     ${SG_INCLUDE_PATH}/camera/TransformFaceToCamera.h
-                    ${SG_INCLUDE_PATH}/camera/ViewportInfo.h)
+                    ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/ViewportInfo.h)
 
 source_group("SceneGraph" FILES ${CM_SG_HEADER})
 
@@ -50,7 +50,7 @@ SOURCE_GROUP("1.Core\\Module" FILES ${GRAPH_MODULE_FILES})
 # 2. Scene Management - 场景管理系统
 # ============================================================================
 
-SET(SCENE_ENVIRONMENT_FILES ${SG_INCLUDE_PATH}/env/SkyInfo.h
+SET(SCENE_ENVIRONMENT_FILES ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/SkyInfo.h
                             env/SkyInfo.cpp)
 
 SOURCE_GROUP("2.Scene\\Environment" FILES ${SCENE_ENVIRONMENT_FILES})

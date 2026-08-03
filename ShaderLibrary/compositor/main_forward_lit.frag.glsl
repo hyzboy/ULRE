@@ -9,7 +9,8 @@
 
 // Scene UBOs
 #include "common/descriptor_macros.glsl"
-#include "common/scene_ubo.glsl"
+#include "ubo/camera_info.glsl"
+#include "ubo/sky_info.glsl"
 SCENE_CAMERA_UBO;
 SCENE_SKY_UBO;
 

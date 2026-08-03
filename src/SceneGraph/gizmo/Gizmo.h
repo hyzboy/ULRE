@@ -4,7 +4,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/CameraInfo.h>
-#include<hgl/graph/camera/ViewportInfo.h>
+#include<hgl/graph/ubo/ViewportInfo.h>
 #include<hgl/ecs/core/System.h>
 #include<memory>
 

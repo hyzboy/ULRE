@@ -29,7 +29,7 @@
 #include<hgl/vk/VKCommandBuffer.h>
 
 #include<hgl/mtl/SamplerName.h>
-#include<hgl/mtl/UBOCommon.h>
+#include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/common/RenderOptions.h>
 #include<hgl/type/String.h>
 #include<hgl/type/MemoryUtil.h>

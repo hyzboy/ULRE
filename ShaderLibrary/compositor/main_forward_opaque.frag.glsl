@@ -15,19 +15,21 @@ layout(location=4) flat in uint fragTextureLayerID;
 
 layout(location=0) out vec4 outColor;
 
-// --- Surface Function include (由 CompositorAssembler 注入) ---
-#include SURFACE_FUNCTION_FILE
-// 展开后类似: #include "surface/standard_surface.glsl"
-
 // --- Lighting ---
 #include "common/lighting.glsl"
 
 // --- Scene Data (shared UBO definitions) ---
 #include "common/descriptor_macros.glsl"
-#include "common/scene_ubo.glsl"
+#include "ubo/viewport_info.glsl"
+#include "ubo/camera_info.glsl"
+#include "ubo/sky_info.glsl"
 SCENE_CAMERA_UBO;
 SCENE_SKY_UBO;
 SCENE_VIEWPORT_UBO;
+
+// --- Surface Function include (由 CompositorAssembler 注入) ---
+#include SURFACE_FUNCTION_FILE
+// 展开后类似: #include "surface/standard_surface.glsl"
 
 void main()
 {

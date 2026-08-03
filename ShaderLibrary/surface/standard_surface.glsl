@@ -10,7 +10,6 @@
 #include "common/bindless_textures.glsl"
 
 // ─── Sky Light ────────────────────────────────────────────────────────────────
-#include "common/skylight_simple.glsl"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

@@ -2,7 +2,7 @@
 #include<hgl/graph/camera/Camera.h>
 #include<hgl/graph/camera/ReversedZProj.h>
 #include<hgl/math/geometry/Frustum.h>
-#include<hgl/graph/camera/ViewportInfo.h>
+#include<hgl/graph/ubo/ViewportInfo.h>
 
 namespace hgl::graph
 {

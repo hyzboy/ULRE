@@ -13,6 +13,7 @@
 #include<hgl/common/ShaderStageDef.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
 #include<hgl/mtl/MaterialRecipe.h>
+#include<hgl/graph/glsl/ShaderResourceManifest.h>
 #include <string>
 #include <vector>
 
@@ -40,6 +41,7 @@ struct CompositorMaterialBuildConfig
     // Optional: capability declaration source for development-time subset validation.
     // When non-null, CompileCompositorMaterial checks Layout requirements ⊆ Definition capabilities.
     const MaterialDefinition *material_definition = nullptr;
+    const ShaderResourceManifest *resource_manifest = nullptr;
 };
 
 class ShaderProgramBuildSpec;

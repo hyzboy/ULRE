@@ -1,12 +1,10 @@
 #include <hgl/shadergen/ShaderProgramBuildSpec.h>
-#include <hgl/mtl/UBOCommon.h>
 #include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/common/RenderAssignDef.h>
 #include <hgl/log/Log.h>
 #include <vector>
 
-#include "../common/MFSkyLight.h"
 #include "../common/VertexBuilderCommon.h"
 #include "../common/VertexShaderAssembler.h"
 #include "DefinitionDescriptorBuilder3D.h"
@@ -22,6 +20,7 @@ namespace
         bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
         bmi.ssbo_slot_decls   = {{"mtl", SSBOType::ClearCoatSurface}};
         bmi.ubo_requirements  = {UBODescriptorSemantic::ViewportInfo, UBODescriptorSemantic::CameraInfo, UBODescriptorSemantic::SkyInfo};
+        bmi.code_module_requirements = {GLSLCodeModuleID::SkyLightHeader};
         bmi.texture_slot_decls = {
             {TextureSlot::BaseColor, GLSLSamplerType::Sampler2DArray, false},
             {TextureSlot::Normal,    GLSLSamplerType::Sampler2DArray, false},
@@ -36,15 +35,14 @@ namespace
 
 static ShaderProgramBuildSpec *CreateStandardTextureArrayImpl(const contract::PhysicalDeviceProfileLite *profile, CompositorMaterialBuildConfig bc, const MaterialDefinition &definition)
 {
-    SkyLightAmbientModel ambient = bc.sky_ambient_model;
-
-    std::vector<FixedDescriptorEntry> dynamic_descriptors = Build3DDescriptorsFromDefinition(definition);
-
-    std::vector<const char *> unused_resources;
-    ApplySkyLightResourceInjection(
-        GetSkyLightResourceInjectionSpec(ambient),
-        dynamic_descriptors,
-        unused_resources);
+    ShaderResourceManifest manifest{};
+    if (!Build3DShaderResourceManifest(definition, bc.sky_ambient_model, manifest))
+    {
+        GLogError("[StandardTextureArray] ShaderResourceManifest failed");
+        return nullptr;
+    }
+    std::vector<FixedDescriptorEntry> dynamic_descriptors =
+        Build3DDescriptorsFromDefinition(definition, manifest);
 
     const vertex_builder_common::VertexSemanticDecl vertex_decls[] = {
         { VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT },
@@ -67,6 +65,7 @@ static ShaderProgramBuildSpec *CreateStandardTextureArrayImpl(const contract::Ph
         dynamic_descriptors.data(),
         uint32_t(dynamic_descriptors.size()),
     };
+    bc.resource_manifest = &manifest;
 
     CompositorAssembler assembler("ShaderLibrary");
 

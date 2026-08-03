@@ -2,7 +2,7 @@
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
-#include<hgl/mtl/UBOCommon.h>
+#include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/math/Matrix.h>
 #include<string>
 #include<limits>

@@ -2,7 +2,7 @@
 
 #include<hgl/mtl/FixedDescriptorEntry.h>
 #include<hgl/mtl/MaterializationPools.h>
-#include<hgl/mtl/UBOCommon.h>
+#include<hgl/graph/ShaderBufferSources.h>
 #include<vector>
 #include<string>
 #include<utility>

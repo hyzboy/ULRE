@@ -7,7 +7,7 @@
 #include<hgl/vk/VKFormat.h>
 #include<hgl/vk/VKPrimitiveType.h>
 #include<hgl/vk/VKStruct.h>
-#include<hgl/graph/camera/ViewportInfo.h>
+#include<hgl/graph/ubo/ViewportInfo.h>
 #include<hgl/vk/VKRenderbufferInfo.h>
 #include<cstring>
 

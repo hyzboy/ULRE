@@ -90,9 +90,16 @@ namespace hgl::graph::mtl
 
         if (needs_camera || needs_viewport)
         {
-            vs += "#include \"common/scene_ubo.glsl\"\n";
-            if (needs_camera)  vs += "SCENE_CAMERA_UBO;\n";
-            if (needs_viewport) vs += "SCENE_VIEWPORT_UBO;\n";
+            if (needs_camera)
+            {
+                vs += "#include \"ubo/camera_info.glsl\"\n";
+                vs += "SCENE_CAMERA_UBO;\n";
+            }
+            if (needs_viewport)
+            {
+                vs += "#include \"ubo/viewport_info.glsl\"\n";
+                vs += "SCENE_VIEWPORT_UBO;\n";
+            }
         }
 
         if (needs_l2w)
