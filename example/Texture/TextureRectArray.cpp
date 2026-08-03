@@ -131,7 +131,7 @@ private:
         sampler=sampler_manager->CreateSampler();
 
         mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<hgl::math::Vector4u>(
-            graph::mtl::SSBOType::EmissiveSurface,
+            graph::mtl::SSBOType::TextureRectArraySurface,
             "TextureRectArray:MIData",
             TexCount);
         if (!mi_ssbo_accessor)

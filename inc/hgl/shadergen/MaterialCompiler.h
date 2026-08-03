@@ -34,7 +34,8 @@ struct CompositorMaterialBuildConfig
     const ::hgl::graph::GeometryVertexFormat *geometry_vertex_format = nullptr;
     // Per-material SSBO slot declarations (index == ssbo_slot).
     // When non-null and non-empty, MaterialCompiler generates MaterialInstance
-    // FixedDescriptorEntry items automatically and injects #define MTL_SSBO_SLOT_COUNT N.
+    // FixedDescriptorEntry items and injects the material SSBO struct/buffer
+    // declarations into the fragment GLSL.
     const std::vector<MaterialSSBOSlotDecl> *ssbo_slot_decls = nullptr;
     // Optional: capability declaration source for development-time subset validation.
     // When non-null, CompileCompositorMaterial checks Layout requirements ⊆ Definition capabilities.

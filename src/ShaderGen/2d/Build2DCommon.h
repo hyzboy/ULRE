@@ -138,7 +138,6 @@ inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, cons
                 decl.ssbo_type);
         }
         descriptor_builder_common::PushMaterialDataIndexRows(v, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
-        descriptor_builder_common::PushMaterialTextureLayerRows(v, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
     }
 
     // Definition-driven texture/sampler slots (E3+)

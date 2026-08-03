@@ -1,17 +1,5 @@
 // pbrcolor3d_surface.glsl — PBR Color3D surface function (world-space, Cook-Torrance)
 // Pure-color variant: no texture sampling.
-// Material set bindings: mtl=0
-
-// MI SSBO
-struct PBRSurfaceData
-{
-    uint  base_color;    // packed RGBA8_UNORM
-    float metallic;      // [0, 1]
-    float roughness;     // [0.04, 1]
-};
-layout(set=MI_SET, binding=MI_BINDING) readonly buffer PBRSurfaceBuffer {
-    PBRSurfaceData mi[];
-} mtl;
 
 // Sky light
 #include "common/skylight_simple.glsl"

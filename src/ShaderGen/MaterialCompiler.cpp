@@ -109,7 +109,6 @@ static bool ValidateE0DescriptorShapeBaseline(
             { DescriptorSetType::Transform, DescriptorKind::SSBO,    uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::LocalToWorldIndexTable, TextureSlot::BaseColor },
             { DescriptorSetType::Material,  DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::MaterialSSBOSlotData,    TextureSlot::BaseColor },
             { DescriptorSetType::Material,  DescriptorKind::SSBO,    uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::MaterialSSBOIndexTable,  TextureSlot::BaseColor },
-            { DescriptorSetType::Material,  DescriptorKind::SSBO,    uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::MaterialTextureLayerTable,TextureSlot::BaseColor },
         };
         return ValidateDescriptorShapeExact(name, def.descriptor_entries, def.descriptor_entry_count, expected, uint32_t(sizeof(expected) / sizeof(expected[0])), diagnostics);
     }
@@ -130,7 +129,6 @@ static bool ValidateE0DescriptorShapeBaseline(
             { DescriptorSetType::Scene,     DescriptorKind::UBO,     uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::ViewportInfo,          TextureSlot::BaseColor },
             { DescriptorSetType::Material,  DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::MaterialSSBOSlotData,    TextureSlot::BaseColor },
             { DescriptorSetType::Material,  DescriptorKind::SSBO,    uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::MaterialSSBOIndexTable,  TextureSlot::BaseColor },
-            { DescriptorSetType::Material,  DescriptorKind::SSBO,    uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), DescriptorSemantic::MaterialTextureLayerTable,TextureSlot::BaseColor },
             { DescriptorSetType::Material,  DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), DescriptorSemantic::MaterialSampler, TextureSlot::BaseColor },
         };
         return ValidateDescriptorShapeExact(name, def.descriptor_entries, def.descriptor_entry_count, expected, uint32_t(sizeof(expected) / sizeof(expected[0])), diagnostics);
@@ -531,10 +529,6 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     std::string binding_preamble;
     binding_preamble += "#define TEXTURE_SLOT_RANGE_SIZE " + std::to_string(texture_slot_range_size) + "u\n";
 
-    // Inject per-material SSBO slot count when declared via ssbo_slot_decls.
-    if (use_slot_decls)
-        binding_preamble += "#define MTL_SSBO_SLOT_COUNT " + std::to_string(config.ssbo_slot_decls->size()) + "u\n";
-
     auto AppendDescriptorBindingDefine = [&](const char *macro_name, const ShaderDescriptor *sd)
     {
         if (!macro_name || !sd || sd->set < 0 || sd->binding < 0)
@@ -553,11 +547,6 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
 
     const MaterialDescriptorInfo &descriptor_info = mci->GetDescriptorInfo();
 
-    const char *material_data_name = "mtl";
-    if (use_slot_decls && config.ssbo_slot_decls && !config.ssbo_slot_decls->empty())
-        material_data_name = (*config.ssbo_slot_decls)[0].name.c_str();
-
-    AppendDescriptorBindingDefine("MI_SET", descriptor_info.GetSSBO(material_data_name));
     AppendDescriptorBindingDefine("MI_DATA_INDEX_ROWS_SET", descriptor_info.GetSSBO(SBS_MaterialDataIndexRows.name));
     AppendDescriptorBindingDefine("MI_TEXTURE_LAYER_ROWS_SET", descriptor_info.GetSSBO(SBS_MaterialTextureLayerRows.name));
     AppendDescriptorBindingDefine("L2W_SET", descriptor_info.GetSSBO(SBS_LocalToWorld.name));
@@ -595,6 +584,71 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
         }
     }
 
+    // ── Material SSBO GLSL 声明 ─────────────────────────────────────────────
+    // 材质实例 SSBO 的 struct + buffer 声明不再写死在 .glsl 中，
+    // 统一由此处依据 ssbo_slot_decls 生成并注入 Fragment 阶段。
+    std::string material_ssbo_decls;
+
+    if (use_slot_decls && config.ssbo_slot_decls && !config.ssbo_slot_decls->empty())
+    {
+        for (uint32_t i = 0; i < static_cast<uint32_t>(config.ssbo_slot_decls->size()); ++i)
+        {
+            const MaterialSSBOSlotDecl &decl = (*config.ssbo_slot_decls)[i];
+            const ShaderDescriptor *sd = descriptor_info.GetSSBO(decl.name.c_str());
+            if (!sd || sd->set < 0 || sd->binding < 0)
+                return FailAfterMci("material ssbo descriptor unresolved for GLSL generation");
+
+            const char *struct_name  = ssbo::GetMaterialSSBOStructName(decl.ssbo_type);
+            const char *struct_codes = ssbo::GetMaterialInstanceGLSL(decl.ssbo_type);
+            if (!struct_name || !struct_codes)
+                return FailAfterMci("unsupported material ssbo type for GLSL generation");
+
+            std::string buffer_name(struct_name);
+            const size_t name_len = buffer_name.size();
+            if (name_len > 4 && buffer_name.compare(name_len - 4, 4, "Data") == 0)
+                buffer_name.resize(name_len - 4);
+            buffer_name += "Buffer";
+
+            material_ssbo_decls += "struct ";
+            material_ssbo_decls += struct_name;
+            material_ssbo_decls += "\n{\n";
+
+            // 规范化字段文本：去掉行首空白、统一 4 空格缩进。
+            std::string line;
+            const char *p = struct_codes;
+            auto FlushFieldLine = [&]()
+            {
+                size_t start = 0;
+                while (start < line.size() && (line[start] == ' ' || line[start] == '\t'))
+                    ++start;
+                if (start < line.size())
+                {
+                    material_ssbo_decls += "    ";
+                    material_ssbo_decls.append(line, start, line.size() - start);
+                    material_ssbo_decls += '\n';
+                }
+                line.clear();
+            };
+            for (; *p; ++p)
+            {
+                if (*p == '\n')
+                    FlushFieldLine();
+                else
+                    line += *p;
+            }
+            FlushFieldLine();
+
+            material_ssbo_decls += "};\n";
+            material_ssbo_decls += "layout(set=" + std::to_string(sd->set) + ", binding=" + std::to_string(sd->binding) + ") readonly buffer ";
+            material_ssbo_decls += buffer_name;
+            material_ssbo_decls += " {\n    ";
+            material_ssbo_decls += struct_name;
+            material_ssbo_decls += " mi[];\n} ";
+            material_ssbo_decls += decl.name;
+            material_ssbo_decls += ";\n";
+        }
+    }
+
     // GLSL requires #version to be the very first token.
     auto InsertAfterVersionLine = [](const std::string &glsl, const std::string &inject) -> std::string
     {
@@ -607,7 +661,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     };
 
     std::string vs_final = InsertAfterVersionLine(vs_glsl, binding_preamble);
-    std::string fs_final = InsertAfterVersionLine(fs_glsl, binding_preamble);
+    std::string fs_final = InsertAfterVersionLine(fs_glsl, binding_preamble + material_ssbo_decls);
 
     ShaderCreateInfoVertex   *vert = mci->GetVertexShader();
     ShaderCreateInfo         *frag = mci->GetStageShader(ShaderStage::Fragment);

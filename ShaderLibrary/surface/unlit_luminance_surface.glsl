@@ -3,14 +3,6 @@
 // baseColor = MI.Color.rgb × luminance，alpha = MI.Color.a
 
 #include "common/surface_interface.glsl"
-struct EmissiveSurfaceData
-{
-    vec4 color;
-};
-
-layout(set=MI_SET, binding=MI_BINDING) readonly buffer EmissiveSurfaceBuffer {
-    EmissiveSurfaceData mi[];
-} mtl;
 
 SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
 {

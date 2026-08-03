@@ -6,16 +6,6 @@
 // This aligns with the general texture-layer architecture (no texture_id in MI).
 
 #include "common/surface_interface.glsl"
-struct ClearCoatSurfaceData
-{
-    uint  base_color;
-    float metallic;
-    float roughness;
-    float normal_scale;
-};
-layout(set=MI_SET, binding=MI_BINDING) readonly buffer ClearCoatSurfaceBuffer {
-    ClearCoatSurfaceData mi[];
-} mtl;
 
 // Bindless 2DArray rows + bindless sampler arrays
 #include "common/instance_rows_ssbo.glsl"

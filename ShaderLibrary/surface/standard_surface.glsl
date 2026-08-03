@@ -3,18 +3,6 @@
 
 #include "common/surface_interface.glsl"
 
-// ─── MI SSBO ─────────────────────────────────────────────────────────────────
-struct ClearCoatSurfaceData
-{
-    uint  base_color;    // packed RGBA8_UNORM, read with unpackUnorm4x8()
-    float metallic;
-    float roughness;
-    float normal_scale;
-};
-layout(set=MI_SET, binding=MI_BINDING) readonly buffer ClearCoatSurfaceBuffer {
-    ClearCoatSurfaceData mi[];
-} mtl;
-
 // ─── Bindless 纹理 ────────────────────────────────────────────────────────────
 #include "common/descriptor_macros.glsl"
 #include "common/instance_rows_ssbo.glsl"

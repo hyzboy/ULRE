@@ -15,7 +15,7 @@ namespace
         bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
         bmi.ubo_requirements = {UBODescriptorSemantic::ViewportInfo};
         bmi.texture_slot_decls = {{TextureSlot::BaseColor, GLSLSamplerType::Sampler2DArray, true}};
-        bmi.ssbo_slot_decls = {{"mtl", SSBOType::EmissiveSurface}};
+        bmi.ssbo_slot_decls = {{"mtl", SSBOType::TextureRectArraySurface}};
         bmi.vertex_node_config = Make2DNodeConfigNDC(true);
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::RectTexture2DArray, bmi);
         return true;
@@ -49,8 +49,8 @@ static ShaderProgramBuildSpec *CreateRectTexture2DArrayImpl(const contract::Phys
 
     VertexVaryingConfig varying_cfg;
     varying_cfg.emit_data_index_id = true;
-    varying_cfg.emit_texture_layer_id = true;
     varying_cfg.emit_uv0 = true;
+    // layer 由 mi.id.x 提供（0-based 真层索引），不经过 bindless texture layer rows。
     const std::string extra_attrs = "layout(location=1) in vec2 TexCoord;\n";
     std::string vs = GenerateVertexShader(
         p.vertex_node_config,

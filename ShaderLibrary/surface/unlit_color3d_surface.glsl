@@ -3,15 +3,6 @@
 // MI_Unlit: 仅包含 vec4 color (16 bytes)
 
 #include "common/surface_interface.glsl"
-// 材质实例数据 — 仅一个颜色值
-struct EmissiveSurfaceData
-{
-    vec4 color;     // RGBA
-};
-
-layout(set=MI_SET, binding=MI_BINDING) readonly buffer EmissiveSurfaceBuffer {
-    EmissiveSurfaceData mi[];
-} mtl;
 
 SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
 {

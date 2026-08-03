@@ -4,7 +4,8 @@
 // 2D 生成器或自定义材质可在 #include 之前 #define 覆盖默认值。
 //
 // 固定布局：set 间按 Scene(0) < Transform(1) < Material(2) < VertexData(3)。
-// Material 内固定行表绑定：mtl=0, mtl_data_index_rows=1, mtl_texture_layer_rows=2。
+// Material 内固定行表绑定：mtl_data_index_rows=1, mtl_texture_layer_rows=2。
+// 材质实例 mtl SSBO 的 struct/buffer 声明由 CompileCompositorMaterial 统一生成并注入，不再写死在 .glsl。
 
 #ifndef DESCRIPTOR_MACROS_GLSL
 #define DESCRIPTOR_MACROS_GLSL
@@ -46,14 +47,6 @@
 #endif
 
 // ── Material set rows (instance-index indirection) ──
-
-#ifndef MI_SET
-#define MI_SET MATERIAL_SET
-#endif
-
-#ifndef MI_BINDING
-#define MI_BINDING 0
-#endif
 
 #ifndef MI_DATA_INDEX_ROWS_SET
 #define MI_DATA_INDEX_ROWS_SET MATERIAL_SET
