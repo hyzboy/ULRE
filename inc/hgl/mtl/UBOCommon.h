@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/mtl/ShaderBufferSource.h>
+#include<hgl/graph/ubo/UBOShaderSources.h>
 
 namespace hgl::graph{
 struct UBODescriptor;
@@ -16,22 +17,6 @@ SSBODescriptor *CreateSSBODescriptor(const ShaderBufferSource &sbs,const uint32_
 // struct_name as the main routing key anymore.
 const ShaderBufferSource *FindShaderBufferSourceByStructName(const char *struct_name);
 
-constexpr const ShaderBufferSource SBS_ViewportInfo=
-{
-    DescriptorSetType::Scene,
-
-    "viewport",
-    "ViewportInfo"
-};
-
-constexpr const ShaderBufferSource SBS_CameraInfo=
-{
-    DescriptorSetType::Scene,
-
-    "camera",
-    "CameraInfo"
-};
-
 constexpr const ShaderBufferSource SBS_LocalToWorld=
 {
     DescriptorSetType::Transform,
@@ -46,14 +31,6 @@ constexpr const ShaderBufferSource SBS_LocalToWorldIndexRows=
 
     "l2w_index_rows",
     "LocalToWorldIndexRows"
-};
-
-constexpr const ShaderBufferSource SBS_ColorPattle =
-{
-    DescriptorSetType::Material,
-
-    "color_pattle",
-    "ColorPattle"
 };
 
 constexpr const ShaderBufferSource SBS_MaterialTextureLayerRows=
@@ -78,17 +55,6 @@ constexpr const ShaderBufferSource SBS_JointInfo=
 
     "joint",
     "JointInfo"
-};
-
-/**
-* SkyInfo（全局环境/天空信息）
-*/
-constexpr const ShaderBufferSource SBS_SkyInfo=
-{
-    DescriptorSetType::Scene,
-
-    "sky",
-    "SkyInfo"
 };
 
 }//namespace hgl::graph::mtl
