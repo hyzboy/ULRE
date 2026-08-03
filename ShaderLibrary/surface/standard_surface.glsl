@@ -19,25 +19,6 @@ float halfLambertDiffuse(vec3 N, vec3 L)
     return h * h;
 }
 
-float D_GGX(float NdotH, float alpha2)
-{
-    float d = NdotH * NdotH * (alpha2 - 1.0) + 1.0;
-    return alpha2 / (3.14159265 * d * d + 1e-7);
-}
-
-float G_Smith(float NdotV, float NdotL, float roughness)
-{
-    float k  = (roughness + 1.0) * (roughness + 1.0) / 8.0;
-    float gv = NdotV / (NdotV * (1.0 - k) + k + 1e-7);
-    float gl = NdotL / (NdotL * (1.0 - k) + k + 1e-7);
-    return gv * gl;
-}
-
-vec3 F_Schlick(float VdotH, vec3 F0)
-{
-    return F0 + (1.0 - F0) * pow(clamp(1.0 - VdotH, 0.0, 1.0), 5.0);
-}
-
 // ─── Surface Entry ────────────────────────────────────────────────────────────
 
 SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
@@ -85,10 +66,10 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
     float VdotH  = max(dot(V, H), 0.0);
 
     float alpha2 = roughness * roughness * roughness * roughness;
-    float D      = D_GGX(NdotH, alpha2);
-    float G      = G_Smith(NdotV, NdotL, roughness);
+    float D      = ULRE_D_GGX(NdotH, alpha2);
+    float G      = ULRE_G_Smith(NdotV, NdotL, roughness);
     vec3  F0     = mix(vec3(0.04), albedo, metallic);
-    vec3  F      = F_Schlick(VdotH, F0);
+    vec3  F      = ULRE_F_Schlick(VdotH, F0);
 
     vec3 kd       = (1.0 - F) * (1.0 - metallic);
     vec3 diffuse  = kd * albedo / 3.14159265 * NdotL;

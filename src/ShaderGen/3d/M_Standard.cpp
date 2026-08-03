@@ -20,11 +20,13 @@ namespace
         bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
         bmi.ssbo_slot_decls   = {{"mtl", SSBOType::ClearCoatSurface}};
         bmi.ubo_requirements  = {UBODescriptorSemantic::ViewportInfo, UBODescriptorSemantic::CameraInfo, UBODescriptorSemantic::SkyInfo};
-        bmi.code_module_requirements = {GLSLCodeModuleID::SkyLightHeader};
+        bmi.code_module_requirements = {GLSLCodeModuleID::SkyLightHeader, GLSLCodeModuleID::PBRSurface};
         bmi.texture_slot_decls = {
             {TextureSlot::BaseColor, GLSLSamplerType::Sampler2D, false},
             {TextureSlot::Normal,    GLSLSamplerType::Sampler2D, false},
+            {TextureSlot::Metallic,  GLSLSamplerType::Sampler2D, false},
             {TextureSlot::Roughness, GLSLSamplerType::Sampler2D, false},
+            {TextureSlot::Occlusion, GLSLSamplerType::Sampler2D, false},
         };
         bmi.vertex_node_config = MakeDefault3DNodeConfig();
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::Standard, bmi);

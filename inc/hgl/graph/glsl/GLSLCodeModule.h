@@ -14,7 +14,9 @@ namespace hgl::graph::mtl
         SkyLightHeader = 0,
         SkyLightSimple,
         SkyLightCubeMap,
-        ENUM_CLASS_RANGE(SkyLightHeader, SkyLightCubeMap)
+        BRDF,
+        PBRSurface,
+        ENUM_CLASS_RANGE(SkyLightHeader, PBRSurface)
     };
 
     struct GLSLCodeModuleUBORequirement

@@ -139,23 +139,20 @@ namespace
         {
             const char *definition_id;
             BuiltinMaterialCreatorID builtin_id;
-            bool is_2d = false;
-            bool is_text = false;
-            bool with_sky = false;
         };
 
         static const ExpectedEntry expected[] =
         {
-            { BUILTIN_MTL_DEF_FALLBACK_2D, BuiltinMaterialCreatorID::PureColor2D, true,  false, false },
-            { BUILTIN_MTL_DEF_FALLBACK_3D, BuiltinMaterialCreatorID::PureColor3D, false, false, false },
-            { BUILTIN_MTL_DEF_MISSING_MATERIAL, BuiltinMaterialCreatorID::PureColor3D, false, false, false },
-            { BUILTIN_MTL_DEF_TEXT, BuiltinMaterialCreatorID::Text2D, true, true, false },
-            { BUILTIN_MTL_DEF_SKY, BuiltinMaterialCreatorID::SkyMinimal, false, false, true },
-            { "Standard", BuiltinMaterialCreatorID::Standard, false, false, true },
-            { "StandardTextureArray", BuiltinMaterialCreatorID::StandardTextureArray, false, false, true },
-            { "Gizmo3D", BuiltinMaterialCreatorID::Gizmo3D, false, false, false },
-            { "RectTexture2D", BuiltinMaterialCreatorID::RectTexture2D, true, false, false },
-            { "RectTexture2DArray", BuiltinMaterialCreatorID::RectTexture2DArray, true, false, false },
+            { BUILTIN_MTL_DEF_FALLBACK_2D, BuiltinMaterialCreatorID::PureColor2D },
+            { BUILTIN_MTL_DEF_FALLBACK_3D, BuiltinMaterialCreatorID::PureColor3D },
+            { BUILTIN_MTL_DEF_MISSING_MATERIAL, BuiltinMaterialCreatorID::PureColor3D },
+            { BUILTIN_MTL_DEF_TEXT, BuiltinMaterialCreatorID::Text2D },
+            { BUILTIN_MTL_DEF_SKY, BuiltinMaterialCreatorID::SkyMinimal },
+            { "Standard", BuiltinMaterialCreatorID::Standard },
+            { "StandardTextureArray", BuiltinMaterialCreatorID::StandardTextureArray },
+            { "Gizmo3D", BuiltinMaterialCreatorID::Gizmo3D },
+            { "RectTexture2D", BuiltinMaterialCreatorID::RectTexture2D },
+            { "RectTexture2DArray", BuiltinMaterialCreatorID::RectTexture2DArray },
         };
 
         for (const auto &entry : expected)
@@ -173,26 +170,8 @@ namespace
                 continue;
             }
 
-            const bool is_2d = entry.builtin_id <= BuiltinMaterialCreatorID::Text2D;
-            const bool is_text = entry.builtin_id == BuiltinMaterialCreatorID::Text2D;
-            const bool with_sky = entry.builtin_id == BuiltinMaterialCreatorID::SkyMinimal
-                               || entry.builtin_id == BuiltinMaterialCreatorID::Standard
-                               || entry.builtin_id == BuiltinMaterialCreatorID::StandardTextureArray;
-
-            if (is_2d != entry.is_2d)
-            {
-                result.diagnostics.emplace_back(std::string("is_2d mismatch: ") + entry.definition_id);
-                continue;
-            }
-
-            if (is_text != entry.is_text)
-            {
-                result.diagnostics.emplace_back(std::string("is_text mismatch: ") + entry.definition_id);
-                continue;
-            }
-
-            if (with_sky != entry.with_sky)
-                result.diagnostics.emplace_back(std::string("with_sky mismatch: ") + entry.definition_id);
+            if (bmi.definition_name.empty())
+                result.diagnostics.emplace_back(std::string("Empty material definition name: ") + entry.definition_id);
         }
 
         result.passed = result.diagnostics.empty();
