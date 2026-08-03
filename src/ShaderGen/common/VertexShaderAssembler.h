@@ -19,6 +19,16 @@ namespace hgl::graph::mtl
         // These are appended after the standard varying slots above.
         bool emit_world_pos        = false;  // out vec3 fragWorldPos
         bool emit_world_normal     = false;  // out vec3 fragWorldNormal
+        // Extended: special-purpose varying outputs (appended last).
+        bool emit_luminance        = false;  // out float fragLuminance (= Luminance vertex attr)
+        bool emit_frag_direction   = false;  // out vec3 fragDirection (= normalize(Position)), sky dome
+        // PattleColor-style materials: GetL2W reads the TransformID vertex attribute
+        // directly (l2w.mats[TransformID]) instead of resolving gl_InstanceIndex
+        // through the l2w_index_rows table.
+        bool use_transform_id_attr = false;
+        // Vertex color sourced from a MaterialColorPalette UBO instead of a Color
+        // vertex attribute: fragVertexColor = color_pattle.color[ColorIndex].
+        bool emit_vertex_color_from_pattle = false;
     };
 
     // GenerateVertexShader — generates a complete, standalone VS GLSL string.
@@ -68,10 +78,12 @@ namespace hgl::graph::mtl
         bool needs_l2w = (node_cfg.orientation == OrientationMode::World ||
                           node_cfg.orientation == OrientationMode::CameraFacingFree ||
                           node_cfg.orientation == OrientationMode::CameraFacingAxisY);
-        bool needs_mi  = varying_cfg.emit_data_index_id || varying_cfg.emit_texture_layer_id;
 
         // ── Header ───────────────────────────────────────────────────────────
-        append("#version 450\n\n");
+        append("#version 450\n");
+        if (varying_cfg.emit_vertex_color_from_pattle)
+            append("#extension GL_EXT_scalar_block_layout : require\n");
+        append("\n");
 
         // ── Descriptor macros ─────────────────────────────────────────────────
         vs += "#include \"common/descriptor_macros.glsl\"\n";
@@ -87,20 +99,12 @@ namespace hgl::graph::mtl
         {
             vs += "#include \"common/l2w_ssbo.glsl\"\n";
             vs += "L2W_SSBO;\n";
-            vs += "#include \"common/instance_rows_ssbo.glsl\"\n";
-            vs += "L2W_INDEX_ROWS_SSBO;\n";
         }
 
-        if (needs_mi)
-        {
-            if (!needs_l2w)
-            {
-                vs += "#include \"common/instance_rows_ssbo.glsl\"\n";
-            }
-            if (varying_cfg.emit_data_index_id) vs += "DATA_INDEX_ROWS_SSBO;\n";
-            if (varying_cfg.emit_texture_layer_id && !varying_cfg.texture_layer_id_uses_data_index)
-                vs += "TEXTURE_LAYER_ROWS_SSBO;\n";
-        }
+        // 行表 SSBO 声明（l2w_index_rows / mtl_data_index_rows / mtl_texture_layer_rows）
+        // 不再在此展开：由 CompileCompositorMaterial 依据 descriptor_info 统一生成并
+        // 注入到 #version 之后（ResolveTransformID / ResolveDataIndexID / ResolveTextureLayerID
+        // 同由该处提供定义）。
 
         vs += "\n";
 
@@ -128,6 +132,10 @@ namespace hgl::graph::mtl
             vs += extra_attr_glsl;
             if (extra_attr_glsl.back() != '\n') vs += "\n";
         }
+
+        // MaterialColorPalette UBO (PattleColor-style materials).
+        if (varying_cfg.emit_vertex_color_from_pattle)
+            vs += "layout(scalar, set=MATERIAL_SET, binding=0) uniform ColorPattle { vec4 color[256]; } color_pattle;\n";
 
         vs += "\n";
 
@@ -166,6 +174,12 @@ namespace hgl::graph::mtl
 
         // ── Stage 3: Transform strategy ───────────────────────────────────────
         // Select based on orientation × scale × projection.
+        // PattleColor-style materials resolve L2W from the TransformID vertex
+        // attribute instead of the gl_InstanceIndex table; orient_world.glsl
+        // branches on this macro.
+        if (varying_cfg.use_transform_id_attr)
+            vs += "#define HGL_L2W_FROM_VERTEX_ATTR\n";
+
         if (node_cfg.orientation == OrientationMode::CameraFacingFree ||
             node_cfg.orientation == OrientationMode::CameraFacingAxisY)
         {
@@ -218,8 +232,12 @@ namespace hgl::graph::mtl
             vs += "layout(location=" + std::to_string(loc++) + ") out vec3 fragWorldNormal;\n";
         if (varying_cfg.emit_uv0)
             vs += "layout(location=" + std::to_string(loc++) + ") out vec2 fragUV0;\n";
-        if (varying_cfg.emit_vertex_color)
+        if (varying_cfg.emit_vertex_color || varying_cfg.emit_vertex_color_from_pattle)
             vs += "layout(location=" + std::to_string(loc++) + ") out vec4 fragVertexColor;\n";
+        if (varying_cfg.emit_frag_direction)
+            vs += "layout(location=" + std::to_string(loc++) + ") out vec3 fragDirection;\n";
+        if (varying_cfg.emit_luminance)
+            vs += "layout(location=" + std::to_string(loc++) + ") out float fragLuminance;\n";
 
         vs += "\nvoid main()\n{\n";
 
@@ -233,10 +251,19 @@ namespace hgl::graph::mtl
             else
                 vs += "    fragTextureLayerID = ResolveTextureLayerID(gl_InstanceIndex);\n";
         }
-        if (varying_cfg.emit_vertex_color)
-            vs += "    fragVertexColor = Color;\n";
+        if (varying_cfg.emit_vertex_color || varying_cfg.emit_vertex_color_from_pattle)
+        {
+            if (varying_cfg.emit_vertex_color_from_pattle)
+                vs += "    fragVertexColor = color_pattle.color[ColorIndex];\n";
+            else
+                vs += "    fragVertexColor = Color;\n";
+        }
         if (varying_cfg.emit_uv0)
             vs += "    fragUV0 = TexCoord;\n";
+        if (varying_cfg.emit_frag_direction)
+            vs += "    fragDirection = normalize(Position);\n";
+        if (varying_cfg.emit_luminance)
+            vs += "    fragLuminance = Luminance;\n";
 
         // World-space outputs: compute L2W once and use for both transform and normal.
         if (varying_cfg.emit_world_pos || varying_cfg.emit_world_normal)

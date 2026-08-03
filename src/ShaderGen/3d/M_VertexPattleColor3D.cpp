@@ -17,6 +17,7 @@
 #include<hgl/log/Log.h>
 #include<vector>
 #include "../common/VertexBuilderCommon.h"
+#include "../common/VertexShaderAssembler.h"
 #include "DefinitionDescriptorBuilder3D.h"
 
 namespace hgl::graph::mtl{
@@ -33,31 +34,6 @@ namespace
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::VertexPattleColor3D, bmi);
         return true;
     }();
-
-    static std::string BuildVertexPattleColor3DVertexShader()
-    {
-        return
-            "#version 450\n"
-            "#extension GL_EXT_scalar_block_layout : require\n\n"
-            "#include \"common/descriptor_macros.glsl\"\n"
-            "#include \"common/scene_ubo.glsl\"\n"
-            "SCENE_CAMERA_UBO;\n"
-            "#include \"common/l2w_ssbo.glsl\"\n"
-            "L2W_SSBO;\n\n"
-            "layout(scalar, set=MATERIAL_SET, binding=0) uniform ColorPattle { vec4 color[256]; } color_pattle;\n"
-            "layout(location=0) in vec3 Position;\n"
-            "layout(location=1) in uint ColorIndex;\n"
-            "layout(location=2) in uint TransformID;\n"
-            "#include \"vertex/s2_passthrough3d.glsl\"\n\n"
-            "layout(location=0) out vec4 fragVertexColor;\n\n"
-            "void main()\n"
-            "{\n"
-            "    mat4 l2w_mat = l2w.mats[TransformID];\n"
-            "    vec4 world_pos = l2w_mat * GetLocalPos();\n"
-            "    fragVertexColor = color_pattle.color[ColorIndex];\n"
-            "    gl_Position = camera.vp * world_pos;\n"
-            "}\n";
-    }
 
 }//namespace
 
@@ -106,7 +82,23 @@ static ShaderProgramBuildSpec *CreateVertexPattleColor3DImpl(const contract::Phy
         return nullptr;
     }
 
-    const std::string vs_glsl = BuildVertexPattleColor3DVertexShader();
+    // emit_vertex_color(from_pattle) + use_transform_id_attr:
+    // TransformID attribute indexes l2w.mats directly (no instance table);
+    // ColorIndex attribute samples the MaterialColorPalette UBO.
+    VertexVaryingConfig varying_cfg;
+    varying_cfg.emit_vertex_color_from_pattle = true;
+    varying_cfg.use_transform_id_attr         = true;
+
+    const std::string extra_attrs =
+        "layout(location=1) in uint ColorIndex;\n"
+        "layout(location=2) in uint TransformID;\n";
+    std::string vs_glsl = GenerateVertexShader(
+        definition.vertex_node_config,
+        varying_cfg,
+        VK_FORMAT_R32G32B32_SFLOAT,
+        extra_attrs,
+        "ShaderLibrary"
+    );
 
     ShaderProgramBuildSpec *mci = CompileCompositorMaterial(
         profile,

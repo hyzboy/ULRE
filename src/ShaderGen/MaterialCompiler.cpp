@@ -547,10 +547,10 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
 
     const MaterialDescriptorInfo &descriptor_info = mci->GetDescriptorInfo();
 
-    AppendDescriptorBindingDefine("MI_DATA_INDEX_ROWS_SET", descriptor_info.GetSSBO(SBS_MaterialDataIndexRows.name));
-    AppendDescriptorBindingDefine("MI_TEXTURE_LAYER_ROWS_SET", descriptor_info.GetSSBO(SBS_MaterialTextureLayerRows.name));
+    // 行表绑定（mtl_data_index_rows / mtl_texture_layer_rows / l2w_index_rows）不再注入
+    // set/binding 宏：声明由下方 index table 生成逻辑依据 descriptor_info 直接以
+    // layout(set=.., binding=..) 写出（统一声明生成，不再写死在 .glsl）。
     AppendDescriptorBindingDefine("L2W_SET", descriptor_info.GetSSBO(SBS_LocalToWorld.name));
-    AppendDescriptorBindingDefine("L2W_INDEX_ROWS_SET", descriptor_info.GetSSBO(SBS_LocalToWorldIndexRows.name));
     AppendDescriptorBindingDefine("VIEWPORT_SET", descriptor_info.GetUBO(SBS_ViewportInfo.name));
     AppendDescriptorBindingDefine("CAMERA_SET", descriptor_info.GetUBO(SBS_CameraInfo.name));
     AppendDescriptorBindingDefine("SKY_SET", descriptor_info.GetUBO(SBS_SkyInfo.name));
@@ -649,6 +649,50 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
         }
     }
 
+    // ── Instance index table SSBO GLSL 声明 ──────────────────────────────────
+    // mtl_data_index_rows / mtl_texture_layer_rows / l2w_index_rows 的 buffer
+    // 声明与 Resolve 函数不再写死在 instance_rows_ssbo.glsl 中，统一依据
+    // descriptor_info 生成注入：VS 阶段提供 l2w_index_rows / mtl_data_index_rows
+    //（含 ResolveTransformID / ResolveDataIndexID），FS 阶段提供
+    // mtl_texture_layer_rows（bindless GetTextureHandle 行表，仅需 buffer 声明）。
+    struct IndexTableSpec
+    {
+        const char *buffer_name;
+        const char *var_name;
+        const char *resolve_func;   // 为空则仅生成 buffer 声明
+    };
+
+    auto AppendIndexTableDecl = [](std::string &out, const ShaderDescriptor *sd, const IndexTableSpec &spec)
+    {
+        if (!sd || sd->set < 0 || sd->binding < 0)
+            return;
+
+        out += "layout(set=" + std::to_string(sd->set) + ", binding=" + std::to_string(sd->binding) + ") readonly buffer ";
+        out += spec.buffer_name;
+        out += " { uint values[]; } ";
+        out += spec.var_name;
+        out += ";\n";
+
+        if (spec.resolve_func)
+        {
+            out += "uint ";
+            out += spec.resolve_func;
+            out += "(uint iid) { return ";
+            out += spec.var_name;
+            out += ".values[iid]; }\n";
+        }
+    };
+
+    std::string vs_index_table_decls;
+    std::string fs_index_table_decls;
+
+    AppendIndexTableDecl(vs_index_table_decls, descriptor_info.GetSSBO(SBS_LocalToWorldIndexRows.name),
+                         { "LocalToWorldIndexRows", "l2w_index_rows", "ResolveTransformID" });
+    AppendIndexTableDecl(vs_index_table_decls, descriptor_info.GetSSBO(SBS_MaterialDataIndexRows.name),
+                         { "DataIndexRows", "mtl_data_index_rows", "ResolveDataIndexID" });
+    AppendIndexTableDecl(fs_index_table_decls, descriptor_info.GetSSBO(SBS_MaterialTextureLayerRows.name),
+                         { "TextureLayerRows", "mtl_texture_layer_rows", nullptr });
+
     // GLSL requires #version to be the very first token.
     auto InsertAfterVersionLine = [](const std::string &glsl, const std::string &inject) -> std::string
     {
@@ -660,8 +704,8 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
         return glsl.substr(0, pos + 1) + inject + glsl.substr(pos + 1);
     };
 
-    std::string vs_final = InsertAfterVersionLine(vs_glsl, binding_preamble);
-    std::string fs_final = InsertAfterVersionLine(fs_glsl, binding_preamble + material_ssbo_decls);
+    std::string vs_final = InsertAfterVersionLine(vs_glsl, binding_preamble + vs_index_table_decls);
+    std::string fs_final = InsertAfterVersionLine(fs_glsl, binding_preamble + fs_index_table_decls + material_ssbo_decls);
 
     ShaderCreateInfoVertex   *vert = mci->GetVertexShader();
     ShaderCreateInfo         *frag = mci->GetStageShader(ShaderStage::Fragment);

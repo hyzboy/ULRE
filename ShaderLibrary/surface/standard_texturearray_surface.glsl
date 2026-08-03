@@ -8,8 +8,8 @@
 #include "common/surface_interface.glsl"
 
 // Bindless 2DArray rows + bindless sampler arrays
-#include "common/instance_rows_ssbo.glsl"
-TEXTURE_LAYER_ROWS_SSBO;
+// mtl_texture_layer_rows 行表声明由 CompileCompositorMaterial 统一生成并注入
+//（GetTextureHandle 宏依赖该 buffer），不再在此处 #include 展开。
 #include "common/bindless_textures.glsl"
 
 #include "common/skylight_simple.glsl"

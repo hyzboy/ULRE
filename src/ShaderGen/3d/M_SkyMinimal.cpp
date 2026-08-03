@@ -5,6 +5,7 @@
 #include<hgl/log/Log.h>
 #include<vector>
 #include "../common/VertexBuilderCommon.h"
+#include "../common/VertexShaderAssembler.h"
 #include "DefinitionDescriptorBuilder3D.h"
 
 namespace hgl::graph::mtl{
@@ -28,30 +29,6 @@ namespace
 
         return true;
     }();
-
-    static std::string BuildSkyMinimalVertexShader()
-    {
-        return
-            "#version 450\n\n"
-            "#include \"common/descriptor_macros.glsl\"\n"
-            "#include \"common/scene_ubo.glsl\"\n"
-            "SCENE_CAMERA_UBO;\n"
-            "#include \"common/l2w_ssbo.glsl\"\n"
-            "L2W_SSBO;\n"
-            "#include \"common/instance_rows_ssbo.glsl\"\n"
-            "L2W_INDEX_ROWS_SSBO;\n\n"
-            "layout(location=0) in vec3 Position;\n"
-            "#include \"vertex/s2_passthrough3d.glsl\"\n"
-            "#include \"vertex/helpers/orient_world.glsl\"\n\n"
-            "layout(location=0) out vec3 fragDirection;\n\n"
-            "void main()\n"
-            "{\n"
-            "    vec4 local_pos = GetLocalPos();\n"
-            "    vec4 world_pos = GetL2W() * local_pos;\n"
-            "    fragDirection = normalize(Position);\n"
-            "    gl_Position = camera.vp * world_pos;\n"
-            "}\n";
-    }
 
 }//namespace
 
@@ -97,7 +74,16 @@ static ShaderProgramBuildSpec *CreateSkyMinimalImpl(const contract::PhysicalDevi
         return nullptr;
     }
 
-    const std::string vs_glsl = BuildSkyMinimalVertexShader();
+    // emit_frag_direction: main_forward_sky.frag.glsl expects location=0 vec3 fragDirection.
+    VertexVaryingConfig varying_cfg;
+    varying_cfg.emit_frag_direction = true;
+    std::string vs_glsl = GenerateVertexShader(
+        definition.vertex_node_config,
+        varying_cfg,
+        VK_FORMAT_R32G32B32_SFLOAT,
+        "",
+        "ShaderLibrary"
+    );
 
     ShaderProgramBuildSpec *mci = CompileCompositorMaterial(
         profile,

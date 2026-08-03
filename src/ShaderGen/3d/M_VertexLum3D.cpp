@@ -5,6 +5,7 @@
 #include<hgl/log/Log.h>
 #include<vector>
 #include "../common/VertexBuilderCommon.h"
+#include "../common/VertexShaderAssembler.h"
 #include "DefinitionDescriptorBuilder3D.h"
 
 namespace hgl::graph::mtl{
@@ -22,42 +23,6 @@ namespace
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::VertexLuminance3D, bmi);
         return true;
     }();
-
-    static std::string BuildVertexLuminance3DVertexShader(const bool use_vec2_position)
-    {
-        std::string vs =
-            "#version 450\n\n"
-            "#include \"common/descriptor_macros.glsl\"\n"
-            "#include \"common/scene_ubo.glsl\"\n"
-            "SCENE_CAMERA_UBO;\n"
-            "#include \"common/l2w_ssbo.glsl\"\n"
-            "L2W_SSBO;\n"
-            "#include \"common/instance_rows_ssbo.glsl\"\n"
-            "L2W_INDEX_ROWS_SSBO;\n"
-            "DATA_INDEX_ROWS_SSBO;\n\n";
-
-        vs += use_vec2_position
-            ? "layout(location=0) in vec2 Position;\n"
-            : "layout(location=0) in vec3 Position;\n";
-
-        vs += "layout(location=1) in float Luminance;\n";
-        vs += use_vec2_position
-            ? "#include \"vertex/s2_lift_xy0.glsl\"\n"
-            : "#include \"vertex/s2_passthrough3d.glsl\"\n";
-        vs += "#include \"vertex/helpers/orient_world.glsl\"\n\n";
-        vs += "layout(location=0) flat out uint fragDataIndexID;\n";
-        vs += "layout(location=1) flat out uint fragTextureLayerID;\n";
-        vs += "layout(location=2) out float fragLuminance;\n\n";
-        vs += "void main()\n";
-        vs += "{\n";
-        vs += "    fragDataIndexID = ResolveDataIndexID(gl_InstanceIndex);\n";
-        vs += "    fragTextureLayerID = fragDataIndexID;\n";
-        vs += "    fragLuminance = Luminance;\n";
-        vs += "    vec4 world_pos = GetL2W() * GetLocalPos();\n";
-        vs += "    gl_Position = camera.vp * world_pos;\n";
-        vs += "}\n";
-        return vs;
-    }
 
 }
 
@@ -92,7 +57,26 @@ static ShaderProgramBuildSpec *CreateVertexLuminance3DImpl(const contract::Physi
         return nullptr;
     }
 
-    const std::string vs_glsl = BuildVertexLuminance3DVertexShader(vertex_result.use_vec2_position);
+    // emit_data_index_id + emit_texture_layer_id(uses_data_index) + emit_luminance:
+    // matches main_forward_unlit_luminance.frag.glsl (loc0/1/2).
+    VertexVaryingConfig varying_cfg;
+    varying_cfg.emit_data_index_id               = true;
+    varying_cfg.emit_texture_layer_id            = true;
+    varying_cfg.texture_layer_id_uses_data_index = true;
+    varying_cfg.emit_luminance                   = true;
+
+    VertexShaderNodeConfig node_cfg = definition.vertex_node_config;
+    if (vertex_result.use_vec2_position)
+        node_cfg.position_mapping = PositionMappingMode::LiftXY_XY0;
+
+    const std::string extra_attrs = "layout(location=1) in float Luminance;\n";
+    std::string vs_glsl = GenerateVertexShader(
+        node_cfg,
+        varying_cfg,
+        vertex_result.use_vec2_position ? VK_FORMAT_R32G32_SFLOAT : VK_FORMAT_R32G32B32_SFLOAT,
+        extra_attrs,
+        "ShaderLibrary"
+    );
 
     ShaderProgramBuildSpec *mci = CompileCompositorMaterial(
         profile,
