@@ -336,7 +336,7 @@ bool ShaderProgramManager::BuildRuntimeDescriptorState(ShaderProgram *mtl,
     return true;
 }
 
-ShaderProgram *ShaderProgramManager::AcquireMaterialProgram(const AnsiString &mtl_name,const mtl::ShaderProgramBuildSpec *mci)
+ShaderProgram *ShaderProgramManager::AcquireShaderProgram(const AnsiString &mtl_name,const mtl::ShaderProgramBuildSpec *mci)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -420,7 +420,7 @@ bool ShaderProgramManager::BuildMaterialResourceLayout(const mtl::MaterialDefini
     return true;
 }
 
-ShaderProgram *ShaderProgramManager::AcquireMaterialProgram(const mtl::MaterialDefinitionBuildRequest &request)
+ShaderProgram *ShaderProgramManager::AcquireShaderProgram(const mtl::MaterialDefinitionBuildRequest &request)
 {
     // Ensure recipe defaults are filled in before lookup, in case the caller skipped normalization.
     // This call is idempotent; PrimitiveComponent-initiated paths will have already normalized.
@@ -448,7 +448,7 @@ ShaderProgram *ShaderProgramManager::AcquireMaterialProgram(const mtl::MaterialD
     if(!mci)
         return nullptr;
 
-    return this->AcquireMaterialProgram(hash_name, mci);
+    return this->AcquireShaderProgram(hash_name, mci);
 }
 
 }//namespace hgl::graph

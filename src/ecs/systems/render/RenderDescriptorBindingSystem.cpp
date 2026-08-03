@@ -1356,44 +1356,44 @@ namespace hgl::ecs
 
         for (const auto &pair : cache.materialBatches)
         {
-            graph::ShaderProgram *material = pair.first.material;
-            if (!material)
+            graph::ShaderProgram *shader_program = pair.first.shader_program;
+            if (!shader_program)
                 continue;
 
             MaterialBatch *batch = pair.second.get();
             if (!batch || batch->items.empty())
                 continue;
 
-            active_materials.insert(material);
+            active_materials.insert(shader_program);
             batch->descriptor_bind_valid = true;
 
-            const auto &contract = material->GetMaterialResourceLayout();
+            const auto &contract = shader_program->GetMaterialResourceLayout();
 
             for (const auto &req : contract.requirements)
             {
                 if (!req.name || !*req.name)
                     continue;
-                apply_requirement(material, batch, req);
+                apply_requirement(shader_program, batch, req);
             }
 
         }
 
         // Bind scene-level UBOs to pipeline-registered materials (Line, Terrain, etc.)
         // These materials bypass the normal materialBatches path.
-        for (graph::ShaderProgram *material : pipeline_materials)
+        for (graph::ShaderProgram *shader_program : pipeline_materials)
         {
-            if (!material)
+            if (!shader_program)
                 continue;
 
-            active_materials.insert(material);
+            active_materials.insert(shader_program);
 
-            const auto &contract = material->GetMaterialResourceLayout();
+            const auto &contract = shader_program->GetMaterialResourceLayout();
 
             for (const auto &req : contract.requirements)
             {
                 if (!req.name || !*req.name)
                     continue;
-                apply_requirement(material, nullptr, req);
+                apply_requirement(shader_program, nullptr, req);
             }
         }
 
@@ -1497,13 +1497,13 @@ namespace hgl::ecs
         for (const auto &pair : cache.materialBatches)
         {
             const auto &key = pair.first;
-            const graph::ShaderProgram *material = key.material;
-            if (!material)
+            const graph::ShaderProgram *shader_program = key.shader_program;
+            if (!shader_program)
                 continue;
 
             ++frame_stats.materials_checked;
 
-            const auto &contract = material->GetMaterialResourceLayout();
+            const auto &contract = shader_program->GetMaterialResourceLayout();
 
             bool all_required_ok = true;
             std::string first_error;
@@ -1534,10 +1534,10 @@ namespace hgl::ecs
                 }
             }
 
-            auto it = resource_layout_last_ok.find(material);
+            auto it = resource_layout_last_ok.find(shader_program);
             if (it == resource_layout_last_ok.end())
             {
-                resource_layout_last_ok.emplace(material, all_required_ok);
+                resource_layout_last_ok.emplace(shader_program, all_required_ok);
 
                 if (!all_required_ok)
                     ++frame_stats.materials_unresolved;
@@ -1545,7 +1545,7 @@ namespace hgl::ecs
                 if (!all_required_ok)
                 {
                     LogWarning("[DescriptorContract] material=%s unresolved required contract: %s",
-                               material->GetName().c_str(),
+                               shader_program->GetName().c_str(),
                                first_error.c_str());
                 }
                 continue;
@@ -1556,12 +1556,12 @@ namespace hgl::ecs
                 if (!all_required_ok)
                 {
                     LogWarning("[DescriptorContract] material=%s contract changed to unresolved: %s",
-                               material->GetName().c_str(),
+                               shader_program->GetName().c_str(),
                                first_error.c_str());
                 }
                 else
                 {
-                    LogInfo("[DescriptorContract] material=%s contract resolved", material->GetName().c_str());
+                    LogInfo("[DescriptorContract] material=%s contract resolved", shader_program->GetName().c_str());
                 }
 
                 it->second = all_required_ok;

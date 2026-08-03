@@ -57,7 +57,7 @@ namespace hgl::ecs
         std::shared_ptr<MaterialComponent> GetMaterialComponent() const { return materialComp; }
 
         // ShaderProgram batching interface
-        hgl::graph::ShaderProgram* GetMaterialProgram() const override;
+        hgl::graph::ShaderProgram* GetShaderProgram() const override;
         hgl::graph::Pipeline* GetPipeline() const override;
         const hgl::graph::GeometryDataBuffer *GetGeometryDataBuffer() const override;
         const hgl::graph::GeometryDrawRange *GetGeometryDrawRange() const override;

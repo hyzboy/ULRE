@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/ecs/core/MaterialPipelineKey.h>
+#include<hgl/ecs/core/ShaderProgramPipelineKey.h>
 #include<hgl/ecs/support/PipelineMaterialRenderer.h>
 #include<hgl/common/DescriptorSetTypeDef.h>
 #include<hgl/mtl/MaterialRecipe.h>
@@ -43,7 +43,7 @@ namespace hgl::ecs
     {
     public:
 
-        MaterialPipelineKey                     key;                                        ///<材质/管线键
+        ShaderProgramPipelineKey                key;                                        ///<材质/管线键
         std::vector<RenderItem *>               items;                                      ///<渲染项列表
         uint32_t                                static_count            = 0;                ///<静态项数量
         const graph::CameraInfo *               cameraInfo              = nullptr;          ///<相机信息
@@ -77,7 +77,7 @@ namespace hgl::ecs
 
     public:
 
-        MaterialBatch(const MaterialPipelineKey& k, graph::VulkanDevice* dev = nullptr, graph::BufferManager* bm = nullptr);
+        MaterialBatch(const ShaderProgramPipelineKey& k, graph::VulkanDevice* dev = nullptr, graph::BufferManager* bm = nullptr);
         ~MaterialBatch();
 
         void Clear();

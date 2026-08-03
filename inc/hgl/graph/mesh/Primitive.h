@@ -45,7 +45,7 @@ public:
 
             Pipeline *          GetPipeline         (){return pipeline;}
             VkPipelineLayout    GetPipelineLayout   (){return material_program ? material_program->GetPipelineLayout() : VK_NULL_HANDLE;}
-            ShaderProgram *   GetMaterialProgram  (){return material_program;}
+            ShaderProgram *   GetShaderProgram  (){return material_program;}
     const   VIL *               GetVIL              ()const{return binding_vil ? binding_vil : (material_program ? material_program->GetDefaultVIL() : nullptr);}
             Geometry *          GetGeometry         (){return geometry;}
             AnsiString          GetGeometryName     (){return geometry->GetName();}

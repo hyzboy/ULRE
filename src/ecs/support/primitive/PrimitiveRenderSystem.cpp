@@ -76,7 +76,7 @@ namespace hgl::ecs
                 continue;
 
             const auto& key = batch->key;
-            if (!key.material || !key.pipeline)
+            if (!key.shader_program || !key.pipeline)
                 continue;
 
             if (batch->draw_batches_count == 0)

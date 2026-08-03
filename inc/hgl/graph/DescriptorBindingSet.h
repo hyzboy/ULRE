@@ -46,7 +46,7 @@ namespace hgl
             DescriptorBindingSet(ShaderProgram *mtl = nullptr, const VIL *binding_vil = nullptr);
 
             void SetMaterial(ShaderProgram *mtl);
-            ShaderProgram *GetMaterialProgram() const { return material; }
+            ShaderProgram *GetShaderProgram() const { return material; }
 
             void SetVIL(const VIL *binding_vil) { vil = binding_vil; }
             const VIL *GetVIL() const;

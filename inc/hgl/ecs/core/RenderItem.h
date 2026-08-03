@@ -55,7 +55,7 @@ namespace hgl::ecs
         virtual glm::mat4 GetWorldMatrix() const = 0;
 
         // For material batching support
-        virtual hgl::graph::ShaderProgram* GetMaterialProgram() const = 0;
+        virtual hgl::graph::ShaderProgram* GetShaderProgram() const = 0;
         virtual hgl::graph::Pipeline* GetPipeline() const = 0;
         virtual const hgl::graph::GeometryDataBuffer *GetGeometryDataBuffer() const = 0;
         virtual const hgl::graph::GeometryDrawRange *GetGeometryDrawRange() const = 0;

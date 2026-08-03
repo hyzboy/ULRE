@@ -41,12 +41,12 @@ namespace hgl::ecs
         return std::static_pointer_cast<RenderableComponent>(primitiveComp);
     }
 
-    hgl::graph::ShaderProgram* PrimitiveRenderItem::GetMaterialProgram() const
+    hgl::graph::ShaderProgram* PrimitiveRenderItem::GetShaderProgram() const
     {
         if (materialComp && materialComp->program)
             return materialComp->program;
 
-        return primitiveComp ? primitiveComp->GetMaterialProgram() : nullptr;
+        return primitiveComp ? primitiveComp->GetShaderProgram() : nullptr;
     }
 
     hgl::graph::Pipeline* PrimitiveRenderItem::GetPipeline() const

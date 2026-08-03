@@ -22,7 +22,7 @@ namespace mtl
     class ShaderProgramBuildSpec;
 }//namespace mtl
 
-using MaterialID            = int;
+using ShaderProgramID       = int;
 using ShaderModuleMapByName = UnorderedMap<AnsiString,ShaderModule *>;
 
 constexpr const size_t VK_SHADER_STAGE_TYPE_COUNT = 20;
@@ -34,7 +34,7 @@ private:
     ShaderModuleMapByName shader_module_by_name[VK_SHADER_STAGE_TYPE_COUNT];
     UnorderedMap<AnsiString,ShaderProgram *> material_by_name;
 
-    AutoIdObjectManager<MaterialID, ShaderProgram> rm_material;  ///<材质合集
+    AutoIdObjectManager<ShaderProgramID, ShaderProgram> rm_material;  ///<材质合集
 
 private:
 
@@ -47,7 +47,7 @@ private:
 
 private: // Helper methods with integrated DebugUtils
 
-    ShaderProgram *AcquireMaterialProgram(const AnsiString &, const mtl::ShaderProgramBuildSpec *);
+    ShaderProgram *AcquireShaderProgram(const AnsiString &, const mtl::ShaderProgramBuildSpec *);
     class PipelineLayoutData *CreateMaterialPipelineLayoutData(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager);
     class MaterialParameters *CreateMaterialMP(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager, const class PipelineLayoutData *pld, const DescriptorSetType &desc_set_type);
     void ApplyMaterialFinalizePlan(ShaderProgram *mtl, const AnsiString &mtl_name, const mtl::ShaderProgramBuildSpec &mci);
@@ -66,14 +66,14 @@ private: // Helper methods with integrated DebugUtils
 
 public: //Add
 
-    MaterialID Add(ShaderProgram *mtl) { return rm_material.Add(mtl); }
+    ShaderProgramID Add(ShaderProgram *mtl) { return rm_material.Add(mtl); }
 
     /** 设置全局 Bindless Texture Set 布局（必须在创建任何材质前调用）*/
     void SetBindlessLayout(VkDescriptorSetLayout layout) { bindless_layout_ = layout; }
 
 public: //Get
 
-    ShaderProgram *GetMaterialProgram(const MaterialID &id) { return rm_material.Get(id); }
+    ShaderProgram *GetShaderProgram(const ShaderProgramID &id) { return rm_material.Get(id); }
 
 public: //Release
 
@@ -136,7 +136,7 @@ public: //ShaderProgram
 
     bool            BuildMaterialResourceLayout(const mtl::MaterialDefinitionBuildRequest &request,
                                                 mtl::MaterialResourceLayout &out_layout);
-    ShaderProgram *   AcquireMaterialProgram(const mtl::MaterialDefinitionBuildRequest &request);
+    ShaderProgram *   AcquireShaderProgram(const mtl::MaterialDefinitionBuildRequest &request);
 
 };//class ShaderProgramManager
 

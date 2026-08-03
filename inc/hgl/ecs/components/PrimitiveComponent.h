@@ -210,7 +210,7 @@ namespace hgl::ecs
         void ClearMaterialAuthoringResources();
 
         // ShaderProgram access (returns override if set, otherwise descriptor-bound material)
-        hgl::graph::ShaderProgram* GetMaterialProgram() const;
+        hgl::graph::ShaderProgram* GetShaderProgram() const;
 
         // Pipeline access: override → runtime resolved
         hgl::graph::Pipeline* GetPipeline() const;

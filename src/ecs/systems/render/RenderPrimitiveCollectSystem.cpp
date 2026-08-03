@@ -404,18 +404,18 @@ namespace hgl::ecs
             primitive_type = asset->GetPrimitiveType();
         }
 
-        // 统一 BMI 入口：由 AcquireMaterialProgram 内部处理 2D/3D/Text/Sky 分支，
+        // 统一 BMI 入口：由 AcquireShaderProgram 内部处理 2D/3D/Text/Sky 分支，
         // ECS 不再持有材质 config 细节知识。
         graph::mtl::MaterialDefinitionBuildRequest mtl_request{};
         mtl_request.recipe = effective_recipe;
         mtl_request.primitive_type = primitive_type;
         mtl_request.geometry_vertex_format = geometry_vertex_format;
         graph::ShaderProgram *resolved_program =
-            material_manager->AcquireMaterialProgram(mtl_request);
+            material_manager->AcquireShaderProgram(mtl_request);
 
         if (!resolved_program)
         {
-            GLogWarning("[RenderPrimitiveCollectSystem] AcquireMaterialProgram failed for %s recipe=%s mtl_def_id=%s builtin_creator_id=%u",
+            GLogWarning("[RenderPrimitiveCollectSystem] AcquireShaderProgram failed for %s recipe=%s mtl_def_id=%s builtin_creator_id=%u",
                         GetPrimitiveOwnerName(primitive_comp),
                         effective_recipe.recipe_name.c_str(),
                         effective_recipe.mtl_def_id.c_str());

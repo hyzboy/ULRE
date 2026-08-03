@@ -9,7 +9,7 @@
 
 namespace hgl::ecs
 {
-    MaterialBatch::MaterialBatch(const MaterialPipelineKey& k, graph::VulkanDevice* dev, graph::BufferManager* bm)
+    MaterialBatch::MaterialBatch(const ShaderProgramPipelineKey& k, graph::VulkanDevice* dev, graph::BufferManager* bm)
         : key(k)
         , static_count(0)
         , cameraInfo(nullptr)
@@ -18,10 +18,10 @@ namespace hgl::ecs
         , draw_batches_count(0)
         , renderer(nullptr)
     {
-        if (key.material && key.pipeline)
+        if (key.shader_program && key.pipeline)
         {
             // Create ECS renderer
-            renderer = new PipelineMaterialRenderer(key.material, key.pipeline);
+            renderer = new PipelineMaterialRenderer(key.shader_program, key.pipeline);
         }
     }
 

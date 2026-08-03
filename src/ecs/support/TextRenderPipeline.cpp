@@ -328,7 +328,7 @@ namespace hgl::ecs
             graph::mtl::MaterialDefinitionBuildRequest mtl_request{};
             mtl_request.recipe = recipe;
             mtl_request.primitive_type = graph::PrimitiveType::Triangles;
-            guard.material = material_manager->AcquireMaterialProgram(mtl_request);
+            guard.material = material_manager->AcquireShaderProgram(mtl_request);
         }
         if (!guard.material)
             return nullptr;

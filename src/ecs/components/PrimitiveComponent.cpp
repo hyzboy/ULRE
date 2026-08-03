@@ -648,7 +648,7 @@ namespace hgl::ecs
         resolvedRuntimeRenderPass = nullptr;
     }
 
-    hgl::graph::ShaderProgram* PrimitiveComponent::GetMaterialProgram() const
+    hgl::graph::ShaderProgram* PrimitiveComponent::GetShaderProgram() const
     {
         // Recipe runtime resolves program via MaterialComponent; non-recipe items have no program.
         return nullptr;

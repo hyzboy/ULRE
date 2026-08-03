@@ -18,7 +18,7 @@
 #include <hgl/type/UnorderedMap.h>
 #include<typeinfo>
 #include<type_traits>
-#include<hgl/ecs/core/MaterialPipelineKey.h>
+#include<hgl/ecs/core/ShaderProgramPipelineKey.h>
 #include<hgl/color/Color4f.h>
 
 #ifndef ULRE_ECS_DEBUG_API
@@ -49,7 +49,7 @@ namespace hgl
         struct RenderFrameCache
         {
             std::vector<std::unique_ptr<RenderItem>> renderItems;
-            hgl::UnorderedMap<MaterialPipelineKey, std::unique_ptr<MaterialBatch>> materialBatches;
+            hgl::UnorderedMap<ShaderProgramPipelineKey, std::unique_ptr<MaterialBatch>> materialBatches;
             const graph::CameraInfo* cameraInfo = nullptr;
             uint32_t renderableCount = 0;
 

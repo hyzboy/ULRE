@@ -17,7 +17,7 @@ set(ECS_CORE_FILES
     ${ECS_INCLUDE_PATH}/core/World.h
     ${ECS_INCLUDE_PATH}/core/DefaultSystems.h
     ${ECS_INCLUDE_PATH}/core/MaterialBatch.h
-    ${ECS_INCLUDE_PATH}/core/MaterialPipelineKey.h
+    ${ECS_INCLUDE_PATH}/core/ShaderProgramPipelineKey.h
     ${ECS_INCLUDE_PATH}/core/RenderItem.h
     ${ECS_INCLUDE_PATH}/core/PrimitiveRenderItem.h
     ${ECS_INCLUDE_PATH}/systems/render/RenderSystemCore.h

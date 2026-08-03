@@ -217,7 +217,7 @@ namespace hgl::graph
             mtl::MaterialDefinitionBuildRequest mtl_request{};
             mtl_request.recipe = recipe;
             mtl_request.primitive_type = PrimitiveType::Triangles;
-            mtl_fs = mtl_manager->AcquireMaterialProgram(mtl_request);
+            mtl_fs = mtl_manager->AcquireShaderProgram(mtl_request);
         }
         if(!mtl_fs)return(false);
 

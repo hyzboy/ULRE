@@ -620,7 +620,7 @@ namespace hgl::ecs
         }
 
         // Per-batch DataIndex rows SSBO — shader consumes this as a flat uint[] by instance index.
-        if (MaterialRequiresRecipeRuntimeRows(batch.key.material))
+        if (MaterialRequiresRecipeRuntimeRows(batch.key.shader_program))
         {
             if (!batch.mi_ssbo_index_rows_buffer || batch.mi_ssbo_index_rows_capacity < item_count)
             {
@@ -682,9 +682,9 @@ namespace hgl::ecs
             if (mi_gpu)
             {
                 graph::mtl::SSBOType primary_ssbo_type = graph::mtl::SSBOType::PBRSurface;
-                if (batch.key.material)
+                if (batch.key.shader_program)
                 {
-                    for (const auto &req : batch.key.material->GetMaterialResourceLayout().requirements)
+                    for (const auto &req : batch.key.shader_program->GetMaterialResourceLayout().requirements)
                     {
                         if (req.semantic == graph::mtl::DescriptorSemantic::MaterialSSBOSlotData)
                         {
@@ -707,8 +707,8 @@ namespace hgl::ecs
                             if (!warned_missing_recipe_row)
                             {
                                 warned_missing_recipe_row = true;
-                                LogWarning("[PrimitiveBatchPipeline] Missing recipe ssbo_index_row in batch write, fallback to row0. material=%s",
-                                           batch.key.material ? batch.key.material->GetName().c_str() : "<null>");
+                                LogWarning("[PrimitiveBatchPipeline] Missing recipe ssbo_index_row in batch write, fallback to row0. shader_prog=%s",
+                                           batch.key.shader_program ? batch.key.shader_program->GetName().c_str() : "<null>");
                             }
                             row = 0;
                         }
@@ -744,7 +744,7 @@ namespace hgl::ecs
             if (!item || !item->isVisible)
                 continue;
 
-            auto* material = item->GetMaterialProgram();
+            auto* shader_prog = item->GetShaderProgram();
             auto* pipeline = item->GetPipeline();
             auto* prim_item = dynamic_cast<PrimitiveRenderItem*>(item);
             auto prim_comp = prim_item ? prim_item->GetPrimitiveComponent() : nullptr;
@@ -752,7 +752,7 @@ namespace hgl::ecs
 
             if (prim_item)
             {
-                const bool needs_recipe_rows = MaterialRequiresRecipeRuntimeRows(material);
+                const bool needs_recipe_rows = MaterialRequiresRecipeRuntimeRows(shader_prog);
                 const bool missing_rows = needs_recipe_rows
                                        && (!material_comp
                                         || material_comp->material_instance_row == uint32_t(-1)
@@ -760,18 +760,18 @@ namespace hgl::ecs
                                         || material_comp->texture_layer_row == uint32_t(-1));
                 if (missing_rows)
                 {
-                    LogWarning("[PrimitiveBatchPipeline] Skip primitive item: unresolved recipe rows. material=%s",
-                               material ? material->GetName().c_str() : "<null>");
+                    LogWarning("[PrimitiveBatchPipeline] Skip primitive item: unresolved recipe rows. shader_prog=%s",
+                               shader_prog ? shader_prog->GetName().c_str() : "<null>");
                     continue;
                 }
             }
 
-            if (!material || !pipeline)
+            if (!shader_prog || !pipeline)
             {
                 if (prim_comp && prim_comp->HasAnyMaterialRecipeSource())
                 {
-                    LogWarning("[PrimitiveBatchPipeline] Skip primitive item: unresolved runtime pipeline. material=%s render_pass=%p",
-                               material ? material->GetName().c_str() : "<null>",
+                    LogWarning("[PrimitiveBatchPipeline] Skip primitive item: unresolved runtime pipeline. shader_prog=%s render_pass=%p",
+                               shader_prog ? shader_prog->GetName().c_str() : "<null>",
                                current_render_pass);
                 }
                 continue;
@@ -780,7 +780,7 @@ namespace hgl::ecs
             uint64_t program_signature = 0;
             uint64_t binding_signature = 0;
 
-            MaterialPipelineKey key(material, pipeline, program_signature, binding_signature);
+            ShaderProgramPipelineKey key(shader_prog, pipeline, program_signature, binding_signature);
             auto* batch_ptr = cache.materialBatches.GetValuePointer(key);
 
             if (!batch_ptr)

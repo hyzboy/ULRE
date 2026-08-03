@@ -118,22 +118,22 @@ namespace hgl
         #if !ULRE_ECS_DEBUG_API
             return false;
         #else
-            const hgl::graph::ShaderProgram *matched_material = nullptr;
+            const hgl::graph::ShaderProgram *matched_shader_program = nullptr;
 
             for (const auto &pair : render_frame_cache.materialBatches)
             {
-                const hgl::graph::ShaderProgram *material = pair.first.material;
-                if (!material)
+                const hgl::graph::ShaderProgram *shader_program = pair.first.shader_program;
+                if (!shader_program)
                     continue;
 
-                if (material->GetName() == material_name)
+                if (shader_program->GetName() == material_name)
                 {
-                    matched_material = material;
+                    matched_shader_program = shader_program;
                     break;
                 }
             }
 
-            if (!matched_material)
+            if (!matched_shader_program)
             {
                 if (material_binding_query_log_enabled)
                 {
@@ -142,11 +142,11 @@ namespace hgl
 
                     for (const auto &pair : render_frame_cache.materialBatches)
                     {
-                        const hgl::graph::ShaderProgram *material = pair.first.material;
-                        if (!material)
+                        const hgl::graph::ShaderProgram *shader_program = pair.first.shader_program;
+                        if (!shader_program)
                             continue;
 
-                        const AnsiString &name = material->GetName();
+                        const AnsiString &name = shader_program->GetName();
                         if (name.IsEmpty())
                             continue;
 
@@ -175,7 +175,7 @@ namespace hgl
                 return false;
             }
 
-            return GetMaterialBindingKeys(matched_material, out_keys);
+            return GetMaterialBindingKeys(matched_shader_program, out_keys);
         #endif
         }
 
@@ -202,16 +202,16 @@ namespace hgl
 
             for (const auto &entry : render_frame_cache.materialBatches)
             {
-                const MaterialPipelineKey &key = entry.first;
+                const ShaderProgramPipelineKey &key = entry.first;
                 const MaterialBatch *batch = entry.second.get();
 
-                if (!key.material || !key.pipeline || !batch || batch->items.empty())
+                if (!key.shader_program || !key.pipeline || !batch || batch->items.empty())
                     continue;
 
                 ++active_batch_count;
                 total_item_count += static_cast<uint32_t>(batch->items.size());
 
-                const MaterialPipelinePair pair_key{key.material, key.pipeline};
+                const MaterialPipelinePair pair_key{key.shader_program, key.pipeline};
                 unique_pairs.insert(pair_key);
                 unique_spec_hashes.insert(key.materialization_spec_hash);
                 pair_spec_hashes[pair_key].insert(key.materialization_spec_hash);
@@ -241,10 +241,10 @@ namespace hgl
         #else
             for (const auto &entry : render_frame_cache.materialBatches)
             {
-                const MaterialPipelineKey &key = entry.first;
+                const ShaderProgramPipelineKey &key = entry.first;
                 const MaterialBatch *batch = entry.second.get();
 
-                if (!key.material || !key.pipeline || !batch || batch->items.empty())
+                if (!key.shader_program || !key.pipeline || !batch || batch->items.empty())
                     continue;
 
                 ++out_histogram[key.materialization_spec_hash];
