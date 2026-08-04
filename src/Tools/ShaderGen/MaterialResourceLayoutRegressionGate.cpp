@@ -1,6 +1,7 @@
 #include <hgl/mtl/MaterialResourceLayout.h>
 #include <hgl/mtl/MaterialLibrary.h>
 #include <hgl/shadergen/CompositorAssembler.h>
+#include <hgl/shadergen/ShaderArtifactStore.h>
 #include <hgl/graph/glsl/GLSLCodeModule.h>
 #include <hgl/graph/glsl/GLSLCodeModuleCapabilityResolver.h>
 #include <hgl/graph/glsl/GLSLCodeModuleFile.h>
@@ -814,6 +815,60 @@ namespace
         fragment.inputs[1].value_type = ShaderStageValueType::Vec4;
         if (HasCompatibleStageInterface(vertex, fragment))
             result.diagnostics.emplace_back("incompatible composed stage interfaces accepted");
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
+    static GateResult RunResolvedStageCacheIdentityCase()
+    {
+        GateResult result;
+        result.name = "Q.resolved-stage-cache-identity";
+
+        const GeometryVertexFormat rg16_geometry{{
+            VertexSemantic::Position, VF_V2HF
+        }};
+        const GeometryVertexFormat rg32_geometry{{
+            VertexSemantic::Position, VF_V2F
+        }};
+
+        ShaderStageBuildSpec stage{};
+        stage.stage = ShaderStage::Vertex;
+        stage.glsl_module_graph_hash = 0x13579bdf2468ace0ull;
+        const ShaderStageKey stage_key = stage.BuildKey();
+        const ShaderStageKey equivalent_stage_key = stage.BuildKey();
+        if (!(stage_key == equivalent_stage_key))
+            result.diagnostics.emplace_back("equivalent provider stages must share cache identity");
+
+        if (rg16_geometry.GetVertexInputHash() == rg32_geometry.GetVertexInputHash())
+            result.diagnostics.emplace_back("raw Geometry formats must remain distinct");
+
+        ShaderProgramLinkSpec rg16_link{};
+        rg16_link.vertex_stage = stage_key;
+        rg16_link.fragment_stage.stage = ShaderStage::Fragment;
+        rg16_link.vertex_input_hash = rg16_geometry.GetVertexInputHash();
+        ShaderProgramLinkSpec rg32_link = rg16_link;
+        rg32_link.vertex_input_hash = rg32_geometry.GetVertexInputHash();
+        if (rg16_link.BuildKey() == rg32_link.BuildKey())
+            result.diagnostics.emplace_back(
+                "equivalent shader stages must retain distinct program input identity");
+
+        ShaderArtifactStore store(OS_TEXT("E:/ULRE/build"), ShaderCacheMode::BuildIfMissing);
+        const uint32_t payload[] = {0x07230203u, 1u, 2u, 3u};
+        if (!store.SaveStageSPV(stage_key, payload, sizeof(payload)))
+        {
+            result.diagnostics.emplace_back("stage SPV cache save failed");
+        }
+        else
+        {
+            hgl::ValueArray<hgl::uint8> loaded;
+            if (!store.LoadStageSPV(stage_key, loaded)
+             || loaded.GetCount() != static_cast<int>(sizeof(payload))
+             || std::memcmp(loaded.GetData(), payload, sizeof(payload)) != 0)
+            {
+                result.diagnostics.emplace_back("stage SPV cache round-trip failed");
+            }
+        }
 
         result.passed = result.diagnostics.empty();
         return result;
@@ -1775,6 +1830,7 @@ int main()
     results.push_back(RunCompositorVersionPlacementCase());
     results.push_back(RunProviderGraphIdentityCase());
     results.push_back(RunProviderGraphCompositionCase());
+    results.push_back(RunResolvedStageCacheIdentityCase());
 
     bool all_passed = true;
     for (const auto &result : results)

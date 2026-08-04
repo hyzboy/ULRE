@@ -4,6 +4,7 @@
 #include <hgl/graph/geo/AttributeCompatibility.h>
 #include <hgl/vk/VKFormat.h>
 #include <hgl/vk/VKVertexInputFormat.h>
+#include <hgl/util/hash/FNV1a.h>
 #include <initializer_list>
 #include <vector>
 #include <cstring>
@@ -152,6 +153,21 @@ namespace hgl::graph
         bool Add(const VertexSemantic semantic, const VkFormat format)
         {
             return Add(semantic, format, 0, 0);
+        }
+
+        uint64 GetVertexInputHash() const noexcept
+        {
+            uint64 hash = hgl::hash::FNV1aInit<uint64>();
+            hash = hgl::hash::FNV1aAppendValueBytes(
+                hash, static_cast<uint32>(attributes.size()));
+            for (const auto &attribute : attributes)
+            {
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, attribute.semantic);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, attribute.format);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, attribute.vec_size);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, attribute.stride);
+            }
+            return hash;
         }
 
     };

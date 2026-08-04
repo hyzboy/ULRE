@@ -311,6 +311,9 @@ namespace
                     resolved_provider_graph_hash);
             resolved_program_link.fragment_stage = definition.fragment_stage.BuildKey();
             resolved_program_link.resource_layout_hash = manifest.stable_hash;
+            resolved_program_link.vertex_input_hash =
+                request.geometry_vertex_format
+                    ? request.geometry_vertex_format->GetVertexInputHash() : 0;
             config.program_link = &resolved_program_link;
         }
         config.ssbo_slot_decls = definition.ssbo_slot_decls.empty()
