@@ -80,22 +80,11 @@ SET(SSBO_STRUCT_FILES   ${SSBO_HEADER_PATH}/StandardMaterialInstance.h
 SOURCE_GROUP("Standard Material\\SSBO" FILES ${SSBO_STRUCT_FILES})
 
 SET(STD_MTL_2D_SOURCE_FILES	2d/Build2DCommon.h
-                            2d/M_VertexColor2D.cpp
                             2d/M_PureColor2D.cpp
-                            2d/M_PureTexture2D.cpp
-                            2d/M_RectTexture2D.cpp
-                            2d/M_RectTexture2DArray.cpp
                             2d/M_Text.cpp
 )
 
 SET(STD_MTL_3D_SOURCE_FILES	3d/M_PureColor3D.cpp
-                            3d/M_VertexColor3D.cpp
-                            3d/M_VertexLum3D.cpp
-                            3d/M_Gizmo3D.cpp
-                            3d/M_SkyMinimal.cpp
-                            3d/M_Standard.cpp
-                            3d/M_StandardTextureArray.cpp
-                            3d/M_VertexPattleColor3D.cpp
 )
 
 SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/StdMaterial.h

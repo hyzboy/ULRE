@@ -15,20 +15,9 @@
 #include <string>
 
 namespace hgl::graph::mtl{
-void ForceLinkVertexColor2DMaterialDefinition();
 void ForceLinkPureColor2DMaterialDefinition();
-void ForceLinkPureTexture2DMaterialDefinition();
-void ForceLinkRectTexture2DMaterialDefinition();
-void ForceLinkRectTexture2DArrayMaterialDefinition();
 void ForceLinkText2DMaterialDefinition();
 void ForceLinkPureColor3DMaterialDefinition();
-void ForceLinkVertexColor3DMaterialDefinition();
-void ForceLinkVertexLuminance3DMaterialDefinition();
-void ForceLinkVertexPattleColor3DMaterialDefinition();
-void ForceLinkGizmo3DMaterialDefinition();
-void ForceLinkSkyMinimalMaterialDefinition();
-void ForceLinkStandardMaterialDefinition();
-void ForceLinkStandardTextureArrayMaterialDefinition();
 
 namespace
 {
@@ -148,20 +137,9 @@ namespace
     {
         static const bool linked = []() -> bool
         {
-            ForceLinkVertexColor2DMaterialDefinition();
             ForceLinkPureColor2DMaterialDefinition();
-            ForceLinkPureTexture2DMaterialDefinition();
-            ForceLinkRectTexture2DMaterialDefinition();
-            ForceLinkRectTexture2DArrayMaterialDefinition();
             ForceLinkText2DMaterialDefinition();
             ForceLinkPureColor3DMaterialDefinition();
-            ForceLinkVertexColor3DMaterialDefinition();
-            ForceLinkVertexLuminance3DMaterialDefinition();
-            ForceLinkVertexPattleColor3DMaterialDefinition();
-            ForceLinkGizmo3DMaterialDefinition();
-            ForceLinkSkyMinimalMaterialDefinition();
-            ForceLinkStandardMaterialDefinition();
-            ForceLinkStandardTextureArrayMaterialDefinition();
             return true;
         }();
         (void)linked;
@@ -347,7 +325,7 @@ namespace
     struct BaseMaterialInfoRegistryEntry
     {
         bool has_preset = false;
-        BuiltinMaterialCreatorID preset = BuiltinMaterialCreatorID::VertexColor2D;
+        BuiltinMaterialCreatorID preset = BuiltinMaterialCreatorID::PureColor2D;
         MaterialDefinition bmi{};
     };
 
@@ -505,6 +483,28 @@ bool TryGetMaterialDefinitionByID(const std::string &mtl_def_id, MaterialDefinit
     {
         if (entry.bmi.definition_id == mtl_def_id)
         {
+            if (IsBootstrapMaterialDefinition(entry.bmi))
+            {
+                out_bmi = entry.bmi;
+                return true;
+            }
+        }
+    }
+
+    const MaterialDefinitionFileRegistry &file_registry =
+        GetMaterialDefinitionFileRegistry();
+    const MaterialDefinition *file_definition =
+        file_registry.FindByID(mtl_def_id.c_str());
+    if (file_definition)
+    {
+        out_bmi = *file_definition;
+        return true;
+    }
+
+    for (const auto &entry : registry)
+    {
+        if (entry.bmi.definition_id == mtl_def_id)
+        {
             out_bmi = entry.bmi;
             return true;
         }
@@ -605,11 +605,7 @@ bool MergeMaterialDefinitionFile(const MaterialDefinition &legacy,
 const char *GetBuiltinMaterialCreatorIDName(const BuiltinMaterialCreatorID mtl_id)
 {
     static const char *const names[] = {
-        "VertexColor2D", "PureColor2D", "PureTexture2D",
-        "RectTexture2D", "RectTexture2DArray", "Text2D",
-        "PureColor3D", "VertexColor3D", "VertexLuminance3D",
-        "VertexPattleColor3D", "Gizmo3D", "SkyMinimal",
-        "Standard", "StandardTextureArray"
+        "PureColor2D", "Text2D", "PureColor3D"
     };
     const uint32 index = static_cast<uint32>(mtl_id);
     return index < static_cast<uint32>(sizeof(names) / sizeof(names[0]))

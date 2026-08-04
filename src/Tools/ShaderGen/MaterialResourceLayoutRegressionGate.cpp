@@ -268,13 +268,7 @@ namespace
             BUILTIN_MTL_DEF_FALLBACK_2D,
             BUILTIN_MTL_DEF_FALLBACK_3D,
             BUILTIN_MTL_DEF_MISSING_MATERIAL,
-            BUILTIN_MTL_DEF_TEXT,
-            BUILTIN_MTL_DEF_SKY,
-            "Standard",
-            "StandardTextureArray",
-            "Gizmo3D",
-            "RectTexture2D",
-            "RectTexture2DArray"
+            BUILTIN_MTL_DEF_TEXT
         };
         for (const char *id : builtin_ids)
         {
@@ -303,19 +297,8 @@ namespace
         result.name = "L.material-semantic-abi-parity";
 
         static const char *definition_ids[] = {
-            "VertexColor2D",
             "PureColor2D",
-            "PureTexture2D",
-            "RectTexture2D",
-            "RectTexture2DArray",
             "PureColor3D",
-            "VertexColor3D",
-            "VertexLuminance3D",
-            "VertexPattleColor3D",
-            "Gizmo3D",
-            "SkyMinimal",
-            "Standard",
-            "StandardTextureArray",
             "Text2D"
         };
 
@@ -955,21 +938,14 @@ namespace
         struct ExpectedEntry
         {
             const char *definition_id;
-            BuiltinMaterialCreatorID builtin_id;
         };
 
         static const ExpectedEntry expected[] =
         {
-            { BUILTIN_MTL_DEF_FALLBACK_2D, BuiltinMaterialCreatorID::PureColor2D },
-            { BUILTIN_MTL_DEF_FALLBACK_3D, BuiltinMaterialCreatorID::PureColor3D },
-            { BUILTIN_MTL_DEF_MISSING_MATERIAL, BuiltinMaterialCreatorID::PureColor3D },
-            { BUILTIN_MTL_DEF_TEXT, BuiltinMaterialCreatorID::Text2D },
-            { BUILTIN_MTL_DEF_SKY, BuiltinMaterialCreatorID::SkyMinimal },
-            { "Standard", BuiltinMaterialCreatorID::Standard },
-            { "StandardTextureArray", BuiltinMaterialCreatorID::StandardTextureArray },
-            { "Gizmo3D", BuiltinMaterialCreatorID::Gizmo3D },
-            { "RectTexture2D", BuiltinMaterialCreatorID::RectTexture2D },
-            { "RectTexture2DArray", BuiltinMaterialCreatorID::RectTexture2DArray },
+            { BUILTIN_MTL_DEF_FALLBACK_2D },
+            { BUILTIN_MTL_DEF_FALLBACK_3D },
+            { BUILTIN_MTL_DEF_MISSING_MATERIAL },
+            { BUILTIN_MTL_DEF_TEXT }
         };
 
         for (const auto &entry : expected)
@@ -981,13 +957,9 @@ namespace
                 continue;
             }
 
-            if (bmi.builtin_creator_id != static_cast<uint32_t>(entry.builtin_id))
-            {
-                result.diagnostics.emplace_back(std::string("Builtin creator mismatch: ") + entry.definition_id);
-                continue;
-            }
-
-            if (bmi.definition_name.empty())
+            if (bmi.definition_name.empty()
+             || !IsBootstrapMaterialDefinition(bmi)
+             || bmi.source_kind != MaterialDefinitionSourceKind::BuiltIn)
                 result.diagnostics.emplace_back(std::string("Empty material definition name: ") + entry.definition_id);
         }
 

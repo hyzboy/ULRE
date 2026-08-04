@@ -31,24 +31,11 @@ class MaterialDefinitionFileRegistry;
 // 作者层不直接使用此 enum；通过 mtl_def_id 字符串主键识别材质。
 enum class BuiltinMaterialCreatorID:uint8
 {
-    VertexColor2D,
     PureColor2D,
-    PureTexture2D,
-    RectTexture2D,
-    RectTexture2DArray,
     Text2D,
-
     PureColor3D,
-    VertexColor3D,
-    VertexLuminance3D,
-    VertexPattleColor3D,
-    Gizmo3D,
 
-    SkyMinimal,
-    Standard,
-    StandardTextureArray,
-
-    ENUM_CLASS_RANGE(VertexColor2D,StandardTextureArray)
+    ENUM_CLASS_RANGE(PureColor2D,PureColor3D)
 };
 
 // ── Layer 3: MaterialDefinitionBuildRequest = Build Context ──────────────────
