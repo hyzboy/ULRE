@@ -1,4 +1,5 @@
 #include<hgl/mtl/MaterialLibrary.h>
+#include<hgl/mtl/MaterialDefinitionFile.h>
 #include<hgl/mtl/ShaderBufferSource.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
@@ -526,6 +527,29 @@ bool TryGetMaterialDefinitionByBuiltinMaterialCreatorID(const BuiltinMaterialCre
     }
 
     return false;
+}
+
+MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry()
+{
+    static MaterialDefinitionFileRegistry registry;
+    static bool loaded = false;
+    if (!loaded)
+    {
+        int file_count = 0;
+        int error_count = 0;
+        if (!registry.LoadDirectory(
+                OS_TEXT("ShaderLibrary/material"), &file_count, &error_count))
+        {
+            GLogWarning("[ShaderGen] Material TOML directory unavailable; using built-in definitions");
+        }
+        else
+        {
+            GLogInfo("[ShaderGen] Loaded %d material TOML definitions (%d errors)",
+                     file_count, error_count);
+        }
+        loaded = true;
+    }
+    return registry;
 }
 
 bool ShouldUse2DFallbackMaterial(const MaterialDefinitionBuildRequest &request)

@@ -25,6 +25,7 @@ namespace hgl::graph::mtl{
 
 class ShaderProgramBuildSpec;
 class ShaderArtifactStore;
+class MaterialDefinitionFileRegistry;
 
 // BuiltinMaterialCreatorID：内部创建派发键，与 M_* 创建函数一一对应。
 // 作者层不直接使用此 enum；通过 mtl_def_id 字符串主键识别材质。
@@ -136,6 +137,7 @@ void RegisterMaterialDefinition(const MaterialDefinition &bmi);
 void RegisterMaterialDefinition(const BuiltinMaterialCreatorID preset, const MaterialDefinition &bmi);
 bool TryGetMaterialDefinitionByID(const std::string &mtl_def_id, MaterialDefinition &out_bmi);
 bool TryGetMaterialDefinitionByBuiltinMaterialCreatorID(const BuiltinMaterialCreatorID preset, MaterialDefinition &out_bmi);
+MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry();
 bool MergeMaterialDefinitionFile(const MaterialDefinition &legacy,
                                  const MaterialDefinition &file,
                                  MaterialDefinition &out);

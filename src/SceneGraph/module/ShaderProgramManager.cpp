@@ -25,12 +25,6 @@ namespace hgl::graph{
 
 namespace
 {
-    mtl::MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry()
-    {
-        static mtl::MaterialDefinitionFileRegistry registry;
-        return registry;
-    }
-
     bool ResolveMaterialDefinitionForRequest(const mtl::MaterialDefinitionBuildRequest &request,
                                              const mtl::MaterialDefinitionFileRegistry *file_registry,
                                              mtl::MaterialDefinition &out_bmi)
@@ -163,23 +157,7 @@ namespace
 
 GRAPH_MODULE_CONSTRUCT(ShaderProgramManager)
 {
-    static bool loaded = false;
-    if (!loaded)
-    {
-        int file_count = 0;
-        int error_count = 0;
-        if (!GetMaterialDefinitionFileRegistry().LoadDirectory(
-                OS_TEXT("ShaderLibrary/material"), &file_count, &error_count))
-        {
-            GLogWarning("[ShaderProgramManager] Material TOML directory unavailable; using built-in definitions");
-        }
-        else
-        {
-            GLogInfo("[ShaderProgramManager] Loaded %d material TOML definitions (%d errors)",
-                     file_count, error_count);
-        }
-        loaded = true;
-    }
+    (void)mtl::GetMaterialDefinitionFileRegistry();
 }
 
 const ShaderModule *ShaderProgramManager::CreateShaderModule(const AnsiString &sm_name,const ShaderCreateInfo *sci)
@@ -481,7 +459,7 @@ bool ShaderProgramManager::BuildMaterialResourceLayout(const mtl::MaterialDefini
 {
     mtl::MaterialDefinition bmi{};
     if (!ResolveMaterialDefinitionForRequest(
-            request, &GetMaterialDefinitionFileRegistry(), bmi))
+            request, &mtl::GetMaterialDefinitionFileRegistry(), bmi))
         return false;
 
     const auto *profile = GetPhysicalDeviceProfile();
@@ -510,7 +488,7 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(const mtl::MaterialDef
 
     mtl::MaterialDefinition bmi{};
     if (!ResolveMaterialDefinitionForRequest(
-            normalized_request, &GetMaterialDefinitionFileRegistry(), bmi))
+            normalized_request, &mtl::GetMaterialDefinitionFileRegistry(), bmi))
         return nullptr;
 
     // Compute hash key BEFORE generic shader compilation to avoid triggering
