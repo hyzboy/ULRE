@@ -4,6 +4,7 @@
 #include<hgl/shadergen/contract/ShaderGenContract.h>
 #include<hgl/mtl/StdMaterial.h>
 #include<hgl/mtl/MaterialRecipe.h>
+#include<hgl/graph/glsl/GLSLCodeModuleCapabilityResolver.h>
 #include<hgl/mtl/MaterializationSpec.h>
 #include<hgl/mtl/MaterializationResolver.h>
 #include<hgl/mtl/MaterializationPools.h>
@@ -80,6 +81,20 @@ ShaderProgramBuildSpec *CreateMaterialFromDefinition(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialDefinition &definition,
     const MaterialDefinitionBuildRequest &request);
+
+/**
+ * Resolve a definition's format-free vertex semantic contract against the
+ * Geometry supplied for this build. This preview has no effect on generated
+ * GLSL, pipeline state, or caches while Phase 4 transitions the ABI.
+ *
+ * @return false only when there is no semantic contract or no Geometry format;
+ *         otherwise `out_result.resolved` reports whether providers were found.
+ */
+bool PreviewMaterialVertexSemanticResolution(
+    const GLSLCodeModuleRegistry &registry,
+    const MaterialDefinition &definition,
+    const MaterialDefinitionBuildRequest &request,
+    GLSLCodeModuleResolutionResult &out_result);
 
 VkFormat ResolveMaterialVertexSemanticFormat(const GeometryVertexFormat *gvf, VertexSemantic semantic, VkFormat fallback_format);
 inline VkFormat ResolveMaterialPositionFormat(const GeometryVertexFormat *gvf, VkFormat fallback_format)

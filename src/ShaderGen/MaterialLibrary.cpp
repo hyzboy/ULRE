@@ -211,6 +211,40 @@ VkFormat ResolveMaterialVertexSemanticFormat(const GeometryVertexFormat *gvf, Ve
     return attribute->format;
 }
 
+bool PreviewMaterialVertexSemanticResolution(
+    const GLSLCodeModuleRegistry &registry,
+    const MaterialDefinition &definition,
+    const MaterialDefinitionBuildRequest &request,
+    GLSLCodeModuleResolutionResult &out_result)
+{
+    out_result.resolved = false;
+    out_result.selections.Clear();
+    out_result.diagnostics.Clear();
+
+    if (definition.vertex_semantic_requirements.IsEmpty()
+     || !request.geometry_vertex_format)
+        return false;
+
+    ValueArray<GLSLCodeModuleGeometryCapability> geometry_capabilities;
+    if (!GLSLCodeModuleCapabilityResolver::BuildGeometryCapabilities(
+            *request.geometry_vertex_format, geometry_capabilities))
+        return false;
+
+    const GLSLCodeModuleResolutionRequest resolution_request{
+        definition.vertex_semantic_requirements.GetData(),
+        static_cast<uint32>(definition.vertex_semantic_requirements.GetCount()),
+        geometry_capabilities.GetData(),
+        static_cast<uint32>(geometry_capabilities.GetCount()),
+        nullptr,
+        0,
+        nullptr,
+        0
+    };
+    GLSLCodeModuleCapabilityResolver resolver;
+    resolver.Resolve(registry, resolution_request, out_result);
+    return true;
+}
+
 void RegisterMaterialDefinition(const MaterialDefinition &bmi)
 {
     MaterialDefinition normalized = bmi;

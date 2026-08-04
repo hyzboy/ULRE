@@ -371,6 +371,124 @@ namespace
         return result;
     }
 
+    static GateResult RunMaterialSemanticResolverPreviewCase()
+    {
+        GateResult result;
+        result.name = "M.material-semantic-resolver-preview";
+
+        GLSLCodeModuleSemanticRequirement position_geometry{};
+        position_geometry.source = GLSLCodeModuleCapabilitySource::GeometryAttribute;
+        position_geometry.semantic = GLSLCodeModuleSemantic::Position;
+
+        GLSLCodeModuleSemanticRequirement uv_geometry{};
+        uv_geometry.source = GLSLCodeModuleCapabilitySource::GeometryAttribute;
+        uv_geometry.semantic = GLSLCodeModuleSemantic::UV0;
+
+        const GLSLCodeModuleSemantic position_provides[] = {
+            GLSLCodeModuleSemantic::Position
+        };
+        const GLSLCodeModuleSemantic uv_provides[] = {
+            GLSLCodeModuleSemantic::UV0
+        };
+
+        GLSLCodeModuleDefinition position_provider{};
+        position_provider.id = GLSLCodeModuleID::SkyLightHeader;
+        position_provider.name = "preview_position_from_geometry";
+        position_provider.glsl_code = "// preview only";
+        position_provider.kind = GLSLCodeModuleKind::VertexInput;
+        position_provider.semantic_requirements = &position_geometry;
+        position_provider.semantic_requirement_count = 1;
+        position_provider.semantic_provides = position_provides;
+        position_provider.semantic_provide_count = 1;
+
+        GLSLCodeModuleDefinition uv_provider{};
+        uv_provider.id = GLSLCodeModuleID::SkyLightSimple;
+        uv_provider.name = "preview_uv_from_geometry";
+        uv_provider.glsl_code = "// preview only";
+        uv_provider.kind = GLSLCodeModuleKind::VertexInput;
+        uv_provider.semantic_requirements = &uv_geometry;
+        uv_provider.semantic_requirement_count = 1;
+        uv_provider.semantic_provides = uv_provides;
+        uv_provider.semantic_provide_count = 1;
+
+        GLSLCodeModuleRegistry registry;
+        if (!registry.Register(position_provider) || !registry.Register(uv_provider))
+        {
+            result.diagnostics.emplace_back("failed to create preview provider registry");
+            result.passed = false;
+            return result;
+        }
+
+        const auto check_preview = [&](const char *id,
+                                       const GeometryVertexFormat &geometry,
+                                       const uint32_t expected_selection_count)
+        {
+            MaterialDefinition definition{};
+            if (!TryGetMaterialDefinitionByID(id, definition))
+            {
+                result.diagnostics.emplace_back(std::string("missing preview definition: ") + id);
+                return;
+            }
+
+            MaterialDefinitionBuildRequest request{};
+            request.geometry_vertex_format = &geometry;
+            GLSLCodeModuleResolutionResult preview{};
+            if (!PreviewMaterialVertexSemanticResolution(
+                    registry, definition, request, preview))
+            {
+                result.diagnostics.emplace_back(std::string("preview did not run: ") + id);
+                return;
+            }
+            if (!preview.resolved
+             || preview.selections.GetCount() != int(expected_selection_count))
+            {
+                result.diagnostics.emplace_back(std::string("preview did not resolve: ") + id);
+                return;
+            }
+
+            for (int i = 0; i < preview.selections.GetCount(); ++i)
+            {
+                const auto &selection = preview.selections[i];
+                bool found_legacy_semantic = false;
+                for (int k = 0; k < definition.vertex_attributes.GetCount(); ++k)
+                {
+                    if (GetGLSLCodeModuleSemanticFromVertexSemantic(
+                            definition.vertex_attributes[k].semantic)
+                            == selection.requirement)
+                    {
+                        found_legacy_semantic = true;
+                        break;
+                    }
+                }
+
+                if (!found_legacy_semantic || !selection.provider)
+                {
+                    result.diagnostics.emplace_back(std::string("preview/legacy mismatch: ") + id);
+                    return;
+                }
+            }
+        };
+
+        const GeometryVertexFormat pure2d_geometry{{
+            VertexSemantic::Position, VF_V2I
+        }};
+        check_preview("PureColor2D", pure2d_geometry, 1);
+
+        const GeometryVertexFormat pure3d_geometry{{
+            VertexSemantic::Position, VF_V3F
+        }};
+        check_preview("PureColor3D", pure3d_geometry, 1);
+
+        const GeometryVertexFormat text_geometry{
+            {VertexSemantic::Position, VF_V2I},
+            {VertexSemantic::TexCoord, VF_V2F}
+        };
+        check_preview("Text2D", text_geometry, 2);
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunBindlessEquivalenceCase()
     {
         GateResult result;
@@ -1323,6 +1441,7 @@ int main()
     results.push_back(RunCapabilityResolverCase());
     results.push_back(RunMaterialVertexABICharacterizationCase());
     results.push_back(RunMaterialSemanticABIParityCase());
+    results.push_back(RunMaterialSemanticResolverPreviewCase());
 
     bool all_passed = true;
     for (const auto &result : results)
