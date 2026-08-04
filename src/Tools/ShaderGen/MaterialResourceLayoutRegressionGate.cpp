@@ -662,6 +662,95 @@ namespace
         return result;
     }
 
+    static GateResult RunProviderGraphIdentityCase()
+    {
+        GateResult result;
+        result.name = "O.provider-graph-stage-identity";
+
+        const GLSLCodeModuleSemanticRequirement normal_requirement{
+            GLSLCodeModuleCapabilitySource::GeometryAttribute,
+            GLSLCodeModuleSemantic::Normal,
+            static_cast<uint32_t>(GLSLCodeModuleNumericClass::Float),
+            3, 3, 0
+        };
+        const GLSLCodeModuleSemantic normal_provides[] = {
+            GLSLCodeModuleSemantic::Normal
+        };
+        const GLSLCodeModuleDefinition normal_provider{
+            GLSLCodeModuleID::SkyLightHeader,
+            "identity_normal",
+            "// identity",
+            nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0,
+            GLSLCodeModuleKind::VertexInput,
+            &normal_requirement, 1,
+            normal_provides, 1,
+            10, 0
+        };
+
+        const GLSLCodeModuleSemanticRequirement uv_requirement{
+            GLSLCodeModuleCapabilitySource::GeometryAttribute,
+            GLSLCodeModuleSemantic::UV0,
+            static_cast<uint32_t>(GLSLCodeModuleNumericClass::Float),
+            2, 2, 0
+        };
+        const GLSLCodeModuleSemantic uv_provides[] = {
+            GLSLCodeModuleSemantic::UV0
+        };
+        const GLSLCodeModuleDefinition uv_provider{
+            GLSLCodeModuleID::SkyLightSimple,
+            "identity_uv",
+            "// identity",
+            nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0,
+            GLSLCodeModuleKind::VertexInput,
+            &uv_requirement, 1,
+            uv_provides, 1,
+            10, 0
+        };
+
+        GLSLCodeModuleResolutionResult first{};
+        first.resolved = true;
+        first.selections.Add({GLSLCodeModuleSemantic::Normal, &normal_provider});
+        first.selections.Add({GLSLCodeModuleSemantic::UV0, &uv_provider});
+
+        GLSLCodeModuleResolutionResult equivalent_result{};
+        equivalent_result.resolved = true;
+        equivalent_result.selections.Add({GLSLCodeModuleSemantic::UV0, &uv_provider});
+        equivalent_result.selections.Add({GLSLCodeModuleSemantic::Normal, &normal_provider});
+
+        const uint64_t first_hash = GetGLSLCodeModuleProviderGraphHash(first);
+        const uint64_t equivalent_hash = GetGLSLCodeModuleProviderGraphHash(equivalent_result);
+        if (first_hash == 0 || first_hash != equivalent_hash)
+            result.diagnostics.emplace_back("equivalent provider graphs must hash identically");
+
+        GLSLCodeModuleResolutionResult changed_result = first;
+        const GLSLCodeModuleDefinition packed_normal_provider{
+            GLSLCodeModuleID::SkyLightCubeMap,
+            "identity_normal_packed",
+            "// identity",
+            nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0,
+            GLSLCodeModuleKind::Decode,
+            &normal_requirement, 1,
+            normal_provides, 1,
+            20, 0
+        };
+        changed_result.selections[0].provider = &packed_normal_provider;
+        if (GetGLSLCodeModuleProviderGraphHash(changed_result) == first_hash)
+            result.diagnostics.emplace_back("distinct provider graphs must hash differently");
+
+        ShaderStageBuildSpec stage{};
+        stage.stage = ShaderStage::Vertex;
+        const ShaderStageKey first_key = stage.BuildKeyWithProviderGraphHash(first_hash);
+        const ShaderStageKey changed_key =
+            stage.BuildKeyWithProviderGraphHash(
+                GetGLSLCodeModuleProviderGraphHash(changed_result));
+        if (first_key == changed_key
+         || first_key.glsl_module_graph_hash != first_hash)
+            result.diagnostics.emplace_back("provider graph hash must participate in ShaderStageKey");
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunBindlessEquivalenceCase()
     {
         GateResult result;
@@ -1616,6 +1705,7 @@ int main()
     results.push_back(RunMaterialSemanticABIParityCase());
     results.push_back(RunMaterialSemanticResolverPreviewCase());
     results.push_back(RunCompositorVersionPlacementCase());
+    results.push_back(RunProviderGraphIdentityCase());
 
     bool all_passed = true;
     for (const auto &result : results)

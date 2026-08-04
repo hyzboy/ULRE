@@ -91,6 +91,14 @@ namespace hgl::graph::mtl
     };
 
     /**
+     * Hash the normalized selected provider graph for use in a stage key.
+     * Selection order is canonicalized by requirement semantic and provider
+     * identity, so equivalent graphs produce the same digest.
+     */
+    uint64 GetGLSLCodeModuleProviderGraphHash(
+        const GLSLCodeModuleResolutionResult &result) noexcept;
+
+    /**
      * Generic capability resolver for GLSL code modules.
      *
      * Converts concrete geometry formats into semantic/numeric-class

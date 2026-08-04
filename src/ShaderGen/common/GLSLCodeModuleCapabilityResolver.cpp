@@ -603,4 +603,79 @@ namespace hgl::graph::mtl
         result.resolved = ok;
         return ok;
     }
+
+    uint64 GetGLSLCodeModuleProviderGraphHash(
+        const GLSLCodeModuleResolutionResult &result) noexcept
+    {
+        constexpr uint32 kProviderGraphHashSchemaVersion = 1;
+        constexpr uint32 kMaxSelectionCount = 64;
+
+        uint64 hash = hgl::hash::FNV1aInit<uint64>();
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, kProviderGraphHashSchemaVersion);
+        hash = hgl::hash::FNV1aAppendValueBytes(
+            hash, static_cast<uint32>(result.selections.GetCount()));
+
+        uint32 order[kMaxSelectionCount] = {};
+        const uint32 count = static_cast<uint32>(result.selections.GetCount());
+        const uint32 bounded_count = count < kMaxSelectionCount ? count : kMaxSelectionCount;
+        for (uint32 i = 0; i < bounded_count; ++i)
+        {
+            order[i] = i;
+            for (uint32 j = i; j > 0; --j)
+            {
+                const auto &lhs = result.selections[static_cast<int>(order[j - 1])];
+                const auto &rhs = result.selections[static_cast<int>(order[j])];
+                const uint32 lhs_id = lhs.provider
+                    ? static_cast<uint32>(lhs.provider->id) : 0xffffffffu;
+                const uint32 rhs_id = rhs.provider
+                    ? static_cast<uint32>(rhs.provider->id) : 0xffffffffu;
+                const bool should_swap =
+                    static_cast<uint32>(lhs.requirement) > static_cast<uint32>(rhs.requirement)
+                    || (lhs.requirement == rhs.requirement && lhs_id > rhs_id);
+                if (!should_swap)
+                    break;
+                const uint32 temp = order[j - 1];
+                order[j - 1] = order[j];
+                order[j] = temp;
+            }
+        }
+
+        for (uint32 i = 0; i < bounded_count; ++i)
+        {
+            const auto &selection = result.selections[static_cast<int>(order[i])];
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, selection.requirement);
+
+            if (!selection.provider)
+            {
+                const uint32 missing_provider = 0xffffffffu;
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, missing_provider);
+                continue;
+            }
+
+            const auto &provider = *selection.provider;
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, provider.id);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, provider.kind);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, provider.priority);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, provider.flags);
+
+            if (provider.name)
+                hash = hgl::hash::FNV1aAppendBytes(
+                    hash, provider.name, std::strlen(provider.name));
+
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, provider.semantic_requirement_count);
+            for (uint32 k = 0; k < provider.semantic_requirement_count; ++k)
+                hash = hgl::hash::FNV1aAppendValueBytes(
+                    hash, provider.semantic_requirements[k]);
+
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, provider.semantic_provide_count);
+            for (uint32 k = 0; k < provider.semantic_provide_count; ++k)
+                hash = hgl::hash::FNV1aAppendValueBytes(
+                    hash, provider.semantic_provides[k]);
+        }
+
+        if (count > kMaxSelectionCount)
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, count);
+
+        return hash;
+    }
 }
