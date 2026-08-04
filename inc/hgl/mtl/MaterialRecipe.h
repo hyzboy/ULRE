@@ -207,6 +207,15 @@ namespace hgl::graph::mtl
         Sky,           // 天空专用
     };
 
+    enum class MaterialDefinitionBootstrapKind : uint8_t
+    {
+        None = 0,
+        ErrorCheckerboard,
+        PureColor,
+        PureDepth,
+        TextAlphaBlend
+    };
+
     struct MaterialDefinition
     {
         // ── Layer 1: MaterialDefinition = Capability Superset ─────────────────────────
@@ -221,6 +230,7 @@ namespace hgl::graph::mtl
         uint32_t    builtin_creator_id = InvalidBuiltinMaterialCreatorIDHint;         // 当前内置 creator 路由字段（enum 序号）
         MaterialDefinitionSourceKind source_kind = MaterialDefinitionSourceKind::BuiltIn;         // 来源类型
         MaterialDefinitionUsageTag   usage_tag  = MaterialDefinitionUsageTag::General;            // 用途标签
+        MaterialDefinitionBootstrapKind bootstrap_kind = MaterialDefinitionBootstrapKind::None;
 
         // Lod / 质量包络
         uint16_t default_lod   = 0;

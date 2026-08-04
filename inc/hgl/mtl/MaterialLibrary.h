@@ -144,6 +144,13 @@ constexpr const char *BUILTIN_MTL_DEF_MISSING_MATERIAL  = "builtin/missing_mater
 constexpr const char *BUILTIN_MTL_DEF_ERROR_CHECKER     = "builtin/error_checker";
 constexpr const char *BUILTIN_MTL_DEF_TEXT              = "builtin/text";
 constexpr const char *BUILTIN_MTL_DEF_SKY               = "builtin/sky";
+constexpr const char *BUILTIN_MTL_DEF_PURE_DEPTH        = "builtin/pure_depth";
+
+inline bool IsBootstrapMaterialDefinition(
+    const MaterialDefinition &definition) noexcept
+{
+    return definition.bootstrap_kind != MaterialDefinitionBootstrapKind::None;
+}
 
 inline const char *GetFallbackMaterialDefinitionID(const bool use_2d_fallback = false)
 {

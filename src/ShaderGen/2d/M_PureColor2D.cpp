@@ -15,6 +15,7 @@ namespace
         bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
         bmi.ubo_requirements = {UBODescriptorSemantic::ViewportInfo};
         bmi.usage_tag   = MaterialDefinitionUsageTag::Fallback;
+        bmi.bootstrap_kind = MaterialDefinitionBootstrapKind::PureColor;
         bmi.ssbo_slot_decls = {{"mtl", SSBOType::EmissiveSurface}};
         bmi.vertex_node_config = Make2DNodeConfigNDC(true);
         const MaterialVertexAttributeDefinition attributes[] = {

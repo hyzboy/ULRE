@@ -15,6 +15,7 @@ namespace
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::Text2D);
         bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
         bmi.usage_tag = MaterialDefinitionUsageTag::Text;
+        bmi.bootstrap_kind = MaterialDefinitionBootstrapKind::TextAlphaBlend;
         bmi.ubo_requirements = {UBODescriptorSemantic::ViewportInfo};
         bmi.texture_slot_decls = {{TextureSlot::BaseColor, GLSLSamplerType::Sampler2D, true, SamplerName::Text}};
         bmi.ssbo_slot_decls = {{"mtl", SSBOType::TransmissionSurface}};

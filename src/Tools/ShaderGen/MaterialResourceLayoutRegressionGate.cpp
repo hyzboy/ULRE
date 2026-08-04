@@ -994,6 +994,71 @@ namespace
         return result;
     }
 
+    static GateResult RunBootstrapMaterialBoundaryCase()
+    {
+        GateResult result;
+        result.name = "R.bootstrap-material-boundary";
+
+        struct ExpectedBootstrap
+        {
+            const char *definition_id;
+            MaterialDefinitionBootstrapKind kind;
+        };
+
+        static const ExpectedBootstrap expected[] = {
+            {BUILTIN_MTL_DEF_FALLBACK_2D, MaterialDefinitionBootstrapKind::PureColor},
+            {BUILTIN_MTL_DEF_FALLBACK_3D, MaterialDefinitionBootstrapKind::PureColor},
+            {BUILTIN_MTL_DEF_MISSING_MATERIAL, MaterialDefinitionBootstrapKind::PureColor},
+            {BUILTIN_MTL_DEF_TEXT, MaterialDefinitionBootstrapKind::TextAlphaBlend}
+        };
+
+        for (const auto &entry : expected)
+        {
+            MaterialDefinition definition{};
+            if (!TryGetMaterialDefinitionByID(entry.definition_id, definition))
+            {
+                result.diagnostics.emplace_back(
+                    std::string("missing bootstrap definition: ") + entry.definition_id);
+                continue;
+            }
+
+            if (!IsBootstrapMaterialDefinition(definition)
+             || definition.bootstrap_kind != entry.kind
+             || definition.source_kind != MaterialDefinitionSourceKind::BuiltIn)
+            {
+                result.diagnostics.emplace_back(
+                    std::string("invalid bootstrap metadata: ") + entry.definition_id);
+            }
+        }
+
+        const char *non_bootstrap_ids[] = {
+            "VertexColor2D", "PureTexture2D", "RectTexture2D",
+            "RectTexture2DArray", "VertexColor3D", "VertexLuminance3D",
+            "VertexPattleColor3D", "Gizmo3D", "SkyMinimal", "Standard",
+            "StandardTextureArray"
+        };
+        for (const char *id : non_bootstrap_ids)
+        {
+            MaterialDefinition definition{};
+            if (!TryGetMaterialDefinitionByID(id, definition))
+            {
+                result.diagnostics.emplace_back(std::string("missing non-bootstrap definition: ") + id);
+                continue;
+            }
+            if (IsBootstrapMaterialDefinition(definition))
+                result.diagnostics.emplace_back(std::string("non-bootstrap material marked bootstrap: ") + id);
+        }
+
+        if (BUILTIN_MTL_DEF_ERROR_CHECKER[0] == 0
+         || BUILTIN_MTL_DEF_PURE_DEPTH[0] == 0)
+        {
+            result.diagnostics.emplace_back("bootstrap canonical IDs must not be empty");
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunFallbackInferenceCase()
     {
         GateResult result;
@@ -1829,6 +1894,7 @@ int main()
 
     results.push_back(RunBindlessEquivalenceCase());
     results.push_back(RunBuiltinRegistryCoverageCase());
+    results.push_back(RunBootstrapMaterialBoundaryCase());
     results.push_back(RunFallbackInferenceCase());
     results.push_back(RunGLSLCodeModuleRegistryCase());
     results.push_back(RunShaderResourceManifestCase());

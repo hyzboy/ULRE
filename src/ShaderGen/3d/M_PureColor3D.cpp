@@ -18,6 +18,7 @@ namespace
         bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::PureColor3D);
         bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
         bmi.usage_tag   = MaterialDefinitionUsageTag::Fallback;
+        bmi.bootstrap_kind = MaterialDefinitionBootstrapKind::PureColor;
         bmi.ssbo_slot_decls   = {{"mtl", SSBOType::EmissiveSurface}};
         bmi.ubo_requirements  = {UBODescriptorSemantic::ViewportInfo, UBODescriptorSemantic::CameraInfo};
         bmi.vertex_node_config = MakeDefault3DNodeConfig();
