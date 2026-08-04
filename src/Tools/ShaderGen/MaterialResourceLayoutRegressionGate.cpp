@@ -7,6 +7,7 @@
 #include <hgl/graph/glsl/ShaderResourceManifest.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
+#include "../../ShaderGen/common/VertexBuilderCommon.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -72,6 +73,224 @@ namespace
 
         const MaterialResourceLayout contract = BuildMaterialResourceLayout(entries, count);
         result.passed = (ValidateMaterialResourceLayout(contract, result.diagnostics) == expected_pass);
+        return result;
+    }
+
+    static bool CheckVertexEntries(const std::vector<FixedVertexEntry> &actual,
+                                   const std::vector<FixedVertexEntry> &expected,
+                                   std::string &diagnostic)
+    {
+        if (actual.size() != expected.size())
+        {
+            diagnostic = "vertex entry count mismatch";
+            return false;
+        }
+
+        for (size_t i = 0; i < expected.size(); ++i)
+        {
+            if (actual[i].semantic != expected[i].semantic
+             || actual[i].format != expected[i].format)
+            {
+                diagnostic = "vertex entry semantic/format mismatch at index "
+                    + std::to_string(i);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    static GateResult RunMaterialVertexABICharacterizationCase()
+    {
+        GateResult result;
+        result.name = "K.material-vertex-abi-characterization";
+
+        const auto check_entries = [&](const char *name,
+                                       const GeometryVertexFormat &geometry,
+                                       const vertex_builder_common::VertexSemanticDecl *decls,
+                                       const uint32_t decl_count,
+                                       const std::vector<FixedVertexEntry> &expected)
+        {
+            const vertex_builder_common::VertexBuildInput input{
+                PrimitiveType::Triangles, &geometry, decls, decl_count
+            };
+            const auto actual = vertex_builder_common::BuildVertexEntries(input);
+            std::string diagnostic;
+            if (!CheckVertexEntries(actual, expected, diagnostic))
+                result.diagnostics.emplace_back(std::string(name) + ": " + diagnostic);
+        };
+
+        // Position-only geometry is the baseline for both 2D and 3D paths.
+        {
+            const GeometryVertexFormat geometry{{VertexSemantic::Position, VF_V3F}};
+            const vertex_builder_common::VertexSemanticDecl decls[] = {
+                {VertexSemantic::Position, VF_V3F}
+            };
+            check_entries("position-only", geometry, decls, 1,
+                {{VF_V3F, VertexSemantic::Position}});
+        }
+
+        // UV and color are independently resolved from Geometry, not by location.
+        {
+            const GeometryVertexFormat geometry{
+                {VertexSemantic::Position, VF_V3F},
+                {VertexSemantic::TexCoord, VF_V2HF},
+                {VertexSemantic::Color, VF_V4UN8}
+            };
+            const vertex_builder_common::VertexSemanticDecl decls[] = {
+                {VertexSemantic::Position, VF_V3F},
+                {VertexSemantic::TexCoord, VF_V2F},
+                {VertexSemantic::Color, VF_V4F}
+            };
+            check_entries("uv-and-color", geometry, decls, 3,
+                {{VF_V3F, VertexSemantic::Position},
+                 {VF_V2HF, VertexSemantic::TexCoord},
+                 {VF_V4UN8, VertexSemantic::Color}});
+        }
+
+        // Normal providers may expose only Normal, Normal+Tangent, or full NTB.
+        {
+            const GeometryVertexFormat geometry{
+                {VertexSemantic::Position, VF_V3F},
+                {VertexSemantic::Normal, VF_V3F}
+            };
+            const vertex_builder_common::VertexSemanticDecl decls[] = {
+                {VertexSemantic::Position, VF_V3F},
+                {VertexSemantic::Normal, VF_V3F}
+            };
+            check_entries("normal-only", geometry, decls, 2,
+                {{VF_V3F, VertexSemantic::Position},
+                 {VF_V3F, VertexSemantic::Normal}});
+        }
+        {
+            const GeometryVertexFormat geometry{
+                {VertexSemantic::Position, VF_V3F},
+                {VertexSemantic::Normal, VF_V3F},
+                {VertexSemantic::Tangent, VF_V3HF}
+            };
+            const vertex_builder_common::VertexSemanticDecl decls[] = {
+                {VertexSemantic::Position, VF_V3F},
+                {VertexSemantic::Normal, VF_V3F},
+                {VertexSemantic::Tangent, VF_V3F}
+            };
+            check_entries("normal-and-tangent", geometry, decls, 3,
+                {{VF_V3F, VertexSemantic::Position},
+                 {VF_V3F, VertexSemantic::Normal},
+                 {VF_V3HF, VertexSemantic::Tangent}});
+        }
+        {
+            const GeometryVertexFormat geometry{
+                {VertexSemantic::Position, VF_V3F},
+                {VertexSemantic::Normal, VF_V3F},
+                {VertexSemantic::Tangent, VF_V3F},
+                {VertexSemantic::Bitangent, VF_V3F}
+            };
+            const vertex_builder_common::VertexSemanticDecl decls[] = {
+                {VertexSemantic::Position, VF_V3F},
+                {VertexSemantic::Normal, VF_V3F},
+                {VertexSemantic::Tangent, VF_V3F},
+                {VertexSemantic::Bitangent, VF_V3F}
+            };
+            check_entries("full-ntb", geometry, decls, 4,
+                {{VF_V3F, VertexSemantic::Position},
+                 {VF_V3F, VertexSemantic::Normal},
+                 {VF_V3F, VertexSemantic::Tangent},
+                 {VF_V3F, VertexSemantic::Bitangent}});
+        }
+
+        // Packed normal formats remain a Geometry-owned format and preserve
+        // their ABI identity for the legacy path.
+        {
+            const GeometryVertexFormat geometry{
+                {VertexSemantic::Position, VF_V3F},
+                {VertexSemantic::Normal, PF_A2BGR10UN, 4}
+            };
+            const vertex_builder_common::VertexSemanticDecl decls[] = {
+                {VertexSemantic::Position, VF_V3F},
+                {VertexSemantic::Normal, VF_V3F}
+            };
+            check_entries("packed-normal", geometry, decls, 2,
+                {{VF_V3F, VertexSemantic::Position},
+                 {PF_A2BGR10UN, VertexSemantic::Normal}});
+        }
+
+        // Multiple color-related attributes must remain independently
+        // addressable until the provider graph replaces this legacy ABI.
+        {
+            const GeometryVertexFormat geometry{
+                {VertexSemantic::Position, VF_V3F},
+                {VertexSemantic::Color, VF_V4UN8},
+                {VertexSemantic::Luminance, VF_V1UN8}
+            };
+            const vertex_builder_common::VertexSemanticDecl decls[] = {
+                {VertexSemantic::Position, VF_V3F},
+                {VertexSemantic::Color, VF_V4F},
+                {VertexSemantic::Luminance, VF_V1F}
+            };
+            check_entries("multi-color-attributes", geometry, decls, 3,
+                {{VF_V3F, VertexSemantic::Position},
+                 {VF_V4UN8, VertexSemantic::Color},
+                 {VF_V1UN8, VertexSemantic::Luminance}});
+        }
+
+        // Equivalent floating-point formats resolve to their own Geometry
+        // formats while keeping the same semantic declaration shape.
+        {
+            const GeometryVertexFormat rg16_geometry{{VertexSemantic::Position, VF_V2HF}};
+            const GeometryVertexFormat rg32_geometry{{VertexSemantic::Position, VF_V2F}};
+            const vertex_builder_common::VertexSemanticDecl decls[] = {
+                {VertexSemantic::Position, VF_V3F}
+            };
+            const vertex_builder_common::VertexBuildInput rg16_input{
+                PrimitiveType::Triangles, &rg16_geometry, decls, 1
+            };
+            const vertex_builder_common::VertexBuildInput rg32_input{
+                PrimitiveType::Triangles, &rg32_geometry, decls, 1
+            };
+            const auto rg16_entries = vertex_builder_common::BuildVertexEntries(rg16_input);
+            const auto rg32_entries = vertex_builder_common::BuildVertexEntries(rg32_input);
+            if (rg16_entries.size() != rg32_entries.size()
+             || rg16_entries.size() != 1
+             || rg16_entries[0].semantic != rg32_entries[0].semantic
+             || rg16_entries[0].format != VF_V2HF
+             || rg32_entries[0].format != VF_V2F)
+            {
+                result.diagnostics.emplace_back("equivalent-format ABI shape mismatch");
+            }
+        }
+
+        // Every built-in definition must still expose the legacy position-first
+        // contract while Phase 4 is introduced incrementally.
+        static const char *builtin_ids[] = {
+            BUILTIN_MTL_DEF_FALLBACK_2D,
+            BUILTIN_MTL_DEF_FALLBACK_3D,
+            BUILTIN_MTL_DEF_MISSING_MATERIAL,
+            BUILTIN_MTL_DEF_TEXT,
+            BUILTIN_MTL_DEF_SKY,
+            "Standard",
+            "StandardTextureArray",
+            "Gizmo3D",
+            "RectTexture2D",
+            "RectTexture2DArray"
+        };
+        for (const char *id : builtin_ids)
+        {
+            MaterialDefinition definition{};
+            if (!TryGetMaterialDefinitionByID(id, definition))
+            {
+                result.diagnostics.emplace_back(std::string("missing built-in definition: ") + id);
+                continue;
+            }
+            if (definition.vertex_attributes.IsEmpty()
+             || definition.vertex_attributes[0].semantic != VertexSemantic::Position
+             || definition.vertex_stage.stage != ShaderStage::Vertex
+             || definition.fragment_stage.stage != ShaderStage::Fragment)
+            {
+                result.diagnostics.emplace_back(std::string("invalid legacy vertex ABI: ") + id);
+            }
+        }
+
+        result.passed = result.diagnostics.empty();
         return result;
     }
 
@@ -1025,6 +1244,7 @@ int main()
     results.push_back(RunShaderResourceManifestCase());
     results.push_back(RunGLSLCodeModuleFileCase());
     results.push_back(RunCapabilityResolverCase());
+    results.push_back(RunMaterialVertexABICharacterizationCase());
 
     bool all_passed = true;
     for (const auto &result : results)
