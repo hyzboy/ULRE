@@ -95,25 +95,58 @@ namespace hgl::graph
 
     std::string CompositorAssembler::InjectDefines(const std::string &source, const NewShaderPermutationKey &key) const
     {
-        // 在 #version 行之后插入 #define 宏
         std::string defines;
         key.AppendGLSLDefines(defines);
 
-        // 查找 #version 行的末尾
-        auto pos = source.find('\n');
-        if (pos != std::string::npos && source.substr(0, 8) == "#version")
+        // Metadata/comments may precede #version in file-backed templates, but
+        // GLSL requires #version to be the first preprocessing token.
+        size_t version_line_start = std::string::npos;
+        size_t version_token_start = std::string::npos;
+        size_t version_line_end = std::string::npos;
+        size_t line_start = 0;
+        while (line_start < source.size())
+        {
+            const size_t line_end = source.find('\n', line_start);
+            const size_t content_end = line_end == std::string::npos ? source.size() : line_end;
+            size_t token_start = line_start;
+            while (token_start < content_end
+                && (source[token_start] == ' ' || source[token_start] == '\t'
+                 || source[token_start] == '\r'))
+                ++token_start;
+
+            if (content_end - token_start >= 8
+             && source.compare(token_start, 8, "#version") == 0)
+            {
+                version_line_start = line_start;
+                version_token_start = token_start;
+                version_line_end = content_end;
+                break;
+            }
+
+            if (line_end == std::string::npos)
+                break;
+            line_start = line_end + 1;
+        }
+
+        if (version_token_start != std::string::npos)
         {
             std::string result;
-            result.reserve(source.size() + defines.size() + 2);
-            result.append(source, 0, pos + 1);
+            result.reserve(source.size() + defines.size() + 32);
+            result.append(source, version_token_start, version_line_end - version_token_start);
             result.append("\n");
-            result.append(defines);
-            result.append("\n");
-            result.append(source, pos + 1, std::string::npos);
+            result.append(source, 0, version_line_start);
+            if (!defines.empty())
+            {
+                result.append(defines);
+                result.append("\n");
+            }
+
+            const size_t suffix_start = version_line_end < source.size()
+                ? version_line_end + 1 : version_line_end;
+            result.append(source, suffix_start, std::string::npos);
             return result;
         }
 
-        // 没有 #version 行则直接在头部插入
         return defines + "\n" + source;
     }
 

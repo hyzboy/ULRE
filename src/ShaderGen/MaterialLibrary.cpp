@@ -31,6 +31,108 @@ void ForceLinkStandardTextureArrayMaterialDefinition();
 
 namespace
 {
+    const char *GetVertexInputName(const VertexSemantic semantic)
+    {
+        switch (semantic)
+        {
+        case VertexSemantic::Position:    return "Position";
+        case VertexSemantic::Normal:      return "Normal";
+        case VertexSemantic::Tangent:     return "Tangent";
+        case VertexSemantic::Bitangent:   return "Binormal";
+        case VertexSemantic::Color:       return "Color";
+        case VertexSemantic::Luminance:   return "Luminance";
+        case VertexSemantic::TexCoord:    return "TexCoord";
+        case VertexSemantic::TransformID: return "TransformID";
+        default:                          return nullptr;
+        }
+    }
+
+    const char *GetGLSLVertexInputType(const VkFormat format,
+                                       const uint8 component_count)
+    {
+        const uint32 numeric_class =
+            GLSLCodeModuleCapabilityResolver::GetNumericClassFromVkFormat(format);
+        if (numeric_class == 0 || component_count == 0 || component_count > 4)
+            return nullptr;
+
+        const bool is_signed_integer = numeric_class
+            & uint32(GLSLCodeModuleNumericClass::SignedInteger);
+        const bool is_unsigned_integer = numeric_class
+            & uint32(GLSLCodeModuleNumericClass::UnsignedInteger);
+        if (component_count == 1)
+            return is_signed_integer ? "int" : is_unsigned_integer ? "uint" : "float";
+
+        if (is_signed_integer)
+        {
+            static const char *const types[] = {nullptr, nullptr, "ivec2", "ivec3", "ivec4"};
+            return types[component_count];
+        }
+        if (is_unsigned_integer)
+        {
+            static const char *const types[] = {nullptr, nullptr, "uvec2", "uvec3", "uvec4"};
+            return types[component_count];
+        }
+
+        static const char *const types[] = {nullptr, nullptr, "vec2", "vec3", "vec4"};
+        return types[component_count];
+    }
+
+    bool BuildResolvedVertexABI(
+        const MaterialDefinition &definition,
+        const MaterialDefinitionBuildRequest &request,
+        std::vector<FixedVertexEntry> &out_vertices,
+        VkFormat &out_position_format,
+        std::string &out_vertex_input_glsl)
+    {
+        if (!request.vertex_code_module_registry
+         || definition.vertex_provider_policy != MaterialVertexProviderPolicy::GeometryOnly)
+            return false;
+
+        GLSLCodeModuleResolutionResult resolution;
+        if (!PreviewMaterialVertexSemanticResolution(
+                *request.vertex_code_module_registry, definition, request, resolution)
+         || !resolution.resolved)
+            return false;
+
+        const GeometryVertexFormat &geometry = *request.geometry_vertex_format;
+        out_vertices.clear();
+        out_vertex_input_glsl.clear();
+        out_position_format = VK_FORMAT_UNDEFINED;
+
+        for (int i = 0; i < definition.vertex_semantic_requirements.GetCount(); ++i)
+        {
+            const auto &requirement = definition.vertex_semantic_requirements[i];
+            const VertexSemantic semantic =
+                GetVertexSemanticFromGLSLCodeModuleSemantic(requirement.semantic);
+            const char *const name = GetVertexInputName(semantic);
+            const GeometryVertexAttributeFormat *attribute = geometry.Find(semantic);
+            if (!name || !attribute)
+                return false;
+
+            int location = -1;
+            for (uint32 index = 0; index < geometry.GetCount(); ++index)
+            {
+                if (geometry.Get(index) == attribute)
+                {
+                    location = static_cast<int>(index);
+                    break;
+                }
+            }
+            const char *const type = GetGLSLVertexInputType(
+                attribute->format, attribute->vec_size);
+            if (location < 0 || !type)
+                return false;
+
+            out_vertices.push_back({attribute->format, semantic});
+            out_vertex_input_glsl += "layout(location=" + std::to_string(location)
+                + ") in " + type + " " + name + ";\n";
+            if (semantic == VertexSemantic::Position)
+                out_position_format = attribute->format;
+        }
+
+        return out_position_format != VK_FORMAT_UNDEFINED;
+    }
+
     void EnsureBuiltinMaterialDefinitionsLinked()
     {
         static const bool linked = []() -> bool
@@ -88,10 +190,7 @@ namespace
 
         std::vector<FixedVertexEntry> vertices;
         std::vector<FixedDescriptorEntry> descriptors;
-        const VkFormat position_format = ResolveMaterialVertexSemanticFormat(
-            request.geometry_vertex_format,
-            definition.vertex_attributes[0].semantic,
-            definition.vertex_attributes[0].format);
+        VkFormat position_format = VK_FORMAT_UNDEFINED;
         VertexShaderNodeConfig vertex_node_config = request.recipe.vertex_node_config;
         if (IsDefault3DNodeConfig(vertex_node_config)
          && !IsDefault3DNodeConfig(definition.vertex_node_config))
@@ -101,22 +200,45 @@ namespace
         vertex_builder_common::VertexSemanticDecl declarations[8]{};
         uint32 declaration_count = 0;
         std::string extra_attributes;
-        for (int i = 0; i < definition.vertex_attributes.GetCount() && declaration_count < 8; ++i)
+        std::string resolved_vertex_input_glsl;
+        if (request.enable_resolved_vertex_abi)
         {
-            const MaterialVertexAttributeDefinition &attribute = definition.vertex_attributes[i];
-            const VkFormat resolved_format = ResolveMaterialVertexSemanticFormat(
-                request.geometry_vertex_format,
-                attribute.semantic,
-                attribute.format);
-            declarations[declaration_count++] = {attribute.semantic, resolved_format};
-            if (attribute.glsl_declaration)
-                extra_attributes += attribute.glsl_declaration;
+            MaterialResolvedVertexABI resolved_abi;
+            if (!BuildResolvedMaterialVertexABI(definition, request, resolved_abi))
+            {
+                GLogError("[ShaderGen] Resolved vertex ABI build failed: name=%s",
+                          definition.definition_name.c_str());
+                return nullptr;
+            }
+            position_format = resolved_abi.position_format;
+            resolved_vertex_input_glsl = resolved_abi.vertex_input_glsl.c_str();
+            vertices.reserve(static_cast<size_t>(resolved_abi.vertex_entries.GetCount()));
+            for (int i = 0; i < resolved_abi.vertex_entries.GetCount(); ++i)
+                vertices.push_back(resolved_abi.vertex_entries[i]);
         }
-        const vertex_builder_common::VertexBuildInput input{
-            request.primitive_type, request.geometry_vertex_format,
-            declarations, declaration_count
-        };
-        vertices = vertex_builder_common::BuildVertexEntries(input);
+        else
+        {
+            position_format = ResolveMaterialVertexSemanticFormat(
+                request.geometry_vertex_format,
+                definition.vertex_attributes[0].semantic,
+                definition.vertex_attributes[0].format);
+            for (int i = 0; i < definition.vertex_attributes.GetCount() && declaration_count < 8; ++i)
+            {
+                const MaterialVertexAttributeDefinition &attribute = definition.vertex_attributes[i];
+                const VkFormat resolved_format = ResolveMaterialVertexSemanticFormat(
+                    request.geometry_vertex_format,
+                    attribute.semantic,
+                    attribute.format);
+                declarations[declaration_count++] = {attribute.semantic, resolved_format};
+                if (attribute.glsl_declaration)
+                    extra_attributes += attribute.glsl_declaration;
+            }
+            const vertex_builder_common::VertexBuildInput input{
+                request.primitive_type, request.geometry_vertex_format,
+                declarations, declaration_count
+            };
+            vertices = vertex_builder_common::BuildVertexEntries(input);
+        }
         ShaderResourceManifest manifest{};
         if (definition.fragment_program_mode == MaterialFragmentProgramMode::Compositor)
         {
@@ -136,7 +258,8 @@ namespace
         }
         std::string vs = GenerateVertexShader(vertex_node_config, varying,
                                                position_format,
-                                               extra_attributes, "ShaderLibrary");
+                                               extra_attributes, "ShaderLibrary",
+                                               resolved_vertex_input_glsl);
 
         std::string fs;
         if (definition.fragment_program_mode == MaterialFragmentProgramMode::Compositor)
@@ -242,6 +365,26 @@ bool PreviewMaterialVertexSemanticResolution(
     };
     GLSLCodeModuleCapabilityResolver resolver;
     resolver.Resolve(registry, resolution_request, out_result);
+    return true;
+}
+
+bool BuildResolvedMaterialVertexABI(
+    const MaterialDefinition &definition,
+    const MaterialDefinitionBuildRequest &request,
+    MaterialResolvedVertexABI &out_abi)
+{
+    std::vector<FixedVertexEntry> vertices;
+    std::string vertex_input_glsl;
+    VkFormat position_format = VK_FORMAT_UNDEFINED;
+    if (!BuildResolvedVertexABI(definition, request, vertices, position_format,
+                                vertex_input_glsl))
+        return false;
+
+    out_abi.position_format = position_format;
+    out_abi.vertex_entries.Clear();
+    for (const FixedVertexEntry &entry : vertices)
+        out_abi.vertex_entries.Add(entry);
+    out_abi.vertex_input_glsl = vertex_input_glsl.c_str();
     return true;
 }
 

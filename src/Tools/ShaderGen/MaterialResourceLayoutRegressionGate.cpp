@@ -1,5 +1,6 @@
 #include <hgl/mtl/MaterialResourceLayout.h>
 #include <hgl/mtl/MaterialLibrary.h>
+#include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/graph/glsl/GLSLCodeModule.h>
 #include <hgl/graph/glsl/GLSLCodeModuleCapabilityResolver.h>
 #include <hgl/graph/glsl/GLSLCodeModuleFile.h>
@@ -384,11 +385,18 @@ namespace
         uv_geometry.source = GLSLCodeModuleCapabilitySource::GeometryAttribute;
         uv_geometry.semantic = GLSLCodeModuleSemantic::UV0;
 
+        GLSLCodeModuleSemanticRequirement normal_geometry{};
+        normal_geometry.source = GLSLCodeModuleCapabilitySource::GeometryAttribute;
+        normal_geometry.semantic = GLSLCodeModuleSemantic::Normal;
+
         const GLSLCodeModuleSemantic position_provides[] = {
             GLSLCodeModuleSemantic::Position
         };
         const GLSLCodeModuleSemantic uv_provides[] = {
             GLSLCodeModuleSemantic::UV0
+        };
+        const GLSLCodeModuleSemantic normal_provides[] = {
+            GLSLCodeModuleSemantic::Normal
         };
 
         GLSLCodeModuleDefinition position_provider{};
@@ -411,8 +419,20 @@ namespace
         uv_provider.semantic_provides = uv_provides;
         uv_provider.semantic_provide_count = 1;
 
+        GLSLCodeModuleDefinition normal_provider{};
+        normal_provider.id = GLSLCodeModuleID::SkyLightCubeMap;
+        normal_provider.name = "preview_normal_from_geometry";
+        normal_provider.glsl_code = "// preview only";
+        normal_provider.kind = GLSLCodeModuleKind::VertexInput;
+        normal_provider.semantic_requirements = &normal_geometry;
+        normal_provider.semantic_requirement_count = 1;
+        normal_provider.semantic_provides = normal_provides;
+        normal_provider.semantic_provide_count = 1;
+
         GLSLCodeModuleRegistry registry;
-        if (!registry.Register(position_provider) || !registry.Register(uv_provider))
+        if (!registry.Register(position_provider)
+         || !registry.Register(uv_provider)
+         || !registry.Register(normal_provider))
         {
             result.diagnostics.emplace_back("failed to create preview provider registry");
             result.passed = false;
@@ -470,7 +490,7 @@ namespace
         };
 
         const GeometryVertexFormat pure2d_geometry{{
-            VertexSemantic::Position, VF_V2I
+            VertexSemantic::Position, VF_V2F
         }};
         check_preview("PureColor2D", pure2d_geometry, 1);
 
@@ -484,6 +504,148 @@ namespace
             {VertexSemantic::TexCoord, VF_V2F}
         };
         check_preview("Text2D", text_geometry, 2);
+
+        // The opt-in ABI builder consumes the preview graph to generate both
+        // FixedVertexEntry data and GLSL declarations without invoking the
+        // GLSL compiler plugin.
+        MaterialDefinition text_definition{};
+        if (!TryGetMaterialDefinitionByID("Text2D", text_definition))
+        {
+            result.diagnostics.emplace_back("missing switched-build definition: Text2D");
+        }
+        else
+        {
+            MaterialDefinitionBuildRequest request{};
+            request.geometry_vertex_format = &text_geometry;
+            request.enable_resolved_vertex_abi = true;
+            request.vertex_code_module_registry = &registry;
+            MaterialResolvedVertexABI abi{};
+            if (!BuildResolvedMaterialVertexABI(text_definition, request, abi))
+            {
+                result.diagnostics.emplace_back("resolved vertex ABI builder failed");
+            }
+            else
+            {
+                const std::string source(abi.vertex_input_glsl.c_str());
+                if (abi.position_format != VF_V2I
+                 || abi.vertex_entries.GetCount() != 2
+                 || !(abi.vertex_entries[0] == FixedVertexEntry{VF_V2I, VertexSemantic::Position})
+                 || !(abi.vertex_entries[1] == FixedVertexEntry{VF_V2F, VertexSemantic::TexCoord})
+                 || source.find("layout(location=0) in ivec2 Position;") == std::string::npos
+                 || source.find("layout(location=1) in vec2 TexCoord;") == std::string::npos)
+                {
+                    result.diagnostics.emplace_back(
+                        "resolved vertex ABI does not match Geometry");
+                }
+            }
+        }
+
+        const auto build_abi = [&](const MaterialDefinition &definition,
+                                   const GeometryVertexFormat &geometry,
+                                   MaterialResolvedVertexABI &out_abi) -> bool
+        {
+            MaterialDefinitionBuildRequest request{};
+            request.geometry_vertex_format = &geometry;
+            request.enable_resolved_vertex_abi = true;
+            request.vertex_code_module_registry = &registry;
+            return BuildResolvedMaterialVertexABI(definition, request, out_abi);
+        };
+
+        // The same vec2 declaration must serve RG16F and RG32F Geometry
+        // inputs. The raw format remains distinct only in FixedVertexEntry.
+        MaterialDefinition pure2d_definition{};
+        if (!TryGetMaterialDefinitionByID("PureColor2D", pure2d_definition))
+        {
+            result.diagnostics.emplace_back("missing equivalent-format definition: PureColor2D");
+        }
+        else
+        {
+            const GeometryVertexFormat rg16_geometry{{
+                VertexSemantic::Position, VF_V2HF
+            }};
+            const GeometryVertexFormat rg32_geometry{{
+                VertexSemantic::Position, VF_V2F
+            }};
+            MaterialResolvedVertexABI rg16_abi{};
+            MaterialResolvedVertexABI rg32_abi{};
+            if (!build_abi(pure2d_definition, rg16_geometry, rg16_abi)
+             || !build_abi(pure2d_definition, rg32_geometry, rg32_abi)
+             || rg16_abi.vertex_input_glsl != rg32_abi.vertex_input_glsl
+             || rg16_abi.vertex_entries.GetCount() != 1
+             || rg32_abi.vertex_entries.GetCount() != 1
+             || rg16_abi.vertex_entries[0].format != VF_V2HF
+             || rg32_abi.vertex_entries[0].format != VF_V2F)
+            {
+                result.diagnostics.emplace_back("RG16F/RG32F resolved ABI sharing failed");
+            }
+        }
+
+        // Packed normals intentionally produce a distinct declaration shape
+        // from direct float normals, preserving the future decode-provider ABI.
+        MaterialDefinition normal_definition{};
+        if (!TryGetMaterialDefinitionByID("PureColor3D", normal_definition))
+        {
+            result.diagnostics.emplace_back("missing packed-normal definition: PureColor3D");
+        }
+        else
+        {
+            normal_definition.vertex_semantic_requirements.Clear();
+            normal_definition.vertex_semantic_requirements.Add(
+                MakeMaterialVertexSemanticRequirement(VertexSemantic::Position));
+            normal_definition.vertex_semantic_requirements.Add(
+                MakeMaterialVertexSemanticRequirement(VertexSemantic::Normal));
+
+            const GeometryVertexFormat float_normal_geometry{
+                {VertexSemantic::Position, VF_V3F},
+                {VertexSemantic::Normal, VF_V3F}
+            };
+            const GeometryVertexFormat packed_normal_geometry{
+                {VertexSemantic::Position, VF_V3F},
+                {VertexSemantic::Normal, PF_A2BGR10UN, 4}
+            };
+            MaterialResolvedVertexABI float_normal_abi{};
+            MaterialResolvedVertexABI packed_normal_abi{};
+            if (!build_abi(normal_definition, float_normal_geometry, float_normal_abi)
+             || !build_abi(normal_definition, packed_normal_geometry, packed_normal_abi)
+             || float_normal_abi.vertex_input_glsl == packed_normal_abi.vertex_input_glsl
+             || packed_normal_abi.vertex_entries.GetCount() != 2
+             || packed_normal_abi.vertex_entries[1].format != PF_A2BGR10UN)
+            {
+                result.diagnostics.emplace_back("packed normal resolved ABI variant failed");
+            }
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
+    static GateResult RunCompositorVersionPlacementCase()
+    {
+        GateResult result;
+        result.name = "N.compositor-version-placement";
+
+        CompositorAssembler assembler("E:/ULRE/ShaderLibrary");
+        const auto assembled = assembler.Assemble(
+            SurfaceType::Standard,
+            BlendMode::Opaque,
+            PassType::ForwardOpaque);
+        if (!assembled.success)
+        {
+            result.diagnostics.emplace_back(
+                "Standard compositor assembly failed: " + assembled.error_message);
+        }
+        else
+        {
+            if (assembled.fragment_glsl.compare(0, 8, "#version") != 0)
+                result.diagnostics.emplace_back(
+                    "Compositor GLSL must begin with #version");
+            if (assembled.fragment_glsl.find("#define SURFACE_TYPE ") == std::string::npos)
+                result.diagnostics.emplace_back(
+                    "Compositor permutation defines were not injected");
+            if (assembled.fragment_glsl.find("#version", 8) != std::string::npos)
+                result.diagnostics.emplace_back(
+                    "Compositor GLSL contains a second #version directive");
+        }
 
         result.passed = result.diagnostics.empty();
         return result;
@@ -1442,6 +1604,7 @@ int main()
     results.push_back(RunMaterialVertexABICharacterizationCase());
     results.push_back(RunMaterialSemanticABIParityCase());
     results.push_back(RunMaterialSemanticResolverPreviewCase());
+    results.push_back(RunCompositorVersionPlacementCase());
 
     bool all_passed = true;
     for (const auto &result : results)

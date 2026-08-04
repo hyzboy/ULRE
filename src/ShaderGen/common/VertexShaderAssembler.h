@@ -40,6 +40,8 @@ namespace hgl::graph::mtl
     //                     VK_FORMAT_UNDEFINED → fall back to node_cfg.input.
     //  extra_attr_glsl:   Optional additional vertex attribute declarations
     //                     (beyond position), emitted verbatim after Stage-1 include.
+    //  resolved_input_glsl: Full resolver-derived input declarations. When
+    //                     non-empty, replaces the legacy Stage-1 declaration.
     //  shader_lib_path:   Path prefix for #include resolution (usually "ShaderLibrary").
     //
     // Returns the full GLSL source string. If a Stage is not yet implemented,
@@ -50,7 +52,8 @@ namespace hgl::graph::mtl
         const VertexVaryingConfig    &varying_cfg,
         VkFormat                      position_format,
         const std::string            &extra_attr_glsl,
-        const std::string            &shader_lib_path)
+        const std::string            &shader_lib_path,
+        const std::string            &resolved_input_glsl = {})
     {
         std::string vs;
         vs.reserve(2048);
@@ -116,7 +119,13 @@ namespace hgl::graph::mtl
         vs += "\n";
 
         // ── Stage 1: Vertex input ─────────────────────────────────────────────
-        switch (effective_input)
+        if (!resolved_input_glsl.empty())
+        {
+            vs += resolved_input_glsl;
+            if (resolved_input_glsl.back() != '\n')
+                vs += "\n";
+        }
+        else switch (effective_input)
         {
         case VertexInputMode::Vec2Position:
             vs += "layout(location=0) in vec2 Position;\n";

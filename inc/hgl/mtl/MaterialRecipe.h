@@ -144,6 +144,22 @@ namespace hgl::graph::mtl
         return requirement;
     }
 
+    inline VertexSemantic GetVertexSemanticFromGLSLCodeModuleSemantic(
+        const GLSLCodeModuleSemantic semantic) noexcept
+    {
+        switch (semantic)
+        {
+        case GLSLCodeModuleSemantic::Position:  return VertexSemantic::Position;
+        case GLSLCodeModuleSemantic::Normal:    return VertexSemantic::Normal;
+        case GLSLCodeModuleSemantic::Tangent:   return VertexSemantic::Tangent;
+        case GLSLCodeModuleSemantic::Binormal:  return VertexSemantic::Bitangent;
+        case GLSLCodeModuleSemantic::Color:     return VertexSemantic::Color;
+        case GLSLCodeModuleSemantic::Luminance: return VertexSemantic::Luminance;
+        case GLSLCodeModuleSemantic::UV0:       return VertexSemantic::TexCoord;
+        default:                                return VertexSemantic::Unknown;
+        }
+    }
+
     struct MaterialVertexVaryingConfig
     {
         bool emit_data_index_id = false;

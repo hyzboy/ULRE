@@ -8,6 +8,8 @@
 #include<hgl/mtl/MaterializationSpec.h>
 #include<hgl/mtl/MaterializationResolver.h>
 #include<hgl/mtl/MaterializationPools.h>
+#include<hgl/mtl/FixedVertexEntry.h>
+#include<hgl/type/String.h>
 #include<hgl/common/VertexAttribDef.h>
 #include<hgl/common/RenderTargetOutputConfig.h>
 #include<hgl/mtl/SkyLight.h>
@@ -58,6 +60,11 @@ struct MaterialDefinitionBuildRequest
     PrimitiveType primitive_type = PrimitiveType::Triangles;
     const GeometryVertexFormat *geometry_vertex_format = nullptr;
 
+    // Phase 4.4 opt-in: only explicit callers with a loaded registry activate
+    // resolver-derived VS declarations and vertex entries.
+    bool enable_resolved_vertex_abi = false;
+    const GLSLCodeModuleRegistry *vertex_code_module_registry = nullptr;
+
     bool override_shader_stage_bits = false;
     uint32 shader_stage_flag_bit = 0;
 
@@ -75,6 +82,13 @@ struct MaterialDefinitionBuildRequest
         private_shader_buffer_sources=list;
         private_shader_buffer_source_count=count;
     }
+};
+
+struct MaterialResolvedVertexABI
+{
+    VkFormat position_format = VK_FORMAT_UNDEFINED;
+    ValueArray<FixedVertexEntry> vertex_entries;
+    AnsiString vertex_input_glsl;
 };
 
 ShaderProgramBuildSpec *CreateMaterialFromDefinition(
@@ -95,6 +109,15 @@ bool PreviewMaterialVertexSemanticResolution(
     const MaterialDefinition &definition,
     const MaterialDefinitionBuildRequest &request,
     GLSLCodeModuleResolutionResult &out_result);
+
+/**
+ * Build the resolver-derived vertex ABI without compiling shaders or mutating
+ * a program/cache. This is the explicit Phase 4.4 switched-path payload.
+ */
+bool BuildResolvedMaterialVertexABI(
+    const MaterialDefinition &definition,
+    const MaterialDefinitionBuildRequest &request,
+    MaterialResolvedVertexABI &out_abi);
 
 VkFormat ResolveMaterialVertexSemanticFormat(const GeometryVertexFormat *gvf, VertexSemantic semantic, VkFormat fallback_format);
 inline VkFormat ResolveMaterialPositionFormat(const GeometryVertexFormat *gvf, VkFormat fallback_format)
