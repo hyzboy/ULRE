@@ -751,6 +751,74 @@ namespace
         return result;
     }
 
+    static GateResult RunProviderGraphCompositionCase()
+    {
+        GateResult result;
+        result.name = "P.provider-graph-composition-interface";
+
+        const GLSLCodeModuleDefinition position_provider{
+            GLSLCodeModuleID::SkyLightHeader,
+            "compose_position",
+            "vec4 GetLocalPos() { return vec4(Position, 1.0); }",
+            nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0,
+            GLSLCodeModuleKind::Position,
+            nullptr, 0, nullptr, 0, 0, 0
+        };
+        const GLSLCodeModuleDefinition normal_provider{
+            GLSLCodeModuleID::SkyLightSimple,
+            "compose_normal",
+            "vec3 GetNormal() { return Normal; }",
+            nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0,
+            GLSLCodeModuleKind::Basis,
+            nullptr, 0, nullptr, 0, 0, 0
+        };
+
+        GLSLCodeModuleResolutionResult result_graph{};
+        result_graph.resolved = true;
+        result_graph.selections.Add(
+            {GLSLCodeModuleSemantic::Position, &position_provider});
+        result_graph.selections.Add(
+            {GLSLCodeModuleSemantic::Normal, &normal_provider});
+        result_graph.selections.Add(
+            {GLSLCodeModuleSemantic::WorldNormal, &normal_provider});
+
+        std::string composed;
+        if (!ComposeGLSLCodeModuleProviderGraph(result_graph, composed))
+            result.diagnostics.emplace_back("provider graph composition failed");
+        else
+        {
+            const size_t position_count = composed.find("compose_position");
+            const size_t normal_count = composed.find("compose_normal");
+            const size_t duplicate_normal = composed.find(
+                "compose_normal", normal_count == std::string::npos
+                    ? 0 : normal_count + 1);
+            if (position_count == std::string::npos
+             || normal_count == std::string::npos
+             || duplicate_normal != std::string::npos
+             || position_count > normal_count)
+                result.diagnostics.emplace_back(
+                    "provider source must be dependency-ordered and deduplicated");
+        }
+
+        ShaderStageBuildSpec vertex{};
+        vertex.stage = ShaderStage::Vertex;
+        vertex.outputs.Add({0, ShaderStageValueType::Vec3, 0, 0});
+        vertex.outputs.Add({0, ShaderStageValueType::Vec2, 1, 0});
+        ShaderStageBuildSpec fragment{};
+        fragment.stage = ShaderStage::Fragment;
+        fragment.inputs.Add({0, ShaderStageValueType::Vec3, 0, 0});
+        fragment.inputs.Add({0, ShaderStageValueType::Vec2, 1, 0});
+        if (!HasCompatibleStageInterface(vertex, fragment))
+            result.diagnostics.emplace_back("matching composed stage interfaces rejected");
+
+        fragment.inputs[1].value_type = ShaderStageValueType::Vec4;
+        if (HasCompatibleStageInterface(vertex, fragment))
+            result.diagnostics.emplace_back("incompatible composed stage interfaces accepted");
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunBindlessEquivalenceCase()
     {
         GateResult result;
@@ -1706,6 +1774,7 @@ int main()
     results.push_back(RunMaterialSemanticResolverPreviewCase());
     results.push_back(RunCompositorVersionPlacementCase());
     results.push_back(RunProviderGraphIdentityCase());
+    results.push_back(RunProviderGraphCompositionCase());
 
     bool all_passed = true;
     for (const auto &result : results)

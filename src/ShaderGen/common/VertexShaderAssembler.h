@@ -42,6 +42,8 @@ namespace hgl::graph::mtl
     //                     (beyond position), emitted verbatim after Stage-1 include.
     //  resolved_input_glsl: Full resolver-derived input declarations. When
     //                     non-empty, replaces the legacy Stage-1 declaration.
+    //  provider_glsl:      Selected provider module source, emitted after
+    //                     vertex declarations and before stage helpers.
     //  shader_lib_path:   Path prefix for #include resolution (usually "ShaderLibrary").
     //
     // Returns the full GLSL source string. If a Stage is not yet implemented,
@@ -53,7 +55,8 @@ namespace hgl::graph::mtl
         VkFormat                      position_format,
         const std::string            &extra_attr_glsl,
         const std::string            &shader_lib_path,
-        const std::string            &resolved_input_glsl = {})
+        const std::string            &resolved_input_glsl = {},
+        const std::string            &provider_glsl = {})
     {
         std::string vs;
         vs.reserve(2048);
@@ -147,6 +150,11 @@ namespace hgl::graph::mtl
         {
             vs += extra_attr_glsl;
             if (extra_attr_glsl.back() != '\n') vs += "\n";
+        }
+        if (!provider_glsl.empty())
+        {
+            vs += provider_glsl;
+            if (provider_glsl.back() != '\n') vs += "\n";
         }
 
         // MaterialColorPalette UBO (PattleColor-style materials).

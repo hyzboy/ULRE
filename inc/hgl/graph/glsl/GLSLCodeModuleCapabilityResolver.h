@@ -4,6 +4,7 @@
 #include <hgl/graph/glsl/GLSLCodeModuleRegistry.h>
 #include <hgl/type/ValueArray.h>
 #include <vulkan/vulkan.h>
+#include <string>
 
 namespace hgl::graph
 {
@@ -97,6 +98,14 @@ namespace hgl::graph::mtl
      */
     uint64 GetGLSLCodeModuleProviderGraphHash(
         const GLSLCodeModuleResolutionResult &result) noexcept;
+
+    /**
+     * Compose selected provider source in resolver dependency order.
+     * Providers selected for multiple semantics are emitted once.
+     */
+    bool ComposeGLSLCodeModuleProviderGraph(
+        const GLSLCodeModuleResolutionResult &result,
+        std::string &out_glsl);
 
     /**
      * Generic capability resolver for GLSL code modules.

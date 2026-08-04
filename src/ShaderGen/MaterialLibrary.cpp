@@ -82,16 +82,16 @@ namespace
         const MaterialDefinitionBuildRequest &request,
         std::vector<FixedVertexEntry> &out_vertices,
         VkFormat &out_position_format,
-        std::string &out_vertex_input_glsl)
+        std::string &out_vertex_input_glsl,
+        GLSLCodeModuleResolutionResult &out_resolution)
     {
         if (!request.vertex_code_module_registry
          || definition.vertex_provider_policy != MaterialVertexProviderPolicy::GeometryOnly)
             return false;
 
-        GLSLCodeModuleResolutionResult resolution;
         if (!PreviewMaterialVertexSemanticResolution(
-                *request.vertex_code_module_registry, definition, request, resolution)
-         || !resolution.resolved)
+                *request.vertex_code_module_registry, definition, request, out_resolution)
+         || !out_resolution.resolved)
             return false;
 
         const GeometryVertexFormat &geometry = *request.geometry_vertex_format;
@@ -201,6 +201,8 @@ namespace
         uint32 declaration_count = 0;
         std::string extra_attributes;
         std::string resolved_vertex_input_glsl;
+        std::string resolved_provider_glsl;
+        uint64 resolved_provider_graph_hash = 0;
         if (request.enable_resolved_vertex_abi)
         {
             MaterialResolvedVertexABI resolved_abi;
@@ -212,6 +214,8 @@ namespace
             }
             position_format = resolved_abi.position_format;
             resolved_vertex_input_glsl = resolved_abi.vertex_input_glsl.c_str();
+            resolved_provider_glsl = resolved_abi.provider_glsl;
+            resolved_provider_graph_hash = resolved_abi.provider_graph_hash;
             vertices.reserve(static_cast<size_t>(resolved_abi.vertex_entries.GetCount()));
             for (int i = 0; i < resolved_abi.vertex_entries.GetCount(); ++i)
                 vertices.push_back(resolved_abi.vertex_entries[i]);
@@ -240,6 +244,7 @@ namespace
             vertices = vertex_builder_common::BuildVertexEntries(input);
         }
         ShaderResourceManifest manifest{};
+        ShaderProgramLinkSpec resolved_program_link{};
         if (definition.fragment_program_mode == MaterialFragmentProgramMode::Compositor)
         {
             if (!Build3DShaderResourceManifest(definition, request.override_sky_ambient_model
@@ -259,7 +264,8 @@ namespace
         std::string vs = GenerateVertexShader(vertex_node_config, varying,
                                                position_format,
                                                extra_attributes, "ShaderLibrary",
-                                               resolved_vertex_input_glsl);
+                                               resolved_vertex_input_glsl,
+                                               resolved_provider_glsl);
 
         std::string fs;
         if (definition.fragment_program_mode == MaterialFragmentProgramMode::Compositor)
@@ -298,6 +304,15 @@ namespace
         config.geometry_vertex_format = request.geometry_vertex_format;
         config.material_definition = &definition;
         config.resource_manifest = manifest.IsValid() ? &manifest : nullptr;
+        if (request.enable_resolved_vertex_abi)
+        {
+            resolved_program_link.vertex_stage =
+                definition.vertex_stage.BuildKeyWithProviderGraphHash(
+                    resolved_provider_graph_hash);
+            resolved_program_link.fragment_stage = definition.fragment_stage.BuildKey();
+            resolved_program_link.resource_layout_hash = manifest.stable_hash;
+            config.program_link = &resolved_program_link;
+        }
         config.ssbo_slot_decls = definition.ssbo_slot_decls.empty()
             ? nullptr : &definition.ssbo_slot_decls;
         ShaderProgramBuildSpec *result = CompileCompositorMaterial(profile, fixed_definition, vs, fs, config);
@@ -376,15 +391,20 @@ bool BuildResolvedMaterialVertexABI(
     std::vector<FixedVertexEntry> vertices;
     std::string vertex_input_glsl;
     VkFormat position_format = VK_FORMAT_UNDEFINED;
+    GLSLCodeModuleResolutionResult resolution;
     if (!BuildResolvedVertexABI(definition, request, vertices, position_format,
-                                vertex_input_glsl))
+                                vertex_input_glsl, resolution))
         return false;
 
     out_abi.position_format = position_format;
+    out_abi.provider_graph_hash =
+        GetGLSLCodeModuleProviderGraphHash(resolution);
     out_abi.vertex_entries.Clear();
     for (const FixedVertexEntry &entry : vertices)
         out_abi.vertex_entries.Add(entry);
     out_abi.vertex_input_glsl = vertex_input_glsl.c_str();
+    if (!ComposeGLSLCodeModuleProviderGraph(resolution, out_abi.provider_glsl))
+        return false;
     return true;
 }
 

@@ -678,4 +678,47 @@ namespace hgl::graph::mtl
 
         return hash;
     }
+
+    bool ComposeGLSLCodeModuleProviderGraph(
+        const GLSLCodeModuleResolutionResult &result,
+        std::string &out_glsl)
+    {
+        out_glsl.clear();
+        if (!result.resolved)
+            return false;
+
+        const GLSLCodeModuleDefinition *emitted[64] = {};
+        uint32 emitted_count = 0;
+        for (int i = 0; i < result.selections.GetCount(); ++i)
+        {
+            const GLSLCodeModuleDefinition *provider = result.selections[i].provider;
+            if (!provider || !provider->glsl_code)
+                return false;
+
+            bool already_emitted = false;
+            for (uint32 k = 0; k < emitted_count; ++k)
+            {
+                if (emitted[k] == provider)
+                {
+                    already_emitted = true;
+                    break;
+                }
+            }
+            if (already_emitted)
+                continue;
+
+            if (emitted_count >= 64)
+                return false;
+
+            emitted[emitted_count++] = provider;
+            out_glsl += "\n// GLSLCodeModule provider: ";
+            out_glsl += provider->name ? provider->name : "Unknown";
+            out_glsl += "\n";
+            out_glsl += provider->glsl_code;
+            if (out_glsl.empty() || out_glsl.back() != '\n')
+                out_glsl += "\n";
+        }
+
+        return true;
+    }
 }

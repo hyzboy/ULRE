@@ -87,8 +87,10 @@ struct MaterialDefinitionBuildRequest
 struct MaterialResolvedVertexABI
 {
     VkFormat position_format = VK_FORMAT_UNDEFINED;
+    uint64 provider_graph_hash = 0;
     ValueArray<FixedVertexEntry> vertex_entries;
     AnsiString vertex_input_glsl;
+    std::string provider_glsl;
 };
 
 ShaderProgramBuildSpec *CreateMaterialFromDefinition(
