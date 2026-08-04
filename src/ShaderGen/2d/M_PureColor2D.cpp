@@ -32,6 +32,11 @@ namespace
                                          MaterialShaderDomain::Screen2D,
                                          MaterialFragmentProgramMode::DirectInclude,
                                          attributes, 1, inputs, 1, outputs, 1, varying);
+        const GLSLCodeModuleSemanticRequirement vertex_requirements[] = {
+            MakeMaterialVertexSemanticRequirement(VertexSemantic::Position)
+        };
+        ConfigureMaterialVertexSemanticContract(
+            bmi, vertex_requirements, 1, MaterialVertexProviderPolicy::GeometryOnly);
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::PureColor2D, bmi);
         // Register builtin alias so fallback code can look up by canonical id.
         MaterialDefinition fallback_alias = bmi;

@@ -294,6 +294,83 @@ namespace
         return result;
     }
 
+    static GateResult RunMaterialSemanticABIParityCase()
+    {
+        GateResult result;
+        result.name = "L.material-semantic-abi-parity";
+
+        static const char *definition_ids[] = {
+            "PureColor2D",
+            "PureColor3D",
+            "Text2D"
+        };
+
+        for (const char *id : definition_ids)
+        {
+            MaterialDefinition definition{};
+            if (!TryGetMaterialDefinitionByID(id, definition))
+            {
+                result.diagnostics.emplace_back(std::string("missing migrated definition: ") + id);
+                continue;
+            }
+
+            if (definition.vertex_provider_policy != MaterialVertexProviderPolicy::GeometryOnly)
+            {
+                result.diagnostics.emplace_back(std::string("unexpected provider policy: ") + id);
+                continue;
+            }
+
+            if (definition.vertex_semantic_requirements.GetCount()
+                    != definition.vertex_attributes.GetCount()
+             || definition.vertex_stage.inputs.GetCount()
+                    != definition.vertex_attributes.GetCount())
+            {
+                result.diagnostics.emplace_back(std::string("semantic/legacy input count mismatch: ") + id);
+                continue;
+            }
+
+            GeometryVertexFormat geometry;
+            std::vector<vertex_builder_common::VertexSemanticDecl> semantic_decls;
+            std::vector<FixedVertexEntry> expected_entries;
+            bool valid = true;
+            for (int i = 0; i < definition.vertex_attributes.GetCount(); ++i)
+            {
+                const auto &attribute = definition.vertex_attributes[i];
+                const auto &requirement = definition.vertex_semantic_requirements[i];
+                if (requirement.source != GLSLCodeModuleCapabilitySource::ProducedSemantic
+                 || requirement.semantic != GetGLSLCodeModuleSemanticFromVertexSemantic(attribute.semantic)
+                 || requirement.semantic == GLSLCodeModuleSemantic::Unknown
+                 || !geometry.Add(attribute.semantic, attribute.format))
+                {
+                    valid = false;
+                    break;
+                }
+
+                semantic_decls.push_back({attribute.semantic, attribute.format});
+                expected_entries.push_back({attribute.format, attribute.semantic});
+            }
+
+            if (!valid)
+            {
+                result.diagnostics.emplace_back(std::string("invalid semantic contract: ") + id);
+                continue;
+            }
+
+            const vertex_builder_common::VertexBuildInput input{
+                PrimitiveType::Triangles, &geometry, semantic_decls.data(),
+                static_cast<uint32_t>(semantic_decls.size())
+            };
+            const auto entries = vertex_builder_common::BuildVertexEntries(input);
+            std::string diagnostic;
+            if (!CheckVertexEntries(entries, expected_entries, diagnostic))
+                result.diagnostics.emplace_back(std::string("legacy ABI parity failed for ")
+                    + id + ": " + diagnostic);
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunBindlessEquivalenceCase()
     {
         GateResult result;
@@ -1245,6 +1322,7 @@ int main()
     results.push_back(RunGLSLCodeModuleFileCase());
     results.push_back(RunCapabilityResolverCase());
     results.push_back(RunMaterialVertexABICharacterizationCase());
+    results.push_back(RunMaterialSemanticABIParityCase());
 
     bool all_passed = true;
     for (const auto &result : results)

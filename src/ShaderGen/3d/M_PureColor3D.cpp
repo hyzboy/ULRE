@@ -39,6 +39,11 @@ namespace
                                          MaterialShaderDomain::World3D,
                                          MaterialFragmentProgramMode::Compositor,
                                          attributes, 1, inputs, 1, outputs, 2, varying);
+        const GLSLCodeModuleSemanticRequirement vertex_requirements[] = {
+            MakeMaterialVertexSemanticRequirement(VertexSemantic::Position)
+        };
+        ConfigureMaterialVertexSemanticContract(
+            bmi, vertex_requirements, 1, MaterialVertexProviderPolicy::GeometryOnly);
         bmi.fragment_surface_module = "surface/unlit_color3d_surface.glsl";
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::PureColor3D, bmi);
         // builtin/fallback_3d: 3D 无材质保底

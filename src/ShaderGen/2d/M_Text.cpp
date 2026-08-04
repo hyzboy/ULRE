@@ -27,6 +27,12 @@ namespace
         varying.emit_uv0 = true;
         ConfigureMaterialDefinitionContract(bmi, "2d/text2d.frag.glsl", nullptr,
                                              VK_FORMAT_R32G32_SINT, varying, attrs, 1);
+        const GLSLCodeModuleSemanticRequirement vertex_requirements[] = {
+            MakeMaterialVertexSemanticRequirement(VertexSemantic::Position),
+            MakeMaterialVertexSemanticRequirement(VertexSemantic::TexCoord)
+        };
+        ConfigureMaterialVertexSemanticContract(
+            bmi, vertex_requirements, 2, MaterialVertexProviderPolicy::GeometryOnly);
         bmi.fragment_program_mode = MaterialFragmentProgramMode::DirectInclude;
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::Text2D, bmi);
         MaterialDefinition alias = bmi;

@@ -7,6 +7,7 @@
 #include <hgl/common/VertexAttribDef.h>
 #include <hgl/vk/VK.h>
 #include <hgl/graph/glsl/GLSLCodeModule.h>
+#include <hgl/type/ValueArray.h>
 #include <hgl/shadergen/ShaderStageBuildSpec.h>
 #include <hgl/shadergen/ShaderProgramLinkSpec.h>
 #include <hgl/mtl/new/SurfaceType.h>
@@ -109,6 +110,40 @@ namespace hgl::graph::mtl
         }
     };
 
+    // Policy for resolving a material vertex semantic. This is declarative only:
+    // Phase 4.2 keeps the legacy ABI as the active production path.
+    enum class MaterialVertexProviderPolicy : uint8
+    {
+        Auto = 0,
+        GeometryOnly,
+        AllowDerived
+    };
+
+    inline GLSLCodeModuleSemantic GetGLSLCodeModuleSemanticFromVertexSemantic(
+        const VertexSemantic semantic) noexcept
+    {
+        switch (semantic)
+        {
+        case VertexSemantic::Position:  return GLSLCodeModuleSemantic::Position;
+        case VertexSemantic::Normal:    return GLSLCodeModuleSemantic::Normal;
+        case VertexSemantic::Tangent:   return GLSLCodeModuleSemantic::Tangent;
+        case VertexSemantic::Bitangent: return GLSLCodeModuleSemantic::Binormal;
+        case VertexSemantic::Color:     return GLSLCodeModuleSemantic::Color;
+        case VertexSemantic::Luminance: return GLSLCodeModuleSemantic::Luminance;
+        case VertexSemantic::TexCoord:  return GLSLCodeModuleSemantic::UV0;
+        default:                        return GLSLCodeModuleSemantic::Unknown;
+        }
+    }
+
+    inline GLSLCodeModuleSemanticRequirement MakeMaterialVertexSemanticRequirement(
+        const VertexSemantic semantic) noexcept
+    {
+        GLSLCodeModuleSemanticRequirement requirement;
+        requirement.source = GLSLCodeModuleCapabilitySource::ProducedSemantic;
+        requirement.semantic = GetGLSLCodeModuleSemanticFromVertexSemantic(semantic);
+        return requirement;
+    }
+
     struct MaterialVertexVaryingConfig
     {
         bool emit_data_index_id = false;
@@ -199,6 +234,12 @@ namespace hgl::graph::mtl
         // Unified shader ABI/program contract shared by built-in and
         // file-backed definitions. The generator must not infer this from
         // the material name.
+        //
+        // Phase 4 transition state: vertex_semantic_requirements is the
+        // format-free, file-serializable contract. vertex_attributes remains
+        // the active legacy ABI until resolver-backed generation is enabled.
+        ValueArray<GLSLCodeModuleSemanticRequirement> vertex_semantic_requirements;
+        MaterialVertexProviderPolicy vertex_provider_policy = MaterialVertexProviderPolicy::Auto;
         ValueArray<MaterialVertexAttributeDefinition> vertex_attributes;
         ShaderStageBuildSpec vertex_stage;
         ShaderStageBuildSpec fragment_stage;
@@ -247,6 +288,20 @@ namespace hgl::graph::mtl
 
         definition.program_link.vertex_stage = definition.vertex_stage.BuildKey();
         definition.program_link.fragment_stage = definition.fragment_stage.BuildKey();
+    }
+
+    inline void ConfigureMaterialVertexSemanticContract(
+        MaterialDefinition &definition,
+        const GLSLCodeModuleSemanticRequirement *requirements,
+        const uint32 requirement_count,
+        const MaterialVertexProviderPolicy provider_policy =
+            MaterialVertexProviderPolicy::Auto)
+    {
+        definition.vertex_semantic_requirements.Clear();
+        definition.vertex_provider_policy = provider_policy;
+
+        for (uint32 i = 0; i < requirement_count; ++i)
+            definition.vertex_semantic_requirements.Add(requirements[i]);
     }
 
     inline void ConfigureMaterialDefinitionContract(
