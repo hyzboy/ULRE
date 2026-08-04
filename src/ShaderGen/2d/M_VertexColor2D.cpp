@@ -32,6 +32,7 @@ namespace
                                          MaterialShaderDomain::Screen2D,
                                          MaterialFragmentProgramMode::DirectInclude,
                                          attributes, 2, inputs, 2, outputs, 1, varying);
+        ConfigureMaterialVertexSemanticContractFromAttributes(bmi, attributes, 2, false);
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::VertexColor2D, bmi);
         return true;
     }();

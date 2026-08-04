@@ -31,6 +31,7 @@ namespace
         ConfigureMaterialDefinitionContract(bmi, "compositor/main_forward_unlit_luminance.frag.glsl",
                                              "surface/unlit_luminance_surface.glsl",
                                              VK_FORMAT_R32G32B32_SFLOAT, varying, attrs, 1);
+        ConfigureMaterialVertexSemanticContractFromAttributes(bmi, attrs, 1, true);
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::VertexLuminance3D, bmi);
         return true;
     }();

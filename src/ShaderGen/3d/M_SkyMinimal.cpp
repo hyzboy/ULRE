@@ -25,6 +25,7 @@ namespace
         ConfigureMaterialDefinitionContract(bmi, "compositor/main_forward_sky.frag.glsl",
                                              "surface/sky_minimal_surface.glsl",
                                              VK_FORMAT_R32G32B32_SFLOAT, varying, nullptr, 0);
+        ConfigureMaterialVertexSemanticContractFromAttributes(bmi, nullptr, 0, true);
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::SkyMinimal, bmi);
         MaterialDefinition alias = bmi;
         alias.definition_id = BUILTIN_MTL_DEF_SKY;

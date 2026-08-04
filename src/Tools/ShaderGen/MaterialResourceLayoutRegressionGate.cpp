@@ -301,8 +301,19 @@ namespace
         result.name = "L.material-semantic-abi-parity";
 
         static const char *definition_ids[] = {
+            "VertexColor2D",
             "PureColor2D",
+            "PureTexture2D",
+            "RectTexture2D",
+            "RectTexture2DArray",
             "PureColor3D",
+            "VertexColor3D",
+            "VertexLuminance3D",
+            "VertexPattleColor3D",
+            "Gizmo3D",
+            "SkyMinimal",
+            "Standard",
+            "StandardTextureArray",
             "Text2D"
         };
 

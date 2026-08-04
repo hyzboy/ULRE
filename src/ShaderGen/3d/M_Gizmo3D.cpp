@@ -33,6 +33,7 @@ namespace
         ConfigureMaterialDefinitionContract(bmi, "compositor/main_forward_unlit_normal.frag.glsl",
                                              "surface/gizmo3d_surface.glsl",
                                              VK_FORMAT_R32G32B32_SFLOAT, varying, attrs, 1);
+        ConfigureMaterialVertexSemanticContractFromAttributes(bmi, attrs, 1, true);
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::Gizmo3D, bmi);
         return true;
     }();

@@ -36,6 +36,7 @@ namespace
                                          MaterialShaderDomain::World3D,
                                          MaterialFragmentProgramMode::Compositor,
                                          attributes, 2, inputs, 2, outputs, 1, varying);
+        ConfigureMaterialVertexSemanticContractFromAttributes(bmi, attributes, 2, false);
         bmi.fragment_surface_module = "surface/unlit_vertexcolor_surface.glsl";
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::VertexColor3D, bmi);
         return true;

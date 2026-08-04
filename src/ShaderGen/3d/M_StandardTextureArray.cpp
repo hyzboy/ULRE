@@ -43,6 +43,7 @@ namespace
         ConfigureMaterialDefinitionContract(bmi, "compositor/main_forward_lit.frag.glsl",
                                              "surface/standard_texturearray_surface.glsl",
                                              VK_FORMAT_R32G32B32_SFLOAT, varying, attrs, 2);
+        ConfigureMaterialVertexSemanticContractFromAttributes(bmi, attrs, 2, true);
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::StandardTextureArray, bmi);
         return true;
     }();

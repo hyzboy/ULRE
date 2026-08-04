@@ -25,6 +25,7 @@ namespace
         varying.emit_uv0 = true;
         ConfigureMaterialDefinitionContract(bmi, "2d/recttexture2darray.frag.glsl", nullptr,
                                              VK_FORMAT_R32G32_SFLOAT, varying, attrs, 1);
+        ConfigureMaterialVertexSemanticContractFromAttributes(bmi, attrs, 1, true);
         bmi.fragment_program_mode = MaterialFragmentProgramMode::DirectInclude;
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::RectTexture2DArray, bmi);
         return true;

@@ -41,6 +41,7 @@ namespace
         ConfigureMaterialDefinitionContract(bmi, "compositor/main_forward_unlit_vertexcolor.frag.glsl",
                                              "surface/unlit_vertexcolor_surface.glsl",
                                              VK_FORMAT_R32G32B32_SFLOAT, varying, attrs, 2);
+        ConfigureMaterialVertexSemanticContractFromAttributes(bmi, attrs, 2, true);
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::VertexPattleColor3D, bmi);
         return true;
     }();

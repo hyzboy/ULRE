@@ -438,6 +438,7 @@ namespace hgl::graph::mtl
             case VertexSemantic::Color:     return GLSLCodeModuleSemantic::Color;
             case VertexSemantic::Luminance: return GLSLCodeModuleSemantic::Luminance;
             case VertexSemantic::TexCoord:  return GLSLCodeModuleSemantic::UV0;
+            case VertexSemantic::TransformID: return GLSLCodeModuleSemantic::TransformID;
             default:                        return GLSLCodeModuleSemantic::Unknown;
             }
         }

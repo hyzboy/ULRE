@@ -131,6 +131,7 @@ namespace hgl::graph::mtl
         case VertexSemantic::Color:     return GLSLCodeModuleSemantic::Color;
         case VertexSemantic::Luminance: return GLSLCodeModuleSemantic::Luminance;
         case VertexSemantic::TexCoord:  return GLSLCodeModuleSemantic::UV0;
+        case VertexSemantic::TransformID: return GLSLCodeModuleSemantic::TransformID;
         default:                        return GLSLCodeModuleSemantic::Unknown;
         }
     }
@@ -156,6 +157,7 @@ namespace hgl::graph::mtl
         case GLSLCodeModuleSemantic::Color:     return VertexSemantic::Color;
         case GLSLCodeModuleSemantic::Luminance: return VertexSemantic::Luminance;
         case GLSLCodeModuleSemantic::UV0:       return VertexSemantic::TexCoord;
+        case GLSLCodeModuleSemantic::TransformID: return VertexSemantic::TransformID;
         default:                                return VertexSemantic::Unknown;
         }
     }
@@ -318,6 +320,34 @@ namespace hgl::graph::mtl
 
         for (uint32 i = 0; i < requirement_count; ++i)
             definition.vertex_semantic_requirements.Add(requirements[i]);
+    }
+
+    inline void ConfigureMaterialVertexSemanticContractFromAttributes(
+        MaterialDefinition &definition,
+        const MaterialVertexAttributeDefinition *attributes,
+        const uint32 attribute_count,
+        const bool include_position,
+        const MaterialVertexProviderPolicy provider_policy =
+            MaterialVertexProviderPolicy::GeometryOnly)
+    {
+        definition.vertex_semantic_requirements.Clear();
+        definition.vertex_provider_policy = provider_policy;
+
+        if (include_position)
+            definition.vertex_semantic_requirements.Add(
+                MakeMaterialVertexSemanticRequirement(VertexSemantic::Position));
+
+        for (uint32 i = 0; i < attribute_count; ++i)
+        {
+            const GLSLCodeModuleSemantic semantic =
+                GetGLSLCodeModuleSemanticFromVertexSemantic(attributes[i].semantic);
+            if (semantic == GLSLCodeModuleSemantic::Unknown)
+                continue;
+
+            GLSLCodeModuleSemanticRequirement requirement =
+                MakeMaterialVertexSemanticRequirement(attributes[i].semantic);
+            definition.vertex_semantic_requirements.Add(requirement);
+        }
     }
 
     inline void ConfigureMaterialDefinitionContract(
