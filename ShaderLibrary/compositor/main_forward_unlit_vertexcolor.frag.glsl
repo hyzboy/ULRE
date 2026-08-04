@@ -1,3 +1,9 @@
+// @ulre begin
+// @ulre name main_forward_unlit_vertexcolor
+// @ulre kind FragmentShader
+// @ulre priority 0
+// @ulre require ProducedSemantic Color
+// @ulre end
 #version 450
 
 // === Compositor Template: Forward Unlit FS (Vertex Color) ===

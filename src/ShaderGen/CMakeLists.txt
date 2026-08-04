@@ -25,7 +25,11 @@ SET(SHADER_ARTIFACT_CONTRACT_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderStageKey.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderArtifactStore.h
                                    ShaderArtifactStore.cpp
                                    ${ROOT_INCLUDE_PATH}/hgl/graph/glsl/GLSLCodeModuleRegistry.h
-                                   common/GLSLCodeModuleRegistry.cpp)
+                                   common/GLSLCodeModuleRegistry.cpp
+                                   ${ROOT_INCLUDE_PATH}/hgl/graph/glsl/GLSLCodeModuleFile.h
+                                   common/GLSLCodeModuleFile.cpp
+                                   ${ROOT_INCLUDE_PATH}/hgl/graph/glsl/GLSLCodeModuleCapabilityResolver.h
+                                   common/GLSLCodeModuleCapabilityResolver.cpp)
 
 SOURCE_GROUP("Shader Artifact Contract" FILES ${SHADER_ARTIFACT_CONTRACT_FILES})
 

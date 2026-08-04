@@ -1,3 +1,12 @@
+// @ulre begin
+// @ulre name terrain_grid_surface
+// @ulre kind Surface
+// @ulre priority 0
+// @ulre require ProducedSemantic WorldPosition
+// @ulre require ProducedSemantic WorldNormal
+// @ulre require Resource Camera
+// @ulre uses surface_interface
+// @ulre end
 // === Surface Function: Terrain Grid ===
 // 硬编码太阳方向 + Blinn-Phong 光照，保持与旧版行为一致
 // 注意：si.worldPos 实际是 clip-space position（原始设计如此）

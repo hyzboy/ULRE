@@ -29,7 +29,8 @@ namespace hgl::graph::mtl
         Basis,
         Decode,
         Transform,
-        Utility
+        Utility,
+        FragmentShader
     };
 
     enum class GLSLCodeModuleSemantic : uint16
@@ -83,6 +84,18 @@ namespace hgl::graph::mtl
         uint8 max_component_count = 0;
         uint16 reserved = 0;
     };
+
+    // ValueArray<T> instantiates its virtual Find() for every concrete T, which
+    // requires an equality operator.
+    inline bool operator==(const GLSLCodeModuleSemanticRequirement &lhs,
+                           const GLSLCodeModuleSemanticRequirement &rhs) noexcept
+    {
+        return lhs.source == rhs.source
+            && lhs.semantic == rhs.semantic
+            && lhs.numeric_class_mask == rhs.numeric_class_mask
+            && lhs.min_component_count == rhs.min_component_count
+            && lhs.max_component_count == rhs.max_component_count;
+    }
 
     struct GLSLCodeModuleUBORequirement
     {

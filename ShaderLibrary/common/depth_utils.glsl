@@ -1,3 +1,8 @@
+// @ulre begin
+// @ulre name depth_utils
+// @ulre kind Utility
+// @ulre priority 0
+// @ulre end
 // Reversed-Z depth utilities
 // Usage: #include "depth_utils.glsl"
 

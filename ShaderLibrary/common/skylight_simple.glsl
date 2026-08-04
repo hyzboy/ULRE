@@ -1,3 +1,10 @@
+// @ulre begin
+// @ulre name skylight_simple
+// @ulre kind Utility
+// @ulre priority 0
+// @ulre require Resource SkyLight
+// @ulre provide SkyLight
+// @ulre end
 // skylight_simple.glsl — Simple sky light model (GLSL include)
 // Requires: sky UBO (SkyInfo) already declared via SCENE_SKY_UBO
 //

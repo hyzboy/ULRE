@@ -1,3 +1,8 @@
+// @ulre begin
+// @ulre name material_color_palette
+// @ulre kind Utility
+// @ulre priority 0
+// @ulre end
 #ifndef HGL_UBO_MATERIAL_COLOR_PALETTE_GLSL
 #define HGL_UBO_MATERIAL_COLOR_PALETTE_GLSL
 

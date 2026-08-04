@@ -1,3 +1,8 @@
+// @ulre begin
+// @ulre name position_source_transform_policy
+// @ulre kind Utility
+// @ulre priority 0
+// @ulre end
 // R08 stage split helpers:
 // - PositionSource: produce local/object-space positions
 // - TransformPolicy: apply facing / fixed-screen-scale / clip transform

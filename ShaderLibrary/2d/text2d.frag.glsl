@@ -1,3 +1,11 @@
+// @ulre begin
+// @ulre name text2d
+// @ulre kind FragmentShader
+// @ulre priority 0
+// @ulre require Resource MaterialData
+// @ulre require ProducedSemantic MaterialData
+// @ulre require ProducedSemantic UV0
+// @ulre end
 // Text2D fragment shader
 
 layout(set=TEX_SET, binding=TEX_BINDING) uniform sampler2D TextureText;

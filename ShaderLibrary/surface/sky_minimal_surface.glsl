@@ -1,3 +1,11 @@
+// @ulre begin
+// @ulre name sky_minimal_surface
+// @ulre kind Surface
+// @ulre priority 0
+// @ulre require ProducedSemantic WorldPosition
+// @ulre require Resource SkyLight
+// @ulre uses surface_interface
+// @ulre end
 // === Surface Function: SkyMinimal ===
 // Procedural sky — gradient + atmosphere scatter + sun core/glow
 // 无 Material Instance，无贴图。sky UBO 由 FS 模板声明。

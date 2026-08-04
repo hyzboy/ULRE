@@ -1,13 +1,20 @@
 #include <hgl/mtl/MaterialResourceLayout.h>
 #include <hgl/mtl/MaterialLibrary.h>
 #include <hgl/graph/glsl/GLSLCodeModule.h>
+#include <hgl/graph/glsl/GLSLCodeModuleCapabilityResolver.h>
+#include <hgl/graph/glsl/GLSLCodeModuleFile.h>
+#include <hgl/graph/glsl/GLSLCodeModuleRegistry.h>
 #include <hgl/graph/glsl/ShaderResourceManifest.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <iterator>
+#include <memory>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -329,6 +336,649 @@ namespace
         result.passed = result.diagnostics.empty();
         return result;
     }
+
+    static GateResult RunGLSLCodeModuleFileCase()
+    {
+        GateResult result;
+        result.name = "I.glsl-code-module-file-parse";
+
+        auto expect_parse = [&result](const char *content,
+                                      const GLSLCodeModuleParseResult expected,
+                                      const char *label)
+        {
+            GLSLCodeModuleFileData data;
+            const GLSLCodeModuleParseResult actual =
+                ParseGLSLCodeModuleFile(content, int(std::strlen(content)), data);
+            if (actual != expected)
+            {
+                result.diagnostics.emplace_back(std::string(label) + ": got "
+                    + GetGLSLCodeModuleParseResultName(actual)
+                    + " expected " + GetGLSLCodeModuleParseResultName(expected));
+                return false;
+            }
+            return true;
+        };
+
+        // Valid full metadata block.
+        const char full_meta[] =
+            "// @ulre begin\n"
+            "// @ulre name sample_ntb\n"
+            "// @ulre kind VertexInput\n"
+            "// @ulre priority 10\n"
+            "// @ulre flags 0x3\n"
+            "// @ulre require GeometryAttribute Normal Float 3 3\n"
+            "// @ulre require GeometryAttribute Tangent Any\n"
+            "// @ulre provide Normal\n"
+            "// @ulre provide Tangent\n"
+            "// @ulre uses s2_lift_xy0\n"
+            "// @ulre end\n";
+        {
+            GLSLCodeModuleFileData data;
+            const GLSLCodeModuleParseResult parse =
+                ParseGLSLCodeModuleFile(full_meta, int(std::strlen(full_meta)), data);
+            if (parse != GLSLCodeModuleParseResult::OK)
+                result.diagnostics.emplace_back("full-metadata parse failed");
+            else
+            {
+                if (std::strcmp(data.name.c_str(), "sample_ntb") != 0)
+                    result.diagnostics.emplace_back("full-metadata name mismatch");
+                if (data.kind != GLSLCodeModuleKind::VertexInput)
+                    result.diagnostics.emplace_back("full-metadata kind mismatch");
+                if (data.priority != 10)
+                    result.diagnostics.emplace_back("full-metadata priority mismatch");
+                if (data.flags != 0x3u)
+                    result.diagnostics.emplace_back("full-metadata flags mismatch");
+                if (data.semantic_requirements.GetCount() != 2)
+                    result.diagnostics.emplace_back("full-metadata require count mismatch");
+                else
+                {
+                    const auto &normal_req = data.semantic_requirements[0];
+                    if (normal_req.source != GLSLCodeModuleCapabilitySource::GeometryAttribute
+                     || normal_req.semantic != GLSLCodeModuleSemantic::Normal
+                     || normal_req.numeric_class_mask != uint32_t(GLSLCodeModuleNumericClass::Float)
+                     || normal_req.min_component_count != 3
+                     || normal_req.max_component_count != 3)
+                        result.diagnostics.emplace_back("full-metadata require[0] mismatch");
+
+                    const auto &tangent_req = data.semantic_requirements[1];
+                    if (tangent_req.source != GLSLCodeModuleCapabilitySource::GeometryAttribute
+                     || tangent_req.semantic != GLSLCodeModuleSemantic::Tangent
+                     || tangent_req.numeric_class_mask != uint32_t(GLSLCodeModuleNumericClass::Any)
+                     || tangent_req.min_component_count != 0
+                     || tangent_req.max_component_count != 0)
+                        result.diagnostics.emplace_back("full-metadata require[1] mismatch");
+                }
+                if (data.semantic_provides.GetCount() != 2
+                 || data.semantic_provides[0] != GLSLCodeModuleSemantic::Normal
+                 || data.semantic_provides[1] != GLSLCodeModuleSemantic::Tangent)
+                    result.diagnostics.emplace_back("full-metadata provide mismatch");
+                if (data.pending_module_requirements.GetCount() != 1
+                 || std::strcmp(data.pending_module_requirements[0].c_str(), "s2_lift_xy0") != 0)
+                    result.diagnostics.emplace_back("full-metadata uses mismatch");
+            }
+        }
+
+        expect_parse("// @ulre begin\n// @ulre end\n", GLSLCodeModuleParseResult::OK, "minimal");
+        expect_parse("void main() {}\n", GLSLCodeModuleParseResult::Skipped, "no-metadata");
+        expect_parse("// @ulre name x\n// @ulre begin\n// @ulre end\n", GLSLCodeModuleParseResult::MissingBegin, "missing-begin");
+        expect_parse("// @ulre begin\n// @ulre begin\n// @ulre end\n", GLSLCodeModuleParseResult::DuplicateBegin, "duplicate-begin");
+        expect_parse("// @ulre begin\n// @ulre name x\n", GLSLCodeModuleParseResult::MissingEnd, "missing-end");
+        expect_parse("// @ulre begin\n// @ulre nope 1\n// @ulre end\n", GLSLCodeModuleParseResult::UnknownDirective, "unknown-directive");
+        expect_parse("// @ulre begin\n// @ulre name a\n// @ulre name b\n// @ulre end\n", GLSLCodeModuleParseResult::DuplicateDirective, "duplicate-directive");
+        expect_parse("// @ulre begin\n// @ulre kind\n// @ulre end\n", GLSLCodeModuleParseResult::MissingDirectiveArgument, "missing-argument");
+        expect_parse("// @ulre begin\n// @ulre kind NoSuchKind\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidKind, "invalid-kind");
+        expect_parse("// @ulre begin\n// @ulre provide NoSuchSemantic\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidSemantic, "invalid-semantic");
+        expect_parse("// @ulre begin\n// @ulre require BadSource Normal\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidSource, "invalid-source");
+        expect_parse("// @ulre begin\n// @ulre require GeometryAttribute Normal NotAClass\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidNumericClass, "invalid-numclass");
+        expect_parse("// @ulre begin\n// @ulre priority notanumber\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidNumber, "invalid-number");
+
+        // Registry scan of the real ShaderLibrary directory.
+        GLSLCodeModuleRegistry registry;
+        if (!registry.RegisterBuiltinModules())
+            result.diagnostics.emplace_back("RegisterBuiltinModules failed");
+
+        int file_count = 0;
+        int error_count = 0;
+        if (!registry.LoadDirectory(OS_TEXT("E:/ULRE/ShaderLibrary"), &file_count, &error_count))
+            result.diagnostics.emplace_back("LoadDirectory failed to scan directory");
+        else
+        {
+            if (file_count != 54)
+                result.diagnostics.emplace_back("LoadDirectory expected 54 file modules, got "
+                    + std::to_string(file_count));
+            if (error_count != 0)
+                result.diagnostics.emplace_back("LoadDirectory reported "
+                    + std::to_string(error_count) + " errors");
+
+            const int expected_count = 54 + int(GLSLCodeModuleID::RANGE_SIZE);
+            if (registry.GetCount() != expected_count)
+                result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
+                    + std::to_string(registry.GetCount()));
+        }
+
+        const auto *lift = registry.FindByName("s2_lift_xy0");
+        if (!lift)
+            result.diagnostics.emplace_back("s2_lift_xy0 not found by name");
+        else if (lift->kind != GLSLCodeModuleKind::Position
+              || lift->semantic_requirement_count != 1
+              || lift->semantic_requirements[0].semantic != GLSLCodeModuleSemantic::Position
+              || lift->semantic_requirements[0].min_component_count != 2
+              || lift->semantic_requirements[0].max_component_count != 2)
+            result.diagnostics.emplace_back("s2_lift_xy0 capability metadata mismatch");
+
+        const auto *surface_interface = registry.FindByName("surface_interface");
+        if (!surface_interface)
+            result.diagnostics.emplace_back("surface_interface not found by name");
+        else if (surface_interface->kind != GLSLCodeModuleKind::Shared)
+            result.diagnostics.emplace_back("surface_interface kind mismatch");
+
+        const auto *compositor_lit = registry.FindByName("main_forward_lit");
+        if (!compositor_lit)
+            result.diagnostics.emplace_back("main_forward_lit not found by name");
+        else
+        {
+            if (compositor_lit->kind != GLSLCodeModuleKind::FragmentShader)
+                result.diagnostics.emplace_back("main_forward_lit kind mismatch");
+            if (compositor_lit->code_module_requirement_count != 4)
+                result.diagnostics.emplace_back("main_forward_lit uses resolution expected 4 deps, got "
+                    + std::to_string(compositor_lit->code_module_requirement_count));
+        }
+
+        // Re-scan must detect every duplicate name and keep counts stable.
+        int dup_count = 0;
+        int dup_errors = 0;
+        if (!registry.LoadDirectory(OS_TEXT("E:/ULRE/ShaderLibrary"), &dup_count, &dup_errors))
+            result.diagnostics.emplace_back("second LoadDirectory failed");
+        else if (dup_count != 0 || dup_errors != 54)
+            result.diagnostics.emplace_back("second LoadDirectory must report 54 duplicates, got files="
+                + std::to_string(dup_count) + " errors=" + std::to_string(dup_errors));
+
+        const int stable_count = 54 + int(GLSLCodeModuleID::RANGE_SIZE);
+        if (registry.GetCount() != stable_count)
+            result.diagnostics.emplace_back("registry count changed after duplicate re-scan: got "
+                + std::to_string(registry.GetCount()));
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
+    constexpr uint32_t RESOLVER_ANY  = uint32_t(GLSLCodeModuleNumericClass::Any);
+    constexpr uint32_t RESOLVER_FLOAT = uint32_t(GLSLCodeModuleNumericClass::Float);
+    constexpr uint32_t RESOLVER_NORM  = uint32_t(GLSLCodeModuleNumericClass::Normalized);
+    constexpr uint32_t RESOLVER_PACK  = uint32_t(GLSLCodeModuleNumericClass::Packed);
+
+    static std::vector<GLSLCodeModuleGeometryCapability> ResolverBuildCaps(const GeometryVertexFormat &gvf)
+    {
+        std::vector<GLSLCodeModuleGeometryCapability> caps;
+        hgl::ValueArray<GLSLCodeModuleGeometryCapability> temp;
+        if (!GLSLCodeModuleCapabilityResolver::BuildGeometryCapabilities(gvf, temp))
+            return caps;
+        for (int i = 0; i < temp.GetCount(); ++i)
+            caps.push_back(temp[i]);
+        return caps;
+    }
+
+    static GateResult RunCapabilityResolverCase()
+    {
+        GateResult result;
+        result.name = "J.capability-resolver";
+
+        // A synthetic module whose pointers stay stable because the module
+        // object itself is heap-allocated through a unique_ptr.
+        struct SyntheticModule
+        {
+            std::string name;
+            std::string code;
+            std::vector<GLSLCodeModuleSemanticRequirement> requirements;
+            std::vector<GLSLCodeModuleSemantic> provides;
+            GLSLCodeModuleDefinition definition;
+        };
+
+        struct ResolverFixture
+        {
+            GLSLCodeModuleRegistry registry;
+            std::vector<std::unique_ptr<SyntheticModule>> storage;
+            uint16_t next_id = 100;
+
+            ResolverFixture()
+            {
+                if (!registry.RegisterBuiltinModules())
+                    throw std::runtime_error("RegisterBuiltinModules failed");
+            }
+
+            const GLSLCodeModuleDefinition *Add(const char *name,
+                                                const GLSLCodeModuleKind kind,
+                                                const int32_t priority,
+                                                std::vector<GLSLCodeModuleSemanticRequirement> reqs,
+                                                std::vector<GLSLCodeModuleSemantic> provides)
+            {
+                auto module = std::make_unique<SyntheticModule>();
+                module->name = name;
+                module->code = "// synthetic";
+                module->requirements = std::move(reqs);
+                module->provides = std::move(provides);
+
+                GLSLCodeModuleDefinition definition;
+                definition.id = static_cast<GLSLCodeModuleID>(next_id++);
+                definition.name = module->name.c_str();
+                definition.glsl_code = module->code.c_str();
+                definition.kind = kind;
+                definition.priority = priority;
+                definition.semantic_requirements = module->requirements.empty() ? nullptr : module->requirements.data();
+                definition.semantic_requirement_count = uint32_t(module->requirements.size());
+                definition.semantic_provides = module->provides.empty() ? nullptr : module->provides.data();
+                definition.semantic_provide_count = uint32_t(module->provides.size());
+
+                module->definition = definition;
+                const auto *ptr = &module->definition;
+                if (!registry.Register(*ptr))
+                    return nullptr;
+
+                storage.push_back(std::move(module));
+                return ptr;
+            }
+        };
+
+        struct ResolveOutcome
+        {
+            bool ok = false;
+            GLSLCodeModuleResolutionResult result;
+        };
+
+        auto resolve = [](const ResolverFixture &fixture,
+                          const std::vector<GLSLCodeModuleSemanticRequirement> &reqs,
+                          const std::vector<GLSLCodeModuleGeometryCapability> &caps,
+                          const std::vector<GLSLCodeModuleSemantic> &resources,
+                          const std::vector<GLSLCodeModuleSemantic> &options)
+        {
+            GLSLCodeModuleResolutionRequest request;
+            request.requirements = reqs.empty() ? nullptr : reqs.data();
+            request.requirement_count = uint32_t(reqs.size());
+            request.geometry_capabilities = caps.empty() ? nullptr : caps.data();
+            request.geometry_capability_count = uint32_t(caps.size());
+            request.resources = resources.empty() ? nullptr : resources.data();
+            request.resource_count = uint32_t(resources.size());
+            request.options = options.empty() ? nullptr : options.data();
+            request.option_count = uint32_t(options.size());
+
+            const GLSLCodeModuleCapabilityResolver resolver;
+            ResolveOutcome outcome;
+            outcome.ok = resolver.Resolve(fixture.registry, request, outcome.result);
+            return outcome;
+        };
+
+        const std::vector<GLSLCodeModuleSemantic> kNoResources;
+        const std::vector<GLSLCodeModuleSemantic> kNoOptions;
+
+        auto has_selection = [](const GLSLCodeModuleResolutionResult &res, const GLSLCodeModuleDefinition *expected)
+        {
+            for (int i = 0; i < res.selections.GetCount(); ++i)
+            {
+                if (res.selections[i].provider == expected)
+                    return true;
+            }
+            return false;
+        };
+
+        auto rejected_candidate = [](const GLSLCodeModuleResolutionResult &res, const GLSLCodeModuleDefinition *candidate)
+        {
+            for (int i = 0; i < res.diagnostics.GetCount(); ++i)
+            {
+                if (res.diagnostics[i].candidate == candidate)
+                    return true;
+            }
+            return false;
+        };
+
+        auto produced = [](const GLSLCodeModuleSemantic semantic)
+        {
+            GLSLCodeModuleSemanticRequirement requirement;
+            requirement.source = GLSLCodeModuleCapabilitySource::ProducedSemantic;
+            requirement.semantic = semantic;
+            requirement.numeric_class_mask = RESOLVER_ANY;
+            return requirement;
+        };
+
+        auto geometry = [](const GLSLCodeModuleSemantic semantic,
+                           const uint32_t mask = RESOLVER_ANY,
+                           const uint8_t minc = 0,
+                           const uint8_t maxc = 0)
+        {
+            GLSLCodeModuleSemanticRequirement requirement;
+            requirement.source = GLSLCodeModuleCapabilitySource::GeometryAttribute;
+            requirement.semantic = semantic;
+            requirement.numeric_class_mask = mask;
+            requirement.min_component_count = minc;
+            requirement.max_component_count = maxc;
+            return requirement;
+        };
+
+        auto resource = [](const GLSLCodeModuleSemantic semantic)
+        {
+            GLSLCodeModuleSemanticRequirement requirement;
+            requirement.source = GLSLCodeModuleCapabilitySource::Resource;
+            requirement.semantic = semantic;
+            requirement.numeric_class_mask = RESOLVER_ANY;
+            return requirement;
+        };
+
+        auto check = [&result](const bool condition, const std::string &label)
+        {
+            if (!condition)
+                result.diagnostics.push_back(label);
+        };
+
+        // ------------------------------------------------------------------
+        // 1. Full NTB geometry selects the direct NTB provider.
+        {
+            ResolverFixture fixture;
+            const auto *ntb_direct = fixture.Add("ntb_direct", GLSLCodeModuleKind::VertexInput, 100,
+                { geometry(GLSLCodeModuleSemantic::Normal),
+                  geometry(GLSLCodeModuleSemantic::Tangent),
+                  geometry(GLSLCodeModuleSemantic::Binormal) },
+                { GLSLCodeModuleSemantic::Normal, GLSLCodeModuleSemantic::Tangent, GLSLCodeModuleSemantic::Binormal });
+
+            GeometryVertexFormat gvf;
+            gvf.Add(VertexSemantic::Position, VF_V3F);
+            gvf.Add(VertexSemantic::Normal, VF_V3F);
+            gvf.Add(VertexSemantic::Tangent, VF_V3F);
+            gvf.Add(VertexSemantic::Bitangent, VF_V3F);
+
+            const auto outcome = resolve(fixture, { produced(GLSLCodeModuleSemantic::Normal) }, ResolverBuildCaps(gvf), kNoResources, kNoOptions);
+            check(outcome.ok, "J1 direct-ntb: resolution must succeed");
+            check(outcome.result.resolved, "J1 direct-ntb: resolved flag must be set");
+            check(has_selection(outcome.result, ntb_direct), "J1 direct-ntb: expected ntb_direct selected");
+        }
+
+        // ------------------------------------------------------------------
+        // 2. Normal-only geometry selects the normal-only provider; the full
+        //    NTB provider is rejected because Tangent/Binormal are absent.
+        {
+            ResolverFixture fixture;
+            const auto *ntb_direct = fixture.Add("ntb_direct", GLSLCodeModuleKind::VertexInput, 100,
+                { geometry(GLSLCodeModuleSemantic::Normal),
+                  geometry(GLSLCodeModuleSemantic::Tangent),
+                  geometry(GLSLCodeModuleSemantic::Binormal) },
+                { GLSLCodeModuleSemantic::Normal, GLSLCodeModuleSemantic::Tangent, GLSLCodeModuleSemantic::Binormal });
+            const auto *normal_only = fixture.Add("normal_only", GLSLCodeModuleKind::VertexInput, 100,
+                { geometry(GLSLCodeModuleSemantic::Normal, RESOLVER_FLOAT, 3, 3) },
+                { GLSLCodeModuleSemantic::Normal });
+
+            GeometryVertexFormat gvf;
+            gvf.Add(VertexSemantic::Position, VF_V3F);
+            gvf.Add(VertexSemantic::Normal, VF_V3F);
+
+            const auto outcome = resolve(fixture, { produced(GLSLCodeModuleSemantic::Normal) }, ResolverBuildCaps(gvf), kNoResources, kNoOptions);
+            check(outcome.ok, "J2 normal-only: resolution must succeed");
+            check(has_selection(outcome.result, normal_only), "J2 normal-only: expected normal_only selected");
+            check(rejected_candidate(outcome.result, ntb_direct), "J2 normal-only: ntb_direct must be rejected");
+        }
+
+        // ------------------------------------------------------------------
+        // 3. Packed RGB10A2 normal selects the decode provider.
+        {
+            ResolverFixture fixture;
+            fixture.Add("ntb_direct", GLSLCodeModuleKind::VertexInput, 100,
+                { geometry(GLSLCodeModuleSemantic::Normal),
+                  geometry(GLSLCodeModuleSemantic::Tangent),
+                  geometry(GLSLCodeModuleSemantic::Binormal) },
+                { GLSLCodeModuleSemantic::Normal, GLSLCodeModuleSemantic::Tangent, GLSLCodeModuleSemantic::Binormal });
+            const auto *normal_only = fixture.Add("normal_only", GLSLCodeModuleKind::VertexInput, 100,
+                { geometry(GLSLCodeModuleSemantic::Normal, RESOLVER_FLOAT, 3, 3) },
+                { GLSLCodeModuleSemantic::Normal });
+            const auto *decode = fixture.Add("normal_decode_a2rgb10", GLSLCodeModuleKind::Decode, 100,
+                { geometry(GLSLCodeModuleSemantic::Normal, RESOLVER_NORM | RESOLVER_PACK) },
+                { GLSLCodeModuleSemantic::Normal });
+
+            GeometryVertexFormat gvf;
+            gvf.Add(VertexSemantic::Position, VF_V3F);
+            // Packed formats have no VF_ macro; vec_size must be explicit.
+            gvf.Add(VertexSemantic::Normal, PF_A2RGB10UN, 4, 0);
+
+            const auto outcome = resolve(fixture, { produced(GLSLCodeModuleSemantic::Normal) }, ResolverBuildCaps(gvf), kNoResources, kNoOptions);
+            check(outcome.ok, "J3 packed-normal: resolution must succeed");
+            check(has_selection(outcome.result, decode), "J3 packed-normal: expected decode provider selected");
+            check(rejected_candidate(outcome.result, normal_only), "J3 packed-normal: float provider must be rejected");
+        }
+
+        // ------------------------------------------------------------------
+        // 4. Position-derived sky NTB (geometry has only Position).
+        {
+            ResolverFixture fixture;
+            const auto *ntb_from_position = fixture.Add("ntb_from_position", GLSLCodeModuleKind::Basis, 50,
+                { geometry(GLSLCodeModuleSemantic::Position, RESOLVER_FLOAT, 3, 3) },
+                { GLSLCodeModuleSemantic::Normal, GLSLCodeModuleSemantic::Tangent, GLSLCodeModuleSemantic::Binormal });
+            fixture.Add("ntb_direct", GLSLCodeModuleKind::VertexInput, 100,
+                { geometry(GLSLCodeModuleSemantic::Normal),
+                  geometry(GLSLCodeModuleSemantic::Tangent),
+                  geometry(GLSLCodeModuleSemantic::Binormal) },
+                { GLSLCodeModuleSemantic::Normal, GLSLCodeModuleSemantic::Tangent, GLSLCodeModuleSemantic::Binormal });
+
+            GeometryVertexFormat gvf;
+            gvf.Add(VertexSemantic::Position, VF_V3F);
+
+            const auto outcome = resolve(fixture, { produced(GLSLCodeModuleSemantic::Normal) }, ResolverBuildCaps(gvf), kNoResources, kNoOptions);
+            check(outcome.ok, "J4 sky-ntb: resolution must succeed");
+            check(has_selection(outcome.result, ntb_from_position), "J4 sky-ntb: expected position-derived provider selected");
+        }
+
+        // ------------------------------------------------------------------
+        // 5. Heightmap terrain NTB: with the HeightMap resource the dedicated
+        //    provider wins over the plain position-derived fallback.
+        {
+            ResolverFixture fixture;
+            fixture.Add("ntb_from_position", GLSLCodeModuleKind::Basis, 50,
+                { geometry(GLSLCodeModuleSemantic::Position, RESOLVER_FLOAT, 3, 3) },
+                { GLSLCodeModuleSemantic::Normal, GLSLCodeModuleSemantic::Tangent, GLSLCodeModuleSemantic::Binormal });
+            const auto *ntb_heightmap = fixture.Add("ntb_from_heightmap", GLSLCodeModuleKind::Basis, 60,
+                { geometry(GLSLCodeModuleSemantic::Position, RESOLVER_FLOAT, 3, 3),
+                  geometry(GLSLCodeModuleSemantic::UV0, RESOLVER_FLOAT, 2, 2),
+                  resource(GLSLCodeModuleSemantic::HeightMap) },
+                { GLSLCodeModuleSemantic::Normal, GLSLCodeModuleSemantic::Tangent, GLSLCodeModuleSemantic::Binormal });
+
+            GeometryVertexFormat gvf;
+            gvf.Add(VertexSemantic::Position, VF_V3F);
+            gvf.Add(VertexSemantic::TexCoord, VF_V2F);
+
+            const auto outcome = resolve(
+                fixture,
+                { produced(GLSLCodeModuleSemantic::Normal) },
+                ResolverBuildCaps(gvf),
+                { GLSLCodeModuleSemantic::HeightMap },
+                kNoOptions);
+            check(outcome.ok, "J5 terrain-ntb: resolution must succeed");
+            check(has_selection(outcome.result, ntb_heightmap), "J5 terrain-ntb: expected heightmap provider selected");
+        }
+
+        // ------------------------------------------------------------------
+        // 6. Heightmap provider without the HeightMap resource must fail.
+        {
+            ResolverFixture fixture;
+            fixture.Add("ntb_heightmap", GLSLCodeModuleKind::Basis, 60,
+                { geometry(GLSLCodeModuleSemantic::Position, RESOLVER_FLOAT, 3, 3),
+                  geometry(GLSLCodeModuleSemantic::UV0, RESOLVER_FLOAT, 2, 2),
+                  resource(GLSLCodeModuleSemantic::HeightMap) },
+                { GLSLCodeModuleSemantic::Normal, GLSLCodeModuleSemantic::Tangent, GLSLCodeModuleSemantic::Binormal });
+
+            GeometryVertexFormat gvf;
+            gvf.Add(VertexSemantic::Position, VF_V3F);
+            gvf.Add(VertexSemantic::TexCoord, VF_V2F);
+
+            const auto outcome = resolve(
+                fixture,
+                { produced(GLSLCodeModuleSemantic::Normal) },
+                ResolverBuildCaps(gvf),
+                kNoResources,
+                kNoOptions);
+            check(!outcome.ok, "J6 missing-resource: resolution must fail");
+            check(!outcome.result.resolved, "J6 missing-resource: resolved flag must be clear");
+            check(outcome.result.diagnostics.GetCount() > 0, "J6 missing-resource: diagnostics must be present");
+        }
+
+        // ------------------------------------------------------------------
+        // 7. Octahedral RG8SN normal (2-component, normalized).
+        {
+            ResolverFixture fixture;
+            const auto *octa = fixture.Add("normal_decode_octa", GLSLCodeModuleKind::Decode, 100,
+                { geometry(GLSLCodeModuleSemantic::Normal, RESOLVER_NORM, 2, 2) },
+                { GLSLCodeModuleSemantic::Normal });
+            fixture.Add("normal_only", GLSLCodeModuleKind::VertexInput, 100,
+                { geometry(GLSLCodeModuleSemantic::Normal, RESOLVER_FLOAT, 3, 3) },
+                { GLSLCodeModuleSemantic::Normal });
+
+            GeometryVertexFormat gvf;
+            gvf.Add(VertexSemantic::Position, VF_V3F);
+            gvf.Add(VertexSemantic::Normal, VF_V2SN8);
+
+            const auto outcome = resolve(fixture, { produced(GLSLCodeModuleSemantic::Normal) }, ResolverBuildCaps(gvf), kNoResources, kNoOptions);
+            check(outcome.ok, "J7 octa-normal: resolution must succeed");
+            check(has_selection(outcome.result, octa), "J7 octa-normal: expected octa decoder selected");
+        }
+
+        // ------------------------------------------------------------------
+        // 8. Priority ordering: higher priority provider wins.
+        {
+            ResolverFixture fixture;
+            const auto *low = fixture.Add("normal_low", GLSLCodeModuleKind::VertexInput, 0,
+                { geometry(GLSLCodeModuleSemantic::Normal, RESOLVER_FLOAT, 3, 3) },
+                { GLSLCodeModuleSemantic::Normal });
+            const auto *high = fixture.Add("normal_high", GLSLCodeModuleKind::VertexInput, 100,
+                { geometry(GLSLCodeModuleSemantic::Normal, RESOLVER_FLOAT, 3, 3) },
+                { GLSLCodeModuleSemantic::Normal });
+
+            GeometryVertexFormat gvf;
+            gvf.Add(VertexSemantic::Position, VF_V3F);
+            gvf.Add(VertexSemantic::Normal, VF_V3F);
+
+            const auto outcome = resolve(fixture, { produced(GLSLCodeModuleSemantic::Normal) }, ResolverBuildCaps(gvf), kNoResources, kNoOptions);
+            check(outcome.ok, "J8 priority: resolution must succeed");
+            check(has_selection(outcome.result, high), "J8 priority: expected high-priority provider selected");
+            check(!has_selection(outcome.result, low), "J8 priority: low-priority provider must not be selected");
+        }
+
+        // ------------------------------------------------------------------
+        // 9. Deterministic tie-break: equal priority picks the lower module ID.
+        {
+            ResolverFixture fixture;
+            const auto *a = fixture.Add("normal_a", GLSLCodeModuleKind::VertexInput, 0,
+                { geometry(GLSLCodeModuleSemantic::Normal, RESOLVER_FLOAT, 3, 3) },
+                { GLSLCodeModuleSemantic::Normal });
+            const auto *b = fixture.Add("normal_b", GLSLCodeModuleKind::VertexInput, 0,
+                { geometry(GLSLCodeModuleSemantic::Normal, RESOLVER_FLOAT, 3, 3) },
+                { GLSLCodeModuleSemantic::Normal });
+
+            GeometryVertexFormat gvf;
+            gvf.Add(VertexSemantic::Position, VF_V3F);
+            gvf.Add(VertexSemantic::Normal, VF_V3F);
+
+            const auto outcome = resolve(fixture, { produced(GLSLCodeModuleSemantic::Normal) }, ResolverBuildCaps(gvf), kNoResources, kNoOptions);
+            check(outcome.ok, "J9 tie-break: resolution must succeed");
+            check(has_selection(outcome.result, a), "J9 tie-break: expected first-registered (lower ID) provider selected");
+            check(!has_selection(outcome.result, b), "J9 tie-break: second provider must not be selected");
+        }
+
+        // ------------------------------------------------------------------
+        // 10. RG16F/RG32F normal geometries resolve to the same provider.
+        {
+            ResolverFixture fixture;
+            const auto *normal_only = fixture.Add("normal_only", GLSLCodeModuleKind::VertexInput, 100,
+                { geometry(GLSLCodeModuleSemantic::Normal, RESOLVER_FLOAT, 3, 3) },
+                { GLSLCodeModuleSemantic::Normal });
+
+            GeometryVertexFormat gvf32;
+            gvf32.Add(VertexSemantic::Position, VF_V3F);
+            gvf32.Add(VertexSemantic::Normal, VF_V3F);
+
+            GeometryVertexFormat gvf16;
+            gvf16.Add(VertexSemantic::Position, VF_V3F);
+            gvf16.Add(VertexSemantic::Normal, VF_V3HF);
+
+            const auto outcome32 = resolve(fixture, { produced(GLSLCodeModuleSemantic::Normal) }, ResolverBuildCaps(gvf32), kNoResources, kNoOptions);
+            const auto outcome16 = resolve(fixture, { produced(GLSLCodeModuleSemantic::Normal) }, ResolverBuildCaps(gvf16), kNoResources, kNoOptions);
+            check(outcome32.ok && outcome16.ok, "J10 rg16f-rg32f: both resolutions must succeed");
+            check(has_selection(outcome32.result, normal_only) && has_selection(outcome16.result, normal_only),
+                  "J10 rg16f-rg32f: both formats must select the same provider");
+        }
+
+        // ------------------------------------------------------------------
+        // 11. Provider composition: a WorldNormal provider depends on the
+        //     produced Normal semantic; dependencies commit first.
+        {
+            ResolverFixture fixture;
+            const auto *ntb_from_position = fixture.Add("ntb_from_position", GLSLCodeModuleKind::Basis, 50,
+                { geometry(GLSLCodeModuleSemantic::Position, RESOLVER_FLOAT, 3, 3) },
+                { GLSLCodeModuleSemantic::Normal, GLSLCodeModuleSemantic::Tangent, GLSLCodeModuleSemantic::Binormal });
+            const auto *world_normal = fixture.Add("world_normal_from_normal", GLSLCodeModuleKind::Basis, 50,
+                { produced(GLSLCodeModuleSemantic::Normal) },
+                { GLSLCodeModuleSemantic::WorldNormal });
+
+            GeometryVertexFormat gvf;
+            gvf.Add(VertexSemantic::Position, VF_V3F);
+
+            const auto outcome = resolve(fixture, { produced(GLSLCodeModuleSemantic::WorldNormal) }, ResolverBuildCaps(gvf), kNoResources, kNoOptions);
+            check(outcome.ok, "J11 composition: resolution must succeed");
+            check(has_selection(outcome.result, ntb_from_position), "J11 composition: NTB provider must be selected first");
+            check(has_selection(outcome.result, world_normal), "J11 composition: world-normal provider must be selected");
+
+            if (outcome.result.selections.GetCount() == 2)
+            {
+                check(outcome.result.selections[0].provider == ntb_from_position,
+                      "J11 composition: dependency must appear before its dependent");
+            }
+            else
+            {
+                result.diagnostics.push_back("J11 composition: expected exactly two selections");
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // 12. YUV color: provider needs ColorY + ColorUV attributes; direct
+        //     RGBA color provider needs only Color. Exercise both branches
+        //     with explicit capability arrays (the geometry->capability mapper
+        //     cannot yet express YUV channels through VertexSemantic).
+        {
+            ResolverFixture fixture;
+            const auto *color_direct = fixture.Add("color_direct", GLSLCodeModuleKind::VertexInput, 100,
+                { geometry(GLSLCodeModuleSemantic::Color) },
+                { GLSLCodeModuleSemantic::Color });
+            const auto *color_yuv = fixture.Add("color_decode_yuv", GLSLCodeModuleKind::Decode, 100,
+                { geometry(GLSLCodeModuleSemantic::ColorY),
+                  geometry(GLSLCodeModuleSemantic::ColorUV) },
+                { GLSLCodeModuleSemantic::Color });
+
+            std::vector<GLSLCodeModuleGeometryCapability> yuv_caps;
+            GLSLCodeModuleGeometryCapability cap_y;
+            cap_y.semantic = GLSLCodeModuleSemantic::ColorY;
+            cap_y.numeric_class_mask = RESOLVER_FLOAT;
+            cap_y.component_count = 1;
+            yuv_caps.push_back(cap_y);
+            GLSLCodeModuleGeometryCapability cap_uv;
+            cap_uv.semantic = GLSLCodeModuleSemantic::ColorUV;
+            cap_uv.numeric_class_mask = RESOLVER_NORM;
+            cap_uv.component_count = 2;
+            yuv_caps.push_back(cap_uv);
+
+            const auto outcome_yuv = resolve(fixture, { produced(GLSLCodeModuleSemantic::Color) }, yuv_caps, kNoResources, kNoOptions);
+            check(outcome_yuv.ok, "J12 yuv: resolution must succeed");
+            check(has_selection(outcome_yuv.result, color_yuv), "J12 yuv: expected YUV decoder selected");
+            check(rejected_candidate(outcome_yuv.result, color_direct), "J12 yuv: direct RGBA provider must be rejected");
+
+            std::vector<GLSLCodeModuleGeometryCapability> rgba_caps;
+            GLSLCodeModuleGeometryCapability cap_color;
+            cap_color.semantic = GLSLCodeModuleSemantic::Color;
+            cap_color.numeric_class_mask = RESOLVER_NORM;
+            cap_color.component_count = 4;
+            rgba_caps.push_back(cap_color);
+
+            const auto outcome_rgba = resolve(fixture, { produced(GLSLCodeModuleSemantic::Color) }, rgba_caps, kNoResources, kNoOptions);
+            check(outcome_rgba.ok, "J12 rgba: resolution must succeed");
+            check(has_selection(outcome_rgba.result, color_direct), "J12 rgba: expected direct color provider selected");
+            check(!has_selection(outcome_rgba.result, color_yuv), "J12 rgba: YUV decoder must not be selected");
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
 }
 
 int main()
@@ -373,6 +1023,8 @@ int main()
     results.push_back(RunFallbackInferenceCase());
     results.push_back(RunGLSLCodeModuleRegistryCase());
     results.push_back(RunShaderResourceManifestCase());
+    results.push_back(RunGLSLCodeModuleFileCase());
+    results.push_back(RunCapabilityResolverCase());
 
     bool all_passed = true;
     for (const auto &result : results)

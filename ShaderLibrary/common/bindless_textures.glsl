@@ -1,3 +1,9 @@
+// @ulre begin
+// @ulre name bindless_textures
+// @ulre kind Utility
+// @ulre priority 0
+// @ulre uses descriptor_macros
+// @ulre end
 // bindless_textures.glsl — 全局 Bindless 纹理数组
 //
 // 使用前须确保 descriptor_macros.glsl 已被 #include（提供 BINDLESS_SET）。

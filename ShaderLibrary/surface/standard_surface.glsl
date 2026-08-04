@@ -1,3 +1,15 @@
+// @ulre begin
+// @ulre name standard_surface
+// @ulre kind Surface
+// @ulre priority 0
+// @ulre require ProducedSemantic WorldPosition
+// @ulre require ProducedSemantic WorldNormal
+// @ulre require ProducedSemantic UV0
+// @ulre uses skylight_simple
+// @ulre uses bindless_textures
+// @ulre uses descriptor_macros
+// @ulre uses surface_interface
+// @ulre end
 // standard_surface.glsl — Standard Lit Surface
 // 固定使用贴图 + 法线 + MR 的统一 PBR 路径。
 

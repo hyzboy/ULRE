@@ -1,3 +1,11 @@
+// @ulre begin
+// @ulre name unlit_color3d_surface
+// @ulre kind Surface
+// @ulre priority 0
+// @ulre require ProducedSemantic WorldNormal
+// @ulre require Resource MaterialData
+// @ulre uses surface_interface
+// @ulre end
 // Unlit Color3D Surface Function — 最简纯色材质
 // 不使用任何纹理，不参与光照计算
 // MI_Unlit: 仅包含 vec4 color (16 bytes)

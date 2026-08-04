@@ -1,3 +1,11 @@
+// @ulre begin
+// @ulre name unlit_vertexcolor_surface
+// @ulre kind Surface
+// @ulre priority 0
+// @ulre require ProducedSemantic WorldNormal
+// @ulre require ProducedSemantic Color
+// @ulre uses surface_interface
+// @ulre end
 // Unlit VertexColor Surface Function — 顶点色直通
 // 无 MI，baseColor 直接取自 SurfaceInput.vertexColor
 

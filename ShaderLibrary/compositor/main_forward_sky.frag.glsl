@@ -1,3 +1,12 @@
+// @ulre begin
+// @ulre name main_forward_sky
+// @ulre kind FragmentShader
+// @ulre priority 0
+// @ulre require Resource SkyLight
+// @ulre uses sky_info
+// @ulre uses surface_interface
+// @ulre uses descriptor_macros
+// @ulre end
 #version 450
 
 // === Compositor Template: Forward Sky FS ===

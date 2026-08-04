@@ -1,3 +1,9 @@
+// @ulre begin
+// @ulre name camera_info
+// @ulre kind Utility
+// @ulre priority 0
+// @ulre provide Camera
+// @ulre end
 #ifndef HGL_UBO_CAMERA_INFO_GLSL
 #define HGL_UBO_CAMERA_INFO_GLSL
 

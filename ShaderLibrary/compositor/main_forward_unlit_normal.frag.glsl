@@ -1,3 +1,14 @@
+// @ulre begin
+// @ulre name main_forward_unlit_normal
+// @ulre kind FragmentShader
+// @ulre priority 0
+// @ulre require Resource Camera
+// @ulre require ProducedSemantic WorldPosition
+// @ulre require ProducedSemantic WorldNormal
+// @ulre require ProducedSemantic MaterialData
+// @ulre uses camera_info
+// @ulre uses descriptor_macros
+// @ulre end
 #version 450
 
 // === Compositor Template: Forward Unlit FS (with Normal + Camera) ===

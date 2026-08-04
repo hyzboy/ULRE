@@ -1,3 +1,9 @@
+// @ulre begin
+// @ulre name s2_lift_x0y
+// @ulre kind Position
+// @ulre priority 0
+// @ulre require GeometryAttribute Position Float 2 2
+// @ulre end
 // Stage 2: Lift XY → (X, 0, Y, 1)
 // 2D position in the ground plane (Z-up world), Y becomes world-Z height.
 // Requires: stage-1 declares `layout(location=0) in vec2 Position`.

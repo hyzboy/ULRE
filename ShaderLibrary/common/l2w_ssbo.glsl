@@ -1,3 +1,8 @@
+// @ulre begin
+// @ulre name l2w_ssbo
+// @ulre kind Utility
+// @ulre priority 0
+// @ulre end
 // l2w_ssbo.glsl — LocalToWorld 变换 SSBO 统一声明
 //
 // 需要 L2W_SET / L2W_BINDING 宏（descriptor_macros.glsl 提供默认值）

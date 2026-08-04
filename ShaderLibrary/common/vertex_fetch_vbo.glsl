@@ -1,3 +1,11 @@
+// @ulre begin
+// @ulre name vertex_fetch_vbo
+// @ulre kind VertexInput
+// @ulre priority 0
+// @ulre require GeometryAttribute Position Float 3 3
+// @ulre require GeometryAttribute Normal Float 3 3
+// @ulre require GeometryAttribute UV0 Float 2 2
+// @ulre end
 // VBO 顶点获取模块 — 使用传统 vertex attribute
 // 注意：layout(location=N) 由 Compositor VS 声明，此文件仅提供与 SSBO 路径一致的函数别名
 

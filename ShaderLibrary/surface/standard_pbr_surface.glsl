@@ -1,3 +1,13 @@
+// @ulre begin
+// @ulre name standard_pbr_surface
+// @ulre kind Surface
+// @ulre priority 0
+// @ulre require ProducedSemantic WorldPosition
+// @ulre require ProducedSemantic WorldNormal
+// @ulre require ProducedSemantic UV0
+// @ulre uses skylight_simple
+// @ulre uses surface_interface
+// @ulre end
 // standard_pbr_surface.glsl — Standard PBR surface for CMCore StandardPBRArray variant.
 //
 // CMCore FS compositor context provides before this include:

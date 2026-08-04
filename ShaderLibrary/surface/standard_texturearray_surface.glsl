@@ -1,3 +1,14 @@
+// @ulre begin
+// @ulre name standard_texturearray_surface
+// @ulre kind Surface
+// @ulre priority 0
+// @ulre require ProducedSemantic WorldPosition
+// @ulre require ProducedSemantic WorldNormal
+// @ulre require ProducedSemantic UV0
+// @ulre uses skylight_simple
+// @ulre uses bindless_textures
+// @ulre uses surface_interface
+// @ulre end
 // standard_texturearray_surface.glsl — Standard Lit Surface with Texture2DArray sampling
 // S6: Texture sampling migrated to bindless (bindless_tex2darray[], binding=1 on Set 4).
 // Texture semantic declarations remain in the material contract for recipe extraction,

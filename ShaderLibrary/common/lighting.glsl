@@ -1,3 +1,9 @@
+// @ulre begin
+// @ulre name lighting
+// @ulre kind Utility
+// @ulre priority 0
+// @ulre uses surface_interface
+// @ulre end
 // Lighting — 统一光照计算 (EvalLighting 供 main_forward_opaque.frag.glsl 路径使用)
 
 #include "common/surface_interface.glsl"

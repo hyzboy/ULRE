@@ -1,3 +1,11 @@
+// @ulre begin
+// @ulre name gizmo3d_surface
+// @ulre kind Surface
+// @ulre priority 0
+// @ulre require ProducedSemantic WorldNormal
+// @ulre require Resource MaterialData
+// @ulre uses surface_interface
+// @ulre end
 // Gizmo3D Surface Function — 调试 Gizmo 材质
 // MI_Gizmo: vec4 Color (16 bytes)
 // 自带简易 Blinn-Phong 光照（硬编码太阳方向）

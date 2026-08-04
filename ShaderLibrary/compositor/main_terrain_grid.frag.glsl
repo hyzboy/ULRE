@@ -1,3 +1,13 @@
+// @ulre begin
+// @ulre name main_terrain_grid
+// @ulre kind FragmentShader
+// @ulre priority 0
+// @ulre require Resource Camera
+// @ulre require ProducedSemantic WorldNormal
+// @ulre uses surface_interface
+// @ulre uses camera_info
+// @ulre uses descriptor_macros
+// @ulre end
 #version 450
 
 // === Compositor Template: Terrain Grid FS ===

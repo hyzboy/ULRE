@@ -1,3 +1,11 @@
+// @ulre begin
+// @ulre name unlit_luminance_surface
+// @ulre kind Surface
+// @ulre priority 0
+// @ulre require ProducedSemantic WorldNormal
+// @ulre require ProducedSemantic Luminance
+// @ulre uses surface_interface
+// @ulre end
 // Unlit Luminance Surface Function — 顶点亮度 × MI 颜色
 // MI_Luminance: vec4 Color (16 bytes)
 // baseColor = MI.Color.rgb × luminance，alpha = MI.Color.a

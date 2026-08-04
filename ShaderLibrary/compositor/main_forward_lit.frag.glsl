@@ -1,3 +1,18 @@
+// @ulre begin
+// @ulre name main_forward_lit
+// @ulre kind FragmentShader
+// @ulre priority 0
+// @ulre require Resource Camera
+// @ulre require Resource SkyLight
+// @ulre require ProducedSemantic WorldPosition
+// @ulre require ProducedSemantic WorldNormal
+// @ulre require ProducedSemantic UV0
+// @ulre require ProducedSemantic MaterialData
+// @ulre uses surface_interface
+// @ulre uses camera_info
+// @ulre uses sky_info
+// @ulre uses descriptor_macros
+// @ulre end
 #version 450
 
 // === Compositor Template: Forward Lit FS ===

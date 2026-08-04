@@ -1,3 +1,8 @@
+// @ulre begin
+// @ulre name descriptor_macros
+// @ulre kind Utility
+// @ulre priority 0
+// @ulre end
 // descriptor_macros.glsl — 标准描述符集/绑定宏定义
 //
 // 默认值对应 3D 标准布局（Scene=0, Transform=1, Material=2, VertexData=3）。

@@ -1,3 +1,8 @@
+// @ulre begin
+// @ulre name orient_world
+// @ulre kind Utility
+// @ulre priority 0
+// @ulre end
 // Stage 3 helper: orient_world — provides GetL2W() for standard world transform.
 // Requires (already injected by CompileCompositorMaterial): L2W_SSBO + l2w_index_rows + ResolveTransformID
 

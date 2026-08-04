@@ -1,3 +1,10 @@
+// @ulre begin
+// @ulre name main_forward_unlit_luminance
+// @ulre kind FragmentShader
+// @ulre priority 0
+// @ulre require ProducedSemantic Luminance
+// @ulre require ProducedSemantic MaterialData
+// @ulre end
 #version 450
 
 // === Compositor Template: Forward Unlit FS (Luminance) ===

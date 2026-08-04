@@ -1,3 +1,12 @@
+// @ulre begin
+// @ulre name s3_camera_facing_fixed_pixels
+// @ulre kind Transform
+// @ulre priority 0
+// @ulre require Resource Camera
+// @ulre require Resource Viewport
+// @ulre uses orient_world
+// @ulre uses scale_fixed_pixels
+// @ulre end
 // Stage 3: Camera-Facing Billboard (Fixed Pixel Size) — billboard at fixed screen size.
 // Object center transforms to clip space; then local offset is added in NDC/pixel space.
 // Requires: camera UBO, viewport UBO, l2w SSBO,

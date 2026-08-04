@@ -1,3 +1,9 @@
+// @ulre begin
+// @ulre name sky_info
+// @ulre kind Utility
+// @ulre priority 0
+// @ulre provide SkyLight
+// @ulre end
 #ifndef HGL_UBO_SKY_INFO_GLSL
 #define HGL_UBO_SKY_INFO_GLSL
 

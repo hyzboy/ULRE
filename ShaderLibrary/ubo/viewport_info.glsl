@@ -1,3 +1,9 @@
+// @ulre begin
+// @ulre name viewport_info
+// @ulre kind Utility
+// @ulre priority 0
+// @ulre provide Viewport
+// @ulre end
 #ifndef HGL_UBO_VIEWPORT_INFO_GLSL
 #define HGL_UBO_VIEWPORT_INFO_GLSL
 

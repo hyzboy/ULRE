@@ -1,3 +1,8 @@
+// @ulre begin
+// @ulre name vertex_fetch_ssbo
+// @ulre kind VertexInput
+// @ulre priority 0
+// @ulre end
 // SSBO 顶点获取模块
 #include "common/descriptor_macros.glsl"
 
