@@ -304,11 +304,13 @@ namespace
         config.geometry_vertex_format = request.geometry_vertex_format;
         config.material_definition = &definition;
         config.resource_manifest = manifest.IsValid() ? &manifest : nullptr;
-        if (request.enable_resolved_vertex_abi)
+        config.artifact_store = request.shader_artifact_store;
+        if (request.shader_artifact_store)
         {
-            resolved_program_link.vertex_stage =
-                definition.vertex_stage.BuildKeyWithProviderGraphHash(
-                    resolved_provider_graph_hash);
+            resolved_program_link.vertex_stage = request.enable_resolved_vertex_abi
+                ? definition.vertex_stage.BuildKeyWithProviderGraphHash(
+                    resolved_provider_graph_hash)
+                : definition.vertex_stage.BuildKey();
             resolved_program_link.fragment_stage = definition.fragment_stage.BuildKey();
             resolved_program_link.resource_layout_hash = manifest.stable_hash;
             resolved_program_link.vertex_input_hash =

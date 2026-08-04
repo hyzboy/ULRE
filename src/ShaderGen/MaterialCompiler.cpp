@@ -218,6 +218,9 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     ShaderProgramBuildSpec *mci = new ShaderProgramBuildSpec(primitive_type, shader_stage_bits, with_local_to_world);
     if (profile)
         mci->SetDevice(profile);
+    if (config.program_link)
+        mci->SetProgramLink(*config.program_link);
+    mci->SetArtifactStore(config.artifact_store);
 
     auto FailAfterMci = [&](const char *reason) -> ShaderProgramBuildSpec *
     {
@@ -743,9 +746,36 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     // Step 7: Compile directly → SPV
     // ─────────────────────────────────────────────────────────────
 
-    if (!mci->CreateShaderDirect())
+    bool cache_hit = false;
+    if (config.artifact_store && mci->HasProgramLink())
+    {
+        const auto &link = mci->GetProgramLink();
+        ValueArray<hgl::uint8> cached_vertex;
+        ValueArray<hgl::uint8> cached_fragment;
+        cache_hit = config.artifact_store->LoadStageSPV(
+                        link.vertex_stage, cached_vertex)
+                 && config.artifact_store->LoadStageSPV(
+                        link.fragment_stage, cached_fragment);
+    }
+
+    if (!cache_hit && !mci->CreateShaderDirect())
     {
         return FailAfterMci("CreateShaderDirect() failed (check GLSLCompiler log)");
+    }
+
+    if (!cache_hit && config.artifact_store && mci->HasProgramLink())
+    {
+        const auto &link = mci->GetProgramLink();
+        const ShaderCreateInfo *vertex = mci->GetStageShader(ShaderStage::Vertex);
+        const ShaderCreateInfo *fragment = mci->GetStageShader(ShaderStage::Fragment);
+        if (!vertex || !fragment
+         || !config.artifact_store->SaveStageSPV(
+                link.vertex_stage, vertex->GetSPVData(), vertex->GetSPVSize())
+         || !config.artifact_store->SaveStageSPV(
+                link.fragment_stage, fragment->GetSPVData(), fragment->GetSPVSize()))
+        {
+            return FailAfterMci("failed to persist compiled stage SPV");
+        }
     }
 
     return mci;

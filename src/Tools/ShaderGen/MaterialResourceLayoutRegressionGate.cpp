@@ -868,7 +868,17 @@ namespace
             {
                 result.diagnostics.emplace_back("stage SPV cache round-trip failed");
             }
+
+            ShaderStageKey wrong_key = stage_key;
+            wrong_key.glsl_module_graph_hash ^= 1ull;
+            if (store.LoadStageSPV(wrong_key, loaded))
+                result.diagnostics.emplace_back("cache must reject a different stage key");
         }
+
+        ShaderArtifactStore read_only_store(
+            OS_TEXT("E:/ULRE/build"), ShaderCacheMode::ReadOnly);
+        if (read_only_store.SaveStageSPV(stage_key, payload, sizeof(payload)))
+            result.diagnostics.emplace_back("read-only cache must reject writes");
 
         result.passed = result.diagnostics.empty();
         return result;

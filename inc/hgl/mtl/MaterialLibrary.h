@@ -24,6 +24,7 @@ namespace hgl::graph
 namespace hgl::graph::mtl{
 
 class ShaderProgramBuildSpec;
+class ShaderArtifactStore;
 
 // BuiltinMaterialCreatorID：内部创建派发键，与 M_* 创建函数一一对应。
 // 作者层不直接使用此 enum；通过 mtl_def_id 字符串主键识别材质。
@@ -59,6 +60,7 @@ struct MaterialDefinitionBuildRequest
     MaterialRecipe recipe;
     PrimitiveType primitive_type = PrimitiveType::Triangles;
     const GeometryVertexFormat *geometry_vertex_format = nullptr;
+    ShaderArtifactStore *shader_artifact_store = nullptr;
 
     // Phase 4.4 opt-in: only explicit callers with a loaded registry activate
     // resolver-derived VS declarations and vertex entries.

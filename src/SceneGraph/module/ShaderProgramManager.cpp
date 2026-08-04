@@ -13,6 +13,7 @@
 #include<hgl/graph/module/ShaderProgramFinalizeFlowAdapter.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/shadergen/ShaderProgramBuildSpec.h>
+#include<hgl/shadergen/ShaderArtifactStore.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/object/ObjectTracker.h>
@@ -62,6 +63,7 @@ namespace
     bool BuildShaderModulesFromCreateInfoMap(ShaderProgramManager *manager,
                                              const AnsiString &mtl_name,
                                              const ShaderCreateInfoMap &sci_map,
+                                             const mtl::ShaderProgramBuildSpec *build_spec,
                                              ShaderModuleMap *shader_maps)
     {
         if (!manager || !shader_maps)
@@ -77,7 +79,32 @@ namespace
             if (!sci_ptr)
                 return false;
 
-            const ShaderModule *module = manager->CreateShaderModule(mtl_name, sci_ptr);
+            const ShaderModule *module = nullptr;
+            mtl::ShaderArtifactStore *artifact_store =
+                build_spec ? build_spec->GetArtifactStore() : nullptr;
+            const mtl::ShaderStageKey *cache_key = nullptr;
+            if (build_spec && build_spec->HasProgramLink())
+            {
+                const auto &link = build_spec->GetProgramLink();
+                cache_key = stage == ShaderStage::Vertex
+                    ? &link.vertex_stage : stage == ShaderStage::Fragment
+                        ? &link.fragment_stage : nullptr;
+            }
+
+            if (artifact_store && cache_key)
+            {
+                hgl::ValueArray<hgl::uint8> cached_spv;
+                if (artifact_store->LoadStageSPV(*cache_key, cached_spv))
+                {
+                    module = manager->CreateShaderModuleFromSPV(
+                        *cache_key,
+                        reinterpret_cast<const uint32_t *>(cached_spv.GetData()),
+                        static_cast<size_t>(cached_spv.GetCount()));
+                }
+            }
+
+            if (!module)
+                module = manager->CreateShaderModule(mtl_name, sci_ptr);
             if (!module)
                 return false;
 
@@ -313,6 +340,7 @@ bool ShaderProgramManager::BuildRuntimeShaderProgramState(ShaderProgram *mtl,
     if(!BuildShaderModulesFromCreateInfoMap(this,
                                             mtl_name,
                                             sci_map,
+                                            mci,
                                             mtl->shader_maps))
     {
         return false;

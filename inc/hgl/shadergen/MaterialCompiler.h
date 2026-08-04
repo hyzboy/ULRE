@@ -14,6 +14,7 @@
 #include<hgl/shadergen/contract/ShaderGenContract.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/glsl/ShaderResourceManifest.h>
+#include<hgl/shadergen/ShaderArtifactStore.h>
 #include <string>
 #include <vector>
 
@@ -45,6 +46,7 @@ struct CompositorMaterialBuildConfig
     // validates the declared VS/FS interface before compiling the local SPV.
     const ShaderProgramLinkSpec *program_link = nullptr;
     const ShaderResourceManifest *resource_manifest = nullptr;
+    ShaderArtifactStore *artifact_store = nullptr;
 };
 
 class ShaderProgramBuildSpec;

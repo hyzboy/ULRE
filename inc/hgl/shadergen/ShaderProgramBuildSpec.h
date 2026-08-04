@@ -3,6 +3,7 @@
 #include<hgl/shadergen/MaterialDescriptorInfo.h>
 #include<hgl/mtl/MaterialResourceLayout.h>
 #include<hgl/shadergen/ShaderCreateInfoMap.h>
+#include<hgl/shadergen/ShaderProgramLinkSpec.h>
 #include<hgl/common/PrimitiveTypeDef.h>
 #include<hgl/common/ShaderStageDef.h>
 #include <hgl/common/TextureSamplerTypeDef.h>
@@ -24,6 +25,7 @@ namespace hgl::graph
         {
             struct PhysicalDeviceProfileLite;
         }
+        class ShaderArtifactStore;
 
         class ShaderProgramBuildSpec
         {
@@ -44,6 +46,9 @@ namespace hgl::graph
             ShaderCreateInfoMap shader_map;                         ///<着色器列表
 
             bool has_local_to_world;
+            ShaderProgramLinkSpec program_link;
+            bool has_program_link = false;
+            ShaderArtifactStore *artifact_store = nullptr;
 
         public:
 
@@ -73,6 +78,17 @@ namespace hgl::graph
             const MaterialResourceLayout &GetMaterialResourceLayout()const{return material_resource_layout;}
 
             void SetMaterialResourceLayout(const MaterialResourceLayout &contract){material_resource_layout=contract;}
+
+            void SetProgramLink(const ShaderProgramLinkSpec &link)
+            {
+                program_link = link;
+                has_program_link = link.IsValid();
+            }
+
+            bool HasProgramLink() const noexcept { return has_program_link; }
+            const ShaderProgramLinkSpec &GetProgramLink() const noexcept { return program_link; }
+            void SetArtifactStore(ShaderArtifactStore *store) noexcept { artifact_store = store; }
+            ShaderArtifactStore *GetArtifactStore() const noexcept { return artifact_store; }
 
             const bool HasLocalToWorld                  ()const{return has_local_to_world;}
 
