@@ -164,7 +164,7 @@ namespace hgl::ecs
                 if (bmi.usage_tag == graph::mtl::MaterialDefinitionUsageTag::Sky)
                     return graph::PipelinePreset::Sky;
 
-                if (bmi.builtin_creator_id <= static_cast<uint32_t>(graph::mtl::BuiltinMaterialCreatorID::Text2D))
+                if (bmi.shader_domain == graph::mtl::MaterialShaderDomain::Screen2D)
                     return graph::PipelinePreset::Solid2D;
             }
 

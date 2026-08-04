@@ -348,6 +348,8 @@ namespace hgl::ecs
 
         support_wide_lines_ = device_->GetDevAttr() && device_->GetDevAttr()->wide_lines;
 
+        const graph::GeometryVertexFormat line_gvf = CreateLineGeometryVertexFormat();
+
         // ------- Create material -------
         graph::mtl::MaterialRecipe recipe{};
         recipe.mtl_def_id = "VertexPattleColor3D";
@@ -360,6 +362,7 @@ namespace hgl::ecs
             graph::mtl::MaterialDefinitionBuildRequest mtl_request{};
             mtl_request.recipe = recipe;
             mtl_request.primitive_type = graph::PrimitiveType::Lines;
+            mtl_request.geometry_vertex_format = &line_gvf;
             material_ = mat_mgr->AcquireShaderProgram(mtl_request);
         }
         if (!material_)
@@ -367,8 +370,6 @@ namespace hgl::ecs
 
         if (auto rdbs = context_->GetSystem<RenderDescriptorBindingSystem>())
             rdbs->RegisterPipelineMaterial(material_);
-
-        const graph::GeometryVertexFormat line_gvf = CreateLineGeometryVertexFormat();
 
         // ------- Create descriptor binding set -------
         binding_vil_ = material_->CreateVIL(line_gvf);

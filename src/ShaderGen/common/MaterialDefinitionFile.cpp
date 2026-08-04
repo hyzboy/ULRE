@@ -262,6 +262,8 @@ namespace hgl::graph::mtl
             out.definition.definition_id = id;
             out.definition.definition_name = name;
             out.definition.source_kind = MaterialDefinitionSourceKind::File;
+            if (out.definition.shader_domain == MaterialShaderDomain::Screen2D)
+                out.definition.vertex_node_config = Make2DNodeConfigNDC(true);
 
             const toml::value *compositor = nullptr;
             if (root.contains("compositor"))

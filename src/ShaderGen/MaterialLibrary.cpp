@@ -85,14 +85,21 @@ namespace
         std::string &out_vertex_input_glsl,
         GLSLCodeModuleResolutionResult &out_resolution)
     {
-        if (!request.vertex_code_module_registry
-         || definition.vertex_provider_policy != MaterialVertexProviderPolicy::GeometryOnly)
+        if (definition.vertex_provider_policy != MaterialVertexProviderPolicy::GeometryOnly)
             return false;
 
-        if (!PreviewMaterialVertexSemanticResolution(
-                *request.vertex_code_module_registry, definition, request, out_resolution)
-         || !out_resolution.resolved)
-            return false;
+        if (request.vertex_code_module_registry)
+        {
+            if (!PreviewMaterialVertexSemanticResolution(
+                    *request.vertex_code_module_registry, definition, request, out_resolution)
+             || !out_resolution.resolved)
+                return false;
+        }
+        else
+        {
+            out_resolution = GLSLCodeModuleResolutionResult{};
+            out_resolution.resolved = true;
+        }
 
         const GeometryVertexFormat &geometry = *request.geometry_vertex_format;
         out_vertices.clear();
@@ -104,7 +111,10 @@ namespace
             const auto &requirement = definition.vertex_semantic_requirements[i];
             const VertexSemantic semantic =
                 GetVertexSemanticFromGLSLCodeModuleSemantic(requirement.semantic);
-            const char *const name = GetVertexInputName(semantic);
+            const char *name = GetVertexInputName(semantic);
+            if (semantic == VertexSemantic::Color
+             && definition.vertex_varying.emit_vertex_color_from_pattle)
+                name = "ColorIndex";
             const GeometryVertexAttributeFormat *attribute = geometry.Find(semantic);
             if (!name || !attribute)
                 return false;
@@ -161,10 +171,14 @@ namespace
         const MaterialDefinitionBuildRequest &request,
         const MaterialDefinition &definition)
     {
+        const bool file_semantic_contract =
+            definition.source_kind == MaterialDefinitionSourceKind::File
+         && !definition.vertex_semantic_requirements.IsEmpty();
         if (!definition.fragment_program_module
-         || definition.vertex_stage.stage != ShaderStage::Vertex
-         || definition.fragment_stage.stage != ShaderStage::Fragment
-         || definition.vertex_attributes.IsEmpty())
+         || (!file_semantic_contract
+             && (definition.vertex_stage.stage != ShaderStage::Vertex
+              || definition.fragment_stage.stage != ShaderStage::Fragment
+              || definition.vertex_attributes.IsEmpty())))
         {
             GLogError("[ShaderGen] Generic material contract invalid: name=%s fragment=%p vertex_stage=%u fragment_stage=%u attributes=%d",
                       definition.definition_name.c_str(),
@@ -203,7 +217,9 @@ namespace
         std::string resolved_vertex_input_glsl;
         std::string resolved_provider_glsl;
         uint64 resolved_provider_graph_hash = 0;
-        if (request.enable_resolved_vertex_abi)
+        const bool use_resolved_vertex_abi =
+            request.enable_resolved_vertex_abi || file_semantic_contract;
+        if (use_resolved_vertex_abi)
         {
             MaterialResolvedVertexABI resolved_abi;
             if (!BuildResolvedMaterialVertexABI(definition, request, resolved_abi))
@@ -543,6 +559,10 @@ bool MergeMaterialDefinitionFile(const MaterialDefinition &legacy,
     out.fragment_program_mode = file.fragment_program_mode;
     out.vertex_provider_policy = file.vertex_provider_policy;
     out.vertex_semantic_requirements = file.vertex_semantic_requirements;
+    out.vertex_attributes.Clear();
+    out.vertex_stage = ShaderStageBuildSpec{};
+    out.fragment_stage = ShaderStageBuildSpec{};
+    out.program_link = ShaderProgramLinkSpec{};
     out.vertex_varying = file.vertex_varying;
     out.required_ssbo_assets = file.required_ssbo_assets;
     out.ssbo_slot_decls = file.ssbo_slot_decls;

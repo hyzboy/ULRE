@@ -16,6 +16,7 @@
 #include<hgl/shadergen/ShaderArtifactStore.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
 #include<hgl/mtl/MaterialLibrary.h>
+#include<hgl/mtl/MaterialDefinitionFile.h>
 #include<hgl/object/ObjectTracker.h>
 #include<cstdint>
 #include<vector>
@@ -24,6 +25,12 @@ namespace hgl::graph{
 
 namespace
 {
+    mtl::MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry()
+    {
+        static mtl::MaterialDefinitionFileRegistry registry;
+        return registry;
+    }
+
     bool ResolveMaterialDefinitionForRequest(const mtl::MaterialDefinitionBuildRequest &request,
                                              const mtl::MaterialDefinitionFileRegistry *file_registry,
                                              mtl::MaterialDefinition &out_bmi)
@@ -156,17 +163,22 @@ namespace
 
 GRAPH_MODULE_CONSTRUCT(ShaderProgramManager)
 {
-    int file_count = 0;
-    int error_count = 0;
-    if (!material_definition_files.LoadDirectory(
-            OS_TEXT("ShaderLibrary/material"), &file_count, &error_count))
+    static bool loaded = false;
+    if (!loaded)
     {
-        GLogWarning("[ShaderProgramManager] Material TOML directory unavailable; using built-in definitions");
-    }
-    else
-    {
-        GLogInfo("[ShaderProgramManager] Loaded %d material TOML definitions (%d errors)",
-                 file_count, error_count);
+        int file_count = 0;
+        int error_count = 0;
+        if (!GetMaterialDefinitionFileRegistry().LoadDirectory(
+                OS_TEXT("ShaderLibrary/material"), &file_count, &error_count))
+        {
+            GLogWarning("[ShaderProgramManager] Material TOML directory unavailable; using built-in definitions");
+        }
+        else
+        {
+            GLogInfo("[ShaderProgramManager] Loaded %d material TOML definitions (%d errors)",
+                     file_count, error_count);
+        }
+        loaded = true;
     }
 }
 
@@ -469,7 +481,7 @@ bool ShaderProgramManager::BuildMaterialResourceLayout(const mtl::MaterialDefini
 {
     mtl::MaterialDefinition bmi{};
     if (!ResolveMaterialDefinitionForRequest(
-            request, &material_definition_files, bmi))
+            request, &GetMaterialDefinitionFileRegistry(), bmi))
         return false;
 
     const auto *profile = GetPhysicalDeviceProfile();
@@ -498,7 +510,7 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(const mtl::MaterialDef
 
     mtl::MaterialDefinition bmi{};
     if (!ResolveMaterialDefinitionForRequest(
-            normalized_request, &material_definition_files, bmi))
+            normalized_request, &GetMaterialDefinitionFileRegistry(), bmi))
         return nullptr;
 
     // Compute hash key BEFORE generic shader compilation to avoid triggering

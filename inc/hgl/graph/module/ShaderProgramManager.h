@@ -8,7 +8,6 @@
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/type/ObjectManager.h>
 #include<hgl/graph/module/ShaderGenValidationTypes.h>
-#include<hgl/mtl/MaterialDefinitionFile.h>
 #include <map>
 #include <string>
 #include <vector>
@@ -33,7 +32,6 @@ private:
 
     ShaderStageModuleCache shader_module_cache;
     ShaderProgramLinkCache shader_program_cache;
-    mtl::MaterialDefinitionFileRegistry material_definition_files;
 
     AutoIdObjectManager<ShaderProgramID, ShaderProgram> rm_material;  ///<材质合集
 

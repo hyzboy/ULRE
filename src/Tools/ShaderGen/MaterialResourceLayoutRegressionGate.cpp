@@ -1218,6 +1218,7 @@ namespace
                         break;
                     }
                 }
+
             }
         }
 
@@ -1276,6 +1277,15 @@ namespace
                     break;
                 }
             }
+
+            if (file_definition->shader_domain == MaterialShaderDomain::Screen2D
+             && (file_definition->vertex_node_config.input != VertexInputMode::Vec2Position
+              || file_definition->vertex_node_config.position_mapping != PositionMappingMode::NDCLift
+              || file_definition->vertex_node_config.projection != ProjectionMode::LocalToWorldOnly))
+            {
+                result.diagnostics.emplace_back(
+                    std::string("2D file node config mismatch: ") + id);
+            }
         }
 
         {
@@ -1287,11 +1297,30 @@ namespace
              || !MergeMaterialDefinitionFile(
                     legacy_definition, *file_definition, merged_definition)
              || merged_definition.source_kind != MaterialDefinitionSourceKind::File
+             || !merged_definition.vertex_attributes.IsEmpty()
              || merged_definition.fragment_program_module
                     != file_definition->fragment_program_module)
             {
                 result.diagnostics.emplace_back(
                     "file material merge must prefer the valid TOML definition");
+            }
+            else
+            {
+                const GeometryVertexFormat geometry{
+                    {VertexSemantic::Position, VF_V3F},
+                    {VertexSemantic::TexCoord, VF_V2F},
+                    {VertexSemantic::Normal, VF_V3F}
+                };
+                MaterialDefinitionBuildRequest request{};
+                request.geometry_vertex_format = &geometry;
+                MaterialResolvedVertexABI abi{};
+                if (!BuildResolvedMaterialVertexABI(
+                        merged_definition, request, abi)
+                 || abi.vertex_entries.GetCount() != 3)
+                {
+                    result.diagnostics.emplace_back(
+                        "file material must build vertex ABI from semantic TOML data");
+                }
             }
 
             MaterialDefinition fallback_definition{};
