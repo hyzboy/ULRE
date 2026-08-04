@@ -1278,6 +1278,33 @@ namespace
             }
         }
 
+        {
+            const MaterialDefinition *file_definition = registry.FindByID("Standard");
+            MaterialDefinition legacy_definition{};
+            MaterialDefinition merged_definition{};
+            if (!file_definition
+             || !TryGetMaterialDefinitionByID("Standard", legacy_definition)
+             || !MergeMaterialDefinitionFile(
+                    legacy_definition, *file_definition, merged_definition)
+             || merged_definition.source_kind != MaterialDefinitionSourceKind::File
+             || merged_definition.fragment_program_module
+                    != file_definition->fragment_program_module)
+            {
+                result.diagnostics.emplace_back(
+                    "file material merge must prefer the valid TOML definition");
+            }
+
+            MaterialDefinition fallback_definition{};
+            if (!TryGetMaterialDefinitionByID(
+                    BUILTIN_MTL_DEF_FALLBACK_3D, fallback_definition)
+             || MergeMaterialDefinitionFile(
+                    fallback_definition, *file_definition, merged_definition))
+            {
+                result.diagnostics.emplace_back(
+                    "bootstrap material must not be overridden by TOML");
+            }
+        }
+
         result.passed = result.diagnostics.empty();
         return result;
     }

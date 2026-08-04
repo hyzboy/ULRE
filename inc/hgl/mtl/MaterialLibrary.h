@@ -136,6 +136,9 @@ void RegisterMaterialDefinition(const MaterialDefinition &bmi);
 void RegisterMaterialDefinition(const BuiltinMaterialCreatorID preset, const MaterialDefinition &bmi);
 bool TryGetMaterialDefinitionByID(const std::string &mtl_def_id, MaterialDefinition &out_bmi);
 bool TryGetMaterialDefinitionByBuiltinMaterialCreatorID(const BuiltinMaterialCreatorID preset, MaterialDefinition &out_bmi);
+bool MergeMaterialDefinitionFile(const MaterialDefinition &legacy,
+                                 const MaterialDefinition &file,
+                                 MaterialDefinition &out);
 
 // ── built-in fallback BMI ID 常量 ─────────────────────────────────────────────
 constexpr const char *BUILTIN_MTL_DEF_FALLBACK_2D       = "builtin/fallback_2d";

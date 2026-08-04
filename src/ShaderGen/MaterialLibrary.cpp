@@ -525,6 +525,38 @@ bool ShouldUse2DFallbackMaterial(const MaterialDefinitionBuildRequest &request)
     return position->vec_size == 2;
 }
 
+bool MergeMaterialDefinitionFile(const MaterialDefinition &legacy,
+                                 const MaterialDefinition &file,
+                                 MaterialDefinition &out)
+{
+    if (IsBootstrapMaterialDefinition(legacy)
+     || file.source_kind != MaterialDefinitionSourceKind::File)
+        return false;
+
+    out = legacy;
+    out.definition_id = file.definition_id;
+    out.definition_name = file.definition_name;
+    out.source_kind = MaterialDefinitionSourceKind::File;
+    out.usage_tag = file.usage_tag;
+    out.bootstrap_kind = file.bootstrap_kind;
+    out.shader_domain = file.shader_domain;
+    out.fragment_program_mode = file.fragment_program_mode;
+    out.vertex_provider_policy = file.vertex_provider_policy;
+    out.vertex_semantic_requirements = file.vertex_semantic_requirements;
+    out.vertex_varying = file.vertex_varying;
+    out.required_ssbo_assets = file.required_ssbo_assets;
+    out.ssbo_slot_decls = file.ssbo_slot_decls;
+    out.ubo_requirements = file.ubo_requirements;
+    out.texture_slot_decls = file.texture_slot_decls;
+    out.code_module_requirements = file.code_module_requirements;
+    out.compositor_surface = file.compositor_surface;
+    out.compositor_blend = file.compositor_blend;
+    out.compositor_pass = file.compositor_pass;
+    out.fragment_program_module = file.fragment_program_module;
+    out.fragment_surface_module = file.fragment_surface_module
+        ? file.fragment_surface_module : legacy.fragment_surface_module;
+    return true;
+}
 
 const char *GetBuiltinMaterialCreatorIDName(const BuiltinMaterialCreatorID mtl_id)
 {
