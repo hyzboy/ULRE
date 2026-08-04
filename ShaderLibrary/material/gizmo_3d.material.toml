@@ -1,0 +1,24 @@
+schema = 1
+id = "Gizmo3D"
+name = "Gizmo3D"
+source = "file"
+usage = "Debug"
+bootstrap = "None"
+domain = "World3D"
+program_mode = "Compositor"
+provider_policy = "GeometryOnly"
+
+[compositor]
+surface = "Unlit"
+blend = "Opaque"
+pass = "ForwardOpaque"
+fragment = "compositor/main_forward_unlit_normal.frag.glsl"
+surface_module = "surface/gizmo3d_surface.glsl"
+
+[vertex]
+requirements = ["Position", "Normal"]
+varyings = ["emit_data_index_id", "emit_texture_layer_id", "texture_layer_id_uses_data_index", "emit_world_pos", "emit_world_normal"]
+
+[resources]
+ubos = ["ViewportInfo", "CameraInfo"]
+ssbos = [{ name = "mtl", type = "EmissiveSurface" }]

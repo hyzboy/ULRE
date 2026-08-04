@@ -16,6 +16,7 @@ namespace
         bmi.ubo_requirements = {UBODescriptorSemantic::ViewportInfo};
         bmi.texture_slot_decls = {{TextureSlot::BaseColor, GLSLSamplerType::Sampler2D, true}};
         bmi.vertex_node_config = Make2DNodeConfigNDC(true);
+        bmi.shader_domain = MaterialShaderDomain::Screen2D;
         const MaterialVertexAttributeDefinition attributes[] = {
             {VertexSemantic::Position, 0, VK_FORMAT_R32G32_SFLOAT, nullptr},
             {VertexSemantic::TexCoord, 1, VK_FORMAT_R32G32_SFLOAT, "layout(location=1) in vec2 TexCoord;\n"}

@@ -20,6 +20,10 @@ namespace
         bmi.ssbo_slot_decls   = {{"mtl", SSBOType::EmissiveSurface}};
         bmi.ubo_requirements  = {UBODescriptorSemantic::ViewportInfo, UBODescriptorSemantic::CameraInfo};
         bmi.vertex_node_config = MakeDefault3DNodeConfig();
+        bmi.shader_domain = MaterialShaderDomain::World3D;
+        bmi.compositor_surface = SurfaceType::Unlit;
+        bmi.compositor_blend = BlendMode::Opaque;
+        bmi.compositor_pass = PassType::ForwardOpaque;
         const MaterialVertexAttributeDefinition attrs[] = {
             {VertexSemantic::Luminance, 1, VK_FORMAT_R32_SFLOAT, "layout(location=1) in float Luminance;\n"}
         };

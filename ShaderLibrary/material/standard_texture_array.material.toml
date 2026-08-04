@@ -1,0 +1,32 @@
+schema = 1
+id = "StandardTextureArray"
+name = "StandardTextureArray"
+source = "file"
+usage = "General"
+bootstrap = "None"
+domain = "World3D"
+program_mode = "Compositor"
+provider_policy = "GeometryOnly"
+
+[compositor]
+surface = "Standard"
+blend = "Opaque"
+pass = "ForwardOpaque"
+fragment = "compositor/main_forward_lit.frag.glsl"
+surface_module = "surface/standard_texturearray_surface.glsl"
+
+[vertex]
+requirements = ["Position", "UV0", "Normal"]
+varyings = ["emit_data_index_id", "emit_texture_layer_id", "texture_layer_id_uses_data_index", "emit_world_pos", "emit_world_normal", "emit_uv0"]
+
+[resources]
+ubos = ["ViewportInfo", "CameraInfo", "SkyInfo"]
+code_modules = ["SkyLightHeader", "PBRSurface"]
+ssbos = [{ name = "mtl", type = "ClearCoatSurface" }]
+textures = [
+  { slot = "BaseColor", sampler = "Sampler2DArray", required = false },
+  { slot = "Normal", sampler = "Sampler2DArray", required = false },
+  { slot = "Metallic", sampler = "Sampler2DArray", required = false },
+  { slot = "Roughness", sampler = "Sampler2DArray", required = false },
+  { slot = "Occlusion", sampler = "Sampler2DArray", required = false }
+]

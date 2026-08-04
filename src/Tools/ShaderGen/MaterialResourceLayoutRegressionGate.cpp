@@ -1,5 +1,6 @@
 #include <hgl/mtl/MaterialResourceLayout.h>
 #include <hgl/mtl/MaterialLibrary.h>
+#include <hgl/mtl/MaterialDefinitionFile.h>
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/shadergen/ShaderArtifactStore.h>
 #include <hgl/graph/glsl/GLSLCodeModule.h>
@@ -1059,6 +1060,228 @@ namespace
         return result;
     }
 
+    static GateResult RunMaterialDefinitionFileSchemaCase()
+    {
+        GateResult result;
+        result.name = "S.material-definition-file-schema";
+
+        const char material_file[] =
+            "schema = 1\n"
+            "id = \"StandardFile\"\n"
+            "name = \"StandardFile\"\n"
+            "source = \"file\"\n"
+            "usage = \"General\"\n"
+            "bootstrap = \"None\"\n"
+            "domain = \"World3D\"\n"
+            "program_mode = \"Compositor\"\n"
+            "provider_policy = \"AllowDerived\"\n"
+            "[compositor]\n"
+            "surface = \"Standard\"\n"
+            "blend = \"Opaque\"\n"
+            "pass = \"ForwardOpaque\"\n"
+            "fragment = \"compositor/main_forward_lit.frag.glsl\"\n"
+            "surface_module = \"surface/standard_surface.glsl\"\n"
+            "[vertex]\n"
+            "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
+            "varyings = [\"emit_world_pos\", \"emit_world_normal\", \"emit_uv0\"]\n"
+            "[resources]\n"
+            "ubos = [\"CameraInfo\", \"SkyInfo\"]\n";
+
+        MaterialDefinitionFileData data;
+        const auto parse = ParseMaterialDefinitionFile(
+            material_file, static_cast<int>(std::strlen(material_file)), data);
+        if (parse != MaterialDefinitionFileParseResult::OK)
+        {
+            result.diagnostics.emplace_back(
+                std::string("material schema parse failed: ")
+                + GetMaterialDefinitionFileParseResultName(parse));
+        }
+        else
+        {
+            const auto &definition = data.definition;
+            if (definition.source_kind != MaterialDefinitionSourceKind::File
+             || definition.definition_id != "StandardFile"
+             || definition.vertex_provider_policy != MaterialVertexProviderPolicy::AllowDerived
+             || definition.vertex_semantic_requirements.GetCount() != 3
+             || definition.ubo_requirements.size() != 2
+             || std::strcmp(definition.fragment_program_module,
+                            "compositor/main_forward_lit.frag.glsl") != 0
+             || std::strcmp(definition.fragment_surface_module,
+                            "surface/standard_surface.glsl") != 0)
+            {
+                result.diagnostics.emplace_back("material schema fields mismatch");
+            }
+        }
+
+        const char invalid_file[] =
+            "schema = 1\n"
+            "id = \"Broken\"\n"
+            "name = \"Broken\"\n"
+            "source = \"builtin\"\n"
+            "usage = \"General\"\n"
+            "bootstrap = \"None\"\n"
+            "domain = \"World3D\"\n"
+            "program_mode = \"Compositor\"\n"
+            "provider_policy = \"GeometryOnly\"\n";
+        MaterialDefinitionFileData invalid_data;
+        if (ParseMaterialDefinitionFile(
+                invalid_file, static_cast<int>(std::strlen(invalid_file)), invalid_data)
+                != MaterialDefinitionFileParseResult::InvalidValue)
+        {
+            result.diagnostics.emplace_back(
+                "material schema must reject non-File source");
+        }
+
+        MaterialDefinitionFileRegistry registry;
+        int file_count = 0;
+        int error_count = 0;
+        if (!registry.LoadDirectory(OS_TEXT("E:/ULRE/ShaderLibrary"),
+                                    &file_count, &error_count)
+         || file_count != 11
+         || error_count != 0)
+        {
+            result.diagnostics.emplace_back("material file registry bulk load failed");
+        }
+        else
+        {
+            const char *expected_file_ids[] = {
+                "Standard", "StandardTextureArray", "SkyMinimal", "Gizmo3D",
+                "VertexColor2D", "PureTexture2D", "RectTexture2D",
+                "RectTexture2DArray", "VertexColor3D", "VertexLuminance3D",
+                "VertexPattleColor3D"
+            };
+            for (const char *id : expected_file_ids)
+            {
+                if (!registry.FindByID(id))
+                    result.diagnostics.emplace_back(
+                        std::string("missing bulk material file: ") + id);
+            }
+
+            const MaterialDefinition *file_definition = registry.FindByID("Standard");
+            MaterialDefinition legacy_definition{};
+            if (!file_definition
+             || !TryGetMaterialDefinitionByID("Standard", legacy_definition))
+            {
+                result.diagnostics.emplace_back("Standard file/legacy definition lookup failed");
+            }
+            else
+            {
+                if (file_definition->definition_id != legacy_definition.definition_id)
+                    result.diagnostics.emplace_back("Standard id mismatch");
+                if (file_definition->shader_domain != legacy_definition.shader_domain)
+                    result.diagnostics.emplace_back("Standard domain mismatch");
+                if (file_definition->fragment_program_mode != legacy_definition.fragment_program_mode)
+                    result.diagnostics.emplace_back("Standard mode mismatch");
+                if (file_definition->compositor_surface != legacy_definition.compositor_surface)
+                    result.diagnostics.emplace_back("Standard surface mismatch");
+                if (file_definition->compositor_blend != legacy_definition.compositor_blend)
+                    result.diagnostics.emplace_back("Standard blend mismatch");
+                if (file_definition->compositor_pass != legacy_definition.compositor_pass)
+                    result.diagnostics.emplace_back("Standard pass mismatch");
+                if (file_definition->vertex_semantic_requirements.GetCount()
+                        != legacy_definition.vertex_semantic_requirements.GetCount())
+                    result.diagnostics.emplace_back("Standard semantic count mismatch");
+                if (file_definition->code_module_requirements
+                        != legacy_definition.code_module_requirements)
+                    result.diagnostics.emplace_back("Standard code module mismatch");
+                if (file_definition->ubo_requirements != legacy_definition.ubo_requirements)
+                    result.diagnostics.emplace_back("Standard UBO mismatch");
+                if (file_definition->ssbo_slot_decls.size()
+                        != legacy_definition.ssbo_slot_decls.size())
+                    result.diagnostics.emplace_back("Standard SSBO mismatch");
+                if (file_definition->texture_slot_decls.size()
+                        != legacy_definition.texture_slot_decls.size())
+                    result.diagnostics.emplace_back("Standard texture mismatch");
+                if (file_definition->vertex_varying.emit_world_pos
+                        != legacy_definition.vertex_varying.emit_world_pos
+                 || file_definition->vertex_varying.emit_world_normal
+                        != legacy_definition.vertex_varying.emit_world_normal
+                 || file_definition->vertex_varying.emit_uv0
+                        != legacy_definition.vertex_varying.emit_uv0)
+                    result.diagnostics.emplace_back("Standard varying mismatch");
+                if (file_definition->vertex_provider_policy
+                        != legacy_definition.vertex_provider_policy)
+                    result.diagnostics.emplace_back("Standard provider policy mismatch");
+                if (std::strcmp(file_definition->fragment_program_module,
+                                "compositor/main_forward_lit.frag.glsl") != 0
+                 || std::strcmp(file_definition->fragment_surface_module,
+                                "surface/standard_surface.glsl") != 0)
+                    result.diagnostics.emplace_back("Standard stage reference mismatch");
+
+                for (int i = 0; i < file_definition->vertex_semantic_requirements.GetCount(); ++i)
+                {
+                    if (!(file_definition->vertex_semantic_requirements[i]
+                        == legacy_definition.vertex_semantic_requirements[i]))
+                    {
+                        result.diagnostics.emplace_back(
+                            "Standard file semantic requirements differ from legacy");
+                        break;
+                    }
+                }
+            }
+        }
+
+        const char *bulk_ids[] = {
+            "StandardTextureArray", "SkyMinimal", "Gizmo3D", "VertexColor2D",
+            "PureTexture2D", "RectTexture2D", "RectTexture2DArray",
+            "VertexColor3D", "VertexLuminance3D", "VertexPattleColor3D"
+        };
+        for (const char *id : bulk_ids)
+        {
+            const MaterialDefinition *file_definition = registry.FindByID(id);
+            MaterialDefinition legacy_definition{};
+            if (!file_definition
+             || !TryGetMaterialDefinitionByID(id, legacy_definition))
+            {
+                result.diagnostics.emplace_back(
+                    std::string("bulk file/legacy lookup failed: ") + id);
+                continue;
+            }
+
+            const bool same_surface_reference =
+                (!file_definition->fragment_surface_module
+                 && !legacy_definition.fragment_surface_module)
+                || (file_definition->fragment_surface_module
+                 && legacy_definition.fragment_surface_module
+                 && std::strcmp(file_definition->fragment_surface_module,
+                                legacy_definition.fragment_surface_module) == 0);
+            if (file_definition->shader_domain != legacy_definition.shader_domain
+             || file_definition->fragment_program_mode != legacy_definition.fragment_program_mode
+             || file_definition->compositor_surface != legacy_definition.compositor_surface
+             || file_definition->compositor_blend != legacy_definition.compositor_blend
+             || file_definition->compositor_pass != legacy_definition.compositor_pass
+             || file_definition->vertex_provider_policy != legacy_definition.vertex_provider_policy
+             || !same_surface_reference
+             || file_definition->vertex_semantic_requirements.GetCount()
+                    != legacy_definition.vertex_semantic_requirements.GetCount()
+             || file_definition->ubo_requirements.size()
+                    != legacy_definition.ubo_requirements.size()
+             || file_definition->ssbo_slot_decls.size()
+                    != legacy_definition.ssbo_slot_decls.size()
+             || file_definition->texture_slot_decls.size()
+                    != legacy_definition.texture_slot_decls.size())
+            {
+                result.diagnostics.emplace_back(
+                    std::string("bulk file definition contract mismatch: ") + id);
+                continue;
+            }
+
+            for (int i = 0; i < file_definition->vertex_semantic_requirements.GetCount(); ++i)
+            {
+                if (!(file_definition->vertex_semantic_requirements[i]
+                    == legacy_definition.vertex_semantic_requirements[i]))
+                {
+                    result.diagnostics.emplace_back(
+                        std::string("bulk semantic mismatch: ") + id);
+                    break;
+                }
+            }
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunFallbackInferenceCase()
     {
         GateResult result;
@@ -1895,6 +2118,7 @@ int main()
     results.push_back(RunBindlessEquivalenceCase());
     results.push_back(RunBuiltinRegistryCoverageCase());
     results.push_back(RunBootstrapMaterialBoundaryCase());
+    results.push_back(RunMaterialDefinitionFileSchemaCase());
     results.push_back(RunFallbackInferenceCase());
     results.push_back(RunGLSLCodeModuleRegistryCase());
     results.push_back(RunShaderResourceManifestCase());

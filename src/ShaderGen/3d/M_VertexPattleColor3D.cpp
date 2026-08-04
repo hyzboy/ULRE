@@ -31,6 +31,10 @@ namespace
         bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
         bmi.ubo_requirements  = {UBODescriptorSemantic::ViewportInfo, UBODescriptorSemantic::CameraInfo, UBODescriptorSemantic::MaterialColorPalette};
         bmi.vertex_node_config = MakeDefault3DNodeConfig();
+        bmi.shader_domain = MaterialShaderDomain::World3D;
+        bmi.compositor_surface = SurfaceType::Unlit;
+        bmi.compositor_blend = BlendMode::Opaque;
+        bmi.compositor_pass = PassType::ForwardOpaque;
         const MaterialVertexAttributeDefinition attrs[] = {
             {VertexSemantic::Color, 1, VK_FORMAT_R32_UINT, "layout(location=1) in uint ColorIndex;\n"},
             {VertexSemantic::TransformID, 2, VK_FORMAT_R32_UINT, "layout(location=2) in uint TransformID;\n"}

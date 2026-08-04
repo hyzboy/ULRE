@@ -29,7 +29,9 @@ SET(SHADER_ARTIFACT_CONTRACT_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderStageKey.h
                                    ${ROOT_INCLUDE_PATH}/hgl/graph/glsl/GLSLCodeModuleFile.h
                                    common/GLSLCodeModuleFile.cpp
                                    ${ROOT_INCLUDE_PATH}/hgl/graph/glsl/GLSLCodeModuleCapabilityResolver.h
-                                   common/GLSLCodeModuleCapabilityResolver.cpp)
+                                   common/GLSLCodeModuleCapabilityResolver.cpp
+                                   ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialDefinitionFile.h
+                                   common/MaterialDefinitionFile.cpp)
 
 SOURCE_GROUP("Shader Artifact Contract" FILES ${SHADER_ARTIFACT_CONTRACT_FILES})
 

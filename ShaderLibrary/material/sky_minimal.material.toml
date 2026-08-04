@@ -1,0 +1,23 @@
+schema = 1
+id = "SkyMinimal"
+name = "SkyMinimal"
+source = "file"
+usage = "Sky"
+bootstrap = "None"
+domain = "World3D"
+program_mode = "Compositor"
+provider_policy = "GeometryOnly"
+
+[compositor]
+surface = "Sky"
+blend = "Opaque"
+pass = "ForwardOpaque"
+fragment = "compositor/main_forward_sky.frag.glsl"
+surface_module = "surface/sky_minimal_surface.glsl"
+
+[vertex]
+requirements = ["Position"]
+varyings = ["emit_frag_direction"]
+
+[resources]
+ubos = ["ViewportInfo", "CameraInfo", "SkyInfo"]

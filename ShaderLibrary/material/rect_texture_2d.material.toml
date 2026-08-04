@@ -1,0 +1,20 @@
+schema = 1
+id = "RectTexture2D"
+name = "RectTexture2D"
+source = "file"
+usage = "General"
+bootstrap = "None"
+domain = "Screen2D"
+program_mode = "DirectInclude"
+provider_policy = "GeometryOnly"
+
+[compositor]
+fragment = "2d/puretexture2d.frag.glsl"
+
+[vertex]
+requirements = ["Position", "UV0"]
+varyings = ["emit_uv0"]
+
+[resources]
+ubos = ["ViewportInfo"]
+textures = [{ slot = "BaseColor", sampler = "Sampler2D", required = true }]

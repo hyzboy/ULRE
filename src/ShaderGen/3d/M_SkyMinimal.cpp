@@ -20,6 +20,10 @@ namespace
         bmi.usage_tag = MaterialDefinitionUsageTag::Sky;
         bmi.ubo_requirements  = {UBODescriptorSemantic::ViewportInfo, UBODescriptorSemantic::CameraInfo, UBODescriptorSemantic::SkyInfo};
         bmi.vertex_node_config = MakeDefault3DNodeConfig();
+        bmi.shader_domain = MaterialShaderDomain::World3D;
+        bmi.compositor_surface = SurfaceType::Sky;
+        bmi.compositor_blend = BlendMode::Opaque;
+        bmi.compositor_pass = PassType::ForwardOpaque;
         MaterialVertexVaryingConfig varying{};
         varying.emit_frag_direction = true;
         ConfigureMaterialDefinitionContract(bmi, "compositor/main_forward_sky.frag.glsl",

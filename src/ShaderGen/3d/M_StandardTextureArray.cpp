@@ -29,6 +29,10 @@ namespace
             {TextureSlot::Occlusion, GLSLSamplerType::Sampler2DArray, false},
         };
         bmi.vertex_node_config = MakeDefault3DNodeConfig();
+        bmi.shader_domain = MaterialShaderDomain::World3D;
+        bmi.compositor_surface = SurfaceType::Standard;
+        bmi.compositor_blend = BlendMode::Opaque;
+        bmi.compositor_pass = PassType::ForwardOpaque;
         const MaterialVertexAttributeDefinition attrs[] = {
             {VertexSemantic::TexCoord, 1, VK_FORMAT_R32G32_SFLOAT, "layout(location=1) in vec2 TexCoord;\n"},
             {VertexSemantic::Normal, 2, VK_FORMAT_R32G32B32_SFLOAT, "layout(location=2) in vec3 Normal;\n"}
