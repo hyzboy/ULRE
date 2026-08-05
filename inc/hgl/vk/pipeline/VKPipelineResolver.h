@@ -3,6 +3,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/vk/pipeline/VKPipelineData.h>
 #include<hgl/vk/VKPrimitiveType.h>
+#include<hgl/graph/PipelinePreset.h>
 #include<hgl/type/String.h>
 #include<cstdint>
 
@@ -83,6 +84,7 @@ namespace hgl::graph
 
     struct FinalPipelineKey
     {
+        PipelinePreset preset = PipelinePreset::Auto;
         VertexInterfaceKey vi;
         PreRasterPipelineKey pr;
         FragmentShaderKey fs;
@@ -90,7 +92,8 @@ namespace hgl::graph
 
         bool operator == (const FinalPipelineKey &rhs) const
         {
-            return vi == rhs.vi
+            return preset == rhs.preset
+                && vi == rhs.vi
                 && pr == rhs.pr
                 && fs == rhs.fs
                 && fo == rhs.fo;
@@ -116,6 +119,7 @@ namespace hgl::graph
         FrameOutputConfig frame_output{};
 
         const AnsiString *debug_name = nullptr;
+        PipelinePreset pipeline_preset = PipelinePreset::Auto;
         PipelineData *pipeline_data = nullptr;
         const ShaderStageCreateInfoList *shader_stages = nullptr;
         VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;

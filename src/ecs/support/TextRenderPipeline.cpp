@@ -317,6 +317,8 @@ namespace hgl::ecs
 
         graph::mtl::MaterialRecipe recipe{};
         recipe.mtl_def_id = "Text2D";
+        recipe.pipeline_preset = graph::PipelinePreset::Solid2D;
+        const graph::GeometryVertexFormat text_gvf = graph::CreateTextGeometryVertexFormat();
 
         material_manager = graphics_context->GetMaterialManager();
         if (!material_manager)
@@ -328,13 +330,13 @@ namespace hgl::ecs
             graph::mtl::MaterialDefinitionBuildRequest mtl_request{};
             mtl_request.recipe = recipe;
             mtl_request.primitive_type = graph::PrimitiveType::Triangles;
+            mtl_request.geometry_vertex_format = &text_gvf;
             guard.material = material_manager->AcquireShaderProgram(mtl_request);
         }
         if (!guard.material)
             return nullptr;
 
         {
-            const graph::GeometryVertexFormat text_gvf = graph::CreateTextGeometryVertexFormat();
             guard.binding_vil = guard.material->CreateVIL(text_gvf);
             if (!guard.binding_vil)
                 return nullptr;

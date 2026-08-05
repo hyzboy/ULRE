@@ -153,22 +153,19 @@ namespace hgl::ecs
             return primitive_comp->BuildResolvedAuthoringMaterialRecipe(out_recipe, material_program);
         }
 
-        graph::PipelinePreset ResolvePipelinePresetFromRecipe(const graph::mtl::MaterialRecipe &recipe)
+        bool ResolvePipelinePresetFromRecipe(const graph::mtl::MaterialRecipe &recipe,
+                                             graph::PipelinePreset &out_preset)
         {
-            if (recipe.pipeline_preset != graph::PipelinePreset::Auto)
-                return recipe.pipeline_preset;
-
-            graph::mtl::MaterialDefinition bmi{};
-            if (graph::mtl::TryGetMaterialDefinitionByID(recipe.mtl_def_id, bmi))
+            if (recipe.pipeline_preset == graph::PipelinePreset::Auto)
             {
-                if (bmi.usage_tag == graph::mtl::MaterialDefinitionUsageTag::Sky)
-                    return graph::PipelinePreset::Sky;
-
-                if (bmi.shader_domain == graph::mtl::MaterialShaderDomain::Screen2D)
-                    return graph::PipelinePreset::Solid2D;
+                GLogError("[RenderPrimitiveCollectSystem] Pipeline preset must be explicitly configured: recipe=%s material=%s",
+                          recipe.recipe_name.c_str(),
+                          recipe.mtl_def_id.c_str());
+                return false;
             }
 
-            return graph::PipelinePreset::Solid3D;
+            out_preset = recipe.pipeline_preset;
+            return true;
         }
 
         bool PrepareRecipeAuthoringResources(ECSContext *world,
@@ -475,7 +472,9 @@ namespace hgl::ecs
         if (!BuildEffectiveMaterialRecipe(primitive_comp, material_comp->program, effective_recipe))
             return false;
 
-        const graph::PipelinePreset pipeline_preset = ResolvePipelinePresetFromRecipe(effective_recipe);
+        graph::PipelinePreset pipeline_preset = graph::PipelinePreset::Auto;
+        if (!ResolvePipelinePresetFromRecipe(effective_recipe, pipeline_preset))
+            return false;
 
         const graph::VIL *vil = primitive_comp->GetRuntimeVIL();
         if (!vil)

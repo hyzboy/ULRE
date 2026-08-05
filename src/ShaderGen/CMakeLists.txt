@@ -80,11 +80,10 @@ SET(SSBO_STRUCT_FILES   ${SSBO_HEADER_PATH}/StandardMaterialInstance.h
 SOURCE_GROUP("Standard Material\\SSBO" FILES ${SSBO_STRUCT_FILES})
 
 SET(STD_MTL_2D_SOURCE_FILES	2d/Build2DCommon.h
-                            2d/M_PureColor2D.cpp
                             2d/M_Text.cpp
 )
 
-SET(STD_MTL_3D_SOURCE_FILES	3d/M_PureColor3D.cpp
+SET(STD_MTL_3D_SOURCE_FILES	3d/M_PureColor.cpp
 )
 
 SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/StdMaterial.h

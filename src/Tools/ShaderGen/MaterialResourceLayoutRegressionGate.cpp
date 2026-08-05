@@ -11,6 +11,7 @@
 #include <hgl/common/RenderOptions.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include "../../ShaderGen/common/VertexBuilderCommon.h"
+#include "../../ShaderGen/common/VertexShaderAssembler.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -265,8 +266,7 @@ namespace
         // Every built-in definition must still expose the legacy position-first
         // contract while Phase 4 is introduced incrementally.
         static const char *builtin_ids[] = {
-            BUILTIN_MTL_DEF_FALLBACK_2D,
-            BUILTIN_MTL_DEF_FALLBACK_3D,
+            BUILTIN_MTL_DEF_FALLBACK,
             BUILTIN_MTL_DEF_MISSING_MATERIAL,
             BUILTIN_MTL_DEF_TEXT
         };
@@ -278,10 +278,8 @@ namespace
                 result.diagnostics.emplace_back(std::string("missing built-in definition: ") + id);
                 continue;
             }
-            if (definition.vertex_attributes.IsEmpty()
-             || definition.vertex_attributes[0].semantic != VertexSemantic::Position
-             || definition.vertex_stage.stage != ShaderStage::Vertex
-             || definition.fragment_stage.stage != ShaderStage::Fragment)
+            if (!IsBootstrapMaterialDefinition(definition)
+             || definition.vertex_semantic_requirements.IsEmpty())
             {
                 result.diagnostics.emplace_back(std::string("invalid legacy vertex ABI: ") + id);
             }
@@ -297,8 +295,7 @@ namespace
         result.name = "L.material-semantic-abi-parity";
 
         static const char *definition_ids[] = {
-            "PureColor2D",
-            "PureColor3D",
+            BUILTIN_MTL_DEF_PURE_COLOR,
             "Text2D"
         };
 
@@ -317,51 +314,9 @@ namespace
                 continue;
             }
 
-            if (definition.vertex_semantic_requirements.GetCount()
-                    != definition.vertex_attributes.GetCount()
-             || definition.vertex_stage.inputs.GetCount()
-                    != definition.vertex_attributes.GetCount())
-            {
-                result.diagnostics.emplace_back(std::string("semantic/legacy input count mismatch: ") + id);
-                continue;
-            }
-
-            GeometryVertexFormat geometry;
-            std::vector<vertex_builder_common::VertexSemanticDecl> semantic_decls;
-            std::vector<FixedVertexEntry> expected_entries;
-            bool valid = true;
-            for (int i = 0; i < definition.vertex_attributes.GetCount(); ++i)
-            {
-                const auto &attribute = definition.vertex_attributes[i];
-                const auto &requirement = definition.vertex_semantic_requirements[i];
-                if (requirement.source != GLSLCodeModuleCapabilitySource::ProducedSemantic
-                 || requirement.semantic != GetGLSLCodeModuleSemanticFromVertexSemantic(attribute.semantic)
-                 || requirement.semantic == GLSLCodeModuleSemantic::Unknown
-                 || !geometry.Add(attribute.semantic, attribute.format))
-                {
-                    valid = false;
-                    break;
-                }
-
-                semantic_decls.push_back({attribute.semantic, attribute.format});
-                expected_entries.push_back({attribute.format, attribute.semantic});
-            }
-
-            if (!valid)
-            {
-                result.diagnostics.emplace_back(std::string("invalid semantic contract: ") + id);
-                continue;
-            }
-
-            const vertex_builder_common::VertexBuildInput input{
-                PrimitiveType::Triangles, &geometry, semantic_decls.data(),
-                static_cast<uint32_t>(semantic_decls.size())
-            };
-            const auto entries = vertex_builder_common::BuildVertexEntries(input);
-            std::string diagnostic;
-            if (!CheckVertexEntries(entries, expected_entries, diagnostic))
-                result.diagnostics.emplace_back(std::string("legacy ABI parity failed for ")
-                    + id + ": " + diagnostic);
+            if (definition.vertex_semantic_requirements.IsEmpty())
+                result.diagnostics.emplace_back(
+                    std::string("empty semantic-only ABI: ") + id);
         }
 
         result.passed = result.diagnostics.empty();
@@ -466,17 +421,14 @@ namespace
             {
                 const auto &selection = preview.selections[i];
                 bool found_legacy_semantic = false;
-                for (int k = 0; k < definition.vertex_attributes.GetCount(); ++k)
+                for (int k = 0; k < definition.vertex_semantic_requirements.GetCount(); ++k)
                 {
-                    if (GetGLSLCodeModuleSemanticFromVertexSemantic(
-                            definition.vertex_attributes[k].semantic)
-                            == selection.requirement)
+                    if (definition.vertex_semantic_requirements[k].semantic == selection.requirement)
                     {
                         found_legacy_semantic = true;
                         break;
                     }
                 }
-
                 if (!found_legacy_semantic || !selection.provider)
                 {
                     result.diagnostics.emplace_back(std::string("preview/legacy mismatch: ") + id);
@@ -488,12 +440,12 @@ namespace
         const GeometryVertexFormat pure2d_geometry{{
             VertexSemantic::Position, VF_V2F
         }};
-        check_preview("PureColor2D", pure2d_geometry, 1);
+        check_preview(BUILTIN_MTL_DEF_PURE_COLOR, pure2d_geometry, 1);
 
         const GeometryVertexFormat pure3d_geometry{{
             VertexSemantic::Position, VF_V3F
         }};
-        check_preview("PureColor3D", pure3d_geometry, 1);
+        check_preview(BUILTIN_MTL_DEF_PURE_COLOR, pure3d_geometry, 1);
 
         const GeometryVertexFormat text_geometry{
             {VertexSemantic::Position, VF_V2I},
@@ -550,9 +502,9 @@ namespace
         // The same vec2 declaration must serve RG16F and RG32F Geometry
         // inputs. The raw format remains distinct only in FixedVertexEntry.
         MaterialDefinition pure2d_definition{};
-        if (!TryGetMaterialDefinitionByID("PureColor2D", pure2d_definition))
+        if (!TryGetMaterialDefinitionByID(BUILTIN_MTL_DEF_PURE_COLOR, pure2d_definition))
         {
-            result.diagnostics.emplace_back("missing equivalent-format definition: PureColor2D");
+            result.diagnostics.emplace_back("missing equivalent-format definition: PureColor");
         }
         else
         {
@@ -579,9 +531,9 @@ namespace
         // Packed normals intentionally produce a distinct declaration shape
         // from direct float normals, preserving the future decode-provider ABI.
         MaterialDefinition normal_definition{};
-        if (!TryGetMaterialDefinitionByID("PureColor3D", normal_definition))
+        if (!TryGetMaterialDefinitionByID(BUILTIN_MTL_DEF_PURE_COLOR, normal_definition))
         {
-            result.diagnostics.emplace_back("missing packed-normal definition: PureColor3D");
+            result.diagnostics.emplace_back("missing packed-normal definition: PureColor");
         }
         else
         {
@@ -942,8 +894,7 @@ namespace
 
         static const ExpectedEntry expected[] =
         {
-            { BUILTIN_MTL_DEF_FALLBACK_2D },
-            { BUILTIN_MTL_DEF_FALLBACK_3D },
+            { BUILTIN_MTL_DEF_FALLBACK },
             { BUILTIN_MTL_DEF_MISSING_MATERIAL },
             { BUILTIN_MTL_DEF_TEXT }
         };
@@ -979,8 +930,7 @@ namespace
         };
 
         static const ExpectedBootstrap expected[] = {
-            {BUILTIN_MTL_DEF_FALLBACK_2D, MaterialDefinitionBootstrapKind::PureColor},
-            {BUILTIN_MTL_DEF_FALLBACK_3D, MaterialDefinitionBootstrapKind::PureColor},
+            {BUILTIN_MTL_DEF_FALLBACK, MaterialDefinitionBootstrapKind::PureColor},
             {BUILTIN_MTL_DEF_MISSING_MATERIAL, MaterialDefinitionBootstrapKind::PureColor},
             {BUILTIN_MTL_DEF_TEXT, MaterialDefinitionBootstrapKind::TextAlphaBlend}
         };
@@ -1032,6 +982,212 @@ namespace
         return result;
     }
 
+    static GateResult RunUnifiedMaterialBaselineCase()
+    {
+        GateResult result;
+        result.name = "T.unified-material-baseline";
+
+        MaterialDefinition pure_color{};
+        if (!TryGetMaterialDefinitionByID(BUILTIN_MTL_DEF_PURE_COLOR, pure_color))
+        {
+            result.diagnostics.emplace_back("canonical PureColor must exist");
+        }
+        else if (!IsPureColorMaterialDefinition(pure_color)
+               || pure_color.ssbo_slot_decls.size() != 1
+              || pure_color.ssbo_slot_decls[0].ssbo_type != SSBOType::EmissiveSurface
+              || pure_color.vertex_semantic_requirements.GetCount() != 1)
+            result.diagnostics.emplace_back("canonical PureColor contract is not semantic-only");
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
+    static GateResult RunUnifiedPureColorFragmentCase()
+    {
+        GateResult result;
+        result.name = "V.unified-purecolor-fragment";
+
+        MaterialDefinition pure_color{};
+        if (!TryGetMaterialDefinitionByID(BUILTIN_MTL_DEF_PURE_COLOR, pure_color))
+        {
+            result.diagnostics.emplace_back("unified PureColor definition is unavailable");
+            result.passed = false;
+            return result;
+        }
+
+        if (!pure_color.fragment_program_module
+         || std::strcmp(pure_color.fragment_program_module,
+                        "compositor/pure_color.frag.glsl") != 0
+         || pure_color.fragment_program_mode != MaterialFragmentProgramMode::Compositor
+         || pure_color.fragment_surface_module)
+            result.diagnostics.emplace_back("PureColor must use one FS module");
+
+        CompositorAssembler assembler("E:/ULRE/ShaderLibrary");
+        const auto assembled = assembler.Assemble(
+            SurfaceType::Unlit, BlendMode::Opaque, PassType::ForwardOpaque,
+            "compositor/pure_color.frag.glsl", nullptr);
+        if (!assembled.success
+         || assembled.fragment_glsl.find("mtl.mi[fragDataIndexID].color")
+                == std::string::npos
+         || assembled.fragment_glsl.find("layout(location=0) flat in uint fragDataIndexID")
+                == std::string::npos)
+            result.diagnostics.emplace_back("unified PureColor FS source is invalid");
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
+    static GateResult RunUnifiedMaterialContractCase()
+    {
+        GateResult result;
+        result.name = "U.unified-material-contract";
+
+        if (std::strcmp(BUILTIN_MTL_DEF_PURE_COLOR, "builtin/pure_color") != 0)
+            result.diagnostics.emplace_back("canonical PureColor ID changed unexpectedly");
+
+        MaterialDefinition pure_color{};
+        if (!TryGetMaterialDefinitionByID(BUILTIN_MTL_DEF_PURE_COLOR, pure_color))
+        {
+            result.diagnostics.emplace_back("canonical PureColor definition missing during contract phase");
+        }
+        else
+        {
+            if (!IsPureColorMaterialDefinition(pure_color)
+             || pure_color.ssbo_slot_decls.size() != 1
+             || pure_color.ssbo_slot_decls[0].ssbo_type != SSBOType::EmissiveSurface
+             || pure_color.vertex_semantic_requirements.GetCount() != 1)
+                result.diagnostics.emplace_back("PureColor contract is not canonical");
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
+    static GateResult RunTransformGraphModelCase()
+    {
+        GateResult result;
+        result.name = "W.transform-graph-model";
+
+        const MaterialTransformGraph flat = MaterialTransformGraph::FlatXY();
+        const MaterialTransformGraph wall = MaterialTransformGraph::WallXY();
+        const MaterialTransformGraph world = MaterialTransformGraph::World3D();
+        const MaterialTransformGraph terrain = MaterialTransformGraph::Terrain();
+        MaterialTransformGraph world_vec2 = world;
+        world_vec2.source = VertexInputMode::Vec2Position;
+        world_vec2.mapping = PositionMappingMode::LiftXY_XY0;
+
+        if (flat == wall || flat == world || world == terrain
+         || flat.GetHash() == wall.GetHash()
+         || world.GetHash() == terrain.GetHash())
+            result.diagnostics.emplace_back(
+                "transform graph variants must have distinct structural identity");
+
+        if (!flat.IsScreenLike()
+         || !wall.IsScreenLike()
+         || world.IsScreenLike()
+         || world_vec2.IsScreenLike())
+            result.diagnostics.emplace_back(
+                "screen-space classification must include projection, not only Vec2 input");
+
+        const VertexShaderNodeConfig flat_config = flat.ToNodeConfig();
+        if (flat_config.input != VertexInputMode::Vec2Position
+         || flat_config.position_mapping != PositionMappingMode::NDCLift
+         || flat_config.projection != ProjectionMode::LocalToWorldOnly)
+            result.diagnostics.emplace_back("FlatXY graph conversion mismatch");
+
+        const VertexShaderNodeConfig wall_config = wall.ToNodeConfig();
+        if (wall_config.position_mapping != PositionMappingMode::LiftXY_X0Y)
+            result.diagnostics.emplace_back("WallXY graph conversion mismatch");
+
+        const VertexShaderNodeConfig terrain_config = terrain.ToNodeConfig();
+        if (terrain_config.position_mapping != PositionMappingMode::TerrainGrid
+         || terrain_config.projection != ProjectionMode::WorldCameraVP)
+            result.diagnostics.emplace_back("Terrain graph conversion mismatch");
+
+        if (MaterialTransformGraph::FromNodeConfig(world.ToNodeConfig()) != world)
+            result.diagnostics.emplace_back("transform graph round-trip mismatch");
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
+    static GateResult RunTransformGraphCompositionCase()
+    {
+        GateResult result;
+        result.name = "X.transform-graph-composition";
+
+        VertexVaryingConfig varying{};
+        varying.emit_data_index_id = true;
+
+        const auto build = [&](const MaterialTransformGraph &graph)
+        {
+            return GenerateVertexShader(
+                graph.ToNodeConfig(), varying, VK_FORMAT_R32G32B32_SFLOAT,
+                std::string(), "ShaderLibrary");
+        };
+
+        const std::string flat = build(MaterialTransformGraph::FlatXY());
+        const std::string wall = build(MaterialTransformGraph::WallXY());
+        const std::string world = build(MaterialTransformGraph::World3D());
+        const std::string terrain = build(MaterialTransformGraph::Terrain());
+
+        if (flat == wall || flat == world || world == terrain)
+            result.diagnostics.emplace_back(
+                "one material must produce distinct VS sources per transform graph");
+        if (flat.find("vertex/s2_ndc_lift.glsl") == std::string::npos
+         || wall.find("vertex/s2_lift_x0y.glsl") == std::string::npos
+         || world.find("vertex/s2_passthrough3d.glsl") == std::string::npos
+         || terrain.find("TerrainGrid") == std::string::npos)
+            result.diagnostics.emplace_back(
+                "transform graph source composition selected the wrong stage");
+
+        ShaderStageBuildSpec stage{};
+        stage.stage = ShaderStage::Vertex;
+        const ShaderStageKey flat_key =
+            stage.BuildKeyWithProviderGraphHash(MaterialTransformGraph::FlatXY().GetHash());
+        const ShaderStageKey wall_key =
+            stage.BuildKeyWithProviderGraphHash(MaterialTransformGraph::WallXY().GetHash());
+        if (flat_key == wall_key)
+            result.diagnostics.emplace_back(
+                "transform graph variants must produce distinct stage identity");
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
+    static GateResult RunMaterialShaderVariantIdentityCase()
+    {
+        GateResult result;
+        result.name = "Y.material-shader-variant-identity";
+
+        MaterialRecipe first{};
+        first.mtl_def_id = BUILTIN_MTL_DEF_PURE_COLOR;
+        first.recipe_name = "GizmoColor_0";
+        first.domain = "Gizmo";
+        first.ssbo_assets.push_back(
+            {"mtl", 0, SSBOType::EmissiveSurface, 100, 0, true, true});
+
+        MaterialRecipe second = first;
+        second.recipe_name = "GizmoColor_1";
+        second.domain = "AnotherInstanceDomain";
+        second.ssbo_assets[0].ssbo_element_index = 1;
+        if (HashMaterialRecipe(first) == HashMaterialRecipe(second))
+            result.diagnostics.emplace_back(
+                "full recipe identity should retain instance differences");
+        if (HashMaterialShaderVariant(first) != HashMaterialShaderVariant(second))
+            result.diagnostics.emplace_back(
+                "shader variant identity must ignore recipe/SSBO instance differences");
+
+        second.has_transform_graph = true;
+        second.transform_graph = MaterialTransformGraph::WallXY();
+        if (HashMaterialShaderVariant(first) == HashMaterialShaderVariant(second))
+            result.diagnostics.emplace_back(
+                "shader variant identity must include transform graph differences");
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunMaterialDefinitionFileSchemaCase()
     {
         GateResult result;
@@ -1044,9 +1200,14 @@ namespace
             "source = \"file\"\n"
             "usage = \"General\"\n"
             "bootstrap = \"None\"\n"
-            "domain = \"World3D\"\n"
             "program_mode = \"Compositor\"\n"
             "provider_policy = \"AllowDerived\"\n"
+            "[transform]\n"
+            "source = \"Vec3Position\"\n"
+            "mapping = \"Passthrough3D\"\n"
+            "orientation = \"World\"\n"
+            "scale = \"World\"\n"
+            "projection = \"WorldCameraVP\"\n"
             "[compositor]\n"
             "surface = \"Standard\"\n"
             "blend = \"Opaque\"\n"
@@ -1074,6 +1235,8 @@ namespace
             if (definition.source_kind != MaterialDefinitionSourceKind::File
              || definition.definition_id != "StandardFile"
              || definition.vertex_provider_policy != MaterialVertexProviderPolicy::AllowDerived
+             || !definition.has_transform_graph
+             || definition.transform_graph.mapping != PositionMappingMode::Passthrough3D
              || definition.vertex_semantic_requirements.GetCount() != 3
              || definition.ubo_requirements.size() != 2
              || std::strcmp(definition.fragment_program_module,
@@ -1092,7 +1255,6 @@ namespace
             "source = \"builtin\"\n"
             "usage = \"General\"\n"
             "bootstrap = \"None\"\n"
-            "domain = \"World3D\"\n"
             "program_mode = \"Compositor\"\n"
             "provider_policy = \"GeometryOnly\"\n";
         MaterialDefinitionFileData invalid_data;
@@ -1140,8 +1302,6 @@ namespace
             {
                 if (file_definition->definition_id != legacy_definition.definition_id)
                     result.diagnostics.emplace_back("Standard id mismatch");
-                if (file_definition->shader_domain != legacy_definition.shader_domain)
-                    result.diagnostics.emplace_back("Standard domain mismatch");
                 if (file_definition->fragment_program_mode != legacy_definition.fragment_program_mode)
                     result.diagnostics.emplace_back("Standard mode mismatch");
                 if (file_definition->compositor_surface != legacy_definition.compositor_surface)
@@ -1218,8 +1378,7 @@ namespace
                  && legacy_definition.fragment_surface_module
                  && std::strcmp(file_definition->fragment_surface_module,
                                 legacy_definition.fragment_surface_module) == 0);
-            if (file_definition->shader_domain != legacy_definition.shader_domain
-             || file_definition->fragment_program_mode != legacy_definition.fragment_program_mode
+            if (file_definition->fragment_program_mode != legacy_definition.fragment_program_mode
              || file_definition->compositor_surface != legacy_definition.compositor_surface
              || file_definition->compositor_blend != legacy_definition.compositor_blend
              || file_definition->compositor_pass != legacy_definition.compositor_pass
@@ -1250,7 +1409,8 @@ namespace
                 }
             }
 
-            if (file_definition->shader_domain == MaterialShaderDomain::Screen2D
+            if (file_definition->has_transform_graph
+             && file_definition->transform_graph.IsScreenLike()
              && (file_definition->vertex_node_config.input != VertexInputMode::Vec2Position
               || file_definition->vertex_node_config.position_mapping != PositionMappingMode::NDCLift
               || file_definition->vertex_node_config.projection != ProjectionMode::LocalToWorldOnly))
@@ -1269,7 +1429,6 @@ namespace
              || !MergeMaterialDefinitionFile(
                     legacy_definition, *file_definition, merged_definition)
              || merged_definition.source_kind != MaterialDefinitionSourceKind::File
-             || !merged_definition.vertex_attributes.IsEmpty()
              || merged_definition.fragment_program_module
                     != file_definition->fragment_program_module)
             {
@@ -1297,7 +1456,7 @@ namespace
 
             MaterialDefinition fallback_definition{};
             if (!TryGetMaterialDefinitionByID(
-                    BUILTIN_MTL_DEF_FALLBACK_3D, fallback_definition)
+                    BUILTIN_MTL_DEF_FALLBACK, fallback_definition)
              || MergeMaterialDefinitionFile(
                     fallback_definition, *file_definition, merged_definition))
             {
@@ -1321,22 +1480,10 @@ namespace
         GeometryVertexFormat gvf_3d{};
         gvf_3d.Add(VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT, 3, sizeof(float) * 3);
 
-        MaterialDefinitionBuildRequest request_2d{};
-        request_2d.geometry_vertex_format = &gvf_2d;
-
-        MaterialDefinitionBuildRequest request_3d{};
-        request_3d.geometry_vertex_format = &gvf_3d;
-
-        MaterialDefinitionBuildRequest request_unknown{};
-
-        if (!ShouldUse2DFallbackMaterial(request_2d))
-            result.diagnostics.emplace_back("2D position format must select fallback_2d.");
-
-        if (ShouldUse2DFallbackMaterial(request_3d))
-            result.diagnostics.emplace_back("3D position format must not select fallback_2d.");
-
-        if (ShouldUse2DFallbackMaterial(request_unknown))
-            result.diagnostics.emplace_back("Missing geometry hint must default to 3D fallback.");
+        (void)gvf_2d;
+        (void)gvf_3d;
+        if (std::strcmp(GetFallbackMaterialDefinitionID(), BUILTIN_MTL_DEF_PURE_COLOR) != 0)
+            result.diagnostics.emplace_back("all Geometry dimensions must use unified PureColor fallback");
 
         result.passed = result.diagnostics.empty();
         return result;
@@ -1568,14 +1715,14 @@ namespace
             result.diagnostics.emplace_back("LoadDirectory failed to scan directory");
         else
         {
-            if (file_count != 54)
-                result.diagnostics.emplace_back("LoadDirectory expected 54 file modules, got "
+            if (file_count != 53)
+                result.diagnostics.emplace_back("LoadDirectory expected 53 file modules, got "
                     + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 54 + int(GLSLCodeModuleID::RANGE_SIZE);
+            const int expected_count = 53 + int(GLSLCodeModuleID::RANGE_SIZE);
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
@@ -1614,11 +1761,11 @@ namespace
         int dup_errors = 0;
         if (!registry.LoadDirectory(OS_TEXT("E:/ULRE/ShaderLibrary"), &dup_count, &dup_errors))
             result.diagnostics.emplace_back("second LoadDirectory failed");
-        else if (dup_count != 0 || dup_errors != 54)
-            result.diagnostics.emplace_back("second LoadDirectory must report 54 duplicates, got files="
+        else if (dup_count != 0 || dup_errors != 53)
+            result.diagnostics.emplace_back("second LoadDirectory must report 53 duplicates, got files="
                 + std::to_string(dup_count) + " errors=" + std::to_string(dup_errors));
 
-        const int stable_count = 54 + int(GLSLCodeModuleID::RANGE_SIZE);
+        const int stable_count = 53 + int(GLSLCodeModuleID::RANGE_SIZE);
         if (registry.GetCount() != stable_count)
             result.diagnostics.emplace_back("registry count changed after duplicate re-scan: got "
                 + std::to_string(registry.GetCount()));
@@ -2146,6 +2293,12 @@ int main()
     results.push_back(RunBindlessEquivalenceCase());
     results.push_back(RunBuiltinRegistryCoverageCase());
     results.push_back(RunBootstrapMaterialBoundaryCase());
+    results.push_back(RunUnifiedMaterialBaselineCase());
+    results.push_back(RunUnifiedPureColorFragmentCase());
+    results.push_back(RunUnifiedMaterialContractCase());
+    results.push_back(RunTransformGraphModelCase());
+    results.push_back(RunTransformGraphCompositionCase());
+    results.push_back(RunMaterialShaderVariantIdentityCase());
     results.push_back(RunMaterialDefinitionFileSchemaCase());
     results.push_back(RunFallbackInferenceCase());
     results.push_back(RunGLSLCodeModuleRegistryCase());

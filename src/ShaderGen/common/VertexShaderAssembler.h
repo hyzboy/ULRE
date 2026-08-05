@@ -1,6 +1,7 @@
 #pragma once
 
 #include <hgl/mtl/VertexShaderNodeConfig.h>
+#include <hgl/mtl/MaterialTransformGraph.h>
 #include <vulkan/vulkan.h>
 #include <string>
 
@@ -164,34 +165,17 @@ namespace hgl::graph::mtl
         vs += "\n";
 
         // ── Stage 2: Position mapping ─────────────────────────────────────────
-        switch (node_cfg.position_mapping)
+        const MaterialTransformGraph transform_graph =
+            MaterialTransformGraph::FromNodeConfig(node_cfg);
+        const char *stage2_module = transform_graph.GetMappingModulePath();
+        if (stage2_module)
         {
-        case PositionMappingMode::LiftXY_XY0:
-            vs += "#include \"vertex/s2_lift_xy0.glsl\"\n";
-            break;
-        case PositionMappingMode::LiftXY_X0Y:
-            vs += "#include \"vertex/s2_lift_x0y.glsl\"\n";
-            break;
-        case PositionMappingMode::LiftXY_0XY:
-            vs += "#include \"vertex/s2_lift_0xy.glsl\"\n";
-            break;
-        case PositionMappingMode::NDCLift:
-            vs += "#include \"vertex/s2_ndc_lift.glsl\"\n";
-            break;
-        case PositionMappingMode::ZeroOneToNDC:
-            vs += "#include \"vertex/s2_zeroone_to_ndc.glsl\"\n";
-            break;
-        case PositionMappingMode::PixelToLocal:
-            vs += "#include \"vertex/s2_pixel_to_local.glsl\"\n";
-            break;
-        case PositionMappingMode::TerrainGrid:
+            vs += "#include \"" + std::string(stage2_module) + "\"\n";
+        }
+        else
+        {
             vs += "// TODO: TerrainGrid Stage2 not yet implemented\n";
             vs += "vec4 GetLocalPos() { return vec4(0.0); }\n";
-            break;
-        case PositionMappingMode::Passthrough3D:
-        default:
-            vs += "#include \"vertex/s2_passthrough3d.glsl\"\n";
-            break;
         }
 
         vs += "\n";
@@ -204,36 +188,7 @@ namespace hgl::graph::mtl
         if (varying_cfg.use_transform_id_attr)
             vs += "#define HGL_L2W_FROM_VERTEX_ATTR\n";
 
-        if (node_cfg.orientation == OrientationMode::CameraFacingFree ||
-            node_cfg.orientation == OrientationMode::CameraFacingAxisY)
-        {
-            if (node_cfg.scale == ScaleMode::FixedPixelSize)
-                vs += "#include \"vertex/s3_camera_facing_fixed_pixels.glsl\"\n";
-            else
-                vs += "#include \"vertex/s3_camera_facing_world.glsl\"\n";
-        }
-        else // OrientationMode::World
-        {
-            switch (node_cfg.projection)
-            {
-            case ProjectionMode::LocalToWorldOnly:
-                vs += "#include \"vertex/s3_l2w_only.glsl\"\n";
-                break;
-            case ProjectionMode::OrthoViewport:
-                vs += "#include \"vertex/s3_ortho_viewport.glsl\"\n";
-                break;
-            case ProjectionMode::OrthoThenLocalToWorld:
-                vs += "#include \"vertex/s3_ortho_then_l2w.glsl\"\n";
-                break;
-            case ProjectionMode::ClipPassthrough:
-                vs += "#include \"vertex/s3_clip_passthrough.glsl\"\n";
-                break;
-            case ProjectionMode::WorldCameraVP:
-            default:
-                vs += "#include \"vertex/s3_world_camera_vp.glsl\"\n";
-                break;
-            }
-        }
+        vs += "#include \"" + std::string(transform_graph.GetStage3ModulePath()) + "\"\n";
 
         vs += "\n";
 

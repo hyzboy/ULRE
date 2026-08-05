@@ -445,6 +445,7 @@ namespace hgl::graph
     bool PipelineResolver::BuildFinalPipelineKey(const FinalPipelineResolveRequest &request, FinalPipelineKey &out_key)
     {
         out_key = {};
+        out_key.preset = request.pipeline_preset;
 
         if(request.geometry_vertex_format)
         {

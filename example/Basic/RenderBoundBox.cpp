@@ -53,7 +53,7 @@ namespace
         return gvf;
     }
 
-    GeometryVertexFormat CreatePureColor3DGeometryVertexFormat()
+    GeometryVertexFormat CreatePureColorGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
             {VertexSemantic::Position, VF_V3F},
@@ -177,10 +177,12 @@ private:
     {
         solid_recipe.recipe_name = "RenderBoundBox.Solid";
         solid_recipe.mtl_def_id = "Gizmo3D";
+        solid_recipe.pipeline_preset = PipelinePreset::Solid3D;
         solid_recipe.domain = "RenderBoundBox.Solid";
 
         wire_recipe.recipe_name = "RenderBoundBox.Wire";
-        wire_recipe.mtl_def_id = "PureColor3D";
+        wire_recipe.mtl_def_id = "builtin/pure_color";
+        wire_recipe.pipeline_preset = PipelinePreset::Solid3D;
         wire_recipe.domain = "RenderBoundBox.Wire";
     }
 
@@ -491,7 +493,7 @@ private:
 
         auto pc = std::make_unique<GeometryCreater>(
             device,
-            CreatePureColor3DGeometryVertexFormat());
+            CreatePureColorGeometryVertexFormat());
 
         inline_geometry::BoundingBoxCreateInfo bbci;
         bbox_geometry = CreateBoundingBox(pc.get(),&bbci);

@@ -140,6 +140,7 @@ public:
         mi_data.normal_scale=0.35f;
         wall_recipe.recipe_name = "WallsFromPolyline.Standard";
         wall_recipe.mtl_def_id = "Standard";
+        wall_recipe.pipeline_preset = PipelinePreset::Solid3D;
         wall_recipe.domain = "WallsFromPolyline";
 
         // Allocate SSBO first so the ID is available before UpsertRecipe.

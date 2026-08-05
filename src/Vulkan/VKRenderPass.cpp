@@ -48,7 +48,13 @@ RenderPass::~RenderPass()
     LogInfo("[RenderPass::~RenderPass] RenderPass destroyed");
 }
 
-Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,const ShaderStageCreateInfoList &ssci_list,VkPipelineLayout pl,const VIL *vil,const GeometryVertexFormat *gvf)
+Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
+                                      PipelineData *pd,
+                                      const ShaderStageCreateInfoList &ssci_list,
+                                      VkPipelineLayout pl,
+                                      const VIL *vil,
+                                      const GeometryVertexFormat *gvf,
+                                      const PipelinePreset preset)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -61,6 +67,7 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,con
     request.frame_output.color_attachment_count = color_formats.GetCount();
     request.frame_output.depth_stencil_format = depth_format;
     request.debug_name = &name;
+    request.pipeline_preset = preset;
     request.pipeline_data = pd;
     request.shader_stages = &ssci_list;
     request.pipeline_layout = pl;
@@ -93,7 +100,7 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,con
         }
     }
 
-    Pipeline *pipeline = new Pipeline(name,*device,graphicsPipeline,vil,pd);
+    Pipeline *pipeline = new Pipeline(name,*device,graphicsPipeline,vil,pd,preset);
 
     const char *mode_name = resolve_result.materialize_mode == PipelineMaterializeMode::GraphicsPipelineLibrary
                           ? "GPL-skeleton"
@@ -114,7 +121,7 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const VIL *vil,const Pip
 
     pd->SetPrim(mtl->GetPrimitiveType(),prim_restart);
 
-    Pipeline *p=CreatePipeline(mtl->GetName(),pd,mtl->GetStageList(),mtl->GetPipelineLayout(),vil,gvf);
+    Pipeline *p=CreatePipeline(mtl->GetName(),pd,mtl->GetStageList(),mtl->GetPipelineLayout(),vil,gvf,PipelinePreset::Auto);
 
     if(p && !pipeline_list.Contains(p))
         pipeline_list.Add(p);
@@ -124,9 +131,24 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const VIL *vil,const Pip
 
 Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const VIL *vil,const PipelinePreset &ip,const bool prim_restart,const GeometryVertexFormat *gvf)
 {
-    if(!mtl)return(nullptr);
+    if(!mtl)
+        return(nullptr);
 
-    return CreatePipeline(mtl,vil,GetPipelineData(ip),prim_restart,gvf);
+    PipelineData *pd = new PipelineData(GetPipelineData(ip));
+    pd->SetPrim(mtl->GetPrimitiveType(),prim_restart);
+
+    Pipeline *p = CreatePipeline(mtl->GetName(),
+                                  pd,
+                                  mtl->GetStageList(),
+                                  mtl->GetPipelineLayout(),
+                                  vil,
+                                  gvf,
+                                  ip);
+
+    if(p && !pipeline_list.Contains(p))
+        pipeline_list.Add(p);
+
+    return p;
 }
 
 Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const PipelineData *pd,const bool prim_restart)
@@ -152,7 +174,7 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
 
     pd->SetPrim(prim, prim_restart);
 
-    Pipeline *p = CreatePipeline(name, pd, ssci, layout, vil, gvf);
+    Pipeline *p = CreatePipeline(name, pd, ssci, layout, vil, gvf, PipelinePreset::Auto);
 
     if(p && !pipeline_list.Contains(p))
         pipeline_list.Add(p);

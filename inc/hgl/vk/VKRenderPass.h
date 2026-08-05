@@ -35,7 +35,13 @@ protected:
 
     ManagedArray<Pipeline> pipeline_list;
 
-    Pipeline *CreatePipeline(const AnsiString &,PipelineData *,const ShaderStageCreateInfoList &,VkPipelineLayout,const VIL *,const GeometryVertexFormat *gvf=nullptr);
+    Pipeline *CreatePipeline(const AnsiString &,
+                             PipelineData *,
+                             const ShaderStageCreateInfoList &,
+                             VkPipelineLayout,
+                             const VIL *,
+                             const GeometryVertexFormat *gvf=nullptr,
+                             PipelinePreset preset=PipelinePreset::Auto);
 
 private:
 

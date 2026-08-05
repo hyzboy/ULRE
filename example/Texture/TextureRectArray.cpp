@@ -143,6 +143,7 @@ private:
 
         rect_recipe.recipe_name = "TextureRectArray.RectTexture2DArray";
         rect_recipe.mtl_def_id = "RectTexture2DArray";
+        rect_recipe.pipeline_preset = graph::PipelinePreset::Solid2D;
         rect_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigZeroToOne(true);
         rect_recipe.domain = "TextureRectArray";
         graph::mtl::UpsertRecipeSSBOAssetBinding(rect_recipe,

@@ -7,6 +7,7 @@
 #include <hgl/common/VertexAttribDef.h>
 #include <hgl/vk/VK.h>
 #include <hgl/graph/glsl/GLSLCodeModule.h>
+#include <hgl/mtl/MaterialTransformGraph.h>
 #include <hgl/type/ValueArray.h>
 #include <hgl/shadergen/ShaderStageBuildSpec.h>
 #include <hgl/shadergen/ShaderProgramLinkSpec.h>
@@ -94,22 +95,6 @@ namespace hgl::graph::mtl
         const char *     name         = nullptr;
     };
 
-    // Static vertex-input contract. This describes the shader ABI rather than
-    // a runtime Vulkan binding.
-    struct MaterialVertexAttributeDefinition
-    {
-        VertexSemantic semantic = VertexSemantic::Position;
-        uint32 location = 0;
-        VkFormat format = VK_FORMAT_UNDEFINED;
-        const char *glsl_declaration = nullptr;
-
-        bool operator==(const MaterialVertexAttributeDefinition &rhs) const noexcept
-        {
-            return semantic == rhs.semantic && location == rhs.location && format == rhs.format
-                && glsl_declaration == rhs.glsl_declaration;
-        }
-    };
-
     // Policy for resolving a material vertex semantic. This is declarative only:
     // Phase 4.2 keeps the legacy ABI as the active production path.
     enum class MaterialVertexProviderPolicy : uint8
@@ -175,13 +160,6 @@ namespace hgl::graph::mtl
         bool emit_frag_direction = false;
         bool use_transform_id_attr = false;
         bool emit_vertex_color_from_pattle = false;
-    };
-
-    enum class MaterialShaderDomain : uint8
-    {
-        Generic = 0,
-        Screen2D,
-        World3D
     };
 
     enum class MaterialFragmentProgramMode : uint8
@@ -250,7 +228,7 @@ namespace hgl::graph::mtl
         std::vector<UBODescriptorSemantic> ubo_requirements;
 
         // Part-B4: 纹理槽位能力声明。
-        // 无纹理材质（PureColor3D、VertexColor3D 等）此列表为空。
+        // 无纹理材质（PureColor、VertexColor 等）此列表为空。
         // sampler_type 区分 "sampler2D" vs "sampler2DArray" 等 GLSL 采样器变体。
         std::vector<MaterialTextureSlotDecl> texture_slot_decls;
 
@@ -258,65 +236,23 @@ namespace hgl::graph::mtl
 
         // PCG 顶点节点配置（单一真源）
         VertexShaderNodeConfig vertex_node_config;
+        MaterialTransformGraph transform_graph;
+        bool has_transform_graph = false;
 
         // Unified shader ABI/program contract shared by built-in and
         // file-backed definitions. The generator must not infer this from
         // the material name.
         //
-        // Phase 4 transition state: vertex_semantic_requirements is the
-        // format-free, file-serializable contract. vertex_attributes remains
-        // the active legacy ABI until resolver-backed generation is enabled.
         ValueArray<GLSLCodeModuleSemanticRequirement> vertex_semantic_requirements;
         MaterialVertexProviderPolicy vertex_provider_policy = MaterialVertexProviderPolicy::Auto;
-        ValueArray<MaterialVertexAttributeDefinition> vertex_attributes;
-        ShaderStageBuildSpec vertex_stage;
-        ShaderStageBuildSpec fragment_stage;
-        ShaderProgramLinkSpec program_link;
         const char *fragment_program_module = nullptr;
         const char *fragment_surface_module = nullptr;
         MaterialVertexVaryingConfig vertex_varying;
-        MaterialShaderDomain shader_domain = MaterialShaderDomain::Generic;
         MaterialFragmentProgramMode fragment_program_mode = MaterialFragmentProgramMode::Compositor;
         SurfaceType compositor_surface = SurfaceType::Unlit;
         BlendMode compositor_blend = BlendMode::Opaque;
         PassType compositor_pass = PassType::ForwardOpaque;
     };
-
-    inline void ConfigureMaterialShaderContract(
-        MaterialDefinition &definition,
-        const char *fragment_module,
-        const MaterialShaderDomain shader_domain,
-        const MaterialFragmentProgramMode fragment_program_mode,
-        const MaterialVertexAttributeDefinition *attributes,
-        const uint32 attribute_count,
-        const ShaderStageInterfaceVariable *vertex_inputs,
-        const uint32 vertex_input_count,
-        const ShaderStageInterfaceVariable *stage_outputs,
-        const uint32 stage_output_count,
-        const MaterialVertexVaryingConfig &varying)
-    {
-        definition.fragment_program_module = fragment_module;
-        definition.shader_domain = shader_domain;
-        definition.fragment_program_mode = fragment_program_mode;
-        definition.vertex_stage.stage = ShaderStage::Vertex;
-        definition.fragment_stage.stage = ShaderStage::Fragment;
-        definition.vertex_varying = varying;
-
-        for (uint32 i = 0; i < attribute_count; ++i)
-            definition.vertex_attributes.Add(attributes[i]);
-
-        for (uint32 i = 0; i < vertex_input_count; ++i)
-            definition.vertex_stage.inputs.Add(vertex_inputs[i]);
-
-        for (uint32 i = 0; i < stage_output_count; ++i)
-        {
-            definition.vertex_stage.outputs.Add(stage_outputs[i]);
-            definition.fragment_stage.inputs.Add(stage_outputs[i]);
-        }
-
-        definition.program_link.vertex_stage = definition.vertex_stage.BuildKey();
-        definition.program_link.fragment_stage = definition.fragment_stage.BuildKey();
-    }
 
     inline void ConfigureMaterialVertexSemanticContract(
         MaterialDefinition &definition,
@@ -332,97 +268,6 @@ namespace hgl::graph::mtl
             definition.vertex_semantic_requirements.Add(requirements[i]);
     }
 
-    inline void ConfigureMaterialVertexSemanticContractFromAttributes(
-        MaterialDefinition &definition,
-        const MaterialVertexAttributeDefinition *attributes,
-        const uint32 attribute_count,
-        const bool include_position,
-        const MaterialVertexProviderPolicy provider_policy =
-            MaterialVertexProviderPolicy::GeometryOnly)
-    {
-        definition.vertex_semantic_requirements.Clear();
-        definition.vertex_provider_policy = provider_policy;
-
-        if (include_position)
-            definition.vertex_semantic_requirements.Add(
-                MakeMaterialVertexSemanticRequirement(VertexSemantic::Position));
-
-        for (uint32 i = 0; i < attribute_count; ++i)
-        {
-            const GLSLCodeModuleSemantic semantic =
-                GetGLSLCodeModuleSemanticFromVertexSemantic(attributes[i].semantic);
-            if (semantic == GLSLCodeModuleSemantic::Unknown)
-                continue;
-
-            GLSLCodeModuleSemanticRequirement requirement =
-                MakeMaterialVertexSemanticRequirement(attributes[i].semantic);
-            definition.vertex_semantic_requirements.Add(requirement);
-        }
-    }
-
-    inline void ConfigureMaterialDefinitionContract(
-        MaterialDefinition &definition,
-        const char *fragment_module,
-        const char *surface_module,
-        const VkFormat position_format,
-        const MaterialVertexVaryingConfig &varying,
-        const MaterialVertexAttributeDefinition *attributes,
-        const uint32 attribute_count)
-    {
-        definition.fragment_program_module = fragment_module;
-        definition.fragment_surface_module = surface_module;
-        definition.fragment_program_mode = MaterialFragmentProgramMode::Compositor;
-        definition.vertex_varying = varying;
-        definition.vertex_stage.stage = ShaderStage::Vertex;
-        definition.fragment_stage.stage = ShaderStage::Fragment;
-
-        MaterialVertexAttributeDefinition position{};
-        position.semantic = VertexSemantic::Position;
-        position.location = 0;
-        position.format = position_format;
-        definition.vertex_attributes.Add(position);
-        definition.vertex_stage.inputs.Add({
-            0,
-            (position_format == VK_FORMAT_R32G32_SFLOAT || position_format == VK_FORMAT_R32G32_SINT)
-                ? ShaderStageValueType::Vec2 : ShaderStageValueType::Vec3,
-            0, 0
-        });
-
-        for (uint32 i = 0; i < attribute_count; ++i)
-        {
-            definition.vertex_attributes.Add(attributes[i]);
-            definition.vertex_stage.inputs.Add({0, ShaderStageValueType::Unknown,
-                                                  attributes[i].location, 0});
-        }
-
-        uint32 location = 0;
-        auto add_output = [&](const ShaderStageValueType type, const uint32 flags)
-        {
-            const ShaderStageInterfaceVariable value{0, type, location++, flags};
-            definition.vertex_stage.outputs.Add(value);
-            definition.fragment_stage.inputs.Add(value);
-        };
-        if (varying.emit_data_index_id)
-            add_output(ShaderStageValueType::UInt, uint32(ShaderStageInterfaceFlags::Flat));
-        if (varying.emit_texture_layer_id)
-            add_output(ShaderStageValueType::UInt, uint32(ShaderStageInterfaceFlags::Flat));
-        if (varying.emit_world_pos)
-            add_output(ShaderStageValueType::Vec3, 0);
-        if (varying.emit_world_normal)
-            add_output(ShaderStageValueType::Vec3, 0);
-        if (varying.emit_uv0)
-            add_output(ShaderStageValueType::Vec2, 0);
-        if (varying.emit_vertex_color || varying.emit_vertex_color_from_pattle)
-            add_output(ShaderStageValueType::Vec4, 0);
-        if (varying.emit_frag_direction)
-            add_output(ShaderStageValueType::Vec3, 0);
-        if (varying.emit_luminance)
-            add_output(ShaderStageValueType::Float, 0);
-
-        definition.program_link.vertex_stage = definition.vertex_stage.BuildKey();
-        definition.program_link.fragment_stage = definition.fragment_stage.BuildKey();
-    }
-
     // ── Layer 2: MaterialRecipe = Instance Input ──────────────────────────────────
     // 描述"这次渲染想要什么"。由上层作者按需填写，不含 Vulkan 句柄。
     // mtl_def_id 是唯一与 MaterialDefinition 对接的字段。
@@ -435,12 +280,14 @@ namespace hgl::graph::mtl
         std::string mtl_def_id;                // MaterialDefinition字符串主键（材质标识 / 未来文件名）
         std::string domain;                    // 资源/缓存域（用于隔离不同管线空间）
         VertexShaderNodeConfig vertex_node_config = MakeDefault3DNodeConfig();
+        MaterialTransformGraph transform_graph;
+        bool has_transform_graph = false;
         uint16_t material_lod = 0;            // 作者层选择的材质 LOD
 
         bool double_sided = false; // 双面渲染开关
         bool alpha_test = false;   // 是否启用 alpha test
         float alpha_cutoff = 0.5f; // alpha test 阈值（alpha < cutoff 丢弃）
-        hgl::graph::PipelinePreset pipeline_preset = hgl::graph::PipelinePreset::Auto; // Auto: 按 MaterialDefinition 推导
+        hgl::graph::PipelinePreset pipeline_preset = hgl::graph::PipelinePreset::Auto; // Auto: 未配置，渲染时拒绝
 
         std::vector<RecipeTextureBinding> textures; // 所有纹理语义绑定
         std::vector<RecipeSSBOAssetBinding> ssbo_assets; // 所有 SSBO 运行时绑定（name/slot/type/id/row）
@@ -582,6 +429,10 @@ namespace hgl::graph::mtl
         if (!recipe.domain.empty())
             hash = hgl::hash::FNV1aAppendBytes(hash, recipe.domain.data(), recipe.domain.size());
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.vertex_node_config);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.has_transform_graph);
+        if (recipe.has_transform_graph)
+            hash = hgl::hash::FNV1aAppendValueBytes(
+                hash, recipe.transform_graph.GetHash());
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.material_lod);
 
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.double_sided);
@@ -613,6 +464,24 @@ namespace hgl::graph::mtl
             hash = hgl::hash::FNV1aAppendValueBytes(hash, asset.shared_across_instances);
         }
 
+        return static_cast<uint64_t>(hash);
+    }
+
+    inline uint64_t HashMaterialShaderVariant(const MaterialRecipe &recipe) noexcept
+    {
+        uint64 hash = hgl::hash::FNV1aInit<uint64>();
+        if (!recipe.mtl_def_id.empty())
+            hash = hgl::hash::FNV1aAppendBytes(
+                hash, recipe.mtl_def_id.data(), recipe.mtl_def_id.size());
+
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.vertex_node_config);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.has_transform_graph);
+        if (recipe.has_transform_graph)
+            hash = hgl::hash::FNV1aAppendValueBytes(
+                hash, recipe.transform_graph.GetHash());
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.material_lod);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.alpha_test);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.alpha_cutoff);
         return static_cast<uint64_t>(hash);
     }
 }

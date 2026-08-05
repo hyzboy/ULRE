@@ -51,9 +51,9 @@ constexpr uint32_t VERTEX_COUNT = 3;
 // 三角形顶点数据（基底在原点，尖端指向上方，占满窗口大小）
 constexpr float position_data[VERTEX_COUNT * 2] =
 {
-    -0.05,  0.0,
-    0.05,  0.0,
-    0.0,   0.85
+    -0.05, 0.0,
+     0.05, 0.0,
+     0.0,  0.85
 };
 
 // 刻度数量
@@ -105,8 +105,9 @@ private:
         if (!geometry)
             return false;
 
-        clock_recipe.recipe_name = "Clock.PureColor2D";
-        clock_recipe.mtl_def_id = "PureColor2D";
+        clock_recipe.recipe_name = "Clock.PureColor";
+        clock_recipe.mtl_def_id = "builtin/pure_color";
+        clock_recipe.pipeline_preset = PipelinePreset::Solid2D;
         clock_recipe.domain = "Clock";
         clock_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
         graph::mtl::UpsertRecipeSSBOAssetBinding(clock_recipe,

@@ -144,6 +144,7 @@ private:
         auto primitive_comp = cube_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         cube_recipe.recipe_name = "Phase2.MaterialRecipeEntry.Cube";
         cube_recipe.mtl_def_id = "Gizmo3D";
+        cube_recipe.pipeline_preset = PipelinePreset::Solid3D;
         cube_recipe.domain = "Phase2AuthoringTest";
         graph::mtl::UpsertRecipeSSBOAssetBinding(cube_recipe,
                                                  graph::mtl::DefaultMaterialSSBOName,

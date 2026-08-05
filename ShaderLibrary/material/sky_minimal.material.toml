@@ -4,9 +4,15 @@ name = "SkyMinimal"
 source = "file"
 usage = "Sky"
 bootstrap = "None"
-domain = "World3D"
 program_mode = "Compositor"
 provider_policy = "GeometryOnly"
+
+[transform]
+source = "Vec3Position"
+mapping = "Passthrough3D"
+orientation = "World"
+scale = "World"
+projection = "WorldCameraVP"
 
 [compositor]
 surface = "Sky"

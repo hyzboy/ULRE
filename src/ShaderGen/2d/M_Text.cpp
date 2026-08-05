@@ -20,14 +20,13 @@ namespace
         bmi.texture_slot_decls = {{TextureSlot::BaseColor, GLSLSamplerType::Sampler2D, true, SamplerName::Text}};
         bmi.ssbo_slot_decls = {{"mtl", SSBOType::TransmissionSurface}};
         bmi.vertex_node_config = Make2DNodeConfigOrtho(false);
-        const MaterialVertexAttributeDefinition attrs[] = {
-            {VertexSemantic::TexCoord, 1, VK_FORMAT_R32G32_SFLOAT, "layout(location=1) in vec2 TexCoord;\n"}
-        };
         MaterialVertexVaryingConfig varying{};
         varying.emit_data_index_id = true;
         varying.emit_uv0 = true;
-        ConfigureMaterialDefinitionContract(bmi, "2d/text2d.frag.glsl", nullptr,
-                                             VK_FORMAT_R32G32_SINT, varying, attrs, 1);
+        bmi.fragment_program_module = "2d/text2d.frag.glsl";
+        bmi.fragment_program_mode = MaterialFragmentProgramMode::DirectInclude;
+        bmi.fragment_surface_module = nullptr;
+        bmi.vertex_varying = varying;
         const GLSLCodeModuleSemanticRequirement vertex_requirements[] = {
             MakeMaterialVertexSemanticRequirement(VertexSemantic::Position),
             MakeMaterialVertexSemanticRequirement(VertexSemantic::TexCoord)

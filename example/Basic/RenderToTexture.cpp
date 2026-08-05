@@ -254,6 +254,7 @@ public:
 
         sphere_recipe.recipe_name = "RenderToTexture.OffscreenSphere";
         sphere_recipe.mtl_def_id = "Gizmo3D";
+        sphere_recipe.pipeline_preset = PipelinePreset::Solid3D;
         sphere_recipe.domain = "RenderToTexture.Offscreen";
         sphere_asset = PrimitiveAsset(geometry, &sphere_recipe, PrimitiveType::Triangles);
         if (!sphere_asset.IsValid())
@@ -441,6 +442,7 @@ private:
 
         cube_recipe.recipe_name = "RenderToTexture.Cube";
         cube_recipe.mtl_def_id = "Standard";
+        cube_recipe.pipeline_preset = PipelinePreset::Solid3D;
         cube_recipe.domain = "RenderToTexture.MainScene";
         cube_asset = PrimitiveAsset(cube_geometry, &cube_recipe, PrimitiveType::Triangles);
         if (!cube_asset.IsValid())

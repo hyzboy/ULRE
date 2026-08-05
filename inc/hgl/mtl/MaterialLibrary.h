@@ -8,6 +8,7 @@
 #include<hgl/mtl/MaterializationSpec.h>
 #include<hgl/mtl/MaterializationResolver.h>
 #include<hgl/mtl/MaterializationPools.h>
+#include<hgl/graph/glsl/GLSLCodeModuleRegistry.h>
 #include<hgl/mtl/FixedVertexEntry.h>
 #include<hgl/type/String.h>
 #include<hgl/common/VertexAttribDef.h>
@@ -31,11 +32,10 @@ class MaterialDefinitionFileRegistry;
 // 作者层不直接使用此 enum；通过 mtl_def_id 字符串主键识别材质。
 enum class BuiltinMaterialCreatorID:uint8
 {
-    PureColor2D,
+    PureColor,
     Text2D,
-    PureColor3D,
 
-    ENUM_CLASS_RANGE(PureColor2D,PureColor3D)
+    ENUM_CLASS_RANGE(PureColor,Text2D)
 };
 
 // ── Layer 3: MaterialDefinitionBuildRequest = Build Context ──────────────────
@@ -48,6 +48,8 @@ struct MaterialDefinitionBuildRequest
     MaterialRecipe recipe;
     PrimitiveType primitive_type = PrimitiveType::Triangles;
     const GeometryVertexFormat *geometry_vertex_format = nullptr;
+    MaterialTransformGraph transform_graph;
+    bool has_transform_graph = false;
     ShaderArtifactStore *shader_artifact_store = nullptr;
 
     // Phase 4.4 opt-in: only explicit callers with a loaded registry activate
@@ -125,18 +127,25 @@ void RegisterMaterialDefinition(const BuiltinMaterialCreatorID preset, const Mat
 bool TryGetMaterialDefinitionByID(const std::string &mtl_def_id, MaterialDefinition &out_bmi);
 bool TryGetMaterialDefinitionByBuiltinMaterialCreatorID(const BuiltinMaterialCreatorID preset, MaterialDefinition &out_bmi);
 MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry();
+GLSLCodeModuleRegistry &GetGLSLCodeModuleRegistry();
 bool MergeMaterialDefinitionFile(const MaterialDefinition &legacy,
                                  const MaterialDefinition &file,
                                  MaterialDefinition &out);
 
 // ── built-in fallback BMI ID 常量 ─────────────────────────────────────────────
-constexpr const char *BUILTIN_MTL_DEF_FALLBACK_2D       = "builtin/fallback_2d";
-constexpr const char *BUILTIN_MTL_DEF_FALLBACK_3D       = "builtin/fallback_3d";
+constexpr const char *BUILTIN_MTL_DEF_FALLBACK          = "builtin/pure_color";
 constexpr const char *BUILTIN_MTL_DEF_MISSING_MATERIAL  = "builtin/missing_material";
 constexpr const char *BUILTIN_MTL_DEF_ERROR_CHECKER     = "builtin/error_checker";
 constexpr const char *BUILTIN_MTL_DEF_TEXT              = "builtin/text";
 constexpr const char *BUILTIN_MTL_DEF_SKY               = "builtin/sky";
 constexpr const char *BUILTIN_MTL_DEF_PURE_DEPTH        = "builtin/pure_depth";
+constexpr const char *BUILTIN_MTL_DEF_PURE_COLOR        = "builtin/pure_color";
+
+inline bool IsPureColorMaterialDefinition(
+    const MaterialDefinition &definition) noexcept
+{
+    return definition.bootstrap_kind == MaterialDefinitionBootstrapKind::PureColor;
+}
 
 inline bool IsBootstrapMaterialDefinition(
     const MaterialDefinition &definition) noexcept
@@ -144,12 +153,10 @@ inline bool IsBootstrapMaterialDefinition(
     return definition.bootstrap_kind != MaterialDefinitionBootstrapKind::None;
 }
 
-inline const char *GetFallbackMaterialDefinitionID(const bool use_2d_fallback = false)
+inline const char *GetFallbackMaterialDefinitionID()
 {
-    return use_2d_fallback ? BUILTIN_MTL_DEF_FALLBACK_2D : BUILTIN_MTL_DEF_FALLBACK_3D;
+    return BUILTIN_MTL_DEF_FALLBACK;
 }
-
-bool ShouldUse2DFallbackMaterial(const MaterialDefinitionBuildRequest &request);
 
 /**
  * Normalize a MaterialRecipe in-place:

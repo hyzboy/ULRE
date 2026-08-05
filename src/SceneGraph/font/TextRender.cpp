@@ -213,15 +213,16 @@ namespace hgl::graph
     {
         mtl::MaterialRecipe recipe{};
         recipe.mtl_def_id = "Text2D";
+        recipe.pipeline_preset = PipelinePreset::Solid2D;
+        const GeometryVertexFormat text_gvf = CreateTextGeometryVertexFormat();
         {
             mtl::MaterialDefinitionBuildRequest mtl_request{};
             mtl_request.recipe = recipe;
             mtl_request.primitive_type = PrimitiveType::Triangles;
+            mtl_request.geometry_vertex_format = &text_gvf;
             mtl_fs = mtl_manager->AcquireShaderProgram(mtl_request);
         }
         if(!mtl_fs)return(false);
-
-        const GeometryVertexFormat text_gvf = CreateTextGeometryVertexFormat();
 
         // Build VIL from geometry vertex format
         {

@@ -16,6 +16,7 @@ class Pipeline
 
     const VIL *vil;
     PipelineData *data;
+    PipelinePreset preset;
 
     bool alpha_test;
     bool alpha_blend;
@@ -24,14 +25,19 @@ private:
 
     friend class RenderPass;
 
-    Pipeline(const AnsiString &n,VkDevice dev,VkPipeline p,const VIL *v,PipelineData *pd)
+    Pipeline(const AnsiString &n,
+             VkDevice dev,
+             VkPipeline p,
+             const VIL *v,
+             PipelineData *pd,
+             PipelinePreset pp)
     {
         name=n;
-
         device=dev;
         pipeline=p;
         vil=v;
         data=pd;
+        preset=pp;
 
         alpha_test=false;
         alpha_blend=false;
@@ -47,6 +53,7 @@ public:
 
     const VIL *GetVIL()const{return vil;}
     const PipelineData *GetData()const{return data;}
+    PipelinePreset GetPreset()const{return preset;}
 
     const bool IsAlphaTest()const{return data->alpha_test>0;}
     const bool IsAlphaBlend()const{return data->alpha_blend;}

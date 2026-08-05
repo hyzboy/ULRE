@@ -15,9 +15,8 @@
 #include <string>
 
 namespace hgl::graph::mtl{
-void ForceLinkPureColor2DMaterialDefinition();
+void ForceLinkPureColorMaterialDefinition();
 void ForceLinkText2DMaterialDefinition();
-void ForceLinkPureColor3DMaterialDefinition();
 
 namespace
 {
@@ -76,6 +75,8 @@ namespace
         GLSLCodeModuleResolutionResult &out_resolution)
     {
         if (definition.vertex_provider_policy != MaterialVertexProviderPolicy::GeometryOnly)
+            return false;
+        if (!request.geometry_vertex_format)
             return false;
 
         if (request.vertex_code_module_registry)
@@ -137,9 +138,8 @@ namespace
     {
         static const bool linked = []() -> bool
         {
-            ForceLinkPureColor2DMaterialDefinition();
+            ForceLinkPureColorMaterialDefinition();
             ForceLinkText2DMaterialDefinition();
-            ForceLinkPureColor3DMaterialDefinition();
             return true;
         }();
         (void)linked;
@@ -150,21 +150,15 @@ namespace
         const MaterialDefinitionBuildRequest &request,
         const MaterialDefinition &definition)
     {
-        const bool file_semantic_contract =
-            definition.source_kind == MaterialDefinitionSourceKind::File
-         && !definition.vertex_semantic_requirements.IsEmpty();
+        const bool semantic_contract =
+            !definition.vertex_semantic_requirements.IsEmpty();
         if (!definition.fragment_program_module
-         || (!file_semantic_contract
-             && (definition.vertex_stage.stage != ShaderStage::Vertex
-              || definition.fragment_stage.stage != ShaderStage::Fragment
-              || definition.vertex_attributes.IsEmpty())))
+         || !semantic_contract)
         {
-            GLogError("[ShaderGen] Generic material contract invalid: name=%s fragment=%p vertex_stage=%u fragment_stage=%u attributes=%d",
+            GLogError("[ShaderGen] Generic material contract invalid: name=%s fragment=%p semantic_requirements=%d",
                       definition.definition_name.c_str(),
                       definition.fragment_program_module,
-                      static_cast<uint32>(definition.vertex_stage.stage),
-                      static_cast<uint32>(definition.fragment_stage.stage),
-                      definition.vertex_attributes.GetCount());
+                      definition.vertex_semantic_requirements.GetCount());
             return nullptr;
         }
 
@@ -185,20 +179,36 @@ namespace
         std::vector<FixedDescriptorEntry> descriptors;
         VkFormat position_format = VK_FORMAT_UNDEFINED;
         VertexShaderNodeConfig vertex_node_config = request.recipe.vertex_node_config;
-        if (IsDefault3DNodeConfig(vertex_node_config)
+        if (request.has_transform_graph)
+            vertex_node_config = request.transform_graph.ToNodeConfig();
+        const bool has_explicit_recipe_node_config =
+            !IsDefault3DNodeConfig(request.recipe.vertex_node_config);
+        if (!request.has_transform_graph
+         && !has_explicit_recipe_node_config
+         && IsDefault3DNodeConfig(vertex_node_config)
          && !IsDefault3DNodeConfig(definition.vertex_node_config))
         {
             vertex_node_config = definition.vertex_node_config;
         }
-        vertex_builder_common::VertexSemanticDecl declarations[8]{};
-        uint32 declaration_count = 0;
+        if (!request.has_transform_graph
+         && !has_explicit_recipe_node_config
+         && definition.has_transform_graph)
+            vertex_node_config = definition.transform_graph.ToNodeConfig();
+        if (!request.has_transform_graph
+         && IsDefault3DNodeConfig(vertex_node_config)
+         && request.geometry_vertex_format)
+        {
+            const auto *position = request.geometry_vertex_format->Find(VertexSemantic::Position);
+            if (position && position->vec_size == 2)
+                vertex_node_config = MaterialTransformGraph::FlatXY().ToNodeConfig();
+        }
+        const MaterialTransformGraph transform_graph =
+            MaterialTransformGraph::FromNodeConfig(vertex_node_config);
+        vertex_node_config = transform_graph.ToNodeConfig();
         std::string extra_attributes;
         std::string resolved_vertex_input_glsl;
         std::string resolved_provider_glsl;
         uint64 resolved_provider_graph_hash = 0;
-        const bool use_resolved_vertex_abi =
-            request.enable_resolved_vertex_abi || file_semantic_contract;
-        if (use_resolved_vertex_abi)
         {
             MaterialResolvedVertexABI resolved_abi;
             if (!BuildResolvedMaterialVertexABI(definition, request, resolved_abi))
@@ -211,32 +221,13 @@ namespace
             resolved_vertex_input_glsl = resolved_abi.vertex_input_glsl.c_str();
             resolved_provider_glsl = resolved_abi.provider_glsl;
             resolved_provider_graph_hash = resolved_abi.provider_graph_hash;
+            resolved_provider_graph_hash = hgl::hash::FNV1aAppendValueBytes(
+                hgl::hash::FNV1aInit<uint64>(), transform_graph.GetHash());
+            resolved_provider_graph_hash = hgl::hash::FNV1aAppendValueBytes(
+                resolved_provider_graph_hash, resolved_abi.provider_graph_hash);
             vertices.reserve(static_cast<size_t>(resolved_abi.vertex_entries.GetCount()));
             for (int i = 0; i < resolved_abi.vertex_entries.GetCount(); ++i)
                 vertices.push_back(resolved_abi.vertex_entries[i]);
-        }
-        else
-        {
-            position_format = ResolveMaterialVertexSemanticFormat(
-                request.geometry_vertex_format,
-                definition.vertex_attributes[0].semantic,
-                definition.vertex_attributes[0].format);
-            for (int i = 0; i < definition.vertex_attributes.GetCount() && declaration_count < 8; ++i)
-            {
-                const MaterialVertexAttributeDefinition &attribute = definition.vertex_attributes[i];
-                const VkFormat resolved_format = ResolveMaterialVertexSemanticFormat(
-                    request.geometry_vertex_format,
-                    attribute.semantic,
-                    attribute.format);
-                declarations[declaration_count++] = {attribute.semantic, resolved_format};
-                if (attribute.glsl_declaration)
-                    extra_attributes += attribute.glsl_declaration;
-            }
-            const vertex_builder_common::VertexBuildInput input{
-                request.primitive_type, request.geometry_vertex_format,
-                declarations, declaration_count
-            };
-            vertices = vertex_builder_common::BuildVertexEntries(input);
         }
         ShaderResourceManifest manifest{};
         ShaderProgramLinkSpec resolved_program_link{};
@@ -302,11 +293,15 @@ namespace
         config.artifact_store = request.shader_artifact_store;
         if (request.shader_artifact_store)
         {
+            ShaderStageBuildSpec vertex_stage{};
+            vertex_stage.stage = ShaderStage::Vertex;
+            ShaderStageBuildSpec fragment_stage{};
+            fragment_stage.stage = ShaderStage::Fragment;
             resolved_program_link.vertex_stage = request.enable_resolved_vertex_abi
-                ? definition.vertex_stage.BuildKeyWithProviderGraphHash(
+                ? vertex_stage.BuildKeyWithProviderGraphHash(
                     resolved_provider_graph_hash)
-                : definition.vertex_stage.BuildKey();
-            resolved_program_link.fragment_stage = definition.fragment_stage.BuildKey();
+                : vertex_stage.BuildKey();
+            resolved_program_link.fragment_stage = fragment_stage.BuildKey();
             resolved_program_link.resource_layout_hash = manifest.stable_hash;
             resolved_program_link.vertex_input_hash =
                 request.geometry_vertex_format
@@ -325,7 +320,7 @@ namespace
     struct BaseMaterialInfoRegistryEntry
     {
         bool has_preset = false;
-        BuiltinMaterialCreatorID preset = BuiltinMaterialCreatorID::PureColor2D;
+        BuiltinMaterialCreatorID preset = BuiltinMaterialCreatorID::PureColor;
         MaterialDefinition bmi{};
     };
 
@@ -552,17 +547,17 @@ MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry()
     return registry;
 }
 
-bool ShouldUse2DFallbackMaterial(const MaterialDefinitionBuildRequest &request)
+GLSLCodeModuleRegistry &GetGLSLCodeModuleRegistry()
 {
-    const GeometryVertexFormat *gvf = request.geometry_vertex_format;
-    if (!gvf)
-        return false;
-
-    const GeometryVertexAttributeFormat *position = gvf->Find(VertexSemantic::Position);
-    if (!position)
-        return false;
-
-    return position->vec_size == 2;
+    static GLSLCodeModuleRegistry registry;
+    static bool loaded = false;
+    if (!loaded)
+    {
+        registry.RegisterBuiltinModules();
+        registry.LoadDirectory(OS_TEXT("ShaderLibrary"));
+        loaded = true;
+    }
+    return registry;
 }
 
 bool MergeMaterialDefinitionFile(const MaterialDefinition &legacy,
@@ -579,14 +574,11 @@ bool MergeMaterialDefinitionFile(const MaterialDefinition &legacy,
     out.source_kind = MaterialDefinitionSourceKind::File;
     out.usage_tag = file.usage_tag;
     out.bootstrap_kind = file.bootstrap_kind;
-    out.shader_domain = file.shader_domain;
     out.fragment_program_mode = file.fragment_program_mode;
     out.vertex_provider_policy = file.vertex_provider_policy;
     out.vertex_semantic_requirements = file.vertex_semantic_requirements;
-    out.vertex_attributes.Clear();
-    out.vertex_stage = ShaderStageBuildSpec{};
-    out.fragment_stage = ShaderStageBuildSpec{};
-    out.program_link = ShaderProgramLinkSpec{};
+    out.transform_graph = file.transform_graph;
+    out.has_transform_graph = file.has_transform_graph;
     out.vertex_varying = file.vertex_varying;
     out.required_ssbo_assets = file.required_ssbo_assets;
     out.ssbo_slot_decls = file.ssbo_slot_decls;
@@ -605,7 +597,7 @@ bool MergeMaterialDefinitionFile(const MaterialDefinition &legacy,
 const char *GetBuiltinMaterialCreatorIDName(const BuiltinMaterialCreatorID mtl_id)
 {
     static const char *const names[] = {
-        "PureColor2D", "Text2D", "PureColor3D"
+        "PureColor", "Text2D"
     };
     const uint32 index = static_cast<uint32>(mtl_id);
     return index < static_cast<uint32>(sizeof(names) / sizeof(names[0]))

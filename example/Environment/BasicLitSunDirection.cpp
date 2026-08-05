@@ -171,6 +171,7 @@ private:
 
         sky_recipe.recipe_name = "BasicLitSunDirection.Sky";
         sky_recipe.mtl_def_id = "SkyMinimal";
+        sky_recipe.pipeline_preset = PipelinePreset::Sky;
         sky_recipe.domain = "BasicLitSunDirection";
         sky_asset = PrimitiveAsset(sky_geometry, &sky_recipe, PrimitiveType::Triangles);
 
@@ -210,6 +211,7 @@ private:
         mi_data.normal_scale = 0.35f;
         mesh_recipe.recipe_name = "BasicLitSunDirection.Standard";
         mesh_recipe.mtl_def_id = "Standard";
+        mesh_recipe.pipeline_preset = PipelinePreset::Solid3D;
         mesh_recipe.domain = "BasicLitSunDirection";
 
         // Allocate SSBO first so the ID is available before UpsertRecipe.

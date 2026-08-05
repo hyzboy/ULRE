@@ -63,15 +63,6 @@ namespace hgl::graph::mtl
             return true;
         }
 
-        bool ParseDomain(const std::string &name, MaterialShaderDomain &out)
-        {
-            if (name == "Generic") out = MaterialShaderDomain::Generic;
-            else if (name == "Screen2D") out = MaterialShaderDomain::Screen2D;
-            else if (name == "World3D") out = MaterialShaderDomain::World3D;
-            else return false;
-            return true;
-        }
-
         bool ParseMode(const std::string &name, MaterialFragmentProgramMode &out)
         {
             if (name == "DirectInclude") out = MaterialFragmentProgramMode::DirectInclude;
@@ -133,6 +124,79 @@ namespace hgl::graph::mtl
                 }
             }
             return false;
+        }
+
+        bool ParseVertexInput(const std::string &name, VertexInputMode &out)
+        {
+            if (name == "Vec2Position") out = VertexInputMode::Vec2Position;
+            else if (name == "Vec3Position") out = VertexInputMode::Vec3Position;
+            else if (name == "Vec2IntPosition") out = VertexInputMode::Vec2IntPosition;
+            else if (name == "Procedural") out = VertexInputMode::Procedural;
+            else return false;
+            return true;
+        }
+
+        bool ParseMapping(const std::string &name, PositionMappingMode &out)
+        {
+            static const char *const names[] = {
+                "Passthrough3D", "LiftXY_XY0", "LiftXY_X0Y", "LiftXY_0XY",
+                "NDCLift", "ZeroOneToNDC", "PixelToLocal", "TerrainGrid"
+            };
+            for (uint32 i = 0; i < 8; ++i)
+            {
+                if (name == names[i])
+                {
+                    out = static_cast<PositionMappingMode>(i);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool ParseOrientation(const std::string &name, OrientationMode &out)
+        {
+            if (name == "World") out = OrientationMode::World;
+            else if (name == "CameraFacingFree") out = OrientationMode::CameraFacingFree;
+            else if (name == "CameraFacingAxisY") out = OrientationMode::CameraFacingAxisY;
+            else return false;
+            return true;
+        }
+
+        bool ParseScale(const std::string &name, ScaleMode &out)
+        {
+            if (name == "World") out = ScaleMode::World;
+            else if (name == "FixedPixelSize") out = ScaleMode::FixedPixelSize;
+            else return false;
+            return true;
+        }
+
+        bool ParseProjection(const std::string &name, ProjectionMode &out)
+        {
+            if (name == "WorldCameraVP") out = ProjectionMode::WorldCameraVP;
+            else if (name == "LocalToWorldOnly") out = ProjectionMode::LocalToWorldOnly;
+            else if (name == "OrthoViewport") out = ProjectionMode::OrthoViewport;
+            else if (name == "OrthoThenLocalToWorld") out = ProjectionMode::OrthoThenLocalToWorld;
+            else if (name == "ClipPassthrough") out = ProjectionMode::ClipPassthrough;
+            else return false;
+            return true;
+        }
+
+        bool ParseTransformGraph(const toml::value &table,
+                                 MaterialTransformGraph &out)
+        {
+            std::string value;
+            if (!ReadRequiredString(table, "source", value)
+             || !ParseVertexInput(value, out.source)
+             || !ReadRequiredString(table, "mapping", value)
+             || !ParseMapping(value, out.mapping)
+             || !ReadRequiredString(table, "orientation", value)
+             || !ParseOrientation(value, out.orientation)
+             || !ReadRequiredString(table, "scale", value)
+             || !ParseScale(value, out.scale)
+             || !ReadRequiredString(table, "projection", value)
+             || !ParseProjection(value, out.projection))
+                return false;
+            return true;
         }
 
         bool ParseCodeModule(const std::string &name, GLSLCodeModuleID &out)
@@ -239,7 +303,6 @@ namespace hgl::graph::mtl
             std::string source;
             std::string usage;
             std::string bootstrap;
-            std::string domain;
             std::string mode;
             std::string policy;
 
@@ -248,13 +311,11 @@ namespace hgl::graph::mtl
              || !ReadRequiredString(root, "source", source)
              || !ReadRequiredString(root, "usage", usage)
              || !ReadRequiredString(root, "bootstrap", bootstrap)
-             || !ReadRequiredString(root, "domain", domain)
              || !ReadRequiredString(root, "program_mode", mode)
              || !ReadRequiredString(root, "provider_policy", policy)
              || source != "file"
              || !ParseUsage(usage, out.definition.usage_tag)
              || !ParseBootstrap(bootstrap, out.definition.bootstrap_kind)
-             || !ParseDomain(domain, out.definition.shader_domain)
              || !ParseMode(mode, out.definition.fragment_program_mode)
              || !ParsePolicy(policy, out.definition.vertex_provider_policy))
                 return false;
@@ -262,8 +323,15 @@ namespace hgl::graph::mtl
             out.definition.definition_id = id;
             out.definition.definition_name = name;
             out.definition.source_kind = MaterialDefinitionSourceKind::File;
-            if (out.definition.shader_domain == MaterialShaderDomain::Screen2D)
-                out.definition.vertex_node_config = Make2DNodeConfigNDC(true);
+            if (root.contains("transform"))
+            {
+                if (!ParseTransformGraph(
+                        root.at("transform"), out.definition.transform_graph))
+                    return false;
+                out.definition.has_transform_graph = true;
+                out.definition.vertex_node_config =
+                    out.definition.transform_graph.ToNodeConfig();
+            }
 
             const toml::value *compositor = nullptr;
             if (root.contains("compositor"))

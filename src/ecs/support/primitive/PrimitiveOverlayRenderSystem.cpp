@@ -14,12 +14,7 @@ namespace hgl::ecs
             if (!batch || !batch->key.pipeline)
                 return false;
 
-            const auto *pd = batch->key.pipeline->GetData();
-            if (!pd || !pd->depth_stencil)
-                return false;
-
-            return pd->depth_stencil->depthCompareOp == VK_COMPARE_OP_ALWAYS
-                && pd->depth_stencil->depthWriteEnable == VK_FALSE;
+            return graph::IsOverlayPipelinePreset(batch->key.pipeline->GetPreset());
         }
     }
 

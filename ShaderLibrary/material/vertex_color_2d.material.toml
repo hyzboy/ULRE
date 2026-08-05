@@ -4,9 +4,15 @@ name = "VertexColor2D"
 source = "file"
 usage = "General"
 bootstrap = "None"
-domain = "Screen2D"
 program_mode = "DirectInclude"
 provider_policy = "GeometryOnly"
+
+[transform]
+source = "Vec2Position"
+mapping = "NDCLift"
+orientation = "World"
+scale = "World"
+projection = "LocalToWorldOnly"
 
 [compositor]
 fragment = "2d/vertexcolor2d.frag.glsl"

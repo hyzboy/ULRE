@@ -43,7 +43,7 @@ namespace
         }
         if (!has_bmi)
         {
-            const char *fallback_def_id = mtl::GetFallbackMaterialDefinitionID(mtl::ShouldUse2DFallbackMaterial(request));
+            const char *fallback_def_id = mtl::GetFallbackMaterialDefinitionID();
             has_bmi = mtl::TryGetMaterialDefinitionByID(fallback_def_id, out_bmi);
         }
 
@@ -494,7 +494,7 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(const mtl::MaterialDef
     // Compute hash key BEFORE generic shader compilation to avoid triggering
     // CompositorAssembler/GLSL compilation on every call when already cached.
     const std::string hash_std = bmi.definition_id + "?"
-        + std::to_string(mtl::HashMaterialRecipe(normalized_request.recipe));
+        + std::to_string(mtl::HashMaterialShaderVariant(normalized_request.recipe));
     const AnsiString hash_name = hash_std.c_str();
 
     if (ShaderProgram *cached = TryGetCachedMaterial(hash_name))

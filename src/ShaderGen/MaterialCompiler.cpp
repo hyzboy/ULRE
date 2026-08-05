@@ -704,28 +704,6 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     if (config.material_definition)
     {
         const MaterialDefinition &material_definition = *config.material_definition;
-        const bool has_stage_contract =
-            !material_definition.vertex_stage.inputs.IsEmpty()
-            || !material_definition.vertex_stage.outputs.IsEmpty()
-            || !material_definition.fragment_stage.inputs.IsEmpty()
-            || !material_definition.fragment_stage.outputs.IsEmpty();
-        if (has_stage_contract)
-        {
-            if (material_definition.vertex_stage.stage != ShaderStage::Vertex
-             || material_definition.fragment_stage.stage != ShaderStage::Fragment
-             || !HasCompatibleStageInterface(material_definition.vertex_stage,
-                                              material_definition.fragment_stage))
-                return FailAfterMci("MaterialDefinition stage interface contract is invalid");
-
-            ShaderProgramLinkSpec link = material_definition.program_link;
-            if (!link.IsValid())
-            {
-                link.vertex_stage = material_definition.vertex_stage.BuildKey();
-                link.fragment_stage = material_definition.fragment_stage.BuildKey();
-            }
-            (void)link.BuildKey();
-        }
-
         std::vector<std::string> capability_diagnostics;
         if (!ValidateDefinitionCapabilitySubset(material_definition, material_resource_layout, capability_diagnostics))
         {

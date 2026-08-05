@@ -106,6 +106,7 @@ private:
 
         plane_grid_recipe.recipe_name = "PlaneGrid3D.VertexLuminance3D";
         plane_grid_recipe.mtl_def_id = "VertexLuminance3D";
+        plane_grid_recipe.pipeline_preset = graph::PipelinePreset::Solid3D;
         plane_grid_recipe.domain = "PlaneGrid3D";
         plane_grid_recipe.vertex_node_config.input = graph::mtl::VertexInputMode::Vec2Position;
         plane_grid_recipe.vertex_node_config.position_mapping = graph::mtl::PositionMappingMode::LiftXY_XY0;

@@ -21,4 +21,11 @@ namespace hgl::graph
 
         ENUM_CLASS_RANGE(Solid3D, Alpha2D)
     };//enum class PipelinePreset
+
+    inline bool IsOverlayPipelinePreset(const PipelinePreset preset) noexcept
+    {
+        return preset == PipelinePreset::GizmoOverlay3D
+            || preset == PipelinePreset::Solid2D
+            || preset == PipelinePreset::Alpha2D;
+    }
 }//namespace hgl::graph

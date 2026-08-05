@@ -43,7 +43,7 @@ namespace
         return gvf;
     }
 
-    GeometryVertexFormat CreatePureColor3DGeometryVertexFormat()
+    GeometryVertexFormat CreatePureColorGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
             {VertexSemantic::Position, VF_V3F},
@@ -167,10 +167,12 @@ private:
     {
         solid_recipe.recipe_name = "LoadGeometry.Gizmo3D";
         solid_recipe.mtl_def_id = "Gizmo3D";
+        solid_recipe.pipeline_preset = PipelinePreset::Solid3D;
         solid_recipe.domain = "LoadGeometry";
 
         wire_recipe.recipe_name = "LoadGeometry.Wire";
-        wire_recipe.mtl_def_id = "PureColor3D";
+        wire_recipe.mtl_def_id = "builtin/pure_color";
+        wire_recipe.pipeline_preset = PipelinePreset::Solid3D;
         wire_recipe.domain = "LoadGeometry";
     }
 
@@ -188,7 +190,7 @@ private:
         return InitMaterialRuntimeData(
             &wire,
             "LoadGeometry:WireMIData",
-            CreatePureColor3DGeometryVertexFormat(),
+            CreatePureColorGeometryVertexFormat(),
             graph::mtl::SSBOType::EmissiveSurface);
     }
 
@@ -201,7 +203,7 @@ private:
         if (!device || !geometry_manager)
             return false;
 
-        auto pc = std::make_unique<GeometryCreater>(device, CreatePureColor3DGeometryVertexFormat());
+        auto pc = std::make_unique<GeometryCreater>(device, CreatePureColorGeometryVertexFormat());
 
         inline_geometry::BoundingBoxCreateInfo bbci;
 

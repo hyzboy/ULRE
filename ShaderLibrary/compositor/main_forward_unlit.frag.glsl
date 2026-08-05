@@ -8,7 +8,7 @@
 
 // === Compositor Template: Forward Unlit FS ===
 // Unlit 渲染 — 不执行光照计算，直接输出 baseColor
-// 适用于 SurfaceType::Unlit (PureColor3D 等)
+// 适用于 SurfaceType::Unlit surface paths
 //
 // Descriptor binding 约定（固定布局）：
 //   Scene    set=0 : camera=0, viewport=2

@@ -75,7 +75,7 @@ namespace hgl::graph
         }
 
         // Create the SSBO holding one Color4f per GizmoColor slot.
-        // PureColor3D MI data is exactly one Color4f (16 bytes, std430 vec4).
+        // PureColor MI data is exactly one Color4f (16 bytes, std430 vec4).
         bool InitColorSSBO(GizmoResource *gr, const mtl::MaterialResourceLayout &material_layout)
         {
             if (!gr)
@@ -104,7 +104,7 @@ namespace hgl::graph
             const uint32_t color_count = uint32_t(GizmoColor::RANGE_SIZE);
 
             gr->mi_ssbo = buffer_manager->CreateSSBO(
-                "GizmoResource:PureColor3D:MIData",
+                "GizmoResource:PureColor:MIData",
                 VkDeviceSize(sizeof(Color4f)) * color_count,
                 nullptr,
                 SharingMode::Exclusive);
@@ -138,7 +138,7 @@ namespace hgl::graph
                     auto &recipe = gr->color_recipe[c];
                     recipe = mtl::MaterialRecipe{};
                     recipe.recipe_name = "GizmoColor_" + std::to_string(c);
-                    recipe.mtl_def_id = "PureColor3D";
+                    recipe.mtl_def_id = mtl::BUILTIN_MTL_DEF_PURE_COLOR;
                     recipe.textures.clear();
                     recipe.ssbo_assets.clear();
 
@@ -171,22 +171,22 @@ namespace hgl::graph
             if(!gizmo_mtl_manager)
                 return(false);
 
+            const GeometryVertexFormat gizmo_gvf = CreateGizmoGeometryVertexFormat();
             mtl::MaterialResourceLayout gizmo_material_layout{};
 
             {
                 mtl::MaterialRecipe recipe{};
-                recipe.mtl_def_id = "PureColor3D";
+                recipe.mtl_def_id = mtl::BUILTIN_MTL_DEF_PURE_COLOR;
                 mtl::MaterialDefinitionBuildRequest request{};
                 request.recipe = recipe;
                 request.primitive_type = PrimitiveType::Triangles;
+                request.geometry_vertex_format = &gizmo_gvf;
 
                 if(!gizmo_mtl_manager->BuildMaterialResourceLayout(request, gizmo_material_layout))
                     return(false);
             }
 
             {
-                const GeometryVertexFormat gizmo_gvf = CreateGizmoGeometryVertexFormat();
-
                 if(!InitColorSSBO(&gizmo_triangle, gizmo_material_layout))
                     return(false);
 

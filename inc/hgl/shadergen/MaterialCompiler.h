@@ -94,7 +94,7 @@ inline CompositorMaterialBuildConfig ToCompositorBuildConfig3D(
     bc.private_shader_buffer_source_count = request.private_shader_buffer_source_count;
     bc.ssbo_slot_decls                   = definition.ssbo_slot_decls.empty() ? nullptr : &definition.ssbo_slot_decls;
     bc.material_definition               = &definition;
-    bc.program_link                      = &definition.program_link;
+    bc.program_link                      = nullptr;
     return bc;
 }
 
