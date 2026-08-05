@@ -3,6 +3,7 @@
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
+#include<hgl/thread/ThreadMutex.h>
 #include<hgl/util/hash/FNV1a.h>
 #include<hgl/log/Log.h>
 #include<cstring>
@@ -87,12 +88,37 @@ namespace hgl::graph
                 return 0;
 
             uint64_t hash = hgl::hash::FNV1aInit<uint64_t>();
-            hash = hgl::hash::FNV1aAppendBytes(hash, &pd->input_assembly, sizeof(pd->input_assembly));
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->input_assembly.flags);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->input_assembly.topology);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->input_assembly.primitiveRestartEnable);
             if(pd->rasterization)
-                hash = hgl::hash::FNV1aAppendBytes(hash, pd->rasterization, sizeof(VkPipelineRasterizationStateCreateInfo));
+            {
+                const VkPipelineRasterizationStateCreateInfo &rs = *pd->rasterization;
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, rs.flags);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, rs.depthClampEnable);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, rs.rasterizerDiscardEnable);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, rs.polygonMode);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, rs.cullMode);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, rs.frontFace);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, rs.depthBiasEnable);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, rs.depthBiasConstantFactor);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, rs.depthBiasClamp);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, rs.depthBiasSlopeFactor);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, rs.lineWidth);
+            }
             if(pd->tessellation)
-                hash = hgl::hash::FNV1aAppendBytes(hash, pd->tessellation, sizeof(VkPipelineTessellationStateCreateInfo));
+            {
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->tessellation->flags);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->tessellation->patchControlPoints);
+            }
+
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->viewport_state.viewportCount);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->viewport_state.scissorCount);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->dynamic_state.dynamicStateCount);
+            if(pd->dynamic_state.dynamicStateCount > 0 && pd->dynamic_state.pDynamicStates)
+                hash = hgl::hash::FNV1aAppendBytes(hash,
+                                                   pd->dynamic_state.pDynamicStates,
+                                                   sizeof(VkDynamicState) * pd->dynamic_state.dynamicStateCount);
             return hash;
         }
 
@@ -174,13 +200,40 @@ namespace hgl::graph
         {
             VulkanDevice *device = nullptr;
             VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
+            VkRenderPass render_pass = VK_NULL_HANDLE;
+            uint32_t subpass = 0;
             FinalPipelineKey key{};
             VkPipeline pipeline = VK_NULL_HANDLE;
+            uint32_t references = 0;
 
             bool operator == (const FinalPipelineCacheEntry &rhs) const
             {
                 return device == rhs.device
                     && pipeline_layout == rhs.pipeline_layout
+                    && render_pass == rhs.render_pass
+                    && subpass == rhs.subpass
+                    && key == rhs.key
+                    && pipeline == rhs.pipeline
+                    && references == rhs.references;
+            }
+        };
+
+        template<typename Key>
+        struct LibraryPipelineCacheEntry
+        {
+            VulkanDevice *device = nullptr;
+            VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
+            VkRenderPass render_pass = VK_NULL_HANDLE;
+            uint32_t subpass = 0;
+            Key key{};
+            VkPipeline pipeline = VK_NULL_HANDLE;
+
+            bool operator == (const LibraryPipelineCacheEntry &rhs) const
+            {
+                return device == rhs.device
+                    && pipeline_layout == rhs.pipeline_layout
+                    && render_pass == rhs.render_pass
+                    && subpass == rhs.subpass
                     && key == rhs.key
                     && pipeline == rhs.pipeline;
             }
@@ -188,10 +241,10 @@ namespace hgl::graph
 
         ValueArray<FinalPipelineCacheEntry> g_monolithic_pipeline_cache;
         ValueArray<FinalPipelineCacheEntry> g_gpl_link_pipeline_cache;
-        ValueArray<VertexInterfaceKey> g_vi_library_cache;
-        ValueArray<PreRasterPipelineKey> g_pr_library_cache;
-        ValueArray<FragmentShaderKey> g_fs_library_cache;
-        ValueArray<FragmentOutputKey> g_fo_library_cache;
+        ValueArray<LibraryPipelineCacheEntry<VertexInterfaceKey>> g_vi_library_cache;
+        ValueArray<LibraryPipelineCacheEntry<PreRasterPipelineKey>> g_pr_library_cache;
+        ValueArray<LibraryPipelineCacheEntry<FragmentShaderKey>> g_fs_library_cache;
+        ValueArray<LibraryPipelineCacheEntry<FragmentOutputKey>> g_fo_library_cache;
 
         struct PipelineResolveStats
         {
@@ -226,6 +279,7 @@ namespace hgl::graph
         };
 
         PipelineResolveStats g_resolve_stats;
+        ThreadMutex g_resolver_mutex;
 
         const char *ResolveErrorText(const ResolveError error)
         {
@@ -273,68 +327,107 @@ namespace hgl::graph
             return ResolveError::None;
         }
 
-        bool TouchVILibraryCache(const VertexInterfaceKey &key, bool &hit)
+        VkPipeline FindLibraryPipeline(const ValueArray<LibraryPipelineCacheEntry<VertexInterfaceKey>> &cache,
+                                       const FinalPipelineResolveRequest &request,
+                                       const VertexInterfaceKey &key)
         {
-            const int count = g_vi_library_cache.GetCount();
+            const int count = cache.GetCount();
             for(int i = 0; i < count; ++i)
             {
-                if(g_vi_library_cache[i] == key)
-                {
-                    hit = true;
-                    return true;
-                }
+                const LibraryPipelineCacheEntry<VertexInterfaceKey> &entry = cache[i];
+                if(entry.device == request.device
+                && entry.key == key)
+                    return entry.pipeline;
             }
 
-            hit = false;
-            return g_vi_library_cache.Add(key);
+            return VK_NULL_HANDLE;
         }
 
-        bool TouchPRLibraryCache(const PreRasterPipelineKey &key, bool &hit)
+        template<typename Key>
+        VkPipeline FindLibraryPipeline(const ValueArray<LibraryPipelineCacheEntry<Key>> &cache,
+                                       const FinalPipelineResolveRequest &request,
+                                       const Key &key)
         {
-            const int count = g_pr_library_cache.GetCount();
+            const int count = cache.GetCount();
             for(int i = 0; i < count; ++i)
             {
-                if(g_pr_library_cache[i] == key)
-                {
-                    hit = true;
-                    return true;
-                }
+                const LibraryPipelineCacheEntry<Key> &entry = cache[i];
+                if(entry.device == request.device
+                && entry.pipeline_layout == request.pipeline_layout
+                && entry.render_pass == request.render_pass
+                && entry.subpass == request.subpass
+                && entry.key == key)
+                    return entry.pipeline;
             }
 
-            hit = false;
-            return g_pr_library_cache.Add(key);
+            return VK_NULL_HANDLE;
         }
 
-        bool TouchFSLibraryCache(const FragmentShaderKey &key, bool &hit)
+        bool CacheLibraryPipeline(ValueArray<LibraryPipelineCacheEntry<VertexInterfaceKey>> &cache,
+                                  const FinalPipelineResolveRequest &request,
+                                  const VertexInterfaceKey &key,
+                                  const VkPipeline pipeline)
         {
-            const int count = g_fs_library_cache.GetCount();
-            for(int i = 0; i < count; ++i)
-            {
-                if(g_fs_library_cache[i] == key)
-                {
-                    hit = true;
-                    return true;
-                }
-            }
+            if(!request.device || pipeline == VK_NULL_HANDLE)
+                return false;
 
-            hit = false;
-            return g_fs_library_cache.Add(key);
+            LibraryPipelineCacheEntry<VertexInterfaceKey> entry{};
+            entry.device = request.device;
+            entry.pipeline_layout = VK_NULL_HANDLE;
+            entry.render_pass = VK_NULL_HANDLE;
+            entry.subpass = 0;
+            entry.key = key;
+            entry.pipeline = pipeline;
+            return cache.Add(entry) >= 0;
         }
 
-        bool TouchFOLibraryCache(const FragmentOutputKey &key, bool &hit)
+        template<typename Key>
+        bool CacheLibraryPipeline(ValueArray<LibraryPipelineCacheEntry<Key>> &cache,
+                                  const FinalPipelineResolveRequest &request,
+                                  const Key &key,
+                                  const VkPipeline pipeline)
         {
-            const int count = g_fo_library_cache.GetCount();
+            if(!request.device || pipeline == VK_NULL_HANDLE)
+                return false;
+
+            LibraryPipelineCacheEntry<Key> entry{};
+            entry.device = request.device;
+            entry.pipeline_layout = request.pipeline_layout;
+            entry.render_pass = request.render_pass;
+            entry.subpass = request.subpass;
+            entry.key = key;
+            entry.pipeline = pipeline;
+            return cache.Add(entry) >= 0;
+        }
+
+        template<typename Key>
+        void ForgetLibraryPipelinesForDevice(ValueArray<LibraryPipelineCacheEntry<Key>> &cache,
+                                             VulkanDevice *device)
+        {
+            int write = 0;
+            const int count = cache.GetCount();
             for(int i = 0; i < count; ++i)
             {
-                if(g_fo_library_cache[i] == key)
-                {
-                    hit = true;
-                    return true;
-                }
+                if(cache[i].device == device)
+                    continue;
+
+                if(write != i)
+                    cache[write] = cache[i];
+                ++write;
             }
 
-            hit = false;
-            return g_fo_library_cache.Add(key);
+            while(cache.GetCount() > write)
+                cache.Delete(cache.GetCount() - 1);
+        }
+
+        template<typename Key>
+        bool TouchLibraryCache(const ValueArray<LibraryPipelineCacheEntry<Key>> &cache,
+                               const FinalPipelineResolveRequest &request,
+                               const Key &key,
+                               bool &hit)
+        {
+            hit = FindLibraryPipeline(cache, request, key) != VK_NULL_HANDLE;
+            return hit;
         }
 
         void UpdateLibraryHitStats(const bool vi_hit,
@@ -388,10 +481,12 @@ namespace hgl::graph
             const int count = cache.GetCount();
             for(int i = 0; i < count; ++i)
             {
-                const FinalPipelineCacheEntry &entry = cache[i];
+                FinalPipelineCacheEntry &entry = cache[i];
                 if(entry.device != request.device)
                     continue;
                 if(entry.pipeline_layout != request.pipeline_layout)
+                    continue;
+                if(entry.render_pass != request.render_pass || entry.subpass != request.subpass)
                     continue;
                 if(!(entry.key == key))
                     continue;
@@ -399,6 +494,7 @@ namespace hgl::graph
                     continue;
 
                 out_pipeline = entry.pipeline;
+                ++entry.references;
                 return true;
             }
 
@@ -416,9 +512,184 @@ namespace hgl::graph
             FinalPipelineCacheEntry entry{};
             entry.device = request.device;
             entry.pipeline_layout = request.pipeline_layout;
+            entry.render_pass = request.render_pass;
+            entry.subpass = request.subpass;
             entry.key = key;
             entry.pipeline = pipeline;
+            entry.references = 1;
             GetFinalPipelineCache(mode).Add(entry);
+        }
+
+        void CollectShaderStages(const ShaderStageCreateInfoList &source,
+                                 const VkShaderStageFlagBits stage,
+                                 const bool match,
+                                 ShaderStageCreateInfoList &target)
+        {
+            const uint count = source.GetCount();
+            const VkPipelineShaderStageCreateInfo *stages = source.GetData();
+
+            for(uint i = 0; i < count; ++i)
+                if(((stages[i].stage & stage) != 0) == match)
+                    target.Add(stages[i]);
+        }
+
+        bool HasShaderStage(const ShaderStageCreateInfoList &stages,
+                            const VkShaderStageFlagBits stage)
+        {
+            const uint count = stages.GetCount();
+            const VkPipelineShaderStageCreateInfo *stage_list = stages.GetData();
+
+            for(uint i = 0; i < count; ++i)
+                if((stage_list[i].stage & stage) != 0)
+                    return true;
+
+            return false;
+        }
+
+        bool CreatePipelineLibrary(const FinalPipelineResolveRequest &request,
+                                   PipelineData *pd,
+                                   const ShaderStageCreateInfoList &stages,
+                                   const VkGraphicsPipelineLibraryFlagsEXT library_flags,
+                                   VkPipeline &out_pipeline)
+        {
+            out_pipeline = VK_NULL_HANDLE;
+
+            VkGraphicsPipelineLibraryCreateInfoEXT library_info{};
+            library_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT;
+            library_info.flags = library_flags;
+
+            const bool vertex_input_interface =
+                (library_flags & VK_GRAPHICS_PIPELINE_LIBRARY_VERTEX_INPUT_INTERFACE_BIT_EXT) != 0;
+            const bool pre_rasterization =
+                (library_flags & VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT) != 0;
+            const bool fragment_shader =
+                (library_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) != 0;
+            const bool fragment_output =
+                (library_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT) != 0;
+            const bool has_tessellation_shader =
+                HasShaderStage(stages, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)
+                || HasShaderStage(stages, VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+
+            VkGraphicsPipelineCreateInfo create_info = pd->pipeline_info;
+            create_info.pNext = &library_info;
+            create_info.flags = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR;
+            create_info.layout = vertex_input_interface ? VK_NULL_HANDLE : request.pipeline_layout;
+            create_info.renderPass = vertex_input_interface ? VK_NULL_HANDLE : request.render_pass;
+            create_info.subpass = vertex_input_interface ? 0 : request.subpass;
+            create_info.stageCount = stages.GetCount();
+            create_info.pStages = stages.IsEmpty() ? nullptr : stages.GetData();
+
+            create_info.pVertexInputState = vertex_input_interface ? pd->pipeline_info.pVertexInputState : nullptr;
+            create_info.pInputAssemblyState = vertex_input_interface ? pd->pipeline_info.pInputAssemblyState : nullptr;
+            create_info.pTessellationState = pre_rasterization && has_tessellation_shader
+                                           ? pd->pipeline_info.pTessellationState
+                                           : nullptr;
+            create_info.pViewportState = pre_rasterization ? pd->pipeline_info.pViewportState : nullptr;
+            create_info.pRasterizationState = pre_rasterization ? pd->pipeline_info.pRasterizationState : nullptr;
+            create_info.pMultisampleState = (pre_rasterization || fragment_shader || fragment_output)
+                                          ? pd->pipeline_info.pMultisampleState
+                                          : nullptr;
+            create_info.pDepthStencilState = fragment_shader ? pd->pipeline_info.pDepthStencilState : nullptr;
+            create_info.pColorBlendState = fragment_output ? pd->pipeline_info.pColorBlendState : nullptr;
+
+            // 按照规范精细化过滤各个 Library 的动态状态 (Dynamic States)
+            VkPipelineDynamicStateCreateInfo lib_dynamic_state{};
+            VkDynamicState filtered_dynamic_states[32];
+            uint32_t filtered_count = 0;
+
+            if(pd->pipeline_info.pDynamicState && pd->pipeline_info.pDynamicState->dynamicStateCount > 0)
+            {
+                const uint32_t src_count = pd->pipeline_info.pDynamicState->dynamicStateCount;
+                const VkDynamicState *src_states = pd->pipeline_info.pDynamicState->pDynamicStates;
+
+                for(uint32_t i = 0; i < src_count; ++i)
+                {
+                    const VkDynamicState ds = src_states[i];
+                    bool belong = false;
+
+                    if(vertex_input_interface)
+                    {
+                        if(ds == VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE
+                        || ds == VK_DYNAMIC_STATE_VERTEX_INPUT_EXT)
+                            belong = true;
+                    }
+                    if(pre_rasterization)
+                    {
+                        if(ds == VK_DYNAMIC_STATE_VIEWPORT
+                        || ds == VK_DYNAMIC_STATE_SCISSOR
+                        || ds == VK_DYNAMIC_STATE_LINE_WIDTH
+                        || ds == VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE
+                        || ds == VK_DYNAMIC_STATE_CULL_MODE
+                        || ds == VK_DYNAMIC_STATE_FRONT_FACE
+                        || ds == VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY
+                        || ds == VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE)
+                            belong = true;
+                    }
+                    if(fragment_shader)
+                    {
+                        if(ds == VK_DYNAMIC_STATE_DEPTH_BIAS
+                        || ds == VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE
+                        || ds == VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE
+                        || ds == VK_DYNAMIC_STATE_DEPTH_COMPARE_OP
+                        || ds == VK_DYNAMIC_STATE_DEPTH_BOUNDS
+                        || ds == VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE
+                        || ds == VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE
+                        || ds == VK_DYNAMIC_STATE_STENCIL_OP
+                        || ds == VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK
+                        || ds == VK_DYNAMIC_STATE_STENCIL_WRITE_MASK
+                        || ds == VK_DYNAMIC_STATE_STENCIL_REFERENCE)
+                            belong = true;
+                    }
+                    if(fragment_output)
+                    {
+                        if(ds == VK_DYNAMIC_STATE_BLEND_CONSTANTS
+                        || ds == VK_DYNAMIC_STATE_COLOR_BLEND_ENABLE_EXT
+                        || ds == VK_DYNAMIC_STATE_COLOR_BLEND_EQUATION_EXT
+                        || ds == VK_DYNAMIC_STATE_COLOR_WRITE_MASK_EXT)
+                            belong = true;
+                    }
+
+                    if(belong && filtered_count < 32)
+                    {
+                        filtered_dynamic_states[filtered_count++] = ds;
+                    }
+                }
+
+                if(filtered_count > 0)
+                {
+                    lib_dynamic_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+                    lib_dynamic_state.pNext = nullptr;
+                    lib_dynamic_state.flags = 0;
+                    lib_dynamic_state.dynamicStateCount = filtered_count;
+                    lib_dynamic_state.pDynamicStates = filtered_dynamic_states;
+                    create_info.pDynamicState = &lib_dynamic_state;
+                }
+                else
+                {
+                    create_info.pDynamicState = nullptr;
+                }
+            }
+            else
+            {
+                create_info.pDynamicState = nullptr;
+            }
+
+            const VkResult result = vkCreateGraphicsPipelines(*request.device,
+                                                               request.pipeline_cache,
+                                                               1,
+                                                               &create_info,
+                                                               nullptr,
+                                                               &out_pipeline);
+            if(result != VK_SUCCESS)
+            {
+                GLogError("[PipelineResolver] GPL library creation failed: flags=0x%x VkResult=%d",
+                          static_cast<uint32_t>(library_flags),
+                          static_cast<int>(result));
+                out_pipeline = VK_NULL_HANDLE;
+                return false;
+            }
+
+            return true;
         }
     }
 
@@ -480,7 +751,7 @@ namespace hgl::graph
                                       : PrimitiveType::Triangles;
 
         out_key.fs.shader_program_hash = HashShaderStages(request.shader_stages);
-        out_key.fs.variant_hash = request.debug_name ? HashBytes(request.debug_name->c_str(), request.debug_name->Length()) : 0;
+        out_key.fs.variant_hash = 0;
 
         out_key.fo.color_attachment_count = request.frame_output.color_attachment_count;
         out_key.fo.color_formats_hash = (request.frame_output.color_formats && request.frame_output.color_attachment_count > 0)
@@ -531,8 +802,157 @@ namespace hgl::graph
                                          &out_pipeline) == VK_SUCCESS;
     }
 
+    bool PipelineResolver::MaterializeGraphicsPipelineLibrary(const FinalPipelineResolveRequest &request,
+                                                             const FinalPipelineKey &key,
+                                                             VkPipeline &out_pipeline)
+    {
+        out_pipeline = VK_NULL_HANDLE;
+
+        if(!request.device || !request.pipeline_data || !request.shader_stages)
+            return false;
+
+        PipelineData *pd = request.pipeline_data;
+        pd->InitShaderStage(*request.shader_stages);
+        pd->InitVertexInputState(request.vertex_input_layout);
+        pd->SetColorAttachments(request.frame_output.color_attachment_count);
+        pd->pipeline_info.layout = request.pipeline_layout;
+        pd->pipeline_info.renderPass = request.render_pass;
+        pd->pipeline_info.subpass = request.subpass;
+
+        ShaderStageCreateInfoList pre_raster_stages;
+        ShaderStageCreateInfoList fragment_stages;
+        CollectShaderStages(*request.shader_stages, VK_SHADER_STAGE_FRAGMENT_BIT, false, pre_raster_stages);
+        CollectShaderStages(*request.shader_stages, VK_SHADER_STAGE_FRAGMENT_BIT, true, fragment_stages);
+
+        if(pre_raster_stages.IsEmpty() || fragment_stages.IsEmpty())
+            return false;
+
+        VkPipeline vi_pipeline = FindLibraryPipeline(g_vi_library_cache, request, key.vi);
+        VkPipeline pr_pipeline = FindLibraryPipeline(g_pr_library_cache, request, key.pr);
+        VkPipeline fs_pipeline = FindLibraryPipeline(g_fs_library_cache, request, key.fs);
+        VkPipeline fo_pipeline = FindLibraryPipeline(g_fo_library_cache, request, key.fo);
+
+        bool vi_created = false;
+        bool pr_created = false;
+        bool fs_created = false;
+        bool fo_created = false;
+
+        if(vi_pipeline == VK_NULL_HANDLE)
+        {
+            if(!CreatePipelineLibrary(request,
+                                      pd,
+                                      ShaderStageCreateInfoList{},
+                                      VK_GRAPHICS_PIPELINE_LIBRARY_VERTEX_INPUT_INTERFACE_BIT_EXT,
+                                      vi_pipeline))
+                goto fail;
+            vi_created = true;
+        }
+
+        if(pr_pipeline == VK_NULL_HANDLE)
+        {
+            if(!CreatePipelineLibrary(request,
+                                      pd,
+                                      pre_raster_stages,
+                                      VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT,
+                                      pr_pipeline))
+                goto fail;
+            pr_created = true;
+        }
+
+        if(fs_pipeline == VK_NULL_HANDLE)
+        {
+            if(!CreatePipelineLibrary(request,
+                                      pd,
+                                      fragment_stages,
+                                      VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT,
+                                      fs_pipeline))
+                goto fail;
+            fs_created = true;
+        }
+
+        if(fo_pipeline == VK_NULL_HANDLE)
+        {
+            if(!CreatePipelineLibrary(request,
+                                      pd,
+                                      ShaderStageCreateInfoList{},
+                                      VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT,
+                                      fo_pipeline))
+                goto fail;
+            fo_created = true;
+        }
+
+        {
+            VkPipeline libraries[] = {vi_pipeline, pr_pipeline, fs_pipeline, fo_pipeline};
+
+            VkPipelineLibraryCreateInfoKHR library_link_info{};
+            library_link_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR;
+            library_link_info.libraryCount = 4;
+            library_link_info.pLibraries = libraries;
+
+            VkGraphicsPipelineCreateInfo link_info = pd->pipeline_info;
+            link_info.pNext = &library_link_info;
+            link_info.flags = 0;
+            link_info.layout = request.pipeline_layout;
+            link_info.renderPass = request.render_pass;
+            link_info.subpass = request.subpass;
+            link_info.stageCount = 0;
+            link_info.pStages = nullptr;
+            link_info.pVertexInputState = nullptr;
+            link_info.pInputAssemblyState = nullptr;
+            link_info.pTessellationState = nullptr;
+            link_info.pViewportState = nullptr;
+            link_info.pRasterizationState = nullptr;
+            link_info.pMultisampleState = nullptr;
+            link_info.pDepthStencilState = nullptr;
+            link_info.pColorBlendState = nullptr;
+            link_info.pDynamicState = nullptr;
+
+            const VkResult link_result = vkCreateGraphicsPipelines(*request.device,
+                                                                    request.pipeline_cache,
+                                                                    1,
+                                                                    &link_info,
+                                                                    nullptr,
+                                                                    &out_pipeline);
+            if(link_result != VK_SUCCESS)
+            {
+                GLogError("[PipelineResolver] GPL link failed: VkResult=%d", static_cast<int>(link_result));
+                out_pipeline = VK_NULL_HANDLE;
+                goto fail;
+            }
+        }
+
+        if(vi_created && !CacheLibraryPipeline(g_vi_library_cache, request, key.vi, vi_pipeline))
+            goto fail;
+        if(pr_created && !CacheLibraryPipeline(g_pr_library_cache, request, key.pr, pr_pipeline))
+            goto fail;
+        if(fs_created && !CacheLibraryPipeline(g_fs_library_cache, request, key.fs, fs_pipeline))
+            goto fail;
+        if(fo_created && !CacheLibraryPipeline(g_fo_library_cache, request, key.fo, fo_pipeline))
+            goto fail;
+
+        return true;
+
+    fail:
+        if(out_pipeline != VK_NULL_HANDLE)
+        {
+            vkDestroyPipeline(*request.device, out_pipeline, nullptr);
+            out_pipeline = VK_NULL_HANDLE;
+        }
+        if(vi_created && vi_pipeline != VK_NULL_HANDLE)
+            vkDestroyPipeline(*request.device, vi_pipeline, nullptr);
+        if(pr_created && pr_pipeline != VK_NULL_HANDLE)
+            vkDestroyPipeline(*request.device, pr_pipeline, nullptr);
+        if(fs_created && fs_pipeline != VK_NULL_HANDLE)
+            vkDestroyPipeline(*request.device, fs_pipeline, nullptr);
+        if(fo_created && fo_pipeline != VK_NULL_HANDLE)
+            vkDestroyPipeline(*request.device, fo_pipeline, nullptr);
+        return false;
+    }
+
     bool PipelineResolver::ResolveFinalPipeline(const FinalPipelineResolveRequest &request, FinalPipelineResolveResult &out_result)
     {
+        ThreadMutexLock resolver_lock(&g_resolver_mutex);
+
         out_result = {};
         ++g_resolve_stats.requests;
 
@@ -550,6 +970,14 @@ namespace hgl::graph
 
         const VulkanPhyDevice *physical_device = request.device ? request.device->GetPhyDevice() : nullptr;
         out_result.capability = BuildCapabilityInfo(physical_device);
+        if(request.device && request.device->GetDevAttr())
+            out_result.capability.graphics_pipeline_library =
+                out_result.capability.graphics_pipeline_library
+                && request.device->GetDevAttr()->graphics_pipeline_library;
+        out_result.capability.preferred_materialize_mode =
+            out_result.capability.graphics_pipeline_library
+            ? PipelineMaterializeMode::GraphicsPipelineLibrary
+            : PipelineMaterializeMode::Monolithic;
         out_result.materialize_mode = out_result.capability.preferred_materialize_mode;
 
         BuildFinalPipelineKey(request, out_result.key);
@@ -565,10 +993,10 @@ namespace hgl::graph
         bool pr_hit = false;
         bool fs_hit = false;
         bool fo_hit = false;
-        TouchVILibraryCache(out_result.key.vi, vi_hit);
-        TouchPRLibraryCache(out_result.key.pr, pr_hit);
-        TouchFSLibraryCache(out_result.key.fs, fs_hit);
-        TouchFOLibraryCache(out_result.key.fo, fo_hit);
+        TouchLibraryCache(g_vi_library_cache, request, out_result.key.vi, vi_hit);
+        TouchLibraryCache(g_pr_library_cache, request, out_result.key.pr, pr_hit);
+        TouchLibraryCache(g_fs_library_cache, request, out_result.key.fs, fs_hit);
+        TouchLibraryCache(g_fo_library_cache, request, out_result.key.fo, fo_hit);
         UpdateLibraryHitStats(vi_hit, pr_hit, fs_hit, fo_hit);
 
         if(TryGetCachedFinalPipeline(out_result.materialize_mode, request, out_result.key, out_result.pipeline))
@@ -583,13 +1011,17 @@ namespace hgl::graph
         switch(out_result.materialize_mode)
         {
         case PipelineMaterializeMode::GraphicsPipelineLibrary:
-            // Phase 1 skeleton: route through the same monolithic materialization until GPL caches/linking land.
-            if(!MaterializeMonolithic(request, out_result.pipeline))
+            if(!MaterializeGraphicsPipelineLibrary(request, out_result.key, out_result.pipeline))
             {
-                ++g_resolve_stats.materialize_failed;
-                GLogError("[PipelineResolver] Materialize failed in GPL mode fallback");
-                LogResolveStatsIfNeeded();
-                return false;
+                GLogWarning("[PipelineResolver] GPL materialization failed, falling back to monolithic pipeline");
+                out_result.materialize_mode = PipelineMaterializeMode::Monolithic;
+                if(!MaterializeMonolithic(request, out_result.pipeline))
+                {
+                    ++g_resolve_stats.materialize_failed;
+                    GLogError("[PipelineResolver] Materialize failed in GPL fallback");
+                    LogResolveStatsIfNeeded();
+                    return false;
+                }
             }
             ++g_resolve_stats.materialize_success;
             CacheFinalPipeline(out_result.materialize_mode, request, out_result.key, out_result.pipeline);
@@ -611,8 +1043,38 @@ namespace hgl::graph
         }
     }
 
+    void PipelineResolver::ReleaseFinalPipeline(VulkanDevice *device, VkPipeline pipeline)
+    {
+        ThreadMutexLock resolver_lock(&g_resolver_mutex);
+
+        if(!device || pipeline == VK_NULL_HANDLE)
+            return;
+
+        auto ReleaseFromCache = [device, pipeline](ValueArray<FinalPipelineCacheEntry> &cache)
+        {
+            for(int i = cache.GetCount() - 1; i >= 0; --i)
+            {
+                if(cache[i].device == device && cache[i].pipeline == pipeline)
+                {
+                    if(cache[i].references > 1)
+                    {
+                        --cache[i].references;
+                        continue;
+                    }
+
+                    cache.Delete(i);
+                }
+            }
+        };
+
+        ReleaseFromCache(g_monolithic_pipeline_cache);
+        ReleaseFromCache(g_gpl_link_pipeline_cache);
+    }
+
     void PipelineResolver::ClearCacheForDevice(VulkanDevice *device)
     {
+        ThreadMutexLock resolver_lock(&g_resolver_mutex);
+
         if(!device)
             return;
 
@@ -635,15 +1097,28 @@ namespace hgl::graph
 
         ClearFromCache(g_monolithic_pipeline_cache);
         ClearFromCache(g_gpl_link_pipeline_cache);
+        // Library pipelines may still be referenced by executable pipelines owned
+        // by RenderPass wrappers. Let vkDestroyDevice reclaim them after those
+        // wrappers have gone away instead of destroying dependencies first.
+        ForgetLibraryPipelinesForDevice(g_vi_library_cache, device);
+        ForgetLibraryPipelinesForDevice(g_pr_library_cache, device);
+        ForgetLibraryPipelinesForDevice(g_fs_library_cache, device);
+        ForgetLibraryPipelinesForDevice(g_fo_library_cache, device);
 
-        GLogInfo("[PipelineResolver] Cleared caches for device %p. Remaining: monolithic=%d gpl=%d",
+        GLogInfo("[PipelineResolver] Cleared caches for device %p. Remaining: monolithic=%d gpl=%d libraries vi/pr/fs/fo=%d/%d/%d/%d",
                  (void *)device,
                  g_monolithic_pipeline_cache.GetCount(),
-                 g_gpl_link_pipeline_cache.GetCount());
+                 g_gpl_link_pipeline_cache.GetCount(),
+                 g_vi_library_cache.GetCount(),
+                 g_pr_library_cache.GetCount(),
+                 g_fs_library_cache.GetCount(),
+                 g_fo_library_cache.GetCount());
     }
 
     PipelineResolverQueryStats PipelineResolver::QueryStats()
     {
+        ThreadMutexLock resolver_lock(&g_resolver_mutex);
+
         PipelineResolverQueryStats out{};
         out.requests               = g_resolve_stats.requests;
         out.invalid_request        = g_resolve_stats.invalid_request;

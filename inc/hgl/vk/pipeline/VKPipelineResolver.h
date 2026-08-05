@@ -169,7 +169,14 @@ namespace hgl::graph
         static bool BuildFinalPipelineKey(const FinalPipelineResolveRequest &request, FinalPipelineKey &out_key);
         static bool HasCompleteFinalKey(const FinalPipelineKey &key);
         static bool MaterializeMonolithic(const FinalPipelineResolveRequest &request, VkPipeline &out_pipeline);
+        static bool MaterializeGraphicsPipelineLibrary(const FinalPipelineResolveRequest &request,
+                                                        const FinalPipelineKey &key,
+                                                        VkPipeline &out_pipeline);
         static bool ResolveFinalPipeline(const FinalPipelineResolveRequest &request, FinalPipelineResolveResult &out_result);
+
+        /// Release a final pipeline reference held by the resolver cache.
+        /// The caller remains responsible for destroying the VkPipeline handle.
+        static void ReleaseFinalPipeline(VulkanDevice *device, VkPipeline pipeline);
 
         /// Remove all cached pipelines created for the given device.
         /// Must be called before the device is destroyed.

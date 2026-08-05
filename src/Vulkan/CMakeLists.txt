@@ -6,6 +6,7 @@ set(VK_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/vk)
 
 # --- 0. Core ---
 SET(VK_CORE_FILES               ${VK_INCLUDE_PATH}/VK.h
+                                ${VK_INCLUDE_PATH}/VKPipelineConfig.h
                                 ${VK_INCLUDE_PATH}/VKFormat.h
                                 ${VK_INCLUDE_PATH}/VKString.h
                                 ${VK_INCLUDE_PATH}/VKInterpolation.h

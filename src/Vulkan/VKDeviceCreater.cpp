@@ -38,7 +38,10 @@ void LogSurfaceFormat(const VkSurfaceFormatList &surface_formats_list)
 
 namespace
 {
-    void SetDeviceExtension(CharPointerList *ext_list,const VulkanPhyDevice *physical_device,const VulkanHardwareRequirement &require)
+    void SetDeviceExtension(CharPointerList *ext_list,
+                            const VulkanPhyDevice *physical_device,
+                            const VulkanHardwareRequirement &require,
+                            const bool enable_graphics_pipeline_library)
     {
         ext_list->Add(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
@@ -58,8 +61,6 @@ namespace
 //            VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME,
 //            VK_AMD_DISPLAY_NATIVE_HDR_EXTENSION_NAME,
             VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
-            // VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,       // forced off while stabilizing non-GPL path
-            // VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME,
 
 //            VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME,
 
@@ -69,6 +70,14 @@ namespace
         for(const char *ext_name:require_ext_list)
             if(physical_device->CheckExtensionSupport(ext_name))
                 ext_list->Add(ext_name);
+
+        if(enable_graphics_pipeline_library
+        && !FORCE_DISABLE_GRAPHICS_PIPELINE_LIBRARY
+        && physical_device->SupportGraphicsPipelineLibrary())
+        {
+            ext_list->Add(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME);
+            ext_list->Add(VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME);
+        }
 
         if(require.lineRasterization>=VulkanHardwareRequirement::SupportLevel::Want)
             ext_list->Add(VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME);
@@ -203,7 +212,8 @@ constexpr size_t VK_DRIVER_ID_RANGE_SIZE=VK_DRIVER_ID_END_RANGE-VK_DRIVER_ID_BEG
 void OutputPhysicalDeviceCaps(const VulkanPhyDevice *);
 #endif//_DEBUG
 
-VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
+VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family,
+                                           const bool enable_graphics_pipeline_library)
 {
     float queue_priorities[1]={0.0};
 
@@ -252,7 +262,8 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     }
 
 
-    if(!FORCE_DISABLE_GRAPHICS_PIPELINE_LIBRARY
+    if(enable_graphics_pipeline_library
+    && !FORCE_DISABLE_GRAPHICS_PIPELINE_LIBRARY
     && physical_device->SupportGraphicsPipelineLibrary())
     {
         graphics_pipeline_library_features.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT;
@@ -334,10 +345,22 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
     if(graphics_family==ERROR_FAMILY_INDEX)
         return(nullptr);
 
-    SetDeviceExtension(&ext_list,physical_device,require);
+    bool try_graphics_pipeline_library = !FORCE_DISABLE_GRAPHICS_PIPELINE_LIBRARY
+                                       && physical_device->SupportGraphicsPipelineLibrary();
+
+    SetDeviceExtension(&ext_list,physical_device,require,try_graphics_pipeline_library);
     SetDeviceFeatures(&features,physical_device->GetFeatures10(),require);
 
-    device_attr->device=CreateDevice(graphics_family);
+    device_attr->device=CreateDevice(graphics_family, try_graphics_pipeline_library);
+
+    if(!device_attr->device && try_graphics_pipeline_library)
+    {
+        GLogWarning("[VulkanDeviceCreater] GPL device creation failed, retrying without GPL extensions");
+        ext_list.Clear();
+        SetDeviceExtension(&ext_list,physical_device,require,false);
+        device_attr->device=CreateDevice(graphics_family, false);
+        try_graphics_pipeline_library = false;
+    }
 
     if(!device_attr->device)
         return(nullptr);
@@ -362,8 +385,8 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
         device_attr->wide_lines = true;
     }
 
-    device_attr->graphics_pipeline_library = !FORCE_DISABLE_GRAPHICS_PIPELINE_LIBRARY
-                                           && physical_device->SupportGraphicsPipelineLibrary();
+    device_attr->graphics_pipeline_library = try_graphics_pipeline_library
+                                            && device_attr->device != VK_NULL_HANDLE;
 
     device_attr->surface_format=surface_format;
 

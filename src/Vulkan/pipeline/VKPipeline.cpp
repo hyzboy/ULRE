@@ -1,4 +1,5 @@
 ﻿#include<hgl/vk/pipeline/VKPipeline.h>
+#include<hgl/vk/pipeline/VKPipelineResolver.h>
 #include<hgl/vk/VKDevice.h>
 #include<cstdint>
 #include<hgl/log/Log.h>
@@ -19,6 +20,9 @@ Pipeline::~Pipeline()
     {
         GLogWarning("[Pipeline::~Pipeline]   WARNING: VulkanDevice owner is NULL for Pipeline '%s'", name.c_str());
     }
+
+    if (owner)
+        PipelineResolver::ReleaseFinalPipeline(owner, pipeline);
 
     delete data;
     GLogDebug("[Pipeline::~Pipeline]   Calling vkDestroyPipeline for '%s'", name.c_str());

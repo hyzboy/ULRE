@@ -90,6 +90,7 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
         Pipeline *existing_pipeline = pipeline_list[i];
         if(existing_pipeline && VkPipeline(*existing_pipeline) == graphicsPipeline)
         {
+            PipelineResolver::ReleaseFinalPipeline(device, graphicsPipeline);
             delete pd;
             LogDebug("[RenderPass::CreatePipeline] Reuse existing Pipeline wrapper '%s' in RenderPass '%s' (VkPipeline=0x%llx, Pipeline*=0x%llx)",
                      existing_pipeline->GetName().c_str(),
@@ -103,7 +104,7 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
     Pipeline *pipeline = new Pipeline(name,*device,graphicsPipeline,vil,pd,preset);
 
     const char *mode_name = resolve_result.materialize_mode == PipelineMaterializeMode::GraphicsPipelineLibrary
-                          ? "GPL-skeleton"
+                          ? "GPL"
                           : "Monolithic";
 
     LogInfo("[RenderPass::CreatePipeline] Created Pipeline '%s' in RenderPass '%s' (VkPipeline=0x%llx, mode=%s, Pipeline*=0x%llx)",
