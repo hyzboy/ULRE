@@ -1,4 +1,5 @@
 #include<hgl/vk/pipeline/VKPipelineResolver.h>
+#include<hgl/vk/VKPipelineConfig.h>
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
@@ -10,8 +11,6 @@ namespace hgl::graph
 {
     namespace
     {
-        constexpr bool FORCE_DISABLE_GRAPHICS_PIPELINE_LIBRARY = true;
-
         uint64_t HashBytes(const void *data, const size_t size)
         {
             uint64_t hash = hgl::hash::FNV1aInit<uint64_t>();

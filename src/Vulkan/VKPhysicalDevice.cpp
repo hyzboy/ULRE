@@ -1,5 +1,6 @@
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/VKInstance.h>
+#include<hgl/vk/VKPipelineConfig.h>
 #include<hgl/log/Log.h>
 #include<hgl/shadergen/contract/ShaderGenPhysicalDeviceProfileAdapter.h>
 #include"DebugOutProperties.h"
@@ -7,8 +8,6 @@
 namespace hgl::graph{
 namespace
 {
-    constexpr bool FORCE_DISABLE_GRAPHICS_PIPELINE_LIBRARY = true;
-
     void debug_queue_family_properties_out(const char *front,const ValueArray<VkQueueFamilyProperties> &qfp_list)
     {
         constexpr const char *queue_bit_name[]=
@@ -404,5 +403,4 @@ VkFormat VulkanPhyDevice::GetDepthStencilFormat(bool lower_to_high)const
     return result;
 }
 }//namespace hgl::graph
-
 

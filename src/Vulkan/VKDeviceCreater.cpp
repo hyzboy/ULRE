@@ -8,6 +8,7 @@
 #include<hgl/vk/VKDeviceCreater.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKSurface.h>
+#include<hgl/vk/VKPipelineConfig.h>
 #include<hgl/shadergen/ShaderCompilerProfileAPI.h>
 
 #include<hgl/log/Log.h>
@@ -37,8 +38,6 @@ void LogSurfaceFormat(const VkSurfaceFormatList &surface_formats_list)
 
 namespace
 {
-    constexpr bool FORCE_DISABLE_GRAPHICS_PIPELINE_LIBRARY = true;
-
     void SetDeviceExtension(CharPointerList *ext_list,const VulkanPhyDevice *physical_device,const VulkanHardwareRequirement &require)
     {
         ext_list->Add(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
