@@ -77,8 +77,8 @@ private:
         if (!geom_triangle)
             return false;
 
-        triangle_recipe.recipe_name = "AutoInstance.VertexColor2D";
-        triangle_recipe.mtl_def_id = "VertexColor2D";
+        triangle_recipe.recipe_name = "AutoInstance.VertexColor";
+        triangle_recipe.mtl_def_id = "VertexColor";
         triangle_recipe.pipeline_preset = PipelinePreset::Solid2D;
         triangle_recipe.domain = "AutoInstance";
         triangle_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);

@@ -137,8 +137,8 @@ private:
         // 注意：需要明确使用hgl::ecs命名空间，因为有两个PrimitiveComponent
         HGL_TRACK_ALLOCATION("TrianglePrimitive", hgl::core::ObjectTypeTag::FrameResource);
         auto ecs_primitive = triangle_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
-        triangle_recipe.recipe_name = "DrawTriangle.VertexColor2D";
-        triangle_recipe.mtl_def_id = "VertexColor2D";
+        triangle_recipe.recipe_name = "DrawTriangle.VertexColor";
+        triangle_recipe.mtl_def_id = "VertexColor";
         triangle_recipe.domain = "DrawTriangle";
         triangle_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigOrtho(false);
         triangle_recipe.pipeline_preset = PipelinePreset::Solid2D;

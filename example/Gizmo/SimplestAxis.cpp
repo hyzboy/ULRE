@@ -87,8 +87,8 @@ private:
         transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         transform->SetMovable(false);
 
-        axis_recipe.recipe_name = "SimplestAxis.VertexColor3D";
-        axis_recipe.mtl_def_id = "VertexColor3D";
+        axis_recipe.recipe_name = "SimplestAxis.VertexColor";
+        axis_recipe.mtl_def_id = "VertexColor";
         axis_recipe.pipeline_preset = PipelinePreset::Solid3D;
         axis_recipe.domain = "SimplestAxis";
         axis_asset = PrimitiveAsset(geom_axis, &axis_recipe, PrimitiveType::Lines);

@@ -955,8 +955,8 @@ namespace
         }
 
         const char *non_bootstrap_ids[] = {
-            "VertexColor2D", "PureTexture2D", "RectTexture2D",
-            "RectTexture2DArray", "VertexColor3D", "VertexLuminance3D",
+            "VertexColor", "PureTexture2D", "RectTexture2D",
+            "RectTexture2DArray", "VertexLuminance3D",
             "VertexPattleColor3D", "Gizmo3D", "SkyMinimal", "Standard",
             "StandardTextureArray"
         };
@@ -1271,7 +1271,7 @@ namespace
         int error_count = 0;
         if (!registry.LoadDirectory(OS_TEXT("E:/ULRE/ShaderLibrary"),
                                     &file_count, &error_count)
-         || file_count != 11
+         || file_count != 10
          || error_count != 0)
         {
             result.diagnostics.emplace_back("material file registry bulk load failed");
@@ -1280,8 +1280,8 @@ namespace
         {
             const char *expected_file_ids[] = {
                 "Standard", "StandardTextureArray", "SkyMinimal", "Gizmo3D",
-                "VertexColor2D", "PureTexture2D", "RectTexture2D",
-                "RectTexture2DArray", "VertexColor3D", "VertexLuminance3D",
+                "VertexColor", "PureTexture2D", "RectTexture2D",
+                "RectTexture2DArray", "VertexLuminance3D",
                 "VertexPattleColor3D"
             };
             for (const char *id : expected_file_ids)
@@ -1355,9 +1355,9 @@ namespace
         }
 
         const char *bulk_ids[] = {
-            "StandardTextureArray", "SkyMinimal", "Gizmo3D", "VertexColor2D",
+            "StandardTextureArray", "SkyMinimal", "Gizmo3D", "VertexColor",
             "PureTexture2D", "RectTexture2D", "RectTexture2DArray",
-            "VertexColor3D", "VertexLuminance3D", "VertexPattleColor3D"
+            "VertexLuminance3D", "VertexPattleColor3D"
         };
         for (const char *id : bulk_ids)
         {
@@ -1715,14 +1715,14 @@ namespace
             result.diagnostics.emplace_back("LoadDirectory failed to scan directory");
         else
         {
-            if (file_count != 53)
-                result.diagnostics.emplace_back("LoadDirectory expected 53 file modules, got "
+            if (file_count != 52)
+                result.diagnostics.emplace_back("LoadDirectory expected 52 file modules, got "
                     + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 53 + int(GLSLCodeModuleID::RANGE_SIZE);
+            const int expected_count = 52 + int(GLSLCodeModuleID::RANGE_SIZE);
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
@@ -1761,11 +1761,11 @@ namespace
         int dup_errors = 0;
         if (!registry.LoadDirectory(OS_TEXT("E:/ULRE/ShaderLibrary"), &dup_count, &dup_errors))
             result.diagnostics.emplace_back("second LoadDirectory failed");
-        else if (dup_count != 0 || dup_errors != 53)
-            result.diagnostics.emplace_back("second LoadDirectory must report 53 duplicates, got files="
+        else if (dup_count != 0 || dup_errors != 52)
+            result.diagnostics.emplace_back("second LoadDirectory must report 52 duplicates, got files="
                 + std::to_string(dup_count) + " errors=" + std::to_string(dup_errors));
 
-        const int stable_count = 53 + int(GLSLCodeModuleID::RANGE_SIZE);
+        const int stable_count = 52 + int(GLSLCodeModuleID::RANGE_SIZE);
         if (registry.GetCount() != stable_count)
             result.diagnostics.emplace_back("registry count changed after duplicate re-scan: got "
                 + std::to_string(registry.GetCount()));
