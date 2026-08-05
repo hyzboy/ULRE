@@ -72,8 +72,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 set(SSBO_HEADER_PATH ${ROOT_INCLUDE_PATH}/hgl/graph/ssbo)
 
-SET(SSBO_STRUCT_FILES   ${SSBO_HEADER_PATH}/StandardMaterialInstance.h
-                        ${SSBO_HEADER_PATH}/StandardTextureArrayMaterialInstance.h
+SET(SSBO_STRUCT_FILES   ${SSBO_HEADER_PATH}/LitMaterialData.h
                         ${SSBO_HEADER_PATH}/TextureSlot.h
                         ${SSBO_HEADER_PATH}/SSBOTypes.h)
 

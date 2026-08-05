@@ -93,7 +93,10 @@ namespace hgl::graph
         }
     }
 
-    std::string CompositorAssembler::InjectDefines(const std::string &source, const NewShaderPermutationKey &key) const
+    std::string CompositorAssembler::InjectDefines(
+        const std::string &source,
+        const NewShaderPermutationKey &key,
+        const CompositorModuleOptions &module_options) const
     {
         std::string defines;
         key.AppendGLSLDefines(defines);
@@ -167,12 +170,57 @@ namespace hgl::graph
         return result;
     }
 
+    std::string CompositorAssembler::ReplaceLightingModuleIncludes(
+        const std::string &source,
+        const CompositorModuleOptions &module_options) const
+    {
+        const char *module_paths[] =
+        {
+            module_options.sky_module && module_options.sky_module[0]
+                ? module_options.sky_module
+                : "sky/sky_atmosphere.glsl",
+            module_options.direct_lighting_module && module_options.direct_lighting_module[0]
+                ? module_options.direct_lighting_module
+                : "lighting/direct_cook_torrance_pbr.glsl",
+            module_options.indirect_lighting_module && module_options.indirect_lighting_module[0]
+                ? module_options.indirect_lighting_module
+                : "lighting/indirect_simple_ambient.glsl",
+            module_options.ntb_module && module_options.ntb_module[0]
+                ? module_options.ntb_module
+                : "ntb/ntb_tangent_vbo_normalmap.glsl"
+        };
+        const char *default_paths[] =
+        {
+            "sky/sky_atmosphere.glsl",
+            "lighting/direct_cook_torrance_pbr.glsl",
+            "lighting/indirect_simple_ambient.glsl",
+            "ntb/ntb_tangent_vbo_normalmap.glsl"
+        };
+
+        std::string result = source;
+        for (size_t i = 0; i < 4; ++i)
+        {
+            const std::string marker =
+                std::string("#include \"") + default_paths[i] + "\"";
+            const size_t pos = result.find(marker);
+            if (pos == std::string::npos)
+                continue;
+
+            const std::string replacement =
+                std::string("#include \"") + module_paths[i] + "\"";
+            result.replace(pos, marker.size(), replacement);
+        }
+
+        return result;
+    }
+
     CompositorAssembler::AssembleResult CompositorAssembler::Assemble(
-        SurfaceType     surface,
-        BlendMode       blend,
-        PassType        pass,
-        const char     *fs_template_override,
-        const char     *surface_function_override
+        SurfaceType                  surface,
+        BlendMode                    blend,
+        PassType                     pass,
+        const char                  *fs_template_override,
+        const char                  *surface_function_override,
+        const CompositorModuleOptions &module_options
     ) const
     {
         AssembleResult result{};
@@ -198,9 +246,13 @@ namespace hgl::graph
         }
 
         // 4. 注入 #define
-        fs_source = InjectDefines(fs_source, key);
+        fs_source = InjectDefines(fs_source, key, module_options);
 
-        // 5. 替换 FS 中的 SURFACE_FUNCTION_FILE
+        // 5. Resolve configurable module includes to literal header names.
+        // GLSL does not allow a macro to stand in for the header token of #include.
+        fs_source = ReplaceLightingModuleIncludes(fs_source, module_options);
+
+        // 6. 替换 FS 中的 SURFACE_FUNCTION_FILE
         fs_source = ReplaceSurfaceInclude(fs_source, surface_rel);
 
         result.fragment_glsl = std::move(fs_source);

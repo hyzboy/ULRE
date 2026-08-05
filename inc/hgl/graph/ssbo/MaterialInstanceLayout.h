@@ -8,15 +8,18 @@ namespace hgl::graph::ssbo
     constexpr const char EmissiveSurfaceMaterialInstanceGLSL[] = "vec4 color;";
     constexpr const char TextureRectArraySurfaceMaterialInstanceGLSL[] = "uvec4 id;";
     constexpr const char PBRSurfaceMaterialInstanceGLSL[] = R"(
-        uint  base_color;
-        float metallic;
-        float roughness;
-    )";
-    constexpr const char ClearCoatSurfaceMaterialInstanceGLSL[] = R"(
-        uint  base_color;
+        vec4  base_color;
         float metallic;
         float roughness;
         float normal_scale;
+        float fresnel;
+    )";
+    constexpr const char ClearCoatSurfaceMaterialInstanceGLSL[] = R"(
+        vec4  base_color;
+        float metallic;
+        float roughness;
+        float normal_scale;
+        float fresnel;
     )";
     constexpr const char TransmissionSurfaceMaterialInstanceGLSL[] = "uint TextColor;";
 

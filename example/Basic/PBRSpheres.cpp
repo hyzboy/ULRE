@@ -13,8 +13,7 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/mtl/MaterialRecipe.h>
-#include<hgl/graph/ssbo/StandardMaterialInstance.h>
-#include<hgl/graph/ssbo/StandardTextureArrayMaterialInstance.h>
+#include<hgl/graph/ssbo/LitMaterialData.h>
 #include<hgl/filesystem/Filename.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/module/TextureManager.h>
@@ -91,7 +90,7 @@ private:
     Entity *      camera_entity = nullptr;
 
     graph::mtl::MaterialRecipe sphere_recipe{};
-    graph::SSBOArrayAccessor<ssbo::StandardMaterialInstance>* mi_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<ssbo::LitMaterialData>* mi_ssbo_accessor = nullptr;
     Texture2DArray *    base_color_texture = nullptr;
     Texture2DArray *    normal_texture = nullptr;
     Sampler *           sampler = nullptr;
@@ -102,7 +101,7 @@ private:
     PrimitiveAsset      base_primitives[GEOMETRY_VARIANT_COUNT]{};
 
     // One MI per cell: col controls metallic, row controls roughness
-    ssbo::StandardMaterialInstance sphere_mi_data[GRID_SIZE][GRID_SIZE]{};
+    ssbo::LitMaterialData sphere_mi_data[GRID_SIZE][GRID_SIZE]{};
     uint32_t                         sphere_slot_rows[GRID_SIZE][GRID_SIZE]{};
 
     // 100 entities, one per sphere
@@ -241,7 +240,7 @@ private:
         return true;
     }
 
-    bool CreateStandardMaterialInstances()
+    bool CreateLitMaterialData()
     {
         for (uint row = 0; row < GRID_SIZE; ++row)
         {
@@ -252,8 +251,8 @@ private:
                 float metallic  = float(col) / float(GRID_SIZE - 1);
                 float roughness = 0.05f + float(row) / float(GRID_SIZE - 1) * 0.95f;
 
-                ssbo::StandardTextureArrayMaterialInstance d{};
-                d.base_color = PackRGBA8Float(BASE_COLOR_R, BASE_COLOR_G, BASE_COLOR_B, 1.0f);
+                ssbo::LitMaterialData d{};
+                d.base_color = Color4f(BASE_COLOR_R, BASE_COLOR_G, BASE_COLOR_B, 1.0f);
                 d.metallic   = metallic;
                 d.roughness  = roughness;
                 d.normal_scale = 0.35f;
@@ -282,7 +281,7 @@ private:
 
         const uint32_t mi_count = GRID_SIZE * GRID_SIZE;
 
-        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::StandardMaterialInstance>(
+        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::LitMaterialData>(
             graph::mtl::SSBOType::ClearCoatSurface,
             "PBRSpheres:ClearCoatSurface:MIData",
             mi_count);
@@ -585,7 +584,7 @@ public:
         if (!InitMaterial())
             return false;
 
-        if (!CreateStandardMaterialInstances())
+        if (!CreateLitMaterialData())
             return false;
 
         if (!InitVDM())

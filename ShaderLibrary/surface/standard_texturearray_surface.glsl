@@ -65,13 +65,14 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
     const uint iid = si.textureLayerID;
     float layer = float(GetTextureHandle(iid, TEXTURE_SLOT_CUSTOM0));
 
-    vec3 albedo = unpackUnorm4x8(mi.base_color).rgb;
+    vec3 albedo = mi.base_color.rgb;
     const uint base_color_handle = GetTextureHandle(iid, TEXTURE_SLOT_BASE_COLOR);
     if (base_color_handle != 0u)
         albedo *= SampleBindless2DArray(base_color_handle, si.uv0, layer).rgb;
 
     float metallic  = clamp(mi.metallic,  0.0, 1.0);
     float roughness = clamp(mi.roughness, 0.04, 1.0);
+    float fresnel   = clamp(mi.fresnel,   0.0, 1.0);
 
     const uint normal_handle = GetTextureHandle(iid, TEXTURE_SLOT_NORMAL);
     if (normal_handle != 0u)
@@ -97,7 +98,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
     float alpha2 = roughness * roughness * roughness * roughness;
     float D      = D_GGX(NdotH, alpha2);
     float G      = G_Smith(NdotV, NdotL, roughness);
-    vec3  F0     = mix(vec3(0.04), albedo, metallic);
+    vec3  F0     = mix(vec3(fresnel), albedo, metallic);
     vec3  F      = F_Schlick(VdotH, F0);
 
     vec3 kd       = (1.0 - F) * (1.0 - metallic);
@@ -112,6 +113,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
     so.normal    = N;
     so.metallic  = metallic;
     so.roughness = roughness;
+    so.fresnel   = fresnel;
     so.ao        = 1.0;
     so.emissive  = vec3(0.0);
     so.alpha     = 1.0;

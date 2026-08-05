@@ -30,6 +30,7 @@ struct SurfaceOutput
     vec3  normal;
     float metallic;
     float roughness;
+    float fresnel;
     float ao;
     vec3  emissive;
     float alpha;

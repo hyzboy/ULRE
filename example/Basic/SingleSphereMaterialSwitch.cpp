@@ -15,7 +15,7 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/mtl/MaterialRecipe.h>
-#include<hgl/graph/ssbo/StandardMaterialInstance.h>
+#include<hgl/graph/ssbo/LitMaterialData.h>
 #include<hgl/filesystem/Filename.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/module/TextureManager.h>
@@ -74,7 +74,7 @@ private:
     graph::mtl::MaterialRecipe near_recipe{};
     graph::mtl::MaterialRecipe far_recipe{};
 
-    graph::SSBOArrayAccessor<ssbo::StandardMaterialInstance>* mi_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<ssbo::LitMaterialData>* mi_ssbo_accessor = nullptr;
 
     Texture2DArray *near_base_color_array = nullptr;
     Texture2DArray *near_normal_array = nullptr;
@@ -162,7 +162,7 @@ private:
         auto* domain_manager = GetManager<ResourceDomainManager>();
         if (!domain_manager)
             return LogFail("InitMaterials", "domain manager null");
-        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::StandardMaterialInstance>(
+        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::LitMaterialData>(
             graph::mtl::SSBOType::ClearCoatSurface, "SingleSphereSwitch:MIData", 1);
         if (!mi_ssbo_accessor)
             return LogFail("InitMaterials", "SSBO allocation failed");
@@ -260,8 +260,8 @@ private:
         if (!mi_ssbo_accessor)
             return LogFail("InitRenderResources", "SSBO not allocated");
 
-        ssbo::StandardMaterialInstance mi_data{};
-        mi_data.base_color = PackRGBA8Float(0.72f, 0.72f, 0.72f, 1.0f);
+        ssbo::LitMaterialData mi_data{};
+        mi_data.base_color = Color4f(0.72f, 0.72f, 0.72f, 1.0f);
         mi_data.metallic = 0.15f;
         mi_data.roughness = 0.25f;
         mi_data.normal_scale = 0.35f;

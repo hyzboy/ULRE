@@ -5,7 +5,7 @@
 #include<hgl/graph/geo/Wall.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/MaterialLibrary.h>
-#include<hgl/graph/ssbo/StandardMaterialInstance.h>
+#include<hgl/graph/ssbo/LitMaterialData.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -50,9 +50,9 @@ private:
     hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
 
-    ssbo::StandardMaterialInstance mi_data;
+    ssbo::LitMaterialData mi_data;
     graph::mtl::MaterialRecipe wall_recipe{};
-    graph::SSBOArrayAccessor<ssbo::StandardMaterialInstance>* mi_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<ssbo::LitMaterialData>* mi_ssbo_accessor = nullptr;
     Sampler *sampler = nullptr;
     Texture2D *base_color_texture = nullptr;
     std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
@@ -134,7 +134,7 @@ public:
         if (!geometry_manager)
             return false;
 
-        mi_data.base_color = GetRGBA(COLOR::FireBrick);
+        mi_data.base_color = GetColor4f(COLOR::FireBrick);
         mi_data.metallic=0;
         mi_data.roughness=0.95f;
         mi_data.normal_scale=0.35f;
@@ -149,7 +149,7 @@ public:
         if (!domain_manager || !buffer_manager)
             return false;
 
-        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::StandardMaterialInstance>(
+        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::LitMaterialData>(
             graph::mtl::SSBOType::ClearCoatSurface,
             "WallsFromPolyline:MIData",
             1);

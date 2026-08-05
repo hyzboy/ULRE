@@ -29,8 +29,15 @@
 SCENE_CAMERA_UBO;
 SCENE_SKY_UBO;
 
-// Surface interface
+// Surface & Lighting interfaces
 #include "common/surface_interface.glsl"
+
+// Configurable Lighting & NTB Code Modules.
+// CompositorAssembler replaces these literal defaults when options override them.
+#include "sky/sky_atmosphere.glsl"
+#include "lighting/direct_cook_torrance_pbr.glsl"
+#include "lighting/indirect_simple_ambient.glsl"
+#include "ntb/ntb_tangent_vbo_normalmap.glsl"
 
 // Inputs from VS
 layout(location=0) flat in uint fragDataIndexID;

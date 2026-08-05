@@ -92,13 +92,13 @@ namespace hgl::graph::mtl
         case SSBOType::MaterialSSBOIndexTable:
             return 0;  // dynamic: stride = ssbo_slot_decls.size() * sizeof(uint32_t) per material
         case SSBOType::PBRSurface:
-            return sizeof(uint32_t) + sizeof(float) * 2; // base_color + metallic + roughness
+            return sizeof(float) * 8; // vec4 base_color + metallic + roughness + normal_scale + fresnel
         case SSBOType::EmissiveSurface:
             return sizeof(float) * 4;                    // vec4/uvec4 style payload
         case SSBOType::TextureRectArraySurface:
             return sizeof(uint32_t) * 4;                // uvec4 id
         case SSBOType::ClearCoatSurface:
-            return sizeof(uint32_t) + sizeof(float) * 3; // base_color + metallic + roughness + normal_scale
+            return sizeof(float) * 8; // vec4 base_color + metallic + roughness + normal_scale + fresnel
         case SSBOType::TransmissionSurface:
             return sizeof(uint32_t);                     // packed uint payload
         case SSBOType::TransformIndexRows:
