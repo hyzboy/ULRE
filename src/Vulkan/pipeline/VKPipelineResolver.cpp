@@ -421,6 +421,22 @@ namespace hgl::graph
         }
 
         template<typename Key>
+        void DestroyLibraryPipelinesForDevice(ValueArray<LibraryPipelineCacheEntry<Key>> &cache,
+                                              VulkanDevice *device)
+        {
+            for(int i = cache.GetCount() - 1; i >= 0; --i)
+            {
+                if(cache[i].device != device)
+                    continue;
+
+                if(cache[i].pipeline != VK_NULL_HANDLE)
+                    vkDestroyPipeline(*device, cache[i].pipeline, nullptr);
+
+                cache.Delete(i);
+            }
+        }
+
+        template<typename Key>
         bool TouchLibraryCache(const ValueArray<LibraryPipelineCacheEntry<Key>> &cache,
                                const FinalPipelineResolveRequest &request,
                                const Key &key,
@@ -1097,13 +1113,14 @@ namespace hgl::graph
 
         ClearFromCache(g_monolithic_pipeline_cache);
         ClearFromCache(g_gpl_link_pipeline_cache);
-        // Library pipelines may still be referenced by executable pipelines owned
-        // by RenderPass wrappers. Let vkDestroyDevice reclaim them after those
-        // wrappers have gone away instead of destroying dependencies first.
-        ForgetLibraryPipelinesForDevice(g_vi_library_cache, device);
-        ForgetLibraryPipelinesForDevice(g_pr_library_cache, device);
-        ForgetLibraryPipelinesForDevice(g_fs_library_cache, device);
-        ForgetLibraryPipelinesForDevice(g_fo_library_cache, device);
+        // Final executable pipelines have been released by their owners before
+        // VulkanDevice destruction reaches this resolver cache. Destroy the
+        // four library pipelines explicitly so they do not remain tracked as
+        // live Vulkan objects.
+        DestroyLibraryPipelinesForDevice(g_vi_library_cache, device);
+        DestroyLibraryPipelinesForDevice(g_pr_library_cache, device);
+        DestroyLibraryPipelinesForDevice(g_fs_library_cache, device);
+        DestroyLibraryPipelinesForDevice(g_fo_library_cache, device);
 
         GLogInfo("[PipelineResolver] Cleared caches for device %p. Remaining: monolithic=%d gpl=%d libraries vi/pr/fs/fo=%d/%d/%d/%d",
                  (void *)device,
