@@ -1,6 +1,6 @@
 schema = 1
-id = "RectTexture2D"
-name = "RectTexture2D"
+id = "Texture2DArray"
+name = "Texture2DArray"
 source = "file"
 usage = "General"
 bootstrap = "None"
@@ -15,12 +15,13 @@ scale = "World"
 projection = "LocalToWorldOnly"
 
 [compositor]
-fragment = "2d/puretexture2d.frag.glsl"
+fragment = "2d/recttexture2darray.frag.glsl"
 
 [vertex]
 requirements = ["Position", "UV0"]
-varyings = ["emit_uv0"]
+varyings = ["emit_data_index_id", "emit_uv0"]
 
 [resources]
 ubos = ["ViewportInfo"]
-textures = [{ slot = "BaseColor", sampler = "Sampler2D", required = true }]
+ssbos = [{ name = "mtl", type = "TextureRectArraySurface" }]
+textures = [{ slot = "BaseColor", sampler = "Sampler2DArray", required = true }]

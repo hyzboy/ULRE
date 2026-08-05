@@ -955,10 +955,9 @@ namespace
         }
 
         const char *non_bootstrap_ids[] = {
-            "VertexColor", "PureTexture2D", "RectTexture2D",
-            "RectTexture2DArray", "VertexLuminance3D",
-            "VertexPattleColor3D", "Gizmo3D", "SkyMinimal", "Standard",
-            "StandardTextureArray"
+            "VertexColor", "UnlitTexture", "Texture2DArray",
+            "VertexLuminance", "VertexPaletteColor", "DebugNormalColor", "SkyMinimal", "Lit",
+            "LitTextureArray"
         };
         for (const char *id : non_bootstrap_ids)
         {
@@ -1271,7 +1270,7 @@ namespace
         int error_count = 0;
         if (!registry.LoadDirectory(OS_TEXT("E:/ULRE/ShaderLibrary"),
                                     &file_count, &error_count)
-         || file_count != 10
+         || file_count != 9
          || error_count != 0)
         {
             result.diagnostics.emplace_back("material file registry bulk load failed");
@@ -1279,10 +1278,9 @@ namespace
         else
         {
             const char *expected_file_ids[] = {
-                "Standard", "StandardTextureArray", "SkyMinimal", "Gizmo3D",
-                "VertexColor", "PureTexture2D", "RectTexture2D",
-                "RectTexture2DArray", "VertexLuminance3D",
-                "VertexPattleColor3D"
+                "Lit", "LitTextureArray", "SkyMinimal", "DebugNormalColor",
+                "VertexColor", "UnlitTexture", "Texture2DArray",
+                "VertexLuminance", "VertexPaletteColor"
             };
             for (const char *id : expected_file_ids)
             {
@@ -1291,10 +1289,10 @@ namespace
                         std::string("missing bulk material file: ") + id);
             }
 
-            const MaterialDefinition *file_definition = registry.FindByID("Standard");
+            const MaterialDefinition *file_definition = registry.FindByID("Lit");
             MaterialDefinition legacy_definition{};
             if (!file_definition
-             || !TryGetMaterialDefinitionByID("Standard", legacy_definition))
+             || !TryGetMaterialDefinitionByID("Lit", legacy_definition))
             {
                 result.diagnostics.emplace_back("Standard file/legacy definition lookup failed");
             }
@@ -1355,9 +1353,9 @@ namespace
         }
 
         const char *bulk_ids[] = {
-            "StandardTextureArray", "SkyMinimal", "Gizmo3D", "VertexColor",
-            "PureTexture2D", "RectTexture2D", "RectTexture2DArray",
-            "VertexLuminance3D", "VertexPattleColor3D"
+            "LitTextureArray", "SkyMinimal", "DebugNormalColor", "VertexColor",
+            "UnlitTexture", "Texture2DArray", "VertexLuminance",
+            "VertexPaletteColor"
         };
         for (const char *id : bulk_ids)
         {
@@ -1421,11 +1419,11 @@ namespace
         }
 
         {
-            const MaterialDefinition *file_definition = registry.FindByID("Standard");
+            const MaterialDefinition *file_definition = registry.FindByID("Lit");
             MaterialDefinition legacy_definition{};
             MaterialDefinition merged_definition{};
             if (!file_definition
-             || !TryGetMaterialDefinitionByID("Standard", legacy_definition)
+             || !TryGetMaterialDefinitionByID("Lit", legacy_definition)
              || !MergeMaterialDefinitionFile(
                     legacy_definition, *file_definition, merged_definition)
              || merged_definition.source_kind != MaterialDefinitionSourceKind::File

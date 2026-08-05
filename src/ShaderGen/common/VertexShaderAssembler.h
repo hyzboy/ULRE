@@ -16,7 +16,7 @@ namespace hgl::graph::mtl
         bool texture_layer_id_uses_data_index = false; // true: fragTextureLayerID = fragDataIndexID (legacy 3D bindless row semantics)
         bool emit_vertex_color     = false;  // location=2 out vec4 fragVertexColor
         bool emit_uv0              = false;  // location=3 out vec2 fragUV0
-        // Extended: for materials that need world-space outputs (e.g. Gizmo3D)
+        // Extended: for materials that need world-space outputs (e.g. DebugNormalColor)
         // These are appended after the standard varying slots above.
         bool emit_world_pos        = false;  // out vec3 fragWorldPos
         bool emit_world_normal     = false;  // out vec3 fragWorldNormal

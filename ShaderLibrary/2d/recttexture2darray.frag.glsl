@@ -6,7 +6,7 @@
 // @ulre require ProducedSemantic MaterialData
 // @ulre require ProducedSemantic UV0
 // @ulre end
-// RectTexture2DArray fragment shader
+// Texture2DArray fragment shader
 
 layout(set=TEX_SET, binding=TEX_BINDING) uniform sampler2DArray TextureBaseColor;
 

@@ -1,6 +1,6 @@
 schema = 1
-id = "PureTexture2D"
-name = "PureTexture2D"
+id = "UnlitTexture"
+name = "UnlitTexture"
 source = "file"
 usage = "General"
 bootstrap = "None"

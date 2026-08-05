@@ -102,8 +102,8 @@ private:
         if (!geometry)
             return false;
         geometry_manager->Add(geometry);
-        quad_recipe.recipe_name = "TextureQuad.PureTexture2D";
-        quad_recipe.mtl_def_id = "PureTexture2D";
+        quad_recipe.recipe_name = "TextureQuad.UnlitTexture";
+        quad_recipe.mtl_def_id = "UnlitTexture";
         quad_recipe.pipeline_preset = PipelinePreset::Solid2D;
         quad_recipe.domain = "TextureQuad";
         quad_asset = PrimitiveAsset(geometry, &quad_recipe, PrimitiveType::Fan);

@@ -149,8 +149,8 @@ private:
                    nullptr, sampler_manager, base_color_texture, normal_texture);
             return false;
         }
-        sphere_recipe.recipe_name = "PBRSpheres.StandardTextureArray";
-        sphere_recipe.mtl_def_id = "StandardTextureArray";
+        sphere_recipe.recipe_name = "PBRSpheres.LitTextureArray";
+        sphere_recipe.mtl_def_id = "LitTextureArray";
         sphere_recipe.pipeline_preset = PipelinePreset::Solid3D;
         sphere_recipe.domain = "PBRSpheres";
 

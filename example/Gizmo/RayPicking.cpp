@@ -100,7 +100,7 @@ private:
     bool InitMaterialAndPipeline()
     {
         plane_recipe.recipe_name = "RayPicking.PlaneGrid";
-        plane_recipe.mtl_def_id = "VertexLuminance3D";
+        plane_recipe.mtl_def_id = "VertexLuminance";
         plane_recipe.pipeline_preset = graph::PipelinePreset::Solid3D;
         plane_recipe.domain = "RayPicking";
         plane_recipe.vertex_node_config.input = graph::mtl::VertexInputMode::Vec2Position;

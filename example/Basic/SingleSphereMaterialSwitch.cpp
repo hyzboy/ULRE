@@ -168,7 +168,7 @@ private:
             return LogFail("InitMaterials", "SSBO allocation failed");
 
         near_recipe.recipe_name = "06e.SingleSphereSwitch.Near";
-        near_recipe.mtl_def_id = "StandardTextureArray";
+        near_recipe.mtl_def_id = "LitTextureArray";
         near_recipe.domain = "06e.SingleSphereSwitch";
         near_recipe.pipeline_preset = PipelinePreset::Solid3D;
         graph::mtl::UpsertRecipeSSBOAssetBinding(near_recipe,
@@ -177,7 +177,7 @@ private:
 
         far_recipe = near_recipe;
         far_recipe.recipe_name = "06e.SingleSphereSwitch.Far";
-        far_recipe.mtl_def_id = "Standard";
+        far_recipe.mtl_def_id = "Lit";
 
         return true;
     }

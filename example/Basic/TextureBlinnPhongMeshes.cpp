@@ -86,8 +86,8 @@ private:
         auto* sampler_manager = GetManager<SamplerManager>();
         if (!texture_manager || !sampler_manager)
             return false;
-        mesh_recipe.recipe_name = "06c.TextureBlinnPhong.Standard";
-        mesh_recipe.mtl_def_id = "Standard";
+        mesh_recipe.recipe_name = "06c.TextureBlinnPhong.Lit";
+        mesh_recipe.mtl_def_id = "Lit";
         mesh_recipe.pipeline_preset = PipelinePreset::Solid3D;
         mesh_recipe.domain = "06c.TextureBlinnPhong";
         graph::mtl::UpsertRecipeSSBOAssetBinding(mesh_recipe,

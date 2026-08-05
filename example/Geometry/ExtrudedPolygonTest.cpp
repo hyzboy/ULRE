@@ -77,8 +77,8 @@ private:
         (*mi_ssbo_accessor)[0] = GetColor4f(COLOR::BlenderAxisRed, 1.0f);
         mi_ssbo_accessor->Commit();
 
-        mesh_recipe.recipe_name = "ExtrudedPolygonTest.Gizmo3D";
-        mesh_recipe.mtl_def_id = "Gizmo3D";
+        mesh_recipe.recipe_name = "ExtrudedPolygonTest.DebugNormalColor";
+        mesh_recipe.mtl_def_id = "DebugNormalColor";
         mesh_recipe.pipeline_preset = PipelinePreset::Solid3D;
         mesh_recipe.domain = "ExtrudedPolygonTest";
         graph::mtl::UpsertRecipeSSBOAssetBinding(mesh_recipe,

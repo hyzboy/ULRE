@@ -119,8 +119,8 @@ private:
             (*grid_mi_ssbo_accessor)[0] = GetColor4f(COLOR::White, 1.0f);
             grid_mi_ssbo_accessor->Commit();
 
-            grid_recipe.recipe_name = "GizmoUsageExample.VertexLuminance3D";
-            grid_recipe.mtl_def_id = "VertexLuminance3D";
+            grid_recipe.recipe_name = "GizmoUsageExample.VertexLuminance";
+            grid_recipe.mtl_def_id = "VertexLuminance";
             grid_recipe.pipeline_preset = PipelinePreset::Solid3D;
             grid_recipe.domain = "GizmoUsageExample";
             grid_recipe.vertex_node_config.input = graph::mtl::VertexInputMode::Vec2Position;
@@ -164,8 +164,8 @@ private:
             (*cube_mi_ssbo_accessor)[0] = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
             cube_mi_ssbo_accessor->Commit();
 
-            cube_recipe.recipe_name = "GizmoUsageExample.Gizmo3D";
-            cube_recipe.mtl_def_id = "Gizmo3D";
+            cube_recipe.recipe_name = "GizmoUsageExample.DebugNormalColor";
+            cube_recipe.mtl_def_id = "DebugNormalColor";
             cube_recipe.pipeline_preset = PipelinePreset::Solid3D;
             cube_recipe.domain = "GizmoUsageExample";
             graph::mtl::UpsertRecipeSSBOAssetBinding(cube_recipe,

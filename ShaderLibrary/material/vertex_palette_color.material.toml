@@ -1,6 +1,6 @@
 schema = 1
-id = "VertexPattleColor3D"
-name = "VertexPattleColor3D"
+id = "VertexPaletteColor"
+name = "VertexPaletteColor"
 source = "file"
 usage = "General"
 bootstrap = "None"

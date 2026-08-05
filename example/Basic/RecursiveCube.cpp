@@ -122,8 +122,8 @@ private:
         if (!mi_ssbo_accessor)
             return false;
 
-        cube_recipe.recipe_name = "RecursiveCube.Gizmo3D";
-        cube_recipe.mtl_def_id = "Gizmo3D";
+        cube_recipe.recipe_name = "RecursiveCube.DebugNormalColor";
+        cube_recipe.mtl_def_id = "DebugNormalColor";
         cube_recipe.pipeline_preset = PipelinePreset::Solid3D;
         cube_recipe.domain = "RecursiveCube";
         graph::mtl::UpsertRecipeSSBOAssetBinding(cube_recipe,

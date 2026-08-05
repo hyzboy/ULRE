@@ -4,7 +4,7 @@
 // @ulre priority 0
 // @ulre require ProducedSemantic UV0
 // @ulre end
-// PureTexture2D / RectTexture2D fragment shader
+// UnlitTexture fragment shader
 
 layout(set=TEX_SET, binding=TEX_BINDING) uniform sampler2D TextureBaseColor;
 

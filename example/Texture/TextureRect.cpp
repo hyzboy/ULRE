@@ -105,8 +105,8 @@ private:
         if (!geometry)
             return false;
         geometry_manager->Add(geometry);
-        rect_recipe.recipe_name = "TextureRect.RectTexture2D";
-        rect_recipe.mtl_def_id = "RectTexture2D";
+        rect_recipe.recipe_name = "TextureRect.UnlitTexture";
+        rect_recipe.mtl_def_id = "UnlitTexture";
         rect_recipe.pipeline_preset = PipelinePreset::Solid2D;
         rect_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigZeroToOne(true);
         rect_recipe.domain = "TextureRect";

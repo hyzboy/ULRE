@@ -141,8 +141,8 @@ private:
             (*mi_ssbo_accessor)[i] = hgl::math::Vector4u{i, 0u, 0u, 0u};
         mi_ssbo_accessor->Commit();
 
-        rect_recipe.recipe_name = "TextureRectArray.RectTexture2DArray";
-        rect_recipe.mtl_def_id = "RectTexture2DArray";
+        rect_recipe.recipe_name = "TextureRectArray.Texture2DArray";
+        rect_recipe.mtl_def_id = "Texture2DArray";
         rect_recipe.pipeline_preset = graph::PipelinePreset::Solid2D;
         rect_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigZeroToOne(true);
         rect_recipe.domain = "TextureRectArray";

@@ -1,12 +1,12 @@
 // @ulre begin
-// @ulre name gizmo3d_surface
+// @ulre name debug_normal_color
 // @ulre kind Surface
 // @ulre priority 0
 // @ulre require ProducedSemantic WorldNormal
 // @ulre require Resource MaterialData
 // @ulre uses surface_interface
 // @ulre end
-// Gizmo3D Surface Function — 调试 Gizmo 材质
+// DebugNormalColor Surface Function
 // MI_Gizmo: vec4 Color (16 bytes)
 // 自带简易 Blinn-Phong 光照（硬编码太阳方向）
 
@@ -16,7 +16,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
 {
     EmissiveSurfaceData mi = mtl.mi[materialInstanceID];
 
-    const vec3 SUN_DIRECTION = vec3(0.655386, 0.491539, 0.573462);
+    const vec3 SUN_DIRECTION = normalize(vec3(0.655386, 0.491539, 0.573462));
     const vec3 SUN_COLOR     = vec3(1.0, 1.0, 1.0);
 
     // Half-Lambert diffuse

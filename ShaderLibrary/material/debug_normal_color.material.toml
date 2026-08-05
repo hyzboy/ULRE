@@ -1,8 +1,8 @@
 schema = 1
-id = "VertexLuminance3D"
-name = "VertexLuminance3D"
+id = "DebugNormalColor"
+name = "DebugNormalColor"
 source = "file"
-usage = "General"
+usage = "Debug"
 bootstrap = "None"
 program_mode = "Compositor"
 provider_policy = "GeometryOnly"
@@ -18,12 +18,12 @@ projection = "WorldCameraVP"
 surface = "Unlit"
 blend = "Opaque"
 pass = "ForwardOpaque"
-fragment = "compositor/main_forward_unlit_luminance.frag.glsl"
-surface_module = "surface/unlit_luminance_surface.glsl"
+fragment = "compositor/main_forward_unlit_normal.frag.glsl"
+surface_module = "surface/debug_normal_color.glsl"
 
 [vertex]
-requirements = ["Position", "Luminance"]
-varyings = ["emit_data_index_id", "emit_texture_layer_id", "texture_layer_id_uses_data_index", "emit_luminance"]
+requirements = ["Position", "Normal"]
+varyings = ["emit_data_index_id", "emit_texture_layer_id", "texture_layer_id_uses_data_index", "emit_world_pos", "emit_world_normal"]
 
 [resources]
 ubos = ["ViewportInfo", "CameraInfo"]

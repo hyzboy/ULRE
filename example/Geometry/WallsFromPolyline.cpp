@@ -138,8 +138,8 @@ public:
         mi_data.metallic=0;
         mi_data.roughness=0.95f;
         mi_data.normal_scale=0.35f;
-        wall_recipe.recipe_name = "WallsFromPolyline.Standard";
-        wall_recipe.mtl_def_id = "Standard";
+        wall_recipe.recipe_name = "WallsFromPolyline.Lit";
+        wall_recipe.mtl_def_id = "Lit";
         wall_recipe.pipeline_preset = PipelinePreset::Solid3D;
         wall_recipe.domain = "WallsFromPolyline";
 

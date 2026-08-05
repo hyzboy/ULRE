@@ -88,8 +88,8 @@ private:
 
         if (!texture_manager || !sampler_manager )
             return false;
-        mesh_recipe.recipe_name = "06b.BasicLit.Standard";
-        mesh_recipe.mtl_def_id = "Standard";
+        mesh_recipe.recipe_name = "06b.BasicLit.Lit";
+        mesh_recipe.mtl_def_id = "Lit";
         mesh_recipe.pipeline_preset = PipelinePreset::Solid3D;
         mesh_recipe.domain = "06b.BasicLit";
         graph::mtl::UpsertRecipeSSBOAssetBinding(mesh_recipe,

@@ -1,6 +1,6 @@
 schema = 1
-id = "StandardTextureArray"
-name = "StandardTextureArray"
+id = "LitTextureArray"
+name = "LitTextureArray"
 source = "file"
 usage = "General"
 bootstrap = "None"

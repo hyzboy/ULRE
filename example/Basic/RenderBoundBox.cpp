@@ -176,7 +176,7 @@ private:
     void InitMaterialRecipes()
     {
         solid_recipe.recipe_name = "RenderBoundBox.Solid";
-        solid_recipe.mtl_def_id = "Gizmo3D";
+        solid_recipe.mtl_def_id = "DebugNormalColor";
         solid_recipe.pipeline_preset = PipelinePreset::Solid3D;
         solid_recipe.domain = "RenderBoundBox.Solid";
 
