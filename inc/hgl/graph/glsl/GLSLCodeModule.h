@@ -107,7 +107,7 @@ namespace hgl::graph::mtl
     {
         const char *name = nullptr;
         SSBOType ssbo_type = SSBOType::UserDefined;
-        uint32 ssbo_slot = 0;
+        uint32 data_slot = 0;
         uint32 stage_flags = 0;
     };
 

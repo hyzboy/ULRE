@@ -140,13 +140,13 @@ private:
         cube_recipe.domain = "SimpleCube";
         cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
         primitive_comp->SetPrimitiveAsset(&cube_asset);
-        hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource named_struct{};
-        named_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
+        hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource named_struct{};
+        named_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
         named_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
-        named_struct.ssbo_element_index = 0;
-        named_struct.use_ssbo_element_index = true;
+        named_struct.data_index = 0;
+        named_struct.use_data_index = true;
         named_struct.shared_across_instances = true;
-        primitive_comp->SetMaterialSSBOResource(named_struct);
+        primitive_comp->SetMaterialDataSlotResource(named_struct);
         primitive_comp->SetVisible(true);
 
         return true;

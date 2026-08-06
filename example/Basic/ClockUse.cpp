@@ -111,7 +111,7 @@ private:
         clock_recipe.domain = "Clock";
         clock_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
         graph::mtl::UpsertRecipeSSBOAssetBinding(clock_recipe,
-                                                 graph::mtl::DefaultMaterialSSBOName,
+                                                 graph::mtl::DefaultMaterialDataSlotName,
                                                  mi_ssbo_accessor->GetSSBOBinding());
         clock_asset = PrimitiveAsset(geometry, &clock_recipe, PrimitiveType::Triangles);
 
@@ -222,13 +222,13 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = ticks[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&clock_asset);
-            hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource tick_struct{};
-            tick_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
+            hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource tick_struct{};
+            tick_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
             tick_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
-            tick_struct.ssbo_element_index = tick_slot;
-            tick_struct.use_ssbo_element_index = true;
+            tick_struct.data_index = tick_slot;
+            tick_struct.use_data_index = true;
             tick_struct.shared_across_instances = false;
-            primitive_comp->SetMaterialSSBOResource(tick_struct);
+            primitive_comp->SetMaterialDataSlotResource(tick_struct);
             primitive_comp->SetVisible(true);
 
             GLogInfo(u8"[ClockApp::InitECS] Created static tick at angle %f degrees", 30.0f * i);
@@ -259,13 +259,13 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = hands[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&clock_asset);
-            hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource hand_struct{};
-            hand_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
+            hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource hand_struct{};
+            hand_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
             hand_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
-            hand_struct.ssbo_element_index = hand_slots[i];
-            hand_struct.use_ssbo_element_index = true;
+            hand_struct.data_index = hand_slots[i];
+            hand_struct.use_data_index = true;
             hand_struct.shared_across_instances = false;
-            primitive_comp->SetMaterialSSBOResource(hand_struct);
+            primitive_comp->SetMaterialDataSlotResource(hand_struct);
             primitive_comp->SetVisible(true);
 
             GLogInfo(u8"[ClockApp::InitECS] Created movable hand [%u] (%s)", i, hand_names[i]);

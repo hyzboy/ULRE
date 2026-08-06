@@ -64,26 +64,26 @@ namespace hgl::ecs
             bool required = false;
         };
 
-        struct MaterialSSBOAuthoringResource
+        struct MaterialDataSlotAuthoringResource
         {
-            uint32_t ssbo_slot = hgl::graph::mtl::DefaultMaterialSSBOSlot;
+            uint32_t data_slot = hgl::graph::mtl::DefaultMaterialDataSlot;
             hgl::graph::mtl::SSBOType ssbo_type = hgl::graph::mtl::SSBOType::UserDefined;
             uint32_t ssbo_id = 0;
             hgl::graph::DeviceBuffer *buffer = nullptr;
             uint32_t element_capacity = 0;
             uint32_t byte_stride = 0;
-            uint32_t ssbo_element_index = 0;
-            bool use_ssbo_element_index = false;
+            uint32_t data_index = 0;
+            bool use_data_index = false;
             bool shared_across_instances = false;
             bool authored = false;
         };
 
-        struct MaterialSSBONamedAuthoringResource
+        struct MaterialDataSlotNamedAuthoringResource
         {
-            std::string ssbo_name;
+            std::string data_slot_name;
             uint32_t ssbo_id = 0;
-            uint32_t ssbo_element_index = 0;
-            bool use_ssbo_element_index = false;
+            uint32_t data_index = 0;
+            bool use_data_index = false;
             bool shared_across_instances = false;
             bool authored = false;
         };
@@ -102,8 +102,8 @@ namespace hgl::ecs
         bool hasMaterialRecipeOverride = false;
         hgl::graph::mtl::MaterialRecipe materialRecipeOverride;
         std::array<MaterialTextureAuthoringResource, static_cast<size_t>(hgl::graph::mtl::TextureSlot::RANGE_SIZE)> materialTextureResources{};
-        std::vector<MaterialSSBOAuthoringResource> materialSSBOResources;
-        std::vector<MaterialSSBONamedAuthoringResource> materialSSBONamedResources{};
+        std::vector<MaterialDataSlotAuthoringResource> materialDataSlotResources;
+        std::vector<MaterialDataSlotNamedAuthoringResource> materialDataSlotNamedResources{};
 
         // Late-resolve pipeline slot:
         // Populated at render-time if primitive has no pre-baked pipeline.
@@ -182,31 +182,31 @@ namespace hgl::ecs
         void SetMaterialTextureValue(hgl::graph::mtl::TextureSlot slot, uint32_t value);
         const MaterialTextureAuthoringResource *GetMaterialTextureResource(hgl::graph::mtl::TextureSlot slot) const;
         void ClearMaterialTextureResource(hgl::graph::mtl::TextureSlot slot);
-        void SetMaterialSSBOResource(hgl::graph::mtl::SSBOType ssbo_type,
+        void SetMaterialDataSlotResource(hgl::graph::mtl::SSBOType ssbo_type,
                                        uint32_t ssbo_id,
                                        hgl::graph::DeviceBuffer *buffer,
                                        uint32_t element_capacity,
                                        uint32_t byte_stride,
-                                       uint32_t ssbo_element_index = 0,
-                                       bool use_ssbo_element_index = false,
+                                       uint32_t data_index = 0,
+                                       bool use_data_index = false,
                                        bool shared_across_instances = false);
-        void SetMaterialSSBOResource(uint32_t ssbo_slot,
+        void SetMaterialDataSlotResource(uint32_t data_slot,
                                        hgl::graph::mtl::SSBOType ssbo_type,
                                        uint32_t ssbo_id,
                                        hgl::graph::DeviceBuffer *buffer,
                                        uint32_t element_capacity,
                                        uint32_t byte_stride,
-                                       uint32_t ssbo_element_index = 0,
-                                       bool use_ssbo_element_index = false,
+                                       uint32_t data_index = 0,
+                                       bool use_data_index = false,
                                        bool shared_across_instances = false);
-        uint32_t GetMaterialSSBOSlotCount() const { return static_cast<uint32_t>(materialSSBOResources.size()); }
-        const MaterialSSBOAuthoringResource *GetMaterialSSBOResource(hgl::graph::mtl::SSBOType ssbo_type) const;
-        const MaterialSSBOAuthoringResource *GetMaterialSSBOResourceBySlot(uint32_t ssbo_slot) const;
-        void ClearMaterialSSBOResource(hgl::graph::mtl::SSBOType ssbo_type);
-        void ClearMaterialSSBOResourceBySlot(uint32_t ssbo_slot);
-        void SetMaterialSSBOResource(const MaterialSSBONamedAuthoringResource &resource);
-        const MaterialSSBONamedAuthoringResource *GetMaterialSSBOResource(const std::string &ssbo_name) const;
-        void ClearMaterialSSBOResource(const std::string &ssbo_name);
+        uint32_t GetMaterialDataSlotCount() const { return static_cast<uint32_t>(materialDataSlotResources.size()); }
+        const MaterialDataSlotAuthoringResource *GetMaterialDataSlotResource(hgl::graph::mtl::SSBOType ssbo_type) const;
+        const MaterialDataSlotAuthoringResource *GetMaterialDataSlotResourceBySlot(uint32_t data_slot) const;
+        void ClearMaterialDataSlotResource(hgl::graph::mtl::SSBOType ssbo_type);
+        void ClearMaterialDataSlotResourceBySlot(uint32_t data_slot);
+        void SetMaterialDataSlotResource(const MaterialDataSlotNamedAuthoringResource &resource);
+        const MaterialDataSlotNamedAuthoringResource *GetMaterialDataSlotResource(const std::string &data_slot_name) const;
+        void ClearMaterialDataSlotResource(const std::string &data_slot_name);
         void ClearMaterialAuthoringResources();
 
         // ShaderProgram access (returns override if set, otherwise descriptor-bound material)

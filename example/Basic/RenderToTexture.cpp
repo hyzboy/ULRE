@@ -271,13 +271,13 @@ public:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitiveAsset(&sphere_asset);
-        hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource sphere_struct{};
-        sphere_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
+        hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource sphere_struct{};
+        sphere_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
         sphere_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
-        sphere_struct.ssbo_element_index = 0;
-        sphere_struct.use_ssbo_element_index = true;
+        sphere_struct.data_index = 0;
+        sphere_struct.use_data_index = true;
         sphere_struct.shared_across_instances = true;
-        prim_comp->SetMaterialSSBOResource(sphere_struct);
+        prim_comp->SetMaterialDataSlotResource(sphere_struct);
         prim_comp->SetVisible(true);
 
         sphere_primitive_comp = prim_comp;
@@ -461,13 +461,13 @@ private:
         cube_prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_tex, cube_sampler);
         cube_prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal, normal_tex, cube_sampler);
         cube_prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_tex, cube_sampler);
-        hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource cube_struct{};
-        cube_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
+        hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource cube_struct{};
+        cube_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
         cube_struct.ssbo_id = cube_mi_ssbo_accessor->GetSSBOId();
-        cube_struct.ssbo_element_index = 0;
-        cube_struct.use_ssbo_element_index = true;
+        cube_struct.data_index = 0;
+        cube_struct.use_data_index = true;
         cube_struct.shared_across_instances = true;
-        cube_prim_comp->SetMaterialSSBOResource(cube_struct);
+        cube_prim_comp->SetMaterialDataSlotResource(cube_struct);
         cube_prim_comp->SetVisible(true);
         LogStage("RenderToTextureApp::CreateCube", "success");
         return true;

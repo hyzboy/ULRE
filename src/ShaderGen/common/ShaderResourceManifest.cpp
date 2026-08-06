@@ -53,7 +53,7 @@ namespace hgl::graph::mtl
             {
                 auto &existing = manifest.ssbos[i];
                 if (!CStrEqual(existing.name, incoming.name)
-                 || existing.ssbo_slot != incoming.ssbo_slot)
+                 || existing.data_slot != incoming.data_slot)
                     continue;
 
                 if (existing.ssbo_type != incoming.ssbo_type)
@@ -214,7 +214,7 @@ namespace hgl::graph::mtl
                 const auto &ssbo = manifest.ssbos[i];
                 hash = hgl::hash::FNV1aAppendBytes(hash, ssbo.name, std::strlen(ssbo.name));
                 hash = hgl::hash::FNV1aAppendValueBytes(hash, ssbo.ssbo_type);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ssbo.ssbo_slot);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, ssbo.data_slot);
                 hash = hgl::hash::FNV1aAppendValueBytes(hash, ssbo.stage_flags);
             }
 

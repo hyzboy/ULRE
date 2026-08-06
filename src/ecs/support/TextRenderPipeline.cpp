@@ -83,7 +83,7 @@ namespace hgl::ecs
 
             for (const auto &req : material->GetMaterialResourceLayout().requirements)
             {
-                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialSSBOSlotData)
+                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialDataSlotData)
                     continue;
 
                 return graph::mtl::GetSSBOTypeStructStride(req.ssbo_type);
@@ -370,7 +370,7 @@ namespace hgl::ecs
                 return nullptr;
 
             if (!guard.material->BindSSBO(graph::DescriptorSetType::Material,
-                                          graph::mtl::DefaultMaterialSSBOName,
+                                          graph::mtl::DefaultMaterialDataSlotName,
                                           guard.material_instance_buffer->GetGPUBuffer()))
                 return nullptr;
 
@@ -382,7 +382,7 @@ namespace hgl::ecs
 
             for (const auto &req : guard.material->GetMaterialResourceLayout().requirements)
             {
-                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialSSBOSlotData)
+                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialDataSlotData)
                     continue;
 
                 const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};

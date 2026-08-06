@@ -38,7 +38,7 @@ namespace hgl::graph
         return material ? material->GetDefaultVIL() : nullptr;
     }
 
-    bool DescriptorBindingSet::SetSSBOBinding(const mtl::SSBOType ssbo_type, const uint32_t ssbo_id, const uint32_t ssbo_slot)
+    bool DescriptorBindingSet::SetSSBOBinding(const mtl::SSBOType ssbo_type, const uint32_t ssbo_id, const uint32_t data_slot)
     {
         const size_t index = ToIndex(ssbo_type);
         if (index >= size_t(mtl::SSBOType::RANGE_SIZE))
@@ -47,7 +47,7 @@ namespace hgl::graph
         ssbo_bindings[index].valid = true;
         ssbo_bindings[index].ssbo_type = ssbo_type;
         ssbo_bindings[index].ssbo_id = ssbo_id;
-        ssbo_bindings[index].ssbo_slot = ssbo_slot;
+        ssbo_bindings[index].data_slot = data_slot;
         return true;
     }
 
@@ -82,13 +82,13 @@ namespace hgl::graph
         return binding.ssbo_id;
     }
 
-    uint32_t DescriptorBindingSet::GetSSBOSlot(const mtl::SSBOType ssbo_type) const
+    uint32_t DescriptorBindingSet::GetDataSlot(const mtl::SSBOType ssbo_type) const
     {
         SSBOBinding binding;
         if (!GetSSBOBinding(ssbo_type, binding))
             return 0;
 
-        return binding.ssbo_slot;
+        return binding.data_slot;
     }
 
     void DescriptorBindingSet::ClearSSBOBinding(const mtl::SSBOType ssbo_type)
@@ -147,9 +147,9 @@ namespace hgl::graph
 
             switch (req.semantic)
             {
-            case mtl::DescriptorSemantic::MaterialSSBOSlotData:
+            case mtl::DescriptorSemantic::MaterialDataSlotData:
             case mtl::DescriptorSemantic::MaterialTextureLayerTable:
-            case mtl::DescriptorSemantic::MaterialSSBOIndexTable:
+            case mtl::DescriptorSemantic::MaterialDataIndexTable:
             {
                 SSBOBinding binding;
                 if (!GetSSBOBinding(req.ssbo_type, binding))

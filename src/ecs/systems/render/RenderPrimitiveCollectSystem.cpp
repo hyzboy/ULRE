@@ -86,19 +86,19 @@ namespace hgl::ecs
                 const auto &contract = material->GetMaterialResourceLayout();
                 for (const auto &req : contract.requirements)
                 {
-                    if (req.semantic != graph::mtl::DescriptorSemantic::MaterialSSBOSlotData)
+                    if (req.semantic != graph::mtl::DescriptorSemantic::MaterialDataSlotData)
                         continue;
 
                     for (const auto &ref : spec.struct_refs)
                     {
-                        if (ref.ssbo_slot == req.ssbo_slot && ref.ssbo_type == req.ssbo_type)
-                            return ref.ssbo_element_index;
+                        if (ref.data_slot == req.data_slot && ref.ssbo_type == req.ssbo_type)
+                            return ref.data_index;
                     }
                 }
             }
 
             if (!spec.struct_refs.empty())
-                return spec.struct_refs.front().ssbo_element_index;
+                return spec.struct_refs.front().data_index;
 
             return fallback_row;
         }
@@ -113,7 +113,7 @@ namespace hgl::ecs
                 return true;
             }
 
-            if (const auto *asset = graph::mtl::FindRecipeSSBOAssetBindingBySlot(recipe, req.ssbo_slot, req.ssbo_type))
+            if (const auto *asset = graph::mtl::FindRecipeSSBOAssetBindingBySlot(recipe, req.data_slot, req.ssbo_type))
             {
                 out_ssbo_id = asset->ssbo_id;
                 return true;
@@ -131,8 +131,8 @@ namespace hgl::ecs
             {
                 switch (req.semantic)
                 {
-                    case graph::mtl::DescriptorSemantic::MaterialSSBOSlotData:
-                    case graph::mtl::DescriptorSemantic::MaterialSSBOIndexTable:
+                    case graph::mtl::DescriptorSemantic::MaterialDataSlotData:
+                    case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
                     case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
                         return true;
                     default:
@@ -259,10 +259,10 @@ namespace hgl::ecs
                 }
             }
 
-            for (size_t i = 0; i < static_cast<size_t>(primitive_comp->GetMaterialSSBOSlotCount()); ++i)
+            for (size_t i = 0; i < static_cast<size_t>(primitive_comp->GetMaterialDataSlotCount()); ++i)
             {
-                const auto ssbo_slot = static_cast<uint32_t>(i);
-                const auto *resource = primitive_comp->GetMaterialSSBOResourceBySlot(ssbo_slot);
+                const auto data_slot = static_cast<uint32_t>(i);
+                const auto *resource = primitive_comp->GetMaterialDataSlotResourceBySlot(data_slot);
                 if (!resource)
                     continue;
 
@@ -291,12 +291,12 @@ namespace hgl::ecs
 
             for (const auto &req : material_program->GetMaterialResourceLayout().requirements)
             {
-                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialSSBOSlotData)
+                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialDataSlotData)
                     continue;
 
                 const auto *asset_binding = graph::mtl::FindRecipeSSBOAssetBinding(effective_recipe, req.name, req.ssbo_type);
                 if (!asset_binding)
-                    asset_binding = graph::mtl::FindRecipeSSBOAssetBindingBySlot(effective_recipe, req.ssbo_slot, req.ssbo_type);
+                    asset_binding = graph::mtl::FindRecipeSSBOAssetBindingBySlot(effective_recipe, req.data_slot, req.ssbo_type);
 
                 if (!asset_binding)
                     continue;
@@ -320,7 +320,7 @@ namespace hgl::ecs
                 return;
 
             material_comp->texture_layer_row = uint32_t(-1);
-            material_comp->ssbo_index_row = uint32_t(-1);
+            material_comp->data_index_row = uint32_t(-1);
             material_comp->bindings_dirty = true;
             material_comp->resources_dirty = true;
             material_comp->valid = false;
@@ -426,7 +426,7 @@ namespace hgl::ecs
         {
             for (const auto &req : resolved_program->GetMaterialResourceLayout().requirements)
             {
-                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialSSBOSlotData)
+                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialDataSlotData)
                     continue;
 
                 const uint32_t stride = graph::mtl::GetSSBOTypeStructStride(req.ssbo_type);
@@ -511,7 +511,7 @@ namespace hgl::ecs
         if (!MaterialRequiresRecipeRuntimeRows(material_comp->program))
         {
             material_comp->texture_layer_row = 0;
-            material_comp->ssbo_index_row = 0;
+            material_comp->data_index_row = 0;
             material_comp->bindings_dirty = false;
             material_comp->resources_dirty = false;
             material_comp->valid = true;
@@ -529,7 +529,7 @@ namespace hgl::ecs
         material_comp->ClearResolvedSSBOBindings();
         for (const auto &req : material_comp->program->GetMaterialResourceLayout().requirements)
         {
-            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialSSBOSlotData)
+            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialDataSlotData)
                 continue;
 
             uint32_t resolved_ssbo_id = 0;
@@ -538,12 +538,12 @@ namespace hgl::ecs
                 GLogWarning("[RenderPrimitiveCollectSystem] Materialize failed: unresolved SSBO binding for %s descriptor=%s slot=%u type=%s",
                             GetPrimitiveOwnerName(primitive_comp),
                             req.name ? req.name : "<unnamed>",
-                            req.ssbo_slot,
+                            req.data_slot,
                             graph::mtl::GetSSBOTypeName(req.ssbo_type));
                 return false;
             }
 
-            material_comp->SetResolvedSSBOBinding(req.ssbo_slot, req.ssbo_type, resolved_ssbo_id);
+            material_comp->SetResolvedSSBOBinding(req.data_slot, req.ssbo_type, resolved_ssbo_id);
         }
 
         auto rdbs = world->GetSystem<RenderDescriptorBindingSystem>();
@@ -556,8 +556,8 @@ namespace hgl::ecs
 
         graph::mtl::MaterializationSpec spec{};
         uint32_t texture_layer_row = uint32_t(-1);
-        uint32_t ssbo_index_row = uint32_t(-1);
-        if (!rdbs->ResolveMaterialRecipe(effective_recipe, spec, &texture_layer_row, &ssbo_index_row))
+        uint32_t data_index_row = uint32_t(-1);
+        if (!rdbs->ResolveMaterialRecipe(effective_recipe, spec, &texture_layer_row, &data_index_row))
         {
             GLogWarning("[RenderPrimitiveCollectSystem] ResolveMaterialRecipe failed for %s recipe=%s",
                         GetPrimitiveOwnerName(primitive_comp),
@@ -565,51 +565,51 @@ namespace hgl::ecs
             return false;
         }
 
-        if (texture_layer_row == uint32_t(-1) || ssbo_index_row == uint32_t(-1))
+        if (texture_layer_row == uint32_t(-1) || data_index_row == uint32_t(-1))
         {
             GLogWarning("[RenderPrimitiveCollectSystem] ResolveMaterialRecipe returned invalid rows. tex=%u data=%u",
                         texture_layer_row,
-                        ssbo_index_row);
+                        data_index_row);
             return false;
         }
 
-        // Determine the entity's own ssbo_element_index from the effective recipe.
+        // Determine the entity's own data_index from the effective recipe.
         // effective_recipe is always built fresh from primitive_comp, so its ssbo_assets
-        // carry the correct per-entity ssbo_element_index — unlike the cached spec which
+        // carry the correct per-entity data_index — unlike the cached spec which
         // holds the FIRST entity's value for a given recipe hash.
-        uint32_t entity_element_index = uint32_t(-1);
+        uint32_t entity_data_index = uint32_t(-1);
         for (const auto &asset_binding : effective_recipe.ssbo_assets)
         {
-            if (asset_binding.use_ssbo_element_index)
+            if (asset_binding.use_data_index)
             {
-                entity_element_index = asset_binding.ssbo_element_index;
+                entity_data_index = asset_binding.data_index;
                 break;
             }
         }
 
-        if (entity_element_index != uint32_t(-1))
+        if (entity_data_index != uint32_t(-1))
         {
             // Only texture-using materials need the legacy "texture row == data row" mirror.
             // Untextured materials (for example gizmo/pure-color) may legally reuse the same
-            // ssbo_element_index values as textured materials; writing an all-zero texture row
+            // data_index values as textured materials; writing an all-zero texture row
             // here would clobber the textured material's global handle table entry.
             if (!effective_recipe.textures.empty())
             {
-                rdbs->WriteTextureLayerRowAt(entity_element_index, spec);
-                texture_layer_row = entity_element_index;
+                rdbs->WriteTextureLayerRowAt(entity_data_index, spec);
+                texture_layer_row = entity_data_index;
             }
 
-            ssbo_index_row = entity_element_index;
+            data_index_row = entity_data_index;
         }
         else
         {
-            ssbo_index_row = ResolvePrimaryStructIndex(material_comp->program,
+            data_index_row = ResolvePrimaryStructIndex(material_comp->program,
                                                        spec,
-                                                       ssbo_index_row);
+                                                       data_index_row);
         }
 
         material_comp->texture_layer_row = texture_layer_row;
-        material_comp->ssbo_index_row = ssbo_index_row;
+        material_comp->data_index_row = data_index_row;
         material_comp->bindings_dirty = false;
         material_comp->resources_dirty = false;
         material_comp->valid = true;

@@ -25,13 +25,13 @@ namespace hgl::graph::mtl
 
         LocalToWorld,
         LocalToWorldIndexTable,
-        MaterialSSBOSlotData,      // per-instance SSBO slot (one entry per ssbo_slot_decls[i])
+        MaterialDataSlotData,      // per-instance SSBO slot (one entry per data_slot_decls[i])
         MaterialColorPalette,
 
         MaterialTexture,
         MaterialSampler,
         MaterialTextureLayerTable,
-        MaterialSSBOIndexTable,
+        MaterialDataIndexTable,
 
         Custom,
     };
@@ -48,9 +48,9 @@ namespace hgl::graph::mtl
     {
         LocalToWorld = 0,
         LocalToWorldIndexTable,
-        MaterialSSBOSlotData,      // per-instance SSBO slot data (one per ssbo_slot_decls[i])
+        MaterialDataSlotData,      // per-instance SSBO slot data (one per data_slot_decls[i])
         MaterialTextureLayerTable,
-        MaterialSSBOIndexTable
+        MaterialDataIndexTable
     };
 
     inline const char *GetDescriptorSemanticLayerName(const DescriptorSemanticLayer layer)
@@ -86,11 +86,11 @@ namespace hgl::graph::mtl
 
         case DescriptorSemantic::LocalToWorldIndexTable:
         case DescriptorSemantic::MaterialTextureLayerTable:
-        case DescriptorSemantic::MaterialSSBOIndexTable:
+        case DescriptorSemantic::MaterialDataIndexTable:
             return DescriptorSemanticLayer::SSBO;
 
         case DescriptorSemantic::LocalToWorld:
-        case DescriptorSemantic::MaterialSSBOSlotData:
+        case DescriptorSemantic::MaterialDataSlotData:
         case DescriptorSemantic::Unknown:
         case DescriptorSemantic::Custom:
             return DescriptorSemanticLayer::Unknown;
@@ -131,9 +131,9 @@ namespace hgl::graph::mtl
         {
         case DescriptorSemantic::LocalToWorld: out = SSBODescriptorSemantic::LocalToWorld; return true;
         case DescriptorSemantic::LocalToWorldIndexTable: out = SSBODescriptorSemantic::LocalToWorldIndexTable; return true;
-        case DescriptorSemantic::MaterialSSBOSlotData: out = SSBODescriptorSemantic::MaterialSSBOSlotData; return true;
+        case DescriptorSemantic::MaterialDataSlotData: out = SSBODescriptorSemantic::MaterialDataSlotData; return true;
         case DescriptorSemantic::MaterialTextureLayerTable: out = SSBODescriptorSemantic::MaterialTextureLayerTable; return true;
-        case DescriptorSemantic::MaterialSSBOIndexTable: out = SSBODescriptorSemantic::MaterialSSBOIndexTable; return true;
+        case DescriptorSemantic::MaterialDataIndexTable: out = SSBODescriptorSemantic::MaterialDataIndexTable; return true;
         default: break;
         }
 

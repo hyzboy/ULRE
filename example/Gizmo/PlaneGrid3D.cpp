@@ -75,7 +75,7 @@ private:
         return geom_plane_grid;
     }
 
-    bool Add(const char *name,const uint32_t ssbo_element_index,const glm::quat &rotation)
+    bool Add(const char *name,const uint32_t data_index,const glm::quat &rotation)
     {
         auto entity = ecs_context->CreateEntity<hgl::ecs::Entity>(name);
         auto transform = entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
@@ -87,13 +87,13 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitiveAsset(&plane_grid_asset);
-        hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource named_struct{};
-        named_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
+        hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource named_struct{};
+        named_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
         named_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
-        named_struct.ssbo_element_index = ssbo_element_index;
-        named_struct.use_ssbo_element_index = true;
+        named_struct.data_index = data_index;
+        named_struct.use_data_index = true;
         named_struct.shared_across_instances = true;
-        prim_comp->SetMaterialSSBOResource(named_struct);
+        prim_comp->SetMaterialDataSlotResource(named_struct);
         prim_comp->SetVisible(true);
 
         return true;
@@ -113,7 +113,7 @@ private:
         plane_grid_recipe.vertex_node_config.orientation = graph::mtl::OrientationMode::World;
         plane_grid_recipe.vertex_node_config.scale = graph::mtl::ScaleMode::World;
         plane_grid_recipe.vertex_node_config.projection = graph::mtl::ProjectionMode::WorldCameraVP;
-        graph::mtl::UpsertRecipeSSBOAssetBinding(plane_grid_recipe, graph::mtl::DefaultMaterialSSBOName, mi_ssbo_accessor->GetSSBOBinding());
+        graph::mtl::UpsertRecipeSSBOAssetBinding(plane_grid_recipe, graph::mtl::DefaultMaterialDataSlotName, mi_ssbo_accessor->GetSSBOBinding());
         plane_grid_asset = PrimitiveAsset(geom_plane_grid, &plane_grid_recipe, PrimitiveType::Lines);
 
         if(!Add("PlaneXY", 0, glm::quat(1.0f, 0.0f, 0.0f, 0.0f)))

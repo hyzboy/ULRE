@@ -203,13 +203,13 @@ private:
                 se.transform->SetMovable(false);
 
                 se.primitive_comp->SetPrimitiveAsset(&asset);
-                hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource scene_struct{};
-                scene_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
+                hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource scene_struct{};
+                scene_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
                 scene_struct.ssbo_id = solid.mi_ssbo_accessor->GetSSBOId();
-                scene_struct.ssbo_element_index = (entity_idx - 1) % COLOR_COUNT;
-                scene_struct.use_ssbo_element_index = true;
+                scene_struct.data_index = (entity_idx - 1) % COLOR_COUNT;
+                scene_struct.use_data_index = true;
                 scene_struct.shared_across_instances = true;
-                se.primitive_comp->SetMaterialSSBOResource(scene_struct);
+                se.primitive_comp->SetMaterialDataSlotResource(scene_struct);
                 se.primitive_comp->SetVisible(true);
 
                 scene_entities_.push_back(std::move(se));

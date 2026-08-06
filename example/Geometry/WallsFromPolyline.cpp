@@ -110,13 +110,13 @@ public:
 
             prim_comp->SetPrimitiveAsset(&wall_meshes[i]);
             prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_color_texture, sampler);
-            hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource wall_struct{};
-            wall_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
+            hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource wall_struct{};
+            wall_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
             wall_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
-            wall_struct.ssbo_element_index = 0;
-            wall_struct.use_ssbo_element_index = true;
+            wall_struct.data_index = 0;
+            wall_struct.use_data_index = true;
             wall_struct.shared_across_instances = true;
-            prim_comp->SetMaterialSSBOResource(wall_struct);
+            prim_comp->SetMaterialDataSlotResource(wall_struct);
             prim_comp->SetVisible(true);
         }
 
@@ -160,7 +160,7 @@ public:
         mi_ssbo_accessor->Commit();
 
         graph::mtl::UpsertRecipeSSBOAssetBinding(wall_recipe,
-                                                 graph::mtl::DefaultMaterialSSBOName,
+                                                 graph::mtl::DefaultMaterialDataSlotName,
                                                  mi_ssbo_accessor->GetSSBOBinding());
 
         // Standard surface (QUALITY_TIER=Medium) samples TexAlbedo; bind a fallback texture.

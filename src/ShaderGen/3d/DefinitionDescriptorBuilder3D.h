@@ -45,7 +45,7 @@ inline std::vector<FixedDescriptorEntry> Build3DDescriptorsFromDefinition(
             descriptors.push_back({
                 DescriptorSetType::Material, DescriptorKind::UBO, opt.color_palette_stage_flags,
                 "color_pattle", "ColorPattle", nullptr, DescriptorSemantic::MaterialColorPalette,
-                TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO
+                TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO
             });
             break;
         }
@@ -58,12 +58,12 @@ inline std::vector<FixedDescriptorEntry> Build3DDescriptorsFromDefinition(
         descriptor_builder_common::PushLocalToWorldIndexRows(descriptors, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
     }
 
-    if (!definition.ssbo_slot_decls.empty())
+    if (!definition.data_slot_decls.empty())
     {
-        for (uint32_t i = 0; i < static_cast<uint32_t>(definition.ssbo_slot_decls.size()); ++i)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(definition.data_slot_decls.size()); ++i)
         {
-            const auto &decl = definition.ssbo_slot_decls[i];
-            descriptor_builder_common::PushMaterialSSBOSlot(
+            const auto &decl = definition.data_slot_decls[i];
+            descriptor_builder_common::PushMaterialDataSlot(
                 descriptors,
                 uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
                 decl.name.c_str(),
@@ -167,7 +167,7 @@ inline std::vector<FixedDescriptorEntry> Build3DDescriptorsFromDefinition(
             descriptors.push_back({
                 DescriptorSetType::Material, DescriptorKind::UBO, manifest.ubos[i].stage_flags,
                 "color_pattle", "ColorPattle", nullptr, DescriptorSemantic::MaterialColorPalette,
-                TextureSlot::BaseColor, DefaultMaterialSSBOSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO
+                TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO
             });
             break;
         }

@@ -308,8 +308,8 @@ namespace
                     ? request.geometry_vertex_format->GetVertexInputHash() : 0;
             config.program_link = &resolved_program_link;
         }
-        config.ssbo_slot_decls = definition.ssbo_slot_decls.empty()
-            ? nullptr : &definition.ssbo_slot_decls;
+        config.data_slot_decls = definition.data_slot_decls.empty()
+            ? nullptr : &definition.data_slot_decls;
         ShaderProgramBuildSpec *result = CompileCompositorMaterial(profile, fixed_definition, vs, fs, config);
         if (!result)
             GLogError("[ShaderGen] Generic material compilation failed: name=%s",
@@ -581,7 +581,7 @@ bool MergeMaterialDefinitionFile(const MaterialDefinition &legacy,
     out.has_transform_graph = file.has_transform_graph;
     out.vertex_varying = file.vertex_varying;
     out.required_ssbo_assets = file.required_ssbo_assets;
-    out.ssbo_slot_decls = file.ssbo_slot_decls;
+    out.data_slot_decls = file.data_slot_decls;
     out.ubo_requirements = file.ubo_requirements;
     out.texture_slot_decls = file.texture_slot_decls;
     out.code_module_requirements = file.code_module_requirements;

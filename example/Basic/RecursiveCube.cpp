@@ -127,7 +127,7 @@ private:
         cube_recipe.pipeline_preset = PipelinePreset::Solid3D;
         cube_recipe.domain = "RecursiveCube";
         graph::mtl::UpsertRecipeSSBOAssetBinding(cube_recipe,
-                                                 graph::mtl::DefaultMaterialSSBOName,
+                                                 graph::mtl::DefaultMaterialDataSlotName,
                                                  mi_ssbo_accessor->GetSSBOBinding());
         cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
 
@@ -187,13 +187,13 @@ private:
         primitive_comp->SetPrimitiveAsset(&cube_asset);
         if (mi_ssbo_accessor && mi_ssbo_accessor->GetSSBOId() != 0)
         {
-            hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource cube_struct{};
-            cube_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
+            hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource cube_struct{};
+            cube_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
             cube_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
-            cube_struct.ssbo_element_index = 0;
-            cube_struct.use_ssbo_element_index = true;
+            cube_struct.data_index = 0;
+            cube_struct.use_data_index = true;
             cube_struct.shared_across_instances = true;
-            primitive_comp->SetMaterialSSBOResource(cube_struct);
+            primitive_comp->SetMaterialDataSlotResource(cube_struct);
         }
         primitive_comp->SetVisible(true);
 

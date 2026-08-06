@@ -58,12 +58,12 @@ namespace hgl::graph::mtl
                 return false;
 
             ResolvedStructRef resolved{};
-            resolved.ssbo_slot = asset.ssbo_slot;
+            resolved.data_slot = asset.data_slot;
 
             if (!callbacks.resolve_struct(asset, resolved))
                 return false;
 
-            resolved.ssbo_slot = asset.ssbo_slot;
+            resolved.data_slot = asset.data_slot;
             out_spec.struct_refs.emplace_back(std::move(resolved));
         }
 

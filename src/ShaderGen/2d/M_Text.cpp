@@ -18,7 +18,7 @@ namespace
         bmi.bootstrap_kind = MaterialDefinitionBootstrapKind::TextAlphaBlend;
         bmi.ubo_requirements = {UBODescriptorSemantic::ViewportInfo};
         bmi.texture_slot_decls = {{TextureSlot::BaseColor, GLSLSamplerType::Sampler2D, true, SamplerName::Text}};
-        bmi.ssbo_slot_decls = {{"mtl", SSBOType::TransmissionSurface}};
+        bmi.data_slot_decls = {{"mtl", SSBOType::TransmissionSurface}};
         bmi.vertex_node_config = Make2DNodeConfigOrtho(false);
         MaterialVertexVaryingConfig varying{};
         varying.emit_data_index_id = true;

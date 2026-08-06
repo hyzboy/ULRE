@@ -172,7 +172,7 @@ private:
         near_recipe.domain = "06e.SingleSphereSwitch";
         near_recipe.pipeline_preset = PipelinePreset::Solid3D;
         graph::mtl::UpsertRecipeSSBOAssetBinding(near_recipe,
-                                                 graph::mtl::DefaultMaterialSSBOName,
+                                                 graph::mtl::DefaultMaterialDataSlotName,
                                                  mi_ssbo_accessor->GetSSBOBinding());
 
         far_recipe = near_recipe;
@@ -242,13 +242,13 @@ private:
                                                                   PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray);
         }
 
-        hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource sphere_struct{};
-        sphere_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
+        hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource sphere_struct{};
+        sphere_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
         sphere_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
-        sphere_struct.ssbo_element_index = 0;
-        sphere_struct.use_ssbo_element_index = false;
+        sphere_struct.data_index = 0;
+        sphere_struct.use_data_index = false;
         sphere_struct.shared_across_instances = false;
-        sphere_primitive_component->SetMaterialSSBOResource(sphere_struct);
+        sphere_primitive_component->SetMaterialDataSlotResource(sphere_struct);
         return true;
     }
 

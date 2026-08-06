@@ -436,7 +436,7 @@ namespace hgl::graph::mtl
                         SSBOType type;
                         if (!ParseSSBOType(item.at("type").as_string(), type))
                             return false;
-                        out.definition.ssbo_slot_decls.push_back(
+                        out.definition.data_slot_decls.push_back(
                             {item.at("name").as_string(), type});
                     }
                 }

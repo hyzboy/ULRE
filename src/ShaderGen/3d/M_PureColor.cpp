@@ -15,7 +15,7 @@ namespace hgl::graph::mtl
             bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
             bmi.usage_tag = MaterialDefinitionUsageTag::Fallback;
             bmi.bootstrap_kind = MaterialDefinitionBootstrapKind::PureColor;
-            bmi.ssbo_slot_decls = {{"mtl", SSBOType::EmissiveSurface}};
+            bmi.data_slot_decls = {{"mtl", SSBOType::EmissiveSurface}};
             bmi.ubo_requirements = {
                 UBODescriptorSemantic::ViewportInfo,
                 UBODescriptorSemantic::CameraInfo

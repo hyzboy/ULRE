@@ -92,7 +92,7 @@ namespace hgl::graph
             bool has_struct_binding = false;
             for (const auto &req : material_layout.requirements)
             {
-                if (req.semantic == mtl::DescriptorSemantic::MaterialSSBOSlotData)
+                if (req.semantic == mtl::DescriptorSemantic::MaterialDataSlotData)
                 {
                     has_struct_binding = true;
                     break;
@@ -125,7 +125,7 @@ namespace hgl::graph
 
             for (const auto &req : material_layout.requirements)
             {
-                if (req.semantic != mtl::DescriptorSemantic::MaterialSSBOSlotData)
+                if (req.semantic != mtl::DescriptorSemantic::MaterialDataSlotData)
                     continue;
 
                 has_struct_binding = true;
@@ -146,7 +146,7 @@ namespace hgl::graph
                                                       std::string(),
                                                       req.ssbo_type,
                                                       req.ssbo_id,
-                                                      req.ssbo_slot,
+                                                      req.data_slot,
                                                       c,
                                                       true,
                                                       true);

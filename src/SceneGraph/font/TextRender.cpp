@@ -36,7 +36,7 @@ namespace hgl::graph
 
             for (const auto &req : material->GetMaterialResourceLayout().requirements)
             {
-                if (req.semantic != mtl::DescriptorSemantic::MaterialSSBOSlotData)
+                if (req.semantic != mtl::DescriptorSemantic::MaterialDataSlotData)
                     continue;
 
                 return mtl::GetSSBOTypeStructStride(req.ssbo_type);
@@ -247,7 +247,7 @@ namespace hgl::graph
             // Register in domain manager so RenderDescriptorBindingSystem can resolve it
             for (const auto &req : mtl_fs->GetMaterialResourceLayout().requirements)
             {
-                if (req.semantic != mtl::DescriptorSemantic::MaterialSSBOSlotData)
+                if (req.semantic != mtl::DescriptorSemantic::MaterialDataSlotData)
                     continue;
                 const mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
                 domain_manager->RegisterBuffer(addr, mi_ssbo, 1);
@@ -259,7 +259,7 @@ namespace hgl::graph
         if (!binding_set) return false;
         for (const auto &req : mtl_fs->GetMaterialResourceLayout().requirements)
         {
-            if (req.semantic != mtl::DescriptorSemantic::MaterialSSBOSlotData)
+            if (req.semantic != mtl::DescriptorSemantic::MaterialDataSlotData)
                 continue;
             binding_set->SetSSBOBinding(req.ssbo_type, req.ssbo_id, 0);
         }

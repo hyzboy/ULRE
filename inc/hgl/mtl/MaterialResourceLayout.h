@@ -16,7 +16,7 @@ namespace hgl::graph::mtl
         DescriptorSetType set_type = DescriptorSetType::Unknow;
         DescriptorKind kind = DescriptorKind::UBO;
         TextureSlot texture_slot = TextureSlot::BaseColor;
-        uint32_t ssbo_slot = DefaultMaterialSSBOSlot;
+        uint32_t data_slot = DefaultMaterialDataSlot;
         SSBOType ssbo_type = SSBOType::UserDefined;
         uint32_t ssbo_id = MakeRecipeSSBOId(0);
 
@@ -25,7 +25,7 @@ namespace hgl::graph::mtl
         const char *glsl_type = nullptr;
 
         // Owned copies — set when name/struct_name comes from a runtime std::string
-        // (e.g. generated from ssbo_slot_decls) rather than a string literal.
+        // (e.g. generated from data_slot_decls) rather than a string literal.
         std::string owned_name;
         std::string owned_struct_name;
 
@@ -49,7 +49,7 @@ namespace hgl::graph::mtl
             , set_type(rhs.set_type)
             , kind(rhs.kind)
             , texture_slot(rhs.texture_slot)
-            , ssbo_slot(rhs.ssbo_slot)
+            , data_slot(rhs.data_slot)
             , ssbo_type(rhs.ssbo_type)
             , ssbo_id(rhs.ssbo_id)
             , name(rhs.name)
@@ -73,7 +73,7 @@ namespace hgl::graph::mtl
             set_type = rhs.set_type;
             kind = rhs.kind;
             texture_slot = rhs.texture_slot;
-            ssbo_slot = rhs.ssbo_slot;
+            data_slot = rhs.data_slot;
             ssbo_type = rhs.ssbo_type;
             ssbo_id = rhs.ssbo_id;
             name = rhs.name;
@@ -94,7 +94,7 @@ namespace hgl::graph::mtl
             , set_type(rhs.set_type)
             , kind(rhs.kind)
             , texture_slot(rhs.texture_slot)
-            , ssbo_slot(rhs.ssbo_slot)
+            , data_slot(rhs.data_slot)
             , ssbo_type(rhs.ssbo_type)
             , ssbo_id(rhs.ssbo_id)
             , name(rhs.name)
@@ -118,7 +118,7 @@ namespace hgl::graph::mtl
             set_type = rhs.set_type;
             kind = rhs.kind;
             texture_slot = rhs.texture_slot;
-            ssbo_slot = rhs.ssbo_slot;
+            data_slot = rhs.data_slot;
             ssbo_type = rhs.ssbo_type;
             ssbo_id = rhs.ssbo_id;
             name = rhs.name;
@@ -148,7 +148,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::MaterialTexture:
         case DescriptorSemantic::MaterialSampler:
         case DescriptorSemantic::MaterialTextureLayerTable:
-        case DescriptorSemantic::MaterialSSBOIndexTable:
+        case DescriptorSemantic::MaterialDataIndexTable:
             return false;
         default:
             return true;
@@ -164,7 +164,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::MaterialTexture:
         case DescriptorSemantic::MaterialSampler:
         case DescriptorSemantic::MaterialTextureLayerTable:
-        case DescriptorSemantic::MaterialSSBOIndexTable:
+        case DescriptorSemantic::MaterialDataIndexTable:
             return true;
         default:
             return false;
@@ -188,11 +188,11 @@ namespace hgl::graph::mtl
             return DescriptorSetType::Transform;
 
         case DescriptorSemantic::MaterialColorPalette:
-        case DescriptorSemantic::MaterialSSBOSlotData:
+        case DescriptorSemantic::MaterialDataSlotData:
         case DescriptorSemantic::MaterialTexture:
         case DescriptorSemantic::MaterialSampler:
         case DescriptorSemantic::MaterialTextureLayerTable:
-        case DescriptorSemantic::MaterialSSBOIndexTable:
+        case DescriptorSemantic::MaterialDataIndexTable:
             return DescriptorSetType::Material;
 
         default:
@@ -224,7 +224,7 @@ namespace hgl::graph::mtl
 
         // Legacy semantics that can legally map to either UBO/SSBO remain kind-driven.
         if (entry.semantic == DescriptorSemantic::LocalToWorld
-         || entry.semantic == DescriptorSemantic::MaterialSSBOSlotData)
+         || entry.semantic == DescriptorSemantic::MaterialDataSlotData)
         {
             switch (entry.kind)
             {
@@ -246,10 +246,10 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::SkyInfo: return SBS_SkyInfo.name;
         case DescriptorSemantic::LocalToWorld: return SBS_LocalToWorld.name;
         case DescriptorSemantic::LocalToWorldIndexTable: return SBS_LocalToWorldIndexRows.name;
-        case DescriptorSemantic::MaterialSSBOSlotData: return DefaultMaterialSSBOName;
+        case DescriptorSemantic::MaterialDataSlotData: return DefaultMaterialDataSlotName;
         case DescriptorSemantic::MaterialColorPalette: return SBS_ColorPattle.name;
         case DescriptorSemantic::MaterialTextureLayerTable: return SBS_MaterialTextureLayerRows.name;
-        case DescriptorSemantic::MaterialSSBOIndexTable: return SBS_MaterialDataIndexRows.name;
+        case DescriptorSemantic::MaterialDataIndexTable: return SBS_MaterialDataIndexRows.name;
         default: return nullptr;
         }
     }
@@ -263,10 +263,10 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::SkyInfo: return SBS_SkyInfo.struct_name;
         case DescriptorSemantic::LocalToWorld: return SBS_LocalToWorld.struct_name;
         case DescriptorSemantic::LocalToWorldIndexTable: return SBS_LocalToWorldIndexRows.struct_name;
-        case DescriptorSemantic::MaterialSSBOSlotData: return nullptr;
+        case DescriptorSemantic::MaterialDataSlotData: return nullptr;
         case DescriptorSemantic::MaterialColorPalette: return SBS_ColorPattle.struct_name;
         case DescriptorSemantic::MaterialTextureLayerTable: return SBS_MaterialTextureLayerRows.struct_name;
-        case DescriptorSemantic::MaterialSSBOIndexTable: return SBS_MaterialDataIndexRows.struct_name;
+        case DescriptorSemantic::MaterialDataIndexTable: return SBS_MaterialDataIndexRows.struct_name;
         default: return nullptr;
         }
     }
@@ -290,7 +290,7 @@ namespace hgl::graph::mtl
             req.set_type = entry.set_type;
             req.kind = entry.kind;
             req.texture_slot = entry.texture_slot;
-            req.ssbo_slot = entry.ssbo_slot;
+            req.data_slot = entry.data_slot;
             req.ssbo_type = entry.ssbo_type;
             req.ssbo_id = entry.ssbo_id;
             req.name = entry.name;
@@ -311,14 +311,14 @@ namespace hgl::graph::mtl
                 req.texture_slot = entry.texture_slot;
             }
 
-            if (req.semantic == DescriptorSemantic::MaterialSSBOSlotData)
+            if (req.semantic == DescriptorSemantic::MaterialDataSlotData)
             {
-                req.ssbo_slot = entry.ssbo_slot;
+                req.data_slot = entry.data_slot;
                 req.ssbo_type = entry.ssbo_type;
                 if (req.ssbo_type == SSBOType::UserDefined)
                     req.ssbo_type = SSBOType::PBRSurface;
                 if (req.ssbo_id == MakeRecipeSSBOId(0))
-                    req.ssbo_id = MakeRecipeSSBOId(req.ssbo_slot);
+                    req.ssbo_id = MakeRecipeSSBOId(req.data_slot);
             }
 
             if (req.semantic == DescriptorSemantic::MaterialTextureLayerTable
@@ -332,15 +332,15 @@ namespace hgl::graph::mtl
                 req.ssbo_id = MakeRecipeSSBOId(static_cast<uint32_t>(req.texture_slot));
             }
 
-            if (req.semantic == DescriptorSemantic::MaterialSSBOIndexTable
+            if (req.semantic == DescriptorSemantic::MaterialDataIndexTable
              && req.ssbo_type == SSBOType::UserDefined)
             {
-                req.ssbo_type = SSBOType::MaterialSSBOIndexTable;
+                req.ssbo_type = SSBOType::MaterialDataIndexTable;
             }
-            if (req.semantic == DescriptorSemantic::MaterialSSBOIndexTable
+            if (req.semantic == DescriptorSemantic::MaterialDataIndexTable
              && req.ssbo_id == MakeRecipeSSBOId(0))
             {
-                req.ssbo_id = MakeRecipeSSBOId(req.ssbo_slot);
+                req.ssbo_id = MakeRecipeSSBOId(req.data_slot);
             }
 
             if (req.semantic == DescriptorSemantic::LocalToWorldIndexTable
@@ -367,11 +367,11 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::LocalToWorld:     return "LocalToWorld";
         case DescriptorSemantic::LocalToWorldIndexTable: return "LocalToWorldIndexTable";
         case DescriptorSemantic::MaterialColorPalette: return "MaterialColorPalette";
-        case DescriptorSemantic::MaterialSSBOSlotData: return "MaterialSSBOSlotData";
+        case DescriptorSemantic::MaterialDataSlotData: return "MaterialDataSlotData";
         case DescriptorSemantic::MaterialTexture:  return "MaterialTexture";
         case DescriptorSemantic::MaterialSampler:  return "MaterialSampler";
         case DescriptorSemantic::MaterialTextureLayerTable: return "MaterialTextureLayerTable";
-        case DescriptorSemantic::MaterialSSBOIndexTable: return "MaterialSSBOIndexTable";
+        case DescriptorSemantic::MaterialDataIndexTable: return "MaterialDataIndexTable";
         case DescriptorSemantic::Custom:           return "Custom";
         }
 
@@ -462,14 +462,14 @@ namespace hgl::graph::mtl
             }
 
             const bool requires_data_ssbo =
-                req.semantic == DescriptorSemantic::MaterialSSBOSlotData
+                req.semantic == DescriptorSemantic::MaterialDataSlotData
              || req.semantic == DescriptorSemantic::MaterialTextureLayerTable
-             || req.semantic == DescriptorSemantic::MaterialSSBOIndexTable;
+             || req.semantic == DescriptorSemantic::MaterialDataIndexTable;
             if (requires_data_ssbo)
             {
-                if (req.ssbo_slot >= MaxMaterialSSBOSlotsPerMaterial)
+                if (req.data_slot >= MaxMaterialDataSlotsPerMaterial)
                 {
-                    std::string message = "Descriptor ssbo_slot is invalid for material SSBO semantic: ";
+                    std::string message = "Descriptor data_slot is invalid for material SSBO semantic: ";
                     message += context;
                     diagnostics.push_back(std::move(message));
                     continue;

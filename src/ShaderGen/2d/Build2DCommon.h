@@ -27,7 +27,7 @@ struct Material2DBuildParams
     const GeometryVertexFormat *geometry_vertex_format = nullptr;
     const ShaderBufferSource *const *private_shader_buffer_sources = nullptr;
     uint32_t                private_shader_buffer_source_count = 0;
-    const std::vector<MaterialSSBOSlotDecl> *ssbo_slot_decls = nullptr;
+    const std::vector<MaterialDataSlotDecl> *data_slot_decls = nullptr;
 
     const MaterialDefinition *material_definition = nullptr;
 
@@ -44,7 +44,7 @@ struct Material2DBuildParams
         p.geometry_vertex_format            = request.geometry_vertex_format;
         p.private_shader_buffer_sources     = request.private_shader_buffer_sources;
         p.private_shader_buffer_source_count = request.private_shader_buffer_source_count;
-        p.ssbo_slot_decls = definition.ssbo_slot_decls.empty() ? nullptr : &definition.ssbo_slot_decls;
+        p.data_slot_decls = definition.data_slot_decls.empty() ? nullptr : &definition.data_slot_decls;
         p.material_definition = &definition;
         if(request.override_rt_output)
         {
@@ -123,13 +123,13 @@ inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, cons
         descriptor_builder_common::PushLocalToWorldIndexRows(v, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
     }
 
-    // MaterialInstance — definition-driven (E4): driven by ssbo_slot_decls, same as 3D path.
-    if (p.material_definition && !p.material_definition->ssbo_slot_decls.empty())
+    // MaterialDataSlot — definition-driven (E4): driven by data_slot_decls, same as 3D path.
+    if (p.material_definition && !p.material_definition->data_slot_decls.empty())
     {
-        for (uint32_t i = 0; i < static_cast<uint32_t>(p.material_definition->ssbo_slot_decls.size()); ++i)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(p.material_definition->data_slot_decls.size()); ++i)
         {
-            const auto &decl = p.material_definition->ssbo_slot_decls[i];
-            descriptor_builder_common::PushMaterialSSBOSlot(
+            const auto &decl = p.material_definition->data_slot_decls[i];
+            descriptor_builder_common::PushMaterialDataSlot(
                 v,
                 uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
                 decl.name.c_str(),
@@ -167,7 +167,7 @@ inline CompositorMaterialBuildConfig ToCompositorBuildConfig2D(const Material2DB
     bc.private_shader_buffer_sources   = p.private_shader_buffer_sources;
     bc.private_shader_buffer_source_count = p.private_shader_buffer_source_count;
     bc.geometry_vertex_format          = p.geometry_vertex_format;
-    bc.ssbo_slot_decls                 = p.ssbo_slot_decls;
+    bc.data_slot_decls                 = p.data_slot_decls;
     bc.material_definition             = p.material_definition;
     return bc;
 }

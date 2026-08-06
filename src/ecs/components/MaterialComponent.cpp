@@ -48,9 +48,9 @@ namespace hgl::ecs
         resolved_ssbo_bindings.clear();
     }
 
-    void MaterialComponent::SetResolvedSSBOBinding(uint32_t ssbo_slot, graph::mtl::SSBOType ssbo_type, uint32_t ssbo_id)
+    void MaterialComponent::SetResolvedSSBOBinding(uint32_t data_slot, graph::mtl::SSBOType ssbo_type, uint32_t ssbo_id)
     {
-        const size_t index = static_cast<size_t>(ssbo_slot);
+        const size_t index = static_cast<size_t>(data_slot);
         if (index >= resolved_ssbo_bindings.size())
             resolved_ssbo_bindings.resize(index + 1);
 
@@ -60,10 +60,10 @@ namespace hgl::ecs
         binding.valid = true;
     }
 
-    const MaterialComponent::ResolvedSSBOBinding *MaterialComponent::FindResolvedSSBOBinding(uint32_t ssbo_slot,
+    const MaterialComponent::ResolvedSSBOBinding *MaterialComponent::FindResolvedSSBOBinding(uint32_t data_slot,
                                                                                              graph::mtl::SSBOType ssbo_type) const
     {
-        const size_t index = static_cast<size_t>(ssbo_slot);
+        const size_t index = static_cast<size_t>(data_slot);
         if (index >= resolved_ssbo_bindings.size())
             return nullptr;
 
@@ -88,7 +88,7 @@ namespace hgl::ecs
     {
         program = nullptr;
         texture_layer_row = uint32_t(-1);
-        ssbo_index_row = uint32_t(-1);
+        data_index_row = uint32_t(-1);
         program_dirty = true;
         bindings_dirty = true;
         resources_dirty = true;

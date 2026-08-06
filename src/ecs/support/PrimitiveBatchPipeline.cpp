@@ -35,7 +35,7 @@ namespace hgl::ecs
 {
     namespace
     {
-        constexpr uint32_t InvalidBatchSSBOIndexRow = uint32_t(-1);
+        constexpr uint32_t InvalidBatchDataIndexRow = uint32_t(-1);
 
         bool MaterialRequiresRecipeRuntimeRows(const graph::ShaderProgram *material)
         {
@@ -46,8 +46,8 @@ namespace hgl::ecs
             {
                 switch (req.semantic)
                 {
-                    case graph::mtl::DescriptorSemantic::MaterialSSBOSlotData:
-                    case graph::mtl::DescriptorSemantic::MaterialSSBOIndexTable:
+                    case graph::mtl::DescriptorSemantic::MaterialDataSlotData:
+                    case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
                     case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
                         return true;
                     default:
@@ -108,7 +108,7 @@ namespace hgl::ecs
             indexed_draw_cmd->firstInstance = batch->first_instance;
         }
 
-        uint32_t ResolveMaterialSSBOIndexRow(RenderItem *item, const graph::mtl::SSBOType primary_ssbo_type)
+        uint32_t ResolveMaterialDataIndexRow(RenderItem *item, const graph::mtl::SSBOType primary_ssbo_type)
         {
             if (!item)
                 return 0;
@@ -118,11 +118,11 @@ namespace hgl::ecs
                 auto material_comp = primitive_item->GetMaterialComponent();
                 if (material_comp)
                 {
-                    if (material_comp->ssbo_index_row != uint32_t(-1))
-                        return material_comp->ssbo_index_row;
+                    if (material_comp->data_index_row != uint32_t(-1))
+                        return material_comp->data_index_row;
                 }
 
-                return InvalidBatchSSBOIndexRow;
+                return InvalidBatchDataIndexRow;
             }
 
             return 0;
@@ -683,7 +683,7 @@ namespace hgl::ecs
                 {
                     for (const auto &req : batch.key.shader_program->GetMaterialResourceLayout().requirements)
                     {
-                        if (req.semantic == graph::mtl::DescriptorSemantic::MaterialSSBOSlotData)
+                        if (req.semantic == graph::mtl::DescriptorSemantic::MaterialDataSlotData)
                         {
                             primary_ssbo_type = req.ssbo_type;
                             break;
@@ -698,13 +698,13 @@ namespace hgl::ecs
                     bool warned_missing_recipe_row = false;
                     for (size_t i = 0; i < item_count; ++i)
                     {
-                        uint32_t row = ResolveMaterialSSBOIndexRow(batch.items[i], primary_ssbo_type);
-                        if (row == InvalidBatchSSBOIndexRow)
+                        uint32_t row = ResolveMaterialDataIndexRow(batch.items[i], primary_ssbo_type);
+                        if (row == InvalidBatchDataIndexRow)
                         {
                             if (!warned_missing_recipe_row)
                             {
                                 warned_missing_recipe_row = true;
-                                LogWarning("[PrimitiveBatchPipeline] Missing recipe ssbo_index_row in batch write, fallback to row0. shader_prog=%s",
+                                LogWarning("[PrimitiveBatchPipeline] Missing recipe data_index_row in batch write, fallback to row0. shader_prog=%s",
                                            batch.key.shader_program ? batch.key.shader_program->GetName().c_str() : "<null>");
                             }
                             row = 0;
@@ -752,7 +752,7 @@ namespace hgl::ecs
                 const bool needs_recipe_rows = MaterialRequiresRecipeRuntimeRows(shader_prog);
                 const bool missing_rows = needs_recipe_rows
                                        && (!material_comp
-                                        || material_comp->ssbo_index_row == uint32_t(-1)
+                                        || material_comp->data_index_row == uint32_t(-1)
                                         || material_comp->texture_layer_row == uint32_t(-1));
                 if (missing_rows)
                 {

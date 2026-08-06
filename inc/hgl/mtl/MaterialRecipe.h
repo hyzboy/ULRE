@@ -22,7 +22,7 @@
 namespace hgl::graph::mtl
 {
     constexpr uint32_t InvalidBuiltinMaterialCreatorIDHint = 0xffffffffu;
-    constexpr const char DefaultMaterialSSBOName[] = "mtl";
+    constexpr const char DefaultMaterialDataSlotName[] = "mtl";
 
     // 逻辑纹理槽位（与具体 descriptor set/binding 解耦）。
     // Resolve 阶段会把这些语义槽映射到 bindless handle + 运行时索引。
@@ -39,18 +39,18 @@ namespace hgl::graph::mtl
 
     struct RecipeSSBOAssetBinding
     {
-        std::string ssbo_name;
-        uint32_t ssbo_slot = DefaultMaterialSSBOSlot;
+        std::string data_slot_name;
+        uint32_t data_slot = DefaultMaterialDataSlot;
         SSBOType ssbo_type = SSBOType::UserDefined;
         uint32_t ssbo_id = 0;
-        uint32_t ssbo_element_index = 0;
-        bool use_ssbo_element_index = false;
+        uint32_t data_index = 0;
+        bool use_data_index = false;
         bool shared_across_instances = false;
     };
 
     // 每个材质的 SSBO slot 声明（由 MaterialDefinition 显式列出）。
-    // index 即 ssbo_slot；name 同时作为 GLSL 变量名与 C++ 绑定 key。
-    struct MaterialSSBOSlotDecl
+    // index 即 data_slot；name 同时作为 GLSL 变量名与 C++ 绑定 key。
+    struct MaterialDataSlotDecl
     {
         std::string name;           // GLSL 变量名 / C++ 绑定 key，如 "pbr_surface" / "pbr_surface_a"
         SSBOType    ssbo_type = SSBOType::UserDefined; // 数据结构语义
@@ -217,10 +217,10 @@ namespace hgl::graph::mtl
         // Part-B: 资源契约（Definition 侧的静态资产需求；运行时绑定由 recipe 提供）
         std::vector<RecipeSSBOAssetBinding> required_ssbo_assets;
 
-        // Part-B2: 材质 SSBO slot 显式声明（index == ssbo_slot）
-        // name 用于 GLSL 变量名 与 C++ SetMaterialSSBOResource(name,...) 绑定。
+        // Part-B2: 材质 SSBO slot 显式声明（index == data_slot）
+        // name 用于 GLSL 变量名 与 C++ SetMaterialDataSlotResource(name,...) 绑定。
         // 无 SSBO 的材质此列表为空。
-        std::vector<MaterialSSBOSlotDecl> ssbo_slot_decls;
+        std::vector<MaterialDataSlotDecl> data_slot_decls;
 
         // Part-B3: UBO 资源能力声明。
         // 显式列出此材质可使用的标准 UBO（ViewportInfo/CameraInfo/SkyInfo/MaterialColorPalette）。
@@ -301,15 +301,15 @@ namespace hgl::graph::mtl
     }
 
     inline const RecipeSSBOAssetBinding *FindRecipeSSBOAssetBinding(const MaterialRecipe &recipe,
-                                                                    const char *ssbo_name,
+                                                                    const char *data_slot_name,
                                                                     const SSBOType ssbo_type) noexcept
     {
-        if (!ssbo_name || !*ssbo_name)
+        if (!data_slot_name || !*data_slot_name)
             return nullptr;
 
         for (const auto &asset : recipe.ssbo_assets)
         {
-            if (asset.ssbo_name != ssbo_name)
+            if (asset.data_slot_name != data_slot_name)
                 continue;
 
             if (asset.ssbo_type != SSBOType::UserDefined
@@ -324,12 +324,12 @@ namespace hgl::graph::mtl
     }
 
     inline const RecipeSSBOAssetBinding *FindRecipeSSBOAssetBindingBySlot(const MaterialRecipe &recipe,
-                                                                          const uint32_t ssbo_slot,
+                                                                          const uint32_t data_slot,
                                                                           const SSBOType ssbo_type) noexcept
     {
         for (const auto &asset : recipe.ssbo_assets)
         {
-            if (asset.ssbo_slot != ssbo_slot)
+            if (asset.data_slot != data_slot)
                 continue;
 
             if (asset.ssbo_type != SSBOType::UserDefined
@@ -344,49 +344,49 @@ namespace hgl::graph::mtl
     }
 
     inline void UpsertRecipeSSBOAssetBinding(MaterialRecipe &recipe,
-                                             const std::string &ssbo_name,
+                                             const std::string &data_slot_name,
                                              const SSBOType ssbo_type,
                                              const uint32_t ssbo_id,
-                                             const uint32_t ssbo_slot = DefaultMaterialSSBOSlot,
-                                             const uint32_t ssbo_element_index = 0,
-                                             const bool use_ssbo_element_index = false,
+                                             const uint32_t data_slot = DefaultMaterialDataSlot,
+                                             const uint32_t data_index = 0,
+                                             const bool use_data_index = false,
                                              const bool shared_across_instances = false)
     {
         for (auto &asset : recipe.ssbo_assets)
         {
-            if (!ssbo_name.empty() && asset.ssbo_name == ssbo_name)
+            if (!data_slot_name.empty() && asset.data_slot_name == data_slot_name)
             {
-                asset.ssbo_name = ssbo_name;
+                asset.data_slot_name = data_slot_name;
                 asset.ssbo_type = ssbo_type;
                 asset.ssbo_id = ssbo_id;
-                asset.ssbo_slot = ssbo_slot;
-                asset.ssbo_element_index = ssbo_element_index;
-                asset.use_ssbo_element_index = use_ssbo_element_index;
+                asset.data_slot = data_slot;
+                asset.data_index = data_index;
+                asset.use_data_index = use_data_index;
                 asset.shared_across_instances = shared_across_instances;
                 return;
             }
 
-            if (asset.ssbo_slot == ssbo_slot && asset.ssbo_type == ssbo_type)
+            if (asset.data_slot == data_slot && asset.ssbo_type == ssbo_type)
             {
-                if (!ssbo_name.empty())
-                    asset.ssbo_name = ssbo_name;
+                if (!data_slot_name.empty())
+                    asset.data_slot_name = data_slot_name;
                 asset.ssbo_type = ssbo_type;
                 asset.ssbo_id = ssbo_id;
-                asset.ssbo_slot = ssbo_slot;
-                asset.ssbo_element_index = ssbo_element_index;
-                asset.use_ssbo_element_index = use_ssbo_element_index;
+                asset.data_slot = data_slot;
+                asset.data_index = data_index;
+                asset.use_data_index = use_data_index;
                 asset.shared_across_instances = shared_across_instances;
                 return;
             }
         }
 
         RecipeSSBOAssetBinding asset{};
-        asset.ssbo_name = ssbo_name;
-        asset.ssbo_slot = ssbo_slot;
+        asset.data_slot_name = data_slot_name;
+        asset.data_slot = data_slot;
         asset.ssbo_type = ssbo_type;
         asset.ssbo_id = ssbo_id;
-        asset.ssbo_element_index = ssbo_element_index;
-        asset.use_ssbo_element_index = use_ssbo_element_index;
+        asset.data_index = data_index;
+        asset.use_data_index = use_data_index;
         asset.shared_across_instances = shared_across_instances;
         recipe.ssbo_assets.emplace_back(std::move(asset));
     }
@@ -398,10 +398,10 @@ namespace hgl::graph::mtl
      * EN: Unified overload accepting SSBOBinding so type/id need not be passed separately.
      */
     inline void UpsertRecipeSSBOAssetBinding(MaterialRecipe &recipe,
-                                             const std::string &ssbo_name,
+                                             const std::string &data_slot_name,
                                              const SSBOBinding &binding)
     {
-        UpsertRecipeSSBOAssetBinding(recipe, ssbo_name, binding.ssbo_type, binding.ssbo_id);
+        UpsertRecipeSSBOAssetBinding(recipe, data_slot_name, binding.ssbo_type, binding.ssbo_id);
     }
 
     inline void ApplyBaseMaterialInfoDefaults(MaterialRecipe &recipe,
@@ -415,7 +415,7 @@ namespace hgl::graph::mtl
             recipe.material_lod = bmi.default_lod;
 
         for (const auto &asset : bmi.required_ssbo_assets)
-            UpsertRecipeSSBOAssetBinding(recipe, asset.ssbo_name, asset.ssbo_type, asset.ssbo_id);
+            UpsertRecipeSSBOAssetBinding(recipe, asset.data_slot_name, asset.ssbo_type, asset.ssbo_id);
     }
 
     inline uint64_t HashMaterialRecipe(const MaterialRecipe &recipe) noexcept
@@ -456,11 +456,11 @@ namespace hgl::graph::mtl
         hash = hgl::hash::FNV1aAppendValueBytes(hash, ssbo_asset_count);
         for (const auto &asset : recipe.ssbo_assets)
         {
-            if (!asset.ssbo_name.empty())
-                hash = hgl::hash::FNV1aAppendBytes(hash, asset.ssbo_name.data(), asset.ssbo_name.size());
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, asset.ssbo_slot);
+            if (!asset.data_slot_name.empty())
+                hash = hgl::hash::FNV1aAppendBytes(hash, asset.data_slot_name.data(), asset.data_slot_name.size());
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, asset.data_slot);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, asset.ssbo_type);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, asset.use_ssbo_element_index);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, asset.use_data_index);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, asset.shared_across_instances);
         }
 

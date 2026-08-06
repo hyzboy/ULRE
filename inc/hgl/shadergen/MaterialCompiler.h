@@ -34,11 +34,11 @@ struct CompositorMaterialBuildConfig
     const ::hgl::graph::ShaderBufferSource *const *private_shader_buffer_sources = nullptr;
     uint32_t private_shader_buffer_source_count = 0;
     const ::hgl::graph::GeometryVertexFormat *geometry_vertex_format = nullptr;
-    // Per-material SSBO slot declarations (index == ssbo_slot).
-    // When non-null and non-empty, MaterialCompiler generates MaterialInstance
+    // Per-material SSBO slot declarations (index == data_slot).
+    // When non-null and non-empty, MaterialCompiler generates MaterialDataSlot
     // FixedDescriptorEntry items and injects the material SSBO struct/buffer
     // declarations into the fragment GLSL.
-    const std::vector<MaterialSSBOSlotDecl> *ssbo_slot_decls = nullptr;
+    const std::vector<MaterialDataSlotDecl> *data_slot_decls = nullptr;
     // Optional: capability declaration source for development-time subset validation.
     // When non-null, CompileCompositorMaterial checks Layout requirements ⊆ Definition capabilities.
     const MaterialDefinition *material_definition = nullptr;
@@ -92,7 +92,7 @@ inline CompositorMaterialBuildConfig ToCompositorBuildConfig3D(
     bc.geometry_vertex_format            = request.geometry_vertex_format;
     bc.private_shader_buffer_sources     = request.private_shader_buffer_sources;
     bc.private_shader_buffer_source_count = request.private_shader_buffer_source_count;
-    bc.ssbo_slot_decls                   = definition.ssbo_slot_decls.empty() ? nullptr : &definition.ssbo_slot_decls;
+    bc.data_slot_decls                   = definition.data_slot_decls.empty() ? nullptr : &definition.data_slot_decls;
     bc.material_definition               = &definition;
     bc.program_link                      = nullptr;
     return bc;

@@ -106,7 +106,7 @@ namespace hgl::graph::mtl
     {
         SSBOType ssbo_type = SSBOType::UserDefined;
         uint32_t ssbo_id = 0;
-        uint32_t ssbo_element_index = 0;
+        uint32_t data_index = 0;
         uint32_t byte_stride = 0;
     };
 
@@ -134,12 +134,12 @@ namespace hgl::graph::mtl
 
             const auto &state = it->second;
             // Default to row 0 for domain-managed per-id buffers.
-            // Explicit row selection must be provided by authoring (use_ssbo_element_index=true).
+            // Explicit row selection must be provided by authoring (use_data_index=true).
             const uint32_t index = 0;
 
             out_alloc.ssbo_type = state.layout.ssbo_type;
             out_alloc.ssbo_id = state.layout.ssbo_id;
-            out_alloc.ssbo_element_index = index;
+            out_alloc.data_index = index;
             out_alloc.byte_stride = state.layout.byte_stride;
             return true;
         }
@@ -202,11 +202,11 @@ namespace hgl::graph::mtl
         std::array<uint32_t, static_cast<size_t>(TextureSlot::RANGE_SIZE)> values{};
     };
 
-    // MaterialSSBOIndexTable SSBO 的单实例行（每个结构体槽位一个 ssbo_element_index）。
-    // 宽度动态 = 该材质 ssbo_slot_decls.size()。
-    struct MaterialSSBOIndexRow
+    // MaterialDataIndexTable SSBO 的单实例行（每个结构体槽位一个 data_index）。
+    // 宽度动态 = 该材质 data_slot_decls.size()。
+    struct MaterialDataIndexRow
     {
-        std::vector<uint32_t> values;  // values[ssbo_slot] = ssbo_element_index
+        std::vector<uint32_t> values;  // values[data_slot] = data_index
     };
 
     // TextureLayer/DataIndex 间接表容器（Phase 3 最小骨架）。
@@ -214,7 +214,7 @@ namespace hgl::graph::mtl
     {
     private:
         std::vector<TextureLayerRow> texture_layer_rows;
-        std::vector<MaterialSSBOIndexRow> data_index_rows;
+        std::vector<MaterialDataIndexRow> data_index_rows;
 
     public:
         void Clear()
@@ -238,14 +238,14 @@ namespace hgl::graph::mtl
             texture_layer_rows[index] = row;
         }
 
-        uint32_t PushMaterialSSBOIndexRow(const MaterialSSBOIndexRow &row)
+        uint32_t PushMaterialDataIndexRow(const MaterialDataIndexRow &row)
         {
             data_index_rows.emplace_back(row);
             return static_cast<uint32_t>(data_index_rows.size() - 1);
         }
 
         // Write (or overwrite) a material SSBO index row at a specific addressable index.
-        void WriteMaterialSSBOIndexRowAt(uint32_t index, const MaterialSSBOIndexRow &row)
+        void WriteMaterialDataIndexRowAt(uint32_t index, const MaterialDataIndexRow &row)
         {
             if (index >= static_cast<uint32_t>(data_index_rows.size()))
                 data_index_rows.resize(index + 1);
@@ -259,7 +259,7 @@ namespace hgl::graph::mtl
             return &texture_layer_rows[index];
         }
 
-        const MaterialSSBOIndexRow *GetMaterialSSBOIndexRow(const uint32_t index) const
+        const MaterialDataIndexRow *GetMaterialDataIndexRow(const uint32_t index) const
         {
             if (index >= data_index_rows.size())
                 return nullptr;
@@ -267,9 +267,9 @@ namespace hgl::graph::mtl
         }
 
         size_t GetTextureLayerRowCount() const { return texture_layer_rows.size(); }
-        size_t GetMaterialSSBOIndexRowCount() const { return data_index_rows.size(); }
+        size_t GetMaterialDataIndexRowCount() const { return data_index_rows.size(); }
 
-        uint32_t GetMaxMaterialSSBOSlotCount() const
+        uint32_t GetMaxMaterialDataSlotCount() const
         {
             uint32_t max_count = 0;
             for (const auto &row : data_index_rows)
@@ -326,11 +326,11 @@ namespace hgl::graph::mtl
             if (!struct_pool.TryResolve(input.ssbo_type, input.ssbo_id, alloc))
                 return false;
 
-            output.ssbo_slot = input.ssbo_slot;
+            output.data_slot = input.data_slot;
             output.ssbo_type = alloc.ssbo_type;
             output.ssbo_id = alloc.ssbo_id;
             output.ssbo_binding = static_cast<uint32_t>(alloc.ssbo_type); // 临时默认映射，后续由布局系统接管
-            output.ssbo_element_index = input.use_ssbo_element_index ? input.ssbo_element_index : alloc.ssbo_element_index;
+            output.data_index = input.use_data_index ? input.data_index : alloc.data_index;
             output.byte_stride = alloc.byte_stride;
             return true;
         };
@@ -352,18 +352,18 @@ namespace hgl::graph::mtl
         return row;
     }
 
-    inline MaterialSSBOIndexRow BuildMaterialSSBOIndexRow(const MaterializationSpec &spec)
+    inline MaterialDataIndexRow BuildMaterialDataIndexRow(const MaterializationSpec &spec)
     {
         uint32_t max_slot = 0;
         for (const auto &ref : spec.struct_refs)
-            if (ref.ssbo_slot + 1 > max_slot) max_slot = ref.ssbo_slot + 1;
+            if (ref.data_slot + 1 > max_slot) max_slot = ref.data_slot + 1;
 
-        MaterialSSBOIndexRow row;
+        MaterialDataIndexRow row;
         row.values.assign(max_slot, 0u);
         for (const auto &ref : spec.struct_refs)
         {
-            if (ref.ssbo_slot < max_slot)
-                row.values[ref.ssbo_slot] = ref.ssbo_element_index;
+            if (ref.data_slot < max_slot)
+                row.values[ref.data_slot] = ref.data_index;
         }
         return row;
     }
@@ -375,12 +375,12 @@ namespace hgl::graph::mtl
                                        uint32_t &out_data_index_row)
     {
         out_texture_layer_row = tables.PushTextureLayerRow(BuildTextureLayerRow(spec));
-        out_data_index_row = tables.PushMaterialSSBOIndexRow(BuildMaterialSSBOIndexRow(spec));
+        out_data_index_row = tables.PushMaterialDataIndexRow(BuildMaterialDataIndexRow(spec));
         return true;
     }
 
     // 将 spec 写入间接表的指定地址索引（适用于有 SSBO 元素索引的材质，避免稀疏表越界）。
-    // at_index 通常等于 spec.struct_refs[0].ssbo_element_index。
+    // at_index 通常等于 spec.struct_refs[0].data_index。
     inline bool WriteSpecToIndexTablesAt(const MaterializationSpec &spec,
                                          uint32_t at_index,
                                          MaterializationIndexTables &tables,
@@ -388,7 +388,7 @@ namespace hgl::graph::mtl
                                          uint32_t &out_data_index_row)
     {
         tables.WriteTextureLayerRowAt(at_index, BuildTextureLayerRow(spec));
-        tables.WriteMaterialSSBOIndexRowAt(at_index, BuildMaterialSSBOIndexRow(spec));
+        tables.WriteMaterialDataIndexRowAt(at_index, BuildMaterialDataIndexRow(spec));
         out_texture_layer_row = at_index;
         out_data_index_row = at_index;
         return true;

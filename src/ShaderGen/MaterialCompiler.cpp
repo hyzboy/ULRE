@@ -87,9 +87,9 @@ static bool HasLayoutSemantic(const MaterialResourceLayout &layout, const Descri
     return false;
 }
 
-static bool AddMaterialSSBOSlotDescriptor(ShaderProgramBuildSpec &mci,
-                                          const MaterialSSBOSlotDecl &decl,
-                                          const uint32_t ssbo_slot,
+static bool AddMaterialDataSlotDescriptor(ShaderProgramBuildSpec &mci,
+                                          const MaterialDataSlotDecl &decl,
+                                          const uint32_t data_slot,
                                           const uint32_t stage_bits)
 {
     const char *struct_name = nullptr;
@@ -102,7 +102,7 @@ static bool AddMaterialSSBOSlotDescriptor(ShaderProgramBuildSpec &mci,
     if (!mci.AddStruct(struct_name, glsl_codes))
         return false;
 
-    return mci.AddSSBO(stage_bits, DescriptorSetType::Material, struct_name, decl.name, int(ssbo_slot));
+    return mci.AddSSBO(stage_bits, DescriptorSetType::Material, struct_name, decl.name, int(data_slot));
 }
 
 static bool ValidateDefinitionCapabilitySubset(
@@ -137,15 +137,15 @@ static bool ValidateDefinitionCapabilitySubset(
                    && definition.vertex_node_config.projection != ProjectionMode::ClipPassthrough;
             break;
 
-        case DescriptorSemantic::MaterialSSBOSlotData:
-            allowed = req.ssbo_slot < definition.ssbo_slot_decls.size();
+        case DescriptorSemantic::MaterialDataSlotData:
+            allowed = req.data_slot < definition.data_slot_decls.size();
             if (allowed)
-                allowed = definition.ssbo_slot_decls[req.ssbo_slot].ssbo_type == req.ssbo_type;
+                allowed = definition.data_slot_decls[req.data_slot].ssbo_type == req.ssbo_type;
             break;
 
         case DescriptorSemantic::MaterialTextureLayerTable:
-        case DescriptorSemantic::MaterialSSBOIndexTable:
-            allowed = !definition.ssbo_slot_decls.empty();
+        case DescriptorSemantic::MaterialDataIndexTable:
+            allowed = !definition.data_slot_decls.empty();
             break;
 
         case DescriptorSemantic::MaterialTexture:
@@ -236,13 +236,13 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
 
     // ─────────────────────────────────────────────────────────────
     // Step 3: Add Descriptors from FixedDescriptorEntry[]
-    // When config.ssbo_slot_decls is provided, material SSBO entries are
+    // When config.data_slot_decls is provided, material SSBO entries are
     // generated from it; any baked single-slot entries in def are skipped.
     // ─────────────────────────────────────────────────────────────
 
-    const bool use_slot_decls = config.ssbo_slot_decls && !config.ssbo_slot_decls->empty();
+    const bool use_slot_decls = config.data_slot_decls && !config.data_slot_decls->empty();
 
-    const uint32_t declared_material_ssbo_slot_count = use_slot_decls ? static_cast<uint32_t>(config.ssbo_slot_decls->size()) : 0u;
+    const uint32_t declared_material_data_slot_count = use_slot_decls ? static_cast<uint32_t>(config.data_slot_decls->size()) : 0u;
 
     std::string primary_sampler_name;
 
@@ -251,7 +251,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
         const FixedDescriptorEntry &entry = def.descriptor_entries[i];
 
         // Skip baked material-SSBO entries when slot_decls takes over.
-        if (use_slot_decls && entry.semantic == DescriptorSemantic::MaterialSSBOSlotData)
+        if (use_slot_decls && entry.semantic == DescriptorSemantic::MaterialDataSlotData)
             continue;
 
         const uint32_t stage_bits = entry.stage_flags;
@@ -273,7 +273,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
             case DescriptorSemantic::LocalToWorld:
                 mci->SetLocalToWorld(stage_bits);
                 break;
-            case DescriptorSemantic::MaterialSSBOSlotData:
+            case DescriptorSemantic::MaterialDataSlotData:
                 material_ssbo_stage_bits = stage_bits;
                 break;
             case DescriptorSemantic::MaterialColorPalette:
@@ -293,7 +293,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
             case DescriptorSemantic::LocalToWorldIndexTable:
                 mci->AddSSBOStruct(stage_bits, SBS_LocalToWorldIndexRows);
                 break;
-            case DescriptorSemantic::MaterialSSBOSlotData:
+            case DescriptorSemantic::MaterialDataSlotData:
                 material_ssbo_stage_bits = stage_bits;
                 break;
             case DescriptorSemantic::MaterialTextureLayerTable:
@@ -305,7 +305,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
                                       DescriptorSetType::Material,
                                       SBS_MaterialTextureLayerRows.struct_name,
                                       SBS_MaterialTextureLayerRows.name,
-                                      int(declared_material_ssbo_slot_count + 1u)))
+                                      int(declared_material_data_slot_count + 1u)))
                     {
                         return FailAfterMci("failed to add MaterialTextureLayerRows SSBO");
                     }
@@ -316,7 +316,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
                         return FailAfterMci("failed to add MaterialTextureLayerRows SSBO");
                 }
                 break;
-            case DescriptorSemantic::MaterialSSBOIndexTable:
+            case DescriptorSemantic::MaterialDataIndexTable:
                 if (use_slot_decls)
                 {
                     if (!mci->AddStruct(SBS_MaterialDataIndexRows.struct_name, ""))
@@ -325,7 +325,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
                                       DescriptorSetType::Material,
                                       SBS_MaterialDataIndexRows.struct_name,
                                       SBS_MaterialDataIndexRows.name,
-                                      int(declared_material_ssbo_slot_count)))
+                                      int(declared_material_data_slot_count)))
                     {
                         return FailAfterMci("failed to add MaterialDataIndexRows SSBO");
                     }
@@ -408,9 +408,9 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
 
     if (use_slot_decls)
     {
-        for (uint32_t i = 0; i < static_cast<uint32_t>(config.ssbo_slot_decls->size()); ++i)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(config.data_slot_decls->size()); ++i)
         {
-            if (!AddMaterialSSBOSlotDescriptor(*mci, (*config.ssbo_slot_decls)[i], i, material_ssbo_stage_bits))
+            if (!AddMaterialDataSlotDescriptor(*mci, (*config.data_slot_decls)[i], i, material_ssbo_stage_bits))
                 return FailAfterMci("failed to add declared material ssbo slot descriptor");
         }
     }
@@ -481,14 +481,14 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
 
     // ── Material SSBO GLSL 声明 ─────────────────────────────────────────────
     // 材质实例 SSBO 的 struct + buffer 声明不再写死在 .glsl 中，
-    // 统一由此处依据 ssbo_slot_decls 生成并注入 Fragment 阶段。
+    // 统一由此处依据 data_slot_decls 生成并注入 Fragment 阶段。
     std::string material_ssbo_decls;
 
-    if (use_slot_decls && config.ssbo_slot_decls && !config.ssbo_slot_decls->empty())
+    if (use_slot_decls && config.data_slot_decls && !config.data_slot_decls->empty())
     {
-        for (uint32_t i = 0; i < static_cast<uint32_t>(config.ssbo_slot_decls->size()); ++i)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(config.data_slot_decls->size()); ++i)
         {
-            const MaterialSSBOSlotDecl &decl = (*config.ssbo_slot_decls)[i];
+            const MaterialDataSlotDecl &decl = (*config.data_slot_decls)[i];
             const ShaderDescriptor *sd = descriptor_info.GetSSBO(decl.name.c_str());
             if (!sd || sd->set < 0 || sd->binding < 0)
                 return FailAfterMci("material ssbo descriptor unresolved for GLSL generation");
@@ -630,7 +630,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
 
     // ─────────────────────────────────────────────────────────────
     // Step 6b: Build MaterialResourceLayout from descriptor entries.
-    // When ssbo_slot_decls is provided, material SSBO entries are
+    // When data_slot_decls is provided, material SSBO entries are
     // generated from it and merged with the rest of def.descriptor_entries.
     // ─────────────────────────────────────────────────────────────
 
@@ -639,18 +639,18 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     {
         // Build augmented list: base entries (without legacy single-slot material SSBO) + slot_decls entries.
         std::vector<FixedDescriptorEntry> augmented;
-        // Names from ssbo_slot_decls are runtime strings; store them here to ensure lifetime.
+        // Names from data_slot_decls are runtime strings; store them here to ensure lifetime.
         std::vector<std::string> augmented_names;
-        augmented.reserve(def.descriptor_entry_count + config.ssbo_slot_decls->size());
-        augmented_names.reserve(config.ssbo_slot_decls->size());
+        augmented.reserve(def.descriptor_entry_count + config.data_slot_decls->size());
+        augmented_names.reserve(config.data_slot_decls->size());
         for (uint32_t i = 0; i < def.descriptor_entry_count; ++i)
         {
-            if (def.descriptor_entries[i].semantic != DescriptorSemantic::MaterialSSBOSlotData)
+            if (def.descriptor_entries[i].semantic != DescriptorSemantic::MaterialDataSlotData)
                 augmented.push_back(def.descriptor_entries[i]);
         }
-        for (uint32_t i = 0; i < static_cast<uint32_t>(config.ssbo_slot_decls->size()); ++i)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(config.data_slot_decls->size()); ++i)
         {
-            const MaterialSSBOSlotDecl &decl = (*config.ssbo_slot_decls)[i];
+            const MaterialDataSlotDecl &decl = (*config.data_slot_decls)[i];
             augmented_names.push_back(decl.name);  // owned copy guarantees lifetime
             FixedDescriptorEntry e{};
             e.set_type      = DescriptorSetType::Material;
@@ -659,9 +659,9 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
             e.name          = augmented_names.back().c_str();  // stable pointer into owned string
             e.struct_name   = ssbo::GetMaterialSSBOStructName(decl.ssbo_type);
             e.glsl_type     = nullptr;
-            e.semantic      = DescriptorSemantic::MaterialSSBOSlotData;
+            e.semantic      = DescriptorSemantic::MaterialDataSlotData;
             e.texture_slot  = TextureSlot::BaseColor;
-            e.ssbo_slot     = i;
+            e.data_slot     = i;
             e.ssbo_type     = decl.ssbo_type;
             e.semantic_layer = GetDescriptorSemanticLayerByKind(e.kind);
             e.ssbo_id       = MakeRecipeSSBOId(i);
@@ -673,12 +673,12 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
         // Any requirement whose name pointed into augmented_names must be re-pointed via owned_name.
         for (auto &req : material_resource_layout.requirements)
         {
-            if (req.semantic != DescriptorSemantic::MaterialSSBOSlotData)
+            if (req.semantic != DescriptorSemantic::MaterialDataSlotData)
                 continue;
-            // req.ssbo_slot is the slot index, which matches augmented_names order.
-            if (req.ssbo_slot < static_cast<uint32_t>(augmented_names.size()))
+            // req.data_slot is the slot index, which matches augmented_names order.
+            if (req.data_slot < static_cast<uint32_t>(augmented_names.size()))
             {
-                req.owned_name   = augmented_names[req.ssbo_slot];
+                req.owned_name   = augmented_names[req.data_slot];
                 req.name         = req.owned_name.c_str();
             }
         }

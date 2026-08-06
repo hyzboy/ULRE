@@ -129,7 +129,7 @@ private:
             grid_recipe.vertex_node_config.scale = graph::mtl::ScaleMode::World;
             grid_recipe.vertex_node_config.projection = graph::mtl::ProjectionMode::WorldCameraVP;
             graph::mtl::UpsertRecipeSSBOAssetBinding(grid_recipe,
-                                                     graph::mtl::DefaultMaterialSSBOName,
+                                                     graph::mtl::DefaultMaterialDataSlotName,
                                                      grid_mi_ssbo_accessor->GetSSBOBinding());
             grid_asset = PrimitiveAsset(grid_geometry, &grid_recipe, PrimitiveType::Lines);
         }
@@ -169,7 +169,7 @@ private:
             cube_recipe.pipeline_preset = PipelinePreset::Solid3D;
             cube_recipe.domain = "GizmoUsageExample";
             graph::mtl::UpsertRecipeSSBOAssetBinding(cube_recipe,
-                                                     graph::mtl::DefaultMaterialSSBOName,
+                                                     graph::mtl::DefaultMaterialDataSlotName,
                                                      cube_mi_ssbo_accessor->GetSSBOBinding());
             cube_asset = PrimitiveAsset(cube_geometry, &cube_recipe, PrimitiveType::Triangles);
         }
@@ -191,13 +191,13 @@ private:
 
         auto plane_primitive_comp = plane_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         plane_primitive_comp->SetPrimitiveAsset(&grid_asset);
-        hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource plane_struct{};
-        plane_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
+        hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource plane_struct{};
+        plane_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
         plane_struct.ssbo_id = grid_mi_ssbo_accessor->GetSSBOId();
-        plane_struct.ssbo_element_index = 0;
-        plane_struct.use_ssbo_element_index = true;
+        plane_struct.data_index = 0;
+        plane_struct.use_data_index = true;
         plane_struct.shared_across_instances = true;
-        plane_primitive_comp->SetMaterialSSBOResource(plane_struct);
+        plane_primitive_comp->SetMaterialDataSlotResource(plane_struct);
         plane_primitive_comp->SetVisible(true);
 
         cube_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("Cube");
@@ -209,13 +209,13 @@ private:
 
         auto cube_primitive_comp = cube_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         cube_primitive_comp->SetPrimitiveAsset(&cube_asset);
-        hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource cube_struct{};
-        cube_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
+        hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource cube_struct{};
+        cube_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
         cube_struct.ssbo_id = cube_mi_ssbo_accessor->GetSSBOId();
-        cube_struct.ssbo_element_index = 0;
-        cube_struct.use_ssbo_element_index = true;
+        cube_struct.data_index = 0;
+        cube_struct.use_data_index = true;
         cube_struct.shared_across_instances = true;
-        cube_primitive_comp->SetMaterialSSBOResource(cube_struct);
+        cube_primitive_comp->SetMaterialDataSlotResource(cube_struct);
         cube_primitive_comp->SetVisible(true);
 
         return true;

@@ -82,7 +82,7 @@ private:
         mesh_recipe.pipeline_preset = PipelinePreset::Solid3D;
         mesh_recipe.domain = "ExtrudedPolygonTest";
         graph::mtl::UpsertRecipeSSBOAssetBinding(mesh_recipe,
-                                                 graph::mtl::DefaultMaterialSSBOName,
+                                                 graph::mtl::DefaultMaterialDataSlotName,
                                                  mi_ssbo_accessor->GetSSBOBinding());
 
         return true;
@@ -186,13 +186,13 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitiveAsset(mesh_asset);
-        hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource mesh_struct{};
-        mesh_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
+        hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource mesh_struct{};
+        mesh_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
         mesh_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
-        mesh_struct.ssbo_element_index = 0;
-        mesh_struct.use_ssbo_element_index = true;
+        mesh_struct.data_index = 0;
+        mesh_struct.use_data_index = true;
         mesh_struct.shared_across_instances = true;
-        prim_comp->SetMaterialSSBOResource(mesh_struct);
+        prim_comp->SetMaterialDataSlotResource(mesh_struct);
         prim_comp->SetVisible(true);
 
         return true;

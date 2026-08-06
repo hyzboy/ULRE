@@ -27,7 +27,7 @@ namespace hgl::ecs
 
         // Runtime row indices, materialized by ECS.
         uint32_t texture_layer_row = uint32_t(-1);
-        uint32_t ssbo_index_row = uint32_t(-1);
+        uint32_t data_index_row = uint32_t(-1);
 
         // Dirty/lifecycle flags.
         bool program_dirty = true;
@@ -51,8 +51,8 @@ namespace hgl::ecs
         void MarkInvalid();
         void MarkValid();
         void ClearResolvedSSBOBindings();
-        void SetResolvedSSBOBinding(uint32_t ssbo_slot, graph::mtl::SSBOType ssbo_type, uint32_t ssbo_id);
-        const ResolvedSSBOBinding *FindResolvedSSBOBinding(uint32_t ssbo_slot,
+        void SetResolvedSSBOBinding(uint32_t data_slot, graph::mtl::SSBOType ssbo_type, uint32_t ssbo_id);
+        const ResolvedSSBOBinding *FindResolvedSSBOBinding(uint32_t data_slot,
                                                            graph::mtl::SSBOType ssbo_type) const;
 
         void OnAttach() override;

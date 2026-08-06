@@ -195,10 +195,10 @@ private:
             return false;
 
         graph::mtl::UpsertRecipeSSBOAssetBinding(plane_recipe,
-                                                 graph::mtl::DefaultMaterialSSBOName,
+                                                 graph::mtl::DefaultMaterialDataSlotName,
                                                  mi_ssbo_accessor->GetSSBOBinding());
         graph::mtl::UpsertRecipeSSBOAssetBinding(line_recipe,
-                                                 graph::mtl::DefaultMaterialSSBOName,
+                                                 graph::mtl::DefaultMaterialDataSlotName,
                                                  mi_ssbo_accessor->GetSSBOBinding());
 
         (*mi_ssbo_accessor)[plane_slot] = white_color;
@@ -218,13 +218,13 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = plane_grid_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&plane_asset);
-            hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource plane_struct{};
-            plane_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
+            hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource plane_struct{};
+            plane_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
             plane_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
-            plane_struct.ssbo_element_index = plane_slot;
-            plane_struct.use_ssbo_element_index = true;
+            plane_struct.data_index = plane_slot;
+            plane_struct.use_data_index = true;
             plane_struct.shared_across_instances = true;
-            primitive_comp->SetMaterialSSBOResource(plane_struct);
+            primitive_comp->SetMaterialDataSlotResource(plane_struct);
             primitive_comp->SetVisible(true);
         }
 
@@ -242,13 +242,13 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = ray_line_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&line_asset);
-            hgl::ecs::PrimitiveComponent::MaterialSSBONamedAuthoringResource line_struct{};
-            line_struct.ssbo_name = graph::mtl::DefaultMaterialSSBOName;
+            hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource line_struct{};
+            line_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
             line_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
-            line_struct.ssbo_element_index = line_slot;
-            line_struct.use_ssbo_element_index = true;
+            line_struct.data_index = line_slot;
+            line_struct.use_data_index = true;
             line_struct.shared_across_instances = true;
-            primitive_comp->SetMaterialSSBOResource(line_struct);
+            primitive_comp->SetMaterialDataSlotResource(line_struct);
             primitive_comp->SetVisible(true);
         }
 
