@@ -15,7 +15,6 @@ namespace hgl::graph::mtl
         SkyLightHeader = 0,
         SkyLightSimple,
         SkyLightCubeMap,
-        BRDF,
         PBRSurface,
         ENUM_CLASS_RANGE(SkyLightHeader, PBRSurface)
     };

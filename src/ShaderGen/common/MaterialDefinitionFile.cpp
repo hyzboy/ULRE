@@ -203,9 +203,9 @@ namespace hgl::graph::mtl
         {
             static const char *const names[] = {
                 "SkyLightHeader", "SkyLightSimple", "SkyLightCubeMap",
-                "BRDF", "PBRSurface"
+                "PBRSurface"
             };
-            for (uint32 i = 0; i < 5; ++i)
+            for (uint32 i = 0; i < 4; ++i)
             {
                 if (name == names[i])
                 {
