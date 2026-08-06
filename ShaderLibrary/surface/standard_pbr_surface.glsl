@@ -15,15 +15,15 @@
 #include "common/ntb_interface.glsl"
 #include "common/lighting_interface.glsl"
 
-SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
+SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 {
-    vec4 baseColorSample = GetSamplerBaseColor(miID, si.uv0);
+    vec4 baseColorSample = GetSamplerBaseColor(dataIndex, si.uv0);
     vec3 albedo = baseColorSample.rgb;
 
     NTBSpace ntb = BuildOrthoNTB(si.worldNormal);
 
 #ifdef HAS_NORMAL
-    vec4 normalSample = GetSamplerNormal(miID, si.uv0);
+    vec4 normalSample = GetSamplerNormal(dataIndex, si.uv0);
     if (length(normalSample.xyz) > 0.01)
     {
         vec3 nm = normalSample.xyz * 2.0 - 1.0;
@@ -56,8 +56,8 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
     return surf;
 }
 
-float EvalAlpha(SurfaceInput si, uint miID)
+float EvalAlpha(SurfaceInput si, uint dataIndex)
 {
-    return GetSamplerBaseColor(miID, si.uv0).a;
+    return GetSamplerBaseColor(dataIndex, si.uv0).a;
 }
 

@@ -20,9 +20,9 @@
 #include "common/ntb_interface.glsl"
 #include "common/lighting_interface.glsl"
 
-SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
+SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 {
-    ClearCoatSurfaceData mi = mtl.mi[miID];
+    ClearCoatSurfaceData mi = mtl.data[dataIndex];
 
     // 1. Base Albedo & PBR Parameters
     vec3 albedo = mi.base_color.rgb;
@@ -52,7 +52,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
 
     // 2. Normal Map & NTB Space Resolution
     const uint normal_handle = GetTextureHandle(si.textureLayerID, TEXTURE_SLOT_NORMAL);
-    NTBSpace ntb = EvalNTBSpace(si, miID, mi.normal_scale, normal_handle);
+    NTBSpace ntb = EvalNTBSpace(si, dataIndex, mi.normal_scale, normal_handle);
 
     // 3. Construct Surface Base Output Properties
     SurfaceOutput surf;
@@ -84,7 +84,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
     return surf;
 }
 
-float EvalAlpha(SurfaceInput si, uint miID)
+float EvalAlpha(SurfaceInput si, uint dataIndex)
 {
     return 1.0;
 }

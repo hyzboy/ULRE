@@ -26,7 +26,6 @@ namespace hgl::ecs
         hgl::graph::ShaderProgram *program = nullptr;
 
         // Runtime row indices, materialized by ECS.
-        uint32_t material_instance_row = uint32_t(-1);
         uint32_t texture_layer_row = uint32_t(-1);
         uint32_t ssbo_index_row = uint32_t(-1);
 

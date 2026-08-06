@@ -87,7 +87,6 @@ namespace hgl::ecs
     void MaterialComponent::OnDetach()
     {
         program = nullptr;
-        material_instance_row = uint32_t(-1);
         texture_layer_row = uint32_t(-1);
         ssbo_index_row = uint32_t(-1);
         program_dirty = true;

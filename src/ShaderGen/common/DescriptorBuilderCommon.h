@@ -64,12 +64,12 @@ inline void PushLocalToWorldIndexRows(std::vector<FixedDescriptorEntry> &v, cons
     });
 }
 
-inline void PushMaterialInstance(std::vector<FixedDescriptorEntry> &v,
-                                const uint32_t stage_flags,
-                                const char *name,
-                                const char *struct_name,
-                                const uint32_t ssbo_slot,
-                                const SSBOType ssbo_type)
+inline void PushMaterialSSBOSlot(std::vector<FixedDescriptorEntry> &v,
+                                 const uint32_t stage_flags,
+                                 const char *name,
+                                 const char *struct_name,
+                                 const uint32_t ssbo_slot,
+                                 const SSBOType ssbo_type)
 {
     v.push_back({
         DescriptorSetType::Material, DescriptorKind::SSBO, stage_flags,

@@ -17,7 +17,7 @@ layout(location=0) out vec4 FragColor;
 
 void main()
 {
-    TransmissionSurfaceData mi = mtl.mi[fragDataIndexID];
+    TransmissionSurfaceData mi = mtl.data[fragDataIndexID];
     vec4 TextColor = unpackUnorm4x8(mi.TextColor);
     float lum = texture(TextureText, fragUV0).r;
     FragColor = vec4(TextColor.rgb * lum, TextColor.a);

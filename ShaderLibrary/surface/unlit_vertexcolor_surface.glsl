@@ -11,7 +11,7 @@
 
 #include "common/surface_interface.glsl"
 
-SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
+SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 {
     SurfaceOutput so;
     so.baseColor = si.vertexColor.rgb;
@@ -24,7 +24,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
     return so;
 }
 
-float EvalAlpha(SurfaceInput si, uint materialInstanceID)
+float EvalAlpha(SurfaceInput si, uint dataIndex)
 {
     return si.vertexColor.a;
 }

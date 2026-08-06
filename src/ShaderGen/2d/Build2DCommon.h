@@ -8,7 +8,7 @@
 
 #include<hgl/mtl/FixedMaterialDef.h>
 #include<hgl/common/RenderAssignDef.h>
-#include <hgl/graph/ssbo/MaterialInstanceLayout.h>
+#include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/shadergen/MaterialCompiler.h>
 #include "../common/DescriptorBuilderCommon.h"
@@ -129,7 +129,7 @@ inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, cons
         for (uint32_t i = 0; i < static_cast<uint32_t>(p.material_definition->ssbo_slot_decls.size()); ++i)
         {
             const auto &decl = p.material_definition->ssbo_slot_decls[i];
-            descriptor_builder_common::PushMaterialInstance(
+            descriptor_builder_common::PushMaterialSSBOSlot(
                 v,
                 uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
                 decl.name.c_str(),

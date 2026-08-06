@@ -12,7 +12,7 @@
 #include <hgl/graph/ShaderBufferSources.h>
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/common/RenderOptions.h>
-#include <hgl/graph/ssbo/MaterialInstanceLayout.h>
+#include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/graph/glsl/GLSLCodeModule.h>
 #include <cstring>
 #include <cstdio>
@@ -96,7 +96,7 @@ static bool AddMaterialSSBOSlotDescriptor(ShaderProgramBuildSpec &mci,
     const char *glsl_codes = nullptr;
     uint32_t struct_bytes = 0;
 
-    if (!ssbo::TryGetMaterialInstanceLayout(decl.ssbo_type, struct_name, glsl_codes, struct_bytes))
+    if (!ssbo::TryGetMaterialSSBOLayout(decl.ssbo_type, struct_name, glsl_codes, struct_bytes))
         return false;
 
     if (!mci.AddStruct(struct_name, glsl_codes))
@@ -494,7 +494,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
                 return FailAfterMci("material ssbo descriptor unresolved for GLSL generation");
 
             const char *struct_name  = ssbo::GetMaterialSSBOStructName(decl.ssbo_type);
-            const char *struct_codes = ssbo::GetMaterialInstanceGLSL(decl.ssbo_type);
+            const char *struct_codes = ssbo::GetMaterialSSBOStructGLSL(decl.ssbo_type);
             if (!struct_name || !struct_codes)
                 return FailAfterMci("unsupported material ssbo type for GLSL generation");
 
@@ -538,7 +538,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
             material_ssbo_decls += buffer_name;
             material_ssbo_decls += " {\n    ";
             material_ssbo_decls += struct_name;
-            material_ssbo_decls += " mi[];\n} ";
+            material_ssbo_decls += " data[];\n} ";
             material_ssbo_decls += decl.name;
             material_ssbo_decls += ";\n";
         }

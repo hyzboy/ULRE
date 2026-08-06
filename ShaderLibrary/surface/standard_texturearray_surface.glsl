@@ -49,9 +49,9 @@ vec3 F_Schlick(float VdotH, vec3 F0)
     return F0 + (1.0 - F0) * pow(clamp(1.0 - VdotH, 0.0, 1.0), 5.0);
 }
 
-SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
+SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 {
-    ClearCoatSurfaceData mi = mtl.mi[miID];
+    ClearCoatSurfaceData mi = mtl.data[dataIndex];
 
     vec3 N = normalize(si.worldNormal);
     vec3 V = si.viewDir;
@@ -120,7 +120,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
     return so;
 }
 
-float EvalAlpha(SurfaceInput si, uint miID)
+float EvalAlpha(SurfaceInput si, uint dataIndex)
 {
     return 1.0;
 }

@@ -12,9 +12,9 @@
 
 #include "common/surface_interface.glsl"
 
-SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
+SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 {
-    EmissiveSurfaceData mi = mtl.mi[materialInstanceID];
+    EmissiveSurfaceData mi = mtl.data[dataIndex];
 
     SurfaceOutput so;
     so.baseColor = mi.color.rgb;
@@ -27,7 +27,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
     return so;
 }
 
-float EvalAlpha(SurfaceInput si, uint materialInstanceID)
+float EvalAlpha(SurfaceInput si, uint dataIndex)
 {
-    return mtl.mi[materialInstanceID].color.a;
+    return mtl.data[dataIndex].color.a;
 }

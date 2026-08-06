@@ -17,7 +17,7 @@ layout(location=0) out vec4 FragColor;
 
 void main()
 {
-    TextureRectArraySurfaceData mi = mtl.mi[fragDataIndexID];
+    TextureRectArraySurfaceData mi = mtl.data[fragDataIndexID];
     // layer 直接取 mi.id.x：0-based 真层索引（example 中 mi.id.x = 层号）
     uint layer = mi.id.x;
 FragColor = texture(TextureBaseColor, vec3(fragUV0, float(layer)));

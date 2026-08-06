@@ -6,5 +6,5 @@ layout(location=0) out vec4 outColor;
 
 void main()
 {
-    outColor = mtl.mi[fragDataIndexID].color;
+    outColor = mtl.data[fragDataIndexID].color;
 }

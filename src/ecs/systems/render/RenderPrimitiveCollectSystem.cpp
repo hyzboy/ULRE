@@ -319,7 +319,6 @@ namespace hgl::ecs
             if (!material_comp)
                 return;
 
-            material_comp->material_instance_row = uint32_t(-1);
             material_comp->texture_layer_row = uint32_t(-1);
             material_comp->ssbo_index_row = uint32_t(-1);
             material_comp->bindings_dirty = true;
@@ -511,7 +510,6 @@ namespace hgl::ecs
 
         if (!MaterialRequiresRecipeRuntimeRows(material_comp->program))
         {
-            material_comp->material_instance_row = 0;
             material_comp->texture_layer_row = 0;
             material_comp->ssbo_index_row = 0;
             material_comp->bindings_dirty = false;
@@ -589,10 +587,9 @@ namespace hgl::ecs
             }
         }
 
-        uint32_t material_instance_row;
         if (entity_element_index != uint32_t(-1))
         {
-            // Only texture-using materials need the legacy "texture row == MI row" mirror.
+            // Only texture-using materials need the legacy "texture row == data row" mirror.
             // Untextured materials (for example gizmo/pure-color) may legally reuse the same
             // ssbo_element_index values as textured materials; writing an all-zero texture row
             // here would clobber the textured material's global handle table entry.
@@ -602,21 +599,17 @@ namespace hgl::ecs
                 texture_layer_row = entity_element_index;
             }
 
-            material_instance_row = entity_element_index;
             ssbo_index_row = entity_element_index;
         }
         else
         {
-            material_instance_row = ResolvePrimaryStructIndex(material_comp->program,
-                                                              spec,
-                                                              ssbo_index_row);
+            ssbo_index_row = ResolvePrimaryStructIndex(material_comp->program,
+                                                       spec,
+                                                       ssbo_index_row);
         }
 
-        // ssbo_index_row keeps the indirection-table row identity.
-        // material_instance_row is the concrete ssbo_element_index that shaders use as mtl.mi[miID].
         material_comp->texture_layer_row = texture_layer_row;
         material_comp->ssbo_index_row = ssbo_index_row;
-        material_comp->material_instance_row = material_instance_row;
         material_comp->bindings_dirty = false;
         material_comp->resources_dirty = false;
         material_comp->valid = true;

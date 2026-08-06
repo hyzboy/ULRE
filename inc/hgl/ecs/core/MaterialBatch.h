@@ -60,8 +60,8 @@ namespace hgl::ecs
 
         // Per-batch DataIndex rows SSBO — each row carries one struct slot index per instance.
         // row[i].values[DefaultMaterialSSBOSlot] = MaterialInstance::GetMIID() of items[i].
-        graph::DeviceBuffer *                   mi_ssbo_index_rows_buffer   = nullptr;      ///<每批 DataIndex 行表 SSBO（draw order）
-        uint32_t                                mi_ssbo_index_rows_capacity = 0;            ///<DataIndex 行表容量（元素数）
+        graph::DeviceBuffer *                   material_data_index_rows_buffer   = nullptr;  ///<每批 DataIndex 行表 SSBO（draw order）
+        uint32_t                                material_data_index_rows_capacity = 0;        ///<DataIndex 行表容量（元素数）
 
         TransformAssignmentBuffer *          transform_buffer        = nullptr;          ///<Transform分配缓冲(非拥有)
         std::array<uint32_t, static_cast<size_t>(graph::mtl::TextureSlot::RANGE_SIZE)> texture_slot_handles{}; ///<每材质纹理槽的 bindless handle（用于实例纹理行表）

@@ -10,7 +10,7 @@
 // Procedural sky — gradient + atmosphere scatter + sun core/glow
 // 无 Material Instance，无贴图。sky UBO 由 FS 模板声明。
 
-SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
+SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 {
     vec3 dir      = normalize(si.worldPos);   // VS 传来的方向向量
     vec3 to_light = normalize(sky.sun_direction.xyz);

@@ -10,7 +10,7 @@
 
 #include "common/ntb_interface.glsl"
 
-NTBSpace EvalNTBSpace(SurfaceInput si, uint miID, float normalScale, uint normalTexHandle)
+NTBSpace EvalNTBSpace(SurfaceInput si, uint dataIndex, float normalScale, uint normalTexHandle)
 {
     return BuildOrthoNTB(si.worldNormal);
 }

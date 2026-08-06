@@ -11,7 +11,7 @@
 // 硬编码太阳方向 + Blinn-Phong 光照，保持与旧版行为一致
 // 注意：si.worldPos 实际是 clip-space position（原始设计如此）
 
-SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
+SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 {
     const vec3 SUN_DIRECTION = normalize(vec3(0.655386, 0.491539, 0.573462));
     const vec3 SUN_COLOR     = vec3(1.0, 1.0, 1.0);
@@ -43,7 +43,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
     return so;
 }
 
-float EvalAlpha(SurfaceInput si, uint materialInstanceID)
+float EvalAlpha(SurfaceInput si, uint dataIndex)
 {
     return 1.0;
 }

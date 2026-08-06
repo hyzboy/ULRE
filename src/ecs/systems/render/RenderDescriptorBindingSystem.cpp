@@ -1236,12 +1236,12 @@ namespace hgl::ecs
 
                 const graph::IGPUBuffer *mi_ssbo = resolve_domain_ssbo(
                     graph::mtl::SSBOAddress{req.ssbo_type, resolved_ssbo_id, 0},
-                    "MaterialInstance");
+                    "MaterialSSBOSlot");
 
                 if (mi_ssbo)
                 {
                     if (!bind_ssbo(material, batch, req, mi_ssbo))
-                        log_bind_failure(material, batch, req, "bind MaterialInstance failed");
+                        log_bind_failure(material, batch, req, "bind MaterialSSBOSlot failed");
                 }
                 else
                 {
@@ -1278,8 +1278,8 @@ namespace hgl::ecs
                 const graph::IGPUBuffer *table_buffer = nullptr;
 
                 // Prefer per-batch DataIndex rows SSBO (written in draw order by PrimitiveBatchPipeline).
-                if (batch && batch->mi_ssbo_index_rows_buffer)
-                    table_buffer = batch->mi_ssbo_index_rows_buffer->GetGPUBuffer();
+                if (batch && batch->material_data_index_rows_buffer)
+                    table_buffer = batch->material_data_index_rows_buffer->GetGPUBuffer();
 
                 // Fall back to domain SSBO.
                 if (!table_buffer)

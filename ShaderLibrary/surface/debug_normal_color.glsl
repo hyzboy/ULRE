@@ -12,9 +12,9 @@
 
 #include "common/surface_interface.glsl"
 
-SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
+SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 {
-    EmissiveSurfaceData mi = mtl.mi[materialInstanceID];
+    EmissiveSurfaceData mi = mtl.data[dataIndex];
 
     const vec3 SUN_DIRECTION = normalize(vec3(0.655386, 0.491539, 0.573462));
     const vec3 SUN_COLOR     = vec3(1.0, 1.0, 1.0);
@@ -43,7 +43,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
     return so;
 }
 
-float EvalAlpha(SurfaceInput si, uint materialInstanceID)
+float EvalAlpha(SurfaceInput si, uint dataIndex)
 {
     return 1.0;
 }

@@ -4,7 +4,7 @@
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/common/RenderAssignDef.h>
-#include <hgl/graph/ssbo/MaterialInstanceLayout.h>
+#include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/graph/glsl/ShaderResourceManifest.h>
 #include <cstring>
 #include <vector>
@@ -63,7 +63,7 @@ inline std::vector<FixedDescriptorEntry> Build3DDescriptorsFromDefinition(
         for (uint32_t i = 0; i < static_cast<uint32_t>(definition.ssbo_slot_decls.size()); ++i)
         {
             const auto &decl = definition.ssbo_slot_decls[i];
-            descriptor_builder_common::PushMaterialInstance(
+            descriptor_builder_common::PushMaterialSSBOSlot(
                 descriptors,
                 uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
                 decl.name.c_str(),

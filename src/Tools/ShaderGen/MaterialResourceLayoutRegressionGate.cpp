@@ -1026,7 +1026,7 @@ namespace
             SurfaceType::Unlit, BlendMode::Opaque, PassType::ForwardOpaque,
             "compositor/pure_color.frag.glsl", nullptr);
         if (!assembled.success
-         || assembled.fragment_glsl.find("mtl.mi[fragDataIndexID].color")
+         || assembled.fragment_glsl.find("mtl.data[fragDataIndexID].color")
                 == std::string::npos
          || assembled.fragment_glsl.find("layout(location=0) flat in uint fragDataIndexID")
                 == std::string::npos)

@@ -32,7 +32,7 @@ void main()
     si.luminance   = 1.0;
     si.textureLayerID = 0u;
 
-    SurfaceOutput so = EvalSurface(si, 0u);  // miID=0, 无 MI
+    SurfaceOutput so = EvalSurface(si, 0u);  // dataIndex=0, 无数据
 
     outColor = vec4(so.baseColor, so.alpha);
 }
