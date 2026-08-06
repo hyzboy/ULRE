@@ -89,7 +89,7 @@ private:
 
         axis_recipe.recipe_name = "SimplestAxis.VertexColor";
         axis_recipe.mtl_def_id = "VertexColor";
-        axis_recipe.pipeline_preset = PipelinePreset::Solid3D;
+        axis_recipe.pipeline_config = mtl::MakeSolid3DConfig();
         axis_recipe.domain = "SimplestAxis";
         axis_asset = PrimitiveAsset(geom_axis, &axis_recipe, PrimitiveType::Lines);
         prim_comp->SetPrimitiveAsset(&axis_asset);

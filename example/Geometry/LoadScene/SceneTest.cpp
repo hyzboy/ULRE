@@ -152,7 +152,7 @@ private:
 
         scene_recipe.recipe_name = "LoadScene.DebugNormalColor";
         scene_recipe.mtl_def_id = "DebugNormalColor";
-        scene_recipe.pipeline_preset = PipelinePreset::Solid3D;
+        scene_recipe.pipeline_config = mtl::MakeSolid3DConfig();
         scene_recipe.domain = "LoadScene";
 
         return LoadStaticMeshSceneAsPrimitiveAssets(

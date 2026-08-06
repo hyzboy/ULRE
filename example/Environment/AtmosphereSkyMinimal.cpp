@@ -49,7 +49,7 @@ private:
             return false;
         sky_recipe.recipe_name = "AtmosphereSkyMinimal.Sky";
         sky_recipe.mtl_def_id = "SkyMinimal";
-        sky_recipe.pipeline_preset = PipelinePreset::Sky;
+        sky_recipe.pipeline_config = mtl::MakeSkyConfig();
         sky_recipe.domain = "AtmosphereSkyMinimal";
         sky_asset = PrimitiveAsset(prim_sky_sphere, &sky_recipe, PrimitiveType::Triangles);
         return true;

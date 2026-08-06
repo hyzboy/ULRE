@@ -51,13 +51,13 @@ namespace hgl::graph
         switch (pass)
         {
         case PassType::ForwardOpaque:
-            return shader_lib_path_ + "/compositor/main_forward_opaque.frag.glsl";
+            return shader_lib_path_ + "/compositor/main_forward_lit.frag.glsl";
 
         case PassType::ForwardMasked:
-            return shader_lib_path_ + "/compositor/main_forward_masked.frag.glsl"; // 后续实现
+            return shader_lib_path_ + "/compositor/main_forward_lit.frag.glsl"; // 后续支持 masked 合成
 
         case PassType::ForwardTransparent:
-            return shader_lib_path_ + "/compositor/main_forward_transparent.frag.glsl"; // 后续实现
+            return shader_lib_path_ + "/compositor/main_forward_lit.frag.glsl"; // 后续支持透明合成
 
         case PassType::ShadowOpaque:
         case PassType::ShadowMasked:
@@ -71,7 +71,7 @@ namespace hgl::graph
             return shader_lib_path_ + "/compositor/main_vbuffer.frag.glsl"; // 后续实现
 
         default:
-            return shader_lib_path_ + "/compositor/main_forward_opaque.frag.glsl";
+            return shader_lib_path_ + "/compositor/main_forward_lit.frag.glsl";
         }
     }
 

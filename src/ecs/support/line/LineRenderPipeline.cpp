@@ -382,8 +382,8 @@ namespace hgl::ecs
 
         // ------- Create pipeline -------
         pipeline_ = support_wide_lines_
-            ? rp->CreatePipeline(material_, binding_vil_, graph::PipelinePreset::DynamicLineWidth3D, false, &line_gvf)
-            : rp->CreatePipeline(material_, binding_vil_, graph::PipelinePreset::Solid3D, false, &line_gvf);
+            ? rp->CreatePipeline(material_, binding_vil_, graph::mtl::MakeDynamicLineWidth3DConfig(), false, &line_gvf)
+            : rp->CreatePipeline(material_, binding_vil_, graph::mtl::MakeSolid3DConfig(), false, &line_gvf);
 
         if (!pipeline_)
             return false;

@@ -317,7 +317,7 @@ namespace hgl::ecs
 
         graph::mtl::MaterialRecipe recipe{};
         recipe.mtl_def_id = "Text2D";
-        recipe.pipeline_preset = graph::PipelinePreset::Solid2D;
+        recipe.pipeline_config = graph::mtl::MakeSolid2DConfig();
         const graph::GeometryVertexFormat text_gvf = graph::CreateTextGeometryVertexFormat();
 
         material_manager = graphics_context->GetMaterialManager();
@@ -539,7 +539,7 @@ namespace hgl::ecs
                 const graph::GeometryVertexFormat text_gvf = graph::CreateTextGeometryVertexFormat();
                 resources->pipeline = render_pass->CreatePipeline(resources->material,
                                                                   resources->binding_vil,
-                                                                  graph::PipelinePreset::Solid2D,
+                                                                  graph::mtl::MakeSolid2DConfig(),
                                                                   false,
                                                                   &text_gvf);
                 if (!resources->pipeline)

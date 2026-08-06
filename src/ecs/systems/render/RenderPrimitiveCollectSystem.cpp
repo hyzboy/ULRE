@@ -153,21 +153,6 @@ namespace hgl::ecs
             return primitive_comp->BuildResolvedAuthoringMaterialRecipe(out_recipe, material_program);
         }
 
-        bool ResolvePipelinePresetFromRecipe(const graph::mtl::MaterialRecipe &recipe,
-                                             graph::PipelinePreset &out_preset)
-        {
-            if (recipe.pipeline_preset == graph::PipelinePreset::Auto)
-            {
-                GLogError("[RenderPrimitiveCollectSystem] Pipeline preset must be explicitly configured: recipe=%s material=%s",
-                          recipe.recipe_name.c_str(),
-                          recipe.mtl_def_id.c_str());
-                return false;
-            }
-
-            out_preset = recipe.pipeline_preset;
-            return true;
-        }
-
         bool PrepareRecipeAuthoringResources(ECSContext *world,
                                              const std::shared_ptr<PrimitiveComponent> &primitive_comp,
                                              graph::ShaderProgram *material_program)
@@ -471,10 +456,6 @@ namespace hgl::ecs
         if (!BuildEffectiveMaterialRecipe(primitive_comp, material_comp->program, effective_recipe))
             return false;
 
-        graph::PipelinePreset pipeline_preset = graph::PipelinePreset::Auto;
-        if (!ResolvePipelinePresetFromRecipe(effective_recipe, pipeline_preset))
-            return false;
-
         const graph::VIL *vil = primitive_comp->GetRuntimeVIL();
         if (!vil)
             vil = material_comp->program->GetDefaultVIL();
@@ -489,7 +470,7 @@ namespace hgl::ecs
 
         graph::Pipeline *resolved_pipeline = render_pass->CreatePipeline(material_comp->program,
                                                                          vil,
-                                                                         pipeline_preset);
+                                                                         effective_recipe);
         if (!resolved_pipeline)
         {
             GLogWarning("[RenderPrimitiveCollectSystem] ResolveRuntimePipeline failed: CreatePipeline failed for %s material=%s",

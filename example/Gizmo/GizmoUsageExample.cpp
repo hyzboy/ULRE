@@ -121,7 +121,7 @@ private:
 
             grid_recipe.recipe_name = "GizmoUsageExample.VertexLuminance";
             grid_recipe.mtl_def_id = "VertexLuminance";
-            grid_recipe.pipeline_preset = PipelinePreset::Solid3D;
+            grid_recipe.pipeline_config = mtl::MakeSolid3DConfig();
             grid_recipe.domain = "GizmoUsageExample";
             grid_recipe.vertex_node_config.input = graph::mtl::VertexInputMode::Vec2Position;
             grid_recipe.vertex_node_config.position_mapping = graph::mtl::PositionMappingMode::LiftXY_XY0;
@@ -166,7 +166,7 @@ private:
 
             cube_recipe.recipe_name = "GizmoUsageExample.DebugNormalColor";
             cube_recipe.mtl_def_id = "DebugNormalColor";
-            cube_recipe.pipeline_preset = PipelinePreset::Solid3D;
+            cube_recipe.pipeline_config = mtl::MakeSolid3DConfig();
             cube_recipe.domain = "GizmoUsageExample";
             graph::mtl::UpsertRecipeSSBOAssetBinding(cube_recipe,
                                                      graph::mtl::DefaultMaterialDataSlotName,

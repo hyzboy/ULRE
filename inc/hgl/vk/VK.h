@@ -245,7 +245,6 @@ class MaterialDescriptorManager;
 class ShaderProgram;
 class MaterialParameters;
 struct PipelineData;
-enum class PipelinePreset;
 class Pipeline;
 
 struct VAConfig;

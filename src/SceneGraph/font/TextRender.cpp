@@ -213,7 +213,7 @@ namespace hgl::graph
     {
         mtl::MaterialRecipe recipe{};
         recipe.mtl_def_id = "Text2D";
-        recipe.pipeline_preset = PipelinePreset::Solid2D;
+        recipe.pipeline_config = mtl::MakeSolid2DConfig();
         const GeometryVertexFormat text_gvf = CreateTextGeometryVertexFormat();
         {
             mtl::MaterialDefinitionBuildRequest mtl_request{};
@@ -264,7 +264,7 @@ namespace hgl::graph
             binding_set->SetSSBOBinding(req.ssbo_type, req.ssbo_id, 0);
         }
 
-        pipeline = rp->CreatePipeline(mtl_fs, binding_vil, PipelinePreset::Solid2D, false, &text_gvf);
+        pipeline = rp->CreatePipeline(mtl_fs, binding_vil, mtl::MakeSolid2DConfig(), false, &text_gvf);
         if (!pipeline) return false;
 
         if (!mtl_fs->BindTextureSampler(DescriptorSetType::Material,

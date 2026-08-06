@@ -5,67 +5,35 @@
 // @ulre require ProducedSemantic WorldPosition
 // @ulre require ProducedSemantic WorldNormal
 // @ulre require ProducedSemantic UV0
-// @ulre uses skylight_simple
 // @ulre uses bindless_textures
 // @ulre uses surface_interface
+// @ulre uses ntb_interface
+// @ulre uses lighting_interface
 // @ulre end
 // standard_texturearray_surface.glsl — Standard Lit Surface with Texture2DArray sampling
 // S6: Texture sampling migrated to bindless (bindless_tex2darray[], binding=1 on Set 4).
 // Texture semantic declarations remain in the material contract for recipe extraction,
 // but actual sampling is fully bindless in this shader.
 // Array layer index is stored in TextureLayerRows[iid][TEXTURE_SLOT_CUSTOM0].
-// This aligns with the general texture-layer architecture (no texture_id in MI).
+// 天光/直接光/间接光与 standard_surface 共用同一套模块：
+//   sky/sky_atmosphere.glsl (GetSky*) + lighting/direct_cook_torrance_pbr.glsl
+//   (EvalDirectLighting) + lighting/indirect_simple_ambient.glsl (EvalIndirectLighting)。
+// 本 surface 仅保留 Texture2DArray 采样差异。
 
 #include "common/surface_interface.glsl"
-
-// Bindless 2DArray rows + bindless sampler arrays
-// mtl_texture_layer_rows 行表声明由 CompileCompositorMaterial 统一生成并注入
-//（GetTextureHandle 宏依赖该 buffer），不再在此处 #include 展开。
+#include "common/ntb_interface.glsl"
+#include "common/lighting_interface.glsl"
 #include "common/bindless_textures.glsl"
 
-
-float halfLambertDiffuse(vec3 N, vec3 L)
-{
-    float h = dot(N, L) * 0.5 + 0.5;
-    return h * h;
-}
-
-float D_GGX(float NdotH, float alpha2)
-{
-    float d = NdotH * NdotH * (alpha2 - 1.0) + 1.0;
-    return alpha2 / (3.14159265 * d * d + 1e-7);
-}
-
-float G_Smith(float NdotV, float NdotL, float roughness)
-{
-    float k  = (roughness + 1.0) * (roughness + 1.0) / 8.0;
-    float gv = NdotV / (NdotV * (1.0 - k) + k + 1e-7);
-    float gl = NdotL / (NdotL * (1.0 - k) + k + 1e-7);
-    return gv * gl;
-}
-
-vec3 F_Schlick(float VdotH, vec3 F0)
-{
-    return F0 + (1.0 - F0) * pow(clamp(1.0 - VdotH, 0.0, 1.0), 5.0);
-}
 
 SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 {
     ClearCoatSurfaceData mi = mtl.data[dataIndex];
 
-    vec3 N = normalize(si.worldNormal);
-    vec3 V = si.viewDir;
-    vec3 L = normalize(ULRE_GetSkyLightDir());
-
-    vec3 sunColor   = max(ULRE_GetSkyLightColor(), vec3(0.2));
-    vec3 skyAmbient = ULRE_GetSkyAmbientColor();
-
-    // Array layer index stored in TextureLayerRows[iid][TEXTURE_SLOT_CUSTOM0].
-    // Handle resolved from per-instance TextureLayerRows via GetTextureHandle().
+    vec3 albedo = mi.base_color.rgb;
     const uint iid = si.textureLayerID;
     float layer = float(GetTextureHandle(iid, TEXTURE_SLOT_CUSTOM0));
 
-    vec3 albedo = mi.base_color.rgb;
     const uint base_color_handle = GetTextureHandle(iid, TEXTURE_SLOT_BASE_COLOR);
     if (base_color_handle != 0u)
         albedo *= SampleBindless2DArray(base_color_handle, si.uv0, layer).rgb;
@@ -73,6 +41,8 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
     float metallic  = clamp(mi.metallic,  0.0, 1.0);
     float roughness = clamp(mi.roughness, 0.04, 1.0);
     float fresnel   = clamp(mi.fresnel,   0.0, 1.0);
+
+    vec3 N = normalize(si.worldNormal);
 
     const uint normal_handle = GetTextureHandle(iid, TEXTURE_SLOT_NORMAL);
     if (normal_handle != 0u)
@@ -89,35 +59,29 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
         roughness = clamp(roughness * roughness_tex, 0.04, 1.0);
     }
 
-    float NdotL  = max(dot(N, L), 0.0);
-    float NdotV  = max(dot(N, V), 1e-4);
-    vec3  H      = normalize(V + L);
-    float NdotH  = max(dot(N, H), 0.0);
-    float VdotH  = max(dot(V, H), 0.0);
+    // 无 tangent 输入（Texture2DArray 材质），由世界法线构造正交 NTB 空间
+    NTBSpace ntb = BuildOrthoNTB(N);
 
-    float alpha2 = roughness * roughness * roughness * roughness;
-    float D      = D_GGX(NdotH, alpha2);
-    float G      = G_Smith(NdotV, NdotL, roughness);
-    vec3  F0     = mix(vec3(fresnel), albedo, metallic);
-    vec3  F      = F_Schlick(VdotH, F0);
+    SurfaceOutput surf;
+    surf.baseColor = albedo;
+    surf.normal    = N;
+    surf.metallic  = metallic;
+    surf.roughness = roughness;
+    surf.fresnel   = fresnel;
+    surf.ao        = 1.0;
+    surf.emissive  = vec3(0.0);
+    surf.alpha     = 1.0;
 
-    vec3 kd       = (1.0 - F) * (1.0 - metallic);
-    vec3 diffuse  = kd * albedo / 3.14159265 * NdotL;
-    vec3 specular = D * G * F / max(4.0 * NdotV * NdotL, 1e-4) * NdotL;
+    // 与 standard_surface 共用同一套天光 + 直接光 + 间接光模块
+    vec3 lightDir   = GetSkyMainLightDir();
+    vec3 lightColor = GetSkyMainLightColor();
+    vec3 skyAmbient = GetSkyAmbientColor();
 
-    vec3 color  = (diffuse + specular) * sunColor;
-    color      += skyAmbient * albedo * (1.0 - metallic) * 0.2;
+    vec3 directColor   = EvalDirectLighting(surf, ntb, si.viewDir, lightDir, lightColor);
+    vec3 indirectColor = EvalIndirectLighting(surf, ntb, si.viewDir, skyAmbient);
 
-    SurfaceOutput so;
-    so.baseColor = color;
-    so.normal    = N;
-    so.metallic  = metallic;
-    so.roughness = roughness;
-    so.fresnel   = fresnel;
-    so.ao        = 1.0;
-    so.emissive  = vec3(0.0);
-    so.alpha     = 1.0;
-    return so;
+    surf.baseColor = directColor + indirectColor + surf.emissive;
+    return surf;
 }
 
 float EvalAlpha(SurfaceInput si, uint dataIndex)

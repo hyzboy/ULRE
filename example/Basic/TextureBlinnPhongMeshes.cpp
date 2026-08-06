@@ -88,7 +88,7 @@ private:
             return false;
         mesh_recipe.recipe_name = "06c.TextureBlinnPhong.Lit";
         mesh_recipe.mtl_def_id = "Lit";
-        mesh_recipe.pipeline_preset = PipelinePreset::Solid3D;
+        mesh_recipe.pipeline_config = mtl::MakeSolid3DConfig();
         mesh_recipe.domain = "06c.TextureBlinnPhong";
         graph::mtl::UpsertRecipeSSBOAssetBinding(mesh_recipe,
                                                  graph::mtl::DefaultMaterialDataSlotName,

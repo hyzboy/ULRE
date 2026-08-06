@@ -33,7 +33,7 @@ namespace hgl::ecs
             recipe.double_sided = false;
             recipe.alpha_test = false;
             recipe.alpha_cutoff = 0.5f;
-            recipe.pipeline_preset = hgl::graph::PipelinePreset::Auto;
+            recipe.pipeline_config = hgl::graph::mtl::MaterialPipelineConfig{};
             recipe.textures.clear();
             recipe.ssbo_assets.clear();
         }

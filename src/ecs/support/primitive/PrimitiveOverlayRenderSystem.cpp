@@ -14,7 +14,7 @@ namespace hgl::ecs
             if (!batch || !batch->key.pipeline)
                 return false;
 
-            return graph::IsOverlayPipelinePreset(batch->key.pipeline->GetPreset());
+            return batch->key.pipeline->GetOverlay();
         }
     }
 

@@ -1,5 +1,5 @@
 ﻿#include<hgl/vk/pipeline/VKPipelineData.h>
-#include<hgl/vk/pipeline/VKPipelinePreset.h>
+#include<hgl/vk/pipeline/VKPipelineDataBuild.h>
 #include<hgl/type/UnorderedMap.h>
 
 namespace hgl::graph{
@@ -7,71 +7,7 @@ PipelineData *LoadPipelineFromFile(const OSString &filename);
 
 namespace
 {
-    UnorderedMap<PipelinePreset,PipelineData*> inline_pipeline_data;
-
     UnorderedMap<OSString,PipelineData*> pipeline_data_by_filename;
-
-    void InitInlinePipelineData()
-    {
-        PipelineData *pd;
-
-        {
-            pd=new PipelineData(1);
-            inline_pipeline_data.Add(PipelinePreset::Solid3D,pd);
-        }
-
-        {
-            pd = new PipelineData(1);
-            pd->AddDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH);
-            inline_pipeline_data.Add(PipelinePreset::DynamicLineWidth3D,pd);
-        }
-
-        {
-            pd=new PipelineData(1);
-            pd->OpenBlend(0);
-            pd->SetColorBlend(0,VK_BLEND_OP_ADD,VK_BLEND_FACTOR_SRC_ALPHA,VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA);
-            pd->SetAlphaBlend(0,VK_BLEND_OP_ADD,VK_BLEND_FACTOR_ONE,VK_BLEND_FACTOR_ZERO);
-            inline_pipeline_data.Add(PipelinePreset::Alpha3D,pd);
-        }
-
-        {
-            pd=new PipelineData(1);
-            pd->CloseCullFace();
-            pd->SetDepthTest(true);
-            pd->SetDepthWrite(false);
-            pd->SetDepthCompareOp(VK_COMPARE_OP_ALWAYS);
-            inline_pipeline_data.Add(PipelinePreset::GizmoOverlay3D,pd);
-        }
-
-        {
-            pd=new PipelineData(1);
-            pd->CloseCullFace();
-            pd->SetDepthTest(false);
-            pd->SetDepthWrite(false);
-            pd->SetDepthCompareOp(VK_COMPARE_OP_ALWAYS);
-            inline_pipeline_data.Add(PipelinePreset::Solid2D,pd);
-        }
-
-        {
-            pd=new PipelineData(1);
-            pd->CloseCullFace();
-            pd->SetDepthTest(false);
-            pd->SetDepthWrite(false);
-            pd->SetDepthCompareOp(VK_COMPARE_OP_ALWAYS);
-            pd->OpenBlend(0);
-            pd->SetColorBlend(0,VK_BLEND_OP_ADD,VK_BLEND_FACTOR_SRC_ALPHA,VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA);
-            pd->SetAlphaBlend(0,VK_BLEND_OP_ADD,VK_BLEND_FACTOR_ONE,VK_BLEND_FACTOR_ZERO);
-            inline_pipeline_data.Add(PipelinePreset::Alpha2D,pd);
-        }
-
-        {
-            pd=new PipelineData(1);
-            pd->SetCullMode(VK_CULL_MODE_FRONT_BIT);
-            pd->SetDepthWrite(false);
-            pd->SetDepthCompareOp(VK_COMPARE_OP_GREATER_OR_EQUAL);
-            inline_pipeline_data.Add(PipelinePreset::Sky,pd);
-        }
-    }
 }//namespace
 
 const PipelineData *GetPipelineData(const OSString &filename)
@@ -92,13 +28,46 @@ const PipelineData *GetPipelineData(const OSString &filename)
     return pd;
 }
 
-const PipelineData *GetPipelineData(const PipelinePreset &ip)
+PipelineData *BuildPipelineData(const mtl::MaterialPipelineConfig &config,
+                                const bool double_sided,
+                                const float alpha_cutoff)
 {
-    if(inline_pipeline_data.GetCount()<=0)
-        InitInlinePipelineData();
+    // 默认状态与旧 Solid3D 预设一致：cull Back、depth test/write 开、compare GreaterOrEqual、混合关
+    PipelineData *pd = new PipelineData(1);
 
-    PipelineData *pd = nullptr;
-    inline_pipeline_data.Get(ip, pd);
+    // 剔除
+    pd->SetCullMode(static_cast<VkCullModeFlagBits>(config.cull_mode));
+
+    if(double_sided)
+        pd->CloseCullFace();
+
+    // 深度
+    pd->SetDepthTest(config.depth_test);
+    pd->SetDepthWrite(config.depth_write);
+    pd->SetDepthCompareOp(config.depth_compare_op);
+
+    // 混合
+    if(config.alpha_blend)
+    {
+        pd->OpenBlend(0);
+        pd->SetColorBlend(0,VK_BLEND_OP_ADD,config.blend_src,config.blend_dst);
+        pd->SetAlphaBlend(0,VK_BLEND_OP_ADD,VK_BLEND_FACTOR_ONE,VK_BLEND_FACTOR_ZERO);
+    }
+
+    // 线宽
+    pd->SetLineWidth(config.line_width);
+
+    if(config.dynamic_line_width)
+        pd->AddDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH);
+
+    // 线框
+    if(config.wireframe)
+        pd->SetPolygonMode(VK_POLYGON_MODE_LINE);
+
+    // alpha test
+    if(alpha_cutoff>0.0f)
+        pd->SetAlphaTest(alpha_cutoff);
+
     return pd;
 }
 }//namespace hgl::graph

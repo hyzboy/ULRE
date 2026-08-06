@@ -141,7 +141,7 @@ private:
         triangle_recipe.mtl_def_id = "VertexColor";
         triangle_recipe.domain = "DrawTriangle";
         triangle_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigOrtho(false);
-        triangle_recipe.pipeline_preset = PipelinePreset::Solid2D;
+        triangle_recipe.pipeline_config = mtl::MakeSolid2DConfig();
         triangle_asset = PrimitiveAsset(geom_triangle, &triangle_recipe, PrimitiveType::Triangles);
         ecs_primitive->SetPrimitiveAsset(&triangle_asset);
         ecs_primitive->SetVisible(true);

@@ -4,6 +4,7 @@
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/type/ManagedArray.h>
 #include<hgl/mtl/new/GeometryFetchMode.h>
+#include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/log/Log.h>
 
 namespace hgl::graph{
@@ -41,7 +42,8 @@ protected:
                              VkPipelineLayout,
                              const VIL *,
                              const GeometryVertexFormat *gvf=nullptr,
-                             PipelinePreset preset=PipelinePreset::Auto);
+                             const uint64_t pipeline_config_hash=0,
+                             const bool is_overlay=false);
 
 private:
 
@@ -74,10 +76,11 @@ public:
 public:
 
     Pipeline *CreatePipeline(ShaderProgram *,const VIL *,const PipelineData *,   const bool prim_restart=false,const GeometryVertexFormat *gvf=nullptr);
-    Pipeline *CreatePipeline(ShaderProgram *,const VIL *,const PipelinePreset &, const bool prim_restart=false,const GeometryVertexFormat *gvf=nullptr);
+    Pipeline *CreatePipeline(ShaderProgram *,const VIL *,const mtl::MaterialPipelineConfig &config, const bool prim_restart=false,const GeometryVertexFormat *gvf=nullptr);
+    Pipeline *CreatePipeline(ShaderProgram *,const VIL *,const mtl::MaterialRecipe &recipe, const bool prim_restart=false,const GeometryVertexFormat *gvf=nullptr);
 
     Pipeline *CreatePipeline(ShaderProgram *mtl,         const PipelineData *,   const bool prim_restart=false);
-    Pipeline *CreatePipeline(ShaderProgram *mtl,         const PipelinePreset &, const bool prim_restart=false);
+    Pipeline *CreatePipeline(ShaderProgram *mtl,         const mtl::MaterialPipelineConfig &config, const bool prim_restart=false);
 
     /**
      * 从原始着色器阶段 + Pipeline Layout + VIL 创建管线（供 Compositor 系统使用）

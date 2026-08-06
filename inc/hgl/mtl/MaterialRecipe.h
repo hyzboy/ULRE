@@ -1,7 +1,7 @@
 #pragma once
 
 #include <hgl/mtl/VertexShaderNodeConfig.h>
-#include <hgl/graph/PipelinePreset.h>
+#include <hgl/mtl/PipelineConfig.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
 #include <hgl/mtl/DescriptorSemantic.h>
 #include <hgl/common/VertexAttribDef.h>
@@ -287,7 +287,8 @@ namespace hgl::graph::mtl
         bool double_sided = false; // 双面渲染开关
         bool alpha_test = false;   // 是否启用 alpha test
         float alpha_cutoff = 0.5f; // alpha test 阈值（alpha < cutoff 丢弃）
-        hgl::graph::PipelinePreset pipeline_preset = hgl::graph::PipelinePreset::Auto; // Auto: 未配置，渲染时拒绝
+
+        MaterialPipelineConfig pipeline_config; // 管线配置（深度/混合/剔除/覆盖层等，替代旧 PipelinePreset）
 
         std::vector<RecipeTextureBinding> textures; // 所有纹理语义绑定
         std::vector<RecipeSSBOAssetBinding> ssbo_assets; // 所有 SSBO 运行时绑定（name/slot/type/id/row）
@@ -438,7 +439,7 @@ namespace hgl::graph::mtl
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.double_sided);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.alpha_test);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.alpha_cutoff);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.pipeline_preset);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, HashMaterialPipelineConfig(recipe.pipeline_config));
 
         const uint32_t texture_count = static_cast<uint32_t>(recipe.textures.size());
         hash = hgl::hash::FNV1aAppendValueBytes(hash, texture_count);

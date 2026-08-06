@@ -42,12 +42,10 @@ namespace hgl::graph::mtl
             {
                 GLSLCodeModuleID::SkyLightHeader,
                 "SkyLightHeader",
-                R"GLSL(
-vec3 ULRE_GetSkyLightDir()
-{
-    return normalize(sky.sun_direction.xyz);
-}
-)GLSL",
+                // 天光算法已统一到 ShaderLibrary/sky/sky_atmosphere.glsl（GetSky* 系列），
+                // 由 CompositorAssembler 的 sky_module 选择注入。本模块仅作为
+                // has_sky_root 标记，不再注入 GLSL 代码。
+                "// Sky lighting provided by sky/sky_atmosphere.glsl (compositor sky module)",
                 nullptr,
                 0,
                 nullptr,
@@ -60,17 +58,8 @@ vec3 ULRE_GetSkyLightDir()
             {
                 GLSLCodeModuleID::SkyLightSimple,
                 "SkyLightSimple",
-                R"GLSL(
-vec3 ULRE_GetSkyLightColor()
-{
-    return sky.sun_color.rgb * sky.sun_intensity;
-}
-                vec3 ULRE_GetSkyAmbientColor()
-                {
-                    float h = clamp(normalize(sky.sun_direction.xyz).z * 0.5 + 0.5, 0.0, 1.0);
-                    return sky.base_sky_color.rgb * exp2(-(1.0 - h) * 0.8);
-                }
-                )GLSL",
+                // 仅声明 SkyInfo UBO 资源需求；函数由 sky/sky_atmosphere.glsl 提供。
+                "// SkyLightSimple: requires SkyInfo UBO (functions in sky/sky_atmosphere.glsl)",
                 SKY_LIGHT_UBO_REQUIREMENT,
                 uint32(sizeof(SKY_LIGHT_UBO_REQUIREMENT) / sizeof(SKY_LIGHT_UBO_REQUIREMENT[0])),
                 nullptr,
@@ -83,16 +72,9 @@ vec3 ULRE_GetSkyLightColor()
             {
                 GLSLCodeModuleID::SkyLightCubeMap,
                 "SkyLightCubeMap",
-                R"GLSL(
-vec3 ULRE_GetSkyLightColor()
-{
-    return texture(SkyCubemap, ULRE_GetSkyLightDir()).rgb;
-}
-vec3 ULRE_GetSkyAmbientColor()
-{
-    return texture(SkyCubemap, ULRE_GetSkyLightDir()).rgb;
-}
-)GLSL",
+                // 未来 CUBEMAP 天光模式的资源声明（SkyInfo + SkyCubemap texture）。
+                // 函数实现届时由独立的 sky/sky_cubemap.glsl（GetSky* 同名接口）提供。
+                "// SkyLightCubeMap: requires SkyInfo UBO + SkyCubemap samplerCube (future)",
                 SKY_LIGHT_UBO_REQUIREMENT,
                 uint32(sizeof(SKY_LIGHT_UBO_REQUIREMENT) / sizeof(SKY_LIGHT_UBO_REQUIREMENT[0])),
                 nullptr,
