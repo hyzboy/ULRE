@@ -11,6 +11,8 @@ namespace hgl
     namespace graph
     {
         class RenderContext;
+        class Texture;
+        class Sampler;
     }
 
     namespace ecs
@@ -25,7 +27,7 @@ namespace hgl
             bool need_sh_ubo = false;      ///<是否需要 SH 系数 UBO
         };
 
-        /// SkyLight 资源绑定占位（仅接口，不在本阶段实现真实资源分配）
+        /// SkyLight resource names supplied by the environment/resource layer.
         struct SkyLightResourceBinding
         {
             const char *cubemap_name = nullptr;      ///<CubeMap 资源标识（资源系统 key/path/name）
@@ -47,9 +49,11 @@ namespace hgl
             UBOSkyInfo *sky_ubo = nullptr;
             bool sky_ubo_managed = false;
 
-            // SkyLight 配置与占位绑定（接口阶段）
+            // SkyLight configuration and runtime resource bindings.
             graph::mtl::SkyLightAmbientModel skylight_model = graph::mtl::SkyLightAmbientModel::Simple;
             SkyLightResourceBinding skylight_binding;
+            graph::Texture *sky_cubemap_texture = nullptr;
+            graph::Sampler *sky_cubemap_sampler = nullptr;
 
         public:
 
@@ -67,7 +71,8 @@ namespace hgl
             void SyncSkyUBO();
 
             // -----------------------------------------------------------------
-            // SkyLight 配置接口（阶段 1：声明与最小联动；资源创建/同步留待后续实现）
+            // SkyLight configuration interface. Resource ownership remains
+            // with the environment/resource layer.
             // -----------------------------------------------------------------
 
             /// 设置当前天光模型；immediate=true 时仅标记 Sky UBO dirty（不做重资源）
@@ -95,14 +100,14 @@ namespace hgl
                 return out;
             }
 
-            /// 占位接口：设置当前模型对应的资源绑定（不触发真实加载）
+            /// Set logical resource names; loading remains external.
             void SetSkyLightResourceBinding(const SkyLightResourceBinding &binding)
             {
                 skylight_binding = binding;
                 SyncSkyLightBindingKeysFromRequirement();
             }
 
-            /// 占位接口：获取当前资源绑定
+            /// Get logical resource names.
             const SkyLightResourceBinding &GetSkyLightResourceBinding() const { return skylight_binding; }
 
             /// 便捷接口：设置单 CubeMap 资源名（当前阶段最常用）
@@ -111,13 +116,25 @@ namespace hgl
             /// 便捷接口：获取单 CubeMap 资源名
             const char *GetSkyCubeMapName() const { return skylight_binding.cubemap_name; }
 
-            /// 占位接口：检查当前绑定是否满足模型需求（仅字符串非空检查）
+            void SetSkyCubeMapResource(graph::Texture *texture, graph::Sampler *sampler)
+            {
+                sky_cubemap_texture = texture;
+                sky_cubemap_sampler = sampler;
+            }
+
+            graph::Texture *GetSkyCubeMapTexture() const { return sky_cubemap_texture; }
+            graph::Sampler *GetSkyCubeMapSampler() const { return sky_cubemap_sampler; }
+
+            /// Check that required logical and runtime resources are available.
             bool IsSkyLightResourceReady() const
             {
                 const graph::mtl::SkyLightDataRequirement req =
                     graph::mtl::GetSkyLightDataRequirement(skylight_model);
 
-                if (req.need_sky_cubemap && (!skylight_binding.cubemap_name || !*skylight_binding.cubemap_name))
+                if (req.need_sky_cubemap
+                 && ((!skylight_binding.cubemap_name || !*skylight_binding.cubemap_name)
+                  || !sky_cubemap_texture
+                  || !sky_cubemap_sampler))
                     return false;
                 if (req.need_ibl_cubemap && (!skylight_binding.ibl_cubemap_name || !*skylight_binding.ibl_cubemap_name))
                     return false;

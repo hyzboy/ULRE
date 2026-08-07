@@ -90,8 +90,8 @@ namespace hgl::ecs
     {
         EnsureResources();
 
-        // S2: SkyInfo UBO 必须长期存在并保持可同步，不能因为天空资源未就绪而消失。
-        // 真实 CubeMap/SH/IBL 资源热切换与绑定后续再接入；当前阶段先稳定 Scene set 的 sky 槽位。
+        // SkyInfo remains available independently of optional environment
+        // textures; CubeMap resources are supplied through the binding API.
         SyncSkyUBO();
     }
     void EnvironmentSystem::EnsureResources()
@@ -132,4 +132,3 @@ namespace hgl::ecs
         }
     }
 }//namespace hgl::ecs
-

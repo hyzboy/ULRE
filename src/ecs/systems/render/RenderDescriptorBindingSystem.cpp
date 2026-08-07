@@ -1129,9 +1129,20 @@ namespace hgl::ecs
             case graph::mtl::DescriptorSemantic::SkyCubemapSampler:
             {
                 const auto *binding = FindMaterialResourceBinding(material, req.name);
-                if (binding && binding->texture && binding->sampler)
+                graph::Texture *texture = binding ? binding->texture : nullptr;
+                graph::Sampler *sampler = binding ? binding->sampler : nullptr;
+                if ((!texture || !sampler) && context)
                 {
-                    if (!bind_texture_sampler(material, batch, req, binding->texture, binding->sampler))
+                    if (auto environment_system = context->GetSystem<EnvironmentSystem>())
+                    {
+                        texture = environment_system->GetSkyCubeMapTexture();
+                        sampler = environment_system->GetSkyCubeMapSampler();
+                    }
+                }
+
+                if (texture && sampler)
+                {
+                    if (!bind_texture_sampler(material, batch, req, texture, sampler))
                         log_bind_failure(material, batch, req, "bind sky cubemap sampler failed");
                 }
                 break;

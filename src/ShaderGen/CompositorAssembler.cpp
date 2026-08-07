@@ -58,10 +58,10 @@ namespace hgl::graph
             return shader_lib_path_ + "/compositor/main_forward_lit.frag.glsl";
 
         case PassType::ForwardMasked:
-            return shader_lib_path_ + "/compositor/main_forward_lit.frag.glsl"; // 后续支持 masked 合成
+            return shader_lib_path_ + "/compositor/main_forward_lit.frag.glsl";
 
         case PassType::ForwardTransparent:
-            return shader_lib_path_ + "/compositor/main_forward_lit.frag.glsl"; // 后续支持透明合成
+            return shader_lib_path_ + "/compositor/main_forward_lit.frag.glsl";
 
         case PassType::ForwardDither:
         case PassType::ForwardA2C:
@@ -90,14 +90,13 @@ namespace hgl::graph
         case SurfaceType::Standard:   return "surface/standard_surface.glsl";
         case SurfaceType::Unlit:      return "surface/unlit_color3d_surface.glsl";
         case SurfaceType::Sky:        return "surface/sky_minimal_surface.glsl";
-        case SurfaceType::Skin:
-        case SurfaceType::Hair:
-        case SurfaceType::Cloth:
-        case SurfaceType::Eye:
-        case SurfaceType::Foliage:
-        case SurfaceType::ClearCoat:
-        case SurfaceType::Water:
-            return {};
+        case SurfaceType::Skin:       return "surface/skin_surface.glsl";
+        case SurfaceType::Hair:       return "surface/hair_surface.glsl";
+        case SurfaceType::Cloth:      return "surface/cloth_surface.glsl";
+        case SurfaceType::Eye:        return "surface/eye_surface.glsl";
+        case SurfaceType::Foliage:    return "surface/foliage_surface.glsl";
+        case SurfaceType::ClearCoat:  return "surface/clearcoat_surface.glsl";
+        case SurfaceType::Water:      return "surface/water_surface.glsl";
         default:                      return {};
         }
     }

@@ -6,6 +6,7 @@
 #include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/shadergen/ShaderProgramBuildSpec.h>
+#include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/log/Log.h>
 #include "2d/Build2DCommon.h"
 #include "3d/DefinitionDescriptorBuilder3D.h"
@@ -201,14 +202,6 @@ namespace
          && !has_explicit_recipe_node_config
          && definition.has_transform_graph)
             vertex_node_config = definition.transform_graph.ToNodeConfig();
-        if (!request.has_transform_graph
-         && IsDefault3DNodeConfig(vertex_node_config)
-         && request.geometry_vertex_format)
-        {
-            const auto *position = request.geometry_vertex_format->Find(VertexSemantic::Position);
-            if (position && position->vec_size == 2)
-                vertex_node_config = MaterialTransformGraph::FlatXY().ToNodeConfig();
-        }
         const MaterialTransformGraph transform_graph =
             MaterialTransformGraph::FromNodeConfig(vertex_node_config);
         vertex_node_config = transform_graph.ToNodeConfig();
@@ -238,10 +231,22 @@ namespace
         }
         ShaderResourceManifest manifest{};
         ShaderProgramLinkSpec resolved_program_link{};
+        SkyLightAmbientModel ambient_model = request.override_sky_ambient_model
+            ? request.sky_ambient_model : SkyLightAmbientModel::Simple;
+        if (!request.override_sky_ambient_model)
+        {
+            for (const GLSLCodeModuleID id : definition.code_module_requirements)
+            {
+                if (id == GLSLCodeModuleID::SkyLightCubeMap)
+                {
+                    ambient_model = SkyLightAmbientModel::CubeMap;
+                    break;
+                }
+            }
+        }
         if (definition.fragment_program_mode == MaterialFragmentProgramMode::Compositor)
         {
-            if (!Build3DShaderResourceManifest(definition, request.override_sky_ambient_model
-                ? request.sky_ambient_model : SkyLightAmbientModel::Simple, manifest))
+            if (!Build3DShaderResourceManifest(definition, ambient_model, manifest))
             {
                 GLogError("[ShaderGen] Generic material resource manifest failed: name=%s",
                           definition.definition_name.c_str());
@@ -262,17 +267,22 @@ namespace
         }
         std::string vs = GenerateVertexShader(vertex_node_config, varying,
                                                position_format,
-                                               extra_attributes, "ShaderLibrary",
+                                               extra_attributes, GetShaderLibraryPath().c_str(),
                                                resolved_vertex_input_glsl,
                                                resolved_provider_glsl);
 
         std::string fs;
         if (definition.fragment_program_mode == MaterialFragmentProgramMode::Compositor)
         {
-            CompositorAssembler assembler("ShaderLibrary");
+            CompositorAssembler assembler(GetShaderLibraryPath());
             CompositorAssembler::CompositorModuleOptions compositor_options{};
             compositor_options.alpha_test = request.recipe.alpha_test;
             compositor_options.alpha_cutoff = request.recipe.alpha_cutoff;
+            compositor_options.sky_module =
+                ambient_model == SkyLightAmbientModel::CubeMap
+             || ambient_model == SkyLightAmbientModel::IBL
+                    ? "sky/sky_cubemap.glsl"
+                    : "sky/sky_atmosphere.glsl";
             compositor_options.dither =
                 definition.compositor_blend == BlendMode::Dither
              || definition.compositor_pass == PassType::ForwardDither;
@@ -559,8 +569,11 @@ MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry()
     {
         int file_count = 0;
         int error_count = 0;
+        const hgl::filesystem::Path material_path =
+            hgl::filesystem::Path(ToOSString(GetShaderLibraryPath()))
+            / OSString(OS_TEXT("material"));
         if (!registry.LoadDirectory(
-                OS_TEXT("ShaderLibrary/material"), &file_count, &error_count))
+                material_path.ToOSString(), &file_count, &error_count))
         {
             GLogWarning("[ShaderGen] Material TOML directory unavailable; using built-in definitions");
         }
@@ -581,7 +594,7 @@ GLSLCodeModuleRegistry &GetGLSLCodeModuleRegistry()
     if (!loaded)
     {
         registry.RegisterBuiltinModules();
-        registry.LoadDirectory(OS_TEXT("ShaderLibrary"));
+        registry.LoadDirectory(ToOSString(GetShaderLibraryPath()));
         loaded = true;
     }
     return registry;

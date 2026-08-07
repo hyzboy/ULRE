@@ -5,6 +5,7 @@
 #include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/shadergen/ShaderProgramBuildSpec.h>
 #include <hgl/shadergen/ShaderCreateInfo.h>
+#include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/shadergen/ShaderArtifactStore.h>
 #include <hgl/graph/glsl/GLSLCodeModule.h>
 #include <hgl/graph/glsl/GLSLCodeModuleCapabilityResolver.h>
@@ -14,6 +15,7 @@
 #include <hgl/common/RenderOptions.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include "../../ShaderGen/2d/Build2DCommon.h"
+#include "../../ShaderGen/3d/DefinitionDescriptorBuilder3D.h"
 #include "../../ShaderGen/common/VertexBuilderCommon.h"
 #include "../../ShaderGen/common/VertexShaderAssembler.h"
 
@@ -576,7 +578,7 @@ namespace
         GateResult result;
         result.name = "N.compositor-version-placement";
 
-        CompositorAssembler assembler("E:/ULRE/ShaderLibrary");
+        CompositorAssembler assembler(GetShaderLibraryPath());
         const auto assembled = assembler.Assemble(
             SurfaceType::Standard,
             BlendMode::Opaque,
@@ -642,6 +644,47 @@ namespace
          || unsupported.error_message.find("Unsupported compositor pass") == std::string::npos)
             result.diagnostics.emplace_back(
                 "Unsupported compositor pass must fail explicitly");
+
+        CompositorAssembler::CompositorModuleOptions cubemap_options{};
+        cubemap_options.sky_module = "sky/sky_cubemap.glsl";
+        const auto cubemap = assembler.Assemble(
+            SurfaceType::Sky,
+            BlendMode::Opaque,
+            PassType::ForwardOpaque,
+            "compositor/main_forward_sky.frag.glsl",
+            "surface/sky_cubemap_surface.glsl",
+            cubemap_options);
+        if (!cubemap.success
+         || cubemap.fragment_glsl.find("#include \"sky/sky_cubemap.glsl\"")
+                == std::string::npos
+         || cubemap.fragment_glsl.find(
+                "#include \"surface/sky_cubemap_surface.glsl\"")
+                == std::string::npos)
+            result.diagnostics.emplace_back(
+                "CubeMap compositor must select the CubeMap sky and surface modules");
+
+        const SurfaceType supported_surfaces[] = {
+            SurfaceType::Skin,
+            SurfaceType::Hair,
+            SurfaceType::Cloth,
+            SurfaceType::Eye,
+            SurfaceType::Foliage,
+            SurfaceType::ClearCoat,
+            SurfaceType::Water
+        };
+        for (const SurfaceType supported_surface : supported_surfaces)
+        {
+            const auto surface_result = assembler.Assemble(
+                supported_surface,
+                BlendMode::Opaque,
+                PassType::ForwardOpaque);
+            if (!surface_result.success)
+            {
+                result.diagnostics.emplace_back(
+                    "Supported surface entry point failed to assemble");
+                break;
+            }
+        }
 
         result.passed = result.diagnostics.empty();
         return result;
@@ -1069,7 +1112,7 @@ namespace
          || pure_color.fragment_surface_module)
             result.diagnostics.emplace_back("PureColor must use one FS module");
 
-        CompositorAssembler assembler("E:/ULRE/ShaderLibrary");
+        CompositorAssembler assembler(GetShaderLibraryPath());
         const auto assembled = assembler.Assemble(
             SurfaceType::Unlit, BlendMode::Opaque, PassType::ForwardOpaque,
             "compositor/pure_color.frag.glsl", nullptr);
@@ -1170,7 +1213,7 @@ namespace
         {
             return GenerateVertexShader(
                 graph.ToNodeConfig(), varying, VK_FORMAT_R32G32B32_SFLOAT,
-                std::string(), "ShaderLibrary");
+                std::string(), GetShaderLibraryPath());
         };
 
         const std::string flat = build(MaterialTransformGraph::FlatXY());
@@ -1332,9 +1375,9 @@ namespace
         MaterialDefinitionFileRegistry registry;
         int file_count = 0;
         int error_count = 0;
-        if (!registry.LoadDirectory(OS_TEXT("E:/ULRE/ShaderLibrary"),
+        if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()),
                                     &file_count, &error_count)
-         || file_count != 9
+         || file_count != 10
          || error_count != 0)
         {
             result.diagnostics.emplace_back("material file registry bulk load failed");
@@ -1344,13 +1387,44 @@ namespace
             const char *expected_file_ids[] = {
                 "Lit", "LitTextureArray", "SkyMinimal", "DebugNormalColor",
                 "VertexColor", "UnlitTexture", "Texture2DArray",
-                "VertexLuminance", "VertexPaletteColor"
+                "VertexLuminance", "VertexPaletteColor", "SkyCubeMap"
             };
             for (const char *id : expected_file_ids)
             {
                 if (!registry.FindByID(id))
                     result.diagnostics.emplace_back(
                         std::string("missing bulk material file: ") + id);
+            }
+
+            const MaterialDefinition *cubemap_file =
+                registry.FindByID("SkyCubeMap");
+            if (!cubemap_file
+             || cubemap_file->compositor_surface != SurfaceType::Sky
+             || !cubemap_file->fragment_surface_module
+             || std::strcmp(
+                    cubemap_file->fragment_surface_module,
+                    "surface/sky_cubemap_surface.glsl") != 0
+             || cubemap_file->code_module_requirements.size() != 1
+             || cubemap_file->code_module_requirements[0]
+                    != GLSLCodeModuleID::SkyLightCubeMap)
+            {
+                result.diagnostics.emplace_back(
+                    "SkyCubeMap material definition contract is invalid");
+            }
+            else
+            {
+                ShaderResourceManifest cubemap_manifest{};
+                if (!Build3DShaderResourceManifest(
+                        *cubemap_file,
+                        SkyLightAmbientModel::CubeMap,
+                        cubemap_manifest)
+                 || cubemap_manifest.texture_count != 1
+                 || cubemap_manifest.textures[0].semantic
+                        != DescriptorSemantic::SkyCubemapSampler)
+                {
+                    result.diagnostics.emplace_back(
+                        "SkyCubeMap resource manifest must contain one sky cubemap sampler");
+                }
             }
 
             const MaterialDefinition *file_definition = registry.FindByID("Lit");
@@ -1534,7 +1608,7 @@ namespace
     static GateResult RunFallbackInferenceCase()
     {
         GateResult result;
-        result.name = "F.fallback-dimension-inference";
+        result.name = "F.fallback-dimension-neutral";
 
         GeometryVertexFormat gvf_2d{};
         gvf_2d.Add(VertexSemantic::Position, VK_FORMAT_R32G32_SFLOAT, 2, sizeof(float) * 2);
@@ -1542,8 +1616,9 @@ namespace
         GeometryVertexFormat gvf_3d{};
         gvf_3d.Add(VertexSemantic::Position, VK_FORMAT_R32G32B32_SFLOAT, 3, sizeof(float) * 3);
 
-        (void)gvf_2d;
-        (void)gvf_3d;
+        if (gvf_2d.GetVertexInputHash() == gvf_3d.GetVertexInputHash())
+            result.diagnostics.emplace_back(
+                "Geometry formats with different dimensions must remain distinct");
         if (std::strcmp(GetFallbackMaterialDefinitionID(), BUILTIN_MTL_DEF_PURE_COLOR) != 0)
             result.diagnostics.emplace_back("all Geometry dimensions must use unified PureColor fallback");
 
@@ -1773,7 +1848,7 @@ namespace
 
         int file_count = 0;
         int error_count = 0;
-        if (!registry.LoadDirectory(OS_TEXT("E:/ULRE/ShaderLibrary"), &file_count, &error_count))
+        if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()), &file_count, &error_count))
             result.diagnostics.emplace_back("LoadDirectory failed to scan directory");
         else
         {
@@ -1821,7 +1896,7 @@ namespace
         // Re-scan must detect every duplicate name and keep counts stable.
         int dup_count = 0;
         int dup_errors = 0;
-        if (!registry.LoadDirectory(OS_TEXT("E:/ULRE/ShaderLibrary"), &dup_count, &dup_errors))
+        if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()), &dup_count, &dup_errors))
             result.diagnostics.emplace_back("second LoadDirectory failed");
         else if (dup_count != 0 || dup_errors != 60)
             result.diagnostics.emplace_back("second LoadDirectory must report 60 duplicates, got files="
@@ -2475,6 +2550,23 @@ namespace
         result.passed = result.diagnostics.empty();
         return result;
     }
+
+    static GateResult RunShaderLibraryPathCase()
+    {
+        GateResult result;
+        result.name = "AB.shader-library-path";
+
+        const std::string root = GetShaderLibraryPath("ShaderLibrary");
+        const hgl::filesystem::Path root_path(hgl::ToOSString(root));
+        if (!IsShaderLibraryRoot(root_path))
+        {
+            result.diagnostics.emplace_back(
+                "ShaderLibrary path resolver did not find a valid material root");
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
 }
 
 int main()
@@ -2538,6 +2630,7 @@ int main()
     results.push_back(RunResolvedStageCacheIdentityCase());
     results.push_back(RunMaterialMultiSlotSourceCase());
     results.push_back(RunDirectIncludeManifestCase());
+    results.push_back(RunShaderLibraryPathCase());
 
     bool all_passed = true;
     for (const auto &result : results)

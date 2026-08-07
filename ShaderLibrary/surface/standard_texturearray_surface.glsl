@@ -79,6 +79,13 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 
     vec3 directColor   = EvalDirectLighting(surf, ntb, si.viewDir, lightDir, lightColor);
     vec3 indirectColor = EvalIndirectLighting(surf, ntb, si.viewDir, skyAmbient);
+#ifdef HGL_SKY_CUBEMAP
+    vec3 reflection_dir = reflect(-normalize(si.viewDir), ntb.N);
+    vec3 reflection_f0 = mix(vec3(surf.fresnel), surf.baseColor, surf.metallic);
+    indirectColor += GetSkyReflectionColor(reflection_dir)
+                   * reflection_f0
+                   * (1.0 - surf.roughness);
+#endif
 
     surf.baseColor = directColor + indirectColor + surf.emissive;
     return surf;

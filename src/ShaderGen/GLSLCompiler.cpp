@@ -6,6 +6,7 @@
 #include<hgl/log/Logger.h>
 #include<hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
 #include<hgl/shadergen/contract/ShaderGenPhysicalDeviceProfileJson.h>
+#include<hgl/shadergen/ShaderLibraryPath.h>
 #include<vector>
 #include<string>
 
@@ -213,7 +214,9 @@ namespace hgl
                         if(g_pd_profile_valid)
                             ApplyPhysicalDeviceProfileToCompilerLimits(g_pd_profile);
 
-                        AddShaderIncludePath("ShaderLibrary");
+                        const std::string shader_library_path =
+                            mtl::GetShaderLibraryPath();
+                        AddShaderIncludePath(shader_library_path.c_str());
 
                         return(true);
                     }

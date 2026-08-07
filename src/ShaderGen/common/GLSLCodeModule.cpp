@@ -72,9 +72,9 @@ namespace hgl::graph::mtl
             {
                 GLSLCodeModuleID::SkyLightCubeMap,
                 "SkyLightCubeMap",
-                // 未来 CUBEMAP 天光模式的资源声明（SkyInfo + SkyCubemap texture）。
-                // 函数实现届时由独立的 sky/sky_cubemap.glsl（GetSky* 同名接口）提供。
-                "// SkyLightCubeMap: requires SkyInfo UBO + SkyCubemap samplerCube (future)",
+                // CubeMap mode resources; implementation is selected by the
+                // compositor sky module path.
+                "// SkyLightCubeMap: requires SkyInfo UBO + SkyCubemap samplerCube",
                 SKY_LIGHT_UBO_REQUIREMENT,
                 uint32(sizeof(SKY_LIGHT_UBO_REQUIREMENT) / sizeof(SKY_LIGHT_UBO_REQUIREMENT[0])),
                 nullptr,

@@ -20,6 +20,7 @@
 #include "common/descriptor_macros.glsl"
 #include "ubo/sky_info.glsl"
 SCENE_SKY_UBO;
+#include "sky/sky_atmosphere.glsl"
 
 // Surface interface
 #include "common/surface_interface.glsl"

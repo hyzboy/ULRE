@@ -465,6 +465,8 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     AppendDescriptorBindingDefine("VIEWPORT_SET", descriptor_info.GetUBO(SBS_ViewportInfo.name));
     AppendDescriptorBindingDefine("CAMERA_SET", descriptor_info.GetUBO(SBS_CameraInfo.name));
     AppendDescriptorBindingDefine("SKY_SET", descriptor_info.GetUBO(SBS_SkyInfo.name));
+    AppendDescriptorBindingDefine(
+        "SKY_CUBEMAP_SET", descriptor_info.GetTextureSampler("SkyCubemap"));
 
     const TextureSamplerDescriptor *primary_sampler = nullptr;
     if (!primary_sampler_name.empty())
