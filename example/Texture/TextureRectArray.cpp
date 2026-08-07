@@ -81,7 +81,7 @@ private:
     Sampler *           sampler             = nullptr;
     graph::mtl::MaterialRecipe rect_recipe{};
     PrimitiveAsset      rect_asset{};
-    graph::SSBOArrayAccessor<hgl::math::Vector4u> * mi_ssbo_accessor   =nullptr;
+    graph::SSBOArrayAccessor<hgl::math::Vector4u> * mtl_data_ssbo_accessor = nullptr;
     std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
 
     struct
@@ -130,16 +130,16 @@ private:
 
         sampler=sampler_manager->CreateSampler();
 
-        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<hgl::math::Vector4u>(
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<hgl::math::Vector4u>(
             graph::mtl::SSBOType::TextureRectArraySurface,
-            "TextureRectArray:MIData",
+            "TextureRectArray:MaterialData",
             TexCount);
-        if (!mi_ssbo_accessor)
+        if (!mtl_data_ssbo_accessor)
             return false;
 
         for (uint32_t i = 0; i < TexCount; ++i)
-            (*mi_ssbo_accessor)[i] = hgl::math::Vector4u{i, 0u, 0u, 0u};
-        mi_ssbo_accessor->Commit();
+            (*mtl_data_ssbo_accessor)[i] = hgl::math::Vector4u{i, 0u, 0u, 0u};
+        mtl_data_ssbo_accessor->Commit();
 
         rect_recipe.recipe_name = "TextureRectArray.Texture2DArray";
         rect_recipe.mtl_def_id = "Texture2DArray";
@@ -148,7 +148,7 @@ private:
         rect_recipe.domain = "TextureRectArray";
         graph::mtl::UpsertRecipeSSBOAssetBinding(rect_recipe,
                                                  graph::mtl::DefaultMaterialDataSlotName,
-                                                 mi_ssbo_accessor->GetSSBOBinding());
+                                                 mtl_data_ssbo_accessor->GetSSBOBinding());
 
         return(true);
     }
@@ -204,7 +204,7 @@ private:
                                                   PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray);
             hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource rect_struct{};
             rect_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
-            rect_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
+            rect_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             rect_struct.data_index = i;
             rect_struct.use_data_index = true;
             rect_struct.shared_across_instances = false;
@@ -220,7 +220,7 @@ public:
     explicit TestApp(std::shared_ptr<ecs::ECSContext> ctx) : WorkObject(std::move(ctx)) {}
     ~TestApp()
     {
-        SAFE_CLEAR(mi_ssbo_accessor)
+        SAFE_CLEAR(mtl_data_ssbo_accessor)
     }
     bool Init() override
     {

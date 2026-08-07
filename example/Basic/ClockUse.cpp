@@ -75,7 +75,7 @@ private:
     Geometry* geometry = nullptr;
     graph::mtl::MaterialRecipe clock_recipe{};
     PrimitiveAsset clock_asset{};
-    graph::SSBOArrayAccessor<Color4f>* mi_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<Color4f>* mtl_data_ssbo_accessor = nullptr;
     static constexpr uint32_t tick_slot   = 0;
     static constexpr uint32_t hand_slots[3] = {1, 2, 3};
 
@@ -112,7 +112,7 @@ private:
         clock_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
         graph::mtl::UpsertRecipeSSBOAssetBinding(clock_recipe,
                                                  graph::mtl::DefaultMaterialDataSlotName,
-                                                 mi_ssbo_accessor->GetSSBOBinding());
+                                                 mtl_data_ssbo_accessor->GetSSBOBinding());
         clock_asset = PrimitiveAsset(geometry, &clock_recipe, PrimitiveType::Triangles);
 
         return true;
@@ -157,14 +157,14 @@ private:
         if (!domain_manager)
             return false;
 
-        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
             graph::mtl::SSBOType::EmissiveSurface,
-            "Clock:EmissiveSurface:MIData",
+            "Clock:EmissiveSurface:MaterialData",
             4);
-        if (!mi_ssbo_accessor)
+        if (!mtl_data_ssbo_accessor)
             return false;
 
-        (*mi_ssbo_accessor)[tick_slot] = Color4f(1.0f, 1.0f, 1.0f, 1.0f);
+        (*mtl_data_ssbo_accessor)[tick_slot] = Color4f(1.0f, 1.0f, 1.0f, 1.0f);
 
         Color4f hand_colors[3] = {
             Color4f(1.0f, 0.0f, 0.0f, 1.0f),
@@ -173,10 +173,10 @@ private:
         };
         for (uint i = 0; i < 3; ++i)
         {
-            (*mi_ssbo_accessor)[hand_slots[i]] = hand_colors[i];
+            (*mtl_data_ssbo_accessor)[hand_slots[i]] = hand_colors[i];
         }
 
-        mi_ssbo_accessor->Commit();
+        mtl_data_ssbo_accessor->Commit();
         return true;
     }
 
@@ -224,7 +224,7 @@ private:
             primitive_comp->SetPrimitiveAsset(&clock_asset);
             hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource tick_struct{};
             tick_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
-            tick_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
+            tick_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             tick_struct.data_index = tick_slot;
             tick_struct.use_data_index = true;
             tick_struct.shared_across_instances = false;
@@ -261,7 +261,7 @@ private:
             primitive_comp->SetPrimitiveAsset(&clock_asset);
             hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource hand_struct{};
             hand_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
-            hand_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
+            hand_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             hand_struct.data_index = hand_slots[i];
             hand_struct.use_data_index = true;
             hand_struct.shared_across_instances = false;
@@ -358,7 +358,7 @@ public:
 
     ~ClockApp()
     {
-        SAFE_CLEAR(mi_ssbo_accessor)
+        SAFE_CLEAR(mtl_data_ssbo_accessor)
     }
 };//class ClockApp:public WorkObject
 

@@ -80,7 +80,7 @@ namespace hgl::graph
 
         binding_vil =nullptr;
         binding_set =nullptr;
-        mi_ssbo     =nullptr;
+        text_style_ssbo     =nullptr;
 
         fixed_style.CharColor=GetColor4ub(COLOR::White);
 
@@ -95,9 +95,9 @@ namespace hgl::graph
         fixed_style=cs;
 
         // Write updated CharStyle directly to the external SSBO.
-        if (mi_ssbo)
+        if (text_style_ssbo)
         {
-            if (auto *gpu = mi_ssbo->GetGPUBuffer())
+            if (auto *gpu = text_style_ssbo->GetGPUBuffer())
                 gpu->Write(&fixed_style, 0, hgl_min(static_cast<uint32_t>(sizeof(fixed_style)),
                                                     ResolveMaterialSSBOStride(mtl_fs)));
         }
@@ -125,12 +125,12 @@ namespace hgl::graph
         delete binding_set;
         binding_set = nullptr;
 
-        if (mi_ssbo && graphics_context)
+        if (text_style_ssbo && graphics_context)
         {
             if (auto *buf_mgr = graphics_context->GetBufferManager())
-                buf_mgr->Release(mi_ssbo);
+                buf_mgr->Release(text_style_ssbo);
         }
-        mi_ssbo = nullptr;
+        text_style_ssbo = nullptr;
 
         if (binding_vil && mtl_fs)
         {
@@ -237,11 +237,11 @@ namespace hgl::graph
         const uint32_t mi_bytes = ResolveMaterialSSBOStride(mtl_fs);
         if (mi_bytes > 0 && buffer_manager && domain_manager)
         {
-            mi_ssbo = buffer_manager->CreateSSBO("TextRender:FixedStyle", mi_bytes, nullptr, SharingMode::Exclusive);
-            if (!mi_ssbo) return false;
+            text_style_ssbo = buffer_manager->CreateSSBO("TextRender:FixedStyle", mi_bytes, nullptr, SharingMode::Exclusive);
+            if (!text_style_ssbo) return false;
 
             // Write initial CharStyle data
-            if (auto *gpu = mi_ssbo->GetGPUBuffer())
+            if (auto *gpu = text_style_ssbo->GetGPUBuffer())
                 gpu->Write(&fixed_style, 0, hgl_min(static_cast<uint32_t>(sizeof(fixed_style)), mi_bytes));
 
             // Register in domain manager so RenderDescriptorBindingSystem can resolve it
@@ -250,7 +250,7 @@ namespace hgl::graph
                 if (req.semantic != mtl::DescriptorSemantic::MaterialDataSlotData)
                     continue;
                 const mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
-                domain_manager->RegisterBuffer(addr, mi_ssbo, 1);
+                domain_manager->RegisterBuffer(addr, text_style_ssbo, 1);
             }
         }
 

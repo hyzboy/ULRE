@@ -74,7 +74,7 @@ private:
     graph::mtl::MaterialRecipe near_recipe{};
     graph::mtl::MaterialRecipe far_recipe{};
 
-    graph::SSBOArrayAccessor<ssbo::LitMaterialData>* mi_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<ssbo::LitMaterialData>* mtl_data_ssbo_accessor = nullptr;
 
     Texture2DArray *near_base_color_array = nullptr;
     Texture2DArray *near_normal_array = nullptr;
@@ -162,9 +162,9 @@ private:
         auto* domain_manager = GetManager<ResourceDomainManager>();
         if (!domain_manager)
             return LogFail("InitMaterials", "domain manager null");
-        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::LitMaterialData>(
-            graph::mtl::SSBOType::ClearCoatSurface, "SingleSphereSwitch:MIData", 1);
-        if (!mi_ssbo_accessor)
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::LitMaterialData>(
+            graph::mtl::SSBOType::ClearCoatSurface, "SingleSphereSwitch:MaterialData", 1);
+        if (!mtl_data_ssbo_accessor)
             return LogFail("InitMaterials", "SSBO allocation failed");
 
         near_recipe.recipe_name = "06e.SingleSphereSwitch.Near";
@@ -173,7 +173,7 @@ private:
         near_recipe.pipeline_config = mtl::MakeSolid3DConfig();
         graph::mtl::UpsertRecipeSSBOAssetBinding(near_recipe,
                                                  graph::mtl::DefaultMaterialDataSlotName,
-                                                 mi_ssbo_accessor->GetSSBOBinding());
+                                                 mtl_data_ssbo_accessor->GetSSBOBinding());
 
         far_recipe = near_recipe;
         far_recipe.recipe_name = "06e.SingleSphereSwitch.Far";
@@ -244,7 +244,7 @@ private:
 
         hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource sphere_struct{};
         sphere_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
-        sphere_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
+        sphere_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
         sphere_struct.data_index = 0;
         sphere_struct.use_data_index = false;
         sphere_struct.shared_across_instances = false;
@@ -257,17 +257,17 @@ private:
         if (!near_base_color_array || !near_normal_array || !far_base_color_texture || !far_normal_texture)
             return LogFail("InitRenderResources", "required material/texture is null");
 
-        if (!mi_ssbo_accessor)
+        if (!mtl_data_ssbo_accessor)
             return LogFail("InitRenderResources", "SSBO not allocated");
 
-        ssbo::LitMaterialData mi_data{};
-        mi_data.base_color = Color4f(0.72f, 0.72f, 0.72f, 1.0f);
-        mi_data.metallic = 0.15f;
-        mi_data.roughness = 0.25f;
-        mi_data.normal_scale = 0.35f;
+        ssbo::LitMaterialData material_data{};
+        material_data.base_color = Color4f(0.72f, 0.72f, 0.72f, 1.0f);
+        material_data.metallic = 0.15f;
+        material_data.roughness = 0.25f;
+        material_data.normal_scale = 0.35f;
 
-        (*mi_ssbo_accessor)[0] = mi_data;
-        mi_ssbo_accessor->Commit();
+        (*mtl_data_ssbo_accessor)[0] = material_data;
+        mtl_data_ssbo_accessor->Commit();
         sphere_asset = PrimitiveAsset(sphere_geometry, &near_recipe, PrimitiveType::Triangles);
 
         return true;
@@ -365,7 +365,7 @@ public:
         SAFE_CLEAR(sphere_geometry)
         SAFE_CLEAR(mesh_vdm)
 
-        SAFE_CLEAR(mi_ssbo_accessor)
+        SAFE_CLEAR(mtl_data_ssbo_accessor)
 
         SAFE_CLEAR(near_base_color_array)
         SAFE_CLEAR(near_normal_array)

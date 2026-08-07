@@ -37,6 +37,9 @@ namespace hgl::graph
             const char *direct_lighting_module = nullptr;  // e.g. "lighting/direct_cook_torrance_pbr.glsl"
             const char *indirect_lighting_module = nullptr;// e.g. "lighting/indirect_simple_ambient.glsl"
             const char *ntb_module = nullptr;              // e.g. "ntb/ntb_tangent_vbo_normalmap.glsl"
+            bool alpha_test = false;
+            float alpha_cutoff = 0.5f;
+            bool dither = false;
         };
 
         /// shader_library_path: ShaderLibrary 根目录的绝对路径（不带尾部斜杠）

@@ -100,7 +100,7 @@ private:
     Geometry *geometry = nullptr;
     PrimitiveAsset sphere_asset;
     graph::mtl::MaterialRecipe sphere_recipe{};
-    graph::SSBOArrayAccessor<Color4f>* mi_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<Color4f>* mtl_data_ssbo_accessor = nullptr;
     Color4f sphere_color_data{};
     Entity *sphere_entity = nullptr;
     std::shared_ptr<PrimitiveComponent> sphere_primitive_comp;
@@ -159,15 +159,15 @@ private:
         if (!domain_manager)
             return LogStageFail("OffscreenPass::InitMISSBO", "resource domain manager is null");
 
-        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
             graph::mtl::SSBOType::EmissiveSurface,
-            "RenderToTexture:OffscreenPass:MIData",
+            "RenderToTexture:OffscreenPass:MaterialData",
             1);
-        if (!mi_ssbo_accessor)
+        if (!mtl_data_ssbo_accessor)
             return LogStageFail("OffscreenPass::InitMISSBO", "CreateSSBO failed");
 
-        (*mi_ssbo_accessor)[0] = sphere_color_data;
-        mi_ssbo_accessor->Commit();
+        (*mtl_data_ssbo_accessor)[0] = sphere_color_data;
+        mtl_data_ssbo_accessor->Commit();
 
         LogStage("OffscreenPass::InitMISSBO", "success");
         return true;
@@ -191,8 +191,8 @@ public:
             }
         }
 
-        delete mi_ssbo_accessor;
-        mi_ssbo_accessor = nullptr;
+        delete mtl_data_ssbo_accessor;
+        mtl_data_ssbo_accessor = nullptr;
         geometry = nullptr;
     }
 
@@ -273,7 +273,7 @@ public:
         prim_comp->SetPrimitiveAsset(&sphere_asset);
         hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource sphere_struct{};
         sphere_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
-        sphere_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
+        sphere_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
         sphere_struct.data_index = 0;
         sphere_struct.use_data_index = true;
         sphere_struct.shared_across_instances = true;
@@ -325,9 +325,9 @@ private:
 
     PrimitiveAsset cube_asset;
     graph::mtl::MaterialRecipe cube_recipe{};
-    graph::SSBOArrayAccessor<ssbo::LitMaterialData>* cube_mi_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<ssbo::LitMaterialData>* cube_mtl_data_ssbo_accessor = nullptr;
     Sampler *cube_sampler = nullptr;
-    ssbo::LitMaterialData cube_mi_data{};
+    ssbo::LitMaterialData cube_material_data{};
 
     Texture2D *base_tex = nullptr;
     Texture2D *fallback_albedo = nullptr;
@@ -419,10 +419,10 @@ private:
 
         LogTextureInfo("onscreen_bind_basecolor", base_tex);
 
-        cube_mi_data.base_color = Color4f(1.0f);
-        cube_mi_data.metallic = 0.08f;
-        cube_mi_data.roughness = 0.92f;
-        cube_mi_data.normal_scale = 0.35f;
+        cube_material_data.base_color = Color4f(1.0f);
+        cube_material_data.metallic = 0.08f;
+        cube_material_data.roughness = 0.92f;
+        cube_material_data.normal_scale = 0.35f;
 
         if (!InitCubeMISSBO())
             return LogStageFail("RenderToTextureApp::CreateCube", "InitCubeMISSBO failed");
@@ -463,7 +463,7 @@ private:
         cube_prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_tex, cube_sampler);
         hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource cube_struct{};
         cube_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
-        cube_struct.ssbo_id = cube_mi_ssbo_accessor->GetSSBOId();
+        cube_struct.ssbo_id = cube_mtl_data_ssbo_accessor->GetSSBOId();
         cube_struct.data_index = 0;
         cube_struct.use_data_index = true;
         cube_struct.shared_across_instances = true;
@@ -483,15 +483,15 @@ private:
         if (!domain_manager)
             return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "resource domain manager is null");
 
-        cube_mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::LitMaterialData>(
+        cube_mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::LitMaterialData>(
             graph::mtl::SSBOType::ClearCoatSurface,
-            "RenderToTexture:MainScene:MIData",
+            "RenderToTexture:MainScene:MaterialData",
             1);
-        if (!cube_mi_ssbo_accessor)
+        if (!cube_mtl_data_ssbo_accessor)
             return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "CreateSSBO failed");
 
-        (*cube_mi_ssbo_accessor)[0] = cube_mi_data;
-        cube_mi_ssbo_accessor->Commit();
+        (*cube_mtl_data_ssbo_accessor)[0] = cube_material_data;
+        cube_mtl_data_ssbo_accessor->Commit();
 
         LogStage("RenderToTextureApp::InitCubeMISSBO", "success");
         return true;
@@ -510,7 +510,7 @@ public:
             }
         }
 
-        SAFE_CLEAR(cube_mi_ssbo_accessor)
+        SAFE_CLEAR(cube_mtl_data_ssbo_accessor)
         cube_sampler = nullptr;
         base_tex = nullptr;
         fallback_albedo = nullptr;

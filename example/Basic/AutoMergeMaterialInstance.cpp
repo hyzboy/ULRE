@@ -69,7 +69,7 @@ private:
     PrimitiveAsset triangle_asset{};
 
     // MI 结构体 SSBO
-    graph::SSBOArrayAccessor<Color4f>* mi_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<Color4f>* mtl_data_ssbo_accessor = nullptr;
 
     // 每个三角形的数据
     struct TriangleData
@@ -86,18 +86,17 @@ private:
         if (!geometry)
             return false;
 
-        triangle_recipe.recipe_name = "AutoMergeMaterialInstance.PureColor";
+        triangle_recipe.recipe_name = "AutoMergeMaterialData.PureColor";
         triangle_recipe.mtl_def_id = "builtin/pure_color";
         triangle_recipe.pipeline_config = mtl::MakeSolid2DConfig();
-        triangle_recipe.domain = "AutoMergeMaterialInstance";
+        triangle_recipe.domain = "AutoMergeMaterialData";
         triangle_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
         graph::mtl::UpsertRecipeSSBOAssetBinding(triangle_recipe,
                                                  graph::mtl::DefaultMaterialDataSlotName,
-                                                 mi_ssbo_accessor->GetSSBOBinding());
+                                                 mtl_data_ssbo_accessor->GetSSBOBinding());
 
         triangle_asset = PrimitiveAsset(geometry, &triangle_recipe, PrimitiveType::Triangles);
 
-        std::cout << "[TestApp::InitRecipe] Recipe initialized with ssbo_id=" << mi_ssbo_accessor->GetSSBOId() << std::endl;
 
         return true;
     }
@@ -173,7 +172,7 @@ private:
             primitive_comp->SetPrimitiveAsset(&triangle_asset);
             hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource tri_struct{};
             tri_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
-            tri_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
+            tri_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             tri_struct.data_index = i;
             tri_struct.use_data_index = true;
             tri_struct.shared_across_instances = false;
@@ -209,19 +208,19 @@ private:
         if (!domain_manager)
             return false;
 
-        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
             graph::mtl::SSBOType::EmissiveSurface,
-            "Example:EmissiveSurface:MIData",
+            "Example:EmissiveSurface:MaterialData",
             DRAW_OBJECT_COUNT);
-        if (!mi_ssbo_accessor)
+        if (!mtl_data_ssbo_accessor)
             return false;
 
         for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
         {
-            (*mi_ssbo_accessor)[i] = GetColor4f((COLOR)(i + int(COLOR::Blue)), 1.0f);
+            (*mtl_data_ssbo_accessor)[i] = GetColor4f((COLOR)(i + int(COLOR::Blue)), 1.0f);
             triangles[i].entity = nullptr;
         }
-        mi_ssbo_accessor->Commit();
+        mtl_data_ssbo_accessor->Commit();
 
         return true;
     }
@@ -264,7 +263,7 @@ public:
 
     ~TestApp()
     {
-        SAFE_CLEAR(mi_ssbo_accessor)
+        SAFE_CLEAR(mtl_data_ssbo_accessor)
     }
 };//class TestApp:public WorkObject
 

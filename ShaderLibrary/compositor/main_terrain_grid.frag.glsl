@@ -30,6 +30,7 @@ layout(location=0) out vec4 outColor;
 // Surface interface + surface function
 #include "common/surface_interface.glsl"
 #include SURFACE_FUNCTION_FILE
+#include "common/alpha_compositor.glsl"
 
 void main()
 {
@@ -46,5 +47,5 @@ void main()
 
     SurfaceOutput so = EvalSurface(si, 0u);
 
-    outColor = vec4(so.baseColor, so.alpha);
+    outColor = HGLComposeColor(vec4(so.baseColor, so.alpha));
 }

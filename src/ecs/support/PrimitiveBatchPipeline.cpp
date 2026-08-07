@@ -108,7 +108,7 @@ namespace hgl::ecs
             indexed_draw_cmd->firstInstance = batch->first_instance;
         }
 
-        uint32_t ResolveMaterialDataIndexRow(RenderItem *item, const graph::mtl::SSBOType primary_ssbo_type)
+        uint32_t ResolveMaterialDataIndexRow(RenderItem *item)
         {
             if (!item)
                 return 0;
@@ -616,7 +616,7 @@ namespace hgl::ecs
             }
         }
 
-        // Per-batch DataIndex rows SSBO — shader consumes this as a flat uint[] by instance index.
+        // Per-batch DataIndex rows SSBO — shader consumes fixed-width rows by instance index.
         if (MaterialRequiresRecipeRuntimeRows(batch.key.shader_program))
         {
             if (!batch.material_data_index_rows_buffer || batch.material_data_index_rows_capacity < item_count)
@@ -634,7 +634,9 @@ namespace hgl::ecs
 
                 if (batch.buffer_manager)
                 {
-                    const VkDeviceSize byte_size = static_cast<VkDeviceSize>(batch.material_data_index_rows_capacity) * sizeof(uint32_t);
+                    const VkDeviceSize byte_size =
+                        static_cast<VkDeviceSize>(batch.material_data_index_rows_capacity)
+                        * graph::mtl::MaterialDataIndexRowStride * sizeof(uint32_t);
                     batch.material_data_index_rows_buffer = batch.buffer_manager->CreateSSBO(
                         "ECS:Batch:MaterialDataIndexRows", byte_size, nullptr, graph::SharingMode::Exclusive);
                 }
@@ -671,45 +673,57 @@ namespace hgl::ecs
             }
         }
 
-        // Write per-batch DataIndex rows SSBO in draw order.
-        // mtl_data_index_rows is declared as uint values[] in shader, so this must be tightly packed uint.
+        // Write per-batch fixed-width DataIndex rows in draw order.
         if (batch.material_data_index_rows_buffer)
         {
             auto *mi_gpu = batch.material_data_index_rows_buffer->GetGPUBuffer();
             if (mi_gpu)
             {
-                graph::mtl::SSBOType primary_ssbo_type = graph::mtl::SSBOType::PBRSurface;
-                if (batch.key.shader_program)
-                {
-                    for (const auto &req : batch.key.shader_program->GetMaterialResourceLayout().requirements)
-                    {
-                        if (req.semantic == graph::mtl::DescriptorSemantic::MaterialDataSlotData)
-                        {
-                            primary_ssbo_type = req.ssbo_type;
-                            break;
-                        }
-                    }
-                }
-
                 uint32_t *row_ptr = static_cast<uint32_t *>(
-                    mi_gpu->Map(0, static_cast<VkDeviceSize>(item_count) * sizeof(uint32_t)));
+                    mi_gpu->Map(
+                        0,
+                        static_cast<VkDeviceSize>(item_count)
+                        * graph::mtl::MaterialDataIndexRowStride
+                        * sizeof(uint32_t)));
                 if (row_ptr)
                 {
                     bool warned_missing_recipe_row = false;
                     for (size_t i = 0; i < item_count; ++i)
                     {
-                        uint32_t row = ResolveMaterialDataIndexRow(batch.items[i], primary_ssbo_type);
-                        if (row == InvalidBatchDataIndexRow)
+                        const uint32_t base =
+                            static_cast<uint32_t>(i) * graph::mtl::MaterialDataIndexRowStride;
+                        for (uint32_t slot = 0; slot < graph::mtl::MaterialDataIndexRowStride; ++slot)
+                            row_ptr[base + slot] = 0u;
+
+                        auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(batch.items[i]);
+                        auto material_comp = primitive_item
+                            ? primitive_item->GetMaterialComponent()
+                            : nullptr;
+                        if (material_comp && !material_comp->data_index_values.empty())
                         {
-                            if (!warned_missing_recipe_row)
-                            {
-                                warned_missing_recipe_row = true;
-                                LogWarning("[PrimitiveBatchPipeline] Missing recipe data_index_row in batch write, fallback to row0. shader_prog=%s",
-                                           batch.key.shader_program ? batch.key.shader_program->GetName().c_str() : "<null>");
-                            }
-                            row = 0;
+                            for (uint32_t slot = 0;
+                                 slot < material_comp->data_index_values.size()
+                                  && slot < graph::mtl::MaterialDataIndexRowStride;
+                                 ++slot)
+                                row_ptr[base + slot] = material_comp->data_index_values[slot];
                         }
-                        row_ptr[i] = row;
+                        else
+                        {
+                            const uint32_t row = ResolveMaterialDataIndexRow(batch.items[i]);
+                            if (row == InvalidBatchDataIndexRow)
+                            {
+                                if (!warned_missing_recipe_row)
+                                {
+                                    warned_missing_recipe_row = true;
+                                    LogWarning("[PrimitiveBatchPipeline] Missing recipe data_index_row in batch write, fallback to row0. shader_prog=%s",
+                                               batch.key.shader_program ? batch.key.shader_program->GetName().c_str() : "<null>");
+                                }
+                            }
+                            else
+                            {
+                                row_ptr[base] = row;
+                            }
+                        }
                     }
                     mi_gpu->Unmap();
                 }

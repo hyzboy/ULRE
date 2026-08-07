@@ -65,7 +65,7 @@ private:
     Entity* camera_entity = nullptr;
 
     graph::mtl::MaterialRecipe mesh_recipe{};
-    graph::SSBOArrayAccessor<ssbo::LitMaterialData>* mi_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<ssbo::LitMaterialData>* mtl_data_ssbo_accessor = nullptr;
     VertexDataManager* mesh_vdm = nullptr;
 
     RenderMesh* rm_floor = nullptr;
@@ -92,7 +92,7 @@ private:
         mesh_recipe.domain = "06c.TextureBlinnPhong";
         graph::mtl::UpsertRecipeSSBOAssetBinding(mesh_recipe,
                                                  graph::mtl::DefaultMaterialDataSlotName,
-                                                 mi_ssbo_accessor->GetSSBOBinding());
+                                                 mtl_data_ssbo_accessor->GetSSBOBinding());
 
         base_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
         if (!base_texture)
@@ -121,21 +121,21 @@ private:
         if (!domain_manager)
             return false;
 
-        ssbo::LitMaterialData mi_data{};
-        mi_data.base_color  = Color4f(1.0f);
-        mi_data.metallic    = 0.08f;
-        mi_data.roughness   = 0.92f;
-        mi_data.normal_scale = 0.35f;
+        ssbo::LitMaterialData material_data{};
+        material_data.base_color  = Color4f(1.0f);
+        material_data.metallic    = 0.08f;
+        material_data.roughness   = 0.92f;
+        material_data.normal_scale = 0.35f;
 
-        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::LitMaterialData>(
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::LitMaterialData>(
             graph::mtl::SSBOType::ClearCoatSurface,
-            "06c:ClearCoatSurface:MIData",
+            "06c:ClearCoatSurface:MaterialData",
             1);
-        if (!mi_ssbo_accessor)
+        if (!mtl_data_ssbo_accessor)
             return false;
 
-        (*mi_ssbo_accessor)[0] = mi_data;
-        mi_ssbo_accessor->Commit();
+        (*mtl_data_ssbo_accessor)[0] = material_data;
+        mtl_data_ssbo_accessor->Commit();
         return true;
     }
 
@@ -403,7 +403,7 @@ private:
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource floor_struct{};
             floor_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
-            floor_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
+            floor_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             floor_struct.data_index = 0;
             floor_struct.use_data_index = false;
             floor_struct.shared_across_instances = false;
@@ -440,7 +440,7 @@ private:
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource mesh_struct{};
             mesh_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
-            mesh_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
+            mesh_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             mesh_struct.data_index = 0;
             mesh_struct.use_data_index = false;
             mesh_struct.shared_across_instances = false;
@@ -494,7 +494,7 @@ private:
 public:
     ~TextureBlinnPhongMeshesECSApp()
     {
-        SAFE_CLEAR(mi_ssbo_accessor)
+        SAFE_CLEAR(mtl_data_ssbo_accessor)
         SAFE_CLEAR(mesh_vdm)
     }
 

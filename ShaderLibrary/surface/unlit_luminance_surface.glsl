@@ -14,11 +14,11 @@
 
 SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 {
-    EmissiveSurfaceData mi = mtl.data[dataIndex];
+    EmissiveSurfaceData material_data = MTL_DATA.data[dataIndex];
 
     SurfaceOutput so;
-    so.baseColor = si.luminance * mi.color.rgb;
-    so.alpha     = mi.color.a;
+    so.baseColor = si.luminance * material_data.color.rgb;
+    so.alpha     = material_data.color.a;
     so.normal    = si.worldNormal;
     so.metallic  = 0.0;
     so.roughness = 1.0;
@@ -29,5 +29,5 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 
 float EvalAlpha(SurfaceInput si, uint dataIndex)
 {
-    return mtl.data[dataIndex].color.a;
+    return MTL_DATA.data[dataIndex].color.a;
 }

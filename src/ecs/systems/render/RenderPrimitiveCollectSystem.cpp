@@ -306,6 +306,7 @@ namespace hgl::ecs
 
             material_comp->texture_layer_row = uint32_t(-1);
             material_comp->data_index_row = uint32_t(-1);
+            material_comp->data_index_values.clear();
             material_comp->bindings_dirty = true;
             material_comp->resources_dirty = true;
             material_comp->valid = false;
@@ -493,6 +494,7 @@ namespace hgl::ecs
         {
             material_comp->texture_layer_row = 0;
             material_comp->data_index_row = 0;
+            material_comp->data_index_values.clear();
             material_comp->bindings_dirty = false;
             material_comp->resources_dirty = false;
             material_comp->valid = true;
@@ -508,6 +510,7 @@ namespace hgl::ecs
         }
 
         material_comp->ClearResolvedSSBOBindings();
+        material_comp->data_index_values.clear();
         for (const auto &req : material_comp->program->GetMaterialResourceLayout().requirements)
         {
             if (req.semantic != graph::mtl::DescriptorSemantic::MaterialDataSlotData)
@@ -564,8 +567,38 @@ namespace hgl::ecs
             if (asset_binding.use_data_index)
             {
                 entity_data_index = asset_binding.data_index;
-                break;
             }
+        }
+
+        for (const auto &ref : spec.struct_refs)
+        {
+            if (ref.data_slot >= material_comp->data_index_values.size())
+                material_comp->data_index_values.resize(ref.data_slot + 1, 0u);
+            material_comp->data_index_values[ref.data_slot] = ref.data_index;
+        }
+
+        for (const auto &asset_binding : effective_recipe.ssbo_assets)
+        {
+            if (!asset_binding.use_data_index)
+                continue;
+
+            uint32_t data_slot = asset_binding.data_slot;
+            for (const auto &req : material_comp->program->GetMaterialResourceLayout().requirements)
+            {
+                if (req.semantic == graph::mtl::DescriptorSemantic::MaterialDataSlotData
+                 && req.name
+                 && req.data_slot == asset_binding.data_slot
+                 && req.ssbo_type == asset_binding.ssbo_type
+                 && asset_binding.data_slot_name == req.name)
+                {
+                    data_slot = req.data_slot;
+                    break;
+                }
+            }
+
+            if (data_slot >= material_comp->data_index_values.size())
+                material_comp->data_index_values.resize(data_slot + 1, 0u);
+            material_comp->data_index_values[data_slot] = asset_binding.data_index;
         }
 
         if (entity_data_index != uint32_t(-1))

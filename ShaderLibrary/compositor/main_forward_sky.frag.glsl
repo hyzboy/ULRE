@@ -24,6 +24,7 @@ SCENE_SKY_UBO;
 // Surface interface
 #include "common/surface_interface.glsl"
 #include SURFACE_FUNCTION_FILE
+#include "common/alpha_compositor.glsl"
 
 // Input from VS: sky direction
 layout(location=0) in vec3 fragDirection;
@@ -45,5 +46,5 @@ void main()
 
     SurfaceOutput so = EvalSurface(si, 0u);
 
-    outColor = vec4(so.baseColor, so.alpha);
+    outColor = HGLComposeColor(vec4(so.baseColor, so.alpha));
 }

@@ -18,11 +18,11 @@ namespace hgl::graph::mtl
         "CameraInfo"
     };
 
-    constexpr const ShaderBufferSource SBS_ColorPattle =
+    constexpr const ShaderBufferSource SBS_ColorPalette =
     {
         DescriptorSetType::Material,
-        "color_pattle",
-        "ColorPattle"
+        "color_palette",
+        "ColorPalette"
     };
 
     constexpr const ShaderBufferSource SBS_SkyInfo =

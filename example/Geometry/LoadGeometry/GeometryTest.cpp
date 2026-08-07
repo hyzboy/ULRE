@@ -83,13 +83,13 @@ private:
     struct MaterialData
     {
         GeometryVertexFormat geometry_vertex_format;
-        graph::SSBOArrayAccessor<Color4f>* mi_ssbo_accessor = nullptr;
+        graph::SSBOArrayAccessor<Color4f> * mtl_data_ssbo_accessor = nullptr;
         uint32_t ssbo_count = 0;
 
         ~MaterialData()
         {
-            delete mi_ssbo_accessor;
-            mi_ssbo_accessor = nullptr;
+            delete mtl_data_ssbo_accessor;
+            mtl_data_ssbo_accessor = nullptr;
         }
     };
 
@@ -149,16 +149,16 @@ private:
 
         const uint32_t color_count = static_cast<uint32_t>(COLOR_COUNT);
         md->ssbo_count = color_count;
-        md->mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+        md->mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
             ssbo_type,
             tag,
             color_count);
-        if (!md->mi_ssbo_accessor)
+        if (!md->mtl_data_ssbo_accessor)
             return false;
 
         for (uint32_t i = 0; i < color_count; ++i)
-            (*md->mi_ssbo_accessor)[i] = GetColor4f(TestColor[i], 1.0f);
-        md->mi_ssbo_accessor->Commit();
+            (*md->mtl_data_ssbo_accessor)[i] = GetColor4f(TestColor[i], 1.0f);
+        md->mtl_data_ssbo_accessor->Commit();
 
         return true;
     }
@@ -180,7 +180,7 @@ private:
     {
         return InitMaterialRuntimeData(
             &solid,
-            "LoadGeometry:SolidMIData",
+            "LoadGeometry:SolidMaterialData",
             CreateGizmo3DGeometryVertexFormat(),
             graph::mtl::SSBOType::EmissiveSurface);
     }
@@ -189,7 +189,7 @@ private:
     {
         return InitMaterialRuntimeData(
             &wire,
-            "LoadGeometry:WireMIData",
+            "LoadGeometry:WireMaterialData",
             CreatePureColorGeometryVertexFormat(),
             graph::mtl::SSBOType::EmissiveSurface);
     }
@@ -294,7 +294,7 @@ private:
             bbox->primitive_comp->SetPrimitiveAsset(&bbox_asset);
             hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource bbox_struct{};
             bbox_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
-            bbox_struct.ssbo_id = wire.mi_ssbo_accessor->GetSSBOId();
+            bbox_struct.ssbo_id = wire.mtl_data_ssbo_accessor->GetSSBOId();
             bbox_struct.data_index = static_cast<uint32_t>(i % COLOR_COUNT);
             bbox_struct.use_data_index = true;
             bbox_struct.shared_across_instances = true;
@@ -336,7 +336,7 @@ private:
             rm->primitive_comp->SetPrimitiveAsset(&rm->asset);
             hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource mesh_struct{};
             mesh_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
-            mesh_struct.ssbo_id = solid.mi_ssbo_accessor->GetSSBOId();
+            mesh_struct.ssbo_id = solid.mtl_data_ssbo_accessor->GetSSBOId();
             mesh_struct.data_index = rm->color_index;
             mesh_struct.use_data_index = true;
             mesh_struct.shared_across_instances = true;

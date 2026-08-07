@@ -22,17 +22,17 @@
 
 SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 {
-    ClearCoatSurfaceData mi = mtl.data[dataIndex];
+    ClearCoatSurfaceData material_data = MTL_DATA.data[dataIndex];
 
     // 1. Base Albedo & PBR Parameters
-    vec3 albedo = mi.base_color.rgb;
+    vec3 albedo = material_data.base_color.rgb;
     const uint base_color_handle = GetTextureHandle(si.textureLayerID, TEXTURE_SLOT_BASE_COLOR);
     if (base_color_handle != 0u)
         albedo *= SampleBindless2D(base_color_handle, si.uv0).rgb;
 
-    float metallic  = clamp(mi.metallic,  0.0, 1.0);
-    float roughness = clamp(mi.roughness, 0.04, 1.0);
-    float fresnel   = clamp(mi.fresnel,   0.0, 1.0);
+    float metallic  = clamp(material_data.metallic,  0.0, 1.0);
+    float roughness = clamp(material_data.roughness, 0.04, 1.0);
+    float fresnel   = clamp(material_data.fresnel,   0.0, 1.0);
 
     // Roughness Map
     const uint roughness_handle = GetTextureHandle(si.textureLayerID, TEXTURE_SLOT_ROUGHNESS);
@@ -52,7 +52,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 
     // 2. Normal Map & NTB Space Resolution
     const uint normal_handle = GetTextureHandle(si.textureLayerID, TEXTURE_SLOT_NORMAL);
-    NTBSpace ntb = EvalNTBSpace(si, dataIndex, mi.normal_scale, normal_handle);
+    NTBSpace ntb = EvalNTBSpace(si, dataIndex, material_data.normal_scale, normal_handle);
 
     // 3. Construct Surface Base Output Properties
     SurfaceOutput surf;

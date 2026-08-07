@@ -74,8 +74,15 @@ namespace
         std::string &out_vertex_input_glsl,
         GLSLCodeModuleResolutionResult &out_resolution)
     {
-        if (definition.vertex_provider_policy != MaterialVertexProviderPolicy::GeometryOnly)
+        switch (definition.vertex_provider_policy)
+        {
+        case MaterialVertexProviderPolicy::Auto:
+        case MaterialVertexProviderPolicy::GeometryOnly:
+        case MaterialVertexProviderPolicy::AllowDerived:
+            break;
+        default:
             return false;
+        }
         if (!request.geometry_vertex_format)
             return false;
 
@@ -104,7 +111,7 @@ namespace
                 GetVertexSemanticFromGLSLCodeModuleSemantic(requirement.semantic);
             const char *name = GetVertexInputName(semantic);
             if (semantic == VertexSemantic::Color
-             && definition.vertex_varying.emit_vertex_color_from_pattle)
+             && definition.vertex_varying.emit_vertex_color_from_palette)
                 name = "ColorIndex";
             const GeometryVertexAttributeFormat *attribute = geometry.Find(semantic);
             if (!name || !attribute)
@@ -173,7 +180,7 @@ namespace
         varying.emit_luminance = definition.vertex_varying.emit_luminance;
         varying.emit_frag_direction = definition.vertex_varying.emit_frag_direction;
         varying.use_transform_id_attr = definition.vertex_varying.use_transform_id_attr;
-        varying.emit_vertex_color_from_pattle = definition.vertex_varying.emit_vertex_color_from_pattle;
+        varying.emit_vertex_color_from_palette = definition.vertex_varying.emit_vertex_color_from_palette;
 
         std::vector<FixedVertexEntry> vertices;
         std::vector<FixedDescriptorEntry> descriptors;
@@ -245,7 +252,13 @@ namespace
         else
         {
             Material2DBuildParams params = Material2DBuildParams::From(request, definition);
-            build2d::PushBaseDescriptorEntries(descriptors, params);
+            if (!build2d::Build2DShaderResourceManifest(definition, manifest))
+            {
+                GLogError("[ShaderGen] DirectInclude material resource manifest failed: name=%s",
+                          definition.definition_name.c_str());
+                return nullptr;
+            }
+            descriptors = build2d::Build2DDescriptorsFromDefinition(params, manifest);
         }
         std::string vs = GenerateVertexShader(vertex_node_config, varying,
                                                position_format,
@@ -257,12 +270,19 @@ namespace
         if (definition.fragment_program_mode == MaterialFragmentProgramMode::Compositor)
         {
             CompositorAssembler assembler("ShaderLibrary");
+            CompositorAssembler::CompositorModuleOptions compositor_options{};
+            compositor_options.alpha_test = request.recipe.alpha_test;
+            compositor_options.alpha_cutoff = request.recipe.alpha_cutoff;
+            compositor_options.dither =
+                definition.compositor_blend == BlendMode::Dither
+             || definition.compositor_pass == PassType::ForwardDither;
             const auto assembled = assembler.Assemble(
                 definition.compositor_surface,
                 definition.compositor_blend,
                 definition.compositor_pass,
                 definition.fragment_program_module,
-                definition.fragment_surface_module);
+                definition.fragment_surface_module,
+                compositor_options);
             if (!assembled.success)
             {
                 GLogError("[ShaderGen] Generic material compositor assembly failed: name=%s error=%s",
@@ -287,8 +307,15 @@ namespace
         config.primitive_type = request.primitive_type;
         config.shader_stage_flag_bits = request.override_shader_stage_bits
             ? request.shader_stage_flag_bit : uint32(ShaderStage::VertexFragment);
-        config.geometry_vertex_format = request.geometry_vertex_format;
         config.material_definition = &definition;
+        config.alpha_test = definition.fragment_program_mode == MaterialFragmentProgramMode::DirectInclude
+            && (request.recipe.alpha_test
+             || definition.compositor_blend == BlendMode::Masked
+             || definition.compositor_pass == PassType::ForwardMasked);
+        config.alpha_cutoff = request.recipe.alpha_cutoff;
+        config.alpha_dither = definition.fragment_program_mode == MaterialFragmentProgramMode::DirectInclude
+            && (definition.compositor_blend == BlendMode::Dither
+             || definition.compositor_pass == PassType::ForwardDither);
         config.resource_manifest = manifest.IsValid() ? &manifest : nullptr;
         config.artifact_store = request.shader_artifact_store;
         if (request.shader_artifact_store)

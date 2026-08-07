@@ -54,7 +54,7 @@ private:
 
     graph::mtl::MaterialRecipe cube_recipe{};
     PrimitiveAsset             cube_asset{};
-    graph::SSBOArrayAccessor<Color4f>* mi_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<Color4f>* mtl_data_ssbo_accessor = nullptr;
 
     Geometry *geometry = nullptr;
     struct CubeNode
@@ -118,8 +118,8 @@ private:
         if (!domain_manager)
             return false;
 
-        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(graph::mtl::SSBOType::EmissiveSurface, "RecursiveCube:MIData", 1);
-        if (!mi_ssbo_accessor)
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(graph::mtl::SSBOType::EmissiveSurface, "RecursiveCube:MaterialData", 1);
+        if (!mtl_data_ssbo_accessor)
             return false;
 
         cube_recipe.recipe_name = "RecursiveCube.DebugNormalColor";
@@ -128,11 +128,11 @@ private:
         cube_recipe.domain = "RecursiveCube";
         graph::mtl::UpsertRecipeSSBOAssetBinding(cube_recipe,
                                                  graph::mtl::DefaultMaterialDataSlotName,
-                                                 mi_ssbo_accessor->GetSSBOBinding());
+                                                 mtl_data_ssbo_accessor->GetSSBOBinding());
         cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
 
-        (*mi_ssbo_accessor)[0] = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-        mi_ssbo_accessor->Commit();
+        (*mtl_data_ssbo_accessor)[0] = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
+        mtl_data_ssbo_accessor->Commit();
 
         return true;
     }
@@ -185,11 +185,11 @@ private:
 
         auto primitive_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         primitive_comp->SetPrimitiveAsset(&cube_asset);
-        if (mi_ssbo_accessor && mi_ssbo_accessor->GetSSBOId() != 0)
+        if (mtl_data_ssbo_accessor && mtl_data_ssbo_accessor->GetSSBOId() != 0)
         {
             hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource cube_struct{};
             cube_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
-            cube_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
+            cube_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             cube_struct.data_index = 0;
             cube_struct.use_data_index = true;
             cube_struct.shared_across_instances = true;
@@ -288,7 +288,7 @@ public:
     ~RecursiveCubeApp()
     {
         SAFE_CLEAR(geometry)
-        SAFE_CLEAR(mi_ssbo_accessor)
+        SAFE_CLEAR(mtl_data_ssbo_accessor)
     }
 
     bool Init() override

@@ -54,6 +54,10 @@ PipelineData *BuildPipelineData(const mtl::MaterialPipelineConfig &config,
         pd->SetAlphaBlend(0,VK_BLEND_OP_ADD,VK_BLEND_FACTOR_ONE,VK_BLEND_FACTOR_ZERO);
     }
 
+    if (pd->multi_sample)
+        pd->multi_sample->alphaToCoverageEnable =
+            config.alpha_to_coverage ? VK_TRUE : VK_FALSE;
+
     // 线宽
     pd->SetLineWidth(config.line_width);
 

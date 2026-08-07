@@ -202,8 +202,8 @@ namespace hgl::graph::mtl
         std::array<uint32_t, static_cast<size_t>(TextureSlot::RANGE_SIZE)> values{};
     };
 
-    // MaterialDataIndexTable SSBO 的单实例行（每个结构体槽位一个 data_index）。
-    // 宽度动态 = 该材质 data_slot_decls.size()。
+    // MaterialDataIndexTable 的逻辑行（每个结构体槽位一个 data_index）。
+    // 上传到共享 SSBO 时会按 MaterialDataIndexRowStride 固定宽度补零。
     struct MaterialDataIndexRow
     {
         std::vector<uint32_t> values;  // values[data_slot] = data_index
@@ -329,7 +329,6 @@ namespace hgl::graph::mtl
             output.data_slot = input.data_slot;
             output.ssbo_type = alloc.ssbo_type;
             output.ssbo_id = alloc.ssbo_id;
-            output.ssbo_binding = static_cast<uint32_t>(alloc.ssbo_type); // 临时默认映射，后续由布局系统接管
             output.data_index = input.use_data_index ? input.data_index : alloc.data_index;
             output.byte_stride = alloc.byte_stride;
             return true;

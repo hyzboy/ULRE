@@ -50,9 +50,9 @@ private:
     hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
 
-    ssbo::LitMaterialData mi_data;
+    ssbo::LitMaterialData material_data;
     graph::mtl::MaterialRecipe wall_recipe{};
-    graph::SSBOArrayAccessor<ssbo::LitMaterialData>* mi_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<ssbo::LitMaterialData>* mtl_data_ssbo_accessor = nullptr;
     Sampler *sampler = nullptr;
     Texture2D *base_color_texture = nullptr;
     std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
@@ -66,7 +66,7 @@ public:
     {
         SAFE_CLEAR(sampler)
         SAFE_CLEAR(mesh_vdm)
-        SAFE_CLEAR(mi_ssbo_accessor)
+        SAFE_CLEAR(mtl_data_ssbo_accessor)
     }
 
     bool InitCamera()
@@ -112,7 +112,7 @@ public:
             prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_color_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource wall_struct{};
             wall_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
-            wall_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
+            wall_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             wall_struct.data_index = 0;
             wall_struct.use_data_index = true;
             wall_struct.shared_across_instances = true;
@@ -134,10 +134,10 @@ public:
         if (!geometry_manager)
             return false;
 
-        mi_data.base_color = GetColor4f(COLOR::FireBrick);
-        mi_data.metallic=0;
-        mi_data.roughness=0.95f;
-        mi_data.normal_scale=0.35f;
+        material_data.base_color = GetColor4f(COLOR::FireBrick);
+        material_data.metallic=0;
+        material_data.roughness=0.95f;
+        material_data.normal_scale=0.35f;
         wall_recipe.recipe_name = "WallsFromPolyline.Lit";
         wall_recipe.mtl_def_id = "Lit";
         wall_recipe.pipeline_config = mtl::MakeSolid3DConfig();
@@ -149,19 +149,19 @@ public:
         if (!domain_manager || !buffer_manager)
             return false;
 
-        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::LitMaterialData>(
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::LitMaterialData>(
             graph::mtl::SSBOType::ClearCoatSurface,
-            "WallsFromPolyline:MIData",
+            "WallsFromPolyline:MaterialData",
             1);
-        if (!mi_ssbo_accessor)
+        if (!mtl_data_ssbo_accessor)
             return false;
 
-        (*mi_ssbo_accessor)[0] = mi_data;
-        mi_ssbo_accessor->Commit();
+        (*mtl_data_ssbo_accessor)[0] = material_data;
+        mtl_data_ssbo_accessor->Commit();
 
         graph::mtl::UpsertRecipeSSBOAssetBinding(wall_recipe,
                                                  graph::mtl::DefaultMaterialDataSlotName,
-                                                 mi_ssbo_accessor->GetSSBOBinding());
+                                                 mtl_data_ssbo_accessor->GetSSBOBinding());
 
         // Standard surface (QUALITY_TIER=Medium) samples TexAlbedo; bind a fallback texture.
         base_color_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);

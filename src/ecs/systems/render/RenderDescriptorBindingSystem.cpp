@@ -484,11 +484,12 @@ namespace hgl::ecs
         }
         materialization_texture_layer_capacity = domain_manager->GetElementCapacity(graph::mtl::SSBOAddress{graph::mtl::SSBOType::TextureLayer, 0, 0});
 
-        // Compute per-material SSBO slot count (max across all rows).
+        // DataIndex rows use a fixed stride so different material definitions
+        // can share the same table buffer.
         const uint32_t max_data_slot_count = materialization_index_tables.GetMaxMaterialDataSlotCount();
         materialization_data_slot_count = max_data_slot_count;
         const VkDeviceSize ssbo_row_stride_bytes = max_data_slot_count > 0
-            ? static_cast<VkDeviceSize>(max_data_slot_count) * sizeof(uint32_t)
+            ? static_cast<VkDeviceSize>(graph::mtl::MaterialDataIndexRowStride) * sizeof(uint32_t)
             : sizeof(uint32_t);  // fallback: at least 1 uint32 to keep buffer valid
 
         if (data_capacity > 0 && max_data_slot_count > 0)
@@ -557,18 +558,18 @@ namespace hgl::ecs
 
         if (data_rows > 0 && max_data_slot_count > 0 && materialization_data_index_table_buffer)
         {
-            // Rows are variable-width; write as flat uint32 array with stride = max_data_slot_count.
+            // Rows are fixed-width; write as a flat uint32 array.
             auto *acc = graph::SSBOArrayAccessor<uint32_t>::Create(
                 materialization_data_index_table_buffer,
-                data_rows * max_data_slot_count);
+                data_rows * graph::mtl::MaterialDataIndexRowStride);
             if (acc)
             {
                 for (uint32_t i = 0; i < data_rows; ++i)
                 {
                     const auto *row = materialization_index_tables.GetMaterialDataIndexRow(i);
                     if (!row) break;
-                    const uint32_t base = i * max_data_slot_count;
-                    for (uint32_t j = 0; j < max_data_slot_count; ++j)
+                    const uint32_t base = i * graph::mtl::MaterialDataIndexRowStride;
+                    for (uint32_t j = 0; j < graph::mtl::MaterialDataIndexRowStride; ++j)
                         (*acc)[base + j] = (j < row->values.size()) ? row->values[j] : 0u;
                 }
                 acc->MarkDirty();
@@ -1234,13 +1235,13 @@ namespace hgl::ecs
                     }
                 }
 
-                const graph::IGPUBuffer *mi_ssbo = resolve_domain_ssbo(
+                const graph::IGPUBuffer *material_data_ssbo = resolve_domain_ssbo(
                     graph::mtl::SSBOAddress{req.ssbo_type, resolved_ssbo_id, 0},
                     "MaterialDataSlot");
 
-                if (mi_ssbo)
+                if (material_data_ssbo)
                 {
-                    if (!bind_ssbo(material, batch, req, mi_ssbo))
+                    if (!bind_ssbo(material, batch, req, material_data_ssbo))
                         log_bind_failure(material, batch, req, "bind MaterialDataSlot failed");
                 }
                 else
@@ -1346,7 +1347,7 @@ namespace hgl::ecs
             {
                 // MaterialColorPalette is explicitly declared and contract-validated.
                 // The current owner-bound path is non-ECS (for example LineRenderPipeline
-                // binds SBS_ColorPattle directly), so RDBS intentionally does not inject it.
+                // binds SBS_ColorPalette directly), so RDBS intentionally does not inject it.
                 break;
             }
             default:

@@ -433,11 +433,20 @@ namespace hgl::graph::mtl
                          || !item.contains("name") || !item.at("name").is_string()
                          || !item.contains("type") || !item.at("type").is_string())
                             return false;
+                        const std::string slot_name = item.at("name").as_string();
+                        if (!IsValidMaterialDataSlotName(slot_name)
+                         || out.definition.data_slot_decls.size() >= MaxMaterialDataSlotsPerMaterial)
+                            return false;
+                        for (const auto &existing : out.definition.data_slot_decls)
+                        {
+                            if (existing.name == slot_name)
+                                return false;
+                        }
                         SSBOType type;
                         if (!ParseSSBOType(item.at("type").as_string(), type))
                             return false;
                         out.definition.data_slot_decls.push_back(
-                            {item.at("name").as_string(), type});
+                            {slot_name, type});
                     }
                 }
 
@@ -483,7 +492,7 @@ namespace hgl::graph::mtl
                     else if (field == "emit_luminance") out.definition.vertex_varying.emit_luminance = true;
                     else if (field == "emit_frag_direction") out.definition.vertex_varying.emit_frag_direction = true;
                     else if (field == "use_transform_id_attr") out.definition.vertex_varying.use_transform_id_attr = true;
-                    else if (field == "emit_vertex_color_from_pattle") out.definition.vertex_varying.emit_vertex_color_from_pattle = true;
+                    else if (field == "emit_vertex_color_from_palette") out.definition.vertex_varying.emit_vertex_color_from_palette = true;
                     else return false;
                 }
             }

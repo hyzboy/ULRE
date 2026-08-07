@@ -30,10 +30,6 @@ struct CompositorMaterialBuildConfig
 {
     PrimitiveType primitive_type = PrimitiveType::Triangles;
     uint32_t shader_stage_flag_bits = uint32_t(ShaderStage::VertexFragment);
-    SkyLightAmbientModel sky_ambient_model = SkyLightAmbientModel::Simple;
-    const ::hgl::graph::ShaderBufferSource *const *private_shader_buffer_sources = nullptr;
-    uint32_t private_shader_buffer_source_count = 0;
-    const ::hgl::graph::GeometryVertexFormat *geometry_vertex_format = nullptr;
     // Per-material SSBO slot declarations (index == data_slot).
     // When non-null and non-empty, MaterialCompiler generates MaterialDataSlot
     // FixedDescriptorEntry items and injects the material SSBO struct/buffer
@@ -47,6 +43,10 @@ struct CompositorMaterialBuildConfig
     const ShaderProgramLinkSpec *program_link = nullptr;
     const ShaderResourceManifest *resource_manifest = nullptr;
     ShaderArtifactStore *artifact_store = nullptr;
+    bool generate_only = false; // Preserve generated GLSL for contract tests without SPV compilation.
+    bool alpha_test = false;
+    float alpha_cutoff = 0.5f;
+    bool alpha_dither = false;
 };
 
 class ShaderProgramBuildSpec;
@@ -84,14 +84,8 @@ inline CompositorMaterialBuildConfig ToCompositorBuildConfig3D(
 {
     CompositorMaterialBuildConfig bc;
     bc.primitive_type       = request.primitive_type;
-    bc.sky_ambient_model    = request.override_sky_ambient_model
-        ? request.sky_ambient_model
-        : SkyLightAmbientModel::Simple;
     if(request.override_shader_stage_bits)
         bc.shader_stage_flag_bits = request.shader_stage_flag_bit;
-    bc.geometry_vertex_format            = request.geometry_vertex_format;
-    bc.private_shader_buffer_sources     = request.private_shader_buffer_sources;
-    bc.private_shader_buffer_source_count = request.private_shader_buffer_source_count;
     bc.data_slot_decls                   = definition.data_slot_decls.empty() ? nullptr : &definition.data_slot_decls;
     bc.material_definition               = &definition;
     bc.program_link                      = nullptr;

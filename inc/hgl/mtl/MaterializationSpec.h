@@ -24,7 +24,6 @@ namespace hgl::graph::mtl
         uint32_t data_slot = DefaultMaterialDataSlot; // DataIndex 行槽位
         SSBOType ssbo_type = SSBOType::UserDefined; // 目标 SSBO 类型（契约主字段）
         uint32_t ssbo_id = 0;                       // 目标 SSBO 资源 ID（主字段，P1.55）
-        uint32_t ssbo_binding = 0;                  // 目标 SSBO binding（管线布局侧）
         uint32_t data_index = 0;                  // 结构数据索引（默认 0；可由作者层显式指定）
         uint32_t byte_stride = 0;                   // 同类结构体的字节步长
     };
@@ -74,67 +73,7 @@ namespace hgl::graph::mtl
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.data_slot);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_type);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_id);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_binding);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.byte_stride);
-        }
-
-        return static_cast<uint64_t>(hash);
-    }
-
-    // ProgramSignature：仅表达“会不会影响 shader program/布局”的语义信息。
-    // 说明：
-    // - 不包含 ssbo_id、bindless handle、texture layer 等绑定时态信息；
-    // - 用于 program 级缓存与批次中的“程序等价”判断。
-    inline uint64_t HashMaterializationProgramSignature(const MaterializationSpec &spec) noexcept
-    {
-        uint64 hash = hgl::hash::FNV1aInit<uint64>();
-
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.double_sided);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.alpha_test);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.alpha_cutoff);
-
-        const uint32_t resource_count = static_cast<uint32_t>(spec.resources.size());
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, resource_count);
-        for (const auto &resource : spec.resources)
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, resource.slot);
-
-        const uint32_t struct_count = static_cast<uint32_t>(spec.struct_refs.size());
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, struct_count);
-        for (const auto &ref : spec.struct_refs)
-        {
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.data_slot);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_type);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_binding);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.byte_stride);
-        }
-
-        return static_cast<uint64_t>(hash);
-    }
-
-    // BindingSignature：表达“绑定资源是否等价”。
-    // 说明：
-    // - 包含 ssbo_id/句柄/层等绑定身份；
-    // - 不影响 shader 代码，但影响是否可共享同一次绑定与 draw batch。
-    inline uint64_t HashMaterializationBindingSignature(const MaterializationSpec &spec) noexcept
-    {
-        uint64 hash = hgl::hash::FNV1aInit<uint64>();
-
-        const uint32_t resource_count = static_cast<uint32_t>(spec.resources.size());
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, resource_count);
-        for (const auto &resource : spec.resources)
-        {
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, resource.slot);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, resource.bindless_handle);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, resource.texture_layer);
-        }
-
-        const uint32_t struct_count = static_cast<uint32_t>(spec.struct_refs.size());
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, struct_count);
-        for (const auto &ref : spec.struct_refs)
-        {
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.data_slot);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_type);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_id);
         }
 
         return static_cast<uint64_t>(hash);

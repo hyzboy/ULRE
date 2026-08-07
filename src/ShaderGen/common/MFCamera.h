@@ -1,7 +1,5 @@
 #pragma once
 
-#include<hgl/mtl/StdMaterial.h>
-
 namespace hgl::graph::mtl{
 namespace func
 {

@@ -28,9 +28,9 @@
 
 SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 {
-    ClearCoatSurfaceData mi = mtl.data[dataIndex];
+    ClearCoatSurfaceData material_data = MTL_DATA.data[dataIndex];
 
-    vec3 albedo = mi.base_color.rgb;
+    vec3 albedo = material_data.base_color.rgb;
     const uint iid = si.textureLayerID;
     float layer = float(GetTextureHandle(iid, TEXTURE_SLOT_CUSTOM0));
 
@@ -38,9 +38,9 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
     if (base_color_handle != 0u)
         albedo *= SampleBindless2DArray(base_color_handle, si.uv0, layer).rgb;
 
-    float metallic  = clamp(mi.metallic,  0.0, 1.0);
-    float roughness = clamp(mi.roughness, 0.04, 1.0);
-    float fresnel   = clamp(mi.fresnel,   0.0, 1.0);
+    float metallic  = clamp(material_data.metallic,  0.0, 1.0);
+    float roughness = clamp(material_data.roughness, 0.04, 1.0);
+    float fresnel   = clamp(material_data.fresnel,   0.0, 1.0);
 
     vec3 N = normalize(si.worldNormal);
 
@@ -49,7 +49,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
     {
         vec3 nm = SampleBindless2DArray(normal_handle, si.uv0, layer).xyz * 2.0 - 1.0;
         nm.y = -nm.y;
-        N = normalize(N + vec3(nm.xy, 0.0) * mi.normal_scale);
+        N = normalize(N + vec3(nm.xy, 0.0) * material_data.normal_scale);
     }
 
     const uint roughness_handle = GetTextureHandle(iid, TEXTURE_SLOT_ROUGHNESS);

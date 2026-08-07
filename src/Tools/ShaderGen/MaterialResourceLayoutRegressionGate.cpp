@@ -2,6 +2,9 @@
 #include <hgl/mtl/MaterialLibrary.h>
 #include <hgl/mtl/MaterialDefinitionFile.h>
 #include <hgl/shadergen/CompositorAssembler.h>
+#include <hgl/shadergen/MaterialCompiler.h>
+#include <hgl/shadergen/ShaderProgramBuildSpec.h>
+#include <hgl/shadergen/ShaderCreateInfo.h>
 #include <hgl/shadergen/ShaderArtifactStore.h>
 #include <hgl/graph/glsl/GLSLCodeModule.h>
 #include <hgl/graph/glsl/GLSLCodeModuleCapabilityResolver.h>
@@ -10,6 +13,7 @@
 #include <hgl/graph/glsl/ShaderResourceManifest.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
+#include "../../ShaderGen/2d/Build2DCommon.h"
 #include "../../ShaderGen/common/VertexBuilderCommon.h"
 #include "../../ShaderGen/common/VertexShaderAssembler.h"
 
@@ -595,6 +599,50 @@ namespace
                     "Compositor GLSL contains a second #version directive");
         }
 
+        const auto dithered = assembler.Assemble(
+            SurfaceType::Unlit,
+            BlendMode::Dither,
+            PassType::ForwardDither);
+        if (!dithered.success
+         || dithered.fragment_glsl.find("#define HGL_ALPHA_DITHER 1") == std::string::npos
+         || dithered.fragment_glsl.find("HGLComposeColor") == std::string::npos)
+            result.diagnostics.emplace_back(
+                "Dither compositor must inject shared alpha handling");
+
+        CompositorAssembler::CompositorModuleOptions alpha_options{};
+        alpha_options.alpha_test = true;
+        alpha_options.alpha_cutoff = 0.25f;
+        const auto masked = assembler.Assemble(
+            SurfaceType::Unlit,
+            BlendMode::Masked,
+            PassType::ForwardMasked,
+            nullptr,
+            nullptr,
+            alpha_options);
+        if (!masked.success
+         || masked.fragment_glsl.find("#define HGL_ALPHA_TEST 1") == std::string::npos
+         || masked.fragment_glsl.find("#define HGL_ALPHA_CUTOFF 0.250000") == std::string::npos)
+            result.diagnostics.emplace_back(
+                "Masked compositor must inject alpha-test cutoff");
+
+        const auto alpha_to_coverage = assembler.Assemble(
+            SurfaceType::Unlit,
+            BlendMode::AlphaToCoverage,
+            PassType::ForwardA2C);
+        if (!alpha_to_coverage.success
+         || alpha_to_coverage.fragment_glsl.find("HGLComposeColor") == std::string::npos)
+            result.diagnostics.emplace_back(
+                "Alpha-to-coverage compositor must preserve alpha output");
+
+        const auto unsupported = assembler.Assemble(
+            SurfaceType::Standard,
+            BlendMode::Opaque,
+            PassType::ShadowOpaque);
+        if (unsupported.success
+         || unsupported.error_message.find("Unsupported compositor pass") == std::string::npos)
+            result.diagnostics.emplace_back(
+                "Unsupported compositor pass must fail explicitly");
+
         result.passed = result.diagnostics.empty();
         return result;
     }
@@ -1026,7 +1074,7 @@ namespace
             SurfaceType::Unlit, BlendMode::Opaque, PassType::ForwardOpaque,
             "compositor/pure_color.frag.glsl", nullptr);
         if (!assembled.success
-         || assembled.fragment_glsl.find("mtl.data[fragDataIndexID].color")
+         || assembled.fragment_glsl.find("MTL_DATA.data[fragDataIndexID].color")
                 == std::string::npos
          || assembled.fragment_glsl.find("layout(location=0) flat in uint fragDataIndexID")
                 == std::string::npos)
@@ -1244,6 +1292,22 @@ namespace
                             "surface/standard_surface.glsl") != 0)
             {
                 result.diagnostics.emplace_back("material schema fields mismatch");
+            }
+
+            const GeometryVertexFormat allow_derived_geometry{
+                {VertexSemantic::Position, VF_V3F},
+                {VertexSemantic::TexCoord, VF_V2F},
+                {VertexSemantic::Normal, VF_V3F}
+            };
+            MaterialDefinitionBuildRequest allow_derived_request{};
+            allow_derived_request.geometry_vertex_format = &allow_derived_geometry;
+            MaterialResolvedVertexABI allow_derived_abi{};
+            if (!BuildResolvedMaterialVertexABI(
+                    definition, allow_derived_request, allow_derived_abi)
+             || allow_derived_abi.vertex_entries.GetCount() != 3)
+            {
+                result.diagnostics.emplace_back(
+                    "AllowDerived material definition must build a geometry ABI");
             }
         }
 
@@ -2249,6 +2313,168 @@ namespace
         result.passed = result.diagnostics.empty();
         return result;
     }
+
+    static GateResult RunMaterialMultiSlotSourceCase()
+    {
+        GateResult result;
+        result.name = "Z.material-multislot-source";
+
+        std::vector<MaterialDataSlotDecl> slots = {
+            {"surface_a", SSBOType::EmissiveSurface},
+            {"surface_b", SSBOType::EmissiveSurface}
+        };
+        const FixedVertexEntry vertices[] = {
+            {VF_V2F, VertexSemantic::Position}
+        };
+        const FixedDescriptorEntry descriptors[] = {
+            {
+                DescriptorSetType::Material,
+                DescriptorKind::SSBO,
+                uint32_t(VK_SHADER_STAGE_VERTEX_BIT),
+                "mtl_data_index_rows",
+                "DataIndexRows",
+                nullptr,
+                DescriptorSemantic::MaterialDataIndexTable,
+                TextureSlot::BaseColor,
+                DefaultMaterialDataSlot,
+                SSBOType::MaterialDataIndexTable,
+                DescriptorSemanticLayer::SSBO
+            }
+        };
+        const FixedMaterialDef fixed_definition{
+            "MultiSlotMaterial",
+            PrimitiveType::Triangles,
+            vertices,
+            1,
+            descriptors,
+            1
+        };
+
+        CompositorMaterialBuildConfig config{};
+        config.data_slot_decls = &slots;
+        config.generate_only = true;
+
+        ShaderProgramBuildSpec *build_spec = CompileCompositorMaterial(
+            nullptr,
+            fixed_definition,
+            "#version 450\nlayout(location=0) in vec2 Position;\nvoid main(){gl_Position=vec4(Position,0.0,1.0);}\n",
+            "#version 450\nlayout(location=0) out vec4 outColor;\nvoid main(){outColor=vec4(1.0);}\n",
+            config);
+        if (!build_spec)
+        {
+            result.diagnostics.emplace_back("multi-slot compiler did not produce a build spec");
+            result.passed = false;
+            return result;
+        }
+
+        const ShaderCreateInfo *fragment =
+            build_spec->GetStageShader(ShaderStage::Fragment);
+        if (!fragment)
+        {
+            result.diagnostics.emplace_back("multi-slot compiler did not produce a fragment stage");
+        }
+        else
+        {
+            const std::string &source = fragment->GetFinalGLSL();
+            const auto count_occurrences = [&source](const char *token)
+            {
+                size_t count = 0;
+                size_t offset = 0;
+                while (true)
+                {
+                    const size_t found = source.find(token, offset);
+                    if (found == std::string::npos)
+                        break;
+                    ++count;
+                    offset = found + 1;
+                }
+                return count;
+            };
+
+            if (source.find("#define MTL_DATA surface_a") == std::string::npos
+             || source.find("#define MTL_DATA_SLOT_1 surface_b") == std::string::npos
+             || source.find("#define MTL_DATA_SLOT_COUNT 2u") == std::string::npos)
+                result.diagnostics.emplace_back("multi-slot aliases were not injected");
+
+            if (count_occurrences("struct EmissiveSurfaceData") != 1)
+                result.diagnostics.emplace_back("repeated SSBO type emitted duplicate GLSL struct");
+
+            if (source.find("} surface_a;") == std::string::npos
+             || source.find("} surface_b;") == std::string::npos)
+                result.diagnostics.emplace_back("named multi-slot SSBO declarations are incomplete");
+        }
+
+        const ShaderCreateInfo *vertex =
+            build_spec->GetStageShader(ShaderStage::Vertex);
+        if (!vertex)
+        {
+            result.diagnostics.emplace_back("multi-slot compiler did not produce a vertex stage");
+        }
+        else
+        {
+            const std::string &source = vertex->GetFinalGLSL();
+            if (source.find("ResolveDataIndexID(uint iid, uint data_slot)") == std::string::npos
+             || source.find("iid * MTL_DATA_INDEX_ROW_STRIDE + data_slot") == std::string::npos)
+                result.diagnostics.emplace_back("data-index resolver is not slot-aware");
+        }
+
+        delete build_spec;
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
+    static GateResult RunDirectIncludeManifestCase()
+    {
+        GateResult result;
+        result.name = "AA.direct-include-manifest";
+
+        MaterialDefinition definition{};
+        definition.code_module_requirements.push_back(
+            GLSLCodeModuleID::SkyLightHeader);
+        ShaderResourceManifest manifest{};
+        if (!build2d::Build2DShaderResourceManifest(definition, manifest)
+         || !manifest.IsValid())
+        {
+            result.diagnostics.emplace_back("2D DirectInclude manifest build failed");
+            result.passed = false;
+            return result;
+        }
+
+        const FixedMaterialDef fixed_definition{
+            "DirectIncludeManifest",
+            PrimitiveType::Triangles,
+            nullptr,
+            0,
+            nullptr,
+            0
+        };
+        CompositorMaterialBuildConfig config{};
+        config.resource_manifest = &manifest;
+        config.generate_only = true;
+        ShaderProgramBuildSpec *build_spec = CompileCompositorMaterial(
+            nullptr,
+            fixed_definition,
+            "#version 450\nvoid main(){gl_Position=vec4(0.0);}\n",
+            "#version 450\nlayout(location=0) out vec4 outColor;\nvoid main(){outColor=vec4(1.0);}\n",
+            config);
+        if (!build_spec)
+        {
+            result.diagnostics.emplace_back("DirectInclude manifest source generation failed");
+        }
+        else
+        {
+            const ShaderCreateInfo *fragment =
+                build_spec->GetStageShader(ShaderStage::Fragment);
+            if (!fragment
+             || fragment->GetFinalGLSL().find("// GLSLCodeModule:") == std::string::npos)
+                result.diagnostics.emplace_back(
+                    "DirectInclude code modules were not injected before fragment code");
+        }
+
+        delete build_spec;
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
 }
 
 int main()
@@ -2284,7 +2510,7 @@ int main()
 
     constexpr FixedDescriptorEntry palette_explicit[] =
     {
-        { DescriptorSetType::Material, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "color_pattle", "ColorPattle", nullptr, DescriptorSemantic::MaterialColorPalette, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
+        { DescriptorSetType::Material, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "color_palette", "ColorPalette", nullptr, DescriptorSemantic::MaterialColorPalette, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
     };
     results.push_back(RunValidationCase("C.material-color-palette-explicit", palette_explicit, 1, true));
 
@@ -2310,6 +2536,8 @@ int main()
     results.push_back(RunProviderGraphIdentityCase());
     results.push_back(RunProviderGraphCompositionCase());
     results.push_back(RunResolvedStageCacheIdentityCase());
+    results.push_back(RunMaterialMultiSlotSourceCase());
+    results.push_back(RunDirectIncludeManifestCase());
 
     bool all_passed = true;
     for (const auto &result : results)

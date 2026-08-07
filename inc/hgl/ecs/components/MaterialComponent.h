@@ -28,6 +28,7 @@ namespace hgl::ecs
         // Runtime row indices, materialized by ECS.
         uint32_t texture_layer_row = uint32_t(-1);
         uint32_t data_index_row = uint32_t(-1);
+        std::vector<uint32_t> data_index_values;
 
         // Dirty/lifecycle flags.
         bool program_dirty = true;

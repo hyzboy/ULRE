@@ -400,7 +400,7 @@ namespace hgl::ecs
         raw_buf->SetUpdateClass(graph::BufferUpdateClass::Default);
 
         auto* ubo = graph::StructuredBufferAccessor<LineColorPalette>::Create(
-                        raw_buf, &graph::mtl::SBS_ColorPattle, false);
+                        raw_buf, &graph::mtl::SBS_ColorPalette, false);
         if (!ubo)
             return false;
 
@@ -408,7 +408,7 @@ namespace hgl::ecs
         ubo_raw_buf_ = raw_buf;
 
         // Bind UBO to material
-        material_->BindUBO(&graph::mtl::SBS_ColorPattle, ubo->GetGPUBuffer());
+        material_->BindUBO(&graph::mtl::SBS_ColorPalette, ubo->GetGPUBuffer());
         material_->Update();
 
         // Flush current palette to UBO (palette initialized in constructor)

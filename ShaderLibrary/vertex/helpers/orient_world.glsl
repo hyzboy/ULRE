@@ -10,7 +10,7 @@
 #define HELPER_ORIENT_WORLD_GLSL
 
 #if defined(HGL_L2W_FROM_VERTEX_ATTR)
-// PattleColor-style materials: L2W resolved from the TransformID vertex attribute.
+// Palette-color materials: L2W resolved from the TransformID vertex attribute.
 // Requires: `layout(location=N) in uint TransformID;`
 mat4 GetL2W()
 {

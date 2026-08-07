@@ -76,17 +76,6 @@ static bool IsTextureSlotDeclared(const MaterialDefinition &definition, const Te
     return false;
 }
 
-static bool HasLayoutSemantic(const MaterialResourceLayout &layout, const DescriptorSemantic semantic) noexcept
-{
-    for (const auto &req : layout.requirements)
-    {
-        if (req.semantic == semantic)
-            return true;
-    }
-
-    return false;
-}
-
 static bool AddMaterialDataSlotDescriptor(ShaderProgramBuildSpec &mci,
                                           const MaterialDataSlotDecl &decl,
                                           const uint32_t data_slot,
@@ -243,6 +232,24 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     const bool use_slot_decls = config.data_slot_decls && !config.data_slot_decls->empty();
 
     const uint32_t declared_material_data_slot_count = use_slot_decls ? static_cast<uint32_t>(config.data_slot_decls->size()) : 0u;
+    if (use_slot_decls)
+    {
+        if (declared_material_data_slot_count > MaxMaterialDataSlotsPerMaterial)
+            return FailAfterMci("material data slot count exceeds the supported limit");
+
+        for (uint32_t i = 0; i < declared_material_data_slot_count; ++i)
+        {
+            const auto &decl = (*config.data_slot_decls)[i];
+            if (!IsValidMaterialDataSlotName(decl.name))
+                return FailAfterMci("invalid material data slot GLSL name");
+
+            for (uint32_t j = 0; j < i; ++j)
+            {
+                if ((*config.data_slot_decls)[j].name == decl.name)
+                    return FailAfterMci("duplicate material data slot GLSL name");
+            }
+        }
+    }
 
     std::string primary_sampler_name;
 
@@ -277,7 +284,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
                 material_ssbo_stage_bits = stage_bits;
                 break;
             case DescriptorSemantic::MaterialColorPalette:
-                mci->AddUBOStruct(stage_bits, SBS_ColorPattle);
+                mci->AddUBOStruct(stage_bits, SBS_ColorPalette);
                 break;
             default:
                 break;
@@ -423,6 +430,15 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
 
     std::string binding_preamble;
     binding_preamble += "#define TEXTURE_SLOT_RANGE_SIZE " + std::to_string(texture_slot_range_size) + "u\n";
+    if (config.alpha_test)
+    {
+        binding_preamble += "#define HGL_ALPHA_TEST 1\n";
+        binding_preamble += "#define HGL_ALPHA_CUTOFF ";
+        binding_preamble += std::to_string(config.alpha_cutoff);
+        binding_preamble += "\n";
+    }
+    if (config.alpha_dither)
+        binding_preamble += "#define HGL_ALPHA_DITHER 1\n";
 
     auto AppendDescriptorBindingDefine = [&](const char *macro_name, const ShaderDescriptor *sd)
     {
@@ -483,9 +499,12 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     // 材质实例 SSBO 的 struct + buffer 声明不再写死在 .glsl 中，
     // 统一由此处依据 data_slot_decls 生成并注入 Fragment 阶段。
     std::string material_ssbo_decls;
+    std::string material_slot_macros;
 
     if (use_slot_decls && config.data_slot_decls && !config.data_slot_decls->empty())
     {
+        std::vector<std::string> emitted_struct_names;
+        std::vector<std::string> emitted_buffer_names;
         for (uint32_t i = 0; i < static_cast<uint32_t>(config.data_slot_decls->size()); ++i)
         {
             const MaterialDataSlotDecl &decl = (*config.data_slot_decls)[i];
@@ -504,36 +523,68 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
                 buffer_name.resize(name_len - 4);
             buffer_name += "Buffer";
 
-            material_ssbo_decls += "struct ";
-            material_ssbo_decls += struct_name;
-            material_ssbo_decls += "\n{\n";
-
-            // 规范化字段文本：去掉行首空白、统一 4 空格缩进。
-            std::string line;
-            const char *p = struct_codes;
-            auto FlushFieldLine = [&]()
+            for (uint32_t suffix = 1;; ++suffix)
             {
-                size_t start = 0;
-                while (start < line.size() && (line[start] == ' ' || line[start] == '\t'))
-                    ++start;
-                if (start < line.size())
+                bool used = false;
+                for (const auto &used_name : emitted_buffer_names)
                 {
-                    material_ssbo_decls += "    ";
-                    material_ssbo_decls.append(line, start, line.size() - start);
-                    material_ssbo_decls += '\n';
+                    if (used_name == buffer_name)
+                    {
+                        used = true;
+                        break;
+                    }
                 }
-                line.clear();
-            };
-            for (; *p; ++p)
-            {
-                if (*p == '\n')
-                    FlushFieldLine();
-                else
-                    line += *p;
+                if (!used)
+                    break;
+                buffer_name = std::string(struct_name) + "Buffer_" + std::to_string(suffix);
             }
-            FlushFieldLine();
+            emitted_buffer_names.push_back(buffer_name);
 
-            material_ssbo_decls += "};\n";
+            bool struct_emitted = false;
+            for (const auto &emitted_name : emitted_struct_names)
+            {
+                if (emitted_name == struct_name)
+                {
+                    struct_emitted = true;
+                    break;
+                }
+            }
+
+            if (!struct_emitted)
+            {
+                emitted_struct_names.emplace_back(struct_name);
+                material_ssbo_decls += "struct ";
+                material_ssbo_decls += struct_name;
+                material_ssbo_decls += "\n{\n";
+
+                // 规范化字段文本：去掉行首空白、统一 4 空格缩进。
+                std::string line;
+                const char *p = struct_codes;
+                auto FlushFieldLine = [&]()
+                {
+                    size_t start = 0;
+                    while (start < line.size() && (line[start] == ' ' || line[start] == '\t'))
+                        ++start;
+                    if (start < line.size())
+                    {
+                        material_ssbo_decls += "    ";
+                        material_ssbo_decls.append(line, start, line.size() - start);
+                        material_ssbo_decls += '\n';
+                    }
+                    line.clear();
+                };
+                for (; *p; ++p)
+                {
+                    if (*p == '\n')
+                        FlushFieldLine();
+                    else
+                        line += *p;
+                }
+                FlushFieldLine();
+
+                material_ssbo_decls += "};\n";
+            }
+
             material_ssbo_decls += "layout(set=" + std::to_string(sd->set) + ", binding=" + std::to_string(sd->binding) + ") readonly buffer ";
             material_ssbo_decls += buffer_name;
             material_ssbo_decls += " {\n    ";
@@ -542,6 +593,22 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
             material_ssbo_decls += decl.name;
             material_ssbo_decls += ";\n";
         }
+
+        material_slot_macros += "#define MTL_DATA_SLOT_COUNT "
+            + std::to_string(config.data_slot_decls->size()) + "u\n";
+        material_slot_macros += "#define MTL_DATA_INDEX_ROW_STRIDE "
+            + std::to_string(MaterialDataIndexRowStride) + "u\n";
+        for (uint32_t i = 0; i < static_cast<uint32_t>(config.data_slot_decls->size()); ++i)
+        {
+            material_slot_macros += "#define MTL_DATA_SLOT_";
+            material_slot_macros += std::to_string(i);
+            material_slot_macros += " ";
+            material_slot_macros += (*config.data_slot_decls)[i].name;
+            material_slot_macros += "\n";
+        }
+        material_slot_macros += "#define MTL_DATA ";
+        material_slot_macros += (*config.data_slot_decls)[0].name;
+        material_slot_macros += "\n";
     }
 
     // ── Instance index table SSBO GLSL 声明 ──────────────────────────────────
@@ -555,6 +622,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
         const char *buffer_name;
         const char *var_name;
         const char *resolve_func;   // 为空则仅生成 buffer 声明
+        bool slot_aware = false;
     };
 
     auto AppendIndexTableDecl = [](std::string &out, const ShaderDescriptor *sd, const IndexTableSpec &spec)
@@ -570,21 +638,43 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
 
         if (spec.resolve_func)
         {
+            if (spec.slot_aware)
+            {
+                out += "uint ";
+                out += spec.resolve_func;
+                out += "(uint iid, uint data_slot) { return ";
+                out += spec.var_name;
+                out += ".values[iid * MTL_DATA_INDEX_ROW_STRIDE + data_slot]; }\n";
+            }
             out += "uint ";
             out += spec.resolve_func;
             out += "(uint iid) { return ";
-            out += spec.var_name;
-            out += ".values[iid]; }\n";
+            if (spec.slot_aware)
+            {
+                out += spec.resolve_func;
+                out += "(iid, 0u); }\n";
+            }
+            else
+            {
+                out += spec.var_name;
+                out += ".values[iid]; }\n";
+            }
         }
     };
 
     std::string vs_index_table_decls;
     std::string fs_index_table_decls;
+    const uint32_t material_data_slot_count =
+        use_slot_decls ? static_cast<uint32_t>(config.data_slot_decls->size()) : 1u;
+    vs_index_table_decls = "#define MTL_DATA_SLOT_COUNT "
+        + std::to_string(material_data_slot_count) + "u\n"
+        + "#define MTL_DATA_INDEX_ROW_STRIDE "
+        + std::to_string(MaterialDataIndexRowStride) + "u\n";
 
     AppendIndexTableDecl(vs_index_table_decls, descriptor_info.GetSSBO(SBS_LocalToWorldIndexRows.name),
                          { "LocalToWorldIndexRows", "l2w_index_rows", "ResolveTransformID" });
     AppendIndexTableDecl(vs_index_table_decls, descriptor_info.GetSSBO(SBS_MaterialDataIndexRows.name),
-                         { "DataIndexRows", "mtl_data_index_rows", "ResolveDataIndexID" });
+                         { "DataIndexRows", "mtl_data_index_rows", "ResolveDataIndexID", true });
     AppendIndexTableDecl(fs_index_table_decls, descriptor_info.GetSSBO(SBS_MaterialTextureLayerRows.name),
                          { "TextureLayerRows", "mtl_texture_layer_rows", nullptr });
 
@@ -616,8 +706,17 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     };
 
     std::string vs_final = InsertAfterVersionLine(vs_glsl, binding_preamble + vs_index_table_decls);
-    std::string fs_final = InsertAfterVersionLine(fs_glsl, binding_preamble + fs_index_table_decls + material_ssbo_decls);
-    fs_final = InsertBeforeSurfaceFunction(fs_final, BuildCodeModuleGLSL(config.resource_manifest));
+    std::string fs_final = InsertAfterVersionLine(
+        fs_glsl, binding_preamble + fs_index_table_decls + material_ssbo_decls + material_slot_macros);
+    const std::string code_module_glsl = BuildCodeModuleGLSL(config.resource_manifest);
+    if (!code_module_glsl.empty())
+    {
+        if (fs_glsl.find("#include SURFACE_FUNCTION_FILE") == std::string::npos
+         && fs_glsl.find("#include \"surface/") == std::string::npos)
+            fs_final = InsertAfterVersionLine(fs_final, code_module_glsl);
+        else
+            fs_final = InsertBeforeSurfaceFunction(fs_final, code_module_glsl);
+    }
 
     ShaderCreateInfoVertex   *vert = mci->GetVertexShader();
     ShaderCreateInfo         *frag = mci->GetStageShader(ShaderStage::Fragment);
@@ -723,6 +822,9 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     // ─────────────────────────────────────────────────────────────
     // Step 7: Compile directly → SPV
     // ─────────────────────────────────────────────────────────────
+
+    if (config.generate_only)
+        return mci;
 
     bool cache_hit = false;
     if (config.artifact_store && mci->HasProgramLink())

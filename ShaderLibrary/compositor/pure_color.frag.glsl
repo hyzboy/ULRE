@@ -2,9 +2,11 @@
 #version 450
 
 layout(location=0) flat in uint fragDataIndexID;
+#include "common/alpha_compositor.glsl"
+
 layout(location=0) out vec4 outColor;
 
 void main()
 {
-    outColor = mtl.data[fragDataIndexID].color;
+    outColor = MTL_DATA.data[fragDataIndexID].color;
 }

@@ -35,7 +35,7 @@ namespace hgl::graph
 
         struct GizmoResource
         {
-            DeviceBuffer *      mi_ssbo;
+            DeviceBuffer *      color_ssbo;
             VertexDataManager * vdm;
             mtl::MaterialRecipe color_recipe[size_t(GizmoColor::RANGE_SIZE)]{};
 
@@ -103,17 +103,17 @@ namespace hgl::graph
 
             const uint32_t color_count = uint32_t(GizmoColor::RANGE_SIZE);
 
-            gr->mi_ssbo = buffer_manager->CreateSSBO(
-                "GizmoResource:PureColor:MIData",
+            gr->color_ssbo = buffer_manager->CreateSSBO(
+                "GizmoResource:PureColor:MaterialData",
                 VkDeviceSize(sizeof(Color4f)) * color_count,
                 nullptr,
                 SharingMode::Exclusive);
-            if (!gr->mi_ssbo)
+            if (!gr->color_ssbo)
                 return false;
 
             {
                 // 临时 accessor 用于写入颜色数据 / Temporary accessor for color write
-                auto *acc = SSBOArrayAccessor<Color4f>::Create(gr->mi_ssbo, color_count);
+                auto *acc = SSBOArrayAccessor<Color4f>::Create(gr->color_ssbo, color_count);
                 if (!acc)
                     return false;
 
@@ -130,7 +130,7 @@ namespace hgl::graph
 
                 has_struct_binding = true;
                 const mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
-                if (!domain_manager->RegisterBuffer(addr, gr->mi_ssbo, color_count))
+                if (!domain_manager->RegisterBuffer(addr, gr->color_ssbo, color_count))
                     return false;
 
                 for (uint32_t c = 0; c < color_count; ++c)
@@ -309,7 +309,7 @@ namespace hgl::graph
 
         SAFE_CLEAR(gizmo_triangle.prim_creater);
         SAFE_CLEAR(gizmo_triangle.vdm);
-        SAFE_CLEAR(gizmo_triangle.mi_ssbo);
+        SAFE_CLEAR(gizmo_triangle.color_ssbo);
 
         graphics_context = nullptr;
     }

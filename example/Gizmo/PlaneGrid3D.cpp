@@ -36,7 +36,7 @@ private:
 
     hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
-    graph::SSBOArrayAccessor<Color4f>* mi_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<Color4f>* mtl_data_ssbo_accessor = nullptr;
 
     Geometry *         geom_plane_grid     =nullptr;
     graph::mtl::MaterialRecipe plane_grid_recipe{};
@@ -89,7 +89,7 @@ private:
         prim_comp->SetPrimitiveAsset(&plane_grid_asset);
         hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource named_struct{};
         named_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
-        named_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
+        named_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
         named_struct.data_index = data_index;
         named_struct.use_data_index = true;
         named_struct.shared_across_instances = true;
@@ -113,7 +113,7 @@ private:
         plane_grid_recipe.vertex_node_config.orientation = graph::mtl::OrientationMode::World;
         plane_grid_recipe.vertex_node_config.scale = graph::mtl::ScaleMode::World;
         plane_grid_recipe.vertex_node_config.projection = graph::mtl::ProjectionMode::WorldCameraVP;
-        graph::mtl::UpsertRecipeSSBOAssetBinding(plane_grid_recipe, graph::mtl::DefaultMaterialDataSlotName, mi_ssbo_accessor->GetSSBOBinding());
+        graph::mtl::UpsertRecipeSSBOAssetBinding(plane_grid_recipe, graph::mtl::DefaultMaterialDataSlotName, mtl_data_ssbo_accessor->GetSSBOBinding());
         plane_grid_asset = PrimitiveAsset(geom_plane_grid, &plane_grid_recipe, PrimitiveType::Lines);
 
         if(!Add("PlaneXY", 0, glm::quat(1.0f, 0.0f, 0.0f, 0.0f)))
@@ -137,20 +137,20 @@ private:
         if (!domain_manager)
             return false;
 
-        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
             graph::mtl::SSBOType::EmissiveSurface,
-            "PlaneGrid3D:MIData",
+            "PlaneGrid3D:MaterialData",
             3);
-        if (!mi_ssbo_accessor)
+        if (!mtl_data_ssbo_accessor)
             return false;
 
         Color4f grid_color = GetColor4f(COLOR::BlenderAxisRed, 1.0f);
         for (uint32_t i = 0; i < 3; ++i)
         {
-            (*mi_ssbo_accessor)[i] = grid_color;
+            (*mtl_data_ssbo_accessor)[i] = grid_color;
             grid_color = GetColor4f(COLOR(int(COLOR::BlenderAxisRed) + int(i) + 1), 1.0f);
         }
-        mi_ssbo_accessor->Commit();
+        mtl_data_ssbo_accessor->Commit();
 
         return true;
     }
@@ -200,7 +200,7 @@ private:
 public:
     ~TestApp()
     {
-        SAFE_CLEAR(mi_ssbo_accessor)
+        SAFE_CLEAR(mtl_data_ssbo_accessor)
         SAFE_CLEAR(geom_plane_grid);
     }
 

@@ -71,13 +71,13 @@ private:
     struct MaterialData
     {
         GeometryVertexFormat geometry_vertex_format;
-        graph::SSBOArrayAccessor<Color4f>* mi_ssbo_accessor = nullptr;
+        graph::SSBOArrayAccessor<Color4f>* mtl_data_ssbo_accessor = nullptr;
         uint32_t ssbo_count = 0;
 
         ~MaterialData()
         {
-            delete mi_ssbo_accessor;
-            mi_ssbo_accessor = nullptr;
+            delete mtl_data_ssbo_accessor;
+            mtl_data_ssbo_accessor = nullptr;
         }
     };
 
@@ -109,16 +109,16 @@ private:
 
         const uint32_t color_count = static_cast<uint32_t>(COLOR_COUNT);
         md->ssbo_count = color_count;
-        md->mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+        md->mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
             graph::mtl::SSBOType::EmissiveSurface,
             tag,
             color_count);
-        if (!md->mi_ssbo_accessor)
+        if (!md->mtl_data_ssbo_accessor)
             return false;
 
         for (uint32_t i = 0; i < color_count; ++i)
-            (*md->mi_ssbo_accessor)[i] = GetColor4f(TestColor[i], 1.0f);
-        md->mi_ssbo_accessor->Commit();
+            (*md->mtl_data_ssbo_accessor)[i] = GetColor4f(TestColor[i], 1.0f);
+        md->mtl_data_ssbo_accessor->Commit();
 
         return true;
     }
@@ -129,7 +129,7 @@ private:
         if (solid.geometry_vertex_format.GetCount() == 0)
             return false;
 
-        return InitMaterialForDBS(&solid, "LoadScene:SolidMIData");
+        return InitMaterialForDBS(&solid, "LoadScene:SolidMaterialData");
     }
 
     bool TryLoadStaticMeshScene()
@@ -205,7 +205,7 @@ private:
                 se.primitive_comp->SetPrimitiveAsset(&asset);
                 hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource scene_struct{};
                 scene_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
-                scene_struct.ssbo_id = solid.mi_ssbo_accessor->GetSSBOId();
+                scene_struct.ssbo_id = solid.mtl_data_ssbo_accessor->GetSSBOId();
                 scene_struct.data_index = (entity_idx - 1) % COLOR_COUNT;
                 scene_struct.use_data_index = true;
                 scene_struct.shared_across_instances = true;

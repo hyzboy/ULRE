@@ -56,6 +56,29 @@ namespace hgl::graph::mtl
         SSBOType    ssbo_type = SSBOType::UserDefined; // 数据结构语义
     };
 
+    inline bool IsValidMaterialDataSlotName(const std::string &name) noexcept
+    {
+        if (name.empty())
+            return false;
+
+        const auto is_letter = [](const char c)
+        {
+            return (c >= 'a' && c <= 'z')
+                || (c >= 'A' && c <= 'Z')
+                || c == '_';
+        };
+        if (!is_letter(name[0]))
+            return false;
+
+        for (size_t i = 1; i < name.size(); ++i)
+        {
+            const char c = name[i];
+            if (!is_letter(c) && !(c >= '0' && c <= '9'))
+                return false;
+        }
+        return true;
+    }
+
     // 纹理槽位能力声明（由 MaterialDefinition 显式列出）。
     // 供 Step C 的 Definition→FixedDescriptorEntry 推导使用。
     // 无纹理材质此列表为空。
@@ -95,8 +118,9 @@ namespace hgl::graph::mtl
         const char *     name         = nullptr;
     };
 
-    // Policy for resolving a material vertex semantic. This is declarative only:
-    // Phase 4.2 keeps the legacy ABI as the active production path.
+    // Policy for resolving a material vertex semantic. GeometryOnly and
+    // AllowDerived share the same ABI builder; the resolver is activated when
+    // a vertex code-module registry is supplied.
     enum class MaterialVertexProviderPolicy : uint8
     {
         Auto = 0,
@@ -159,7 +183,7 @@ namespace hgl::graph::mtl
         bool emit_luminance = false;
         bool emit_frag_direction = false;
         bool use_transform_id_attr = false;
-        bool emit_vertex_color_from_pattle = false;
+        bool emit_vertex_color_from_palette = false;
     };
 
     enum class MaterialFragmentProgramMode : uint8

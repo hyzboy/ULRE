@@ -48,7 +48,7 @@ private:
     hgl::ecs::Entity *camera_entity = nullptr;
 
     graph::mtl::MaterialRecipe mesh_recipe{};
-    graph::SSBOArrayAccessor<Color4f>* mi_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<Color4f>* mtl_data_ssbo_accessor = nullptr;
 
     Geometry *         prim_rect_cube      = nullptr;
     Geometry *         prim_circle_cylinder = nullptr;
@@ -67,15 +67,15 @@ private:
         if (!domain_manager)
             return false;
 
-        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
             graph::mtl::SSBOType::EmissiveSurface,
-            "ExtrudedPolygonTest:MIData",
+            "ExtrudedPolygonTest:MaterialData",
             1);
-        if (!mi_ssbo_accessor)
+        if (!mtl_data_ssbo_accessor)
             return false;
 
-        (*mi_ssbo_accessor)[0] = GetColor4f(COLOR::BlenderAxisRed, 1.0f);
-        mi_ssbo_accessor->Commit();
+        (*mtl_data_ssbo_accessor)[0] = GetColor4f(COLOR::BlenderAxisRed, 1.0f);
+        mtl_data_ssbo_accessor->Commit();
 
         mesh_recipe.recipe_name = "ExtrudedPolygonTest.DebugNormalColor";
         mesh_recipe.mtl_def_id = "DebugNormalColor";
@@ -83,7 +83,7 @@ private:
         mesh_recipe.domain = "ExtrudedPolygonTest";
         graph::mtl::UpsertRecipeSSBOAssetBinding(mesh_recipe,
                                                  graph::mtl::DefaultMaterialDataSlotName,
-                                                 mi_ssbo_accessor->GetSSBOBinding());
+                                                 mtl_data_ssbo_accessor->GetSSBOBinding());
 
         return true;
     }
@@ -188,7 +188,7 @@ private:
         prim_comp->SetPrimitiveAsset(mesh_asset);
         hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource mesh_struct{};
         mesh_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
-        mesh_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
+        mesh_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
         mesh_struct.data_index = 0;
         mesh_struct.use_data_index = true;
         mesh_struct.shared_across_instances = true;
@@ -264,7 +264,7 @@ public:
         SAFE_CLEAR(prim_circle_cylinder);
         SAFE_CLEAR(prim_triangle);
         SAFE_CLEAR(prim_pentagon);
-        SAFE_CLEAR(mi_ssbo_accessor)
+        SAFE_CLEAR(mtl_data_ssbo_accessor)
     }
 
     bool Init() override

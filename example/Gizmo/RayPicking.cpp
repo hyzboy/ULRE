@@ -86,7 +86,7 @@ private:
     Geometry *          geom_plane_grid     =nullptr;
     graph::mtl::MaterialRecipe plane_recipe{};
     PrimitiveAsset             plane_asset{};
-    graph::SSBOArrayAccessor<Color4f>* mi_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<Color4f>* mtl_data_ssbo_accessor = nullptr;
 
     Geometry *          geom_line           =nullptr;
     graph::mtl::MaterialRecipe line_recipe{};
@@ -187,23 +187,23 @@ private:
         const uint32_t line_slot = 1;
         const uint32_t mi_count = (std::max)(plane_slot, line_slot) + 1;
 
-        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
             graph::mtl::SSBOType::EmissiveSurface,
-            "RayPicking:SharedMIData",
+            "RayPicking:SharedMaterialData",
             mi_count);
-        if (!mi_ssbo_accessor)
+        if (!mtl_data_ssbo_accessor)
             return false;
 
         graph::mtl::UpsertRecipeSSBOAssetBinding(plane_recipe,
                                                  graph::mtl::DefaultMaterialDataSlotName,
-                                                 mi_ssbo_accessor->GetSSBOBinding());
+                                                 mtl_data_ssbo_accessor->GetSSBOBinding());
         graph::mtl::UpsertRecipeSSBOAssetBinding(line_recipe,
                                                  graph::mtl::DefaultMaterialDataSlotName,
-                                                 mi_ssbo_accessor->GetSSBOBinding());
+                                                 mtl_data_ssbo_accessor->GetSSBOBinding());
 
-        (*mi_ssbo_accessor)[plane_slot] = white_color;
-        (*mi_ssbo_accessor)[line_slot]  = yellow_color;
-        mi_ssbo_accessor->Commit();
+        (*mtl_data_ssbo_accessor)[plane_slot] = white_color;
+        (*mtl_data_ssbo_accessor)[line_slot]  = yellow_color;
+        mtl_data_ssbo_accessor->Commit();
 
         // === 步骤2: 创建平面网格实体 ===
         {
@@ -220,7 +220,7 @@ private:
             primitive_comp->SetPrimitiveAsset(&plane_asset);
             hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource plane_struct{};
             plane_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
-            plane_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
+            plane_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             plane_struct.data_index = plane_slot;
             plane_struct.use_data_index = true;
             plane_struct.shared_across_instances = true;
@@ -244,7 +244,7 @@ private:
             primitive_comp->SetPrimitiveAsset(&line_asset);
             hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource line_struct{};
             line_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
-            line_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
+            line_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             line_struct.data_index = line_slot;
             line_struct.use_data_index = true;
             line_struct.shared_across_instances = true;
@@ -293,7 +293,7 @@ public:
     {
         SAFE_CLEAR(geom_plane_grid);
         SAFE_CLEAR(geom_line);
-        SAFE_CLEAR(mi_ssbo_accessor);
+        SAFE_CLEAR(mtl_data_ssbo_accessor);
     }
 
     bool Init() override

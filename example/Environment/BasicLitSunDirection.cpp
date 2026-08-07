@@ -89,7 +89,7 @@ private:
 #endif//DRAW_GIZMO
 
     graph::mtl::MaterialRecipe mesh_recipe{};
-    graph::SSBOArrayAccessor<ssbo::LitMaterialData>* mi_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<ssbo::LitMaterialData>* mtl_data_ssbo_accessor = nullptr;
     VertexDataManager* mesh_vdm = nullptr;
 
     RenderMesh* rm_floor = nullptr;
@@ -204,11 +204,11 @@ private:
 
         // Bindless registration is deferred until ECS systems are ready.
 
-        ssbo::LitMaterialData mi_data{};
-        mi_data.base_color = Color4f(1.0f);
-        mi_data.metallic = 0.08f;
-        mi_data.roughness = 0.92f;
-        mi_data.normal_scale = 0.35f;
+        ssbo::LitMaterialData material_data{};
+        material_data.base_color = Color4f(1.0f);
+        material_data.metallic = 0.08f;
+        material_data.roughness = 0.92f;
+        material_data.normal_scale = 0.35f;
         mesh_recipe.recipe_name = "BasicLitSunDirection.Lit";
         mesh_recipe.mtl_def_id = "Lit";
         mesh_recipe.pipeline_config = mtl::MakeSolid3DConfig();
@@ -219,19 +219,18 @@ private:
         if (!domain_manager)
             return false;
 
-        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::LitMaterialData>(
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::LitMaterialData>(
             graph::mtl::SSBOType::ClearCoatSurface,
             "BasicLitSunDir:Standard:MI",
             1);
-        if (!mi_ssbo_accessor)
+        if (!mtl_data_ssbo_accessor)
             return false;
 
         graph::mtl::UpsertRecipeSSBOAssetBinding(mesh_recipe,
                                                  graph::mtl::DefaultMaterialDataSlotName,
-                                                 mi_ssbo_accessor->GetSSBOBinding());
-
-        (*mi_ssbo_accessor)[0] = mi_data;
-        mi_ssbo_accessor->Commit();
+                                                 mtl_data_ssbo_accessor->GetSSBOBinding());
+        (*mtl_data_ssbo_accessor)[0] = material_data;
+        mtl_data_ssbo_accessor->Commit();
 
         return true;
     }
@@ -400,7 +399,7 @@ private:
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource floor_struct{};
             floor_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
-            floor_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
+            floor_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             floor_struct.data_index = 0;
             floor_struct.use_data_index = true;
             floor_struct.shared_across_instances = true;
@@ -437,7 +436,7 @@ private:
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_texture, sampler);
             hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource mesh_struct{};
             mesh_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
-            mesh_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
+            mesh_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             mesh_struct.data_index = 0;
             mesh_struct.use_data_index = true;
             mesh_struct.shared_across_instances = true;
@@ -501,10 +500,10 @@ public:
     {
         auto* rc = GetRenderContext();
         auto* gc = rc ? rc->GetGraphicsContext() : nullptr;
-        if (mi_ssbo_accessor)
+        if (mtl_data_ssbo_accessor)
         {
-            delete mi_ssbo_accessor;
-            mi_ssbo_accessor = nullptr;
+            delete mtl_data_ssbo_accessor;
+            mtl_data_ssbo_accessor = nullptr;
         }
 
         SAFE_CLEAR(mesh_vdm)

@@ -55,7 +55,6 @@ SET(SHADERGEN_COMMON_FILES  ${ROOT_INCLUDE_PATH}/hgl/graph/ShaderBufferSources.h
                             ${STD_MTL_HEADER_PATH}/SamplerName.h
                             ${STD_MTL_HEADER_PATH}/ShaderVariableType.h
                             ShaderVariableType.cpp
-                            common/UBOCommon.cpp
                             common/GLSLCodeModule.cpp
                             common/ShaderResourceManifest.cpp
                             common/MFCamera.h
@@ -85,8 +84,7 @@ SET(STD_MTL_2D_SOURCE_FILES	2d/Build2DCommon.h
 SET(STD_MTL_3D_SOURCE_FILES	3d/M_PureColor.cpp
 )
 
-SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/StdMaterial.h
-                    ${STD_MTL_HEADER_PATH}/ShaderBufferSource.h
+SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/ShaderBufferSource.h
                     GLSLStructSize.cpp
 )
 

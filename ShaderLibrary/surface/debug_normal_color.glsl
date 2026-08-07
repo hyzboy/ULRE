@@ -14,14 +14,14 @@
 
 SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 {
-    EmissiveSurfaceData mi = mtl.data[dataIndex];
+    EmissiveSurfaceData material_data = MTL_DATA.data[dataIndex];
 
     const vec3 SUN_DIRECTION = normalize(vec3(0.655386, 0.491539, 0.573462));
     const vec3 SUN_COLOR     = vec3(1.0, 1.0, 1.0);
 
     // Half-Lambert diffuse
     float intensity = 0.5 * max(dot(si.worldNormal, SUN_DIRECTION), 0.0) + 0.5;
-    vec3 direct_color = intensity * SUN_COLOR * mi.color.rgb;
+    vec3 direct_color = intensity * SUN_COLOR * material_data.color.rgb;
 
     // Blinn-Phong specular
     vec3 spec_color = vec3(0.0);

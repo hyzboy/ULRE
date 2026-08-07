@@ -46,7 +46,7 @@ namespace hgl
                 graph::ShaderProgram* material = nullptr;
                 graph::Pipeline* pipeline = nullptr;
                 graph::Sampler* sampler = nullptr;
-                graph::DeviceBuffer* material_instance_buffer = nullptr;
+                graph::DeviceBuffer* material_data_buffer = nullptr;
 
                 graph::layout::CharStyle char_style{};
                 graph::TextGeometry* geometry = nullptr;

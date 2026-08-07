@@ -59,7 +59,7 @@ private:
     Entity *      camera_entity  =nullptr;
 
     Geometry *          geometry        = nullptr;
-    graph::SSBOArrayAccessor<Color4f>* mi_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<Color4f>* mtl_data_ssbo_accessor = nullptr;
     graph::mtl::MaterialRecipe cube_recipe{};
     PrimitiveAsset             cube_asset{};
 
@@ -111,12 +111,12 @@ private:
         if (!domain_manager)
             return false;
 
-        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(graph::mtl::SSBOType::EmissiveSurface, "SimpleCube:EmissiveSurface:MIData", 1);
-        if (!mi_ssbo_accessor)
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(graph::mtl::SSBOType::EmissiveSurface, "SimpleCube:EmissiveSurface:MaterialData", 1);
+        if (!mtl_data_ssbo_accessor)
             return false;
 
-        (*mi_ssbo_accessor)[0] = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-        mi_ssbo_accessor->Commit();
+        (*mtl_data_ssbo_accessor)[0] = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
+        mtl_data_ssbo_accessor->Commit();
         return true;
     }
     bool InitECS()
@@ -142,7 +142,7 @@ private:
         primitive_comp->SetPrimitiveAsset(&cube_asset);
         hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource named_struct{};
         named_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
-        named_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
+        named_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
         named_struct.data_index = 0;
         named_struct.use_data_index = true;
         named_struct.shared_across_instances = true;
@@ -178,7 +178,7 @@ private:
 public:
     ~TestApp()
     {
-        SAFE_CLEAR(mi_ssbo_accessor)
+        SAFE_CLEAR(mtl_data_ssbo_accessor)
         SAFE_CLEAR(geometry)
     }
 

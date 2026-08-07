@@ -13,6 +13,7 @@
 #include<hgl/shadergen/MaterialCompiler.h>
 #include "../common/DescriptorBuilderCommon.h"
 #include "../common/VertexBuilderCommon.h"
+#include <cstring>
 #include<string>
 #include<vector>
 
@@ -25,8 +26,6 @@ struct Material2DBuildParams
     VertexShaderNodeConfig   vertex_node_config  = MakeDefault3DNodeConfig();
     uint32_t                shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
     const GeometryVertexFormat *geometry_vertex_format = nullptr;
-    const ShaderBufferSource *const *private_shader_buffer_sources = nullptr;
-    uint32_t                private_shader_buffer_source_count = 0;
     const std::vector<MaterialDataSlotDecl> *data_slot_decls = nullptr;
 
     const MaterialDefinition *material_definition = nullptr;
@@ -42,8 +41,6 @@ struct Material2DBuildParams
         if(request.override_shader_stage_bits)
             p.shader_stage_flag_bit = request.shader_stage_flag_bit;
         p.geometry_vertex_format            = request.geometry_vertex_format;
-        p.private_shader_buffer_sources     = request.private_shader_buffer_sources;
-        p.private_shader_buffer_source_count = request.private_shader_buffer_source_count;
         p.data_slot_decls = definition.data_slot_decls.empty() ? nullptr : &definition.data_slot_decls;
         p.material_definition = &definition;
         if(request.override_rt_output)
@@ -154,6 +151,88 @@ inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, cons
     }
 }
 
+inline bool Build2DShaderResourceManifest(
+    const MaterialDefinition &definition,
+    ShaderResourceManifest &manifest)
+{
+    GLSLCodeModuleID roots[64]{};
+    uint32 root_count = 0;
+    for (const GLSLCodeModuleID id : definition.code_module_requirements)
+    {
+        if (root_count >= 64u)
+            return false;
+        roots[root_count++] = id;
+    }
+
+    return BuildShaderResourceManifest(roots, root_count, manifest);
+}
+
+inline std::vector<FixedDescriptorEntry> Build2DDescriptorsFromDefinition(
+    const Material2DBuildParams &p,
+    const ShaderResourceManifest &manifest)
+{
+    std::vector<FixedDescriptorEntry> descriptors;
+    PushBaseDescriptorEntries(descriptors, p);
+
+    for (uint32 i = 0; i < manifest.ubo_count; ++i)
+    {
+        const UBODescriptorSemantic semantic = manifest.ubos[i].semantic;
+        bool exists = false;
+        for (const auto &entry : descriptors)
+        {
+            UBODescriptorSemantic existing{};
+            if (entry.kind == DescriptorKind::UBO
+             && TryGetUBODescriptorSemantic(entry.semantic, existing)
+             && existing == semantic)
+            {
+                exists = true;
+                break;
+            }
+        }
+        if (exists)
+            continue;
+
+        switch (semantic)
+        {
+        case UBODescriptorSemantic::ViewportInfo:
+            descriptor_builder_common::PushViewport(descriptors, manifest.ubos[i].stage_flags);
+            break;
+        case UBODescriptorSemantic::CameraInfo:
+            descriptor_builder_common::PushCamera(descriptors, manifest.ubos[i].stage_flags);
+            break;
+        case UBODescriptorSemantic::SkyInfo:
+            descriptor_builder_common::PushSky(descriptors, manifest.ubos[i].stage_flags);
+            break;
+        case UBODescriptorSemantic::MaterialColorPalette:
+            descriptors.push_back({
+                DescriptorSetType::Material, DescriptorKind::UBO, manifest.ubos[i].stage_flags,
+                "color_palette", "ColorPalette", nullptr, DescriptorSemantic::MaterialColorPalette,
+                TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined,
+                DescriptorSemanticLayer::UBO
+            });
+            break;
+        }
+    }
+
+    for (uint32 i = 0; i < manifest.texture_count; ++i)
+    {
+        bool exists = false;
+        for (const auto &entry : descriptors)
+        {
+            if (entry.name && manifest.textures[i].name
+             && std::strcmp(entry.name, manifest.textures[i].name) == 0)
+            {
+                exists = true;
+                break;
+            }
+        }
+        if (!exists)
+            descriptor_builder_common::PushManifestTexture(descriptors, manifest.textures[i]);
+    }
+
+    return descriptors;
+}
+
 // ─────────────────────────────────────────────────────────────
 // Convert Material2DBuildParams → CompositorMaterialBuildConfig (2D: no camera/sky)
 // ─────────────────────────────────────────────────────────────
@@ -163,10 +242,6 @@ inline CompositorMaterialBuildConfig ToCompositorBuildConfig2D(const Material2DB
     CompositorMaterialBuildConfig bc;
     bc.primitive_type                  = p.prim;
     bc.shader_stage_flag_bits          = p.shader_stage_flag_bit;
-    bc.sky_ambient_model               = SkyLightAmbientModel::Simple;
-    bc.private_shader_buffer_sources   = p.private_shader_buffer_sources;
-    bc.private_shader_buffer_source_count = p.private_shader_buffer_source_count;
-    bc.geometry_vertex_format          = p.geometry_vertex_format;
     bc.data_slot_decls                 = p.data_slot_decls;
     bc.material_definition             = p.material_definition;
     return bc;

@@ -44,7 +44,7 @@ inline std::vector<FixedDescriptorEntry> Build3DDescriptorsFromDefinition(
         case UBODescriptorSemantic::MaterialColorPalette:
             descriptors.push_back({
                 DescriptorSetType::Material, DescriptorKind::UBO, opt.color_palette_stage_flags,
-                "color_pattle", "ColorPattle", nullptr, DescriptorSemantic::MaterialColorPalette,
+                "color_palette", "ColorPalette", nullptr, DescriptorSemantic::MaterialColorPalette,
                 TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO
             });
             break;
@@ -166,7 +166,7 @@ inline std::vector<FixedDescriptorEntry> Build3DDescriptorsFromDefinition(
         case UBODescriptorSemantic::MaterialColorPalette:
             descriptors.push_back({
                 DescriptorSetType::Material, DescriptorKind::UBO, manifest.ubos[i].stage_flags,
-                "color_pattle", "ColorPattle", nullptr, DescriptorSemantic::MaterialColorPalette,
+                "color_palette", "ColorPalette", nullptr, DescriptorSemantic::MaterialColorPalette,
                 TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO
             });
             break;

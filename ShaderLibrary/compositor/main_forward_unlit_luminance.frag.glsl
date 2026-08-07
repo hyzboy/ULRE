@@ -23,6 +23,7 @@ layout(location=0) out vec4 outColor;
 
 // --- Surface Function include (由 CompositorAssembler 注入) ---
 #include SURFACE_FUNCTION_FILE
+#include "common/alpha_compositor.glsl"
 
 void main()
 {
@@ -39,5 +40,5 @@ void main()
 
     SurfaceOutput so = EvalSurface(si, fragDataIndexID);
 
-    outColor = vec4(so.baseColor, so.alpha);
+    outColor = HGLComposeColor(vec4(so.baseColor, so.alpha));
 }

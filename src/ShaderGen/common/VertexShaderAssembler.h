@@ -23,13 +23,13 @@ namespace hgl::graph::mtl
         // Extended: special-purpose varying outputs (appended last).
         bool emit_luminance        = false;  // out float fragLuminance (= Luminance vertex attr)
         bool emit_frag_direction   = false;  // out vec3 fragDirection (= normalize(Position)), sky dome
-        // PattleColor-style materials: GetL2W reads the TransformID vertex attribute
+        // Palette-color materials: GetL2W reads the TransformID vertex attribute
         // directly (l2w.mats[TransformID]) instead of resolving gl_InstanceIndex
         // through the l2w_index_rows table.
         bool use_transform_id_attr = false;
         // Vertex color sourced from a MaterialColorPalette UBO instead of a Color
-        // vertex attribute: fragVertexColor = color_pattle.color[ColorIndex].
-        bool emit_vertex_color_from_pattle = false;
+        // vertex attribute: fragVertexColor = color_palette.color[ColorIndex].
+        bool emit_vertex_color_from_palette = false;
     };
 
     // GenerateVertexShader — generates a complete, standalone VS GLSL string.
@@ -88,7 +88,7 @@ namespace hgl::graph::mtl
 
         // ── Header ───────────────────────────────────────────────────────────
         append("#version 450\n");
-        if (varying_cfg.emit_vertex_color_from_pattle)
+        if (varying_cfg.emit_vertex_color_from_palette)
             append("#extension GL_EXT_scalar_block_layout : require\n");
         append("\n");
 
@@ -158,9 +158,9 @@ namespace hgl::graph::mtl
             if (provider_glsl.back() != '\n') vs += "\n";
         }
 
-        // MaterialColorPalette UBO (PattleColor-style materials).
-        if (varying_cfg.emit_vertex_color_from_pattle)
-            vs += "layout(scalar, set=MATERIAL_SET, binding=0) uniform ColorPattle { vec4 color[256]; } color_pattle;\n";
+        // MaterialColorPalette UBO (palette-color materials).
+        if (varying_cfg.emit_vertex_color_from_palette)
+            vs += "layout(scalar, set=MATERIAL_SET, binding=0) uniform ColorPalette { vec4 color[256]; } color_palette;\n";
 
         vs += "\n";
 
@@ -182,7 +182,7 @@ namespace hgl::graph::mtl
 
         // ── Stage 3: Transform strategy ───────────────────────────────────────
         // Select based on orientation × scale × projection.
-        // PattleColor-style materials resolve L2W from the TransformID vertex
+        // Palette-color materials resolve L2W from the TransformID vertex
         // attribute instead of the gl_InstanceIndex table; orient_world.glsl
         // branches on this macro.
         if (varying_cfg.use_transform_id_attr)
@@ -211,7 +211,7 @@ namespace hgl::graph::mtl
             vs += "layout(location=" + std::to_string(loc++) + ") out vec3 fragWorldNormal;\n";
         if (varying_cfg.emit_uv0)
             vs += "layout(location=" + std::to_string(loc++) + ") out vec2 fragUV0;\n";
-        if (varying_cfg.emit_vertex_color || varying_cfg.emit_vertex_color_from_pattle)
+        if (varying_cfg.emit_vertex_color || varying_cfg.emit_vertex_color_from_palette)
             vs += "layout(location=" + std::to_string(loc++) + ") out vec4 fragVertexColor;\n";
         if (varying_cfg.emit_frag_direction)
             vs += "layout(location=" + std::to_string(loc++) + ") out vec3 fragDirection;\n";
@@ -230,10 +230,10 @@ namespace hgl::graph::mtl
             else
                 vs += "    fragTextureLayerID = ResolveTextureLayerID(gl_InstanceIndex);\n";
         }
-        if (varying_cfg.emit_vertex_color || varying_cfg.emit_vertex_color_from_pattle)
+        if (varying_cfg.emit_vertex_color || varying_cfg.emit_vertex_color_from_palette)
         {
-            if (varying_cfg.emit_vertex_color_from_pattle)
-                vs += "    fragVertexColor = color_pattle.color[ColorIndex];\n";
+            if (varying_cfg.emit_vertex_color_from_palette)
+                vs += "    fragVertexColor = color_palette.color[ColorIndex];\n";
             else
                 vs += "    fragVertexColor = Color;\n";
         }

@@ -33,7 +33,6 @@ namespace
         };
         ConfigureMaterialVertexSemanticContract(
             bmi, vertex_requirements, 2, MaterialVertexProviderPolicy::GeometryOnly);
-        bmi.fragment_program_mode = MaterialFragmentProgramMode::DirectInclude;
         RegisterMaterialDefinition(BuiltinMaterialCreatorID::Text2D, bmi);
         MaterialDefinition alias = bmi;
         alias.definition_id = BUILTIN_MTL_DEF_TEXT;

@@ -2,7 +2,6 @@
 
 #include<hgl/vk/VK.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
-#include<hgl/mtl/StdMaterial.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/glsl/GLSLCodeModuleCapabilityResolver.h>
 #include<hgl/mtl/MaterializationSpec.h>
@@ -40,7 +39,7 @@ enum class BuiltinMaterialCreatorID:uint8
 
 // ── Layer 3: MaterialDefinitionBuildRequest = Build Context ──────────────────
 // 描述"构建此帧 ShaderProgram 时的额外上下文"。包含 recipe（Layer 2）加上
-// 构建期覆写项（几何格式、RT 输出配置、私有 ShaderBufferSource 等）。
+// 构建期覆写项（几何格式、RT 输出配置等）。
 // recipe.mtl_def_id 是材质标识的唯一来源；此结构不再持有独立的 mtl_def_id 字段。
 // ─────────────────────────────────────────────────────────────────────────────
 struct MaterialDefinitionBuildRequest
@@ -66,14 +65,6 @@ struct MaterialDefinitionBuildRequest
     bool override_sky_ambient_model = false;
     SkyLightAmbientModel sky_ambient_model = SkyLightAmbientModel::Simple;
 
-    const ShaderBufferSource *const *private_shader_buffer_sources = nullptr;
-    uint32 private_shader_buffer_source_count = 0;
-
-    void SetPrivateShaderBufferSources(const ShaderBufferSource *const *list,const uint32 count)
-    {
-        private_shader_buffer_sources=list;
-        private_shader_buffer_source_count=count;
-    }
 };
 
 struct MaterialResolvedVertexABI

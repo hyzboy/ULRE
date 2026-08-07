@@ -96,18 +96,6 @@ inline void PushMaterialTextureLayerRows(std::vector<FixedDescriptorEntry> &v, c
     });
 }
 
-inline void PushMaterialTexture(std::vector<FixedDescriptorEntry> &v,
-                                const TextureSlot slot,
-                                const char *glsl_type,
-                                const uint32_t stage_flags)
-{
-    v.push_back({
-        DescriptorSetType::Material, DescriptorKind::Texture, stage_flags,
-        GetTextureNameBySlot(slot), nullptr, glsl_type, DescriptorSemantic::MaterialTexture,
-        slot, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::Texture
-    });
-}
-
 inline void PushMaterialSampler(std::vector<FixedDescriptorEntry> &v,
                                 const char *name,
                                 const TextureSlot slot,

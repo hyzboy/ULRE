@@ -44,15 +44,6 @@ namespace hgl::graph::mtl
         MaterialColorPalette
     };
 
-    enum class SSBODescriptorSemantic : uint8
-    {
-        LocalToWorld = 0,
-        LocalToWorldIndexTable,
-        MaterialDataSlotData,      // per-instance SSBO slot data (one per data_slot_decls[i])
-        MaterialTextureLayerTable,
-        MaterialDataIndexTable
-    };
-
     inline const char *GetDescriptorSemanticLayerName(const DescriptorSemanticLayer layer)
     {
         switch (layer)
@@ -125,20 +116,5 @@ namespace hgl::graph::mtl
         return false;
     }
 
-    inline bool TryGetSSBODescriptorSemantic(const DescriptorSemantic semantic, SSBODescriptorSemantic &out)
-    {
-        switch (semantic)
-        {
-        case DescriptorSemantic::LocalToWorld: out = SSBODescriptorSemantic::LocalToWorld; return true;
-        case DescriptorSemantic::LocalToWorldIndexTable: out = SSBODescriptorSemantic::LocalToWorldIndexTable; return true;
-        case DescriptorSemantic::MaterialDataSlotData: out = SSBODescriptorSemantic::MaterialDataSlotData; return true;
-        case DescriptorSemantic::MaterialTextureLayerTable: out = SSBODescriptorSemantic::MaterialTextureLayerTable; return true;
-        case DescriptorSemantic::MaterialDataIndexTable: out = SSBODescriptorSemantic::MaterialDataIndexTable; return true;
-        default: break;
-        }
-
-        return false;
-    }
 }
-
 

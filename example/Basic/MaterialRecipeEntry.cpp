@@ -66,7 +66,7 @@ private:
     Entity *      camera_entity  =nullptr;
 
     Geometry *          geometry        = nullptr;
-    graph::SSBOArrayAccessor<Color4f>* mi_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<Color4f>* mtl_data_ssbo_accessor = nullptr;
     graph::mtl::MaterialRecipe cube_recipe{};
     PrimitiveAsset             cube_asset{};
 
@@ -116,15 +116,15 @@ private:
         if (!domain_manager)
             return false;
 
-        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
             graph::mtl::SSBOType::EmissiveSurface,
-            "MaterialRecipeEntry:EmissiveSurface:MIData",
+            "MaterialRecipeEntry:EmissiveSurface:MaterialData",
             1);
-        if (!mi_ssbo_accessor)
+        if (!mtl_data_ssbo_accessor)
             return false;
 
-        (*mi_ssbo_accessor)[0] = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
-        mi_ssbo_accessor->Commit();
+        (*mtl_data_ssbo_accessor)[0] = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
+        mtl_data_ssbo_accessor->Commit();
         return true;
     }
     bool InitECS()
@@ -148,12 +148,12 @@ private:
         cube_recipe.domain = "Phase2AuthoringTest";
         graph::mtl::UpsertRecipeSSBOAssetBinding(cube_recipe,
                                                  graph::mtl::DefaultMaterialDataSlotName,
-                                                 mi_ssbo_accessor->GetSSBOBinding());
+                                                 mtl_data_ssbo_accessor->GetSSBOBinding());
         cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
         primitive_comp->SetPrimitiveAsset(&cube_asset);
         hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource named_struct{};
         named_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
-        named_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
+        named_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
         named_struct.data_index = 0;
         named_struct.use_data_index = false;
         named_struct.shared_across_instances = true;
@@ -189,7 +189,7 @@ private:
 public:
     ~TestApp()
     {
-        SAFE_CLEAR(mi_ssbo_accessor)
+        SAFE_CLEAR(mtl_data_ssbo_accessor)
         SAFE_CLEAR(geometry)
     }
 

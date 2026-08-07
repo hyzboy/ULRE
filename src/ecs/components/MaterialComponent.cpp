@@ -46,6 +46,7 @@ namespace hgl::ecs
     void MaterialComponent::ClearResolvedSSBOBindings()
     {
         resolved_ssbo_bindings.clear();
+        data_index_values.clear();
     }
 
     void MaterialComponent::SetResolvedSSBOBinding(uint32_t data_slot, graph::mtl::SSBOType ssbo_type, uint32_t ssbo_id)
@@ -89,6 +90,7 @@ namespace hgl::ecs
         program = nullptr;
         texture_layer_row = uint32_t(-1);
         data_index_row = uint32_t(-1);
+        data_index_values.clear();
         program_dirty = true;
         bindings_dirty = true;
         resources_dirty = true;

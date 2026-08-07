@@ -247,7 +247,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::LocalToWorld: return SBS_LocalToWorld.name;
         case DescriptorSemantic::LocalToWorldIndexTable: return SBS_LocalToWorldIndexRows.name;
         case DescriptorSemantic::MaterialDataSlotData: return DefaultMaterialDataSlotName;
-        case DescriptorSemantic::MaterialColorPalette: return SBS_ColorPattle.name;
+        case DescriptorSemantic::MaterialColorPalette: return SBS_ColorPalette.name;
         case DescriptorSemantic::MaterialTextureLayerTable: return SBS_MaterialTextureLayerRows.name;
         case DescriptorSemantic::MaterialDataIndexTable: return SBS_MaterialDataIndexRows.name;
         default: return nullptr;
@@ -264,7 +264,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::LocalToWorld: return SBS_LocalToWorld.struct_name;
         case DescriptorSemantic::LocalToWorldIndexTable: return SBS_LocalToWorldIndexRows.struct_name;
         case DescriptorSemantic::MaterialDataSlotData: return nullptr;
-        case DescriptorSemantic::MaterialColorPalette: return SBS_ColorPattle.struct_name;
+        case DescriptorSemantic::MaterialColorPalette: return SBS_ColorPalette.struct_name;
         case DescriptorSemantic::MaterialTextureLayerTable: return SBS_MaterialTextureLayerRows.struct_name;
         case DescriptorSemantic::MaterialDataIndexTable: return SBS_MaterialDataIndexRows.struct_name;
         default: return nullptr;

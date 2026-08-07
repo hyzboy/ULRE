@@ -166,10 +166,10 @@ namespace hgl::ecs
                 res.sampler = nullptr;
             }
 
-            if (res.material_instance_buffer && buffer_manager)
+            if (res.material_data_buffer && buffer_manager)
             {
-                buffer_manager->Release(res.material_instance_buffer);
-                res.material_instance_buffer = nullptr;
+                buffer_manager->Release(res.material_data_buffer);
+                res.material_data_buffer = nullptr;
             }
 
             if (res.tile_font)
@@ -276,7 +276,7 @@ namespace hgl::ecs
             graph::DescriptorBindingSet* descriptor_binding_set = nullptr;
             graph::Sampler* sampler = nullptr;
             graph::BufferManager* buffer_manager = nullptr;
-            graph::DeviceBuffer* material_instance_buffer = nullptr;
+            graph::DeviceBuffer* material_data_buffer = nullptr;
             std::unique_ptr<graph::TileFont> tile_font;
             bool committed = false;
 
@@ -288,8 +288,8 @@ namespace hgl::ecs
                 if (sampler && sampler_manager)
                     sampler_manager->Release(sampler);
 
-                if (material_instance_buffer && buffer_manager)
-                    buffer_manager->Release(material_instance_buffer);
+                if (material_data_buffer && buffer_manager)
+                    buffer_manager->Release(material_data_buffer);
 
                 if (descriptor_binding_set)
                     delete descriptor_binding_set;
@@ -365,16 +365,16 @@ namespace hgl::ecs
         const uint32_t mi_bytes = ResolveMaterialSSBOStride(guard.material);
         if (mi_bytes > 0)
         {
-            guard.material_instance_buffer = buffer_manager->CreateSSBO("Text2D_MI", mi_bytes, graph::SharingMode::Exclusive);
-            if (!guard.material_instance_buffer)
+            guard.material_data_buffer = buffer_manager->CreateSSBO("Text2D_MaterialData", mi_bytes, graph::SharingMode::Exclusive);
+            if (!guard.material_data_buffer)
                 return nullptr;
 
             if (!guard.material->BindSSBO(graph::DescriptorSetType::Material,
                                           graph::mtl::DefaultMaterialDataSlotName,
-                                          guard.material_instance_buffer->GetGPUBuffer()))
+                                          guard.material_data_buffer->GetGPUBuffer()))
                 return nullptr;
 
-            resources.material_instance_buffer = guard.material_instance_buffer;
+            resources.material_data_buffer = guard.material_data_buffer;
 
             auto *domain_manager = graphics_context->GetResourceDomainManager();
             if (!domain_manager)
@@ -386,14 +386,14 @@ namespace hgl::ecs
                     continue;
 
                 const graph::mtl::SSBOAddress addr{req.ssbo_type, req.ssbo_id, 0};
-                if (!domain_manager->RegisterBuffer(addr, guard.material_instance_buffer, 1))
+                if (!domain_manager->RegisterBuffer(addr, guard.material_data_buffer, 1))
                     return nullptr;
 
                 if (!guard.descriptor_binding_set->SetSSBOBinding(req.ssbo_type, req.ssbo_id, 0))
                     return nullptr;
             }
 
-            guard.material_instance_buffer = nullptr;
+            guard.material_data_buffer = nullptr;
         }
 
         if (!guard.material->BindTextureSampler(graph::DescriptorSetType::Material,
@@ -525,11 +525,11 @@ namespace hgl::ecs
 
             if (input.dirty)
             {
-                if (resources->material_instance_buffer)
+                if (resources->material_data_buffer)
                 {
                     const uint32_t upload_bytes = hgl_min<uint32_t>(ResolveMaterialSSBOStride(resources->material),
                                                                     sizeof(graph::layout::CharStyle));
-                    if(auto *mgpu = resources->material_instance_buffer->GetGPUBuffer())
+                    if(auto *mgpu = resources->material_data_buffer->GetGPUBuffer())
                         mgpu->Write(&resources->char_style, 0, upload_bytes);
                 }
             }

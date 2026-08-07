@@ -23,7 +23,7 @@ surface_module = "surface/unlit_vertexcolor_surface.glsl"
 
 [vertex]
 requirements = ["Position", "Color", "TransformID"]
-varyings = ["use_transform_id_attr", "emit_vertex_color_from_pattle"]
+varyings = ["use_transform_id_attr", "emit_vertex_color_from_palette"]
 
 [resources]
 ubos = ["ViewportInfo", "CameraInfo", "MaterialColorPalette"]

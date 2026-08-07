@@ -90,7 +90,7 @@ private:
     Entity *      camera_entity = nullptr;
 
     graph::mtl::MaterialRecipe sphere_recipe{};
-    graph::SSBOArrayAccessor<ssbo::LitMaterialData>* mi_ssbo_accessor = nullptr;
+    graph::SSBOArrayAccessor<ssbo::LitMaterialData>* mtl_data_ssbo_accessor = nullptr;
     Texture2DArray *    base_color_texture = nullptr;
     Texture2DArray *    normal_texture = nullptr;
     Sampler *           sampler = nullptr;
@@ -101,7 +101,7 @@ private:
     PrimitiveAsset      base_primitives[GEOMETRY_VARIANT_COUNT]{};
 
     // One MI per cell: col controls metallic, row controls roughness
-    ssbo::LitMaterialData sphere_mi_data[GRID_SIZE][GRID_SIZE]{};
+    ssbo::LitMaterialData sphere_material_data[GRID_SIZE][GRID_SIZE]{};
     uint32_t                         sphere_slot_rows[GRID_SIZE][GRID_SIZE]{};
 
     // 100 entities, one per sphere
@@ -257,7 +257,7 @@ private:
                 d.roughness  = roughness;
                 d.normal_scale = 0.35f;
 
-                auto &store = sphere_mi_data[row][col];
+                auto &store = sphere_material_data[row][col];
                 store.base_color = d.base_color;
                 store.metallic = d.metallic;
                 store.roughness = d.roughness;
@@ -281,11 +281,11 @@ private:
 
         const uint32_t mi_count = GRID_SIZE * GRID_SIZE;
 
-        mi_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::LitMaterialData>(
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::LitMaterialData>(
             graph::mtl::SSBOType::ClearCoatSurface,
-            "PBRSpheres:ClearCoatSurface:MIData",
+            "PBRSpheres:ClearCoatSurface:MaterialData",
             mi_count);
-        if (!mi_ssbo_accessor)
+        if (!mtl_data_ssbo_accessor)
             return false;
 
         for (uint row = 0; row < GRID_SIZE; ++row)
@@ -294,10 +294,10 @@ private:
             {
                 const uint32_t slot_index = row * GRID_SIZE + col;
                 sphere_slot_rows[row][col] = slot_index;
-                (*mi_ssbo_accessor)[slot_index] = sphere_mi_data[row][col];
+                (*mtl_data_ssbo_accessor)[slot_index] = sphere_material_data[row][col];
             }
         }
-        mi_ssbo_accessor->Commit();
+        mtl_data_ssbo_accessor->Commit();
         return true;
     }
 
@@ -453,7 +453,7 @@ private:
 
         graph::mtl::UpsertRecipeSSBOAssetBinding(sphere_recipe,
                                                  graph::mtl::DefaultMaterialDataSlotName,
-                                                 mi_ssbo_accessor->GetSSBOBinding());
+                                                 mtl_data_ssbo_accessor->GetSSBOBinding());
 
         if (!CreateBasePrimitives())
             return false;
@@ -496,7 +496,7 @@ private:
                 prim_comp->SetMaterialTextureValue(graph::mtl::TextureSlot::Custom0, row);
                 hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource sphere_struct{};
                 sphere_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
-                sphere_struct.ssbo_id = mi_ssbo_accessor->GetSSBOId();
+                sphere_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
                 sphere_struct.data_index = sphere_slot_rows[row][col];
                 sphere_struct.use_data_index = true;
                 sphere_struct.shared_across_instances = false;
@@ -569,7 +569,7 @@ public:
         }
 
         SAFE_CLEAR(mesh_vdm)
-        SAFE_CLEAR(mi_ssbo_accessor)
+        SAFE_CLEAR(mtl_data_ssbo_accessor)
         SAFE_CLEAR(base_color_texture)
         SAFE_CLEAR(normal_texture)
     }

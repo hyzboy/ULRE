@@ -36,11 +36,15 @@ namespace hgl::graph
 
             case PassType::ShadowOpaque:
             case PassType::ShadowMasked:
-                return shader_lib_path_ + "/compositor/main_shadow.frag.glsl"; // 后续实现
+                return {};
 
             case PassType::EarlyZSolid:
             case PassType::EarlyZMasked:
-                return shader_lib_path_ + "/compositor/main_earlyz.frag.glsl"; // 后续实现
+                return {};
+
+            case PassType::ForwardDither:
+            case PassType::ForwardA2C:
+                return shader_lib_path_ + "/compositor/main_forward_unlit.frag.glsl";
 
             default:
                 return shader_lib_path_ + "/compositor/main_forward_unlit.frag.glsl";
@@ -59,16 +63,20 @@ namespace hgl::graph
         case PassType::ForwardTransparent:
             return shader_lib_path_ + "/compositor/main_forward_lit.frag.glsl"; // 后续支持透明合成
 
+        case PassType::ForwardDither:
+        case PassType::ForwardA2C:
+            return shader_lib_path_ + "/compositor/main_forward_lit.frag.glsl";
+
         case PassType::ShadowOpaque:
         case PassType::ShadowMasked:
-            return shader_lib_path_ + "/compositor/main_shadow.frag.glsl"; // 后续实现
+            return {};
 
         case PassType::EarlyZSolid:
         case PassType::EarlyZMasked:
-            return shader_lib_path_ + "/compositor/main_earlyz.frag.glsl"; // 后续实现
+            return {};
 
         case PassType::VBufferID:
-            return shader_lib_path_ + "/compositor/main_vbuffer.frag.glsl"; // 后续实现
+            return {};
 
         default:
             return shader_lib_path_ + "/compositor/main_forward_lit.frag.glsl";
@@ -81,15 +89,16 @@ namespace hgl::graph
         {
         case SurfaceType::Standard:   return "surface/standard_surface.glsl";
         case SurfaceType::Unlit:      return "surface/unlit_color3d_surface.glsl";
-        case SurfaceType::Skin:       return "surface/skin_surface.glsl";        // 后续实现
-        case SurfaceType::Hair:       return "surface/hair_surface.glsl";        // 后续实现
-        case SurfaceType::Cloth:      return "surface/cloth_surface.glsl";       // 后续实现
-        case SurfaceType::Eye:        return "surface/eye_surface.glsl";         // 后续实现
-        case SurfaceType::Foliage:    return "surface/foliage_surface.glsl";     // 后续实现
-        case SurfaceType::ClearCoat:  return "surface/clearcoat_surface.glsl";   // 后续实现
-        case SurfaceType::Water:      return "surface/water_surface.glsl";       // 后续实现
-        case SurfaceType::Sky:        return "surface/sky_surface.glsl";         // 后续实现
-        default:                      return "surface/standard_surface.glsl";
+        case SurfaceType::Sky:        return "surface/sky_minimal_surface.glsl";
+        case SurfaceType::Skin:
+        case SurfaceType::Hair:
+        case SurfaceType::Cloth:
+        case SurfaceType::Eye:
+        case SurfaceType::Foliage:
+        case SurfaceType::ClearCoat:
+        case SurfaceType::Water:
+            return {};
+        default:                      return {};
         }
     }
 
@@ -100,6 +109,15 @@ namespace hgl::graph
     {
         std::string defines;
         key.AppendGLSLDefines(defines);
+        if (module_options.alpha_test)
+        {
+            defines += "#define HGL_ALPHA_TEST 1\n";
+            defines += "#define HGL_ALPHA_CUTOFF ";
+            defines += std::to_string(module_options.alpha_cutoff);
+            defines += "\n";
+        }
+        if (module_options.dither)
+            defines += "#define HGL_ALPHA_DITHER 1\n";
 
         // Metadata/comments may precede #version in file-backed templates, but
         // GLSL requires #version to be the first preprocessing token.
@@ -237,6 +255,19 @@ namespace hgl::graph
             ? surface_function_override
             : GetSurfaceFunctionPath(surface);
 
+        if (fs_path.empty())
+        {
+            result.error_message = "Unsupported compositor pass";
+            result.success = false;
+            return result;
+        }
+        if (surface_rel.empty())
+        {
+            result.error_message = "Unsupported compositor surface";
+            result.success = false;
+            return result;
+        }
+
         // 3. 读取 FS 模板
         std::string fs_source;
         if (!ReadFile(fs_path, fs_source, result.error_message))
@@ -246,7 +277,14 @@ namespace hgl::graph
         }
 
         // 4. 注入 #define
-        fs_source = InjectDefines(fs_source, key, module_options);
+        CompositorModuleOptions effective_options = module_options;
+        effective_options.alpha_test = effective_options.alpha_test
+            || blend == BlendMode::Masked
+            || pass == PassType::ForwardMasked;
+        effective_options.dither = effective_options.dither
+            || blend == BlendMode::Dither
+            || pass == PassType::ForwardDither;
+        fs_source = InjectDefines(fs_source, key, effective_options);
 
         // 5. Resolve configurable module includes to literal header names.
         // GLSL does not allow a macro to stand in for the header token of #include.

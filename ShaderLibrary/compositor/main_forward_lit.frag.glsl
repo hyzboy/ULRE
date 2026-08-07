@@ -51,6 +51,7 @@ layout(location=0) out vec4 outColor;
 
 // Surface function (injected by CompositorAssembler via #define SURFACE_FUNCTION_FILE)
 #include SURFACE_FUNCTION_FILE
+#include "common/alpha_compositor.glsl"
 
 void main()
 {
@@ -66,5 +67,5 @@ void main()
     si.textureLayerID = fragTextureLayerID;
 
     SurfaceOutput so = EvalSurface(si, fragDataIndexID);
-    outColor = vec4(so.baseColor, so.alpha);
+    outColor = HGLComposeColor(vec4(so.baseColor, so.alpha));
 }
