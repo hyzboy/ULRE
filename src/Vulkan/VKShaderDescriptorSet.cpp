@@ -25,19 +25,6 @@ namespace
             if (strcmp(name, "l2w_index_rows") == 0) { out_binding = 1; return true; }
             return false;
 
-        case DescriptorSetType::VertexData:
-            if (strcmp(name, "VertexDataBuffer") == 0 || strcmp(name, "vtx_data") == 0)
-            {
-                out_binding = 18;
-                return true;
-            }
-            if (strcmp(name, "IndexDataBuffer") == 0 || strcmp(name, "idx_data") == 0)
-            {
-                out_binding = 19;
-                return true;
-            }
-            return false;
-
         case DescriptorSetType::Material:
             return false;
 
@@ -53,7 +40,6 @@ namespace
         case DescriptorSetType::Scene:     return 3;
         case DescriptorSetType::Transform: return 2;
         case DescriptorSetType::Material:  return 0;
-        case DescriptorSetType::VertexData:return 20;
         default:                           return 0;
         }
     }

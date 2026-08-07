@@ -12,7 +12,7 @@ namespace hgl::graph
     class Sampler;
 
     /**
-     * 全局 Bindless 纹理管理器（对应 Descriptor Set 4）。
+     * 全局 Bindless 纹理管理器（对应 Descriptor Set 3）。
      *
      * 维护两个纹理数组：
      *   binding=0 : sampler2D[]      (2D 单层纹理)

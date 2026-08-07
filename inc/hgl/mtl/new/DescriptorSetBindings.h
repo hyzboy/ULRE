@@ -59,8 +59,6 @@ namespace hgl::graph::DSBinding
         constexpr uint32_t MeshletBuffer      = 15;
         constexpr uint32_t InstanceBuffer     = 16;
         constexpr uint32_t TerrainHeightMap   = 17;
-        constexpr uint32_t VertexDataBuffer   = 18;
-        constexpr uint32_t IndexDataBuffer    = 19;
         constexpr uint32_t ShadowMapCached    = 20;
         constexpr uint32_t CapsuleShadowData  = 21;
     }

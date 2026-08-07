@@ -11,7 +11,7 @@
 // @ulre uses lighting_interface
 // @ulre end
 // standard_texturearray_surface.glsl — Standard Lit Surface with Texture2DArray sampling
-// S6: Texture sampling migrated to bindless (bindless_tex2darray[], binding=1 on Set 4).
+// S6: Texture sampling migrated to bindless (bindless_tex2darray[], binding=1 on Set 3).
 // Texture semantic declarations remain in the material contract for recipe extraction,
 // but actual sampling is fully bindless in this shader.
 // Array layer index is stored in TextureLayerRows[iid][TEXTURE_SLOT_CUSTOM0].

@@ -30,6 +30,8 @@
 #include <utility>
 #include <vector>
 
+#include <hgl/type/StdString.h>
+
 using namespace hgl::graph;
 using namespace hgl::graph::mtl;
 
@@ -41,6 +43,17 @@ namespace
         bool passed = false;
         std::vector<std::string> diagnostics;
     };
+
+    // 仓库根路径（由 CMake 注入，避免硬编码盘符）
+    static std::string RepoRootPath(const char *suffix)
+    {
+        return std::string(ULRE_REPO_ROOT) + "/" + suffix;
+    }
+
+    static hgl::OSString RepoRootOSPath(const char *suffix)
+    {
+        return hgl::ToOSString(RepoRootPath(suffix));
+    }
 
     static std::vector<std::string> SummarizeConstraintShape(const MaterialResourceLayout &contract)
     {
@@ -880,7 +893,7 @@ namespace
             result.diagnostics.emplace_back(
                 "equivalent shader stages must retain distinct program input identity");
 
-        ShaderArtifactStore store(OS_TEXT("E:/ULRE/build"), ShaderCacheMode::BuildIfMissing);
+        ShaderArtifactStore store(RepoRootOSPath("build"), ShaderCacheMode::BuildIfMissing);
         const uint32_t payload[] = {0x07230203u, 1u, 2u, 3u};
         if (!store.SaveStageSPV(stage_key, payload, sizeof(payload)))
         {
@@ -903,7 +916,7 @@ namespace
         }
 
         ShaderArtifactStore read_only_store(
-            OS_TEXT("E:/ULRE/build"), ShaderCacheMode::ReadOnly);
+            RepoRootOSPath("build"), ShaderCacheMode::ReadOnly);
         if (read_only_store.SaveStageSPV(stage_key, payload, sizeof(payload)))
             result.diagnostics.emplace_back("read-only cache must reject writes");
 
@@ -1852,14 +1865,14 @@ namespace
             result.diagnostics.emplace_back("LoadDirectory failed to scan directory");
         else
         {
-            if (file_count != 60)
-                result.diagnostics.emplace_back("LoadDirectory expected 60 file modules, got "
+            if (file_count != 58)
+                result.diagnostics.emplace_back("LoadDirectory expected 58 file modules, got "
                     + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 60 + int(GLSLCodeModuleID::RANGE_SIZE);
+            const int expected_count = 58 + int(GLSLCodeModuleID::RANGE_SIZE);
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
@@ -1898,11 +1911,11 @@ namespace
         int dup_errors = 0;
         if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()), &dup_count, &dup_errors))
             result.diagnostics.emplace_back("second LoadDirectory failed");
-        else if (dup_count != 0 || dup_errors != 60)
-            result.diagnostics.emplace_back("second LoadDirectory must report 60 duplicates, got files="
+        else if (dup_count != 0 || dup_errors != 58)
+            result.diagnostics.emplace_back("second LoadDirectory must report 58 duplicates, got files="
                 + std::to_string(dup_count) + " errors=" + std::to_string(dup_errors));
 
-        const int stable_count = 60 + int(GLSLCodeModuleID::RANGE_SIZE);
+        const int stable_count = 58 + int(GLSLCodeModuleID::RANGE_SIZE);
         if (registry.GetCount() != stable_count)
             result.diagnostics.emplace_back("registry count changed after duplicate re-scan: got "
                 + std::to_string(registry.GetCount()));

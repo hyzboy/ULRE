@@ -42,6 +42,9 @@ target_link_libraries(MaterialResourceLayoutRegressionGate
 
 CreateProject(MaterialResourceLayoutRegressionGate)
 
+target_compile_definitions(MaterialResourceLayoutRegressionGate
+    PRIVATE ULRE_REPO_ROOT="${CMAKE_SOURCE_DIR}")
+
 if(BUILD_TESTING)
     add_test(
         NAME material_resource_layout_regression_gate
