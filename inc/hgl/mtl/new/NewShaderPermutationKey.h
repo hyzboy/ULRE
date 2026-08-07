@@ -1,7 +1,6 @@
 #pragma once
 
 #include "SurfaceType.h"
-#include "GeometryFetchMode.h"
 #include <string>
 
 namespace hgl::graph

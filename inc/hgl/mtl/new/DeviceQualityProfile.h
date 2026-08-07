@@ -1,13 +1,11 @@
 #pragma once
 
-#include "GeometryFetchMode.h"
+#include <hgl/type/EnumUtil.h>
 
 namespace hgl::graph
 {
     struct DeviceQualityProfile
     {
-        GeometryFetchMode   geometry_fetch;
-
         // 特性掩码
         bool support_ssbo_vertex;       // SSBO 顶点获取
         bool support_meshlet;           // Meshlet 管线
@@ -25,8 +23,7 @@ namespace hgl::graph
 
         // 默认构造 — PC High
         DeviceQualityProfile()
-            : geometry_fetch(GeometryFetchMode::SSBO)
-            , support_ssbo_vertex(true)
+            : support_ssbo_vertex(true)
             , support_meshlet(false)
             , support_hzb(true)
             , support_clustered(true)

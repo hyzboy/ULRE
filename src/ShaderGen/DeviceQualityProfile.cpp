@@ -39,21 +39,6 @@ DeviceQualityProfile DetectDeviceQuality(const VulkanPhyDevice &phy_device)
     profile.max_shadow_cascade  = 4;
     profile.max_point_lights    = 64;
 
-    // ---- 能力标志设置完毕，geometry_fetch 已确定 ----
-    const bool is_discrete = (props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);
-    const uint32_t ssbo_range = limits.maxStorageBufferRange;
-
-    profile.render_scale = 1.0f;
-    profile.max_shadow_cascade = 3;
-    profile.max_point_lights   = 16;
-    profile.support_hzb        = false;
-    profile.support_vbuffer    = false;
-    profile.support_clustered  = false;
-
-    // ---- GeometryFetchMode ----
-    profile.geometry_fetch = profile.support_ssbo_vertex ? GeometryFetchMode::SSBO
-                                                        : GeometryFetchMode::VBO;
-
     return profile;
 }
 

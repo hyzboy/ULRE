@@ -3,7 +3,6 @@
 #include <hgl/mtl/new/SurfaceType.h>
 #include <hgl/mtl/new/BlendMode.h>
 #include <hgl/mtl/new/PassType.h>
-#include <hgl/mtl/new/GeometryFetchMode.h>
 #include <hgl/mtl/new/NewShaderPermutationKey.h>
 #include <string>
 

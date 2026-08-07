@@ -10,13 +10,9 @@ void NewShaderPermutationKey::AppendGLSLDefines(std::string &out) const
     char buf[512];
     snprintf(buf, sizeof(buf),
         "#define SURFACE_TYPE %d\n"
-        "#define SHADOW_MODE %u\n"
-        "#define GEOMETRY_FETCH_SSBO %d\n",
+        "#define SHADOW_MODE %u\n",
         static_cast<int>(GetSurfaceType()),
-        static_cast<unsigned>(GetShadowMode()),
-        // geometry fetch mode: SSBO geometry fetch not yet implemented in renderer,
-        // always 0 until VertexDataBuffer SSBO pipeline is wired up.
-        0);
+        static_cast<unsigned>(GetShadowMode()));
 
     out += buf;
 }

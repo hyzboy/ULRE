@@ -3,7 +3,6 @@
 #include<hgl/vk/VK.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/type/ManagedArray.h>
-#include<hgl/mtl/new/GeometryFetchMode.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/log/Log.h>
 
