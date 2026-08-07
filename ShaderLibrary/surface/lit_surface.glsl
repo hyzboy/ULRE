@@ -9,16 +9,14 @@
 // @ulre uses descriptor_macros
 // @ulre uses surface_interface
 // @ulre uses ntb_interface
-// @ulre uses lighting_interface
 // @ulre end
 // lit_surface.glsl — Modular Lit Surface
-// 材质基本属性提炼 + 模块化 NTB 空间解码 + 独立 Direct/Indirect/Sky 光照合成
+// 材质基本属性提取与模块化 NTB 空间解码；光照由 compositor 统一调度。
 
 #include "common/surface_interface.glsl"
 #include "common/descriptor_macros.glsl"
 #include "common/bindless_textures.glsl"
 #include "common/ntb_interface.glsl"
-#include "common/lighting_interface.glsl"
 
 SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 {
@@ -72,22 +70,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
         surf.ao = SampleBindless2D(occlusion_handle, si.uv0).r;
     }
 
-    // 4. Lighting Evaluation via Selected CodeModules
-    vec3 lightDir   = GetSkyMainLightDir();
-    vec3 lightColor = GetSkyMainLightColor();
-    vec3 skyAmbient = GetSkyAmbientColor();
-
-    vec3 directColor   = EvalDirectLighting(surf, ntb, si.viewDir, lightDir, lightColor);
-    vec3 indirectColor = EvalIndirectLighting(surf, ntb, si.viewDir, skyAmbient);
-#ifdef HGL_SKY_CUBEMAP
-    vec3 reflection_dir = reflect(-normalize(si.viewDir), ntb.N);
-    vec3 reflection_f0 = mix(vec3(surf.fresnel), surf.baseColor, surf.metallic);
-    indirectColor += GetSkyReflectionColor(reflection_dir)
-                   * reflection_f0
-                   * (1.0 - surf.roughness);
-#endif
-
-    surf.baseColor = directColor + indirectColor + surf.emissive;
+    // Lighting is scheduled by the compositor after this material output.
     return surf;
 }
 

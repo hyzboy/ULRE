@@ -20,7 +20,7 @@
 //
 // 提供 camera + sky UBO，填充 SurfaceInput（world-space），
 // 然后调用 SURFACE_FUNCTION_FILE 中的 EvalSurface()。
-// 光照计算由各 surface function 自行完成（支持自定义光照模型）。
+// 光照调度统一在 compositor 中完成，surface 只输出材质属性。
 
 // Scene UBOs
 #include "common/descriptor_macros.glsl"
@@ -32,12 +32,14 @@ SCENE_SKY_UBO;
 // Surface & Lighting interfaces
 #include "common/surface_interface.glsl"
 
-// Configurable Lighting & NTB Code Modules.
+// Configurable lighting provider and compositor modules.
 // CompositorAssembler replaces these literal defaults when options override them.
 #include "sky/sky_atmosphere.glsl"
 #include "lighting/direct_cook_torrance_pbr.glsl"
 #include "lighting/indirect_simple_ambient.glsl"
+#include "lighting/forward_pbr.glsl"
 #include "ntb/ntb_tangent_vbo_normalmap.glsl"
+#include "compositor/forward_lighting.glsl"
 
 // Inputs from VS
 layout(location=0) flat in uint fragDataIndexID;
@@ -67,5 +69,8 @@ void main()
     si.textureLayerID = fragTextureLayerID;
 
     SurfaceOutput so = EvalSurface(si, fragDataIndexID);
-    outColor = HGLComposeColor(vec4(so.baseColor, so.alpha));
+    const LightingInput lightingInput = BuildForwardLightingInput(so, si);
+    const vec4 finalColor = EvalLighting(lightingInput);
+
+    outColor = HGLComposeColor(finalColor);
 }

@@ -24,6 +24,8 @@ struct SurfaceInput
     uint textureLayerID; // bindless 纹理行索引（= gl_InstanceIndex），用于 GetTextureHandle(textureLayerID, slot) 查表
 };
 
+// Material attributes returned by a surface module. Compositors must not
+// overwrite baseColor with the final lit color.
 struct SurfaceOutput
 {
     vec3  baseColor;

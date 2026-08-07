@@ -294,6 +294,10 @@ namespace
              || ambient_model == SkyLightAmbientModel::IBL
                     ? "sky/sky_cubemap.glsl"
                     : "sky/sky_atmosphere.glsl";
+            compositor_options.forward_lighting_module =
+                "compositor/forward_lighting.glsl";
+            compositor_options.lighting_algorithm_module =
+                "lighting/forward_pbr.glsl";
         }
 
         const auto assembled = assembler.Assemble(

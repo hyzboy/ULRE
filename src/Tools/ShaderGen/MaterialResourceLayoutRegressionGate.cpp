@@ -612,7 +612,57 @@ namespace
             if (assembled.fragment_glsl.find("#version", 8) != std::string::npos)
                 result.diagnostics.emplace_back(
                     "Compositor GLSL contains a second #version directive");
+            const size_t surface_call = assembled.fragment_glsl.find(
+                "SurfaceOutput so = EvalSurface(si, fragDataIndexID);");
+            const size_t input_module_include = assembled.fragment_glsl.find(
+                "#include \"compositor/forward_lighting.glsl\"");
+            const size_t algorithm_module_include = assembled.fragment_glsl.find(
+                "#include \"lighting/forward_pbr.glsl\"");
+            const size_t input_builder_call = assembled.fragment_glsl.find(
+                "BuildForwardLightingInput(");
+            const size_t algorithm_call = assembled.fragment_glsl.find(
+                "EvalLighting(");
+            if (surface_call == std::string::npos
+             || input_module_include == std::string::npos
+             || algorithm_module_include == std::string::npos
+             || input_builder_call == std::string::npos
+             || algorithm_call == std::string::npos
+             || input_builder_call < surface_call
+             || algorithm_call < input_builder_call)
+                result.diagnostics.emplace_back(
+                    "Lit compositor must fill LightingInput before invoking the replaceable lighting algorithm");
         }
+
+        CompositorAssembler::CompositorModuleOptions lighting_options{};
+        lighting_options.direct_lighting_module = "lighting/direct_toon.glsl";
+        lighting_options.indirect_lighting_module = "lighting/indirect_pbr_ambient.glsl";
+        lighting_options.lighting_algorithm_module = "lighting/forward_flat.glsl";
+        lighting_options.forward_lighting_module = "compositor/forward_lighting.glsl";
+        const auto scheduled_lighting = assembler.Assemble(
+            SurfaceType::Lit,
+            BlendMode::Opaque,
+            PassType::ForwardOpaque,
+            nullptr,
+            "surface/lit_texturearray_surface.glsl",
+            lighting_options);
+        if (!scheduled_lighting.success
+         || scheduled_lighting.fragment_glsl.find(
+                "#include \"lighting/direct_toon.glsl\"")
+                == std::string::npos
+         || scheduled_lighting.fragment_glsl.find(
+                "#include \"lighting/indirect_pbr_ambient.glsl\"")
+                == std::string::npos
+         || scheduled_lighting.fragment_glsl.find(
+                "#include \"lighting/forward_flat.glsl\"")
+                == std::string::npos
+         || scheduled_lighting.fragment_glsl.find(
+                "#include \"compositor/forward_lighting.glsl\"")
+                == std::string::npos
+         || scheduled_lighting.fragment_glsl.find(
+                "#include \"surface/lit_texturearray_surface.glsl\"")
+                == std::string::npos)
+            result.diagnostics.emplace_back(
+                "Lit compositor must route lighting and texture-array surface modules through one scheduler");
 
         const auto dithered = assembler.Assemble(
             SurfaceType::Unlit,
@@ -2248,14 +2298,14 @@ namespace
             result.diagnostics.emplace_back("LoadDirectory failed to scan directory");
         else
         {
-            if (file_count != 57)
-                result.diagnostics.emplace_back("LoadDirectory expected 57 file modules, got "
+            if (file_count != 60)
+                result.diagnostics.emplace_back("LoadDirectory expected 60 file modules, got "
                     + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 57 + int(GLSLCodeModuleID::RANGE_SIZE);
+            const int expected_count = 60 + int(GLSLCodeModuleID::RANGE_SIZE);
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
@@ -2289,16 +2339,28 @@ namespace
                     + std::to_string(compositor_lit->code_module_requirement_count));
         }
 
+        const auto *forward_input = registry.FindByName("forward_lighting");
+        if (!forward_input || forward_input->kind != GLSLCodeModuleKind::Utility)
+            result.diagnostics.emplace_back("forward_lighting input assembly module is missing or has wrong kind");
+
+        const auto *forward_algorithm = registry.FindByName("forward_pbr");
+        if (!forward_algorithm || forward_algorithm->kind != GLSLCodeModuleKind::Utility)
+            result.diagnostics.emplace_back("forward_pbr lighting algorithm module is missing or has wrong kind");
+
+        const auto *alternate_algorithm = registry.FindByName("forward_flat");
+        if (!alternate_algorithm || alternate_algorithm->kind != GLSLCodeModuleKind::Utility)
+            result.diagnostics.emplace_back("forward_flat alternate lighting algorithm is missing or has wrong kind");
+
         // Re-scan must detect every duplicate name and keep counts stable.
         int dup_count = 0;
         int dup_errors = 0;
         if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()), &dup_count, &dup_errors))
             result.diagnostics.emplace_back("second LoadDirectory failed");
-        else if (dup_count != 0 || dup_errors != 57)
-            result.diagnostics.emplace_back("second LoadDirectory must report 57 duplicates, got files="
+        else if (dup_count != 0 || dup_errors != 60)
+            result.diagnostics.emplace_back("second LoadDirectory must report 60 duplicates, got files="
                 + std::to_string(dup_count) + " errors=" + std::to_string(dup_errors));
 
-        const int stable_count = 57 + int(GLSLCodeModuleID::RANGE_SIZE);
+        const int stable_count = 60 + int(GLSLCodeModuleID::RANGE_SIZE);
         if (registry.GetCount() != stable_count)
             result.diagnostics.emplace_back("registry count changed after duplicate re-scan: got "
                 + std::to_string(registry.GetCount()));

@@ -7,8 +7,29 @@
 #ifndef LIGHTING_INTERFACE_GLSL
 #define LIGHTING_INTERFACE_GLSL
 
-#include "common/surface_interface.glsl"
-#include "common/ntb_interface.glsl"
+// All values required by a lighting algorithm are resolved before the
+// algorithm is called. The source of baseColor, normal, or environment data
+// is intentionally not part of this contract.
+struct LightingInput
+{
+    vec3  baseColor;
+    vec3  normal;
+    vec3  viewDir;
+    float metallic;
+    float roughness;
+    float fresnel;
+    float ao;
+    vec3  emissive;
+    float alpha;
+
+    vec3  mainLightDir;
+    vec3  mainLightColor;
+    vec3  ambientColor;
+    vec3  reflectionColor;
+};
+
+// A lighting algorithm consumes only LightingInput and returns final RGBA.
+//   vec4 EvalLighting(LightingInput lighting)
 
 // 光照基础 Math 辅助库
 float ULRE_LIT_D_GGX(float NdotH, float alpha2)

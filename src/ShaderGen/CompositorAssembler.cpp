@@ -204,20 +204,28 @@ namespace hgl::graph
             module_options.indirect_lighting_module && module_options.indirect_lighting_module[0]
                 ? module_options.indirect_lighting_module
                 : "lighting/indirect_simple_ambient.glsl",
+            module_options.lighting_algorithm_module && module_options.lighting_algorithm_module[0]
+                ? module_options.lighting_algorithm_module
+                : "lighting/forward_pbr.glsl",
             module_options.ntb_module && module_options.ntb_module[0]
                 ? module_options.ntb_module
-                : "ntb/ntb_tangent_vbo_normalmap.glsl"
+                : "ntb/ntb_tangent_vbo_normalmap.glsl",
+            module_options.forward_lighting_module && module_options.forward_lighting_module[0]
+                ? module_options.forward_lighting_module
+                : "compositor/forward_lighting.glsl"
         };
         const char *default_paths[] =
         {
             "sky/sky_atmosphere.glsl",
             "lighting/direct_cook_torrance_pbr.glsl",
             "lighting/indirect_simple_ambient.glsl",
-            "ntb/ntb_tangent_vbo_normalmap.glsl"
+            "lighting/forward_pbr.glsl",
+            "ntb/ntb_tangent_vbo_normalmap.glsl",
+            "compositor/forward_lighting.glsl"
         };
 
         std::string result = source;
-        for (size_t i = 0; i < 4; ++i)
+        for (size_t i = 0; i < 6; ++i)
         {
             const std::string marker =
                 std::string("#include \"") + default_paths[i] + "\"";
