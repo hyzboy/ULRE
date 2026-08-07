@@ -1,6 +1,7 @@
 #include <hgl/graph/glsl/GLSLCodeModule.h>
 
 #include <hgl/common/RenderAssignDef.h>
+#include <hgl/type/StrChar.h>
 
 namespace hgl::graph::mtl
 {
@@ -26,15 +27,6 @@ namespace hgl::graph::mtl
         constexpr GLSLCodeModuleID SKY_LIGHT_HEADER_MODULES[] =
         {
             GLSLCodeModuleID::SkyLightHeader
-        };
-
-        constexpr GLSLCodeModuleTextureRequirement PBR_TEXTURE_REQUIREMENTS[] =
-        {
-            { "TextureBaseColor", "sampler2D", DescriptorSemantic::MaterialTexture, TextureSlot::BaseColor, uint32(VK_SHADER_STAGE_FRAGMENT_BIT), false },
-            { "TextureNormal", "sampler2D", DescriptorSemantic::MaterialTexture, TextureSlot::Normal, uint32(VK_SHADER_STAGE_FRAGMENT_BIT), false },
-            { "TextureMetallic", "sampler2D", DescriptorSemantic::MaterialTexture, TextureSlot::Metallic, uint32(VK_SHADER_STAGE_FRAGMENT_BIT), false },
-            { "TextureRoughness", "sampler2D", DescriptorSemantic::MaterialTexture, TextureSlot::Roughness, uint32(VK_SHADER_STAGE_FRAGMENT_BIT), false },
-            { "TextureOcclusion", "sampler2D", DescriptorSemantic::MaterialTexture, TextureSlot::Occlusion, uint32(VK_SHADER_STAGE_FRAGMENT_BIT), false },
         };
 
         constexpr GLSLCodeModuleDefinition MODULES[] =
@@ -87,12 +79,11 @@ namespace hgl::graph::mtl
            {
                GLSLCodeModuleID::PBRSurface,
                "PBRSurface",
-                "",
-                nullptr, 0, nullptr, 0,
-                PBR_TEXTURE_REQUIREMENTS,
-                uint32(sizeof(PBR_TEXTURE_REQUIREMENTS) / sizeof(PBR_TEXTURE_REQUIREMENTS[0])),
-                nullptr,
-                0
+               "",
+               nullptr, 0, nullptr, 0,
+               nullptr, 0,
+               nullptr,
+               0
             }
         };
     }
@@ -103,6 +94,25 @@ namespace hgl::graph::mtl
         return index < static_cast<uint32>(sizeof(MODULES) / sizeof(MODULES[0]))
             ? &MODULES[index]
             : nullptr;
+    }
+
+    bool TryGetGLSLCodeModuleIDByName(const char *name, GLSLCodeModuleID &out) noexcept
+    {
+        if (!name || !*name)
+            return false;
+
+        constexpr uint32 module_count =
+            static_cast<uint32>(sizeof(MODULES) / sizeof(MODULES[0]));
+        for (uint32 i = 0; i < module_count; ++i)
+        {
+            if (MODULES[i].name && hgl::strcmp(MODULES[i].name, name) == 0)
+            {
+                out = MODULES[i].id;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     const char *GetGLSLCodeModuleName(const GLSLCodeModuleID id) noexcept

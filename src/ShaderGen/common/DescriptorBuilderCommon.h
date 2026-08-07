@@ -14,9 +14,17 @@ inline const char *GetTextureNameBySlot(const TextureSlot slot) noexcept
     {
     case TextureSlot::BaseColor: return "TextureBaseColor";
     case TextureSlot::Normal: return "TextureNormal";
+    case TextureSlot::Metallic: return "TextureMetallic";
     case TextureSlot::Roughness: return "TextureRoughness";
-    default: return "TextureCustom";
+    case TextureSlot::Emissive: return "TextureEmissive";
+    case TextureSlot::Occlusion: return "TextureOcclusion";
+    case TextureSlot::OpacityMask: return "TextureOpacityMask";
+    case TextureSlot::Height: return "TextureHeight";
+    case TextureSlot::Custom0: return "TextureCustom0";
+    case TextureSlot::Custom1: return "TextureCustom1";
     }
+
+    return "TextureUnknown";
 }
 
 inline void PushViewport(std::vector<FixedDescriptorEntry> &v, const uint32_t stage_flags)

@@ -14,13 +14,6 @@ namespace hgl::graph::ssbo
         float normal_scale;
         float fresnel;
     )";
-    constexpr const char ClearCoatSurfaceMaterialSSBOGLSL[] = R"(
-        vec4  base_color;
-        float metallic;
-        float roughness;
-        float normal_scale;
-        float fresnel;
-    )";
     constexpr const char TransmissionSurfaceMaterialSSBOGLSL[] = "uint TextColor;";
 
     inline const char *GetMaterialSSBOStructName(const mtl::SSBOType type) noexcept
@@ -30,7 +23,6 @@ namespace hgl::graph::ssbo
         case mtl::SSBOType::EmissiveSurface:         return "EmissiveSurfaceData";
         case mtl::SSBOType::TextureRectArraySurface: return "TextureRectArraySurfaceData";
         case mtl::SSBOType::PBRSurface:              return "PBRSurfaceData";
-        case mtl::SSBOType::ClearCoatSurface:        return "ClearCoatSurfaceData";
         case mtl::SSBOType::TransmissionSurface:     return "TransmissionSurfaceData";
         default:                                     return nullptr;
         }
@@ -42,9 +34,8 @@ namespace hgl::graph::ssbo
         {
         case mtl::SSBOType::EmissiveSurface:     return EmissiveSurfaceMaterialSSBOGLSL;
         case mtl::SSBOType::TextureRectArraySurface: return TextureRectArraySurfaceMaterialSSBOGLSL;
-        case mtl::SSBOType::PBRSurface:          return PBRSurfaceMaterialSSBOGLSL;
-        case mtl::SSBOType::ClearCoatSurface:    return ClearCoatSurfaceMaterialSSBOGLSL;
-        case mtl::SSBOType::TransmissionSurface: return TransmissionSurfaceMaterialSSBOGLSL;
+        case mtl::SSBOType::PBRSurface:              return PBRSurfaceMaterialSSBOGLSL;
+        case mtl::SSBOType::TransmissionSurface:     return TransmissionSurfaceMaterialSSBOGLSL;
         default:                                 return nullptr;
         }
     }

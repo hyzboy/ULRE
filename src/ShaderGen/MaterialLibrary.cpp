@@ -271,41 +271,38 @@ namespace
                                                resolved_vertex_input_glsl,
                                                resolved_provider_glsl);
 
-        std::string fs;
+        CompositorAssembler assembler(GetShaderLibraryPath());
+        CompositorAssembler::CompositorModuleOptions compositor_options{};
+        compositor_options.alpha_test = request.recipe.alpha_test;
+        compositor_options.alpha_cutoff = request.recipe.alpha_cutoff;
+        compositor_options.dither =
+            definition.compositor_blend == BlendMode::Dither
+         || definition.compositor_pass == PassType::ForwardDither;
         if (definition.fragment_program_mode == MaterialFragmentProgramMode::Compositor)
         {
-            CompositorAssembler assembler(GetShaderLibraryPath());
-            CompositorAssembler::CompositorModuleOptions compositor_options{};
-            compositor_options.alpha_test = request.recipe.alpha_test;
-            compositor_options.alpha_cutoff = request.recipe.alpha_cutoff;
             compositor_options.sky_module =
                 ambient_model == SkyLightAmbientModel::CubeMap
              || ambient_model == SkyLightAmbientModel::IBL
                     ? "sky/sky_cubemap.glsl"
                     : "sky/sky_atmosphere.glsl";
-            compositor_options.dither =
-                definition.compositor_blend == BlendMode::Dither
-             || definition.compositor_pass == PassType::ForwardDither;
-            const auto assembled = assembler.Assemble(
-                definition.compositor_surface,
-                definition.compositor_blend,
-                definition.compositor_pass,
-                definition.fragment_program_module,
-                definition.fragment_surface_module,
-                compositor_options);
-            if (!assembled.success)
-            {
-                GLogError("[ShaderGen] Generic material compositor assembly failed: name=%s error=%s",
-                          definition.definition_name.c_str(),
-                          assembled.error_message.c_str());
-                return nullptr;
-            }
-            fs = assembled.fragment_glsl;
         }
-        else
+
+        const auto assembled = assembler.Assemble(
+            definition.compositor_surface,
+            definition.compositor_blend,
+            definition.compositor_pass,
+            definition.fragment_program_module,
+            definition.fragment_program_mode == MaterialFragmentProgramMode::Compositor
+                ? definition.fragment_surface_module : nullptr,
+            compositor_options);
+        if (!assembled.success)
         {
-            fs = "#version 450\n#include \"" + std::string(definition.fragment_program_module) + "\"\n";
+            GLogError("[ShaderGen] Generic material fragment assembly failed: name=%s error=%s",
+                      definition.definition_name.c_str(),
+                      assembled.error_message.c_str());
+            return nullptr;
         }
+        const std::string fs = assembled.fragment_glsl;
 
         FixedMaterialDef fixed_definition{
             definition.definition_name.c_str(),
@@ -318,14 +315,6 @@ namespace
         config.shader_stage_flag_bits = request.override_shader_stage_bits
             ? request.shader_stage_flag_bit : uint32(ShaderStage::VertexFragment);
         config.material_definition = &definition;
-        config.alpha_test = definition.fragment_program_mode == MaterialFragmentProgramMode::DirectInclude
-            && (request.recipe.alpha_test
-             || definition.compositor_blend == BlendMode::Masked
-             || definition.compositor_pass == PassType::ForwardMasked);
-        config.alpha_cutoff = request.recipe.alpha_cutoff;
-        config.alpha_dither = definition.fragment_program_mode == MaterialFragmentProgramMode::DirectInclude
-            && (definition.compositor_blend == BlendMode::Dither
-             || definition.compositor_pass == PassType::ForwardDither);
         config.resource_manifest = manifest.IsValid() ? &manifest : nullptr;
         config.artifact_store = request.shader_artifact_store;
         if (request.shader_artifact_store)

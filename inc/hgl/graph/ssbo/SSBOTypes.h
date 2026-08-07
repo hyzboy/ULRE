@@ -14,7 +14,6 @@ namespace hgl::graph::mtl
         PBRSurface,
         EmissiveSurface,
         TextureRectArraySurface,
-        ClearCoatSurface,
         TransmissionSurface,
         TransformIndexRows,
         LocalToWorld,
@@ -38,7 +37,6 @@ namespace hgl::graph::mtl
         case SSBOType::PBRSurface:
         case SSBOType::EmissiveSurface:
         case SSBOType::TextureRectArraySurface:
-        case SSBOType::ClearCoatSurface:
         case SSBOType::TransmissionSurface:
         case SSBOType::UserDefined:
             return true;
@@ -56,7 +54,6 @@ namespace hgl::graph::mtl
         case SSBOType::PBRSurface: return "PBRSurface";
         case SSBOType::EmissiveSurface: return "EmissiveSurface";
         case SSBOType::TextureRectArraySurface: return "TextureRectArraySurface";
-        case SSBOType::ClearCoatSurface: return "ClearCoatSurface";
         case SSBOType::TransmissionSurface: return "TransmissionSurface";
         case SSBOType::TransformIndexRows: return "TransformIndexRows";
         case SSBOType::LocalToWorld: return "LocalToWorld";
@@ -76,7 +73,6 @@ namespace hgl::graph::mtl
         case SSBOType::PBRSurface:
         case SSBOType::EmissiveSurface:
         case SSBOType::TextureRectArraySurface:
-        case SSBOType::ClearCoatSurface:
         case SSBOType::TransmissionSurface:
             return 1;
         default:
@@ -100,8 +96,6 @@ namespace hgl::graph::mtl
             return sizeof(float) * 4;                    // vec4/uvec4 style payload
         case SSBOType::TextureRectArraySurface:
             return sizeof(uint32_t) * 4;                // uvec4 id
-        case SSBOType::ClearCoatSurface:
-            return sizeof(float) * 8; // vec4 base_color + metallic + roughness + normal_scale + fresnel
         case SSBOType::TransmissionSurface:
             return sizeof(uint32_t);                     // packed uint payload
         case SSBOType::TransformIndexRows:

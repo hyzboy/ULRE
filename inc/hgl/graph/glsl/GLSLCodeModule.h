@@ -151,6 +151,7 @@ namespace hgl::graph::mtl
     };
 
     const GLSLCodeModuleDefinition *FindGLSLCodeModuleDefinition(GLSLCodeModuleID id) noexcept;
+    bool TryGetGLSLCodeModuleIDByName(const char *name, GLSLCodeModuleID &out) noexcept;
     const char *GetGLSLCodeModuleName(GLSLCodeModuleID id) noexcept;
     uint64 GetGLSLCodeModuleDefinitionHash(GLSLCodeModuleID id) noexcept;
 

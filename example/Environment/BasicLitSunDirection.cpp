@@ -220,7 +220,7 @@ private:
             return false;
 
         mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::LitMaterialData>(
-            graph::mtl::SSBOType::ClearCoatSurface,
+            graph::mtl::SSBOType::PBRSurface,
             "BasicLitSunDir:Standard:MI",
             1);
         if (!mtl_data_ssbo_accessor)

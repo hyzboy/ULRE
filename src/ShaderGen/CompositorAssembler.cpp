@@ -95,7 +95,7 @@ namespace hgl::graph
         case SurfaceType::Cloth:      return "surface/cloth_surface.glsl";
         case SurfaceType::Eye:        return "surface/eye_surface.glsl";
         case SurfaceType::Foliage:    return "surface/foliage_surface.glsl";
-        case SurfaceType::ClearCoat:  return "surface/clearcoat_surface.glsl";
+        case SurfaceType::ClearCoat:  return "surface/standard_surface.glsl";
         case SurfaceType::Water:      return "surface/water_surface.glsl";
         default:                      return {};
         }
@@ -167,7 +167,9 @@ namespace hgl::graph
             return result;
         }
 
-        return defines + "\n" + source;
+        // DirectInclude fragment files may omit #version because the old
+        // MaterialLibrary path prepended it before compilation.
+        return "#version 450\n" + defines + "\n" + source;
     }
 
     std::string CompositorAssembler::ReplaceSurfaceInclude(const std::string &source, const std::string &surface_path) const

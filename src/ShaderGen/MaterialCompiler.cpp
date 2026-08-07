@@ -430,15 +430,6 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
 
     std::string binding_preamble;
     binding_preamble += "#define TEXTURE_SLOT_RANGE_SIZE " + std::to_string(texture_slot_range_size) + "u\n";
-    if (config.alpha_test)
-    {
-        binding_preamble += "#define HGL_ALPHA_TEST 1\n";
-        binding_preamble += "#define HGL_ALPHA_CUTOFF ";
-        binding_preamble += std::to_string(config.alpha_cutoff);
-        binding_preamble += "\n";
-    }
-    if (config.alpha_dither)
-        binding_preamble += "#define HGL_ALPHA_DITHER 1\n";
 
     auto AppendDescriptorBindingDefine = [&](const char *macro_name, const ShaderDescriptor *sd)
     {

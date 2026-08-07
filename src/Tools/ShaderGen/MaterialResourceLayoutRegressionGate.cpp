@@ -640,6 +640,24 @@ namespace
             result.diagnostics.emplace_back(
                 "Masked compositor must inject alpha-test cutoff");
 
+        const auto direct_include = assembler.Assemble(
+            SurfaceType::Unlit,
+            BlendMode::Masked,
+            PassType::ForwardMasked,
+            "2d/puretexture2d.frag.glsl",
+            nullptr,
+            alpha_options);
+        if (!direct_include.success
+         || direct_include.fragment_glsl.compare(0, 8, "#version") != 0
+         || direct_include.fragment_glsl.find("#define HGL_ALPHA_TEST 1")
+                == std::string::npos
+         || direct_include.fragment_glsl.find("HGLComposeColor")
+                == std::string::npos)
+        {
+            result.diagnostics.emplace_back(
+                "DirectInclude fragment must use the shared compositor assembly path");
+        }
+
         const auto alpha_to_coverage = assembler.Assemble(
             SurfaceType::Unlit,
             BlendMode::AlphaToCoverage,
@@ -1650,6 +1668,8 @@ namespace
             FindGLSLCodeModuleDefinition(GLSLCodeModuleID::SkyLightSimple);
         const GLSLCodeModuleDefinition *cubemap =
             FindGLSLCodeModuleDefinition(GLSLCodeModuleID::SkyLightCubeMap);
+        const GLSLCodeModuleDefinition *pbr =
+            FindGLSLCodeModuleDefinition(GLSLCodeModuleID::PBRSurface);
 
         if (!header || !header->glsl_code || !header->glsl_code[0])
             result.diagnostics.emplace_back("SkyLightHeader module is not registered with GLSL code.");
@@ -1693,6 +1713,14 @@ namespace
              || !cubemap->code_module_requirements
              || cubemap->code_module_requirements[0] != GLSLCodeModuleID::SkyLightHeader)
                 result.diagnostics.emplace_back("SkyLightCubeMap must depend on SkyLightHeader.");
+        }
+
+        if (!pbr || !pbr->glsl_code
+         || pbr->texture_requirement_count != 0
+         || pbr->texture_requirements)
+        {
+            result.diagnostics.emplace_back(
+                "PBRSurface texture requirements must come from the material definition.");
         }
 
         result.passed = result.diagnostics.empty();
@@ -1865,14 +1893,14 @@ namespace
             result.diagnostics.emplace_back("LoadDirectory failed to scan directory");
         else
         {
-            if (file_count != 58)
-                result.diagnostics.emplace_back("LoadDirectory expected 58 file modules, got "
+            if (file_count != 57)
+                result.diagnostics.emplace_back("LoadDirectory expected 57 file modules, got "
                     + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 58 + int(GLSLCodeModuleID::RANGE_SIZE);
+            const int expected_count = 57 + int(GLSLCodeModuleID::RANGE_SIZE);
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
@@ -1911,11 +1939,11 @@ namespace
         int dup_errors = 0;
         if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()), &dup_count, &dup_errors))
             result.diagnostics.emplace_back("second LoadDirectory failed");
-        else if (dup_count != 0 || dup_errors != 58)
-            result.diagnostics.emplace_back("second LoadDirectory must report 58 duplicates, got files="
+        else if (dup_count != 0 || dup_errors != 57)
+            result.diagnostics.emplace_back("second LoadDirectory must report 57 duplicates, got files="
                 + std::to_string(dup_count) + " errors=" + std::to_string(dup_errors));
 
-        const int stable_count = 58 + int(GLSLCodeModuleID::RANGE_SIZE);
+        const int stable_count = 57 + int(GLSLCodeModuleID::RANGE_SIZE);
         if (registry.GetCount() != stable_count)
             result.diagnostics.emplace_back("registry count changed after duplicate re-scan: got "
                 + std::to_string(registry.GetCount()));

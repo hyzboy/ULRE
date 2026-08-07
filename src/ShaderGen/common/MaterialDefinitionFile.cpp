@@ -201,19 +201,7 @@ namespace hgl::graph::mtl
 
         bool ParseCodeModule(const std::string &name, GLSLCodeModuleID &out)
         {
-            static const char *const names[] = {
-                "SkyLightHeader", "SkyLightSimple", "SkyLightCubeMap",
-                "PBRSurface"
-            };
-            for (uint32 i = 0; i < 4; ++i)
-            {
-                if (name == names[i])
-                {
-                    out = static_cast<GLSLCodeModuleID>(i);
-                    return true;
-                }
-            }
-            return false;
+            return TryGetGLSLCodeModuleIDByName(name.c_str(), out);
         }
 
         bool ParseSemantic(const std::string &name, GLSLCodeModuleSemantic &out)

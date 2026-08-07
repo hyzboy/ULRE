@@ -28,7 +28,7 @@ varyings = ["emit_data_index_id", "emit_texture_layer_id", "texture_layer_id_use
 [resources]
 ubos = ["ViewportInfo", "CameraInfo", "SkyInfo"]
 code_modules = ["SkyLightHeader", "PBRSurface"]
-ssbos = [{ name = "mtl", type = "ClearCoatSurface" }]
+ssbos = [{ name = "mtl", type = "PBRSurface" }]
 textures = [
   { slot = "BaseColor", sampler = "Sampler2D", required = false },
   { slot = "Normal", sampler = "Sampler2D", required = false },

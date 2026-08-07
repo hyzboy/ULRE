@@ -282,8 +282,8 @@ private:
         const uint32_t mi_count = GRID_SIZE * GRID_SIZE;
 
         mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::LitMaterialData>(
-            graph::mtl::SSBOType::ClearCoatSurface,
-            "PBRSpheres:ClearCoatSurface:MaterialData",
+            graph::mtl::SSBOType::PBRSurface,
+            "PBRSpheres:PBRSurface:MaterialData",
             mi_count);
         if (!mtl_data_ssbo_accessor)
             return false;

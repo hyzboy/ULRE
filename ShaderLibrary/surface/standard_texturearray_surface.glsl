@@ -28,7 +28,7 @@
 
 SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 {
-    ClearCoatSurfaceData material_data = MTL_DATA.data[dataIndex];
+    PBRSurfaceData material_data = MTL_DATA.data[dataIndex];
 
     vec3 albedo = material_data.base_color.rgb;
     const uint iid = si.textureLayerID;

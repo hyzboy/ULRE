@@ -1,3 +1,2 @@
-// Minimal Skin surface entry point. Specialized skin BRDF can replace this
-// module without changing the compositor contract.
+// Placeholder surface: not specialized yet; falls back to standard_surface.glsl.
 #include "surface/standard_surface.glsl"

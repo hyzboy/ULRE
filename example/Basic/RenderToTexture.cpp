@@ -484,7 +484,7 @@ private:
             return LogStageFail("RenderToTextureApp::InitCubeMISSBO", "resource domain manager is null");
 
         cube_mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::LitMaterialData>(
-            graph::mtl::SSBOType::ClearCoatSurface,
+            graph::mtl::SSBOType::PBRSurface,
             "RenderToTexture:MainScene:MaterialData",
             1);
         if (!cube_mtl_data_ssbo_accessor)

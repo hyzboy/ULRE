@@ -44,9 +44,6 @@ struct CompositorMaterialBuildConfig
     const ShaderResourceManifest *resource_manifest = nullptr;
     ShaderArtifactStore *artifact_store = nullptr;
     bool generate_only = false; // Preserve generated GLSL for contract tests without SPV compilation.
-    bool alpha_test = false;
-    float alpha_cutoff = 0.5f;
-    bool alpha_dither = false;
 };
 
 class ShaderProgramBuildSpec;

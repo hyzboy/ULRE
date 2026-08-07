@@ -128,8 +128,8 @@ private:
         material_data.normal_scale = 0.35f;
 
         mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::LitMaterialData>(
-            graph::mtl::SSBOType::ClearCoatSurface,
-            "06c:ClearCoatSurface:MaterialData",
+            graph::mtl::SSBOType::PBRSurface,
+            "06c:PBRSurface:MaterialData",
             1);
         if (!mtl_data_ssbo_accessor)
             return false;

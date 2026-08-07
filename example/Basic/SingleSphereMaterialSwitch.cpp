@@ -163,7 +163,7 @@ private:
         if (!domain_manager)
             return LogFail("InitMaterials", "domain manager null");
         mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::LitMaterialData>(
-            graph::mtl::SSBOType::ClearCoatSurface, "SingleSphereSwitch:MaterialData", 1);
+            graph::mtl::SSBOType::PBRSurface, "SingleSphereSwitch:MaterialData", 1);
         if (!mtl_data_ssbo_accessor)
             return LogFail("InitMaterials", "SSBO allocation failed");
 
