@@ -28,6 +28,57 @@ namespace hgl::graph::mtl
         bool wireframe = false;                                     // 线框多边形模式
     };//struct MaterialPipelineConfig
 
+    inline bool operator==(const MaterialPipelineConfig &lhs,
+                           const MaterialPipelineConfig &rhs) noexcept
+    {
+        return lhs.cull_mode == rhs.cull_mode
+            && lhs.depth_test == rhs.depth_test
+            && lhs.depth_write == rhs.depth_write
+            && lhs.depth_compare_op == rhs.depth_compare_op
+            && lhs.alpha_blend == rhs.alpha_blend
+            && lhs.alpha_to_coverage == rhs.alpha_to_coverage
+            && lhs.blend_src == rhs.blend_src
+            && lhs.blend_dst == rhs.blend_dst
+            && lhs.line_width == rhs.line_width
+            && lhs.dynamic_line_width == rhs.dynamic_line_width
+            && lhs.overlay == rhs.overlay
+            && lhs.wireframe == rhs.wireframe;
+    }
+
+    inline bool operator!=(const MaterialPipelineConfig &lhs,
+                           const MaterialPipelineConfig &rhs) noexcept
+    {
+        return !(lhs == rhs);
+    }
+
+    /**
+     * The single render-state payload consumed by both shader generation and
+     * Vulkan pipeline creation.  Material definitions provide the defaults;
+     * recipes are resolved into this value before either backend is called.
+     */
+    struct ResolvedMaterialRenderState
+    {
+        bool double_sided = false;
+        bool alpha_test = false;
+        float alpha_cutoff = 0.5f;
+        bool dither = false;
+        MaterialPipelineConfig pipeline_config;
+    };
+
+    struct MaterialRenderStateOverrides
+    {
+        bool has_double_sided = false;
+        bool double_sided = false;
+        bool has_alpha_test = false;
+        bool alpha_test = false;
+        bool has_alpha_cutoff = false;
+        float alpha_cutoff = 0.5f;
+        bool has_dither = false;
+        bool dither = false;
+        bool has_pipeline_config = false;
+        MaterialPipelineConfig pipeline_config;
+    };
+
     // ── 便捷构造器（每个都返回完整可用的配置，作者可在其上再任意修改字段）──
 
     inline MaterialPipelineConfig MakeSolid3DConfig()
@@ -102,6 +153,19 @@ namespace hgl::graph::mtl
         hash = hgl::hash::FNV1aAppendValueBytes(hash, config.overlay);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, config.wireframe);
 
+        return static_cast<uint64_t>(hash);
+    }
+
+    inline uint64_t HashResolvedMaterialRenderState(
+        const ResolvedMaterialRenderState &state) noexcept
+    {
+        uint64 hash = hgl::hash::FNV1aInit<uint64>();
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, state.double_sided);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, state.alpha_test);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, state.alpha_cutoff);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, state.dither);
+        hash = hgl::hash::FNV1aAppendValueBytes(
+            hash, HashMaterialPipelineConfig(state.pipeline_config));
         return static_cast<uint64_t>(hash);
     }
 }//namespace hgl::graph::mtl

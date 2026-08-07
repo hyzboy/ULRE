@@ -493,8 +493,11 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(const mtl::MaterialDef
 
     // Compute hash key BEFORE generic shader compilation to avoid triggering
     // CompositorAssembler/GLSL compilation on every call when already cached.
+    const mtl::ResolvedMaterialRenderState render_state =
+        mtl::ResolveMaterialRenderState(bmi, normalized_request.recipe);
     const std::string hash_std = bmi.definition_id + "?"
-        + std::to_string(mtl::HashMaterialShaderVariant(normalized_request.recipe));
+        + std::to_string(mtl::HashMaterialShaderVariant(
+            normalized_request.recipe, render_state));
     const AnsiString hash_name = hash_std.c_str();
 
     if (ShaderProgram *cached = TryGetCachedMaterial(hash_name))

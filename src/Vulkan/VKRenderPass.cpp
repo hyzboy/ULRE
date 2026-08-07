@@ -5,6 +5,7 @@
 #include<hgl/vk/pipeline/VKPipelineData.h>
 #include<hgl/vk/pipeline/VKPipelineResolver.h>
 #include<hgl/vk/VKShaderProgram.h>
+#include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/object/ObjectTracker.h>
 #include<hgl/log/Log.h>
 namespace hgl::graph{
@@ -159,9 +160,11 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const VIL *vil,const mtl
     if(!mtl)
         return(nullptr);
 
-    const float cutoff = recipe.alpha_test ? recipe.alpha_cutoff : 0.0f;
-
-    PipelineData *pd = BuildPipelineData(recipe.pipeline_config, recipe.double_sided, cutoff);
+    mtl::MaterialRecipe normalized_recipe = recipe;
+    mtl::NormalizeRecipe(normalized_recipe);
+    const mtl::ResolvedMaterialRenderState render_state =
+        mtl::ResolveMaterialRenderState(normalized_recipe);
+    PipelineData *pd = BuildPipelineData(render_state);
     pd->SetPrim(mtl->GetPrimitiveType(),prim_restart);
 
     Pipeline *p = CreatePipeline(mtl->GetName(),
@@ -170,8 +173,8 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const VIL *vil,const mtl
                                   mtl->GetPipelineLayout(),
                                   vil,
                                   gvf,
-                                  mtl::HashMaterialPipelineConfig(recipe.pipeline_config),
-                                  recipe.pipeline_config.overlay);
+                                  mtl::HashResolvedMaterialRenderState(render_state),
+                                  render_state.pipeline_config.overlay);
 
     if(p && !pipeline_list.Contains(p))
         pipeline_list.Add(p);

@@ -36,6 +36,20 @@ namespace hgl::graph::mtl
             return true;
         }
 
+        bool ReadFloat(const toml::value &table, const char *key, float &out)
+        {
+            if (!table.is_table() || !table.contains(key))
+                return false;
+            const toml::value &value = table.at(key);
+            if (value.is_floating())
+                out = static_cast<float>(value.as_floating());
+            else if (value.is_integer())
+                out = static_cast<float>(value.as_integer());
+            else
+                return false;
+            return true;
+        }
+
         bool ReadRequiredString(const toml::value &table, const char *key, std::string &out)
         {
             return ReadString(table, key, out) && !out.empty();
@@ -124,6 +138,156 @@ namespace hgl::graph::mtl
                 }
             }
             return false;
+        }
+
+        bool ParseCullMode(const std::string &name, VkCullModeFlags &out)
+        {
+            if (name == "None") out = VK_CULL_MODE_NONE;
+            else if (name == "Front") out = VK_CULL_MODE_FRONT_BIT;
+            else if (name == "Back") out = VK_CULL_MODE_BACK_BIT;
+            else if (name == "FrontAndBack") out = VK_CULL_MODE_FRONT_AND_BACK;
+            else return false;
+            return true;
+        }
+
+        bool ParseCompareOp(const std::string &name, VkCompareOp &out)
+        {
+            static const VkCompareOp values[] = {
+                VK_COMPARE_OP_NEVER, VK_COMPARE_OP_LESS, VK_COMPARE_OP_EQUAL,
+                VK_COMPARE_OP_LESS_OR_EQUAL, VK_COMPARE_OP_GREATER,
+                VK_COMPARE_OP_NOT_EQUAL, VK_COMPARE_OP_GREATER_OR_EQUAL,
+                VK_COMPARE_OP_ALWAYS
+            };
+            static const char *const names[] = {
+                "Never", "Less", "Equal", "LessOrEqual", "Greater",
+                "NotEqual", "GreaterOrEqual", "Always"
+            };
+            for (uint32 i = 0; i < 8; ++i)
+            {
+                if (name == names[i])
+                {
+                    out = values[i];
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool ParseBlendFactor(const std::string &name, VkBlendFactor &out)
+        {
+            static const VkBlendFactor values[] = {
+                VK_BLEND_FACTOR_ZERO, VK_BLEND_FACTOR_ONE,
+                VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                VK_BLEND_FACTOR_DST_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA,
+                VK_BLEND_FACTOR_SRC_COLOR, VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR,
+                VK_BLEND_FACTOR_DST_COLOR, VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR,
+                VK_BLEND_FACTOR_SRC_ALPHA_SATURATE
+            };
+            static const char *const names[] = {
+                "Zero", "One", "SrcAlpha", "OneMinusSrcAlpha",
+                "DstAlpha", "OneMinusDstAlpha", "SrcColor",
+                "OneMinusSrcColor", "DstColor", "OneMinusDstColor",
+                "SrcAlphaSaturate"
+            };
+            for (uint32 i = 0; i < 11; ++i)
+            {
+                if (name == names[i])
+                {
+                    out = values[i];
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool ParseRenderState(const toml::value &root, MaterialDefinition &definition)
+        {
+            if (!root.contains("render_state"))
+                return true;
+
+            const toml::value &render_state = root.at("render_state");
+            if (!render_state.is_table())
+                return false;
+
+            if (render_state.contains("double_sided")
+             && !ReadBool(render_state, "double_sided",
+                          definition.default_render_state.double_sided))
+                return false;
+            if (render_state.contains("alpha_test")
+             && !ReadBool(render_state, "alpha_test",
+                          definition.default_render_state.alpha_test))
+                return false;
+            if (render_state.contains("alpha_cutoff")
+             && !ReadFloat(render_state, "alpha_cutoff",
+                           definition.default_render_state.alpha_cutoff))
+                return false;
+            if (render_state.contains("dither")
+             && !ReadBool(render_state, "dither",
+                          definition.default_render_state.dither))
+                return false;
+
+            if (!render_state.contains("pipeline"))
+                return true;
+            const toml::value &pipeline = render_state.at("pipeline");
+            if (!pipeline.is_table())
+                return false;
+
+            std::string value;
+            if (pipeline.contains("cull_mode"))
+            {
+                if (!ReadString(pipeline, "cull_mode", value)
+                 || !ParseCullMode(value, definition.default_render_state.pipeline_config.cull_mode))
+                    return false;
+            }
+            if (pipeline.contains("depth_compare_op"))
+            {
+                if (!ReadString(pipeline, "depth_compare_op", value)
+                 || !ParseCompareOp(value, definition.default_render_state.pipeline_config.depth_compare_op))
+                    return false;
+            }
+            if (pipeline.contains("blend_src"))
+            {
+                if (!ReadString(pipeline, "blend_src", value)
+                 || !ParseBlendFactor(value, definition.default_render_state.pipeline_config.blend_src))
+                    return false;
+            }
+            if (pipeline.contains("blend_dst"))
+            {
+                if (!ReadString(pipeline, "blend_dst", value)
+                 || !ParseBlendFactor(value, definition.default_render_state.pipeline_config.blend_dst))
+                    return false;
+            }
+
+            bool &depth_test = definition.default_render_state.pipeline_config.depth_test;
+            bool &depth_write = definition.default_render_state.pipeline_config.depth_write;
+            bool &alpha_blend = definition.default_render_state.pipeline_config.alpha_blend;
+            bool &alpha_to_coverage =
+                definition.default_render_state.pipeline_config.alpha_to_coverage;
+            bool &dynamic_line_width =
+                definition.default_render_state.pipeline_config.dynamic_line_width;
+            bool &overlay = definition.default_render_state.pipeline_config.overlay;
+            bool &wireframe = definition.default_render_state.pipeline_config.wireframe;
+            if (pipeline.contains("depth_test") && !ReadBool(pipeline, "depth_test", depth_test))
+                return false;
+            if (pipeline.contains("depth_write") && !ReadBool(pipeline, "depth_write", depth_write))
+                return false;
+            if (pipeline.contains("alpha_blend") && !ReadBool(pipeline, "alpha_blend", alpha_blend))
+                return false;
+            if (pipeline.contains("alpha_to_coverage")
+             && !ReadBool(pipeline, "alpha_to_coverage", alpha_to_coverage))
+                return false;
+            if (pipeline.contains("dynamic_line_width")
+             && !ReadBool(pipeline, "dynamic_line_width", dynamic_line_width))
+                return false;
+            if (pipeline.contains("overlay") && !ReadBool(pipeline, "overlay", overlay))
+                return false;
+            if (pipeline.contains("wireframe") && !ReadBool(pipeline, "wireframe", wireframe))
+                return false;
+            if (pipeline.contains("line_width")
+             && !ReadFloat(pipeline, "line_width",
+                           definition.default_render_state.pipeline_config.line_width))
+                return false;
+            return true;
         }
 
         bool ParseVertexInput(const std::string &name, VertexInputMode &out)
@@ -347,6 +511,9 @@ namespace hgl::graph::mtl
                 }
             }
             if (!out.definition.fragment_program_module)
+                return false;
+
+            if (!ParseRenderState(root, out.definition))
                 return false;
 
             const toml::value *vertex = root.contains("vertex") ? &root.at("vertex") : nullptr;

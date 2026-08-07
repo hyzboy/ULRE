@@ -39,6 +39,7 @@ namespace hgl::graph
             bool alpha_test = false;
             float alpha_cutoff = 0.5f;
             bool dither = false;
+            bool use_resolved_render_state = false;
         };
 
         /// shader_library_path: ShaderLibrary 根目录的绝对路径（不带尾部斜杠）

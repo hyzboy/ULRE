@@ -304,9 +304,7 @@ namespace hgl::ecs
             if (!material_comp)
                 return;
 
-            material_comp->texture_layer_row = uint32_t(-1);
-            material_comp->data_index_row = uint32_t(-1);
-            material_comp->data_index_values.clear();
+            material_comp->ClearMaterializationInstanceData();
             material_comp->bindings_dirty = true;
             material_comp->resources_dirty = true;
             material_comp->valid = false;
@@ -539,9 +537,11 @@ namespace hgl::ecs
         }
 
         graph::mtl::MaterializationSpec spec{};
+        graph::mtl::MaterializationInstanceData instance_data{};
         uint32_t texture_layer_row = uint32_t(-1);
         uint32_t data_index_row = uint32_t(-1);
-        if (!rdbs->ResolveMaterialRecipe(effective_recipe, spec, &texture_layer_row, &data_index_row))
+        if (!rdbs->ResolveMaterialRecipe(
+                effective_recipe, spec, &texture_layer_row, &data_index_row, &instance_data))
         {
             GLogWarning("[RenderPrimitiveCollectSystem] ResolveMaterialRecipe failed for %s recipe=%s",
                         GetPrimitiveOwnerName(primitive_comp),
@@ -558,9 +558,8 @@ namespace hgl::ecs
         }
 
         // Determine the entity's own data_index from the effective recipe.
-        // effective_recipe is always built fresh from primitive_comp, so its ssbo_assets
-        // carry the correct per-entity data_index — unlike the cached spec which
-        // holds the FIRST entity's value for a given recipe hash.
+        // ResolveMaterialRecipe rehydrates this instance value from the shared
+        // resource-resolution cache, so it never inherits another primitive's row.
         uint32_t entity_data_index = uint32_t(-1);
         for (const auto &asset_binding : effective_recipe.ssbo_assets)
         {
@@ -570,12 +569,7 @@ namespace hgl::ecs
             }
         }
 
-        for (const auto &ref : spec.struct_refs)
-        {
-            if (ref.data_slot >= material_comp->data_index_values.size())
-                material_comp->data_index_values.resize(ref.data_slot + 1, 0u);
-            material_comp->data_index_values[ref.data_slot] = ref.data_index;
-        }
+        material_comp->data_index_values = std::move(instance_data.data_index_values);
 
         for (const auto &asset_binding : effective_recipe.ssbo_assets)
         {
@@ -622,8 +616,10 @@ namespace hgl::ecs
                                                        data_index_row);
         }
 
-        material_comp->texture_layer_row = texture_layer_row;
-        material_comp->data_index_row = data_index_row;
+        instance_data.texture_layer_row = texture_layer_row;
+        instance_data.data_index_row = data_index_row;
+        material_comp->texture_layer_row = instance_data.texture_layer_row;
+        material_comp->data_index_row = instance_data.data_index_row;
         material_comp->bindings_dirty = false;
         material_comp->resources_dirty = false;
         material_comp->valid = true;

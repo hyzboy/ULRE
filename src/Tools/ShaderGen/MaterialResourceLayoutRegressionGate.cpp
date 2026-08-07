@@ -999,8 +999,118 @@ namespace
             result.diagnostics.emplace_back("Bindless dual forms produced different normalized constraint shapes.");
             return result;
         }
-
         result.passed = true;
+        return result;
+    }
+
+    static GateResult RunMaterializationSharedInstanceCase()
+    {
+        GateResult result;
+        result.name = "D1.materialization-shared-instance-separation";
+
+        MaterialRecipe recipe;
+        recipe.recipe_name = "shared-instance-regression";
+
+        RecipeTextureBinding texture{};
+        texture.slot = TextureSlot::BaseColor;
+        texture.use_direct_value = true;
+        texture.direct_value = 7;
+        recipe.textures.emplace_back(texture);
+
+        RecipeSSBOAssetBinding asset{};
+        asset.data_slot = DefaultMaterialDataSlot;
+        asset.ssbo_type = SSBOType::PBRSurface;
+        asset.ssbo_id = 41;
+        asset.data_index = 3;
+        asset.use_data_index = true;
+        recipe.ssbo_assets.emplace_back(asset);
+
+        MaterializationResolveCallbacks callbacks{};
+        callbacks.resolve_texture = [](const RecipeTextureBinding &input, ResolvedResource &output)
+        {
+            output.slot = input.slot;
+            output.bindless_handle = input.direct_value;
+            output.texture_layer = input.direct_value;
+            return true;
+        };
+        callbacks.resolve_struct = [](const RecipeSSBOAssetBinding &input, ResolvedStructRef &output)
+        {
+            output.data_slot = input.data_slot;
+            output.ssbo_type = input.ssbo_type;
+            output.ssbo_id = input.ssbo_id;
+            output.data_index = input.data_index;
+            return true;
+        };
+
+        MaterializationSharedSpec shared;
+        if (!ResolveMaterializationSharedSpec(recipe, callbacks, shared))
+        {
+            result.diagnostics.emplace_back("shared resolve failed");
+            result.passed = false;
+            return result;
+        }
+
+        const MaterializationSpec first = MaterializeMaterializationInstance(shared, recipe);
+        recipe.ssbo_assets[0].data_index = 9;
+        const MaterializationSpec second = MaterializeMaterializationInstance(shared, recipe);
+
+        if (shared.spec.struct_refs.empty()
+         || shared.spec.struct_refs[0].data_index != 0
+         || first.struct_refs[0].data_index != 3
+         || second.struct_refs[0].data_index != 9)
+            result.diagnostics.emplace_back("instance data_index leaked into shared spec");
+
+        MaterializationIndexTables tables;
+        uint32_t first_texture_row = 0;
+        uint32_t first_data_row = 0;
+        uint32_t second_texture_row = 0;
+        uint32_t second_data_row = 0;
+        WriteSpecToIndexTables(first, tables, first_texture_row, first_data_row);
+        WriteSpecToIndexTables(second, tables, second_texture_row, second_data_row);
+
+        const auto *first_data = tables.GetMaterialDataIndexRow(first_data_row);
+        const auto *second_data = tables.GetMaterialDataIndexRow(second_data_row);
+        if (first_texture_row == second_texture_row
+         || first_data_row == second_data_row
+         || !first_data || !second_data
+         || first_data->values[DefaultMaterialDataSlot] != 3
+         || second_data->values[DefaultMaterialDataSlot] != 9)
+            result.diagnostics.emplace_back("instance rows were not written independently");
+
+        MaterializationInstanceData first_instance = MakeMaterializationInstanceData(first);
+        MaterializationInstanceData second_instance = MakeMaterializationInstanceData(second);
+        MaterializationIndexTables instance_tables;
+        uint32_t first_instance_texture_row = 0;
+        uint32_t first_instance_data_row = 0;
+        uint32_t second_instance_texture_row = 0;
+        uint32_t second_instance_data_row = 0;
+        WriteMaterializationInstanceToIndexTables(
+            shared.spec,
+            first_instance,
+            instance_tables,
+            first_instance_texture_row,
+            first_instance_data_row);
+        WriteMaterializationInstanceToIndexTables(
+            shared.spec,
+            second_instance,
+            instance_tables,
+            second_instance_texture_row,
+            second_instance_data_row);
+
+        const auto *first_instance_data =
+            instance_tables.GetMaterialDataIndexRow(first_instance_data_row);
+        const auto *second_instance_data =
+            instance_tables.GetMaterialDataIndexRow(second_instance_data_row);
+        if (first_instance.texture_layer_row != first_instance_texture_row
+         || first_instance.data_index_row != first_instance_data_row
+         || second_instance.texture_layer_row != second_instance_texture_row
+         || second_instance.data_index_row != second_instance_data_row
+         || !first_instance_data || !second_instance_data
+         || first_instance_data->values[DefaultMaterialDataSlot] != 3
+         || second_instance_data->values[DefaultMaterialDataSlot] != 9)
+            result.diagnostics.emplace_back("explicit instance data was not wired to index tables");
+
+        result.passed = result.diagnostics.empty();
         return result;
     }
 
@@ -1311,6 +1421,67 @@ namespace
         if (HashMaterialShaderVariant(first) == HashMaterialShaderVariant(second))
             result.diagnostics.emplace_back(
                 "shader variant identity must include transform graph differences");
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
+    static GateResult RunResolvedMaterialRenderStateCase()
+    {
+        GateResult result;
+        result.name = "Y1.resolved-material-render-state";
+
+        MaterialDefinition definition{};
+        definition.compositor_blend = BlendMode::Masked;
+        definition.default_render_state.double_sided = true;
+        definition.default_render_state.alpha_cutoff = 0.35f;
+        definition.default_render_state.pipeline_config =
+            MakeSolid3DConfig();
+        definition.default_render_state.pipeline_config.depth_write = false;
+
+        MaterialRecipe defaults{};
+        const ResolvedMaterialRenderState default_state =
+            ResolveMaterialRenderState(definition, defaults);
+        if (!default_state.double_sided
+         || !default_state.alpha_test
+         || default_state.alpha_cutoff != 0.35f
+         || default_state.pipeline_config.depth_write)
+        {
+            result.diagnostics.emplace_back(
+                "definition render defaults were not preserved by resolution");
+        }
+
+        MaterialRecipe overrides{};
+        overrides.alpha_cutoff = 0.5f;
+        overrides.render_state_overrides.has_double_sided = true;
+        overrides.render_state_overrides.double_sided = false;
+        overrides.render_state_overrides.has_alpha_test = true;
+        overrides.render_state_overrides.alpha_test = false;
+        overrides.render_state_overrides.has_alpha_cutoff = true;
+        overrides.render_state_overrides.alpha_cutoff = 0.8f;
+        overrides.render_state_overrides.has_dither = true;
+        overrides.render_state_overrides.dither = true;
+        overrides.render_state_overrides.has_pipeline_config = true;
+        overrides.render_state_overrides.pipeline_config =
+            MakeAlpha3DConfig();
+        const ResolvedMaterialRenderState resolved =
+            ResolveMaterialRenderState(definition, overrides);
+        if (resolved.double_sided
+         || resolved.alpha_test
+         || resolved.alpha_cutoff != 0.8f
+         || !resolved.dither
+         || !resolved.pipeline_config.alpha_blend)
+        {
+            result.diagnostics.emplace_back(
+                "recipe render-state overrides were not applied atomically");
+        }
+
+        if (HashResolvedMaterialRenderState(default_state)
+            == HashResolvedMaterialRenderState(resolved))
+        {
+            result.diagnostics.emplace_back(
+                "resolved render-state differences must affect pipeline identity");
+        }
 
         result.passed = result.diagnostics.empty();
         return result;
@@ -2655,6 +2826,7 @@ int main()
     results.push_back(RunValidationCase("C.material-color-palette-explicit", palette_explicit, 1, true));
 
     results.push_back(RunBindlessEquivalenceCase());
+    results.push_back(RunMaterializationSharedInstanceCase());
     results.push_back(RunBuiltinRegistryCoverageCase());
     results.push_back(RunBootstrapMaterialBoundaryCase());
     results.push_back(RunUnifiedMaterialBaselineCase());
@@ -2663,6 +2835,7 @@ int main()
     results.push_back(RunTransformGraphModelCase());
     results.push_back(RunTransformGraphCompositionCase());
     results.push_back(RunMaterialShaderVariantIdentityCase());
+    results.push_back(RunResolvedMaterialRenderStateCase());
     results.push_back(RunMaterialDefinitionFileSchemaCase());
     results.push_back(RunFallbackInferenceCase());
     results.push_back(RunGLSLCodeModuleRegistryCase());

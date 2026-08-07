@@ -77,9 +77,7 @@ namespace hgl::ecs
 
         struct MaterializationResolveCacheEntry
         {
-            graph::mtl::MaterializationSpec spec;
-            uint32_t texture_layer_row = 0;
-            uint32_t data_index_row = 0;
+            graph::mtl::MaterializationSharedSpec shared_spec;
         };
 
         // Viewport UBO — owned here, stable across swapchain resize.
@@ -142,7 +140,8 @@ namespace hgl::ecs
         bool ResolveMaterialRecipe(const graph::mtl::MaterialRecipe &recipe,
                                    graph::mtl::MaterializationSpec &out_spec,
                                    uint32_t *out_texture_layer_row = nullptr,
-                                   uint32_t *out_data_index_row = nullptr);
+                                   uint32_t *out_data_index_row = nullptr,
+                                   graph::mtl::MaterializationInstanceData *out_instance_data = nullptr);
         bool GetMaterializationPoolStats(uint32_t &texture_count,
                                          uint32_t &struct_layout_count,
                                          uint32_t &texture_layer_rows,

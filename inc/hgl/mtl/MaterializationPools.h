@@ -367,15 +367,48 @@ namespace hgl::graph::mtl
         return row;
     }
 
+    inline MaterializationInstanceData MakeMaterializationInstanceData(const MaterializationSpec &spec)
+    {
+        MaterializationInstanceData instance;
+        for (const auto &ref : spec.struct_refs)
+        {
+            if (ref.data_slot >= instance.data_index_values.size())
+                instance.data_index_values.resize(ref.data_slot + 1, 0u);
+            instance.data_index_values[ref.data_slot] = ref.data_index;
+        }
+        return instance;
+    }
+
+    inline MaterialDataIndexRow BuildMaterialDataIndexRow(const MaterializationInstanceData &instance)
+    {
+        MaterialDataIndexRow row;
+        row.values = instance.data_index_values;
+        return row;
+    }
+
+    inline bool WriteMaterializationInstanceToIndexTables(
+        const MaterializationSpec &spec,
+        MaterializationInstanceData &instance,
+        MaterializationIndexTables &tables,
+        uint32_t &out_texture_layer_row,
+        uint32_t &out_data_index_row)
+    {
+        out_texture_layer_row = tables.PushTextureLayerRow(BuildTextureLayerRow(spec));
+        out_data_index_row = tables.PushMaterialDataIndexRow(BuildMaterialDataIndexRow(instance));
+        instance.texture_layer_row = out_texture_layer_row;
+        instance.data_index_row = out_data_index_row;
+        return true;
+    }
+
     // 将 spec 写入间接表并返回行索引（用于实例绑定）。
     inline bool WriteSpecToIndexTables(const MaterializationSpec &spec,
                                        MaterializationIndexTables &tables,
                                        uint32_t &out_texture_layer_row,
                                        uint32_t &out_data_index_row)
     {
-        out_texture_layer_row = tables.PushTextureLayerRow(BuildTextureLayerRow(spec));
-        out_data_index_row = tables.PushMaterialDataIndexRow(BuildMaterialDataIndexRow(spec));
-        return true;
+        auto instance = MakeMaterializationInstanceData(spec);
+        return WriteMaterializationInstanceToIndexTables(
+            spec, instance, tables, out_texture_layer_row, out_data_index_row);
     }
 
     // 将 spec 写入间接表的指定地址索引（适用于有 SSBO 元素索引的材质，避免稀疏表越界）。

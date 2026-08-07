@@ -25,7 +25,8 @@ namespace hgl::ecs
         // Runtime shared program, resolved by ECS.
         hgl::graph::ShaderProgram *program = nullptr;
 
-        // Runtime row indices, materialized by ECS.
+        // Runtime row indices, materialized independently for this primitive.
+        // They must not be sourced from a shared recipe/spec cache entry.
         uint32_t texture_layer_row = uint32_t(-1);
         uint32_t data_index_row = uint32_t(-1);
         std::vector<uint32_t> data_index_values;
@@ -51,6 +52,7 @@ namespace hgl::ecs
         void MarkResourcesDirty();
         void MarkInvalid();
         void MarkValid();
+        void ClearMaterializationInstanceData();
         void ClearResolvedSSBOBindings();
         void SetResolvedSSBOBinding(uint32_t data_slot, graph::mtl::SSBOType ssbo_type, uint32_t ssbo_id);
         const ResolvedSSBOBinding *FindResolvedSSBOBinding(uint32_t data_slot,

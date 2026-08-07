@@ -74,4 +74,13 @@ PipelineData *BuildPipelineData(const mtl::MaterialPipelineConfig &config,
 
     return pd;
 }
+
+PipelineData *BuildPipelineData(
+    const mtl::ResolvedMaterialRenderState &state)
+{
+    return BuildPipelineData(
+        state.pipeline_config,
+        state.double_sided,
+        state.alpha_test ? state.alpha_cutoff : 0.0f);
+}
 }//namespace hgl::graph

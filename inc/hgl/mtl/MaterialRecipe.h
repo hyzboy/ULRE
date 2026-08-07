@@ -276,6 +276,7 @@ namespace hgl::graph::mtl
         SurfaceType compositor_surface = SurfaceType::Unlit;
         BlendMode compositor_blend = BlendMode::Opaque;
         PassType compositor_pass = PassType::ForwardOpaque;
+        ResolvedMaterialRenderState default_render_state;
     };
 
     inline void ConfigureMaterialVertexSemanticContract(
@@ -295,7 +296,7 @@ namespace hgl::graph::mtl
     // ── Layer 2: MaterialRecipe = Instance Input ──────────────────────────────────
     // 描述"这次渲染想要什么"。由上层作者按需填写，不含 Vulkan 句柄。
     // mtl_def_id 是唯一与 MaterialDefinition 对接的字段。
-    // 调用 mtl::NormalizeRecipe() 后，definition 的默认值会被合入此结构。
+    // 调用 mtl::NormalizeRecipe() 后，definition 的默认资源与渲染状态会被合入此结构。
     // ─────────────────────────────────────────────────────────────────────────────
     // 纯声明式材质输入（不含 Vulkan/运行时句柄），是 MaterializationSpec 的上游输入。
     struct MaterialRecipe
@@ -311,12 +312,98 @@ namespace hgl::graph::mtl
         bool double_sided = false; // 双面渲染开关
         bool alpha_test = false;   // 是否启用 alpha test
         float alpha_cutoff = 0.5f; // alpha test 阈值（alpha < cutoff 丢弃）
+        bool dither = false;       // 是否启用 alpha dither
+        MaterialRenderStateOverrides render_state_overrides;
 
         MaterialPipelineConfig pipeline_config; // 管线配置（深度/混合/剔除/覆盖层等，替代旧 PipelinePreset）
 
         std::vector<RecipeTextureBinding> textures; // 所有纹理语义绑定
         std::vector<RecipeSSBOAssetBinding> ssbo_assets; // 所有 SSBO 运行时绑定（name/slot/type/id/row）
     };
+
+    inline ResolvedMaterialRenderState ResolveMaterialRenderState(
+        const MaterialDefinition &definition,
+        const MaterialRecipe &recipe) noexcept
+    {
+        ResolvedMaterialRenderState state = definition.default_render_state;
+
+        const bool definition_masked =
+            definition.compositor_blend == BlendMode::Masked
+         || definition.compositor_pass == PassType::ForwardMasked;
+        const bool definition_dithered =
+            definition.compositor_blend == BlendMode::Dither
+         || definition.compositor_pass == PassType::ForwardDither;
+        const bool definition_transparent =
+            definition.compositor_blend == BlendMode::Transparent;
+        const bool definition_a2c =
+            definition.compositor_blend == BlendMode::AlphaToCoverage
+         || definition.compositor_pass == PassType::ForwardA2C;
+
+        if (definition_masked)
+            state.alpha_test = true;
+        if (definition_dithered)
+        {
+            state.alpha_test = true;
+            state.dither = true;
+        }
+        if (definition_transparent)
+            state.pipeline_config.alpha_blend = true;
+        if (definition_a2c)
+            state.pipeline_config.alpha_to_coverage = true;
+
+        const MaterialRenderStateOverrides &overrides = recipe.render_state_overrides;
+        if (overrides.has_double_sided)
+            state.double_sided = overrides.double_sided;
+        else if (recipe.double_sided)
+            state.double_sided = true;
+
+        if (overrides.has_alpha_test)
+            state.alpha_test = overrides.alpha_test;
+        else if (recipe.alpha_test)
+            state.alpha_test = true;
+
+        if (overrides.has_alpha_cutoff)
+            state.alpha_cutoff = overrides.alpha_cutoff;
+        else if (recipe.alpha_cutoff != 0.5f)
+            state.alpha_cutoff = recipe.alpha_cutoff;
+
+        if (overrides.has_dither)
+            state.dither = overrides.dither;
+        else if (recipe.dither)
+            state.dither = true;
+
+        if (overrides.has_pipeline_config)
+            state.pipeline_config = overrides.pipeline_config;
+        else if (recipe.pipeline_config != MaterialPipelineConfig{})
+            state.pipeline_config = recipe.pipeline_config;
+
+        return state;
+    }
+
+    // Used by Vulkan call sites that receive a normalized recipe rather than
+    // the definition used to produce it.
+    inline ResolvedMaterialRenderState ResolveMaterialRenderState(
+        const MaterialRecipe &recipe) noexcept
+    {
+        ResolvedMaterialRenderState state;
+        state.double_sided = recipe.double_sided;
+        state.alpha_test = recipe.alpha_test;
+        state.alpha_cutoff = recipe.alpha_cutoff;
+        state.dither = recipe.dither;
+        state.pipeline_config = recipe.pipeline_config;
+        return state;
+    }
+
+    inline void ApplyResolvedMaterialRenderState(
+        MaterialRecipe &recipe,
+        const ResolvedMaterialRenderState &state) noexcept
+    {
+        recipe.double_sided = state.double_sided;
+        recipe.alpha_test = state.alpha_test;
+        recipe.alpha_cutoff = state.alpha_cutoff;
+        recipe.dither = state.dither;
+        recipe.pipeline_config = state.pipeline_config;
+    }
 
     inline bool HasUBORequirement(const MaterialDefinition &def, UBODescriptorSemantic s) noexcept
     {
@@ -463,7 +550,19 @@ namespace hgl::graph::mtl
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.double_sided);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.alpha_test);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.alpha_cutoff);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.dither);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.render_state_overrides.has_double_sided);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.render_state_overrides.double_sided);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.render_state_overrides.has_alpha_test);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.render_state_overrides.alpha_test);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.render_state_overrides.has_alpha_cutoff);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.render_state_overrides.alpha_cutoff);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.render_state_overrides.has_dither);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.render_state_overrides.dither);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.render_state_overrides.has_pipeline_config);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, HashMaterialPipelineConfig(recipe.pipeline_config));
+        hash = hgl::hash::FNV1aAppendValueBytes(
+            hash, HashMaterialPipelineConfig(recipe.render_state_overrides.pipeline_config));
 
         const uint32_t texture_count = static_cast<uint32_t>(recipe.textures.size());
         hash = hgl::hash::FNV1aAppendValueBytes(hash, texture_count);
@@ -508,6 +607,17 @@ namespace hgl::graph::mtl
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.material_lod);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.alpha_test);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.alpha_cutoff);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.dither);
+        return static_cast<uint64_t>(hash);
+    }
+
+    inline uint64_t HashMaterialShaderVariant(
+        const MaterialRecipe &recipe,
+        const ResolvedMaterialRenderState &state) noexcept
+    {
+        uint64 hash = HashMaterialShaderVariant(recipe);
+        hash = hgl::hash::FNV1aAppendValueBytes(
+            hash, HashResolvedMaterialRenderState(state));
         return static_cast<uint64_t>(hash);
     }
 }

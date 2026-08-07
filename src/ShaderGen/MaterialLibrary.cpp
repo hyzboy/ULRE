@@ -272,12 +272,13 @@ namespace
                                                resolved_provider_glsl);
 
         CompositorAssembler assembler(GetShaderLibraryPath());
+        const ResolvedMaterialRenderState render_state =
+            ResolveMaterialRenderState(definition, request.recipe);
         CompositorAssembler::CompositorModuleOptions compositor_options{};
-        compositor_options.alpha_test = request.recipe.alpha_test;
-        compositor_options.alpha_cutoff = request.recipe.alpha_cutoff;
-        compositor_options.dither =
-            definition.compositor_blend == BlendMode::Dither
-         || definition.compositor_pass == PassType::ForwardDither;
+        compositor_options.alpha_test = render_state.alpha_test;
+        compositor_options.alpha_cutoff = render_state.alpha_cutoff;
+        compositor_options.dither = render_state.dither;
+        compositor_options.use_resolved_render_state = true;
         if (definition.fragment_program_mode == MaterialFragmentProgramMode::Compositor)
         {
             compositor_options.sky_module =
@@ -617,6 +618,7 @@ bool MergeMaterialDefinitionFile(const MaterialDefinition &legacy,
     out.compositor_surface = file.compositor_surface;
     out.compositor_blend = file.compositor_blend;
     out.compositor_pass = file.compositor_pass;
+    out.default_render_state = file.default_render_state;
     out.fragment_program_module = file.fragment_program_module;
     out.fragment_surface_module = file.fragment_surface_module
         ? file.fragment_surface_module : legacy.fragment_surface_module;
@@ -647,9 +649,22 @@ void NormalizeRecipe(MaterialRecipe &recipe)
         return;
 
     MaterialDefinition bmi{};
-    const bool has_definition = TryGetMaterialDefinitionByID(recipe.mtl_def_id, bmi);
+    bool has_definition = TryGetMaterialDefinitionByID(recipe.mtl_def_id, bmi);
+    if (has_definition && !IsBootstrapMaterialDefinition(bmi))
+    {
+        const MaterialDefinition *file_definition =
+            GetMaterialDefinitionFileRegistry().FindByID(recipe.mtl_def_id.c_str());
+        MaterialDefinition merged;
+        if (file_definition
+         && MergeMaterialDefinitionFile(bmi, *file_definition, merged))
+            bmi = merged;
+    }
     if (has_definition)
+    {
         ApplyBaseMaterialInfoDefaults(recipe, bmi, false);
+        ApplyResolvedMaterialRenderState(
+            recipe, ResolveMaterialRenderState(bmi, recipe));
+    }
 
 }
 

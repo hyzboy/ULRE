@@ -70,4 +70,18 @@ namespace hgl::graph::mtl
         RefreshMaterializationSpecHash(out_spec);
         return true;
     }
+
+    // 解析只保留可由多个实例共享的资源定位结果；实例 data_index 在后续
+    // MaterializeMaterializationInstance 阶段从当前 Recipe 写回。
+    inline bool ResolveMaterializationSharedSpec(const MaterialRecipe &recipe,
+                                                 const MaterializationResolveCallbacks &callbacks,
+                                                 MaterializationSharedSpec &out_shared)
+    {
+        MaterializationSpec resolved;
+        if (!ResolveMaterializationSpec(recipe, callbacks, resolved))
+            return false;
+
+        out_shared = MakeMaterializationSharedSpec(resolved);
+        return true;
+    }
 }

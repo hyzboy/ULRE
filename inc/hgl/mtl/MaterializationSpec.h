@@ -45,6 +45,21 @@ namespace hgl::graph::mtl
         std::vector<ResolvedStructRef> struct_refs; // 所有已解析结构体数据引用
     };
 
+    // 共享解析缓存中的内容。struct_refs 中的 data_index 始终为 0；
+    // 具体实例的 data_index 由 MaterialRecipe 在实例化阶段重新写入。
+    struct MaterializationSharedSpec
+    {
+        MaterializationSpec spec;
+    };
+
+    // 一次实例化产生的间接表地址。该数据不能进入共享解析缓存。
+    struct MaterializationInstanceData
+    {
+        uint32_t texture_layer_row = uint32_t(-1);
+        uint32_t data_index_row = uint32_t(-1);
+        std::vector<uint32_t> data_index_values;
+    };
+
     // 计算 MaterializationSpec 的稳定内容哈希。
     // 目的：作为 Shader/PSO/布局缓存键，保证同内容同 key，不同内容不同 key。
     // 注意：不纳入 data_index 等运行时分配位置信息，避免跨帧分配顺序扰动缓存键。
@@ -100,5 +115,41 @@ namespace hgl::graph::mtl
     inline void RefreshMaterializationSpecHash(MaterializationSpec &spec) noexcept
     {
         spec.spec_hash = HashMaterializationSpec(spec);
+    }
+
+    inline MaterializationSharedSpec MakeMaterializationSharedSpec(const MaterializationSpec &resolved)
+    {
+        MaterializationSharedSpec shared;
+        shared.spec = resolved;
+        for (auto &ref : shared.spec.struct_refs)
+            ref.data_index = 0;
+
+        RefreshMaterializationSpecHash(shared.spec);
+        return shared;
+    }
+
+    // 将共享资源解析结果与本次 Recipe 中的实例位置重新组合。
+    // HashMaterializationSpec 不含 data_index，因此不同实例仍共享同一 Spec key。
+    inline MaterializationSpec MaterializeMaterializationInstance(const MaterializationSharedSpec &shared,
+                                                                   const MaterialRecipe &recipe)
+    {
+        MaterializationSpec instance = shared.spec;
+
+        for (auto &ref : instance.struct_refs)
+        {
+            for (const auto &asset : recipe.ssbo_assets)
+            {
+                if (asset.data_slot != ref.data_slot
+                 || asset.ssbo_type != ref.ssbo_type
+                 || asset.ssbo_id != ref.ssbo_id)
+                    continue;
+
+                ref.data_index = asset.use_data_index ? asset.data_index : 0;
+                break;
+            }
+        }
+
+        RefreshMaterializationSpecHash(instance);
+        return instance;
     }
 }

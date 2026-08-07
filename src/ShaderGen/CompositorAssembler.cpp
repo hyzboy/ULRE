@@ -279,12 +279,15 @@ namespace hgl::graph
 
         // 4. 注入 #define
         CompositorModuleOptions effective_options = module_options;
-        effective_options.alpha_test = effective_options.alpha_test
-            || blend == BlendMode::Masked
-            || pass == PassType::ForwardMasked;
-        effective_options.dither = effective_options.dither
-            || blend == BlendMode::Dither
-            || pass == PassType::ForwardDither;
+        if (!effective_options.use_resolved_render_state)
+        {
+            effective_options.alpha_test = effective_options.alpha_test
+                || blend == BlendMode::Masked
+                || pass == PassType::ForwardMasked;
+            effective_options.dither = effective_options.dither
+                || blend == BlendMode::Dither
+                || pass == PassType::ForwardDither;
+        }
         fs_source = InjectDefines(fs_source, key, effective_options);
 
         // 5. Resolve configurable module includes to literal header names.

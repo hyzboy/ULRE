@@ -288,7 +288,8 @@ namespace hgl::ecs
     bool RenderDescriptorBindingSystem::ResolveMaterialRecipe(const graph::mtl::MaterialRecipe &recipe,
                                                               graph::mtl::MaterializationSpec &out_spec,
                                                               uint32_t *out_texture_layer_row,
-                                                              uint32_t *out_data_index_row)
+                                                              uint32_t *out_data_index_row,
+                                                              graph::mtl::MaterializationInstanceData *out_instance_data)
     {
         if (context)
         {
@@ -312,29 +313,34 @@ namespace hgl::ecs
         auto cache_it = materialization_resolve_cache.find(recipe_hash);
         if (cache_it != materialization_resolve_cache.end())
         {
-            out_spec = cache_it->second.spec;
-
-            if (out_texture_layer_row)
-                *out_texture_layer_row = cache_it->second.texture_layer_row;
-
-            if (out_data_index_row)
-                *out_data_index_row = cache_it->second.data_index_row;
-
-            return true;
+            out_spec = graph::mtl::MaterializeMaterializationInstance(cache_it->second.shared_spec, recipe);
         }
-
-        if (!graph::mtl::ResolveMaterializationSpec(recipe, materialization_callbacks, out_spec))
+        else
         {
-            GLogError("[ResolveMaterialRecipe] ResolveMaterializationSpec failed for recipe=%s", recipe.recipe_name.c_str());
-            return false;
+            graph::mtl::MaterializationSharedSpec shared_spec;
+            if (!graph::mtl::ResolveMaterializationSharedSpec(recipe, materialization_callbacks, shared_spec))
+            {
+                GLogError("[ResolveMaterialRecipe] ResolveMaterializationSharedSpec failed for recipe=%s", recipe.recipe_name.c_str());
+                return false;
+            }
+
+            GLogVerbose("[ResolveMaterialRecipe] resolved shared tex=%zu struct=%zu",
+                     shared_spec.spec.resources.size(), shared_spec.spec.struct_refs.size());
+
+            MaterializationResolveCacheEntry cache_entry{};
+            cache_entry.shared_spec = std::move(shared_spec);
+            materialization_resolve_cache[recipe_hash] = std::move(cache_entry);
+            out_spec = graph::mtl::MaterializeMaterializationInstance(
+                materialization_resolve_cache[recipe_hash].shared_spec, recipe);
         }
 
-        GLogVerbose("[ResolveMaterialRecipe] resolved tex=%zu struct=%zu",
-                 out_spec.resources.size(), out_spec.struct_refs.size());
-
+        // Rows are instance data. Never return rows retained by the shared cache.
+        graph::mtl::MaterializationInstanceData instance_data =
+            graph::mtl::MakeMaterializationInstanceData(out_spec);
         uint32_t texture_row = 0;
         uint32_t data_row = 0;
-        if (!graph::mtl::WriteSpecToIndexTables(out_spec, materialization_index_tables, texture_row, data_row))
+        if (!graph::mtl::WriteMaterializationInstanceToIndexTables(
+                out_spec, instance_data, materialization_index_tables, texture_row, data_row))
             return false;
 
         if (out_texture_layer_row)
@@ -343,11 +349,9 @@ namespace hgl::ecs
         if (out_data_index_row)
             *out_data_index_row = data_row;
 
-        MaterializationResolveCacheEntry cache_entry{};
-        cache_entry.spec = out_spec;
-        cache_entry.texture_layer_row = texture_row;
-        cache_entry.data_index_row = data_row;
-        materialization_resolve_cache[recipe_hash] = std::move(cache_entry);
+        if (out_instance_data)
+            *out_instance_data = std::move(instance_data);
+
         materialization_index_tables_dirty = true;
 
         return true;
