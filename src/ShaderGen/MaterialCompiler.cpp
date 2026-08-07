@@ -76,6 +76,28 @@ static bool IsTextureSlotDeclared(const MaterialDefinition &definition, const Te
     return false;
 }
 
+static void ApplyMaterialDefinitionTexturePolicy(
+    const MaterialDefinition &definition,
+    MaterialResourceLayout &layout)
+{
+    for (auto &requirement : layout.requirements)
+    {
+        if (requirement.semantic != DescriptorSemantic::MaterialTexture
+         && requirement.semantic != DescriptorSemantic::MaterialSampler)
+            continue;
+
+        for (const auto &decl : definition.texture_slot_decls)
+        {
+            if (decl.slot != requirement.texture_slot)
+                continue;
+
+            requirement.required = decl.required;
+            requirement.allow_fallback = !decl.required;
+            break;
+        }
+    }
+}
+
 static bool AddMaterialDataSlotDescriptor(ShaderProgramBuildSpec &mci,
                                           const MaterialDataSlotDecl &decl,
                                           const uint32_t data_slot,
@@ -779,6 +801,10 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     {
         material_resource_layout = BuildMaterialResourceLayout(def.descriptor_entries, def.descriptor_entry_count);
     }
+
+    if (config.material_definition)
+        ApplyMaterialDefinitionTexturePolicy(
+            *config.material_definition, material_resource_layout);
 
     std::vector<std::string> contract_diagnostics;
     if (!ValidateMaterialResourceLayout(material_resource_layout, contract_diagnostics))

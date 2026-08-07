@@ -14,12 +14,14 @@ orientation = "World"
 scale = "World"
 projection = "WorldCameraVP"
 
+[fragment]
+source = "compositor/main_forward_unlit_vertexcolor.frag.glsl"
+surface_module = "surface/unlit_vertexcolor_surface.glsl"
+
 [compositor]
 surface = "Unlit"
 blend = "Opaque"
 pass = "ForwardOpaque"
-fragment = "compositor/main_forward_unlit_vertexcolor.frag.glsl"
-surface_module = "surface/unlit_vertexcolor_surface.glsl"
 
 [vertex]
 requirements = ["Position", "Color"]

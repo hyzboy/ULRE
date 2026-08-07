@@ -97,7 +97,7 @@ namespace hgl::graph::mtl
         bool ParseSurface(const std::string &name, SurfaceType &out)
         {
             static const char *const names[] = {
-                "Unlit", "Standard", "Skin", "Hair", "Cloth",
+                "Unlit", "Lit", "Skin", "Hair", "Cloth",
                 "Eye", "Foliage", "ClearCoat", "Water", "Sky"
             };
             for (uint32 i = 0; i < 10; ++i)
@@ -485,32 +485,62 @@ namespace hgl::graph::mtl
                     out.definition.transform_graph.ToNodeConfig();
             }
 
-            const toml::value *compositor = nullptr;
-            if (root.contains("compositor"))
+            const toml::value *fragment = root.contains("fragment")
+                ? &root.at("fragment") : nullptr;
+            const toml::value *compositor = root.contains("compositor")
+                ? &root.at("compositor") : nullptr;
+            std::string value;
+            if (fragment)
             {
-                compositor = &root.at("compositor");
-                std::string value;
-                if (!ReadRequiredString(*compositor, "fragment", value))
+                if (!ReadRequiredString(*fragment, "source", value))
                     return false;
-                out.fragment_module_storage = value.c_str();
-                out.definition.fragment_program_module = out.fragment_module_storage.c_str();
-                if (out.definition.fragment_program_mode == MaterialFragmentProgramMode::Compositor
-                 && (!ReadRequiredString(*compositor, "surface", value)
-                  || !ParseSurface(value, out.definition.compositor_surface)
-                  || !ReadRequiredString(*compositor, "blend", value)
-                  || !ParseBlend(value, out.definition.compositor_blend)
-                  || !ReadRequiredString(*compositor, "pass", value)
-                  || !ParsePass(value, out.definition.compositor_pass)))
-                    return false;
-                if (compositor->contains("surface_module"))
+                out.fragment_source_storage = value.c_str();
+                SetMaterialFragmentSource(
+                    out.definition, out.fragment_source_storage.c_str());
+                if (fragment->contains("surface_module"))
                 {
-                    if (!ReadRequiredString(*compositor, "surface_module", value))
+                    if (!ReadRequiredString(*fragment, "surface_module", value))
                         return false;
                     out.surface_module_storage = value.c_str();
-                    out.definition.fragment_surface_module = out.surface_module_storage.c_str();
+                    out.definition.fragment_surface_module =
+                        out.surface_module_storage.c_str();
                 }
             }
-            if (!out.definition.fragment_program_module)
+            else if (compositor)
+            {
+                // Compatibility boundary for schema-1 files. New files use
+                // [fragment].source; the old [compositor].fragment spelling
+                // is converted immediately to the canonical field.
+                const char *source_key = compositor->contains("source")
+                    ? "source" : "fragment";
+                if (!ReadRequiredString(*compositor, source_key, value))
+                    return false;
+                out.fragment_source_storage = value.c_str();
+                SetMaterialFragmentSource(
+                    out.definition, out.fragment_source_storage.c_str());
+            }
+
+            if (out.definition.fragment_program_mode == MaterialFragmentProgramMode::Compositor
+             && (!compositor
+              || !ReadRequiredString(*compositor, "surface", value)
+              || !ParseSurface(value, out.definition.compositor_surface)
+              || !ReadRequiredString(*compositor, "blend", value)
+              || !ParseBlend(value, out.definition.compositor_blend)
+              || !ReadRequiredString(*compositor, "pass", value)
+              || !ParsePass(value, out.definition.compositor_pass)))
+                return false;
+
+            if (compositor && compositor->contains("surface_module")
+             && !out.definition.fragment_surface_module)
+            {
+                if (!ReadRequiredString(*compositor, "surface_module", value))
+                    return false;
+                out.surface_module_storage = value.c_str();
+                out.definition.fragment_surface_module =
+                    out.surface_module_storage.c_str();
+            }
+
+            if (!out.definition.fragment_source)
                 return false;
 
             if (!ParseRenderState(root, out.definition))
@@ -703,8 +733,8 @@ namespace hgl::graph::mtl
             && !definition.definition_name.empty()
             && definition.source_kind == MaterialDefinitionSourceKind::File
             && !definition.vertex_semantic_requirements.IsEmpty()
-            && definition.fragment_program_module
-            && definition.fragment_program_module[0] != 0;
+            && definition.fragment_source
+            && definition.fragment_source[0] != 0;
     }
 
     bool MaterialDefinitionFileRegistry::LoadFile(const OSString &path)
@@ -730,6 +760,18 @@ namespace hgl::graph::mtl
         {
             files.DeleteAt(files.GetCount() - 1);
             return false;
+        }
+
+        const int new_file_index = files.GetCount() - 1;
+        for (int i = 0; i < new_file_index; ++i)
+        {
+            if (files[i]
+             && files[i]->definition.definition_id
+                    == data->definition.definition_id)
+            {
+                files.DeleteAt(new_file_index);
+                return false;
+            }
         }
         return true;
     }

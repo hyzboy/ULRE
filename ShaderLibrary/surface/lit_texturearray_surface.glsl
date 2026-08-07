@@ -1,5 +1,5 @@
 // @ulre begin
-// @ulre name standard_texturearray_surface
+// @ulre name lit_texturearray_surface
 // @ulre kind Surface
 // @ulre priority 0
 // @ulre require ProducedSemantic WorldPosition
@@ -10,12 +10,12 @@
 // @ulre uses ntb_interface
 // @ulre uses lighting_interface
 // @ulre end
-// standard_texturearray_surface.glsl — Standard Lit Surface with Texture2DArray sampling
+// lit_texturearray_surface.glsl — Lit Surface with Texture2DArray sampling
 // S6: Texture sampling migrated to bindless (bindless_tex2darray[], binding=1 on Set 3).
 // Texture semantic declarations remain in the material contract for recipe extraction,
 // but actual sampling is fully bindless in this shader.
 // Array layer index is stored in TextureLayerRows[iid][TEXTURE_SLOT_CUSTOM0].
-// 天光/直接光/间接光与 standard_surface 共用同一套模块：
+// 天光/直接光/间接光与 lit_surface 共用同一套模块：
 //   sky/sky_atmosphere.glsl (GetSky*) + lighting/direct_cook_torrance_pbr.glsl
 //   (EvalDirectLighting) + lighting/indirect_simple_ambient.glsl (EvalIndirectLighting)。
 // 本 surface 仅保留 Texture2DArray 采样差异。
@@ -72,7 +72,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
     surf.emissive  = vec3(0.0);
     surf.alpha     = 1.0;
 
-    // 与 standard_surface 共用同一套天光 + 直接光 + 间接光模块
+    // 与 lit_surface 共用同一套天光 + 直接光 + 间接光模块
     vec3 lightDir   = GetSkyMainLightDir();
     vec3 lightColor = GetSkyMainLightColor();
     vec3 skyAmbient = GetSkyAmbientColor();

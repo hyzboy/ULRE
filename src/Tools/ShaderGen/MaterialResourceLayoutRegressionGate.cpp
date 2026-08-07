@@ -593,13 +593,13 @@ namespace
 
         CompositorAssembler assembler(GetShaderLibraryPath());
         const auto assembled = assembler.Assemble(
-            SurfaceType::Standard,
+            SurfaceType::Lit,
             BlendMode::Opaque,
             PassType::ForwardOpaque);
         if (!assembled.success)
         {
             result.diagnostics.emplace_back(
-                "Standard compositor assembly failed: " + assembled.error_message);
+                "Lit compositor assembly failed: " + assembled.error_message);
         }
         else
         {
@@ -668,7 +668,7 @@ namespace
                 "Alpha-to-coverage compositor must preserve alpha output");
 
         const auto unsupported = assembler.Assemble(
-            SurfaceType::Standard,
+            SurfaceType::Lit,
             BlendMode::Opaque,
             PassType::ShadowOpaque);
         if (unsupported.success
@@ -1213,6 +1213,81 @@ namespace
         return result;
     }
 
+    static GateResult RunMaterialDefinitionIdentityCase()
+    {
+        GateResult result;
+        result.name = "R1.material-definition-identity";
+
+        MaterialDefinition pure_color{};
+        MaterialDefinition missing_alias{};
+        if (!TryGetMaterialDefinitionByID(
+                BUILTIN_MTL_DEF_PURE_COLOR, pure_color)
+         || !TryGetMaterialDefinitionByID(
+                BUILTIN_MTL_DEF_MISSING_MATERIAL, missing_alias))
+        {
+            result.diagnostics.emplace_back(
+                "PureColor canonical definition or compatibility alias is missing");
+        }
+        else
+        {
+            if (pure_color.definition_id != BUILTIN_MTL_DEF_PURE_COLOR
+             || missing_alias.definition_id != pure_color.definition_id
+             || missing_alias.definition_name != pure_color.definition_name)
+            {
+                result.diagnostics.emplace_back(
+                    "PureColor alias must resolve to the canonical definition identity");
+            }
+        }
+
+        MaterialDefinition text{};
+        MaterialDefinition text_alias{};
+        MaterialDefinition text_creator{};
+        if (!TryGetMaterialDefinitionByID(BUILTIN_MTL_DEF_TEXT, text)
+         || !TryGetMaterialDefinitionByID("Text2D", text_alias)
+         || !TryGetMaterialDefinitionByBuiltinMaterialCreatorID(
+                BuiltinMaterialCreatorID::Text2D, text_creator))
+        {
+            result.diagnostics.emplace_back(
+                "Text canonical definition, alias, or creator route is missing");
+        }
+        else if (text.definition_id != BUILTIN_MTL_DEF_TEXT
+              || text_alias.definition_id != text.definition_id
+              || text_creator.definition_id != text.definition_id
+              || text_alias.source_kind != MaterialDefinitionSourceKind::BuiltIn
+              || !IsBootstrapMaterialDefinition(text_alias))
+        {
+            result.diagnostics.emplace_back(
+                "Text2D alias and creator route must share one bootstrap identity");
+        }
+
+        MaterialRecipe canonical_recipe{};
+        canonical_recipe.mtl_def_id = BUILTIN_MTL_DEF_TEXT;
+        MaterialRecipe alias_recipe{};
+        alias_recipe.mtl_def_id = "Text2D";
+        NormalizeRecipe(canonical_recipe);
+        NormalizeRecipe(alias_recipe);
+        if (canonical_recipe.mtl_def_id != alias_recipe.mtl_def_id
+         || HashMaterialShaderVariant(canonical_recipe)
+                != HashMaterialShaderVariant(alias_recipe))
+        {
+            result.diagnostics.emplace_back(
+                "recipe normalization must collapse aliases to one shader identity");
+        }
+
+        MaterialDefinition ordinary{};
+        if (!TryGetMaterialDefinitionByID("Lit", ordinary)
+         || ordinary.definition_id != "Lit"
+         || ordinary.source_kind != MaterialDefinitionSourceKind::File
+         || IsBootstrapMaterialDefinition(ordinary))
+        {
+            result.diagnostics.emplace_back(
+                "ordinary material lookup must resolve the TOML definition");
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunUnifiedMaterialBaselineCase()
     {
         GateResult result;
@@ -1246,8 +1321,8 @@ namespace
             return result;
         }
 
-        if (!pure_color.fragment_program_module
-         || std::strcmp(pure_color.fragment_program_module,
+        if (!pure_color.fragment_source
+         || std::strcmp(pure_color.fragment_source,
                         "compositor/pure_color.frag.glsl") != 0
          || pure_color.fragment_program_mode != MaterialFragmentProgramMode::Compositor
          || pure_color.fragment_surface_module)
@@ -1494,8 +1569,8 @@ namespace
 
         const char material_file[] =
             "schema = 1\n"
-            "id = \"StandardFile\"\n"
-            "name = \"StandardFile\"\n"
+            "id = \"LitFile\"\n"
+            "name = \"LitFile\"\n"
             "source = \"file\"\n"
             "usage = \"General\"\n"
             "bootstrap = \"None\"\n"
@@ -1507,12 +1582,13 @@ namespace
             "orientation = \"World\"\n"
             "scale = \"World\"\n"
             "projection = \"WorldCameraVP\"\n"
+            "[fragment]\n"
+            "source = \"compositor/main_forward_lit.frag.glsl\"\n"
+            "surface_module = \"surface/lit_surface.glsl\"\n"
             "[compositor]\n"
-            "surface = \"Standard\"\n"
+            "surface = \"Lit\"\n"
             "blend = \"Opaque\"\n"
             "pass = \"ForwardOpaque\"\n"
-            "fragment = \"compositor/main_forward_lit.frag.glsl\"\n"
-            "surface_module = \"surface/standard_surface.glsl\"\n"
             "[vertex]\n"
             "requirements = [\"Position\", \"UV0\", \"Normal\"]\n"
             "varyings = [\"emit_world_pos\", \"emit_world_normal\", \"emit_uv0\"]\n"
@@ -1532,16 +1608,18 @@ namespace
         {
             const auto &definition = data.definition;
             if (definition.source_kind != MaterialDefinitionSourceKind::File
-             || definition.definition_id != "StandardFile"
+             || definition.definition_id != "LitFile"
              || definition.vertex_provider_policy != MaterialVertexProviderPolicy::AllowDerived
              || !definition.has_transform_graph
              || definition.transform_graph.mapping != PositionMappingMode::Passthrough3D
              || definition.vertex_semantic_requirements.GetCount() != 3
              || definition.ubo_requirements.size() != 2
-             || std::strcmp(definition.fragment_program_module,
+             || std::strcmp(definition.fragment_source,
                             "compositor/main_forward_lit.frag.glsl") != 0
+             || definition.fragment_program_module
+                    != definition.fragment_source
              || std::strcmp(definition.fragment_surface_module,
-                            "surface/standard_surface.glsl") != 0)
+                            "surface/lit_surface.glsl") != 0)
             {
                 result.diagnostics.emplace_back("material schema fields mismatch");
             }
@@ -1561,6 +1639,34 @@ namespace
                 result.diagnostics.emplace_back(
                     "AllowDerived material definition must build a geometry ABI");
             }
+        }
+
+        const char legacy_file[] =
+            "schema = 1\n"
+            "id = \"LegacyDirect\"\n"
+            "name = \"LegacyDirect\"\n"
+            "source = \"file\"\n"
+            "usage = \"General\"\n"
+            "bootstrap = \"None\"\n"
+            "program_mode = \"DirectInclude\"\n"
+            "provider_policy = \"GeometryOnly\"\n"
+            "[compositor]\n"
+            "fragment = \"2d/puretexture2d.frag.glsl\"\n"
+            "[vertex]\n"
+            "requirements = [\"Position\"]\n";
+        MaterialDefinitionFileData legacy_data;
+        if (ParseMaterialDefinitionFile(
+                legacy_file, static_cast<int>(std::strlen(legacy_file)), legacy_data)
+                != MaterialDefinitionFileParseResult::OK
+         || !legacy_data.definition.fragment_source
+         || std::strcmp(
+                legacy_data.definition.fragment_source,
+                "2d/puretexture2d.frag.glsl") != 0
+         || legacy_data.definition.fragment_program_module
+                != legacy_data.definition.fragment_source)
+        {
+            result.diagnostics.emplace_back(
+                "legacy compositor.fragment must convert at the parser boundary");
         }
 
         const char invalid_file[] =
@@ -1641,49 +1747,49 @@ namespace
             if (!file_definition
              || !TryGetMaterialDefinitionByID("Lit", legacy_definition))
             {
-                result.diagnostics.emplace_back("Standard file/legacy definition lookup failed");
+                result.diagnostics.emplace_back("Lit file/legacy definition lookup failed");
             }
             else
             {
                 if (file_definition->definition_id != legacy_definition.definition_id)
-                    result.diagnostics.emplace_back("Standard id mismatch");
+                    result.diagnostics.emplace_back("Lit id mismatch");
                 if (file_definition->fragment_program_mode != legacy_definition.fragment_program_mode)
-                    result.diagnostics.emplace_back("Standard mode mismatch");
+                    result.diagnostics.emplace_back("Lit mode mismatch");
                 if (file_definition->compositor_surface != legacy_definition.compositor_surface)
-                    result.diagnostics.emplace_back("Standard surface mismatch");
+                    result.diagnostics.emplace_back("Lit surface mismatch");
                 if (file_definition->compositor_blend != legacy_definition.compositor_blend)
-                    result.diagnostics.emplace_back("Standard blend mismatch");
+                    result.diagnostics.emplace_back("Lit blend mismatch");
                 if (file_definition->compositor_pass != legacy_definition.compositor_pass)
-                    result.diagnostics.emplace_back("Standard pass mismatch");
+                    result.diagnostics.emplace_back("Lit pass mismatch");
                 if (file_definition->vertex_semantic_requirements.GetCount()
                         != legacy_definition.vertex_semantic_requirements.GetCount())
-                    result.diagnostics.emplace_back("Standard semantic count mismatch");
+                    result.diagnostics.emplace_back("Lit semantic count mismatch");
                 if (file_definition->code_module_requirements
                         != legacy_definition.code_module_requirements)
-                    result.diagnostics.emplace_back("Standard code module mismatch");
+                    result.diagnostics.emplace_back("Lit code module mismatch");
                 if (file_definition->ubo_requirements != legacy_definition.ubo_requirements)
-                    result.diagnostics.emplace_back("Standard UBO mismatch");
+                    result.diagnostics.emplace_back("Lit UBO mismatch");
                 if (file_definition->data_slot_decls.size()
                         != legacy_definition.data_slot_decls.size())
-                    result.diagnostics.emplace_back("Standard SSBO mismatch");
+                    result.diagnostics.emplace_back("Lit SSBO mismatch");
                 if (file_definition->texture_slot_decls.size()
                         != legacy_definition.texture_slot_decls.size())
-                    result.diagnostics.emplace_back("Standard texture mismatch");
+                    result.diagnostics.emplace_back("Lit texture mismatch");
                 if (file_definition->vertex_varying.emit_world_pos
                         != legacy_definition.vertex_varying.emit_world_pos
                  || file_definition->vertex_varying.emit_world_normal
                         != legacy_definition.vertex_varying.emit_world_normal
                  || file_definition->vertex_varying.emit_uv0
                         != legacy_definition.vertex_varying.emit_uv0)
-                    result.diagnostics.emplace_back("Standard varying mismatch");
+                    result.diagnostics.emplace_back("Lit varying mismatch");
                 if (file_definition->vertex_provider_policy
                         != legacy_definition.vertex_provider_policy)
-                    result.diagnostics.emplace_back("Standard provider policy mismatch");
-                if (std::strcmp(file_definition->fragment_program_module,
+                    result.diagnostics.emplace_back("Lit provider policy mismatch");
+                if (std::strcmp(file_definition->fragment_source,
                                 "compositor/main_forward_lit.frag.glsl") != 0
                  || std::strcmp(file_definition->fragment_surface_module,
-                                "surface/standard_surface.glsl") != 0)
-                    result.diagnostics.emplace_back("Standard stage reference mismatch");
+                                "surface/lit_surface.glsl") != 0)
+                    result.diagnostics.emplace_back("Lit stage reference mismatch");
 
                 for (int i = 0; i < file_definition->vertex_semantic_requirements.GetCount(); ++i)
                 {
@@ -1691,7 +1797,7 @@ namespace
                         == legacy_definition.vertex_semantic_requirements[i]))
                     {
                         result.diagnostics.emplace_back(
-                            "Standard file semantic requirements differ from legacy");
+                            "Lit file semantic requirements differ from legacy");
                         break;
                     }
                 }
@@ -1774,8 +1880,8 @@ namespace
              || !MergeMaterialDefinitionFile(
                     legacy_definition, *file_definition, merged_definition)
              || merged_definition.source_kind != MaterialDefinitionSourceKind::File
-             || merged_definition.fragment_program_module
-                    != file_definition->fragment_program_module)
+             || merged_definition.fragment_source
+                    != file_definition->fragment_source)
             {
                 result.diagnostics.emplace_back(
                     "file material merge must prefer the valid TOML definition");
@@ -2770,6 +2876,170 @@ namespace
         return result;
     }
 
+    static GateResult RunDescriptorBuilderConvergenceCase()
+    {
+        GateResult result;
+        result.name = "AC.descriptor-builder-convergence";
+
+        const MaterialDefinition *unlit_texture =
+            GetMaterialDefinitionFileRegistry().FindByID("UnlitTexture");
+        const MaterialDefinition *texture_array =
+            GetMaterialDefinitionFileRegistry().FindByID("Texture2DArray");
+        if (!unlit_texture || !texture_array)
+        {
+            result.diagnostics.emplace_back(
+                "Descriptor convergence definitions were not loaded");
+            result.passed = false;
+            return result;
+        }
+
+        const auto build_2d_descriptors =
+            [](const MaterialDefinition &definition)
+                -> std::vector<FixedDescriptorEntry>
+        {
+            MaterialDefinitionBuildRequest request{};
+            const Material2DBuildParams params =
+                Material2DBuildParams::From(request, definition);
+            ShaderResourceManifest manifest{};
+            if (!build2d::Build2DShaderResourceManifest(definition, manifest)
+             || !manifest.IsValid())
+                return {};
+            return build2d::Build2DDescriptorsFromDefinition(params, manifest);
+        };
+
+        const std::vector<FixedDescriptorEntry> unlit_descriptors =
+            build_2d_descriptors(*unlit_texture);
+        const std::vector<FixedDescriptorEntry> array_descriptors =
+            build_2d_descriptors(*texture_array);
+        if (unlit_descriptors.empty() || array_descriptors.empty())
+        {
+            result.diagnostics.emplace_back(
+                "2D descriptor builders must produce descriptors for file definitions");
+        }
+        else
+        {
+            const FixedDescriptorEntry *unlit_sampler = nullptr;
+            for (const auto &entry : unlit_descriptors)
+            {
+                if (entry.semantic == DescriptorSemantic::MaterialSampler
+                 && entry.texture_slot == TextureSlot::BaseColor)
+                {
+                    unlit_sampler = &entry;
+                    break;
+                }
+            }
+
+            if (!unlit_sampler
+             || !unlit_sampler->glsl_type
+             || std::strcmp(unlit_sampler->glsl_type, "sampler2D") != 0)
+            {
+                result.diagnostics.emplace_back(
+                    "2D sampler type was not preserved");
+            }
+
+            bool has_data_index_rows = false;
+            bool has_texture_layer_rows = false;
+            for (const auto &entry : array_descriptors)
+            {
+                has_data_index_rows |=
+                    entry.semantic == DescriptorSemantic::MaterialDataIndexTable;
+                has_texture_layer_rows |=
+                    entry.semantic == DescriptorSemantic::MaterialTextureLayerTable;
+            }
+            if (!has_data_index_rows || !has_texture_layer_rows)
+                result.diagnostics.emplace_back(
+                    "2D material data slots must emit both index and texture-layer rows");
+
+            const MaterialResourceLayout unlit_layout =
+                BuildMaterialResourceLayout(
+                    unlit_descriptors.data(),
+                    static_cast<uint32_t>(unlit_descriptors.size()));
+            std::vector<std::string> layout_diagnostics;
+            if (!ValidateMaterialResourceLayout(unlit_layout, layout_diagnostics))
+                result.diagnostics.emplace_back(
+                    "2D descriptor output failed resource-layout validation");
+
+            const FixedMaterialDef fixed_definition{
+                "DescriptorPolicy",
+                PrimitiveType::Triangles,
+                nullptr,
+                0,
+                unlit_descriptors.data(),
+                static_cast<uint32_t>(unlit_descriptors.size())
+            };
+            CompositorMaterialBuildConfig config{};
+            config.material_definition = unlit_texture;
+            config.generate_only = true;
+            ShaderProgramBuildSpec *build_spec = CompileCompositorMaterial(
+                nullptr,
+                fixed_definition,
+                "#version 450\nvoid main(){gl_Position=vec4(0.0);}\n",
+                "#version 450\nlayout(location=0) out vec4 outColor;\nvoid main(){outColor=vec4(1.0);}\n",
+                config);
+            bool checked_required_policy = false;
+            if (!build_spec)
+            {
+                result.diagnostics.emplace_back(
+                    "Material compiler rejected the 2D descriptor policy contract");
+            }
+            else
+            {
+                for (const auto &requirement :
+                     build_spec->GetMaterialResourceLayout().requirements)
+                {
+                    if (requirement.semantic == DescriptorSemantic::MaterialSampler
+                     && requirement.texture_slot == TextureSlot::BaseColor)
+                    {
+                        checked_required_policy = true;
+                        if (!requirement.required || requirement.allow_fallback)
+                            result.diagnostics.emplace_back(
+                                "Definition-required texture policy was not propagated");
+                        break;
+                    }
+                }
+                delete build_spec;
+            }
+            if (!checked_required_policy)
+                result.diagnostics.emplace_back(
+                    "Compiled 2D resource layout omitted the material sampler policy");
+
+            ShaderResourceManifest unlit_manifest{};
+            ShaderResourceManifest array_manifest{};
+            if (!build2d::Build2DShaderResourceManifest(*unlit_texture, unlit_manifest)
+             || !build2d::Build2DShaderResourceManifest(*texture_array, array_manifest)
+             || descriptor_builder_common::HashResourceContract(
+                    unlit_manifest.stable_hash, unlit_descriptors)
+                    == descriptor_builder_common::HashResourceContract(
+                        array_manifest.stable_hash, array_descriptors))
+            {
+                result.diagnostics.emplace_back(
+                    "Different 2D descriptor/resource contracts must hash differently");
+            }
+        }
+
+        MaterialDefinition camera_definition{};
+        camera_definition.vertex_node_config.projection =
+            ProjectionMode::ClipPassthrough;
+        camera_definition.ubo_requirements.push_back(
+            UBODescriptorSemantic::CameraInfo);
+        MaterialDefinitionBuildRequest camera_request{};
+        const Material2DBuildParams camera_params =
+            Material2DBuildParams::From(camera_request, camera_definition);
+        ShaderResourceManifest camera_manifest{};
+        const auto camera_descriptors =
+            build2d::Build2DDescriptorsFromDefinition(
+                camera_params, camera_manifest);
+        bool has_camera = false;
+        for (const auto &entry : camera_descriptors)
+            has_camera |= entry.semantic == DescriptorSemantic::CameraInfo;
+        if (!has_camera)
+            result.diagnostics.emplace_back(
+                "2D definition UBO requirements must be emitted by the common builder");
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunShaderLibraryPathCase()
     {
         GateResult result;
@@ -2829,6 +3099,7 @@ int main()
     results.push_back(RunMaterializationSharedInstanceCase());
     results.push_back(RunBuiltinRegistryCoverageCase());
     results.push_back(RunBootstrapMaterialBoundaryCase());
+    results.push_back(RunMaterialDefinitionIdentityCase());
     results.push_back(RunUnifiedMaterialBaselineCase());
     results.push_back(RunUnifiedPureColorFragmentCase());
     results.push_back(RunUnifiedMaterialContractCase());
@@ -2851,6 +3122,7 @@ int main()
     results.push_back(RunResolvedStageCacheIdentityCase());
     results.push_back(RunMaterialMultiSlotSourceCase());
     results.push_back(RunDirectIncludeManifestCase());
+    results.push_back(RunDescriptorBuilderConvergenceCase());
     results.push_back(RunShaderLibraryPathCase());
 
     bool all_passed = true;

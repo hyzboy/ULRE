@@ -16,7 +16,7 @@
 #version 450
 
 // === Compositor Template: Forward Lit FS ===
-// Lit 材质共用片元模板 — Standard, StandardTextureArray
+// Lit 材质共用片元模板 — Lit, LitTextureArray
 //
 // 提供 camera + sky UBO，填充 SurfaceInput（world-space），
 // 然后调用 SURFACE_FUNCTION_FILE 中的 EvalSurface()。

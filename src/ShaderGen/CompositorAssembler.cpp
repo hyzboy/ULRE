@@ -87,7 +87,7 @@ namespace hgl::graph
     {
         switch (surface)
         {
-        case SurfaceType::Standard:   return "surface/standard_surface.glsl";
+        case SurfaceType::Lit:        return "surface/lit_surface.glsl";
         case SurfaceType::Unlit:      return "surface/unlit_color3d_surface.glsl";
         case SurfaceType::Sky:        return "surface/sky_minimal_surface.glsl";
         case SurfaceType::Skin:       return "surface/skin_surface.glsl";
@@ -95,7 +95,7 @@ namespace hgl::graph
         case SurfaceType::Cloth:      return "surface/cloth_surface.glsl";
         case SurfaceType::Eye:        return "surface/eye_surface.glsl";
         case SurfaceType::Foliage:    return "surface/foliage_surface.glsl";
-        case SurfaceType::ClearCoat:  return "surface/standard_surface.glsl";
+        case SurfaceType::ClearCoat:  return "surface/lit_surface.glsl";
         case SurfaceType::Water:      return "surface/water_surface.glsl";
         default:                      return {};
         }
@@ -237,7 +237,7 @@ namespace hgl::graph
         SurfaceType                  surface,
         BlendMode                    blend,
         PassType                     pass,
-        const char                  *fs_template_override,
+        const char                  *fragment_source_override,
         const char                  *surface_function_override,
         const CompositorModuleOptions &module_options
     ) const
@@ -248,9 +248,9 @@ namespace hgl::graph
         NewShaderPermutationKey key;
         key.SetSurfaceType(surface);
 
-        // 2. 获取模板文件路径（支持覆盖）
-        std::string fs_path = (fs_template_override && fs_template_override[0])
-            ? shader_lib_path_ + "/" + fs_template_override
+        // 2. Resolve the canonical fragment source/template path.
+        std::string fs_path = (fragment_source_override && fragment_source_override[0])
+            ? shader_lib_path_ + "/" + fragment_source_override
             : GetCompositorFSPath(surface, blend, pass);
         std::string surface_rel = (surface_function_override && surface_function_override[0])
             ? surface_function_override

@@ -269,8 +269,15 @@ namespace hgl::graph::mtl
         //
         ValueArray<GLSLCodeModuleSemanticRequirement> vertex_semantic_requirements;
         MaterialVertexProviderPolicy vertex_provider_policy = MaterialVertexProviderPolicy::Auto;
-        const char *fragment_program_module = nullptr;
+        // Canonical fragment assembly input. The path names either a raw
+        // DirectInclude source or a Compositor template; assembly is shared.
+        const char *fragment_source = nullptr;
+        // Optional surface function include replacement used by compositor
+        // templates (and harmless for raw sources without the marker).
         const char *fragment_surface_module = nullptr;
+        // Compatibility-only spelling. Boundary code normalizes this into
+        // fragment_source; runtime assembly must use the canonical field.
+        const char *fragment_program_module = nullptr;
         MaterialVertexVaryingConfig vertex_varying;
         MaterialFragmentProgramMode fragment_program_mode = MaterialFragmentProgramMode::Compositor;
         SurfaceType compositor_surface = SurfaceType::Unlit;
@@ -278,6 +285,25 @@ namespace hgl::graph::mtl
         PassType compositor_pass = PassType::ForwardOpaque;
         ResolvedMaterialRenderState default_render_state;
     };
+
+    inline void SetMaterialFragmentSource(
+        MaterialDefinition &definition,
+        const char *source)
+    {
+        definition.fragment_source = source;
+        // Keep the legacy ABI field populated for callers that still inspect
+        // it, while all engine code consumes fragment_source.
+        definition.fragment_program_module = source;
+    }
+
+    inline void NormalizeMaterialFragmentSource(
+        MaterialDefinition &definition)
+    {
+        if (!definition.fragment_source && definition.fragment_program_module)
+            definition.fragment_source = definition.fragment_program_module;
+        if (!definition.fragment_program_module && definition.fragment_source)
+            definition.fragment_program_module = definition.fragment_source;
+    }
 
     inline void ConfigureMaterialVertexSemanticContract(
         MaterialDefinition &definition,

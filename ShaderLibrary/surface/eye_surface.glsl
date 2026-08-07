@@ -1,2 +1,2 @@
-// Placeholder surface: not specialized yet; falls back to standard_surface.glsl.
-#include "surface/standard_surface.glsl"
+// Placeholder surface: not specialized yet; falls back to lit_surface.glsl.
+#include "surface/lit_surface.glsl"

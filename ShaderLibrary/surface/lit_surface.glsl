@@ -1,5 +1,5 @@
 // @ulre begin
-// @ulre name standard_surface
+// @ulre name lit_surface
 // @ulre kind Surface
 // @ulre priority 0
 // @ulre require ProducedSemantic WorldPosition
@@ -11,7 +11,7 @@
 // @ulre uses ntb_interface
 // @ulre uses lighting_interface
 // @ulre end
-// standard_surface.glsl — Modular Standard Lit Surface
+// lit_surface.glsl — Modular Lit Surface
 // 材质基本属性提炼 + 模块化 NTB 空间解码 + 独立 Direct/Indirect/Sky 光照合成
 
 #include "common/surface_interface.glsl"

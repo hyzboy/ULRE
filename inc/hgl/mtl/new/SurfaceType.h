@@ -7,7 +7,7 @@ namespace hgl::graph
     enum class SurfaceType : uint8
     {
         Unlit = 0,
-        Standard,
+        Lit,
         Skin,
         Hair,
         Cloth,
@@ -21,7 +21,7 @@ namespace hgl::graph
     };
 
     constexpr const char* SurfaceTypeNames[] = {
-        "Unlit", "Standard", "Skin", "Hair", "Cloth",
+        "Unlit", "Lit", "Skin", "Hair", "Cloth",
         "Eye", "Foliage", "ClearCoat", "Water", "Sky"
     };
 

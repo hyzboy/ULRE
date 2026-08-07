@@ -9,7 +9,8 @@
 namespace hgl::graph
 {
     /**
-     * CompositorAssembler — 组合 Compositor Template + Surface Function 生成完整 GLSL
+     * CompositorAssembler — 统一组合 raw fragment source/template 与
+     * Surface Function，生成完整 GLSL
      *
      * 第一版最小实现：
      *   1. 输入：SurfaceType, BlendMode, PassType
@@ -45,13 +46,14 @@ namespace hgl::graph
         /// shader_library_path: ShaderLibrary 根目录的绝对路径（不带尾部斜杠）
         explicit CompositorAssembler(const std::string &shader_library_path);
 
-        /// fs_template_override: 非空时覆盖默认 FS 模板路径（相对于 ShaderLibrary 根目录）
-        /// surface_function_override: 非空时覆盖默认 Surface Function 路径
+        /// fragment_source_override: raw DirectInclude source or compositor
+        /// template path, relative to the ShaderLibrary root.
+        /// surface_function_override: optional Surface Function path override.
         AssembleResult Assemble(
             SurfaceType                  surface,
             BlendMode                    blend,
             PassType                     pass,
-            const char                  *fs_template_override,
+            const char                  *fragment_source_override,
             const char                  *surface_function_override,
             const CompositorModuleOptions &module_options
         ) const;

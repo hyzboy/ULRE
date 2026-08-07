@@ -14,8 +14,8 @@ orientation = "World"
 scale = "World"
 projection = "LocalToWorldOnly"
 
-[compositor]
-fragment = "2d/recttexture2darray.frag.glsl"
+[fragment]
+source = "2d/recttexture2darray.frag.glsl"
 
 [vertex]
 requirements = ["Position", "UV0"]

@@ -29,28 +29,14 @@ namespace
                                              const mtl::MaterialDefinitionFileRegistry *file_registry,
                                              mtl::MaterialDefinition &out_bmi)
     {
+        (void)file_registry;
         const std::string &mtl_def_id = request.recipe.mtl_def_id;
 
-        bool has_bmi = mtl::TryGetMaterialDefinitionByID(mtl_def_id, out_bmi);
-        if (has_bmi && file_registry && !mtl::IsBootstrapMaterialDefinition(out_bmi))
-        {
-            const mtl::MaterialDefinition *file_definition =
-                file_registry->FindByID(mtl_def_id.c_str());
-            mtl::MaterialDefinition merged;
-            if (file_definition
-             && mtl::MergeMaterialDefinitionFile(out_bmi, *file_definition, merged))
-                out_bmi = merged;
-        }
-        if (!has_bmi)
-        {
-            const char *fallback_def_id = mtl::GetFallbackMaterialDefinitionID();
-            has_bmi = mtl::TryGetMaterialDefinitionByID(fallback_def_id, out_bmi);
-        }
+        if (mtl::TryGetMaterialDefinitionByID(mtl_def_id, out_bmi))
+            return true;
 
-        if (!has_bmi)
-            return false;
-
-        return true;
+        return mtl::TryGetMaterialDefinitionByID(
+            mtl::GetFallbackMaterialDefinitionID(), out_bmi);
     }
 
     void CreateShaderStageList(ValueArray<VkPipelineShaderStageCreateInfo> &shader_stage_list,ShaderModuleMap *shader_maps)

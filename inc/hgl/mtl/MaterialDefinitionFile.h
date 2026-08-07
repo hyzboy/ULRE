@@ -22,7 +22,7 @@ namespace hgl::graph::mtl
     struct MaterialDefinitionFileData
     {
         MaterialDefinition definition;
-        AnsiString fragment_module_storage;
+        AnsiString fragment_source_storage;
         AnsiString surface_module_storage;
     };
 

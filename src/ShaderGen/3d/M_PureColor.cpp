@@ -21,7 +21,7 @@ namespace hgl::graph::mtl
                 UBODescriptorSemantic::CameraInfo
             };
             bmi.vertex_node_config = MakeDefault3DNodeConfig();
-            bmi.fragment_program_module = "compositor/pure_color.frag.glsl";
+            SetMaterialFragmentSource(bmi, "compositor/pure_color.frag.glsl");
             bmi.fragment_program_mode = MaterialFragmentProgramMode::Compositor;
             bmi.fragment_surface_module = nullptr;
             bmi.vertex_varying.emit_data_index_id = true;
@@ -32,11 +32,9 @@ namespace hgl::graph::mtl
             ConfigureMaterialVertexSemanticContract(
                 bmi, requirements, 1, MaterialVertexProviderPolicy::GeometryOnly);
             RegisterMaterialDefinition(BuiltinMaterialCreatorID::PureColor, bmi);
-            RegisterMaterialDefinition(bmi);
-            MaterialDefinition missing_alias = bmi;
-            missing_alias.definition_id = BUILTIN_MTL_DEF_MISSING_MATERIAL;
-            missing_alias.definition_name = "builtin/missing_material";
-            RegisterMaterialDefinition(missing_alias);
+            RegisterMaterialDefinitionAlias(
+                   BUILTIN_MTL_DEF_MISSING_MATERIAL,
+                   BUILTIN_MTL_DEF_PURE_COLOR);
             return true;
         }();
     }

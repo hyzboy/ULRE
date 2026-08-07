@@ -27,8 +27,8 @@ class ShaderProgramBuildSpec;
 class ShaderArtifactStore;
 class MaterialDefinitionFileRegistry;
 
-// BuiltinMaterialCreatorID：内部创建派发键，与 M_* 创建函数一一对应。
-// 作者层不直接使用此 enum；通过 mtl_def_id 字符串主键识别材质。
+// BuiltinMaterialCreatorID：仅用于 bootstrap/fallback creator 派发。
+// 它不是 MaterialDefinition 身份；作者层通过 definition_id 字符串主键识别材质。
 enum class BuiltinMaterialCreatorID:uint8
 {
     PureColor,
@@ -115,6 +115,9 @@ const char *GetBuiltinMaterialCreatorIDName(const BuiltinMaterialCreatorID mtl_i
 // BMI registry
 void RegisterMaterialDefinition(const MaterialDefinition &bmi);
 void RegisterMaterialDefinition(const BuiltinMaterialCreatorID preset, const MaterialDefinition &bmi);
+// Compatibility-only route; aliases resolve to the canonical definition and
+// never create a second MaterialDefinition registry entry.
+void RegisterMaterialDefinitionAlias(const char *alias_id, const char *definition_id);
 bool TryGetMaterialDefinitionByID(const std::string &mtl_def_id, MaterialDefinition &out_bmi);
 bool TryGetMaterialDefinitionByBuiltinMaterialCreatorID(const BuiltinMaterialCreatorID preset, MaterialDefinition &out_bmi);
 MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry();

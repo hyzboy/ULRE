@@ -12,6 +12,7 @@
 #include "3d/DefinitionDescriptorBuilder3D.h"
 #include "common/VertexShaderAssembler.h"
 #include "common/VertexBuilderCommon.h"
+#include <cstring>
 #include <vector>
 #include <string>
 
@@ -160,12 +161,12 @@ namespace
     {
         const bool semantic_contract =
             !definition.vertex_semantic_requirements.IsEmpty();
-        if (!definition.fragment_program_module
+        if (!definition.fragment_source
          || !semantic_contract)
         {
             GLogError("[ShaderGen] Generic material contract invalid: name=%s fragment=%p semantic_requirements=%d",
                       definition.definition_name.c_str(),
-                      definition.fragment_program_module,
+                      definition.fragment_source,
                       definition.vertex_semantic_requirements.GetCount());
             return nullptr;
         }
@@ -292,9 +293,8 @@ namespace
             definition.compositor_surface,
             definition.compositor_blend,
             definition.compositor_pass,
-            definition.fragment_program_module,
-            definition.fragment_program_mode == MaterialFragmentProgramMode::Compositor
-                ? definition.fragment_surface_module : nullptr,
+            definition.fragment_source,
+            definition.fragment_surface_module,
             compositor_options);
         if (!assembled.success)
         {
@@ -329,7 +329,9 @@ namespace
                     resolved_provider_graph_hash)
                 : vertex_stage.BuildKey();
             resolved_program_link.fragment_stage = fragment_stage.BuildKey();
-            resolved_program_link.resource_layout_hash = manifest.stable_hash;
+            resolved_program_link.resource_layout_hash =
+                descriptor_builder_common::HashResourceContract(
+                    manifest.stable_hash, descriptors, definition);
             resolved_program_link.vertex_input_hash =
                 request.geometry_vertex_format
                     ? request.geometry_vertex_format->GetVertexInputHash() : 0;
@@ -351,11 +353,82 @@ namespace
         MaterialDefinition bmi{};
     };
 
+    struct MaterialDefinitionAliasRegistryEntry
+    {
+        AnsiString alias_id;
+        AnsiString definition_id;
+    };
+
     std::vector<BaseMaterialInfoRegistryEntry> &GetBaseMaterialInfoRegistry()
     {
         EnsureBuiltinMaterialDefinitionsLinked();
         static std::vector<BaseMaterialInfoRegistryEntry> registry;
         return registry;
+    }
+
+    ManagedArray<MaterialDefinitionAliasRegistryEntry> &GetMaterialDefinitionAliasRegistry()
+    {
+        static ManagedArray<MaterialDefinitionAliasRegistryEntry> registry;
+        return registry;
+    }
+
+    const AnsiString *FindMaterialDefinitionAlias(const char *alias_id)
+    {
+        if (!alias_id || !alias_id[0])
+            return nullptr;
+
+        auto &registry = GetMaterialDefinitionAliasRegistry();
+        for (int i = 0; i < registry.GetCount(); ++i)
+        {
+            if (std::strcmp(registry[i]->alias_id.c_str(), alias_id) == 0)
+                return &registry[i]->definition_id;
+        }
+        return nullptr;
+    }
+
+    bool TryGetMaterialDefinitionByIDInternal(
+        const char *mtl_def_id,
+        MaterialDefinition &out_bmi,
+        const uint32 alias_depth)
+    {
+        if (!mtl_def_id || !mtl_def_id[0] || alias_depth > 8)
+            return false;
+
+        const auto &registry = GetBaseMaterialInfoRegistry();
+
+        // Bootstrap definitions are the only creator-backed runtime
+        // definitions. They are checked before files so a fallback cannot be
+        // replaced by a same-named TOML definition.
+        for (const auto &entry : registry)
+        {
+            if (entry.bmi.definition_id == mtl_def_id
+             && IsBootstrapMaterialDefinition(entry.bmi))
+            {
+                out_bmi = entry.bmi;
+                return true;
+            }
+        }
+
+        // Ordinary material identity is file-backed. A file lookup is exact;
+        // compatibility aliases are considered only after canonical IDs.
+        const MaterialDefinitionFileRegistry &file_registry =
+            GetMaterialDefinitionFileRegistry();
+        const MaterialDefinition *file_definition =
+            file_registry.FindByID(mtl_def_id);
+        if (file_definition)
+        {
+            out_bmi = *file_definition;
+            return true;
+        }
+
+        const AnsiString *canonical_id =
+            FindMaterialDefinitionAlias(mtl_def_id);
+        if (canonical_id
+         && std::strcmp(canonical_id->c_str(), mtl_def_id) != 0)
+            return TryGetMaterialDefinitionByIDInternal(
+                canonical_id->c_str(), out_bmi, alias_depth + 1);
+
+        return false;
     }
 }
 
@@ -433,20 +506,16 @@ bool BuildResolvedMaterialVertexABI(
 void RegisterMaterialDefinition(const MaterialDefinition &bmi)
 {
     MaterialDefinition normalized = bmi;
-    if (normalized.definition_id.empty())
-    {
-        if (!normalized.definition_name.empty())
-            normalized.definition_id = normalized.definition_name;
-    }
-
-    if (normalized.definition_name.empty() && normalized.definition_id.empty())
+    NormalizeMaterialFragmentSource(normalized);
+    if (normalized.definition_id.empty()
+     || normalized.source_kind != MaterialDefinitionSourceKind::BuiltIn
+     || !IsBootstrapMaterialDefinition(normalized))
         return;
 
     auto &registry = GetBaseMaterialInfoRegistry();
     for (auto &entry : registry)
     {
-        if ((!normalized.definition_id.empty() && entry.bmi.definition_id == normalized.definition_id)
-         || (!normalized.definition_name.empty() && entry.bmi.definition_name == normalized.definition_name))
+        if (entry.bmi.definition_id == normalized.definition_id)
         {
             entry.bmi = normalized;
             return;
@@ -461,24 +530,26 @@ void RegisterMaterialDefinition(const MaterialDefinition &bmi)
 void RegisterMaterialDefinition(const BuiltinMaterialCreatorID preset, const MaterialDefinition &bmi)
 {
     MaterialDefinition normalized = bmi;
-    const char *preset_name = GetBuiltinMaterialCreatorIDName(preset);
-
-    if (normalized.definition_id.empty())
-    {
-        if (preset_name && *preset_name)
-            normalized.definition_id = preset_name;
-    }
-
-    if (normalized.definition_name.empty())
-    {
-        if (preset_name && *preset_name)
-            normalized.definition_name = preset_name;
-    }
-
-    if (normalized.definition_name.empty() && normalized.definition_id.empty())
+    NormalizeMaterialFragmentSource(normalized);
+    if (normalized.definition_id.empty()
+     || !IsBootstrapMaterialDefinition(normalized))
         return;
 
+    normalized.builtin_creator_id = static_cast<uint32_t>(preset);
+    normalized.source_kind = MaterialDefinitionSourceKind::BuiltIn;
+
     auto &registry = GetBaseMaterialInfoRegistry();
+    for (auto &entry : registry)
+    {
+        if (entry.bmi.definition_id == normalized.definition_id)
+        {
+            entry.has_preset = true;
+            entry.preset = preset;
+            entry.bmi = normalized;
+            return;
+        }
+    }
+
     for (auto &entry : registry)
     {
         if (entry.has_preset && entry.preset == preset)
@@ -495,44 +566,37 @@ void RegisterMaterialDefinition(const BuiltinMaterialCreatorID preset, const Mat
     registry.emplace_back(std::move(entry));
 }
 
+void RegisterMaterialDefinitionAlias(const char *alias_id, const char *definition_id)
+{
+    if (!alias_id || !alias_id[0]
+     || !definition_id || !definition_id[0]
+     || std::strcmp(alias_id, definition_id) == 0)
+        return;
+
+    const auto &definitions = GetBaseMaterialInfoRegistry();
+    for (const auto &entry : definitions)
+    {
+        if (entry.bmi.definition_id == alias_id)
+            return;
+    }
+
+    auto &aliases = GetMaterialDefinitionAliasRegistry();
+    for (int i = 0; i < aliases.GetCount(); ++i)
+    {
+        if (std::strcmp(aliases[i]->alias_id.c_str(), alias_id) == 0)
+            return;
+    }
+
+    MaterialDefinitionAliasRegistryEntry *entry = aliases.Create();
+    if (!entry)
+        return;
+    entry->alias_id = alias_id;
+    entry->definition_id = definition_id;
+}
+
 bool TryGetMaterialDefinitionByID(const std::string &mtl_def_id, MaterialDefinition &out_bmi)
 {
-    if (mtl_def_id.empty())
-        return false;
-
-    const auto &registry = GetBaseMaterialInfoRegistry();
-    for (const auto &entry : registry)
-    {
-        if (entry.bmi.definition_id == mtl_def_id)
-        {
-            if (IsBootstrapMaterialDefinition(entry.bmi))
-            {
-                out_bmi = entry.bmi;
-                return true;
-            }
-        }
-    }
-
-    const MaterialDefinitionFileRegistry &file_registry =
-        GetMaterialDefinitionFileRegistry();
-    const MaterialDefinition *file_definition =
-        file_registry.FindByID(mtl_def_id.c_str());
-    if (file_definition)
-    {
-        out_bmi = *file_definition;
-        return true;
-    }
-
-    for (const auto &entry : registry)
-    {
-        if (entry.bmi.definition_id == mtl_def_id)
-        {
-            out_bmi = entry.bmi;
-            return true;
-        }
-    }
-
-    return false;
+    return TryGetMaterialDefinitionByIDInternal(mtl_def_id.c_str(), out_bmi, 0);
 }
 
 
@@ -541,7 +605,9 @@ bool TryGetMaterialDefinitionByBuiltinMaterialCreatorID(const BuiltinMaterialCre
     const auto &registry = GetBaseMaterialInfoRegistry();
     for (const auto &entry : registry)
     {
-        if (entry.has_preset && entry.preset == preset)
+        if (entry.has_preset
+         && entry.preset == preset
+         && IsBootstrapMaterialDefinition(entry.bmi))
         {
             out_bmi = entry.bmi;
             return true;
@@ -594,34 +660,41 @@ bool MergeMaterialDefinitionFile(const MaterialDefinition &legacy,
                                  const MaterialDefinition &file,
                                  MaterialDefinition &out)
 {
-    if (IsBootstrapMaterialDefinition(legacy)
-     || file.source_kind != MaterialDefinitionSourceKind::File)
+    MaterialDefinition normalized_legacy = legacy;
+    MaterialDefinition normalized_file = file;
+    NormalizeMaterialFragmentSource(normalized_legacy);
+    NormalizeMaterialFragmentSource(normalized_file);
+
+    if (IsBootstrapMaterialDefinition(normalized_legacy)
+     || normalized_file.source_kind != MaterialDefinitionSourceKind::File)
         return false;
 
-    out = legacy;
-    out.definition_id = file.definition_id;
-    out.definition_name = file.definition_name;
+    out = normalized_legacy;
+    out.definition_id = normalized_file.definition_id;
+    out.definition_name = normalized_file.definition_name;
     out.source_kind = MaterialDefinitionSourceKind::File;
-    out.usage_tag = file.usage_tag;
-    out.bootstrap_kind = file.bootstrap_kind;
-    out.fragment_program_mode = file.fragment_program_mode;
-    out.vertex_provider_policy = file.vertex_provider_policy;
-    out.vertex_semantic_requirements = file.vertex_semantic_requirements;
-    out.transform_graph = file.transform_graph;
-    out.has_transform_graph = file.has_transform_graph;
-    out.vertex_varying = file.vertex_varying;
-    out.required_ssbo_assets = file.required_ssbo_assets;
-    out.data_slot_decls = file.data_slot_decls;
-    out.ubo_requirements = file.ubo_requirements;
-    out.texture_slot_decls = file.texture_slot_decls;
-    out.code_module_requirements = file.code_module_requirements;
-    out.compositor_surface = file.compositor_surface;
-    out.compositor_blend = file.compositor_blend;
-    out.compositor_pass = file.compositor_pass;
-    out.default_render_state = file.default_render_state;
-    out.fragment_program_module = file.fragment_program_module;
-    out.fragment_surface_module = file.fragment_surface_module
-        ? file.fragment_surface_module : legacy.fragment_surface_module;
+    out.usage_tag = normalized_file.usage_tag;
+    out.bootstrap_kind = normalized_file.bootstrap_kind;
+    out.fragment_program_mode = normalized_file.fragment_program_mode;
+    out.vertex_provider_policy = normalized_file.vertex_provider_policy;
+    out.vertex_semantic_requirements = normalized_file.vertex_semantic_requirements;
+    out.transform_graph = normalized_file.transform_graph;
+    out.has_transform_graph = normalized_file.has_transform_graph;
+    out.vertex_varying = normalized_file.vertex_varying;
+    out.required_ssbo_assets = normalized_file.required_ssbo_assets;
+    out.data_slot_decls = normalized_file.data_slot_decls;
+    out.ubo_requirements = normalized_file.ubo_requirements;
+    out.texture_slot_decls = normalized_file.texture_slot_decls;
+    out.code_module_requirements = normalized_file.code_module_requirements;
+    out.compositor_surface = normalized_file.compositor_surface;
+    out.compositor_blend = normalized_file.compositor_blend;
+    out.compositor_pass = normalized_file.compositor_pass;
+    out.default_render_state = normalized_file.default_render_state;
+    out.fragment_source = normalized_file.fragment_source
+        ? normalized_file.fragment_source : normalized_legacy.fragment_source;
+    out.fragment_surface_module = normalized_file.fragment_surface_module
+        ? normalized_file.fragment_surface_module : normalized_legacy.fragment_surface_module;
+    NormalizeMaterialFragmentSource(out);
     return true;
 }
 
@@ -640,7 +713,9 @@ ShaderProgramBuildSpec *CreateMaterialFromDefinition(
     const MaterialDefinition &definition,
     const MaterialDefinitionBuildRequest &request)
 {
-    return BuildGenericMaterial(profile, request, definition);
+    MaterialDefinition canonical_definition = definition;
+    NormalizeMaterialFragmentSource(canonical_definition);
+    return BuildGenericMaterial(profile, request, canonical_definition);
 }
 
 void NormalizeRecipe(MaterialRecipe &recipe)
@@ -650,17 +725,12 @@ void NormalizeRecipe(MaterialRecipe &recipe)
 
     MaterialDefinition bmi{};
     bool has_definition = TryGetMaterialDefinitionByID(recipe.mtl_def_id, bmi);
-    if (has_definition && !IsBootstrapMaterialDefinition(bmi))
-    {
-        const MaterialDefinition *file_definition =
-            GetMaterialDefinitionFileRegistry().FindByID(recipe.mtl_def_id.c_str());
-        MaterialDefinition merged;
-        if (file_definition
-         && MergeMaterialDefinitionFile(bmi, *file_definition, merged))
-            bmi = merged;
-    }
     if (has_definition)
     {
+        // Aliases are accepted only at the compatibility boundary. Once a
+        // recipe is normalized, the canonical definition ID is the sole
+        // runtime identity used by hashing and caches.
+        recipe.mtl_def_id = bmi.definition_id;
         ApplyBaseMaterialInfoDefaults(recipe, bmi, false);
         ApplyResolvedMaterialRenderState(
             recipe, ResolveMaterialRenderState(bmi, recipe));

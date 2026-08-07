@@ -11,7 +11,7 @@ namespace hgl::graph
         // 引擎内建
         Unlit2D     = 0,    // 2D 无光照
         Unlit3D     = 1,    // 3D 无光照
-        Standard3D  = 2,    // 3D 标准光照 (Standard Surface)
+        Lit3D       = 2,    // 3D 光照表面 (Lit Surface)
         Special3D   = 3,    // 3D 特殊表面 (Skin/Hair/Cloth/Eye/Foliage/ClearCoat/Water)
 
         // 项目扩展从此开始

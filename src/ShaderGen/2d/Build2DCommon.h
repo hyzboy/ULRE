@@ -13,7 +13,6 @@
 #include<hgl/shadergen/MaterialCompiler.h>
 #include "../common/DescriptorBuilderCommon.h"
 #include "../common/VertexBuilderCommon.h"
-#include <cstring>
 #include<string>
 #include<vector>
 
@@ -120,34 +119,20 @@ inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, cons
         descriptor_builder_common::PushLocalToWorldIndexRows(v, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
     }
 
-    // MaterialDataSlot — definition-driven (E4): driven by data_slot_decls, same as 3D path.
-    if (p.material_definition && !p.material_definition->data_slot_decls.empty())
-    {
-        for (uint32_t i = 0; i < static_cast<uint32_t>(p.material_definition->data_slot_decls.size()); ++i)
-        {
-            const auto &decl = p.material_definition->data_slot_decls[i];
-            descriptor_builder_common::PushMaterialDataSlot(
-                v,
-                uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
-                decl.name.c_str(),
-                ssbo::GetMaterialSSBOStructName(decl.ssbo_type),
-                i,
-                decl.ssbo_type);
-        }
-        descriptor_builder_common::PushMaterialDataIndexRows(v, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
-    }
-
-    // Definition-driven texture/sampler slots (E3+)
     if (p.material_definition)
     {
-        for (const auto &decl : p.material_definition->texture_slot_decls)
-        {
-            const char *name = decl.name ? decl.name : descriptor_builder_common::GetTextureNameBySlot(decl.slot);
-            descriptor_builder_common::PushMaterialSampler(
-                v, name, decl.slot,
-                ToGLSLSamplerTypeName(decl.sampler_type),
-                uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT));
-        }
+        descriptor_builder_common::AppendDefinitionUBODescriptors(
+            v,
+            *p.material_definition,
+            uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
+            uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
+            uint32_t(VK_SHADER_STAGE_VERTEX_BIT));
+        descriptor_builder_common::AppendDefinitionMaterialDescriptors(
+            v,
+            *p.material_definition,
+            uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
+            uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
+            uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT));
     }
 }
 
@@ -155,16 +140,8 @@ inline bool Build2DShaderResourceManifest(
     const MaterialDefinition &definition,
     ShaderResourceManifest &manifest)
 {
-    GLSLCodeModuleID roots[64]{};
-    uint32 root_count = 0;
-    for (const GLSLCodeModuleID id : definition.code_module_requirements)
-    {
-        if (root_count >= 64u)
-            return false;
-        roots[root_count++] = id;
-    }
-
-    return BuildShaderResourceManifest(roots, root_count, manifest);
+    return descriptor_builder_common::BuildDefinitionShaderResourceManifest(
+        definition, manifest);
 }
 
 inline std::vector<FixedDescriptorEntry> Build2DDescriptorsFromDefinition(
@@ -173,62 +150,8 @@ inline std::vector<FixedDescriptorEntry> Build2DDescriptorsFromDefinition(
 {
     std::vector<FixedDescriptorEntry> descriptors;
     PushBaseDescriptorEntries(descriptors, p);
-
-    for (uint32 i = 0; i < manifest.ubo_count; ++i)
-    {
-        const UBODescriptorSemantic semantic = manifest.ubos[i].semantic;
-        bool exists = false;
-        for (const auto &entry : descriptors)
-        {
-            UBODescriptorSemantic existing{};
-            if (entry.kind == DescriptorKind::UBO
-             && TryGetUBODescriptorSemantic(entry.semantic, existing)
-             && existing == semantic)
-            {
-                exists = true;
-                break;
-            }
-        }
-        if (exists)
-            continue;
-
-        switch (semantic)
-        {
-        case UBODescriptorSemantic::ViewportInfo:
-            descriptor_builder_common::PushViewport(descriptors, manifest.ubos[i].stage_flags);
-            break;
-        case UBODescriptorSemantic::CameraInfo:
-            descriptor_builder_common::PushCamera(descriptors, manifest.ubos[i].stage_flags);
-            break;
-        case UBODescriptorSemantic::SkyInfo:
-            descriptor_builder_common::PushSky(descriptors, manifest.ubos[i].stage_flags);
-            break;
-        case UBODescriptorSemantic::MaterialColorPalette:
-            descriptors.push_back({
-                DescriptorSetType::Material, DescriptorKind::UBO, manifest.ubos[i].stage_flags,
-                "color_palette", "ColorPalette", nullptr, DescriptorSemantic::MaterialColorPalette,
-                TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined,
-                DescriptorSemanticLayer::UBO
-            });
-            break;
-        }
-    }
-
-    for (uint32 i = 0; i < manifest.texture_count; ++i)
-    {
-        bool exists = false;
-        for (const auto &entry : descriptors)
-        {
-            if (entry.name && manifest.textures[i].name
-             && std::strcmp(entry.name, manifest.textures[i].name) == 0)
-            {
-                exists = true;
-                break;
-            }
-        }
-        if (!exists)
-            descriptor_builder_common::PushManifestTexture(descriptors, manifest.textures[i]);
-    }
+    descriptor_builder_common::AppendManifestUBODescriptors(descriptors, manifest);
+    descriptor_builder_common::AppendManifestTextureDescriptors(descriptors, manifest);
 
     return descriptors;
 }
