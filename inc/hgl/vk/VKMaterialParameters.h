@@ -38,7 +38,6 @@ public:
         MP_TYPE_IS(Scene)
         MP_TYPE_IS(Transform)
         MP_TYPE_IS(Material)
-        MP_TYPE_IS(VertexData)
     #undef MP_TYPE_IS
 
 public:

@@ -16,16 +16,10 @@ DeviceQualityProfile DetectDeviceQuality(const VulkanPhyDevice &phy_device)
     // ---- 基础能力检测 ----
     profile.support_compute         = true;   // Vulkan 1.0 保证 compute queue
     profile.support_indirect_draw   = feat10.multiDrawIndirect == VK_TRUE;
-    profile.support_ssbo_vertex     = (limits.maxStorageBufferRange >= 128 * 1024 * 1024);  // 128 MB
     profile.support_meshlet         = false;  // 需要 VK_EXT_mesh_shader，后续检测扩展
 
     // HZB 需要 compute + image load/store
     profile.support_hzb = profile.support_compute;
-
-    // VBuffer 需要 SSBO + compute + indirect draw
-    profile.support_vbuffer = profile.support_ssbo_vertex
-                           && profile.support_compute
-                           && profile.support_indirect_draw;
 
     // Clustered Shading 需要 compute
     profile.support_clustered = profile.support_compute;

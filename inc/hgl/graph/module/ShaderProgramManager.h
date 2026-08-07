@@ -37,7 +37,7 @@ private:
 
 private:
 
-    VkDescriptorSetLayout bindless_layout_ = VK_NULL_HANDLE;   ///< 全局 Bindless Texture Set 布局（Set 4）
+    VkDescriptorSetLayout bindless_layout_ = VK_NULL_HANDLE;   ///< 全局 Bindless Texture Set 布局（Set 3）
 
     ShaderProgramManager(GraphicsContext *);
     ~ShaderProgramManager()=default;

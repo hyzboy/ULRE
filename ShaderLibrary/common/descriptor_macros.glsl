@@ -5,10 +5,10 @@
 // @ulre end
 // descriptor_macros.glsl — 标准描述符集/绑定宏定义
 //
-// 默认值对应 3D 标准布局（Scene=0, Transform=1, Material=2, VertexData=3）。
+// 默认值对应 3D 标准布局（Scene=0, Transform=1, Material=2, Bindless=3）。
 // 2D 生成器或自定义材质可在 #include 之前 #define 覆盖默认值。
 //
-// 固定布局：set 间按 Scene(0) < Transform(1) < Material(2) < VertexData(3)。
+// 固定布局：set 间按 Scene(0) < Transform(1) < Material(2) < Bindless(3)。
 // 行表 SSBO 声明（mtl_data_index_rows / mtl_texture_layer_rows / l2w_index_rows）
 // 不在此定义默认值：由 CompileCompositorMaterial 依据 descriptor_info 统一生成并
 // 注入（buffer 声明 + Resolve 函数，不再写死在 .glsl）。
@@ -29,10 +29,6 @@
 
 #ifndef MATERIAL_SET
 #define MATERIAL_SET 2
-#endif
-
-#ifndef VERTEX_DATA_SET
-#define VERTEX_DATA_SET 3
 #endif
 
 // ── Transform set ──
@@ -60,17 +56,7 @@
 #endif
 
 #ifndef BINDLESS_SET
-#define BINDLESS_SET 4
-#endif
-
-// ── VertexData set (SSBO 顶点获取) ──
-
-#ifndef VTX_DATA_BINDING
-#define VTX_DATA_BINDING 18
-#endif
-
-#ifndef IDX_DATA_BINDING
-#define IDX_DATA_BINDING 19
+#define BINDLESS_SET 3
 #endif
 
 #endif // DESCRIPTOR_MACROS_GLSL

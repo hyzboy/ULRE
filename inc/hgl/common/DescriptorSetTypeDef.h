@@ -13,8 +13,7 @@ namespace hgl::graph
         Scene=0,
         Transform,
         Material,
-        VertexData,
-        Bindless,           ///< 全局 Bindless 纹理数组集合（Set 4）
+        Bindless,           ///< 全局 Bindless 纹理数组集合（Set 3）
 
         ENUM_CLASS_RANGE(Scene,Bindless)
     };
@@ -26,7 +25,6 @@ namespace hgl::graph
         "Scene",
         "Transform",
         "Material",
-        "VertexData",
         "Bindless"
     };
 

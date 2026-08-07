@@ -87,7 +87,7 @@ PipelineLayoutData *VulkanDevice::CreatePipelineLayoutData(const MaterialDescrip
     memset(pld, 0, sizeof(PipelineLayoutData));
     pld->device = attr->device;
 
-    for(int i = int(DescriptorSetType::Scene); i <= int(DescriptorSetType::VertexData); ++i)
+    for(int i = int(DescriptorSetType::Scene); i < int(DescriptorSetType::Bindless); ++i)
     {
         VkDescriptorSetLayout layout = VK_NULL_HANDLE;
 

@@ -7,11 +7,9 @@ namespace hgl::graph
     struct DeviceQualityProfile
     {
         // 特性掩码
-        bool support_ssbo_vertex;       // SSBO 顶点获取
         bool support_meshlet;           // Meshlet 管线
         bool support_hzb;               // HZB 生成和遮挡剔除
         bool support_clustered;         // Clustered Shading
-        bool support_vbuffer;           // VBuffer 路径
         bool support_compute;           // Compute Shader
         bool support_indirect_draw;     // Indirect Draw
         bool support_d32_sfloat;        // D32_SFLOAT 深度格式
@@ -23,11 +21,9 @@ namespace hgl::graph
 
         // 默认构造 — PC High
         DeviceQualityProfile()
-            : support_ssbo_vertex(true)
-            , support_meshlet(false)
+            : support_meshlet(false)
             , support_hzb(true)
             , support_clustered(true)
-            , support_vbuffer(true)
             , support_compute(true)
             , support_indirect_draw(true)
             , support_d32_sfloat(true)

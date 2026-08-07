@@ -268,7 +268,7 @@ namespace
     };//class GeometryDataPrivateBufferBM:public GeometryData
 
     /**
-    * 使用VertexDataBuffer分配VAB/IBO，在本类析构时归还数据
+    * 使用VertexDataManager分配VAB/IBO，在本类析构时归还数据
     */
     class GeometryDataVDM:public GeometryData
     {

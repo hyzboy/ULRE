@@ -255,12 +255,6 @@ SET(VK_TEXTURE_LOADER_FILES     ${ROOT_INCLUDE_PATH}/hgl/vk/VKTextureLoader.h
 
 SOURCE_GROUP("9.Vulkan\\TextureLoader" FILES ${VK_TEXTURE_LOADER_FILES})
 
-# --- 9. SSBO Vertex Fetch ---
-SET(SSBO_VERTEX_FETCH_FILES     ${SG_INCLUDE_PATH}/VertexDataBufferManager.h
-                                VertexDataBufferManager.cpp)
-
-SOURCE_GROUP("SSBO VertexFetch" FILES ${SSBO_VERTEX_FETCH_FILES})
-
 # ============================================================================
 # Combine all files
 # ============================================================================
@@ -307,5 +301,4 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SG_INCLUDE_PATH}
                                         ${CM_SG_GEO_FILES}
                                         ${CM_CAMERA_SOURCE}
 
-                                        ${SSBO_VERTEX_FETCH_FILES}
 )
