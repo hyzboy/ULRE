@@ -1295,6 +1295,13 @@ namespace
         if (HashMaterialRecipe(first) == HashMaterialRecipe(second))
             result.diagnostics.emplace_back(
                 "full recipe identity should retain instance differences");
+
+        second = first;
+        second.ssbo_assets[0].ssbo_id = 101;
+        if (HashMaterialRecipe(first) == HashMaterialRecipe(second))
+            result.diagnostics.emplace_back(
+                "full recipe identity must retain SSBO resource identity");
+
         if (HashMaterialShaderVariant(first) != HashMaterialShaderVariant(second))
             result.diagnostics.emplace_back(
                 "shader variant identity must ignore recipe/SSBO instance differences");

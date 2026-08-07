@@ -485,6 +485,7 @@ namespace hgl::graph::mtl
                 hash = hgl::hash::FNV1aAppendBytes(hash, asset.data_slot_name.data(), asset.data_slot_name.size());
             hash = hgl::hash::FNV1aAppendValueBytes(hash, asset.data_slot);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, asset.ssbo_type);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, asset.ssbo_id);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, asset.use_data_index);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, asset.shared_across_instances);
         }

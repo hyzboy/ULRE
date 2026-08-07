@@ -127,6 +127,27 @@ namespace hgl::ecs
 
             return 0;
         }
+
+        uint64_t ResolveSSBOBindingSignature(RenderItem *item)
+        {
+            uint64 hash = hgl::hash::FNV1aInit<uint64>();
+            const auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(item);
+            const auto material_comp = primitive_item ? primitive_item->GetMaterialComponent() : nullptr;
+            if (!material_comp)
+                return static_cast<uint64_t>(hash);
+
+            const uint32_t binding_count =
+                static_cast<uint32_t>(material_comp->resolved_ssbo_bindings.size());
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, binding_count);
+            for (const auto &binding : material_comp->resolved_ssbo_bindings)
+            {
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.ssbo_type);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.ssbo_id);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.valid);
+            }
+
+            return static_cast<uint64_t>(hash);
+        }
     }
 
     bool PrimitiveBatchPipeline::PrepareFrame(ECSContext* ctx)
@@ -787,10 +808,9 @@ namespace hgl::ecs
                 continue;
             }
 
-            uint64_t program_signature = 0;
-            uint64_t binding_signature = 0;
-
-            ShaderProgramPipelineKey key(shader_prog, pipeline, program_signature, binding_signature);
+            ShaderProgramPipelineKey key(shader_prog,
+                                         pipeline,
+                                         ResolveSSBOBindingSignature(item));
             auto* batch_ptr = cache.materialBatches.GetValuePointer(key);
 
             if (!batch_ptr)

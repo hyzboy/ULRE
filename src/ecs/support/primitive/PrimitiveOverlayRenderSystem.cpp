@@ -4,6 +4,8 @@
 #include <hgl/ecs/core/MaterialBatch.h>
 #include <hgl/ecs/support/PipelineMaterialRenderer.h>
 #include <hgl/vk/VKCommandBuffer.h>
+#include <algorithm>
+#include <vector>
 
 namespace hgl::ecs
 {
@@ -40,12 +42,26 @@ namespace hgl::ecs
         if (cache.renderableCount == 0)
             return;
 
+        std::vector<MaterialBatch *> ordered_batches;
+        ordered_batches.reserve(cache.materialBatches.GetCount());
         for (auto& pair : cache.materialBatches)
         {
             MaterialBatch* batch = pair.second.get();
             if (!batch || batch->items.empty())
                 continue;
 
+            ordered_batches.push_back(batch);
+        }
+
+        std::sort(ordered_batches.begin(),
+                  ordered_batches.end(),
+                  [](const MaterialBatch *a, const MaterialBatch *b)
+                  {
+                      return a->key < b->key;
+                  });
+
+        for (MaterialBatch *batch : ordered_batches)
+        {
             if (!batch->descriptor_bind_valid)
                 continue;
 

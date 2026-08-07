@@ -58,6 +58,13 @@ namespace hgl::ecs
             ordered_batches.push_back(batch);
         }
 
+        std::sort(ordered_batches.begin(),
+                  ordered_batches.end(),
+                  [](const MaterialBatch *a, const MaterialBatch *b)
+                  {
+                      return a->key < b->key;
+                  });
+
         for (MaterialBatch* batch : ordered_batches)
         {
             if (!batch || batch->items.empty())
