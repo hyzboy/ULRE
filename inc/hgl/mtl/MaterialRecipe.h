@@ -438,21 +438,17 @@ namespace hgl::graph::mtl
         return false;
     }
 
-    inline const RecipeSSBOAssetBinding *FindRecipeSSBOAssetBinding(const MaterialRecipe &recipe,
-                                                                    const char *data_slot_name,
-                                                                    const SSBOType ssbo_type) noexcept
+    inline const RecipeSSBOAssetBinding *FindRecipeSSBOAssetBindingByKey(
+        const MaterialRecipe &recipe,
+        const char *data_slot_name,
+        const uint32_t data_slot) noexcept
     {
         if (!data_slot_name || !*data_slot_name)
             return nullptr;
 
         for (const auto &asset : recipe.ssbo_assets)
         {
-            if (asset.data_slot_name != data_slot_name)
-                continue;
-
-            if (asset.ssbo_type != SSBOType::UserDefined
-             && ssbo_type != SSBOType::UserDefined
-             && asset.ssbo_type != ssbo_type)
+            if (asset.data_slot_name != data_slot_name || asset.data_slot != data_slot)
                 continue;
 
             return &asset;
@@ -461,27 +457,34 @@ namespace hgl::graph::mtl
         return nullptr;
     }
 
-    inline const RecipeSSBOAssetBinding *FindRecipeSSBOAssetBindingBySlot(const MaterialRecipe &recipe,
-                                                                          const uint32_t data_slot,
-                                                                          const SSBOType ssbo_type) noexcept
+    inline SSBOType ResolveRecipeSSBOType(
+        const MaterialRecipe &recipe,
+        const char *data_slot_name,
+        const uint32_t data_slot,
+        const SSBOType authored_type) noexcept
     {
-        for (const auto &asset : recipe.ssbo_assets)
-        {
-            if (asset.data_slot != data_slot)
-                continue;
+        if (authored_type != SSBOType::UserDefined)
+            return authored_type;
 
-            if (asset.ssbo_type != SSBOType::UserDefined
-             && ssbo_type != SSBOType::UserDefined
-             && asset.ssbo_type != ssbo_type)
-                continue;
+        if (const auto *asset = FindRecipeSSBOAssetBindingByKey(
+                recipe, data_slot_name, data_slot))
+            return asset->ssbo_type;
 
-            return &asset;
-        }
-
-        return nullptr;
+        return authored_type;
     }
 
-    inline void UpsertRecipeSSBOAssetBinding(MaterialRecipe &recipe,
+    inline const RecipeSSBOAssetBinding *FindRecipeSSBOAssetBinding(
+        const MaterialRecipe &recipe,
+        const char *data_slot_name,
+        const uint32_t data_slot,
+        const SSBOType ssbo_type) noexcept
+    {
+        const auto *asset = FindRecipeSSBOAssetBindingByKey(
+            recipe, data_slot_name, data_slot);
+        return asset && asset->ssbo_type == ssbo_type ? asset : nullptr;
+    }
+
+    inline bool UpsertRecipeSSBOAssetBinding(MaterialRecipe &recipe,
                                              const std::string &data_slot_name,
                                              const SSBOType ssbo_type,
                                              const uint32_t ssbo_id,
@@ -490,9 +493,13 @@ namespace hgl::graph::mtl
                                              const bool use_data_index = false,
                                              const bool shared_across_instances = false)
     {
+        if (!IsValidMaterialDataSlotName(data_slot_name))
+            return false;
+
         for (auto &asset : recipe.ssbo_assets)
         {
-            if (!data_slot_name.empty() && asset.data_slot_name == data_slot_name)
+            if (asset.data_slot_name == data_slot_name
+             && asset.data_slot == data_slot)
             {
                 asset.data_slot_name = data_slot_name;
                 asset.ssbo_type = ssbo_type;
@@ -501,20 +508,7 @@ namespace hgl::graph::mtl
                 asset.data_index = data_index;
                 asset.use_data_index = use_data_index;
                 asset.shared_across_instances = shared_across_instances;
-                return;
-            }
-
-            if (asset.data_slot == data_slot && asset.ssbo_type == ssbo_type)
-            {
-                if (!data_slot_name.empty())
-                    asset.data_slot_name = data_slot_name;
-                asset.ssbo_type = ssbo_type;
-                asset.ssbo_id = ssbo_id;
-                asset.data_slot = data_slot;
-                asset.data_index = data_index;
-                asset.use_data_index = use_data_index;
-                asset.shared_across_instances = shared_across_instances;
-                return;
+                return true;
             }
         }
 
@@ -527,6 +521,7 @@ namespace hgl::graph::mtl
         asset.use_data_index = use_data_index;
         asset.shared_across_instances = shared_across_instances;
         recipe.ssbo_assets.emplace_back(std::move(asset));
+        return true;
     }
 
     /**
@@ -535,11 +530,13 @@ namespace hgl::graph::mtl
      *       UpsertRecipeSSBOAssetBinding(recipe, name, accessor->GetSSBOBinding());
      * EN: Unified overload accepting SSBOBinding so type/id need not be passed separately.
      */
-    inline void UpsertRecipeSSBOAssetBinding(MaterialRecipe &recipe,
+    inline bool UpsertRecipeSSBOAssetBinding(MaterialRecipe &recipe,
                                              const std::string &data_slot_name,
-                                             const SSBOBinding &binding)
+                                             const SSBOBinding &binding,
+                                             const uint32_t data_slot = DefaultMaterialDataSlot)
     {
-        UpsertRecipeSSBOAssetBinding(recipe, data_slot_name, binding.ssbo_type, binding.ssbo_id);
+        return UpsertRecipeSSBOAssetBinding(
+            recipe, data_slot_name, binding.ssbo_type, binding.ssbo_id, data_slot);
     }
 
     inline void ApplyBaseMaterialInfoDefaults(MaterialRecipe &recipe,
@@ -553,7 +550,12 @@ namespace hgl::graph::mtl
             recipe.material_lod = bmi.default_lod;
 
         for (const auto &asset : bmi.required_ssbo_assets)
-            UpsertRecipeSSBOAssetBinding(recipe, asset.data_slot_name, asset.ssbo_type, asset.ssbo_id);
+            UpsertRecipeSSBOAssetBinding(
+                recipe,
+                asset.data_slot_name,
+                asset.ssbo_type,
+                asset.ssbo_id,
+                asset.data_slot);
     }
 
     inline uint64_t HashMaterialRecipe(const MaterialRecipe &recipe) noexcept

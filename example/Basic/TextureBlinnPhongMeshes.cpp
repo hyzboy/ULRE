@@ -401,7 +401,7 @@ private:
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_texture, sampler);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal, normal_texture, sampler);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_texture, sampler);
-            hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource floor_struct{};
+            hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource floor_struct{};
             floor_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
             floor_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             floor_struct.data_index = 0;
@@ -438,7 +438,7 @@ private:
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_texture, sampler);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal, normal_texture, sampler);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_texture, sampler);
-            hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource mesh_struct{};
+            hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource mesh_struct{};
             mesh_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
             mesh_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             mesh_struct.data_index = 0;

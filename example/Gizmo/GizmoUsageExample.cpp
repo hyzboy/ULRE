@@ -191,7 +191,7 @@ private:
 
         auto plane_primitive_comp = plane_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         plane_primitive_comp->SetPrimitiveAsset(&grid_asset);
-        hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource plane_struct{};
+        hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource plane_struct{};
         plane_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
         plane_struct.ssbo_id = grid_mtl_data_ssbo_accessor->GetSSBOId();
         plane_struct.data_index = 0;
@@ -209,7 +209,7 @@ private:
 
         auto cube_primitive_comp = cube_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         cube_primitive_comp->SetPrimitiveAsset(&cube_asset);
-        hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource cube_struct{};
+        hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource cube_struct{};
         cube_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
         cube_struct.ssbo_id = cube_mtl_data_ssbo_accessor->GetSSBOId();
         cube_struct.data_index = 0;

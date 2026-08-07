@@ -107,13 +107,8 @@ namespace hgl::ecs
                                         const graph::mtl::MaterialResourceRequirement &req,
                                         uint32_t &out_ssbo_id)
         {
-            if (const auto *asset = graph::mtl::FindRecipeSSBOAssetBinding(recipe, req.name, req.ssbo_type))
-            {
-                out_ssbo_id = asset->ssbo_id;
-                return true;
-            }
-
-            if (const auto *asset = graph::mtl::FindRecipeSSBOAssetBindingBySlot(recipe, req.data_slot, req.ssbo_type))
+            if (const auto *asset = graph::mtl::FindRecipeSSBOAssetBinding(
+                    recipe, req.name, req.data_slot, req.ssbo_type))
             {
                 out_ssbo_id = asset->ssbo_id;
                 return true;
@@ -244,30 +239,94 @@ namespace hgl::ecs
                 }
             }
 
-            for (size_t i = 0; i < static_cast<size_t>(primitive_comp->GetMaterialDataSlotCount()); ++i)
+            for (uint32_t i = 0; i < primitive_comp->GetMaterialDataSlotCount(); ++i)
             {
-                const auto data_slot = static_cast<uint32_t>(i);
-                const auto *resource = primitive_comp->GetMaterialDataSlotResourceBySlot(data_slot);
+                const auto *resource = primitive_comp->GetMaterialDataSlotResourceAt(i);
                 if (!resource)
                     continue;
 
-                const graph::mtl::SSBOAddress address{resource->ssbo_type, resource->ssbo_id, 0};
+                const graph::mtl::SSBOType ssbo_type =
+                    graph::mtl::ResolveRecipeSSBOType(
+                        effective_recipe,
+                        resource->data_slot_name.c_str(),
+                        resource->data_slot,
+                        resource->ssbo_type);
+
+                graph::mtl::SSBOType resolved_ssbo_type = ssbo_type;
+                if (resolved_ssbo_type == graph::mtl::SSBOType::UserDefined && material_program)
+                {
+                    for (const auto &req : material_program->GetMaterialResourceLayout().requirements)
+                    {
+                        if (req.semantic == graph::mtl::DescriptorSemantic::MaterialDataSlotData
+                         && req.name
+                         && req.data_slot == resource->data_slot
+                         && resource->data_slot_name == req.name)
+                        {
+                            resolved_ssbo_type = req.ssbo_type;
+                            break;
+                        }
+                    }
+                }
+
+                if (!graph::mtl::IsMaterialSSBOType(resolved_ssbo_type))
+                {
+                    GLogError("[PrepareRecipe] %s: invalid SSBO type=%s name=%s slot=%u",
+                              prim_owner,
+                              graph::mtl::GetSSBOTypeName(resolved_ssbo_type),
+                              resource->data_slot_name.c_str(),
+                              resource->data_slot);
+                    return false;
+                }
+
+                const graph::mtl::SSBOAddress address{resolved_ssbo_type, resource->ssbo_id, 0};
                 if (resource->buffer)
                 {
-                    if (!rdbs->RegisterMaterialStructLayout(resource->ssbo_type, resource->ssbo_id, resource->byte_stride))
+                    if (!rdbs->RegisterMaterialStructLayout(resolved_ssbo_type, resource->ssbo_id, resource->byte_stride))
+                    {
+                        GLogError("[PrepareRecipe] %s: SSBO layout registration failed type=%s id=%u name=%s slot=%u",
+                                  prim_owner,
+                                  graph::mtl::GetSSBOTypeName(resolved_ssbo_type),
+                                  resource->ssbo_id,
+                                  resource->data_slot_name.c_str(),
+                                  resource->data_slot);
                         return false;
+                    }
 
                     if (!domain_manager->RegisterBuffer(address, resource->buffer, resource->element_capacity))
+                    {
+                        GLogError("[PrepareRecipe] %s: SSBO buffer registration failed type=%s id=%u name=%s slot=%u",
+                                  prim_owner,
+                                  graph::mtl::GetSSBOTypeName(resolved_ssbo_type),
+                                  resource->ssbo_id,
+                                  resource->data_slot_name.c_str(),
+                                  resource->data_slot);
                         return false;
+                    }
                 }
                 else
                 {
                     graph::ResourceDomainBinding binding{};
                     if (!domain_manager->TryGetBinding(address, binding) || !binding.buffer || binding.element_stride == 0)
+                    {
+                        GLogError("[PrepareRecipe] %s: SSBO binding not found type=%s id=%u name=%s slot=%u",
+                                  prim_owner,
+                                  graph::mtl::GetSSBOTypeName(resolved_ssbo_type),
+                                  resource->ssbo_id,
+                                  resource->data_slot_name.c_str(),
+                                  resource->data_slot);
                         return false;
+                    }
 
-                    if (!rdbs->RegisterMaterialStructLayout(resource->ssbo_type, resource->ssbo_id, binding.element_stride))
+                    if (!rdbs->RegisterMaterialStructLayout(resolved_ssbo_type, resource->ssbo_id, binding.element_stride))
+                    {
+                        GLogError("[PrepareRecipe] %s: SSBO layout registration failed type=%s id=%u name=%s slot=%u",
+                                  prim_owner,
+                                  graph::mtl::GetSSBOTypeName(resolved_ssbo_type),
+                                  resource->ssbo_id,
+                                  resource->data_slot_name.c_str(),
+                                  resource->data_slot);
                         return false;
+                    }
                 }
             }
 
@@ -279,9 +338,8 @@ namespace hgl::ecs
                 if (req.semantic != graph::mtl::DescriptorSemantic::MaterialDataSlotData)
                     continue;
 
-                const auto *asset_binding = graph::mtl::FindRecipeSSBOAssetBinding(effective_recipe, req.name, req.ssbo_type);
-                if (!asset_binding)
-                    asset_binding = graph::mtl::FindRecipeSSBOAssetBindingBySlot(effective_recipe, req.data_slot, req.ssbo_type);
+                const auto *asset_binding = graph::mtl::FindRecipeSSBOAssetBinding(
+                    effective_recipe, req.name, req.data_slot, req.ssbo_type);
 
                 if (!asset_binding)
                     continue;
@@ -525,7 +583,8 @@ namespace hgl::ecs
                 return false;
             }
 
-            material_comp->SetResolvedSSBOBinding(req.data_slot, req.ssbo_type, resolved_ssbo_id);
+            material_comp->SetResolvedSSBOBinding(
+                req.name, req.data_slot, req.ssbo_type, resolved_ssbo_id);
         }
 
         auto rdbs = world->GetSystem<RenderDescriptorBindingSystem>();

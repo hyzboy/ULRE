@@ -154,6 +154,11 @@ private:
         scene_recipe.mtl_def_id = "DebugNormalColor";
         scene_recipe.pipeline_config = mtl::MakeSolid3DConfig();
         scene_recipe.domain = "LoadScene";
+        if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
+                scene_recipe,
+                graph::mtl::DefaultMaterialDataSlotName,
+                solid.mtl_data_ssbo_accessor->GetSSBOBinding()))
+            return false;
 
         return LoadStaticMeshSceneAsPrimitiveAssets(
             device,
@@ -203,7 +208,7 @@ private:
                 se.transform->SetMovable(false);
 
                 se.primitive_comp->SetPrimitiveAsset(&asset);
-                hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource scene_struct{};
+                hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource scene_struct{};
                 scene_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
                 scene_struct.ssbo_id = solid.mtl_data_ssbo_accessor->GetSSBOId();
                 scene_struct.data_index = (entity_idx - 1) % COLOR_COUNT;

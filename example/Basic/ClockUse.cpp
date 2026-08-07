@@ -222,7 +222,7 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = ticks[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&clock_asset);
-            hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource tick_struct{};
+            hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource tick_struct{};
             tick_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
             tick_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             tick_struct.data_index = tick_slot;
@@ -259,7 +259,7 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = hands[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&clock_asset);
-            hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource hand_struct{};
+            hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource hand_struct{};
             hand_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
             hand_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             hand_struct.data_index = hand_slots[i];

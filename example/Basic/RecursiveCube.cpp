@@ -187,7 +187,7 @@ private:
         primitive_comp->SetPrimitiveAsset(&cube_asset);
         if (mtl_data_ssbo_accessor && mtl_data_ssbo_accessor->GetSSBOId() != 0)
         {
-            hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource cube_struct{};
+            hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource cube_struct{};
             cube_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
             cube_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             cube_struct.data_index = 0;

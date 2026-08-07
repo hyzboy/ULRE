@@ -142,14 +142,16 @@ namespace hgl::graph
                     recipe.textures.clear();
                     recipe.ssbo_assets.clear();
 
-                    mtl::UpsertRecipeSSBOAssetBinding(recipe,
-                                                      std::string(),
-                                                      req.ssbo_type,
-                                                      req.ssbo_id,
-                                                      req.data_slot,
-                                                      c,
-                                                      true,
-                                                      true);
+                    if (!req.name
+                     || !mtl::UpsertRecipeSSBOAssetBinding(recipe,
+                                                          req.name,
+                                                          req.ssbo_type,
+                                                          req.ssbo_id,
+                                                          req.data_slot,
+                                                          c,
+                                                          true,
+                                                          true))
+                        return false;
                 }
             }
 

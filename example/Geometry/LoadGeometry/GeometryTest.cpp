@@ -178,20 +178,32 @@ private:
 
     bool InitSolidMDP()
     {
-        return InitMaterialRuntimeData(
-            &solid,
-            "LoadGeometry:SolidMaterialData",
-            CreateGizmo3DGeometryVertexFormat(),
-            graph::mtl::SSBOType::EmissiveSurface);
+        if (!InitMaterialRuntimeData(
+                &solid,
+                "LoadGeometry:SolidMaterialData",
+                CreateGizmo3DGeometryVertexFormat(),
+                graph::mtl::SSBOType::EmissiveSurface))
+            return false;
+
+        return graph::mtl::UpsertRecipeSSBOAssetBinding(
+            solid_recipe,
+            graph::mtl::DefaultMaterialDataSlotName,
+            solid.mtl_data_ssbo_accessor->GetSSBOBinding());
     }
 
     bool InitWireMDP()
     {
-        return InitMaterialRuntimeData(
-            &wire,
-            "LoadGeometry:WireMaterialData",
-            CreatePureColorGeometryVertexFormat(),
-            graph::mtl::SSBOType::EmissiveSurface);
+        if (!InitMaterialRuntimeData(
+                &wire,
+                "LoadGeometry:WireMaterialData",
+                CreatePureColorGeometryVertexFormat(),
+                graph::mtl::SSBOType::EmissiveSurface))
+            return false;
+
+        return graph::mtl::UpsertRecipeSSBOAssetBinding(
+            wire_recipe,
+            graph::mtl::DefaultMaterialDataSlotName,
+            wire.mtl_data_ssbo_accessor->GetSSBOBinding());
     }
 
     bool CreateBoundingBoxMesh()
@@ -292,7 +304,7 @@ private:
             bbox->transform->SetMovable(false);
 
             bbox->primitive_comp->SetPrimitiveAsset(&bbox_asset);
-            hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource bbox_struct{};
+            hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource bbox_struct{};
             bbox_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
             bbox_struct.ssbo_id = wire.mtl_data_ssbo_accessor->GetSSBOId();
             bbox_struct.data_index = static_cast<uint32_t>(i % COLOR_COUNT);
@@ -334,7 +346,7 @@ private:
             rm->transform->SetMovable(false);
 
             rm->primitive_comp->SetPrimitiveAsset(&rm->asset);
-            hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource mesh_struct{};
+            hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource mesh_struct{};
             mesh_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
             mesh_struct.ssbo_id = solid.mtl_data_ssbo_accessor->GetSSBOId();
             mesh_struct.data_index = rm->color_index;

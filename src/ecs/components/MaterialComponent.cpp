@@ -1,4 +1,5 @@
 #include<hgl/ecs/components/MaterialComponent.h>
+#include<cstring>
 
 namespace hgl::ecs
 {
@@ -60,30 +61,56 @@ namespace hgl::ecs
         data_index_values.clear();
     }
 
-    void MaterialComponent::SetResolvedSSBOBinding(uint32_t data_slot, graph::mtl::SSBOType ssbo_type, uint32_t ssbo_id)
+    void MaterialComponent::SetResolvedSSBOBinding(const char *data_slot_name,
+                                                   const uint32_t data_slot,
+                                                   graph::mtl::SSBOType ssbo_type,
+                                                   const uint32_t ssbo_id)
     {
-        const size_t index = static_cast<size_t>(data_slot);
-        if (index >= resolved_ssbo_bindings.size())
-            resolved_ssbo_bindings.resize(index + 1);
+        if (!data_slot_name || !*data_slot_name)
+            return;
 
-        auto &binding = resolved_ssbo_bindings[index];
+        for (auto &binding : resolved_ssbo_bindings)
+        {
+            if (binding.valid
+             && binding.data_slot == data_slot
+             && binding.data_slot_name
+             && std::strcmp(binding.data_slot_name, data_slot_name) == 0)
+            {
+                binding.ssbo_type = ssbo_type;
+                binding.ssbo_id = ssbo_id;
+                return;
+            }
+        }
+
+        ResolvedSSBOBinding binding{};
+        binding.data_slot_name = data_slot_name;
+        binding.data_slot = data_slot;
         binding.ssbo_type = ssbo_type;
         binding.ssbo_id = ssbo_id;
         binding.valid = true;
+        resolved_ssbo_bindings.emplace_back(binding);
     }
 
-    const MaterialComponent::ResolvedSSBOBinding *MaterialComponent::FindResolvedSSBOBinding(uint32_t data_slot,
-                                                                                             graph::mtl::SSBOType ssbo_type) const
+    const MaterialComponent::ResolvedSSBOBinding *
+        MaterialComponent::FindResolvedSSBOBinding(
+            const char *data_slot_name,
+            const uint32_t data_slot,
+            graph::mtl::SSBOType ssbo_type) const
     {
-        const size_t index = static_cast<size_t>(data_slot);
-        if (index >= resolved_ssbo_bindings.size())
+        if (!data_slot_name || !*data_slot_name)
             return nullptr;
 
-        const auto &binding = resolved_ssbo_bindings[index];
-        if (!binding.valid || binding.ssbo_type != ssbo_type)
-            return nullptr;
+        for (const auto &binding : resolved_ssbo_bindings)
+        {
+            if (binding.valid
+             && binding.data_slot == data_slot
+             && binding.ssbo_type == ssbo_type
+             && binding.data_slot_name
+             && std::strcmp(binding.data_slot_name, data_slot_name) == 0)
+                return &binding;
+        }
 
-        return &binding;
+        return nullptr;
     }
 
     void MaterialComponent::OnAttach()

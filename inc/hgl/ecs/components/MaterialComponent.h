@@ -17,6 +17,8 @@ namespace hgl::ecs
 
         struct ResolvedSSBOBinding
         {
+            const char *data_slot_name = nullptr;
+            uint32_t data_slot = graph::mtl::DefaultMaterialDataSlot;
             graph::mtl::SSBOType ssbo_type = graph::mtl::SSBOType::UserDefined;
             uint32_t ssbo_id = 0;
             bool valid = false;
@@ -54,8 +56,12 @@ namespace hgl::ecs
         void MarkValid();
         void ClearMaterializationInstanceData();
         void ClearResolvedSSBOBindings();
-        void SetResolvedSSBOBinding(uint32_t data_slot, graph::mtl::SSBOType ssbo_type, uint32_t ssbo_id);
-        const ResolvedSSBOBinding *FindResolvedSSBOBinding(uint32_t data_slot,
+        void SetResolvedSSBOBinding(const char *data_slot_name,
+                                    uint32_t data_slot,
+                                    graph::mtl::SSBOType ssbo_type,
+                                    uint32_t ssbo_id);
+        const ResolvedSSBOBinding *FindResolvedSSBOBinding(const char *data_slot_name,
+                                                           uint32_t data_slot,
                                                            graph::mtl::SSBOType ssbo_type) const;
 
         void OnAttach() override;

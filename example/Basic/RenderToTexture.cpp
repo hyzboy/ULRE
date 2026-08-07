@@ -256,6 +256,12 @@ public:
         sphere_recipe.mtl_def_id = "DebugNormalColor";
         sphere_recipe.pipeline_config = mtl::MakeSolid3DConfig();
         sphere_recipe.domain = "RenderToTexture.Offscreen";
+        if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
+                sphere_recipe,
+                graph::mtl::DefaultMaterialDataSlotName,
+                mtl_data_ssbo_accessor->GetSSBOBinding()))
+            return LogStageFail("OffscreenPass::BuildSphere", "register material SSBO binding failed");
+
         sphere_asset = PrimitiveAsset(geometry, &sphere_recipe, PrimitiveType::Triangles);
         if (!sphere_asset.IsValid())
             return LogStageFail("OffscreenPass::BuildSphere", "create offscreen primitive asset failed");
@@ -271,7 +277,7 @@ public:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitiveAsset(&sphere_asset);
-        hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource sphere_struct{};
+        hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource sphere_struct{};
         sphere_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
         sphere_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
         sphere_struct.data_index = 0;
@@ -444,6 +450,12 @@ private:
         cube_recipe.mtl_def_id = "Lit";
         cube_recipe.pipeline_config = mtl::MakeSolid3DConfig();
         cube_recipe.domain = "RenderToTexture.MainScene";
+        if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
+                cube_recipe,
+                graph::mtl::DefaultMaterialDataSlotName,
+                cube_mtl_data_ssbo_accessor->GetSSBOBinding()))
+            return LogStageFail("RenderToTextureApp::CreateCube", "register material SSBO binding failed");
+
         cube_asset = PrimitiveAsset(cube_geometry, &cube_recipe, PrimitiveType::Triangles);
         if (!cube_asset.IsValid())
             return LogStageFail("RenderToTextureApp::CreateCube", "create cube primitive asset failed");
@@ -461,7 +473,7 @@ private:
         cube_prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_tex, cube_sampler);
         cube_prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal, normal_tex, cube_sampler);
         cube_prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_tex, cube_sampler);
-        hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource cube_struct{};
+        hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource cube_struct{};
         cube_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
         cube_struct.ssbo_id = cube_mtl_data_ssbo_accessor->GetSSBOId();
         cube_struct.data_index = 0;

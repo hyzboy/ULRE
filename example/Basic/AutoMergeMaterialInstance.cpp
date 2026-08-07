@@ -170,7 +170,7 @@ private:
             // 每个实体共享同一 PrimitiveAsset，颜色来自不同结构体行
             auto primitive_comp = triangles[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&triangle_asset);
-            hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource tri_struct{};
+            hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource tri_struct{};
             tri_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
             tri_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             tri_struct.data_index = i;

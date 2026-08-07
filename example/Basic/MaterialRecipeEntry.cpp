@@ -151,7 +151,7 @@ private:
                                                  mtl_data_ssbo_accessor->GetSSBOBinding());
         cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
         primitive_comp->SetPrimitiveAsset(&cube_asset);
-        hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource named_struct{};
+        hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource named_struct{};
         named_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
         named_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
         named_struct.data_index = 0;

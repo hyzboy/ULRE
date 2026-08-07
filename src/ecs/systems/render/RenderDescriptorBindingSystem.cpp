@@ -1032,7 +1032,10 @@ namespace hgl::ecs
                 if (auto *entity = primitive_item->GetEntity())
                 {
                     auto material_comp = entity->GetComponent<MaterialComponent>();
-                    if (const auto *resolved = material_comp ? material_comp->FindResolvedSSBOBinding(req.data_slot, req.ssbo_type) : nullptr)
+                    if (const auto *resolved = material_comp
+                        ? material_comp->FindResolvedSSBOBinding(
+                            req.name, req.data_slot, req.ssbo_type)
+                        : nullptr)
                     {
                         candidate_ssbo_id = resolved->ssbo_id;
                         has_candidate = true;
@@ -1044,12 +1047,8 @@ namespace hgl::ecs
                     graph::mtl::MaterialRecipe effective_recipe{};
                     if (primitive_comp->BuildResolvedAuthoringMaterialRecipe(effective_recipe, material))
                     {
-                        if (const auto *asset = graph::mtl::FindRecipeSSBOAssetBinding(effective_recipe, req.name, req.ssbo_type))
-                        {
-                            candidate_ssbo_id = asset->ssbo_id;
-                            has_candidate = true;
-                        }
-                        else if (const auto *asset = graph::mtl::FindRecipeSSBOAssetBindingBySlot(effective_recipe, req.data_slot, req.ssbo_type))
+                        if (const auto *asset = graph::mtl::FindRecipeSSBOAssetBinding(
+                                effective_recipe, req.name, req.data_slot, req.ssbo_type))
                         {
                             candidate_ssbo_id = asset->ssbo_id;
                             has_candidate = true;
@@ -1060,7 +1059,11 @@ namespace hgl::ecs
                             if (auto *entity = primitive_item->GetEntity())
                             {
                                 if (auto material_comp = entity->GetComponent<MaterialComponent>())
-                                    material_comp->SetResolvedSSBOBinding(req.data_slot, req.ssbo_type, candidate_ssbo_id);
+                                    material_comp->SetResolvedSSBOBinding(
+                                        req.name,
+                                        req.data_slot,
+                                        req.ssbo_type,
+                                        candidate_ssbo_id);
                             }
                         }
                     }

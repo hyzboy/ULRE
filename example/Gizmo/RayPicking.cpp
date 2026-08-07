@@ -218,7 +218,7 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = plane_grid_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&plane_asset);
-            hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource plane_struct{};
+            hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource plane_struct{};
             plane_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
             plane_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             plane_struct.data_index = plane_slot;
@@ -242,7 +242,7 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = ray_line_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&line_asset);
-            hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource line_struct{};
+            hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource line_struct{};
             line_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
             line_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             line_struct.data_index = line_slot;

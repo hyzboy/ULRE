@@ -87,7 +87,7 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitiveAsset(&plane_grid_asset);
-        hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource named_struct{};
+        hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource named_struct{};
         named_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
         named_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
         named_struct.data_index = data_index;

@@ -494,7 +494,7 @@ private:
                                                       sampler,
                                                       PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray);
                 prim_comp->SetMaterialTextureValue(graph::mtl::TextureSlot::Custom0, row);
-                hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource sphere_struct{};
+                hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource sphere_struct{};
                 sphere_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
                 sphere_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
                 sphere_struct.data_index = sphere_slot_rows[row][col];

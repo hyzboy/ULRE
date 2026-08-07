@@ -186,7 +186,7 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitiveAsset(mesh_asset);
-        hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource mesh_struct{};
+        hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource mesh_struct{};
         mesh_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
         mesh_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
         mesh_struct.data_index = 0;

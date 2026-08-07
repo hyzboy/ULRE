@@ -202,7 +202,7 @@ private:
                                                   texture,
                                                   sampler,
                                                   PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray);
-            hgl::ecs::PrimitiveComponent::MaterialDataSlotNamedAuthoringResource rect_struct{};
+            hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource rect_struct{};
             rect_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
             rect_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             rect_struct.data_index = i;

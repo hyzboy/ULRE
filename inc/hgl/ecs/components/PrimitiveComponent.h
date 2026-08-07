@@ -66,22 +66,13 @@ namespace hgl::ecs
 
         struct MaterialDataSlotAuthoringResource
         {
+            std::string data_slot_name;
             uint32_t data_slot = hgl::graph::mtl::DefaultMaterialDataSlot;
             hgl::graph::mtl::SSBOType ssbo_type = hgl::graph::mtl::SSBOType::UserDefined;
             uint32_t ssbo_id = 0;
             hgl::graph::DeviceBuffer *buffer = nullptr;
             uint32_t element_capacity = 0;
             uint32_t byte_stride = 0;
-            uint32_t data_index = 0;
-            bool use_data_index = false;
-            bool shared_across_instances = false;
-            bool authored = false;
-        };
-
-        struct MaterialDataSlotNamedAuthoringResource
-        {
-            std::string data_slot_name;
-            uint32_t ssbo_id = 0;
             uint32_t data_index = 0;
             bool use_data_index = false;
             bool shared_across_instances = false;
@@ -102,8 +93,7 @@ namespace hgl::ecs
         bool hasMaterialRecipeOverride = false;
         hgl::graph::mtl::MaterialRecipe materialRecipeOverride;
         std::array<MaterialTextureAuthoringResource, static_cast<size_t>(hgl::graph::mtl::TextureSlot::RANGE_SIZE)> materialTextureResources{};
-        std::vector<MaterialDataSlotAuthoringResource> materialDataSlotResources;
-        std::vector<MaterialDataSlotNamedAuthoringResource> materialDataSlotNamedResources{};
+        std::vector<MaterialDataSlotAuthoringResource> materialDataSlotResources{};
 
         // Late-resolve pipeline slot:
         // Populated at render-time if primitive has no pre-baked pipeline.
@@ -182,31 +172,16 @@ namespace hgl::ecs
         void SetMaterialTextureValue(hgl::graph::mtl::TextureSlot slot, uint32_t value);
         const MaterialTextureAuthoringResource *GetMaterialTextureResource(hgl::graph::mtl::TextureSlot slot) const;
         void ClearMaterialTextureResource(hgl::graph::mtl::TextureSlot slot);
-        void SetMaterialDataSlotResource(hgl::graph::mtl::SSBOType ssbo_type,
-                                       uint32_t ssbo_id,
-                                       hgl::graph::DeviceBuffer *buffer,
-                                       uint32_t element_capacity,
-                                       uint32_t byte_stride,
-                                       uint32_t data_index = 0,
-                                       bool use_data_index = false,
-                                       bool shared_across_instances = false);
-        void SetMaterialDataSlotResource(uint32_t data_slot,
-                                       hgl::graph::mtl::SSBOType ssbo_type,
-                                       uint32_t ssbo_id,
-                                       hgl::graph::DeviceBuffer *buffer,
-                                       uint32_t element_capacity,
-                                       uint32_t byte_stride,
-                                       uint32_t data_index = 0,
-                                       bool use_data_index = false,
-                                       bool shared_across_instances = false);
-        uint32_t GetMaterialDataSlotCount() const { return static_cast<uint32_t>(materialDataSlotResources.size()); }
-        const MaterialDataSlotAuthoringResource *GetMaterialDataSlotResource(hgl::graph::mtl::SSBOType ssbo_type) const;
-        const MaterialDataSlotAuthoringResource *GetMaterialDataSlotResourceBySlot(uint32_t data_slot) const;
-        void ClearMaterialDataSlotResource(hgl::graph::mtl::SSBOType ssbo_type);
-        void ClearMaterialDataSlotResourceBySlot(uint32_t data_slot);
-        void SetMaterialDataSlotResource(const MaterialDataSlotNamedAuthoringResource &resource);
-        const MaterialDataSlotNamedAuthoringResource *GetMaterialDataSlotResource(const std::string &data_slot_name) const;
-        void ClearMaterialDataSlotResource(const std::string &data_slot_name);
+        uint32_t GetMaterialDataSlotCount() const
+        {
+            return static_cast<uint32_t>(materialDataSlotResources.size());
+        }
+        const MaterialDataSlotAuthoringResource *GetMaterialDataSlotResourceAt(uint32_t index) const;
+        void SetMaterialDataSlotResource(const MaterialDataSlotAuthoringResource &resource);
+        const MaterialDataSlotAuthoringResource *GetMaterialDataSlotResource(
+            const std::string &data_slot_name,
+            uint32_t data_slot) const;
+        void ClearMaterialDataSlotResource(const std::string &data_slot_name, uint32_t data_slot);
         void ClearMaterialAuthoringResources();
 
         // ShaderProgram access (returns override if set, otherwise descriptor-bound material)

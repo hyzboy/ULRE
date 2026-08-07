@@ -1501,6 +1501,63 @@ namespace
         return result;
     }
 
+    static GateResult RunMaterialSSBOBindingKeyCase()
+    {
+        GateResult result;
+        result.name = "Y1a.material-ssbo-binding-key";
+
+        MaterialRecipe recipe{};
+        if (!UpsertRecipeSSBOAssetBinding(
+                recipe, "surface_a", SSBOType::EmissiveSurface, 11, 0)
+         || !UpsertRecipeSSBOAssetBinding(
+                recipe, "surface_b", SSBOType::EmissiveSurface, 22, 0)
+         || !UpsertRecipeSSBOAssetBinding(
+                recipe, "surface_a", SSBOType::EmissiveSurface, 33, 1)
+         || !UpsertRecipeSSBOAssetBinding(
+                recipe, "surface_a", SSBOType::EmissiveSurface, 44, 0))
+        {
+            result.diagnostics.emplace_back("canonical SSBO binding upsert rejected valid keys");
+        }
+
+        const auto *surface_a_0 = FindRecipeSSBOAssetBindingByKey(recipe, "surface_a", 0);
+        const auto *surface_b_0 = FindRecipeSSBOAssetBindingByKey(recipe, "surface_b", 0);
+        const auto *surface_a_1 = FindRecipeSSBOAssetBindingByKey(recipe, "surface_a", 1);
+        if (!surface_a_0 || surface_a_0->ssbo_id != 44
+         || !surface_b_0 || surface_b_0->ssbo_id != 22
+         || !surface_a_1 || surface_a_1->ssbo_id != 33
+         || recipe.ssbo_assets.size() != 3)
+        {
+            result.diagnostics.emplace_back(
+                "SSBO bindings were not isolated by name plus data slot index");
+        }
+
+        if (!FindRecipeSSBOAssetBinding(
+                recipe, "surface_a", 1, SSBOType::EmissiveSurface)
+         || FindRecipeSSBOAssetBinding(
+                recipe, "surface_a", 1, SSBOType::PBRSurface))
+        {
+            result.diagnostics.emplace_back(
+                "typed SSBO lookup did not enforce the canonical binding key");
+        }
+
+        if (ResolveRecipeSSBOType(
+                recipe, "surface_a", 0, SSBOType::UserDefined)
+                != SSBOType::EmissiveSurface
+         || ResolveRecipeSSBOType(
+                recipe, "missing", 0, SSBOType::UserDefined)
+                != SSBOType::UserDefined
+         || ResolveRecipeSSBOType(
+                recipe, "surface_a", 0, SSBOType::PBRSurface)
+                != SSBOType::PBRSurface)
+        {
+            result.diagnostics.emplace_back(
+                "UserDefined authoring must inherit Recipe SSBO type without overriding explicit types");
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunResolvedMaterialRenderStateCase()
     {
         GateResult result;
@@ -3106,6 +3163,7 @@ int main()
     results.push_back(RunTransformGraphModelCase());
     results.push_back(RunTransformGraphCompositionCase());
     results.push_back(RunMaterialShaderVariantIdentityCase());
+    results.push_back(RunMaterialSSBOBindingKeyCase());
     results.push_back(RunResolvedMaterialRenderStateCase());
     results.push_back(RunMaterialDefinitionFileSchemaCase());
     results.push_back(RunFallbackInferenceCase());
