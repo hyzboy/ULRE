@@ -1110,6 +1110,20 @@ namespace
          || second_instance_data->values[DefaultMaterialDataSlot] != 9)
             result.diagnostics.emplace_back("explicit instance data was not wired to index tables");
 
+        recipe.ssbo_assets[0].data_index = 3;
+        const uint64_t first_recipe_hash = HashMaterialRecipe(recipe);
+        recipe.ssbo_assets[0].data_index = 9;
+        const uint64_t second_recipe_hash = HashMaterialRecipe(recipe);
+        if (first_recipe_hash != second_recipe_hash)
+            result.diagnostics.emplace_back(
+            "instance data_index must not change shared recipe identity");
+
+        recipe.ssbo_assets[0].ssbo_id = 42;
+        const uint64_t changed_buffer_hash = HashMaterialRecipe(recipe);
+        if (second_recipe_hash == changed_buffer_hash)
+            result.diagnostics.emplace_back(
+            "SSBO buffer identity must change shared recipe identity");
+
         result.passed = result.diagnostics.empty();
         return result;
     }
@@ -3113,6 +3127,195 @@ namespace
         result.passed = result.diagnostics.empty();
         return result;
     }
+
+    static GateResult RunResourceContractBoundaryCase()
+    {
+        GateResult result;
+        result.name = "AD.resource-contract-boundary";
+
+        MaterialDefinition definition{};
+        definition.data_slot_decls = {{"mtl", SSBOType::PBRSurface}};
+        definition.texture_slot_decls = {
+            {TextureSlot::BaseColor, GLSLSamplerType::Sampler2D, true, "TextureBaseColor"}
+        };
+
+        std::vector<FixedDescriptorEntry> descriptors;
+        descriptor_builder_common::AppendDefinitionMaterialDescriptors(
+            descriptors,
+            definition,
+            uint32_t(VK_SHADER_STAGE_VERTEX_BIT),
+            uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
+            uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT));
+
+        ShaderResourceManifest compatible_manifest{};
+        compatible_manifest.texture_count = 1;
+        compatible_manifest.textures[0] = {
+            "TextureBaseColor",
+            "sampler2D",
+            DescriptorSemantic::MaterialSampler,
+            TextureSlot::BaseColor,
+            uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
+            true
+        };
+        compatible_manifest.ssbo_count = 1;
+        compatible_manifest.ssbos[0] = {
+            "mtl",
+            SSBOType::PBRSurface,
+            DefaultMaterialDataSlot,
+            uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT)
+        };
+
+        if (!descriptor_builder_common::AppendManifestSSBODescriptors(
+                descriptors, compatible_manifest)
+         || !descriptor_builder_common::AppendManifestTextureDescriptors(
+                descriptors, compatible_manifest)
+         || !compatible_manifest.IsValid())
+        {
+            result.diagnostics.emplace_back(
+                "Compatible definition and module resources must merge without duplication.");
+        }
+        else
+        {
+            const MaterialResourceLayout layout =
+                BuildMaterialResourceLayout(
+                    descriptors.data(),
+                    static_cast<uint32_t>(descriptors.size()));
+            std::vector<std::string> diagnostics;
+            if (!ValidateMaterialResourceLayout(layout, diagnostics))
+                result.diagnostics.emplace_back(
+                    "Merged definition/module resource contract failed validation.");
+
+            bool has_required_sampler = false;
+            bool has_single_material_ssbo = false;
+            for (const auto &req : layout.requirements)
+            {
+                if (req.semantic == DescriptorSemantic::MaterialSampler
+                 && req.texture_slot == TextureSlot::BaseColor)
+                    has_required_sampler = req.required && !req.allow_fallback;
+                if (req.semantic == DescriptorSemantic::MaterialDataSlotData
+                 && req.data_slot == DefaultMaterialDataSlot)
+                    has_single_material_ssbo = true;
+            }
+            if (!has_required_sampler || !has_single_material_ssbo)
+                result.diagnostics.emplace_back(
+                    "Merged resource policy or SSBO identity was not preserved.");
+        }
+
+        ShaderResourceManifest name_conflict{};
+        name_conflict.texture_count = 1;
+        name_conflict.textures[0] = {
+            "TextureBaseColor",
+            "samplerCube",
+            DescriptorSemantic::MaterialSampler,
+            TextureSlot::BaseColor,
+            uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
+            true
+        };
+        if (descriptor_builder_common::AppendManifestTextureDescriptors(
+                descriptors, name_conflict)
+         || name_conflict.error != ShaderResourceManifestError::ResourceConflict)
+        {
+            result.diagnostics.emplace_back(
+                "Same-name sampler type conflicts must fail explicitly.");
+        }
+
+        ShaderResourceManifest slot_conflict{};
+        slot_conflict.texture_count = 1;
+        slot_conflict.textures[0] = {
+            "TextureBaseColorAlias",
+            "sampler2D",
+            DescriptorSemantic::MaterialSampler,
+            TextureSlot::BaseColor,
+            uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
+            true
+        };
+        if (descriptor_builder_common::AppendManifestTextureDescriptors(
+                descriptors, slot_conflict)
+         || slot_conflict.error != ShaderResourceManifestError::ResourceConflict)
+        {
+            result.diagnostics.emplace_back(
+                "Same semantic slot with a different name must fail explicitly.");
+        }
+
+        ShaderResourceManifest texture_manifest{};
+        texture_manifest.texture_count = 1;
+        texture_manifest.textures[0] = {
+            "TextureNormal",
+            "sampler2D",
+            DescriptorSemantic::MaterialTexture,
+            TextureSlot::Normal,
+            uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
+            false
+        };
+        std::vector<FixedDescriptorEntry> texture_descriptors;
+        if (!descriptor_builder_common::AppendManifestTextureDescriptors(
+                texture_descriptors, texture_manifest)
+         || texture_descriptors.size() != 1
+         || texture_descriptors[0].kind != DescriptorKind::Texture
+         || texture_descriptors[0].semantic != DescriptorSemantic::MaterialTexture)
+        {
+            result.diagnostics.emplace_back(
+                "Manifest MaterialTexture must remain a texture descriptor, not a sampler alias.");
+        }
+
+        FixedDescriptorEntry hash_entry{};
+        hash_entry.set_type = DescriptorSetType::Material;
+        hash_entry.kind = DescriptorKind::TextureSampler;
+        hash_entry.stage_flags = uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT);
+        hash_entry.name = "TextureBaseColor";
+        hash_entry.glsl_type = "sampler2D";
+        hash_entry.semantic = DescriptorSemantic::MaterialSampler;
+        hash_entry.semantic_layer = DescriptorSemanticLayer::Sampler;
+        hash_entry.texture_slot = TextureSlot::BaseColor;
+        hash_entry.has_requirement_policy = true;
+        hash_entry.required = true;
+        hash_entry.allow_fallback = false;
+
+        std::vector<FixedDescriptorEntry> hash_entries{hash_entry};
+        const uint64_t strict_hash =
+            descriptor_builder_common::HashResourceContract(0, hash_entries);
+        hash_entries[0].required = false;
+        hash_entries[0].allow_fallback = true;
+        const uint64_t optional_hash =
+            descriptor_builder_common::HashResourceContract(0, hash_entries);
+        if (strict_hash == optional_hash)
+            result.diagnostics.emplace_back(
+                "Required/fallback policy changes must change the resource contract hash.");
+
+        hash_entries[0].required = true;
+        hash_entries[0].allow_fallback = false;
+        hash_entries[0].glsl_type = "sampler2DArray";
+        const uint64_t sampler_hash =
+            descriptor_builder_common::HashResourceContract(0, hash_entries);
+        if (strict_hash == sampler_hash)
+            result.diagnostics.emplace_back(
+                "Sampler type changes must change the resource contract hash.");
+
+        FixedDescriptorEntry ssbo_hash_entry{};
+        ssbo_hash_entry.set_type = DescriptorSetType::Material;
+        ssbo_hash_entry.kind = DescriptorKind::SSBO;
+        ssbo_hash_entry.stage_flags = uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT);
+        ssbo_hash_entry.name = "mtl";
+        ssbo_hash_entry.struct_name = "PBRSurfaceData";
+        ssbo_hash_entry.semantic = DescriptorSemantic::MaterialDataSlotData;
+        ssbo_hash_entry.semantic_layer = DescriptorSemanticLayer::SSBO;
+        ssbo_hash_entry.data_slot = DefaultMaterialDataSlot;
+        ssbo_hash_entry.ssbo_type = SSBOType::PBRSurface;
+        ssbo_hash_entry.ssbo_id = 11;
+
+        std::vector<FixedDescriptorEntry> ssbo_hash_entries{ssbo_hash_entry};
+        const uint64_t first_ssbo_hash =
+            descriptor_builder_common::HashResourceContract(0, ssbo_hash_entries);
+        ssbo_hash_entries[0].ssbo_id = 12;
+        const uint64_t second_ssbo_hash =
+            descriptor_builder_common::HashResourceContract(0, ssbo_hash_entries);
+        if (first_ssbo_hash == second_ssbo_hash)
+            result.diagnostics.emplace_back(
+                "SSBO buffer identity changes must change the resource contract hash.");
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
 }
 
 int main()
@@ -3182,6 +3385,7 @@ int main()
     results.push_back(RunDirectIncludeManifestCase());
     results.push_back(RunDescriptorBuilderConvergenceCase());
     results.push_back(RunShaderLibraryPathCase());
+    results.push_back(RunResourceContractBoundaryCase());
 
     bool all_passed = true;
     for (const auto &result : results)

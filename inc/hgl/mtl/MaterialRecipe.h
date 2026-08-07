@@ -222,7 +222,7 @@ namespace hgl::graph::mtl
     {
         // ── Layer 1: MaterialDefinition = Capability Superset ─────────────────────────
         // 描述一个材质"能做什么"，由材质文件（未来）或 M_* 内置工厂注册。
-        // 包含资源需求声明（required_ssbo_assets）和渲染选项包络。
+        // 包含静态资源能力声明和渲染选项包络。
         // 不含任何运行时句柄或 Vulkan 对象。
         // ─────────────────────────────────────────────────────────────────────────────
 
@@ -238,10 +238,7 @@ namespace hgl::graph::mtl
         uint16_t default_lod   = 0;
         uint16_t lod_count     = 1;
 
-        // Part-B: 资源契约（Definition 侧的静态资产需求；运行时绑定由 recipe 提供）
-        std::vector<RecipeSSBOAssetBinding> required_ssbo_assets;
-
-        // Part-B2: 材质 SSBO slot 显式声明（index == data_slot）
+        // Part-B: 材质 SSBO slot 显式声明（index == data_slot）
         // name 用于 GLSL 变量名 与 C++ SetMaterialDataSlotResource(name,...) 绑定。
         // 无 SSBO 的材质此列表为空。
         std::vector<MaterialDataSlotDecl> data_slot_decls;
@@ -549,25 +546,24 @@ namespace hgl::graph::mtl
         if (bmi.lod_count > 0 && recipe.material_lod >= bmi.lod_count)
             recipe.material_lod = bmi.default_lod;
 
-        for (const auto &asset : bmi.required_ssbo_assets)
-            UpsertRecipeSSBOAssetBinding(
-                recipe,
-                asset.data_slot_name,
-                asset.ssbo_type,
-                asset.ssbo_id,
-                asset.data_slot);
     }
 
     inline uint64_t HashMaterialRecipe(const MaterialRecipe &recipe) noexcept
     {
         uint64 hash = hgl::hash::FNV1aInit<uint64>();
 
-        if (!recipe.recipe_name.empty())
-            hash = hgl::hash::FNV1aAppendBytes(hash, recipe.recipe_name.data(), recipe.recipe_name.size());
-        if (!recipe.mtl_def_id.empty())
-            hash = hgl::hash::FNV1aAppendBytes(hash, recipe.mtl_def_id.data(), recipe.mtl_def_id.size());
-        if (!recipe.domain.empty())
-            hash = hgl::hash::FNV1aAppendBytes(hash, recipe.domain.data(), recipe.domain.size());
+        const auto append_string = [](uint64 current, const std::string &value) -> uint64
+        {
+            const uint32 length = static_cast<uint32>(value.size());
+            current = hgl::hash::FNV1aAppendValueBytes(current, length);
+            if (length > 0)
+                current = hgl::hash::FNV1aAppendBytes(current, value.data(), length);
+            return current;
+        };
+
+        hash = append_string(hash, recipe.recipe_name);
+        hash = append_string(hash, recipe.mtl_def_id);
+        hash = append_string(hash, recipe.domain);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.vertex_node_config);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.has_transform_graph);
         if (recipe.has_transform_graph)
@@ -597,8 +593,7 @@ namespace hgl::graph::mtl
         for (const auto &texture : recipe.textures)
         {
             hash = hgl::hash::FNV1aAppendValueBytes(hash, texture.slot);
-            if (!texture.resource_id.empty())
-                hash = hgl::hash::FNV1aAppendBytes(hash, texture.resource_id.data(), texture.resource_id.size());
+            hash = append_string(hash, texture.resource_id);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, texture.direct_value);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, texture.use_direct_value);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, texture.required);
@@ -608,8 +603,7 @@ namespace hgl::graph::mtl
         hash = hgl::hash::FNV1aAppendValueBytes(hash, ssbo_asset_count);
         for (const auto &asset : recipe.ssbo_assets)
         {
-            if (!asset.data_slot_name.empty())
-                hash = hgl::hash::FNV1aAppendBytes(hash, asset.data_slot_name.data(), asset.data_slot_name.size());
+            hash = append_string(hash, asset.data_slot_name);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, asset.data_slot);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, asset.ssbo_type);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, asset.ssbo_id);

@@ -146,14 +146,24 @@ inline bool Build2DShaderResourceManifest(
 
 inline std::vector<FixedDescriptorEntry> Build2DDescriptorsFromDefinition(
     const Material2DBuildParams &p,
-    const ShaderResourceManifest &manifest)
+    ShaderResourceManifest &manifest)
 {
     std::vector<FixedDescriptorEntry> descriptors;
     PushBaseDescriptorEntries(descriptors, p);
     descriptor_builder_common::AppendManifestUBODescriptors(descriptors, manifest);
-    descriptor_builder_common::AppendManifestTextureDescriptors(descriptors, manifest);
+    if (!descriptor_builder_common::AppendManifestSSBODescriptors(descriptors, manifest)
+     || !descriptor_builder_common::AppendManifestTextureDescriptors(descriptors, manifest))
+        return {};
 
     return descriptors;
+}
+
+inline std::vector<FixedDescriptorEntry> Build2DDescriptorsFromDefinition(
+    const Material2DBuildParams &p,
+    const ShaderResourceManifest &manifest)
+{
+    ShaderResourceManifest mutable_manifest = manifest;
+    return Build2DDescriptorsFromDefinition(p, mutable_manifest);
 }
 
 // ─────────────────────────────────────────────────────────────

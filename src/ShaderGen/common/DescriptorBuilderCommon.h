@@ -1,7 +1,9 @@
 #pragma once
 
 #include <hgl/mtl/FixedDescriptorEntry.h>
+#include <hgl/mtl/MaterialResourceLayout.h>
 #include <hgl/graph/glsl/ShaderResourceManifest.h>
+#include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <cstring>
@@ -174,13 +176,14 @@ inline void PushMaterialSampler(std::vector<FixedDescriptorEntry> &v,
                                 const char *name,
                                 const TextureSlot slot,
                                 const char *glsl_type,
-                                const uint32_t stage_flags)
+                                const uint32_t stage_flags,
+                                const bool required)
 {
     v.push_back({
         DescriptorSetType::Material, DescriptorKind::TextureSampler, stage_flags,
         name, nullptr, glsl_type, DescriptorSemantic::MaterialSampler,
         slot, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::Sampler,
-        MakeRecipeSSBOId(0)
+        MakeRecipeSSBOId(0), true, required, !required
     });
 }
 
@@ -217,30 +220,173 @@ inline void AppendDefinitionMaterialDescriptors(
             name,
             decl.slot,
             ToGLSLSamplerTypeName(decl.sampler_type),
-            texture_stage_flags);
+            texture_stage_flags,
+            decl.required);
     }
 }
 
-inline void PushManifestTexture(std::vector<FixedDescriptorEntry> &v,
-                                const GLSLCodeModuleTextureRequirement &texture)
+inline bool IsTextureDescriptor(const FixedDescriptorEntry &entry) noexcept
 {
-    const bool is_scene_sampler = texture.semantic == DescriptorSemantic::SkyCubemapSampler
-                               || texture.semantic == DescriptorSemantic::MaterialSampler;
-    const bool is_material_sampler = texture.semantic == DescriptorSemantic::MaterialTexture
-                                 || texture.semantic == DescriptorSemantic::MaterialSampler;
-    v.push_back({
-        is_scene_sampler ? DescriptorSetType::Scene : DescriptorSetType::Material,
-        is_scene_sampler || is_material_sampler ? DescriptorKind::TextureSampler : DescriptorKind::Texture,
-        texture.stage_flags,
-        texture.name,
-        nullptr,
-        texture.glsl_type,
-        is_material_sampler ? DescriptorSemantic::MaterialSampler : texture.semantic,
-        texture.slot,
-        DefaultMaterialDataSlot,
-        SSBOType::UserDefined,
-        is_scene_sampler || is_material_sampler ? DescriptorSemanticLayer::Sampler : DescriptorSemanticLayer::Texture
-    });
+    return entry.kind == DescriptorKind::Texture
+        || entry.kind == DescriptorKind::TextureSampler;
+}
+
+inline bool CStrEqual(const char *lhs, const char *rhs) noexcept
+{
+    return lhs && rhs && std::strcmp(lhs, rhs) == 0;
+}
+
+inline void MergeResourcePolicy(
+    FixedDescriptorEntry &existing,
+    const FixedDescriptorEntry &incoming)
+{
+    const bool existing_required = existing.has_requirement_policy
+        ? existing.required : IsSemanticRequired(existing.semantic);
+    const bool existing_fallback = existing.has_requirement_policy
+        ? existing.allow_fallback : IsSemanticFallbackAllowed(existing.semantic);
+    const bool incoming_required = incoming.has_requirement_policy
+        ? incoming.required : IsSemanticRequired(incoming.semantic);
+    const bool incoming_fallback = incoming.has_requirement_policy
+        ? incoming.allow_fallback : IsSemanticFallbackAllowed(incoming.semantic);
+
+    existing.has_requirement_policy = true;
+    existing.required = existing_required || incoming_required;
+    existing.allow_fallback = existing_fallback && incoming_fallback;
+}
+
+inline bool MergeTextureDescriptor(
+    std::vector<FixedDescriptorEntry> &v,
+    const FixedDescriptorEntry &incoming)
+{
+    for (auto &existing : v)
+    {
+        if (!IsTextureDescriptor(existing))
+            continue;
+
+        const bool same_name = CStrEqual(existing.name, incoming.name);
+        const bool same_semantic_slot =
+            existing.semantic == incoming.semantic
+         && existing.texture_slot == incoming.texture_slot;
+        if (!same_name && !same_semantic_slot)
+            continue;
+
+        const bool same_identity =
+            same_name
+         && same_semantic_slot
+         && existing.set_type == incoming.set_type
+         && existing.kind == incoming.kind
+         && existing.semantic_layer == incoming.semantic_layer
+         && ((existing.glsl_type == nullptr && incoming.glsl_type == nullptr)
+          || CStrEqual(existing.glsl_type, incoming.glsl_type));
+        if (!same_identity)
+            return false;
+
+        existing.stage_flags |= incoming.stage_flags;
+        MergeResourcePolicy(existing, incoming);
+        return true;
+    }
+
+    v.push_back(incoming);
+    return true;
+}
+
+inline bool MergeSSBODescriptor(
+    std::vector<FixedDescriptorEntry> &v,
+    const FixedDescriptorEntry &incoming)
+{
+    for (auto &existing : v)
+    {
+        if (existing.kind != DescriptorKind::SSBO
+         || incoming.kind != DescriptorKind::SSBO)
+            continue;
+
+        const bool same_name = CStrEqual(existing.name, incoming.name);
+        const bool same_semantic_slot =
+            existing.semantic == incoming.semantic
+         && existing.data_slot == incoming.data_slot;
+        if (!same_name && !same_semantic_slot)
+            continue;
+
+        const bool same_identity =
+            same_name
+         && same_semantic_slot
+         && existing.set_type == incoming.set_type
+         && existing.ssbo_type == incoming.ssbo_type
+         && existing.ssbo_id == incoming.ssbo_id
+         && existing.semantic_layer == incoming.semantic_layer;
+        if (!same_identity)
+            return false;
+
+        existing.stage_flags |= incoming.stage_flags;
+        MergeResourcePolicy(existing, incoming);
+        return true;
+    }
+
+    v.push_back(incoming);
+    return true;
+}
+
+inline bool PushManifestSSBO(
+    std::vector<FixedDescriptorEntry> &v,
+    const GLSLCodeModuleSSBORequirement &ssbo)
+{
+    if (!ssbo.name || !*ssbo.name)
+        return false;
+
+    FixedDescriptorEntry entry{};
+    entry.set_type = DescriptorSetType::Material;
+    entry.kind = DescriptorKind::SSBO;
+    entry.stage_flags = ssbo.stage_flags;
+    entry.name = ssbo.name;
+    entry.struct_name = ssbo::GetMaterialSSBOStructName(ssbo.ssbo_type);
+    entry.semantic = DescriptorSemantic::MaterialDataSlotData;
+    entry.data_slot = ssbo.data_slot;
+    entry.ssbo_type = ssbo.ssbo_type;
+    entry.ssbo_id = MakeRecipeSSBOId(ssbo.data_slot);
+    entry.semantic_layer = DescriptorSemanticLayer::SSBO;
+    return MergeSSBODescriptor(v, entry);
+}
+
+inline bool MakeManifestTextureDescriptor(
+    const GLSLCodeModuleTextureRequirement &texture,
+    FixedDescriptorEntry &out)
+{
+    if (!texture.name || !*texture.name
+     || !texture.glsl_type || !*texture.glsl_type)
+        return false;
+
+    out = {};
+    out.stage_flags = texture.stage_flags;
+    out.name = texture.name;
+    out.glsl_type = texture.glsl_type;
+    out.texture_slot = texture.slot;
+    out.semantic = texture.semantic;
+    out.has_requirement_policy = true;
+    out.required = texture.required;
+    out.allow_fallback = !texture.required;
+
+    switch (texture.semantic)
+    {
+    case DescriptorSemantic::SkyCubemapSampler:
+        out.set_type = DescriptorSetType::Scene;
+        out.kind = DescriptorKind::TextureSampler;
+        out.semantic_layer = DescriptorSemanticLayer::Sampler;
+        break;
+    case DescriptorSemantic::MaterialTexture:
+        out.set_type = DescriptorSetType::Material;
+        out.kind = DescriptorKind::Texture;
+        out.semantic_layer = DescriptorSemanticLayer::Texture;
+        break;
+    case DescriptorSemantic::MaterialSampler:
+        out.set_type = DescriptorSetType::Material;
+        out.kind = DescriptorKind::TextureSampler;
+        out.semantic_layer = DescriptorSemanticLayer::Sampler;
+        break;
+    default:
+        return false;
+    }
+
+    return true;
 }
 
 inline void AppendManifestUBODescriptors(
@@ -254,27 +400,38 @@ inline void AppendManifestUBODescriptors(
     }
 }
 
-inline void AppendManifestTextureDescriptors(
+inline bool AppendManifestSSBODescriptors(
     std::vector<FixedDescriptorEntry> &v,
-    const ShaderResourceManifest &manifest)
+    ShaderResourceManifest &manifest)
+{
+    for (uint32 i = 0; i < manifest.ssbo_count; ++i)
+    {
+        if (PushManifestSSBO(v, manifest.ssbos[i]))
+            continue;
+
+        manifest.error = ShaderResourceManifestError::ResourceConflict;
+        return false;
+    }
+
+    return true;
+}
+
+inline bool AppendManifestTextureDescriptors(
+    std::vector<FixedDescriptorEntry> &v,
+    ShaderResourceManifest &manifest)
 {
     for (uint32 i = 0; i < manifest.texture_count; ++i)
     {
-        const auto &texture = manifest.textures[i];
-        bool exists = false;
-        for (const auto &entry : v)
+        FixedDescriptorEntry entry{};
+        if (!MakeManifestTextureDescriptor(manifest.textures[i], entry)
+         || !MergeTextureDescriptor(v, entry))
         {
-            if (entry.name && texture.name
-             && std::strcmp(entry.name, texture.name) == 0)
-            {
-                exists = true;
-                break;
-            }
+            manifest.error = ShaderResourceManifestError::ResourceConflict;
+            return false;
         }
-
-        if (!exists)
-            PushManifestTexture(v, texture);
     }
+
+    return true;
 }
 
 inline bool BuildDefinitionShaderResourceManifest(
@@ -331,6 +488,9 @@ inline uint64 HashDescriptorEntries(
         hash = hgl::hash::FNV1aAppendValueBytes(hash, entry.ssbo_type);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, entry.semantic_layer);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, entry.ssbo_id);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, entry.has_requirement_policy);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, entry.required);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, entry.allow_fallback);
         hash = append_string(hash, entry.name);
         hash = append_string(hash, entry.struct_name);
         hash = append_string(hash, entry.glsl_type);
@@ -344,9 +504,35 @@ inline uint64 HashResourceContract(
     const std::vector<FixedDescriptorEntry> &entries) noexcept
 {
     uint64 hash = hgl::hash::FNV1aInit<uint64>();
+    constexpr uint32 contract_version = 2u;
+    hash = hgl::hash::FNV1aAppendValueBytes(hash, contract_version);
     hash = hgl::hash::FNV1aAppendValueBytes(hash, manifest_hash);
-    hash = hgl::hash::FNV1aAppendValueBytes(hash, HashDescriptorEntries(entries));
+    const MaterialResourceLayout layout =
+        BuildMaterialResourceLayout(entries.data(), static_cast<uint32>(entries.size()));
+    hash = hgl::hash::FNV1aAppendValueBytes(hash, HashMaterialResourceLayout(layout));
     return hash;
+}
+
+inline void ApplyMaterialDefinitionTexturePolicy(
+    const MaterialDefinition &definition,
+    MaterialResourceLayout &layout)
+{
+    for (auto &requirement : layout.requirements)
+    {
+        if (requirement.semantic != DescriptorSemantic::MaterialTexture
+         && requirement.semantic != DescriptorSemantic::MaterialSampler)
+            continue;
+
+        for (const auto &decl : definition.texture_slot_decls)
+        {
+            if (decl.slot != requirement.texture_slot)
+                continue;
+
+            requirement.required = decl.required;
+            requirement.allow_fallback = !decl.required;
+            break;
+        }
+    }
 }
 
 inline uint64 HashMaterialDefinitionTexturePolicy(
@@ -360,6 +546,7 @@ inline uint64 HashMaterialDefinitionTexturePolicy(
         hash = hgl::hash::FNV1aAppendValueBytes(hash, decl.slot);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, decl.sampler_type);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, decl.required);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, !decl.required);
         const uint32 name_length =
             decl.name ? static_cast<uint32>(std::strlen(decl.name)) : 0u;
         hash = hgl::hash::FNV1aAppendValueBytes(hash, name_length);
@@ -374,8 +561,16 @@ inline uint64 HashResourceContract(
     const std::vector<FixedDescriptorEntry> &entries,
     const MaterialDefinition &definition) noexcept
 {
-    return HashMaterialDefinitionTexturePolicy(
-        HashResourceContract(manifest_hash, entries), definition);
+    uint64 hash = hgl::hash::FNV1aInit<uint64>();
+    constexpr uint32 contract_version = 3u;
+    hash = hgl::hash::FNV1aAppendValueBytes(hash, contract_version);
+    hash = hgl::hash::FNV1aAppendValueBytes(hash, manifest_hash);
+
+    MaterialResourceLayout layout =
+        BuildMaterialResourceLayout(entries.data(), static_cast<uint32>(entries.size()));
+    ApplyMaterialDefinitionTexturePolicy(definition, layout);
+    hash = hgl::hash::FNV1aAppendValueBytes(hash, HashMaterialResourceLayout(layout));
+    return hash;
 }
 
 } // namespace hgl::graph::mtl::descriptor_builder_common

@@ -22,5 +22,12 @@ namespace hgl::graph::mtl
         SSBOType            ssbo_type = SSBOType::UserDefined;
         DescriptorSemanticLayer semantic_layer = DescriptorSemanticLayer::Unknown;
         uint32_t            ssbo_id = MakeRecipeSSBOId(0);
+
+        // Resource policy is explicit for manifest/definition-owned entries.
+        // Entries without an explicit policy use the semantic defaults when
+        // converted into MaterialResourceLayout.
+        bool                has_requirement_policy = false;
+        bool                required = true;
+        bool                allow_fallback = false;
     };
 }//namespace hgl::graph::mtl

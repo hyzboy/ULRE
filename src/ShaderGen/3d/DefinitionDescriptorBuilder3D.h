@@ -85,14 +85,25 @@ inline bool Build3DShaderResourceManifest(
 
 inline std::vector<FixedDescriptorEntry> Build3DDescriptorsFromDefinition(
     const MaterialDefinition &definition,
-    const ShaderResourceManifest &manifest,
+    ShaderResourceManifest &manifest,
     const Build3DDescriptorOptions &opt = {})
 {
     std::vector<FixedDescriptorEntry> descriptors = Build3DDescriptorsFromDefinition(definition, opt);
     descriptor_builder_common::AppendManifestUBODescriptors(descriptors, manifest);
-    descriptor_builder_common::AppendManifestTextureDescriptors(descriptors, manifest);
+    if (!descriptor_builder_common::AppendManifestSSBODescriptors(descriptors, manifest)
+     || !descriptor_builder_common::AppendManifestTextureDescriptors(descriptors, manifest))
+        return {};
 
     return descriptors;
+}
+
+inline std::vector<FixedDescriptorEntry> Build3DDescriptorsFromDefinition(
+    const MaterialDefinition &definition,
+    const ShaderResourceManifest &manifest,
+    const Build3DDescriptorOptions &opt = {})
+{
+    ShaderResourceManifest mutable_manifest = manifest;
+    return Build3DDescriptorsFromDefinition(definition, mutable_manifest, opt);
 }
 
 } // namespace hgl::graph::mtl

@@ -3,9 +3,11 @@
 #include<hgl/mtl/FixedDescriptorEntry.h>
 #include<hgl/mtl/MaterializationPools.h>
 #include<hgl/graph/ShaderBufferSources.h>
-#include<vector>
-#include<string>
-#include<utility>
+#include <hgl/util/hash/FNV1a.h>
+#include <cstring>
+#include <vector>
+#include <string>
+#include <utility>
 
 namespace hgl::graph::mtl
 {
@@ -296,8 +298,10 @@ namespace hgl::graph::mtl
             req.name = entry.name;
             req.struct_name = entry.struct_name;
             req.glsl_type = entry.glsl_type;
-            req.required = IsSemanticRequired(req.semantic);
-            req.allow_fallback = IsSemanticFallbackAllowed(req.semantic);
+            req.required = entry.has_requirement_policy
+                ? entry.required : IsSemanticRequired(req.semantic);
+            req.allow_fallback = entry.has_requirement_policy
+                ? entry.allow_fallback : IsSemanticFallbackAllowed(req.semantic);
 
             if (!req.name || !*req.name)
                 req.name = GetDefaultDescriptorNameBySemantic(req.semantic);
@@ -353,6 +357,45 @@ namespace hgl::graph::mtl
         }
 
         return contract;
+    }
+
+    inline uint64 HashMaterialResourceLayout(
+        const MaterialResourceLayout &layout) noexcept
+    {
+        uint64 hash = hgl::hash::FNV1aInit<uint64>();
+        constexpr uint32 contract_version = 2u;
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, contract_version);
+        hash = hgl::hash::FNV1aAppendValueBytes(
+            hash, static_cast<uint32>(layout.requirements.size()));
+
+        const auto append_string = [](uint64 current, const char *value) -> uint64
+        {
+            const uint32 length = value
+                ? static_cast<uint32>(std::strlen(value)) : 0u;
+            current = hgl::hash::FNV1aAppendValueBytes(current, length);
+            if (length > 0)
+                current = hgl::hash::FNV1aAppendBytes(current, value, length);
+            return current;
+        };
+
+        for (const auto &req : layout.requirements)
+        {
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, req.semantic);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, req.semantic_layer);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, req.set_type);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, req.kind);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, req.texture_slot);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, req.data_slot);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, req.ssbo_type);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, req.ssbo_id);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, req.required);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, req.allow_fallback);
+            hash = append_string(hash, req.name);
+            hash = append_string(hash, req.struct_name);
+            hash = append_string(hash, req.glsl_type);
+        }
+
+        return hash;
     }
 
     inline const char *GetDescriptorSemanticName(DescriptorSemantic semantic)
@@ -419,6 +462,20 @@ namespace hgl::graph::mtl
                 continue;
             }
 
+            if (!req.name || !*req.name)
+            {
+                diagnostics.emplace_back("Descriptor resource name is empty; every resource must have a canonical name (" + context + ").");
+                continue;
+            }
+
+            if ((req.kind == DescriptorKind::Texture
+              || req.kind == DescriptorKind::TextureSampler)
+             && (!req.glsl_type || !*req.glsl_type))
+            {
+                diagnostics.emplace_back("Texture resource GLSL type is empty (" + context + ").");
+                continue;
+            }
+
             const DescriptorSetType expected_set = GetExpectedSetType(req.semantic);
             if (expected_set != DescriptorSetType::Unknow && expected_set != req.set_type)
             {
@@ -482,6 +539,46 @@ namespace hgl::graph::mtl
                     diagnostics.push_back(std::move(message));
                     continue;
                 }
+            }
+        }
+
+        for (size_t i = 0; i < contract.requirements.size(); ++i)
+        {
+            const MaterialResourceRequirement &lhs = contract.requirements[i];
+            for (size_t j = i + 1; j < contract.requirements.size(); ++j)
+            {
+                const MaterialResourceRequirement &rhs = contract.requirements[j];
+                const bool same_name =
+                    lhs.name && rhs.name && std::strcmp(lhs.name, rhs.name) == 0;
+                const bool same_semantic_key =
+                    lhs.semantic == rhs.semantic
+                 && lhs.texture_slot == rhs.texture_slot
+                 && lhs.data_slot == rhs.data_slot;
+
+                if (!same_name && !same_semantic_key)
+                    continue;
+
+                const bool same_identity =
+                    same_name
+                 && lhs.semantic == rhs.semantic
+                 && lhs.semantic_layer == rhs.semantic_layer
+                 && lhs.set_type == rhs.set_type
+                 && lhs.kind == rhs.kind
+                 && lhs.texture_slot == rhs.texture_slot
+                 && lhs.data_slot == rhs.data_slot
+                 && lhs.ssbo_type == rhs.ssbo_type
+                 && lhs.ssbo_id == rhs.ssbo_id
+                 && ((!lhs.glsl_type && !rhs.glsl_type)
+                  || (lhs.glsl_type && rhs.glsl_type
+                   && std::strcmp(lhs.glsl_type, rhs.glsl_type) == 0));
+
+                std::string message = same_identity
+                    ? "Duplicate material resource requirement: "
+                    : "Conflicting material resource requirements: ";
+                message += BuildEntryContext(lhs);
+                message += " vs ";
+                message += BuildEntryContext(rhs);
+                diagnostics.push_back(std::move(message));
             }
         }
 

@@ -266,6 +266,13 @@ namespace
             }
             descriptors = build2d::Build2DDescriptorsFromDefinition(params, manifest);
         }
+        if (!manifest.IsValid())
+        {
+            GLogError("[ShaderGen] Generic material resource contract failed: name=%s error=%s",
+                      definition.definition_name.c_str(),
+                      GetShaderResourceManifestErrorName(manifest.error));
+            return nullptr;
+        }
         std::string vs = GenerateVertexShader(vertex_node_config, varying,
                                                position_format,
                                                extra_attributes, GetShaderLibraryPath().c_str(),
@@ -681,7 +688,6 @@ bool MergeMaterialDefinitionFile(const MaterialDefinition &legacy,
     out.transform_graph = normalized_file.transform_graph;
     out.has_transform_graph = normalized_file.has_transform_graph;
     out.vertex_varying = normalized_file.vertex_varying;
-    out.required_ssbo_assets = normalized_file.required_ssbo_assets;
     out.data_slot_decls = normalized_file.data_slot_decls;
     out.ubo_requirements = normalized_file.ubo_requirements;
     out.texture_slot_decls = normalized_file.texture_slot_decls;

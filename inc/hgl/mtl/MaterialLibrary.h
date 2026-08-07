@@ -155,7 +155,7 @@ inline const char *GetFallbackMaterialDefinitionID()
 /**
  * Normalize a MaterialRecipe in-place:
  *   1. Fills mtl_def_id and lod from the matched MaterialDefinition if they are unset.
- *   2. Propagates required_ssbo_assets from the definition into recipe.ssbo_assets.
+ *   2. Applies definition defaults and resolved render state to the recipe.
  *
  * This is the canonical pre-processing step that must be called before the recipe is stored
  * in a PrimitiveComponent or passed to RenderDescriptorBindingSystem.  It is idempotent.
