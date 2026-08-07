@@ -28,6 +28,8 @@
 #include <utility>
 #include <vector>
 
+#include <hgl/type/StdString.h>
+
 using namespace hgl::graph;
 using namespace hgl::graph::mtl;
 
@@ -39,6 +41,17 @@ namespace
         bool passed = false;
         std::vector<std::string> diagnostics;
     };
+
+    // 仓库根路径（由 CMake 注入，避免硬编码盘符）
+    static std::string RepoRootPath(const char *suffix)
+    {
+        return std::string(ULRE_REPO_ROOT) + "/" + suffix;
+    }
+
+    static hgl::OSString RepoRootOSPath(const char *suffix)
+    {
+        return hgl::ToOSString(RepoRootPath(suffix));
+    }
 
     static std::vector<std::string> SummarizeConstraintShape(const MaterialResourceLayout &contract)
     {
@@ -576,7 +589,7 @@ namespace
         GateResult result;
         result.name = "N.compositor-version-placement";
 
-        CompositorAssembler assembler("E:/ULRE/ShaderLibrary");
+        CompositorAssembler assembler(RepoRootPath("ShaderLibrary"));
         const auto assembled = assembler.Assemble(
             SurfaceType::Standard,
             BlendMode::Opaque,
@@ -837,7 +850,7 @@ namespace
             result.diagnostics.emplace_back(
                 "equivalent shader stages must retain distinct program input identity");
 
-        ShaderArtifactStore store(OS_TEXT("E:/ULRE/build"), ShaderCacheMode::BuildIfMissing);
+        ShaderArtifactStore store(RepoRootOSPath("build"), ShaderCacheMode::BuildIfMissing);
         const uint32_t payload[] = {0x07230203u, 1u, 2u, 3u};
         if (!store.SaveStageSPV(stage_key, payload, sizeof(payload)))
         {
@@ -860,7 +873,7 @@ namespace
         }
 
         ShaderArtifactStore read_only_store(
-            OS_TEXT("E:/ULRE/build"), ShaderCacheMode::ReadOnly);
+            RepoRootOSPath("build"), ShaderCacheMode::ReadOnly);
         if (read_only_store.SaveStageSPV(stage_key, payload, sizeof(payload)))
             result.diagnostics.emplace_back("read-only cache must reject writes");
 
@@ -1069,7 +1082,7 @@ namespace
          || pure_color.fragment_surface_module)
             result.diagnostics.emplace_back("PureColor must use one FS module");
 
-        CompositorAssembler assembler("E:/ULRE/ShaderLibrary");
+        CompositorAssembler assembler(RepoRootPath("ShaderLibrary"));
         const auto assembled = assembler.Assemble(
             SurfaceType::Unlit, BlendMode::Opaque, PassType::ForwardOpaque,
             "compositor/pure_color.frag.glsl", nullptr);
@@ -1332,7 +1345,7 @@ namespace
         MaterialDefinitionFileRegistry registry;
         int file_count = 0;
         int error_count = 0;
-        if (!registry.LoadDirectory(OS_TEXT("E:/ULRE/ShaderLibrary"),
+        if (!registry.LoadDirectory(RepoRootOSPath("ShaderLibrary"),
                                     &file_count, &error_count)
          || file_count != 9
          || error_count != 0)
@@ -1773,7 +1786,7 @@ namespace
 
         int file_count = 0;
         int error_count = 0;
-        if (!registry.LoadDirectory(OS_TEXT("E:/ULRE/ShaderLibrary"), &file_count, &error_count))
+        if (!registry.LoadDirectory(RepoRootOSPath("ShaderLibrary"), &file_count, &error_count))
             result.diagnostics.emplace_back("LoadDirectory failed to scan directory");
         else
         {
@@ -1821,7 +1834,7 @@ namespace
         // Re-scan must detect every duplicate name and keep counts stable.
         int dup_count = 0;
         int dup_errors = 0;
-        if (!registry.LoadDirectory(OS_TEXT("E:/ULRE/ShaderLibrary"), &dup_count, &dup_errors))
+        if (!registry.LoadDirectory(RepoRootOSPath("ShaderLibrary"), &dup_count, &dup_errors))
             result.diagnostics.emplace_back("second LoadDirectory failed");
         else if (dup_count != 0 || dup_errors != 58)
             result.diagnostics.emplace_back("second LoadDirectory must report 58 duplicates, got files="
