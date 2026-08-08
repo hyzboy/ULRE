@@ -3,18 +3,18 @@
 // @ulre kind Surface
 // @ulre priority 0
 // @ulre require ProducedSemantic WorldNormal
-// @ulre require Resource MaterialData
 // @ulre uses surface_interface
+// @ulre uses unlit_source
 // @ulre end
 // Unlit Color3D Surface Function — 最简纯色材质
-// 不使用任何纹理，不参与光照计算
-// MI_Unlit: 仅包含 vec4 color (16 bytes)
+// 通过 EvalUnlitSource() provider 获取 SSBO 颜色数据
 
 #include "common/surface_interface.glsl"
+#include "material/unlit_source.glsl"
 
 SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 {
-    EmissiveSurfaceData material_data = MTL_DATA.data[dataIndex];
+    EmissiveSurfaceData material_data = EvalUnlitSource(dataIndex);
 
     SurfaceOutput so;
     so.baseColor = material_data.color.rgb;
@@ -29,5 +29,5 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 
 float EvalAlpha(SurfaceInput si, uint dataIndex)
 {
-    return MTL_DATA.data[dataIndex].color.a;
+    return EvalUnlitSource(dataIndex).color.a;
 }

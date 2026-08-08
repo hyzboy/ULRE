@@ -94,6 +94,9 @@ namespace hgl::graph::mtl
             return true;
         }
 
+        // Accepts all registered SurfaceType names for forward compatibility.
+        // Skin/Hair/Cloth/Eye/Foliage/ClearCoat/Water are reserved — they resolve to
+        // lit_surface at compositor assembly time.
         bool ParseSurface(const std::string &name, SurfaceType &out)
         {
             static const char *const names[] = {

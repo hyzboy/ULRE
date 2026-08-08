@@ -38,7 +38,9 @@ struct SurfaceOutput
     float alpha;
 };
 
-// Special Surface 扩展（Skin, Hair, ClearCoat, Cloth 等）
+// SurfaceOutputExt — reserved for future specialization (Skin/Hair/ClearCoat/Cloth).
+// No active surface currently uses these fields; the struct is kept for the 4-bit
+// SurfaceType bit-packing in the permutation key.
 struct SurfaceOutputExt
 {
     vec3  subsurfaceColor;

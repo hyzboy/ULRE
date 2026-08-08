@@ -12,7 +12,7 @@ namespace hgl::graph
         Unlit2D     = 0,    // 2D 无光照
         Unlit3D     = 1,    // 3D 无光照
         Lit3D       = 2,    // 3D 光照表面 (Lit Surface)
-        Special3D   = 3,    // 3D 特殊表面 (Skin/Hair/Cloth/Eye/Foliage/ClearCoat/Water)
+        Special3D   = 3,    // 3D 表面 (reserved: Skin/Hair/Cloth/Eye/Foliage/ClearCoat/Water → Lit)
 
         // 项目扩展从此开始
         ProjectBase = 64,

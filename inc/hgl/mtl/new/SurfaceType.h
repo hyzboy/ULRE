@@ -8,6 +8,8 @@ namespace hgl::graph
     {
         Unlit = 0,
         Lit,
+        // Reserved (Skin—Water): no specialized surface implementation exists.
+        // CompositorAssembler resolves all of them to lit_surface.
         Skin,
         Hair,
         Cloth,

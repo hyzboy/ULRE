@@ -5,16 +5,18 @@
 // @ulre require ProducedSemantic WorldNormal
 // @ulre require ProducedSemantic Luminance
 // @ulre uses surface_interface
+// @ulre uses unlit_source
 // @ulre end
 // Unlit Luminance Surface Function — 顶点亮度 × MI 颜色
-// MI_Luminance: vec4 Color (16 bytes)
-// baseColor = MI.Color.rgb × luminance，alpha = MI.Color.a
+// 通过 EvalUnlitSource() provider 获取 SSBO 颜色数据
+// baseColor = SSBO.Color.rgb × luminance，alpha = SSBO.Color.a
 
 #include "common/surface_interface.glsl"
+#include "material/unlit_source.glsl"
 
 SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 {
-    EmissiveSurfaceData material_data = MTL_DATA.data[dataIndex];
+    EmissiveSurfaceData material_data = EvalUnlitSource(dataIndex);
 
     SurfaceOutput so;
     so.baseColor = si.luminance * material_data.color.rgb;
@@ -29,5 +31,5 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 
 float EvalAlpha(SurfaceInput si, uint dataIndex)
 {
-    return MTL_DATA.data[dataIndex].color.a;
+    return EvalUnlitSource(dataIndex).color.a;
 }

@@ -3,18 +3,19 @@
 // @ulre kind Surface
 // @ulre priority 0
 // @ulre require ProducedSemantic WorldNormal
-// @ulre require Resource MaterialData
 // @ulre uses surface_interface
+// @ulre uses unlit_source
 // @ulre end
-// DebugNormalColor Surface Function
-// MI_Gizmo: vec4 Color (16 bytes)
-// 自带简易 Blinn-Phong 光照（硬编码太阳方向）
+// DebugNormalColor Surface Function — 自带简易 Blinn-Phong 光照
+// 通过 EvalUnlitSource() provider 获取 SSBO 颜色数据
+// 硬编码太阳方向，用于可视化调试
 
 #include "common/surface_interface.glsl"
+#include "material/unlit_source.glsl"
 
 SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 {
-    EmissiveSurfaceData material_data = MTL_DATA.data[dataIndex];
+    EmissiveSurfaceData material_data = EvalUnlitSource(dataIndex);
 
     const vec3 SUN_DIRECTION = normalize(vec3(0.655386, 0.491539, 0.573462));
     const vec3 SUN_COLOR     = vec3(1.0, 1.0, 1.0);

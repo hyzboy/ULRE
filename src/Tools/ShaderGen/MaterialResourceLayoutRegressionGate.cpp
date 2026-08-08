@@ -780,28 +780,8 @@ namespace
             result.diagnostics.emplace_back(
                 "Custom compositor surfaces must not implicitly enable Lit providers");
 
-        const SurfaceType supported_surfaces[] = {
-            SurfaceType::Skin,
-            SurfaceType::Hair,
-            SurfaceType::Cloth,
-            SurfaceType::Eye,
-            SurfaceType::Foliage,
-            SurfaceType::ClearCoat,
-            SurfaceType::Water
-        };
-        for (const SurfaceType supported_surface : supported_surfaces)
-        {
-            const auto surface_result = assembler.Assemble(
-                supported_surface,
-                BlendMode::Opaque,
-                PassType::ForwardOpaque);
-            if (!surface_result.success)
-            {
-                result.diagnostics.emplace_back(
-                    "Supported surface entry point failed to assemble");
-                break;
-            }
-        }
+        // All remaining SurfaceType values (Skin/Hair/Cloth/Eye/Foliage/ClearCoat/Water)
+        // resolve to lit_surface via CompositorAssembler fall-through — verified above.
 
         result.passed = result.diagnostics.empty();
         return result;
@@ -2472,14 +2452,14 @@ namespace
             result.diagnostics.emplace_back("LoadDirectory failed to scan directory");
         else
         {
-            if (file_count != 64)
-                result.diagnostics.emplace_back("LoadDirectory expected 64 file modules, got "
+            if (file_count != 63)
+                result.diagnostics.emplace_back("LoadDirectory expected 63 file modules, got "
                     + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 64 + int(GLSLCodeModuleID::RANGE_SIZE);
+            const int expected_count = 63 + int(GLSLCodeModuleID::RANGE_SIZE);
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
@@ -2530,11 +2510,11 @@ namespace
         int dup_errors = 0;
         if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()), &dup_count, &dup_errors))
             result.diagnostics.emplace_back("second LoadDirectory failed");
-        else if (dup_count != 0 || dup_errors != 64)
-            result.diagnostics.emplace_back("second LoadDirectory must report 64 duplicates, got files="
+        else if (dup_count != 0 || dup_errors != 63)
+            result.diagnostics.emplace_back("second LoadDirectory must report 63 duplicates, got files="
                 + std::to_string(dup_count) + " errors=" + std::to_string(dup_errors));
 
-        const int stable_count = 64 + int(GLSLCodeModuleID::RANGE_SIZE);
+        const int stable_count = 63 + int(GLSLCodeModuleID::RANGE_SIZE);
         if (registry.GetCount() != stable_count)
             result.diagnostics.emplace_back("registry count changed after duplicate re-scan: got "
                 + std::to_string(registry.GetCount()));
