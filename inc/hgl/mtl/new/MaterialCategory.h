@@ -5,6 +5,7 @@
 namespace hgl::graph
 {
     // 引擎内建材质分类 (0-3)
+    // 注意：2D 渲染路径均为 Unlit，故仅有 Unlit2D 而无 Lit2D。
     // 项目扩展材质分类从 64 开始
     enum class MaterialCategory : uint8
     {

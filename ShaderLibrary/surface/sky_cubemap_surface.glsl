@@ -1,5 +1,12 @@
-// CubeMap environment surface. sky_cubemap.glsl is injected by the
-// SkyLightCubeMap resource manifest before this surface function.
+// @ulre begin
+// @ulre name sky_cubemap_surface
+// @ulre kind Surface
+// @ulre priority 0
+// @ulre require ProducedSemantic WorldPosition
+// @ulre uses surface_interface
+// @ulre end
+// CubeMap environment surface. The SampleSkyCubemap() function is injected
+// by the SkyLightCubeMap resource manifest before this surface function.
 #include "common/surface_interface.glsl"
 
 SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)

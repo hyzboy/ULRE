@@ -1,3 +1,8 @@
+// @ulre begin
+// @ulre name alpha_compositor
+// @ulre kind Shared
+// @ulre priority 0
+// @ulre end
 // Shared final alpha handling for compositor output.
 #ifndef HGL_ALPHA_COMPOSITOR_GLSL
 #define HGL_ALPHA_COMPOSITOR_GLSL

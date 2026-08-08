@@ -4,7 +4,7 @@
 ///
 /// 提供 2D FS preamble、DEF 构建等工具，
 /// 供各 M_Xxx2D.cpp 工厂函数使用。
-/// GLSL 代码已移至 ShaderLibrary/2d/ 目录下的文件。
+/// 2D 专用 fragment shader 已迁移至 Compositor 统一架构（参见 ShaderLibrary/compositor/ 与 ShaderLibrary/surface/）。
 
 #include<hgl/mtl/FixedMaterialDef.h>
 #include<hgl/common/RenderAssignDef.h>

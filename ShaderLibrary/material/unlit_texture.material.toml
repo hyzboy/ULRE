@@ -4,7 +4,7 @@ name = "UnlitTexture"
 source = "file"
 usage = "General"
 bootstrap = "None"
-program_mode = "DirectInclude"
+program_mode = "Compositor"
 provider_policy = "GeometryOnly"
 
 [transform]
@@ -15,11 +15,17 @@ scale = "World"
 projection = "LocalToWorldOnly"
 
 [fragment]
-source = "2d/puretexture2d.frag.glsl"
+source = "compositor/main_forward_unlit_texture.frag.glsl"
+surface_module = "surface/unlit_texture_surface.glsl"
+
+[compositor]
+surface = "Unlit"
+blend = "Opaque"
+pass = "ForwardOpaque"
 
 [vertex]
 requirements = ["Position", "UV0"]
-varyings = ["emit_uv0"]
+varyings = ["emit_data_index_id", "emit_texture_layer_id", "emit_uv0"]
 
 [resources]
 ubos = ["ViewportInfo"]

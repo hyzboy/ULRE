@@ -1,3 +1,10 @@
+// @ulre begin
+// @ulre name sky_cubemap
+// @ulre kind Shared
+// @ulre priority 0
+// @ulre uses descriptor_macros
+// @ulre ubo SkyInfo Fragment required
+// @ulre end
 // CubeMap sky-light implementation. The sampler binding is injected by
 // MaterialCompiler from the SkyLightCubeMap manifest requirement.
 #ifndef SKY_CUBEMAP_GLSL

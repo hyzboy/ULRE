@@ -188,6 +188,9 @@ namespace hgl
             return false;
         }
 
+        // TODO(Phase 11): Populate material category validation matrix from the
+        // ShaderGen module registry. Currently a stub — always returns empty.
+        // See inc/hgl/mtl/new/MaterialCategory.h for the category enum.
         bool ECSContext::GetShaderGenValidationMaterialCategoryMatrix(std::map<std::string, std::map<std::string, uint32_t>> &out_matrix,
                                                                       uint32_t max_count) const
         {

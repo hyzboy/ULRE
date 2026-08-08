@@ -501,6 +501,45 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     }
 
     // ─────────────────────────────────────────────────────────────
+    // Step 5a: Ensure index-table SSBOs for vertex-varying emissions.
+    //
+    // The descriptor builder calls EnsureMaterialDataIndexTable only when a
+    // MaterialDataSlotData entry exists.  Compositor materials without data
+    // slots may still emit fragDataIndexID / fragTextureLayerID (declared
+    // as varyings in .material.toml).  Without the corresponding SSBO the VS
+    // GLSL injection skips ResolveDataIndexID/ResolveTextureLayerID → compile
+    // error.
+    // ─────────────────────────────────────────────────────────────
+
+    if (config.material_definition)
+    {
+        const auto &vv = config.material_definition->vertex_varying;
+
+        auto HasDescriptorSemanticInDef = [&](DescriptorSemantic sem) -> bool
+        {
+            for (uint32_t i = 0; i < def.descriptor_entry_count; ++i)
+                if (def.descriptor_entries[i].semantic == sem)
+                    return true;
+            return false;
+        };
+
+        if (vv.emit_data_index_id
+            && !HasDescriptorSemanticInDef(DescriptorSemantic::MaterialDataIndexTable))
+        {
+            mci->AddSSBOStruct(uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
+                               SBS_MaterialDataIndexRows);
+        }
+
+        if (vv.emit_texture_layer_id
+            && !vv.texture_layer_id_uses_data_index
+            && !HasDescriptorSemanticInDef(DescriptorSemantic::MaterialTextureLayerTable))
+        {
+            mci->AddSSBOStruct(uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
+                               SBS_MaterialTextureLayerRows);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
     // Step 6: Set complete GLSL (bypass ProcXXX pipeline)
     // ─────────────────────────────────────────────────────────────
 
@@ -746,6 +785,11 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
                          { "LocalToWorldIndexRows", "l2w_index_rows", "ResolveTransformID" });
     AppendIndexTableDecl(vs_index_table_decls, descriptor_info.GetSSBO(SBS_MaterialDataIndexRows.name),
                          { "DataIndexRows", "mtl_data_index_rows", "ResolveDataIndexID", true });
+    // VS 阶段提供 mtl_texture_layer_rows 的 buffer 声明 + ResolveTextureLayerID
+    //（供 emit_texture_layer_id 且 texture_layer_id_uses_data_index=false 的材质使用）。
+    AppendIndexTableDecl(vs_index_table_decls, descriptor_info.GetSSBO(SBS_MaterialTextureLayerRows.name),
+                         { "TextureLayerRows", "mtl_texture_layer_rows", "ResolveTextureLayerID" });
+    // FS 阶段仅需 buffer 声明（bindless GetTextureHandle 行表），无需 resolve 函数。
     AppendIndexTableDecl(fs_index_table_decls, descriptor_info.GetSSBO(SBS_MaterialTextureLayerRows.name),
                          { "TextureLayerRows", "mtl_texture_layer_rows", nullptr });
 

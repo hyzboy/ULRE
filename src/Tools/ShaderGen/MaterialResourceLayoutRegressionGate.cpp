@@ -712,22 +712,22 @@ namespace
             result.diagnostics.emplace_back(
                 "Masked compositor must inject alpha-test cutoff");
 
-        const auto direct_include = assembler.Assemble(
+        const auto texture_template = assembler.Assemble(
             SurfaceType::Unlit,
             BlendMode::Masked,
             PassType::ForwardMasked,
-            "2d/puretexture2d.frag.glsl",
-            nullptr,
+            "compositor/main_forward_unlit_texture.frag.glsl",
+            "surface/unlit_texture_surface.glsl",
             alpha_options);
-        if (!direct_include.success
-         || direct_include.fragment_glsl.compare(0, 8, "#version") != 0
-         || direct_include.fragment_glsl.find("#define HGL_ALPHA_TEST 1")
+        if (!texture_template.success
+         || texture_template.fragment_glsl.compare(0, 8, "#version") != 0
+         || texture_template.fragment_glsl.find("#define HGL_ALPHA_TEST 1")
                 == std::string::npos
-         || direct_include.fragment_glsl.find("HGLComposeColor")
+         || texture_template.fragment_glsl.find("HGLComposeColor")
                 == std::string::npos)
         {
             result.diagnostics.emplace_back(
-                "DirectInclude fragment must use the shared compositor assembly path");
+                "UnlitTexture Compositor must inject alpha into template + surface");
         }
 
         const auto alpha_to_coverage = assembler.Assemble(
@@ -1788,7 +1788,7 @@ namespace
             "program_mode = \"DirectInclude\"\n"
             "provider_policy = \"GeometryOnly\"\n"
             "[compositor]\n"
-            "fragment = \"2d/puretexture2d.frag.glsl\"\n"
+            "fragment = \"compositor/legacy_test_template.frag.glsl\"\n"
             "[vertex]\n"
             "requirements = [\"Position\"]\n";
         MaterialDefinitionFileData legacy_data;
@@ -1798,7 +1798,7 @@ namespace
          || !legacy_data.definition.fragment_source
          || std::strcmp(
                 legacy_data.definition.fragment_source,
-                "2d/puretexture2d.frag.glsl") != 0
+                "compositor/legacy_test_template.frag.glsl") != 0
          || legacy_data.definition.fragment_program_module
                 != legacy_data.definition.fragment_source)
         {
@@ -2452,14 +2452,14 @@ namespace
             result.diagnostics.emplace_back("LoadDirectory failed to scan directory");
         else
         {
-            if (file_count != 63)
-                result.diagnostics.emplace_back("LoadDirectory expected 63 file modules, got "
+            if (file_count != 68)
+                result.diagnostics.emplace_back("LoadDirectory expected 68 file modules, got "
                     + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 63 + int(GLSLCodeModuleID::RANGE_SIZE);
+            const int expected_count = 68 + int(GLSLCodeModuleID::RANGE_SIZE);
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
@@ -2510,11 +2510,11 @@ namespace
         int dup_errors = 0;
         if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()), &dup_count, &dup_errors))
             result.diagnostics.emplace_back("second LoadDirectory failed");
-        else if (dup_count != 0 || dup_errors != 63)
-            result.diagnostics.emplace_back("second LoadDirectory must report 63 duplicates, got files="
+        else if (dup_count != 0 || dup_errors != 68)
+            result.diagnostics.emplace_back("second LoadDirectory must report 68 duplicates, got files="
                 + std::to_string(dup_count) + " errors=" + std::to_string(dup_errors));
 
-        const int stable_count = 63 + int(GLSLCodeModuleID::RANGE_SIZE);
+        const int stable_count = 68 + int(GLSLCodeModuleID::RANGE_SIZE);
         if (registry.GetCount() != stable_count)
             result.diagnostics.emplace_back("registry count changed after duplicate re-scan: got "
                 + std::to_string(registry.GetCount()));

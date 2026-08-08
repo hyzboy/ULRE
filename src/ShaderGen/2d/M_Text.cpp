@@ -23,10 +23,11 @@ namespace
         bmi.vertex_node_config = Make2DNodeConfigOrtho(false);
         MaterialVertexVaryingConfig varying{};
         varying.emit_data_index_id = true;
+        varying.emit_texture_layer_id = true;
         varying.emit_uv0 = true;
-        SetMaterialFragmentSource(bmi, "2d/text2d.frag.glsl");
-        bmi.fragment_program_mode = MaterialFragmentProgramMode::DirectInclude;
-        bmi.fragment_surface_module = nullptr;
+        SetMaterialFragmentSource(bmi, "compositor/main_forward_unlit_texture.frag.glsl");
+        bmi.fragment_program_mode = MaterialFragmentProgramMode::Compositor;
+        bmi.fragment_surface_module = "surface/unlit_text_surface.glsl";
         bmi.vertex_varying = varying;
         const GLSLCodeModuleSemanticRequirement vertex_requirements[] = {
             MakeMaterialVertexSemanticRequirement(VertexSemantic::Position),

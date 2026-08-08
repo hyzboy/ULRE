@@ -13,7 +13,7 @@ namespace hgl::graph::mtl
     {
         bool emit_data_index_id    = false;  // location=0 flat out uint fragDataIndexID
         bool emit_texture_layer_id = false;  // location=1 flat out uint fragTextureLayerID
-        bool texture_layer_id_uses_data_index = false; // true: fragTextureLayerID = fragDataIndexID (legacy 3D bindless row semantics)
+        bool texture_layer_id_uses_data_index = false; // true: fragTextureLayerID = fragDataIndexID (bindless row semantics)
         bool emit_vertex_color     = false;  // location=2 out vec4 fragVertexColor
         bool emit_uv0              = false;  // location=3 out vec2 fragUV0
         // Extended: for materials that need world-space outputs (e.g. DebugNormalColor)
