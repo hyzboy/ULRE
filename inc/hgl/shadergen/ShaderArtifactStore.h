@@ -13,16 +13,24 @@ namespace hgl::graph::mtl
     {
         OSString root_path;
         ShaderCacheMode cache_mode = ShaderCacheMode::BuildIfMissing;
+        ShaderArtifactCacheNamespace cache_namespace = ShaderArtifactCacheNamespace::Legacy;
 
         OSString GetStagePath(const ShaderStageKey &key) const;
 
     public:
         ShaderArtifactStore() = default;
-        ShaderArtifactStore(const OSString &root, const ShaderCacheMode mode)
-            : root_path(root), cache_mode(mode) {}
+        ShaderArtifactStore(
+            const OSString &root,
+            const ShaderCacheMode mode,
+            const ShaderArtifactCacheNamespace artifact_namespace =
+                ShaderArtifactCacheNamespace::Legacy)
+            : root_path(root),
+              cache_mode(mode),
+              cache_namespace(artifact_namespace) {}
 
         const OSString &GetRootPath() const noexcept { return root_path; }
         ShaderCacheMode GetCacheMode() const noexcept { return cache_mode; }
+        ShaderArtifactCacheNamespace GetCacheNamespace() const noexcept { return cache_namespace; }
         void SetCacheMode(const ShaderCacheMode mode) noexcept { cache_mode = mode; }
 
         bool HasStageSPV(const ShaderStageKey &key) const;

@@ -49,6 +49,25 @@ if(BUILD_TESTING)
     add_test(
         NAME material_resource_layout_regression_gate
         COMMAND MaterialResourceLayoutRegressionGate)
+
+    set_tests_properties(
+        material_resource_layout_regression_gate
+        PROPERTIES LABELS "shadergen;baseline")
+
+    foreach(regression_group
+            glsl
+            interface
+            descriptor
+            cache
+            materialization
+            pipeline)
+        add_test(
+            NAME material_resource_layout_regression_gate.${regression_group}
+            COMMAND MaterialResourceLayoutRegressionGate ${regression_group})
+        set_tests_properties(
+            material_resource_layout_regression_gate.${regression_group}
+            PROPERTIES LABELS "shadergen;baseline;${regression_group}")
+    endforeach()
 endif()
 
 ####################################################################################################

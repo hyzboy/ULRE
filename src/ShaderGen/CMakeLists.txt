@@ -20,6 +20,7 @@ SOURCE_GROUP("ShaderProgram Build Spec" FILES   ${SHADER_PROGRAM_BUILD_SPEC_HEAD
 SET(SHADER_ARTIFACT_CONTRACT_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderStageKey.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderProgramKey.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderArtifactContract.h
+                                   ${SHADERGEN_INCLUDE_PATH}/ShaderGenMigration.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderStageBuildSpec.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderProgramLinkSpec.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderArtifactStore.h

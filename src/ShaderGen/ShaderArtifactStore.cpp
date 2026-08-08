@@ -16,10 +16,21 @@ namespace hgl::graph::mtl
             return ToOSString(key_name.c_str()) + OS_TEXT(".spv");
         }
 
-        OSString MakeStageDirectory(const OSString &root)
+        OSString MakeStageDirectory(
+            const OSString &root,
+            const ShaderArtifactCacheNamespace cache_namespace)
         {
+            if (!IsValidShaderArtifactCacheNamespace(cache_namespace))
+                return {};
+
             filesystem::Path path(root);
             path /= ToOSString(ShaderArtifactCacheDirectory);
+
+            const char *namespace_directory =
+                GetShaderArtifactCacheNamespaceDirectory(cache_namespace);
+            if (namespace_directory)
+                path /= ToOSString(namespace_directory);
+
             path /= ToOSString(ShaderArtifactStageDirectory);
             return path.ToOSString();
         }
@@ -27,7 +38,11 @@ namespace hgl::graph::mtl
 
     OSString ShaderArtifactStore::GetStagePath(const ShaderStageKey &key) const
     {
-        filesystem::Path path(MakeStageDirectory(root_path));
+        const OSString directory = MakeStageDirectory(root_path, cache_namespace);
+        if (directory.IsEmpty())
+            return {};
+
+        filesystem::Path path(directory);
         path /= MakeStageFilename(key);
         return path.ToOSString();
     }
@@ -96,7 +111,10 @@ namespace hgl::graph::mtl
          || spv_size > static_cast<uint64>(0x7fffffff))
             return false;
 
-        const OSString directory = MakeStageDirectory(root_path);
+        const OSString directory = MakeStageDirectory(root_path, cache_namespace);
+        if (directory.IsEmpty())
+            return false;
+
         if (!filesystem::IsDirectory(directory)
          && !filesystem::MakePath(directory))
             return false;

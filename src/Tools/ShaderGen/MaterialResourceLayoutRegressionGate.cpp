@@ -14,6 +14,7 @@
 #include <hgl/graph/glsl/ShaderResourceManifest.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
+#include <hgl/log/Log.h>
 #include "../../ShaderGen/2d/Build2DCommon.h"
 #include "../../ShaderGen/3d/DefinitionDescriptorBuilder3D.h"
 #include "../../ShaderGen/common/VertexBuilderCommon.h"
@@ -37,6 +38,28 @@ using namespace hgl::graph::mtl;
 
 namespace
 {
+    static bool IsKnownRegressionGroup(const char *group)
+    {
+        if (!group)
+            return false;
+
+        return std::strcmp(group, "all") == 0
+            || std::strcmp(group, "glsl") == 0
+            || std::strcmp(group, "interface") == 0
+            || std::strcmp(group, "descriptor") == 0
+            || std::strcmp(group, "cache") == 0
+            || std::strcmp(group, "materialization") == 0
+            || std::strcmp(group, "pipeline") == 0;
+    }
+
+    static bool IsRegressionGroupSelected(
+        const char *selected_group,
+        const char *case_group)
+    {
+        return std::strcmp(selected_group, "all") == 0
+            || std::strcmp(selected_group, case_group) == 0;
+    }
+
     struct GateResult
     {
         std::string name;
@@ -1003,6 +1026,51 @@ namespace
             RepoRootOSPath("build"), ShaderCacheMode::ReadOnly);
         if (read_only_store.SaveStageSPV(stage_key, payload, sizeof(payload)))
             result.diagnostics.emplace_back("read-only cache must reject writes");
+
+        ShaderArtifactStore shadow_store(
+            RepoRootOSPath("build"),
+            ShaderCacheMode::BuildIfMissing,
+            ShaderArtifactCacheNamespace::ShadowV1);
+        const uint32_t shadow_payload[] = {0x07230203u, 4u, 5u, 6u};
+        if (!shadow_store.SaveStageSPV(stage_key, shadow_payload, sizeof(shadow_payload)))
+        {
+            result.diagnostics.emplace_back("shadow namespace cache save failed");
+        }
+        else
+        {
+            hgl::ValueArray<hgl::uint8> legacy_loaded;
+            hgl::ValueArray<hgl::uint8> shadow_loaded;
+            if (!store.LoadStageSPV(stage_key, legacy_loaded)
+             || legacy_loaded.GetCount() != static_cast<int>(sizeof(payload))
+             || std::memcmp(legacy_loaded.GetData(), payload, sizeof(payload)) != 0)
+            {
+                result.diagnostics.emplace_back(
+                    "shadow namespace must not replace the legacy artifact");
+            }
+
+            if (!shadow_store.LoadStageSPV(stage_key, shadow_loaded)
+             || shadow_loaded.GetCount() != static_cast<int>(sizeof(shadow_payload))
+             || std::memcmp(
+                    shadow_loaded.GetData(), shadow_payload, sizeof(shadow_payload)) != 0)
+            {
+                result.diagnostics.emplace_back(
+                    "shadow namespace must load its isolated artifact");
+            }
+        }
+
+        if (store.GetCacheNamespace() != ShaderArtifactCacheNamespace::Legacy
+         || shadow_store.GetCacheNamespace() != ShaderArtifactCacheNamespace::ShadowV1)
+        {
+            result.diagnostics.emplace_back("artifact cache namespace state mismatch");
+        }
+
+        ShaderGenMigrationOptions migration_options{};
+        if (migration_options.implementation_path != ShaderGenImplementationPath::Legacy
+         || migration_options.artifact_namespace != ShaderArtifactCacheNamespace::Legacy)
+        {
+            result.diagnostics.emplace_back(
+                "migration options must preserve the legacy path by default");
+        }
 
         result.passed = result.diagnostics.empty();
         return result;
@@ -3534,75 +3602,102 @@ namespace
     }
 }
 
-int main()
+int main(const int argc, char **argv)
 {
+    if (argc > 2)
+    {
+        GLogError(
+            "[MaterialResourceLayoutRegressionGate] Expected zero or one group argument.");
+        return 2;
+    }
+
+    const char *selected_group = argc == 2 ? argv[1] : "all";
+    if (!IsKnownRegressionGroup(selected_group))
+    {
+        GLogError(
+            "[MaterialResourceLayoutRegressionGate] Unknown regression group: %s",
+            selected_group);
+        return 2;
+    }
+
+    const bool run_glsl = IsRegressionGroupSelected(selected_group, "glsl");
+    const bool run_interface = IsRegressionGroupSelected(selected_group, "interface");
+    const bool run_descriptor = IsRegressionGroupSelected(selected_group, "descriptor");
+    const bool run_cache = IsRegressionGroupSelected(selected_group, "cache");
+    const bool run_materialization =
+        IsRegressionGroupSelected(selected_group, "materialization");
+    const bool run_pipeline = IsRegressionGroupSelected(selected_group, "pipeline");
+
     std::vector<GateResult> results;
 
-    constexpr FixedDescriptorEntry valid_entries[] =
+    if (run_descriptor)
     {
-        { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
-        { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl_data_index_rows", "DataIndexRows", nullptr, DescriptorSemantic::MaterialDataIndexTable, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::MaterialDataIndexTable, DescriptorSemanticLayer::SSBO },
-        { DescriptorSetType::Material, DescriptorKind::Texture, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureBaseColor", nullptr, "sampler2D", DescriptorSemantic::MaterialTexture, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::Texture },
-        { DescriptorSetType::Material, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "SkyCubemap", nullptr, "samplerCube", DescriptorSemantic::MaterialSampler, TextureSlot::Custom0, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::Sampler },
-    };
-    results.push_back(RunValidationCase("A.valid-layered-paths", valid_entries, uint32_t(std::size(valid_entries)), true));
+        constexpr FixedDescriptorEntry valid_entries[] =
+        {
+            { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
+            { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl_data_index_rows", "DataIndexRows", nullptr, DescriptorSemantic::MaterialDataIndexTable, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::MaterialDataIndexTable, DescriptorSemanticLayer::SSBO },
+            { DescriptorSetType::Material, DescriptorKind::Texture, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureBaseColor", nullptr, "sampler2D", DescriptorSemantic::MaterialTexture, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::Texture },
+            { DescriptorSetType::Material, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "SkyCubemap", nullptr, "samplerCube", DescriptorSemantic::MaterialSampler, TextureSlot::Custom0, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::Sampler },
+        };
+        results.push_back(RunValidationCase("A.valid-layered-paths", valid_entries, uint32_t(std::size(valid_entries)), true));
 
-    constexpr FixedDescriptorEntry unknown_semantic[] =
-    {
-        { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "broken", "ViewportInfo", nullptr, DescriptorSemantic::Unknown, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
-    };
-    results.push_back(RunValidationCase("B1.unknown-semantic-hard-fail", unknown_semantic, 1, false));
+        constexpr FixedDescriptorEntry unknown_semantic[] =
+        {
+            { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "broken", "ViewportInfo", nullptr, DescriptorSemantic::Unknown, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
+        };
+        results.push_back(RunValidationCase("B1.unknown-semantic-hard-fail", unknown_semantic, 1, false));
 
-    constexpr FixedDescriptorEntry semantic_kind_mismatch[] =
-    {
-        { DescriptorSetType::Material, DescriptorKind::Texture, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "mtl_data_index_rows", "DataIndexRows", "sampler2D", DescriptorSemantic::MaterialDataIndexTable, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::MaterialDataIndexTable, DescriptorSemanticLayer::SSBO },
-    };
-    results.push_back(RunValidationCase("B2.semantic-kind-mismatch-hard-fail", semantic_kind_mismatch, 1, false));
+        constexpr FixedDescriptorEntry semantic_kind_mismatch[] =
+        {
+            { DescriptorSetType::Material, DescriptorKind::Texture, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "mtl_data_index_rows", "DataIndexRows", "sampler2D", DescriptorSemantic::MaterialDataIndexTable, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::MaterialDataIndexTable, DescriptorSemanticLayer::SSBO },
+        };
+        results.push_back(RunValidationCase("B2.semantic-kind-mismatch-hard-fail", semantic_kind_mismatch, 1, false));
 
-    constexpr FixedDescriptorEntry invalid_fixed_descriptor[] =
-    {
-        { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl", "PBRSurfaceData", nullptr, DescriptorSemantic::MaterialDataSlotData, TextureSlot::BaseColor, 0xffu, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO },
-    };
-    results.push_back(RunValidationCase("B3.invalid-fixed-descriptor-hard-fail", invalid_fixed_descriptor, 1, false));
+        constexpr FixedDescriptorEntry invalid_fixed_descriptor[] =
+        {
+            { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl", "PBRSurfaceData", nullptr, DescriptorSemantic::MaterialDataSlotData, TextureSlot::BaseColor, 0xffu, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO },
+        };
+        results.push_back(RunValidationCase("B3.invalid-fixed-descriptor-hard-fail", invalid_fixed_descriptor, 1, false));
 
-    constexpr FixedDescriptorEntry palette_explicit[] =
-    {
-        { DescriptorSetType::Material, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "color_palette", "ColorPalette", nullptr, DescriptorSemantic::MaterialColorPalette, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
-    };
-    results.push_back(RunValidationCase("C.material-color-palette-explicit", palette_explicit, 1, true));
+        constexpr FixedDescriptorEntry palette_explicit[] =
+        {
+            { DescriptorSetType::Material, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "color_palette", "ColorPalette", nullptr, DescriptorSemantic::MaterialColorPalette, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
+        };
+        results.push_back(RunValidationCase("C.material-color-palette-explicit", palette_explicit, 1, true));
+    }
 
-    results.push_back(RunBindlessEquivalenceCase());
-    results.push_back(RunMaterializationSharedInstanceCase());
-    results.push_back(RunBuiltinRegistryCoverageCase());
-    results.push_back(RunBootstrapMaterialBoundaryCase());
-    results.push_back(RunMaterialDefinitionIdentityCase());
-    results.push_back(RunUnifiedMaterialBaselineCase());
-    results.push_back(RunUnifiedPureColorFragmentCase());
-    results.push_back(RunUnifiedMaterialContractCase());
-    results.push_back(RunTransformGraphModelCase());
-    results.push_back(RunTransformGraphCompositionCase());
-    results.push_back(RunMaterialShaderVariantIdentityCase());
-    results.push_back(RunMaterialSSBOBindingKeyCase());
-    results.push_back(RunResolvedMaterialRenderStateCase());
-    results.push_back(RunMaterialDefinitionFileSchemaCase());
-    results.push_back(RunFallbackInferenceCase());
-    results.push_back(RunGLSLCodeModuleRegistryCase());
-    results.push_back(RunShaderResourceManifestCase());
-    results.push_back(RunProviderResourceManifestCase());
-    results.push_back(RunGLSLCodeModuleFileCase());
-    results.push_back(RunCapabilityResolverCase());
-    results.push_back(RunMaterialVertexABICharacterizationCase());
-    results.push_back(RunMaterialSemanticABIParityCase());
-    results.push_back(RunMaterialSemanticResolverPreviewCase());
-    results.push_back(RunCompositorVersionPlacementCase());
-    results.push_back(RunProviderGraphIdentityCase());
-    results.push_back(RunProviderGraphCompositionCase());
-    results.push_back(RunResolvedStageCacheIdentityCase());
-    results.push_back(RunMaterialMultiSlotSourceCase());
-    results.push_back(RunDirectIncludeManifestCase());
-    results.push_back(RunDescriptorBuilderConvergenceCase());
-    results.push_back(RunShaderLibraryPathCase());
-    results.push_back(RunResourceContractBoundaryCase());
+    if (run_descriptor) results.push_back(RunBindlessEquivalenceCase());
+    if (run_materialization) results.push_back(RunMaterializationSharedInstanceCase());
+    if (run_materialization) results.push_back(RunBuiltinRegistryCoverageCase());
+    if (run_materialization) results.push_back(RunBootstrapMaterialBoundaryCase());
+    if (run_materialization) results.push_back(RunMaterialDefinitionIdentityCase());
+    if (run_pipeline) results.push_back(RunUnifiedMaterialBaselineCase());
+    if (run_pipeline) results.push_back(RunUnifiedPureColorFragmentCase());
+    if (run_descriptor) results.push_back(RunUnifiedMaterialContractCase());
+    if (run_materialization) results.push_back(RunTransformGraphModelCase());
+    if (run_materialization) results.push_back(RunTransformGraphCompositionCase());
+    if (run_cache) results.push_back(RunMaterialShaderVariantIdentityCase());
+    if (run_descriptor) results.push_back(RunMaterialSSBOBindingKeyCase());
+    if (run_materialization) results.push_back(RunResolvedMaterialRenderStateCase());
+    if (run_materialization) results.push_back(RunMaterialDefinitionFileSchemaCase());
+    if (run_materialization) results.push_back(RunFallbackInferenceCase());
+    if (run_glsl) results.push_back(RunGLSLCodeModuleRegistryCase());
+    if (run_glsl) results.push_back(RunShaderResourceManifestCase());
+    if (run_glsl) results.push_back(RunProviderResourceManifestCase());
+    if (run_glsl) results.push_back(RunGLSLCodeModuleFileCase());
+    if (run_glsl) results.push_back(RunCapabilityResolverCase());
+    if (run_interface) results.push_back(RunMaterialVertexABICharacterizationCase());
+    if (run_interface) results.push_back(RunMaterialSemanticABIParityCase());
+    if (run_interface) results.push_back(RunMaterialSemanticResolverPreviewCase());
+    if (run_glsl) results.push_back(RunCompositorVersionPlacementCase());
+    if (run_cache) results.push_back(RunProviderGraphIdentityCase());
+    if (run_cache) results.push_back(RunProviderGraphCompositionCase());
+    if (run_cache) results.push_back(RunResolvedStageCacheIdentityCase());
+    if (run_pipeline) results.push_back(RunMaterialMultiSlotSourceCase());
+    if (run_pipeline) results.push_back(RunDirectIncludeManifestCase());
+    if (run_descriptor) results.push_back(RunDescriptorBuilderConvergenceCase());
+    if (run_pipeline) results.push_back(RunShaderLibraryPathCase());
+    if (run_descriptor) results.push_back(RunResourceContractBoundaryCase());
 
     bool all_passed = true;
     for (const auto &result : results)

@@ -2,6 +2,7 @@
 
 #include<hgl/vk/VK.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
+#include<hgl/shadergen/ShaderGenMigration.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/glsl/GLSLCodeModuleCapabilityResolver.h>
 #include<hgl/mtl/MaterializationSpec.h>
@@ -50,6 +51,7 @@ struct MaterialDefinitionBuildRequest
     MaterialTransformGraph transform_graph;
     bool has_transform_graph = false;
     ShaderArtifactStore *shader_artifact_store = nullptr;
+    ShaderGenMigrationOptions migration{};
 
     // Phase 4.4 opt-in: only explicit callers with a loaded registry activate
     // resolver-derived VS declarations and vertex entries.
