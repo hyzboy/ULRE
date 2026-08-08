@@ -54,7 +54,10 @@ inline std::vector<FixedDescriptorEntry> Build3DDescriptorsFromDefinition(
 inline bool Build3DShaderResourceManifest(
     const MaterialDefinition &definition,
     const SkyLightAmbientModel ambient_model,
-    ShaderResourceManifest &manifest)
+    ShaderResourceManifest &manifest,
+    const GLSLCodeModuleID *provider_roots = nullptr,
+    const uint32 provider_root_count = 0,
+    const GLSLCodeModuleRegistry *registry = nullptr)
 {
     bool has_sky_root = false;
     for (const GLSLCodeModuleID id : definition.code_module_requirements)
@@ -76,11 +79,21 @@ inline bool Build3DShaderResourceManifest(
             : GLSLCodeModuleID::SkyLightSimple;
     }
 
+    GLSLCodeModuleID extra_roots[MaxShaderResourceManifestCodeModules]{};
+    uint32 extra_root_count = 0;
+    if (provider_root_count > 0 && !provider_roots)
+        return false;
+    if (has_sky_root)
+        extra_roots[extra_root_count++] = ambient_root;
+    for (uint32 i = 0; i < provider_root_count; ++i)
+    {
+        if (extra_root_count >= MaxShaderResourceManifestCodeModules)
+            return false;
+        extra_roots[extra_root_count++] = provider_roots[i];
+    }
+
     return descriptor_builder_common::BuildDefinitionShaderResourceManifest(
-        definition,
-        manifest,
-        has_sky_root ? &ambient_root : nullptr,
-        has_sky_root ? 1u : 0u);
+        definition, manifest, extra_roots, extra_root_count, registry);
 }
 
 inline std::vector<FixedDescriptorEntry> Build3DDescriptorsFromDefinition(
@@ -91,8 +104,11 @@ inline std::vector<FixedDescriptorEntry> Build3DDescriptorsFromDefinition(
     std::vector<FixedDescriptorEntry> descriptors = Build3DDescriptorsFromDefinition(definition, opt);
     descriptor_builder_common::AppendManifestUBODescriptors(descriptors, manifest);
     if (!descriptor_builder_common::AppendManifestSSBODescriptors(descriptors, manifest)
-     || !descriptor_builder_common::AppendManifestTextureDescriptors(descriptors, manifest))
+     || !descriptor_builder_common::AppendManifestTextureDescriptors(descriptors, manifest)
+     || !descriptor_builder_common::AppendManifestTextureLayerDescriptors(descriptors, manifest))
         return {};
+    descriptor_builder_common::EnsureMaterialDataIndexTable(
+        descriptors, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
 
     return descriptors;
 }

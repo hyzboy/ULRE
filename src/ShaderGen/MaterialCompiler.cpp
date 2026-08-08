@@ -98,7 +98,8 @@ static bool AddMaterialDataSlotDescriptor(ShaderProgramBuildSpec &mci,
 static bool ValidateDefinitionCapabilitySubset(
     const MaterialDefinition &definition,
     const MaterialResourceLayout &layout,
-    std::vector<std::string> &diagnostics)
+    std::vector<std::string> &diagnostics,
+    const ShaderResourceManifest *manifest)
 {
     diagnostics.clear();
 
@@ -153,6 +154,46 @@ static bool ValidateDefinitionCapabilitySubset(
         case DescriptorSemantic::Custom:
             allowed = false;
             break;
+        }
+
+        if (!allowed && manifest && manifest->IsValid())
+        {
+            for (uint32 i = 0; i < manifest->ubo_count && !allowed; ++i)
+            {
+                UBODescriptorSemantic ubo_semantic{};
+                if (TryGetUBODescriptorSemantic(req.semantic, ubo_semantic)
+                 && manifest->ubos[i].semantic == ubo_semantic)
+                    allowed = true;
+            }
+            for (uint32 i = 0; i < manifest->ssbo_count && !allowed; ++i)
+            {
+                const auto &ssbo = manifest->ssbos[i];
+                if (req.semantic == DescriptorSemantic::MaterialDataSlotData
+                 && req.data_slot == ssbo.data_slot
+                 && req.ssbo_type == ssbo.ssbo_type
+                 && CStrEq(req.name, ssbo.name))
+                    allowed = true;
+            }
+            for (uint32 i = 0; i < manifest->texture_count && !allowed; ++i)
+            {
+                const auto &texture = manifest->textures[i];
+                if (req.semantic == texture.semantic
+                 && req.texture_slot == texture.slot
+                 && CStrEq(req.name, texture.name))
+                    allowed = true;
+            }
+            if (req.semantic == DescriptorSemantic::MaterialTextureLayerTable
+             && manifest->texture_layer_count > 0)
+                allowed = true;
+
+            // The mtl_data_index_rows table only exists to route instance IDs
+            // to material data-slot SSBOs. If any material data-slot SSBO was
+            // declared purely via provider manifest metadata (no matching
+            // TOML [resources].ssbos entry), the index table requirement is
+            // implied and must be accepted the same way.
+            if (req.semantic == DescriptorSemantic::MaterialDataIndexTable
+             && manifest->ssbo_count > 0)
+                allowed = true;
         }
 
         if (allowed)
@@ -223,16 +264,52 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     };
 
     uint32_t material_ssbo_stage_bits = uint32_t(ShaderStage::Fragment);
+    if (config.resource_manifest && config.resource_manifest->IsValid())
+    {
+        for (uint32_t i = 0; i < config.resource_manifest->ssbo_count; ++i)
+            material_ssbo_stage_bits |= config.resource_manifest->ssbos[i].stage_flags;
+    }
 
     // ─────────────────────────────────────────────────────────────
     // Step 3: Add Descriptors from FixedDescriptorEntry[]
-    // When config.data_slot_decls is provided, material SSBO entries are
-    // generated from it; any baked single-slot entries in def are skipped.
+    // Provider metadata contributes material SSBO slots to the same canonical
+    // declaration list as the material definition.
     // ─────────────────────────────────────────────────────────────
 
-    const bool use_slot_decls = config.data_slot_decls && !config.data_slot_decls->empty();
+    std::vector<MaterialDataSlotDecl> effective_data_slot_decls;
+    if (config.data_slot_decls)
+        effective_data_slot_decls = *config.data_slot_decls;
+    if (config.resource_manifest && config.resource_manifest->IsValid())
+    {
+        for (uint32_t i = 0; i < config.resource_manifest->ssbo_count; ++i)
+        {
+            const auto &ssbo = config.resource_manifest->ssbos[i];
+            if (ssbo.data_slot > MaxMaterialDataSlotsPerMaterial)
+                return FailAfterMci("provider material data slot exceeds the supported limit");
+            if (ssbo.data_slot > effective_data_slot_decls.size())
+                return FailAfterMci("provider material data slots must be contiguous");
 
-    const uint32_t declared_material_data_slot_count = use_slot_decls ? static_cast<uint32_t>(config.data_slot_decls->size()) : 0u;
+            if (ssbo.data_slot == effective_data_slot_decls.size())
+            {
+                MaterialDataSlotDecl decl;
+                decl.name = ssbo.name;
+                decl.ssbo_type = ssbo.ssbo_type;
+                effective_data_slot_decls.push_back(decl);
+            }
+            else
+            {
+                const auto &decl = effective_data_slot_decls[ssbo.data_slot];
+                if (decl.name != ssbo.name || decl.ssbo_type != ssbo.ssbo_type)
+                    return FailAfterMci("provider material data slot conflicts with definition");
+            }
+        }
+    }
+
+    const std::vector<MaterialDataSlotDecl> *data_slot_decls =
+        effective_data_slot_decls.empty() ? nullptr : &effective_data_slot_decls;
+    const bool use_slot_decls = data_slot_decls != nullptr;
+
+    const uint32_t declared_material_data_slot_count = use_slot_decls ? static_cast<uint32_t>(data_slot_decls->size()) : 0u;
     if (use_slot_decls)
     {
         if (declared_material_data_slot_count > MaxMaterialDataSlotsPerMaterial)
@@ -240,13 +317,13 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
 
         for (uint32_t i = 0; i < declared_material_data_slot_count; ++i)
         {
-            const auto &decl = (*config.data_slot_decls)[i];
+            const auto &decl = (*data_slot_decls)[i];
             if (!IsValidMaterialDataSlotName(decl.name))
                 return FailAfterMci("invalid material data slot GLSL name");
 
             for (uint32_t j = 0; j < i; ++j)
             {
-                if ((*config.data_slot_decls)[j].name == decl.name)
+                if ((*data_slot_decls)[j].name == decl.name)
                     return FailAfterMci("duplicate material data slot GLSL name");
             }
         }
@@ -416,9 +493,9 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
 
     if (use_slot_decls)
     {
-        for (uint32_t i = 0; i < static_cast<uint32_t>(config.data_slot_decls->size()); ++i)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(data_slot_decls->size()); ++i)
         {
-            if (!AddMaterialDataSlotDescriptor(*mci, (*config.data_slot_decls)[i], i, material_ssbo_stage_bits))
+            if (!AddMaterialDataSlotDescriptor(*mci, (*data_slot_decls)[i], i, material_ssbo_stage_bits))
                 return FailAfterMci("failed to add declared material ssbo slot descriptor");
         }
     }
@@ -495,13 +572,13 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     std::string material_ssbo_decls;
     std::string material_slot_macros;
 
-    if (use_slot_decls && config.data_slot_decls && !config.data_slot_decls->empty())
+    if (use_slot_decls && data_slot_decls && !data_slot_decls->empty())
     {
         std::vector<std::string> emitted_struct_names;
         std::vector<std::string> emitted_buffer_names;
-        for (uint32_t i = 0; i < static_cast<uint32_t>(config.data_slot_decls->size()); ++i)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(data_slot_decls->size()); ++i)
         {
-            const MaterialDataSlotDecl &decl = (*config.data_slot_decls)[i];
+            const MaterialDataSlotDecl &decl = (*data_slot_decls)[i];
             const ShaderDescriptor *sd = descriptor_info.GetSSBO(decl.name.c_str());
             if (!sd || sd->set < 0 || sd->binding < 0)
                 return FailAfterMci("material ssbo descriptor unresolved for GLSL generation");
@@ -589,19 +666,19 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
         }
 
         material_slot_macros += "#define MTL_DATA_SLOT_COUNT "
-            + std::to_string(config.data_slot_decls->size()) + "u\n";
+            + std::to_string(data_slot_decls->size()) + "u\n";
         material_slot_macros += "#define MTL_DATA_INDEX_ROW_STRIDE "
             + std::to_string(MaterialDataIndexRowStride) + "u\n";
-        for (uint32_t i = 0; i < static_cast<uint32_t>(config.data_slot_decls->size()); ++i)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(data_slot_decls->size()); ++i)
         {
             material_slot_macros += "#define MTL_DATA_SLOT_";
             material_slot_macros += std::to_string(i);
             material_slot_macros += " ";
-            material_slot_macros += (*config.data_slot_decls)[i].name;
+            material_slot_macros += (*data_slot_decls)[i].name;
             material_slot_macros += "\n";
         }
         material_slot_macros += "#define MTL_DATA ";
-        material_slot_macros += (*config.data_slot_decls)[0].name;
+        material_slot_macros += (*data_slot_decls)[0].name;
         material_slot_macros += "\n";
     }
 
@@ -659,7 +736,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     std::string vs_index_table_decls;
     std::string fs_index_table_decls;
     const uint32_t material_data_slot_count =
-        use_slot_decls ? static_cast<uint32_t>(config.data_slot_decls->size()) : 1u;
+        use_slot_decls ? static_cast<uint32_t>(data_slot_decls->size()) : 1u;
     vs_index_table_decls = "#define MTL_DATA_SLOT_COUNT "
         + std::to_string(material_data_slot_count) + "u\n"
         + "#define MTL_DATA_INDEX_ROW_STRIDE "
@@ -734,16 +811,16 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
         std::vector<FixedDescriptorEntry> augmented;
         // Names from data_slot_decls are runtime strings; store them here to ensure lifetime.
         std::vector<std::string> augmented_names;
-        augmented.reserve(def.descriptor_entry_count + config.data_slot_decls->size());
-        augmented_names.reserve(config.data_slot_decls->size());
+        augmented.reserve(def.descriptor_entry_count + data_slot_decls->size());
+        augmented_names.reserve(data_slot_decls->size());
         for (uint32_t i = 0; i < def.descriptor_entry_count; ++i)
         {
             if (def.descriptor_entries[i].semantic != DescriptorSemantic::MaterialDataSlotData)
                 augmented.push_back(def.descriptor_entries[i]);
         }
-        for (uint32_t i = 0; i < static_cast<uint32_t>(config.data_slot_decls->size()); ++i)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(data_slot_decls->size()); ++i)
         {
-            const MaterialDataSlotDecl &decl = (*config.data_slot_decls)[i];
+            const MaterialDataSlotDecl &decl = (*data_slot_decls)[i];
             augmented_names.push_back(decl.name);  // owned copy guarantees lifetime
             FixedDescriptorEntry e{};
             e.set_type      = DescriptorSetType::Material;
@@ -802,7 +879,9 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     {
         const MaterialDefinition &material_definition = *config.material_definition;
         std::vector<std::string> capability_diagnostics;
-        if (!ValidateDefinitionCapabilitySubset(material_definition, material_resource_layout, capability_diagnostics))
+        if (!ValidateDefinitionCapabilitySubset(
+                material_definition, material_resource_layout,
+                capability_diagnostics, config.resource_manifest))
         {
             for (const auto &diag : capability_diagnostics)
             {

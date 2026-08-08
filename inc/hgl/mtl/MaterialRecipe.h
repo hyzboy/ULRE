@@ -272,6 +272,11 @@ namespace hgl::graph::mtl
         // Optional surface function include replacement used by compositor
         // templates (and harmless for raw sources without the marker).
         const char *fragment_surface_module = nullptr;
+        // Optional material-source provider include used by lit compositor
+        // templates. The provider owns material data and texture extraction.
+        const char *fragment_material_source_module = nullptr;
+        // Optional NTB provider include used by lit compositor templates.
+        const char *fragment_ntb_module = nullptr;
         // Compatibility-only spelling. Boundary code normalizes this into
         // fragment_source; runtime assembly must use the canonical field.
         const char *fragment_program_module = nullptr;

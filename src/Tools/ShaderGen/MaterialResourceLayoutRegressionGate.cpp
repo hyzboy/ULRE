@@ -629,21 +629,37 @@ namespace
              || algorithm_call == std::string::npos
              || input_builder_call < surface_call
              || algorithm_call < input_builder_call)
-                result.diagnostics.emplace_back(
-                    "Lit compositor must fill LightingInput before invoking the replaceable lighting algorithm");
+               result.diagnostics.emplace_back(
+                   "Lit compositor must fill LightingInput before invoking the replaceable lighting algorithm");
+            if (assembled.fragment_glsl.find(
+                   "#define HGL_USE_MATERIAL_SOURCE_PROVIDER 1")
+                   == std::string::npos
+             || assembled.fragment_glsl.find(
+                   "#define HGL_USE_NTB_PROVIDER 1")
+                   == std::string::npos
+             || assembled.fragment_glsl.find(
+                   "#include \"material/pbr_surface_source.glsl\"")
+                   == std::string::npos
+             || assembled.fragment_glsl.find(
+                   "#include \"ntb/ntb_tangent_vbo_normalmap.glsl\"")
+                   == std::string::npos)
+               result.diagnostics.emplace_back(
+                   "Lit compositor must enable and include the default material/NTB providers");
         }
 
         CompositorAssembler::CompositorModuleOptions lighting_options{};
         lighting_options.direct_lighting_module = "lighting/direct_toon.glsl";
         lighting_options.indirect_lighting_module = "lighting/indirect_pbr_ambient.glsl";
         lighting_options.lighting_algorithm_module = "lighting/forward_flat.glsl";
+        lighting_options.material_source_module = "material/pbr_texturearray_source.glsl";
+        lighting_options.ntb_module = "ntb/ntb_texturearray_normalmap.glsl";
         lighting_options.forward_lighting_module = "compositor/forward_lighting.glsl";
         const auto scheduled_lighting = assembler.Assemble(
             SurfaceType::Lit,
             BlendMode::Opaque,
             PassType::ForwardOpaque,
             nullptr,
-            "surface/lit_texturearray_surface.glsl",
+            "surface/lit_surface.glsl",
             lighting_options);
         if (!scheduled_lighting.success
          || scheduled_lighting.fragment_glsl.find(
@@ -656,13 +672,19 @@ namespace
                 "#include \"lighting/forward_flat.glsl\"")
                 == std::string::npos
          || scheduled_lighting.fragment_glsl.find(
+                "#include \"material/pbr_texturearray_source.glsl\"")
+                == std::string::npos
+         || scheduled_lighting.fragment_glsl.find(
+                "#include \"ntb/ntb_texturearray_normalmap.glsl\"")
+                == std::string::npos
+         || scheduled_lighting.fragment_glsl.find(
                 "#include \"compositor/forward_lighting.glsl\"")
                 == std::string::npos
          || scheduled_lighting.fragment_glsl.find(
-                "#include \"surface/lit_texturearray_surface.glsl\"")
+                "#include \"surface/lit_surface.glsl\"")
                 == std::string::npos)
             result.diagnostics.emplace_back(
-                "Lit compositor must route lighting and texture-array surface modules through one scheduler");
+                "Lit compositor must route lighting and material surface modules through one scheduler");
 
         const auto dithered = assembler.Assemble(
             SurfaceType::Unlit,
@@ -743,6 +765,20 @@ namespace
                 == std::string::npos)
             result.diagnostics.emplace_back(
                 "CubeMap compositor must select the CubeMap sky and surface modules");
+
+        const auto custom_surface = assembler.Assemble(
+            SurfaceType::Unlit,
+            BlendMode::Opaque,
+            PassType::ForwardOpaque);
+        if (!custom_surface.success
+         || custom_surface.fragment_glsl.find(
+                "#define HGL_USE_MATERIAL_SOURCE_PROVIDER 0")
+                == std::string::npos
+         || custom_surface.fragment_glsl.find(
+                "#define HGL_USE_NTB_PROVIDER 0")
+                == std::string::npos)
+            result.diagnostics.emplace_back(
+                "Custom compositor surfaces must not implicitly enable Lit providers");
 
         const SurfaceType supported_surfaces[] = {
             SurfaceType::Skin,
@@ -2192,6 +2228,144 @@ namespace
         return result;
     }
 
+    static GateResult RunProviderResourceManifestCase()
+    {
+        GateResult result;
+        result.name = "H1.provider-resource-manifest";
+
+        GLSLCodeModuleRegistry registry;
+        if (!registry.RegisterBuiltinModules())
+            result.diagnostics.emplace_back("provider registry builtin registration failed");
+
+        int file_count = 0;
+        int error_count = 0;
+        if (!registry.LoadDirectory(
+                hgl::ToOSString(GetShaderLibraryPath()), &file_count, &error_count))
+        {
+            result.diagnostics.emplace_back("provider registry directory scan failed");
+        }
+        else if (error_count != 0)
+        {
+            result.diagnostics.emplace_back(
+                "provider registry directory scan reported parse errors");
+        }
+
+        const auto *pbr_2d = registry.FindByName("pbr_surface_source");
+        const auto *pbr_array = registry.FindByName("pbr_texturearray_source");
+        const auto *ntb_2d = registry.FindByName("ntb_tangent_vbo_normalmap");
+        const auto *ntb_array = registry.FindByName("ntb_texturearray_normalmap");
+        const auto *ntb_derivative = registry.FindByName("ntb_derivative_normalmap");
+        if (!pbr_2d || !pbr_array || !ntb_2d || !ntb_array || !ntb_derivative)
+        {
+            result.diagnostics.emplace_back("provider metadata modules are missing");
+        }
+        else
+        {
+            const GLSLCodeModuleID roots_2d[] = {pbr_2d->id, ntb_2d->id};
+            ShaderResourceManifest manifest_2d{};
+            if (!BuildShaderResourceManifest(
+                    roots_2d, uint32_t(std::size(roots_2d)), manifest_2d, &registry))
+            {
+                result.diagnostics.emplace_back(
+                    std::string("Texture2D provider manifest failed: ")
+                    + GetShaderResourceManifestErrorName(manifest_2d.error));
+            }
+            else
+            {
+                if (manifest_2d.ssbo_count != 1
+                 || std::strcmp(manifest_2d.ssbos[0].name, "mtl") != 0
+                 || manifest_2d.ssbos[0].ssbo_type != SSBOType::PBRSurface
+                 || manifest_2d.ssbos[0].data_slot != 0)
+                    result.diagnostics.emplace_back(
+                        "Texture2D providers must declare one PBRSurface material SSBO");
+
+                if (manifest_2d.texture_count != 5
+                 || manifest_2d.texture_layer_count != 2)
+                    result.diagnostics.emplace_back(
+                        "Texture2D providers must declare samplers and per-slot bindless layer-table dependencies");
+
+                const std::vector<FixedDescriptorEntry> descriptors =
+                    Build3DDescriptorsFromDefinition(MaterialDefinition{}, manifest_2d);
+                bool has_layer_table = false;
+                for (const auto &entry : descriptors)
+                {
+                    if (entry.semantic == DescriptorSemantic::MaterialTextureLayerTable
+                     && entry.name
+                     && std::strcmp(entry.name, "mtl_texture_layer_rows") == 0)
+                    {
+                        has_layer_table = true;
+                        break;
+                    }
+                }
+                if (!has_layer_table)
+                    result.diagnostics.emplace_back(
+                        "Texture2D bindless providers must emit the layer-table descriptor");
+            }
+
+            const GLSLCodeModuleID roots_array[] = {pbr_array->id, ntb_array->id};
+            ShaderResourceManifest manifest_array{};
+            if (!BuildShaderResourceManifest(
+                    roots_array, uint32_t(std::size(roots_array)), manifest_array, &registry))
+            {
+                result.diagnostics.emplace_back(
+                    std::string("Texture2DArray provider manifest failed: ")
+                    + GetShaderResourceManifestErrorName(manifest_array.error));
+            }
+            else
+            {
+                if (manifest_array.ssbo_count != 1
+                 || manifest_array.texture_count != 5
+                 || manifest_array.texture_layer_count != 1
+                 || manifest_array.texture_layers[0].slot != TextureSlot::Custom0)
+                    result.diagnostics.emplace_back(
+                        "Texture2DArray providers must declare sampler and Custom0 layer resources");
+
+                for (uint32_t i = 0; i < manifest_array.texture_count; ++i)
+                {
+                    if (!manifest_array.textures[i].glsl_type
+                     || std::strcmp(
+                            manifest_array.textures[i].glsl_type,
+                            "sampler2DArray") != 0)
+                    {
+                        result.diagnostics.emplace_back(
+                            "Texture2DArray provider samplers must retain sampler2DArray type");
+                        break;
+                    }
+                }
+
+                const std::vector<FixedDescriptorEntry> descriptors =
+                    Build3DDescriptorsFromDefinition(MaterialDefinition{}, manifest_array);
+                bool has_layer_table = false;
+                for (const auto &entry : descriptors)
+                {
+                    if (entry.semantic == DescriptorSemantic::MaterialTextureLayerTable
+                     && entry.name
+                     && std::strcmp(entry.name, "mtl_texture_layer_rows") == 0)
+                    {
+                        has_layer_table = true;
+                        break;
+                    }
+                }
+                if (!has_layer_table)
+                    result.diagnostics.emplace_back(
+                        "Texture2DArray provider layer dependency must emit the layer-table descriptor");
+            }
+
+            const GLSLCodeModuleID derivative_root = ntb_derivative->id;
+            ShaderResourceManifest derivative_manifest{};
+            if (!BuildShaderResourceManifest(
+                    &derivative_root, 1, derivative_manifest, &registry)
+             || derivative_manifest.texture_count != 1
+             || derivative_manifest.textures[0].slot != TextureSlot::Normal
+             || derivative_manifest.texture_layer_count != 1)
+               result.diagnostics.emplace_back(
+                   "Derivative normal-map provider must declare its sampler and bindless layer-table dependency");
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunGLSLCodeModuleFileCase()
     {
         GateResult result;
@@ -2298,14 +2472,14 @@ namespace
             result.diagnostics.emplace_back("LoadDirectory failed to scan directory");
         else
         {
-            if (file_count != 60)
-                result.diagnostics.emplace_back("LoadDirectory expected 60 file modules, got "
+            if (file_count != 64)
+                result.diagnostics.emplace_back("LoadDirectory expected 64 file modules, got "
                     + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 60 + int(GLSLCodeModuleID::RANGE_SIZE);
+            const int expected_count = 64 + int(GLSLCodeModuleID::RANGE_SIZE);
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
@@ -2356,11 +2530,11 @@ namespace
         int dup_errors = 0;
         if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()), &dup_count, &dup_errors))
             result.diagnostics.emplace_back("second LoadDirectory failed");
-        else if (dup_count != 0 || dup_errors != 60)
-            result.diagnostics.emplace_back("second LoadDirectory must report 60 duplicates, got files="
+        else if (dup_count != 0 || dup_errors != 64)
+            result.diagnostics.emplace_back("second LoadDirectory must report 64 duplicates, got files="
                 + std::to_string(dup_count) + " errors=" + std::to_string(dup_errors));
 
-        const int stable_count = 60 + int(GLSLCodeModuleID::RANGE_SIZE);
+        const int stable_count = 64 + int(GLSLCodeModuleID::RANGE_SIZE);
         if (registry.GetCount() != stable_count)
             result.diagnostics.emplace_back("registry count changed after duplicate re-scan: got "
                 + std::to_string(registry.GetCount()));
@@ -3434,6 +3608,7 @@ int main()
     results.push_back(RunFallbackInferenceCase());
     results.push_back(RunGLSLCodeModuleRegistryCase());
     results.push_back(RunShaderResourceManifestCase());
+    results.push_back(RunProviderResourceManifestCase());
     results.push_back(RunGLSLCodeModuleFileCase());
     results.push_back(RunCapabilityResolverCase());
     results.push_back(RunMaterialVertexABICharacterizationCase());

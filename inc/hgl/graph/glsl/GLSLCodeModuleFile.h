@@ -3,6 +3,7 @@
 #include <hgl/graph/glsl/GLSLCodeModule.h>
 #include <hgl/type/String.h>
 #include <hgl/type/StringList.h>
+#include <hgl/type/ManagedArray.h>
 #include <hgl/type/ValueArray.h>
 
 namespace hgl::graph::mtl
@@ -27,7 +28,9 @@ namespace hgl::graph::mtl
         InvalidSemantic,
         InvalidSource,
         InvalidNumericClass,
-        InvalidNumber
+        InvalidNumber,
+        InvalidResource,
+        InvalidStage
     };
 
     const char *GetGLSLCodeModuleParseResultName(GLSLCodeModuleParseResult result) noexcept;
@@ -52,6 +55,13 @@ namespace hgl::graph::mtl
         ValueArray<GLSLCodeModuleSemanticRequirement> semantic_requirements;
         ValueArray<GLSLCodeModuleSemantic> semantic_provides;
         ValueArray<GLSLCodeModuleID> code_module_requirements;
+        ValueArray<GLSLCodeModuleUBORequirement> ubo_requirements;
+        ValueArray<GLSLCodeModuleSSBORequirement> ssbo_requirements;
+        ValueArray<GLSLCodeModuleTextureRequirement> texture_requirements;
+        ValueArray<GLSLCodeModuleTextureLayerRequirement> texture_layer_requirements;
+        ManagedArray<AnsiString> ssbo_name_storage;
+        ManagedArray<AnsiString> texture_name_storage;
+        ManagedArray<AnsiString> texture_type_storage;
 
         GLSLCodeModuleKind kind = GLSLCodeModuleKind::Shared;
         int32 priority = 0;
@@ -66,7 +76,8 @@ namespace hgl::graph::mtl
      * @param content      NUL-terminated file content.
      * @param content_size Byte count of content (excluding trailing NUL).
      * @param out_data     Receives parsed name/kind/priority/flags,
-     *                     semantic requirements/provides and `uses` list.
+     *                     semantic/resource requirements, including
+     *                     `texture_layer <slot> <stage> [policy]`, and `uses` list.
      *                     glsl_code is NOT assigned here; the caller owns the
      *                     content and should copy it into out_data.glsl_code.
      */

@@ -138,10 +138,13 @@ inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, cons
 
 inline bool Build2DShaderResourceManifest(
     const MaterialDefinition &definition,
-    ShaderResourceManifest &manifest)
+    ShaderResourceManifest &manifest,
+    const GLSLCodeModuleID *provider_roots = nullptr,
+    const uint32 provider_root_count = 0,
+    const GLSLCodeModuleRegistry *registry = nullptr)
 {
     return descriptor_builder_common::BuildDefinitionShaderResourceManifest(
-        definition, manifest);
+        definition, manifest, provider_roots, provider_root_count, registry);
 }
 
 inline std::vector<FixedDescriptorEntry> Build2DDescriptorsFromDefinition(
@@ -152,8 +155,11 @@ inline std::vector<FixedDescriptorEntry> Build2DDescriptorsFromDefinition(
     PushBaseDescriptorEntries(descriptors, p);
     descriptor_builder_common::AppendManifestUBODescriptors(descriptors, manifest);
     if (!descriptor_builder_common::AppendManifestSSBODescriptors(descriptors, manifest)
-     || !descriptor_builder_common::AppendManifestTextureDescriptors(descriptors, manifest))
+     || !descriptor_builder_common::AppendManifestTextureDescriptors(descriptors, manifest)
+     || !descriptor_builder_common::AppendManifestTextureLayerDescriptors(descriptors, manifest))
         return {};
+    descriptor_builder_common::EnsureMaterialDataIndexTable(
+        descriptors, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
 
     return descriptors;
 }

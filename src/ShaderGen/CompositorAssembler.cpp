@@ -51,6 +51,29 @@ namespace hgl::graph
             }
         }
 
+        if (surface == SurfaceType::Sky)
+        {
+            switch (pass)
+            {
+            case PassType::ForwardOpaque:
+            case PassType::ForwardMasked:
+            case PassType::ForwardTransparent:
+            case PassType::ForwardDither:
+            case PassType::ForwardA2C:
+                return shader_lib_path_ + "/compositor/main_forward_sky.frag.glsl";
+
+            case PassType::ShadowOpaque:
+            case PassType::ShadowMasked:
+            case PassType::EarlyZSolid:
+            case PassType::EarlyZMasked:
+            case PassType::VBufferID:
+                return {};
+
+            default:
+                return shader_lib_path_ + "/compositor/main_forward_sky.frag.glsl";
+            }
+        }
+
         // 非 Unlit 走 Lit 路径
         switch (pass)
         {
@@ -117,6 +140,14 @@ namespace hgl::graph
         }
         if (module_options.dither)
             defines += "#define HGL_ALPHA_DITHER 1\n";
+        if (module_options.enable_material_source_provider)
+            defines += "#define HGL_USE_MATERIAL_SOURCE_PROVIDER 1\n";
+        else
+            defines += "#define HGL_USE_MATERIAL_SOURCE_PROVIDER 0\n";
+        if (module_options.enable_ntb_provider)
+            defines += "#define HGL_USE_NTB_PROVIDER 1\n";
+        else
+            defines += "#define HGL_USE_NTB_PROVIDER 0\n";
 
         // Metadata/comments may precede #version in file-backed templates, but
         // GLSL requires #version to be the first preprocessing token.
@@ -207,6 +238,9 @@ namespace hgl::graph
             module_options.lighting_algorithm_module && module_options.lighting_algorithm_module[0]
                 ? module_options.lighting_algorithm_module
                 : "lighting/forward_pbr.glsl",
+            module_options.material_source_module && module_options.material_source_module[0]
+                ? module_options.material_source_module
+                : "material/pbr_surface_source.glsl",
             module_options.ntb_module && module_options.ntb_module[0]
                 ? module_options.ntb_module
                 : "ntb/ntb_tangent_vbo_normalmap.glsl",
@@ -220,12 +254,13 @@ namespace hgl::graph
             "lighting/direct_cook_torrance_pbr.glsl",
             "lighting/indirect_simple_ambient.glsl",
             "lighting/forward_pbr.glsl",
+            "material/pbr_surface_source.glsl",
             "ntb/ntb_tangent_vbo_normalmap.glsl",
             "compositor/forward_lighting.glsl"
         };
 
         std::string result = source;
-        for (size_t i = 0; i < 6; ++i)
+        for (size_t i = 0; i < 7; ++i)
         {
             const std::string marker =
                 std::string("#include \"") + default_paths[i] + "\"";
@@ -287,6 +322,18 @@ namespace hgl::graph
 
         // 4. 注入 #define
         CompositorModuleOptions effective_options = module_options;
+        const bool is_lit_surface =
+            surface != SurfaceType::Unlit && surface != SurfaceType::Sky;
+        effective_options.enable_material_source_provider =
+            effective_options.enable_material_source_provider
+            || is_lit_surface
+            || (effective_options.material_source_module
+                && effective_options.material_source_module[0]);
+        effective_options.enable_ntb_provider =
+            effective_options.enable_ntb_provider
+            || is_lit_surface
+            || (effective_options.ntb_module
+                && effective_options.ntb_module[0]);
         if (!effective_options.use_resolved_render_state)
         {
             effective_options.alpha_test = effective_options.alpha_test

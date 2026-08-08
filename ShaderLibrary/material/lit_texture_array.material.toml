@@ -16,7 +16,9 @@ projection = "WorldCameraVP"
 
 [fragment]
 source = "compositor/main_forward_lit.frag.glsl"
-surface_module = "surface/lit_texturearray_surface.glsl"
+surface_module = "surface/lit_surface.glsl"
+material_source_module = "material/pbr_texturearray_source.glsl"
+ntb_module = "ntb/ntb_texturearray_normalmap.glsl"
 
 [compositor]
 surface = "Lit"
@@ -29,12 +31,4 @@ varyings = ["emit_data_index_id", "emit_texture_layer_id", "texture_layer_id_use
 
 [resources]
 ubos = ["ViewportInfo", "CameraInfo", "SkyInfo"]
-code_modules = ["SkyLightHeader", "PBRSurface"]
-ssbos = [{ name = "mtl", type = "PBRSurface" }]
-textures = [
-  { slot = "BaseColor", sampler = "Sampler2DArray", required = false },
-  { slot = "Normal", sampler = "Sampler2DArray", required = false },
-  { slot = "Metallic", sampler = "Sampler2DArray", required = false },
-  { slot = "Roughness", sampler = "Sampler2DArray", required = false },
-  { slot = "Occlusion", sampler = "Sampler2DArray", required = false }
-]
+code_modules = ["SkyLightHeader"]

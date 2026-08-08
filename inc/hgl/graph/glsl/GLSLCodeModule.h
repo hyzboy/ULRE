@@ -4,6 +4,7 @@
 #include <hgl/mtl/DescriptorSemantic.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
 #include <hgl/graph/ssbo/TextureSlot.h>
+#include <hgl/type/StrChar.h>
 #include <hgl/util/hash/FNV1a.h>
 
 namespace hgl::graph::mtl
@@ -101,7 +102,18 @@ namespace hgl::graph::mtl
     {
         UBODescriptorSemantic semantic = UBODescriptorSemantic::ViewportInfo;
         uint32 stage_flags = 0;
+        bool required = true;
+        bool allow_fallback = false;
     };
+
+    inline bool operator==(const GLSLCodeModuleUBORequirement &lhs,
+                           const GLSLCodeModuleUBORequirement &rhs) noexcept
+    {
+        return lhs.semantic == rhs.semantic
+            && lhs.stage_flags == rhs.stage_flags
+            && lhs.required == rhs.required
+            && lhs.allow_fallback == rhs.allow_fallback;
+    }
 
     struct GLSLCodeModuleSSBORequirement
     {
@@ -109,7 +121,22 @@ namespace hgl::graph::mtl
         SSBOType ssbo_type = SSBOType::UserDefined;
         uint32 data_slot = 0;
         uint32 stage_flags = 0;
+        bool required = true;
+        bool allow_fallback = false;
     };
+
+    inline bool operator==(const GLSLCodeModuleSSBORequirement &lhs,
+                           const GLSLCodeModuleSSBORequirement &rhs) noexcept
+    {
+        const bool same_name = lhs.name == rhs.name
+            || (lhs.name && rhs.name && hgl::strcmp(lhs.name, rhs.name) == 0);
+        return same_name
+            && lhs.ssbo_type == rhs.ssbo_type
+            && lhs.data_slot == rhs.data_slot
+            && lhs.stage_flags == rhs.stage_flags
+            && lhs.required == rhs.required
+            && lhs.allow_fallback == rhs.allow_fallback;
+    }
 
     struct GLSLCodeModuleTextureRequirement
     {
@@ -119,7 +146,41 @@ namespace hgl::graph::mtl
         TextureSlot slot = TextureSlot::BaseColor;
         uint32 stage_flags = 0;
         bool required = true;
+        bool allow_fallback = false;
     };
+
+    inline bool operator==(const GLSLCodeModuleTextureRequirement &lhs,
+                           const GLSLCodeModuleTextureRequirement &rhs) noexcept
+    {
+        const bool same_name = lhs.name == rhs.name
+            || (lhs.name && rhs.name && hgl::strcmp(lhs.name, rhs.name) == 0);
+        const bool same_glsl_type = lhs.glsl_type == rhs.glsl_type
+            || (lhs.glsl_type && rhs.glsl_type && hgl::strcmp(lhs.glsl_type, rhs.glsl_type) == 0);
+        return same_name
+            && same_glsl_type
+            && lhs.semantic == rhs.semantic
+            && lhs.slot == rhs.slot
+            && lhs.stage_flags == rhs.stage_flags
+            && lhs.required == rhs.required
+            && lhs.allow_fallback == rhs.allow_fallback;
+    }
+
+    struct GLSLCodeModuleTextureLayerRequirement
+    {
+        TextureSlot slot = TextureSlot::Custom0;
+        uint32 stage_flags = 0;
+        bool required = true;
+        bool allow_fallback = false;
+    };
+
+    inline bool operator==(const GLSLCodeModuleTextureLayerRequirement &lhs,
+                           const GLSLCodeModuleTextureLayerRequirement &rhs) noexcept
+    {
+        return lhs.slot == rhs.slot
+            && lhs.stage_flags == rhs.stage_flags
+            && lhs.required == rhs.required
+            && lhs.allow_fallback == rhs.allow_fallback;
+    }
 
     struct GLSLCodeModuleDefinition
     {
@@ -148,12 +209,17 @@ namespace hgl::graph::mtl
         uint32 semantic_provide_count = 0;
         int32 priority = 0;
         uint32 flags = 0;
+
+        const GLSLCodeModuleTextureLayerRequirement *texture_layer_requirements = nullptr;
+        uint32 texture_layer_requirement_count = 0;
     };
 
     const GLSLCodeModuleDefinition *FindGLSLCodeModuleDefinition(GLSLCodeModuleID id) noexcept;
     bool TryGetGLSLCodeModuleIDByName(const char *name, GLSLCodeModuleID &out) noexcept;
     const char *GetGLSLCodeModuleName(GLSLCodeModuleID id) noexcept;
     uint64 GetGLSLCodeModuleDefinitionHash(GLSLCodeModuleID id) noexcept;
+    uint64 GetGLSLCodeModuleDefinitionHash(
+        const GLSLCodeModuleDefinition &definition) noexcept;
 
     inline bool IsValidGLSLCodeModuleDefinition(const GLSLCodeModuleDefinition &definition) noexcept
     {

@@ -72,7 +72,10 @@ inline void PushMaterialColorPalette(std::vector<FixedDescriptorEntry> &v,
 inline void MergeUBODescriptor(
     std::vector<FixedDescriptorEntry> &v,
     const UBODescriptorSemantic semantic,
-    const uint32_t stage_flags)
+    const uint32_t stage_flags,
+    const bool has_policy = false,
+    const bool required = true,
+    const bool allow_fallback = false)
 {
     for (auto &entry : v)
     {
@@ -83,6 +86,12 @@ inline void MergeUBODescriptor(
             continue;
 
         entry.stage_flags |= stage_flags;
+        if (has_policy)
+        {
+            entry.has_requirement_policy = true;
+            entry.required = entry.required || required;
+            entry.allow_fallback = entry.allow_fallback && allow_fallback;
+        }
         return;
     }
 
@@ -100,6 +109,13 @@ inline void MergeUBODescriptor(
     case UBODescriptorSemantic::MaterialColorPalette:
         PushMaterialColorPalette(v, stage_flags);
         break;
+    }
+    if (has_policy && !v.empty())
+    {
+        FixedDescriptorEntry &entry = v.back();
+        entry.has_requirement_policy = true;
+        entry.required = required;
+        entry.allow_fallback = allow_fallback;
     }
 }
 
@@ -163,13 +179,22 @@ inline void PushMaterialDataIndexRows(std::vector<FixedDescriptorEntry> &v, cons
     });
 }
 
-inline void PushMaterialTextureLayerRows(std::vector<FixedDescriptorEntry> &v, const uint32_t stage_flags)
+inline void PushMaterialTextureLayerRows(
+    std::vector<FixedDescriptorEntry> &v,
+    const uint32_t stage_flags,
+    const bool has_policy = false,
+    const bool required = true,
+    const bool allow_fallback = false)
 {
-    v.push_back({
+    FixedDescriptorEntry entry{
         DescriptorSetType::Material, DescriptorKind::SSBO, stage_flags,
         "mtl_texture_layer_rows", "TextureLayerRows", nullptr, DescriptorSemantic::MaterialTextureLayerTable,
         TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO
-    });
+    };
+    entry.has_requirement_policy = has_policy;
+    entry.required = required;
+    entry.allow_fallback = allow_fallback;
+    v.push_back(entry);
 }
 
 inline void PushMaterialSampler(std::vector<FixedDescriptorEntry> &v,
@@ -344,6 +369,9 @@ inline bool PushManifestSSBO(
     entry.ssbo_type = ssbo.ssbo_type;
     entry.ssbo_id = MakeRecipeSSBOId(ssbo.data_slot);
     entry.semantic_layer = DescriptorSemanticLayer::SSBO;
+    entry.has_requirement_policy = true;
+    entry.required = ssbo.required;
+    entry.allow_fallback = ssbo.allow_fallback;
     return MergeSSBODescriptor(v, entry);
 }
 
@@ -363,7 +391,7 @@ inline bool MakeManifestTextureDescriptor(
     out.semantic = texture.semantic;
     out.has_requirement_policy = true;
     out.required = texture.required;
-    out.allow_fallback = !texture.required;
+    out.allow_fallback = texture.allow_fallback;
 
     switch (texture.semantic)
     {
@@ -396,7 +424,8 @@ inline void AppendManifestUBODescriptors(
     for (uint32 i = 0; i < manifest.ubo_count; ++i)
     {
         const auto &ubo = manifest.ubos[i];
-        MergeUBODescriptor(v, ubo.semantic, ubo.stage_flags);
+        MergeUBODescriptor(v, ubo.semantic, ubo.stage_flags, true,
+                           ubo.required, ubo.allow_fallback);
     }
 }
 
@@ -434,11 +463,66 @@ inline bool AppendManifestTextureDescriptors(
     return true;
 }
 
+inline bool AppendManifestTextureLayerDescriptors(
+    std::vector<FixedDescriptorEntry> &v,
+    ShaderResourceManifest &manifest)
+{
+    for (uint32 i = 0; i < manifest.texture_layer_count; ++i)
+    {
+        const auto &layer = manifest.texture_layers[i];
+        FixedDescriptorEntry entry{};
+        entry.set_type = DescriptorSetType::Material;
+        entry.kind = DescriptorKind::SSBO;
+        entry.stage_flags = layer.stage_flags;
+        entry.name = "mtl_texture_layer_rows";
+        entry.struct_name = "TextureLayerRows";
+        entry.semantic = DescriptorSemantic::MaterialTextureLayerTable;
+        entry.semantic_layer = DescriptorSemanticLayer::SSBO;
+        entry.has_requirement_policy = true;
+        entry.required = layer.required;
+        entry.allow_fallback = layer.allow_fallback;
+        if (!MergeSSBODescriptor(v, entry))
+        {
+            manifest.error = ShaderResourceManifestError::ResourceConflict;
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// Provider modules may declare their own "mtl"-style data-slot SSBO purely via
+// manifest metadata (`@ulre ssbo ...`), without the material TOML also listing it
+// under [resources].ssbos. In that case `definition.data_slot_decls` stays empty,
+// so AppendDefinitionMaterialDescriptors() never pushes the mtl_data_index_rows
+// index table — yet ResolveDataIndexID() is still referenced unconditionally by
+// the vertex assembler. Scan the merged descriptor list for any
+// MaterialDataSlotData entry (from either source) and make sure the matching
+// MaterialDataIndexTable entry exists.
+inline void EnsureMaterialDataIndexTable(
+    std::vector<FixedDescriptorEntry> &v,
+    const uint32_t stage_flags)
+{
+    bool has_data_slot = false;
+    bool has_index_table = false;
+    for (const auto &entry : v)
+    {
+        if (entry.semantic == DescriptorSemantic::MaterialDataSlotData)
+            has_data_slot = true;
+        else if (entry.semantic == DescriptorSemantic::MaterialDataIndexTable)
+            has_index_table = true;
+    }
+
+    if (has_data_slot && !has_index_table)
+        PushMaterialDataIndexRows(v, stage_flags);
+}
+
 inline bool BuildDefinitionShaderResourceManifest(
     const MaterialDefinition &definition,
     ShaderResourceManifest &manifest,
     const GLSLCodeModuleID *extra_roots = nullptr,
-    const uint32 extra_root_count = 0)
+    const uint32 extra_root_count = 0,
+    const GLSLCodeModuleRegistry *registry = nullptr)
 {
     GLSLCodeModuleID roots[MaxShaderResourceManifestCodeModules]{};
     uint32 root_count = 0;
@@ -458,7 +542,7 @@ inline bool BuildDefinitionShaderResourceManifest(
         roots[root_count++] = extra_roots[i];
     }
 
-    return BuildShaderResourceManifest(roots, root_count, manifest);
+    return BuildShaderResourceManifest(roots, root_count, manifest, registry);
 }
 
 inline uint64 HashDescriptorEntries(

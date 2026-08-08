@@ -22,6 +22,13 @@
 // 然后调用 SURFACE_FUNCTION_FILE 中的 EvalSurface()。
 // 光照调度统一在 compositor 中完成，surface 只输出材质属性。
 
+#ifndef HGL_USE_MATERIAL_SOURCE_PROVIDER
+#define HGL_USE_MATERIAL_SOURCE_PROVIDER 1
+#endif
+#ifndef HGL_USE_NTB_PROVIDER
+#define HGL_USE_NTB_PROVIDER 1
+#endif
+
 // Scene UBOs
 #include "common/descriptor_macros.glsl"
 #include "ubo/camera_info.glsl"
@@ -38,7 +45,12 @@ SCENE_SKY_UBO;
 #include "lighting/direct_cook_torrance_pbr.glsl"
 #include "lighting/indirect_simple_ambient.glsl"
 #include "lighting/forward_pbr.glsl"
+#if HGL_USE_MATERIAL_SOURCE_PROVIDER
+#include "material/pbr_surface_source.glsl"
+#endif
+#if HGL_USE_NTB_PROVIDER
 #include "ntb/ntb_tangent_vbo_normalmap.glsl"
+#endif
 #include "compositor/forward_lighting.glsl"
 
 // Inputs from VS

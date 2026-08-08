@@ -1,4 +1,5 @@
 #include <hgl/graph/glsl/GLSLCodeModuleFile.h>
+#include <hgl/vk/VK.h>
 
 #include <cstring>
 
@@ -211,6 +212,148 @@ namespace hgl::graph::mtl
                 : mask;
             return true;
         }
+
+        bool ParseStageFlags(const char *token, uint32 &out_flags) noexcept
+        {
+            if (!token || !*token)
+                return false;
+
+            if (ParseUnsignedInt(token, out_flags))
+                return true;
+
+            out_flags = 0;
+            const char *cursor = token;
+            while (*cursor)
+            {
+                const char *separator = std::strchr(cursor, '|');
+                const size_t length = separator
+                    ? size_t(separator - cursor) : std::strlen(cursor);
+                char part[32];
+                if (length == 0 || length >= sizeof(part))
+                    return false;
+                std::memcpy(part, cursor, length);
+                part[length] = 0;
+
+                uint32 bit = 0;
+                if (std::strcmp(part, "Vertex") == 0)
+                    bit = VK_SHADER_STAGE_VERTEX_BIT;
+                else if (std::strcmp(part, "Fragment") == 0)
+                    bit = VK_SHADER_STAGE_FRAGMENT_BIT;
+                else if (std::strcmp(part, "Compute") == 0)
+                    bit = VK_SHADER_STAGE_COMPUTE_BIT;
+                else if (std::strcmp(part, "AllGraphics") == 0)
+                    bit = VK_SHADER_STAGE_ALL_GRAPHICS;
+                else if (std::strcmp(part, "VertexFragment") == 0)
+                    bit = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+                else
+                    return false;
+
+                out_flags |= bit;
+                if (!separator)
+                    break;
+                cursor = separator + 1;
+            }
+
+            return out_flags != 0;
+        }
+
+        bool ParseResourcePolicy(const char *token, bool &required, bool &fallback) noexcept
+        {
+            if (std::strcmp(token, "required") == 0)
+                required = true;
+            else if (std::strcmp(token, "optional") == 0)
+                required = false;
+            else if (std::strcmp(token, "fallback") == 0)
+                fallback = true;
+            else if (std::strcmp(token, "strict") == 0)
+                fallback = false;
+            else
+                return false;
+            return true;
+        }
+
+        bool ParseUBOSemantic(const char *token, UBODescriptorSemantic &out) noexcept
+        {
+            static const char *const names[] =
+            {
+                "ViewportInfo", "CameraInfo", "SkyInfo", "MaterialColorPalette"
+            };
+            for (uint32 i = 0; i < 4; ++i)
+            {
+                if (std::strcmp(token, names[i]) == 0)
+                {
+                    out = static_cast<UBODescriptorSemantic>(i);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool ParseDescriptorSemantic(const char *token, DescriptorSemantic &out) noexcept
+        {
+            static const char *const names[] =
+            {
+                "ViewportInfo", "CameraInfo", "SkyInfo", "SkyCubemapSampler",
+                "MaterialTexture", "MaterialSampler"
+            };
+            static const DescriptorSemantic values[] =
+            {
+                DescriptorSemantic::ViewportInfo, DescriptorSemantic::CameraInfo,
+                DescriptorSemantic::SkyInfo, DescriptorSemantic::SkyCubemapSampler,
+                DescriptorSemantic::MaterialTexture, DescriptorSemantic::MaterialSampler
+            };
+            for (uint32 i = 0; i < 6; ++i)
+            {
+                if (std::strcmp(token, names[i]) == 0)
+                {
+                    out = values[i];
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool ParseSSBOType(const char *token, SSBOType &out) noexcept
+        {
+            for (uint32 i = 0; i < static_cast<uint32>(SSBOType::RANGE_SIZE); ++i)
+            {
+                const SSBOType type = static_cast<SSBOType>(i);
+                if (std::strcmp(token, GetSSBOTypeName(type)) == 0)
+                {
+                    out = type;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool ParseTextureSlot(const char *token, TextureSlot &out) noexcept
+        {
+            static const char *const names[] =
+            {
+                "BaseColor", "Normal", "Metallic", "Roughness", "Emissive",
+                "Occlusion", "OpacityMask", "Height", "Custom0", "Custom1"
+            };
+            for (uint32 i = 0; i < 10; ++i)
+            {
+                if (std::strcmp(token, names[i]) == 0)
+                {
+                    out = static_cast<TextureSlot>(i);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool ParseSamplerType(const char *token) noexcept
+        {
+            return std::strcmp(token, "sampler2D") == 0
+                || std::strcmp(token, "sampler2DArray") == 0
+                || std::strcmp(token, "sampler2DShadow") == 0
+                || std::strcmp(token, "samplerCube") == 0
+                || std::strcmp(token, "samplerCubeArray") == 0
+                || std::strcmp(token, "sampler3D") == 0;
+        }
     }
 
     const char *GetGLSLCodeModuleParseResultName(const GLSLCodeModuleParseResult result) noexcept
@@ -230,6 +373,8 @@ namespace hgl::graph::mtl
             case GLSLCodeModuleParseResult::InvalidSource: return "InvalidSource";
             case GLSLCodeModuleParseResult::InvalidNumericClass: return "InvalidNumericClass";
             case GLSLCodeModuleParseResult::InvalidNumber: return "InvalidNumber";
+            case GLSLCodeModuleParseResult::InvalidResource: return "InvalidResource";
+            case GLSLCodeModuleParseResult::InvalidStage: return "InvalidStage";
             default: return "Unknown";
         }
     }
@@ -333,6 +478,108 @@ namespace hgl::graph::mtl
                     if (!ParseUnsignedInt(token, value))
                         return GLSLCodeModuleParseResult::InvalidNumber;
                     out_data.flags = value;
+                }
+                else if (std::strcmp(token, "ubo") == 0)
+                {
+                    GLSLCodeModuleUBORequirement requirement;
+                    const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
+                    if (!next || !ParseUBOSemantic(token, requirement.semantic))
+                        return GLSLCodeModuleParseResult::InvalidResource;
+                    next = ReadToken(next, line_end, token, sizeof(token));
+                    if (!next || !ParseStageFlags(token, requirement.stage_flags))
+                        return GLSLCodeModuleParseResult::InvalidStage;
+
+                    while ((next = ReadToken(next, line_end, token, sizeof(token))) != nullptr)
+                    {
+                        if (!ParseResourcePolicy(token, requirement.required,
+                                                  requirement.allow_fallback))
+                            return GLSLCodeModuleParseResult::InvalidResource;
+                    }
+                    out_data.ubo_requirements.Add(requirement);
+                }
+                else if (std::strcmp(token, "ssbo") == 0)
+                {
+                    GLSLCodeModuleSSBORequirement requirement;
+                    const int name_index = out_data.ssbo_name_storage.GetCount();
+                    const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
+                    if (!next || !token[0])
+                        return GLSLCodeModuleParseResult::MissingDirectiveArgument;
+                    AnsiString *ssbo_name = out_data.ssbo_name_storage.Create();
+                    if (!ssbo_name)
+                        return GLSLCodeModuleParseResult::InvalidResource;
+                    *ssbo_name = token;
+                    next = ReadToken(next, line_end, token, sizeof(token));
+                    if (!next || !ParseSSBOType(token, requirement.ssbo_type))
+                        return GLSLCodeModuleParseResult::InvalidResource;
+                    next = ReadToken(next, line_end, token, sizeof(token));
+                    if (!next || !ParseUnsignedInt(token, requirement.data_slot))
+                        return GLSLCodeModuleParseResult::InvalidNumber;
+                    next = ReadToken(next, line_end, token, sizeof(token));
+                    if (!next || !ParseStageFlags(token, requirement.stage_flags))
+                        return GLSLCodeModuleParseResult::InvalidStage;
+
+                    while ((next = ReadToken(next, line_end, token, sizeof(token))) != nullptr)
+                    {
+                        if (!ParseResourcePolicy(token, requirement.required,
+                                                  requirement.allow_fallback))
+                            return GLSLCodeModuleParseResult::InvalidResource;
+                    }
+                    (void)name_index;
+                    out_data.ssbo_requirements.Add(requirement);
+                }
+                else if (std::strcmp(token, "texture") == 0)
+                {
+                    GLSLCodeModuleTextureRequirement requirement;
+                    const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
+                    if (!next || !token[0])
+                        return GLSLCodeModuleParseResult::MissingDirectiveArgument;
+                    AnsiString *texture_name = out_data.texture_name_storage.Create();
+                    if (!texture_name)
+                        return GLSLCodeModuleParseResult::InvalidResource;
+                    *texture_name = token;
+
+                    next = ReadToken(next, line_end, token, sizeof(token));
+                    if (!next || !ParseDescriptorSemantic(token, requirement.semantic))
+                        return GLSLCodeModuleParseResult::InvalidResource;
+                    next = ReadToken(next, line_end, token, sizeof(token));
+                    if (!next || !ParseTextureSlot(token, requirement.slot))
+                        return GLSLCodeModuleParseResult::InvalidResource;
+                    next = ReadToken(next, line_end, token, sizeof(token));
+                    if (!next || !ParseSamplerType(token))
+                        return GLSLCodeModuleParseResult::InvalidResource;
+                    AnsiString *texture_type = out_data.texture_type_storage.Create();
+                    if (!texture_type)
+                        return GLSLCodeModuleParseResult::InvalidResource;
+                    *texture_type = token;
+                    next = ReadToken(next, line_end, token, sizeof(token));
+                    if (!next || !ParseStageFlags(token, requirement.stage_flags))
+                        return GLSLCodeModuleParseResult::InvalidStage;
+
+                    while ((next = ReadToken(next, line_end, token, sizeof(token))) != nullptr)
+                    {
+                        if (!ParseResourcePolicy(token, requirement.required,
+                                                  requirement.allow_fallback))
+                            return GLSLCodeModuleParseResult::InvalidResource;
+                    }
+                    out_data.texture_requirements.Add(requirement);
+                }
+                else if (std::strcmp(token, "texture_layer") == 0)
+                {
+                    GLSLCodeModuleTextureLayerRequirement requirement;
+                    const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
+                    if (!next || !ParseTextureSlot(token, requirement.slot))
+                        return GLSLCodeModuleParseResult::InvalidResource;
+                    next = ReadToken(next, line_end, token, sizeof(token));
+                    if (!next || !ParseStageFlags(token, requirement.stage_flags))
+                        return GLSLCodeModuleParseResult::InvalidStage;
+
+                    while ((next = ReadToken(next, line_end, token, sizeof(token))) != nullptr)
+                    {
+                        if (!ParseResourcePolicy(token, requirement.required,
+                                                  requirement.allow_fallback))
+                            return GLSLCodeModuleParseResult::InvalidResource;
+                    }
+                    out_data.texture_layer_requirements.Add(requirement);
                 }
                 else if (std::strcmp(token, "require") == 0)
                 {

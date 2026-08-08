@@ -9,10 +9,11 @@
 #define NTB_VERTEX_ONLY_GLSL
 
 #include "common/ntb_interface.glsl"
+#include "ntb/ntb_orthonormal.glsl"
 
-NTBSpace EvalNTBSpace(SurfaceInput si, uint dataIndex, float normalScale, uint normalTexHandle)
+NTBSpace GetNTB(NTBInput ntb_input)
 {
-    return BuildOrthoNTB(si.worldNormal);
+    return BuildOrthoNTB(ntb_input.surface.worldNormal);
 }
 
 #endif // NTB_VERTEX_ONLY_GLSL

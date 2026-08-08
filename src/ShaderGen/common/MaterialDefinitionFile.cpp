@@ -505,6 +505,22 @@ namespace hgl::graph::mtl
                     out.definition.fragment_surface_module =
                         out.surface_module_storage.c_str();
                 }
+                if (fragment->contains("material_source_module"))
+                {
+                    if (!ReadRequiredString(*fragment, "material_source_module", value))
+                        return false;
+                    out.material_source_module_storage = value.c_str();
+                    out.definition.fragment_material_source_module =
+                        out.material_source_module_storage.c_str();
+                }
+                if (fragment->contains("ntb_module"))
+                {
+                    if (!ReadRequiredString(*fragment, "ntb_module", value))
+                        return false;
+                    out.ntb_module_storage = value.c_str();
+                    out.definition.fragment_ntb_module =
+                        out.ntb_module_storage.c_str();
+                }
             }
             else if (compositor)
             {

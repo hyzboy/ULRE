@@ -58,6 +58,7 @@ namespace
             static const char *const types[] = {nullptr, nullptr, "ivec2", "ivec3", "ivec4"};
             return types[component_count];
         }
+
         if (is_unsigned_integer)
         {
             static const char *const types[] = {nullptr, nullptr, "uvec2", "uvec3", "uvec4"};
@@ -66,6 +67,34 @@ namespace
 
         static const char *const types[] = {nullptr, nullptr, "vec2", "vec3", "vec4"};
         return types[component_count];
+    }
+
+    const GLSLCodeModuleDefinition *FindSelectedProviderModule(
+        const GLSLCodeModuleRegistry &registry,
+        const char *path)
+    {
+        if (!path || !path[0])
+            return nullptr;
+
+        const GLSLCodeModuleDefinition *definition = registry.FindByName(path);
+        if (definition)
+            return definition;
+
+        const char *stem = path;
+        const char *dot = nullptr;
+        for (const char *cursor = path; *cursor; ++cursor)
+        {
+            if (*cursor == '/' || *cursor == '\\')
+            {
+                stem = cursor + 1;
+                dot = nullptr;
+            }
+            else if (*cursor == '.' && !dot)
+                dot = cursor;
+        }
+
+        const AnsiString name = dot ? AnsiString(stem, int(dot - stem)) : AnsiString(stem);
+        return registry.FindByName(name.c_str());
     }
 
     bool BuildResolvedVertexABI(
@@ -231,6 +260,29 @@ namespace
                 vertices.push_back(resolved_abi.vertex_entries[i]);
         }
         ShaderResourceManifest manifest{};
+        GLSLCodeModuleID provider_roots[2]{};
+        uint32 provider_root_count = 0;
+        const GLSLCodeModuleRegistry &module_registry = GetGLSLCodeModuleRegistry();
+        const char *selected_provider_paths[] =
+        {
+            definition.fragment_material_source_module,
+            definition.fragment_ntb_module
+        };
+        for (const char *provider_path : selected_provider_paths)
+        {
+            if (!provider_path || !provider_path[0])
+                continue;
+            const GLSLCodeModuleDefinition *provider =
+                FindSelectedProviderModule(module_registry, provider_path);
+            if (!provider)
+            {
+                GLogError("[ShaderGen] Selected provider has no registered metadata: %s",
+                          provider_path);
+                return nullptr;
+            }
+            if (provider_root_count < 2)
+                provider_roots[provider_root_count++] = provider->id;
+        }
         ShaderProgramLinkSpec resolved_program_link{};
         SkyLightAmbientModel ambient_model = request.override_sky_ambient_model
             ? request.sky_ambient_model : SkyLightAmbientModel::Simple;
@@ -247,7 +299,9 @@ namespace
         }
         if (definition.fragment_program_mode == MaterialFragmentProgramMode::Compositor)
         {
-            if (!Build3DShaderResourceManifest(definition, ambient_model, manifest))
+            if (!Build3DShaderResourceManifest(
+                    definition, ambient_model, manifest,
+                    provider_roots, provider_root_count, &module_registry))
             {
                 GLogError("[ShaderGen] Generic material resource manifest failed: name=%s",
                           definition.definition_name.c_str());
@@ -258,7 +312,9 @@ namespace
         else
         {
             Material2DBuildParams params = Material2DBuildParams::From(request, definition);
-            if (!build2d::Build2DShaderResourceManifest(definition, manifest))
+            if (!build2d::Build2DShaderResourceManifest(
+                    definition, manifest,
+                    provider_roots, provider_root_count, &module_registry))
             {
                 GLogError("[ShaderGen] DirectInclude material resource manifest failed: name=%s",
                           definition.definition_name.c_str());
@@ -298,6 +354,10 @@ namespace
                 "compositor/forward_lighting.glsl";
             compositor_options.lighting_algorithm_module =
                 "lighting/forward_pbr.glsl";
+            compositor_options.material_source_module =
+                definition.fragment_material_source_module;
+            compositor_options.ntb_module =
+                definition.fragment_ntb_module;
         }
 
         const auto assembled = assembler.Assemble(
@@ -696,6 +756,9 @@ bool MergeMaterialDefinitionFile(const MaterialDefinition &legacy,
     out.ubo_requirements = normalized_file.ubo_requirements;
     out.texture_slot_decls = normalized_file.texture_slot_decls;
     out.code_module_requirements = normalized_file.code_module_requirements;
+    out.fragment_material_source_module =
+        normalized_file.fragment_material_source_module;
+    out.fragment_ntb_module = normalized_file.fragment_ntb_module;
     out.compositor_surface = normalized_file.compositor_surface;
     out.compositor_blend = normalized_file.compositor_blend;
     out.compositor_pass = normalized_file.compositor_pass;

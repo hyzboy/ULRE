@@ -4,18 +4,24 @@
 // @ulre priority 0
 // @ulre uses ntb_interface
 // @ulre uses bindless_textures
+// @ulre texture TextureNormal MaterialSampler Normal sampler2D Fragment optional fallback
+// @ulre texture_layer Normal Fragment optional fallback
 // @ulre end
 // NTB Derivative Normal Map — 基于 dFdx / dFdy 屏幕空间偏导推导切线空间并解算法线贴图
 #ifndef NTB_DERIVATIVE_NORMALMAP_GLSL
 #define NTB_DERIVATIVE_NORMALMAP_GLSL
 
 #include "common/ntb_interface.glsl"
+#include "ntb/ntb_orthonormal.glsl"
 #include "common/bindless_textures.glsl"
 
-NTBSpace EvalNTBSpace(SurfaceInput si, uint dataIndex, float normalScale, uint normalTexHandle)
+NTBSpace GetNTB(NTBInput ntb_input)
 {
+    const SurfaceInput si = ntb_input.surface;
     NTBSpace ntb;
     ntb.N = normalize(si.worldNormal);
+    const uint normalTexHandle =
+        GetTextureHandle(si.textureLayerID, TEXTURE_SLOT_NORMAL);
 
     if (normalTexHandle != 0u)
     {
@@ -31,7 +37,8 @@ NTBSpace EvalNTBSpace(SurfaceInput si, uint dataIndex, float normalScale, uint n
 
         vec3 nm = SampleBindless2D(normalTexHandle, si.uv0).xyz * 2.0 - 1.0;
         nm.y = -nm.y;
-        vec3 tangentNormal = normalize(vec3(nm.xy * normalScale, nm.z));
+        vec3 tangentNormal =
+            normalize(vec3(nm.xy * ntb_input.normalScale, nm.z));
 
         mat3 TBN = mat3(T, B, N);
         ntb.N = normalize(TBN * tangentNormal);

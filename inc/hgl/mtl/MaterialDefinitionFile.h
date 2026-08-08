@@ -24,6 +24,8 @@ namespace hgl::graph::mtl
         MaterialDefinition definition;
         AnsiString fragment_source_storage;
         AnsiString surface_module_storage;
+        AnsiString material_source_module_storage;
+        AnsiString ntb_module_storage;
     };
 
     MaterialDefinitionFileParseResult ParseMaterialDefinitionFile(
