@@ -7,6 +7,7 @@
 #include <hgl/shadergen/ShaderCreateInfo.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/shadergen/ShaderArtifactStore.h>
+#include <hgl/shadergen/ShaderSemanticRegistry.h>
 #include <hgl/graph/glsl/GLSLCodeModule.h>
 #include <hgl/graph/glsl/GLSLCodeModuleCapabilityResolver.h>
 #include <hgl/graph/glsl/GLSLCodeModuleFile.h>
@@ -359,6 +360,172 @@ namespace
             if (definition.vertex_semantic_requirements.IsEmpty())
                 result.diagnostics.emplace_back(
                     std::string("empty semantic-only ABI: ") + id);
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
+    static GateResult RunShaderSemanticRegistryCase()
+    {
+        GateResult result;
+        result.name = "L0.shader-semantic-registry";
+
+        ShaderSemanticRegistryValidationResult validation{};
+        if (!ValidateShaderSemanticRegistries(validation))
+        {
+            result.diagnostics.emplace_back(
+                "semantic registry validation failed: error="
+                + std::to_string(static_cast<hgl::uint32>(validation.error))
+                + " first=" + std::to_string(validation.first_index)
+                + " second=" + std::to_string(validation.second_index));
+        }
+
+        if (GetGeometrySemanticInfoCount()
+                != static_cast<hgl::uint32>(VertexSemantic::RANGE_SIZE)
+         || GetInterStageSemanticInfoCount()
+                != static_cast<hgl::uint32>(InterStageSemantic::RANGE_SIZE))
+        {
+            result.diagnostics.emplace_back("semantic registry coverage mismatch");
+        }
+
+        const GeometrySemanticInfo *bitangent =
+            GetGeometrySemanticInfo(VertexSemantic::Bitangent);
+        if (!bitangent
+         || std::strcmp(bitangent->shader_symbol, "Binormal") != 0
+         || bitangent->default_shape.scalar_type
+                != ShaderSemanticScalarType::Float
+         || bitangent->default_shape.component_count != 3)
+        {
+            result.diagnostics.emplace_back(
+                "geometry semantic metadata mismatch");
+        }
+
+        const InterStageSemanticInfo *data_index =
+            GetInterStageSemanticInfo(InterStageSemantic::DataIndexID);
+        const InterStageSemanticInfo *uv1 =
+            GetInterStageSemanticInfo(InterStageSemantic::UV1);
+        const InterStageSemanticInfo *color =
+            GetInterStageSemanticInfo(InterStageSemantic::Color);
+        if (!data_index
+         || data_index->stable_location != 0
+         || data_index->interpolation != InterStageInterpolation::Flat
+         || !uv1
+         || uv1->stable_location != 5
+         || uv1->legacy_packed_order != InvalidLegacyPackedOrder
+         || !color
+         || color->stable_location != 6)
+        {
+            result.diagnostics.emplace_back(
+                "inter-stage stable ABI metadata mismatch");
+        }
+
+        const GeometryVertexFormat geometry{
+            {VertexSemantic::Position, VF_V3F},
+            {VertexSemantic::TexCoord, VF_V2F},
+            {VertexSemantic::Color, VF_V4UN8}
+        };
+        hgl::uint32 location = InvalidShaderSemanticLocation;
+        if (!ResolveCurrentGeometrySemanticLocation(
+                geometry, VertexSemantic::Position, location)
+         || location != 0
+         || !ResolveCurrentGeometrySemanticLocation(
+                geometry, VertexSemantic::TexCoord, location)
+         || location != 1
+         || !ResolveCurrentGeometrySemanticLocation(
+                geometry, VertexSemantic::Color, location)
+         || location != 2
+         || ResolveCurrentGeometrySemanticLocation(
+                geometry, VertexSemantic::Normal, location))
+        {
+            result.diagnostics.emplace_back(
+                "current Geometry attribute-order mapping mismatch");
+        }
+
+        const InterStageSemanticMask lit_semantics =
+            GetInterStageSemanticMask(InterStageSemantic::DataIndexID)
+          | GetInterStageSemanticMask(InterStageSemantic::TextureLayerID)
+          | GetInterStageSemanticMask(InterStageSemantic::WorldPosition)
+          | GetInterStageSemanticMask(InterStageSemantic::WorldNormal)
+          | GetInterStageSemanticMask(InterStageSemantic::UV0);
+        if (!ResolveLegacyPackedInterStageSemanticLocation(
+                lit_semantics, InterStageSemantic::DataIndexID, location)
+         || location != 0
+         || !ResolveLegacyPackedInterStageSemanticLocation(
+                lit_semantics, InterStageSemantic::TextureLayerID, location)
+         || location != 1
+         || !ResolveLegacyPackedInterStageSemanticLocation(
+                lit_semantics, InterStageSemantic::WorldPosition, location)
+         || location != 2
+         || !ResolveLegacyPackedInterStageSemanticLocation(
+                lit_semantics, InterStageSemantic::WorldNormal, location)
+         || location != 3
+         || !ResolveLegacyPackedInterStageSemanticLocation(
+                lit_semantics, InterStageSemantic::UV0, location)
+         || location != 4)
+        {
+            result.diagnostics.emplace_back(
+                "legacy packed lit varying mapping mismatch");
+        }
+
+        const InterStageSemanticMask color_semantics =
+            GetInterStageSemanticMask(InterStageSemantic::Color);
+        if (!ResolveLegacyPackedInterStageSemanticLocation(
+                color_semantics, InterStageSemantic::Color, location)
+         || location != 0
+         || ResolveLegacyPackedInterStageSemanticLocation(
+                color_semantics, InterStageSemantic::UV1, location))
+        {
+            result.diagnostics.emplace_back(
+                "legacy packed sparse varying mapping mismatch");
+        }
+
+        VertexVaryingConfig lit_varying{};
+        lit_varying.emit_data_index_id = true;
+        lit_varying.emit_texture_layer_id = true;
+        lit_varying.emit_world_pos = true;
+        lit_varying.emit_world_normal = true;
+        lit_varying.emit_uv0 = true;
+        const std::string lit_vs = GenerateVertexShader(
+            MakeDefault3DNodeConfig(),
+            lit_varying,
+            VK_FORMAT_R32G32B32_SFLOAT,
+            {},
+            GetShaderLibraryPath());
+        if (lit_vs.find(
+                "layout(location=0) flat out uint fragDataIndexID;")
+                == std::string::npos
+         || lit_vs.find(
+                "layout(location=1) flat out uint fragTextureLayerID;")
+                == std::string::npos
+         || lit_vs.find("layout(location=2) out vec3 fragWorldPos;")
+                == std::string::npos
+         || lit_vs.find("layout(location=3) out vec3 fragWorldNormal;")
+                == std::string::npos
+         || lit_vs.find("layout(location=4) out vec2 fragUV0;")
+                == std::string::npos)
+        {
+            result.diagnostics.emplace_back(
+                "legacy generated lit varying ABI changed");
+        }
+
+        VertexVaryingConfig color_varying{};
+        color_varying.emit_vertex_color = true;
+        const std::string color_vs = GenerateVertexShader(
+            MakeDefault3DNodeConfig(),
+            color_varying,
+            VK_FORMAT_R32G32B32_SFLOAT,
+            {},
+            GetShaderLibraryPath());
+        if (color_vs.find(
+                "layout(location=0) out vec4 fragVertexColor;")
+                == std::string::npos
+         || color_vs.find(
+                "layout(location=6) out vec4 fragVertexColor;")
+                != std::string::npos)
+        {
+            result.diagnostics.emplace_back(
+                "legacy generated vertex-color ABI changed");
         }
 
         result.passed = result.diagnostics.empty();
@@ -3686,6 +3853,7 @@ int main(const int argc, char **argv)
     if (run_glsl) results.push_back(RunProviderResourceManifestCase());
     if (run_glsl) results.push_back(RunGLSLCodeModuleFileCase());
     if (run_glsl) results.push_back(RunCapabilityResolverCase());
+    if (run_interface) results.push_back(RunShaderSemanticRegistryCase());
     if (run_interface) results.push_back(RunMaterialVertexABICharacterizationCase());
     if (run_interface) results.push_back(RunMaterialSemanticABIParityCase());
     if (run_interface) results.push_back(RunMaterialSemanticResolverPreviewCase());
