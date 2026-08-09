@@ -1972,6 +1972,15 @@ generated_source_digest
 
 ### Phase K：移除过渡路径
 
+当前安全清理状态：
+
+- 已删除 DirectInclude 模式、旧 `program_mode` TOML 字段和旧 fragment source 兼容别名。
+- 已删除重复 Lit/Unlit Forward skeleton、对应旧 Surface 模块和旧 PureColor fragment。
+- 已删除 `FixedMaterialDef` 核心编译入口，统一使用 `MaterialCompilerInput`。
+- 已删除公开 migration 切换、生产 Shadow 对照分支和多 cache namespace。
+- `MaterialVertexVaryingConfig` 与 `CompositorAssembler` 仍是当前生产生成链依赖；必须先用
+  canonical ShaderInterface/module assembly 完整替代，不能仅为清理目标强制删除。
+
 目标：
 
 - 删除旧 Varying bool 配置。

@@ -9,15 +9,10 @@
 #include <hgl/shadergen/MaterialCoverageContract.h>
 #include <hgl/shadergen/ShaderProgramBuildSpec.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
-#include <hgl/shadergen/ResolvedModuleGraphBuilder.h>
-#include <hgl/shadergen/ShadowShaderContractBuilder.h>
-#include <hgl/shadergen/ShadowShaderKeyBuilder.h>
-#include <hgl/shadergen/ShadowResourceAcquirePlanBuilder.h>
 #include <hgl/shadergen/ShaderKeyUtility.h>
 #include <hgl/shadergen/EffectiveMaterialProgramBuilder.h>
 #include <hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
 #include <hgl/log/Log.h>
-#include "2d/Build2DCommon.h"
 #include "3d/DefinitionDescriptorBuilder3D.h"
 #include "common/VertexShaderAssembler.h"
 #include "common/VertexBuilderCommon.h"
@@ -397,31 +392,15 @@ namespace
                 definition.definition_name.c_str());
             return nullptr;
         }
-        if (definition.fragment_program_mode == MaterialFragmentProgramMode::Compositor)
+        if (!Build3DShaderResourceManifest(
+                manifest_definition, ambient_model, manifest,
+                provider_roots, provider_root_count, &module_registry))
         {
-            if (!Build3DShaderResourceManifest(
-                    manifest_definition, ambient_model, manifest,
-                    provider_roots, provider_root_count, &module_registry))
-            {
-                GLogError("[ShaderGen] Generic material resource manifest failed: name=%s",
-                          definition.definition_name.c_str());
-                return nullptr;
-            }
-            descriptors = Build3DDescriptorsFromDefinition(definition, manifest);
+            GLogError("[ShaderGen] Generic material resource manifest failed: name=%s",
+                      definition.definition_name.c_str());
+            return nullptr;
         }
-        else
-        {
-            Material2DBuildParams params = Material2DBuildParams::From(request, definition);
-            if (!build2d::Build2DShaderResourceManifest(
-                    manifest_definition, manifest,
-                    provider_roots, provider_root_count, &module_registry))
-            {
-                GLogError("[ShaderGen] DirectInclude material resource manifest failed: name=%s",
-                          definition.definition_name.c_str());
-                return nullptr;
-            }
-            descriptors = build2d::Build2DDescriptorsFromDefinition(params, manifest);
-        }
+        descriptors = Build3DDescriptorsFromDefinition(definition, manifest);
         if (depth_purpose)
         {
             descriptors.erase(
@@ -520,32 +499,29 @@ namespace
         compositor_options.fragment_inputs = &stage_interface;
         compositor_options.output_contract = &output_contract;
         compositor_options.coverage_contract = &coverage_contract;
-        if (definition.fragment_program_mode == MaterialFragmentProgramMode::Compositor)
-        {
-            const bool use_scene_lighting =
-                definition.compositor_surface != SurfaceType::Unlit
-             && definition.compositor_surface != SurfaceType::Sky;
-            compositor_options.enable_scene_lighting =
-                use_scene_lighting;
-            compositor_options.sky_module = use_scene_lighting
-                ? ambient_model == SkyLightAmbientModel::CubeMap
-                 || ambient_model == SkyLightAmbientModel::IBL
-                    ? "sky/sky_cubemap.glsl"
-                    : "sky/sky_atmosphere.glsl"
-                : nullptr;
-            compositor_options.forward_lighting_module =
-                use_scene_lighting
-                    ? "compositor/forward_lighting.glsl"
-                    : "compositor/flat_lighting.glsl";
-            compositor_options.lighting_algorithm_module =
-                use_scene_lighting
-                    ? "lighting/forward_pbr.glsl"
-                    : "lighting/forward_flat.glsl";
-            compositor_options.material_source_module =
-                definition.fragment_material_source_module;
-            compositor_options.ntb_module =
-                definition.fragment_ntb_module;
-        }
+        const bool use_scene_lighting =
+            definition.compositor_surface != SurfaceType::Unlit
+         && definition.compositor_surface != SurfaceType::Sky;
+        compositor_options.enable_scene_lighting =
+            use_scene_lighting;
+        compositor_options.sky_module = use_scene_lighting
+            ? ambient_model == SkyLightAmbientModel::CubeMap
+             || ambient_model == SkyLightAmbientModel::IBL
+                ? "sky/sky_cubemap.glsl"
+                : "sky/sky_atmosphere.glsl"
+            : nullptr;
+        compositor_options.forward_lighting_module =
+            use_scene_lighting
+                ? "compositor/forward_lighting.glsl"
+                : "compositor/flat_lighting.glsl";
+        compositor_options.lighting_algorithm_module =
+            use_scene_lighting
+                ? "lighting/forward_pbr.glsl"
+                : "lighting/forward_flat.glsl";
+        compositor_options.material_source_module =
+            definition.fragment_material_source_module;
+        compositor_options.ntb_module =
+            definition.fragment_ntb_module;
 
         PassType effective_pass = definition.compositor_pass;
         const char *effective_fragment_source =
@@ -583,7 +559,7 @@ namespace
         }
         const std::string fs = assembled.fragment_glsl;
 
-        FixedMaterialDef fixed_definition{
+        MaterialCompilerInput compiler_input{
             definition.definition_name.c_str(),
             request.primitive_type,
             vertices.data(), static_cast<uint32>(vertices.size()),
@@ -679,7 +655,8 @@ namespace
                 : definition.data_slot_decls.empty()
                     ? nullptr : &definition.data_slot_decls;
         config.generate_only = request.generate_only;
-        ShaderProgramBuildSpec *result = CompileCompositorMaterial(profile, fixed_definition, vs, fs, config);
+        ShaderProgramBuildSpec *result = CompileCompositorMaterial(
+            profile, compiler_input, vs, fs, config);
         if (!result)
             GLogError("[ShaderGen] Generic material compilation failed: name=%s",
                       definition.definition_name.c_str());
@@ -938,7 +915,6 @@ bool BuildResolvedMaterialVertexABI(
 void RegisterMaterialDefinition(const MaterialDefinition &bmi)
 {
     MaterialDefinition normalized = bmi;
-    NormalizeMaterialFragmentSource(normalized);
     if (normalized.definition_id.empty()
      || normalized.source_kind != MaterialDefinitionSourceKind::BuiltIn
      || !IsBootstrapMaterialDefinition(normalized))
@@ -962,7 +938,6 @@ void RegisterMaterialDefinition(const MaterialDefinition &bmi)
 void RegisterMaterialDefinition(const BuiltinMaterialCreatorID preset, const MaterialDefinition &bmi)
 {
     MaterialDefinition normalized = bmi;
-    NormalizeMaterialFragmentSource(normalized);
     if (normalized.definition_id.empty()
      || !IsBootstrapMaterialDefinition(normalized))
         return;
@@ -1094,8 +1069,6 @@ bool MergeMaterialDefinitionFile(const MaterialDefinition &legacy,
 {
     MaterialDefinition normalized_legacy = legacy;
     MaterialDefinition normalized_file = file;
-    NormalizeMaterialFragmentSource(normalized_legacy);
-    NormalizeMaterialFragmentSource(normalized_file);
 
     if (IsBootstrapMaterialDefinition(normalized_legacy)
      || normalized_file.source_kind != MaterialDefinitionSourceKind::File)
@@ -1107,7 +1080,6 @@ bool MergeMaterialDefinitionFile(const MaterialDefinition &legacy,
     out.source_kind = MaterialDefinitionSourceKind::File;
     out.usage_tag = normalized_file.usage_tag;
     out.bootstrap_kind = normalized_file.bootstrap_kind;
-    out.fragment_program_mode = normalized_file.fragment_program_mode;
     out.vertex_provider_policy = normalized_file.vertex_provider_policy;
     out.vertex_semantic_requirements = normalized_file.vertex_semantic_requirements;
     out.transform_graph = normalized_file.transform_graph;
@@ -1135,7 +1107,6 @@ bool MergeMaterialDefinitionFile(const MaterialDefinition &legacy,
         ? normalized_file.fragment_source : normalized_legacy.fragment_source;
     out.fragment_surface_module = normalized_file.fragment_surface_module
         ? normalized_file.fragment_surface_module : normalized_legacy.fragment_surface_module;
-    NormalizeMaterialFragmentSource(out);
     return true;
 }
 
@@ -1155,130 +1126,9 @@ ShaderProgramBuildSpec *CreateMaterialFromDefinition(
     const MaterialDefinitionBuildRequest &request)
 {
     MaterialDefinition canonical_definition = definition;
-    NormalizeMaterialFragmentSource(canonical_definition);
-
-    if (request.migration.implementation_path
-        == ShaderGenImplementationPath::Contract)
-    {
-        ShaderGenDiagnosticEvent event{};
-        event.kind =
-            ShaderGenDiagnosticEventKind::ContractPathUnavailable;
-        ReportShaderGenDiagnostic(request.migration, event);
-        GLogError(
-            "[ShaderGen] Contract implementation path is not enabled yet: material=%s",
-            canonical_definition.definition_id.c_str());
-        return nullptr;
-    }
-
-    // Shadow intentionally keeps Legacy authoritative. It observes the exact
-    // request-effective Legacy result and never changes shader output.
-    const bool shadow_mode = request.migration.implementation_path
-        == ShaderGenImplementationPath::Shadow;
-    ResolvedModuleGraph shadow_graph{};
-    bool shadow_graph_built = false;
-    if (shadow_mode)
-    {
-        ResolvedModuleGraphBuildDiagnostic diagnostic{};
-        shadow_graph_built = BuildMaterialResolvedModuleGraph(
-            canonical_definition,
-            GetGLSLCodeModuleRegistry(),
-            shadow_graph,
-            diagnostic,
-            &request);
-
-        ShaderGenDiagnosticEvent event{};
-        event.kind = shadow_graph_built
-            ? ShaderGenDiagnosticEventKind::ShadowModuleGraphBuilt
-            : ShaderGenDiagnosticEventKind::ShadowModuleGraphFailed;
-        event.contract_digest = shadow_graph_built
-            ? GetResolvedModuleGraphHash(shadow_graph) : 0;
-        ReportShaderGenDiagnostic(request.migration, event);
-
-    }
 
     ShaderProgramBuildSpec *result =
         BuildGenericMaterial(profile, request, canonical_definition);
-    if (shadow_mode && shadow_graph_built && result)
-    {
-        ShadowShaderContracts contracts{};
-        ShadowShaderContractBuildDiagnostic diagnostic{};
-        const bool contracts_built = BuildShadowShaderContracts(
-            canonical_definition,
-            request,
-            shadow_graph,
-            *result,
-            contracts,
-            diagnostic);
-
-        ShaderGenDiagnosticEvent event{};
-        event.kind = contracts_built
-            ? ShaderGenDiagnosticEventKind::ShadowShaderContractBuilt
-            : ShaderGenDiagnosticEventKind::ShadowShaderContractFailed;
-        if (contracts_built)
-        {
-            uint64 hash = hgl::hash::FNV1aInit<uint64>();
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash,
-                GetShaderInterfaceContractHash(
-                    contracts.shader_interface));
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash,
-                GetOutputContractHash(contracts.output));
-            event.contract_digest = hash;
-        }
-        ReportShaderGenDiagnostic(request.migration, event);
-
-        if (contracts_built)
-        {
-            ShadowShaderKeys keys{};
-            ShadowShaderKeyBuildDiagnostic key_diagnostic{};
-            const bool keys_built = BuildShadowShaderKeys(
-                profile,
-                canonical_definition,
-                request,
-                shadow_graph,
-                contracts,
-                *result,
-                keys,
-                key_diagnostic);
-
-            ShaderGenDiagnosticEvent key_event{};
-            key_event.kind = keys_built
-                ? ShaderGenDiagnosticEventKind::ShadowShaderKeysBuilt
-                : ShaderGenDiagnosticEventKind::ShadowShaderKeysFailed;
-            key_event.contract_digest = keys_built
-                ? GetShaderProgramArtifactMetadataHash(
-                    keys.program_metadata)
-                : 0;
-            ReportShaderGenDiagnostic(request.migration, key_event);
-
-            if (keys_built)
-            {
-                ResourceAcquirePlan resource_plan{};
-                ShadowResourcePlanSummary summary{};
-                ShadowResourcePlanDiagnostic plan_diagnostic{};
-                const bool plan_built = BuildShadowResourceAcquirePlan(
-                    request.recipe,
-                    GetGLSLCodeModuleRegistry(),
-                    shadow_graph,
-                    contracts.shader_interface,
-                    keys.effective_program,
-                    resource_plan,
-                    summary,
-                    plan_diagnostic);
-
-                ShaderGenDiagnosticEvent plan_event{};
-                plan_event.kind = plan_built
-                    ? ShaderGenDiagnosticEventKind::ShadowResourcePlanBuilt
-                    : ShaderGenDiagnosticEventKind::ShadowResourcePlanFailed;
-                plan_event.contract_digest = plan_built
-                    ? GetResourceAcquirePlanHash(resource_plan) : 0;
-                ReportShaderGenDiagnostic(
-                    request.migration, plan_event);
-            }
-        }
-    }
-
     return result;
 }
 

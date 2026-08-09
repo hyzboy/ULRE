@@ -4,7 +4,6 @@ name = "DebugNormalColor"
 source = "file"
 usage = "Debug"
 bootstrap = "None"
-program_mode = "Compositor"
 provider_policy = "GeometryOnly"
 
 [transform]

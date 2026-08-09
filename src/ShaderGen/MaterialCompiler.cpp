@@ -1,4 +1,4 @@
-/// MaterialCompiler.cpp — FixedMaterialDef → ShaderProgramBuildSpec 编译器实现
+/// MaterialCompiler.cpp — canonical material input compiler
 ///
 /// 流程：
 ///   1. 从 FixedDescriptorEntry[] 构建 MaterialDescriptorInfo（描述符布局）
@@ -301,7 +301,7 @@ static bool ValidateDefinitionCapabilitySubset(
 
 ShaderProgramBuildSpec *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
-    const FixedMaterialDef &    def,
+    const MaterialCompilerInput &input,
     const std::string &         vs_glsl,
     const std::string &         fs_glsl,
     const CompositorMaterialBuildConfig &config)
@@ -310,7 +310,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     {
         std::fprintf(stderr,
             "[CompileCompositorMaterial] material=%s: vs_glsl or fs_glsl is empty\n",
-            def.name ? def.name : "<unnamed>");
+            input.debug_name ? input.debug_name : "<unnamed>");
         return nullptr;
     }
 
@@ -319,6 +319,8 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     // ─────────────────────────────────────────────────────────────
 
     const PrimitiveType primitive_type = config.primitive_type;
+    if (input.primitive_type != primitive_type)
+        return nullptr;
     const uint32_t shader_stage_bits = config.shader_stage_flag_bits != 0 ? config.shader_stage_flag_bits : uint32_t(ShaderStage::VertexFragment);
 
     MaterialDescriptorContract base_descriptor_contract{};
@@ -327,8 +329,8 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
         base_descriptor_contract = *config.descriptor_contract;
     }
     else if (!BuildMaterialDescriptorContract(
-                def.descriptor_entries,
-                def.descriptor_entry_count,
+                input.descriptor_entries,
+                input.descriptor_entry_count,
                 base_descriptor_contract))
     {
         return nullptr;
@@ -353,7 +355,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     {
         std::fprintf(stderr,
             "[CompileCompositorMaterial] material=%s failed: %s\n",
-            def.name ? def.name : "<unnamed>",
+            input.debug_name ? input.debug_name : "<unnamed>",
             reason ? reason : "<unknown>");
         delete mci;
         return nullptr;
@@ -599,9 +601,9 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     ShaderCreateInfoVertex *vsc = mci->GetVertexShader();
     if (vsc)
     {
-        for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
+        for (uint32_t i = 0; i < input.vertex_entry_count; ++i)
         {
-            const FixedVertexEntry &entry = def.vertex_entries[i];
+            const FixedVertexEntry &entry = input.vertex_entries[i];
             vsc->AddInput(entry.format, entry.semantic);
         }
     }
@@ -960,7 +962,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     // ─────────────────────────────────────────────────────────────
     // Step 6b: Build MaterialResourceLayout from descriptor entries.
     // When data_slot_decls is provided, material SSBO entries are
-    // generated from it and merged with the rest of def.descriptor_entries.
+    // generated from it and merged with the canonical descriptor entries.
     // ─────────────────────────────────────────────────────────────
 
     MaterialResourceLayout material_resource_layout;
@@ -980,7 +982,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
         {
             std::fprintf(stderr,
                 "[CompileCompositorMaterial][MaterialResourceLayout] material=%s: %s\n",
-                def.name ? def.name : "<unnamed>",
+                input.debug_name ? input.debug_name : "<unnamed>",
                 diag.c_str());
         }
         return FailAfterMci("MaterialResourceLayout validation failed");
@@ -998,7 +1000,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
             {
                 std::fprintf(stderr,
                     "[CompileCompositorMaterial][DefinitionCapability] material=%s: %s\n",
-                    def.name ? def.name : "<unnamed>",
+                    input.debug_name ? input.debug_name : "<unnamed>",
                     diag.c_str());
             }
             return FailAfterMci("Definition capability subset validation failed");

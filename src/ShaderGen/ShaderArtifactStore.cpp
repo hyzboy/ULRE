@@ -17,37 +17,19 @@ namespace hgl::graph::mtl
         }
 
         OSString MakeStageDirectory(
-            const OSString &root,
-            const ShaderArtifactCacheNamespace cache_namespace)
+            const OSString &root)
         {
-            if (!IsValidShaderArtifactCacheNamespace(cache_namespace))
-                return {};
-
             filesystem::Path path(root);
             path /= ToOSString(ShaderArtifactCacheDirectory);
-
-            const char *namespace_directory =
-                GetShaderArtifactCacheNamespaceDirectory(cache_namespace);
-            if (namespace_directory)
-                path /= ToOSString(namespace_directory);
-
             path /= ToOSString(ShaderArtifactStageDirectory);
             return path.ToOSString();
         }
 
         OSString MakeProgramDirectory(
-            const OSString &root,
-            const ShaderArtifactCacheNamespace cache_namespace)
+            const OSString &root)
         {
-            if (!IsValidShaderArtifactCacheNamespace(cache_namespace))
-                return {};
-
             filesystem::Path path(root);
             path /= ToOSString(ShaderArtifactCacheDirectory);
-            const char *namespace_directory =
-                GetShaderArtifactCacheNamespaceDirectory(cache_namespace);
-            if (namespace_directory)
-                path /= ToOSString(namespace_directory);
             path /= ToOSString(ShaderArtifactProgramDirectory);
             return path.ToOSString();
         }
@@ -168,7 +150,7 @@ namespace hgl::graph::mtl
 
     OSString ShaderArtifactStore::GetStagePath(const ShaderStageKey &key) const
     {
-        const OSString directory = MakeStageDirectory(root_path, cache_namespace);
+        const OSString directory = MakeStageDirectory(root_path);
         if (directory.IsEmpty())
             return {};
 
@@ -181,7 +163,7 @@ namespace hgl::graph::mtl
         const ShaderProgramKey &key) const
     {
         const OSString directory =
-            MakeProgramDirectory(root_path, cache_namespace);
+            MakeProgramDirectory(root_path);
         if (directory.IsEmpty())
             return {};
 
@@ -254,7 +236,7 @@ namespace hgl::graph::mtl
          || !IsValidSPVPayload(spv_data, spv_size))
             return false;
 
-        const OSString directory = MakeStageDirectory(root_path, cache_namespace);
+        const OSString directory = MakeStageDirectory(root_path);
         if (directory.IsEmpty())
             return false;
 
@@ -371,7 +353,7 @@ namespace hgl::graph::mtl
             return false;
 
         const OSString directory =
-            MakeProgramDirectory(root_path, cache_namespace);
+            MakeProgramDirectory(root_path);
         if (directory.IsEmpty())
             return false;
         if (!filesystem::IsDirectory(directory)

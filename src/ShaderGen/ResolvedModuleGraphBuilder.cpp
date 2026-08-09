@@ -676,10 +676,7 @@ namespace hgl::graph::mtl
 
         const bool forward_purpose =
             purpose == ShaderProgramPurpose::ForwardColor;
-        const bool forward_compositor =
-            forward_purpose
-         && definition.fragment_program_mode
-                == MaterialFragmentProgramMode::Compositor;
+        const bool forward_compositor = forward_purpose;
         const bool scene_lighting =
             forward_compositor
          && definition.compositor_surface != SurfaceType::Unlit

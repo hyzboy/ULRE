@@ -77,14 +77,6 @@ namespace hgl::graph::mtl
             return true;
         }
 
-        bool ParseMode(const std::string &name, MaterialFragmentProgramMode &out)
-        {
-            if (name == "DirectInclude") out = MaterialFragmentProgramMode::DirectInclude;
-            else if (name == "Compositor") out = MaterialFragmentProgramMode::Compositor;
-            else return false;
-            return true;
-        }
-
         bool ParsePolicy(const std::string &name, MaterialVertexProviderPolicy &out)
         {
             if (name == "Auto") out = MaterialVertexProviderPolicy::Auto;
@@ -513,7 +505,6 @@ namespace hgl::graph::mtl
             std::string source;
             std::string usage;
             std::string bootstrap;
-            std::string mode;
             std::string policy;
 
             if (!ReadRequiredString(root, "id", id)
@@ -521,12 +512,10 @@ namespace hgl::graph::mtl
              || !ReadRequiredString(root, "source", source)
              || !ReadRequiredString(root, "usage", usage)
              || !ReadRequiredString(root, "bootstrap", bootstrap)
-             || !ReadRequiredString(root, "program_mode", mode)
              || !ReadRequiredString(root, "provider_policy", policy)
              || source != "file"
              || !ParseUsage(usage, out.definition.usage_tag)
              || !ParseBootstrap(bootstrap, out.definition.bootstrap_kind)
-             || !ParseMode(mode, out.definition.fragment_program_mode)
              || !ParsePolicy(policy, out.definition.vertex_provider_policy))
                 return false;
 
@@ -582,39 +571,17 @@ namespace hgl::graph::mtl
                         out.ntb_module_storage.c_str();
                 }
             }
-            else if (compositor)
-            {
-                // Compatibility boundary for schema-1 files. New files use
-                // [fragment].source; the old [compositor].fragment spelling
-                // is converted immediately to the canonical field.
-                const char *source_key = compositor->contains("source")
-                    ? "source" : "fragment";
-                if (!ReadRequiredString(*compositor, source_key, value))
-                    return false;
-                out.fragment_source_storage = value.c_str();
-                SetMaterialFragmentSource(
-                    out.definition, out.fragment_source_storage.c_str());
-            }
+            else
+               return false;
 
-            if (out.definition.fragment_program_mode == MaterialFragmentProgramMode::Compositor
-             && (!compositor
+            if (!compositor
               || !ReadRequiredString(*compositor, "surface", value)
               || !ParseSurface(value, out.definition.compositor_surface)
               || !ReadRequiredString(*compositor, "blend", value)
               || !ParseBlend(value, out.definition.compositor_blend)
               || !ReadRequiredString(*compositor, "pass", value)
-              || !ParsePass(value, out.definition.compositor_pass)))
-                return false;
-
-            if (compositor && compositor->contains("surface_module")
-             && !out.definition.fragment_surface_module)
-            {
-                if (!ReadRequiredString(*compositor, "surface_module", value))
-                    return false;
-                out.surface_module_storage = value.c_str();
-                out.definition.fragment_surface_module =
-                    out.surface_module_storage.c_str();
-            }
+              || !ParsePass(value, out.definition.compositor_pass))
+               return false;
 
             if (!out.definition.fragment_source)
                 return false;

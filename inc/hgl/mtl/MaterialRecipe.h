@@ -187,12 +187,6 @@ namespace hgl::graph::mtl
         bool emit_vertex_color_from_palette = false;
     };
 
-    enum class MaterialFragmentProgramMode : uint8
-    {
-        DirectInclude = 0,
-        Compositor
-    };
-
     // BMI 来源标记：区分 built-in 硬编码实现与未来的文件化实现。
     enum class MaterialDefinitionSourceKind : uint8_t
     {
@@ -274,8 +268,7 @@ namespace hgl::graph::mtl
         //
         ValueArray<GLSLCodeModuleSemanticRequirement> vertex_semantic_requirements;
         MaterialVertexProviderPolicy vertex_provider_policy = MaterialVertexProviderPolicy::Auto;
-        // Canonical fragment assembly input. The path names either a raw
-        // DirectInclude source or a Compositor template; assembly is shared.
+        // Canonical fragment assembly input.
         const char *fragment_source = nullptr;
         // Optional surface function include replacement used by compositor
         // templates (and harmless for raw sources without the marker).
@@ -285,11 +278,7 @@ namespace hgl::graph::mtl
         const char *fragment_material_source_module = nullptr;
         // Optional NTB provider include used by lit compositor templates.
         const char *fragment_ntb_module = nullptr;
-        // Compatibility-only spelling. Boundary code normalizes this into
-        // fragment_source; runtime assembly must use the canonical field.
-        const char *fragment_program_module = nullptr;
         MaterialVertexVaryingConfig vertex_varying;
-        MaterialFragmentProgramMode fragment_program_mode = MaterialFragmentProgramMode::Compositor;
         SurfaceType compositor_surface = SurfaceType::Unlit;
         BlendMode compositor_blend = BlendMode::Opaque;
         PassType compositor_pass = PassType::ForwardOpaque;
@@ -301,18 +290,6 @@ namespace hgl::graph::mtl
         const char *source)
     {
         definition.fragment_source = source;
-        // Keep the legacy ABI field populated for callers that still inspect
-        // it, while all engine code consumes fragment_source.
-        definition.fragment_program_module = source;
-    }
-
-    inline void NormalizeMaterialFragmentSource(
-        MaterialDefinition &definition)
-    {
-        if (!definition.fragment_source && definition.fragment_program_module)
-            definition.fragment_source = definition.fragment_program_module;
-        if (!definition.fragment_program_module && definition.fragment_source)
-            definition.fragment_program_module = definition.fragment_source;
     }
 
     inline void ConfigureMaterialVertexSemanticContract(

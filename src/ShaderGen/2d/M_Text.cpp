@@ -1,9 +1,5 @@
-#include"Build2DCommon.h"
-#include<hgl/shadergen/ShaderProgramBuildSpec.h>
-#include<hgl/shadergen/MaterialCompiler.h>
-#include<hgl/log/Log.h>
+#include <hgl/mtl/MaterialLibrary.h>
 #include<hgl/mtl/SamplerName.h>
-#include "../common/VertexShaderAssembler.h"
 
 namespace hgl::graph::mtl{
 namespace
@@ -27,7 +23,6 @@ namespace
         varying.emit_uv0 = true;
         SetMaterialFragmentSource(
             bmi, "compositor/main_forward_surface.frag.glsl");
-        bmi.fragment_program_mode = MaterialFragmentProgramMode::Compositor;
         bmi.fragment_surface_module = "surface/material_surface.glsl";
         bmi.fragment_material_source_module =
             "material/text_source.glsl";

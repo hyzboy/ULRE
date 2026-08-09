@@ -7,9 +7,6 @@
 #include <hgl/shadergen/MaterialDescriptorContract.h>
 #include <hgl/shadergen/ShaderProgramBuildSpec.h>
 #include <hgl/shadergen/ResolvedModuleGraphBuilder.h>
-#include <hgl/shadergen/ShadowShaderContractBuilder.h>
-#include <hgl/shadergen/ShadowShaderKeyBuilder.h>
-#include <hgl/shadergen/ShadowResourceAcquirePlanBuilder.h>
 #include <hgl/shadergen/ActiveProfileBindingViewBuilder.h>
 #include <hgl/shadergen/ShaderCreateInfo.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
@@ -1575,7 +1572,7 @@ namespace
             BlendMode::Opaque,
             PassType::ForwardOpaque,
             nullptr,
-            "surface/lit_surface.glsl",
+            "surface/material_surface.glsl",
             lighting_options);
         if (!scheduled_lighting.success
          || scheduled_lighting.fragment_glsl.find(
@@ -1597,7 +1594,7 @@ namespace
                 "#include \"compositor/forward_lighting.glsl\"")
                 == std::string::npos
          || scheduled_lighting.fragment_glsl.find(
-                "#include \"surface/lit_surface.glsl\"")
+                "#include \"surface/material_surface.glsl\"")
                 == std::string::npos)
             result.diagnostics.emplace_back(
                 "Lit compositor must route lighting and material surface modules through one scheduler");
@@ -1615,6 +1612,8 @@ namespace
         CompositorAssembler::CompositorModuleOptions alpha_options{};
         alpha_options.alpha_test = true;
         alpha_options.alpha_cutoff = 0.25f;
+        alpha_options.material_source_module =
+            "material/texture_source.glsl";
         const auto masked = assembler.Assemble(
             SurfaceType::Unlit,
             BlendMode::Masked,
@@ -1632,8 +1631,8 @@ namespace
             SurfaceType::Unlit,
             BlendMode::Masked,
             PassType::ForwardMasked,
-            "compositor/main_forward_unlit_texture.frag.glsl",
-            "surface/unlit_texture_surface.glsl",
+            "compositor/main_forward_surface.frag.glsl",
+            "surface/material_surface.glsl",
             alpha_options);
         if (!texture_template.success
          || texture_template.fragment_glsl.compare(0, 8, "#version") != 0
@@ -2131,9 +2130,8 @@ namespace
         }
 
         ShaderArtifactStore shadow_store(
-            RepoRootOSPath("build"),
-            ShaderCacheMode::BuildIfMissing,
-            ShaderArtifactCacheNamespace::ShadowV1);
+            RepoRootOSPath("build/cache-isolation"),
+            ShaderCacheMode::BuildIfMissing);
         const uint32_t shadow_payload[] =
             {0x07230203u, 4u, 5u, 6u};
         const uint32_t shadow_fragment_payload[] =
@@ -2150,7 +2148,7 @@ namespace
                 program_link, metadata))
         {
             result.diagnostics.emplace_back(
-                "shadow namespace cache save failed");
+                "isolated cache save failed");
         }
         else
         {
@@ -2161,16 +2159,17 @@ namespace
              || std::memcmp(legacy_loaded.GetData(), payload, sizeof(payload)) != 0)
             {
                 result.diagnostics.emplace_back(
-                    "shadow namespace must not replace the legacy artifact");
+                    "isolated cache must not replace the primary artifact");
             }
 
-            if (!shadow_store.LoadStageSPV(stage_key, shadow_loaded)
+            if (!shadow_store.LoadStageSPV(
+                    program_link.vertex_stage, shadow_loaded)
              || shadow_loaded.GetCount() != static_cast<int>(sizeof(shadow_payload))
              || std::memcmp(
                     shadow_loaded.GetData(), shadow_payload, sizeof(shadow_payload)) != 0)
             {
                 result.diagnostics.emplace_back(
-                    "shadow namespace must load its isolated artifact");
+                    "isolated cache must load its own artifact");
             }
 
             hgl::ValueArray<hgl::uint8> shadow_fragment_loaded;
@@ -2188,13 +2187,12 @@ namespace
                     sizeof(shadow_fragment_payload)) != 0)
             {
                 result.diagnostics.emplace_back(
-                    "shadow program artifacts must remain isolated");
+                    "program artifacts must remain root-isolated");
             }
 
             ShaderArtifactStore contract_store(
-                RepoRootOSPath("build"),
-                ShaderCacheMode::ReadOnly,
-                ShaderArtifactCacheNamespace::ContractV1);
+                RepoRootOSPath("build/cache-miss"),
+                ShaderCacheMode::ReadOnly);
             if (contract_store.LoadProgramArtifacts(
                     program_link,
                     metadata,
@@ -2202,22 +2200,8 @@ namespace
                     shadow_fragment_loaded))
             {
                 result.diagnostics.emplace_back(
-                    "contract namespace must not hit legacy/shadow programs");
+                    "independent cache root must not hit other programs");
             }
-        }
-
-        if (store.GetCacheNamespace() != ShaderArtifactCacheNamespace::Legacy
-         || shadow_store.GetCacheNamespace() != ShaderArtifactCacheNamespace::ShadowV1)
-        {
-            result.diagnostics.emplace_back("artifact cache namespace state mismatch");
-        }
-
-        ShaderGenMigrationOptions migration_options{};
-        if (migration_options.implementation_path != ShaderGenImplementationPath::Legacy
-         || migration_options.artifact_namespace != ShaderArtifactCacheNamespace::Legacy)
-        {
-            result.diagnostics.emplace_back(
-                "migration options must preserve the legacy path by default");
         }
 
         result.passed = result.diagnostics.empty();
@@ -2333,9 +2317,8 @@ namespace
             }
 
             ShaderArtifactStore hot_store(
-                RepoRootOSPath("build"),
-                ShaderCacheMode::BuildIfMissing,
-                ShaderArtifactCacheNamespace::ShadowV1);
+                RepoRootOSPath("build/cache-hot"),
+                ShaderCacheMode::BuildIfMissing);
             const uint32_t cached_vertex_spv[] =
                 {ShaderArtifactSPVMagic, 0x3101u, 0x3102u, 0x3103u};
             const uint32_t cached_fragment_spv[] =
@@ -2384,9 +2367,8 @@ namespace
             }
 
             ShaderArtifactStore read_only_miss_store(
-                RepoRootOSPath("build"),
-                ShaderCacheMode::ReadOnly,
-                ShaderArtifactCacheNamespace::ContractV1);
+                RepoRootOSPath("build/cache-read-only-miss"),
+                ShaderCacheMode::ReadOnly);
             lit_b->SetArtifactStore(&read_only_miss_store);
             if (read_only_miss_store.HasProgramMetadata(
                     lit_b->GetProgramLink())
@@ -3852,7 +3834,6 @@ namespace
         if (!pure_color.fragment_source
          || std::strcmp(pure_color.fragment_source,
                         "compositor/main_forward_surface.frag.glsl") != 0
-         || pure_color.fragment_program_mode != MaterialFragmentProgramMode::Compositor
          || !pure_color.fragment_surface_module
          || std::strcmp(
                 pure_color.fragment_surface_module,
@@ -4188,7 +4169,6 @@ namespace
             "source = \"file\"\n"
             "usage = \"General\"\n"
             "bootstrap = \"None\"\n"
-            "program_mode = \"Compositor\"\n"
             "provider_policy = \"AllowDerived\"\n"
             "[transform]\n"
             "source = \"Vec3Position\"\n"
@@ -4197,8 +4177,10 @@ namespace
             "scale = \"World\"\n"
             "projection = \"WorldCameraVP\"\n"
             "[fragment]\n"
-            "source = \"compositor/main_forward_lit.frag.glsl\"\n"
-            "surface_module = \"surface/lit_surface.glsl\"\n"
+            "source = \"compositor/main_forward_surface.frag.glsl\"\n"
+            "surface_module = \"surface/material_surface.glsl\"\n"
+            "material_source_module = \"material/pbr_surface_source.glsl\"\n"
+            "ntb_module = \"ntb/ntb_tangent_vbo_normalmap.glsl\"\n"
             "[compositor]\n"
             "surface = \"Lit\"\n"
             "blend = \"Opaque\"\n"
@@ -4229,11 +4211,9 @@ namespace
              || definition.vertex_semantic_requirements.GetCount() != 3
              || definition.ubo_requirements.size() != 2
              || std::strcmp(definition.fragment_source,
-                            "compositor/main_forward_lit.frag.glsl") != 0
-             || definition.fragment_program_module
-                    != definition.fragment_source
+                            "compositor/main_forward_surface.frag.glsl") != 0
              || std::strcmp(definition.fragment_surface_module,
-                            "surface/lit_surface.glsl") != 0)
+                            "surface/material_surface.glsl") != 0)
             {
                 result.diagnostics.emplace_back("material schema fields mismatch");
             }
@@ -4262,7 +4242,6 @@ namespace
             "source = \"file\"\n"
             "usage = \"General\"\n"
             "bootstrap = \"None\"\n"
-            "program_mode = \"DirectInclude\"\n"
             "provider_policy = \"GeometryOnly\"\n"
             "[compositor]\n"
             "fragment = \"compositor/legacy_test_template.frag.glsl\"\n"
@@ -4271,16 +4250,10 @@ namespace
         MaterialDefinitionFileData legacy_data;
         if (ParseMaterialDefinitionFile(
                 legacy_file, static_cast<int>(std::strlen(legacy_file)), legacy_data)
-                != MaterialDefinitionFileParseResult::OK
-         || !legacy_data.definition.fragment_source
-         || std::strcmp(
-                legacy_data.definition.fragment_source,
-                "compositor/legacy_test_template.frag.glsl") != 0
-         || legacy_data.definition.fragment_program_module
-                != legacy_data.definition.fragment_source)
+                != MaterialDefinitionFileParseResult::InvalidValue)
         {
             result.diagnostics.emplace_back(
-                "legacy compositor.fragment must convert at the parser boundary");
+                "legacy compositor fragment schema must be rejected");
         }
 
         const char invalid_file[] =
@@ -4290,7 +4263,6 @@ namespace
             "source = \"builtin\"\n"
             "usage = \"General\"\n"
             "bootstrap = \"None\"\n"
-            "program_mode = \"Compositor\"\n"
             "provider_policy = \"GeometryOnly\"\n";
         MaterialDefinitionFileData invalid_data;
         if (ParseMaterialDefinitionFile(
@@ -4367,8 +4339,6 @@ namespace
             {
                 if (file_definition->definition_id != legacy_definition.definition_id)
                     result.diagnostics.emplace_back("Lit id mismatch");
-                if (file_definition->fragment_program_mode != legacy_definition.fragment_program_mode)
-                    result.diagnostics.emplace_back("Lit mode mismatch");
                 if (file_definition->compositor_surface != legacy_definition.compositor_surface)
                     result.diagnostics.emplace_back("Lit surface mismatch");
                 if (file_definition->compositor_blend != legacy_definition.compositor_blend)
@@ -4447,8 +4417,7 @@ namespace
                  && legacy_definition.fragment_surface_module
                  && std::strcmp(file_definition->fragment_surface_module,
                                 legacy_definition.fragment_surface_module) == 0);
-            if (file_definition->fragment_program_mode != legacy_definition.fragment_program_mode
-             || file_definition->compositor_surface != legacy_definition.compositor_surface
+            if (file_definition->compositor_surface != legacy_definition.compositor_surface
              || file_definition->compositor_blend != legacy_definition.compositor_blend
              || file_definition->compositor_pass != legacy_definition.compositor_pass
              || file_definition->vertex_provider_policy != legacy_definition.vertex_provider_policy
@@ -5009,14 +4978,14 @@ namespace
             result.diagnostics.emplace_back("LoadDirectory failed to scan directory");
         else
         {
-            if (file_count != 78)
-                result.diagnostics.emplace_back("LoadDirectory expected 78 file modules, got "
+            if (file_count != 64)
+                result.diagnostics.emplace_back("LoadDirectory expected 64 file modules, got "
                     + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 78 + int(GLSLCodeModuleID::RANGE_SIZE);
+            const int expected_count = 64 + int(GLSLCodeModuleID::RANGE_SIZE);
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
@@ -5056,15 +5025,15 @@ namespace
         else if (surface_interface->kind != GLSLCodeModuleKind::Shared)
             result.diagnostics.emplace_back("surface_interface kind mismatch");
 
-        const auto *compositor_lit = registry.FindByName("main_forward_lit");
+        const auto *compositor_lit = registry.FindByName("main_forward_surface");
         if (!compositor_lit)
-            result.diagnostics.emplace_back("main_forward_lit not found by name");
+            result.diagnostics.emplace_back("main_forward_surface not found by name");
         else
         {
             if (compositor_lit->kind != GLSLCodeModuleKind::FragmentShader)
-                result.diagnostics.emplace_back("main_forward_lit kind mismatch");
+                result.diagnostics.emplace_back("main_forward_surface kind mismatch");
             if (compositor_lit->code_module_requirement_count != 4)
-                result.diagnostics.emplace_back("main_forward_lit uses resolution expected 4 deps, got "
+                result.diagnostics.emplace_back("main_forward_surface uses resolution expected 4 deps, got "
                     + std::to_string(compositor_lit->code_module_requirement_count));
         }
 
@@ -5085,11 +5054,11 @@ namespace
         int dup_errors = 0;
         if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()), &dup_count, &dup_errors))
             result.diagnostics.emplace_back("second LoadDirectory failed");
-        else if (dup_count != 0 || dup_errors != 78)
-            result.diagnostics.emplace_back("second LoadDirectory must report 78 duplicates, got files="
+        else if (dup_count != 0 || dup_errors != 64)
+            result.diagnostics.emplace_back("second LoadDirectory must report 64 duplicates, got files="
                 + std::to_string(dup_count) + " errors=" + std::to_string(dup_errors));
 
-        const int stable_count = 78 + int(GLSLCodeModuleID::RANGE_SIZE);
+        const int stable_count = 64 + int(GLSLCodeModuleID::RANGE_SIZE);
         if (registry.GetCount() != stable_count)
             result.diagnostics.emplace_back("registry count changed after duplicate re-scan: got "
                 + std::to_string(registry.GetCount()));
@@ -5617,11 +5586,13 @@ namespace
         {
             MaterialDefinition definition{};
             definition.definition_id = "SyntheticShadowGraph";
-            definition.fragment_program_mode =
-                MaterialFragmentProgramMode::DirectInclude;
             SetMaterialFragmentSource(
                 definition, "synthetic/shadow_root.frag.glsl");
             definition.vertex_node_config = MakeDefault3DNodeConfig();
+            MaterialDefinitionBuildRequest graph_request{};
+            graph_request.override_shader_program_purpose = true;
+            graph_request.shader_program_purpose =
+                ShaderProgramPurpose::PostProcess;
 
             ResolvedModuleGraph first_graph{};
             ResolvedModuleGraph second_graph{};
@@ -5632,12 +5603,14 @@ namespace
                     definition,
                     first_registry,
                     first_graph,
-                    diagnostic)
+                    diagnostic,
+                    &graph_request)
              || !BuildMaterialResolvedModuleGraph(
                     definition,
                     second_registry,
                     second_graph,
-                    diagnostic)
+                    diagnostic,
+                    &graph_request)
              || !SerializeResolvedModuleGraph(first_graph, first_bytes)
              || !SerializeResolvedModuleGraph(second_graph, second_bytes)
              || first_bytes.GetCount() != second_bytes.GetCount()
@@ -5658,13 +5631,18 @@ namespace
         SetMaterialFragmentSource(
             missing_root, "synthetic/not_registered.frag.glsl");
         missing_root.vertex_node_config = MakeDefault3DNodeConfig();
+        MaterialDefinitionBuildRequest missing_request{};
+        missing_request.override_shader_program_purpose = true;
+        missing_request.shader_program_purpose =
+            ShaderProgramPurpose::PostProcess;
         ResolvedModuleGraph missing_graph{};
         ResolvedModuleGraphBuildDiagnostic missing_diagnostic{};
         if (BuildMaterialResolvedModuleGraph(
                 missing_root,
                 first_registry,
                 missing_graph,
-                missing_diagnostic)
+                missing_diagnostic,
+                &missing_request)
          || missing_diagnostic.error
                 != ResolvedModuleGraphBuildError::MissingRootModule)
         {
@@ -5676,6 +5654,7 @@ namespace
         return result;
     }
 
+#if 0
     static GateResult RunShadowShaderContractCase()
     {
         GateResult result;
@@ -6116,7 +6095,6 @@ namespace
             result.passed = false;
             return result;
         }
-
         const GeometryVertexFormat geometry{
             {VertexSemantic::Position, VF_V3F},
             {VertexSemantic::TexCoord, VF_V2F},
@@ -6357,6 +6335,7 @@ namespace
         result.passed = result.diagnostics.empty();
         return result;
     }
+#endif
 
     constexpr uint32_t RESOLVER_ANY  = uint32_t(GLSLCodeModuleNumericClass::Any);
     constexpr uint32_t RESOLVER_FLOAT = uint32_t(GLSLCodeModuleNumericClass::Float);
@@ -6863,7 +6842,7 @@ namespace
                 DescriptorSemanticLayer::SSBO
             }
         };
-        const FixedMaterialDef fixed_definition{
+        const MaterialCompilerInput compiler_input{
             "MultiSlotMaterial",
             PrimitiveType::Triangles,
             vertices,
@@ -6878,7 +6857,7 @@ namespace
 
         ShaderProgramBuildSpec *build_spec = CompileCompositorMaterial(
             nullptr,
-            fixed_definition,
+            compiler_input,
             "#version 450\nlayout(location=0) in vec2 Position;\nvoid main(){gl_Position=vec4(Position,0.0,1.0);}\n",
             "#version 450\nlayout(location=0) out vec4 outColor;\nvoid main(){outColor=vec4(1.0);}\n",
             config);
@@ -6945,10 +6924,10 @@ namespace
         return result;
     }
 
-    static GateResult RunDirectIncludeManifestCase()
+    static GateResult RunGeneratedManifestInjectionCase()
     {
         GateResult result;
-        result.name = "AA.direct-include-manifest";
+        result.name = "AA.generated-manifest-injection";
 
         MaterialDefinition definition{};
         definition.code_module_requirements.push_back(
@@ -6957,13 +6936,13 @@ namespace
         if (!build2d::Build2DShaderResourceManifest(definition, manifest)
          || !manifest.IsValid())
         {
-            result.diagnostics.emplace_back("2D DirectInclude manifest build failed");
+            result.diagnostics.emplace_back("generated manifest build failed");
             result.passed = false;
             return result;
         }
 
-        const FixedMaterialDef fixed_definition{
-            "DirectIncludeManifest",
+        const MaterialCompilerInput compiler_input{
+            "GeneratedManifestInjection",
             PrimitiveType::Triangles,
             nullptr,
             0,
@@ -6975,13 +6954,13 @@ namespace
         config.generate_only = true;
         ShaderProgramBuildSpec *build_spec = CompileCompositorMaterial(
             nullptr,
-            fixed_definition,
+            compiler_input,
             "#version 450\nvoid main(){gl_Position=vec4(0.0);}\n",
             "#version 450\nlayout(location=0) out vec4 outColor;\nvoid main(){outColor=vec4(1.0);}\n",
             config);
         if (!build_spec)
         {
-            result.diagnostics.emplace_back("DirectInclude manifest source generation failed");
+            result.diagnostics.emplace_back("generated manifest source generation failed");
         }
         else
         {
@@ -6990,7 +6969,7 @@ namespace
             if (!fragment
              || fragment->GetFinalGLSL().find("// GLSLCodeModule:") == std::string::npos)
                 result.diagnostics.emplace_back(
-                    "DirectInclude code modules were not injected before fragment code");
+                    "generated code modules were not injected before fragment code");
         }
 
         delete build_spec;
@@ -7081,7 +7060,7 @@ namespace
                 result.diagnostics.emplace_back(
                     "2D descriptor output failed resource-layout validation");
 
-            const FixedMaterialDef fixed_definition{
+            const MaterialCompilerInput compiler_input{
                 "DescriptorPolicy",
                 PrimitiveType::Triangles,
                 nullptr,
@@ -7094,7 +7073,7 @@ namespace
             config.generate_only = true;
             ShaderProgramBuildSpec *build_spec = CompileCompositorMaterial(
                 nullptr,
-                fixed_definition,
+                compiler_input,
                 "#version 450\nvoid main(){gl_Position=vec4(0.0);}\n",
                 "#version 450\nlayout(location=0) out vec4 outColor;\nvoid main(){outColor=vec4(1.0);}\n",
                 config);
@@ -7630,8 +7609,6 @@ int main(const int argc, char **argv)
     if (run_glsl) results.push_back(RunGLSLCodeModuleFileCase());
     if (run_glsl) results.push_back(RunGLSLCodeModuleMetadataValidationCase());
     if (run_glsl) results.push_back(RunShadowMaterialModuleGraphCase());
-    if (run_glsl) results.push_back(RunShadowShaderContractCase());
-    if (run_materialization) results.push_back(RunShadowResourceAcquirePlanCase());
     if (run_glsl) results.push_back(RunCapabilityResolverCase());
     if (run_interface) results.push_back(RunShaderSemanticRegistryCase());
     if (run_materialization) results.push_back(RunSurfaceProfileModelCase());
@@ -7645,7 +7622,7 @@ int main(const int argc, char **argv)
     if (run_cache) results.push_back(RunResolvedStageCacheIdentityCase());
     if (run_cache) results.push_back(RunCanonicalShaderContractCase());
     if (run_pipeline) results.push_back(RunMaterialMultiSlotSourceCase());
-    if (run_pipeline) results.push_back(RunDirectIncludeManifestCase());
+    if (run_pipeline) results.push_back(RunGeneratedManifestInjectionCase());
     if (run_descriptor) results.push_back(RunDescriptorBuilderConvergenceCase());
     if (run_descriptor) results.push_back(RunMaterialDescriptorContractCase());
     if (run_pipeline) results.push_back(RunShaderLibraryPathCase());

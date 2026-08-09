@@ -2,7 +2,6 @@
 
 #include<hgl/vk/VK.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
-#include<hgl/shadergen/ShaderGenMigration.h>
 #include<hgl/shadergen/CanonicalShaderContract.h>
 #include<hgl/shadergen/MaterialCoverageContract.h>
 #include<hgl/mtl/MaterialRecipe.h>
@@ -57,7 +56,6 @@ struct MaterialDefinitionBuildRequest
     MaterialTransformGraph transform_graph;
     bool has_transform_graph = false;
     ShaderArtifactStore *shader_artifact_store = nullptr;
-    ShaderGenMigrationOptions migration{};
     bool generate_only = false;
     bool override_shader_program_purpose = false;
     ShaderProgramPurpose shader_program_purpose =

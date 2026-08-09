@@ -4,7 +4,6 @@ name = "SkyMinimal"
 source = "file"
 usage = "Sky"
 bootstrap = "None"
-program_mode = "Compositor"
 provider_policy = "GeometryOnly"
 
 [transform]

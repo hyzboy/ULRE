@@ -1,14 +1,15 @@
 #pragma once
 
-/// MaterialCompiler.h — FixedMaterialDef → ShaderProgramBuildSpec 编译器接口
+/// MaterialCompiler.h — canonical material input → ShaderProgramBuildSpec
 ///
 /// 使用 CompileCompositorMaterial 编译 Compositor 模板产出的完整 GLSL。
 /// 内部流程：
-///   1. 按 def.descriptor_entries[] 构建 MaterialDescriptorInfo（描述符布局）
+///   1. Build MaterialDescriptorInfo from the canonical descriptor input.
 ///   2. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
 ///   3. 填充并返回 ShaderProgramBuildSpec*
 
-#include<hgl/mtl/FixedMaterialDef.h>
+#include <hgl/mtl/FixedVertexEntry.h>
+#include <hgl/mtl/FixedDescriptorEntry.h>
 #include<hgl/mtl/SkyLight.h>
 #include<hgl/common/ShaderStageDef.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
@@ -27,6 +28,16 @@ namespace hgl::graph
 }
 
 namespace hgl::graph::mtl{
+
+struct MaterialCompilerInput
+{
+    const char *debug_name = nullptr;
+    PrimitiveType primitive_type = PrimitiveType::Triangles;
+    const FixedVertexEntry *vertex_entries = nullptr;
+    uint32 vertex_entry_count = 0;
+    const FixedDescriptorEntry *descriptor_entries = nullptr;
+    uint32 descriptor_entry_count = 0;
+};
 
 struct CompositorMaterialBuildConfig
 {
@@ -64,7 +75,7 @@ bool FinalizeShaderProgramBuildSpec(
  * 使用 SetFinalGLSL() + CreateShaderDirect() 直接编译。
  *
  * @param profile   设备能力 profile
- * @param def       材质定义（descriptor/vertex/MI 元数据）
+ * @param input     canonical compiler input
  * @param vs_glsl   完整的 vertex shader GLSL（含 #version, layout, main）
  * @param fs_glsl   完整的 fragment shader GLSL（含 #version, layout, main）
  * @param config    编译期配置视图
@@ -72,7 +83,7 @@ bool FinalizeShaderProgramBuildSpec(
  */
 ShaderProgramBuildSpec *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
-    const FixedMaterialDef &    def,
+    const MaterialCompilerInput &input,
     const std::string &         vs_glsl,
     const std::string &         fs_glsl,
     const CompositorMaterialBuildConfig &config);

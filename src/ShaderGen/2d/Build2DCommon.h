@@ -6,7 +6,8 @@
 /// 供各 M_Xxx2D.cpp 工厂函数使用。
 /// 2D 专用 fragment shader 已迁移至 Compositor 统一架构（参见 ShaderLibrary/compositor/ 与 ShaderLibrary/surface/）。
 
-#include<hgl/mtl/FixedMaterialDef.h>
+#include <hgl/mtl/FixedVertexEntry.h>
+#include <hgl/mtl/FixedDescriptorEntry.h>
 #include<hgl/common/RenderAssignDef.h>
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include<hgl/graph/ShaderBufferSources.h>

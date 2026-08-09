@@ -11,8 +11,6 @@ namespace hgl::graph::mtl
     constexpr uint16 ShaderArtifactFileVersion = 1;
 
     constexpr const char ShaderArtifactCacheDirectory[] = "shader-cache";
-    constexpr const char ShaderArtifactShadowCacheDirectory[] = "shadow-v1";
-    constexpr const char ShaderArtifactContractCacheDirectory[] = "contract-v1";
     constexpr const char ShaderArtifactStageDirectory[] = "stage";
     constexpr const char ShaderArtifactProgramDirectory[] = "program";
     constexpr const char ShaderArtifactSPVExtension[] = ".spv";
@@ -33,37 +31,6 @@ namespace hgl::graph::mtl
         BuildIfMissing = 0,
         ReadOnly
     };
-
-    enum class ShaderArtifactCacheNamespace : uint8
-    {
-        Legacy = 0,
-        ShadowV1,
-        ContractV1
-    };
-
-    inline bool IsValidShaderArtifactCacheNamespace(
-        const ShaderArtifactCacheNamespace cache_namespace) noexcept
-    {
-        return cache_namespace == ShaderArtifactCacheNamespace::Legacy
-            || cache_namespace == ShaderArtifactCacheNamespace::ShadowV1
-            || cache_namespace == ShaderArtifactCacheNamespace::ContractV1;
-    }
-
-    inline const char *GetShaderArtifactCacheNamespaceDirectory(
-        const ShaderArtifactCacheNamespace cache_namespace) noexcept
-    {
-        switch (cache_namespace)
-        {
-        case ShaderArtifactCacheNamespace::Legacy:
-            return nullptr;
-        case ShaderArtifactCacheNamespace::ShadowV1:
-            return ShaderArtifactShadowCacheDirectory;
-        case ShaderArtifactCacheNamespace::ContractV1:
-            return ShaderArtifactContractCacheDirectory;
-        }
-
-        return nullptr;
-    }
 
     struct ShaderArtifactFileHeader
     {

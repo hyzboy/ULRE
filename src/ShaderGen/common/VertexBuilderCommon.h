@@ -1,6 +1,6 @@
 #pragma once
 
-#include <hgl/mtl/FixedMaterialDef.h>
+#include <hgl/mtl/FixedVertexEntry.h>
 #include <hgl/common/RenderAssignDef.h>
 #include <vector>
 

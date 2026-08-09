@@ -21,7 +21,6 @@ SET(SHADER_ARTIFACT_CONTRACT_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderStageKey.h
 ${SHADERGEN_INCLUDE_PATH}/ShaderKeyUtility.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderProgramKey.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderArtifactContract.h
-                                   ${SHADERGEN_INCLUDE_PATH}/ShaderGenMigration.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderStageBuildSpec.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderProgramLinkSpec.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderArtifactStore.h
@@ -55,18 +54,12 @@ SET(CANONICAL_SHADER_CONTRACT_FILES
     ${SHADERGEN_INCLUDE_PATH}/MaterialOutputContract.h
     ${SHADERGEN_INCLUDE_PATH}/MaterialCoverageContract.h
     ${SHADERGEN_INCLUDE_PATH}/ResolvedModuleGraphBuilder.h
-    ${SHADERGEN_INCLUDE_PATH}/ShadowShaderContractBuilder.h
-    ${SHADERGEN_INCLUDE_PATH}/ShadowShaderKeyBuilder.h
-    ${SHADERGEN_INCLUDE_PATH}/ShadowResourceAcquirePlanBuilder.h
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialProgramContract.h
     CanonicalShaderContract.cpp
     MaterialDescriptorContract.cpp
     MaterialOutputContract.cpp
     MaterialCoverageContract.cpp
     ResolvedModuleGraphBuilder.cpp
-    ShadowShaderContractBuilder.cpp
-    ShadowShaderKeyBuilder.cpp
-    ShadowResourceAcquirePlanBuilder.cpp
     ${SHADERGEN_INCLUDE_PATH}/EffectiveMaterialProgramBuilder.h
     EffectiveMaterialProgramBuilder.cpp
     ${SHADERGEN_INCLUDE_PATH}/ActiveProfileBindingViewBuilder.h

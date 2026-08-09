@@ -4,7 +4,6 @@ name = "VertexPaletteColor"
 source = "file"
 usage = "General"
 bootstrap = "None"
-program_mode = "Compositor"
 provider_policy = "GeometryOnly"
 
 [transform]

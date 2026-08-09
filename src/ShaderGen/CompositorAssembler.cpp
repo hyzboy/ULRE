@@ -206,9 +206,7 @@ namespace hgl::graph
             return result;
         }
 
-        // DirectInclude fragment files may omit #version because the old
-        // MaterialLibrary path prepended it before compilation.
-        return "#version 450\n" + defines + "\n" + source;
+        return {};
     }
 
     std::string CompositorAssembler::ReplaceSurfaceInclude(const std::string &source, const std::string &surface_path) const
@@ -443,6 +441,12 @@ namespace hgl::graph
                 || pass == PassType::ForwardDither;
         }
         fs_source = InjectDefines(fs_source, key, effective_options);
+        if (fs_source.empty())
+        {
+            result.error_message =
+                "fragment template must declare #version";
+            return result;
+        }
 
         // 5. Resolve configurable module includes to literal header names.
         // GLSL does not allow a macro to stand in for the header token of #include.

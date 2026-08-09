@@ -61,8 +61,8 @@ namespace hgl::graph
         /// shader_library_path: ShaderLibrary 根目录的绝对路径（不带尾部斜杠）
         explicit CompositorAssembler(const std::string &shader_library_path);
 
-        /// fragment_source_override: raw DirectInclude source or compositor
-        /// template path, relative to the ShaderLibrary root.
+        /// fragment_source_override: compositor template path, relative to the
+        /// ShaderLibrary root.
         /// surface_function_override: optional Surface Function path override.
         AssembleResult Assemble(
             SurfaceType                  surface,
