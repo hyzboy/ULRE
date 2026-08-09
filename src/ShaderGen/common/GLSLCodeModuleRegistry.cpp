@@ -82,6 +82,19 @@ namespace hgl::graph::mtl
         int error_count = 0;
         const int first_new_file_index = file_data.GetCount();
 
+        // Previously unresolved entries remain in file_data so a later directory
+        // load can supply their missing dependencies or conflict targets.
+        for (int i = 0; i < first_new_file_index; ++i)
+        {
+            GLSLCodeModuleFileData *data = file_data[i];
+            if (!data
+             || data->metadata_resolution_valid
+             || modules.ContainsKey(data->definition.id))
+                continue;
+
+            Register(data->definition);
+        }
+
         // Pass 1: read, parse and register every file-backed module.
         for (int i = 0; i < file_list.GetCount(); ++i)
         {
@@ -190,6 +203,7 @@ namespace hgl::graph::mtl
             data->definition.conditions = data->conditions.GetData();
             data->definition.condition_count =
                 static_cast<uint32>(data->conditions.GetCount());
+            data->metadata_resolution_valid = false;
 
             if (!Register(data->definition))
             {
@@ -205,12 +219,15 @@ namespace hgl::graph::mtl
 
         // Pass 2: resolve `uses <module-name>` references against the
         // now-complete registry.
-        for (int i = first_new_file_index; i < file_data.GetCount(); ++i)
+        for (int i = 0; i < file_data.GetCount(); ++i)
         {
             GLSLCodeModuleFileData *data = file_data[i];
-            if (!data)
+            if (!data || data->metadata_resolution_valid)
                 continue;
 
+            data->code_module_requirements.Clear();
+            data->dependencies.Clear();
+            data->module_conflicts.Clear();
             data->metadata_resolution_valid = true;
             const int pending_count = data->pending_module_requirements.GetCount();
             for (int k = 0; k < pending_count; ++k)
@@ -284,13 +301,14 @@ namespace hgl::graph::mtl
                 static_cast<uint32>(data->module_conflicts.GetCount());
         }
 
-        for (int i = first_new_file_index; i < file_data.GetCount(); ++i)
+        for (int i = 0; i < file_data.GetCount(); ++i)
         {
             GLSLCodeModuleFileData *data = file_data[i];
             if (!data || data->metadata_resolution_valid)
                 continue;
 
-            if (modules.DeleteByKey(data->definition.id))
+            if (modules.DeleteByKey(data->definition.id)
+             && i >= first_new_file_index)
                 --file_count;
         }
 
@@ -299,15 +317,23 @@ namespace hgl::graph::mtl
         {
             removed_incomplete_module = false;
 
-            for (int i = first_new_file_index; i < file_data.GetCount(); ++i)
+            for (int i = 0; i < file_data.GetCount(); ++i)
             {
                 GLSLCodeModuleFileData *data = file_data[i];
                 if (!data || !modules.ContainsKey(data->definition.id))
                     continue;
 
-                bool complete = true;
+                bool complete =
+                    data->metadata_resolution_valid
+                 && data->code_module_requirements.GetCount()
+                        == data->pending_module_requirements.GetCount()
+                 && data->dependencies.GetCount()
+                        == data->pending_dependency_versions.GetCount()
+                 && data->module_conflicts.GetCount()
+                        == data->pending_module_conflicts.GetCount();
                 for (int k = 0;
-                     k < data->code_module_requirements.GetCount();
+                     complete
+                        && k < data->code_module_requirements.GetCount();
                      ++k)
                 {
                     if (!modules.ContainsKey(data->code_module_requirements[k]))
@@ -334,7 +360,8 @@ namespace hgl::graph::mtl
                 if (!complete && modules.DeleteByKey(data->definition.id))
                 {
                     data->metadata_resolution_valid = false;
-                    --file_count;
+                    if (i >= first_new_file_index)
+                        --file_count;
                     ++error_count;
                     removed_incomplete_module = true;
                 }

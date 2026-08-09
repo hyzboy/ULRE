@@ -1,6 +1,7 @@
 #include <hgl/mtl/MaterialResourceLayout.h>
 #include <hgl/mtl/MaterialLibrary.h>
 #include <hgl/mtl/MaterialDefinitionFile.h>
+#include <hgl/mtl/SurfaceProfileFile.h>
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/shadergen/ShaderProgramBuildSpec.h>
@@ -17,6 +18,8 @@
 #include <hgl/common/RenderOptions.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/log/Log.h>
+#include <hgl/filesystem/FileSystem.h>
+#include <hgl/filesystem/Path.h>
 #include "../../ShaderGen/2d/Build2DCommon.h"
 #include "../../ShaderGen/3d/DefinitionDescriptorBuilder3D.h"
 #include "../../ShaderGen/common/VertexBuilderCommon.h"
@@ -361,6 +364,258 @@ namespace
             if (definition.vertex_semantic_requirements.IsEmpty())
                 result.diagnostics.emplace_back(
                     std::string("empty semantic-only ABI: ") + id);
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
+    static GateResult RunSurfaceProfileModelCase()
+    {
+        GateResult result;
+        result.name = "L1.surface-profile-model";
+
+        SurfaceProfileFileData file_data;
+        {
+            SurfaceImplementationProfile *stale =
+                file_data.profiles.Create();
+            if (stale)
+                stale->profile_name = "Stale";
+            if (LoadSurfaceProfileFile(
+                    RepoRootOSPath(
+                        "ShaderLibrary/surface_profiles/missing.surface-profile.toml"),
+                    file_data)
+             || !file_data.profiles.IsEmpty()
+             || !file_data.intents.IsEmpty()
+             || !file_data.downgrades.IsEmpty())
+            {
+                result.diagnostics.emplace_back(
+                    "failed surface profile loads must clear output data");
+            }
+        }
+
+        if (!LoadSurfaceProfileFile(
+                RepoRootOSPath(
+                    "ShaderLibrary/surface_profiles/default.surface-profile.toml"),
+                file_data))
+        {
+            result.diagnostics.emplace_back(
+                "failed to load default surface profile protocol");
+            result.passed = false;
+            return result;
+        }
+
+        if (file_data.profiles.GetCount() != 10
+         || file_data.intents.GetCount() != 8
+         || file_data.downgrades.GetCount() != 9)
+        {
+            result.diagnostics.emplace_back(
+                "default surface profile protocol count mismatch");
+        }
+
+        SurfaceProfileRegistry registry;
+        SurfaceProfileValidationDiagnostic diagnostic{};
+        if (!RegisterSurfaceProfileFileData(
+                file_data, registry, diagnostic))
+        {
+            result.diagnostics.emplace_back(
+                "default surface profile protocol invalid: "
+                + std::string(GetSurfaceProfileValidationErrorName(
+                    diagnostic.error)));
+        }
+        else
+        {
+            if (!registry.FindIntent("HumanSkin")
+             || !registry.FindIntent("Wood")
+             || !registry.FindProfile("SkinSSS")
+             || !registry.FindProfile("StandardPBR")
+             || !registry.FindProfile("BlinnPhongFakePBR")
+             || !registry.FindProfile("Flat"))
+            {
+                result.diagnostics.emplace_back(
+                    "default surface profile registry entries missing");
+            }
+
+            if (!registry.CanDowngrade(
+                    GetSurfaceStableID("SkinSSS"),
+                    GetSurfaceStableID("StandardPBR"))
+             || !registry.CanDowngrade(
+                    GetSurfaceStableID("SkinSSS"),
+                    GetSurfaceStableID("BlinnPhongFakePBR"))
+             || !registry.CanDowngrade(
+                    GetSurfaceStableID("SkinSSS"),
+                    GetSurfaceStableID("Flat"))
+             || !registry.CanDowngrade(
+                    GetSurfaceStableID("WoodFiberLighting"),
+                    GetSurfaceStableID("StandardPBR"))
+             || registry.CanDowngrade(
+                    GetSurfaceStableID("StandardPBR"),
+                    GetSurfaceStableID("SkinSSS")))
+            {
+                result.diagnostics.emplace_back(
+                    "surface profile downgrade reachability mismatch");
+            }
+
+            if (registry.GetStableHash() == 0)
+                result.diagnostics.emplace_back(
+                    "surface profile registry hash must be non-zero");
+        }
+
+        SurfaceProfileRegistry reverse_registry;
+        for (int i = file_data.profiles.GetCount() - 1; i >= 0; --i)
+        {
+            if (!file_data.profiles[i]
+             || !reverse_registry.RegisterProfile(*file_data.profiles[i]))
+                result.diagnostics.emplace_back(
+                    "reverse profile registration failed");
+        }
+        for (int i = file_data.intents.GetCount() - 1; i >= 0; --i)
+        {
+            if (!file_data.intents[i]
+             || !reverse_registry.RegisterIntent(*file_data.intents[i]))
+                result.diagnostics.emplace_back(
+                    "reverse intent registration failed");
+        }
+        for (int i = file_data.downgrades.GetCount() - 1; i >= 0; --i)
+        {
+            if (!reverse_registry.RegisterDowngrade(
+                    file_data.downgrades[i]))
+                result.diagnostics.emplace_back(
+                    "reverse downgrade registration failed");
+        }
+        if (registry.GetStableHash() != reverse_registry.GetStableHash())
+            result.diagnostics.emplace_back(
+                "surface profile hash must ignore registration order");
+
+        MaterialDefinition human_skin{};
+        human_skin.surface_intent_id = GetSurfaceStableID("HumanSkin");
+        human_skin.surface_profile_projections.Add(
+            MakeMaterialSurfaceProfileProjection(
+                "SkinSSS", "HumanSkin.ToSkinSSS"));
+        human_skin.surface_profile_projections.Add(
+            MakeMaterialSurfaceProfileProjection(
+                "StandardPBR", "HumanSkin.ToStandardPBR"));
+        human_skin.surface_profile_projections.Add(
+            MakeMaterialSurfaceProfileProjection(
+                "BlinnPhongFakePBR", "HumanSkin.ToFakePBR"));
+        human_skin.surface_profile_projections.Add(
+            MakeMaterialSurfaceProfileProjection(
+                "Flat", "HumanSkin.ToFlat"));
+        if (!ValidateMaterialSurfaceProfileProjections(
+                human_skin, registry, diagnostic))
+        {
+            result.diagnostics.emplace_back(
+                "human skin profile projections rejected");
+        }
+
+        MaterialDefinition wood{};
+        wood.surface_intent_id = GetSurfaceStableID("Wood");
+        wood.surface_profile_projections.Add(
+            MakeMaterialSurfaceProfileProjection(
+                "WoodFiberLighting", "Wood.ToFiber"));
+        wood.surface_profile_projections.Add(
+            MakeMaterialSurfaceProfileProjection(
+                "StandardPBR", "Wood.ToStandardPBR"));
+        wood.surface_profile_projections.Add(
+            MakeMaterialSurfaceProfileProjection(
+                "BlinnPhongFakePBR", "Wood.ToFakePBR"));
+        if (!ValidateMaterialSurfaceProfileProjections(
+                wood, registry, diagnostic))
+        {
+            result.diagnostics.emplace_back(
+                "wood profile projections rejected");
+        }
+
+        MaterialDefinitionFileRegistry material_registry;
+        if (!material_registry.LoadFile(
+                RepoRootOSPath(
+                    "ShaderLibrary/material/lit.material.toml")))
+        {
+            result.diagnostics.emplace_back(
+                "failed to load Lit surface profile projections");
+        }
+        else
+        {
+            const MaterialDefinition *lit =
+                material_registry.FindByID("Lit");
+            if (!lit
+             || lit->surface_intent_id
+                    != GetSurfaceStableID("GenericPBR")
+             || lit->surface_profile_projections.GetCount() != 3
+             || !ValidateMaterialSurfaceProfileProjections(
+                    *lit, registry, diagnostic))
+            {
+                result.diagnostics.emplace_back(
+                    "Lit surface profile projections invalid");
+            }
+        }
+
+        MaterialDefinition missing_preferred{};
+        missing_preferred.surface_intent_id = GetSurfaceStableID("HumanSkin");
+        missing_preferred.surface_profile_projections.Add(
+            MakeMaterialSurfaceProfileProjection(
+                "StandardPBR", "HumanSkin.ToStandardPBR"));
+        if (ValidateMaterialSurfaceProfileProjections(
+                missing_preferred, registry, diagnostic)
+         || diagnostic.error
+                != SurfaceProfileValidationError::
+                    MissingPreferredProjection)
+        {
+            result.diagnostics.emplace_back(
+                "missing preferred projection must be rejected");
+        }
+
+        const char invalid_downgrade[] =
+            "schema = 1\n"
+            "[[profiles]]\n"
+            "id = \"Low\"\n"
+            "parameter_schema = \"Surface.Low.v1\"\n"
+            "schema_version = 1\n"
+            "quality_rank = 0\n"
+            "[[profiles]]\n"
+            "id = \"High\"\n"
+            "parameter_schema = \"Surface.High.v1\"\n"
+            "schema_version = 1\n"
+            "quality_rank = 100\n"
+            "[[intents]]\n"
+            "id = \"Example\"\n"
+            "preferred_profile = \"Low\"\n"
+            "[[downgrades]]\n"
+            "from = \"Low\"\n"
+            "to = \"High\"\n"
+            "order = 0\n";
+        SurfaceProfileFileData invalid_data;
+        if (ParseSurfaceProfileFile(
+                invalid_downgrade,
+                int(std::strlen(invalid_downgrade)),
+                invalid_data) != SurfaceProfileFileParseResult::OK)
+        {
+            result.diagnostics.emplace_back(
+                "invalid downgrade fixture failed to parse");
+        }
+        else
+        {
+            SurfaceProfileRegistry invalid_registry;
+            if (RegisterSurfaceProfileFileData(
+                    invalid_data, invalid_registry, diagnostic)
+             || diagnostic.error
+                    != SurfaceProfileValidationError::InvalidDowngrade)
+            {
+                result.diagnostics.emplace_back(
+                    "quality-increasing downgrade must be rejected");
+            }
+        }
+
+        const char unsupported_schema[] = "schema = 2\n";
+        SurfaceProfileFileData unsupported_data;
+        if (ParseSurfaceProfileFile(
+                unsupported_schema,
+                int(std::strlen(unsupported_schema)),
+                unsupported_data)
+            != SurfaceProfileFileParseResult::UnsupportedSchema)
+        {
+            result.diagnostics.emplace_back(
+                "unsupported surface profile schema must be rejected");
         }
 
         result.passed = result.diagnostics.empty();
@@ -2829,6 +3084,106 @@ namespace
                 "duplicate re-scan must not append module dependencies");
         }
 
+        hgl::filesystem::Path retry_root_path(RepoRootOSPath("build"));
+        retry_root_path /=
+            hgl::OSString(OS_TEXT("shader-module-registry-retry"));
+        const hgl::OSString retry_root = retry_root_path.ToOSString();
+        hgl::filesystem::Path dependent_path_builder(retry_root);
+        dependent_path_builder /= hgl::OSString(OS_TEXT("dependent"));
+        const hgl::OSString dependent_path =
+            dependent_path_builder.ToOSString();
+        hgl::filesystem::Path provider_path_builder(retry_root);
+        provider_path_builder /= hgl::OSString(OS_TEXT("provider"));
+        const hgl::OSString provider_path =
+            provider_path_builder.ToOSString();
+        hgl::filesystem::Path dependent_file_builder(dependent_path);
+        dependent_file_builder /= hgl::OSString(OS_TEXT("dependent.glsl"));
+        const hgl::OSString dependent_file =
+            dependent_file_builder.ToOSString();
+        hgl::filesystem::Path provider_file_builder(provider_path);
+        provider_file_builder /= hgl::OSString(OS_TEXT("provider.glsl"));
+        const hgl::OSString provider_file =
+            provider_file_builder.ToOSString();
+        const auto cleanup_retry_files = [&]()
+        {
+            if (hgl::filesystem::FileExist(dependent_file))
+                hgl::filesystem::FileDelete(dependent_file);
+            if (hgl::filesystem::FileExist(provider_file))
+                hgl::filesystem::FileDelete(provider_file);
+            if (hgl::filesystem::IsDirectory(dependent_path))
+                hgl::filesystem::DeletePath(dependent_path);
+            if (hgl::filesystem::IsDirectory(provider_path))
+                hgl::filesystem::DeletePath(provider_path);
+            if (hgl::filesystem::IsDirectory(retry_root))
+                hgl::filesystem::DeletePath(retry_root);
+        };
+        cleanup_retry_files();
+        if (!hgl::filesystem::MakePath(dependent_path)
+         || !hgl::filesystem::MakePath(provider_path))
+        {
+            result.diagnostics.emplace_back(
+                "failed to create registry retry test directories");
+        }
+        else
+        {
+            const char dependent_module[] =
+                "// @ulre begin\n"
+                "// @ulre version 1\n"
+                "// @ulre name retry_dependent\n"
+                "// @ulre kind Utility\n"
+                "// @ulre uses retry_provider 1 1\n"
+                "// @ulre end\n";
+            const char provider_module[] =
+                "// @ulre begin\n"
+                "// @ulre version 1\n"
+                "// @ulre name retry_provider\n"
+                "// @ulre kind Utility\n"
+                "// @ulre end\n";
+            if (hgl::filesystem::SaveMemoryToFile(
+                    dependent_file,
+                    dependent_module,
+                    hgl::int64(sizeof(dependent_module) - 1))
+                    != hgl::int64(sizeof(dependent_module) - 1)
+             || hgl::filesystem::SaveMemoryToFile(
+                    provider_file,
+                    provider_module,
+                    hgl::int64(sizeof(provider_module) - 1))
+                    != hgl::int64(sizeof(provider_module) - 1))
+            {
+                result.diagnostics.emplace_back(
+                    "failed to write registry retry test modules");
+            }
+            else
+            {
+                GLSLCodeModuleRegistry retry_registry;
+                int retry_files = 0;
+                int retry_errors = 0;
+                if (!retry_registry.LoadDirectory(
+                        dependent_path, &retry_files, &retry_errors)
+                 || retry_files != 0
+                 || retry_errors != 1
+                 || retry_registry.FindByName("retry_dependent"))
+                {
+                    result.diagnostics.emplace_back(
+                        "missing dependency module must remain pending");
+                }
+
+                retry_files = 0;
+                retry_errors = 0;
+                if (!retry_registry.LoadDirectory(
+                        provider_path, &retry_files, &retry_errors)
+                 || retry_files != 1
+                 || retry_errors != 0
+                 || !retry_registry.FindByName("retry_provider")
+                 || !retry_registry.FindByName("retry_dependent"))
+                {
+                    result.diagnostics.emplace_back(
+                        "later dependency load must recover pending modules");
+                }
+            }
+        }
+        cleanup_retry_files();
+
         result.passed = result.diagnostics.empty();
         return result;
     }
@@ -3021,6 +3376,29 @@ namespace
             {
                 result.diagnostics.emplace_back(
                     "module conflicts must be symmetric at query time");
+            }
+        }
+
+        {
+            GLSLCodeModuleDefinition base =
+                make_definition(211, "metadata_hash");
+            GLSLCodeModuleDefinition changed = base;
+            const GLSLCodeModuleCondition condition[] =
+            {
+                {
+                    GLSLCodeModuleConditionDomain::Option,
+                    GLSLCodeModuleConditionOperator::Equals,
+                    "Quality",
+                    "High"
+                }
+            };
+            changed.conditions = condition;
+            changed.condition_count = 1;
+            if (GetGLSLCodeModuleDefinitionHash(base)
+                == GetGLSLCodeModuleDefinitionHash(changed))
+            {
+                result.diagnostics.emplace_back(
+                    "module metadata changes must affect definition hash");
             }
         }
 
@@ -4125,6 +4503,7 @@ int main(const int argc, char **argv)
     if (run_glsl) results.push_back(RunGLSLCodeModuleMetadataValidationCase());
     if (run_glsl) results.push_back(RunCapabilityResolverCase());
     if (run_interface) results.push_back(RunShaderSemanticRegistryCase());
+    if (run_materialization) results.push_back(RunSurfaceProfileModelCase());
     if (run_interface) results.push_back(RunMaterialVertexABICharacterizationCase());
     if (run_interface) results.push_back(RunMaterialSemanticABIParityCase());
     if (run_interface) results.push_back(RunMaterialSemanticResolverPreviewCase());

@@ -14,6 +14,7 @@
 #include <hgl/mtl/new/SurfaceType.h>
 #include <hgl/mtl/new/BlendMode.h>
 #include <hgl/mtl/new/PassType.h>
+#include <hgl/mtl/SurfaceProfile.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <cstdint>
 #include <string>
@@ -237,6 +238,13 @@ namespace hgl::graph::mtl
         // Lod / 质量包络
         uint16_t default_lod   = 0;
         uint16_t lod_count     = 1;
+
+        // Step 7 target model. Empty fields preserve the current legacy path.
+        // The intent identifies authoring meaning; projections define how this
+        // Definition can feed a preferred or legally downgraded shared profile.
+        SurfaceIntentID surface_intent_id = InvalidSurfaceIntentID;
+        ValueArray<MaterialSurfaceProfileProjection>
+            surface_profile_projections;
 
         // Part-B: 材质 SSBO slot 显式声明（index == data_slot）
         // name 用于 GLSL 变量名 与 C++ SetMaterialDataSlotResource(name,...) 绑定。

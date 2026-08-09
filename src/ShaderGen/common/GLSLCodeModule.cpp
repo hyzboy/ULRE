@@ -141,6 +141,8 @@ namespace hgl::graph::mtl
         hash = hgl::hash::FNV1aAppendValueBytes(hash, definition.kind);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, definition.priority);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, definition.flags);
+        hash = hgl::hash::FNV1aAppendValueBytes(
+            hash, definition.metadata_version);
 
         hash = hgl::hash::FNV1aAppendValueBytes(hash, definition.ubo_requirement_count);
         for (uint32 i = 0; i < definition.ubo_requirement_count; ++i)
@@ -188,6 +190,38 @@ namespace hgl::graph::mtl
             hash, definition.code_module_requirement_count);
         for (uint32 i = 0; i < definition.code_module_requirement_count; ++i)
             hash = hgl::hash::FNV1aAppendValueBytes(hash, definition.code_module_requirements[i]);
+
+        hash = hgl::hash::FNV1aAppendValueBytes(
+            hash, definition.dependency_count);
+        for (uint32 i = 0; i < definition.dependency_count; ++i)
+        {
+            const GLSLCodeModuleDependency &dependency =
+                definition.dependencies[i];
+            hash = hgl::hash::FNV1aAppendValueBytes(
+                hash, dependency.module_id);
+            hash = hgl::hash::FNV1aAppendValueBytes(
+                hash, dependency.min_metadata_version);
+            hash = hgl::hash::FNV1aAppendValueBytes(
+                hash, dependency.max_metadata_version);
+        }
+
+        hash = hgl::hash::FNV1aAppendValueBytes(
+            hash, definition.condition_count);
+        for (uint32 i = 0; i < definition.condition_count; ++i)
+        {
+            const GLSLCodeModuleCondition &condition = definition.conditions[i];
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, condition.domain);
+            hash = hgl::hash::FNV1aAppendValueBytes(
+                hash, condition.operation);
+            hash = append_string(hash, condition.key);
+            hash = append_string(hash, condition.value);
+        }
+
+        hash = hgl::hash::FNV1aAppendValueBytes(
+            hash, definition.module_conflict_count);
+        for (uint32 i = 0; i < definition.module_conflict_count; ++i)
+            hash = hgl::hash::FNV1aAppendValueBytes(
+                hash, definition.module_conflicts[i]);
 
         return hash;
     }
