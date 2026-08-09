@@ -1485,15 +1485,233 @@ namespace
             RepoRootOSPath("build"), ShaderCacheMode::ReadOnly);
         if (read_only_store.SaveStageSPV(stage_key, payload, sizeof(payload)))
             result.diagnostics.emplace_back("read-only cache must reject writes");
+        const uint32_t invalid_spv[] = {0u, 1u, 2u, 3u};
+        if (store.SaveStageSPV(
+                stage_key, invalid_spv, sizeof(invalid_spv)))
+            result.diagnostics.emplace_back(
+                "invalid SPV payload must be rejected");
+
+        ShaderProgramLinkSpec program_link{};
+        program_link.vertex_stage = stage_key;
+        program_link.fragment_stage.stage = ShaderStage::Fragment;
+        program_link.fragment_stage.definition_hash = 0x2201u;
+        program_link.fragment_stage.glsl_module_graph_hash = 0x2202u;
+        program_link.fragment_stage.interface_hash = 0x2203u;
+        program_link.fragment_stage.resource_hash = 0x2204u;
+        program_link.fragment_stage.compiler_hash = 0x2205u;
+        program_link.resource_layout_hash = 0x2301u;
+        program_link.vertex_input_hash = 0x2302u;
+        program_link.render_target_hash = 0x2303u;
+        program_link.compiler_hash = stage_key.compiler_hash != 0
+            ? stage_key.compiler_hash : 0x2304u;
+        program_link.vertex_stage.compiler_hash =
+            program_link.compiler_hash;
+        program_link.fragment_stage.compiler_hash =
+            program_link.compiler_hash;
+
+        ShaderProgramArtifactMetadata metadata{};
+        metadata.program_key_digest =
+            program_link.BuildKey().GetDigest();
+        metadata.effective_material_program_digest = 0x2401u;
+        metadata.shader_variant_digest = 0x2402u;
+        metadata.resolved_module_graph_hash = 0x2403u;
+        metadata.shader_interface_hash = 0x2404u;
+        metadata.output_contract_hash =
+            program_link.render_target_hash;
+        metadata.vertex_stage_digest =
+            program_link.vertex_stage.GetDigest();
+        metadata.fragment_stage_digest =
+            program_link.fragment_stage.GetDigest();
+        metadata.compiler_profile_hash =
+            program_link.compiler_hash;
+        metadata.device_target_hash = 0x2405u;
+        metadata.generated_source_digest = 0x2406u;
+
+        const uint32_t fragment_payload[] =
+            {0x07230203u, 7u, 8u, 9u};
+        if (!store.SaveStageSPV(
+                program_link.vertex_stage,
+                payload,
+                sizeof(payload))
+         || !store.SaveStageSPV(
+                program_link.fragment_stage,
+                fragment_payload,
+                sizeof(fragment_payload))
+         || !store.SaveProgramMetadata(program_link, metadata))
+        {
+            result.diagnostics.emplace_back(
+                "complete program artifact save failed");
+        }
+        else
+        {
+            hgl::ValueArray<hgl::uint8> cached_vertex;
+            hgl::ValueArray<hgl::uint8> cached_fragment;
+            if (!store.HasProgramMetadata(program_link)
+             || !store.LoadProgramArtifacts(
+                    program_link,
+                    metadata,
+                    cached_vertex,
+                    cached_fragment)
+             || cached_vertex.GetCount()
+                    != static_cast<int>(sizeof(payload))
+             || cached_fragment.GetCount()
+                    != static_cast<int>(sizeof(fragment_payload))
+             || std::memcmp(
+                    cached_vertex.GetData(),
+                    payload,
+                    sizeof(payload)) != 0
+             || std::memcmp(
+                    cached_fragment.GetData(),
+                    fragment_payload,
+                    sizeof(fragment_payload)) != 0)
+            {
+                result.diagnostics.emplace_back(
+                    "complete program artifact load failed");
+            }
+
+            ShaderProgramArtifactMetadata changed_metadata = metadata;
+            changed_metadata.device_target_hash ^= 1u;
+            if (store.LoadProgramArtifacts(
+                    program_link,
+                    changed_metadata,
+                    cached_vertex,
+                    cached_fragment))
+            {
+                result.diagnostics.emplace_back(
+                    "metadata mismatch must reject stage artifacts");
+            }
+
+            if (!read_only_store.LoadProgramArtifacts(
+                    program_link,
+                    metadata,
+                    cached_vertex,
+                    cached_fragment)
+             || read_only_store.SaveProgramMetadata(
+                    program_link, metadata))
+            {
+                result.diagnostics.emplace_back(
+                    "read-only complete program artifact behavior failed");
+            }
+
+            hgl::filesystem::Path metadata_path(
+                RepoRootOSPath("build"));
+            metadata_path /=
+                hgl::OSString(OS_TEXT("shader-cache"));
+            metadata_path /=
+                hgl::OSString(OS_TEXT("program"));
+            metadata_path /= hgl::ToOSString(
+                (program_link.BuildKey().ToString()
+                    + hgl::AnsiString(".meta")).c_str());
+            hgl::int64 metadata_file_size = 0;
+            void *metadata_file =
+                hgl::filesystem::LoadFileToMemory(
+                    metadata_path.ToOSString(),
+                    metadata_file_size);
+            if (!metadata_file || metadata_file_size <= 0)
+            {
+                result.diagnostics.emplace_back(
+                    "failed to load metadata corruption fixture");
+            }
+            else
+            {
+                auto *metadata_bytes =
+                    static_cast<hgl::uint8 *>(metadata_file);
+                metadata_bytes[metadata_file_size - 1] ^= 0xffu;
+                if (hgl::filesystem::SaveMemoryToFile(
+                        metadata_path.ToOSString(),
+                        metadata_bytes,
+                        metadata_file_size)
+                        != metadata_file_size)
+                {
+                    result.diagnostics.emplace_back(
+                        "failed to corrupt program metadata");
+                }
+                delete[] metadata_bytes;
+
+                ShaderProgramArtifactMetadata corrupted{};
+                if (store.LoadProgramMetadata(
+                        program_link, corrupted))
+                {
+                    result.diagnostics.emplace_back(
+                        "corrupt program metadata must be rejected");
+                }
+                if (!store.SaveProgramMetadata(
+                        program_link, metadata))
+                {
+                    result.diagnostics.emplace_back(
+                        "failed to restore program metadata fixture");
+                }
+            }
+        }
+
+        ShaderProgramArtifactMetadata invalid_schema = metadata;
+        ++invalid_schema.schema_version;
+        if (store.SaveProgramMetadata(
+                program_link, invalid_schema))
+            result.diagnostics.emplace_back(
+                "metadata schema mismatch must reject writes");
+
+        ShaderProgramLinkSpec stage_only_link = program_link;
+        stage_only_link.render_target_hash ^= 0x1000u;
+        ShaderProgramArtifactMetadata stage_only_metadata = metadata;
+        stage_only_metadata.program_key_digest =
+            stage_only_link.BuildKey().GetDigest();
+        hgl::ValueArray<hgl::uint8> stage_only_vertex;
+        hgl::ValueArray<hgl::uint8> stage_only_fragment;
+        if (store.LoadProgramArtifacts(
+                stage_only_link,
+                stage_only_metadata,
+                stage_only_vertex,
+                stage_only_fragment))
+        {
+            result.diagnostics.emplace_back(
+                "stage-only artifacts must not count as a program hit");
+        }
+
+        ShaderProgramLinkSpec metadata_only_link = program_link;
+        metadata_only_link.fragment_stage.definition_hash ^= 0x2000u;
+        ShaderProgramArtifactMetadata metadata_only = metadata;
+        metadata_only.program_key_digest =
+            metadata_only_link.BuildKey().GetDigest();
+        metadata_only.fragment_stage_digest =
+            metadata_only_link.fragment_stage.GetDigest();
+        if (!store.SaveProgramMetadata(
+                metadata_only_link, metadata_only))
+        {
+            result.diagnostics.emplace_back(
+                "metadata-only fixture save failed");
+        }
+        else if (store.LoadProgramArtifacts(
+                    metadata_only_link,
+                    metadata_only,
+                    stage_only_vertex,
+                    stage_only_fragment))
+        {
+            result.diagnostics.emplace_back(
+                "metadata without all stages must not count as a program hit");
+        }
 
         ShaderArtifactStore shadow_store(
             RepoRootOSPath("build"),
             ShaderCacheMode::BuildIfMissing,
             ShaderArtifactCacheNamespace::ShadowV1);
-        const uint32_t shadow_payload[] = {0x07230203u, 4u, 5u, 6u};
-        if (!shadow_store.SaveStageSPV(stage_key, shadow_payload, sizeof(shadow_payload)))
+        const uint32_t shadow_payload[] =
+            {0x07230203u, 4u, 5u, 6u};
+        const uint32_t shadow_fragment_payload[] =
+            {0x07230203u, 10u, 11u, 12u};
+        if (!shadow_store.SaveStageSPV(
+                program_link.vertex_stage,
+                shadow_payload,
+                sizeof(shadow_payload))
+         || !shadow_store.SaveStageSPV(
+                program_link.fragment_stage,
+                shadow_fragment_payload,
+                sizeof(shadow_fragment_payload))
+         || !shadow_store.SaveProgramMetadata(
+                program_link, metadata))
         {
-            result.diagnostics.emplace_back("shadow namespace cache save failed");
+            result.diagnostics.emplace_back(
+                "shadow namespace cache save failed");
         }
         else
         {
@@ -1514,6 +1732,38 @@ namespace
             {
                 result.diagnostics.emplace_back(
                     "shadow namespace must load its isolated artifact");
+            }
+
+            hgl::ValueArray<hgl::uint8> shadow_fragment_loaded;
+            if (!shadow_store.LoadProgramArtifacts(
+                    program_link,
+                    metadata,
+                    shadow_loaded,
+                    shadow_fragment_loaded)
+             || shadow_fragment_loaded.GetCount()
+                    != static_cast<int>(
+                        sizeof(shadow_fragment_payload))
+             || std::memcmp(
+                    shadow_fragment_loaded.GetData(),
+                    shadow_fragment_payload,
+                    sizeof(shadow_fragment_payload)) != 0)
+            {
+                result.diagnostics.emplace_back(
+                    "shadow program artifacts must remain isolated");
+            }
+
+            ShaderArtifactStore contract_store(
+                RepoRootOSPath("build"),
+                ShaderCacheMode::ReadOnly,
+                ShaderArtifactCacheNamespace::ContractV1);
+            if (contract_store.LoadProgramArtifacts(
+                    program_link,
+                    metadata,
+                    shadow_loaded,
+                    shadow_fragment_loaded))
+            {
+                result.diagnostics.emplace_back(
+                    "contract namespace must not hit legacy/shadow programs");
             }
         }
 
@@ -1595,7 +1845,11 @@ namespace
          || !lit_a->HasProgramLink()
          || !lit_b->HasProgramLink()
          || !color->HasProgramLink()
-         || !lit_targeted->HasProgramLink())
+         || !lit_targeted->HasProgramLink()
+         || !lit_a->HasProgramArtifactMetadata()
+         || !lit_b->HasProgramArtifactMetadata()
+         || !color->HasProgramArtifactMetadata()
+         || !lit_targeted->HasProgramArtifactMetadata())
         {
             result.diagnostics.emplace_back(
                 "generate-only material builds must produce ProgramLink");
@@ -1607,6 +1861,87 @@ namespace
             const ShaderProgramLinkSpec &c = color->GetProgramLink();
             const ShaderProgramLinkSpec &targeted =
                 lit_targeted->GetProgramLink();
+            if (lit_a->GetProgramArtifactMetadata().
+                    program_key_digest
+                    != a.BuildKey().GetDigest()
+             || lit_a->GetProgramArtifactMetadata().
+                    vertex_stage_digest
+                    != a.vertex_stage.GetDigest()
+             || lit_a->GetProgramArtifactMetadata().
+                    fragment_stage_digest
+                    != a.fragment_stage.GetDigest())
+            {
+                result.diagnostics.emplace_back(
+                    "BuildSpec program metadata does not match ProgramLink");
+            }
+
+            ShaderArtifactStore hot_store(
+                RepoRootOSPath("build"),
+                ShaderCacheMode::BuildIfMissing,
+                ShaderArtifactCacheNamespace::ShadowV1);
+            const uint32_t cached_vertex_spv[] =
+                {ShaderArtifactSPVMagic, 0x3101u, 0x3102u, 0x3103u};
+            const uint32_t cached_fragment_spv[] =
+                {ShaderArtifactSPVMagic, 0x3201u, 0x3202u, 0x3203u};
+            if (!hot_store.SaveStageSPV(
+                    a.vertex_stage,
+                    cached_vertex_spv,
+                    sizeof(cached_vertex_spv))
+             || !hot_store.SaveStageSPV(
+                    a.fragment_stage,
+                    cached_fragment_spv,
+                    sizeof(cached_fragment_spv))
+             || !hot_store.SaveProgramMetadata(
+                    a,
+                    lit_a->GetProgramArtifactMetadata()))
+            {
+                result.diagnostics.emplace_back(
+                    "hot program artifact fixture save failed");
+            }
+            else
+            {
+                lit_a->SetArtifactStore(&hot_store);
+                if (!FinalizeShaderProgramBuildSpec(lit_a.get())
+                 || !lit_a->GetStageShader(ShaderStage::Vertex)
+                 || !lit_a->GetStageShader(ShaderStage::Fragment)
+                 || lit_a->GetStageShader(
+                        ShaderStage::Vertex)->GetSPVSize()
+                        != sizeof(cached_vertex_spv)
+                 || lit_a->GetStageShader(
+                        ShaderStage::Fragment)->GetSPVSize()
+                        != sizeof(cached_fragment_spv)
+                 || std::memcmp(
+                        lit_a->GetStageShader(
+                            ShaderStage::Vertex)->GetSPVData(),
+                        cached_vertex_spv,
+                        sizeof(cached_vertex_spv)) != 0
+                 || std::memcmp(
+                        lit_a->GetStageShader(
+                            ShaderStage::Fragment)->GetSPVData(),
+                        cached_fragment_spv,
+                        sizeof(cached_fragment_spv)) != 0)
+                {
+                    result.diagnostics.emplace_back(
+                        "hot program hit must populate BuildSpec SPV");
+                }
+            }
+
+            ShaderArtifactStore read_only_miss_store(
+                RepoRootOSPath("build"),
+                ShaderCacheMode::ReadOnly,
+                ShaderArtifactCacheNamespace::ContractV1);
+            lit_b->SetArtifactStore(&read_only_miss_store);
+            if (read_only_miss_store.HasProgramMetadata(
+                    lit_b->GetProgramLink())
+             || FinalizeShaderProgramBuildSpec(lit_b.get())
+             || lit_b->GetStageShader(
+                    ShaderStage::Vertex)->GetSPVSize() != 0
+             || lit_b->GetStageShader(
+                    ShaderStage::Fragment)->GetSPVSize() != 0)
+            {
+                result.diagnostics.emplace_back(
+                    "read-only program miss must not compile or write");
+            }
 
             if (a.vertex_stage.definition_hash == 0
              || a.vertex_stage.interface_hash == 0

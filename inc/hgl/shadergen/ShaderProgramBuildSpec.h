@@ -4,6 +4,7 @@
 #include<hgl/mtl/MaterialResourceLayout.h>
 #include<hgl/shadergen/ShaderCreateInfoMap.h>
 #include<hgl/shadergen/ShaderProgramLinkSpec.h>
+#include<hgl/shadergen/ShaderArtifactContract.h>
 #include<hgl/common/PrimitiveTypeDef.h>
 #include<hgl/common/ShaderStageDef.h>
 #include <hgl/common/TextureSamplerTypeDef.h>
@@ -49,6 +50,8 @@ namespace hgl::graph
             ShaderProgramLinkSpec program_link;
             bool has_program_link = false;
             ShaderArtifactStore *artifact_store = nullptr;
+            ShaderProgramArtifactMetadata program_metadata{};
+            bool has_program_metadata = false;
 
         public:
 
@@ -89,6 +92,22 @@ namespace hgl::graph
             const ShaderProgramLinkSpec &GetProgramLink() const noexcept { return program_link; }
             void SetArtifactStore(ShaderArtifactStore *store) noexcept { artifact_store = store; }
             ShaderArtifactStore *GetArtifactStore() const noexcept { return artifact_store; }
+            void SetProgramArtifactMetadata(
+                const ShaderProgramArtifactMetadata &metadata)
+            {
+                program_metadata = metadata;
+                has_program_metadata =
+                    IsValidShaderProgramArtifactMetadata(metadata);
+            }
+            bool HasProgramArtifactMetadata() const noexcept
+            {
+                return has_program_metadata;
+            }
+            const ShaderProgramArtifactMetadata &
+                GetProgramArtifactMetadata() const noexcept
+            {
+                return program_metadata;
+            }
 
             const bool HasLocalToWorld                  ()const{return has_local_to_world;}
 

@@ -4,6 +4,7 @@
 #include <hgl/common/ShaderStageDef.h>
 #include <hgl/common/InterpolationDef.h>
 #include <hgl/common/DescriptorSetTypeDef.h>
+#include <hgl/type/ValueArray.h>
 #include<hgl/log/Log.h>
 #include<string>
 
@@ -33,6 +34,7 @@ protected:
     std::string final_shader;
 
     SPVData *spv_data;
+    ValueArray<uint32> cached_spv_data;
 
 protected:
 
@@ -65,6 +67,7 @@ public:
     void SetFinalGLSL(const char *glsl){final_shader=glsl?glsl:"";}
 
     bool CompileFinalGLSLToSPV();                ///< 直接编译 final_shader 到 SPV
+    bool SetCachedSPVData(const void *data, size_t byte_size);
     bool CreateShaderFromFinalGLSL()             ///< compatibility alias
     {
         return CompileFinalGLSLToSPV();

@@ -4,6 +4,7 @@
 #include <hgl/filesystem/Path.h>
 #include <hgl/shadergen/ShaderArtifactContract.h>
 #include <hgl/shadergen/ShaderStageKey.h>
+#include <hgl/shadergen/ShaderProgramLinkSpec.h>
 #include <hgl/type/String.h>
 #include <hgl/type/ValueArray.h>
 
@@ -16,6 +17,7 @@ namespace hgl::graph::mtl
         ShaderArtifactCacheNamespace cache_namespace = ShaderArtifactCacheNamespace::Legacy;
 
         OSString GetStagePath(const ShaderStageKey &key) const;
+        OSString GetProgramPath(const ShaderProgramKey &key) const;
 
     public:
         ShaderArtifactStore() = default;
@@ -36,5 +38,20 @@ namespace hgl::graph::mtl
         bool HasStageSPV(const ShaderStageKey &key) const;
         bool LoadStageSPV(const ShaderStageKey &key, ValueArray<uint8> &out_spv) const;
         bool SaveStageSPV(const ShaderStageKey &key, const void *spv_data, const uint64 spv_size);
+
+        bool HasProgramMetadata(
+            const ShaderProgramLinkSpec &link) const;
+        bool LoadProgramMetadata(
+            const ShaderProgramLinkSpec &link,
+            ShaderProgramArtifactMetadata &out_metadata) const;
+        bool SaveProgramMetadata(
+            const ShaderProgramLinkSpec &link,
+            const ShaderProgramArtifactMetadata &metadata);
+
+        bool LoadProgramArtifacts(
+            const ShaderProgramLinkSpec &link,
+            const ShaderProgramArtifactMetadata &expected_metadata,
+            ValueArray<uint8> &out_vertex_spv,
+            ValueArray<uint8> &out_fragment_spv) const;
     };
 }

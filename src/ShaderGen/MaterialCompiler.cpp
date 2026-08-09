@@ -9,6 +9,7 @@
 #include <hgl/mtl/MaterialResourceLayout.h>
 #include <hgl/shadergen/ShaderProgramBuildSpec.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
+#include <hgl/shadergen/ShaderProgramArtifactBuilder.h>
 #include <hgl/graph/ShaderBufferSources.h>
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/common/RenderOptions.h>
@@ -31,22 +32,48 @@ bool FinalizeShaderProgramBuildSpec(
 
     ShaderArtifactStore *artifact_store =
         build_spec->GetArtifactStore();
+    if (artifact_store
+     && (!build_spec->HasProgramLink()
+      || !build_spec->HasProgramArtifactMetadata()))
+        return false;
+
     bool cache_hit = false;
-    if (artifact_store && build_spec->HasProgramLink())
+    if (artifact_store)
     {
         const auto &link = build_spec->GetProgramLink();
         ValueArray<hgl::uint8> cached_vertex;
         ValueArray<hgl::uint8> cached_fragment;
-        cache_hit = artifact_store->LoadStageSPV(
-                        link.vertex_stage, cached_vertex)
-                 && artifact_store->LoadStageSPV(
-                        link.fragment_stage, cached_fragment);
+        cache_hit = artifact_store->LoadProgramArtifacts(
+            link,
+            build_spec->GetProgramArtifactMetadata(),
+            cached_vertex,
+            cached_fragment);
+        if (cache_hit)
+        {
+            ShaderCreateInfo *vertex =
+                build_spec->GetStageShader(ShaderStage::Vertex);
+            ShaderCreateInfo *fragment =
+                build_spec->GetStageShader(ShaderStage::Fragment);
+            cache_hit = vertex
+                     && fragment
+                     && vertex->SetCachedSPVData(
+                            cached_vertex.GetData(),
+                            cached_vertex.GetCount())
+                     && fragment->SetCachedSPVData(
+                            cached_fragment.GetData(),
+                            cached_fragment.GetCount());
+        }
     }
+
+    if (!cache_hit
+     && artifact_store
+     && artifact_store->GetCacheMode() == ShaderCacheMode::ReadOnly)
+        return false;
 
     if (!cache_hit && !build_spec->CreateShaderDirect())
         return false;
 
-    if (!cache_hit && artifact_store && build_spec->HasProgramLink())
+    if (!cache_hit && artifact_store)
     {
         const auto &link = build_spec->GetProgramLink();
         const ShaderCreateInfo *vertex =
@@ -61,7 +88,10 @@ bool FinalizeShaderProgramBuildSpec(
          || !artifact_store->SaveStageSPV(
                 link.fragment_stage,
                 fragment->GetSPVData(),
-                fragment->GetSPVSize()))
+                fragment->GetSPVSize())
+         || !artifact_store->SaveProgramMetadata(
+                link,
+                build_spec->GetProgramArtifactMetadata()))
             return false;
     }
 
@@ -975,6 +1005,15 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     }
 
     mci->SetMaterialResourceLayout(material_resource_layout);
+    if (mci->HasProgramLink())
+    {
+        ShaderProgramArtifactMetadata metadata{};
+        if (!BuildShaderProgramArtifactMetadata(
+                profile, *mci, metadata))
+            return FailAfterMci(
+                "failed to build ShaderProgram artifact metadata");
+        mci->SetProgramArtifactMetadata(metadata);
+    }
 
     // ─────────────────────────────────────────────────────────────
     // Step 7: Compile directly → SPV

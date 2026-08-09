@@ -25,7 +25,9 @@ ${SHADERGEN_INCLUDE_PATH}/ShaderKeyUtility.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderStageBuildSpec.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderProgramLinkSpec.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderArtifactStore.h
+                                   ${SHADERGEN_INCLUDE_PATH}/ShaderProgramArtifactBuilder.h
                                    ShaderArtifactStore.cpp
+                                   ShaderProgramArtifactBuilder.cpp
                                    ${ROOT_INCLUDE_PATH}/hgl/graph/glsl/GLSLCodeModuleRegistry.h
                                    common/GLSLCodeModuleRegistry.cpp
                                    ${ROOT_INCLUDE_PATH}/hgl/graph/glsl/GLSLCodeModuleMetadata.h
