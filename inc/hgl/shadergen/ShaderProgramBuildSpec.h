@@ -53,9 +53,9 @@ namespace hgl::graph
             ShaderArtifactStore *artifact_store = nullptr;
             ShaderProgramArtifactMetadata program_metadata{};
             bool has_program_metadata = false;
-            EffectiveMaterialProgramKey effective_program{};
+            PreparedMaterialProgramSet prepared_program_set{};
             MaterialResolutionResult material_resolution{};
-            bool has_effective_program = false;
+            bool has_prepared_program_set = false;
 
         public:
 
@@ -112,32 +112,42 @@ namespace hgl::graph
             {
                 return program_metadata;
             }
-            bool SetEffectiveMaterialProgram(
-                const EffectiveMaterialProgramKey &program,
+            bool SetPreparedMaterialProgramSet(
+                const PreparedMaterialProgramSet &program_set,
                 const MaterialResolutionResult &resolution)
             {
-                if (!ValidateEffectiveMaterialProgramKey(program)
+                const EffectiveMaterialProgramKey *executable_program =
+                    program_set.GetExecutableProgram();
+                if (!executable_program
                  || !ValidateMaterialResolutionResult(resolution)
                  || resolution.status
                         != MaterialResolutionStatus::Resolved
-                 || resolution.effective_program != program)
+                 || resolution.effective_program
+                        != *executable_program)
                 {
                     return false;
                 }
 
-                effective_program = program;
+                prepared_program_set = program_set;
                 material_resolution = resolution;
-                has_effective_program = true;
+                has_prepared_program_set = true;
                 return true;
             }
-            bool HasEffectiveMaterialProgram() const noexcept
+            bool HasPreparedMaterialProgramSet() const noexcept
             {
-                return has_effective_program;
+                return has_prepared_program_set;
             }
-            const EffectiveMaterialProgramKey &
-                GetEffectiveMaterialProgram() const noexcept
+            const PreparedMaterialProgramSet &
+                GetPreparedMaterialProgramSet() const noexcept
             {
-                return effective_program;
+                return prepared_program_set;
+            }
+            const EffectiveMaterialProgramKey *
+                GetActiveEffectiveMaterialProgram() const noexcept
+            {
+                return has_prepared_program_set
+                    ? prepared_program_set.GetExecutableProgram()
+                    : nullptr;
             }
             const MaterialResolutionResult &
                 GetMaterialResolutionResult() const noexcept

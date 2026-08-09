@@ -59,9 +59,11 @@ namespace hgl::graph::mtl
                 build_spec.GetMaterialResourceLayout()));
 
         const uint64 program_digest = link.BuildKey().GetDigest();
+        const EffectiveMaterialProgramKey *active_program =
+            build_spec.GetActiveEffectiveMaterialProgram();
         const uint64 effective_program_digest =
-            build_spec.HasEffectiveMaterialProgram()
-                ? build_spec.GetEffectiveMaterialProgram().GetDigest()
+            active_program
+                ? active_program->GetDigest()
                 : program_digest;
         uint64 variant_digest = hgl::hash::FNV1aInit<uint64>();
         variant_digest = hgl::hash::FNV1aAppendValueBytes(

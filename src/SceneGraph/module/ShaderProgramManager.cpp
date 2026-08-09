@@ -411,9 +411,11 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(const AnsiString &mtl_
 
     Add(mtl);
 
-    if (mci->HasEffectiveMaterialProgram())
+    const mtl::EffectiveMaterialProgramKey *active_program =
+        mci->GetActiveEffectiveMaterialProgram();
+    if (active_program)
         shader_program_cache.Add(
-            mci->GetEffectiveMaterialProgram(), mtl);
+            *active_program, mtl);
     else
         shader_program_cache.AddName(mtl_name,mtl);
     // ShaderProgram is a C++ object managed by ShaderProgramManager, not a Vulkan object
@@ -501,8 +503,11 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(const mtl::MaterialDef
         return nullptr;
     }
 
+    const mtl::EffectiveMaterialProgramKey *active_program =
+        mci->GetActiveEffectiveMaterialProgram();
     if (!mci->HasProgramLink()
-     || !mci->HasEffectiveMaterialProgram())
+     || !mci->HasPreparedMaterialProgramSet()
+     || !active_program)
     {
         GLogError(
             "[ShaderProgramManager] Material build produced incomplete program identity: id=%s",
@@ -510,11 +515,10 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(const mtl::MaterialDef
         return nullptr;
     }
 
-    const AnsiString hash_name =
-        mci->GetEffectiveMaterialProgram().ToString();
+    const AnsiString hash_name = active_program->ToString();
     if (ShaderProgram *cached =
             TryGetCachedEffectiveMaterialProgram(
-                mci->GetEffectiveMaterialProgram()))
+                *active_program))
         return cached;
 
     if (!mtl::FinalizeShaderProgramBuildSpec(mci))

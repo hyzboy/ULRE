@@ -1850,10 +1850,14 @@ namespace
          || !lit_b->HasProgramArtifactMetadata()
          || !color->HasProgramArtifactMetadata()
          || !lit_targeted->HasProgramArtifactMetadata()
-         || !lit_a->HasEffectiveMaterialProgram()
-         || !lit_b->HasEffectiveMaterialProgram()
-         || !color->HasEffectiveMaterialProgram()
-         || !lit_targeted->HasEffectiveMaterialProgram())
+         || !lit_a->HasPreparedMaterialProgramSet()
+         || !lit_b->HasPreparedMaterialProgramSet()
+         || !color->HasPreparedMaterialProgramSet()
+         || !lit_targeted->HasPreparedMaterialProgramSet()
+         || !lit_a->GetActiveEffectiveMaterialProgram()
+         || !lit_b->GetActiveEffectiveMaterialProgram()
+         || !color->GetActiveEffectiveMaterialProgram()
+         || !lit_targeted->GetActiveEffectiveMaterialProgram())
         {
             result.diagnostics.emplace_back(
                 "generate-only material builds must produce ProgramLink");
@@ -1876,8 +1880,10 @@ namespace
                     != a.fragment_stage.GetDigest()
              || lit_a->GetProgramArtifactMetadata().
                     effective_material_program_digest
-                    != lit_a->GetEffectiveMaterialProgram().
-                        GetDigest())
+                    != lit_a->GetActiveEffectiveMaterialProgram()->
+                        GetDigest()
+             || lit_a->GetPreparedMaterialProgramSet().
+                    programs.GetCount() != 1)
             {
                 result.diagnostics.emplace_back(
                     "BuildSpec program metadata does not match ProgramLink");
@@ -1970,8 +1976,8 @@ namespace
             if (a.fragment_stage.GetDigest()
                     == c.fragment_stage.GetDigest()
              || a.BuildKey() == c.BuildKey()
-             || lit_a->GetEffectiveMaterialProgram()
-                    == color->GetEffectiveMaterialProgram())
+             || *lit_a->GetActiveEffectiveMaterialProgram()
+                    == *color->GetActiveEffectiveMaterialProgram())
             {
                 result.diagnostics.emplace_back(
                     "different materials must not share authoritative keys");
@@ -1980,8 +1986,8 @@ namespace
             if (a.vertex_stage.GetDigest()
                     == b.vertex_stage.GetDigest()
              || a.BuildKey() == b.BuildKey()
-             || lit_a->GetEffectiveMaterialProgram()
-                    == lit_b->GetEffectiveMaterialProgram())
+             || *lit_a->GetActiveEffectiveMaterialProgram()
+                    == *lit_b->GetActiveEffectiveMaterialProgram())
             {
                 result.diagnostics.emplace_back(
                     "different geometry formats must not share authoritative keys");
@@ -1992,8 +1998,9 @@ namespace
              || a.fragment_stage.compiler_hash
                     == targeted.fragment_stage.compiler_hash
              || a.BuildKey() == targeted.BuildKey()
-             || lit_a->GetEffectiveMaterialProgram()
-                    == lit_targeted->GetEffectiveMaterialProgram())
+             || *lit_a->GetActiveEffectiveMaterialProgram()
+                    == *lit_targeted->
+                        GetActiveEffectiveMaterialProgram())
             {
                 result.diagnostics.emplace_back(
                     "compiler profile changes must invalidate authoritative keys");
@@ -2043,7 +2050,8 @@ namespace
             else
             {
                 const EffectiveMaterialProgramKey &shared_key =
-                    shared_builds[0]->GetEffectiveMaterialProgram();
+                    *shared_builds[0]->
+                        GetActiveEffectiveMaterialProgram();
                 const MaterialResolutionResult &first_resolution =
                     shared_builds[0]->GetMaterialResolutionResult();
                 for (int i = 1; i < 4; ++i)
@@ -2052,10 +2060,15 @@ namespace
                         shared_builds[i]->
                             GetMaterialResolutionResult();
                     if (!shared_builds[i]->
-                            HasEffectiveMaterialProgram()
-                     || shared_builds[i]->
-                            GetEffectiveMaterialProgram()
+                            HasPreparedMaterialProgramSet()
+                     || !shared_builds[i]->
+                            GetActiveEffectiveMaterialProgram()
+                     || *shared_builds[i]->
+                            GetActiveEffectiveMaterialProgram()
                             != shared_key
+                     || shared_builds[i]->
+                            GetPreparedMaterialProgramSet().
+                                programs.GetCount() != 1
                      || shared_builds[i]->GetProgramLink().BuildKey()
                             != shared_builds[0]->
                                 GetProgramLink().BuildKey()
@@ -2399,21 +2412,51 @@ namespace
         }
 
         PreparedMaterialProgramSet prepared_set{};
-        prepared_set.maximum_surface_profile_id =
-            effective_key.resolved_surface_profile_id;
-        prepared_set.quality_policy_hash = 0x601u;
-        prepared_set.preferred_program = effective_key;
-        prepared_set.programs.Add(effective_key);
-        if (!prepared_set.IsValidForCurrentForwardPath()
+        if (!BuildSingleProgramPreparedMaterialProgramSet(
+                first_resolution, prepared_set)
+         || !prepared_set.IsValidForCurrentForwardPath()
+         || !prepared_set.GetExecutableProgram()
+         || *prepared_set.GetExecutableProgram() != effective_key
+         || prepared_set.maximum_surface_profile_id
+                != effective_key.resolved_surface_profile_id
+         || prepared_set.quality_policy_hash
+                != GetSingleProgramPreparedSetPolicyHash()
          || prepared_set.GetStableHash() == 0)
         {
             result.diagnostics.emplace_back(
                 "single-program prepared set must be valid");
         }
         prepared_set.programs.Add(effective_key);
-        if (prepared_set.IsValidForCurrentForwardPath())
+        if (prepared_set.IsValidForCurrentForwardPath()
+         || prepared_set.GetExecutableProgram())
             result.diagnostics.emplace_back(
-                "Step 8 prepared set must reject multiple programs");
+                "current Forward path must reject multiple programs");
+
+        if (!BuildSingleProgramPreparedMaterialProgramSet(
+                first_resolution, prepared_set))
+        {
+            result.diagnostics.emplace_back(
+                "single-program prepared set rebuild failed");
+        }
+        else
+        {
+            prepared_set.maximum_surface_profile_id =
+                GetSurfaceStableID("AnotherProfile");
+            if (prepared_set.IsValidForCurrentForwardPath()
+             || prepared_set.GetExecutableProgram())
+            {
+                result.diagnostics.emplace_back(
+                    "prepared set maximum profile must match executable program");
+            }
+        }
+
+        MaterialResolutionResult unresolved{};
+        if (BuildSingleProgramPreparedMaterialProgramSet(
+                unresolved, prepared_set))
+        {
+            result.diagnostics.emplace_back(
+                "unresolved material must not produce a prepared set");
+        }
 
         ResourceAcquirePlan resource_plan_a{};
         resource_plan_a.effective_material_program_digest =

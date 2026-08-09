@@ -1009,13 +1009,20 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
             != (config.material_resolution == nullptr))
         return FailAfterMci(
             "incomplete Effective Material Program contract");
-    if (config.effective_program
-     && !mci->SetEffectiveMaterialProgram(
-            *config.effective_program,
-            *config.material_resolution))
+    if (config.effective_program)
     {
-        return FailAfterMci(
-            "invalid Effective Material Program contract");
+        PreparedMaterialProgramSet program_set{};
+        if (config.material_resolution->effective_program
+                != *config.effective_program
+         || !BuildSingleProgramPreparedMaterialProgramSet(
+                *config.material_resolution, program_set)
+         || !mci->SetPreparedMaterialProgramSet(
+                program_set,
+                *config.material_resolution))
+        {
+            return FailAfterMci(
+                "invalid Prepared Material Program Set contract");
+        }
     }
     if (mci->HasProgramLink())
     {

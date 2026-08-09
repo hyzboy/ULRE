@@ -11,6 +11,7 @@
 namespace hgl::graph::mtl
 {
     constexpr uint32 MaterialProgramContractSchemaVersion = 1;
+    constexpr uint32 SingleProgramPreparedSetPolicyVersion = 1;
 
     enum class MaterialResolutionStatus : uint8
     {
@@ -119,6 +120,8 @@ namespace hgl::graph::mtl
         ValueArray<EffectiveMaterialProgramKey> programs;
 
         bool IsValidForCurrentForwardPath() const noexcept;
+        const EffectiveMaterialProgramKey *
+            GetExecutableProgram() const noexcept;
         uint64 GetStableHash() const noexcept;
     };
 
@@ -177,6 +180,10 @@ namespace hgl::graph::mtl
         const MaterialResolutionResult &result) noexcept;
     bool ValidateResourceAcquirePlan(
         const ResourceAcquirePlan &plan) noexcept;
+    uint64 GetSingleProgramPreparedSetPolicyHash() noexcept;
+    bool BuildSingleProgramPreparedMaterialProgramSet(
+        const MaterialResolutionResult &resolution,
+        PreparedMaterialProgramSet &out_set) noexcept;
 
     bool SerializeEffectiveMaterialProgramKey(
         const EffectiveMaterialProgramKey &key,

@@ -203,6 +203,33 @@ namespace hgl::graph::mtl
             ? contract_detail::HashCanonicalBytes(bytes) : 0;
     }
 
+    uint64 GetSingleProgramPreparedSetPolicyHash() noexcept
+    {
+        uint64 hash = hgl::hash::FNV1aInit<uint64>();
+        hash = hgl::hash::FNV1aAppendValueBytes(
+            hash, MaterialProgramContractSchemaVersion);
+        return hgl::hash::FNV1aAppendValueBytes(
+            hash, SingleProgramPreparedSetPolicyVersion);
+    }
+
+    bool BuildSingleProgramPreparedMaterialProgramSet(
+        const MaterialResolutionResult &resolution,
+        PreparedMaterialProgramSet &out_set) noexcept
+    {
+        out_set = {};
+        if (!ValidateMaterialResolutionResult(resolution)
+         || resolution.status != MaterialResolutionStatus::Resolved)
+            return false;
+
+        out_set.maximum_surface_profile_id =
+            resolution.effective_program.resolved_surface_profile_id;
+        out_set.quality_policy_hash =
+            GetSingleProgramPreparedSetPolicyHash();
+        out_set.preferred_program = resolution.effective_program;
+        out_set.programs.Add(resolution.effective_program);
+        return out_set.IsValidForCurrentForwardPath();
+    }
+
     bool PreparedMaterialProgramSet::IsValidForCurrentForwardPath()
         const noexcept
     {
@@ -211,7 +238,17 @@ namespace hgl::graph::mtl
             && quality_policy_hash != 0
             && programs.GetCount() == 1
             && ValidateEffectiveMaterialProgramKey(preferred_program)
+            && maximum_surface_profile_id
+                == preferred_program.resolved_surface_profile_id
             && programs[0] == preferred_program;
+    }
+
+    const EffectiveMaterialProgramKey *
+    PreparedMaterialProgramSet::GetExecutableProgram() const noexcept
+    {
+        return IsValidForCurrentForwardPath()
+            ? &programs[0]
+            : nullptr;
     }
 
     bool SerializePreparedMaterialProgramSet(
