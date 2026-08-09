@@ -8,7 +8,9 @@
 #include <hgl/shadergen/ShaderCreateInfo.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/shadergen/ShaderArtifactStore.h>
+#include <hgl/shadergen/CanonicalShaderContract.h>
 #include <hgl/shadergen/ShaderSemanticRegistry.h>
+#include <hgl/mtl/MaterialProgramContract.h>
 #include <hgl/graph/glsl/GLSLCodeModule.h>
 #include <hgl/graph/glsl/GLSLCodeModuleCapabilityResolver.h>
 #include <hgl/graph/glsl/GLSLCodeModuleFile.h>
@@ -1493,6 +1495,389 @@ namespace
         {
             result.diagnostics.emplace_back(
                 "migration options must preserve the legacy path by default");
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
+    static GateResult RunCanonicalShaderContractCase()
+    {
+        GateResult result;
+        result.name = "Q1.canonical-shader-contract";
+
+        const auto bytes_equal = [](const hgl::ValueArray<hgl::uint8> &lhs,
+                                    const hgl::ValueArray<hgl::uint8> &rhs)
+        {
+            return lhs.GetCount() == rhs.GetCount()
+                && (lhs.IsEmpty()
+                 || std::memcmp(
+                        lhs.GetData(),
+                        rhs.GetData(),
+                        static_cast<size_t>(lhs.GetCount())) == 0);
+        };
+
+        const ShaderContractStableID source_module =
+            GetSurfaceStableID("module.source");
+        const ShaderContractStableID dependency_module =
+            GetSurfaceStableID("module.dependency");
+
+        ResolvedModuleGraph graph_a{};
+        graph_a.modules.Add(
+            {source_module, 0x101u, 0x201u, 1, 0});
+        graph_a.modules.Add(
+            {dependency_module, 0x102u, 0x202u, 0, 0});
+        graph_a.dependencies.Add(
+            {source_module, dependency_module, 0, 1});
+        graph_a.provider_selections.Add(
+            {
+                GLSLCodeModuleSemantic::Position,
+                dependency_module,
+                10,
+                0
+            });
+        graph_a.aggregated_semantic_requirements.Add(
+            {
+                GLSLCodeModuleCapabilitySource::GeometryAttribute,
+                GLSLCodeModuleSemantic::Position,
+                uint32_t(GLSLCodeModuleNumericClass::Float),
+                3,
+                3,
+                0
+            });
+        graph_a.aggregated_semantic_requirements.Add(
+            {
+                GLSLCodeModuleCapabilitySource::Resource,
+                GLSLCodeModuleSemantic::MaterialData,
+                uint32_t(GLSLCodeModuleNumericClass::Any),
+                0,
+                0,
+                0
+            });
+
+        ResolvedModuleGraph graph_b{};
+        graph_b.modules.Add(graph_a.modules[1]);
+        graph_b.modules.Add(graph_a.modules[0]);
+        graph_b.dependencies.Add(graph_a.dependencies[0]);
+        graph_b.provider_selections.Add(graph_a.provider_selections[0]);
+        graph_b.aggregated_semantic_requirements.Add(
+            graph_a.aggregated_semantic_requirements[1]);
+        graph_b.aggregated_semantic_requirements.Add(
+            graph_a.aggregated_semantic_requirements[0]);
+
+        hgl::ValueArray<hgl::uint8> graph_bytes_a;
+        hgl::ValueArray<hgl::uint8> graph_bytes_b;
+        if (!SerializeResolvedModuleGraph(graph_a, graph_bytes_a)
+         || !SerializeResolvedModuleGraph(graph_b, graph_bytes_b)
+         || !bytes_equal(graph_bytes_a, graph_bytes_b)
+         || GetResolvedModuleGraphHash(graph_a)
+                != GetResolvedModuleGraphHash(graph_b))
+        {
+            result.diagnostics.emplace_back(
+                "module graph serialization must ignore input order");
+        }
+
+        ResolvedModuleGraph changed_graph = graph_a;
+        changed_graph.modules[0].module_content_hash ^= 1u;
+        if (GetResolvedModuleGraphHash(changed_graph)
+            == GetResolvedModuleGraphHash(graph_a))
+        {
+            result.diagnostics.emplace_back(
+                "module content changes must affect graph hash");
+        }
+
+        ResolvedModuleGraph duplicate_graph = graph_a;
+        duplicate_graph.modules.Add(graph_a.modules[0]);
+        if (ValidateResolvedModuleGraph(duplicate_graph))
+            result.diagnostics.emplace_back(
+                "duplicate module identities must be rejected");
+
+        ShaderInterfaceContract interface_a{};
+        interface_a.geometry_semantics.Add(
+            {
+                VertexSemantic::Position,
+                ShaderSemanticScalarType::Float,
+                3,
+                1,
+                0,
+                uint32_t(VK_FORMAT_R32G32B32_SFLOAT)
+            });
+        interface_a.geometry_semantics.Add(
+            {
+                VertexSemantic::TexCoord,
+                ShaderSemanticScalarType::Float,
+                2,
+                1,
+                1,
+                uint32_t(VK_FORMAT_R32G32_SFLOAT)
+            });
+        interface_a.inter_stage_semantics.Add(
+            {
+                InterStageSemantic::DataIndexID,
+                ShaderSemanticScalarType::UnsignedInteger,
+                InterStageInterpolation::Flat,
+                1,
+                1,
+                0
+            });
+        interface_a.inter_stage_semantics.Add(
+            {
+                InterStageSemantic::UV0,
+                ShaderSemanticScalarType::Float,
+                InterStageInterpolation::Smooth,
+                2,
+                1,
+                1
+            });
+        interface_a.descriptor_requirements.Add(
+            {
+                GetSurfaceStableID("resource.material_data"),
+                GetSurfaceStableID("schema.PBRSurface.v1"),
+                DescriptorSemantic::MaterialDataSlotData,
+                DescriptorSemanticLayer::SSBO,
+                DescriptorSetType::Material,
+                DescriptorKind::SSBO,
+                TextureSlot::BaseColor,
+                SSBOType::PBRSurface,
+                0,
+                uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
+                1,
+                true,
+                false
+            });
+        interface_a.descriptor_requirements.Add(
+            {
+                GetSurfaceStableID("resource.base_color"),
+                GetSurfaceStableID("schema.sampler2D"),
+                DescriptorSemantic::MaterialTexture,
+                DescriptorSemanticLayer::Texture,
+                DescriptorSetType::Material,
+                DescriptorKind::Texture,
+                TextureSlot::BaseColor,
+                SSBOType::UserDefined,
+                0,
+                uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
+                1,
+                false,
+                true
+            });
+        interface_a.entry_points.Add(
+            {ShaderStage::Vertex, GetSurfaceStableID("main.vs")});
+        interface_a.entry_points.Add(
+            {ShaderStage::Fragment, GetSurfaceStableID("main.fs")});
+
+        ShaderInterfaceContract interface_b{};
+        interface_b.geometry_semantics.Add(interface_a.geometry_semantics[1]);
+        interface_b.geometry_semantics.Add(interface_a.geometry_semantics[0]);
+        interface_b.inter_stage_semantics.Add(
+            interface_a.inter_stage_semantics[1]);
+        interface_b.inter_stage_semantics.Add(
+            interface_a.inter_stage_semantics[0]);
+        interface_b.descriptor_requirements.Add(
+            interface_a.descriptor_requirements[1]);
+        interface_b.descriptor_requirements.Add(
+            interface_a.descriptor_requirements[0]);
+        interface_b.entry_points.Add(interface_a.entry_points[1]);
+        interface_b.entry_points.Add(interface_a.entry_points[0]);
+
+        hgl::ValueArray<hgl::uint8> interface_bytes_a;
+        hgl::ValueArray<hgl::uint8> interface_bytes_b;
+        if (!SerializeShaderInterfaceContract(
+                interface_a, interface_bytes_a)
+         || !SerializeShaderInterfaceContract(
+                interface_b, interface_bytes_b)
+         || !bytes_equal(interface_bytes_a, interface_bytes_b)
+         || GetShaderInterfaceContractHash(interface_a)
+                != GetShaderInterfaceContractHash(interface_b))
+        {
+            result.diagnostics.emplace_back(
+                "shader interface serialization must ignore input order");
+        }
+
+        ShaderInterfaceContract conflicting_interface = interface_a;
+        conflicting_interface.inter_stage_semantics[1].location = 0;
+        if (ValidateShaderInterfaceContract(conflicting_interface))
+            result.diagnostics.emplace_back(
+                "inter-stage location conflicts must be rejected");
+
+        OutputContract output_a{};
+        output_a.purpose = ShaderProgramPurpose::ForwardColor;
+        output_a.attachments.Add(
+            {
+                GetSurfaceStableID("output.color"),
+                ShaderStageValueType::Vec4,
+                0,
+                1,
+                0
+            });
+        output_a.attachments.Add(
+            {
+                GetSurfaceStableID("output.material_id"),
+                ShaderStageValueType::UInt,
+                1,
+                1,
+                0
+            });
+        OutputContract output_b = output_a;
+        output_b.attachments.Clear();
+        output_b.attachments.Add(output_a.attachments[1]);
+        output_b.attachments.Add(output_a.attachments[0]);
+        if (GetOutputContractHash(output_a) == 0
+         || GetOutputContractHash(output_a)
+                != GetOutputContractHash(output_b))
+        {
+            result.diagnostics.emplace_back(
+                "output serialization must ignore attachment order");
+        }
+
+        OutputContract depth_output{};
+        depth_output.purpose = ShaderProgramPurpose::DepthOnly;
+        depth_output.depth_only = true;
+        if (!ValidateOutputContract(depth_output))
+            result.diagnostics.emplace_back(
+                "depth-only output contract must allow no attachments");
+
+        EffectiveMaterialProgramKey effective_key{};
+        effective_key.resolved_surface_profile_id =
+            GetSurfaceStableID("StandardPBR");
+        effective_key.resolved_surface_profile_hash = 0x301u;
+        effective_key.projection_id =
+            GetSurfaceStableID("Lit.ToStandardPBR");
+        effective_key.normalized_static_feature_hash = 0x302u;
+        effective_key.resolved_module_graph_hash =
+            GetResolvedModuleGraphHash(graph_a);
+        effective_key.capability_signature_hash = 0x303u;
+        effective_key.resolver_policy_hash = 0x304u;
+        effective_key.purpose = ShaderProgramPurpose::ForwardColor;
+        const uint64_t effective_digest = effective_key.GetDigest();
+        if (effective_digest == 0)
+            result.diagnostics.emplace_back(
+                "valid effective material key must have a digest");
+
+        MaterialResolutionResult first_resolution{};
+        first_resolution.status = MaterialResolutionStatus::Resolved;
+        first_resolution.source_definition_id_hash = 0x401u;
+        first_resolution.recipe_capability_hash = 0x402u;
+        first_resolution.source_surface_intent_id =
+            GetSurfaceStableID("HumanSkin");
+        first_resolution.requested_quality_class = 2;
+        first_resolution.effective_program = effective_key;
+        MaterialResolutionResult second_resolution = first_resolution;
+        second_resolution.source_definition_id_hash = 0x403u;
+        second_resolution.source_surface_intent_id =
+            GetSurfaceStableID("Wood");
+
+        if (!ValidateMaterialResolutionResult(first_resolution)
+         || !ValidateMaterialResolutionResult(second_resolution)
+         || first_resolution.effective_program.GetDigest()
+                != second_resolution.effective_program.GetDigest()
+         || first_resolution.GetProvenanceHash()
+                == second_resolution.GetProvenanceHash())
+        {
+            result.diagnostics.emplace_back(
+                "resolution provenance must not pollute effective program key");
+        }
+
+        ShaderVariantContract first_variant{};
+        first_variant.effective_material_program_digest =
+            effective_digest;
+        first_variant.resolved_module_graph_hash =
+            GetResolvedModuleGraphHash(graph_a);
+        first_variant.shader_interface_hash =
+            GetShaderInterfaceContractHash(interface_a);
+        first_variant.output_contract_hash =
+            GetOutputContractHash(output_a);
+        first_variant.compile_time_feature_hash = 0x501u;
+        first_variant.compiler_profile_hash = 0x502u;
+        first_variant.device_target_hash = 0x503u;
+        const ShaderVariantContract second_variant = first_variant;
+        if (GetShaderVariantContractHash(first_variant) == 0
+         || GetShaderVariantContractHash(first_variant)
+                != GetShaderVariantContractHash(second_variant))
+        {
+            result.diagnostics.emplace_back(
+                "equivalent effective programs must share variant identity");
+        }
+
+        PreparedMaterialProgramSet prepared_set{};
+        prepared_set.maximum_surface_profile_id =
+            effective_key.resolved_surface_profile_id;
+        prepared_set.quality_policy_hash = 0x601u;
+        prepared_set.preferred_program = effective_key;
+        prepared_set.programs.Add(effective_key);
+        if (!prepared_set.IsValidForCurrentForwardPath()
+         || prepared_set.GetStableHash() == 0)
+        {
+            result.diagnostics.emplace_back(
+                "single-program prepared set must be valid");
+        }
+        prepared_set.programs.Add(effective_key);
+        if (prepared_set.IsValidForCurrentForwardPath())
+            result.diagnostics.emplace_back(
+                "Step 8 prepared set must reject multiple programs");
+
+        ResourceAcquirePlan resource_plan_a{};
+        resource_plan_a.effective_material_program_digest =
+            effective_digest;
+        resource_plan_a.resources.Add(
+            {
+                GetSurfaceStableID("resource.base_color"),
+                0x701u,
+                0x702u,
+                source_module,
+                DescriptorSemantic::MaterialTexture,
+                TextureSlot::BaseColor,
+                0,
+                ResourceAcquireKind::Texture,
+                true,
+                false
+            });
+        resource_plan_a.resources.Add(
+            {
+                GetSurfaceStableID("resource.material_data"),
+                0x703u,
+                0x704u,
+                source_module,
+                DescriptorSemantic::MaterialDataSlotData,
+                TextureSlot::BaseColor,
+                0,
+                ResourceAcquireKind::StorageBuffer,
+                true,
+                false
+            });
+        ResourceAcquirePlan resource_plan_b{};
+        resource_plan_b.effective_material_program_digest =
+            effective_digest;
+        resource_plan_b.resources.Add(resource_plan_a.resources[1]);
+        resource_plan_b.resources.Add(resource_plan_a.resources[0]);
+        if (GetResourceAcquirePlanHash(resource_plan_a) == 0
+         || GetResourceAcquirePlanHash(resource_plan_a)
+                != GetResourceAcquirePlanHash(resource_plan_b))
+        {
+            result.diagnostics.emplace_back(
+                "resource plan serialization must ignore input order");
+        }
+
+        ResourceAcquirePlan changed_assets = resource_plan_a;
+        changed_assets.resources[0].asset_identity_hash ^= 1u;
+        if (GetResourceAcquirePlanHash(changed_assets)
+                == GetResourceAcquirePlanHash(resource_plan_a)
+         || GetShaderVariantContractHash(first_variant)
+                != GetShaderVariantContractHash(second_variant))
+        {
+            result.diagnostics.emplace_back(
+                "asset identity must affect only the resource plan");
+        }
+
+        hgl::ValueArray<hgl::uint8> effective_bytes;
+        if (!SerializeEffectiveMaterialProgramKey(
+                effective_key, effective_bytes)
+         || effective_bytes.GetCount() < 8
+         || effective_bytes[4]
+                != uint8_t(MaterialProgramContractSchemaVersion))
+        {
+            result.diagnostics.emplace_back(
+                "effective program serialization must include schema version");
         }
 
         result.passed = result.diagnostics.empty();
@@ -4511,6 +4896,7 @@ int main(const int argc, char **argv)
     if (run_cache) results.push_back(RunProviderGraphIdentityCase());
     if (run_cache) results.push_back(RunProviderGraphCompositionCase());
     if (run_cache) results.push_back(RunResolvedStageCacheIdentityCase());
+    if (run_cache) results.push_back(RunCanonicalShaderContractCase());
     if (run_pipeline) results.push_back(RunMaterialMultiSlotSourceCase());
     if (run_pipeline) results.push_back(RunDirectIncludeManifestCase());
     if (run_descriptor) results.push_back(RunDescriptorBuilderConvergenceCase());

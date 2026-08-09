@@ -44,6 +44,16 @@ SET(SHADER_SEMANTIC_REGISTRY_FILES
 
 SOURCE_GROUP("Shader Semantic Registry" FILES ${SHADER_SEMANTIC_REGISTRY_FILES})
 
+SET(CANONICAL_SHADER_CONTRACT_FILES
+    ${SHADERGEN_INCLUDE_PATH}/CanonicalShaderContract.h
+    ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialProgramContract.h
+    CanonicalShaderContract.cpp
+    MaterialProgramContract.cpp
+    common/CanonicalContractWriter.h)
+
+SOURCE_GROUP("Canonical Shader Contract"
+    FILES ${CANONICAL_SHADER_CONTRACT_FILES})
+
 SET(SURFACE_PROFILE_FILES
     ${ROOT_INCLUDE_PATH}/hgl/mtl/SurfaceProfile.h
     ${ROOT_INCLUDE_PATH}/hgl/mtl/SurfaceProfileRegistry.h
@@ -161,6 +171,7 @@ add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_INCLUDE_PATH}
                                         ${SHADER_PROGRAM_BUILD_SPEC_SOURCE_FILES}
                                         ${SHADER_ARTIFACT_CONTRACT_FILES}
                                         ${SHADER_SEMANTIC_REGISTRY_FILES}
+                                        ${CANONICAL_SHADER_CONTRACT_FILES}
                                         ${SURFACE_PROFILE_FILES}
                                         ${SHADER_CREATER_HEADER_FILES}
                                         ${SHADER_CREATER_SOURCE_FILES}
