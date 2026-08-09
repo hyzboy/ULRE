@@ -1,6 +1,7 @@
 #include <hgl/shadergen/ResolvedModuleGraphBuilder.h>
 
 #include <hgl/graph/glsl/GLSLCodeModuleMetadata.h>
+#include <hgl/mtl/MaterialLibrary.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <cstring>
 
@@ -606,7 +607,8 @@ namespace hgl::graph::mtl
         const MaterialDefinition &definition,
         const GLSLCodeModuleRegistry &registry,
         ResolvedModuleGraph &out_graph,
-        ResolvedModuleGraphBuildDiagnostic &out_diagnostic)
+        ResolvedModuleGraphBuildDiagnostic &out_diagnostic,
+        const MaterialDefinitionBuildRequest *request)
     {
         out_graph = {};
         out_diagnostic = {};
@@ -671,10 +673,13 @@ namespace hgl::graph::mtl
         }
 
         const MaterialTransformGraph transform =
-            definition.has_transform_graph
-                ? definition.transform_graph
-                : MaterialTransformGraph::FromNodeConfig(
-                    definition.vertex_node_config);
+            MaterialTransformGraph::FromNodeConfig(
+                request
+                    ? ResolveMaterialVertexNodeConfig(
+                        definition, *request)
+                    : definition.has_transform_graph
+                        ? definition.transform_graph.ToNodeConfig()
+                        : definition.vertex_node_config);
         const char *vertex_paths[] =
         {
             transform.source == VertexInputMode::Procedural

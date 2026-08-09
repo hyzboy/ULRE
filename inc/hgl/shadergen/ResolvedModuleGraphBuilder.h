@@ -7,6 +7,8 @@
 
 namespace hgl::graph::mtl
 {
+    struct MaterialDefinitionBuildRequest;
+
     enum class ResolvedModuleGraphBuildError : uint8
     {
         None = 0,
@@ -43,5 +45,6 @@ namespace hgl::graph::mtl
         const MaterialDefinition &definition,
         const GLSLCodeModuleRegistry &registry,
         ResolvedModuleGraph &out_graph,
-        ResolvedModuleGraphBuildDiagnostic &out_diagnostic);
+        ResolvedModuleGraphBuildDiagnostic &out_diagnostic,
+        const MaterialDefinitionBuildRequest *request = nullptr);
 }

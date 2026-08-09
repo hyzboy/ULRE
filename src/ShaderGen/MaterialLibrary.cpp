@@ -8,6 +8,7 @@
 #include <hgl/shadergen/ShaderProgramBuildSpec.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/shadergen/ResolvedModuleGraphBuilder.h>
+#include <hgl/shadergen/ShadowShaderContractBuilder.h>
 #include <hgl/log/Log.h>
 #include "2d/Build2DCommon.h"
 #include "3d/DefinitionDescriptorBuilder3D.h"
@@ -217,22 +218,8 @@ namespace
         std::vector<FixedVertexEntry> vertices;
         std::vector<FixedDescriptorEntry> descriptors;
         VkFormat position_format = VK_FORMAT_UNDEFINED;
-        VertexShaderNodeConfig vertex_node_config = request.recipe.vertex_node_config;
-        if (request.has_transform_graph)
-            vertex_node_config = request.transform_graph.ToNodeConfig();
-        const bool has_explicit_recipe_node_config =
-            !IsDefault3DNodeConfig(request.recipe.vertex_node_config);
-        if (!request.has_transform_graph
-         && !has_explicit_recipe_node_config
-         && IsDefault3DNodeConfig(vertex_node_config)
-         && !IsDefault3DNodeConfig(definition.vertex_node_config))
-        {
-            vertex_node_config = definition.vertex_node_config;
-        }
-        if (!request.has_transform_graph
-         && !has_explicit_recipe_node_config
-         && definition.has_transform_graph)
-            vertex_node_config = definition.transform_graph.ToNodeConfig();
+        VertexShaderNodeConfig vertex_node_config =
+            ResolveMaterialVertexNodeConfig(definition, request);
         const MaterialTransformGraph transform_graph =
             MaterialTransformGraph::FromNodeConfig(vertex_node_config);
         vertex_node_config = transform_graph.ToNodeConfig();
@@ -411,6 +398,7 @@ namespace
         }
         config.data_slot_decls = definition.data_slot_decls.empty()
             ? nullptr : &definition.data_slot_decls;
+        config.generate_only = request.generate_only;
         ShaderProgramBuildSpec *result = CompileCompositorMaterial(profile, fixed_definition, vs, fs, config);
         if (!result)
             GLogError("[ShaderGen] Generic material compilation failed: name=%s",
@@ -514,6 +502,27 @@ VkFormat ResolveMaterialVertexSemanticFormat(const GeometryVertexFormat *gvf, Ve
         return fallback_format;
 
     return attribute->format;
+}
+
+VertexShaderNodeConfig ResolveMaterialVertexNodeConfig(
+    const MaterialDefinition &definition,
+    const MaterialDefinitionBuildRequest &request) noexcept
+{
+    VertexShaderNodeConfig vertex_node_config =
+        request.recipe.vertex_node_config;
+    if (request.has_transform_graph)
+        return request.transform_graph.ToNodeConfig();
+
+    const bool has_explicit_recipe_node_config =
+        !IsDefault3DNodeConfig(request.recipe.vertex_node_config);
+    if (has_explicit_recipe_node_config)
+        return vertex_node_config;
+
+    if (definition.has_transform_graph)
+        return definition.transform_graph.ToNodeConfig();
+    if (!IsDefault3DNodeConfig(definition.vertex_node_config))
+        return definition.vertex_node_config;
+    return vertex_node_config;
 }
 
 bool PreviewMaterialVertexSemanticResolution(
@@ -757,9 +766,13 @@ bool MergeMaterialDefinitionFile(const MaterialDefinition &legacy,
     out.ubo_requirements = normalized_file.ubo_requirements;
     out.texture_slot_decls = normalized_file.texture_slot_decls;
     out.code_module_requirements = normalized_file.code_module_requirements;
-    out.surface_intent_id = normalized_file.surface_intent_id;
-    out.surface_profile_projections =
-        normalized_file.surface_profile_projections;
+    if (normalized_file.surface_intent_id != InvalidSurfaceIntentID
+     || !normalized_file.surface_profile_projections.IsEmpty())
+    {
+        out.surface_intent_id = normalized_file.surface_intent_id;
+        out.surface_profile_projections =
+            normalized_file.surface_profile_projections;
+    }
     out.fragment_material_source_module =
         normalized_file.fragment_material_source_module;
     out.fragment_ntb_module = normalized_file.fragment_ntb_module;
@@ -794,26 +807,77 @@ ShaderProgramBuildSpec *CreateMaterialFromDefinition(
     NormalizeMaterialFragmentSource(canonical_definition);
 
     if (request.migration.implementation_path
-        == ShaderGenImplementationPath::Shadow)
+        == ShaderGenImplementationPath::Contract)
     {
-        ResolvedModuleGraph shadow_graph{};
+        ShaderGenDiagnosticEvent event{};
+        event.kind =
+            ShaderGenDiagnosticEventKind::ContractPathUnavailable;
+        ReportShaderGenDiagnostic(request.migration, event);
+        GLogError(
+            "[ShaderGen] Contract implementation path is not enabled yet: material=%s",
+            canonical_definition.definition_id.c_str());
+        return nullptr;
+    }
+
+    // Shadow intentionally keeps Legacy authoritative. It observes the exact
+    // request-effective Legacy result and never changes shader output.
+    const bool shadow_mode = request.migration.implementation_path
+        == ShaderGenImplementationPath::Shadow;
+    ResolvedModuleGraph shadow_graph{};
+    bool shadow_graph_built = false;
+    if (shadow_mode)
+    {
         ResolvedModuleGraphBuildDiagnostic diagnostic{};
-        const bool shadow_built = BuildMaterialResolvedModuleGraph(
+        shadow_graph_built = BuildMaterialResolvedModuleGraph(
             canonical_definition,
             GetGLSLCodeModuleRegistry(),
             shadow_graph,
-            diagnostic);
+            diagnostic,
+            &request);
 
         ShaderGenDiagnosticEvent event{};
-        event.kind = shadow_built
+        event.kind = shadow_graph_built
             ? ShaderGenDiagnosticEventKind::ShadowModuleGraphBuilt
             : ShaderGenDiagnosticEventKind::ShadowModuleGraphFailed;
-        event.contract_digest = shadow_built
+        event.contract_digest = shadow_graph_built
             ? GetResolvedModuleGraphHash(shadow_graph) : 0;
         ReportShaderGenDiagnostic(request.migration, event);
     }
 
-    return BuildGenericMaterial(profile, request, canonical_definition);
+    ShaderProgramBuildSpec *result =
+        BuildGenericMaterial(profile, request, canonical_definition);
+    if (shadow_mode && shadow_graph_built && result)
+    {
+        ShadowShaderContracts contracts{};
+        ShadowShaderContractBuildDiagnostic diagnostic{};
+        const bool contracts_built = BuildShadowShaderContracts(
+            canonical_definition,
+            request,
+            shadow_graph,
+            *result,
+            contracts,
+            diagnostic);
+
+        ShaderGenDiagnosticEvent event{};
+        event.kind = contracts_built
+            ? ShaderGenDiagnosticEventKind::ShadowShaderContractBuilt
+            : ShaderGenDiagnosticEventKind::ShadowShaderContractFailed;
+        if (contracts_built)
+        {
+            uint64 hash = hgl::hash::FNV1aInit<uint64>();
+            hash = hgl::hash::FNV1aAppendValueBytes(
+                hash,
+                GetShaderInterfaceContractHash(
+                    contracts.shader_interface));
+            hash = hgl::hash::FNV1aAppendValueBytes(
+                hash,
+                GetOutputContractHash(contracts.output));
+            event.contract_digest = hash;
+        }
+        ReportShaderGenDiagnostic(request.migration, event);
+    }
+
+    return result;
 }
 
 void NormalizeRecipe(MaterialRecipe &recipe)

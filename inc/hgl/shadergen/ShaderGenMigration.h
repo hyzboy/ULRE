@@ -21,7 +21,10 @@ namespace hgl::graph::mtl
         CacheWrite,
         Fallback,
         ShadowModuleGraphBuilt,
-        ShadowModuleGraphFailed
+        ShadowModuleGraphFailed,
+        ShadowShaderContractBuilt,
+        ShadowShaderContractFailed,
+        ContractPathUnavailable
     };
 
     struct ShaderGenDiagnosticEvent

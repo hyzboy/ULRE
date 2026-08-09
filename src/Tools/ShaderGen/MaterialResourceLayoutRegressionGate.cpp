@@ -6,6 +6,7 @@
 #include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/shadergen/ShaderProgramBuildSpec.h>
 #include <hgl/shadergen/ResolvedModuleGraphBuilder.h>
+#include <hgl/shadergen/ShadowShaderContractBuilder.h>
 #include <hgl/shadergen/ShaderCreateInfo.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/shadergen/ShaderArtifactStore.h>
@@ -2928,6 +2929,33 @@ namespace
                 result.diagnostics.emplace_back(
                     "bootstrap material must not be overridden by TOML");
             }
+
+            MaterialDefinition inherited_profile{};
+            inherited_profile.definition_id = "InheritedProfile";
+            inherited_profile.source_kind =
+                MaterialDefinitionSourceKind::BuiltIn;
+            inherited_profile.surface_intent_id =
+                GetSurfaceStableID("GenericPBR");
+            inherited_profile.surface_profile_projections.Add(
+                MakeMaterialSurfaceProfileProjection(
+                    "StandardPBR", "Inherited.ToStandardPBR"));
+            MaterialDefinition profile_neutral_file{};
+            profile_neutral_file.definition_id = "InheritedProfile";
+            profile_neutral_file.definition_name = "InheritedProfile";
+            profile_neutral_file.source_kind =
+                MaterialDefinitionSourceKind::File;
+            MaterialDefinition inherited_result{};
+            if (!MergeMaterialDefinitionFile(
+                    inherited_profile,
+                    profile_neutral_file,
+                    inherited_result)
+             || inherited_result.surface_intent_id
+                    != inherited_profile.surface_intent_id
+             || inherited_result.surface_profile_projections.GetCount() != 1)
+            {
+                result.diagnostics.emplace_back(
+                    "profile-neutral file merge must preserve inherited profile");
+            }
         }
 
         result.passed = result.diagnostics.empty();
@@ -3849,6 +3877,45 @@ namespace
             }
         }
 
+        {
+            MaterialDefinition definition{};
+            if (!TryGetMaterialDefinitionByID("Lit", definition))
+            {
+                result.diagnostics.emplace_back(
+                    "missing Lit definition for request graph identity");
+            }
+            else
+            {
+                MaterialDefinitionBuildRequest default_request{};
+                MaterialDefinitionBuildRequest override_request{};
+                override_request.has_transform_graph = true;
+                override_request.transform_graph =
+                    MaterialTransformGraph::FlatXY();
+
+                ResolvedModuleGraph default_graph{};
+                ResolvedModuleGraph override_graph{};
+                ResolvedModuleGraphBuildDiagnostic diagnostic{};
+                if (!BuildMaterialResolvedModuleGraph(
+                        definition,
+                        registry,
+                        default_graph,
+                        diagnostic,
+                        &default_request)
+                 || !BuildMaterialResolvedModuleGraph(
+                        definition,
+                        registry,
+                        override_graph,
+                        diagnostic,
+                        &override_request)
+                 || GetResolvedModuleGraphHash(default_graph)
+                        == GetResolvedModuleGraphHash(override_graph))
+                {
+                    result.diagnostics.emplace_back(
+                        "request-selected transform must affect module graph");
+                }
+            }
+        }
+
         const auto build_synthetic_registry = [](
             GLSLCodeModuleRegistry &out_registry,
             GLSLCodeModuleDefinition &dependency,
@@ -3998,6 +4065,243 @@ namespace
         {
             result.diagnostics.emplace_back(
                 "missing module roots must fail explicitly");
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
+    static GateResult RunShadowShaderContractCase()
+    {
+        GateResult result;
+        result.name = "I3.shadow-shader-contract";
+
+        struct DiagnosticCapture
+        {
+            hgl::uint32 module_graph_built = 0;
+            hgl::uint32 shader_contract_built = 0;
+            hgl::uint32 failures = 0;
+            hgl::uint32 contract_unavailable = 0;
+            hgl::uint64 last_contract_digest = 0;
+        };
+
+        const auto callback = [](
+            const ShaderGenDiagnosticEvent &event,
+            void *user_data)
+        {
+            auto *capture = static_cast<DiagnosticCapture *>(user_data);
+            if (!capture)
+                return;
+
+            switch (event.kind)
+            {
+            case ShaderGenDiagnosticEventKind::ShadowModuleGraphBuilt:
+                ++capture->module_graph_built;
+                break;
+            case ShaderGenDiagnosticEventKind::ShadowShaderContractBuilt:
+                ++capture->shader_contract_built;
+                break;
+            case ShaderGenDiagnosticEventKind::ShadowModuleGraphFailed:
+            case ShaderGenDiagnosticEventKind::ShadowShaderContractFailed:
+                ++capture->failures;
+                break;
+            case ShaderGenDiagnosticEventKind::ContractPathUnavailable:
+                ++capture->contract_unavailable;
+                break;
+            default:
+                break;
+            }
+            if (event.contract_digest != 0)
+                capture->last_contract_digest =
+                    event.contract_digest;
+        };
+
+        const auto add_geometry = [](
+            const MaterialDefinition &definition,
+            GeometryVertexFormat &geometry)
+        {
+            const MaterialTransformGraph transform =
+                definition.has_transform_graph
+                    ? definition.transform_graph
+                    : MaterialTransformGraph::FromNodeConfig(
+                        definition.vertex_node_config);
+
+            for (int i = 0;
+                 i < definition.vertex_semantic_requirements.GetCount();
+                 ++i)
+            {
+                const VertexSemantic semantic =
+                    GetVertexSemanticFromGLSLCodeModuleSemantic(
+                        definition.vertex_semantic_requirements[i].semantic);
+                if (semantic == VertexSemantic::Unknown
+                 || geometry.Find(semantic))
+                    continue;
+
+                VkFormat format = VK_FORMAT_UNDEFINED;
+                switch (semantic)
+                {
+                case VertexSemantic::Position:
+                    format = transform.source == VertexInputMode::Vec2IntPosition
+                        ? VF_V2I
+                        : transform.source == VertexInputMode::Vec2Position
+                            ? VF_V2F : VF_V3F;
+                    break;
+                case VertexSemantic::TexCoord:
+                    format = VF_V2F;
+                    break;
+                case VertexSemantic::Normal:
+                case VertexSemantic::Tangent:
+                case VertexSemantic::Bitangent:
+                    format = VF_V3F;
+                    break;
+                case VertexSemantic::Color:
+                    format = definition.vertex_varying.
+                            emit_vertex_color_from_palette
+                        ? VF_V1U : VF_V4F;
+                    break;
+                case VertexSemantic::Luminance:
+                    format = VF_V1F;
+                    break;
+                case VertexSemantic::TransformID:
+                case VertexSemantic::DataIndexID:
+                case VertexSemantic::TextureLayerID:
+                    format = VF_V1U;
+                    break;
+                default:
+                    format = VF_V1F;
+                    break;
+                }
+                geometry.Add(semantic, format);
+            }
+        };
+
+        static const char *definition_ids[] =
+        {
+            "Lit",
+            "VertexPaletteColor",
+            "VertexLuminance",
+            "DebugNormalColor",
+            "VertexColor",
+            "SkyMinimal",
+            "UnlitTexture",
+            "SkyCubeMap",
+            "Texture2DArray",
+            "LitTextureArray"
+        };
+
+        for (const char *definition_id : definition_ids)
+        {
+            MaterialDefinition definition{};
+            if (!TryGetMaterialDefinitionByID(definition_id, definition))
+            {
+                result.diagnostics.emplace_back(
+                    std::string("missing shadow-contract definition: ")
+                    + definition_id);
+                continue;
+            }
+
+            GeometryVertexFormat geometry;
+            add_geometry(definition, geometry);
+
+            DiagnosticCapture capture{};
+            MaterialDefinitionBuildRequest request{};
+            request.recipe.mtl_def_id = definition.definition_id;
+            request.geometry_vertex_format = &geometry;
+            request.generate_only = true;
+            request.migration.implementation_path =
+                ShaderGenImplementationPath::Shadow;
+            request.migration.diagnostic_callback = callback;
+            request.migration.diagnostic_user_data = &capture;
+
+            std::unique_ptr<ShaderProgramBuildSpec> build_spec(
+                CreateMaterialFromDefinition(
+                    nullptr, definition, request));
+            if (!build_spec)
+            {
+                result.diagnostics.emplace_back(
+                    std::string("shadow-contract legacy build failed: ")
+                    + definition_id);
+                continue;
+            }
+
+            ResolvedModuleGraph graph{};
+            ResolvedModuleGraphBuildDiagnostic graph_diagnostic{};
+            ShadowShaderContracts contracts{};
+            ShadowShaderContractBuildDiagnostic contract_diagnostic{};
+            if (!BuildMaterialResolvedModuleGraph(
+                    definition,
+                    GetGLSLCodeModuleRegistry(),
+                    graph,
+                    graph_diagnostic,
+                    &request)
+             || !BuildShadowShaderContracts(
+                    definition,
+                    request,
+                    graph,
+                    *build_spec,
+                    contracts,
+                    contract_diagnostic))
+            {
+                result.diagnostics.emplace_back(
+                    std::string("shadow contract build failed: ")
+                    + definition_id + " graph="
+                    + GetResolvedModuleGraphBuildErrorName(
+                        graph_diagnostic.error)
+                    + " contract="
+                    + GetShadowShaderContractBuildErrorName(
+                        contract_diagnostic.error)
+                    + " detail="
+                    + contract_diagnostic.detail.c_str());
+                continue;
+            }
+
+            if (GetShaderInterfaceContractHash(
+                    contracts.shader_interface) == 0
+             || GetOutputContractHash(contracts.output) == 0
+             || capture.module_graph_built != 1
+             || capture.shader_contract_built != 1
+             || capture.failures != 0
+             || capture.last_contract_digest == 0)
+            {
+                result.diagnostics.emplace_back(
+                    std::string("shadow contract diagnostics mismatch: ")
+                    + definition_id);
+            }
+        }
+
+        {
+            MaterialDefinition definition{};
+            if (!TryGetMaterialDefinitionByID("Lit", definition))
+            {
+                result.diagnostics.emplace_back(
+                    "missing Lit definition for Contract path rejection");
+            }
+            else
+            {
+                GeometryVertexFormat geometry;
+                add_geometry(definition, geometry);
+                DiagnosticCapture capture{};
+                MaterialDefinitionBuildRequest request{};
+                request.recipe.mtl_def_id = definition.definition_id;
+                request.geometry_vertex_format = &geometry;
+                request.generate_only = true;
+                request.migration.implementation_path =
+                    ShaderGenImplementationPath::Contract;
+                request.migration.diagnostic_callback = callback;
+                request.migration.diagnostic_user_data = &capture;
+
+                std::unique_ptr<ShaderProgramBuildSpec> unavailable(
+                    CreateMaterialFromDefinition(
+                        nullptr, definition, request));
+                if (unavailable
+                 || capture.contract_unavailable != 1
+                 || capture.module_graph_built != 0
+                 || capture.shader_contract_built != 0)
+                {
+                    result.diagnostics.emplace_back(
+                        "unavailable Contract path must fail explicitly");
+                }
+            }
         }
 
         result.passed = result.diagnostics.empty();
@@ -5100,6 +5404,7 @@ int main(const int argc, char **argv)
     if (run_glsl) results.push_back(RunGLSLCodeModuleFileCase());
     if (run_glsl) results.push_back(RunGLSLCodeModuleMetadataValidationCase());
     if (run_glsl) results.push_back(RunShadowMaterialModuleGraphCase());
+    if (run_glsl) results.push_back(RunShadowShaderContractCase());
     if (run_glsl) results.push_back(RunCapabilityResolverCase());
     if (run_interface) results.push_back(RunShaderSemanticRegistryCase());
     if (run_materialization) results.push_back(RunSurfaceProfileModelCase());

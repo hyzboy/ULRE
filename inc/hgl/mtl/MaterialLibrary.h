@@ -52,6 +52,7 @@ struct MaterialDefinitionBuildRequest
     bool has_transform_graph = false;
     ShaderArtifactStore *shader_artifact_store = nullptr;
     ShaderGenMigrationOptions migration{};
+    bool generate_only = false;
 
     // Phase 4.4 opt-in: only explicit callers with a loaded registry activate
     // resolver-derived VS declarations and vertex entries.
@@ -77,6 +78,10 @@ struct MaterialResolvedVertexABI
     AnsiString vertex_input_glsl;
     std::string provider_glsl;
 };
+
+VertexShaderNodeConfig ResolveMaterialVertexNodeConfig(
+    const MaterialDefinition &definition,
+    const MaterialDefinitionBuildRequest &request) noexcept;
 
 ShaderProgramBuildSpec *CreateMaterialFromDefinition(
     const contract::PhysicalDeviceProfileLite *profile,
