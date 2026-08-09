@@ -21,6 +21,7 @@ namespace hgl::graph::mtl
         uint32_t data_slot = DefaultMaterialDataSlot;
         SSBOType ssbo_type = SSBOType::UserDefined;
         uint32_t ssbo_id = MakeRecipeSSBOId(0);
+        uint32_t stage_flags = 0;
 
         const char *name = nullptr;
         const char *struct_name = nullptr;
@@ -30,6 +31,7 @@ namespace hgl::graph::mtl
         // (e.g. generated from data_slot_decls) rather than a string literal.
         std::string owned_name;
         std::string owned_struct_name;
+        std::string owned_glsl_type;
 
         bool required = true;
         bool allow_fallback = false;
@@ -41,6 +43,9 @@ namespace hgl::graph::mtl
 
             if (!owned_struct_name.empty())
                 struct_name = owned_struct_name.c_str();
+
+            if (!owned_glsl_type.empty())
+                glsl_type = owned_glsl_type.c_str();
         }
 
         MaterialResourceRequirement() = default;
@@ -54,11 +59,13 @@ namespace hgl::graph::mtl
             , data_slot(rhs.data_slot)
             , ssbo_type(rhs.ssbo_type)
             , ssbo_id(rhs.ssbo_id)
+            , stage_flags(rhs.stage_flags)
             , name(rhs.name)
             , struct_name(rhs.struct_name)
             , glsl_type(rhs.glsl_type)
             , owned_name(rhs.owned_name)
             , owned_struct_name(rhs.owned_struct_name)
+            , owned_glsl_type(rhs.owned_glsl_type)
             , required(rhs.required)
             , allow_fallback(rhs.allow_fallback)
         {
@@ -78,11 +85,13 @@ namespace hgl::graph::mtl
             data_slot = rhs.data_slot;
             ssbo_type = rhs.ssbo_type;
             ssbo_id = rhs.ssbo_id;
+            stage_flags = rhs.stage_flags;
             name = rhs.name;
             struct_name = rhs.struct_name;
             glsl_type = rhs.glsl_type;
             owned_name = rhs.owned_name;
             owned_struct_name = rhs.owned_struct_name;
+            owned_glsl_type = rhs.owned_glsl_type;
             required = rhs.required;
             allow_fallback = rhs.allow_fallback;
 
@@ -99,11 +108,13 @@ namespace hgl::graph::mtl
             , data_slot(rhs.data_slot)
             , ssbo_type(rhs.ssbo_type)
             , ssbo_id(rhs.ssbo_id)
+            , stage_flags(rhs.stage_flags)
             , name(rhs.name)
             , struct_name(rhs.struct_name)
             , glsl_type(rhs.glsl_type)
             , owned_name(std::move(rhs.owned_name))
             , owned_struct_name(std::move(rhs.owned_struct_name))
+            , owned_glsl_type(std::move(rhs.owned_glsl_type))
             , required(rhs.required)
             , allow_fallback(rhs.allow_fallback)
         {
@@ -123,11 +134,13 @@ namespace hgl::graph::mtl
             data_slot = rhs.data_slot;
             ssbo_type = rhs.ssbo_type;
             ssbo_id = rhs.ssbo_id;
+            stage_flags = rhs.stage_flags;
             name = rhs.name;
             struct_name = rhs.struct_name;
             glsl_type = rhs.glsl_type;
             owned_name = std::move(rhs.owned_name);
             owned_struct_name = std::move(rhs.owned_struct_name);
+            owned_glsl_type = std::move(rhs.owned_glsl_type);
             required = rhs.required;
             allow_fallback = rhs.allow_fallback;
 
@@ -295,6 +308,7 @@ namespace hgl::graph::mtl
             req.data_slot = entry.data_slot;
             req.ssbo_type = entry.ssbo_type;
             req.ssbo_id = entry.ssbo_id;
+            req.stage_flags = entry.stage_flags;
             req.name = entry.name;
             req.struct_name = entry.struct_name;
             req.glsl_type = entry.glsl_type;
@@ -363,7 +377,7 @@ namespace hgl::graph::mtl
         const MaterialResourceLayout &layout) noexcept
     {
         uint64 hash = hgl::hash::FNV1aInit<uint64>();
-        constexpr uint32 contract_version = 2u;
+        constexpr uint32 contract_version = 3u;
         hash = hgl::hash::FNV1aAppendValueBytes(hash, contract_version);
         hash = hgl::hash::FNV1aAppendValueBytes(
             hash, static_cast<uint32>(layout.requirements.size()));
@@ -388,6 +402,8 @@ namespace hgl::graph::mtl
             hash = hgl::hash::FNV1aAppendValueBytes(hash, req.data_slot);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, req.ssbo_type);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, req.ssbo_id);
+            hash = hgl::hash::FNV1aAppendValueBytes(
+                hash, req.stage_flags);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, req.required);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, req.allow_fallback);
             hash = append_string(hash, req.name);
@@ -465,6 +481,13 @@ namespace hgl::graph::mtl
             if (!req.name || !*req.name)
             {
                 diagnostics.emplace_back("Descriptor resource name is empty; every resource must have a canonical name (" + context + ").");
+                continue;
+            }
+
+            if (req.stage_flags == 0)
+            {
+                diagnostics.emplace_back(
+                    "Descriptor stage visibility is empty (" + context + ").");
                 continue;
             }
 
@@ -568,6 +591,7 @@ namespace hgl::graph::mtl
                  && lhs.data_slot == rhs.data_slot
                  && lhs.ssbo_type == rhs.ssbo_type
                  && lhs.ssbo_id == rhs.ssbo_id
+                 && lhs.stage_flags == rhs.stage_flags
                  && ((!lhs.glsl_type && !rhs.glsl_type)
                   || (lhs.glsl_type && rhs.glsl_type
                    && std::strcmp(lhs.glsl_type, rhs.glsl_type) == 0));

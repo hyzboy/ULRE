@@ -4,6 +4,7 @@
 #include <hgl/mtl/SurfaceProfileFile.h>
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/shadergen/MaterialCompiler.h>
+#include <hgl/shadergen/MaterialDescriptorContract.h>
 #include <hgl/shadergen/ShaderProgramBuildSpec.h>
 #include <hgl/shadergen/ResolvedModuleGraphBuilder.h>
 #include <hgl/shadergen/ShadowShaderContractBuilder.h>
@@ -5690,6 +5691,178 @@ namespace
         return result;
     }
 
+    static GateResult RunMaterialDescriptorContractCase()
+    {
+        GateResult result;
+        result.name = "W1.material-descriptor-contract";
+
+        MaterialResourceLayout persistent_layout;
+        MaterialDescriptorContract first_contract{};
+        MaterialDescriptorContract second_contract{};
+        {
+            std::string viewport_name = "viewport";
+            std::string viewport_struct = "ViewportInfo";
+            std::string texture_name = "TextureBaseColor";
+            std::string texture_type = "sampler2D";
+            FixedDescriptorEntry entries[] =
+            {
+                {
+                    DescriptorSetType::Scene,
+                    DescriptorKind::UBO,
+                    uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
+                    viewport_name.c_str(),
+                    viewport_struct.c_str(),
+                    nullptr,
+                    DescriptorSemantic::ViewportInfo,
+                    TextureSlot::BaseColor,
+                    DefaultMaterialDataSlot,
+                    SSBOType::UserDefined,
+                    DescriptorSemanticLayer::UBO
+                },
+                {
+                    DescriptorSetType::Material,
+                    DescriptorKind::TextureSampler,
+                    uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
+                    texture_name.c_str(),
+                    nullptr,
+                    texture_type.c_str(),
+                    DescriptorSemantic::MaterialSampler,
+                    TextureSlot::BaseColor,
+                    DefaultMaterialDataSlot,
+                    SSBOType::UserDefined,
+                    DescriptorSemanticLayer::Sampler,
+                    MakeRecipeSSBOId(0),
+                    true,
+                    false,
+                    true
+                }
+            };
+            std::vector<FixedDescriptorEntry> reversed{
+                entries[1], entries[0]
+            };
+
+            if (!BuildMaterialDescriptorContract(
+                    entries, 2, first_contract)
+             || !BuildMaterialDescriptorContract(
+                    reversed, second_contract)
+             || GetMaterialDescriptorContractHash(first_contract)
+                    != GetMaterialDescriptorContractHash(second_contract)
+             || !BuildMaterialResourceLayoutFromDescriptorContract(
+                    first_contract, persistent_layout))
+            {
+                result.diagnostics.emplace_back(
+                    "descriptor contract build/hash/layout failed");
+            }
+
+            FixedDescriptorEntry visibility_changed_entries[] =
+            {
+                entries[0], entries[1]
+            };
+            visibility_changed_entries[1].stage_flags =
+                uint32_t(VK_SHADER_STAGE_VERTEX_BIT);
+            MaterialDescriptorContract visibility_changed{};
+            if (!BuildMaterialDescriptorContract(
+                    visibility_changed_entries,
+                    2,
+                    visibility_changed)
+             || GetMaterialDescriptorContractHash(first_contract)
+                    == GetMaterialDescriptorContractHash(
+                        visibility_changed))
+            {
+                result.diagnostics.emplace_back(
+                    "descriptor stage visibility must affect contract hash");
+            }
+
+            std::vector<FixedDescriptorEntry> roundtrip;
+            if (!ConvertMaterialDescriptorContractToFixed(
+                    first_contract, roundtrip)
+             || roundtrip.size() != 2
+             || std::strcmp(roundtrip[0].name, "viewport") != 0
+             || std::strcmp(
+                    roundtrip[1].glsl_type, "sampler2D") != 0)
+            {
+                result.diagnostics.emplace_back(
+                    "descriptor contract Fixed adapter mismatch");
+            }
+
+            FixedDescriptorEntry duplicate_entries[] =
+            {
+                entries[0], entries[0]
+            };
+            MaterialDescriptorContract invalid_contract{};
+            if (BuildMaterialDescriptorContract(
+                    duplicate_entries, 2, invalid_contract))
+            {
+                result.diagnostics.emplace_back(
+                    "duplicate descriptor identities must be rejected");
+            }
+
+            MaterialDescriptorContract varying_contract = first_contract;
+            MaterialVertexVaryingConfig varying{};
+            varying.emit_data_index_id = true;
+            varying.emit_texture_layer_id = true;
+            varying.texture_layer_id_uses_data_index = false;
+            MaterialResourceLayout varying_layout;
+            if (!EnsureMaterialDescriptorContractVaryingResources(
+                    varying, varying_contract)
+             || !BuildMaterialResourceLayoutFromDescriptorContract(
+                    varying_contract, varying_layout))
+            {
+                result.diagnostics.emplace_back(
+                    "varying descriptor resources were not added");
+            }
+            else
+            {
+                bool has_data_index = false;
+                bool has_texture_layer = false;
+                for (const auto &requirement :
+                     varying_layout.requirements)
+                {
+                    if (requirement.semantic
+                        == DescriptorSemantic::MaterialDataIndexTable)
+                    {
+                        has_data_index =
+                            requirement.stage_flags
+                                == uint32_t(
+                                    VK_SHADER_STAGE_ALL_GRAPHICS);
+                    }
+                    if (requirement.semantic
+                        == DescriptorSemantic::MaterialTextureLayerTable)
+                    {
+                        has_texture_layer =
+                            requirement.stage_flags
+                                == uint32_t(
+                                    VK_SHADER_STAGE_ALL_GRAPHICS);
+                    }
+                }
+                if (!has_data_index || !has_texture_layer)
+                    result.diagnostics.emplace_back(
+                        "varying tables missing from runtime layout");
+            }
+        }
+
+        if (persistent_layout.requirements.size() != 2
+         || !persistent_layout.requirements[0].name
+         || std::strcmp(
+                persistent_layout.requirements[0].name,
+                "viewport") != 0
+         || !persistent_layout.requirements[0].struct_name
+         || std::strcmp(
+                persistent_layout.requirements[0].struct_name,
+                "ViewportInfo") != 0
+         || !persistent_layout.requirements[1].glsl_type
+         || std::strcmp(
+                persistent_layout.requirements[1].glsl_type,
+                "sampler2D") != 0)
+        {
+            result.diagnostics.emplace_back(
+                "material layout did not retain owned descriptor strings");
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunShaderLibraryPathCase()
     {
         GateResult result;
@@ -5999,6 +6172,7 @@ int main(const int argc, char **argv)
     if (run_pipeline) results.push_back(RunMaterialMultiSlotSourceCase());
     if (run_pipeline) results.push_back(RunDirectIncludeManifestCase());
     if (run_descriptor) results.push_back(RunDescriptorBuilderConvergenceCase());
+    if (run_descriptor) results.push_back(RunMaterialDescriptorContractCase());
     if (run_pipeline) results.push_back(RunShaderLibraryPathCase());
     if (run_descriptor) results.push_back(RunResourceContractBoundaryCase());
 

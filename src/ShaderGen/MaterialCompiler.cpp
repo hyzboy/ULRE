@@ -99,12 +99,14 @@ static std::string BuildCodeModuleGLSL(const ShaderResourceManifest *manifest)
     return result;
 }
 
-static bool HasDescriptorSemantic(const FixedMaterialDef &def, const DescriptorSemantic semantic)
+static bool HasDescriptorSemantic(
+    const MaterialDescriptorContract &contract,
+    const DescriptorSemantic semantic)
 {
-    for (uint32_t i = 0; i < def.descriptor_entry_count; ++i)
+    for (const MaterialDescriptorContractEntry &entry :
+         contract.entries)
     {
-        const auto &entry = def.descriptor_entries[i];
-        if (entry.semantic == semantic)
+        if (entry.canonical.semantic == semantic)
             return true;
     }
 
@@ -180,8 +182,12 @@ static bool ValidateDefinitionCapabilitySubset(
             break;
 
         case DescriptorSemantic::MaterialTextureLayerTable:
+            allowed = !definition.data_slot_decls.empty()
+                   || definition.vertex_varying.emit_texture_layer_id;
+            break;
         case DescriptorSemantic::MaterialDataIndexTable:
-            allowed = !definition.data_slot_decls.empty();
+            allowed = !definition.data_slot_decls.empty()
+                   || definition.vertex_varying.emit_data_index_id;
             break;
 
         case DescriptorSemantic::MaterialTexture:
@@ -284,7 +290,21 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     const PrimitiveType primitive_type = config.primitive_type;
     const uint32_t shader_stage_bits = config.shader_stage_flag_bits != 0 ? config.shader_stage_flag_bits : uint32_t(ShaderStage::VertexFragment);
 
-    const bool infer_has_l2w = HasDescriptorSemantic(def, DescriptorSemantic::LocalToWorld);
+    MaterialDescriptorContract base_descriptor_contract{};
+    if (config.descriptor_contract)
+    {
+        base_descriptor_contract = *config.descriptor_contract;
+    }
+    else if (!BuildMaterialDescriptorContract(
+                def.descriptor_entries,
+                def.descriptor_entry_count,
+                base_descriptor_contract))
+    {
+        return nullptr;
+    }
+
+    const bool infer_has_l2w = HasDescriptorSemantic(
+        base_descriptor_contract, DescriptorSemantic::LocalToWorld);
     const bool with_local_to_world = infer_has_l2w;
 
     // ─────────────────────────────────────────────────────────────
@@ -354,6 +374,27 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
         effective_data_slot_decls.empty() ? nullptr : &effective_data_slot_decls;
     const bool use_slot_decls = data_slot_decls != nullptr;
 
+    MaterialDescriptorContract effective_descriptor_contract{};
+    if (!BuildEffectiveMaterialDescriptorContract(
+            base_descriptor_contract,
+            data_slot_decls,
+            material_ssbo_stage_bits,
+            effective_descriptor_contract))
+        return FailAfterMci("invalid effective material descriptor contract");
+    if (config.material_definition
+     && !EnsureMaterialDescriptorContractVaryingResources(
+            config.material_definition->vertex_varying,
+            effective_descriptor_contract))
+    {
+        return FailAfterMci(
+            "failed to add varying descriptor contract resources");
+    }
+
+    std::vector<FixedDescriptorEntry> descriptor_entries;
+    if (!ConvertMaterialDescriptorContractToFixed(
+            effective_descriptor_contract, descriptor_entries))
+        return FailAfterMci("failed to adapt material descriptor contract");
+
     const uint32_t declared_material_data_slot_count = use_slot_decls ? static_cast<uint32_t>(data_slot_decls->size()) : 0u;
     if (use_slot_decls)
     {
@@ -376,14 +417,8 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
 
     std::string primary_sampler_name;
 
-    for (uint32_t i = 0; i < def.descriptor_entry_count; ++i)
+    for (const FixedDescriptorEntry &entry : descriptor_entries)
     {
-        const FixedDescriptorEntry &entry = def.descriptor_entries[i];
-
-        // Skip baked material-SSBO entries when slot_decls takes over.
-        if (use_slot_decls && entry.semantic == DescriptorSemantic::MaterialDataSlotData)
-            continue;
-
         const uint32_t stage_bits = entry.stage_flags;
 
         switch (entry.kind)
@@ -562,8 +597,8 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
 
         auto HasDescriptorSemanticInDef = [&](DescriptorSemantic sem) -> bool
         {
-            for (uint32_t i = 0; i < def.descriptor_entry_count; ++i)
-                if (def.descriptor_entries[i].semantic == sem)
+            for (const FixedDescriptorEntry &entry : descriptor_entries)
+                if (entry.semantic == sem)
                     return true;
             return false;
         };
@@ -894,58 +929,10 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     // ─────────────────────────────────────────────────────────────
 
     MaterialResourceLayout material_resource_layout;
-    if (use_slot_decls)
-    {
-        // Build augmented list: base entries (without legacy single-slot material SSBO) + slot_decls entries.
-        std::vector<FixedDescriptorEntry> augmented;
-        // Names from data_slot_decls are runtime strings; store them here to ensure lifetime.
-        std::vector<std::string> augmented_names;
-        augmented.reserve(def.descriptor_entry_count + data_slot_decls->size());
-        augmented_names.reserve(data_slot_decls->size());
-        for (uint32_t i = 0; i < def.descriptor_entry_count; ++i)
-        {
-            if (def.descriptor_entries[i].semantic != DescriptorSemantic::MaterialDataSlotData)
-                augmented.push_back(def.descriptor_entries[i]);
-        }
-        for (uint32_t i = 0; i < static_cast<uint32_t>(data_slot_decls->size()); ++i)
-        {
-            const MaterialDataSlotDecl &decl = (*data_slot_decls)[i];
-            augmented_names.push_back(decl.name);  // owned copy guarantees lifetime
-            FixedDescriptorEntry e{};
-            e.set_type      = DescriptorSetType::Material;
-            e.kind          = DescriptorKind::SSBO;
-            e.stage_flags   = uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS);
-            e.name          = augmented_names.back().c_str();  // stable pointer into owned string
-            e.struct_name   = ssbo::GetMaterialSSBOStructName(decl.ssbo_type);
-            e.glsl_type     = nullptr;
-            e.semantic      = DescriptorSemantic::MaterialDataSlotData;
-            e.texture_slot  = TextureSlot::BaseColor;
-            e.data_slot     = i;
-            e.ssbo_type     = decl.ssbo_type;
-            e.semantic_layer = GetDescriptorSemanticLayerByKind(e.kind);
-            e.ssbo_id       = MakeRecipeSSBOId(i);
-            augmented.push_back(e);
-        }
-        material_resource_layout = BuildMaterialResourceLayout(augmented.data(), static_cast<uint32_t>(augmented.size()));
-
-        // Fix up dangling name pointers: BuildMaterialResourceLayout copied the const char* pointers.
-        // Any requirement whose name pointed into augmented_names must be re-pointed via owned_name.
-        for (auto &req : material_resource_layout.requirements)
-        {
-            if (req.semantic != DescriptorSemantic::MaterialDataSlotData)
-                continue;
-            // req.data_slot is the slot index, which matches augmented_names order.
-            if (req.data_slot < static_cast<uint32_t>(augmented_names.size()))
-            {
-                req.owned_name   = augmented_names[req.data_slot];
-                req.name         = req.owned_name.c_str();
-            }
-        }
-    }
-    else
-    {
-        material_resource_layout = BuildMaterialResourceLayout(def.descriptor_entries, def.descriptor_entry_count);
-    }
+    if (!BuildMaterialResourceLayoutFromDescriptorContract(
+            effective_descriptor_contract,
+            material_resource_layout))
+        return FailAfterMci("descriptor contract/layout build failed");
 
     if (config.material_definition)
         descriptor_builder_common::ApplyMaterialDefinitionTexturePolicy(

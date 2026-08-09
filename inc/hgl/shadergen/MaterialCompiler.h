@@ -15,6 +15,7 @@
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/glsl/ShaderResourceManifest.h>
 #include<hgl/shadergen/ShaderArtifactStore.h>
+#include<hgl/shadergen/MaterialDescriptorContract.h>
 #include <string>
 #include <vector>
 
@@ -43,6 +44,7 @@ struct CompositorMaterialBuildConfig
     const ShaderProgramLinkSpec *program_link = nullptr;
     const ShaderResourceManifest *resource_manifest = nullptr;
     ShaderArtifactStore *artifact_store = nullptr;
+    const MaterialDescriptorContract *descriptor_contract = nullptr;
     bool generate_only = false; // Preserve generated GLSL for contract tests without SPV compilation.
 };
 

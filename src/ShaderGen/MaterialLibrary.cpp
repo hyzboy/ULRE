@@ -343,6 +343,15 @@ namespace
                       GetShaderResourceManifestErrorName(manifest.error));
             return nullptr;
         }
+        MaterialDescriptorContract descriptor_contract{};
+        if (!BuildMaterialDescriptorContract(
+                descriptors, descriptor_contract))
+        {
+            GLogError(
+                "[ShaderGen] Material descriptor contract build failed: name=%s",
+                definition.definition_name.c_str());
+            return nullptr;
+        }
         std::string vs = GenerateVertexShader(vertex_node_config, varying,
                                                position_format,
                                                extra_attributes, GetShaderLibraryPath().c_str(),
@@ -405,9 +414,10 @@ namespace
         config.material_definition = &definition;
         config.resource_manifest = manifest.IsValid() ? &manifest : nullptr;
         config.artifact_store = request.shader_artifact_store;
+        config.descriptor_contract = &descriptor_contract;
         const uint64 resource_contract_hash =
-            descriptor_builder_common::HashResourceContract(
-                manifest.stable_hash, descriptors, definition);
+            GetMaterialDescriptorContractHash(
+                descriptor_contract, manifest.stable_hash);
         const uint64 vertex_input_hash = request.geometry_vertex_format
             ? request.geometry_vertex_format->GetVertexInputHash() : 0;
         const uint64 compiler_hash =
