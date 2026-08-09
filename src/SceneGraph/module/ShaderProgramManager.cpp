@@ -13,6 +13,7 @@
 #include<hgl/graph/module/ShaderProgramFinalizeFlowAdapter.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/shadergen/ShaderProgramBuildSpec.h>
+#include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/shadergen/ShaderArtifactStore.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
 #include<hgl/mtl/MaterialLibrary.h>
@@ -477,25 +478,37 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(const mtl::MaterialDef
             normalized_request, &mtl::GetMaterialDefinitionFileRegistry(), bmi))
         return nullptr;
 
-    // Compute hash key BEFORE generic shader compilation to avoid triggering
-    // CompositorAssembler/GLSL compilation on every call when already cached.
-    const mtl::ResolvedMaterialRenderState render_state =
-        mtl::ResolveMaterialRenderState(bmi, normalized_request.recipe);
-    const std::string hash_std = bmi.definition_id + "?"
-        + std::to_string(mtl::HashMaterialShaderVariant(
-            normalized_request.recipe, render_state));
-    const AnsiString hash_name = hash_std.c_str();
-
-    if (ShaderProgram *cached = TryGetCachedMaterial(hash_name))
-        return cached;
-
     const auto *profile = GetPhysicalDeviceProfile();
-    AutoDelete<mtl::ShaderProgramBuildSpec> mci = mtl::CreateMaterialFromDefinition(profile, bmi, normalized_request);
+    normalized_request.generate_only = true;
+    AutoDelete<mtl::ShaderProgramBuildSpec> mci =
+        mtl::CreateMaterialFromDefinition(
+            profile, bmi, normalized_request);
     if(!mci)
     {
         GLogError("[ShaderProgramManager] Material definition build failed: id=%s name=%s",
                   bmi.definition_id.c_str(),
                   bmi.definition_name.c_str());
+        return nullptr;
+    }
+
+    if (!mci->HasProgramLink())
+    {
+        GLogError(
+            "[ShaderProgramManager] Material build produced no ProgramLink: id=%s",
+            bmi.definition_id.c_str());
+        return nullptr;
+    }
+
+    const AnsiString hash_name =
+        mci->GetProgramLink().BuildKey().ToString();
+    if (ShaderProgram *cached = TryGetCachedMaterial(hash_name))
+        return cached;
+
+    if (!mtl::FinalizeShaderProgramBuildSpec(mci))
+    {
+        GLogError(
+            "[ShaderProgramManager] Material build finalization failed: id=%s",
+            bmi.definition_id.c_str());
         return nullptr;
     }
 

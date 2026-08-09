@@ -48,6 +48,9 @@ struct CompositorMaterialBuildConfig
 
 class ShaderProgramBuildSpec;
 
+bool FinalizeShaderProgramBuildSpec(
+    ShaderProgramBuildSpec *build_spec);
+
 /**
  * 编译 Compositor 模板产出的完整 GLSL → ShaderProgramBuildSpec*。
  *

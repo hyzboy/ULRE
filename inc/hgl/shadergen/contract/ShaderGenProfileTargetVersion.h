@@ -2,6 +2,7 @@
 
 #include <hgl/type/DataType.h>
 #include <hgl/shadergen/contract/ShaderGenContract.h>
+#include <hgl/util/hash/FNV1a.h>
 
 namespace hgl::graph::mtl::contract
 {
@@ -72,5 +73,66 @@ namespace hgl::graph::mtl::contract
 
         if (profile.target_spv_version != 0)
             out_spv_version = profile.target_spv_version;
+    }
+
+    inline uint64 GetPhysicalDeviceProfileHash(
+        const PhysicalDeviceProfileLite *profile) noexcept
+    {
+        uint64 hash = hgl::hash::FNV1aInit<uint64>();
+        const uint32 schema_version = 1;
+        hash = hgl::hash::FNV1aAppendValueBytes(
+            hash, schema_version);
+        if (!profile)
+            return hgl::hash::FNV1aAppendValueBytes(hash, uint32(0));
+
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, profile->vendor_id);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, profile->device_id);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, profile->api_version);
+        hash = hgl::hash::FNV1aAppendValueBytes(
+            hash, profile->target_vulkan_version);
+        hash = hgl::hash::FNV1aAppendValueBytes(
+            hash, profile->target_spv_version);
+        hash = hgl::hash::FNV1aAppendValueBytes(
+            hash, profile->limits.max_image_dimension_2d);
+        hash = hgl::hash::FNV1aAppendValueBytes(
+            hash, profile->limits.max_push_constants_size);
+        hash = hgl::hash::FNV1aAppendValueBytes(
+            hash, profile->limits.max_vertex_input_attributes);
+        hash = hgl::hash::FNV1aAppendValueBytes(
+            hash, profile->limits.max_bound_descriptor_sets);
+        hash = hgl::hash::FNV1aAppendValueBytes(
+            hash, profile->limits.max_uniform_buffer_range);
+        hash = hgl::hash::FNV1aAppendValueBytes(
+            hash, profile->limits.max_storage_buffer_range);
+        hash = hgl::hash::FNV1aAppendValueBytes(
+            hash, profile->features.geometry_shader);
+        hash = hgl::hash::FNV1aAppendValueBytes(
+            hash, profile->features.tessellation_shader);
+        hash = hgl::hash::FNV1aAppendValueBytes(
+            hash, profile->features.wide_lines);
+        hash = hgl::hash::FNV1aAppendValueBytes(
+            hash, profile->features.sampler_anisotropy);
+        hash = hgl::hash::FNV1aAppendValueBytes(
+            hash, profile->features.index_type_uint8);
+        hash = hgl::hash::FNV1aAppendValueBytes(
+            hash, profile->features.descriptor_indexing);
+        return hgl::hash::FNV1aAppendValueBytes(
+            hash, profile->features.sampler_mirror_clamp_to_edge);
+    }
+
+    inline uint64 GetShaderCompilerProfileHash(
+        const PhysicalDeviceProfileLite *profile) noexcept
+    {
+        uint32 vulkan_version = MakeVkVersion(1, 0);
+        uint32 spv_version = SPV_VERSION_1_0;
+        if (profile)
+            ResolveShaderTargetVersions(
+                *profile, vulkan_version, spv_version);
+
+        uint64 hash = hgl::hash::FNV1aInit<uint64>();
+        hash = hgl::hash::FNV1aAppendValueBytes(
+            hash, GetPhysicalDeviceProfileHash(profile));
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, vulkan_version);
+        return hgl::hash::FNV1aAppendValueBytes(hash, spv_version);
     }
 }

@@ -9,6 +9,9 @@
 #include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/shadergen/ResolvedModuleGraphBuilder.h>
 #include <hgl/shadergen/ShadowShaderContractBuilder.h>
+#include <hgl/shadergen/ShadowShaderKeyBuilder.h>
+#include <hgl/shadergen/ShaderKeyUtility.h>
+#include <hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
 #include <hgl/log/Log.h>
 #include "2d/Build2DCommon.h"
 #include "3d/DefinitionDescriptorBuilder3D.h"
@@ -377,25 +380,53 @@ namespace
         config.material_definition = &definition;
         config.resource_manifest = manifest.IsValid() ? &manifest : nullptr;
         config.artifact_store = request.shader_artifact_store;
-        if (request.shader_artifact_store)
+        const uint64 resource_contract_hash =
+            descriptor_builder_common::HashResourceContract(
+                manifest.stable_hash, descriptors, definition);
+        const uint64 vertex_input_hash = request.geometry_vertex_format
+            ? request.geometry_vertex_format->GetVertexInputHash() : 0;
+        const uint64 compiler_hash =
+            contract::GetShaderCompilerProfileHash(profile);
+        uint64 vertex_interface_hash = hgl::hash::FNV1aAppendValueBytes(
+            hgl::hash::FNV1aInit<uint64>(),
+            HashFinalShaderSource(vs.data(), vs.size()));
+        vertex_interface_hash = hgl::hash::FNV1aAppendValueBytes(
+            vertex_interface_hash, vertex_input_hash);
+        const uint64 fragment_interface_hash =
+            HashFinalShaderSource(fs.data(), fs.size());
+
+        resolved_program_link.vertex_stage = BuildFinalShaderStageKey(
+            ShaderStage::Vertex,
+            vs.data(),
+            vs.size(),
+            resolved_provider_graph_hash,
+            vertex_interface_hash,
+            resource_contract_hash,
+            compiler_hash);
+        resolved_program_link.fragment_stage = BuildFinalShaderStageKey(
+            ShaderStage::Fragment,
+            fs.data(),
+            fs.size(),
+            manifest.stable_hash,
+            fragment_interface_hash,
+            resource_contract_hash,
+            compiler_hash);
+        resolved_program_link.resource_layout_hash =
+            resource_contract_hash;
+        resolved_program_link.vertex_input_hash = vertex_input_hash;
+        if (request.override_rt_output)
         {
-            ShaderStageBuildSpec vertex_stage{};
-            vertex_stage.stage = ShaderStage::Vertex;
-            ShaderStageBuildSpec fragment_stage{};
-            fragment_stage.stage = ShaderStage::Fragment;
-            resolved_program_link.vertex_stage = request.enable_resolved_vertex_abi
-                ? vertex_stage.BuildKeyWithProviderGraphHash(
-                    resolved_provider_graph_hash)
-                : vertex_stage.BuildKey();
-            resolved_program_link.fragment_stage = fragment_stage.BuildKey();
-            resolved_program_link.resource_layout_hash =
-                descriptor_builder_common::HashResourceContract(
-                    manifest.stable_hash, descriptors, definition);
-            resolved_program_link.vertex_input_hash =
-                request.geometry_vertex_format
-                    ? request.geometry_vertex_format->GetVertexInputHash() : 0;
-            config.program_link = &resolved_program_link;
+            uint64 render_target_hash = hgl::hash::FNV1aInit<uint64>();
+            render_target_hash = hgl::hash::FNV1aAppendValueBytes(
+                render_target_hash, request.rt_output.color);
+            render_target_hash = hgl::hash::FNV1aAppendValueBytes(
+                render_target_hash, request.rt_output.depth);
+            resolved_program_link.render_target_hash =
+                hgl::hash::FNV1aAppendValueBytes(
+                    render_target_hash, request.rt_output.stencil);
         }
+        resolved_program_link.compiler_hash = compiler_hash;
+        config.program_link = &resolved_program_link;
         config.data_slot_decls = definition.data_slot_decls.empty()
             ? nullptr : &definition.data_slot_decls;
         config.generate_only = request.generate_only;
@@ -842,6 +873,7 @@ ShaderProgramBuildSpec *CreateMaterialFromDefinition(
         event.contract_digest = shadow_graph_built
             ? GetResolvedModuleGraphHash(shadow_graph) : 0;
         ReportShaderGenDiagnostic(request.migration, event);
+
     }
 
     ShaderProgramBuildSpec *result =
@@ -875,6 +907,31 @@ ShaderProgramBuildSpec *CreateMaterialFromDefinition(
             event.contract_digest = hash;
         }
         ReportShaderGenDiagnostic(request.migration, event);
+
+        if (contracts_built)
+        {
+            ShadowShaderKeys keys{};
+            ShadowShaderKeyBuildDiagnostic key_diagnostic{};
+            const bool keys_built = BuildShadowShaderKeys(
+                profile,
+                canonical_definition,
+                request,
+                shadow_graph,
+                contracts,
+                *result,
+                keys,
+                key_diagnostic);
+
+            ShaderGenDiagnosticEvent key_event{};
+            key_event.kind = keys_built
+                ? ShaderGenDiagnosticEventKind::ShadowShaderKeysBuilt
+                : ShaderGenDiagnosticEventKind::ShadowShaderKeysFailed;
+            key_event.contract_digest = keys_built
+                ? GetShaderProgramArtifactMetadataHash(
+                    keys.program_metadata)
+                : 0;
+            ReportShaderGenDiagnostic(request.migration, key_event);
+        }
     }
 
     return result;

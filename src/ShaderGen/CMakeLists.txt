@@ -18,6 +18,7 @@ SOURCE_GROUP("ShaderProgram Build Spec" FILES   ${SHADER_PROGRAM_BUILD_SPEC_HEAD
                                                 ${SHADER_PROGRAM_BUILD_SPEC_SOURCE_FILES})
 
 SET(SHADER_ARTIFACT_CONTRACT_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderStageKey.h
+${SHADERGEN_INCLUDE_PATH}/ShaderKeyUtility.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderProgramKey.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderArtifactContract.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderGenMigration.h
@@ -48,10 +49,12 @@ SET(CANONICAL_SHADER_CONTRACT_FILES
     ${SHADERGEN_INCLUDE_PATH}/CanonicalShaderContract.h
     ${SHADERGEN_INCLUDE_PATH}/ResolvedModuleGraphBuilder.h
     ${SHADERGEN_INCLUDE_PATH}/ShadowShaderContractBuilder.h
+    ${SHADERGEN_INCLUDE_PATH}/ShadowShaderKeyBuilder.h
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialProgramContract.h
     CanonicalShaderContract.cpp
     ResolvedModuleGraphBuilder.cpp
     ShadowShaderContractBuilder.cpp
+    ShadowShaderKeyBuilder.cpp
     MaterialProgramContract.cpp
     common/CanonicalContractWriter.h)
 

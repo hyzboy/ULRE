@@ -23,6 +23,51 @@
 
 namespace hgl::graph::mtl {
 
+bool FinalizeShaderProgramBuildSpec(
+    ShaderProgramBuildSpec *build_spec)
+{
+    if (!build_spec)
+        return false;
+
+    ShaderArtifactStore *artifact_store =
+        build_spec->GetArtifactStore();
+    bool cache_hit = false;
+    if (artifact_store && build_spec->HasProgramLink())
+    {
+        const auto &link = build_spec->GetProgramLink();
+        ValueArray<hgl::uint8> cached_vertex;
+        ValueArray<hgl::uint8> cached_fragment;
+        cache_hit = artifact_store->LoadStageSPV(
+                        link.vertex_stage, cached_vertex)
+                 && artifact_store->LoadStageSPV(
+                        link.fragment_stage, cached_fragment);
+    }
+
+    if (!cache_hit && !build_spec->CreateShaderDirect())
+        return false;
+
+    if (!cache_hit && artifact_store && build_spec->HasProgramLink())
+    {
+        const auto &link = build_spec->GetProgramLink();
+        const ShaderCreateInfo *vertex =
+            build_spec->GetStageShader(ShaderStage::Vertex);
+        const ShaderCreateInfo *fragment =
+            build_spec->GetStageShader(ShaderStage::Fragment);
+        if (!vertex || !fragment
+         || !artifact_store->SaveStageSPV(
+                link.vertex_stage,
+                vertex->GetSPVData(),
+                vertex->GetSPVSize())
+         || !artifact_store->SaveStageSPV(
+                link.fragment_stage,
+                fragment->GetSPVData(),
+                fragment->GetSPVSize()))
+            return false;
+    }
+
+    return true;
+}
+
 static bool CStrEq(const char *lhs, const char *rhs)
 {
     // Guard against corrupted/non-string pointers from malformed descriptor entries.
@@ -947,37 +992,9 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     if (config.generate_only)
         return mci;
 
-    bool cache_hit = false;
-    if (config.artifact_store && mci->HasProgramLink())
-    {
-        const auto &link = mci->GetProgramLink();
-        ValueArray<hgl::uint8> cached_vertex;
-        ValueArray<hgl::uint8> cached_fragment;
-        cache_hit = config.artifact_store->LoadStageSPV(
-                        link.vertex_stage, cached_vertex)
-                 && config.artifact_store->LoadStageSPV(
-                        link.fragment_stage, cached_fragment);
-    }
-
-    if (!cache_hit && !mci->CreateShaderDirect())
-    {
-        return FailAfterMci("CreateShaderDirect() failed (check GLSLCompiler log)");
-    }
-
-    if (!cache_hit && config.artifact_store && mci->HasProgramLink())
-    {
-        const auto &link = mci->GetProgramLink();
-        const ShaderCreateInfo *vertex = mci->GetStageShader(ShaderStage::Vertex);
-        const ShaderCreateInfo *fragment = mci->GetStageShader(ShaderStage::Fragment);
-        if (!vertex || !fragment
-         || !config.artifact_store->SaveStageSPV(
-                link.vertex_stage, vertex->GetSPVData(), vertex->GetSPVSize())
-         || !config.artifact_store->SaveStageSPV(
-                link.fragment_stage, fragment->GetSPVData(), fragment->GetSPVSize()))
-        {
-            return FailAfterMci("failed to persist compiled stage SPV");
-        }
-    }
+    if (!FinalizeShaderProgramBuildSpec(mci))
+        return FailAfterMci(
+            "FinalizeShaderProgramBuildSpec() failed");
 
     return mci;
 }

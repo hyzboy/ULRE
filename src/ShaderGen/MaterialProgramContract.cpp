@@ -9,6 +9,7 @@ namespace hgl::graph::mtl
         using contract_detail::CanonicalContractWriter;
 
         constexpr uint32 EffectiveProgramTag = 0x314B5045u;   // EPK1
+        constexpr uint32 SelectionRequestTag = 0x3152534Bu;   // KSR1
         constexpr uint32 ResolutionResultTag = 0x3152534Du;   // MSR1
         constexpr uint32 PreparedProgramSetTag = 0x31535050u; // PPS1
         constexpr uint32 ResourcePlanTag = 0x31504352u;       // RCP1
@@ -61,6 +62,50 @@ namespace hgl::graph::mtl
             return static_cast<uint8>(lhs.purpose)
                 < static_cast<uint8>(rhs.purpose);
         }
+    }
+
+    bool ValidateMaterialSelectionRequestKey(
+        const MaterialSelectionRequestKey &key) noexcept
+    {
+        return key.schema_version == MaterialProgramContractSchemaVersion
+            && key.definition_id_hash != 0
+            && key.definition_content_hash != 0
+            && key.recipe_capability_hash != 0
+            && key.geometry_capability_hash != 0
+            && key.device_quality_hash != 0
+            && key.request_context_hash != 0
+            && key.purpose >= ShaderProgramPurpose::ForwardColor
+            && key.purpose <= ShaderProgramPurpose::PostProcess;
+    }
+
+    bool SerializeMaterialSelectionRequestKey(
+        const MaterialSelectionRequestKey &key,
+        ValueArray<uint8> &out_bytes)
+    {
+        out_bytes.Clear();
+        if (!ValidateMaterialSelectionRequestKey(key))
+            return false;
+
+        CanonicalContractWriter writer(out_bytes);
+        writer.WriteU32(SelectionRequestTag);
+        writer.WriteU32(key.schema_version);
+        writer.WriteU64(key.definition_id_hash);
+        writer.WriteU64(key.definition_content_hash);
+        writer.WriteU64(key.recipe_capability_hash);
+        writer.WriteU64(key.geometry_capability_hash);
+        writer.WriteU64(key.device_quality_hash);
+        writer.WriteU64(key.request_context_hash);
+        writer.WriteU8(static_cast<uint8>(key.purpose));
+        writer.WriteU16(key.requested_material_lod);
+        writer.WriteU16(key.requested_quality_class);
+        return true;
+    }
+
+    uint64 MaterialSelectionRequestKey::GetDigest() const noexcept
+    {
+        ValueArray<uint8> bytes;
+        return SerializeMaterialSelectionRequestKey(*this, bytes)
+            ? contract_detail::HashCanonicalBytes(bytes) : 0;
     }
 
     bool ValidateEffectiveMaterialProgramKey(

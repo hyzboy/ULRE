@@ -17,6 +17,7 @@ namespace hgl::graph::mtl
     constexpr const char ShaderArtifactSPVExtension[] = ".spv";
     constexpr const char ShaderArtifactMetadataExtension[] = ".meta";
     constexpr uint32 ShaderArtifactFileHeaderSize = 40;
+    constexpr uint32 ShaderProgramMetadataSchemaVersion = 1;
 
     enum class ShaderArtifactKind : uint8
     {
@@ -72,6 +73,22 @@ namespace hgl::graph::mtl
         uint64 key_digest = 0;
         uint64 payload_size = 0;
         uint64 payload_hash = 0;
+    };
+
+    struct ShaderProgramArtifactMetadata
+    {
+        uint32 schema_version = ShaderProgramMetadataSchemaVersion;
+        uint64 program_key_digest = 0;
+        uint64 effective_material_program_digest = 0;
+        uint64 shader_variant_digest = 0;
+        uint64 resolved_module_graph_hash = 0;
+        uint64 shader_interface_hash = 0;
+        uint64 output_contract_hash = 0;
+        uint64 vertex_stage_digest = 0;
+        uint64 fragment_stage_digest = 0;
+        uint64 compiler_profile_hash = 0;
+        uint64 device_target_hash = 0;
+        uint64 generated_source_digest = 0;
     };
 
     static_assert(sizeof(ShaderArtifactFileHeader) == ShaderArtifactFileHeaderSize,

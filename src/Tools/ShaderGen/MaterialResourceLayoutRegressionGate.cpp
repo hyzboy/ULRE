@@ -7,8 +7,10 @@
 #include <hgl/shadergen/ShaderProgramBuildSpec.h>
 #include <hgl/shadergen/ResolvedModuleGraphBuilder.h>
 #include <hgl/shadergen/ShadowShaderContractBuilder.h>
+#include <hgl/shadergen/ShadowShaderKeyBuilder.h>
 #include <hgl/shadergen/ShaderCreateInfo.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
+#include <hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
 #include <hgl/shadergen/ShaderArtifactStore.h>
 #include <hgl/shadergen/CanonicalShaderContract.h>
 #include <hgl/shadergen/ShaderSemanticRegistry.h>
@@ -1497,6 +1499,126 @@ namespace
         {
             result.diagnostics.emplace_back(
                 "migration options must preserve the legacy path by default");
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
+    static GateResult RunAuthoritativeMaterialCacheIdentityCase()
+    {
+        GateResult result;
+        result.name = "Q0.authoritative-material-cache-identity";
+
+        MaterialDefinition lit{};
+        MaterialDefinition vertex_color{};
+        if (!TryGetMaterialDefinitionByID("Lit", lit)
+         || !TryGetMaterialDefinitionByID("VertexColor", vertex_color))
+        {
+            result.diagnostics.emplace_back(
+                "cache identity material definitions unavailable");
+            result.passed = false;
+            return result;
+        }
+
+        const GeometryVertexFormat lit_geometry_a{
+            {VertexSemantic::Position, VF_V3F},
+            {VertexSemantic::TexCoord, VF_V2F},
+            {VertexSemantic::Normal, VF_V3F}
+        };
+        const GeometryVertexFormat lit_geometry_b{
+            {VertexSemantic::Position, VF_V3HF},
+            {VertexSemantic::TexCoord, VF_V2F},
+            {VertexSemantic::Normal, VF_V3F}
+        };
+        const GeometryVertexFormat color_geometry{
+            {VertexSemantic::Position, VF_V3F},
+            {VertexSemantic::Color, VF_V4UN8}
+        };
+
+        const auto build = [](
+            const contract::PhysicalDeviceProfileLite *profile,
+            const MaterialDefinition &definition,
+            const GeometryVertexFormat &geometry)
+        {
+            MaterialDefinitionBuildRequest request{};
+            request.recipe.mtl_def_id = definition.definition_id;
+            request.geometry_vertex_format = &geometry;
+            request.generate_only = true;
+            return std::unique_ptr<ShaderProgramBuildSpec>(
+                CreateMaterialFromDefinition(
+                    profile, definition, request));
+        };
+
+        const auto lit_a = build(nullptr, lit, lit_geometry_a);
+        const auto lit_b = build(nullptr, lit, lit_geometry_b);
+        const auto color = build(nullptr, vertex_color, color_geometry);
+        contract::PhysicalDeviceProfileLite profile{};
+        profile.api_version = contract::MakeVkVersion(1, 3);
+        profile.target_vulkan_version = contract::MakeVkVersion(1, 3);
+        profile.target_spv_version = contract::SPV_VERSION_1_6;
+        profile.limits.max_uniform_buffer_range = 65536;
+        profile.limits.max_storage_buffer_range = 1ull << 30;
+        const auto lit_targeted = build(&profile, lit, lit_geometry_a);
+
+        if (!lit_a || !lit_b || !color || !lit_targeted
+         || !lit_a->HasProgramLink()
+         || !lit_b->HasProgramLink()
+         || !color->HasProgramLink()
+         || !lit_targeted->HasProgramLink())
+        {
+            result.diagnostics.emplace_back(
+                "generate-only material builds must produce ProgramLink");
+        }
+        else
+        {
+            const ShaderProgramLinkSpec &a = lit_a->GetProgramLink();
+            const ShaderProgramLinkSpec &b = lit_b->GetProgramLink();
+            const ShaderProgramLinkSpec &c = color->GetProgramLink();
+            const ShaderProgramLinkSpec &targeted =
+                lit_targeted->GetProgramLink();
+
+            if (a.vertex_stage.definition_hash == 0
+             || a.vertex_stage.interface_hash == 0
+             || a.vertex_stage.resource_hash == 0
+             || a.vertex_stage.compiler_hash == 0
+             || a.fragment_stage.definition_hash == 0
+             || a.fragment_stage.interface_hash == 0
+             || a.fragment_stage.resource_hash == 0
+             || a.fragment_stage.compiler_hash == 0
+             || a.resource_layout_hash == 0
+             || a.vertex_input_hash == 0
+             || a.compiler_hash == 0)
+            {
+                result.diagnostics.emplace_back(
+                    "authoritative stage/program keys contain zero identity");
+            }
+
+            if (a.fragment_stage.GetDigest()
+                    == c.fragment_stage.GetDigest()
+             || a.BuildKey() == c.BuildKey())
+            {
+                result.diagnostics.emplace_back(
+                    "different materials must not share authoritative keys");
+            }
+
+            if (a.vertex_stage.GetDigest()
+                    == b.vertex_stage.GetDigest()
+             || a.BuildKey() == b.BuildKey())
+            {
+                result.diagnostics.emplace_back(
+                    "different geometry formats must not share authoritative keys");
+            }
+
+            if (a.vertex_stage.compiler_hash
+                    == targeted.vertex_stage.compiler_hash
+             || a.fragment_stage.compiler_hash
+                    == targeted.fragment_stage.compiler_hash
+             || a.BuildKey() == targeted.BuildKey())
+            {
+                result.diagnostics.emplace_back(
+                    "compiler profile changes must invalidate authoritative keys");
+            }
         }
 
         result.passed = result.diagnostics.empty();
@@ -4080,6 +4202,7 @@ namespace
         {
             hgl::uint32 module_graph_built = 0;
             hgl::uint32 shader_contract_built = 0;
+            hgl::uint32 shader_keys_built = 0;
             hgl::uint32 failures = 0;
             hgl::uint32 contract_unavailable = 0;
             hgl::uint64 last_contract_digest = 0;
@@ -4101,8 +4224,12 @@ namespace
             case ShaderGenDiagnosticEventKind::ShadowShaderContractBuilt:
                 ++capture->shader_contract_built;
                 break;
+            case ShaderGenDiagnosticEventKind::ShadowShaderKeysBuilt:
+                ++capture->shader_keys_built;
+                break;
             case ShaderGenDiagnosticEventKind::ShadowModuleGraphFailed:
             case ShaderGenDiagnosticEventKind::ShadowShaderContractFailed:
+            case ShaderGenDiagnosticEventKind::ShadowShaderKeysFailed:
                 ++capture->failures;
                 break;
             case ShaderGenDiagnosticEventKind::ContractPathUnavailable:
@@ -4228,6 +4355,8 @@ namespace
             ResolvedModuleGraphBuildDiagnostic graph_diagnostic{};
             ShadowShaderContracts contracts{};
             ShadowShaderContractBuildDiagnostic contract_diagnostic{};
+            ShadowShaderKeys keys{};
+            ShadowShaderKeyBuildDiagnostic key_diagnostic{};
             if (!BuildMaterialResolvedModuleGraph(
                     definition,
                     GetGLSLCodeModuleRegistry(),
@@ -4240,7 +4369,16 @@ namespace
                     graph,
                     *build_spec,
                     contracts,
-                    contract_diagnostic))
+                    contract_diagnostic)
+             || !BuildShadowShaderKeys(
+                    nullptr,
+                    definition,
+                    request,
+                    graph,
+                    contracts,
+                    *build_spec,
+                    keys,
+                    key_diagnostic))
             {
                 result.diagnostics.emplace_back(
                     std::string("shadow contract build failed: ")
@@ -4251,7 +4389,12 @@ namespace
                     + GetShadowShaderContractBuildErrorName(
                         contract_diagnostic.error)
                     + " detail="
-                    + contract_diagnostic.detail.c_str());
+                    + contract_diagnostic.detail.c_str()
+                    + " key="
+                    + GetShadowShaderKeyBuildErrorName(
+                        key_diagnostic.error)
+                    + " key_detail="
+                    + key_diagnostic.detail.c_str());
                 continue;
             }
 
@@ -4260,12 +4403,173 @@ namespace
              || GetOutputContractHash(contracts.output) == 0
              || capture.module_graph_built != 1
              || capture.shader_contract_built != 1
+             || capture.shader_keys_built != 1
              || capture.failures != 0
-             || capture.last_contract_digest == 0)
+             || capture.last_contract_digest == 0
+             || keys.selection_request.GetDigest() == 0
+             || keys.effective_program.GetDigest() == 0
+             || GetShaderVariantContractHash(keys.shader_variant) == 0
+             || keys.vertex_stage.GetDigest() == 0
+             || keys.fragment_stage.GetDigest() == 0
+             || keys.program.GetDigest() == 0
+             || GetShaderProgramArtifactMetadataHash(
+                    keys.program_metadata) == 0)
             {
                 result.diagnostics.emplace_back(
                     std::string("shadow contract diagnostics mismatch: ")
                     + definition_id);
+            }
+
+            {
+                MaterialDefinition definition{};
+                if (!TryGetMaterialDefinitionByID("Lit", definition))
+                {
+                    result.diagnostics.emplace_back(
+                        "missing Lit definition for shadow key identity");
+                }
+                else
+                {
+                    GeometryVertexFormat geometry;
+                    add_geometry(definition, geometry);
+                    MaterialDefinitionBuildRequest first_request{};
+                    first_request.recipe.mtl_def_id = definition.definition_id;
+                    first_request.recipe.textures.push_back(
+                        {
+                            TextureSlot::BaseColor,
+                            "asset/a.png",
+                            0,
+                            false,
+                            true
+                        });
+                    first_request.geometry_vertex_format = &geometry;
+                    first_request.generate_only = true;
+
+                    std::unique_ptr<ShaderProgramBuildSpec> build_spec(
+                        CreateMaterialFromDefinition(
+                            nullptr, definition, first_request));
+                    ResolvedModuleGraph graph{};
+                    ResolvedModuleGraphBuildDiagnostic graph_diagnostic{};
+                    ShadowShaderContracts contracts{};
+                    ShadowShaderContractBuildDiagnostic contract_diagnostic{};
+                    ShadowShaderKeys first_keys{};
+                    ShadowShaderKeyBuildDiagnostic key_diagnostic{};
+                    if (!build_spec
+                     || !BuildMaterialResolvedModuleGraph(
+                            definition,
+                            GetGLSLCodeModuleRegistry(),
+                            graph,
+                            graph_diagnostic,
+                            &first_request)
+                     || !BuildShadowShaderContracts(
+                            definition,
+                            first_request,
+                            graph,
+                            *build_spec,
+                            contracts,
+                            contract_diagnostic)
+                     || !BuildShadowShaderKeys(
+                            nullptr,
+                            definition,
+                            first_request,
+                            graph,
+                            contracts,
+                            *build_spec,
+                            first_keys,
+                            key_diagnostic))
+                    {
+                        result.diagnostics.emplace_back(
+                            "failed to build Lit shadow key identity fixture");
+                    }
+                    else
+                    {
+                        MaterialDefinition second_definition = definition;
+                        second_definition.definition_id =
+                            "AnotherDefinitionWithSameEffectiveProgram";
+                        MaterialDefinitionBuildRequest second_request =
+                            first_request;
+                        second_request.recipe.textures[0].resource_id =
+                            "asset/b.png";
+                        ShadowShaderKeys second_keys{};
+                        if (!BuildShadowShaderKeys(
+                                nullptr,
+                                second_definition,
+                                second_request,
+                                graph,
+                                contracts,
+                                *build_spec,
+                                second_keys,
+                                key_diagnostic)
+                         || first_keys.selection_request.GetDigest()
+                                == second_keys.selection_request.GetDigest()
+                         || first_keys.effective_program.GetDigest()
+                                != second_keys.effective_program.GetDigest()
+                         || GetShaderVariantContractHash(
+                                first_keys.shader_variant)
+                                != GetShaderVariantContractHash(
+                                    second_keys.shader_variant)
+                         || first_keys.program.GetDigest()
+                                != second_keys.program.GetDigest())
+                        {
+                            result.diagnostics.emplace_back(
+                                "definition provenance polluted effective shader keys");
+                        }
+
+                        MaterialDefinitionBuildRequest third_request =
+                            first_request;
+                        third_request.recipe.textures[0].resource_id =
+                            "asset/c.png";
+                        ShadowShaderKeys third_keys{};
+                        if (!BuildShadowShaderKeys(
+                                nullptr,
+                                definition,
+                                third_request,
+                                graph,
+                                contracts,
+                                *build_spec,
+                                third_keys,
+                                key_diagnostic)
+                         || first_keys.selection_request.GetDigest()
+                                != third_keys.selection_request.GetDigest()
+                         || first_keys.effective_program.GetDigest()
+                                != third_keys.effective_program.GetDigest()
+                         || first_keys.program.GetDigest()
+                                != third_keys.program.GetDigest())
+                        {
+                            result.diagnostics.emplace_back(
+                                "asset identity must not affect shadow shader keys");
+                        }
+
+                        contract::PhysicalDeviceProfileLite profile{};
+                        profile.api_version =
+                            contract::MakeVkVersion(1, 3);
+                        profile.target_vulkan_version =
+                            contract::MakeVkVersion(1, 3);
+                        profile.target_spv_version =
+                            contract::SPV_VERSION_1_6;
+                        ShadowShaderKeys targeted_keys{};
+                        if (!BuildShadowShaderKeys(
+                                &profile,
+                                definition,
+                                first_request,
+                                graph,
+                                contracts,
+                                *build_spec,
+                                targeted_keys,
+                                key_diagnostic)
+                         || first_keys.vertex_stage.GetDigest()
+                                == targeted_keys.vertex_stage.GetDigest()
+                         || first_keys.program.GetDigest()
+                                == targeted_keys.program.GetDigest()
+                         || GetShaderProgramArtifactMetadataHash(
+                                first_keys.program_metadata)
+                                == GetShaderProgramArtifactMetadataHash(
+                                    targeted_keys.program_metadata))
+                        {
+                            result.diagnostics.emplace_back(
+                                "compiler target changes must invalidate shadow keys");
+                        }
+                    }
+                }
             }
         }
 
@@ -4296,7 +4600,8 @@ namespace
                 if (unavailable
                  || capture.contract_unavailable != 1
                  || capture.module_graph_built != 0
-                 || capture.shader_contract_built != 0)
+                 || capture.shader_contract_built != 0
+                 || capture.shader_keys_built != 0)
                 {
                     result.diagnostics.emplace_back(
                         "unavailable Contract path must fail explicitly");
@@ -5394,6 +5699,7 @@ int main(const int argc, char **argv)
     if (run_materialization) results.push_back(RunTransformGraphModelCase());
     if (run_materialization) results.push_back(RunTransformGraphCompositionCase());
     if (run_cache) results.push_back(RunMaterialShaderVariantIdentityCase());
+    if (run_cache) results.push_back(RunAuthoritativeMaterialCacheIdentityCase());
     if (run_descriptor) results.push_back(RunMaterialSSBOBindingKeyCase());
     if (run_materialization) results.push_back(RunResolvedMaterialRenderStateCase());
     if (run_materialization) results.push_back(RunMaterialDefinitionFileSchemaCase());

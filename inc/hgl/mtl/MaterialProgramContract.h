@@ -18,6 +18,38 @@ namespace hgl::graph::mtl
         Failed
     };
 
+    struct MaterialSelectionRequestKey
+    {
+        uint32 schema_version = MaterialProgramContractSchemaVersion;
+        uint64 definition_id_hash = 0;
+        uint64 definition_content_hash = 0;
+        uint64 recipe_capability_hash = 0;
+        uint64 geometry_capability_hash = 0;
+        uint64 device_quality_hash = 0;
+        uint64 request_context_hash = 0;
+        ShaderProgramPurpose purpose = ShaderProgramPurpose::ForwardColor;
+        uint16 requested_material_lod = 0;
+        uint16 requested_quality_class = 0;
+
+        uint64 GetDigest() const noexcept;
+    };
+
+    inline bool operator==(
+        const MaterialSelectionRequestKey &lhs,
+        const MaterialSelectionRequestKey &rhs) noexcept
+    {
+        return lhs.schema_version == rhs.schema_version
+            && lhs.definition_id_hash == rhs.definition_id_hash
+            && lhs.definition_content_hash == rhs.definition_content_hash
+            && lhs.recipe_capability_hash == rhs.recipe_capability_hash
+            && lhs.geometry_capability_hash == rhs.geometry_capability_hash
+            && lhs.device_quality_hash == rhs.device_quality_hash
+            && lhs.request_context_hash == rhs.request_context_hash
+            && lhs.purpose == rhs.purpose
+            && lhs.requested_material_lod == rhs.requested_material_lod
+            && lhs.requested_quality_class == rhs.requested_quality_class;
+    }
+
     struct EffectiveMaterialProgramKey
     {
         uint32 schema_version = MaterialProgramContractSchemaVersion;
@@ -131,6 +163,8 @@ namespace hgl::graph::mtl
 
     bool ValidateEffectiveMaterialProgramKey(
         const EffectiveMaterialProgramKey &key) noexcept;
+    bool ValidateMaterialSelectionRequestKey(
+        const MaterialSelectionRequestKey &key) noexcept;
     bool ValidateMaterialResolutionResult(
         const MaterialResolutionResult &result) noexcept;
     bool ValidateResourceAcquirePlan(
@@ -138,6 +172,9 @@ namespace hgl::graph::mtl
 
     bool SerializeEffectiveMaterialProgramKey(
         const EffectiveMaterialProgramKey &key,
+        ValueArray<uint8> &out_bytes);
+    bool SerializeMaterialSelectionRequestKey(
+        const MaterialSelectionRequestKey &key,
         ValueArray<uint8> &out_bytes);
     bool SerializeMaterialResolutionResult(
         const MaterialResolutionResult &result,
