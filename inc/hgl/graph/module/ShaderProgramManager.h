@@ -52,6 +52,8 @@ private: // Helper methods with integrated DebugUtils
     void ApplyMaterialFinalizePlan(ShaderProgram *mtl, const AnsiString &mtl_name, const mtl::ShaderProgramBuildSpec &mci);
     ShaderProgram *TryGetCachedMaterial(const AnsiString &name);
     ShaderProgram *TryGetCachedShaderProgram(const mtl::ShaderProgramKey &key);
+    ShaderProgram *TryGetCachedEffectiveMaterialProgram(
+        const mtl::EffectiveMaterialProgramKey &key);
     bool RegisterShaderProgram(const mtl::ShaderProgramKey &key, ShaderProgram *program);
     bool BuildRuntimeShaderProgramState(ShaderProgram *mtl,
                                         const AnsiString &mtl_name,

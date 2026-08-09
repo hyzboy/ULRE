@@ -1849,7 +1849,11 @@ namespace
          || !lit_a->HasProgramArtifactMetadata()
          || !lit_b->HasProgramArtifactMetadata()
          || !color->HasProgramArtifactMetadata()
-         || !lit_targeted->HasProgramArtifactMetadata())
+         || !lit_targeted->HasProgramArtifactMetadata()
+         || !lit_a->HasEffectiveMaterialProgram()
+         || !lit_b->HasEffectiveMaterialProgram()
+         || !color->HasEffectiveMaterialProgram()
+         || !lit_targeted->HasEffectiveMaterialProgram())
         {
             result.diagnostics.emplace_back(
                 "generate-only material builds must produce ProgramLink");
@@ -1869,7 +1873,11 @@ namespace
                     != a.vertex_stage.GetDigest()
              || lit_a->GetProgramArtifactMetadata().
                     fragment_stage_digest
-                    != a.fragment_stage.GetDigest())
+                    != a.fragment_stage.GetDigest()
+             || lit_a->GetProgramArtifactMetadata().
+                    effective_material_program_digest
+                    != lit_a->GetEffectiveMaterialProgram().
+                        GetDigest())
             {
                 result.diagnostics.emplace_back(
                     "BuildSpec program metadata does not match ProgramLink");
@@ -1961,7 +1969,9 @@ namespace
 
             if (a.fragment_stage.GetDigest()
                     == c.fragment_stage.GetDigest()
-             || a.BuildKey() == c.BuildKey())
+             || a.BuildKey() == c.BuildKey()
+             || lit_a->GetEffectiveMaterialProgram()
+                    == color->GetEffectiveMaterialProgram())
             {
                 result.diagnostics.emplace_back(
                     "different materials must not share authoritative keys");
@@ -1969,7 +1979,9 @@ namespace
 
             if (a.vertex_stage.GetDigest()
                     == b.vertex_stage.GetDigest()
-             || a.BuildKey() == b.BuildKey())
+             || a.BuildKey() == b.BuildKey()
+             || lit_a->GetEffectiveMaterialProgram()
+                    == lit_b->GetEffectiveMaterialProgram())
             {
                 result.diagnostics.emplace_back(
                     "different geometry formats must not share authoritative keys");
@@ -1979,10 +1991,85 @@ namespace
                     == targeted.vertex_stage.compiler_hash
              || a.fragment_stage.compiler_hash
                     == targeted.fragment_stage.compiler_hash
-             || a.BuildKey() == targeted.BuildKey())
+             || a.BuildKey() == targeted.BuildKey()
+             || lit_a->GetEffectiveMaterialProgram()
+                    == lit_targeted->GetEffectiveMaterialProgram())
             {
                 result.diagnostics.emplace_back(
                     "compiler profile changes must invalidate authoritative keys");
+            }
+
+            const char *const shared_definition_ids[] =
+            {
+                "HumanSkinDefinition",
+                "WoodDefinition",
+                "StoneDefinition",
+                "MetalDefinition"
+            };
+            const char *const shared_intent_ids[] =
+            {
+                "HumanSkin",
+                "Wood",
+                "Stone",
+                "Metal"
+            };
+            std::vector<std::unique_ptr<ShaderProgramBuildSpec>>
+                shared_builds;
+            for (int i = 0; i < 4; ++i)
+            {
+                MaterialDefinition definition = lit;
+                definition.definition_id = shared_definition_ids[i];
+                definition.definition_name = shared_definition_ids[i];
+                definition.surface_intent_id =
+                    GetSurfaceStableID(shared_intent_ids[i]);
+                definition.surface_profile_projections.Clear();
+                definition.surface_profile_projections.Add(
+                    MakeMaterialSurfaceProfileProjection(
+                        "StandardPBR",
+                        "Shared.StandardPBRProjection"));
+                shared_builds.push_back(
+                    build(nullptr, definition, lit_geometry_a));
+            }
+
+            if (shared_builds.size() != 4
+             || !shared_builds[0]
+             || !shared_builds[1]
+             || !shared_builds[2]
+             || !shared_builds[3])
+            {
+                result.diagnostics.emplace_back(
+                    "cross-Definition effective program fixtures failed");
+            }
+            else
+            {
+                const EffectiveMaterialProgramKey &shared_key =
+                    shared_builds[0]->GetEffectiveMaterialProgram();
+                const MaterialResolutionResult &first_resolution =
+                    shared_builds[0]->GetMaterialResolutionResult();
+                for (int i = 1; i < 4; ++i)
+                {
+                    const MaterialResolutionResult &resolution =
+                        shared_builds[i]->
+                            GetMaterialResolutionResult();
+                    if (!shared_builds[i]->
+                            HasEffectiveMaterialProgram()
+                     || shared_builds[i]->
+                            GetEffectiveMaterialProgram()
+                            != shared_key
+                     || shared_builds[i]->GetProgramLink().BuildKey()
+                            != shared_builds[0]->
+                                GetProgramLink().BuildKey()
+                     || resolution.GetProvenanceHash()
+                            == first_resolution.GetProvenanceHash()
+                     || resolution.source_surface_intent_id
+                            == first_resolution.
+                                source_surface_intent_id)
+                    {
+                        result.diagnostics.emplace_back(
+                            "equivalent StandardPBR Definitions must share only effective identity");
+                        break;
+                    }
+                }
             }
 
             const uint64_t context_a =

@@ -67,6 +67,8 @@ SET(CANONICAL_SHADER_CONTRACT_FILES
     ShadowShaderContractBuilder.cpp
     ShadowShaderKeyBuilder.cpp
     ShadowResourceAcquirePlanBuilder.cpp
+    ${SHADERGEN_INCLUDE_PATH}/EffectiveMaterialProgramBuilder.h
+    EffectiveMaterialProgramBuilder.cpp
     MaterialProgramContract.cpp
     common/CanonicalContractWriter.h)
 

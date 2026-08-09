@@ -6,6 +6,7 @@
 #include <hgl/mtl/SurfaceProfile.h>
 #include <hgl/shadergen/CanonicalShaderContract.h>
 #include <hgl/type/ValueArray.h>
+#include <hgl/type/String.h>
 
 namespace hgl::graph::mtl
 {
@@ -64,6 +65,11 @@ namespace hgl::graph::mtl
         ShaderProgramPurpose purpose = ShaderProgramPurpose::ForwardColor;
 
         uint64 GetDigest() const noexcept;
+        AnsiString ToString() const
+        {
+            return AnsiString("effective-program-")
+                + AnsiString::numberOf(GetDigest());
+        }
     };
 
     inline bool operator==(

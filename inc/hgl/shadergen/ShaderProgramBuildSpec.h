@@ -5,6 +5,7 @@
 #include<hgl/shadergen/ShaderCreateInfoMap.h>
 #include<hgl/shadergen/ShaderProgramLinkSpec.h>
 #include<hgl/shadergen/ShaderArtifactContract.h>
+#include <hgl/mtl/MaterialProgramContract.h>
 #include<hgl/common/PrimitiveTypeDef.h>
 #include<hgl/common/ShaderStageDef.h>
 #include <hgl/common/TextureSamplerTypeDef.h>
@@ -52,6 +53,9 @@ namespace hgl::graph
             ShaderArtifactStore *artifact_store = nullptr;
             ShaderProgramArtifactMetadata program_metadata{};
             bool has_program_metadata = false;
+            EffectiveMaterialProgramKey effective_program{};
+            MaterialResolutionResult material_resolution{};
+            bool has_effective_program = false;
 
         public:
 
@@ -107,6 +111,38 @@ namespace hgl::graph
                 GetProgramArtifactMetadata() const noexcept
             {
                 return program_metadata;
+            }
+            bool SetEffectiveMaterialProgram(
+                const EffectiveMaterialProgramKey &program,
+                const MaterialResolutionResult &resolution)
+            {
+                if (!ValidateEffectiveMaterialProgramKey(program)
+                 || !ValidateMaterialResolutionResult(resolution)
+                 || resolution.status
+                        != MaterialResolutionStatus::Resolved
+                 || resolution.effective_program != program)
+                {
+                    return false;
+                }
+
+                effective_program = program;
+                material_resolution = resolution;
+                has_effective_program = true;
+                return true;
+            }
+            bool HasEffectiveMaterialProgram() const noexcept
+            {
+                return has_effective_program;
+            }
+            const EffectiveMaterialProgramKey &
+                GetEffectiveMaterialProgram() const noexcept
+            {
+                return effective_program;
+            }
+            const MaterialResolutionResult &
+                GetMaterialResolutionResult() const noexcept
+            {
+                return material_resolution;
             }
 
             const bool HasLocalToWorld                  ()const{return has_local_to_world;}

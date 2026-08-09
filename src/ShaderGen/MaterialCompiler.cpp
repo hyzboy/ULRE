@@ -1005,6 +1005,18 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     }
 
     mci->SetMaterialResourceLayout(material_resource_layout);
+    if ((config.effective_program == nullptr)
+            != (config.material_resolution == nullptr))
+        return FailAfterMci(
+            "incomplete Effective Material Program contract");
+    if (config.effective_program
+     && !mci->SetEffectiveMaterialProgram(
+            *config.effective_program,
+            *config.material_resolution))
+    {
+        return FailAfterMci(
+            "invalid Effective Material Program contract");
+    }
     if (mci->HasProgramLink())
     {
         ShaderProgramArtifactMetadata metadata{};

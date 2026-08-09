@@ -16,6 +16,7 @@
 #include<hgl/graph/glsl/ShaderResourceManifest.h>
 #include<hgl/shadergen/ShaderArtifactStore.h>
 #include<hgl/shadergen/MaterialDescriptorContract.h>
+#include <hgl/mtl/MaterialProgramContract.h>
 #include <string>
 #include <vector>
 
@@ -46,6 +47,8 @@ struct CompositorMaterialBuildConfig
     bool merge_resource_manifest_material_slots = true;
     ShaderArtifactStore *artifact_store = nullptr;
     const MaterialDescriptorContract *descriptor_contract = nullptr;
+    const EffectiveMaterialProgramKey *effective_program = nullptr;
+    const MaterialResolutionResult *material_resolution = nullptr;
     bool generate_only = false; // Preserve generated GLSL for contract tests without SPV compilation.
 };
 

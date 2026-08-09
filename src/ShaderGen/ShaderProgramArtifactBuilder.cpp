@@ -59,9 +59,13 @@ namespace hgl::graph::mtl
                 build_spec.GetMaterialResourceLayout()));
 
         const uint64 program_digest = link.BuildKey().GetDigest();
+        const uint64 effective_program_digest =
+            build_spec.HasEffectiveMaterialProgram()
+                ? build_spec.GetEffectiveMaterialProgram().GetDigest()
+                : program_digest;
         uint64 variant_digest = hgl::hash::FNV1aInit<uint64>();
         variant_digest = hgl::hash::FNV1aAppendValueBytes(
-            variant_digest, program_digest);
+            variant_digest, effective_program_digest);
         variant_digest = hgl::hash::FNV1aAppendValueBytes(
             variant_digest, module_graph_hash);
         variant_digest = hgl::hash::FNV1aAppendValueBytes(
@@ -79,7 +83,7 @@ namespace hgl::graph::mtl
 
         out_metadata.program_key_digest = program_digest;
         out_metadata.effective_material_program_digest =
-            program_digest;
+            effective_program_digest;
         out_metadata.shader_variant_digest = variant_digest;
         out_metadata.resolved_module_graph_hash = module_graph_hash;
         out_metadata.shader_interface_hash = interface_hash;
