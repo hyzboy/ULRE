@@ -36,11 +36,13 @@ namespace hgl::graph
 
             case PassType::ShadowOpaque:
             case PassType::ShadowMasked:
-                return {};
+                return shader_lib_path_
+                    + "/compositor/main_depth_only.frag.glsl";
 
             case PassType::EarlyZSolid:
             case PassType::EarlyZMasked:
-                return {};
+                return shader_lib_path_
+                    + "/compositor/main_depth_only.frag.glsl";
 
             case PassType::ForwardDither:
             case PassType::ForwardA2C:
@@ -92,11 +94,13 @@ namespace hgl::graph
 
         case PassType::ShadowOpaque:
         case PassType::ShadowMasked:
-            return {};
+            return shader_lib_path_
+                + "/compositor/main_depth_only.frag.glsl";
 
         case PassType::EarlyZSolid:
         case PassType::EarlyZMasked:
-            return {};
+            return shader_lib_path_
+                + "/compositor/main_depth_only.frag.glsl";
 
         case PassType::VBufferID:
             return {};
@@ -328,8 +332,20 @@ namespace hgl::graph
             line_start = line_end + 1;
         }
 
-        if (!inputs.IsEmpty() && !declarations_inserted)
-            return false;
+        const std::string input_marker =
+            "// ULRE_FRAGMENT_INPUT_CONTRACT";
+        const size_t marker = out_source.find(input_marker);
+        if (!declarations_inserted)
+        {
+            if (!inputs.IsEmpty() && marker == std::string::npos)
+                return false;
+            if (marker != std::string::npos)
+                out_source.replace(marker, input_marker.size(), declarations);
+        }
+        else if (marker != std::string::npos)
+        {
+            out_source.erase(marker, input_marker.size());
+        }
         return true;
     }
 
@@ -424,6 +440,43 @@ namespace hgl::graph
             }
             fs_source = std::move(contracted_source);
         }
+
+        mtl::OutputContract default_output_contract{};
+        mtl::MaterialOutputContractDiagnostic output_diagnostic{};
+        const mtl::OutputContract *output_contract =
+            module_options.output_contract;
+        if (!output_contract)
+        {
+            if (!mtl::BuildMaterialOutputContract(
+                    pass,
+                    default_output_contract,
+                    output_diagnostic))
+            {
+                result.error_message =
+                    std::string("Failed to build output contract: ")
+                    + mtl::GetMaterialOutputContractErrorName(
+                        output_diagnostic.error);
+                result.success = false;
+                return result;
+            }
+            output_contract = &default_output_contract;
+        }
+
+        std::string contracted_source;
+        if (!mtl::ApplyMaterialOutputContract(
+                *output_contract,
+                fs_source,
+                contracted_source,
+                output_diagnostic))
+        {
+            result.error_message =
+                std::string("Failed to apply output contract: ")
+                + mtl::GetMaterialOutputContractErrorName(
+                    output_diagnostic.error);
+            result.success = false;
+            return result;
+        }
+        fs_source = std::move(contracted_source);
 
         result.fragment_glsl = std::move(fs_source);
         result.success       = true;

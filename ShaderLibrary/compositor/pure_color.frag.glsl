@@ -15,11 +15,11 @@
 layout(location=0) flat in uint fragDataIndexID;
 #include "common/alpha_compositor.glsl"
 
-layout(location=0) out vec4 outColor;
+// ULRE_OUTPUT_CONTRACT
 
 void main()
 {
-    outColor = MTL_DATA.data[fragDataIndexID].color;
+    WriteMaterialOutput(MTL_DATA.data[fragDataIndexID].color);
 }
 
 #endif // PURE_COLOR_FRAG_GLSL

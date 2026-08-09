@@ -1215,14 +1215,19 @@ namespace
             result.diagnostics.emplace_back(
                 "Alpha-to-coverage compositor must preserve alpha output");
 
-        const auto unsupported = assembler.Assemble(
+        const auto depth_only = assembler.Assemble(
             SurfaceType::Lit,
             BlendMode::Opaque,
             PassType::ShadowOpaque);
-        if (unsupported.success
-         || unsupported.error_message.find("Unsupported compositor pass") == std::string::npos)
+        if (!depth_only.success
+         || depth_only.fragment_glsl.find("void main()")
+                == std::string::npos
+         || depth_only.fragment_glsl.find("outColor")
+                != std::string::npos
+         || depth_only.fragment_glsl.find("layout(location=0) out")
+                != std::string::npos)
             result.diagnostics.emplace_back(
-                "Unsupported compositor pass must fail explicitly");
+                "Shadow depth compositor must emit no color attachment");
 
         CompositorAssembler::CompositorModuleOptions cubemap_options{};
         cubemap_options.sky_module = "sky/sky_cubemap.glsl";
@@ -2437,6 +2442,171 @@ namespace
         return result;
     }
 
+    static GateResult RunMaterialOutputContractCase()
+    {
+        GateResult result;
+        result.name = "V1.material-output-contract";
+
+            OutputContract opaque_output{};
+            OutputContract transparent_output{};
+            OutputContract depth_output{};
+            OutputContract shadow_output{};
+            MaterialOutputContractDiagnostic diagnostic{};
+            if (!BuildMaterialOutputContract(
+                    PassType::ForwardOpaque,
+                    opaque_output,
+                    diagnostic)
+             || !BuildMaterialOutputContract(
+                    PassType::ForwardTransparent,
+                    transparent_output,
+                    diagnostic)
+             || !BuildMaterialOutputContract(
+                    PassType::EarlyZSolid,
+                    depth_output,
+                    diagnostic)
+             || !BuildMaterialOutputContract(
+                    PassType::ShadowOpaque,
+                    shadow_output,
+                    diagnostic)
+             || GetOutputContractHash(opaque_output)
+                    != GetOutputContractHash(transparent_output)
+             || !depth_output.depth_only
+             || !depth_output.attachments.IsEmpty()
+             || !shadow_output.depth_only
+             || !shadow_output.attachments.IsEmpty()
+             || GetOutputContractHash(depth_output)
+                    == GetOutputContractHash(shadow_output))
+            {
+                result.diagnostics.emplace_back(
+                    "output purpose contract mapping mismatch");
+            }
+
+            OutputContract unsupported_output{};
+            if (BuildMaterialOutputContract(
+                    PassType::VBufferID,
+                    unsupported_output,
+                    diagnostic)
+             || diagnostic.error
+                    != MaterialOutputContractError::UnsupportedPurpose)
+            {
+                result.diagnostics.emplace_back(
+                    "unsupported VBuffer output must fail explicitly");
+            }
+
+            std::string applied;
+            if (ApplyMaterialOutputContract(
+                    opaque_output,
+                    "#version 450\nvoid main(){}\n",
+                    applied,
+                    diagnostic)
+             || diagnostic.error
+                    != MaterialOutputContractError::MissingContractMarker)
+            {
+                result.diagnostics.emplace_back(
+                    "output contract marker must be mandatory");
+            }
+
+            MaterialDefinition lit{};
+            if (!TryGetMaterialDefinitionByID("Lit", lit))
+            {
+                result.diagnostics.emplace_back(
+                    "Lit definition unavailable for output contract");
+            }
+            else
+            {
+                const GeometryVertexFormat geometry{
+                    {VertexSemantic::Position, VF_V3F},
+                    {VertexSemantic::TexCoord, VF_V2F},
+                    {VertexSemantic::Normal, VF_V3F}
+                };
+                const auto build = [&](
+                    const ShaderProgramPurpose purpose,
+                    const bool override_purpose,
+                    const PassType pass)
+                {
+                    MaterialDefinition selected = lit;
+                    selected.compositor_pass = pass;
+                    MaterialDefinitionBuildRequest request{};
+                    request.recipe.mtl_def_id = selected.definition_id;
+                    request.geometry_vertex_format = &geometry;
+                    request.generate_only = true;
+                    request.override_shader_program_purpose =
+                        override_purpose;
+                    request.shader_program_purpose = purpose;
+                    return std::unique_ptr<ShaderProgramBuildSpec>(
+                        CreateMaterialFromDefinition(
+                            nullptr, selected, request));
+                };
+
+                const auto opaque = build(
+                    ShaderProgramPurpose::ForwardColor,
+                    false,
+                    PassType::ForwardOpaque);
+                const auto transparent = build(
+                    ShaderProgramPurpose::ForwardColor,
+                    false,
+                    PassType::ForwardTransparent);
+                const auto depth = build(
+                    ShaderProgramPurpose::DepthOnly,
+                    true,
+                    PassType::ForwardOpaque);
+                const auto shadow = build(
+                    ShaderProgramPurpose::ShadowDepth,
+                    true,
+                    PassType::ForwardOpaque);
+
+                if (!opaque || !transparent || !depth || !shadow
+                 || !opaque->HasProgramLink()
+                 || !transparent->HasProgramLink()
+                 || !depth->HasProgramLink()
+                 || !shadow->HasProgramLink())
+                {
+                    result.diagnostics.emplace_back(
+                        "production output contract builds failed");
+                }
+                else
+                {
+                    const std::string &opaque_fs =
+                        opaque->GetStageShader(
+                            ShaderStage::Fragment)->GetFinalGLSL();
+                    const std::string &depth_fs =
+                        depth->GetStageShader(
+                            ShaderStage::Fragment)->GetFinalGLSL();
+                    if (opaque_fs.find(
+                            "layout(location=0) out vec4 outColor;")
+                            == std::string::npos
+                     || opaque_fs.find("WriteMaterialOutput(")
+                            == std::string::npos
+                     || opaque_fs.find("ULRE_OUTPUT_CONTRACT")
+                            != std::string::npos
+                     || depth_fs.find("outColor")
+                            != std::string::npos
+                     || depth_fs.find("WriteMaterialOutput(")
+                            != std::string::npos
+                     || depth_fs.find("ULRE_OUTPUT_CONTRACT")
+                            != std::string::npos)
+                    {
+                        result.diagnostics.emplace_back(
+                            "production fragment output generation mismatch");
+                    }
+
+                    if (!(opaque->GetProgramLink().BuildKey()
+                            == transparent->GetProgramLink().BuildKey())
+                     || depth->GetProgramLink().BuildKey()
+                            == shadow->GetProgramLink().BuildKey()
+                     || opaque->GetProgramLink().BuildKey()
+                            == depth->GetProgramLink().BuildKey())
+                    {
+                        result.diagnostics.emplace_back(
+                            "output purpose ProgramKey identity mismatch");
+                    }
+                }
+            }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunUnifiedPureColorFragmentCase()
     {
         GateResult result;
@@ -3577,14 +3747,14 @@ namespace
             result.diagnostics.emplace_back("LoadDirectory failed to scan directory");
         else
         {
-            if (file_count != 68)
-                result.diagnostics.emplace_back("LoadDirectory expected 68 file modules, got "
+            if (file_count != 69)
+                result.diagnostics.emplace_back("LoadDirectory expected 69 file modules, got "
                     + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 68 + int(GLSLCodeModuleID::RANGE_SIZE);
+            const int expected_count = 69 + int(GLSLCodeModuleID::RANGE_SIZE);
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
@@ -3653,11 +3823,11 @@ namespace
         int dup_errors = 0;
         if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()), &dup_count, &dup_errors))
             result.diagnostics.emplace_back("second LoadDirectory failed");
-        else if (dup_count != 0 || dup_errors != 68)
-            result.diagnostics.emplace_back("second LoadDirectory must report 68 duplicates, got files="
+        else if (dup_count != 0 || dup_errors != 69)
+            result.diagnostics.emplace_back("second LoadDirectory must report 69 duplicates, got files="
                 + std::to_string(dup_count) + " errors=" + std::to_string(dup_errors));
 
-        const int stable_count = 68 + int(GLSLCodeModuleID::RANGE_SIZE);
+        const int stable_count = 69 + int(GLSLCodeModuleID::RANGE_SIZE);
         if (registry.GetCount() != stable_count)
             result.diagnostics.emplace_back("registry count changed after duplicate re-scan: got "
                 + std::to_string(registry.GetCount()));
@@ -6140,6 +6310,7 @@ int main(const int argc, char **argv)
     if (run_materialization) results.push_back(RunBootstrapMaterialBoundaryCase());
     if (run_materialization) results.push_back(RunMaterialDefinitionIdentityCase());
     if (run_pipeline) results.push_back(RunUnifiedMaterialBaselineCase());
+    if (run_pipeline) results.push_back(RunMaterialOutputContractCase());
     if (run_pipeline) results.push_back(RunUnifiedPureColorFragmentCase());
     if (run_descriptor) results.push_back(RunUnifiedMaterialContractCase());
     if (run_materialization) results.push_back(RunTransformGraphModelCase());

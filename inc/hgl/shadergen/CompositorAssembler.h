@@ -5,6 +5,7 @@
 #include <hgl/mtl/new/PassType.h>
 #include <hgl/mtl/new/NewShaderPermutationKey.h>
 #include <hgl/shadergen/MaterialStageInterface.h>
+#include <hgl/shadergen/MaterialOutputContract.h>
 #include <string>
 
 namespace hgl::graph
@@ -50,6 +51,7 @@ namespace hgl::graph
             const hgl::ValueArray<
                 mtl::InterStageSemanticContractEntry>
                 *fragment_inputs = nullptr;
+            const mtl::OutputContract *output_contract = nullptr;
         };
 
         /// shader_library_path: ShaderLibrary 根目录的绝对路径（不带尾部斜杠）

@@ -3,6 +3,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
 #include<hgl/shadergen/ShaderGenMigration.h>
+#include<hgl/shadergen/CanonicalShaderContract.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/glsl/GLSLCodeModuleCapabilityResolver.h>
 #include<hgl/mtl/MaterializationSpec.h>
@@ -57,6 +58,9 @@ struct MaterialDefinitionBuildRequest
     ShaderArtifactStore *shader_artifact_store = nullptr;
     ShaderGenMigrationOptions migration{};
     bool generate_only = false;
+    bool override_shader_program_purpose = false;
+    ShaderProgramPurpose shader_program_purpose =
+        ShaderProgramPurpose::ForwardColor;
 
     // Phase 4.4 opt-in: only explicit callers with a loaded registry activate
     // resolver-derived VS declarations and vertex entries.

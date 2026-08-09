@@ -61,7 +61,7 @@ layout(location=3) in vec3 fragWorldNormal;
 layout(location=4) in vec2 fragUV0;
 
 // Output
-layout(location=0) out vec4 outColor;
+// ULRE_OUTPUT_CONTRACT
 
 // Surface function (injected by CompositorAssembler via #define SURFACE_FUNCTION_FILE)
 #include SURFACE_FUNCTION_FILE
@@ -84,5 +84,5 @@ void main()
     const LightingInput lightingInput = BuildForwardLightingInput(so, si);
     const vec4 finalColor = EvalLighting(lightingInput);
 
-    outColor = HGLComposeColor(finalColor);
+    WriteMaterialOutput(HGLComposeColor(finalColor));
 }

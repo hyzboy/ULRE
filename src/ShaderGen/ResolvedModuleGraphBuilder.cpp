@@ -2,6 +2,7 @@
 
 #include <hgl/graph/glsl/GLSLCodeModuleMetadata.h>
 #include <hgl/mtl/MaterialLibrary.h>
+#include <hgl/shadergen/MaterialOutputContract.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <cstring>
 
@@ -640,24 +641,40 @@ namespace hgl::graph::mtl
             }
         }
 
+        const ShaderProgramPurpose purpose =
+            request && request->override_shader_program_purpose
+                ? request->shader_program_purpose
+                : GetShaderProgramPurpose(
+                    definition.compositor_pass);
+        const bool depth_purpose =
+            purpose == ShaderProgramPurpose::DepthOnly
+         || purpose == ShaderProgramPurpose::ShadowDepth;
+
         ValueArray<const GLSLCodeModuleDefinition *> roots;
-        for (const GLSLCodeModuleID id : definition.code_module_requirements)
+        if (!depth_purpose)
         {
-            const GLSLCodeModuleDefinition *root = registry.Find(id);
-            if (!AddRoot(
-                    roots,
-                    root,
-                    out_diagnostic,
-                    GetGLSLCodeModuleName(id)))
-                return false;
+            for (const GLSLCodeModuleID id :
+                 definition.code_module_requirements)
+            {
+                const GLSLCodeModuleDefinition *root = registry.Find(id);
+                if (!AddRoot(
+                        roots,
+                        root,
+                        out_diagnostic,
+                        GetGLSLCodeModuleName(id)))
+                    return false;
+            }
         }
 
         const char *module_paths[] =
         {
-            definition.fragment_source,
-            definition.fragment_surface_module,
-            definition.fragment_material_source_module,
-            definition.fragment_ntb_module
+            depth_purpose
+                ? "compositor/main_depth_only.frag.glsl"
+                : definition.fragment_source,
+            depth_purpose ? nullptr : definition.fragment_surface_module,
+            depth_purpose
+                ? nullptr : definition.fragment_material_source_module,
+            depth_purpose ? nullptr : definition.fragment_ntb_module
         };
         for (const char *path : module_paths)
         {

@@ -14,7 +14,7 @@
 
 layout(location=0) in vec4 fragVertexColor;
 
-layout(location=0) out vec4 outColor;
+// ULRE_OUTPUT_CONTRACT
 
 // --- Surface Function include (由 CompositorAssembler 注入) ---
 #include SURFACE_FUNCTION_FILE
@@ -35,5 +35,5 @@ void main()
 
     SurfaceOutput so = EvalSurface(si, 0u);  // dataIndex=0, 无数据
 
-    outColor = HGLComposeColor(vec4(so.baseColor, so.alpha));
+    WriteMaterialOutput(HGLComposeColor(vec4(so.baseColor, so.alpha)));
 }

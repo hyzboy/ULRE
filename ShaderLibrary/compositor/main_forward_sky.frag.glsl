@@ -30,7 +30,7 @@ SCENE_SKY_UBO;
 // Input from VS: sky direction
 layout(location=0) in vec3 fragDirection;
 
-layout(location=0) out vec4 outColor;
+// ULRE_OUTPUT_CONTRACT
 
 void main()
 {
@@ -47,5 +47,5 @@ void main()
 
     SurfaceOutput so = EvalSurface(si, 0u);
 
-    outColor = HGLComposeColor(vec4(so.baseColor, so.alpha));
+    WriteMaterialOutput(HGLComposeColor(vec4(so.baseColor, so.alpha)));
 }

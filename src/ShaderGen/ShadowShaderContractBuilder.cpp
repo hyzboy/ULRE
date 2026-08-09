@@ -3,6 +3,7 @@
 #include <hgl/common/ShaderDescriptorDef.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/shadergen/MaterialStageInterface.h>
+#include <hgl/shadergen/MaterialOutputContract.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <cstdlib>
@@ -123,23 +124,6 @@ namespace hgl::graph::mtl
             hash = hgl::hash::FNV1aAppendValueBytes(
                 hash, requirement.ssbo_type);
             return hash;
-        }
-
-        ShaderProgramPurpose GetPurpose(const PassType pass) noexcept
-        {
-            switch (pass)
-            {
-            case PassType::ShadowOpaque:
-            case PassType::ShadowMasked:
-                return ShaderProgramPurpose::ShadowDepth;
-            case PassType::EarlyZSolid:
-            case PassType::EarlyZMasked:
-                return ShaderProgramPurpose::DepthOnly;
-            case PassType::VBufferID:
-                return ShaderProgramPurpose::VBufferWrite;
-            default:
-                return ShaderProgramPurpose::ForwardColor;
-            }
         }
 
         ShaderStageValueType ParseStageValueType(
@@ -431,7 +415,10 @@ namespace hgl::graph::mtl
             {ShaderStage::Fragment, HashText("main.fragment")});
 
         out_contracts.output.purpose =
-            GetPurpose(definition.compositor_pass);
+            request.override_shader_program_purpose
+                ? request.shader_program_purpose
+                : GetShaderProgramPurpose(
+                    definition.compositor_pass);
         if (!ParseFragmentOutputs(fragment_glsl, out_contracts.output))
             return SetShadowContractFailure(
                 out_diagnostic,

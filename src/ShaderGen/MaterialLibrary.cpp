@@ -5,6 +5,7 @@
 #include<hgl/shadergen/contract/ShaderGenContract.h>
 #include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/shadergen/CompositorAssembler.h>
+#include <hgl/shadergen/MaterialOutputContract.h>
 #include <hgl/shadergen/ShaderProgramBuildSpec.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/shadergen/ResolvedModuleGraphBuilder.h>
@@ -362,12 +363,32 @@ namespace
         CompositorAssembler assembler(GetShaderLibraryPath());
         const ResolvedMaterialRenderState render_state =
             ResolveMaterialRenderState(definition, request.recipe);
+        const ShaderProgramPurpose shader_program_purpose =
+            request.override_shader_program_purpose
+                ? request.shader_program_purpose
+                : GetShaderProgramPurpose(
+                    definition.compositor_pass);
+        OutputContract output_contract{};
+        MaterialOutputContractDiagnostic output_diagnostic{};
+        if (!BuildMaterialOutputContract(
+                shader_program_purpose,
+                output_contract,
+                output_diagnostic))
+        {
+            GLogError(
+                "[ShaderGen] Material output contract build failed: name=%s error=%s",
+                definition.definition_name.c_str(),
+                GetMaterialOutputContractErrorName(
+                    output_diagnostic.error));
+            return nullptr;
+        }
         CompositorAssembler::CompositorModuleOptions compositor_options{};
         compositor_options.alpha_test = render_state.alpha_test;
         compositor_options.alpha_cutoff = render_state.alpha_cutoff;
         compositor_options.dither = render_state.dither;
         compositor_options.use_resolved_render_state = true;
         compositor_options.fragment_inputs = &stage_interface;
+        compositor_options.output_contract = &output_contract;
         if (definition.fragment_program_mode == MaterialFragmentProgramMode::Compositor)
         {
             compositor_options.sky_module =
@@ -385,11 +406,27 @@ namespace
                 definition.fragment_ntb_module;
         }
 
+        PassType effective_pass = definition.compositor_pass;
+        const char *effective_fragment_source =
+            definition.fragment_source;
+        if (shader_program_purpose
+            == ShaderProgramPurpose::DepthOnly)
+        {
+            effective_pass = PassType::EarlyZSolid;
+            effective_fragment_source = nullptr;
+        }
+        else if (shader_program_purpose
+            == ShaderProgramPurpose::ShadowDepth)
+        {
+            effective_pass = PassType::ShadowOpaque;
+            effective_fragment_source = nullptr;
+        }
+
         const auto assembled = assembler.Assemble(
             definition.compositor_surface,
             definition.compositor_blend,
-            definition.compositor_pass,
-            definition.fragment_source,
+            effective_pass,
+            effective_fragment_source,
             definition.fragment_surface_module,
             compositor_options);
         if (!assembled.success)
@@ -449,9 +486,14 @@ namespace
         resolved_program_link.resource_layout_hash =
             resource_contract_hash;
         resolved_program_link.vertex_input_hash = vertex_input_hash;
+        resolved_program_link.render_target_hash =
+            GetOutputContractHash(output_contract);
         if (request.override_rt_output)
         {
             uint64 render_target_hash = hgl::hash::FNV1aInit<uint64>();
+            render_target_hash = hgl::hash::FNV1aAppendValueBytes(
+                render_target_hash,
+                resolved_program_link.render_target_hash);
             render_target_hash = hgl::hash::FNV1aAppendValueBytes(
                 render_target_hash, request.rt_output.color);
             render_target_hash = hgl::hash::FNV1aAppendValueBytes(
