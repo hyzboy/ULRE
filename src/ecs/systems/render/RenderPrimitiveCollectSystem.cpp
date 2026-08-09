@@ -403,15 +403,6 @@ namespace hgl::ecs
         }
 
         const uint64_t recipe_hash = graph::mtl::HashMaterialRecipe(effective_recipe);
-        if (material_comp->recipe_hash != recipe_hash)
-        {
-            material_comp->program_dirty = true;
-            InvalidateRecipeRuntime(material_comp, false);
-        }
-
-        if (!material_comp->program_dirty && material_comp->program)
-            return true;
-
         auto *graphics = world->GetGraphicsContext();
         if (!graphics)
         {
@@ -441,6 +432,22 @@ namespace hgl::ecs
                 geometry_vertex_format = &asset_geometry->GetGeometryVertexFormat();
             primitive_type = asset->GetPrimitiveType();
         }
+
+        const uint64_t build_context_hash =
+            graph::mtl::HashMaterialProgramBuildContext(
+                primitive_type,
+                geometry_vertex_format,
+                graphics->GetPhysicalDeviceProfile());
+        if (material_comp->recipe_hash != recipe_hash
+         || material_comp->program_build_context_hash
+                != build_context_hash)
+        {
+            material_comp->program_dirty = true;
+            InvalidateRecipeRuntime(material_comp, false);
+        }
+
+        if (!material_comp->program_dirty && material_comp->program)
+            return true;
 
         // 统一 BMI 入口：由 AcquireShaderProgram 内部处理 2D/3D/Text/Sky 分支，
         // ECS 不再持有材质 config 细节知识。
@@ -482,6 +489,8 @@ namespace hgl::ecs
         material_comp->program = resolved_program;
         material_comp->program_dirty = false;
         material_comp->recipe_hash = recipe_hash;
+        material_comp->program_build_context_hash =
+            build_context_hash;
         return true;
     }
 

@@ -40,6 +40,7 @@ namespace hgl::ecs
         bool valid = false;
         uint32_t runtime_revision = 0;
         uint64_t recipe_hash = 0;
+        uint64_t program_build_context_hash = 0;
         std::vector<ResolvedSSBOBinding> resolved_ssbo_bindings;
 
     public:

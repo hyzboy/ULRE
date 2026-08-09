@@ -27,6 +27,10 @@ namespace hgl::graph::mtl{
 class ShaderProgramBuildSpec;
 class ShaderArtifactStore;
 class MaterialDefinitionFileRegistry;
+namespace contract
+{
+    struct PhysicalDeviceProfileLite;
+}
 
 // BuiltinMaterialCreatorID：仅用于 bootstrap/fallback creator 派发。
 // 它不是 MaterialDefinition 身份；作者层通过 definition_id 字符串主键识别材质。
@@ -82,6 +86,11 @@ struct MaterialResolvedVertexABI
 VertexShaderNodeConfig ResolveMaterialVertexNodeConfig(
     const MaterialDefinition &definition,
     const MaterialDefinitionBuildRequest &request) noexcept;
+
+uint64 HashMaterialProgramBuildContext(
+    PrimitiveType primitive_type,
+    const GeometryVertexFormat *geometry_vertex_format,
+    const contract::PhysicalDeviceProfileLite *profile) noexcept;
 
 ShaderProgramBuildSpec *CreateMaterialFromDefinition(
     const contract::PhysicalDeviceProfileLite *profile,

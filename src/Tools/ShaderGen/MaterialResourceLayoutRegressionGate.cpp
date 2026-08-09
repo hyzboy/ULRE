@@ -1619,6 +1619,29 @@ namespace
                 result.diagnostics.emplace_back(
                     "compiler profile changes must invalidate authoritative keys");
             }
+
+            const uint64_t context_a =
+                HashMaterialProgramBuildContext(
+                    PrimitiveType::Triangles,
+                    &lit_geometry_a,
+                    nullptr);
+            const uint64_t context_b =
+                HashMaterialProgramBuildContext(
+                    PrimitiveType::Triangles,
+                    &lit_geometry_b,
+                    nullptr);
+            const uint64_t context_targeted =
+                HashMaterialProgramBuildContext(
+                    PrimitiveType::Triangles,
+                    &lit_geometry_a,
+                    &profile);
+            if (context_a == 0
+             || context_a == context_b
+             || context_a == context_targeted)
+            {
+                result.diagnostics.emplace_back(
+                    "program build context must include geometry and device");
+            }
         }
 
         result.passed = result.diagnostics.empty();

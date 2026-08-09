@@ -556,6 +556,21 @@ VertexShaderNodeConfig ResolveMaterialVertexNodeConfig(
     return vertex_node_config;
 }
 
+uint64 HashMaterialProgramBuildContext(
+    const PrimitiveType primitive_type,
+    const GeometryVertexFormat *geometry_vertex_format,
+    const contract::PhysicalDeviceProfileLite *profile) noexcept
+{
+    uint64 hash = hgl::hash::FNV1aInit<uint64>();
+    hash = hgl::hash::FNV1aAppendValueBytes(hash, primitive_type);
+    hash = hgl::hash::FNV1aAppendValueBytes(
+        hash,
+        geometry_vertex_format
+            ? geometry_vertex_format->GetVertexInputHash() : 0);
+    return hgl::hash::FNV1aAppendValueBytes(
+        hash, contract::GetPhysicalDeviceProfileHash(profile));
+}
+
 bool PreviewMaterialVertexSemanticResolution(
     const GLSLCodeModuleRegistry &registry,
     const MaterialDefinition &definition,
