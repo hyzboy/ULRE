@@ -2,6 +2,7 @@
 
 #include <hgl/common/ShaderDescriptorDef.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
+#include <hgl/shadergen/MaterialStageInterface.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <cstdlib>
@@ -56,100 +57,6 @@ namespace hgl::graph::mtl
             default:
                 return ShaderSemanticScalarType::Unknown;
             }
-        }
-
-        const char *GetGLSLValueTypeName(
-            const ShaderSemanticValueShape &shape) noexcept
-        {
-            if (shape.component_count == 0 || shape.component_count > 4)
-                return nullptr;
-
-            switch (shape.scalar_type)
-            {
-            case ShaderSemanticScalarType::Float:
-            {
-                static const char *const names[] =
-                    {nullptr, "float", "vec2", "vec3", "vec4"};
-                return names[shape.component_count];
-            }
-            case ShaderSemanticScalarType::SignedInteger:
-            {
-                static const char *const names[] =
-                    {nullptr, "int", "ivec2", "ivec3", "ivec4"};
-                return names[shape.component_count];
-            }
-            case ShaderSemanticScalarType::UnsignedInteger:
-            {
-                static const char *const names[] =
-                    {nullptr, "uint", "uvec2", "uvec3", "uvec4"};
-                return names[shape.component_count];
-            }
-            case ShaderSemanticScalarType::Boolean:
-            {
-                static const char *const names[] =
-                    {nullptr, "bool", "bvec2", "bvec3", "bvec4"};
-                return names[shape.component_count];
-            }
-            default:
-                return nullptr;
-            }
-        }
-
-        InterStageSemanticMask GetActiveInterStageSemantics(
-            const MaterialVertexVaryingConfig &varying) noexcept
-        {
-            InterStageSemanticMask mask = 0;
-            const auto add = [&mask](const InterStageSemantic semantic)
-            {
-                mask |= GetInterStageSemanticMask(semantic);
-            };
-
-            if (varying.emit_data_index_id)
-                add(InterStageSemantic::DataIndexID);
-            if (varying.emit_texture_layer_id)
-                add(InterStageSemantic::TextureLayerID);
-            if (varying.emit_world_pos)
-                add(InterStageSemantic::WorldPosition);
-            if (varying.emit_world_normal)
-                add(InterStageSemantic::WorldNormal);
-            if (varying.emit_uv0)
-                add(InterStageSemantic::UV0);
-            if (varying.emit_vertex_color
-             || varying.emit_vertex_color_from_palette)
-                add(InterStageSemantic::Color);
-            if (varying.emit_frag_direction)
-                add(InterStageSemantic::FragDirection);
-            if (varying.emit_luminance)
-                add(InterStageSemantic::Luminance);
-            return mask;
-        }
-
-        AnsiString BuildInterfaceDeclaration(
-            const InterStageSemanticInfo &info,
-            const uint32 location,
-            const char *direction)
-        {
-            const char *type_name = GetGLSLValueTypeName(info.value_shape);
-            if (!type_name || !direction)
-                return {};
-
-            AnsiString declaration =
-                AnsiString("layout(location=")
-                + AnsiString::numberOf(location)
-                + AnsiString(") ");
-            if (info.interpolation == InterStageInterpolation::Flat)
-                declaration += "flat ";
-            else if (info.interpolation
-                == InterStageInterpolation::NoPerspective)
-                declaration += "noperspective ";
-
-            declaration += direction;
-            declaration += " ";
-            declaration += type_name;
-            declaration += " ";
-            declaration += info.shader_symbol;
-            declaration += ";";
-            return declaration;
         }
 
         int CountLocationDeclarations(
@@ -405,40 +312,39 @@ namespace hgl::graph::mtl
                 });
         }
 
-        const InterStageSemanticMask active_semantics =
-            GetActiveInterStageSemantics(definition.vertex_varying);
+        ValueArray<InterStageSemanticContractEntry> expected_interface;
+        MaterialStageInterfaceDiagnostic interface_diagnostic{};
+        if (!BuildMaterialStageInterface(
+                definition.vertex_varying,
+                expected_interface,
+                interface_diagnostic))
+        {
+            return SetShadowContractFailure(
+                out_diagnostic,
+                ShadowShaderContractBuildError::
+                    InvalidCanonicalContract,
+                GetMaterialStageInterfaceErrorName(
+                    interface_diagnostic.error));
+        }
         const std::string &vertex_glsl = vertex->GetFinalGLSL();
         const std::string &fragment_glsl = fragment->GetFinalGLSL();
-        int expected_varying_count = 0;
-        for (uint32 value = 1;
-             value < static_cast<uint32>(InterStageSemantic::RANGE_SIZE);
-             ++value)
+        for (int i = 0; i < expected_interface.GetCount(); ++i)
         {
-            const InterStageSemantic semantic =
-                static_cast<InterStageSemantic>(value);
-            if (!(active_semantics & GetInterStageSemanticMask(semantic)))
-                continue;
-
-            const InterStageSemanticInfo *info =
-                GetInterStageSemanticInfo(semantic);
-            uint32 location = InvalidShaderSemanticLocation;
-            if (!info
-             || !ResolveLegacyPackedInterStageSemanticLocation(
-                    active_semantics, semantic, location))
-            {
+            const InterStageSemanticContractEntry &entry =
+                expected_interface[i];
+            AnsiString vertex_declaration;
+            AnsiString fragment_declaration;
+            if (!BuildGLSLInterStageDeclaration(
+                    entry, "out", vertex_declaration)
+             || !BuildGLSLInterStageDeclaration(
+                    entry, "in", fragment_declaration))
                 return SetShadowContractFailure(
                     out_diagnostic,
                     ShadowShaderContractBuildError::
                         MissingVaryingDeclaration,
-                    "varying registry lookup failed",
+                    "varying declaration generation failed",
                     VertexSemantic::Unknown,
-                    semantic);
-            }
-
-            const AnsiString vertex_declaration =
-                BuildInterfaceDeclaration(*info, location, "out");
-            const AnsiString fragment_declaration =
-                BuildInterfaceDeclaration(*info, location, "in");
+                    entry.semantic);
             if (vertex_glsl.find(vertex_declaration.c_str())
                     == std::string::npos
              || fragment_glsl.find(fragment_declaration.c_str())
@@ -448,27 +354,18 @@ namespace hgl::graph::mtl
                     out_diagnostic,
                     ShadowShaderContractBuildError::
                         MissingVaryingDeclaration,
-                    info->shader_symbol,
+                    vertex_declaration.c_str(),
                     VertexSemantic::Unknown,
-                    semantic);
+                    entry.semantic);
             }
-
-            out_contracts.shader_interface.inter_stage_semantics.Add(
-                {
-                    semantic,
-                    info->value_shape.scalar_type,
-                    info->interpolation,
-                    info->value_shape.component_count,
-                    info->location_width,
-                    location
-                });
-            ++expected_varying_count;
         }
+        out_contracts.shader_interface.inter_stage_semantics =
+            expected_interface;
 
         if (CountLocationDeclarations(vertex_glsl, "out")
-                != expected_varying_count
+                != expected_interface.GetCount()
          || CountLocationDeclarations(fragment_glsl, "in")
-                != expected_varying_count)
+                != expected_interface.GetCount())
         {
             return SetShadowContractFailure(
                 out_diagnostic,

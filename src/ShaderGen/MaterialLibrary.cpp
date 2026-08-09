@@ -219,6 +219,21 @@ namespace
         varying.use_transform_id_attr = definition.vertex_varying.use_transform_id_attr;
         varying.emit_vertex_color_from_palette = definition.vertex_varying.emit_vertex_color_from_palette;
 
+        ValueArray<InterStageSemanticContractEntry> stage_interface;
+        MaterialStageInterfaceDiagnostic stage_interface_diagnostic{};
+        if (!BuildMaterialStageInterface(
+                definition.vertex_varying,
+                stage_interface,
+                stage_interface_diagnostic))
+        {
+            GLogError(
+                "[ShaderGen] Material stage interface build failed: name=%s error=%s",
+                definition.definition_name.c_str(),
+                GetMaterialStageInterfaceErrorName(
+                    stage_interface_diagnostic.error));
+            return nullptr;
+        }
+
         std::vector<FixedVertexEntry> vertices;
         std::vector<FixedDescriptorEntry> descriptors;
         VkFormat position_format = VK_FORMAT_UNDEFINED;
@@ -332,7 +347,8 @@ namespace
                                                position_format,
                                                extra_attributes, GetShaderLibraryPath().c_str(),
                                                resolved_vertex_input_glsl,
-                                               resolved_provider_glsl);
+                                               resolved_provider_glsl,
+                                               &stage_interface);
 
         CompositorAssembler assembler(GetShaderLibraryPath());
         const ResolvedMaterialRenderState render_state =
@@ -342,6 +358,7 @@ namespace
         compositor_options.alpha_cutoff = render_state.alpha_cutoff;
         compositor_options.dither = render_state.dither;
         compositor_options.use_resolved_render_state = true;
+        compositor_options.fragment_inputs = &stage_interface;
         if (definition.fragment_program_mode == MaterialFragmentProgramMode::Compositor)
         {
             compositor_options.sky_module =

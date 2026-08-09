@@ -4,6 +4,7 @@
 #include <hgl/mtl/new/BlendMode.h>
 #include <hgl/mtl/new/PassType.h>
 #include <hgl/mtl/new/NewShaderPermutationKey.h>
+#include <hgl/shadergen/MaterialStageInterface.h>
 #include <string>
 
 namespace hgl::graph
@@ -46,6 +47,9 @@ namespace hgl::graph
             float alpha_cutoff = 0.5f;
             bool dither = false;
             bool use_resolved_render_state = false;
+            const hgl::ValueArray<
+                mtl::InterStageSemanticContractEntry>
+                *fragment_inputs = nullptr;
         };
 
         /// shader_library_path: ShaderLibrary 根目录的绝对路径（不带尾部斜杠）
@@ -81,6 +85,10 @@ namespace hgl::graph
         std::string InjectDefines(const std::string &source, const NewShaderPermutationKey &key, const CompositorModuleOptions &module_options) const;
         std::string ReplaceLightingModuleIncludes(const std::string &source, const CompositorModuleOptions &module_options) const;
         std::string ReplaceSurfaceInclude(const std::string &source, const std::string &surface_path) const;
+        bool ApplyFragmentInputContract(
+            const std::string &source,
+            const hgl::ValueArray<mtl::InterStageSemanticContractEntry> &inputs,
+            std::string &out_source) const;
         bool        ReadFile(const std::string &path, std::string &out_content, std::string &out_error) const;
 
         std::string shader_lib_path_;

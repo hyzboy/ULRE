@@ -803,14 +803,14 @@ namespace
             {},
             GetShaderLibraryPath());
         if (color_vs.find(
-                "layout(location=0) out vec4 fragVertexColor;")
+                "layout(location=6) out vec4 fragVertexColor;")
                 == std::string::npos
          || color_vs.find(
-                "layout(location=6) out vec4 fragVertexColor;")
+                "layout(location=0) out vec4 fragVertexColor;")
                 != std::string::npos)
         {
             result.diagnostics.emplace_back(
-                "legacy generated vertex-color ABI changed");
+                "stable vertex-color ABI was not generated");
         }
 
         result.passed = result.diagnostics.empty();

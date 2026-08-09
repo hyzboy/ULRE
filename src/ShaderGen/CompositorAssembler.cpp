@@ -277,6 +277,62 @@ namespace hgl::graph
         return result;
     }
 
+    bool CompositorAssembler::ApplyFragmentInputContract(
+        const std::string &source,
+        const hgl::ValueArray<mtl::InterStageSemanticContractEntry> &inputs,
+        std::string &out_source) const
+    {
+        out_source.clear();
+        std::string declarations;
+        for (int i = 0; i < inputs.GetCount(); ++i)
+        {
+            AnsiString declaration;
+            if (!mtl::BuildGLSLInterStageDeclaration(
+                    inputs[i], "in", declaration))
+                return false;
+            declarations += declaration.c_str();
+            declarations += "\n";
+        }
+
+        out_source.reserve(source.size() + declarations.size() + 1);
+        bool declarations_inserted = false;
+
+        size_t line_start = 0;
+        while (line_start < source.size())
+        {
+            const size_t line_end = source.find('\n', line_start);
+            const size_t length = line_end == std::string::npos
+                ? source.size() - line_start
+                : line_end - line_start;
+            const std::string line = source.substr(line_start, length);
+            const bool is_fragment_input =
+                line.find("layout(location=") != std::string::npos
+             && line.find(" in ") != std::string::npos;
+            if (is_fragment_input)
+            {
+                if (!declarations_inserted)
+                {
+                    out_source += declarations;
+                    declarations_inserted = true;
+                }
+            }
+            else
+            {
+                out_source.append(line);
+                if (line_end != std::string::npos)
+                    out_source.push_back('\n');
+            }
+
+            if (line_end == std::string::npos)
+                break;
+            line_start = line_end + 1;
+        }
+
+        if (!inputs.IsEmpty() && !declarations_inserted)
+            return false;
+        return true;
+    }
+
     CompositorAssembler::AssembleResult CompositorAssembler::Assemble(
         SurfaceType                  surface,
         BlendMode                    blend,
@@ -352,6 +408,22 @@ namespace hgl::graph
 
         // 6. 替换 FS 中的 SURFACE_FUNCTION_FILE
         fs_source = ReplaceSurfaceInclude(fs_source, surface_rel);
+
+        if (module_options.fragment_inputs)
+        {
+            std::string contracted_source;
+            if (!ApplyFragmentInputContract(
+                    fs_source,
+                    *module_options.fragment_inputs,
+                    contracted_source))
+            {
+                result.error_message =
+                    "Failed to apply fragment stage interface contract";
+                result.success = false;
+                return result;
+            }
+            fs_source = std::move(contracted_source);
+        }
 
         result.fragment_glsl = std::move(fs_source);
         result.success       = true;

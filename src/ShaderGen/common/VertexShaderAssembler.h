@@ -2,6 +2,7 @@
 
 #include <hgl/mtl/VertexShaderNodeConfig.h>
 #include <hgl/mtl/MaterialTransformGraph.h>
+#include <hgl/shadergen/MaterialStageInterface.h>
 #include <vulkan/vulkan.h>
 #include <string>
 
@@ -57,10 +58,46 @@ namespace hgl::graph::mtl
         const std::string            &extra_attr_glsl,
         const std::string            &shader_lib_path,
         const std::string            &resolved_input_glsl = {},
-        const std::string            &provider_glsl = {})
+        const std::string            &provider_glsl = {},
+        const ValueArray<InterStageSemanticContractEntry>
+            *resolved_stage_interface = nullptr)
     {
         std::string vs;
         vs.reserve(2048);
+
+        ValueArray<InterStageSemanticContractEntry>
+            adapted_stage_interface;
+        MaterialStageInterfaceDiagnostic stage_interface_diagnostic{};
+        if (!resolved_stage_interface)
+        {
+            MaterialVertexVaryingConfig material_varying{};
+            material_varying.emit_data_index_id =
+                varying_cfg.emit_data_index_id;
+            material_varying.emit_texture_layer_id =
+                varying_cfg.emit_texture_layer_id;
+            material_varying.texture_layer_id_uses_data_index =
+                varying_cfg.texture_layer_id_uses_data_index;
+            material_varying.emit_vertex_color =
+                varying_cfg.emit_vertex_color;
+            material_varying.emit_uv0 = varying_cfg.emit_uv0;
+            material_varying.emit_world_pos =
+                varying_cfg.emit_world_pos;
+            material_varying.emit_world_normal =
+                varying_cfg.emit_world_normal;
+            material_varying.emit_luminance =
+                varying_cfg.emit_luminance;
+            material_varying.emit_frag_direction =
+                varying_cfg.emit_frag_direction;
+            material_varying.emit_vertex_color_from_palette =
+                varying_cfg.emit_vertex_color_from_palette;
+            if (!BuildMaterialStageInterface(
+                    material_varying,
+                    adapted_stage_interface,
+                    stage_interface_diagnostic))
+                return {};
+            resolved_stage_interface = &adapted_stage_interface;
+        }
+        const auto &stage_interface = *resolved_stage_interface;
 
         // ── Helpers ──────────────────────────────────────────────────────────
         auto append = [&](const char *s) { vs += s; };
@@ -192,66 +229,61 @@ namespace hgl::graph::mtl
 
         vs += "\n";
 
-        // ── Varying outputs (emission order must match FS input locations) ─────
-        // Standard layout:
-        //   loc=0  fragDataIndexID    (flat, if MI)
-        //   loc=1  fragTextureLayerID (flat, if MI + texture)
-        //   loc=2  fragWorldPos       (if world-space outputs)
-        //   loc=3  fragWorldNormal    (if world-space outputs)
-        //   loc=4  fragUV0            (if UV)
-        //   loc=2  fragVertexColor    (if vertex-color; only when no MI, so no conflict)
-        uint32_t loc = 0;
-        if (varying_cfg.emit_data_index_id)
-            vs += "layout(location=" + std::to_string(loc++) + ") flat out uint fragDataIndexID;\n";
-        if (varying_cfg.emit_texture_layer_id)
-            vs += "layout(location=" + std::to_string(loc++) + ") flat out uint fragTextureLayerID;\n";
-        if (varying_cfg.emit_world_pos)
-            vs += "layout(location=" + std::to_string(loc++) + ") out vec3 fragWorldPos;\n";
-        if (varying_cfg.emit_world_normal)
-            vs += "layout(location=" + std::to_string(loc++) + ") out vec3 fragWorldNormal;\n";
-        if (varying_cfg.emit_uv0)
-            vs += "layout(location=" + std::to_string(loc++) + ") out vec2 fragUV0;\n";
-        if (varying_cfg.emit_vertex_color || varying_cfg.emit_vertex_color_from_palette)
-            vs += "layout(location=" + std::to_string(loc++) + ") out vec4 fragVertexColor;\n";
-        if (varying_cfg.emit_frag_direction)
-            vs += "layout(location=" + std::to_string(loc++) + ") out vec3 fragDirection;\n";
-        if (varying_cfg.emit_luminance)
-            vs += "layout(location=" + std::to_string(loc++) + ") out float fragLuminance;\n";
+        // ── Varying outputs from the shared VS/FS contract ────────────────────
+        for (int i = 0; i < stage_interface.GetCount(); ++i)
+        {
+            AnsiString declaration;
+            if (!BuildGLSLInterStageDeclaration(
+                    stage_interface[i], "out", declaration))
+                return {};
+            vs += declaration.c_str();
+            vs += "\n";
+        }
 
         vs += "\nvoid main()\n{\n";
 
         // Standard varying assignments (MI index IDs, color, UV).
-        if (varying_cfg.emit_data_index_id)
+        if (FindMaterialStageInterfaceEntry(
+                stage_interface, InterStageSemantic::DataIndexID))
             vs += "    fragDataIndexID = ResolveDataIndexID(gl_InstanceIndex);\n";
-        if (varying_cfg.emit_texture_layer_id)
+        if (FindMaterialStageInterfaceEntry(
+                stage_interface, InterStageSemantic::TextureLayerID))
         {
             if (varying_cfg.texture_layer_id_uses_data_index)
                 vs += "    fragTextureLayerID = fragDataIndexID;\n";
             else
                 vs += "    fragTextureLayerID = ResolveTextureLayerID(gl_InstanceIndex);\n";
         }
-        if (varying_cfg.emit_vertex_color || varying_cfg.emit_vertex_color_from_palette)
+        if (FindMaterialStageInterfaceEntry(
+                stage_interface, InterStageSemantic::Color))
         {
             if (varying_cfg.emit_vertex_color_from_palette)
                 vs += "    fragVertexColor = color_palette.color[ColorIndex];\n";
             else
                 vs += "    fragVertexColor = Color;\n";
         }
-        if (varying_cfg.emit_uv0)
+        if (FindMaterialStageInterfaceEntry(
+                stage_interface, InterStageSemantic::UV0))
             vs += "    fragUV0 = TexCoord;\n";
-        if (varying_cfg.emit_frag_direction)
+        if (FindMaterialStageInterfaceEntry(
+                stage_interface, InterStageSemantic::FragDirection))
             vs += "    fragDirection = normalize(Position);\n";
-        if (varying_cfg.emit_luminance)
+        if (FindMaterialStageInterfaceEntry(
+                stage_interface, InterStageSemantic::Luminance))
             vs += "    fragLuminance = Luminance;\n";
 
         // World-space outputs: compute L2W once and use for both transform and normal.
-        if (varying_cfg.emit_world_pos || varying_cfg.emit_world_normal)
+        const bool emit_world_pos = FindMaterialStageInterfaceEntry(
+            stage_interface, InterStageSemantic::WorldPosition);
+        const bool emit_world_normal = FindMaterialStageInterfaceEntry(
+            stage_interface, InterStageSemantic::WorldNormal);
+        if (emit_world_pos || emit_world_normal)
         {
             vs += "    mat4 _l2w = GetL2W();\n";
             vs += "    vec4 _world_pos = _l2w * GetLocalPos();\n";
-            if (varying_cfg.emit_world_pos)
+            if (emit_world_pos)
                 vs += "    fragWorldPos = _world_pos.xyz;\n";
-            if (varying_cfg.emit_world_normal)
+            if (emit_world_normal)
                 vs += "    fragWorldNormal = normalize(mat3(_l2w) * Normal);\n";
             // For world-normal path, projection is always WorldCameraVP.
             vs += "    gl_Position = camera.vp * _world_pos;\n";

@@ -41,7 +41,9 @@ SOURCE_GROUP("Shader Artifact Contract" FILES ${SHADER_ARTIFACT_CONTRACT_FILES})
 
 SET(SHADER_SEMANTIC_REGISTRY_FILES
     ${SHADERGEN_INCLUDE_PATH}/ShaderSemanticRegistry.h
-    ShaderSemanticRegistry.cpp)
+    ${SHADERGEN_INCLUDE_PATH}/MaterialStageInterface.h
+    ShaderSemanticRegistry.cpp
+    MaterialStageInterface.cpp)
 
 SOURCE_GROUP("Shader Semantic Registry" FILES ${SHADER_SEMANTIC_REGISTRY_FILES})
 
