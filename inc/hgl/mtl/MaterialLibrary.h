@@ -45,7 +45,7 @@ enum class BuiltinMaterialCreatorID:uint8
 
 // ── Layer 3: MaterialDefinitionBuildRequest = Build Context ──────────────────
 // 描述"构建此帧 ShaderProgram 时的额外上下文"。包含 recipe（Layer 2）加上
-// 构建期覆写项（几何格式、RT 输出配置等）。
+// 构建期上下文（几何格式、Program Purpose、天光策略等）。
 // recipe.mtl_def_id 是材质标识的唯一来源；此结构不再持有独立的 mtl_def_id 字段。
 // ─────────────────────────────────────────────────────────────────────────────
 struct MaterialDefinitionBuildRequest
@@ -61,19 +61,11 @@ struct MaterialDefinitionBuildRequest
     ShaderProgramPurpose shader_program_purpose =
         ShaderProgramPurpose::ForwardColor;
 
-    // Phase 4.4 opt-in: only explicit callers with a loaded registry activate
-    // resolver-derived VS declarations and vertex entries.
-    bool enable_resolved_vertex_abi = false;
     const GLSLCodeModuleRegistry *vertex_code_module_registry = nullptr;
 
-    bool override_shader_stage_bits = false;
-    uint32 shader_stage_flag_bit = 0;
-
-    bool override_rt_output = false;
-    RenderTargetOutputConfig rt_output{};
-
     bool override_sky_ambient_model = false;
-    SkyLightAmbientModel sky_ambient_model = SkyLightAmbientModel::Simple;
+    SkyLightAmbientModel sky_ambient_model =
+        SkyLightAmbientModel::Simple;
 
 };
 
@@ -107,8 +99,8 @@ ShaderProgramBuildSpec *CreateMaterialFromDefinition(
 
 /**
  * Resolve a definition's format-free vertex semantic contract against the
- * Geometry supplied for this build. This preview has no effect on generated
- * GLSL, pipeline state, or caches while Phase 4 transitions the ABI.
+ * Geometry supplied for this build. This query has no effect on generated
+ * GLSL, pipeline state, or caches.
  *
  * @return false only when there is no semantic contract or no Geometry format;
  *         otherwise `out_result.resolved` reports whether providers were found.
@@ -134,8 +126,6 @@ inline VkFormat ResolveMaterialPositionFormat(const GeometryVertexFormat *gvf, V
     return ResolveMaterialVertexSemanticFormat(gvf, VertexSemantic::Position, fallback_format);
 }
 
-const char *GetBuiltinMaterialCreatorIDName(const BuiltinMaterialCreatorID mtl_id);
-
 // BMI registry
 void RegisterMaterialDefinition(const MaterialDefinition &bmi);
 void RegisterMaterialDefinition(const BuiltinMaterialCreatorID preset, const MaterialDefinition &bmi);
@@ -146,9 +136,6 @@ bool TryGetMaterialDefinitionByID(const std::string &mtl_def_id, MaterialDefinit
 bool TryGetMaterialDefinitionByBuiltinMaterialCreatorID(const BuiltinMaterialCreatorID preset, MaterialDefinition &out_bmi);
 MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry();
 GLSLCodeModuleRegistry &GetGLSLCodeModuleRegistry();
-bool MergeMaterialDefinitionFile(const MaterialDefinition &legacy,
-                                 const MaterialDefinition &file,
-                                 MaterialDefinition &out);
 
 // ── built-in fallback BMI ID 常量 ─────────────────────────────────────────────
 constexpr const char *BUILTIN_MTL_DEF_FALLBACK          = "builtin/pure_color";

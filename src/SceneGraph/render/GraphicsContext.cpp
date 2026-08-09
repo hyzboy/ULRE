@@ -138,47 +138,4 @@ namespace hgl::graph
         return device ? device->GetDevice() : VK_NULL_HANDLE;
     }
 
-    void GraphicsContext::ResetShaderGenProfiler()
-    {
-        if (material_manager)
-            material_manager->ResetShaderGenProfiler();
-    }
-
-    ShaderGenProfilerSnapshot GraphicsContext::GetShaderGenProfilerSnapshot() const
-    {
-        if (material_manager)
-            return material_manager->GetShaderGenProfilerSnapshot();
-
-        return {};
-    }
-
-    bool GraphicsContext::GetShaderGenLastValidationReport(ShaderGenValidationReport &out_report, std::string *out_material_name) const
-    {
-        if (material_manager)
-            return material_manager->GetShaderGenLastValidationReport(out_report, out_material_name);
-
-        out_report = {};
-        if (out_material_name)
-            out_material_name->clear();
-        return false;
-    }
-
-    std::vector<ShaderGenValidationReportRecord> GraphicsContext::GetShaderGenRecentValidationReports(uint32_t max_count) const
-    {
-        if (material_manager)
-            return material_manager->GetShaderGenRecentValidationReports(max_count);
-
-        (void)max_count;
-        return {};
-    }
-
-    std::map<std::string, uint32_t> GraphicsContext::GetShaderGenRecentValidationCategoryHistogram(uint32_t max_count) const
-    {
-        if (material_manager)
-            return material_manager->GetShaderGenRecentValidationCategoryHistogram(max_count);
-
-        (void)max_count;
-        return {};
-    }
-
 } // namespace hgl::graph

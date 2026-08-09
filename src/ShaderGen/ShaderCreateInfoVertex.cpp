@@ -2,11 +2,9 @@
 
 namespace hgl::graph{
 
-ShaderCreateInfoVertex::ShaderCreateInfoVertex(MaterialDescriptorInfo *m)
-    :ShaderCreateInfo(new VertexShaderDescriptorInfo(),m)
-{
-    vsdi=static_cast<VertexShaderDescriptorInfo *>(sdi);
-}
+ShaderCreateInfoVertex::ShaderCreateInfoVertex()
+    :ShaderCreateInfo(ShaderStage::Vertex)
+{}
 
 int ShaderCreateInfoVertex::AddInput(VIAList &via_list)
 {
@@ -14,7 +12,7 @@ int ShaderCreateInfoVertex::AddInput(VIAList &via_list)
 
     for(VIA &via:via_list)
     {
-        if(vsdi->AddInput(via))
+        if(input.Add(via))
             ++count;
     }
 
@@ -108,6 +106,6 @@ int ShaderCreateInfoVertex::AddInput(const VAType &type,const VertexSemantic sem
 
     via.interpolation=  Interpolation::Smooth;
 
-    return vsdi->AddInput(via);
+    return input.Add(via);
 }
 }//namespace hgl::graph

@@ -233,7 +233,6 @@ namespace hgl::graph::mtl
         uint16_t default_lod   = 0;
         uint16_t lod_count     = 1;
 
-        // Step 7 target model. Empty fields preserve the current legacy path.
         // The intent identifies authoring meaning; projections define how this
         // Definition can feed a preferred or legally downgraded shared profile.
         SurfaceIntentID surface_intent_id = InvalidSurfaceIntentID;
@@ -604,32 +603,4 @@ namespace hgl::graph::mtl
         return static_cast<uint64_t>(hash);
     }
 
-    inline uint64_t HashMaterialShaderVariant(const MaterialRecipe &recipe) noexcept
-    {
-        uint64 hash = hgl::hash::FNV1aInit<uint64>();
-        if (!recipe.mtl_def_id.empty())
-            hash = hgl::hash::FNV1aAppendBytes(
-                hash, recipe.mtl_def_id.data(), recipe.mtl_def_id.size());
-
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.vertex_node_config);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.has_transform_graph);
-        if (recipe.has_transform_graph)
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, recipe.transform_graph.GetHash());
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.material_lod);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.alpha_test);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.alpha_cutoff);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.dither);
-        return static_cast<uint64_t>(hash);
-    }
-
-    inline uint64_t HashMaterialShaderVariant(
-        const MaterialRecipe &recipe,
-        const ResolvedMaterialRenderState &state) noexcept
-    {
-        uint64 hash = HashMaterialShaderVariant(recipe);
-        hash = hgl::hash::FNV1aAppendValueBytes(
-            hash, HashResolvedMaterialRenderState(state));
-        return static_cast<uint64_t>(hash);
-    }
 }

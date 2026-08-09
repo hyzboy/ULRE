@@ -807,7 +807,8 @@ namespace hgl::graph::mtl
             return GLSLCodeModuleParseResult::MissingEnd;
 
         if (requires_versioned_metadata
-         && out_data.metadata_version == GLSLCodeModuleLegacyMetadataVersion)
+         && out_data.metadata_version
+                == GLSLCodeModuleUnversionedMetadataVersion)
             return GLSLCodeModuleParseResult::MissingMetadataVersion;
 
         return GLSLCodeModuleParseResult::OK;

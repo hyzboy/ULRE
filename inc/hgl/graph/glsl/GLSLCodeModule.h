@@ -9,7 +9,7 @@
 
 namespace hgl::graph::mtl
 {
-    constexpr uint16 GLSLCodeModuleLegacyMetadataVersion = 0;
+    constexpr uint16 GLSLCodeModuleUnversionedMetadataVersion = 0;
     constexpr uint16 GLSLCodeModuleCurrentMetadataVersion = 1;
 
     // Reusable GLSL code is stage-agnostic. A module may be used by vertex,
@@ -125,7 +125,8 @@ namespace hgl::graph::mtl
     struct GLSLCodeModuleDependency
     {
         GLSLCodeModuleID module_id = GLSLCodeModuleID::SkyLightHeader;
-        uint16 min_metadata_version = GLSLCodeModuleLegacyMetadataVersion;
+        uint16 min_metadata_version =
+            GLSLCodeModuleUnversionedMetadataVersion;
         uint16 max_metadata_version = GLSLCodeModuleCurrentMetadataVersion;
     };
 
@@ -274,7 +275,8 @@ namespace hgl::graph::mtl
         const GLSLCodeModuleTextureLayerRequirement *texture_layer_requirements = nullptr;
         uint32 texture_layer_requirement_count = 0;
 
-        uint16 metadata_version = GLSLCodeModuleLegacyMetadataVersion;
+        uint16 metadata_version =
+            GLSLCodeModuleUnversionedMetadataVersion;
         uint16 metadata_reserved = 0;
 
         const GLSLCodeModuleDependency *dependencies = nullptr;

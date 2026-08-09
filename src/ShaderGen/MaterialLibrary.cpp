@@ -372,8 +372,10 @@ namespace
                 provider_roots[provider_root_count++] = provider->id;
         }
         ShaderProgramLinkSpec resolved_program_link{};
-        SkyLightAmbientModel ambient_model = request.override_sky_ambient_model
-            ? request.sky_ambient_model : SkyLightAmbientModel::Simple;
+        SkyLightAmbientModel ambient_model =
+            request.override_sky_ambient_model
+                ? request.sky_ambient_model
+                : SkyLightAmbientModel::Simple;
         if (!request.override_sky_ambient_model)
         {
             for (const GLSLCodeModuleID id : definition.code_module_requirements)
@@ -567,8 +569,8 @@ namespace
         };
         CompositorMaterialBuildConfig config{};
         config.primitive_type = request.primitive_type;
-        config.shader_stage_flag_bits = request.override_shader_stage_bits
-            ? request.shader_stage_flag_bit : uint32(ShaderStage::VertexFragment);
+        config.shader_stage_flag_bits =
+            uint32(ShaderStage::VertexFragment);
         MaterialDefinition contract_definition = definition;
         contract_definition.vertex_varying =
             effective_vertex_varying;
@@ -615,20 +617,6 @@ namespace
         resolved_program_link.vertex_input_hash = vertex_input_hash;
         resolved_program_link.render_target_hash =
             GetOutputContractHash(output_contract);
-        if (request.override_rt_output)
-        {
-            uint64 render_target_hash = hgl::hash::FNV1aInit<uint64>();
-            render_target_hash = hgl::hash::FNV1aAppendValueBytes(
-                render_target_hash,
-                resolved_program_link.render_target_hash);
-            render_target_hash = hgl::hash::FNV1aAppendValueBytes(
-                render_target_hash, request.rt_output.color);
-            render_target_hash = hgl::hash::FNV1aAppendValueBytes(
-                render_target_hash, request.rt_output.depth);
-            resolved_program_link.render_target_hash =
-                hgl::hash::FNV1aAppendValueBytes(
-                    render_target_hash, request.rt_output.stencil);
-        }
         resolved_program_link.compiler_hash = compiler_hash;
         EffectiveMaterialProgramKey effective_program{};
         MaterialResolutionResult material_resolution{};
@@ -727,7 +715,7 @@ namespace
         }
 
         // Ordinary material identity is file-backed. A file lookup is exact;
-        // compatibility aliases are considered only after canonical IDs.
+        // Registered aliases are considered only after canonical IDs.
         const MaterialDefinitionFileRegistry &file_registry =
             GetMaterialDefinitionFileRegistry();
         const MaterialDefinition *file_definition =
@@ -1061,63 +1049,6 @@ GLSLCodeModuleRegistry &GetGLSLCodeModuleRegistry()
         loaded = true;
     }
     return registry;
-}
-
-bool MergeMaterialDefinitionFile(const MaterialDefinition &legacy,
-                                 const MaterialDefinition &file,
-                                 MaterialDefinition &out)
-{
-    MaterialDefinition normalized_legacy = legacy;
-    MaterialDefinition normalized_file = file;
-
-    if (IsBootstrapMaterialDefinition(normalized_legacy)
-     || normalized_file.source_kind != MaterialDefinitionSourceKind::File)
-        return false;
-
-    out = normalized_legacy;
-    out.definition_id = normalized_file.definition_id;
-    out.definition_name = normalized_file.definition_name;
-    out.source_kind = MaterialDefinitionSourceKind::File;
-    out.usage_tag = normalized_file.usage_tag;
-    out.bootstrap_kind = normalized_file.bootstrap_kind;
-    out.vertex_provider_policy = normalized_file.vertex_provider_policy;
-    out.vertex_semantic_requirements = normalized_file.vertex_semantic_requirements;
-    out.transform_graph = normalized_file.transform_graph;
-    out.has_transform_graph = normalized_file.has_transform_graph;
-    out.vertex_varying = normalized_file.vertex_varying;
-    out.data_slot_decls = normalized_file.data_slot_decls;
-    out.ubo_requirements = normalized_file.ubo_requirements;
-    out.texture_slot_decls = normalized_file.texture_slot_decls;
-    out.code_module_requirements = normalized_file.code_module_requirements;
-    if (normalized_file.surface_intent_id != InvalidSurfaceIntentID
-     || !normalized_file.surface_profile_projections.IsEmpty())
-    {
-        out.surface_intent_id = normalized_file.surface_intent_id;
-        out.surface_profile_projections =
-            normalized_file.surface_profile_projections;
-    }
-    out.fragment_material_source_module =
-        normalized_file.fragment_material_source_module;
-    out.fragment_ntb_module = normalized_file.fragment_ntb_module;
-    out.compositor_surface = normalized_file.compositor_surface;
-    out.compositor_blend = normalized_file.compositor_blend;
-    out.compositor_pass = normalized_file.compositor_pass;
-    out.default_render_state = normalized_file.default_render_state;
-    out.fragment_source = normalized_file.fragment_source
-        ? normalized_file.fragment_source : normalized_legacy.fragment_source;
-    out.fragment_surface_module = normalized_file.fragment_surface_module
-        ? normalized_file.fragment_surface_module : normalized_legacy.fragment_surface_module;
-    return true;
-}
-
-const char *GetBuiltinMaterialCreatorIDName(const BuiltinMaterialCreatorID mtl_id)
-{
-    static const char *const names[] = {
-        "PureColor", "Text2D"
-    };
-    const uint32 index = static_cast<uint32>(mtl_id);
-    return index < static_cast<uint32>(sizeof(names) / sizeof(names[0]))
-        ? names[index] : nullptr;
 }
 
 ShaderProgramBuildSpec *CreateMaterialFromDefinition(

@@ -173,11 +173,6 @@ namespace hgl::graph::mtl
         return path.ToOSString();
     }
 
-    bool ShaderArtifactStore::HasStageSPV(const ShaderStageKey &key) const
-    {
-        return filesystem::FileExist(GetStagePath(key));
-    }
-
     bool ShaderArtifactStore::LoadStageSPV(const ShaderStageKey &key, ValueArray<uint8> &out_spv) const
     {
         out_spv.Clear();

@@ -298,21 +298,10 @@ ShaderProgram *ShaderProgramManager::TryGetCachedMaterial(const AnsiString &name
     return shader_program_cache.FindName(name);
 }
 
-ShaderProgram *ShaderProgramManager::TryGetCachedShaderProgram(const mtl::ShaderProgramKey &key)
-{
-    return shader_program_cache.Find(key);
-}
-
 ShaderProgram *ShaderProgramManager::TryGetCachedEffectiveMaterialProgram(
     const mtl::EffectiveMaterialProgramKey &key)
 {
     return shader_program_cache.Find(key);
-}
-
-bool ShaderProgramManager::RegisterShaderProgram(const mtl::ShaderProgramKey &key,
-                                                 ShaderProgram *program)
-{
-    return shader_program_cache.Add(key, program);
 }
 
 bool ShaderProgramManager::ExecuteRuntimeMaterialBuildPipeline(ShaderProgram *mtl,
@@ -421,36 +410,6 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(const AnsiString &mtl_
     // ShaderProgram is a C++ object managed by ShaderProgramManager, not a Vulkan object
     // No need to track with ObjectTracker
     return mtl.Finish();
-}
-
-void ShaderProgramManager::ResetShaderGenProfiler()
-{
-    // Runtime path currently keeps ShaderGen debug APIs as no-op for compatibility.
-}
-
-ShaderGenProfilerSnapshot ShaderProgramManager::GetShaderGenProfilerSnapshot() const
-{
-    return {};
-}
-
-bool ShaderProgramManager::GetShaderGenLastValidationReport(ShaderGenValidationReport &out_report, std::string *out_material_name) const
-{
-    out_report = {};
-    if (out_material_name)
-        out_material_name->clear();
-    return false;
-}
-
-std::vector<ShaderGenValidationReportRecord> ShaderProgramManager::GetShaderGenRecentValidationReports(const uint32_t max_count) const
-{
-    (void)max_count;
-    return {};
-}
-
-std::map<std::string, uint32_t> ShaderProgramManager::GetShaderGenRecentValidationCategoryHistogram(const uint32_t max_count) const
-{
-    (void)max_count;
-    return {};
 }
 
 bool ShaderProgramManager::BuildMaterialResourceLayout(const mtl::MaterialDefinitionBuildRequest &request,

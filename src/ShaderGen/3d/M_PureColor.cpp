@@ -1,6 +1,4 @@
-#include <hgl/shadergen/ShaderProgramBuildSpec.h>
-#include <hgl/shadergen/MaterialCompiler.h>
-#include <hgl/log/Log.h>
+#include <hgl/mtl/MaterialLibrary.h>
 
 namespace hgl::graph::mtl
 {

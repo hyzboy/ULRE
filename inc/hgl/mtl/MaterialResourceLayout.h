@@ -237,7 +237,7 @@ namespace hgl::graph::mtl
         if (mapped != DescriptorSemanticLayer::Unknown)
             return mapped;
 
-        // Legacy semantics that can legally map to either UBO/SSBO remain kind-driven.
+        // Semantics that can legally map to either UBO/SSBO remain kind-driven.
         if (entry.semantic == DescriptorSemantic::LocalToWorld
          || entry.semantic == DescriptorSemantic::MaterialDataSlotData)
         {

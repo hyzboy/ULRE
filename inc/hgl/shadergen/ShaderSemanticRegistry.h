@@ -11,7 +11,6 @@ namespace hgl::graph
 namespace hgl::graph::mtl
 {
     constexpr uint32 InvalidShaderSemanticLocation = uint32(-1);
-    constexpr uint8 InvalidLegacyPackedOrder = uint8(-1);
 
     enum class ShaderSemanticScalarType : uint8
     {
@@ -75,7 +74,6 @@ namespace hgl::graph::mtl
         ShaderSemanticValueShape value_shape{};
         InterStageInterpolation interpolation = InterStageInterpolation::Smooth;
         uint8 location_width = 0;
-        uint8 legacy_packed_order = InvalidLegacyPackedOrder;
         uint32 stable_location = InvalidShaderSemanticLocation;
     };
 
@@ -101,9 +99,7 @@ namespace hgl::graph::mtl
         InterStageTypeInvalid,
         InterStageInterpolationInvalid,
         InterStageLocationInvalid,
-        InterStageLocationConflict,
-        InterStageLegacyOrderConflict,
-        InterStageLegacyOrderGap
+        InterStageLocationConflict
     };
 
     struct ShaderSemanticRegistryValidationResult
@@ -125,11 +121,6 @@ namespace hgl::graph::mtl
     bool ResolveCurrentGeometrySemanticLocation(
         const GeometryVertexFormat &geometry,
         VertexSemantic semantic,
-        uint32 &out_location) noexcept;
-
-    bool ResolveLegacyPackedInterStageSemanticLocation(
-        InterStageSemanticMask active_semantics,
-        InterStageSemantic semantic,
         uint32 &out_location) noexcept;
 
     bool ValidateGeometrySemanticRegistry(

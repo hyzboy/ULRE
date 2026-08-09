@@ -16,7 +16,7 @@ namespace hgl::graph::mtl
         std::string name;
         std::string struct_name;
         std::string glsl_type;
-        uint32 legacy_ssbo_id = MakeRecipeSSBOId(0);
+        uint32 ssbo_id = MakeRecipeSSBOId(0);
         bool has_explicit_policy = false;
     };
 

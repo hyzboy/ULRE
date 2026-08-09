@@ -32,9 +32,6 @@ namespace hgl::graph::mtl
         ShaderProgramPurpose purpose,
         MaterialCoverageContract &out_contract) noexcept;
 
-    uint64 GetMaterialCoverageContractHash(
-        const MaterialCoverageContract &contract) noexcept;
-
     bool ApplyDepthCoverageContract(
         const MaterialCoverageContract &coverage,
         const ValueArray<InterStageSemanticContractEntry> &stage_interface,

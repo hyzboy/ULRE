@@ -1,5 +1,4 @@
 #include<hgl/shadergen/ShaderProgramBuildSpec.h>
-#include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
 #include<hgl/graph/ShaderBufferSources.h>
@@ -156,8 +155,8 @@ static const TextureSamplerDescriptor *ResolveTextureSamplerDescriptor(
 ShaderProgramBuildSpec::ShaderProgramBuildSpec(const PrimitiveType primitive_type_value,const uint32_t shader_stage_bits,const bool has_local_to_world_value)
     : primitive_type(primitive_type_value), shader_stage_flag_bits(shader_stage_bits), has_local_to_world(has_local_to_world_value)
 {
-    if(hasVertex    ())shader_map.Add(new ShaderCreateInfoVertex(&descriptor_db));
-    if(hasFragment  ())shader_map.Add(new ShaderCreateInfo(new FragmentShaderDescriptorInfo(),&descriptor_db));
+    if(hasVertex    ())shader_map.Add(new ShaderCreateInfoVertex());
+    if(hasFragment  ())shader_map.Add(new ShaderCreateInfo(ShaderStage::Fragment));
 
     ubo_range=0;
     ssbo_range=0;
@@ -194,16 +193,8 @@ bool ShaderProgramBuildSpec::AddUBO(const ShaderStage flag_bit,const DescriptorS
     if(!descriptor_db.hasStruct(struct_name))
         return(false);
 
-    ShaderCreateInfo *sc=shader_map[flag_bit];
-
-    if(!sc)
-        return(false);
-
     const UBODescriptor *ubo=ResolveUBODescriptor(descriptor_db,flag_bit,set_type,struct_name,name);
-    if(!ubo)
-        return false;
-
-    return sc->AddUBO(set_type,ubo);
+    return ubo != nullptr;
 }
 
 bool ShaderProgramBuildSpec::AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name)
@@ -241,16 +232,8 @@ bool ShaderProgramBuildSpec::AddSSBO(const ShaderStage flag_bit,const Descriptor
     if(!descriptor_db.hasStruct(struct_name))
         return(false);
 
-    ShaderCreateInfo *sc=shader_map[flag_bit];
-
-    if(!sc)
-        return(false);
-
     const SSBODescriptor *ssbo=ResolveSSBODescriptor(descriptor_db,flag_bit,set_type,struct_name,name,preferred_binding);
-    if(!ssbo)
-        return false;
-
-    return sc->AddSSBO(set_type,ssbo);
+    return ssbo != nullptr;
 }
 
 bool ShaderProgramBuildSpec::AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name)
@@ -287,18 +270,10 @@ bool ShaderProgramBuildSpec::AddTexture(const ShaderStage flag_bit,const Descrip
 
     RANGE_CHECK_RETURN_FALSE(tt);
 
-    ShaderCreateInfo *sc = shader_map[flag_bit];
-
-    if(!sc)
-        return(false);
-
     const std::string st_name(GetTextureTypeName(tt));        //这里可能需要根据纹理类型，在前面增加i/u的前缀
 
     const TextureDescriptor *texture=ResolveTextureDescriptor(descriptor_db,flag_bit,set_type,st_name,name);
-    if(!texture)
-        return false;
-
-    return sc->AddTexture(set_type,texture);
+    return texture != nullptr;
 }
 
 bool ShaderProgramBuildSpec::AddTextureSampler(const ShaderStage flag_bit,const DescriptorSetType set_type,const SamplerType &st,const std::string &name)
@@ -308,18 +283,10 @@ bool ShaderProgramBuildSpec::AddTextureSampler(const ShaderStage flag_bit,const 
 
     RANGE_CHECK_RETURN_FALSE(st);
 
-    ShaderCreateInfo *sc=shader_map[flag_bit];
-
-    if(!sc)
-        return(false);
-
     const std::string st_name(GetSamplerTypeName(st));      //这里可能需要根据纹理类型，在前面增加i/u的前缀
 
     const TextureSamplerDescriptor *image_sampler=ResolveTextureSamplerDescriptor(descriptor_db,flag_bit,set_type,st_name,name);
-    if(!image_sampler)
-        return false;
-
-    return sc->AddTextureSampler(set_type,image_sampler);
+    return image_sampler != nullptr;
 }
 
 bool ShaderProgramBuildSpec::SetLocalToWorld(const uint32_t shader_stage_flag_bits)

@@ -40,18 +40,18 @@ namespace hgl::graph::mtl
 
         constexpr InterStageSemanticInfo InterStageSemanticRegistry[] =
         {
-            {InterStageSemantic::Unknown,        "Unknown",            {},           InterStageInterpolation::Smooth, 0, InvalidLegacyPackedOrder, InvalidShaderSemanticLocation},
-            {InterStageSemantic::DataIndexID,    "fragDataIndexID",    UIntShape(1),  InterStageInterpolation::Flat,   1, 0,                        0},
-            {InterStageSemantic::TextureLayerID, "fragTextureLayerID", UIntShape(1),  InterStageInterpolation::Flat,   1, 1,                        1},
-            {InterStageSemantic::WorldPosition,  "fragWorldPos",       FloatShape(3), InterStageInterpolation::Smooth, 1, 2,                        2},
-            {InterStageSemantic::WorldNormal,    "fragWorldNormal",    FloatShape(3), InterStageInterpolation::Smooth, 1, 3,                        3},
-            {InterStageSemantic::UV0,            "fragUV0",            FloatShape(2), InterStageInterpolation::Smooth, 1, 4,                        4},
-            {InterStageSemantic::UV1,            "fragUV1",            FloatShape(2), InterStageInterpolation::Smooth, 1, InvalidLegacyPackedOrder, 5},
-            {InterStageSemantic::Color,          "fragVertexColor",    FloatShape(4), InterStageInterpolation::Smooth, 1, 5,                        6},
-            {InterStageSemantic::FragDirection,  "fragDirection",      FloatShape(3), InterStageInterpolation::Smooth, 1, 6,                        7},
-            {InterStageSemantic::Luminance,      "fragLuminance",      FloatShape(1), InterStageInterpolation::Smooth, 1, 7,                        8},
-            {InterStageSemantic::WorldTangent,   "fragWorldTangent",   FloatShape(3), InterStageInterpolation::Smooth, 1, InvalidLegacyPackedOrder, 9},
-            {InterStageSemantic::WorldBinormal,  "fragWorldBinormal",  FloatShape(3), InterStageInterpolation::Smooth, 1, InvalidLegacyPackedOrder, 10}
+            {InterStageSemantic::Unknown,        "Unknown",            {},           InterStageInterpolation::Smooth, 0, InvalidShaderSemanticLocation},
+            {InterStageSemantic::DataIndexID,    "fragDataIndexID",    UIntShape(1),  InterStageInterpolation::Flat,   1, 0},
+            {InterStageSemantic::TextureLayerID, "fragTextureLayerID", UIntShape(1),  InterStageInterpolation::Flat,   1, 1},
+            {InterStageSemantic::WorldPosition,  "fragWorldPos",       FloatShape(3), InterStageInterpolation::Smooth, 1, 2},
+            {InterStageSemantic::WorldNormal,    "fragWorldNormal",    FloatShape(3), InterStageInterpolation::Smooth, 1, 3},
+            {InterStageSemantic::UV0,            "fragUV0",            FloatShape(2), InterStageInterpolation::Smooth, 1, 4},
+            {InterStageSemantic::UV1,            "fragUV1",            FloatShape(2), InterStageInterpolation::Smooth, 1, 5},
+            {InterStageSemantic::Color,          "fragVertexColor",    FloatShape(4), InterStageInterpolation::Smooth, 1, 6},
+            {InterStageSemantic::FragDirection,  "fragDirection",      FloatShape(3), InterStageInterpolation::Smooth, 1, 7},
+            {InterStageSemantic::Luminance,      "fragLuminance",      FloatShape(1), InterStageInterpolation::Smooth, 1, 8},
+            {InterStageSemantic::WorldTangent,   "fragWorldTangent",   FloatShape(3), InterStageInterpolation::Smooth, 1, 9},
+            {InterStageSemantic::WorldBinormal,  "fragWorldBinormal",  FloatShape(3), InterStageInterpolation::Smooth, 1, 10}
         };
 
         constexpr uint32 GeometrySemanticRegistryCount =
@@ -144,39 +144,6 @@ namespace hgl::graph::mtl
         return false;
     }
 
-    bool ResolveLegacyPackedInterStageSemanticLocation(
-        const InterStageSemanticMask active_semantics,
-        const InterStageSemantic semantic,
-        uint32 &out_location) noexcept
-    {
-        const InterStageSemanticInfo *target = GetInterStageSemanticInfo(semantic);
-        const InterStageSemanticMask target_mask = GetInterStageSemanticMask(semantic);
-        if (!target
-         || target->legacy_packed_order == InvalidLegacyPackedOrder
-         || target_mask == 0
-         || !(active_semantics & target_mask))
-            return false;
-
-        uint32 location = 0;
-        for (uint8 order = 0; order < target->legacy_packed_order; ++order)
-        {
-            for (uint32 index = 1; index < InterStageSemanticRegistryCount; ++index)
-            {
-                const InterStageSemanticInfo &candidate =
-                    InterStageSemanticRegistry[index];
-                if (candidate.legacy_packed_order == order
-                 && (active_semantics & GetInterStageSemanticMask(candidate.semantic)))
-                {
-                    location += candidate.location_width;
-                    break;
-                }
-            }
-        }
-
-        out_location = location;
-        return true;
-    }
-
     bool ValidateGeometrySemanticRegistry(
         ShaderSemanticRegistryValidationResult &out_result) noexcept
     {
@@ -224,8 +191,6 @@ namespace hgl::graph::mtl
         ShaderSemanticRegistryValidationResult &out_result) noexcept
     {
         out_result = {};
-        uint8 legacy_order_count = 0;
-
         for (uint32 index = 0; index < InterStageSemanticRegistryCount; ++index)
         {
             const InterStageSemanticInfo &info = InterStageSemanticRegistry[index];
@@ -267,9 +232,6 @@ namespace hgl::graph::mtl
                         InterStageLocationInvalid,
                     index);
 
-            if (info.legacy_packed_order != InvalidLegacyPackedOrder)
-                ++legacy_order_count;
-
             for (uint32 other_index = 1;
                  other_index < index;
                  ++other_index)
@@ -299,37 +261,7 @@ namespace hgl::graph::mtl
                         other_index,
                         index);
 
-                if (info.legacy_packed_order != InvalidLegacyPackedOrder
-                 && info.legacy_packed_order == other.legacy_packed_order)
-                {
-                    return SetValidationFailure(
-                        out_result,
-                        ShaderSemanticRegistryValidationError::
-                            InterStageLegacyOrderConflict,
-                        other_index,
-                        index);
-                }
             }
-        }
-
-        for (uint8 order = 0; order < legacy_order_count; ++order)
-        {
-            bool found = false;
-            for (uint32 index = 1; index < InterStageSemanticRegistryCount; ++index)
-            {
-                if (InterStageSemanticRegistry[index].legacy_packed_order == order)
-                {
-                    found = true;
-                    break;
-                }
-            }
-
-            if (!found)
-                return SetValidationFailure(
-                    out_result,
-                    ShaderSemanticRegistryValidationError::
-                        InterStageLegacyOrderGap,
-                    order);
         }
 
         return true;

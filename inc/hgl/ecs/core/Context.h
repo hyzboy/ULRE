@@ -378,12 +378,6 @@ namespace hgl
             bool GetMaterialBindingKeysByName(const AnsiString &material_name,
                                               std::vector<std::string> &out_keys) const;
 
-            bool GetShaderGenValidationCategoryHistogram(std::map<std::string, uint32_t> &out_histogram,
-                                                         uint32_t max_count = 128) const;
-
-            bool GetShaderGenValidationMaterialCategoryMatrix(std::map<std::string, std::map<std::string, uint32_t>> &out_matrix,
-                                                              uint32_t max_count = 128) const;
-
             void SetMaterialBindingQueryLogEnabled(bool enabled) { material_binding_query_log_enabled = enabled; }
             bool IsMaterialBindingQueryLogEnabled() const { return material_binding_query_log_enabled; }
 

@@ -65,7 +65,7 @@ namespace hgl::graph::mtl
                 source.struct_name ? source.struct_name : "";
             entry.glsl_type =
                 source.glsl_type ? source.glsl_type : "";
-            entry.legacy_ssbo_id = source.ssbo_id;
+            entry.ssbo_id = source.ssbo_id;
             entry.has_explicit_policy =
                 source.has_requirement_policy;
 
@@ -288,7 +288,7 @@ namespace hgl::graph::mtl
             fixed.data_slot = entry.canonical.data_slot;
             fixed.ssbo_type = entry.canonical.ssbo_type;
             fixed.semantic_layer = entry.canonical.semantic_layer;
-            fixed.ssbo_id = entry.legacy_ssbo_id;
+            fixed.ssbo_id = entry.ssbo_id;
             fixed.has_requirement_policy =
                 entry.has_explicit_policy;
             fixed.required = entry.canonical.required;

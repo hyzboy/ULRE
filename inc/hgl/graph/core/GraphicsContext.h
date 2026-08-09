@@ -19,7 +19,6 @@
  */
 
 #include <hgl/vk/VKDevice.h>
-#include <hgl/graph/module/ShaderGenValidationTypes.h>
 
 namespace hgl::graph
 {
@@ -126,14 +125,6 @@ namespace hgl::graph
         GraphModuleManager *GetModuleManager() { return module_manager; }
         RenderTargetManager *GetRenderTargetManager() { return rt_manager; }
 
-        // ShaderGen Profiler debug entry (collect-only, no default output)
-        void ResetShaderGenProfiler();
-        ShaderGenProfilerSnapshot GetShaderGenProfilerSnapshot() const;
-
-        // ShaderGen Validation report query entry (collect-only, no default output)
-        bool GetShaderGenLastValidationReport(ShaderGenValidationReport &out_report, std::string *out_material_name = nullptr) const;
-        std::vector<ShaderGenValidationReportRecord> GetShaderGenRecentValidationReports(uint32_t max_count = 64) const;
-        std::map<std::string, uint32_t> GetShaderGenRecentValidationCategoryHistogram(uint32_t max_count = 128) const;
     };
 
     // 向后兼容别名

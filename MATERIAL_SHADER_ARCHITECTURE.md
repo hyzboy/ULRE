@@ -1978,6 +1978,9 @@ generated_source_digest
 - 已删除重复 Lit/Unlit Forward skeleton、对应旧 Surface 模块和旧 PureColor fragment。
 - 已删除 `FixedMaterialDef` 核心编译入口，统一使用 `MaterialCompilerInput`。
 - 已删除公开 migration 切换、生产 Shadow 对照分支和多 cache namespace。
+- 复扫已删除禁用 Shadow 回归、Build2D adapter、旧 descriptor-stage IR、
+  legacy packed varying、无效 profiler/validation API、未使用 request flags、
+  definition merge 兼容、CMake dead units 和孤立 GLSL modules。
 - `MaterialVertexVaryingConfig` 与 `CompositorAssembler` 仍是当前生产生成链依赖；必须先用
   canonical ShaderInterface/module assembly 完整替代，不能仅为清理目标强制删除。
 

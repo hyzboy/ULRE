@@ -261,8 +261,6 @@ namespace hgl
             }
         }
 
-        const char PreambleString[]="";
-
         void AddShaderIncludePath(const char *path)
         {
             if(!path || path[0]=='\0') return;
@@ -276,11 +274,6 @@ namespace hgl
 
             compile_info.includes       = g_include_path_ptrs.data();
             compile_info.includes_count  = static_cast<uint32_t>(g_include_path_ptrs.size());
-        }
-
-        void RebuildGLSLIncludePath()
-        {
-            compile_info.preamble=PreambleString;
         }
 
         void FreeSPVData(SPVData *spv_data)

@@ -1,23 +1,23 @@
 #pragma once
 
 #include<hgl/shadergen/ShaderCreateInfo.h>
-#include<hgl/shadergen/ShaderDescriptorInfo.h>
+#include <hgl/common/VertexInputDef.h>
 #include<vulkan/vulkan.h>
 
 namespace hgl::graph
 {
     class ShaderCreateInfoVertex:public ShaderCreateInfo
     {
-        VertexShaderDescriptorInfo *vsdi;
+        VIAArray input;
 
     public:
 
-        VIAArray &GetInput(){return vsdi->GetInput();}
-        const VIAArray &GetInput()const{return vsdi->GetInput();}
+        VIAArray &GetInput(){return input;}
+        const VIAArray &GetInput()const{return input;}
 
     public:
 
-        ShaderCreateInfoVertex(MaterialDescriptorInfo *m);
+        ShaderCreateInfoVertex();
         ~ShaderCreateInfoVertex()override=default;
 
         int AddInput(VIAList &);

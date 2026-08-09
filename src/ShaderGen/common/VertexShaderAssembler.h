@@ -43,7 +43,7 @@ namespace hgl::graph::mtl
     //  extra_attr_glsl:   Optional additional vertex attribute declarations
     //                     (beyond position), emitted verbatim after Stage-1 include.
     //  resolved_input_glsl: Full resolver-derived input declarations. When
-    //                     non-empty, replaces the legacy Stage-1 declaration.
+    //                     non-empty, replaces the default Stage-1 declaration.
     //  provider_glsl:      Selected provider module source, emitted after
     //                     vertex declarations and before stage helpers.
     //  shader_lib_path:   Path prefix for #include resolution (usually "ShaderLibrary").

@@ -30,7 +30,6 @@ namespace hgl::graph::mtl
         ShaderCacheMode GetCacheMode() const noexcept { return cache_mode; }
         void SetCacheMode(const ShaderCacheMode mode) noexcept { cache_mode = mode; }
 
-        bool HasStageSPV(const ShaderStageKey &key) const;
         bool LoadStageSPV(const ShaderStageKey &key, ValueArray<uint8> &out_spv) const;
         bool SaveStageSPV(const ShaderStageKey &key, const void *spv_data, const uint64 spv_size);
 

@@ -7,10 +7,6 @@
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/type/ObjectManager.h>
-#include<hgl/graph/module/ShaderGenValidationTypes.h>
-#include <map>
-#include <string>
-#include <vector>
 
 namespace hgl::graph{
 
@@ -51,10 +47,8 @@ private: // Helper methods with integrated DebugUtils
     class MaterialParameters *CreateMaterialMP(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager, const class PipelineLayoutData *pld, const DescriptorSetType &desc_set_type);
     void ApplyMaterialFinalizePlan(ShaderProgram *mtl, const AnsiString &mtl_name, const mtl::ShaderProgramBuildSpec &mci);
     ShaderProgram *TryGetCachedMaterial(const AnsiString &name);
-    ShaderProgram *TryGetCachedShaderProgram(const mtl::ShaderProgramKey &key);
     ShaderProgram *TryGetCachedEffectiveMaterialProgram(
         const mtl::EffectiveMaterialProgramKey &key);
-    bool RegisterShaderProgram(const mtl::ShaderProgramKey &key, ShaderProgram *program);
     bool BuildRuntimeShaderProgramState(ShaderProgram *mtl,
                                         const AnsiString &mtl_name,
                                         const mtl::ShaderProgramBuildSpec *mci,
@@ -124,18 +118,6 @@ public: //Shader
     const ShaderModule *CreateShaderModuleFromSPV(const mtl::ShaderStageKey &,
                                                   const uint32_t *spv_data,
                                                   const size_t spv_size);
-
-public: //ShaderGen Profiler (debug entry, collect-only)
-
-    void ResetShaderGenProfiler();
-
-    ShaderGenProfilerSnapshot GetShaderGenProfilerSnapshot() const;
-
-    bool GetShaderGenLastValidationReport(ShaderGenValidationReport &out_report, std::string *out_material_name = nullptr) const;
-
-    std::vector<ShaderGenValidationReportRecord> GetShaderGenRecentValidationReports(const uint32_t max_count = 64) const;
-
-    std::map<std::string, uint32_t> GetShaderGenRecentValidationCategoryHistogram(const uint32_t max_count = 128) const;
 
 public: //ShaderProgram
 

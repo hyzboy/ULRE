@@ -75,7 +75,8 @@ namespace hgl::graph::mtl
         GLSLCodeModuleKind kind = GLSLCodeModuleKind::Shared;
         int32 priority = 0;
         uint32 flags = 0;
-        uint16 metadata_version = GLSLCodeModuleLegacyMetadataVersion;
+        uint16 metadata_version =
+            GLSLCodeModuleUnversionedMetadataVersion;
         bool metadata_resolution_valid = false;
         ValueArray<GLSLCodeModuleDependency> dependencies;
         ValueArray<GLSLCodeModuleCondition> conditions;

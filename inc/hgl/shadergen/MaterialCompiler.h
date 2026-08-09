@@ -89,25 +89,3 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     const CompositorMaterialBuildConfig &config);
 
 }//namespace hgl::graph::mtl
-
-// ── MaterialLibrary.h must be included for MaterialDefinitionBuildRequest and MaterialDefinition ──
-#include<hgl/mtl/MaterialLibrary.h>
-
-namespace hgl::graph::mtl{
-
-/// Build a CompositorMaterialBuildConfig for a 3D/sky material from a request + definition.
-inline CompositorMaterialBuildConfig ToCompositorBuildConfig3D(
-    const MaterialDefinitionBuildRequest &request,
-    const MaterialDefinition &definition)
-{
-    CompositorMaterialBuildConfig bc;
-    bc.primitive_type       = request.primitive_type;
-    if(request.override_shader_stage_bits)
-        bc.shader_stage_flag_bits = request.shader_stage_flag_bit;
-    bc.data_slot_decls                   = definition.data_slot_decls.empty() ? nullptr : &definition.data_slot_decls;
-    bc.material_definition               = &definition;
-    bc.program_link                      = nullptr;
-    return bc;
-}
-
-}//namespace hgl::graph::mtl

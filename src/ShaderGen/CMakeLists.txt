@@ -79,11 +79,9 @@ SET(SURFACE_PROFILE_FILES
 
 SOURCE_GROUP("Material Surface Profile" FILES ${SURFACE_PROFILE_FILES})
 
-SET(DESC_INFO_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/ShaderDescriptorInfo.h
-                            ${SHADERGEN_INCLUDE_PATH}/MaterialDescriptorInfo.h)
+SET(DESC_INFO_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/MaterialDescriptorInfo.h)
 
-SET(DESC_INFO_SOURCE_FILES  ShaderDescriptorInfo.cpp
-                            MaterialDescriptorInfo.cpp)
+SET(DESC_INFO_SOURCE_FILES  MaterialDescriptorInfo.cpp)
 
 SOURCE_GROUP("Material Create Info\\Descriptor Info" FILES  ${DESC_INFO_HEADER_FILES}
                                                             ${DESC_INFO_SOURCE_FILES})
@@ -98,11 +96,8 @@ set(STD_MTL_HEADER_PATH  ${ROOT_INCLUDE_PATH}/hgl/mtl)
 SET(SHADERGEN_COMMON_FILES  ${ROOT_INCLUDE_PATH}/hgl/graph/ShaderBufferSources.h
                             ${SHADERGEN_INCLUDE_PATH}/ShaderLibraryPath.h
                             ${STD_MTL_HEADER_PATH}/SamplerName.h
-                            ${STD_MTL_HEADER_PATH}/ShaderVariableType.h
-                            ShaderVariableType.cpp
                             common/GLSLCodeModule.cpp
                             common/ShaderResourceManifest.cpp
-                            common/MFCamera.h
                             ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/SkyInfo.h
                             ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/ViewportInfo.h
                             ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/UBOShaderSources.h
@@ -122,15 +117,13 @@ SET(SSBO_STRUCT_FILES   ${SSBO_HEADER_PATH}/LitMaterialData.h
 
 SOURCE_GROUP("Standard Material\\SSBO" FILES ${SSBO_STRUCT_FILES})
 
-SET(STD_MTL_2D_SOURCE_FILES	2d/Build2DCommon.h
-                            2d/M_Text.cpp
+SET(STD_MTL_2D_SOURCE_FILES	2d/M_Text.cpp
 )
 
 SET(STD_MTL_3D_SOURCE_FILES	3d/M_PureColor.cpp
 )
 
 SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/ShaderBufferSource.h
-                    GLSLStructSize.cpp
 )
 
 SOURCE_GROUP("Standard Material" FILES ${STD_MTL_SOURCE})
@@ -169,12 +162,8 @@ set(NEW_MTL_INCLUDE_PATH ${ROOT_INCLUDE_PATH}/hgl/mtl/new)
 SET(NEW_MTL_TYPE_FILES  ${NEW_MTL_INCLUDE_PATH}/SurfaceType.h
                         ${NEW_MTL_INCLUDE_PATH}/BlendMode.h
                         ${NEW_MTL_INCLUDE_PATH}/PassType.h
-                        ${NEW_MTL_INCLUDE_PATH}/MaterialCategory.h
                         ${NEW_MTL_INCLUDE_PATH}/NewShaderPermutationKey.h
-                        ${NEW_MTL_INCLUDE_PATH}/DeviceQualityProfile.h
-                        ${NEW_MTL_INCLUDE_PATH}/DescriptorSetBindings.h
                         NewShaderPermutationKey.cpp
-                        DeviceQualityProfile.cpp
 )
 
 SOURCE_GROUP("New Material Types" FILES ${NEW_MTL_TYPE_FILES})

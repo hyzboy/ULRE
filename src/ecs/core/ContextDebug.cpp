@@ -179,25 +179,5 @@ namespace hgl
         #endif
         }
 
-        bool ECSContext::GetShaderGenValidationCategoryHistogram(std::map<std::string, uint32_t> &out_histogram,
-                                                                 uint32_t max_count) const
-        {
-            out_histogram.clear();
-            (void)max_count;
-
-            return false;
-        }
-
-        // TODO(Phase 11): Populate material category validation matrix from the
-        // ShaderGen module registry. Currently a stub — always returns empty.
-        // See inc/hgl/mtl/new/MaterialCategory.h for the category enum.
-        bool ECSContext::GetShaderGenValidationMaterialCategoryMatrix(std::map<std::string, std::map<std::string, uint32_t>> &out_matrix,
-                                                                      uint32_t max_count) const
-        {
-            out_matrix.clear();
-            (void)max_count;
-
-            return false;
-        }
     }
 }

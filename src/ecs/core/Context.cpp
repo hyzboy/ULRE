@@ -798,54 +798,6 @@ namespace hgl
                                 fallback_hits,
                                 materials_registered,
                                 binding_entries);
-
-                        std::map<std::string, uint32_t> category_histogram;
-                        if (GetShaderGenValidationCategoryHistogram(category_histogram, 128))
-                        {
-                            const auto count_of = [&category_histogram](const char *category) -> uint32_t
-                            {
-                                auto it = category_histogram.find(category);
-                                return it == category_histogram.end() ? 0u : it->second;
-                            };
-
-                            const uint32_t strict_prebuild = count_of("StrictGate.Prebuild");
-                            const uint32_t strict_spv = count_of("StrictGate.Spv");
-                            const uint32_t strict_vertex = count_of("StrictGate.Vertex");
-                            const uint32_t strict_descriptor = count_of("StrictGate.Descriptor");
-                            const uint32_t strict_total = strict_prebuild + strict_spv + strict_vertex + strict_descriptor;
-
-                            if (strict_total > 0)
-                            {
-                                uint32_t strict_materials = 0;
-                                std::map<std::string, std::map<std::string, uint32_t>> material_category_matrix;
-                                if (GetShaderGenValidationMaterialCategoryMatrix(material_category_matrix, 128))
-                                {
-                                    for (const auto &mat_pair : material_category_matrix)
-                                    {
-                                        bool has_strict = false;
-                                        for (const auto &cat_pair : mat_pair.second)
-                                        {
-                                            if (cat_pair.second > 0 && cat_pair.first.rfind("StrictGate.", 0) == 0)
-                                            {
-                                                has_strict = true;
-                                                break;
-                                            }
-                                        }
-
-                                        if (has_strict)
-                                            ++strict_materials;
-                                    }
-                                }
-
-                                LogInfo("[ShaderGenValidation][ECSContext] strict_total=%u prebuild=%u spv=%u vertex=%u descriptor=%u strict_materials=%u",
-                                        strict_total,
-                                        strict_prebuild,
-                                        strict_spv,
-                                        strict_vertex,
-                                        strict_descriptor,
-                                        strict_materials);
-                            }
-                        }
                     }
 
                     descriptor_contract_diag_last_log_ms = now_ms;

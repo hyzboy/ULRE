@@ -158,29 +158,6 @@ namespace hgl::graph::mtl
         return true;
     }
 
-    uint64 GetMaterialCoverageContractHash(
-        const MaterialCoverageContract &contract) noexcept
-    {
-        uint64 hash = hgl::hash::FNV1aInit<uint64>();
-        const uint32 schema_version = 1;
-        hash = hgl::hash::FNV1aAppendValueBytes(
-            hash, schema_version);
-        hash = hgl::hash::FNV1aAppendValueBytes(
-            hash, contract.mode);
-        hash = hgl::hash::FNV1aAppendValueBytes(
-            hash, contract.alpha_cutoff);
-        hash = hgl::hash::FNV1aAppendValueBytes(
-            hash, contract.requires_alpha_evaluation);
-        hash = hgl::hash::FNV1aAppendValueBytes(
-            hash, contract.required_semantics);
-        hash = hgl::hash::FNV1aAppendValueBytes(
-            hash, contract.requires_material_data);
-        hash = hgl::hash::FNV1aAppendValueBytes(
-            hash, contract.requires_texture);
-        return hgl::hash::FNV1aAppendValueBytes(
-            hash, contract.texture_slot);
-    }
-
     bool ApplyDepthCoverageContract(
         const MaterialCoverageContract &coverage,
         const ValueArray<InterStageSemanticContractEntry> &stage_interface,

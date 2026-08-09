@@ -27,7 +27,6 @@
 #include <hgl/log/Log.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/filesystem/Path.h>
-#include "../../ShaderGen/2d/Build2DCommon.h"
 #include "../../ShaderGen/3d/DefinitionDescriptorBuilder3D.h"
 #include "../../ShaderGen/common/VertexBuilderCommon.h"
 #include "../../ShaderGen/common/VertexShaderAssembler.h"
@@ -625,28 +624,6 @@ namespace
                 "unsupported surface profile schema must be rejected");
         }
 
-        MaterialDefinition lit{};
-        if (TryGetMaterialDefinitionByID("Lit", lit))
-        {
-            const GeometryVertexFormat geometry{
-                {VertexSemantic::Position, VF_V3F},
-                {VertexSemantic::TexCoord, VF_V2F},
-                {VertexSemantic::Normal, VF_V3F}
-            };
-            MaterialDefinitionBuildRequest ibl_request{};
-            ibl_request.recipe.mtl_def_id = lit.definition_id;
-            ibl_request.geometry_vertex_format = &geometry;
-            ibl_request.override_sky_ambient_model = true;
-            ibl_request.sky_ambient_model = SkyLightAmbientModel::IBL;
-            ibl_request.generate_only = true;
-            std::unique_ptr<ShaderProgramBuildSpec> ibl_build(
-                CreateMaterialFromDefinition(
-                    nullptr, lit, ibl_request));
-            if (ibl_build)
-                result.diagnostics.emplace_back(
-                    "unimplemented IBL resource contract must fail explicitly");
-        }
-
         result.passed = result.diagnostics.empty();
         return result;
     }
@@ -1135,7 +1112,6 @@ namespace
          || data_index->interpolation != InterStageInterpolation::Flat
          || !uv1
          || uv1->stable_location != 5
-         || uv1->legacy_packed_order != InvalidLegacyPackedOrder
          || !color
          || color->stable_location != 6)
         {
@@ -1163,44 +1139,6 @@ namespace
         {
             result.diagnostics.emplace_back(
                 "current Geometry attribute-order mapping mismatch");
-        }
-
-        const InterStageSemanticMask lit_semantics =
-            GetInterStageSemanticMask(InterStageSemantic::DataIndexID)
-          | GetInterStageSemanticMask(InterStageSemantic::TextureLayerID)
-          | GetInterStageSemanticMask(InterStageSemantic::WorldPosition)
-          | GetInterStageSemanticMask(InterStageSemantic::WorldNormal)
-          | GetInterStageSemanticMask(InterStageSemantic::UV0);
-        if (!ResolveLegacyPackedInterStageSemanticLocation(
-                lit_semantics, InterStageSemantic::DataIndexID, location)
-         || location != 0
-         || !ResolveLegacyPackedInterStageSemanticLocation(
-                lit_semantics, InterStageSemantic::TextureLayerID, location)
-         || location != 1
-         || !ResolveLegacyPackedInterStageSemanticLocation(
-                lit_semantics, InterStageSemantic::WorldPosition, location)
-         || location != 2
-         || !ResolveLegacyPackedInterStageSemanticLocation(
-                lit_semantics, InterStageSemantic::WorldNormal, location)
-         || location != 3
-         || !ResolveLegacyPackedInterStageSemanticLocation(
-                lit_semantics, InterStageSemantic::UV0, location)
-         || location != 4)
-        {
-            result.diagnostics.emplace_back(
-                "legacy packed lit varying mapping mismatch");
-        }
-
-        const InterStageSemanticMask color_semantics =
-            GetInterStageSemanticMask(InterStageSemantic::Color);
-        if (!ResolveLegacyPackedInterStageSemanticLocation(
-                color_semantics, InterStageSemantic::Color, location)
-         || location != 0
-         || ResolveLegacyPackedInterStageSemanticLocation(
-                color_semantics, InterStageSemantic::UV1, location))
-        {
-            result.diagnostics.emplace_back(
-                "legacy packed sparse varying mapping mismatch");
         }
 
         VertexVaryingConfig lit_varying{};
@@ -1397,7 +1335,6 @@ namespace
         {
             MaterialDefinitionBuildRequest request{};
             request.geometry_vertex_format = &text_geometry;
-            request.enable_resolved_vertex_abi = true;
             request.vertex_code_module_registry = &registry;
             MaterialResolvedVertexABI abi{};
             if (!BuildResolvedMaterialVertexABI(text_definition, request, abi))
@@ -1426,7 +1363,6 @@ namespace
         {
             MaterialDefinitionBuildRequest request{};
             request.geometry_vertex_format = &geometry;
-            request.enable_resolved_vertex_abi = true;
             request.vertex_code_module_registry = &registry;
             return BuildResolvedMaterialVertexABI(definition, request, out_abi);
         };
@@ -1561,8 +1497,10 @@ namespace
         }
 
         CompositorAssembler::CompositorModuleOptions lighting_options{};
-        lighting_options.direct_lighting_module = "lighting/direct_toon.glsl";
-        lighting_options.indirect_lighting_module = "lighting/indirect_pbr_ambient.glsl";
+        lighting_options.direct_lighting_module =
+            "lighting/direct_cook_torrance_pbr.glsl";
+        lighting_options.indirect_lighting_module =
+            "lighting/indirect_simple_ambient.glsl";
         lighting_options.lighting_algorithm_module = "lighting/forward_flat.glsl";
         lighting_options.material_source_module = "material/pbr_texturearray_source.glsl";
         lighting_options.ntb_module = "ntb/ntb_texturearray_normalmap.glsl";
@@ -1576,10 +1514,10 @@ namespace
             lighting_options);
         if (!scheduled_lighting.success
          || scheduled_lighting.fragment_glsl.find(
-                "#include \"lighting/direct_toon.glsl\"")
+                "#include \"lighting/direct_cook_torrance_pbr.glsl\"")
                 == std::string::npos
          || scheduled_lighting.fragment_glsl.find(
-                "#include \"lighting/indirect_pbr_ambient.glsl\"")
+                "#include \"lighting/indirect_simple_ambient.glsl\"")
                 == std::string::npos
          || scheduled_lighting.fragment_glsl.find(
                 "#include \"lighting/forward_flat.glsl\"")
@@ -3293,9 +3231,7 @@ namespace
         alias_recipe.mtl_def_id = "Text2D";
         NormalizeRecipe(canonical_recipe);
         NormalizeRecipe(alias_recipe);
-        if (canonical_recipe.mtl_def_id != alias_recipe.mtl_def_id
-         || HashMaterialShaderVariant(canonical_recipe)
-                != HashMaterialShaderVariant(alias_recipe))
+        if (canonical_recipe.mtl_def_id != alias_recipe.mtl_def_id)
         {
             result.diagnostics.emplace_back(
                 "recipe normalization must collapse aliases to one shader identity");
@@ -3999,46 +3935,6 @@ namespace
         return result;
     }
 
-    static GateResult RunMaterialShaderVariantIdentityCase()
-    {
-        GateResult result;
-        result.name = "Y.material-shader-variant-identity";
-
-        MaterialRecipe first{};
-        first.mtl_def_id = BUILTIN_MTL_DEF_PURE_COLOR;
-        first.recipe_name = "GizmoColor_0";
-        first.domain = "Gizmo";
-        first.ssbo_assets.push_back(
-            {"mtl", 0, SSBOType::EmissiveSurface, 100, 0, true, true});
-
-        MaterialRecipe second = first;
-        second.recipe_name = "GizmoColor_1";
-        second.domain = "AnotherInstanceDomain";
-        second.ssbo_assets[0].data_index = 1;
-        if (HashMaterialRecipe(first) == HashMaterialRecipe(second))
-            result.diagnostics.emplace_back(
-                "full recipe identity should retain instance differences");
-
-        second = first;
-        second.ssbo_assets[0].ssbo_id = 101;
-        if (HashMaterialRecipe(first) == HashMaterialRecipe(second))
-            result.diagnostics.emplace_back(
-                "full recipe identity must retain SSBO resource identity");
-
-        if (HashMaterialShaderVariant(first) != HashMaterialShaderVariant(second))
-            result.diagnostics.emplace_back(
-                "shader variant identity must ignore recipe/SSBO instance differences");
-
-        second.has_transform_graph = true;
-        second.transform_graph = MaterialTransformGraph::WallXY();
-        if (HashMaterialShaderVariant(first) == HashMaterialShaderVariant(second))
-            result.diagnostics.emplace_back(
-                "shader variant identity must include transform graph differences");
-
-        result.passed = result.diagnostics.empty();
-        return result;
-    }
-
     static GateResult RunMaterialSSBOBindingKeyCase()
     {
         GateResult result;
@@ -4328,71 +4224,6 @@ namespace
                 }
             }
 
-            const MaterialDefinition *file_definition = registry.FindByID("Lit");
-            MaterialDefinition legacy_definition{};
-            if (!file_definition
-             || !TryGetMaterialDefinitionByID("Lit", legacy_definition))
-            {
-                result.diagnostics.emplace_back("Lit file/legacy definition lookup failed");
-            }
-            else
-            {
-                if (file_definition->definition_id != legacy_definition.definition_id)
-                    result.diagnostics.emplace_back("Lit id mismatch");
-                if (file_definition->compositor_surface != legacy_definition.compositor_surface)
-                    result.diagnostics.emplace_back("Lit surface mismatch");
-                if (file_definition->compositor_blend != legacy_definition.compositor_blend)
-                    result.diagnostics.emplace_back("Lit blend mismatch");
-                if (file_definition->compositor_pass != legacy_definition.compositor_pass)
-                    result.diagnostics.emplace_back("Lit pass mismatch");
-                if (file_definition->vertex_semantic_requirements.GetCount()
-                        != legacy_definition.vertex_semantic_requirements.GetCount())
-                    result.diagnostics.emplace_back("Lit semantic count mismatch");
-                if (file_definition->code_module_requirements
-                        != legacy_definition.code_module_requirements)
-                    result.diagnostics.emplace_back("Lit code module mismatch");
-                if (file_definition->ubo_requirements != legacy_definition.ubo_requirements)
-                    result.diagnostics.emplace_back("Lit UBO mismatch");
-                if (file_definition->data_slot_decls.size()
-                        != legacy_definition.data_slot_decls.size())
-                    result.diagnostics.emplace_back("Lit SSBO mismatch");
-                if (file_definition->texture_slot_decls.size()
-                        != legacy_definition.texture_slot_decls.size())
-                    result.diagnostics.emplace_back("Lit texture mismatch");
-                if (file_definition->vertex_varying.emit_world_pos
-                        != legacy_definition.vertex_varying.emit_world_pos
-                 || file_definition->vertex_varying.emit_world_normal
-                        != legacy_definition.vertex_varying.emit_world_normal
-                 || file_definition->vertex_varying.emit_uv0
-                        != legacy_definition.vertex_varying.emit_uv0)
-                    result.diagnostics.emplace_back("Lit varying mismatch");
-                if (file_definition->vertex_provider_policy
-                        != legacy_definition.vertex_provider_policy)
-                    result.diagnostics.emplace_back("Lit provider policy mismatch");
-                if (std::strcmp(file_definition->fragment_source,
-                               "compositor/main_forward_surface.frag.glsl") != 0
-                 || std::strcmp(file_definition->fragment_surface_module,
-                                "surface/material_surface.glsl") != 0
-                 || !file_definition->fragment_material_source_module
-                 || std::strcmp(
-                       file_definition->fragment_material_source_module,
-                       "material/pbr_surface_source.glsl") != 0)
-                   result.diagnostics.emplace_back("Lit stage reference mismatch");
-
-                for (int i = 0; i < file_definition->vertex_semantic_requirements.GetCount(); ++i)
-                {
-                    if (!(file_definition->vertex_semantic_requirements[i]
-                        == legacy_definition.vertex_semantic_requirements[i]))
-                    {
-                        result.diagnostics.emplace_back(
-                            "Lit file semantic requirements differ from legacy");
-                        break;
-                    }
-                }
-
-            }
-        }
-
         const char *bulk_ids[] = {
             "LitTextureArray", "SkyMinimal", "DebugNormalColor", "VertexColor",
             "UnlitTexture", "Texture2DArray", "VertexLuminance",
@@ -4401,9 +4232,9 @@ namespace
         for (const char *id : bulk_ids)
         {
             const MaterialDefinition *file_definition = registry.FindByID(id);
-            MaterialDefinition legacy_definition{};
+            MaterialDefinition registry_definition{};
             if (!file_definition
-             || !TryGetMaterialDefinitionByID(id, legacy_definition))
+             || !TryGetMaterialDefinitionByID(id, registry_definition))
             {
                 result.diagnostics.emplace_back(
                     std::string("bulk file/legacy lookup failed: ") + id);
@@ -4412,24 +4243,24 @@ namespace
 
             const bool same_surface_reference =
                 (!file_definition->fragment_surface_module
-                 && !legacy_definition.fragment_surface_module)
+                 && !registry_definition.fragment_surface_module)
                 || (file_definition->fragment_surface_module
-                 && legacy_definition.fragment_surface_module
+                 && registry_definition.fragment_surface_module
                  && std::strcmp(file_definition->fragment_surface_module,
-                                legacy_definition.fragment_surface_module) == 0);
-            if (file_definition->compositor_surface != legacy_definition.compositor_surface
-             || file_definition->compositor_blend != legacy_definition.compositor_blend
-             || file_definition->compositor_pass != legacy_definition.compositor_pass
-             || file_definition->vertex_provider_policy != legacy_definition.vertex_provider_policy
+                                registry_definition.fragment_surface_module) == 0);
+            if (file_definition->compositor_surface != registry_definition.compositor_surface
+             || file_definition->compositor_blend != registry_definition.compositor_blend
+             || file_definition->compositor_pass != registry_definition.compositor_pass
+             || file_definition->vertex_provider_policy != registry_definition.vertex_provider_policy
              || !same_surface_reference
              || file_definition->vertex_semantic_requirements.GetCount()
-                    != legacy_definition.vertex_semantic_requirements.GetCount()
+                    != registry_definition.vertex_semantic_requirements.GetCount()
              || file_definition->ubo_requirements.size()
-                    != legacy_definition.ubo_requirements.size()
+                    != registry_definition.ubo_requirements.size()
              || file_definition->data_slot_decls.size()
-                    != legacy_definition.data_slot_decls.size()
+                    != registry_definition.data_slot_decls.size()
              || file_definition->texture_slot_decls.size()
-                    != legacy_definition.texture_slot_decls.size())
+                    != registry_definition.texture_slot_decls.size())
             {
                 result.diagnostics.emplace_back(
                     std::string("bulk file definition contract mismatch: ") + id);
@@ -4439,7 +4270,7 @@ namespace
             for (int i = 0; i < file_definition->vertex_semantic_requirements.GetCount(); ++i)
             {
                 if (!(file_definition->vertex_semantic_requirements[i]
-                    == legacy_definition.vertex_semantic_requirements[i]))
+                    == registry_definition.vertex_semantic_requirements[i]))
                 {
                     result.diagnostics.emplace_back(
                         std::string("bulk semantic mismatch: ") + id);
@@ -4458,76 +4289,6 @@ namespace
             }
         }
 
-        {
-            const MaterialDefinition *file_definition = registry.FindByID("Lit");
-            MaterialDefinition legacy_definition{};
-            MaterialDefinition merged_definition{};
-            if (!file_definition
-             || !TryGetMaterialDefinitionByID("Lit", legacy_definition)
-             || !MergeMaterialDefinitionFile(
-                    legacy_definition, *file_definition, merged_definition)
-             || merged_definition.source_kind != MaterialDefinitionSourceKind::File
-             || merged_definition.fragment_source
-                    != file_definition->fragment_source)
-            {
-                result.diagnostics.emplace_back(
-                    "file material merge must prefer the valid TOML definition");
-            }
-            else
-            {
-                const GeometryVertexFormat geometry{
-                    {VertexSemantic::Position, VF_V3F},
-                    {VertexSemantic::TexCoord, VF_V2F},
-                    {VertexSemantic::Normal, VF_V3F}
-                };
-                MaterialDefinitionBuildRequest request{};
-                request.geometry_vertex_format = &geometry;
-                MaterialResolvedVertexABI abi{};
-                if (!BuildResolvedMaterialVertexABI(
-                        merged_definition, request, abi)
-                 || abi.vertex_entries.GetCount() != 3)
-                {
-                    result.diagnostics.emplace_back(
-                        "file material must build vertex ABI from semantic TOML data");
-                }
-            }
-
-            MaterialDefinition fallback_definition{};
-            if (!TryGetMaterialDefinitionByID(
-                    BUILTIN_MTL_DEF_FALLBACK, fallback_definition)
-             || MergeMaterialDefinitionFile(
-                    fallback_definition, *file_definition, merged_definition))
-            {
-                result.diagnostics.emplace_back(
-                    "bootstrap material must not be overridden by TOML");
-            }
-
-            MaterialDefinition inherited_profile{};
-            inherited_profile.definition_id = "InheritedProfile";
-            inherited_profile.source_kind =
-                MaterialDefinitionSourceKind::BuiltIn;
-            inherited_profile.surface_intent_id =
-                GetSurfaceStableID("GenericPBR");
-            inherited_profile.surface_profile_projections.Add(
-                MakeMaterialSurfaceProfileProjection(
-                    "StandardPBR", "Inherited.ToStandardPBR"));
-            MaterialDefinition profile_neutral_file{};
-            profile_neutral_file.definition_id = "InheritedProfile";
-            profile_neutral_file.definition_name = "InheritedProfile";
-            profile_neutral_file.source_kind =
-                MaterialDefinitionSourceKind::File;
-            MaterialDefinition inherited_result{};
-            if (!MergeMaterialDefinitionFile(
-                    inherited_profile,
-                    profile_neutral_file,
-                    inherited_result)
-             || inherited_result.surface_intent_id
-                    != inherited_profile.surface_intent_id
-             || inherited_result.surface_profile_projections.GetCount() != 1)
-            {
-                result.diagnostics.emplace_back(
-                    "profile-neutral file merge must preserve inherited profile");
-            }
         }
 
         result.passed = result.diagnostics.empty();
@@ -4867,9 +4628,9 @@ namespace
             else
             {
                 if (data.metadata_version
-                    != GLSLCodeModuleLegacyMetadataVersion)
+                    != GLSLCodeModuleUnversionedMetadataVersion)
                     result.diagnostics.emplace_back(
-                        "legacy metadata version mismatch");
+                        "unversioned metadata version mismatch");
                 if (std::strcmp(data.name.c_str(), "sample_ntb") != 0)
                     result.diagnostics.emplace_back("full-metadata name mismatch");
                 if (data.kind != GLSLCodeModuleKind::VertexInput)
@@ -4978,14 +4739,14 @@ namespace
             result.diagnostics.emplace_back("LoadDirectory failed to scan directory");
         else
         {
-            if (file_count != 64)
-                result.diagnostics.emplace_back("LoadDirectory expected 64 file modules, got "
+            if (file_count != 56)
+                result.diagnostics.emplace_back("LoadDirectory expected 56 file modules, got "
                     + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 64 + int(GLSLCodeModuleID::RANGE_SIZE);
+            const int expected_count = 56 + int(GLSLCodeModuleID::RANGE_SIZE);
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
@@ -5054,11 +4815,11 @@ namespace
         int dup_errors = 0;
         if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()), &dup_count, &dup_errors))
             result.diagnostics.emplace_back("second LoadDirectory failed");
-        else if (dup_count != 0 || dup_errors != 64)
-            result.diagnostics.emplace_back("second LoadDirectory must report 64 duplicates, got files="
+        else if (dup_count != 0 || dup_errors != 56)
+            result.diagnostics.emplace_back("second LoadDirectory must report 56 duplicates, got files="
                 + std::to_string(dup_count) + " errors=" + std::to_string(dup_errors));
 
-        const int stable_count = 64 + int(GLSLCodeModuleID::RANGE_SIZE);
+        const int stable_count = 56 + int(GLSLCodeModuleID::RANGE_SIZE);
         if (registry.GetCount() != stable_count)
             result.diagnostics.emplace_back("registry count changed after duplicate re-scan: got "
                 + std::to_string(registry.GetCount()));
@@ -5322,22 +5083,22 @@ namespace
         }
 
         {
-            GLSLCodeModuleDefinition legacy_target =
-                make_definition(207, "legacy_target");
-            legacy_target.metadata_version =
-                GLSLCodeModuleLegacyMetadataVersion;
+            GLSLCodeModuleDefinition unversioned_target =
+                make_definition(207, "unversioned_target");
+            unversioned_target.metadata_version =
+                GLSLCodeModuleUnversionedMetadataVersion;
             GLSLCodeModuleDefinition versioned_source =
                 make_definition(208, "versioned_source");
             const GLSLCodeModuleDependency dependencies[] =
             {
-                {legacy_target.id, 1, 1}
+                {unversioned_target.id, 1, 1}
             };
             versioned_source.dependencies = dependencies;
             versioned_source.dependency_count = 1;
 
             GLSLCodeModuleRegistry registry;
             GLSLCodeModuleMetadataValidationDiagnostic diagnostic{};
-            if (!registry.Register(legacy_target)
+            if (!registry.Register(unversioned_target)
              || !registry.Register(versioned_source)
              || ValidateGLSLCodeModuleRegistryMetadata(registry, diagnostic)
              || diagnostic.error
@@ -5507,7 +5268,7 @@ namespace
 
             root_dependency = {
                 dependency.id,
-                GLSLCodeModuleLegacyMetadataVersion,
+                GLSLCodeModuleUnversionedMetadataVersion,
                 GLSLCodeModuleCurrentMetadataVersion
             };
             root = {};
@@ -5653,689 +5414,6 @@ namespace
         result.passed = result.diagnostics.empty();
         return result;
     }
-
-#if 0
-    static GateResult RunShadowShaderContractCase()
-    {
-        GateResult result;
-        result.name = "I3.shadow-shader-contract";
-
-        struct DiagnosticCapture
-        {
-            hgl::uint32 module_graph_built = 0;
-            hgl::uint32 shader_contract_built = 0;
-            hgl::uint32 shader_keys_built = 0;
-            hgl::uint32 resource_plan_built = 0;
-            hgl::uint32 failures = 0;
-            hgl::uint32 contract_unavailable = 0;
-            hgl::uint64 last_contract_digest = 0;
-        };
-
-        const auto callback = [](
-            const ShaderGenDiagnosticEvent &event,
-            void *user_data)
-        {
-            auto *capture = static_cast<DiagnosticCapture *>(user_data);
-            if (!capture)
-                return;
-
-            switch (event.kind)
-            {
-            case ShaderGenDiagnosticEventKind::ShadowModuleGraphBuilt:
-                ++capture->module_graph_built;
-                break;
-            case ShaderGenDiagnosticEventKind::ShadowShaderContractBuilt:
-                ++capture->shader_contract_built;
-                break;
-            case ShaderGenDiagnosticEventKind::ShadowShaderKeysBuilt:
-                ++capture->shader_keys_built;
-                break;
-            case ShaderGenDiagnosticEventKind::ShadowResourcePlanBuilt:
-                ++capture->resource_plan_built;
-                break;
-            case ShaderGenDiagnosticEventKind::ShadowModuleGraphFailed:
-            case ShaderGenDiagnosticEventKind::ShadowShaderContractFailed:
-            case ShaderGenDiagnosticEventKind::ShadowShaderKeysFailed:
-            case ShaderGenDiagnosticEventKind::ShadowResourcePlanFailed:
-                ++capture->failures;
-                break;
-            case ShaderGenDiagnosticEventKind::ContractPathUnavailable:
-                ++capture->contract_unavailable;
-                break;
-            default:
-                break;
-            }
-            if (event.contract_digest != 0)
-                capture->last_contract_digest =
-                    event.contract_digest;
-        };
-
-        const auto add_geometry = [](
-            const MaterialDefinition &definition,
-            GeometryVertexFormat &geometry)
-        {
-            const MaterialTransformGraph transform =
-                definition.has_transform_graph
-                    ? definition.transform_graph
-                    : MaterialTransformGraph::FromNodeConfig(
-                        definition.vertex_node_config);
-
-            for (int i = 0;
-                 i < definition.vertex_semantic_requirements.GetCount();
-                 ++i)
-            {
-                const VertexSemantic semantic =
-                    GetVertexSemanticFromGLSLCodeModuleSemantic(
-                        definition.vertex_semantic_requirements[i].semantic);
-                if (semantic == VertexSemantic::Unknown
-                 || geometry.Find(semantic))
-                    continue;
-
-                VkFormat format = VK_FORMAT_UNDEFINED;
-                switch (semantic)
-                {
-                case VertexSemantic::Position:
-                    format = transform.source == VertexInputMode::Vec2IntPosition
-                        ? VF_V2I
-                        : transform.source == VertexInputMode::Vec2Position
-                            ? VF_V2F : VF_V3F;
-                    break;
-                case VertexSemantic::TexCoord:
-                    format = VF_V2F;
-                    break;
-                case VertexSemantic::Normal:
-                case VertexSemantic::Tangent:
-                case VertexSemantic::Bitangent:
-                    format = VF_V3F;
-                    break;
-                case VertexSemantic::Color:
-                    format = definition.vertex_varying.
-                            emit_vertex_color_from_palette
-                        ? VF_V1U : VF_V4F;
-                    break;
-                case VertexSemantic::Luminance:
-                    format = VF_V1F;
-                    break;
-                case VertexSemantic::TransformID:
-                case VertexSemantic::DataIndexID:
-                case VertexSemantic::TextureLayerID:
-                    format = VF_V1U;
-                    break;
-                default:
-                    format = VF_V1F;
-                    break;
-                }
-                geometry.Add(semantic, format);
-            }
-        };
-
-        static const char *definition_ids[] =
-        {
-            "Lit",
-            "VertexPaletteColor",
-            "VertexLuminance",
-            "DebugNormalColor",
-            "VertexColor",
-            "SkyMinimal",
-            "UnlitTexture",
-            "SkyCubeMap",
-            "Texture2DArray",
-            "LitTextureArray"
-        };
-
-        for (const char *definition_id : definition_ids)
-        {
-            MaterialDefinition definition{};
-            if (!TryGetMaterialDefinitionByID(definition_id, definition))
-            {
-                result.diagnostics.emplace_back(
-                    std::string("missing shadow-contract definition: ")
-                    + definition_id);
-                continue;
-            }
-
-            GeometryVertexFormat geometry;
-            add_geometry(definition, geometry);
-
-            DiagnosticCapture capture{};
-            MaterialDefinitionBuildRequest request{};
-            request.recipe.mtl_def_id = definition.definition_id;
-            request.geometry_vertex_format = &geometry;
-            request.generate_only = true;
-            request.migration.implementation_path =
-                ShaderGenImplementationPath::Shadow;
-            request.migration.diagnostic_callback = callback;
-            request.migration.diagnostic_user_data = &capture;
-
-            std::unique_ptr<ShaderProgramBuildSpec> build_spec(
-                CreateMaterialFromDefinition(
-                    nullptr, definition, request));
-            if (!build_spec)
-            {
-                result.diagnostics.emplace_back(
-                    std::string("shadow-contract legacy build failed: ")
-                    + definition_id);
-                continue;
-            }
-
-            ResolvedModuleGraph graph{};
-            ResolvedModuleGraphBuildDiagnostic graph_diagnostic{};
-            ShadowShaderContracts contracts{};
-            ShadowShaderContractBuildDiagnostic contract_diagnostic{};
-            ShadowShaderKeys keys{};
-            ShadowShaderKeyBuildDiagnostic key_diagnostic{};
-            if (!BuildMaterialResolvedModuleGraph(
-                    definition,
-                    GetGLSLCodeModuleRegistry(),
-                    graph,
-                    graph_diagnostic,
-                    &request)
-             || !BuildShadowShaderContracts(
-                    definition,
-                    request,
-                    graph,
-                    *build_spec,
-                    contracts,
-                    contract_diagnostic)
-             || !BuildShadowShaderKeys(
-                    nullptr,
-                    definition,
-                    request,
-                    graph,
-                    contracts,
-                    *build_spec,
-                    keys,
-                    key_diagnostic))
-            {
-                result.diagnostics.emplace_back(
-                    std::string("shadow contract build failed: ")
-                    + definition_id + " graph="
-                    + GetResolvedModuleGraphBuildErrorName(
-                        graph_diagnostic.error)
-                    + " contract="
-                    + GetShadowShaderContractBuildErrorName(
-                        contract_diagnostic.error)
-                    + " detail="
-                    + contract_diagnostic.detail.c_str()
-                    + " key="
-                    + GetShadowShaderKeyBuildErrorName(
-                        key_diagnostic.error)
-                    + " key_detail="
-                    + key_diagnostic.detail.c_str());
-                continue;
-            }
-
-            if (GetShaderInterfaceContractHash(
-                    contracts.shader_interface) == 0
-             || GetOutputContractHash(contracts.output) == 0
-             || capture.module_graph_built != 1
-             || capture.shader_contract_built != 1
-             || capture.shader_keys_built != 1
-             || capture.resource_plan_built != 1
-             || capture.failures != 0
-             || capture.last_contract_digest == 0
-             || keys.selection_request.GetDigest() == 0
-             || keys.effective_program.GetDigest() == 0
-             || GetShaderVariantContractHash(keys.shader_variant) == 0
-             || keys.vertex_stage.GetDigest() == 0
-             || keys.fragment_stage.GetDigest() == 0
-             || keys.program.GetDigest() == 0
-             || GetShaderProgramArtifactMetadataHash(
-                    keys.program_metadata) == 0)
-            {
-                result.diagnostics.emplace_back(
-                    std::string("shadow contract diagnostics mismatch: ")
-                    + definition_id);
-            }
-
-            {
-                MaterialDefinition definition{};
-                if (!TryGetMaterialDefinitionByID("Lit", definition))
-                {
-                    result.diagnostics.emplace_back(
-                        "missing Lit definition for shadow key identity");
-                }
-                else
-                {
-                    GeometryVertexFormat geometry;
-                    add_geometry(definition, geometry);
-                    MaterialDefinitionBuildRequest first_request{};
-                    first_request.recipe.mtl_def_id = definition.definition_id;
-                    first_request.recipe.textures.push_back(
-                        {
-                            TextureSlot::BaseColor,
-                            "asset/a.png",
-                            0,
-                            false,
-                            true
-                        });
-                    first_request.geometry_vertex_format = &geometry;
-                    first_request.generate_only = true;
-
-                    std::unique_ptr<ShaderProgramBuildSpec> build_spec(
-                        CreateMaterialFromDefinition(
-                            nullptr, definition, first_request));
-                    ResolvedModuleGraph graph{};
-                    ResolvedModuleGraphBuildDiagnostic graph_diagnostic{};
-                    ShadowShaderContracts contracts{};
-                    ShadowShaderContractBuildDiagnostic contract_diagnostic{};
-                    ShadowShaderKeys first_keys{};
-                    ShadowShaderKeyBuildDiagnostic key_diagnostic{};
-                    if (!build_spec
-                     || !BuildMaterialResolvedModuleGraph(
-                            definition,
-                            GetGLSLCodeModuleRegistry(),
-                            graph,
-                            graph_diagnostic,
-                            &first_request)
-                     || !BuildShadowShaderContracts(
-                            definition,
-                            first_request,
-                            graph,
-                            *build_spec,
-                            contracts,
-                            contract_diagnostic)
-                     || !BuildShadowShaderKeys(
-                            nullptr,
-                            definition,
-                            first_request,
-                            graph,
-                            contracts,
-                            *build_spec,
-                            first_keys,
-                            key_diagnostic))
-                    {
-                        result.diagnostics.emplace_back(
-                            "failed to build Lit shadow key identity fixture");
-                    }
-                    else
-                    {
-                        MaterialDefinition second_definition = definition;
-                        second_definition.definition_id =
-                            "AnotherDefinitionWithSameEffectiveProgram";
-                        MaterialDefinitionBuildRequest second_request =
-                            first_request;
-                        second_request.recipe.textures[0].resource_id =
-                            "asset/b.png";
-                        ShadowShaderKeys second_keys{};
-                        if (!BuildShadowShaderKeys(
-                                nullptr,
-                                second_definition,
-                                second_request,
-                                graph,
-                                contracts,
-                                *build_spec,
-                                second_keys,
-                                key_diagnostic)
-                         || first_keys.selection_request.GetDigest()
-                                == second_keys.selection_request.GetDigest()
-                         || first_keys.effective_program.GetDigest()
-                                != second_keys.effective_program.GetDigest()
-                         || GetShaderVariantContractHash(
-                                first_keys.shader_variant)
-                                != GetShaderVariantContractHash(
-                                    second_keys.shader_variant)
-                         || first_keys.program.GetDigest()
-                                != second_keys.program.GetDigest())
-                        {
-                            result.diagnostics.emplace_back(
-                                "definition provenance polluted effective shader keys");
-                        }
-
-                        MaterialDefinitionBuildRequest third_request =
-                            first_request;
-                        third_request.recipe.textures[0].resource_id =
-                            "asset/c.png";
-                        ShadowShaderKeys third_keys{};
-                        if (!BuildShadowShaderKeys(
-                                nullptr,
-                                definition,
-                                third_request,
-                                graph,
-                                contracts,
-                                *build_spec,
-                                third_keys,
-                                key_diagnostic)
-                         || first_keys.selection_request.GetDigest()
-                                != third_keys.selection_request.GetDigest()
-                         || first_keys.effective_program.GetDigest()
-                                != third_keys.effective_program.GetDigest()
-                         || first_keys.program.GetDigest()
-                                != third_keys.program.GetDigest())
-                        {
-                            result.diagnostics.emplace_back(
-                                "asset identity must not affect shadow shader keys");
-                        }
-
-                        contract::PhysicalDeviceProfileLite profile{};
-                        profile.api_version =
-                            contract::MakeVkVersion(1, 3);
-                        profile.target_vulkan_version =
-                            contract::MakeVkVersion(1, 3);
-                        profile.target_spv_version =
-                            contract::SPV_VERSION_1_6;
-                        ShadowShaderKeys targeted_keys{};
-                        if (!BuildShadowShaderKeys(
-                                &profile,
-                                definition,
-                                first_request,
-                                graph,
-                                contracts,
-                                *build_spec,
-                                targeted_keys,
-                                key_diagnostic)
-                         || first_keys.vertex_stage.GetDigest()
-                                == targeted_keys.vertex_stage.GetDigest()
-                         || first_keys.program.GetDigest()
-                                == targeted_keys.program.GetDigest()
-                         || GetShaderProgramArtifactMetadataHash(
-                                first_keys.program_metadata)
-                                == GetShaderProgramArtifactMetadataHash(
-                                    targeted_keys.program_metadata))
-                        {
-                            result.diagnostics.emplace_back(
-                                "compiler target changes must invalidate shadow keys");
-                        }
-                    }
-                }
-            }
-        }
-
-        {
-            MaterialDefinition definition{};
-            if (!TryGetMaterialDefinitionByID("Lit", definition))
-            {
-                result.diagnostics.emplace_back(
-                    "missing Lit definition for Contract path rejection");
-            }
-            else
-            {
-                GeometryVertexFormat geometry;
-                add_geometry(definition, geometry);
-                DiagnosticCapture capture{};
-                MaterialDefinitionBuildRequest request{};
-                request.recipe.mtl_def_id = definition.definition_id;
-                request.geometry_vertex_format = &geometry;
-                request.generate_only = true;
-                request.migration.implementation_path =
-                    ShaderGenImplementationPath::Contract;
-                request.migration.diagnostic_callback = callback;
-                request.migration.diagnostic_user_data = &capture;
-
-                std::unique_ptr<ShaderProgramBuildSpec> unavailable(
-                    CreateMaterialFromDefinition(
-                        nullptr, definition, request));
-                if (unavailable
-                 || capture.contract_unavailable != 1
-                 || capture.module_graph_built != 0
-                 || capture.shader_contract_built != 0
-                 || capture.shader_keys_built != 0
-                 || capture.resource_plan_built != 0)
-                {
-                    result.diagnostics.emplace_back(
-                        "unavailable Contract path must fail explicitly");
-                }
-            }
-        }
-
-        result.passed = result.diagnostics.empty();
-        return result;
-    }
-
-    static GateResult RunShadowResourceAcquirePlanCase()
-    {
-        GateResult result;
-        result.name = "I4.shadow-resource-acquire-plan";
-
-        MaterialDefinition definition{};
-        if (!TryGetMaterialDefinitionByID("Lit", definition))
-        {
-            result.diagnostics.emplace_back(
-                "missing Lit definition for resource plan");
-            result.passed = false;
-            return result;
-        }
-        const GeometryVertexFormat geometry{
-            {VertexSemantic::Position, VF_V3F},
-            {VertexSemantic::TexCoord, VF_V2F},
-            {VertexSemantic::Normal, VF_V3F}
-        };
-        MaterialDefinitionBuildRequest request{};
-        request.recipe.mtl_def_id = definition.definition_id;
-        request.recipe.textures.push_back(
-            {
-                TextureSlot::BaseColor,
-                "assets/base_color_a.ktx",
-                0,
-                false,
-                true
-            });
-        request.recipe.textures.push_back(
-            {
-                TextureSlot::Custom1,
-                "assets/unused.ktx",
-                0,
-                false,
-                false
-            });
-        request.recipe.ssbo_assets.push_back(
-            {
-                "mtl",
-                0,
-                SSBOType::PBRSurface,
-                17,
-                0,
-                false,
-                false
-            });
-        request.recipe.ssbo_assets.push_back(
-            {
-                "unused",
-                7,
-                SSBOType::UserDefined,
-                19,
-                0,
-                false,
-                false
-            });
-        request.geometry_vertex_format = &geometry;
-        request.generate_only = true;
-
-        std::unique_ptr<ShaderProgramBuildSpec> build_spec(
-            CreateMaterialFromDefinition(nullptr, definition, request));
-        ResolvedModuleGraph graph{};
-        ResolvedModuleGraphBuildDiagnostic graph_diagnostic{};
-        ShadowShaderContracts contracts{};
-        ShadowShaderContractBuildDiagnostic contract_diagnostic{};
-        ShadowShaderKeys keys{};
-        ShadowShaderKeyBuildDiagnostic key_diagnostic{};
-        if (!build_spec
-         || !BuildMaterialResolvedModuleGraph(
-                definition,
-                GetGLSLCodeModuleRegistry(),
-                graph,
-                graph_diagnostic,
-                &request)
-         || !BuildShadowShaderContracts(
-                definition,
-                request,
-                graph,
-                *build_spec,
-                contracts,
-                contract_diagnostic)
-         || !BuildShadowShaderKeys(
-                nullptr,
-                definition,
-                request,
-                graph,
-                contracts,
-                *build_spec,
-                keys,
-                key_diagnostic))
-        {
-            result.diagnostics.emplace_back(
-                "failed to create shadow resource plan fixture");
-            result.passed = false;
-            return result;
-        }
-
-        ResourceAcquirePlan plan{};
-        ShadowResourcePlanSummary summary{};
-        ShadowResourcePlanDiagnostic diagnostic{};
-        if (!BuildShadowResourceAcquirePlan(
-                request.recipe,
-                GetGLSLCodeModuleRegistry(),
-                graph,
-                contracts.shader_interface,
-                keys.effective_program,
-                plan,
-                summary,
-                diagnostic))
-        {
-            result.diagnostics.emplace_back(
-                std::string("resource plan build failed: ")
-                + GetShadowResourcePlanErrorName(diagnostic.error));
-        }
-        else
-        {
-            if (summary.planned_texture_count != 1
-             || summary.planned_ssbo_count != 1
-             || summary.unused_recipe_texture_count != 1
-             || summary.unused_recipe_ssbo_count != 1
-             || GetResourceAcquirePlanHash(plan) == 0)
-            {
-                result.diagnostics.emplace_back(
-                    "resource plan summary mismatch");
-            }
-
-            MaterializationSpec materialization =
-                MakeMaterializationSpecSkeleton(request.recipe);
-            materialization.resources.clear();
-            materialization.struct_refs.clear();
-            for (int i = 0; i < plan.resources.GetCount(); ++i)
-            {
-                const ResourceAcquirePlanEntry &entry =
-                    plan.resources[i];
-                if (entry.kind == ResourceAcquireKind::Texture)
-                {
-                    materialization.resources.push_back(
-                        {entry.texture_slot, 100u, 2u});
-                }
-                else if (entry.kind == ResourceAcquireKind::StorageBuffer)
-                {
-                    ResolvedStructRef ref{};
-                    ref.data_slot = entry.data_slot;
-                    ref.ssbo_type = entry.ssbo_type;
-                    ref.ssbo_id = 17;
-                    ref.byte_stride =
-                        GetSSBOTypeStructStride(entry.ssbo_type);
-                    materialization.struct_refs.push_back(ref);
-                }
-            }
-            RefreshMaterializationSpecHash(materialization);
-
-            if (!CompareShadowResourcePlanToMaterialization(
-                    plan, materialization, diagnostic))
-            {
-                result.diagnostics.emplace_back(
-                    "matching materialization rejected");
-            }
-
-            materialization.resources.push_back(
-                {TextureSlot::Custom0, 101u, 3u});
-            if (CompareShadowResourcePlanToMaterialization(
-                    plan, materialization, diagnostic)
-             || diagnostic.error
-                    != ShadowResourcePlanError::
-                        MaterializationTextureMismatch)
-            {
-                result.diagnostics.emplace_back(
-                    "extra materialized texture must be reported");
-            }
-            materialization.resources.pop_back();
-
-            if (!materialization.struct_refs.empty())
-            {
-                const SSBOType original_type =
-                    materialization.struct_refs[0].ssbo_type;
-                materialization.struct_refs[0].ssbo_type =
-                    SSBOType::EmissiveSurface;
-                if (CompareShadowResourcePlanToMaterialization(
-                        plan, materialization, diagnostic)
-                 || diagnostic.error
-                        != ShadowResourcePlanError::
-                            MaterializationStructMismatch)
-                {
-                    result.diagnostics.emplace_back(
-                        "materialized SSBO type mismatch must be reported");
-                }
-                materialization.struct_refs[0].ssbo_type = original_type;
-
-                const uint32_t original_ssbo_id =
-                    materialization.struct_refs[0].ssbo_id;
-                materialization.struct_refs[0].ssbo_id =
-                    original_ssbo_id + 1;
-                if (CompareShadowResourcePlanToMaterialization(
-                        plan, materialization, diagnostic)
-                 || diagnostic.error
-                        != ShadowResourcePlanError::
-                            MaterializationStructMismatch)
-                {
-                    result.diagnostics.emplace_back(
-                        "materialized SSBO ID mismatch must be reported");
-                }
-                materialization.struct_refs[0].ssbo_id =
-                    original_ssbo_id;
-            }
-        }
-
-        MaterialRecipe changed_assets = request.recipe;
-        changed_assets.textures[0].resource_id =
-            "assets/base_color_b.ktx";
-        ResourceAcquirePlan changed_plan{};
-        ShadowResourcePlanSummary changed_summary{};
-        if (!BuildShadowResourceAcquirePlan(
-                changed_assets,
-                GetGLSLCodeModuleRegistry(),
-                graph,
-                contracts.shader_interface,
-                keys.effective_program,
-                changed_plan,
-                changed_summary,
-                diagnostic)
-         || GetResourceAcquirePlanHash(plan)
-                == GetResourceAcquirePlanHash(changed_plan)
-         || keys.program.GetDigest() == 0)
-        {
-            result.diagnostics.emplace_back(
-                "asset identity must affect only resource plan identity");
-        }
-
-        MaterialRecipe zero_id_assets = request.recipe;
-        zero_id_assets.ssbo_assets[0].ssbo_id = 0;
-        ResourceAcquirePlan zero_id_plan{};
-        ShadowResourcePlanSummary zero_id_summary{};
-        if (!BuildShadowResourceAcquirePlan(
-                zero_id_assets,
-                GetGLSLCodeModuleRegistry(),
-                graph,
-                contracts.shader_interface,
-                keys.effective_program,
-                zero_id_plan,
-                zero_id_summary,
-                diagnostic)
-         || zero_id_summary.planned_ssbo_count != 1
-         || zero_id_summary.missing_required_count != 0
-         || GetResourceAcquirePlanHash(zero_id_plan) == 0)
-        {
-            result.diagnostics.emplace_back(
-                "typed SSBO binding ID 0 must remain valid in the shadow plan");
-        }
-
-        result.passed = result.diagnostics.empty();
-        return result;
-    }
-#endif
 
     constexpr uint32_t RESOLVER_ANY  = uint32_t(GLSLCodeModuleNumericClass::Any);
     constexpr uint32_t RESOLVER_FLOAT = uint32_t(GLSLCodeModuleNumericClass::Float);
@@ -6924,223 +6002,6 @@ namespace
         return result;
     }
 
-    static GateResult RunGeneratedManifestInjectionCase()
-    {
-        GateResult result;
-        result.name = "AA.generated-manifest-injection";
-
-        MaterialDefinition definition{};
-        definition.code_module_requirements.push_back(
-            GLSLCodeModuleID::SkyLightHeader);
-        ShaderResourceManifest manifest{};
-        if (!build2d::Build2DShaderResourceManifest(definition, manifest)
-         || !manifest.IsValid())
-        {
-            result.diagnostics.emplace_back("generated manifest build failed");
-            result.passed = false;
-            return result;
-        }
-
-        const MaterialCompilerInput compiler_input{
-            "GeneratedManifestInjection",
-            PrimitiveType::Triangles,
-            nullptr,
-            0,
-            nullptr,
-            0
-        };
-        CompositorMaterialBuildConfig config{};
-        config.resource_manifest = &manifest;
-        config.generate_only = true;
-        ShaderProgramBuildSpec *build_spec = CompileCompositorMaterial(
-            nullptr,
-            compiler_input,
-            "#version 450\nvoid main(){gl_Position=vec4(0.0);}\n",
-            "#version 450\nlayout(location=0) out vec4 outColor;\nvoid main(){outColor=vec4(1.0);}\n",
-            config);
-        if (!build_spec)
-        {
-            result.diagnostics.emplace_back("generated manifest source generation failed");
-        }
-        else
-        {
-            const ShaderCreateInfo *fragment =
-                build_spec->GetStageShader(ShaderStage::Fragment);
-            if (!fragment
-             || fragment->GetFinalGLSL().find("// GLSLCodeModule:") == std::string::npos)
-                result.diagnostics.emplace_back(
-                    "generated code modules were not injected before fragment code");
-        }
-
-        delete build_spec;
-        result.passed = result.diagnostics.empty();
-        return result;
-    }
-
-    static GateResult RunDescriptorBuilderConvergenceCase()
-    {
-        GateResult result;
-        result.name = "AC.descriptor-builder-convergence";
-
-        const MaterialDefinition *unlit_texture =
-            GetMaterialDefinitionFileRegistry().FindByID("UnlitTexture");
-        const MaterialDefinition *texture_array =
-            GetMaterialDefinitionFileRegistry().FindByID("Texture2DArray");
-        if (!unlit_texture || !texture_array)
-        {
-            result.diagnostics.emplace_back(
-                "Descriptor convergence definitions were not loaded");
-            result.passed = false;
-            return result;
-        }
-
-        const auto build_2d_descriptors =
-            [](const MaterialDefinition &definition)
-                -> std::vector<FixedDescriptorEntry>
-        {
-            MaterialDefinitionBuildRequest request{};
-            const Material2DBuildParams params =
-                Material2DBuildParams::From(request, definition);
-            ShaderResourceManifest manifest{};
-            if (!build2d::Build2DShaderResourceManifest(definition, manifest)
-             || !manifest.IsValid())
-                return {};
-            return build2d::Build2DDescriptorsFromDefinition(params, manifest);
-        };
-
-        const std::vector<FixedDescriptorEntry> unlit_descriptors =
-            build_2d_descriptors(*unlit_texture);
-        const std::vector<FixedDescriptorEntry> array_descriptors =
-            build_2d_descriptors(*texture_array);
-        if (unlit_descriptors.empty() || array_descriptors.empty())
-        {
-            result.diagnostics.emplace_back(
-                "2D descriptor builders must produce descriptors for file definitions");
-        }
-        else
-        {
-            const FixedDescriptorEntry *unlit_sampler = nullptr;
-            for (const auto &entry : unlit_descriptors)
-            {
-                if (entry.semantic == DescriptorSemantic::MaterialSampler
-                 && entry.texture_slot == TextureSlot::BaseColor)
-                {
-                    unlit_sampler = &entry;
-                    break;
-                }
-            }
-
-            if (!unlit_sampler
-             || !unlit_sampler->glsl_type
-             || std::strcmp(unlit_sampler->glsl_type, "sampler2D") != 0)
-            {
-                result.diagnostics.emplace_back(
-                    "2D sampler type was not preserved");
-            }
-
-            bool has_data_index_rows = false;
-            bool has_texture_layer_rows = false;
-            for (const auto &entry : array_descriptors)
-            {
-                has_data_index_rows |=
-                    entry.semantic == DescriptorSemantic::MaterialDataIndexTable;
-                has_texture_layer_rows |=
-                    entry.semantic == DescriptorSemantic::MaterialTextureLayerTable;
-            }
-            if (!has_data_index_rows || !has_texture_layer_rows)
-                result.diagnostics.emplace_back(
-                    "2D material data slots must emit both index and texture-layer rows");
-
-            const MaterialResourceLayout unlit_layout =
-                BuildMaterialResourceLayout(
-                    unlit_descriptors.data(),
-                    static_cast<uint32_t>(unlit_descriptors.size()));
-            std::vector<std::string> layout_diagnostics;
-            if (!ValidateMaterialResourceLayout(unlit_layout, layout_diagnostics))
-                result.diagnostics.emplace_back(
-                    "2D descriptor output failed resource-layout validation");
-
-            const MaterialCompilerInput compiler_input{
-                "DescriptorPolicy",
-                PrimitiveType::Triangles,
-                nullptr,
-                0,
-                unlit_descriptors.data(),
-                static_cast<uint32_t>(unlit_descriptors.size())
-            };
-            CompositorMaterialBuildConfig config{};
-            config.material_definition = unlit_texture;
-            config.generate_only = true;
-            ShaderProgramBuildSpec *build_spec = CompileCompositorMaterial(
-                nullptr,
-                compiler_input,
-                "#version 450\nvoid main(){gl_Position=vec4(0.0);}\n",
-                "#version 450\nlayout(location=0) out vec4 outColor;\nvoid main(){outColor=vec4(1.0);}\n",
-                config);
-            bool checked_required_policy = false;
-            if (!build_spec)
-            {
-                result.diagnostics.emplace_back(
-                    "Material compiler rejected the 2D descriptor policy contract");
-            }
-            else
-            {
-                for (const auto &requirement :
-                     build_spec->GetMaterialResourceLayout().requirements)
-                {
-                    if (requirement.semantic == DescriptorSemantic::MaterialSampler
-                     && requirement.texture_slot == TextureSlot::BaseColor)
-                    {
-                        checked_required_policy = true;
-                        if (!requirement.required || requirement.allow_fallback)
-                            result.diagnostics.emplace_back(
-                                "Definition-required texture policy was not propagated");
-                        break;
-                    }
-                }
-                delete build_spec;
-            }
-            if (!checked_required_policy)
-                result.diagnostics.emplace_back(
-                    "Compiled 2D resource layout omitted the material sampler policy");
-
-            ShaderResourceManifest unlit_manifest{};
-            ShaderResourceManifest array_manifest{};
-            if (!build2d::Build2DShaderResourceManifest(*unlit_texture, unlit_manifest)
-             || !build2d::Build2DShaderResourceManifest(*texture_array, array_manifest)
-             || descriptor_builder_common::HashResourceContract(
-                    unlit_manifest.stable_hash, unlit_descriptors)
-                    == descriptor_builder_common::HashResourceContract(
-                        array_manifest.stable_hash, array_descriptors))
-            {
-                result.diagnostics.emplace_back(
-                    "Different 2D descriptor/resource contracts must hash differently");
-            }
-        }
-
-        MaterialDefinition camera_definition{};
-        camera_definition.vertex_node_config.projection =
-            ProjectionMode::ClipPassthrough;
-        camera_definition.ubo_requirements.push_back(
-            UBODescriptorSemantic::CameraInfo);
-        MaterialDefinitionBuildRequest camera_request{};
-        const Material2DBuildParams camera_params =
-            Material2DBuildParams::From(camera_request, camera_definition);
-        ShaderResourceManifest camera_manifest{};
-        const auto camera_descriptors =
-            build2d::Build2DDescriptorsFromDefinition(
-                camera_params, camera_manifest);
-        bool has_camera = false;
-        for (const auto &entry : camera_descriptors)
-            has_camera |= entry.semantic == DescriptorSemantic::CameraInfo;
-        if (!has_camera)
-            result.diagnostics.emplace_back(
-                "2D definition UBO requirements must be emitted by the common builder");
-
-        result.passed = result.diagnostics.empty();
-        return result;
-    }
-
     static GateResult RunMaterialDescriptorContractCase()
     {
         GateResult result;
@@ -7597,7 +6458,6 @@ int main(const int argc, char **argv)
     if (run_descriptor) results.push_back(RunUnifiedMaterialContractCase());
     if (run_materialization) results.push_back(RunTransformGraphModelCase());
     if (run_materialization) results.push_back(RunTransformGraphCompositionCase());
-    if (run_cache) results.push_back(RunMaterialShaderVariantIdentityCase());
     if (run_cache) results.push_back(RunAuthoritativeMaterialCacheIdentityCase());
     if (run_descriptor) results.push_back(RunMaterialSSBOBindingKeyCase());
     if (run_materialization) results.push_back(RunResolvedMaterialRenderStateCase());
@@ -7622,8 +6482,6 @@ int main(const int argc, char **argv)
     if (run_cache) results.push_back(RunResolvedStageCacheIdentityCase());
     if (run_cache) results.push_back(RunCanonicalShaderContractCase());
     if (run_pipeline) results.push_back(RunMaterialMultiSlotSourceCase());
-    if (run_pipeline) results.push_back(RunGeneratedManifestInjectionCase());
-    if (run_descriptor) results.push_back(RunDescriptorBuilderConvergenceCase());
     if (run_descriptor) results.push_back(RunMaterialDescriptorContractCase());
     if (run_pipeline) results.push_back(RunShaderLibraryPathCase());
     if (run_descriptor) results.push_back(RunResourceContractBoundaryCase());
