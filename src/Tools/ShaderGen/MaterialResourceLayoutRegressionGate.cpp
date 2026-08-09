@@ -12,6 +12,7 @@
 #include <hgl/graph/glsl/GLSLCodeModuleCapabilityResolver.h>
 #include <hgl/graph/glsl/GLSLCodeModuleFile.h>
 #include <hgl/graph/glsl/GLSLCodeModuleRegistry.h>
+#include <hgl/graph/glsl/GLSLCodeModuleMetadata.h>
 #include <hgl/graph/glsl/ShaderResourceManifest.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
@@ -2624,6 +2625,10 @@ namespace
                 result.diagnostics.emplace_back("full-metadata parse failed");
             else
             {
+                if (data.metadata_version
+                    != GLSLCodeModuleLegacyMetadataVersion)
+                    result.diagnostics.emplace_back(
+                        "legacy metadata version mismatch");
                 if (std::strcmp(data.name.c_str(), "sample_ntb") != 0)
                     result.diagnostics.emplace_back("full-metadata name mismatch");
                 if (data.kind != GLSLCodeModuleKind::VertexInput)
@@ -2662,6 +2667,46 @@ namespace
             }
         }
 
+        const char versioned_meta[] =
+            "// @ulre begin\n"
+            "// @ulre version 1\n"
+            "// @ulre name versioned_sample\n"
+            "// @ulre kind Utility\n"
+            "// @ulre condition Option NormalMap Equals Enabled\n"
+            "// @ulre uses surface_interface 0 1\n"
+            "// @ulre conflicts alternate_sample\n"
+            "// @ulre end\n";
+        {
+            GLSLCodeModuleFileData data;
+            const GLSLCodeModuleParseResult parse =
+                ParseGLSLCodeModuleFile(
+                    versioned_meta,
+                    int(std::strlen(versioned_meta)),
+                    data);
+            if (parse != GLSLCodeModuleParseResult::OK)
+            {
+                result.diagnostics.emplace_back(
+                    "versioned metadata parse failed");
+            }
+            else
+            {
+                if (data.metadata_version
+                        != GLSLCodeModuleCurrentMetadataVersion
+                 || data.conditions.GetCount() != 1
+                 || std::strcmp(data.conditions[0].key, "NormalMap") != 0
+                 || std::strcmp(data.conditions[0].value, "Enabled") != 0
+                 || data.pending_module_requirements.GetCount() != 1
+                 || data.pending_dependency_versions.GetCount() != 1
+                 || data.pending_dependency_versions[0].min_metadata_version != 0
+                 || data.pending_dependency_versions[0].max_metadata_version != 1
+                 || data.pending_module_conflicts.GetCount() != 1)
+                {
+                    result.diagnostics.emplace_back(
+                        "versioned metadata content mismatch");
+                }
+            }
+        }
+
         expect_parse("// @ulre begin\n// @ulre end\n", GLSLCodeModuleParseResult::OK, "minimal");
         expect_parse("void main() {}\n", GLSLCodeModuleParseResult::Skipped, "no-metadata");
         expect_parse("// @ulre name x\n// @ulre begin\n// @ulre end\n", GLSLCodeModuleParseResult::MissingBegin, "missing-begin");
@@ -2675,6 +2720,11 @@ namespace
         expect_parse("// @ulre begin\n// @ulre require BadSource Normal\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidSource, "invalid-source");
         expect_parse("// @ulre begin\n// @ulre require GeometryAttribute Normal NotAClass\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidNumericClass, "invalid-numclass");
         expect_parse("// @ulre begin\n// @ulre priority notanumber\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidNumber, "invalid-number");
+        expect_parse("// @ulre begin\n// @ulre version 2\n// @ulre end\n", GLSLCodeModuleParseResult::UnsupportedMetadataVersion, "unsupported-version");
+        expect_parse("// @ulre begin\n// @ulre condition Option X Equals Y\n// @ulre end\n", GLSLCodeModuleParseResult::MissingMetadataVersion, "condition-missing-version");
+        expect_parse("// @ulre begin\n// @ulre version 1\n// @ulre condition Unknown X Equals Y\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidCondition, "invalid-condition");
+        expect_parse("// @ulre begin\n// @ulre version 1\n// @ulre uses dep 1 0\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidDependency, "invalid-dependency-version");
+        expect_parse("// @ulre begin\n// @ulre version 1\n// @ulre conflicts\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidConflict, "invalid-conflict");
 
         // Registry scan of the real ShaderLibrary directory.
         GLSLCodeModuleRegistry registry;
@@ -2698,6 +2748,24 @@ namespace
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
+
+            GLSLCodeModuleMetadataValidationDiagnostic metadata_diagnostic{};
+            if (!ValidateGLSLCodeModuleRegistryMetadata(
+                    registry, metadata_diagnostic))
+            {
+                result.diagnostics.emplace_back(
+                    "formal metadata validation failed: error="
+                    + std::string(
+                        GetGLSLCodeModuleMetadataValidationErrorName(
+                            metadata_diagnostic.error))
+                    + " module="
+                    + std::to_string(
+                        static_cast<uint32_t>(metadata_diagnostic.module_id))
+                    + " related="
+                    + std::to_string(
+                        static_cast<uint32_t>(
+                            metadata_diagnostic.related_module_id)));
+            }
         }
 
         const auto *lift = registry.FindByName("s2_lift_xy0");
@@ -2753,6 +2821,208 @@ namespace
         if (registry.GetCount() != stable_count)
             result.diagnostics.emplace_back("registry count changed after duplicate re-scan: got "
                 + std::to_string(registry.GetCount()));
+        if (compositor_lit
+         && (compositor_lit->code_module_requirement_count != 4
+          || compositor_lit->dependency_count != 4))
+        {
+            result.diagnostics.emplace_back(
+                "duplicate re-scan must not append module dependencies");
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
+    static GateResult RunGLSLCodeModuleMetadataValidationCase()
+    {
+        GateResult result;
+        result.name = "I1.glsl-code-module-metadata-validation";
+
+        const auto make_definition = [](
+            const uint16_t id,
+            const char *name) -> GLSLCodeModuleDefinition
+        {
+            GLSLCodeModuleDefinition definition{};
+            definition.id = static_cast<GLSLCodeModuleID>(id);
+            definition.name = name;
+            definition.glsl_code = "// metadata validation";
+            definition.kind = GLSLCodeModuleKind::VertexInput;
+            definition.metadata_version =
+                GLSLCodeModuleCurrentMetadataVersion;
+            return definition;
+        };
+
+        {
+            const GLSLCodeModuleSemantic duplicate_provides[] =
+            {
+                GLSLCodeModuleSemantic::Position,
+                GLSLCodeModuleSemantic::Position
+            };
+            GLSLCodeModuleDefinition definition =
+                make_definition(200, "duplicate_provide");
+            definition.semantic_provides = duplicate_provides;
+            definition.semantic_provide_count = 2;
+
+            GLSLCodeModuleMetadataValidationDiagnostic diagnostic{};
+            if (ValidateGLSLCodeModuleMetadata(definition, diagnostic)
+             || diagnostic.error
+                    != GLSLCodeModuleMetadataValidationError::DuplicateProvide)
+            {
+                result.diagnostics.emplace_back(
+                    "duplicate provide metadata must be rejected");
+            }
+        }
+
+        {
+            GLSLCodeModuleDefinition first =
+                make_definition(201, "cycle_first");
+            GLSLCodeModuleDefinition second =
+                make_definition(202, "cycle_second");
+            const GLSLCodeModuleDependency first_dependencies[] =
+            {
+                {second.id, 0, 1}
+            };
+            const GLSLCodeModuleDependency second_dependencies[] =
+            {
+                {first.id, 0, 1}
+            };
+            first.dependencies = first_dependencies;
+            first.dependency_count = 1;
+            second.dependencies = second_dependencies;
+            second.dependency_count = 1;
+
+            GLSLCodeModuleRegistry registry;
+            GLSLCodeModuleMetadataValidationDiagnostic diagnostic{};
+            if (!registry.Register(first)
+             || !registry.Register(second)
+             || ValidateGLSLCodeModuleRegistryMetadata(registry, diagnostic)
+             || diagnostic.error
+                    != GLSLCodeModuleMetadataValidationError::DependencyCycle)
+            {
+                result.diagnostics.emplace_back(
+                    "explicit dependency cycle must be rejected");
+            }
+        }
+
+        {
+            const GLSLCodeModuleSemantic position[] =
+            {
+                GLSLCodeModuleSemantic::Position
+            };
+            GLSLCodeModuleDefinition first =
+                make_definition(203, "ambiguous_first");
+            GLSLCodeModuleDefinition second =
+                make_definition(204, "ambiguous_second");
+            first.semantic_provides = position;
+            first.semantic_provide_count = 1;
+            second.semantic_provides = position;
+            second.semantic_provide_count = 1;
+
+            GLSLCodeModuleRegistry registry;
+            GLSLCodeModuleMetadataValidationDiagnostic diagnostic{};
+            if (!registry.Register(first)
+             || !registry.Register(second)
+             || ValidateGLSLCodeModuleRegistryMetadata(registry, diagnostic)
+             || diagnostic.error
+                    != GLSLCodeModuleMetadataValidationError::
+                        AmbiguousProviderPriority)
+            {
+                result.diagnostics.emplace_back(
+                    "equal-priority providers must be rejected as ambiguous");
+            }
+        }
+
+        {
+            const GLSLCodeModuleSemantic position[] =
+            {
+                GLSLCodeModuleSemantic::Position
+            };
+            const GLSLCodeModuleCondition high_condition[] =
+            {
+                {
+                    GLSLCodeModuleConditionDomain::Option,
+                    GLSLCodeModuleConditionOperator::Equals,
+                    "Quality",
+                    "High"
+                }
+            };
+            const GLSLCodeModuleCondition low_condition[] =
+            {
+                {
+                    GLSLCodeModuleConditionDomain::Option,
+                    GLSLCodeModuleConditionOperator::Equals,
+                    "Quality",
+                    "Low"
+                }
+            };
+            GLSLCodeModuleDefinition high =
+                make_definition(205, "conditional_high");
+            GLSLCodeModuleDefinition low =
+                make_definition(206, "conditional_low");
+            high.semantic_provides = position;
+            high.semantic_provide_count = 1;
+            high.conditions = high_condition;
+            high.condition_count = 1;
+            low.semantic_provides = position;
+            low.semantic_provide_count = 1;
+            low.conditions = low_condition;
+            low.condition_count = 1;
+
+            GLSLCodeModuleRegistry registry;
+            GLSLCodeModuleMetadataValidationDiagnostic diagnostic{};
+            if (!registry.Register(high)
+             || !registry.Register(low)
+             || !ValidateGLSLCodeModuleRegistryMetadata(
+                    registry, diagnostic))
+            {
+                result.diagnostics.emplace_back(
+                    "mutually exclusive provider conditions must be valid");
+            }
+        }
+
+        {
+            GLSLCodeModuleDefinition legacy_target =
+                make_definition(207, "legacy_target");
+            legacy_target.metadata_version =
+                GLSLCodeModuleLegacyMetadataVersion;
+            GLSLCodeModuleDefinition versioned_source =
+                make_definition(208, "versioned_source");
+            const GLSLCodeModuleDependency dependencies[] =
+            {
+                {legacy_target.id, 1, 1}
+            };
+            versioned_source.dependencies = dependencies;
+            versioned_source.dependency_count = 1;
+
+            GLSLCodeModuleRegistry registry;
+            GLSLCodeModuleMetadataValidationDiagnostic diagnostic{};
+            if (!registry.Register(legacy_target)
+             || !registry.Register(versioned_source)
+             || ValidateGLSLCodeModuleRegistryMetadata(registry, diagnostic)
+             || diagnostic.error
+                    != GLSLCodeModuleMetadataValidationError::
+                        DependencyVersionMismatch)
+            {
+                result.diagnostics.emplace_back(
+                    "dependency metadata version mismatch must be rejected");
+            }
+        }
+
+        {
+            GLSLCodeModuleDefinition first =
+                make_definition(209, "conflict_first");
+            GLSLCodeModuleDefinition second =
+                make_definition(210, "conflict_second");
+            const GLSLCodeModuleID conflicts[] = {second.id};
+            first.module_conflicts = conflicts;
+            first.module_conflict_count = 1;
+            if (!AreGLSLCodeModulesConflicting(first, second)
+             || !AreGLSLCodeModulesConflicting(second, first))
+            {
+                result.diagnostics.emplace_back(
+                    "module conflicts must be symmetric at query time");
+            }
+        }
 
         result.passed = result.diagnostics.empty();
         return result;
@@ -3852,6 +4122,7 @@ int main(const int argc, char **argv)
     if (run_glsl) results.push_back(RunShaderResourceManifestCase());
     if (run_glsl) results.push_back(RunProviderResourceManifestCase());
     if (run_glsl) results.push_back(RunGLSLCodeModuleFileCase());
+    if (run_glsl) results.push_back(RunGLSLCodeModuleMetadataValidationCase());
     if (run_glsl) results.push_back(RunCapabilityResolverCase());
     if (run_interface) results.push_back(RunShaderSemanticRegistryCase());
     if (run_interface) results.push_back(RunMaterialVertexABICharacterizationCase());

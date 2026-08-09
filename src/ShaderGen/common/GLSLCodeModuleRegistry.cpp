@@ -80,6 +80,7 @@ namespace hgl::graph::mtl
 
         int file_count = 0;
         int error_count = 0;
+        const int first_new_file_index = file_data.GetCount();
 
         // Pass 1: read, parse and register every file-backed module.
         for (int i = 0; i < file_list.GetCount(); ++i)
@@ -163,6 +164,7 @@ namespace hgl::graph::mtl
             data->definition.kind = data->kind;
             data->definition.priority = data->priority;
             data->definition.flags = data->flags;
+            data->definition.metadata_version = data->metadata_version;
             data->definition.semantic_requirements = data->semantic_requirements.GetData();
             data->definition.semantic_requirement_count = static_cast<uint32>(data->semantic_requirements.GetCount());
             data->definition.semantic_provides = data->semantic_provides.GetData();
@@ -185,6 +187,9 @@ namespace hgl::graph::mtl
             data->definition.texture_layer_requirements = data->texture_layer_requirements.GetData();
             data->definition.texture_layer_requirement_count =
                 static_cast<uint32>(data->texture_layer_requirements.GetCount());
+            data->definition.conditions = data->conditions.GetData();
+            data->definition.condition_count =
+                static_cast<uint32>(data->conditions.GetCount());
 
             if (!Register(data->definition))
             {
@@ -200,16 +205,14 @@ namespace hgl::graph::mtl
 
         // Pass 2: resolve `uses <module-name>` references against the
         // now-complete registry.
-        for (int i = 0; i < file_data.GetCount(); ++i)
+        for (int i = first_new_file_index; i < file_data.GetCount(); ++i)
         {
             GLSLCodeModuleFileData *data = file_data[i];
             if (!data)
                 continue;
 
+            data->metadata_resolution_valid = true;
             const int pending_count = data->pending_module_requirements.GetCount();
-            if (pending_count == 0)
-                continue;
-
             for (int k = 0; k < pending_count; ++k)
             {
                 const AnsiString &dependency_name = data->pending_module_requirements[k];
@@ -219,14 +222,123 @@ namespace hgl::graph::mtl
                     GLogError(u8"[GLSLCodeModuleRegistry] Unresolved code-module dependency: module=%s depends_on=%s",
                               data->name.c_str(), dependency_name.c_str());
                     ++error_count;
+                    data->metadata_resolution_valid = false;
+                    continue;
+                }
+
+                const GLSLCodeModuleDependency &pending_dependency =
+                    data->pending_dependency_versions[k];
+                if (dependency->metadata_version
+                        < pending_dependency.min_metadata_version
+                 || dependency->metadata_version
+                        > pending_dependency.max_metadata_version)
+                {
+                    GLogError(u8"[GLSLCodeModuleRegistry] Code-module dependency version mismatch: module=%s depends_on=%s target_version=%u required=%u..%u",
+                              data->name.c_str(),
+                              dependency_name.c_str(),
+                              uint32(dependency->metadata_version),
+                              uint32(pending_dependency.min_metadata_version),
+                              uint32(pending_dependency.max_metadata_version));
+                    ++error_count;
+                    data->metadata_resolution_valid = false;
                     continue;
                 }
 
                 data->code_module_requirements.Add(dependency->id);
+
+                GLSLCodeModuleDependency versioned_dependency =
+                    pending_dependency;
+                versioned_dependency.module_id = dependency->id;
+                data->dependencies.Add(versioned_dependency);
             }
 
             data->definition.code_module_requirements = data->code_module_requirements.GetData();
             data->definition.code_module_requirement_count = static_cast<uint32>(data->code_module_requirements.GetCount());
+            data->definition.dependencies = data->dependencies.GetData();
+            data->definition.dependency_count =
+                static_cast<uint32>(data->dependencies.GetCount());
+
+            for (int k = 0;
+                 k < data->pending_module_conflicts.GetCount();
+                 ++k)
+            {
+                const AnsiString &conflict_name =
+                    data->pending_module_conflicts[k];
+                const GLSLCodeModuleDefinition *conflict =
+                    FindByName(conflict_name.c_str());
+                if (!conflict)
+                {
+                    GLogError(u8"[GLSLCodeModuleRegistry] Unresolved code-module conflict: module=%s conflicts_with=%s",
+                              data->name.c_str(), conflict_name.c_str());
+                    ++error_count;
+                    data->metadata_resolution_valid = false;
+                    continue;
+                }
+
+                data->module_conflicts.Add(conflict->id);
+            }
+
+            data->definition.module_conflicts =
+                data->module_conflicts.GetData();
+            data->definition.module_conflict_count =
+                static_cast<uint32>(data->module_conflicts.GetCount());
+        }
+
+        for (int i = first_new_file_index; i < file_data.GetCount(); ++i)
+        {
+            GLSLCodeModuleFileData *data = file_data[i];
+            if (!data || data->metadata_resolution_valid)
+                continue;
+
+            if (modules.DeleteByKey(data->definition.id))
+                --file_count;
+        }
+
+        bool removed_incomplete_module = true;
+        while (removed_incomplete_module)
+        {
+            removed_incomplete_module = false;
+
+            for (int i = first_new_file_index; i < file_data.GetCount(); ++i)
+            {
+                GLSLCodeModuleFileData *data = file_data[i];
+                if (!data || !modules.ContainsKey(data->definition.id))
+                    continue;
+
+                bool complete = true;
+                for (int k = 0;
+                     k < data->code_module_requirements.GetCount();
+                     ++k)
+                {
+                    if (!modules.ContainsKey(data->code_module_requirements[k]))
+                    {
+                        complete = false;
+                        break;
+                    }
+                }
+
+                if (complete)
+                {
+                    for (int k = 0;
+                         k < data->module_conflicts.GetCount();
+                         ++k)
+                    {
+                        if (!modules.ContainsKey(data->module_conflicts[k]))
+                        {
+                            complete = false;
+                            break;
+                        }
+                    }
+                }
+
+                if (!complete && modules.DeleteByKey(data->definition.id))
+                {
+                    data->metadata_resolution_valid = false;
+                    --file_count;
+                    ++error_count;
+                    removed_incomplete_module = true;
+                }
+            }
         }
 
         if (out_file_count)

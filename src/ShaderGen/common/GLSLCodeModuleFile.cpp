@@ -354,6 +354,39 @@ namespace hgl::graph::mtl
                 || std::strcmp(token, "samplerCubeArray") == 0
                 || std::strcmp(token, "sampler3D") == 0;
         }
+
+        bool ParseConditionDomain(
+            const char *token,
+            GLSLCodeModuleConditionDomain &out_domain) noexcept
+        {
+            if (std::strcmp(token, "Option") == 0)
+                out_domain = GLSLCodeModuleConditionDomain::Option;
+            else if (std::strcmp(token, "ShaderProgramPurpose") == 0)
+                out_domain =
+                    GLSLCodeModuleConditionDomain::ShaderProgramPurpose;
+            else if (std::strcmp(token, "SurfaceProfile") == 0)
+                out_domain = GLSLCodeModuleConditionDomain::SurfaceProfile;
+            else if (std::strcmp(token, "DeviceFeature") == 0)
+                out_domain = GLSLCodeModuleConditionDomain::DeviceFeature;
+            else
+                return false;
+
+            return true;
+        }
+
+        bool ParseConditionOperator(
+            const char *token,
+            GLSLCodeModuleConditionOperator &out_operation) noexcept
+        {
+            if (std::strcmp(token, "Equals") == 0)
+                out_operation = GLSLCodeModuleConditionOperator::Equals;
+            else if (std::strcmp(token, "NotEquals") == 0)
+                out_operation = GLSLCodeModuleConditionOperator::NotEquals;
+            else
+                return false;
+
+            return true;
+        }
     }
 
     const char *GetGLSLCodeModuleParseResultName(const GLSLCodeModuleParseResult result) noexcept
@@ -375,6 +408,11 @@ namespace hgl::graph::mtl
             case GLSLCodeModuleParseResult::InvalidNumber: return "InvalidNumber";
             case GLSLCodeModuleParseResult::InvalidResource: return "InvalidResource";
             case GLSLCodeModuleParseResult::InvalidStage: return "InvalidStage";
+            case GLSLCodeModuleParseResult::MissingMetadataVersion: return "MissingMetadataVersion";
+            case GLSLCodeModuleParseResult::UnsupportedMetadataVersion: return "UnsupportedMetadataVersion";
+            case GLSLCodeModuleParseResult::InvalidCondition: return "InvalidCondition";
+            case GLSLCodeModuleParseResult::InvalidDependency: return "InvalidDependency";
+            case GLSLCodeModuleParseResult::InvalidConflict: return "InvalidConflict";
             default: return "Unknown";
         }
     }
@@ -392,6 +430,11 @@ namespace hgl::graph::mtl
         bool in_block = false;
         bool saw_any_ulre = false;
         bool saw_end = false;
+        bool saw_version = false;
+        bool saw_kind = false;
+        bool saw_priority = false;
+        bool saw_flags = false;
+        bool requires_versioned_metadata = false;
         char token[TOKEN_CAPACITY];
 
         while (cursor < end && !saw_end)
@@ -446,8 +489,28 @@ namespace hgl::graph::mtl
                         return GLSLCodeModuleParseResult::MissingDirectiveArgument;
                     out_data.name = AnsiString(token);
                 }
+                else if (std::strcmp(token, "version") == 0)
+                {
+                    if (saw_version)
+                        return GLSLCodeModuleParseResult::DuplicateDirective;
+
+                    const char *next =
+                        ReadToken(after_keyword, line_end, token, sizeof(token));
+                    uint32 version = 0;
+                    if (!next || !ParseUnsignedInt(token, version))
+                        return GLSLCodeModuleParseResult::InvalidNumber;
+                    if (version > GLSLCodeModuleCurrentMetadataVersion)
+                        return GLSLCodeModuleParseResult::
+                            UnsupportedMetadataVersion;
+
+                    out_data.metadata_version = static_cast<uint16>(version);
+                    saw_version = true;
+                }
                 else if (std::strcmp(token, "kind") == 0)
                 {
+                    if (saw_kind)
+                        return GLSLCodeModuleParseResult::DuplicateDirective;
+
                     const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
                     if (!next || !token[0])
                         return GLSLCodeModuleParseResult::MissingDirectiveArgument;
@@ -456,9 +519,13 @@ namespace hgl::graph::mtl
                     if (!ParseKind(token, kind))
                         return GLSLCodeModuleParseResult::InvalidKind;
                     out_data.kind = kind;
+                    saw_kind = true;
                 }
                 else if (std::strcmp(token, "priority") == 0)
                 {
+                    if (saw_priority)
+                        return GLSLCodeModuleParseResult::DuplicateDirective;
+
                     const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
                     if (!next || !token[0])
                         return GLSLCodeModuleParseResult::MissingDirectiveArgument;
@@ -467,9 +534,13 @@ namespace hgl::graph::mtl
                     if (!ParseSignedInt(token, value))
                         return GLSLCodeModuleParseResult::InvalidNumber;
                     out_data.priority = value;
+                    saw_priority = true;
                 }
                 else if (std::strcmp(token, "flags") == 0)
                 {
+                    if (saw_flags)
+                        return GLSLCodeModuleParseResult::DuplicateDirective;
+
                     const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
                     if (!next || !token[0])
                         return GLSLCodeModuleParseResult::MissingDirectiveArgument;
@@ -478,6 +549,7 @@ namespace hgl::graph::mtl
                     if (!ParseUnsignedInt(token, value))
                         return GLSLCodeModuleParseResult::InvalidNumber;
                     out_data.flags = value;
+                    saw_flags = true;
                 }
                 else if (std::strcmp(token, "ubo") == 0)
                 {
@@ -644,7 +716,80 @@ namespace hgl::graph::mtl
                     const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
                     if (!next || !token[0])
                         return GLSLCodeModuleParseResult::MissingDirectiveArgument;
-                    out_data.pending_module_requirements.Add(AnsiString(token));
+
+                    const AnsiString dependency_name(token);
+                    GLSLCodeModuleDependency dependency{};
+
+                    next = ReadToken(next, line_end, token, sizeof(token));
+                    if (next && token[0])
+                    {
+                        uint32 min_version = 0;
+                        if (!ParseUnsignedInt(token, min_version)
+                         || min_version > GLSLCodeModuleCurrentMetadataVersion)
+                            return GLSLCodeModuleParseResult::InvalidDependency;
+
+                        next = ReadToken(next, line_end, token, sizeof(token));
+                        uint32 max_version = 0;
+                        if (!next
+                         || !ParseUnsignedInt(token, max_version)
+                         || max_version > GLSLCodeModuleCurrentMetadataVersion
+                         || min_version > max_version)
+                            return GLSLCodeModuleParseResult::InvalidDependency;
+
+                        dependency.min_metadata_version =
+                            static_cast<uint16>(min_version);
+                        dependency.max_metadata_version =
+                            static_cast<uint16>(max_version);
+                        requires_versioned_metadata = true;
+                    }
+
+                    out_data.pending_module_requirements.Add(dependency_name);
+                    out_data.pending_dependency_versions.Add(dependency);
+                }
+                else if (std::strcmp(token, "condition") == 0)
+                {
+                    GLSLCodeModuleCondition condition{};
+                    const char *next =
+                        ReadToken(after_keyword, line_end, token, sizeof(token));
+                    if (!next || !ParseConditionDomain(token, condition.domain))
+                        return GLSLCodeModuleParseResult::InvalidCondition;
+
+                    next = ReadToken(next, line_end, token, sizeof(token));
+                    if (!next || !token[0])
+                        return GLSLCodeModuleParseResult::InvalidCondition;
+                    AnsiString *key = out_data.condition_key_storage.Create();
+                    if (!key)
+                        return GLSLCodeModuleParseResult::InvalidCondition;
+                    *key = token;
+                    condition.key = key->c_str();
+
+                    next = ReadToken(next, line_end, token, sizeof(token));
+                    if (!next
+                     || !ParseConditionOperator(token, condition.operation))
+                        return GLSLCodeModuleParseResult::InvalidCondition;
+
+                    next = ReadToken(next, line_end, token, sizeof(token));
+                    if (!next || !token[0])
+                        return GLSLCodeModuleParseResult::InvalidCondition;
+                    AnsiString *value =
+                        out_data.condition_value_storage.Create();
+                    if (!value)
+                        return GLSLCodeModuleParseResult::InvalidCondition;
+                    *value = token;
+                    condition.value = value->c_str();
+
+                    out_data.conditions.Add(condition);
+                    requires_versioned_metadata = true;
+                }
+                else if (std::strcmp(token, "conflicts") == 0)
+                {
+                    const char *next =
+                        ReadToken(after_keyword, line_end, token, sizeof(token));
+                    if (!next || !token[0])
+                        return GLSLCodeModuleParseResult::InvalidConflict;
+
+                    out_data.pending_module_conflicts.Add(AnsiString(token));
+                    requires_versioned_metadata = true;
                 }
                 else
                 {
@@ -660,6 +805,10 @@ namespace hgl::graph::mtl
 
         if (in_block)
             return GLSLCodeModuleParseResult::MissingEnd;
+
+        if (requires_versioned_metadata
+         && out_data.metadata_version == GLSLCodeModuleLegacyMetadataVersion)
+            return GLSLCodeModuleParseResult::MissingMetadataVersion;
 
         return GLSLCodeModuleParseResult::OK;
     }

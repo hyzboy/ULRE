@@ -9,6 +9,9 @@
 
 namespace hgl::graph::mtl
 {
+    constexpr uint16 GLSLCodeModuleLegacyMetadataVersion = 0;
+    constexpr uint16 GLSLCodeModuleCurrentMetadataVersion = 1;
+
     // Reusable GLSL code is stage-agnostic. A module may be used by vertex,
     // fragment, or shared shader generation paths.
     enum class GLSLCodeModuleID : uint16
@@ -75,6 +78,64 @@ namespace hgl::graph::mtl
         Packed = 1u << 4,
         Any = 0xffffffffu
     };
+
+    enum class GLSLCodeModuleProviderFlag : uint32
+    {
+        None = 0,
+        Exclusive = 1u << 0
+    };
+
+    enum class GLSLCodeModuleConditionDomain : uint8
+    {
+        Option = 0,
+        ShaderProgramPurpose,
+        SurfaceProfile,
+        DeviceFeature
+    };
+
+    enum class GLSLCodeModuleConditionOperator : uint8
+    {
+        Equals = 0,
+        NotEquals
+    };
+
+    struct GLSLCodeModuleCondition
+    {
+        GLSLCodeModuleConditionDomain domain =
+            GLSLCodeModuleConditionDomain::Option;
+        GLSLCodeModuleConditionOperator operation =
+            GLSLCodeModuleConditionOperator::Equals;
+        const char *key = nullptr;
+        const char *value = nullptr;
+    };
+
+    inline bool operator==(const GLSLCodeModuleCondition &lhs,
+                           const GLSLCodeModuleCondition &rhs) noexcept
+    {
+        const bool same_key = lhs.key == rhs.key
+            || (lhs.key && rhs.key && hgl::strcmp(lhs.key, rhs.key) == 0);
+        const bool same_value = lhs.value == rhs.value
+            || (lhs.value && rhs.value && hgl::strcmp(lhs.value, rhs.value) == 0);
+        return lhs.domain == rhs.domain
+            && lhs.operation == rhs.operation
+            && same_key
+            && same_value;
+    }
+
+    struct GLSLCodeModuleDependency
+    {
+        GLSLCodeModuleID module_id = GLSLCodeModuleID::SkyLightHeader;
+        uint16 min_metadata_version = GLSLCodeModuleLegacyMetadataVersion;
+        uint16 max_metadata_version = GLSLCodeModuleCurrentMetadataVersion;
+    };
+
+    inline bool operator==(const GLSLCodeModuleDependency &lhs,
+                           const GLSLCodeModuleDependency &rhs) noexcept
+    {
+        return lhs.module_id == rhs.module_id
+            && lhs.min_metadata_version == rhs.min_metadata_version
+            && lhs.max_metadata_version == rhs.max_metadata_version;
+    }
 
     struct GLSLCodeModuleSemanticRequirement
     {
@@ -212,6 +273,18 @@ namespace hgl::graph::mtl
 
         const GLSLCodeModuleTextureLayerRequirement *texture_layer_requirements = nullptr;
         uint32 texture_layer_requirement_count = 0;
+
+        uint16 metadata_version = GLSLCodeModuleLegacyMetadataVersion;
+        uint16 metadata_reserved = 0;
+
+        const GLSLCodeModuleDependency *dependencies = nullptr;
+        uint32 dependency_count = 0;
+
+        const GLSLCodeModuleCondition *conditions = nullptr;
+        uint32 condition_count = 0;
+
+        const GLSLCodeModuleID *module_conflicts = nullptr;
+        uint32 module_conflict_count = 0;
     };
 
     const GLSLCodeModuleDefinition *FindGLSLCodeModuleDefinition(GLSLCodeModuleID id) noexcept;
@@ -224,6 +297,22 @@ namespace hgl::graph::mtl
     inline bool IsValidGLSLCodeModuleDefinition(const GLSLCodeModuleDefinition &definition) noexcept
     {
         if (!definition.name || !*definition.name || !definition.glsl_code)
+            return false;
+
+        if ((definition.semantic_requirement_count > 0
+          && !definition.semantic_requirements)
+         || (definition.semantic_provide_count > 0
+          && !definition.semantic_provides)
+         || (definition.code_module_requirement_count > 0
+          && !definition.code_module_requirements)
+         || (definition.ubo_requirement_count > 0
+          && !definition.ubo_requirements)
+         || (definition.ssbo_requirement_count > 0
+          && !definition.ssbo_requirements)
+         || (definition.texture_requirement_count > 0
+          && !definition.texture_requirements)
+         || (definition.texture_layer_requirement_count > 0
+          && !definition.texture_layer_requirements))
             return false;
 
         for (uint32 i = 0; i < definition.semantic_requirement_count; ++i)

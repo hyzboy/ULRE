@@ -27,6 +27,8 @@ SET(SHADER_ARTIFACT_CONTRACT_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderStageKey.h
                                    ShaderArtifactStore.cpp
                                    ${ROOT_INCLUDE_PATH}/hgl/graph/glsl/GLSLCodeModuleRegistry.h
                                    common/GLSLCodeModuleRegistry.cpp
+                                   ${ROOT_INCLUDE_PATH}/hgl/graph/glsl/GLSLCodeModuleMetadata.h
+                                   common/GLSLCodeModuleMetadata.cpp
                                    ${ROOT_INCLUDE_PATH}/hgl/graph/glsl/GLSLCodeModuleFile.h
                                    common/GLSLCodeModuleFile.cpp
                                    ${ROOT_INCLUDE_PATH}/hgl/graph/glsl/GLSLCodeModuleCapabilityResolver.h

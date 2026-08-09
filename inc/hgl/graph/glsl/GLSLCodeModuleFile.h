@@ -30,7 +30,12 @@ namespace hgl::graph::mtl
         InvalidNumericClass,
         InvalidNumber,
         InvalidResource,
-        InvalidStage
+        InvalidStage,
+        MissingMetadataVersion,
+        UnsupportedMetadataVersion,
+        InvalidCondition,
+        InvalidDependency,
+        InvalidConflict
     };
 
     const char *GetGLSLCodeModuleParseResultName(GLSLCodeModuleParseResult result) noexcept;
@@ -51,6 +56,8 @@ namespace hgl::graph::mtl
         // `uses <module-name>` references; resolved to IDs by the registry
         // pass 2 after all files are registered.
         AnsiStringList pending_module_requirements;
+        ValueArray<GLSLCodeModuleDependency> pending_dependency_versions;
+        AnsiStringList pending_module_conflicts;
 
         ValueArray<GLSLCodeModuleSemanticRequirement> semantic_requirements;
         ValueArray<GLSLCodeModuleSemantic> semantic_provides;
@@ -62,10 +69,17 @@ namespace hgl::graph::mtl
         ManagedArray<AnsiString> ssbo_name_storage;
         ManagedArray<AnsiString> texture_name_storage;
         ManagedArray<AnsiString> texture_type_storage;
+        ManagedArray<AnsiString> condition_key_storage;
+        ManagedArray<AnsiString> condition_value_storage;
 
         GLSLCodeModuleKind kind = GLSLCodeModuleKind::Shared;
         int32 priority = 0;
         uint32 flags = 0;
+        uint16 metadata_version = GLSLCodeModuleLegacyMetadataVersion;
+        bool metadata_resolution_valid = true;
+        ValueArray<GLSLCodeModuleDependency> dependencies;
+        ValueArray<GLSLCodeModuleCondition> conditions;
+        ValueArray<GLSLCodeModuleID> module_conflicts;
 
         GLSLCodeModuleDefinition definition;
     };

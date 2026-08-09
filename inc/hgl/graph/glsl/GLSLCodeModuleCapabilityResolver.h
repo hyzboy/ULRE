@@ -13,15 +13,6 @@ namespace hgl::graph
 
 namespace hgl::graph::mtl
 {
-    // Reserved provider flags. `Exclusive` marks a provider that must be the
-    // only one covering its provided semantics; deterministic per-semantic
-    // selection already guarantees this while the stage-graph policy lands.
-    enum class GLSLCodeModuleProviderFlag : uint32
-    {
-        None = 0,
-        Exclusive = 1u << 0
-    };
-
     // A capability contributed by a single Geometry vertex attribute.
     struct GLSLCodeModuleGeometryCapability
     {
