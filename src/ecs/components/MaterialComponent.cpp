@@ -3,6 +3,38 @@
 
 namespace hgl::ecs
 {
+    const char *GetMaterialRuntimeStateName(
+        const MaterialRuntimeState state) noexcept
+    {
+        switch (state)
+        {
+        case MaterialRuntimeState::Unresolved:
+            return "Unresolved";
+        case MaterialRuntimeState::ProgramResolved:
+            return "ProgramResolved";
+        case MaterialRuntimeState::ResourcesPending:
+            return "ResourcesPending";
+        case MaterialRuntimeState::Ready:
+            return "Ready";
+        case MaterialRuntimeState::Failed:
+            return "Failed";
+        }
+        return "Unknown";
+    }
+
+    const char *GetMaterialResourceLoadingModeName(
+        const MaterialResourceLoadingMode mode) noexcept
+    {
+        switch (mode)
+        {
+        case MaterialResourceLoadingMode::LegacyEager:
+            return "LegacyEager";
+        case MaterialResourceLoadingMode::ActivePlan:
+            return "ActivePlan";
+        }
+        return "Unknown";
+    }
+
     MaterialComponent::MaterialComponent(const std::string &name)
         : Component(name)
     {
@@ -12,6 +44,7 @@ namespace hgl::ecs
     {
         program_dirty = true;
         valid = false;
+        runtime_state = MaterialRuntimeState::Unresolved;
         ClearMaterializationInstanceData();
         ClearResolvedSSBOBindings();
         ClearActiveProfileBindingView();
@@ -22,6 +55,7 @@ namespace hgl::ecs
     {
         bindings_dirty = true;
         valid = false;
+        runtime_state = MaterialRuntimeState::Unresolved;
         ClearMaterializationInstanceData();
         ClearResolvedSSBOBindings();
         ClearActiveProfileBindingView();
@@ -32,15 +66,16 @@ namespace hgl::ecs
     {
         resources_dirty = true;
         valid = false;
+        runtime_state = MaterialRuntimeState::ResourcesPending;
         ClearMaterializationInstanceData();
         ClearResolvedSSBOBindings();
-        ClearActiveProfileBindingView();
         ++runtime_revision;
     }
 
     void MaterialComponent::MarkInvalid()
     {
         valid = false;
+        runtime_state = MaterialRuntimeState::Failed;
         ClearMaterializationInstanceData();
         ClearResolvedSSBOBindings();
         ClearActiveProfileBindingView();
@@ -50,6 +85,25 @@ namespace hgl::ecs
     void MaterialComponent::MarkValid()
     {
         valid = true;
+        runtime_state = MaterialRuntimeState::Ready;
+    }
+
+    void MaterialComponent::MarkProgramResolved()
+    {
+        valid = false;
+        runtime_state = MaterialRuntimeState::ProgramResolved;
+    }
+
+    void MaterialComponent::MarkResourcesPending()
+    {
+        valid = false;
+        runtime_state = MaterialRuntimeState::ResourcesPending;
+    }
+
+    void MaterialComponent::MarkFailed()
+    {
+        valid = false;
+        runtime_state = MaterialRuntimeState::Failed;
     }
 
     void MaterialComponent::ClearResolvedSSBOBindings()
@@ -61,13 +115,13 @@ namespace hgl::ecs
     void MaterialComponent::ClearActiveProfileBindingView()
     {
         active_profile_binding_view = {};
-        ClearShadowResourceAcquirePlan();
+        ClearActiveResourceAcquirePlan();
     }
 
-    void MaterialComponent::ClearShadowResourceAcquirePlan()
+    void MaterialComponent::ClearActiveResourceAcquirePlan()
     {
-        shadow_resource_acquire_plan = {};
-        has_shadow_resource_acquire_plan = false;
+        active_resource_acquire_plan = {};
+        has_active_resource_acquire_plan = false;
     }
 
     void MaterialComponent::ClearMaterializationInstanceData()
@@ -135,6 +189,7 @@ namespace hgl::ecs
         bindings_dirty = true;
         resources_dirty = true;
         valid = false;
+        runtime_state = MaterialRuntimeState::Unresolved;
         recipe_hash = 0;
         ClearMaterializationInstanceData();
         ClearResolvedSSBOBindings();
@@ -148,6 +203,7 @@ namespace hgl::ecs
         bindings_dirty = true;
         resources_dirty = true;
         valid = false;
+        runtime_state = MaterialRuntimeState::Unresolved;
         recipe_hash = 0;
         ClearMaterializationInstanceData();
         ClearResolvedSSBOBindings();

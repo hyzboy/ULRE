@@ -301,6 +301,29 @@ namespace hgl::graph::mtl
         return hash;
     }
 
+    uint64 GetMaterialTextureAssetIdentityHash(
+        const char *resource_id,
+        const uint32 resource_id_length) noexcept
+    {
+        if (!resource_id || resource_id_length == 0)
+            return 0;
+        return hgl::hash::FNV1aAppendBytes(
+            hgl::hash::FNV1aInit<uint64>(),
+            resource_id,
+            resource_id_length);
+    }
+
+    uint64 GetMaterialDataAssetIdentityHash(
+        const SSBOType ssbo_type,
+        const uint32 ssbo_id,
+        const uint32 data_slot) noexcept
+    {
+        uint64 hash = hgl::hash::FNV1aInit<uint64>();
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, ssbo_type);
+        hash = hgl::hash::FNV1aAppendValueBytes(hash, ssbo_id);
+        return hgl::hash::FNV1aAppendValueBytes(hash, data_slot);
+    }
+
     bool BuildActiveProfileBindingView(
         const MaterialRecipe &recipe,
         const MaterialResourceLayout &resource_layout,
@@ -477,7 +500,10 @@ namespace hgl::graph::mtl
                     view_binding.source =
                         ActiveProfileBindingSource::Asset;
                     view_binding.asset_identity_hash =
-                        HashText(recipe_binding.resource_id);
+                        GetMaterialTextureAssetIdentityHash(
+                            recipe_binding.resource_id.data(),
+                            static_cast<uint32>(
+                                recipe_binding.resource_id.size()));
                 }
                 else
                 {
@@ -531,14 +557,11 @@ namespace hgl::graph::mtl
                 view_binding.shared_across_instances =
                     recipe_binding.shared_across_instances;
 
-                uint64 identity = hgl::hash::FNV1aInit<uint64>();
-                identity = hgl::hash::FNV1aAppendValueBytes(
-                    identity, recipe_binding.ssbo_type);
-                identity = hgl::hash::FNV1aAppendValueBytes(
-                    identity, recipe_binding.ssbo_id);
                 view_binding.asset_identity_hash =
-                    hgl::hash::FNV1aAppendValueBytes(
-                        identity, recipe_binding.data_slot);
+                    GetMaterialDataAssetIdentityHash(
+                        recipe_binding.ssbo_type,
+                        recipe_binding.ssbo_id,
+                        recipe_binding.data_slot);
             }
 
             if (view_binding.recipe_binding_index
@@ -618,7 +641,10 @@ namespace hgl::graph::mtl
                     == ActiveProfileBindingSource::Asset)
             {
                 if (recipe_binding.use_direct_value
-                 || HashText(recipe_binding.resource_id)
+                 || GetMaterialTextureAssetIdentityHash(
+                        recipe_binding.resource_id.data(),
+                        static_cast<uint32>(
+                            recipe_binding.resource_id.size()))
                         != view_binding.asset_identity_hash)
                     return false;
             }

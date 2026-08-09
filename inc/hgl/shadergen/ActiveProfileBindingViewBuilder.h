@@ -32,6 +32,13 @@ namespace hgl::graph::mtl
 
     uint64 GetActiveProfileBindingSourceHash(
         const MaterialRecipe &recipe) noexcept;
+    uint64 GetMaterialTextureAssetIdentityHash(
+        const char *resource_id,
+        uint32 resource_id_length) noexcept;
+    uint64 GetMaterialDataAssetIdentityHash(
+        SSBOType ssbo_type,
+        uint32 ssbo_id,
+        uint32 data_slot) noexcept;
 
     bool BuildActiveProfileBindingView(
         const MaterialRecipe &recipe,

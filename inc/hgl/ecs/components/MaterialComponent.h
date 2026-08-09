@@ -12,6 +12,26 @@ namespace hgl::graph
 
 namespace hgl::ecs
 {
+    enum class MaterialRuntimeState : uint8
+    {
+        Unresolved = 0,
+        ProgramResolved,
+        ResourcesPending,
+        Ready,
+        Failed
+    };
+
+    enum class MaterialResourceLoadingMode : uint8
+    {
+        LegacyEager = 0,
+        ActivePlan
+    };
+
+    const char *GetMaterialRuntimeStateName(
+        MaterialRuntimeState state) noexcept;
+    const char *GetMaterialResourceLoadingModeName(
+        MaterialResourceLoadingMode mode) noexcept;
+
     class MaterialComponent : public Component
     {
     public:
@@ -39,12 +59,16 @@ namespace hgl::ecs
         bool bindings_dirty = true;
         bool resources_dirty = true;
         bool valid = false;
+        MaterialRuntimeState runtime_state =
+            MaterialRuntimeState::Unresolved;
+        MaterialResourceLoadingMode resource_loading_mode =
+            MaterialResourceLoadingMode::ActivePlan;
         uint32_t runtime_revision = 0;
         uint64_t recipe_hash = 0;
         uint64_t program_build_context_hash = 0;
         graph::mtl::ActiveProfileBindingView active_profile_binding_view;
-        graph::mtl::ResourceAcquirePlan shadow_resource_acquire_plan;
-        bool has_shadow_resource_acquire_plan = false;
+        graph::mtl::ResourceAcquirePlan active_resource_acquire_plan;
+        bool has_active_resource_acquire_plan = false;
         std::vector<ResolvedSSBOBinding> resolved_ssbo_bindings;
 
     public:
@@ -59,10 +83,13 @@ namespace hgl::ecs
         void MarkResourcesDirty();
         void MarkInvalid();
         void MarkValid();
+        void MarkProgramResolved();
+        void MarkResourcesPending();
+        void MarkFailed();
         void ClearMaterializationInstanceData();
         void ClearResolvedSSBOBindings();
         void ClearActiveProfileBindingView();
-        void ClearShadowResourceAcquirePlan();
+        void ClearActiveResourceAcquirePlan();
         void SetResolvedSSBOBinding(const char *data_slot_name,
                                     uint32_t data_slot,
                                     graph::mtl::SSBOType ssbo_type,

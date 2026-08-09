@@ -497,6 +497,252 @@ namespace hgl::ecs
             return true;
         }
 
+        bool PrepareActivePlanResources(
+            ECSContext *world,
+            const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+            graph::ShaderProgram *material_program,
+            const graph::mtl::ResourceAcquirePlan &plan)
+        {
+            if (!world
+             || !primitive_comp
+             || !material_program
+             || !graph::mtl::ValidateResourceAcquirePlan(plan))
+                return false;
+
+            graph::mtl::MaterialRecipe active_recipe{};
+            if (!BuildEffectiveMaterialRecipe(
+                    primitive_comp, material_program, active_recipe))
+                return false;
+
+            auto rdbs = world->GetSystem<RenderDescriptorBindingSystem>();
+            auto *render_context = world->GetRenderContext();
+            auto *graphics_context = render_context
+                ? render_context->GetGraphicsContext()
+                : world->GetGraphicsContext();
+            auto *domain_manager = graphics_context
+                ? graphics_context->GetResourceDomainManager() : nullptr;
+            auto *bindless_mgr = graphics_context
+                ? graphics_context->
+                    GetManager<graph::BindlessTextureManager>()
+                : nullptr;
+            if (!rdbs || !domain_manager)
+                return false;
+
+            const char *owner_name =
+                GetPrimitiveOwnerName(primitive_comp);
+            for (int i = 0; i < plan.resources.GetCount(); ++i)
+            {
+                const graph::mtl::ResourceAcquirePlanEntry &entry =
+                    plan.resources[i];
+                if (entry.kind
+                    == graph::mtl::ResourceAcquireKind::Texture)
+                {
+                    const graph::mtl::RecipeTextureBinding
+                        *recipe_binding = nullptr;
+                    for (const auto &binding : active_recipe.textures)
+                    {
+                        if (binding.slot == entry.texture_slot
+                         && !binding.use_direct_value
+                         && graph::mtl::
+                                GetMaterialTextureAssetIdentityHash(
+                                    binding.resource_id.data(),
+                                    static_cast<uint32_t>(
+                                        binding.resource_id.size()))
+                                == entry.asset_identity_hash)
+                        {
+                            recipe_binding = &binding;
+                            break;
+                        }
+                    }
+                    const auto *resource =
+                        primitive_comp->GetMaterialTextureResource(
+                            entry.texture_slot);
+                    if (!recipe_binding
+                     || !resource
+                     || resource->use_direct_value
+                     || !bindless_mgr)
+                    {
+                        GLogError(
+                            "[DeferredResource] Texture acquisition failed: owner=%s slot=%u recipe=%d resource=%d bindless=%d",
+                            owner_name,
+                            static_cast<uint32_t>(
+                                entry.texture_slot),
+                            recipe_binding ? 1 : 0,
+                            resource ? 1 : 0,
+                            bindless_mgr ? 1 : 0);
+                        return false;
+                    }
+
+                    const std::string resource_id =
+                        resource->resource_id.empty()
+                            ? BuildTextureResourceId(resource->texture)
+                            : resource->resource_id;
+                    if (graph::mtl::
+                            GetMaterialTextureAssetIdentityHash(
+                                resource_id.data(),
+                                static_cast<uint32_t>(
+                                    resource_id.size()))
+                            != entry.asset_identity_hash)
+                    {
+                        GLogError(
+                            "[DeferredResource] Texture identity mismatch: owner=%s slot=%u",
+                            owner_name,
+                            static_cast<uint32_t>(
+                                entry.texture_slot));
+                        return false;
+                    }
+
+                    uint32_t handle = 0;
+                    switch (resource->kind)
+                    {
+                    case PrimitiveComponent::
+                            MaterialTextureResourceKind::Texture2D:
+                        handle = rdbs->RegisterTexture2DResource(
+                            resource_id,
+                            resource->texture,
+                            resource->sampler,
+                            bindless_mgr);
+                        break;
+                    case PrimitiveComponent::
+                            MaterialTextureResourceKind::Texture2DArray:
+                        handle = rdbs->RegisterTexture2DArrayResource(
+                            resource_id,
+                            resource->texture,
+                            resource->sampler,
+                            bindless_mgr);
+                        break;
+                    default:
+                        break;
+                    }
+                    if (handle == 0)
+                        return false;
+
+                    bool descriptor_registered = false;
+                    for (const auto &requirement :
+                         material_program->
+                            GetMaterialResourceLayout().requirements)
+                    {
+                        if (requirement.texture_slot
+                                != entry.texture_slot
+                         || requirement.semantic != entry.semantic
+                         || !requirement.name
+                         || !*requirement.name)
+                            continue;
+
+                        if (entry.semantic
+                            == graph::mtl::DescriptorSemantic::
+                                MaterialSampler)
+                        {
+                            descriptor_registered =
+                                rdbs->
+                                    RegisterMaterialTextureSampler(
+                                        material_program,
+                                        requirement.name,
+                                        resource->texture,
+                                        resource->sampler);
+                        }
+                        else
+                        {
+                            descriptor_registered =
+                                rdbs->RegisterMaterialTexture(
+                                    material_program,
+                                    requirement.name,
+                                    resource->texture);
+                        }
+                        break;
+                    }
+                    if (!descriptor_registered)
+                        return false;
+                    continue;
+                }
+
+                if (entry.kind
+                    != graph::mtl::ResourceAcquireKind::StorageBuffer)
+                    return false;
+
+                const graph::mtl::RecipeSSBOAssetBinding
+                    *recipe_binding = nullptr;
+                for (const auto &binding : active_recipe.ssbo_assets)
+                {
+                    if (binding.data_slot == entry.data_slot
+                     && binding.ssbo_type == entry.ssbo_type
+                     && graph::mtl::GetMaterialDataAssetIdentityHash(
+                            binding.ssbo_type,
+                            binding.ssbo_id,
+                            binding.data_slot)
+                            == entry.asset_identity_hash)
+                    {
+                        recipe_binding = &binding;
+                        break;
+                    }
+                }
+                if (!recipe_binding)
+                    return false;
+
+                const graph::mtl::MaterialResourceRequirement
+                    *layout_requirement = nullptr;
+                for (const auto &requirement :
+                     material_program->
+                        GetMaterialResourceLayout().requirements)
+                {
+                    if (requirement.semantic
+                            == graph::mtl::DescriptorSemantic::
+                                MaterialDataSlotData
+                     && requirement.data_slot == entry.data_slot
+                     && requirement.ssbo_type == entry.ssbo_type)
+                    {
+                        layout_requirement = &requirement;
+                        break;
+                    }
+                }
+                if (!layout_requirement || !layout_requirement->name)
+                    return false;
+
+                const graph::mtl::SSBOAddress address{
+                    entry.ssbo_type,
+                    recipe_binding->ssbo_id,
+                    0};
+                graph::ResourceDomainBinding domain_binding{};
+                if (!domain_manager->TryGetBinding(
+                        address, domain_binding)
+                 || !domain_binding.buffer
+                 || domain_binding.element_stride == 0)
+                {
+                    const auto *resource =
+                        primitive_comp->GetMaterialDataSlotResource(
+                            layout_requirement->name,
+                            entry.data_slot);
+                    if (!resource
+                     || !resource->buffer
+                     || resource->ssbo_id != recipe_binding->ssbo_id)
+                        return false;
+
+                    if (!rdbs->RegisterMaterialStructLayout(
+                            entry.ssbo_type,
+                            recipe_binding->ssbo_id,
+                            resource->byte_stride)
+                     || !domain_manager->RegisterBuffer(
+                            address,
+                            resource->buffer,
+                            resource->element_capacity))
+                        return false;
+
+                    if (!domain_manager->TryGetBinding(
+                            address, domain_binding)
+                     || !domain_binding.buffer
+                     || domain_binding.element_stride == 0)
+                        return false;
+                }
+
+                if (!rdbs->RegisterMaterialStructLayout(
+                        entry.ssbo_type,
+                        recipe_binding->ssbo_id,
+                        domain_binding.element_stride))
+                    return false;
+            }
+            return true;
+        }
+
         void InvalidateRecipeRuntime(const std::shared_ptr<MaterialComponent> &material_comp,
                                      const bool clear_program)
         {
@@ -507,6 +753,8 @@ namespace hgl::ecs
             material_comp->bindings_dirty = true;
             material_comp->resources_dirty = true;
             material_comp->valid = false;
+            material_comp->runtime_state =
+                MaterialRuntimeState::Unresolved;
 
             if (clear_program)
             {
@@ -657,13 +905,13 @@ namespace hgl::ecs
                 binding_view);
         }
 
-        graph::mtl::ResourceAcquirePlan shadow_resource_plan{};
+        graph::mtl::ResourceAcquirePlan active_resource_plan{};
         if (binding_view.IsRuntimeReady()
          && !graph::mtl::BuildActiveProfileResourceAcquirePlan(
-                binding_view, shadow_resource_plan))
+                binding_view, active_resource_plan))
         {
             GLogWarning(
-                "[DeferredResourceShadow] plan build failed: owner=%s program=%s",
+                "[DeferredResource] plan build failed: owner=%s program=%s",
                 GetPrimitiveOwnerName(primitive_comp),
                 resolved_program->GetName().c_str());
             return false;
@@ -690,33 +938,33 @@ namespace hgl::ecs
 
         material_comp->program = resolved_program;
         material_comp->active_profile_binding_view = binding_view;
-        material_comp->shadow_resource_acquire_plan =
-            shadow_resource_plan;
-        material_comp->has_shadow_resource_acquire_plan =
+        material_comp->active_resource_acquire_plan =
+            active_resource_plan;
+        material_comp->has_active_resource_acquire_plan =
             binding_view.IsRuntimeReady();
-        if (material_comp->has_shadow_resource_acquire_plan)
+        if (material_comp->has_active_resource_acquire_plan)
         {
             uint32_t planned_textures = 0;
             uint32_t planned_data = 0;
             for (int i = 0;
-                 i < shadow_resource_plan.resources.GetCount();
+                 i < active_resource_plan.resources.GetCount();
                  ++i)
             {
-                if (shadow_resource_plan.resources[i].kind
+                if (active_resource_plan.resources[i].kind
                         == graph::mtl::ResourceAcquireKind::Texture)
                     ++planned_textures;
-                else if (shadow_resource_plan.resources[i].kind
+                else if (active_resource_plan.resources[i].kind
                         == graph::mtl::ResourceAcquireKind::
                             StorageBuffer)
                     ++planned_data;
             }
             GLogVerbose(
-                "[DeferredResourceShadow] owner=%s program=%s plan_hash=%llu planned_texture=%u planned_data=%u recipe_texture=%zu recipe_data=%zu unused_texture=%u unused_data=%u",
+                "[DeferredResource] owner=%s program=%s plan_hash=%llu planned_texture=%u planned_data=%u recipe_texture=%zu recipe_data=%zu unused_texture=%u unused_data=%u",
                 GetPrimitiveOwnerName(primitive_comp),
                 resolved_program->GetName().c_str(),
                 static_cast<unsigned long long>(
                     graph::mtl::GetResourceAcquirePlanHash(
-                        shadow_resource_plan)),
+                        active_resource_plan)),
                 planned_textures,
                 planned_data,
                 active_profile_recipe.textures.size(),
@@ -725,6 +973,9 @@ namespace hgl::ecs
                 binding_view.unused_recipe_data_count);
         }
         material_comp->program_dirty = false;
+        material_comp->resource_loading_mode =
+            resource_loading_mode;
+        material_comp->MarkProgramResolved();
         material_comp->recipe_hash = recipe_hash;
         material_comp->program_build_context_hash =
             build_context_hash;
@@ -799,7 +1050,7 @@ namespace hgl::ecs
             material_comp->data_index_values.clear();
             material_comp->bindings_dirty = false;
             material_comp->resources_dirty = false;
-            material_comp->valid = true;
+            material_comp->valid = false;
             return true;
         }
 
@@ -958,7 +1209,7 @@ namespace hgl::ecs
         material_comp->data_index_row = instance_data.data_index_row;
         material_comp->bindings_dirty = false;
         material_comp->resources_dirty = false;
-        material_comp->valid = true;
+        material_comp->valid = false;
         return true;
     }
 
@@ -1044,51 +1295,114 @@ namespace hgl::ecs
                 if (!material_comp)
                     material_comp = entity->AddComponent<MaterialComponent>();
 
-                if (!PrepareRecipeAuthoringResources(world, primitiveComp, nullptr))
+                if (material_comp->resource_loading_mode
+                        != resource_loading_mode)
                 {
-                    GLogWarning("[RenderPrimitiveCollectSystem] PrepareRecipeAuthoringResources(pre-resolve) failed for %s",
-                                primitiveComp->GetOwner() ? primitiveComp->GetOwner()->GetName().c_str() : "<no-owner>");
+                    material_comp->program_dirty = true;
+                    InvalidateRecipeRuntime(material_comp, false);
+                    material_comp->resource_loading_mode =
+                        resource_loading_mode;
+                }
+
+                const bool legacy_eager =
+                    resource_loading_mode
+                        == MaterialResourceLoadingMode::LegacyEager;
+                if (legacy_eager
+                 && !PrepareRecipeAuthoringResources(
+                        world, primitiveComp, nullptr))
+                {
+                    GLogWarning(
+                        "[RenderPrimitiveCollectSystem] Legacy eager resource preparation failed for %s",
+                        GetPrimitiveOwnerName(primitiveComp));
                     InvalidateRecipeRuntime(material_comp, true);
+                    material_comp->MarkFailed();
+                }
+                else if (!ResolveMaterialProgramForPrimitive(
+                            primitiveComp, material_comp))
+                {
+                    GLogWarning(
+                        "[RenderPrimitiveCollectSystem] ResolveMaterialProgramForPrimitive failed for %s",
+                        GetPrimitiveOwnerName(primitiveComp));
+                    InvalidateRecipeRuntime(material_comp, true);
+                    material_comp->MarkFailed();
                 }
                 else
                 {
-                    const bool resolved_program = ResolveMaterialProgramForPrimitive(primitiveComp, material_comp);
-                    if (!resolved_program)
+                    material_comp->MarkResourcesPending();
+                    const bool resources_ready = legacy_eager
+                        ? PrepareRecipeAuthoringResources(
+                            world,
+                            primitiveComp,
+                            material_comp->program)
+                        : material_comp->
+                                has_active_resource_acquire_plan
+                         && PrepareActivePlanResources(
+                                world,
+                                primitiveComp,
+                                material_comp->program,
+                                material_comp->
+                                    active_resource_acquire_plan);
+                    if (!resources_ready)
                     {
-                        GLogWarning("[RenderPrimitiveCollectSystem] ResolveMaterialProgramForPrimitive failed for %s",
-                                    primitiveComp->GetOwner() ? primitiveComp->GetOwner()->GetName().c_str() : "<no-owner>");
-                        InvalidateRecipeRuntime(material_comp, true);
+                        GLogWarning(
+                            "[RenderPrimitiveCollectSystem] Material resources failed for %s program=%s mode=%s",
+                            GetPrimitiveOwnerName(primitiveComp),
+                            material_comp->program
+                                ? material_comp->program->
+                                    GetName().c_str()
+                                : "<null>",
+                            legacy_eager
+                                ? "LegacyEager" : "ActivePlan");
+                        InvalidateRecipeRuntime(
+                            material_comp, false);
+                        material_comp->MarkFailed();
+                    }
+                    else if (!MaterializeRecipeRowsForPrimitive(
+                                primitiveComp, material_comp))
+                    {
+                        GLogWarning(
+                            "[RenderPrimitiveCollectSystem] MaterializeRecipeRowsForPrimitive failed for %s program=%s",
+                            GetPrimitiveOwnerName(primitiveComp),
+                            material_comp->program
+                                ? material_comp->program->
+                                    GetName().c_str()
+                                : "<null>");
+                        InvalidateRecipeRuntime(
+                            material_comp, false);
+                        material_comp->MarkFailed();
+                    }
+                    else if (!EnsureRuntimeGeometryFromAsset(
+                                world, primitiveComp, material_comp))
+                    {
+                        GLogWarning(
+                            "[RenderPrimitiveCollectSystem] EnsureRuntimeGeometryFromAsset failed for %s",
+                            GetPrimitiveOwnerName(primitiveComp));
+                        material_comp->MarkFailed();
+                    }
+                    else if (!ResolveRuntimePipelineForPrimitive(
+                                primitiveComp, material_comp))
+                    {
+                        GLogWarning(
+                            "[RenderPrimitiveCollectSystem] ResolveRuntimePipelineForPrimitive failed for %s",
+                            GetPrimitiveOwnerName(primitiveComp));
+                        material_comp->MarkFailed();
                     }
                     else
                     {
-                        if (!PrepareRecipeAuthoringResources(world, primitiveComp, material_comp->program))
-                        {
-                            GLogWarning("[RenderPrimitiveCollectSystem] PrepareRecipeAuthoringResources(post-resolve) failed for %s program=%s",
-                                        primitiveComp->GetOwner() ? primitiveComp->GetOwner()->GetName().c_str() : "<no-owner>",
-                                        material_comp->program ? material_comp->program->GetName().c_str() : "<null>");
-                            InvalidateRecipeRuntime(material_comp, false);
-                        }
-                        else
-                        {
-                            const bool materialized_rows = MaterializeRecipeRowsForPrimitive(primitiveComp, material_comp);
-                            if (!materialized_rows)
-                            {
-                                GLogWarning("[RenderPrimitiveCollectSystem] MaterializeRecipeRowsForPrimitive failed for %s program=%s",
-                                            primitiveComp->GetOwner() ? primitiveComp->GetOwner()->GetName().c_str() : "<no-owner>",
-                                            material_comp->program ? material_comp->program->GetName().c_str() : "<null>");
-                                InvalidateRecipeRuntime(material_comp, false);
-                            }
-                            else if (!EnsureRuntimeGeometryFromAsset(world, primitiveComp, material_comp))
-                            {
-                                GLogWarning("[RenderPrimitiveCollectSystem] EnsureRuntimeGeometryFromAsset failed for %s",
-                                            primitiveComp->GetOwner() ? primitiveComp->GetOwner()->GetName().c_str() : "<no-owner>");
-                            }
-                            else if (!ResolveRuntimePipelineForPrimitive(primitiveComp, material_comp))
-                            {
-                                GLogWarning("[RenderPrimitiveCollectSystem] ResolveRuntimePipelineForPrimitive failed for %s",
-                                            primitiveComp->GetOwner() ? primitiveComp->GetOwner()->GetName().c_str() : "<no-owner>");
-                            }
-                        }
+                        material_comp->MarkValid();
+                        GLogVerbose(
+                            "[DeferredResource] owner=%s state=%s mode=%s plan=%llu",
+                            GetPrimitiveOwnerName(primitiveComp),
+                            GetMaterialRuntimeStateName(
+                                material_comp->runtime_state),
+                            GetMaterialResourceLoadingModeName(
+                                material_comp->
+                                    resource_loading_mode),
+                            static_cast<unsigned long long>(
+                                graph::mtl::
+                                    GetResourceAcquirePlanHash(
+                                        material_comp->
+                                            active_resource_acquire_plan)));
                     }
                 }
             }
