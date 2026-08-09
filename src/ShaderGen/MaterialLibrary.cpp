@@ -7,6 +7,7 @@
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/shadergen/ShaderProgramBuildSpec.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
+#include <hgl/shadergen/ResolvedModuleGraphBuilder.h>
 #include <hgl/log/Log.h>
 #include "2d/Build2DCommon.h"
 #include "3d/DefinitionDescriptorBuilder3D.h"
@@ -756,6 +757,9 @@ bool MergeMaterialDefinitionFile(const MaterialDefinition &legacy,
     out.ubo_requirements = normalized_file.ubo_requirements;
     out.texture_slot_decls = normalized_file.texture_slot_decls;
     out.code_module_requirements = normalized_file.code_module_requirements;
+    out.surface_intent_id = normalized_file.surface_intent_id;
+    out.surface_profile_projections =
+        normalized_file.surface_profile_projections;
     out.fragment_material_source_module =
         normalized_file.fragment_material_source_module;
     out.fragment_ntb_module = normalized_file.fragment_ntb_module;
@@ -788,6 +792,27 @@ ShaderProgramBuildSpec *CreateMaterialFromDefinition(
 {
     MaterialDefinition canonical_definition = definition;
     NormalizeMaterialFragmentSource(canonical_definition);
+
+    if (request.migration.implementation_path
+        == ShaderGenImplementationPath::Shadow)
+    {
+        ResolvedModuleGraph shadow_graph{};
+        ResolvedModuleGraphBuildDiagnostic diagnostic{};
+        const bool shadow_built = BuildMaterialResolvedModuleGraph(
+            canonical_definition,
+            GetGLSLCodeModuleRegistry(),
+            shadow_graph,
+            diagnostic);
+
+        ShaderGenDiagnosticEvent event{};
+        event.kind = shadow_built
+            ? ShaderGenDiagnosticEventKind::ShadowModuleGraphBuilt
+            : ShaderGenDiagnosticEventKind::ShadowModuleGraphFailed;
+        event.contract_digest = shadow_built
+            ? GetResolvedModuleGraphHash(shadow_graph) : 0;
+        ReportShaderGenDiagnostic(request.migration, event);
+    }
+
     return BuildGenericMaterial(profile, request, canonical_definition);
 }
 

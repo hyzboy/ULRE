@@ -5,6 +5,7 @@
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/shadergen/ShaderProgramBuildSpec.h>
+#include <hgl/shadergen/ResolvedModuleGraphBuilder.h>
 #include <hgl/shadergen/ShaderCreateInfo.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/shadergen/ShaderArtifactStore.h>
@@ -3791,6 +3792,218 @@ namespace
         return result;
     }
 
+    static GateResult RunShadowMaterialModuleGraphCase()
+    {
+        GateResult result;
+        result.name = "I2.shadow-material-module-graph";
+
+        GLSLCodeModuleRegistry &registry = GetGLSLCodeModuleRegistry();
+        static const char *definition_ids[] =
+        {
+            "Lit",
+            "VertexPaletteColor",
+            "VertexLuminance",
+            "DebugNormalColor",
+            "VertexColor",
+            "SkyMinimal",
+            "UnlitTexture",
+            "SkyCubeMap",
+            "Texture2DArray",
+            "LitTextureArray"
+        };
+
+        for (const char *definition_id : definition_ids)
+        {
+            MaterialDefinition definition{};
+            if (!TryGetMaterialDefinitionByID(definition_id, definition))
+            {
+                result.diagnostics.emplace_back(
+                    std::string("missing module-graph definition: ")
+                    + definition_id);
+                continue;
+            }
+
+            ResolvedModuleGraph first_graph{};
+            ResolvedModuleGraph second_graph{};
+            ResolvedModuleGraphBuildDiagnostic diagnostic{};
+            if (!BuildMaterialResolvedModuleGraph(
+                    definition, registry, first_graph, diagnostic))
+            {
+                result.diagnostics.emplace_back(
+                    std::string("module graph build failed: ")
+                    + definition_id + " error="
+                    + GetResolvedModuleGraphBuildErrorName(
+                        diagnostic.error)
+                    + " module=" + diagnostic.module_name.c_str());
+                continue;
+            }
+            if (!BuildMaterialResolvedModuleGraph(
+                    definition, registry, second_graph, diagnostic)
+             || GetResolvedModuleGraphHash(first_graph) == 0
+             || GetResolvedModuleGraphHash(first_graph)
+                    != GetResolvedModuleGraphHash(second_graph))
+            {
+                result.diagnostics.emplace_back(
+                    std::string("module graph is not deterministic: ")
+                    + definition_id);
+            }
+        }
+
+        const auto build_synthetic_registry = [](
+            GLSLCodeModuleRegistry &out_registry,
+            GLSLCodeModuleDefinition &dependency,
+            GLSLCodeModuleDefinition &root,
+            GLSLCodeModuleDefinition &stage2,
+            GLSLCodeModuleDefinition &stage3,
+            GLSLCodeModuleDependency &root_dependency,
+            const uint16_t first_id,
+            const bool reverse_order) -> bool
+        {
+            dependency = {};
+            dependency.id = static_cast<GLSLCodeModuleID>(first_id);
+            dependency.name = "shadow_dependency";
+            dependency.glsl_code = "// shadow dependency";
+            dependency.kind = GLSLCodeModuleKind::Utility;
+            dependency.metadata_version = 1;
+
+            root_dependency = {
+                dependency.id,
+                GLSLCodeModuleLegacyMetadataVersion,
+                GLSLCodeModuleCurrentMetadataVersion
+            };
+            root = {};
+            root.id = static_cast<GLSLCodeModuleID>(first_id + 1);
+            root.name = "shadow_root";
+            root.glsl_code = "// shadow root";
+            root.kind = GLSLCodeModuleKind::FragmentShader;
+            root.metadata_version = 1;
+            root.dependencies = &root_dependency;
+            root.dependency_count = 1;
+
+            stage2 = {};
+            stage2.id = static_cast<GLSLCodeModuleID>(first_id + 2);
+            stage2.name = "s2_passthrough3d";
+            stage2.glsl_code = "// synthetic stage 2";
+            stage2.kind = GLSLCodeModuleKind::Position;
+            stage2.metadata_version = 1;
+
+            stage3 = {};
+            stage3.id = static_cast<GLSLCodeModuleID>(first_id + 3);
+            stage3.name = "s3_world_camera_vp";
+            stage3.glsl_code = "// synthetic stage 3";
+            stage3.kind = GLSLCodeModuleKind::Transform;
+            stage3.metadata_version = 1;
+
+            if (reverse_order)
+            {
+                return out_registry.Register(stage3)
+                    && out_registry.Register(stage2)
+                    && out_registry.Register(root)
+                    && out_registry.Register(dependency);
+            }
+
+            return out_registry.Register(dependency)
+                && out_registry.Register(root)
+                && out_registry.Register(stage2)
+                && out_registry.Register(stage3);
+        };
+
+        GLSLCodeModuleRegistry first_registry;
+        GLSLCodeModuleRegistry second_registry;
+        GLSLCodeModuleDefinition first_dependency{};
+        GLSLCodeModuleDefinition first_root{};
+        GLSLCodeModuleDefinition first_stage2{};
+        GLSLCodeModuleDefinition first_stage3{};
+        GLSLCodeModuleDependency first_root_dependency{};
+        GLSLCodeModuleDefinition second_dependency{};
+        GLSLCodeModuleDefinition second_root{};
+        GLSLCodeModuleDefinition second_stage2{};
+        GLSLCodeModuleDefinition second_stage3{};
+        GLSLCodeModuleDependency second_root_dependency{};
+
+        if (!build_synthetic_registry(
+                first_registry,
+                first_dependency,
+                first_root,
+                first_stage2,
+                first_stage3,
+                first_root_dependency,
+                400,
+                false)
+         || !build_synthetic_registry(
+                second_registry,
+                second_dependency,
+                second_root,
+                second_stage2,
+                second_stage3,
+                second_root_dependency,
+                500,
+                true))
+        {
+            result.diagnostics.emplace_back(
+                "failed to build synthetic module registries");
+        }
+        else
+        {
+            MaterialDefinition definition{};
+            definition.definition_id = "SyntheticShadowGraph";
+            SetMaterialFragmentSource(
+                definition, "synthetic/shadow_root.frag.glsl");
+            definition.vertex_node_config = MakeDefault3DNodeConfig();
+
+            ResolvedModuleGraph first_graph{};
+            ResolvedModuleGraph second_graph{};
+            ResolvedModuleGraphBuildDiagnostic diagnostic{};
+            hgl::ValueArray<hgl::uint8> first_bytes;
+            hgl::ValueArray<hgl::uint8> second_bytes;
+            if (!BuildMaterialResolvedModuleGraph(
+                    definition,
+                    first_registry,
+                    first_graph,
+                    diagnostic)
+             || !BuildMaterialResolvedModuleGraph(
+                    definition,
+                    second_registry,
+                    second_graph,
+                    diagnostic)
+             || !SerializeResolvedModuleGraph(first_graph, first_bytes)
+             || !SerializeResolvedModuleGraph(second_graph, second_bytes)
+             || first_bytes.GetCount() != second_bytes.GetCount()
+             || std::memcmp(
+                    first_bytes.GetData(),
+                    second_bytes.GetData(),
+                    static_cast<size_t>(first_bytes.GetCount())) != 0
+             || GetResolvedModuleGraphHash(first_graph)
+                    != GetResolvedModuleGraphHash(second_graph))
+            {
+                result.diagnostics.emplace_back(
+                    "module graph must ignore registry IDs and order");
+            }
+        }
+
+        MaterialDefinition missing_root{};
+        missing_root.definition_id = "MissingShadowRoot";
+        SetMaterialFragmentSource(
+            missing_root, "synthetic/not_registered.frag.glsl");
+        missing_root.vertex_node_config = MakeDefault3DNodeConfig();
+        ResolvedModuleGraph missing_graph{};
+        ResolvedModuleGraphBuildDiagnostic missing_diagnostic{};
+        if (BuildMaterialResolvedModuleGraph(
+                missing_root,
+                first_registry,
+                missing_graph,
+                missing_diagnostic)
+         || missing_diagnostic.error
+                != ResolvedModuleGraphBuildError::MissingRootModule)
+        {
+            result.diagnostics.emplace_back(
+                "missing module roots must fail explicitly");
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     constexpr uint32_t RESOLVER_ANY  = uint32_t(GLSLCodeModuleNumericClass::Any);
     constexpr uint32_t RESOLVER_FLOAT = uint32_t(GLSLCodeModuleNumericClass::Float);
     constexpr uint32_t RESOLVER_NORM  = uint32_t(GLSLCodeModuleNumericClass::Normalized);
@@ -4886,6 +5099,7 @@ int main(const int argc, char **argv)
     if (run_glsl) results.push_back(RunProviderResourceManifestCase());
     if (run_glsl) results.push_back(RunGLSLCodeModuleFileCase());
     if (run_glsl) results.push_back(RunGLSLCodeModuleMetadataValidationCase());
+    if (run_glsl) results.push_back(RunShadowMaterialModuleGraphCase());
     if (run_glsl) results.push_back(RunCapabilityResolverCase());
     if (run_interface) results.push_back(RunShaderSemanticRegistryCase());
     if (run_materialization) results.push_back(RunSurfaceProfileModelCase());

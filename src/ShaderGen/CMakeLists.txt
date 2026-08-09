@@ -46,8 +46,10 @@ SOURCE_GROUP("Shader Semantic Registry" FILES ${SHADER_SEMANTIC_REGISTRY_FILES})
 
 SET(CANONICAL_SHADER_CONTRACT_FILES
     ${SHADERGEN_INCLUDE_PATH}/CanonicalShaderContract.h
+    ${SHADERGEN_INCLUDE_PATH}/ResolvedModuleGraphBuilder.h
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialProgramContract.h
     CanonicalShaderContract.cpp
+    ResolvedModuleGraphBuilder.cpp
     MaterialProgramContract.cpp
     common/CanonicalContractWriter.h)
 
