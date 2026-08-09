@@ -425,6 +425,41 @@ namespace hgl::graph
         // 6. 替换 FS 中的 SURFACE_FUNCTION_FILE
         fs_source = ReplaceSurfaceInclude(fs_source, surface_rel);
 
+        mtl::MaterialCoverageContract default_coverage_contract{};
+        const mtl::MaterialCoverageContract *coverage_contract =
+            module_options.coverage_contract
+                ? module_options.coverage_contract
+                : &default_coverage_contract;
+        const mtl::ShaderProgramPurpose output_purpose =
+            module_options.output_contract
+                ? module_options.output_contract->purpose
+                : mtl::GetShaderProgramPurpose(pass);
+        if (output_purpose == mtl::ShaderProgramPurpose::DepthOnly
+         || output_purpose == mtl::ShaderProgramPurpose::ShadowDepth)
+        {
+            std::string covered_source;
+            const hgl::ValueArray<
+                mtl::InterStageSemanticContractEntry> empty_inputs;
+            const auto &coverage_inputs =
+                module_options.fragment_inputs
+                    ? *module_options.fragment_inputs
+                    : empty_inputs;
+            if (!mtl::ApplyDepthCoverageContract(
+                    *coverage_contract,
+                    coverage_inputs,
+                    module_options.material_source_module,
+                    surface_rel.c_str(),
+                    fs_source,
+                    covered_source))
+            {
+                result.error_message =
+                    "Failed to apply depth coverage contract";
+                result.success = false;
+                return result;
+            }
+            fs_source = std::move(covered_source);
+        }
+
         if (module_options.fragment_inputs)
         {
             std::string contracted_source;

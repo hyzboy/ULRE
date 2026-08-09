@@ -4,6 +4,7 @@
 #include<hgl/shadergen/contract/ShaderGenContract.h>
 #include<hgl/shadergen/ShaderGenMigration.h>
 #include<hgl/shadergen/CanonicalShaderContract.h>
+#include<hgl/shadergen/MaterialCoverageContract.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/glsl/GLSLCodeModuleCapabilityResolver.h>
 #include<hgl/mtl/MaterializationSpec.h>
@@ -90,6 +91,11 @@ struct MaterialResolvedVertexABI
 VertexShaderNodeConfig ResolveMaterialVertexNodeConfig(
     const MaterialDefinition &definition,
     const MaterialDefinitionBuildRequest &request) noexcept;
+
+MaterialVertexVaryingConfig ResolveMaterialVertexVaryingConfig(
+    const MaterialDefinition &definition,
+    ShaderProgramPurpose purpose,
+    const MaterialCoverageContract &coverage) noexcept;
 
 uint64 HashMaterialProgramBuildContext(
     PrimitiveType primitive_type,

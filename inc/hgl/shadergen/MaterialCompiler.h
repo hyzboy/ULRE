@@ -43,6 +43,7 @@ struct CompositorMaterialBuildConfig
     // validates the declared VS/FS interface before compiling the local SPV.
     const ShaderProgramLinkSpec *program_link = nullptr;
     const ShaderResourceManifest *resource_manifest = nullptr;
+    bool merge_resource_manifest_material_slots = true;
     ShaderArtifactStore *artifact_store = nullptr;
     const MaterialDescriptorContract *descriptor_contract = nullptr;
     bool generate_only = false; // Preserve generated GLSL for contract tests without SPV compilation.

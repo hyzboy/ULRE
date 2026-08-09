@@ -131,6 +131,43 @@ namespace hgl::graph
             return GetVariant(0);
         }
 
+        const PrimitiveVariant *FindVariantByPurpose(
+            const PrimitiveVariantPurpose purpose,
+            const uint32_t preferred_index = 0) const
+        {
+            const PrimitiveVariant *preferred =
+                GetVariant(preferred_index);
+            if (preferred
+             && preferred->IsValid()
+             && preferred->purpose == purpose)
+                return preferred;
+
+            for (uint32_t i = 0; i < variant_count_; ++i)
+            {
+                const PrimitiveVariant *variant = GetVariant(i);
+                if (variant
+                 && variant->IsValid()
+                 && variant->purpose == purpose)
+                    return variant;
+            }
+
+            if (purpose != PrimitiveVariantPurpose::Surface)
+            {
+                for (uint32_t i = 0; i < variant_count_; ++i)
+                {
+                    const PrimitiveVariant *variant = GetVariant(i);
+                    if (variant
+                     && variant->IsValid()
+                     && variant->purpose
+                        == PrimitiveVariantPurpose::Surface)
+                        return variant;
+                }
+            }
+
+            return preferred && preferred->IsValid()
+                ? preferred : GetDefaultVariant();
+        }
+
         const mtl::MaterialRecipe *GetMaterialRecipe() const
         {
             const PrimitiveVariant *variant = GetDefaultVariant();

@@ -25,6 +25,7 @@
 #include <hgl/graph/glsl/ShaderResourceManifest.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
+#include <hgl/graph/asset/PrimitiveAsset.h>
 #include <hgl/log/Log.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/filesystem/Path.h>
@@ -2522,12 +2523,19 @@ namespace
                 const auto build = [&](
                     const ShaderProgramPurpose purpose,
                     const bool override_purpose,
-                    const PassType pass)
+                    const PassType pass,
+                    const bool alpha_test,
+                    const bool dither,
+                    const bool alpha_to_coverage)
                 {
                     MaterialDefinition selected = lit;
                     selected.compositor_pass = pass;
                     MaterialDefinitionBuildRequest request{};
                     request.recipe.mtl_def_id = selected.definition_id;
+                    request.recipe.alpha_test = alpha_test;
+                    request.recipe.dither = dither;
+                    request.recipe.pipeline_config.alpha_to_coverage =
+                        alpha_to_coverage;
                     request.geometry_vertex_format = &geometry;
                     request.generate_only = true;
                     request.override_shader_program_purpose =
@@ -2541,25 +2549,62 @@ namespace
                 const auto opaque = build(
                     ShaderProgramPurpose::ForwardColor,
                     false,
-                    PassType::ForwardOpaque);
+                    PassType::ForwardOpaque,
+                    false,
+                    false,
+                    false);
                 const auto transparent = build(
                     ShaderProgramPurpose::ForwardColor,
                     false,
-                    PassType::ForwardTransparent);
+                    PassType::ForwardTransparent,
+                    false,
+                    false,
+                    false);
                 const auto depth = build(
                     ShaderProgramPurpose::DepthOnly,
                     true,
-                    PassType::ForwardOpaque);
+                    PassType::ForwardOpaque,
+                    false,
+                    false,
+                    false);
                 const auto shadow = build(
                     ShaderProgramPurpose::ShadowDepth,
                     true,
-                    PassType::ForwardOpaque);
+                    PassType::ForwardOpaque,
+                    false,
+                    false,
+                    false);
+                const auto masked_depth = build(
+                    ShaderProgramPurpose::DepthOnly,
+                    true,
+                    PassType::ForwardOpaque,
+                    true,
+                    false,
+                    false);
+                const auto dither_shadow = build(
+                    ShaderProgramPurpose::ShadowDepth,
+                    true,
+                    PassType::ForwardOpaque,
+                    false,
+                    true,
+                    false);
+                const auto a2c_depth = build(
+                    ShaderProgramPurpose::DepthOnly,
+                    true,
+                    PassType::ForwardOpaque,
+                    false,
+                    false,
+                    true);
 
                 if (!opaque || !transparent || !depth || !shadow
+                 || !masked_depth || !dither_shadow || !a2c_depth
                  || !opaque->HasProgramLink()
                  || !transparent->HasProgramLink()
                  || !depth->HasProgramLink()
-                 || !shadow->HasProgramLink())
+                 || !shadow->HasProgramLink()
+                 || !masked_depth->HasProgramLink()
+                 || !dither_shadow->HasProgramLink()
+                 || !a2c_depth->HasProgramLink())
                 {
                     result.diagnostics.emplace_back(
                         "production output contract builds failed");
@@ -2571,6 +2616,21 @@ namespace
                             ShaderStage::Fragment)->GetFinalGLSL();
                     const std::string &depth_fs =
                         depth->GetStageShader(
+                            ShaderStage::Fragment)->GetFinalGLSL();
+                    const std::string &depth_vs =
+                        depth->GetStageShader(
+                            ShaderStage::Vertex)->GetFinalGLSL();
+                    const std::string &masked_depth_fs =
+                        masked_depth->GetStageShader(
+                            ShaderStage::Fragment)->GetFinalGLSL();
+                    const std::string &masked_depth_vs =
+                        masked_depth->GetStageShader(
+                            ShaderStage::Vertex)->GetFinalGLSL();
+                    const std::string &dither_shadow_fs =
+                        dither_shadow->GetStageShader(
+                            ShaderStage::Fragment)->GetFinalGLSL();
+                    const std::string &a2c_depth_fs =
+                        a2c_depth->GetStageShader(
                             ShaderStage::Fragment)->GetFinalGLSL();
                     if (opaque_fs.find(
                             "layout(location=0) out vec4 outColor;")
@@ -2584,10 +2644,71 @@ namespace
                      || depth_fs.find("WriteMaterialOutput(")
                             != std::string::npos
                      || depth_fs.find("ULRE_OUTPUT_CONTRACT")
-                            != std::string::npos)
+                            != std::string::npos
+                     || depth_fs.find("EvalAlpha(")
+                            != std::string::npos
+                     || depth_vs.find("fragDataIndexID")
+                            != std::string::npos
+                     || masked_depth_fs.find("EvalAlpha(")
+                            == std::string::npos
+                     || masked_depth_fs.find("HGLApplyAlpha(")
+                            == std::string::npos
+                     || masked_depth_fs.find(
+                            "#define HGL_ALPHA_TEST 1")
+                            == std::string::npos
+                     || masked_depth_fs.find("EvalLighting(")
+                            != std::string::npos
+                     || masked_depth_vs.find("fragWorldPos")
+                            != std::string::npos
+                     || dither_shadow_fs.find(
+                            "#define HGL_ALPHA_DITHER 1")
+                            == std::string::npos
+                     || dither_shadow_fs.find("EvalLighting(")
+                            != std::string::npos
+                     || a2c_depth_fs.find(
+                            "#define HGL_ALPHA_DITHER 1")
+                            == std::string::npos
+                     || a2c_depth_fs.find("EvalAlpha(")
+                            == std::string::npos)
                     {
                         result.diagnostics.emplace_back(
                             "production fragment output generation mismatch");
+                    }
+
+                    const auto has_material_resource =
+                        [](const ShaderProgramBuildSpec &spec)
+                    {
+                        for (const auto &requirement :
+                             spec.GetMaterialResourceLayout().requirements)
+                        {
+                            if (requirement.set_type
+                                == DescriptorSetType::Material)
+                                return true;
+                        }
+                        return false;
+                    };
+                    const auto has_sky_resource =
+                        [](const ShaderProgramBuildSpec &spec)
+                    {
+                        for (const auto &requirement :
+                             spec.GetMaterialResourceLayout().requirements)
+                        {
+                            if (requirement.semantic
+                                    == DescriptorSemantic::SkyInfo
+                             || requirement.semantic
+                                    == DescriptorSemantic::
+                                        SkyCubemapSampler)
+                                return true;
+                        }
+                        return false;
+                    };
+                    if (has_material_resource(*depth)
+                     || has_sky_resource(*depth)
+                     || !has_material_resource(*masked_depth)
+                     || has_sky_resource(*masked_depth))
+                    {
+                        result.diagnostics.emplace_back(
+                            "depth coverage resource pruning mismatch");
                     }
 
                     if (!(opaque->GetProgramLink().BuildKey()
@@ -2595,13 +2716,78 @@ namespace
                      || depth->GetProgramLink().BuildKey()
                             == shadow->GetProgramLink().BuildKey()
                      || opaque->GetProgramLink().BuildKey()
-                            == depth->GetProgramLink().BuildKey())
+                            == depth->GetProgramLink().BuildKey()
+                     || depth->GetProgramLink().BuildKey()
+                            == masked_depth->GetProgramLink().BuildKey())
                     {
                         result.diagnostics.emplace_back(
                             "output purpose ProgramKey identity mismatch");
                     }
                 }
             }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
+    static GateResult RunPrimitiveVariantPurposeCase()
+    {
+        GateResult result;
+        result.name = "V2.primitive-variant-purpose";
+
+        MaterialRecipe surface_recipe{};
+        surface_recipe.recipe_name = "Surface";
+        MaterialRecipe depth_recipe{};
+        depth_recipe.recipe_name = "Depth";
+        MaterialRecipe shadow_recipe{};
+        shadow_recipe.recipe_name = "Shadow";
+        const PrimitiveVariant variants[] =
+        {
+            {
+                &surface_recipe,
+                PrimitiveVariantPurpose::Surface,
+                0
+            },
+            {
+                &depth_recipe,
+                PrimitiveVariantPurpose::DepthOnly,
+                0
+            },
+            {
+                &shadow_recipe,
+                PrimitiveVariantPurpose::ShadowCaster,
+                0
+            }
+        };
+        const PrimitiveAsset asset(
+            nullptr,
+            variants,
+            static_cast<uint32_t>(std::size(variants)));
+
+        const PrimitiveVariant *surface =
+            asset.FindVariantByPurpose(
+                PrimitiveVariantPurpose::Surface, 2);
+        const PrimitiveVariant *depth =
+            asset.FindVariantByPurpose(
+                PrimitiveVariantPurpose::DepthOnly, 0);
+        const PrimitiveVariant *shadow =
+            asset.FindVariantByPurpose(
+                PrimitiveVariantPurpose::ShadowCaster, 0);
+        const PrimitiveVariant *fallback =
+            asset.FindVariantByPurpose(
+                PrimitiveVariantPurpose::Picking, 2);
+        if (!surface
+         || surface->material_recipe != &surface_recipe
+         || !depth
+         || depth->material_recipe != &depth_recipe
+         || !shadow
+         || shadow->material_recipe != &shadow_recipe
+         || !fallback
+         || fallback->material_recipe != &surface_recipe)
+        {
+            result.diagnostics.emplace_back(
+                "primitive variants were not resolved by purpose");
+        }
 
         result.passed = result.diagnostics.empty();
         return result;
@@ -3505,7 +3691,7 @@ namespace
                     result.diagnostics.emplace_back(
                         "Texture2D providers must declare one PBRSurface material SSBO");
 
-                if (manifest_2d.texture_count != 5
+                if (manifest_2d.texture_count != 6
                  || manifest_2d.texture_layer_count != 2)
                     result.diagnostics.emplace_back(
                         "Texture2D providers must declare samplers and per-slot bindless layer-table dependencies");
@@ -3540,7 +3726,7 @@ namespace
             else
             {
                 if (manifest_array.ssbo_count != 1
-                 || manifest_array.texture_count != 5
+                 || manifest_array.texture_count != 6
                  || manifest_array.texture_layer_count != 1
                  || manifest_array.texture_layers[0].slot != TextureSlot::Custom0)
                     result.diagnostics.emplace_back(
@@ -6311,6 +6497,7 @@ int main(const int argc, char **argv)
     if (run_materialization) results.push_back(RunMaterialDefinitionIdentityCase());
     if (run_pipeline) results.push_back(RunUnifiedMaterialBaselineCase());
     if (run_pipeline) results.push_back(RunMaterialOutputContractCase());
+    if (run_pipeline) results.push_back(RunPrimitiveVariantPurposeCase());
     if (run_pipeline) results.push_back(RunUnifiedPureColorFragmentCase());
     if (run_descriptor) results.push_back(RunUnifiedMaterialContractCase());
     if (run_materialization) results.push_back(RunTransformGraphModelCase());

@@ -4,6 +4,7 @@
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/shadergen/MaterialStageInterface.h>
 #include <hgl/shadergen/MaterialOutputContract.h>
+#include <hgl/shadergen/MaterialCoverageContract.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <cstdlib>
@@ -296,10 +297,33 @@ namespace hgl::graph::mtl
                 });
         }
 
+        MaterialCoverageContract coverage{};
+        if (!BuildMaterialCoverageContract(
+                definition,
+                request.recipe,
+                request.override_shader_program_purpose
+                    ? request.shader_program_purpose
+                    : GetShaderProgramPurpose(
+                        definition.compositor_pass),
+                coverage))
+            return SetShadowContractFailure(
+                out_diagnostic,
+                ShadowShaderContractBuildError::
+                    InvalidCanonicalContract,
+                "coverage contract build failed");
+        const MaterialVertexVaryingConfig effective_varying =
+            ResolveMaterialVertexVaryingConfig(
+                definition,
+                request.override_shader_program_purpose
+                    ? request.shader_program_purpose
+                    : GetShaderProgramPurpose(
+                        definition.compositor_pass),
+                coverage);
+
         ValueArray<InterStageSemanticContractEntry> expected_interface;
         MaterialStageInterfaceDiagnostic interface_diagnostic{};
         if (!BuildMaterialStageInterface(
-                definition.vertex_varying,
+                effective_varying,
                 expected_interface,
                 interface_diagnostic))
         {

@@ -12,6 +12,7 @@
 #include "common/surface_interface.glsl"
 #include "material/unlit_source.glsl"
 
+#ifndef HGL_COVERAGE_ONLY
 SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 {
     EmissiveSurfaceData material_data = EvalUnlitSource(dataIndex);
@@ -26,6 +27,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
     so.emissive  = vec3(0.0);
     return so;
 }
+#endif
 
 float EvalAlpha(SurfaceInput si, uint dataIndex)
 {

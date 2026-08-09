@@ -4,6 +4,7 @@
 #include<hgl/ecs/support/PositionSourceSpec.h>
 #include<hgl/ecs/support/TransformPolicySpec.h>
 #include<hgl/mtl/MaterialRecipe.h>
+#include<hgl/graph/asset/PrimitiveAsset.h>
 #include<array>
 #include<glm/glm.hpp>
 
@@ -21,7 +22,6 @@ namespace hgl
         struct GeometryDataBuffer;
         struct GeometryDrawRange;
         class Geometry;
-        class PrimitiveAsset;
         class ShaderProgram;
         class Pipeline;
         class RenderPass;
@@ -83,6 +83,8 @@ namespace hgl::ecs
 
         const hgl::graph::PrimitiveAsset* primitiveAsset = nullptr;  // Asset-level geometry+recipe pairing (not owned)
         uint32_t primitiveVariantIndex = 0;
+        hgl::graph::PrimitiveVariantPurpose primitiveVariantPurpose =
+            hgl::graph::PrimitiveVariantPurpose::Surface;
         hgl::graph::GeometryDataBuffer *runtime_data_buffer = nullptr;
         hgl::graph::GeometryDrawRange *runtime_draw_range = nullptr;
         hgl::graph::Geometry *runtime_geometry = nullptr;
@@ -126,6 +128,19 @@ namespace hgl::ecs
         void ClearPrimitiveAsset() { SetPrimitiveAsset(nullptr); }
         void SetPrimitiveVariantIndex(const uint32_t index) { primitiveVariantIndex = index; }
         uint32_t GetPrimitiveVariantIndex() const { return primitiveVariantIndex; }
+        void SetPrimitiveVariantPurpose(
+            const hgl::graph::PrimitiveVariantPurpose purpose)
+        {
+            if (primitiveVariantPurpose == purpose)
+                return;
+            primitiveVariantPurpose = purpose;
+            InvalidateResolvedRuntimePipeline();
+        }
+        hgl::graph::PrimitiveVariantPurpose GetPrimitiveVariantPurpose()
+            const
+        {
+            return primitiveVariantPurpose;
+        }
         bool EnsureRuntimeGeometryBinding(hgl::graph::ShaderProgram *material);
         void ClearRuntimeGeometryBinding();
         const hgl::graph::GeometryDataBuffer *GetRuntimeGeometryDataBuffer() const;

@@ -15,6 +15,7 @@
 
 layout(set=TEX_SET, binding=TEX_BINDING) uniform sampler2D TextureBaseColor;
 
+#ifndef HGL_COVERAGE_ONLY
 SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 {
     vec4 texColor = texture(TextureBaseColor, si.uv0);
@@ -29,6 +30,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
     so.emissive  = vec3(0.0);
     return so;
 }
+#endif
 
 float EvalAlpha(SurfaceInput si, uint dataIndex)
 {

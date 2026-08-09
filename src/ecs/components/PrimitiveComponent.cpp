@@ -294,7 +294,10 @@ namespace hgl::ecs
         if (!primitiveAsset)
             return nullptr;
 
-        if (const auto *variant = primitiveAsset->GetVariant(primitiveVariantIndex))
+        if (const auto *variant =
+                primitiveAsset->FindVariantByPurpose(
+                    primitiveVariantPurpose,
+                    primitiveVariantIndex))
             return variant->material_recipe;
 
         return primitiveAsset->GetMaterialRecipe();

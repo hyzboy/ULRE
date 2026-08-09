@@ -455,6 +455,21 @@ namespace hgl::ecs
         mtl_request.recipe = effective_recipe;
         mtl_request.primitive_type = primitive_type;
         mtl_request.geometry_vertex_format = geometry_vertex_format;
+        switch (primitive_comp->GetPrimitiveVariantPurpose())
+        {
+        case graph::PrimitiveVariantPurpose::DepthOnly:
+            mtl_request.override_shader_program_purpose = true;
+            mtl_request.shader_program_purpose =
+                graph::mtl::ShaderProgramPurpose::DepthOnly;
+            break;
+        case graph::PrimitiveVariantPurpose::ShadowCaster:
+            mtl_request.override_shader_program_purpose = true;
+            mtl_request.shader_program_purpose =
+                graph::mtl::ShaderProgramPurpose::ShadowDepth;
+            break;
+        default:
+            break;
+        }
         graph::ShaderProgram *resolved_program =
             material_manager->AcquireShaderProgram(mtl_request);
 

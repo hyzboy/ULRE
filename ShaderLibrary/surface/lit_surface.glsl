@@ -18,6 +18,7 @@
 #include "common/ntb_interface.glsl"
 
 
+#ifndef HGL_COVERAGE_ONLY
 SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 {
     MaterialSourceInput source_input;
@@ -43,11 +44,12 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 
     return surf;
 }
+#endif
 
 float EvalAlpha(SurfaceInput si, uint dataIndex)
 {
     MaterialSourceInput source_input;
     source_input.surface = si;
     source_input.dataIndex = dataIndex;
-    return EvalMaterialSource(source_input).alpha;
+    return EvalMaterialAlpha(source_input);
 }

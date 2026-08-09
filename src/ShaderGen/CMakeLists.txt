@@ -51,6 +51,7 @@ SET(CANONICAL_SHADER_CONTRACT_FILES
     ${SHADERGEN_INCLUDE_PATH}/CanonicalShaderContract.h
     ${SHADERGEN_INCLUDE_PATH}/MaterialDescriptorContract.h
     ${SHADERGEN_INCLUDE_PATH}/MaterialOutputContract.h
+    ${SHADERGEN_INCLUDE_PATH}/MaterialCoverageContract.h
     ${SHADERGEN_INCLUDE_PATH}/ResolvedModuleGraphBuilder.h
     ${SHADERGEN_INCLUDE_PATH}/ShadowShaderContractBuilder.h
     ${SHADERGEN_INCLUDE_PATH}/ShadowShaderKeyBuilder.h
@@ -59,6 +60,7 @@ SET(CANONICAL_SHADER_CONTRACT_FILES
     CanonicalShaderContract.cpp
     MaterialDescriptorContract.cpp
     MaterialOutputContract.cpp
+    MaterialCoverageContract.cpp
     ResolvedModuleGraphBuilder.cpp
     ShadowShaderContractBuilder.cpp
     ShadowShaderKeyBuilder.cpp

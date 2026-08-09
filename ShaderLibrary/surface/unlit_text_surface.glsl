@@ -16,6 +16,7 @@
 
 layout(set=TEX_SET, binding=TEX_BINDING) uniform sampler2D TextureText;
 
+#ifndef HGL_COVERAGE_ONLY
 SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 {
     TransmissionSurfaceData material_data = MTL_DATA.data[dataIndex];
@@ -32,6 +33,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
     so.emissive  = vec3(0.0);
     return so;
 }
+#endif
 
 float EvalAlpha(SurfaceInput si, uint dataIndex)
 {

@@ -329,7 +329,9 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     };
 
     uint32_t material_ssbo_stage_bits = uint32_t(ShaderStage::Fragment);
-    if (config.resource_manifest && config.resource_manifest->IsValid())
+    if (config.merge_resource_manifest_material_slots
+     && config.resource_manifest
+     && config.resource_manifest->IsValid())
     {
         for (uint32_t i = 0; i < config.resource_manifest->ssbo_count; ++i)
             material_ssbo_stage_bits |= config.resource_manifest->ssbos[i].stage_flags;
@@ -344,7 +346,9 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     std::vector<MaterialDataSlotDecl> effective_data_slot_decls;
     if (config.data_slot_decls)
         effective_data_slot_decls = *config.data_slot_decls;
-    if (config.resource_manifest && config.resource_manifest->IsValid())
+    if (config.merge_resource_manifest_material_slots
+     && config.resource_manifest
+     && config.resource_manifest->IsValid())
     {
         for (uint32_t i = 0; i < config.resource_manifest->ssbo_count; ++i)
         {

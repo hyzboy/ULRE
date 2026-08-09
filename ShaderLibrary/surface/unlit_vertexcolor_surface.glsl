@@ -11,6 +11,7 @@
 
 #include "common/surface_interface.glsl"
 
+#ifndef HGL_COVERAGE_ONLY
 SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 {
     SurfaceOutput so;
@@ -23,6 +24,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
     so.emissive  = vec3(0.0);
     return so;
 }
+#endif
 
 float EvalAlpha(SurfaceInput si, uint dataIndex)
 {

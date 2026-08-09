@@ -16,6 +16,7 @@
 
 layout(set=TEX_SET, binding=TEX_BINDING) uniform sampler2DArray TextureBaseColor;
 
+#ifndef HGL_COVERAGE_ONLY
 SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
 {
     TextureRectArraySurfaceData material_data = MTL_DATA.data[dataIndex];
@@ -33,6 +34,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint dataIndex)
     so.emissive  = vec3(0.0);
     return so;
 }
+#endif
 
 float EvalAlpha(SurfaceInput si, uint dataIndex)
 {

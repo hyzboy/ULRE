@@ -3,6 +3,7 @@
 #include <hgl/graph/glsl/GLSLCodeModuleMetadata.h>
 #include <hgl/mtl/MaterialLibrary.h>
 #include <hgl/shadergen/MaterialOutputContract.h>
+#include <hgl/shadergen/MaterialCoverageContract.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <cstring>
 
@@ -649,6 +650,13 @@ namespace hgl::graph::mtl
         const bool depth_purpose =
             purpose == ShaderProgramPurpose::DepthOnly
          || purpose == ShaderProgramPurpose::ShadowDepth;
+        MaterialCoverageContract coverage{};
+        if (!BuildMaterialCoverageContract(
+                definition,
+                request ? request->recipe : MaterialRecipe{},
+                purpose,
+                coverage))
+            return false;
 
         ValueArray<const GLSLCodeModuleDefinition *> roots;
         if (!depth_purpose)
@@ -671,8 +679,9 @@ namespace hgl::graph::mtl
             depth_purpose
                 ? "compositor/main_depth_only.frag.glsl"
                 : definition.fragment_source,
-            depth_purpose ? nullptr : definition.fragment_surface_module,
-            depth_purpose
+            depth_purpose && !coverage.requires_alpha_evaluation
+                ? nullptr : definition.fragment_surface_module,
+            depth_purpose && !coverage.requires_alpha_evaluation
                 ? nullptr : definition.fragment_material_source_module,
             depth_purpose ? nullptr : definition.fragment_ntb_module
         };

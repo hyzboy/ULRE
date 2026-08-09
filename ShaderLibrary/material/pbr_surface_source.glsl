@@ -9,6 +9,7 @@
 // @ulre texture TextureMetallic MaterialSampler Metallic sampler2D Fragment optional fallback
 // @ulre texture TextureRoughness MaterialSampler Roughness sampler2D Fragment optional fallback
 // @ulre texture TextureOcclusion MaterialSampler Occlusion sampler2D Fragment optional fallback
+// @ulre texture TextureOpacityMask MaterialSampler OpacityMask sampler2D Fragment optional fallback
 // @ulre texture_layer BaseColor Fragment optional fallback
 // @ulre uses material_source_interface
 // @ulre uses bindless_textures
@@ -65,6 +66,17 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
             SampleBindless2D(occlusion_handle, source_input.surface.uv0).r;
 
     return material_output;
+}
+
+float EvalMaterialAlpha(MaterialSourceInput source_input)
+{
+    const uint opacity_handle = GetTextureHandle(
+        source_input.surface.textureLayerID,
+        TEXTURE_SLOT_OPACITY_MASK);
+    return opacity_handle == 0u
+        ? 1.0
+        : SampleBindless2D(
+            opacity_handle, source_input.surface.uv0).r;
 }
 
 #endif // PBR_SURFACE_SOURCE_GLSL
