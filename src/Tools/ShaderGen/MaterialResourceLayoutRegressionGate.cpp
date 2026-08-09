@@ -799,6 +799,45 @@ namespace
             result.diagnostics.emplace_back(
                 "active Profile Recipe must preserve TextureLayer direct values");
         }
+        ResourceAcquirePlan resource_plan{};
+        if (!BuildActiveProfileResourceAcquirePlan(
+                binding_view, resource_plan)
+         || resource_plan.resources.GetCount() != 2
+         || GetResourceAcquirePlanHash(resource_plan) == 0)
+        {
+            result.diagnostics.emplace_back(
+                "active Profile ResourceAcquirePlan build failed");
+        }
+        else
+        {
+            bool planned_base_color = false;
+            bool planned_data = false;
+            bool planned_direct_value = false;
+            for (int i = 0;
+                 i < resource_plan.resources.GetCount();
+                 ++i)
+            {
+                const ResourceAcquirePlanEntry &entry =
+                    resource_plan.resources[i];
+                if (entry.kind == ResourceAcquireKind::Texture
+                 && entry.texture_slot == TextureSlot::BaseColor)
+                    planned_base_color = true;
+                if (entry.kind == ResourceAcquireKind::StorageBuffer
+                 && entry.data_slot == 0
+                 && entry.ssbo_type == SSBOType::PBRSurface)
+                    planned_data = true;
+                if (entry.kind == ResourceAcquireKind::Texture
+                 && entry.texture_slot == TextureSlot::Custom0)
+                    planned_direct_value = true;
+            }
+            if (!planned_base_color
+             || !planned_data
+             || planned_direct_value)
+            {
+                result.diagnostics.emplace_back(
+                    "ResourceAcquirePlan must include only active loadable resources");
+            }
+        }
         MaterializationResolveCallbacks projection_callbacks{};
         projection_callbacks.resolve_texture =
             [](const RecipeTextureBinding &input,
@@ -900,6 +939,7 @@ namespace
                 "Binding View source hash must include binding identity");
         }
         ActiveProfileBindingView second_view{};
+        ResourceAcquirePlan second_plan{};
         if (!BuildActiveProfileBindingView(
                 second_recipe,
                 layout,
@@ -909,6 +949,10 @@ namespace
          || second_view.GetStableHash() == binding_view.GetStableHash()
          || second_view.effective_material_program_digest
                 != binding_view.effective_material_program_digest
+         || !BuildActiveProfileResourceAcquirePlan(
+                second_view, second_plan)
+         || GetResourceAcquirePlanHash(second_plan)
+                == GetResourceAcquirePlanHash(resource_plan)
          || prepared_set.GetExecutableProgram()->GetDigest()
                 != effective_program.GetDigest())
         {
@@ -960,7 +1004,9 @@ namespace
          || missing_view.IsRuntimeReady()
          || missing_view.missing_required_count != 1
          || BuildActiveProfileMaterialRecipe(
-                missing_recipe, missing_view, projected_recipe))
+                missing_recipe, missing_view, projected_recipe)
+         || BuildActiveProfileResourceAcquirePlan(
+                missing_view, resource_plan))
         {
             result.diagnostics.emplace_back(
                 "missing required active Profile resource must remain explicit");
@@ -1000,6 +1046,46 @@ namespace
         {
             result.diagnostics.emplace_back(
                 "duplicate active Profile texture binding must fail");
+        }
+
+        EffectiveMaterialProgramKey depth_program =
+            effective_program;
+        depth_program.purpose = ShaderProgramPurpose::DepthOnly;
+        depth_program.normalized_static_feature_hash ^= 0x100u;
+        MaterialResolutionResult depth_resolution = resolution;
+        depth_resolution.effective_program = depth_program;
+        PreparedMaterialProgramSet depth_set{};
+        ActiveProfileBindingView depth_view{};
+        MaterialResourceLayout depth_layout{};
+        ResourceAcquirePlan depth_plan{};
+        if (!BuildSingleProgramPreparedMaterialProgramSet(
+                depth_resolution, depth_set)
+         || !BuildActiveProfileBindingView(
+                recipe,
+                depth_layout,
+                depth_set,
+                depth_view,
+                diagnostic)
+         || !depth_view.IsRuntimeReady()
+         || depth_view.unused_recipe_texture_count
+                != recipe.textures.size()
+         || depth_view.unused_recipe_data_count
+                != recipe.ssbo_assets.size()
+         || !BuildActiveProfileResourceAcquirePlan(
+                depth_view, depth_plan)
+         || !depth_plan.resources.IsEmpty())
+        {
+            result.diagnostics.emplace_back(
+                "Depth-only active Program must submit no unrelated resource acquisition");
+        }
+
+        ActiveProfileBindingView unresolved_view{};
+        ResourceAcquirePlan unresolved_plan{};
+        if (BuildActiveProfileResourceAcquirePlan(
+                unresolved_view, unresolved_plan))
+        {
+            result.diagnostics.emplace_back(
+                "unresolved Program must not submit resource acquisition");
         }
 
         result.passed = result.diagnostics.empty();
@@ -2824,6 +2910,7 @@ namespace
                 0x701u,
                 0x702u,
                 source_module,
+                ResourceAcquireReasonKind::Module,
                 DescriptorSemantic::MaterialTexture,
                 TextureSlot::BaseColor,
                 0,
@@ -2838,6 +2925,7 @@ namespace
                 0x703u,
                 0x704u,
                 source_module,
+                ResourceAcquireReasonKind::Module,
                 DescriptorSemantic::MaterialDataSlotData,
                 TextureSlot::BaseColor,
                 0,

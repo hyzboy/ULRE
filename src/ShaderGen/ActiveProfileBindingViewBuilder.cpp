@@ -354,12 +354,20 @@ namespace hgl::graph::mtl
                             ActiveProfileTextureBinding{});
                     binding = &out_view.textures[binding_index];
                     binding->profile_slot = requirement.texture_slot;
+                    binding->semantic = requirement.semantic;
                     binding->logical_resource_id =
                         HashTextureLogicalResource(
                             out_view.active_surface_profile_id,
                             out_view.active_projection_id,
                             requirement.texture_slot);
                     binding->allow_fallback = true;
+                }
+                else if (binding->semantic
+                            == DescriptorSemantic::MaterialTexture
+                      && requirement.semantic
+                            == DescriptorSemantic::MaterialSampler)
+                {
+                    binding->semantic = requirement.semantic;
                 }
                 binding->required =
                     binding->required || requirement.required;
@@ -413,6 +421,7 @@ namespace hgl::graph::mtl
 
                 ActiveProfileTextureBinding binding{};
                 binding.profile_slot = recipe_binding.slot;
+                binding.semantic = DescriptorSemantic::MaterialTexture;
                 binding.logical_resource_id =
                     HashTextureLogicalResource(
                         out_view.active_surface_profile_id,
@@ -645,5 +654,66 @@ namespace hgl::graph::mtl
             out_recipe.ssbo_assets.push_back(recipe_binding);
         }
         return true;
+    }
+
+    bool BuildActiveProfileResourceAcquirePlan(
+        const ActiveProfileBindingView &binding_view,
+        ResourceAcquirePlan &out_plan) noexcept
+    {
+        out_plan = {};
+        if (!binding_view.IsRuntimeReady())
+            return false;
+
+        out_plan.effective_material_program_digest =
+            binding_view.effective_material_program_digest;
+        for (int i = 0; i < binding_view.textures.GetCount(); ++i)
+        {
+            const ActiveProfileTextureBinding &binding =
+                binding_view.textures[i];
+            if (binding.source != ActiveProfileBindingSource::Asset)
+                continue;
+
+            ResourceAcquirePlanEntry entry{};
+            entry.logical_resource_id = binding.logical_resource_id;
+            entry.asset_identity_hash = binding.asset_identity_hash;
+            entry.asset_metadata_hash = binding.asset_metadata_hash;
+            entry.reason_contract_id =
+                binding_view.active_projection_id;
+            entry.reason_kind =
+                ResourceAcquireReasonKind::SurfaceProjection;
+            entry.semantic = binding.semantic;
+            entry.texture_slot = binding.profile_slot;
+            entry.kind = ResourceAcquireKind::Texture;
+            entry.required = binding.required;
+            entry.allow_fallback = binding.allow_fallback;
+            out_plan.resources.Add(entry);
+        }
+
+        for (int i = 0; i < binding_view.data.GetCount(); ++i)
+        {
+            const ActiveProfileDataBinding &binding =
+                binding_view.data[i];
+            if (binding.source != ActiveProfileBindingSource::Asset)
+                continue;
+
+            ResourceAcquirePlanEntry entry{};
+            entry.logical_resource_id = binding.logical_resource_id;
+            entry.asset_identity_hash = binding.asset_identity_hash;
+            entry.asset_metadata_hash = binding.asset_metadata_hash;
+            entry.reason_contract_id =
+                binding_view.active_projection_id;
+            entry.reason_kind =
+                ResourceAcquireReasonKind::SurfaceProjection;
+            entry.semantic =
+                DescriptorSemantic::MaterialDataSlotData;
+            entry.data_slot = binding.data_slot;
+            entry.ssbo_type = binding.ssbo_type;
+            entry.kind = ResourceAcquireKind::StorageBuffer;
+            entry.required = binding.required;
+            entry.allow_fallback = binding.allow_fallback;
+            out_plan.resources.Add(entry);
+        }
+
+        return ValidateResourceAcquirePlan(out_plan);
     }
 }

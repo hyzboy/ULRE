@@ -44,4 +44,8 @@ namespace hgl::graph::mtl
         const MaterialRecipe &source_recipe,
         const ActiveProfileBindingView &binding_view,
         MaterialRecipe &out_recipe) noexcept;
+
+    bool BuildActiveProfileResourceAcquirePlan(
+        const ActiveProfileBindingView &binding_view,
+        ResourceAcquirePlan &out_plan) noexcept;
 }

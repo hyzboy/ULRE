@@ -657,6 +657,18 @@ namespace hgl::ecs
                 binding_view);
         }
 
+        graph::mtl::ResourceAcquirePlan shadow_resource_plan{};
+        if (binding_view.IsRuntimeReady()
+         && !graph::mtl::BuildActiveProfileResourceAcquirePlan(
+                binding_view, shadow_resource_plan))
+        {
+            GLogWarning(
+                "[DeferredResourceShadow] plan build failed: owner=%s program=%s",
+                GetPrimitiveOwnerName(primitive_comp),
+                resolved_program->GetName().c_str());
+            return false;
+        }
+
         const bool program_changed = (material_comp->program != resolved_program);
         if (program_changed)
             InvalidateRecipeRuntime(material_comp, false);
@@ -678,6 +690,40 @@ namespace hgl::ecs
 
         material_comp->program = resolved_program;
         material_comp->active_profile_binding_view = binding_view;
+        material_comp->shadow_resource_acquire_plan =
+            shadow_resource_plan;
+        material_comp->has_shadow_resource_acquire_plan =
+            binding_view.IsRuntimeReady();
+        if (material_comp->has_shadow_resource_acquire_plan)
+        {
+            uint32_t planned_textures = 0;
+            uint32_t planned_data = 0;
+            for (int i = 0;
+                 i < shadow_resource_plan.resources.GetCount();
+                 ++i)
+            {
+                if (shadow_resource_plan.resources[i].kind
+                        == graph::mtl::ResourceAcquireKind::Texture)
+                    ++planned_textures;
+                else if (shadow_resource_plan.resources[i].kind
+                        == graph::mtl::ResourceAcquireKind::
+                            StorageBuffer)
+                    ++planned_data;
+            }
+            GLogVerbose(
+                "[DeferredResourceShadow] owner=%s program=%s plan_hash=%llu planned_texture=%u planned_data=%u recipe_texture=%zu recipe_data=%zu unused_texture=%u unused_data=%u",
+                GetPrimitiveOwnerName(primitive_comp),
+                resolved_program->GetName().c_str(),
+                static_cast<unsigned long long>(
+                    graph::mtl::GetResourceAcquirePlanHash(
+                        shadow_resource_plan)),
+                planned_textures,
+                planned_data,
+                active_profile_recipe.textures.size(),
+                active_profile_recipe.ssbo_assets.size(),
+                binding_view.unused_recipe_texture_count,
+                binding_view.unused_recipe_data_count);
+        }
         material_comp->program_dirty = false;
         material_comp->recipe_hash = recipe_hash;
         material_comp->program_build_context_hash =

@@ -323,9 +323,10 @@ namespace hgl::graph::mtl
                 entry.asset_identity_hash = HashText(binding.resource_id);
                 entry.asset_metadata_hash =
                     HashTextureMetadata(contract, binding);
-                entry.reason_module_id =
+                entry.reason_contract_id =
                     FindTextureReasonModule(
                         registry, module_graph, contract);
+                entry.reason_kind = ResourceAcquireReasonKind::Module;
                 entry.semantic = contract.semantic;
                 entry.texture_slot = contract.texture_slot;
                 entry.kind = ResourceAcquireKind::Texture;
@@ -366,9 +367,10 @@ namespace hgl::graph::mtl
                     HashSSBOAssetIdentity(binding);
                 entry.asset_metadata_hash =
                     HashSSBOMetadata(contract, binding);
-                entry.reason_module_id =
+                entry.reason_contract_id =
                     FindSSBOReasonModule(
                         registry, module_graph, contract);
+                entry.reason_kind = ResourceAcquireReasonKind::Module;
                 entry.semantic = contract.semantic;
                 entry.data_slot = contract.data_slot;
                 entry.ssbo_type = contract.ssbo_type;

@@ -298,6 +298,10 @@ namespace hgl::graph::mtl
             if (binding.logical_resource_id == 0
              || binding.asset_identity_hash == 0
              || binding.asset_metadata_hash == 0
+             || (binding.semantic
+                    != DescriptorSemantic::MaterialTexture
+              && binding.semantic
+                    != DescriptorSemantic::MaterialSampler)
              || binding.profile_slot < TextureSlot::BEGIN_RANGE
              || binding.profile_slot > TextureSlot::END_RANGE
              || binding.source < ActiveProfileBindingSource::Asset
@@ -407,6 +411,7 @@ namespace hgl::graph::mtl
             writer.WriteU64(binding.logical_resource_id);
             writer.WriteU64(binding.asset_identity_hash);
             writer.WriteU64(binding.asset_metadata_hash);
+            writer.WriteU16(static_cast<uint16>(binding.semantic));
             writer.WriteU16(static_cast<uint16>(binding.profile_slot));
             writer.WriteU32(binding.recipe_binding_index);
             writer.WriteU32(binding.direct_value);
@@ -447,11 +452,15 @@ namespace hgl::graph::mtl
             const ResourceAcquirePlanEntry &entry = plan.resources[i];
             if (entry.logical_resource_id == 0
              || entry.asset_identity_hash == 0
-             || entry.reason_module_id == 0
+             || entry.reason_contract_id == 0
              || entry.semantic == DescriptorSemantic::Unknown)
                 return false;
             if (entry.kind < ResourceAcquireKind::Texture
              || entry.kind > ResourceAcquireKind::Sampler
+             || entry.reason_kind
+                    < ResourceAcquireReasonKind::Module
+             || entry.reason_kind
+                    > ResourceAcquireReasonKind::SurfaceProjection
              || entry.texture_slot < TextureSlot::BEGIN_RANGE
              || entry.texture_slot > TextureSlot::END_RANGE
              || entry.ssbo_type < SSBOType::BEGIN_RANGE
@@ -500,7 +509,8 @@ namespace hgl::graph::mtl
             writer.WriteU64(entry.logical_resource_id);
             writer.WriteU64(entry.asset_identity_hash);
             writer.WriteU64(entry.asset_metadata_hash);
-            writer.WriteU64(entry.reason_module_id);
+            writer.WriteU64(entry.reason_contract_id);
+            writer.WriteU8(static_cast<uint8>(entry.reason_kind));
             writer.WriteU8(static_cast<uint8>(entry.semantic));
             writer.WriteU8(static_cast<uint8>(entry.texture_slot));
             writer.WriteU32(entry.data_slot);

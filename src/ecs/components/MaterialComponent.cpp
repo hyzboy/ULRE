@@ -61,6 +61,13 @@ namespace hgl::ecs
     void MaterialComponent::ClearActiveProfileBindingView()
     {
         active_profile_binding_view = {};
+        ClearShadowResourceAcquirePlan();
+    }
+
+    void MaterialComponent::ClearShadowResourceAcquirePlan()
+    {
+        shadow_resource_acquire_plan = {};
+        has_shadow_resource_acquire_plan = false;
     }
 
     void MaterialComponent::ClearMaterializationInstanceData()

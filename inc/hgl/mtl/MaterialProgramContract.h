@@ -10,7 +10,7 @@
 
 namespace hgl::graph::mtl
 {
-    constexpr uint32 MaterialProgramContractSchemaVersion = 1;
+    constexpr uint32 MaterialProgramContractSchemaVersion = 2;
     constexpr uint32 SingleProgramPreparedSetPolicyVersion = 1;
     constexpr uint32 InvalidMaterialRecipeBindingIndex = HGL_U32_MAX;
 
@@ -140,6 +140,8 @@ namespace hgl::graph::mtl
         uint64 logical_resource_id = 0;
         uint64 asset_identity_hash = 0;
         uint64 asset_metadata_hash = 0;
+        DescriptorSemantic semantic =
+            DescriptorSemantic::MaterialTexture;
         TextureSlot profile_slot = TextureSlot::BaseColor;
         uint32 recipe_binding_index =
             InvalidMaterialRecipeBindingIndex;
@@ -157,6 +159,7 @@ namespace hgl::graph::mtl
         return lhs.logical_resource_id == rhs.logical_resource_id
             && lhs.asset_identity_hash == rhs.asset_identity_hash
             && lhs.asset_metadata_hash == rhs.asset_metadata_hash
+            && lhs.semantic == rhs.semantic
             && lhs.profile_slot == rhs.profile_slot
             && lhs.recipe_binding_index == rhs.recipe_binding_index
             && lhs.direct_value == rhs.direct_value
@@ -232,12 +235,20 @@ namespace hgl::graph::mtl
         Sampler
     };
 
+    enum class ResourceAcquireReasonKind : uint8
+    {
+        Module = 0,
+        SurfaceProjection
+    };
+
     struct ResourceAcquirePlanEntry
     {
         uint64 logical_resource_id = 0;
         uint64 asset_identity_hash = 0;
         uint64 asset_metadata_hash = 0;
-        ShaderContractStableID reason_module_id = 0;
+        ShaderContractStableID reason_contract_id = 0;
+        ResourceAcquireReasonKind reason_kind =
+            ResourceAcquireReasonKind::Module;
         DescriptorSemantic semantic = DescriptorSemantic::Unknown;
         TextureSlot texture_slot = TextureSlot::BaseColor;
         uint32 data_slot = 0;
@@ -254,7 +265,8 @@ namespace hgl::graph::mtl
         return lhs.logical_resource_id == rhs.logical_resource_id
             && lhs.asset_identity_hash == rhs.asset_identity_hash
             && lhs.asset_metadata_hash == rhs.asset_metadata_hash
-            && lhs.reason_module_id == rhs.reason_module_id
+            && lhs.reason_contract_id == rhs.reason_contract_id
+            && lhs.reason_kind == rhs.reason_kind
             && lhs.semantic == rhs.semantic
             && lhs.texture_slot == rhs.texture_slot
             && lhs.data_slot == rhs.data_slot
