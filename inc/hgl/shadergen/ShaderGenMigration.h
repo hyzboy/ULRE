@@ -26,6 +26,8 @@ namespace hgl::graph::mtl
         ShadowShaderContractFailed,
         ShadowShaderKeysBuilt,
         ShadowShaderKeysFailed,
+        ShadowResourcePlanBuilt,
+        ShadowResourcePlanFailed,
         ContractPathUnavailable
     };
 

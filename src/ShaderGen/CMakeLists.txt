@@ -50,11 +50,13 @@ SET(CANONICAL_SHADER_CONTRACT_FILES
     ${SHADERGEN_INCLUDE_PATH}/ResolvedModuleGraphBuilder.h
     ${SHADERGEN_INCLUDE_PATH}/ShadowShaderContractBuilder.h
     ${SHADERGEN_INCLUDE_PATH}/ShadowShaderKeyBuilder.h
+    ${SHADERGEN_INCLUDE_PATH}/ShadowResourceAcquirePlanBuilder.h
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialProgramContract.h
     CanonicalShaderContract.cpp
     ResolvedModuleGraphBuilder.cpp
     ShadowShaderContractBuilder.cpp
     ShadowShaderKeyBuilder.cpp
+    ShadowResourceAcquirePlanBuilder.cpp
     MaterialProgramContract.cpp
     common/CanonicalContractWriter.h)
 

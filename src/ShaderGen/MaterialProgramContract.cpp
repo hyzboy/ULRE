@@ -262,7 +262,9 @@ namespace hgl::graph::mtl
             if (entry.kind < ResourceAcquireKind::Texture
              || entry.kind > ResourceAcquireKind::Sampler
              || entry.texture_slot < TextureSlot::BEGIN_RANGE
-             || entry.texture_slot > TextureSlot::END_RANGE)
+             || entry.texture_slot > TextureSlot::END_RANGE
+             || entry.ssbo_type < SSBOType::BEGIN_RANGE
+             || entry.ssbo_type > SSBOType::END_RANGE)
                 return false;
 
             for (int j = 0; j < i; ++j)
@@ -311,6 +313,7 @@ namespace hgl::graph::mtl
             writer.WriteU8(static_cast<uint8>(entry.semantic));
             writer.WriteU8(static_cast<uint8>(entry.texture_slot));
             writer.WriteU32(entry.data_slot);
+            writer.WriteU16(static_cast<uint16>(entry.ssbo_type));
             writer.WriteU8(static_cast<uint8>(entry.kind));
             writer.WriteBool(entry.required);
             writer.WriteBool(entry.allow_fallback);

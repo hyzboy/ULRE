@@ -10,6 +10,7 @@
 #include <hgl/shadergen/ResolvedModuleGraphBuilder.h>
 #include <hgl/shadergen/ShadowShaderContractBuilder.h>
 #include <hgl/shadergen/ShadowShaderKeyBuilder.h>
+#include <hgl/shadergen/ShadowResourceAcquirePlanBuilder.h>
 #include <hgl/shadergen/ShaderKeyUtility.h>
 #include <hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
 #include <hgl/log/Log.h>
@@ -287,6 +288,13 @@ namespace
                     break;
                 }
             }
+        }
+        if (ambient_model == SkyLightAmbientModel::IBL)
+        {
+            GLogError(
+                "[ShaderGen] IBL sky model is not implemented by the current shader resource contract: material=%s",
+                definition.definition_name.c_str());
+            return nullptr;
         }
         if (definition.fragment_program_mode == MaterialFragmentProgramMode::Compositor)
         {
@@ -946,6 +954,31 @@ ShaderProgramBuildSpec *CreateMaterialFromDefinition(
                     keys.program_metadata)
                 : 0;
             ReportShaderGenDiagnostic(request.migration, key_event);
+
+            if (keys_built)
+            {
+                ResourceAcquirePlan resource_plan{};
+                ShadowResourcePlanSummary summary{};
+                ShadowResourcePlanDiagnostic plan_diagnostic{};
+                const bool plan_built = BuildShadowResourceAcquirePlan(
+                    request.recipe,
+                    GetGLSLCodeModuleRegistry(),
+                    shadow_graph,
+                    contracts.shader_interface,
+                    keys.effective_program,
+                    resource_plan,
+                    summary,
+                    plan_diagnostic);
+
+                ShaderGenDiagnosticEvent plan_event{};
+                plan_event.kind = plan_built
+                    ? ShaderGenDiagnosticEventKind::ShadowResourcePlanBuilt
+                    : ShaderGenDiagnosticEventKind::ShadowResourcePlanFailed;
+                plan_event.contract_digest = plan_built
+                    ? GetResourceAcquirePlanHash(resource_plan) : 0;
+                ReportShaderGenDiagnostic(
+                    request.migration, plan_event);
+            }
         }
     }
 

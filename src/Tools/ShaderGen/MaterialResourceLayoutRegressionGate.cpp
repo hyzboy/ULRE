@@ -8,6 +8,7 @@
 #include <hgl/shadergen/ResolvedModuleGraphBuilder.h>
 #include <hgl/shadergen/ShadowShaderContractBuilder.h>
 #include <hgl/shadergen/ShadowShaderKeyBuilder.h>
+#include <hgl/shadergen/ShadowResourceAcquirePlanBuilder.h>
 #include <hgl/shadergen/ShaderCreateInfo.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
@@ -622,6 +623,28 @@ namespace
         {
             result.diagnostics.emplace_back(
                 "unsupported surface profile schema must be rejected");
+        }
+
+        MaterialDefinition lit{};
+        if (TryGetMaterialDefinitionByID("Lit", lit))
+        {
+            const GeometryVertexFormat geometry{
+                {VertexSemantic::Position, VF_V3F},
+                {VertexSemantic::TexCoord, VF_V2F},
+                {VertexSemantic::Normal, VF_V3F}
+            };
+            MaterialDefinitionBuildRequest ibl_request{};
+            ibl_request.recipe.mtl_def_id = lit.definition_id;
+            ibl_request.geometry_vertex_format = &geometry;
+            ibl_request.override_sky_ambient_model = true;
+            ibl_request.sky_ambient_model = SkyLightAmbientModel::IBL;
+            ibl_request.generate_only = true;
+            std::unique_ptr<ShaderProgramBuildSpec> ibl_build(
+                CreateMaterialFromDefinition(
+                    nullptr, lit, ibl_request));
+            if (ibl_build)
+                result.diagnostics.emplace_back(
+                    "unimplemented IBL resource contract must fail explicitly");
         }
 
         result.passed = result.diagnostics.empty();
@@ -1975,6 +1998,7 @@ namespace
                 DescriptorSemantic::MaterialTexture,
                 TextureSlot::BaseColor,
                 0,
+                SSBOType::UserDefined,
                 ResourceAcquireKind::Texture,
                 true,
                 false
@@ -1988,6 +2012,7 @@ namespace
                 DescriptorSemantic::MaterialDataSlotData,
                 TextureSlot::BaseColor,
                 0,
+                SSBOType::PBRSurface,
                 ResourceAcquireKind::StorageBuffer,
                 true,
                 false
@@ -4226,6 +4251,7 @@ namespace
             hgl::uint32 module_graph_built = 0;
             hgl::uint32 shader_contract_built = 0;
             hgl::uint32 shader_keys_built = 0;
+            hgl::uint32 resource_plan_built = 0;
             hgl::uint32 failures = 0;
             hgl::uint32 contract_unavailable = 0;
             hgl::uint64 last_contract_digest = 0;
@@ -4250,9 +4276,13 @@ namespace
             case ShaderGenDiagnosticEventKind::ShadowShaderKeysBuilt:
                 ++capture->shader_keys_built;
                 break;
+            case ShaderGenDiagnosticEventKind::ShadowResourcePlanBuilt:
+                ++capture->resource_plan_built;
+                break;
             case ShaderGenDiagnosticEventKind::ShadowModuleGraphFailed:
             case ShaderGenDiagnosticEventKind::ShadowShaderContractFailed:
             case ShaderGenDiagnosticEventKind::ShadowShaderKeysFailed:
+            case ShaderGenDiagnosticEventKind::ShadowResourcePlanFailed:
                 ++capture->failures;
                 break;
             case ShaderGenDiagnosticEventKind::ContractPathUnavailable:
@@ -4427,6 +4457,7 @@ namespace
              || capture.module_graph_built != 1
              || capture.shader_contract_built != 1
              || capture.shader_keys_built != 1
+             || capture.resource_plan_built != 1
              || capture.failures != 0
              || capture.last_contract_digest == 0
              || keys.selection_request.GetDigest() == 0
@@ -4624,12 +4655,231 @@ namespace
                  || capture.contract_unavailable != 1
                  || capture.module_graph_built != 0
                  || capture.shader_contract_built != 0
-                 || capture.shader_keys_built != 0)
+                 || capture.shader_keys_built != 0
+                 || capture.resource_plan_built != 0)
                 {
                     result.diagnostics.emplace_back(
                         "unavailable Contract path must fail explicitly");
                 }
             }
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
+    static GateResult RunShadowResourceAcquirePlanCase()
+    {
+        GateResult result;
+        result.name = "I4.shadow-resource-acquire-plan";
+
+        MaterialDefinition definition{};
+        if (!TryGetMaterialDefinitionByID("Lit", definition))
+        {
+            result.diagnostics.emplace_back(
+                "missing Lit definition for resource plan");
+            result.passed = false;
+            return result;
+        }
+
+        const GeometryVertexFormat geometry{
+            {VertexSemantic::Position, VF_V3F},
+            {VertexSemantic::TexCoord, VF_V2F},
+            {VertexSemantic::Normal, VF_V3F}
+        };
+        MaterialDefinitionBuildRequest request{};
+        request.recipe.mtl_def_id = definition.definition_id;
+        request.recipe.textures.push_back(
+            {
+                TextureSlot::BaseColor,
+                "assets/base_color_a.ktx",
+                0,
+                false,
+                true
+            });
+        request.recipe.textures.push_back(
+            {
+                TextureSlot::Custom1,
+                "assets/unused.ktx",
+                0,
+                false,
+                false
+            });
+        request.recipe.ssbo_assets.push_back(
+            {
+                "mtl",
+                0,
+                SSBOType::PBRSurface,
+                17,
+                0,
+                false,
+                false
+            });
+        request.recipe.ssbo_assets.push_back(
+            {
+                "unused",
+                7,
+                SSBOType::UserDefined,
+                19,
+                0,
+                false,
+                false
+            });
+        request.geometry_vertex_format = &geometry;
+        request.generate_only = true;
+
+        std::unique_ptr<ShaderProgramBuildSpec> build_spec(
+            CreateMaterialFromDefinition(nullptr, definition, request));
+        ResolvedModuleGraph graph{};
+        ResolvedModuleGraphBuildDiagnostic graph_diagnostic{};
+        ShadowShaderContracts contracts{};
+        ShadowShaderContractBuildDiagnostic contract_diagnostic{};
+        ShadowShaderKeys keys{};
+        ShadowShaderKeyBuildDiagnostic key_diagnostic{};
+        if (!build_spec
+         || !BuildMaterialResolvedModuleGraph(
+                definition,
+                GetGLSLCodeModuleRegistry(),
+                graph,
+                graph_diagnostic,
+                &request)
+         || !BuildShadowShaderContracts(
+                definition,
+                request,
+                graph,
+                *build_spec,
+                contracts,
+                contract_diagnostic)
+         || !BuildShadowShaderKeys(
+                nullptr,
+                definition,
+                request,
+                graph,
+                contracts,
+                *build_spec,
+                keys,
+                key_diagnostic))
+        {
+            result.diagnostics.emplace_back(
+                "failed to create shadow resource plan fixture");
+            result.passed = false;
+            return result;
+        }
+
+        ResourceAcquirePlan plan{};
+        ShadowResourcePlanSummary summary{};
+        ShadowResourcePlanDiagnostic diagnostic{};
+        if (!BuildShadowResourceAcquirePlan(
+                request.recipe,
+                GetGLSLCodeModuleRegistry(),
+                graph,
+                contracts.shader_interface,
+                keys.effective_program,
+                plan,
+                summary,
+                diagnostic))
+        {
+            result.diagnostics.emplace_back(
+                std::string("resource plan build failed: ")
+                + GetShadowResourcePlanErrorName(diagnostic.error));
+        }
+        else
+        {
+            if (summary.planned_texture_count != 1
+             || summary.planned_ssbo_count != 1
+             || summary.unused_recipe_texture_count != 1
+             || summary.unused_recipe_ssbo_count != 1
+             || GetResourceAcquirePlanHash(plan) == 0)
+            {
+                result.diagnostics.emplace_back(
+                    "resource plan summary mismatch");
+            }
+
+            MaterializationSpec materialization =
+                MakeMaterializationSpecSkeleton(request.recipe);
+            materialization.resources.clear();
+            materialization.struct_refs.clear();
+            for (int i = 0; i < plan.resources.GetCount(); ++i)
+            {
+                const ResourceAcquirePlanEntry &entry =
+                    plan.resources[i];
+                if (entry.kind == ResourceAcquireKind::Texture)
+                {
+                    materialization.resources.push_back(
+                        {entry.texture_slot, 100u, 2u});
+                }
+                else if (entry.kind == ResourceAcquireKind::StorageBuffer)
+                {
+                    ResolvedStructRef ref{};
+                    ref.data_slot = entry.data_slot;
+                    ref.ssbo_type = entry.ssbo_type;
+                    ref.ssbo_id = 17;
+                    ref.byte_stride =
+                        GetSSBOTypeStructStride(entry.ssbo_type);
+                    materialization.struct_refs.push_back(ref);
+                }
+            }
+            RefreshMaterializationSpecHash(materialization);
+
+            if (!CompareShadowResourcePlanToMaterialization(
+                    plan, materialization, diagnostic))
+            {
+                result.diagnostics.emplace_back(
+                    "matching materialization rejected");
+            }
+
+            materialization.resources.push_back(
+                {TextureSlot::Custom0, 101u, 3u});
+            if (CompareShadowResourcePlanToMaterialization(
+                    plan, materialization, diagnostic)
+             || diagnostic.error
+                    != ShadowResourcePlanError::
+                        MaterializationTextureMismatch)
+            {
+                result.diagnostics.emplace_back(
+                    "extra materialized texture must be reported");
+            }
+            materialization.resources.pop_back();
+
+            if (!materialization.struct_refs.empty())
+            {
+                const SSBOType original_type =
+                    materialization.struct_refs[0].ssbo_type;
+                materialization.struct_refs[0].ssbo_type =
+                    SSBOType::EmissiveSurface;
+                if (CompareShadowResourcePlanToMaterialization(
+                        plan, materialization, diagnostic)
+                 || diagnostic.error
+                        != ShadowResourcePlanError::
+                            MaterializationStructMismatch)
+                {
+                    result.diagnostics.emplace_back(
+                        "materialized SSBO type mismatch must be reported");
+                }
+                materialization.struct_refs[0].ssbo_type = original_type;
+            }
+        }
+
+        MaterialRecipe changed_assets = request.recipe;
+        changed_assets.textures[0].resource_id =
+            "assets/base_color_b.ktx";
+        ResourceAcquirePlan changed_plan{};
+        ShadowResourcePlanSummary changed_summary{};
+        if (!BuildShadowResourceAcquirePlan(
+                changed_assets,
+                GetGLSLCodeModuleRegistry(),
+                graph,
+                contracts.shader_interface,
+                keys.effective_program,
+                changed_plan,
+                changed_summary,
+                diagnostic)
+         || GetResourceAcquirePlanHash(plan)
+                == GetResourceAcquirePlanHash(changed_plan)
+         || keys.program.GetDigest() == 0)
+        {
+            result.diagnostics.emplace_back(
+                "asset identity must affect only resource plan identity");
         }
 
         result.passed = result.diagnostics.empty();
@@ -5734,6 +5984,7 @@ int main(const int argc, char **argv)
     if (run_glsl) results.push_back(RunGLSLCodeModuleMetadataValidationCase());
     if (run_glsl) results.push_back(RunShadowMaterialModuleGraphCase());
     if (run_glsl) results.push_back(RunShadowShaderContractCase());
+    if (run_materialization) results.push_back(RunShadowResourceAcquirePlanCase());
     if (run_glsl) results.push_back(RunCapabilityResolverCase());
     if (run_interface) results.push_back(RunShaderSemanticRegistryCase());
     if (run_materialization) results.push_back(RunSurfaceProfileModelCase());

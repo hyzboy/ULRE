@@ -133,6 +133,7 @@ namespace hgl::graph::mtl
         DescriptorSemantic semantic = DescriptorSemantic::Unknown;
         TextureSlot texture_slot = TextureSlot::BaseColor;
         uint32 data_slot = 0;
+        SSBOType ssbo_type = SSBOType::UserDefined;
         ResourceAcquireKind kind = ResourceAcquireKind::Texture;
         bool required = true;
         bool allow_fallback = false;
@@ -149,6 +150,7 @@ namespace hgl::graph::mtl
             && lhs.semantic == rhs.semantic
             && lhs.texture_slot == rhs.texture_slot
             && lhs.data_slot == rhs.data_slot
+            && lhs.ssbo_type == rhs.ssbo_type
             && lhs.kind == rhs.kind
             && lhs.required == rhs.required
             && lhs.allow_fallback == rhs.allow_fallback;
