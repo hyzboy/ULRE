@@ -76,6 +76,9 @@ namespace hgl::graph::mtl
         {
             const char *surface = definition.fragment_surface_module
                 ? definition.fragment_surface_module : "";
+            const char *source =
+                definition.fragment_material_source_module
+                    ? definition.fragment_material_source_module : "";
             const auto require_semantic =
                 [&out_contract](const InterStageSemantic semantic)
             {
@@ -84,28 +87,33 @@ namespace hgl::graph::mtl
             };
 
             if (std::strcmp(
-                    surface, "surface/lit_surface.glsl") == 0)
+                    source, "material/pbr_surface_source.glsl") == 0
+             || std::strcmp(
+                    source,
+                    "material/pbr_texturearray_source.glsl") == 0)
             {
-                require_semantic(InterStageSemantic::DataIndexID);
                 require_semantic(InterStageSemantic::TextureLayerID);
                 require_semantic(InterStageSemantic::UV0);
+                if (definition.vertex_varying.
+                        texture_layer_id_uses_data_index)
+                    require_semantic(InterStageSemantic::DataIndexID);
                 out_contract.requires_texture = true;
                 out_contract.texture_slot = TextureSlot::OpacityMask;
             }
             else if (std::strcmp(
-                        surface,
-                        "surface/unlit_texture_surface.glsl") == 0)
+                        source,
+                        "material/texture_source.glsl") == 0)
             {
                 require_semantic(InterStageSemantic::UV0);
                 out_contract.requires_texture = true;
                 out_contract.texture_slot = TextureSlot::BaseColor;
             }
             else if (std::strcmp(
-                        surface,
-                        "surface/unlit_text_surface.glsl") == 0
+                        source,
+                        "material/text_source.glsl") == 0
                   || std::strcmp(
-                        surface,
-                        "surface/unlit_2darray_surface.glsl") == 0)
+                        source,
+                        "material/texture_array_source.glsl") == 0)
             {
                 require_semantic(InterStageSemantic::DataIndexID);
                 require_semantic(InterStageSemantic::UV0);
@@ -114,20 +122,26 @@ namespace hgl::graph::mtl
                 out_contract.texture_slot = TextureSlot::BaseColor;
             }
             else if (std::strcmp(
-                        surface,
-                        "surface/unlit_vertexcolor_surface.glsl") == 0)
+                        source,
+                        "material/vertex_color_source.glsl") == 0)
             {
                 require_semantic(InterStageSemantic::Color);
             }
             else if (std::strcmp(
-                        surface,
-                        "surface/unlit_color3d_surface.glsl") == 0
+                        source,
+                        "material/unlit_source.glsl") == 0
                   || std::strcmp(
-                        surface,
-                        "surface/unlit_luminance_surface.glsl") == 0)
+                        source,
+                        "material/luminance_source.glsl") == 0)
             {
                 require_semantic(InterStageSemantic::DataIndexID);
                 out_contract.requires_material_data = true;
+            }
+            else if (std::strcmp(
+                        source,
+                        "material/debug_normal_source.glsl") == 0)
+            {
+                // Debug source alpha is a constant.
             }
             else
             {

@@ -521,15 +521,25 @@ namespace
         compositor_options.coverage_contract = &coverage_contract;
         if (definition.fragment_program_mode == MaterialFragmentProgramMode::Compositor)
         {
-            compositor_options.sky_module =
-                ambient_model == SkyLightAmbientModel::CubeMap
-             || ambient_model == SkyLightAmbientModel::IBL
+            const bool use_scene_lighting =
+                definition.compositor_surface != SurfaceType::Unlit
+             && definition.compositor_surface != SurfaceType::Sky;
+            compositor_options.enable_scene_lighting =
+                use_scene_lighting;
+            compositor_options.sky_module = use_scene_lighting
+                ? ambient_model == SkyLightAmbientModel::CubeMap
+                 || ambient_model == SkyLightAmbientModel::IBL
                     ? "sky/sky_cubemap.glsl"
-                    : "sky/sky_atmosphere.glsl";
+                    : "sky/sky_atmosphere.glsl"
+                : nullptr;
             compositor_options.forward_lighting_module =
-                "compositor/forward_lighting.glsl";
+                use_scene_lighting
+                    ? "compositor/forward_lighting.glsl"
+                    : "compositor/flat_lighting.glsl";
             compositor_options.lighting_algorithm_module =
-                "lighting/forward_pbr.glsl";
+                use_scene_lighting
+                    ? "lighting/forward_pbr.glsl"
+                    : "lighting/forward_flat.glsl";
             compositor_options.material_source_module =
                 definition.fragment_material_source_module;
             compositor_options.ntb_module =

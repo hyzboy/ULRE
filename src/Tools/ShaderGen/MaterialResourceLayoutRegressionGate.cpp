@@ -1090,7 +1090,7 @@ namespace
                 result.diagnostics.emplace_back(
                     "Compositor GLSL contains a second #version directive");
             const size_t surface_call = assembled.fragment_glsl.find(
-                "SurfaceOutput so = EvalSurface(si, fragDataIndexID);");
+                "EvalSurface(si, materialDataIndex);");
             const size_t input_module_include = assembled.fragment_glsl.find(
                 "#include \"compositor/forward_lighting.glsl\"");
             const size_t algorithm_module_include = assembled.fragment_glsl.find(
@@ -2793,6 +2793,139 @@ namespace
         return result;
     }
 
+    static GateResult RunUnifiedForwardSkeletonCase()
+    {
+        GateResult result;
+        result.name = "V3.unified-forward-skeleton";
+
+        struct ExpectedSource
+        {
+            const char *definition_id;
+            const char *source_module;
+        };
+        static const ExpectedSource expected_sources[] =
+        {
+            {"VertexPaletteColor", "material/vertex_color_source.glsl"},
+            {"VertexColor", "material/vertex_color_source.glsl"},
+            {"VertexLuminance", "material/luminance_source.glsl"},
+            {"UnlitTexture", "material/texture_source.glsl"},
+            {"Texture2DArray", "material/texture_array_source.glsl"},
+            {"DebugNormalColor", "material/debug_normal_source.glsl"},
+            {"Lit", "material/pbr_surface_source.glsl"},
+            {"LitTextureArray", "material/pbr_texturearray_source.glsl"},
+            {BUILTIN_MTL_DEF_PURE_COLOR, "material/unlit_source.glsl"},
+            {BUILTIN_MTL_DEF_TEXT, "material/text_source.glsl"}
+        };
+
+        for (const ExpectedSource &expected : expected_sources)
+        {
+            MaterialDefinition definition{};
+            if (!TryGetMaterialDefinitionByID(
+                    expected.definition_id, definition)
+             || !definition.fragment_source
+             || std::strcmp(
+                    definition.fragment_source,
+                    "compositor/main_forward_surface.frag.glsl") != 0
+             || !definition.fragment_surface_module
+             || std::strcmp(
+                    definition.fragment_surface_module,
+                    "surface/material_surface.glsl") != 0
+             || !definition.fragment_material_source_module
+             || std::strcmp(
+                    definition.fragment_material_source_module,
+                    expected.source_module) != 0)
+            {
+                result.diagnostics.emplace_back(
+                    std::string("definition did not use unified skeleton: ")
+                    + expected.definition_id);
+            }
+        }
+
+        MaterialDefinition lit{};
+        MaterialDefinition unlit{};
+        if (!TryGetMaterialDefinitionByID("Lit", lit)
+         || !TryGetMaterialDefinitionByID("UnlitTexture", unlit))
+        {
+            result.diagnostics.emplace_back(
+                "unified skeleton build definitions unavailable");
+        }
+        else
+        {
+            const GeometryVertexFormat lit_geometry{
+                {VertexSemantic::Position, VF_V3F},
+                {VertexSemantic::TexCoord, VF_V2F},
+                {VertexSemantic::Normal, VF_V3F}
+            };
+            const GeometryVertexFormat unlit_geometry{
+                {VertexSemantic::Position, VF_V2F},
+                {VertexSemantic::TexCoord, VF_V2F}
+            };
+            const auto build = [](
+                const MaterialDefinition &definition,
+                const GeometryVertexFormat &geometry)
+            {
+                MaterialDefinitionBuildRequest request{};
+                request.recipe.mtl_def_id = definition.definition_id;
+                request.geometry_vertex_format = &geometry;
+                request.generate_only = true;
+                return std::unique_ptr<ShaderProgramBuildSpec>(
+                    CreateMaterialFromDefinition(
+                        nullptr, definition, request));
+            };
+            const auto lit_build = build(lit, lit_geometry);
+            const auto unlit_build = build(unlit, unlit_geometry);
+            if (!lit_build || !unlit_build)
+            {
+                result.diagnostics.emplace_back(
+                    "unified forward skeleton build failed");
+            }
+            else
+            {
+                const std::string &lit_fs =
+                    lit_build->GetStageShader(
+                        ShaderStage::Fragment)->GetFinalGLSL();
+                const std::string &unlit_fs =
+                    unlit_build->GetStageShader(
+                        ShaderStage::Fragment)->GetFinalGLSL();
+                if (lit_fs.find(
+                        "#define HGL_USE_SCENE_LIGHTING 1")
+                        == std::string::npos
+                 || lit_fs.find(
+                        "#include \"lighting/forward_pbr.glsl\"")
+                        == std::string::npos
+                 || lit_fs.find(
+                        "#include \"compositor/forward_lighting.glsl\"")
+                        == std::string::npos
+                 || unlit_fs.find(
+                        "#define HGL_USE_SCENE_LIGHTING 0")
+                        == std::string::npos
+                 || unlit_fs.find(
+                        "#include \"lighting/forward_flat.glsl\"")
+                        == std::string::npos
+                 || unlit_fs.find(
+                        "#include \"compositor/flat_lighting.glsl\"")
+                        == std::string::npos
+                 || lit_fs.find(
+                        "EvalSurface(si, materialDataIndex)")
+                        == std::string::npos
+                 || unlit_fs.find(
+                        "EvalSurface(si, materialDataIndex)")
+                        == std::string::npos
+                 || lit_fs.find("EvalLighting(lighting)")
+                        == std::string::npos
+                 || unlit_fs.find("EvalLighting(lighting)")
+                        == std::string::npos)
+                {
+                    result.diagnostics.emplace_back(
+                        "unified Lit/Unlit module schedule mismatch");
+                }
+            }
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunUnifiedPureColorFragmentCase()
     {
         GateResult result;
@@ -2808,19 +2941,48 @@ namespace
 
         if (!pure_color.fragment_source
          || std::strcmp(pure_color.fragment_source,
-                        "compositor/pure_color.frag.glsl") != 0
+                        "compositor/main_forward_surface.frag.glsl") != 0
          || pure_color.fragment_program_mode != MaterialFragmentProgramMode::Compositor
-         || pure_color.fragment_surface_module)
+         || !pure_color.fragment_surface_module
+         || std::strcmp(
+                pure_color.fragment_surface_module,
+                "surface/material_surface.glsl") != 0
+         || !pure_color.fragment_material_source_module
+         || std::strcmp(
+                pure_color.fragment_material_source_module,
+                "material/unlit_source.glsl") != 0)
             result.diagnostics.emplace_back("PureColor must use one FS module");
 
         CompositorAssembler assembler(GetShaderLibraryPath());
+        hgl::ValueArray<InterStageSemanticContractEntry> stage_interface;
+        MaterialStageInterfaceDiagnostic interface_diagnostic{};
+        MaterialVertexVaryingConfig pure_color_varying{};
+        pure_color_varying.emit_data_index_id = true;
+        if (!BuildMaterialStageInterface(
+                pure_color_varying,
+                stage_interface,
+                interface_diagnostic))
+            result.diagnostics.emplace_back(
+                "PureColor stage interface build failed");
+        CompositorAssembler::CompositorModuleOptions options{};
+        options.material_source_module =
+            "material/unlit_source.glsl";
+        options.forward_lighting_module =
+            "compositor/flat_lighting.glsl";
+        options.lighting_algorithm_module =
+            "lighting/forward_flat.glsl";
+        options.fragment_inputs = &stage_interface;
         const auto assembled = assembler.Assemble(
             SurfaceType::Unlit, BlendMode::Opaque, PassType::ForwardOpaque,
-            "compositor/pure_color.frag.glsl", nullptr);
+            "compositor/main_forward_surface.frag.glsl",
+            "surface/material_surface.glsl",
+            options);
         if (!assembled.success
-         || assembled.fragment_glsl.find("MTL_DATA.data[fragDataIndexID].color")
+         || assembled.fragment_glsl.find(
+                "#include \"material/unlit_source.glsl\"")
                 == std::string::npos
-         || assembled.fragment_glsl.find("layout(location=0) flat in uint fragDataIndexID")
+         || assembled.fragment_glsl.find(
+                "#include \"lighting/forward_flat.glsl\"")
                 == std::string::npos)
             result.diagnostics.emplace_back("unified PureColor FS source is invalid");
 
@@ -3328,10 +3490,14 @@ namespace
                         != legacy_definition.vertex_provider_policy)
                     result.diagnostics.emplace_back("Lit provider policy mismatch");
                 if (std::strcmp(file_definition->fragment_source,
-                                "compositor/main_forward_lit.frag.glsl") != 0
+                               "compositor/main_forward_surface.frag.glsl") != 0
                  || std::strcmp(file_definition->fragment_surface_module,
-                                "surface/lit_surface.glsl") != 0)
-                    result.diagnostics.emplace_back("Lit stage reference mismatch");
+                                "surface/material_surface.glsl") != 0
+                 || !file_definition->fragment_material_source_module
+                 || std::strcmp(
+                       file_definition->fragment_material_source_module,
+                       "material/pbr_surface_source.glsl") != 0)
+                   result.diagnostics.emplace_back("Lit stage reference mismatch");
 
                 for (int i = 0; i < file_definition->vertex_semantic_requirements.GetCount(); ++i)
                 {
@@ -3933,14 +4099,14 @@ namespace
             result.diagnostics.emplace_back("LoadDirectory failed to scan directory");
         else
         {
-            if (file_count != 69)
-                result.diagnostics.emplace_back("LoadDirectory expected 69 file modules, got "
+            if (file_count != 78)
+                result.diagnostics.emplace_back("LoadDirectory expected 78 file modules, got "
                     + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 69 + int(GLSLCodeModuleID::RANGE_SIZE);
+            const int expected_count = 78 + int(GLSLCodeModuleID::RANGE_SIZE);
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
@@ -4009,11 +4175,11 @@ namespace
         int dup_errors = 0;
         if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()), &dup_count, &dup_errors))
             result.diagnostics.emplace_back("second LoadDirectory failed");
-        else if (dup_count != 0 || dup_errors != 69)
-            result.diagnostics.emplace_back("second LoadDirectory must report 69 duplicates, got files="
+        else if (dup_count != 0 || dup_errors != 78)
+            result.diagnostics.emplace_back("second LoadDirectory must report 78 duplicates, got files="
                 + std::to_string(dup_count) + " errors=" + std::to_string(dup_errors));
 
-        const int stable_count = 69 + int(GLSLCodeModuleID::RANGE_SIZE);
+        const int stable_count = 78 + int(GLSLCodeModuleID::RANGE_SIZE);
         if (registry.GetCount() != stable_count)
             result.diagnostics.emplace_back("registry count changed after duplicate re-scan: got "
                 + std::to_string(registry.GetCount()));
@@ -4541,6 +4707,8 @@ namespace
         {
             MaterialDefinition definition{};
             definition.definition_id = "SyntheticShadowGraph";
+            definition.fragment_program_mode =
+                MaterialFragmentProgramMode::DirectInclude;
             SetMaterialFragmentSource(
                 definition, "synthetic/shadow_root.frag.glsl");
             definition.vertex_node_config = MakeDefault3DNodeConfig();
@@ -6498,6 +6666,7 @@ int main(const int argc, char **argv)
     if (run_pipeline) results.push_back(RunUnifiedMaterialBaselineCase());
     if (run_pipeline) results.push_back(RunMaterialOutputContractCase());
     if (run_pipeline) results.push_back(RunPrimitiveVariantPurposeCase());
+    if (run_pipeline) results.push_back(RunUnifiedForwardSkeletonCase());
     if (run_pipeline) results.push_back(RunUnifiedPureColorFragmentCase());
     if (run_descriptor) results.push_back(RunUnifiedMaterialContractCase());
     if (run_materialization) results.push_back(RunTransformGraphModelCase());

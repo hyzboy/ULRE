@@ -40,4 +40,8 @@ namespace hgl::graph::mtl
         const InterStageSemanticContractEntry &entry,
         const char *direction,
         AnsiString &out_declaration);
+
+    bool BuildGLSLMaterialSurfaceInput(
+        const ValueArray<InterStageSemanticContractEntry> &entries,
+        AnsiString &out_code);
 }

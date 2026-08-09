@@ -45,6 +45,7 @@ namespace hgl::graph
             const char *forward_lighting_module = nullptr;// e.g. "compositor/forward_lighting.glsl"
             bool enable_material_source_provider = false;
             bool enable_ntb_provider = false;
+            bool enable_scene_lighting = false;
             bool alpha_test = false;
             float alpha_cutoff = 0.5f;
             bool dither = false;
@@ -91,6 +92,10 @@ namespace hgl::graph
         std::string ReplaceLightingModuleIncludes(const std::string &source, const CompositorModuleOptions &module_options) const;
         std::string ReplaceSurfaceInclude(const std::string &source, const std::string &surface_path) const;
         bool ApplyFragmentInputContract(
+            const std::string &source,
+            const hgl::ValueArray<mtl::InterStageSemanticContractEntry> &inputs,
+            std::string &out_source) const;
+        bool ApplySurfaceInputContract(
             const std::string &source,
             const hgl::ValueArray<mtl::InterStageSemanticContractEntry> &inputs,
             std::string &out_source) const;

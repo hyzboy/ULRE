@@ -674,6 +674,36 @@ namespace hgl::graph::mtl
             }
         }
 
+        const bool forward_purpose =
+            purpose == ShaderProgramPurpose::ForwardColor;
+        const bool forward_compositor =
+            forward_purpose
+         && definition.fragment_program_mode
+                == MaterialFragmentProgramMode::Compositor;
+        const bool scene_lighting =
+            forward_compositor
+         && definition.compositor_surface != SurfaceType::Unlit
+         && definition.compositor_surface != SurfaceType::Sky;
+        SkyLightAmbientModel ambient_model =
+            request && request->override_sky_ambient_model
+                ? request->sky_ambient_model
+                : SkyLightAmbientModel::Simple;
+        if (!request || !request->override_sky_ambient_model)
+        {
+            for (const GLSLCodeModuleID id :
+                 definition.code_module_requirements)
+            {
+                if (id == GLSLCodeModuleID::SkyLightCubeMap)
+                {
+                    ambient_model = SkyLightAmbientModel::CubeMap;
+                    break;
+                }
+            }
+        }
+        const bool needs_sky_module =
+            forward_compositor
+         && definition.compositor_surface != SurfaceType::Unlit;
+
         const char *module_paths[] =
         {
             depth_purpose
@@ -683,7 +713,30 @@ namespace hgl::graph::mtl
                 ? nullptr : definition.fragment_surface_module,
             depth_purpose && !coverage.requires_alpha_evaluation
                 ? nullptr : definition.fragment_material_source_module,
-            depth_purpose ? nullptr : definition.fragment_ntb_module
+            depth_purpose ? nullptr : definition.fragment_ntb_module,
+            scene_lighting
+                ? "compositor/forward_lighting.glsl"
+                : forward_compositor
+                 && definition.compositor_surface == SurfaceType::Unlit
+                    ? "compositor/flat_lighting.glsl"
+                    : nullptr,
+            scene_lighting
+                ? "lighting/forward_pbr.glsl"
+                : forward_compositor
+                 && definition.compositor_surface == SurfaceType::Unlit
+                    ? "lighting/forward_flat.glsl"
+                    : nullptr,
+            scene_lighting
+                ? "lighting/direct_cook_torrance_pbr.glsl"
+                : nullptr,
+            scene_lighting
+                ? "lighting/indirect_simple_ambient.glsl"
+                : nullptr,
+            needs_sky_module
+                ? ambient_model == SkyLightAmbientModel::CubeMap
+                    ? "sky/sky_cubemap.glsl"
+                    : "sky/sky_atmosphere.glsl"
+                : nullptr
         };
         for (const char *path : module_paths)
         {

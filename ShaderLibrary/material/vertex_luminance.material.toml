@@ -15,8 +15,9 @@ scale = "World"
 projection = "WorldCameraVP"
 
 [fragment]
-source = "compositor/main_forward_unlit_luminance.frag.glsl"
-surface_module = "surface/unlit_luminance_surface.glsl"
+source = "compositor/main_forward_surface.frag.glsl"
+surface_module = "surface/material_surface.glsl"
+material_source_module = "material/luminance_source.glsl"
 
 [compositor]
 surface = "Unlit"

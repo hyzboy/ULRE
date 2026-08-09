@@ -15,8 +15,9 @@ scale = "World"
 projection = "WorldCameraVP"
 
 [fragment]
-source = "compositor/main_forward_unlit_normal.frag.glsl"
-surface_module = "surface/debug_normal_color.glsl"
+source = "compositor/main_forward_surface.frag.glsl"
+surface_module = "surface/material_surface.glsl"
+material_source_module = "material/debug_normal_source.glsl"
 
 [compositor]
 surface = "Unlit"

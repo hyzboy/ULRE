@@ -21,9 +21,13 @@ namespace hgl::graph::mtl
                 UBODescriptorSemantic::CameraInfo
             };
             bmi.vertex_node_config = MakeDefault3DNodeConfig();
-            SetMaterialFragmentSource(bmi, "compositor/pure_color.frag.glsl");
+            SetMaterialFragmentSource(
+                bmi, "compositor/main_forward_surface.frag.glsl");
             bmi.fragment_program_mode = MaterialFragmentProgramMode::Compositor;
-            bmi.fragment_surface_module = nullptr;
+            bmi.fragment_surface_module =
+                "surface/material_surface.glsl";
+            bmi.fragment_material_source_module =
+                "material/unlit_source.glsl";
             bmi.vertex_varying.emit_data_index_id = true;
 
             const GLSLCodeModuleSemanticRequirement requirements[] = {

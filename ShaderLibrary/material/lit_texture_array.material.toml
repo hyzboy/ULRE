@@ -15,8 +15,8 @@ scale = "World"
 projection = "WorldCameraVP"
 
 [fragment]
-source = "compositor/main_forward_lit.frag.glsl"
-surface_module = "surface/lit_surface.glsl"
+source = "compositor/main_forward_surface.frag.glsl"
+surface_module = "surface/material_surface.glsl"
 material_source_module = "material/pbr_texturearray_source.glsl"
 ntb_module = "ntb/ntb_texturearray_normalmap.glsl"
 

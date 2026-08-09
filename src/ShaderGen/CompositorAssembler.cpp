@@ -32,7 +32,7 @@ namespace hgl::graph
             case PassType::ForwardOpaque:
             case PassType::ForwardMasked:
             case PassType::ForwardTransparent:
-                return shader_lib_path_ + "/compositor/main_forward_unlit.frag.glsl";
+                return shader_lib_path_ + "/compositor/main_forward_surface.frag.glsl";
 
             case PassType::ShadowOpaque:
             case PassType::ShadowMasked:
@@ -46,10 +46,10 @@ namespace hgl::graph
 
             case PassType::ForwardDither:
             case PassType::ForwardA2C:
-                return shader_lib_path_ + "/compositor/main_forward_unlit.frag.glsl";
+                return shader_lib_path_ + "/compositor/main_forward_surface.frag.glsl";
 
             default:
-                return shader_lib_path_ + "/compositor/main_forward_unlit.frag.glsl";
+                return shader_lib_path_ + "/compositor/main_forward_surface.frag.glsl";
             }
         }
 
@@ -80,17 +80,17 @@ namespace hgl::graph
         switch (pass)
         {
         case PassType::ForwardOpaque:
-            return shader_lib_path_ + "/compositor/main_forward_lit.frag.glsl";
+            return shader_lib_path_ + "/compositor/main_forward_surface.frag.glsl";
 
         case PassType::ForwardMasked:
-            return shader_lib_path_ + "/compositor/main_forward_lit.frag.glsl";
+            return shader_lib_path_ + "/compositor/main_forward_surface.frag.glsl";
 
         case PassType::ForwardTransparent:
-            return shader_lib_path_ + "/compositor/main_forward_lit.frag.glsl";
+            return shader_lib_path_ + "/compositor/main_forward_surface.frag.glsl";
 
         case PassType::ForwardDither:
         case PassType::ForwardA2C:
-            return shader_lib_path_ + "/compositor/main_forward_lit.frag.glsl";
+            return shader_lib_path_ + "/compositor/main_forward_surface.frag.glsl";
 
         case PassType::ShadowOpaque:
         case PassType::ShadowMasked:
@@ -106,7 +106,7 @@ namespace hgl::graph
             return {};
 
         default:
-            return shader_lib_path_ + "/compositor/main_forward_lit.frag.glsl";
+            return shader_lib_path_ + "/compositor/main_forward_surface.frag.glsl";
         }
     }
 
@@ -114,8 +114,8 @@ namespace hgl::graph
     {
         switch (surface)
         {
-        case SurfaceType::Lit:        return "surface/lit_surface.glsl";
-        case SurfaceType::Unlit:      return "surface/unlit_color3d_surface.glsl";
+        case SurfaceType::Lit:        return "surface/material_surface.glsl";
+        case SurfaceType::Unlit:      return "surface/material_surface.glsl";
         case SurfaceType::Sky:        return "surface/sky_minimal_surface.glsl";
         // Reserved: Skin, Hair, Cloth, Eye, Foliage, ClearCoat, Water — not yet specialized, fall through to Lit.
         case SurfaceType::Skin:
@@ -124,7 +124,7 @@ namespace hgl::graph
         case SurfaceType::Eye:
         case SurfaceType::Foliage:
         case SurfaceType::ClearCoat:
-        case SurfaceType::Water:      return "surface/lit_surface.glsl";
+        case SurfaceType::Water:      return "surface/material_surface.glsl";
         default:                      return {};
         }
     }
@@ -153,6 +153,9 @@ namespace hgl::graph
             defines += "#define HGL_USE_NTB_PROVIDER 1\n";
         else
             defines += "#define HGL_USE_NTB_PROVIDER 0\n";
+        defines += module_options.enable_scene_lighting
+            ? "#define HGL_USE_SCENE_LIGHTING 1\n"
+            : "#define HGL_USE_SCENE_LIGHTING 0\n";
 
         // Metadata/comments may precede #version in file-backed templates, but
         // GLSL requires #version to be the first preprocessing token.
@@ -349,6 +352,26 @@ namespace hgl::graph
         return true;
     }
 
+    bool CompositorAssembler::ApplySurfaceInputContract(
+        const std::string &source,
+        const hgl::ValueArray<mtl::InterStageSemanticContractEntry> &inputs,
+        std::string &out_source) const
+    {
+        const std::string marker =
+            "// ULRE_SURFACE_INPUT_CONTRACT";
+        const size_t marker_pos = source.find(marker);
+        if (marker_pos == std::string::npos)
+            return false;
+
+        AnsiString generated;
+        if (!mtl::BuildGLSLMaterialSurfaceInput(inputs, generated))
+            return false;
+        out_source = source;
+        out_source.replace(
+            marker_pos, marker.size(), generated.c_str());
+        return true;
+    }
+
     CompositorAssembler::AssembleResult CompositorAssembler::Assemble(
         SurfaceType                  surface,
         BlendMode                    blend,
@@ -407,6 +430,9 @@ namespace hgl::graph
             || is_lit_surface
             || (effective_options.ntb_module
                 && effective_options.ntb_module[0]);
+        effective_options.enable_scene_lighting =
+            effective_options.enable_scene_lighting
+            || is_lit_surface;
         if (!effective_options.use_resolved_render_state)
         {
             effective_options.alpha_test = effective_options.alpha_test
@@ -420,7 +446,8 @@ namespace hgl::graph
 
         // 5. Resolve configurable module includes to literal header names.
         // GLSL does not allow a macro to stand in for the header token of #include.
-        fs_source = ReplaceLightingModuleIncludes(fs_source, module_options);
+        fs_source = ReplaceLightingModuleIncludes(
+            fs_source, effective_options);
 
         // 6. 替换 FS 中的 SURFACE_FUNCTION_FILE
         fs_source = ReplaceSurfaceInclude(fs_source, surface_rel);
@@ -474,6 +501,24 @@ namespace hgl::graph
                 return result;
             }
             fs_source = std::move(contracted_source);
+        }
+
+        if (module_options.fragment_inputs
+         && fs_source.find("// ULRE_SURFACE_INPUT_CONTRACT")
+                != std::string::npos)
+        {
+            std::string input_source;
+            if (!ApplySurfaceInputContract(
+                    fs_source,
+                    *module_options.fragment_inputs,
+                    input_source))
+            {
+                result.error_message =
+                    "Failed to apply material surface input contract";
+                result.success = false;
+                return result;
+            }
+            fs_source = std::move(input_source);
         }
 
         mtl::OutputContract default_output_contract{};

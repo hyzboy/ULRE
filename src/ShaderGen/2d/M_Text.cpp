@@ -25,9 +25,12 @@ namespace
         varying.emit_data_index_id = true;
         varying.emit_texture_layer_id = true;
         varying.emit_uv0 = true;
-        SetMaterialFragmentSource(bmi, "compositor/main_forward_unlit_texture.frag.glsl");
+        SetMaterialFragmentSource(
+            bmi, "compositor/main_forward_surface.frag.glsl");
         bmi.fragment_program_mode = MaterialFragmentProgramMode::Compositor;
-        bmi.fragment_surface_module = "surface/unlit_text_surface.glsl";
+        bmi.fragment_surface_module = "surface/material_surface.glsl";
+        bmi.fragment_material_source_module =
+            "material/text_source.glsl";
         bmi.vertex_varying = varying;
         const GLSLCodeModuleSemanticRequirement vertex_requirements[] = {
             MakeMaterialVertexSemanticRequirement(VertexSemantic::Position),

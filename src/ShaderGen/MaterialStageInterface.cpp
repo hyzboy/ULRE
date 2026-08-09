@@ -203,4 +203,52 @@ namespace hgl::graph::mtl
         out_declaration += ";";
         return true;
     }
+
+    bool BuildGLSLMaterialSurfaceInput(
+        const ValueArray<InterStageSemanticContractEntry> &entries,
+        AnsiString &out_code)
+    {
+        out_code =
+            "    SurfaceInput si;\n"
+            "    si.worldPos = vec3(0.0);\n"
+            "    si.worldNormal = vec3(0.0, 0.0, 1.0);\n"
+            "    si.uv0 = vec2(0.0);\n"
+            "    si.uv1 = vec2(0.0);\n"
+            "    si.vertexColor = vec4(1.0);\n"
+            "    si.viewDir = vec3(0.0, 0.0, 1.0);\n"
+            "    si.screenPos = gl_FragCoord.xy;\n"
+            "    si.luminance = 1.0;\n"
+            "    si.textureLayerID = 0u;\n";
+
+        if (FindMaterialStageInterfaceEntry(
+                entries, InterStageSemantic::WorldPosition))
+        {
+            out_code += "    si.worldPos = fragWorldPos;\n";
+            out_code +=
+                "    si.viewDir = normalize(-fragWorldPos);\n";
+        }
+        if (FindMaterialStageInterfaceEntry(
+                entries, InterStageSemantic::WorldNormal))
+            out_code +=
+                "    si.worldNormal = normalize(fragWorldNormal);\n";
+        if (FindMaterialStageInterfaceEntry(
+                entries, InterStageSemantic::UV0))
+            out_code += "    si.uv0 = fragUV0;\n";
+        if (FindMaterialStageInterfaceEntry(
+                entries, InterStageSemantic::Color))
+            out_code += "    si.vertexColor = fragVertexColor;\n";
+        if (FindMaterialStageInterfaceEntry(
+                entries, InterStageSemantic::Luminance))
+            out_code += "    si.luminance = fragLuminance;\n";
+        if (FindMaterialStageInterfaceEntry(
+                entries, InterStageSemantic::TextureLayerID))
+            out_code +=
+                "    si.textureLayerID = fragTextureLayerID;\n";
+
+        out_code += "    const uint materialDataIndex = ";
+        out_code += FindMaterialStageInterfaceEntry(
+                entries, InterStageSemantic::DataIndexID)
+            ? "fragDataIndexID;\n" : "0u;\n";
+        return true;
+    }
 }
