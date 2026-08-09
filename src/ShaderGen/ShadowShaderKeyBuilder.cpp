@@ -150,7 +150,7 @@ namespace hgl::graph::mtl
                     {
                         ssbo.data_slot,
                         ssbo.ssbo_type,
-                        ssbo.ssbo_id != 0,
+                        true,
                         ssbo.use_data_index,
                         ssbo.shared_across_instances
                     });

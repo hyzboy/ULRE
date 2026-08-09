@@ -48,16 +48,27 @@ namespace hgl::graph::mtl
         }
 
         uint64 HashSSBOAssetIdentity(
-            const RecipeSSBOAssetBinding &binding) noexcept
+            const SSBOType ssbo_type,
+            const uint32 ssbo_id,
+            const uint32 data_slot) noexcept
         {
             uint64 hash = hgl::hash::FNV1aInit<uint64>();
             hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, binding.ssbo_type);
+                hash, ssbo_type);
             hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, binding.ssbo_id);
+                hash, ssbo_id);
             hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, binding.data_slot);
+                hash, data_slot);
             return hash;
+        }
+
+        uint64 HashSSBOAssetIdentity(
+            const RecipeSSBOAssetBinding &binding) noexcept
+        {
+            return HashSSBOAssetIdentity(
+                binding.ssbo_type,
+                binding.ssbo_id,
+                binding.data_slot);
         }
 
         uint64 HashSSBOMetadata(
@@ -348,14 +359,6 @@ namespace hgl::graph::mtl
                 const RecipeSSBOAssetBinding &binding =
                     recipe.ssbo_assets[static_cast<size_t>(binding_index)];
                 used_ssbos[static_cast<size_t>(binding_index)] = true;
-                if (binding.ssbo_id == 0)
-                {
-                    if (contract.required)
-                        ++out_summary.missing_required_count;
-                    else
-                        ++out_summary.missing_optional_count;
-                    continue;
-                }
 
                 ResourceAcquirePlanEntry entry{};
                 entry.logical_resource_id = contract.logical_resource_id;
@@ -441,7 +444,12 @@ namespace hgl::graph::mtl
                      materialization.struct_refs)
                 {
                     if (resource.data_slot == entry.data_slot
-                     && resource.ssbo_type == entry.ssbo_type)
+                     && resource.ssbo_type == entry.ssbo_type
+                     && HashSSBOAssetIdentity(
+                            resource.ssbo_type,
+                            resource.ssbo_id,
+                            resource.data_slot)
+                            == entry.asset_identity_hash)
                     {
                         found = true;
                         break;

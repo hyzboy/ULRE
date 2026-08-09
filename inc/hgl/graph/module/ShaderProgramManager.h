@@ -141,7 +141,9 @@ public: //ShaderProgram
 
     bool            BuildMaterialResourceLayout(const mtl::MaterialDefinitionBuildRequest &request,
                                                 mtl::MaterialResourceLayout &out_layout);
-    ShaderProgram *   AcquireShaderProgram(const mtl::MaterialDefinitionBuildRequest &request);
+    ShaderProgram *AcquireShaderProgram(
+        const mtl::MaterialDefinitionBuildRequest &request,
+        mtl::ActiveProfileBindingView *out_binding_view = nullptr);
 
 };//class ShaderProgramManager
 

@@ -49,6 +49,7 @@ struct CompositorMaterialBuildConfig
     const MaterialDescriptorContract *descriptor_contract = nullptr;
     const EffectiveMaterialProgramKey *effective_program = nullptr;
     const MaterialResolutionResult *material_resolution = nullptr;
+    const MaterialRecipe *material_recipe = nullptr;
     bool generate_only = false; // Preserve generated GLSL for contract tests without SPV compilation.
 };
 

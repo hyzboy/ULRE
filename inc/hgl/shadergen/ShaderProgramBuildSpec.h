@@ -55,7 +55,9 @@ namespace hgl::graph
             bool has_program_metadata = false;
             PreparedMaterialProgramSet prepared_program_set{};
             MaterialResolutionResult material_resolution{};
+            ActiveProfileBindingView active_profile_binding_view{};
             bool has_prepared_program_set = false;
+            bool has_active_profile_binding_view = false;
 
         public:
 
@@ -114,7 +116,8 @@ namespace hgl::graph
             }
             bool SetPreparedMaterialProgramSet(
                 const PreparedMaterialProgramSet &program_set,
-                const MaterialResolutionResult &resolution)
+                const MaterialResolutionResult &resolution,
+                const ActiveProfileBindingView &binding_view)
             {
                 const EffectiveMaterialProgramKey *executable_program =
                     program_set.GetExecutableProgram();
@@ -123,14 +126,24 @@ namespace hgl::graph
                  || resolution.status
                         != MaterialResolutionStatus::Resolved
                  || resolution.effective_program
-                        != *executable_program)
+                        != *executable_program
+                 || !binding_view.IsValid()
+                 || binding_view.effective_material_program_digest
+                        != executable_program->GetDigest()
+                 || binding_view.active_surface_profile_id
+                        != executable_program->
+                            resolved_surface_profile_id
+                 || binding_view.active_projection_id
+                        != executable_program->projection_id)
                 {
                     return false;
                 }
 
                 prepared_program_set = program_set;
                 material_resolution = resolution;
+                active_profile_binding_view = binding_view;
                 has_prepared_program_set = true;
+                has_active_profile_binding_view = true;
                 return true;
             }
             bool HasPreparedMaterialProgramSet() const noexcept
@@ -153,6 +166,15 @@ namespace hgl::graph
                 GetMaterialResolutionResult() const noexcept
             {
                 return material_resolution;
+            }
+            bool HasActiveProfileBindingView() const noexcept
+            {
+                return has_active_profile_binding_view;
+            }
+            const ActiveProfileBindingView &
+                GetActiveProfileBindingView() const noexcept
+            {
+                return active_profile_binding_view;
             }
 
             const bool HasLocalToWorld                  ()const{return has_local_to_world;}

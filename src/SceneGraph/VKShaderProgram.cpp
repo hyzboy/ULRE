@@ -17,6 +17,7 @@ ShaderProgram::ShaderProgram(const AnsiString &n,const mtl::ShaderProgramBuildSp
     name=n;
     geometry=mci->GetPrimitiveType();
     material_resource_layout=mci->GetMaterialResourceLayout();
+    prepared_program_set=mci->GetPreparedMaterialProgramSet();
 
     vertex_input=nullptr;
     shader_maps=new ShaderModuleMap;

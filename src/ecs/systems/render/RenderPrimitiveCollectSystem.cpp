@@ -16,6 +16,7 @@
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/mtl/MaterialLibrary.h>
+#include <hgl/shadergen/ActiveProfileBindingViewBuilder.h>
 #include<hgl/log/Log.h>
 #include<hgl/vk/VKRenderPass.h>
 #include<glm/glm.hpp>
@@ -146,6 +147,146 @@ namespace hgl::ecs
                 return false;
 
             return primitive_comp->BuildResolvedAuthoringMaterialRecipe(out_recipe, material_program);
+        }
+
+        void LogActiveProfileBindingFailure(
+            const char *owner_name,
+            const graph::ShaderProgram *program,
+            const graph::mtl::MaterialRecipe &recipe,
+            const graph::mtl::ActiveProfileBindingView &view)
+        {
+            GLogWarning(
+                "[ActiveProfileBinding] owner=%s program=%s ready=%d valid=%d missing=%u profile=%llu projection=%llu effective=%llu view_hash=%llu expected_binding_hash=%llu actual_binding_hash=%llu recipe=%s definition=%s textures=%zu data=%zu",
+                owner_name ? owner_name : "<null>",
+                program ? program->GetName().c_str() : "<null>",
+                view.IsRuntimeReady() ? 1 : 0,
+                view.IsValid() ? 1 : 0,
+                view.missing_required_count,
+                static_cast<unsigned long long>(
+                    view.active_surface_profile_id),
+                static_cast<unsigned long long>(
+                    view.active_projection_id),
+                static_cast<unsigned long long>(
+                    view.effective_material_program_digest),
+                static_cast<unsigned long long>(view.GetStableHash()),
+                static_cast<unsigned long long>(
+                    view.source_binding_hash),
+                static_cast<unsigned long long>(
+                    graph::mtl::GetActiveProfileBindingSourceHash(
+                        recipe)),
+                recipe.recipe_name.c_str(),
+                recipe.mtl_def_id.c_str(),
+                recipe.textures.size(),
+                recipe.ssbo_assets.size());
+
+            for (int i = 0; i < view.textures.GetCount(); ++i)
+            {
+                const auto &binding = view.textures[i];
+                if (binding.source
+                        != graph::mtl::ActiveProfileBindingSource::Missing)
+                    continue;
+                GLogWarning(
+                    "[ActiveProfileBinding][MissingTexture] view_index=%d logical=%llu slot=%u source=%s required=%d allow_fallback=%d recipe_index=%u asset_hash=%llu metadata_hash=%llu direct=%u",
+                    i,
+                    static_cast<unsigned long long>(
+                        binding.logical_resource_id),
+                    static_cast<uint32_t>(binding.profile_slot),
+                    graph::mtl::GetActiveProfileBindingSourceName(
+                        binding.source),
+                    binding.required ? 1 : 0,
+                    binding.allow_fallback ? 1 : 0,
+                    binding.recipe_binding_index,
+                    static_cast<unsigned long long>(
+                        binding.asset_identity_hash),
+                    static_cast<unsigned long long>(
+                        binding.asset_metadata_hash),
+                    binding.direct_value);
+            }
+            for (int i = 0; i < view.data.GetCount(); ++i)
+            {
+                const auto &binding = view.data[i];
+                if (binding.source
+                        != graph::mtl::ActiveProfileBindingSource::Missing)
+                    continue;
+                GLogWarning(
+                    "[ActiveProfileBinding][MissingData] view_index=%d logical=%llu slot=%u type=%s(%u) source=%s required=%d allow_fallback=%d recipe_index=%u ssbo_id=%u data_index=%u use_data_index=%d shared=%d asset_hash=%llu metadata_hash=%llu",
+                    i,
+                    static_cast<unsigned long long>(
+                        binding.logical_resource_id),
+                    binding.data_slot,
+                    graph::mtl::GetSSBOTypeName(binding.ssbo_type),
+                    static_cast<uint32_t>(binding.ssbo_type),
+                    graph::mtl::GetActiveProfileBindingSourceName(
+                        binding.source),
+                    binding.required ? 1 : 0,
+                    binding.allow_fallback ? 1 : 0,
+                    binding.recipe_binding_index,
+                    binding.ssbo_id,
+                    binding.data_index,
+                    binding.use_data_index ? 1 : 0,
+                    binding.shared_across_instances ? 1 : 0,
+                    static_cast<unsigned long long>(
+                        binding.asset_identity_hash),
+                    static_cast<unsigned long long>(
+                        binding.asset_metadata_hash));
+            }
+            for (size_t i = 0; i < recipe.textures.size(); ++i)
+            {
+                const auto &binding = recipe.textures[i];
+                GLogWarning(
+                    "[ActiveProfileBinding][RecipeTexture] index=%zu slot=%u resource=%s direct=%d direct_value=%u required=%d",
+                    i,
+                    static_cast<uint32_t>(binding.slot),
+                    binding.resource_id.c_str(),
+                    binding.use_direct_value ? 1 : 0,
+                    binding.direct_value,
+                    binding.required ? 1 : 0);
+            }
+            for (size_t i = 0; i < recipe.ssbo_assets.size(); ++i)
+            {
+                const auto &binding = recipe.ssbo_assets[i];
+                GLogWarning(
+                    "[ActiveProfileBinding][RecipeData] index=%zu name=%s slot=%u type=%s(%u) ssbo_id=%u data_index=%u use_data_index=%d shared=%d",
+                    i,
+                    binding.data_slot_name.c_str(),
+                    binding.data_slot,
+                    graph::mtl::GetSSBOTypeName(binding.ssbo_type),
+                    static_cast<uint32_t>(binding.ssbo_type),
+                    binding.ssbo_id,
+                    binding.data_index,
+                    binding.use_data_index ? 1 : 0,
+                    binding.shared_across_instances ? 1 : 0);
+            }
+            if (!program)
+                return;
+            const auto &requirements =
+                program->GetMaterialResourceLayout().requirements;
+            for (size_t i = 0; i < requirements.size(); ++i)
+            {
+                const auto &requirement = requirements[i];
+                if (requirement.semantic
+                        != graph::mtl::DescriptorSemantic::MaterialTexture
+                 && requirement.semantic
+                        != graph::mtl::DescriptorSemantic::MaterialSampler
+                 && requirement.semantic
+                        != graph::mtl::DescriptorSemantic::
+                            MaterialDataSlotData)
+                    continue;
+                GLogWarning(
+                    "[ActiveProfileBinding][Layout] index=%zu name=%s semantic=%s kind=%s required=%d allow_fallback=%d texture_slot=%u data_slot=%u type=%s(%u) ssbo_id=%u",
+                    i,
+                    requirement.name ? requirement.name : "<unnamed>",
+                    graph::mtl::GetDescriptorSemanticName(
+                        requirement.semantic),
+                    graph::mtl::GetDescriptorKindName(requirement.kind),
+                    requirement.required ? 1 : 0,
+                    requirement.allow_fallback ? 1 : 0,
+                    static_cast<uint32_t>(requirement.texture_slot),
+                    requirement.data_slot,
+                    graph::mtl::GetSSBOTypeName(requirement.ssbo_type),
+                    static_cast<uint32_t>(requirement.ssbo_type),
+                    requirement.ssbo_id);
+            }
         }
 
         bool PrepareRecipeAuthoringResources(ECSContext *world,
@@ -446,7 +587,9 @@ namespace hgl::ecs
             InvalidateRecipeRuntime(material_comp, false);
         }
 
-        if (!material_comp->program_dirty && material_comp->program)
+        if (!material_comp->program_dirty
+         && material_comp->program
+         && material_comp->active_profile_binding_view.IsRuntimeReady())
             return true;
 
         // 统一 BMI 入口：由 AcquireShaderProgram 内部处理 2D/3D/Text/Sky 分支，
@@ -470,8 +613,10 @@ namespace hgl::ecs
         default:
             break;
         }
+        graph::mtl::ActiveProfileBindingView binding_view{};
         graph::ShaderProgram *resolved_program =
-            material_manager->AcquireShaderProgram(mtl_request);
+            material_manager->AcquireShaderProgram(
+                mtl_request, &binding_view);
 
         if (!resolved_program)
         {
@@ -480,6 +625,36 @@ namespace hgl::ecs
                         effective_recipe.recipe_name.c_str(),
                         effective_recipe.mtl_def_id.c_str());
             return false;
+        }
+
+        graph::mtl::MaterialRecipe active_profile_recipe{};
+        graph::mtl::ActiveProfileBindingViewBuildDiagnostic
+            binding_diagnostic{};
+        if (!BuildEffectiveMaterialRecipe(
+                primitive_comp,
+                resolved_program,
+                active_profile_recipe)
+         || !graph::mtl::BuildActiveProfileBindingView(
+                active_profile_recipe,
+                resolved_program->GetMaterialResourceLayout(),
+                resolved_program->GetPreparedMaterialProgramSet(),
+                binding_view,
+                binding_diagnostic))
+        {
+            GLogWarning(
+                "[RenderPrimitiveCollectSystem] Active Profile Binding View build failed for %s error=%s",
+                GetPrimitiveOwnerName(primitive_comp),
+                graph::mtl::GetActiveProfileBindingViewBuildErrorName(
+                    binding_diagnostic.error));
+            return false;
+        }
+        if (!binding_view.IsRuntimeReady())
+        {
+            LogActiveProfileBindingFailure(
+                GetPrimitiveOwnerName(primitive_comp),
+                resolved_program,
+                active_profile_recipe,
+                binding_view);
         }
 
         const bool program_changed = (material_comp->program != resolved_program);
@@ -502,6 +677,7 @@ namespace hgl::ecs
         }
 
         material_comp->program = resolved_program;
+        material_comp->active_profile_binding_view = binding_view;
         material_comp->program_dirty = false;
         material_comp->recipe_hash = recipe_hash;
         material_comp->program_build_context_hash =
@@ -588,6 +764,32 @@ namespace hgl::ecs
                         GetPrimitiveOwnerName(primitive_comp));
             return false;
         }
+        graph::mtl::MaterialRecipe active_profile_recipe{};
+        if (!graph::mtl::BuildActiveProfileMaterialRecipe(
+                effective_recipe,
+                material_comp->active_profile_binding_view,
+                active_profile_recipe))
+        {
+            LogActiveProfileBindingFailure(
+                GetPrimitiveOwnerName(primitive_comp),
+                material_comp->program,
+                effective_recipe,
+                material_comp->active_profile_binding_view);
+            GLogWarning(
+                "[RenderPrimitiveCollectSystem] Materialize failed: active Profile Binding View invalid for %s ready=%d missing=%u expected_binding_hash=%llu actual_binding_hash=%llu",
+                GetPrimitiveOwnerName(primitive_comp),
+                material_comp->active_profile_binding_view.
+                    IsRuntimeReady() ? 1 : 0,
+                material_comp->active_profile_binding_view.
+                    missing_required_count,
+                static_cast<unsigned long long>(
+                    material_comp->active_profile_binding_view.
+                        source_binding_hash),
+                static_cast<unsigned long long>(
+                    graph::mtl::GetActiveProfileBindingSourceHash(
+                        effective_recipe)));
+            return false;
+        }
 
         material_comp->ClearResolvedSSBOBindings();
         material_comp->data_index_values.clear();
@@ -597,7 +799,8 @@ namespace hgl::ecs
                 continue;
 
             uint32_t resolved_ssbo_id = 0;
-            if (!ResolveRecipeSSBOBindingId(effective_recipe, req, resolved_ssbo_id))
+            if (!ResolveRecipeSSBOBindingId(
+                    active_profile_recipe, req, resolved_ssbo_id))
             {
                 GLogWarning("[RenderPrimitiveCollectSystem] Materialize failed: unresolved SSBO binding for %s descriptor=%s slot=%u type=%s",
                             GetPrimitiveOwnerName(primitive_comp),
@@ -624,7 +827,11 @@ namespace hgl::ecs
         uint32_t texture_layer_row = uint32_t(-1);
         uint32_t data_index_row = uint32_t(-1);
         if (!rdbs->ResolveMaterialRecipe(
-                effective_recipe, spec, &texture_layer_row, &data_index_row, &instance_data))
+                active_profile_recipe,
+                spec,
+                &texture_layer_row,
+                &data_index_row,
+                &instance_data))
         {
             GLogWarning("[RenderPrimitiveCollectSystem] ResolveMaterialRecipe failed for %s recipe=%s",
                         GetPrimitiveOwnerName(primitive_comp),
@@ -644,7 +851,7 @@ namespace hgl::ecs
         // ResolveMaterialRecipe rehydrates this instance value from the shared
         // resource-resolution cache, so it never inherits another primitive's row.
         uint32_t entity_data_index = uint32_t(-1);
-        for (const auto &asset_binding : effective_recipe.ssbo_assets)
+        for (const auto &asset_binding : active_profile_recipe.ssbo_assets)
         {
             if (asset_binding.use_data_index)
             {
@@ -654,7 +861,7 @@ namespace hgl::ecs
 
         material_comp->data_index_values = std::move(instance_data.data_index_values);
 
-        for (const auto &asset_binding : effective_recipe.ssbo_assets)
+        for (const auto &asset_binding : active_profile_recipe.ssbo_assets)
         {
             if (!asset_binding.use_data_index)
                 continue;
@@ -684,7 +891,7 @@ namespace hgl::ecs
             // Untextured materials (for example gizmo/pure-color) may legally reuse the same
             // data_index values as textured materials; writing an all-zero texture row
             // here would clobber the textured material's global handle table entry.
-            if (!effective_recipe.textures.empty())
+            if (!active_profile_recipe.textures.empty())
             {
                 rdbs->WriteTextureLayerRowAt(entity_data_index, spec);
                 texture_layer_row = entity_data_index;

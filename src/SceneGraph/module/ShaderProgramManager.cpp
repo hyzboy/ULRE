@@ -475,8 +475,12 @@ bool ShaderProgramManager::BuildMaterialResourceLayout(const mtl::MaterialDefini
     return true;
 }
 
-ShaderProgram *ShaderProgramManager::AcquireShaderProgram(const mtl::MaterialDefinitionBuildRequest &request)
+ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
+    const mtl::MaterialDefinitionBuildRequest &request,
+    mtl::ActiveProfileBindingView *out_binding_view)
 {
+    if (out_binding_view)
+        *out_binding_view = {};
     // Ensure recipe defaults are filled in before lookup, in case the caller skipped normalization.
     // This call is idempotent; PrimitiveComponent-initiated paths will have already normalized.
     mtl::MaterialRecipe normalized_recipe = request.recipe;
@@ -514,6 +518,15 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(const mtl::MaterialDef
             bmi.definition_id.c_str());
         return nullptr;
     }
+    if (!mci->HasActiveProfileBindingView())
+    {
+        GLogError(
+            "[ShaderProgramManager] Material build produced no active binding view: id=%s",
+            bmi.definition_id.c_str());
+        return nullptr;
+    }
+    if (out_binding_view)
+        *out_binding_view = mci->GetActiveProfileBindingView();
 
     const AnsiString hash_name = active_program->ToString();
     if (ShaderProgram *cached =

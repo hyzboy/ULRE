@@ -671,6 +671,7 @@ namespace
         config.program_link = &resolved_program_link;
         config.effective_program = &effective_program;
         config.material_resolution = &material_resolution;
+        config.material_recipe = &request.recipe;
         config.data_slot_decls =
             depth_purpose
          && !coverage_contract.requires_material_data

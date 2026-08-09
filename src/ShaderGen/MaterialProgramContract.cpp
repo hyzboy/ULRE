@@ -12,6 +12,7 @@ namespace hgl::graph::mtl
         constexpr uint32 SelectionRequestTag = 0x3152534Bu;   // KSR1
         constexpr uint32 ResolutionResultTag = 0x3152534Du;   // MSR1
         constexpr uint32 PreparedProgramSetTag = 0x31535050u; // PPS1
+        constexpr uint32 ActiveBindingViewTag = 0x31564241u;   // ABV1
         constexpr uint32 ResourcePlanTag = 0x31504352u;       // RCP1
 
         void WriteEffectiveMaterialProgramKey(
@@ -279,6 +280,159 @@ namespace hgl::graph::mtl
         ValueArray<uint8> bytes;
         return SerializePreparedMaterialProgramSet(*this, bytes)
             ? contract_detail::HashCanonicalBytes(bytes) : 0;
+    }
+
+    bool ActiveProfileBindingView::IsValid() const noexcept
+    {
+        if (schema_version != MaterialProgramContractSchemaVersion
+         || effective_material_program_digest == 0
+         || source_binding_hash == 0
+         || active_surface_profile_id == InvalidSurfaceProfileID
+         || active_projection_id == InvalidSurfaceProjectionID)
+            return false;
+
+        uint32 observed_missing_required = 0;
+        for (int i = 0; i < textures.GetCount(); ++i)
+        {
+            const ActiveProfileTextureBinding &binding = textures[i];
+            if (binding.logical_resource_id == 0
+             || binding.asset_identity_hash == 0
+             || binding.asset_metadata_hash == 0
+             || binding.profile_slot < TextureSlot::BEGIN_RANGE
+             || binding.profile_slot > TextureSlot::END_RANGE
+             || binding.source < ActiveProfileBindingSource::Asset
+             || binding.source > ActiveProfileBindingSource::Omitted)
+                return false;
+
+            const bool has_recipe_binding =
+                binding.recipe_binding_index
+                    != InvalidMaterialRecipeBindingIndex;
+            if ((binding.source == ActiveProfileBindingSource::Asset
+              || binding.source
+                    == ActiveProfileBindingSource::DirectValue)
+                    != has_recipe_binding)
+                return false;
+            if (binding.source == ActiveProfileBindingSource::Fallback
+             && !binding.allow_fallback)
+                return false;
+            if (binding.source == ActiveProfileBindingSource::Missing)
+            {
+                if (!binding.required)
+                    return false;
+                ++observed_missing_required;
+            }
+            if (binding.source == ActiveProfileBindingSource::Omitted
+             && binding.required)
+                return false;
+
+            for (int j = 0; j < i; ++j)
+            {
+                if (textures[j].logical_resource_id
+                        == binding.logical_resource_id
+                 || textures[j].profile_slot == binding.profile_slot)
+                    return false;
+            }
+        }
+
+        for (int i = 0; i < data.GetCount(); ++i)
+        {
+            const ActiveProfileDataBinding &binding = data[i];
+            if (binding.logical_resource_id == 0
+             || binding.asset_identity_hash == 0
+             || binding.asset_metadata_hash == 0
+             || binding.ssbo_type < SSBOType::BEGIN_RANGE
+             || binding.ssbo_type > SSBOType::END_RANGE
+             || binding.source == ActiveProfileBindingSource::DirectValue
+             || binding.source < ActiveProfileBindingSource::Asset
+             || binding.source > ActiveProfileBindingSource::Omitted)
+                return false;
+
+            const bool has_recipe_binding =
+                binding.recipe_binding_index
+                    != InvalidMaterialRecipeBindingIndex;
+            if ((binding.source == ActiveProfileBindingSource::Asset)
+                    != has_recipe_binding)
+                return false;
+            if (binding.source == ActiveProfileBindingSource::Fallback
+             && !binding.allow_fallback)
+                return false;
+            if (binding.source == ActiveProfileBindingSource::Missing)
+            {
+                if (!binding.required)
+                    return false;
+                ++observed_missing_required;
+            }
+            if (binding.source == ActiveProfileBindingSource::Omitted
+             && binding.required)
+                return false;
+
+            for (int j = 0; j < i; ++j)
+            {
+                if (data[j].logical_resource_id
+                        == binding.logical_resource_id
+                 || (data[j].data_slot == binding.data_slot
+                  && data[j].ssbo_type == binding.ssbo_type))
+                    return false;
+            }
+        }
+
+        return observed_missing_required == missing_required_count;
+    }
+
+    bool ActiveProfileBindingView::IsRuntimeReady() const noexcept
+    {
+        return IsValid() && missing_required_count == 0;
+    }
+
+    uint64 ActiveProfileBindingView::GetStableHash() const noexcept
+    {
+        if (!IsValid())
+            return 0;
+
+        ValueArray<uint8> bytes;
+        CanonicalContractWriter writer(bytes);
+        writer.WriteU32(ActiveBindingViewTag);
+        writer.WriteU32(schema_version);
+        writer.WriteU64(effective_material_program_digest);
+        writer.WriteU64(source_binding_hash);
+        writer.WriteU64(active_surface_profile_id);
+        writer.WriteU64(active_projection_id);
+        writer.WriteU32(missing_required_count);
+        writer.WriteU32(unused_recipe_texture_count);
+        writer.WriteU32(unused_recipe_data_count);
+        writer.WriteU32(static_cast<uint32>(textures.GetCount()));
+        for (int i = 0; i < textures.GetCount(); ++i)
+        {
+            const ActiveProfileTextureBinding &binding = textures[i];
+            writer.WriteU64(binding.logical_resource_id);
+            writer.WriteU64(binding.asset_identity_hash);
+            writer.WriteU64(binding.asset_metadata_hash);
+            writer.WriteU16(static_cast<uint16>(binding.profile_slot));
+            writer.WriteU32(binding.recipe_binding_index);
+            writer.WriteU32(binding.direct_value);
+            writer.WriteU8(static_cast<uint8>(binding.source));
+            writer.WriteBool(binding.required);
+            writer.WriteBool(binding.allow_fallback);
+        }
+        writer.WriteU32(static_cast<uint32>(data.GetCount()));
+        for (int i = 0; i < data.GetCount(); ++i)
+        {
+            const ActiveProfileDataBinding &binding = data[i];
+            writer.WriteU64(binding.logical_resource_id);
+            writer.WriteU64(binding.asset_identity_hash);
+            writer.WriteU64(binding.asset_metadata_hash);
+            writer.WriteU32(binding.data_slot);
+            writer.WriteU32(binding.ssbo_id);
+            writer.WriteU32(binding.data_index);
+            writer.WriteU32(binding.recipe_binding_index);
+            writer.WriteU16(static_cast<uint16>(binding.ssbo_type));
+            writer.WriteU8(static_cast<uint8>(binding.source));
+            writer.WriteBool(binding.use_data_index);
+            writer.WriteBool(binding.shared_across_instances);
+            writer.WriteBool(binding.required);
+            writer.WriteBool(binding.allow_fallback);
+        }
+        return contract_detail::HashCanonicalBytes(bytes);
     }
 
     bool ValidateResourceAcquirePlan(

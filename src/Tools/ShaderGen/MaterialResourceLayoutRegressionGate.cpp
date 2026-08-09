@@ -10,6 +10,7 @@
 #include <hgl/shadergen/ShadowShaderContractBuilder.h>
 #include <hgl/shadergen/ShadowShaderKeyBuilder.h>
 #include <hgl/shadergen/ShadowResourceAcquirePlanBuilder.h>
+#include <hgl/shadergen/ActiveProfileBindingViewBuilder.h>
 #include <hgl/shadergen/ShaderCreateInfo.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
@@ -647,6 +648,358 @@ namespace
             if (ibl_build)
                 result.diagnostics.emplace_back(
                     "unimplemented IBL resource contract must fail explicitly");
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
+    static GateResult RunActiveProfileBindingViewCase()
+    {
+        GateResult result;
+        result.name = "L2.active-profile-binding-view";
+
+        EffectiveMaterialProgramKey effective_program{};
+        effective_program.resolved_surface_profile_id =
+            GetSurfaceStableID("StandardPBR");
+        effective_program.resolved_surface_profile_hash = 0x7101u;
+        effective_program.projection_id =
+            GetSurfaceStableID("Example.ToStandardPBR");
+        effective_program.normalized_static_feature_hash = 0x7102u;
+        effective_program.resolved_module_graph_hash = 0x7103u;
+        effective_program.capability_signature_hash = 0x7104u;
+        effective_program.resolver_policy_hash = 0x7105u;
+
+        MaterialResolutionResult resolution{};
+        resolution.status = MaterialResolutionStatus::Resolved;
+        resolution.source_definition_id_hash = 0x7201u;
+        resolution.recipe_capability_hash = 0x7202u;
+        resolution.source_surface_intent_id =
+            GetSurfaceStableID("Example");
+        resolution.effective_program = effective_program;
+
+        PreparedMaterialProgramSet prepared_set{};
+        if (!BuildSingleProgramPreparedMaterialProgramSet(
+                resolution, prepared_set))
+        {
+            result.diagnostics.emplace_back(
+                "failed to build active-profile PreparedSet fixture");
+            result.passed = false;
+            return result;
+        }
+
+        MaterialResourceLayout layout{};
+        MaterialResourceRequirement texture_requirement{};
+        texture_requirement.semantic =
+            DescriptorSemantic::MaterialSampler;
+        texture_requirement.kind = DescriptorKind::TextureSampler;
+        texture_requirement.texture_slot = TextureSlot::BaseColor;
+        texture_requirement.required = true;
+        texture_requirement.allow_fallback = false;
+        layout.requirements.push_back(texture_requirement);
+
+        MaterialResourceRequirement texture_layer_requirement{};
+        texture_layer_requirement.semantic =
+            DescriptorSemantic::MaterialTextureLayerTable;
+        texture_layer_requirement.kind = DescriptorKind::SSBO;
+        texture_layer_requirement.ssbo_type = SSBOType::TextureLayer;
+        texture_layer_requirement.required = true;
+        layout.requirements.push_back(texture_layer_requirement);
+
+        MaterialResourceRequirement data_requirement{};
+        data_requirement.semantic =
+            DescriptorSemantic::MaterialDataSlotData;
+        data_requirement.kind = DescriptorKind::SSBO;
+        data_requirement.data_slot = 0;
+        data_requirement.ssbo_type = SSBOType::PBRSurface;
+        data_requirement.required = true;
+        data_requirement.allow_fallback = false;
+        layout.requirements.push_back(data_requirement);
+
+        MaterialRecipe recipe{};
+        recipe.recipe_name = "BindingViewA";
+        recipe.mtl_def_id = "DefinitionA";
+        recipe.textures.push_back(
+            {TextureSlot::BaseColor, "asset/albedo-a", 0, false, true});
+        recipe.textures.push_back(
+            {TextureSlot::Normal, "asset/unused-normal", 0, false, false});
+        recipe.textures.push_back(
+            {TextureSlot::Custom0, std::string(), 7, true, false});
+        RecipeSSBOAssetBinding data_binding{};
+        data_binding.data_slot_name = "mtl";
+        data_binding.data_slot = 0;
+        data_binding.ssbo_type = SSBOType::PBRSurface;
+        data_binding.ssbo_id = 17;
+        data_binding.data_index = 9;
+        data_binding.use_data_index = true;
+        recipe.ssbo_assets.push_back(data_binding);
+
+        ActiveProfileBindingView binding_view{};
+        ActiveProfileBindingViewBuildDiagnostic diagnostic{};
+        MaterialRecipe equivalent_binding_recipe = recipe;
+        equivalent_binding_recipe.recipe_name = "DifferentName";
+        equivalent_binding_recipe.mtl_def_id = "DifferentDefinition";
+        equivalent_binding_recipe.material_lod = 7;
+        equivalent_binding_recipe.alpha_cutoff = 0.25f;
+        if (GetActiveProfileBindingSourceHash(recipe)
+                != GetActiveProfileBindingSourceHash(
+                    equivalent_binding_recipe))
+        {
+            result.diagnostics.emplace_back(
+                "Binding View source hash must ignore unrelated Recipe state");
+        }
+        if (!BuildActiveProfileBindingView(
+                recipe,
+                layout,
+                prepared_set,
+                binding_view,
+                diagnostic)
+         || !binding_view.IsRuntimeReady()
+         || binding_view.GetStableHash() == 0
+         || binding_view.active_surface_profile_id
+                != effective_program.resolved_surface_profile_id
+         || binding_view.active_projection_id
+                != effective_program.projection_id
+         || binding_view.textures.GetCount() != 2
+         || binding_view.data.GetCount() != 1
+         || binding_view.unused_recipe_texture_count != 1
+         || binding_view.unused_recipe_data_count != 0)
+        {
+            result.diagnostics.emplace_back(
+                std::string("active Profile Binding View build failed: ")
+                + GetActiveProfileBindingViewBuildErrorName(
+                    diagnostic.error));
+        }
+
+        MaterialRecipe projected_recipe{};
+        if (!BuildActiveProfileMaterialRecipe(
+                recipe, binding_view, projected_recipe)
+         || projected_recipe.textures.size() != 2
+         || projected_recipe.ssbo_assets.size() != 1
+         || projected_recipe.ssbo_assets[0].ssbo_id != 17)
+        {
+            result.diagnostics.emplace_back(
+                "active Profile Recipe projection mismatch");
+        }
+        bool found_base_color = false;
+        bool found_layer_value = false;
+        for (const RecipeTextureBinding &binding :
+             projected_recipe.textures)
+        {
+            if (binding.slot == TextureSlot::BaseColor
+             && binding.resource_id == "asset/albedo-a")
+                found_base_color = true;
+            if (binding.slot == TextureSlot::Custom0
+             && binding.use_direct_value
+             && binding.direct_value == 7)
+                found_layer_value = true;
+        }
+        if (!found_base_color || !found_layer_value)
+        {
+            result.diagnostics.emplace_back(
+                "active Profile Recipe must preserve TextureLayer direct values");
+        }
+        MaterializationResolveCallbacks projection_callbacks{};
+        projection_callbacks.resolve_texture =
+            [](const RecipeTextureBinding &input,
+               ResolvedResource &output)
+            {
+                output.slot = input.slot;
+                output.bindless_handle = input.use_direct_value
+                    ? input.direct_value : 5;
+                output.texture_layer = output.bindless_handle;
+                return true;
+            };
+        projection_callbacks.resolve_struct =
+            [](const RecipeSSBOAssetBinding &input,
+               ResolvedStructRef &output)
+            {
+                output.data_slot = input.data_slot;
+                output.ssbo_type = input.ssbo_type;
+                output.ssbo_id = input.ssbo_id;
+                output.data_index = input.data_index;
+                output.byte_stride = 16;
+                return true;
+            };
+        MaterializationSpec projected_spec{};
+        if (!ResolveMaterializationSpec(
+                projected_recipe,
+                projection_callbacks,
+                projected_spec)
+         || BuildTextureLayerRow(projected_spec).
+                values[static_cast<size_t>(TextureSlot::Custom0)] != 7)
+        {
+            result.diagnostics.emplace_back(
+                "TextureLayerRow must retain the active direct layer value");
+        }
+
+        MaterialRecipe zero_id_recipe = recipe;
+        zero_id_recipe.ssbo_assets[0].ssbo_id = 0;
+        ActiveProfileBindingView zero_id_view{};
+        if (!BuildActiveProfileBindingView(
+                zero_id_recipe,
+                layout,
+                prepared_set,
+                zero_id_view,
+                diagnostic)
+         || !zero_id_view.IsRuntimeReady()
+         || zero_id_view.data.GetCount() != 1
+         || zero_id_view.data[0].source
+                != ActiveProfileBindingSource::Asset
+         || zero_id_view.data[0].ssbo_id != 0
+         || !BuildActiveProfileMaterialRecipe(
+                zero_id_recipe,
+                zero_id_view,
+                projected_recipe)
+         || projected_recipe.ssbo_assets.size() != 1
+         || projected_recipe.ssbo_assets[0].ssbo_id != 0)
+        {
+            result.diagnostics.emplace_back(
+                "typed SSBO binding ID 0 must remain a valid active resource");
+        }
+
+        MaterialRecipe pre_resolve_recipe = recipe;
+        pre_resolve_recipe.ssbo_assets[0].ssbo_type =
+            SSBOType::UserDefined;
+        ActiveProfileBindingView pre_resolve_view{};
+        if (!BuildActiveProfileBindingView(
+                pre_resolve_recipe,
+                layout,
+                prepared_set,
+                pre_resolve_view,
+                diagnostic)
+         || pre_resolve_view.IsRuntimeReady())
+        {
+            result.diagnostics.emplace_back(
+                "pre-resolve UserDefined SSBO must not masquerade as the active Profile type");
+        }
+        ActiveProfileBindingView post_resolve_view{};
+        if (!BuildActiveProfileBindingView(
+                recipe,
+                layout,
+                prepared_set,
+                post_resolve_view,
+                diagnostic)
+         || !post_resolve_view.IsRuntimeReady()
+         || !BuildActiveProfileMaterialRecipe(
+                recipe, post_resolve_view, projected_recipe))
+        {
+            result.diagnostics.emplace_back(
+                "post-resolve Recipe must rebuild a runtime-ready Binding View");
+        }
+
+        MaterialRecipe second_recipe = recipe;
+        second_recipe.recipe_name = "BindingViewB";
+        second_recipe.mtl_def_id = "DefinitionB";
+        second_recipe.textures[0].resource_id = "asset/albedo-b";
+        second_recipe.ssbo_assets[0].ssbo_id = 23;
+        if (GetActiveProfileBindingSourceHash(second_recipe)
+                == GetActiveProfileBindingSourceHash(recipe))
+        {
+            result.diagnostics.emplace_back(
+                "Binding View source hash must include binding identity");
+        }
+        ActiveProfileBindingView second_view{};
+        if (!BuildActiveProfileBindingView(
+                second_recipe,
+                layout,
+                prepared_set,
+                second_view,
+                diagnostic)
+         || second_view.GetStableHash() == binding_view.GetStableHash()
+         || second_view.effective_material_program_digest
+                != binding_view.effective_material_program_digest
+         || prepared_set.GetExecutableProgram()->GetDigest()
+                != effective_program.GetDigest())
+        {
+            result.diagnostics.emplace_back(
+                "asset identity must affect Binding View, not Effective Program");
+        }
+
+        EffectiveMaterialProgramKey specialist_program =
+            effective_program;
+        specialist_program.resolved_surface_profile_id =
+            GetSurfaceStableID("SkinSSS");
+        specialist_program.resolved_surface_profile_hash = 0x7301u;
+        specialist_program.projection_id =
+            GetSurfaceStableID("Example.ToSkinSSS");
+        MaterialResolutionResult specialist_resolution = resolution;
+        specialist_resolution.effective_program = specialist_program;
+        PreparedMaterialProgramSet specialist_set{};
+        ActiveProfileBindingView specialist_view{};
+        if (!BuildSingleProgramPreparedMaterialProgramSet(
+                specialist_resolution, specialist_set)
+         || !BuildActiveProfileBindingView(
+                recipe,
+                layout,
+                specialist_set,
+                specialist_view,
+                diagnostic)
+         || specialist_view.active_surface_profile_id
+                != specialist_program.resolved_surface_profile_id
+         || specialist_view.active_projection_id
+                != specialist_program.projection_id
+         || specialist_view.active_surface_profile_id
+                == binding_view.active_surface_profile_id)
+        {
+            result.diagnostics.emplace_back(
+                "Binding View must follow the explicitly prepared active Profile");
+        }
+
+        MaterialRecipe missing_recipe = recipe;
+        missing_recipe.textures[0].resource_id.clear();
+        missing_recipe.textures[0].required = true;
+        ActiveProfileBindingView missing_view{};
+        if (!BuildActiveProfileBindingView(
+                missing_recipe,
+                layout,
+                prepared_set,
+                missing_view,
+                diagnostic)
+         || !missing_view.IsValid()
+         || missing_view.IsRuntimeReady()
+         || missing_view.missing_required_count != 1
+         || BuildActiveProfileMaterialRecipe(
+                missing_recipe, missing_view, projected_recipe))
+        {
+            result.diagnostics.emplace_back(
+                "missing required active Profile resource must remain explicit");
+        }
+
+        MaterialResourceLayout fallback_layout = layout;
+        fallback_layout.requirements[0].allow_fallback = true;
+        ActiveProfileBindingView unresolved_fallback_view{};
+        if (!BuildActiveProfileBindingView(
+                missing_recipe,
+                fallback_layout,
+                prepared_set,
+                unresolved_fallback_view,
+                diagnostic)
+         || !unresolved_fallback_view.IsValid()
+         || unresolved_fallback_view.IsRuntimeReady()
+         || unresolved_fallback_view.textures[0].source
+                != ActiveProfileBindingSource::Missing)
+        {
+            result.diagnostics.emplace_back(
+                "fallback permission without a concrete fallback must remain pending");
+        }
+
+        MaterialRecipe duplicate_recipe = recipe;
+        duplicate_recipe.textures.push_back(
+            {TextureSlot::BaseColor, "asset/duplicate", 0, false, true});
+        ActiveProfileBindingView duplicate_view{};
+        if (BuildActiveProfileBindingView(
+                duplicate_recipe,
+                layout,
+                prepared_set,
+                duplicate_view,
+                diagnostic)
+         || diagnostic.error
+                != ActiveProfileBindingViewBuildError::
+                    DuplicateRecipeTexture)
+        {
+            result.diagnostics.emplace_back(
+                "duplicate active Profile texture binding must fail");
         }
 
         result.passed = result.diagnostics.empty();
@@ -1857,7 +2210,11 @@ namespace
          || !lit_a->GetActiveEffectiveMaterialProgram()
          || !lit_b->GetActiveEffectiveMaterialProgram()
          || !color->GetActiveEffectiveMaterialProgram()
-         || !lit_targeted->GetActiveEffectiveMaterialProgram())
+         || !lit_targeted->GetActiveEffectiveMaterialProgram()
+         || !lit_a->HasActiveProfileBindingView()
+         || !lit_b->HasActiveProfileBindingView()
+         || !color->HasActiveProfileBindingView()
+         || !lit_targeted->HasActiveProfileBindingView())
         {
             result.diagnostics.emplace_back(
                 "generate-only material builds must produce ProgramLink");
@@ -5847,6 +6204,22 @@ namespace
                         "materialized SSBO type mismatch must be reported");
                 }
                 materialization.struct_refs[0].ssbo_type = original_type;
+
+                const uint32_t original_ssbo_id =
+                    materialization.struct_refs[0].ssbo_id;
+                materialization.struct_refs[0].ssbo_id =
+                    original_ssbo_id + 1;
+                if (CompareShadowResourcePlanToMaterialization(
+                        plan, materialization, diagnostic)
+                 || diagnostic.error
+                        != ShadowResourcePlanError::
+                            MaterializationStructMismatch)
+                {
+                    result.diagnostics.emplace_back(
+                        "materialized SSBO ID mismatch must be reported");
+                }
+                materialization.struct_refs[0].ssbo_id =
+                    original_ssbo_id;
             }
         }
 
@@ -5870,6 +6243,27 @@ namespace
         {
             result.diagnostics.emplace_back(
                 "asset identity must affect only resource plan identity");
+        }
+
+        MaterialRecipe zero_id_assets = request.recipe;
+        zero_id_assets.ssbo_assets[0].ssbo_id = 0;
+        ResourceAcquirePlan zero_id_plan{};
+        ShadowResourcePlanSummary zero_id_summary{};
+        if (!BuildShadowResourceAcquirePlan(
+                zero_id_assets,
+                GetGLSLCodeModuleRegistry(),
+                graph,
+                contracts.shader_interface,
+                keys.effective_program,
+                zero_id_plan,
+                zero_id_summary,
+                diagnostic)
+         || zero_id_summary.planned_ssbo_count != 1
+         || zero_id_summary.missing_required_count != 0
+         || GetResourceAcquirePlanHash(zero_id_plan) == 0)
+        {
+            result.diagnostics.emplace_back(
+                "typed SSBO binding ID 0 must remain valid in the shadow plan");
         }
 
         result.passed = result.diagnostics.empty();
@@ -7153,6 +7547,7 @@ int main(const int argc, char **argv)
     if (run_glsl) results.push_back(RunCapabilityResolverCase());
     if (run_interface) results.push_back(RunShaderSemanticRegistryCase());
     if (run_materialization) results.push_back(RunSurfaceProfileModelCase());
+    if (run_materialization) results.push_back(RunActiveProfileBindingViewCase());
     if (run_interface) results.push_back(RunMaterialVertexABICharacterizationCase());
     if (run_interface) results.push_back(RunMaterialSemanticABIParityCase());
     if (run_interface) results.push_back(RunMaterialSemanticResolverPreviewCase());

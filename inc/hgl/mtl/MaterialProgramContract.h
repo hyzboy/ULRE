@@ -12,6 +12,7 @@ namespace hgl::graph::mtl
 {
     constexpr uint32 MaterialProgramContractSchemaVersion = 1;
     constexpr uint32 SingleProgramPreparedSetPolicyVersion = 1;
+    constexpr uint32 InvalidMaterialRecipeBindingIndex = HGL_U32_MAX;
 
     enum class MaterialResolutionStatus : uint8
     {
@@ -122,6 +123,104 @@ namespace hgl::graph::mtl
         bool IsValidForCurrentForwardPath() const noexcept;
         const EffectiveMaterialProgramKey *
             GetExecutableProgram() const noexcept;
+        uint64 GetStableHash() const noexcept;
+    };
+
+    enum class ActiveProfileBindingSource : uint8
+    {
+        Asset = 0,
+        DirectValue,
+        Fallback,
+        Missing,
+        Omitted
+    };
+
+    struct ActiveProfileTextureBinding
+    {
+        uint64 logical_resource_id = 0;
+        uint64 asset_identity_hash = 0;
+        uint64 asset_metadata_hash = 0;
+        TextureSlot profile_slot = TextureSlot::BaseColor;
+        uint32 recipe_binding_index =
+            InvalidMaterialRecipeBindingIndex;
+        uint32 direct_value = 0;
+        ActiveProfileBindingSource source =
+            ActiveProfileBindingSource::Missing;
+        bool required = false;
+        bool allow_fallback = false;
+    };
+
+    inline bool operator==(
+        const ActiveProfileTextureBinding &lhs,
+        const ActiveProfileTextureBinding &rhs) noexcept
+    {
+        return lhs.logical_resource_id == rhs.logical_resource_id
+            && lhs.asset_identity_hash == rhs.asset_identity_hash
+            && lhs.asset_metadata_hash == rhs.asset_metadata_hash
+            && lhs.profile_slot == rhs.profile_slot
+            && lhs.recipe_binding_index == rhs.recipe_binding_index
+            && lhs.direct_value == rhs.direct_value
+            && lhs.source == rhs.source
+            && lhs.required == rhs.required
+            && lhs.allow_fallback == rhs.allow_fallback;
+    }
+
+    struct ActiveProfileDataBinding
+    {
+        uint64 logical_resource_id = 0;
+        uint64 asset_identity_hash = 0;
+        uint64 asset_metadata_hash = 0;
+        uint32 data_slot = 0;
+        uint32 ssbo_id = 0;
+        uint32 data_index = 0;
+        uint32 recipe_binding_index =
+            InvalidMaterialRecipeBindingIndex;
+        SSBOType ssbo_type = SSBOType::UserDefined;
+        ActiveProfileBindingSource source =
+            ActiveProfileBindingSource::Missing;
+        bool use_data_index = false;
+        bool shared_across_instances = false;
+        bool required = false;
+        bool allow_fallback = false;
+    };
+
+    inline bool operator==(
+        const ActiveProfileDataBinding &lhs,
+        const ActiveProfileDataBinding &rhs) noexcept
+    {
+        return lhs.logical_resource_id == rhs.logical_resource_id
+            && lhs.asset_identity_hash == rhs.asset_identity_hash
+            && lhs.asset_metadata_hash == rhs.asset_metadata_hash
+            && lhs.data_slot == rhs.data_slot
+            && lhs.ssbo_id == rhs.ssbo_id
+            && lhs.data_index == rhs.data_index
+            && lhs.recipe_binding_index == rhs.recipe_binding_index
+            && lhs.ssbo_type == rhs.ssbo_type
+            && lhs.source == rhs.source
+            && lhs.use_data_index == rhs.use_data_index
+            && lhs.shared_across_instances
+                == rhs.shared_across_instances
+            && lhs.required == rhs.required
+            && lhs.allow_fallback == rhs.allow_fallback;
+    }
+
+    struct ActiveProfileBindingView
+    {
+        uint32 schema_version = MaterialProgramContractSchemaVersion;
+        uint64 effective_material_program_digest = 0;
+        uint64 source_binding_hash = 0;
+        SurfaceProfileID active_surface_profile_id =
+            InvalidSurfaceProfileID;
+        SurfaceProjectionID active_projection_id =
+            InvalidSurfaceProjectionID;
+        uint32 missing_required_count = 0;
+        uint32 unused_recipe_texture_count = 0;
+        uint32 unused_recipe_data_count = 0;
+        ValueArray<ActiveProfileTextureBinding> textures;
+        ValueArray<ActiveProfileDataBinding> data;
+
+        bool IsValid() const noexcept;
+        bool IsRuntimeReady() const noexcept;
         uint64 GetStableHash() const noexcept;
     };
 

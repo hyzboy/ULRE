@@ -4,6 +4,7 @@
 #include<hgl/type/String.h>
 #include<hgl/vk/VKShaderModuleMap.h>
 #include<hgl/mtl/MaterialResourceLayout.h>
+#include <hgl/mtl/MaterialProgramContract.h>
 #include<hgl/mtl/ShaderBufferSource.h>
 #include<hgl/log/Log.h>
 #include<unordered_set>
@@ -41,6 +42,7 @@ class ShaderProgram
 
     MaterialDescriptorManager *desc_manager;
     mtl::MaterialResourceLayout material_resource_layout;
+    mtl::PreparedMaterialProgramSet prepared_program_set;
 
     ShaderStageCreateInfoList shader_stage_list;
 
@@ -62,6 +64,11 @@ public:
 
     const   AnsiString &                        GetName                 ()const{return name;}
     const   mtl::MaterialResourceLayout &              GetMaterialResourceLayout      ()const{return material_resource_layout;}
+    const mtl::PreparedMaterialProgramSet &
+        GetPreparedMaterialProgramSet() const
+    {
+        return prepared_program_set;
+    }
 
     const   PrimitiveType &                     GetPrimitiveType        ()const{return geometry;}
 

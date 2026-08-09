@@ -69,6 +69,8 @@ SET(CANONICAL_SHADER_CONTRACT_FILES
     ShadowResourceAcquirePlanBuilder.cpp
     ${SHADERGEN_INCLUDE_PATH}/EffectiveMaterialProgramBuilder.h
     EffectiveMaterialProgramBuilder.cpp
+    ${SHADERGEN_INCLUDE_PATH}/ActiveProfileBindingViewBuilder.h
+    ActiveProfileBindingViewBuilder.cpp
     MaterialProgramContract.cpp
     common/CanonicalContractWriter.h)
 
