@@ -122,9 +122,9 @@ namespace hgl::graph::mtl
             static const char *const names[] = {
                 "ForwardOpaque", "ForwardMasked", "ForwardTransparent",
                 "ForwardDither", "ForwardA2C", "ShadowOpaque", "ShadowMasked",
-                "EarlyZSolid", "EarlyZMasked", "VBufferID"
+                "EarlyZSolid", "EarlyZMasked"
             };
-            for (uint32 i = 0; i < 10; ++i)
+            for (uint32 i = 0; i < 9; ++i)
             {
                 if (name == names[i])
                 {

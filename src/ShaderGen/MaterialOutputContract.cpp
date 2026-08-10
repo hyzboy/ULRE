@@ -83,8 +83,6 @@ namespace hgl::graph::mtl
         case PassType::EarlyZSolid:
         case PassType::EarlyZMasked:
             return ShaderProgramPurpose::DepthOnly;
-        case PassType::VBufferID:
-            return ShaderProgramPurpose::VBufferWrite;
         default:
             return ShaderProgramPurpose::ForwardColor;
         }

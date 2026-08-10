@@ -23,10 +23,7 @@ namespace hgl::graph::mtl
     {
         ForwardColor = 0,
         DepthOnly,
-        ShadowDepth,
-        VBufferWrite,
-        VBufferShade,
-        PostProcess
+        ShadowDepth
     };
 
     struct ResolvedModuleContractEntry

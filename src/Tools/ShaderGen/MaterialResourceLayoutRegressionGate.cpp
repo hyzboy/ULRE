@@ -2350,6 +2350,13 @@ namespace
             result.diagnostics.emplace_back(
                 "depth-only output contract must allow no attachments");
 
+        OutputContract unsupported_output = depth_output;
+        unsupported_output.purpose =
+            static_cast<ShaderProgramPurpose>(3);
+        if (ValidateOutputContract(unsupported_output))
+            result.diagnostics.emplace_back(
+                "purpose validation must accept exactly three values");
+
         result.passed = result.diagnostics.empty();
         return result;
     }
@@ -2769,18 +2776,6 @@ namespace
             {
                 result.diagnostics.emplace_back(
                     "output purpose contract mapping mismatch");
-            }
-
-            OutputContract unsupported_output{};
-            if (BuildMaterialOutputContract(
-                    PassType::VBufferID,
-                    unsupported_output,
-                    diagnostic)
-             || diagnostic.error
-                    != MaterialOutputContractError::UnsupportedPurpose)
-            {
-                result.diagnostics.emplace_back(
-                    "unsupported VBuffer output must fail explicitly");
             }
 
             std::string applied;
@@ -4734,7 +4729,7 @@ namespace
             };
             root = {};
             root.id = static_cast<GLSLCodeModuleID>(first_id + 1);
-            root.name = "shadow_root";
+            root.name = "main_depth_only";
             root.glsl_code = "// shadow root";
             root.kind = GLSLCodeModuleKind::FragmentShader;
             root.metadata_version = 1;
@@ -4814,7 +4809,7 @@ namespace
             MaterialDefinitionBuildRequest graph_request{};
             graph_request.override_shader_program_purpose = true;
             graph_request.shader_program_purpose =
-                ShaderProgramPurpose::PostProcess;
+                ShaderProgramPurpose::ShadowDepth;
 
             ResolvedModuleGraph first_graph{};
             ResolvedModuleGraph second_graph{};
@@ -4856,12 +4851,13 @@ namespace
         MaterialDefinitionBuildRequest missing_request{};
         missing_request.override_shader_program_purpose = true;
         missing_request.shader_program_purpose =
-            ShaderProgramPurpose::PostProcess;
+            ShaderProgramPurpose::ShadowDepth;
+        GLSLCodeModuleRegistry missing_registry;
         ResolvedModuleGraph missing_graph{};
         ResolvedModuleGraphBuildDiagnostic missing_diagnostic{};
         if (BuildMaterialResolvedModuleGraph(
                 missing_root,
-                first_registry,
+                missing_registry,
                 missing_graph,
                 missing_diagnostic,
                 &missing_request)

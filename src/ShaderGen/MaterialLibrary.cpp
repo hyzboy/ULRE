@@ -386,11 +386,13 @@ namespace
                 }
             }
         }
-        if (ambient_model == SkyLightAmbientModel::IBL)
+        if (ambient_model < SkyLightAmbientModel::BEGIN_RANGE
+         || ambient_model > SkyLightAmbientModel::END_RANGE)
         {
             GLogError(
-                "[ShaderGen] IBL sky model is not implemented by the current shader resource contract: material=%s",
-                definition.definition_name.c_str());
+                "[ShaderGen] Unsupported sky ambient model: material=%s model=%u",
+                definition.definition_name.c_str(),
+                static_cast<uint32>(ambient_model));
             return nullptr;
         }
         if (!Build3DShaderResourceManifest(
@@ -507,7 +509,6 @@ namespace
             use_scene_lighting;
         compositor_options.sky_module = use_scene_lighting
             ? ambient_model == SkyLightAmbientModel::CubeMap
-             || ambient_model == SkyLightAmbientModel::IBL
                 ? "sky/sky_cubemap.glsl"
                 : "sky/sky_atmosphere.glsl"
             : nullptr;

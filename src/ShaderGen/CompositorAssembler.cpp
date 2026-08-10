@@ -68,7 +68,6 @@ namespace hgl::graph
             case PassType::ShadowMasked:
             case PassType::EarlyZSolid:
             case PassType::EarlyZMasked:
-            case PassType::VBufferID:
                 return {};
 
             default:
@@ -101,9 +100,6 @@ namespace hgl::graph
         case PassType::EarlyZMasked:
             return shader_lib_path_
                 + "/compositor/main_depth_only.frag.glsl";
-
-        case PassType::VBufferID:
-            return {};
 
         default:
             return shader_lib_path_ + "/compositor/main_forward_surface.frag.glsl";

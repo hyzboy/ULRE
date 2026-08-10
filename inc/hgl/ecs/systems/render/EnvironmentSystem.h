@@ -23,7 +23,6 @@ namespace hgl
         struct SkyLightResourceRequirement
         {
             bool need_cubemap = false;     ///<是否需要天空/环境 CubeMap
-            bool need_ibl_cubemap = false; ///<是否需要 IBL CubeMap
             bool need_sh_ubo = false;      ///<是否需要 SH 系数 UBO
         };
 
@@ -31,7 +30,6 @@ namespace hgl
         struct SkyLightResourceBinding
         {
             const char *cubemap_name = nullptr;      ///<CubeMap 资源标识（资源系统 key/path/name）
-            const char *ibl_cubemap_name = nullptr;  ///<IBL CubeMap 资源标识
             const char *sh_ubo_name = nullptr;       ///<SH UBO 资源标识
         };
 
@@ -96,7 +94,6 @@ namespace hgl
                 SkyLightResourceRequirement out;
                 out.need_cubemap = req.need_sky_cubemap;
                 out.need_sh_ubo = req.need_sh_ubo;
-                out.need_ibl_cubemap = req.need_ibl_cubemap;
                 return out;
             }
 
@@ -136,8 +133,6 @@ namespace hgl
                   || !sky_cubemap_texture
                   || !sky_cubemap_sampler))
                     return false;
-                if (req.need_ibl_cubemap && (!skylight_binding.ibl_cubemap_name || !*skylight_binding.ibl_cubemap_name))
-                    return false;
                 if (req.need_sh_ubo && (!skylight_binding.sh_ubo_name || !*skylight_binding.sh_ubo_name))
                     return false;
 
@@ -168,8 +163,6 @@ namespace hgl
                 if (req.need_sh_ubo && (!skylight_binding.sh_ubo_name || !*skylight_binding.sh_ubo_name) && req.sh_ubo_name)
                     skylight_binding.sh_ubo_name = req.sh_ubo_name;
 
-                if (req.need_ibl_cubemap && (!skylight_binding.ibl_cubemap_name || !*skylight_binding.ibl_cubemap_name) && req.ibl_cubemap_name)
-                    skylight_binding.ibl_cubemap_name = req.ibl_cubemap_name;
             }
 
             void EnsureResources();

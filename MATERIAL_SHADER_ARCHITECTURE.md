@@ -2,7 +2,7 @@
 
 > 状态：设计评审稿  
 > 日期：2026-08-09  
-> 适用范围：Material Definition、Material Recipe、多决策域 Material LOD、Shader Code Module、Shader Program 选择、VS/MS/FS 生成、Visibility Buffer Tile 着色选择、资源解析与加载、Descriptor Contract、Pass Output、Shader Artifact  
+> 适用范围：Material Definition、Material Recipe、多决策域 Material LOD、Shader Code Module、Shader Program 选择、VS/MS/FS 生成、资源解析与加载、Descriptor Contract、Pass Output、Shader Artifact
 > 当前阶段：从 0 到 1，不保留旧资产格式兼容  
 
 ## 1. 文档目标
@@ -20,9 +20,8 @@ ULRE 面向使用严格资产规格的中小规模团队。材质系统不是开
 3. Material Definition 中面向未来 Material LOD 的完整配置。
 4. Material Recipe 提供资源候选，但不强制所有资源都被当前程序使用。
 5. 根据 ECS 批准的最终 Shader Program 或 Prepared Program Set 延迟加载真实需要的资源。
-6. Forward、Depth Only、Shadow、VBuffer 和部分 Post Process。
+6. Forward、Depth Only 和 Shadow。
 7. 未来取消 VBO，迁移到 SSBO Geometry + Mesh Shader。
-8. 未来 Visibility Buffer 下按 Tile/像素分布从 Prepared Set 中进一步选择着色 Profile。
 
 本文不要求一次完成 Mesh Shader 迁移，但当前设计不能把 VBO 结构固化为长期材质 ABI。
 
@@ -169,9 +168,6 @@ Shader。没有候选满足时必须明确失败。
 - `ForwardColor`
 - `DepthOnly`
 - `ShadowDepth`
-- `VBufferWrite`
-- `VBufferShade`
-- `PostProcess`
 
 它决定：
 
@@ -264,7 +260,6 @@ Recipe 纹理，会造成：
 - Unlit/Lit 骨架。
 - Shadow Mask 逻辑。
 - Dither 逻辑。
-- VBuffer 特殊输出。
 
 ### 5.4 Shader 生成目的与渲染执行分类混合
 
@@ -775,7 +770,6 @@ EffectiveMaterialProgramKey 和 ShaderProgram。不同 Recipe 仍通过各自 Ma
 - PBR 参数。
 - 特殊资产编码。
 - PCG 数据。
-- VBuffer 后置重建数据。
 
 建议统一入口：
 
@@ -886,9 +880,6 @@ Output Module 只负责 Shader 输出声明和写入，不负责完整渲染执�
 
 - Forward Color。
 - Depth Only。
-- VBuffer ID。
-- VBuffer Shading Data。
-- Post Process Color。
 
 Opaque 与 Transparent 如果生成相同 FS 输出和代码，应复用同一个 Shader Variant。
 Blend、排序和 Depth Write 的差异由执行系统处理。
@@ -1429,43 +1420,6 @@ Geometry / Transform
 
 HZB 通常消费已有深度，应使用独立固定骨架，不强行进入 Surface/Lighting 流程。
 
-### 15.4 VBuffer Write
-
-使用专用 OutputContract 写出 ID 或最小重建数据。
-
-如果 Masked 材质需要裁剪，仍复用 Material Source 的 Alpha 子集和 Coverage。
-
-VBuffer 至少需要保留或可重建：
-
-- Material/Binding identity。
-- Primitive/Geometry identity。
-- Profile 选择所需的分类信息。
-- 各 Prepared Profile 共同需要的基础 Surface 输入。
-
-不得只编码高质量专用 Profile 才能理解、却无法投影到 StandardPBR fallback 的数据。
-
-### 15.5 VBuffer Shade
-
-Material Source 从 VBuffer 重建输入，而不是直接读取传统 Geometry Varying。Surface 和
-Lighting 接口保持一致。
-
-着色前先进行 Tile/group classification。分类器从各 sample 的 Prepared Set 中选择公共
-有效 Profile；例如多数 StandardPBR 像素与少量 SkinSSS 像素可以统一使用 StandardPBR。
-
-选择结果只决定本帧调度哪个已缓存 shading Program，不修改 Definition，不创建新的
-ShaderVariant，也不在 Tile 阶段加载资源。
-
-### 15.6 Post Process
-
-Post Process 可以复用：
-
-- Module metadata。
-- Descriptor Contract。
-- OutputContract。
-- Shader assembly infrastructure。
-
-但不强制复用 Surface/Lighting 模型。
-
 ## 16. 缓存与稳定哈希
 
 ### 16.1 Hash 分层
@@ -1946,9 +1900,6 @@ generated_source_digest
 
 - ShadowDepth。
 - Early-Z / DepthOnly。
-- VBufferWrite。
-- VBufferShade。
-- 必要的 PostProcess skeleton。
 
 每新增一种 Purpose，必须先定义：
 
@@ -1965,7 +1916,6 @@ generated_source_digest
 - 每种 Purpose 有独立 Contract 测试。
 - 不需要的模块和资源确实被裁剪。
 - Shader Purpose 不错误决定 Render Queue 或 Blend State。
-- VBuffer Tile reducer 只能选择 Prepared Set 内的 Program。
 - 少量 SkinSSS 像素和多数 StandardPBR 像素可以按策略统一降为 StandardPBR。
 - 不存在公共 Profile 时拆分 shading group，不能选择非法 Profile。
 - Tile 选择不触发 Shader 编译或资源加载。
@@ -2169,7 +2119,7 @@ Independent Render Execution System
 6. Visibility Buffer 可以在 Prepared Set 内按 Tile/像素分布进一步降级。
 7. Tile/像素降级不会触发 Shader 编译、Artifact 创建或同步资源加载。
 8. Shader Program/Set 确定前不加载具体纹理和材质资源。
-9. Alpha Test 可以被 Forward、Shadow、Depth 和 VBuffer 复用。
+9. Alpha Test 可以被 Forward、Shadow 和 Depth 复用。
 10. Opaque/Transparent 等执行分类不会无理由制造 Shader 变体。
 11. Shader、Pipeline 和 Material Binding 使用不同缓存身份。
 12. 当前 VBO 输入可以被未来 SSBO Geometry + Mesh Shader 替换。

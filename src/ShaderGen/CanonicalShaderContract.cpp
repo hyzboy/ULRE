@@ -54,8 +54,15 @@ namespace hgl::graph::mtl
 
         bool IsValidPurpose(const ShaderProgramPurpose purpose) noexcept
         {
-            return purpose >= ShaderProgramPurpose::ForwardColor
-                && purpose <= ShaderProgramPurpose::PostProcess;
+            switch (purpose)
+            {
+            case ShaderProgramPurpose::ForwardColor:
+            case ShaderProgramPurpose::DepthOnly:
+            case ShaderProgramPurpose::ShadowDepth:
+                return true;
+            default:
+                return false;
+            }
         }
 
         bool IsSingleShaderStage(const ShaderStage stage) noexcept
