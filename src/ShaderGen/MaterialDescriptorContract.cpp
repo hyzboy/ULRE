@@ -317,39 +317,115 @@ namespace hgl::graph::mtl
         return ValidateShaderInterfaceContract(interface_contract);
     }
 
+    namespace
+    {
+        DescriptorSemanticLayer NormalizeContractSemanticLayer(
+            const ShaderDescriptorContractEntry &can)
+        {
+            if (can.semantic_layer != DescriptorSemanticLayer::Unknown)
+                return can.semantic_layer;
+
+            const DescriptorSemanticLayer mapped =
+                GetDescriptorSemanticLayer(can.semantic);
+            if (mapped != DescriptorSemanticLayer::Unknown)
+                return mapped;
+
+            if (can.semantic == DescriptorSemantic::LocalToWorld
+             || can.semantic == DescriptorSemantic::MaterialDataSlotData)
+            {
+                switch (can.kind)
+                {
+                case DescriptorKind::UBO:
+                    return DescriptorSemanticLayer::UBO;
+                case DescriptorKind::SSBO:
+                    return DescriptorSemanticLayer::SSBO;
+                default:
+                    return DescriptorSemanticLayer::Unknown;
+                }
+            }
+            return DescriptorSemanticLayer::Unknown;
+        }
+    }
+
     bool BuildMaterialResourceLayoutFromDescriptorContract(
         const MaterialDescriptorContract &contract,
         MaterialResourceLayout &out_layout)
     {
         out_layout = {};
-        std::vector<FixedDescriptorEntry> fixed_entries;
-        if (!ConvertMaterialDescriptorContractToFixed(
-                contract, fixed_entries))
+        if (!ValidateMaterialDescriptorContract(contract))
             return false;
 
-        out_layout = BuildMaterialResourceLayout(
-            fixed_entries.data(),
-            static_cast<uint32>(fixed_entries.size()));
-        if (out_layout.requirements.size() != contract.entries.size())
-            return false;
+        out_layout.requirements.reserve(contract.entries.size());
 
-        for (size_t i = 0; i < out_layout.requirements.size(); ++i)
+        for (const MaterialDescriptorContractEntry &entry :
+             contract.entries)
         {
-            MaterialResourceRequirement &requirement =
-                out_layout.requirements[i];
-            const MaterialDescriptorContractEntry &entry =
-                contract.entries[i];
-            requirement.logical_resource_id =
-                entry.canonical.logical_resource_id;
-            requirement.resource_schema_id =
-                entry.canonical.resource_schema_id;
-            requirement.owned_name = requirement.name
-                ? requirement.name : entry.name;
-            requirement.owned_struct_name = requirement.struct_name
-                ? requirement.struct_name : entry.struct_name;
-            requirement.owned_glsl_type = requirement.glsl_type
-                ? requirement.glsl_type : entry.glsl_type;
-            requirement.RebindOwnedPointers();
+            const ShaderDescriptorContractEntry &can =
+                entry.canonical;
+            MaterialResourceRequirement req;
+
+            // ── Identity from canonical (already computed by AppendEntry) ──
+            req.logical_resource_id = can.logical_resource_id;
+            req.resource_schema_id = can.resource_schema_id;
+            req.semantic = can.semantic;
+            req.semantic_layer = NormalizeContractSemanticLayer(can);
+            req.set_type = can.set_type;
+            req.kind = can.kind;
+            req.texture_slot = can.texture_slot;
+            req.data_slot = can.data_slot;
+            req.ssbo_type = can.ssbo_type;
+            req.ssbo_id = entry.ssbo_id;
+            req.stage_flags = can.stage_flags;
+            req.required = entry.has_explicit_policy
+                ? can.required
+                : IsSemanticRequired(req.semantic);
+            req.allow_fallback = entry.has_explicit_policy
+                ? can.allow_fallback
+                : IsSemanticFallbackAllowed(req.semantic);
+
+            // ── Names from entry ──
+            req.name = entry.name.empty()
+                ? nullptr : entry.name.c_str();
+            req.struct_name = entry.struct_name.empty()
+                ? nullptr : entry.struct_name.c_str();
+            req.glsl_type = entry.glsl_type.empty()
+                ? nullptr : entry.glsl_type.c_str();
+
+            // ── Owned copies ──
+            req.owned_name = entry.name;
+            req.owned_struct_name = entry.struct_name;
+            req.owned_glsl_type = entry.glsl_type;
+
+            // ── Fallback names by semantic ──
+            if (!req.name || !*req.name)
+                req.name = GetDefaultDescriptorNameBySemantic(
+                    req.semantic);
+            if (!req.struct_name || !*req.struct_name)
+                req.struct_name = GetDefaultStructNameBySemantic(
+                    req.semantic);
+
+            // ── SSBO id corrections (matching BuildMaterialResourceLayout) ──
+            if (req.semantic == DescriptorSemantic::MaterialDataSlotData
+             && req.ssbo_id == MakeRecipeSSBOId(0))
+            {
+                req.ssbo_id = MakeRecipeSSBOId(req.data_slot);
+            }
+            if (req.semantic
+                    == DescriptorSemantic::MaterialTextureLayerTable
+             && req.ssbo_id == MakeRecipeSSBOId(0))
+            {
+                req.ssbo_id = MakeRecipeSSBOId(
+                    static_cast<uint32>(req.texture_slot));
+            }
+            if (req.semantic
+                    == DescriptorSemantic::MaterialDataIndexTable
+             && req.ssbo_id == MakeRecipeSSBOId(0))
+            {
+                req.ssbo_id = MakeRecipeSSBOId(req.data_slot);
+            }
+
+            req.RebindOwnedPointers();
+            out_layout.requirements.push_back(std::move(req));
         }
         return true;
     }
