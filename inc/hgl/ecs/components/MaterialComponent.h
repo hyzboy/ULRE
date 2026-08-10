@@ -76,6 +76,12 @@ namespace hgl::ecs
         graph::mtl::MaterialRecipe cached_normalized_recipe{};
         uint64_t cached_normalized_recipe_hash = 0;
 
+        // P3: Cached effective recipe built with resolved program —
+        // avoids redundant BuildEffectiveMaterialRecipe in
+        // MaterializeRecipeRowsForPrimitive and ResolveRuntimePipelineForPrimitive.
+        graph::mtl::MaterialRecipe cached_effective_recipe{};
+        uint64_t cached_effective_recipe_hash = 0;
+
     public:
 
         MaterialComponent(const std::string &name = "MaterialRuntime");

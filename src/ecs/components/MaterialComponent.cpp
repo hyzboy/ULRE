@@ -50,6 +50,8 @@ namespace hgl::ecs
         ClearMaterialBindingView();
         cached_normalized_recipe = {};
         cached_normalized_recipe_hash = 0;
+        cached_effective_recipe = {};
+        cached_effective_recipe_hash = 0;
         ++runtime_revision;
     }
 
@@ -193,6 +195,8 @@ namespace hgl::ecs
         valid = false;
         runtime_state = MaterialRuntimeState::Unresolved;
         recipe_hash = 0;
+        cached_effective_recipe = {};
+        cached_effective_recipe_hash = 0;
         ClearMaterializationInstanceData();
         ClearResolvedSSBOBindings();
         ClearMaterialBindingView();
@@ -209,6 +213,8 @@ namespace hgl::ecs
         recipe_hash = 0;
         cached_normalized_recipe = {};
         cached_normalized_recipe_hash = 0;
+        cached_effective_recipe = {};
+        cached_effective_recipe_hash = 0;
         ClearMaterializationInstanceData();
         ClearResolvedSSBOBindings();
         ClearMaterialBindingView();

@@ -983,6 +983,12 @@ namespace hgl::ecs
             material_comp->cached_normalized_recipe_hash = recipe_hash;
         }
 
+        // P3: Cache effective recipe (with program-resolved SSBO types)
+        // to avoid redundant BuildEffectiveMaterialRecipe downstream.
+        material_comp->cached_effective_recipe = material_binding_recipe;
+        material_comp->cached_effective_recipe_hash =
+            graph::mtl::HashMaterialRecipe(material_binding_recipe);
+
         return true;
     }
 
@@ -1010,14 +1016,12 @@ namespace hgl::ecs
         if (primitive_comp->GetResolvedRuntimePipeline())
             return true;
 
-        graph::mtl::MaterialRecipe effective_recipe{};
-        if (!BuildEffectiveMaterialRecipe(primitive_comp, material_comp->program, effective_recipe))
-            return false;
+        graph::mtl::MaterialRecipe effective_recipe = material_comp->cached_effective_recipe;
 
-        // Reuse cached recipe when it hasn't changed since program resolve.
-        // CreatePipeline normalizes internally, so we don't need to normalize here.
-        const uint64 recipe_hash = graph::mtl::HashMaterialRecipe(effective_recipe);
-        if (material_comp->cached_normalized_recipe_hash == recipe_hash)
+        // Reuse cached normalized recipe when effective recipe hasn't changed
+        // since it was last normalized in ResolveMaterialProgramForPrimitive.
+        if (material_comp->cached_normalized_recipe_hash
+         == material_comp->cached_effective_recipe_hash)
             effective_recipe = material_comp->cached_normalized_recipe;
 
         const graph::VIL *vil = primitive_comp->GetRuntimeVIL();
@@ -1064,13 +1068,8 @@ namespace hgl::ecs
             return true;
         }
 
-        graph::mtl::MaterialRecipe effective_recipe{};
-        if (!BuildEffectiveMaterialRecipe(primitive_comp, material_comp->program, effective_recipe))
-        {
-            GLogWarning("[RenderPrimitiveCollectSystem] Materialize failed: BuildEffectiveMaterialRecipe failed for %s",
-                        GetPrimitiveOwnerName(primitive_comp));
-            return false;
-        }
+        // P3: use cached effective recipe instead of rebuilding
+        graph::mtl::MaterialRecipe &effective_recipe = material_comp->cached_effective_recipe;
         graph::mtl::MaterialRecipe material_binding_recipe{};
         if (!graph::mtl::BuildMaterialBindingRecipe(
                 effective_recipe,
