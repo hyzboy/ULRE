@@ -310,9 +310,6 @@ namespace
         VkFormat position_format = VK_FORMAT_UNDEFINED;
         VertexShaderNodeConfig vertex_node_config =
             ResolveMaterialVertexNodeConfig(definition, request);
-        const MaterialTransformGraph transform_graph =
-            MaterialTransformGraph::FromNodeConfig(vertex_node_config);
-        vertex_node_config = transform_graph.ToNodeConfig();
         std::string extra_attributes;
         std::string resolved_vertex_input_glsl;
         std::string resolved_provider_glsl;
@@ -331,7 +328,7 @@ namespace
             resolved_provider_glsl = resolved_abi.provider_glsl;
             resolved_provider_graph_hash = resolved_abi.provider_graph_hash;
             resolved_provider_graph_hash = hgl::hash::FNV1aAppendValueBytes(
-                hgl::hash::FNV1aInit<uint64>(), transform_graph.GetHash());
+                hgl::hash::FNV1aInit<uint64>(), MaterialTransformGraph::GetHash(vertex_node_config));
             resolved_provider_graph_hash = hgl::hash::FNV1aAppendValueBytes(
                 resolved_provider_graph_hash, resolved_abi.provider_graph_hash);
             vertices.reserve(static_cast<size_t>(resolved_abi.vertex_entries.GetCount()));
@@ -736,21 +733,20 @@ VertexShaderNodeConfig ResolveMaterialVertexNodeConfig(
     const MaterialDefinition &definition,
     const MaterialDefinitionBuildRequest &request) noexcept
 {
-    VertexShaderNodeConfig vertex_node_config =
-        request.recipe.vertex_node_config;
-    if (request.has_transform_graph)
-        return request.transform_graph.ToNodeConfig();
+    // 1. request 显式覆盖
+    if (request.has_vertex_node_config_override)
+        return request.vertex_node_config_override;
 
-    const bool has_explicit_recipe_node_config =
-        !IsDefault3DNodeConfig(request.recipe.vertex_node_config);
-    if (has_explicit_recipe_node_config)
-        return vertex_node_config;
+    // 2. recipe 显式设置
+    if (!IsDefault3DNodeConfig(request.recipe.vertex_node_config))
+        return request.recipe.vertex_node_config;
 
-    if (definition.has_transform_graph)
-        return definition.transform_graph.ToNodeConfig();
+    // 3. definition 非默认
     if (!IsDefault3DNodeConfig(definition.vertex_node_config))
         return definition.vertex_node_config;
-    return vertex_node_config;
+
+    // 4. fallback
+    return request.recipe.vertex_node_config;
 }
 
 uint64 HashMaterialProgramBuildContext(
@@ -1060,8 +1056,21 @@ void NormalizeRecipe(MaterialRecipe &recipe)
         // runtime identity used by hashing and caches.
         recipe.mtl_def_id = bmi.definition_id;
         ApplyBaseMaterialInfoDefaults(recipe, bmi, false);
-        ApplyResolvedMaterialRenderState(
-            recipe, ResolveMaterialRenderState(bmi, recipe));
+
+        const ResolvedMaterialRenderState resolved =
+            ResolveMaterialRenderState(bmi, recipe);
+
+        // Write resolved values back to render_state_overrides as authoritative.
+        recipe.render_state_overrides.has_double_sided = true;
+        recipe.render_state_overrides.double_sided = resolved.double_sided;
+        recipe.render_state_overrides.has_alpha_test = true;
+        recipe.render_state_overrides.alpha_test = resolved.alpha_test;
+        recipe.render_state_overrides.has_alpha_cutoff = true;
+        recipe.render_state_overrides.alpha_cutoff = resolved.alpha_cutoff;
+        recipe.render_state_overrides.has_dither = true;
+        recipe.render_state_overrides.dither = resolved.dither;
+        recipe.render_state_overrides.has_pipeline_config = true;
+        recipe.render_state_overrides.pipeline_config = resolved.pipeline_config;
     }
 
 }

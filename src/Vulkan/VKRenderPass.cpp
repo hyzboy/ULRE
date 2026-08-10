@@ -162,8 +162,13 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const VIL *vil,const mtl
 
     mtl::MaterialRecipe normalized_recipe = recipe;
     mtl::NormalizeRecipe(normalized_recipe);
-    const mtl::ResolvedMaterialRenderState render_state =
-        mtl::ResolveMaterialRenderState(normalized_recipe);
+    const mtl::ResolvedMaterialRenderState render_state{
+        normalized_recipe.render_state_overrides.double_sided,
+        normalized_recipe.render_state_overrides.alpha_test,
+        normalized_recipe.render_state_overrides.alpha_cutoff,
+        normalized_recipe.render_state_overrides.dither,
+        normalized_recipe.render_state_overrides.pipeline_config
+    };
     PipelineData *pd = BuildPipelineData(render_state);
     pd->SetPrim(mtl->GetPrimitiveType(),prim_restart);
 

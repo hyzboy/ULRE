@@ -103,9 +103,9 @@ namespace hgl::graph::mtl
         MaterializationSpec spec;
 
         spec.recipe_hash = HashMaterialRecipe(recipe);
-        spec.double_sided = recipe.double_sided;
-        spec.alpha_test = recipe.alpha_test;
-        spec.alpha_cutoff = recipe.alpha_cutoff;
+        spec.double_sided = recipe.render_state_overrides.double_sided;
+        spec.alpha_test = recipe.render_state_overrides.alpha_test;
+        spec.alpha_cutoff = recipe.render_state_overrides.alpha_cutoff;
 
         spec.spec_hash = HashMaterializationSpec(spec);
         return spec;

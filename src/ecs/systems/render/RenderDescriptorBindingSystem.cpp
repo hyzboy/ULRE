@@ -42,10 +42,16 @@ namespace hgl::ecs
             recipe.domain.clear();
             recipe.vertex_node_config = graph::mtl::MakeDefault3DNodeConfig();
             recipe.material_lod = 0;
-            recipe.double_sided = false;
-            recipe.alpha_test = false;
-            recipe.alpha_cutoff = 0.5f;
-            recipe.pipeline_config = graph::mtl::MaterialPipelineConfig{};
+            recipe.render_state_overrides.has_double_sided = true;
+            recipe.render_state_overrides.double_sided = false;
+            recipe.render_state_overrides.has_alpha_test = true;
+            recipe.render_state_overrides.alpha_test = false;
+            recipe.render_state_overrides.has_alpha_cutoff = true;
+            recipe.render_state_overrides.alpha_cutoff = 0.5f;
+            recipe.render_state_overrides.has_dither = true;
+            recipe.render_state_overrides.dither = false;
+            recipe.render_state_overrides.has_pipeline_config = true;
+            recipe.render_state_overrides.pipeline_config = graph::mtl::MaterialPipelineConfig{};
             recipe.textures.clear();
             recipe.ssbo_assets.clear();
         }

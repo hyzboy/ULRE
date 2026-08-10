@@ -202,9 +202,7 @@ namespace hgl::graph::mtl
         vs += "\n";
 
         // ── Stage 2: Position mapping ─────────────────────────────────────────
-        const MaterialTransformGraph transform_graph =
-            MaterialTransformGraph::FromNodeConfig(node_cfg);
-        const char *stage2_module = transform_graph.GetMappingModulePath();
+        const char *stage2_module = MaterialTransformGraph::GetMappingModulePath(node_cfg);
         if (stage2_module)
         {
             vs += "#include \"" + std::string(stage2_module) + "\"\n";
@@ -225,7 +223,7 @@ namespace hgl::graph::mtl
         if (varying_cfg.use_transform_id_attr)
             vs += "#define HGL_L2W_FROM_VERTEX_ATTR\n";
 
-        vs += "#include \"" + std::string(transform_graph.GetStage3ModulePath()) + "\"\n";
+        vs += "#include \"" + std::string(MaterialTransformGraph::GetStage3ModulePath(node_cfg)) + "\"\n";
 
         vs += "\n";
 

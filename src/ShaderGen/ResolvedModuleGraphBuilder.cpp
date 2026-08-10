@@ -748,20 +748,16 @@ namespace hgl::graph::mtl
                 return false;
         }
 
-        const MaterialTransformGraph transform =
-            MaterialTransformGraph::FromNodeConfig(
-                request
-                    ? ResolveMaterialVertexNodeConfig(
-                        definition, *request)
-                    : definition.has_transform_graph
-                        ? definition.transform_graph.ToNodeConfig()
-                        : definition.vertex_node_config);
+        const VertexShaderNodeConfig config =
+            request
+                ? ResolveMaterialVertexNodeConfig(definition, *request)
+                : definition.vertex_node_config;
         const char *vertex_paths[] =
         {
-            transform.source == VertexInputMode::Procedural
+            config.input == VertexInputMode::Procedural
                 ? "vertex/s1_input_procedural.glsl" : nullptr,
-            transform.GetMappingModulePath(),
-            transform.GetStage3ModulePath()
+            MaterialTransformGraph::GetMappingModulePath(config),
+            MaterialTransformGraph::GetStage3ModulePath(config)
         };
         for (const char *path : vertex_paths)
         {

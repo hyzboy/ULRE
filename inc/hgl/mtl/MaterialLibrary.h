@@ -53,8 +53,8 @@ struct MaterialDefinitionBuildRequest
     MaterialRecipe recipe;
     PrimitiveType primitive_type = PrimitiveType::Triangles;
     const GeometryVertexFormat *geometry_vertex_format = nullptr;
-    MaterialTransformGraph transform_graph;
-    bool has_transform_graph = false;
+    bool has_vertex_node_config_override = false;
+    VertexShaderNodeConfig vertex_node_config_override;
     ShaderArtifactStore *shader_artifact_store = nullptr;
     bool generate_only = false;
     bool override_shader_program_purpose = false;

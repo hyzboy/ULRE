@@ -341,13 +341,13 @@ namespace hgl::graph::mtl
         }
 
         bool ParseTransformGraph(const toml::value &table,
-                                 MaterialTransformGraph &out)
+                                 VertexShaderNodeConfig &out)
         {
             std::string value;
             if (!ReadRequiredString(table, "source", value)
-             || !ParseVertexInput(value, out.source)
+             || !ParseVertexInput(value, out.input)
              || !ReadRequiredString(table, "mapping", value)
-             || !ParseMapping(value, out.mapping)
+             || !ParseMapping(value, out.position_mapping)
              || !ReadRequiredString(table, "orientation", value)
              || !ParseOrientation(value, out.orientation)
              || !ReadRequiredString(table, "scale", value)
@@ -470,11 +470,8 @@ namespace hgl::graph::mtl
             if (root.contains("transform"))
             {
                 if (!ParseTransformGraph(
-                        root.at("transform"), out.definition.transform_graph))
+                        root.at("transform"), out.definition.vertex_node_config))
                     return false;
-                out.definition.has_transform_graph = true;
-                out.definition.vertex_node_config =
-                    out.definition.transform_graph.ToNodeConfig();
             }
 
             const toml::value *fragment = root.contains("fragment")

@@ -251,8 +251,6 @@ namespace hgl::graph::mtl
 
         // PCG 顶点节点配置（单一真源）
         VertexShaderNodeConfig vertex_node_config;
-        MaterialTransformGraph transform_graph;
-        bool has_transform_graph = false;
 
         // Unified shader ABI/program contract shared by built-in and
         // file-backed definitions. The generator must not infer this from
@@ -310,14 +308,8 @@ namespace hgl::graph::mtl
         std::string mtl_def_id;                // MaterialDefinition字符串主键（材质标识 / 未来文件名）
         std::string domain;                    // 资源/缓存域（用于隔离不同管线空间）
         VertexShaderNodeConfig vertex_node_config = MakeDefault3DNodeConfig();
-        MaterialTransformGraph transform_graph;
-        bool has_transform_graph = false;
         uint16_t material_lod = 0;            // 作者层选择的材质 LOD
 
-        bool double_sided = false; // 双面渲染开关
-        bool alpha_test = false;   // 是否启用 alpha test
-        float alpha_cutoff = 0.5f; // alpha test 阈值（alpha < cutoff 丢弃）
-        bool dither = false;       // 是否启用 alpha dither
         MaterialRenderStateOverrides render_state_overrides;
 
         MaterialPipelineConfig pipeline_config; // 管线配置（深度/混合/剔除/覆盖层等，替代旧 PipelinePreset）
@@ -359,55 +351,16 @@ namespace hgl::graph::mtl
         const MaterialRenderStateOverrides &overrides = recipe.render_state_overrides;
         if (overrides.has_double_sided)
             state.double_sided = overrides.double_sided;
-        else if (recipe.double_sided)
-            state.double_sided = true;
-
         if (overrides.has_alpha_test)
             state.alpha_test = overrides.alpha_test;
-        else if (recipe.alpha_test)
-            state.alpha_test = true;
-
         if (overrides.has_alpha_cutoff)
             state.alpha_cutoff = overrides.alpha_cutoff;
-        else if (recipe.alpha_cutoff != 0.5f)
-            state.alpha_cutoff = recipe.alpha_cutoff;
-
         if (overrides.has_dither)
             state.dither = overrides.dither;
-        else if (recipe.dither)
-            state.dither = true;
-
         if (overrides.has_pipeline_config)
             state.pipeline_config = overrides.pipeline_config;
-        else if (recipe.pipeline_config != MaterialPipelineConfig{})
-            state.pipeline_config = recipe.pipeline_config;
 
         return state;
-    }
-
-    // Used by Vulkan call sites that receive a normalized recipe rather than
-    // the definition used to produce it.
-    inline ResolvedMaterialRenderState ResolveMaterialRenderState(
-        const MaterialRecipe &recipe) noexcept
-    {
-        ResolvedMaterialRenderState state;
-        state.double_sided = recipe.double_sided;
-        state.alpha_test = recipe.alpha_test;
-        state.alpha_cutoff = recipe.alpha_cutoff;
-        state.dither = recipe.dither;
-        state.pipeline_config = recipe.pipeline_config;
-        return state;
-    }
-
-    inline void ApplyResolvedMaterialRenderState(
-        MaterialRecipe &recipe,
-        const ResolvedMaterialRenderState &state) noexcept
-    {
-        recipe.double_sided = state.double_sided;
-        recipe.alpha_test = state.alpha_test;
-        recipe.alpha_cutoff = state.alpha_cutoff;
-        recipe.dither = state.dither;
-        recipe.pipeline_config = state.pipeline_config;
     }
 
     inline bool HasUBORequirement(const MaterialDefinition &def, UBODescriptorSemantic s) noexcept
@@ -547,16 +500,8 @@ namespace hgl::graph::mtl
         hash = append_string(hash, recipe.mtl_def_id);
         hash = append_string(hash, recipe.domain);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.vertex_node_config);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.has_transform_graph);
-        if (recipe.has_transform_graph)
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, recipe.transform_graph.GetHash());
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.material_lod);
 
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.double_sided);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.alpha_test);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.alpha_cutoff);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.dither);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.render_state_overrides.has_double_sided);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.render_state_overrides.double_sided);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.render_state_overrides.has_alpha_test);
@@ -566,7 +511,6 @@ namespace hgl::graph::mtl
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.render_state_overrides.has_dither);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.render_state_overrides.dither);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.render_state_overrides.has_pipeline_config);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, HashMaterialPipelineConfig(recipe.pipeline_config));
         hash = hgl::hash::FNV1aAppendValueBytes(
             hash, HashMaterialPipelineConfig(recipe.render_state_overrides.pipeline_config));
 

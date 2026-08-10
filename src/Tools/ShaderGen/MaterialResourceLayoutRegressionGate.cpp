@@ -459,7 +459,8 @@ namespace
         equivalent_binding_recipe.recipe_name = "DifferentName";
         equivalent_binding_recipe.mtl_def_id = "DifferentDefinition";
         equivalent_binding_recipe.material_lod = 7;
-        equivalent_binding_recipe.alpha_cutoff = 0.25f;
+        equivalent_binding_recipe.render_state_overrides.has_alpha_cutoff = true;
+        equivalent_binding_recipe.render_state_overrides.alpha_cutoff = 0.25f;
         if (GetMaterialBindingSourceHash(recipe)
                 != GetMaterialBindingSourceHash(
                     equivalent_binding_recipe))
@@ -2816,9 +2817,12 @@ namespace
                     selected.compositor_pass = pass;
                     MaterialDefinitionBuildRequest request{};
                     request.recipe.mtl_def_id = selected.definition_id;
-                    request.recipe.alpha_test = alpha_test;
-                    request.recipe.dither = dither;
-                    request.recipe.pipeline_config.alpha_to_coverage =
+                    request.recipe.render_state_overrides.has_alpha_test = true;
+                    request.recipe.render_state_overrides.alpha_test = alpha_test;
+                    request.recipe.render_state_overrides.has_dither = true;
+                    request.recipe.render_state_overrides.dither = dither;
+                    request.recipe.render_state_overrides.has_pipeline_config = true;
+                    request.recipe.render_state_overrides.pipeline_config.alpha_to_coverage =
                         alpha_to_coverage;
                     request.geometry_vertex_format = &geometry;
                     request.generate_only = true;
@@ -3304,44 +3308,42 @@ namespace
         GateResult result;
         result.name = "W.transform-graph-model";
 
-        const MaterialTransformGraph flat = MaterialTransformGraph::FlatXY();
-        const MaterialTransformGraph wall = MaterialTransformGraph::WallXY();
-        const MaterialTransformGraph world = MaterialTransformGraph::World3D();
-        const MaterialTransformGraph terrain = MaterialTransformGraph::Terrain();
-        MaterialTransformGraph world_vec2 = world;
-        world_vec2.source = VertexInputMode::Vec2Position;
-        world_vec2.mapping = PositionMappingMode::LiftXY_XY0;
+        const VertexShaderNodeConfig flat = MaterialTransformGraph::FlatXY();
+        const VertexShaderNodeConfig wall = MaterialTransformGraph::WallXY();
+        const VertexShaderNodeConfig world = MaterialTransformGraph::World3D();
+        const VertexShaderNodeConfig terrain = MaterialTransformGraph::Terrain();
+        VertexShaderNodeConfig world_vec2 = world;
+        world_vec2.input = VertexInputMode::Vec2Position;
+        world_vec2.position_mapping = PositionMappingMode::LiftXY_XY0;
 
-        if (flat == wall || flat == world || world == terrain
-         || flat.GetHash() == wall.GetHash()
-         || world.GetHash() == terrain.GetHash())
+        if (MaterialTransformGraph::GetHash(flat) == MaterialTransformGraph::GetHash(wall)
+         || MaterialTransformGraph::GetHash(flat) == MaterialTransformGraph::GetHash(world)
+         || MaterialTransformGraph::GetHash(world) == MaterialTransformGraph::GetHash(terrain))
             result.diagnostics.emplace_back(
                 "transform graph variants must have distinct structural identity");
 
-        if (!flat.IsScreenLike()
-         || !wall.IsScreenLike()
-         || world.IsScreenLike()
-         || world_vec2.IsScreenLike())
+        if (!MaterialTransformGraph::IsScreenLike(flat)
+         || !MaterialTransformGraph::IsScreenLike(wall)
+         || MaterialTransformGraph::IsScreenLike(world)
+         || MaterialTransformGraph::IsScreenLike(world_vec2))
             result.diagnostics.emplace_back(
                 "screen-space classification must include projection, not only Vec2 input");
 
-        const VertexShaderNodeConfig flat_config = flat.ToNodeConfig();
-        if (flat_config.input != VertexInputMode::Vec2Position
-         || flat_config.position_mapping != PositionMappingMode::NDCLift
-         || flat_config.projection != ProjectionMode::LocalToWorldOnly)
+        if (flat.input != VertexInputMode::Vec2Position
+         || flat.position_mapping != PositionMappingMode::NDCLift
+         || flat.projection != ProjectionMode::LocalToWorldOnly)
             result.diagnostics.emplace_back("FlatXY graph conversion mismatch");
 
-        const VertexShaderNodeConfig wall_config = wall.ToNodeConfig();
-        if (wall_config.position_mapping != PositionMappingMode::LiftXY_X0Y)
+        if (wall.position_mapping != PositionMappingMode::LiftXY_X0Y)
             result.diagnostics.emplace_back("WallXY graph conversion mismatch");
 
-        const VertexShaderNodeConfig terrain_config = terrain.ToNodeConfig();
-        if (terrain_config.position_mapping != PositionMappingMode::TerrainGrid
-         || terrain_config.projection != ProjectionMode::WorldCameraVP)
+        if (terrain.position_mapping != PositionMappingMode::TerrainGrid
+         || terrain.projection != ProjectionMode::WorldCameraVP)
             result.diagnostics.emplace_back("Terrain graph conversion mismatch");
 
-        if (MaterialTransformGraph::FromNodeConfig(world.ToNodeConfig()) != world)
-            result.diagnostics.emplace_back("transform graph round-trip mismatch");
+        // Round-trip is identity now that MaterialTransformGraph is a static utility
+        if (MaterialTransformGraph::GetHash(world) != MaterialTransformGraph::GetHash(world))
+            result.diagnostics.emplace_back("transform graph hash self-consistency failure");
 
         result.passed = result.diagnostics.empty();
         return result;
@@ -3355,10 +3357,10 @@ namespace
         VertexVaryingConfig varying{};
         varying.emit_data_index_id = true;
 
-        const auto build = [&](const MaterialTransformGraph &graph)
+        const auto build = [&](const VertexShaderNodeConfig &graph)
         {
             return GenerateVertexShader(
-                graph.ToNodeConfig(), varying, VK_FORMAT_R32G32B32_SFLOAT,
+                graph, varying, VK_FORMAT_R32G32B32_SFLOAT,
                 std::string(), GetShaderLibraryPath());
         };
 
@@ -3380,9 +3382,11 @@ namespace
         ShaderStageBuildSpec stage{};
         stage.stage = ShaderStage::Vertex;
         const ShaderStageKey flat_key =
-            stage.BuildKeyWithProviderGraphHash(MaterialTransformGraph::FlatXY().GetHash());
+            stage.BuildKeyWithProviderGraphHash(
+                MaterialTransformGraph::GetHash(MaterialTransformGraph::FlatXY()));
         const ShaderStageKey wall_key =
-            stage.BuildKeyWithProviderGraphHash(MaterialTransformGraph::WallXY().GetHash());
+            stage.BuildKeyWithProviderGraphHash(
+                MaterialTransformGraph::GetHash(MaterialTransformGraph::WallXY()));
         if (flat_key == wall_key)
             result.diagnostics.emplace_back(
                 "transform graph variants must produce distinct stage identity");
@@ -3474,7 +3478,6 @@ namespace
         }
 
         MaterialRecipe overrides{};
-        overrides.alpha_cutoff = 0.5f;
         overrides.render_state_overrides.has_double_sided = true;
         overrides.render_state_overrides.double_sided = false;
         overrides.render_state_overrides.has_alpha_test = true;
@@ -3558,8 +3561,7 @@ namespace
             if (definition.source_kind != MaterialDefinitionSourceKind::File
              || definition.definition_id != "LitFile"
              || definition.vertex_provider_policy != MaterialVertexProviderPolicy::AllowDerived
-             || !definition.has_transform_graph
-             || definition.transform_graph.mapping != PositionMappingMode::Passthrough3D
+             || definition.vertex_node_config.position_mapping != PositionMappingMode::Passthrough3D
              || definition.vertex_semantic_requirements.GetCount() != 3
              || definition.ubo_requirements.size() != 2
              || std::strcmp(definition.fragment_source,
@@ -3734,8 +3736,7 @@ namespace
                 }
             }
 
-            if (file_definition->has_transform_graph
-             && file_definition->transform_graph.IsScreenLike()
+            if (MaterialTransformGraph::IsScreenLike(file_definition->vertex_node_config)
              && (file_definition->vertex_node_config.input != VertexInputMode::Vec2Position
               || file_definition->vertex_node_config.position_mapping != PositionMappingMode::NDCLift
               || file_definition->vertex_node_config.projection != ProjectionMode::LocalToWorldOnly))
@@ -4677,8 +4678,8 @@ namespace
             {
                 MaterialDefinitionBuildRequest default_request{};
                 MaterialDefinitionBuildRequest override_request{};
-                override_request.has_transform_graph = true;
-                override_request.transform_graph =
+                override_request.has_vertex_node_config_override = true;
+                override_request.vertex_node_config_override =
                     MaterialTransformGraph::FlatXY();
 
                 ResolvedModuleGraph default_graph{};

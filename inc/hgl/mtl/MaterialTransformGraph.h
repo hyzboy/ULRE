@@ -5,80 +5,54 @@
 
 namespace hgl::graph::mtl
 {
+    /// Pure-static utility for resolving GLSL vertex stage module paths
+    /// and querying transform properties from a VertexShaderNodeConfig.
     struct MaterialTransformGraph
     {
-        VertexInputMode source = VertexInputMode::Vec3Position;
-        PositionMappingMode mapping = PositionMappingMode::Passthrough3D;
-        OrientationMode orientation = OrientationMode::World;
-        ScaleMode scale = ScaleMode::World;
-        ProjectionMode projection = ProjectionMode::WorldCameraVP;
-
-        VertexShaderNodeConfig ToNodeConfig() const noexcept
+        static const char *GetMappingModulePath(const VertexShaderNodeConfig &cfg) noexcept
         {
-            return VertexShaderNodeConfig{
-                source, mapping, orientation, scale, projection
-            };
+            switch (cfg.position_mapping)
+            {
+            case PositionMappingMode::LiftXY_XY0:      return "vertex/s2_lift_xy0.glsl";
+            case PositionMappingMode::LiftXY_X0Y:      return "vertex/s2_lift_x0y.glsl";
+            case PositionMappingMode::LiftXY_0XY:      return "vertex/s2_lift_0xy.glsl";
+            case PositionMappingMode::NDCLift:          return "vertex/s2_ndc_lift.glsl";
+            case PositionMappingMode::ZeroOneToNDC:     return "vertex/s2_zeroone_to_ndc.glsl";
+            case PositionMappingMode::PixelToLocal:     return "vertex/s2_pixel_to_local.glsl";
+            case PositionMappingMode::TerrainGrid:      return nullptr;
+            case PositionMappingMode::Passthrough3D:
+            default:                                   return "vertex/s2_passthrough3d.glsl";
+            }
         }
 
-        static MaterialTransformGraph FromNodeConfig(
-            const VertexShaderNodeConfig &config) noexcept
+        static const char *GetStage3ModulePath(const VertexShaderNodeConfig &cfg) noexcept
         {
-            return MaterialTransformGraph{
-                config.input,
-                config.position_mapping,
-                config.orientation,
-                config.scale,
-                config.projection
-            };
+            if (cfg.orientation == OrientationMode::CameraFacingFree
+             || cfg.orientation == OrientationMode::CameraFacingAxisY)
+            {
+                return cfg.scale == ScaleMode::FixedPixelSize
+                    ? "vertex/s3_camera_facing_fixed_pixels.glsl"
+                    : "vertex/s3_camera_facing_world.glsl";
+            }
+
+            switch (cfg.projection)
+            {
+            case ProjectionMode::LocalToWorldOnly:      return "vertex/s3_l2w_only.glsl";
+            case ProjectionMode::OrthoViewport:          return "vertex/s3_ortho_viewport.glsl";
+            case ProjectionMode::OrthoThenLocalToWorld:  return "vertex/s3_ortho_then_l2w.glsl";
+            case ProjectionMode::ClipPassthrough:        return "vertex/s3_clip_passthrough.glsl";
+            case ProjectionMode::WorldCameraVP:
+            default:                                    return "vertex/s3_world_camera_vp.glsl";
+            }
         }
 
-        static MaterialTransformGraph FlatXY() noexcept
+        static bool IsScreenLike(const VertexShaderNodeConfig &cfg) noexcept
         {
-            return FromNodeConfig(Make2DNodeConfigNDC(true));
-        }
-
-        static MaterialTransformGraph PixelOrtho() noexcept
-        {
-            return FromNodeConfig(Make2DNodeConfigOrtho(false));
-        }
-
-        static MaterialTransformGraph WallXY() noexcept
-        {
-            MaterialTransformGraph graph = FlatXY();
-            graph.mapping = PositionMappingMode::LiftXY_X0Y;
-            return graph;
-        }
-
-        static MaterialTransformGraph World3D() noexcept
-        {
-            return FromNodeConfig(MakeDefault3DNodeConfig());
-        }
-
-        static MaterialTransformGraph Terrain() noexcept
-        {
-            MaterialTransformGraph graph = World3D();
-            graph.mapping = PositionMappingMode::TerrainGrid;
-            return graph;
-        }
-
-        uint64 GetHash() const noexcept
-        {
-            uint64 hash = hgl::hash::FNV1aInit<uint64>();
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, source);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, mapping);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, orientation);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, scale);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, projection);
-            return hash;
-        }
-
-        bool IsScreenLike() const noexcept
-        {
-            if (source != VertexInputMode::Vec2Position
-             && source != VertexInputMode::Vec2IntPosition)
+            if (cfg.input != VertexInputMode::Vec2Position
+             && cfg.input != VertexInputMode::Vec2IntPosition)
                 return false;
 
-            switch (projection)
+            switch (cfg.projection)
             {
             case ProjectionMode::LocalToWorldOnly:
             case ProjectionMode::OrthoViewport:
@@ -91,50 +65,46 @@ namespace hgl::graph::mtl
             }
         }
 
-        const char *GetMappingModulePath() const noexcept
+        static uint64 GetHash(const VertexShaderNodeConfig &cfg) noexcept
         {
-            switch (mapping)
-            {
-            case PositionMappingMode::LiftXY_XY0: return "vertex/s2_lift_xy0.glsl";
-            case PositionMappingMode::LiftXY_X0Y: return "vertex/s2_lift_x0y.glsl";
-            case PositionMappingMode::LiftXY_0XY: return "vertex/s2_lift_0xy.glsl";
-            case PositionMappingMode::NDCLift: return "vertex/s2_ndc_lift.glsl";
-            case PositionMappingMode::ZeroOneToNDC: return "vertex/s2_zeroone_to_ndc.glsl";
-            case PositionMappingMode::PixelToLocal: return "vertex/s2_pixel_to_local.glsl";
-            case PositionMappingMode::TerrainGrid: return nullptr;
-            case PositionMappingMode::Passthrough3D:
-            default: return "vertex/s2_passthrough3d.glsl";
-            }
+            uint64 hash = hgl::hash::FNV1aInit<uint64>();
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, cfg.input);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, cfg.position_mapping);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, cfg.orientation);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, cfg.scale);
+            hash = hgl::hash::FNV1aAppendValueBytes(hash, cfg.projection);
+            return hash;
         }
 
-        const char *GetStage3ModulePath() const noexcept
-        {
-            if (orientation == OrientationMode::CameraFacingFree
-             || orientation == OrientationMode::CameraFacingAxisY)
-            {
-                return scale == ScaleMode::FixedPixelSize
-                    ? "vertex/s3_camera_facing_fixed_pixels.glsl"
-                    : "vertex/s3_camera_facing_world.glsl";
-            }
+        // ── Factory methods ──────────────────────────────────────────
 
-            switch (projection)
-            {
-            case ProjectionMode::LocalToWorldOnly: return "vertex/s3_l2w_only.glsl";
-            case ProjectionMode::OrthoViewport: return "vertex/s3_ortho_viewport.glsl";
-            case ProjectionMode::OrthoThenLocalToWorld: return "vertex/s3_ortho_then_l2w.glsl";
-            case ProjectionMode::ClipPassthrough: return "vertex/s3_clip_passthrough.glsl";
-            case ProjectionMode::WorldCameraVP:
-            default: return "vertex/s3_world_camera_vp.glsl";
-            }
+        static VertexShaderNodeConfig FlatXY() noexcept
+        {
+            return Make2DNodeConfigNDC(true);
         }
 
-        bool operator==(const MaterialTransformGraph &rhs) const noexcept
+        static VertexShaderNodeConfig PixelOrtho() noexcept
         {
-            return source == rhs.source
-                && mapping == rhs.mapping
-                && orientation == rhs.orientation
-                && scale == rhs.scale
-                && projection == rhs.projection;
+            return Make2DNodeConfigOrtho(false);
+        }
+
+        static VertexShaderNodeConfig WallXY() noexcept
+        {
+            VertexShaderNodeConfig cfg = Make2DNodeConfigNDC(true);
+            cfg.position_mapping = PositionMappingMode::LiftXY_X0Y;
+            return cfg;
+        }
+
+        static VertexShaderNodeConfig World3D() noexcept
+        {
+            return MakeDefault3DNodeConfig();
+        }
+
+        static VertexShaderNodeConfig Terrain() noexcept
+        {
+            VertexShaderNodeConfig cfg = MakeDefault3DNodeConfig();
+            cfg.position_mapping = PositionMappingMode::TerrainGrid;
+            return cfg;
         }
     };
 }
