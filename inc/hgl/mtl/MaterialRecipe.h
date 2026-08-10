@@ -359,6 +359,8 @@ namespace hgl::graph::mtl
             state.dither = overrides.dither;
         if (overrides.has_pipeline_config)
             state.pipeline_config = overrides.pipeline_config;
+        else if (recipe.pipeline_config != MaterialPipelineConfig{})
+            state.pipeline_config = recipe.pipeline_config;
 
         return state;
     }
@@ -511,6 +513,8 @@ namespace hgl::graph::mtl
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.render_state_overrides.has_dither);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.render_state_overrides.dither);
         hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.render_state_overrides.has_pipeline_config);
+        hash = hgl::hash::FNV1aAppendValueBytes(
+            hash, HashMaterialPipelineConfig(recipe.pipeline_config));
         hash = hgl::hash::FNV1aAppendValueBytes(
             hash, HashMaterialPipelineConfig(recipe.render_state_overrides.pipeline_config));
 
