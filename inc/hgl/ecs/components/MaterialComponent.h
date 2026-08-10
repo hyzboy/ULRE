@@ -2,7 +2,8 @@
 
 #include<hgl/ecs/core/Component.h>
 #include<hgl/mtl/MaterialResourceLayout.h>
-#include <hgl/mtl/MaterialBindingContract.h>
+#include<hgl/mtl/MaterialRecipe.h>
+#include<hgl/mtl/MaterialBindingContract.h>
 #include<vector>
 
 namespace hgl::graph
@@ -70,6 +71,10 @@ namespace hgl::ecs
         graph::mtl::ResourceAcquirePlan active_resource_acquire_plan;
         bool has_active_resource_acquire_plan = false;
         std::vector<ResolvedSSBOBinding> resolved_ssbo_bindings;
+
+        // Cached normalized recipe — avoids redundant NormalizeRecipe in CreatePipeline.
+        graph::mtl::MaterialRecipe cached_normalized_recipe{};
+        uint64_t cached_normalized_recipe_hash = 0;
 
     public:
 

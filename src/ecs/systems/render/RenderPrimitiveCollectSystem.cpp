@@ -974,6 +974,15 @@ namespace hgl::ecs
         material_comp->recipe_hash = recipe_hash;
         material_comp->program_build_context_hash =
             build_context_hash;
+
+        // Cache normalized recipe so CreatePipeline can skip duplicate NormalizeRecipe.
+        {
+            graph::mtl::MaterialRecipe cached_recipe = effective_recipe;
+            graph::mtl::NormalizeRecipe(cached_recipe);
+            material_comp->cached_normalized_recipe = std::move(cached_recipe);
+            material_comp->cached_normalized_recipe_hash = recipe_hash;
+        }
+
         return true;
     }
 
@@ -1004,6 +1013,12 @@ namespace hgl::ecs
         graph::mtl::MaterialRecipe effective_recipe{};
         if (!BuildEffectiveMaterialRecipe(primitive_comp, material_comp->program, effective_recipe))
             return false;
+
+        // Reuse cached recipe when it hasn't changed since program resolve.
+        // CreatePipeline normalizes internally, so we don't need to normalize here.
+        const uint64 recipe_hash = graph::mtl::HashMaterialRecipe(effective_recipe);
+        if (material_comp->cached_normalized_recipe_hash == recipe_hash)
+            effective_recipe = material_comp->cached_normalized_recipe;
 
         const graph::VIL *vil = primitive_comp->GetRuntimeVIL();
         if (!vil)
