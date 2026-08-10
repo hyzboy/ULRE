@@ -67,13 +67,15 @@ namespace hgl::graph::mtl
 
         static uint64 GetHash(const VertexShaderNodeConfig &cfg) noexcept
         {
-            uint64 hash = hgl::hash::FNV1aInit<uint64>();
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, cfg.input);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, cfg.position_mapping);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, cfg.orientation);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, cfg.scale);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, cfg.projection);
-            return hash;
+            hgl::hash::FNV1aHasher64 h;
+
+            h << cfg.input
+              << cfg.position_mapping
+              << cfg.orientation
+              << cfg.scale
+              << cfg.projection;
+
+            return h;
         }
 
         // ── Factory methods ──────────────────────────────────────────

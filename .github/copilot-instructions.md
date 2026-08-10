@@ -111,16 +111,23 @@
 ```cpp
 #include <hgl/util/hash/FNV1a.h>
 
-// 初始化
+// ── 推荐：FNV1aHasher + operator<< 链式用法 ──
+hgl::hash::FNV1aHasher64 h;
+
+h << field_a
+  << field_b
+  << some_struct_value;
+
+// 字符串/原始字节用 AppendBytes()
+h.AppendBytes(data_ptr, byte_count);
+
+// 获取结果（隐式转换或 .Result()）
+uint64 result = h;
+
+// ── 传统用法（向后兼容）──
 uint64 hash = hgl::hash::FNV1aInit<uint64>();
-
-// 追加原始字节数据
 hash = hgl::hash::FNV1aAppendBytes(hash, data_ptr, byte_count);
-
-// 追加值类型（自动按字节展开）
 hash = hgl::hash::FNV1aAppendValueBytes(hash, some_int_or_struct);
-
-// 追加字符串内容
 hash = hgl::hash::FNV1aAppendBytes(hash, str.data(), str.size());
 ```
 

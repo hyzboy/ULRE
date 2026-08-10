@@ -12,12 +12,12 @@ namespace hgl::graph::mtl
         ShaderContractStableID GetOutputStableID(
             const char *name) noexcept
         {
-            return name && name[0]
-                ? hgl::hash::FNV1aAppendBytes(
-                    hgl::hash::FNV1aInit<uint64>(),
-                    name,
-                    std::strlen(name))
-                : 0;
+            if (!name || !name[0])
+                return 0;
+
+            hgl::hash::FNV1aHasher64 h;
+            h << name;
+            return h;
         }
 
         bool SetFailure(

@@ -65,33 +65,33 @@ namespace hgl::graph::mtl
     // 注意：不纳入 data_index 等运行时分配位置信息，避免跨帧分配顺序扰动缓存键。
     inline uint64_t HashMaterializationSpec(const MaterializationSpec &spec) noexcept
     {
-        uint64 hash = hgl::hash::FNV1aInit<uint64>();
+        hgl::hash::FNV1aHasher64 h;
 
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.recipe_hash);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.double_sided);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.alpha_test);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, spec.alpha_cutoff);
+        h << spec.recipe_hash
+          << spec.double_sided
+          << spec.alpha_test
+          << spec.alpha_cutoff;
 
         const uint32_t resource_count = static_cast<uint32_t>(spec.resources.size());
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, resource_count);
+        h << resource_count;
         for (const auto &resource : spec.resources)
         {
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, resource.slot);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, resource.bindless_handle);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, resource.texture_layer);
+            h << resource.slot
+              << resource.bindless_handle
+              << resource.texture_layer;
         }
 
         const uint32_t struct_count = static_cast<uint32_t>(spec.struct_refs.size());
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, struct_count);
+        h << struct_count;
         for (const auto &ref : spec.struct_refs)
         {
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.data_slot);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_type);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.ssbo_id);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, ref.byte_stride);
+            h << ref.data_slot
+              << ref.ssbo_type
+              << ref.ssbo_id
+              << ref.byte_stride;
         }
 
-        return static_cast<uint64_t>(hash);
+        return h;
     }
 
     // 由 Recipe 生成一个“未解析资源”的 Spec 初稿：

@@ -75,9 +75,8 @@ namespace hgl::graph::mtl::contract_detail
         if (bytes.IsEmpty())
             return 0;
 
-        return hgl::hash::FNV1aAppendBytes(
-            hgl::hash::FNV1aInit<uint64>(),
-            bytes.GetData(),
-            static_cast<size_t>(bytes.GetCount()));
+        hgl::hash::FNV1aHasher64 h;
+        h.AppendBytes(bytes.GetData(), static_cast<size_t>(bytes.GetCount()));
+        return h;
     }
 }

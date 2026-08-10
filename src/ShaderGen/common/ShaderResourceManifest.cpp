@@ -269,72 +269,55 @@ namespace hgl::graph::mtl
             ShaderResourceManifest &manifest,
             const GLSLCodeModuleRegistry *registry)
         {
-            uint64 hash = hgl::hash::FNV1aInit<uint64>();
+            hgl::hash::FNV1aHasher64 h;
             constexpr uint32 manifest_version = 2u;
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, manifest_version);
+            h << manifest_version;
 
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, manifest.code_module_count);
+            h << manifest.code_module_count;
             for (uint32 i = 0; i < manifest.code_module_count; ++i)
             {
                 const auto id = manifest.code_modules[i];
                 const auto *definition = FindModule(id, registry);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, id);
-                hash = hgl::hash::FNV1aAppendValueBytes(
-                    hash, definition ? GetGLSLCodeModuleDefinitionHash(*definition) : 0);
-                const uint32 name_length = definition && definition->name
-                    ? static_cast<uint32>(std::strlen(definition->name)) : 0u;
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, name_length);
-                if (name_length > 0)
-                    hash = hgl::hash::FNV1aAppendBytes(
-                        hash, definition->name, name_length);
-                const uint32 glsl_length = definition && definition->glsl_code
-                    ? static_cast<uint32>(std::strlen(definition->glsl_code)) : 0u;
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, glsl_length);
-                if (glsl_length > 0)
-                    hash = hgl::hash::FNV1aAppendBytes(
-                        hash, definition->glsl_code, glsl_length);
+                h << id
+                  << (definition ? GetGLSLCodeModuleDefinitionHash(*definition) : 0)
+                  << (definition ? definition->name : nullptr)
+                  << (definition ? definition->glsl_code : nullptr);
             }
 
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, manifest.ubo_count);
+            h << manifest.ubo_count;
             for (uint32 i = 0; i < manifest.ubo_count; ++i)
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, manifest.ubos[i]);
+                h << manifest.ubos[i];
 
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, manifest.ssbo_count);
+            h << manifest.ssbo_count;
             for (uint32 i = 0; i < manifest.ssbo_count; ++i)
             {
                 const auto &ssbo = manifest.ssbos[i];
-                const uint32 name_length = static_cast<uint32>(std::strlen(ssbo.name));
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, name_length);
-                hash = hgl::hash::FNV1aAppendBytes(hash, ssbo.name, name_length);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ssbo.ssbo_type);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ssbo.data_slot);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ssbo.stage_flags);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ssbo.required);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ssbo.allow_fallback);
+                h << ssbo.name;
+                h << ssbo.ssbo_type
+                  << ssbo.data_slot
+                  << ssbo.stage_flags
+                  << ssbo.required
+                  << ssbo.allow_fallback;
             }
 
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, manifest.texture_count);
+            h << manifest.texture_count;
             for (uint32 i = 0; i < manifest.texture_count; ++i)
             {
                 const auto &texture = manifest.textures[i];
-                const uint32 name_length = static_cast<uint32>(std::strlen(texture.name));
-                const uint32 glsl_length = static_cast<uint32>(std::strlen(texture.glsl_type));
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, name_length);
-                hash = hgl::hash::FNV1aAppendBytes(hash, texture.name, name_length);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, glsl_length);
-                hash = hgl::hash::FNV1aAppendBytes(hash, texture.glsl_type, glsl_length);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, texture.semantic);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, texture.slot);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, texture.stage_flags);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, texture.required);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, texture.allow_fallback);
+                h << texture.name
+                  << texture.glsl_type;
+                h << texture.semantic
+                  << texture.slot
+                  << texture.stage_flags
+                  << texture.required
+                  << texture.allow_fallback;
             }
 
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, manifest.texture_layer_count);
+            h << manifest.texture_layer_count;
             for (uint32 i = 0; i < manifest.texture_layer_count; ++i)
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, manifest.texture_layers[i]);
+                h << manifest.texture_layers[i];
 
-            manifest.stable_hash = hash;
+            manifest.stable_hash = h;
         }
     }
 

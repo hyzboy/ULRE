@@ -487,61 +487,50 @@ namespace hgl::graph::mtl
 
     inline uint64_t HashMaterialRecipe(const MaterialRecipe &recipe) noexcept
     {
-        uint64 hash = hgl::hash::FNV1aInit<uint64>();
+        hgl::hash::FNV1aHasher64 h;
 
-        const auto append_string = [](uint64 current, const std::string &value) -> uint64
-        {
-            const uint32 length = static_cast<uint32>(value.size());
-            current = hgl::hash::FNV1aAppendValueBytes(current, length);
-            if (length > 0)
-                current = hgl::hash::FNV1aAppendBytes(current, value.data(), length);
-            return current;
-        };
+        h << recipe.recipe_name
+          << recipe.mtl_def_id
+          << recipe.domain;
 
-        hash = append_string(hash, recipe.recipe_name);
-        hash = append_string(hash, recipe.mtl_def_id);
-        hash = append_string(hash, recipe.domain);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.vertex_node_config);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.material_lod);
-
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.render_state_overrides.has_double_sided);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.render_state_overrides.double_sided);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.render_state_overrides.has_alpha_test);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.render_state_overrides.alpha_test);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.render_state_overrides.has_alpha_cutoff);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.render_state_overrides.alpha_cutoff);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.render_state_overrides.has_dither);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.render_state_overrides.dither);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, recipe.render_state_overrides.has_pipeline_config);
-        hash = hgl::hash::FNV1aAppendValueBytes(
-            hash, HashMaterialPipelineConfig(recipe.pipeline_config));
-        hash = hgl::hash::FNV1aAppendValueBytes(
-            hash, HashMaterialPipelineConfig(recipe.render_state_overrides.pipeline_config));
+        h << recipe.vertex_node_config
+          << recipe.material_lod
+          << recipe.render_state_overrides.has_double_sided
+          << recipe.render_state_overrides.double_sided
+          << recipe.render_state_overrides.has_alpha_test
+          << recipe.render_state_overrides.alpha_test
+          << recipe.render_state_overrides.has_alpha_cutoff
+          << recipe.render_state_overrides.alpha_cutoff
+          << recipe.render_state_overrides.has_dither
+          << recipe.render_state_overrides.dither
+          << recipe.render_state_overrides.has_pipeline_config
+          << HashMaterialPipelineConfig(recipe.pipeline_config)
+          << HashMaterialPipelineConfig(recipe.render_state_overrides.pipeline_config);
 
         const uint32_t texture_count = static_cast<uint32_t>(recipe.textures.size());
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, texture_count);
+        h << texture_count;
         for (const auto &texture : recipe.textures)
         {
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, texture.slot);
-            hash = append_string(hash, texture.resource_id);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, texture.direct_value);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, texture.use_direct_value);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, texture.required);
+            h << texture.slot
+              << texture.resource_id;
+            h << texture.direct_value
+              << texture.use_direct_value
+              << texture.required;
         }
 
         const uint32_t ssbo_asset_count = static_cast<uint32_t>(recipe.ssbo_assets.size());
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, ssbo_asset_count);
+        h << ssbo_asset_count;
         for (const auto &asset : recipe.ssbo_assets)
         {
-            hash = append_string(hash, asset.data_slot_name);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, asset.data_slot);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, asset.ssbo_type);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, asset.ssbo_id);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, asset.use_data_index);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, asset.shared_across_instances);
+            h << asset.data_slot_name
+              << asset.data_slot
+              << asset.ssbo_type
+              << asset.ssbo_id
+              << asset.use_data_index
+              << asset.shared_across_instances;
         }
 
-        return static_cast<uint64_t>(hash);
+        return h;
     }
 
 }

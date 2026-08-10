@@ -49,12 +49,12 @@ namespace
 {
     static hgl::uint64 StableID(const char *text)
     {
-        return text && text[0]
-            ? hgl::hash::FNV1aAppendBytes(
-                hgl::hash::FNV1aInit<hgl::uint64>(),
-                text,
-                std::strlen(text))
-            : 0;
+        if (!(text && text[0]))
+            return 0;
+
+        hgl::hash::FNV1aHasher64 h;
+        h << text;
+        return h;
     }
 
     static bool IsKnownRegressionGroup(const char *group)

@@ -31,11 +31,11 @@ namespace hgl::graph::mtl
             const MaterialBindingSource source,
             const uint32 value = 0) noexcept
         {
-            uint64 hash = hgl::hash::FNV1aInit<uint64>();
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, logical_resource_id);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, source);
-            return hgl::hash::FNV1aAppendValueBytes(hash, value);
+            hgl::hash::FNV1aHasher64 h;
+            h << logical_resource_id
+              << source
+              << value;
+            return h;
         }
 
         uint64 ResolveFallbackResourceID(
@@ -46,45 +46,47 @@ namespace hgl::graph::mtl
             const SSBOType ssbo_type,
             const uint64 resource_schema_id) noexcept
         {
-            uint64 hash = hgl::hash::FNV1aInit<uint64>();
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, program_key_digest);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, resource_schema_id);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, semantic);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, texture_slot);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, data_slot);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, ssbo_type);
-            return hash != 0 ? hash : 1;
+            hgl::hash::FNV1aHasher64 h;
+            h << program_key_digest
+              << resource_schema_id
+              << semantic
+              << texture_slot
+              << data_slot
+              << ssbo_type;
+            return h != 0 ? h.Result() : 1;
         }
 
         uint64 HashTextureMetadata(
             const MaterialTextureBinding &binding) noexcept
         {
-            uint64 hash = hgl::hash::FNV1aInit<uint64>();
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.logical_resource_id);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.semantic);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.texture_slot);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.recipe_binding_index);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.direct_value);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.source);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.required);
-            return hgl::hash::FNV1aAppendValueBytes(hash, binding.allow_fallback);
+            hgl::hash::FNV1aHasher64 h;
+            h << binding.logical_resource_id
+              << binding.semantic
+              << binding.texture_slot
+              << binding.recipe_binding_index
+              << binding.direct_value
+              << binding.source
+              << binding.required
+              << binding.allow_fallback;
+            return h;
         }
 
         uint64 HashDataMetadata(
             const MaterialDataBinding &binding) noexcept
         {
-            uint64 hash = hgl::hash::FNV1aInit<uint64>();
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.logical_resource_id);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.semantic);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.data_slot);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.ssbo_id);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.data_index);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.ssbo_type);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.source);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.use_data_index);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.shared_across_instances);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.required);
-            return hgl::hash::FNV1aAppendValueBytes(hash, binding.allow_fallback);
+            hgl::hash::FNV1aHasher64 h;
+            h << binding.logical_resource_id
+              << binding.semantic
+              << binding.data_slot
+              << binding.ssbo_id
+              << binding.data_index
+              << binding.ssbo_type
+              << binding.source
+              << binding.use_data_index
+              << binding.shared_across_instances
+              << binding.required
+              << binding.allow_fallback;
+            return h;
         }
 
         uint64 ResolveDescriptorLogicalResourceID(
@@ -94,15 +96,15 @@ namespace hgl::graph::mtl
             if (entry.logical_resource_id != 0)
                 return entry.logical_resource_id;
 
-            uint64 hash = hgl::hash::FNV1aInit<uint64>();
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, program_key_digest);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, entry.resource_schema_id);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, entry.semantic);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, entry.texture_slot);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, entry.data_slot);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, entry.ssbo_type);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, entry.kind);
-            return hash != 0 ? hash : 1;
+            hgl::hash::FNV1aHasher64 h;
+            h << program_key_digest
+              << entry.resource_schema_id
+              << entry.semantic
+              << entry.texture_slot
+              << entry.data_slot
+              << entry.ssbo_type
+              << entry.kind;
+            return h != 0 ? h.Result() : 1;
         }
 
         uint64 MakeViewFallbackTextureID(

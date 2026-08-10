@@ -3,6 +3,8 @@
 #include <hgl/shadergen/ShaderStageKey.h>
 #include <hgl/util/hash/FNV1a.h>
 
+#include <string_view>
+
 namespace hgl::graph::mtl
 {
     inline uint64 HashFinalShaderSource(
@@ -12,10 +14,9 @@ namespace hgl::graph::mtl
         if (!source || length == 0)
             return 0;
 
-        return hgl::hash::FNV1aAppendBytes(
-            hgl::hash::FNV1aInit<uint64>(),
-            source,
-            length);
+        hgl::hash::FNV1aHasher64 h;
+        h << std::string_view(source, length);
+        return h;
     }
 
     inline ShaderStageKey BuildFinalShaderStageKey(

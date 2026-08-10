@@ -22,15 +22,17 @@ namespace hgl::graph::mtl
 
         uint64 GetDigest() const noexcept
         {
-            uint64 hash = hgl::hash::FNV1aInit<uint64>();
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, schema_version);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, stage);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, definition_hash);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, glsl_module_graph_hash);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, interface_hash);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, resource_hash);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, compiler_hash);
-            return hash;
+            hgl::hash::FNV1aHasher64 h;
+
+            h << schema_version
+              << stage
+              << definition_hash
+              << glsl_module_graph_hash
+              << interface_hash
+              << resource_hash
+              << compiler_hash;
+
+            return h;
         }
 
         AnsiString ToString() const

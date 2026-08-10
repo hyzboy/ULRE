@@ -14,8 +14,9 @@ namespace hgl::graph
     {
         uint64_t HashBytes(const void *data, const size_t size)
         {
-            uint64_t hash = hgl::hash::FNV1aInit<uint64_t>();
-            return hgl::hash::FNV1aAppendBytes(hash, data, size);
+            hgl::hash::FNV1aHasher64 h;
+            h.AppendBytes(data, size);
+            return h;
         }
 
         uint64_t HashVIL(const VIL *vil)
@@ -28,10 +29,11 @@ namespace hgl::graph
             if(!vif_list || count == 0)
                 return 0;
 
-            uint64_t hash = hgl::hash::FNV1aInit<uint64_t>();
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, count);
-            hash = hgl::hash::FNV1aAppendBytes(hash, vif_list, sizeof(VertexInputFormat) * count);
-            return hash;
+            hgl::hash::FNV1aHasher64 h;
+
+            h << count;
+            h.AppendBytes(vif_list, sizeof(VertexInputFormat) * count);
+            return h;
         }
 
         uint64_t HashGeometryVertexFormat(const GeometryVertexFormat *gvf)
@@ -43,8 +45,9 @@ namespace hgl::graph
             if(count == 0)
                 return 0;
 
-            uint64_t hash = hgl::hash::FNV1aInit<uint64_t>();
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, count);
+            hgl::hash::FNV1aHasher64 h;
+
+            h << count;
 
             for(uint32_t i=0;i<count;i++)
             {
@@ -52,13 +55,13 @@ namespace hgl::graph
                 if(!attr)
                     continue;
 
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, attr->semantic);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, attr->format);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, attr->vec_size);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, attr->stride);
+                h << attr->semantic
+                  << attr->format
+                  << attr->vec_size
+                  << attr->stride;
             }
 
-            return hash;
+            return h;
         }
 
         uint64_t HashShaderStages(const ShaderStageCreateInfoList *shader_stages)
@@ -66,20 +69,21 @@ namespace hgl::graph
             if(!shader_stages || shader_stages->IsEmpty())
                 return 0;
 
-            uint64_t hash = hgl::hash::FNV1aInit<uint64_t>();
+            hgl::hash::FNV1aHasher64 h;
+
             const uint count = shader_stages->GetCount();
             const VkPipelineShaderStageCreateInfo *stages = shader_stages->GetData();
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, count);
+            h << count;
 
             for(uint i = 0; i < count; ++i)
             {
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, stages[i].stage);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, (uint64_t)(uintptr_t)stages[i].module);
+                h << stages[i].stage
+                  << (uint64_t)(uintptr_t)stages[i].module;
                 if(stages[i].pName)
-                    hash = hgl::hash::FNV1aAppendBytes(hash, stages[i].pName, std::strlen(stages[i].pName));
+                    h << stages[i].pName;
             }
 
-            return hash;
+            return h;
         }
 
         uint64_t HashPreRasterConfig(const PipelineData *pd)
@@ -87,39 +91,39 @@ namespace hgl::graph
             if(!pd)
                 return 0;
 
-            uint64_t hash = hgl::hash::FNV1aInit<uint64_t>();
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->input_assembly.flags);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->input_assembly.topology);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->input_assembly.primitiveRestartEnable);
+            hgl::hash::FNV1aHasher64 h;
+
+            h << pd->input_assembly.flags
+              << pd->input_assembly.topology
+              << pd->input_assembly.primitiveRestartEnable;
             if(pd->rasterization)
             {
                 const VkPipelineRasterizationStateCreateInfo &rs = *pd->rasterization;
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, rs.flags);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, rs.depthClampEnable);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, rs.rasterizerDiscardEnable);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, rs.polygonMode);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, rs.cullMode);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, rs.frontFace);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, rs.depthBiasEnable);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, rs.depthBiasConstantFactor);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, rs.depthBiasClamp);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, rs.depthBiasSlopeFactor);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, rs.lineWidth);
+                h << rs.flags
+                  << rs.depthClampEnable
+                  << rs.rasterizerDiscardEnable
+                  << rs.polygonMode
+                  << rs.cullMode
+                  << rs.frontFace
+                  << rs.depthBiasEnable
+                  << rs.depthBiasConstantFactor
+                  << rs.depthBiasClamp
+                  << rs.depthBiasSlopeFactor
+                  << rs.lineWidth;
             }
             if(pd->tessellation)
             {
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->tessellation->flags);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->tessellation->patchControlPoints);
+                h << pd->tessellation->flags
+                  << pd->tessellation->patchControlPoints;
             }
 
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->viewport_state.viewportCount);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->viewport_state.scissorCount);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->dynamic_state.dynamicStateCount);
+            h << pd->viewport_state.viewportCount
+              << pd->viewport_state.scissorCount
+              << pd->dynamic_state.dynamicStateCount;
             if(pd->dynamic_state.dynamicStateCount > 0 && pd->dynamic_state.pDynamicStates)
-                hash = hgl::hash::FNV1aAppendBytes(hash,
-                                                   pd->dynamic_state.pDynamicStates,
-                                                   sizeof(VkDynamicState) * pd->dynamic_state.dynamicStateCount);
-            return hash;
+                h.AppendBytes(pd->dynamic_state.pDynamicStates,
+                              sizeof(VkDynamicState) * pd->dynamic_state.dynamicStateCount);
+            return h;
         }
 
         uint64_t HashFragmentOutputState(const PipelineData *pd)
@@ -127,73 +131,73 @@ namespace hgl::graph
             if(!pd)
                 return 0;
 
-            uint64_t hash = hgl::hash::FNV1aInit<uint64_t>();
+            hgl::hash::FNV1aHasher64 h;
 
             const bool has_multisample = pd->multi_sample != nullptr;
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, has_multisample);
+            h << has_multisample;
             if(has_multisample)
             {
                 const VkPipelineMultisampleStateCreateInfo *ms = pd->multi_sample;
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ms->flags);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ms->rasterizationSamples);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ms->sampleShadingEnable);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ms->minSampleShading);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ms->alphaToCoverageEnable);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ms->alphaToOneEnable);
+                h << ms->flags
+                  << ms->rasterizationSamples
+                  << ms->sampleShadingEnable
+                  << ms->minSampleShading
+                  << ms->alphaToCoverageEnable
+                  << ms->alphaToOneEnable;
 
                 const uint32_t sample_count = static_cast<uint32_t>(ms->rasterizationSamples);
                 const uint32_t sample_mask_word_count = (sample_count + 31u) / 32u;
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, sample_mask_word_count);
+                h << sample_mask_word_count;
 
                 if(sample_mask_word_count > 0 && ms->pSampleMask)
-                    hash = hgl::hash::FNV1aAppendBytes(hash, ms->pSampleMask, sizeof(VkSampleMask) * sample_mask_word_count);
+                    h.AppendBytes(ms->pSampleMask, sizeof(VkSampleMask) * sample_mask_word_count);
             }
 
             const bool has_depth_stencil = pd->depth_stencil != nullptr;
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, has_depth_stencil);
+            h << has_depth_stencil;
             if(has_depth_stencil)
             {
                 const VkPipelineDepthStencilStateCreateInfo *ds = pd->depth_stencil;
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->flags);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->depthTestEnable);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->depthWriteEnable);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->depthCompareOp);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->depthBoundsTestEnable);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->stencilTestEnable);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->front.failOp);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->front.passOp);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->front.depthFailOp);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->front.compareOp);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->front.compareMask);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->front.writeMask);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->front.reference);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->back.failOp);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->back.passOp);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->back.depthFailOp);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->back.compareOp);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->back.compareMask);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->back.writeMask);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->back.reference);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->minDepthBounds);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, ds->maxDepthBounds);
+                h << ds->flags
+                  << ds->depthTestEnable
+                  << ds->depthWriteEnable
+                  << ds->depthCompareOp
+                  << ds->depthBoundsTestEnable
+                  << ds->stencilTestEnable
+                  << ds->front.failOp
+                  << ds->front.passOp
+                  << ds->front.depthFailOp
+                  << ds->front.compareOp
+                  << ds->front.compareMask
+                  << ds->front.writeMask
+                  << ds->front.reference
+                  << ds->back.failOp
+                  << ds->back.passOp
+                  << ds->back.depthFailOp
+                  << ds->back.compareOp
+                  << ds->back.compareMask
+                  << ds->back.writeMask
+                  << ds->back.reference
+                  << ds->minDepthBounds
+                  << ds->maxDepthBounds;
             }
 
             const bool has_color_blend = pd->color_blend != nullptr;
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, has_color_blend);
+            h << has_color_blend;
             if(pd->color_blend)
             {
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->color_blend->attachmentCount);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->color_blend->flags);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->color_blend->logicOpEnable);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->color_blend->logicOp);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->color_blend->blendConstants[0]);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->color_blend->blendConstants[1]);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->color_blend->blendConstants[2]);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, pd->color_blend->blendConstants[3]);
+                h << pd->color_blend->attachmentCount
+                  << pd->color_blend->flags
+                  << pd->color_blend->logicOpEnable
+                  << pd->color_blend->logicOp
+                  << pd->color_blend->blendConstants[0]
+                  << pd->color_blend->blendConstants[1]
+                  << pd->color_blend->blendConstants[2]
+                  << pd->color_blend->blendConstants[3];
             }
             if(pd->color_blend_attachments && pd->color_blend)
-                hash = hgl::hash::FNV1aAppendBytes(hash, pd->color_blend_attachments, sizeof(VkPipelineColorBlendAttachmentState) * pd->color_blend->attachmentCount);
-            return hash;
+                h.AppendBytes(pd->color_blend_attachments, sizeof(VkPipelineColorBlendAttachmentState) * pd->color_blend->attachmentCount);
+            return h;
         }
 
         struct FinalPipelineCacheEntry
@@ -741,7 +745,9 @@ namespace hgl::graph
             // Phase 2 transition: preserve uniqueness against VIL-era binding layouts.
             if(request.vertex_input_layout)
             {
-                out_key.vi.format_hash = hgl::hash::FNV1aAppendValueBytes(out_key.vi.format_hash, HashVIL(request.vertex_input_layout));
+                hgl::hash::FNV1aHasher64 h(out_key.vi.format_hash);
+                h << HashVIL(request.vertex_input_layout);
+                out_key.vi.format_hash = h;
                 out_key.vi.binding_count = request.vertex_input_layout->GetVertexAttribCount();
             }
             else

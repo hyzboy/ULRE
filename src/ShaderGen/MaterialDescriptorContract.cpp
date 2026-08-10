@@ -14,10 +14,10 @@ namespace hgl::graph::mtl
         {
             if (!text || !text[0])
                 return 0;
-            return hgl::hash::FNV1aAppendBytes(
-                hgl::hash::FNV1aInit<uint64>(),
-                text,
-                std::strlen(text));
+
+            hgl::hash::FNV1aHasher64 h;
+            h << text;
+            return h;
         }
 
         uint64 GetLogicalResourceID(
@@ -27,18 +27,15 @@ namespace hgl::graph::mtl
             if (name_hash != 0)
                 return name_hash;
 
-            uint64 hash = hgl::hash::FNV1aInit<uint64>();
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, entry.semantic);
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, entry.semantic_layer);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, entry.set_type);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, entry.kind);
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, entry.texture_slot);
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, entry.data_slot);
-            return hgl::hash::FNV1aAppendValueBytes(
-                hash, entry.ssbo_type);
+            hgl::hash::FNV1aHasher64 h;
+            h << entry.semantic
+              << entry.semantic_layer
+              << entry.set_type
+              << entry.kind
+              << entry.texture_slot
+              << entry.data_slot
+              << entry.ssbo_type;
+            return h;
         }
 
         uint64 GetResourceSchemaID(
@@ -49,10 +46,10 @@ namespace hgl::graph::mtl
             if (entry.glsl_type && entry.glsl_type[0])
                 return HashText(entry.glsl_type);
 
-            uint64 hash = hgl::hash::FNV1aInit<uint64>();
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, entry.kind);
-            return hgl::hash::FNV1aAppendValueBytes(
-                hash, entry.ssbo_type);
+            hgl::hash::FNV1aHasher64 h;
+            h << entry.kind
+              << entry.ssbo_type;
+            return h;
         }
 
         bool AppendEntry(
@@ -374,12 +371,10 @@ namespace hgl::graph::mtl
                 entry.canonical);
         }
 
-        uint64 hash = hgl::hash::FNV1aInit<uint64>();
-        hash = hgl::hash::FNV1aAppendValueBytes(
-            hash, MaterialDescriptorContractSchemaVersion);
-        hash = hgl::hash::FNV1aAppendValueBytes(
-            hash, module_manifest_hash);
-        return hgl::hash::FNV1aAppendValueBytes(
-            hash, GetShaderInterfaceContractHash(interface_contract));
+        hgl::hash::FNV1aHasher64 h;
+        h << MaterialDescriptorContractSchemaVersion
+          << module_manifest_hash
+          << GetShaderInterfaceContractHash(interface_contract);
+        return h;
     }
 }

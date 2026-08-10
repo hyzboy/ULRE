@@ -76,15 +76,14 @@ namespace hgl::graph::mtl
     };
 
     template<typename T>
-    inline uint64 HashShaderStageValueArray(uint64 hash, const ValueArray<T> &values) noexcept
+    inline void HashShaderStageValueArray(hgl::hash::FNV1aHasher64 &h,
+                                          const ValueArray<T> &values) noexcept
     {
         const uint32 count = static_cast<uint32>(values.GetCount());
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, count);
+        h << count;
 
         for (uint32 i = 0; i < count; ++i)
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, values[static_cast<int>(i)]);
-
-        return hash;
+            h << values[static_cast<int>(i)];
     }
 
     struct ShaderStageBuildSpec
@@ -100,18 +99,20 @@ namespace hgl::graph::mtl
 
         uint64 GetInterfaceHash() const noexcept
         {
-            uint64 hash = hgl::hash::FNV1aInit<uint64>();
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, stage);
-            hash = HashShaderStageValueArray(hash, inputs);
-            hash = HashShaderStageValueArray(hash, outputs);
-            return hash;
+            hgl::hash::FNV1aHasher64 h;
+
+            h << stage;
+            HashShaderStageValueArray(h, inputs);
+            HashShaderStageValueArray(h, outputs);
+            return h;
         }
 
         uint64 GetResourceHash() const noexcept
         {
-            uint64 hash = hgl::hash::FNV1aInit<uint64>();
-            hash = HashShaderStageValueArray(hash, resources);
-            return hash;
+            hgl::hash::FNV1aHasher64 h;
+
+            HashShaderStageValueArray(h, resources);
+            return h;
         }
 
         ShaderStageKey BuildKey() const noexcept

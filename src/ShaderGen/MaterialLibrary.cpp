@@ -327,10 +327,12 @@ namespace
             resolved_vertex_input_glsl = resolved_abi.vertex_input_glsl.c_str();
             resolved_provider_glsl = resolved_abi.provider_glsl;
             resolved_provider_graph_hash = resolved_abi.provider_graph_hash;
-            resolved_provider_graph_hash = hgl::hash::FNV1aAppendValueBytes(
-                hgl::hash::FNV1aInit<uint64>(), MaterialTransformGraph::GetHash(vertex_node_config));
-            resolved_provider_graph_hash = hgl::hash::FNV1aAppendValueBytes(
-                resolved_provider_graph_hash, resolved_abi.provider_graph_hash);
+            {
+                hgl::hash::FNV1aHasher64 h;
+                h << MaterialTransformGraph::GetHash(vertex_node_config)
+                  << resolved_abi.provider_graph_hash;
+                resolved_provider_graph_hash = h;
+            }
             vertices.reserve(static_cast<size_t>(resolved_abi.vertex_entries.GetCount()));
             for (int i = 0; i < resolved_abi.vertex_entries.GetCount(); ++i)
                 vertices.push_back(resolved_abi.vertex_entries[i]);
@@ -585,11 +587,10 @@ namespace
             ? request.geometry_vertex_format->GetVertexInputHash() : 0;
         const uint64 compiler_hash =
             contract::GetShaderCompilerProfileHash(profile);
-        uint64 vertex_interface_hash = hgl::hash::FNV1aAppendValueBytes(
-            hgl::hash::FNV1aInit<uint64>(),
-            HashFinalShaderSource(vs.data(), vs.size()));
-        vertex_interface_hash = hgl::hash::FNV1aAppendValueBytes(
-            vertex_interface_hash, vertex_input_hash);
+        hgl::hash::FNV1aHasher64 vertex_interface_hasher;
+        vertex_interface_hasher << HashFinalShaderSource(vs.data(), vs.size())
+                                << vertex_input_hash;
+        const uint64 vertex_interface_hash = vertex_interface_hasher;
         const uint64 fragment_interface_hash =
             HashFinalShaderSource(fs.data(), fs.size());
 
@@ -754,14 +755,13 @@ uint64 HashMaterialProgramBuildContext(
     const GeometryVertexFormat *geometry_vertex_format,
     const contract::PhysicalDeviceProfileLite *profile) noexcept
 {
-    uint64 hash = hgl::hash::FNV1aInit<uint64>();
-    hash = hgl::hash::FNV1aAppendValueBytes(hash, primitive_type);
-    hash = hgl::hash::FNV1aAppendValueBytes(
-        hash,
-        geometry_vertex_format
-            ? geometry_vertex_format->GetVertexInputHash() : 0);
-    return hgl::hash::FNV1aAppendValueBytes(
-        hash, contract::GetPhysicalDeviceProfileHash(profile));
+    hgl::hash::FNV1aHasher64 h;
+
+    h << primitive_type
+      << (geometry_vertex_format
+            ? geometry_vertex_format->GetVertexInputHash() : 0)
+      << contract::GetPhysicalDeviceProfileHash(profile);
+    return h;
 }
 
 MaterialVertexVaryingConfig ResolveMaterialVertexVaryingConfig(

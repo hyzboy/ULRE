@@ -138,34 +138,35 @@ namespace hgl::graph::mtl
 
     inline uint64_t HashMaterialPipelineConfig(const MaterialPipelineConfig &config) noexcept
     {
-        uint64 hash = hgl::hash::FNV1aInit<uint64>();
+        hgl::hash::FNV1aHasher64 h;
 
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, config.cull_mode);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, config.depth_test);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, config.depth_write);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, config.depth_compare_op);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, config.alpha_blend);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, config.alpha_to_coverage);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, config.blend_src);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, config.blend_dst);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, config.line_width);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, config.dynamic_line_width);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, config.overlay);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, config.wireframe);
+        h << config.cull_mode
+          << config.depth_test
+          << config.depth_write
+          << config.depth_compare_op
+          << config.alpha_blend
+          << config.alpha_to_coverage
+          << config.blend_src
+          << config.blend_dst
+          << config.line_width
+          << config.dynamic_line_width
+          << config.overlay
+          << config.wireframe;
 
-        return static_cast<uint64_t>(hash);
+        return h;
     }
 
     inline uint64_t HashResolvedMaterialRenderState(
         const ResolvedMaterialRenderState &state) noexcept
     {
-        uint64 hash = hgl::hash::FNV1aInit<uint64>();
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, state.double_sided);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, state.alpha_test);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, state.alpha_cutoff);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, state.dither);
-        hash = hgl::hash::FNV1aAppendValueBytes(
-            hash, HashMaterialPipelineConfig(state.pipeline_config));
-        return static_cast<uint64_t>(hash);
+        hgl::hash::FNV1aHasher64 h;
+
+        h << state.double_sided
+          << state.alpha_test
+          << state.alpha_cutoff
+          << state.dither
+          << HashMaterialPipelineConfig(state.pipeline_config);
+
+        return h;
     }
 }//namespace hgl::graph::mtl

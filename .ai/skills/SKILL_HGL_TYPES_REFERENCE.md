@@ -261,25 +261,21 @@ AnsiString *key = bimap.FindByRight(1); // 通过value找key
 #include <hgl/util/hash/FNV1a.h>
 ```
 
-### FNV1a 标准用法
+### FNV1aHasher — 推荐用法（新API）
 
 ```cpp
-// --- 32位哈希 ---
-uint32 hash32 = hgl::hash::FNV1aInit<uint32>();
-hash32 = hgl::hash::FNV1aAppendBytes(hash32, data, byte_len);
-hash32 = hgl::hash::FNV1aAppendValueBytes(hash32, some_value);
+// 推荐：用有状态 FNV1aHasher + operator<< 链式追加
+hgl::hash::FNV1aHasher64 h;
 
-// --- 64位哈希（推荐） ---
-uint64 hash64 = hgl::hash::FNV1aInit<uint64>();
-hash64 = hgl::hash::FNV1aAppendBytes(hash64, data, byte_len);
-hash64 = hgl::hash::FNV1aAppendValueBytes(hash64, some_value);
+h << field_a
+  << field_b
+  << field_c;
 
-// --- 追加字符串 ---
-AnsiString name = "some_name";
-hash64 = hgl::hash::FNV1aAppendBytes(hash64, name.data(), name.GetLength());
+// 追加字符串/原始字节用 AppendBytes()
+h.AppendBytes(name.data(), name.GetLength());
 
-// --- 一次性哈希整个缓冲区 ---
-uint64 h = hgl::hash::FNV1a<uint64>(data_ptr, byte_count);
+// 获取结果（隐式转换）
+uint64 result = h;
 ```
 
 ### 典型场景：对结构体哈希
@@ -287,12 +283,29 @@ uint64 h = hgl::hash::FNV1a<uint64>(data_ptr, byte_count);
 ```cpp
 uint64 HashMyStruct(const MyStruct &s)
 {
-    uint64 hash = hgl::hash::FNV1aInit<uint64>();
-    hash = hgl::hash::FNV1aAppendValueBytes(hash, s.field_a);
-    hash = hgl::hash::FNV1aAppendValueBytes(hash, s.field_b);
-    hash = hgl::hash::FNV1aAppendBytes(hash, s.name.data(), s.name.GetLength());
-    return hash;
+    hgl::hash::FNV1aHasher64 h;
+    h << s.field_a
+      << s.field_b;
+    h.AppendBytes(s.name.data(), s.name.GetLength());
+    return h;
 }
+```
+
+### FNV1a 传统用法（向后兼容，仍可用但不推荐）
+
+```cpp
+// --- 32位哈希 ---
+uint32 hash32 = hgl::hash::FNV1aInit<uint32>();
+hash32 = hgl::hash::FNV1aAppendBytes(hash32, data, byte_len);
+hash32 = hgl::hash::FNV1aAppendValueBytes(hash32, some_value);
+
+// --- 64位哈希 ---
+uint64 hash64 = hgl::hash::FNV1aInit<uint64>();
+hash64 = hgl::hash::FNV1aAppendBytes(hash64, data, byte_len);
+hash64 = hgl::hash::FNV1aAppendValueBytes(hash64, some_value);
+
+// --- 一次性哈希整个缓冲区 ---
+uint64 h = hgl::hash::FNV1a<uint64>(data_ptr, byte_count);
 ```
 
 ### 通用哈希接口

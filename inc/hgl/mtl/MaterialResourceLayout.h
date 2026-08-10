@@ -379,28 +379,23 @@ namespace hgl::graph::mtl
 
             if (req.name && *req.name)
             {
-                req.logical_resource_id = hgl::hash::FNV1aAppendBytes(
-                    hgl::hash::FNV1aInit<uint64>(),
-                    req.name,
-                    std::strlen(req.name));
+                hgl::hash::FNV1aHasher64 h;
+                h << req.name;
+                req.logical_resource_id = h;
             }
             else
             {
-                uint64 hash = hgl::hash::FNV1aInit<uint64>();
-                hash = hgl::hash::FNV1aAppendValueBytes(
-                    hash, req.semantic);
-                hash = hgl::hash::FNV1aAppendValueBytes(
-                    hash, req.semantic_layer);
-                hash = hgl::hash::FNV1aAppendValueBytes(
-                    hash, req.set_type);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, req.kind);
-                hash = hgl::hash::FNV1aAppendValueBytes(
-                    hash, req.texture_slot);
-                hash = hgl::hash::FNV1aAppendValueBytes(
-                    hash, req.data_slot);
-                req.logical_resource_id =
-                    hgl::hash::FNV1aAppendValueBytes(
-                        hash, req.ssbo_type);
+                hgl::hash::FNV1aHasher64 h;
+
+                h << req.semantic
+                  << req.semantic_layer
+                  << req.set_type
+                  << req.kind
+                  << req.texture_slot
+                  << req.data_slot
+                  << req.ssbo_type;
+
+                req.logical_resource_id = h;
             }
 
             const char *schema_name =
@@ -408,18 +403,18 @@ namespace hgl::graph::mtl
                     ? req.struct_name : req.glsl_type;
             if (schema_name && *schema_name)
             {
-                req.resource_schema_id = hgl::hash::FNV1aAppendBytes(
-                    hgl::hash::FNV1aInit<uint64>(),
-                    schema_name,
-                    std::strlen(schema_name));
+                hgl::hash::FNV1aHasher64 h;
+                h << schema_name;
+                req.resource_schema_id = h;
             }
             else
             {
-                uint64 hash = hgl::hash::FNV1aInit<uint64>();
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, req.kind);
-                req.resource_schema_id =
-                    hgl::hash::FNV1aAppendValueBytes(
-                        hash, req.ssbo_type);
+                hgl::hash::FNV1aHasher64 h;
+
+                h << req.kind
+                  << req.ssbo_type;
+
+                req.resource_schema_id = h;
             }
 
             contract.requirements.push_back(req);
@@ -431,46 +426,34 @@ namespace hgl::graph::mtl
     inline uint64 HashMaterialResourceLayout(
         const MaterialResourceLayout &layout) noexcept
     {
-        uint64 hash = hgl::hash::FNV1aInit<uint64>();
-        constexpr uint32 contract_version = 4u;
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, contract_version);
-        hash = hgl::hash::FNV1aAppendValueBytes(
-            hash, static_cast<uint32>(layout.requirements.size()));
+        hgl::hash::FNV1aHasher64 h;
 
-        const auto append_string = [](uint64 current, const char *value) -> uint64
-        {
-            const uint32 length = value
-                ? static_cast<uint32>(std::strlen(value)) : 0u;
-            current = hgl::hash::FNV1aAppendValueBytes(current, length);
-            if (length > 0)
-                current = hgl::hash::FNV1aAppendBytes(current, value, length);
-            return current;
-        };
+        constexpr uint32 contract_version = 4u;
+        h << contract_version
+          << static_cast<uint32>(layout.requirements.size());
 
         for (const auto &req : layout.requirements)
         {
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, req.logical_resource_id);
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, req.resource_schema_id);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, req.semantic);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, req.semantic_layer);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, req.set_type);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, req.kind);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, req.texture_slot);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, req.data_slot);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, req.ssbo_type);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, req.ssbo_id);
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, req.stage_flags);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, req.required);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, req.allow_fallback);
-            hash = append_string(hash, req.name);
-            hash = append_string(hash, req.struct_name);
-            hash = append_string(hash, req.glsl_type);
+            h << req.logical_resource_id
+              << req.resource_schema_id
+              << req.semantic
+              << req.semantic_layer
+              << req.set_type
+              << req.kind
+              << req.texture_slot
+              << req.data_slot
+              << req.ssbo_type
+              << req.ssbo_id
+              << req.stage_flags
+              << req.required
+              << req.allow_fallback;
+
+            h << req.name
+              << req.struct_name
+              << req.glsl_type;
         }
 
-        return hash;
+        return h;
     }
 
     inline const char *GetDescriptorSemanticName(DescriptorSemantic semantic)

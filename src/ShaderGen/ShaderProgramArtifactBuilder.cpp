@@ -40,30 +40,23 @@ namespace hgl::graph::mtl
             fragment->GetFinalGLSL().data(),
             fragment->GetFinalGLSL().size());
 
-        uint64 module_graph_hash = hgl::hash::FNV1aInit<uint64>();
-        module_graph_hash = hgl::hash::FNV1aAppendValueBytes(
-            module_graph_hash,
-            link.vertex_stage.glsl_module_graph_hash);
-        module_graph_hash = hgl::hash::FNV1aAppendValueBytes(
-            module_graph_hash,
-            link.fragment_stage.glsl_module_graph_hash);
+        hgl::hash::FNV1aHasher64 module_graph_hasher;
+        module_graph_hasher << link.vertex_stage.glsl_module_graph_hash
+                            << link.fragment_stage.glsl_module_graph_hash;
+        const uint64 module_graph_hash = module_graph_hasher;
 
-        uint64 interface_hash = hgl::hash::FNV1aInit<uint64>();
-        interface_hash = hgl::hash::FNV1aAppendValueBytes(
-            interface_hash, link.vertex_stage.interface_hash);
-        interface_hash = hgl::hash::FNV1aAppendValueBytes(
-            interface_hash, link.fragment_stage.interface_hash);
-        interface_hash = hgl::hash::FNV1aAppendValueBytes(
-            interface_hash,
-            HashMaterialResourceLayout(
-                build_spec.GetMaterialResourceLayout()));
+        hgl::hash::FNV1aHasher64 interface_hasher;
+        interface_hasher << link.vertex_stage.interface_hash
+                         << link.fragment_stage.interface_hash
+                         << HashMaterialResourceLayout(
+                             build_spec.GetMaterialResourceLayout());
+        const uint64 interface_hash = interface_hasher;
 
         const uint64 program_digest = link.BuildKey().GetDigest();
-        uint64 source_digest = hgl::hash::FNV1aInit<uint64>();
-        source_digest = hgl::hash::FNV1aAppendValueBytes(
-            source_digest, vertex_source_hash);
-        source_digest = hgl::hash::FNV1aAppendValueBytes(
-            source_digest, fragment_source_hash);
+        hgl::hash::FNV1aHasher64 source_hasher;
+        source_hasher << vertex_source_hash
+                      << fragment_source_hash;
+        const uint64 source_digest = source_hasher;
 
         out_metadata.program_key_digest = program_digest;
         out_metadata.resolved_module_graph_hash = module_graph_hash;

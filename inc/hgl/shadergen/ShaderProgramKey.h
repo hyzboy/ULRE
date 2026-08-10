@@ -22,16 +22,18 @@ namespace hgl::graph::mtl
 
         uint64 GetDigest() const noexcept
         {
-            uint64 hash = hgl::hash::FNV1aInit<uint64>();
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, schema_version);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, vertex_stage_digest);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, fragment_stage_digest);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, resource_layout_hash);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, vertex_input_hash);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, pipeline_state_hash);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, render_target_hash);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, compiler_hash);
-            return hash;
+            hgl::hash::FNV1aHasher64 h;
+
+            h << schema_version
+              << vertex_stage_digest
+              << fragment_stage_digest
+              << resource_layout_hash
+              << vertex_input_hash
+              << pipeline_state_hash
+              << render_target_hash
+              << compiler_hash;
+
+            return h;
         }
 
         AnsiString ToString() const

@@ -157,17 +157,17 @@ namespace hgl::graph
 
         uint64 GetVertexInputHash() const noexcept
         {
-            uint64 hash = hgl::hash::FNV1aInit<uint64>();
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, static_cast<uint32>(attributes.size()));
+            hgl::hash::FNV1aHasher64 h;
+
+            h << static_cast<uint32>(attributes.size());
             for (const auto &attribute : attributes)
             {
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, attribute.semantic);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, attribute.format);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, attribute.vec_size);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, attribute.stride);
+                h << attribute.semantic
+                  << attribute.format
+                  << attribute.vec_size
+                  << attribute.stride;
             }
-            return hash;
+            return h;
         }
 
     };

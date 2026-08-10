@@ -195,8 +195,9 @@ namespace hgl::graph::mtl
                 break;
 
             const auto *payload = static_cast<const uint8 *>(file_data) + header.header_size;
-            const uint64 payload_hash = hgl::hash::FNV1aAppendBytes(
-                hgl::hash::FNV1aInit<uint64>(), payload, static_cast<size_t>(header.payload_size));
+            hgl::hash::FNV1aHasher64 hasher;
+            hasher.AppendBytes(payload, static_cast<size_t>(header.payload_size));
+            const uint64 payload_hash = hasher;
             if (payload_hash != header.payload_hash
              || !IsValidSPVPayload(payload, header.payload_size))
                 break;
@@ -235,8 +236,9 @@ namespace hgl::graph::mtl
         header.stage = static_cast<uint32>(key.stage);
         header.key_digest = key.GetDigest();
         header.payload_size = spv_size;
-        header.payload_hash = hgl::hash::FNV1aAppendBytes(
-            hgl::hash::FNV1aInit<uint64>(), spv_data, static_cast<size_t>(spv_size));
+        hgl::hash::FNV1aHasher64 hasher;
+        hasher.AppendBytes(spv_data, static_cast<size_t>(spv_size));
+        header.payload_hash = hasher;
 
         ValueArray<uint8> file_data;
         file_data.Resize(static_cast<int>(sizeof(header) + spv_size));
@@ -292,11 +294,9 @@ namespace hgl::graph::mtl
             const auto *payload =
                 static_cast<const uint8 *>(file_data)
                 + header.header_size;
-            const uint64 payload_hash =
-                hgl::hash::FNV1aAppendBytes(
-                    hgl::hash::FNV1aInit<uint64>(),
-                    payload,
-                    static_cast<size_t>(header.payload_size));
+            hgl::hash::FNV1aHasher64 hasher;
+            hasher.AppendBytes(payload, static_cast<size_t>(header.payload_size));
+            const uint64 payload_hash = hasher;
             if (payload_hash != header.payload_hash
              || !DeserializeProgramMetadata(
                     payload,
@@ -353,10 +353,9 @@ namespace hgl::graph::mtl
         header.stage = 0;
         header.key_digest = link.BuildKey().GetDigest();
         header.payload_size = payload.GetCount();
-        header.payload_hash = hgl::hash::FNV1aAppendBytes(
-            hgl::hash::FNV1aInit<uint64>(),
-            payload.GetData(),
-            static_cast<size_t>(payload.GetCount()));
+        hgl::hash::FNV1aHasher64 hasher;
+        hasher.AppendBytes(payload.GetData(), static_cast<size_t>(payload.GetCount()));
+        header.payload_hash = hasher;
 
         ValueArray<uint8> file_data;
         file_data.Resize(

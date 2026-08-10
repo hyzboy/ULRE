@@ -548,53 +548,43 @@ inline bool BuildDefinitionShaderResourceManifest(
 inline uint64 HashDescriptorEntries(
     const std::vector<FixedDescriptorEntry> &entries) noexcept
 {
-    uint64 hash = hgl::hash::FNV1aInit<uint64>();
-    hash = hgl::hash::FNV1aAppendValueBytes(
-        hash, static_cast<uint32>(entries.size()));
-
-    const auto append_string = [](uint64 current, const char *value) -> uint64
-    {
-        const uint32 length = value ? static_cast<uint32>(std::strlen(value)) : 0u;
-        current = hgl::hash::FNV1aAppendValueBytes(current, length);
-        if (length > 0)
-            current = hgl::hash::FNV1aAppendBytes(current, value, length);
-        return current;
-    };
+    hgl::hash::FNV1aHasher64 h;
+    h << static_cast<uint32>(entries.size());
 
     for (const auto &entry : entries)
     {
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, entry.set_type);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, entry.kind);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, entry.stage_flags);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, entry.semantic);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, entry.texture_slot);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, entry.data_slot);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, entry.ssbo_type);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, entry.semantic_layer);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, entry.ssbo_id);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, entry.has_requirement_policy);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, entry.required);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, entry.allow_fallback);
-        hash = append_string(hash, entry.name);
-        hash = append_string(hash, entry.struct_name);
-        hash = append_string(hash, entry.glsl_type);
+        h << entry.set_type
+          << entry.kind
+          << entry.stage_flags
+          << entry.semantic
+          << entry.texture_slot
+          << entry.data_slot
+          << entry.ssbo_type
+          << entry.semantic_layer
+          << entry.ssbo_id
+          << entry.has_requirement_policy
+          << entry.required
+          << entry.allow_fallback
+          << entry.name
+          << entry.struct_name
+          << entry.glsl_type;
     }
 
-    return hash;
+    return h;
 }
 
 inline uint64 HashResourceContract(
     const uint64 manifest_hash,
     const std::vector<FixedDescriptorEntry> &entries) noexcept
 {
-    uint64 hash = hgl::hash::FNV1aInit<uint64>();
+    hgl::hash::FNV1aHasher64 h;
     constexpr uint32 contract_version = 2u;
-    hash = hgl::hash::FNV1aAppendValueBytes(hash, contract_version);
-    hash = hgl::hash::FNV1aAppendValueBytes(hash, manifest_hash);
     const MaterialResourceLayout layout =
         BuildMaterialResourceLayout(entries.data(), static_cast<uint32>(entries.size()));
-    hash = hgl::hash::FNV1aAppendValueBytes(hash, HashMaterialResourceLayout(layout));
-    return hash;
+    h << contract_version
+      << manifest_hash
+      << HashMaterialResourceLayout(layout);
+    return h;
 }
 
 inline void ApplyMaterialDefinitionTexturePolicy(
@@ -620,24 +610,20 @@ inline void ApplyMaterialDefinitionTexturePolicy(
 }
 
 inline uint64 HashMaterialDefinitionTexturePolicy(
-    uint64 hash,
+    const uint64 hash,
     const MaterialDefinition &definition) noexcept
 {
-    hash = hgl::hash::FNV1aAppendValueBytes(
-        hash, static_cast<uint32>(definition.texture_slot_decls.size()));
+    hgl::hash::FNV1aHasher64 h(hash);
+    h << static_cast<uint32>(definition.texture_slot_decls.size());
     for (const auto &decl : definition.texture_slot_decls)
     {
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, decl.slot);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, decl.sampler_type);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, decl.required);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, !decl.required);
-        const uint32 name_length =
-            decl.name ? static_cast<uint32>(std::strlen(decl.name)) : 0u;
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, name_length);
-        if (name_length > 0)
-            hash = hgl::hash::FNV1aAppendBytes(hash, decl.name, name_length);
+        h << decl.slot
+          << decl.sampler_type
+          << decl.required
+          << !decl.required
+          << decl.name;
     }
-    return hash;
+    return h;
 }
 
 inline uint64 HashResourceContract(
@@ -645,16 +631,16 @@ inline uint64 HashResourceContract(
     const std::vector<FixedDescriptorEntry> &entries,
     const MaterialDefinition &definition) noexcept
 {
-    uint64 hash = hgl::hash::FNV1aInit<uint64>();
+    hgl::hash::FNV1aHasher64 h;
     constexpr uint32 contract_version = 3u;
-    hash = hgl::hash::FNV1aAppendValueBytes(hash, contract_version);
-    hash = hgl::hash::FNV1aAppendValueBytes(hash, manifest_hash);
 
     MaterialResourceLayout layout =
         BuildMaterialResourceLayout(entries.data(), static_cast<uint32>(entries.size()));
     ApplyMaterialDefinitionTexturePolicy(definition, layout);
-    hash = hgl::hash::FNV1aAppendValueBytes(hash, HashMaterialResourceLayout(layout));
-    return hash;
+    h << contract_version
+      << manifest_hash
+      << HashMaterialResourceLayout(layout);
+    return h;
 }
 
 } // namespace hgl::graph::mtl::descriptor_builder_common

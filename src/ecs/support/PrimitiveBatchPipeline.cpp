@@ -130,23 +130,23 @@ namespace hgl::ecs
 
         uint64_t ResolveSSBOBindingSignature(RenderItem *item)
         {
-            uint64 hash = hgl::hash::FNV1aInit<uint64>();
+            hgl::hash::FNV1aHasher64 h;
             const auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(item);
             const auto material_comp = primitive_item ? primitive_item->GetMaterialComponent() : nullptr;
             if (!material_comp)
-                return static_cast<uint64_t>(hash);
+                return static_cast<uint64_t>(h);
 
             const uint32_t binding_count =
                 static_cast<uint32_t>(material_comp->resolved_ssbo_bindings.size());
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, binding_count);
+            h << binding_count;
             for (const auto &binding : material_comp->resolved_ssbo_bindings)
             {
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.ssbo_type);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.ssbo_id);
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, binding.valid);
+                h << binding.ssbo_type
+                  << binding.ssbo_id
+                  << binding.valid;
             }
 
-            return static_cast<uint64_t>(hash);
+            return static_cast<uint64_t>(h);
         }
     }
 

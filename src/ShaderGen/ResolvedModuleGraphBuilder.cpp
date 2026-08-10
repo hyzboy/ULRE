@@ -35,18 +35,6 @@ namespace hgl::graph::mtl
                 && lhs.dependency == rhs.dependency;
         }
 
-        uint64 AppendString(
-            uint64 hash,
-            const char *value) noexcept
-        {
-            const uint32 length = value
-                ? static_cast<uint32>(std::strlen(value)) : 0;
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, length);
-            return length > 0
-                ? hgl::hash::FNV1aAppendBytes(hash, value, length)
-                : hash;
-        }
-
         bool SetGraphFailure(
             ResolvedModuleGraphBuildDiagnostic &diagnostic,
             const ResolvedModuleGraphBuildError error,
@@ -222,19 +210,17 @@ namespace hgl::graph::mtl
                 conditions[insert_at] = value;
             }
 
-            uint64 hash = hgl::hash::FNV1aInit<uint64>();
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, static_cast<uint32>(conditions.GetCount()));
+            hgl::hash::FNV1aHasher64 h;
+
+            h << static_cast<uint32>(conditions.GetCount());
             for (int i = 0; i < conditions.GetCount(); ++i)
             {
-                hash = hgl::hash::FNV1aAppendValueBytes(
-                    hash, conditions[i].domain);
-                hash = hgl::hash::FNV1aAppendValueBytes(
-                    hash, conditions[i].operation);
-                hash = AppendString(hash, conditions[i].key);
-                hash = AppendString(hash, conditions[i].value);
+                h << conditions[i].domain
+                  << conditions[i].operation
+                  << conditions[i].key
+                  << conditions[i].value;
             }
-            return hash;
+            return h;
         }
 
         bool MergeRequirement(
@@ -448,100 +434,80 @@ namespace hgl::graph::mtl
     ShaderContractStableID GetGLSLCodeModuleStableID(
         const GLSLCodeModuleDefinition &definition) noexcept
     {
-        return definition.name
-            ? hgl::hash::FNV1aAppendBytes(
-                hgl::hash::FNV1aInit<uint64>(),
-                definition.name,
-                std::strlen(definition.name))
-            : 0;
+        if (!definition.name)
+            return 0;
+
+        hgl::hash::FNV1aHasher64 h;
+        h << definition.name;
+        return h;
     }
 
     uint64 GetCanonicalGLSLCodeModuleContentHash(
         const GLSLCodeModuleDefinition &definition,
         const GLSLCodeModuleRegistry &registry) noexcept
     {
-        uint64 hash = hgl::hash::FNV1aInit<uint64>();
-        hash = AppendString(hash, definition.name);
-        hash = AppendString(hash, definition.glsl_code);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, definition.kind);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, definition.priority);
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, definition.flags);
-        hash = hgl::hash::FNV1aAppendValueBytes(
-            hash, definition.metadata_version);
+        hgl::hash::FNV1aHasher64 h;
 
-        hash = hgl::hash::FNV1aAppendValueBytes(
-            hash, definition.ubo_requirement_count);
+        h << definition.name
+          << definition.glsl_code;
+        h << definition.kind
+          << definition.priority
+          << definition.flags
+          << definition.metadata_version;
+
+        h << definition.ubo_requirement_count;
         for (uint32 i = 0; i < definition.ubo_requirement_count; ++i)
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, definition.ubo_requirements[i]);
+            h << definition.ubo_requirements[i];
 
-        hash = hgl::hash::FNV1aAppendValueBytes(
-            hash, definition.ssbo_requirement_count);
+        h << definition.ssbo_requirement_count;
         for (uint32 i = 0; i < definition.ssbo_requirement_count; ++i)
         {
             const GLSLCodeModuleSSBORequirement &requirement =
                 definition.ssbo_requirements[i];
-            hash = AppendString(hash, requirement.name);
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, requirement.ssbo_type);
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, requirement.data_slot);
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, requirement.stage_flags);
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, requirement.required);
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, requirement.allow_fallback);
+            h << requirement.name;
+            h << requirement.ssbo_type
+              << requirement.data_slot
+              << requirement.stage_flags
+              << requirement.required
+              << requirement.allow_fallback;
         }
 
-        hash = hgl::hash::FNV1aAppendValueBytes(
-            hash, definition.texture_requirement_count);
+        h << definition.texture_requirement_count;
         for (uint32 i = 0; i < definition.texture_requirement_count; ++i)
         {
             const GLSLCodeModuleTextureRequirement &requirement =
                 definition.texture_requirements[i];
-            hash = AppendString(hash, requirement.name);
-            hash = AppendString(hash, requirement.glsl_type);
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, requirement.semantic);
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, requirement.slot);
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, requirement.stage_flags);
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, requirement.required);
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, requirement.allow_fallback);
+            h << requirement.name
+              << requirement.glsl_type;
+            h << requirement.semantic
+              << requirement.slot
+              << requirement.stage_flags
+              << requirement.required
+              << requirement.allow_fallback;
         }
 
-        hash = hgl::hash::FNV1aAppendValueBytes(
-            hash, definition.texture_layer_requirement_count);
+        h << definition.texture_layer_requirement_count;
         for (uint32 i = 0;
              i < definition.texture_layer_requirement_count;
              ++i)
         {
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, definition.texture_layer_requirements[i]);
+            h << definition.texture_layer_requirements[i];
         }
 
-        hash = hgl::hash::FNV1aAppendValueBytes(
-            hash, definition.semantic_requirement_count);
+        h << definition.semantic_requirement_count;
         for (uint32 i = 0;
              i < definition.semantic_requirement_count;
              ++i)
         {
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, definition.semantic_requirements[i]);
+            h << definition.semantic_requirements[i];
         }
 
-        hash = hgl::hash::FNV1aAppendValueBytes(
-            hash, definition.semantic_provide_count);
+        h << definition.semantic_provide_count;
         for (uint32 i = 0;
              i < definition.semantic_provide_count;
              ++i)
         {
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, definition.semantic_provides[i]);
+            h << definition.semantic_provides[i];
         }
 
         ValueArray<ModuleDependencySelection> dependencies;
@@ -560,22 +526,15 @@ namespace hgl::graph::mtl
             dependencies.Add({target, dependency});
         }
         SortDependencies(dependencies);
-        hash = hgl::hash::FNV1aAppendValueBytes(
-            hash, static_cast<uint32>(dependencies.GetCount()));
+        h << static_cast<uint32>(dependencies.GetCount());
         for (int i = 0; i < dependencies.GetCount(); ++i)
         {
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, GetGLSLCodeModuleStableID(*dependencies[i].target));
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash,
-                dependencies[i].dependency.min_metadata_version);
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash,
-                dependencies[i].dependency.max_metadata_version);
+            h << GetGLSLCodeModuleStableID(*dependencies[i].target)
+              << dependencies[i].dependency.min_metadata_version
+              << dependencies[i].dependency.max_metadata_version;
         }
 
-        hash = hgl::hash::FNV1aAppendValueBytes(
-            hash, GetResolvedConditionHash(definition));
+        h << GetResolvedConditionHash(definition);
 
         ValueArray<ShaderContractStableID> conflict_ids;
         for (uint32 i = 0; i < definition.module_conflict_count; ++i)
@@ -597,12 +556,10 @@ namespace hgl::graph::mtl
             }
             conflict_ids[insert_at] = value;
         }
-        hash = hgl::hash::FNV1aAppendValueBytes(
-            hash, static_cast<uint32>(conflict_ids.GetCount()));
+        h << static_cast<uint32>(conflict_ids.GetCount());
         for (int i = 0; i < conflict_ids.GetCount(); ++i)
-            hash = hgl::hash::FNV1aAppendValueBytes(
-                hash, conflict_ids[i]);
-        return hash;
+            h << conflict_ids[i];
+        return h;
     }
 
     bool BuildMaterialResolvedModuleGraph(

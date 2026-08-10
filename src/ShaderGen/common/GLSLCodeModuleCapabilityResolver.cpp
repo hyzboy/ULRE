@@ -610,10 +610,9 @@ namespace hgl::graph::mtl
         constexpr uint32 kProviderGraphHashSchemaVersion = 1;
         constexpr uint32 kMaxSelectionCount = 64;
 
-        uint64 hash = hgl::hash::FNV1aInit<uint64>();
-        hash = hgl::hash::FNV1aAppendValueBytes(hash, kProviderGraphHashSchemaVersion);
-        hash = hgl::hash::FNV1aAppendValueBytes(
-            hash, static_cast<uint32>(result.selections.GetCount()));
+        hgl::hash::FNV1aHasher64 h;
+        h << kProviderGraphHashSchemaVersion
+          << static_cast<uint32>(result.selections.GetCount());
 
         uint32 order[kMaxSelectionCount] = {};
         const uint32 count = static_cast<uint32>(result.selections.GetCount());
@@ -643,40 +642,37 @@ namespace hgl::graph::mtl
         for (uint32 i = 0; i < bounded_count; ++i)
         {
             const auto &selection = result.selections[static_cast<int>(order[i])];
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, selection.requirement);
+            h << selection.requirement;
 
             if (!selection.provider)
             {
                 const uint32 missing_provider = 0xffffffffu;
-                hash = hgl::hash::FNV1aAppendValueBytes(hash, missing_provider);
+                h << missing_provider;
                 continue;
             }
 
             const auto &provider = *selection.provider;
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, provider.id);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, provider.kind);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, provider.priority);
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, provider.flags);
+            h << provider.id
+              << provider.kind
+              << provider.priority
+              << provider.flags;
 
             if (provider.name)
-                hash = hgl::hash::FNV1aAppendBytes(
-                    hash, provider.name, std::strlen(provider.name));
+                h << provider.name;
 
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, provider.semantic_requirement_count);
+            h << provider.semantic_requirement_count;
             for (uint32 k = 0; k < provider.semantic_requirement_count; ++k)
-                hash = hgl::hash::FNV1aAppendValueBytes(
-                    hash, provider.semantic_requirements[k]);
+                h << provider.semantic_requirements[k];
 
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, provider.semantic_provide_count);
+            h << provider.semantic_provide_count;
             for (uint32 k = 0; k < provider.semantic_provide_count; ++k)
-                hash = hgl::hash::FNV1aAppendValueBytes(
-                    hash, provider.semantic_provides[k]);
+                h << provider.semantic_provides[k];
         }
 
         if (count > kMaxSelectionCount)
-            hash = hgl::hash::FNV1aAppendValueBytes(hash, count);
+            h << count;
 
-        return hash;
+        return h;
     }
 
     bool ComposeGLSLCodeModuleProviderGraph(
