@@ -1,6 +1,6 @@
 #pragma once
 
-#include <hgl/mtl/new/PassType.h>
+#include <hgl/mtl/PassType.h>
 #include <hgl/shadergen/CanonicalShaderContract.h>
 #include <string>
 

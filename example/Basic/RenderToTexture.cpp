@@ -254,7 +254,7 @@ public:
 
         sphere_recipe.recipe_name = "RenderToTexture.OffscreenSphere";
         sphere_recipe.mtl_def_id = "DebugNormalColor";
-        sphere_recipe.pipeline_config = mtl::MakeSolid3DConfig();
+        sphere_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         sphere_recipe.domain = "RenderToTexture.Offscreen";
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 sphere_recipe,
@@ -448,7 +448,7 @@ private:
 
         cube_recipe.recipe_name = "RenderToTexture.Cube";
         cube_recipe.mtl_def_id = "Lit";
-        cube_recipe.pipeline_config = mtl::MakeSolid3DConfig();
+        cube_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         cube_recipe.domain = "RenderToTexture.MainScene";
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 cube_recipe,

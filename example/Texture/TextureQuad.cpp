@@ -104,7 +104,7 @@ private:
         geometry_manager->Add(geometry);
         quad_recipe.recipe_name = "TextureQuad.UnlitTexture";
         quad_recipe.mtl_def_id = "UnlitTexture";
-        quad_recipe.pipeline_config = mtl::MakeSolid2DConfig();
+        quad_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
         quad_recipe.domain = "TextureQuad";
         quad_asset = PrimitiveAsset(geometry, &quad_recipe, PrimitiveType::Fan);
 

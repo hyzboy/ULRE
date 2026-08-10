@@ -33,16 +33,6 @@ namespace contract
     struct PhysicalDeviceProfileLite;
 }
 
-// BuiltinMaterialCreatorID：仅用于 bootstrap/fallback creator 派发。
-// 它不是 MaterialDefinition 身份；作者层通过 definition_id 字符串主键识别材质。
-enum class BuiltinMaterialCreatorID:uint8
-{
-    PureColor,
-    Text2D,
-
-    ENUM_CLASS_RANGE(PureColor,Text2D)
-};
-
 // ── Layer 3: MaterialDefinitionBuildRequest = Build Context ──────────────────
 // 描述"构建此帧 ShaderProgram 时的额外上下文"。包含 recipe（Layer 2）加上
 // 构建期上下文（几何格式、Program Purpose、天光策略等）。
@@ -128,12 +118,11 @@ inline VkFormat ResolveMaterialPositionFormat(const GeometryVertexFormat *gvf, V
 
 // BMI registry
 void RegisterMaterialDefinition(const MaterialDefinition &bmi);
-void RegisterMaterialDefinition(const BuiltinMaterialCreatorID preset, const MaterialDefinition &bmi);
 // Compatibility-only route; aliases resolve to the canonical definition and
 // never create a second MaterialDefinition registry entry.
 void RegisterMaterialDefinitionAlias(const char *alias_id, const char *definition_id);
 bool TryGetMaterialDefinitionByID(const std::string &mtl_def_id, MaterialDefinition &out_bmi);
-bool TryGetMaterialDefinitionByBuiltinMaterialCreatorID(const BuiltinMaterialCreatorID preset, MaterialDefinition &out_bmi);
+bool TryGetMaterialDefinitionByBootstrapKind(const MaterialDefinitionBootstrapKind kind, MaterialDefinition &out_bmi);
 MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry();
 GLSLCodeModuleRegistry &GetGLSLCodeModuleRegistry();
 

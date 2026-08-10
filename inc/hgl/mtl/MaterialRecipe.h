@@ -11,9 +11,9 @@
 #include <hgl/type/ValueArray.h>
 #include <hgl/shadergen/ShaderStageBuildSpec.h>
 #include <hgl/shadergen/ShaderProgramLinkSpec.h>
-#include <hgl/mtl/new/SurfaceType.h>
-#include <hgl/mtl/new/BlendMode.h>
-#include <hgl/mtl/new/PassType.h>
+#include <hgl/mtl/SurfaceType.h>
+#include <hgl/mtl/BlendMode.h>
+#include <hgl/mtl/PassType.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <cstdint>
 #include <string>
@@ -21,7 +21,6 @@
 
 namespace hgl::graph::mtl
 {
-    constexpr uint32_t InvalidBuiltinMaterialCreatorIDHint = 0xffffffffu;
     constexpr const char DefaultMaterialDataSlotName[] = "mtl";
 
     // 逻辑纹理槽位（与具体 descriptor set/binding 解耦）。
@@ -223,7 +222,6 @@ namespace hgl::graph::mtl
         // Part-A: 基础语义/元信息
         std::string definition_id;                                   // 正式主键（字符串 ID / 未来文件名）
         std::string definition_name;                                 // 人类可读名称
-        uint32_t    builtin_creator_id = InvalidBuiltinMaterialCreatorIDHint;         // 当前内置 creator 路由字段（enum 序号）
         MaterialDefinitionSourceKind source_kind = MaterialDefinitionSourceKind::BuiltIn;         // 来源类型
         MaterialDefinitionUsageTag   usage_tag  = MaterialDefinitionUsageTag::General;            // 用途标签
         MaterialDefinitionBootstrapKind bootstrap_kind = MaterialDefinitionBootstrapKind::None;
@@ -312,8 +310,6 @@ namespace hgl::graph::mtl
 
         MaterialRenderStateOverrides render_state_overrides;
 
-        MaterialPipelineConfig pipeline_config; // 管线配置（深度/混合/剔除/覆盖层等，替代旧 PipelinePreset）
-
         std::vector<RecipeTextureBinding> textures; // 所有纹理语义绑定
         std::vector<RecipeSSBOAssetBinding> ssbo_assets; // 所有 SSBO 运行时绑定（name/slot/type/id/row）
     };
@@ -357,10 +353,9 @@ namespace hgl::graph::mtl
             state.alpha_cutoff = overrides.alpha_cutoff;
         if (overrides.has_dither)
             state.dither = overrides.dither;
-        if (overrides.has_pipeline_config)
+        if (overrides.has_pipeline_config
+         || overrides.pipeline_config != state.pipeline_config)
             state.pipeline_config = overrides.pipeline_config;
-        else if (recipe.pipeline_config != MaterialPipelineConfig{})
-            state.pipeline_config = recipe.pipeline_config;
 
         return state;
     }
@@ -504,7 +499,6 @@ namespace hgl::graph::mtl
           << recipe.render_state_overrides.has_dither
           << recipe.render_state_overrides.dither
           << recipe.render_state_overrides.has_pipeline_config
-          << HashMaterialPipelineConfig(recipe.pipeline_config)
           << HashMaterialPipelineConfig(recipe.render_state_overrides.pipeline_config);
 
         const uint32_t texture_count = static_cast<uint32_t>(recipe.textures.size());

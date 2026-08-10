@@ -170,7 +170,7 @@ private:
         near_recipe.recipe_name = "06e.SingleSphereSwitch.Near";
         near_recipe.mtl_def_id = "LitTextureArray";
         near_recipe.domain = "06e.SingleSphereSwitch";
-        near_recipe.pipeline_config = mtl::MakeSolid3DConfig();
+        near_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         graph::mtl::UpsertRecipeSSBOAssetBinding(near_recipe,
                                                  graph::mtl::DefaultMaterialDataSlotName,
                                                  mtl_data_ssbo_accessor->GetSSBOBinding());

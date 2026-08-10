@@ -2678,8 +2678,8 @@ namespace
         MaterialDefinition text_creator{};
         if (!TryGetMaterialDefinitionByID(BUILTIN_MTL_DEF_TEXT, text)
          || !TryGetMaterialDefinitionByID("Text2D", text_alias)
-         || !TryGetMaterialDefinitionByBuiltinMaterialCreatorID(
-                BuiltinMaterialCreatorID::Text2D, text_creator))
+         || !TryGetMaterialDefinitionByBootstrapKind(
+                MaterialDefinitionBootstrapKind::TextAlphaBlend, text_creator))
         {
             result.diagnostics.emplace_back(
                 "Text canonical definition, alias, or creator route is missing");

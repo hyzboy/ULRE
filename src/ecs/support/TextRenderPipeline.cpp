@@ -317,7 +317,7 @@ namespace hgl::ecs
 
         graph::mtl::MaterialRecipe recipe{};
         recipe.mtl_def_id = "Text2D";
-        recipe.pipeline_config = graph::mtl::MakeSolid2DConfig();
+        recipe.render_state_overrides.pipeline_config = graph::mtl::MakeSolid2DConfig();
         const graph::GeometryVertexFormat text_gvf = graph::CreateTextGeometryVertexFormat();
 
         material_manager = graphics_context->GetMaterialManager();

@@ -1,9 +1,9 @@
 #pragma once
 
-#include <hgl/mtl/new/SurfaceType.h>
-#include <hgl/mtl/new/BlendMode.h>
-#include <hgl/mtl/new/PassType.h>
-#include <hgl/mtl/new/NewShaderPermutationKey.h>
+#include <hgl/mtl/SurfaceType.h>
+#include <hgl/mtl/BlendMode.h>
+#include <hgl/mtl/PassType.h>
+#include <hgl/mtl/NewShaderPermutationKey.h>
 #include <hgl/shadergen/MaterialStageInterface.h>
 #include <hgl/shadergen/MaterialOutputContract.h>
 #include <hgl/shadergen/MaterialCoverageContract.h>
@@ -86,7 +86,7 @@ namespace hgl::graph
 
     private:
 
-        std::string GetCompositorFSPath(SurfaceType surface, BlendMode blend, PassType pass) const;
+        std::string GetCompositorFSPath(SurfaceType surface, PassType pass) const;
         std::string GetSurfaceFunctionPath(SurfaceType surface) const;
         std::string InjectDefines(const std::string &source, const NewShaderPermutationKey &key, const CompositorModuleOptions &module_options) const;
         std::string ReplaceLightingModuleIncludes(const std::string &source, const CompositorModuleOptions &module_options) const;

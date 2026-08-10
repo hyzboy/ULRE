@@ -107,7 +107,7 @@ private:
         geometry_manager->Add(geometry);
         rect_recipe.recipe_name = "TextureRect.UnlitTexture";
         rect_recipe.mtl_def_id = "UnlitTexture";
-        rect_recipe.pipeline_config = mtl::MakeSolid2DConfig();
+        rect_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
         rect_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigZeroToOne(true);
         rect_recipe.domain = "TextureRect";
         rect_asset = PrimitiveAsset(geometry, &rect_recipe, PrimitiveType::Triangles);

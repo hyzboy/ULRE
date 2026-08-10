@@ -9,7 +9,6 @@ namespace hgl::graph::mtl
             MaterialDefinition bmi{};
             bmi.definition_id = BUILTIN_MTL_DEF_PURE_COLOR;
             bmi.definition_name = "builtin/pure_color";
-            bmi.builtin_creator_id = static_cast<uint32_t>(BuiltinMaterialCreatorID::PureColor);
             bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
             bmi.usage_tag = MaterialDefinitionUsageTag::Fallback;
             bmi.bootstrap_kind = MaterialDefinitionBootstrapKind::PureColor;
@@ -32,7 +31,7 @@ namespace hgl::graph::mtl
             };
             ConfigureMaterialVertexSemanticContract(
                 bmi, requirements, 1, MaterialVertexProviderPolicy::GeometryOnly);
-            RegisterMaterialDefinition(BuiltinMaterialCreatorID::PureColor, bmi);
+            RegisterMaterialDefinition(bmi);
             RegisterMaterialDefinitionAlias(
                    BUILTIN_MTL_DEF_MISSING_MATERIAL,
                    BUILTIN_MTL_DEF_PURE_COLOR);

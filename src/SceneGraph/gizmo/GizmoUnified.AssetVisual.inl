@@ -52,7 +52,7 @@ static bool AttachAssetModePrimitive(std::vector<GizmoVisualPrimitive> &out_list
 
     prim_comp->SetPrimitiveAsset(asset);
     graph::mtl::MaterialRecipe visual_recipe = *recipe;
-    visual_recipe.pipeline_config = graph::mtl::MakeGizmoOverlayConfig();
+    visual_recipe.render_state_overrides.pipeline_config = graph::mtl::MakeGizmoOverlayConfig();
     prim_comp->SetMaterialRecipe(visual_recipe);
     prim_comp->SetVisible(false);
 
@@ -100,7 +100,7 @@ static void ApplyGizmoVisualColor(GizmoVisualPrimitive &entry, const GizmoColor 
         return;
 
     graph::mtl::MaterialRecipe visual_recipe = *recipe;
-    visual_recipe.pipeline_config = graph::mtl::MakeGizmoOverlayConfig();
+    visual_recipe.render_state_overrides.pipeline_config = graph::mtl::MakeGizmoOverlayConfig();
     entry.primitive->SetMaterialRecipe(visual_recipe);
     entry.applied_color = color;
 }

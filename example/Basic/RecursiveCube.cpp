@@ -124,7 +124,7 @@ private:
 
         cube_recipe.recipe_name = "RecursiveCube.DebugNormalColor";
         cube_recipe.mtl_def_id = "DebugNormalColor";
-        cube_recipe.pipeline_config = mtl::MakeSolid3DConfig();
+        cube_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         cube_recipe.domain = "RecursiveCube";
         graph::mtl::UpsertRecipeSSBOAssetBinding(cube_recipe,
                                                  graph::mtl::DefaultMaterialDataSlotName,

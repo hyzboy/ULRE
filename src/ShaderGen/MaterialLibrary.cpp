@@ -635,7 +635,7 @@ namespace
     struct BaseMaterialInfoRegistryEntry
     {
         bool has_preset = false;
-        BuiltinMaterialCreatorID preset = BuiltinMaterialCreatorID::PureColor;
+        MaterialDefinitionBootstrapKind preset = MaterialDefinitionBootstrapKind::None;
         MaterialDefinition bmi{};
     };
 
@@ -892,42 +892,8 @@ void RegisterMaterialDefinition(const MaterialDefinition &bmi)
     {
         if (entry.bmi.definition_id == normalized.definition_id)
         {
-            entry.bmi = normalized;
-            return;
-        }
-    }
-
-    BaseMaterialInfoRegistryEntry entry{};
-    entry.bmi = normalized;
-    registry.emplace_back(std::move(entry));
-}
-
-void RegisterMaterialDefinition(const BuiltinMaterialCreatorID preset, const MaterialDefinition &bmi)
-{
-    MaterialDefinition normalized = bmi;
-    if (normalized.definition_id.empty()
-     || !IsBootstrapMaterialDefinition(normalized))
-        return;
-
-    normalized.builtin_creator_id = static_cast<uint32_t>(preset);
-    normalized.source_kind = MaterialDefinitionSourceKind::BuiltIn;
-
-    auto &registry = GetBaseMaterialInfoRegistry();
-    for (auto &entry : registry)
-    {
-        if (entry.bmi.definition_id == normalized.definition_id)
-        {
             entry.has_preset = true;
-            entry.preset = preset;
-            entry.bmi = normalized;
-            return;
-        }
-    }
-
-    for (auto &entry : registry)
-    {
-        if (entry.has_preset && entry.preset == preset)
-        {
+            entry.preset = normalized.bootstrap_kind;
             entry.bmi = normalized;
             return;
         }
@@ -935,7 +901,7 @@ void RegisterMaterialDefinition(const BuiltinMaterialCreatorID preset, const Mat
 
     BaseMaterialInfoRegistryEntry entry{};
     entry.has_preset = true;
-    entry.preset = preset;
+    entry.preset = normalized.bootstrap_kind;
     entry.bmi = normalized;
     registry.emplace_back(std::move(entry));
 }
@@ -974,13 +940,13 @@ bool TryGetMaterialDefinitionByID(const std::string &mtl_def_id, MaterialDefinit
 }
 
 
-bool TryGetMaterialDefinitionByBuiltinMaterialCreatorID(const BuiltinMaterialCreatorID preset, MaterialDefinition &out_bmi)
+bool TryGetMaterialDefinitionByBootstrapKind(const MaterialDefinitionBootstrapKind kind, MaterialDefinition &out_bmi)
 {
     const auto &registry = GetBaseMaterialInfoRegistry();
     for (const auto &entry : registry)
     {
         if (entry.has_preset
-         && entry.preset == preset
+         && entry.preset == kind
          && IsBootstrapMaterialDefinition(entry.bmi))
         {
             out_bmi = entry.bmi;

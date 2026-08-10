@@ -88,7 +88,7 @@ private:
 
         triangle_recipe.recipe_name = "AutoMergeMaterialData.PureColor";
         triangle_recipe.mtl_def_id = "builtin/pure_color";
-        triangle_recipe.pipeline_config = mtl::MakeSolid2DConfig();
+        triangle_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
         triangle_recipe.domain = "AutoMergeMaterialData";
         triangle_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
         graph::mtl::UpsertRecipeSSBOAssetBinding(triangle_recipe,

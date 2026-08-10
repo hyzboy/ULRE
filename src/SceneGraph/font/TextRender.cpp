@@ -213,7 +213,7 @@ namespace hgl::graph
     {
         mtl::MaterialRecipe recipe{};
         recipe.mtl_def_id = "Text2D";
-        recipe.pipeline_config = mtl::MakeSolid2DConfig();
+        recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
         const GeometryVertexFormat text_gvf = CreateTextGeometryVertexFormat();
         {
             mtl::MaterialDefinitionBuildRequest mtl_request{};

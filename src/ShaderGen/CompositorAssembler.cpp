@@ -22,84 +22,32 @@ namespace hgl::graph
         return true;
     }
 
-    std::string CompositorAssembler::GetCompositorFSPath(SurfaceType surface, BlendMode blend, PassType pass) const
+    std::string CompositorAssembler::GetCompositorFSPath(SurfaceType surface, PassType pass) const
     {
-        // Unlit 表面类型使用专用 FS 模板（无光照）
-        if (surface == SurfaceType::Unlit)
-        {
-            switch (pass)
-            {
-            case PassType::ForwardOpaque:
-            case PassType::ForwardMasked:
-            case PassType::ForwardTransparent:
-                return shader_lib_path_ + "/compositor/main_forward_surface.frag.glsl";
-
-            case PassType::ShadowOpaque:
-            case PassType::ShadowMasked:
-                return shader_lib_path_
-                    + "/compositor/main_depth_only.frag.glsl";
-
-            case PassType::EarlyZSolid:
-            case PassType::EarlyZMasked:
-                return shader_lib_path_
-                    + "/compositor/main_depth_only.frag.glsl";
-
-            case PassType::ForwardDither:
-            case PassType::ForwardA2C:
-                return shader_lib_path_ + "/compositor/main_forward_surface.frag.glsl";
-
-            default:
-                return shader_lib_path_ + "/compositor/main_forward_surface.frag.glsl";
-            }
-        }
-
+        // Sky 表面使用专用 FS 模板
         if (surface == SurfaceType::Sky)
         {
             switch (pass)
             {
-            case PassType::ForwardOpaque:
-            case PassType::ForwardMasked:
-            case PassType::ForwardTransparent:
-            case PassType::ForwardDither:
-            case PassType::ForwardA2C:
-                return shader_lib_path_ + "/compositor/main_forward_sky.frag.glsl";
-
             case PassType::ShadowOpaque:
             case PassType::ShadowMasked:
             case PassType::EarlyZSolid:
             case PassType::EarlyZMasked:
-                return {};
+                return {};  // Sky 无深度/阴影 pass
 
             default:
                 return shader_lib_path_ + "/compositor/main_forward_sky.frag.glsl";
             }
         }
 
-        // 非 Unlit 走 Lit 路径
+        // Unlit / Lit 及其它表面类型 — 统一路径
         switch (pass)
         {
-        case PassType::ForwardOpaque:
-            return shader_lib_path_ + "/compositor/main_forward_surface.frag.glsl";
-
-        case PassType::ForwardMasked:
-            return shader_lib_path_ + "/compositor/main_forward_surface.frag.glsl";
-
-        case PassType::ForwardTransparent:
-            return shader_lib_path_ + "/compositor/main_forward_surface.frag.glsl";
-
-        case PassType::ForwardDither:
-        case PassType::ForwardA2C:
-            return shader_lib_path_ + "/compositor/main_forward_surface.frag.glsl";
-
         case PassType::ShadowOpaque:
         case PassType::ShadowMasked:
-            return shader_lib_path_
-                + "/compositor/main_depth_only.frag.glsl";
-
         case PassType::EarlyZSolid:
         case PassType::EarlyZMasked:
-            return shader_lib_path_
-                + "/compositor/main_depth_only.frag.glsl";
+            return shader_lib_path_ + "/compositor/main_depth_only.frag.glsl";
 
         default:
             return shader_lib_path_ + "/compositor/main_forward_surface.frag.glsl";
@@ -384,7 +332,7 @@ namespace hgl::graph
         // 2. Resolve the canonical fragment source/template path.
         std::string fs_path = (fragment_source_override && fragment_source_override[0])
             ? shader_lib_path_ + "/" + fragment_source_override
-            : GetCompositorFSPath(surface, blend, pass);
+            : GetCompositorFSPath(surface, pass);
         std::string surface_rel = (surface_function_override && surface_function_override[0])
             ? surface_function_override
             : GetSurfaceFunctionPath(surface);

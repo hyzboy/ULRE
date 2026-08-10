@@ -146,12 +146,10 @@ SET(COMPOSITOR_SOURCE_FILES  CompositorAssembler.cpp)
 SOURCE_GROUP("Compositor" FILES ${COMPOSITOR_HEADER_FILES}
                                 ${COMPOSITOR_SOURCE_FILES})
 
-set(NEW_MTL_INCLUDE_PATH ${ROOT_INCLUDE_PATH}/hgl/mtl/new)
-
-SET(NEW_MTL_TYPE_FILES  ${NEW_MTL_INCLUDE_PATH}/SurfaceType.h
-                        ${NEW_MTL_INCLUDE_PATH}/BlendMode.h
-                        ${NEW_MTL_INCLUDE_PATH}/PassType.h
-                        ${NEW_MTL_INCLUDE_PATH}/NewShaderPermutationKey.h
+SET(NEW_MTL_TYPE_FILES  ${ROOT_INCLUDE_PATH}/hgl/mtl/SurfaceType.h
+                        ${ROOT_INCLUDE_PATH}/hgl/mtl/BlendMode.h
+                        ${ROOT_INCLUDE_PATH}/hgl/mtl/PassType.h
+                        ${ROOT_INCLUDE_PATH}/hgl/mtl/NewShaderPermutationKey.h
                         NewShaderPermutationKey.cpp
 )
 

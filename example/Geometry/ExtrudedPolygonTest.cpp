@@ -79,7 +79,7 @@ private:
 
         mesh_recipe.recipe_name = "ExtrudedPolygonTest.DebugNormalColor";
         mesh_recipe.mtl_def_id = "DebugNormalColor";
-        mesh_recipe.pipeline_config = mtl::MakeSolid3DConfig();
+        mesh_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         mesh_recipe.domain = "ExtrudedPolygonTest";
         graph::mtl::UpsertRecipeSSBOAssetBinding(mesh_recipe,
                                                  graph::mtl::DefaultMaterialDataSlotName,
