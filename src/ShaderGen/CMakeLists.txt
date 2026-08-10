@@ -54,30 +54,19 @@ SET(CANONICAL_SHADER_CONTRACT_FILES
     ${SHADERGEN_INCLUDE_PATH}/MaterialOutputContract.h
     ${SHADERGEN_INCLUDE_PATH}/MaterialCoverageContract.h
     ${SHADERGEN_INCLUDE_PATH}/ResolvedModuleGraphBuilder.h
-    ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialProgramContract.h
     CanonicalShaderContract.cpp
     MaterialDescriptorContract.cpp
     MaterialOutputContract.cpp
     MaterialCoverageContract.cpp
     ResolvedModuleGraphBuilder.cpp
-    ${SHADERGEN_INCLUDE_PATH}/EffectiveMaterialProgramBuilder.h
-    EffectiveMaterialProgramBuilder.cpp
-    ${SHADERGEN_INCLUDE_PATH}/ActiveProfileBindingViewBuilder.h
-    ActiveProfileBindingViewBuilder.cpp
-    MaterialProgramContract.cpp
+    ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialBindingContract.h
+    ${SHADERGEN_INCLUDE_PATH}/MaterialBindingViewBuilder.h
+    MaterialBindingContract.cpp
+    MaterialBindingViewBuilder.cpp
     common/CanonicalContractWriter.h)
 
 SOURCE_GROUP("Canonical Shader Contract"
     FILES ${CANONICAL_SHADER_CONTRACT_FILES})
-
-SET(SURFACE_PROFILE_FILES
-    ${ROOT_INCLUDE_PATH}/hgl/mtl/SurfaceProfile.h
-    ${ROOT_INCLUDE_PATH}/hgl/mtl/SurfaceProfileRegistry.h
-    ${ROOT_INCLUDE_PATH}/hgl/mtl/SurfaceProfileFile.h
-    SurfaceProfileRegistry.cpp
-    common/SurfaceProfileFile.cpp)
-
-SOURCE_GROUP("Material Surface Profile" FILES ${SURFACE_PROFILE_FILES})
 
 SET(DESC_INFO_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/MaterialDescriptorInfo.h)
 
@@ -177,7 +166,6 @@ add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_INCLUDE_PATH}
                                         ${SHADER_ARTIFACT_CONTRACT_FILES}
                                         ${SHADER_SEMANTIC_REGISTRY_FILES}
                                         ${CANONICAL_SHADER_CONTRACT_FILES}
-                                        ${SURFACE_PROFILE_FILES}
                                         ${SHADER_CREATER_HEADER_FILES}
                                         ${SHADER_CREATER_SOURCE_FILES}
                                         ${GLSL_COMPILER_SOURCE}

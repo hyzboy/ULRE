@@ -293,13 +293,8 @@ void ShaderProgramManager::ApplyMaterialFinalizePlan(ShaderProgram *mtl, const A
 
 }
 
-ShaderProgram *ShaderProgramManager::TryGetCachedMaterial(const AnsiString &name)
-{
-    return shader_program_cache.FindName(name);
-}
-
-ShaderProgram *ShaderProgramManager::TryGetCachedEffectiveMaterialProgram(
-    const mtl::EffectiveMaterialProgramKey &key)
+ShaderProgram *ShaderProgramManager::TryGetCachedShaderProgram(
+    const mtl::ShaderProgramKey &key)
 {
     return shader_program_cache.Find(key);
 }
@@ -364,22 +359,23 @@ bool ShaderProgramManager::BuildRuntimeDescriptorState(ShaderProgram *mtl,
     return true;
 }
 
-ShaderProgram *ShaderProgramManager::AcquireShaderProgram(const AnsiString &mtl_name,const mtl::ShaderProgramBuildSpec *mci)
+ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
+    const mtl::ShaderProgramKey &program_key,
+    const mtl::ShaderProgramBuildSpec *mci)
 {
     HGL_CAPTURE_SCOPE();
 
-    if(!mci)
+    if (!mci
+     || !mci->HasProgramLink()
+     || !(mci->GetProgramLink().BuildKey() == program_key))
         return(nullptr);
 
+    const AnsiString mtl_name = program_key.ToString();
     ShaderProgramCreatePrecheckResult precheck_result;
     const ShaderProgramCreatePrecheckDecision precheck_decision = RunShaderProgramCreatePrecheck(
         mci,
         mtl_name,
-        [&](const AnsiString &name)->ShaderProgram * { return TryGetCachedMaterial(name); },
         precheck_result);
-
-    if(precheck_decision == ShaderProgramCreatePrecheckDecision::UseCached)
-        return precheck_result.cached_material;
 
     if(precheck_decision != ShaderProgramCreatePrecheckDecision::Proceed)
     {
@@ -400,13 +396,7 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(const AnsiString &mtl_
 
     Add(mtl);
 
-    const mtl::EffectiveMaterialProgramKey *active_program =
-        mci->GetActiveEffectiveMaterialProgram();
-    if (active_program)
-        shader_program_cache.Add(
-            *active_program, mtl);
-    else
-        shader_program_cache.AddName(mtl_name,mtl);
+    shader_program_cache.Add(program_key, mtl);
     // ShaderProgram is a C++ object managed by ShaderProgramManager, not a Vulkan object
     // No need to track with ObjectTracker
     return mtl.Finish();
@@ -435,11 +425,8 @@ bool ShaderProgramManager::BuildMaterialResourceLayout(const mtl::MaterialDefini
 }
 
 ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
-    const mtl::MaterialDefinitionBuildRequest &request,
-    mtl::ActiveProfileBindingView *out_binding_view)
+    const mtl::MaterialDefinitionBuildRequest &request)
 {
-    if (out_binding_view)
-        *out_binding_view = {};
     // Ensure recipe defaults are filled in before lookup, in case the caller skipped normalization.
     // This call is idempotent; PrimitiveComponent-initiated paths will have already normalized.
     mtl::MaterialRecipe normalized_recipe = request.recipe;
@@ -466,31 +453,16 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
         return nullptr;
     }
 
-    const mtl::EffectiveMaterialProgramKey *active_program =
-        mci->GetActiveEffectiveMaterialProgram();
-    if (!mci->HasProgramLink()
-     || !mci->HasPreparedMaterialProgramSet()
-     || !active_program)
+    if (!mci->HasProgramLink())
     {
         GLogError(
             "[ShaderProgramManager] Material build produced incomplete program identity: id=%s",
             bmi.definition_id.c_str());
         return nullptr;
     }
-    if (!mci->HasActiveProfileBindingView())
-    {
-        GLogError(
-            "[ShaderProgramManager] Material build produced no active binding view: id=%s",
-            bmi.definition_id.c_str());
-        return nullptr;
-    }
-    if (out_binding_view)
-        *out_binding_view = mci->GetActiveProfileBindingView();
-
-    const AnsiString hash_name = active_program->ToString();
-    if (ShaderProgram *cached =
-            TryGetCachedEffectiveMaterialProgram(
-                *active_program))
+    const mtl::ShaderProgramKey program_key =
+        mci->GetProgramLink().BuildKey();
+    if (ShaderProgram *cached = TryGetCachedShaderProgram(program_key))
         return cached;
 
     if (!mtl::FinalizeShaderProgramBuildSpec(mci))
@@ -501,7 +473,7 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
         return nullptr;
     }
 
-    return this->AcquireShaderProgram(hash_name, mci);
+    return this->AcquireShaderProgram(program_key, mci);
 }
 
 }//namespace hgl::graph

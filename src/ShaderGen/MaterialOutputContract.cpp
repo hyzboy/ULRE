@@ -1,6 +1,6 @@
 #include <hgl/shadergen/MaterialOutputContract.h>
-
-#include <hgl/mtl/SurfaceProfile.h>
+#include <hgl/util/hash/FNV1a.h>
+#include <cstring>
 
 namespace hgl::graph::mtl
 {
@@ -8,6 +8,17 @@ namespace hgl::graph::mtl
     {
         constexpr const char OutputContractMarker[] =
             "// ULRE_OUTPUT_CONTRACT";
+
+        ShaderContractStableID GetOutputStableID(
+            const char *name) noexcept
+        {
+            return name && name[0]
+                ? hgl::hash::FNV1aAppendBytes(
+                    hgl::hash::FNV1aInit<uint64>(),
+                    name,
+                    std::strlen(name))
+                : 0;
+        }
 
         bool SetFailure(
             MaterialOutputContractDiagnostic &diagnostic,
@@ -41,7 +52,7 @@ namespace hgl::graph::mtl
         const char *GetOutputName(
             const ShaderContractStableID semantic_id) noexcept
         {
-            if (semantic_id == GetSurfaceStableID("outColor"))
+            if (semantic_id == GetOutputStableID("outColor"))
                 return "outColor";
             return nullptr;
         }
@@ -93,7 +104,7 @@ namespace hgl::graph::mtl
         case ShaderProgramPurpose::ForwardColor:
             out_contract.attachments.Add(
                 {
-                    GetSurfaceStableID("outColor"),
+                    GetOutputStableID("outColor"),
                     ShaderStageValueType::Vec4,
                     0,
                     1,

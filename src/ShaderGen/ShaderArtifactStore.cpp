@@ -85,10 +85,6 @@ namespace hgl::graph::mtl
             out_payload.Reserve(ShaderProgramMetadataPayloadSize);
             AppendU32(out_payload, metadata.schema_version);
             AppendU64(out_payload, metadata.program_key_digest);
-            AppendU64(
-                out_payload,
-                metadata.effective_material_program_digest);
-            AppendU64(out_payload, metadata.shader_variant_digest);
             AppendU64(out_payload, metadata.resolved_module_graph_hash);
             AppendU64(out_payload, metadata.shader_interface_hash);
             AppendU64(out_payload, metadata.output_contract_hash);
@@ -113,11 +109,6 @@ namespace hgl::graph::mtl
             const uint8 *end = payload + payload_size;
             return ReadU32(cursor, end, out_metadata.schema_version)
                 && ReadU64(cursor, end, out_metadata.program_key_digest)
-                && ReadU64(
-                    cursor,
-                    end,
-                    out_metadata.effective_material_program_digest)
-                && ReadU64(cursor, end, out_metadata.shader_variant_digest)
                 && ReadU64(
                     cursor,
                     end,

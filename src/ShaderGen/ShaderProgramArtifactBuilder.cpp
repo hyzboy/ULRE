@@ -59,24 +59,6 @@ namespace hgl::graph::mtl
                 build_spec.GetMaterialResourceLayout()));
 
         const uint64 program_digest = link.BuildKey().GetDigest();
-        const EffectiveMaterialProgramKey *active_program =
-            build_spec.GetActiveEffectiveMaterialProgram();
-        const uint64 effective_program_digest =
-            active_program
-                ? active_program->GetDigest()
-                : program_digest;
-        uint64 variant_digest = hgl::hash::FNV1aInit<uint64>();
-        variant_digest = hgl::hash::FNV1aAppendValueBytes(
-            variant_digest, effective_program_digest);
-        variant_digest = hgl::hash::FNV1aAppendValueBytes(
-            variant_digest, module_graph_hash);
-        variant_digest = hgl::hash::FNV1aAppendValueBytes(
-            variant_digest, interface_hash);
-        variant_digest = hgl::hash::FNV1aAppendValueBytes(
-            variant_digest, link.render_target_hash);
-        variant_digest = hgl::hash::FNV1aAppendValueBytes(
-            variant_digest, link.compiler_hash);
-
         uint64 source_digest = hgl::hash::FNV1aInit<uint64>();
         source_digest = hgl::hash::FNV1aAppendValueBytes(
             source_digest, vertex_source_hash);
@@ -84,9 +66,6 @@ namespace hgl::graph::mtl
             source_digest, fragment_source_hash);
 
         out_metadata.program_key_digest = program_digest;
-        out_metadata.effective_material_program_digest =
-            effective_program_digest;
-        out_metadata.shader_variant_digest = variant_digest;
         out_metadata.resolved_module_graph_hash = module_graph_hash;
         out_metadata.shader_interface_hash = interface_hash;
         out_metadata.output_contract_hash = link.render_target_hash;

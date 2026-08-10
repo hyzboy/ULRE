@@ -230,18 +230,6 @@ namespace hgl::graph::mtl
         ValueArray<ShaderOutputAttachmentContract> attachments;
     };
 
-    struct ShaderVariantContract
-    {
-        uint32 schema_version = CanonicalShaderContractSchemaVersion;
-        uint64 effective_material_program_digest = 0;
-        uint64 resolved_module_graph_hash = 0;
-        uint64 shader_interface_hash = 0;
-        uint64 output_contract_hash = 0;
-        uint64 compile_time_feature_hash = 0;
-        uint64 compiler_profile_hash = 0;
-        uint64 device_target_hash = 0;
-    };
-
     bool ValidateResolvedModuleGraph(
         const ResolvedModuleGraph &graph) noexcept;
     bool ValidateShaderInterfaceContract(
@@ -257,16 +245,10 @@ namespace hgl::graph::mtl
     bool SerializeOutputContract(
         const OutputContract &contract,
         ValueArray<uint8> &out_bytes);
-    bool SerializeShaderVariantContract(
-        const ShaderVariantContract &contract,
-        ValueArray<uint8> &out_bytes);
-
     uint64 GetResolvedModuleGraphHash(
         const ResolvedModuleGraph &graph) noexcept;
     uint64 GetShaderInterfaceContractHash(
         const ShaderInterfaceContract &contract) noexcept;
     uint64 GetOutputContractHash(
         const OutputContract &contract) noexcept;
-    uint64 GetShaderVariantContractHash(
-        const ShaderVariantContract &contract) noexcept;
 }

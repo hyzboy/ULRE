@@ -1,0 +1,202 @@
+#pragma once
+
+#include <hgl/CoreType.h>
+#include <hgl/graph/ssbo/SSBOTypes.h>
+#include <hgl/graph/ssbo/TextureSlot.h>
+#include <hgl/mtl/DescriptorSemantic.h>
+#include <hgl/type/ValueArray.h>
+
+namespace hgl::graph::mtl
+{
+    struct MaterialRecipe;
+    struct MaterialDescriptorContract;
+    struct MaterialResourceLayout;
+    struct ShaderProgramKey;
+
+    constexpr uint32 MaterialBindingContractSchemaVersion = 1;
+    constexpr uint32 InvalidMaterialRecipeBindingIndex = ~uint32(0);
+
+    enum class MaterialBindingSource : uint8
+    {
+        Asset = 0,
+        DirectValue,
+        Missing,
+        Omitted
+    };
+
+    struct MaterialTextureBinding
+    {
+        uint64 logical_resource_id = 0;
+        uint64 asset_identity_hash = 0;
+        uint64 asset_metadata_hash = 0;
+        DescriptorSemantic semantic = DescriptorSemantic::MaterialTexture;
+        TextureSlot texture_slot = TextureSlot::BaseColor;
+        uint32 recipe_binding_index = InvalidMaterialRecipeBindingIndex;
+        uint32 direct_value = 0;
+        MaterialBindingSource source = MaterialBindingSource::Missing;
+        bool required = false;
+        bool allow_fallback = false;
+    };
+
+    inline bool operator==(
+        const MaterialTextureBinding &lhs,
+        const MaterialTextureBinding &rhs) noexcept
+    {
+        return lhs.logical_resource_id == rhs.logical_resource_id
+            && lhs.asset_identity_hash == rhs.asset_identity_hash
+            && lhs.asset_metadata_hash == rhs.asset_metadata_hash
+            && lhs.semantic == rhs.semantic
+            && lhs.texture_slot == rhs.texture_slot
+            && lhs.recipe_binding_index == rhs.recipe_binding_index
+            && lhs.direct_value == rhs.direct_value
+            && lhs.source == rhs.source
+            && lhs.required == rhs.required
+            && lhs.allow_fallback == rhs.allow_fallback;
+    }
+
+    struct MaterialDataBinding
+    {
+        uint64 logical_resource_id = 0;
+        uint64 asset_identity_hash = 0;
+        uint64 asset_metadata_hash = 0;
+        DescriptorSemantic semantic = DescriptorSemantic::MaterialDataSlotData;
+        uint32 data_slot = 0;
+        uint32 ssbo_id = 0;
+        uint32 data_index = 0;
+        uint32 recipe_binding_index = InvalidMaterialRecipeBindingIndex;
+        SSBOType ssbo_type = SSBOType::UserDefined;
+        MaterialBindingSource source = MaterialBindingSource::Missing;
+        bool use_data_index = false;
+        bool shared_across_instances = false;
+        bool required = false;
+        bool allow_fallback = false;
+    };
+
+    inline bool operator==(
+        const MaterialDataBinding &lhs,
+        const MaterialDataBinding &rhs) noexcept
+    {
+        return lhs.logical_resource_id == rhs.logical_resource_id
+            && lhs.asset_identity_hash == rhs.asset_identity_hash
+            && lhs.asset_metadata_hash == rhs.asset_metadata_hash
+            && lhs.semantic == rhs.semantic
+            && lhs.data_slot == rhs.data_slot
+            && lhs.ssbo_id == rhs.ssbo_id
+            && lhs.data_index == rhs.data_index
+            && lhs.recipe_binding_index == rhs.recipe_binding_index
+            && lhs.ssbo_type == rhs.ssbo_type
+            && lhs.source == rhs.source
+            && lhs.use_data_index == rhs.use_data_index
+            && lhs.shared_across_instances == rhs.shared_across_instances
+            && lhs.required == rhs.required
+            && lhs.allow_fallback == rhs.allow_fallback;
+    }
+
+    struct MaterialBindingView
+    {
+        uint32 schema_version = MaterialBindingContractSchemaVersion;
+        uint64 program_key_digest = 0;
+        uint64 source_binding_hash = 0;
+        uint32 missing_required_count = 0;
+        uint32 unused_recipe_texture_count = 0;
+        uint32 unused_recipe_data_count = 0;
+        ValueArray<MaterialTextureBinding> textures;
+        ValueArray<MaterialDataBinding> data;
+
+        bool IsValid() const noexcept;
+        bool IsRuntimeReady() const noexcept;
+        uint64 GetStableHash() const noexcept;
+    };
+
+    enum class ResourceAcquireKind : uint8
+    {
+        Texture = 0,
+        StorageBuffer
+    };
+
+    struct ResourceAcquirePlanEntry
+    {
+        uint64 logical_resource_id = 0;
+        uint64 asset_identity_hash = 0;
+        uint64 asset_metadata_hash = 0;
+        DescriptorSemantic semantic = DescriptorSemantic::Unknown;
+        TextureSlot texture_slot = TextureSlot::BaseColor;
+        uint32 data_slot = 0;
+        SSBOType ssbo_type = SSBOType::UserDefined;
+        ResourceAcquireKind kind = ResourceAcquireKind::Texture;
+        bool required = true;
+        bool allow_fallback = false;
+    };
+
+    inline bool operator==(
+        const ResourceAcquirePlanEntry &lhs,
+        const ResourceAcquirePlanEntry &rhs) noexcept
+    {
+        return lhs.logical_resource_id == rhs.logical_resource_id
+            && lhs.asset_identity_hash == rhs.asset_identity_hash
+            && lhs.asset_metadata_hash == rhs.asset_metadata_hash
+            && lhs.semantic == rhs.semantic
+            && lhs.texture_slot == rhs.texture_slot
+            && lhs.data_slot == rhs.data_slot
+            && lhs.ssbo_type == rhs.ssbo_type
+            && lhs.kind == rhs.kind
+            && lhs.required == rhs.required
+            && lhs.allow_fallback == rhs.allow_fallback;
+    }
+
+    struct ResourceAcquirePlan
+    {
+        uint32 schema_version = MaterialBindingContractSchemaVersion;
+        uint64 program_key_digest = 0;
+        ValueArray<ResourceAcquirePlanEntry> resources;
+    };
+
+    enum class MaterialBindingViewBuildError : uint8
+    {
+        None = 0,
+        InvalidShaderProgramKey,
+        DuplicateRecipeTexture,
+        DuplicateRecipeData,
+        InvalidBindingView
+    };
+
+    struct MaterialBindingViewBuildDiagnostic
+    {
+        MaterialBindingViewBuildError error = MaterialBindingViewBuildError::None;
+        TextureSlot texture_slot = TextureSlot::BaseColor;
+        uint32 data_slot = 0;
+        SSBOType ssbo_type = SSBOType::UserDefined;
+    };
+
+    const char *GetMaterialBindingViewBuildErrorName(
+        MaterialBindingViewBuildError error) noexcept;
+    const char *GetMaterialBindingSourceName(
+        MaterialBindingSource source) noexcept;
+
+    uint64 GetMaterialBindingSourceHash(
+        const MaterialRecipe &recipe) noexcept;
+    uint64 GetMaterialBindingTextureAssetIdentityHash(
+        const char *resource_id,
+        uint32 resource_id_length) noexcept;
+    uint64 GetMaterialBindingDataAssetIdentityHash(
+        SSBOType ssbo_type,
+        uint32 ssbo_id,
+        uint32 data_slot) noexcept;
+
+    bool ValidateMaterialBindingView(
+        const MaterialBindingView &view) noexcept;
+    bool ValidateMaterialResourceAcquirePlan(
+        const ResourceAcquirePlan &plan) noexcept;
+
+    bool SerializeMaterialBindingView(
+        const MaterialBindingView &view,
+        ValueArray<uint8> &out_bytes);
+    bool SerializeMaterialResourceAcquirePlan(
+        const ResourceAcquirePlan &plan,
+        ValueArray<uint8> &out_bytes);
+
+    uint64 GetMaterialBindingViewHash(
+        const MaterialBindingView &view) noexcept;
+    uint64 GetMaterialResourceAcquirePlanHash(
+        const ResourceAcquirePlan &plan) noexcept;
+}

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <hgl/shadergen/ShaderProgramKey.h>
-#include <hgl/mtl/MaterialProgramContract.h>
 #include <hgl/type/String.h>
 #include <hgl/type/UnorderedMap.h>
 #include <hgl/type/ValueArray.h>
@@ -20,12 +19,6 @@ namespace hgl::graph
             return FindName(key.ToString());
         }
 
-        ShaderProgram *Find(
-            const mtl::EffectiveMaterialProgramKey &key) const
-        {
-            return FindName(key.ToString());
-        }
-
         ShaderProgram *FindName(const AnsiString &name) const
         {
             ShaderProgram *program = nullptr;
@@ -34,13 +27,6 @@ namespace hgl::graph
         }
 
         bool Add(const mtl::ShaderProgramKey &key, ShaderProgram *program)
-        {
-            return AddName(key.ToString(), program);
-        }
-
-        bool Add(
-            const mtl::EffectiveMaterialProgramKey &key,
-            ShaderProgram *program)
         {
             return AddName(key.ToString(), program);
         }
@@ -56,6 +42,11 @@ namespace hgl::graph
         bool RemoveName(const AnsiString &name)
         {
             return programs.DeleteByKey(name);
+        }
+
+        bool Remove(const mtl::ShaderProgramKey &key)
+        {
+            return RemoveName(key.ToString());
         }
 
         void GetValues(ValueArray<ShaderProgram *> &out_values) const

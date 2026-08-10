@@ -42,13 +42,12 @@ private:
 
 private: // Helper methods with integrated DebugUtils
 
-    ShaderProgram *AcquireShaderProgram(const AnsiString &, const mtl::ShaderProgramBuildSpec *);
+    ShaderProgram *AcquireShaderProgram(const mtl::ShaderProgramKey &, const mtl::ShaderProgramBuildSpec *);
     class PipelineLayoutData *CreateMaterialPipelineLayoutData(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager);
     class MaterialParameters *CreateMaterialMP(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager, const class PipelineLayoutData *pld, const DescriptorSetType &desc_set_type);
     void ApplyMaterialFinalizePlan(ShaderProgram *mtl, const AnsiString &mtl_name, const mtl::ShaderProgramBuildSpec &mci);
-    ShaderProgram *TryGetCachedMaterial(const AnsiString &name);
-    ShaderProgram *TryGetCachedEffectiveMaterialProgram(
-        const mtl::EffectiveMaterialProgramKey &key);
+    ShaderProgram *TryGetCachedShaderProgram(
+        const mtl::ShaderProgramKey &key);
     bool BuildRuntimeShaderProgramState(ShaderProgram *mtl,
                                         const AnsiString &mtl_name,
                                         const mtl::ShaderProgramBuildSpec *mci,
@@ -81,9 +80,7 @@ public: //Release
         if (!mtl)
             return;
 
-        const AnsiString &name = mtl->GetName();
-        if (!name.IsEmpty())
-            shader_program_cache.RemoveName(name);
+        shader_program_cache.Remove(mtl->GetProgramKey());
 
         rm_material.Release(mtl, true);
     }
@@ -124,8 +121,7 @@ public: //ShaderProgram
     bool            BuildMaterialResourceLayout(const mtl::MaterialDefinitionBuildRequest &request,
                                                 mtl::MaterialResourceLayout &out_layout);
     ShaderProgram *AcquireShaderProgram(
-        const mtl::MaterialDefinitionBuildRequest &request,
-        mtl::ActiveProfileBindingView *out_binding_view = nullptr);
+        const mtl::MaterialDefinitionBuildRequest &request);
 
 };//class ShaderProgramManager
 

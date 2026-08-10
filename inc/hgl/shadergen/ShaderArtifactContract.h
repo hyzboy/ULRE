@@ -16,9 +16,9 @@ namespace hgl::graph::mtl
     constexpr const char ShaderArtifactSPVExtension[] = ".spv";
     constexpr const char ShaderArtifactMetadataExtension[] = ".meta";
     constexpr uint32 ShaderArtifactFileHeaderSize = 40;
-    constexpr uint32 ShaderProgramMetadataSchemaVersion = 1;
+    constexpr uint32 ShaderProgramMetadataSchemaVersion = 2;
     constexpr uint32 ShaderProgramMetadataPayloadSize =
-        sizeof(uint32) + sizeof(uint64) * 11;
+        sizeof(uint32) + sizeof(uint64) * 9;
 
     enum class ShaderArtifactKind : uint8
     {
@@ -49,8 +49,6 @@ namespace hgl::graph::mtl
     {
         uint32 schema_version = ShaderProgramMetadataSchemaVersion;
         uint64 program_key_digest = 0;
-        uint64 effective_material_program_digest = 0;
-        uint64 shader_variant_digest = 0;
         uint64 resolved_module_graph_hash = 0;
         uint64 shader_interface_hash = 0;
         uint64 output_contract_hash = 0;
@@ -67,9 +65,6 @@ namespace hgl::graph::mtl
     {
         return lhs.schema_version == rhs.schema_version
             && lhs.program_key_digest == rhs.program_key_digest
-            && lhs.effective_material_program_digest
-                == rhs.effective_material_program_digest
-            && lhs.shader_variant_digest == rhs.shader_variant_digest
             && lhs.resolved_module_graph_hash
                 == rhs.resolved_module_graph_hash
             && lhs.shader_interface_hash == rhs.shader_interface_hash
@@ -88,8 +83,6 @@ namespace hgl::graph::mtl
         return metadata.schema_version
                 == ShaderProgramMetadataSchemaVersion
             && metadata.program_key_digest != 0
-            && metadata.effective_material_program_digest != 0
-            && metadata.shader_variant_digest != 0
             && metadata.resolved_module_graph_hash != 0
             && metadata.shader_interface_hash != 0
             && metadata.output_contract_hash != 0

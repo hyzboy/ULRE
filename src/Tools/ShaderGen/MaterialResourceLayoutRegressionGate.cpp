@@ -1,20 +1,18 @@
 #include <hgl/mtl/MaterialResourceLayout.h>
 #include <hgl/mtl/MaterialLibrary.h>
 #include <hgl/mtl/MaterialDefinitionFile.h>
-#include <hgl/mtl/SurfaceProfileFile.h>
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/shadergen/MaterialDescriptorContract.h>
 #include <hgl/shadergen/ShaderProgramBuildSpec.h>
 #include <hgl/shadergen/ResolvedModuleGraphBuilder.h>
-#include <hgl/shadergen/ActiveProfileBindingViewBuilder.h>
+#include <hgl/shadergen/MaterialBindingViewBuilder.h>
 #include <hgl/shadergen/ShaderCreateInfo.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
 #include <hgl/shadergen/ShaderArtifactStore.h>
 #include <hgl/shadergen/CanonicalShaderContract.h>
 #include <hgl/shadergen/ShaderSemanticRegistry.h>
-#include <hgl/mtl/MaterialProgramContract.h>
 #include <hgl/graph/glsl/GLSLCodeModule.h>
 #include <hgl/graph/glsl/GLSLCodeModuleCapabilityResolver.h>
 #include <hgl/graph/glsl/GLSLCodeModuleFile.h>
@@ -49,6 +47,16 @@ using namespace hgl::graph::mtl;
 
 namespace
 {
+    static hgl::uint64 StableID(const char *text)
+    {
+        return text && text[0]
+            ? hgl::hash::FNV1aAppendBytes(
+                hgl::hash::FNV1aInit<hgl::uint64>(),
+                text,
+                std::strlen(text))
+            : 0;
+    }
+
     static bool IsKnownRegressionGroup(const char *group)
     {
         if (!group)
@@ -376,294 +384,23 @@ namespace
         return result;
     }
 
-    static GateResult RunSurfaceProfileModelCase()
+    static GateResult RunMaterialBindingViewCase()
     {
         GateResult result;
-        result.name = "L1.surface-profile-model";
+        result.name = "L2.material-binding-view";
 
-        SurfaceProfileFileData file_data;
-        {
-            SurfaceImplementationProfile *stale =
-                file_data.profiles.Create();
-            if (stale)
-                stale->profile_name = "Stale";
-            if (LoadSurfaceProfileFile(
-                    RepoRootOSPath(
-                        "ShaderLibrary/surface_profiles/missing.surface-profile.toml"),
-                    file_data)
-             || !file_data.profiles.IsEmpty()
-             || !file_data.intents.IsEmpty()
-             || !file_data.downgrades.IsEmpty())
-            {
-                result.diagnostics.emplace_back(
-                    "failed surface profile loads must clear output data");
-            }
-        }
-
-        if (!LoadSurfaceProfileFile(
-                RepoRootOSPath(
-                    "ShaderLibrary/surface_profiles/default.surface-profile.toml"),
-                file_data))
-        {
-            result.diagnostics.emplace_back(
-                "failed to load default surface profile protocol");
-            result.passed = false;
-            return result;
-        }
-
-        if (file_data.profiles.GetCount() != 10
-         || file_data.intents.GetCount() != 8
-         || file_data.downgrades.GetCount() != 9)
-        {
-            result.diagnostics.emplace_back(
-                "default surface profile protocol count mismatch");
-        }
-
-        SurfaceProfileRegistry registry;
-        SurfaceProfileValidationDiagnostic diagnostic{};
-        if (!RegisterSurfaceProfileFileData(
-                file_data, registry, diagnostic))
-        {
-            result.diagnostics.emplace_back(
-                "default surface profile protocol invalid: "
-                + std::string(GetSurfaceProfileValidationErrorName(
-                    diagnostic.error)));
-        }
-        else
-        {
-            if (!registry.FindIntent("HumanSkin")
-             || !registry.FindIntent("Wood")
-             || !registry.FindProfile("SkinSSS")
-             || !registry.FindProfile("StandardPBR")
-             || !registry.FindProfile("BlinnPhongFakePBR")
-             || !registry.FindProfile("Flat"))
-            {
-                result.diagnostics.emplace_back(
-                    "default surface profile registry entries missing");
-            }
-
-            if (!registry.CanDowngrade(
-                    GetSurfaceStableID("SkinSSS"),
-                    GetSurfaceStableID("StandardPBR"))
-             || !registry.CanDowngrade(
-                    GetSurfaceStableID("SkinSSS"),
-                    GetSurfaceStableID("BlinnPhongFakePBR"))
-             || !registry.CanDowngrade(
-                    GetSurfaceStableID("SkinSSS"),
-                    GetSurfaceStableID("Flat"))
-             || !registry.CanDowngrade(
-                    GetSurfaceStableID("WoodFiberLighting"),
-                    GetSurfaceStableID("StandardPBR"))
-             || registry.CanDowngrade(
-                    GetSurfaceStableID("StandardPBR"),
-                    GetSurfaceStableID("SkinSSS")))
-            {
-                result.diagnostics.emplace_back(
-                    "surface profile downgrade reachability mismatch");
-            }
-
-            if (registry.GetStableHash() == 0)
-                result.diagnostics.emplace_back(
-                    "surface profile registry hash must be non-zero");
-        }
-
-        SurfaceProfileRegistry reverse_registry;
-        for (int i = file_data.profiles.GetCount() - 1; i >= 0; --i)
-        {
-            if (!file_data.profiles[i]
-             || !reverse_registry.RegisterProfile(*file_data.profiles[i]))
-                result.diagnostics.emplace_back(
-                    "reverse profile registration failed");
-        }
-        for (int i = file_data.intents.GetCount() - 1; i >= 0; --i)
-        {
-            if (!file_data.intents[i]
-             || !reverse_registry.RegisterIntent(*file_data.intents[i]))
-                result.diagnostics.emplace_back(
-                    "reverse intent registration failed");
-        }
-        for (int i = file_data.downgrades.GetCount() - 1; i >= 0; --i)
-        {
-            if (!reverse_registry.RegisterDowngrade(
-                    file_data.downgrades[i]))
-                result.diagnostics.emplace_back(
-                    "reverse downgrade registration failed");
-        }
-        if (registry.GetStableHash() != reverse_registry.GetStableHash())
-            result.diagnostics.emplace_back(
-                "surface profile hash must ignore registration order");
-
-        MaterialDefinition human_skin{};
-        human_skin.surface_intent_id = GetSurfaceStableID("HumanSkin");
-        human_skin.surface_profile_projections.Add(
-            MakeMaterialSurfaceProfileProjection(
-                "SkinSSS", "HumanSkin.ToSkinSSS"));
-        human_skin.surface_profile_projections.Add(
-            MakeMaterialSurfaceProfileProjection(
-                "StandardPBR", "HumanSkin.ToStandardPBR"));
-        human_skin.surface_profile_projections.Add(
-            MakeMaterialSurfaceProfileProjection(
-                "BlinnPhongFakePBR", "HumanSkin.ToFakePBR"));
-        human_skin.surface_profile_projections.Add(
-            MakeMaterialSurfaceProfileProjection(
-                "Flat", "HumanSkin.ToFlat"));
-        if (!ValidateMaterialSurfaceProfileProjections(
-                human_skin, registry, diagnostic))
-        {
-            result.diagnostics.emplace_back(
-                "human skin profile projections rejected");
-        }
-
-        MaterialDefinition wood{};
-        wood.surface_intent_id = GetSurfaceStableID("Wood");
-        wood.surface_profile_projections.Add(
-            MakeMaterialSurfaceProfileProjection(
-                "WoodFiberLighting", "Wood.ToFiber"));
-        wood.surface_profile_projections.Add(
-            MakeMaterialSurfaceProfileProjection(
-                "StandardPBR", "Wood.ToStandardPBR"));
-        wood.surface_profile_projections.Add(
-            MakeMaterialSurfaceProfileProjection(
-                "BlinnPhongFakePBR", "Wood.ToFakePBR"));
-        if (!ValidateMaterialSurfaceProfileProjections(
-                wood, registry, diagnostic))
-        {
-            result.diagnostics.emplace_back(
-                "wood profile projections rejected");
-        }
-
-        MaterialDefinitionFileRegistry material_registry;
-        if (!material_registry.LoadFile(
-                RepoRootOSPath(
-                    "ShaderLibrary/material/lit.material.toml")))
-        {
-            result.diagnostics.emplace_back(
-                "failed to load Lit surface profile projections");
-        }
-        else
-        {
-            const MaterialDefinition *lit =
-                material_registry.FindByID("Lit");
-            if (!lit
-             || lit->surface_intent_id
-                    != GetSurfaceStableID("GenericPBR")
-             || lit->surface_profile_projections.GetCount() != 3
-             || !ValidateMaterialSurfaceProfileProjections(
-                    *lit, registry, diagnostic))
-            {
-                result.diagnostics.emplace_back(
-                    "Lit surface profile projections invalid");
-            }
-        }
-
-        MaterialDefinition missing_preferred{};
-        missing_preferred.surface_intent_id = GetSurfaceStableID("HumanSkin");
-        missing_preferred.surface_profile_projections.Add(
-            MakeMaterialSurfaceProfileProjection(
-                "StandardPBR", "HumanSkin.ToStandardPBR"));
-        if (ValidateMaterialSurfaceProfileProjections(
-                missing_preferred, registry, diagnostic)
-         || diagnostic.error
-                != SurfaceProfileValidationError::
-                    MissingPreferredProjection)
-        {
-            result.diagnostics.emplace_back(
-                "missing preferred projection must be rejected");
-        }
-
-        const char invalid_downgrade[] =
-            "schema = 1\n"
-            "[[profiles]]\n"
-            "id = \"Low\"\n"
-            "parameter_schema = \"Surface.Low.v1\"\n"
-            "schema_version = 1\n"
-            "quality_rank = 0\n"
-            "[[profiles]]\n"
-            "id = \"High\"\n"
-            "parameter_schema = \"Surface.High.v1\"\n"
-            "schema_version = 1\n"
-            "quality_rank = 100\n"
-            "[[intents]]\n"
-            "id = \"Example\"\n"
-            "preferred_profile = \"Low\"\n"
-            "[[downgrades]]\n"
-            "from = \"Low\"\n"
-            "to = \"High\"\n"
-            "order = 0\n";
-        SurfaceProfileFileData invalid_data;
-        if (ParseSurfaceProfileFile(
-                invalid_downgrade,
-                int(std::strlen(invalid_downgrade)),
-                invalid_data) != SurfaceProfileFileParseResult::OK)
-        {
-            result.diagnostics.emplace_back(
-                "invalid downgrade fixture failed to parse");
-        }
-        else
-        {
-            SurfaceProfileRegistry invalid_registry;
-            if (RegisterSurfaceProfileFileData(
-                    invalid_data, invalid_registry, diagnostic)
-             || diagnostic.error
-                    != SurfaceProfileValidationError::InvalidDowngrade)
-            {
-                result.diagnostics.emplace_back(
-                    "quality-increasing downgrade must be rejected");
-            }
-        }
-
-        const char unsupported_schema[] = "schema = 2\n";
-        SurfaceProfileFileData unsupported_data;
-        if (ParseSurfaceProfileFile(
-                unsupported_schema,
-                int(std::strlen(unsupported_schema)),
-                unsupported_data)
-            != SurfaceProfileFileParseResult::UnsupportedSchema)
-        {
-            result.diagnostics.emplace_back(
-                "unsupported surface profile schema must be rejected");
-        }
-
-        result.passed = result.diagnostics.empty();
-        return result;
-    }
-
-    static GateResult RunActiveProfileBindingViewCase()
-    {
-        GateResult result;
-        result.name = "L2.active-profile-binding-view";
-
-        EffectiveMaterialProgramKey effective_program{};
-        effective_program.resolved_surface_profile_id =
-            GetSurfaceStableID("StandardPBR");
-        effective_program.resolved_surface_profile_hash = 0x7101u;
-        effective_program.projection_id =
-            GetSurfaceStableID("Example.ToStandardPBR");
-        effective_program.normalized_static_feature_hash = 0x7102u;
-        effective_program.resolved_module_graph_hash = 0x7103u;
-        effective_program.capability_signature_hash = 0x7104u;
-        effective_program.resolver_policy_hash = 0x7105u;
-
-        MaterialResolutionResult resolution{};
-        resolution.status = MaterialResolutionStatus::Resolved;
-        resolution.source_definition_id_hash = 0x7201u;
-        resolution.recipe_capability_hash = 0x7202u;
-        resolution.source_surface_intent_id =
-            GetSurfaceStableID("Example");
-        resolution.effective_program = effective_program;
-
-        PreparedMaterialProgramSet prepared_set{};
-        if (!BuildSingleProgramPreparedMaterialProgramSet(
-                resolution, prepared_set))
-        {
-            result.diagnostics.emplace_back(
-                "failed to build active-profile PreparedSet fixture");
-            result.passed = false;
-            return result;
-        }
+        ShaderProgramKey program_key{};
+        program_key.vertex_stage_digest = 0x7101u;
+        program_key.fragment_stage_digest = 0x7102u;
+        program_key.resource_layout_hash = 0x7103u;
+        program_key.vertex_input_hash = 0x7104u;
 
         MaterialResourceLayout layout{};
         MaterialResourceRequirement texture_requirement{};
+        texture_requirement.logical_resource_id =
+            StableID("resource.base_color");
+        texture_requirement.resource_schema_id =
+            StableID("schema.sampler2D");
         texture_requirement.semantic =
             DescriptorSemantic::MaterialSampler;
         texture_requirement.kind = DescriptorKind::TextureSampler;
@@ -673,6 +410,10 @@ namespace
         layout.requirements.push_back(texture_requirement);
 
         MaterialResourceRequirement texture_layer_requirement{};
+        texture_layer_requirement.logical_resource_id =
+            StableID("resource.texture_layers");
+        texture_layer_requirement.resource_schema_id =
+            StableID("schema.TextureLayer");
         texture_layer_requirement.semantic =
             DescriptorSemantic::MaterialTextureLayerTable;
         texture_layer_requirement.kind = DescriptorKind::SSBO;
@@ -681,6 +422,10 @@ namespace
         layout.requirements.push_back(texture_layer_requirement);
 
         MaterialResourceRequirement data_requirement{};
+        data_requirement.logical_resource_id =
+            StableID("resource.material_data");
+        data_requirement.resource_schema_id =
+            StableID("schema.PBRSurface");
         data_requirement.semantic =
             DescriptorSemantic::MaterialDataSlotData;
         data_requirement.kind = DescriptorKind::SSBO;
@@ -708,52 +453,49 @@ namespace
         data_binding.use_data_index = true;
         recipe.ssbo_assets.push_back(data_binding);
 
-        ActiveProfileBindingView binding_view{};
-        ActiveProfileBindingViewBuildDiagnostic diagnostic{};
+        MaterialBindingView binding_view{};
+        MaterialBindingViewBuildDiagnostic diagnostic{};
         MaterialRecipe equivalent_binding_recipe = recipe;
         equivalent_binding_recipe.recipe_name = "DifferentName";
         equivalent_binding_recipe.mtl_def_id = "DifferentDefinition";
         equivalent_binding_recipe.material_lod = 7;
         equivalent_binding_recipe.alpha_cutoff = 0.25f;
-        if (GetActiveProfileBindingSourceHash(recipe)
-                != GetActiveProfileBindingSourceHash(
+        if (GetMaterialBindingSourceHash(recipe)
+                != GetMaterialBindingSourceHash(
                     equivalent_binding_recipe))
         {
             result.diagnostics.emplace_back(
                 "Binding View source hash must ignore unrelated Recipe state");
         }
-        if (!BuildActiveProfileBindingView(
+        if (!BuildMaterialBindingView(
                 recipe,
                 layout,
-                prepared_set,
+                program_key,
                 binding_view,
                 diagnostic)
          || !binding_view.IsRuntimeReady()
          || binding_view.GetStableHash() == 0
-         || binding_view.active_surface_profile_id
-                != effective_program.resolved_surface_profile_id
-         || binding_view.active_projection_id
-                != effective_program.projection_id
+         || binding_view.program_key_digest != program_key.GetDigest()
          || binding_view.textures.GetCount() != 2
          || binding_view.data.GetCount() != 1
          || binding_view.unused_recipe_texture_count != 1
          || binding_view.unused_recipe_data_count != 0)
         {
             result.diagnostics.emplace_back(
-                std::string("active Profile Binding View build failed: ")
-                + GetActiveProfileBindingViewBuildErrorName(
+                std::string("Material Binding View build failed: ")
+                + GetMaterialBindingViewBuildErrorName(
                     diagnostic.error));
         }
 
         MaterialRecipe projected_recipe{};
-        if (!BuildActiveProfileMaterialRecipe(
+        if (!BuildMaterialBindingRecipe(
                 recipe, binding_view, projected_recipe)
          || projected_recipe.textures.size() != 2
          || projected_recipe.ssbo_assets.size() != 1
          || projected_recipe.ssbo_assets[0].ssbo_id != 17)
         {
             result.diagnostics.emplace_back(
-                "active Profile Recipe projection mismatch");
+                "Material Binding Recipe projection mismatch");
         }
         bool found_base_color = false;
         bool found_layer_value = false;
@@ -771,16 +513,16 @@ namespace
         if (!found_base_color || !found_layer_value)
         {
             result.diagnostics.emplace_back(
-                "active Profile Recipe must preserve TextureLayer direct values");
+                "Material Binding Recipe must preserve TextureLayer direct values");
         }
         ResourceAcquirePlan resource_plan{};
-        if (!BuildActiveProfileResourceAcquirePlan(
+        if (!BuildMaterialResourceAcquirePlan(
                 binding_view, resource_plan)
          || resource_plan.resources.GetCount() != 2
-         || GetResourceAcquirePlanHash(resource_plan) == 0)
+         || GetMaterialResourceAcquirePlanHash(resource_plan) == 0)
         {
             result.diagnostics.emplace_back(
-                "active Profile ResourceAcquirePlan build failed");
+                "Material ResourceAcquirePlan build failed");
         }
         else
         {
@@ -848,19 +590,19 @@ namespace
 
         MaterialRecipe zero_id_recipe = recipe;
         zero_id_recipe.ssbo_assets[0].ssbo_id = 0;
-        ActiveProfileBindingView zero_id_view{};
-        if (!BuildActiveProfileBindingView(
+        MaterialBindingView zero_id_view{};
+        if (!BuildMaterialBindingView(
                 zero_id_recipe,
                 layout,
-                prepared_set,
+                program_key,
                 zero_id_view,
                 diagnostic)
          || !zero_id_view.IsRuntimeReady()
          || zero_id_view.data.GetCount() != 1
          || zero_id_view.data[0].source
-                != ActiveProfileBindingSource::Asset
+                != MaterialBindingSource::Asset
          || zero_id_view.data[0].ssbo_id != 0
-         || !BuildActiveProfileMaterialRecipe(
+         || !BuildMaterialBindingRecipe(
                 zero_id_recipe,
                 zero_id_view,
                 projected_recipe)
@@ -874,27 +616,27 @@ namespace
         MaterialRecipe pre_resolve_recipe = recipe;
         pre_resolve_recipe.ssbo_assets[0].ssbo_type =
             SSBOType::UserDefined;
-        ActiveProfileBindingView pre_resolve_view{};
-        if (!BuildActiveProfileBindingView(
+        MaterialBindingView pre_resolve_view{};
+        if (!BuildMaterialBindingView(
                 pre_resolve_recipe,
                 layout,
-                prepared_set,
+                program_key,
                 pre_resolve_view,
                 diagnostic)
          || pre_resolve_view.IsRuntimeReady())
         {
             result.diagnostics.emplace_back(
-                "pre-resolve UserDefined SSBO must not masquerade as the active Profile type");
+                "pre-resolve UserDefined SSBO must not masquerade as the required binding type");
         }
-        ActiveProfileBindingView post_resolve_view{};
-        if (!BuildActiveProfileBindingView(
+        MaterialBindingView post_resolve_view{};
+        if (!BuildMaterialBindingView(
                 recipe,
                 layout,
-                prepared_set,
+                program_key,
                 post_resolve_view,
                 diagnostic)
          || !post_resolve_view.IsRuntimeReady()
-         || !BuildActiveProfileMaterialRecipe(
+         || !BuildMaterialBindingRecipe(
                 recipe, post_resolve_view, projected_recipe))
         {
             result.diagnostics.emplace_back(
@@ -906,99 +648,67 @@ namespace
         second_recipe.mtl_def_id = "DefinitionB";
         second_recipe.textures[0].resource_id = "asset/albedo-b";
         second_recipe.ssbo_assets[0].ssbo_id = 23;
-        if (GetActiveProfileBindingSourceHash(second_recipe)
-                == GetActiveProfileBindingSourceHash(recipe))
+        if (GetMaterialBindingSourceHash(second_recipe)
+                == GetMaterialBindingSourceHash(recipe))
         {
             result.diagnostics.emplace_back(
                 "Binding View source hash must include binding identity");
         }
-        ActiveProfileBindingView second_view{};
+        MaterialBindingView second_view{};
         ResourceAcquirePlan second_plan{};
-        if (!BuildActiveProfileBindingView(
+        if (!BuildMaterialBindingView(
                 second_recipe,
                 layout,
-                prepared_set,
+                program_key,
                 second_view,
                 diagnostic)
          || second_view.GetStableHash() == binding_view.GetStableHash()
-         || second_view.effective_material_program_digest
-                != binding_view.effective_material_program_digest
-         || !BuildActiveProfileResourceAcquirePlan(
+         || second_view.program_key_digest
+                != binding_view.program_key_digest
+         || !BuildMaterialResourceAcquirePlan(
                 second_view, second_plan)
-         || GetResourceAcquirePlanHash(second_plan)
-                == GetResourceAcquirePlanHash(resource_plan)
-         || prepared_set.GetExecutableProgram()->GetDigest()
-                != effective_program.GetDigest())
+         || GetMaterialResourceAcquirePlanHash(second_plan)
+                == GetMaterialResourceAcquirePlanHash(resource_plan))
         {
             result.diagnostics.emplace_back(
-                "asset identity must affect Binding View, not Effective Program");
-        }
-
-        EffectiveMaterialProgramKey specialist_program =
-            effective_program;
-        specialist_program.resolved_surface_profile_id =
-            GetSurfaceStableID("SkinSSS");
-        specialist_program.resolved_surface_profile_hash = 0x7301u;
-        specialist_program.projection_id =
-            GetSurfaceStableID("Example.ToSkinSSS");
-        MaterialResolutionResult specialist_resolution = resolution;
-        specialist_resolution.effective_program = specialist_program;
-        PreparedMaterialProgramSet specialist_set{};
-        ActiveProfileBindingView specialist_view{};
-        if (!BuildSingleProgramPreparedMaterialProgramSet(
-                specialist_resolution, specialist_set)
-         || !BuildActiveProfileBindingView(
-                recipe,
-                layout,
-                specialist_set,
-                specialist_view,
-                diagnostic)
-         || specialist_view.active_surface_profile_id
-                != specialist_program.resolved_surface_profile_id
-         || specialist_view.active_projection_id
-                != specialist_program.projection_id
-         || specialist_view.active_surface_profile_id
-                == binding_view.active_surface_profile_id)
-        {
-            result.diagnostics.emplace_back(
-                "Binding View must follow the explicitly prepared active Profile");
+                "asset identity must affect Binding View, not ProgramKey");
         }
 
         MaterialRecipe missing_recipe = recipe;
         missing_recipe.textures[0].resource_id.clear();
         missing_recipe.textures[0].required = true;
-        ActiveProfileBindingView missing_view{};
-        if (!BuildActiveProfileBindingView(
+        MaterialBindingView missing_view{};
+        if (!BuildMaterialBindingView(
                 missing_recipe,
                 layout,
-                prepared_set,
+                program_key,
                 missing_view,
                 diagnostic)
          || !missing_view.IsValid()
          || missing_view.IsRuntimeReady()
          || missing_view.missing_required_count != 1
-         || BuildActiveProfileMaterialRecipe(
+         || BuildMaterialBindingRecipe(
                 missing_recipe, missing_view, projected_recipe)
-         || BuildActiveProfileResourceAcquirePlan(
+         || BuildMaterialResourceAcquirePlan(
                 missing_view, resource_plan))
         {
             result.diagnostics.emplace_back(
-                "missing required active Profile resource must remain explicit");
+                "missing required material resource must remain explicit");
         }
 
         MaterialResourceLayout fallback_layout = layout;
         fallback_layout.requirements[0].allow_fallback = true;
-        ActiveProfileBindingView unresolved_fallback_view{};
-        if (!BuildActiveProfileBindingView(
+        MaterialBindingView unresolved_fallback_view{};
+        if (!BuildMaterialBindingView(
                 missing_recipe,
                 fallback_layout,
-                prepared_set,
+                program_key,
                 unresolved_fallback_view,
                 diagnostic)
          || !unresolved_fallback_view.IsValid()
          || unresolved_fallback_view.IsRuntimeReady()
          || unresolved_fallback_view.textures[0].source
-                != ActiveProfileBindingSource::Missing)
+                != MaterialBindingSource::Missing)
         {
             result.diagnostics.emplace_back(
                 "fallback permission without a concrete fallback must remain pending");
@@ -1007,37 +717,28 @@ namespace
         MaterialRecipe duplicate_recipe = recipe;
         duplicate_recipe.textures.push_back(
             {TextureSlot::BaseColor, "asset/duplicate", 0, false, true});
-        ActiveProfileBindingView duplicate_view{};
-        if (BuildActiveProfileBindingView(
+        MaterialBindingView duplicate_view{};
+        if (BuildMaterialBindingView(
                 duplicate_recipe,
                 layout,
-                prepared_set,
+                program_key,
                 duplicate_view,
                 diagnostic)
          || diagnostic.error
-                != ActiveProfileBindingViewBuildError::
+                != MaterialBindingViewBuildError::
                     DuplicateRecipeTexture)
         {
             result.diagnostics.emplace_back(
-                "duplicate active Profile texture binding must fail");
+                "duplicate material texture binding must fail");
         }
 
-        EffectiveMaterialProgramKey depth_program =
-            effective_program;
-        depth_program.purpose = ShaderProgramPurpose::DepthOnly;
-        depth_program.normalized_static_feature_hash ^= 0x100u;
-        MaterialResolutionResult depth_resolution = resolution;
-        depth_resolution.effective_program = depth_program;
-        PreparedMaterialProgramSet depth_set{};
-        ActiveProfileBindingView depth_view{};
+        MaterialBindingView depth_view{};
         MaterialResourceLayout depth_layout{};
         ResourceAcquirePlan depth_plan{};
-        if (!BuildSingleProgramPreparedMaterialProgramSet(
-                depth_resolution, depth_set)
-         || !BuildActiveProfileBindingView(
+        if (!BuildMaterialBindingView(
                 recipe,
                 depth_layout,
-                depth_set,
+                program_key,
                 depth_view,
                 diagnostic)
          || !depth_view.IsRuntimeReady()
@@ -1045,17 +746,17 @@ namespace
                 != recipe.textures.size()
          || depth_view.unused_recipe_data_count
                 != recipe.ssbo_assets.size()
-         || !BuildActiveProfileResourceAcquirePlan(
+         || !BuildMaterialResourceAcquirePlan(
                 depth_view, depth_plan)
          || !depth_plan.resources.IsEmpty())
         {
             result.diagnostics.emplace_back(
-                "Depth-only active Program must submit no unrelated resource acquisition");
+                "resource-free Program must submit no unrelated resource acquisition");
         }
 
-        ActiveProfileBindingView unresolved_view{};
+        MaterialBindingView unresolved_view{};
         ResourceAcquirePlan unresolved_plan{};
-        if (BuildActiveProfileResourceAcquirePlan(
+        if (BuildMaterialResourceAcquirePlan(
                 unresolved_view, unresolved_plan))
         {
             result.diagnostics.emplace_back(
@@ -1888,8 +1589,6 @@ namespace
         ShaderProgramArtifactMetadata metadata{};
         metadata.program_key_digest =
             program_link.BuildKey().GetDigest();
-        metadata.effective_material_program_digest = 0x2401u;
-        metadata.shader_variant_digest = 0x2402u;
         metadata.resolved_module_graph_hash = 0x2403u;
         metadata.shader_interface_hash = 0x2404u;
         metadata.output_contract_hash =
@@ -2210,19 +1909,7 @@ namespace
          || !lit_a->HasProgramArtifactMetadata()
          || !lit_b->HasProgramArtifactMetadata()
          || !color->HasProgramArtifactMetadata()
-         || !lit_targeted->HasProgramArtifactMetadata()
-         || !lit_a->HasPreparedMaterialProgramSet()
-         || !lit_b->HasPreparedMaterialProgramSet()
-         || !color->HasPreparedMaterialProgramSet()
-         || !lit_targeted->HasPreparedMaterialProgramSet()
-         || !lit_a->GetActiveEffectiveMaterialProgram()
-         || !lit_b->GetActiveEffectiveMaterialProgram()
-         || !color->GetActiveEffectiveMaterialProgram()
-         || !lit_targeted->GetActiveEffectiveMaterialProgram()
-         || !lit_a->HasActiveProfileBindingView()
-         || !lit_b->HasActiveProfileBindingView()
-         || !color->HasActiveProfileBindingView()
-         || !lit_targeted->HasActiveProfileBindingView())
+         || !lit_targeted->HasProgramArtifactMetadata())
         {
             result.diagnostics.emplace_back(
                 "generate-only material builds must produce ProgramLink");
@@ -2242,13 +1929,7 @@ namespace
                     != a.vertex_stage.GetDigest()
              || lit_a->GetProgramArtifactMetadata().
                     fragment_stage_digest
-                    != a.fragment_stage.GetDigest()
-             || lit_a->GetProgramArtifactMetadata().
-                    effective_material_program_digest
-                    != lit_a->GetActiveEffectiveMaterialProgram()->
-                        GetDigest()
-             || lit_a->GetPreparedMaterialProgramSet().
-                    programs.GetCount() != 1)
+                    != a.fragment_stage.GetDigest())
             {
                 result.diagnostics.emplace_back(
                     "BuildSpec program metadata does not match ProgramLink");
@@ -2338,9 +2019,7 @@ namespace
 
             if (a.fragment_stage.GetDigest()
                     == c.fragment_stage.GetDigest()
-             || a.BuildKey() == c.BuildKey()
-             || *lit_a->GetActiveEffectiveMaterialProgram()
-                    == *color->GetActiveEffectiveMaterialProgram())
+             || a.BuildKey() == c.BuildKey())
             {
                 result.diagnostics.emplace_back(
                     "different materials must not share authoritative keys");
@@ -2348,9 +2027,7 @@ namespace
 
             if (a.vertex_stage.GetDigest()
                     == b.vertex_stage.GetDigest()
-             || a.BuildKey() == b.BuildKey()
-             || *lit_a->GetActiveEffectiveMaterialProgram()
-                    == *lit_b->GetActiveEffectiveMaterialProgram())
+             || a.BuildKey() == b.BuildKey())
             {
                 result.diagnostics.emplace_back(
                     "different geometry formats must not share authoritative keys");
@@ -2360,10 +2037,7 @@ namespace
                     == targeted.vertex_stage.compiler_hash
              || a.fragment_stage.compiler_hash
                     == targeted.fragment_stage.compiler_hash
-             || a.BuildKey() == targeted.BuildKey()
-             || *lit_a->GetActiveEffectiveMaterialProgram()
-                    == *lit_targeted->
-                        GetActiveEffectiveMaterialProgram())
+             || a.BuildKey() == targeted.BuildKey())
             {
                 result.diagnostics.emplace_back(
                     "compiler profile changes must invalidate authoritative keys");
@@ -2376,13 +2050,6 @@ namespace
                 "StoneDefinition",
                 "MetalDefinition"
             };
-            const char *const shared_intent_ids[] =
-            {
-                "HumanSkin",
-                "Wood",
-                "Stone",
-                "Metal"
-            };
             std::vector<std::unique_ptr<ShaderProgramBuildSpec>>
                 shared_builds;
             for (int i = 0; i < 4; ++i)
@@ -2390,13 +2057,6 @@ namespace
                 MaterialDefinition definition = lit;
                 definition.definition_id = shared_definition_ids[i];
                 definition.definition_name = shared_definition_ids[i];
-                definition.surface_intent_id =
-                    GetSurfaceStableID(shared_intent_ids[i]);
-                definition.surface_profile_projections.Clear();
-                definition.surface_profile_projections.Add(
-                    MakeMaterialSurfaceProfileProjection(
-                        "StandardPBR",
-                        "Shared.StandardPBRProjection"));
                 shared_builds.push_back(
                     build(nullptr, definition, lit_geometry_a));
             }
@@ -2408,41 +2068,19 @@ namespace
              || !shared_builds[3])
             {
                 result.diagnostics.emplace_back(
-                    "cross-Definition effective program fixtures failed");
+                    "cross-Definition ProgramKey fixtures failed");
             }
             else
             {
-                const EffectiveMaterialProgramKey &shared_key =
-                    *shared_builds[0]->
-                        GetActiveEffectiveMaterialProgram();
-                const MaterialResolutionResult &first_resolution =
-                    shared_builds[0]->GetMaterialResolutionResult();
+                const ShaderProgramKey shared_key =
+                    shared_builds[0]->GetProgramLink().BuildKey();
                 for (int i = 1; i < 4; ++i)
                 {
-                    const MaterialResolutionResult &resolution =
-                        shared_builds[i]->
-                            GetMaterialResolutionResult();
-                    if (!shared_builds[i]->
-                            HasPreparedMaterialProgramSet()
-                     || !shared_builds[i]->
-                            GetActiveEffectiveMaterialProgram()
-                     || *shared_builds[i]->
-                            GetActiveEffectiveMaterialProgram()
-                            != shared_key
-                     || shared_builds[i]->
-                            GetPreparedMaterialProgramSet().
-                                programs.GetCount() != 1
-                     || shared_builds[i]->GetProgramLink().BuildKey()
-                            != shared_builds[0]->
-                                GetProgramLink().BuildKey()
-                     || resolution.GetProvenanceHash()
-                            == first_resolution.GetProvenanceHash()
-                     || resolution.source_surface_intent_id
-                            == first_resolution.
-                                source_surface_intent_id)
+                    if (!(shared_builds[i]->
+                            GetProgramLink().BuildKey() == shared_key))
                     {
                         result.diagnostics.emplace_back(
-                            "equivalent StandardPBR Definitions must share only effective identity");
+                            "equivalent Definitions must share ProgramKey identity");
                         break;
                     }
                 }
@@ -2493,9 +2131,9 @@ namespace
         };
 
         const ShaderContractStableID source_module =
-            GetSurfaceStableID("module.source");
+            StableID("module.source");
         const ShaderContractStableID dependency_module =
-            GetSurfaceStableID("module.dependency");
+            StableID("module.dependency");
 
         ResolvedModuleGraph graph_a{};
         graph_a.modules.Add(
@@ -2606,8 +2244,8 @@ namespace
             });
         interface_a.descriptor_requirements.Add(
             {
-                GetSurfaceStableID("resource.material_data"),
-                GetSurfaceStableID("schema.PBRSurface.v1"),
+                StableID("resource.material_data"),
+                StableID("schema.PBRSurface.v1"),
                 DescriptorSemantic::MaterialDataSlotData,
                 DescriptorSemanticLayer::SSBO,
                 DescriptorSetType::Material,
@@ -2622,8 +2260,8 @@ namespace
             });
         interface_a.descriptor_requirements.Add(
             {
-                GetSurfaceStableID("resource.base_color"),
-                GetSurfaceStableID("schema.sampler2D"),
+                StableID("resource.base_color"),
+                StableID("schema.sampler2D"),
                 DescriptorSemantic::MaterialTexture,
                 DescriptorSemanticLayer::Texture,
                 DescriptorSetType::Material,
@@ -2637,9 +2275,9 @@ namespace
                 true
             });
         interface_a.entry_points.Add(
-            {ShaderStage::Vertex, GetSurfaceStableID("main.vs")});
+            {ShaderStage::Vertex, StableID("main.vs")});
         interface_a.entry_points.Add(
-            {ShaderStage::Fragment, GetSurfaceStableID("main.fs")});
+            {ShaderStage::Fragment, StableID("main.fs")});
 
         ShaderInterfaceContract interface_b{};
         interface_b.geometry_semantics.Add(interface_a.geometry_semantics[1]);
@@ -2679,7 +2317,7 @@ namespace
         output_a.purpose = ShaderProgramPurpose::ForwardColor;
         output_a.attachments.Add(
             {
-                GetSurfaceStableID("output.color"),
+                StableID("output.color"),
                 ShaderStageValueType::Vec4,
                 0,
                 1,
@@ -2687,7 +2325,7 @@ namespace
             });
         output_a.attachments.Add(
             {
-                GetSurfaceStableID("output.material_id"),
+                StableID("output.material_id"),
                 ShaderStageValueType::UInt,
                 1,
                 1,
@@ -2711,183 +2349,6 @@ namespace
         if (!ValidateOutputContract(depth_output))
             result.diagnostics.emplace_back(
                 "depth-only output contract must allow no attachments");
-
-        EffectiveMaterialProgramKey effective_key{};
-        effective_key.resolved_surface_profile_id =
-            GetSurfaceStableID("StandardPBR");
-        effective_key.resolved_surface_profile_hash = 0x301u;
-        effective_key.projection_id =
-            GetSurfaceStableID("Lit.ToStandardPBR");
-        effective_key.normalized_static_feature_hash = 0x302u;
-        effective_key.resolved_module_graph_hash =
-            GetResolvedModuleGraphHash(graph_a);
-        effective_key.capability_signature_hash = 0x303u;
-        effective_key.resolver_policy_hash = 0x304u;
-        effective_key.purpose = ShaderProgramPurpose::ForwardColor;
-        const uint64_t effective_digest = effective_key.GetDigest();
-        if (effective_digest == 0)
-            result.diagnostics.emplace_back(
-                "valid effective material key must have a digest");
-
-        MaterialResolutionResult first_resolution{};
-        first_resolution.status = MaterialResolutionStatus::Resolved;
-        first_resolution.source_definition_id_hash = 0x401u;
-        first_resolution.recipe_capability_hash = 0x402u;
-        first_resolution.source_surface_intent_id =
-            GetSurfaceStableID("HumanSkin");
-        first_resolution.requested_quality_class = 2;
-        first_resolution.effective_program = effective_key;
-        MaterialResolutionResult second_resolution = first_resolution;
-        second_resolution.source_definition_id_hash = 0x403u;
-        second_resolution.source_surface_intent_id =
-            GetSurfaceStableID("Wood");
-
-        if (!ValidateMaterialResolutionResult(first_resolution)
-         || !ValidateMaterialResolutionResult(second_resolution)
-         || first_resolution.effective_program.GetDigest()
-                != second_resolution.effective_program.GetDigest()
-         || first_resolution.GetProvenanceHash()
-                == second_resolution.GetProvenanceHash())
-        {
-            result.diagnostics.emplace_back(
-                "resolution provenance must not pollute effective program key");
-        }
-
-        ShaderVariantContract first_variant{};
-        first_variant.effective_material_program_digest =
-            effective_digest;
-        first_variant.resolved_module_graph_hash =
-            GetResolvedModuleGraphHash(graph_a);
-        first_variant.shader_interface_hash =
-            GetShaderInterfaceContractHash(interface_a);
-        first_variant.output_contract_hash =
-            GetOutputContractHash(output_a);
-        first_variant.compile_time_feature_hash = 0x501u;
-        first_variant.compiler_profile_hash = 0x502u;
-        first_variant.device_target_hash = 0x503u;
-        const ShaderVariantContract second_variant = first_variant;
-        if (GetShaderVariantContractHash(first_variant) == 0
-         || GetShaderVariantContractHash(first_variant)
-                != GetShaderVariantContractHash(second_variant))
-        {
-            result.diagnostics.emplace_back(
-                "equivalent effective programs must share variant identity");
-        }
-
-        PreparedMaterialProgramSet prepared_set{};
-        if (!BuildSingleProgramPreparedMaterialProgramSet(
-                first_resolution, prepared_set)
-         || !prepared_set.IsValidForCurrentForwardPath()
-         || !prepared_set.GetExecutableProgram()
-         || *prepared_set.GetExecutableProgram() != effective_key
-         || prepared_set.maximum_surface_profile_id
-                != effective_key.resolved_surface_profile_id
-         || prepared_set.quality_policy_hash
-                != GetSingleProgramPreparedSetPolicyHash()
-         || prepared_set.GetStableHash() == 0)
-        {
-            result.diagnostics.emplace_back(
-                "single-program prepared set must be valid");
-        }
-        prepared_set.programs.Add(effective_key);
-        if (prepared_set.IsValidForCurrentForwardPath()
-         || prepared_set.GetExecutableProgram())
-            result.diagnostics.emplace_back(
-                "current Forward path must reject multiple programs");
-
-        if (!BuildSingleProgramPreparedMaterialProgramSet(
-                first_resolution, prepared_set))
-        {
-            result.diagnostics.emplace_back(
-                "single-program prepared set rebuild failed");
-        }
-        else
-        {
-            prepared_set.maximum_surface_profile_id =
-                GetSurfaceStableID("AnotherProfile");
-            if (prepared_set.IsValidForCurrentForwardPath()
-             || prepared_set.GetExecutableProgram())
-            {
-                result.diagnostics.emplace_back(
-                    "prepared set maximum profile must match executable program");
-            }
-        }
-
-        MaterialResolutionResult unresolved{};
-        if (BuildSingleProgramPreparedMaterialProgramSet(
-                unresolved, prepared_set))
-        {
-            result.diagnostics.emplace_back(
-                "unresolved material must not produce a prepared set");
-        }
-
-        ResourceAcquirePlan resource_plan_a{};
-        resource_plan_a.effective_material_program_digest =
-            effective_digest;
-        resource_plan_a.resources.Add(
-            {
-                GetSurfaceStableID("resource.base_color"),
-                0x701u,
-                0x702u,
-                source_module,
-                ResourceAcquireReasonKind::Module,
-                DescriptorSemantic::MaterialTexture,
-                TextureSlot::BaseColor,
-                0,
-                SSBOType::UserDefined,
-                ResourceAcquireKind::Texture,
-                true,
-                false
-            });
-        resource_plan_a.resources.Add(
-            {
-                GetSurfaceStableID("resource.material_data"),
-                0x703u,
-                0x704u,
-                source_module,
-                ResourceAcquireReasonKind::Module,
-                DescriptorSemantic::MaterialDataSlotData,
-                TextureSlot::BaseColor,
-                0,
-                SSBOType::PBRSurface,
-                ResourceAcquireKind::StorageBuffer,
-                true,
-                false
-            });
-        ResourceAcquirePlan resource_plan_b{};
-        resource_plan_b.effective_material_program_digest =
-            effective_digest;
-        resource_plan_b.resources.Add(resource_plan_a.resources[1]);
-        resource_plan_b.resources.Add(resource_plan_a.resources[0]);
-        if (GetResourceAcquirePlanHash(resource_plan_a) == 0
-         || GetResourceAcquirePlanHash(resource_plan_a)
-                != GetResourceAcquirePlanHash(resource_plan_b))
-        {
-            result.diagnostics.emplace_back(
-                "resource plan serialization must ignore input order");
-        }
-
-        ResourceAcquirePlan changed_assets = resource_plan_a;
-        changed_assets.resources[0].asset_identity_hash ^= 1u;
-        if (GetResourceAcquirePlanHash(changed_assets)
-                == GetResourceAcquirePlanHash(resource_plan_a)
-         || GetShaderVariantContractHash(first_variant)
-                != GetShaderVariantContractHash(second_variant))
-        {
-            result.diagnostics.emplace_back(
-                "asset identity must affect only the resource plan");
-        }
-
-        hgl::ValueArray<hgl::uint8> effective_bytes;
-        if (!SerializeEffectiveMaterialProgramKey(
-                effective_key, effective_bytes)
-         || effective_bytes.GetCount() < 8
-         || effective_bytes[4]
-                != uint8_t(MaterialProgramContractSchemaVersion))
-        {
-            result.diagnostics.emplace_back(
-                "effective program serialization must include schema version");
-        }
 
         result.passed = result.diagnostics.empty();
         return result;
@@ -5044,7 +4505,7 @@ namespace
                 {
                     GLSLCodeModuleConditionDomain::Option,
                     GLSLCodeModuleConditionOperator::Equals,
-                    "Quality",
+                    "Mode",
                     "High"
                 }
             };
@@ -5053,7 +4514,7 @@ namespace
                 {
                     GLSLCodeModuleConditionDomain::Option,
                     GLSLCodeModuleConditionOperator::Equals,
-                    "Quality",
+                    "Mode",
                     "Low"
                 }
             };
@@ -5135,7 +4596,7 @@ namespace
                 {
                     GLSLCodeModuleConditionDomain::Option,
                     GLSLCodeModuleConditionOperator::Equals,
-                    "Quality",
+                    "Mode",
                     "High"
                 }
             };
@@ -6471,8 +5932,7 @@ int main(const int argc, char **argv)
     if (run_glsl) results.push_back(RunShadowMaterialModuleGraphCase());
     if (run_glsl) results.push_back(RunCapabilityResolverCase());
     if (run_interface) results.push_back(RunShaderSemanticRegistryCase());
-    if (run_materialization) results.push_back(RunSurfaceProfileModelCase());
-    if (run_materialization) results.push_back(RunActiveProfileBindingViewCase());
+    if (run_materialization) results.push_back(RunMaterialBindingViewCase());
     if (run_interface) results.push_back(RunMaterialVertexABICharacterizationCase());
     if (run_interface) results.push_back(RunMaterialSemanticABIParityCase());
     if (run_interface) results.push_back(RunMaterialSemanticResolverPreviewCase());

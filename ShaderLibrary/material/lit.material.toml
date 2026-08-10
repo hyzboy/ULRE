@@ -6,14 +6,6 @@ usage = "General"
 bootstrap = "None"
 provider_policy = "GeometryOnly"
 
-[surface_profile]
-intent = "GenericPBR"
-projections = [
-    { profile = "StandardPBR", projection = "Lit.ToStandardPBR" },
-    { profile = "BlinnPhongFakePBR", projection = "Lit.ToFakePBR" },
-    { profile = "Flat", projection = "Lit.ToFlat" }
-]
-
 [transform]
 source = "Vec3Position"
 mapping = "Passthrough3D"

@@ -6,23 +6,14 @@ namespace hgl::graph
 {
     ShaderProgramCreatePrecheckDecision RunShaderProgramCreatePrecheck(const mtl::ShaderProgramBuildSpec *mci,
                                                              const AnsiString &material_name,
-                                                             const std::function<ShaderProgram *(const AnsiString &)> &find_cached_material,
                                                              ShaderProgramCreatePrecheckResult &out_result)
     {
-        out_result.cached_material = nullptr;
         out_result.shader_map = nullptr;
 
         if (!mci)
         {
             GLogError("[ShaderProgramPrecheck] null build spec: name=%s", material_name.c_str());
             return ShaderProgramCreatePrecheckDecision::Abort;
-        }
-
-        if (find_cached_material)
-        {
-            out_result.cached_material = find_cached_material(material_name);
-            if (out_result.cached_material)
-                return ShaderProgramCreatePrecheckDecision::UseCached;
         }
 
         const ShaderCreateInfoMap &sci_map = mci->GetShaderMap();

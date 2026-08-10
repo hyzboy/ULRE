@@ -89,7 +89,6 @@ namespace hgl::graph::mtl
     {
         Option = 0,
         ShaderProgramPurpose,
-        SurfaceProfile,
         DeviceFeature
     };
 

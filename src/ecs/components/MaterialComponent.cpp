@@ -47,7 +47,7 @@ namespace hgl::ecs
         runtime_state = MaterialRuntimeState::Unresolved;
         ClearMaterializationInstanceData();
         ClearResolvedSSBOBindings();
-        ClearActiveProfileBindingView();
+        ClearMaterialBindingView();
         ++runtime_revision;
     }
 
@@ -58,7 +58,7 @@ namespace hgl::ecs
         runtime_state = MaterialRuntimeState::Unresolved;
         ClearMaterializationInstanceData();
         ClearResolvedSSBOBindings();
-        ClearActiveProfileBindingView();
+        ClearMaterialBindingView();
         ++runtime_revision;
     }
 
@@ -78,7 +78,7 @@ namespace hgl::ecs
         runtime_state = MaterialRuntimeState::Failed;
         ClearMaterializationInstanceData();
         ClearResolvedSSBOBindings();
-        ClearActiveProfileBindingView();
+        ClearMaterialBindingView();
         ++runtime_revision;
     }
 
@@ -112,9 +112,9 @@ namespace hgl::ecs
         data_index_values.clear();
     }
 
-    void MaterialComponent::ClearActiveProfileBindingView()
+    void MaterialComponent::ClearMaterialBindingView()
     {
-        active_profile_binding_view = {};
+        material_binding_view = {};
         ClearActiveResourceAcquirePlan();
     }
 
@@ -193,7 +193,7 @@ namespace hgl::ecs
         recipe_hash = 0;
         ClearMaterializationInstanceData();
         ClearResolvedSSBOBindings();
-        ClearActiveProfileBindingView();
+        ClearMaterialBindingView();
     }
 
     void MaterialComponent::OnDetach()
@@ -207,6 +207,6 @@ namespace hgl::ecs
         recipe_hash = 0;
         ClearMaterializationInstanceData();
         ClearResolvedSSBOBindings();
-        ClearActiveProfileBindingView();
+        ClearMaterialBindingView();
     }
 }//namespace hgl::ecs

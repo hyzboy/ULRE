@@ -11,7 +11,6 @@ namespace hgl::graph::mtl
         constexpr uint32 ResolvedModuleGraphTag = 0x31474D52u; // RMG1
         constexpr uint32 ShaderInterfaceTag = 0x31494653u;     // SFI1
         constexpr uint32 OutputContractTag = 0x3154554Fu;      // OUT1
-        constexpr uint32 ShaderVariantTag = 0x31525653u;       // SVR1
 
         bool HasModule(
             const ResolvedModuleGraph &graph,
@@ -577,31 +576,6 @@ namespace hgl::graph::mtl
         return true;
     }
 
-    bool SerializeShaderVariantContract(
-        const ShaderVariantContract &contract,
-        ValueArray<uint8> &out_bytes)
-    {
-        out_bytes.Clear();
-        if (contract.schema_version != CanonicalShaderContractSchemaVersion
-         || contract.effective_material_program_digest == 0
-         || contract.resolved_module_graph_hash == 0
-         || contract.shader_interface_hash == 0
-         || contract.output_contract_hash == 0)
-            return false;
-
-        CanonicalContractWriter writer(out_bytes);
-        writer.WriteU32(ShaderVariantTag);
-        writer.WriteU32(contract.schema_version);
-        writer.WriteU64(contract.effective_material_program_digest);
-        writer.WriteU64(contract.resolved_module_graph_hash);
-        writer.WriteU64(contract.shader_interface_hash);
-        writer.WriteU64(contract.output_contract_hash);
-        writer.WriteU64(contract.compile_time_feature_hash);
-        writer.WriteU64(contract.compiler_profile_hash);
-        writer.WriteU64(contract.device_target_hash);
-        return true;
-    }
-
     uint64 GetResolvedModuleGraphHash(
         const ResolvedModuleGraph &graph) noexcept
     {
@@ -625,11 +599,4 @@ namespace hgl::graph::mtl
             ? contract_detail::HashCanonicalBytes(bytes) : 0;
     }
 
-    uint64 GetShaderVariantContractHash(
-        const ShaderVariantContract &contract) noexcept
-    {
-        ValueArray<uint8> bytes;
-        return SerializeShaderVariantContract(contract, bytes)
-            ? contract_detail::HashCanonicalBytes(bytes) : 0;
-    }
 }

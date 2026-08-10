@@ -443,61 +443,6 @@ namespace hgl::graph::mtl
             return false;
         }
 
-        bool ParseSurfaceProfileProjection(
-            const toml::value &root,
-            MaterialDefinition &definition)
-        {
-            if (!root.contains("surface_profile"))
-                return true;
-
-            const toml::value &surface_profile = root.at("surface_profile");
-            if (!surface_profile.is_table())
-                return false;
-
-            std::string intent;
-            if (!ReadRequiredString(surface_profile, "intent", intent)
-             || !surface_profile.contains("projections")
-             || !surface_profile.at("projections").is_array())
-                return false;
-
-            definition.surface_intent_id =
-                GetSurfaceStableID(intent.c_str());
-            const auto &projections =
-                surface_profile.at("projections").as_array();
-            if (projections.empty())
-                return false;
-
-            for (const auto &value : projections)
-            {
-                std::string profile;
-                std::string projection;
-                if (!ReadRequiredString(value, "profile", profile)
-                 || !ReadRequiredString(value, "projection", projection))
-                    return false;
-
-                uint16 schema_version = SurfaceProfileSchemaVersion;
-                if (value.contains("schema_version"))
-                {
-                    if (!value.at("schema_version").is_integer())
-                        return false;
-                    const auto parsed_version =
-                        value.at("schema_version").as_integer();
-                    if (parsed_version <= 0
-                     || parsed_version > SurfaceProfileSchemaVersion)
-                        return false;
-                    schema_version = static_cast<uint16>(parsed_version);
-                }
-
-                definition.surface_profile_projections.Add(
-                    MakeMaterialSurfaceProfileProjection(
-                        profile.c_str(),
-                        projection.c_str(),
-                        schema_version));
-            }
-
-            return true;
-        }
-
         bool ParseDefinition(const toml::value &root, MaterialDefinitionFileData &out)
         {
             std::string id;
@@ -522,8 +467,6 @@ namespace hgl::graph::mtl
             out.definition.definition_id = id;
             out.definition.definition_name = name;
             out.definition.source_kind = MaterialDefinitionSourceKind::File;
-            if (!ParseSurfaceProfileProjection(root, out.definition))
-                return false;
             if (root.contains("transform"))
             {
                 if (!ParseTransformGraph(

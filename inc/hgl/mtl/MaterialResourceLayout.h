@@ -13,6 +13,8 @@ namespace hgl::graph::mtl
 {
     struct MaterialResourceRequirement
     {
+        uint64 logical_resource_id = 0;
+        uint64 resource_schema_id = 0;
         DescriptorSemantic semantic = DescriptorSemantic::Unknown;
         DescriptorSemanticLayer semantic_layer = DescriptorSemanticLayer::Unknown;
         DescriptorSetType set_type = DescriptorSetType::Unknow;
@@ -51,7 +53,9 @@ namespace hgl::graph::mtl
         MaterialResourceRequirement() = default;
 
         MaterialResourceRequirement(const MaterialResourceRequirement &rhs)
-            : semantic(rhs.semantic)
+            : logical_resource_id(rhs.logical_resource_id)
+            , resource_schema_id(rhs.resource_schema_id)
+            , semantic(rhs.semantic)
             , semantic_layer(rhs.semantic_layer)
             , set_type(rhs.set_type)
             , kind(rhs.kind)
@@ -77,6 +81,8 @@ namespace hgl::graph::mtl
             if (this == &rhs)
                 return *this;
 
+            logical_resource_id = rhs.logical_resource_id;
+            resource_schema_id = rhs.resource_schema_id;
             semantic = rhs.semantic;
             semantic_layer = rhs.semantic_layer;
             set_type = rhs.set_type;
@@ -100,7 +106,9 @@ namespace hgl::graph::mtl
         }
 
         MaterialResourceRequirement(MaterialResourceRequirement &&rhs) noexcept
-            : semantic(rhs.semantic)
+            : logical_resource_id(rhs.logical_resource_id)
+            , resource_schema_id(rhs.resource_schema_id)
+            , semantic(rhs.semantic)
             , semantic_layer(rhs.semantic_layer)
             , set_type(rhs.set_type)
             , kind(rhs.kind)
@@ -126,6 +134,8 @@ namespace hgl::graph::mtl
             if (this == &rhs)
                 return *this;
 
+            logical_resource_id = rhs.logical_resource_id;
+            resource_schema_id = rhs.resource_schema_id;
             semantic = rhs.semantic;
             semantic_layer = rhs.semantic_layer;
             set_type = rhs.set_type;
@@ -367,6 +377,51 @@ namespace hgl::graph::mtl
                 req.ssbo_type = SSBOType::TransformIndexRows;
             }
 
+            if (req.name && *req.name)
+            {
+                req.logical_resource_id = hgl::hash::FNV1aAppendBytes(
+                    hgl::hash::FNV1aInit<uint64>(),
+                    req.name,
+                    std::strlen(req.name));
+            }
+            else
+            {
+                uint64 hash = hgl::hash::FNV1aInit<uint64>();
+                hash = hgl::hash::FNV1aAppendValueBytes(
+                    hash, req.semantic);
+                hash = hgl::hash::FNV1aAppendValueBytes(
+                    hash, req.semantic_layer);
+                hash = hgl::hash::FNV1aAppendValueBytes(
+                    hash, req.set_type);
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, req.kind);
+                hash = hgl::hash::FNV1aAppendValueBytes(
+                    hash, req.texture_slot);
+                hash = hgl::hash::FNV1aAppendValueBytes(
+                    hash, req.data_slot);
+                req.logical_resource_id =
+                    hgl::hash::FNV1aAppendValueBytes(
+                        hash, req.ssbo_type);
+            }
+
+            const char *schema_name =
+                req.struct_name && *req.struct_name
+                    ? req.struct_name : req.glsl_type;
+            if (schema_name && *schema_name)
+            {
+                req.resource_schema_id = hgl::hash::FNV1aAppendBytes(
+                    hgl::hash::FNV1aInit<uint64>(),
+                    schema_name,
+                    std::strlen(schema_name));
+            }
+            else
+            {
+                uint64 hash = hgl::hash::FNV1aInit<uint64>();
+                hash = hgl::hash::FNV1aAppendValueBytes(hash, req.kind);
+                req.resource_schema_id =
+                    hgl::hash::FNV1aAppendValueBytes(
+                        hash, req.ssbo_type);
+            }
+
             contract.requirements.push_back(req);
         }
 
@@ -377,7 +432,7 @@ namespace hgl::graph::mtl
         const MaterialResourceLayout &layout) noexcept
     {
         uint64 hash = hgl::hash::FNV1aInit<uint64>();
-        constexpr uint32 contract_version = 3u;
+        constexpr uint32 contract_version = 4u;
         hash = hgl::hash::FNV1aAppendValueBytes(hash, contract_version);
         hash = hgl::hash::FNV1aAppendValueBytes(
             hash, static_cast<uint32>(layout.requirements.size()));
@@ -394,6 +449,10 @@ namespace hgl::graph::mtl
 
         for (const auto &req : layout.requirements)
         {
+            hash = hgl::hash::FNV1aAppendValueBytes(
+                hash, req.logical_resource_id);
+            hash = hgl::hash::FNV1aAppendValueBytes(
+                hash, req.resource_schema_id);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, req.semantic);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, req.semantic_layer);
             hash = hgl::hash::FNV1aAppendValueBytes(hash, req.set_type);
@@ -459,6 +518,15 @@ namespace hgl::graph::mtl
         for (const MaterialResourceRequirement &req : contract.requirements)
         {
             const std::string context = BuildEntryContext(req);
+
+            if (req.logical_resource_id == 0
+             || req.resource_schema_id == 0)
+            {
+                diagnostics.emplace_back(
+                    "Descriptor canonical resource identity is empty ("
+                    + context + ").");
+                continue;
+            }
 
             if (req.semantic == DescriptorSemantic::Unknown)
             {
@@ -573,16 +641,22 @@ namespace hgl::graph::mtl
                 const MaterialResourceRequirement &rhs = contract.requirements[j];
                 const bool same_name =
                     lhs.name && rhs.name && std::strcmp(lhs.name, rhs.name) == 0;
+                const bool same_logical_resource =
+                    lhs.logical_resource_id == rhs.logical_resource_id;
                 const bool same_semantic_key =
                     lhs.semantic == rhs.semantic
                  && lhs.texture_slot == rhs.texture_slot
                  && lhs.data_slot == rhs.data_slot;
 
-                if (!same_name && !same_semantic_key)
+                if (!same_name
+                 && !same_logical_resource
+                 && !same_semantic_key)
                     continue;
 
                 const bool same_identity =
                     same_name
+                 && same_logical_resource
+                 && lhs.resource_schema_id == rhs.resource_schema_id
                  && lhs.semantic == rhs.semantic
                  && lhs.semantic_layer == rhs.semantic_layer
                  && lhs.set_type == rhs.set_type

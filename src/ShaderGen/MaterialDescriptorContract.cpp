@@ -342,6 +342,10 @@ namespace hgl::graph::mtl
                 out_layout.requirements[i];
             const MaterialDescriptorContractEntry &entry =
                 contract.entries[i];
+            requirement.logical_resource_id =
+                entry.canonical.logical_resource_id;
+            requirement.resource_schema_id =
+                entry.canonical.resource_schema_id;
             requirement.owned_name = requirement.name
                 ? requirement.name : entry.name;
             requirement.owned_struct_name = requirement.struct_name

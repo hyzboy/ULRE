@@ -10,7 +10,6 @@
 #include <hgl/shadergen/ShaderProgramBuildSpec.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
 #include <hgl/shadergen/ShaderProgramArtifactBuilder.h>
-#include <hgl/shadergen/ActiveProfileBindingViewBuilder.h>
 #include <hgl/graph/ShaderBufferSources.h>
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/common/RenderOptions.h>
@@ -1008,36 +1007,6 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     }
 
     mci->SetMaterialResourceLayout(material_resource_layout);
-    if ((config.effective_program == nullptr)
-            != (config.material_resolution == nullptr)
-     || (config.effective_program == nullptr)
-            != (config.material_recipe == nullptr))
-        return FailAfterMci(
-            "incomplete Effective Material Program contract");
-    if (config.effective_program)
-    {
-        PreparedMaterialProgramSet program_set{};
-        ActiveProfileBindingView binding_view{};
-        ActiveProfileBindingViewBuildDiagnostic binding_diagnostic{};
-        if (config.material_resolution->effective_program
-                != *config.effective_program
-         || !BuildSingleProgramPreparedMaterialProgramSet(
-                *config.material_resolution, program_set)
-         || !BuildActiveProfileBindingView(
-                *config.material_recipe,
-                material_resource_layout,
-                program_set,
-                binding_view,
-                binding_diagnostic)
-         || !mci->SetPreparedMaterialProgramSet(
-                program_set,
-                *config.material_resolution,
-                binding_view))
-        {
-            return FailAfterMci(
-                "invalid active-profile material contract");
-        }
-    }
     if (mci->HasProgramLink())
     {
         ShaderProgramArtifactMetadata metadata{};

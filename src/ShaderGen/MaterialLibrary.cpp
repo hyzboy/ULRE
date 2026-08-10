@@ -10,7 +10,6 @@
 #include <hgl/shadergen/ShaderProgramBuildSpec.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/shadergen/ShaderKeyUtility.h>
-#include <hgl/shadergen/EffectiveMaterialProgramBuilder.h>
 #include <hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
 #include <hgl/log/Log.h>
 #include "3d/DefinitionDescriptorBuilder3D.h"
@@ -618,24 +617,7 @@ namespace
         resolved_program_link.render_target_hash =
             GetOutputContractHash(output_contract);
         resolved_program_link.compiler_hash = compiler_hash;
-        EffectiveMaterialProgramKey effective_program{};
-        MaterialResolutionResult material_resolution{};
-        if (!BuildEffectiveMaterialProgram(
-                definition,
-                request,
-                resolved_program_link,
-                effective_program,
-                material_resolution))
-        {
-            GLogError(
-                "[ShaderGen] Effective Material Program build failed: name=%s",
-                definition.definition_name.c_str());
-            return nullptr;
-        }
         config.program_link = &resolved_program_link;
-        config.effective_program = &effective_program;
-        config.material_resolution = &material_resolution;
-        config.material_recipe = &request.recipe;
         config.data_slot_decls =
             depth_purpose
          && !coverage_contract.requires_material_data

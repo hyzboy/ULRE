@@ -364,8 +364,6 @@ namespace hgl::graph::mtl
             else if (std::strcmp(token, "ShaderProgramPurpose") == 0)
                 out_domain =
                     GLSLCodeModuleConditionDomain::ShaderProgramPurpose;
-            else if (std::strcmp(token, "SurfaceProfile") == 0)
-                out_domain = GLSLCodeModuleConditionDomain::SurfaceProfile;
             else if (std::strcmp(token, "DeviceFeature") == 0)
                 out_domain = GLSLCodeModuleConditionDomain::DeviceFeature;
             else
