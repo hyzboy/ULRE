@@ -878,7 +878,7 @@ namespace hgl::ecs
 
         graph::mtl::MaterialRecipe material_binding_recipe{};
         graph::mtl::ResolvedBindingTable binding_view{};
-        graph::mtl::MaterialBindingViewBuildDiagnostic
+        graph::mtl::BindingBuildDiagnostic
             binding_diagnostic{};
         if (!BuildEffectiveMaterialRecipe(
                 primitive_comp,

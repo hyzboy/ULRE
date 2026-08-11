@@ -455,7 +455,7 @@ namespace
         recipe.ssbo_assets.push_back(data_binding);
 
         ResolvedBindingTable binding_view{};
-        MaterialBindingViewBuildDiagnostic diagnostic{};
+        BindingBuildDiagnostic diagnostic{};
         MaterialRecipe equivalent_binding_recipe = recipe;
         equivalent_binding_recipe.recipe_name = "DifferentName";
         equivalent_binding_recipe.mtl_def_id = "DifferentDefinition";
@@ -727,7 +727,7 @@ namespace
                 duplicate_view,
                 diagnostic)
          || diagnostic.error
-                != MaterialBindingViewBuildError::
+                != BindingBuildError::
                     DuplicateRecipeTexture)
         {
             result.diagnostics.emplace_back(

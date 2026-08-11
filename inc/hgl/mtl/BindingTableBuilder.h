@@ -22,14 +22,14 @@ namespace hgl::graph::mtl
         const MaterialDescriptorContract &layout,
         const shadergen::ShaderProgramKey &program_key,
         ResolvedBindingTable &out_view,
-        MaterialBindingViewBuildDiagnostic &out_diagnostic) noexcept;
+        BindingBuildDiagnostic &out_diagnostic) noexcept;
 
     bool BuildBindingTable(
         const MaterialRecipe &recipe,
         const ShaderResourceSchema &layout,
         const shadergen::ShaderProgramKey &program_key,
         ResolvedBindingTable &out_view,
-        MaterialBindingViewBuildDiagnostic &out_diagnostic) noexcept;
+        BindingBuildDiagnostic &out_diagnostic) noexcept;
 
     bool BuildBindingTableRecipe(
         const MaterialRecipe &source_recipe,

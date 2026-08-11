@@ -177,18 +177,18 @@ namespace hgl::graph::mtl
     }
 
     const char *GetMaterialBindingViewBuildErrorName(
-        const MaterialBindingViewBuildError error) noexcept
+        const BindingBuildError error) noexcept
     {
         switch (error)
         {
-        case MaterialBindingViewBuildError::None: return "None";
-        case MaterialBindingViewBuildError::InvalidShaderProgramKey:
+        case BindingBuildError::None: return "None";
+        case BindingBuildError::InvalidShaderProgramKey:
             return "InvalidShaderProgramKey";
-        case MaterialBindingViewBuildError::DuplicateRecipeTexture:
+        case BindingBuildError::DuplicateRecipeTexture:
             return "DuplicateRecipeTexture";
-        case MaterialBindingViewBuildError::DuplicateRecipeData:
+        case BindingBuildError::DuplicateRecipeData:
             return "DuplicateRecipeData";
-        case MaterialBindingViewBuildError::InvalidBindingView:
+        case BindingBuildError::InvalidBindingView:
             return "InvalidBindingView";
         }
         return "Unknown";

@@ -14,8 +14,8 @@ namespace hgl::graph::mtl
     namespace
     {
         bool SetBuildFailure(
-            MaterialBindingViewBuildDiagnostic &diagnostic,
-            const MaterialBindingViewBuildError error,
+            BindingBuildDiagnostic &diagnostic,
+            const BindingBuildError error,
             const TextureSlot texture_slot = TextureSlot::BaseColor,
             const uint32 data_slot = 0,
             const SSBOType ssbo_type = SSBOType::UserDefined) noexcept
@@ -150,7 +150,7 @@ namespace hgl::graph::mtl
         int FindRecipeTexture(
             const MaterialRecipe &recipe,
             const TextureSlot slot,
-            MaterialBindingViewBuildDiagnostic &diagnostic) noexcept
+            BindingBuildDiagnostic &diagnostic) noexcept
         {
             int found = -1;
             for (int i = 0;
@@ -163,7 +163,7 @@ namespace hgl::graph::mtl
                 {
                     SetBuildFailure(
                         diagnostic,
-                        MaterialBindingViewBuildError::DuplicateRecipeTexture,
+                        BindingBuildError::DuplicateRecipeTexture,
                         slot);
                     return -2;
                 }
@@ -176,7 +176,7 @@ namespace hgl::graph::mtl
             const MaterialRecipe &recipe,
             const uint32 data_slot,
             const SSBOType ssbo_type,
-            MaterialBindingViewBuildDiagnostic &diagnostic) noexcept
+            BindingBuildDiagnostic &diagnostic) noexcept
         {
             int found = -1;
             for (int i = 0;
@@ -192,7 +192,7 @@ namespace hgl::graph::mtl
                 {
                     SetBuildFailure(
                         diagnostic,
-                        MaterialBindingViewBuildError::DuplicateRecipeData,
+                        BindingBuildError::DuplicateRecipeData,
                         TextureSlot::BaseColor,
                         data_slot,
                         ssbo_type);
@@ -270,14 +270,14 @@ namespace hgl::graph::mtl
             const ValueArray<ShaderDescriptorContractEntry> &requirements,
             const uint64 program_key_digest,
             ResolvedBindingTable &out_view,
-            MaterialBindingViewBuildDiagnostic &out_diagnostic) noexcept
+            BindingBuildDiagnostic &out_diagnostic) noexcept
         {
             out_view = {};
             out_diagnostic = {};
             if (program_key_digest == 0)
                 return SetBuildFailure(
                     out_diagnostic,
-                    MaterialBindingViewBuildError::InvalidShaderProgramKey);
+                    BindingBuildError::InvalidShaderProgramKey);
 
             out_view.program_key_digest = program_key_digest;
             out_view.source_binding_hash = GetMaterialBindingSourceHash(recipe);
@@ -316,7 +316,7 @@ namespace hgl::graph::mtl
                          && logical_resource_id != 0)
                             return SetBuildFailure(
                                 out_diagnostic,
-                                MaterialBindingViewBuildError::InvalidBindingView);
+                                BindingBuildError::InvalidBindingView);
                         if (binding->semantic == DescriptorSemantic::MaterialTexture
                          && entry.semantic == DescriptorSemantic::MaterialSampler)
                             binding->semantic = DescriptorSemantic::MaterialSampler;
@@ -350,7 +350,7 @@ namespace hgl::graph::mtl
                          && logical_resource_id != 0)
                             return SetBuildFailure(
                                 out_diagnostic,
-                                MaterialBindingViewBuildError::InvalidBindingView);
+                                BindingBuildError::InvalidBindingView);
                         binding->required = binding->required || entry.required;
                         binding->allow_fallback = binding->allow_fallback && entry.allow_fallback;
                     }
@@ -506,7 +506,7 @@ namespace hgl::graph::mtl
             if (!out_view.IsValid())
                 return SetBuildFailure(
                     out_diagnostic,
-                    MaterialBindingViewBuildError::InvalidBindingView);
+                    BindingBuildError::InvalidBindingView);
             return true;
         }
 
@@ -578,13 +578,13 @@ namespace hgl::graph::mtl
         const MaterialDescriptorContract &layout,
         const shadergen::ShaderProgramKey &program_key,
         ResolvedBindingTable &out_view,
-        MaterialBindingViewBuildDiagnostic &out_diagnostic) noexcept
+        BindingBuildDiagnostic &out_diagnostic) noexcept
     {
         ValueArray<ShaderDescriptorContractEntry> requirements;
         if (!AppendDescriptorRequirements(layout, requirements))
             return SetBuildFailure(
                 out_diagnostic,
-                MaterialBindingViewBuildError::InvalidBindingView);
+                BindingBuildError::InvalidBindingView);
         return BuildBindingTableFromRequirements(
             recipe,
             requirements,
@@ -598,13 +598,13 @@ namespace hgl::graph::mtl
         const ShaderResourceSchema &layout,
         const shadergen::ShaderProgramKey &program_key,
         ResolvedBindingTable &out_view,
-        MaterialBindingViewBuildDiagnostic &out_diagnostic) noexcept
+        BindingBuildDiagnostic &out_diagnostic) noexcept
     {
         ValueArray<ShaderDescriptorContractEntry> requirements;
         if (!AppendLayoutRequirements(layout, requirements))
             return SetBuildFailure(
                 out_diagnostic,
-                MaterialBindingViewBuildError::InvalidBindingView);
+                BindingBuildError::InvalidBindingView);
         return BuildBindingTableFromRequirements(
             recipe,
             requirements,

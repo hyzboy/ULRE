@@ -159,7 +159,7 @@ namespace hgl::graph::mtl
         ValueArray<ResourceAcquirePlanEntry> resources;
     };
 
-    enum class MaterialBindingViewBuildError : uint8
+    enum class BindingBuildError : uint8
     {
         None = 0,
         InvalidShaderProgramKey,
@@ -168,16 +168,16 @@ namespace hgl::graph::mtl
         InvalidBindingView
     };
 
-    struct MaterialBindingViewBuildDiagnostic
+    struct BindingBuildDiagnostic
     {
-        MaterialBindingViewBuildError error = MaterialBindingViewBuildError::None;
+        BindingBuildError error = BindingBuildError::None;
         TextureSlot texture_slot = TextureSlot::BaseColor;
         uint32 data_slot = 0;
         SSBOType ssbo_type = SSBOType::UserDefined;
     };
 
     const char *GetMaterialBindingViewBuildErrorName(
-        MaterialBindingViewBuildError error) noexcept;
+        BindingBuildError error) noexcept;
     const char *GetMaterialBindingSourceName(
         MaterialBindingSource source) noexcept;
 
