@@ -5,7 +5,7 @@ namespace hgl::graph::mtl {}
 #include <hgl/mtl/SurfaceType.h>
 #include <hgl/mtl/BlendMode.h>
 #include <hgl/mtl/PassType.h>
-#include <hgl/shadergen/NewShaderPermutationKey.h>
+#include <hgl/shadergen/ShaderPermutationKey.h>
 #include <hgl/shadergen/MaterialStageInterface.h>
 #include <hgl/shadergen/MaterialOutputContract.h>
 #include <hgl/shadergen/MaterialCoverageContract.h>
@@ -22,7 +22,7 @@ namespace hgl::graph::shadergen
      *   1. 输入：SurfaceType, BlendMode, PassType
      *   2. 查表选择 FS Compositor Template 文件路径
      *   3. 读取模板文件内容
-     *   4. 注入 #define 宏（NewShaderPermutationKey::AppendGLSLDefines()）
+     *   4. 注入 #define 宏（ShaderPermutationKey::AppendGLSLDefines()）
      *   5. 替换 #include SURFACE_FUNCTION_FILE 为实际路径
      *   6. 返回完整 FS GLSL 字符串
      */
@@ -91,7 +91,7 @@ namespace hgl::graph::shadergen
 
         std::string GetCompositorFSPath(SurfaceType surface, PassType pass) const;
         std::string GetSurfaceFunctionPath(SurfaceType surface) const;
-        std::string InjectDefines(const std::string &source, const NewShaderPermutationKey &key, const CompositorModuleOptions &module_options) const;
+        std::string InjectDefines(const std::string &source, const ShaderPermutationKey &key, const CompositorModuleOptions &module_options) const;
         std::string ReplaceLightingModuleIncludes(const std::string &source, const CompositorModuleOptions &module_options) const;
         std::string ReplaceSurfaceInclude(const std::string &source, const std::string &surface_path) const;
         bool ApplyFragmentInputContract(

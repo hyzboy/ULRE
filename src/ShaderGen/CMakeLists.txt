@@ -149,8 +149,8 @@ SOURCE_GROUP("Compositor" FILES ${COMPOSITOR_HEADER_FILES}
 SET(NEW_MTL_TYPE_FILES  ${ROOT_INCLUDE_PATH}/hgl/mtl/SurfaceType.h
                         ${ROOT_INCLUDE_PATH}/hgl/mtl/BlendMode.h
                         ${ROOT_INCLUDE_PATH}/hgl/mtl/PassType.h
-                        ${SHADERGEN_INCLUDE_PATH}/NewShaderPermutationKey.h
-                        NewShaderPermutationKey.cpp
+                        ${SHADERGEN_INCLUDE_PATH}/ShaderPermutationKey.h
+                        ShaderPermutationKey.cpp
 )
 
 SOURCE_GROUP("New Material Types" FILES ${NEW_MTL_TYPE_FILES})

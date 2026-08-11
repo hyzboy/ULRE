@@ -76,7 +76,7 @@ namespace hgl::graph::shadergen
 
     std::string CompositorAssembler::InjectDefines(
         const std::string &source,
-        const NewShaderPermutationKey &key,
+        const ShaderPermutationKey &key,
         const CompositorModuleOptions &module_options) const
     {
         std::string defines;
@@ -327,7 +327,7 @@ namespace hgl::graph::shadergen
         AssembleResult result{};
 
         // 1. 构建 permutation key
-        NewShaderPermutationKey key;
+        ShaderPermutationKey key;
         key.SetSurfaceType(surface);
 
         // 2. Resolve the canonical fragment source/template path.

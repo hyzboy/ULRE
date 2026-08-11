@@ -1,11 +1,11 @@
-/// NewShaderPermutationKey.cpp — 新排列 key → GLSL #define 映射实现
+/// ShaderPermutationKey.cpp — 新排列 key → GLSL #define 映射实现
 
-#include <hgl/shadergen/NewShaderPermutationKey.h>
+#include <hgl/shadergen/ShaderPermutationKey.h>
 #include<stdio.h>
 
 namespace hgl::graph::shadergen{
 
-void NewShaderPermutationKey::AppendGLSLDefines(std::string &out) const
+void ShaderPermutationKey::AppendGLSLDefines(std::string &out) const
 {
     char buf[512];
     snprintf(buf, sizeof(buf),

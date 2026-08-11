@@ -12,11 +12,11 @@ namespace hgl::graph::shadergen
     //   [6:4]   Flags        (3 bit: fog/skinning/wind etc.)
 
     //   [1:0]   Reserved     (2 bit)
-    struct NewShaderPermutationKey
+    struct ShaderPermutationKey
     {
         uint16 packed;
 
-        NewShaderPermutationKey() : packed(0) {}
+        ShaderPermutationKey() : packed(0) {}
 
         void SetSurfaceType(SurfaceType st)     { packed = (packed & 0x0FFF) | (static_cast<uint16>(st) << 12); }
         void SetShadowMode(uint8 sm)             { packed = (packed & 0xFE7F) | ((sm & 0x3) << 7); }
@@ -26,8 +26,8 @@ namespace hgl::graph::shadergen
         uint8           GetShadowMode()  const   { return (packed >> 7) & 0x3; }
         uint8           GetFlags()       const   { return (packed >> 4) & 0x7; }
 
-        bool operator==(const NewShaderPermutationKey& o) const { return packed == o.packed; }
-        bool operator<(const NewShaderPermutationKey& o) const { return packed < o.packed; }
+        bool operator==(const ShaderPermutationKey& o) const { return packed == o.packed; }
+        bool operator<(const ShaderPermutationKey& o) const { return packed < o.packed; }
 
         void AppendGLSLDefines(std::string &out) const;
     };
