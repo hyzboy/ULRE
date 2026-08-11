@@ -49,7 +49,7 @@ namespace hgl::graph::shadergen
         hgl::hash::FNV1aHasher64 interface_hasher;
         interface_hasher << link.vertex_stage.interface_hash
                          << link.fragment_stage.interface_hash
-                         << HashMaterialResourceLayout(
+                         << HashShaderResourceSchema(
                              build_spec.GetShaderResourceSchema());
         const uint64 interface_hash = interface_hasher;
 

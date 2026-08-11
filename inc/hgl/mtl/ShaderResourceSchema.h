@@ -423,16 +423,16 @@ namespace hgl::graph::mtl
         return contract;
     }
 
-    inline uint64 HashMaterialResourceLayout(
-        const ShaderResourceSchema &layout) noexcept
+    inline uint64 HashShaderResourceSchema(
+        const ShaderResourceSchema &schema) noexcept
     {
         hgl::hash::FNV1aHasher64 h;
 
         constexpr uint32 contract_version = 4u;
         h << contract_version
-          << static_cast<uint32>(layout.resources.size());
+          << static_cast<uint32>(schema.resources.size());
 
-        for (const auto &req : layout.resources)
+        for (const auto &req : schema.resources)
         {
             h << req.logical_resource_id
               << req.resource_schema_id

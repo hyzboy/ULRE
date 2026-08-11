@@ -580,19 +580,19 @@ inline uint64 HashResourceContract(
 {
     hgl::hash::FNV1aHasher64 h;
     constexpr uint32 contract_version = 2u;
-    const ShaderResourceSchema layout =
+    const ShaderResourceSchema schema =
         BuildShaderResourceSchema(entries.data(), static_cast<uint32>(entries.size()));
     h << contract_version
       << manifest_hash
-      << HashMaterialResourceLayout(layout);
+      << HashShaderResourceSchema(schema);
     return h;
 }
 
 inline void ApplyMaterialDefinitionTexturePolicy(
     const MaterialDefinition &definition,
-    ShaderResourceSchema &layout)
+    ShaderResourceSchema &schema)
 {
-    for (auto &requirement : layout.resources)
+    for (auto &requirement : schema.resources)
     {
         if (requirement.semantic != DescriptorSemantic::MaterialTexture
          && requirement.semantic != DescriptorSemantic::MaterialSampler)
@@ -640,7 +640,7 @@ inline uint64 HashResourceContract(
     ApplyMaterialDefinitionTexturePolicy(definition, layout);
     h << contract_version
       << manifest_hash
-      << HashMaterialResourceLayout(layout);
+      << HashShaderResourceSchema(layout);
     return h;
 }
 
