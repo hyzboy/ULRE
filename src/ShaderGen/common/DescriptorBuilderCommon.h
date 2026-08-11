@@ -1,6 +1,6 @@
 #pragma once
 
-#include <hgl/mtl/FixedDescriptorEntry.h>
+#include <hgl/mtl/SerializedDescriptorEntry.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/graph/glsl/ShaderResourceManifest.h>
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
@@ -32,7 +32,7 @@ inline const char *GetTextureNameBySlot(const TextureSlot slot) noexcept
     return "TextureUnknown";
 }
 
-inline void PushViewport(std::vector<FixedDescriptorEntry> &v, const uint32_t stage_flags)
+inline void PushViewport(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
     v.push_back({
         DescriptorSetType::Scene, DescriptorKind::UBO, stage_flags,
@@ -41,7 +41,7 @@ inline void PushViewport(std::vector<FixedDescriptorEntry> &v, const uint32_t st
     });
 }
 
-inline void PushCamera(std::vector<FixedDescriptorEntry> &v, const uint32_t stage_flags)
+inline void PushCamera(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
     v.push_back({
         DescriptorSetType::Scene, DescriptorKind::UBO, stage_flags,
@@ -50,7 +50,7 @@ inline void PushCamera(std::vector<FixedDescriptorEntry> &v, const uint32_t stag
     });
 }
 
-inline void PushSky(std::vector<FixedDescriptorEntry> &v, const uint32_t stage_flags)
+inline void PushSky(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
     v.push_back({
         DescriptorSetType::Scene, DescriptorKind::UBO, stage_flags,
@@ -59,7 +59,7 @@ inline void PushSky(std::vector<FixedDescriptorEntry> &v, const uint32_t stage_f
     });
 }
 
-inline void PushMaterialColorPalette(std::vector<FixedDescriptorEntry> &v,
+inline void PushMaterialColorPalette(std::vector<SerializedDescriptorEntry> &v,
                                      const uint32_t stage_flags)
 {
     v.push_back({
@@ -71,7 +71,7 @@ inline void PushMaterialColorPalette(std::vector<FixedDescriptorEntry> &v,
 }
 
 inline void MergeUBODescriptor(
-    std::vector<FixedDescriptorEntry> &v,
+    std::vector<SerializedDescriptorEntry> &v,
     const UBODescriptorSemantic semantic,
     const uint32_t stage_flags,
     const bool has_policy = false,
@@ -113,7 +113,7 @@ inline void MergeUBODescriptor(
     }
     if (has_policy && !v.empty())
     {
-        FixedDescriptorEntry &entry = v.back();
+        SerializedDescriptorEntry &entry = v.back();
         entry.has_requirement_policy = true;
         entry.required = required;
         entry.allow_fallback = allow_fallback;
@@ -121,7 +121,7 @@ inline void MergeUBODescriptor(
 }
 
 inline void AppendDefinitionUBODescriptors(
-    std::vector<FixedDescriptorEntry> &v,
+    std::vector<SerializedDescriptorEntry> &v,
     const MaterialDefinition &definition,
     const uint32_t default_stage_flags,
     const uint32_t sky_stage_flags,
@@ -139,7 +139,7 @@ inline void AppendDefinitionUBODescriptors(
     }
 }
 
-inline void PushLocalToWorld(std::vector<FixedDescriptorEntry> &v, const DescriptorKind kind, const uint32_t stage_flags)
+inline void PushLocalToWorld(std::vector<SerializedDescriptorEntry> &v, const DescriptorKind kind, const uint32_t stage_flags)
 {
     v.push_back({
         DescriptorSetType::Transform, kind, stage_flags,
@@ -148,7 +148,7 @@ inline void PushLocalToWorld(std::vector<FixedDescriptorEntry> &v, const Descrip
     });
 }
 
-inline void PushLocalToWorldIndexRows(std::vector<FixedDescriptorEntry> &v, const uint32_t stage_flags)
+inline void PushLocalToWorldIndexRows(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
     v.push_back({
         DescriptorSetType::Transform, DescriptorKind::SSBO, stage_flags,
@@ -157,7 +157,7 @@ inline void PushLocalToWorldIndexRows(std::vector<FixedDescriptorEntry> &v, cons
     });
 }
 
-inline void PushMaterialDataSlot(std::vector<FixedDescriptorEntry> &v,
+inline void PushMaterialDataSlot(std::vector<SerializedDescriptorEntry> &v,
                                  const uint32_t stage_flags,
                                  const char *name,
                                  const char *struct_name,
@@ -171,7 +171,7 @@ inline void PushMaterialDataSlot(std::vector<FixedDescriptorEntry> &v,
     });
 }
 
-inline void PushMaterialDataIndexRows(std::vector<FixedDescriptorEntry> &v, const uint32_t stage_flags)
+inline void PushMaterialDataIndexRows(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
     v.push_back({
         DescriptorSetType::Material, DescriptorKind::SSBO, stage_flags,
@@ -181,13 +181,13 @@ inline void PushMaterialDataIndexRows(std::vector<FixedDescriptorEntry> &v, cons
 }
 
 inline void PushMaterialTextureLayerRows(
-    std::vector<FixedDescriptorEntry> &v,
+    std::vector<SerializedDescriptorEntry> &v,
     const uint32_t stage_flags,
     const bool has_policy = false,
     const bool required = true,
     const bool allow_fallback = false)
 {
-    FixedDescriptorEntry entry{
+    SerializedDescriptorEntry entry{
         DescriptorSetType::Material, DescriptorKind::SSBO, stage_flags,
         "mtl_texture_layer_rows", "TextureLayerRows", nullptr, DescriptorSemantic::MaterialTextureLayerTable,
         TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO
@@ -198,7 +198,7 @@ inline void PushMaterialTextureLayerRows(
     v.push_back(entry);
 }
 
-inline void PushMaterialSampler(std::vector<FixedDescriptorEntry> &v,
+inline void PushMaterialSampler(std::vector<SerializedDescriptorEntry> &v,
                                 const char *name,
                                 const TextureSlot slot,
                                 const char *glsl_type,
@@ -214,7 +214,7 @@ inline void PushMaterialSampler(std::vector<FixedDescriptorEntry> &v,
 }
 
 inline void AppendDefinitionMaterialDescriptors(
-    std::vector<FixedDescriptorEntry> &v,
+    std::vector<SerializedDescriptorEntry> &v,
     const MaterialDefinition &definition,
     const uint32_t stage_flags,
     const uint32_t texture_layer_table_stage_flags,
@@ -251,7 +251,7 @@ inline void AppendDefinitionMaterialDescriptors(
     }
 }
 
-inline bool IsTextureDescriptor(const FixedDescriptorEntry &entry) noexcept
+inline bool IsTextureDescriptor(const SerializedDescriptorEntry &entry) noexcept
 {
     return entry.kind == DescriptorKind::Texture
         || entry.kind == DescriptorKind::TextureSampler;
@@ -263,8 +263,8 @@ inline bool CStrEqual(const char *lhs, const char *rhs) noexcept
 }
 
 inline void MergeResourcePolicy(
-    FixedDescriptorEntry &existing,
-    const FixedDescriptorEntry &incoming)
+    SerializedDescriptorEntry &existing,
+    const SerializedDescriptorEntry &incoming)
 {
     const bool existing_required = existing.has_requirement_policy
         ? existing.required : IsSemanticRequired(existing.semantic);
@@ -281,8 +281,8 @@ inline void MergeResourcePolicy(
 }
 
 inline bool MergeTextureDescriptor(
-    std::vector<FixedDescriptorEntry> &v,
-    const FixedDescriptorEntry &incoming)
+    std::vector<SerializedDescriptorEntry> &v,
+    const SerializedDescriptorEntry &incoming)
 {
     for (auto &existing : v)
     {
@@ -317,8 +317,8 @@ inline bool MergeTextureDescriptor(
 }
 
 inline bool MergeSSBODescriptor(
-    std::vector<FixedDescriptorEntry> &v,
-    const FixedDescriptorEntry &incoming)
+    std::vector<SerializedDescriptorEntry> &v,
+    const SerializedDescriptorEntry &incoming)
 {
     for (auto &existing : v)
     {
@@ -353,13 +353,13 @@ inline bool MergeSSBODescriptor(
 }
 
 inline bool PushManifestSSBO(
-    std::vector<FixedDescriptorEntry> &v,
+    std::vector<SerializedDescriptorEntry> &v,
     const GLSLCodeModuleSSBORequirement &ssbo)
 {
     if (!ssbo.name || !*ssbo.name)
         return false;
 
-    FixedDescriptorEntry entry{};
+    SerializedDescriptorEntry entry{};
     entry.set_type = DescriptorSetType::Material;
     entry.kind = DescriptorKind::SSBO;
     entry.stage_flags = ssbo.stage_flags;
@@ -378,7 +378,7 @@ inline bool PushManifestSSBO(
 
 inline bool MakeManifestTextureDescriptor(
     const GLSLCodeModuleTextureRequirement &texture,
-    FixedDescriptorEntry &out)
+    SerializedDescriptorEntry &out)
 {
     if (!texture.name || !*texture.name
      || !texture.glsl_type || !*texture.glsl_type)
@@ -419,7 +419,7 @@ inline bool MakeManifestTextureDescriptor(
 }
 
 inline void AppendManifestUBODescriptors(
-    std::vector<FixedDescriptorEntry> &v,
+    std::vector<SerializedDescriptorEntry> &v,
     const ShaderResourceManifest &manifest)
 {
     for (uint32 i = 0; i < manifest.ubo_count; ++i)
@@ -431,7 +431,7 @@ inline void AppendManifestUBODescriptors(
 }
 
 inline bool AppendManifestSSBODescriptors(
-    std::vector<FixedDescriptorEntry> &v,
+    std::vector<SerializedDescriptorEntry> &v,
     ShaderResourceManifest &manifest)
 {
     for (uint32 i = 0; i < manifest.ssbo_count; ++i)
@@ -447,12 +447,12 @@ inline bool AppendManifestSSBODescriptors(
 }
 
 inline bool AppendManifestTextureDescriptors(
-    std::vector<FixedDescriptorEntry> &v,
+    std::vector<SerializedDescriptorEntry> &v,
     ShaderResourceManifest &manifest)
 {
     for (uint32 i = 0; i < manifest.texture_count; ++i)
     {
-        FixedDescriptorEntry entry{};
+        SerializedDescriptorEntry entry{};
         if (!MakeManifestTextureDescriptor(manifest.textures[i], entry)
          || !MergeTextureDescriptor(v, entry))
         {
@@ -465,13 +465,13 @@ inline bool AppendManifestTextureDescriptors(
 }
 
 inline bool AppendManifestTextureLayerDescriptors(
-    std::vector<FixedDescriptorEntry> &v,
+    std::vector<SerializedDescriptorEntry> &v,
     ShaderResourceManifest &manifest)
 {
     for (uint32 i = 0; i < manifest.texture_layer_count; ++i)
     {
         const auto &layer = manifest.texture_layers[i];
-        FixedDescriptorEntry entry{};
+        SerializedDescriptorEntry entry{};
         entry.set_type = DescriptorSetType::Material;
         entry.kind = DescriptorKind::SSBO;
         entry.stage_flags = layer.stage_flags;
@@ -501,7 +501,7 @@ inline bool AppendManifestTextureLayerDescriptors(
 // MaterialDataSlotData entry (from either source) and make sure the matching
 // MaterialDataIndexTable entry exists.
 inline void EnsureMaterialDataIndexTable(
-    std::vector<FixedDescriptorEntry> &v,
+    std::vector<SerializedDescriptorEntry> &v,
     const uint32_t stage_flags)
 {
     bool has_data_slot = false;
@@ -547,7 +547,7 @@ inline bool BuildDefinitionShaderResourceManifest(
 }
 
 inline uint64 HashDescriptorEntries(
-    const std::vector<FixedDescriptorEntry> &entries) noexcept
+    const std::vector<SerializedDescriptorEntry> &entries) noexcept
 {
     hgl::hash::FNV1aHasher64 h;
     h << static_cast<uint32>(entries.size());
@@ -576,7 +576,7 @@ inline uint64 HashDescriptorEntries(
 
 inline uint64 HashResourceContract(
     const uint64 manifest_hash,
-    const std::vector<FixedDescriptorEntry> &entries) noexcept
+    const std::vector<SerializedDescriptorEntry> &entries) noexcept
 {
     hgl::hash::FNV1aHasher64 h;
     constexpr uint32 contract_version = 2u;
@@ -629,7 +629,7 @@ inline uint64 HashMaterialDefinitionTexturePolicy(
 
 inline uint64 HashResourceContract(
     const uint64 manifest_hash,
-    const std::vector<FixedDescriptorEntry> &entries,
+    const std::vector<SerializedDescriptorEntry> &entries,
     const MaterialDefinition &definition) noexcept
 {
     hgl::hash::FNV1aHasher64 h;

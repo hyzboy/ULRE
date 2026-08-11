@@ -1,6 +1,6 @@
 #pragma once
 
-#include <hgl/mtl/FixedDescriptorEntry.h>
+#include <hgl/mtl/SerializedDescriptorEntry.h>
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/common/RenderAssignDef.h>
@@ -21,11 +21,11 @@ struct Build3DDescriptorOptions
     uint32_t material_texture_layer_table_stage_flags = uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS);
 };
 
-inline std::vector<FixedDescriptorEntry> Build3DDescriptorsFromDefinition(
+inline std::vector<SerializedDescriptorEntry> Build3DDescriptorsFromDefinition(
     const MaterialDefinition &definition,
     const Build3DDescriptorOptions &opt = {})
 {
-    std::vector<FixedDescriptorEntry> descriptors;
+    std::vector<SerializedDescriptorEntry> descriptors;
     descriptors.reserve(16);
 
     descriptor_builder_common::AppendDefinitionUBODescriptors(
@@ -97,12 +97,12 @@ inline bool Build3DShaderResourceManifest(
         definition, manifest, extra_roots, extra_root_count, registry);
 }
 
-inline std::vector<FixedDescriptorEntry> Build3DDescriptorsFromDefinition(
+inline std::vector<SerializedDescriptorEntry> Build3DDescriptorsFromDefinition(
     const MaterialDefinition &definition,
     ShaderResourceManifest &manifest,
     const Build3DDescriptorOptions &opt = {})
 {
-    std::vector<FixedDescriptorEntry> descriptors = Build3DDescriptorsFromDefinition(definition, opt);
+    std::vector<SerializedDescriptorEntry> descriptors = Build3DDescriptorsFromDefinition(definition, opt);
     descriptor_builder_common::AppendManifestUBODescriptors(descriptors, manifest);
     if (!descriptor_builder_common::AppendManifestSSBODescriptors(descriptors, manifest)
      || !descriptor_builder_common::AppendManifestTextureDescriptors(descriptors, manifest)
@@ -114,7 +114,7 @@ inline std::vector<FixedDescriptorEntry> Build3DDescriptorsFromDefinition(
     return descriptors;
 }
 
-inline std::vector<FixedDescriptorEntry> Build3DDescriptorsFromDefinition(
+inline std::vector<SerializedDescriptorEntry> Build3DDescriptorsFromDefinition(
     const MaterialDefinition &definition,
     const ShaderResourceManifest &manifest,
     const Build3DDescriptorOptions &opt = {})

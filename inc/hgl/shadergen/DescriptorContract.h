@@ -2,7 +2,7 @@
 
 namespace hgl::graph::mtl {}
 
-#include <hgl/mtl/FixedDescriptorEntry.h>
+#include <hgl/mtl/SerializedDescriptorEntry.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/shadergen/CanonicalShaderContract.h>
 #include <string>
@@ -30,12 +30,12 @@ namespace hgl::graph::shadergen
     };
 
     bool BuildDescriptorContract(
-        const mtl::FixedDescriptorEntry *entries,
+        const mtl::SerializedDescriptorEntry *entries,
         uint32 entry_count,
         DescriptorContract &out_contract);
 
     bool BuildDescriptorContract(
-        const std::vector<mtl::FixedDescriptorEntry> &entries,
+        const std::vector<mtl::SerializedDescriptorEntry> &entries,
         DescriptorContract &out_contract);
 
     bool BuildEffectiveDescriptorContract(
@@ -50,7 +50,7 @@ namespace hgl::graph::shadergen
 
     bool ConvertDescriptorContractToFixed(
         const DescriptorContract &contract,
-        std::vector<mtl::FixedDescriptorEntry> &out_entries);
+        std::vector<mtl::SerializedDescriptorEntry> &out_entries);
 
     bool BuildResourceSchemaFromContract(
         const DescriptorContract &contract,

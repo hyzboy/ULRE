@@ -1,7 +1,7 @@
 /// MaterialCompiler.cpp — canonical material input compiler
 ///
 /// 流程：
-///   1. 从 FixedDescriptorEntry[] 构建 DescriptorSetLayoutAllocator（描述符布局）
+///   1. 从 SerializedDescriptorEntry[] 构建 DescriptorSetLayoutAllocator（描述符布局）
 ///   2. 从 FixedVertexEntry[] 设置顶点输入
 ///   3. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
 
@@ -371,7 +371,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Step 3: Add Descriptors from FixedDescriptorEntry[]
+    // Step 3: Add Descriptors from SerializedDescriptorEntry[]
     // Provider metadata contributes material SSBO slots to the same canonical
     // declaration list as the material definition.
     // ─────────────────────────────────────────────────────────────
@@ -427,7 +427,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
             "failed to add varying descriptor contract resources");
     }
 
-    std::vector<FixedDescriptorEntry> descriptor_entries;
+    std::vector<SerializedDescriptorEntry> descriptor_entries;
     if (!ConvertDescriptorContractToFixed(
             effective_descriptor_contract, descriptor_entries))
         return FailAfterMci("failed to adapt material descriptor contract");
@@ -454,7 +454,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
 
     std::string primary_sampler_name;
 
-    for (const FixedDescriptorEntry &entry : descriptor_entries)
+    for (const SerializedDescriptorEntry &entry : descriptor_entries)
     {
         const uint32_t stage_bits = entry.stage_flags;
 
@@ -634,7 +634,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
 
         auto HasDescriptorSemanticInDef = [&](DescriptorSemantic sem) -> bool
         {
-            for (const FixedDescriptorEntry &entry : descriptor_entries)
+            for (const SerializedDescriptorEntry &entry : descriptor_entries)
                 if (entry.semantic == sem)
                     return true;
             return false;

@@ -22,7 +22,7 @@ namespace hgl::graph::shadergen
         }
 
         uint64 GetLogicalResourceID(
-            const FixedDescriptorEntry &entry) noexcept
+            const SerializedDescriptorEntry &entry) noexcept
         {
             const uint64 name_hash = HashText(entry.name);
             if (name_hash != 0)
@@ -40,7 +40,7 @@ namespace hgl::graph::shadergen
         }
 
         uint64 GetResourceSchemaID(
-            const FixedDescriptorEntry &entry) noexcept
+            const SerializedDescriptorEntry &entry) noexcept
         {
             if (entry.struct_name && entry.struct_name[0])
                 return HashText(entry.struct_name);
@@ -54,7 +54,7 @@ namespace hgl::graph::shadergen
         }
 
         bool AppendEntry(
-            const FixedDescriptorEntry &source,
+            const SerializedDescriptorEntry &source,
             DescriptorContract &out_contract)
         {
             DescriptorContractEntry entry{};
@@ -116,7 +116,7 @@ namespace hgl::graph::shadergen
     }
 
     bool BuildDescriptorContract(
-        const FixedDescriptorEntry *entries,
+        const SerializedDescriptorEntry *entries,
         const uint32 entry_count,
         DescriptorContract &out_contract)
     {
@@ -149,11 +149,11 @@ namespace hgl::graph::shadergen
             return false;
         };
 
-        std::vector<FixedDescriptorEntry> generated;
+        std::vector<SerializedDescriptorEntry> generated;
         if (varying.emit_data_index_id
          && !has_semantic(DescriptorSemantic::MaterialDataIndexTable))
         {
-            FixedDescriptorEntry entry{};
+            SerializedDescriptorEntry entry{};
             entry.set_type = DescriptorSetType::Material;
             entry.kind = DescriptorKind::SSBO;
             entry.stage_flags =
@@ -174,7 +174,7 @@ namespace hgl::graph::shadergen
          && !has_semantic(
                 DescriptorSemantic::MaterialTextureLayerTable))
         {
-            FixedDescriptorEntry entry{};
+            SerializedDescriptorEntry entry{};
             entry.set_type = DescriptorSetType::Material;
             entry.kind = DescriptorKind::SSBO;
             entry.stage_flags =
@@ -191,7 +191,7 @@ namespace hgl::graph::shadergen
             generated.push_back(entry);
         }
 
-        for (const FixedDescriptorEntry &entry : generated)
+        for (const SerializedDescriptorEntry &entry : generated)
         {
             if (!AppendEntry(entry, in_out_contract))
                 return false;
@@ -200,7 +200,7 @@ namespace hgl::graph::shadergen
     }
 
     bool BuildDescriptorContract(
-        const std::vector<FixedDescriptorEntry> &entries,
+        const std::vector<SerializedDescriptorEntry> &entries,
         DescriptorContract &out_contract)
     {
         return BuildDescriptorContract(
@@ -235,7 +235,7 @@ namespace hgl::graph::shadergen
              ++i)
         {
             const MaterialDataSlotDecl &decl = (*data_slot_decls)[i];
-            FixedDescriptorEntry fixed{};
+            SerializedDescriptorEntry fixed{};
             fixed.set_type = DescriptorSetType::Material;
             fixed.kind = DescriptorKind::SSBO;
             fixed.stage_flags = material_ssbo_stage_bits;
@@ -261,7 +261,7 @@ namespace hgl::graph::shadergen
 
     bool ConvertDescriptorContractToFixed(
         const DescriptorContract &contract,
-        std::vector<FixedDescriptorEntry> &out_entries)
+        std::vector<SerializedDescriptorEntry> &out_entries)
     {
         out_entries.clear();
         if (!ValidateDescriptorContract(contract))
@@ -271,7 +271,7 @@ namespace hgl::graph::shadergen
         for (const DescriptorContractEntry &entry :
              contract.entries)
         {
-            FixedDescriptorEntry fixed{};
+            SerializedDescriptorEntry fixed{};
             fixed.set_type = entry.canonical.set_type;
             fixed.kind = entry.canonical.kind;
             fixed.stage_flags = entry.canonical.stage_flags;

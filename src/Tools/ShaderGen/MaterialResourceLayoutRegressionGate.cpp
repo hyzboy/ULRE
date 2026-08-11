@@ -130,7 +130,7 @@ namespace
     }
 
     static GateResult RunValidationCase(const char *name,
-                                        const FixedDescriptorEntry *entries,
+                                        const SerializedDescriptorEntry *entries,
                                         const uint32_t count,
                                         const bool expected_pass)
     {
@@ -2368,7 +2368,7 @@ namespace
         GateResult result;
         result.name = "D.bindless-dual-form-equivalence";
 
-        constexpr FixedDescriptorEntry standard_entries[] =
+        constexpr SerializedDescriptorEntry standard_entries[] =
         {
             { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo },
             { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera", "CameraInfo", nullptr, DescriptorSemantic::CameraInfo },
@@ -2383,7 +2383,7 @@ namespace
             { DescriptorSetType::Material, DescriptorKind::Texture, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureRoughness", nullptr, "sampler2D", DescriptorSemantic::MaterialTexture, TextureSlot::Roughness },
         };
 
-        constexpr FixedDescriptorEntry array_entries[] =
+        constexpr SerializedDescriptorEntry array_entries[] =
         {
             { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo },
             { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera", "CameraInfo", nullptr, DescriptorSemantic::CameraInfo },
@@ -3960,7 +3960,7 @@ namespace
                     result.diagnostics.emplace_back(
                         "Texture2D providers must declare samplers and per-slot bindless layer-table dependencies");
 
-                const std::vector<FixedDescriptorEntry> descriptors =
+                const std::vector<SerializedDescriptorEntry> descriptors =
                     Build3DDescriptorsFromDefinition(MaterialDefinition{}, manifest_2d);
                 bool has_layer_table = false;
                 for (const auto &entry : descriptors)
@@ -4009,7 +4009,7 @@ namespace
                     }
                 }
 
-                const std::vector<FixedDescriptorEntry> descriptors =
+                const std::vector<SerializedDescriptorEntry> descriptors =
                     Build3DDescriptorsFromDefinition(MaterialDefinition{}, manifest_array);
                 bool has_layer_table = false;
                 for (const auto &entry : descriptors)
@@ -5364,7 +5364,7 @@ namespace
         const FixedVertexEntry vertices[] = {
             {VF_V2F, VertexSemantic::Position}
         };
-        const FixedDescriptorEntry descriptors[] = {
+        const SerializedDescriptorEntry descriptors[] = {
             {
                 DescriptorSetType::Material,
                 DescriptorKind::SSBO,
@@ -5474,7 +5474,7 @@ namespace
             std::string viewport_struct = "ViewportInfo";
             std::string texture_name = "TextureBaseColor";
             std::string texture_type = "sampler2D";
-            FixedDescriptorEntry entries[] =
+            SerializedDescriptorEntry entries[] =
             {
                 {
                     DescriptorSetType::Scene,
@@ -5507,7 +5507,7 @@ namespace
                     true
                 }
             };
-            std::vector<FixedDescriptorEntry> reversed{
+            std::vector<SerializedDescriptorEntry> reversed{
                 entries[1], entries[0]
             };
 
@@ -5524,7 +5524,7 @@ namespace
                     "descriptor contract build/hash/layout failed");
             }
 
-            FixedDescriptorEntry visibility_changed_entries[] =
+            SerializedDescriptorEntry visibility_changed_entries[] =
             {
                 entries[0], entries[1]
             };
@@ -5543,7 +5543,7 @@ namespace
                     "descriptor stage visibility must affect contract hash");
             }
 
-            std::vector<FixedDescriptorEntry> roundtrip;
+            std::vector<SerializedDescriptorEntry> roundtrip;
             if (!ConvertDescriptorContractToFixed(
                     first_contract, roundtrip)
              || roundtrip.size() != 2
@@ -5555,7 +5555,7 @@ namespace
                     "descriptor contract Fixed adapter mismatch");
             }
 
-            FixedDescriptorEntry duplicate_entries[] =
+            SerializedDescriptorEntry duplicate_entries[] =
             {
                 entries[0], entries[0]
             };
@@ -5661,7 +5661,7 @@ namespace
             {TextureSlot::BaseColor, GLSLSamplerType::Sampler2D, true, "TextureBaseColor"}
         };
 
-        std::vector<FixedDescriptorEntry> descriptors;
+        std::vector<SerializedDescriptorEntry> descriptors;
         descriptor_builder_common::AppendDefinitionMaterialDescriptors(
             descriptors,
             definition,
@@ -5769,7 +5769,7 @@ namespace
             uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
             false
         };
-        std::vector<FixedDescriptorEntry> texture_descriptors;
+        std::vector<SerializedDescriptorEntry> texture_descriptors;
         if (!descriptor_builder_common::AppendManifestTextureDescriptors(
                 texture_descriptors, texture_manifest)
          || texture_descriptors.size() != 1
@@ -5780,7 +5780,7 @@ namespace
                 "Manifest MaterialTexture must remain a texture descriptor, not a sampler alias.");
         }
 
-        FixedDescriptorEntry hash_entry{};
+        SerializedDescriptorEntry hash_entry{};
         hash_entry.set_type = DescriptorSetType::Material;
         hash_entry.kind = DescriptorKind::TextureSampler;
         hash_entry.stage_flags = uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT);
@@ -5793,7 +5793,7 @@ namespace
         hash_entry.required = true;
         hash_entry.allow_fallback = false;
 
-        std::vector<FixedDescriptorEntry> hash_entries{hash_entry};
+        std::vector<SerializedDescriptorEntry> hash_entries{hash_entry};
         const uint64_t strict_hash =
             descriptor_builder_common::HashResourceContract(0, hash_entries);
         hash_entries[0].required = false;
@@ -5813,7 +5813,7 @@ namespace
             result.diagnostics.emplace_back(
                 "Sampler type changes must change the resource contract hash.");
 
-        FixedDescriptorEntry ssbo_hash_entry{};
+        SerializedDescriptorEntry ssbo_hash_entry{};
         ssbo_hash_entry.set_type = DescriptorSetType::Material;
         ssbo_hash_entry.kind = DescriptorKind::SSBO;
         ssbo_hash_entry.stage_flags = uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT);
@@ -5825,7 +5825,7 @@ namespace
         ssbo_hash_entry.ssbo_type = SSBOType::PBRSurface;
         ssbo_hash_entry.ssbo_id = 11;
 
-        std::vector<FixedDescriptorEntry> ssbo_hash_entries{ssbo_hash_entry};
+        std::vector<SerializedDescriptorEntry> ssbo_hash_entries{ssbo_hash_entry};
         const uint64_t first_ssbo_hash =
             descriptor_builder_common::HashResourceContract(0, ssbo_hash_entries);
         ssbo_hash_entries[0].ssbo_id = 12;
@@ -5870,7 +5870,7 @@ int main(const int argc, char **argv)
 
     if (run_descriptor)
     {
-        constexpr FixedDescriptorEntry valid_entries[] =
+        constexpr SerializedDescriptorEntry valid_entries[] =
         {
             { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
             { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl_data_index_rows", "DataIndexRows", nullptr, DescriptorSemantic::MaterialDataIndexTable, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::MaterialDataIndexTable, DescriptorSemanticLayer::SSBO },
@@ -5879,25 +5879,25 @@ int main(const int argc, char **argv)
         };
         results.push_back(RunValidationCase("A.valid-layered-paths", valid_entries, uint32_t(std::size(valid_entries)), true));
 
-        constexpr FixedDescriptorEntry unknown_semantic[] =
+        constexpr SerializedDescriptorEntry unknown_semantic[] =
         {
             { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "broken", "ViewportInfo", nullptr, DescriptorSemantic::Unknown, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
         };
         results.push_back(RunValidationCase("B1.unknown-semantic-hard-fail", unknown_semantic, 1, false));
 
-        constexpr FixedDescriptorEntry semantic_kind_mismatch[] =
+        constexpr SerializedDescriptorEntry semantic_kind_mismatch[] =
         {
             { DescriptorSetType::Material, DescriptorKind::Texture, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "mtl_data_index_rows", "DataIndexRows", "sampler2D", DescriptorSemantic::MaterialDataIndexTable, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::MaterialDataIndexTable, DescriptorSemanticLayer::SSBO },
         };
         results.push_back(RunValidationCase("B2.semantic-kind-mismatch-hard-fail", semantic_kind_mismatch, 1, false));
 
-        constexpr FixedDescriptorEntry invalid_fixed_descriptor[] =
+        constexpr SerializedDescriptorEntry invalid_fixed_descriptor[] =
         {
             { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl", "PBRSurfaceData", nullptr, DescriptorSemantic::MaterialDataSlotData, TextureSlot::BaseColor, 0xffu, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO },
         };
         results.push_back(RunValidationCase("B3.invalid-fixed-descriptor-hard-fail", invalid_fixed_descriptor, 1, false));
 
-        constexpr FixedDescriptorEntry palette_explicit[] =
+        constexpr SerializedDescriptorEntry palette_explicit[] =
         {
             { DescriptorSetType::Material, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "color_palette", "ColorPalette", nullptr, DescriptorSemantic::MaterialColorPalette, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
         };

@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/mtl/FixedDescriptorEntry.h>
+#include<hgl/mtl/SerializedDescriptorEntry.h>
 #include<hgl/mtl/MaterializationPools.h>
 #include<hgl/graph/ShaderBufferSources.h>
 #include <hgl/util/hash/FNV1a.h>
@@ -238,7 +238,7 @@ namespace hgl::graph::mtl
         return "Unknown";
     }
 
-    inline DescriptorSemanticLayer NormalizeSemanticLayer(const FixedDescriptorEntry &entry)
+    inline DescriptorSemanticLayer NormalizeSemanticLayer(const SerializedDescriptorEntry &entry)
     {
         if (entry.semantic_layer != DescriptorSemanticLayer::Unknown)
             return entry.semantic_layer;
@@ -296,7 +296,7 @@ namespace hgl::graph::mtl
         }
     }
 
-    inline ShaderResourceSchema BuildShaderResourceSchema(const FixedDescriptorEntry *descriptor_entries,
+    inline ShaderResourceSchema BuildShaderResourceSchema(const SerializedDescriptorEntry *descriptor_entries,
                                                 const uint32_t descriptor_entry_count)
     {
         ShaderResourceSchema contract;
@@ -307,7 +307,7 @@ namespace hgl::graph::mtl
 
         for (uint32_t i = 0; i < descriptor_entry_count; ++i)
         {
-            const FixedDescriptorEntry &entry = descriptor_entries[i];
+            const SerializedDescriptorEntry &entry = descriptor_entries[i];
 
             ShaderResourceSlot req;
             req.semantic = entry.semantic;

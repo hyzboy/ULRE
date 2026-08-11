@@ -8,7 +8,7 @@
 
 namespace hgl::graph::mtl
 {
-    struct FixedDescriptorEntry
+    struct SerializedDescriptorEntry
     {
         DescriptorSetType   set_type;
         DescriptorKind      kind;

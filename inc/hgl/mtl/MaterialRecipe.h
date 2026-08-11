@@ -79,7 +79,7 @@ namespace hgl::graph::mtl
     }
 
     // 纹理槽位能力声明（由 MaterialDefinition 显式列出）。
-    // 供 Step C 的 Definition→FixedDescriptorEntry 推导使用。
+    // 供 Step C 的 Definition→SerializedDescriptorEntry 推导使用。
     // 无纹理材质此列表为空。
 
     // GLSL 采样器类型枚举，避免传裸字符串指针。

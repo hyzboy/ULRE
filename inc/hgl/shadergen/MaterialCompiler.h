@@ -11,7 +11,7 @@ namespace hgl::graph::mtl {}
 ///   3. 填充并返回 ShaderProgramBuildSpec*
 
 #include <hgl/mtl/FixedVertexEntry.h>
-#include <hgl/mtl/FixedDescriptorEntry.h>
+#include <hgl/mtl/SerializedDescriptorEntry.h>
 #include<hgl/mtl/SkyLight.h>
 #include<hgl/common/ShaderStageDef.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
@@ -36,7 +36,7 @@ struct MaterialCompilerInput
     PrimitiveType primitive_type = PrimitiveType::Triangles;
     const mtl::FixedVertexEntry *vertex_entries = nullptr;
     uint32 vertex_entry_count = 0;
-    const mtl::FixedDescriptorEntry *descriptor_entries = nullptr;
+    const mtl::SerializedDescriptorEntry *descriptor_entries = nullptr;
     uint32 descriptor_entry_count = 0;
 };
 
@@ -46,7 +46,7 @@ struct CompositorMaterialBuildConfig
     uint32_t shader_stage_flag_bits = uint32_t(ShaderStage::VertexFragment);
     // Per-material SSBO slot declarations (index == data_slot).
     // When non-null and non-empty, MaterialCompiler generates MaterialDataSlot
-    // mtl::FixedDescriptorEntry items and injects the material SSBO struct/buffer
+    // mtl::SerializedDescriptorEntry items and injects the material SSBO struct/buffer
     // declarations into the fragment GLSL.
     const std::vector<mtl::MaterialDataSlotDecl> *data_slot_decls = nullptr;
     // Optional: capability declaration source for development-time subset validation.

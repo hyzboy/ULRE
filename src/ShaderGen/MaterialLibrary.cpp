@@ -307,7 +307,7 @@ namespace
         }
 
         std::vector<FixedVertexEntry> vertices;
-        std::vector<FixedDescriptorEntry> descriptors;
+        std::vector<SerializedDescriptorEntry> descriptors;
         VkFormat position_format = VK_FORMAT_UNDEFINED;
         VertexShaderNodeConfig vertex_node_config =
             ResolveMaterialVertexNodeConfig(definition, request);
@@ -410,7 +410,7 @@ namespace
                 std::remove_if(
                     descriptors.begin(),
                     descriptors.end(),
-                    [&](const FixedDescriptorEntry &entry)
+                    [&](const SerializedDescriptorEntry &entry)
                     {
                         if (entry.semantic == DescriptorSemantic::SkyInfo
                          || entry.semantic
