@@ -30,28 +30,28 @@ CreateProject(VulkanPhysicalDeviceProfileCollector)
 
 ####################################################################################################
 
-add_executable(MaterialResourceLayoutRegressionGate
-    MaterialResourceLayoutRegressionGate.cpp)
+add_executable(ShaderResourceSchemaRegressionGate
+    ShaderResourceSchemaRegressionGate.cpp)
 
-target_link_libraries(MaterialResourceLayoutRegressionGate
+target_link_libraries(ShaderResourceSchemaRegressionGate
     PRIVATE ULRE.ShaderGen
             ULRE.Vulkan
             CMCore
             CMMath
             CMCoreType)
 
-CreateProject(MaterialResourceLayoutRegressionGate)
+CreateProject(ShaderResourceSchemaRegressionGate)
 
-target_compile_definitions(MaterialResourceLayoutRegressionGate
+target_compile_definitions(ShaderResourceSchemaRegressionGate
     PRIVATE ULRE_REPO_ROOT="${CMAKE_SOURCE_DIR}")
 
 if(BUILD_TESTING)
     add_test(
-        NAME material_resource_layout_regression_gate
-        COMMAND MaterialResourceLayoutRegressionGate)
+        NAME shader_resource_schema_regression_gate
+        COMMAND ShaderResourceSchemaRegressionGate)
 
     set_tests_properties(
-        material_resource_layout_regression_gate
+        shader_resource_schema_regression_gate
         PROPERTIES LABELS "shadergen;baseline")
 
     foreach(regression_group
@@ -62,10 +62,10 @@ if(BUILD_TESTING)
             materialization
             pipeline)
         add_test(
-            NAME material_resource_layout_regression_gate.${regression_group}
-            COMMAND MaterialResourceLayoutRegressionGate ${regression_group})
+            NAME shader_resource_schema_regression_gate.${regression_group}
+            COMMAND ShaderResourceSchemaRegressionGate ${regression_group})
         set_tests_properties(
-            material_resource_layout_regression_gate.${regression_group}
+            shader_resource_schema_regression_gate.${regression_group}
             PROPERTIES LABELS "shadergen;baseline;${regression_group}")
     endforeach()
 endif()
@@ -75,6 +75,6 @@ endif()
 
 # 需要时可直接运行：
 #   cmake --build <build_dir> --target MaterialPresetExhaustiveCompile
-#   cmake --build <build_dir> --target MaterialResourceLayoutRegressionGate
+#   cmake --build <build_dir> --target ShaderResourceSchemaRegressionGate
 # 在生成目录执行：
 #   .\\test\\Debug\\MaterialPresetExhaustiveCompile.exe

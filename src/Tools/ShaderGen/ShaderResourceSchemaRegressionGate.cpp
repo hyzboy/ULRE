@@ -385,10 +385,10 @@ namespace
         return result;
     }
 
-    static GateResult RunMaterialBindingViewCase()
+    static GateResult RunResolvedBindingTableCase()
     {
         GateResult result;
-        result.name = "L2.material-binding-view";
+        result.name = "L2.resolved-binding-table";
 
         ShaderProgramKey program_key{};
         program_key.vertex_stage_digest = 0x7101u;
@@ -437,7 +437,7 @@ namespace
         layout.resources.push_back(data_resources);
 
         MaterialRecipe recipe{};
-        recipe.recipe_name = "BindingViewA";
+        recipe.recipe_name = "BindingTableA";
         recipe.mtl_def_id = "DefinitionA";
         recipe.textures.push_back(
             {TextureSlot::BaseColor, "asset/albedo-a", 0, false, true});
@@ -454,7 +454,7 @@ namespace
         data_binding.use_data_index = true;
         recipe.ssbo_assets.push_back(data_binding);
 
-        ResolvedBindingTable binding_view{};
+        ResolvedBindingTable binding_table{};
         BindingBuildDiagnostic diagnostic{};
         MaterialRecipe equivalent_binding_recipe = recipe;
         equivalent_binding_recipe.recipe_name = "DifferentName";
@@ -467,37 +467,37 @@ namespace
                     equivalent_binding_recipe))
         {
             result.diagnostics.emplace_back(
-                "Binding View source hash must ignore unrelated Recipe state");
+                "Binding Table source hash must ignore unrelated Recipe state");
         }
         if (!BuildBindingTable(
                 recipe,
                 layout,
                 program_key,
-                binding_view,
+                binding_table,
                 diagnostic)
-         || !binding_view.IsRuntimeReady()
-         || binding_view.GetStableHash() == 0
-         || binding_view.program_key_digest != program_key.GetDigest()
-         || binding_view.textures.GetCount() != 2
-         || binding_view.data.GetCount() != 1
-         || binding_view.unused_recipe_texture_count != 1
-         || binding_view.unused_recipe_data_count != 0)
+         || !binding_table.IsRuntimeReady()
+         || binding_table.GetStableHash() == 0
+         || binding_table.program_key_digest != program_key.GetDigest()
+         || binding_table.textures.GetCount() != 2
+         || binding_table.data.GetCount() != 1
+         || binding_table.unused_recipe_texture_count != 1
+         || binding_table.unused_recipe_data_count != 0)
         {
             result.diagnostics.emplace_back(
-                std::string("Material Binding View build failed: ")
+                std::string("Binding Table build failed: ")
                 + GetBindingBuildErrorName(
                     diagnostic.error));
         }
 
         MaterialRecipe projected_recipe{};
         if (!BuildBindingTableRecipe(
-                recipe, binding_view, projected_recipe)
+                recipe, binding_table, projected_recipe)
          || projected_recipe.textures.size() != 2
          || projected_recipe.ssbo_assets.size() != 1
          || projected_recipe.ssbo_assets[0].ssbo_id != 17)
         {
             result.diagnostics.emplace_back(
-                "Material Binding Recipe projection mismatch");
+                "Binding Table Recipe projection mismatch");
         }
         bool found_base_color = false;
         bool found_layer_value = false;
@@ -515,16 +515,16 @@ namespace
         if (!found_base_color || !found_layer_value)
         {
             result.diagnostics.emplace_back(
-                "Material Binding Recipe must preserve TextureLayer direct values");
+                "Binding Table Recipe must preserve TextureLayer direct values");
         }
         ResourceAcquirePlan resource_plan{};
         if (!BuildResourceAcquirePlan(
-                binding_view, resource_plan)
+                binding_table, resource_plan)
          || resource_plan.resources.GetCount() != 2
          || GetResourceAcquirePlanHash(resource_plan) == 0)
         {
             result.diagnostics.emplace_back(
-                "Material ResourceAcquirePlan build failed");
+                "ResourceAcquirePlan build failed");
         }
         else
         {
@@ -592,21 +592,21 @@ namespace
 
         MaterialRecipe zero_id_recipe = recipe;
         zero_id_recipe.ssbo_assets[0].ssbo_id = 0;
-        ResolvedBindingTable zero_id_view{};
+        ResolvedBindingTable zero_id_table{};
         if (!BuildBindingTable(
                 zero_id_recipe,
                 layout,
                 program_key,
-                zero_id_view,
+                zero_id_table,
                 diagnostic)
-         || !zero_id_view.IsRuntimeReady()
-         || zero_id_view.data.GetCount() != 1
-         || zero_id_view.data[0].source
+         || !zero_id_table.IsRuntimeReady()
+         || zero_id_table.data.GetCount() != 1
+         || zero_id_table.data[0].source
                 != BindingSource::Asset
-         || zero_id_view.data[0].ssbo_id != 0
+         || zero_id_table.data[0].ssbo_id != 0
          || !BuildBindingTableRecipe(
                 zero_id_recipe,
-                zero_id_view,
+                zero_id_table,
                 projected_recipe)
          || projected_recipe.ssbo_assets.size() != 1
          || projected_recipe.ssbo_assets[0].ssbo_id != 0)
@@ -618,35 +618,35 @@ namespace
         MaterialRecipe pre_resolve_recipe = recipe;
         pre_resolve_recipe.ssbo_assets[0].ssbo_type =
             SSBOType::UserDefined;
-        ResolvedBindingTable pre_resolve_view{};
+        ResolvedBindingTable pre_resolve_table{};
         if (!BuildBindingTable(
                 pre_resolve_recipe,
                 layout,
                 program_key,
-                pre_resolve_view,
+                pre_resolve_table,
                 diagnostic)
-         || pre_resolve_view.IsRuntimeReady())
+         || pre_resolve_table.IsRuntimeReady())
         {
             result.diagnostics.emplace_back(
                 "pre-resolve UserDefined SSBO must not masquerade as the required binding type");
         }
-        ResolvedBindingTable post_resolve_view{};
+        ResolvedBindingTable post_resolve_table{};
         if (!BuildBindingTable(
                 recipe,
                 layout,
                 program_key,
-                post_resolve_view,
+                post_resolve_table,
                 diagnostic)
-         || !post_resolve_view.IsRuntimeReady()
+         || !post_resolve_table.IsRuntimeReady()
          || !BuildBindingTableRecipe(
-                recipe, post_resolve_view, projected_recipe))
+                recipe, post_resolve_table, projected_recipe))
         {
             result.diagnostics.emplace_back(
-                "post-resolve Recipe must rebuild a runtime-ready Binding View");
+                "post-resolve Recipe must rebuild a runtime-ready Binding Table");
         }
 
         MaterialRecipe second_recipe = recipe;
-        second_recipe.recipe_name = "BindingViewB";
+        second_recipe.recipe_name = "BindingTableB";
         second_recipe.mtl_def_id = "DefinitionB";
         second_recipe.textures[0].resource_id = "asset/albedo-b";
         second_recipe.ssbo_assets[0].ssbo_id = 23;
@@ -654,45 +654,45 @@ namespace
                 == GetBindingSourceHash(recipe))
         {
             result.diagnostics.emplace_back(
-                "Binding View source hash must include binding identity");
+                "Binding Table source hash must include binding identity");
         }
-        ResolvedBindingTable second_view{};
+        ResolvedBindingTable second_table{};
         ResourceAcquirePlan second_plan{};
         if (!BuildBindingTable(
                 second_recipe,
                 layout,
                 program_key,
-                second_view,
+                second_table,
                 diagnostic)
-         || second_view.GetStableHash() == binding_view.GetStableHash()
-         || second_view.program_key_digest
-                != binding_view.program_key_digest
+         || second_table.GetStableHash() == binding_table.GetStableHash()
+         || second_table.program_key_digest
+                != binding_table.program_key_digest
          || !BuildResourceAcquirePlan(
-                second_view, second_plan)
+                second_table, second_plan)
          || GetResourceAcquirePlanHash(second_plan)
                 == GetResourceAcquirePlanHash(resource_plan))
         {
             result.diagnostics.emplace_back(
-                "asset identity must affect Binding View, not ProgramKey");
+                "asset identity must affect Binding Table, not ProgramKey");
         }
 
         MaterialRecipe missing_recipe = recipe;
         missing_recipe.textures[0].resource_id.clear();
         missing_recipe.textures[0].required = true;
-        ResolvedBindingTable missing_view{};
+        ResolvedBindingTable missing_table{};
         if (!BuildBindingTable(
                 missing_recipe,
                 layout,
                 program_key,
-                missing_view,
+                missing_table,
                 diagnostic)
-         || !missing_view.IsValid()
-         || missing_view.IsRuntimeReady()
-         || missing_view.missing_required_count != 1
+         || !missing_table.IsValid()
+         || missing_table.IsRuntimeReady()
+         || missing_table.missing_required_count != 1
          || BuildBindingTableRecipe(
-                missing_recipe, missing_view, projected_recipe)
+                missing_recipe, missing_table, projected_recipe)
          || BuildResourceAcquirePlan(
-                missing_view, resource_plan))
+                missing_table, resource_plan))
         {
             result.diagnostics.emplace_back(
                 "missing required material resource must remain explicit");
@@ -700,16 +700,16 @@ namespace
 
         ShaderResourceSchema fallback_layout = layout;
         fallback_layout.resources[0].allow_fallback = true;
-        ResolvedBindingTable unresolved_fallback_view{};
+        ResolvedBindingTable unresolved_fallback_table{};
         if (!BuildBindingTable(
                 missing_recipe,
                 fallback_layout,
                 program_key,
-                unresolved_fallback_view,
+                unresolved_fallback_table,
                 diagnostic)
-         || !unresolved_fallback_view.IsValid()
-         || unresolved_fallback_view.IsRuntimeReady()
-         || unresolved_fallback_view.textures[0].source
+         || !unresolved_fallback_table.IsValid()
+         || unresolved_fallback_table.IsRuntimeReady()
+         || unresolved_fallback_table.textures[0].source
                 != BindingSource::Missing)
         {
             result.diagnostics.emplace_back(
@@ -719,12 +719,12 @@ namespace
         MaterialRecipe duplicate_recipe = recipe;
         duplicate_recipe.textures.push_back(
             {TextureSlot::BaseColor, "asset/duplicate", 0, false, true});
-        ResolvedBindingTable duplicate_view{};
+        ResolvedBindingTable duplicate_table{};
         if (BuildBindingTable(
                 duplicate_recipe,
                 layout,
                 program_key,
-                duplicate_view,
+                duplicate_table,
                 diagnostic)
          || diagnostic.error
                 != BindingBuildError::
@@ -734,32 +734,32 @@ namespace
                 "duplicate material texture binding must fail");
         }
 
-        ResolvedBindingTable depth_view{};
+        ResolvedBindingTable depth_table{};
         ShaderResourceSchema depth_layout{};
         ResourceAcquirePlan depth_plan{};
         if (!BuildBindingTable(
                 recipe,
                 depth_layout,
                 program_key,
-                depth_view,
+                depth_table,
                 diagnostic)
-         || !depth_view.IsRuntimeReady()
-         || depth_view.unused_recipe_texture_count
+         || !depth_table.IsRuntimeReady()
+         || depth_table.unused_recipe_texture_count
                 != recipe.textures.size()
-         || depth_view.unused_recipe_data_count
+         || depth_table.unused_recipe_data_count
                 != recipe.ssbo_assets.size()
          || !BuildResourceAcquirePlan(
-                depth_view, depth_plan)
+                depth_table, depth_plan)
          || !depth_plan.resources.IsEmpty())
         {
             result.diagnostics.emplace_back(
                 "resource-free Program must submit no unrelated resource acquisition");
         }
 
-        ResolvedBindingTable unresolved_view{};
+        ResolvedBindingTable unresolved_table{};
         ResourceAcquirePlan unresolved_plan{};
         if (BuildResourceAcquirePlan(
-                unresolved_view, unresolved_plan))
+                unresolved_table, unresolved_plan))
         {
             result.diagnostics.emplace_back(
                 "unresolved Program must not submit resource acquisition");
@@ -5845,7 +5845,7 @@ int main(const int argc, char **argv)
     if (argc > 2)
     {
         GLogError(
-            "[MaterialResourceLayoutRegressionGate] Expected zero or one group argument.");
+            "[ShaderResourceSchemaRegressionGate] Expected zero or one group argument.");
         return 2;
     }
 
@@ -5853,7 +5853,7 @@ int main(const int argc, char **argv)
     if (!IsKnownRegressionGroup(selected_group))
     {
         GLogError(
-            "[MaterialResourceLayoutRegressionGate] Unknown regression group: %s",
+            "[ShaderResourceSchemaRegressionGate] Unknown regression group: %s",
             selected_group);
         return 2;
     }
@@ -5930,7 +5930,7 @@ int main(const int argc, char **argv)
     if (run_glsl) results.push_back(RunShadowMaterialModuleGraphCase());
     if (run_glsl) results.push_back(RunCapabilityResolverCase());
     if (run_interface) results.push_back(RunShaderSemanticRegistryCase());
-    if (run_materialization) results.push_back(RunMaterialBindingViewCase());
+    if (run_materialization) results.push_back(RunResolvedBindingTableCase());
     if (run_interface) results.push_back(RunMaterialVertexABICharacterizationCase());
     if (run_interface) results.push_back(RunMaterialSemanticABIParityCase());
     if (run_interface) results.push_back(RunMaterialSemanticResolverPreviewCase());
