@@ -6,7 +6,7 @@
 namespace hgl::graph::mtl
 {
     struct MaterialRecipe;
-    struct MaterialResourceLayout;
+    struct ShaderResourceSchema;
 }
 namespace hgl::graph::shadergen
 {
@@ -26,7 +26,7 @@ namespace hgl::graph::mtl
 
     bool BuildMaterialBindingView(
         const MaterialRecipe &recipe,
-        const MaterialResourceLayout &layout,
+        const ShaderResourceSchema &layout,
         const shadergen::ShaderProgramKey &program_key,
         MaterialBindingView &out_view,
         MaterialBindingViewBuildDiagnostic &out_diagnostic) noexcept;

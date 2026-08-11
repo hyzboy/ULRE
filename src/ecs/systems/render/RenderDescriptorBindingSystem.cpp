@@ -997,7 +997,7 @@ namespace hgl::ecs
             if (!material || !batch)
                 return false;
 
-            const auto &contract = material->GetMaterialResourceLayout();
+            const auto &contract = material->GetShaderResourceSchema();
             for (const auto &candidate : contract.requirements)
             {
                 if (candidate.semantic != graph::mtl::DescriptorSemantic::MaterialTextureLayerTable)
@@ -1392,7 +1392,7 @@ namespace hgl::ecs
             active_materials.insert(shader_program);
             batch->descriptor_bind_valid = true;
 
-            const auto &contract = shader_program->GetMaterialResourceLayout();
+            const auto &contract = shader_program->GetShaderResourceSchema();
 
             for (const auto &req : contract.requirements)
             {
@@ -1412,7 +1412,7 @@ namespace hgl::ecs
 
             active_materials.insert(shader_program);
 
-            const auto &contract = shader_program->GetMaterialResourceLayout();
+            const auto &contract = shader_program->GetShaderResourceSchema();
 
             for (const auto &req : contract.requirements)
             {
@@ -1439,7 +1439,7 @@ namespace hgl::ecs
                         continue;
 
                     bool needs_bindless_set = false;
-                    const auto &contract = material->GetMaterialResourceLayout();
+                    const auto &contract = material->GetShaderResourceSchema();
                     for (const auto &req : contract.requirements)
                     {
                         if (req.semantic == graph::mtl::DescriptorSemantic::MaterialTextureLayerTable)
@@ -1528,7 +1528,7 @@ namespace hgl::ecs
 
             ++frame_stats.materials_checked;
 
-            const auto &contract = shader_program->GetMaterialResourceLayout();
+            const auto &contract = shader_program->GetShaderResourceSchema();
 
             bool all_required_ok = true;
             std::string first_error;

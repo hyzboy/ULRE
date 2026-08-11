@@ -1,7 +1,7 @@
 #include <hgl/shadergen/MaterialDescriptorContract.h>
 
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
-#include <hgl/mtl/MaterialResourceLayout.h>
+#include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <algorithm>
 #include <cstring>
@@ -350,7 +350,7 @@ namespace hgl::graph::shadergen
 
     bool BuildMaterialResourceLayoutFromDescriptorContract(
         const MaterialDescriptorContract &contract,
-        MaterialResourceLayout &out_layout)
+        ShaderResourceSchema &out_layout)
     {
         out_layout = {};
         if (!ValidateMaterialDescriptorContract(contract))

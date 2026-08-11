@@ -403,7 +403,7 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
 }
 
 bool ShaderProgramManager::BuildMaterialResourceLayout(const mtl::MaterialDefinitionBuildRequest &request,
-                                                  mtl::MaterialResourceLayout &out_layout)
+                                                  mtl::ShaderResourceSchema &out_layout)
 {
     mtl::MaterialDefinition bmi{};
     if (!ResolveMaterialDefinitionForRequest(
@@ -420,7 +420,7 @@ bool ShaderProgramManager::BuildMaterialResourceLayout(const mtl::MaterialDefini
         return false;
     }
 
-    out_layout = mci->GetMaterialResourceLayout();
+    out_layout = mci->GetShaderResourceSchema();
     return true;
 }
 

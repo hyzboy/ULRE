@@ -1,7 +1,7 @@
 #pragma once
 
 #include <hgl/mtl/FixedDescriptorEntry.h>
-#include <hgl/mtl/MaterialResourceLayout.h>
+#include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/graph/glsl/ShaderResourceManifest.h>
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/common/RenderOptions.h>
@@ -580,7 +580,7 @@ inline uint64 HashResourceContract(
 {
     hgl::hash::FNV1aHasher64 h;
     constexpr uint32 contract_version = 2u;
-    const MaterialResourceLayout layout =
+    const ShaderResourceSchema layout =
         BuildMaterialResourceLayout(entries.data(), static_cast<uint32>(entries.size()));
     h << contract_version
       << manifest_hash
@@ -590,7 +590,7 @@ inline uint64 HashResourceContract(
 
 inline void ApplyMaterialDefinitionTexturePolicy(
     const MaterialDefinition &definition,
-    MaterialResourceLayout &layout)
+    ShaderResourceSchema &layout)
 {
     for (auto &requirement : layout.requirements)
     {
@@ -635,7 +635,7 @@ inline uint64 HashResourceContract(
     hgl::hash::FNV1aHasher64 h;
     constexpr uint32 contract_version = 3u;
 
-    MaterialResourceLayout layout =
+    ShaderResourceSchema layout =
         BuildMaterialResourceLayout(entries.data(), static_cast<uint32>(entries.size()));
     ApplyMaterialDefinitionTexturePolicy(definition, layout);
     h << contract_version

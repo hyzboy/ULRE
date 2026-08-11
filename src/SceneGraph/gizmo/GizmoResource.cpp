@@ -11,7 +11,7 @@
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
-#include<hgl/mtl/MaterialResourceLayout.h>
+#include<hgl/mtl/ShaderResourceSchema.h>
 #include"GizmoResource.h"
 
 namespace hgl::graph
@@ -76,7 +76,7 @@ namespace hgl::graph
 
         // Create the SSBO holding one Color4f per GizmoColor slot.
         // PureColor MI data is exactly one Color4f (16 bytes, std430 vec4).
-        bool InitColorSSBO(GizmoResource *gr, const mtl::MaterialResourceLayout &material_layout)
+        bool InitColorSSBO(GizmoResource *gr, const mtl::ShaderResourceSchema &material_layout)
         {
             if (!gr)
                 return false;
@@ -174,7 +174,7 @@ namespace hgl::graph
                 return(false);
 
             const GeometryVertexFormat gizmo_gvf = CreateGizmoGeometryVertexFormat();
-            mtl::MaterialResourceLayout gizmo_material_layout{};
+            mtl::ShaderResourceSchema gizmo_material_layout{};
 
             {
                 mtl::MaterialRecipe recipe{};

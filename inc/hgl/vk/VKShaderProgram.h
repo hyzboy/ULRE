@@ -3,7 +3,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/type/String.h>
 #include<hgl/vk/VKShaderModuleMap.h>
-#include<hgl/mtl/MaterialResourceLayout.h>
+#include<hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/shadergen/ShaderProgramKey.h>
 #include<hgl/graph/ShaderBufferSource.h>
 #include<hgl/log/Log.h>
@@ -39,7 +39,7 @@ class ShaderProgram
     ShaderModuleMap *shader_maps;
 
     MaterialDescriptorManager *desc_manager;
-    mtl::MaterialResourceLayout material_resource_layout;
+    mtl::ShaderResourceSchema material_resource_layout;
     shadergen::ShaderProgramKey program_key;
 
     ShaderStageCreateInfoList shader_stage_list;
@@ -61,7 +61,7 @@ public:
     virtual ~ShaderProgram();
 
     const   AnsiString &                        GetName                 ()const{return name;}
-    const   mtl::MaterialResourceLayout &              GetMaterialResourceLayout      ()const{return material_resource_layout;}
+    const   mtl::ShaderResourceSchema &              GetShaderResourceSchema      ()const{return material_resource_layout;}
     const   shadergen::ShaderProgramKey &             GetProgramKey          ()const{return program_key;}
 
     const   PrimitiveType &                     GetPrimitiveType        ()const{return geometry;}

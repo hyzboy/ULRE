@@ -16,7 +16,7 @@ ShaderProgram::ShaderProgram(const AnsiString &n,const shadergen::ShaderProgramB
 {
     name=n;
     geometry=mci->GetPrimitiveType();
-    material_resource_layout=mci->GetMaterialResourceLayout();
+    material_resource_layout=mci->GetShaderResourceSchema();
     program_key=mci->GetProgramLink().BuildKey();
 
     vertex_input=nullptr;

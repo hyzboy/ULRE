@@ -30,7 +30,7 @@ namespace hgl::graph::mtl
                 || source == MaterialBindingSource::Omitted;
         }
 
-        bool IsValidTextureBinding(const MaterialTextureBinding &binding) noexcept
+        bool IsValidTextureBinding(const ResolvedTextureBinding &binding) noexcept
         {
             return binding.logical_resource_id != 0
                 && binding.asset_identity_hash != 0
@@ -73,7 +73,7 @@ namespace hgl::graph::mtl
         }
 
         uint64 HashTextureMetadata(
-            const MaterialTextureBinding &binding) noexcept
+            const ResolvedTextureBinding &binding) noexcept
         {
             hgl::hash::FNV1aHasher64 h;
             h << binding.logical_resource_id
@@ -106,8 +106,8 @@ namespace hgl::graph::mtl
         }
 
         bool IsLess(
-            const MaterialTextureBinding &lhs,
-            const MaterialTextureBinding &rhs) noexcept
+            const ResolvedTextureBinding &lhs,
+            const ResolvedTextureBinding &rhs) noexcept
         {
             if (lhs.logical_resource_id != rhs.logical_resource_id)
                 return lhs.logical_resource_id < rhs.logical_resource_id;
@@ -141,7 +141,7 @@ namespace hgl::graph::mtl
 
         void WriteMaterialTextureBinding(
             CanonicalContractWriter &writer,
-            const MaterialTextureBinding &binding)
+            const ResolvedTextureBinding &binding)
         {
             writer.WriteU64(binding.logical_resource_id);
             writer.WriteU64(binding.asset_identity_hash);
@@ -218,7 +218,7 @@ namespace hgl::graph::mtl
         uint32 observed_missing_required = 0;
         for (int i = 0; i < view.textures.GetCount(); ++i)
         {
-            const MaterialTextureBinding &binding = view.textures[i];
+            const ResolvedTextureBinding &binding = view.textures[i];
             if (!IsValidTextureBinding(binding))
                 return false;
 
@@ -309,11 +309,11 @@ namespace hgl::graph::mtl
         if (!ValidateMaterialBindingView(view))
             return false;
 
-        ValueArray<MaterialTextureBinding> textures = view.textures;
+        ValueArray<ResolvedTextureBinding> textures = view.textures;
         contract_detail::CanonicalSort(
             textures,
-            [](const MaterialTextureBinding &lhs,
-               const MaterialTextureBinding &rhs) noexcept
+            [](const ResolvedTextureBinding &lhs,
+               const ResolvedTextureBinding &rhs) noexcept
             {
                 return IsLess(lhs, rhs);
             });

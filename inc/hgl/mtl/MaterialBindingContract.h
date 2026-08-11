@@ -9,7 +9,7 @@
 namespace hgl::graph::mtl
 {
     struct MaterialRecipe;
-    struct MaterialResourceLayout;
+    struct ShaderResourceSchema;
 }
 namespace hgl::graph::shadergen
 {
@@ -32,7 +32,7 @@ namespace hgl::graph::mtl
         Omitted
     };
 
-    struct MaterialTextureBinding
+    struct ResolvedTextureBinding
     {
         uint64 logical_resource_id = 0;
         uint64 asset_identity_hash = 0;
@@ -47,8 +47,8 @@ namespace hgl::graph::mtl
     };
 
     inline bool operator==(
-        const MaterialTextureBinding &lhs,
-        const MaterialTextureBinding &rhs) noexcept
+        const ResolvedTextureBinding &lhs,
+        const ResolvedTextureBinding &rhs) noexcept
     {
         return lhs.logical_resource_id == rhs.logical_resource_id
             && lhs.asset_identity_hash == rhs.asset_identity_hash
@@ -108,7 +108,7 @@ namespace hgl::graph::mtl
         uint32 missing_required_count = 0;
         uint32 unused_recipe_texture_count = 0;
         uint32 unused_recipe_data_count = 0;
-        ValueArray<MaterialTextureBinding> textures;
+        ValueArray<ResolvedTextureBinding> textures;
         ValueArray<MaterialDataBinding> data;
 
         bool IsValid() const noexcept;

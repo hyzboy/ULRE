@@ -134,7 +134,7 @@ namespace hgl::graph
         texture_bindings[index] = {};
     }
 
-    bool DescriptorBindingSet::SatisfiesResourceLayout(const mtl::MaterialResourceLayout &resource_layout, const char *resource_layout_owner_name) const
+    bool DescriptorBindingSet::SatisfiesResourceLayout(const mtl::ShaderResourceSchema &resource_layout, const char *resource_layout_owner_name) const
     {
         const char *owner_name = (resource_layout_owner_name && *resource_layout_owner_name)
                                ? resource_layout_owner_name
@@ -214,10 +214,10 @@ namespace hgl::graph
         if (!material)
             return false;
 
-        return SatisfiesResourceLayout(material->GetMaterialResourceLayout(), material->GetName().c_str());
+        return SatisfiesResourceLayout(material->GetShaderResourceSchema(), material->GetName().c_str());
     }
 
-    bool DescriptorBindingSet::HasRequiredResourceBindings(const mtl::MaterialResourceLayout &resource_layout, const char *resource_layout_owner_name) const
+    bool DescriptorBindingSet::HasRequiredResourceBindings(const mtl::ShaderResourceSchema &resource_layout, const char *resource_layout_owner_name) const
     {
         return SatisfiesResourceLayout(resource_layout, resource_layout_owner_name);
     }

@@ -208,7 +208,7 @@ namespace hgl::ecs
             if (bindless_mgr && bindless_mgr->IsValid())
             {
                 bool needs_bindless_set = false;
-                const auto &contract = material->GetMaterialResourceLayout();
+                const auto &contract = material->GetShaderResourceSchema();
                 for (const auto &req : contract.requirements)
                 {
                     if (req.semantic == graph::mtl::DescriptorSemantic::MaterialTextureLayerTable)

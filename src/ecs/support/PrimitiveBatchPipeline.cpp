@@ -42,7 +42,7 @@ namespace hgl::ecs
             if (!material)
                 return false;
 
-            for (const auto &req : material->GetMaterialResourceLayout().requirements)
+            for (const auto &req : material->GetShaderResourceSchema().requirements)
             {
                 switch (req.semantic)
                 {

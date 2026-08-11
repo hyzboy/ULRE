@@ -1,6 +1,6 @@
 #include <hgl/shadergen/ShaderProgramArtifactBuilder.h>
 
-#include <hgl/mtl/MaterialResourceLayout.h>
+#include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/shadergen/ShaderCreateInfo.h>
 #include <hgl/shadergen/ShaderKeyUtility.h>
 #include <hgl/shadergen/ShaderProgramBuildSpec.h>
@@ -50,7 +50,7 @@ namespace hgl::graph::shadergen
         interface_hasher << link.vertex_stage.interface_hash
                          << link.fragment_stage.interface_hash
                          << HashMaterialResourceLayout(
-                             build_spec.GetMaterialResourceLayout());
+                             build_spec.GetShaderResourceSchema());
         const uint64 interface_hash = interface_hasher;
 
         const uint64 program_digest = link.BuildKey().GetDigest();

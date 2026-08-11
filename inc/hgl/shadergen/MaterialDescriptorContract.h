@@ -3,7 +3,7 @@
 namespace hgl::graph::mtl {}
 
 #include <hgl/mtl/FixedDescriptorEntry.h>
-#include <hgl/mtl/MaterialResourceLayout.h>
+#include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/shadergen/CanonicalShaderContract.h>
 #include <string>
 #include <vector>
@@ -54,7 +54,7 @@ namespace hgl::graph::shadergen
 
     bool BuildMaterialResourceLayoutFromDescriptorContract(
         const MaterialDescriptorContract &contract,
-        MaterialResourceLayout &out_layout);
+        ShaderResourceSchema &out_layout);
 
     bool ValidateMaterialDescriptorContract(
         const MaterialDescriptorContract &contract) noexcept;

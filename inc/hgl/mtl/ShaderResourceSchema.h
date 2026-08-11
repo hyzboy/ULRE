@@ -159,7 +159,7 @@ namespace hgl::graph::mtl
         }
     };
 
-    struct MaterialResourceLayout
+    struct ShaderResourceSchema
     {
         std::vector<MaterialResourceRequirement> requirements;
     };
@@ -296,10 +296,10 @@ namespace hgl::graph::mtl
         }
     }
 
-    inline MaterialResourceLayout BuildMaterialResourceLayout(const FixedDescriptorEntry *descriptor_entries,
+    inline ShaderResourceSchema BuildMaterialResourceLayout(const FixedDescriptorEntry *descriptor_entries,
                                                 const uint32_t descriptor_entry_count)
     {
-        MaterialResourceLayout contract;
+        ShaderResourceSchema contract;
         if (!descriptor_entries || descriptor_entry_count == 0)
             return contract;
 
@@ -424,7 +424,7 @@ namespace hgl::graph::mtl
     }
 
     inline uint64 HashMaterialResourceLayout(
-        const MaterialResourceLayout &layout) noexcept
+        const ShaderResourceSchema &layout) noexcept
     {
         hgl::hash::FNV1aHasher64 h;
 
@@ -479,7 +479,7 @@ namespace hgl::graph::mtl
         return "Unknown";
     }
 
-    inline bool ValidateMaterialResourceLayout(const MaterialResourceLayout &contract, std::vector<std::string> &diagnostics)
+    inline bool ValidateMaterialResourceLayout(const ShaderResourceSchema &contract, std::vector<std::string> &diagnostics)
     {
         diagnostics.clear();
 

@@ -6,7 +6,7 @@
 ///   3. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
 
 #include <hgl/shadergen/MaterialCompiler.h>
-#include <hgl/mtl/MaterialResourceLayout.h>
+#include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/shadergen/ShaderProgramBuildSpec.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
 #include <hgl/shadergen/ShaderProgramArtifactBuilder.h>
@@ -175,7 +175,7 @@ static bool AddMaterialDataSlotDescriptor(ShaderProgramBuildSpec &mci,
 
 static bool ValidateDefinitionCapabilitySubset(
     const MaterialDefinition &definition,
-    const MaterialResourceLayout &layout,
+    const ShaderResourceSchema &layout,
     std::vector<std::string> &diagnostics,
     const ShaderResourceManifest *manifest)
 {
@@ -960,12 +960,12 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
         frag->SetFinalGLSL(fs_final);
 
     // ─────────────────────────────────────────────────────────────
-    // Step 6b: Build MaterialResourceLayout from descriptor entries.
+    // Step 6b: Build ShaderResourceSchema from descriptor entries.
     // When data_slot_decls is provided, material SSBO entries are
     // generated from it and merged with the canonical descriptor entries.
     // ─────────────────────────────────────────────────────────────
 
-    MaterialResourceLayout material_resource_layout;
+    ShaderResourceSchema material_resource_layout;
     if (!BuildMaterialResourceLayoutFromDescriptorContract(
             effective_descriptor_contract,
             material_resource_layout))
@@ -981,11 +981,11 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
         for (const auto &diag : contract_diagnostics)
         {
             std::fprintf(stderr,
-                "[CompileCompositorMaterial][MaterialResourceLayout] material=%s: %s\n",
+                "[CompileCompositorMaterial][ShaderResourceSchema] material=%s: %s\n",
                 input.debug_name ? input.debug_name : "<unnamed>",
                 diag.c_str());
         }
-        return FailAfterMci("MaterialResourceLayout validation failed");
+        return FailAfterMci("ShaderResourceSchema validation failed");
     }
 
     if (config.material_definition)
@@ -1007,7 +1007,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
         }
     }
 
-    mci->SetMaterialResourceLayout(material_resource_layout);
+    mci->SetShaderResourceSchema(material_resource_layout);
     if (mci->HasProgramLink())
     {
         ShaderProgramArtifactMetadata metadata{};

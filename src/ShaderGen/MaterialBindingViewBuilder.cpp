@@ -1,7 +1,7 @@
 #include <hgl/mtl/MaterialBindingViewBuilder.h>
 
 #include <hgl/mtl/MaterialRecipe.h>
-#include <hgl/mtl/MaterialResourceLayout.h>
+#include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/shadergen/MaterialDescriptorContract.h>
 #include <hgl/shadergen/CanonicalShaderContract.h>
 #include <hgl/util/hash/FNV1a.h>
@@ -58,7 +58,7 @@ namespace hgl::graph::mtl
         }
 
         uint64 HashTextureMetadata(
-            const MaterialTextureBinding &binding) noexcept
+            const ResolvedTextureBinding &binding) noexcept
         {
             hgl::hash::FNV1aHasher64 h;
             h << binding.logical_resource_id
@@ -121,7 +121,7 @@ namespace hgl::graph::mtl
                 0);
         }
 
-        MaterialTextureBinding *FindTextureView(
+        ResolvedTextureBinding *FindTextureView(
             MaterialBindingView &view,
             const TextureSlot slot) noexcept
         {
@@ -203,10 +203,10 @@ namespace hgl::graph::mtl
             return found;
         }
 
-        void SortBindings(ValueArray<MaterialTextureBinding> &bindings)
+        void SortBindings(ValueArray<ResolvedTextureBinding> &bindings)
         {
-            contract_detail::CanonicalSort(bindings, [](const MaterialTextureBinding &lhs,
-                                                        const MaterialTextureBinding &rhs)
+            contract_detail::CanonicalSort(bindings, [](const ResolvedTextureBinding &lhs,
+                                                        const ResolvedTextureBinding &rhs)
             {
                 return lhs.logical_resource_id < rhs.logical_resource_id;
             });
@@ -237,7 +237,7 @@ namespace hgl::graph::mtl
         }
 
         bool AppendLayoutRequirements(
-            const MaterialResourceLayout &layout,
+            const ShaderResourceSchema &layout,
             ValueArray<ShaderDescriptorContractEntry> &out_requirements) noexcept
         {
             out_requirements.Clear();
@@ -296,12 +296,12 @@ namespace hgl::graph::mtl
                 {
                     const uint64 logical_resource_id =
                         ResolveDescriptorLogicalResourceID(entry, program_key_digest);
-                    MaterialTextureBinding *binding =
+                    ResolvedTextureBinding *binding =
                         FindTextureView(out_view, entry.texture_slot);
                     if (!binding)
                     {
                         const int index = out_view.textures.Add(
-                            MaterialTextureBinding{});
+                            ResolvedTextureBinding{});
                         binding = &out_view.textures[index];
                         binding->logical_resource_id = logical_resource_id;
                         binding->semantic = entry.semantic;
@@ -366,7 +366,7 @@ namespace hgl::graph::mtl
                     if (FindTextureView(out_view, recipe_binding.slot))
                         continue;
 
-                    MaterialTextureBinding binding{};
+                    ResolvedTextureBinding binding{};
                     binding.logical_resource_id = MakeViewFallbackTextureID(
                         program_key_digest, recipe_binding.slot);
                     binding.semantic = DescriptorSemantic::MaterialTexture;
@@ -388,7 +388,7 @@ namespace hgl::graph::mtl
 
             for (int i = 0; i < out_view.textures.GetCount(); ++i)
             {
-                MaterialTextureBinding &view_binding = out_view.textures[i];
+                ResolvedTextureBinding &view_binding = out_view.textures[i];
                 const int binding_index = FindRecipeTexture(
                     recipe, view_binding.texture_slot, out_diagnostic);
                 if (binding_index == -2)
@@ -521,7 +521,7 @@ namespace hgl::graph::mtl
 
             for (int i = 0; i < binding_view.textures.GetCount(); ++i)
             {
-                const MaterialTextureBinding &view_binding = binding_view.textures[i];
+                const ResolvedTextureBinding &view_binding = binding_view.textures[i];
                 if (view_binding.source == MaterialBindingSource::Omitted)
                     continue;
                 if (view_binding.source == MaterialBindingSource::Missing
@@ -595,7 +595,7 @@ namespace hgl::graph::mtl
 
     bool BuildMaterialBindingView(
         const MaterialRecipe &recipe,
-        const MaterialResourceLayout &layout,
+        const ShaderResourceSchema &layout,
         const shadergen::ShaderProgramKey &program_key,
         MaterialBindingView &out_view,
         MaterialBindingViewBuildDiagnostic &out_diagnostic) noexcept
@@ -639,7 +639,7 @@ namespace hgl::graph::mtl
         out_plan.program_key_digest = binding_view.program_key_digest;
         for (int i = 0; i < binding_view.textures.GetCount(); ++i)
         {
-            const MaterialTextureBinding &binding = binding_view.textures[i];
+            const ResolvedTextureBinding &binding = binding_view.textures[i];
             if (binding.source != MaterialBindingSource::Asset)
                 continue;
 

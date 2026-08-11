@@ -25,7 +25,7 @@ namespace hgl::graph::mtl
 
         // Resource policy is explicit for manifest/definition-owned entries.
         // Entries without an explicit policy use the semantic defaults when
-        // converted into MaterialResourceLayout.
+        // converted into ShaderResourceSchema.
         bool                has_requirement_policy = false;
         bool                required = true;
         bool                allow_fallback = false;

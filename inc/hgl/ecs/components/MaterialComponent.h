@@ -1,7 +1,7 @@
 #pragma once
 
 #include<hgl/ecs/core/Component.h>
-#include<hgl/mtl/MaterialResourceLayout.h>
+#include<hgl/mtl/ShaderResourceSchema.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/MaterialBindingContract.h>
 #include<vector>

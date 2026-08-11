@@ -84,7 +84,7 @@ namespace hgl::ecs
         {
             if (material)
             {
-                const auto &contract = material->GetMaterialResourceLayout();
+                const auto &contract = material->GetShaderResourceSchema();
                 for (const auto &req : contract.requirements)
                 {
                     if (req.semantic != graph::mtl::DescriptorSemantic::MaterialDataSlotData)
@@ -123,7 +123,7 @@ namespace hgl::ecs
             if (!material)
                 return false;
 
-            for (const auto &req : material->GetMaterialResourceLayout().requirements)
+            for (const auto &req : material->GetShaderResourceSchema().requirements)
             {
                 switch (req.semantic)
                 {
@@ -256,7 +256,7 @@ namespace hgl::ecs
             if (!program)
                 return;
             const auto &requirements =
-                program->GetMaterialResourceLayout().requirements;
+                program->GetShaderResourceSchema().requirements;
             for (size_t i = 0; i < requirements.size(); ++i)
             {
                 const auto &requirement = requirements[i];
@@ -349,7 +349,7 @@ namespace hgl::ecs
                 if (!material_program)
                     continue;
 
-                for (const auto &req : material_program->GetMaterialResourceLayout().requirements)
+                for (const auto &req : material_program->GetShaderResourceSchema().requirements)
                 {
                     if (req.texture_slot != slot || !req.name || !*req.name)
                         continue;
@@ -392,7 +392,7 @@ namespace hgl::ecs
                 graph::mtl::SSBOType resolved_ssbo_type = ssbo_type;
                 if (resolved_ssbo_type == graph::mtl::SSBOType::UserDefined && material_program)
                 {
-                    for (const auto &req : material_program->GetMaterialResourceLayout().requirements)
+                    for (const auto &req : material_program->GetShaderResourceSchema().requirements)
                     {
                         if (req.semantic == graph::mtl::DescriptorSemantic::MaterialDataSlotData
                          && req.name
@@ -470,7 +470,7 @@ namespace hgl::ecs
             if (!material_program)
                 return true;
 
-            for (const auto &req : material_program->GetMaterialResourceLayout().requirements)
+            for (const auto &req : material_program->GetShaderResourceSchema().requirements)
             {
                 if (req.semantic != graph::mtl::DescriptorSemantic::MaterialDataSlotData)
                     continue;
@@ -616,7 +616,7 @@ namespace hgl::ecs
                     bool descriptor_registered = false;
                     for (const auto &requirement :
                          material_program->
-                            GetMaterialResourceLayout().requirements)
+                            GetShaderResourceSchema().requirements)
                     {
                         if (requirement.texture_slot
                                 != entry.texture_slot
@@ -679,7 +679,7 @@ namespace hgl::ecs
                     *layout_requirement = nullptr;
                 for (const auto &requirement :
                      material_program->
-                        GetMaterialResourceLayout().requirements)
+                        GetShaderResourceSchema().requirements)
                 {
                     if (requirement.semantic
                             == graph::mtl::DescriptorSemantic::
@@ -886,7 +886,7 @@ namespace hgl::ecs
                 material_binding_recipe)
          || !graph::mtl::BuildMaterialBindingView(
                 material_binding_recipe,
-                resolved_program->GetMaterialResourceLayout(),
+                resolved_program->GetShaderResourceSchema(),
                 resolved_program->GetProgramKey(),
                 binding_view,
                 binding_diagnostic))
@@ -925,7 +925,7 @@ namespace hgl::ecs
 
         if (auto rdbs = world->GetSystem<RenderDescriptorBindingSystem>())
         {
-            for (const auto &req : resolved_program->GetMaterialResourceLayout().requirements)
+            for (const auto &req : resolved_program->GetShaderResourceSchema().requirements)
             {
                 if (req.semantic != graph::mtl::DescriptorSemantic::MaterialDataSlotData)
                     continue;
@@ -1107,7 +1107,7 @@ namespace hgl::ecs
 
         material_comp->ClearResolvedSSBOBindings();
         material_comp->data_index_values.clear();
-        for (const auto &req : material_comp->program->GetMaterialResourceLayout().requirements)
+        for (const auto &req : material_comp->program->GetShaderResourceSchema().requirements)
         {
             if (req.semantic != graph::mtl::DescriptorSemantic::MaterialDataSlotData)
                 continue;
@@ -1181,7 +1181,7 @@ namespace hgl::ecs
                 continue;
 
             uint32_t data_slot = asset_binding.data_slot;
-            for (const auto &req : material_comp->program->GetMaterialResourceLayout().requirements)
+            for (const auto &req : material_comp->program->GetShaderResourceSchema().requirements)
             {
                 if (req.semantic == graph::mtl::DescriptorSemantic::MaterialDataSlotData
                  && req.name

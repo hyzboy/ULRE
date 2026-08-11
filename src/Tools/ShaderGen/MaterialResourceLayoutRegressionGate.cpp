@@ -1,4 +1,4 @@
-#include <hgl/mtl/MaterialResourceLayout.h>
+#include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/mtl/MaterialLibrary.h>
 #include <hgl/mtl/MaterialDefinitionFile.h>
 #include <hgl/shadergen/CompositorAssembler.h>
@@ -98,7 +98,7 @@ namespace
         return hgl::ToOSString(RepoRootPath(suffix));
     }
 
-    static std::vector<std::string> SummarizeConstraintShape(const MaterialResourceLayout &contract)
+    static std::vector<std::string> SummarizeConstraintShape(const ShaderResourceSchema &contract)
     {
         std::vector<std::string> rows;
         rows.reserve(contract.requirements.size());
@@ -137,7 +137,7 @@ namespace
         GateResult result;
         result.name = name ? name : "<unnamed>";
 
-        const MaterialResourceLayout contract = BuildMaterialResourceLayout(entries, count);
+        const ShaderResourceSchema contract = BuildMaterialResourceLayout(entries, count);
         result.passed = (ValidateMaterialResourceLayout(contract, result.diagnostics) == expected_pass);
         return result;
     }
@@ -396,7 +396,7 @@ namespace
         program_key.resource_layout_hash = 0x7103u;
         program_key.vertex_input_hash = 0x7104u;
 
-        MaterialResourceLayout layout{};
+        ShaderResourceSchema layout{};
         MaterialResourceRequirement texture_requirement{};
         texture_requirement.logical_resource_id =
             StableID("resource.base_color");
@@ -698,7 +698,7 @@ namespace
                 "missing required material resource must remain explicit");
         }
 
-        MaterialResourceLayout fallback_layout = layout;
+        ShaderResourceSchema fallback_layout = layout;
         fallback_layout.requirements[0].allow_fallback = true;
         MaterialBindingView unresolved_fallback_view{};
         if (!BuildMaterialBindingView(
@@ -735,7 +735,7 @@ namespace
         }
 
         MaterialBindingView depth_view{};
-        MaterialResourceLayout depth_layout{};
+        ShaderResourceSchema depth_layout{};
         ResourceAcquirePlan depth_plan{};
         if (!BuildMaterialBindingView(
                 recipe,
@@ -2400,8 +2400,8 @@ namespace
 
         std::vector<std::string> diagnostics_standard;
         std::vector<std::string> diagnostics_array;
-        const MaterialResourceLayout standard_contract = BuildMaterialResourceLayout(standard_entries, uint32_t(std::size(standard_entries)));
-        const MaterialResourceLayout array_contract = BuildMaterialResourceLayout(array_entries, uint32_t(std::size(array_entries)));
+        const ShaderResourceSchema standard_contract = BuildMaterialResourceLayout(standard_entries, uint32_t(std::size(standard_entries)));
+        const ShaderResourceSchema array_contract = BuildMaterialResourceLayout(array_entries, uint32_t(std::size(array_entries)));
 
         const bool standard_ok = ValidateMaterialResourceLayout(standard_contract, diagnostics_standard);
         const bool array_ok = ValidateMaterialResourceLayout(array_contract, diagnostics_array);
@@ -2968,7 +2968,7 @@ namespace
                         [](const ShaderProgramBuildSpec &spec)
                     {
                         for (const auto &requirement :
-                             spec.GetMaterialResourceLayout().requirements)
+                             spec.GetShaderResourceSchema().requirements)
                         {
                             if (requirement.set_type
                                 == DescriptorSetType::Material)
@@ -2980,7 +2980,7 @@ namespace
                         [](const ShaderProgramBuildSpec &spec)
                     {
                         for (const auto &requirement :
-                             spec.GetMaterialResourceLayout().requirements)
+                             spec.GetShaderResourceSchema().requirements)
                         {
                             if (requirement.semantic
                                     == DescriptorSemantic::SkyInfo
@@ -5466,7 +5466,7 @@ namespace
         GateResult result;
         result.name = "W1.material-descriptor-contract";
 
-        MaterialResourceLayout persistent_layout;
+        ShaderResourceSchema persistent_layout;
         MaterialDescriptorContract first_contract{};
         MaterialDescriptorContract second_contract{};
         {
@@ -5572,7 +5572,7 @@ namespace
             varying.emit_data_index_id = true;
             varying.emit_texture_layer_id = true;
             varying.texture_layer_id_uses_data_index = false;
-            MaterialResourceLayout varying_layout;
+            ShaderResourceSchema varying_layout;
             if (!EnsureMaterialDescriptorContractVaryingResources(
                     varying, varying_contract)
              || !BuildMaterialResourceLayoutFromDescriptorContract(
@@ -5698,7 +5698,7 @@ namespace
         }
         else
         {
-            const MaterialResourceLayout layout =
+            const ShaderResourceSchema layout =
                 BuildMaterialResourceLayout(
                     descriptors.data(),
                     static_cast<uint32_t>(descriptors.size()));

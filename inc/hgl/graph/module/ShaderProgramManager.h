@@ -123,7 +123,7 @@ public: //Shader
 public: //ShaderProgram
 
     bool            BuildMaterialResourceLayout(const mtl::MaterialDefinitionBuildRequest &request,
-                                                mtl::MaterialResourceLayout &out_layout);
+                                                mtl::ShaderResourceSchema &out_layout);
     ShaderProgram *AcquireShaderProgram(
         const mtl::MaterialDefinitionBuildRequest &request);
 
