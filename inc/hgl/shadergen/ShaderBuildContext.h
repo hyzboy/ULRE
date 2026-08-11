@@ -118,7 +118,6 @@ namespace hgl::graph::shadergen
             void SetDevice(const contract::PhysicalDeviceProfileLite *profile);
 
             bool SetLocalToWorld(const uint32_t shader_stage_flag_bits);
-            //bool SetWorldPosition(const uint32_t shader_stage_flag_bits);
 
             bool AddStruct(const std::string &ubo_typename,const std::string &codes);
             bool AddStruct(const char *ubo_typename,const char *codes)

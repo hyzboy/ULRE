@@ -58,28 +58,9 @@ public:
         return AddStruct(name,KeyFrom(code));
     }
 
-    bool AddStruct(const ShaderBufferSource &ss)
-    {
-        return(AddStruct(ss.struct_name,""));
-    }
-
-    bool GetStruct(const std::string &name,std::string &code)
-    {
-        const auto iter=struct_map.find(name);
-        if(iter==struct_map.end())
-            return false;
-
-        code=iter->second;
-        return true;
-    }
-
     bool hasStruct(const std::string &name) const
     {
         return struct_map.contains(name);
-    }
-    bool hasStruct(const char *name) const
-    {
-        return struct_map.contains(KeyFrom(name));
     }
 
     const UBODescriptor *AddUBO(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,UBODescriptor *sd);
@@ -103,12 +84,6 @@ public:
     const SSBODescriptor *GetSSBO(const char *name)const{return GetSSBO(std::string(name?name:""));}
     const TextureDescriptor *GetTexture(const char *name)const{return GetTexture(std::string(name?name:""));}
     const TextureSamplerDescriptor *GetTextureSampler(const char *name)const{return GetTextureSampler(std::string(name?name:""));}
-
-    const DescriptorSetType GetSetType(const std::string &name)const;
-    const DescriptorSetType GetSetType(const char *name)const
-    {
-        return GetSetType(std::string(name?name:""));
-    }
 
     const uint GetCount()const
     {

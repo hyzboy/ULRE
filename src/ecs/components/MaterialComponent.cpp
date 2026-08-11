@@ -22,19 +22,6 @@ namespace hgl::ecs
         return "Unknown";
     }
 
-    const char *GetMaterialResourceLoadingModeName(
-        const MaterialResourceLoadingMode mode) noexcept
-    {
-        switch (mode)
-        {
-        case MaterialResourceLoadingMode::LegacyEager:
-            return "LegacyEager";
-        case MaterialResourceLoadingMode::ActivePlan:
-            return "ActivePlan";
-        }
-        return "Unknown";
-    }
-
     MaterialComponent::MaterialComponent(const std::string &name)
         : Component(name)
     {

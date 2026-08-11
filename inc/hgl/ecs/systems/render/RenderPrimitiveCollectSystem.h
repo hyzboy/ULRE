@@ -28,8 +28,6 @@ namespace hgl::ecs
 
         ECSContext* world = nullptr;
         const graph::CameraInfo* cameraInfo = nullptr;
-        MaterialResourceLoadingMode resource_loading_mode =
-            MaterialResourceLoadingMode::ActivePlan;
         bool ResolveMaterialProgramForPrimitive(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
                                                 const std::shared_ptr<MaterialComponent> &material_comp);
         bool ResolveRuntimePipelineForPrimitive(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
@@ -47,16 +45,6 @@ namespace hgl::ecs
         void SetWorld(ECSContext* w) { world = w; }
         void SetCameraInfo(const graph::CameraInfo* info) { cameraInfo = info; }
         const graph::CameraInfo* GetCameraInfo() const { return cameraInfo; }
-        void SetMaterialResourceLoadingMode(
-            MaterialResourceLoadingMode mode) noexcept
-        {
-            resource_loading_mode = mode;
-        }
-        MaterialResourceLoadingMode GetMaterialResourceLoadingMode()
-            const noexcept
-        {
-            return resource_loading_mode;
-        }
 
         void Update(float deltaTime) override;
     };

@@ -16,15 +16,6 @@ DescriptorSetLayoutAllocator::DescriptorSetLayoutAllocator()
     }
 }
 
-const DescriptorSetType DescriptorSetLayoutAllocator::GetSetType(const std::string &name)const
-{
-    for(auto &sds:desc_set_array)
-        if(sds.descriptor_map.ContainsKey(name.c_str()))
-            return(sds.set_type);
-
-    return DescriptorSetType::Unknow;
-}
-
 const UBODescriptor *DescriptorSetLayoutAllocator::AddUBO(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,UBODescriptor *sd)
 {
     RANGE_CHECK_RETURN_NULLPTR(set_type);

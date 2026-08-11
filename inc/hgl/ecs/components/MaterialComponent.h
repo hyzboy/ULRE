@@ -22,16 +22,8 @@ namespace hgl::ecs
         Failed
     };
 
-    enum class MaterialResourceLoadingMode : uint8
-    {
-        LegacyEager = 0,
-        ActivePlan
-    };
-
     const char *GetMaterialRuntimeStateName(
         MaterialRuntimeState state) noexcept;
-    const char *GetMaterialResourceLoadingModeName(
-        MaterialResourceLoadingMode mode) noexcept;
 
     class MaterialComponent : public Component
     {
@@ -62,8 +54,6 @@ namespace hgl::ecs
         bool valid = false;
         MaterialRuntimeState runtime_state =
             MaterialRuntimeState::Unresolved;
-        MaterialResourceLoadingMode resource_loading_mode =
-            MaterialResourceLoadingMode::ActivePlan;
         uint32_t runtime_revision = 0;
         uint64_t recipe_hash = 0;
         uint64_t program_build_context_hash = 0;

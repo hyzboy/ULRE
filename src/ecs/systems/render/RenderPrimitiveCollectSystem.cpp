@@ -285,214 +285,6 @@ namespace hgl::ecs
             }
         }
 
-        bool PrepareRecipeAuthoringResources(ECSContext *world,
-                                             const std::shared_ptr<PrimitiveComponent> &primitive_comp,
-                                             graph::ShaderProgram *material_program)
-        {
-            if (!world || !primitive_comp)
-                return false;
-
-            graph::mtl::MaterialRecipe effective_recipe{};
-            if (!BuildResolvedRecipe(primitive_comp, material_program, effective_recipe))
-                return false;
-
-            auto rdbs = world->GetSystem<RenderDescriptorBindingSystem>();
-            auto *render_context = world->GetRenderContext();
-            auto *graphics_context = render_context ? render_context->GetGraphicsContext() : world->GetGraphicsContext();
-            auto *domain_manager = graphics_context ? graphics_context->GetResourceDomainManager() : nullptr;
-            auto *bindless_mgr = graphics_context ? graphics_context->GetManager<graph::BindlessTextureManager>() : nullptr;
-            if (!rdbs || !domain_manager)
-                return false;
-
-            const char *prim_owner = GetPrimitiveOwnerName(primitive_comp);
-
-            for (size_t i = 0; i < static_cast<size_t>(graph::mtl::TextureSlot::RANGE_SIZE); ++i)
-            {
-                const auto slot = static_cast<graph::mtl::TextureSlot>(i);
-                const auto *resource = primitive_comp->GetMaterialTextureResource(slot);
-                if (!resource)
-                    continue;
-
-                if (resource->use_direct_value)
-                    continue;
-
-                const std::string resource_id = resource->resource_id.empty()
-                                              ? BuildTextureResourceId(resource->texture)
-                                              : resource->resource_id;
-                if (resource_id.empty() || !bindless_mgr)
-                {
-                    GLogError("[PrepareRecipe] %s slot=%zu: resource_id_empty=%d bindless_mgr_null=%d",
-                              prim_owner, i, resource_id.empty()?1:0, !bindless_mgr?1:0);
-                    return false;
-                }
-
-                uint32_t handle = 0;
-                switch (resource->kind)
-                {
-                    case PrimitiveComponent::MaterialTextureResourceKind::Texture2D:
-                        handle = rdbs->RegisterTexture2DResource(resource_id, resource->texture, resource->sampler, bindless_mgr);
-                        break;
-                    case PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray:
-                        handle = rdbs->RegisterTexture2DArrayResource(resource_id, resource->texture, resource->sampler, bindless_mgr);
-                        break;
-                    default:
-                        GLogWarning("[PrepareRecipe] %s slot=%zu unknown texture kind=%d", prim_owner, i, (int)resource->kind);
-                        break;
-                }
-
-                if (handle == 0)
-                {
-                    GLogError("[PrepareRecipe] %s slot=%zu: RegisterTexture returned handle=0", prim_owner, i);
-                    return false;
-                }
-
-                if (!material_program)
-                    continue;
-
-                for (const auto &req : material_program->GetShaderResourceSchema().resources)
-                {
-                    if (req.texture_slot != slot || !req.name || !*req.name)
-                        continue;
-
-                    switch (req.semantic)
-                    {
-                        case graph::mtl::DescriptorSemantic::MaterialTexture:
-                            if (!rdbs->RegisterMaterialTexture(material_program, req.name, resource->texture))
-                            {
-                                GLogError("[PrepareRecipe] %s RegisterMaterialTexture FAILED descriptor=%s", prim_owner, req.name);
-                                return false;
-                            }
-                            break;
-                        case graph::mtl::DescriptorSemantic::MaterialSampler:
-                            if (!rdbs->RegisterMaterialTextureSampler(material_program, req.name, resource->texture, resource->sampler))
-                            {
-                                GLogError("[PrepareRecipe] %s RegisterMaterialTextureSampler FAILED descriptor=%s", prim_owner, req.name);
-                                return false;
-                            }
-                            break;
-                        default:
-                            break;
-                    }
-                }
-            }
-
-            for (uint32_t i = 0; i < primitive_comp->GetMaterialDataSlotCount(); ++i)
-            {
-                const auto *resource = primitive_comp->GetMaterialDataSlotResourceAt(i);
-                if (!resource)
-                    continue;
-
-                const graph::mtl::SSBOType ssbo_type =
-                    graph::mtl::ResolveRecipeSSBOType(
-                        effective_recipe,
-                        resource->data_slot_name.c_str(),
-                        resource->data_slot,
-                        resource->ssbo_type);
-
-                graph::mtl::SSBOType resolved_ssbo_type = ssbo_type;
-                if (resolved_ssbo_type == graph::mtl::SSBOType::UserDefined && material_program)
-                {
-                    for (const auto &req : material_program->GetShaderResourceSchema().resources)
-                    {
-                        if (req.semantic == graph::mtl::DescriptorSemantic::MaterialDataSlotData
-                         && req.name
-                         && req.data_slot == resource->data_slot
-                         && resource->data_slot_name == req.name)
-                        {
-                            resolved_ssbo_type = req.ssbo_type;
-                            break;
-                        }
-                    }
-                }
-
-                if (!graph::mtl::IsMaterialSSBOType(resolved_ssbo_type))
-                {
-                    GLogError("[PrepareRecipe] %s: invalid SSBO type=%s name=%s slot=%u",
-                              prim_owner,
-                              graph::mtl::GetSSBOTypeName(resolved_ssbo_type),
-                              resource->data_slot_name.c_str(),
-                              resource->data_slot);
-                    return false;
-                }
-
-                const graph::mtl::SSBOAddress address{resolved_ssbo_type, resource->ssbo_id, 0};
-                if (resource->buffer)
-                {
-                    if (!rdbs->RegisterMaterialStructLayout(resolved_ssbo_type, resource->ssbo_id, resource->byte_stride))
-                    {
-                        GLogError("[PrepareRecipe] %s: SSBO layout registration failed type=%s id=%u name=%s slot=%u",
-                                  prim_owner,
-                                  graph::mtl::GetSSBOTypeName(resolved_ssbo_type),
-                                  resource->ssbo_id,
-                                  resource->data_slot_name.c_str(),
-                                  resource->data_slot);
-                        return false;
-                    }
-
-                    if (!domain_manager->RegisterBuffer(address, resource->buffer, resource->element_capacity))
-                    {
-                        GLogError("[PrepareRecipe] %s: SSBO buffer registration failed type=%s id=%u name=%s slot=%u",
-                                  prim_owner,
-                                  graph::mtl::GetSSBOTypeName(resolved_ssbo_type),
-                                  resource->ssbo_id,
-                                  resource->data_slot_name.c_str(),
-                                  resource->data_slot);
-                        return false;
-                    }
-                }
-                else
-                {
-                    graph::ResourceDomainBinding binding{};
-                    if (!domain_manager->TryGetBinding(address, binding) || !binding.buffer || binding.element_stride == 0)
-                    {
-                        GLogError("[PrepareRecipe] %s: SSBO binding not found type=%s id=%u name=%s slot=%u",
-                                  prim_owner,
-                                  graph::mtl::GetSSBOTypeName(resolved_ssbo_type),
-                                  resource->ssbo_id,
-                                  resource->data_slot_name.c_str(),
-                                  resource->data_slot);
-                        return false;
-                    }
-
-                    if (!rdbs->RegisterMaterialStructLayout(resolved_ssbo_type, resource->ssbo_id, binding.element_stride))
-                    {
-                        GLogError("[PrepareRecipe] %s: SSBO layout registration failed type=%s id=%u name=%s slot=%u",
-                                  prim_owner,
-                                  graph::mtl::GetSSBOTypeName(resolved_ssbo_type),
-                                  resource->ssbo_id,
-                                  resource->data_slot_name.c_str(),
-                                  resource->data_slot);
-                        return false;
-                    }
-                }
-            }
-
-            if (!material_program)
-                return true;
-
-            for (const auto &req : material_program->GetShaderResourceSchema().resources)
-            {
-                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialDataSlotData)
-                    continue;
-
-                const auto *asset_binding = graph::mtl::FindRecipeSSBOAssetBinding(
-                    effective_recipe, req.name, req.data_slot, req.ssbo_type);
-
-                if (!asset_binding)
-                    continue;
-
-                const graph::mtl::SSBOAddress address{req.ssbo_type, asset_binding->ssbo_id, 0};
-                graph::ResourceDomainBinding binding{};
-                if (!domain_manager->TryGetBinding(address, binding) || !binding.buffer || binding.element_stride == 0)
-                    return false;
-
-                if (!rdbs->RegisterMaterialStructLayout(req.ssbo_type, asset_binding->ssbo_id, binding.element_stride))
-                    return false;
-            }
-
-            return true;
-        }
-
         bool PrepareActivePlanResources(
             ECSContext *world,
             const std::shared_ptr<PrimitiveComponent> &primitive_comp,
@@ -975,8 +767,6 @@ namespace hgl::ecs
                 binding_table.unused_recipe_data_count);
         }
         material_comp->program_dirty = false;
-        material_comp->resource_loading_mode =
-            resource_loading_mode;
         material_comp->MarkProgramResolved();
         material_comp->recipe_hash = recipe_hash;
         material_comp->program_build_context_hash =
@@ -1312,29 +1102,7 @@ namespace hgl::ecs
                 if (!material_comp)
                     material_comp = entity->AddComponent<MaterialComponent>();
 
-                if (material_comp->resource_loading_mode
-                        != resource_loading_mode)
-                {
-                    material_comp->program_dirty = true;
-                    InvalidateRecipeRuntime(material_comp, false);
-                    material_comp->resource_loading_mode =
-                        resource_loading_mode;
-                }
-
-                const bool legacy_eager =
-                    resource_loading_mode
-                        == MaterialResourceLoadingMode::LegacyEager;
-                if (legacy_eager
-                 && !PrepareRecipeAuthoringResources(
-                        world, primitiveComp, nullptr))
-                {
-                    GLogWarning(
-                        "[RenderPrimitiveCollectSystem] Legacy eager resource preparation failed for %s",
-                        GetPrimitiveOwnerName(primitiveComp));
-                    InvalidateRecipeRuntime(material_comp, true);
-                    material_comp->MarkFailed();
-                }
-                else if (!ResolveMaterialProgramForPrimitive(
+                if (!ResolveMaterialProgramForPrimitive(
                             primitiveComp, material_comp))
                 {
                     GLogWarning(
@@ -1346,30 +1114,23 @@ namespace hgl::ecs
                 else
                 {
                     material_comp->MarkResourcesPending();
-                    const bool resources_ready = legacy_eager
-                        ? PrepareRecipeAuthoringResources(
+                    const bool resources_ready = material_comp->
+                            has_active_resource_acquire_plan
+                     && PrepareActivePlanResources(
                             world,
                             primitiveComp,
-                            material_comp->program)
-                        : material_comp->
-                                has_active_resource_acquire_plan
-                         && PrepareActivePlanResources(
-                                world,
-                                primitiveComp,
-                                material_comp->program,
-                                material_comp->
-                                    active_resource_acquire_plan);
+                            material_comp->program,
+                            material_comp->
+                                active_resource_acquire_plan);
                     if (!resources_ready)
                     {
                         GLogWarning(
-                            "[RenderPrimitiveCollectSystem] Material resources failed for %s program=%s mode=%s",
+                            "[RenderPrimitiveCollectSystem] Material resources failed for %s program=%s",
                             GetPrimitiveOwnerName(primitiveComp),
                             material_comp->program
                                 ? material_comp->program->
                                     GetName().c_str()
-                                : "<null>",
-                            legacy_eager
-                                ? "LegacyEager" : "ActivePlan");
+                                : "<null>");
                         InvalidateRecipeRuntime(
                             material_comp, false);
                         material_comp->MarkFailed();
@@ -1408,13 +1169,10 @@ namespace hgl::ecs
                     {
                         material_comp->MarkValid();
                         GLogVerbose(
-                            "[DeferredResource] owner=%s state=%s mode=%s plan=%llu",
+                            "[DeferredResource] owner=%s state=%s plan=%llu",
                             GetPrimitiveOwnerName(primitiveComp),
                             GetMaterialRuntimeStateName(
                                 material_comp->runtime_state),
-                            GetMaterialResourceLoadingModeName(
-                                material_comp->
-                                    resource_loading_mode),
                             static_cast<unsigned long long>(
                                 graph::mtl::
                                     GetResourceAcquirePlanHash(
