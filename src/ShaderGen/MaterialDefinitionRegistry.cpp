@@ -3,7 +3,7 @@
 #include<hgl/graph/ShaderBufferSource.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
-#include <hgl/shadergen/MaterialCompiler.h>
+#include <hgl/shadergen/MaterialShaderCompiler.h>
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/shadergen/MaterialOutputContract.h>
 #include <hgl/shadergen/MaterialCoverageContract.h>

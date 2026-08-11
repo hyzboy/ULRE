@@ -2,7 +2,7 @@
 
 namespace hgl::graph::mtl {}
 
-/// MaterialCompiler.h — canonical material input → ShaderProgramBuildSpec
+/// MaterialShaderCompiler.h — canonical material input → ShaderProgramBuildSpec
 ///
 /// 使用 CompileCompositorMaterial 编译 Compositor 模板产出的完整 GLSL。
 /// 内部流程：
@@ -45,7 +45,7 @@ struct CompositorMaterialBuildConfig
     PrimitiveType primitive_type = PrimitiveType::Triangles;
     uint32_t shader_stage_flag_bits = uint32_t(ShaderStage::VertexFragment);
     // Per-material SSBO slot declarations (index == data_slot).
-    // When non-null and non-empty, MaterialCompiler generates MaterialDataSlot
+    // When non-null and non-empty, MaterialShaderCompiler generates MaterialDataSlot
     // mtl::SerializedDescriptorEntry items and injects the material SSBO struct/buffer
     // declarations into the fragment GLSL.
     const std::vector<mtl::DataSlotDeclaration> *data_slot_decls = nullptr;

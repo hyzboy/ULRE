@@ -13,7 +13,7 @@
 #include<hgl/graph/module/ShaderProgramFinalizeFlowAdapter.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/shadergen/ShaderProgramBuildSpec.h>
-#include<hgl/shadergen/MaterialCompiler.h>
+#include<hgl/shadergen/MaterialShaderCompiler.h>
 #include<hgl/shadergen/ShaderArtifactStore.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>

@@ -1,11 +1,11 @@
-/// MaterialCompiler.cpp — canonical material input compiler
+/// MaterialShaderCompiler.cpp — canonical material input compiler
 ///
 /// 流程：
 ///   1. 从 SerializedDescriptorEntry[] 构建 DescriptorSetLayoutAllocator（描述符布局）
 ///   2. 从 SerializedVertexEntry[] 设置顶点输入
 ///   3. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
 
-#include <hgl/shadergen/MaterialCompiler.h>
+#include <hgl/shadergen/MaterialShaderCompiler.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/shadergen/ShaderProgramBuildSpec.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>

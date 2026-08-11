@@ -2,7 +2,7 @@
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/MaterialDefinitionFile.h>
 #include <hgl/shadergen/CompositorAssembler.h>
-#include <hgl/shadergen/MaterialCompiler.h>
+#include <hgl/shadergen/MaterialShaderCompiler.h>
 #include <hgl/shadergen/DescriptorContract.h>
 #include <hgl/shadergen/ShaderProgramBuildSpec.h>
 #include <hgl/shadergen/ResolvedModuleGraphBuilder.h>
