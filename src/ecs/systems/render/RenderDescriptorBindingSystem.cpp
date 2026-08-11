@@ -809,7 +809,7 @@ namespace hgl::ecs
         std::unordered_set<std::string> missing_ssbo_warned_keys;
 
         auto log_missing_ssbo_once = [&](graph::ShaderProgram *material,
-                                         const graph::mtl::MaterialResourceRequirement &req,
+                                         const graph::mtl::ShaderResourceSlot &req,
                                          const char *reason,
                                          int32_t slot = -1)
         {
@@ -858,7 +858,7 @@ namespace hgl::ecs
         };
         auto log_bind_failure = [&](graph::ShaderProgram *material,
                                     MaterialBatch *batch,
-                                    const graph::mtl::MaterialResourceRequirement &req,
+                                    const graph::mtl::ShaderResourceSlot &req,
                                     const char *reason)
         {
             if (!material || !req.name || !*req.name)
@@ -920,7 +920,7 @@ namespace hgl::ecs
 
         auto bind_ubo = [&](graph::ShaderProgram *material,
                             MaterialBatch *batch,
-                            const graph::mtl::MaterialResourceRequirement &req,
+                            const graph::mtl::ShaderResourceSlot &req,
                             const graph::IGPUBuffer *gpu) -> bool
         {
             if (!material || !gpu)
@@ -938,7 +938,7 @@ namespace hgl::ecs
 
         auto bind_ssbo = [&](graph::ShaderProgram *material,
                              MaterialBatch *batch,
-                             const graph::mtl::MaterialResourceRequirement &req,
+                             const graph::mtl::ShaderResourceSlot &req,
                              const graph::IGPUBuffer *gpu) -> bool
         {
             if (!material || !gpu)
@@ -956,7 +956,7 @@ namespace hgl::ecs
 
         auto bind_texture = [&](graph::ShaderProgram *material,
                                 MaterialBatch *batch,
-                                const graph::mtl::MaterialResourceRequirement &req,
+                                const graph::mtl::ShaderResourceSlot &req,
                                 graph::Texture *texture) -> bool
         {
             if (!material || !texture)
@@ -974,7 +974,7 @@ namespace hgl::ecs
 
         auto bind_texture_sampler = [&](graph::ShaderProgram *material,
                                         MaterialBatch *batch,
-                                        const graph::mtl::MaterialResourceRequirement &req,
+                                        const graph::mtl::ShaderResourceSlot &req,
                                         graph::Texture *texture,
                                         graph::Sampler *sampler) -> bool
         {
@@ -992,13 +992,13 @@ namespace hgl::ecs
         };
         auto recipe_runtime_has_layer_table_for_texture_slot = [&](graph::ShaderProgram *material,
                                                                     MaterialBatch *batch,
-                                                                    const graph::mtl::MaterialResourceRequirement &req) -> bool
+                                                                    const graph::mtl::ShaderResourceSlot &req) -> bool
         {
             if (!material || !batch)
                 return false;
 
             const auto &contract = material->GetShaderResourceSchema();
-            for (const auto &candidate : contract.requirements)
+            for (const auto &candidate : contract.resources)
             {
                 if (candidate.semantic != graph::mtl::DescriptorSemantic::MaterialTextureLayerTable)
                     continue;
@@ -1013,7 +1013,7 @@ namespace hgl::ecs
         };
         auto resolve_recipe_batch_struct_ssbo_id = [&](graph::ShaderProgram *material,
                                                        MaterialBatch *batch,
-                                                       const graph::mtl::MaterialResourceRequirement &req,
+                                                       const graph::mtl::ShaderResourceSlot &req,
                                                        uint32_t &out_ssbo_id) -> bool
         {
             if (!batch)
@@ -1108,7 +1108,7 @@ namespace hgl::ecs
 
         auto apply_requirement = [&](graph::ShaderProgram *material,
                                      MaterialBatch *batch,
-                                     const graph::mtl::MaterialResourceRequirement &req)
+                                     const graph::mtl::ShaderResourceSlot &req)
         {
             switch (req.semantic)
             {
@@ -1394,7 +1394,7 @@ namespace hgl::ecs
 
             const auto &contract = shader_program->GetShaderResourceSchema();
 
-            for (const auto &req : contract.requirements)
+            for (const auto &req : contract.resources)
             {
                 if (!req.name || !*req.name)
                     continue;
@@ -1414,7 +1414,7 @@ namespace hgl::ecs
 
             const auto &contract = shader_program->GetShaderResourceSchema();
 
-            for (const auto &req : contract.requirements)
+            for (const auto &req : contract.resources)
             {
                 if (!req.name || !*req.name)
                     continue;
@@ -1440,7 +1440,7 @@ namespace hgl::ecs
 
                     bool needs_bindless_set = false;
                     const auto &contract = material->GetShaderResourceSchema();
-                    for (const auto &req : contract.requirements)
+                    for (const auto &req : contract.resources)
                     {
                         if (req.semantic == graph::mtl::DescriptorSemantic::MaterialTextureLayerTable)
                         {
@@ -1533,7 +1533,7 @@ namespace hgl::ecs
             bool all_required_ok = true;
             std::string first_error;
 
-            for (const auto &req : contract.requirements)
+            for (const auto &req : contract.resources)
             {
                 const bool resolvable = IsSemanticResolvable(req.semantic);
                 if (resolvable)

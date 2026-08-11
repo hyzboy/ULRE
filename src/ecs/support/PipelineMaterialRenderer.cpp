@@ -209,7 +209,7 @@ namespace hgl::ecs
             {
                 bool needs_bindless_set = false;
                 const auto &contract = material->GetShaderResourceSchema();
-                for (const auto &req : contract.requirements)
+                for (const auto &req : contract.resources)
                 {
                     if (req.semantic == graph::mtl::DescriptorSemantic::MaterialTextureLayerTable)
                     {

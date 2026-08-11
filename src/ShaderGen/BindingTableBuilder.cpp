@@ -241,9 +241,9 @@ namespace hgl::graph::mtl
             ValueArray<ShaderDescriptorContractEntry> &out_requirements) noexcept
         {
             out_requirements.Clear();
-            out_requirements.Reserve(static_cast<int>(layout.requirements.size()));
+            out_requirements.Reserve(static_cast<int>(layout.resources.size()));
 
-            for (const MaterialResourceRequirement &req : layout.requirements)
+            for (const ShaderResourceSlot &req : layout.resources)
             {
                 ShaderDescriptorContractEntry entry{};
                 entry.logical_resource_id = req.logical_resource_id;

@@ -101,9 +101,9 @@ namespace
     static std::vector<std::string> SummarizeConstraintShape(const ShaderResourceSchema &contract)
     {
         std::vector<std::string> rows;
-        rows.reserve(contract.requirements.size());
+        rows.reserve(contract.resources.size());
 
-        for (const auto &req : contract.requirements)
+        for (const auto &req : contract.resources)
         {
             std::string row;
             row += GetDescriptorSemanticName(req.semantic);
@@ -397,44 +397,44 @@ namespace
         program_key.vertex_input_hash = 0x7104u;
 
         ShaderResourceSchema layout{};
-        MaterialResourceRequirement texture_requirement{};
-        texture_requirement.logical_resource_id =
+        ShaderResourceSlot texture_resources{};
+        texture_resources.logical_resource_id =
             StableID("resource.base_color");
-        texture_requirement.resource_schema_id =
+        texture_resources.resource_schema_id =
             StableID("schema.sampler2D");
-        texture_requirement.semantic =
+        texture_resources.semantic =
             DescriptorSemantic::MaterialSampler;
-        texture_requirement.kind = DescriptorKind::TextureSampler;
-        texture_requirement.texture_slot = TextureSlot::BaseColor;
-        texture_requirement.required = true;
-        texture_requirement.allow_fallback = false;
-        layout.requirements.push_back(texture_requirement);
+        texture_resources.kind = DescriptorKind::TextureSampler;
+        texture_resources.texture_slot = TextureSlot::BaseColor;
+        texture_resources.required = true;
+        texture_resources.allow_fallback = false;
+        layout.resources.push_back(texture_resources);
 
-        MaterialResourceRequirement texture_layer_requirement{};
-        texture_layer_requirement.logical_resource_id =
+        ShaderResourceSlot texture_layer_resources{};
+        texture_layer_resources.logical_resource_id =
             StableID("resource.texture_layers");
-        texture_layer_requirement.resource_schema_id =
+        texture_layer_resources.resource_schema_id =
             StableID("schema.TextureLayer");
-        texture_layer_requirement.semantic =
+        texture_layer_resources.semantic =
             DescriptorSemantic::MaterialTextureLayerTable;
-        texture_layer_requirement.kind = DescriptorKind::SSBO;
-        texture_layer_requirement.ssbo_type = SSBOType::TextureLayer;
-        texture_layer_requirement.required = true;
-        layout.requirements.push_back(texture_layer_requirement);
+        texture_layer_resources.kind = DescriptorKind::SSBO;
+        texture_layer_resources.ssbo_type = SSBOType::TextureLayer;
+        texture_layer_resources.required = true;
+        layout.resources.push_back(texture_layer_resources);
 
-        MaterialResourceRequirement data_requirement{};
-        data_requirement.logical_resource_id =
+        ShaderResourceSlot data_resources{};
+        data_resources.logical_resource_id =
             StableID("resource.material_data");
-        data_requirement.resource_schema_id =
+        data_resources.resource_schema_id =
             StableID("schema.PBRSurface");
-        data_requirement.semantic =
+        data_resources.semantic =
             DescriptorSemantic::MaterialDataSlotData;
-        data_requirement.kind = DescriptorKind::SSBO;
-        data_requirement.data_slot = 0;
-        data_requirement.ssbo_type = SSBOType::PBRSurface;
-        data_requirement.required = true;
-        data_requirement.allow_fallback = false;
-        layout.requirements.push_back(data_requirement);
+        data_resources.kind = DescriptorKind::SSBO;
+        data_resources.data_slot = 0;
+        data_resources.ssbo_type = SSBOType::PBRSurface;
+        data_resources.required = true;
+        data_resources.allow_fallback = false;
+        layout.resources.push_back(data_resources);
 
         MaterialRecipe recipe{};
         recipe.recipe_name = "BindingViewA";
@@ -699,7 +699,7 @@ namespace
         }
 
         ShaderResourceSchema fallback_layout = layout;
-        fallback_layout.requirements[0].allow_fallback = true;
+        fallback_layout.resources[0].allow_fallback = true;
         ResolvedBindingTable unresolved_fallback_view{};
         if (!BuildBindingTable(
                 missing_recipe,
@@ -2968,7 +2968,7 @@ namespace
                         [](const ShaderProgramBuildSpec &spec)
                     {
                         for (const auto &requirement :
-                             spec.GetShaderResourceSchema().requirements)
+                             spec.GetShaderResourceSchema().resources)
                         {
                             if (requirement.set_type
                                 == DescriptorSetType::Material)
@@ -2980,7 +2980,7 @@ namespace
                         [](const ShaderProgramBuildSpec &spec)
                     {
                         for (const auto &requirement :
-                             spec.GetShaderResourceSchema().requirements)
+                             spec.GetShaderResourceSchema().resources)
                         {
                             if (requirement.semantic
                                     == DescriptorSemantic::SkyInfo
@@ -5586,7 +5586,7 @@ namespace
                 bool has_data_index = false;
                 bool has_texture_layer = false;
                 for (const auto &requirement :
-                     varying_layout.requirements)
+                     varying_layout.resources)
                 {
                     if (requirement.semantic
                         == DescriptorSemantic::MaterialDataIndexTable)
@@ -5611,18 +5611,18 @@ namespace
             }
         }
 
-        if (persistent_layout.requirements.size() != 2
-         || !persistent_layout.requirements[0].name
+        if (persistent_layout.resources.size() != 2
+         || !persistent_layout.resources[0].name
          || std::strcmp(
-                persistent_layout.requirements[0].name,
+                persistent_layout.resources[0].name,
                 "viewport") != 0
-         || !persistent_layout.requirements[0].struct_name
+         || !persistent_layout.resources[0].struct_name
          || std::strcmp(
-                persistent_layout.requirements[0].struct_name,
+                persistent_layout.resources[0].struct_name,
                 "ViewportInfo") != 0
-         || !persistent_layout.requirements[1].glsl_type
+         || !persistent_layout.resources[1].glsl_type
          || std::strcmp(
-                persistent_layout.requirements[1].glsl_type,
+                persistent_layout.resources[1].glsl_type,
                 "sampler2D") != 0)
         {
             result.diagnostics.emplace_back(
@@ -5709,7 +5709,7 @@ namespace
 
             bool has_required_sampler = false;
             bool has_single_material_ssbo = false;
-            for (const auto &req : layout.requirements)
+            for (const auto &req : layout.resources)
             {
                 if (req.semantic == DescriptorSemantic::MaterialSampler
                  && req.texture_slot == TextureSlot::BaseColor)

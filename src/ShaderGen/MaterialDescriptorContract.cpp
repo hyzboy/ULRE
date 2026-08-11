@@ -356,14 +356,14 @@ namespace hgl::graph::shadergen
         if (!ValidateMaterialDescriptorContract(contract))
             return false;
 
-        out_layout.requirements.reserve(contract.entries.size());
+        out_layout.resources.reserve(contract.entries.size());
 
         for (const MaterialDescriptorContractEntry &entry :
              contract.entries)
         {
             const ShaderDescriptorContractEntry &can =
                 entry.canonical;
-            MaterialResourceRequirement req;
+            ShaderResourceSlot req;
 
             // ── Identity from canonical (already computed by AppendEntry) ──
             req.logical_resource_id = can.logical_resource_id;
@@ -426,7 +426,7 @@ namespace hgl::graph::shadergen
             }
 
             req.RebindOwnedPointers();
-            out_layout.requirements.push_back(std::move(req));
+            out_layout.resources.push_back(std::move(req));
         }
         return true;
     }

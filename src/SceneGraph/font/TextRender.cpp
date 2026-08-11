@@ -34,7 +34,7 @@ namespace hgl::graph
             if (!material)
                 return 0;
 
-            for (const auto &req : material->GetShaderResourceSchema().requirements)
+            for (const auto &req : material->GetShaderResourceSchema().resources)
             {
                 if (req.semantic != mtl::DescriptorSemantic::MaterialDataSlotData)
                     continue;
@@ -245,7 +245,7 @@ namespace hgl::graph
                 gpu->Write(&fixed_style, 0, hgl_min(static_cast<uint32_t>(sizeof(fixed_style)), mi_bytes));
 
             // Register in domain manager so RenderDescriptorBindingSystem can resolve it
-            for (const auto &req : mtl_fs->GetShaderResourceSchema().requirements)
+            for (const auto &req : mtl_fs->GetShaderResourceSchema().resources)
             {
                 if (req.semantic != mtl::DescriptorSemantic::MaterialDataSlotData)
                     continue;
@@ -257,7 +257,7 @@ namespace hgl::graph
         // Build DescriptorBindingSet
         binding_set = new DescriptorBindingSet(mtl_fs, binding_vil);
         if (!binding_set) return false;
-        for (const auto &req : mtl_fs->GetShaderResourceSchema().requirements)
+        for (const auto &req : mtl_fs->GetShaderResourceSchema().resources)
         {
             if (req.semantic != mtl::DescriptorSemantic::MaterialDataSlotData)
                 continue;

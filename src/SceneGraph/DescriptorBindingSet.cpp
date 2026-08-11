@@ -140,7 +140,7 @@ namespace hgl::graph
                                ? resource_layout_owner_name
                                : (material ? material->GetName().c_str() : "<unknown>");
 
-        for (const auto &req : resource_layout.requirements)
+        for (const auto &req : resource_layout.resources)
         {
             if (!req.required)
                 continue;

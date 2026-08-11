@@ -81,7 +81,7 @@ namespace hgl::ecs
             if (!material)
                 return 0;
 
-            for (const auto &req : material->GetShaderResourceSchema().requirements)
+            for (const auto &req : material->GetShaderResourceSchema().resources)
             {
                 if (req.semantic != graph::mtl::DescriptorSemantic::MaterialDataSlotData)
                     continue;
@@ -380,7 +380,7 @@ namespace hgl::ecs
             if (!domain_manager)
                 return nullptr;
 
-            for (const auto &req : guard.material->GetShaderResourceSchema().requirements)
+            for (const auto &req : guard.material->GetShaderResourceSchema().resources)
             {
                 if (req.semantic != graph::mtl::DescriptorSemantic::MaterialDataSlotData)
                     continue;

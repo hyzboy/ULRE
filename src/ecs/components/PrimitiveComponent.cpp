@@ -370,7 +370,7 @@ namespace hgl::ecs
 
             if (material_program)
             {
-                for (const auto &req : material_program->GetShaderResourceSchema().requirements)
+                for (const auto &req : material_program->GetShaderResourceSchema().resources)
                 {
                     if (req.semantic != hgl::graph::mtl::DescriptorSemantic::MaterialDataSlotData
                      || !req.name

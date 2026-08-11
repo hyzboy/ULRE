@@ -11,7 +11,7 @@
 
 namespace hgl::graph::mtl
 {
-    struct MaterialResourceRequirement
+    struct ShaderResourceSlot
     {
         uint64 logical_resource_id = 0;
         uint64 resource_schema_id = 0;
@@ -50,9 +50,9 @@ namespace hgl::graph::mtl
                 glsl_type = owned_glsl_type.c_str();
         }
 
-        MaterialResourceRequirement() = default;
+        ShaderResourceSlot() = default;
 
-        MaterialResourceRequirement(const MaterialResourceRequirement &rhs)
+        ShaderResourceSlot(const ShaderResourceSlot &rhs)
             : logical_resource_id(rhs.logical_resource_id)
             , resource_schema_id(rhs.resource_schema_id)
             , semantic(rhs.semantic)
@@ -76,7 +76,7 @@ namespace hgl::graph::mtl
             RebindOwnedPointers();
         }
 
-        MaterialResourceRequirement &operator=(const MaterialResourceRequirement &rhs)
+        ShaderResourceSlot &operator=(const ShaderResourceSlot &rhs)
         {
             if (this == &rhs)
                 return *this;
@@ -105,7 +105,7 @@ namespace hgl::graph::mtl
             return *this;
         }
 
-        MaterialResourceRequirement(MaterialResourceRequirement &&rhs) noexcept
+        ShaderResourceSlot(ShaderResourceSlot &&rhs) noexcept
             : logical_resource_id(rhs.logical_resource_id)
             , resource_schema_id(rhs.resource_schema_id)
             , semantic(rhs.semantic)
@@ -129,7 +129,7 @@ namespace hgl::graph::mtl
             RebindOwnedPointers();
         }
 
-        MaterialResourceRequirement &operator=(MaterialResourceRequirement &&rhs) noexcept
+        ShaderResourceSlot &operator=(ShaderResourceSlot &&rhs) noexcept
         {
             if (this == &rhs)
                 return *this;
@@ -161,7 +161,7 @@ namespace hgl::graph::mtl
 
     struct ShaderResourceSchema
     {
-        std::vector<MaterialResourceRequirement> requirements;
+        std::vector<ShaderResourceSlot> resources;
     };
 
     inline bool IsSemanticRequired(DescriptorSemantic semantic)
@@ -303,13 +303,13 @@ namespace hgl::graph::mtl
         if (!descriptor_entries || descriptor_entry_count == 0)
             return contract;
 
-        contract.requirements.reserve(descriptor_entry_count);
+        contract.resources.reserve(descriptor_entry_count);
 
         for (uint32_t i = 0; i < descriptor_entry_count; ++i)
         {
             const FixedDescriptorEntry &entry = descriptor_entries[i];
 
-            MaterialResourceRequirement req;
+            ShaderResourceSlot req;
             req.semantic = entry.semantic;
             req.semantic_layer = NormalizeSemanticLayer(entry);
             req.set_type = entry.set_type;
@@ -417,7 +417,7 @@ namespace hgl::graph::mtl
                 req.resource_schema_id = h;
             }
 
-            contract.requirements.push_back(req);
+            contract.resources.push_back(req);
         }
 
         return contract;
@@ -430,9 +430,9 @@ namespace hgl::graph::mtl
 
         constexpr uint32 contract_version = 4u;
         h << contract_version
-          << static_cast<uint32>(layout.requirements.size());
+          << static_cast<uint32>(layout.resources.size());
 
-        for (const auto &req : layout.requirements)
+        for (const auto &req : layout.resources)
         {
             h << req.logical_resource_id
               << req.resource_schema_id
@@ -483,7 +483,7 @@ namespace hgl::graph::mtl
     {
         diagnostics.clear();
 
-        auto BuildEntryContext = [](const MaterialResourceRequirement &req) -> std::string
+        auto BuildEntryContext = [](const ShaderResourceSlot &req) -> std::string
         {
             std::string message = "semantic=";
             message += GetDescriptorSemanticName(req.semantic);
@@ -498,7 +498,7 @@ namespace hgl::graph::mtl
             return message;
         };
 
-        for (const MaterialResourceRequirement &req : contract.requirements)
+        for (const ShaderResourceSlot &req : contract.resources)
         {
             const std::string context = BuildEntryContext(req);
 
@@ -616,12 +616,12 @@ namespace hgl::graph::mtl
             }
         }
 
-        for (size_t i = 0; i < contract.requirements.size(); ++i)
+        for (size_t i = 0; i < contract.resources.size(); ++i)
         {
-            const MaterialResourceRequirement &lhs = contract.requirements[i];
-            for (size_t j = i + 1; j < contract.requirements.size(); ++j)
+            const ShaderResourceSlot &lhs = contract.resources[i];
+            for (size_t j = i + 1; j < contract.resources.size(); ++j)
             {
-                const MaterialResourceRequirement &rhs = contract.requirements[j];
+                const ShaderResourceSlot &rhs = contract.resources[j];
                 const bool same_name =
                     lhs.name && rhs.name && std::strcmp(lhs.name, rhs.name) == 0;
                 const bool same_logical_resource =

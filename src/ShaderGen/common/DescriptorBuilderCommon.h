@@ -592,7 +592,7 @@ inline void ApplyMaterialDefinitionTexturePolicy(
     const MaterialDefinition &definition,
     ShaderResourceSchema &layout)
 {
-    for (auto &requirement : layout.requirements)
+    for (auto &requirement : layout.resources)
     {
         if (requirement.semantic != DescriptorSemantic::MaterialTexture
          && requirement.semantic != DescriptorSemantic::MaterialSampler)

@@ -90,7 +90,7 @@ namespace hgl::graph
                 return false;
 
             bool has_struct_binding = false;
-            for (const auto &req : material_layout.requirements)
+            for (const auto &req : material_layout.resources)
             {
                 if (req.semantic == mtl::DescriptorSemantic::MaterialDataSlotData)
                 {
@@ -123,7 +123,7 @@ namespace hgl::graph
                 delete acc;
             }
 
-            for (const auto &req : material_layout.requirements)
+            for (const auto &req : material_layout.resources)
             {
                 if (req.semantic != mtl::DescriptorSemantic::MaterialDataSlotData)
                     continue;

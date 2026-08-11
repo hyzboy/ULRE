@@ -181,7 +181,7 @@ static bool ValidateDefinitionCapabilitySubset(
 {
     diagnostics.clear();
 
-    for (const auto &req : layout.requirements)
+    for (const auto &req : layout.resources)
     {
         bool allowed = false;
 
