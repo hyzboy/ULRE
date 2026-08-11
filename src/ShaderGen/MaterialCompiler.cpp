@@ -1,7 +1,7 @@
 /// MaterialCompiler.cpp — canonical material input compiler
 ///
 /// 流程：
-///   1. 从 FixedDescriptorEntry[] 构建 MaterialDescriptorInfo（描述符布局）
+///   1. 从 FixedDescriptorEntry[] 构建 DescriptorSetLayoutAllocator（描述符布局）
 ///   2. 从 FixedVertexEntry[] 设置顶点输入
 ///   3. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
 
@@ -681,7 +681,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
         binding_preamble += "\n";
     };
 
-    const MaterialDescriptorInfo &descriptor_info = mci->GetDescriptorInfo();
+    const DescriptorSetLayoutAllocator &descriptor_info = mci->GetDescriptorInfo();
 
     // 行表绑定（mtl_data_index_rows / mtl_texture_layer_rows / l2w_index_rows）不再注入
     // set/binding 宏：声明由下方 index table 生成逻辑依据 descriptor_info 直接以

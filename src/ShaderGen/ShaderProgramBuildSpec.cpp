@@ -50,7 +50,7 @@ static bool ExecuteOnShadersByStage(
 }
 
 static const UBODescriptor *ResolveUBODescriptor(
-    MaterialDescriptorInfo &mdi,
+    DescriptorSetLayoutAllocator &mdi,
     const ShaderStage flag_bit,
     const DescriptorSetType set_type,
     const std::string &struct_name,
@@ -75,7 +75,7 @@ static const UBODescriptor *ResolveUBODescriptor(
 }
 
 static const SSBODescriptor *ResolveSSBODescriptor(
-    MaterialDescriptorInfo &mdi,
+    DescriptorSetLayoutAllocator &mdi,
     const ShaderStage flag_bit,
     const DescriptorSetType set_type,
     const std::string &struct_name,
@@ -104,7 +104,7 @@ static const SSBODescriptor *ResolveSSBODescriptor(
 }
 
 static const TextureDescriptor *ResolveTextureDescriptor(
-    MaterialDescriptorInfo &mdi,
+    DescriptorSetLayoutAllocator &mdi,
     const ShaderStage flag_bit,
     const DescriptorSetType set_type,
     const std::string &type_name,
@@ -129,7 +129,7 @@ static const TextureDescriptor *ResolveTextureDescriptor(
 }
 
 static const TextureSamplerDescriptor *ResolveTextureSamplerDescriptor(
-    MaterialDescriptorInfo &mdi,
+    DescriptorSetLayoutAllocator &mdi,
     const ShaderStage flag_bit,
     const DescriptorSetType set_type,
     const std::string &type_name,

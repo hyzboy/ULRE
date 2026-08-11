@@ -13,7 +13,7 @@ namespace hgl{namespace graph{namespace shadergen{
 * 材质描述符管理</p>
 * 该类使用于SHADER生成前，用于统计编号set/binding
 */
-class MaterialDescriptorInfo
+class DescriptorSetLayoutAllocator
 {
     ShaderDescriptorSetArray desc_set_array;
 
@@ -37,8 +37,8 @@ private:
 
 public:
 
-    MaterialDescriptorInfo();
-    ~MaterialDescriptorInfo()=default;
+    DescriptorSetLayoutAllocator();
+    ~DescriptorSetLayoutAllocator()=default;
 
     bool AddStruct(const std::string &name,const std::string &code)
     {
@@ -91,10 +91,10 @@ public:
     SSBODescriptor *GetSSBO(const std::string &name);
     TextureDescriptor *GetTexture(const std::string &name);
     TextureSamplerDescriptor *GetTextureSampler(const std::string &name);
-    const UBODescriptor *GetUBO(const std::string &name)const{return const_cast<MaterialDescriptorInfo *>(this)->GetUBO(name);}
-    const SSBODescriptor *GetSSBO(const std::string &name)const{return const_cast<MaterialDescriptorInfo *>(this)->GetSSBO(name);}
-    const TextureDescriptor *GetTexture(const std::string &name)const{return const_cast<MaterialDescriptorInfo *>(this)->GetTexture(name);}
-    const TextureSamplerDescriptor *GetTextureSampler(const std::string &name)const{return const_cast<MaterialDescriptorInfo *>(this)->GetTextureSampler(name);}
+    const UBODescriptor *GetUBO(const std::string &name)const{return const_cast<DescriptorSetLayoutAllocator *>(this)->GetUBO(name);}
+    const SSBODescriptor *GetSSBO(const std::string &name)const{return const_cast<DescriptorSetLayoutAllocator *>(this)->GetSSBO(name);}
+    const TextureDescriptor *GetTexture(const std::string &name)const{return const_cast<DescriptorSetLayoutAllocator *>(this)->GetTexture(name);}
+    const TextureSamplerDescriptor *GetTextureSampler(const std::string &name)const{return const_cast<DescriptorSetLayoutAllocator *>(this)->GetTextureSampler(name);}
     UBODescriptor *GetUBO(const char *name){return GetUBO(std::string(name?name:""));}
     SSBODescriptor *GetSSBO(const char *name){return GetSSBO(std::string(name?name:""));}
     TextureDescriptor *GetTexture(const char *name){return GetTexture(std::string(name?name:""));}
@@ -130,5 +130,5 @@ public:
     {
         return desc_set_array[size_t(type)].count>0;
     }
-};//class MaterialDescriptorInfo
+};//class DescriptorSetLayoutAllocator
 }}}//namespace hgl::graph::shadergen

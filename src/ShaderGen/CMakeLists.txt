@@ -68,12 +68,12 @@ SET(CANONICAL_SHADER_CONTRACT_FILES
 SOURCE_GROUP("Canonical Shader Contract"
     FILES ${CANONICAL_SHADER_CONTRACT_FILES})
 
-SET(DESC_INFO_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/MaterialDescriptorInfo.h)
+SET(DS_LAYOUT_ALLOCATOR_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/DescriptorSetLayoutAllocator.h)
 
-SET(DESC_INFO_SOURCE_FILES  MaterialDescriptorInfo.cpp)
+SET(DS_LAYOUT_ALLOCATOR_SOURCE_FILES  DescriptorSetLayoutAllocator.cpp)
 
-SOURCE_GROUP("Material Create Info\\Descriptor Info" FILES  ${DESC_INFO_HEADER_FILES}
-                                                            ${DESC_INFO_SOURCE_FILES})
+SOURCE_GROUP("Descriptor Set Layout" FILES  ${DS_LAYOUT_ALLOCATOR_HEADER_FILES}
+                                            ${DS_LAYOUT_ALLOCATOR_SOURCE_FILES})
 
 SET(GLSL_COMPILER_SOURCE	GLSLCompiler.h
                             GLSLCompiler.cpp)
@@ -157,8 +157,8 @@ SOURCE_GROUP("New Material Types" FILES ${NEW_MTL_TYPE_FILES})
 
 add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_INCLUDE_PATH}
 
-                                        ${DESC_INFO_HEADER_FILES}
-                                        ${DESC_INFO_SOURCE_FILES}
+                                        ${DS_LAYOUT_ALLOCATOR_HEADER_FILES}
+                                        ${DS_LAYOUT_ALLOCATOR_SOURCE_FILES}
                                         ${SHADER_PROGRAM_BUILD_SPEC_HEADER_FILES}
                                         ${SHADER_PROGRAM_BUILD_SPEC_SOURCE_FILES}
                                         ${SHADER_ARTIFACT_CONTRACT_FILES}

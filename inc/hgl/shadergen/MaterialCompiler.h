@@ -6,7 +6,7 @@ namespace hgl::graph::mtl {}
 ///
 /// 使用 CompileCompositorMaterial 编译 Compositor 模板产出的完整 GLSL。
 /// 内部流程：
-///   1. Build MaterialDescriptorInfo from the canonical descriptor input.
+///   1. Build DescriptorSetLayoutAllocator from the canonical descriptor input.
 ///   2. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
 ///   3. 填充并返回 ShaderProgramBuildSpec*
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/shadergen/MaterialDescriptorInfo.h>
+#include<hgl/shadergen/DescriptorSetLayoutAllocator.h>
 #include<hgl/mtl/ShaderResourceSchema.h>
 #include<hgl/shadergen/ShaderCreateInfoMap.h>
 #include<hgl/shadergen/ShaderProgramLinkSpec.h>
@@ -38,7 +38,7 @@ namespace hgl::graph
             uint32_t ubo_range;
             uint32_t ssbo_range;
 
-            MaterialDescriptorInfo descriptor_db;                    ///<材质描述符管理器
+            DescriptorSetLayoutAllocator descriptor_db;                    ///<材质描述符管理器
             mtl::ShaderResourceSchema material_resource_layout;                       ///<descriptor semantic contract (phase 2)
 
             uint32_t local_to_world_max_count;
@@ -78,7 +78,7 @@ namespace hgl::graph
 
         public:
 
-            const MaterialDescriptorInfo &GetDescriptorInfo()const{return descriptor_db;}
+            const DescriptorSetLayoutAllocator &GetDescriptorInfo()const{return descriptor_db;}
             const mtl::ShaderResourceSchema &GetShaderResourceSchema()const{return material_resource_layout;}
 
             void SetShaderResourceSchema(const mtl::ShaderResourceSchema &contract){material_resource_layout=contract;}

@@ -1,7 +1,7 @@
-#include<hgl/shadergen/MaterialDescriptorInfo.h>
+#include<hgl/shadergen/DescriptorSetLayoutAllocator.h>
 namespace hgl{namespace graph::shadergen{
     using namespace hgl::graph::mtl;
-MaterialDescriptorInfo::MaterialDescriptorInfo()
+DescriptorSetLayoutAllocator::DescriptorSetLayoutAllocator()
 {
     int set_type=(int)DescriptorSetType::BEGIN_RANGE;
 
@@ -16,7 +16,7 @@ MaterialDescriptorInfo::MaterialDescriptorInfo()
     }
 }
 
-const DescriptorSetType MaterialDescriptorInfo::GetSetType(const std::string &name)const
+const DescriptorSetType DescriptorSetLayoutAllocator::GetSetType(const std::string &name)const
 {
     for(auto &sds:desc_set_array)
         if(sds.descriptor_map.ContainsKey(name.c_str()))
@@ -25,7 +25,7 @@ const DescriptorSetType MaterialDescriptorInfo::GetSetType(const std::string &na
     return DescriptorSetType::Unknow;
 }
 
-const UBODescriptor *MaterialDescriptorInfo::AddUBO(uint32_t ssb,DescriptorSetType set_type,UBODescriptor *sd)
+const UBODescriptor *DescriptorSetLayoutAllocator::AddUBO(uint32_t ssb,DescriptorSetType set_type,UBODescriptor *sd)
 {
     RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);
@@ -38,7 +38,7 @@ const UBODescriptor *MaterialDescriptorInfo::AddUBO(uint32_t ssb,DescriptorSetTy
     return((UBODescriptor *)obj);
 }
 
-const SSBODescriptor *MaterialDescriptorInfo::AddSSBO(uint32_t ssb,DescriptorSetType set_type,SSBODescriptor *sd)
+const SSBODescriptor *DescriptorSetLayoutAllocator::AddSSBO(uint32_t ssb,DescriptorSetType set_type,SSBODescriptor *sd)
 {
     RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);
@@ -51,7 +51,7 @@ const SSBODescriptor *MaterialDescriptorInfo::AddSSBO(uint32_t ssb,DescriptorSet
     return((SSBODescriptor *)obj);
 }
 
-const TextureDescriptor *MaterialDescriptorInfo::AddTexture(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureDescriptor *sd)
+const TextureDescriptor *DescriptorSetLayoutAllocator::AddTexture(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureDescriptor *sd)
 {
     RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);
@@ -64,7 +64,7 @@ const TextureDescriptor *MaterialDescriptorInfo::AddTexture(uint32_t shader_stag
     return((TextureDescriptor *)obj);
 }
 
-const TextureSamplerDescriptor *MaterialDescriptorInfo::AddTextureSampler(uint32_t ssb,DescriptorSetType set_type,TextureSamplerDescriptor *sd)
+const TextureSamplerDescriptor *DescriptorSetLayoutAllocator::AddTextureSampler(uint32_t ssb,DescriptorSetType set_type,TextureSamplerDescriptor *sd)
 {
     RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);
@@ -77,7 +77,7 @@ const TextureSamplerDescriptor *MaterialDescriptorInfo::AddTextureSampler(uint32
     return((TextureSamplerDescriptor *)obj);
 }
 
-UBODescriptor *MaterialDescriptorInfo::GetUBO(const std::string &name)
+UBODescriptor *DescriptorSetLayoutAllocator::GetUBO(const std::string &name)
 {
     const auto iter=ubo_map.find(name);
     if(iter!=ubo_map.end())
@@ -86,7 +86,7 @@ UBODescriptor *MaterialDescriptorInfo::GetUBO(const std::string &name)
     return(nullptr);
 }
 
-SSBODescriptor *MaterialDescriptorInfo::GetSSBO(const std::string &name)
+SSBODescriptor *DescriptorSetLayoutAllocator::GetSSBO(const std::string &name)
 {
     const auto iter=ssbo_map.find(name);
     if(iter!=ssbo_map.end())
@@ -95,7 +95,7 @@ SSBODescriptor *MaterialDescriptorInfo::GetSSBO(const std::string &name)
     return(nullptr);
 }
 
-TextureDescriptor *MaterialDescriptorInfo::GetTexture(const std::string &name)
+TextureDescriptor *DescriptorSetLayoutAllocator::GetTexture(const std::string &name)
 {
     const auto iter=texture_map.find(name);
     if(iter!=texture_map.end())
@@ -104,7 +104,7 @@ TextureDescriptor *MaterialDescriptorInfo::GetTexture(const std::string &name)
     return(nullptr);
 }
 
-TextureSamplerDescriptor *MaterialDescriptorInfo::GetTextureSampler(const std::string &name)
+TextureSamplerDescriptor *DescriptorSetLayoutAllocator::GetTextureSampler(const std::string &name)
 {
     const auto iter=texture_sampler_map.find(name);
     if(iter!=texture_sampler_map.end())
