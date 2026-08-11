@@ -108,7 +108,7 @@ namespace hgl::graph::mtl
         return "sampler2D";
     }
 
-    struct MaterialTextureSlotDecl
+    struct TextureSlotDeclaration
     {
         TextureSlot      slot         = TextureSlot::BaseColor;       // 纹理语义槽
         GLSLSamplerType  sampler_type = GLSLSamplerType::Sampler2D;   // GLSL 采样器类型
@@ -243,7 +243,7 @@ namespace hgl::graph::mtl
         // Part-B4: 纹理槽位能力声明。
         // 无纹理材质（PureColor、VertexColor 等）此列表为空。
         // sampler_type 区分 "sampler2D" vs "sampler2DArray" 等 GLSL 采样器变体。
-        std::vector<MaterialTextureSlotDecl> texture_slot_decls;
+        std::vector<TextureSlotDeclaration> texture_slot_decls;
 
         std::vector<GLSLCodeModuleID> code_module_requirements;
 
