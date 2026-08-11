@@ -454,7 +454,7 @@ namespace
         data_binding.use_data_index = true;
         recipe.ssbo_assets.push_back(data_binding);
 
-        MaterialBindingView binding_view{};
+        ResolvedBindingTable binding_view{};
         MaterialBindingViewBuildDiagnostic diagnostic{};
         MaterialRecipe equivalent_binding_recipe = recipe;
         equivalent_binding_recipe.recipe_name = "DifferentName";
@@ -592,7 +592,7 @@ namespace
 
         MaterialRecipe zero_id_recipe = recipe;
         zero_id_recipe.ssbo_assets[0].ssbo_id = 0;
-        MaterialBindingView zero_id_view{};
+        ResolvedBindingTable zero_id_view{};
         if (!BuildMaterialBindingView(
                 zero_id_recipe,
                 layout,
@@ -618,7 +618,7 @@ namespace
         MaterialRecipe pre_resolve_recipe = recipe;
         pre_resolve_recipe.ssbo_assets[0].ssbo_type =
             SSBOType::UserDefined;
-        MaterialBindingView pre_resolve_view{};
+        ResolvedBindingTable pre_resolve_view{};
         if (!BuildMaterialBindingView(
                 pre_resolve_recipe,
                 layout,
@@ -630,7 +630,7 @@ namespace
             result.diagnostics.emplace_back(
                 "pre-resolve UserDefined SSBO must not masquerade as the required binding type");
         }
-        MaterialBindingView post_resolve_view{};
+        ResolvedBindingTable post_resolve_view{};
         if (!BuildMaterialBindingView(
                 recipe,
                 layout,
@@ -656,7 +656,7 @@ namespace
             result.diagnostics.emplace_back(
                 "Binding View source hash must include binding identity");
         }
-        MaterialBindingView second_view{};
+        ResolvedBindingTable second_view{};
         ResourceAcquirePlan second_plan{};
         if (!BuildMaterialBindingView(
                 second_recipe,
@@ -679,7 +679,7 @@ namespace
         MaterialRecipe missing_recipe = recipe;
         missing_recipe.textures[0].resource_id.clear();
         missing_recipe.textures[0].required = true;
-        MaterialBindingView missing_view{};
+        ResolvedBindingTable missing_view{};
         if (!BuildMaterialBindingView(
                 missing_recipe,
                 layout,
@@ -700,7 +700,7 @@ namespace
 
         ShaderResourceSchema fallback_layout = layout;
         fallback_layout.requirements[0].allow_fallback = true;
-        MaterialBindingView unresolved_fallback_view{};
+        ResolvedBindingTable unresolved_fallback_view{};
         if (!BuildMaterialBindingView(
                 missing_recipe,
                 fallback_layout,
@@ -719,7 +719,7 @@ namespace
         MaterialRecipe duplicate_recipe = recipe;
         duplicate_recipe.textures.push_back(
             {TextureSlot::BaseColor, "asset/duplicate", 0, false, true});
-        MaterialBindingView duplicate_view{};
+        ResolvedBindingTable duplicate_view{};
         if (BuildMaterialBindingView(
                 duplicate_recipe,
                 layout,
@@ -734,7 +734,7 @@ namespace
                 "duplicate material texture binding must fail");
         }
 
-        MaterialBindingView depth_view{};
+        ResolvedBindingTable depth_view{};
         ShaderResourceSchema depth_layout{};
         ResourceAcquirePlan depth_plan{};
         if (!BuildMaterialBindingView(
@@ -756,7 +756,7 @@ namespace
                 "resource-free Program must submit no unrelated resource acquisition");
         }
 
-        MaterialBindingView unresolved_view{};
+        ResolvedBindingTable unresolved_view{};
         ResourceAcquirePlan unresolved_plan{};
         if (BuildMaterialResourceAcquirePlan(
                 unresolved_view, unresolved_plan))

@@ -119,7 +119,7 @@ namespace hgl::ecs
 
     void MaterialComponent::ClearMaterialBindingView()
     {
-        material_binding_view = {};
+        resolved_binding_table = {};
         ClearActiveResourceAcquirePlan();
     }
 

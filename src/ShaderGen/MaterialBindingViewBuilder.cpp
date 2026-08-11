@@ -122,7 +122,7 @@ namespace hgl::graph::mtl
         }
 
         ResolvedTextureBinding *FindTextureView(
-            MaterialBindingView &view,
+            ResolvedBindingTable &view,
             const TextureSlot slot) noexcept
         {
             for (int i = 0; i < view.textures.GetCount(); ++i)
@@ -134,7 +134,7 @@ namespace hgl::graph::mtl
         }
 
         MaterialDataBinding *FindDataView(
-            MaterialBindingView &view,
+            ResolvedBindingTable &view,
             const uint32 data_slot,
             const SSBOType ssbo_type) noexcept
         {
@@ -269,7 +269,7 @@ namespace hgl::graph::mtl
             const MaterialRecipe &recipe,
             const ValueArray<ShaderDescriptorContractEntry> &requirements,
             const uint64 program_key_digest,
-            MaterialBindingView &out_view,
+            ResolvedBindingTable &out_view,
             MaterialBindingViewBuildDiagnostic &out_diagnostic) noexcept
         {
             out_view = {};
@@ -511,7 +511,7 @@ namespace hgl::graph::mtl
         }
 
         bool CopyBackMaterialRecipe(
-            const MaterialBindingView &binding_view,
+            const ResolvedBindingTable &binding_view,
             const MaterialRecipe &source_recipe,
             MaterialRecipe &out_recipe) noexcept
         {
@@ -577,7 +577,7 @@ namespace hgl::graph::mtl
         const MaterialRecipe &recipe,
         const MaterialDescriptorContract &layout,
         const shadergen::ShaderProgramKey &program_key,
-        MaterialBindingView &out_view,
+        ResolvedBindingTable &out_view,
         MaterialBindingViewBuildDiagnostic &out_diagnostic) noexcept
     {
         ValueArray<ShaderDescriptorContractEntry> requirements;
@@ -597,7 +597,7 @@ namespace hgl::graph::mtl
         const MaterialRecipe &recipe,
         const ShaderResourceSchema &layout,
         const shadergen::ShaderProgramKey &program_key,
-        MaterialBindingView &out_view,
+        ResolvedBindingTable &out_view,
         MaterialBindingViewBuildDiagnostic &out_diagnostic) noexcept
     {
         ValueArray<ShaderDescriptorContractEntry> requirements;
@@ -615,7 +615,7 @@ namespace hgl::graph::mtl
 
     bool BuildMaterialBindingRecipe(
         const MaterialRecipe &source_recipe,
-        const MaterialBindingView &binding_view,
+        const ResolvedBindingTable &binding_view,
         MaterialRecipe &out_recipe) noexcept
     {
         if (!binding_view.IsRuntimeReady()
@@ -629,7 +629,7 @@ namespace hgl::graph::mtl
     }
 
     bool BuildMaterialResourceAcquirePlan(
-        const MaterialBindingView &binding_view,
+        const ResolvedBindingTable &binding_view,
         ResourceAcquirePlan &out_plan) noexcept
     {
         out_plan = {};

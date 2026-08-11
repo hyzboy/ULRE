@@ -21,22 +21,22 @@ namespace hgl::graph::mtl
         const MaterialRecipe &recipe,
         const MaterialDescriptorContract &layout,
         const shadergen::ShaderProgramKey &program_key,
-        MaterialBindingView &out_view,
+        ResolvedBindingTable &out_view,
         MaterialBindingViewBuildDiagnostic &out_diagnostic) noexcept;
 
     bool BuildMaterialBindingView(
         const MaterialRecipe &recipe,
         const ShaderResourceSchema &layout,
         const shadergen::ShaderProgramKey &program_key,
-        MaterialBindingView &out_view,
+        ResolvedBindingTable &out_view,
         MaterialBindingViewBuildDiagnostic &out_diagnostic) noexcept;
 
     bool BuildMaterialBindingRecipe(
         const MaterialRecipe &source_recipe,
-        const MaterialBindingView &binding_view,
+        const ResolvedBindingTable &binding_view,
         MaterialRecipe &out_recipe) noexcept;
 
     bool BuildMaterialResourceAcquirePlan(
-        const MaterialBindingView &binding_view,
+        const ResolvedBindingTable &binding_view,
         ResourceAcquirePlan &out_plan) noexcept;
 }

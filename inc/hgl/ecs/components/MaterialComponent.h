@@ -67,7 +67,7 @@ namespace hgl::ecs
         uint32_t runtime_revision = 0;
         uint64_t recipe_hash = 0;
         uint64_t program_build_context_hash = 0;
-        graph::mtl::MaterialBindingView material_binding_view;
+        graph::mtl::ResolvedBindingTable resolved_binding_table;
         graph::mtl::ResourceAcquirePlan active_resource_acquire_plan;
         bool has_active_resource_acquire_plan = false;
         std::vector<ResolvedSSBOBinding> resolved_ssbo_bindings;

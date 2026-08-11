@@ -100,7 +100,7 @@ namespace hgl::graph::mtl
             && lhs.allow_fallback == rhs.allow_fallback;
     }
 
-    struct MaterialBindingView
+    struct ResolvedBindingTable
     {
         uint32 schema_version = MaterialBindingContractSchemaVersion;
         uint64 program_key_digest = 0;
@@ -192,19 +192,19 @@ namespace hgl::graph::mtl
         uint32 data_slot) noexcept;
 
     bool ValidateMaterialBindingView(
-        const MaterialBindingView &view) noexcept;
+        const ResolvedBindingTable &view) noexcept;
     bool ValidateMaterialResourceAcquirePlan(
         const ResourceAcquirePlan &plan) noexcept;
 
     bool SerializeMaterialBindingView(
-        const MaterialBindingView &view,
+        const ResolvedBindingTable &view,
         ValueArray<uint8> &out_bytes);
     bool SerializeMaterialResourceAcquirePlan(
         const ResourceAcquirePlan &plan,
         ValueArray<uint8> &out_bytes);
 
     uint64 GetMaterialBindingViewHash(
-        const MaterialBindingView &view) noexcept;
+        const ResolvedBindingTable &view) noexcept;
     uint64 GetMaterialResourceAcquirePlanHash(
         const ResourceAcquirePlan &plan) noexcept;
 }

@@ -153,7 +153,7 @@ namespace hgl::ecs
             const char *owner_name,
             const graph::ShaderProgram *program,
             const graph::mtl::MaterialRecipe &recipe,
-            const graph::mtl::MaterialBindingView &view)
+            const graph::mtl::ResolvedBindingTable &view)
         {
             GLogWarning(
                 "[MaterialBinding] owner=%s program=%s ready=%d valid=%d missing=%u program_key=%llu view_hash=%llu expected_binding_hash=%llu actual_binding_hash=%llu recipe=%s definition=%s textures=%zu data=%zu",
@@ -783,7 +783,7 @@ namespace hgl::ecs
         if (!material_comp->program_dirty
             && material_comp->program
             && material_comp->tracked_material_authored_generation == primitive_comp->GetMaterialAuthoredGeneration()
-            && material_comp->material_binding_view.IsRuntimeReady())
+            && material_comp->resolved_binding_table.IsRuntimeReady())
             return true;
 
         graph::mtl::MaterialRecipe effective_recipe{};
@@ -840,7 +840,7 @@ namespace hgl::ecs
 
         if (!material_comp->program_dirty
          && material_comp->program
-         && material_comp->material_binding_view.IsRuntimeReady())
+         && material_comp->resolved_binding_table.IsRuntimeReady())
             return true;
 
         // 统一 BMI 入口：由 AcquireShaderProgram 内部处理 2D/3D/Text/Sky 分支，
@@ -877,7 +877,7 @@ namespace hgl::ecs
         }
 
         graph::mtl::MaterialRecipe material_binding_recipe{};
-        graph::mtl::MaterialBindingView binding_view{};
+        graph::mtl::ResolvedBindingTable binding_view{};
         graph::mtl::MaterialBindingViewBuildDiagnostic
             binding_diagnostic{};
         if (!BuildEffectiveMaterialRecipe(
@@ -939,7 +939,7 @@ namespace hgl::ecs
         }
 
         material_comp->program = resolved_program;
-        material_comp->material_binding_view = binding_view;
+        material_comp->resolved_binding_table = binding_view;
         material_comp->active_resource_acquire_plan =
             active_resource_plan;
         material_comp->has_active_resource_acquire_plan =
@@ -1081,23 +1081,23 @@ namespace hgl::ecs
         graph::mtl::MaterialRecipe material_binding_recipe{};
         if (!graph::mtl::BuildMaterialBindingRecipe(
                 effective_recipe,
-                material_comp->material_binding_view,
+                material_comp->resolved_binding_table,
                 material_binding_recipe))
         {
             LogMaterialBindingFailure(
                 GetPrimitiveOwnerName(primitive_comp),
                 material_comp->program,
                 effective_recipe,
-                material_comp->material_binding_view);
+                material_comp->resolved_binding_table);
             GLogWarning(
                 "[RenderPrimitiveCollectSystem] Materialize failed: Material Binding View invalid for %s ready=%d missing=%u expected_binding_hash=%llu actual_binding_hash=%llu",
                 GetPrimitiveOwnerName(primitive_comp),
-                material_comp->material_binding_view.
+                material_comp->resolved_binding_table.
                     IsRuntimeReady() ? 1 : 0,
-                material_comp->material_binding_view.
+                material_comp->resolved_binding_table.
                     missing_required_count,
                 static_cast<unsigned long long>(
-                    material_comp->material_binding_view.
+                    material_comp->resolved_binding_table.
                         source_binding_hash),
                 static_cast<unsigned long long>(
                     graph::mtl::GetMaterialBindingSourceHash(

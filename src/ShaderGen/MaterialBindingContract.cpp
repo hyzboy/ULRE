@@ -208,7 +208,7 @@ namespace hgl::graph::mtl
     }
 
     bool ValidateMaterialBindingView(
-        const MaterialBindingView &view) noexcept
+        const ResolvedBindingTable &view) noexcept
     {
         if (view.schema_version != MaterialBindingContractSchemaVersion
          || view.program_key_digest == 0
@@ -302,7 +302,7 @@ namespace hgl::graph::mtl
     }
 
     bool SerializeMaterialBindingView(
-        const MaterialBindingView &view,
+        const ResolvedBindingTable &view,
         ValueArray<uint8> &out_bytes)
     {
         out_bytes.Clear();
@@ -435,23 +435,23 @@ namespace hgl::graph::mtl
         return h;
     }
 
-    uint64 MaterialBindingView::GetStableHash() const noexcept
+    uint64 ResolvedBindingTable::GetStableHash() const noexcept
     {
         return GetMaterialBindingViewHash(*this);
     }
 
-    bool MaterialBindingView::IsValid() const noexcept
+    bool ResolvedBindingTable::IsValid() const noexcept
     {
         return ValidateMaterialBindingView(*this);
     }
 
-    bool MaterialBindingView::IsRuntimeReady() const noexcept
+    bool ResolvedBindingTable::IsRuntimeReady() const noexcept
     {
         return IsValid() && missing_required_count == 0;
     }
 
     uint64 GetMaterialBindingViewHash(
-        const MaterialBindingView &view) noexcept
+        const ResolvedBindingTable &view) noexcept
     {
         ValueArray<uint8> bytes;
         return SerializeMaterialBindingView(view, bytes)
