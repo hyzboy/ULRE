@@ -7,7 +7,7 @@ namespace hgl::graph::mtl
 {
     /// Pure-static utility for resolving GLSL vertex stage module paths
     /// and querying transform properties from a VertexShaderNodeConfig.
-    struct MaterialTransformGraph
+    struct VertexNodeConfigResolver
     {
         static const char *GetMappingModulePath(const VertexShaderNodeConfig &cfg) noexcept
         {

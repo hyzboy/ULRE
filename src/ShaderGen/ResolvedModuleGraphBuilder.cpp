@@ -714,8 +714,8 @@ namespace hgl::graph::shadergen
         {
             config.input == VertexInputMode::Procedural
                 ? "vertex/s1_input_procedural.glsl" : nullptr,
-            MaterialTransformGraph::GetMappingModulePath(config),
-            MaterialTransformGraph::GetStage3ModulePath(config)
+            VertexNodeConfigResolver::GetMappingModulePath(config),
+            VertexNodeConfigResolver::GetStage3ModulePath(config)
         };
         for (const char *path : vertex_paths)
         {

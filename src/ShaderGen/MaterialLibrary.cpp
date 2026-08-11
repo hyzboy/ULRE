@@ -330,7 +330,7 @@ namespace
             resolved_provider_graph_hash = resolved_abi.provider_graph_hash;
             {
                 hgl::hash::FNV1aHasher64 h;
-                h << MaterialTransformGraph::GetHash(vertex_node_config)
+                h << VertexNodeConfigResolver::GetHash(vertex_node_config)
                   << resolved_abi.provider_graph_hash;
                 resolved_provider_graph_hash = h;
             }

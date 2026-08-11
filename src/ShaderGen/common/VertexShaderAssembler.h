@@ -1,7 +1,7 @@
 #pragma once
 
 #include <hgl/mtl/VertexShaderNodeConfig.h>
-#include <hgl/mtl/MaterialTransformGraph.h>
+#include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/shadergen/MaterialStageInterface.h>
 #include <vulkan/vulkan.h>
 #include <string>
@@ -203,7 +203,7 @@ namespace hgl::graph::shadergen
         vs += "\n";
 
         // ── Stage 2: Position mapping ─────────────────────────────────────────
-        const char *stage2_module = MaterialTransformGraph::GetMappingModulePath(node_cfg);
+        const char *stage2_module = VertexNodeConfigResolver::GetMappingModulePath(node_cfg);
         if (stage2_module)
         {
             vs += "#include \"" + std::string(stage2_module) + "\"\n";
@@ -224,7 +224,7 @@ namespace hgl::graph::shadergen
         if (varying_cfg.use_transform_id_attr)
             vs += "#define HGL_L2W_FROM_VERTEX_ATTR\n";
 
-        vs += "#include \"" + std::string(MaterialTransformGraph::GetStage3ModulePath(node_cfg)) + "\"\n";
+        vs += "#include \"" + std::string(VertexNodeConfigResolver::GetStage3ModulePath(node_cfg)) + "\"\n";
 
         vs += "\n";
 

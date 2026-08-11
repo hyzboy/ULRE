@@ -3309,24 +3309,24 @@ namespace
         GateResult result;
         result.name = "W.transform-graph-model";
 
-        const VertexShaderNodeConfig flat = MaterialTransformGraph::FlatXY();
-        const VertexShaderNodeConfig wall = MaterialTransformGraph::WallXY();
-        const VertexShaderNodeConfig world = MaterialTransformGraph::World3D();
-        const VertexShaderNodeConfig terrain = MaterialTransformGraph::Terrain();
+        const VertexShaderNodeConfig flat = VertexNodeConfigResolver::FlatXY();
+        const VertexShaderNodeConfig wall = VertexNodeConfigResolver::WallXY();
+        const VertexShaderNodeConfig world = VertexNodeConfigResolver::World3D();
+        const VertexShaderNodeConfig terrain = VertexNodeConfigResolver::Terrain();
         VertexShaderNodeConfig world_vec2 = world;
         world_vec2.input = VertexInputMode::Vec2Position;
         world_vec2.position_mapping = PositionMappingMode::LiftXY_XY0;
 
-        if (MaterialTransformGraph::GetHash(flat) == MaterialTransformGraph::GetHash(wall)
-         || MaterialTransformGraph::GetHash(flat) == MaterialTransformGraph::GetHash(world)
-         || MaterialTransformGraph::GetHash(world) == MaterialTransformGraph::GetHash(terrain))
+        if (VertexNodeConfigResolver::GetHash(flat) == VertexNodeConfigResolver::GetHash(wall)
+         || VertexNodeConfigResolver::GetHash(flat) == VertexNodeConfigResolver::GetHash(world)
+         || VertexNodeConfigResolver::GetHash(world) == VertexNodeConfigResolver::GetHash(terrain))
             result.diagnostics.emplace_back(
                 "transform graph variants must have distinct structural identity");
 
-        if (!MaterialTransformGraph::IsScreenLike(flat)
-         || !MaterialTransformGraph::IsScreenLike(wall)
-         || MaterialTransformGraph::IsScreenLike(world)
-         || MaterialTransformGraph::IsScreenLike(world_vec2))
+        if (!VertexNodeConfigResolver::IsScreenLike(flat)
+         || !VertexNodeConfigResolver::IsScreenLike(wall)
+         || VertexNodeConfigResolver::IsScreenLike(world)
+         || VertexNodeConfigResolver::IsScreenLike(world_vec2))
             result.diagnostics.emplace_back(
                 "screen-space classification must include projection, not only Vec2 input");
 
@@ -3342,8 +3342,8 @@ namespace
          || terrain.projection != ProjectionMode::WorldCameraVP)
             result.diagnostics.emplace_back("Terrain graph conversion mismatch");
 
-        // Round-trip is identity now that MaterialTransformGraph is a static utility
-        if (MaterialTransformGraph::GetHash(world) != MaterialTransformGraph::GetHash(world))
+        // Round-trip is identity now that VertexNodeConfigResolver is a static utility
+        if (VertexNodeConfigResolver::GetHash(world) != VertexNodeConfigResolver::GetHash(world))
             result.diagnostics.emplace_back("transform graph hash self-consistency failure");
 
         result.passed = result.diagnostics.empty();
@@ -3365,10 +3365,10 @@ namespace
                 std::string(), GetShaderLibraryPath());
         };
 
-        const std::string flat = build(MaterialTransformGraph::FlatXY());
-        const std::string wall = build(MaterialTransformGraph::WallXY());
-        const std::string world = build(MaterialTransformGraph::World3D());
-        const std::string terrain = build(MaterialTransformGraph::Terrain());
+        const std::string flat = build(VertexNodeConfigResolver::FlatXY());
+        const std::string wall = build(VertexNodeConfigResolver::WallXY());
+        const std::string world = build(VertexNodeConfigResolver::World3D());
+        const std::string terrain = build(VertexNodeConfigResolver::Terrain());
 
         if (flat == wall || flat == world || world == terrain)
             result.diagnostics.emplace_back(
@@ -3384,10 +3384,10 @@ namespace
         stage.stage = ShaderStage::Vertex;
         const ShaderStageKey flat_key =
             stage.BuildKeyWithProviderGraphHash(
-                MaterialTransformGraph::GetHash(MaterialTransformGraph::FlatXY()));
+                VertexNodeConfigResolver::GetHash(VertexNodeConfigResolver::FlatXY()));
         const ShaderStageKey wall_key =
             stage.BuildKeyWithProviderGraphHash(
-                MaterialTransformGraph::GetHash(MaterialTransformGraph::WallXY()));
+                VertexNodeConfigResolver::GetHash(VertexNodeConfigResolver::WallXY()));
         if (flat_key == wall_key)
             result.diagnostics.emplace_back(
                 "transform graph variants must produce distinct stage identity");
@@ -3737,7 +3737,7 @@ namespace
                 }
             }
 
-            if (MaterialTransformGraph::IsScreenLike(file_definition->vertex_node_config)
+            if (VertexNodeConfigResolver::IsScreenLike(file_definition->vertex_node_config)
              && (file_definition->vertex_node_config.input != VertexInputMode::Vec2Position
               || file_definition->vertex_node_config.position_mapping != PositionMappingMode::NDCLift
               || file_definition->vertex_node_config.projection != ProjectionMode::LocalToWorldOnly))
@@ -4681,7 +4681,7 @@ namespace
                 MaterialDefinitionBuildRequest override_request{};
                 override_request.has_vertex_node_config_override = true;
                 override_request.vertex_node_config_override =
-                    MaterialTransformGraph::FlatXY();
+                    VertexNodeConfigResolver::FlatXY();
 
                 ResolvedModuleGraph default_graph{};
                 ResolvedModuleGraph override_graph{};

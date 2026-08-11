@@ -7,7 +7,7 @@
 #include <hgl/common/VertexAttribDef.h>
 #include <hgl/vk/VK.h>
 #include <hgl/graph/glsl/GLSLCodeModule.h>
-#include <hgl/mtl/MaterialTransformGraph.h>
+#include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/type/ValueArray.h>
 #include <hgl/shadergen/ShaderStageBuildSpec.h>
 #include <hgl/shadergen/ShaderProgramLinkSpec.h>
