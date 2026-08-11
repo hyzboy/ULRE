@@ -25,7 +25,7 @@
 namespace hgl::graph::shadergen {
     using namespace hgl::graph::mtl;
 
-bool FinalizeShaderProgramBuildSpec(
+bool FinalizeShaderBuildContext(
     ShaderBuildContext *build_spec)
 {
     if (!build_spec)
@@ -1025,9 +1025,9 @@ ShaderBuildContext *CompileCompositorMaterial(
     if (config.generate_only)
         return mci;
 
-    if (!FinalizeShaderProgramBuildSpec(mci))
+    if (!FinalizeShaderBuildContext(mci))
         return FailAfterMci(
-            "FinalizeShaderProgramBuildSpec() failed");
+            "FinalizeShaderBuildContext() failed");
 
     return mci;
 }

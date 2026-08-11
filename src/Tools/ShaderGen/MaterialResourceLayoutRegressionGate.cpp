@@ -1962,7 +1962,7 @@ namespace
             else
             {
                 lit_a->SetArtifactStore(&hot_store);
-                if (!FinalizeShaderProgramBuildSpec(lit_a.get())
+                if (!FinalizeShaderBuildContext(lit_a.get())
                  || !lit_a->GetStageShader(ShaderStage::Vertex)
                  || !lit_a->GetStageShader(ShaderStage::Fragment)
                  || lit_a->GetStageShader(
@@ -1993,7 +1993,7 @@ namespace
             lit_b->SetArtifactStore(&read_only_miss_store);
             if (read_only_miss_store.HasProgramMetadata(
                     lit_b->GetProgramLink())
-             || FinalizeShaderProgramBuildSpec(lit_b.get())
+             || FinalizeShaderBuildContext(lit_b.get())
              || lit_b->GetStageShader(
                     ShaderStage::Vertex)->GetSPVSize() != 0
              || lit_b->GetStageShader(

@@ -64,7 +64,7 @@ struct CompositorMaterialBuildConfig
 
 class ShaderBuildContext;
 
-bool FinalizeShaderProgramBuildSpec(
+bool FinalizeShaderBuildContext(
     ShaderBuildContext *build_spec);
 
 /**

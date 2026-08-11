@@ -465,7 +465,7 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
     if (ShaderProgram *cached = TryGetCachedShaderProgram(program_key))
         return cached;
 
-    if (!shadergen::FinalizeShaderProgramBuildSpec(mci))
+    if (!shadergen::FinalizeShaderBuildContext(mci))
     {
         GLogError(
             "[ShaderProgramManager] Material build finalization failed: id=%s",
