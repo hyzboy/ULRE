@@ -5,11 +5,11 @@
 namespace hgl::graph
 {
     void BuildShaderProgramFinalizePlan(const MaterialDescriptorManager *desc_manager,
-                                   const shadergen::ShaderBuildContext &mci,
+                                   const shadergen::ShaderBuildContext &ctx,
                                    ShaderProgramFinalizePlan &out_plan)
     {
         out_plan.mp_set_types.clear();
-        (void)mci;
+        (void)ctx;
 
         if (!desc_manager)
             return;

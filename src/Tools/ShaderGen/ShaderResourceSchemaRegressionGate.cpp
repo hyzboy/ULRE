@@ -1934,7 +1934,7 @@ namespace
                     != a.fragment_stage.GetDigest())
             {
                 result.diagnostics.emplace_back(
-                    "BuildSpec program metadata does not match ProgramLink");
+                    "BuildContext program metadata does not match ProgramLink");
             }
 
             ShaderArtifactStore hot_store(
@@ -1983,7 +1983,7 @@ namespace
                         sizeof(cached_fragment_spv)) != 0)
                 {
                     result.diagnostics.emplace_back(
-                        "hot program hit must populate BuildSpec SPV");
+                        "hot program hit must populate BuildContext SPV");
                 }
             }
 
@@ -2568,16 +2568,16 @@ namespace
 
         for (const auto &entry : expected)
         {
-            MaterialDefinition bmi{};
-            if (!TryGetMaterialDefinitionByID(entry.definition_id, bmi))
+            MaterialDefinition definition{};
+            if (!TryGetMaterialDefinitionByID(entry.definition_id, definition))
             {
                 result.diagnostics.emplace_back(std::string("Missing material definition: ") + entry.definition_id);
                 continue;
             }
 
-            if (bmi.definition_name.empty()
-             || !IsBootstrapMaterialDefinition(bmi)
-             || bmi.source_kind != MaterialDefinitionSourceKind::BuiltIn)
+            if (definition.definition_name.empty()
+             || !IsBootstrapMaterialDefinition(definition)
+             || definition.source_kind != MaterialDefinitionSourceKind::BuiltIn)
                 result.diagnostics.emplace_back(std::string("Empty material definition name: ") + entry.definition_id);
         }
 

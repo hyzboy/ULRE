@@ -185,14 +185,14 @@ namespace hgl::graph::mtl
         bool emit_vertex_color_from_palette = false;
     };
 
-    // BMI 来源标记：区分 built-in 硬编码实现与未来的文件化实现。
+    // MaterialDefinition 来源标记：区分 built-in 硬编码实现与未来的文件化实现。
     enum class MaterialDefinitionSourceKind : uint8_t
     {
         BuiltIn = 0,  // M_* 硬编码 creator（用于 fallback 与少量保底材质）
-        File,         // 外部 BMI 文件（未来主路径）
+        File,         // 外部 MaterialDefinition 文件（未来主路径）
     };
 
-    // BMI 用途标签：辅助调试 / 统计 / fallback 降级判断。
+    // MaterialDefinition 用途标签：辅助调试 / 统计 / fallback 降级判断。
     enum class MaterialDefinitionUsageTag : uint8_t
     {
         General = 0,   // 普通材质
@@ -469,14 +469,14 @@ namespace hgl::graph::mtl
     }
 
     inline void ApplyBaseMaterialInfoDefaults(MaterialRecipe &recipe,
-                                              const MaterialDefinition &bmi,
+                                              const MaterialDefinition &definition,
                                               const bool overwrite_existing = false)
     {
         if (recipe.mtl_def_id.empty())
-            recipe.mtl_def_id = bmi.definition_id;
+            recipe.mtl_def_id = definition.definition_id;
 
-        if (bmi.lod_count > 0 && recipe.material_lod >= bmi.lod_count)
-            recipe.material_lod = bmi.default_lod;
+        if (definition.lod_count > 0 && recipe.material_lod >= definition.lod_count)
+            recipe.material_lod = definition.default_lod;
 
     }
 

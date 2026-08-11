@@ -14,9 +14,10 @@
 namespace hgl::graph
 {
     struct ShaderBufferSource;
+}
 
-    namespace shadergen
-    {
+namespace hgl::graph::shadergen
+{
         using namespace hgl::graph::mtl;
         using hgl::graph::ShaderStage;
         using hgl::graph::DescriptorSetType;
@@ -60,13 +61,11 @@ namespace hgl::graph
 
             const   uint32      GetShaderStage  ()const{return shader_stage_flag_bits;}
 
-                    bool        hasShader       (const ShaderStage ss)const{return shader_stage_flag_bits&(uint32)ss;}
+                    bool        has_shader      (const ShaderStage ss)const{return shader_stage_flag_bits&(uint32)ss;}
 
-                    bool        hasVertex       ()const{return hasShader(ShaderStage::Vertex);}
-        //          bool        hasTessCtrl     ()const{return hasShader(ShaderStage::TessControl);}
-        //          bool        hasTessEval     ()const{return hasShader(ShaderStage::TessEval);}
-                    bool        hasFragment     ()const{return hasShader(ShaderStage::Fragment);}
-        //          bool        hasCompute      ()const{return hasShader(ShaderStage::Compute);}
+                    bool        has_vertex      ()const{return has_shader(ShaderStage::Vertex);}
+
+                    bool        has_fragment    ()const{return has_shader(ShaderStage::Fragment);}
 
             ShaderCreateInfo *         GetStageShader(const ShaderStage ss){return shader_map[ss];}
             const ShaderCreateInfo *   GetStageShader(const ShaderStage ss)const{return shader_map[ss];}
@@ -176,5 +175,4 @@ namespace hgl::graph
 
             bool CreateShaderDirect();               ///< 直接编译各阶段的 FinalGLSL 到 SPV
         };//class ShaderBuildContext
-    }//namespace shadergen
-}//namespace hgl::graph
+}//namespace hgl::graph::shadergen

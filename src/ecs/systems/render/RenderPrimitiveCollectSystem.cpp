@@ -843,7 +843,7 @@ namespace hgl::ecs
          && material_comp->resolved_binding_table.IsRuntimeReady())
             return true;
 
-        // 统一 BMI 入口：由 AcquireShaderProgram 内部处理 2D/3D/Text/Sky 分支，
+        // 统一 MaterialDefinition 入口：由 AcquireShaderProgram 内部处理 2D/3D/Text/Sky 分支，
         // ECS 不再持有材质 config 细节知识。
         graph::mtl::MaterialDefinitionBuildRequest mtl_request{};
         mtl_request.recipe = effective_recipe;
@@ -877,7 +877,7 @@ namespace hgl::ecs
         }
 
         graph::mtl::MaterialRecipe material_binding_recipe{};
-        graph::mtl::ResolvedBindingTable binding_view{};
+        graph::mtl::ResolvedBindingTable binding_table{};
         graph::mtl::BindingBuildDiagnostic
             binding_diagnostic{};
         if (!BuildResolvedRecipe(
@@ -888,7 +888,7 @@ namespace hgl::ecs
                 material_binding_recipe,
                 resolved_program->GetShaderResourceSchema(),
                 resolved_program->GetProgramKey(),
-                binding_view,
+                binding_table,
                 binding_diagnostic))
         {
             GLogWarning(
@@ -898,19 +898,19 @@ namespace hgl::ecs
                     binding_diagnostic.error));
             return false;
         }
-        if (!binding_view.IsRuntimeReady())
+        if (!binding_table.IsRuntimeReady())
         {
             LogMaterialBindingFailure(
                 GetPrimitiveOwnerName(primitive_comp),
                 resolved_program,
                 material_binding_recipe,
-                binding_view);
+                binding_table);
         }
 
         graph::mtl::ResourceAcquirePlan active_resource_plan{};
-        if (binding_view.IsRuntimeReady()
+        if (binding_table.IsRuntimeReady()
          && !graph::mtl::BuildResourceAcquirePlan(
-                binding_view, active_resource_plan))
+                binding_table, active_resource_plan))
         {
             GLogWarning(
                 "[DeferredResource] plan build failed: owner=%s program=%s",
@@ -939,11 +939,11 @@ namespace hgl::ecs
         }
 
         material_comp->program = resolved_program;
-        material_comp->resolved_binding_table = binding_view;
+        material_comp->resolved_binding_table = binding_table;
         material_comp->active_resource_acquire_plan =
             active_resource_plan;
         material_comp->has_active_resource_acquire_plan =
-            binding_view.IsRuntimeReady();
+            binding_table.IsRuntimeReady();
         if (material_comp->has_active_resource_acquire_plan)
         {
             uint32_t planned_textures = 0;
@@ -971,8 +971,8 @@ namespace hgl::ecs
                 planned_data,
                 material_binding_recipe.textures.size(),
                 material_binding_recipe.ssbo_assets.size(),
-                binding_view.unused_recipe_texture_count,
-                binding_view.unused_recipe_data_count);
+                binding_table.unused_recipe_texture_count,
+                binding_table.unused_recipe_data_count);
         }
         material_comp->program_dirty = false;
         material_comp->resource_loading_mode =

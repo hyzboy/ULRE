@@ -6,33 +6,33 @@ namespace
 {
     const bool kRegisteredText2DBmi = []() -> bool
     {
-        MaterialDefinition bmi{};
-        bmi.definition_id = BUILTIN_MTL_DEF_TEXT;
-        bmi.definition_name = "Text2D";
-        bmi.source_kind = MaterialDefinitionSourceKind::BuiltIn;
-        bmi.usage_tag = MaterialDefinitionUsageTag::Text;
-        bmi.bootstrap_kind = MaterialDefinitionBootstrapKind::TextAlphaBlend;
-        bmi.ubo_requirements = {UBODescriptorSemantic::ViewportInfo};
-        bmi.texture_slot_decls = {{TextureSlot::BaseColor, GLSLSamplerType::Sampler2D, true, SamplerName::Text}};
-        bmi.data_slot_decls = {{"mtl", SSBOType::TransmissionSurface}};
-        bmi.vertex_node_config = Make2DNodeConfigOrtho(false);
+        MaterialDefinition definition{};
+        definition.definition_id = BUILTIN_MTL_DEF_TEXT;
+        definition.definition_name = "Text2D";
+        definition.source_kind = MaterialDefinitionSourceKind::BuiltIn;
+        definition.usage_tag = MaterialDefinitionUsageTag::Text;
+        definition.bootstrap_kind = MaterialDefinitionBootstrapKind::TextAlphaBlend;
+        definition.ubo_requirements = {UBODescriptorSemantic::ViewportInfo};
+        definition.texture_slot_decls = {{TextureSlot::BaseColor, GLSLSamplerType::Sampler2D, true, SamplerName::Text}};
+        definition.data_slot_decls = {{"mtl", SSBOType::TransmissionSurface}};
+        definition.vertex_node_config = Make2DNodeConfigOrtho(false);
         MaterialVertexVaryingConfig varying{};
         varying.emit_data_index_id = true;
         varying.emit_texture_layer_id = true;
         varying.emit_uv0 = true;
         SetMaterialFragmentSource(
-            bmi, "compositor/main_forward_surface.frag.glsl");
-        bmi.fragment_surface_module = "surface/material_surface.glsl";
-        bmi.fragment_material_source_module =
+            definition, "compositor/main_forward_surface.frag.glsl");
+        definition.fragment_surface_module = "surface/material_surface.glsl";
+        definition.fragment_material_source_module =
             "material/text_source.glsl";
-        bmi.vertex_varying = varying;
+        definition.vertex_varying = varying;
         const GLSLCodeModuleSemanticRequirement vertex_requirements[] = {
             MakeMaterialVertexSemanticRequirement(VertexSemantic::Position),
             MakeMaterialVertexSemanticRequirement(VertexSemantic::TexCoord)
         };
         ConfigureMaterialVertexSemanticContract(
-            bmi, vertex_requirements, 2, MaterialVertexProviderPolicy::GeometryOnly);
-        RegisterMaterialDefinition(bmi);
+            definition, vertex_requirements, 2, MaterialVertexProviderPolicy::GeometryOnly);
+        RegisterMaterialDefinition(definition);
         RegisterMaterialDefinitionAlias("Text2D", BUILTIN_MTL_DEF_TEXT);
 
         return true;

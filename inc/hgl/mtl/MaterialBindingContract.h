@@ -192,19 +192,19 @@ namespace hgl::graph::mtl
         uint32 data_slot) noexcept;
 
     bool ValidateResolvedBindingTable(
-        const ResolvedBindingTable &view) noexcept;
+        const ResolvedBindingTable &table) noexcept;
     bool ValidateResourceAcquirePlan(
         const ResourceAcquirePlan &plan) noexcept;
 
     bool SerializeResolvedBindingTable(
-        const ResolvedBindingTable &view,
+        const ResolvedBindingTable &table,
         ValueArray<uint8> &out_bytes);
     bool SerializeResourceAcquirePlan(
         const ResourceAcquirePlan &plan,
         ValueArray<uint8> &out_bytes);
 
     uint64 GetResolvedBindingTableHash(
-        const ResolvedBindingTable &view) noexcept;
+        const ResolvedBindingTable &table) noexcept;
     uint64 GetResourceAcquirePlanHash(
         const ResourceAcquirePlan &plan) noexcept;
 }

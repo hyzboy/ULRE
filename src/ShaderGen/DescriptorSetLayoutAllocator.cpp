@@ -25,27 +25,27 @@ const DescriptorSetType DescriptorSetLayoutAllocator::GetSetType(const std::stri
     return DescriptorSetType::Unknow;
 }
 
-const UBODescriptor *DescriptorSetLayoutAllocator::AddUBO(uint32_t ssb,DescriptorSetType set_type,UBODescriptor *sd)
+const UBODescriptor *DescriptorSetLayoutAllocator::AddUBO(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,UBODescriptor *sd)
 {
     RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);
 
     ShaderDescriptorSet *sds=desc_set_array+(size_t)set_type;
 
-    ShaderDescriptor *obj=sds->AddDescriptor(ssb,sd);
+    ShaderDescriptor *obj=sds->AddDescriptor(shader_stage_flag_bits,sd);
 
     ubo_map[obj->name] = (UBODescriptor *)obj;
     return((UBODescriptor *)obj);
 }
 
-const SSBODescriptor *DescriptorSetLayoutAllocator::AddSSBO(uint32_t ssb,DescriptorSetType set_type,SSBODescriptor *sd)
+const SSBODescriptor *DescriptorSetLayoutAllocator::AddSSBO(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,SSBODescriptor *sd)
 {
     RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);
 
     ShaderDescriptorSet *sds=desc_set_array+(size_t)set_type;
 
-    ShaderDescriptor *obj=sds->AddDescriptor(ssb,sd);
+    ShaderDescriptor *obj=sds->AddDescriptor(shader_stage_flag_bits,sd);
 
     ssbo_map[obj->name] = (SSBODescriptor *)obj;
     return((SSBODescriptor *)obj);
@@ -64,14 +64,14 @@ const TextureDescriptor *DescriptorSetLayoutAllocator::AddTexture(uint32_t shade
     return((TextureDescriptor *)obj);
 }
 
-const TextureSamplerDescriptor *DescriptorSetLayoutAllocator::AddTextureSampler(uint32_t ssb,DescriptorSetType set_type,TextureSamplerDescriptor *sd)
+const TextureSamplerDescriptor *DescriptorSetLayoutAllocator::AddTextureSampler(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureSamplerDescriptor *sd)
 {
     RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);
 
     ShaderDescriptorSet *sds=desc_set_array+(size_t)set_type;
 
-    ShaderDescriptor *obj=sds->AddDescriptor(ssb,sd);
+    ShaderDescriptor *obj=sds->AddDescriptor(shader_stage_flag_bits,sd);
 
     texture_sampler_map[obj->name] = (TextureSamplerDescriptor *)obj;
     return((TextureSamplerDescriptor *)obj);

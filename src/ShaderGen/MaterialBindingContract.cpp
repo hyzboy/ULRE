@@ -208,17 +208,17 @@ namespace hgl::graph::mtl
     }
 
     bool ValidateResolvedBindingTable(
-        const ResolvedBindingTable &view) noexcept
+        const ResolvedBindingTable &table) noexcept
     {
-        if (view.schema_version != MaterialBindingContractSchemaVersion
-         || view.program_key_digest == 0
-         || view.source_binding_hash == 0)
+        if (table.schema_version != MaterialBindingContractSchemaVersion
+         || table.program_key_digest == 0
+         || table.source_binding_hash == 0)
             return false;
 
         uint32 observed_missing_required = 0;
-        for (int i = 0; i < view.textures.GetCount(); ++i)
+        for (int i = 0; i < table.textures.GetCount(); ++i)
         {
-            const ResolvedTextureBinding &binding = view.textures[i];
+            const ResolvedTextureBinding &binding = table.textures[i];
             if (!IsValidTextureBinding(binding))
                 return false;
 
@@ -227,15 +227,15 @@ namespace hgl::graph::mtl
 
             for (int j = 0; j < i; ++j)
             {
-                if (view.textures[j].logical_resource_id == binding.logical_resource_id
-                 || view.textures[j].texture_slot == binding.texture_slot)
+                if (table.textures[j].logical_resource_id == binding.logical_resource_id
+                 || table.textures[j].texture_slot == binding.texture_slot)
                     return false;
             }
         }
 
-        for (int i = 0; i < view.data.GetCount(); ++i)
+        for (int i = 0; i < table.data.GetCount(); ++i)
         {
-            const ResolvedDataBinding &binding = view.data[i];
+            const ResolvedDataBinding &binding = table.data[i];
             if (!IsValidDataBinding(binding))
                 return false;
 
@@ -244,14 +244,14 @@ namespace hgl::graph::mtl
 
             for (int j = 0; j < i; ++j)
             {
-                if (view.data[j].logical_resource_id == binding.logical_resource_id
-                 || (view.data[j].data_slot == binding.data_slot
-                  && view.data[j].ssbo_type == binding.ssbo_type))
+                if (table.data[j].logical_resource_id == binding.logical_resource_id
+                 || (table.data[j].data_slot == binding.data_slot
+                  && table.data[j].ssbo_type == binding.ssbo_type))
                     return false;
             }
         }
 
-        return observed_missing_required == view.missing_required_count;
+        return observed_missing_required == table.missing_required_count;
     }
 
     bool ValidateResourceAcquirePlan(
@@ -302,14 +302,14 @@ namespace hgl::graph::mtl
     }
 
     bool SerializeResolvedBindingTable(
-        const ResolvedBindingTable &view,
+        const ResolvedBindingTable &table,
         ValueArray<uint8> &out_bytes)
     {
         out_bytes.Clear();
-        if (!ValidateResolvedBindingTable(view))
+        if (!ValidateResolvedBindingTable(table))
             return false;
 
-        ValueArray<ResolvedTextureBinding> textures = view.textures;
+        ValueArray<ResolvedTextureBinding> textures = table.textures;
         contract_detail::CanonicalSort(
             textures,
             [](const ResolvedTextureBinding &lhs,
@@ -317,7 +317,7 @@ namespace hgl::graph::mtl
             {
                 return IsLess(lhs, rhs);
             });
-        ValueArray<ResolvedDataBinding> data = view.data;
+        ValueArray<ResolvedDataBinding> data = table.data;
         contract_detail::CanonicalSort(
             data,
             [](const ResolvedDataBinding &lhs,
@@ -328,12 +328,12 @@ namespace hgl::graph::mtl
 
         CanonicalContractWriter writer(out_bytes);
         writer.WriteU32(ResolvedBindingTableTag);
-        writer.WriteU32(view.schema_version);
-        writer.WriteU64(view.program_key_digest);
-        writer.WriteU64(view.source_binding_hash);
-        writer.WriteU32(view.missing_required_count);
-        writer.WriteU32(view.unused_recipe_texture_count);
-        writer.WriteU32(view.unused_recipe_data_count);
+        writer.WriteU32(table.schema_version);
+        writer.WriteU64(table.program_key_digest);
+        writer.WriteU64(table.source_binding_hash);
+        writer.WriteU32(table.missing_required_count);
+        writer.WriteU32(table.unused_recipe_texture_count);
+        writer.WriteU32(table.unused_recipe_data_count);
         writer.WriteU32(static_cast<uint32>(textures.GetCount()));
         for (int i = 0; i < textures.GetCount(); ++i)
             WriteResolvedTextureBinding(writer, textures[i]);
@@ -451,10 +451,10 @@ namespace hgl::graph::mtl
     }
 
     uint64 GetResolvedBindingTableHash(
-        const ResolvedBindingTable &view) noexcept
+        const ResolvedBindingTable &table) noexcept
     {
         ValueArray<uint8> bytes;
-        return SerializeResolvedBindingTable(view, bytes)
+        return SerializeResolvedBindingTable(table, bytes)
             ? contract_detail::HashCanonicalBytes(bytes) : 0;
     }
 

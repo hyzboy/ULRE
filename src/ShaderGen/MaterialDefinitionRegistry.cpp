@@ -637,7 +637,7 @@ namespace
     {
         bool has_preset = false;
         MaterialDefinitionBootstrapKind preset = MaterialDefinitionBootstrapKind::None;
-        MaterialDefinition bmi{};
+        MaterialDefinition definition{};
     };
 
     struct MaterialDefinitionAliasRegistryEntry
@@ -675,7 +675,7 @@ namespace
 
     bool TryGetMaterialDefinitionByIDInternal(
         const char *mtl_def_id,
-        MaterialDefinition &out_bmi,
+        MaterialDefinition &out_definition,
         const uint32 alias_depth)
     {
         if (!mtl_def_id || !mtl_def_id[0] || alias_depth > 8)
@@ -688,10 +688,10 @@ namespace
         // replaced by a same-named TOML definition.
         for (const auto &entry : registry)
         {
-            if (entry.bmi.definition_id == mtl_def_id
-             && IsBootstrapMaterialDefinition(entry.bmi))
+            if (entry.definition.definition_id == mtl_def_id
+             && IsBootstrapMaterialDefinition(entry.definition))
             {
-                out_bmi = entry.bmi;
+                out_definition = entry.definition;
                 return true;
             }
         }
@@ -704,7 +704,7 @@ namespace
             file_registry.FindByID(mtl_def_id);
         if (file_definition)
         {
-            out_bmi = *file_definition;
+            out_definition = *file_definition;
             return true;
         }
 
@@ -713,7 +713,7 @@ namespace
         if (canonical_id
          && std::strcmp(canonical_id->c_str(), mtl_def_id) != 0)
             return TryGetMaterialDefinitionByIDInternal(
-                canonical_id->c_str(), out_bmi, alias_depth + 1);
+                canonical_id->c_str(), out_definition, alias_depth + 1);
 
         return false;
     }
@@ -880,9 +880,9 @@ bool BuildResolvedMaterialVertexABI(
     return true;
 }
 
-void RegisterMaterialDefinition(const MaterialDefinition &bmi)
+void RegisterMaterialDefinition(const MaterialDefinition &definition)
 {
-    MaterialDefinition normalized = bmi;
+    MaterialDefinition normalized = definition;
     if (normalized.definition_id.empty()
      || normalized.source_kind != MaterialDefinitionSourceKind::BuiltIn
      || !IsBootstrapMaterialDefinition(normalized))
@@ -891,11 +891,11 @@ void RegisterMaterialDefinition(const MaterialDefinition &bmi)
     auto &registry = GetBaseMaterialInfoRegistry();
     for (auto &entry : registry)
     {
-        if (entry.bmi.definition_id == normalized.definition_id)
+        if (entry.definition.definition_id == normalized.definition_id)
         {
             entry.has_preset = true;
             entry.preset = normalized.bootstrap_kind;
-            entry.bmi = normalized;
+            entry.definition = normalized;
             return;
         }
     }
@@ -903,7 +903,7 @@ void RegisterMaterialDefinition(const MaterialDefinition &bmi)
     BaseMaterialInfoRegistryEntry entry{};
     entry.has_preset = true;
     entry.preset = normalized.bootstrap_kind;
-    entry.bmi = normalized;
+    entry.definition = normalized;
     registry.emplace_back(std::move(entry));
 }
 
@@ -917,7 +917,7 @@ void RegisterMaterialDefinitionAlias(const char *alias_id, const char *definitio
     const auto &definitions = GetBaseMaterialInfoRegistry();
     for (const auto &entry : definitions)
     {
-        if (entry.bmi.definition_id == alias_id)
+        if (entry.definition.definition_id == alias_id)
             return;
     }
 
@@ -935,22 +935,22 @@ void RegisterMaterialDefinitionAlias(const char *alias_id, const char *definitio
     entry->definition_id = definition_id;
 }
 
-bool TryGetMaterialDefinitionByID(const std::string &mtl_def_id, MaterialDefinition &out_bmi)
+bool TryGetMaterialDefinitionByID(const std::string &mtl_def_id, MaterialDefinition &out_definition)
 {
-    return TryGetMaterialDefinitionByIDInternal(mtl_def_id.c_str(), out_bmi, 0);
+    return TryGetMaterialDefinitionByIDInternal(mtl_def_id.c_str(), out_definition, 0);
 }
 
 
-bool TryGetMaterialDefinitionByBootstrapKind(const MaterialDefinitionBootstrapKind kind, MaterialDefinition &out_bmi)
+bool TryGetMaterialDefinitionByBootstrapKind(const MaterialDefinitionBootstrapKind kind, MaterialDefinition &out_definition)
 {
     const auto &registry = GetBaseMaterialInfoRegistry();
     for (const auto &entry : registry)
     {
         if (entry.has_preset
          && entry.preset == kind
-         && IsBootstrapMaterialDefinition(entry.bmi))
+         && IsBootstrapMaterialDefinition(entry.definition))
         {
-            out_bmi = entry.bmi;
+            out_definition = entry.definition;
             return true;
         }
     }
@@ -1014,18 +1014,18 @@ void NormalizeRecipe(MaterialRecipe &recipe)
     if (recipe.mtl_def_id.empty())
         return;
 
-    MaterialDefinition bmi{};
-    bool has_definition = TryGetMaterialDefinitionByID(recipe.mtl_def_id, bmi);
+    MaterialDefinition definition{};
+    bool has_definition = TryGetMaterialDefinitionByID(recipe.mtl_def_id, definition);
     if (has_definition)
     {
         // Aliases are accepted only at the compatibility boundary. Once a
         // recipe is normalized, the canonical definition ID is the sole
         // runtime identity used by hashing and caches.
-        recipe.mtl_def_id = bmi.definition_id;
-        ApplyBaseMaterialInfoDefaults(recipe, bmi, false);
+        recipe.mtl_def_id = definition.definition_id;
+        ApplyBaseMaterialInfoDefaults(recipe, definition, false);
 
         const ResolvedMaterialRenderState resolved =
-            ResolveMaterialRenderState(bmi, recipe);
+            ResolveMaterialRenderState(definition, recipe);
 
         // Write resolved values back to render_state_overrides as authoritative.
         recipe.render_state_overrides.has_double_sided = true;

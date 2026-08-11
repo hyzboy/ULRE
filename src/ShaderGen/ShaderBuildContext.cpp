@@ -50,13 +50,13 @@ static bool ExecuteOnShadersByStage(
 }
 
 static const UBODescriptor *ResolveUBODescriptor(
-    DescriptorSetLayoutAllocator &mdi,
+    DescriptorSetLayoutAllocator &allocator,
     const ShaderStage flag_bit,
     const DescriptorSetType set_type,
     const std::string &struct_name,
     const std::string &name)
 {
-    UBODescriptor *ubo=mdi.GetUBO(name);
+    UBODescriptor *ubo=allocator.GetUBO(name);
 
     if(ubo)
     {
@@ -71,18 +71,18 @@ static const UBODescriptor *ResolveUBODescriptor(
     ubo->type=struct_name.c_str();
     hgl::strcpy(ubo->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
 
-    return mdi.AddUBO((uint32_t)flag_bit,set_type,ubo);
+    return allocator.AddUBO((uint32_t)flag_bit,set_type,ubo);
 }
 
 static const SSBODescriptor *ResolveSSBODescriptor(
-    DescriptorSetLayoutAllocator &mdi,
+    DescriptorSetLayoutAllocator &allocator,
     const ShaderStage flag_bit,
     const DescriptorSetType set_type,
     const std::string &struct_name,
     const std::string &name,
     const int preferred_binding)
 {
-    SSBODescriptor *ssbo=mdi.GetSSBO(name);
+    SSBODescriptor *ssbo=allocator.GetSSBO(name);
 
     if(ssbo)
     {
@@ -100,17 +100,17 @@ static const SSBODescriptor *ResolveSSBODescriptor(
     hgl::strcpy(ssbo->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
     ssbo->preferred_binding=preferred_binding;
 
-    return mdi.AddSSBO((uint32_t)flag_bit,set_type,ssbo);
+    return allocator.AddSSBO((uint32_t)flag_bit,set_type,ssbo);
 }
 
 static const TextureDescriptor *ResolveTextureDescriptor(
-    DescriptorSetLayoutAllocator &mdi,
+    DescriptorSetLayoutAllocator &allocator,
     const ShaderStage flag_bit,
     const DescriptorSetType set_type,
     const std::string &type_name,
     const std::string &name)
 {
-    TextureDescriptor *texture=mdi.GetTexture(name);
+    TextureDescriptor *texture=allocator.GetTexture(name);
 
     if(texture)
     {
@@ -125,17 +125,17 @@ static const TextureDescriptor *ResolveTextureDescriptor(
     texture->type=type_name.c_str();
     hgl::strcpy(texture->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
 
-    return mdi.AddTexture((uint32_t)flag_bit,set_type,texture);
+    return allocator.AddTexture((uint32_t)flag_bit,set_type,texture);
 }
 
 static const TextureSamplerDescriptor *ResolveTextureSamplerDescriptor(
-    DescriptorSetLayoutAllocator &mdi,
+    DescriptorSetLayoutAllocator &allocator,
     const ShaderStage flag_bit,
     const DescriptorSetType set_type,
     const std::string &type_name,
     const std::string &name)
 {
-    TextureSamplerDescriptor *image_sampler=mdi.GetTextureSampler(name);
+    TextureSamplerDescriptor *image_sampler=allocator.GetTextureSampler(name);
 
     if(image_sampler)
     {
@@ -150,14 +150,14 @@ static const TextureSamplerDescriptor *ResolveTextureSamplerDescriptor(
     image_sampler->type=type_name.c_str();
     hgl::strcpy(image_sampler->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
 
-    return mdi.AddTextureSampler((uint32_t)flag_bit,set_type,image_sampler);
+    return allocator.AddTextureSampler((uint32_t)flag_bit,set_type,image_sampler);
 }
 
 ShaderBuildContext::ShaderBuildContext(const PrimitiveType primitive_type_value,const uint32_t shader_stage_bits,const bool has_local_to_world_value)
     : primitive_type(primitive_type_value), shader_stage_flag_bits(shader_stage_bits), has_local_to_world(has_local_to_world_value)
 {
-    if(hasVertex    ())shader_map.Add(new ShaderCreateInfoVertex());
-    if(hasFragment  ())shader_map.Add(new ShaderCreateInfo(ShaderStage::Fragment));
+    if(has_vertex    ())shader_map.Add(new ShaderCreateInfoVertex());
+    if(has_fragment  ())shader_map.Add(new ShaderCreateInfo(ShaderStage::Fragment));
 
     ubo_range=0;
     ssbo_range=0;

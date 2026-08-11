@@ -1,4 +1,4 @@
-﻿#include<hgl/vk/VKShaderDescriptorSet.h>
+#include<hgl/vk/VKShaderDescriptorSet.h>
 #include<algorithm>
 #include<cstring>
 #include<unordered_set>
@@ -114,21 +114,21 @@ namespace
 /**
 * 添加一个描述符
 */
-ShaderDescriptor *ShaderDescriptorSet::AddDescriptor(uint32_t ssb,ShaderDescriptor *new_sd)
+ShaderDescriptor *ShaderDescriptorSet::AddDescriptor(uint32_t shader_stage_flag_bits,ShaderDescriptor *new_sd)
 {
     ShaderDescriptor *sd;
 
     if(descriptor_map.Get(new_sd->name,sd))
     {
         delete new_sd;
-        sd->stage_flag|=ssb;
+        sd->stage_flag|=shader_stage_flag_bits;
         return(sd);
     }
     else
     {
         new_sd->set_type=set_type;
         new_sd->set=int(set_type);
-        new_sd->stage_flag=ssb;
+        new_sd->stage_flag=shader_stage_flag_bits;
 
         descriptor_map.Add(new_sd->name,new_sd);
         ReassignBindingsForSet(*this);

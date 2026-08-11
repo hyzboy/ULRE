@@ -54,7 +54,7 @@ namespace hgl::graph::shadergen
 
     bool BuildResourceSchemaFromContract(
         const DescriptorContract &contract,
-        ShaderResourceSchema &out_layout);
+        ShaderResourceSchema &out_schema);
 
     bool ValidateDescriptorContract(
         const DescriptorContract &contract) noexcept;

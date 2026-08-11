@@ -4,19 +4,19 @@
 
 namespace hgl::graph
 {
-    ShaderProgramCreatePrecheckDecision RunShaderProgramCreatePrecheck(const shadergen::ShaderBuildContext *mci,
+    ShaderProgramCreatePrecheckDecision RunShaderProgramCreatePrecheck(const shadergen::ShaderBuildContext *ctx,
                                                              const AnsiString &material_name,
                                                              ShaderProgramCreatePrecheckResult &out_result)
     {
         out_result.shader_map = nullptr;
 
-        if (!mci)
+        if (!ctx)
         {
             GLogError("[ShaderProgramPrecheck] null build spec: name=%s", material_name.c_str());
             return ShaderProgramCreatePrecheckDecision::Abort;
         }
 
-        const shadergen::ShaderCreateInfoMap &sci_map = mci->GetShaderMap();
+        const shadergen::ShaderCreateInfoMap &sci_map = ctx->GetShaderMap();
         if (sci_map.GetCount() < 2)
         {
             GLogError("[ShaderProgramPrecheck] incomplete shader map: name=%s count=%d",
@@ -24,7 +24,7 @@ namespace hgl::graph
             return ShaderProgramCreatePrecheckDecision::Abort;
         }
 
-        if (!mci->GetStageShader(ShaderStage::Fragment))
+        if (!ctx->GetStageShader(ShaderStage::Fragment))
         {
             GLogError("[ShaderProgramPrecheck] fragment stage missing: name=%s", material_name.c_str());
             return ShaderProgramCreatePrecheckDecision::Abort;

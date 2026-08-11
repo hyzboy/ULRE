@@ -11,11 +11,11 @@ SET(SHADER_CREATER_SOURCE_FILES ShaderCreateInfo.cpp
 SOURCE_GROUP("Material Create Info\\Shader" FILES   ${SHADER_CREATER_HEADER_FILES}
                                                     ${SHADER_CREATER_SOURCE_FILES})
 
-SET(SHADER_PROGRAM_BUILD_SPEC_HEADER_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderBuildContext.h)
-SET(SHADER_PROGRAM_BUILD_SPEC_SOURCE_FILES ShaderBuildContext.cpp)
+SET(SHADER_BUILD_CONTEXT_HEADER_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderBuildContext.h)
+SET(SHADER_BUILD_CONTEXT_SOURCE_FILES ShaderBuildContext.cpp)
 
-SOURCE_GROUP("ShaderProgram Build Spec" FILES   ${SHADER_PROGRAM_BUILD_SPEC_HEADER_FILES}
-                                                ${SHADER_PROGRAM_BUILD_SPEC_SOURCE_FILES})
+SOURCE_GROUP("Shader Build Context" FILES   ${SHADER_BUILD_CONTEXT_HEADER_FILES}
+                                            ${SHADER_BUILD_CONTEXT_SOURCE_FILES})
 
 SET(SHADER_ARTIFACT_CONTRACT_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderStageKey.h
 ${SHADERGEN_INCLUDE_PATH}/ShaderKeyUtility.h
@@ -153,14 +153,14 @@ SET(NEW_MTL_TYPE_FILES  ${ROOT_INCLUDE_PATH}/hgl/mtl/SurfaceType.h
                         ShaderPermutationKey.cpp
 )
 
-SOURCE_GROUP("New Material Types" FILES ${NEW_MTL_TYPE_FILES})
+SOURCE_GROUP("Material Types" FILES ${NEW_MTL_TYPE_FILES})
 
 add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_INCLUDE_PATH}
 
                                         ${DS_LAYOUT_ALLOCATOR_HEADER_FILES}
                                         ${DS_LAYOUT_ALLOCATOR_SOURCE_FILES}
-                                        ${SHADER_PROGRAM_BUILD_SPEC_HEADER_FILES}
-                                        ${SHADER_PROGRAM_BUILD_SPEC_SOURCE_FILES}
+                                        ${SHADER_BUILD_CONTEXT_HEADER_FILES}
+                                        ${SHADER_BUILD_CONTEXT_SOURCE_FILES}
                                         ${SHADER_ARTIFACT_CONTRACT_FILES}
                                         ${SHADER_SEMANTIC_REGISTRY_FILES}
                                         ${CANONICAL_SHADER_CONTRACT_FILES}

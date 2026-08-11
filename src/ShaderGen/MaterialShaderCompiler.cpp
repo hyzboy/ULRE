@@ -155,7 +155,7 @@ static bool IsTextureSlotDeclared(const MaterialDefinition &definition, const Te
     return false;
 }
 
-static bool AddMaterialDataSlotDescriptor(ShaderBuildContext &mci,
+static bool AddMaterialDataSlotDescriptor(ShaderBuildContext &ctx,
                                           const DataSlotDeclaration &decl,
                                           const uint32_t data_slot,
                                           const uint32_t stage_bits)
@@ -167,10 +167,10 @@ static bool AddMaterialDataSlotDescriptor(ShaderBuildContext &mci,
     if (!ssbo::TryGetMaterialSSBOLayout(decl.ssbo_type, struct_name, glsl_codes, struct_bytes))
         return false;
 
-    if (!mci.AddStruct(struct_name, glsl_codes))
+    if (!ctx.AddStruct(struct_name, glsl_codes))
         return false;
 
-    return mci.AddSSBO(stage_bits, DescriptorSetType::Material, struct_name, decl.name, int(data_slot));
+    return ctx.AddSSBO(stage_bits, DescriptorSetType::Material, struct_name, decl.name, int(data_slot));
 }
 
 static bool ValidateDefinitionCapabilitySubset(
@@ -344,20 +344,20 @@ ShaderBuildContext *CompileCompositorMaterial(
     // Step 2: Create ShaderBuildContext
     // ─────────────────────────────────────────────────────────────
 
-    ShaderBuildContext *mci = new ShaderBuildContext(primitive_type, shader_stage_bits, with_local_to_world);
+    ShaderBuildContext *ctx = new ShaderBuildContext(primitive_type, shader_stage_bits, with_local_to_world);
     if (profile)
-        mci->SetDevice(profile);
+        ctx->SetDevice(profile);
     if (config.program_link)
-        mci->SetProgramLink(*config.program_link);
-    mci->SetArtifactStore(config.artifact_store);
+        ctx->SetProgramLink(*config.program_link);
+    ctx->SetArtifactStore(config.artifact_store);
 
-    auto FailAfterMci = [&](const char *reason) -> ShaderBuildContext *
+    auto FailAfterBuild = [&](const char *reason) -> ShaderBuildContext *
     {
         std::fprintf(stderr,
             "[CompileCompositorMaterial] material=%s failed: %s\n",
             input.debug_name ? input.debug_name : "<unnamed>",
             reason ? reason : "<unknown>");
-        delete mci;
+        delete ctx;
         return nullptr;
     };
 
@@ -387,9 +387,9 @@ ShaderBuildContext *CompileCompositorMaterial(
         {
             const auto &ssbo = config.resource_manifest->ssbos[i];
             if (ssbo.data_slot > MaxMaterialDataSlotsPerMaterial)
-                return FailAfterMci("provider material data slot exceeds the supported limit");
+                return FailAfterBuild("provider material data slot exceeds the supported limit");
             if (ssbo.data_slot > effective_data_slot_decls.size())
-                return FailAfterMci("provider material data slots must be contiguous");
+                return FailAfterBuild("provider material data slots must be contiguous");
 
             if (ssbo.data_slot == effective_data_slot_decls.size())
             {
@@ -402,7 +402,7 @@ ShaderBuildContext *CompileCompositorMaterial(
             {
                 const auto &decl = effective_data_slot_decls[ssbo.data_slot];
                 if (decl.name != ssbo.name || decl.ssbo_type != ssbo.ssbo_type)
-                    return FailAfterMci("provider material data slot conflicts with definition");
+                    return FailAfterBuild("provider material data slot conflicts with definition");
             }
         }
     }
@@ -417,37 +417,37 @@ ShaderBuildContext *CompileCompositorMaterial(
             data_slot_decls,
             material_ssbo_stage_bits,
             effective_descriptor_contract))
-        return FailAfterMci("invalid effective material descriptor contract");
+        return FailAfterBuild("invalid effective material descriptor contract");
     if (config.material_definition
      && !EnsureDescriptorContractVaryingResources(
             config.material_definition->vertex_varying,
             effective_descriptor_contract))
     {
-        return FailAfterMci(
+        return FailAfterBuild(
             "failed to add varying descriptor contract resources");
     }
 
     std::vector<SerializedDescriptorEntry> descriptor_entries;
     if (!ConvertDescriptorContractToFixed(
             effective_descriptor_contract, descriptor_entries))
-        return FailAfterMci("failed to adapt material descriptor contract");
+        return FailAfterBuild("failed to adapt material descriptor contract");
 
     const uint32_t declared_material_data_slot_count = use_slot_decls ? static_cast<uint32_t>(data_slot_decls->size()) : 0u;
     if (use_slot_decls)
     {
         if (declared_material_data_slot_count > MaxMaterialDataSlotsPerMaterial)
-            return FailAfterMci("material data slot count exceeds the supported limit");
+            return FailAfterBuild("material data slot count exceeds the supported limit");
 
         for (uint32_t i = 0; i < declared_material_data_slot_count; ++i)
         {
             const auto &decl = (*data_slot_decls)[i];
             if (!IsValidMaterialDataSlotName(decl.name))
-                return FailAfterMci("invalid material data slot GLSL name");
+                return FailAfterBuild("invalid material data slot GLSL name");
 
             for (uint32_t j = 0; j < i; ++j)
             {
                 if ((*data_slot_decls)[j].name == decl.name)
-                    return FailAfterMci("duplicate material data slot GLSL name");
+                    return FailAfterBuild("duplicate material data slot GLSL name");
             }
         }
     }
@@ -464,22 +464,22 @@ ShaderBuildContext *CompileCompositorMaterial(
             switch (entry.semantic)
             {
             case DescriptorSemantic::ViewportInfo:
-                mci->AddUBOStruct(stage_bits, SBS_ViewportInfo);
+                ctx->AddUBOStruct(stage_bits, SBS_ViewportInfo);
                 break;
             case DescriptorSemantic::CameraInfo:
-                mci->AddUBOStruct(stage_bits, SBS_CameraInfo);
+                ctx->AddUBOStruct(stage_bits, SBS_CameraInfo);
                 break;
             case DescriptorSemantic::SkyInfo:
-                mci->AddUBOStruct(stage_bits, SBS_SkyInfo);
+                ctx->AddUBOStruct(stage_bits, SBS_SkyInfo);
                 break;
             case DescriptorSemantic::LocalToWorld:
-                mci->SetLocalToWorld(stage_bits);
+                ctx->SetLocalToWorld(stage_bits);
                 break;
             case DescriptorSemantic::MaterialDataSlotData:
                 material_ssbo_stage_bits = stage_bits;
                 break;
             case DescriptorSemantic::MaterialColorPalette:
-                mci->AddUBOStruct(stage_bits, SBS_ColorPalette);
+                ctx->AddUBOStruct(stage_bits, SBS_ColorPalette);
                 break;
             default:
                 break;
@@ -490,10 +490,10 @@ ShaderBuildContext *CompileCompositorMaterial(
             switch (entry.semantic)
             {
             case DescriptorSemantic::LocalToWorld:
-                mci->SetLocalToWorld(stage_bits);
+                ctx->SetLocalToWorld(stage_bits);
                 break;
             case DescriptorSemantic::LocalToWorldIndexTable:
-                mci->AddSSBOStruct(stage_bits, SBS_LocalToWorldIndexRows);
+                ctx->AddSSBOStruct(stage_bits, SBS_LocalToWorldIndexRows);
                 break;
             case DescriptorSemantic::MaterialDataSlotData:
                 material_ssbo_stage_bits = stage_bits;
@@ -501,41 +501,41 @@ ShaderBuildContext *CompileCompositorMaterial(
             case DescriptorSemantic::MaterialTextureLayerTable:
                 if (use_slot_decls)
                 {
-                    if (!mci->AddStruct(SBS_MaterialTextureLayerRows.struct_name, ""))
-                        return FailAfterMci("failed to add MaterialTextureLayerRows struct");
-                    if (!mci->AddSSBO(stage_bits,
+                    if (!ctx->AddStruct(SBS_MaterialTextureLayerRows.struct_name, ""))
+                        return FailAfterBuild("failed to add MaterialTextureLayerRows struct");
+                    if (!ctx->AddSSBO(stage_bits,
                                       DescriptorSetType::Material,
                                       SBS_MaterialTextureLayerRows.struct_name,
                                       SBS_MaterialTextureLayerRows.name,
                                       int(declared_material_data_slot_count + 1u)))
                     {
-                        return FailAfterMci("failed to add MaterialTextureLayerRows SSBO");
+                        return FailAfterBuild("failed to add MaterialTextureLayerRows SSBO");
                     }
                 }
                 else
                 {
-                    if (!mci->AddSSBOStruct(stage_bits, SBS_MaterialTextureLayerRows))
-                        return FailAfterMci("failed to add MaterialTextureLayerRows SSBO");
+                    if (!ctx->AddSSBOStruct(stage_bits, SBS_MaterialTextureLayerRows))
+                        return FailAfterBuild("failed to add MaterialTextureLayerRows SSBO");
                 }
                 break;
             case DescriptorSemantic::MaterialDataIndexTable:
                 if (use_slot_decls)
                 {
-                    if (!mci->AddStruct(SBS_MaterialDataIndexRows.struct_name, ""))
-                        return FailAfterMci("failed to add MaterialDataIndexRows struct");
-                    if (!mci->AddSSBO(stage_bits,
+                    if (!ctx->AddStruct(SBS_MaterialDataIndexRows.struct_name, ""))
+                        return FailAfterBuild("failed to add MaterialDataIndexRows struct");
+                    if (!ctx->AddSSBO(stage_bits,
                                       DescriptorSetType::Material,
                                       SBS_MaterialDataIndexRows.struct_name,
                                       SBS_MaterialDataIndexRows.name,
                                       int(declared_material_data_slot_count)))
                     {
-                        return FailAfterMci("failed to add MaterialDataIndexRows SSBO");
+                        return FailAfterBuild("failed to add MaterialDataIndexRows SSBO");
                     }
                 }
                 else
                 {
-                    if (!mci->AddSSBOStruct(stage_bits, SBS_MaterialDataIndexRows))
-                        return FailAfterMci("failed to add MaterialDataIndexRows SSBO");
+                    if (!ctx->AddSSBOStruct(stage_bits, SBS_MaterialDataIndexRows))
+                        return FailAfterBuild("failed to add MaterialDataIndexRows SSBO");
                 }
                 break;
             default:
@@ -560,7 +560,7 @@ ShaderBuildContext *CompileCompositorMaterial(
                 else
                     tt = TextureType::Texture2D;
 
-                mci->AddTexture(ShaderStage(stage_bits), entry.set_type, tt, entry.name);
+                ctx->AddTexture(ShaderStage(stage_bits), entry.set_type, tt, entry.name);
             }
             break;
 
@@ -588,7 +588,7 @@ ShaderBuildContext *CompileCompositorMaterial(
                     st = SamplerType::Sampler2D;
                 }
 
-                mci->AddTextureSampler(ShaderStage(stage_bits), entry.set_type, st, entry.name);
+                ctx->AddTextureSampler(ShaderStage(stage_bits), entry.set_type, st, entry.name);
             }
             break;
         }
@@ -598,7 +598,7 @@ ShaderBuildContext *CompileCompositorMaterial(
     // Step 4: Add Vertex Inputs from SerializedVertexEntry[]
     // ─────────────────────────────────────────────────────────────
 
-    ShaderCreateInfoVertex *vsc = mci->GetVertexShader();
+    ShaderCreateInfoVertex *vsc = ctx->GetVertexShader();
     if (vsc)
     {
         for (uint32_t i = 0; i < input.vertex_entry_count; ++i)
@@ -612,8 +612,8 @@ ShaderBuildContext *CompileCompositorMaterial(
     {
         for (uint32_t i = 0; i < static_cast<uint32_t>(data_slot_decls->size()); ++i)
         {
-            if (!AddMaterialDataSlotDescriptor(*mci, (*data_slot_decls)[i], i, material_ssbo_stage_bits))
-                return FailAfterMci("failed to add declared material ssbo slot descriptor");
+            if (!AddMaterialDataSlotDescriptor(*ctx, (*data_slot_decls)[i], i, material_ssbo_stage_bits))
+                return FailAfterBuild("failed to add declared material ssbo slot descriptor");
         }
     }
 
@@ -643,7 +643,7 @@ ShaderBuildContext *CompileCompositorMaterial(
         if (vv.emit_data_index_id
             && !HasDescriptorSemanticInDef(DescriptorSemantic::MaterialDataIndexTable))
         {
-            mci->AddSSBOStruct(uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
+            ctx->AddSSBOStruct(uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
                                SBS_MaterialDataIndexRows);
         }
 
@@ -651,7 +651,7 @@ ShaderBuildContext *CompileCompositorMaterial(
             && !vv.texture_layer_id_uses_data_index
             && !HasDescriptorSemanticInDef(DescriptorSemantic::MaterialTextureLayerTable))
         {
-            mci->AddSSBOStruct(uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
+            ctx->AddSSBOStruct(uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
                                SBS_MaterialTextureLayerRows);
         }
     }
@@ -681,7 +681,7 @@ ShaderBuildContext *CompileCompositorMaterial(
         binding_preamble += "\n";
     };
 
-    const DescriptorSetLayoutAllocator &descriptor_info = mci->GetDescriptorAllocator();
+    const DescriptorSetLayoutAllocator &descriptor_info = ctx->GetDescriptorAllocator();
 
     // 行表绑定（mtl_data_index_rows / mtl_texture_layer_rows / l2w_index_rows）不再注入
     // set/binding 宏：声明由下方 index table 生成逻辑依据 descriptor_info 直接以
@@ -737,12 +737,12 @@ ShaderBuildContext *CompileCompositorMaterial(
             const DataSlotDeclaration &decl = (*data_slot_decls)[i];
             const ShaderDescriptor *sd = descriptor_info.GetSSBO(decl.name.c_str());
             if (!sd || sd->set < 0 || sd->binding < 0)
-                return FailAfterMci("material ssbo descriptor unresolved for GLSL generation");
+                return FailAfterBuild("material ssbo descriptor unresolved for GLSL generation");
 
             const char *struct_name  = ssbo::GetMaterialSSBOStructName(decl.ssbo_type);
             const char *struct_codes = ssbo::GetMaterialSSBOStructGLSL(decl.ssbo_type);
             if (!struct_name || !struct_codes)
-                return FailAfterMci("unsupported material ssbo type for GLSL generation");
+                return FailAfterBuild("unsupported material ssbo type for GLSL generation");
 
             std::string buffer_name(struct_name);
             const size_t name_len = buffer_name.size();
@@ -950,8 +950,8 @@ ShaderBuildContext *CompileCompositorMaterial(
             fs_final = InsertBeforeSurfaceFunction(fs_final, code_module_glsl);
     }
 
-    ShaderCreateInfoVertex   *vert = mci->GetVertexShader();
-    ShaderCreateInfo         *frag = mci->GetStageShader(ShaderStage::Fragment);
+    ShaderCreateInfoVertex   *vert = ctx->GetVertexShader();
+    ShaderCreateInfo         *frag = ctx->GetStageShader(ShaderStage::Fragment);
 
     if (vert)
         vert->SetFinalGLSL(vs_final);
@@ -969,7 +969,7 @@ ShaderBuildContext *CompileCompositorMaterial(
     if (!BuildResourceSchemaFromContract(
             effective_descriptor_contract,
             shader_resource_schema))
-        return FailAfterMci("descriptor contract/layout build failed");
+        return FailAfterBuild("descriptor contract/layout build failed");
 
     if (config.material_definition)
         descriptor_builder_common::ApplyMaterialDefinitionTexturePolicy(
@@ -985,7 +985,7 @@ ShaderBuildContext *CompileCompositorMaterial(
                 input.debug_name ? input.debug_name : "<unnamed>",
                 diag.c_str());
         }
-        return FailAfterMci("ShaderResourceSchema validation failed");
+        return FailAfterBuild("ShaderResourceSchema validation failed");
     }
 
     if (config.material_definition)
@@ -1003,19 +1003,19 @@ ShaderBuildContext *CompileCompositorMaterial(
                     input.debug_name ? input.debug_name : "<unnamed>",
                     diag.c_str());
             }
-            return FailAfterMci("Definition capability subset validation failed");
+            return FailAfterBuild("Definition capability subset validation failed");
         }
     }
 
-    mci->SetShaderResourceSchema(shader_resource_schema);
-    if (mci->HasProgramLink())
+    ctx->SetShaderResourceSchema(shader_resource_schema);
+    if (ctx->HasProgramLink())
     {
         ShaderProgramArtifactMetadata metadata{};
         if (!BuildShaderProgramArtifactMetadata(
-                profile, *mci, metadata))
-            return FailAfterMci(
+                profile, *ctx, metadata))
+            return FailAfterBuild(
                 "failed to build ShaderProgram artifact metadata");
-        mci->SetProgramArtifactMetadata(metadata);
+        ctx->SetProgramArtifactMetadata(metadata);
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -1023,13 +1023,13 @@ ShaderBuildContext *CompileCompositorMaterial(
     // ─────────────────────────────────────────────────────────────
 
     if (config.generate_only)
-        return mci;
+        return ctx;
 
-    if (!FinalizeShaderBuildContext(mci))
-        return FailAfterMci(
+    if (!FinalizeShaderBuildContext(ctx))
+        return FailAfterBuild(
             "FinalizeShaderBuildContext() failed");
 
-    return mci;
+    return ctx;
 }
 
 }  // namespace hgl::graph::shadergen

@@ -22,7 +22,7 @@ namespace hgl::graph
         const shadergen::ShaderCreateInfoMap *shader_map = nullptr;
     };
 
-    ShaderProgramCreatePrecheckDecision RunShaderProgramCreatePrecheck(const shadergen::ShaderBuildContext *mci,
+    ShaderProgramCreatePrecheckDecision RunShaderProgramCreatePrecheck(const shadergen::ShaderBuildContext *ctx,
                                                              const AnsiString &material_name,
                                                              ShaderProgramCreatePrecheckResult &out_result);
 }

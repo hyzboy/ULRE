@@ -163,15 +163,15 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const VIL *vil,const mtl
     mtl::MaterialRecipe normalized_recipe = recipe;
     mtl::NormalizeRecipe(normalized_recipe);
 
-    mtl::MaterialDefinition bmi{};
-    if(!mtl::TryGetMaterialDefinitionByID(normalized_recipe.mtl_def_id, bmi))
+    mtl::MaterialDefinition definition{};
+    if(!mtl::TryGetMaterialDefinitionByID(normalized_recipe.mtl_def_id, definition))
     {
         GLogError(u8"[RenderPass::CreatePipeline] MaterialDefinition not found: '%s'",
                   normalized_recipe.mtl_def_id.c_str());
         return nullptr;
     }
     const mtl::ResolvedMaterialRenderState render_state =
-        mtl::ResolveMaterialRenderState(bmi, normalized_recipe);
+        mtl::ResolveMaterialRenderState(definition, normalized_recipe);
 
     PipelineData *pd = BuildPipelineData(render_state);
     pd->SetPrim(mtl->GetPrimitiveType(),prim_restart);

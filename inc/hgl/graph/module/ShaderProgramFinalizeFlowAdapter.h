@@ -19,6 +19,6 @@ namespace hgl::graph
     };
 
     void BuildShaderProgramFinalizePlan(const MaterialDescriptorManager *desc_manager,
-                                   const shadergen::ShaderBuildContext &mci,
+                                   const shadergen::ShaderBuildContext &ctx,
                                    ShaderProgramFinalizePlan &out_plan);
 }

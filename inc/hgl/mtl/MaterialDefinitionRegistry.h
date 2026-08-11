@@ -120,17 +120,17 @@ inline VkFormat ResolveMaterialPositionFormat(const GeometryVertexFormat *gvf, V
     return ResolveMaterialVertexSemanticFormat(gvf, VertexSemantic::Position, fallback_format);
 }
 
-// BMI registry
-void RegisterMaterialDefinition(const MaterialDefinition &bmi);
+// Material definition registry
+void RegisterMaterialDefinition(const MaterialDefinition &definition);
 // Compatibility-only route; aliases resolve to the canonical definition and
 // never create a second MaterialDefinition registry entry.
 void RegisterMaterialDefinitionAlias(const char *alias_id, const char *definition_id);
-bool TryGetMaterialDefinitionByID(const std::string &mtl_def_id, MaterialDefinition &out_bmi);
-bool TryGetMaterialDefinitionByBootstrapKind(const MaterialDefinitionBootstrapKind kind, MaterialDefinition &out_bmi);
+bool TryGetMaterialDefinitionByID(const std::string &mtl_def_id, MaterialDefinition &out_definition);
+bool TryGetMaterialDefinitionByBootstrapKind(const MaterialDefinitionBootstrapKind kind, MaterialDefinition &out_definition);
 MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry();
 GLSLCodeModuleRegistry &GetGLSLCodeModuleRegistry();
 
-// ── built-in fallback BMI ID 常量 ─────────────────────────────────────────────
+// ── built-in fallback definition ID 常量 ──────────────────────────────────────
 constexpr const char *BUILTIN_MTL_DEF_FALLBACK          = "builtin/pure_color";
 constexpr const char *BUILTIN_MTL_DEF_MISSING_MATERIAL  = "builtin/missing_material";
 constexpr const char *BUILTIN_MTL_DEF_ERROR_CHECKER     = "builtin/error_checker";

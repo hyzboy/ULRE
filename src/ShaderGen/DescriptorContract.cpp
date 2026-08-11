@@ -350,13 +350,13 @@ namespace hgl::graph::shadergen
 
     bool BuildResourceSchemaFromContract(
         const DescriptorContract &contract,
-        ShaderResourceSchema &out_layout)
+        ShaderResourceSchema &out_schema)
     {
-        out_layout = {};
+        out_schema = {};
         if (!ValidateDescriptorContract(contract))
             return false;
 
-        out_layout.resources.reserve(contract.entries.size());
+        out_schema.resources.reserve(contract.entries.size());
 
         for (const DescriptorContractEntry &entry :
              contract.entries)
@@ -426,7 +426,7 @@ namespace hgl::graph::shadergen
             }
 
             req.RebindOwnedPointers();
-            out_layout.resources.push_back(std::move(req));
+            out_schema.resources.push_back(std::move(req));
         }
         return true;
     }

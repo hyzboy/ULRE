@@ -1,4 +1,4 @@
-﻿#include<hgl/vk/VKShaderProgram.h>
+#include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/vk/VKVertexInput.h>
@@ -12,12 +12,12 @@ namespace hgl::graph{
 
 void ReleaseVertexInput(VertexInput *vi);
 
-ShaderProgram::ShaderProgram(const AnsiString &n,const shadergen::ShaderBuildContext *mci)
+ShaderProgram::ShaderProgram(const AnsiString &n,const shadergen::ShaderBuildContext *ctx)
 {
     name=n;
-    geometry=mci->GetPrimitiveType();
-    shader_resource_schema=mci->GetShaderResourceSchema();
-    program_key=mci->GetProgramLink().BuildKey();
+    geometry=ctx->GetPrimitiveType();
+    shader_resource_schema=ctx->GetShaderResourceSchema();
+    program_key=ctx->GetProgramLink().BuildKey();
 
     vertex_input=nullptr;
     shader_maps=new ShaderModuleMap;
@@ -26,7 +26,7 @@ ShaderProgram::ShaderProgram(const AnsiString &n,const shadergen::ShaderBuildCon
 
     mem_zero(mp_array);
 
-    has_l2w_matrix=mci->HasLocalToWorld();
+    has_l2w_matrix=ctx->HasLocalToWorld();
 }
 
 ShaderProgram::~ShaderProgram()
