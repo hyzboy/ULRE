@@ -52,6 +52,7 @@ namespace hgl::ecs
         cached_normalized_recipe_hash = 0;
         cached_effective_recipe = {};
         cached_effective_recipe_hash = 0;
+        tracked_material_authored_generation = 0;
         ++runtime_revision;
     }
 
@@ -197,6 +198,7 @@ namespace hgl::ecs
         recipe_hash = 0;
         cached_effective_recipe = {};
         cached_effective_recipe_hash = 0;
+        tracked_material_authored_generation = 0;
         ClearMaterializationInstanceData();
         ClearResolvedSSBOBindings();
         ClearMaterialBindingView();
@@ -215,6 +217,7 @@ namespace hgl::ecs
         cached_normalized_recipe_hash = 0;
         cached_effective_recipe = {};
         cached_effective_recipe_hash = 0;
+        tracked_material_authored_generation = 0;
         ClearMaterializationInstanceData();
         ClearResolvedSSBOBindings();
         ClearMaterialBindingView();

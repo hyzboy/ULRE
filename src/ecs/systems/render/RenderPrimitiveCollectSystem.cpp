@@ -779,6 +779,13 @@ namespace hgl::ecs
         if (!world || !primitive_comp || !material_comp)
             return false;
 
+        // P3: Fast-path — if nothing has changed since last resolve, skip all work.
+        if (!material_comp->program_dirty
+            && material_comp->program
+            && material_comp->tracked_material_authored_generation == primitive_comp->GetMaterialAuthoredGeneration()
+            && material_comp->material_binding_view.IsRuntimeReady())
+            return true;
+
         graph::mtl::MaterialRecipe effective_recipe{};
         if (!BuildEffectiveMaterialRecipe(primitive_comp, nullptr, effective_recipe))
         {
@@ -988,6 +995,7 @@ namespace hgl::ecs
         material_comp->cached_effective_recipe = material_binding_recipe;
         material_comp->cached_effective_recipe_hash =
             graph::mtl::HashMaterialRecipe(material_binding_recipe);
+        material_comp->tracked_material_authored_generation = primitive_comp->GetMaterialAuthoredGeneration();
 
         return true;
     }

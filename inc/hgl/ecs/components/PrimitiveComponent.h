@@ -97,6 +97,11 @@ namespace hgl::ecs
         std::array<MaterialTextureAuthoringResource, static_cast<size_t>(hgl::graph::mtl::TextureSlot::RANGE_SIZE)> materialTextureResources{};
         std::vector<MaterialDataSlotAuthoringResource> materialDataSlotResources{};
 
+        // Monotonic counter incremented every time authored material resources change
+        // (textures, SSBOs, recipe). Compared against MaterialComponent to skip
+        // BuildEffectiveMaterialRecipe when nothing has changed.
+        uint32_t material_authored_generation = 0;
+
         // Late-resolve pipeline slot:
         // Populated at render-time if primitive has no pre-baked pipeline.
         hgl::graph::Pipeline* resolvedRuntimePipeline = nullptr; // (not owned)
@@ -198,6 +203,10 @@ namespace hgl::ecs
             uint32_t data_slot) const;
         void ClearMaterialDataSlotResource(const std::string &data_slot_name, uint32_t data_slot);
         void ClearMaterialAuthoringResources();
+
+        // Generation counter for authored material resources.
+        // Compared against MaterialComponent to detect changes.
+        uint32_t GetMaterialAuthoredGeneration() const { return material_authored_generation; }
 
         // ShaderProgram access (returns override if set, otherwise descriptor-bound material)
         hgl::graph::ShaderProgram* GetShaderProgram() const;

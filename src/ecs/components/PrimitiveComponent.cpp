@@ -273,6 +273,8 @@ namespace hgl::ecs
         {
             SetBoundingRadius(0.0f);
         }
+
+        ++material_authored_generation;
     }
 
     void PrimitiveComponent::SetMaterialRecipe(const hgl::graph::mtl::MaterialRecipe &recipe)
@@ -280,6 +282,7 @@ namespace hgl::ecs
         InvalidateResolvedRuntimePipeline();
         materialRecipeOverride = recipe;
         hasMaterialRecipeOverride = true;
+        ++material_authored_generation;
     }
 
     const hgl::graph::mtl::MaterialRecipe *PrimitiveComponent::GetMaterialRecipe() const
@@ -407,6 +410,7 @@ namespace hgl::ecs
         ResetMaterialRecipe(materialRecipeOverride);
         hasMaterialRecipeOverride = false;
         ClearMaterialAuthoringResources();
+        ++material_authored_generation;
     }
 
     void PrimitiveComponent::SetMaterialTextureResource(hgl::graph::mtl::TextureSlot slot,
@@ -434,6 +438,7 @@ namespace hgl::ecs
         resource.use_direct_value = false;
         resource.required = required;
         resource.resource_id = resource_id.empty() ? BuildTextureResourceId(texture) : resource_id;
+        ++material_authored_generation;
     }
 
     void PrimitiveComponent::SetMaterialTextureValue(hgl::graph::mtl::TextureSlot slot, uint32_t value)
@@ -446,6 +451,7 @@ namespace hgl::ecs
         ResetMaterialTextureAuthoringResource(resource);
         resource.direct_value = value;
         resource.use_direct_value = true;
+        ++material_authored_generation;
     }
 
     const PrimitiveComponent::MaterialTextureAuthoringResource *PrimitiveComponent::GetMaterialTextureResource(hgl::graph::mtl::TextureSlot slot) const
@@ -465,6 +471,7 @@ namespace hgl::ecs
             return;
 
         ResetMaterialTextureAuthoringResource(materialTextureResources[index]);
+        ++material_authored_generation;
     }
 
     void PrimitiveComponent::SetMaterialDataSlotResource(const MaterialDataSlotAuthoringResource &resource)
@@ -486,12 +493,14 @@ namespace hgl::ecs
 
             existing = resource;
             existing.authored = true;
+            ++material_authored_generation;
             return;
         }
 
         MaterialDataSlotAuthoringResource authored_resource = resource;
         authored_resource.authored = true;
         materialDataSlotResources.emplace_back(std::move(authored_resource));
+        ++material_authored_generation;
     }
 
     const PrimitiveComponent::MaterialDataSlotAuthoringResource *
@@ -537,6 +546,7 @@ namespace hgl::ecs
                 continue;
 
             ResetMaterialDataSlotAuthoringResource(resource);
+            ++material_authored_generation;
             return;
         }
     }
@@ -618,5 +628,6 @@ namespace hgl::ecs
         ClearMaterialAuthoringResources();
         resolvedRuntimePipeline = nullptr;
         resolvedRuntimeRenderPass = nullptr;
+        ++material_authored_generation;
     }
 }//namespace hgl::ecs

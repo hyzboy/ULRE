@@ -82,6 +82,11 @@ namespace hgl::ecs
         graph::mtl::MaterialRecipe cached_effective_recipe{};
         uint64_t cached_effective_recipe_hash = 0;
 
+        // P3: Tracks the last observed PrimitiveComponent::material_authored_generation.
+        // When this matches the primitive's current generation, all cached material
+        // data is valid and ResolveMaterialProgramForPrimitive can skip entirely.
+        uint32_t tracked_material_authored_generation = 0;
+
     public:
 
         MaterialComponent(const std::string &name = "MaterialRuntime");
