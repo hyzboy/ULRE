@@ -183,7 +183,7 @@ bool ShaderBuildContext::AddStruct(const std::string &struct_name,const std::str
     if(struct_name.empty())
         return(false);
 
-    return descriptor_db.AddStruct(struct_name,codes);
+    return descriptor_allocator.AddStruct(struct_name,codes);
 }
 
 bool ShaderBuildContext::AddUBO(const ShaderStage flag_bit,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name)
@@ -191,10 +191,10 @@ bool ShaderBuildContext::AddUBO(const ShaderStage flag_bit,const DescriptorSetTy
     if(!shader_map.ContainsKey(flag_bit))
         return(false);
 
-    if(!descriptor_db.hasStruct(struct_name))
+    if(!descriptor_allocator.hasStruct(struct_name))
         return(false);
 
-    const UBODescriptor *ubo=ResolveUBODescriptor(descriptor_db,flag_bit,set_type,struct_name,name);
+    const UBODescriptor *ubo=ResolveUBODescriptor(descriptor_allocator,flag_bit,set_type,struct_name,name);
     return ubo != nullptr;
 }
 
@@ -202,7 +202,7 @@ bool ShaderBuildContext::AddUBO(const uint32_t flag_bits,const DescriptorSetType
 {
     if(flag_bits==0)return(false);          //没有任何SHADER用?
 
-    if(!descriptor_db.hasStruct(struct_name))
+    if(!descriptor_allocator.hasStruct(struct_name))
         return(false);
 
     return ExecuteOnShadersByStage(shader_map,flag_bits,
@@ -230,10 +230,10 @@ bool ShaderBuildContext::AddSSBO(const ShaderStage flag_bit,const DescriptorSetT
     if(!shader_map.ContainsKey(flag_bit))
         return(false);
 
-    if(!descriptor_db.hasStruct(struct_name))
+    if(!descriptor_allocator.hasStruct(struct_name))
         return(false);
 
-    const SSBODescriptor *ssbo=ResolveSSBODescriptor(descriptor_db,flag_bit,set_type,struct_name,name,preferred_binding);
+    const SSBODescriptor *ssbo=ResolveSSBODescriptor(descriptor_allocator,flag_bit,set_type,struct_name,name,preferred_binding);
     return ssbo != nullptr;
 }
 
@@ -246,7 +246,7 @@ bool ShaderBuildContext::AddSSBO(const uint32_t flag_bits,const DescriptorSetTyp
 {
     if(flag_bits==0)return(false);          //没有任何SHADER用?
 
-    if(!descriptor_db.hasStruct(struct_name))
+    if(!descriptor_allocator.hasStruct(struct_name))
         return(false);
 
     return ExecuteOnShadersByStage(shader_map,flag_bits,
@@ -273,7 +273,7 @@ bool ShaderBuildContext::AddTexture(const ShaderStage flag_bit,const DescriptorS
 
     const std::string st_name(GetTextureTypeName(tt));        //这里可能需要根据纹理类型，在前面增加i/u的前缀
 
-    const TextureDescriptor *texture=ResolveTextureDescriptor(descriptor_db,flag_bit,set_type,st_name,name);
+    const TextureDescriptor *texture=ResolveTextureDescriptor(descriptor_allocator,flag_bit,set_type,st_name,name);
     return texture != nullptr;
 }
 
@@ -286,7 +286,7 @@ bool ShaderBuildContext::AddTextureSampler(const ShaderStage flag_bit,const Desc
 
     const std::string st_name(GetSamplerTypeName(st));      //这里可能需要根据纹理类型，在前面增加i/u的前缀
 
-    const TextureSamplerDescriptor *image_sampler=ResolveTextureSamplerDescriptor(descriptor_db,flag_bit,set_type,st_name,name);
+    const TextureSamplerDescriptor *image_sampler=ResolveTextureSamplerDescriptor(descriptor_allocator,flag_bit,set_type,st_name,name);
     return image_sampler != nullptr;
 }
 
@@ -299,7 +299,7 @@ bool ShaderBuildContext::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
     if(!AddSSBOStruct(shader_stage_flag_bits,SBS_LocalToWorld))
         return(false);
 
-    local_to_world_ssbo=descriptor_db.GetSSBO(SBS_LocalToWorld.name);
+    local_to_world_ssbo=descriptor_allocator.GetSSBO(SBS_LocalToWorld.name);
 
     local_to_world_stage_bits=shader_stage_flag_bits;
 
