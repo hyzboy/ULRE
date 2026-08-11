@@ -1,4 +1,4 @@
-#include <hgl/mtl/MaterialLibrary.h>
+#include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/SamplerName.h>
 
 namespace hgl::graph::mtl{

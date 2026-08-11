@@ -7,7 +7,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/SamplerManager.h>
-#include<hgl/mtl/MaterialLibrary.h>
+#include<hgl/mtl/MaterialDefinitionRegistry.h>
 
 // ECS headers
 #include<hgl/ecs/core/Context.h>

@@ -4,7 +4,7 @@
 #include<hgl/graph/mesh/GeometryDataBuffer.h>
 #include<hgl/graph/mesh/GeometryDrawRange.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
-#include<hgl/mtl/MaterialLibrary.h>
+#include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/pipeline/VKPipeline.h>

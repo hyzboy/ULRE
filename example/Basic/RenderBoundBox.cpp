@@ -11,7 +11,7 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/log/Log.h>
-#include<hgl/mtl/MaterialLibrary.h>
+#include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>

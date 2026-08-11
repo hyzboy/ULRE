@@ -7,7 +7,7 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
-#include<hgl/mtl/MaterialLibrary.h>
+#include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/vk/VKVertexInputConfig.h>

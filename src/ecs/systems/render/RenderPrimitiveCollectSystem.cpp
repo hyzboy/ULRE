@@ -15,7 +15,7 @@
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/render/RenderContext.h>
-#include<hgl/mtl/MaterialLibrary.h>
+#include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/BindingTableBuilder.h>
 #include<hgl/log/Log.h>
 #include<hgl/vk/VKRenderPass.h>

@@ -120,8 +120,8 @@ SOURCE_GROUP("Standard Material" FILES ${STD_MTL_SOURCE})
 SOURCE_GROUP("Standard Material\\2D" FILES ${STD_MTL_2D_SOURCE_FILES})
 SOURCE_GROUP("Standard Material\\3D" FILES ${STD_MTL_3D_SOURCE_FILES})
 
-SET(SHADER_LIBRARY_FILES    MaterialLibrary.cpp
-                            ${STD_MTL_HEADER_PATH}/MaterialLibrary.h)
+SET(SHADER_LIBRARY_FILES    MaterialDefinitionRegistry.cpp
+                            ${STD_MTL_HEADER_PATH}/MaterialDefinitionRegistry.h)
 
 SOURCE_GROUP("Shader Library" FILES ${SHADER_LIBRARY_FILES})
 

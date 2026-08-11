@@ -5,7 +5,7 @@
 #include<hgl/vk/pipeline/VKPipelineData.h>
 #include<hgl/vk/pipeline/VKPipelineResolver.h>
 #include<hgl/vk/VKShaderProgram.h>
-#include<hgl/mtl/MaterialLibrary.h>
+#include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/object/ObjectTracker.h>
 #include<hgl/log/Log.h>
 namespace hgl::graph{

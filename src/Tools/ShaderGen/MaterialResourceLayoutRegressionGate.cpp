@@ -1,5 +1,5 @@
 #include <hgl/mtl/ShaderResourceSchema.h>
-#include <hgl/mtl/MaterialLibrary.h>
+#include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/MaterialDefinitionFile.h>
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/shadergen/MaterialCompiler.h>

@@ -6,7 +6,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/mtl/MaterialRecipe.h>
-#include<hgl/mtl/MaterialLibrary.h>
+#include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/SamplerName.h>
 #include<hgl/framework/AppFramework.h>
 #include<hgl/graph/core/GraphicsContext.h>

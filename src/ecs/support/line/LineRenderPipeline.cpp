@@ -17,7 +17,7 @@
 #include <hgl/graph/mesh/GeometryDataBuffer.h>
 #include <hgl/graph/mesh/GeometryDrawRange.h>
 #include <hgl/mtl/MaterialRecipe.h>
-#include <hgl/mtl/MaterialLibrary.h>
+#include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/graph/ShaderBufferSources.h>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/VKShaderProgram.h>

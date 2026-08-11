@@ -1,7 +1,7 @@
 #include <hgl/shadergen/ResolvedModuleGraphBuilder.h>
 
 #include <hgl/graph/glsl/GLSLCodeModuleMetadata.h>
-#include <hgl/mtl/MaterialLibrary.h>
+#include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/shadergen/MaterialOutputContract.h>
 #include <hgl/shadergen/MaterialCoverageContract.h>
 #include <hgl/util/hash/FNV1a.h>

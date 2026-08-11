@@ -4,7 +4,7 @@
 #include<hgl/vk/StructuredBufferAccessor.h>
 #include<hgl/graph/ubo/SkyInfo.h>
 #include<hgl/mtl/SkyLight.h>
-#include<hgl/mtl/MaterialLibrary.h>
+#include<hgl/mtl/MaterialDefinitionRegistry.h>
 
 namespace hgl
 {

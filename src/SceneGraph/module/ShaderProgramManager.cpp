@@ -16,7 +16,7 @@
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/shadergen/ShaderArtifactStore.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
-#include<hgl/mtl/MaterialLibrary.h>
+#include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/MaterialDefinitionFile.h>
 #include<hgl/object/ObjectTracker.h>
 #include<cstdint>
