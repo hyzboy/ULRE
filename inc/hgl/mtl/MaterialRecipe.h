@@ -345,16 +345,15 @@ namespace hgl::graph::mtl
             state.pipeline_config.alpha_to_coverage = true;
 
         const MaterialRenderStateOverrides &overrides = recipe.render_state_overrides;
-        if (overrides.has_double_sided)
+        if (overrides.double_sided != state.double_sided)
             state.double_sided = overrides.double_sided;
-        if (overrides.has_alpha_test)
+        if (overrides.alpha_test != state.alpha_test)
             state.alpha_test = overrides.alpha_test;
-        if (overrides.has_alpha_cutoff)
+        if (overrides.alpha_cutoff != state.alpha_cutoff)
             state.alpha_cutoff = overrides.alpha_cutoff;
-        if (overrides.has_dither)
+        if (overrides.dither != state.dither)
             state.dither = overrides.dither;
-        if (overrides.has_pipeline_config
-         || overrides.pipeline_config != state.pipeline_config)
+        if (overrides.pipeline_config != state.pipeline_config)
             state.pipeline_config = overrides.pipeline_config;
 
         return state;
