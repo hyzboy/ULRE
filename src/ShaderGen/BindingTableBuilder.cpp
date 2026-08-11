@@ -2,7 +2,6 @@
 
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
-#include <hgl/shadergen/DescriptorContract.h>
 #include <hgl/shadergen/CanonicalShaderContract.h>
 #include <hgl/util/hash/FNV1a.h>
 
@@ -223,17 +222,6 @@ namespace hgl::graph::mtl
                     return lhs.data_slot < rhs.data_slot;
                 return lhs.ssbo_type < rhs.ssbo_type;
             });
-        }
-
-        bool AppendDescriptorRequirements(
-            const DescriptorContract &layout,
-            ValueArray<ShaderDescriptorContractEntry> &out_requirements) noexcept
-        {
-            out_requirements.Clear();
-            out_requirements.Reserve(static_cast<int>(layout.entries.size()));
-            for (const DescriptorContractEntry &entry : layout.entries)
-                out_requirements.Add(entry.canonical);
-            return true;
         }
 
         bool AppendLayoutRequirements(
@@ -571,26 +559,6 @@ namespace hgl::graph::mtl
 
             return true;
         }
-    }
-
-    bool BuildBindingTable(
-        const MaterialRecipe &recipe,
-        const DescriptorContract &layout,
-        const shadergen::ShaderProgramKey &program_key,
-        ResolvedBindingTable &out_table,
-        BindingBuildDiagnostic &out_diagnostic) noexcept
-    {
-        ValueArray<ShaderDescriptorContractEntry> requirements;
-        if (!AppendDescriptorRequirements(layout, requirements))
-            return SetBuildFailure(
-                out_diagnostic,
-                BindingBuildError::InvalidBindingTable);
-        return BuildBindingTableFromRequirements(
-            recipe,
-            requirements,
-            program_key.GetDigest(),
-            out_table,
-            out_diagnostic);
     }
 
     bool BuildBindingTable(

@@ -142,10 +142,6 @@ namespace hgl::ecs
                                    uint32_t *out_texture_layer_row = nullptr,
                                    uint32_t *out_data_index_row = nullptr,
                                    graph::mtl::MaterializationInstanceData *out_instance_data = nullptr);
-        bool GetMaterializationPoolStats(uint32_t &texture_count,
-                                         uint32_t &struct_layout_count,
-                                         uint32_t &texture_layer_rows,
-                                         uint32_t &data_index_rows) const;
 
         /**
          * 向 bindless 纹理池预注册一个逻辑资源 ID 与 bindless handle 的映射。

@@ -363,18 +363,6 @@ namespace hgl::ecs
         return true;
     }
 
-    bool RenderDescriptorBindingSystem::GetMaterializationPoolStats(uint32_t &texture_count,
-                                                                    uint32_t &struct_layout_count,
-                                                                    uint32_t &texture_layer_rows,
-                                                                    uint32_t &data_index_rows) const
-    {
-        texture_count = static_cast<uint32_t>(materialization_texture_pool.GetCount());
-        struct_layout_count = static_cast<uint32_t>(materialization_struct_pool.GetLayoutCount());
-        texture_layer_rows = static_cast<uint32_t>(materialization_index_tables.GetTextureLayerRowCount());
-        data_index_rows = static_cast<uint32_t>(materialization_index_tables.GetMaterialDataIndexRowCount());
-        return true;
-    }
-
     bool RenderDescriptorBindingSystem::RegisterBindlessTextureResource(const std::string &resource_id, uint32_t bindless_handle)
     {
         if (resource_id.empty() || bindless_handle == 0)

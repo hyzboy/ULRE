@@ -8,21 +8,9 @@ namespace hgl::graph::mtl
     struct MaterialRecipe;
     struct ShaderResourceSchema;
 }
-namespace hgl::graph::shadergen
-{
-    struct DescriptorContract;
-}
-
 namespace hgl::graph::mtl
 {
     using namespace hgl::graph::shadergen;
-
-    bool BuildBindingTable(
-        const MaterialRecipe &recipe,
-        const DescriptorContract &layout,
-        const shadergen::ShaderProgramKey &program_key,
-        ResolvedBindingTable &out_table,
-        BindingBuildDiagnostic &out_diagnostic) noexcept;
 
     bool BuildBindingTable(
         const MaterialRecipe &recipe,
