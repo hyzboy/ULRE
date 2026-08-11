@@ -370,7 +370,7 @@ namespace
             if (provider_root_count < 2)
                 provider_roots[provider_root_count++] = provider->id;
         }
-        ShaderProgramLinkSpec resolved_program_link{};
+        ShaderLinkSpec resolved_program_link{};
         SkyLightAmbientModel ambient_model =
             request.override_sky_ambient_model
                 ? request.sky_ambient_model

@@ -252,14 +252,14 @@ namespace hgl::graph::shadergen
     }
 
     bool ShaderArtifactStore::HasProgramMetadata(
-        const ShaderProgramLinkSpec &link) const
+        const ShaderLinkSpec &link) const
     {
         return link.IsValid()
             && filesystem::FileExist(GetProgramPath(link.BuildKey()));
     }
 
     bool ShaderArtifactStore::LoadProgramMetadata(
-        const ShaderProgramLinkSpec &link,
+        const ShaderLinkSpec &link,
         ShaderProgramArtifactMetadata &out_metadata) const
     {
         out_metadata = {};
@@ -325,7 +325,7 @@ namespace hgl::graph::shadergen
     }
 
     bool ShaderArtifactStore::SaveProgramMetadata(
-        const ShaderProgramLinkSpec &link,
+        const ShaderLinkSpec &link,
         const ShaderProgramArtifactMetadata &metadata)
     {
         if (cache_mode == ShaderCacheMode::ReadOnly
@@ -374,7 +374,7 @@ namespace hgl::graph::shadergen
     }
 
     bool ShaderArtifactStore::LoadProgramArtifacts(
-        const ShaderProgramLinkSpec &link,
+        const ShaderLinkSpec &link,
         const ShaderProgramArtifactMetadata &expected_metadata,
         ValueArray<uint8> &out_vertex_spv,
         ValueArray<uint8> &out_fragment_spv) const

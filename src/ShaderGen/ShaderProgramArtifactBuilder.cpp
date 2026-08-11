@@ -28,7 +28,7 @@ namespace hgl::graph::shadergen
          || fragment->GetFinalGLSL().empty())
             return false;
 
-        const ShaderProgramLinkSpec &link =
+        const ShaderLinkSpec &link =
             build_spec.GetProgramLink();
         if (link.compiler_hash
             != contract::GetShaderCompilerProfileHash(profile))

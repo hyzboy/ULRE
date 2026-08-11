@@ -3,7 +3,7 @@
 #include<hgl/shadergen/DescriptorSetLayoutAllocator.h>
 #include<hgl/mtl/ShaderResourceSchema.h>
 #include<hgl/shadergen/ShaderCreateInfoMap.h>
-#include<hgl/shadergen/ShaderProgramLinkSpec.h>
+#include<hgl/shadergen/ShaderLinkSpec.h>
 #include<hgl/shadergen/ShaderArtifactContract.h>
 #include<hgl/common/PrimitiveTypeDef.h>
 #include<hgl/common/ShaderStageDef.h>
@@ -48,7 +48,7 @@ namespace hgl::graph
             ShaderCreateInfoMap shader_map;                         ///<着色器列表
 
             bool has_local_to_world;
-            ShaderProgramLinkSpec program_link;
+            ShaderLinkSpec program_link;
             bool has_program_link = false;
             ShaderArtifactStore *artifact_store = nullptr;
             ShaderProgramArtifactMetadata program_metadata{};
@@ -83,14 +83,14 @@ namespace hgl::graph
 
             void SetShaderResourceSchema(const mtl::ShaderResourceSchema &contract){material_resource_layout=contract;}
 
-            void SetProgramLink(const ShaderProgramLinkSpec &link)
+            void SetProgramLink(const ShaderLinkSpec &link)
             {
                 program_link = link;
                 has_program_link = link.IsValid();
             }
 
             bool HasProgramLink() const noexcept { return has_program_link; }
-            const ShaderProgramLinkSpec &GetProgramLink() const noexcept { return program_link; }
+            const ShaderLinkSpec &GetProgramLink() const noexcept { return program_link; }
             void SetArtifactStore(ShaderArtifactStore *store) noexcept { artifact_store = store; }
             ShaderArtifactStore *GetArtifactStore() const noexcept { return artifact_store; }
             void SetProgramArtifactMetadata(

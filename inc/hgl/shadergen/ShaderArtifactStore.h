@@ -6,7 +6,7 @@ namespace hgl::graph::mtl {}
 #include <hgl/filesystem/Path.h>
 #include <hgl/shadergen/ShaderArtifactContract.h>
 #include <hgl/shadergen/ShaderStageKey.h>
-#include <hgl/shadergen/ShaderProgramLinkSpec.h>
+#include <hgl/shadergen/ShaderLinkSpec.h>
 #include <hgl/type/String.h>
 #include <hgl/type/ValueArray.h>
 
@@ -37,16 +37,16 @@ namespace hgl::graph::shadergen
         bool SaveStageSPV(const ShaderStageKey &key, const void *spv_data, const uint64 spv_size);
 
         bool HasProgramMetadata(
-            const ShaderProgramLinkSpec &link) const;
+            const ShaderLinkSpec &link) const;
         bool LoadProgramMetadata(
-            const ShaderProgramLinkSpec &link,
+            const ShaderLinkSpec &link,
             ShaderProgramArtifactMetadata &out_metadata) const;
         bool SaveProgramMetadata(
-            const ShaderProgramLinkSpec &link,
+            const ShaderLinkSpec &link,
             const ShaderProgramArtifactMetadata &metadata);
 
         bool LoadProgramArtifacts(
-            const ShaderProgramLinkSpec &link,
+            const ShaderLinkSpec &link,
             const ShaderProgramArtifactMetadata &expected_metadata,
             ValueArray<uint8> &out_vertex_spv,
             ValueArray<uint8> &out_fragment_spv) const;

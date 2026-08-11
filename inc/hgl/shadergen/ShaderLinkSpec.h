@@ -9,7 +9,7 @@ namespace hgl::graph::mtl {}
 namespace hgl::graph::shadergen
 {
     using namespace hgl::graph::mtl;
-    struct ShaderProgramLinkSpec
+    struct ShaderLinkSpec
     {
         ShaderStageKey vertex_stage;
         ShaderStageKey fragment_stage;

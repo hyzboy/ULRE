@@ -1528,11 +1528,11 @@ namespace
         if (rg16_geometry.GetVertexInputHash() == rg32_geometry.GetVertexInputHash())
             result.diagnostics.emplace_back("raw Geometry formats must remain distinct");
 
-        ShaderProgramLinkSpec rg16_link{};
+        ShaderLinkSpec rg16_link{};
         rg16_link.vertex_stage = stage_key;
         rg16_link.fragment_stage.stage = ShaderStage::Fragment;
         rg16_link.vertex_input_hash = rg16_geometry.GetVertexInputHash();
-        ShaderProgramLinkSpec rg32_link = rg16_link;
+        ShaderLinkSpec rg32_link = rg16_link;
         rg32_link.vertex_input_hash = rg32_geometry.GetVertexInputHash();
         if (rg16_link.BuildKey() == rg32_link.BuildKey())
             result.diagnostics.emplace_back(
@@ -1570,7 +1570,7 @@ namespace
             result.diagnostics.emplace_back(
                 "invalid SPV payload must be rejected");
 
-        ShaderProgramLinkSpec program_link{};
+        ShaderLinkSpec program_link{};
         program_link.vertex_stage = stage_key;
         program_link.fragment_stage.stage = ShaderStage::Fragment;
         program_link.fragment_stage.definition_hash = 0x2201u;
@@ -1728,7 +1728,7 @@ namespace
             result.diagnostics.emplace_back(
                 "metadata schema mismatch must reject writes");
 
-        ShaderProgramLinkSpec stage_only_link = program_link;
+        ShaderLinkSpec stage_only_link = program_link;
         stage_only_link.render_target_hash ^= 0x1000u;
         ShaderProgramArtifactMetadata stage_only_metadata = metadata;
         stage_only_metadata.program_key_digest =
@@ -1745,7 +1745,7 @@ namespace
                 "stage-only artifacts must not count as a program hit");
         }
 
-        ShaderProgramLinkSpec metadata_only_link = program_link;
+        ShaderLinkSpec metadata_only_link = program_link;
         metadata_only_link.fragment_stage.definition_hash ^= 0x2000u;
         ShaderProgramArtifactMetadata metadata_only = metadata;
         metadata_only.program_key_digest =
@@ -1918,10 +1918,10 @@ namespace
         }
         else
         {
-            const ShaderProgramLinkSpec &a = lit_a->GetProgramLink();
-            const ShaderProgramLinkSpec &b = lit_b->GetProgramLink();
-            const ShaderProgramLinkSpec &c = color->GetProgramLink();
-            const ShaderProgramLinkSpec &targeted =
+            const ShaderLinkSpec &a = lit_a->GetProgramLink();
+            const ShaderLinkSpec &b = lit_b->GetProgramLink();
+            const ShaderLinkSpec &c = color->GetProgramLink();
+            const ShaderLinkSpec &targeted =
                 lit_targeted->GetProgramLink();
             if (lit_a->GetProgramArtifactMetadata().
                     program_key_digest

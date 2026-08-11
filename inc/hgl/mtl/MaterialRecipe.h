@@ -10,7 +10,7 @@
 #include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/type/ValueArray.h>
 #include <hgl/shadergen/ShaderStageBuildContext.h>
-#include <hgl/shadergen/ShaderProgramLinkSpec.h>
+#include <hgl/shadergen/ShaderLinkSpec.h>
 #include <hgl/mtl/SurfaceType.h>
 #include <hgl/mtl/BlendMode.h>
 #include <hgl/mtl/PassType.h>

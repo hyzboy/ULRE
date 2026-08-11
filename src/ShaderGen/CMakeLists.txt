@@ -22,7 +22,7 @@ ${SHADERGEN_INCLUDE_PATH}/ShaderKeyUtility.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderProgramKey.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderArtifactContract.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderStageBuildContext.h
-                                   ${SHADERGEN_INCLUDE_PATH}/ShaderProgramLinkSpec.h
+                                   ${SHADERGEN_INCLUDE_PATH}/ShaderLinkSpec.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderArtifactStore.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderProgramArtifactBuilder.h
                                    ShaderArtifactStore.cpp
