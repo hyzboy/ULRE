@@ -3,8 +3,9 @@
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <cstring>
 
-namespace hgl::graph::mtl
+namespace hgl::graph::shadergen
 {
+    using namespace hgl::graph::mtl;
     namespace
     {
         constexpr ShaderSemanticValueShape FloatShape(const uint8 component_count)

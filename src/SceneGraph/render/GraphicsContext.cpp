@@ -1,4 +1,4 @@
-﻿#include <hgl/graph/core/GraphicsContext.h>
+#include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/VKPhysicalDevice.h>
 #include <hgl/graph/module/GraphModuleManager.h>
@@ -127,7 +127,7 @@ namespace hgl::graph
         return device ? const_cast<VulkanPhyDevice *>(device->GetPhyDevice()) : nullptr;
     }
 
-    const mtl::contract::PhysicalDeviceProfileLite *GraphicsContext::GetPhysicalDeviceProfile() const
+    const shadergen::contract::PhysicalDeviceProfileLite *GraphicsContext::GetPhysicalDeviceProfile() const
     {
         auto *pd = GetPhyDevice();
         return pd ? &pd->GetPhysicalDeviceProfile() : nullptr;

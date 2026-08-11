@@ -1,5 +1,7 @@
 #pragma once
 
+namespace hgl::graph::mtl {}
+
 /// MaterialCompiler.h — canonical material input → ShaderProgramBuildSpec
 ///
 /// 使用 CompileCompositorMaterial 编译 Compositor 模板产出的完整 GLSL。
@@ -26,15 +28,15 @@ namespace hgl::graph
     class GeometryVertexFormat;
 }
 
-namespace hgl::graph::mtl{
-
+namespace hgl::graph::shadergen{
+    using namespace hgl::graph::mtl;
 struct MaterialCompilerInput
 {
     const char *debug_name = nullptr;
     PrimitiveType primitive_type = PrimitiveType::Triangles;
-    const FixedVertexEntry *vertex_entries = nullptr;
+    const mtl::FixedVertexEntry *vertex_entries = nullptr;
     uint32 vertex_entry_count = 0;
-    const FixedDescriptorEntry *descriptor_entries = nullptr;
+    const mtl::FixedDescriptorEntry *descriptor_entries = nullptr;
     uint32 descriptor_entry_count = 0;
 };
 
@@ -44,12 +46,12 @@ struct CompositorMaterialBuildConfig
     uint32_t shader_stage_flag_bits = uint32_t(ShaderStage::VertexFragment);
     // Per-material SSBO slot declarations (index == data_slot).
     // When non-null and non-empty, MaterialCompiler generates MaterialDataSlot
-    // FixedDescriptorEntry items and injects the material SSBO struct/buffer
+    // mtl::FixedDescriptorEntry items and injects the material SSBO struct/buffer
     // declarations into the fragment GLSL.
-    const std::vector<MaterialDataSlotDecl> *data_slot_decls = nullptr;
+    const std::vector<mtl::MaterialDataSlotDecl> *data_slot_decls = nullptr;
     // Optional: capability declaration source for development-time subset validation.
     // When non-null, CompileCompositorMaterial checks Layout requirements ⊆ Definition capabilities.
-    const MaterialDefinition *material_definition = nullptr;
+    const mtl::MaterialDefinition *material_definition = nullptr;
     // Optional unified stage/link contract. When supplied, the compiler
     // validates the declared VS/FS interface before compiling the local SPV.
     const ShaderProgramLinkSpec *program_link = nullptr;
@@ -84,4 +86,4 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     const std::string &         fs_glsl,
     const CompositorMaterialBuildConfig &config);
 
-}//namespace hgl::graph::mtl
+}//namespace hgl::graph::shadergen

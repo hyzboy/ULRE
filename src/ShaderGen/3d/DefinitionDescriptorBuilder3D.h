@@ -11,6 +11,7 @@
 
 namespace hgl::graph::mtl
 {
+    namespace descriptor_builder_common = hgl::graph::shadergen::descriptor_builder_common;
 
 struct Build3DDescriptorOptions
 {

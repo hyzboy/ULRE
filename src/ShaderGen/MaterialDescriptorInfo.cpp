@@ -1,5 +1,6 @@
 #include<hgl/shadergen/MaterialDescriptorInfo.h>
-namespace hgl{namespace graph{
+namespace hgl{namespace graph::shadergen{
+    using namespace hgl::graph::mtl;
 MaterialDescriptorInfo::MaterialDescriptorInfo()
 {
     int set_type=(int)DescriptorSetType::BEGIN_RANGE;
@@ -111,5 +112,5 @@ TextureSamplerDescriptor *MaterialDescriptorInfo::GetTextureSampler(const std::s
 
     return(nullptr);
 }
-}}//namespace hgl::graph
+}}//namespace hgl::graph::shadergen
 

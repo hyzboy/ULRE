@@ -1,7 +1,8 @@
 #include <hgl/shadergen/MaterialStageInterface.h>
 
-namespace hgl::graph::mtl
+namespace hgl::graph::shadergen
 {
+    using namespace hgl::graph::mtl;
     namespace
     {
         const char *GetGLSLTypeName(

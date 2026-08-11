@@ -10,15 +10,19 @@
 
 namespace hgl::graph{
 
-class ShaderCreateInfo;
-class ShaderCreateInfoMap;
 class GeometryVertexFormat;
 
 namespace mtl
 {
     struct MaterialDefinitionBuildRequest;
-    class ShaderProgramBuildSpec;
 }//namespace mtl
+
+namespace shadergen
+{
+    class ShaderCreateInfo;
+    class ShaderCreateInfoMap;
+    class ShaderProgramBuildSpec;
+}//namespace shadergen
 
 using ShaderProgramID = int;
 
@@ -42,23 +46,23 @@ private:
 
 private: // Helper methods with integrated DebugUtils
 
-    ShaderProgram *AcquireShaderProgram(const mtl::ShaderProgramKey &, const mtl::ShaderProgramBuildSpec *);
+    ShaderProgram *AcquireShaderProgram(const shadergen::ShaderProgramKey &, const shadergen::ShaderProgramBuildSpec *);
     class PipelineLayoutData *CreateMaterialPipelineLayoutData(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager);
     class MaterialParameters *CreateMaterialMP(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager, const class PipelineLayoutData *pld, const DescriptorSetType &desc_set_type);
-    void ApplyMaterialFinalizePlan(ShaderProgram *mtl, const AnsiString &mtl_name, const mtl::ShaderProgramBuildSpec &mci);
+    void ApplyMaterialFinalizePlan(ShaderProgram *mtl, const AnsiString &mtl_name, const shadergen::ShaderProgramBuildSpec &mci);
     ShaderProgram *TryGetCachedShaderProgram(
-        const mtl::ShaderProgramKey &key);
+        const shadergen::ShaderProgramKey &key);
     bool BuildRuntimeShaderProgramState(ShaderProgram *mtl,
                                         const AnsiString &mtl_name,
-                                        const mtl::ShaderProgramBuildSpec *mci,
-                                        const ShaderCreateInfoMap &sci_map);
+                                        const shadergen::ShaderProgramBuildSpec *mci,
+                                                                        const shadergen::ShaderCreateInfoMap &sci_map);
     bool BuildRuntimeDescriptorState(ShaderProgram *mtl,
                                      const AnsiString &mtl_name,
-                                     const mtl::ShaderProgramBuildSpec *mci);
+                                     const shadergen::ShaderProgramBuildSpec *mci);
     bool ExecuteRuntimeMaterialBuildPipeline(ShaderProgram *mtl,
                                              const AnsiString &mtl_name,
-                                             const mtl::ShaderProgramBuildSpec *mci,
-                                             const ShaderCreateInfoMap &sci_map);
+                                             const shadergen::ShaderProgramBuildSpec *mci,
+                                             const shadergen::ShaderCreateInfoMap &sci_map);
 
 public: //Add
 
@@ -106,13 +110,13 @@ public: // Override Release from GraphModule - cleanup all resources
 
 public: //Shader
 
-    const ShaderModule *CreateShaderModule(const AnsiString &shader_module_name, const ShaderCreateInfo *);
-    const ShaderModule *CreateShaderModule(const mtl::ShaderStageKey &, const ShaderCreateInfo *);
+    const ShaderModule *CreateShaderModule(const AnsiString &shader_module_name, const shadergen::ShaderCreateInfo *);
+    const ShaderModule *CreateShaderModule(const shadergen::ShaderStageKey &, const shadergen::ShaderCreateInfo *);
     const ShaderModule *CreateShaderModuleFromSPV(const AnsiString &shader_module_name,
                                                   const VkShaderStageFlagBits stage,
                                                   const uint32_t *spv_data,
                                                   const size_t spv_size);
-    const ShaderModule *CreateShaderModuleFromSPV(const mtl::ShaderStageKey &,
+    const ShaderModule *CreateShaderModuleFromSPV(const shadergen::ShaderStageKey &,
                                                   const uint32_t *spv_data,
                                                   const size_t spv_size);
 

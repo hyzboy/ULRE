@@ -1,5 +1,7 @@
 #pragma once
 
+namespace hgl::graph::mtl {}
+
 #include <hgl/CoreType.h>
 #include <hgl/filesystem/Path.h>
 #include <hgl/shadergen/ShaderArtifactContract.h>
@@ -8,8 +10,9 @@
 #include <hgl/type/String.h>
 #include <hgl/type/ValueArray.h>
 
-namespace hgl::graph::mtl
+namespace hgl::graph::shadergen
 {
+    using namespace hgl::graph::mtl;
     class ShaderArtifactStore
     {
         OSString root_path;

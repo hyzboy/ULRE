@@ -1,5 +1,7 @@
 #pragma once
 
+namespace hgl::graph::mtl {}
+
 #include <hgl/CoreType.h>
 #include <hgl/common/DescriptorSetTypeDef.h>
 #include <hgl/common/ShaderStageDef.h>
@@ -13,8 +15,9 @@
 #include <hgl/shadergen/ShaderStageBuildSpec.h>
 #include <hgl/type/ValueArray.h>
 
-namespace hgl::graph::mtl
+namespace hgl::graph::shadergen
 {
+    using namespace hgl::graph::mtl;
     constexpr uint32 CanonicalShaderContractSchemaVersion = 1;
 
     using ShaderContractStableID = uint64;

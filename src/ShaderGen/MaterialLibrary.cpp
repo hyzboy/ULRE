@@ -1,6 +1,6 @@
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/mtl/MaterialDefinitionFile.h>
-#include<hgl/mtl/ShaderBufferSource.h>
+#include<hgl/graph/ShaderBufferSource.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
 #include <hgl/shadergen/MaterialCompiler.h>
@@ -21,6 +21,7 @@
 #include <string>
 
 namespace hgl::graph::mtl{
+using namespace hgl::graph::shadergen;
 void ForceLinkPureColorMaterialDefinition();
 void ForceLinkText2DMaterialDefinition();
 
@@ -766,8 +767,8 @@ uint64 HashMaterialProgramBuildContext(
 
 MaterialVertexVaryingConfig ResolveMaterialVertexVaryingConfig(
     const MaterialDefinition &definition,
-    const ShaderProgramPurpose purpose,
-    const MaterialCoverageContract &coverage) noexcept
+    const shadergen::ShaderProgramPurpose purpose,
+    const shadergen::MaterialCoverageContract &coverage) noexcept
 {
     MaterialVertexVaryingConfig varying =
         definition.vertex_varying;
@@ -966,7 +967,7 @@ MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry()
         int file_count = 0;
         int error_count = 0;
         const hgl::filesystem::Path material_path =
-            hgl::filesystem::Path(ToOSString(GetShaderLibraryPath()))
+            hgl::filesystem::Path(ToOSString(shadergen::GetShaderLibraryPath()))
             / OSString(OS_TEXT("material"));
         if (!registry.LoadDirectory(
                 material_path.ToOSString(), &file_count, &error_count))
@@ -990,14 +991,14 @@ GLSLCodeModuleRegistry &GetGLSLCodeModuleRegistry()
     if (!loaded)
     {
         registry.RegisterBuiltinModules();
-        registry.LoadDirectory(ToOSString(GetShaderLibraryPath()));
+        registry.LoadDirectory(ToOSString(shadergen::GetShaderLibraryPath()));
         loaded = true;
     }
     return registry;
 }
 
-ShaderProgramBuildSpec *CreateMaterialFromDefinition(
-    const contract::PhysicalDeviceProfileLite *profile,
+shadergen::ShaderProgramBuildSpec *CreateMaterialFromDefinition(
+    const shadergen::contract::PhysicalDeviceProfileLite *profile,
     const MaterialDefinition &definition,
     const MaterialDefinitionBuildRequest &request)
 {

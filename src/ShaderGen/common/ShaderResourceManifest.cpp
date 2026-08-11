@@ -6,6 +6,7 @@
 
 namespace hgl::graph::mtl
 {
+    using namespace hgl::graph::mtl;
     namespace
     {
         enum class VisitState : uint8

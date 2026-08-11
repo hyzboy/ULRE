@@ -19,7 +19,7 @@ namespace hgl::graph
         }
 
     public:
-        ShaderModule *Find(const mtl::ShaderStageKey &key) const
+        ShaderModule *Find(const shadergen::ShaderStageKey &key) const
         {
             return FindName(key.stage, key.ToString());
         }
@@ -31,7 +31,7 @@ namespace hgl::graph
             return module;
         }
 
-        bool Add(const mtl::ShaderStageKey &key, ShaderModule *module)
+        bool Add(const shadergen::ShaderStageKey &key, ShaderModule *module)
         {
             return AddName(key.stage, key.ToString(), module);
         }

@@ -2,8 +2,9 @@
 
 #include "common/CanonicalContractWriter.h"
 
-namespace hgl::graph::mtl
+namespace hgl::graph::shadergen
 {
+    using namespace hgl::graph::mtl;
     namespace
     {
         using contract_detail::CanonicalContractWriter;

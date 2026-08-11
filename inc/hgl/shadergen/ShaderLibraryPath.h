@@ -1,12 +1,15 @@
 #pragma once
 
+namespace hgl::graph::mtl {}
+
 #include <hgl/filesystem/Path.h>
 #include <hgl/log/Log.h>
 #include <hgl/utf.h>
 #include <string>
 
-namespace hgl::graph::mtl
+namespace hgl::graph::shadergen
 {
+    using namespace hgl::graph::mtl;
     inline std::string ShaderLibraryPathToUTF8(const OSString &path)
     {
         const U8String utf8 = ToU8String(path);

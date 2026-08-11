@@ -1,16 +1,19 @@
 #pragma once
 
+namespace hgl::graph::mtl {}
+
 #include <hgl/mtl/SurfaceType.h>
 #include <hgl/mtl/BlendMode.h>
 #include <hgl/mtl/PassType.h>
-#include <hgl/mtl/NewShaderPermutationKey.h>
+#include <hgl/shadergen/NewShaderPermutationKey.h>
 #include <hgl/shadergen/MaterialStageInterface.h>
 #include <hgl/shadergen/MaterialOutputContract.h>
 #include <hgl/shadergen/MaterialCoverageContract.h>
 #include <string>
 
-namespace hgl::graph
+namespace hgl::graph::shadergen
 {
+    using namespace hgl::graph::mtl;
     /**
      * CompositorAssembler — 统一组合 raw fragment source/template 与
      * Surface Function，生成完整 GLSL
@@ -51,10 +54,10 @@ namespace hgl::graph
             bool dither = false;
             bool use_resolved_render_state = false;
             const hgl::ValueArray<
-                mtl::InterStageSemanticContractEntry>
+                InterStageSemanticContractEntry>
                 *fragment_inputs = nullptr;
-            const mtl::OutputContract *output_contract = nullptr;
-            const mtl::MaterialCoverageContract
+            const OutputContract *output_contract = nullptr;
+            const MaterialCoverageContract
                 *coverage_contract = nullptr;
         };
 
@@ -93,11 +96,11 @@ namespace hgl::graph
         std::string ReplaceSurfaceInclude(const std::string &source, const std::string &surface_path) const;
         bool ApplyFragmentInputContract(
             const std::string &source,
-            const hgl::ValueArray<mtl::InterStageSemanticContractEntry> &inputs,
+            const hgl::ValueArray<InterStageSemanticContractEntry> &inputs,
             std::string &out_source) const;
         bool ApplySurfaceInputContract(
             const std::string &source,
-            const hgl::ValueArray<mtl::InterStageSemanticContractEntry> &inputs,
+            const hgl::ValueArray<InterStageSemanticContractEntry> &inputs,
             std::string &out_source) const;
         bool        ReadFile(const std::string &path, std::string &out_content, std::string &out_error) const;
 

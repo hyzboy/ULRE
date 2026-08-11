@@ -5,7 +5,7 @@
 #include<hgl/vk/VKShaderModuleMap.h>
 #include<hgl/mtl/MaterialResourceLayout.h>
 #include <hgl/shadergen/ShaderProgramKey.h>
-#include<hgl/mtl/ShaderBufferSource.h>
+#include<hgl/graph/ShaderBufferSource.h>
 #include<hgl/log/Log.h>
 #include<unordered_set>
 
@@ -14,10 +14,8 @@ namespace hgl::graph{
 class IGPUBuffer;
 class GeometryVertexFormat;
 
-namespace mtl
-{
-    class ShaderProgramBuildSpec;
-}
+namespace mtl {}
+namespace shadergen { class ShaderProgramBuildSpec; }
 
 class MaterialParameters;
 
@@ -42,7 +40,7 @@ class ShaderProgram
 
     MaterialDescriptorManager *desc_manager;
     mtl::MaterialResourceLayout material_resource_layout;
-    mtl::ShaderProgramKey program_key;
+    shadergen::ShaderProgramKey program_key;
 
     ShaderStageCreateInfoList shader_stage_list;
 
@@ -56,7 +54,7 @@ private:
 
     friend class ShaderProgramManager;
 
-    ShaderProgram(const AnsiString &,const mtl::ShaderProgramBuildSpec *);
+    ShaderProgram(const AnsiString &,const shadergen::ShaderProgramBuildSpec *);
 
 public:
 
@@ -64,7 +62,7 @@ public:
 
     const   AnsiString &                        GetName                 ()const{return name;}
     const   mtl::MaterialResourceLayout &              GetMaterialResourceLayout      ()const{return material_resource_layout;}
-    const   mtl::ShaderProgramKey &             GetProgramKey          ()const{return program_key;}
+    const   shadergen::ShaderProgramKey &             GetProgramKey          ()const{return program_key;}
 
     const   PrimitiveType &                     GetPrimitiveType        ()const{return geometry;}
 

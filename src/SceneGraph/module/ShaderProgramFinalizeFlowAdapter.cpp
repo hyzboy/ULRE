@@ -5,7 +5,7 @@
 namespace hgl::graph
 {
     void BuildShaderProgramFinalizePlan(const MaterialDescriptorManager *desc_manager,
-                                   const mtl::ShaderProgramBuildSpec &mci,
+                                   const shadergen::ShaderProgramBuildSpec &mci,
                                    ShaderProgramFinalizePlan &out_plan)
     {
         out_plan.mp_set_types.clear();

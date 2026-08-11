@@ -1,10 +1,13 @@
-﻿#pragma once
+#pragma once
+
+namespace hgl::graph::mtl {}
 
 #include<cstdint>
+#include <hgl/common/ShaderStageDef.h>
 #include<ankerl/unordered_dense.h>
 
-namespace hgl{namespace graph{
-enum class ShaderStage:uint32_t;
+namespace hgl{namespace graph{namespace shadergen{
+    using namespace hgl::graph::mtl;
 
 class ShaderCreateInfo;
 
@@ -56,4 +59,4 @@ public:
         return iter!=map.end()?iter->second:nullptr;
     }
 };
-}}//namespace hgl::graph
+}}}//namespace hgl::graph::shadergen

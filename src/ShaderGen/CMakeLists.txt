@@ -60,7 +60,7 @@ SET(CANONICAL_SHADER_CONTRACT_FILES
     MaterialCoverageContract.cpp
     ResolvedModuleGraphBuilder.cpp
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialBindingContract.h
-    ${SHADERGEN_INCLUDE_PATH}/MaterialBindingViewBuilder.h
+    ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialBindingViewBuilder.h
     MaterialBindingContract.cpp
     MaterialBindingViewBuilder.cpp
     common/CanonicalContractWriter.h)
@@ -112,7 +112,7 @@ SET(STD_MTL_2D_SOURCE_FILES	2d/M_Text.cpp
 SET(STD_MTL_3D_SOURCE_FILES	3d/M_PureColor.cpp
 )
 
-SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/ShaderBufferSource.h
+SET(STD_MTL_SOURCE  ${ROOT_INCLUDE_PATH}/hgl/graph/ShaderBufferSource.h
 )
 
 SOURCE_GROUP("Standard Material" FILES ${STD_MTL_SOURCE})
@@ -149,7 +149,7 @@ SOURCE_GROUP("Compositor" FILES ${COMPOSITOR_HEADER_FILES}
 SET(NEW_MTL_TYPE_FILES  ${ROOT_INCLUDE_PATH}/hgl/mtl/SurfaceType.h
                         ${ROOT_INCLUDE_PATH}/hgl/mtl/BlendMode.h
                         ${ROOT_INCLUDE_PATH}/hgl/mtl/PassType.h
-                        ${ROOT_INCLUDE_PATH}/hgl/mtl/NewShaderPermutationKey.h
+                        ${SHADERGEN_INCLUDE_PATH}/NewShaderPermutationKey.h
                         NewShaderPermutationKey.cpp
 )
 

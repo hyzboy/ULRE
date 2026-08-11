@@ -2,8 +2,9 @@
 #include <hgl/util/hash/FNV1a.h>
 #include <cstring>
 
-namespace hgl::graph::mtl
+namespace hgl::graph::shadergen
 {
+    using namespace hgl::graph::mtl;
     namespace
     {
         constexpr const char OutputContractMarker[] =

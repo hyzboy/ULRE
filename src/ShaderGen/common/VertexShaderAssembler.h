@@ -6,8 +6,9 @@
 #include <vulkan/vulkan.h>
 #include <string>
 
-namespace hgl::graph::mtl
+namespace hgl::graph::shadergen
 {
+    using namespace hgl::graph::mtl;
     // VertexVaryingConfig — declares what varying outputs the generated VS emits.
     // These must match the FS template inputs.
     struct VertexVaryingConfig
@@ -296,4 +297,4 @@ namespace hgl::graph::mtl
         return vs;
     }
 
-} // namespace hgl::graph::mtl
+} // namespace hgl::graph::shadergen

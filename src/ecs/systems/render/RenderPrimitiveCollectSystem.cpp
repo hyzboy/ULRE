@@ -16,7 +16,7 @@
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/mtl/MaterialLibrary.h>
-#include <hgl/shadergen/MaterialBindingViewBuilder.h>
+#include <hgl/mtl/MaterialBindingViewBuilder.h>
 #include<hgl/log/Log.h>
 #include<hgl/vk/VKRenderPass.h>
 #include<glm/glm.hpp>
@@ -854,12 +854,12 @@ namespace hgl::ecs
         case graph::PrimitiveVariantPurpose::DepthOnly:
             mtl_request.override_shader_program_purpose = true;
             mtl_request.shader_program_purpose =
-                graph::mtl::ShaderProgramPurpose::DepthOnly;
+                graph::shadergen::ShaderProgramPurpose::DepthOnly;
             break;
         case graph::PrimitiveVariantPurpose::ShadowCaster:
             mtl_request.override_shader_program_purpose = true;
             mtl_request.shader_program_purpose =
-                graph::mtl::ShaderProgramPurpose::ShadowDepth;
+                graph::shadergen::ShaderProgramPurpose::ShadowDepth;
             break;
         default:
             break;

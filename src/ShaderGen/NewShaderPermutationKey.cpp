@@ -1,9 +1,9 @@
 /// NewShaderPermutationKey.cpp — 新排列 key → GLSL #define 映射实现
 
-#include <hgl/mtl/NewShaderPermutationKey.h>
+#include <hgl/shadergen/NewShaderPermutationKey.h>
 #include<stdio.h>
 
-namespace hgl::graph{
+namespace hgl::graph::shadergen{
 
 void NewShaderPermutationKey::AppendGLSLDefines(std::string &out) const
 {
@@ -17,4 +17,4 @@ void NewShaderPermutationKey::AppendGLSLDefines(std::string &out) const
     out += buf;
 }
 
-}//namespace hgl::graph
+}//namespace hgl::graph::shadergen

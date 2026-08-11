@@ -6,20 +6,28 @@
 namespace hgl::graph::mtl
 {
     struct MaterialRecipe;
-    struct MaterialDescriptorContract;
     struct MaterialResourceLayout;
+}
+namespace hgl::graph::shadergen
+{
+    struct MaterialDescriptorContract;
+}
+
+namespace hgl::graph::mtl
+{
+    using namespace hgl::graph::shadergen;
 
     bool BuildMaterialBindingView(
         const MaterialRecipe &recipe,
         const MaterialDescriptorContract &layout,
-        const ShaderProgramKey &program_key,
+        const shadergen::ShaderProgramKey &program_key,
         MaterialBindingView &out_view,
         MaterialBindingViewBuildDiagnostic &out_diagnostic) noexcept;
 
     bool BuildMaterialBindingView(
         const MaterialRecipe &recipe,
         const MaterialResourceLayout &layout,
-        const ShaderProgramKey &program_key,
+        const shadergen::ShaderProgramKey &program_key,
         MaterialBindingView &out_view,
         MaterialBindingViewBuildDiagnostic &out_diagnostic) noexcept;
 

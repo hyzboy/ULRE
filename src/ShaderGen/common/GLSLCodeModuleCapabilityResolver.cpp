@@ -7,6 +7,7 @@
 
 namespace hgl::graph::mtl
 {
+    using namespace hgl::graph::mtl;
     namespace
     {
         constexpr int kSemanticTableSize = 64;

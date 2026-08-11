@@ -9,9 +9,17 @@
 namespace hgl::graph::mtl
 {
     struct MaterialRecipe;
-    struct MaterialDescriptorContract;
     struct MaterialResourceLayout;
+}
+namespace hgl::graph::shadergen
+{
+    struct MaterialDescriptorContract;
     struct ShaderProgramKey;
+}
+
+namespace hgl::graph::mtl
+{
+    using namespace hgl::graph::shadergen;
 
     constexpr uint32 MaterialBindingContractSchemaVersion = 1;
     constexpr uint32 InvalidMaterialRecipeBindingIndex = ~uint32(0);

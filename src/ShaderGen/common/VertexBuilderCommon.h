@@ -4,8 +4,9 @@
 #include <hgl/common/RenderAssignDef.h>
 #include <vector>
 
-namespace hgl::graph::mtl::vertex_builder_common
+namespace hgl::graph::shadergen::vertex_builder_common
 {
+    using namespace hgl::graph::mtl;
 
 struct VertexSemanticDecl
 {
@@ -94,4 +95,4 @@ inline LuminanceVertexBuildResult BuildLuminanceVertexEntries(
     return result;
 }
 
-} // namespace hgl::graph::mtl::vertex_builder_common
+} // namespace hgl::graph::shadergen::vertex_builder_common

@@ -6,7 +6,7 @@
 #include <hgl/shadergen/MaterialDescriptorContract.h>
 #include <hgl/shadergen/ShaderProgramBuildSpec.h>
 #include <hgl/shadergen/ResolvedModuleGraphBuilder.h>
-#include <hgl/shadergen/MaterialBindingViewBuilder.h>
+#include <hgl/mtl/MaterialBindingViewBuilder.h>
 #include <hgl/shadergen/ShaderCreateInfo.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
@@ -44,6 +44,7 @@
 
 using namespace hgl::graph;
 using namespace hgl::graph::mtl;
+using namespace hgl::graph::shadergen;
 
 namespace
 {

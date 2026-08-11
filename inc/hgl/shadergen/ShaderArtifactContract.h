@@ -1,11 +1,14 @@
 #pragma once
 
+namespace hgl::graph::mtl {}
+
 #include <hgl/CoreType.h>
 #include <hgl/common/ShaderStageDef.h>
 #include <cstdint>
 
-namespace hgl::graph::mtl
+namespace hgl::graph::shadergen
 {
+    using namespace hgl::graph::mtl;
     constexpr uint32 ShaderArtifactFileMagic = 0x554C5350u; // "ULSP"
     constexpr uint32 ShaderArtifactSPVMagic = 0x07230203u;
     constexpr uint16 ShaderArtifactFileVersion = 1;

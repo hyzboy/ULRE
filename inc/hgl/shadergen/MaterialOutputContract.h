@@ -1,11 +1,14 @@
 #pragma once
 
+namespace hgl::graph::mtl {}
+
 #include <hgl/mtl/PassType.h>
 #include <hgl/shadergen/CanonicalShaderContract.h>
 #include <string>
 
-namespace hgl::graph::mtl
+namespace hgl::graph::shadergen
 {
+    using namespace hgl::graph::mtl;
     enum class MaterialOutputContractError : uint8
     {
         None = 0,

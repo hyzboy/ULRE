@@ -1,13 +1,16 @@
 #pragma once
 
+namespace hgl::graph::mtl {}
+
 #include <hgl/shadergen/contract/ShaderGenContract.h>
 #include <hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
 #include <cctype>
 #include <cstdint>
 #include <string>
 
-namespace hgl::graph::mtl::contract
+namespace hgl::graph::shadergen::contract
 {
+    using namespace hgl::graph::mtl;
     namespace detail
     {
         inline bool FindJsonKeyPos(const std::string &json, const std::string &key, std::size_t &value_pos)

@@ -22,16 +22,20 @@ namespace hgl::graph
     struct ShaderBufferSource;
 }
 
-
-namespace hgl::graph::mtl{
-
+namespace hgl::graph::shadergen
+{
 class ShaderProgramBuildSpec;
 class ShaderArtifactStore;
-class MaterialDefinitionFileRegistry;
 namespace contract
 {
     struct PhysicalDeviceProfileLite;
 }
+}
+
+namespace hgl::graph::mtl{
+    namespace shadergen = hgl::graph::shadergen;
+
+class MaterialDefinitionFileRegistry;
 
 // ── Layer 3: MaterialDefinitionBuildRequest = Build Context ──────────────────
 // 描述"构建此帧 ShaderProgram 时的额外上下文"。包含 recipe（Layer 2）加上
@@ -45,11 +49,11 @@ struct MaterialDefinitionBuildRequest
     const GeometryVertexFormat *geometry_vertex_format = nullptr;
     bool has_vertex_node_config_override = false;
     VertexShaderNodeConfig vertex_node_config_override;
-    ShaderArtifactStore *shader_artifact_store = nullptr;
+    shadergen::ShaderArtifactStore *shader_artifact_store = nullptr;
     bool generate_only = false;
     bool override_shader_program_purpose = false;
-    ShaderProgramPurpose shader_program_purpose =
-        ShaderProgramPurpose::ForwardColor;
+    shadergen::ShaderProgramPurpose shader_program_purpose =
+        shadergen::ShaderProgramPurpose::ForwardColor;
 
     const GLSLCodeModuleRegistry *vertex_code_module_registry = nullptr;
 
@@ -74,16 +78,16 @@ VertexShaderNodeConfig ResolveMaterialVertexNodeConfig(
 
 MaterialVertexVaryingConfig ResolveMaterialVertexVaryingConfig(
     const MaterialDefinition &definition,
-    ShaderProgramPurpose purpose,
-    const MaterialCoverageContract &coverage) noexcept;
+    shadergen::ShaderProgramPurpose purpose,
+    const shadergen::MaterialCoverageContract &coverage) noexcept;
 
 uint64 HashMaterialProgramBuildContext(
     PrimitiveType primitive_type,
     const GeometryVertexFormat *geometry_vertex_format,
-    const contract::PhysicalDeviceProfileLite *profile) noexcept;
+    const shadergen::contract::PhysicalDeviceProfileLite *profile) noexcept;
 
-ShaderProgramBuildSpec *CreateMaterialFromDefinition(
-    const contract::PhysicalDeviceProfileLite *profile,
+shadergen::ShaderProgramBuildSpec *CreateMaterialFromDefinition(
+    const shadergen::contract::PhysicalDeviceProfileLite *profile,
     const MaterialDefinition &definition,
     const MaterialDefinitionBuildRequest &request);
 

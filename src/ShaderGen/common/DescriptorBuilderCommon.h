@@ -9,8 +9,9 @@
 #include <cstring>
 #include <vector>
 
-namespace hgl::graph::mtl::descriptor_builder_common
+namespace hgl::graph::shadergen::descriptor_builder_common
 {
+    using namespace hgl::graph::mtl;
 
 inline const char *GetTextureNameBySlot(const TextureSlot slot) noexcept
 {
@@ -643,4 +644,4 @@ inline uint64 HashResourceContract(
     return h;
 }
 
-} // namespace hgl::graph::mtl::descriptor_builder_common
+} // namespace hgl::graph::shadergen::descriptor_builder_common

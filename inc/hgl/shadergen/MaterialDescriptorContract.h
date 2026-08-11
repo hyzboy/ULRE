@@ -1,13 +1,16 @@
 #pragma once
 
+namespace hgl::graph::mtl {}
+
 #include <hgl/mtl/FixedDescriptorEntry.h>
 #include <hgl/mtl/MaterialResourceLayout.h>
 #include <hgl/shadergen/CanonicalShaderContract.h>
 #include <string>
 #include <vector>
 
-namespace hgl::graph::mtl
+namespace hgl::graph::shadergen
 {
+    using namespace hgl::graph::mtl;
     constexpr uint32 MaterialDescriptorContractSchemaVersion = 1;
 
     struct MaterialDescriptorContractEntry
@@ -27,27 +30,27 @@ namespace hgl::graph::mtl
     };
 
     bool BuildMaterialDescriptorContract(
-        const FixedDescriptorEntry *entries,
+        const mtl::FixedDescriptorEntry *entries,
         uint32 entry_count,
         MaterialDescriptorContract &out_contract);
 
     bool BuildMaterialDescriptorContract(
-        const std::vector<FixedDescriptorEntry> &entries,
+        const std::vector<mtl::FixedDescriptorEntry> &entries,
         MaterialDescriptorContract &out_contract);
 
     bool BuildEffectiveMaterialDescriptorContract(
         const MaterialDescriptorContract &base_contract,
-        const std::vector<MaterialDataSlotDecl> *data_slot_decls,
+        const std::vector<mtl::MaterialDataSlotDecl> *data_slot_decls,
         uint32 material_ssbo_stage_bits,
         MaterialDescriptorContract &out_contract);
 
     bool EnsureMaterialDescriptorContractVaryingResources(
-        const MaterialVertexVaryingConfig &varying,
+        const mtl::MaterialVertexVaryingConfig &varying,
         MaterialDescriptorContract &in_out_contract);
 
     bool ConvertMaterialDescriptorContractToFixed(
         const MaterialDescriptorContract &contract,
-        std::vector<FixedDescriptorEntry> &out_entries);
+        std::vector<mtl::FixedDescriptorEntry> &out_entries);
 
     bool BuildMaterialResourceLayoutFromDescriptorContract(
         const MaterialDescriptorContract &contract,

@@ -1,11 +1,14 @@
 #pragma once
 
+namespace hgl::graph::mtl {}
+
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/shadergen/CanonicalShaderContract.h>
 #include <hgl/type/String.h>
 
-namespace hgl::graph::mtl
+namespace hgl::graph::shadergen
 {
+    using namespace hgl::graph::mtl;
     enum class MaterialStageInterfaceError : uint8
     {
         None = 0,
@@ -25,10 +28,10 @@ namespace hgl::graph::mtl
         MaterialStageInterfaceError error) noexcept;
 
     InterStageSemanticMask GetMaterialInterStageSemanticMask(
-        const MaterialVertexVaryingConfig &varying) noexcept;
+        const mtl::MaterialVertexVaryingConfig &varying) noexcept;
 
     bool BuildMaterialStageInterface(
-        const MaterialVertexVaryingConfig &varying,
+        const mtl::MaterialVertexVaryingConfig &varying,
         ValueArray<InterStageSemanticContractEntry> &out_entries,
         MaterialStageInterfaceDiagnostic &out_diagnostic) noexcept;
 

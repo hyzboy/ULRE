@@ -1,9 +1,12 @@
 #pragma once
 
+namespace hgl::graph::mtl {}
+
 #include <hgl/shadergen/ShaderArtifactContract.h>
 
-namespace hgl::graph::mtl
+namespace hgl::graph::shadergen
 {
+    using namespace hgl::graph::mtl;
     namespace contract
     {
         struct PhysicalDeviceProfileLite;

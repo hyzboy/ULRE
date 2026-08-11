@@ -1,11 +1,14 @@
-﻿#pragma once
+#pragma once
+
+namespace hgl::graph::mtl {}
 
 #include <hgl/common/ShaderDescriptorDef.h>
-#include<hgl/mtl/ShaderBufferSource.h>
+#include<hgl/graph/ShaderBufferSource.h>
 #include<ankerl/unordered_dense.h>
 #include<string>
 
-namespace hgl{namespace graph{
+namespace hgl{namespace graph{namespace shadergen{
+    using namespace hgl::graph::mtl;
 /**
 * 材质描述符管理</p>
 * 该类使用于SHADER生成前，用于统计编号set/binding
@@ -128,4 +131,4 @@ public:
         return desc_set_array[size_t(type)].count>0;
     }
 };//class MaterialDescriptorInfo
-}}//namespace hgl::graph
+}}}//namespace hgl::graph::shadergen

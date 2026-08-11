@@ -1,13 +1,16 @@
 #pragma once
 
+namespace hgl::graph::mtl {}
+
 #include <hgl/CoreType.h>
 #include <hgl/common/ShaderStageDef.h>
 #include <hgl/type/ValueArray.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <hgl/shadergen/ShaderStageKey.h>
 
-namespace hgl::graph::mtl
+namespace hgl::graph::shadergen
 {
+    using namespace hgl::graph::mtl;
     enum class ShaderStageValueType : uint32
     {
         Unknown = 0,

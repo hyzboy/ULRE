@@ -1,11 +1,14 @@
 #pragma once
 
+namespace hgl::graph::mtl {}
+
 #include <cstdint>
 #include <string>
 #include <vector>
 
-namespace hgl::graph::mtl::contract
+namespace hgl::graph::shadergen::contract
 {
+    using namespace hgl::graph::mtl;
     enum class ResourceClass : uint8_t
     {
         Unknown = 0,

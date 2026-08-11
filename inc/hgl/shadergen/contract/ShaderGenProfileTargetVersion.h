@@ -1,11 +1,14 @@
 #pragma once
 
+namespace hgl::graph::mtl {}
+
 #include <hgl/type/DataType.h>
 #include <hgl/shadergen/contract/ShaderGenContract.h>
 #include <hgl/util/hash/FNV1a.h>
 
-namespace hgl::graph::mtl::contract
+namespace hgl::graph::shadergen::contract
 {
+    using namespace hgl::graph::mtl;
     constexpr uint32_t SPV_VERSION_1_0 = (1u << 16);
     constexpr uint32_t SPV_VERSION_1_1 = (1u << 16) | (1u << 8);
     constexpr uint32_t SPV_VERSION_1_2 = (1u << 16) | (2u << 8);

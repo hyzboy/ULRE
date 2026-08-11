@@ -1,5 +1,7 @@
 #pragma once
 
+namespace hgl::graph::mtl {}
+
 #include <hgl/CoreType.h>
 #include <hgl/common/VertexAttribDef.h>
 
@@ -8,8 +10,9 @@ namespace hgl::graph
     class GeometryVertexFormat;
 }
 
-namespace hgl::graph::mtl
+namespace hgl::graph::shadergen
 {
+    using namespace hgl::graph::mtl;
     constexpr uint32 InvalidShaderSemanticLocation = uint32(-1);
 
     enum class ShaderSemanticScalarType : uint8
@@ -129,4 +132,4 @@ namespace hgl::graph::mtl
         ShaderSemanticRegistryValidationResult &out_result) noexcept;
     bool ValidateShaderSemanticRegistries(
         ShaderSemanticRegistryValidationResult &out_result) noexcept;
-}
+}//namespace hgl::graph::shadergen

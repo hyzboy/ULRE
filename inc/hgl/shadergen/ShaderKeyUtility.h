@@ -1,12 +1,15 @@
 #pragma once
 
+namespace hgl::graph::mtl {}
+
 #include <hgl/shadergen/ShaderStageKey.h>
 #include <hgl/util/hash/FNV1a.h>
 
 #include <string_view>
 
-namespace hgl::graph::mtl
+namespace hgl::graph::shadergen
 {
+    using namespace hgl::graph::mtl;
     inline uint64 HashFinalShaderSource(
         const char *source,
         const size_t length) noexcept

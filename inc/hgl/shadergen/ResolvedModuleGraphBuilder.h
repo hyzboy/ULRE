@@ -1,13 +1,15 @@
 #pragma once
 
+namespace hgl::graph::mtl { struct MaterialDefinitionBuildRequest; }
+
 #include <hgl/graph/glsl/GLSLCodeModuleRegistry.h>
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/shadergen/CanonicalShaderContract.h>
 #include <hgl/type/String.h>
 
-namespace hgl::graph::mtl
+namespace hgl::graph::shadergen
 {
-    struct MaterialDefinitionBuildRequest;
+    using namespace hgl::graph::mtl;
 
     enum class ResolvedModuleGraphBuildError : uint8
     {
@@ -42,9 +44,9 @@ namespace hgl::graph::mtl
         const GLSLCodeModuleRegistry &registry) noexcept;
 
     bool BuildMaterialResolvedModuleGraph(
-        const MaterialDefinition &definition,
+        const mtl::MaterialDefinition &definition,
         const GLSLCodeModuleRegistry &registry,
         ResolvedModuleGraph &out_graph,
         ResolvedModuleGraphBuildDiagnostic &out_diagnostic,
-        const MaterialDefinitionBuildRequest *request = nullptr);
+        const mtl::MaterialDefinitionBuildRequest *request = nullptr);
 }

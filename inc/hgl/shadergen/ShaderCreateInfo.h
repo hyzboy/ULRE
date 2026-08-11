@@ -1,13 +1,19 @@
-﻿#pragma once
+#pragma once
+
+namespace hgl::graph::mtl {}
 
 #include <hgl/common/ShaderStageDef.h>
 #include <hgl/type/ValueArray.h>
 #include<hgl/log/Log.h>
 #include<string>
 
-namespace hgl{namespace graph
+namespace hgl::graph {}  // force open for forward decl
+namespace hgl::graph { struct SPVData; }
+
+namespace hgl{namespace graph::shadergen
 {
-struct SPVData;
+    using namespace hgl::graph::mtl;
+    using hgl::graph::SPVData;
 
 class ShaderCreateInfo
 {
@@ -44,4 +50,4 @@ public:
     const uint32 *GetSPVData()const;
     const size_t GetSPVSize()const;
 };//class ShaderCreateInfo
-}}//namespace hgl::graph
+}}//namespace hgl::graph::shadergen

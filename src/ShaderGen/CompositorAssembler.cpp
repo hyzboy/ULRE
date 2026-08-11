@@ -2,8 +2,9 @@
 #include <fstream>
 #include <sstream>
 
-namespace hgl::graph
+namespace hgl::graph::shadergen
 {
+    using namespace hgl::graph::mtl;
     CompositorAssembler::CompositorAssembler(const std::string &shader_library_path)
         : shader_lib_path_(shader_library_path)
     {}
@@ -228,7 +229,7 @@ namespace hgl::graph
 
     bool CompositorAssembler::ApplyFragmentInputContract(
         const std::string &source,
-        const hgl::ValueArray<mtl::InterStageSemanticContractEntry> &inputs,
+        const hgl::ValueArray<InterStageSemanticContractEntry> &inputs,
         std::string &out_source) const
     {
         out_source.clear();
@@ -236,7 +237,7 @@ namespace hgl::graph
         for (int i = 0; i < inputs.GetCount(); ++i)
         {
             AnsiString declaration;
-            if (!mtl::BuildGLSLInterStageDeclaration(
+            if (!BuildGLSLInterStageDeclaration(
                     inputs[i], "in", declaration))
                 return false;
             declarations += declaration.c_str();
@@ -296,7 +297,7 @@ namespace hgl::graph
 
     bool CompositorAssembler::ApplySurfaceInputContract(
         const std::string &source,
-        const hgl::ValueArray<mtl::InterStageSemanticContractEntry> &inputs,
+        const hgl::ValueArray<InterStageSemanticContractEntry> &inputs,
         std::string &out_source) const
     {
         const std::string marker =
@@ -306,7 +307,7 @@ namespace hgl::graph
             return false;
 
         AnsiString generated;
-        if (!mtl::BuildGLSLMaterialSurfaceInput(inputs, generated))
+        if (!BuildGLSLMaterialSurfaceInput(inputs, generated))
             return false;
         out_source = source;
         out_source.replace(
@@ -400,26 +401,26 @@ namespace hgl::graph
         // 6. 替换 FS 中的 SURFACE_FUNCTION_FILE
         fs_source = ReplaceSurfaceInclude(fs_source, surface_rel);
 
-        mtl::MaterialCoverageContract default_coverage_contract{};
-        const mtl::MaterialCoverageContract *coverage_contract =
+        shadergen::MaterialCoverageContract default_coverage_contract{};
+        const shadergen::MaterialCoverageContract *coverage_contract =
             module_options.coverage_contract
                 ? module_options.coverage_contract
                 : &default_coverage_contract;
-        const mtl::ShaderProgramPurpose output_purpose =
+        const shadergen::ShaderProgramPurpose output_purpose =
             module_options.output_contract
                 ? module_options.output_contract->purpose
-                : mtl::GetShaderProgramPurpose(pass);
-        if (output_purpose == mtl::ShaderProgramPurpose::DepthOnly
-         || output_purpose == mtl::ShaderProgramPurpose::ShadowDepth)
+                : GetShaderProgramPurpose(pass);
+        if (output_purpose == shadergen::ShaderProgramPurpose::DepthOnly
+         || output_purpose == shadergen::ShaderProgramPurpose::ShadowDepth)
         {
             std::string covered_source;
             const hgl::ValueArray<
-                mtl::InterStageSemanticContractEntry> empty_inputs;
+                InterStageSemanticContractEntry> empty_inputs;
             const auto &coverage_inputs =
                 module_options.fragment_inputs
                     ? *module_options.fragment_inputs
                     : empty_inputs;
-            if (!mtl::ApplyDepthCoverageContract(
+            if (!ApplyDepthCoverageContract(
                     *coverage_contract,
                     coverage_inputs,
                     module_options.material_source_module,
@@ -469,20 +470,20 @@ namespace hgl::graph
             fs_source = std::move(input_source);
         }
 
-        mtl::OutputContract default_output_contract{};
-        mtl::MaterialOutputContractDiagnostic output_diagnostic{};
-        const mtl::OutputContract *output_contract =
+        OutputContract default_output_contract{};
+        shadergen::MaterialOutputContractDiagnostic output_diagnostic{};
+        const OutputContract *output_contract =
             module_options.output_contract;
         if (!output_contract)
         {
-            if (!mtl::BuildMaterialOutputContract(
+            if (!BuildMaterialOutputContract(
                     pass,
                     default_output_contract,
                     output_diagnostic))
             {
                 result.error_message =
                     std::string("Failed to build output contract: ")
-                    + mtl::GetMaterialOutputContractErrorName(
+                    + GetMaterialOutputContractErrorName(
                         output_diagnostic.error);
                 result.success = false;
                 return result;
@@ -491,7 +492,7 @@ namespace hgl::graph
         }
 
         std::string contracted_source;
-        if (!mtl::ApplyMaterialOutputContract(
+        if (!ApplyMaterialOutputContract(
                 *output_contract,
                 fs_source,
                 contracted_source,
@@ -499,7 +500,7 @@ namespace hgl::graph
         {
             result.error_message =
                 std::string("Failed to apply output contract: ")
-                + mtl::GetMaterialOutputContractErrorName(
+                + GetMaterialOutputContractErrorName(
                     output_diagnostic.error);
             result.success = false;
             return result;

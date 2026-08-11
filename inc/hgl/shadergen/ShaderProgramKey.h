@@ -1,12 +1,15 @@
 #pragma once
 
+namespace hgl::graph::mtl {}
+
 #include <hgl/CoreType.h>
 #include <hgl/type/String.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <cstdint>
 
-namespace hgl::graph::mtl
+namespace hgl::graph::shadergen
 {
+    using namespace hgl::graph::mtl;
     constexpr uint32 ShaderProgramKeySchemaVersion = 1;
 
     struct ShaderProgramKey

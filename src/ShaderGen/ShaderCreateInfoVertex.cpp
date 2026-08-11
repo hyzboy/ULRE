@@ -1,6 +1,7 @@
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
 
-namespace hgl::graph{
+namespace hgl::graph::shadergen{
+    using namespace hgl::graph::mtl;
 
 ShaderCreateInfoVertex::ShaderCreateInfoVertex()
     :ShaderCreateInfo(ShaderStage::Vertex)
@@ -108,4 +109,4 @@ int ShaderCreateInfoVertex::AddInput(const VAType &type,const VertexSemantic sem
 
     return input.Add(via);
 }
-}//namespace hgl::graph
+}//namespace hgl::graph::shadergen

@@ -2,7 +2,8 @@
 #include"GLSLCompiler.h"
 #include<hgl/shadergen/ShaderArtifactContract.h>
 #include<cstring>
-namespace hgl{namespace graph{
+namespace hgl{namespace graph::shadergen{
+    using namespace hgl::graph::mtl;
 
 ShaderCreateInfo::ShaderCreateInfo(const ShaderStage stage)
 {
@@ -52,7 +53,7 @@ bool ShaderCreateInfo::SetCachedSPVData(const void *data,const size_t byte_size)
     if(!data
      ||byte_size<sizeof(uint32)
      ||byte_size%sizeof(uint32)!=0
-     ||magic!=mtl::ShaderArtifactSPVMagic)
+     ||magic!=shadergen::ShaderArtifactSPVMagic)
         return(false);
 
     if(spv_data)
@@ -83,4 +84,4 @@ const size_t ShaderCreateInfo::GetSPVSize()const
         ?spv_data->spv_length
         :static_cast<size_t>(cached_spv_data.GetCount())*sizeof(uint32);
 }
-}}//namespace hgl::graph
+}}//namespace hgl::graph::shadergen

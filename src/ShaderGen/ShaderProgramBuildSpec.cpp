@@ -8,7 +8,8 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-namespace hgl::graph::mtl{
+namespace hgl::graph::shadergen{
+    using namespace hgl::graph::mtl;
 
 static bool HasShaderStageBit(const uint32_t flag_bits,const ShaderStage stage)
 {
@@ -337,4 +338,4 @@ bool ShaderProgramBuildSpec::CreateShaderDirect()
 
     return(true);
 }
-}//namespace hgl::graph::mtl
+}//namespace hgl::graph::shadergen

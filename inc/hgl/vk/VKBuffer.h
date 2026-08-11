@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/vk/VKBufferOwner.h>          // defines VkBufferOwner + DeviceBufferData
-#include<hgl/mtl/ShaderBufferSource.h>
+#include<hgl/graph/ShaderBufferSource.h>
 
 #include<string>
 

@@ -22,7 +22,8 @@
 #include <string>
 #include <vector>
 
-namespace hgl::graph::mtl {
+namespace hgl::graph::shadergen {
+    using namespace hgl::graph::mtl;
 
 bool FinalizeShaderProgramBuildSpec(
     ShaderProgramBuildSpec *build_spec)
@@ -1031,4 +1032,4 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     return mci;
 }
 
-}  // namespace hgl::graph::mtl
+}  // namespace hgl::graph::shadergen

@@ -1,4 +1,4 @@
-#include <hgl/shadergen/MaterialBindingViewBuilder.h>
+#include <hgl/mtl/MaterialBindingViewBuilder.h>
 
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/MaterialResourceLayout.h>
@@ -10,6 +10,7 @@
 
 namespace hgl::graph::mtl
 {
+    using namespace hgl::graph::shadergen;
     namespace
     {
         bool SetBuildFailure(
@@ -575,7 +576,7 @@ namespace hgl::graph::mtl
     bool BuildMaterialBindingView(
         const MaterialRecipe &recipe,
         const MaterialDescriptorContract &layout,
-        const ShaderProgramKey &program_key,
+        const shadergen::ShaderProgramKey &program_key,
         MaterialBindingView &out_view,
         MaterialBindingViewBuildDiagnostic &out_diagnostic) noexcept
     {
@@ -595,7 +596,7 @@ namespace hgl::graph::mtl
     bool BuildMaterialBindingView(
         const MaterialRecipe &recipe,
         const MaterialResourceLayout &layout,
-        const ShaderProgramKey &program_key,
+        const shadergen::ShaderProgramKey &program_key,
         MaterialBindingView &out_view,
         MaterialBindingViewBuildDiagnostic &out_diagnostic) noexcept
     {

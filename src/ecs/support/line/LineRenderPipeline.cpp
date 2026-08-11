@@ -56,7 +56,7 @@ namespace hgl::ecs
     // -------------------------------------------------------------------------
     // Type aliases (local to this TU)
     // -------------------------------------------------------------------------
-    using LineColorPalette    = graph::Color4f[LineRenderPipeline::PALETTE_SIZE];
+    using LineColorPalette    = Color4f[LineRenderPipeline::PALETTE_SIZE];
     using UBOLineColorPalette = graph::StructuredBufferAccessor<LineColorPalette>;
 
     // -------------------------------------------------------------------------
@@ -118,7 +118,7 @@ namespace hgl::ecs
         SAFE_CLEAR(geometry);
 
         // Create new geometry (2 verts per line)
-        const graph::AnsiString name = graph::AnsiString("LineSlot_W") + graph::AnsiString::numberOf(width);
+        const AnsiString name = AnsiString("LineSlot_W") + AnsiString::numberOf(width);
         geometry = graph::CreateGeometry(dev,
                          CreateLineGeometryVertexFormat(),
                          name, new_cap * 2, 0,

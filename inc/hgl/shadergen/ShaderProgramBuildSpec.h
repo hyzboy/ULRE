@@ -13,20 +13,21 @@
 
 namespace hgl::graph
 {
-    struct UBODescriptor;
-    struct SSBODescriptor;
     struct ShaderBufferSource;
 
-    class ShaderCreateInfoVertex;
-    class ShaderCreateInfo;
-
-    namespace mtl
+    namespace shadergen
     {
+        using namespace hgl::graph::mtl;
+        using hgl::graph::ShaderStage;
+        using hgl::graph::DescriptorSetType;
+
         namespace contract
         {
             struct PhysicalDeviceProfileLite;
         }
         class ShaderArtifactStore;
+        class ShaderCreateInfoVertex;
+        class ShaderCreateInfo;
 
         class ShaderProgramBuildSpec
         {
@@ -38,7 +39,7 @@ namespace hgl::graph
             uint32_t ssbo_range;
 
             MaterialDescriptorInfo descriptor_db;                    ///<材质描述符管理器
-            MaterialResourceLayout material_resource_layout;                       ///<descriptor semantic contract (phase 2)
+            mtl::MaterialResourceLayout material_resource_layout;                       ///<descriptor semantic contract (phase 2)
 
             uint32_t local_to_world_max_count;
             uint32_t local_to_world_stage_bits;
@@ -78,9 +79,9 @@ namespace hgl::graph
         public:
 
             const MaterialDescriptorInfo &GetDescriptorInfo()const{return descriptor_db;}
-            const MaterialResourceLayout &GetMaterialResourceLayout()const{return material_resource_layout;}
+            const mtl::MaterialResourceLayout &GetMaterialResourceLayout()const{return material_resource_layout;}
 
-            void SetMaterialResourceLayout(const MaterialResourceLayout &contract){material_resource_layout=contract;}
+            void SetMaterialResourceLayout(const mtl::MaterialResourceLayout &contract){material_resource_layout=contract;}
 
             void SetProgramLink(const ShaderProgramLinkSpec &link)
             {
@@ -175,5 +176,5 @@ namespace hgl::graph
 
             bool CreateShaderDirect();               ///< 直接编译各阶段的 FinalGLSL 到 SPV
         };//class ShaderProgramBuildSpec
-    }//namespace mtl
+    }//namespace shadergen
 }//namespace hgl::graph

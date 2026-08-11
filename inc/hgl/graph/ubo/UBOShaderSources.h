@@ -1,6 +1,6 @@
 #pragma once
 
-#include <hgl/mtl/ShaderBufferSource.h>
+#include <hgl/graph/ShaderBufferSource.h>
 
 namespace hgl::graph::mtl
 {

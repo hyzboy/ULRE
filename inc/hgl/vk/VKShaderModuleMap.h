@@ -5,8 +5,6 @@
 
 namespace hgl::graph{
 
-using namespace hgl;
-
 class ShaderModuleMap:public UnorderedMap<VkShaderStageFlagBits,const ShaderModule *>
 {
 public:

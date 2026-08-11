@@ -10,6 +10,7 @@
 
 namespace hgl::graph::mtl
 {
+    using namespace hgl::graph::mtl;
     namespace
     {
         bool IsGLSLFile(const OSString &file_name)

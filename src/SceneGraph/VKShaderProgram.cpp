@@ -12,7 +12,7 @@ namespace hgl::graph{
 
 void ReleaseVertexInput(VertexInput *vi);
 
-ShaderProgram::ShaderProgram(const AnsiString &n,const mtl::ShaderProgramBuildSpec *mci)
+ShaderProgram::ShaderProgram(const AnsiString &n,const shadergen::ShaderProgramBuildSpec *mci)
 {
     name=n;
     geometry=mci->GetPrimitiveType();

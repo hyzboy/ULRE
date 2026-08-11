@@ -1,9 +1,9 @@
 #pragma once
 
-#include "SurfaceType.h"
+#include <hgl/mtl/SurfaceType.h>
 #include <string>
 
-namespace hgl::graph
+namespace hgl::graph::shadergen
 {
     // 16-bit packed key:
     //   [15:12] SurfaceType  (4 bit, max 16)

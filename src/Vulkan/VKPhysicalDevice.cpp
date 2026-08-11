@@ -288,7 +288,7 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
         graphics_pipeline_library=(graphics_pipeline_library_features.graphicsPipelineLibrary==VK_TRUE);
     }
 
-    physical_device_profile = mtl::contract::BuildPhysicalDeviceProfileFromVulkanPhyDevice(*this);
+    physical_device_profile = shadergen::contract::BuildPhysicalDeviceProfileFromVulkanPhyDevice(*this);
 
 }
 

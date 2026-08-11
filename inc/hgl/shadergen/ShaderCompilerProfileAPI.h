@@ -1,11 +1,14 @@
 #pragma once
 
+namespace hgl::graph::mtl {}
+
 #include <hgl/type/DataType.h>
 #include <hgl/shadergen/contract/ShaderGenContract.h>
 
-namespace hgl::graph
+namespace hgl::graph::shadergen
 {
-    void SetShaderCompilerPhysicalDeviceProfile(const mtl::contract::PhysicalDeviceProfileLite &profile);
+    using namespace hgl::graph::mtl;
+    void SetShaderCompilerPhysicalDeviceProfile(const contract::PhysicalDeviceProfileLite &profile);
     bool SetShaderCompilerPhysicalDeviceProfileFromJson(const char *json_text);
     void GetShaderCompilerTargetVersions(uint32 &vulkan_version, uint32 &spv_version);
 

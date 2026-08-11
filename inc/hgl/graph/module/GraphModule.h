@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/vk/VK.h>
 #include<hgl/graph/GraphTypes.h>
@@ -11,10 +11,8 @@ class RenderTargetManager;
 class RenderPassManager;
 class GraphicsContext;
 
-namespace mtl::contract
-{
-    struct PhysicalDeviceProfileLite;
-}
+namespace mtl::contract { struct PhysicalDeviceProfileLite; }
+namespace shadergen::contract { struct PhysicalDeviceProfileLite; }
 
 class GraphModule
 {
@@ -32,7 +30,7 @@ public:
                 VulkanDevice *      GetDevice           ();                                             ///<取得GPU设备
                 VkDevice            GetVkDevice         ()const;                                        ///<取得VkDevice
         const   VulkanPhyDevice *   GetPhyDevice        ()const;                                        ///<取得物理设备
-            const   mtl::contract::PhysicalDeviceProfileLite *GetPhysicalDeviceProfile()const;             ///<取得物理设备Profile
+            const   shadergen::contract::PhysicalDeviceProfileLite *GetPhysicalDeviceProfile()const;             ///<取得物理设备Profile
                 VulkanDevAttr *     GetDevAttr          ()const;                                        ///<取得设备属性
                 VulkanSurface *     GetSurface          ()const;                                        ///<取得表面
                 VkPipelineCache     GetPipelineCache    ()const;                                        ///<取得PipelineCache

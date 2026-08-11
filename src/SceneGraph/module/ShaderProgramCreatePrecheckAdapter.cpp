@@ -4,7 +4,7 @@
 
 namespace hgl::graph
 {
-    ShaderProgramCreatePrecheckDecision RunShaderProgramCreatePrecheck(const mtl::ShaderProgramBuildSpec *mci,
+    ShaderProgramCreatePrecheckDecision RunShaderProgramCreatePrecheck(const shadergen::ShaderProgramBuildSpec *mci,
                                                              const AnsiString &material_name,
                                                              ShaderProgramCreatePrecheckResult &out_result)
     {
@@ -16,7 +16,7 @@ namespace hgl::graph
             return ShaderProgramCreatePrecheckDecision::Abort;
         }
 
-        const ShaderCreateInfoMap &sci_map = mci->GetShaderMap();
+        const shadergen::ShaderCreateInfoMap &sci_map = mci->GetShaderMap();
         if (sci_map.GetCount() < 2)
         {
             GLogError("[ShaderProgramPrecheck] incomplete shader map: name=%s count=%d",

@@ -1,11 +1,14 @@
 #pragma once
 
+namespace hgl::graph::mtl {}
+
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/shadergen/CanonicalShaderContract.h>
 #include <string>
 
-namespace hgl::graph::mtl
+namespace hgl::graph::shadergen
 {
+    using namespace hgl::graph::mtl;
     enum class MaterialCoverageMode : uint8
     {
         None = 0,
@@ -27,8 +30,8 @@ namespace hgl::graph::mtl
     };
 
     bool BuildMaterialCoverageContract(
-        const MaterialDefinition &definition,
-        const MaterialRecipe &recipe,
+        const mtl::MaterialDefinition &definition,
+        const mtl::MaterialRecipe &recipe,
         ShaderProgramPurpose purpose,
         MaterialCoverageContract &out_contract) noexcept;
 

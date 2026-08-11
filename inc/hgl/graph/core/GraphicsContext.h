@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 /**
  * GraphicsContext - 图形系统资源管理
@@ -107,7 +107,7 @@ namespace hgl::graph
         VulkanDevice *GetDevice() const { return device; }
         VulkanDevAttr *GetDevAttr() const;
         VulkanPhyDevice *GetPhyDevice() const;
-        const mtl::contract::PhysicalDeviceProfileLite *GetPhysicalDeviceProfile() const;
+        const shadergen::contract::PhysicalDeviceProfileLite *GetPhysicalDeviceProfile() const;
         VkDevice GetVkDevice() const;
 
         // 模块管理器访问

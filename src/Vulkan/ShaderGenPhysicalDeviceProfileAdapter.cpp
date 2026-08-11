@@ -3,7 +3,7 @@
 #include <hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
 #include <hgl/vk/VKPhysicalDevice.h>
 
-namespace hgl::graph::mtl::contract
+namespace hgl::graph::shadergen::contract
 {
     const char *ResolveCapabilityTier(const ::hgl::graph::VulkanPhyDevice &pd)
     {
