@@ -13,7 +13,7 @@ namespace hgl::graph::mtl
 }
 namespace hgl::graph::shadergen
 {
-    struct MaterialDescriptorContract;
+    struct DescriptorContract;
     struct ShaderProgramKey;
 }
 

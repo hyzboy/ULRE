@@ -131,10 +131,10 @@ static std::string BuildCodeModuleGLSL(const ShaderResourceManifest *manifest)
 }
 
 static bool HasDescriptorSemantic(
-    const MaterialDescriptorContract &contract,
+    const DescriptorContract &contract,
     const DescriptorSemantic semantic)
 {
-    for (const MaterialDescriptorContractEntry &entry :
+    for (const DescriptorContractEntry &entry :
          contract.entries)
     {
         if (entry.canonical.semantic == semantic)
@@ -323,12 +323,12 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
         return nullptr;
     const uint32_t shader_stage_bits = config.shader_stage_flag_bits != 0 ? config.shader_stage_flag_bits : uint32_t(ShaderStage::VertexFragment);
 
-    MaterialDescriptorContract base_descriptor_contract{};
+    DescriptorContract base_descriptor_contract{};
     if (config.descriptor_contract)
     {
         base_descriptor_contract = *config.descriptor_contract;
     }
-    else if (!BuildMaterialDescriptorContract(
+    else if (!BuildDescriptorContract(
                 input.descriptor_entries,
                 input.descriptor_entry_count,
                 base_descriptor_contract))
@@ -411,15 +411,15 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
         effective_data_slot_decls.empty() ? nullptr : &effective_data_slot_decls;
     const bool use_slot_decls = data_slot_decls != nullptr;
 
-    MaterialDescriptorContract effective_descriptor_contract{};
-    if (!BuildEffectiveMaterialDescriptorContract(
+    DescriptorContract effective_descriptor_contract{};
+    if (!BuildEffectiveDescriptorContract(
             base_descriptor_contract,
             data_slot_decls,
             material_ssbo_stage_bits,
             effective_descriptor_contract))
         return FailAfterMci("invalid effective material descriptor contract");
     if (config.material_definition
-     && !EnsureMaterialDescriptorContractVaryingResources(
+     && !EnsureDescriptorContractVaryingResources(
             config.material_definition->vertex_varying,
             effective_descriptor_contract))
     {
@@ -428,7 +428,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     }
 
     std::vector<FixedDescriptorEntry> descriptor_entries;
-    if (!ConvertMaterialDescriptorContractToFixed(
+    if (!ConvertDescriptorContractToFixed(
             effective_descriptor_contract, descriptor_entries))
         return FailAfterMci("failed to adapt material descriptor contract");
 

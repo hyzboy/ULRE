@@ -456,8 +456,8 @@ namespace
                       GetShaderResourceManifestErrorName(manifest.error));
             return nullptr;
         }
-        MaterialDescriptorContract descriptor_contract{};
-        if (!BuildMaterialDescriptorContract(
+        DescriptorContract descriptor_contract{};
+        if (!BuildDescriptorContract(
                 descriptors, descriptor_contract))
         {
             GLogError(
@@ -581,7 +581,7 @@ namespace
         config.artifact_store = request.shader_artifact_store;
         config.descriptor_contract = &descriptor_contract;
         const uint64 resource_contract_hash =
-            GetMaterialDescriptorContractHash(
+            GetDescriptorContractHash(
                 descriptor_contract,
                 depth_purpose ? 0 : manifest.stable_hash);
         const uint64 vertex_input_hash = request.geometry_vertex_format

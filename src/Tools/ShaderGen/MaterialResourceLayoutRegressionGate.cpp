@@ -3,7 +3,7 @@
 #include <hgl/mtl/MaterialDefinitionFile.h>
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/shadergen/MaterialCompiler.h>
-#include <hgl/shadergen/MaterialDescriptorContract.h>
+#include <hgl/shadergen/DescriptorContract.h>
 #include <hgl/shadergen/ShaderProgramBuildSpec.h>
 #include <hgl/shadergen/ResolvedModuleGraphBuilder.h>
 #include <hgl/mtl/BindingTableBuilder.h>
@@ -5461,14 +5461,14 @@ namespace
         return result;
     }
 
-    static GateResult RunMaterialDescriptorContractCase()
+    static GateResult RunDescriptorContractCase()
     {
         GateResult result;
         result.name = "W1.material-descriptor-contract";
 
         ShaderResourceSchema persistent_layout;
-        MaterialDescriptorContract first_contract{};
-        MaterialDescriptorContract second_contract{};
+        DescriptorContract first_contract{};
+        DescriptorContract second_contract{};
         {
             std::string viewport_name = "viewport";
             std::string viewport_struct = "ViewportInfo";
@@ -5511,12 +5511,12 @@ namespace
                 entries[1], entries[0]
             };
 
-            if (!BuildMaterialDescriptorContract(
+            if (!BuildDescriptorContract(
                     entries, 2, first_contract)
-             || !BuildMaterialDescriptorContract(
+             || !BuildDescriptorContract(
                     reversed, second_contract)
-             || GetMaterialDescriptorContractHash(first_contract)
-                    != GetMaterialDescriptorContractHash(second_contract)
+             || GetDescriptorContractHash(first_contract)
+                    != GetDescriptorContractHash(second_contract)
              || !BuildMaterialResourceLayoutFromDescriptorContract(
                     first_contract, persistent_layout))
             {
@@ -5530,13 +5530,13 @@ namespace
             };
             visibility_changed_entries[1].stage_flags =
                 uint32_t(VK_SHADER_STAGE_VERTEX_BIT);
-            MaterialDescriptorContract visibility_changed{};
-            if (!BuildMaterialDescriptorContract(
+            DescriptorContract visibility_changed{};
+            if (!BuildDescriptorContract(
                     visibility_changed_entries,
                     2,
                     visibility_changed)
-             || GetMaterialDescriptorContractHash(first_contract)
-                    == GetMaterialDescriptorContractHash(
+             || GetDescriptorContractHash(first_contract)
+                    == GetDescriptorContractHash(
                         visibility_changed))
             {
                 result.diagnostics.emplace_back(
@@ -5544,7 +5544,7 @@ namespace
             }
 
             std::vector<FixedDescriptorEntry> roundtrip;
-            if (!ConvertMaterialDescriptorContractToFixed(
+            if (!ConvertDescriptorContractToFixed(
                     first_contract, roundtrip)
              || roundtrip.size() != 2
              || std::strcmp(roundtrip[0].name, "viewport") != 0
@@ -5559,21 +5559,21 @@ namespace
             {
                 entries[0], entries[0]
             };
-            MaterialDescriptorContract invalid_contract{};
-            if (BuildMaterialDescriptorContract(
+            DescriptorContract invalid_contract{};
+            if (BuildDescriptorContract(
                     duplicate_entries, 2, invalid_contract))
             {
                 result.diagnostics.emplace_back(
                     "duplicate descriptor identities must be rejected");
             }
 
-            MaterialDescriptorContract varying_contract = first_contract;
+            DescriptorContract varying_contract = first_contract;
             MaterialVertexVaryingConfig varying{};
             varying.emit_data_index_id = true;
             varying.emit_texture_layer_id = true;
             varying.texture_layer_id_uses_data_index = false;
             ShaderResourceSchema varying_layout;
-            if (!EnsureMaterialDescriptorContractVaryingResources(
+            if (!EnsureDescriptorContractVaryingResources(
                     varying, varying_contract)
              || !BuildMaterialResourceLayoutFromDescriptorContract(
                     varying_contract, varying_layout))
@@ -5940,7 +5940,7 @@ int main(const int argc, char **argv)
     if (run_cache) results.push_back(RunResolvedStageCacheIdentityCase());
     if (run_cache) results.push_back(RunCanonicalShaderContractCase());
     if (run_pipeline) results.push_back(RunMaterialMultiSlotSourceCase());
-    if (run_descriptor) results.push_back(RunMaterialDescriptorContractCase());
+    if (run_descriptor) results.push_back(RunDescriptorContractCase());
     if (run_pipeline) results.push_back(RunShaderLibraryPathCase());
     if (run_descriptor) results.push_back(RunResourceContractBoundaryCase());
 

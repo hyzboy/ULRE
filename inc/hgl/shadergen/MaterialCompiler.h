@@ -18,7 +18,7 @@ namespace hgl::graph::mtl {}
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/glsl/ShaderResourceManifest.h>
 #include<hgl/shadergen/ShaderArtifactStore.h>
-#include<hgl/shadergen/MaterialDescriptorContract.h>
+#include<hgl/shadergen/DescriptorContract.h>
 #include <string>
 #include <vector>
 
@@ -58,7 +58,7 @@ struct CompositorMaterialBuildConfig
     const ShaderResourceManifest *resource_manifest = nullptr;
     bool merge_resource_manifest_material_slots = true;
     ShaderArtifactStore *artifact_store = nullptr;
-    const MaterialDescriptorContract *descriptor_contract = nullptr;
+    const DescriptorContract *descriptor_contract = nullptr;
     bool generate_only = false; // Preserve generated GLSL for contract tests without SPV compilation.
 };
 

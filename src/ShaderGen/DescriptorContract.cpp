@@ -1,4 +1,4 @@
-#include <hgl/shadergen/MaterialDescriptorContract.h>
+#include <hgl/shadergen/DescriptorContract.h>
 
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
@@ -55,9 +55,9 @@ namespace hgl::graph::shadergen
 
         bool AppendEntry(
             const FixedDescriptorEntry &source,
-            MaterialDescriptorContract &out_contract)
+            DescriptorContract &out_contract)
         {
-            MaterialDescriptorContractEntry entry{};
+            DescriptorContractEntry entry{};
             entry.name = source.name ? source.name : "";
             entry.struct_name =
                 source.struct_name ? source.struct_name : "";
@@ -115,10 +115,10 @@ namespace hgl::graph::shadergen
         }
     }
 
-    bool BuildMaterialDescriptorContract(
+    bool BuildDescriptorContract(
         const FixedDescriptorEntry *entries,
         const uint32 entry_count,
-        MaterialDescriptorContract &out_contract)
+        DescriptorContract &out_contract)
     {
         out_contract = {};
         if (entry_count > 0 && !entries)
@@ -130,17 +130,17 @@ namespace hgl::graph::shadergen
             if (!AppendEntry(entries[i], out_contract))
                 return false;
         }
-        return ValidateMaterialDescriptorContract(out_contract);
+        return ValidateDescriptorContract(out_contract);
     }
 
-    bool EnsureMaterialDescriptorContractVaryingResources(
+    bool EnsureDescriptorContractVaryingResources(
         const MaterialVertexVaryingConfig &varying,
-        MaterialDescriptorContract &in_out_contract)
+        DescriptorContract &in_out_contract)
     {
         const auto has_semantic =
             [&in_out_contract](const DescriptorSemantic semantic)
         {
-            for (const MaterialDescriptorContractEntry &entry :
+            for (const DescriptorContractEntry &entry :
                  in_out_contract.entries)
             {
                 if (entry.canonical.semantic == semantic)
@@ -196,34 +196,34 @@ namespace hgl::graph::shadergen
             if (!AppendEntry(entry, in_out_contract))
                 return false;
         }
-        return ValidateMaterialDescriptorContract(in_out_contract);
+        return ValidateDescriptorContract(in_out_contract);
     }
 
-    bool BuildMaterialDescriptorContract(
+    bool BuildDescriptorContract(
         const std::vector<FixedDescriptorEntry> &entries,
-        MaterialDescriptorContract &out_contract)
+        DescriptorContract &out_contract)
     {
-        return BuildMaterialDescriptorContract(
+        return BuildDescriptorContract(
             entries.data(),
             static_cast<uint32>(entries.size()),
             out_contract);
     }
 
-    bool BuildEffectiveMaterialDescriptorContract(
-        const MaterialDescriptorContract &base_contract,
+    bool BuildEffectiveDescriptorContract(
+        const DescriptorContract &base_contract,
         const std::vector<MaterialDataSlotDecl> *data_slot_decls,
         const uint32 material_ssbo_stage_bits,
-        MaterialDescriptorContract &out_contract)
+        DescriptorContract &out_contract)
     {
         out_contract = base_contract;
         if (!data_slot_decls || data_slot_decls->empty())
-            return ValidateMaterialDescriptorContract(out_contract);
+            return ValidateDescriptorContract(out_contract);
 
         out_contract.entries.erase(
             std::remove_if(
                 out_contract.entries.begin(),
                 out_contract.entries.end(),
-                [](const MaterialDescriptorContractEntry &entry)
+                [](const DescriptorContractEntry &entry)
                 {
                     return entry.canonical.semantic
                         == DescriptorSemantic::MaterialDataSlotData;
@@ -256,19 +256,19 @@ namespace hgl::graph::shadergen
                 return false;
         }
 
-        return ValidateMaterialDescriptorContract(out_contract);
+        return ValidateDescriptorContract(out_contract);
     }
 
-    bool ConvertMaterialDescriptorContractToFixed(
-        const MaterialDescriptorContract &contract,
+    bool ConvertDescriptorContractToFixed(
+        const DescriptorContract &contract,
         std::vector<FixedDescriptorEntry> &out_entries)
     {
         out_entries.clear();
-        if (!ValidateMaterialDescriptorContract(contract))
+        if (!ValidateDescriptorContract(contract))
             return false;
 
         out_entries.reserve(contract.entries.size());
-        for (const MaterialDescriptorContractEntry &entry :
+        for (const DescriptorContractEntry &entry :
              contract.entries)
         {
             FixedDescriptorEntry fixed{};
@@ -297,17 +297,17 @@ namespace hgl::graph::shadergen
         return true;
     }
 
-    bool ValidateMaterialDescriptorContract(
-        const MaterialDescriptorContract &contract) noexcept
+    bool ValidateDescriptorContract(
+        const DescriptorContract &contract) noexcept
     {
         if (contract.schema_version
-            != MaterialDescriptorContractSchemaVersion)
+            != DescriptorContractSchemaVersion)
             return false;
 
         ShaderInterfaceContract interface_contract{};
         interface_contract.descriptor_requirements.Reserve(
             static_cast<int>(contract.entries.size()));
-        for (const MaterialDescriptorContractEntry &entry :
+        for (const DescriptorContractEntry &entry :
              contract.entries)
         {
             if (entry.name.empty())
@@ -349,16 +349,16 @@ namespace hgl::graph::shadergen
     }
 
     bool BuildMaterialResourceLayoutFromDescriptorContract(
-        const MaterialDescriptorContract &contract,
+        const DescriptorContract &contract,
         ShaderResourceSchema &out_layout)
     {
         out_layout = {};
-        if (!ValidateMaterialDescriptorContract(contract))
+        if (!ValidateDescriptorContract(contract))
             return false;
 
         out_layout.resources.reserve(contract.entries.size());
 
-        for (const MaterialDescriptorContractEntry &entry :
+        for (const DescriptorContractEntry &entry :
              contract.entries)
         {
             const ShaderDescriptorContractEntry &can =
@@ -431,17 +431,17 @@ namespace hgl::graph::shadergen
         return true;
     }
 
-    uint64 GetMaterialDescriptorContractHash(
-        const MaterialDescriptorContract &contract,
+    uint64 GetDescriptorContractHash(
+        const DescriptorContract &contract,
         const uint64 module_manifest_hash) noexcept
     {
-        if (!ValidateMaterialDescriptorContract(contract))
+        if (!ValidateDescriptorContract(contract))
             return 0;
 
         ShaderInterfaceContract interface_contract{};
         interface_contract.descriptor_requirements.Reserve(
             static_cast<int>(contract.entries.size()));
-        for (const MaterialDescriptorContractEntry &entry :
+        for (const DescriptorContractEntry &entry :
              contract.entries)
         {
             interface_contract.descriptor_requirements.Add(
@@ -449,7 +449,7 @@ namespace hgl::graph::shadergen
         }
 
         hgl::hash::FNV1aHasher64 h;
-        h << MaterialDescriptorContractSchemaVersion
+        h << DescriptorContractSchemaVersion
           << module_manifest_hash
           << GetShaderInterfaceContractHash(interface_contract);
         return h;

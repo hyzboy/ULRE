@@ -10,7 +10,7 @@ namespace hgl::graph::mtl
 }
 namespace hgl::graph::shadergen
 {
-    struct MaterialDescriptorContract;
+    struct DescriptorContract;
 }
 
 namespace hgl::graph::mtl
@@ -19,7 +19,7 @@ namespace hgl::graph::mtl
 
     bool BuildBindingTable(
         const MaterialRecipe &recipe,
-        const MaterialDescriptorContract &layout,
+        const DescriptorContract &layout,
         const shadergen::ShaderProgramKey &program_key,
         ResolvedBindingTable &out_view,
         BindingBuildDiagnostic &out_diagnostic) noexcept;

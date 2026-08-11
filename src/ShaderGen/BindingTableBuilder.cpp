@@ -2,7 +2,7 @@
 
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
-#include <hgl/shadergen/MaterialDescriptorContract.h>
+#include <hgl/shadergen/DescriptorContract.h>
 #include <hgl/shadergen/CanonicalShaderContract.h>
 #include <hgl/util/hash/FNV1a.h>
 
@@ -226,12 +226,12 @@ namespace hgl::graph::mtl
         }
 
         bool AppendDescriptorRequirements(
-            const MaterialDescriptorContract &layout,
+            const DescriptorContract &layout,
             ValueArray<ShaderDescriptorContractEntry> &out_requirements) noexcept
         {
             out_requirements.Clear();
             out_requirements.Reserve(static_cast<int>(layout.entries.size()));
-            for (const MaterialDescriptorContractEntry &entry : layout.entries)
+            for (const DescriptorContractEntry &entry : layout.entries)
                 out_requirements.Add(entry.canonical);
             return true;
         }
@@ -575,7 +575,7 @@ namespace hgl::graph::mtl
 
     bool BuildBindingTable(
         const MaterialRecipe &recipe,
-        const MaterialDescriptorContract &layout,
+        const DescriptorContract &layout,
         const shadergen::ShaderProgramKey &program_key,
         ResolvedBindingTable &out_view,
         BindingBuildDiagnostic &out_diagnostic) noexcept
