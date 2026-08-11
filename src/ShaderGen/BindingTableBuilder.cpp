@@ -416,7 +416,7 @@ namespace hgl::graph::mtl
                     {
                         view_binding.source = BindingSource::Asset;
                         view_binding.asset_identity_hash =
-                            GetMaterialBindingTextureAssetIdentityHash(
+                            GetResolvedTextureAssetIdentityHash(
                                 recipe_binding.resource_id.data(),
                                 static_cast<uint32>(recipe_binding.resource_id.size()));
                     }
@@ -536,7 +536,7 @@ namespace hgl::graph::mtl
                 if (view_binding.source == BindingSource::Asset)
                 {
                     if (recipe_binding.use_direct_value
-                     || GetMaterialBindingTextureAssetIdentityHash(
+                     || GetResolvedTextureAssetIdentityHash(
                             recipe_binding.resource_id.data(),
                             static_cast<uint32>(recipe_binding.resource_id.size()))
                             != view_binding.asset_identity_hash)

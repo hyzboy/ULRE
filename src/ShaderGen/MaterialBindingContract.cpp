@@ -411,7 +411,7 @@ namespace hgl::graph::mtl
         return h;
     }
 
-    uint64 GetMaterialBindingTextureAssetIdentityHash(
+    uint64 GetResolvedTextureAssetIdentityHash(
         const char *resource_id,
         const uint32 resource_id_length) noexcept
     {

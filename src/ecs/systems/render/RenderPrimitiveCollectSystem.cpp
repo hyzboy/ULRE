@@ -540,7 +540,7 @@ namespace hgl::ecs
                         if (binding.slot == entry.texture_slot
                          && !binding.use_direct_value
                          && graph::mtl::
-                                GetMaterialBindingTextureAssetIdentityHash(
+                                GetResolvedTextureAssetIdentityHash(
                                     binding.resource_id.data(),
                                     static_cast<uint32_t>(
                                         binding.resource_id.size()))
@@ -574,7 +574,7 @@ namespace hgl::ecs
                             ? BuildTextureResourceId(resource->texture)
                             : resource->resource_id;
                     if (graph::mtl::
-                            GetMaterialBindingTextureAssetIdentityHash(
+                            GetResolvedTextureAssetIdentityHash(
                                 resource_id.data(),
                                 static_cast<uint32_t>(
                                     resource_id.size()))

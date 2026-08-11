@@ -183,7 +183,7 @@ namespace hgl::graph::mtl
 
     uint64 GetBindingSourceHash(
         const MaterialRecipe &recipe) noexcept;
-    uint64 GetMaterialBindingTextureAssetIdentityHash(
+    uint64 GetResolvedTextureAssetIdentityHash(
         const char *resource_id,
         uint32 resource_id_length) noexcept;
     uint64 GetMaterialBindingDataAssetIdentityHash(
