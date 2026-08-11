@@ -39,7 +39,7 @@ class ShaderProgram
     ShaderModuleMap *shader_maps;
 
     MaterialDescriptorManager *desc_manager;
-    mtl::ShaderResourceSchema material_resource_layout;
+    mtl::ShaderResourceSchema shader_resource_schema;
     shadergen::ShaderProgramKey program_key;
 
     ShaderStageCreateInfoList shader_stage_list;
@@ -61,7 +61,7 @@ public:
     virtual ~ShaderProgram();
 
     const   AnsiString &                        GetName                 ()const{return name;}
-    const   mtl::ShaderResourceSchema &              GetShaderResourceSchema      ()const{return material_resource_layout;}
+    const   mtl::ShaderResourceSchema &              GetShaderResourceSchema      ()const{return shader_resource_schema;}
     const   shadergen::ShaderProgramKey &             GetProgramKey          ()const{return program_key;}
 
     const   PrimitiveType &                     GetPrimitiveType        ()const{return geometry;}

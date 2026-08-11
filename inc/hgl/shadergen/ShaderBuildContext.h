@@ -39,7 +39,7 @@ namespace hgl::graph
             uint32_t ssbo_range;
 
             DescriptorSetLayoutAllocator descriptor_allocator;                  ///<材质描述符分配器
-            mtl::ShaderResourceSchema material_resource_layout;                       ///<descriptor semantic contract (phase 2)
+            mtl::ShaderResourceSchema shader_resource_schema;                       ///<descriptor semantic contract (phase 2)
 
             uint32_t local_to_world_max_count;
             uint32_t local_to_world_stage_bits;
@@ -79,9 +79,9 @@ namespace hgl::graph
         public:
 
             const DescriptorSetLayoutAllocator &GetDescriptorAllocator()const{return descriptor_allocator;}
-            const mtl::ShaderResourceSchema &GetShaderResourceSchema()const{return material_resource_layout;}
+            const mtl::ShaderResourceSchema &GetShaderResourceSchema()const{return shader_resource_schema;}
 
-            void SetShaderResourceSchema(const mtl::ShaderResourceSchema &contract){material_resource_layout=contract;}
+            void SetShaderResourceSchema(const mtl::ShaderResourceSchema &contract){shader_resource_schema=contract;}
 
             void SetProgramLink(const ShaderLinkSpec &link)
             {
