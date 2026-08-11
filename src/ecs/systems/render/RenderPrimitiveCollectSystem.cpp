@@ -168,7 +168,7 @@ namespace hgl::ecs
                 static_cast<unsigned long long>(
                     view.source_binding_hash),
                 static_cast<unsigned long long>(
-                    graph::mtl::GetMaterialBindingSourceHash(
+                    graph::mtl::GetBindingSourceHash(
                         recipe)),
                 recipe.recipe_name.c_str(),
                 recipe.mtl_def_id.c_str(),
@@ -179,7 +179,7 @@ namespace hgl::ecs
             {
                 const auto &binding = view.textures[i];
                 if (binding.source
-                        != graph::mtl::MaterialBindingSource::Missing)
+                        != graph::mtl::BindingSource::Missing)
                     continue;
                 GLogWarning(
                     "[MaterialBinding][MissingTexture] view_index=%d logical=%llu slot=%u source=%s required=%d allow_fallback=%d recipe_index=%u asset_hash=%llu metadata_hash=%llu direct=%u",
@@ -187,7 +187,7 @@ namespace hgl::ecs
                     static_cast<unsigned long long>(
                         binding.logical_resource_id),
                     static_cast<uint32_t>(binding.texture_slot),
-                    graph::mtl::GetMaterialBindingSourceName(
+                    graph::mtl::GetBindingSourceName(
                         binding.source),
                     binding.required ? 1 : 0,
                     binding.allow_fallback ? 1 : 0,
@@ -202,7 +202,7 @@ namespace hgl::ecs
             {
                 const auto &binding = view.data[i];
                 if (binding.source
-                        != graph::mtl::MaterialBindingSource::Missing)
+                        != graph::mtl::BindingSource::Missing)
                     continue;
                 GLogWarning(
                     "[MaterialBinding][MissingData] view_index=%d logical=%llu slot=%u type=%s(%u) source=%s required=%d allow_fallback=%d recipe_index=%u ssbo_id=%u data_index=%u use_data_index=%d shared=%d asset_hash=%llu metadata_hash=%llu",
@@ -212,7 +212,7 @@ namespace hgl::ecs
                     binding.data_slot,
                     graph::mtl::GetSSBOTypeName(binding.ssbo_type),
                     static_cast<uint32_t>(binding.ssbo_type),
-                    graph::mtl::GetMaterialBindingSourceName(
+                    graph::mtl::GetBindingSourceName(
                         binding.source),
                     binding.required ? 1 : 0,
                     binding.allow_fallback ? 1 : 0,
@@ -1100,7 +1100,7 @@ namespace hgl::ecs
                     material_comp->resolved_binding_table.
                         source_binding_hash),
                 static_cast<unsigned long long>(
-                    graph::mtl::GetMaterialBindingSourceHash(
+                    graph::mtl::GetBindingSourceHash(
                         effective_recipe)));
             return false;
         }

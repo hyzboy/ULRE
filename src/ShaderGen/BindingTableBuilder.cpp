@@ -29,7 +29,7 @@ namespace hgl::graph::mtl
 
         uint64 HashNonAssetBinding(
             const uint64 logical_resource_id,
-            const MaterialBindingSource source,
+            const BindingSource source,
             const uint32 value = 0) noexcept
         {
             hgl::hash::FNV1aHasher64 h;
@@ -280,7 +280,7 @@ namespace hgl::graph::mtl
                     BindingBuildError::InvalidShaderProgramKey);
 
             out_view.program_key_digest = program_key_digest;
-            out_view.source_binding_hash = GetMaterialBindingSourceHash(recipe);
+            out_view.source_binding_hash = GetBindingSourceHash(recipe);
 
             bool uses_texture_layer_table = false;
             for (const ShaderDescriptorContractEntry &entry : requirements)
@@ -405,7 +405,7 @@ namespace hgl::graph::mtl
                         view_binding.required || recipe_binding.required;
                     if (recipe_binding.use_direct_value)
                     {
-                        view_binding.source = MaterialBindingSource::DirectValue;
+                        view_binding.source = BindingSource::DirectValue;
                         view_binding.direct_value = recipe_binding.direct_value;
                         view_binding.asset_identity_hash = HashNonAssetBinding(
                             view_binding.logical_resource_id,
@@ -414,7 +414,7 @@ namespace hgl::graph::mtl
                     }
                     else if (!recipe_binding.resource_id.empty())
                     {
-                        view_binding.source = MaterialBindingSource::Asset;
+                        view_binding.source = BindingSource::Asset;
                         view_binding.asset_identity_hash =
                             GetMaterialBindingTextureAssetIdentityHash(
                                 recipe_binding.resource_id.data(),
@@ -431,12 +431,12 @@ namespace hgl::graph::mtl
                         == InvalidMaterialRecipeBindingIndex)
                 {
                     view_binding.source = view_binding.required
-                        ? MaterialBindingSource::Missing
-                        : MaterialBindingSource::Omitted;
+                        ? BindingSource::Missing
+                        : BindingSource::Omitted;
                     view_binding.asset_identity_hash = HashNonAssetBinding(
                         view_binding.logical_resource_id,
                         view_binding.source);
-                    if (view_binding.source == MaterialBindingSource::Missing)
+                    if (view_binding.source == BindingSource::Missing)
                         ++out_view.missing_required_count;
                 }
 
@@ -461,7 +461,7 @@ namespace hgl::graph::mtl
                     used_data[binding_index] = 1;
                     view_binding.recipe_binding_index =
                         static_cast<uint32>(binding_index);
-                    view_binding.source = MaterialBindingSource::Asset;
+                    view_binding.source = BindingSource::Asset;
                     view_binding.ssbo_id = recipe_binding.ssbo_id;
                     view_binding.data_index = recipe_binding.data_index;
                     view_binding.use_data_index = recipe_binding.use_data_index;
@@ -477,12 +477,12 @@ namespace hgl::graph::mtl
                         == InvalidMaterialRecipeBindingIndex)
                 {
                     view_binding.source = view_binding.required
-                        ? MaterialBindingSource::Missing
-                        : MaterialBindingSource::Omitted;
+                        ? BindingSource::Missing
+                        : BindingSource::Omitted;
                     view_binding.asset_identity_hash = HashNonAssetBinding(
                         view_binding.logical_resource_id,
                         view_binding.source);
-                    if (view_binding.source == MaterialBindingSource::Missing)
+                    if (view_binding.source == BindingSource::Missing)
                         ++out_view.missing_required_count;
                 }
 
@@ -522,9 +522,9 @@ namespace hgl::graph::mtl
             for (int i = 0; i < binding_view.textures.GetCount(); ++i)
             {
                 const ResolvedTextureBinding &view_binding = binding_view.textures[i];
-                if (view_binding.source == MaterialBindingSource::Omitted)
+                if (view_binding.source == BindingSource::Omitted)
                     continue;
-                if (view_binding.source == MaterialBindingSource::Missing
+                if (view_binding.source == BindingSource::Missing
                  || view_binding.recipe_binding_index
                         >= source_recipe.textures.size())
                     return false;
@@ -533,7 +533,7 @@ namespace hgl::graph::mtl
                     source_recipe.textures[view_binding.recipe_binding_index];
                 if (recipe_binding.slot != view_binding.texture_slot)
                     return false;
-                if (view_binding.source == MaterialBindingSource::Asset)
+                if (view_binding.source == BindingSource::Asset)
                 {
                     if (recipe_binding.use_direct_value
                      || GetMaterialBindingTextureAssetIdentityHash(
@@ -553,9 +553,9 @@ namespace hgl::graph::mtl
             for (int i = 0; i < binding_view.data.GetCount(); ++i)
             {
                 const ResolvedDataBinding &view_binding = binding_view.data[i];
-                if (view_binding.source == MaterialBindingSource::Omitted)
+                if (view_binding.source == BindingSource::Omitted)
                     continue;
-                if (view_binding.source != MaterialBindingSource::Asset
+                if (view_binding.source != BindingSource::Asset
                  || view_binding.recipe_binding_index
                         >= source_recipe.ssbo_assets.size())
                     return false;
@@ -620,7 +620,7 @@ namespace hgl::graph::mtl
     {
         if (!binding_view.IsRuntimeReady()
          || binding_view.source_binding_hash
-                != GetMaterialBindingSourceHash(source_recipe))
+                != GetBindingSourceHash(source_recipe))
         {
             out_recipe = {};
             return false;
@@ -640,7 +640,7 @@ namespace hgl::graph::mtl
         for (int i = 0; i < binding_view.textures.GetCount(); ++i)
         {
             const ResolvedTextureBinding &binding = binding_view.textures[i];
-            if (binding.source != MaterialBindingSource::Asset)
+            if (binding.source != BindingSource::Asset)
                 continue;
 
             ResourceAcquirePlanEntry entry{};
@@ -658,7 +658,7 @@ namespace hgl::graph::mtl
         for (int i = 0; i < binding_view.data.GetCount(); ++i)
         {
             const ResolvedDataBinding &binding = binding_view.data[i];
-            if (binding.source != MaterialBindingSource::Asset)
+            if (binding.source != BindingSource::Asset)
                 continue;
 
             ResourceAcquirePlanEntry entry{};

@@ -462,8 +462,8 @@ namespace
         equivalent_binding_recipe.material_lod = 7;
         equivalent_binding_recipe.render_state_overrides.has_alpha_cutoff = true;
         equivalent_binding_recipe.render_state_overrides.alpha_cutoff = 0.25f;
-        if (GetMaterialBindingSourceHash(recipe)
-                != GetMaterialBindingSourceHash(
+        if (GetBindingSourceHash(recipe)
+                != GetBindingSourceHash(
                     equivalent_binding_recipe))
         {
             result.diagnostics.emplace_back(
@@ -602,7 +602,7 @@ namespace
          || !zero_id_view.IsRuntimeReady()
          || zero_id_view.data.GetCount() != 1
          || zero_id_view.data[0].source
-                != MaterialBindingSource::Asset
+                != BindingSource::Asset
          || zero_id_view.data[0].ssbo_id != 0
          || !BuildBindingTableRecipe(
                 zero_id_recipe,
@@ -650,8 +650,8 @@ namespace
         second_recipe.mtl_def_id = "DefinitionB";
         second_recipe.textures[0].resource_id = "asset/albedo-b";
         second_recipe.ssbo_assets[0].ssbo_id = 23;
-        if (GetMaterialBindingSourceHash(second_recipe)
-                == GetMaterialBindingSourceHash(recipe))
+        if (GetBindingSourceHash(second_recipe)
+                == GetBindingSourceHash(recipe))
         {
             result.diagnostics.emplace_back(
                 "Binding View source hash must include binding identity");
@@ -710,7 +710,7 @@ namespace
          || !unresolved_fallback_view.IsValid()
          || unresolved_fallback_view.IsRuntimeReady()
          || unresolved_fallback_view.textures[0].source
-                != MaterialBindingSource::Missing)
+                != BindingSource::Missing)
         {
             result.diagnostics.emplace_back(
                 "fallback permission without a concrete fallback must remain pending");

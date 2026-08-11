@@ -24,7 +24,7 @@ namespace hgl::graph::mtl
     constexpr uint32 MaterialBindingContractSchemaVersion = 1;
     constexpr uint32 InvalidMaterialRecipeBindingIndex = ~uint32(0);
 
-    enum class MaterialBindingSource : uint8
+    enum class BindingSource : uint8
     {
         Asset = 0,
         DirectValue,
@@ -41,7 +41,7 @@ namespace hgl::graph::mtl
         TextureSlot texture_slot = TextureSlot::BaseColor;
         uint32 recipe_binding_index = InvalidMaterialRecipeBindingIndex;
         uint32 direct_value = 0;
-        MaterialBindingSource source = MaterialBindingSource::Missing;
+        BindingSource source = BindingSource::Missing;
         bool required = false;
         bool allow_fallback = false;
     };
@@ -73,7 +73,7 @@ namespace hgl::graph::mtl
         uint32 data_index = 0;
         uint32 recipe_binding_index = InvalidMaterialRecipeBindingIndex;
         SSBOType ssbo_type = SSBOType::UserDefined;
-        MaterialBindingSource source = MaterialBindingSource::Missing;
+        BindingSource source = BindingSource::Missing;
         bool use_data_index = false;
         bool shared_across_instances = false;
         bool required = false;
@@ -178,10 +178,10 @@ namespace hgl::graph::mtl
 
     const char *GetMaterialBindingViewBuildErrorName(
         BindingBuildError error) noexcept;
-    const char *GetMaterialBindingSourceName(
-        MaterialBindingSource source) noexcept;
+    const char *GetBindingSourceName(
+        BindingSource source) noexcept;
 
-    uint64 GetMaterialBindingSourceHash(
+    uint64 GetBindingSourceHash(
         const MaterialRecipe &recipe) noexcept;
     uint64 GetMaterialBindingTextureAssetIdentityHash(
         const char *resource_id,

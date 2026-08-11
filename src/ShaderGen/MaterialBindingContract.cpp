@@ -17,17 +17,17 @@ namespace hgl::graph::mtl
         constexpr uint32 MaterialBindingViewTag = 0x3156424Du;   // MBV1
         constexpr uint32 ResourceAcquirePlanTag = 0x31505152u;    // RQP1
 
-        bool IsValidTextureSource(const MaterialBindingSource source) noexcept
+        bool IsValidTextureSource(const BindingSource source) noexcept
         {
-            return source >= MaterialBindingSource::Asset
-                && source <= MaterialBindingSource::Omitted;
+            return source >= BindingSource::Asset
+                && source <= BindingSource::Omitted;
         }
 
-        bool IsValidDataSource(const MaterialBindingSource source) noexcept
+        bool IsValidDataSource(const BindingSource source) noexcept
         {
-            return source == MaterialBindingSource::Asset
-                || source == MaterialBindingSource::Missing
-                || source == MaterialBindingSource::Omitted;
+            return source == BindingSource::Asset
+                || source == BindingSource::Missing
+                || source == BindingSource::Omitted;
         }
 
         bool IsValidTextureBinding(const ResolvedTextureBinding &binding) noexcept
@@ -40,15 +40,15 @@ namespace hgl::graph::mtl
                 && binding.texture_slot >= TextureSlot::BEGIN_RANGE
                 && binding.texture_slot <= TextureSlot::END_RANGE
                 && IsValidTextureSource(binding.source)
-                && ((binding.source == MaterialBindingSource::Asset
-                  || binding.source == MaterialBindingSource::DirectValue)
+                && ((binding.source == BindingSource::Asset
+                  || binding.source == BindingSource::DirectValue)
                     ? binding.recipe_binding_index
                         != InvalidMaterialRecipeBindingIndex
                     : binding.recipe_binding_index
                         == InvalidMaterialRecipeBindingIndex)
-                && !(binding.source == MaterialBindingSource::Missing
+                && !(binding.source == BindingSource::Missing
                  && !binding.required)
-                && !(binding.source == MaterialBindingSource::Omitted
+                && !(binding.source == BindingSource::Omitted
                  && binding.required);
         }
 
@@ -61,14 +61,14 @@ namespace hgl::graph::mtl
                 && binding.ssbo_type >= SSBOType::BEGIN_RANGE
                 && binding.ssbo_type <= SSBOType::END_RANGE
                 && IsValidDataSource(binding.source)
-                && ((binding.source == MaterialBindingSource::Asset)
+                && ((binding.source == BindingSource::Asset)
                     ? binding.recipe_binding_index
                         != InvalidMaterialRecipeBindingIndex
                     : binding.recipe_binding_index
                         == InvalidMaterialRecipeBindingIndex)
-                && !(binding.source == MaterialBindingSource::Missing
+                && !(binding.source == BindingSource::Missing
                  && !binding.required)
-                && !(binding.source == MaterialBindingSource::Omitted
+                && !(binding.source == BindingSource::Omitted
                  && binding.required);
         }
 
@@ -194,15 +194,15 @@ namespace hgl::graph::mtl
         return "Unknown";
     }
 
-    const char *GetMaterialBindingSourceName(
-        const MaterialBindingSource source) noexcept
+    const char *GetBindingSourceName(
+        const BindingSource source) noexcept
     {
         switch (source)
         {
-        case MaterialBindingSource::Asset: return "Asset";
-        case MaterialBindingSource::DirectValue: return "DirectValue";
-        case MaterialBindingSource::Missing: return "Missing";
-        case MaterialBindingSource::Omitted: return "Omitted";
+        case BindingSource::Asset: return "Asset";
+        case BindingSource::DirectValue: return "DirectValue";
+        case BindingSource::Missing: return "Missing";
+        case BindingSource::Omitted: return "Omitted";
         }
         return "Unknown";
     }
@@ -222,7 +222,7 @@ namespace hgl::graph::mtl
             if (!IsValidTextureBinding(binding))
                 return false;
 
-            if (binding.source == MaterialBindingSource::Missing)
+            if (binding.source == BindingSource::Missing)
                 ++observed_missing_required;
 
             for (int j = 0; j < i; ++j)
@@ -239,7 +239,7 @@ namespace hgl::graph::mtl
             if (!IsValidDataBinding(binding))
                 return false;
 
-            if (binding.source == MaterialBindingSource::Missing)
+            if (binding.source == BindingSource::Missing)
                 ++observed_missing_required;
 
             for (int j = 0; j < i; ++j)
@@ -382,7 +382,7 @@ namespace hgl::graph::mtl
         return true;
     }
 
-    uint64 GetMaterialBindingSourceHash(
+    uint64 GetBindingSourceHash(
         const MaterialRecipe &recipe) noexcept
     {
         hgl::hash::FNV1aHasher64 h;
