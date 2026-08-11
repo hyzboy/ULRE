@@ -16,7 +16,7 @@
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/mtl/MaterialLibrary.h>
-#include <hgl/mtl/MaterialBindingViewBuilder.h>
+#include<hgl/mtl/BindingTableBuilder.h>
 #include<hgl/log/Log.h>
 #include<hgl/vk/VKRenderPass.h>
 #include<glm/glm.hpp>
@@ -884,7 +884,7 @@ namespace hgl::ecs
                 primitive_comp,
                 resolved_program,
                 material_binding_recipe)
-         || !graph::mtl::BuildMaterialBindingView(
+         || !graph::mtl::BuildBindingTable(
                 material_binding_recipe,
                 resolved_program->GetShaderResourceSchema(),
                 resolved_program->GetProgramKey(),
@@ -909,7 +909,7 @@ namespace hgl::ecs
 
         graph::mtl::ResourceAcquirePlan active_resource_plan{};
         if (binding_view.IsRuntimeReady()
-         && !graph::mtl::BuildMaterialResourceAcquirePlan(
+         && !graph::mtl::BuildResourceAcquirePlan(
                 binding_view, active_resource_plan))
         {
             GLogWarning(
@@ -1079,7 +1079,7 @@ namespace hgl::ecs
         // P3: use cached effective recipe instead of rebuilding
         graph::mtl::MaterialRecipe &effective_recipe = material_comp->cached_effective_recipe;
         graph::mtl::MaterialRecipe material_binding_recipe{};
-        if (!graph::mtl::BuildMaterialBindingRecipe(
+        if (!graph::mtl::BuildBindingTableRecipe(
                 effective_recipe,
                 material_comp->resolved_binding_table,
                 material_binding_recipe))

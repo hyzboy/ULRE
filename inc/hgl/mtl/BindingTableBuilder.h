@@ -17,26 +17,26 @@ namespace hgl::graph::mtl
 {
     using namespace hgl::graph::shadergen;
 
-    bool BuildMaterialBindingView(
+    bool BuildBindingTable(
         const MaterialRecipe &recipe,
         const MaterialDescriptorContract &layout,
         const shadergen::ShaderProgramKey &program_key,
         ResolvedBindingTable &out_view,
         MaterialBindingViewBuildDiagnostic &out_diagnostic) noexcept;
 
-    bool BuildMaterialBindingView(
+    bool BuildBindingTable(
         const MaterialRecipe &recipe,
         const ShaderResourceSchema &layout,
         const shadergen::ShaderProgramKey &program_key,
         ResolvedBindingTable &out_view,
         MaterialBindingViewBuildDiagnostic &out_diagnostic) noexcept;
 
-    bool BuildMaterialBindingRecipe(
+    bool BuildBindingTableRecipe(
         const MaterialRecipe &source_recipe,
         const ResolvedBindingTable &binding_view,
         MaterialRecipe &out_recipe) noexcept;
 
-    bool BuildMaterialResourceAcquirePlan(
+    bool BuildResourceAcquirePlan(
         const ResolvedBindingTable &binding_view,
         ResourceAcquirePlan &out_plan) noexcept;
 }

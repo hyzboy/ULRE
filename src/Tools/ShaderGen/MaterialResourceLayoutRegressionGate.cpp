@@ -6,7 +6,7 @@
 #include <hgl/shadergen/MaterialDescriptorContract.h>
 #include <hgl/shadergen/ShaderProgramBuildSpec.h>
 #include <hgl/shadergen/ResolvedModuleGraphBuilder.h>
-#include <hgl/mtl/MaterialBindingViewBuilder.h>
+#include <hgl/mtl/BindingTableBuilder.h>
 #include <hgl/shadergen/ShaderCreateInfo.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
@@ -469,7 +469,7 @@ namespace
             result.diagnostics.emplace_back(
                 "Binding View source hash must ignore unrelated Recipe state");
         }
-        if (!BuildMaterialBindingView(
+        if (!BuildBindingTable(
                 recipe,
                 layout,
                 program_key,
@@ -490,7 +490,7 @@ namespace
         }
 
         MaterialRecipe projected_recipe{};
-        if (!BuildMaterialBindingRecipe(
+        if (!BuildBindingTableRecipe(
                 recipe, binding_view, projected_recipe)
          || projected_recipe.textures.size() != 2
          || projected_recipe.ssbo_assets.size() != 1
@@ -518,7 +518,7 @@ namespace
                 "Material Binding Recipe must preserve TextureLayer direct values");
         }
         ResourceAcquirePlan resource_plan{};
-        if (!BuildMaterialResourceAcquirePlan(
+        if (!BuildResourceAcquirePlan(
                 binding_view, resource_plan)
          || resource_plan.resources.GetCount() != 2
          || GetMaterialResourceAcquirePlanHash(resource_plan) == 0)
@@ -593,7 +593,7 @@ namespace
         MaterialRecipe zero_id_recipe = recipe;
         zero_id_recipe.ssbo_assets[0].ssbo_id = 0;
         ResolvedBindingTable zero_id_view{};
-        if (!BuildMaterialBindingView(
+        if (!BuildBindingTable(
                 zero_id_recipe,
                 layout,
                 program_key,
@@ -604,7 +604,7 @@ namespace
          || zero_id_view.data[0].source
                 != MaterialBindingSource::Asset
          || zero_id_view.data[0].ssbo_id != 0
-         || !BuildMaterialBindingRecipe(
+         || !BuildBindingTableRecipe(
                 zero_id_recipe,
                 zero_id_view,
                 projected_recipe)
@@ -619,7 +619,7 @@ namespace
         pre_resolve_recipe.ssbo_assets[0].ssbo_type =
             SSBOType::UserDefined;
         ResolvedBindingTable pre_resolve_view{};
-        if (!BuildMaterialBindingView(
+        if (!BuildBindingTable(
                 pre_resolve_recipe,
                 layout,
                 program_key,
@@ -631,14 +631,14 @@ namespace
                 "pre-resolve UserDefined SSBO must not masquerade as the required binding type");
         }
         ResolvedBindingTable post_resolve_view{};
-        if (!BuildMaterialBindingView(
+        if (!BuildBindingTable(
                 recipe,
                 layout,
                 program_key,
                 post_resolve_view,
                 diagnostic)
          || !post_resolve_view.IsRuntimeReady()
-         || !BuildMaterialBindingRecipe(
+         || !BuildBindingTableRecipe(
                 recipe, post_resolve_view, projected_recipe))
         {
             result.diagnostics.emplace_back(
@@ -658,7 +658,7 @@ namespace
         }
         ResolvedBindingTable second_view{};
         ResourceAcquirePlan second_plan{};
-        if (!BuildMaterialBindingView(
+        if (!BuildBindingTable(
                 second_recipe,
                 layout,
                 program_key,
@@ -667,7 +667,7 @@ namespace
          || second_view.GetStableHash() == binding_view.GetStableHash()
          || second_view.program_key_digest
                 != binding_view.program_key_digest
-         || !BuildMaterialResourceAcquirePlan(
+         || !BuildResourceAcquirePlan(
                 second_view, second_plan)
          || GetMaterialResourceAcquirePlanHash(second_plan)
                 == GetMaterialResourceAcquirePlanHash(resource_plan))
@@ -680,7 +680,7 @@ namespace
         missing_recipe.textures[0].resource_id.clear();
         missing_recipe.textures[0].required = true;
         ResolvedBindingTable missing_view{};
-        if (!BuildMaterialBindingView(
+        if (!BuildBindingTable(
                 missing_recipe,
                 layout,
                 program_key,
@@ -689,9 +689,9 @@ namespace
          || !missing_view.IsValid()
          || missing_view.IsRuntimeReady()
          || missing_view.missing_required_count != 1
-         || BuildMaterialBindingRecipe(
+         || BuildBindingTableRecipe(
                 missing_recipe, missing_view, projected_recipe)
-         || BuildMaterialResourceAcquirePlan(
+         || BuildResourceAcquirePlan(
                 missing_view, resource_plan))
         {
             result.diagnostics.emplace_back(
@@ -701,7 +701,7 @@ namespace
         ShaderResourceSchema fallback_layout = layout;
         fallback_layout.requirements[0].allow_fallback = true;
         ResolvedBindingTable unresolved_fallback_view{};
-        if (!BuildMaterialBindingView(
+        if (!BuildBindingTable(
                 missing_recipe,
                 fallback_layout,
                 program_key,
@@ -720,7 +720,7 @@ namespace
         duplicate_recipe.textures.push_back(
             {TextureSlot::BaseColor, "asset/duplicate", 0, false, true});
         ResolvedBindingTable duplicate_view{};
-        if (BuildMaterialBindingView(
+        if (BuildBindingTable(
                 duplicate_recipe,
                 layout,
                 program_key,
@@ -737,7 +737,7 @@ namespace
         ResolvedBindingTable depth_view{};
         ShaderResourceSchema depth_layout{};
         ResourceAcquirePlan depth_plan{};
-        if (!BuildMaterialBindingView(
+        if (!BuildBindingTable(
                 recipe,
                 depth_layout,
                 program_key,
@@ -748,7 +748,7 @@ namespace
                 != recipe.textures.size()
          || depth_view.unused_recipe_data_count
                 != recipe.ssbo_assets.size()
-         || !BuildMaterialResourceAcquirePlan(
+         || !BuildResourceAcquirePlan(
                 depth_view, depth_plan)
          || !depth_plan.resources.IsEmpty())
         {
@@ -758,7 +758,7 @@ namespace
 
         ResolvedBindingTable unresolved_view{};
         ResourceAcquirePlan unresolved_plan{};
-        if (BuildMaterialResourceAcquirePlan(
+        if (BuildResourceAcquirePlan(
                 unresolved_view, unresolved_plan))
         {
             result.diagnostics.emplace_back(

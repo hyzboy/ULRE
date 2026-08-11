@@ -1,4 +1,4 @@
-#include <hgl/mtl/MaterialBindingViewBuilder.h>
+#include <hgl/mtl/BindingTableBuilder.h>
 
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
@@ -265,7 +265,7 @@ namespace hgl::graph::mtl
             return true;
         }
 
-        bool BuildMaterialBindingViewFromRequirements(
+        bool BuildBindingTableFromRequirements(
             const MaterialRecipe &recipe,
             const ValueArray<ShaderDescriptorContractEntry> &requirements,
             const uint64 program_key_digest,
@@ -573,7 +573,7 @@ namespace hgl::graph::mtl
         }
     }
 
-    bool BuildMaterialBindingView(
+    bool BuildBindingTable(
         const MaterialRecipe &recipe,
         const MaterialDescriptorContract &layout,
         const shadergen::ShaderProgramKey &program_key,
@@ -585,7 +585,7 @@ namespace hgl::graph::mtl
             return SetBuildFailure(
                 out_diagnostic,
                 MaterialBindingViewBuildError::InvalidBindingView);
-        return BuildMaterialBindingViewFromRequirements(
+        return BuildBindingTableFromRequirements(
             recipe,
             requirements,
             program_key.GetDigest(),
@@ -593,7 +593,7 @@ namespace hgl::graph::mtl
             out_diagnostic);
     }
 
-    bool BuildMaterialBindingView(
+    bool BuildBindingTable(
         const MaterialRecipe &recipe,
         const ShaderResourceSchema &layout,
         const shadergen::ShaderProgramKey &program_key,
@@ -605,7 +605,7 @@ namespace hgl::graph::mtl
             return SetBuildFailure(
                 out_diagnostic,
                 MaterialBindingViewBuildError::InvalidBindingView);
-        return BuildMaterialBindingViewFromRequirements(
+        return BuildBindingTableFromRequirements(
             recipe,
             requirements,
             program_key.GetDigest(),
@@ -613,7 +613,7 @@ namespace hgl::graph::mtl
             out_diagnostic);
     }
 
-    bool BuildMaterialBindingRecipe(
+    bool BuildBindingTableRecipe(
         const MaterialRecipe &source_recipe,
         const ResolvedBindingTable &binding_view,
         MaterialRecipe &out_recipe) noexcept
@@ -628,7 +628,7 @@ namespace hgl::graph::mtl
         return CopyBackMaterialRecipe(binding_view, source_recipe, out_recipe);
     }
 
-    bool BuildMaterialResourceAcquirePlan(
+    bool BuildResourceAcquirePlan(
         const ResolvedBindingTable &binding_view,
         ResourceAcquirePlan &out_plan) noexcept
     {

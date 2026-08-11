@@ -60,9 +60,9 @@ SET(CANONICAL_SHADER_CONTRACT_FILES
     MaterialCoverageContract.cpp
     ResolvedModuleGraphBuilder.cpp
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialBindingContract.h
-    ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialBindingViewBuilder.h
+    ${ROOT_INCLUDE_PATH}/hgl/mtl/BindingTableBuilder.h
     MaterialBindingContract.cpp
-    MaterialBindingViewBuilder.cpp
+    BindingTableBuilder.cpp
     common/CanonicalContractWriter.h)
 
 SOURCE_GROUP("Canonical Shader Contract"
