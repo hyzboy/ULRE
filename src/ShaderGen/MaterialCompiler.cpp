@@ -156,7 +156,7 @@ static bool IsTextureSlotDeclared(const MaterialDefinition &definition, const Te
 }
 
 static bool AddMaterialDataSlotDescriptor(ShaderProgramBuildSpec &mci,
-                                          const MaterialDataSlotDecl &decl,
+                                          const DataSlotDeclaration &decl,
                                           const uint32_t data_slot,
                                           const uint32_t stage_bits)
 {
@@ -376,7 +376,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     // declaration list as the material definition.
     // ─────────────────────────────────────────────────────────────
 
-    std::vector<MaterialDataSlotDecl> effective_data_slot_decls;
+    std::vector<DataSlotDeclaration> effective_data_slot_decls;
     if (config.data_slot_decls)
         effective_data_slot_decls = *config.data_slot_decls;
     if (config.merge_resource_manifest_material_slots
@@ -393,7 +393,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
 
             if (ssbo.data_slot == effective_data_slot_decls.size())
             {
-                MaterialDataSlotDecl decl;
+                DataSlotDeclaration decl;
                 decl.name = ssbo.name;
                 decl.ssbo_type = ssbo.ssbo_type;
                 effective_data_slot_decls.push_back(decl);
@@ -407,7 +407,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
         }
     }
 
-    const std::vector<MaterialDataSlotDecl> *data_slot_decls =
+    const std::vector<DataSlotDeclaration> *data_slot_decls =
         effective_data_slot_decls.empty() ? nullptr : &effective_data_slot_decls;
     const bool use_slot_decls = data_slot_decls != nullptr;
 
@@ -734,7 +734,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
         std::vector<std::string> emitted_buffer_names;
         for (uint32_t i = 0; i < static_cast<uint32_t>(data_slot_decls->size()); ++i)
         {
-            const MaterialDataSlotDecl &decl = (*data_slot_decls)[i];
+            const DataSlotDeclaration &decl = (*data_slot_decls)[i];
             const ShaderDescriptor *sd = descriptor_info.GetSSBO(decl.name.c_str());
             if (!sd || sd->set < 0 || sd->binding < 0)
                 return FailAfterMci("material ssbo descriptor unresolved for GLSL generation");

@@ -48,7 +48,7 @@ struct CompositorMaterialBuildConfig
     // When non-null and non-empty, MaterialCompiler generates MaterialDataSlot
     // mtl::SerializedDescriptorEntry items and injects the material SSBO struct/buffer
     // declarations into the fragment GLSL.
-    const std::vector<mtl::MaterialDataSlotDecl> *data_slot_decls = nullptr;
+    const std::vector<mtl::DataSlotDeclaration> *data_slot_decls = nullptr;
     // Optional: capability declaration source for development-time subset validation.
     // When non-null, CompileCompositorMaterial checks Layout requirements ⊆ Definition capabilities.
     const mtl::MaterialDefinition *material_definition = nullptr;

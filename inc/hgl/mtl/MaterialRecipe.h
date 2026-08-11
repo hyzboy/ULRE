@@ -49,7 +49,7 @@ namespace hgl::graph::mtl
 
     // 每个材质的 SSBO slot 声明（由 MaterialDefinition 显式列出）。
     // index 即 data_slot；name 同时作为 GLSL 变量名与 C++ 绑定 key。
-    struct MaterialDataSlotDecl
+    struct DataSlotDeclaration
     {
         std::string name;           // GLSL 变量名 / C++ 绑定 key，如 "pbr_surface" / "pbr_surface_a"
         SSBOType    ssbo_type = SSBOType::UserDefined; // 数据结构语义
@@ -233,7 +233,7 @@ namespace hgl::graph::mtl
         // Part-B: 材质 SSBO slot 显式声明（index == data_slot）
         // name 用于 GLSL 变量名 与 C++ SetMaterialDataSlotResource(name,...) 绑定。
         // 无 SSBO 的材质此列表为空。
-        std::vector<MaterialDataSlotDecl> data_slot_decls;
+        std::vector<DataSlotDeclaration> data_slot_decls;
 
         // Part-B3: UBO 资源能力声明。
         // 显式列出此材质可使用的标准 UBO（ViewportInfo/CameraInfo/SkyInfo/MaterialColorPalette）。

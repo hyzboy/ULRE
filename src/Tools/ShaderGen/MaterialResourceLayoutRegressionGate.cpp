@@ -5357,7 +5357,7 @@ namespace
         GateResult result;
         result.name = "Z.material-multislot-source";
 
-        std::vector<MaterialDataSlotDecl> slots = {
+        std::vector<DataSlotDeclaration> slots = {
             {"surface_a", SSBOType::EmissiveSurface},
             {"surface_b", SSBOType::EmissiveSurface}
         };

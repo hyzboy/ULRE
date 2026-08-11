@@ -211,7 +211,7 @@ namespace hgl::graph::shadergen
 
     bool BuildEffectiveDescriptorContract(
         const DescriptorContract &base_contract,
-        const std::vector<MaterialDataSlotDecl> *data_slot_decls,
+        const std::vector<DataSlotDeclaration> *data_slot_decls,
         const uint32 material_ssbo_stage_bits,
         DescriptorContract &out_contract)
     {
@@ -234,7 +234,7 @@ namespace hgl::graph::shadergen
              i < static_cast<uint32>(data_slot_decls->size());
              ++i)
         {
-            const MaterialDataSlotDecl &decl = (*data_slot_decls)[i];
+            const DataSlotDeclaration &decl = (*data_slot_decls)[i];
             SerializedDescriptorEntry fixed{};
             fixed.set_type = DescriptorSetType::Material;
             fixed.kind = DescriptorKind::SSBO;

@@ -40,7 +40,7 @@ namespace hgl::graph::shadergen
 
     bool BuildEffectiveDescriptorContract(
         const DescriptorContract &base_contract,
-        const std::vector<mtl::MaterialDataSlotDecl> *data_slot_decls,
+        const std::vector<mtl::DataSlotDeclaration> *data_slot_decls,
         uint32 material_ssbo_stage_bits,
         DescriptorContract &out_contract);
 
