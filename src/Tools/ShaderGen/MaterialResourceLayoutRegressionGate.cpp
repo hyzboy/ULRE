@@ -5379,7 +5379,7 @@ namespace
                 DescriptorSemanticLayer::SSBO
             }
         };
-        const MaterialCompilerInput compiler_input{
+        const MaterialShaderCompilerInput compiler_input{
             "MultiSlotMaterial",
             PrimitiveType::Triangles,
             vertices,

@@ -30,7 +30,7 @@ namespace hgl::graph
 
 namespace hgl::graph::shadergen{
     using namespace hgl::graph::mtl;
-struct MaterialCompilerInput
+struct MaterialShaderCompilerInput
 {
     const char *debug_name = nullptr;
     PrimitiveType primitive_type = PrimitiveType::Triangles;
@@ -81,7 +81,7 @@ bool FinalizeShaderProgramBuildSpec(
  */
 ShaderBuildContext *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialCompilerInput &input,
+    const MaterialShaderCompilerInput &input,
     const std::string &         vs_glsl,
     const std::string &         fs_glsl,
     const CompositorMaterialBuildConfig &config);

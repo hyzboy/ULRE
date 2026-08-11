@@ -561,7 +561,7 @@ namespace
         }
         const std::string fs = assembled.fragment_glsl;
 
-        MaterialCompilerInput compiler_input{
+        MaterialShaderCompilerInput compiler_input{
             definition.definition_name.c_str(),
             request.primitive_type,
             vertices.data(), static_cast<uint32>(vertices.size()),

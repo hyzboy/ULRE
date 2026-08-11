@@ -301,7 +301,7 @@ static bool ValidateDefinitionCapabilitySubset(
 
 ShaderBuildContext *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
-    const MaterialCompilerInput &input,
+    const MaterialShaderCompilerInput &input,
     const std::string &         vs_glsl,
     const std::string &         fs_glsl,
     const CompositorMaterialBuildConfig &config)
