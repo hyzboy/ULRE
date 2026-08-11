@@ -479,7 +479,7 @@ namespace hgl::graph::mtl
         return "Unknown";
     }
 
-    inline bool ValidateMaterialResourceLayout(const ShaderResourceSchema &contract, std::vector<std::string> &diagnostics)
+    inline bool ValidateShaderResourceSchema(const ShaderResourceSchema &schema, std::vector<std::string> &diagnostics)
     {
         diagnostics.clear();
 
@@ -498,7 +498,7 @@ namespace hgl::graph::mtl
             return message;
         };
 
-        for (const ShaderResourceSlot &req : contract.resources)
+        for (const ShaderResourceSlot &req : schema.resources)
         {
             const std::string context = BuildEntryContext(req);
 
@@ -519,7 +519,7 @@ namespace hgl::graph::mtl
 
             if (req.semantic == DescriptorSemantic::Custom)
             {
-                diagnostics.emplace_back("Descriptor semantic is Custom; runtime contract requires concrete semantic enums (" + context + ").");
+                diagnostics.emplace_back("Descriptor semantic is Custom; runtime schema requires concrete semantic enums (" + context + ").");
                 continue;
             }
 
@@ -616,12 +616,12 @@ namespace hgl::graph::mtl
             }
         }
 
-        for (size_t i = 0; i < contract.resources.size(); ++i)
+        for (size_t i = 0; i < schema.resources.size(); ++i)
         {
-            const ShaderResourceSlot &lhs = contract.resources[i];
-            for (size_t j = i + 1; j < contract.resources.size(); ++j)
+            const ShaderResourceSlot &lhs = schema.resources[i];
+            for (size_t j = i + 1; j < schema.resources.size(); ++j)
             {
-                const ShaderResourceSlot &rhs = contract.resources[j];
+                const ShaderResourceSlot &rhs = schema.resources[j];
                 const bool same_name =
                     lhs.name && rhs.name && std::strcmp(lhs.name, rhs.name) == 0;
                 const bool same_logical_resource =

@@ -137,8 +137,8 @@ namespace
         GateResult result;
         result.name = name ? name : "<unnamed>";
 
-        const ShaderResourceSchema contract = BuildShaderResourceSchema(entries, count);
-        result.passed = (ValidateMaterialResourceLayout(contract, result.diagnostics) == expected_pass);
+        const ShaderResourceSchema schema = BuildShaderResourceSchema(entries, count);
+        result.passed = (ValidateShaderResourceSchema(schema, result.diagnostics) == expected_pass);
         return result;
     }
 
@@ -2400,11 +2400,11 @@ namespace
 
         std::vector<std::string> diagnostics_standard;
         std::vector<std::string> diagnostics_array;
-        const ShaderResourceSchema standard_contract = BuildShaderResourceSchema(standard_entries, uint32_t(std::size(standard_entries)));
-        const ShaderResourceSchema array_contract = BuildShaderResourceSchema(array_entries, uint32_t(std::size(array_entries)));
+        const ShaderResourceSchema standard_schema = BuildShaderResourceSchema(standard_entries, uint32_t(std::size(standard_entries)));
+        const ShaderResourceSchema array_schema = BuildShaderResourceSchema(array_entries, uint32_t(std::size(array_entries)));
 
-        const bool standard_ok = ValidateMaterialResourceLayout(standard_contract, diagnostics_standard);
-        const bool array_ok = ValidateMaterialResourceLayout(array_contract, diagnostics_array);
+        const bool standard_ok = ValidateShaderResourceSchema(standard_schema, diagnostics_standard);
+        const bool array_ok = ValidateShaderResourceSchema(array_schema, diagnostics_array);
         if (!standard_ok || !array_ok)
         {
             result.passed = false;
@@ -2412,8 +2412,8 @@ namespace
             return result;
         }
 
-        const auto standard_shape = SummarizeConstraintShape(standard_contract);
-        const auto array_shape = SummarizeConstraintShape(array_contract);
+        const auto standard_shape = SummarizeConstraintShape(standard_schema);
+        const auto array_shape = SummarizeConstraintShape(array_schema);
         if (standard_shape != array_shape)
         {
             result.passed = false;
@@ -5698,18 +5698,18 @@ namespace
         }
         else
         {
-            const ShaderResourceSchema layout =
+            const ShaderResourceSchema schema =
                 BuildShaderResourceSchema(
                     descriptors.data(),
                     static_cast<uint32_t>(descriptors.size()));
             std::vector<std::string> diagnostics;
-            if (!ValidateMaterialResourceLayout(layout, diagnostics))
+            if (!ValidateShaderResourceSchema(schema, diagnostics))
                 result.diagnostics.emplace_back(
                     "Merged definition/module resource contract failed validation.");
 
             bool has_required_sampler = false;
             bool has_single_material_ssbo = false;
-            for (const auto &req : layout.resources)
+            for (const auto &req : schema.resources)
             {
                 if (req.semantic == DescriptorSemantic::MaterialSampler
                  && req.texture_slot == TextureSlot::BaseColor)

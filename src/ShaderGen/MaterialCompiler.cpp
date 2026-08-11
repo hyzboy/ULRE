@@ -965,18 +965,18 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     // generated from it and merged with the canonical descriptor entries.
     // ─────────────────────────────────────────────────────────────
 
-    ShaderResourceSchema material_resource_layout;
+    ShaderResourceSchema shader_resource_schema;
     if (!BuildResourceSchemaFromContract(
             effective_descriptor_contract,
-            material_resource_layout))
+            shader_resource_schema))
         return FailAfterMci("descriptor contract/layout build failed");
 
     if (config.material_definition)
         descriptor_builder_common::ApplyMaterialDefinitionTexturePolicy(
-            *config.material_definition, material_resource_layout);
+            *config.material_definition, shader_resource_schema);
 
     std::vector<std::string> contract_diagnostics;
-    if (!ValidateMaterialResourceLayout(material_resource_layout, contract_diagnostics))
+    if (!ValidateShaderResourceSchema(shader_resource_schema, contract_diagnostics))
     {
         for (const auto &diag : contract_diagnostics)
         {
@@ -993,7 +993,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
         const MaterialDefinition &material_definition = *config.material_definition;
         std::vector<std::string> capability_diagnostics;
         if (!ValidateDefinitionCapabilitySubset(
-                material_definition, material_resource_layout,
+                material_definition, shader_resource_schema,
                 capability_diagnostics, config.resource_manifest))
         {
             for (const auto &diag : capability_diagnostics)
@@ -1007,7 +1007,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
         }
     }
 
-    mci->SetShaderResourceSchema(material_resource_layout);
+    mci->SetShaderResourceSchema(shader_resource_schema);
     if (mci->HasProgramLink())
     {
         ShaderProgramArtifactMetadata metadata{};
