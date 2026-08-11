@@ -186,7 +186,7 @@ namespace hgl::graph::mtl
     uint64 GetResolvedTextureAssetIdentityHash(
         const char *resource_id,
         uint32 resource_id_length) noexcept;
-    uint64 GetMaterialBindingDataAssetIdentityHash(
+    uint64 GetResolvedDataAssetIdentityHash(
         SSBOType ssbo_type,
         uint32 ssbo_id,
         uint32 data_slot) noexcept;

@@ -467,7 +467,7 @@ namespace hgl::graph::mtl
                     view_binding.use_data_index = recipe_binding.use_data_index;
                     view_binding.shared_across_instances =
                         recipe_binding.shared_across_instances;
-                    view_binding.asset_identity_hash = GetMaterialBindingDataAssetIdentityHash(
+                    view_binding.asset_identity_hash = GetResolvedDataAssetIdentityHash(
                         recipe_binding.ssbo_type,
                         recipe_binding.ssbo_id,
                         recipe_binding.data_slot);

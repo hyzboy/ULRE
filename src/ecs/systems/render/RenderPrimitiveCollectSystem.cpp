@@ -662,7 +662,7 @@ namespace hgl::ecs
                 {
                     if (binding.data_slot == entry.data_slot
                      && binding.ssbo_type == entry.ssbo_type
-                     && graph::mtl::GetMaterialBindingDataAssetIdentityHash(
+                     && graph::mtl::GetResolvedDataAssetIdentityHash(
                             binding.ssbo_type,
                             binding.ssbo_id,
                             binding.data_slot)

@@ -423,7 +423,7 @@ namespace hgl::graph::mtl
         return h;
     }
 
-    uint64 GetMaterialBindingDataAssetIdentityHash(
+    uint64 GetResolvedDataAssetIdentityHash(
         const SSBOType ssbo_type,
         const uint32 ssbo_id,
         const uint32 data_slot) noexcept
