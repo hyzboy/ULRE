@@ -139,7 +139,7 @@ namespace hgl::ecs
             return false;
         }
 
-        bool BuildEffectiveMaterialRecipe(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
+        bool BuildResolvedRecipe(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
                                           const graph::ShaderProgram *material_program,
                                           graph::mtl::MaterialRecipe &out_recipe)
         {
@@ -293,7 +293,7 @@ namespace hgl::ecs
                 return false;
 
             graph::mtl::MaterialRecipe effective_recipe{};
-            if (!BuildEffectiveMaterialRecipe(primitive_comp, material_program, effective_recipe))
+            if (!BuildResolvedRecipe(primitive_comp, material_program, effective_recipe))
                 return false;
 
             auto rdbs = world->GetSystem<RenderDescriptorBindingSystem>();
@@ -506,7 +506,7 @@ namespace hgl::ecs
                 return false;
 
             graph::mtl::MaterialRecipe active_recipe{};
-            if (!BuildEffectiveMaterialRecipe(
+            if (!BuildResolvedRecipe(
                     primitive_comp, material_program, active_recipe))
                 return false;
 
@@ -787,9 +787,9 @@ namespace hgl::ecs
             return true;
 
         graph::mtl::MaterialRecipe effective_recipe{};
-        if (!BuildEffectiveMaterialRecipe(primitive_comp, nullptr, effective_recipe))
+        if (!BuildResolvedRecipe(primitive_comp, nullptr, effective_recipe))
         {
-            GLogWarning("[RenderPrimitiveCollectSystem] BuildEffectiveMaterialRecipe failed for %s",
+            GLogWarning("[RenderPrimitiveCollectSystem] BuildResolvedRecipe failed for %s",
                         GetPrimitiveOwnerName(primitive_comp));
             return false;
         }
@@ -880,7 +880,7 @@ namespace hgl::ecs
         graph::mtl::ResolvedBindingTable binding_view{};
         graph::mtl::BindingBuildDiagnostic
             binding_diagnostic{};
-        if (!BuildEffectiveMaterialRecipe(
+        if (!BuildResolvedRecipe(
                 primitive_comp,
                 resolved_program,
                 material_binding_recipe)
@@ -991,7 +991,7 @@ namespace hgl::ecs
         }
 
         // P3: Cache effective recipe (with program-resolved SSBO types)
-        // to avoid redundant BuildEffectiveMaterialRecipe downstream.
+        // to avoid redundant BuildResolvedRecipe downstream.
         material_comp->cached_effective_recipe = material_binding_recipe;
         material_comp->cached_effective_recipe_hash =
             graph::mtl::HashMaterialRecipe(material_binding_recipe);

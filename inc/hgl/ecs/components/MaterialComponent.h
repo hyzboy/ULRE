@@ -77,7 +77,7 @@ namespace hgl::ecs
         uint64_t cached_normalized_recipe_hash = 0;
 
         // P3: Cached effective recipe built with resolved program —
-        // avoids redundant BuildEffectiveMaterialRecipe in
+        // avoids redundant BuildResolvedRecipe in
         // MaterializeRecipeRowsForPrimitive and ResolveRuntimePipelineForPrimitive.
         graph::mtl::MaterialRecipe cached_effective_recipe{};
         uint64_t cached_effective_recipe_hash = 0;

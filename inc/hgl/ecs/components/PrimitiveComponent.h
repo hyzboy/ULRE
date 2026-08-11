@@ -99,7 +99,7 @@ namespace hgl::ecs
 
         // Monotonic counter incremented every time authored material resources change
         // (textures, SSBOs, recipe). Compared against MaterialComponent to skip
-        // BuildEffectiveMaterialRecipe when nothing has changed.
+        // BuildResolvedRecipe when nothing has changed.
         uint32_t material_authored_generation = 0;
 
         // Late-resolve pipeline slot:
