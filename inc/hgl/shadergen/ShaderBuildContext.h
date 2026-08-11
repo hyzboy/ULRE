@@ -78,7 +78,7 @@ namespace hgl::graph
 
         public:
 
-            const DescriptorSetLayoutAllocator &GetDescriptorInfo()const{return descriptor_allocator;}
+            const DescriptorSetLayoutAllocator &GetDescriptorAllocator()const{return descriptor_allocator;}
             const mtl::ShaderResourceSchema &GetShaderResourceSchema()const{return material_resource_layout;}
 
             void SetShaderResourceSchema(const mtl::ShaderResourceSchema &contract){material_resource_layout=contract;}

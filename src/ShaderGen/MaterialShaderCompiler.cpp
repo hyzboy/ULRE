@@ -681,7 +681,7 @@ ShaderBuildContext *CompileCompositorMaterial(
         binding_preamble += "\n";
     };
 
-    const DescriptorSetLayoutAllocator &descriptor_info = mci->GetDescriptorInfo();
+    const DescriptorSetLayoutAllocator &descriptor_info = mci->GetDescriptorAllocator();
 
     // 行表绑定（mtl_data_index_rows / mtl_texture_layer_rows / l2w_index_rows）不再注入
     // set/binding 宏：声明由下方 index table 生成逻辑依据 descriptor_info 直接以

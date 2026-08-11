@@ -118,7 +118,7 @@ namespace
         if (!mci)
             return descriptors;
 
-        const auto &mdi = mci->GetDescriptorInfo();
+        const auto &mdi = mci->GetDescriptorAllocator();
         if (mdi.GetCount() == 0)
             return descriptors;
 
