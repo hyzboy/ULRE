@@ -28,7 +28,7 @@ namespace hgl
 
         namespace mtl
         {
-            class ShaderProgramBuildSpec;
+            class ShaderBuildContext;
         }
     }
 

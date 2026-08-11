@@ -8,7 +8,7 @@ namespace hgl::graph
     namespace shadergen
     {
         class ShaderCreateInfoMap;
-        class ShaderProgramBuildSpec;
+        class ShaderBuildContext;
     }
 
     enum class ShaderProgramCreatePrecheckDecision
@@ -22,7 +22,7 @@ namespace hgl::graph
         const shadergen::ShaderCreateInfoMap *shader_map = nullptr;
     };
 
-    ShaderProgramCreatePrecheckDecision RunShaderProgramCreatePrecheck(const shadergen::ShaderProgramBuildSpec *mci,
+    ShaderProgramCreatePrecheckDecision RunShaderProgramCreatePrecheck(const shadergen::ShaderBuildContext *mci,
                                                              const AnsiString &material_name,
                                                              ShaderProgramCreatePrecheckResult &out_result);
 }

@@ -29,7 +29,7 @@ namespace hgl::graph
         class ShaderCreateInfoVertex;
         class ShaderCreateInfo;
 
-        class ShaderProgramBuildSpec
+        class ShaderBuildContext
         {
         protected:
 
@@ -113,8 +113,8 @@ namespace hgl::graph
 
         public:
 
-            ShaderProgramBuildSpec(const PrimitiveType primitive_type, const uint32_t shader_stage_bits, const bool has_local_to_world);
-            ~ShaderProgramBuildSpec();  // Need explicit destructor to properly clean up shader_map
+            ShaderBuildContext(const PrimitiveType primitive_type, const uint32_t shader_stage_bits, const bool has_local_to_world);
+            ~ShaderBuildContext();  // Need explicit destructor to properly clean up shader_map
 
             void SetDevice(const contract::PhysicalDeviceProfileLite *profile);
 
@@ -175,6 +175,6 @@ namespace hgl::graph
             }
 
             bool CreateShaderDirect();               ///< 直接编译各阶段的 FinalGLSL 到 SPV
-        };//class ShaderProgramBuildSpec
+        };//class ShaderBuildContext
     }//namespace shadergen
 }//namespace hgl::graph

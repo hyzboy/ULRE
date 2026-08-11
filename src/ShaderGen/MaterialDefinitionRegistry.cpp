@@ -7,7 +7,7 @@
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/shadergen/MaterialOutputContract.h>
 #include <hgl/shadergen/MaterialCoverageContract.h>
-#include <hgl/shadergen/ShaderProgramBuildSpec.h>
+#include <hgl/shadergen/ShaderBuildContext.h>
 #include <hgl/shadergen/ShaderLibraryPath.h>
 #include <hgl/shadergen/ShaderKeyUtility.h>
 #include <hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
@@ -215,7 +215,7 @@ namespace
         (void)linked;
     }
 
-    static ShaderProgramBuildSpec *BuildGenericMaterial(
+    static ShaderBuildContext *BuildGenericMaterial(
         const contract::PhysicalDeviceProfileLite *profile,
         const MaterialDefinitionBuildRequest &request,
         const MaterialDefinition &definition)
@@ -625,7 +625,7 @@ namespace
                 : definition.data_slot_decls.empty()
                     ? nullptr : &definition.data_slot_decls;
         config.generate_only = request.generate_only;
-        ShaderProgramBuildSpec *result = CompileCompositorMaterial(
+        ShaderBuildContext *result = CompileCompositorMaterial(
             profile, compiler_input, vs, fs, config);
         if (!result)
             GLogError("[ShaderGen] Generic material compilation failed: name=%s",
@@ -997,14 +997,14 @@ GLSLCodeModuleRegistry &GetGLSLCodeModuleRegistry()
     return registry;
 }
 
-shadergen::ShaderProgramBuildSpec *CreateMaterialFromDefinition(
+shadergen::ShaderBuildContext *CreateMaterialFromDefinition(
     const shadergen::contract::PhysicalDeviceProfileLite *profile,
     const MaterialDefinition &definition,
     const MaterialDefinitionBuildRequest &request)
 {
     MaterialDefinition canonical_definition = definition;
 
-    ShaderProgramBuildSpec *result =
+    ShaderBuildContext *result =
         BuildGenericMaterial(profile, request, canonical_definition);
     return result;
 }

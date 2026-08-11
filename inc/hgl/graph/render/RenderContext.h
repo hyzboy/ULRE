@@ -9,7 +9,7 @@ namespace hgl::graph
 {
     namespace mtl
     {
-        class ShaderProgramBuildSpec;
+        class ShaderBuildContext;
     }
 
     /**

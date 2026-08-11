@@ -15,7 +15,7 @@ class IGPUBuffer;
 class GeometryVertexFormat;
 
 namespace mtl {}
-namespace shadergen { class ShaderProgramBuildSpec; }
+namespace shadergen { class ShaderBuildContext; }
 
 class MaterialParameters;
 
@@ -54,7 +54,7 @@ private:
 
     friend class ShaderProgramManager;
 
-    ShaderProgram(const AnsiString &,const shadergen::ShaderProgramBuildSpec *);
+    ShaderProgram(const AnsiString &,const shadergen::ShaderBuildContext *);
 
 public:
 

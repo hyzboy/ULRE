@@ -24,7 +24,7 @@ namespace hgl::graph
 
 namespace hgl::graph::shadergen
 {
-class ShaderProgramBuildSpec;
+class ShaderBuildContext;
 class ShaderArtifactStore;
 namespace contract
 {
@@ -86,7 +86,7 @@ uint64 HashMaterialProgramBuildContext(
     const GeometryVertexFormat *geometry_vertex_format,
     const shadergen::contract::PhysicalDeviceProfileLite *profile) noexcept;
 
-shadergen::ShaderProgramBuildSpec *CreateMaterialFromDefinition(
+shadergen::ShaderBuildContext *CreateMaterialFromDefinition(
     const shadergen::contract::PhysicalDeviceProfileLite *profile,
     const MaterialDefinition &definition,
     const MaterialDefinitionBuildRequest &request);

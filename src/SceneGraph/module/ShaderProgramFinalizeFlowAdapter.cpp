@@ -1,11 +1,11 @@
 #include <hgl/graph/module/ShaderProgramFinalizeFlowAdapter.h>
 #include <hgl/vk/VKMaterialDescriptorManager.h>
-#include <hgl/shadergen/ShaderProgramBuildSpec.h>
+#include <hgl/shadergen/ShaderBuildContext.h>
 
 namespace hgl::graph
 {
     void BuildShaderProgramFinalizePlan(const MaterialDescriptorManager *desc_manager,
-                                   const shadergen::ShaderProgramBuildSpec &mci,
+                                   const shadergen::ShaderBuildContext &mci,
                                    ShaderProgramFinalizePlan &out_plan)
     {
         out_plan.mp_set_types.clear();

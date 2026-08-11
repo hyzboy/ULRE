@@ -1,10 +1,10 @@
 #include <hgl/graph/module/ShaderProgramCreatePrecheckAdapter.h>
-#include <hgl/shadergen/ShaderProgramBuildSpec.h>
+#include <hgl/shadergen/ShaderBuildContext.h>
 #include <hgl/log/Log.h>
 
 namespace hgl::graph
 {
-    ShaderProgramCreatePrecheckDecision RunShaderProgramCreatePrecheck(const shadergen::ShaderProgramBuildSpec *mci,
+    ShaderProgramCreatePrecheckDecision RunShaderProgramCreatePrecheck(const shadergen::ShaderBuildContext *mci,
                                                              const AnsiString &material_name,
                                                              ShaderProgramCreatePrecheckResult &out_result)
     {

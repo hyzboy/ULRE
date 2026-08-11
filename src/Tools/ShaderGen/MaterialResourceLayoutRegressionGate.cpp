@@ -4,7 +4,7 @@
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/shadergen/MaterialShaderCompiler.h>
 #include <hgl/shadergen/DescriptorContract.h>
-#include <hgl/shadergen/ShaderProgramBuildSpec.h>
+#include <hgl/shadergen/ShaderBuildContext.h>
 #include <hgl/shadergen/ResolvedModuleGraphBuilder.h>
 #include <hgl/mtl/BindingTableBuilder.h>
 #include <hgl/shadergen/ShaderCreateInfo.h>
@@ -1887,7 +1887,7 @@ namespace
             request.recipe.mtl_def_id = definition.definition_id;
             request.geometry_vertex_format = &geometry;
             request.generate_only = true;
-            return std::unique_ptr<ShaderProgramBuildSpec>(
+            return std::unique_ptr<ShaderBuildContext>(
                 CreateMaterialFromDefinition(
                     profile, definition, request));
         };
@@ -2052,7 +2052,7 @@ namespace
                 "StoneDefinition",
                 "MetalDefinition"
             };
-            std::vector<std::unique_ptr<ShaderProgramBuildSpec>>
+            std::vector<std::unique_ptr<ShaderBuildContext>>
                 shared_builds;
             for (int i = 0; i < 4; ++i)
             {
@@ -2830,7 +2830,7 @@ namespace
                     request.override_shader_program_purpose =
                         override_purpose;
                     request.shader_program_purpose = purpose;
-                    return std::unique_ptr<ShaderProgramBuildSpec>(
+                    return std::unique_ptr<ShaderBuildContext>(
                         CreateMaterialFromDefinition(
                             nullptr, selected, request));
                 };
@@ -2965,7 +2965,7 @@ namespace
                     }
 
                     const auto has_material_resource =
-                        [](const ShaderProgramBuildSpec &spec)
+                        [](const ShaderBuildContext &spec)
                     {
                         for (const auto &requirement :
                              spec.GetShaderResourceSchema().resources)
@@ -2977,7 +2977,7 @@ namespace
                         return false;
                     };
                     const auto has_sky_resource =
-                        [](const ShaderProgramBuildSpec &spec)
+                        [](const ShaderBuildContext &spec)
                     {
                         for (const auto &requirement :
                              spec.GetShaderResourceSchema().resources)
@@ -3157,7 +3157,7 @@ namespace
                 request.recipe.mtl_def_id = definition.definition_id;
                 request.geometry_vertex_format = &geometry;
                 request.generate_only = true;
-                return std::unique_ptr<ShaderProgramBuildSpec>(
+                return std::unique_ptr<ShaderBuildContext>(
                     CreateMaterialFromDefinition(
                         nullptr, definition, request));
             };
@@ -5392,7 +5392,7 @@ namespace
         config.data_slot_decls = &slots;
         config.generate_only = true;
 
-        ShaderProgramBuildSpec *build_spec = CompileCompositorMaterial(
+        ShaderBuildContext *build_spec = CompileCompositorMaterial(
             nullptr,
             compiler_input,
             "#version 450\nlayout(location=0) in vec2 Position;\nvoid main(){gl_Position=vec4(Position,0.0,1.0);}\n",

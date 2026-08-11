@@ -7,7 +7,7 @@
 
 #include <hgl/shadergen/MaterialShaderCompiler.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
-#include <hgl/shadergen/ShaderProgramBuildSpec.h>
+#include <hgl/shadergen/ShaderBuildContext.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
 #include <hgl/shadergen/ShaderProgramArtifactBuilder.h>
 #include <hgl/graph/ShaderBufferSources.h>
@@ -26,7 +26,7 @@ namespace hgl::graph::shadergen {
     using namespace hgl::graph::mtl;
 
 bool FinalizeShaderProgramBuildSpec(
-    ShaderProgramBuildSpec *build_spec)
+    ShaderBuildContext *build_spec)
 {
     if (!build_spec)
         return false;
@@ -155,7 +155,7 @@ static bool IsTextureSlotDeclared(const MaterialDefinition &definition, const Te
     return false;
 }
 
-static bool AddMaterialDataSlotDescriptor(ShaderProgramBuildSpec &mci,
+static bool AddMaterialDataSlotDescriptor(ShaderBuildContext &mci,
                                           const DataSlotDeclaration &decl,
                                           const uint32_t data_slot,
                                           const uint32_t stage_bits)
@@ -294,12 +294,12 @@ static bool ValidateDefinitionCapabilitySubset(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CompileCompositorMaterial — Compositor 模板完整 GLSL → ShaderProgramBuildSpec
+// CompileCompositorMaterial — Compositor 模板完整 GLSL → ShaderBuildContext
 //
 // 使用 SetFinalGLSL + CreateShaderDirect 直接编译。
 // ═══════════════════════════════════════════════════════════════════════════
 
-ShaderProgramBuildSpec *CompileCompositorMaterial(
+ShaderBuildContext *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialCompilerInput &input,
     const std::string &         vs_glsl,
@@ -341,17 +341,17 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     const bool with_local_to_world = infer_has_l2w;
 
     // ─────────────────────────────────────────────────────────────
-    // Step 2: Create ShaderProgramBuildSpec
+    // Step 2: Create ShaderBuildContext
     // ─────────────────────────────────────────────────────────────
 
-    ShaderProgramBuildSpec *mci = new ShaderProgramBuildSpec(primitive_type, shader_stage_bits, with_local_to_world);
+    ShaderBuildContext *mci = new ShaderBuildContext(primitive_type, shader_stage_bits, with_local_to_world);
     if (profile)
         mci->SetDevice(profile);
     if (config.program_link)
         mci->SetProgramLink(*config.program_link);
     mci->SetArtifactStore(config.artifact_store);
 
-    auto FailAfterMci = [&](const char *reason) -> ShaderProgramBuildSpec *
+    auto FailAfterMci = [&](const char *reason) -> ShaderBuildContext *
     {
         std::fprintf(stderr,
             "[CompileCompositorMaterial] material=%s failed: %s\n",

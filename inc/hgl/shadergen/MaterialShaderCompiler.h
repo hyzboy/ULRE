@@ -2,13 +2,13 @@
 
 namespace hgl::graph::mtl {}
 
-/// MaterialShaderCompiler.h — canonical material input → ShaderProgramBuildSpec
+/// MaterialShaderCompiler.h — canonical material input → ShaderBuildContext
 ///
 /// 使用 CompileCompositorMaterial 编译 Compositor 模板产出的完整 GLSL。
 /// 内部流程：
 ///   1. Build DescriptorSetLayoutAllocator from the canonical descriptor input.
 ///   2. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
-///   3. 填充并返回 ShaderProgramBuildSpec*
+///   3. 填充并返回 ShaderBuildContext*
 
 #include <hgl/mtl/SerializedVertexEntry.h>
 #include <hgl/mtl/SerializedDescriptorEntry.h>
@@ -62,13 +62,13 @@ struct CompositorMaterialBuildConfig
     bool generate_only = false; // Preserve generated GLSL for contract tests without SPV compilation.
 };
 
-class ShaderProgramBuildSpec;
+class ShaderBuildContext;
 
 bool FinalizeShaderProgramBuildSpec(
-    ShaderProgramBuildSpec *build_spec);
+    ShaderBuildContext *build_spec);
 
 /**
- * 编译 Compositor 模板产出的完整 GLSL → ShaderProgramBuildSpec*。
+ * 编译 Compositor 模板产出的完整 GLSL → ShaderBuildContext*。
  *
  * 使用 SetFinalGLSL() + CreateShaderDirect() 直接编译。
  *
@@ -77,9 +77,9 @@ bool FinalizeShaderProgramBuildSpec(
  * @param vs_glsl   完整的 vertex shader GLSL（含 #version, layout, main）
  * @param fs_glsl   完整的 fragment shader GLSL（含 #version, layout, main）
  * @param config    编译期配置视图
- * @return          编译好的 ShaderProgramBuildSpec*; 失败返回 nullptr
+ * @return          编译好的 ShaderBuildContext*; 失败返回 nullptr
  */
-ShaderProgramBuildSpec *CompileCompositorMaterial(
+ShaderBuildContext *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialCompilerInput &input,
     const std::string &         vs_glsl,

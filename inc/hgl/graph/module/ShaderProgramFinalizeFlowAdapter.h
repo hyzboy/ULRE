@@ -10,7 +10,7 @@ namespace hgl::graph
 
     namespace shadergen
     {
-        class ShaderProgramBuildSpec;
+        class ShaderBuildContext;
     }
 
     struct ShaderProgramFinalizePlan
@@ -19,6 +19,6 @@ namespace hgl::graph
     };
 
     void BuildShaderProgramFinalizePlan(const MaterialDescriptorManager *desc_manager,
-                                   const shadergen::ShaderProgramBuildSpec &mci,
+                                   const shadergen::ShaderBuildContext &mci,
                                    ShaderProgramFinalizePlan &out_plan);
 }

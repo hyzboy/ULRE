@@ -3,7 +3,7 @@
 #include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/shadergen/ShaderCreateInfo.h>
 #include <hgl/shadergen/ShaderKeyUtility.h>
-#include <hgl/shadergen/ShaderProgramBuildSpec.h>
+#include <hgl/shadergen/ShaderBuildContext.h>
 #include <hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
 #include <hgl/util/hash/FNV1a.h>
 
@@ -12,7 +12,7 @@ namespace hgl::graph::shadergen
     using namespace hgl::graph::mtl;
     bool BuildShaderProgramArtifactMetadata(
         const contract::PhysicalDeviceProfileLite *profile,
-        const ShaderProgramBuildSpec &build_spec,
+        const ShaderBuildContext &build_spec,
         ShaderProgramArtifactMetadata &out_metadata) noexcept
     {
         out_metadata = {};

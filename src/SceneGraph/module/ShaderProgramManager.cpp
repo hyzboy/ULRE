@@ -12,7 +12,7 @@
 #include<hgl/graph/module/ShaderProgramCreatePrecheckAdapter.h>
 #include<hgl/graph/module/ShaderProgramFinalizeFlowAdapter.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
-#include<hgl/shadergen/ShaderProgramBuildSpec.h>
+#include<hgl/shadergen/ShaderBuildContext.h>
 #include<hgl/shadergen/MaterialShaderCompiler.h>
 #include<hgl/shadergen/ShaderArtifactStore.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
@@ -61,7 +61,7 @@ namespace
     bool BuildShaderModulesFromCreateInfoMap(ShaderProgramManager *manager,
                                              const AnsiString &mtl_name,
                                              const shadergen::ShaderCreateInfoMap &sci_map,
-                                             const shadergen::ShaderProgramBuildSpec *build_spec,
+                                             const shadergen::ShaderBuildContext *build_spec,
                                              ShaderModuleMap *shader_maps)
     {
         if (!manager || !shader_maps)
@@ -112,7 +112,7 @@ namespace
         return true;
     }
 
-    std::vector<ShaderDescriptor> CollectDescriptorsFromBuildSpec(const shadergen::ShaderProgramBuildSpec *mci)
+    std::vector<ShaderDescriptor> CollectDescriptorsFromBuildSpec(const shadergen::ShaderBuildContext *mci)
     {
         std::vector<ShaderDescriptor> descriptors;
         if (!mci)
@@ -276,7 +276,7 @@ MaterialParameters *ShaderProgramManager::CreateMaterialMP(const AnsiString &mtl
     return mp;
 }
 
-void ShaderProgramManager::ApplyMaterialFinalizePlan(ShaderProgram *mtl, const AnsiString &mtl_name, const shadergen::ShaderProgramBuildSpec &mci)
+void ShaderProgramManager::ApplyMaterialFinalizePlan(ShaderProgram *mtl, const AnsiString &mtl_name, const shadergen::ShaderBuildContext &mci)
 {
     if(!mtl)
         return;
@@ -301,7 +301,7 @@ ShaderProgram *ShaderProgramManager::TryGetCachedShaderProgram(
 
 bool ShaderProgramManager::ExecuteRuntimeMaterialBuildPipeline(ShaderProgram *mtl,
                                                           const AnsiString &mtl_name,
-                                                          const shadergen::ShaderProgramBuildSpec *mci,
+                                                          const shadergen::ShaderBuildContext *mci,
                                                           const shadergen::ShaderCreateInfoMap &sci_map)
 {
     if(!mtl || !mci)
@@ -320,7 +320,7 @@ bool ShaderProgramManager::ExecuteRuntimeMaterialBuildPipeline(ShaderProgram *mt
 
 bool ShaderProgramManager::BuildRuntimeShaderProgramState(ShaderProgram *mtl,
                                                      const AnsiString &mtl_name,
-                                                     const shadergen::ShaderProgramBuildSpec *mci,
+                                                     const shadergen::ShaderBuildContext *mci,
                                                      const shadergen::ShaderCreateInfoMap &sci_map)
 {
     if(!mtl || !mci)
@@ -345,7 +345,7 @@ bool ShaderProgramManager::BuildRuntimeShaderProgramState(ShaderProgram *mtl,
 
 bool ShaderProgramManager::BuildRuntimeDescriptorState(ShaderProgram *mtl,
                                                   const AnsiString &mtl_name,
-                                                  const shadergen::ShaderProgramBuildSpec *mci)
+                                                  const shadergen::ShaderBuildContext *mci)
 {
     if(!mtl || !mci)
         return false;
@@ -361,7 +361,7 @@ bool ShaderProgramManager::BuildRuntimeDescriptorState(ShaderProgram *mtl,
 
 ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
     const shadergen::ShaderProgramKey &program_key,
-    const shadergen::ShaderProgramBuildSpec *mci)
+    const shadergen::ShaderBuildContext *mci)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -411,7 +411,7 @@ bool ShaderProgramManager::BuildShaderResourceSchema(const mtl::MaterialDefiniti
         return false;
 
     const auto *profile = GetPhysicalDeviceProfile();
-    AutoDelete<shadergen::ShaderProgramBuildSpec> mci = mtl::CreateMaterialFromDefinition(profile, bmi, request);
+    AutoDelete<shadergen::ShaderBuildContext> mci = mtl::CreateMaterialFromDefinition(profile, bmi, request);
     if (!mci)
     {
         GLogError("[ShaderProgramManager] Material definition build failed: id=%s name=%s",
@@ -442,7 +442,7 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
 
     const auto *profile = GetPhysicalDeviceProfile();
     normalized_request.generate_only = true;
-    AutoDelete<shadergen::ShaderProgramBuildSpec> mci =
+    AutoDelete<shadergen::ShaderBuildContext> mci =
         mtl::CreateMaterialFromDefinition(
             profile, bmi, normalized_request);
     if(!mci)

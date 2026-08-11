@@ -21,7 +21,7 @@ namespace shadergen
 {
     class ShaderCreateInfo;
     class ShaderCreateInfoMap;
-    class ShaderProgramBuildSpec;
+    class ShaderBuildContext;
 }//namespace shadergen
 
 using ShaderProgramID = int;
@@ -46,22 +46,22 @@ private:
 
 private: // Helper methods with integrated DebugUtils
 
-    ShaderProgram *AcquireShaderProgram(const shadergen::ShaderProgramKey &, const shadergen::ShaderProgramBuildSpec *);
+    ShaderProgram *AcquireShaderProgram(const shadergen::ShaderProgramKey &, const shadergen::ShaderBuildContext *);
     class PipelineLayoutData *CreateMaterialPipelineLayoutData(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager);
     class MaterialParameters *CreateMaterialMP(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager, const class PipelineLayoutData *pld, const DescriptorSetType &desc_set_type);
-    void ApplyMaterialFinalizePlan(ShaderProgram *mtl, const AnsiString &mtl_name, const shadergen::ShaderProgramBuildSpec &mci);
+    void ApplyMaterialFinalizePlan(ShaderProgram *mtl, const AnsiString &mtl_name, const shadergen::ShaderBuildContext &mci);
     ShaderProgram *TryGetCachedShaderProgram(
         const shadergen::ShaderProgramKey &key);
     bool BuildRuntimeShaderProgramState(ShaderProgram *mtl,
                                         const AnsiString &mtl_name,
-                                        const shadergen::ShaderProgramBuildSpec *mci,
+                                        const shadergen::ShaderBuildContext *mci,
                                                                         const shadergen::ShaderCreateInfoMap &sci_map);
     bool BuildRuntimeDescriptorState(ShaderProgram *mtl,
                                      const AnsiString &mtl_name,
-                                     const shadergen::ShaderProgramBuildSpec *mci);
+                                     const shadergen::ShaderBuildContext *mci);
     bool ExecuteRuntimeMaterialBuildPipeline(ShaderProgram *mtl,
                                              const AnsiString &mtl_name,
-                                             const shadergen::ShaderProgramBuildSpec *mci,
+                                             const shadergen::ShaderBuildContext *mci,
                                              const shadergen::ShaderCreateInfoMap &sci_map);
 
 public: //Add

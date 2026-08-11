@@ -12,10 +12,10 @@ namespace hgl::graph::shadergen
         struct PhysicalDeviceProfileLite;
     }
 
-    class ShaderProgramBuildSpec;
+    class ShaderBuildContext;
 
     bool BuildShaderProgramArtifactMetadata(
         const contract::PhysicalDeviceProfileLite *profile,
-        const ShaderProgramBuildSpec &build_spec,
+        const ShaderBuildContext &build_spec,
         ShaderProgramArtifactMetadata &out_metadata) noexcept;
 }
