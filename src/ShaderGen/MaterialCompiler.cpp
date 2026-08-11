@@ -2,7 +2,7 @@
 ///
 /// 流程：
 ///   1. 从 SerializedDescriptorEntry[] 构建 DescriptorSetLayoutAllocator（描述符布局）
-///   2. 从 FixedVertexEntry[] 设置顶点输入
+///   2. 从 SerializedVertexEntry[] 设置顶点输入
 ///   3. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
 
 #include <hgl/shadergen/MaterialCompiler.h>
@@ -595,7 +595,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Step 4: Add Vertex Inputs from FixedVertexEntry[]
+    // Step 4: Add Vertex Inputs from SerializedVertexEntry[]
     // ─────────────────────────────────────────────────────────────
 
     ShaderCreateInfoVertex *vsc = mci->GetVertexShader();
@@ -603,7 +603,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     {
         for (uint32_t i = 0; i < input.vertex_entry_count; ++i)
         {
-            const FixedVertexEntry &entry = input.vertex_entries[i];
+            const SerializedVertexEntry &entry = input.vertex_entries[i];
             vsc->AddInput(entry.format, entry.semantic);
         }
     }

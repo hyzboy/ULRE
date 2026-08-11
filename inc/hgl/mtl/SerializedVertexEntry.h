@@ -5,12 +5,12 @@
 
 namespace hgl::graph::mtl{
 
-struct FixedVertexEntry
+struct SerializedVertexEntry
 {
     VkFormat        format;
     VertexSemantic  semantic;
 
-    bool operator==(const FixedVertexEntry &rhs) const noexcept
+    bool operator==(const SerializedVertexEntry &rhs) const noexcept
     {
         return format == rhs.format && semantic == rhs.semantic;
     }

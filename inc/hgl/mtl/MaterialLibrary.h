@@ -10,7 +10,7 @@
 #include<hgl/mtl/MaterializationResolver.h>
 #include<hgl/mtl/MaterializationPools.h>
 #include<hgl/graph/glsl/GLSLCodeModuleRegistry.h>
-#include<hgl/mtl/FixedVertexEntry.h>
+#include<hgl/mtl/SerializedVertexEntry.h>
 #include<hgl/type/String.h>
 #include<hgl/common/VertexAttribDef.h>
 #include<hgl/common/RenderTargetOutputConfig.h>
@@ -67,7 +67,7 @@ struct MaterialResolvedVertexABI
 {
     VkFormat position_format = VK_FORMAT_UNDEFINED;
     uint64 provider_graph_hash = 0;
-    ValueArray<FixedVertexEntry> vertex_entries;
+    ValueArray<SerializedVertexEntry> vertex_entries;
     AnsiString vertex_input_glsl;
     std::string provider_glsl;
 };

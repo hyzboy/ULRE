@@ -1,6 +1,6 @@
 #pragma once
 
-#include <hgl/mtl/FixedVertexEntry.h>
+#include <hgl/mtl/SerializedVertexEntry.h>
 #include <hgl/common/RenderAssignDef.h>
 #include <vector>
 
@@ -26,7 +26,7 @@ struct VertexBuildInput
 
 struct LuminanceVertexBuildResult
 {
-    std::vector<FixedVertexEntry> entries;
+    std::vector<SerializedVertexEntry> entries;
     VkFormat position_format = VK_FORMAT_UNDEFINED;
     VkFormat luminance_format = VK_FORMAT_UNDEFINED;
     bool use_vec2_position = false;
@@ -44,7 +44,7 @@ inline VkFormat ResolveVertexFormat(const GeometryVertexFormat *geometry_vertex_
     return ResolveMaterialVertexSemanticFormat(geometry_vertex_format, decl.semantic, decl.fallback_format);
 }
 
-inline void BuildVertexEntries(std::vector<FixedVertexEntry> &out,
+inline void BuildVertexEntries(std::vector<SerializedVertexEntry> &out,
                                const VertexBuildInput &input)
 {
     if (!input.semantic_decls || input.semantic_decl_count == 0)
@@ -59,14 +59,14 @@ inline void BuildVertexEntries(std::vector<FixedVertexEntry> &out,
     }
 }
 
-inline std::vector<FixedVertexEntry> BuildVertexEntries(const VertexBuildInput &input)
+inline std::vector<SerializedVertexEntry> BuildVertexEntries(const VertexBuildInput &input)
 {
-    std::vector<FixedVertexEntry> entries;
+    std::vector<SerializedVertexEntry> entries;
     BuildVertexEntries(entries, input);
     return entries;
 }
 
-inline void AppendTransformIDVertexEntry(std::vector<FixedVertexEntry> &out)
+inline void AppendTransformIDVertexEntry(std::vector<SerializedVertexEntry> &out)
 {
     out.push_back({ Assign::TransformID::VAB_FMT, Assign::TransformID::VIS_SEMANTIC });
 }

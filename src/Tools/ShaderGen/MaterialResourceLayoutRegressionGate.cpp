@@ -142,8 +142,8 @@ namespace
         return result;
     }
 
-    static bool CheckVertexEntries(const std::vector<FixedVertexEntry> &actual,
-                                   const std::vector<FixedVertexEntry> &expected,
+    static bool CheckVertexEntries(const std::vector<SerializedVertexEntry> &actual,
+                                   const std::vector<SerializedVertexEntry> &expected,
                                    std::string &diagnostic)
     {
         if (actual.size() != expected.size())
@@ -175,7 +175,7 @@ namespace
                                        const GeometryVertexFormat &geometry,
                                        const vertex_builder_common::VertexSemanticDecl *decls,
                                        const uint32_t decl_count,
-                                       const std::vector<FixedVertexEntry> &expected)
+                                       const std::vector<SerializedVertexEntry> &expected)
         {
             const vertex_builder_common::VertexBuildInput input{
                 PrimitiveType::Triangles, &geometry, decls, decl_count
@@ -1027,7 +1027,7 @@ namespace
         check_preview("Text2D", text_geometry, 2);
 
         // The opt-in ABI builder consumes the preview graph to generate both
-        // FixedVertexEntry data and GLSL declarations without invoking the
+        // SerializedVertexEntry data and GLSL declarations without invoking the
         // GLSL compiler plugin.
         MaterialDefinition text_definition{};
         if (!TryGetMaterialDefinitionByID("Text2D", text_definition))
@@ -1049,8 +1049,8 @@ namespace
                 const std::string source(abi.vertex_input_glsl.c_str());
                 if (abi.position_format != VF_V2I
                  || abi.vertex_entries.GetCount() != 2
-                 || !(abi.vertex_entries[0] == FixedVertexEntry{VF_V2I, VertexSemantic::Position})
-                 || !(abi.vertex_entries[1] == FixedVertexEntry{VF_V2F, VertexSemantic::TexCoord})
+                 || !(abi.vertex_entries[0] == SerializedVertexEntry{VF_V2I, VertexSemantic::Position})
+                 || !(abi.vertex_entries[1] == SerializedVertexEntry{VF_V2F, VertexSemantic::TexCoord})
                  || source.find("layout(location=0) in ivec2 Position;") == std::string::npos
                  || source.find("layout(location=1) in vec2 TexCoord;") == std::string::npos)
                 {
@@ -1071,7 +1071,7 @@ namespace
         };
 
         // The same vec2 declaration must serve RG16F and RG32F Geometry
-        // inputs. The raw format remains distinct only in FixedVertexEntry.
+        // inputs. The raw format remains distinct only in SerializedVertexEntry.
         MaterialDefinition pure2d_definition{};
         if (!TryGetMaterialDefinitionByID(BUILTIN_MTL_DEF_PURE_COLOR, pure2d_definition))
         {
@@ -5361,7 +5361,7 @@ namespace
             {"surface_a", SSBOType::EmissiveSurface},
             {"surface_b", SSBOType::EmissiveSurface}
         };
-        const FixedVertexEntry vertices[] = {
+        const SerializedVertexEntry vertices[] = {
             {VF_V2F, VertexSemantic::Position}
         };
         const SerializedDescriptorEntry descriptors[] = {

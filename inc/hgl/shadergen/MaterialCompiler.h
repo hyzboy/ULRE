@@ -10,7 +10,7 @@ namespace hgl::graph::mtl {}
 ///   2. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
 ///   3. 填充并返回 ShaderProgramBuildSpec*
 
-#include <hgl/mtl/FixedVertexEntry.h>
+#include <hgl/mtl/SerializedVertexEntry.h>
 #include <hgl/mtl/SerializedDescriptorEntry.h>
 #include<hgl/mtl/SkyLight.h>
 #include<hgl/common/ShaderStageDef.h>
@@ -34,7 +34,7 @@ struct MaterialCompilerInput
 {
     const char *debug_name = nullptr;
     PrimitiveType primitive_type = PrimitiveType::Triangles;
-    const mtl::FixedVertexEntry *vertex_entries = nullptr;
+    const mtl::SerializedVertexEntry *vertex_entries = nullptr;
     uint32 vertex_entry_count = 0;
     const mtl::SerializedDescriptorEntry *descriptor_entries = nullptr;
     uint32 descriptor_entry_count = 0;

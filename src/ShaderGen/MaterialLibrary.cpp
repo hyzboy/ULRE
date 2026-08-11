@@ -132,7 +132,7 @@ namespace
     bool BuildResolvedVertexABI(
         const MaterialDefinition &definition,
         const MaterialDefinitionBuildRequest &request,
-        std::vector<FixedVertexEntry> &out_vertices,
+        std::vector<SerializedVertexEntry> &out_vertices,
         VkFormat &out_position_format,
         std::string &out_vertex_input_glsl,
         GLSLCodeModuleResolutionResult &out_resolution)
@@ -306,7 +306,7 @@ namespace
             return nullptr;
         }
 
-        std::vector<FixedVertexEntry> vertices;
+        std::vector<SerializedVertexEntry> vertices;
         std::vector<SerializedDescriptorEntry> descriptors;
         VkFormat position_format = VK_FORMAT_UNDEFINED;
         VertexShaderNodeConfig vertex_node_config =
@@ -860,7 +860,7 @@ bool BuildResolvedMaterialVertexABI(
     const MaterialDefinitionBuildRequest &request,
     MaterialResolvedVertexABI &out_abi)
 {
-    std::vector<FixedVertexEntry> vertices;
+    std::vector<SerializedVertexEntry> vertices;
     std::string vertex_input_glsl;
     VkFormat position_format = VK_FORMAT_UNDEFINED;
     GLSLCodeModuleResolutionResult resolution;
@@ -872,7 +872,7 @@ bool BuildResolvedMaterialVertexABI(
     out_abi.provider_graph_hash =
         GetGLSLCodeModuleProviderGraphHash(resolution);
     out_abi.vertex_entries.Clear();
-    for (const FixedVertexEntry &entry : vertices)
+    for (const SerializedVertexEntry &entry : vertices)
         out_abi.vertex_entries.Add(entry);
     out_abi.vertex_input_glsl = vertex_input_glsl.c_str();
     if (!ComposeGLSLCodeModuleProviderGraph(resolution, out_abi.provider_glsl))
