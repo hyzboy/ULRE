@@ -581,7 +581,7 @@ inline uint64 HashResourceContract(
     hgl::hash::FNV1aHasher64 h;
     constexpr uint32 contract_version = 2u;
     const ShaderResourceSchema layout =
-        BuildMaterialResourceLayout(entries.data(), static_cast<uint32>(entries.size()));
+        BuildShaderResourceSchema(entries.data(), static_cast<uint32>(entries.size()));
     h << contract_version
       << manifest_hash
       << HashMaterialResourceLayout(layout);
@@ -636,7 +636,7 @@ inline uint64 HashResourceContract(
     constexpr uint32 contract_version = 3u;
 
     ShaderResourceSchema layout =
-        BuildMaterialResourceLayout(entries.data(), static_cast<uint32>(entries.size()));
+        BuildShaderResourceSchema(entries.data(), static_cast<uint32>(entries.size()));
     ApplyMaterialDefinitionTexturePolicy(definition, layout);
     h << contract_version
       << manifest_hash

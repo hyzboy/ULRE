@@ -405,7 +405,7 @@ namespace hgl::graph::shadergen
                 req.struct_name = GetDefaultStructNameBySemantic(
                     req.semantic);
 
-            // ── SSBO id corrections (matching BuildMaterialResourceLayout) ──
+            // ── SSBO id corrections (matching BuildShaderResourceSchema) ──
             if (req.semantic == DescriptorSemantic::MaterialDataSlotData
              && req.ssbo_id == MakeRecipeSSBOId(0))
             {

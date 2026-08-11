@@ -184,7 +184,7 @@ namespace hgl::graph
                 request.primitive_type = PrimitiveType::Triangles;
                 request.geometry_vertex_format = &gizmo_gvf;
 
-                if(!gizmo_mtl_manager->BuildMaterialResourceLayout(request, gizmo_material_layout))
+                if(!gizmo_mtl_manager->BuildShaderResourceSchema(request, gizmo_material_layout))
                     return(false);
             }
 

@@ -137,7 +137,7 @@ namespace
         GateResult result;
         result.name = name ? name : "<unnamed>";
 
-        const ShaderResourceSchema contract = BuildMaterialResourceLayout(entries, count);
+        const ShaderResourceSchema contract = BuildShaderResourceSchema(entries, count);
         result.passed = (ValidateMaterialResourceLayout(contract, result.diagnostics) == expected_pass);
         return result;
     }
@@ -2400,8 +2400,8 @@ namespace
 
         std::vector<std::string> diagnostics_standard;
         std::vector<std::string> diagnostics_array;
-        const ShaderResourceSchema standard_contract = BuildMaterialResourceLayout(standard_entries, uint32_t(std::size(standard_entries)));
-        const ShaderResourceSchema array_contract = BuildMaterialResourceLayout(array_entries, uint32_t(std::size(array_entries)));
+        const ShaderResourceSchema standard_contract = BuildShaderResourceSchema(standard_entries, uint32_t(std::size(standard_entries)));
+        const ShaderResourceSchema array_contract = BuildShaderResourceSchema(array_entries, uint32_t(std::size(array_entries)));
 
         const bool standard_ok = ValidateMaterialResourceLayout(standard_contract, diagnostics_standard);
         const bool array_ok = ValidateMaterialResourceLayout(array_contract, diagnostics_array);
@@ -5699,7 +5699,7 @@ namespace
         else
         {
             const ShaderResourceSchema layout =
-                BuildMaterialResourceLayout(
+                BuildShaderResourceSchema(
                     descriptors.data(),
                     static_cast<uint32_t>(descriptors.size()));
             std::vector<std::string> diagnostics;

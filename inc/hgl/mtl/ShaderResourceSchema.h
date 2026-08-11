@@ -296,7 +296,7 @@ namespace hgl::graph::mtl
         }
     }
 
-    inline ShaderResourceSchema BuildMaterialResourceLayout(const FixedDescriptorEntry *descriptor_entries,
+    inline ShaderResourceSchema BuildShaderResourceSchema(const FixedDescriptorEntry *descriptor_entries,
                                                 const uint32_t descriptor_entry_count)
     {
         ShaderResourceSchema contract;

@@ -402,7 +402,7 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
     return mtl.Finish();
 }
 
-bool ShaderProgramManager::BuildMaterialResourceLayout(const mtl::MaterialDefinitionBuildRequest &request,
+bool ShaderProgramManager::BuildShaderResourceSchema(const mtl::MaterialDefinitionBuildRequest &request,
                                                   mtl::ShaderResourceSchema &out_layout)
 {
     mtl::MaterialDefinition bmi{};
