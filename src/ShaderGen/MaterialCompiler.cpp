@@ -966,7 +966,7 @@ ShaderProgramBuildSpec *CompileCompositorMaterial(
     // ─────────────────────────────────────────────────────────────
 
     ShaderResourceSchema material_resource_layout;
-    if (!BuildMaterialResourceLayoutFromDescriptorContract(
+    if (!BuildResourceSchemaFromContract(
             effective_descriptor_contract,
             material_resource_layout))
         return FailAfterMci("descriptor contract/layout build failed");

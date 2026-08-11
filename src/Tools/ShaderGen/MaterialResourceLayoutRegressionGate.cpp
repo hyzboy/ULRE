@@ -5517,7 +5517,7 @@ namespace
                     reversed, second_contract)
              || GetDescriptorContractHash(first_contract)
                     != GetDescriptorContractHash(second_contract)
-             || !BuildMaterialResourceLayoutFromDescriptorContract(
+             || !BuildResourceSchemaFromContract(
                     first_contract, persistent_layout))
             {
                 result.diagnostics.emplace_back(
@@ -5575,7 +5575,7 @@ namespace
             ShaderResourceSchema varying_layout;
             if (!EnsureDescriptorContractVaryingResources(
                     varying, varying_contract)
-             || !BuildMaterialResourceLayoutFromDescriptorContract(
+             || !BuildResourceSchemaFromContract(
                     varying_contract, varying_layout))
             {
                 result.diagnostics.emplace_back(

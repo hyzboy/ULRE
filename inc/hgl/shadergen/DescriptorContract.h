@@ -52,7 +52,7 @@ namespace hgl::graph::shadergen
         const DescriptorContract &contract,
         std::vector<mtl::FixedDescriptorEntry> &out_entries);
 
-    bool BuildMaterialResourceLayoutFromDescriptorContract(
+    bool BuildResourceSchemaFromContract(
         const DescriptorContract &contract,
         ShaderResourceSchema &out_layout);
 

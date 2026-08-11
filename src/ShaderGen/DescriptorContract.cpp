@@ -348,7 +348,7 @@ namespace hgl::graph::shadergen
         }
     }
 
-    bool BuildMaterialResourceLayoutFromDescriptorContract(
+    bool BuildResourceSchemaFromContract(
         const DescriptorContract &contract,
         ShaderResourceSchema &out_layout)
     {
