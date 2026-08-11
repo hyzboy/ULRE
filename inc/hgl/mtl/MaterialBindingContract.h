@@ -165,7 +165,7 @@ namespace hgl::graph::mtl
         InvalidShaderProgramKey,
         DuplicateRecipeTexture,
         DuplicateRecipeData,
-        InvalidBindingView
+        InvalidBindingTable
     };
 
     struct BindingBuildDiagnostic

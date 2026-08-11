@@ -316,7 +316,7 @@ namespace hgl::graph::mtl
                          && logical_resource_id != 0)
                             return SetBuildFailure(
                                 out_diagnostic,
-                                BindingBuildError::InvalidBindingView);
+                                BindingBuildError::InvalidBindingTable);
                         if (binding->semantic == DescriptorSemantic::MaterialTexture
                          && entry.semantic == DescriptorSemantic::MaterialSampler)
                             binding->semantic = DescriptorSemantic::MaterialSampler;
@@ -350,7 +350,7 @@ namespace hgl::graph::mtl
                          && logical_resource_id != 0)
                             return SetBuildFailure(
                                 out_diagnostic,
-                                BindingBuildError::InvalidBindingView);
+                                BindingBuildError::InvalidBindingTable);
                         binding->required = binding->required || entry.required;
                         binding->allow_fallback = binding->allow_fallback && entry.allow_fallback;
                     }
@@ -506,7 +506,7 @@ namespace hgl::graph::mtl
             if (!out_view.IsValid())
                 return SetBuildFailure(
                     out_diagnostic,
-                    BindingBuildError::InvalidBindingView);
+                    BindingBuildError::InvalidBindingTable);
             return true;
         }
 
@@ -584,7 +584,7 @@ namespace hgl::graph::mtl
         if (!AppendDescriptorRequirements(layout, requirements))
             return SetBuildFailure(
                 out_diagnostic,
-                BindingBuildError::InvalidBindingView);
+                BindingBuildError::InvalidBindingTable);
         return BuildBindingTableFromRequirements(
             recipe,
             requirements,
@@ -604,7 +604,7 @@ namespace hgl::graph::mtl
         if (!AppendLayoutRequirements(layout, requirements))
             return SetBuildFailure(
                 out_diagnostic,
-                BindingBuildError::InvalidBindingView);
+                BindingBuildError::InvalidBindingTable);
         return BuildBindingTableFromRequirements(
             recipe,
             requirements,

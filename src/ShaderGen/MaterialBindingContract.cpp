@@ -188,8 +188,8 @@ namespace hgl::graph::mtl
             return "DuplicateRecipeTexture";
         case BindingBuildError::DuplicateRecipeData:
             return "DuplicateRecipeData";
-        case BindingBuildError::InvalidBindingView:
-            return "InvalidBindingView";
+        case BindingBuildError::InvalidBindingTable:
+            return "InvalidBindingTable";
         }
         return "Unknown";
     }
