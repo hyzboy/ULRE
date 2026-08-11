@@ -14,7 +14,7 @@ namespace hgl::graph::mtl
     {
         using contract_detail::CanonicalContractWriter;
 
-        constexpr uint32 MaterialBindingViewTag = 0x3156424Du;   // MBV1
+        constexpr uint32 ResolvedBindingTableTag = 0x3156424Du;   // MBV1
         constexpr uint32 ResourceAcquirePlanTag = 0x31505152u;    // RQP1
 
         bool IsValidTextureSource(const BindingSource source) noexcept
@@ -176,7 +176,7 @@ namespace hgl::graph::mtl
         }
     }
 
-    const char *GetMaterialBindingViewBuildErrorName(
+    const char *GetBindingBuildErrorName(
         const BindingBuildError error) noexcept
     {
         switch (error)
@@ -254,7 +254,7 @@ namespace hgl::graph::mtl
         return observed_missing_required == view.missing_required_count;
     }
 
-    bool ValidateMaterialResourceAcquirePlan(
+    bool ValidateResourceAcquirePlan(
         const ResourceAcquirePlan &plan) noexcept
     {
         if (plan.schema_version != MaterialBindingContractSchemaVersion
@@ -301,7 +301,7 @@ namespace hgl::graph::mtl
         return true;
     }
 
-    bool SerializeMaterialBindingView(
+    bool SerializeResolvedBindingTable(
         const ResolvedBindingTable &view,
         ValueArray<uint8> &out_bytes)
     {
@@ -327,7 +327,7 @@ namespace hgl::graph::mtl
             });
 
         CanonicalContractWriter writer(out_bytes);
-        writer.WriteU32(MaterialBindingViewTag);
+        writer.WriteU32(ResolvedBindingTableTag);
         writer.WriteU32(view.schema_version);
         writer.WriteU64(view.program_key_digest);
         writer.WriteU64(view.source_binding_hash);
@@ -343,12 +343,12 @@ namespace hgl::graph::mtl
         return true;
     }
 
-    bool SerializeMaterialResourceAcquirePlan(
+    bool SerializeResourceAcquirePlan(
         const ResourceAcquirePlan &plan,
         ValueArray<uint8> &out_bytes)
     {
         out_bytes.Clear();
-        if (!ValidateMaterialResourceAcquirePlan(plan))
+        if (!ValidateResourceAcquirePlan(plan))
             return false;
 
         ValueArray<ResourceAcquirePlanEntry> resources = plan.resources;
@@ -437,7 +437,7 @@ namespace hgl::graph::mtl
 
     uint64 ResolvedBindingTable::GetStableHash() const noexcept
     {
-        return GetMaterialBindingViewHash(*this);
+        return GetResolvedBindingTableHash(*this);
     }
 
     bool ResolvedBindingTable::IsValid() const noexcept
@@ -450,19 +450,19 @@ namespace hgl::graph::mtl
         return IsValid() && missing_required_count == 0;
     }
 
-    uint64 GetMaterialBindingViewHash(
+    uint64 GetResolvedBindingTableHash(
         const ResolvedBindingTable &view) noexcept
     {
         ValueArray<uint8> bytes;
-        return SerializeMaterialBindingView(view, bytes)
+        return SerializeResolvedBindingTable(view, bytes)
             ? contract_detail::HashCanonicalBytes(bytes) : 0;
     }
 
-    uint64 GetMaterialResourceAcquirePlanHash(
+    uint64 GetResourceAcquirePlanHash(
         const ResourceAcquirePlan &plan) noexcept
     {
         ValueArray<uint8> bytes;
-        return SerializeMaterialResourceAcquirePlan(plan, bytes)
+        return SerializeResourceAcquirePlan(plan, bytes)
             ? contract_detail::HashCanonicalBytes(bytes) : 0;
     }
 }

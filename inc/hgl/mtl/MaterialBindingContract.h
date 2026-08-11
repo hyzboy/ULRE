@@ -176,7 +176,7 @@ namespace hgl::graph::mtl
         SSBOType ssbo_type = SSBOType::UserDefined;
     };
 
-    const char *GetMaterialBindingViewBuildErrorName(
+    const char *GetBindingBuildErrorName(
         BindingBuildError error) noexcept;
     const char *GetBindingSourceName(
         BindingSource source) noexcept;
@@ -193,18 +193,18 @@ namespace hgl::graph::mtl
 
     bool ValidateResolvedBindingTable(
         const ResolvedBindingTable &view) noexcept;
-    bool ValidateMaterialResourceAcquirePlan(
+    bool ValidateResourceAcquirePlan(
         const ResourceAcquirePlan &plan) noexcept;
 
-    bool SerializeMaterialBindingView(
+    bool SerializeResolvedBindingTable(
         const ResolvedBindingTable &view,
         ValueArray<uint8> &out_bytes);
-    bool SerializeMaterialResourceAcquirePlan(
+    bool SerializeResourceAcquirePlan(
         const ResourceAcquirePlan &plan,
         ValueArray<uint8> &out_bytes);
 
-    uint64 GetMaterialBindingViewHash(
+    uint64 GetResolvedBindingTableHash(
         const ResolvedBindingTable &view) noexcept;
-    uint64 GetMaterialResourceAcquirePlanHash(
+    uint64 GetResourceAcquirePlanHash(
         const ResourceAcquirePlan &plan) noexcept;
 }

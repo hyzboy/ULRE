@@ -674,6 +674,6 @@ namespace hgl::graph::mtl
             out_plan.resources.Add(entry);
         }
 
-        return ValidateMaterialResourceAcquirePlan(out_plan);
+        return ValidateResourceAcquirePlan(out_plan);
     }
 }

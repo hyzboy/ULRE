@@ -485,7 +485,7 @@ namespace
         {
             result.diagnostics.emplace_back(
                 std::string("Material Binding View build failed: ")
-                + GetMaterialBindingViewBuildErrorName(
+                + GetBindingBuildErrorName(
                     diagnostic.error));
         }
 
@@ -521,7 +521,7 @@ namespace
         if (!BuildResourceAcquirePlan(
                 binding_view, resource_plan)
          || resource_plan.resources.GetCount() != 2
-         || GetMaterialResourceAcquirePlanHash(resource_plan) == 0)
+         || GetResourceAcquirePlanHash(resource_plan) == 0)
         {
             result.diagnostics.emplace_back(
                 "Material ResourceAcquirePlan build failed");
@@ -669,8 +669,8 @@ namespace
                 != binding_view.program_key_digest
          || !BuildResourceAcquirePlan(
                 second_view, second_plan)
-         || GetMaterialResourceAcquirePlanHash(second_plan)
-                == GetMaterialResourceAcquirePlanHash(resource_plan))
+         || GetResourceAcquirePlanHash(second_plan)
+                == GetResourceAcquirePlanHash(resource_plan))
         {
             result.diagnostics.emplace_back(
                 "asset identity must affect Binding View, not ProgramKey");

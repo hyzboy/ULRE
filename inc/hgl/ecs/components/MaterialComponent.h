@@ -104,7 +104,7 @@ namespace hgl::ecs
         void MarkFailed();
         void ClearMaterializationInstanceData();
         void ClearResolvedSSBOBindings();
-        void ClearMaterialBindingView();
+        void ClearResolvedBindingTable();
         void ClearActiveResourceAcquirePlan();
         void SetResolvedSSBOBinding(const char *data_slot_name,
                                     uint32_t data_slot,

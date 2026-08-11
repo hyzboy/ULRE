@@ -502,7 +502,7 @@ namespace hgl::ecs
             if (!world
              || !primitive_comp
              || !material_program
-             || !graph::mtl::ValidateMaterialResourceAcquirePlan(plan))
+             || !graph::mtl::ValidateResourceAcquirePlan(plan))
                 return false;
 
             graph::mtl::MaterialRecipe active_recipe{};
@@ -894,7 +894,7 @@ namespace hgl::ecs
             GLogWarning(
                 "[RenderPrimitiveCollectSystem] Material Binding View build failed for %s error=%s",
                 GetPrimitiveOwnerName(primitive_comp),
-                graph::mtl::GetMaterialBindingViewBuildErrorName(
+                graph::mtl::GetBindingBuildErrorName(
                     binding_diagnostic.error));
             return false;
         }
@@ -965,7 +965,7 @@ namespace hgl::ecs
                 GetPrimitiveOwnerName(primitive_comp),
                 resolved_program->GetName().c_str(),
                 static_cast<unsigned long long>(
-                    graph::mtl::GetMaterialResourceAcquirePlanHash(
+                    graph::mtl::GetResourceAcquirePlanHash(
                         active_resource_plan)),
                 planned_textures,
                 planned_data,
@@ -1417,7 +1417,7 @@ namespace hgl::ecs
                                     resource_loading_mode),
                             static_cast<unsigned long long>(
                                 graph::mtl::
-                                    GetMaterialResourceAcquirePlanHash(
+                                    GetResourceAcquirePlanHash(
                                         material_comp->
                                             active_resource_acquire_plan)));
                     }
