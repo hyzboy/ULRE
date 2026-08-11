@@ -139,7 +139,7 @@ namespace hgl::graph::mtl
                 < static_cast<uint8>(rhs.kind);
         }
 
-        void WriteMaterialTextureBinding(
+        void WriteResolvedTextureBinding(
             CanonicalContractWriter &writer,
             const ResolvedTextureBinding &binding)
         {
@@ -336,7 +336,7 @@ namespace hgl::graph::mtl
         writer.WriteU32(view.unused_recipe_data_count);
         writer.WriteU32(static_cast<uint32>(textures.GetCount()));
         for (int i = 0; i < textures.GetCount(); ++i)
-            WriteMaterialTextureBinding(writer, textures[i]);
+            WriteResolvedTextureBinding(writer, textures[i]);
         writer.WriteU32(static_cast<uint32>(data.GetCount()));
         for (int i = 0; i < data.GetCount(); ++i)
             WriteMaterialDataBinding(writer, data[i]);
