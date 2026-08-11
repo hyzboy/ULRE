@@ -62,7 +62,7 @@ namespace hgl::graph::mtl
             && lhs.allow_fallback == rhs.allow_fallback;
     }
 
-    struct MaterialDataBinding
+    struct ResolvedDataBinding
     {
         uint64 logical_resource_id = 0;
         uint64 asset_identity_hash = 0;
@@ -81,8 +81,8 @@ namespace hgl::graph::mtl
     };
 
     inline bool operator==(
-        const MaterialDataBinding &lhs,
-        const MaterialDataBinding &rhs) noexcept
+        const ResolvedDataBinding &lhs,
+        const ResolvedDataBinding &rhs) noexcept
     {
         return lhs.logical_resource_id == rhs.logical_resource_id
             && lhs.asset_identity_hash == rhs.asset_identity_hash
@@ -109,7 +109,7 @@ namespace hgl::graph::mtl
         uint32 unused_recipe_texture_count = 0;
         uint32 unused_recipe_data_count = 0;
         ValueArray<ResolvedTextureBinding> textures;
-        ValueArray<MaterialDataBinding> data;
+        ValueArray<ResolvedDataBinding> data;
 
         bool IsValid() const noexcept;
         bool IsRuntimeReady() const noexcept;

@@ -52,7 +52,7 @@ namespace hgl::graph::mtl
                  && binding.required);
         }
 
-        bool IsValidDataBinding(const MaterialDataBinding &binding) noexcept
+        bool IsValidDataBinding(const ResolvedDataBinding &binding) noexcept
         {
             return binding.logical_resource_id != 0
                 && binding.asset_identity_hash != 0
@@ -88,7 +88,7 @@ namespace hgl::graph::mtl
         }
 
         uint64 HashDataMetadata(
-            const MaterialDataBinding &binding) noexcept
+            const ResolvedDataBinding &binding) noexcept
         {
             hgl::hash::FNV1aHasher64 h;
             h << binding.logical_resource_id
@@ -117,8 +117,8 @@ namespace hgl::graph::mtl
         }
 
         bool IsLess(
-            const MaterialDataBinding &lhs,
-            const MaterialDataBinding &rhs) noexcept
+            const ResolvedDataBinding &lhs,
+            const ResolvedDataBinding &rhs) noexcept
         {
             if (lhs.logical_resource_id != rhs.logical_resource_id)
                 return lhs.logical_resource_id < rhs.logical_resource_id;
@@ -155,9 +155,9 @@ namespace hgl::graph::mtl
             writer.WriteBool(binding.allow_fallback);
         }
 
-        void WriteMaterialDataBinding(
+        void WriteResolvedDataBinding(
             CanonicalContractWriter &writer,
-            const MaterialDataBinding &binding)
+            const ResolvedDataBinding &binding)
         {
             writer.WriteU64(binding.logical_resource_id);
             writer.WriteU64(binding.asset_identity_hash);
@@ -235,7 +235,7 @@ namespace hgl::graph::mtl
 
         for (int i = 0; i < view.data.GetCount(); ++i)
         {
-            const MaterialDataBinding &binding = view.data[i];
+            const ResolvedDataBinding &binding = view.data[i];
             if (!IsValidDataBinding(binding))
                 return false;
 
@@ -317,11 +317,11 @@ namespace hgl::graph::mtl
             {
                 return IsLess(lhs, rhs);
             });
-        ValueArray<MaterialDataBinding> data = view.data;
+        ValueArray<ResolvedDataBinding> data = view.data;
         contract_detail::CanonicalSort(
             data,
-            [](const MaterialDataBinding &lhs,
-               const MaterialDataBinding &rhs) noexcept
+            [](const ResolvedDataBinding &lhs,
+               const ResolvedDataBinding &rhs) noexcept
             {
                 return IsLess(lhs, rhs);
             });
@@ -339,7 +339,7 @@ namespace hgl::graph::mtl
             WriteResolvedTextureBinding(writer, textures[i]);
         writer.WriteU32(static_cast<uint32>(data.GetCount()));
         for (int i = 0; i < data.GetCount(); ++i)
-            WriteMaterialDataBinding(writer, data[i]);
+            WriteResolvedDataBinding(writer, data[i]);
         return true;
     }
 

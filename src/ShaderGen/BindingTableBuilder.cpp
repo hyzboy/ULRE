@@ -73,7 +73,7 @@ namespace hgl::graph::mtl
         }
 
         uint64 HashDataMetadata(
-            const MaterialDataBinding &binding) noexcept
+            const ResolvedDataBinding &binding) noexcept
         {
             hgl::hash::FNV1aHasher64 h;
             h << binding.logical_resource_id
@@ -133,7 +133,7 @@ namespace hgl::graph::mtl
             return nullptr;
         }
 
-        MaterialDataBinding *FindDataView(
+        ResolvedDataBinding *FindDataView(
             ResolvedBindingTable &view,
             const uint32 data_slot,
             const SSBOType ssbo_type) noexcept
@@ -212,10 +212,10 @@ namespace hgl::graph::mtl
             });
         }
 
-        void SortBindings(ValueArray<MaterialDataBinding> &bindings)
+        void SortBindings(ValueArray<ResolvedDataBinding> &bindings)
         {
-            contract_detail::CanonicalSort(bindings, [](const MaterialDataBinding &lhs,
-                                                        const MaterialDataBinding &rhs)
+            contract_detail::CanonicalSort(bindings, [](const ResolvedDataBinding &lhs,
+                                                        const ResolvedDataBinding &rhs)
             {
                 if (lhs.logical_resource_id != rhs.logical_resource_id)
                     return lhs.logical_resource_id < rhs.logical_resource_id;
@@ -330,11 +330,11 @@ namespace hgl::graph::mtl
                 {
                     const uint64 logical_resource_id =
                         ResolveDescriptorLogicalResourceID(entry, program_key_digest);
-                    MaterialDataBinding *binding =
+                    ResolvedDataBinding *binding =
                         FindDataView(out_view, entry.data_slot, entry.ssbo_type);
                     if (!binding)
                     {
-                        const int index = out_view.data.Add(MaterialDataBinding{});
+                        const int index = out_view.data.Add(ResolvedDataBinding{});
                         binding = &out_view.data[index];
                         binding->logical_resource_id = logical_resource_id;
                         binding->semantic = entry.semantic;
@@ -445,7 +445,7 @@ namespace hgl::graph::mtl
 
             for (int i = 0; i < out_view.data.GetCount(); ++i)
             {
-                MaterialDataBinding &view_binding = out_view.data[i];
+                ResolvedDataBinding &view_binding = out_view.data[i];
                 const int binding_index = FindRecipeData(
                     recipe,
                     view_binding.data_slot,
@@ -552,7 +552,7 @@ namespace hgl::graph::mtl
 
             for (int i = 0; i < binding_view.data.GetCount(); ++i)
             {
-                const MaterialDataBinding &view_binding = binding_view.data[i];
+                const ResolvedDataBinding &view_binding = binding_view.data[i];
                 if (view_binding.source == MaterialBindingSource::Omitted)
                     continue;
                 if (view_binding.source != MaterialBindingSource::Asset
@@ -657,7 +657,7 @@ namespace hgl::graph::mtl
 
         for (int i = 0; i < binding_view.data.GetCount(); ++i)
         {
-            const MaterialDataBinding &binding = binding_view.data[i];
+            const ResolvedDataBinding &binding = binding_view.data[i];
             if (binding.source != MaterialBindingSource::Asset)
                 continue;
 
