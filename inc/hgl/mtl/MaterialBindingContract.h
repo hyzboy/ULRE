@@ -191,7 +191,7 @@ namespace hgl::graph::mtl
         uint32 ssbo_id,
         uint32 data_slot) noexcept;
 
-    bool ValidateMaterialBindingView(
+    bool ValidateResolvedBindingTable(
         const ResolvedBindingTable &view) noexcept;
     bool ValidateMaterialResourceAcquirePlan(
         const ResourceAcquirePlan &plan) noexcept;

@@ -207,7 +207,7 @@ namespace hgl::graph::mtl
         return "Unknown";
     }
 
-    bool ValidateMaterialBindingView(
+    bool ValidateResolvedBindingTable(
         const ResolvedBindingTable &view) noexcept
     {
         if (view.schema_version != MaterialBindingContractSchemaVersion
@@ -306,7 +306,7 @@ namespace hgl::graph::mtl
         ValueArray<uint8> &out_bytes)
     {
         out_bytes.Clear();
-        if (!ValidateMaterialBindingView(view))
+        if (!ValidateResolvedBindingTable(view))
             return false;
 
         ValueArray<ResolvedTextureBinding> textures = view.textures;
@@ -442,7 +442,7 @@ namespace hgl::graph::mtl
 
     bool ResolvedBindingTable::IsValid() const noexcept
     {
-        return ValidateMaterialBindingView(*this);
+        return ValidateResolvedBindingTable(*this);
     }
 
     bool ResolvedBindingTable::IsRuntimeReady() const noexcept
