@@ -21,7 +21,7 @@ SET(SHADER_ARTIFACT_CONTRACT_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderStageKey.h
 ${SHADERGEN_INCLUDE_PATH}/ShaderKeyUtility.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderProgramKey.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderArtifactContract.h
-                                   ${SHADERGEN_INCLUDE_PATH}/ShaderStageBuildSpec.h
+                                   ${SHADERGEN_INCLUDE_PATH}/ShaderStageBuildContext.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderProgramLinkSpec.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderArtifactStore.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderProgramArtifactBuilder.h

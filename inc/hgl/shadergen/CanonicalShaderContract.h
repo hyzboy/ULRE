@@ -12,7 +12,7 @@ namespace hgl::graph::mtl {}
 #include <hgl/mtl/DescriptorKind.h>
 #include <hgl/mtl/DescriptorSemantic.h>
 #include <hgl/shadergen/ShaderSemanticRegistry.h>
-#include <hgl/shadergen/ShaderStageBuildSpec.h>
+#include <hgl/shadergen/ShaderStageBuildContext.h>
 #include <hgl/type/ValueArray.h>
 
 namespace hgl::graph::shadergen

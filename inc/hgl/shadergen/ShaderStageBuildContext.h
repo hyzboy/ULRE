@@ -89,7 +89,7 @@ namespace hgl::graph::shadergen
             h << values[static_cast<int>(i)];
     }
 
-    struct ShaderStageBuildSpec
+    struct ShaderStageBuildContext
     {
         ShaderStage stage = ShaderStage::Vertex;
         uint64 definition_hash = 0;
@@ -139,8 +139,8 @@ namespace hgl::graph::shadergen
         }
     };
 
-    inline bool HasCompatibleStageInterface(const ShaderStageBuildSpec &vertex,
-                                             const ShaderStageBuildSpec &fragment) noexcept
+    inline bool HasCompatibleStageInterface(const ShaderStageBuildContext &vertex,
+                                             const ShaderStageBuildContext &fragment) noexcept
     {
         for (int i = 0; i < fragment.inputs.GetCount(); ++i)
         {

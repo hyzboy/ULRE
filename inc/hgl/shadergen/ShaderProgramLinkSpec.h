@@ -4,7 +4,7 @@ namespace hgl::graph::mtl {}
 
 #include <hgl/CoreType.h>
 #include <hgl/shadergen/ShaderProgramKey.h>
-#include <hgl/shadergen/ShaderStageBuildSpec.h>
+#include <hgl/shadergen/ShaderStageBuildContext.h>
 
 namespace hgl::graph::shadergen
 {

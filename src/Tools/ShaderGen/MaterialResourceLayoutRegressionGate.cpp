@@ -1423,7 +1423,7 @@ namespace
         if (GetGLSLCodeModuleProviderGraphHash(changed_result) == first_hash)
             result.diagnostics.emplace_back("distinct provider graphs must hash differently");
 
-        ShaderStageBuildSpec stage{};
+        ShaderStageBuildContext stage{};
         stage.stage = ShaderStage::Vertex;
         const ShaderStageKey first_key = stage.BuildKeyWithProviderGraphHash(first_hash);
         const ShaderStageKey changed_key =
@@ -1486,11 +1486,11 @@ namespace
                     "provider source must be dependency-ordered and deduplicated");
         }
 
-        ShaderStageBuildSpec vertex{};
+        ShaderStageBuildContext vertex{};
         vertex.stage = ShaderStage::Vertex;
         vertex.outputs.Add({0, ShaderStageValueType::Vec3, 0, 0});
         vertex.outputs.Add({0, ShaderStageValueType::Vec2, 1, 0});
-        ShaderStageBuildSpec fragment{};
+        ShaderStageBuildContext fragment{};
         fragment.stage = ShaderStage::Fragment;
         fragment.inputs.Add({0, ShaderStageValueType::Vec3, 0, 0});
         fragment.inputs.Add({0, ShaderStageValueType::Vec2, 1, 0});
@@ -1517,7 +1517,7 @@ namespace
             VertexSemantic::Position, VF_V2F
         }};
 
-        ShaderStageBuildSpec stage{};
+        ShaderStageBuildContext stage{};
         stage.stage = ShaderStage::Vertex;
         stage.glsl_module_graph_hash = 0x13579bdf2468ace0ull;
         const ShaderStageKey stage_key = stage.BuildKey();
@@ -3380,7 +3380,7 @@ namespace
             result.diagnostics.emplace_back(
                 "transform graph source composition selected the wrong stage");
 
-        ShaderStageBuildSpec stage{};
+        ShaderStageBuildContext stage{};
         stage.stage = ShaderStage::Vertex;
         const ShaderStageKey flat_key =
             stage.BuildKeyWithProviderGraphHash(
