@@ -142,32 +142,6 @@ public:
         return(true);
     }
 
-    bool BindDescriptorSets(DescriptorSet *dsl)
-    {
-        if(!dsl)return(false);
-
-        pipeline_layout=dsl->GetPipelineLayout();
-
-        const VkDescriptorSet ds=dsl->GetDescriptorSet();
-
-        vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline_layout,0,1,&ds,0,nullptr);
-
-        return(true);
-    }
-
-    bool BindDescriptorSets(DescriptorSet *dsl,const uint32_t offset)
-    {
-        if(!dsl)return(false);
-
-        pipeline_layout=dsl->GetPipelineLayout();
-
-        const VkDescriptorSet ds=dsl->GetDescriptorSet();
-
-        vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline_layout,0,1,&ds,1,&offset);
-
-        return(true);
-    }
-
     bool BindDescriptorSets(VkPipelineLayout pipeline_layout,const uint32_t first_set,const VkDescriptorSet *ds_list,const uint32_t ds_count,const uint32_t *offset,const uint32_t offset_count)
     {
         if(!ds_list||ds_count<=0)return(false);
@@ -178,11 +152,6 @@ public:
     }
 
     bool BindDescriptorSets(ShaderProgram *);
-
-    bool PushDescriptorSet(VkPipelineLayout pipeline_layout,uint32_t set,uint32_t count,const VkWriteDescriptorSet *write_desc_set)
-    {
-        vkCmdPushDescriptorSetKHR(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline_layout,set,count,write_desc_set);
-    }
 
     void PushConstants(VkShaderStageFlagBits shader_stage_bit,uint32_t offset,uint32_t size,const void *pValues)
     {
@@ -248,16 +217,6 @@ public: //dynamic state
 
 public:
 
-    void Render(Primitive *ri)
-    {
-        if(!ri)return;
-
-        BindPipeline(ri->GetPipeline());
-        BindDescriptorSets(ri->GetShaderProgram());
-        BindDataBuffer(ri->GetDataBuffer());
-
-        Draw(ri->GetDataBuffer(),ri->GetRenderData());
-    }
 };//class RenderCmdBuffer:public VulkanCmdBuffer
 
 class TextureCmdBuffer:public VulkanCmdBuffer

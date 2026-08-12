@@ -13,18 +13,6 @@ namespace hgl::graph
 
 namespace hgl::ecs
 {
-    enum class MaterialRuntimeState : uint8
-    {
-        Unresolved = 0,
-        ProgramResolved,
-        ResourcesPending,
-        Ready,
-        Failed
-    };
-
-    const char *GetMaterialRuntimeStateName(
-        MaterialRuntimeState state) noexcept;
-
     class MaterialComponent : public Component
     {
     public:
@@ -48,21 +36,20 @@ namespace hgl::ecs
         std::vector<uint32_t> data_index_values;
 
         // Dirty/lifecycle flags.
+        // program_dirty — program (pipeline) must be re-resolved.
+        // runtime_dirty  — bindings/resources must be re-prepared and
+        //                  materialized for the current generation.
         bool program_dirty = true;
-        bool bindings_dirty = true;
-        bool resources_dirty = true;
+        bool runtime_dirty = true;
         bool valid = false;
-        MaterialRuntimeState runtime_state =
-            MaterialRuntimeState::Unresolved;
-        uint32_t runtime_revision = 0;
         uint64_t recipe_hash = 0;
         uint64_t program_build_context_hash = 0;
         graph::mtl::ResolvedBindingTable resolved_binding_table;
         std::vector<ResolvedSSBOBinding> resolved_ssbo_bindings;
 
         // Cached normalized recipe — avoids redundant NormalizeRecipe in CreatePipeline.
+        // Its validity is tracked by recipe_hash (same value that produced it).
         graph::mtl::MaterialRecipe cached_normalized_recipe{};
-        uint64_t cached_normalized_recipe_hash = 0;
 
         // P3: Cached effective recipe built with resolved program —
         // avoids redundant BuildResolvedRecipe in
@@ -96,10 +83,6 @@ namespace hgl::ecs
 
     public:
 
-        void MarkProgramDirty();
-        void MarkBindingsDirty();
-        void MarkResourcesDirty();
-        void MarkInvalid();
         void MarkValid();
         void MarkProgramResolved();
         void MarkResourcesPending();

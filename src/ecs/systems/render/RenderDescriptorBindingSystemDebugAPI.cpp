@@ -1,6 +1,4 @@
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
-#include<algorithm>
-#include<limits>
 
 namespace hgl::ecs
 {
@@ -42,30 +40,6 @@ namespace hgl::ecs
         for (const auto &pair : material_resource_bindings)
             binding_entries += static_cast<uint32_t>(pair.second.size());
 
-        return true;
-    #endif
-    }
-
-    bool RenderDescriptorBindingSystem::GetMaterialBindingKeys(const graph::ShaderProgram *material,
-                                                               std::vector<std::string> &out_keys) const
-    {
-        out_keys.clear();
-
-        if (!material)
-            return false;
-
-    #if !ULRE_ECS_DEBUG_API
-        return false;
-    #else
-        auto material_it = material_resource_bindings.find(material);
-        if (material_it == material_resource_bindings.end())
-            return false;
-
-        out_keys.reserve(material_it->second.size());
-        for (const auto &entry : material_it->second)
-            out_keys.push_back(entry.first);
-
-        std::sort(out_keys.begin(), out_keys.end());
         return true;
     #endif
     }

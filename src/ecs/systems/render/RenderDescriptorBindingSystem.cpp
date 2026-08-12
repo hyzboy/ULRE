@@ -35,27 +35,6 @@ namespace hgl::ecs
 {
     namespace
     {
-        void ResetMaterialRecipe(graph::mtl::MaterialRecipe &recipe)
-        {
-            recipe.recipe_name.clear();
-            recipe.mtl_def_id.clear();
-            recipe.domain.clear();
-            recipe.vertex_node_config = graph::mtl::MakeDefault3DNodeConfig();
-            recipe.material_lod = 0;
-            recipe.render_state_overrides.has_double_sided = true;
-            recipe.render_state_overrides.double_sided = false;
-            recipe.render_state_overrides.has_alpha_test = true;
-            recipe.render_state_overrides.alpha_test = false;
-            recipe.render_state_overrides.has_alpha_cutoff = true;
-            recipe.render_state_overrides.alpha_cutoff = 0.5f;
-            recipe.render_state_overrides.has_dither = true;
-            recipe.render_state_overrides.dither = false;
-            recipe.render_state_overrides.has_pipeline_config = true;
-            recipe.render_state_overrides.pipeline_config = graph::mtl::MaterialPipelineConfig{};
-            recipe.textures.clear();
-            recipe.ssbo_assets.clear();
-        }
-
         std::string ToBindingKey(const char *name)
         {
             return name ? std::string(name) : std::string();
@@ -219,20 +198,6 @@ namespace hgl::ecs
         return true;
     }
 
-    void RenderDescriptorBindingSystem::RemoveMaterialBinding(graph::ShaderProgram *material, const AnsiString &name)
-    {
-        if (!material || name.IsEmpty())
-            return;
-
-        auto material_it = material_resource_bindings.find(material);
-        if (material_it == material_resource_bindings.end())
-            return;
-
-        material_it->second.erase(ToBindingKey(name));
-        if (material_it->second.empty())
-            material_resource_bindings.erase(material_it);
-    }
-
     void RenderDescriptorBindingSystem::ClearMaterialBindings(graph::ShaderProgram *material)
     {
         if (!material)
@@ -365,14 +330,6 @@ namespace hgl::ecs
             materialization_writes_frame = context->GetFrameIndex();
 
         return true;
-    }
-
-    bool RenderDescriptorBindingSystem::RegisterBindlessTextureResource(const std::string &resource_id, uint32_t bindless_handle)
-    {
-        if (resource_id.empty() || bindless_handle == 0)
-            return false;
-
-        return materialization_texture_pool.RegisterWithHandle(resource_id, bindless_handle) != 0;
     }
 
     uint32_t RenderDescriptorBindingSystem::RegisterTexture2DResource(const std::string &resource_id,

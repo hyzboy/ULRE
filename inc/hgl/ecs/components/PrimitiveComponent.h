@@ -174,15 +174,12 @@ namespace hgl::ecs
         // Authoring entry: asset recipe is the default source, component recipe is the override source.
         // Runtime resolve/materialize is handled by ECS in later phases.
         void SetMaterialRecipe(const hgl::graph::mtl::MaterialRecipe &recipe);
-        const hgl::graph::mtl::MaterialRecipe *GetMaterialRecipe() const;
         const hgl::graph::mtl::MaterialRecipe *GetMaterialRecipeOverride() const;
         const hgl::graph::mtl::MaterialRecipe *GetAssetMaterialRecipe() const;
         bool BuildResolvedAuthoringMaterialRecipe(hgl::graph::mtl::MaterialRecipe &out_recipe,
                                                   const hgl::graph::ShaderProgram *material_program = nullptr) const;
-        bool HasMaterialRecipe() const { return GetMaterialRecipeOverride() != nullptr; }
         bool HasMaterialRecipeOverride() const { return GetMaterialRecipeOverride() != nullptr; }
         bool HasAnyMaterialRecipeSource() const { return GetMaterialRecipeOverride() != nullptr || GetAssetMaterialRecipe() != nullptr; }
-        void ClearMaterialRecipe();
         void SetMaterialTextureResource(hgl::graph::mtl::TextureSlot slot,
                                         hgl::graph::Texture *texture,
                                         hgl::graph::Sampler *sampler,
@@ -191,12 +188,6 @@ namespace hgl::ecs
                                         bool required = false);
         void SetMaterialTextureValue(hgl::graph::mtl::TextureSlot slot, uint32_t value);
         const MaterialTextureAuthoringResource *GetMaterialTextureResource(hgl::graph::mtl::TextureSlot slot) const;
-        void ClearMaterialTextureResource(hgl::graph::mtl::TextureSlot slot);
-        uint32_t GetMaterialDataSlotCount() const
-        {
-            return static_cast<uint32_t>(materialDataSlotResources.size());
-        }
-        const MaterialDataSlotAuthoringResource *GetMaterialDataSlotResourceAt(uint32_t index) const;
         void SetMaterialDataSlotResource(const MaterialDataSlotAuthoringResource &resource);
         const MaterialDataSlotAuthoringResource *GetMaterialDataSlotResource(
             const std::string &data_slot_name,

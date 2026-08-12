@@ -285,11 +285,6 @@ namespace hgl::ecs
         ++material_authored_generation;
     }
 
-    const hgl::graph::mtl::MaterialRecipe *PrimitiveComponent::GetMaterialRecipe() const
-    {
-        return GetMaterialRecipeOverride();
-    }
-
     const hgl::graph::mtl::MaterialRecipe *PrimitiveComponent::GetMaterialRecipeOverride() const
     {
         if (hasMaterialRecipeOverride)
@@ -403,15 +398,6 @@ namespace hgl::ecs
         return true;
     }
 
-    void PrimitiveComponent::ClearMaterialRecipe()
-    {
-        InvalidateResolvedRuntimePipeline();
-        ResetMaterialRecipe(materialRecipeOverride);
-        hasMaterialRecipeOverride = false;
-        ClearMaterialAuthoringResources();
-        ++material_authored_generation;
-    }
-
     void PrimitiveComponent::SetMaterialTextureResource(hgl::graph::mtl::TextureSlot slot,
                                                         hgl::graph::Texture *texture,
                                                         hgl::graph::Sampler *sampler,
@@ -463,16 +449,6 @@ namespace hgl::ecs
         return (resource.use_direct_value || (resource.texture && resource.sampler)) ? &resource : nullptr;
     }
 
-    void PrimitiveComponent::ClearMaterialTextureResource(hgl::graph::mtl::TextureSlot slot)
-    {
-        const size_t index = static_cast<size_t>(slot);
-        if (index >= materialTextureResources.size())
-            return;
-
-        ResetMaterialTextureAuthoringResource(materialTextureResources[index]);
-        ++material_authored_generation;
-    }
-
     void PrimitiveComponent::SetMaterialDataSlotResource(const MaterialDataSlotAuthoringResource &resource)
     {
         if (!hgl::graph::mtl::IsValidMaterialDataSlotName(resource.data_slot_name))
@@ -500,16 +476,6 @@ namespace hgl::ecs
         authored_resource.authored = true;
         materialDataSlotResources.emplace_back(std::move(authored_resource));
         ++material_authored_generation;
-    }
-
-    const PrimitiveComponent::MaterialDataSlotAuthoringResource *
-        PrimitiveComponent::GetMaterialDataSlotResourceAt(const uint32_t index) const
-    {
-        if (index >= materialDataSlotResources.size())
-            return nullptr;
-
-        const auto &resource = materialDataSlotResources[index];
-        return resource.authored ? &resource : nullptr;
     }
 
     const PrimitiveComponent::MaterialDataSlotAuthoringResource *

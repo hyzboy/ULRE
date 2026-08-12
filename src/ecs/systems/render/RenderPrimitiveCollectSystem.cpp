@@ -67,12 +67,11 @@ namespace hgl::ecs
             auto *material = material_comp->program;
             if (!material)
             {
-                GLogError("[RenderPrimitiveCollectSystem] EnsureRuntimeGeometryFromAsset failed: material program null owner=%s valid=%d program_dirty=%d bindings_dirty=%d resources_dirty=%d",
+                GLogError("[RenderPrimitiveCollectSystem] EnsureRuntimeGeometryFromAsset failed: material program null owner=%s valid=%d program_dirty=%d runtime_dirty=%d",
                           GetPrimitiveOwnerName(primitive_comp),
                           material_comp->valid ? 1 : 0,
                           material_comp->program_dirty ? 1 : 0,
-                          material_comp->bindings_dirty ? 1 : 0,
-                          material_comp->resources_dirty ? 1 : 0);
+                          material_comp->runtime_dirty ? 1 : 0);
                 return false;
             }
             return primitive_comp->EnsureRuntimeGeometryBinding(material);
@@ -548,11 +547,8 @@ namespace hgl::ecs
                 return;
 
             material_comp->ClearMaterializationInstanceData();
-            material_comp->bindings_dirty = true;
-            material_comp->resources_dirty = true;
+            material_comp->runtime_dirty = true;
             material_comp->valid = false;
-            material_comp->runtime_state =
-                MaterialRuntimeState::Unresolved;
 
             if (clear_program)
             {
@@ -647,12 +643,12 @@ namespace hgl::ecs
             // Generation may have advanced without changing the recipe/program
             // content (e.g. an author swapped a texture or data object but kept
             // the same resource id). Refresh the tracked generation and flag
-            // resources dirty so PrepareActivePlanResources re-registers the
+            // runtime dirty so PrepareActivePlanResources re-registers the
             // current resource objects on the next Update.
             if (material_comp->tracked_material_authored_generation
                 != primitive_comp->GetMaterialAuthoredGeneration())
             {
-                material_comp->resources_dirty = true;
+                material_comp->runtime_dirty = true;
                 material_comp->tracked_material_authored_generation =
                     primitive_comp->GetMaterialAuthoredGeneration();
             }
@@ -784,7 +780,6 @@ namespace hgl::ecs
             graph::mtl::MaterialRecipe cached_recipe = effective_recipe;
             graph::mtl::NormalizeRecipe(cached_recipe);
             material_comp->cached_normalized_recipe = std::move(cached_recipe);
-            material_comp->cached_normalized_recipe_hash = recipe_hash;
         }
 
         // P3: Cache effective recipe (with program-resolved SSBO types)
@@ -837,7 +832,7 @@ namespace hgl::ecs
 
         // Reuse cached normalized recipe when effective recipe hasn't changed
         // since it was last normalized in ResolveMaterialProgramForPrimitive.
-        if (material_comp->cached_normalized_recipe_hash
+        if (material_comp->recipe_hash
          == material_comp->cached_effective_recipe_hash)
             effective_recipe = material_comp->cached_normalized_recipe;
 
@@ -879,8 +874,7 @@ namespace hgl::ecs
             material_comp->texture_layer_row = 0;
             material_comp->data_index_row = 0;
             material_comp->data_index_values.clear();
-            material_comp->bindings_dirty = false;
-            material_comp->resources_dirty = false;
+            material_comp->runtime_dirty = false;
             material_comp->valid = false;
             return true;
         }
@@ -1029,8 +1023,7 @@ namespace hgl::ecs
         instance_data.data_index_row = data_index_row;
         material_comp->texture_layer_row = instance_data.texture_layer_row;
         material_comp->data_index_row = instance_data.data_index_row;
-        material_comp->bindings_dirty = false;
-        material_comp->resources_dirty = false;
+        material_comp->runtime_dirty = false;
         material_comp->valid = false;
         material_comp->last_materialize_epoch = materialize_epoch;
         return true;
@@ -1137,15 +1130,15 @@ namespace hgl::ecs
             // materialize+geometry+pipeline chain, so a Failed material keeps
             // retrying every frame instead of being silently skipped.
             //
-            // bindings_dirty/resources_dirty are normally cleared at the end
-            // of a successful materialize, so at pre-scan time a clean material
-            // has both false. They can only be set here if the generation
-            // advanced in the middle of the previous frame's loop (a race that
-            // leaves them unconsumed) — forcing them into needs_work makes the
-            // next frame re-run the full chain so the flags get consumed.
+            // runtime_dirty is normally cleared at the end of a successful
+            // materialize, so at pre-scan time a clean material has it false.
+            // It can only be set here if the generation advanced in the middle
+            // of the previous frame's loop (a race that leaves it unconsumed)
+            // — forcing it into needs_work makes the next frame re-run the full
+            // chain so the flag gets consumed.
             const bool needs_work =
                 !fast_path_holds || epoch_stale || !material_comp->valid
-             || material_comp->bindings_dirty || material_comp->resources_dirty;
+             || material_comp->runtime_dirty;
 
             any_material_work |= needs_work;
             any_possible_runtime_rows_visible |= possible_runtime_rows;
@@ -1295,10 +1288,9 @@ namespace hgl::ecs
                     {
                         material_comp->MarkValid();
                         GLogVerbose(
-                            "[DeferredResource] owner=%s state=%s table=%llu",
+                            "[DeferredResource] owner=%s valid=%d table=%llu",
                             GetPrimitiveOwnerName(primitiveComp),
-                            GetMaterialRuntimeStateName(
-                                material_comp->runtime_state),
+                            material_comp->valid ? 1 : 0,
                             static_cast<unsigned long long>(
                                 material_comp->resolved_binding_table.
                                     GetStableHash()));

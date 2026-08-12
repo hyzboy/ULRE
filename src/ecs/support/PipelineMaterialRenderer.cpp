@@ -26,8 +26,6 @@ namespace hgl::ecs
         , cmd_buf(nullptr)
         , vab_list(new graph::VABList(m->GetVertexInput()->GetCount()))
         , last_data_buffer(nullptr)
-        , last_vdm(nullptr)
-        , last_draw_range(nullptr)
         , first_indirect_draw_index(-1)
         , indirect_draw_count(0)
     {
@@ -105,7 +103,6 @@ namespace hgl::ecs
 
             // 更新缓冲状态
             last_data_buffer = batch->geom_data_buffer;
-            last_draw_range = nullptr;
 
             // 绑定新的顶点数组缓冲
             if (!BindVAB(batch))
@@ -168,8 +165,6 @@ namespace hgl::ecs
 
         // 重置渲染状态缓存
         last_data_buffer = nullptr;
-        last_vdm = nullptr;
-        last_draw_range = nullptr;
         indirect_draw_count = 0;
         first_indirect_draw_index = -1;
 

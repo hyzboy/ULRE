@@ -124,8 +124,6 @@ namespace hgl::ecs
                                         uint32_t &fallback_hits) const;
         bool GetMaterialBindingRegistryStats(uint32_t &materials_registered,
                              uint32_t &binding_entries) const;
-        bool GetMaterialBindingKeys(const graph::ShaderProgram *material,
-                        std::vector<std::string> &out_keys) const;
         bool RegisterMaterialTexture(graph::ShaderProgram *material,
                          const AnsiString &name,
                          graph::Texture *texture);
@@ -133,7 +131,6 @@ namespace hgl::ecs
                             const AnsiString &name,
                             graph::Texture *texture,
                             graph::Sampler *sampler);
-        void RemoveMaterialBinding(graph::ShaderProgram *material, const AnsiString &name);
         void ClearMaterialBindings(graph::ShaderProgram *material);
         void RegisterPipelineMaterial(graph::ShaderProgram *material);
         void UnregisterPipelineMaterial(graph::ShaderProgram *material);
@@ -147,18 +144,6 @@ namespace hgl::ecs
                                    uint32_t *out_texture_layer_row = nullptr,
                                    uint32_t *out_data_index_row = nullptr,
                                    graph::mtl::MaterializationInstanceData *out_instance_data = nullptr);
-
-        /**
-         * 向 bindless 纹理池预注册一个逻辑资源 ID 与 bindless handle 的映射。
-         * 必须在调用 ResolveMaterialRecipe 之前调用，以确保 recipe 中的 resource_id
-         * 能被正确解析为 bindless handle。
-         *
-         * 典型用法：
-         *   uint32_t handle = bindless_mgr->Register2D(tex, sampler);
-         *   rdbs->RegisterBindlessTextureResource("Albedo", handle);
-         *   // 然后 recipe.textures[i].resource_id = "Albedo"
-         */
-        bool RegisterBindlessTextureResource(const std::string &resource_id, uint32_t bindless_handle);
 
         /**
          * 便利版本：同时向 BindlessTextureManager 注册 Vulkan 侧描述符并预注册 pool 映射。

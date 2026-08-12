@@ -149,7 +149,6 @@ namespace hgl
             uint32_t frame_index = 0;
             bool descriptor_contract_diag_log_enabled = false;
             uint64_t descriptor_contract_diag_last_log_ms = 0;
-            bool material_binding_query_log_enabled = false;
             uint32_t filtered_entity_count_last_frame = 0;
 
             /// Unified render pipeline registry: name → RenderPipelineBase
@@ -355,12 +354,6 @@ namespace hgl
             SystemProfiler& GetSystemProfiler() { return profiler; }
             const SystemProfiler& GetSystemProfiler() const { return profiler; }
 
-            bool GetDescriptorContractDiagnostics(uint32_t &materials_checked,
-                                                 uint32_t &materials_unresolved,
-                                                 uint32_t &required_missing,
-                                                 uint32_t &optional_missing,
-                                                 uint32_t &fallback_hits) const;
-
             bool GetDescriptorContractDiagnosticsExtended(uint32_t &materials_checked,
                                                          uint32_t &materials_unresolved,
                                                          uint32_t &required_missing,
@@ -368,18 +361,6 @@ namespace hgl
                                                          uint32_t &fallback_hits,
                                                          uint32_t &materials_registered,
                                                          uint32_t &binding_entries) const;
-
-            bool GetMaterialBindingRegistryStats(uint32_t &materials_registered,
-                                                 uint32_t &binding_entries) const;
-
-            bool GetMaterialBindingKeys(const hgl::graph::ShaderProgram *material,
-                                        std::vector<std::string> &out_keys) const;
-
-            bool GetMaterialBindingKeysByName(const AnsiString &material_name,
-                                              std::vector<std::string> &out_keys) const;
-
-            void SetMaterialBindingQueryLogEnabled(bool enabled) { material_binding_query_log_enabled = enabled; }
-            bool IsMaterialBindingQueryLogEnabled() const { return material_binding_query_log_enabled; }
 
             void SetDescriptorContractDiagnosticsLogEnabled(bool enabled) { descriptor_contract_diag_log_enabled = enabled; }
             bool IsDescriptorContractDiagnosticsLogEnabled() const { return descriptor_contract_diag_log_enabled; }

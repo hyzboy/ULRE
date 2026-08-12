@@ -3,99 +3,29 @@
 
 namespace hgl::ecs
 {
-    const char *GetMaterialRuntimeStateName(
-        const MaterialRuntimeState state) noexcept
-    {
-        switch (state)
-        {
-        case MaterialRuntimeState::Unresolved:
-            return "Unresolved";
-        case MaterialRuntimeState::ProgramResolved:
-            return "ProgramResolved";
-        case MaterialRuntimeState::ResourcesPending:
-            return "ResourcesPending";
-        case MaterialRuntimeState::Ready:
-            return "Ready";
-        case MaterialRuntimeState::Failed:
-            return "Failed";
-        }
-        return "Unknown";
-    }
-
     MaterialComponent::MaterialComponent(const std::string &name)
         : Component(name)
     {
     }
 
-    void MaterialComponent::MarkProgramDirty()
-    {
-        program_dirty = true;
-        valid = false;
-        runtime_state = MaterialRuntimeState::Unresolved;
-        ClearMaterializationInstanceData();
-        ClearResolvedSSBOBindings();
-        ClearResolvedBindingTable();
-        cached_normalized_recipe = {};
-        cached_normalized_recipe_hash = 0;
-        cached_effective_recipe = {};
-        cached_effective_recipe_hash = 0;
-        tracked_material_authored_generation = 0;
-        ++runtime_revision;
-    }
-
-    void MaterialComponent::MarkBindingsDirty()
-    {
-        bindings_dirty = true;
-        valid = false;
-        runtime_state = MaterialRuntimeState::Unresolved;
-        ClearMaterializationInstanceData();
-        ClearResolvedSSBOBindings();
-        ClearResolvedBindingTable();
-        ++runtime_revision;
-    }
-
-    void MaterialComponent::MarkResourcesDirty()
-    {
-        resources_dirty = true;
-        valid = false;
-        runtime_state = MaterialRuntimeState::ResourcesPending;
-        ClearMaterializationInstanceData();
-        ClearResolvedSSBOBindings();
-        ++runtime_revision;
-    }
-
-    void MaterialComponent::MarkInvalid()
-    {
-        valid = false;
-        runtime_state = MaterialRuntimeState::Failed;
-        ClearMaterializationInstanceData();
-        ClearResolvedSSBOBindings();
-        ClearResolvedBindingTable();
-        ++runtime_revision;
-    }
-
     void MaterialComponent::MarkValid()
     {
         valid = true;
-        runtime_state = MaterialRuntimeState::Ready;
     }
 
     void MaterialComponent::MarkProgramResolved()
     {
         valid = false;
-        runtime_state = MaterialRuntimeState::ProgramResolved;
     }
 
     void MaterialComponent::MarkResourcesPending()
     {
         valid = false;
-        runtime_state = MaterialRuntimeState::ResourcesPending;
     }
 
     void MaterialComponent::MarkFailed()
     {
         valid = false;
-        runtime_state = MaterialRuntimeState::Failed;
     }
 
     void MaterialComponent::ClearResolvedSSBOBindings()
@@ -173,10 +103,8 @@ namespace hgl::ecs
     void MaterialComponent::OnAttach()
     {
         program_dirty = true;
-        bindings_dirty = true;
-        resources_dirty = true;
+        runtime_dirty = true;
         valid = false;
-        runtime_state = MaterialRuntimeState::Unresolved;
         recipe_hash = 0;
         cached_effective_recipe = {};
         cached_effective_recipe_hash = 0;
@@ -190,13 +118,10 @@ namespace hgl::ecs
     {
         program = nullptr;
         program_dirty = true;
-        bindings_dirty = true;
-        resources_dirty = true;
+        runtime_dirty = true;
         valid = false;
-        runtime_state = MaterialRuntimeState::Unresolved;
         recipe_hash = 0;
         cached_normalized_recipe = {};
-        cached_normalized_recipe_hash = 0;
         cached_effective_recipe = {};
         cached_effective_recipe_hash = 0;
         tracked_material_authored_generation = 0;

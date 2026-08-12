@@ -76,8 +76,6 @@ namespace hgl::ecs
         graph::VABList* vab_list;                           ///<顶点属性缓冲列表
 
         const graph::GeometryDataBuffer* last_data_buffer;  ///<上次绑定的几何数据缓冲
-        const graph::VDM* last_vdm;                         ///<上次使用的顶点数据管理器
-        const graph::GeometryDrawRange* last_draw_range;    ///<上次使用的绘制范围
 
         int first_indirect_draw_index;                      ///<首个间接绘制索引
         uint32_t indirect_draw_count;                       ///<累积的间接绘制数量
