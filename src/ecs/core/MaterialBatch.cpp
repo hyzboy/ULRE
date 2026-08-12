@@ -52,6 +52,13 @@ namespace hgl::ecs
             else
                 delete material_data_index_rows_buffer;
         }
+        if (texture_layer_rows_buffer)
+        {
+            if (buffer_manager)
+                buffer_manager->Release(texture_layer_rows_buffer);
+            else
+                delete texture_layer_rows_buffer;
+        }
         if (renderer)
             delete renderer;
     }
@@ -62,8 +69,6 @@ namespace hgl::ecs
         static_count = 0;
         draw_batches.clear();
         draw_batches_count = 0;
-        texture_slot_handles.fill(0);
-        has_texture_slot_handles = false;
         descriptor_bind_valid = true;
 
         has_batch_descriptor_overrides = false;

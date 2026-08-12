@@ -1683,7 +1683,7 @@ generated_source_digest
 - `MaterialResourceLayout`
   - 作为 ShaderInterfaceContract 的物理 descriptor layout 结果。
 - `MaterializationSpec` 与 Pools
-  - 收敛为 MaterialBindingPlan 和实例数据实现。
+  - 已收敛为单一绑定 IR `ResolvedBindingTable`（D1 落地，`MaterializationSpec/MaterializationResolver/MaterializationPools` 整套已删除，`MaterializeRecipeRowsForPrimitive` 由 `resolved_ssbo_bindings` 直接驱动）。
 - `ShaderStageKey`、`ShaderProgramKey`、`ShaderArtifactContract`
   - 按 Contract 分层补齐。
 - ECS 材质质量状态

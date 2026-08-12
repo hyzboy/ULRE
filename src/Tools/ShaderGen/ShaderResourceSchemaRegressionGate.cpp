@@ -584,38 +584,29 @@ namespace
                     "Binding Table Asset projection must include only active loadable resources");
             }
         }
-        MaterializationResolveCallbacks projection_callbacks{};
-        projection_callbacks.resolve_texture =
-            [](const RecipeTextureBinding &input,
-               ResolvedResource &output)
+        // Single-IR projection: the Custom0 direct value must survive the
+        // recipe -> binding table -> projected recipe round trip.
+        // ResolvedBindingTable is the sole output channel, so the projected
+        // spec / TextureLayerRow legacy path is gone.
+        bool projected_layer_retained = false;
+        for (int i = 0;
+             i < binding_table.textures.GetCount();
+             ++i)
+        {
+            const ResolvedTextureBinding &binding =
+                binding_table.textures[i];
+            if (binding.texture_slot == TextureSlot::Custom0
+             && binding.source == BindingSource::DirectValue
+             && binding.direct_value == 7)
             {
-                output.slot = input.slot;
-                output.bindless_handle = input.use_direct_value
-                    ? input.direct_value : 5;
-                output.texture_layer = output.bindless_handle;
-                return true;
-            };
-        projection_callbacks.resolve_struct =
-            [](const RecipeSSBOAssetBinding &input,
-               ResolvedStructRef &output)
-            {
-                output.data_slot = input.data_slot;
-                output.ssbo_type = input.ssbo_type;
-                output.ssbo_id = input.ssbo_id;
-                output.data_index = input.data_index;
-                output.byte_stride = 16;
-                return true;
-            };
-        MaterializationSpec projected_spec{};
-        if (!ResolveMaterializationSpec(
-                projected_recipe,
-                projection_callbacks,
-                projected_spec)
-         || BuildTextureLayerRow(projected_spec).
-                values[static_cast<size_t>(TextureSlot::Custom0)] != 7)
+                projected_layer_retained = true;
+                break;
+            }
+        }
+        if (!projected_layer_retained)
         {
             result.diagnostics.emplace_back(
-                "TextureLayerRow must retain the active direct layer value");
+                "Binding Table must retain the active direct layer value");
         }
 
         MaterialRecipe zero_id_recipe = recipe;
@@ -2454,6 +2445,39 @@ namespace
         GateResult result;
         result.name = "D1.materialization-shared-instance-separation";
 
+        ShaderProgramKey program_key{};
+        program_key.vertex_stage_digest = 0x7201u;
+        program_key.fragment_stage_digest = 0x7202u;
+        program_key.resource_layout_hash = 0x7203u;
+        program_key.vertex_input_hash = 0x7204u;
+
+        ShaderResourceSchema layout{};
+        ShaderResourceSlot texture_resources{};
+        texture_resources.logical_resource_id =
+            StableID("resource.base_color");
+        texture_resources.resource_schema_id =
+            StableID("schema.sampler2D");
+        texture_resources.semantic =
+            DescriptorSemantic::MaterialSampler;
+        texture_resources.kind = DescriptorKind::TextureSampler;
+        texture_resources.texture_slot = TextureSlot::BaseColor;
+        texture_resources.required = true;
+        layout.resources.push_back(texture_resources);
+
+        ShaderResourceSlot data_resources{};
+        data_resources.logical_resource_id =
+            StableID("resource.material_data");
+        data_resources.resource_schema_id =
+            StableID("schema.PBRSurface");
+        data_resources.semantic =
+            DescriptorSemantic::MaterialDataSlotData;
+        data_resources.kind = DescriptorKind::SSBO;
+        data_resources.data_slot = 0;
+        data_resources.ssbo_type = SSBOType::PBRSurface;
+        data_resources.required = true;
+        data_resources.allow_fallback = false;
+        layout.resources.push_back(data_resources);
+
         MaterialRecipe recipe;
         recipe.recipe_name = "shared-instance-regression";
 
@@ -2471,90 +2495,45 @@ namespace
         asset.use_data_index = true;
         recipe.ssbo_assets.emplace_back(asset);
 
-        MaterializationResolveCallbacks callbacks{};
-        callbacks.resolve_texture = [](const RecipeTextureBinding &input, ResolvedResource &output)
+        ResolvedBindingTable binding_table{};
+        BindingBuildDiagnostic diagnostic{};
+        if (!BuildBindingTable(
+                recipe,
+                layout,
+                program_key,
+                binding_table,
+                diagnostic)
+         || binding_table.data.GetCount() != 1
+         || binding_table.data[0].data_index != 3
+         || !binding_table.data[0].use_data_index)
         {
-            output.slot = input.slot;
-            output.bindless_handle = input.direct_value;
-            output.texture_layer = input.direct_value;
-            return true;
-        };
-        callbacks.resolve_struct = [](const RecipeSSBOAssetBinding &input, ResolvedStructRef &output)
-        {
-            output.data_slot = input.data_slot;
-            output.ssbo_type = input.ssbo_type;
-            output.ssbo_id = input.ssbo_id;
-            output.data_index = input.data_index;
-            return true;
-        };
-
-        MaterializationSharedSpec shared;
-        if (!ResolveMaterializationSharedSpec(recipe, callbacks, shared))
-        {
-            result.diagnostics.emplace_back("shared resolve failed");
+            result.diagnostics.emplace_back(
+                std::string("shared resolve failed: ")
+                + GetBindingBuildErrorName(
+                    diagnostic.error));
             result.passed = false;
             return result;
         }
 
-        const MaterializationSpec first = MaterializeMaterializationInstance(shared, recipe);
+        // Instance separation: changing the per-instance data_index must not
+        // leak into the shared recipe identity (HashMaterialRecipe), while
+        // the resolved binding table must still carry the new data_index.
         recipe.ssbo_assets[0].data_index = 9;
-        const MaterializationSpec second = MaterializeMaterializationInstance(shared, recipe);
-
-        if (shared.spec.struct_refs.empty()
-         || shared.spec.struct_refs[0].data_index != 0
-         || first.struct_refs[0].data_index != 3
-         || second.struct_refs[0].data_index != 9)
-            result.diagnostics.emplace_back("instance data_index leaked into shared spec");
-
-        MaterializationIndexTables tables;
-        uint32_t first_texture_row = 0;
-        uint32_t first_data_row = 0;
-        uint32_t second_texture_row = 0;
-        uint32_t second_data_row = 0;
-        WriteSpecToIndexTables(first, tables, first_texture_row, first_data_row);
-        WriteSpecToIndexTables(second, tables, second_texture_row, second_data_row);
-
-        const auto *first_data = tables.GetMaterialDataIndexRow(first_data_row);
-        const auto *second_data = tables.GetMaterialDataIndexRow(second_data_row);
-        if (first_texture_row == second_texture_row
-         || first_data_row == second_data_row
-         || !first_data || !second_data
-         || first_data->values[DefaultMaterialDataSlot] != 3
-         || second_data->values[DefaultMaterialDataSlot] != 9)
-            result.diagnostics.emplace_back("instance rows were not written independently");
-
-        MaterializationInstanceData first_instance = MakeMaterializationInstanceData(first);
-        MaterializationInstanceData second_instance = MakeMaterializationInstanceData(second);
-        MaterializationIndexTables instance_tables;
-        uint32_t first_instance_texture_row = 0;
-        uint32_t first_instance_data_row = 0;
-        uint32_t second_instance_texture_row = 0;
-        uint32_t second_instance_data_row = 0;
-        WriteMaterializationInstanceToIndexTables(
-            shared.spec,
-            first_instance,
-            instance_tables,
-            first_instance_texture_row,
-            first_instance_data_row);
-        WriteMaterializationInstanceToIndexTables(
-            shared.spec,
-            second_instance,
-            instance_tables,
-            second_instance_texture_row,
-            second_instance_data_row);
-
-        const auto *first_instance_data =
-            instance_tables.GetMaterialDataIndexRow(first_instance_data_row);
-        const auto *second_instance_data =
-            instance_tables.GetMaterialDataIndexRow(second_instance_data_row);
-        if (first_instance.texture_layer_row != first_instance_texture_row
-         || first_instance.data_index_row != first_instance_data_row
-         || second_instance.texture_layer_row != second_instance_texture_row
-         || second_instance.data_index_row != second_instance_data_row
-         || !first_instance_data || !second_instance_data
-         || first_instance_data->values[DefaultMaterialDataSlot] != 3
-         || second_instance_data->values[DefaultMaterialDataSlot] != 9)
-            result.diagnostics.emplace_back("explicit instance data was not wired to index tables");
+        ResolvedBindingTable changed_table{};
+        if (!BuildBindingTable(
+                recipe,
+                layout,
+                program_key,
+                changed_table,
+                diagnostic)
+         || changed_table.data.GetCount() != 1
+         || changed_table.data[0].data_index != 9)
+        {
+            result.diagnostics.emplace_back(
+                "instance data_index was not projected into the binding table");
+            result.passed = false;
+            return result;
+        }
 
         recipe.ssbo_assets[0].data_index = 3;
         const uint64_t first_recipe_hash = HashMaterialRecipe(recipe);

@@ -6,6 +6,8 @@
 > 旧文档 `doc/SimplifiedMaterialSystem_Design.md`(_5th 分支)是历史记录,与本文冲突时**以本文为准**。
 >
 > 状态:**草案 v4 —— 待 Phase 1 落地验证**
+>
+> **D1 收敛说明(当前分支已落地):** 本文描述的 `MaterializationSpec` / `MaterializationResolver` / `MaterializationPools` 旧物化体系已整体删除。下游 `MaterializeRecipeRowsForPrimitive` 现直接由单一绑定 IR `ResolvedBindingTable`(`inc/hgl/mtl/MaterialBindingContract.h`,由 `ShaderGen/BindingTableBuilder` 构建)驱动,唯一合法 SSBO 输出通道为 `resolved_ssbo_bindings`。本文保留为历史设计参考:**Recipe 语义(§4)与 shader 侧三个语义契约(`MaterialTextureLayerTable` / `MaterialDataIndexTable` / `MaterialDataSlotData`,§6.2)仍有效,其数据源已由旧的 index_tables 上传迁移到 resolved_ssbo_bindings 直接驱动**。
 
 ---
 
@@ -236,6 +238,8 @@ struct MaterialRecipe {
 ---
 
 ## 5. Materialization Spec(IR 契约)
+
+> **D1 已删除此 IR。** 其职责已由 `ResolvedBindingTable`(见 `inc/hgl/mtl/MaterialBindingContract.h`)承接。本节保留为历史契约描述,供理解 shader 侧消费语义。
 
 Spec 是**机器决断的表达**,自包含、无歧义。它是前后端防火墙,也是 shader 缓存键。
 

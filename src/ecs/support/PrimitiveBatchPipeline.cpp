@@ -14,7 +14,6 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/mtl/MaterialRecipe.h>
-#include<hgl/mtl/MaterializationPools.h>
 #include<hgl/object/ObjectTracker.h>
 #include<hgl/util/hash/FNV1a.h>
 #include<hgl/vk/VKDevice.h>
@@ -35,29 +34,6 @@ namespace hgl::ecs
 {
     namespace
     {
-        constexpr uint32_t InvalidBatchDataIndexRow = uint32_t(-1);
-
-        bool MaterialRequiresRecipeRuntimeRows(const graph::ShaderProgram *material)
-        {
-            if (!material)
-                return false;
-
-            for (const auto &req : material->GetShaderResourceSchema().resources)
-            {
-                switch (req.semantic)
-                {
-                    case graph::mtl::DescriptorSemantic::MaterialDataSlotData:
-                    case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
-                    case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
-                        return true;
-                    default:
-                        break;
-                }
-            }
-
-            return false;
-        }
-
         bool BatchRequiresIndirectCommands(const MaterialBatch &batch)
         {
             for (auto *item : batch.items)
@@ -106,26 +82,6 @@ namespace hgl::ecs
             indexed_draw_cmd->firstIndex = batch->geom_draw_range->first_index;
             indexed_draw_cmd->vertexOffset = batch->geom_draw_range->vertex_offset;
             indexed_draw_cmd->firstInstance = batch->first_instance;
-        }
-
-        uint32_t ResolveMaterialDataIndexRow(RenderItem *item)
-        {
-            if (!item)
-                return 0;
-
-            if (auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(item))
-            {
-                auto material_comp = primitive_item->GetMaterialComponent();
-                if (material_comp)
-                {
-                    if (material_comp->data_index_row != uint32_t(-1))
-                        return material_comp->data_index_row;
-                }
-
-                return InvalidBatchDataIndexRow;
-            }
-
-            return 0;
         }
 
         uint64_t ResolveSSBOBindingSignature(RenderItem *item)
@@ -638,7 +594,8 @@ namespace hgl::ecs
         }
 
         // Per-batch DataIndex rows SSBO — shader consumes fixed-width rows by instance index.
-        if (MaterialRequiresRecipeRuntimeRows(batch.key.shader_program))
+        if (batch.key.shader_program
+            && graph::mtl::MaterialRequiresRecipeRuntimeRows(batch.key.shader_program->GetShaderResourceSchema()))
         {
             if (!batch.material_data_index_rows_buffer || batch.material_data_index_rows_capacity < item_count)
             {
@@ -660,6 +617,60 @@ namespace hgl::ecs
                         * graph::mtl::MaterialDataIndexRowStride * sizeof(uint32_t);
                     batch.material_data_index_rows_buffer = batch.buffer_manager->CreateSSBO(
                         "ECS:Batch:MaterialDataIndexRows", byte_size, nullptr, graph::SharingMode::Exclusive);
+                }
+            }
+        }
+
+        // Per-batch texture layer rows SSBO — each row holds one bindless handle
+        // per TextureSlot, keyed by the item's data_index VALUE (shader:
+        // mtl_texture_layer_rows.values[iid * TEXTURE_SLOT_RANGE_SIZE + slot]).
+        if (batch.key.shader_program
+            && graph::mtl::MaterialRequiresRecipeRuntimeRows(batch.key.shader_program->GetShaderResourceSchema()))
+        {
+            uint32_t max_texture_layer_row = 0;
+            for (auto *item : batch.items)
+            {
+                auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(item);
+                auto material_comp = primitive_item
+                    ? primitive_item->GetMaterialComponent()
+                    : nullptr;
+                if (material_comp && material_comp->has_texture_layer_values
+                    && material_comp->texture_layer_row != uint32_t(-1)
+                    && material_comp->texture_layer_row + 1 > max_texture_layer_row)
+                {
+                    max_texture_layer_row = material_comp->texture_layer_row + 1;
+                }
+            }
+
+            // At least one row so the SSBO is always bound even when no item
+            // carries texture-layer values (pure data-index-only materials).
+            if (max_texture_layer_row < 1)
+                max_texture_layer_row = 1;
+
+            uint32_t texture_node_count = 1;
+            while (texture_node_count < max_texture_layer_row)
+                texture_node_count <<= 1;
+
+            if (!batch.texture_layer_rows_buffer || batch.texture_layer_rows_capacity < max_texture_layer_row)
+            {
+                batch.texture_layer_rows_capacity = texture_node_count;
+
+                if (batch.texture_layer_rows_buffer)
+                {
+                    if (batch.buffer_manager)
+                        batch.buffer_manager->Release(batch.texture_layer_rows_buffer);
+                    else
+                        delete batch.texture_layer_rows_buffer;
+                    batch.texture_layer_rows_buffer = nullptr;
+                }
+
+                if (batch.buffer_manager)
+                {
+                    const VkDeviceSize byte_size =
+                        static_cast<VkDeviceSize>(batch.texture_layer_rows_capacity)
+                        * static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE) * sizeof(uint32_t);
+                    batch.texture_layer_rows_buffer = batch.buffer_manager->CreateSSBO(
+                        "ECS:Batch:TextureLayerRows", byte_size, nullptr, graph::SharingMode::Exclusive);
                 }
             }
         }
@@ -708,7 +719,6 @@ namespace hgl::ecs
                         * sizeof(uint32_t)));
                 if (row_ptr)
                 {
-                    bool warned_missing_recipe_row = false;
                     for (size_t i = 0; i < item_count; ++i)
                     {
                         const uint32_t base =
@@ -728,25 +738,52 @@ namespace hgl::ecs
                                  ++slot)
                                 row_ptr[base + slot] = material_comp->data_index_values[slot];
                         }
-                        else
-                        {
-                            const uint32_t row = ResolveMaterialDataIndexRow(batch.items[i]);
-                            if (row == InvalidBatchDataIndexRow)
-                            {
-                                if (!warned_missing_recipe_row)
-                                {
-                                    warned_missing_recipe_row = true;
-                                    LogWarning("[PrimitiveBatchPipeline] Missing recipe data_index_row in batch write, fallback to row0. shader_prog=%s",
-                                               batch.key.shader_program ? batch.key.shader_program->GetName().c_str() : "<null>");
-                                }
-                            }
-                            else
-                            {
-                                row_ptr[base] = row;
-                            }
-                        }
                     }
                     mi_gpu->Unmap();
+                }
+            }
+        }
+
+        // Write per-batch texture layer rows SSBO. Rows are keyed by the item's
+        // data_index VALUE (mtl_texture_layer_rows.values[iid * RANGE_SIZE + slot]),
+        // so zero-fill the whole table first, then write each item's own row.
+        if (batch.texture_layer_rows_buffer)
+        {
+            auto *tl_gpu = batch.texture_layer_rows_buffer->GetGPUBuffer();
+            if (tl_gpu)
+            {
+                const uint32_t table_uint_count =
+                    batch.texture_layer_rows_capacity
+                    * static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE);
+                uint32_t *tl_ptr = static_cast<uint32_t *>(
+                    tl_gpu->Map(0, static_cast<VkDeviceSize>(table_uint_count) * sizeof(uint32_t)));
+                if (tl_ptr)
+                {
+                    for (uint32_t u = 0; u < table_uint_count; ++u)
+                        tl_ptr[u] = 0u;
+
+                    for (size_t i = 0; i < item_count; ++i)
+                    {
+                        auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(batch.items[i]);
+                        auto material_comp = primitive_item
+                            ? primitive_item->GetMaterialComponent()
+                            : nullptr;
+                        if (!material_comp || !material_comp->has_texture_layer_values)
+                            continue;
+
+                        const uint32_t row = material_comp->texture_layer_row;
+                        if (row >= batch.texture_layer_rows_capacity)
+                            continue;
+
+                        const uint32_t base = row
+                            * static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE);
+                        for (uint32_t slot = 0;
+                             slot < static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE);
+                             ++slot)
+                            tl_ptr[base + slot] = material_comp->texture_layer_values[slot];
+                    }
+
+                    tl_gpu->Unmap();
                 }
             }
         }
@@ -784,7 +821,8 @@ namespace hgl::ecs
 
             if (prim_item)
             {
-                const bool needs_recipe_rows = MaterialRequiresRecipeRuntimeRows(shader_prog);
+                const bool needs_recipe_rows = shader_prog
+                    && graph::mtl::MaterialRequiresRecipeRuntimeRows(shader_prog->GetShaderResourceSchema());
                 const bool missing_rows = needs_recipe_rows
                                        && (!material_comp
                                         || material_comp->data_index_row == uint32_t(-1)

@@ -2,9 +2,8 @@
 
 #include<hgl/ecs/core/System.h>
 #include<hgl/mtl/ShaderResourceSchema.h>
-#include<hgl/mtl/MaterializationPools.h>
+#include<hgl/type/UnorderedMap.h>
 #include<hgl/type/String.h>
-#include<limits>
 #include<cstdint>
 #include<vector>
 #include<unordered_map>
@@ -75,11 +74,6 @@ namespace hgl::ecs
             }
         };
 
-        struct MaterializationResolveCacheEntry
-        {
-            graph::mtl::MaterializationSharedSpec shared_spec;
-        };
-
         // Viewport UBO — owned here, stable across swapchain resize.
         graph::StructuredBufferAccessor<graph::ViewportInfo> *viewport_ubo = nullptr;
         uint32_t pending_viewport_width  = 0;
@@ -89,23 +83,11 @@ namespace hgl::ecs
         bool resource_layout_diagnostics_enabled = true;
         ResourceLayoutDiagStats last_contract_stats{};
         std::unordered_set<graph::ShaderProgram *> pipeline_materials;
-        graph::mtl::BindlessTexturePool materialization_texture_pool;
-        graph::mtl::StructDataPool materialization_struct_pool;
-        graph::mtl::MaterializationIndexTables materialization_index_tables;
-        graph::mtl::MaterializationResolveCallbacks materialization_callbacks;
-        std::unordered_map<uint64_t, MaterializationResolveCacheEntry> materialization_resolve_cache;
-        uint32_t materialization_last_reset_frame = std::numeric_limits<uint32_t>::max();
-        // Frame index of the last frame that actually wrote materialization
-        // rows. SyncBindingsForCurrentCommand only resets the tables when a
-        // write happened this frame, so all-clean frames (no materialize work)
-        // preserve the previous frame's rows instead of wiping them.
-        uint32_t materialization_writes_frame = std::numeric_limits<uint32_t>::max();
-        graph::DeviceBuffer *materialization_texture_layer_ssbo = nullptr;
-        graph::DeviceBuffer *materialization_data_index_table_buffer = nullptr;
-        uint32_t materialization_texture_layer_capacity = 0;
-        uint32_t materialization_data_index_table_capacity = 0;
-        uint32_t materialization_data_slot_count = 0;  // max slot count across all active rows
-        bool materialization_index_tables_dirty = false;
+        // resource_id → bindless descriptor index (1-based, 0 = not found).
+        // Filled by RegisterTexture2D(Array)Resource; consumed by
+        // RenderPrimitiveCollectSystem::MaterializeRecipeRowsForPrimitive to
+        // build per-primitive texture layer rows without a shared spec/cache.
+        hgl::UnorderedMap<AnsiString, uint32_t> materialization_resource_handles;
 
     public:
         RenderDescriptorBindingSystem(const std::string& name = "RenderDescriptorBindingSystem");
@@ -137,13 +119,6 @@ namespace hgl::ecs
         bool RegisterMaterialStructLayout(graph::mtl::SSBOType ssbo_type,
                                           uint32_t ssbo_id,
                                           uint32_t byte_stride);
-        void ResetMaterializationFrameData();
-        bool WriteTextureLayerRowAt(uint32_t at_index, const graph::mtl::MaterializationSpec &spec);
-        bool ResolveMaterialRecipe(const graph::mtl::MaterialRecipe &recipe,
-                                   graph::mtl::MaterializationSpec &out_spec,
-                                   uint32_t *out_texture_layer_row = nullptr,
-                                   uint32_t *out_data_index_row = nullptr,
-                                   graph::mtl::MaterializationInstanceData *out_instance_data = nullptr);
 
         /**
          * 便利版本：同时向 BindlessTextureManager 注册 Vulkan 侧描述符并预注册 pool 映射。
@@ -165,6 +140,14 @@ namespace hgl::ecs
                                                  graph::Sampler *sampler,
                                                  graph::BindlessTextureManager *bindless_mgr);
 
+        /**
+         * 查询 resource_id 对应的 bindless descriptor index（1-based）。
+         * 注册期间 RegisterTexture2D(Array)Resource 已把 handle 存入映射；
+         * 未注册/不存在返回 0。MaterializeRecipeRowsForPrimitive 用它为
+         * 资产纹理填充 texture_layer_values。
+         */
+        uint32_t GetBindlessHandle(const AnsiString &resource_id) const;
+
     private:
 
         void EnsureViewportUBO();
@@ -174,9 +157,6 @@ namespace hgl::ecs
         const graph::IGPUBuffer *ResolveViewportUBO() const;
         const graph::IGPUBuffer *ResolveCameraUBO() const;
         const graph::IGPUBuffer *ResolveSkyUBO();
-        void EnsureMaterializationCallbacks();
-        void ReleaseMaterializationIndexBuffers();
-        void UploadMaterializationIndexTables();
         const MaterialResourceBinding *FindMaterialResourceBinding(const graph::ShaderProgram *material, const char *name) const;
         void ValidateResourceLayoutsSideChannel();
         bool IsSemanticResolvable(graph::mtl::DescriptorSemantic semantic) const;

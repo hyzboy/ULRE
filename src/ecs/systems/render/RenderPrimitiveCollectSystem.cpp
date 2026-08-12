@@ -77,32 +77,6 @@ namespace hgl::ecs
             return primitive_comp->EnsureRuntimeGeometryBinding(material);
         }
 
-        uint32_t ResolvePrimaryStructIndex(const graph::ShaderProgram *material,
-                                           const graph::mtl::MaterializationSpec &spec,
-                                           const uint32_t fallback_row)
-        {
-            if (material)
-            {
-                const auto &contract = material->GetShaderResourceSchema();
-                for (const auto &req : contract.resources)
-                {
-                    if (req.semantic != graph::mtl::DescriptorSemantic::MaterialDataSlotData)
-                        continue;
-
-                    for (const auto &ref : spec.struct_refs)
-                    {
-                        if (ref.data_slot == req.data_slot && ref.ssbo_type == req.ssbo_type)
-                            return ref.data_index;
-                    }
-                }
-            }
-
-            if (!spec.struct_refs.empty())
-                return spec.struct_refs.front().data_index;
-
-            return fallback_row;
-        }
-
         bool ResolveRecipeSSBOBindingId(const graph::mtl::MaterialRecipe &recipe,
                                         const graph::mtl::ShaderResourceSlot &req,
                                         uint32_t &out_ssbo_id)
@@ -112,27 +86,6 @@ namespace hgl::ecs
             {
                 out_ssbo_id = asset->ssbo_id;
                 return true;
-            }
-
-            return false;
-        }
-
-        bool MaterialRequiresRecipeRuntimeRows(const graph::ShaderProgram *material)
-        {
-            if (!material)
-                return false;
-
-            for (const auto &req : material->GetShaderResourceSchema().resources)
-            {
-                switch (req.semantic)
-                {
-                    case graph::mtl::DescriptorSemantic::MaterialDataSlotData:
-                    case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
-                    case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
-                        return true;
-                    default:
-                        break;
-                }
             }
 
             return false;
@@ -546,7 +499,7 @@ namespace hgl::ecs
             if (!material_comp)
                 return;
 
-            material_comp->ClearMaterializationInstanceData();
+            material_comp->ClearMaterializationRows();
             material_comp->runtime_dirty = true;
             material_comp->valid = false;
 
@@ -869,11 +822,15 @@ namespace hgl::ecs
         if (!world || !primitive_comp || !material_comp)
             return false;
 
-        if (!MaterialRequiresRecipeRuntimeRows(material_comp->program))
+        if (!material_comp->program
+         || !graph::mtl::MaterialRequiresRecipeRuntimeRows(
+                material_comp->program->GetShaderResourceSchema()))
         {
             material_comp->texture_layer_row = 0;
             material_comp->data_index_row = 0;
             material_comp->data_index_values.clear();
+            material_comp->texture_layer_values.fill(0u);
+            material_comp->has_texture_layer_values = false;
             material_comp->runtime_dirty = false;
             material_comp->valid = false;
             return true;
@@ -936,34 +893,9 @@ namespace hgl::ecs
             return false;
         }
 
-        graph::mtl::MaterializationSpec spec{};
-        graph::mtl::MaterializationInstanceData instance_data{};
-        uint32_t texture_layer_row = uint32_t(-1);
-        uint32_t data_index_row = uint32_t(-1);
-        if (!rdbs->ResolveMaterialRecipe(
-                material_binding_recipe,
-                spec,
-                &texture_layer_row,
-                &data_index_row,
-                &instance_data))
-        {
-            GLogWarning("[RenderPrimitiveCollectSystem] ResolveMaterialRecipe failed for %s recipe=%s",
-                        GetPrimitiveOwnerName(primitive_comp),
-                        effective_recipe.recipe_name.c_str());
-            return false;
-        }
-
-        if (texture_layer_row == uint32_t(-1) || data_index_row == uint32_t(-1))
-        {
-            GLogWarning("[RenderPrimitiveCollectSystem] ResolveMaterialRecipe returned invalid rows. tex=%u data=%u",
-                        texture_layer_row,
-                        data_index_row);
-            return false;
-        }
-
-        // Determine the entity's own data_index from the effective recipe.
-        // ResolveMaterialRecipe rehydrates this instance value from the shared
-        // resource-resolution cache, so it never inherits another primitive's row.
+        // Determine the entity's own data_index from the cached binding recipe.
+        // The old shared MaterializationSpec cache is gone: this value is always
+        // this primitive's own row, never inherited from another primitive.
         uint32_t entity_data_index = uint32_t(-1);
         for (const auto &asset_binding : material_binding_recipe.ssbo_assets)
         {
@@ -972,8 +904,6 @@ namespace hgl::ecs
                 entity_data_index = asset_binding.data_index;
             }
         }
-
-        material_comp->data_index_values = std::move(instance_data.data_index_values);
 
         for (const auto &asset_binding : material_binding_recipe.ssbo_assets)
         {
@@ -998,31 +928,74 @@ namespace hgl::ecs
             material_comp->data_index_values[data_slot] = asset_binding.data_index;
         }
 
+        material_comp->texture_layer_values.fill(0u);
+        material_comp->has_texture_layer_values = false;
+
         if (entity_data_index != uint32_t(-1))
         {
-            // Only texture-using materials need the legacy "texture row == data row" mirror.
-            // Untextured materials (for example gizmo/pure-color) may legally reuse the same
-            // data_index values as textured materials; writing an all-zero texture row
-            // here would clobber the textured material's global handle table entry.
-            if (!material_binding_recipe.textures.empty())
+            material_comp->texture_layer_row = entity_data_index;
+            material_comp->data_index_row = entity_data_index;
+
+            // Build this primitive's texture layer row from the single binding
+            // IR. Per-batch MaterialTextureLayerTable rows are keyed by the
+            // primitive's own data_index VALUE (see PrimitiveBatchPipeline), so
+            // each primitive fills exactly one row — no shared global table and
+            // no cross-primitive row collision.
+            for (const auto &texture_binding : material_binding_recipe.textures)
             {
-                rdbs->WriteTextureLayerRowAt(entity_data_index, spec);
-                texture_layer_row = entity_data_index;
+                const uint32_t slot = static_cast<uint32_t>(texture_binding.slot);
+                if (slot >= static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE))
+                    continue;
+
+                uint32_t handle = 0;
+                if (texture_binding.use_direct_value)
+                {
+                    handle = texture_binding.direct_value;
+                }
+                else
+                {
+                    handle = rdbs->GetBindlessHandle(
+                        AnsiString(texture_binding.resource_id.c_str()));
+
+                    if (handle == 0)
+                    {
+                        // The recipe's resource id may be empty; fall back to the
+                        // authored resource id, or the texture-derived id used at
+                        // RegisterTexture2D(Array)Resource time.
+                        if (const auto *authoring =
+                                primitive_comp->GetMaterialTextureResource(texture_binding.slot))
+                        {
+                            if (!authoring->use_direct_value && authoring->texture)
+                            {
+                                const std::string fallback_id =
+                                    authoring->resource_id.empty()
+                                        ? BuildTextureResourceId(authoring->texture)
+                                        : authoring->resource_id;
+                                handle = rdbs->GetBindlessHandle(AnsiString(fallback_id.c_str()));
+                            }
+                        }
+                    }
+                }
+
+                if (handle == 0 && !texture_binding.use_direct_value)
+                {
+                    GLogWarning("[RenderPrimitiveCollectSystem] materialize: bindless handle missing for %s slot=%u resource=%s",
+                                GetPrimitiveOwnerName(primitive_comp),
+                                slot,
+                                texture_binding.resource_id.empty() ? "<unnamed>" : texture_binding.resource_id.c_str());
+                }
+
+                material_comp->texture_layer_values[slot] = handle;
             }
 
-            data_index_row = entity_data_index;
+            material_comp->has_texture_layer_values = true;
         }
         else
         {
-            data_index_row = ResolvePrimaryStructIndex(material_comp->program,
-                                                       spec,
-                                                       data_index_row);
+            material_comp->texture_layer_row = 0;
+            material_comp->data_index_row = 0;
         }
 
-        instance_data.texture_layer_row = texture_layer_row;
-        instance_data.data_index_row = data_index_row;
-        material_comp->texture_layer_row = instance_data.texture_layer_row;
-        material_comp->data_index_row = instance_data.data_index_row;
         material_comp->runtime_dirty = false;
         material_comp->valid = false;
         material_comp->last_materialize_epoch = materialize_epoch;
@@ -1071,11 +1044,13 @@ namespace hgl::ecs
         // work this frame. When none does, the main loop reuses last frame's
         // results and skips those two calls entirely.
         //
-        // Epoch semantics: the first ResolveMaterialRecipe of a frame wipes the
-        // global materialization tables. A primitive skipped this frame (e.g.
-        // invisible) therefore holds stale rows the moment any other primitive
-        // materializes. The epoch is bumped in exactly those frames so skipped
-        // primitives are re-flagged (epoch mismatch) when they next render.
+        // Epoch semantics: a materialize pass wipes per-primitive runtime rows
+        // (rows are rebuilt from the resolved_ssbo_bindings / texture layer
+        // values each time a primitive is materialized). A primitive skipped
+        // this frame (e.g. invisible) therefore holds stale rows the moment any
+        // other primitive materializes. The epoch is bumped in exactly those
+        // frames so skipped primitives are re-flagged (epoch mismatch) when they
+        // next render.
         bool any_material_work = false;
         bool any_possible_runtime_rows_visible = false;
 
@@ -1107,7 +1082,8 @@ namespace hgl::ecs
 
             const bool runtime_rows =
                 material_comp->program
-             && MaterialRequiresRecipeRuntimeRows(material_comp->program);
+             && graph::mtl::MaterialRequiresRecipeRuntimeRows(
+                    material_comp->program->GetShaderResourceSchema());
 
             // A primitive whose program is not yet resolved may still resolve
             // to a runtime-rows program this frame, so it can trigger a table

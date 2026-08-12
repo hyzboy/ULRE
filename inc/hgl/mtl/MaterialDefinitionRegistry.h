@@ -6,9 +6,6 @@
 #include<hgl/shadergen/MaterialCoverageContract.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/glsl/GLSLCodeModuleCapabilityResolver.h>
-#include<hgl/mtl/MaterializationSpec.h>
-#include<hgl/mtl/MaterializationResolver.h>
-#include<hgl/mtl/MaterializationPools.h>
 #include<hgl/graph/glsl/GLSLCodeModuleRegistry.h>
 #include<hgl/mtl/SerializedVertexEntry.h>
 #include<hgl/type/String.h>

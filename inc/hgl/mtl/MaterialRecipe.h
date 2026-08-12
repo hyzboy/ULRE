@@ -299,7 +299,7 @@ namespace hgl::graph::mtl
     // mtl_def_id 是唯一与 MaterialDefinition 对接的字段。
     // 调用 mtl::NormalizeRecipe() 后，definition 的默认资源与渲染状态会被合入此结构。
     // ─────────────────────────────────────────────────────────────────────────────
-    // 纯声明式材质输入（不含 Vulkan/运行时句柄），是 MaterializationSpec 的上游输入。
+    // 纯声明式材质输入（不含 Vulkan/运行时句柄），是 ResolvedBindingTable 的上游输入。
     struct MaterialRecipe
     {
         std::string recipe_name;               // 配方名称（人类可读）

@@ -1,7 +1,6 @@
 #pragma once
 
 #include<hgl/mtl/SerializedDescriptorEntry.h>
-#include<hgl/mtl/MaterializationPools.h>
 #include<hgl/graph/ShaderBufferSources.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <cstring>
@@ -68,6 +67,29 @@ namespace hgl::graph::mtl
         default:
             return false;
         }
+    }
+
+    // Whether a program's resource schema requires per-instance runtime rows:
+    // a MaterialDataIndexTable / MaterialTextureLayerTable / MaterialDataSlotData
+    // descriptor must be fed from per-batch row buffers keyed by the entity's own
+    // data_index, rather than a static binding. Shared by RenderPrimitiveCollectSystem
+    // and PrimitiveBatchPipeline so both agree on the same contract.
+    inline bool MaterialRequiresRecipeRuntimeRows(const ShaderResourceSchema &schema)
+    {
+        for (const auto &req : schema.resources)
+        {
+            switch (req.semantic)
+            {
+            case DescriptorSemantic::MaterialDataSlotData:
+            case DescriptorSemantic::MaterialDataIndexTable:
+            case DescriptorSemantic::MaterialTextureLayerTable:
+                return true;
+            default:
+                break;
+            }
+        }
+
+        return false;
     }
 
     inline DescriptorSetType GetExpectedSetType(DescriptorSemantic semantic)

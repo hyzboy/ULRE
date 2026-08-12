@@ -96,13 +96,10 @@ namespace hgl::ecs
         AddDependency<EnvironmentSystem>();
         AddDependency<RenderTargetSystem>();
         AddDependency<CameraSystem>();
-
-        EnsureMaterializationCallbacks();
     }
 
     RenderDescriptorBindingSystem::~RenderDescriptorBindingSystem()
     {
-        ReleaseMaterializationIndexBuffers();
         ReleaseViewportUBO();
     }
 
@@ -238,97 +235,6 @@ namespace hgl::ecs
         if (auto *domain_manager = GetResourceDomainManager(context))
             domain_manager->Touch(graph::mtl::SSBOAddress{ssbo_type, ssbo_id, 0});
 
-        return materialization_struct_pool.RegisterLayout(ssbo_type, ssbo_id, byte_stride);
-    }
-
-    void RenderDescriptorBindingSystem::ResetMaterializationFrameData()
-    {
-        materialization_index_tables.Clear();
-        materialization_resolve_cache.clear();
-        materialization_index_tables_dirty = true;
-    }
-
-    bool RenderDescriptorBindingSystem::WriteTextureLayerRowAt(uint32_t at_index,
-                                                               const graph::mtl::MaterializationSpec &spec)
-    {
-        materialization_index_tables.WriteTextureLayerRowAt(at_index, graph::mtl::BuildTextureLayerRow(spec));
-        materialization_index_tables_dirty = true;
-        if (context)
-            materialization_writes_frame = context->GetFrameIndex();
-        return true;
-    }
-
-    bool RenderDescriptorBindingSystem::ResolveMaterialRecipe(const graph::mtl::MaterialRecipe &recipe,
-                                                              graph::mtl::MaterializationSpec &out_spec,
-                                                              uint32_t *out_texture_layer_row,
-                                                              uint32_t *out_data_index_row,
-                                                              graph::mtl::MaterializationInstanceData *out_instance_data)
-    {
-        if (context)
-        {
-            const uint32_t frame_index = context->GetFrameIndex();
-            if (materialization_last_reset_frame != frame_index)
-            {
-                ResetMaterializationFrameData();
-                materialization_last_reset_frame = frame_index;
-            }
-        }
-
-        EnsureMaterializationCallbacks();
-
-        const uint64_t recipe_hash = graph::mtl::HashMaterialRecipe(recipe);
-        GLogVerbose("[ResolveMaterialRecipe] recipe=%s tex=%zu ssbo=%zu hash=%llu",
-                 recipe.recipe_name.c_str(),
-                 recipe.textures.size(),
-                 recipe.ssbo_assets.size(),
-                 static_cast<unsigned long long>(recipe_hash));
-
-        auto cache_it = materialization_resolve_cache.find(recipe_hash);
-        if (cache_it != materialization_resolve_cache.end())
-        {
-            out_spec = graph::mtl::MaterializeMaterializationInstance(cache_it->second.shared_spec, recipe);
-        }
-        else
-        {
-            graph::mtl::MaterializationSharedSpec shared_spec;
-            if (!graph::mtl::ResolveMaterializationSharedSpec(recipe, materialization_callbacks, shared_spec))
-            {
-                GLogError("[ResolveMaterialRecipe] ResolveMaterializationSharedSpec failed for recipe=%s", recipe.recipe_name.c_str());
-                return false;
-            }
-
-            GLogVerbose("[ResolveMaterialRecipe] resolved shared tex=%zu struct=%zu",
-                     shared_spec.spec.resources.size(), shared_spec.spec.struct_refs.size());
-
-            MaterializationResolveCacheEntry cache_entry{};
-            cache_entry.shared_spec = std::move(shared_spec);
-            materialization_resolve_cache[recipe_hash] = std::move(cache_entry);
-            out_spec = graph::mtl::MaterializeMaterializationInstance(
-                materialization_resolve_cache[recipe_hash].shared_spec, recipe);
-        }
-
-        // Rows are instance data. Never return rows retained by the shared cache.
-        graph::mtl::MaterializationInstanceData instance_data =
-            graph::mtl::MakeMaterializationInstanceData(out_spec);
-        uint32_t texture_row = 0;
-        uint32_t data_row = 0;
-        if (!graph::mtl::WriteMaterializationInstanceToIndexTables(
-                out_spec, instance_data, materialization_index_tables, texture_row, data_row))
-            return false;
-
-        if (out_texture_layer_row)
-            *out_texture_layer_row = texture_row;
-
-        if (out_data_index_row)
-            *out_data_index_row = data_row;
-
-        if (out_instance_data)
-            *out_instance_data = std::move(instance_data);
-
-        materialization_index_tables_dirty = true;
-        if (context)
-            materialization_writes_frame = context->GetFrameIndex();
-
         return true;
     }
 
@@ -347,7 +253,11 @@ namespace hgl::ecs
         if (rid.empty())
             return 0;
 
-        return bindless_mgr->Register2DWithResource(materialization_texture_pool, rid, tex, sampler);
+        const uint32_t handle = bindless_mgr->Register2D(tex, sampler);
+        if (handle != 0)
+            materialization_resource_handles.Add(AnsiString(rid.c_str()), handle);
+
+        return handle;
     }
 
     uint32_t RenderDescriptorBindingSystem::RegisterTexture2DArrayResource(const std::string &resource_id,
@@ -365,195 +275,20 @@ namespace hgl::ecs
         if (rid.empty())
             return 0;
 
-        return bindless_mgr->Register2DArrayWithResource(materialization_texture_pool, rid, tex, sampler);
+        const uint32_t handle = bindless_mgr->Register2DArray(tex, sampler);
+        if (handle != 0)
+            materialization_resource_handles.Add(AnsiString(rid.c_str()), handle);
+
+        return handle;
     }
 
-    void RenderDescriptorBindingSystem::EnsureMaterializationCallbacks()
+    uint32_t RenderDescriptorBindingSystem::GetBindlessHandle(const AnsiString &resource_id) const
     {
-        if (!materialization_callbacks.resolve_texture || !materialization_callbacks.resolve_struct)
-            materialization_callbacks = graph::mtl::MakePoolResolveCallbacks(materialization_texture_pool, materialization_struct_pool);
-    }
+        if (resource_id.IsEmpty())
+            return 0;
 
-    void RenderDescriptorBindingSystem::ReleaseMaterializationIndexBuffers()
-    {
-        auto *domain_manager = GetResourceDomainManager(context);
-        if (domain_manager)
-        {
-            domain_manager->ClearDomain(graph::mtl::SSBOAddress{graph::mtl::SSBOType::TextureLayer, 0, 0});
-            domain_manager->ClearDomain(graph::mtl::SSBOAddress{graph::mtl::SSBOType::MaterialDataIndexTable, 0, 0});
-
-            const uint32_t texture_slot_count = static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE);
-            for (uint32_t slot = 1; slot < texture_slot_count; ++slot)
-            {
-                const uint32_t alias_ssbo_id = graph::mtl::MakeRecipeSSBOId(slot);
-                domain_manager->ClearDomain(graph::mtl::SSBOAddress{graph::mtl::SSBOType::TextureLayer, alias_ssbo_id, slot});
-            }
-
-            for (uint32_t slot = 1; slot < materialization_data_slot_count; ++slot)
-            {
-                const uint32_t alias_ssbo_id = graph::mtl::MakeRecipeSSBOId(slot);
-                domain_manager->ClearDomain(graph::mtl::SSBOAddress{graph::mtl::SSBOType::MaterialDataIndexTable, alias_ssbo_id, slot});
-            }
-        }
-
-        materialization_texture_layer_ssbo = nullptr;
-        materialization_data_index_table_buffer = nullptr;
-        materialization_texture_layer_capacity = 0;
-        materialization_data_index_table_capacity = 0;
-    }
-
-    void RenderDescriptorBindingSystem::UploadMaterializationIndexTables()
-    {
-        if (!materialization_index_tables_dirty)
-            return;
-
-        auto *domain_manager = GetResourceDomainManager(context);
-        if (!domain_manager)
-            return;
-
-        const uint32_t texture_rows = static_cast<uint32_t>(materialization_index_tables.GetTextureLayerRowCount());
-        const uint32_t data_rows = static_cast<uint32_t>(materialization_index_tables.GetMaterialDataIndexRowCount());
-
-        auto ensure_capacity = [](uint32_t required) -> uint32_t
-        {
-            if (required == 0)
-                return 0;
-
-            uint32_t cap = 1;
-            while (cap < required)
-                cap <<= 1;
-            return cap;
-        };
-
-        const uint32_t texture_capacity = ensure_capacity(texture_rows);
-        const uint32_t data_capacity = ensure_capacity(data_rows);
-
-        if (texture_capacity > 0)
-        {
-            const VkDeviceSize byte_size = static_cast<VkDeviceSize>(texture_capacity) * sizeof(graph::mtl::TextureLayerRow);
-            materialization_texture_layer_ssbo = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{graph::mtl::SSBOType::TextureLayer, 0, 0},
-                                                                               "ECS:Materialization:TextureLayerRows",
-                                                                               byte_size,
-                                                                               texture_capacity,
-                                                                               graph::SharingMode::Exclusive);
-        }
-        else
-        {
-            materialization_texture_layer_ssbo = domain_manager->GetBuffer(graph::mtl::SSBOAddress{graph::mtl::SSBOType::TextureLayer, 0, 0});
-        }
-        materialization_texture_layer_capacity = domain_manager->GetElementCapacity(graph::mtl::SSBOAddress{graph::mtl::SSBOType::TextureLayer, 0, 0});
-
-        // DataIndex rows use a fixed stride so different material definitions
-        // can share the same table buffer.
-        const uint32_t max_data_slot_count = materialization_index_tables.GetMaxMaterialDataSlotCount();
-        materialization_data_slot_count = max_data_slot_count;
-        const VkDeviceSize ssbo_row_stride_bytes = max_data_slot_count > 0
-            ? static_cast<VkDeviceSize>(graph::mtl::MaterialDataIndexRowStride) * sizeof(uint32_t)
-            : sizeof(uint32_t);  // fallback: at least 1 uint32 to keep buffer valid
-
-        if (data_capacity > 0 && max_data_slot_count > 0)
-        {
-            const VkDeviceSize byte_size = static_cast<VkDeviceSize>(data_capacity) * ssbo_row_stride_bytes;
-            materialization_data_index_table_buffer = domain_manager->EnsureBuffer(graph::mtl::SSBOAddress{graph::mtl::SSBOType::MaterialDataIndexTable, 0, 0},
-                                                                            "ECS:Materialization:MaterialDataIndexRows",
-                                                                            byte_size,
-                                                                            data_capacity,
-                                                                            graph::SharingMode::Exclusive);
-        }
-        else
-        {
-            materialization_data_index_table_buffer = domain_manager->GetBuffer(graph::mtl::SSBOAddress{graph::mtl::SSBOType::MaterialDataIndexTable, 0, 0});
-        }
-        materialization_data_index_table_capacity = domain_manager->GetElementCapacity(graph::mtl::SSBOAddress{graph::mtl::SSBOType::MaterialDataIndexTable, 0, 0});
-
-        auto register_domain_aliases = [&](const graph::mtl::SSBOType ssbo_type,
-                                           graph::DeviceBuffer *buffer,
-                                           const uint32_t element_capacity,
-                                           const uint32_t slot_count)
-        {
-            if (!buffer || element_capacity == 0 || slot_count <= 1)
-                return;
-
-            for (uint32_t slot = 1; slot < slot_count; ++slot)
-            {
-                const uint32_t alias_ssbo_id = graph::mtl::MakeRecipeSSBOId(slot);
-                const graph::mtl::SSBOAddress alias_address{ssbo_type, alias_ssbo_id, slot};
-                if (!domain_manager->RegisterBuffer(alias_address, buffer, element_capacity))
-                {
-                    GLogError("[MaterializationAlias] Failed to register alias domain: type=%s ssbo_id=%u slot=%u",
-                              graph::mtl::GetSSBOTypeName(ssbo_type),
-                              alias_ssbo_id,
-                              slot);
-                }
-            }
-        };
-
-        register_domain_aliases(graph::mtl::SSBOType::TextureLayer,
-                                materialization_texture_layer_ssbo,
-                                materialization_texture_layer_capacity,
-                                static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE));
-        register_domain_aliases(graph::mtl::SSBOType::MaterialDataIndexTable,
-                                materialization_data_index_table_buffer,
-                                materialization_data_index_table_capacity,
-                                max_data_slot_count);
-
-        if (texture_rows > 0 && materialization_texture_layer_ssbo)
-        {
-            auto *acc = graph::SSBOArrayAccessor<graph::mtl::TextureLayerRow>::Create(
-                materialization_texture_layer_ssbo, texture_rows);
-            if (acc)
-            {
-                for (uint32_t i = 0; i < texture_rows; ++i)
-                {
-                    const auto *row = materialization_index_tables.GetTextureLayerRow(i);
-                    if (!row) break;
-                    (*acc)[i] = *row;
-                }
-                acc->MarkDirty();
-                acc->Commit();
-                delete acc;
-            }
-        }
-
-        if (data_rows > 0 && max_data_slot_count > 0 && materialization_data_index_table_buffer)
-        {
-            // Rows are fixed-width; write as a flat uint32 array.
-            auto *acc = graph::SSBOArrayAccessor<uint32_t>::Create(
-                materialization_data_index_table_buffer,
-                data_rows * graph::mtl::MaterialDataIndexRowStride);
-            if (acc)
-            {
-                for (uint32_t i = 0; i < data_rows; ++i)
-                {
-                    const auto *row = materialization_index_tables.GetMaterialDataIndexRow(i);
-                    if (!row) break;
-                    const uint32_t base = i * graph::mtl::MaterialDataIndexRowStride;
-                    for (uint32_t j = 0; j < graph::mtl::MaterialDataIndexRowStride; ++j)
-                        (*acc)[base + j] = (j < row->values.size()) ? row->values[j] : 0u;
-                }
-                acc->MarkDirty();
-                acc->Commit();
-                delete acc;
-            }
-        }
-
-#ifdef _DEBUG
-        if (context)
-        {
-            if (auto *vk_device = context->GetGPUDevice())
-            {
-                if (auto *du = vk_device->GetDebugUtils())
-                {
-                    if (materialization_texture_layer_ssbo)
-                        du->SetBuffer(materialization_texture_layer_ssbo->GetBuffer(), "ECS.Materialization.TextureLayerRows");
-                    if (materialization_data_index_table_buffer)
-                        du->SetBuffer(materialization_data_index_table_buffer->GetBuffer(), "ECS.Materialization.MaterialDataIndexRows");
-                }
-            }
-        }
-#endif
-
-        materialization_index_tables_dirty = false;
+        const uint32_t *handle = materialization_resource_handles.GetValuePointer(resource_id);
+        return handle ? *handle : 0;
     }
 
     const RenderDescriptorBindingSystem::MaterialResourceBinding *RenderDescriptorBindingSystem::FindMaterialResourceBinding(const graph::ShaderProgram *material, const char *name) const
@@ -588,22 +323,8 @@ namespace hgl::ecs
         if (!context)
             return;
 
-        const uint32_t frame_index = context->GetFrameIndex();
-        // Only reset the tables when a materialization write happened this
-        // frame. In an all-clean frame (the collect system's global gate
-        // skipped materialize) no rows are rewritten, so resetting would wipe
-        // the previous frame's still-valid rows and render garbage.
-        if (materialization_writes_frame == frame_index
-            && materialization_last_reset_frame != frame_index)
-        {
-            ResetMaterializationFrameData();
-            materialization_last_reset_frame = frame_index;
-        }
-
         if (run_contract_diagnostics)
             ValidateResourceLayoutsSideChannel();
-
-        UploadMaterializationIndexTables();
 
         EnsureViewportUBO();
 
@@ -1232,12 +953,24 @@ namespace hgl::ecs
             }
             case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
             {
-                const graph::IGPUBuffer *table_buffer = resolve_domain_ssbo(
-                    graph::mtl::SSBOAddress{
-                        req.ssbo_type,
-                        req.ssbo_id,
-                        static_cast<uint32_t>(req.texture_slot)},
-                    "MaterialTextureLayerTable");
+                const graph::IGPUBuffer *table_buffer = nullptr;
+
+                // Prefer per-batch texture layer rows SSBO (keyed by the
+                // primitive's own data_index VALUE, written in draw order by
+                // PrimitiveBatchPipeline).
+                if (batch && batch->texture_layer_rows_buffer)
+                    table_buffer = batch->texture_layer_rows_buffer->GetGPUBuffer();
+
+                // Fall back to domain SSBO.
+                if (!table_buffer)
+                {
+                    table_buffer = resolve_domain_ssbo(
+                        graph::mtl::SSBOAddress{
+                            req.ssbo_type,
+                            req.ssbo_id,
+                            static_cast<uint32_t>(req.texture_slot)},
+                        "MaterialTextureLayerTable");
+                }
 
                 if (table_buffer)
                 {
@@ -1246,7 +979,7 @@ namespace hgl::ecs
                 }
                 else
                 {
-                    log_missing_ssbo_once(material, req, "domain binding not found", static_cast<int32_t>(req.texture_slot));
+                    log_missing_ssbo_once(material, req, batch ? "batch rows missing and domain binding not found" : "domain binding not found", static_cast<int32_t>(req.texture_slot));
                     if (batch && req.required)
                         batch->descriptor_bind_valid = false;
                 }
