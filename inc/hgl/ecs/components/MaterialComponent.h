@@ -77,6 +77,13 @@ namespace hgl::ecs
         // data is valid and ResolveMaterialProgramForPrimitive can skip entirely.
         uint32_t tracked_material_authored_generation = 0;
 
+        // Epoch of the last materialization table rebuild in which this
+        // primitive's rows were written. A mismatch with the system's current
+        // materialize_epoch means the global tables were rebuilt while this
+        // primitive was skipped (e.g. invisible), so its rows must be
+        // re-materialized before rendering.
+        uint64_t last_materialize_epoch = 0;
+
     public:
 
         MaterialComponent(const std::string &name = "MaterialRuntime");

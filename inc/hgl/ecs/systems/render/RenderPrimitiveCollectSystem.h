@@ -28,6 +28,13 @@ namespace hgl::ecs
 
         ECSContext* world = nullptr;
         const graph::CameraInfo* cameraInfo = nullptr;
+
+        // Bumped whenever a frame rebuilds the global materialization tables
+        // (i.e. a dirty frame that materializes at least one runtime-rows
+        // primitive). Primitives whose last_materialize_epoch differs must be
+        // re-materialized — their rows were rebuilt while they were skipped.
+        uint64_t materialize_epoch = 0;
+
         bool ResolveMaterialProgramForPrimitive(const std::shared_ptr<PrimitiveComponent> &primitive_comp,
                                                 const std::shared_ptr<MaterialComponent> &material_comp);
         bool ResolveRuntimePipelineForPrimitive(const std::shared_ptr<PrimitiveComponent> &primitive_comp,

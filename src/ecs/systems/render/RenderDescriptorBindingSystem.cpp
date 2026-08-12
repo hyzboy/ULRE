@@ -288,6 +288,8 @@ namespace hgl::ecs
     {
         materialization_index_tables.WriteTextureLayerRowAt(at_index, graph::mtl::BuildTextureLayerRow(spec));
         materialization_index_tables_dirty = true;
+        if (context)
+            materialization_writes_frame = context->GetFrameIndex();
         return true;
     }
 
@@ -359,6 +361,8 @@ namespace hgl::ecs
             *out_instance_data = std::move(instance_data);
 
         materialization_index_tables_dirty = true;
+        if (context)
+            materialization_writes_frame = context->GetFrameIndex();
 
         return true;
     }
@@ -628,7 +632,12 @@ namespace hgl::ecs
             return;
 
         const uint32_t frame_index = context->GetFrameIndex();
-        if (materialization_last_reset_frame != frame_index)
+        // Only reset the tables when a materialization write happened this
+        // frame. In an all-clean frame (the collect system's global gate
+        // skipped materialize) no rows are rewritten, so resetting would wipe
+        // the previous frame's still-valid rows and render garbage.
+        if (materialization_writes_frame == frame_index
+            && materialization_last_reset_frame != frame_index)
         {
             ResetMaterializationFrameData();
             materialization_last_reset_frame = frame_index;

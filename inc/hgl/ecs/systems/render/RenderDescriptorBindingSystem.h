@@ -95,6 +95,11 @@ namespace hgl::ecs
         graph::mtl::MaterializationResolveCallbacks materialization_callbacks;
         std::unordered_map<uint64_t, MaterializationResolveCacheEntry> materialization_resolve_cache;
         uint32_t materialization_last_reset_frame = std::numeric_limits<uint32_t>::max();
+        // Frame index of the last frame that actually wrote materialization
+        // rows. SyncBindingsForCurrentCommand only resets the tables when a
+        // write happened this frame, so all-clean frames (no materialize work)
+        // preserve the previous frame's rows instead of wiping them.
+        uint32_t materialization_writes_frame = std::numeric_limits<uint32_t>::max();
         graph::DeviceBuffer *materialization_texture_layer_ssbo = nullptr;
         graph::DeviceBuffer *materialization_data_index_table_buffer = nullptr;
         uint32_t materialization_texture_layer_capacity = 0;

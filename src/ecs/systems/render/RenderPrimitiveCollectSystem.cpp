@@ -633,7 +633,21 @@ namespace hgl::ecs
         if (!material_comp->program_dirty
          && material_comp->program
          && material_comp->resolved_binding_table.IsRuntimeReady())
+        {
+            // Generation may have advanced without changing the recipe/program
+            // content (e.g. an author swapped a texture or data object but kept
+            // the same resource id). Refresh the tracked generation and flag
+            // resources dirty so PrepareActivePlanResources re-registers the
+            // current resource objects on the next Update.
+            if (material_comp->tracked_material_authored_generation
+                != primitive_comp->GetMaterialAuthoredGeneration())
+            {
+                material_comp->resources_dirty = true;
+                material_comp->tracked_material_authored_generation =
+                    primitive_comp->GetMaterialAuthoredGeneration();
+            }
             return true;
+        }
 
         // 统一 MaterialDefinition 入口：由 AcquireShaderProgram 内部处理 2D/3D/Text/Sky 分支，
         // ECS 不再持有材质 config 细节知识。
@@ -1017,6 +1031,7 @@ namespace hgl::ecs
         material_comp->bindings_dirty = false;
         material_comp->resources_dirty = false;
         material_comp->valid = false;
+        material_comp->last_materialize_epoch = materialize_epoch;
         return true;
     }
 
@@ -1050,6 +1065,93 @@ namespace hgl::ecs
 
         std::vector<std::shared_ptr<PrimitiveComponent>> primitives;
         world->GetComponents<PrimitiveComponent>(primitives);
+
+        // P1-1: Global frame-level materialize gating.
+        //
+        // PrepareActivePlanResources and MaterializeRecipeRowsForPrimitive are
+        // the per-frame hotspot: they re-traverse the resource plan, rebuild the
+        // binding recipe and re-materialize rows on every Update even when
+        // nothing changed. This pre-scan mirrors the resolve fast-path
+        // (ResolveMaterialProgramForPrimitive), the materialization epoch and
+        // the component success state to decide whether ANY primitive needs
+        // work this frame. When none does, the main loop reuses last frame's
+        // results and skips those two calls entirely.
+        //
+        // Epoch semantics: the first ResolveMaterialRecipe of a frame wipes the
+        // global materialization tables. A primitive skipped this frame (e.g.
+        // invisible) therefore holds stale rows the moment any other primitive
+        // materializes. The epoch is bumped in exactly those frames so skipped
+        // primitives are re-flagged (epoch mismatch) when they next render.
+        bool any_material_work = false;
+        bool any_possible_runtime_rows_visible = false;
+
+        for (const auto& primitiveComp : primitives)
+        {
+            if (!primitiveComp)
+                continue;
+
+            if (!primitiveComp->IsVisible() || !primitiveComp->CanRender())
+                continue;
+
+            const EntityID entity_id = primitiveComp->GetOwnerID();
+            if (visibility_storage && visibility_storage->IsInvisible(entity_id))
+                continue;
+
+            Entity* entity = primitiveComp->GetOwner();
+            if (!entity)
+                continue;
+
+            if (!world->IsEntityRenderEnabled(entity))
+                continue;
+
+            if (!primitiveComp->HasAnyMaterialRecipeSource())
+                continue;
+
+            auto material_comp = entity->GetComponent<MaterialComponent>();
+            if (!material_comp)
+                material_comp = entity->AddComponent<MaterialComponent>();
+
+            const bool runtime_rows =
+                material_comp->program
+             && MaterialRequiresRecipeRuntimeRows(material_comp->program);
+
+            // A primitive whose program is not yet resolved may still resolve
+            // to a runtime-rows program this frame, so it can trigger a table
+            // rebuild. Treat it as a possible runtime-rows primitive.
+            const bool possible_runtime_rows =
+                runtime_rows || !material_comp->program;
+
+            const bool fast_path_holds =
+                   !material_comp->program_dirty
+                && material_comp->program
+                && material_comp->tracked_material_authored_generation
+                   == primitiveComp->GetMaterialAuthoredGeneration()
+                && material_comp->resolved_binding_table.IsRuntimeReady();
+
+            const bool epoch_stale =
+                runtime_rows
+             && material_comp->last_materialize_epoch != materialize_epoch;
+
+            // valid==true only survives a fully successful resolve+prepare+
+            // materialize+geometry+pipeline chain, so a Failed material keeps
+            // retrying every frame instead of being silently skipped.
+            //
+            // bindings_dirty/resources_dirty are normally cleared at the end
+            // of a successful materialize, so at pre-scan time a clean material
+            // has both false. They can only be set here if the generation
+            // advanced in the middle of the previous frame's loop (a race that
+            // leaves them unconsumed) — forcing them into needs_work makes the
+            // next frame re-run the full chain so the flags get consumed.
+            const bool needs_work =
+                !fast_path_holds || epoch_stale || !material_comp->valid
+             || material_comp->bindings_dirty || material_comp->resources_dirty;
+
+            any_material_work |= needs_work;
+            any_possible_runtime_rows_visible |= possible_runtime_rows;
+        }
+
+        if (any_material_work && any_possible_runtime_rows_visible)
+            ++materialize_epoch;
 
         size_t skipped_invisible = 0;
         size_t skipped_no_owner = 0;
@@ -1110,6 +1212,30 @@ namespace hgl::ecs
                         GetPrimitiveOwnerName(primitiveComp));
                     InvalidateRecipeRuntime(material_comp, true);
                     material_comp->MarkFailed();
+                }
+                else if (!any_material_work
+                         && material_comp->last_materialize_epoch == materialize_epoch)
+                {
+                    // P1-1: all-clean frame — no primitive requires
+                    // materialization work, the global tables were last rebuilt
+                    // at the current epoch, and this primitive's full chain
+                    // succeeded last frame (valid). Everything cached (binding
+                    // table, resource plan, materialization rows, runtime
+                    // geometry/pipeline) is still valid, so skip the expensive
+                    // re-prepare / re-materialize chain. Only the cheap resolve
+                    // fast-paths run; on any unexpected failure fall back to
+                    // MarkFailed so the next frame retries the full chain.
+                    const bool chain_ok =
+                        ResolveMaterialProgramForPrimitive(
+                            primitiveComp, material_comp)
+                     && EnsureRuntimeGeometryFromAsset(
+                            world, primitiveComp, material_comp)
+                     && ResolveRuntimePipelineForPrimitive(
+                            primitiveComp, material_comp);
+                    if (chain_ok)
+                        material_comp->MarkValid();
+                    else
+                        material_comp->MarkFailed();
                 }
                 else
                 {
