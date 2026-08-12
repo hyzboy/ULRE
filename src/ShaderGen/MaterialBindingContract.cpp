@@ -15,7 +15,6 @@ namespace hgl::graph::mtl
         using contract_detail::CanonicalContractWriter;
 
         constexpr uint32 ResolvedBindingTableTag = 0x3156424Du;   // MBV1
-        constexpr uint32 ResourceAcquirePlanTag = 0x31505152u;    // RQP1
 
         bool IsValidTextureSource(const BindingSource source) noexcept
         {
@@ -127,16 +126,6 @@ namespace hgl::graph::mtl
             if (lhs.ssbo_type != rhs.ssbo_type)
                 return lhs.ssbo_type < rhs.ssbo_type;
             return lhs.recipe_binding_index < rhs.recipe_binding_index;
-        }
-
-        bool IsLess(
-            const ResourceAcquirePlanEntry &lhs,
-            const ResourceAcquirePlanEntry &rhs) noexcept
-        {
-            if (lhs.logical_resource_id != rhs.logical_resource_id)
-                return lhs.logical_resource_id < rhs.logical_resource_id;
-            return static_cast<uint8>(lhs.kind)
-                < static_cast<uint8>(rhs.kind);
         }
 
         void WriteResolvedTextureBinding(
@@ -254,53 +243,6 @@ namespace hgl::graph::mtl
         return observed_missing_required == table.missing_required_count;
     }
 
-    bool ValidateResourceAcquirePlan(
-        const ResourceAcquirePlan &plan) noexcept
-    {
-        if (plan.schema_version != MaterialBindingContractSchemaVersion
-         || plan.program_key_digest == 0)
-            return false;
-
-        for (int i = 0; i < plan.resources.GetCount(); ++i)
-        {
-            const ResourceAcquirePlanEntry &entry = plan.resources[i];
-            if (entry.logical_resource_id == 0
-             || entry.asset_identity_hash == 0
-             || entry.asset_metadata_hash == 0
-             || entry.semantic == DescriptorSemantic::Unknown
-             || entry.kind < ResourceAcquireKind::Texture
-             || entry.kind > ResourceAcquireKind::StorageBuffer)
-                return false;
-
-            if (entry.kind == ResourceAcquireKind::Texture)
-            {
-                if (entry.texture_slot < TextureSlot::BEGIN_RANGE
-                 || entry.texture_slot > TextureSlot::END_RANGE
-                 || (entry.semantic != DescriptorSemantic::MaterialTexture
-                  && entry.semantic != DescriptorSemantic::MaterialSampler))
-                    return false;
-            }
-            else if (entry.semantic != DescriptorSemantic::MaterialDataSlotData)
-            {
-                return false;
-            }
-
-            if (entry.kind == ResourceAcquireKind::StorageBuffer
-             && (entry.ssbo_type < SSBOType::BEGIN_RANGE
-              || entry.ssbo_type > SSBOType::END_RANGE))
-                return false;
-
-            for (int j = 0; j < i; ++j)
-            {
-                if (plan.resources[j].logical_resource_id
-                    == entry.logical_resource_id)
-                    return false;
-            }
-        }
-
-        return true;
-    }
-
     bool SerializeResolvedBindingTable(
         const ResolvedBindingTable &table,
         ValueArray<uint8> &out_bytes)
@@ -340,45 +282,6 @@ namespace hgl::graph::mtl
         writer.WriteU32(static_cast<uint32>(data.GetCount()));
         for (int i = 0; i < data.GetCount(); ++i)
             WriteResolvedDataBinding(writer, data[i]);
-        return true;
-    }
-
-    bool SerializeResourceAcquirePlan(
-        const ResourceAcquirePlan &plan,
-        ValueArray<uint8> &out_bytes)
-    {
-        out_bytes.Clear();
-        if (!ValidateResourceAcquirePlan(plan))
-            return false;
-
-        ValueArray<ResourceAcquirePlanEntry> resources = plan.resources;
-        contract_detail::CanonicalSort(
-            resources,
-            [](const ResourceAcquirePlanEntry &lhs,
-               const ResourceAcquirePlanEntry &rhs) noexcept
-            {
-                return IsLess(lhs, rhs);
-            });
-
-        CanonicalContractWriter writer(out_bytes);
-        writer.WriteU32(ResourceAcquirePlanTag);
-        writer.WriteU32(plan.schema_version);
-        writer.WriteU64(plan.program_key_digest);
-        writer.WriteU32(static_cast<uint32>(resources.GetCount()));
-        for (int i = 0; i < resources.GetCount(); ++i)
-        {
-            const ResourceAcquirePlanEntry &entry = resources[i];
-            writer.WriteU64(entry.logical_resource_id);
-            writer.WriteU64(entry.asset_identity_hash);
-            writer.WriteU64(entry.asset_metadata_hash);
-            writer.WriteU8(static_cast<uint8>(entry.kind));
-            writer.WriteU16(static_cast<uint16>(entry.semantic));
-            writer.WriteU16(static_cast<uint16>(entry.texture_slot));
-            writer.WriteU32(entry.data_slot);
-            writer.WriteU16(static_cast<uint16>(entry.ssbo_type));
-            writer.WriteBool(entry.required);
-            writer.WriteBool(entry.allow_fallback);
-        }
         return true;
     }
 
@@ -455,14 +358,6 @@ namespace hgl::graph::mtl
     {
         ValueArray<uint8> bytes;
         return SerializeResolvedBindingTable(table, bytes)
-            ? contract_detail::HashCanonicalBytes(bytes) : 0;
-    }
-
-    uint64 GetResourceAcquirePlanHash(
-        const ResourceAcquirePlan &plan) noexcept
-    {
-        ValueArray<uint8> bytes;
-        return SerializeResourceAcquirePlan(plan, bytes)
             ? contract_detail::HashCanonicalBytes(bytes) : 0;
     }
 }

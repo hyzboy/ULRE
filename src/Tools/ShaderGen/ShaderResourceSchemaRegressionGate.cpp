@@ -58,6 +58,28 @@ namespace
         return h;
     }
 
+    static uint32_t CountAssetTextures(const ResolvedBindingTable &table)
+    {
+        uint32_t count = 0;
+        for (int i = 0; i < table.textures.GetCount(); ++i)
+        {
+            if (table.textures[i].source == BindingSource::Asset)
+                ++count;
+        }
+        return count;
+    }
+
+    static uint32_t CountAssetData(const ResolvedBindingTable &table)
+    {
+        uint32_t count = 0;
+        for (int i = 0; i < table.data.GetCount(); ++i)
+        {
+            if (table.data[i].source == BindingSource::Asset)
+                ++count;
+        }
+        return count;
+    }
+
     static bool IsKnownRegressionGroup(const char *group)
     {
         if (!group)
@@ -517,14 +539,15 @@ namespace
             result.diagnostics.emplace_back(
                 "Binding Table Recipe must preserve TextureLayer direct values");
         }
-        ResourceAcquirePlan resource_plan{};
-        if (!BuildResourceAcquirePlan(
-                binding_table, resource_plan)
-         || resource_plan.resources.GetCount() != 2
-         || GetResourceAcquirePlanHash(resource_plan) == 0)
+        // Asset projection: only active, loadable resources are acquired.
+        // Custom0 is a direct-value binding (not an asset) and Normal is
+        // unused (no layout requirement), so both must be excluded.
+        if (CountAssetTextures(binding_table) != 1
+         || CountAssetData(binding_table) != 1
+         || binding_table.GetStableHash() == 0)
         {
             result.diagnostics.emplace_back(
-                "ResourceAcquirePlan build failed");
+                "Binding Table Asset projection build failed");
         }
         else
         {
@@ -532,28 +555,33 @@ namespace
             bool planned_data = false;
             bool planned_direct_value = false;
             for (int i = 0;
-                 i < resource_plan.resources.GetCount();
+                 i < binding_table.textures.GetCount();
                  ++i)
             {
-                const ResourceAcquirePlanEntry &entry =
-                    resource_plan.resources[i];
-                if (entry.kind == ResourceAcquireKind::Texture
-                 && entry.texture_slot == TextureSlot::BaseColor)
+                const ResolvedTextureBinding &binding =
+                    binding_table.textures[i];
+                if (binding.source != BindingSource::Asset)
+                    continue;
+                if (binding.texture_slot == TextureSlot::BaseColor)
                     planned_base_color = true;
-                if (entry.kind == ResourceAcquireKind::StorageBuffer
-                 && entry.data_slot == 0
-                 && entry.ssbo_type == SSBOType::PBRSurface)
-                    planned_data = true;
-                if (entry.kind == ResourceAcquireKind::Texture
-                 && entry.texture_slot == TextureSlot::Custom0)
+                if (binding.texture_slot == TextureSlot::Custom0)
                     planned_direct_value = true;
+            }
+            for (int i = 0; i < binding_table.data.GetCount(); ++i)
+            {
+                const ResolvedDataBinding &binding =
+                    binding_table.data[i];
+                if (binding.source == BindingSource::Asset
+                 && binding.data_slot == 0
+                 && binding.ssbo_type == SSBOType::PBRSurface)
+                    planned_data = true;
             }
             if (!planned_base_color
              || !planned_data
              || planned_direct_value)
             {
                 result.diagnostics.emplace_back(
-                    "ResourceAcquirePlan must include only active loadable resources");
+                    "Binding Table Asset projection must include only active loadable resources");
             }
         }
         MaterializationResolveCallbacks projection_callbacks{};
@@ -657,7 +685,6 @@ namespace
                 "Binding Table source hash must include binding identity");
         }
         ResolvedBindingTable second_table{};
-        ResourceAcquirePlan second_plan{};
         if (!BuildBindingTable(
                 second_recipe,
                 layout,
@@ -667,10 +694,10 @@ namespace
          || second_table.GetStableHash() == binding_table.GetStableHash()
          || second_table.program_key_digest
                 != binding_table.program_key_digest
-         || !BuildResourceAcquirePlan(
-                second_table, second_plan)
-         || GetResourceAcquirePlanHash(second_plan)
-                == GetResourceAcquirePlanHash(resource_plan))
+         || CountAssetTextures(second_table)
+                != CountAssetTextures(binding_table)
+         || CountAssetData(second_table)
+                != CountAssetData(binding_table))
         {
             result.diagnostics.emplace_back(
                 "asset identity must affect Binding Table, not ProgramKey");
@@ -691,8 +718,8 @@ namespace
          || missing_table.missing_required_count != 1
          || BuildBindingTableRecipe(
                 missing_recipe, missing_table, projected_recipe)
-         || BuildResourceAcquirePlan(
-                missing_table, resource_plan))
+         || missing_table.textures[0].source
+                != BindingSource::Missing)
         {
             result.diagnostics.emplace_back(
                 "missing required material resource must remain explicit");
@@ -736,7 +763,6 @@ namespace
 
         ResolvedBindingTable depth_table{};
         ShaderResourceSchema depth_layout{};
-        ResourceAcquirePlan depth_plan{};
         if (!BuildBindingTable(
                 recipe,
                 depth_layout,
@@ -748,18 +774,17 @@ namespace
                 != recipe.textures.size()
          || depth_table.unused_recipe_data_count
                 != recipe.ssbo_assets.size()
-         || !BuildResourceAcquirePlan(
-                depth_table, depth_plan)
-         || !depth_plan.resources.IsEmpty())
+         || CountAssetTextures(depth_table) != 0
+         || CountAssetData(depth_table) != 0)
         {
             result.diagnostics.emplace_back(
                 "resource-free Program must submit no unrelated resource acquisition");
         }
 
         ResolvedBindingTable unresolved_table{};
-        ResourceAcquirePlan unresolved_plan{};
-        if (BuildResourceAcquirePlan(
-                unresolved_table, unresolved_plan))
+        if (unresolved_table.IsRuntimeReady()
+         || CountAssetTextures(unresolved_table) != 0
+         || CountAssetData(unresolved_table) != 0)
         {
             result.diagnostics.emplace_back(
                 "unresolved Program must not submit resource acquisition");

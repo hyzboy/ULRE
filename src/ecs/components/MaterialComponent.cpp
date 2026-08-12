@@ -109,13 +109,6 @@ namespace hgl::ecs
         resolved_binding_table = {};
         cached_binding_recipe = {};
         cached_binding_recipe_valid = false;
-        ClearActiveResourceAcquirePlan();
-    }
-
-    void MaterialComponent::ClearActiveResourceAcquirePlan()
-    {
-        active_resource_acquire_plan = {};
-        has_active_resource_acquire_plan = false;
     }
 
     void MaterialComponent::ClearMaterializationInstanceData()

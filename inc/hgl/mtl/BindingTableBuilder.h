@@ -23,8 +23,4 @@ namespace hgl::graph::mtl
         const MaterialRecipe &source_recipe,
         const ResolvedBindingTable &binding_table,
         MaterialRecipe &out_recipe) noexcept;
-
-    bool BuildResourceAcquirePlan(
-        const ResolvedBindingTable &binding_table,
-        ResourceAcquirePlan &out_plan) noexcept;
 }

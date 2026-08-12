@@ -289,12 +289,12 @@ namespace hgl::ecs
             ECSContext *world,
             const std::shared_ptr<PrimitiveComponent> &primitive_comp,
             graph::ShaderProgram *material_program,
-            const graph::mtl::ResourceAcquirePlan &plan)
+            const graph::mtl::ResolvedBindingTable &binding_table)
         {
             if (!world
              || !primitive_comp
              || !material_program
-             || !graph::mtl::ValidateResourceAcquirePlan(plan))
+             || !binding_table.IsRuntimeReady())
                 return false;
 
             graph::mtl::MaterialRecipe active_recipe{};
@@ -318,149 +318,160 @@ namespace hgl::ecs
 
             const char *owner_name =
                 GetPrimitiveOwnerName(primitive_comp);
-            for (int i = 0; i < plan.resources.GetCount(); ++i)
+
+            for (int i = 0; i < binding_table.textures.GetCount(); ++i)
             {
-                const graph::mtl::ResourceAcquirePlanEntry &entry =
-                    plan.resources[i];
-                if (entry.kind
-                    == graph::mtl::ResourceAcquireKind::Texture)
+                const graph::mtl::ResolvedTextureBinding &binding =
+                    binding_table.textures[i];
+                if (binding.source
+                        != graph::mtl::BindingSource::Asset)
+                    continue;
+
+                const graph::mtl::RecipeTextureBinding
+                    *recipe_binding = nullptr;
+                if (binding.recipe_binding_index
+                        < active_recipe.textures.size())
                 {
                     const graph::mtl::RecipeTextureBinding
-                        *recipe_binding = nullptr;
-                    for (const auto &binding : active_recipe.textures)
-                    {
-                        if (binding.slot == entry.texture_slot
-                         && !binding.use_direct_value
-                         && graph::mtl::
-                                GetResolvedTextureAssetIdentityHash(
-                                    binding.resource_id.data(),
-                                    static_cast<uint32_t>(
-                                        binding.resource_id.size()))
-                                == entry.asset_identity_hash)
-                        {
-                            recipe_binding = &binding;
-                            break;
-                        }
-                    }
-                    const auto *resource =
-                        primitive_comp->GetMaterialTextureResource(
-                            entry.texture_slot);
-                    if (!recipe_binding
-                     || !resource
-                     || resource->use_direct_value
-                     || !bindless_mgr)
-                    {
-                        GLogError(
-                            "[DeferredResource] Texture acquisition failed: owner=%s slot=%u recipe=%d resource=%d bindless=%d",
-                            owner_name,
-                            static_cast<uint32_t>(
-                                entry.texture_slot),
-                            recipe_binding ? 1 : 0,
-                            resource ? 1 : 0,
-                            bindless_mgr ? 1 : 0);
-                        return false;
-                    }
-
-                    const std::string resource_id =
-                        resource->resource_id.empty()
-                            ? BuildTextureResourceId(resource->texture)
-                            : resource->resource_id;
-                    if (graph::mtl::
+                        &candidate = active_recipe.textures[
+                            binding.recipe_binding_index];
+                    if (candidate.slot == binding.texture_slot
+                     && !candidate.use_direct_value
+                     && graph::mtl::
                             GetResolvedTextureAssetIdentityHash(
-                                resource_id.data(),
+                                candidate.resource_id.data(),
                                 static_cast<uint32_t>(
-                                    resource_id.size()))
-                            != entry.asset_identity_hash)
+                                    candidate.resource_id.size()))
+                            == binding.asset_identity_hash)
                     {
-                        GLogError(
-                            "[DeferredResource] Texture identity mismatch: owner=%s slot=%u",
-                            owner_name,
-                            static_cast<uint32_t>(
-                                entry.texture_slot));
-                        return false;
+                        recipe_binding = &candidate;
                     }
-
-                    uint32_t handle = 0;
-                    switch (resource->kind)
-                    {
-                    case PrimitiveComponent::
-                            MaterialTextureResourceKind::Texture2D:
-                        handle = rdbs->RegisterTexture2DResource(
-                            resource_id,
-                            resource->texture,
-                            resource->sampler,
-                            bindless_mgr);
-                        break;
-                    case PrimitiveComponent::
-                            MaterialTextureResourceKind::Texture2DArray:
-                        handle = rdbs->RegisterTexture2DArrayResource(
-                            resource_id,
-                            resource->texture,
-                            resource->sampler,
-                            bindless_mgr);
-                        break;
-                    default:
-                        break;
-                    }
-                    if (handle == 0)
-                        return false;
-
-                    bool descriptor_registered = false;
-                    for (const auto &requirement :
-                         material_program->
-                            GetShaderResourceSchema().resources)
-                    {
-                        if (requirement.texture_slot
-                                != entry.texture_slot
-                         || requirement.semantic != entry.semantic
-                         || requirement.name.empty())
-                            continue;
-
-                        if (entry.semantic
-                            == graph::mtl::DescriptorSemantic::
-                                MaterialSampler)
-                        {
-                            descriptor_registered =
-                                rdbs->
-                                    RegisterMaterialTextureSampler(
-                                        material_program,
-                                        requirement.name.c_str(),
-                                        resource->texture,
-                                        resource->sampler);
-                        }
-                        else
-                        {
-                            descriptor_registered =
-                                rdbs->RegisterMaterialTexture(
-                                    material_program,
-                                    requirement.name.c_str(),
-                                    resource->texture);
-                        }
-                        break;
-                    }
-                    if (!descriptor_registered)
-                        return false;
-                    continue;
+                }
+                const auto *resource =
+                    primitive_comp->GetMaterialTextureResource(
+                        binding.texture_slot);
+                if (!recipe_binding
+                 || !resource
+                 || resource->use_direct_value
+                 || !bindless_mgr)
+                {
+                    GLogError(
+                        "[DeferredResource] Texture acquisition failed: owner=%s slot=%u recipe=%d resource=%d bindless=%d",
+                        owner_name,
+                        static_cast<uint32_t>(
+                            binding.texture_slot),
+                        recipe_binding ? 1 : 0,
+                        resource ? 1 : 0,
+                        bindless_mgr ? 1 : 0);
+                    return false;
                 }
 
-                if (entry.kind
-                    != graph::mtl::ResourceAcquireKind::StorageBuffer)
+                const std::string resource_id =
+                    resource->resource_id.empty()
+                        ? BuildTextureResourceId(resource->texture)
+                        : resource->resource_id;
+                if (graph::mtl::
+                        GetResolvedTextureAssetIdentityHash(
+                            resource_id.data(),
+                            static_cast<uint32_t>(
+                                resource_id.size()))
+                        != binding.asset_identity_hash)
+                {
+                    GLogError(
+                        "[DeferredResource] Texture identity mismatch: owner=%s slot=%u",
+                        owner_name,
+                        static_cast<uint32_t>(
+                            binding.texture_slot));
                     return false;
+                }
+
+                uint32_t handle = 0;
+                switch (resource->kind)
+                {
+                case PrimitiveComponent::
+                        MaterialTextureResourceKind::Texture2D:
+                    handle = rdbs->RegisterTexture2DResource(
+                        resource_id,
+                        resource->texture,
+                        resource->sampler,
+                        bindless_mgr);
+                    break;
+                case PrimitiveComponent::
+                        MaterialTextureResourceKind::Texture2DArray:
+                    handle = rdbs->RegisterTexture2DArrayResource(
+                        resource_id,
+                        resource->texture,
+                        resource->sampler,
+                        bindless_mgr);
+                    break;
+                default:
+                    break;
+                }
+                if (handle == 0)
+                    return false;
+
+                bool descriptor_registered = false;
+                for (const auto &requirement :
+                     material_program->
+                        GetShaderResourceSchema().resources)
+                {
+                    if (requirement.texture_slot
+                            != binding.texture_slot
+                     || requirement.semantic != binding.semantic
+                     || requirement.name.empty())
+                        continue;
+
+                    if (binding.semantic
+                        == graph::mtl::DescriptorSemantic::
+                            MaterialSampler)
+                    {
+                        descriptor_registered =
+                            rdbs->
+                                RegisterMaterialTextureSampler(
+                                    material_program,
+                                    requirement.name.c_str(),
+                                    resource->texture,
+                                    resource->sampler);
+                    }
+                    else
+                    {
+                        descriptor_registered =
+                            rdbs->RegisterMaterialTexture(
+                                material_program,
+                                requirement.name.c_str(),
+                                resource->texture);
+                    }
+                    break;
+                }
+                if (!descriptor_registered)
+                    return false;
+            }
+
+            for (int i = 0; i < binding_table.data.GetCount(); ++i)
+            {
+                const graph::mtl::ResolvedDataBinding &binding =
+                    binding_table.data[i];
+                if (binding.source
+                        != graph::mtl::BindingSource::Asset)
+                    continue;
 
                 const graph::mtl::RecipeSSBOAssetBinding
                     *recipe_binding = nullptr;
-                for (const auto &binding : active_recipe.ssbo_assets)
+                if (binding.recipe_binding_index
+                        < active_recipe.ssbo_assets.size())
                 {
-                    if (binding.data_slot == entry.data_slot
-                     && binding.ssbo_type == entry.ssbo_type
+                    const graph::mtl::RecipeSSBOAssetBinding
+                        &candidate = active_recipe.ssbo_assets[
+                            binding.recipe_binding_index];
+                    if (candidate.data_slot == binding.data_slot
+                     && candidate.ssbo_type == binding.ssbo_type
                      && graph::mtl::GetResolvedDataAssetIdentityHash(
-                            binding.ssbo_type,
-                            binding.ssbo_id,
-                            binding.data_slot)
-                            == entry.asset_identity_hash)
+                            candidate.ssbo_type,
+                            candidate.ssbo_id,
+                            candidate.data_slot)
+                            == binding.asset_identity_hash)
                     {
-                        recipe_binding = &binding;
-                        break;
+                        recipe_binding = &candidate;
                     }
                 }
                 if (!recipe_binding)
@@ -475,8 +486,8 @@ namespace hgl::ecs
                     if (requirement.semantic
                             == graph::mtl::DescriptorSemantic::
                                 MaterialDataSlotData
-                     && requirement.data_slot == entry.data_slot
-                     && requirement.ssbo_type == entry.ssbo_type)
+                     && requirement.data_slot == binding.data_slot
+                     && requirement.ssbo_type == binding.ssbo_type)
                     {
                         layout_requirement = &requirement;
                         break;
@@ -486,7 +497,7 @@ namespace hgl::ecs
                     return false;
 
                 const graph::mtl::SSBOAddress address{
-                    entry.ssbo_type,
+                    binding.ssbo_type,
                     recipe_binding->ssbo_id,
                     0};
                 graph::ResourceDomainBinding domain_binding{};
@@ -498,14 +509,14 @@ namespace hgl::ecs
                     const auto *resource =
                         primitive_comp->GetMaterialDataSlotResource(
                             layout_requirement->name,
-                            entry.data_slot);
+                            binding.data_slot);
                     if (!resource
                      || !resource->buffer
                      || resource->ssbo_id != recipe_binding->ssbo_id)
                         return false;
 
                     if (!rdbs->RegisterMaterialStructLayout(
-                            entry.ssbo_type,
+                            binding.ssbo_type,
                             recipe_binding->ssbo_id,
                             resource->byte_stride)
                      || !domain_manager->RegisterBuffer(
@@ -522,7 +533,7 @@ namespace hgl::ecs
                 }
 
                 if (!rdbs->RegisterMaterialStructLayout(
-                        entry.ssbo_type,
+                        binding.ssbo_type,
                         recipe_binding->ssbo_id,
                         domain_binding.element_stride))
                     return false;
@@ -712,18 +723,6 @@ namespace hgl::ecs
                 binding_table);
         }
 
-        graph::mtl::ResourceAcquirePlan active_resource_plan{};
-        if (binding_table.IsRuntimeReady()
-         && !graph::mtl::BuildResourceAcquirePlan(
-                binding_table, active_resource_plan))
-        {
-            GLogWarning(
-                "[DeferredResource] plan build failed: owner=%s program=%s",
-                GetPrimitiveOwnerName(primitive_comp),
-                resolved_program->GetName().c_str());
-            return false;
-        }
-
         const bool program_changed = (material_comp->program != resolved_program);
         if (program_changed)
             InvalidateRecipeRuntime(material_comp, false);
@@ -745,33 +744,28 @@ namespace hgl::ecs
 
         material_comp->program = resolved_program;
         material_comp->resolved_binding_table = binding_table;
-        material_comp->active_resource_acquire_plan =
-            active_resource_plan;
-        material_comp->has_active_resource_acquire_plan =
-            binding_table.IsRuntimeReady();
-        if (material_comp->has_active_resource_acquire_plan)
+        if (binding_table.IsRuntimeReady())
         {
             uint32_t planned_textures = 0;
             uint32_t planned_data = 0;
-            for (int i = 0;
-                 i < active_resource_plan.resources.GetCount();
-                 ++i)
+            for (int i = 0; i < binding_table.textures.GetCount(); ++i)
             {
-                if (active_resource_plan.resources[i].kind
-                        == graph::mtl::ResourceAcquireKind::Texture)
+                if (binding_table.textures[i].source
+                        == graph::mtl::BindingSource::Asset)
                     ++planned_textures;
-                else if (active_resource_plan.resources[i].kind
-                        == graph::mtl::ResourceAcquireKind::
-                            StorageBuffer)
+            }
+            for (int i = 0; i < binding_table.data.GetCount(); ++i)
+            {
+                if (binding_table.data[i].source
+                        == graph::mtl::BindingSource::Asset)
                     ++planned_data;
             }
             GLogVerbose(
-                "[DeferredResource] owner=%s program=%s plan_hash=%llu planned_texture=%u planned_data=%u recipe_texture=%zu recipe_data=%zu unused_texture=%u unused_data=%u",
+                "[DeferredResource] owner=%s program=%s table_hash=%llu planned_texture=%u planned_data=%u recipe_texture=%zu recipe_data=%zu unused_texture=%u unused_data=%u",
                 GetPrimitiveOwnerName(primitive_comp),
                 resolved_program->GetName().c_str(),
                 static_cast<unsigned long long>(
-                    graph::mtl::GetResourceAcquirePlanHash(
-                        active_resource_plan)),
+                    binding_table.GetStableHash()),
                 planned_textures,
                 planned_data,
                 material_binding_recipe.textures.size(),
@@ -1248,13 +1242,12 @@ namespace hgl::ecs
                 {
                     material_comp->MarkResourcesPending();
                     const bool resources_ready = material_comp->
-                            has_active_resource_acquire_plan
+                            resolved_binding_table.IsRuntimeReady()
                      && PrepareActivePlanResources(
                             world,
                             primitiveComp,
                             material_comp->program,
-                            material_comp->
-                                active_resource_acquire_plan);
+                            material_comp->resolved_binding_table);
                     if (!resources_ready)
                     {
                         GLogWarning(
@@ -1302,15 +1295,13 @@ namespace hgl::ecs
                     {
                         material_comp->MarkValid();
                         GLogVerbose(
-                            "[DeferredResource] owner=%s state=%s plan=%llu",
+                            "[DeferredResource] owner=%s state=%s table=%llu",
                             GetPrimitiveOwnerName(primitiveComp),
                             GetMaterialRuntimeStateName(
                                 material_comp->runtime_state),
                             static_cast<unsigned long long>(
-                                graph::mtl::
-                                    GetResourceAcquirePlanHash(
-                                        material_comp->
-                                            active_resource_acquire_plan)));
+                                material_comp->resolved_binding_table.
+                                    GetStableHash()));
                     }
                 }
             }

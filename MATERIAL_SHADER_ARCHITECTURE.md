@@ -1117,10 +1117,24 @@ stable_hash
 - 仅影响 Vulkan 执行而不影响 Shader 的 Blend/Depth/Cull。
 - 仅作为来源标识、但已收敛到同一有效实现的 Definition ID。
 
-### 11.8 ResourceAcquirePlan
+### 11.8 ResolvedBindingTable 与资源获取
 
-从 Recipe 可用资源与 PreparedMaterialProgramSet 的有效 Contract 求交集，得到需要真正
-加载的资产：
+绑定解析的唯一结果是 `ResolvedBindingTable`。它由 Recipe 可用资源与 PreparedMaterialProgramSet
+的有效 Contract 求交集后构建，是存储的唯一绑定 IR；不存在独立的 ResourceAcquirePlan。
+
+表内每个条目携带：
+
+```text
+binding_source          // Asset / DirectValue / Unbound / Missing
+recipe_binding_index    // 在 Recipe 资源数组中的直接索引
+semantic / texture_slot / data_slot
+asset_identity_hash
+required / allow_fallback
+stable_hash
+```
+
+资源获取阶段只消费表中 `binding_source == Asset` 的条目（Asset 投影），以
+`recipe_binding_index` 直接索引 Recipe 资源并注册待加载资产：
 
 ```text
 required_assets
@@ -1248,17 +1262,18 @@ Unresolved
 - 共享 ResolvedMaterialProgram 引用。
 - PreparedMaterialProgramSet。
 - ResolvedModuleGraph 与 Shader contracts 引用。
-- ResourceAcquirePlan。
+- ResolvedBindingTable（含 Asset 投影，即资源获取依据）。
 
 不创建纹理、不分配 bindless handle、不写实例 index table。
 
 如果多个 Definition 收敛到相同 EffectiveMaterialProgramKey，它们在此阶段得到同一个
 ResolvedMaterialProgram 和 ShaderProgram 引用，但分别保留自己的 MaterialResolutionResult
-与 ResourceAcquirePlan。
+与 ResolvedBindingTable。
 
 ### 13.3 资源加载阶段
 
-ECS 或资源调度系统在 `ProgramResolved` 后提交 `ResourceAcquirePlan`。
+ECS 或资源调度系统在 `ProgramResolved` 后依据 `ResolvedBindingTable` 的 Asset 投影提交
+资源加载。
 
 Forward 单 Program 路径只加载最终 Program 实际需要的资源。Visibility Buffer 路径加载
 PreparedMaterialProgramSet 内允许执行 Profile 的需求并集。Recipe 中未被 Prepared Set
@@ -1434,7 +1449,7 @@ ResolvedModuleGraphKey
 ShaderInterfaceKey
 ShaderVariantKey
 ShaderProgramKey
-ResourceAcquirePlanKey
+ResolvedBindingTableKey
 MaterialBindingKey
 RenderPipelineKey
 ```
@@ -1716,7 +1731,7 @@ generated_source_digest
 - 定义模块 `require/provide/dependency/condition` schema。
 - 定义 ResolvedModuleGraph。
 - 定义 ShaderInterfaceContract、OutputContract 和 ShaderVariantContract。
-- 定义 ResourceAcquirePlan 与 MaterialBindingPlan 的边界。
+- 定义 ResolvedBindingTable 与 MaterialBindingPlan 的边界。
 - 定义 MaterialResolutionResult、EffectiveMaterialProgramKey 和 ResolvedMaterialProgram。
 - 明确 Program Selection 与 Provider Selection 诊断结构。
 
@@ -1860,7 +1875,7 @@ generated_source_digest
 - 定义设备/全局上限、ECS 准备决策和未来 Tile 执行决策的边界。
 - ECS 将距离、投影尺寸、重要性和 View 预算解析为 PreparedMaterialProgramSet。
 - 将选择来源缓存与有效 Program 缓存分离。
-- ProgramResolved 后按 Prepared Set 生成 ResourceAcquirePlan。
+- ProgramResolved 后构建 ResolvedBindingTable，以 Asset 投影驱动资源加载。
 - ECS 在 Prepared Set 确定后发起资源加载。
 - 资源完成后建立 MaterialBindingPlan。
 - Recipe 未使用资源不加载。
@@ -1907,7 +1922,7 @@ generated_source_digest
 - 可裁剪阶段。
 - OutputContract。
 - Coverage 需求。
-- ResourceAcquirePlan 预期。
+- ResolvedBindingTable 的 Asset 投影预期。
 - 执行系统边界。
 - PreparedMaterialProgramSet 与 Tile classifier 输入。
 

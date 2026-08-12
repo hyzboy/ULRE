@@ -58,8 +58,6 @@ namespace hgl::ecs
         uint64_t recipe_hash = 0;
         uint64_t program_build_context_hash = 0;
         graph::mtl::ResolvedBindingTable resolved_binding_table;
-        graph::mtl::ResourceAcquirePlan active_resource_acquire_plan;
-        bool has_active_resource_acquire_plan = false;
         std::vector<ResolvedSSBOBinding> resolved_ssbo_bindings;
 
         // Cached normalized recipe — avoids redundant NormalizeRecipe in CreatePipeline.
@@ -109,7 +107,6 @@ namespace hgl::ecs
         void ClearMaterializationInstanceData();
         void ClearResolvedSSBOBindings();
         void ClearResolvedBindingTable();
-        void ClearActiveResourceAcquirePlan();
         void SetResolvedSSBOBinding(const char *data_slot_name,
                                     uint32_t data_slot,
                                     graph::mtl::SSBOType ssbo_type,
