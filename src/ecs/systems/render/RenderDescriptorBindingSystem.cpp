@@ -810,7 +810,7 @@ namespace hgl::ecs
                                          const char *reason,
                                          int32_t slot = -1)
         {
-            if (!material || !req.name || !*req.name)
+            if (!material || req.name.empty())
                 return;
 
             std::string key = material->GetName().c_str();
@@ -835,7 +835,7 @@ namespace hgl::ecs
                 GLogError("[DescriptorBinding] Missing SSBO binding: material=%s semantic=%s descriptor=%s type=%s ssbo_id=%u slot=%d reason=%s. Resource producer must register it via RegisterMaterialStructLayout(...) and ResourceDomainManager::RegisterBuffer(...).",
                           material->GetName().c_str(),
                           graph::mtl::GetDescriptorSemanticName(req.semantic),
-                          req.name,
+                          req.name.c_str(),
                           graph::mtl::GetSSBOTypeName(req.ssbo_type),
                           req.ssbo_id,
                           slot,
@@ -846,7 +846,7 @@ namespace hgl::ecs
                 GLogWarning("[DescriptorBinding] Missing SSBO binding: material=%s semantic=%s descriptor=%s type=%s ssbo_id=%u slot=%d reason=%s. Resource producer must register it via RegisterMaterialStructLayout(...) and ResourceDomainManager::RegisterBuffer(...).",
                             material->GetName().c_str(),
                             graph::mtl::GetDescriptorSemanticName(req.semantic),
-                            req.name,
+                            req.name.c_str(),
                             graph::mtl::GetSSBOTypeName(req.ssbo_type),
                             req.ssbo_id,
                             slot,
@@ -858,7 +858,7 @@ namespace hgl::ecs
                                     const graph::mtl::ShaderResourceSlot &req,
                                     const char *reason)
         {
-            if (!material || !req.name || !*req.name)
+            if (!material || req.name.empty())
                 return;
 
             if (req.required)
@@ -869,7 +869,7 @@ namespace hgl::ecs
                 GLogError("[DescriptorBinding] Bind failed: material=%s semantic=%s descriptor=%s reason=%s",
                           material->GetName().c_str(),
                           graph::mtl::GetDescriptorSemanticName(req.semantic),
-                          req.name,
+                          req.name.c_str(),
                           reason ? reason : "unknown");
             }
             else
@@ -877,7 +877,7 @@ namespace hgl::ecs
                 GLogWarning("[DescriptorBinding] Optional bind failed: material=%s semantic=%s descriptor=%s reason=%s",
                             material->GetName().c_str(),
                             graph::mtl::GetDescriptorSemanticName(req.semantic),
-                            req.name,
+                            req.name.c_str(),
                             reason ? reason : "unknown");
             }
         };
@@ -926,11 +926,11 @@ namespace hgl::ecs
             if (batch)
             {
                 if (auto *mp = ensure_batch_mp(material, batch, req.set_type))
-                    return mp->BindUBO(req.name, gpu, false);
+                    return mp->BindUBO(req.name.c_str(), gpu, false);
                 return false;
             }
 
-            return material->BindUBO(req.set_type, req.name, gpu, false);
+            return material->BindUBO(req.set_type, req.name.c_str(), gpu, false);
         };
 
         auto bind_ssbo = [&](graph::ShaderProgram *material,
@@ -944,11 +944,11 @@ namespace hgl::ecs
             if (batch)
             {
                 if (auto *mp = ensure_batch_mp(material, batch, req.set_type))
-                    return mp->BindSSBO(req.name, gpu, false);
+                    return mp->BindSSBO(req.name.c_str(), gpu, false);
                 return false;
             }
 
-            return material->BindSSBO(req.set_type, req.name, gpu, false);
+            return material->BindSSBO(req.set_type, req.name.c_str(), gpu, false);
         };
 
         auto bind_texture = [&](graph::ShaderProgram *material,
@@ -962,11 +962,11 @@ namespace hgl::ecs
             if (batch)
             {
                 if (auto *mp = ensure_batch_mp(material, batch, req.set_type))
-                    return mp->BindTexture(req.name, texture);
+                    return mp->BindTexture(req.name.c_str(), texture);
                 return false;
             }
 
-            return material->BindTexture(req.set_type, req.name, texture);
+            return material->BindTexture(req.set_type, req.name.c_str(), texture);
         };
 
         auto bind_texture_sampler = [&](graph::ShaderProgram *material,
@@ -981,11 +981,11 @@ namespace hgl::ecs
             if (batch)
             {
                 if (auto *mp = ensure_batch_mp(material, batch, req.set_type))
-                    return mp->BindTextureSampler(req.name, texture, sampler);
+                    return mp->BindTextureSampler(req.name.c_str(), texture, sampler);
                 return false;
             }
 
-            return material->BindTextureSampler(req.set_type, req.name, texture, sampler);
+            return material->BindTextureSampler(req.set_type, req.name.c_str(), texture, sampler);
         };
         auto recipe_runtime_has_layer_table_for_texture_slot = [&](graph::ShaderProgram *material,
                                                                     MaterialBatch *batch,
@@ -1037,7 +1037,7 @@ namespace hgl::ecs
                     auto material_comp = entity->GetComponent<MaterialComponent>();
                     if (const auto *resolved = material_comp
                         ? material_comp->FindResolvedSSBOBinding(
-                            req.name, req.data_slot, req.ssbo_type)
+                            req.name.c_str(), req.data_slot, req.ssbo_type)
                         : nullptr)
                     {
                         candidate_ssbo_id = resolved->ssbo_id;
@@ -1051,7 +1051,7 @@ namespace hgl::ecs
                     if (primitive_comp->BuildResolvedAuthoringMaterialRecipe(effective_recipe, material))
                     {
                         if (const auto *asset = graph::mtl::FindRecipeSSBOAssetBinding(
-                                effective_recipe, req.name, req.data_slot, req.ssbo_type))
+                                effective_recipe, req.name.c_str(), req.data_slot, req.ssbo_type))
                         {
                             candidate_ssbo_id = asset->ssbo_id;
                             has_candidate = true;
@@ -1063,7 +1063,7 @@ namespace hgl::ecs
                             {
                                 if (auto material_comp = entity->GetComponent<MaterialComponent>())
                                     material_comp->SetResolvedSSBOBinding(
-                                        req.name,
+                                        req.name.c_str(),
                                         req.data_slot,
                                         req.ssbo_type,
                                         candidate_ssbo_id);
@@ -1087,7 +1087,7 @@ namespace hgl::ecs
                     GLogError("[DescriptorBinding] Recipe batch struct mismatch: material=%s semantic=%s descriptor=%s slot=%u expected_ssbo_id=%u actual_ssbo_id=%u.",
                               material->GetName().c_str(),
                               graph::mtl::GetDescriptorSemanticName(req.semantic),
-                              req.name,
+                              req.name.c_str(),
                               req.data_slot,
                               ssbo_id,
                               candidate_ssbo_id);
@@ -1138,7 +1138,7 @@ namespace hgl::ecs
             }
             case graph::mtl::DescriptorSemantic::SkyCubemapSampler:
             {
-                const auto *binding = FindMaterialResourceBinding(material, req.name);
+                const auto *binding = FindMaterialResourceBinding(material, req.name.c_str());
                 graph::Texture *texture = binding ? binding->texture : nullptr;
                 graph::Sampler *sampler = binding ? binding->sampler : nullptr;
                 if ((!texture || !sampler) && context)
@@ -1331,7 +1331,7 @@ namespace hgl::ecs
             {
                 const bool allow_indirect_fallback = recipe_runtime_has_layer_table_for_texture_slot(material, batch, req);
 
-                const auto *binding = FindMaterialResourceBinding(material, req.name);
+                const auto *binding = FindMaterialResourceBinding(material, req.name.c_str());
                 if (binding && binding->texture)
                 {
                     const bool bind_ok = binding->sampler
@@ -1351,7 +1351,7 @@ namespace hgl::ecs
             {
                 const bool allow_indirect_fallback = recipe_runtime_has_layer_table_for_texture_slot(material, batch, req);
 
-                const auto *binding = FindMaterialResourceBinding(material, req.name);
+                const auto *binding = FindMaterialResourceBinding(material, req.name.c_str());
                 if (binding && binding->texture && binding->sampler)
                 {
                     if (!bind_texture_sampler(material, batch, req, binding->texture, binding->sampler))
@@ -1393,7 +1393,7 @@ namespace hgl::ecs
 
             for (const auto &req : contract.resources)
             {
-                if (!req.name || !*req.name)
+                if (req.name.empty())
                     continue;
                 apply_requirement(shader_program, batch, req);
             }
@@ -1413,7 +1413,7 @@ namespace hgl::ecs
 
             for (const auto &req : contract.resources)
             {
-                if (!req.name || !*req.name)
+                if (req.name.empty())
                     continue;
                 apply_requirement(shader_program, nullptr, req);
             }

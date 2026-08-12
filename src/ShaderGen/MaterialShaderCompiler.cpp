@@ -253,7 +253,7 @@ static bool ValidateDefinitionCapabilitySubset(
                 if (req.semantic == DescriptorSemantic::MaterialDataSlotData
                  && req.data_slot == ssbo.data_slot
                  && req.ssbo_type == ssbo.ssbo_type
-                 && CStrEq(req.name, ssbo.name))
+                 && CStrEq(req.name.c_str(), ssbo.name))
                     allowed = true;
             }
             for (uint32 i = 0; i < manifest->texture_count && !allowed; ++i)
@@ -261,7 +261,7 @@ static bool ValidateDefinitionCapabilitySubset(
                 const auto &texture = manifest->textures[i];
                 if (req.semantic == texture.semantic
                  && req.texture_slot == texture.slot
-                 && CStrEq(req.name, texture.name))
+                 && CStrEq(req.name.c_str(), texture.name))
                     allowed = true;
             }
             if (req.semantic == DescriptorSemantic::MaterialTextureLayerTable
@@ -284,7 +284,7 @@ static bool ValidateDefinitionCapabilitySubset(
         std::string message = "Definition capability subset violation: semantic=";
         message += GetDescriptorSemanticName(req.semantic);
         message += ", name=";
-        message += (req.name && *req.name) ? req.name : "<unnamed>";
+        message += req.name.empty() ? "<unnamed>" : req.name;
         message += ", def=";
         message += definition.definition_name.empty() ? "<unnamed>" : definition.definition_name;
         diagnostics.push_back(std::move(message));

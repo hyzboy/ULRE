@@ -385,25 +385,25 @@ namespace hgl::graph::shadergen
                 : IsSemanticFallbackAllowed(req.semantic);
 
             // ── Names from entry ──
-            req.name = entry.name.empty()
-                ? nullptr : entry.name.c_str();
-            req.struct_name = entry.struct_name.empty()
-                ? nullptr : entry.struct_name.c_str();
-            req.glsl_type = entry.glsl_type.empty()
-                ? nullptr : entry.glsl_type.c_str();
-
-            // ── Owned copies ──
-            req.owned_name = entry.name;
-            req.owned_struct_name = entry.struct_name;
-            req.owned_glsl_type = entry.glsl_type;
+            req.name = entry.name;
+            req.struct_name = entry.struct_name;
+            req.glsl_type = entry.glsl_type;
 
             // ── Fallback names by semantic ──
-            if (!req.name || !*req.name)
-                req.name = GetDefaultDescriptorNameBySemantic(
+            if (req.name.empty())
+            {
+                const char *default_name = GetDefaultDescriptorNameBySemantic(
                     req.semantic);
-            if (!req.struct_name || !*req.struct_name)
-                req.struct_name = GetDefaultStructNameBySemantic(
+                if (default_name)
+                    req.name = default_name;
+            }
+            if (req.struct_name.empty())
+            {
+                const char *default_struct = GetDefaultStructNameBySemantic(
                     req.semantic);
+                if (default_struct)
+                    req.struct_name = default_struct;
+            }
 
             // ── SSBO id corrections (matching BuildShaderResourceSchema) ──
             if (req.semantic == DescriptorSemantic::MaterialDataSlotData
@@ -425,7 +425,6 @@ namespace hgl::graph::shadergen
                 req.ssbo_id = MakeRecipeSSBOId(req.data_slot);
             }
 
-            req.RebindOwnedPointers();
             out_schema.resources.push_back(std::move(req));
         }
         return true;

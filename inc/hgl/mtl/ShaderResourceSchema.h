@@ -25,138 +25,12 @@ namespace hgl::graph::mtl
         uint32_t ssbo_id = MakeRecipeSSBOId(0);
         uint32_t stage_flags = 0;
 
-        const char *name = nullptr;
-        const char *struct_name = nullptr;
-        const char *glsl_type = nullptr;
-
-        // Owned copies — set when name/struct_name comes from a runtime std::string
-        // (e.g. generated from data_slot_decls) rather than a string literal.
-        std::string owned_name;
-        std::string owned_struct_name;
-        std::string owned_glsl_type;
+        std::string name;
+        std::string struct_name;
+        std::string glsl_type;
 
         bool required = true;
         bool allow_fallback = false;
-
-        void RebindOwnedPointers()
-        {
-            if (!owned_name.empty())
-                name = owned_name.c_str();
-
-            if (!owned_struct_name.empty())
-                struct_name = owned_struct_name.c_str();
-
-            if (!owned_glsl_type.empty())
-                glsl_type = owned_glsl_type.c_str();
-        }
-
-        ShaderResourceSlot() = default;
-
-        ShaderResourceSlot(const ShaderResourceSlot &rhs)
-            : logical_resource_id(rhs.logical_resource_id)
-            , resource_schema_id(rhs.resource_schema_id)
-            , semantic(rhs.semantic)
-            , semantic_layer(rhs.semantic_layer)
-            , set_type(rhs.set_type)
-            , kind(rhs.kind)
-            , texture_slot(rhs.texture_slot)
-            , data_slot(rhs.data_slot)
-            , ssbo_type(rhs.ssbo_type)
-            , ssbo_id(rhs.ssbo_id)
-            , stage_flags(rhs.stage_flags)
-            , name(rhs.name)
-            , struct_name(rhs.struct_name)
-            , glsl_type(rhs.glsl_type)
-            , owned_name(rhs.owned_name)
-            , owned_struct_name(rhs.owned_struct_name)
-            , owned_glsl_type(rhs.owned_glsl_type)
-            , required(rhs.required)
-            , allow_fallback(rhs.allow_fallback)
-        {
-            RebindOwnedPointers();
-        }
-
-        ShaderResourceSlot &operator=(const ShaderResourceSlot &rhs)
-        {
-            if (this == &rhs)
-                return *this;
-
-            logical_resource_id = rhs.logical_resource_id;
-            resource_schema_id = rhs.resource_schema_id;
-            semantic = rhs.semantic;
-            semantic_layer = rhs.semantic_layer;
-            set_type = rhs.set_type;
-            kind = rhs.kind;
-            texture_slot = rhs.texture_slot;
-            data_slot = rhs.data_slot;
-            ssbo_type = rhs.ssbo_type;
-            ssbo_id = rhs.ssbo_id;
-            stage_flags = rhs.stage_flags;
-            name = rhs.name;
-            struct_name = rhs.struct_name;
-            glsl_type = rhs.glsl_type;
-            owned_name = rhs.owned_name;
-            owned_struct_name = rhs.owned_struct_name;
-            owned_glsl_type = rhs.owned_glsl_type;
-            required = rhs.required;
-            allow_fallback = rhs.allow_fallback;
-
-            RebindOwnedPointers();
-            return *this;
-        }
-
-        ShaderResourceSlot(ShaderResourceSlot &&rhs) noexcept
-            : logical_resource_id(rhs.logical_resource_id)
-            , resource_schema_id(rhs.resource_schema_id)
-            , semantic(rhs.semantic)
-            , semantic_layer(rhs.semantic_layer)
-            , set_type(rhs.set_type)
-            , kind(rhs.kind)
-            , texture_slot(rhs.texture_slot)
-            , data_slot(rhs.data_slot)
-            , ssbo_type(rhs.ssbo_type)
-            , ssbo_id(rhs.ssbo_id)
-            , stage_flags(rhs.stage_flags)
-            , name(rhs.name)
-            , struct_name(rhs.struct_name)
-            , glsl_type(rhs.glsl_type)
-            , owned_name(std::move(rhs.owned_name))
-            , owned_struct_name(std::move(rhs.owned_struct_name))
-            , owned_glsl_type(std::move(rhs.owned_glsl_type))
-            , required(rhs.required)
-            , allow_fallback(rhs.allow_fallback)
-        {
-            RebindOwnedPointers();
-        }
-
-        ShaderResourceSlot &operator=(ShaderResourceSlot &&rhs) noexcept
-        {
-            if (this == &rhs)
-                return *this;
-
-            logical_resource_id = rhs.logical_resource_id;
-            resource_schema_id = rhs.resource_schema_id;
-            semantic = rhs.semantic;
-            semantic_layer = rhs.semantic_layer;
-            set_type = rhs.set_type;
-            kind = rhs.kind;
-            texture_slot = rhs.texture_slot;
-            data_slot = rhs.data_slot;
-            ssbo_type = rhs.ssbo_type;
-            ssbo_id = rhs.ssbo_id;
-            stage_flags = rhs.stage_flags;
-            name = rhs.name;
-            struct_name = rhs.struct_name;
-            glsl_type = rhs.glsl_type;
-            owned_name = std::move(rhs.owned_name);
-            owned_struct_name = std::move(rhs.owned_struct_name);
-            owned_glsl_type = std::move(rhs.owned_glsl_type);
-            required = rhs.required;
-            allow_fallback = rhs.allow_fallback;
-
-            RebindOwnedPointers();
-            return *this;
-        }
     };
 
     struct ShaderResourceSchema
@@ -319,19 +193,27 @@ namespace hgl::graph::mtl
             req.ssbo_type = entry.ssbo_type;
             req.ssbo_id = entry.ssbo_id;
             req.stage_flags = entry.stage_flags;
-            req.name = entry.name;
-            req.struct_name = entry.struct_name;
-            req.glsl_type = entry.glsl_type;
+            req.name = entry.name ? entry.name : "";
+            req.struct_name = entry.struct_name ? entry.struct_name : "";
+            req.glsl_type = entry.glsl_type ? entry.glsl_type : "";
             req.required = entry.has_requirement_policy
                 ? entry.required : IsSemanticRequired(req.semantic);
             req.allow_fallback = entry.has_requirement_policy
                 ? entry.allow_fallback : IsSemanticFallbackAllowed(req.semantic);
 
-            if (!req.name || !*req.name)
-                req.name = GetDefaultDescriptorNameBySemantic(req.semantic);
+            if (req.name.empty())
+            {
+                const char *default_name = GetDefaultDescriptorNameBySemantic(req.semantic);
+                if (default_name)
+                    req.name = default_name;
+            }
 
-            if (!req.struct_name || !*req.struct_name)
-                req.struct_name = GetDefaultStructNameBySemantic(req.semantic);
+            if (req.struct_name.empty())
+            {
+                const char *default_struct = GetDefaultStructNameBySemantic(req.semantic);
+                if (default_struct)
+                    req.struct_name = default_struct;
+            }
 
             if (req.semantic == DescriptorSemantic::MaterialTexture
              || req.semantic == DescriptorSemantic::MaterialSampler)
@@ -377,7 +259,7 @@ namespace hgl::graph::mtl
                 req.ssbo_type = SSBOType::TransformIndexRows;
             }
 
-            if (req.name && *req.name)
+            if (!req.name.empty())
             {
                 hgl::hash::FNV1aHasher64 h;
                 h << req.name;
@@ -398,10 +280,9 @@ namespace hgl::graph::mtl
                 req.logical_resource_id = h;
             }
 
-            const char *schema_name =
-                req.struct_name && *req.struct_name
-                    ? req.struct_name : req.glsl_type;
-            if (schema_name && *schema_name)
+            const std::string &schema_name =
+                !req.struct_name.empty() ? req.struct_name : req.glsl_type;
+            if (!schema_name.empty())
             {
                 hgl::hash::FNV1aHasher64 h;
                 h << schema_name;
@@ -493,7 +374,7 @@ namespace hgl::graph::mtl
             message += GetDescriptorKindName(req.kind);
 
             message += ", name=";
-            const char *entry_name = (req.name && *req.name) ? req.name : "<unnamed>";
+            const char *entry_name = req.name.empty() ? "<unnamed>" : req.name.c_str();
             message += entry_name;
             return message;
         };
@@ -529,7 +410,7 @@ namespace hgl::graph::mtl
                 continue;
             }
 
-            if (!req.name || !*req.name)
+            if (req.name.empty())
             {
                 diagnostics.emplace_back("Descriptor resource name is empty; every resource must have a canonical name (" + context + ").");
                 continue;
@@ -544,7 +425,7 @@ namespace hgl::graph::mtl
 
             if ((req.kind == DescriptorKind::Texture
               || req.kind == DescriptorKind::TextureSampler)
-             && (!req.glsl_type || !*req.glsl_type))
+             && req.glsl_type.empty())
             {
                 diagnostics.emplace_back("Texture resource GLSL type is empty (" + context + ").");
                 continue;
@@ -623,7 +504,7 @@ namespace hgl::graph::mtl
             {
                 const ShaderResourceSlot &rhs = schema.resources[j];
                 const bool same_name =
-                    lhs.name && rhs.name && std::strcmp(lhs.name, rhs.name) == 0;
+                    lhs.name == rhs.name;
                 const bool same_logical_resource =
                     lhs.logical_resource_id == rhs.logical_resource_id;
                 const bool same_semantic_key =
@@ -649,9 +530,7 @@ namespace hgl::graph::mtl
                  && lhs.ssbo_type == rhs.ssbo_type
                  && lhs.ssbo_id == rhs.ssbo_id
                  && lhs.stage_flags == rhs.stage_flags
-                 && ((!lhs.glsl_type && !rhs.glsl_type)
-                  || (lhs.glsl_type && rhs.glsl_type
-                   && std::strcmp(lhs.glsl_type, rhs.glsl_type) == 0));
+                 && lhs.glsl_type == rhs.glsl_type;
 
                 std::string message = same_identity
                     ? "Duplicate material resource requirement: "

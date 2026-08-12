@@ -142,7 +142,7 @@ namespace hgl::graph
                     recipe.textures.clear();
                     recipe.ssbo_assets.clear();
 
-                    if (!req.name
+                    if (req.name.empty()
                      || !mtl::UpsertRecipeSSBOAssetBinding(recipe,
                                                           req.name,
                                                           req.ssbo_type,

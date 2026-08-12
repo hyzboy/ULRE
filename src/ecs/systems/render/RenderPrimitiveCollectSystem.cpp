@@ -109,7 +109,7 @@ namespace hgl::ecs
                                         uint32_t &out_ssbo_id)
         {
             if (const auto *asset = graph::mtl::FindRecipeSSBOAssetBinding(
-                    recipe, req.name, req.data_slot, req.ssbo_type))
+                    recipe, req.name.c_str(), req.data_slot, req.ssbo_type))
             {
                 out_ssbo_id = asset->ssbo_id;
                 return true;
@@ -271,7 +271,7 @@ namespace hgl::ecs
                 GLogWarning(
                     "[MaterialBinding][Layout] index=%zu name=%s semantic=%s kind=%s required=%d allow_fallback=%d texture_slot=%u data_slot=%u type=%s(%u) ssbo_id=%u",
                     i,
-                    requirement.name ? requirement.name : "<unnamed>",
+                    requirement.name.empty() ? "<unnamed>" : requirement.name.c_str(),
                     graph::mtl::GetDescriptorSemanticName(
                         requirement.semantic),
                     graph::mtl::GetDescriptorKindName(requirement.kind),
@@ -413,8 +413,7 @@ namespace hgl::ecs
                         if (requirement.texture_slot
                                 != entry.texture_slot
                          || requirement.semantic != entry.semantic
-                         || !requirement.name
-                         || !*requirement.name)
+                         || requirement.name.empty())
                             continue;
 
                         if (entry.semantic
@@ -425,7 +424,7 @@ namespace hgl::ecs
                                 rdbs->
                                     RegisterMaterialTextureSampler(
                                         material_program,
-                                        requirement.name,
+                                        requirement.name.c_str(),
                                         resource->texture,
                                         resource->sampler);
                         }
@@ -434,7 +433,7 @@ namespace hgl::ecs
                             descriptor_registered =
                                 rdbs->RegisterMaterialTexture(
                                     material_program,
-                                    requirement.name,
+                                    requirement.name.c_str(),
                                     resource->texture);
                         }
                         break;
@@ -483,7 +482,7 @@ namespace hgl::ecs
                         break;
                     }
                 }
-                if (!layout_requirement || !layout_requirement->name)
+                if (!layout_requirement || layout_requirement->name.empty())
                     return false;
 
                 const graph::mtl::SSBOAddress address{
@@ -799,6 +798,18 @@ namespace hgl::ecs
         material_comp->cached_effective_recipe = material_binding_recipe;
         material_comp->cached_effective_recipe_hash =
             graph::mtl::HashMaterialRecipe(material_binding_recipe);
+
+        // P2-1: Project the pruned binding recipe back from the freshly built
+        // binding table exactly once. Both inputs are in scope here, so the
+        // recipe→table→recipe round-trip does not need to re-run on every
+        // materialize. When the table is not runtime-ready the projection
+        // fails and cached_binding_recipe_valid stays false, which makes
+        // MaterializeRecipeRowsForPrimitive fail exactly as before.
+        material_comp->cached_binding_recipe_valid =
+            graph::mtl::BuildBindingTableRecipe(
+                material_binding_recipe,
+                binding_table,
+                material_comp->cached_binding_recipe);
         material_comp->tracked_material_authored_generation = primitive_comp->GetMaterialAuthoredGeneration();
 
         return true;
@@ -882,11 +893,8 @@ namespace hgl::ecs
 
         // P3: use cached effective recipe instead of rebuilding
         graph::mtl::MaterialRecipe &effective_recipe = material_comp->cached_effective_recipe;
-        graph::mtl::MaterialRecipe material_binding_recipe{};
-        if (!graph::mtl::BuildBindingTableRecipe(
-                effective_recipe,
-                material_comp->resolved_binding_table,
-                material_binding_recipe))
+        graph::mtl::MaterialRecipe &material_binding_recipe = material_comp->cached_binding_recipe;
+        if (!material_comp->cached_binding_recipe_valid)
         {
             LogMaterialBindingFailure(
                 GetPrimitiveOwnerName(primitive_comp),
@@ -922,14 +930,14 @@ namespace hgl::ecs
             {
                 GLogWarning("[RenderPrimitiveCollectSystem] Materialize failed: unresolved SSBO binding for %s descriptor=%s slot=%u type=%s",
                             GetPrimitiveOwnerName(primitive_comp),
-                            req.name ? req.name : "<unnamed>",
+                            req.name.empty() ? "<unnamed>" : req.name.c_str(),
                             req.data_slot,
                             graph::mtl::GetSSBOTypeName(req.ssbo_type));
                 return false;
             }
 
             material_comp->SetResolvedSSBOBinding(
-                req.name, req.data_slot, req.ssbo_type, resolved_ssbo_id);
+                req.name.c_str(), req.data_slot, req.ssbo_type, resolved_ssbo_id);
         }
 
         auto rdbs = world->GetSystem<RenderDescriptorBindingSystem>();
@@ -988,7 +996,6 @@ namespace hgl::ecs
             for (const auto &req : material_comp->program->GetShaderResourceSchema().resources)
             {
                 if (req.semantic == graph::mtl::DescriptorSemantic::MaterialDataSlotData
-                 && req.name
                  && req.data_slot == asset_binding.data_slot
                  && req.ssbo_type == asset_binding.ssbo_type
                  && asset_binding.data_slot_name == req.name)

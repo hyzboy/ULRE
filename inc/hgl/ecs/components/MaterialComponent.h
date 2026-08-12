@@ -72,6 +72,13 @@ namespace hgl::ecs
         graph::mtl::MaterialRecipe cached_effective_recipe{};
         uint64_t cached_effective_recipe_hash = 0;
 
+        // P2-1: Cached pruned recipe projected back from the resolved binding
+        // table (recipe → table → recipe). Computed once when the binding table
+        // is rebuilt instead of re-running BuildBindingTableRecipe on every
+        // materialize. Cleared together with resolved_binding_table.
+        graph::mtl::MaterialRecipe cached_binding_recipe{};
+        bool cached_binding_recipe_valid = false;
+
         // P3: Tracks the last observed PrimitiveComponent::material_authored_generation.
         // When this matches the primitive's current generation, all cached material
         // data is valid and ResolveMaterialProgramForPrimitive can skip entirely.

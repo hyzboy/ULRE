@@ -373,7 +373,6 @@ namespace hgl::ecs
                 for (const auto &req : material_program->GetShaderResourceSchema().resources)
                 {
                     if (req.semantic != hgl::graph::mtl::DescriptorSemantic::MaterialDataSlotData
-                     || !req.name
                      || req.data_slot != resource.data_slot
                      || resource.data_slot_name != req.name)
                         continue;

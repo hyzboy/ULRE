@@ -5612,18 +5612,9 @@ namespace
         }
 
         if (persistent_layout.resources.size() != 2
-         || !persistent_layout.resources[0].name
-         || std::strcmp(
-                persistent_layout.resources[0].name,
-                "viewport") != 0
-         || !persistent_layout.resources[0].struct_name
-         || std::strcmp(
-                persistent_layout.resources[0].struct_name,
-                "ViewportInfo") != 0
-         || !persistent_layout.resources[1].glsl_type
-         || std::strcmp(
-                persistent_layout.resources[1].glsl_type,
-                "sampler2D") != 0)
+         || persistent_layout.resources[0].name != "viewport"
+         || persistent_layout.resources[0].struct_name != "ViewportInfo"
+         || persistent_layout.resources[1].glsl_type != "sampler2D")
         {
             result.diagnostics.emplace_back(
                 "material layout did not retain owned descriptor strings");

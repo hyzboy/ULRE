@@ -107,6 +107,8 @@ namespace hgl::ecs
     void MaterialComponent::ClearResolvedBindingTable()
     {
         resolved_binding_table = {};
+        cached_binding_recipe = {};
+        cached_binding_recipe_valid = false;
         ClearActiveResourceAcquirePlan();
     }
 
