@@ -896,20 +896,34 @@ namespace hgl::ecs
         // Determine the entity's own data_index from the cached binding recipe.
         // The old shared MaterializationSpec cache is gone: this value is always
         // this primitive's own row, never inherited from another primitive.
+        //
+        // A use_data_index == false asset (e.g. every mesh in BasicLitMeshes /
+        // TextureBlinnPhongMeshes) still owns a concrete row: the shader indexes
+        // mtl_data_index_rows and mtl_texture_layer_rows by the data_index VALUE
+        // read back from those tables, so a non-data-index asset publishes its
+        // authored data_index (0) there. Prefer an explicit use_data_index asset
+        // when present, otherwise fall back to the first authored data_index.
         uint32_t entity_data_index = uint32_t(-1);
+        uint32_t fallback_data_index = uint32_t(-1);
         for (const auto &asset_binding : material_binding_recipe.ssbo_assets)
         {
             if (asset_binding.use_data_index)
             {
                 entity_data_index = asset_binding.data_index;
             }
+            else if (fallback_data_index == uint32_t(-1))
+            {
+                fallback_data_index = asset_binding.data_index;
+            }
         }
+        if (entity_data_index == uint32_t(-1))
+            entity_data_index = fallback_data_index;
 
+        // Fill the per-batch material data index table for every SSBO asset,
+        // including use_data_index == false ones (the shader still reads
+        // data[data_index], so the authored index must be published in the table).
         for (const auto &asset_binding : material_binding_recipe.ssbo_assets)
         {
-            if (!asset_binding.use_data_index)
-                continue;
-
             uint32_t data_slot = asset_binding.data_slot;
             for (const auto &req : material_comp->program->GetShaderResourceSchema().resources)
             {
