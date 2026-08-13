@@ -46,3 +46,6 @@
 [submodule "3rdpty/iwyu"]
 	path = 3rdpty/iwyu
 	url = https://github.com/include-what-you-use/include-what-you-use.git
+[submodule "CMAudio"]
+	path = CMAudio
+	url = https://github.com/hyzboy/CMAudio.git
