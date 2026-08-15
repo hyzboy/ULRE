@@ -1,0 +1,8 @@
+﻿macro(CMLiveAudioSetup CMLIVEAUDIO_ROOT_PATH)
+    message("CMLiveAudio root path: " ${CMLIVEAUDIO_ROOT_PATH})
+
+    set(CMLIVEAUDIO_ROOT_INCLUDE_PATH ${CMLIVEAUDIO_ROOT_PATH}/inc)
+    set(CMLIVEAUDIO_ROOT_SOURCE_PATH ${CMLIVEAUDIO_ROOT_PATH}/src)
+
+    include_directories(${CMLIVEAUDIO_ROOT_INCLUDE_PATH})
+endmacro()
