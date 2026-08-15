@@ -194,8 +194,6 @@ SET(FONT_LAYOUT_FILES   ${SG_INCLUDE_PATH}/font/TextLayout.h
 SOURCE_GROUP("8.Font\\Layout" FILES ${FONT_LAYOUT_FILES})
 
 SET(FONT_RENDERING_FILES    ${SG_INCLUDE_PATH}/font/TextGeometry.h
-                            ${SG_INCLUDE_PATH}/font/TextRender.h
-                            font/TextRender.cpp
                             font/TextGeometry.cpp)
 
 SOURCE_GROUP("8.Font\\Rendering" FILES ${FONT_RENDERING_FILES})

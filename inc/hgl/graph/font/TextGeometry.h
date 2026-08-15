@@ -16,6 +16,20 @@ namespace hgl::graph
         class TextLayout;
     }//namespace layout
 
+    enum class TextGeometryType:uint8
+    {
+        /**
+        * 固定风格，所有的字符使用同一种风格绘制
+        */
+        FixedStyle=0,
+
+        /**
+        * 每个字符可以不同风格，最大不能超过256种。
+        * 在绘制前，会通过一个格式为R8UI的VertexAttribute传递每个字符的风格ID，所以最多不能超过256种风格。
+        */
+        StylePerChar,
+    };
+
     GeometryVertexFormat CreateTextGeometryVertexFormat();
 
     /**
@@ -35,7 +49,6 @@ namespace hgl::graph
     protected:
 
         friend class layout::TextLayout;
-        friend class TextRender;
         friend class ::hgl::ecs::TextRenderPipeline;
 
         U32CharSet chars_sets;

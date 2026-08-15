@@ -16,7 +16,6 @@ namespace hgl::graph
 
 
     class TileData;
-    class TextRender;
 
     struct CameraInfo;
     struct Camera;

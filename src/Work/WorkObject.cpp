@@ -5,7 +5,6 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/graph/module/TextureManager.h>
-#include<hgl/graph/font/TextRender.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/time/Time.h>
 //#include<iostream>
