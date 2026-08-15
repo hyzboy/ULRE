@@ -15,9 +15,9 @@ namespace
         switch (set_type)
         {
         case DescriptorSetType::Scene:
-            if (strcmp(name, "camera") == 0)   { out_binding = 0; return true; }
-            if (strcmp(name, "sky") == 0)      { out_binding = 1; return true; }
-            if (strcmp(name, "viewport") == 0) { out_binding = 2; return true; }
+            if (strcmp(name, "camera") == 0)   { out_binding = kSceneBindingCamera;   return true; }
+            if (strcmp(name, "sky") == 0)      { out_binding = kSceneBindingSky;      return true; }
+            if (strcmp(name, "viewport") == 0) { out_binding = kSceneBindingViewport; return true; }
             return false;
 
         case DescriptorSetType::Transform:
@@ -37,7 +37,7 @@ namespace
     {
         switch (set_type)
         {
-        case DescriptorSetType::Scene:     return 3;
+        case DescriptorSetType::Scene:     return kSceneBindingViewport + 1;
         case DescriptorSetType::Transform: return 2;
         case DescriptorSetType::Material:  return 0;
         default:                           return 0;

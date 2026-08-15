@@ -6,14 +6,19 @@
 
 namespace hgl::graph
 {
+    ///< Scene 集（Set 0）全局 UBO 硬编码绑定号。三个 UBO 全局共用、一帧写/绑一次。
+    constexpr const int kSceneBindingCamera   = 0;    ///< 相机 UBO
+    constexpr const int kSceneBindingSky      = 1;    ///< 天空/太阳光 UBO
+    constexpr const int kSceneBindingViewport = 2;    ///< 视口 UBO
+
     enum class DescriptorSetType:int
     {
         Unknow=-1,
 
-        Scene=0,
-        Transform,
-        Material,
-        Bindless,           ///< 全局 Bindless 纹理数组集合（Set 3）
+        Scene=0,        ///< 全局 UBO 集（camera/sky/viewport），所有材质共用，一帧写/绑一次
+        Transform,      ///< per-draw SSBO 集（l2w/l2w_index_rows/joint）
+        Material,       ///< per-material 描述符集（mtl 数据槽/索引表/ColorPalette）
+        Bindless,       ///< 全局 Bindless 纹理数组集合（Set 3），一帧绑一次
 
         ENUM_CLASS_RANGE(Scene,Bindless)
     };
