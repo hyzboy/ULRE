@@ -5,7 +5,7 @@
 // @ulre require ProducedSemantic UV0
 // @ulre require Resource MaterialData
 // @ulre ssbo mtl TransmissionSurface 0 Fragment required
-// @ulre texture_layer BaseColor Fragment required
+// @ulre texture_layer base_color Fragment required
 // @ulre uses material_source_interface
 // @ulre uses bindless_textures
 // @ulre end

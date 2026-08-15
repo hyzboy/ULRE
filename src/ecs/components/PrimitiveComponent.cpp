@@ -71,7 +71,7 @@ namespace hgl::ecs
         }
 
         void UpsertRecipeTextureBinding(hgl::graph::mtl::MaterialRecipe &recipe,
-                                        hgl::graph::mtl::TextureSlot slot,
+                                        const std::string &slot_name,
                                         const std::string &resource_id,
                                         const bool required,
                                         const uint32_t direct_value = 0,
@@ -79,7 +79,7 @@ namespace hgl::ecs
         {
             for (auto &binding : recipe.textures)
             {
-                if (binding.slot != slot)
+                if (binding.slot_name != slot_name)
                     continue;
 
                 binding.resource_id = resource_id;
@@ -90,7 +90,7 @@ namespace hgl::ecs
             }
 
             hgl::graph::mtl::RecipeTextureBinding binding{};
-            binding.slot = slot;
+            binding.slot_name = slot_name;
             binding.resource_id = resource_id;
             binding.direct_value = direct_value;
             binding.use_direct_value = use_direct_value;
@@ -334,7 +334,7 @@ namespace hgl::ecs
             if (resource->use_direct_value)
             {
                 UpsertRecipeTextureBinding(out_recipe,
-                                           slot,
+                                           hgl::graph::mtl::GetTextureSlotName(slot),
                                            std::string(),
                                            resource->required,
                                            resource->direct_value,
@@ -348,7 +348,7 @@ namespace hgl::ecs
             if (resource_id.empty())
                 continue;
 
-            UpsertRecipeTextureBinding(out_recipe, slot, resource_id, resource->required);
+            UpsertRecipeTextureBinding(out_recipe, hgl::graph::mtl::GetTextureSlotName(slot), resource_id, resource->required);
         }
 
         for (const auto &resource : materialDataSlotResources)

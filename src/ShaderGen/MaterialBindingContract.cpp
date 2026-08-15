@@ -293,7 +293,7 @@ namespace hgl::graph::mtl
           << static_cast<uint32>(recipe.textures.size());
         for (const auto &texture : recipe.textures)
         {
-            h << texture.slot
+            h << texture.slot_name
               << texture.resource_id;
             h << texture.direct_value
               << texture.use_direct_value

@@ -29,7 +29,7 @@ namespace hgl::graph::mtl
     // Recipe 中的纹理绑定声明（纯输入，不包含任何运行时句柄）。
     struct RecipeTextureBinding
     {
-        TextureSlot slot = TextureSlot::BaseColor; // 目标语义槽
+        std::string slot_name;                    // 目标语义槽名（snake_case，如 "base_color"）
         std::string resource_id;                   // 资源标识（路径/资产ID/逻辑名）
         uint32_t direct_value = 0;                // 直接写入 TextureLayerRow 的原始值（例如 array layer）
         bool use_direct_value = false;            // true 时忽略 resource_id，直接使用 direct_value
@@ -110,10 +110,10 @@ namespace hgl::graph::mtl
 
     struct TextureSlotDeclaration
     {
-        TextureSlot      slot         = TextureSlot::BaseColor;       // 纹理语义槽
+        std::string      name;                                        // 纹理槽名（snake_case，主键，如 "base_color"）
+        TextureSlot      slot         = TextureSlot::BaseColor;       // 由 name 派生的内部枚举（契约层序列化用）
         GLSLSamplerType  sampler_type = GLSLSamplerType::Sampler2D;   // GLSL 采样器类型
         bool             required     = false;                         // true: 缺失应触发错误；false: 可选
-        const char *     name         = nullptr;                       // GLSL binding name override
     };
 
     // Policy for resolving a material vertex semantic. GeometryOnly and
@@ -504,7 +504,7 @@ namespace hgl::graph::mtl
         h << texture_count;
         for (const auto &texture : recipe.textures)
         {
-            h << texture.slot
+            h << texture.slot_name
               << texture.resource_id;
             h << texture.direct_value
               << texture.use_direct_value

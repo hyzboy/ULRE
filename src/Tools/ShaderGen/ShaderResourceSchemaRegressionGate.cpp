@@ -460,11 +460,11 @@ namespace
         recipe.recipe_name = "BindingTableA";
         recipe.mtl_def_id = "DefinitionA";
         recipe.textures.push_back(
-            {TextureSlot::BaseColor, "asset/albedo-a", 0, false, true});
+            {GetTextureSlotName(TextureSlot::BaseColor), "asset/albedo-a", 0, false, true});
         recipe.textures.push_back(
-            {TextureSlot::Normal, "asset/unused-normal", 0, false, false});
+            {GetTextureSlotName(TextureSlot::Normal), "asset/unused-normal", 0, false, false});
         recipe.textures.push_back(
-            {TextureSlot::Custom0, std::string(), 7, true, false});
+            {GetTextureSlotName(TextureSlot::Custom0), std::string(), 7, true, false});
         RecipeSSBOAssetBinding data_binding{};
         data_binding.data_slot_name = "mtl";
         data_binding.data_slot = 0;
@@ -524,10 +524,10 @@ namespace
         for (const RecipeTextureBinding &binding :
              projected_recipe.textures)
         {
-            if (binding.slot == TextureSlot::BaseColor
+            if (binding.slot_name == GetTextureSlotName(TextureSlot::BaseColor)
              && binding.resource_id == "asset/albedo-a")
                 found_base_color = true;
-            if (binding.slot == TextureSlot::Custom0
+            if (binding.slot_name == GetTextureSlotName(TextureSlot::Custom0)
              && binding.use_direct_value
              && binding.direct_value == 7)
                 found_layer_value = true;
@@ -742,7 +742,7 @@ namespace
 
         MaterialRecipe duplicate_recipe = recipe;
         duplicate_recipe.textures.push_back(
-            {TextureSlot::BaseColor, "asset/duplicate", 0, false, true});
+            {GetTextureSlotName(TextureSlot::BaseColor), "asset/duplicate", 0, false, true});
         ResolvedBindingTable duplicate_table{};
         if (BuildBindingTable(
                 duplicate_recipe,
@@ -2409,7 +2409,7 @@ namespace
         recipe.recipe_name = "shared-instance-regression";
 
         RecipeTextureBinding texture{};
-        texture.slot = TextureSlot::BaseColor;
+        texture.slot_name = GetTextureSlotName(TextureSlot::BaseColor);
         texture.use_direct_value = true;
         texture.direct_value = 7;
         recipe.textures.emplace_back(texture);

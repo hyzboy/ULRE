@@ -5,7 +5,7 @@
 // @ulre require Resource MaterialData
 // @ulre require ProducedSemantic UV0
 // @ulre ssbo mtl PBRSurface 0 Fragment optional fallback
-// @ulre texture_layer BaseColor Fragment optional fallback
+// @ulre texture_layer base_color Fragment optional fallback
 // @ulre uses material_source_interface
 // @ulre uses bindless_textures
 // @ulre end

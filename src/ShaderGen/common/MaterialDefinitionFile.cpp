@@ -409,23 +409,6 @@ namespace hgl::graph::mtl
             return false;
         }
 
-        bool ParseTextureSlot(const std::string &name, TextureSlot &out)
-        {
-            static const char *const names[] = {
-                "BaseColor", "Normal", "Metallic", "Roughness", "Emissive",
-                "Occlusion", "OpacityMask", "Height", "Custom0", "Custom1"
-            };
-            for (uint32 i = 0; i < 10; ++i)
-            {
-                if (name == names[i])
-                {
-                    out = static_cast<TextureSlot>(i);
-                    return true;
-                }
-            }
-            return false;
-        }
-
         bool ParseSampler(const std::string &name, GLSLSamplerType &out)
         {
             static const char *const names[] = {
@@ -625,17 +608,18 @@ namespace hgl::graph::mtl
                     for (const auto &item : resources.at("textures").as_array())
                     {
                         if (!item.is_table()
-                         || !item.contains("slot") || !item.at("slot").is_string()
+                         || !item.contains("name") || !item.at("name").is_string()
                          || !item.contains("sampler") || !item.at("sampler").is_string()
                          || !item.contains("required") || !item.at("required").is_boolean())
                             return false;
+                        const std::string slot_name = item.at("name").as_string();
                         TextureSlot slot;
                         GLSLSamplerType sampler;
-                        if (!ParseTextureSlot(item.at("slot").as_string(), slot)
+                        if (!ParseTextureSlotName(slot_name, slot)
                          || !ParseSampler(item.at("sampler").as_string(), sampler))
                             return false;
                         out.definition.texture_slot_decls.push_back(
-                            {slot, sampler, item.at("required").as_boolean(), nullptr});
+                            {slot_name, slot, sampler, item.at("required").as_boolean()});
                     }
                 }
             }

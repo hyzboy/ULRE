@@ -4,7 +4,7 @@
 // @ulre priority 0
 // @ulre uses ntb_interface
 // @ulre uses bindless_textures
-// @ulre texture_layer Normal Fragment optional fallback
+// @ulre texture_layer normal Fragment optional fallback
 // @ulre end
 // NTB Derivative Normal Map — 基于 dFdx / dFdy 屏幕空间偏导推导切线空间并解算法线贴图
 #ifndef NTB_DERIVATIVE_NORMALMAP_GLSL

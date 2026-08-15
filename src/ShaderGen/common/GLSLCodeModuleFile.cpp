@@ -328,24 +328,6 @@ namespace hgl::graph::mtl
             return false;
         }
 
-        bool ParseTextureSlot(const char *token, TextureSlot &out) noexcept
-        {
-            static const char *const names[] =
-            {
-                "BaseColor", "Normal", "Metallic", "Roughness", "Emissive",
-                "Occlusion", "OpacityMask", "Height", "Custom0", "Custom1"
-            };
-            for (uint32 i = 0; i < 10; ++i)
-            {
-                if (std::strcmp(token, names[i]) == 0)
-                {
-                    out = static_cast<TextureSlot>(i);
-                    return true;
-                }
-            }
-            return false;
-        }
-
         bool ParseConditionDomain(
             const char *token,
             GLSLCodeModuleConditionDomain &out_domain) noexcept
@@ -592,7 +574,7 @@ namespace hgl::graph::mtl
                 {
                     GLSLCodeModuleTextureLayerRequirement requirement;
                     const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
-                    if (!next || !ParseTextureSlot(token, requirement.slot))
+                    if (!next || !ParseTextureSlotName(token, requirement.slot))
                         return GLSLCodeModuleParseResult::InvalidResource;
                     next = ReadToken(next, line_end, token, sizeof(token));
                     if (!next || !ParseStageFlags(token, requirement.stage_flags))

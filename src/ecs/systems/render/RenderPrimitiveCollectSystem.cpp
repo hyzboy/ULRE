@@ -182,9 +182,9 @@ namespace hgl::ecs
             {
                 const auto &binding = recipe.textures[i];
                 GLogWarning(
-                    "[MaterialBinding][RecipeTexture] index=%zu slot=%u resource=%s direct=%d direct_value=%u required=%d",
+                    "[MaterialBinding][RecipeTexture] index=%zu slot=%s resource=%s direct=%d direct_value=%u required=%d",
                     i,
-                    static_cast<uint32_t>(binding.slot),
+                    binding.slot_name.c_str(),
                     binding.resource_id.c_str(),
                     binding.use_direct_value ? 1 : 0,
                     binding.direct_value,
@@ -287,7 +287,7 @@ namespace hgl::ecs
                     const graph::mtl::RecipeTextureBinding
                         &candidate = active_recipe.textures[
                             binding.recipe_binding_index];
-                    if (candidate.slot == binding.texture_slot
+                    if (candidate.slot_name == graph::mtl::GetTextureSlotName(binding.texture_slot)
                      && !candidate.use_direct_value
                      && graph::mtl::
                             GetResolvedTextureAssetIdentityHash(
@@ -926,9 +926,10 @@ namespace hgl::ecs
         // no cross-primitive row collision.
         for (const auto &texture_binding : material_binding_recipe.textures)
         {
-            const uint32_t slot = static_cast<uint32_t>(texture_binding.slot);
-            if (slot >= static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE))
+            graph::mtl::TextureSlot slot_enum;
+            if (!graph::mtl::ParseTextureSlotName(texture_binding.slot_name, slot_enum))
                 continue;
+            const uint32_t slot = static_cast<uint32_t>(slot_enum);
 
             uint32_t handle = 0;
             if (texture_binding.use_direct_value)
@@ -946,7 +947,7 @@ namespace hgl::ecs
                     // authored resource id, or the texture-derived id used at
                     // RegisterTexture2D(Array)Resource time.
                     if (const auto *authoring =
-                            primitive_comp->GetMaterialTextureResource(texture_binding.slot))
+                            primitive_comp->GetMaterialTextureResource(slot_enum))
                     {
                         if (!authoring->use_direct_value && authoring->texture)
                         {

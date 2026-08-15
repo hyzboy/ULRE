@@ -156,7 +156,7 @@ namespace hgl::graph::mtl
                  i < static_cast<int>(recipe.textures.size());
                  ++i)
             {
-                if (recipe.textures[static_cast<size_t>(i)].slot != slot)
+                if (recipe.textures[static_cast<size_t>(i)].slot_name != GetTextureSlotName(slot))
                     continue;
                 if (found >= 0)
                 {
@@ -355,14 +355,18 @@ namespace hgl::graph::mtl
                     // binding table. Asset bindings feed registration in
                     // PrepareActivePlanResources and round-trip back through
                     // CopyBackMaterialRecipe.
-                    if (FindTextureBinding(out_table, recipe_binding.slot))
+                    TextureSlot slot;
+                    if (!ParseTextureSlotName(recipe_binding.slot_name, slot))
+                        continue;
+
+                    if (FindTextureBinding(out_table, slot))
                         continue;
 
                     ResolvedTextureBinding binding{};
                     binding.logical_resource_id = MakeViewFallbackTextureID(
-                        program_key_digest, recipe_binding.slot);
+                        program_key_digest, slot);
                     binding.semantic = DescriptorSemantic::MaterialTexture;
-                    binding.texture_slot = recipe_binding.slot;
+                    binding.texture_slot = slot;
                     binding.required = recipe_binding.required;
                     binding.allow_fallback = false;
                     out_table.textures.Add(binding);
@@ -523,7 +527,7 @@ namespace hgl::graph::mtl
 
                 const RecipeTextureBinding &recipe_binding =
                     source_recipe.textures[binding.recipe_binding_index];
-                if (recipe_binding.slot != binding.texture_slot)
+                if (recipe_binding.slot_name != GetTextureSlotName(binding.texture_slot))
                     return false;
                 if (binding.source == BindingSource::Asset)
                 {
