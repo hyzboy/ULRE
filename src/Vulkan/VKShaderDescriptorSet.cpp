@@ -17,9 +17,13 @@ namespace
         {
         // 注：Scene 集（camera/sky/viewport UBO）已全局化（P1），不再进入 per-material 分配器，
         //     故此处不再需要 Scene 固定绑定映射。
-        case DescriptorSetType::Transform:
-            if (strcmp(name, "l2w") == 0)            { out_binding = 0; return true; }
-            if (strcmp(name, "l2w_index_rows") == 0) { out_binding = 1; return true; }
+        case DescriptorSetType::PerObject:
+            // P1-2c：PerObject 集 binding 由固定常量表 kPerObjectBinding* 确定
+            //（l2w / l2w_index_rows / joint / mtl_data_index_rows）。
+            if (strcmp(name, "l2w") == 0)              { out_binding = kPerObjectBindingL2W;           return true; }
+            if (strcmp(name, "l2w_index_rows") == 0)   { out_binding = kPerObjectBindingL2WIndexRows;  return true; }
+            if (strcmp(name, "joint") == 0)            { out_binding = kPerObjectBindingJoint;         return true; }
+            if (strcmp(name, "mtl_data_index_rows") == 0) { out_binding = kPerObjectBindingDataIndexRows; return true; }
             return false;
 
         case DescriptorSetType::Material:
@@ -35,7 +39,8 @@ namespace
         switch (set_type)
         {
         // 注：Scene 已全局化（P1），不再进入分配器，无动态绑定起点需求。
-        case DescriptorSetType::Transform: return 2;
+        // P1-2c：PerObject 集固定成员占 binding 0..3（kPerObjectBinding*），动态从 4 起。
+        case DescriptorSetType::PerObject: return 4;
         case DescriptorSetType::Material:  return 0;
         default:                           return 0;
         }

@@ -467,11 +467,13 @@ ShaderBuildContext *CompileCompositorMaterial(
                     return FailAfterBuild("failed to add MaterialTextureLayerRows struct");
                 // 行表 binding 统一为「数据槽数 + 行表序号」：无 data slot 时 declared 计数为 0，
                 // 同一公式覆盖 use_slot_decls 两种路径，避免特例字面量。
+                // P1-2c：mtl_data_index_rows 已迁出 Material 集，texture_layer_rows
+                // 紧随数据槽之后（binding = N），不再 +1。
                 if (!ctx->AddSSBO(stage_bits,
                                   DescriptorSetType::Material,
                                   SBS_MaterialTextureLayerRows.struct_name,
                                   SBS_MaterialTextureLayerRows.name,
-                                  int(declared_material_data_slot_count + 1u)))
+                                  int(declared_material_data_slot_count)))
                 {
                     return FailAfterBuild("failed to add MaterialTextureLayerRows SSBO");
                 }
@@ -479,12 +481,12 @@ ShaderBuildContext *CompileCompositorMaterial(
             case DescriptorSemantic::MaterialDataIndexTable:
                 if (!ctx->AddStruct(SBS_MaterialDataIndexRows.struct_name, ""))
                     return FailAfterBuild("failed to add MaterialDataIndexRows struct");
-                // 行表 binding 统一为「数据槽数 + 行表序号」：无 data slot 时 declared 计数为 0。
+                // P1-2c：mtl_data_index_rows 迁至 PerObject 集，binding 由固定常量表
+                // kPerObjectBinding* 确定（走固定名路径，与 l2w_index_rows 同构）。
                 if (!ctx->AddSSBO(stage_bits,
-                                  DescriptorSetType::Material,
+                                  SBS_MaterialDataIndexRows.set_type,
                                   SBS_MaterialDataIndexRows.struct_name,
-                                  SBS_MaterialDataIndexRows.name,
-                                  int(declared_material_data_slot_count)))
+                                  SBS_MaterialDataIndexRows.name))
                 {
                     return FailAfterBuild("failed to add MaterialDataIndexRows SSBO");
                 }
@@ -542,17 +544,16 @@ ShaderBuildContext *CompileCompositorMaterial(
             return false;
         };
 
-        // 行表 binding 统一为「数据槽数 + 行表序号」：无 data slot 时 declared 计数为 0，
-        // 与 Step 3 的行表分支同一公式，避免特例。
+        // P1-2c：mtl_data_index_rows 迁至 Transform 集，binding 由固定常量表确定，
+        // 与 Step 3 的 MaterialDataIndexTable 分支同构。
         if (vv.emit_data_index_id
             && !HasDescriptorSemanticInDef(DescriptorSemantic::MaterialDataIndexTable))
         {
             ctx->AddStruct(SBS_MaterialDataIndexRows.struct_name, "");
             ctx->AddSSBO(uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
-                         DescriptorSetType::Material,
+                         SBS_MaterialDataIndexRows.set_type,
                          SBS_MaterialDataIndexRows.struct_name,
-                         SBS_MaterialDataIndexRows.name,
-                         int(declared_material_data_slot_count));
+                         SBS_MaterialDataIndexRows.name);
         }
 
         if (vv.emit_texture_layer_id
@@ -564,7 +565,7 @@ ShaderBuildContext *CompileCompositorMaterial(
                          DescriptorSetType::Material,
                          SBS_MaterialTextureLayerRows.struct_name,
                          SBS_MaterialTextureLayerRows.name,
-                         int(declared_material_data_slot_count + 1u));
+                         int(declared_material_data_slot_count));
         }
     }
 

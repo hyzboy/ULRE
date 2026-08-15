@@ -5,10 +5,10 @@
 // @ulre end
 // descriptor_macros.glsl — 标准描述符集/绑定宏定义
 //
-// 默认值对应 3D 标准布局（Scene=0, Transform=1, Material=2, Bindless=3）。
+// 默认值对应 3D 标准布局（Scene=0, PerObject=1, Material=2, Bindless=3）。
 // 2D 生成器或自定义材质可在 #include 之前 #define 覆盖默认值。
 //
-// 固定布局：set 间按 Scene(0) < Transform(1) < Material(2) < Bindless(3)。
+// 固定布局：set 间按 Scene(0) < PerObject(1) < Material(2) < Bindless(3)。
 // 行表 SSBO 声明（mtl_data_index_rows / mtl_texture_layer_rows / l2w_index_rows）
 // 不在此定义默认值：由 CompileCompositorMaterial 依据 descriptor_info 统一生成并
 // 注入（buffer 声明 + Resolve 函数，不再写死在 .glsl）。
@@ -23,18 +23,18 @@
 #define SCENE_SET 0
 #endif
 
-#ifndef TRANSFORM_SET
-#define TRANSFORM_SET 1
+#ifndef PER_OBJECT_SET
+#define PER_OBJECT_SET 1
 #endif
 
 #ifndef MATERIAL_SET
 #define MATERIAL_SET 2
 #endif
 
-// ── Transform set ──
+// ── PerObject set ──
 
 #ifndef L2W_SET
-#define L2W_SET TRANSFORM_SET
+#define L2W_SET PER_OBJECT_SET
 #endif
 
 #ifndef L2W_BINDING

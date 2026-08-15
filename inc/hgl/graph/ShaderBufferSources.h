@@ -6,18 +6,18 @@
 namespace hgl::graph::mtl
 {
     constexpr const ShaderBufferSource SBS_LocalToWorld{
-        DescriptorSetType::Transform, "l2w", "LocalToWorldData"
+        DescriptorSetType::PerObject, "l2w", "LocalToWorldData"
     };
     constexpr const ShaderBufferSource SBS_LocalToWorldIndexRows{
-        DescriptorSetType::Transform, "l2w_index_rows", "LocalToWorldIndexRows"
+        DescriptorSetType::PerObject, "l2w_index_rows", "LocalToWorldIndexRows"
     };
     constexpr const ShaderBufferSource SBS_MaterialTextureLayerRows{
         DescriptorSetType::Material, "mtl_texture_layer_rows", "TextureLayerRows"
     };
     constexpr const ShaderBufferSource SBS_MaterialDataIndexRows{
-        DescriptorSetType::Material, "mtl_data_index_rows", "DataIndexRows"
+        DescriptorSetType::PerObject, "mtl_data_index_rows", "DataIndexRows"
     };
     constexpr const ShaderBufferSource SBS_JointInfo{
-        DescriptorSetType::Transform, "joint", "JointInfo"
+        DescriptorSetType::PerObject, "joint", "JointInfo"
     };
 }

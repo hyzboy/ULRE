@@ -154,7 +154,7 @@ namespace hgl::graph::shadergen
          && !has_semantic(DescriptorSemantic::MaterialDataIndexTable))
         {
             SerializedDescriptorEntry entry{};
-            entry.set_type = DescriptorSetType::Material;
+            entry.set_type = SBS_MaterialDataIndexRows.set_type;  // P1-2c：Transform 集
             entry.kind = DescriptorKind::SSBO;
             entry.stage_flags =
                 uint32(VK_SHADER_STAGE_ALL_GRAPHICS);

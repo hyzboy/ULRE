@@ -123,7 +123,7 @@ inline void AppendDefinitionUBODescriptors(
 inline void PushLocalToWorld(std::vector<SerializedDescriptorEntry> &v, const DescriptorKind kind, const uint32_t stage_flags)
 {
     v.push_back({
-        DescriptorSetType::Transform, kind, stage_flags,
+        DescriptorSetType::PerObject, kind, stage_flags,
         "l2w", "LocalToWorldData", nullptr, DescriptorSemantic::LocalToWorld,
         TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, GetDescriptorSemanticLayerByKind(kind)
     });
@@ -132,7 +132,7 @@ inline void PushLocalToWorld(std::vector<SerializedDescriptorEntry> &v, const De
 inline void PushLocalToWorldIndexRows(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
     v.push_back({
-        DescriptorSetType::Transform, DescriptorKind::SSBO, stage_flags,
+        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
         "l2w_index_rows", "LocalToWorldIndexRows", nullptr, DescriptorSemantic::LocalToWorldIndexTable,
         TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO
     });
@@ -155,9 +155,10 @@ inline void PushMaterialDataSlot(std::vector<SerializedDescriptorEntry> &v,
 inline void PushMaterialDataIndexRows(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
     v.push_back({
-        DescriptorSetType::Material, DescriptorKind::SSBO, stage_flags,
+        // P1-2c：mtl_data_index_rows 迁至 PerObject 集（实例→材质行索引表）。
+        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
         "mtl_data_index_rows", "DataIndexRows", nullptr, DescriptorSemantic::MaterialDataIndexTable,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO
+        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::MaterialDataIndexTable, DescriptorSemanticLayer::SSBO
     });
 }
 

@@ -502,7 +502,7 @@ namespace hgl::ecs
         uint32_t data_index_row[graph::mtl::MaterialDataIndexRowStride] = {};
         guard.data_index_row_buffer->GetGPUBuffer()->Write(data_index_row, 0, sizeof(data_index_row));
 
-        if (!guard.material->BindSSBO(graph::DescriptorSetType::Material,
+        if (!guard.material->BindSSBO(graph::mtl::SBS_MaterialDataIndexRows.set_type,
                                       graph::mtl::SBS_MaterialDataIndexRows.name,
                                       guard.data_index_row_buffer->GetGPUBuffer()))
             return nullptr;

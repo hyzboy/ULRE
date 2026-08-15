@@ -36,7 +36,7 @@ public:
 
     #define MP_TYPE_IS(name)    const   bool is##name()const{return set_type==DescriptorSetType::name;}
         MP_TYPE_IS(Scene)
-        MP_TYPE_IS(Transform)
+        MP_TYPE_IS(PerObject)
         MP_TYPE_IS(Material)
     #undef MP_TYPE_IS
 

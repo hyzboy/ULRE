@@ -104,13 +104,13 @@ namespace hgl::graph::mtl
 
         case DescriptorSemantic::LocalToWorld:
         case DescriptorSemantic::LocalToWorldIndexTable:
-            return DescriptorSetType::Transform;
+        case DescriptorSemantic::MaterialDataIndexTable:  // P1-2c：实例→材质行索引表迁至 PerObject 集
+            return DescriptorSetType::PerObject;
 
         case DescriptorSemantic::MaterialDataSlotData:
         case DescriptorSemantic::MaterialTexture:
         case DescriptorSemantic::MaterialSampler:
         case DescriptorSemantic::MaterialTextureLayerTable:
-        case DescriptorSemantic::MaterialDataIndexTable:
             return DescriptorSetType::Material;
 
         default:
