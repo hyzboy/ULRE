@@ -99,6 +99,11 @@ set(ECS_SYS_09_RenderPreBeginFrame_EnvironmentSystem_FILES
     systems/render/EnvironmentSystem.cpp
 )
 
+set(ECS_SYS_09B_RenderPreBeginFrame_ColorPaletteSystem_FILES
+    ${ECS_INCLUDE_PATH}/systems/render/ColorPaletteSystem.h
+    systems/render/ColorPaletteSystem.cpp
+)
+
 set(ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/RenderBufferUploadSystem.h
     systems/render/RenderBufferUploadSystem.cpp
@@ -266,6 +271,7 @@ set(ECS_SOURCE
     ${ECS_SYS_07_RenderSwapchainNextImage_SwapchainAcquireSystem_FILES}
     ${ECS_SYS_08_RenderPreBeginFrame_RenderTargetSystem_FILES}
     ${ECS_SYS_09_RenderPreBeginFrame_EnvironmentSystem_FILES}
+    ${ECS_SYS_09B_RenderPreBeginFrame_ColorPaletteSystem_FILES}
 
     ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES}
     ${ECS_SYS_15_RenderFrameSync_RenderFrameBusinessSyncSystem_FILES}
@@ -300,6 +306,7 @@ source_group("ECS\\Systems\\05 TickCamera_CameraSystem" FILES ${ECS_SYS_05_TickC
 source_group("ECS\\Systems\\07 RenderSwapchainNextImage_SwapchainAcquireSystem" FILES ${ECS_SYS_07_RenderSwapchainNextImage_SwapchainAcquireSystem_FILES})
 source_group("ECS\\Systems\\08 RenderPreBeginFrame_RenderTargetSystem" FILES ${ECS_SYS_08_RenderPreBeginFrame_RenderTargetSystem_FILES})
 source_group("ECS\\Systems\\09 RenderPreBeginFrame_EnvironmentSystem" FILES ${ECS_SYS_09_RenderPreBeginFrame_EnvironmentSystem_FILES})
+source_group("ECS\\Systems\\09B RenderPreBeginFrame_ColorPaletteSystem" FILES ${ECS_SYS_09B_RenderPreBeginFrame_ColorPaletteSystem_FILES})
 source_group("ECS\\Systems\\14 RenderBufferUpload_RenderBufferUploadSystem" FILES ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES})
 source_group("ECS\\Systems\\15 RenderFrameSync_RenderFrameBusinessSyncSystem" FILES ${ECS_SYS_15_RenderFrameSync_RenderFrameBusinessSyncSystem_FILES})
 source_group("ECS\\Systems\\15B RenderFrameSync_RenderDescriptorBindingSystem" FILES ${ECS_SYS_15B_RenderFrameSync_RenderDescriptorBindingSystem_FILES})

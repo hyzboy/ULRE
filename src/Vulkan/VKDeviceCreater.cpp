@@ -241,24 +241,33 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family,
     VkPhysicalDeviceIndexTypeUint8FeaturesEXT index_type_uint8_features;
     VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT graphics_pipeline_library_features{};
 
-    // 启用 descriptorBindingPartiallyBound (Vulkan 1.2 core / VK_EXT_descriptor_indexing)
-    // 允许描述符集中未使用的绑定不必写入有效描述符
-    VkPhysicalDeviceDescriptorIndexingFeatures descriptor_indexing_features{};
-    descriptor_indexing_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
-    descriptor_indexing_features.pNext = nullptr;
-    descriptor_indexing_features.shaderSampledImageArrayNonUniformIndexing   = VK_TRUE;
-    descriptor_indexing_features.descriptorBindingPartiallyBound             = VK_TRUE;
-    descriptor_indexing_features.runtimeDescriptorArray                      = VK_TRUE;
-    descriptor_indexing_features.descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE;
-    descriptor_indexing_features.descriptorBindingSampledImageUpdateAfterBind= VK_TRUE;
-    descriptor_indexing_features.descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE;
-    descriptor_indexing_features.descriptorBindingUpdateUnusedWhilePending     = VK_TRUE;
-
-    // Chain descriptor indexing features
+    // Vulkan 1.2 统一特性结构：descriptor indexing 与 scalarBlockLayout 均已
+    // 提升并入 VkPhysicalDeviceVulkan12Features，因此必须在此单一结构中设置，
+    // 不得再单独链入 VkPhysicalDeviceDescriptorIndexingFeatures
+    // （否则违反 VUID-VkDeviceCreateInfo-pNext-02830）。
+    // 该结构始终入链，确保即使设备不支持 scalarBlockLayout，
+    // 描述符索引特性依然生效。
+    VkPhysicalDeviceVulkan12Features vk12_features{};
     {
-        const void *prev_pNext = create_info.pNext;
-        descriptor_indexing_features.pNext = const_cast<void*>(prev_pNext);
-        create_info.pNext = &descriptor_indexing_features;
+        const VkPhysicalDeviceVulkan12Features &dev12 = physical_device->GetFeatures12();
+
+        vk12_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+        vk12_features.pNext = const_cast<void*>(static_cast<const void*>(create_info.pNext));
+
+        // descriptor indexing（原 VkPhysicalDeviceDescriptorIndexingFeatures）
+        vk12_features.shaderSampledImageArrayNonUniformIndexing   = dev12.shaderSampledImageArrayNonUniformIndexing;
+        vk12_features.descriptorBindingPartiallyBound             = dev12.descriptorBindingPartiallyBound;
+        vk12_features.runtimeDescriptorArray                      = dev12.runtimeDescriptorArray;
+        vk12_features.descriptorBindingUniformBufferUpdateAfterBind = dev12.descriptorBindingUniformBufferUpdateAfterBind;
+        vk12_features.descriptorBindingSampledImageUpdateAfterBind= dev12.descriptorBindingSampledImageUpdateAfterBind;
+        vk12_features.descriptorBindingStorageBufferUpdateAfterBind = dev12.descriptorBindingStorageBufferUpdateAfterBind;
+        vk12_features.descriptorBindingUpdateUnusedWhilePending   = dev12.descriptorBindingUpdateUnusedWhilePending;
+
+        // GL_EXT_scalar_block_layout：ColorPalette UBO 使用 layout(scalar)
+        // 使 uint[256] 紧凑打包（4 字节步长），与 C++ 端 1024 字节结构对齐。
+        vk12_features.scalarBlockLayout = dev12.scalarBlockLayout;
+
+        create_info.pNext = &vk12_features;
     }
 
 

@@ -10,6 +10,7 @@
 #include <hgl/ecs/support/line/LineRenderSystem.h>
 #include <hgl/ecs/systems/render/LineStatsSystem.h>
 #include <hgl/ecs/systems/render/EnvironmentSystem.h>
+#include <hgl/ecs/systems/render/ColorPaletteSystem.h>
 #include <hgl/ecs/systems/render/RenderTargetSystem.h>
 #include <hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
 #include <hgl/ecs/support/primitive/PrimitiveRenderPipelineGroup.h>
@@ -144,6 +145,7 @@ namespace hgl::ecs
         auto input_system = EnsureTickSystem<ecs::InputSystem>(ctx);
         auto camera_system = EnsureTickSystem<ecs::CameraSystem>(ctx);
         auto environment_system = EnsureRenderSystem<ecs::EnvironmentSystem>(ctx);
+        auto color_palette_system = EnsureRenderSystem<ecs::ColorPaletteSystem>(ctx);
         auto render_target_system = EnsureRenderSystem<ecs::RenderTargetSystem>(ctx);
         auto swapchain_next_image_system = EnsureRenderSystem<ecs::SwapchainNextImageSystem>(ctx);
         auto swapchain_submit_system = EnsureRenderSystem<ecs::SwapchainSubmitSystem>(ctx);
@@ -158,6 +160,9 @@ namespace hgl::ecs
 
         if (environment_system)
             environment_system->SetRenderContext(rc);
+
+        if (color_palette_system)
+            color_palette_system->SetRenderContext(rc);
 
         if (camera_system)
         {

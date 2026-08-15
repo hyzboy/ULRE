@@ -4,7 +4,6 @@
 #include <hgl/graph/DescriptorBindingSet.h>
 #include <hgl/vk/VKBufferAccessor.h>
 #include <hgl/vk/VKRenderAssign.h>
-#include <hgl/color/Color4f.h>
 #include <memory>
 #include <vector>
 #include <string>
@@ -63,7 +62,6 @@ namespace hgl::ecs
     {
     public:
         static constexpr uint32_t MAX_WIDTHS     = 16;
-        static constexpr uint32_t PALETTE_SIZE   = 256;
         static constexpr uint32_t LINES_GRANULE  = 1024; ///< VAB capacity granularity
 
     private:
@@ -80,14 +78,6 @@ namespace hgl::ecs
         graph::DescriptorBindingSet binding_set_storage_{};
         graph::DescriptorBindingSet* binding_set_ = nullptr;
         graph::Pipeline*        pipeline_       = nullptr;
-
-        // Palette UBO (owned; buf_ is the raw GPU buffer handle)
-        void*    ubo_color_   = nullptr;  ///< typed as UBOLineColorPalette* at runtime
-        void*    ubo_raw_buf_ = nullptr;  ///< typed as VkBufferOwner* for release
-
-        // CPU palette (dirty-tracked)
-        hgl::Color4f    palette_[PALETTE_SIZE] = {};
-        bool            palette_dirty_         = true;
 
         // ------- Per-width batch slots (replace LineWidthBatch) -------
         struct LineWidthSlot
@@ -147,9 +137,6 @@ namespace hgl::ecs
         void Shutdown()       override;
 
         // ---- Line-specific API ----
-        /// Set a color palette entry (CPU-side; uploaded before Render)
-        void SetPaletteColor(int index, const hgl::Color4f& color);
-
         /// Total lines written this frame (after RunBuild)
         uint32_t GetTotalLineCount() const { return total_line_count_; }
 
@@ -159,7 +146,6 @@ namespace hgl::ecs
     private:
         bool Initialize();
         uint32_t GetSlotIndex(uint8_t width) const;
-        void FlushPaletteToGPU();
         void SyncTransformBinding();
     };
 

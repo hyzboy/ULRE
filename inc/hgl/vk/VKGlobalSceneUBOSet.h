@@ -12,13 +12,14 @@ namespace hgl::graph
     /**
      * 全局 Scene UBO 描述符集（对应 Descriptor Set 0）。
      *
-     * 所有材质共用同一份 viewport / camera / sky UBO，
+     * 所有材质共用同一份 viewport / camera / sky / color_palette UBO，
      * 一帧写一次、绑一次，不再走 per-material 描述符分配。
      *
      * 硬编码 binding（见 kSceneBinding* 常量）：
-     *   binding=0 : camera   (kSceneBindingCamera)
-     *   binding=1 : sky      (kSceneBindingSky)
-     *   binding=2 : viewport (kSceneBindingViewport)
+     *   binding=0 : camera        (kSceneBindingCamera)
+     *   binding=1 : sky           (kSceneBindingSky)
+     *   binding=2 : viewport      (kSceneBindingViewport)
+     *   binding=3 : color_palette (kSceneBindingColorPalette)
      *
      * 注：与 BindlessTextureManager 一样属于设备级全局资源，
      *     由 GraphicsContext 持有并管理生命周期。
@@ -33,7 +34,7 @@ namespace hgl::graph
         VkDescriptorSet  set_         = VK_NULL_HANDLE;
 
         // 已绑定的 buffer（避免每帧重复 vkUpdateDescriptorSets）
-        VkBuffer bound_buffers_[3]{};
+        VkBuffer bound_buffers_[4]{};
 
     public:
         GlobalSceneUBOSet() = default;
@@ -56,7 +57,7 @@ namespace hgl::graph
         /**
          * 将指定 binding 的 UBO 写入描述符集。
          * 仅当 buffer 变化时才触发 vkUpdateDescriptorSets。
-         * @param binding kSceneBindingCamera / kSceneBindingSky / kSceneBindingViewport
+         * @param binding kSceneBindingCamera / kSceneBindingSky / kSceneBindingViewport / kSceneBindingColorPalette
          * @param gpu     对应 UBO 的 GPU buffer（nullptr 时不更新）
          */
         bool UpdateUBO(uint32_t binding, const IGPUBuffer *gpu);

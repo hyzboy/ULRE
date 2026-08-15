@@ -95,6 +95,7 @@ namespace hgl::graph::mtl
         switch (semantic)
         {
         case DescriptorSemantic::ViewportInfo:
+        case DescriptorSemantic::MaterialColorPalette:
             return DescriptorSetType::Scene;
 
         case DescriptorSemantic::CameraInfo:
@@ -105,7 +106,6 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::LocalToWorldIndexTable:
             return DescriptorSetType::Transform;
 
-        case DescriptorSemantic::MaterialColorPalette:
         case DescriptorSemantic::MaterialDataSlotData:
         case DescriptorSemantic::MaterialTexture:
         case DescriptorSemantic::MaterialSampler:

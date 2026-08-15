@@ -90,6 +90,7 @@ SET(SHADERGEN_COMMON_FILES  ${ROOT_INCLUDE_PATH}/hgl/graph/ShaderBufferSources.h
                             ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/SkyInfo.h
                             ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/ViewportInfo.h
                             ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/UBOShaderSources.h
+                            ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/ColorPalette.h
                             ${ROOT_INCLUDE_PATH}/hgl/graph/glsl/GLSLCodeModule.h
                             ${ROOT_INCLUDE_PATH}/hgl/graph/glsl/ShaderResourceManifest.h
 )

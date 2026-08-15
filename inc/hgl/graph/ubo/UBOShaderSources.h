@@ -20,7 +20,7 @@ namespace hgl::graph::mtl
 
     constexpr const ShaderBufferSource SBS_ColorPalette =
     {
-        DescriptorSetType::Material,
+        DescriptorSetType::Scene,
         "color_palette",
         "ColorPalette"
     };

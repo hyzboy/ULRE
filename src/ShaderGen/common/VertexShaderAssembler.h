@@ -196,9 +196,12 @@ namespace hgl::graph::shadergen
             if (provider_glsl.back() != '\n') vs += "\n";
         }
 
-        // MaterialColorPalette UBO (palette-color materials).
+        // MaterialColorPalette UBO (palette-color materials) — 全局 Scene 集（P1-2a）。
         if (varying_cfg.emit_vertex_color_from_palette)
-            vs += "layout(scalar, set=MATERIAL_SET, binding=0) uniform ColorPalette { vec4 color[256]; } color_palette;\n";
+        {
+            vs += "#include \"ubo/color_palette.glsl\"\n";
+            vs += "SCENE_COLOR_PALETTE_UBO;\n";
+        }
 
         vs += "\n";
 
@@ -257,7 +260,7 @@ namespace hgl::graph::shadergen
                 stage_interface, InterStageSemantic::Color))
         {
             if (varying_cfg.emit_vertex_color_from_palette)
-                vs += "    fragVertexColor = color_palette.color[ColorIndex];\n";
+                vs += "    fragVertexColor = unpackUnorm4x8(color_palette.color[ColorIndex]);\n";
             else
                 vs += "    fragVertexColor = Color;\n";
         }

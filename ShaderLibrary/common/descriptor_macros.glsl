@@ -55,6 +55,10 @@
 #define VIEWPORT_BINDING 2
 #endif
 
+#ifndef COLOR_PALETTE_BINDING
+#define COLOR_PALETTE_BINDING 3
+#endif
+
 #ifndef BINDLESS_SET
 #define BINDLESS_SET 3
 #endif

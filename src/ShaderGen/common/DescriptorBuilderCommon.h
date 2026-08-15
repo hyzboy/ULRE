@@ -44,7 +44,7 @@ inline void PushMaterialColorPalette(std::vector<SerializedDescriptorEntry> &v,
                                      const uint32_t stage_flags)
 {
     v.push_back({
-        DescriptorSetType::Material, DescriptorKind::UBO, stage_flags,
+        DescriptorSetType::Scene, DescriptorKind::UBO, stage_flags,
         "color_palette", "ColorPalette", nullptr, DescriptorSemantic::MaterialColorPalette,
         TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined,
         DescriptorSemanticLayer::UBO

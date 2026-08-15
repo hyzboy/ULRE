@@ -347,17 +347,27 @@ namespace hgl::ecs
         const auto *sky_ubo = ResolveSkyUBO();
         auto *domain_manager = GetResourceDomainManager(context);
 
-        // P1: 全局 Scene UBO 描述符集 —— 一帧写一次（camera=0/sky=1/viewport=2）。
-        // 3 个 UBO 全部有效时全局集才可绑定（UBO 无 PARTIALLY_BOUND 位）。
+        // P1: 全局 Scene UBO 描述符集 —— 一帧写一次（camera=0/sky=1/viewport=2/palette=3）。
+        // camera/viewport 为所有材质必需；sky 与 color_palette 为可选（布局已带
+        // PARTIALLY_BOUND 位，未静态使用的 binding 允许为空）。palette 由
+        // LineRenderPipeline 等在初始化时写入 binding=3。
         auto *global_scene_set = GetGlobalSceneUBOSet(context);
         bool global_scene_valid = false;
         if (global_scene_set && global_scene_set->IsValid()
-         && viewport_ubo && camera_ubo && sky_ubo)
+         && viewport_ubo && camera_ubo)
         {
             global_scene_set->UpdateUBO(uint32_t(graph::kSceneBindingCamera),   camera_ubo);
-            global_scene_set->UpdateUBO(uint32_t(graph::kSceneBindingSky),      sky_ubo);
             global_scene_set->UpdateUBO(uint32_t(graph::kSceneBindingViewport), viewport_ubo);
+            if (sky_ubo)
+                global_scene_set->UpdateUBO(uint32_t(graph::kSceneBindingSky), sky_ubo);
             global_scene_valid = true;
+        }
+        else if (global_scene_set && global_scene_set->IsValid())
+        {
+            GLogWarning("[RDBinding] Scene UBO set not bound: camera=%p viewport=%p sky=%p",
+                        (const void *)camera_ubo,
+                        (const void *)viewport_ubo,
+                        (const void *)sky_ubo);
         }
 
         auto resolve_domain_ssbo = [&](const graph::mtl::SSBOAddress &address, const char *semantic_tag) -> const graph::IGPUBuffer *
@@ -570,14 +580,19 @@ namespace hgl::ecs
             if (!material || !gpu)
                 return false;
 
+            bool ok = false;
+
             if (batch)
             {
                 if (auto *mp = ensure_batch_mp(material, batch, req.set_type))
-                    return mp->BindUBO(req.name.c_str(), gpu, false);
-                return false;
+                    ok = mp->BindUBO(req.name.c_str(), gpu, false);
+            }
+            else
+            {
+                ok = material->BindUBO(req.set_type, req.name.c_str(), gpu, false);
             }
 
-            return material->BindUBO(req.set_type, req.name.c_str(), gpu, false);
+            return ok;
         };
 
         auto bind_ssbo = [&](graph::ShaderProgram *material,
@@ -588,14 +603,19 @@ namespace hgl::ecs
             if (!material || !gpu)
                 return false;
 
+            bool ok = false;
+
             if (batch)
             {
                 if (auto *mp = ensure_batch_mp(material, batch, req.set_type))
-                    return mp->BindSSBO(req.name.c_str(), gpu, false);
-                return false;
+                    ok = mp->BindSSBO(req.name.c_str(), gpu, false);
+            }
+            else
+            {
+                ok = material->BindSSBO(req.set_type, req.name.c_str(), gpu, false);
             }
 
-            return material->BindSSBO(req.set_type, req.name.c_str(), gpu, false);
+            return ok;
         };
 
         auto resolve_recipe_batch_struct_ssbo_id = [&](graph::ShaderProgram *material,
@@ -920,9 +940,9 @@ namespace hgl::ecs
             }
             case graph::mtl::DescriptorSemantic::MaterialColorPalette:
             {
-                // MaterialColorPalette is explicitly declared and contract-validated.
-                // The current owner-bound path is non-ECS (for example LineRenderPipeline
-                // binds SBS_ColorPalette directly), so RDBS intentionally does not inject it.
+                // P1-2a: color_palette 已迁至全局 Scene UBO 集（Set 0, binding=3），
+                // 由拥有者（如 LineRenderPipeline）在初始化时写入全局集一次；RDBS 不再
+                // 按 per-material 注入。此处保留为 no-op 以维持契约遍历完整。
                 break;
             }
             default:
@@ -973,42 +993,10 @@ namespace hgl::ecs
             }
         }
 
-        // 全局描述符集（P1/P2）：Set 0 Scene / Set 3 Bindless 一帧绑一次。
-        // 所有材质的 pipeline layout 在 Set 0/3 都使用同一个全局 layout
-        //（scene_layout_ / bindless_layout_），所以取任一活跃材质的布局绑定一次即可，
-        // 后续不同材质换管线时该绑定仍保持有效（set layout 兼容）。
-        if (auto *render_context = context->GetRenderContext())
-        {
-            auto *current_cmd = cmd ? cmd : render_context->GetCurrentRenderCmdBuffer();
-
-            if (current_cmd)
-            {
-                auto *bindless_mgr = render_context->GetManager<graph::BindlessTextureManager>();
-
-                VkPipelineLayout bind_layout = VK_NULL_HANDLE;
-
-                for (const graph::ShaderProgram *material : active_materials)
-                {
-                    if (!material)
-                        continue;
-
-                    bind_layout = material->GetPipelineLayout();
-                    if (bind_layout != VK_NULL_HANDLE)
-                        break;
-                }
-
-                if (bind_layout != VK_NULL_HANDLE)
-                {
-                    if (global_scene_valid && global_scene_set)
-                        global_scene_set->BindToCmd(*current_cmd, bind_layout);
-
-                    if (bindless_mgr && bindless_mgr->IsValid())
-                        bindless_mgr->BindToCmd(*current_cmd,
-                                                bind_layout,
-                                                static_cast<uint32_t>(graph::DescriptorSetType::Bindless));
-                }
-            }
-        }
+        // Set 0（Scene UBO）/ Set 3（Bindless 纹理）的 cmd buffer 绑定已移入
+        // PipelineMaterialRenderer::Render（BindPipeline 之后按材质自身 layout 绑定）。
+        // VVL 的 set 兼容 ID 取 layout 在 set 0..N 的全部 DSL 前缀，绑定 layout 必须与
+        // draw 时管线 layout 一致，不能在 RDBS 用任意材质的 layout 统一绑定（08600）。
 
         for (auto it = resource_layout_last_ok.begin(); it != resource_layout_last_ok.end();)
         {

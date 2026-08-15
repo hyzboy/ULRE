@@ -431,21 +431,19 @@ ShaderBuildContext *CompileCompositorMaterial(
         case DescriptorKind::UBO:
             switch (entry.semantic)
             {
-            // 注：Scene UBO（ViewportInfo/CameraInfo/SkyInfo）已全局化（P1），
+            // 注：Scene UBO（ViewportInfo/CameraInfo/SkyInfo/ColorPalette）已全局化（P1/P1-2a），
             //     不再进入 per-material 分配器（desc_manager/finalize/绑定均跳过 Scene），
             //     GLSL 声明与 set/binding 由全局集与宏注入保证。
             case DescriptorSemantic::ViewportInfo:
             case DescriptorSemantic::CameraInfo:
             case DescriptorSemantic::SkyInfo:
+            case DescriptorSemantic::MaterialColorPalette:
                 break;
             case DescriptorSemantic::LocalToWorld:
                 ctx->SetLocalToWorld(stage_bits);
                 break;
             case DescriptorSemantic::MaterialDataSlotData:
                 material_ssbo_stage_bits = stage_bits;
-                break;
-            case DescriptorSemantic::MaterialColorPalette:
-                ctx->AddUBOStruct(stage_bits, SBS_ColorPalette);
                 break;
             default:
                 break;
@@ -480,7 +478,15 @@ ShaderBuildContext *CompileCompositorMaterial(
                 }
                 else
                 {
-                    if (!ctx->AddSSBOStruct(stage_bits, SBS_MaterialTextureLayerRows))
+                    // 无 data slot decls：Material 集仅含行表 SSBO，binding 从 0 开始连续，
+                    // 显式传入 preferred_binding 保持 P1-2b 契约（避免动态分配 + 误报）。
+                    if (!ctx->AddStruct(SBS_MaterialTextureLayerRows.struct_name, ""))
+                        return FailAfterBuild("failed to add MaterialTextureLayerRows struct");
+                    if (!ctx->AddSSBO(stage_bits,
+                                      DescriptorSetType::Material,
+                                      SBS_MaterialTextureLayerRows.struct_name,
+                                      SBS_MaterialTextureLayerRows.name,
+                                      1))
                         return FailAfterBuild("failed to add MaterialTextureLayerRows SSBO");
                 }
                 break;
@@ -500,7 +506,14 @@ ShaderBuildContext *CompileCompositorMaterial(
                 }
                 else
                 {
-                    if (!ctx->AddSSBOStruct(stage_bits, SBS_MaterialDataIndexRows))
+                    // 无 data slot decls：data_index_rows 占 binding 0。
+                    if (!ctx->AddStruct(SBS_MaterialDataIndexRows.struct_name, ""))
+                        return FailAfterBuild("failed to add MaterialDataIndexRows struct");
+                    if (!ctx->AddSSBO(stage_bits,
+                                      DescriptorSetType::Material,
+                                      SBS_MaterialDataIndexRows.struct_name,
+                                      SBS_MaterialDataIndexRows.name,
+                                      0))
                         return FailAfterBuild("failed to add MaterialDataIndexRows SSBO");
                 }
                 break;
@@ -557,19 +570,32 @@ ShaderBuildContext *CompileCompositorMaterial(
             return false;
         };
 
+        // 行表 binding 按 P1-2b 契约：有 data slot 时排在数据槽之后（N / N+1），
+        // 无 data slot 时从 0 开始连续（0 / 1）。
+        const int data_index_binding = use_slot_decls ? int(declared_material_data_slot_count) : 0;
+        const int texture_layer_binding = use_slot_decls ? int(declared_material_data_slot_count + 1u) : 1;
+
         if (vv.emit_data_index_id
             && !HasDescriptorSemanticInDef(DescriptorSemantic::MaterialDataIndexTable))
         {
-            ctx->AddSSBOStruct(uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
-                               SBS_MaterialDataIndexRows);
+            ctx->AddStruct(SBS_MaterialDataIndexRows.struct_name, "");
+            ctx->AddSSBO(uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
+                         DescriptorSetType::Material,
+                         SBS_MaterialDataIndexRows.struct_name,
+                         SBS_MaterialDataIndexRows.name,
+                         data_index_binding);
         }
 
         if (vv.emit_texture_layer_id
             && !vv.texture_layer_id_uses_data_index
             && !HasDescriptorSemanticInDef(DescriptorSemantic::MaterialTextureLayerTable))
         {
-            ctx->AddSSBOStruct(uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
-                               SBS_MaterialTextureLayerRows);
+            ctx->AddStruct(SBS_MaterialTextureLayerRows.struct_name, "");
+            ctx->AddSSBO(uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
+                         DescriptorSetType::Material,
+                         SBS_MaterialTextureLayerRows.struct_name,
+                         SBS_MaterialTextureLayerRows.name,
+                         texture_layer_binding);
         }
     }
 
@@ -605,19 +631,21 @@ ShaderBuildContext *CompileCompositorMaterial(
     // layout(set=.., binding=..) 写出（统一声明生成，不再写死在 .glsl）。
     AppendDescriptorBindingDefine("L2W_SET", descriptor_info.GetSSBO(SBS_LocalToWorld.name));
 
-    // ── Scene UBO（camera/sky/viewport）已全局化（P1）：binding 号为 P0 硬编码常量，
-    //    不再从 per-material 分配器查询（Scene 不再进入 per-material 描述符集）。
+    // ── Scene UBO（camera/sky/viewport/color_palette）已全局化（P1/P1-2a）：binding 号为
+    //    P0/P1-2a 硬编码常量，不再从 per-material 分配器查询（Scene 不再进入 per-material 描述符集）。
     //    显式注入 _SET/_BINDING 宏，保证 shader ABI（descriptor_macros.glsl 默认值与此一致）。
     const int scene_set = int(DescriptorSetType::Scene);
 
-    ShaderDescriptor sd_viewport, sd_camera, sd_sky;
+    ShaderDescriptor sd_viewport, sd_camera, sd_sky, sd_color_palette;
     sd_viewport.set = scene_set; sd_viewport.binding = kSceneBindingViewport;
     sd_camera.set    = scene_set; sd_camera.binding    = kSceneBindingCamera;
     sd_sky.set       = scene_set; sd_sky.binding       = kSceneBindingSky;
+    sd_color_palette.set = scene_set; sd_color_palette.binding = kSceneBindingColorPalette;
 
     AppendDescriptorBindingDefine("VIEWPORT_SET", &sd_viewport);
     AppendDescriptorBindingDefine("CAMERA_SET", &sd_camera);
     AppendDescriptorBindingDefine("SKY_SET", &sd_sky);
+    AppendDescriptorBindingDefine("COLOR_PALETTE_SET", &sd_color_palette);
 
     // ── Material SSBO GLSL 声明 ─────────────────────────────────────────────
     // 材质实例 SSBO 的 struct + buffer 声明不再写死在 .glsl 中，

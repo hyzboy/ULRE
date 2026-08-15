@@ -8,6 +8,7 @@
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/color/Color.h>
+#include<hgl/math/Random.h>
 #include<cmath>
 #include<algorithm>
 #include<memory>
@@ -16,6 +17,14 @@
 using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
+
+// CN: 随机调色板索引，范围 = COLOR 枚举全部颜色
+// EN: Random palette index, range = full COLOR enum
+static uint8_t RandomPaletteIndex(uint8_t color_offset = 0)
+{
+    const int color_range = int(hgl::COLOR::RANGE_SIZE);
+    return uint8_t((color_offset + hgl::math::RandomInt(0, color_range - 1)) % color_range);
+}
 
 class WireShapeTestApp:public WorkObject
 {
@@ -52,29 +61,6 @@ public:
             return false;
 
         ecs_world = ecs;
-
-        // CN: 设置线条调色板
-        // EN: Setup line color palette
-        auto* line_pipeline = dynamic_cast<LineRenderPipeline*>(ecs->GetRenderPipeline("Line"));
-        LogInfo("[LineRenderTest] Init: GetRenderPipeline returned %p\n", line_pipeline);
-        
-        if (line_pipeline)
-        {
-            LogInfo("[LineRenderTest] Init: Setting 8 palette colors\n");
-            line_pipeline->SetPaletteColor(0, hgl::Color4f(1.0f, 0.0f, 0.0f, 1.0f)); // Red
-            line_pipeline->SetPaletteColor(1, hgl::Color4f(0.0f, 1.0f, 0.0f, 1.0f)); // Green
-            line_pipeline->SetPaletteColor(2, hgl::Color4f(0.0f, 0.0f, 1.0f, 1.0f)); // Blue
-            line_pipeline->SetPaletteColor(3, hgl::Color4f(1.0f, 1.0f, 0.0f, 1.0f)); // Yellow
-            line_pipeline->SetPaletteColor(4, hgl::Color4f(1.0f, 0.0f, 1.0f, 1.0f)); // Magenta
-            line_pipeline->SetPaletteColor(5, hgl::Color4f(0.0f, 1.0f, 1.0f, 1.0f)); // Cyan
-            line_pipeline->SetPaletteColor(6, hgl::Color4f(1.0f, 0.5f, 0.0f, 1.0f)); // Orange
-            line_pipeline->SetPaletteColor(7, hgl::Color4f(0.5f, 0.0f, 1.0f, 1.0f)); // Purple
-            LogInfo("[LineRenderTest] Init: Palette colors set complete\n");
-        }
-        else
-        {
-            LogError("[LineRenderTest] Init: Failed to get Line pipeline!\n");
-        }
 
         // CN: 创建存储线条的 Entity
         // EN: Create entity to hold lines
@@ -121,7 +107,7 @@ public:
                                    z);
 
                 if(has_prev)
-                    comp->AddLine(prev_pos, pos, uint8_t((color_offset + i) & 7));
+                    comp->AddLine(prev_pos, pos, RandomPaletteIndex(color_offset));
 
                 prev_pos = pos;
                 has_prev = true;
@@ -135,7 +121,7 @@ public:
                 math::Vector3f to(std::cos(t) * radius,
                                   std::sin(t) * radius,
                                   z);
-                comp->AddLine(from, to, uint8_t((color_offset + i * 3) & 7));
+                comp->AddLine(from, to, RandomPaletteIndex(color_offset));
             }
         };
 
@@ -175,7 +161,7 @@ public:
             comp->SetWidth(width);
 
             build_flower_pattern(comp.get(), radius, z, color_offset, petals, 320);
-            build_flower_pattern(comp.get(), radius * 0.45f, z + 0.08f, uint8_t((color_offset + 2) & 7), petals + 2, 240);
+            build_flower_pattern(comp.get(), radius * 0.45f, z + 0.08f, RandomPaletteIndex(color_offset), petals + 2, 240);
 
             const float pi = 3.14159265358979323846f;
             for(int i = 0; i < 20; ++i)
@@ -191,7 +177,7 @@ public:
                                  std::sin(t1) * radius * 0.75f,
                                  z + 0.12f);
 
-                comp->AddLine(a, b, uint8_t((color_offset + i * 5) & 7));
+                comp->AddLine(a, b, RandomPaletteIndex(color_offset));
             }
 
             return transform_ptr;

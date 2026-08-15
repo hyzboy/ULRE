@@ -18,20 +18,19 @@
 #include <hgl/graph/mesh/GeometryDrawRange.h>
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
-#include <hgl/graph/ShaderBufferSources.h>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/VKShaderProgram.h>
 #include <hgl/vk/VKBuffer.h>
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/vk/VKRenderTarget.h>
 #include <hgl/vk/VKRenderAssign.h>
+#include <hgl/vk/VKBindlessTextureManager.h>
+#include <hgl/vk/VKGlobalSceneUBOSet.h>
 #include <hgl/vk/VKVertexInputConfig.h>
 #include <hgl/vk/VKVABList.h>
-#include <hgl/vk/StructuredBufferAccessor.h>
 #include <hgl/math/geometry/Frustum.h>
 #include <hgl/log/Log.h>
 #include <glm/glm.hpp>
-#include <algorithm>
 #include <limits>
 
 namespace hgl::ecs
@@ -52,12 +51,6 @@ namespace hgl::ecs
             return gvf;
         }
     }
-
-    // -------------------------------------------------------------------------
-    // Type aliases (local to this TU)
-    // -------------------------------------------------------------------------
-    using LineColorPalette    = Color4f[LineRenderPipeline::PALETTE_SIZE];
-    using UBOLineColorPalette = graph::StructuredBufferAccessor<LineColorPalette>;
 
     // -------------------------------------------------------------------------
     const std::string LineRenderPipeline::kName{ "Line" };
@@ -301,9 +294,6 @@ namespace hgl::ecs
     LineRenderPipeline::LineRenderPipeline(ECSContext* context)
         : context_(context)
     {
-        // Initialize palette to white by default
-        std::fill(std::begin(palette_), std::end(palette_), hgl::Color4f(1.0f, 1.0f, 1.0f, 1.0f));
-        GLogInfo(OS_TEXT("[LineRenderPipeline] Constructor: initialized palette_ to all white"));
     }
 
     LineRenderPipeline::~LineRenderPipeline()
@@ -320,9 +310,6 @@ namespace hgl::ecs
             return true;
 
         GLogInfo(OS_TEXT("[LineRenderPipeline] Initialize: START"));
-        GLogInfo(OS_TEXT("[LineRenderPipeline] Initialize: palette_[0]=(%.2f,%.2f,%.2f,%.2f) palette_[1]=(%.2f,%.2f,%.2f,%.2f)"),
-                 palette_[0].r, palette_[0].g, palette_[0].b, palette_[0].a,
-                 palette_[1].r, palette_[1].g, palette_[1].b, palette_[1].a);
 
         auto* gc = context_ ? context_->GetGraphicsContext() : nullptr;
         if (!gc)
@@ -388,38 +375,9 @@ namespace hgl::ecs
         if (!pipeline_)
             return false;
 
-        // ------- Create color palette UBO -------
-        auto* buf_mgr = gc->GetBufferManager();
-        if (!buf_mgr)
-            return false;
-
-        auto* raw_buf = buf_mgr->CreateUBO("LineColorPaletteUBO_ECS",
-                                            graph::StructuredBufferAccessor<LineColorPalette>::GetSize());
-        if (!raw_buf)
-            return false;
-        raw_buf->SetUpdateClass(graph::BufferUpdateClass::Default);
-
-        auto* ubo = graph::StructuredBufferAccessor<LineColorPalette>::Create(
-                        raw_buf, &graph::mtl::SBS_ColorPalette, false);
-        if (!ubo)
-            return false;
-
-        ubo_color_   = ubo;
-        ubo_raw_buf_ = raw_buf;
-
-        // Bind UBO to material
-        material_->BindUBO(&graph::mtl::SBS_ColorPalette, ubo->GetGPUBuffer());
-        material_->Update();
-
-        // Flush current palette to UBO (palette initialized in constructor)
-        FlushPaletteToGPU();
-
         SyncTransformBinding();
 
         initialized_ = true;
-        
-        GLogInfo(OS_TEXT("[LineRenderPipeline] Initialize: COMPLETE, palette_[0]=(%.2f,%.2f,%.2f,%.2f)"),
-                 palette_[0].r, palette_[0].g, palette_[0].b, palette_[0].a);
         
         return true;
     }
@@ -730,29 +688,6 @@ namespace hgl::ecs
                  write_fail_count);
     }
 
-    void LineRenderPipeline::FlushPaletteToGPU()
-    {
-        if (!palette_dirty_ || !ubo_color_)
-        {
-            GLogInfo(OS_TEXT("[LineRenderPipeline] FlushPaletteToGPU: skipped - dirty=%d ubo=%p"), 
-                     palette_dirty_ ? 1 : 0, ubo_color_);
-            return;
-        }
-
-        auto* ubo = static_cast<UBOLineColorPalette*>(ubo_color_);
-        
-        GLogInfo(OS_TEXT("[LineRenderPipeline] FlushPaletteToGPU: writing %d colors directly from palette_"), PALETTE_SIZE);
-        
-        // Write directly from palette_ array to GPU buffer (not via mapped_data)
-        // This ensures actual data transfer instead of no-op when source == destination
-        bool write_ok = ubo->Write(palette_, 0, sizeof(LineColorPalette));
-        
-        GLogInfo(OS_TEXT("[LineRenderPipeline] FlushPaletteToGPU: Write result=%d size=%zu bytes"), 
-                 write_ok ? 1 : 0, sizeof(LineColorPalette));
-        
-        palette_dirty_ = false;
-    }
-
     void LineRenderPipeline::Render(hgl::graph::RenderCmdBuffer* cmd)
     {
         if (!cmd)
@@ -786,6 +721,31 @@ namespace hgl::ecs
         cmd->BindDescriptorSets(material_);
 
         cmd->BindPipeline(pipeline_);
+
+        // Set 0（Scene UBO）/ Set 3（Bindless 纹理）按材质自身 layout 绑定。
+        // VVL 的 set 兼容 ID 取 layout 在 set 0..N 的全部 DSL 前缀，绑定 layout 必须与
+        // draw 时管线 layout（= 材质 pipeline layout）一致。见 PipelineMaterialRenderer::Render。
+        if (auto* rc = context_ ? context_->GetRenderContext() : nullptr)
+        {
+            if (auto* gc = rc->GetGraphicsContext())
+            {
+                const VkPipelineLayout layout = material_->GetPipelineLayout();
+
+                if (auto *scene_set = gc->GetGlobalSceneUBOSet();
+                    scene_set && scene_set->IsValid())
+                {
+                    scene_set->BindToCmd(*cmd, layout);
+                }
+
+                if (auto *bindless_mgr = gc->GetBindlessTextureManager();
+                    bindless_mgr && bindless_mgr->IsValid())
+                {
+                    bindless_mgr->BindToCmd(*cmd,
+                                            layout,
+                                            static_cast<uint32_t>(graph::DescriptorSetType::Bindless));
+                }
+            }
+        }
 
         const uint32_t num_slots = support_wide_lines_ ? MAX_WIDTHS : 1;
         uint32_t draw_lines = 0;
@@ -849,18 +809,6 @@ namespace hgl::ecs
                     mat_mgr->Destroy(material_); material_ = nullptr;
                 }
             }
-
-            if (ubo_color_)
-            {
-                auto* ubo = static_cast<UBOLineColorPalette*>(ubo_color_);
-                auto* raw = ubo->GetBuffer();
-                delete ubo;
-                ubo_color_   = nullptr;
-                ubo_raw_buf_ = nullptr;
-
-                if (raw && gc->GetBufferManager())
-                    gc->GetBufferManager()->Release(raw);
-            }
         }
 
         pipeline_    = nullptr; // owned by RenderPass
@@ -868,35 +816,6 @@ namespace hgl::ecs
         initialized_ = false;
         bound_transform_buffer_ = nullptr;
         bound_transform_data_buffer_ = nullptr;
-    }
-
-    void LineRenderPipeline::SetPaletteColor(int index, const hgl::Color4f& color)
-    {
-        GLogInfo(OS_TEXT("[LineRenderPipeline] SetPaletteColor: index=%d color=(%.2f,%.2f,%.2f,%.2f) initialized=%d"),
-                 index, color.r, color.g, color.b, color.a, initialized_ ? 1 : 0);
-        
-        if (index < 0 || index >= static_cast<int>(PALETTE_SIZE))
-        {
-            GLogWarning(OS_TEXT("[LineRenderPipeline] SetPaletteColor: index %d out of range"), index);
-            return;
-        }
-        
-        palette_[index]  = color;
-        palette_dirty_   = true;
-        
-        GLogInfo(OS_TEXT("[LineRenderPipeline] SetPaletteColor: palette_[%d] now = (%.2f,%.2f,%.2f,%.2f)"),
-                 index, palette_[index].r, palette_[index].g, palette_[index].b, palette_[index].a);
-        
-        // Flush immediately if pipeline is initialized
-        if (initialized_)
-        {
-            GLogInfo(OS_TEXT("[LineRenderPipeline] SetPaletteColor: calling FlushPaletteToGPU immediately"));
-            FlushPaletteToGPU();
-        }
-        else
-        {
-            GLogInfo(OS_TEXT("[LineRenderPipeline] SetPaletteColor: pipeline not initialized yet, deferring flush"));
-        }
     }
 
     void LineRenderPipeline::SyncTransformBinding()

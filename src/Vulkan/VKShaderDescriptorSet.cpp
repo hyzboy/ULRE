@@ -1,4 +1,5 @@
 #include<hgl/vk/VKShaderDescriptorSet.h>
+#include<hgl/log/Log.h>
 #include<algorithm>
 #include<cstring>
 #include<unordered_set>
@@ -45,12 +46,20 @@ namespace
         std::vector<ShaderDescriptor *> values;
         set_desc.descriptor_map.GetValueArray(values);
 
-        std::sort(values.begin(), values.end(), [](const ShaderDescriptor *a, const ShaderDescriptor *b)
+        // P1-2b：Material 集的 SSBO binding 由 ShaderBuildContext 显式传入的
+        // preferred_binding（= ssbos 列表下标）确定，不再按名字字母排序分配。
+        // 其余集（Transform 等）仍保留按名排序 + 固定名 + 动态分配的旧路径。
+        const bool index_driven = (set_desc.set_type == DescriptorSetType::Material);
+
+        if (!index_driven)
         {
-            const char *lhs = (a && a->name) ? a->name : "";
-            const char *rhs = (b && b->name) ? b->name : "";
-            return std::strcmp(lhs, rhs) < 0;
-        });
+            std::sort(values.begin(), values.end(), [](const ShaderDescriptor *a, const ShaderDescriptor *b)
+            {
+                const char *lhs = (a && a->name) ? a->name : "";
+                const char *rhs = (b && b->name) ? b->name : "";
+                return std::strcmp(lhs, rhs) < 0;
+            });
+        }
 
         std::unordered_set<int> used_bindings;
         for (auto *sd : values)
@@ -68,6 +77,13 @@ namespace
         {
             if (!sd || sd->preferred_binding < 0)
                 continue;
+
+            if (used_bindings.find(sd->preferred_binding) != used_bindings.end())
+            {
+                GLogError(u8"[ShaderDescriptorSet] duplicate preferred binding %d (set=%d, name='%s')",
+                          sd->preferred_binding, int(set_desc.set_type), sd->name);
+                continue;
+            }
 
             sd->binding = sd->preferred_binding;
             used_bindings.insert(sd->preferred_binding);
@@ -87,15 +103,18 @@ namespace
             }
         }
 
+        // 3) Dynamic binding for anything still unassigned.
         int candidate = DynamicBindingStart(set_desc.set_type);
         for (auto *sd : values)
         {
-            if (!sd)
+            if (!sd || sd->binding >= 0)
                 continue;
 
-            int fixed_binding = -1;
-            if (TryGetFixedBinding(set_desc.set_type, sd->name, fixed_binding))
-                continue;
+            if (index_driven)
+            {
+                GLogError(u8"[ShaderDescriptorSet] material SSBO '%s' has no preferred binding index",
+                          sd->name);
+            }
 
             while (used_bindings.find(candidate) != used_bindings.end())
                 ++candidate;

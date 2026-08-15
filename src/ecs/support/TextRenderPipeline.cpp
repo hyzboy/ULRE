@@ -28,6 +28,7 @@
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
+#include<hgl/vk/VKGlobalSceneUBOSet.h>
 
 #include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/common/RenderOptions.h>
@@ -250,8 +251,27 @@ namespace hgl::ecs
             cmd->BindPipeline(res.pipeline);
             cmd->BindDescriptorSets(res.material);
 
-            // Bindless（Set 3）由 RenderDescriptorBindingSystem 每帧统一绑定一次，
-            // 这里不再逐材质绑定。
+            // Set 0（Scene UBO）/ Set 3（Bindless 纹理）按材质自身 layout 绑定。
+            // VVL 的 set 兼容 ID 取 layout 在 set 0..N 的全部 DSL 前缀，绑定 layout 必须与
+            // draw 时管线 layout（= 材质 pipeline layout）一致。见 PipelineMaterialRenderer::Render。
+            if (auto* gc = render_context ? render_context->GetGraphicsContext() : nullptr)
+            {
+                const VkPipelineLayout layout = res.material->GetPipelineLayout();
+
+                if (auto *scene_set = gc->GetGlobalSceneUBOSet();
+                    scene_set && scene_set->IsValid())
+                {
+                    scene_set->BindToCmd(*cmd, layout);
+                }
+
+                if (auto *bindless_mgr = gc->GetBindlessTextureManager();
+                    bindless_mgr && bindless_mgr->IsValid())
+                {
+                    bindless_mgr->BindToCmd(*cmd,
+                                            layout,
+                                            static_cast<uint32_t>(graph::DescriptorSetType::Bindless));
+                }
+            }
 
             cmd->BindDataBuffer(res.data_buffer);
             cmd->Draw(res.data_buffer, res.draw_range);

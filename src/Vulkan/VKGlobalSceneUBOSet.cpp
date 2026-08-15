@@ -12,7 +12,7 @@ bool GlobalSceneUBOSet::Init(VkDevice device)
     // ── 描述符池 ─────────────────────────────────────────────────────
     {
         VkDescriptorPoolSize pool_sizes[1] = {
-            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3 }
+            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 4 }
         };
 
         VkDescriptorPoolCreateInfo pool_ci{};
@@ -28,9 +28,9 @@ bool GlobalSceneUBOSet::Init(VkDevice device)
         }
     }
 
-    // ── 描述符集布局（camera=0 / sky=1 / viewport=2）────────────────
+    // ── 描述符集布局（camera=0 / sky=1 / viewport=2 / color_palette=3）────────────────
     {
-        VkDescriptorSetLayoutBinding bindings[3]{};
+        VkDescriptorSetLayoutBinding bindings[4]{};
 
         // binding=0 : camera
         bindings[0].binding         = uint32_t(kSceneBindingCamera);
@@ -50,9 +50,29 @@ bool GlobalSceneUBOSet::Init(VkDevice device)
         bindings[2].descriptorCount = 1;
         bindings[2].stageFlags      = VK_SHADER_STAGE_ALL_GRAPHICS;
 
+        // binding=3 : color_palette
+        bindings[3].binding         = uint32_t(kSceneBindingColorPalette);
+        bindings[3].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        bindings[3].descriptorCount = 1;
+        bindings[3].stageFlags      = VK_SHADER_STAGE_ALL_GRAPHICS;
+
+        // PARTIALLY_BOUND：允许未写入的 binding（如 palette/sky）保持为空而不触发校验错误。
+        VkDescriptorBindingFlags binding_flags[4] = {
+            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT,
+            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT,
+            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT,
+            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT,
+        };
+
+        VkDescriptorSetLayoutBindingFlagsCreateInfo flags_ci{};
+        flags_ci.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+        flags_ci.bindingCount  = 4;
+        flags_ci.pBindingFlags = binding_flags;
+
         VkDescriptorSetLayoutCreateInfo layout_ci{};
         layout_ci.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        layout_ci.bindingCount = 3;
+        layout_ci.pNext        = &flags_ci;
+        layout_ci.bindingCount = 4;
         layout_ci.pBindings    = bindings;
 
         if (vkCreateDescriptorSetLayout(device_, &layout_ci, nullptr, &layout_) != VK_SUCCESS)
@@ -77,7 +97,7 @@ bool GlobalSceneUBOSet::Init(VkDevice device)
         }
     }
 
-    GLogInfo(u8"[GlobalSceneUBOSet] Initialized (camera=0, sky=1, viewport=2)");
+    GLogInfo(u8"[GlobalSceneUBOSet] Initialized (camera=0, sky=1, viewport=2, color_palette=3)");
     return true;
 }
 
@@ -105,7 +125,7 @@ void GlobalSceneUBOSet::Destroy()
 
 bool GlobalSceneUBOSet::UpdateUBO(uint32_t binding, const IGPUBuffer *gpu)
 {
-    if (set_ == VK_NULL_HANDLE || !gpu || binding >= 3)
+    if (set_ == VK_NULL_HANDLE || !gpu || binding >= 4)
         return false;
 
     const VkBuffer vk_buf = gpu->GetVkDeviceBuffer();

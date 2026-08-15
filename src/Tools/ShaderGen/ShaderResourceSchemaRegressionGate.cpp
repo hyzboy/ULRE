@@ -3947,14 +3947,14 @@ namespace
             result.diagnostics.emplace_back("LoadDirectory failed to scan directory");
         else
         {
-            if (file_count != 54)
-                result.diagnostics.emplace_back("LoadDirectory expected 54 file modules, got "
+            if (file_count != 55)
+                result.diagnostics.emplace_back("LoadDirectory expected 55 file modules, got "
                     + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 54 + int(GLSLCodeModuleID::RANGE_SIZE);
+            const int expected_count = 55 + int(GLSLCodeModuleID::RANGE_SIZE);
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
@@ -4023,11 +4023,11 @@ namespace
         int dup_errors = 0;
         if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()), &dup_count, &dup_errors))
             result.diagnostics.emplace_back("second LoadDirectory failed");
-        else if (dup_count != 0 || dup_errors != 54)
-            result.diagnostics.emplace_back("second LoadDirectory must report 54 duplicates, got files="
+        else if (dup_count != 0 || dup_errors != 55)
+            result.diagnostics.emplace_back("second LoadDirectory must report 55 duplicates, got files="
                 + std::to_string(dup_count) + " errors=" + std::to_string(dup_errors));
 
-        const int stable_count = 54 + int(GLSLCodeModuleID::RANGE_SIZE);
+        const int stable_count = 55 + int(GLSLCodeModuleID::RANGE_SIZE);
         if (registry.GetCount() != stable_count)
             result.diagnostics.emplace_back("registry count changed after duplicate re-scan: got "
                 + std::to_string(registry.GetCount()));
@@ -5593,9 +5593,9 @@ int main(const int argc, char **argv)
 
         constexpr SerializedDescriptorEntry palette_explicit[] =
         {
-            { DescriptorSetType::Material, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "color_palette", "ColorPalette", nullptr, DescriptorSemantic::MaterialColorPalette, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
+            { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "color_palette", "ColorPalette", nullptr, DescriptorSemantic::MaterialColorPalette, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
         };
-        results.push_back(RunValidationCase("C.material-color-palette-explicit", palette_explicit, 1, true));
+        results.push_back(RunValidationCase("C.scene-color-palette-explicit", palette_explicit, 1, true));
     }
 
     if (run_materialization) results.push_back(RunMaterializationSharedInstanceCase());
