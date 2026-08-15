@@ -463,58 +463,30 @@ ShaderBuildContext *CompileCompositorMaterial(
                 material_ssbo_stage_bits = stage_bits;
                 break;
             case DescriptorSemantic::MaterialTextureLayerTable:
-                if (use_slot_decls)
+                if (!ctx->AddStruct(SBS_MaterialTextureLayerRows.struct_name, ""))
+                    return FailAfterBuild("failed to add MaterialTextureLayerRows struct");
+                // 行表 binding 统一为「数据槽数 + 行表序号」：无 data slot 时 declared 计数为 0，
+                // 同一公式覆盖 use_slot_decls 两种路径，避免特例字面量。
+                if (!ctx->AddSSBO(stage_bits,
+                                  DescriptorSetType::Material,
+                                  SBS_MaterialTextureLayerRows.struct_name,
+                                  SBS_MaterialTextureLayerRows.name,
+                                  int(declared_material_data_slot_count + 1u)))
                 {
-                    if (!ctx->AddStruct(SBS_MaterialTextureLayerRows.struct_name, ""))
-                        return FailAfterBuild("failed to add MaterialTextureLayerRows struct");
-                    if (!ctx->AddSSBO(stage_bits,
-                                      DescriptorSetType::Material,
-                                      SBS_MaterialTextureLayerRows.struct_name,
-                                      SBS_MaterialTextureLayerRows.name,
-                                      int(declared_material_data_slot_count + 1u)))
-                    {
-                        return FailAfterBuild("failed to add MaterialTextureLayerRows SSBO");
-                    }
-                }
-                else
-                {
-                    // 无 data slot decls：Material 集仅含行表 SSBO，binding 从 0 开始连续，
-                    // 显式传入 preferred_binding 保持 P1-2b 契约（避免动态分配 + 误报）。
-                    if (!ctx->AddStruct(SBS_MaterialTextureLayerRows.struct_name, ""))
-                        return FailAfterBuild("failed to add MaterialTextureLayerRows struct");
-                    if (!ctx->AddSSBO(stage_bits,
-                                      DescriptorSetType::Material,
-                                      SBS_MaterialTextureLayerRows.struct_name,
-                                      SBS_MaterialTextureLayerRows.name,
-                                      1))
-                        return FailAfterBuild("failed to add MaterialTextureLayerRows SSBO");
+                    return FailAfterBuild("failed to add MaterialTextureLayerRows SSBO");
                 }
                 break;
             case DescriptorSemantic::MaterialDataIndexTable:
-                if (use_slot_decls)
+                if (!ctx->AddStruct(SBS_MaterialDataIndexRows.struct_name, ""))
+                    return FailAfterBuild("failed to add MaterialDataIndexRows struct");
+                // 行表 binding 统一为「数据槽数 + 行表序号」：无 data slot 时 declared 计数为 0。
+                if (!ctx->AddSSBO(stage_bits,
+                                  DescriptorSetType::Material,
+                                  SBS_MaterialDataIndexRows.struct_name,
+                                  SBS_MaterialDataIndexRows.name,
+                                  int(declared_material_data_slot_count)))
                 {
-                    if (!ctx->AddStruct(SBS_MaterialDataIndexRows.struct_name, ""))
-                        return FailAfterBuild("failed to add MaterialDataIndexRows struct");
-                    if (!ctx->AddSSBO(stage_bits,
-                                      DescriptorSetType::Material,
-                                      SBS_MaterialDataIndexRows.struct_name,
-                                      SBS_MaterialDataIndexRows.name,
-                                      int(declared_material_data_slot_count)))
-                    {
-                        return FailAfterBuild("failed to add MaterialDataIndexRows SSBO");
-                    }
-                }
-                else
-                {
-                    // 无 data slot decls：data_index_rows 占 binding 0。
-                    if (!ctx->AddStruct(SBS_MaterialDataIndexRows.struct_name, ""))
-                        return FailAfterBuild("failed to add MaterialDataIndexRows struct");
-                    if (!ctx->AddSSBO(stage_bits,
-                                      DescriptorSetType::Material,
-                                      SBS_MaterialDataIndexRows.struct_name,
-                                      SBS_MaterialDataIndexRows.name,
-                                      0))
-                        return FailAfterBuild("failed to add MaterialDataIndexRows SSBO");
+                    return FailAfterBuild("failed to add MaterialDataIndexRows SSBO");
                 }
                 break;
             default:
@@ -570,11 +542,8 @@ ShaderBuildContext *CompileCompositorMaterial(
             return false;
         };
 
-        // 行表 binding 按 P1-2b 契约：有 data slot 时排在数据槽之后（N / N+1），
-        // 无 data slot 时从 0 开始连续（0 / 1）。
-        const int data_index_binding = use_slot_decls ? int(declared_material_data_slot_count) : 0;
-        const int texture_layer_binding = use_slot_decls ? int(declared_material_data_slot_count + 1u) : 1;
-
+        // 行表 binding 统一为「数据槽数 + 行表序号」：无 data slot 时 declared 计数为 0，
+        // 与 Step 3 的行表分支同一公式，避免特例。
         if (vv.emit_data_index_id
             && !HasDescriptorSemanticInDef(DescriptorSemantic::MaterialDataIndexTable))
         {
@@ -583,7 +552,7 @@ ShaderBuildContext *CompileCompositorMaterial(
                          DescriptorSetType::Material,
                          SBS_MaterialDataIndexRows.struct_name,
                          SBS_MaterialDataIndexRows.name,
-                         data_index_binding);
+                         int(declared_material_data_slot_count));
         }
 
         if (vv.emit_texture_layer_id
@@ -595,7 +564,7 @@ ShaderBuildContext *CompileCompositorMaterial(
                          DescriptorSetType::Material,
                          SBS_MaterialTextureLayerRows.struct_name,
                          SBS_MaterialTextureLayerRows.name,
-                         texture_layer_binding);
+                         int(declared_material_data_slot_count + 1u));
         }
     }
 
