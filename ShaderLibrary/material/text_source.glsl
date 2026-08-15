@@ -26,7 +26,7 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput sourceInput)
     const vec4 textColor = GetTextColor(sourceInput);
     const float luminance =
         SampleBindless2D(
-            GetTextureHandle(sourceInput.surface.textureLayerID, TEXTURE_SLOT_BASE_COLOR),
+            mtl_texture_layer_rows.data[sourceInput.dataIndex].base_color,
             sourceInput.surface.uv0).r;
     MaterialSourceOutput materialResult;
     materialResult.baseColor = textColor.rgb * luminance;

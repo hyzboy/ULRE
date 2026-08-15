@@ -9,10 +9,11 @@
 // 使用前须确保 descriptor_macros.glsl 已被 #include（提供 BINDLESS_SET）。
 //
 // 用法：
-//   uint handle = mtl_texture_layer_rows.values[TEXTURE_SLOT_BASE_COLOR];
+//   uint handle = mtl_texture_layer_rows.data[dataIndex].base_color;
 //   vec4 color  = SampleBindless2D(handle, uv);
 //
 // handle 为 1-based（0 = 无效）；SampleBindless2D(0, uv) 返回 vec4(0)。
+// TextureLayerRowsData 结构（含各 slot 字段）由 MaterialShaderCompiler 动态生成注入。
 
 #ifndef BINDLESS_TEXTURES_GLSL
 #define BINDLESS_TEXTURES_GLSL
@@ -53,41 +54,5 @@ vec4 FetchBindless2D(uint handle, ivec2 coord, int lod)
         return vec4(0.0);
     return texelFetch(bindless_tex2d[nonuniformEXT(handle - 1u)], coord, lod);
 }
-
-// ── TextureSlot 枚举常量（与 C++ TextureSlot 保持一致） ─────────────
-
-#define TEXTURE_SLOT_BASE_COLOR   0u
-#define TEXTURE_SLOT_NORMAL       1u
-#define TEXTURE_SLOT_METALLIC     2u
-#define TEXTURE_SLOT_ROUGHNESS    3u
-#define TEXTURE_SLOT_EMISSIVE     4u
-#define TEXTURE_SLOT_OCCLUSION    5u
-#define TEXTURE_SLOT_OPACITY_MASK 6u
-#define TEXTURE_SLOT_HEIGHT       7u
-#define TEXTURE_SLOT_CUSTOM0      8u
-#define TEXTURE_SLOT_CUSTOM1      9u
-
-// 纹理槽数量（必须与 C++ 的 graph::mtl::TextureSlot::RANGE_SIZE 保持一致）。
-// 正常路径由 ShaderGen/MaterialCompiler 以 TextureSlot::RANGE_SIZE 注入该宏；
-// 这里保留默认值作为兜底。
-#ifndef TEXTURE_SLOT_RANGE_SIZE
-#define TEXTURE_SLOT_RANGE_SIZE 10u
-#endif
-
-// 别名宏，便于旧 shader 逐步收口到 TEXTURE_SLOT_RANGE_SIZE。
-#define TEXTURE_SLOT_COUNT TEXTURE_SLOT_RANGE_SIZE
-
-// 取指定 instance row 和槽位的 bindless handle
-// iid：textureLayerID（=gl_InstanceIndex，即行索引）
-// slot：TextureSlot 枚举整数常量
-#define GetTextureHandle(iid, slot) \
-    mtl_texture_layer_rows.values[(iid) * TEXTURE_SLOT_RANGE_SIZE + (slot)]
-
-// 便利采样宏（需要 mtl_texture_layer_rows 已声明）
-#define SAMPLE_BINDLESS_SLOT_2D(iid, slot, uv) \
-    SampleBindless2D(GetTextureHandle((iid), (slot)), (uv))
-
-#define SAMPLE_BINDLESS_SLOT_2DARRAY(iid, slot, uv, layer) \
-    SampleBindless2DArray(GetTextureHandle((iid), (slot)), (uv), (layer))
 
 #endif // BINDLESS_TEXTURES_GLSL

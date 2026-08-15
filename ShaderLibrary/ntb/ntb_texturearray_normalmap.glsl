@@ -18,9 +18,8 @@
 NTBSpace GetNTB(NTBInput ntb_input)
 {
     const SurfaceInput si = ntb_input.surface;
-    const uint iid = si.textureLayerID;
-    const float layer = float(GetTextureHandle(iid, TEXTURE_SLOT_CUSTOM0));
-    const uint normalTexHandle = GetTextureHandle(iid, TEXTURE_SLOT_NORMAL);
+    const float layer = float(mtl_texture_layer_rows.data[ntb_input.dataIndex].custom0);
+    const uint normalTexHandle = mtl_texture_layer_rows.data[ntb_input.dataIndex].normal;
     NTBSpace ntb = BuildOrthoNTB(si.worldNormal);
 
     if (normalTexHandle != 0u)

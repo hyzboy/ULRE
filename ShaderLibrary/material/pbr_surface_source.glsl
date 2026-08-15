@@ -20,7 +20,6 @@
 MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
 {
     const PBRSurfaceData material_data = MTL_DATA.data[source_input.dataIndex];
-    const uint iid = source_input.surface.textureLayerID;
 
     MaterialSourceOutput material_output;
     material_output.baseColor = material_data.base_color.rgb;
@@ -32,12 +31,12 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
     material_output.emissive = vec3(0.0);
     material_output.alpha = 1.0;
 
-    const uint base_color_handle = GetTextureHandle(iid, TEXTURE_SLOT_BASE_COLOR);
+    const uint base_color_handle = mtl_texture_layer_rows.data[source_input.dataIndex].base_color;
     if (base_color_handle != 0u)
         material_output.baseColor *=
             SampleBindless2D(base_color_handle, source_input.surface.uv0).rgb;
 
-    const uint roughness_handle = GetTextureHandle(iid, TEXTURE_SLOT_ROUGHNESS);
+    const uint roughness_handle = mtl_texture_layer_rows.data[source_input.dataIndex].roughness;
     if (roughness_handle != 0u)
     {
         const float roughness_tex =
@@ -46,7 +45,7 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
             clamp(material_output.roughness * roughness_tex, 0.04, 1.0);
     }
 
-    const uint metallic_handle = GetTextureHandle(iid, TEXTURE_SLOT_METALLIC);
+    const uint metallic_handle = mtl_texture_layer_rows.data[source_input.dataIndex].metallic;
     if (metallic_handle != 0u)
     {
         const float metallic_tex =
@@ -55,7 +54,7 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
             clamp(material_output.metallic * metallic_tex, 0.0, 1.0);
     }
 
-    const uint occlusion_handle = GetTextureHandle(iid, TEXTURE_SLOT_OCCLUSION);
+    const uint occlusion_handle = mtl_texture_layer_rows.data[source_input.dataIndex].occlusion;
     if (occlusion_handle != 0u)
         material_output.ao =
             SampleBindless2D(occlusion_handle, source_input.surface.uv0).r;
@@ -65,9 +64,8 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
 
 float EvalMaterialAlpha(MaterialSourceInput source_input)
 {
-    const uint opacity_handle = GetTextureHandle(
-        source_input.surface.textureLayerID,
-        TEXTURE_SLOT_OPACITY_MASK);
+    const uint opacity_handle =
+        mtl_texture_layer_rows.data[source_input.dataIndex].opacity_mask;
     return opacity_handle == 0u
         ? 1.0
         : SampleBindless2D(

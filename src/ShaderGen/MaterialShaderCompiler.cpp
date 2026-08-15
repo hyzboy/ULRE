@@ -524,12 +524,11 @@ ShaderBuildContext *CompileCompositorMaterial(
     // ─────────────────────────────────────────────────────────────
     // Step 5a: Ensure index-table SSBOs for vertex-varying emissions.
     //
-    // The descriptor builder calls EnsureMaterialDataIndexTable only when a
+    //     The descriptor builder calls EnsureMaterialDataIndexTable only when a
     // MaterialDataSlotData entry exists.  Compositor materials without data
-    // slots may still emit fragDataIndexID / fragTextureLayerID (declared
-    // as varyings in .material.toml).  Without the corresponding SSBO the VS
-    // GLSL injection skips ResolveDataIndexID/ResolveTextureLayerID → compile
-    // error.
+    // slots may still emit fragDataIndexID (declared as a varying in
+    // .material.toml).  Without the corresponding SSBO the VS GLSL injection
+    // skips ResolveDataIndexID → compile error.
     // ─────────────────────────────────────────────────────────────
 
     if (config.material_definition)
@@ -573,10 +572,7 @@ ShaderBuildContext *CompileCompositorMaterial(
     // Step 6: Set complete GLSL (bypass ProcXXX pipeline)
     // ─────────────────────────────────────────────────────────────
 
-    constexpr uint32_t texture_slot_range_size = static_cast<uint32_t>(TextureSlot::RANGE_SIZE);
-
     std::string binding_preamble;
-    binding_preamble += "#define TEXTURE_SLOT_RANGE_SIZE " + std::to_string(texture_slot_range_size) + "u\n";
 
     auto AppendDescriptorBindingDefine = [&](const char *macro_name, const ShaderDescriptor *sd)
     {
@@ -738,7 +734,7 @@ ShaderBuildContext *CompileCompositorMaterial(
     // 声明与 Resolve 函数不再写死在 instance_rows_ssbo.glsl 中，统一依据
     // descriptor_info 生成注入：VS 阶段提供 l2w_index_rows / mtl_data_index_rows
     //（含 ResolveTransformID / ResolveDataIndexID），FS 阶段提供
-    // mtl_texture_layer_rows（bindless GetTextureHandle 行表，仅需 buffer 声明）。
+    // mtl_texture_layer_rows（named-slot TextureLayerRowsData，见下方注入）。
     struct IndexTableSpec
     {
         const char *buffer_name;
@@ -797,13 +793,35 @@ ShaderBuildContext *CompileCompositorMaterial(
                          { "LocalToWorldIndexRows", "l2w_index_rows", "ResolveTransformID" });
     AppendIndexTableDecl(vs_index_table_decls, descriptor_info.GetSSBO(SBS_MaterialDataIndexRows.name),
                          { "DataIndexRows", "mtl_data_index_rows", "ResolveDataIndexID", true });
-    // VS 阶段提供 mtl_texture_layer_rows 的 buffer 声明 + ResolveTextureLayerID
-    //（供 emit_texture_layer_id 且 texture_layer_id_uses_data_index=false 的材质使用）。
-    AppendIndexTableDecl(vs_index_table_decls, descriptor_info.GetSSBO(SBS_MaterialTextureLayerRows.name),
-                         { "TextureLayerRows", "mtl_texture_layer_rows", "ResolveTextureLayerID" });
-    // FS 阶段仅需 buffer 声明（bindless GetTextureHandle 行表），无需 resolve 函数。
-    AppendIndexTableDecl(fs_index_table_decls, descriptor_info.GetSSBO(SBS_MaterialTextureLayerRows.name),
-                         { "TextureLayerRows", "mtl_texture_layer_rows", nullptr });
+    // FS 阶段注入 bindless 纹理行表：TextureLayerRowsData struct + buffer（named slot）。
+    // 字段名 = TextureSlot 的 snake_case 名（GetTextureSlotName），顺序与枚举一致；
+    // 内存布局与旧扁平 values[RANGE_SIZE] 逐字节相同，故 CPU 上传（p1-2d-3 前）无需改动。
+    // VS 阶段不再注入：ResolveTextureLayerID 仅在 texture_layer_id_uses_data_index=false
+    // 的死路径被引用；生产材质恒 uses_data_index=true，FS 直接复用 fragDataIndexID。
+    {
+        // 仅当该材质确实注册了 mtl_texture_layer_rows（存在 MaterialTextureLayerTable
+        // 描述符，即声明了纹理槽）时才注入 named-slot struct + buffer；否则跳过
+        //（与旧 AppendIndexTableDecl 的静默跳过行为一致，无纹理槽材质 FS 不引用该 buffer）。
+        const ShaderDescriptor *sd =
+            descriptor_info.GetSSBO(SBS_MaterialTextureLayerRows.name);
+        if (sd && sd->set >= 0 && sd->binding >= 0)
+        {
+            fs_index_table_decls += "struct TextureLayerRowsData\n{\n";
+            for (uint32_t i = 0;
+                 i < static_cast<uint32_t>(TextureSlot::RANGE_SIZE); ++i)
+            {
+                fs_index_table_decls += "    uint ";
+                fs_index_table_decls += GetTextureSlotName(static_cast<TextureSlot>(i));
+                fs_index_table_decls += ";\n";
+            }
+            fs_index_table_decls += "};\n";
+            fs_index_table_decls += "layout(set=" + std::to_string(sd->set)
+                                  + ", binding=" + std::to_string(sd->binding)
+                                  + ") readonly buffer TextureLayerRowsBuffer\n{\n"
+                                  + "    TextureLayerRowsData data[];\n"
+                                  + "} mtl_texture_layer_rows;\n";
+        }
+    }
 
     // GLSL requires #version to be the very first token.
     auto InsertAfterVersionLine = [](const std::string &glsl, const std::string &inject) -> std::string

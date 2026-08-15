@@ -15,8 +15,7 @@
 
 vec4 SampleMaterialColor(MaterialSourceInput sourceInput)
 {
-    const uint iid = sourceInput.surface.textureLayerID;
-    const uint handle = GetTextureHandle(iid, TEXTURE_SLOT_BASE_COLOR);
+    const uint handle = mtl_texture_layer_rows.data[sourceInput.dataIndex].base_color;
     return SampleBindless2D(handle, sourceInput.surface.uv0);
 }
 

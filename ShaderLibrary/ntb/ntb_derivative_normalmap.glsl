@@ -20,7 +20,7 @@ NTBSpace GetNTB(NTBInput ntb_input)
     NTBSpace ntb;
     ntb.N = normalize(si.worldNormal);
     const uint normalTexHandle =
-        GetTextureHandle(si.textureLayerID, TEXTURE_SLOT_NORMAL);
+        mtl_texture_layer_rows.data[ntb_input.dataIndex].normal;
 
     if (normalTexHandle != 0u)
     {

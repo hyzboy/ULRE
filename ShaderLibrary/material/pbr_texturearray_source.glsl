@@ -20,8 +20,8 @@
 MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
 {
     const PBRSurfaceData material_data = MTL_DATA.data[source_input.dataIndex];
-    const uint iid = source_input.surface.textureLayerID;
-    const float layer = float(GetTextureHandle(iid, TEXTURE_SLOT_CUSTOM0));
+    // CUSTOM0 槽在此材质中存的是 2DArray 的 layer 值（浮点），而非纹理 handle。
+    const float layer = float(mtl_texture_layer_rows.data[source_input.dataIndex].custom0);
 
     MaterialSourceOutput material_output;
     material_output.baseColor = material_data.base_color.rgb;
@@ -33,12 +33,12 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
     material_output.emissive = vec3(0.0);
     material_output.alpha = 1.0;
 
-    const uint base_color_handle = GetTextureHandle(iid, TEXTURE_SLOT_BASE_COLOR);
+    const uint base_color_handle = mtl_texture_layer_rows.data[source_input.dataIndex].base_color;
     if (base_color_handle != 0u)
         material_output.baseColor *=
             SampleBindless2DArray(base_color_handle, source_input.surface.uv0, layer).rgb;
 
-    const uint roughness_handle = GetTextureHandle(iid, TEXTURE_SLOT_ROUGHNESS);
+    const uint roughness_handle = mtl_texture_layer_rows.data[source_input.dataIndex].roughness;
     if (roughness_handle != 0u)
     {
         const float roughness_tex =
@@ -47,7 +47,7 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
             clamp(material_output.roughness * roughness_tex, 0.04, 1.0);
     }
 
-    const uint metallic_handle = GetTextureHandle(iid, TEXTURE_SLOT_METALLIC);
+    const uint metallic_handle = mtl_texture_layer_rows.data[source_input.dataIndex].metallic;
     if (metallic_handle != 0u)
     {
         const float metallic_tex =
@@ -56,7 +56,7 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
             clamp(material_output.metallic * metallic_tex, 0.0, 1.0);
     }
 
-    const uint occlusion_handle = GetTextureHandle(iid, TEXTURE_SLOT_OCCLUSION);
+    const uint occlusion_handle = mtl_texture_layer_rows.data[source_input.dataIndex].occlusion;
     if (occlusion_handle != 0u)
         material_output.ao =
             SampleBindless2DArray(occlusion_handle, source_input.surface.uv0, layer).r;
@@ -66,14 +66,13 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
 
 float EvalMaterialAlpha(MaterialSourceInput source_input)
 {
-    const uint iid = source_input.surface.textureLayerID;
     const uint opacity_handle =
-        GetTextureHandle(iid, TEXTURE_SLOT_OPACITY_MASK);
+        mtl_texture_layer_rows.data[source_input.dataIndex].opacity_mask;
     if (opacity_handle == 0u)
         return 1.0;
 
     const float layer = float(
-        GetTextureHandle(iid, TEXTURE_SLOT_CUSTOM0));
+        mtl_texture_layer_rows.data[source_input.dataIndex].custom0);
     return SampleBindless2DArray(
         opacity_handle,
         source_input.surface.uv0,
