@@ -16,10 +16,10 @@ namespace hgl::graph::mtl
     // fragment, or shared shader generation paths.
     enum class GLSLCodeModuleID : uint16
     {
-        SkyLightHeader = 0,
-        SkyLightSimple,
+        TestProviderA = 0,
+        TestProviderB,
         PBRSurface,
-        ENUM_CLASS_RANGE(SkyLightHeader, PBRSurface)
+        ENUM_CLASS_RANGE(TestProviderA, PBRSurface)
     };
 
     enum class GLSLCodeModuleKind : uint8
@@ -122,7 +122,7 @@ namespace hgl::graph::mtl
 
     struct GLSLCodeModuleDependency
     {
-        GLSLCodeModuleID module_id = GLSLCodeModuleID::SkyLightHeader;
+        GLSLCodeModuleID module_id = GLSLCodeModuleID::TestProviderA;
         uint16 min_metadata_version =
             GLSLCodeModuleUnversionedMetadataVersion;
         uint16 max_metadata_version = GLSLCodeModuleCurrentMetadataVersion;
@@ -244,7 +244,7 @@ namespace hgl::graph::mtl
 
     struct GLSLCodeModuleDefinition
     {
-        GLSLCodeModuleID id = GLSLCodeModuleID::SkyLightHeader;
+        GLSLCodeModuleID id = GLSLCodeModuleID::TestProviderA;
         const char *name = nullptr;
         const char *glsl_code = nullptr;
 

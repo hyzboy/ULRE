@@ -44,7 +44,7 @@ namespace hgl::graph::mtl
 
         uint64 stable_hash = 0;
         ShaderResourceManifestError error = ShaderResourceManifestError::None;
-        GLSLCodeModuleID error_module = GLSLCodeModuleID::SkyLightHeader;
+        GLSLCodeModuleID error_module = GLSLCodeModuleID::TestProviderA;
 
         bool IsValid() const noexcept
         {

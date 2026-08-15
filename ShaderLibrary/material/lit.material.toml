@@ -30,4 +30,3 @@ varyings = ["emit_data_index_id", "emit_texture_layer_id", "texture_layer_id_use
 
 [resources]
 ubos = ["ViewportInfo", "CameraInfo", "SkyInfo"]
-code_modules = ["SkyLightHeader"]

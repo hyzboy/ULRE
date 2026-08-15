@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ctime>
 #include <hgl/color/Color.h>
 #include <hgl/math/Vector.h>
 #include <hgl/util/geo/GeoLocation.h>

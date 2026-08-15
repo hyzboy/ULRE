@@ -80,6 +80,17 @@ namespace
         return count;
     }
 
+    static const ResolvedTextureBinding *FindTextureBinding(
+        const ResolvedBindingTable &table, TextureSlot slot)
+    {
+        for (int i = 0; i < table.textures.GetCount(); ++i)
+        {
+            if (table.textures[i].texture_slot == slot)
+                return &table.textures[i];
+        }
+        return nullptr;
+    }
+
     static bool IsKnownRegressionGroup(const char *group)
     {
         if (!group)
@@ -711,8 +722,10 @@ namespace
          || missing_table.missing_required_count != 1
          || BuildBindingTableRecipe(
                 missing_recipe, missing_table, projected_recipe)
-         || missing_table.textures[0].source
-                != BindingSource::Missing)
+         || FindTextureBinding(missing_table, TextureSlot::BaseColor)
+                == nullptr
+         || FindTextureBinding(missing_table, TextureSlot::BaseColor)
+                ->source != BindingSource::Missing)
         {
             result.diagnostics.emplace_back(
                 "missing required material resource must remain explicit");
@@ -729,8 +742,12 @@ namespace
                 diagnostic)
          || !unresolved_fallback_table.IsValid()
          || unresolved_fallback_table.IsRuntimeReady()
-         || unresolved_fallback_table.textures[0].source
-                != BindingSource::Missing)
+         || FindTextureBinding(
+                unresolved_fallback_table, TextureSlot::BaseColor)
+                == nullptr
+         || FindTextureBinding(
+                unresolved_fallback_table, TextureSlot::BaseColor)
+                ->source != BindingSource::Missing)
         {
             result.diagnostics.emplace_back(
                 "fallback permission without a concrete fallback must remain pending");
@@ -942,7 +959,7 @@ namespace
         };
 
         GLSLCodeModuleDefinition position_provider{};
-        position_provider.id = GLSLCodeModuleID::SkyLightHeader;
+        position_provider.id = GLSLCodeModuleID::TestProviderA;
         position_provider.name = "preview_position_from_geometry";
         position_provider.glsl_code = "// preview only";
         position_provider.kind = GLSLCodeModuleKind::VertexInput;
@@ -952,7 +969,7 @@ namespace
         position_provider.semantic_provide_count = 1;
 
         GLSLCodeModuleDefinition uv_provider{};
-        uv_provider.id = GLSLCodeModuleID::SkyLightSimple;
+        uv_provider.id = GLSLCodeModuleID::TestProviderB;
         uv_provider.name = "preview_uv_from_geometry";
         uv_provider.glsl_code = "// preview only";
         uv_provider.kind = GLSLCodeModuleKind::VertexInput;
@@ -1363,7 +1380,7 @@ namespace
             GLSLCodeModuleSemantic::Normal
         };
         const GLSLCodeModuleDefinition normal_provider{
-            GLSLCodeModuleID::SkyLightHeader,
+            GLSLCodeModuleID::TestProviderA,
             "identity_normal",
             "// identity",
             nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0,
@@ -1383,7 +1400,7 @@ namespace
             GLSLCodeModuleSemantic::UV0
         };
         const GLSLCodeModuleDefinition uv_provider{
-            GLSLCodeModuleID::SkyLightSimple,
+            GLSLCodeModuleID::TestProviderB,
             "identity_uv",
             "// identity",
             nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0,
@@ -1443,7 +1460,7 @@ namespace
         result.name = "P.provider-graph-composition-interface";
 
         const GLSLCodeModuleDefinition position_provider{
-            GLSLCodeModuleID::SkyLightHeader,
+            GLSLCodeModuleID::TestProviderA,
             "compose_position",
             "vec4 GetLocalPos() { return vec4(Position, 1.0); }",
             nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0,
@@ -1451,7 +1468,7 @@ namespace
             nullptr, 0, nullptr, 0, 0, 0
         };
         const GLSLCodeModuleDefinition normal_provider{
-            GLSLCodeModuleID::SkyLightSimple,
+            GLSLCodeModuleID::TestProviderB,
             "compose_normal",
             "vec3 GetNormal() { return Normal; }",
             nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0,
@@ -3728,109 +3745,6 @@ namespace
         return result;
     }
 
-    static GateResult RunGLSLCodeModuleRegistryCase()
-    {
-        GateResult result;
-        result.name = "G.glsl-code-module-registry";
-
-        const GLSLCodeModuleDefinition *header =
-            FindGLSLCodeModuleDefinition(GLSLCodeModuleID::SkyLightHeader);
-        const GLSLCodeModuleDefinition *simple =
-            FindGLSLCodeModuleDefinition(GLSLCodeModuleID::SkyLightSimple);
-        const GLSLCodeModuleDefinition *pbr =
-            FindGLSLCodeModuleDefinition(GLSLCodeModuleID::PBRSurface);
-
-        if (!header || !header->glsl_code || !header->glsl_code[0])
-            result.diagnostics.emplace_back("SkyLightHeader module is not registered with GLSL code.");
-
-        if (!simple || !simple->glsl_code || !simple->glsl_code[0])
-            result.diagnostics.emplace_back("SkyLightSimple module is not registered with GLSL code.");
-        else
-        {
-            if (simple->ubo_requirement_count != 1
-             || !simple->ubo_requirements
-             || simple->ubo_requirements[0].semantic != UBODescriptorSemantic::SkyInfo)
-                result.diagnostics.emplace_back("SkyLightSimple must require exactly SkyInfo.");
-
-            if (simple->texture_requirement_count != 0)
-                result.diagnostics.emplace_back("SkyLightSimple must not require a cubemap texture.");
-
-            if (simple->code_module_requirement_count != 1
-             || !simple->code_module_requirements
-             || simple->code_module_requirements[0] != GLSLCodeModuleID::SkyLightHeader)
-                result.diagnostics.emplace_back("SkyLightSimple must depend on SkyLightHeader.");
-        }
-
-        if (!pbr || !pbr->glsl_code
-         || pbr->texture_requirement_count != 0
-         || pbr->texture_requirements)
-        {
-            result.diagnostics.emplace_back(
-                "PBRSurface texture requirements must come from the material definition.");
-        }
-
-        result.passed = result.diagnostics.empty();
-        return result;
-    }
-
-    static GateResult RunShaderResourceManifestCase()
-    {
-        GateResult result;
-        result.name = "H.shader-resource-manifest";
-
-        constexpr GLSLCodeModuleID roots[] =
-        {
-            GLSLCodeModuleID::SkyLightSimple
-        };
-
-        ShaderResourceManifest manifest{};
-        if (!BuildShaderResourceManifest(manifest.code_modules, 0, manifest))
-            result.diagnostics.emplace_back("Empty root list must produce a valid manifest.");
-
-        if (!BuildShaderResourceManifest(roots, uint32_t(std::size(roots)), manifest))
-        {
-            result.diagnostics.emplace_back(
-                std::string("Combined SkyLight manifest failed: ")
-                + GetShaderResourceManifestErrorName(manifest.error));
-        }
-        else
-        {
-            if (manifest.code_module_count != 2)
-                result.diagnostics.emplace_back("SkyLightSimple must resolve to Header+Simple code modules.");
-
-            if (manifest.ubo_count != 1
-             || manifest.ubos[0].semantic != UBODescriptorSemantic::SkyInfo)
-                result.diagnostics.emplace_back("SkyLightSimple must produce one SkyInfo UBO.");
-
-            if (manifest.texture_count != 0)
-                result.diagnostics.emplace_back("SkyLightSimple must not produce a cubemap texture.");
-
-            if (manifest.stable_hash == 0)
-                result.diagnostics.emplace_back("Valid manifest must produce a non-zero stable hash.");
-        }
-
-        ShaderResourceManifest simple_manifest{};
-        ShaderResourceManifest pbr_manifest{};
-        const GLSLCodeModuleID simple_root = GLSLCodeModuleID::SkyLightSimple;
-        const GLSLCodeModuleID pbr_root = GLSLCodeModuleID::PBRSurface;
-        if (!BuildShaderResourceManifest(&simple_root, 1, simple_manifest)
-         || !BuildShaderResourceManifest(&pbr_root, 1, pbr_manifest))
-        {
-            result.diagnostics.emplace_back("Individual code module manifests must resolve.");
-        }
-        else if (simple_manifest.stable_hash == pbr_manifest.stable_hash)
-        {
-            result.diagnostics.emplace_back("Different code module closures must hash differently.");
-        }
-
-        if (BuildShaderResourceManifest(nullptr, 1, manifest)
-         || manifest.error != ShaderResourceManifestError::NullRootList)
-            result.diagnostics.emplace_back("Null root list must fail explicitly.");
-
-        result.passed = result.diagnostics.empty();
-        return result;
-    }
-
     static GateResult RunProviderResourceManifestCase()
     {
         GateResult result;
@@ -5774,7 +5688,7 @@ int main(const int argc, char **argv)
             { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
             { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl_data_index_rows", "DataIndexRows", nullptr, DescriptorSemantic::MaterialDataIndexTable, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::MaterialDataIndexTable, DescriptorSemanticLayer::SSBO },
             { DescriptorSetType::Material, DescriptorKind::Texture, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureBaseColor", nullptr, "sampler2D", DescriptorSemantic::MaterialTexture, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::Texture },
-            { DescriptorSetType::Material, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "SkyCubemap", nullptr, "samplerCube", DescriptorSemantic::MaterialSampler, TextureSlot::Custom0, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::Sampler },
+            { DescriptorSetType::Material, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "CustomCubeSampler", nullptr, "samplerCube", DescriptorSemantic::MaterialSampler, TextureSlot::Custom0, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::Sampler },
         };
         results.push_back(RunValidationCase("A.valid-layered-paths", valid_entries, uint32_t(std::size(valid_entries)), true));
 
@@ -5821,8 +5735,6 @@ int main(const int argc, char **argv)
     if (run_materialization) results.push_back(RunResolvedMaterialRenderStateCase());
     if (run_materialization) results.push_back(RunMaterialDefinitionFileSchemaCase());
     if (run_materialization) results.push_back(RunFallbackInferenceCase());
-    if (run_glsl) results.push_back(RunGLSLCodeModuleRegistryCase());
-    if (run_glsl) results.push_back(RunShaderResourceManifestCase());
     if (run_glsl) results.push_back(RunProviderResourceManifestCase());
     if (run_glsl) results.push_back(RunGLSLCodeModuleFileCase());
     if (run_glsl) results.push_back(RunGLSLCodeModuleMetadataValidationCase());

@@ -1,5 +1,7 @@
 #include <hgl/graph/ubo/SkyInfo.h>
 
+#include <ctime>
+
 namespace hgl::graph
 {
     void SkyInfo::SetTime(float hour,float minute,float second)

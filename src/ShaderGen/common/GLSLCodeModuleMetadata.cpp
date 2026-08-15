@@ -14,7 +14,7 @@ namespace hgl::graph::mtl
             const GLSLCodeModuleID module_id,
             const uint32 item_index = 0,
             const GLSLCodeModuleID related_module_id =
-                GLSLCodeModuleID::SkyLightHeader,
+                GLSLCodeModuleID::TestProviderA,
             const GLSLCodeModuleSemantic semantic =
                 GLSLCodeModuleSemantic::Unknown) noexcept
         {

@@ -7,25 +7,13 @@ namespace hgl::graph::mtl
 {
     namespace
     {
-        constexpr GLSLCodeModuleUBORequirement SKY_LIGHT_UBO_REQUIREMENT[] =
-        {
-            { UBODescriptorSemantic::SkyInfo, uint32(VK_SHADER_STAGE_FRAGMENT_BIT) }
-        };
-
-        constexpr GLSLCodeModuleID SKY_LIGHT_HEADER_MODULES[] =
-        {
-            GLSLCodeModuleID::SkyLightHeader
-        };
-
         constexpr GLSLCodeModuleDefinition MODULES[] =
         {
             {
-                GLSLCodeModuleID::SkyLightHeader,
-                "SkyLightHeader",
-                // 天光算法已统一到 ShaderLibrary/sky/sky_atmosphere.glsl（GetSky* 系列），
-                // 由 CompositorAssembler 的 sky_module 选择注入。本模块仅作为
-                // has_sky_root 标记，不再注入 GLSL 代码。
-                "// Sky lighting provided by sky/sky_atmosphere.glsl (compositor sky module)",
+                GLSLCodeModuleID::TestProviderA,
+                "TestProviderA",
+                // 仅为 provider-graph 测试提供占位模块，不注入真实 GLSL 代码。
+                "// TestProviderA: reserved for provider-graph regression tests",
                 nullptr,
                 0,
                 nullptr,
@@ -36,18 +24,18 @@ namespace hgl::graph::mtl
                 0
             },
             {
-                GLSLCodeModuleID::SkyLightSimple,
-                "SkyLightSimple",
-                // 仅声明 SkyInfo UBO 资源需求；函数由 sky/sky_atmosphere.glsl 提供。
-                "// SkyLightSimple: requires SkyInfo UBO (functions in sky/sky_atmosphere.glsl)",
-                SKY_LIGHT_UBO_REQUIREMENT,
-                uint32(sizeof(SKY_LIGHT_UBO_REQUIREMENT) / sizeof(SKY_LIGHT_UBO_REQUIREMENT[0])),
+                GLSLCodeModuleID::TestProviderB,
+                "TestProviderB",
+                // 仅为 provider-graph 测试提供占位模块，不注入真实 GLSL 代码。
+                "// TestProviderB: reserved for provider-graph regression tests",
                 nullptr,
                 0,
                 nullptr,
                 0,
-                SKY_LIGHT_HEADER_MODULES,
-                uint32(sizeof(SKY_LIGHT_HEADER_MODULES) / sizeof(SKY_LIGHT_HEADER_MODULES[0]))
+                nullptr,
+                0,
+                nullptr,
+                0
             },
             {
                 GLSLCodeModuleID::PBRSurface,
