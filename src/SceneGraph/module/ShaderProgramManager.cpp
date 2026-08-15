@@ -239,7 +239,7 @@ PipelineLayoutData *ShaderProgramManager::CreateMaterialPipelineLayoutData(const
     VulkanDevice *device = GetDevice();
     if(!device) return nullptr;
 
-    PipelineLayoutData *pld = device->CreatePipelineLayoutData(desc_manager, bindless_layout_);
+    PipelineLayoutData *pld = device->CreatePipelineLayoutData(desc_manager, bindless_layout_, scene_layout_);
 
     if(pld)
     {
@@ -288,6 +288,11 @@ void ShaderProgramManager::ApplyMaterialFinalizePlan(ShaderProgram *mtl, const A
 
     for(const auto set_type : finalize_plan.mp_set_types)
     {
+        // Scene（Set 0）已全局化（P1）：不再生成 per-material MP，
+        // 由设备级 GlobalSceneUBOSet 一帧写/绑一次。
+        if(scene_layout_ != VK_NULL_HANDLE && set_type == DescriptorSetType::Scene)
+            continue;
+
         mtl->mp_array[(int)set_type] = CreateMaterialMP(mtl_name, mtl->desc_manager, mtl->pipeline_layout_data, set_type);
     }
 

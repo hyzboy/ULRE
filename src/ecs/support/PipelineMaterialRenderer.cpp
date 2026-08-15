@@ -158,6 +158,8 @@ namespace hgl::ecs
         if (batch_count <= 0)
             return;
 
+        (void)render_context;   // Bindless（Set 3）由 RenderDescriptorBindingSystem 统一绑定
+
         cmd_buf = rcb;
 
         // 绑定管线
@@ -197,29 +199,8 @@ namespace hgl::ecs
             cmd_buf->BindDescriptorSets(material);
         }
 
-        if (render_context)
-        {
-            auto *bindless_mgr = render_context->GetManager<graph::BindlessTextureManager>();
-            if (bindless_mgr && bindless_mgr->IsValid())
-            {
-                bool needs_bindless_set = false;
-                const auto &contract = material->GetShaderResourceSchema();
-                for (const auto &req : contract.resources)
-                {
-                    if (req.semantic == graph::mtl::DescriptorSemantic::MaterialTextureLayerTable)
-                    {
-                        needs_bindless_set = true;
-                        break;
-                    }
-                }
-
-                if (needs_bindless_set)
-                {
-                    constexpr uint32_t bindless_set = static_cast<uint32_t>(graph::DescriptorSetType::Bindless);
-                    bindless_mgr->BindToCmd(*cmd_buf, material->GetPipelineLayout(), bindless_set);
-                }
-            }
-        }
+        // Bindless（Set 3）由 RenderDescriptorBindingSystem 每帧在渲染 pass 内统一绑定一次，
+        // 这里不再逐材质绑定。
 
         // 遍历绘制批次
         DrawBatch* batch = const_cast<DrawBatch*>(batches.data());

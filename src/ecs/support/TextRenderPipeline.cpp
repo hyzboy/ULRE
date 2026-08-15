@@ -250,29 +250,8 @@ namespace hgl::ecs
             cmd->BindPipeline(res.pipeline);
             cmd->BindDescriptorSets(res.material);
 
-            if (render_context)
-            {
-                auto *bindless_mgr = render_context->GetManager<graph::BindlessTextureManager>();
-                if (bindless_mgr && bindless_mgr->IsValid())
-                {
-                    bool needs_bindless_set = false;
-                    const auto &contract = res.material->GetShaderResourceSchema();
-                    for (const auto &req : contract.resources)
-                    {
-                        if (req.semantic == graph::mtl::DescriptorSemantic::MaterialTextureLayerTable)
-                        {
-                            needs_bindless_set = true;
-                            break;
-                        }
-                    }
-
-                    if (needs_bindless_set)
-                    {
-                        constexpr uint32_t bindless_set = static_cast<uint32_t>(graph::DescriptorSetType::Bindless);
-                        bindless_mgr->BindToCmd(*cmd, res.material->GetPipelineLayout(), bindless_set);
-                    }
-                }
-            }
+            // Bindless（Set 3）由 RenderDescriptorBindingSystem 每帧统一绑定一次，
+            // 这里不再逐材质绑定。
 
             cmd->BindDataBuffer(res.data_buffer);
             cmd->Draw(res.data_buffer, res.draw_range);

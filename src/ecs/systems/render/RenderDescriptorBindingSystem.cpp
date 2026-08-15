@@ -20,6 +20,7 @@
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
+#include<hgl/vk/VKGlobalSceneUBOSet.h>
 #include<hgl/log/Log.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
@@ -73,6 +74,23 @@ namespace hgl::ecs
 
             if (auto *gc = ctx->GetGraphicsContext())
                 return gc->GetResourceDomainManager();
+
+            return nullptr;
+        }
+
+        graph::GlobalSceneUBOSet *GetGlobalSceneUBOSet(hgl::ecs::ECSContext *ctx)
+        {
+            if (!ctx)
+                return nullptr;
+
+            if (auto *rc = ctx->GetRenderContext())
+            {
+                if (auto *gc = rc->GetGraphicsContext())
+                    return gc->GetGlobalSceneUBOSet();
+            }
+
+            if (auto *gc = ctx->GetGraphicsContext())
+                return gc->GetGlobalSceneUBOSet();
 
             return nullptr;
         }
@@ -328,6 +346,19 @@ namespace hgl::ecs
         const auto *camera_ubo = ResolveCameraUBO();
         const auto *sky_ubo = ResolveSkyUBO();
         auto *domain_manager = GetResourceDomainManager(context);
+
+        // P1: 全局 Scene UBO 描述符集 —— 一帧写一次（camera=0/sky=1/viewport=2）。
+        // 3 个 UBO 全部有效时全局集才可绑定（UBO 无 PARTIALLY_BOUND 位）。
+        auto *global_scene_set = GetGlobalSceneUBOSet(context);
+        bool global_scene_valid = false;
+        if (global_scene_set && global_scene_set->IsValid()
+         && viewport_ubo && camera_ubo && sky_ubo)
+        {
+            global_scene_set->UpdateUBO(uint32_t(graph::kSceneBindingCamera),   camera_ubo);
+            global_scene_set->UpdateUBO(uint32_t(graph::kSceneBindingSky),      sky_ubo);
+            global_scene_set->UpdateUBO(uint32_t(graph::kSceneBindingViewport), viewport_ubo);
+            global_scene_valid = true;
+        }
 
         auto resolve_domain_ssbo = [&](const graph::mtl::SSBOAddress &address, const char *semantic_tag) -> const graph::IGPUBuffer *
         {
@@ -670,6 +701,10 @@ namespace hgl::ecs
             {
             case graph::mtl::DescriptorSemantic::ViewportInfo:
             {
+                // P1: Scene UBO 已全局化，写入全局集（一帧一次），不再走 per-material bind。
+                if (global_scene_valid)
+                    break;
+
                 if (viewport_ubo)
                 {
                     if (!bind_ubo(material, batch, req, viewport_ubo))
@@ -679,6 +714,9 @@ namespace hgl::ecs
             }
             case graph::mtl::DescriptorSemantic::CameraInfo:
             {
+                if (global_scene_valid)
+                    break;
+
                 if (camera_ubo)
                 {
                     if (!bind_ubo(material, batch, req, camera_ubo))
@@ -688,6 +726,9 @@ namespace hgl::ecs
             }
             case graph::mtl::DescriptorSemantic::SkyInfo:
             {
+                if (global_scene_valid)
+                    break;
+
                 if (sky_ubo)
                 {
                     if (!bind_ubo(material, batch, req, sky_ubo))
@@ -932,40 +973,39 @@ namespace hgl::ecs
             }
         }
 
-        // Bind global bindless descriptor set only for materials that explicitly
-        // declare the bindless texture-layer indirection table semantic.
+        // 全局描述符集（P1/P2）：Set 0 Scene / Set 3 Bindless 一帧绑一次。
+        // 所有材质的 pipeline layout 在 Set 0/3 都使用同一个全局 layout
+        //（scene_layout_ / bindless_layout_），所以取任一活跃材质的布局绑定一次即可，
+        // 后续不同材质换管线时该绑定仍保持有效（set layout 兼容）。
         if (auto *render_context = context->GetRenderContext())
         {
-            auto *bindless_mgr = render_context->GetManager<graph::BindlessTextureManager>();
             auto *current_cmd = cmd ? cmd : render_context->GetCurrentRenderCmdBuffer();
 
-            if (bindless_mgr && bindless_mgr->IsValid() && current_cmd)
+            if (current_cmd)
             {
-                constexpr uint32_t bindless_set = static_cast<uint32_t>(graph::DescriptorSetType::Bindless);
+                auto *bindless_mgr = render_context->GetManager<graph::BindlessTextureManager>();
+
+                VkPipelineLayout bind_layout = VK_NULL_HANDLE;
 
                 for (const graph::ShaderProgram *material : active_materials)
                 {
                     if (!material)
                         continue;
 
-                    bool needs_bindless_set = false;
-                    const auto &contract = material->GetShaderResourceSchema();
-                    for (const auto &req : contract.resources)
-                    {
-                        if (req.semantic == graph::mtl::DescriptorSemantic::MaterialTextureLayerTable)
-                        {
-                            needs_bindless_set = true;
-                            break;
-                        }
-                    }
-                    if (!needs_bindless_set)
-                        continue;
+                    bind_layout = material->GetPipelineLayout();
+                    if (bind_layout != VK_NULL_HANDLE)
+                        break;
+                }
 
-                    const VkPipelineLayout pipeline_layout = material->GetPipelineLayout();
-                    if (pipeline_layout == VK_NULL_HANDLE)
-                        continue;
+                if (bind_layout != VK_NULL_HANDLE)
+                {
+                    if (global_scene_valid && global_scene_set)
+                        global_scene_set->BindToCmd(*current_cmd, bind_layout);
 
-                    bindless_mgr->BindToCmd(*current_cmd, pipeline_layout, bindless_set);
+                    if (bindless_mgr && bindless_mgr->IsValid())
+                        bindless_mgr->BindToCmd(*current_cmd,
+                                                bind_layout,
+                                                static_cast<uint32_t>(graph::DescriptorSetType::Bindless));
                 }
             }
         }

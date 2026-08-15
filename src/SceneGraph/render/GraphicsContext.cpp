@@ -11,6 +11,7 @@
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/graph/module/ResourceDomainManager.h>
 #include <hgl/vk/VKBindlessTextureManager.h>
+#include <hgl/vk/VKGlobalSceneUBOSet.h>
 
 namespace hgl::graph
 {
@@ -72,6 +73,16 @@ namespace hgl::graph
 
         material_manager->SetBindlessLayout(bindless_texture_manager_->GetLayout());
 
+        // 全局 Scene UBO 描述符集（P1）：设备级全局，一帧写/绑一次
+        global_scene_ubo_set_ = new GlobalSceneUBOSet();
+        if (!global_scene_ubo_set_)
+            return false;
+
+        if (!global_scene_ubo_set_->Init(device->GetDevice()))
+            return false;
+
+        material_manager->SetSceneLayout(global_scene_ubo_set_->GetLayout());
+
         // Set graphics context for module manager
         module_manager->SetGraphicsContext(this);
 
@@ -100,6 +111,7 @@ namespace hgl::graph
         resource_domain_manager = nullptr;
 
         SAFE_CLEAR(bindless_texture_manager_)
+        SAFE_CLEAR(global_scene_ubo_set_)
     }
 
     void GraphicsContext::OnResize(const VkExtent2D &extent)

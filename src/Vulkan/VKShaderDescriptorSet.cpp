@@ -14,12 +14,8 @@ namespace
 
         switch (set_type)
         {
-        case DescriptorSetType::Scene:
-            if (strcmp(name, "camera") == 0)   { out_binding = kSceneBindingCamera;   return true; }
-            if (strcmp(name, "sky") == 0)      { out_binding = kSceneBindingSky;      return true; }
-            if (strcmp(name, "viewport") == 0) { out_binding = kSceneBindingViewport; return true; }
-            return false;
-
+        // 注：Scene 集（camera/sky/viewport UBO）已全局化（P1），不再进入 per-material 分配器，
+        //     故此处不再需要 Scene 固定绑定映射。
         case DescriptorSetType::Transform:
             if (strcmp(name, "l2w") == 0)            { out_binding = 0; return true; }
             if (strcmp(name, "l2w_index_rows") == 0) { out_binding = 1; return true; }
@@ -37,7 +33,7 @@ namespace
     {
         switch (set_type)
         {
-        case DescriptorSetType::Scene:     return kSceneBindingViewport + 1;
+        // 注：Scene 已全局化（P1），不再进入分配器，无动态绑定起点需求。
         case DescriptorSetType::Transform: return 2;
         case DescriptorSetType::Material:  return 0;
         default:                           return 0;

@@ -40,48 +40,11 @@ namespace
 
         return empty_layout;
     }
-
-    static VkDescriptorSetLayout CreateFallbackBindlessSetLayout(VkDevice device)
-    {
-        VkDescriptorSetLayoutBinding bindings[2]{};
-
-        bindings[0].binding         = 0;
-        bindings[0].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        bindings[0].descriptorCount = BindlessTextureManager::kMax2D;
-        bindings[0].stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-        bindings[1].binding         = 1;
-        bindings[1].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        bindings[1].descriptorCount = BindlessTextureManager::kMax2DArray;
-        bindings[1].stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-        VkDescriptorBindingFlags binding_flags[2] = {
-            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
-            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT
-        };
-
-        VkDescriptorSetLayoutBindingFlagsCreateInfo flags_ci{};
-        flags_ci.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
-        flags_ci.bindingCount  = 2;
-        flags_ci.pBindingFlags = binding_flags;
-
-        VkDescriptorSetLayoutCreateInfo layout_ci{};
-        layout_ci.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        layout_ci.pNext        = &flags_ci;
-        layout_ci.flags        = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
-        layout_ci.bindingCount = 2;
-        layout_ci.pBindings    = bindings;
-
-        VkDescriptorSetLayout layout = VK_NULL_HANDLE;
-        if(vkCreateDescriptorSetLayout(device, &layout_ci, nullptr, &layout) != VK_SUCCESS)
-            return VK_NULL_HANDLE;
-
-        return layout;
-    }
 }
 
 PipelineLayoutData *VulkanDevice::CreatePipelineLayoutData(const MaterialDescriptorManager *desc_manager,
-                                                           VkDescriptorSetLayout bindless_layout)
+                                                           VkDescriptorSetLayout bindless_layout,
+                                                           VkDescriptorSetLayout scene_layout)
 {
     PipelineLayoutData *pld = new PipelineLayoutData();
     memset(pld, 0, sizeof(PipelineLayoutData));
@@ -90,6 +53,16 @@ PipelineLayoutData *VulkanDevice::CreatePipelineLayoutData(const MaterialDescrip
     for(int i = int(DescriptorSetType::Scene); i < int(DescriptorSetType::Bindless); ++i)
     {
         VkDescriptorSetLayout layout = VK_NULL_HANDLE;
+
+        if(i == int(DescriptorSetType::Scene) && scene_layout != VK_NULL_HANDLE)
+        {
+            // 全局 Scene UBO 集（P1）：layout 由设备级 GlobalSceneUBOSet 提供，
+            // 所有材质共用同一 layout；不构建 per-material 布局、不分配 per-material MP。
+            pld->fin_dsl[i] = scene_layout;
+            pld->layouts[i] = VK_NULL_HANDLE;
+            pld->vab_count[i] = 0;
+            continue;
+        }
 
         if(desc_manager)
         {
@@ -154,22 +127,10 @@ PipelineLayoutData *VulkanDevice::CreatePipelineLayoutData(const MaterialDescrip
     }
 
     constexpr int kBindlessIdx = int(DescriptorSetType::Bindless);
-    if(bindless_layout != VK_NULL_HANDLE)
-    {
-        pld->fin_dsl[kBindlessIdx] = bindless_layout;
-        pld->layouts[kBindlessIdx] = VK_NULL_HANDLE;
-    }
-    else
-    {
-        VkDescriptorSetLayout fallback_bindless = CreateFallbackBindlessSetLayout(attr->device);
-        if(fallback_bindless == VK_NULL_HANDLE)
-        {
-            delete pld;
-            return nullptr;
-        }
-        pld->layouts[kBindlessIdx] = fallback_bindless;
-        pld->fin_dsl[kBindlessIdx] = fallback_bindless;
-    }
+    // Bindless（Set 3）恒为设备级全局 layout（BindlessTextureManager 提供），
+    // 由 GraphicsContext::Init 保证非空；不存在回退布局路径。
+    pld->fin_dsl[kBindlessIdx] = bindless_layout;
+    pld->layouts[kBindlessIdx] = VK_NULL_HANDLE;
 
     pld->bindless_set_index = kBindlessIdx;
     pld->vab_count[kBindlessIdx] = 0;

@@ -38,6 +38,7 @@ namespace hgl::graph
     class GeometryManager;
     class ResourceDomainManager;
     class BindlessTextureManager;
+    class GlobalSceneUBOSet;
 
     /**
      * GraphicsContext - Vulkan图形资源管理器聚合类
@@ -70,6 +71,7 @@ namespace hgl::graph
         GeometryManager *geometry_manager = nullptr;
         ResourceDomainManager *resource_domain_manager = nullptr;
         BindlessTextureManager *bindless_texture_manager_ = nullptr;
+        GlobalSceneUBOSet *global_scene_ubo_set_ = nullptr;
 
     public:
         explicit GraphicsContext(VulkanDevice *dev);
@@ -120,6 +122,9 @@ namespace hgl::graph
         ResourceDomainManager *GetResourceDomainManager() { return resource_domain_manager; }
         BindlessTextureManager *GetBindlessTextureManager() { return bindless_texture_manager_; }
         const BindlessTextureManager *GetBindlessTextureManager() const { return bindless_texture_manager_; }
+
+        GlobalSceneUBOSet *GetGlobalSceneUBOSet() { return global_scene_ubo_set_; }
+        const GlobalSceneUBOSet *GetGlobalSceneUBOSet() const { return global_scene_ubo_set_; }
 
         // 扩展访问（不常用）
         GraphModuleManager *GetModuleManager() { return module_manager; }

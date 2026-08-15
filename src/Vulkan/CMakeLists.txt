@@ -263,7 +263,8 @@ SET(VK_BUFFER_OPS_FILES         VKDeviceMemory.cpp
                                 VKDeviceSampler.cpp
                                 VKDeviceFramebuffer.cpp
                                 VKDeviceMaterial.cpp
-                                VKBindlessTextureManager.cpp)
+                                VKBindlessTextureManager.cpp
+                                VKGlobalSceneUBOSet.cpp)
 
 SOURCE_GROUP("BufferOperations" FILES ${VK_BUFFER_OPS_FILES})
 

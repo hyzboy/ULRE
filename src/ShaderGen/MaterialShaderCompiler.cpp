@@ -439,14 +439,12 @@ ShaderBuildContext *CompileCompositorMaterial(
         case DescriptorKind::UBO:
             switch (entry.semantic)
             {
+            // 注：Scene UBO（ViewportInfo/CameraInfo/SkyInfo）已全局化（P1），
+            //     不再进入 per-material 分配器（desc_manager/finalize/绑定均跳过 Scene），
+            //     GLSL 声明与 set/binding 由全局集与宏注入保证。
             case DescriptorSemantic::ViewportInfo:
-                ctx->AddUBOStruct(stage_bits, SBS_ViewportInfo);
-                break;
             case DescriptorSemantic::CameraInfo:
-                ctx->AddUBOStruct(stage_bits, SBS_CameraInfo);
-                break;
             case DescriptorSemantic::SkyInfo:
-                ctx->AddUBOStruct(stage_bits, SBS_SkyInfo);
                 break;
             case DescriptorSemantic::LocalToWorld:
                 ctx->SetLocalToWorld(stage_bits);
@@ -660,9 +658,20 @@ ShaderBuildContext *CompileCompositorMaterial(
     // set/binding 宏：声明由下方 index table 生成逻辑依据 descriptor_info 直接以
     // layout(set=.., binding=..) 写出（统一声明生成，不再写死在 .glsl）。
     AppendDescriptorBindingDefine("L2W_SET", descriptor_info.GetSSBO(SBS_LocalToWorld.name));
-    AppendDescriptorBindingDefine("VIEWPORT_SET", descriptor_info.GetUBO(SBS_ViewportInfo.name));
-    AppendDescriptorBindingDefine("CAMERA_SET", descriptor_info.GetUBO(SBS_CameraInfo.name));
-    AppendDescriptorBindingDefine("SKY_SET", descriptor_info.GetUBO(SBS_SkyInfo.name));
+
+    // ── Scene UBO（camera/sky/viewport）已全局化（P1）：binding 号为 P0 硬编码常量，
+    //    不再从 per-material 分配器查询（Scene 不再进入 per-material 描述符集）。
+    //    显式注入 _SET/_BINDING 宏，保证 shader ABI（descriptor_macros.glsl 默认值与此一致）。
+    const int scene_set = int(DescriptorSetType::Scene);
+
+    ShaderDescriptor sd_viewport, sd_camera, sd_sky;
+    sd_viewport.set = scene_set; sd_viewport.binding = kSceneBindingViewport;
+    sd_camera.set    = scene_set; sd_camera.binding    = kSceneBindingCamera;
+    sd_sky.set       = scene_set; sd_sky.binding       = kSceneBindingSky;
+
+    AppendDescriptorBindingDefine("VIEWPORT_SET", &sd_viewport);
+    AppendDescriptorBindingDefine("CAMERA_SET", &sd_camera);
+    AppendDescriptorBindingDefine("SKY_SET", &sd_sky);
 
     // ── Material SSBO GLSL 声明 ─────────────────────────────────────────────
     // 材质实例 SSBO 的 struct + buffer 声明不再写死在 .glsl 中，

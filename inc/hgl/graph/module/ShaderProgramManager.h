@@ -38,6 +38,7 @@ private:
 private:
 
     VkDescriptorSetLayout bindless_layout_ = VK_NULL_HANDLE;   ///< 全局 Bindless Texture Set 布局（Set 3）
+    VkDescriptorSetLayout scene_layout_    = VK_NULL_HANDLE;   ///< 全局 Scene UBO Set 布局（Set 0，P1 设备级）
 
     ShaderProgramManager(GraphicsContext *);
     ~ShaderProgramManager()=default;
@@ -70,6 +71,9 @@ public: //Add
 
     /** 设置全局 Bindless Texture Set 布局（必须在创建任何材质前调用）*/
     void SetBindlessLayout(VkDescriptorSetLayout layout) { bindless_layout_ = layout; }
+
+    /** 设置全局 Scene UBO Set 布局（必须在创建任何材质前调用，P1）*/
+    void SetSceneLayout(VkDescriptorSetLayout layout) { scene_layout_ = layout; }
 
 public: //Get
 
