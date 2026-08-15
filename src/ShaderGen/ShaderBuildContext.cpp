@@ -103,56 +103,6 @@ static const SSBODescriptor *ResolveSSBODescriptor(
     return allocator.AddSSBO((uint32_t)flag_bit,set_type,ssbo);
 }
 
-static const TextureDescriptor *ResolveTextureDescriptor(
-    DescriptorSetLayoutAllocator &allocator,
-    const ShaderStage flag_bit,
-    const DescriptorSetType set_type,
-    const std::string &type_name,
-    const std::string &name)
-{
-    TextureDescriptor *texture=allocator.GetTexture(name);
-
-    if(texture)
-    {
-        if(std::strcmp(texture->type.c_str()?texture->type.c_str():"",type_name.c_str())!=0)
-            return nullptr;
-
-        texture->stage_flag|=(uint32_t)flag_bit;
-        return texture;
-    }
-
-    texture=new TextureDescriptor();
-    texture->type=type_name.c_str();
-    hgl::strcpy(texture->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
-
-    return allocator.AddTexture((uint32_t)flag_bit,set_type,texture);
-}
-
-static const TextureSamplerDescriptor *ResolveTextureSamplerDescriptor(
-    DescriptorSetLayoutAllocator &allocator,
-    const ShaderStage flag_bit,
-    const DescriptorSetType set_type,
-    const std::string &type_name,
-    const std::string &name)
-{
-    TextureSamplerDescriptor *image_sampler=allocator.GetTextureSampler(name);
-
-    if(image_sampler)
-    {
-        if(std::strcmp(image_sampler->type.c_str()?image_sampler->type.c_str():"",type_name.c_str())!=0)
-            return nullptr;
-
-        image_sampler->stage_flag|=(uint32_t)flag_bit;
-        return image_sampler;
-    }
-
-    image_sampler=new TextureSamplerDescriptor();
-    image_sampler->type=type_name.c_str();
-    hgl::strcpy(image_sampler->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
-
-    return allocator.AddTextureSampler((uint32_t)flag_bit,set_type,image_sampler);
-}
-
 ShaderBuildContext::ShaderBuildContext(const PrimitiveType primitive_type_value,const uint32_t shader_stage_bits,const bool has_local_to_world_value)
     : primitive_type(primitive_type_value), shader_stage_flag_bits(shader_stage_bits), has_local_to_world(has_local_to_world_value)
 {
@@ -262,32 +212,6 @@ bool ShaderBuildContext::AddSSBOStruct(const uint32_t flag_bits,const ShaderBuff
         return(false);
 
     return AddSSBO(flag_bits,ss.set_type,ss.struct_name,ss.name);
-}
-
-bool ShaderBuildContext::AddTexture(const ShaderStage flag_bit,const DescriptorSetType set_type,const TextureType &tt,const std::string &name)
-{
-    if(!shader_map.ContainsKey(flag_bit))
-        return(false);
-
-    RANGE_CHECK_RETURN_FALSE(tt);
-
-    const std::string st_name(GetTextureTypeName(tt));        //这里可能需要根据纹理类型，在前面增加i/u的前缀
-
-    const TextureDescriptor *texture=ResolveTextureDescriptor(descriptor_allocator,flag_bit,set_type,st_name,name);
-    return texture != nullptr;
-}
-
-bool ShaderBuildContext::AddTextureSampler(const ShaderStage flag_bit,const DescriptorSetType set_type,const SamplerType &st,const std::string &name)
-{
-    if(!shader_map.ContainsKey(flag_bit))
-        return(false);
-
-    RANGE_CHECK_RETURN_FALSE(st);
-
-    const std::string st_name(GetSamplerTypeName(st));      //这里可能需要根据纹理类型，在前面增加i/u的前缀
-
-    const TextureSamplerDescriptor *image_sampler=ResolveTextureSamplerDescriptor(descriptor_allocator,flag_bit,set_type,st_name,name);
-    return image_sampler != nullptr;
 }
 
 bool ShaderBuildContext::SetLocalToWorld(const uint32_t shader_stage_flag_bits)

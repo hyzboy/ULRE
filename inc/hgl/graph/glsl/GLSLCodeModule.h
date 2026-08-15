@@ -198,33 +198,6 @@ namespace hgl::graph::mtl
             && lhs.allow_fallback == rhs.allow_fallback;
     }
 
-    struct GLSLCodeModuleTextureRequirement
-    {
-        const char *name = nullptr;
-        const char *glsl_type = nullptr;
-        DescriptorSemantic semantic = DescriptorSemantic::MaterialTexture;
-        TextureSlot slot = TextureSlot::BaseColor;
-        uint32 stage_flags = 0;
-        bool required = true;
-        bool allow_fallback = false;
-    };
-
-    inline bool operator==(const GLSLCodeModuleTextureRequirement &lhs,
-                           const GLSLCodeModuleTextureRequirement &rhs) noexcept
-    {
-        const bool same_name = lhs.name == rhs.name
-            || (lhs.name && rhs.name && hgl::strcmp(lhs.name, rhs.name) == 0);
-        const bool same_glsl_type = lhs.glsl_type == rhs.glsl_type
-            || (lhs.glsl_type && rhs.glsl_type && hgl::strcmp(lhs.glsl_type, rhs.glsl_type) == 0);
-        return same_name
-            && same_glsl_type
-            && lhs.semantic == rhs.semantic
-            && lhs.slot == rhs.slot
-            && lhs.stage_flags == rhs.stage_flags
-            && lhs.required == rhs.required
-            && lhs.allow_fallback == rhs.allow_fallback;
-    }
-
     struct GLSLCodeModuleTextureLayerRequirement
     {
         TextureSlot slot = TextureSlot::Custom0;
@@ -253,9 +226,6 @@ namespace hgl::graph::mtl
 
         const GLSLCodeModuleSSBORequirement *ssbo_requirements = nullptr;
         uint32 ssbo_requirement_count = 0;
-
-        const GLSLCodeModuleTextureRequirement *texture_requirements = nullptr;
-        uint32 texture_requirement_count = 0;
 
         const GLSLCodeModuleID *code_module_requirements = nullptr;
         uint32 code_module_requirement_count = 0;
@@ -309,8 +279,6 @@ namespace hgl::graph::mtl
           && !definition.ubo_requirements)
          || (definition.ssbo_requirement_count > 0
           && !definition.ssbo_requirements)
-         || (definition.texture_requirement_count > 0
-          && !definition.texture_requirements)
          || (definition.texture_layer_requirement_count > 0
           && !definition.texture_layer_requirements))
             return false;

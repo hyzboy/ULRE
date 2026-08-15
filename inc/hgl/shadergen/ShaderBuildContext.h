@@ -161,17 +161,6 @@ namespace hgl::graph::shadergen
 
             bool AddSSBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss);
 
-            bool AddTexture(const ShaderStage flag_bits,const DescriptorSetType set_type,const TextureType &tt,const std::string &name);
-            bool AddTextureSampler(const ShaderStage flag_bits,const DescriptorSetType set_type,const SamplerType &st,const std::string &name);
-            bool AddTexture(const ShaderStage flag_bits,const DescriptorSetType set_type,const TextureType &tt,const char *name)
-            {
-                return AddTexture(flag_bits,set_type,tt,std::string(name?name:""));
-            }
-            bool AddTextureSampler(const ShaderStage flag_bits,const DescriptorSetType set_type,const SamplerType &st,const char *name)
-            {
-                return AddTextureSampler(flag_bits,set_type,st,std::string(name?name:""));
-            }
-
             bool CreateShaderDirect();               ///< 直接编译各阶段的 FinalGLSL 到 SPV
         };//class ShaderBuildContext
 }//namespace hgl::graph::shadergen

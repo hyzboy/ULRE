@@ -279,9 +279,6 @@ namespace hgl::graph::mtl
                 definition.ssbo_requirements,
                 definition.ssbo_requirement_count)
          || !HasValidArray(
-                definition.texture_requirements,
-                definition.texture_requirement_count)
-         || !HasValidArray(
                 definition.texture_layer_requirements,
                 definition.texture_layer_requirement_count))
         {

@@ -261,7 +261,7 @@ namespace hgl::graph::shadergen
              || entry.set_type == DescriptorSetType::Unknow
              || entry.set_type < DescriptorSetType::Scene
              || entry.set_type > DescriptorSetType::Bindless
-             || entry.kind > DescriptorKind::TextureSampler
+             || entry.kind > DescriptorKind::SSBO
              || entry.texture_slot < TextureSlot::BEGIN_RANGE
              || entry.texture_slot > TextureSlot::END_RANGE
              || entry.ssbo_type < SSBOType::BEGIN_RANGE

@@ -473,20 +473,6 @@ namespace hgl::graph::shadergen
               << requirement.allow_fallback;
         }
 
-        h << definition.texture_requirement_count;
-        for (uint32 i = 0; i < definition.texture_requirement_count; ++i)
-        {
-            const GLSLCodeModuleTextureRequirement &requirement =
-                definition.texture_requirements[i];
-            h << requirement.name
-              << requirement.glsl_type;
-            h << requirement.semantic
-              << requirement.slot
-              << requirement.stage_flags
-              << requirement.required
-              << requirement.allow_fallback;
-        }
-
         h << definition.texture_layer_requirement_count;
         for (uint32 i = 0;
              i < definition.texture_layer_requirement_count;

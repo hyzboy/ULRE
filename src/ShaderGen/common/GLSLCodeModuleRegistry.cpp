@@ -191,13 +191,6 @@ namespace hgl::graph::mtl
             }
             data->definition.ssbo_requirements = data->ssbo_requirements.GetData();
             data->definition.ssbo_requirement_count = static_cast<uint32>(data->ssbo_requirements.GetCount());
-            for (int k = 0; k < data->texture_requirements.GetCount(); ++k)
-            {
-                data->texture_requirements[k].name = data->texture_name_storage[k]->c_str();
-                data->texture_requirements[k].glsl_type = data->texture_type_storage[k]->c_str();
-            }
-            data->definition.texture_requirements = data->texture_requirements.GetData();
-            data->definition.texture_requirement_count = static_cast<uint32>(data->texture_requirements.GetCount());
             data->definition.texture_layer_requirements = data->texture_layer_requirements.GetData();
             data->definition.texture_layer_requirement_count =
                 static_cast<uint32>(data->texture_layer_requirements.GetCount());

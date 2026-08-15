@@ -346,16 +346,6 @@ namespace hgl::graph::mtl
             return false;
         }
 
-        bool ParseSamplerType(const char *token) noexcept
-        {
-            return std::strcmp(token, "sampler2D") == 0
-                || std::strcmp(token, "sampler2DArray") == 0
-                || std::strcmp(token, "sampler2DShadow") == 0
-                || std::strcmp(token, "samplerCube") == 0
-                || std::strcmp(token, "samplerCubeArray") == 0
-                || std::strcmp(token, "sampler3D") == 0;
-        }
-
         bool ParseConditionDomain(
             const char *token,
             GLSLCodeModuleConditionDomain &out_domain) noexcept
@@ -597,42 +587,6 @@ namespace hgl::graph::mtl
                     }
                     (void)name_index;
                     out_data.ssbo_requirements.Add(requirement);
-                }
-                else if (std::strcmp(token, "texture") == 0)
-                {
-                    GLSLCodeModuleTextureRequirement requirement;
-                    const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
-                    if (!next || !token[0])
-                        return GLSLCodeModuleParseResult::MissingDirectiveArgument;
-                    AnsiString *texture_name = out_data.texture_name_storage.Create();
-                    if (!texture_name)
-                        return GLSLCodeModuleParseResult::InvalidResource;
-                    *texture_name = token;
-
-                    next = ReadToken(next, line_end, token, sizeof(token));
-                    if (!next || !ParseDescriptorSemantic(token, requirement.semantic))
-                        return GLSLCodeModuleParseResult::InvalidResource;
-                    next = ReadToken(next, line_end, token, sizeof(token));
-                    if (!next || !ParseTextureSlot(token, requirement.slot))
-                        return GLSLCodeModuleParseResult::InvalidResource;
-                    next = ReadToken(next, line_end, token, sizeof(token));
-                    if (!next || !ParseSamplerType(token))
-                        return GLSLCodeModuleParseResult::InvalidResource;
-                    AnsiString *texture_type = out_data.texture_type_storage.Create();
-                    if (!texture_type)
-                        return GLSLCodeModuleParseResult::InvalidResource;
-                    *texture_type = token;
-                    next = ReadToken(next, line_end, token, sizeof(token));
-                    if (!next || !ParseStageFlags(token, requirement.stage_flags))
-                        return GLSLCodeModuleParseResult::InvalidStage;
-
-                    while ((next = ReadToken(next, line_end, token, sizeof(token))) != nullptr)
-                    {
-                        if (!ParseResourcePolicy(token, requirement.required,
-                                                  requirement.allow_fallback))
-                            return GLSLCodeModuleParseResult::InvalidResource;
-                    }
-                    out_data.texture_requirements.Add(requirement);
                 }
                 else if (std::strcmp(token, "texture_layer") == 0)
                 {

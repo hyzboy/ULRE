@@ -8,7 +8,6 @@ namespace hgl::graph::mtl
     constexpr uint32 MaxShaderResourceManifestCodeModules = 64u;
     constexpr uint32 MaxShaderResourceManifestUBOs = 64u;
     constexpr uint32 MaxShaderResourceManifestSSBOs = 64u;
-    constexpr uint32 MaxShaderResourceManifestTextures = 64u;
     constexpr uint32 MaxShaderResourceManifestTextureLayers = 16u;
 
     enum class ShaderResourceManifestError : uint8
@@ -20,7 +19,6 @@ namespace hgl::graph::mtl
         CodeModuleCapacityExceeded,
         UBOCapacityExceeded,
         SSBOCapacityExceeded,
-        TextureCapacityExceeded,
         TextureLayerCapacityExceeded,
         ResourceConflict
     };
@@ -35,9 +33,6 @@ namespace hgl::graph::mtl
 
         GLSLCodeModuleSSBORequirement ssbos[MaxShaderResourceManifestSSBOs]{};
         uint32 ssbo_count = 0;
-
-        GLSLCodeModuleTextureRequirement textures[MaxShaderResourceManifestTextures]{};
-        uint32 texture_count = 0;
 
         GLSLCodeModuleTextureLayerRequirement texture_layers[MaxShaderResourceManifestTextureLayers]{};
         uint32 texture_layer_count = 0;

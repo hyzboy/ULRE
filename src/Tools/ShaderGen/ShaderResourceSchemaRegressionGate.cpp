@@ -430,19 +430,6 @@ namespace
         program_key.vertex_input_hash = 0x7104u;
 
         ShaderResourceSchema layout{};
-        ShaderResourceSlot texture_resources{};
-        texture_resources.logical_resource_id =
-            StableID("resource.base_color");
-        texture_resources.resource_schema_id =
-            StableID("schema.sampler2D");
-        texture_resources.semantic =
-            DescriptorSemantic::MaterialSampler;
-        texture_resources.kind = DescriptorKind::TextureSampler;
-        texture_resources.texture_slot = TextureSlot::BaseColor;
-        texture_resources.required = true;
-        texture_resources.allow_fallback = false;
-        layout.resources.push_back(texture_resources);
-
         ShaderResourceSlot texture_layer_resources{};
         texture_layer_resources.logical_resource_id =
             StableID("resource.texture_layers");
@@ -1383,7 +1370,7 @@ namespace
             GLSLCodeModuleID::TestProviderA,
             "identity_normal",
             "// identity",
-            nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0,
+            nullptr, 0, nullptr, 0, nullptr, 0,
             GLSLCodeModuleKind::VertexInput,
             &normal_requirement, 1,
             normal_provides, 1,
@@ -1403,7 +1390,7 @@ namespace
             GLSLCodeModuleID::TestProviderB,
             "identity_uv",
             "// identity",
-            nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0,
+            nullptr, 0, nullptr, 0, nullptr, 0,
             GLSLCodeModuleKind::VertexInput,
             &uv_requirement, 1,
             uv_provides, 1,
@@ -1430,7 +1417,7 @@ namespace
             GLSLCodeModuleID::PBRSurface,
             "identity_normal_packed",
             "// identity",
-            nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0,
+            nullptr, 0, nullptr, 0, nullptr, 0,
             GLSLCodeModuleKind::Decode,
             &normal_requirement, 1,
             normal_provides, 1,
@@ -1463,7 +1450,7 @@ namespace
             GLSLCodeModuleID::TestProviderA,
             "compose_position",
             "vec4 GetLocalPos() { return vec4(Position, 1.0); }",
-            nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0,
+            nullptr, 0, nullptr, 0, nullptr, 0,
             GLSLCodeModuleKind::Position,
             nullptr, 0, nullptr, 0, 0, 0
         };
@@ -1471,7 +1458,7 @@ namespace
             GLSLCodeModuleID::TestProviderB,
             "compose_normal",
             "vec3 GetNormal() { return Normal; }",
-            nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0,
+            nullptr, 0, nullptr, 0, nullptr, 0,
             GLSLCodeModuleKind::Basis,
             nullptr, 0, nullptr, 0, 0, 0
         };
@@ -2279,14 +2266,14 @@ namespace
             });
         interface_a.descriptor_requirements.Add(
             {
-                StableID("resource.base_color"),
-                StableID("schema.sampler2D"),
-                DescriptorSemantic::MaterialTexture,
-                DescriptorSemanticLayer::Texture,
+                StableID("resource.texture_layers"),
+                StableID("schema.TextureLayer.v1"),
+                DescriptorSemantic::MaterialTextureLayerTable,
+                DescriptorSemanticLayer::SSBO,
                 DescriptorSetType::Material,
-                DescriptorKind::Texture,
+                DescriptorKind::SSBO,
                 TextureSlot::BaseColor,
-                SSBOType::UserDefined,
+                SSBOType::TextureLayer,
                 0,
                 uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
                 1,
@@ -2380,67 +2367,6 @@ namespace
         return result;
     }
 
-    static GateResult RunBindlessEquivalenceCase()
-    {
-        GateResult result;
-        result.name = "D.bindless-dual-form-equivalence";
-
-        constexpr SerializedDescriptorEntry standard_entries[] =
-        {
-            { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo },
-            { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera", "CameraInfo", nullptr, DescriptorSemantic::CameraInfo },
-            { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "sky", "SkyInfo", nullptr, DescriptorSemantic::SkyInfo },
-            { DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr, DescriptorSemantic::LocalToWorld },
-            { DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w_index_rows", "LocalToWorldIndexRows", nullptr, DescriptorSemantic::LocalToWorldIndexTable },
-            { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl", "PBRSurfaceData", nullptr, DescriptorSemantic::MaterialDataSlotData, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::PBRSurface },
-            { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl_data_index_rows", "DataIndexRows", nullptr, DescriptorSemantic::MaterialDataIndexTable },
-            { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "mtl_texture_layer_rows", "TextureLayerRows", nullptr, DescriptorSemantic::MaterialTextureLayerTable },
-            { DescriptorSetType::Material, DescriptorKind::Texture, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureBaseColor", nullptr, "sampler2D", DescriptorSemantic::MaterialTexture, TextureSlot::BaseColor },
-            { DescriptorSetType::Material, DescriptorKind::Texture, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureNormal", nullptr, "sampler2D", DescriptorSemantic::MaterialTexture, TextureSlot::Normal },
-            { DescriptorSetType::Material, DescriptorKind::Texture, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureRoughness", nullptr, "sampler2D", DescriptorSemantic::MaterialTexture, TextureSlot::Roughness },
-        };
-
-        constexpr SerializedDescriptorEntry array_entries[] =
-        {
-            { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo },
-            { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera", "CameraInfo", nullptr, DescriptorSemantic::CameraInfo },
-            { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "sky", "SkyInfo", nullptr, DescriptorSemantic::SkyInfo },
-            { DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr, DescriptorSemantic::LocalToWorld },
-            { DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w_index_rows", "LocalToWorldIndexRows", nullptr, DescriptorSemantic::LocalToWorldIndexTable },
-            { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl", "PBRSurfaceData", nullptr, DescriptorSemantic::MaterialDataSlotData, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::PBRSurface },
-            { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl_data_index_rows", "DataIndexRows", nullptr, DescriptorSemantic::MaterialDataIndexTable },
-            { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl_texture_layer_rows", "TextureLayerRows", nullptr, DescriptorSemantic::MaterialTextureLayerTable },
-            { DescriptorSetType::Material, DescriptorKind::Texture, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureBaseColor", nullptr, "sampler2DArray", DescriptorSemantic::MaterialTexture, TextureSlot::BaseColor },
-            { DescriptorSetType::Material, DescriptorKind::Texture, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureNormal", nullptr, "sampler2DArray", DescriptorSemantic::MaterialTexture, TextureSlot::Normal },
-            { DescriptorSetType::Material, DescriptorKind::Texture, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureRoughness", nullptr, "sampler2DArray", DescriptorSemantic::MaterialTexture, TextureSlot::Roughness },
-        };
-
-        std::vector<std::string> diagnostics_standard;
-        std::vector<std::string> diagnostics_array;
-        const ShaderResourceSchema standard_schema = BuildShaderResourceSchema(standard_entries, uint32_t(std::size(standard_entries)));
-        const ShaderResourceSchema array_schema = BuildShaderResourceSchema(array_entries, uint32_t(std::size(array_entries)));
-
-        const bool standard_ok = ValidateShaderResourceSchema(standard_schema, diagnostics_standard);
-        const bool array_ok = ValidateShaderResourceSchema(array_schema, diagnostics_array);
-        if (!standard_ok || !array_ok)
-        {
-            result.passed = false;
-            result.diagnostics = !standard_ok ? diagnostics_standard : diagnostics_array;
-            return result;
-        }
-
-        const auto standard_shape = SummarizeConstraintShape(standard_schema);
-        const auto array_shape = SummarizeConstraintShape(array_schema);
-        if (standard_shape != array_shape)
-        {
-            result.passed = false;
-            result.diagnostics.emplace_back("Bindless dual forms produced different normalized constraint shapes.");
-            return result;
-        }
-        result.passed = true;
-        return result;
-    }
-
     static GateResult RunMaterializationSharedInstanceCase()
     {
         GateResult result;
@@ -2455,13 +2381,13 @@ namespace
         ShaderResourceSchema layout{};
         ShaderResourceSlot texture_resources{};
         texture_resources.logical_resource_id =
-            StableID("resource.base_color");
+            StableID("resource.texture_layers");
         texture_resources.resource_schema_id =
-            StableID("schema.sampler2D");
+            StableID("schema.TextureLayer");
         texture_resources.semantic =
-            DescriptorSemantic::MaterialSampler;
-        texture_resources.kind = DescriptorKind::TextureSampler;
-        texture_resources.texture_slot = TextureSlot::BaseColor;
+            DescriptorSemantic::MaterialTextureLayerTable;
+        texture_resources.kind = DescriptorKind::SSBO;
+        texture_resources.ssbo_type = SSBOType::TextureLayer;
         texture_resources.required = true;
         layout.resources.push_back(texture_resources);
 
@@ -3796,8 +3722,7 @@ namespace
                     result.diagnostics.emplace_back(
                         "Texture2D providers must declare one PBRSurface material SSBO");
 
-                if (manifest_2d.texture_count != 0
-                 || manifest_2d.texture_layer_count != 2)
+                if (manifest_2d.texture_layer_count != 2)
                     result.diagnostics.emplace_back(
                         "Texture2D providers must declare bindless per-slot layer-table dependencies");
 
@@ -3831,7 +3756,6 @@ namespace
             else
             {
                 if (manifest_array.ssbo_count != 1
-                 || manifest_array.texture_count != 0
                  || manifest_array.texture_layer_count != 1
                  || manifest_array.texture_layers[0].slot != TextureSlot::Custom0)
                     result.diagnostics.emplace_back(
@@ -3859,7 +3783,6 @@ namespace
             ShaderResourceManifest derivative_manifest{};
             if (!BuildShaderResourceManifest(
                     &derivative_root, 1, derivative_manifest, &registry)
-             || derivative_manifest.texture_count != 0
              || derivative_manifest.texture_layer_count != 1)
                result.diagnostics.emplace_back(
                    "Derivative normal-map provider must declare its bindless layer-table dependency");
@@ -5298,8 +5221,8 @@ namespace
         {
             std::string viewport_name = "viewport";
             std::string viewport_struct = "ViewportInfo";
-            std::string texture_name = "TextureBaseColor";
-            std::string texture_type = "sampler2D";
+            std::string material_name = "mtl";
+            std::string material_struct = "PBRSurfaceData";
             SerializedDescriptorEntry entries[] =
             {
                 {
@@ -5317,20 +5240,20 @@ namespace
                 },
                 {
                     DescriptorSetType::Material,
-                    DescriptorKind::TextureSampler,
+                    DescriptorKind::SSBO,
                     uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
-                    texture_name.c_str(),
+                    material_name.c_str(),
+                    material_struct.c_str(),
                     nullptr,
-                    texture_type.c_str(),
-                    DescriptorSemantic::MaterialSampler,
+                    DescriptorSemantic::MaterialDataSlotData,
                     TextureSlot::BaseColor,
                     DefaultMaterialDataSlot,
-                    SSBOType::UserDefined,
-                    DescriptorSemanticLayer::Sampler,
+                    SSBOType::PBRSurface,
+                    DescriptorSemanticLayer::SSBO,
                     MakeRecipeSSBOId(0),
                     true,
-                    false,
-                    true
+                    true,
+                    false
                 }
             };
             std::vector<SerializedDescriptorEntry> reversed{
@@ -5375,7 +5298,7 @@ namespace
              || roundtrip.size() != 2
              || std::strcmp(roundtrip[0].name, "viewport") != 0
              || std::strcmp(
-                    roundtrip[1].glsl_type, "sampler2D") != 0)
+                    roundtrip[1].struct_name, "PBRSurfaceData") != 0)
             {
                 result.diagnostics.emplace_back(
                     "descriptor contract Fixed adapter mismatch");
@@ -5440,7 +5363,7 @@ namespace
         if (persistent_layout.resources.size() != 2
          || persistent_layout.resources[0].name != "viewport"
          || persistent_layout.resources[0].struct_name != "ViewportInfo"
-         || persistent_layout.resources[1].glsl_type != "sampler2D")
+         || persistent_layout.resources[1].struct_name != "PBRSurfaceData")
         {
             result.diagnostics.emplace_back(
                 "material layout did not retain owned descriptor strings");
@@ -5483,14 +5406,12 @@ namespace
             uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT));
 
         ShaderResourceManifest compatible_manifest{};
-        compatible_manifest.texture_count = 1;
-        compatible_manifest.textures[0] = {
-            "TextureBaseColor",
-            "sampler2D",
-            DescriptorSemantic::MaterialSampler,
+        compatible_manifest.texture_layer_count = 1;
+        compatible_manifest.texture_layers[0] = {
             TextureSlot::BaseColor,
             uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
-            true
+            true,
+            false
         };
         compatible_manifest.ssbo_count = 1;
         compatible_manifest.ssbos[0] = {
@@ -5502,7 +5423,7 @@ namespace
 
         if (!descriptor_builder_common::AppendManifestSSBODescriptors(
                 descriptors, compatible_manifest)
-         || !descriptor_builder_common::AppendManifestTextureDescriptors(
+         || !descriptor_builder_common::AppendManifestTextureLayerDescriptors(
                 descriptors, compatible_manifest)
          || !compatible_manifest.IsValid())
         {
@@ -5520,88 +5441,49 @@ namespace
                 result.diagnostics.emplace_back(
                     "Merged definition/module resource contract failed validation.");
 
-            bool has_required_sampler = false;
+            bool has_required_texture_layer = false;
             bool has_single_material_ssbo = false;
             for (const auto &req : schema.resources)
             {
-                if (req.semantic == DescriptorSemantic::MaterialSampler
+                if (req.semantic == DescriptorSemantic::MaterialTextureLayerTable
                  && req.texture_slot == TextureSlot::BaseColor)
-                    has_required_sampler = req.required && !req.allow_fallback;
+                    has_required_texture_layer = req.required && !req.allow_fallback;
                 if (req.semantic == DescriptorSemantic::MaterialDataSlotData
                  && req.data_slot == DefaultMaterialDataSlot)
                     has_single_material_ssbo = true;
             }
-            if (!has_required_sampler || !has_single_material_ssbo)
+            if (!has_required_texture_layer || !has_single_material_ssbo)
                 result.diagnostics.emplace_back(
                     "Merged resource policy or SSBO identity was not preserved.");
         }
 
-        ShaderResourceManifest name_conflict{};
-        name_conflict.texture_count = 1;
-        name_conflict.textures[0] = {
-            "TextureBaseColor",
-            "samplerCube",
-            DescriptorSemantic::MaterialSampler,
-            TextureSlot::BaseColor,
-            uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
-            true
+        ShaderResourceManifest ssbo_name_conflict{};
+        ssbo_name_conflict.ssbo_count = 1;
+        ssbo_name_conflict.ssbos[0] = {
+            "mtl",
+            SSBOType::TextureLayer,
+            DefaultMaterialDataSlot,
+            uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT)
         };
-        if (descriptor_builder_common::AppendManifestTextureDescriptors(
-                descriptors, name_conflict)
-         || name_conflict.error != ShaderResourceManifestError::ResourceConflict)
+        if (descriptor_builder_common::AppendManifestSSBODescriptors(
+                descriptors, ssbo_name_conflict)
+         || ssbo_name_conflict.error != ShaderResourceManifestError::ResourceConflict)
         {
             result.diagnostics.emplace_back(
-                "Same-name sampler type conflicts must fail explicitly.");
-        }
-
-        ShaderResourceManifest slot_conflict{};
-        slot_conflict.texture_count = 1;
-        slot_conflict.textures[0] = {
-            "TextureBaseColorAlias",
-            "sampler2D",
-            DescriptorSemantic::MaterialSampler,
-            TextureSlot::BaseColor,
-            uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
-            true
-        };
-        if (descriptor_builder_common::AppendManifestTextureDescriptors(
-                descriptors, slot_conflict)
-         || slot_conflict.error != ShaderResourceManifestError::ResourceConflict)
-        {
-            result.diagnostics.emplace_back(
-                "Same semantic slot with a different name must fail explicitly.");
-        }
-
-        ShaderResourceManifest texture_manifest{};
-        texture_manifest.texture_count = 1;
-        texture_manifest.textures[0] = {
-            "TextureNormal",
-            "sampler2D",
-            DescriptorSemantic::MaterialTexture,
-            TextureSlot::Normal,
-            uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
-            false
-        };
-        std::vector<SerializedDescriptorEntry> texture_descriptors;
-        if (!descriptor_builder_common::AppendManifestTextureDescriptors(
-                texture_descriptors, texture_manifest)
-         || texture_descriptors.size() != 1
-         || texture_descriptors[0].kind != DescriptorKind::Texture
-         || texture_descriptors[0].semantic != DescriptorSemantic::MaterialTexture)
-        {
-            result.diagnostics.emplace_back(
-                "Manifest MaterialTexture must remain a texture descriptor, not a sampler alias.");
+                "Same-name SSBO type conflicts must fail explicitly.");
         }
 
         SerializedDescriptorEntry hash_entry{};
         hash_entry.set_type = DescriptorSetType::Material;
-        hash_entry.kind = DescriptorKind::TextureSampler;
+        hash_entry.kind = DescriptorKind::SSBO;
         hash_entry.stage_flags = uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT);
-        hash_entry.name = "TextureBaseColor";
-        hash_entry.glsl_type = "sampler2D";
-        hash_entry.semantic = DescriptorSemantic::MaterialSampler;
-        hash_entry.semantic_layer = DescriptorSemanticLayer::Sampler;
-        hash_entry.texture_slot = TextureSlot::BaseColor;
+        hash_entry.name = "mtl";
+        hash_entry.struct_name = "PBRSurfaceData";
+        hash_entry.semantic = DescriptorSemantic::MaterialDataSlotData;
+        hash_entry.semantic_layer = DescriptorSemanticLayer::SSBO;
+        hash_entry.data_slot = DefaultMaterialDataSlot;
+        hash_entry.ssbo_type = SSBOType::PBRSurface;
+        hash_entry.ssbo_id = 11;
         hash_entry.has_requirement_policy = true;
         hash_entry.required = true;
         hash_entry.allow_fallback = false;
@@ -5619,12 +5501,12 @@ namespace
 
         hash_entries[0].required = true;
         hash_entries[0].allow_fallback = false;
-        hash_entries[0].glsl_type = "sampler2DArray";
-        const uint64_t sampler_hash =
+        hash_entries[0].ssbo_type = SSBOType::TextureLayer;
+        const uint64_t ssbo_type_hash =
             descriptor_builder_common::HashResourceContract(0, hash_entries);
-        if (strict_hash == sampler_hash)
+        if (strict_hash == ssbo_type_hash)
             result.diagnostics.emplace_back(
-                "Sampler type changes must change the resource contract hash.");
+                "SSBO type changes must change the resource contract hash.");
 
         SerializedDescriptorEntry ssbo_hash_entry{};
         ssbo_hash_entry.set_type = DescriptorSetType::Material;
@@ -5687,8 +5569,7 @@ int main(const int argc, char **argv)
         {
             { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
             { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl_data_index_rows", "DataIndexRows", nullptr, DescriptorSemantic::MaterialDataIndexTable, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::MaterialDataIndexTable, DescriptorSemanticLayer::SSBO },
-            { DescriptorSetType::Material, DescriptorKind::Texture, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureBaseColor", nullptr, "sampler2D", DescriptorSemantic::MaterialTexture, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::Texture },
-            { DescriptorSetType::Material, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "CustomCubeSampler", nullptr, "samplerCube", DescriptorSemantic::MaterialSampler, TextureSlot::Custom0, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::Sampler },
+            { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "mtl_texture_layer_rows", "TextureLayerRows", nullptr, DescriptorSemantic::MaterialTextureLayerTable, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::TextureLayer, DescriptorSemanticLayer::SSBO },
         };
         results.push_back(RunValidationCase("A.valid-layered-paths", valid_entries, uint32_t(std::size(valid_entries)), true));
 
@@ -5700,7 +5581,7 @@ int main(const int argc, char **argv)
 
         constexpr SerializedDescriptorEntry semantic_kind_mismatch[] =
         {
-            { DescriptorSetType::Material, DescriptorKind::Texture, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "mtl_data_index_rows", "DataIndexRows", "sampler2D", DescriptorSemantic::MaterialDataIndexTable, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::MaterialDataIndexTable, DescriptorSemanticLayer::SSBO },
+            { DescriptorSetType::Material, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "mtl_data_index_rows", "DataIndexRows", nullptr, DescriptorSemantic::MaterialDataIndexTable, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::MaterialDataIndexTable, DescriptorSemanticLayer::SSBO },
         };
         results.push_back(RunValidationCase("B2.semantic-kind-mismatch-hard-fail", semantic_kind_mismatch, 1, false));
 
@@ -5717,7 +5598,6 @@ int main(const int argc, char **argv)
         results.push_back(RunValidationCase("C.material-color-palette-explicit", palette_explicit, 1, true));
     }
 
-    if (run_descriptor) results.push_back(RunBindlessEquivalenceCase());
     if (run_materialization) results.push_back(RunMaterializationSharedInstanceCase());
     if (run_materialization) results.push_back(RunBuiltinRegistryCoverageCase());
     if (run_materialization) results.push_back(RunBootstrapMaterialBoundaryCase());

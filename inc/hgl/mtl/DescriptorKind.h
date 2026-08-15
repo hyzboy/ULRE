@@ -8,7 +8,5 @@ namespace hgl::graph::mtl
     {
         UBO,
         SSBO,
-        Texture,
-        TextureSampler,
     };
 }//namespace hgl::graph::mtl

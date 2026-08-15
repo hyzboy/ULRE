@@ -69,7 +69,6 @@ inline std::vector<SerializedDescriptorEntry> Build3DDescriptorsFromDefinition(
     std::vector<SerializedDescriptorEntry> descriptors = Build3DDescriptorsFromDefinition(definition, opt);
     descriptor_builder_common::AppendManifestUBODescriptors(descriptors, manifest);
     if (!descriptor_builder_common::AppendManifestSSBODescriptors(descriptors, manifest)
-     || !descriptor_builder_common::AppendManifestTextureDescriptors(descriptors, manifest)
      || !descriptor_builder_common::AppendManifestTextureLayerDescriptors(descriptors, manifest))
         return {};
     descriptor_builder_common::EnsureMaterialDataIndexTable(

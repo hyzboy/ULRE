@@ -234,14 +234,6 @@ static bool ValidateDefinitionCapabilitySubset(
                  && CStrEq(req.name.c_str(), ssbo.name))
                     allowed = true;
             }
-            for (uint32 i = 0; i < manifest->texture_count && !allowed; ++i)
-            {
-                const auto &texture = manifest->textures[i];
-                if (req.semantic == texture.semantic
-                 && req.texture_slot == texture.slot
-                 && CStrEq(req.name.c_str(), texture.name))
-                    allowed = true;
-            }
             if (req.semantic == DescriptorSemantic::MaterialTextureLayerTable
              && manifest->texture_layer_count > 0)
                 allowed = true;
@@ -514,52 +506,6 @@ ShaderBuildContext *CompileCompositorMaterial(
                 break;
             default:
                 break;
-            }
-            break;
-
-        case DescriptorKind::Texture:
-            if (entry.glsl_type)
-            {
-                TextureType tt;
-                const char *glsl_type_str = entry.glsl_type;
-
-                if (CStrEq(glsl_type_str, "sampler2D"))
-                    tt = TextureType::Texture2D;
-                else if (CStrEq(glsl_type_str, "sampler3D"))
-                    tt = TextureType::Texture3D;
-                else if (CStrEq(glsl_type_str, "samplerCube"))
-                    tt = TextureType::TextureCube;
-                else if (CStrEq(glsl_type_str, "sampler2DArray"))
-                    tt = TextureType::Texture2DArray;
-                else
-                    tt = TextureType::Texture2D;
-
-                ctx->AddTexture(ShaderStage(stage_bits), entry.set_type, tt, entry.name);
-            }
-            break;
-
-        case DescriptorKind::TextureSampler:
-            if (entry.glsl_type)
-            {
-                TextureType tt;
-                SamplerType st = SamplerType::Sampler2D;
-                const char *glsl_type_str = entry.glsl_type;
-
-                if (CStrEq(glsl_type_str, "sampler2D")) {
-                    tt = TextureType::Texture2D;
-                    st = SamplerType::Sampler2D;
-                } else if (CStrEq(glsl_type_str, "samplerCube")) {
-                    tt = TextureType::TextureCube;
-                    st = SamplerType::SamplerCube;
-                } else if (CStrEq(glsl_type_str, "sampler2DArray")) {
-                    tt = TextureType::Texture2DArray;
-                    st = SamplerType::Sampler2DArray;
-                } else {
-                    tt = TextureType::Texture2D;
-                    st = SamplerType::Sampler2D;
-                }
-
-                ctx->AddTextureSampler(ShaderStage(stage_bits), entry.set_type, st, entry.name);
             }
             break;
         }
@@ -921,10 +867,6 @@ ShaderBuildContext *CompileCompositorMaterial(
             effective_descriptor_contract,
             shader_resource_schema))
         return FailAfterBuild("descriptor contract/layout build failed");
-
-    if (config.material_definition)
-        descriptor_builder_common::ApplyMaterialDefinitionTexturePolicy(
-            *config.material_definition, shader_resource_schema);
 
     std::vector<std::string> contract_diagnostics;
     if (!ValidateShaderResourceSchema(shader_resource_schema, contract_diagnostics))

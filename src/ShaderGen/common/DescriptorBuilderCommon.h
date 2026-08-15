@@ -204,12 +204,6 @@ inline void AppendDefinitionMaterialDescriptors(
     }
 }
 
-inline bool IsTextureDescriptor(const SerializedDescriptorEntry &entry) noexcept
-{
-    return entry.kind == DescriptorKind::Texture
-        || entry.kind == DescriptorKind::TextureSampler;
-}
-
 inline bool CStrEqual(const char *lhs, const char *rhs) noexcept
 {
     return lhs && rhs && std::strcmp(lhs, rhs) == 0;
@@ -231,42 +225,6 @@ inline void MergeResourcePolicy(
     existing.has_requirement_policy = true;
     existing.required = existing_required || incoming_required;
     existing.allow_fallback = existing_fallback && incoming_fallback;
-}
-
-inline bool MergeTextureDescriptor(
-    std::vector<SerializedDescriptorEntry> &v,
-    const SerializedDescriptorEntry &incoming)
-{
-    for (auto &existing : v)
-    {
-        if (!IsTextureDescriptor(existing))
-            continue;
-
-        const bool same_name = CStrEqual(existing.name, incoming.name);
-        const bool same_semantic_slot =
-            existing.semantic == incoming.semantic
-         && existing.texture_slot == incoming.texture_slot;
-        if (!same_name && !same_semantic_slot)
-            continue;
-
-        const bool same_identity =
-            same_name
-         && same_semantic_slot
-         && existing.set_type == incoming.set_type
-         && existing.kind == incoming.kind
-         && existing.semantic_layer == incoming.semantic_layer
-         && ((existing.glsl_type == nullptr && incoming.glsl_type == nullptr)
-          || CStrEqual(existing.glsl_type, incoming.glsl_type));
-        if (!same_identity)
-            return false;
-
-        existing.stage_flags |= incoming.stage_flags;
-        MergeResourcePolicy(existing, incoming);
-        return true;
-    }
-
-    v.push_back(incoming);
-    return true;
 }
 
 inline bool MergeSSBODescriptor(
@@ -329,43 +287,6 @@ inline bool PushManifestSSBO(
     return MergeSSBODescriptor(v, entry);
 }
 
-inline bool MakeManifestTextureDescriptor(
-    const GLSLCodeModuleTextureRequirement &texture,
-    SerializedDescriptorEntry &out)
-{
-    if (!texture.name || !*texture.name
-     || !texture.glsl_type || !*texture.glsl_type)
-        return false;
-
-    out = {};
-    out.stage_flags = texture.stage_flags;
-    out.name = texture.name;
-    out.glsl_type = texture.glsl_type;
-    out.texture_slot = texture.slot;
-    out.semantic = texture.semantic;
-    out.has_requirement_policy = true;
-    out.required = texture.required;
-    out.allow_fallback = texture.allow_fallback;
-
-    switch (texture.semantic)
-    {
-    case DescriptorSemantic::MaterialTexture:
-        out.set_type = DescriptorSetType::Material;
-        out.kind = DescriptorKind::Texture;
-        out.semantic_layer = DescriptorSemanticLayer::Texture;
-        break;
-    case DescriptorSemantic::MaterialSampler:
-        out.set_type = DescriptorSetType::Material;
-        out.kind = DescriptorKind::TextureSampler;
-        out.semantic_layer = DescriptorSemanticLayer::Sampler;
-        break;
-    default:
-        return false;
-    }
-
-    return true;
-}
-
 inline void AppendManifestUBODescriptors(
     std::vector<SerializedDescriptorEntry> &v,
     const ShaderResourceManifest &manifest)
@@ -389,24 +310,6 @@ inline bool AppendManifestSSBODescriptors(
 
         manifest.error = ShaderResourceManifestError::ResourceConflict;
         return false;
-    }
-
-    return true;
-}
-
-inline bool AppendManifestTextureDescriptors(
-    std::vector<SerializedDescriptorEntry> &v,
-    ShaderResourceManifest &manifest)
-{
-    for (uint32 i = 0; i < manifest.texture_count; ++i)
-    {
-        SerializedDescriptorEntry entry{};
-        if (!MakeManifestTextureDescriptor(manifest.textures[i], entry)
-         || !MergeTextureDescriptor(v, entry))
-        {
-            manifest.error = ShaderResourceManifestError::ResourceConflict;
-            return false;
-        }
     }
 
     return true;
@@ -533,62 +436,6 @@ inline uint64 HashResourceContract(
     h << contract_version
       << manifest_hash
       << HashShaderResourceSchema(schema);
-    return h;
-}
-
-inline void ApplyMaterialDefinitionTexturePolicy(
-    const MaterialDefinition &definition,
-    ShaderResourceSchema &schema)
-{
-    for (auto &requirement : schema.resources)
-    {
-        if (requirement.semantic != DescriptorSemantic::MaterialTexture
-         && requirement.semantic != DescriptorSemantic::MaterialSampler)
-            continue;
-
-        for (const auto &decl : definition.texture_slot_decls)
-        {
-            if (decl.slot != requirement.texture_slot)
-                continue;
-
-            requirement.required = decl.required;
-            requirement.allow_fallback = !decl.required;
-            break;
-        }
-    }
-}
-
-inline uint64 HashMaterialDefinitionTexturePolicy(
-    const uint64 hash,
-    const MaterialDefinition &definition) noexcept
-{
-    hgl::hash::FNV1aHasher64 h(hash);
-    h << static_cast<uint32>(definition.texture_slot_decls.size());
-    for (const auto &decl : definition.texture_slot_decls)
-    {
-        h << decl.slot
-          << decl.sampler_type
-          << decl.required
-          << !decl.required
-          << decl.name;
-    }
-    return h;
-}
-
-inline uint64 HashResourceContract(
-    const uint64 manifest_hash,
-    const std::vector<SerializedDescriptorEntry> &entries,
-    const MaterialDefinition &definition) noexcept
-{
-    hgl::hash::FNV1aHasher64 h;
-    constexpr uint32 contract_version = 3u;
-
-    ShaderResourceSchema layout =
-        BuildShaderResourceSchema(entries.data(), static_cast<uint32>(entries.size()));
-    ApplyMaterialDefinitionTexturePolicy(definition, layout);
-    h << contract_version
-      << manifest_hash
-      << HashShaderResourceSchema(layout);
     return h;
 }
 

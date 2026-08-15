@@ -19,8 +19,6 @@ namespace hgl::graph::mtl
                 nullptr,
                 0,
                 nullptr,
-                0,
-                nullptr,
                 0
             },
             {
@@ -33,8 +31,6 @@ namespace hgl::graph::mtl
                 nullptr,
                 0,
                 nullptr,
-                0,
-                nullptr,
                 0
             },
             {
@@ -42,9 +38,7 @@ namespace hgl::graph::mtl
                 "PBRSurface",
                 "",
                 nullptr, 0, nullptr, 0,
-                nullptr, 0,
-                nullptr,
-                0
+                nullptr, 0
              }
         };
     }
@@ -106,19 +100,6 @@ namespace hgl::graph::mtl
             h << requirement.name;
             h << requirement.ssbo_type
               << requirement.data_slot
-              << requirement.stage_flags
-              << requirement.required
-              << requirement.allow_fallback;
-        }
-
-        h << definition.texture_requirement_count;
-        for (uint32 i = 0; i < definition.texture_requirement_count; ++i)
-        {
-            const auto &requirement = definition.texture_requirements[i];
-            h << requirement.name
-              << requirement.glsl_type;
-            h << requirement.semantic
-              << requirement.slot
               << requirement.stage_flags
               << requirement.required
               << requirement.allow_fallback;

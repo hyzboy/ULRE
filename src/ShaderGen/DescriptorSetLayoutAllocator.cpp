@@ -42,32 +42,6 @@ const SSBODescriptor *DescriptorSetLayoutAllocator::AddSSBO(uint32_t shader_stag
     return((SSBODescriptor *)obj);
 }
 
-const TextureDescriptor *DescriptorSetLayoutAllocator::AddTexture(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureDescriptor *sd)
-{
-    RANGE_CHECK_RETURN_NULLPTR(set_type);
-    if(!sd)return(nullptr);
-
-    ShaderDescriptorSet *sds=desc_set_array+(size_t)set_type;
-
-    ShaderDescriptor *obj=sds->AddDescriptor(shader_stage_flag_bits,sd);
-
-    texture_map[obj->name] = (TextureDescriptor *)obj;
-    return((TextureDescriptor *)obj);
-}
-
-const TextureSamplerDescriptor *DescriptorSetLayoutAllocator::AddTextureSampler(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureSamplerDescriptor *sd)
-{
-    RANGE_CHECK_RETURN_NULLPTR(set_type);
-    if(!sd)return(nullptr);
-
-    ShaderDescriptorSet *sds=desc_set_array+(size_t)set_type;
-
-    ShaderDescriptor *obj=sds->AddDescriptor(shader_stage_flag_bits,sd);
-
-    texture_sampler_map[obj->name] = (TextureSamplerDescriptor *)obj;
-    return((TextureSamplerDescriptor *)obj);
-}
-
 UBODescriptor *DescriptorSetLayoutAllocator::GetUBO(const std::string &name)
 {
     const auto iter=ubo_map.find(name);
@@ -81,24 +55,6 @@ SSBODescriptor *DescriptorSetLayoutAllocator::GetSSBO(const std::string &name)
 {
     const auto iter=ssbo_map.find(name);
     if(iter!=ssbo_map.end())
-        return iter->second;
-
-    return(nullptr);
-}
-
-TextureDescriptor *DescriptorSetLayoutAllocator::GetTexture(const std::string &name)
-{
-    const auto iter=texture_map.find(name);
-    if(iter!=texture_map.end())
-        return iter->second;
-
-    return(nullptr);
-}
-
-TextureSamplerDescriptor *DescriptorSetLayoutAllocator::GetTextureSampler(const std::string &name)
-{
-    const auto iter=texture_sampler_map.find(name);
-    if(iter!=texture_sampler_map.end())
         return iter->second;
 
     return(nullptr);

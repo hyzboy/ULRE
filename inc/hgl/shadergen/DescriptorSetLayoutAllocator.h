@@ -20,8 +20,6 @@ class DescriptorSetLayoutAllocator
     ankerl::unordered_dense::map<std::string,std::string> struct_map;
     ankerl::unordered_dense::map<std::string,UBODescriptor *> ubo_map;
     ankerl::unordered_dense::map<std::string,SSBODescriptor *> ssbo_map;
-    ankerl::unordered_dense::map<std::string,TextureDescriptor *> texture_map;
-    ankerl::unordered_dense::map<std::string,TextureSamplerDescriptor *> texture_sampler_map;
 
 private:
 
@@ -65,25 +63,15 @@ public:
 
     const UBODescriptor *AddUBO(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,UBODescriptor *sd);
     const SSBODescriptor *AddSSBO(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,SSBODescriptor *sd);
-    const TextureDescriptor *AddTexture(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureDescriptor *sd);
-    const TextureSamplerDescriptor *AddTextureSampler(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureSamplerDescriptor *sd);
 
     UBODescriptor *GetUBO(const std::string &name);
     SSBODescriptor *GetSSBO(const std::string &name);
-    TextureDescriptor *GetTexture(const std::string &name);
-    TextureSamplerDescriptor *GetTextureSampler(const std::string &name);
     const UBODescriptor *GetUBO(const std::string &name)const{return const_cast<DescriptorSetLayoutAllocator *>(this)->GetUBO(name);}
     const SSBODescriptor *GetSSBO(const std::string &name)const{return const_cast<DescriptorSetLayoutAllocator *>(this)->GetSSBO(name);}
-    const TextureDescriptor *GetTexture(const std::string &name)const{return const_cast<DescriptorSetLayoutAllocator *>(this)->GetTexture(name);}
-    const TextureSamplerDescriptor *GetTextureSampler(const std::string &name)const{return const_cast<DescriptorSetLayoutAllocator *>(this)->GetTextureSampler(name);}
     UBODescriptor *GetUBO(const char *name){return GetUBO(std::string(name?name:""));}
     SSBODescriptor *GetSSBO(const char *name){return GetSSBO(std::string(name?name:""));}
-    TextureDescriptor *GetTexture(const char *name){return GetTexture(std::string(name?name:""));}
-    TextureSamplerDescriptor *GetTextureSampler(const char *name){return GetTextureSampler(std::string(name?name:""));}
     const UBODescriptor *GetUBO(const char *name)const{return GetUBO(std::string(name?name:""));}
     const SSBODescriptor *GetSSBO(const char *name)const{return GetSSBO(std::string(name?name:""));}
-    const TextureDescriptor *GetTexture(const char *name)const{return GetTexture(std::string(name?name:""));}
-    const TextureSamplerDescriptor *GetTextureSampler(const char *name)const{return GetTextureSampler(std::string(name?name:""));}
 
     const uint GetCount()const
     {

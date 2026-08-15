@@ -124,8 +124,6 @@ namespace hgl::graph::mtl
         {
         case DescriptorKind::UBO: return "UBO";
         case DescriptorKind::SSBO: return "SSBO";
-        case DescriptorKind::Texture: return "Texture";
-        case DescriptorKind::TextureSampler: return "TextureSampler";
         }
 
         return "Unknown";
@@ -441,14 +439,6 @@ namespace hgl::graph::mtl
                 continue;
             }
 
-            if ((req.kind == DescriptorKind::Texture
-              || req.kind == DescriptorKind::TextureSampler)
-             && req.glsl_type.empty())
-            {
-                diagnostics.emplace_back("Texture resource GLSL type is empty (" + context + ").");
-                continue;
-            }
-
             const DescriptorSetType expected_set = GetExpectedSetType(req.semantic);
             if (expected_set != DescriptorSetType::Unknow && expected_set != req.set_type)
             {
@@ -463,9 +453,7 @@ namespace hgl::graph::mtl
 
             const bool layer_kind_mismatch =
                    (req.semantic_layer == DescriptorSemanticLayer::UBO && req.kind != DescriptorKind::UBO)
-                || (req.semantic_layer == DescriptorSemanticLayer::SSBO && req.kind != DescriptorKind::SSBO)
-                || (req.semantic_layer == DescriptorSemanticLayer::Texture && req.kind != DescriptorKind::Texture)
-                || (req.semantic_layer == DescriptorSemanticLayer::Sampler && req.kind != DescriptorKind::TextureSampler);
+                || (req.semantic_layer == DescriptorSemanticLayer::SSBO && req.kind != DescriptorKind::SSBO);
 
             if (layer_kind_mismatch)
             {
@@ -473,22 +461,6 @@ namespace hgl::graph::mtl
                 message += context;
                 diagnostics.push_back(std::move(message));
                 continue;
-            }
-
-            const bool requires_texture_slot =
-                req.semantic == DescriptorSemantic::MaterialTexture
-             || req.semantic == DescriptorSemantic::MaterialSampler;
-            if (requires_texture_slot)
-            {
-                const auto slot_value = static_cast<uint32_t>(req.texture_slot);
-                const auto slot_limit = static_cast<uint32_t>(TextureSlot::RANGE_SIZE);
-                if (slot_value >= slot_limit)
-                {
-                    std::string message = "Descriptor texture_slot is invalid for texture/sampler semantic: ";
-                    message += context;
-                    diagnostics.push_back(std::move(message));
-                    continue;
-                }
             }
 
             const bool requires_data_ssbo =

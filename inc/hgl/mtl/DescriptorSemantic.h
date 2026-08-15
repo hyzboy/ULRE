@@ -95,8 +95,6 @@ namespace hgl::graph::mtl
         {
         case DescriptorKind::UBO: return DescriptorSemanticLayer::UBO;
         case DescriptorKind::SSBO: return DescriptorSemanticLayer::SSBO;
-        case DescriptorKind::Texture: return DescriptorSemanticLayer::Texture;
-        case DescriptorKind::TextureSampler: return DescriptorSemanticLayer::Sampler;
         default: return DescriptorSemanticLayer::Unknown;
         }
     }

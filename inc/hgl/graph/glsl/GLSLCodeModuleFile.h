@@ -64,11 +64,8 @@ namespace hgl::graph::mtl
         ValueArray<GLSLCodeModuleID> code_module_requirements;
         ValueArray<GLSLCodeModuleUBORequirement> ubo_requirements;
         ValueArray<GLSLCodeModuleSSBORequirement> ssbo_requirements;
-        ValueArray<GLSLCodeModuleTextureRequirement> texture_requirements;
         ValueArray<GLSLCodeModuleTextureLayerRequirement> texture_layer_requirements;
         ManagedArray<AnsiString> ssbo_name_storage;
-        ManagedArray<AnsiString> texture_name_storage;
-        ManagedArray<AnsiString> texture_type_storage;
         ManagedArray<AnsiString> condition_key_storage;
         ManagedArray<AnsiString> condition_value_storage;
 

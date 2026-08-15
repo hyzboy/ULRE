@@ -82,49 +82,6 @@ namespace hgl::graph::mtl
             return true;
         }
 
-        bool AddTexture(ShaderResourceManifest &manifest, const GLSLCodeModuleTextureRequirement &incoming)
-        {
-            if (!incoming.name || !incoming.name[0]
-             || !incoming.glsl_type || !incoming.glsl_type[0])
-            {
-                manifest.error = ShaderResourceManifestError::ResourceConflict;
-                return false;
-            }
-
-            for (uint32 i = 0; i < manifest.texture_count; ++i)
-            {
-                auto &existing = manifest.textures[i];
-                const bool same_semantic_slot =
-                    existing.semantic == incoming.semantic
-                 && existing.slot == incoming.slot;
-                const bool same_name = CStrEqual(existing.name, incoming.name);
-                if (!same_semantic_slot && !same_name)
-                    continue;
-
-                if (!same_semantic_slot
-                 || !same_name
-                 || !CStrEqual(existing.glsl_type, incoming.glsl_type))
-                {
-                    manifest.error = ShaderResourceManifestError::ResourceConflict;
-                    return false;
-                }
-
-                existing.stage_flags |= incoming.stage_flags;
-                existing.required = existing.required || incoming.required;
-                existing.allow_fallback = existing.allow_fallback && incoming.allow_fallback;
-                return true;
-            }
-
-            if (manifest.texture_count >= MaxShaderResourceManifestTextures)
-            {
-                manifest.error = ShaderResourceManifestError::TextureCapacityExceeded;
-                return false;
-            }
-
-            manifest.textures[manifest.texture_count++] = incoming;
-            return true;
-        }
-
         bool AddTextureLayer(
             ShaderResourceManifest &manifest,
             const GLSLCodeModuleTextureLayerRequirement &incoming)
@@ -242,12 +199,6 @@ namespace hgl::graph::mtl
                     return false;
             }
 
-            for (uint32 i = 0; i < definition->texture_requirement_count; ++i)
-            {
-                if (!AddTexture(manifest, definition->texture_requirements[i]))
-                    return false;
-            }
-
             for (uint32 i = 0; i < definition->texture_layer_requirement_count; ++i)
             {
                 if (!AddTextureLayer(manifest, definition->texture_layer_requirements[i]))
@@ -301,19 +252,6 @@ namespace hgl::graph::mtl
                   << ssbo.allow_fallback;
             }
 
-            h << manifest.texture_count;
-            for (uint32 i = 0; i < manifest.texture_count; ++i)
-            {
-                const auto &texture = manifest.textures[i];
-                h << texture.name
-                  << texture.glsl_type;
-                h << texture.semantic
-                  << texture.slot
-                  << texture.stage_flags
-                  << texture.required
-                  << texture.allow_fallback;
-            }
-
             h << manifest.texture_layer_count;
             for (uint32 i = 0; i < manifest.texture_layer_count; ++i)
                 h << manifest.texture_layers[i];
@@ -361,7 +299,6 @@ namespace hgl::graph::mtl
         case ShaderResourceManifestError::CodeModuleCapacityExceeded: return "CodeModuleCapacityExceeded";
         case ShaderResourceManifestError::UBOCapacityExceeded: return "UBOCapacityExceeded";
         case ShaderResourceManifestError::SSBOCapacityExceeded: return "SSBOCapacityExceeded";
-        case ShaderResourceManifestError::TextureCapacityExceeded: return "TextureCapacityExceeded";
         case ShaderResourceManifestError::TextureLayerCapacityExceeded: return "TextureLayerCapacityExceeded";
         case ShaderResourceManifestError::ResourceConflict: return "ResourceConflict";
         }
