@@ -4,23 +4,23 @@
 // @ulre priority 0
 // @ulre require ProducedSemantic UV0
 // @ulre require Resource MaterialData
-// @ulre ssbo mtl TextureRectArraySurface 0 Fragment required
-// @ulre texture TextureBaseColor MaterialSampler BaseColor sampler2DArray Fragment required
+// @ulre ssbo mtl TextureRectArraySurface 0 Fragment optional fallback
+// @ulre texture_layer BaseColor Fragment optional fallback
 // @ulre uses material_source_interface
+// @ulre uses bindless_textures
 // @ulre end
 
 #ifndef TEXTURE_ARRAY_SOURCE_GLSL
 #define TEXTURE_ARRAY_SOURCE_GLSL
 #include "common/material_source_interface.glsl"
-layout(set=TEX_SET, binding=TEX_BINDING)
-    uniform sampler2DArray TextureBaseColor;
+#include "common/bindless_textures.glsl"
 
 vec4 SampleMaterialColor(MaterialSourceInput sourceInput)
 {
+    const uint iid = sourceInput.surface.textureLayerID;
+    const uint handle = GetTextureHandle(iid, TEXTURE_SLOT_BASE_COLOR);
     const uint layer = MTL_DATA.data[sourceInput.dataIndex].id.x;
-    return texture(
-        TextureBaseColor,
-        vec3(sourceInput.surface.uv0, float(layer)));
+    return SampleBindless2DArray(handle, sourceInput.surface.uv0, float(layer));
 }
 
 MaterialSourceOutput EvalMaterialSource(MaterialSourceInput sourceInput)

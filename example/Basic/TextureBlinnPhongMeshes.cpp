@@ -1,7 +1,6 @@
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/vk/VertexDataManager.h>
-#include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
@@ -74,7 +73,6 @@ private:
     Texture2D* normal_texture = nullptr;
     Texture2D* roughness_texture = nullptr;
     Sampler* sampler = nullptr;
-    std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
 
     std::vector<std::unique_ptr<RenderMesh>> meshes;
 

@@ -47,6 +47,9 @@ namespace hgl
                 graph::Pipeline* pipeline = nullptr;
                 graph::Sampler* sampler = nullptr;
                 graph::DeviceBuffer* material_data_buffer = nullptr;
+                graph::DeviceBuffer* texture_layer_buffer = nullptr;
+                graph::DeviceBuffer* data_index_row_buffer = nullptr;
+                uint32_t bindless_atlas_handle = 0;
 
                 graph::layout::CharStyle char_style{};
                 graph::TextGeometry* geometry = nullptr;

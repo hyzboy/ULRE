@@ -45,12 +45,6 @@ namespace hgl::ecs
     {
     private:
 
-        struct MaterialResourceBinding
-        {
-            graph::Texture *texture = nullptr;
-            graph::Sampler *sampler = nullptr;
-        };
-
         struct ResourceLayoutDiagStats
         {
             uint32_t materials_checked = 0;
@@ -79,7 +73,6 @@ namespace hgl::ecs
         uint32_t pending_viewport_width  = 0;
         uint32_t pending_viewport_height = 0;
         std::unordered_map<const graph::ShaderProgram *, bool> resource_layout_last_ok;
-        std::unordered_map<const graph::ShaderProgram *, std::unordered_map<std::string, MaterialResourceBinding>> material_resource_bindings;
         bool resource_layout_diagnostics_enabled = true;
         ResourceLayoutDiagStats last_contract_stats{};
         std::unordered_set<graph::ShaderProgram *> pipeline_materials;
@@ -106,14 +99,6 @@ namespace hgl::ecs
                                         uint32_t &fallback_hits) const;
         bool GetMaterialBindingRegistryStats(uint32_t &materials_registered,
                              uint32_t &binding_entries) const;
-        bool RegisterMaterialTexture(graph::ShaderProgram *material,
-                         const AnsiString &name,
-                         graph::Texture *texture);
-        bool RegisterMaterialTextureSampler(graph::ShaderProgram *material,
-                            const AnsiString &name,
-                            graph::Texture *texture,
-                            graph::Sampler *sampler);
-        void ClearMaterialBindings(graph::ShaderProgram *material);
         void RegisterPipelineMaterial(graph::ShaderProgram *material);
         void UnregisterPipelineMaterial(graph::ShaderProgram *material);
         bool RegisterMaterialStructLayout(graph::mtl::SSBOType ssbo_type,
@@ -157,7 +142,6 @@ namespace hgl::ecs
         const graph::IGPUBuffer *ResolveViewportUBO() const;
         const graph::IGPUBuffer *ResolveCameraUBO() const;
         const graph::IGPUBuffer *ResolveSkyUBO();
-        const MaterialResourceBinding *FindMaterialResourceBinding(const graph::ShaderProgram *material, const char *name) const;
         void ValidateResourceLayoutsSideChannel();
         bool IsSemanticResolvable(graph::mtl::DescriptorSemantic semantic) const;
     };

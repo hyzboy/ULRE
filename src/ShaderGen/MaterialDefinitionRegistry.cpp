@@ -371,32 +371,8 @@ namespace
                 provider_roots[provider_root_count++] = provider->id;
         }
         ShaderLinkSpec resolved_program_link{};
-        SkyLightAmbientModel ambient_model =
-            request.override_sky_ambient_model
-                ? request.sky_ambient_model
-                : SkyLightAmbientModel::Simple;
-        if (!request.override_sky_ambient_model)
-        {
-            for (const GLSLCodeModuleID id : definition.code_module_requirements)
-            {
-                if (id == GLSLCodeModuleID::SkyLightCubeMap)
-                {
-                    ambient_model = SkyLightAmbientModel::CubeMap;
-                    break;
-                }
-            }
-        }
-        if (ambient_model < SkyLightAmbientModel::BEGIN_RANGE
-         || ambient_model > SkyLightAmbientModel::END_RANGE)
-        {
-            GLogError(
-                "[ShaderGen] Unsupported sky ambient model: material=%s model=%u",
-                definition.definition_name.c_str(),
-                static_cast<uint32>(ambient_model));
-            return nullptr;
-        }
         if (!Build3DShaderResourceManifest(
-                manifest_definition, ambient_model, manifest,
+                manifest_definition, manifest,
                 provider_roots, provider_root_count, &module_registry))
         {
             GLogError("[ShaderGen] Generic material resource manifest failed: name=%s",
@@ -412,9 +388,7 @@ namespace
                     descriptors.end(),
                     [&](const SerializedDescriptorEntry &entry)
                     {
-                        if (entry.semantic == DescriptorSemantic::SkyInfo
-                         || entry.semantic
-                            == DescriptorSemantic::SkyCubemapSampler)
+                        if (entry.semantic == DescriptorSemantic::SkyInfo)
                             return true;
                         if (entry.set_type
                             != DescriptorSetType::Material)
@@ -508,9 +482,7 @@ namespace
         compositor_options.enable_scene_lighting =
             use_scene_lighting;
         compositor_options.sky_module = use_scene_lighting
-            ? ambient_model == SkyLightAmbientModel::CubeMap
-                ? "sky/sky_cubemap.glsl"
-                : "sky/sky_atmosphere.glsl"
+            ? "sky/sky_atmosphere.glsl"
             : nullptr;
         compositor_options.forward_lighting_module =
             use_scene_lighting

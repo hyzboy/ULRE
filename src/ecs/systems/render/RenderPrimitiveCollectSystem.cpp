@@ -361,42 +361,6 @@ namespace hgl::ecs
                 }
                 if (handle == 0)
                     return false;
-
-                bool descriptor_registered = false;
-                for (const auto &requirement :
-                     material_program->
-                        GetShaderResourceSchema().resources)
-                {
-                    if (requirement.texture_slot
-                            != binding.texture_slot
-                     || requirement.semantic != binding.semantic
-                     || requirement.name.empty())
-                        continue;
-
-                    if (binding.semantic
-                        == graph::mtl::DescriptorSemantic::
-                            MaterialSampler)
-                    {
-                        descriptor_registered =
-                            rdbs->
-                                RegisterMaterialTextureSampler(
-                                    material_program,
-                                    requirement.name.c_str(),
-                                    resource->texture,
-                                    resource->sampler);
-                    }
-                    else
-                    {
-                        descriptor_registered =
-                            rdbs->RegisterMaterialTexture(
-                                material_program,
-                                requirement.name.c_str(),
-                                resource->texture);
-                    }
-                    break;
-                }
-                if (!descriptor_registered)
-                    return false;
             }
 
             for (int i = 0; i < binding_table.data.GetCount(); ++i)
@@ -945,69 +909,67 @@ namespace hgl::ecs
         material_comp->texture_layer_values.fill(0u);
         material_comp->has_texture_layer_values = false;
 
-        if (entity_data_index != uint32_t(-1))
+        // The texture-layer row is keyed by the primitive's data_index VALUE
+        // (shader: mtl_texture_layer_rows.values[iid * RANGE + slot], with iid =
+        // textureLayerID = dataIndex for uses_data_index materials). Publish the
+        // row even when the primitive authors no data slot: it still owns row 0,
+        // and its data_index resolves to 0 through mtl_data_index_rows, so
+        // bindless lookups stay aligned.
+        material_comp->texture_layer_row =
+            entity_data_index != uint32_t(-1) ? entity_data_index : 0u;
+        material_comp->data_index_row = material_comp->texture_layer_row;
+
+        // Build this primitive's texture layer row from the single binding
+        // IR. Per-batch MaterialTextureLayerTable rows are keyed by the
+        // primitive's own data_index VALUE (see PrimitiveBatchPipeline), so
+        // each primitive fills exactly one row — no shared global table and
+        // no cross-primitive row collision.
+        for (const auto &texture_binding : material_binding_recipe.textures)
         {
-            material_comp->texture_layer_row = entity_data_index;
-            material_comp->data_index_row = entity_data_index;
+            const uint32_t slot = static_cast<uint32_t>(texture_binding.slot);
+            if (slot >= static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE))
+                continue;
 
-            // Build this primitive's texture layer row from the single binding
-            // IR. Per-batch MaterialTextureLayerTable rows are keyed by the
-            // primitive's own data_index VALUE (see PrimitiveBatchPipeline), so
-            // each primitive fills exactly one row — no shared global table and
-            // no cross-primitive row collision.
-            for (const auto &texture_binding : material_binding_recipe.textures)
+            uint32_t handle = 0;
+            if (texture_binding.use_direct_value)
             {
-                const uint32_t slot = static_cast<uint32_t>(texture_binding.slot);
-                if (slot >= static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE))
-                    continue;
+                handle = texture_binding.direct_value;
+            }
+            else
+            {
+                handle = rdbs->GetBindlessHandle(
+                    AnsiString(texture_binding.resource_id.c_str()));
 
-                uint32_t handle = 0;
-                if (texture_binding.use_direct_value)
+                if (handle == 0)
                 {
-                    handle = texture_binding.direct_value;
-                }
-                else
-                {
-                    handle = rdbs->GetBindlessHandle(
-                        AnsiString(texture_binding.resource_id.c_str()));
-
-                    if (handle == 0)
+                    // The recipe's resource id may be empty; fall back to the
+                    // authored resource id, or the texture-derived id used at
+                    // RegisterTexture2D(Array)Resource time.
+                    if (const auto *authoring =
+                            primitive_comp->GetMaterialTextureResource(texture_binding.slot))
                     {
-                        // The recipe's resource id may be empty; fall back to the
-                        // authored resource id, or the texture-derived id used at
-                        // RegisterTexture2D(Array)Resource time.
-                        if (const auto *authoring =
-                                primitive_comp->GetMaterialTextureResource(texture_binding.slot))
+                        if (!authoring->use_direct_value && authoring->texture)
                         {
-                            if (!authoring->use_direct_value && authoring->texture)
-                            {
-                                const std::string fallback_id =
-                                    authoring->resource_id.empty()
-                                        ? BuildTextureResourceId(authoring->texture)
-                                        : authoring->resource_id;
-                                handle = rdbs->GetBindlessHandle(AnsiString(fallback_id.c_str()));
-                            }
+                            const std::string fallback_id =
+                                authoring->resource_id.empty()
+                                    ? BuildTextureResourceId(authoring->texture)
+                                    : authoring->resource_id;
+                            handle = rdbs->GetBindlessHandle(AnsiString(fallback_id.c_str()));
                         }
                     }
                 }
-
-                if (handle == 0 && !texture_binding.use_direct_value)
-                {
-                    GLogWarning("[RenderPrimitiveCollectSystem] materialize: bindless handle missing for %s slot=%u resource=%s",
-                                GetPrimitiveOwnerName(primitive_comp),
-                                slot,
-                                texture_binding.resource_id.empty() ? "<unnamed>" : texture_binding.resource_id.c_str());
-                }
-
-                material_comp->texture_layer_values[slot] = handle;
             }
 
+            if (handle == 0 && !texture_binding.use_direct_value)
+            {
+                GLogWarning("[RenderPrimitiveCollectSystem] materialize: bindless handle missing for %s slot=%u resource=%s",
+                            GetPrimitiveOwnerName(primitive_comp),
+                            slot,
+                            texture_binding.resource_id.empty() ? "<unnamed>" : texture_binding.resource_id.c_str());
+            }
+
+            material_comp->texture_layer_values[slot] = handle;
             material_comp->has_texture_layer_values = true;
-        }
-        else
-        {
-            material_comp->texture_layer_row = 0;
-            material_comp->data_index_row = 0;
         }
 
         material_comp->runtime_dirty = false;

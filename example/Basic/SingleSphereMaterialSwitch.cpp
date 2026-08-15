@@ -9,7 +9,6 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
-#include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -81,8 +80,6 @@ private:
     Texture2D *far_base_color_texture = nullptr;
     Texture2D *far_normal_texture = nullptr;
     Sampler *sampler = nullptr;
-
-    BindlessTextureManager *bindless_texture_manager = nullptr;
 
     VertexDataManager *mesh_vdm = nullptr;
     Geometry *sphere_geometry = nullptr;
@@ -371,12 +368,6 @@ public:
         SAFE_CLEAR(near_normal_array)
         SAFE_CLEAR(far_base_color_texture)
         SAFE_CLEAR(far_normal_texture)
-
-        if (bindless_texture_manager)
-        {
-            delete bindless_texture_manager;
-            bindless_texture_manager = nullptr;
-        }
     }
 
     bool Init() override

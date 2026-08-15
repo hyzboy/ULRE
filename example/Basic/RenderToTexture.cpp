@@ -1,5 +1,4 @@
 #include<hgl/framework/WorkManager.h>
-#include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderTargetSingle.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
@@ -339,7 +338,6 @@ private:
     Texture2D *fallback_albedo = nullptr;
     Texture2D *normal_tex = nullptr;
     Texture2D *roughness_tex = nullptr;
-    std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
 
     std::shared_ptr<TransformComponent> cube_transform;
     float cube_theta = 0.0f;

@@ -11,7 +11,6 @@
 #include<hgl/type/String.h>
 #include<hgl/common/VertexAttribDef.h>
 #include<hgl/common/RenderTargetOutputConfig.h>
-#include<hgl/mtl/SkyLight.h>
 
 namespace hgl::graph
 {
@@ -53,10 +52,6 @@ struct MaterialDefinitionBuildRequest
         shadergen::ShaderProgramPurpose::ForwardColor;
 
     const GLSLCodeModuleRegistry *vertex_code_module_registry = nullptr;
-
-    bool override_sky_ambient_model = false;
-    SkyLightAmbientModel sky_ambient_model =
-        SkyLightAmbientModel::Simple;
 
 };
 

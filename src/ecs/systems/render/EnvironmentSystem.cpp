@@ -14,7 +14,6 @@ namespace hgl::ecs
     {
         SetSystemType(SystemType::RenderSubmit);
         SetExecutionOrder(ExecutionPhase::RenderPreBeginFrame);
-        SyncSkyLightBindingKeysFromRequirement();
     }
 
     EnvironmentSystem::~EnvironmentSystem()
@@ -90,8 +89,6 @@ namespace hgl::ecs
     {
         EnsureResources();
 
-        // SkyInfo remains available independently of optional environment
-        // textures; CubeMap resources are supplied through the binding API.
         SyncSkyUBO();
     }
     void EnvironmentSystem::EnsureResources()

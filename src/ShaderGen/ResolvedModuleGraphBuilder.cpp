@@ -639,22 +639,6 @@ namespace hgl::graph::shadergen
             forward_compositor
          && definition.compositor_surface != SurfaceType::Unlit
          && definition.compositor_surface != SurfaceType::Sky;
-        SkyLightAmbientModel ambient_model =
-            request && request->override_sky_ambient_model
-                ? request->sky_ambient_model
-                : SkyLightAmbientModel::Simple;
-        if (!request || !request->override_sky_ambient_model)
-        {
-            for (const GLSLCodeModuleID id :
-                 definition.code_module_requirements)
-            {
-                if (id == GLSLCodeModuleID::SkyLightCubeMap)
-                {
-                    ambient_model = SkyLightAmbientModel::CubeMap;
-                    break;
-                }
-            }
-        }
         const bool needs_sky_module =
             forward_compositor
          && definition.compositor_surface != SurfaceType::Unlit;
@@ -688,9 +672,7 @@ namespace hgl::graph::shadergen
                 ? "lighting/indirect_simple_ambient.glsl"
                 : nullptr,
             needs_sky_module
-                ? ambient_model == SkyLightAmbientModel::CubeMap
-                    ? "sky/sky_cubemap.glsl"
-                    : "sky/sky_atmosphere.glsl"
+                ? "sky/sky_atmosphere.glsl"
                 : nullptr
         };
         for (const char *path : module_paths)

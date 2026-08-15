@@ -294,16 +294,16 @@ namespace hgl::graph::mtl
         {
             static const char *const names[] =
             {
-                "ViewportInfo", "CameraInfo", "SkyInfo", "SkyCubemapSampler",
+                "ViewportInfo", "CameraInfo", "SkyInfo",
                 "MaterialTexture", "MaterialSampler"
             };
             static const DescriptorSemantic values[] =
             {
                 DescriptorSemantic::ViewportInfo, DescriptorSemantic::CameraInfo,
-                DescriptorSemantic::SkyInfo, DescriptorSemantic::SkyCubemapSampler,
+                DescriptorSemantic::SkyInfo,
                 DescriptorSemantic::MaterialTexture, DescriptorSemantic::MaterialSampler
             };
-            for (uint32 i = 0; i < 6; ++i)
+            for (uint32 i = 0; i < 5; ++i)
             {
                 if (std::strcmp(token, names[i]) == 0)
                 {

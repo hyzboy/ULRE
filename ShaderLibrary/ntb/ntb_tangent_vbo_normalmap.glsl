@@ -4,7 +4,6 @@
 // @ulre priority 0
 // @ulre uses ntb_interface
 // @ulre uses bindless_textures
-// @ulre texture TextureNormal MaterialSampler Normal sampler2D Fragment optional fallback
 // @ulre texture_layer Normal Fragment optional fallback
 // @ulre end
 // NTB Tangent / Normal Map — 结合法线贴图与 TBN 空间转换

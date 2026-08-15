@@ -349,8 +349,12 @@ namespace hgl::graph::mtl
             {
                 for (const RecipeTextureBinding &recipe_binding : recipe.textures)
                 {
-                    if (!recipe_binding.use_direct_value)
-                        continue;
+                    // Bindless materials sample textures through the
+                    // MaterialTextureLayerTable SSBO, so every recipe texture
+                    // binding (direct-value or asset-source) must appear in the
+                    // binding table. Asset bindings feed registration in
+                    // PrepareActivePlanResources and round-trip back through
+                    // CopyBackMaterialRecipe.
                     if (FindTextureBinding(out_table, recipe_binding.slot))
                         continue;
 

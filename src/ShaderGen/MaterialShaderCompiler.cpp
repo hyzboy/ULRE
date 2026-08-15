@@ -144,17 +144,6 @@ static bool HasDescriptorSemantic(
     return false;
 }
 
-static bool IsTextureSlotDeclared(const MaterialDefinition &definition, const TextureSlot slot) noexcept
-{
-    for (const auto &decl : definition.texture_slot_decls)
-    {
-        if (decl.slot == slot)
-            return true;
-    }
-
-    return false;
-}
-
 static bool AddMaterialDataSlotDescriptor(ShaderBuildContext &ctx,
                                           const DataSlotDeclaration &decl,
                                           const uint32_t data_slot,
@@ -219,17 +208,6 @@ static bool ValidateDefinitionCapabilitySubset(
         case DescriptorSemantic::MaterialDataIndexTable:
             allowed = !definition.data_slot_decls.empty()
                    || definition.vertex_varying.emit_data_index_id;
-            break;
-
-        case DescriptorSemantic::MaterialTexture:
-        case DescriptorSemantic::MaterialSampler:
-            allowed = IsTextureSlotDeclared(definition, req.texture_slot);
-            break;
-
-        // Sky cubemap sampler is injected by sky-light model and is considered
-        // allowed when material declares SkyInfo capability.
-        case DescriptorSemantic::SkyCubemapSampler:
-            allowed = HasUBORequirement(definition, UBODescriptorSemantic::SkyInfo);
             break;
 
         case DescriptorSemantic::Unknown:
@@ -452,8 +430,6 @@ ShaderBuildContext *CompileCompositorMaterial(
         }
     }
 
-    std::string primary_sampler_name;
-
     for (const SerializedDescriptorEntry &entry : descriptor_entries)
     {
         const uint32_t stage_bits = entry.stage_flags;
@@ -567,9 +543,6 @@ ShaderBuildContext *CompileCompositorMaterial(
         case DescriptorKind::TextureSampler:
             if (entry.glsl_type)
             {
-                if (primary_sampler_name.empty() && entry.name && *entry.name)
-                    primary_sampler_name = entry.name;
-
                 TextureType tt;
                 SamplerType st = SamplerType::Sampler2D;
                 const char *glsl_type_str = entry.glsl_type;
@@ -690,37 +663,6 @@ ShaderBuildContext *CompileCompositorMaterial(
     AppendDescriptorBindingDefine("VIEWPORT_SET", descriptor_info.GetUBO(SBS_ViewportInfo.name));
     AppendDescriptorBindingDefine("CAMERA_SET", descriptor_info.GetUBO(SBS_CameraInfo.name));
     AppendDescriptorBindingDefine("SKY_SET", descriptor_info.GetUBO(SBS_SkyInfo.name));
-    AppendDescriptorBindingDefine(
-        "SKY_CUBEMAP_SET", descriptor_info.GetTextureSampler("SkyCubemap"));
-
-    const TextureSamplerDescriptor *primary_sampler = nullptr;
-    if (!primary_sampler_name.empty())
-        primary_sampler = descriptor_info.GetTextureSampler(primary_sampler_name.c_str());
-
-    if (!primary_sampler)
-        primary_sampler = descriptor_info.GetTextureSampler("TextureBaseColor");
-
-    if (!primary_sampler && config.material_definition)
-    {
-        for (const auto &slot_decl : config.material_definition->texture_slot_decls)
-        {
-            if (!slot_decl.name || !*slot_decl.name)
-                continue;
-
-            primary_sampler = descriptor_info.GetTextureSampler(slot_decl.name);
-            if (primary_sampler)
-                break;
-        }
-    }
-
-    if (primary_sampler)
-    {
-        if (primary_sampler->set >= 0 && primary_sampler->binding >= 0)
-        {
-            binding_preamble += "#define TEX_SET " + std::to_string(primary_sampler->set) + "\n";
-            binding_preamble += "#define TEX_BINDING " + std::to_string(primary_sampler->binding) + "\n";
-        }
-    }
 
     // ── Material SSBO GLSL 声明 ─────────────────────────────────────────────
     // 材质实例 SSBO 的 struct + buffer 声明不再写死在 .glsl 中，

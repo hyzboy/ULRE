@@ -35,16 +35,6 @@ namespace hgl::ecs
 {
     namespace
     {
-        std::string ToBindingKey(const char *name)
-        {
-            return name ? std::string(name) : std::string();
-        }
-
-        std::string ToBindingKey(const AnsiString &name)
-        {
-            return ToBindingKey(name.c_str());
-        }
-
         std::string BuildTextureResourceId(const graph::Texture *texture)
         {
             if (!texture)
@@ -167,42 +157,6 @@ namespace hgl::ecs
         }
     }
 
-    bool RenderDescriptorBindingSystem::RegisterMaterialTexture(graph::ShaderProgram *material,
-                                                                const AnsiString &name,
-                                                                graph::Texture *texture)
-    {
-        if (!material || name.IsEmpty() || !texture)
-            return false;
-
-        auto &slot = material_resource_bindings[material][ToBindingKey(name)];
-        slot.texture = texture;
-        return true;
-    }
-
-    bool RenderDescriptorBindingSystem::RegisterMaterialTextureSampler(graph::ShaderProgram *material,
-                                                                       const AnsiString &name,
-                                                                       graph::Texture *texture,
-                                                                       graph::Sampler *sampler)
-    {
-        if (!RegisterMaterialTexture(material, name, texture))
-            return false;
-
-        if (!sampler)
-            return false;
-
-        auto &slot = material_resource_bindings[material][ToBindingKey(name)];
-        slot.sampler = sampler;
-        return true;
-    }
-
-    void RenderDescriptorBindingSystem::ClearMaterialBindings(graph::ShaderProgram *material)
-    {
-        if (!material)
-            return;
-
-        material_resource_bindings.erase(material);
-    }
-
     void RenderDescriptorBindingSystem::RegisterPipelineMaterial(graph::ShaderProgram *material)
     {
         if (material)
@@ -289,22 +243,6 @@ namespace hgl::ecs
 
         const uint32_t *handle = materialization_resource_handles.GetValuePointer(resource_id);
         return handle ? *handle : 0;
-    }
-
-    const RenderDescriptorBindingSystem::MaterialResourceBinding *RenderDescriptorBindingSystem::FindMaterialResourceBinding(const graph::ShaderProgram *material, const char *name) const
-    {
-        if (!material || !name || !*name)
-            return nullptr;
-
-        auto material_it = material_resource_bindings.find(material);
-        if (material_it == material_resource_bindings.end())
-            return nullptr;
-
-        auto resource_it = material_it->second.find(ToBindingKey(name));
-        if (resource_it == material_it->second.end())
-            return nullptr;
-
-        return &resource_it->second;
     }
 
     void RenderDescriptorBindingSystem::Update(float /*deltaTime*/)
@@ -629,63 +567,6 @@ namespace hgl::ecs
             return material->BindSSBO(req.set_type, req.name.c_str(), gpu, false);
         };
 
-        auto bind_texture = [&](graph::ShaderProgram *material,
-                                MaterialBatch *batch,
-                                const graph::mtl::ShaderResourceSlot &req,
-                                graph::Texture *texture) -> bool
-        {
-            if (!material || !texture)
-                return false;
-
-            if (batch)
-            {
-                if (auto *mp = ensure_batch_mp(material, batch, req.set_type))
-                    return mp->BindTexture(req.name.c_str(), texture);
-                return false;
-            }
-
-            return material->BindTexture(req.set_type, req.name.c_str(), texture);
-        };
-
-        auto bind_texture_sampler = [&](graph::ShaderProgram *material,
-                                        MaterialBatch *batch,
-                                        const graph::mtl::ShaderResourceSlot &req,
-                                        graph::Texture *texture,
-                                        graph::Sampler *sampler) -> bool
-        {
-            if (!material || !texture || !sampler)
-                return false;
-
-            if (batch)
-            {
-                if (auto *mp = ensure_batch_mp(material, batch, req.set_type))
-                    return mp->BindTextureSampler(req.name.c_str(), texture, sampler);
-                return false;
-            }
-
-            return material->BindTextureSampler(req.set_type, req.name.c_str(), texture, sampler);
-        };
-        auto recipe_runtime_has_layer_table_for_texture_slot = [&](graph::ShaderProgram *material,
-                                                                    MaterialBatch *batch,
-                                                                    const graph::mtl::ShaderResourceSlot &req) -> bool
-        {
-            if (!material || !batch)
-                return false;
-
-            const auto &contract = material->GetShaderResourceSchema();
-            for (const auto &candidate : contract.resources)
-            {
-                if (candidate.semantic != graph::mtl::DescriptorSemantic::MaterialTextureLayerTable)
-                    continue;
-
-                if (candidate.texture_slot != req.texture_slot)
-                    continue;
-
-                return true;
-            }
-
-            return false;
-        };
         auto resolve_recipe_batch_struct_ssbo_id = [&](graph::ShaderProgram *material,
                                                        MaterialBatch *batch,
                                                        const graph::mtl::ShaderResourceSlot &req,
@@ -811,27 +692,6 @@ namespace hgl::ecs
                 {
                     if (!bind_ubo(material, batch, req, sky_ubo))
                         log_bind_failure(material, batch, req, "bind sky UBO failed");
-                }
-                break;
-            }
-            case graph::mtl::DescriptorSemantic::SkyCubemapSampler:
-            {
-                const auto *binding = FindMaterialResourceBinding(material, req.name.c_str());
-                graph::Texture *texture = binding ? binding->texture : nullptr;
-                graph::Sampler *sampler = binding ? binding->sampler : nullptr;
-                if ((!texture || !sampler) && context)
-                {
-                    if (auto environment_system = context->GetSystem<EnvironmentSystem>())
-                    {
-                        texture = environment_system->GetSkyCubeMapTexture();
-                        sampler = environment_system->GetSkyCubeMapSampler();
-                    }
-                }
-
-                if (texture && sampler)
-                {
-                    if (!bind_texture_sampler(material, batch, req, texture, sampler))
-                        log_bind_failure(material, batch, req, "bind sky cubemap sampler failed");
                 }
                 break;
             }
@@ -1017,43 +877,6 @@ namespace hgl::ecs
                 }
                 break;
             }
-            case graph::mtl::DescriptorSemantic::MaterialTexture:
-            {
-                const bool allow_indirect_fallback = recipe_runtime_has_layer_table_for_texture_slot(material, batch, req);
-
-                const auto *binding = FindMaterialResourceBinding(material, req.name.c_str());
-                if (binding && binding->texture)
-                {
-                    const bool bind_ok = binding->sampler
-                                       ? bind_texture_sampler(material, batch, req, binding->texture, binding->sampler)
-                                       : bind_texture(material, batch, req, binding->texture);
-                    if (!bind_ok)
-                        log_bind_failure(material, batch, req, binding->sampler ? "bind MaterialTexture(Sampler) failed" : "bind MaterialTexture failed");
-                }
-                else
-                {
-                    if (req.required && !allow_indirect_fallback)
-                        log_bind_failure(material, batch, req, "missing required MaterialTexture binding");
-                }
-                break;
-            }
-            case graph::mtl::DescriptorSemantic::MaterialSampler:
-            {
-                const bool allow_indirect_fallback = recipe_runtime_has_layer_table_for_texture_slot(material, batch, req);
-
-                const auto *binding = FindMaterialResourceBinding(material, req.name.c_str());
-                if (binding && binding->texture && binding->sampler)
-                {
-                    if (!bind_texture_sampler(material, batch, req, binding->texture, binding->sampler))
-                        log_bind_failure(material, batch, req, "bind MaterialSampler failed");
-                }
-                else
-                {
-                    if (req.required && !allow_indirect_fallback)
-                        log_bind_failure(material, batch, req, "missing required MaterialSampler binding");
-                }
-                break;
-            }
             case graph::mtl::DescriptorSemantic::MaterialColorPalette:
             {
                 // MaterialColorPalette is explicitly declared and contract-validated.
@@ -1177,9 +1000,6 @@ namespace hgl::ecs
             auto environment_system = context->GetSystem<EnvironmentSystem>();
             return environment_system && environment_system->GetSkyUBO();
         }
-        case graph::mtl::DescriptorSemantic::SkyCubemapSampler:
-            return true;
-
         case graph::mtl::DescriptorSemantic::LocalToWorld:
         case graph::mtl::DescriptorSemantic::LocalToWorldIndexTable:
         case graph::mtl::DescriptorSemantic::MaterialColorPalette:

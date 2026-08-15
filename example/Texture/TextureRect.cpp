@@ -1,7 +1,6 @@
 // 画一个带纹理的矩形，2D模式专用 (ECS)
 
 #include<hgl/framework/WorkManager.h>
-#include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/TextureManager.h>
@@ -67,7 +66,6 @@ private:
     Sampler *           sampler             = nullptr;
     graph::mtl::MaterialRecipe rect_recipe{};
     PrimitiveAsset      rect_asset{};
-    std::unique_ptr<BindlessTextureManager> bindless_texture_manager;
 
 private:
 

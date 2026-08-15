@@ -105,7 +105,11 @@ namespace hgl::graph::shadergen
                         source,
                         "material/texture_source.glsl") == 0)
             {
+                require_semantic(InterStageSemantic::TextureLayerID);
                 require_semantic(InterStageSemantic::UV0);
+                if (definition.vertex_varying.
+                        texture_layer_id_uses_data_index)
+                    require_semantic(InterStageSemantic::DataIndexID);
                 out_contract.requires_texture = true;
                 out_contract.texture_slot = TextureSlot::BaseColor;
             }
@@ -116,6 +120,7 @@ namespace hgl::graph::shadergen
                         source,
                         "material/texture_array_source.glsl") == 0)
             {
+                require_semantic(InterStageSemantic::TextureLayerID);
                 require_semantic(InterStageSemantic::DataIndexID);
                 require_semantic(InterStageSemantic::UV0);
                 out_contract.requires_material_data = true;

@@ -12,18 +12,6 @@ namespace hgl::graph::mtl
             { UBODescriptorSemantic::SkyInfo, uint32(VK_SHADER_STAGE_FRAGMENT_BIT) }
         };
 
-        constexpr GLSLCodeModuleTextureRequirement SKY_LIGHT_CUBEMAP_TEXTURE_REQUIREMENT[] =
-        {
-            {
-                "SkyCubemap",
-                "samplerCube",
-                DescriptorSemantic::SkyCubemapSampler,
-                TextureSlot::Custom0,
-                uint32(VK_SHADER_STAGE_FRAGMENT_BIT),
-                true
-            }
-        };
-
         constexpr GLSLCodeModuleID SKY_LIGHT_HEADER_MODULES[] =
         {
             GLSLCodeModuleID::SkyLightHeader
@@ -62,29 +50,14 @@ namespace hgl::graph::mtl
                 uint32(sizeof(SKY_LIGHT_HEADER_MODULES) / sizeof(SKY_LIGHT_HEADER_MODULES[0]))
             },
             {
-                GLSLCodeModuleID::SkyLightCubeMap,
-                "SkyLightCubeMap",
-                // CubeMap mode resources; implementation is selected by the
-                // compositor sky module path.
-                "// SkyLightCubeMap: requires SkyInfo UBO + SkyCubemap samplerCube",
-                SKY_LIGHT_UBO_REQUIREMENT,
-                uint32(sizeof(SKY_LIGHT_UBO_REQUIREMENT) / sizeof(SKY_LIGHT_UBO_REQUIREMENT[0])),
+                GLSLCodeModuleID::PBRSurface,
+                "PBRSurface",
+                "",
+                nullptr, 0, nullptr, 0,
+                nullptr, 0,
                 nullptr,
-                0,
-                SKY_LIGHT_CUBEMAP_TEXTURE_REQUIREMENT,
-                uint32(sizeof(SKY_LIGHT_CUBEMAP_TEXTURE_REQUIREMENT) / sizeof(SKY_LIGHT_CUBEMAP_TEXTURE_REQUIREMENT[0])),
-                SKY_LIGHT_HEADER_MODULES,
-                uint32(sizeof(SKY_LIGHT_HEADER_MODULES) / sizeof(SKY_LIGHT_HEADER_MODULES[0]))
-            },
-           {
-               GLSLCodeModuleID::PBRSurface,
-               "PBRSurface",
-               "",
-               nullptr, 0, nullptr, 0,
-               nullptr, 0,
-               nullptr,
-               0
-            }
+                0
+             }
         };
     }
 

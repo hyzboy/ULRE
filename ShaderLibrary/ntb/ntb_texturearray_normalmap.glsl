@@ -4,7 +4,6 @@
 // @ulre priority 0
 // @ulre uses ntb_interface
 // @ulre uses bindless_textures
-// @ulre texture TextureNormal MaterialSampler Normal sampler2DArray Fragment optional fallback
 // @ulre texture_layer Custom0 Fragment required fallback
 // @ulre end
 // NTB provider for Texture2DArray normal maps.

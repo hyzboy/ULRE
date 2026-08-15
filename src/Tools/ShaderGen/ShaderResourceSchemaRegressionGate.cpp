@@ -500,9 +500,9 @@ namespace
          || !binding_table.IsRuntimeReady()
          || binding_table.GetStableHash() == 0
          || binding_table.program_key_digest != program_key.GetDigest()
-         || binding_table.textures.GetCount() != 2
+         || binding_table.textures.GetCount() != 3
          || binding_table.data.GetCount() != 1
-         || binding_table.unused_recipe_texture_count != 1
+         || binding_table.unused_recipe_texture_count != 0
          || binding_table.unused_recipe_data_count != 0)
         {
             result.diagnostics.emplace_back(
@@ -514,7 +514,7 @@ namespace
         MaterialRecipe projected_recipe{};
         if (!BuildBindingTableRecipe(
                 recipe, binding_table, projected_recipe)
-         || projected_recipe.textures.size() != 2
+         || projected_recipe.textures.size() != 3
          || projected_recipe.ssbo_assets.size() != 1
          || projected_recipe.ssbo_assets[0].ssbo_id != 17)
         {
@@ -539,10 +539,12 @@ namespace
             result.diagnostics.emplace_back(
                 "Binding Table Recipe must preserve TextureLayer direct values");
         }
-        // Asset projection: only active, loadable resources are acquired.
-        // Custom0 is a direct-value binding (not an asset) and Normal is
-        // unused (no layout requirement), so both must be excluded.
-        if (CountAssetTextures(binding_table) != 1
+        // Asset projection: in bindless mode the recipe is the authoritative
+        // texture-slot source (the schema merges all texture_layer declarations
+        // into one MaterialTextureLayerTable without per-slot info), so every
+        // asset-source recipe texture is acquired. Custom0 is a direct-value
+        // binding (not an asset), so it must be excluded from asset projection.
+        if (CountAssetTextures(binding_table) != 2
          || CountAssetData(binding_table) != 1
          || binding_table.GetStableHash() == 0)
         {
@@ -960,7 +962,7 @@ namespace
         uv_provider.semantic_provide_count = 1;
 
         GLSLCodeModuleDefinition normal_provider{};
-        normal_provider.id = GLSLCodeModuleID::SkyLightCubeMap;
+        normal_provider.id = GLSLCodeModuleID::PBRSurface;
         normal_provider.name = "preview_normal_from_geometry";
         normal_provider.glsl_code = "// preview only";
         normal_provider.kind = GLSLCodeModuleKind::VertexInput;
@@ -1325,24 +1327,6 @@ namespace
             result.diagnostics.emplace_back(
                 "Shadow depth compositor must emit no color attachment");
 
-        CompositorAssembler::CompositorModuleOptions cubemap_options{};
-        cubemap_options.sky_module = "sky/sky_cubemap.glsl";
-        const auto cubemap = assembler.Assemble(
-            SurfaceType::Sky,
-            BlendMode::Opaque,
-            PassType::ForwardOpaque,
-            "compositor/main_forward_sky.frag.glsl",
-            "surface/sky_cubemap_surface.glsl",
-            cubemap_options);
-        if (!cubemap.success
-         || cubemap.fragment_glsl.find("#include \"sky/sky_cubemap.glsl\"")
-                == std::string::npos
-         || cubemap.fragment_glsl.find(
-                "#include \"surface/sky_cubemap_surface.glsl\"")
-                == std::string::npos)
-            result.diagnostics.emplace_back(
-                "CubeMap compositor must select the CubeMap sky and surface modules");
-
         const auto custom_surface = assembler.Assemble(
             SurfaceType::Unlit,
             BlendMode::Opaque,
@@ -1426,7 +1410,7 @@ namespace
 
         GLSLCodeModuleResolutionResult changed_result = first;
         const GLSLCodeModuleDefinition packed_normal_provider{
-            GLSLCodeModuleID::SkyLightCubeMap,
+            GLSLCodeModuleID::PBRSurface,
             "identity_normal_packed",
             "// identity",
             nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0,
@@ -2987,10 +2971,7 @@ namespace
                              spec.GetShaderResourceSchema().resources)
                         {
                             if (requirement.semantic
-                                    == DescriptorSemantic::SkyInfo
-                             || requirement.semantic
-                                    == DescriptorSemantic::
-                                        SkyCubemapSampler)
+                                    == DescriptorSemantic::SkyInfo)
                                 return true;
                         }
                         return false;
@@ -3637,7 +3618,7 @@ namespace
         int error_count = 0;
         if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()),
                                     &file_count, &error_count)
-         || file_count != 10
+         || file_count != 9
          || error_count != 0)
         {
             result.diagnostics.emplace_back("material file registry bulk load failed");
@@ -3647,44 +3628,13 @@ namespace
             const char *expected_file_ids[] = {
                 "Lit", "LitTextureArray", "SkyMinimal", "DebugNormalColor",
                 "VertexColor", "UnlitTexture", "Texture2DArray",
-                "VertexLuminance", "VertexPaletteColor", "SkyCubeMap"
+                "VertexLuminance", "VertexPaletteColor"
             };
             for (const char *id : expected_file_ids)
             {
                 if (!registry.FindByID(id))
                     result.diagnostics.emplace_back(
                         std::string("missing bulk material file: ") + id);
-            }
-
-            const MaterialDefinition *cubemap_file =
-                registry.FindByID("SkyCubeMap");
-            if (!cubemap_file
-             || cubemap_file->compositor_surface != SurfaceType::Sky
-             || !cubemap_file->fragment_surface_module
-             || std::strcmp(
-                    cubemap_file->fragment_surface_module,
-                    "surface/sky_cubemap_surface.glsl") != 0
-             || cubemap_file->code_module_requirements.size() != 1
-             || cubemap_file->code_module_requirements[0]
-                    != GLSLCodeModuleID::SkyLightCubeMap)
-            {
-                result.diagnostics.emplace_back(
-                    "SkyCubeMap material definition contract is invalid");
-            }
-            else
-            {
-                ShaderResourceManifest cubemap_manifest{};
-                if (!Build3DShaderResourceManifest(
-                        *cubemap_file,
-                        SkyLightAmbientModel::CubeMap,
-                        cubemap_manifest)
-                 || cubemap_manifest.texture_count != 1
-                 || cubemap_manifest.textures[0].semantic
-                        != DescriptorSemantic::SkyCubemapSampler)
-                {
-                    result.diagnostics.emplace_back(
-                        "SkyCubeMap resource manifest must contain one sky cubemap sampler");
-                }
             }
 
         const char *bulk_ids[] = {
@@ -3787,8 +3737,6 @@ namespace
             FindGLSLCodeModuleDefinition(GLSLCodeModuleID::SkyLightHeader);
         const GLSLCodeModuleDefinition *simple =
             FindGLSLCodeModuleDefinition(GLSLCodeModuleID::SkyLightSimple);
-        const GLSLCodeModuleDefinition *cubemap =
-            FindGLSLCodeModuleDefinition(GLSLCodeModuleID::SkyLightCubeMap);
         const GLSLCodeModuleDefinition *pbr =
             FindGLSLCodeModuleDefinition(GLSLCodeModuleID::PBRSurface);
 
@@ -3813,29 +3761,6 @@ namespace
                 result.diagnostics.emplace_back("SkyLightSimple must depend on SkyLightHeader.");
         }
 
-        if (!cubemap || !cubemap->glsl_code || !cubemap->glsl_code[0])
-            result.diagnostics.emplace_back("SkyLightCubeMap module is not registered with GLSL code.");
-        else
-        {
-            if (cubemap->ubo_requirement_count != 1
-             || !cubemap->ubo_requirements
-             || cubemap->ubo_requirements[0].semantic != UBODescriptorSemantic::SkyInfo)
-                result.diagnostics.emplace_back("SkyLightCubeMap must require exactly SkyInfo.");
-
-            if (cubemap->texture_requirement_count != 1
-             || !cubemap->texture_requirements
-             || cubemap->texture_requirements[0].semantic != DescriptorSemantic::SkyCubemapSampler
-             || cubemap->texture_requirements[0].slot != TextureSlot::Custom0
-             || !cubemap->texture_requirements[0].glsl_type
-             || std::string(cubemap->texture_requirements[0].glsl_type) != "samplerCube")
-                result.diagnostics.emplace_back("SkyLightCubeMap must require SkyCubemap samplerCube.");
-
-            if (cubemap->code_module_requirement_count != 1
-             || !cubemap->code_module_requirements
-             || cubemap->code_module_requirements[0] != GLSLCodeModuleID::SkyLightHeader)
-                result.diagnostics.emplace_back("SkyLightCubeMap must depend on SkyLightHeader.");
-        }
-
         if (!pbr || !pbr->glsl_code
          || pbr->texture_requirement_count != 0
          || pbr->texture_requirements)
@@ -3855,8 +3780,7 @@ namespace
 
         constexpr GLSLCodeModuleID roots[] =
         {
-            GLSLCodeModuleID::SkyLightSimple,
-            GLSLCodeModuleID::SkyLightCubeMap
+            GLSLCodeModuleID::SkyLightSimple
         };
 
         ShaderResourceManifest manifest{};
@@ -3871,33 +3795,32 @@ namespace
         }
         else
         {
-            if (manifest.code_module_count != 3)
-                result.diagnostics.emplace_back("Shared SkyLightHeader must be deduplicated.");
+            if (manifest.code_module_count != 2)
+                result.diagnostics.emplace_back("SkyLightSimple must resolve to Header+Simple code modules.");
 
             if (manifest.ubo_count != 1
              || manifest.ubos[0].semantic != UBODescriptorSemantic::SkyInfo)
-                result.diagnostics.emplace_back("Combined SkyLight modules must produce one SkyInfo UBO.");
+                result.diagnostics.emplace_back("SkyLightSimple must produce one SkyInfo UBO.");
 
-            if (manifest.texture_count != 1
-             || manifest.textures[0].semantic != DescriptorSemantic::SkyCubemapSampler)
-                result.diagnostics.emplace_back("Combined SkyLight modules must produce one SkyCubemap texture.");
+            if (manifest.texture_count != 0)
+                result.diagnostics.emplace_back("SkyLightSimple must not produce a cubemap texture.");
 
             if (manifest.stable_hash == 0)
                 result.diagnostics.emplace_back("Valid manifest must produce a non-zero stable hash.");
         }
 
         ShaderResourceManifest simple_manifest{};
-        ShaderResourceManifest cubemap_manifest{};
+        ShaderResourceManifest pbr_manifest{};
         const GLSLCodeModuleID simple_root = GLSLCodeModuleID::SkyLightSimple;
-        const GLSLCodeModuleID cubemap_root = GLSLCodeModuleID::SkyLightCubeMap;
+        const GLSLCodeModuleID pbr_root = GLSLCodeModuleID::PBRSurface;
         if (!BuildShaderResourceManifest(&simple_root, 1, simple_manifest)
-         || !BuildShaderResourceManifest(&cubemap_root, 1, cubemap_manifest))
+         || !BuildShaderResourceManifest(&pbr_root, 1, pbr_manifest))
         {
-            result.diagnostics.emplace_back("Individual SkyLight manifests must resolve.");
+            result.diagnostics.emplace_back("Individual code module manifests must resolve.");
         }
-        else if (simple_manifest.stable_hash == cubemap_manifest.stable_hash)
+        else if (simple_manifest.stable_hash == pbr_manifest.stable_hash)
         {
-            result.diagnostics.emplace_back("Different SkyLight resource closures must hash differently.");
+            result.diagnostics.emplace_back("Different code module closures must hash differently.");
         }
 
         if (BuildShaderResourceManifest(nullptr, 1, manifest)
@@ -3959,10 +3882,10 @@ namespace
                     result.diagnostics.emplace_back(
                         "Texture2D providers must declare one PBRSurface material SSBO");
 
-                if (manifest_2d.texture_count != 6
+                if (manifest_2d.texture_count != 0
                  || manifest_2d.texture_layer_count != 2)
                     result.diagnostics.emplace_back(
-                        "Texture2D providers must declare samplers and per-slot bindless layer-table dependencies");
+                        "Texture2D providers must declare bindless per-slot layer-table dependencies");
 
                 const std::vector<SerializedDescriptorEntry> descriptors =
                     Build3DDescriptorsFromDefinition(MaterialDefinition{}, manifest_2d);
@@ -3994,24 +3917,11 @@ namespace
             else
             {
                 if (manifest_array.ssbo_count != 1
-                 || manifest_array.texture_count != 6
+                 || manifest_array.texture_count != 0
                  || manifest_array.texture_layer_count != 1
                  || manifest_array.texture_layers[0].slot != TextureSlot::Custom0)
                     result.diagnostics.emplace_back(
-                        "Texture2DArray providers must declare sampler and Custom0 layer resources");
-
-                for (uint32_t i = 0; i < manifest_array.texture_count; ++i)
-                {
-                    if (!manifest_array.textures[i].glsl_type
-                     || std::strcmp(
-                            manifest_array.textures[i].glsl_type,
-                            "sampler2DArray") != 0)
-                    {
-                        result.diagnostics.emplace_back(
-                            "Texture2DArray provider samplers must retain sampler2DArray type");
-                        break;
-                    }
-                }
+                        "Texture2DArray providers must declare bindless Custom0 layer resources");
 
                 const std::vector<SerializedDescriptorEntry> descriptors =
                     Build3DDescriptorsFromDefinition(MaterialDefinition{}, manifest_array);
@@ -4035,11 +3945,10 @@ namespace
             ShaderResourceManifest derivative_manifest{};
             if (!BuildShaderResourceManifest(
                     &derivative_root, 1, derivative_manifest, &registry)
-             || derivative_manifest.texture_count != 1
-             || derivative_manifest.textures[0].slot != TextureSlot::Normal
+             || derivative_manifest.texture_count != 0
              || derivative_manifest.texture_layer_count != 1)
                result.diagnostics.emplace_back(
-                   "Derivative normal-map provider must declare its sampler and bindless layer-table dependency");
+                   "Derivative normal-map provider must declare its bindless layer-table dependency");
         }
 
         result.passed = result.diagnostics.empty();
@@ -4201,14 +4110,14 @@ namespace
             result.diagnostics.emplace_back("LoadDirectory failed to scan directory");
         else
         {
-            if (file_count != 56)
-                result.diagnostics.emplace_back("LoadDirectory expected 56 file modules, got "
+            if (file_count != 54)
+                result.diagnostics.emplace_back("LoadDirectory expected 54 file modules, got "
                     + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 56 + int(GLSLCodeModuleID::RANGE_SIZE);
+            const int expected_count = 54 + int(GLSLCodeModuleID::RANGE_SIZE);
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
@@ -4277,11 +4186,11 @@ namespace
         int dup_errors = 0;
         if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()), &dup_count, &dup_errors))
             result.diagnostics.emplace_back("second LoadDirectory failed");
-        else if (dup_count != 0 || dup_errors != 56)
-            result.diagnostics.emplace_back("second LoadDirectory must report 56 duplicates, got files="
+        else if (dup_count != 0 || dup_errors != 54)
+            result.diagnostics.emplace_back("second LoadDirectory must report 54 duplicates, got files="
                 + std::to_string(dup_count) + " errors=" + std::to_string(dup_errors));
 
-        const int stable_count = 56 + int(GLSLCodeModuleID::RANGE_SIZE);
+        const int stable_count = 54 + int(GLSLCodeModuleID::RANGE_SIZE);
         if (registry.GetCount() != stable_count)
             result.diagnostics.emplace_back("registry count changed after duplicate re-scan: got "
                 + std::to_string(registry.GetCount()));
@@ -4630,7 +4539,6 @@ namespace
             "VertexColor",
             "SkyMinimal",
             "UnlitTexture",
-            "SkyCubeMap",
             "Texture2DArray",
             "LitTextureArray"
         };
@@ -5652,16 +5560,12 @@ namespace
 
         MaterialDefinition definition{};
         definition.data_slot_decls = {{"mtl", SSBOType::PBRSurface}};
-        definition.texture_slot_decls = {
-            {TextureSlot::BaseColor, GLSLSamplerType::Sampler2D, true, "TextureBaseColor"}
-        };
 
         std::vector<SerializedDescriptorEntry> descriptors;
         descriptor_builder_common::AppendDefinitionMaterialDescriptors(
             descriptors,
             definition,
             uint32_t(VK_SHADER_STAGE_VERTEX_BIT),
-            uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
             uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT));
 
         ShaderResourceManifest compatible_manifest{};

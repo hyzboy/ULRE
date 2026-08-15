@@ -35,10 +35,8 @@ namespace hgl::ecs
     #if !ULRE_ECS_DEBUG_API
         return false;
     #else
-        materials_registered = static_cast<uint32_t>(material_resource_bindings.size());
-
-        for (const auto &pair : material_resource_bindings)
-            binding_entries += static_cast<uint32_t>(pair.second.size());
+        materials_registered = static_cast<uint32_t>(materialization_resource_handles.GetCount());
+        binding_entries = materials_registered;
 
         return true;
     #endif

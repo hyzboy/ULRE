@@ -13,12 +13,12 @@ namespace
         definition.usage_tag = MaterialDefinitionUsageTag::Text;
         definition.bootstrap_kind = MaterialDefinitionBootstrapKind::TextAlphaBlend;
         definition.ubo_requirements = {UBODescriptorSemantic::ViewportInfo};
-        definition.texture_slot_decls = {{TextureSlot::BaseColor, GLSLSamplerType::Sampler2D, true, SamplerName::Text}};
         definition.data_slot_decls = {{"mtl", SSBOType::TransmissionSurface}};
         definition.vertex_node_config = Make2DNodeConfigOrtho(false);
         MaterialVertexVaryingConfig varying{};
         varying.emit_data_index_id = true;
         varying.emit_texture_layer_id = true;
+        varying.texture_layer_id_uses_data_index = true;
         varying.emit_uv0 = true;
         SetMaterialFragmentSource(
             definition, "compositor/main_forward_surface.frag.glsl");

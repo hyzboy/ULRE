@@ -27,8 +27,8 @@
 #include<hgl/vk/VKFormat.h>
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/vk/VKCommandBuffer.h>
+#include<hgl/vk/VKBindlessTextureManager.h>
 
-#include<hgl/mtl/SamplerName.h>
 #include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/common/RenderOptions.h>
 #include<hgl/type/String.h>
@@ -147,7 +147,6 @@ namespace hgl::ecs
                 if (descriptor_binding_system)
                 {
                     descriptor_binding_system->UnregisterPipelineMaterial(res.material);
-                    descriptor_binding_system->ClearMaterialBindings(res.material);
                 }
 
                 material_manager->Release(res.material);
@@ -170,6 +169,18 @@ namespace hgl::ecs
             {
                 buffer_manager->Release(res.material_data_buffer);
                 res.material_data_buffer = nullptr;
+            }
+
+            if (res.texture_layer_buffer && buffer_manager)
+            {
+                buffer_manager->Release(res.texture_layer_buffer);
+                res.texture_layer_buffer = nullptr;
+            }
+
+            if (res.data_index_row_buffer && buffer_manager)
+            {
+                buffer_manager->Release(res.data_index_row_buffer);
+                res.data_index_row_buffer = nullptr;
             }
 
             if (res.tile_font)
@@ -238,6 +249,31 @@ namespace hgl::ecs
 
             cmd->BindPipeline(res.pipeline);
             cmd->BindDescriptorSets(res.material);
+
+            if (render_context)
+            {
+                auto *bindless_mgr = render_context->GetManager<graph::BindlessTextureManager>();
+                if (bindless_mgr && bindless_mgr->IsValid())
+                {
+                    bool needs_bindless_set = false;
+                    const auto &contract = res.material->GetShaderResourceSchema();
+                    for (const auto &req : contract.resources)
+                    {
+                        if (req.semantic == graph::mtl::DescriptorSemantic::MaterialTextureLayerTable)
+                        {
+                            needs_bindless_set = true;
+                            break;
+                        }
+                    }
+
+                    if (needs_bindless_set)
+                    {
+                        constexpr uint32_t bindless_set = static_cast<uint32_t>(graph::DescriptorSetType::Bindless);
+                        bindless_mgr->BindToCmd(*cmd, res.material->GetPipelineLayout(), bindless_set);
+                    }
+                }
+            }
+
             cmd->BindDataBuffer(res.data_buffer);
             cmd->Draw(res.data_buffer, res.draw_range);
         }
@@ -277,6 +313,8 @@ namespace hgl::ecs
             graph::Sampler* sampler = nullptr;
             graph::BufferManager* buffer_manager = nullptr;
             graph::DeviceBuffer* material_data_buffer = nullptr;
+            graph::DeviceBuffer* texture_layer_buffer = nullptr;
+            graph::DeviceBuffer* data_index_row_buffer = nullptr;
             std::unique_ptr<graph::TileFont> tile_font;
             bool committed = false;
 
@@ -290,6 +328,12 @@ namespace hgl::ecs
 
                 if (material_data_buffer && buffer_manager)
                     buffer_manager->Release(material_data_buffer);
+
+                if (texture_layer_buffer && buffer_manager)
+                    buffer_manager->Release(texture_layer_buffer);
+
+                if (data_index_row_buffer && buffer_manager)
+                    buffer_manager->Release(data_index_row_buffer);
 
                 if (descriptor_binding_set)
                     delete descriptor_binding_set;
@@ -396,23 +440,82 @@ namespace hgl::ecs
             guard.material_data_buffer = nullptr;
         }
 
-        if (!guard.material->BindTextureSampler(graph::DescriptorSetType::Material,
-                                                    graph::mtl::SamplerName::Text,
-                                                    guard.tile_font->GetTexture(),
-                                                    guard.sampler))
-            return nullptr;
-
         if (world)
         {
             if (auto descriptor_binding_system = world->GetSystem<RenderDescriptorBindingSystem>())
             {
                 descriptor_binding_system->RegisterPipelineMaterial(guard.material);
-                descriptor_binding_system->RegisterMaterialTextureSampler(guard.material,
-                                                                          graph::mtl::SamplerName::Text,
-                                                                          guard.tile_font->GetTexture(),
-                                                                          guard.sampler);
             }
         }
+
+        // 将字库图集注册进全局 bindless 纹理池，并写入 texture-layer / data-index
+        // 行表第 0 行（dataIndex=0，BaseColor 槽 = 图集句柄），供 Text shader 解析。
+        auto *bindless_mgr = render_context->GetManager<graph::BindlessTextureManager>();
+        if (!bindless_mgr || !bindless_mgr->IsValid())
+            return nullptr;
+
+        const uint32_t atlas_handle = bindless_mgr->Register2D(guard.tile_font->GetTexture(), guard.sampler);
+        if (atlas_handle == 0)
+            return nullptr;
+
+        resources.bindless_atlas_handle = atlas_handle;
+
+        auto *domain_manager = graphics_context->GetResourceDomainManager();
+        if (!domain_manager)
+            return nullptr;
+
+        // mtl_texture_layer_rows：TEXTURE_SLOT_RANGE_SIZE 个 uint 一行；行 0 槽 BaseColor = atlas handle。
+        constexpr uint32_t texture_layer_row_bytes =
+            sizeof(uint32_t) * static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE);
+
+        guard.texture_layer_buffer = buffer_manager->CreateSSBO(
+            "Text2D_TextureLayerRows", texture_layer_row_bytes, graph::SharingMode::Exclusive);
+        if (!guard.texture_layer_buffer)
+            return nullptr;
+
+        uint32_t texture_layer_row[static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE)] = {};
+        texture_layer_row[0] = atlas_handle;
+        guard.texture_layer_buffer->GetGPUBuffer()->Write(texture_layer_row, 0, sizeof(texture_layer_row));
+
+        if (!guard.material->BindSSBO(graph::DescriptorSetType::Material,
+                                      graph::mtl::SBS_MaterialTextureLayerRows.name,
+                                      guard.texture_layer_buffer->GetGPUBuffer()))
+            return nullptr;
+
+        if (!domain_manager->RegisterBuffer(
+                graph::mtl::SSBOAddress{graph::mtl::SSBOType::TextureLayer,
+                                        graph::mtl::MakeRecipeSSBOId(0), 0},
+                guard.texture_layer_buffer, 1))
+            return nullptr;
+
+        resources.texture_layer_buffer = guard.texture_layer_buffer;
+        guard.texture_layer_buffer = nullptr;
+
+        // mtl_data_index_rows：MaterialDataIndexRowStride 个 uint 一行；行 0 value = 0。
+        constexpr uint32_t data_index_row_bytes =
+            sizeof(uint32_t) * graph::mtl::MaterialDataIndexRowStride;
+
+        guard.data_index_row_buffer = buffer_manager->CreateSSBO(
+            "Text2D_DataIndexRows", data_index_row_bytes, graph::SharingMode::Exclusive);
+        if (!guard.data_index_row_buffer)
+            return nullptr;
+
+        uint32_t data_index_row[graph::mtl::MaterialDataIndexRowStride] = {};
+        guard.data_index_row_buffer->GetGPUBuffer()->Write(data_index_row, 0, sizeof(data_index_row));
+
+        if (!guard.material->BindSSBO(graph::DescriptorSetType::Material,
+                                      graph::mtl::SBS_MaterialDataIndexRows.name,
+                                      guard.data_index_row_buffer->GetGPUBuffer()))
+            return nullptr;
+
+        if (!domain_manager->RegisterBuffer(
+                graph::mtl::SSBOAddress{graph::mtl::SSBOType::MaterialDataIndexTable,
+                                        graph::mtl::MakeRecipeSSBOId(0), 0},
+                guard.data_index_row_buffer, 1))
+            return nullptr;
+
+        resources.data_index_row_buffer = guard.data_index_row_buffer;
+        guard.data_index_row_buffer = nullptr;
 
         resources.tile_font = guard.tile_font.release();
         resources.material = guard.material;

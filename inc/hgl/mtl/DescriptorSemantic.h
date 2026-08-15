@@ -21,7 +21,6 @@ namespace hgl::graph::mtl
         ViewportInfo,
         CameraInfo,
         SkyInfo,
-        SkyCubemapSampler,
 
         LocalToWorld,
         LocalToWorldIndexTable,
@@ -71,7 +70,6 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::MaterialTexture:
             return DescriptorSemanticLayer::Texture;
 
-        case DescriptorSemantic::SkyCubemapSampler:
         case DescriptorSemantic::MaterialSampler:
             return DescriptorSemanticLayer::Sampler;
 

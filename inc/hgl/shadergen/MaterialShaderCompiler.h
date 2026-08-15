@@ -12,7 +12,6 @@ namespace hgl::graph::mtl {}
 
 #include <hgl/mtl/SerializedVertexEntry.h>
 #include <hgl/mtl/SerializedDescriptorEntry.h>
-#include<hgl/mtl/SkyLight.h>
 #include<hgl/common/ShaderStageDef.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
 #include<hgl/mtl/MaterialRecipe.h>

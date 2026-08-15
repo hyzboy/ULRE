@@ -32,10 +32,6 @@ LightingInput BuildForwardLightingInput(SurfaceOutput surf, SurfaceInput si)
     lighting.mainLightColor = GetSkyMainLightColor();
     lighting.ambientColor = GetSkyAmbientColor();
     lighting.reflectionColor = vec3(0.0);
-#ifdef HGL_SKY_CUBEMAP
-    const vec3 reflectionDir = reflect(-lighting.viewDir, lighting.normal);
-    lighting.reflectionColor = GetSkyReflectionColor(reflectionDir);
-#endif
     return lighting;
 }
 

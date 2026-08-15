@@ -17,7 +17,6 @@ struct Build3DDescriptorOptions
 {
     uint32_t sky_stage_flags = uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS);
     uint32_t color_palette_stage_flags = uint32_t(VK_SHADER_STAGE_VERTEX_BIT);
-    uint32_t texture_stage_flags = uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT);
     uint32_t material_texture_layer_table_stage_flags = uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS);
 };
 
@@ -46,15 +45,13 @@ inline std::vector<SerializedDescriptorEntry> Build3DDescriptorsFromDefinition(
         descriptors,
         definition,
         uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
-        opt.material_texture_layer_table_stage_flags,
-        opt.texture_stage_flags);
+        opt.material_texture_layer_table_stage_flags);
 
     return descriptors;
 }
 
 inline bool Build3DShaderResourceManifest(
     const MaterialDefinition &definition,
-    const SkyLightAmbientModel ambient_model,
     ShaderResourceManifest &manifest,
     const GLSLCodeModuleID *provider_roots = nullptr,
     const uint32 provider_root_count = 0,
@@ -64,20 +61,11 @@ inline bool Build3DShaderResourceManifest(
     for (const GLSLCodeModuleID id : definition.code_module_requirements)
     {
         if (id == GLSLCodeModuleID::SkyLightHeader
-         || id == GLSLCodeModuleID::SkyLightSimple
-         || id == GLSLCodeModuleID::SkyLightCubeMap)
+         || id == GLSLCodeModuleID::SkyLightSimple)
         {
             has_sky_root = true;
             break;
         }
-    }
-
-    GLSLCodeModuleID ambient_root = GLSLCodeModuleID::SkyLightSimple;
-    if (has_sky_root)
-    {
-        ambient_root = ambient_model == SkyLightAmbientModel::CubeMap
-            ? GLSLCodeModuleID::SkyLightCubeMap
-            : GLSLCodeModuleID::SkyLightSimple;
     }
 
     GLSLCodeModuleID extra_roots[MaxShaderResourceManifestCodeModules]{};
@@ -85,7 +73,7 @@ inline bool Build3DShaderResourceManifest(
     if (provider_root_count > 0 && !provider_roots)
         return false;
     if (has_sky_root)
-        extra_roots[extra_root_count++] = ambient_root;
+        extra_roots[extra_root_count++] = GLSLCodeModuleID::SkyLightSimple;
     for (uint32 i = 0; i < provider_root_count; ++i)
     {
         if (extra_root_count >= MaxShaderResourceManifestCodeModules)

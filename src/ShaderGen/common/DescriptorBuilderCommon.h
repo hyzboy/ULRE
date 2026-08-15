@@ -13,25 +13,6 @@ namespace hgl::graph::shadergen::descriptor_builder_common
 {
     using namespace hgl::graph::mtl;
 
-inline const char *GetTextureNameBySlot(const TextureSlot slot) noexcept
-{
-    switch (slot)
-    {
-    case TextureSlot::BaseColor: return "TextureBaseColor";
-    case TextureSlot::Normal: return "TextureNormal";
-    case TextureSlot::Metallic: return "TextureMetallic";
-    case TextureSlot::Roughness: return "TextureRoughness";
-    case TextureSlot::Emissive: return "TextureEmissive";
-    case TextureSlot::Occlusion: return "TextureOcclusion";
-    case TextureSlot::OpacityMask: return "TextureOpacityMask";
-    case TextureSlot::Height: return "TextureHeight";
-    case TextureSlot::Custom0: return "TextureCustom0";
-    case TextureSlot::Custom1: return "TextureCustom1";
-    }
-
-    return "TextureUnknown";
-}
-
 inline void PushViewport(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
     v.push_back({
@@ -198,27 +179,11 @@ inline void PushMaterialTextureLayerRows(
     v.push_back(entry);
 }
 
-inline void PushMaterialSampler(std::vector<SerializedDescriptorEntry> &v,
-                                const char *name,
-                                const TextureSlot slot,
-                                const char *glsl_type,
-                                const uint32_t stage_flags,
-                                const bool required)
-{
-    v.push_back({
-        DescriptorSetType::Material, DescriptorKind::TextureSampler, stage_flags,
-        name, nullptr, glsl_type, DescriptorSemantic::MaterialSampler,
-        slot, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::Sampler,
-        MakeRecipeSSBOId(0), true, required, !required
-    });
-}
-
 inline void AppendDefinitionMaterialDescriptors(
     std::vector<SerializedDescriptorEntry> &v,
     const MaterialDefinition &definition,
     const uint32_t stage_flags,
-    const uint32_t texture_layer_table_stage_flags,
-    const uint32_t texture_stage_flags)
+    const uint32_t texture_layer_table_stage_flags)
 {
     for (uint32_t i = 0; i < static_cast<uint32_t>(definition.data_slot_decls.size()); ++i)
     {
@@ -236,18 +201,6 @@ inline void AppendDefinitionMaterialDescriptors(
     {
         PushMaterialDataIndexRows(v, stage_flags);
         PushMaterialTextureLayerRows(v, texture_layer_table_stage_flags);
-    }
-
-    for (const auto &decl : definition.texture_slot_decls)
-    {
-        const char *name = decl.name ? decl.name : GetTextureNameBySlot(decl.slot);
-        PushMaterialSampler(
-            v,
-            name,
-            decl.slot,
-            ToGLSLSamplerTypeName(decl.sampler_type),
-            texture_stage_flags,
-            decl.required);
     }
 }
 
@@ -396,11 +349,6 @@ inline bool MakeManifestTextureDescriptor(
 
     switch (texture.semantic)
     {
-    case DescriptorSemantic::SkyCubemapSampler:
-        out.set_type = DescriptorSetType::Scene;
-        out.kind = DescriptorKind::TextureSampler;
-        out.semantic_layer = DescriptorSemanticLayer::Sampler;
-        break;
     case DescriptorSemantic::MaterialTexture:
         out.set_type = DescriptorSetType::Material;
         out.kind = DescriptorKind::Texture;
