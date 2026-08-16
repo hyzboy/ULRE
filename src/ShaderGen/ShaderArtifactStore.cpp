@@ -84,7 +84,6 @@ namespace hgl::graph::shadergen
         {
             out_payload.Clear();
             out_payload.Reserve(ShaderProgramMetadataPayloadSize);
-            AppendU32(out_payload, metadata.schema_version);
             AppendU64(out_payload, metadata.program_key_digest);
             AppendU64(out_payload, metadata.resolved_module_graph_hash);
             AppendU64(out_payload, metadata.shader_interface_hash);
@@ -108,8 +107,7 @@ namespace hgl::graph::shadergen
 
             const uint8 *cursor = payload;
             const uint8 *end = payload + payload_size;
-            return ReadU32(cursor, end, out_metadata.schema_version)
-                && ReadU64(cursor, end, out_metadata.program_key_digest)
+            return ReadU64(cursor, end, out_metadata.program_key_digest)
                 && ReadU64(
                     cursor,
                     end,

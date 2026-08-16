@@ -11,7 +11,6 @@ namespace hgl::graph::shadergen
     using namespace hgl::graph::mtl;
     constexpr uint32 ShaderArtifactFileMagic = 0x554C5350u; // "ULSP"
     constexpr uint32 ShaderArtifactSPVMagic = 0x07230203u;
-    constexpr uint16 ShaderArtifactFileVersion = 1;
 
     constexpr const char ShaderArtifactCacheDirectory[] = "shader-cache";
     constexpr const char ShaderArtifactStageDirectory[] = "stage";
@@ -19,9 +18,8 @@ namespace hgl::graph::shadergen
     constexpr const char ShaderArtifactSPVExtension[] = ".spv";
     constexpr const char ShaderArtifactMetadataExtension[] = ".meta";
     constexpr uint32 ShaderArtifactFileHeaderSize = 40;
-    constexpr uint32 ShaderProgramMetadataSchemaVersion = 2;
     constexpr uint32 ShaderProgramMetadataPayloadSize =
-        sizeof(uint32) + sizeof(uint64) * 9;
+        sizeof(uint64) * 9;
 
     enum class ShaderArtifactKind : uint8
     {
@@ -38,9 +36,9 @@ namespace hgl::graph::shadergen
     struct ShaderArtifactFileHeader
     {
         uint32 magic = ShaderArtifactFileMagic;
-        uint16 version = ShaderArtifactFileVersion;
         ShaderArtifactKind kind = ShaderArtifactKind::StageSPV;
         uint8 reserved = 0;
+        uint16 reserved_pad = 0;
         uint32 header_size = ShaderArtifactFileHeaderSize;
         uint32 stage = static_cast<uint32>(ShaderStage::Vertex);
         uint64 key_digest = 0;
@@ -50,7 +48,6 @@ namespace hgl::graph::shadergen
 
     struct ShaderProgramArtifactMetadata
     {
-        uint32 schema_version = ShaderProgramMetadataSchemaVersion;
         uint64 program_key_digest = 0;
         uint64 resolved_module_graph_hash = 0;
         uint64 shader_interface_hash = 0;
@@ -66,8 +63,7 @@ namespace hgl::graph::shadergen
         const ShaderProgramArtifactMetadata &lhs,
         const ShaderProgramArtifactMetadata &rhs) noexcept
     {
-        return lhs.schema_version == rhs.schema_version
-            && lhs.program_key_digest == rhs.program_key_digest
+        return lhs.program_key_digest == rhs.program_key_digest
             && lhs.resolved_module_graph_hash
                 == rhs.resolved_module_graph_hash
             && lhs.shader_interface_hash == rhs.shader_interface_hash
@@ -83,9 +79,7 @@ namespace hgl::graph::shadergen
     inline bool IsValidShaderProgramArtifactMetadata(
         const ShaderProgramArtifactMetadata &metadata) noexcept
     {
-        return metadata.schema_version
-                == ShaderProgramMetadataSchemaVersion
-            && metadata.program_key_digest != 0
+        return metadata.program_key_digest != 0
             && metadata.resolved_module_graph_hash != 0
             && metadata.shader_interface_hash != 0
             && metadata.output_contract_hash != 0
@@ -102,7 +96,6 @@ namespace hgl::graph::shadergen
     inline bool IsValidShaderArtifactFileHeader(const ShaderArtifactFileHeader &header) noexcept
     {
         return header.magic == ShaderArtifactFileMagic
-            && header.version == ShaderArtifactFileVersion
             && header.header_size == ShaderArtifactFileHeaderSize;
     }
 }

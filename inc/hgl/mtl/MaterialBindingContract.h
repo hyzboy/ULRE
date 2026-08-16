@@ -21,7 +21,6 @@ namespace hgl::graph::mtl
 {
     using namespace hgl::graph::shadergen;
 
-    constexpr uint32 MaterialBindingContractSchemaVersion = 1;
     constexpr uint32 InvalidMaterialRecipeBindingIndex = ~uint32(0);
 
     enum class BindingSource : uint8
@@ -102,7 +101,6 @@ namespace hgl::graph::mtl
 
     struct ResolvedBindingTable
     {
-        uint32 schema_version = MaterialBindingContractSchemaVersion;
         uint64 program_key_digest = 0;
         uint64 source_binding_hash = 0;
         uint32 missing_required_count = 0;

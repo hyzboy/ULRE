@@ -100,8 +100,7 @@ namespace hgl::graph::shadergen
     bool ValidateResolvedModuleGraph(
         const ResolvedModuleGraph &graph) noexcept
     {
-        if (graph.schema_version != CanonicalShaderContractSchemaVersion
-         || graph.modules.IsEmpty())
+        if (graph.modules.IsEmpty())
             return false;
 
         for (int i = 0; i < graph.modules.GetCount(); ++i)
@@ -124,10 +123,6 @@ namespace hgl::graph::shadergen
             uint32 source_order = 0;
             uint32 target_order = 0;
             if (dependency.source_module_id == dependency.target_module_id
-             || dependency.min_metadata_version
-                    > dependency.max_metadata_version
-             || dependency.max_metadata_version
-                    > GLSLCodeModuleCurrentMetadataVersion
              || !HasModule(
                     graph, dependency.source_module_id, &source_order)
              || !HasModule(
@@ -192,8 +187,6 @@ namespace hgl::graph::shadergen
     bool ValidateShaderInterfaceContract(
         const ShaderInterfaceContract &contract) noexcept
     {
-        if (contract.schema_version != CanonicalShaderContractSchemaVersion)
-            return false;
 
         for (int i = 0; i < contract.geometry_semantics.GetCount(); ++i)
         {
@@ -298,8 +291,6 @@ namespace hgl::graph::shadergen
 
     bool ValidateOutputContract(const OutputContract &contract) noexcept
     {
-        if (contract.schema_version != CanonicalShaderContractSchemaVersion)
-            return false;
         if (!IsValidPurpose(contract.purpose))
             return false;
         if (contract.depth_only)
@@ -360,12 +351,7 @@ namespace hgl::graph::shadergen
             {
                 if (lhs.source_module_id != rhs.source_module_id)
                     return lhs.source_module_id < rhs.source_module_id;
-                if (lhs.target_module_id != rhs.target_module_id)
-                    return lhs.target_module_id < rhs.target_module_id;
-                if (lhs.min_metadata_version != rhs.min_metadata_version)
-                    return lhs.min_metadata_version
-                        < rhs.min_metadata_version;
-                return lhs.max_metadata_version < rhs.max_metadata_version;
+                return lhs.target_module_id < rhs.target_module_id;
             });
 
         ValueArray<ResolvedProviderSelectionContract> providers =
@@ -403,13 +389,11 @@ namespace hgl::graph::shadergen
 
         CanonicalContractWriter writer(out_bytes);
         writer.WriteU32(ResolvedModuleGraphTag);
-        writer.WriteU32(graph.schema_version);
-        writer.WriteU32(static_cast<uint32>(modules.GetCount()));
+                writer.WriteU32(static_cast<uint32>(modules.GetCount()));
         for (int i = 0; i < modules.GetCount(); ++i)
         {
             writer.WriteU64(modules[i].module_id);
             writer.WriteU64(modules[i].module_content_hash);
-            writer.WriteU64(modules[i].resolved_condition_hash);
             writer.WriteU32(modules[i].topological_order);
             writer.WriteU32(modules[i].flags);
         }
@@ -419,8 +403,6 @@ namespace hgl::graph::shadergen
         {
             writer.WriteU64(dependencies[i].source_module_id);
             writer.WriteU64(dependencies[i].target_module_id);
-            writer.WriteU16(dependencies[i].min_metadata_version);
-            writer.WriteU16(dependencies[i].max_metadata_version);
         }
 
         writer.WriteU32(static_cast<uint32>(providers.GetCount()));
@@ -492,8 +474,7 @@ namespace hgl::graph::shadergen
 
         CanonicalContractWriter writer(out_bytes);
         writer.WriteU32(ShaderInterfaceTag);
-        writer.WriteU32(contract.schema_version);
-
+        
         writer.WriteU32(static_cast<uint32>(geometry.GetCount()));
         for (int i = 0; i < geometry.GetCount(); ++i)
         {
@@ -567,8 +548,7 @@ namespace hgl::graph::shadergen
 
         CanonicalContractWriter writer(out_bytes);
         writer.WriteU32(OutputContractTag);
-        writer.WriteU32(contract.schema_version);
-        writer.WriteU8(static_cast<uint8>(contract.purpose));
+                writer.WriteU8(static_cast<uint8>(contract.purpose));
         writer.WriteBool(contract.depth_only);
         writer.WriteU32(static_cast<uint32>(attachments.GetCount()));
         for (int i = 0; i < attachments.GetCount(); ++i)

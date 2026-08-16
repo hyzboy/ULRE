@@ -54,36 +54,6 @@ namespace hgl::graph::mtl
                 || (lhs && rhs && std::strcmp(lhs, rhs) == 0);
         }
 
-        bool HasConditionOverlap(
-            const GLSLCodeModuleDefinition &lhs,
-            const GLSLCodeModuleDefinition &rhs) noexcept
-        {
-            for (uint32 i = 0; i < lhs.condition_count; ++i)
-            {
-                const GLSLCodeModuleCondition &left = lhs.conditions[i];
-                for (uint32 j = 0; j < rhs.condition_count; ++j)
-                {
-                    const GLSLCodeModuleCondition &right = rhs.conditions[j];
-                    if (left.domain != right.domain
-                     || hgl::strcmp(left.key, right.key) != 0)
-                        continue;
-
-                    const bool same_value =
-                        hgl::strcmp(left.value, right.value) == 0;
-                    if (left.operation == GLSLCodeModuleConditionOperator::Equals
-                     && right.operation == GLSLCodeModuleConditionOperator::Equals
-                     && !same_value)
-                        return false;
-
-                    if (same_value
-                     && left.operation != right.operation)
-                        return false;
-                }
-            }
-
-            return true;
-        }
-
         bool IsProviderCandidate(
             const GLSLCodeModuleDefinition &definition) noexcept
         {
@@ -170,18 +140,13 @@ namespace hgl::graph::mtl
         {
         case GLSLCodeModuleMetadataValidationError::None: return "None";
         case GLSLCodeModuleMetadataValidationError::InvalidDefinition: return "InvalidDefinition";
-        case GLSLCodeModuleMetadataValidationError::UnsupportedVersion: return "UnsupportedVersion";
         case GLSLCodeModuleMetadataValidationError::InvalidArray: return "InvalidArray";
         case GLSLCodeModuleMetadataValidationError::InvalidRequirement: return "InvalidRequirement";
         case GLSLCodeModuleMetadataValidationError::DuplicateRequirement: return "DuplicateRequirement";
         case GLSLCodeModuleMetadataValidationError::DuplicateProvide: return "DuplicateProvide";
-        case GLSLCodeModuleMetadataValidationError::InvalidDependencyVersion: return "InvalidDependencyVersion";
         case GLSLCodeModuleMetadataValidationError::DuplicateDependency: return "DuplicateDependency";
         case GLSLCodeModuleMetadataValidationError::SelfDependency: return "SelfDependency";
         case GLSLCodeModuleMetadataValidationError::MissingDependency: return "MissingDependency";
-        case GLSLCodeModuleMetadataValidationError::DependencyVersionMismatch: return "DependencyVersionMismatch";
-        case GLSLCodeModuleMetadataValidationError::InvalidCondition: return "InvalidCondition";
-        case GLSLCodeModuleMetadataValidationError::DuplicateCondition: return "DuplicateCondition";
         case GLSLCodeModuleMetadataValidationError::DuplicateConflict: return "DuplicateConflict";
         case GLSLCodeModuleMetadataValidationError::SelfConflict: return "SelfConflict";
         case GLSLCodeModuleMetadataValidationError::MissingConflictTarget: return "MissingConflictTarget";
@@ -246,12 +211,6 @@ namespace hgl::graph::mtl
                 GLSLCodeModuleMetadataValidationError::InvalidDefinition,
                 definition.name);
 
-        if (definition.metadata_version > GLSLCodeModuleCurrentMetadataVersion)
-            return SetMetadataFailure(
-                out_diagnostic,
-                GLSLCodeModuleMetadataValidationError::UnsupportedVersion,
-                definition.name);
-
         if (!HasValidArray(
                 definition.semantic_requirements,
                 definition.semantic_requirement_count)
@@ -259,7 +218,6 @@ namespace hgl::graph::mtl
                 definition.semantic_provides,
                 definition.semantic_provide_count)
          || !HasValidArray(definition.dependencies, definition.dependency_count)
-         || !HasValidArray(definition.conditions, definition.condition_count)
          || !HasValidArray(
                 definition.module_conflict_names,
                 definition.module_conflict_count)
@@ -343,16 +301,11 @@ namespace hgl::graph::mtl
         {
             GLSLCodeModuleDependency dependency{};
             if (!GetNormalizedGLSLCodeModuleDependency(
-                    definition, i, dependency)
-             || dependency.min_metadata_version
-                    > dependency.max_metadata_version
-             || dependency.max_metadata_version
-                    > GLSLCodeModuleCurrentMetadataVersion)
+                    definition, i, dependency))
             {
                 return SetMetadataFailure(
                     out_diagnostic,
-                    GLSLCodeModuleMetadataValidationError::
-                        InvalidDependencyVersion,
+                    GLSLCodeModuleMetadataValidationError::InvalidDefinition,
                     definition.name,
                     i);
             }
@@ -380,40 +333,6 @@ namespace hgl::graph::mtl
                         i,
                         dependency.module_name);
                 }
-            }
-        }
-
-        for (uint32 i = 0; i < definition.condition_count; ++i)
-        {
-            const GLSLCodeModuleCondition &condition = definition.conditions[i];
-            if (condition.domain < GLSLCodeModuleConditionDomain::Option
-             || condition.domain
-                    > GLSLCodeModuleConditionDomain::DeviceFeature
-             || condition.operation
-                    < GLSLCodeModuleConditionOperator::Equals
-             || condition.operation
-                    > GLSLCodeModuleConditionOperator::NotEquals
-             || !condition.key
-             || !condition.key[0]
-             || !condition.value
-             || !condition.value[0])
-            {
-                return SetMetadataFailure(
-                    out_diagnostic,
-                    GLSLCodeModuleMetadataValidationError::InvalidCondition,
-                    definition.name,
-                    i);
-            }
-
-            for (uint32 j = 0; j < i; ++j)
-            {
-                if (condition == definition.conditions[j])
-                    return SetMetadataFailure(
-                        out_diagnostic,
-                        GLSLCodeModuleMetadataValidationError::
-                            DuplicateCondition,
-                        definition.name,
-                        i);
             }
         }
 
@@ -478,17 +397,6 @@ namespace hgl::graph::mtl
                         i,
                         dependency.module_name);
 
-                if (target->metadata_version < dependency.min_metadata_version
-                 || target->metadata_version > dependency.max_metadata_version)
-                {
-                    return SetMetadataFailure(
-                        out_diagnostic,
-                        GLSLCodeModuleMetadataValidationError::
-                            DependencyVersionMismatch,
-                        definition->name,
-                        i,
-                        dependency.module_name);
-                }
             }
 
             for (uint32 i = 0; i < definition->module_conflict_count; ++i)
@@ -534,8 +442,7 @@ namespace hgl::graph::mtl
                     registry.GetModuleByIndex(right_index);
                 if (!right
                  || !IsProviderCandidate(*right)
-                 || left->priority != right->priority
-                 || !HasConditionOverlap(*left, *right))
+                 || left->priority != right->priority)
                     continue;
 
                 for (uint32 left_provide = 0;

@@ -363,7 +363,7 @@ namespace
         // Every built-in definition must still expose the legacy position-first
         // contract while Phase 4 is introduced incrementally.
         static const char *builtin_ids[] = {
-            BUILTIN_MTL_DEF_FALLBACK,
+            BUILTIN_MTL_DEF_PURE_COLOR,
             BUILTIN_MTL_DEF_MISSING_MATERIAL,
             BUILTIN_MTL_DEF_TEXT
         };
@@ -1714,12 +1714,12 @@ namespace
             }
         }
 
-        ShaderProgramArtifactMetadata invalid_schema = metadata;
-        ++invalid_schema.schema_version;
+        ShaderProgramArtifactMetadata invalid_metadata = metadata;
+        invalid_metadata.program_key_digest = 0;
         if (store.SaveProgramMetadata(
-                program_link, invalid_schema))
+                program_link, invalid_metadata))
             result.diagnostics.emplace_back(
-                "metadata schema mismatch must reject writes");
+                "invalid program metadata must reject writes");
 
         ShaderLinkSpec stage_only_link = program_link;
         stage_only_link.render_target_hash ^= 0x1000u;
@@ -2132,11 +2132,11 @@ namespace
 
         ResolvedModuleGraph graph_a{};
         graph_a.modules.Add(
-            {source_module, 0x101u, 0x201u, 1, 0});
+            {source_module, 0x101u, 1, 0});
         graph_a.modules.Add(
-            {dependency_module, 0x102u, 0x202u, 0, 0});
+            {dependency_module, 0x102u, 0, 0});
         graph_a.dependencies.Add(
-            {source_module, dependency_module, 0, 1});
+            {source_module, dependency_module});
         graph_a.provider_selections.Add(
             {
                 GLSLCodeModuleSemantic::Position,
@@ -2481,7 +2481,7 @@ namespace
 
         static const ExpectedEntry expected[] =
         {
-            { BUILTIN_MTL_DEF_FALLBACK },
+            { BUILTIN_MTL_DEF_PURE_COLOR },
             { BUILTIN_MTL_DEF_MISSING_MATERIAL },
             { BUILTIN_MTL_DEF_TEXT }
         };
@@ -2517,7 +2517,7 @@ namespace
         };
 
         static const ExpectedBootstrap expected[] = {
-            {BUILTIN_MTL_DEF_FALLBACK, MaterialDefinitionBootstrapKind::PureColor},
+            {BUILTIN_MTL_DEF_PURE_COLOR, MaterialDefinitionBootstrapKind::PureColor},
             {BUILTIN_MTL_DEF_MISSING_MATERIAL, MaterialDefinitionBootstrapKind::PureColor},
             {BUILTIN_MTL_DEF_TEXT, MaterialDefinitionBootstrapKind::TextAlphaBlend}
         };
@@ -3822,10 +3822,6 @@ namespace
                 result.diagnostics.emplace_back("full-metadata parse failed");
             else
             {
-                if (data.metadata_version
-                    != GLSLCodeModuleUnversionedMetadataVersion)
-                    result.diagnostics.emplace_back(
-                        "unversioned metadata version mismatch");
                 if (std::strcmp(data.name.c_str(), "sample_ntb") != 0)
                     result.diagnostics.emplace_back("full-metadata name mismatch");
                 if (data.kind != GLSLCodeModuleKind::VertexInput)
@@ -3864,46 +3860,6 @@ namespace
             }
         }
 
-        const char versioned_meta[] =
-            "// @ulre begin\n"
-            "// @ulre version 1\n"
-            "// @ulre name versioned_sample\n"
-            "// @ulre kind Utility\n"
-            "// @ulre condition Option NormalMap Equals Enabled\n"
-            "// @ulre uses surface_interface 0 1\n"
-            "// @ulre conflicts alternate_sample\n"
-            "// @ulre end\n";
-        {
-            GLSLCodeModuleFileData data;
-            const GLSLCodeModuleParseResult parse =
-                ParseGLSLCodeModuleFile(
-                    versioned_meta,
-                    int(std::strlen(versioned_meta)),
-                    data);
-            if (parse != GLSLCodeModuleParseResult::OK)
-            {
-                result.diagnostics.emplace_back(
-                    "versioned metadata parse failed");
-            }
-            else
-            {
-                if (data.metadata_version
-                        != GLSLCodeModuleCurrentMetadataVersion
-                 || data.conditions.GetCount() != 1
-                 || std::strcmp(data.conditions[0].key, "NormalMap") != 0
-                 || std::strcmp(data.conditions[0].value, "Enabled") != 0
-                 || data.pending_module_requirements.GetCount() != 1
-                 || data.pending_dependency_versions.GetCount() != 1
-                 || data.pending_dependency_versions[0].min_metadata_version != 0
-                 || data.pending_dependency_versions[0].max_metadata_version != 1
-                 || data.pending_module_conflicts.GetCount() != 1)
-                {
-                    result.diagnostics.emplace_back(
-                        "versioned metadata content mismatch");
-                }
-            }
-        }
-
         expect_parse("// @ulre begin\n// @ulre end\n", GLSLCodeModuleParseResult::OK, "minimal");
         expect_parse("void main() {}\n", GLSLCodeModuleParseResult::Skipped, "no-metadata");
         expect_parse("// @ulre name x\n// @ulre begin\n// @ulre end\n", GLSLCodeModuleParseResult::MissingBegin, "missing-begin");
@@ -3917,11 +3873,7 @@ namespace
         expect_parse("// @ulre begin\n// @ulre require BadSource Normal\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidSource, "invalid-source");
         expect_parse("// @ulre begin\n// @ulre require GeometryAttribute Normal NotAClass\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidNumericClass, "invalid-numclass");
         expect_parse("// @ulre begin\n// @ulre priority notanumber\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidNumber, "invalid-number");
-        expect_parse("// @ulre begin\n// @ulre version 2\n// @ulre end\n", GLSLCodeModuleParseResult::UnsupportedMetadataVersion, "unsupported-version");
-        expect_parse("// @ulre begin\n// @ulre condition Option X Equals Y\n// @ulre end\n", GLSLCodeModuleParseResult::MissingMetadataVersion, "condition-missing-version");
-        expect_parse("// @ulre begin\n// @ulre version 1\n// @ulre condition Unknown X Equals Y\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidCondition, "invalid-condition");
-        expect_parse("// @ulre begin\n// @ulre version 1\n// @ulre uses dep 1 0\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidDependency, "invalid-dependency-version");
-        expect_parse("// @ulre begin\n// @ulre version 1\n// @ulre conflicts\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidConflict, "invalid-conflict");
+        expect_parse("// @ulre begin\n// @ulre conflicts\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidConflict, "invalid-conflict");
 
         // Registry scan of the real ShaderLibrary directory.
         GLSLCodeModuleRegistry registry;
@@ -4065,14 +4017,12 @@ namespace
         {
             const char dependent_module[] =
                 "// @ulre begin\n"
-                "// @ulre version 1\n"
                 "// @ulre name retry_dependent\n"
                 "// @ulre kind Utility\n"
-                "// @ulre uses retry_provider 1 1\n"
+                "// @ulre uses retry_provider\n"
                 "// @ulre end\n";
             const char provider_module[] =
                 "// @ulre begin\n"
-                "// @ulre version 1\n"
                 "// @ulre name retry_provider\n"
                 "// @ulre kind Utility\n"
                 "// @ulre end\n";
@@ -4137,8 +4087,6 @@ namespace
             definition.name = name;
             definition.glsl_code = "// metadata validation";
             definition.kind = GLSLCodeModuleKind::VertexInput;
-            definition.metadata_version =
-                GLSLCodeModuleCurrentMetadataVersion;
             return definition;
         };
 
@@ -4170,11 +4118,11 @@ namespace
                 make_definition("cycle_second");
             const GLSLCodeModuleDependency first_dependencies[] =
             {
-                {second.name, 0, 1}
+                {second.name}
             };
             const GLSLCodeModuleDependency second_dependencies[] =
             {
-                {first.name, 0, 1}
+                {first.name}
             };
             first.dependencies = first_dependencies;
             first.dependency_count = 1;
@@ -4223,82 +4171,6 @@ namespace
         }
 
         {
-            const GLSLCodeModuleSemantic position[] =
-            {
-                GLSLCodeModuleSemantic::Position
-            };
-            const GLSLCodeModuleCondition high_condition[] =
-            {
-                {
-                    GLSLCodeModuleConditionDomain::Option,
-                    GLSLCodeModuleConditionOperator::Equals,
-                    "Mode",
-                    "High"
-                }
-            };
-            const GLSLCodeModuleCondition low_condition[] =
-            {
-                {
-                    GLSLCodeModuleConditionDomain::Option,
-                    GLSLCodeModuleConditionOperator::Equals,
-                    "Mode",
-                    "Low"
-                }
-            };
-            GLSLCodeModuleDefinition high =
-                make_definition("conditional_high");
-            GLSLCodeModuleDefinition low =
-                make_definition("conditional_low");
-            high.semantic_provides = position;
-            high.semantic_provide_count = 1;
-            high.conditions = high_condition;
-            high.condition_count = 1;
-            low.semantic_provides = position;
-            low.semantic_provide_count = 1;
-            low.conditions = low_condition;
-            low.condition_count = 1;
-
-            GLSLCodeModuleRegistry registry;
-            GLSLCodeModuleMetadataValidationDiagnostic diagnostic{};
-            if (!registry.Register(high)
-             || !registry.Register(low)
-             || !ValidateGLSLCodeModuleRegistryMetadata(
-                    registry, diagnostic))
-            {
-                result.diagnostics.emplace_back(
-                    "mutually exclusive provider conditions must be valid");
-            }
-        }
-
-        {
-            GLSLCodeModuleDefinition unversioned_target =
-                make_definition("unversioned_target");
-            unversioned_target.metadata_version =
-                GLSLCodeModuleUnversionedMetadataVersion;
-            GLSLCodeModuleDefinition versioned_source =
-                make_definition("versioned_source");
-            const GLSLCodeModuleDependency dependencies[] =
-            {
-                {unversioned_target.name, 1, 1}
-            };
-            versioned_source.dependencies = dependencies;
-            versioned_source.dependency_count = 1;
-
-            GLSLCodeModuleRegistry registry;
-            GLSLCodeModuleMetadataValidationDiagnostic diagnostic{};
-            if (!registry.Register(unversioned_target)
-             || !registry.Register(versioned_source)
-             || ValidateGLSLCodeModuleRegistryMetadata(registry, diagnostic)
-             || diagnostic.error
-                    != GLSLCodeModuleMetadataValidationError::
-                        DependencyVersionMismatch)
-            {
-                result.diagnostics.emplace_back(
-                    "dependency metadata version mismatch must be rejected");
-            }
-        }
-
-        {
             GLSLCodeModuleDefinition first =
                 make_definition("conflict_first");
             GLSLCodeModuleDefinition second =
@@ -4318,17 +4190,7 @@ namespace
             GLSLCodeModuleDefinition base =
                 make_definition("metadata_hash");
             GLSLCodeModuleDefinition changed = base;
-            const GLSLCodeModuleCondition condition[] =
-            {
-                {
-                    GLSLCodeModuleConditionDomain::Option,
-                    GLSLCodeModuleConditionOperator::Equals,
-                    "Mode",
-                    "High"
-                }
-            };
-            changed.conditions = condition;
-            changed.condition_count = 1;
+            changed.priority = 10;
             if (GetGLSLCodeModuleDefinitionHash(base)
                 == GetGLSLCodeModuleDefinitionHash(changed))
             {
@@ -4449,18 +4311,14 @@ namespace
             dependency.name = "shadow_dependency";
             dependency.glsl_code = "// shadow dependency";
             dependency.kind = GLSLCodeModuleKind::Utility;
-            dependency.metadata_version = 1;
 
             root_dependency = {
-                dependency.name,
-                GLSLCodeModuleUnversionedMetadataVersion,
-                GLSLCodeModuleCurrentMetadataVersion
+                dependency.name
             };
             root = {};
             root.name = "main_depth_only";
             root.glsl_code = "// shadow root";
             root.kind = GLSLCodeModuleKind::FragmentShader;
-            root.metadata_version = 1;
             root.dependencies = &root_dependency;
             root.dependency_count = 1;
 
@@ -4468,13 +4326,11 @@ namespace
             stage2.name = "s2_passthrough3d";
             stage2.glsl_code = "// synthetic stage 2";
             stage2.kind = GLSLCodeModuleKind::Position;
-            stage2.metadata_version = 1;
 
             stage3 = {};
             stage3.name = "s3_world_camera_vp";
             stage3.glsl_code = "// synthetic stage 3";
             stage3.kind = GLSLCodeModuleKind::Transform;
-            stage3.metadata_version = 1;
 
             if (reverse_order)
             {
@@ -5751,7 +5607,6 @@ namespace
         base.glsl_code = "// invariant base";
         base.kind = GLSLCodeModuleKind::Utility;
         base.priority = 10;
-        base.metadata_version = GLSLCodeModuleCurrentMetadataVersion;
         base.semantic_requirements = &normal_requirement;
         base.semantic_requirement_count = 1;
 

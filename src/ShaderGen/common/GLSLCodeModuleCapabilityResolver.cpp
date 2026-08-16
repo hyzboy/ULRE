@@ -639,12 +639,10 @@ namespace hgl::graph::mtl
     uint64 GetGLSLCodeModuleProviderGraphHash(
         const GLSLCodeModuleResolutionResult &result) noexcept
     {
-        constexpr uint32 kProviderGraphHashSchemaVersion = 1;
         constexpr uint32 kMaxSelectionCount = 64;
 
         hgl::hash::FNV1aHasher64 h;
-        h << kProviderGraphHashSchemaVersion
-          << static_cast<uint32>(result.selections.GetCount());
+        h << static_cast<uint32>(result.selections.GetCount());
 
         uint32 order[kMaxSelectionCount] = {};
         const uint32 count = static_cast<uint32>(result.selections.GetCount());

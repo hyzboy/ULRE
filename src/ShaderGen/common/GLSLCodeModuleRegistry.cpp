@@ -164,7 +164,6 @@ namespace hgl::graph::mtl
             data->definition.kind = data->kind;
             data->definition.priority = data->priority;
             data->definition.flags = data->flags;
-            data->definition.metadata_version = data->metadata_version;
             data->definition.semantic_requirements = data->semantic_requirements.GetData();
             data->definition.semantic_requirement_count = static_cast<uint32>(data->semantic_requirements.GetCount());
             data->definition.semantic_provides = data->semantic_provides.GetData();
@@ -180,9 +179,6 @@ namespace hgl::graph::mtl
             data->definition.texture_layer_requirements = data->texture_layer_requirements.GetData();
             data->definition.texture_layer_requirement_count =
                 static_cast<uint32>(data->texture_layer_requirements.GetCount());
-            data->definition.conditions = data->conditions.GetData();
-            data->definition.condition_count =
-                static_cast<uint32>(data->conditions.GetCount());
             data->metadata_resolution_valid = false;
 
             if (!Register(data->definition))
@@ -222,28 +218,9 @@ namespace hgl::graph::mtl
                     continue;
                 }
 
-                const GLSLCodeModuleDependency &pending_dependency =
-                    data->pending_dependency_versions[k];
-                if (dependency->metadata_version
-                        < pending_dependency.min_metadata_version
-                 || dependency->metadata_version
-                        > pending_dependency.max_metadata_version)
-                {
-                    GLogError(u8"[GLSLCodeModuleRegistry] Code-module dependency version mismatch: module=%s depends_on=%s target_version=%u required=%u..%u",
-                              data->name.c_str(),
-                              dependency_name.c_str(),
-                              uint32(dependency->metadata_version),
-                              uint32(pending_dependency.min_metadata_version),
-                              uint32(pending_dependency.max_metadata_version));
-                    ++error_count;
-                    data->metadata_resolution_valid = false;
-                    continue;
-                }
-
-                GLSLCodeModuleDependency versioned_dependency =
-                    pending_dependency;
-                versioned_dependency.module_name = dependency->name;
-                data->dependencies.Add(versioned_dependency);
+                GLSLCodeModuleDependency resolved_dependency{};
+                resolved_dependency.module_name = dependency->name;
+                data->dependencies.Add(resolved_dependency);
             }
 
             data->definition.dependencies = data->dependencies.GetData();

@@ -10,11 +10,8 @@ namespace hgl::graph::mtl {}
 namespace hgl::graph::shadergen
 {
     using namespace hgl::graph::mtl;
-    constexpr uint32 ShaderProgramKeySchemaVersion = 1;
-
     struct ShaderProgramKey
     {
-        uint32 schema_version = ShaderProgramKeySchemaVersion;
         uint64 vertex_stage_digest = 0;
         uint64 fragment_stage_digest = 0;
         uint64 resource_layout_hash = 0;
@@ -27,8 +24,7 @@ namespace hgl::graph::shadergen
         {
             hgl::hash::FNV1aHasher64 h;
 
-            h << schema_version
-              << vertex_stage_digest
+            h << vertex_stage_digest
               << fragment_stage_digest
               << resource_layout_hash
               << vertex_input_hash
@@ -46,8 +42,7 @@ namespace hgl::graph::shadergen
 
         bool operator==(const ShaderProgramKey &rhs) const noexcept
         {
-            return schema_version == rhs.schema_version
-                && vertex_stage_digest == rhs.vertex_stage_digest
+            return vertex_stage_digest == rhs.vertex_stage_digest
                 && fragment_stage_digest == rhs.fragment_stage_digest
                 && resource_layout_hash == rhs.resource_layout_hash
                 && vertex_input_hash == rhs.vertex_input_hash
@@ -58,8 +53,6 @@ namespace hgl::graph::shadergen
 
         bool operator<(const ShaderProgramKey &rhs) const noexcept
         {
-            if (schema_version != rhs.schema_version)
-                return schema_version < rhs.schema_version;
             if (vertex_stage_digest != rhs.vertex_stage_digest)
                 return vertex_stage_digest < rhs.vertex_stage_digest;
             if (fragment_stage_digest != rhs.fragment_stage_digest)

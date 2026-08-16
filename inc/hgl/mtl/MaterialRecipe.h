@@ -203,9 +203,7 @@ namespace hgl::graph::mtl
     enum class MaterialDefinitionBootstrapKind : uint8_t
     {
         None = 0,
-        ErrorCheckerboard,
         PureColor,
-        PureDepth,
         TextAlphaBlend
     };
 

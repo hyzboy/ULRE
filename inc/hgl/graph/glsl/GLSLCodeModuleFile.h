@@ -31,9 +31,6 @@ namespace hgl::graph::mtl
         InvalidNumber,
         InvalidResource,
         InvalidStage,
-        MissingMetadataVersion,
-        UnsupportedMetadataVersion,
-        InvalidCondition,
         InvalidDependency,
         InvalidConflict
     };
@@ -65,17 +62,12 @@ namespace hgl::graph::mtl
         ValueArray<GLSLCodeModuleSSBORequirement> ssbo_requirements;
         ValueArray<GLSLCodeModuleTextureLayerRequirement> texture_layer_requirements;
         ManagedArray<AnsiString> ssbo_name_storage;
-        ManagedArray<AnsiString> condition_key_storage;
-        ManagedArray<AnsiString> condition_value_storage;
 
         GLSLCodeModuleKind kind = GLSLCodeModuleKind::Shared;
         int32 priority = 0;
         uint32 flags = 0;
-        uint16 metadata_version =
-            GLSLCodeModuleUnversionedMetadataVersion;
         bool metadata_resolution_valid = false;
         ValueArray<GLSLCodeModuleDependency> dependencies;
-        ValueArray<GLSLCodeModuleCondition> conditions;
         // Resolved conflict target names (pointing at target module names).
         ValueArray<const char *> module_conflict_names;
 

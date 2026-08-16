@@ -13,8 +13,7 @@ namespace hgl::graph::mtl
           << definition.glsl_code;
         h << definition.kind
           << definition.priority
-          << definition.flags
-          << definition.metadata_version;
+          << definition.flags;
 
         h << definition.ubo_requirement_count;
         for (uint32 i = 0; i < definition.ubo_requirement_count; ++i)
@@ -49,19 +48,7 @@ namespace hgl::graph::mtl
         {
             const GLSLCodeModuleDependency &dependency =
                 definition.dependencies[i];
-            h << dependency.module_name
-              << dependency.min_metadata_version
-              << dependency.max_metadata_version;
-        }
-
-        h << definition.condition_count;
-        for (uint32 i = 0; i < definition.condition_count; ++i)
-        {
-            const GLSLCodeModuleCondition &condition = definition.conditions[i];
-            h << condition.domain
-              << condition.operation
-              << condition.key
-              << condition.value;
+            h << dependency.module_name;
         }
 
         h << definition.module_conflict_count;

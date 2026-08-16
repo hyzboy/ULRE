@@ -69,9 +69,7 @@ namespace hgl::graph::mtl
         bool ParseBootstrap(const std::string &name, MaterialDefinitionBootstrapKind &out)
         {
             if (name == "None") out = MaterialDefinitionBootstrapKind::None;
-            else if (name == "ErrorCheckerboard") out = MaterialDefinitionBootstrapKind::ErrorCheckerboard;
             else if (name == "PureColor") out = MaterialDefinitionBootstrapKind::PureColor;
-            else if (name == "PureDepth") out = MaterialDefinitionBootstrapKind::PureDepth;
             else if (name == "TextAlphaBlend") out = MaterialDefinitionBootstrapKind::TextAlphaBlend;
             else return false;
             return true;

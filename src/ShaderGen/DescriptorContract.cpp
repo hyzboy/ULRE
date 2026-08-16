@@ -278,10 +278,6 @@ namespace hgl::graph::shadergen
     bool ValidateDescriptorContract(
         const DescriptorContract &contract) noexcept
     {
-        if (contract.schema_version
-            != DescriptorContractSchemaVersion)
-            return false;
-
         ShaderInterfaceContract interface_contract{};
         interface_contract.descriptor_requirements.Reserve(
             static_cast<int>(contract.entries.size()));
@@ -426,8 +422,7 @@ namespace hgl::graph::shadergen
         }
 
         hgl::hash::FNV1aHasher64 h;
-        h << DescriptorContractSchemaVersion
-          << module_manifest_hash
+        h << module_manifest_hash
           << GetShaderInterfaceContractHash(interface_contract);
         return h;
     }

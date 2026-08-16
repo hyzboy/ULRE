@@ -11,8 +11,6 @@ namespace hgl::graph::mtl {}
 namespace hgl::graph::shadergen
 {
     using namespace hgl::graph::mtl;
-    constexpr uint32 DescriptorContractSchemaVersion = 1;
-
     struct DescriptorContractEntry
     {
         ShaderDescriptorContractEntry canonical;
@@ -25,7 +23,6 @@ namespace hgl::graph::shadergen
 
     struct DescriptorContract
     {
-        uint32 schema_version = DescriptorContractSchemaVersion;
         std::vector<DescriptorContractEntry> entries;
     };
 

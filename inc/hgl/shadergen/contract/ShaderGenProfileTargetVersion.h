@@ -83,9 +83,6 @@ namespace hgl::graph::shadergen::contract
     {
         hgl::hash::FNV1aHasher64 h;
 
-        const uint32 schema_version = 1;
-        h << schema_version;
-
         if (!profile)
         {
             h << uint32(0);

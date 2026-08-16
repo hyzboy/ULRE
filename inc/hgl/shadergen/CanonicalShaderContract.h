@@ -18,8 +18,6 @@ namespace hgl::graph::mtl {}
 namespace hgl::graph::shadergen
 {
     using namespace hgl::graph::mtl;
-    constexpr uint32 CanonicalShaderContractSchemaVersion = 1;
-
     using ShaderContractStableID = uint64;
 
     enum class ShaderProgramPurpose : uint8
@@ -33,7 +31,6 @@ namespace hgl::graph::shadergen
     {
         ShaderContractStableID module_id = 0;
         uint64 module_content_hash = 0;
-        uint64 resolved_condition_hash = 0;
         uint32 topological_order = 0;
         uint32 flags = 0;
     };
@@ -44,7 +41,6 @@ namespace hgl::graph::shadergen
     {
         return lhs.module_id == rhs.module_id
             && lhs.module_content_hash == rhs.module_content_hash
-            && lhs.resolved_condition_hash == rhs.resolved_condition_hash
             && lhs.topological_order == rhs.topological_order
             && lhs.flags == rhs.flags;
     }
@@ -53,8 +49,6 @@ namespace hgl::graph::shadergen
     {
         ShaderContractStableID source_module_id = 0;
         ShaderContractStableID target_module_id = 0;
-        uint16 min_metadata_version = 0;
-        uint16 max_metadata_version = GLSLCodeModuleCurrentMetadataVersion;
     };
 
     inline bool operator==(
@@ -62,9 +56,7 @@ namespace hgl::graph::shadergen
         const ResolvedModuleDependencyContract &rhs) noexcept
     {
         return lhs.source_module_id == rhs.source_module_id
-            && lhs.target_module_id == rhs.target_module_id
-            && lhs.min_metadata_version == rhs.min_metadata_version
-            && lhs.max_metadata_version == rhs.max_metadata_version;
+            && lhs.target_module_id == rhs.target_module_id;
     }
 
     struct ResolvedProviderSelectionContract
@@ -87,7 +79,6 @@ namespace hgl::graph::shadergen
 
     struct ResolvedModuleGraph
     {
-        uint32 schema_version = CanonicalShaderContractSchemaVersion;
         ValueArray<ResolvedModuleContractEntry> modules;
         ValueArray<ResolvedModuleDependencyContract> dependencies;
         ValueArray<ResolvedProviderSelectionContract> provider_selections;
@@ -195,7 +186,6 @@ namespace hgl::graph::shadergen
 
     struct ShaderInterfaceContract
     {
-        uint32 schema_version = CanonicalShaderContractSchemaVersion;
         ValueArray<GeometrySemanticContractEntry> geometry_semantics;
         ValueArray<InterStageSemanticContractEntry> inter_stage_semantics;
         ValueArray<ShaderDescriptorContractEntry> descriptor_requirements;
@@ -224,7 +214,6 @@ namespace hgl::graph::shadergen
 
     struct OutputContract
     {
-        uint32 schema_version = CanonicalShaderContractSchemaVersion;
         ShaderProgramPurpose purpose = ShaderProgramPurpose::ForwardColor;
         bool depth_only = false;
         ValueArray<ShaderOutputAttachmentContract> attachments;

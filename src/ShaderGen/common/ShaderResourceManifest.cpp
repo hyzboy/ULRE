@@ -230,9 +230,6 @@ namespace hgl::graph::mtl
         {
             hgl::hash::FNV1aHasher64 h;
             // v3: code modules identified by name (numeric ID track removed).
-            constexpr uint32 manifest_version = 3u;
-            h << manifest_version;
-
             h << manifest.code_module_count;
             for (uint32 i = 0; i < manifest.code_module_count; ++i)
             {

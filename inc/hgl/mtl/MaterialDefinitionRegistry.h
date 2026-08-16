@@ -123,7 +123,6 @@ MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry();
 GLSLCodeModuleRegistry &GetGLSLCodeModuleRegistry();
 
 // ── built-in fallback definition ID 常量 ──────────────────────────────────────
-constexpr const char *BUILTIN_MTL_DEF_FALLBACK          = "builtin/pure_color";
 constexpr const char *BUILTIN_MTL_DEF_MISSING_MATERIAL  = "builtin/missing_material";
 constexpr const char *BUILTIN_MTL_DEF_TEXT              = "builtin/text";
 constexpr const char *BUILTIN_MTL_DEF_PURE_COLOR        = "builtin/pure_color";
@@ -142,7 +141,7 @@ inline bool IsBootstrapMaterialDefinition(
 
 inline const char *GetFallbackMaterialDefinitionID()
 {
-    return BUILTIN_MTL_DEF_FALLBACK;
+    return BUILTIN_MTL_DEF_PURE_COLOR;
 }
 
 /**

@@ -172,58 +172,6 @@ namespace hgl::graph::shadergen
             return true;
         }
 
-        uint64 GetResolvedConditionHash(
-            const GLSLCodeModuleDefinition &definition) noexcept
-        {
-            if (definition.condition_count == 0)
-                return 0;
-
-            ValueArray<GLSLCodeModuleCondition> conditions(
-                definition.conditions,
-                static_cast<int>(definition.condition_count));
-            for (int i = 1; i < conditions.GetCount(); ++i)
-            {
-                const GLSLCodeModuleCondition value = conditions[i];
-                int insert_at = i;
-                while (insert_at > 0)
-                {
-                    const GLSLCodeModuleCondition &other =
-                        conditions[insert_at - 1];
-                    int comparison =
-                        static_cast<int>(value.domain)
-                        - static_cast<int>(other.domain);
-                    if (comparison == 0)
-                        comparison = std::strcmp(value.key, other.key);
-                    if (comparison == 0)
-                    {
-                        comparison =
-                            static_cast<int>(value.operation)
-                            - static_cast<int>(other.operation);
-                    }
-                    if (comparison == 0)
-                        comparison = std::strcmp(value.value, other.value);
-                    if (comparison >= 0)
-                        break;
-
-                    conditions[insert_at] = other;
-                    --insert_at;
-                }
-                conditions[insert_at] = value;
-            }
-
-            hgl::hash::FNV1aHasher64 h;
-
-            h << static_cast<uint32>(conditions.GetCount());
-            for (int i = 0; i < conditions.GetCount(); ++i)
-            {
-                h << conditions[i].domain
-                  << conditions[i].operation
-                  << conditions[i].key
-                  << conditions[i].value;
-            }
-            return h;
-        }
-
         bool MergeRequirement(
             ResolvedModuleGraph &graph,
             const GLSLCodeModuleSemanticRequirement &incoming,
@@ -357,9 +305,7 @@ namespace hgl::graph::shadergen
                 state.graph.dependencies.Add(
                     {
                         stable_id,
-                        GetGLSLCodeModuleStableID(*dependencies[i].target),
-                        dependencies[i].dependency.min_metadata_version,
-                        dependencies[i].dependency.max_metadata_version
+                        GetGLSLCodeModuleStableID(*dependencies[i].target)
                     });
             }
 
@@ -396,8 +342,6 @@ namespace hgl::graph::shadergen
             module.module_content_hash =
                 GetCanonicalGLSLCodeModuleContentHash(
                     definition, state.registry);
-            module.resolved_condition_hash =
-                GetResolvedConditionHash(definition);
             module.topological_order =
                 static_cast<uint32>(state.graph.modules.GetCount());
             module.flags = definition.flags;
@@ -453,8 +397,7 @@ namespace hgl::graph::shadergen
           << definition.glsl_code;
         h << definition.kind
           << definition.priority
-          << definition.flags
-          << definition.metadata_version;
+          << definition.flags;
 
         h << definition.ubo_requirement_count;
         for (uint32 i = 0; i < definition.ubo_requirement_count; ++i)
@@ -516,12 +459,8 @@ namespace hgl::graph::shadergen
         h << static_cast<uint32>(dependencies.GetCount());
         for (int i = 0; i < dependencies.GetCount(); ++i)
         {
-            h << GetGLSLCodeModuleStableID(*dependencies[i].target)
-              << dependencies[i].dependency.min_metadata_version
-              << dependencies[i].dependency.max_metadata_version;
+            h << GetGLSLCodeModuleStableID(*dependencies[i].target);
         }
-
-        h << GetResolvedConditionHash(definition);
 
         ValueArray<ShaderContractStableID> conflict_ids;
         for (uint32 i = 0; i < definition.module_conflict_count; ++i)

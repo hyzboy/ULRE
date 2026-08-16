@@ -11,11 +11,8 @@ namespace hgl::graph::mtl {}
 namespace hgl::graph::shadergen
 {
     using namespace hgl::graph::mtl;
-    constexpr uint32 ShaderStageKeySchemaVersion = 1;
-
     struct ShaderStageKey
     {
-        uint32 schema_version = ShaderStageKeySchemaVersion;
         ShaderStage stage = ShaderStage::Vertex;
         uint64 definition_hash = 0;
         uint64 glsl_module_graph_hash = 0;
@@ -27,8 +24,7 @@ namespace hgl::graph::shadergen
         {
             hgl::hash::FNV1aHasher64 h;
 
-            h << schema_version
-              << stage
+            h << stage
               << definition_hash
               << glsl_module_graph_hash
               << interface_hash
@@ -48,8 +44,7 @@ namespace hgl::graph::shadergen
 
         bool operator==(const ShaderStageKey &rhs) const noexcept
         {
-            return schema_version == rhs.schema_version
-                && stage == rhs.stage
+            return stage == rhs.stage
                 && definition_hash == rhs.definition_hash
                 && glsl_module_graph_hash == rhs.glsl_module_graph_hash
                 && interface_hash == rhs.interface_hash
@@ -59,8 +54,6 @@ namespace hgl::graph::shadergen
 
         bool operator<(const ShaderStageKey &rhs) const noexcept
         {
-            if (schema_version != rhs.schema_version)
-                return schema_version < rhs.schema_version;
             if (stage != rhs.stage)
                 return static_cast<uint32>(stage) < static_cast<uint32>(rhs.stage);
             if (definition_hash != rhs.definition_hash)

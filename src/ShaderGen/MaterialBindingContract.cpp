@@ -199,8 +199,7 @@ namespace hgl::graph::mtl
     bool ValidateResolvedBindingTable(
         const ResolvedBindingTable &table) noexcept
     {
-        if (table.schema_version != MaterialBindingContractSchemaVersion
-         || table.program_key_digest == 0
+        if (table.program_key_digest == 0
          || table.source_binding_hash == 0)
             return false;
 
@@ -270,8 +269,7 @@ namespace hgl::graph::mtl
 
         CanonicalContractWriter writer(out_bytes);
         writer.WriteU32(ResolvedBindingTableTag);
-        writer.WriteU32(table.schema_version);
-        writer.WriteU64(table.program_key_digest);
+                writer.WriteU64(table.program_key_digest);
         writer.WriteU64(table.source_binding_hash);
         writer.WriteU32(table.missing_required_count);
         writer.WriteU32(table.unused_recipe_texture_count);
@@ -289,8 +287,7 @@ namespace hgl::graph::mtl
         const MaterialRecipe &recipe) noexcept
     {
         hgl::hash::FNV1aHasher64 h;
-        h << MaterialBindingContractSchemaVersion
-          << static_cast<uint32>(recipe.textures.size());
+        h << static_cast<uint32>(recipe.textures.size());
         for (const auto &texture : recipe.textures)
         {
             h << texture.slot_name

@@ -9,9 +9,6 @@
 
 namespace hgl::graph::mtl
 {
-    constexpr uint16 GLSLCodeModuleUnversionedMetadataVersion = 0;
-    constexpr uint16 GLSLCodeModuleCurrentMetadataVersion = 1;
-
     // Reusable GLSL code is stage-agnostic. A module may be used by vertex,
     // fragment, or shared shader generation paths.
     //
@@ -83,48 +80,9 @@ namespace hgl::graph::mtl
         Exclusive = 1u << 0
     };
 
-    enum class GLSLCodeModuleConditionDomain : uint8
-    {
-        Option = 0,
-        ShaderProgramPurpose,
-        DeviceFeature
-    };
-
-    enum class GLSLCodeModuleConditionOperator : uint8
-    {
-        Equals = 0,
-        NotEquals
-    };
-
-    struct GLSLCodeModuleCondition
-    {
-        GLSLCodeModuleConditionDomain domain =
-            GLSLCodeModuleConditionDomain::Option;
-        GLSLCodeModuleConditionOperator operation =
-            GLSLCodeModuleConditionOperator::Equals;
-        const char *key = nullptr;
-        const char *value = nullptr;
-    };
-
-    inline bool operator==(const GLSLCodeModuleCondition &lhs,
-                           const GLSLCodeModuleCondition &rhs) noexcept
-    {
-        const bool same_key = lhs.key == rhs.key
-            || (lhs.key && rhs.key && hgl::strcmp(lhs.key, rhs.key) == 0);
-        const bool same_value = lhs.value == rhs.value
-            || (lhs.value && rhs.value && hgl::strcmp(lhs.value, rhs.value) == 0);
-        return lhs.domain == rhs.domain
-            && lhs.operation == rhs.operation
-            && same_key
-            && same_value;
-    }
-
     struct GLSLCodeModuleDependency
     {
         const char *module_name = nullptr;      // 依赖目标模块名（注册表唯一键）
-        uint16 min_metadata_version =
-            GLSLCodeModuleUnversionedMetadataVersion;
-        uint16 max_metadata_version = GLSLCodeModuleCurrentMetadataVersion;
     };
 
     inline bool operator==(const GLSLCodeModuleDependency &lhs,
@@ -133,9 +91,7 @@ namespace hgl::graph::mtl
         const bool same_name = lhs.module_name == rhs.module_name
             || (lhs.module_name && rhs.module_name
                 && hgl::strcmp(lhs.module_name, rhs.module_name) == 0);
-        return same_name
-            && lhs.min_metadata_version == rhs.min_metadata_version
-            && lhs.max_metadata_version == rhs.max_metadata_version;
+        return same_name;
     }
 
     struct GLSLCodeModuleSemanticRequirement
@@ -280,15 +236,8 @@ namespace hgl::graph::mtl
         const GLSLCodeModuleTextureLayerRequirement *texture_layer_requirements = nullptr;
         uint32 texture_layer_requirement_count = 0;
 
-        uint16 metadata_version =
-            GLSLCodeModuleUnversionedMetadataVersion;
-        uint16 metadata_reserved = 0;
-
         const GLSLCodeModuleDependency *dependencies = nullptr;
         uint32 dependency_count = 0;
-
-        const GLSLCodeModuleCondition *conditions = nullptr;
-        uint32 condition_count = 0;
 
         // Names of mutually exclusive modules. The registry resolves them at
         // load time; strings are owned by the registry's file-data storage.
