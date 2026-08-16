@@ -97,6 +97,9 @@ namespace hgl
             graph::StructuredBufferAccessor<graph::CameraInfo>* camera_ubo = nullptr;
             bool camera_ubo_managed = false;
             bool first_update_pending = true;
+            // W6 单写点：camera_info 实际更新（UpdateMatrices）时置位，
+            // SyncCameraUBO 消费后清除——相机静止时不再每帧重传 UBO
+            bool camera_ubo_dirty = true;
 
         public:
 

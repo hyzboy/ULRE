@@ -315,6 +315,13 @@ namespace hgl::ecs
         if (!camera_ubo)
             return;
 
+        // W6 单写点：仅相机矩阵实际变化时提交（此前无条件 Update+MarkDirty，
+        // 与 CameraSystem::Update 的双写每帧传两次相同数据）
+        if (!camera_ubo_dirty)
+            return;
+
+        camera_ubo_dirty = false;
+
         if (camera_info)
             camera_ubo->Update(*camera_info);
 
@@ -375,16 +382,6 @@ namespace hgl::ecs
 
             // 更新矩阵
             UpdateMatrices(camera_comp.get());
-
-            // Always commit main camera UBO once per frame to guarantee
-            // camera data availability on render-only paths.
-            if (camera_comp.get() == main_camera && camera_ubo && camera_comp->camera_info)
-            {
-                camera_ubo->Update(*camera_comp->camera_info);
-                camera_ubo->MarkDirty();
-            }
-
-            // 上传到GPU
         }
 
         if (first_update_pending)
@@ -543,6 +540,9 @@ namespace hgl::ecs
                 camera->viewport_info,
                 camera->camera_data
             );
+
+            // W6 单写点：实际更新了 camera_info 才标记 UBO 待提交
+            camera_ubo_dirty = true;
         }
 
         camera->matrix_dirty = false;
