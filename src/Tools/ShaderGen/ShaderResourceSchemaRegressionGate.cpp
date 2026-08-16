@@ -26,7 +26,7 @@
 #include <hgl/log/Log.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/filesystem/Path.h>
-#include "../../ShaderGen/3d/DefinitionDescriptorBuilder3D.h"
+#include "../../ShaderGen/3d/DefinitionDescriptorBuilder.h"
 #include "../../ShaderGen/common/VertexBuilderCommon.h"
 #include "../../ShaderGen/common/VertexShaderAssembler.h"
 
@@ -3714,7 +3714,7 @@ namespace
                         "Texture2D providers must declare bindless per-slot layer-table dependencies");
 
                 const std::vector<SerializedDescriptorEntry> descriptors =
-                    Build3DDescriptorsFromDefinition(MaterialDefinition{}, manifest_2d);
+                    BuildDescriptorsFromDefinition(MaterialDefinition{}, manifest_2d);
                 bool has_layer_table = false;
                 for (const auto &entry : descriptors)
                 {
@@ -3749,7 +3749,7 @@ namespace
                         "Texture2DArray providers must declare bindless Custom0 layer resources");
 
                 const std::vector<SerializedDescriptorEntry> descriptors =
-                    Build3DDescriptorsFromDefinition(MaterialDefinition{}, manifest_array);
+                    BuildDescriptorsFromDefinition(MaterialDefinition{}, manifest_array);
                 bool has_layer_table = false;
                 for (const auto &entry : descriptors)
                 {

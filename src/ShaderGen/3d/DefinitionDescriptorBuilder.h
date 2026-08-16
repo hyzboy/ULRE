@@ -13,16 +13,16 @@ namespace hgl::graph::mtl
 {
     namespace descriptor_builder_common = hgl::graph::shadergen::descriptor_builder_common;
 
-struct Build3DDescriptorOptions
+struct BuildDescriptorOptions
 {
     uint32_t sky_stage_flags = uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS);
     uint32_t color_palette_stage_flags = uint32_t(VK_SHADER_STAGE_VERTEX_BIT);
     uint32_t material_texture_layer_table_stage_flags = uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS);
 };
 
-inline std::vector<SerializedDescriptorEntry> Build3DDescriptorsFromDefinition(
+inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
     const MaterialDefinition &definition,
-    const Build3DDescriptorOptions &opt = {})
+    const BuildDescriptorOptions &opt = {})
 {
     std::vector<SerializedDescriptorEntry> descriptors;
     descriptors.reserve(16);
@@ -50,7 +50,7 @@ inline std::vector<SerializedDescriptorEntry> Build3DDescriptorsFromDefinition(
     return descriptors;
 }
 
-inline bool Build3DShaderResourceManifest(
+inline bool BuildShaderResourceManifest(
     const MaterialDefinition &definition,
     ShaderResourceManifest &manifest,
     const char *const *provider_roots = nullptr,
@@ -61,12 +61,12 @@ inline bool Build3DShaderResourceManifest(
         definition, manifest, provider_roots, provider_root_count, registry);
 }
 
-inline std::vector<SerializedDescriptorEntry> Build3DDescriptorsFromDefinition(
+inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
     const MaterialDefinition &definition,
     ShaderResourceManifest &manifest,
-    const Build3DDescriptorOptions &opt = {})
+    const BuildDescriptorOptions &opt = {})
 {
-    std::vector<SerializedDescriptorEntry> descriptors = Build3DDescriptorsFromDefinition(definition, opt);
+    std::vector<SerializedDescriptorEntry> descriptors = BuildDescriptorsFromDefinition(definition, opt);
     descriptor_builder_common::AppendManifestUBODescriptors(descriptors, manifest);
     if (!descriptor_builder_common::AppendManifestSSBODescriptors(descriptors, manifest)
      || !descriptor_builder_common::AppendManifestTextureLayerDescriptors(descriptors, manifest))
@@ -77,13 +77,13 @@ inline std::vector<SerializedDescriptorEntry> Build3DDescriptorsFromDefinition(
     return descriptors;
 }
 
-inline std::vector<SerializedDescriptorEntry> Build3DDescriptorsFromDefinition(
+inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
     const MaterialDefinition &definition,
     const ShaderResourceManifest &manifest,
-    const Build3DDescriptorOptions &opt = {})
+    const BuildDescriptorOptions &opt = {})
 {
     ShaderResourceManifest mutable_manifest = manifest;
-    return Build3DDescriptorsFromDefinition(definition, mutable_manifest, opt);
+    return BuildDescriptorsFromDefinition(definition, mutable_manifest, opt);
 }
 
 } // namespace hgl::graph::mtl

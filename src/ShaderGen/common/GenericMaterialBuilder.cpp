@@ -19,7 +19,7 @@
 #include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/graph/glsl/GLSLCodeModuleCapabilityResolver.h>
-#include "3d/DefinitionDescriptorBuilder3D.h"
+#include "3d/DefinitionDescriptorBuilder.h"
 #include "common/VertexShaderAssembler.h"
 #include "common/GenericMaterialBuilder.h"
 
@@ -249,7 +249,7 @@ namespace hgl::graph::mtl
                 if (provider_root_count < 2)
                     provider_root_names[provider_root_count++] = provider->name;
             }
-            if (!Build3DShaderResourceManifest(
+            if (!BuildShaderResourceManifest(
                     plan.manifest_definition, plan.manifest,
                     provider_root_names, provider_root_count, &module_registry))
             {
@@ -258,7 +258,7 @@ namespace hgl::graph::mtl
                 return false;
             }
             plan.descriptors =
-                Build3DDescriptorsFromDefinition(definition, plan.manifest);
+                BuildDescriptorsFromDefinition(definition, plan.manifest);
             if (plan.depth_purpose)
             {
                 plan.descriptors.erase(
