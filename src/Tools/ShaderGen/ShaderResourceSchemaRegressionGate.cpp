@@ -5475,12 +5475,58 @@ namespace
         GateResult result;
         result.name = "AB.shader-library-path";
 
+        // Baseline: default resolution must find the repository ShaderLibrary.
         const std::string root = GetShaderLibraryPath("ShaderLibrary");
         const hgl::filesystem::Path root_path(hgl::ToOSString(root));
         if (!IsShaderLibraryRoot(root_path))
         {
             result.diagnostics.emplace_back(
                 "ShaderLibrary path resolver did not find a valid material root");
+        }
+
+        const hgl::OSString env_name(kShaderLibraryPathEnvironmentVariable);
+        const hgl::OSString env_root_os =
+            hgl::ToOSString(RepoRootPath("ShaderLibrary"));
+
+        // Capture the inherited value BEFORE any in-process mutation, so the
+        // final restore puts the environment back exactly as the gate found it.
+        const wchar_t *saved_env =
+            _wgetenv(kShaderLibraryPathEnvironmentVariable);
+        const hgl::OSString saved_env_os =
+            saved_env && saved_env[0] ? hgl::OSString(saved_env) : hgl::OSString();
+
+        // 1. Env-var override wins over an explicit (invalid) request.
+        _wputenv((env_name + OS_TEXT("=") + env_root_os).c_str());
+        const std::string env_override =
+            GetShaderLibraryPath("C:/definitely/not/a/library");
+        const hgl::filesystem::Path env_override_path(
+            hgl::ToOSString(env_override));
+        if (!IsShaderLibraryRoot(env_override_path))
+        {
+            result.diagnostics.emplace_back(
+                "ULRE_SHADERLIBRARY_PATH override must beat the requested path");
+        }
+
+        // 2. Invalid env-var value must be ignored, not fatal.
+        _wputenv((env_name + OS_TEXT("=C:/definitely/not/a/library")).c_str());
+        const std::string invalid_env = GetShaderLibraryPath("ShaderLibrary");
+        if (invalid_env.empty())
+        {
+            result.diagnostics.emplace_back(
+                "invalid ULRE_SHADERLIBRARY_PATH must fall back, not fail");
+        }
+
+        // 3. Restoring the original value (or clearing, when unset) restores
+        //    default resolution and must not poison later gate cases.
+        if (!saved_env_os.IsEmpty())
+            _wputenv((env_name + OS_TEXT("=") + saved_env_os).c_str());
+        else
+            _wputenv(env_name.c_str());
+        const std::string cleared = GetShaderLibraryPath("ShaderLibrary");
+        if (cleared.empty())
+        {
+            result.diagnostics.emplace_back(
+                "restoring ULRE_SHADERLIBRARY_PATH must not break resolution");
         }
 
         result.passed = result.diagnostics.empty();
