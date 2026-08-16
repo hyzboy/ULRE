@@ -441,8 +441,12 @@ namespace hgl::ecs
 
         if (!data_buffer || !draw_range)
         {
-            batch.icb_draw->Unmap();
-            batch.icb_draw_indexed->Unmap();
+            // needs_indirect==false 时 ICB 已被 ReleaseICB 置空，Unmap 会崩溃
+            if (needs_indirect)
+            {
+                batch.icb_draw->Unmap();
+                batch.icb_draw_indexed->Unmap();
+            }
             batch.draw_batches_count = 0;
             batch.draw_batches.clear();
             return;

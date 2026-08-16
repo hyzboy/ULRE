@@ -52,6 +52,17 @@ namespace hgl::ecs
             return;
         }
 
+        is_ticking = true;
+
+        if (context)
+            context->Tick(delta_time);
+
+        for (auto& child : children)
+        {
+            if (child)
+                child->Tick(delta_time);
+        }
+
         is_ticking = false;
     }
 
@@ -64,6 +75,17 @@ namespace hgl::ecs
         {
             LogWarning("[World] Render re-entry blocked: %s", GetName().c_str());
             return;
+        }
+
+        is_rendering = true;
+
+        if (context)
+            context->Render(cmd, delta_time);
+
+        for (auto& child : children)
+        {
+            if (child)
+                child->Render(cmd, delta_time);
         }
 
         is_rendering = false;

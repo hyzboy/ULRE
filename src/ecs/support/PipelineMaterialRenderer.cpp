@@ -77,8 +77,9 @@ namespace hgl::ecs
             icb_draw->Draw(*cmd_buf, first_indirect_draw_index, indirect_draw_count);
         }
 
-        // 重置间接绘制状态
+        // 重置间接绘制状态（命令序号累计到本批次已提交段）
         first_indirect_draw_index = -1;
+        indirect_draw_command_offset += indirect_draw_count;
         indirect_draw_count = 0;
     }
 
@@ -121,10 +122,13 @@ namespace hgl::ecs
         // 提交绘制命令
         if (batch->geom_data_buffer->vdm)
         {
-            // 间接绘制：累积命令
+            // 间接绘制：累积命令。命令偏移取本批次 ICB 的命令序号累计，
+            // 不能用 first_instance（实例索引）——vdm/非 vdm 混排时二者脱节，
+            // 会读取到未写入/错误的 ICB 命令。
             if (indirect_draw_count == 0)
             {
-                first_indirect_draw_index = batch->first_instance;
+                first_indirect_draw_index =
+                    static_cast<int32_t>(indirect_draw_command_offset);
             }
 
             ++indirect_draw_count;
@@ -191,9 +195,10 @@ namespace hgl::ecs
             }
         }
 
-        // 重置渲染状态缓存
+        // 重置渲染状态缓存（每批次 ICB 命令从 0 开始）
         last_data_buffer = nullptr;
         indirect_draw_count = 0;
+        indirect_draw_command_offset = 0;
         first_indirect_draw_index = -1;
 
         // L2W / MI descriptor binding is unified in RenderDescriptorBindingSystem.

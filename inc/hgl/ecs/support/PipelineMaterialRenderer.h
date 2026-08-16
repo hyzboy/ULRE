@@ -79,6 +79,7 @@ namespace hgl::ecs
 
         int first_indirect_draw_index;                      ///<首个间接绘制索引
         uint32_t indirect_draw_count;                       ///<累积的间接绘制数量
+        uint32_t indirect_draw_command_offset = 0;          ///<本批次已提交的间接命令数（ICB 命令序号累计）
 
         // === 渲染辅助方法 ===
 
