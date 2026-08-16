@@ -200,7 +200,6 @@ namespace hgl
             bool SetSystemEnabledByKey(size_t key, bool enabled);
             bool RemoveSystemByKey(size_t key);
             void RunRenderPhaseUpdates(ExecutionPhase phase, float deltaTime);
-            void RunRenderUpdatesFrom(ExecutionPhase phase, float deltaTime);
             void RunRenderUpdatesRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
             void RunRenderSystemsInRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
             void RunSystemUpdate(System *system, float deltaTime);

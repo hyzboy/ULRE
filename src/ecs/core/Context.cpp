@@ -848,24 +848,6 @@ namespace hgl
             }
         }
 
-        void ECSContext::RunRenderUpdatesFrom(ExecutionPhase phase, float deltaTime)
-        {
-            SortRenderSystems();
-
-            const int min_phase = static_cast<int>(phase);
-
-            for (auto& entry : render_system_order)
-            {
-                if (!entry.system)
-                    continue;
-
-                if (entry.phase < min_phase)
-                    continue;
-
-                RunSystemUpdate(entry.system.get(), deltaTime);
-            }
-        }
-
         void ECSContext::RunRenderUpdatesRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime)
         {
             SortRenderSystems();
