@@ -204,18 +204,6 @@ namespace hgl
             return camera_system;
         }
 
-        bool ECSContext::IsEntityTickEnabled(const Entity* entity) const
-        {
-            (void)entity;
-            return true;
-        }
-
-        bool ECSContext::IsEntityRenderEnabled(const Entity* entity) const
-        {
-            (void)entity;
-            return true;
-        }
-
         RenderPipelineBase* ECSContext::GetRenderPipeline(const std::string& name)
         {
             auto it = render_pipelines.find(name);
@@ -357,8 +345,6 @@ namespace hgl
             if (!active)
                 return;
 
-            filtered_entity_count_last_frame = 0;
-
             SortTickSystems();
 
             // Update non-render systems
@@ -376,15 +362,7 @@ namespace hgl
                 for (auto entity : entities)
                 {
                     if (entity)
-                    {
-                        if (!IsEntityTickEnabled(entity))
-                        {
-                            ++filtered_entity_count_last_frame;
-                            continue;
-                        }
-
                         entity->OnUpdate(deltaTime);
-                    }
                 }
             }
 

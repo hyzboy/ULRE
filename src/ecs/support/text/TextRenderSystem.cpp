@@ -9,7 +9,6 @@ namespace hgl::ecs
     TextRenderSystem::TextRenderSystem(const std::string& name)
         : RenderPipelineDrawSystem(name)
     {
-        SetSystemType(SystemType::RenderSubmit);
         SetExecutionOrder(ExecutionPhase::RenderDrawSubmit);
         SetRenderElementType("Text");
         AddDependency<TextSyncSystem>();

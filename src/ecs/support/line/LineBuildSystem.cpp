@@ -9,7 +9,6 @@ namespace hgl::ecs
     LineBuildSystem::LineBuildSystem(const std::string& name)
         : BuildSystem(name)
     {
-        SetSystemType(SystemType::RenderBatch);
         SetExecutionOrder(ExecutionPhase::RenderBatch);
         SetRenderElementType("Line");
         AddDependency<LineCollectSystem>();

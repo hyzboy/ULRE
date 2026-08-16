@@ -12,7 +12,6 @@ namespace hgl::ecs
     BoundingBoxUpdateSystem::BoundingBoxUpdateSystem(const std::string& name)
         : System(name)
     {
-        SetSystemType(SystemType::BoundingBox);
         SetExecutionOrder(ExecutionPhase::TickTransform);
         AddDependency<TransformSystem>();
     }
@@ -44,9 +43,6 @@ namespace hgl::ecs
                 MarkSeen(bbox, nullptr);
                 continue;
             }
-
-            if (!world->IsEntityTickEnabled(owner))
-                continue;
 
             auto primitive = owner->GetComponent<PrimitiveComponent>();
             if (!primitive)

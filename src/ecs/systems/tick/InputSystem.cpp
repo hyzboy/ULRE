@@ -21,7 +21,6 @@ namespace hgl::ecs
     InputSystem::InputSystem()
     {
         // Set system type and properties
-        SetSystemType(SystemType::Input);
         SetExecutionOrder(ExecutionPhase::TickInput);
 
         // No dependencies - Input runs first

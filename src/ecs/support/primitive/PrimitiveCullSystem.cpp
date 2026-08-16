@@ -7,7 +7,6 @@ namespace hgl::ecs
     PrimitiveCullSystem::PrimitiveCullSystem(const std::string& name)
         : CullSystem(name)
     {
-        SetSystemType(SystemType::RenderCollect);
         SetExecutionOrder(ExecutionPhase::RenderCollect);
         SetRenderElementType("Primitive");
     }

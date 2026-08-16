@@ -23,8 +23,6 @@ namespace hgl::ecs
     public:
         virtual bool Initialize()
         {
-            SetSystemType(SystemType::BoundingBox);
-
             // 创建查询：同时需要Transform和BoundingBox
             aabb_query = CreateQuery<TransformComponent, BoundingBoxComponent>();
 
@@ -91,8 +89,6 @@ namespace hgl::ecs
 
         virtual bool Initialize()
         {
-            SetSystemType(SystemType::Animation);
-
             // 条件参与：创建查询并添加距离条件
             skeleton_query = CreateQuery<TransformComponent>();
 
@@ -180,8 +176,6 @@ namespace hgl::ecs
     public:
         virtual bool Initialize()
         {
-            SetSystemType(SystemType::Unknown);
-
             // 创建查询：被手动管理的AI实体
             active_query = CreateQuery<TransformComponent>();
 

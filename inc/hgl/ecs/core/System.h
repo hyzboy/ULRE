@@ -57,25 +57,6 @@ namespace hgl
         };
 
         /**
-         * System type identifiers for dependency management
-         */
-        enum class SystemType
-        {
-            Unknown,
-            Input,
-            Transform,
-            Camera,
-            BoundingBox,
-            RenderCollect,
-            RenderBatch,
-            RenderSubmit,
-            Physics,
-            Animation,
-            Material,
-            // Add more as needed
-        };
-
-        /**
          * Base class for all systems
          * Systems handle specific types of logic and processing
          */
@@ -85,8 +66,6 @@ namespace hgl
 
             OBJECT_LOGGER
 
-            bool initialized = false;
-            SystemType systemType = SystemType::Unknown;
             ExecutionPhase executionPhase = ExecutionPhase::TickInput;
             std::vector<std::type_index> dependencies; // Type IDs of systems this depends on
             std::unique_ptr<SystemCache> cache_manager;  // Component query cache
@@ -113,18 +92,12 @@ namespace hgl
             /// Render hook (optional). Default no-op.
             virtual void Render(graph::RenderCmdBuffer *, float /*deltaTime*/ ) {}
 
-            /// Get if system is initialized
-            bool IsInitialized() const { return initialized; }
-
             void SetEnabled(bool value) { enabled = value; }
             bool IsEnabled() const { return enabled; }
 
             /// Set render element type (e.g., "Primitive", "Text", "SkySphere")
             void SetRenderElementType(const std::string& type) { render_element_type = type; }
             const std::string& GetRenderElementType() const { return render_element_type; }
-
-            /// Get system type
-            SystemType GetSystemType() const { return systemType; }
 
             /// Get execution phase
             ExecutionPhase GetExecutionPhase() const { return executionPhase; }
@@ -153,11 +126,6 @@ namespace hgl
             void SetContext(ECSContext* ctx) { context = ctx; }
 
         protected:
-
-            void SetInitialized(bool value) { initialized = value; }
-
-            /// Set system type (call in derived constructor)
-            void SetSystemType(SystemType type) { systemType = type; }
 
             /// Set execution order by phase
             void SetExecutionOrder(ExecutionPhase phase)

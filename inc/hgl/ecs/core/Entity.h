@@ -102,9 +102,6 @@ namespace hgl
             /// Update all components
             void OnUpdate(float deltaTime) override;
 
-            /// Get component count
-            size_t GetComponentCount() const { return static_cast<size_t>(components.GetCount()); }
-
             /// Get all components (for serialization)
             void GetAllComponents(std::vector<std::shared_ptr<Component>>& out) const;
 

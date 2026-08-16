@@ -464,7 +464,6 @@ namespace hgl::ecs
         : System(name)
     {
         // Set system type and properties
-        SetSystemType(SystemType::RenderCollect);
         SetExecutionOrder(ExecutionPhase::RenderCollect);
         SetRenderElementType("Primitive");
 
@@ -1086,9 +1085,6 @@ namespace hgl::ecs
             if (!entity)
                 continue;
 
-            if (!world->IsEntityRenderEnabled(entity))
-                continue;
-
             if (!primitiveComp->HasAnyMaterialRecipeSource())
                 continue;
 
@@ -1175,9 +1171,6 @@ namespace hgl::ecs
                 ++skipped_no_owner;
                 continue;
             }
-
-            if (!world->IsEntityRenderEnabled(entity))
-                continue;
 
             if (!primitiveComp->HasAnyMaterialRecipeSource())
             {

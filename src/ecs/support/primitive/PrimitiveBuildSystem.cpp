@@ -7,7 +7,6 @@ namespace hgl::ecs
     PrimitiveBuildSystem::PrimitiveBuildSystem(const std::string& name)
         : BuildSystem(name)
     {
-        SetSystemType(SystemType::RenderBatch);
         SetExecutionOrder(ExecutionPhase::RenderBatch);
         SetRenderElementType("Primitive");
     }

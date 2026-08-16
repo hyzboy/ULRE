@@ -11,7 +11,6 @@ namespace hgl::ecs
         : System(name)
     {
         // Set system type and properties
-        SetSystemType(SystemType::Transform);
         SetExecutionOrder(ExecutionPhase::TickTransform);
 
         // No dependencies - Transform is fundamental
@@ -54,8 +53,7 @@ namespace hgl::ecs
             if (auto comp = weak_comp.lock())
             {
                 Entity* owner = comp->GetOwner();
-                if (owner && !world->IsEntityTickEnabled(owner))
-                    continue;
+                (void)owner;
 
                 ++total_movable;
                 if (comp->IsDirty())
@@ -119,8 +117,7 @@ namespace hgl::ecs
             return;
 
         Entity* owner = comp->GetOwner();
-        if (owner && !world->IsEntityTickEnabled(owner))
-            return;
+        (void)owner;
 
         auto parent = comp->GetParent();
         if (parent)

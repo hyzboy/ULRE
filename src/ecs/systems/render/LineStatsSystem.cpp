@@ -9,7 +9,6 @@ namespace hgl::ecs
     LineStatsSystem::LineStatsSystem(const std::string& name)
         : System(name)
     {
-        SetSystemType(SystemType::Unknown);
         SetExecutionOrder(ExecutionPhase::RenderStat);
         SetRenderElementType("Line");
         AddDependency<LineCollectSystem>();

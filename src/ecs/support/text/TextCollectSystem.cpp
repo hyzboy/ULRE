@@ -7,7 +7,6 @@ namespace hgl::ecs
     TextCollectSystem::TextCollectSystem(const std::string& name)
         : CollectSystem(name)
     {
-        SetSystemType(SystemType::RenderCollect);
         SetExecutionOrder(ExecutionPhase::RenderCollect);
         SetRenderElementType("Text");
         AddDependency<RenderPrimitiveCollectSystem>();

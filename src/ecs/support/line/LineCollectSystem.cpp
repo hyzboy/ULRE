@@ -8,7 +8,6 @@ namespace hgl::ecs
     LineCollectSystem::LineCollectSystem(const std::string& name)
         : CollectSystem(name)
     {
-        SetSystemType(SystemType::RenderCollect);
         SetExecutionOrder(ExecutionPhase::RenderCollect);
         SetRenderElementType("Line");
     }

@@ -10,7 +10,6 @@ namespace hgl::ecs
     LineRenderSystem::LineRenderSystem(const std::string& name)
         : RenderPipelineDrawSystem(name)
     {
-        SetSystemType(SystemType::RenderSubmit);
         SetExecutionOrder(ExecutionPhase::RenderDrawSubmit);
         SetRenderElementType("Line");
         AddDependency<LineBuildSystem>();

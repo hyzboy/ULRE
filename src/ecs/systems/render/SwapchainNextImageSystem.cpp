@@ -8,7 +8,6 @@ namespace hgl::ecs
     SwapchainNextImageSystem::SwapchainNextImageSystem(const std::string& name)
         : System(name)
     {
-        SetSystemType(SystemType::RenderSubmit);
         SetExecutionOrder(ExecutionPhase::RenderSwapchainNextImage);
     }
 

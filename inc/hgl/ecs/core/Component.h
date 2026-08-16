@@ -46,9 +46,6 @@ namespace hgl
             /// Default: nullptr (component does not require auto system-group activation)
             virtual const char *GetSystemGroupName() const { return nullptr; }
 
-            /// Backward-compatible alias for legacy render-only naming.
-            virtual const char *GetRenderSystemGroupName() const { return GetSystemGroupName(); }
-
         public:
 
             const std::string& GetName() const { return componentName; }
@@ -56,8 +53,6 @@ namespace hgl
             uint64_t GetVersion() const { return version; }
 
             uint32_t GetChangeMask() const { return change_mask; }
-
-            void ClearChangeMask(uint32_t mask) { change_mask &= ~mask; }
 
             void ClearAllChanges() { change_mask = 0; }
 

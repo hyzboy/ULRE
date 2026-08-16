@@ -7,7 +7,6 @@ namespace hgl::ecs
     PrimitiveSortSystem::PrimitiveSortSystem(const std::string& name)
         : SortSystem(name)
     {
-        SetSystemType(SystemType::RenderCollect);
         SetExecutionOrder(ExecutionPhase::RenderCollect);
         SetRenderElementType("Primitive");
     }

@@ -17,7 +17,6 @@ namespace hgl
         public:
 
             using ObjectID = uint64_t;
-            static constexpr ObjectID INVALID_OBJECT_ID = 0;
 
         protected:
 
@@ -51,9 +50,6 @@ namespace hgl
 
             /// Set object name
             void SetName(const std::string& name) { objectName = name; }
-
-            /// Check if object is valid
-            bool IsValid() const { return objectId != INVALID_OBJECT_ID; }
 
         public: // Lifecycle methods
 

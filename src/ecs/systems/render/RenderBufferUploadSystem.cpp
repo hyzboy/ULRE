@@ -12,7 +12,6 @@ namespace hgl::ecs
     RenderBufferUploadSystem::RenderBufferUploadSystem(const std::string& name)
         : System(name)
     {
-        SetSystemType(SystemType::RenderSubmit);
         SetExecutionOrder(ExecutionPhase::RenderBufferUpload);
     }
 

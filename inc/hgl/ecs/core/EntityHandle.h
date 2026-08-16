@@ -12,7 +12,6 @@ namespace hgl::ecs
     {
         uint32_t index = UINT32_MAX;      ///< Index in the entity pool
         uint16_t generation = 0;          ///< Generation for detecting stale handles
-        uint16_t reserved = 0;            ///< Reserved for future use
 
         EntityID() = default;
         constexpr EntityID(uint32_t idx, uint16_t gen = 0)

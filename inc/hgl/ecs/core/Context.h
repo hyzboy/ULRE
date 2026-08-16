@@ -149,8 +149,6 @@ namespace hgl
             uint32_t frame_index = 0;
             bool descriptor_contract_diag_log_enabled = false;
             uint64_t descriptor_contract_diag_last_log_ms = 0;
-            uint32_t filtered_entity_count_last_frame = 0;
-
             /// Unified render pipeline registry: name → RenderPipelineBase
             /// Managed by SystemGroup installers (e.g., InstallPrimitiveGroup, InstallLineGroup)
             /// Supports dynamic enable/disable per SystemGroup
@@ -502,10 +500,6 @@ namespace hgl
                     entity_manager->GetAllEntityPointers(out_entities);
             }
 
-            bool IsEntityTickEnabled(const Entity* entity) const;
-            bool IsEntityRenderEnabled(const Entity* entity) const;
-            uint32_t GetFilteredEntityCountLastFrame() const { return filtered_entity_count_last_frame; }
-
             /// Ensure CameraSystem exists in this context.
             /// If created after context activation, it is initialized immediately.
             std::shared_ptr<CameraSystem> EnsureCameraSystem();
@@ -685,12 +679,6 @@ namespace hgl
             size_t CleanupUnusedSystemGroups(bool remove_systems = false);
 
         public:
-            /// Get entity count
-            size_t GetEntityCount() const
-            {
-                return entity_manager ? entity_manager->GetEntityCount() : 0;
-            }
-
             RenderFrameCache& GetRenderFrameCache() { return render_frame_cache; }
             const RenderFrameCache& GetRenderFrameCache() const { return render_frame_cache; }
 
@@ -698,8 +686,6 @@ namespace hgl
             bool IsActive() const { return active; }
 
             /// Gate for local render-system registration. Used by hybrid SubWorld policy.
-            void SetRenderSystemRegistrationAllowed(bool value) { allow_render_system_registration = value; }
-            bool IsRenderSystemRegistrationAllowed() const { return allow_render_system_registration; }
             bool CanRegisterRenderSystemInThisContext() const { return allow_render_system_registration; }
             bool CanRegisterGameplaySystemInThisContext() const { return true; }
 
@@ -707,22 +693,6 @@ namespace hgl
             void SetContextRole(ContextRole value) { context_role = value; }
             ContextRole GetContextRole() const { return context_role; }
             bool IsLocalSubWorldContext() const { return context_role == ContextRole::LocalSubWorld; }
-
-            /// Diagnostics: count how many render-system registration attempts were rejected.
-            uint32_t GetRejectedRenderSystemRegistrationCount() const { return rejected_render_system_registration_count; }
-            uint32_t GetGlobalRenderSystemCount() const { return global_render_system_count; }
-            uint32_t GetLocalGameplaySystemCount() const { return local_gameplay_system_count; }
-            void ResetRejectedRenderSystemRegistrationCount()
-            {
-                rejected_render_system_registration_count = 0;
-                rejected_render_system_registration_logged = false;
-            }
-            void ResetHybridRegistrationDiagnostics()
-            {
-                ResetRejectedRenderSystemRegistrationCount();
-                global_render_system_count = 0;
-                local_gameplay_system_count = 0;
-            }
 
             /// 获取指定类型的组件列表（自动清理已失效的弱引用）
             template<typename T>

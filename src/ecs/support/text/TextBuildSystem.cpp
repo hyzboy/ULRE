@@ -7,7 +7,6 @@ namespace hgl::ecs
     TextBuildSystem::TextBuildSystem(const std::string& name)
         : BuildSystem(name)
     {
-        SetSystemType(SystemType::RenderBatch);
         SetExecutionOrder(ExecutionPhase::RenderBatch);
         SetRenderElementType("Text");
         AddDependency<TextCollectSystem>();
