@@ -621,60 +621,6 @@ namespace hgl::ecs
             }
         }
 
-        // Per-batch texture layer rows SSBO — each row holds one bindless handle
-        // per TextureSlot, keyed by the item's data_index VALUE (shader:
-        // mtl_texture_layer_rows.values[iid * TEXTURE_SLOT_RANGE_SIZE + slot]).
-        if (batch.key.shader_program
-            && graph::mtl::MaterialRequiresRecipeRuntimeRows(batch.key.shader_program->GetShaderResourceSchema()))
-        {
-            uint32_t max_texture_layer_row = 0;
-            for (auto *item : batch.items)
-            {
-                auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(item);
-                auto material_comp = primitive_item
-                    ? primitive_item->GetMaterialComponent()
-                    : nullptr;
-                if (material_comp && material_comp->has_texture_layer_values
-                    && material_comp->texture_layer_row != uint32_t(-1)
-                    && material_comp->texture_layer_row + 1 > max_texture_layer_row)
-                {
-                    max_texture_layer_row = material_comp->texture_layer_row + 1;
-                }
-            }
-
-            // At least one row so the SSBO is always bound even when no item
-            // carries texture-layer values (pure data-index-only materials).
-            if (max_texture_layer_row < 1)
-                max_texture_layer_row = 1;
-
-            uint32_t texture_node_count = 1;
-            while (texture_node_count < max_texture_layer_row)
-                texture_node_count <<= 1;
-
-            if (!batch.texture_layer_rows_buffer || batch.texture_layer_rows_capacity < max_texture_layer_row)
-            {
-                batch.texture_layer_rows_capacity = texture_node_count;
-
-                if (batch.texture_layer_rows_buffer)
-                {
-                    if (batch.buffer_manager)
-                        batch.buffer_manager->Release(batch.texture_layer_rows_buffer);
-                    else
-                        delete batch.texture_layer_rows_buffer;
-                    batch.texture_layer_rows_buffer = nullptr;
-                }
-
-                if (batch.buffer_manager)
-                {
-                    const VkDeviceSize byte_size =
-                        static_cast<VkDeviceSize>(batch.texture_layer_rows_capacity)
-                        * static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE) * sizeof(uint32_t);
-                    batch.texture_layer_rows_buffer = batch.buffer_manager->CreateSSBO(
-                        "ECS:Batch:TextureLayerRows", byte_size, nullptr, graph::SharingMode::Exclusive);
-                }
-            }
-        }
-
     }
 
     void PrimitiveBatchPipeline::WriteBatchIndexRows(MaterialBatch& batch)
@@ -744,50 +690,6 @@ namespace hgl::ecs
             }
         }
 
-        // Write per-batch texture layer rows SSBO. Rows are keyed by the item's
-        // data_index VALUE (mtl_texture_layer_rows.values[iid * RANGE_SIZE + slot]),
-        // so zero-fill the whole table first, then write each item's own row.
-        if (batch.texture_layer_rows_buffer)
-        {
-            auto *tl_gpu = batch.texture_layer_rows_buffer->GetGPUBuffer();
-            if (tl_gpu)
-            {
-                const uint32_t table_uint_count =
-                    batch.texture_layer_rows_capacity
-                    * static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE);
-                uint32_t *tl_ptr = static_cast<uint32_t *>(
-                    tl_gpu->Map(0, static_cast<VkDeviceSize>(table_uint_count) * sizeof(uint32_t)));
-                if (tl_ptr)
-                {
-                    for (uint32_t u = 0; u < table_uint_count; ++u)
-                        tl_ptr[u] = 0u;
-
-                    for (size_t i = 0; i < item_count; ++i)
-                    {
-                        auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(batch.items[i]);
-                        auto material_comp = primitive_item
-                            ? primitive_item->GetMaterialComponent()
-                            : nullptr;
-                        if (!material_comp || !material_comp->has_texture_layer_values)
-                            continue;
-
-                        const uint32_t row = material_comp->texture_layer_row;
-                        if (row >= batch.texture_layer_rows_capacity)
-                            continue;
-
-                        const uint32_t base = row
-                            * static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE);
-                        for (uint32_t slot = 0;
-                             slot < static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE);
-                             ++slot)
-                            tl_ptr[base + slot] = material_comp->texture_layer_values[slot];
-                    }
-
-                    tl_gpu->Unmap();
-                }
-            }
-        }
-
     }
     void PrimitiveBatchPipeline::BuildMaterialBatches()
     {
@@ -825,8 +727,7 @@ namespace hgl::ecs
                     && graph::mtl::MaterialRequiresRecipeRuntimeRows(shader_prog->GetShaderResourceSchema());
                 const bool missing_rows = needs_recipe_rows
                                        && (!material_comp
-                                        || material_comp->data_index_row == uint32_t(-1)
-                                        || material_comp->texture_layer_row == uint32_t(-1));
+                                        || material_comp->data_index_row == uint32_t(-1));
                 if (missing_rows)
                 {
                     LogWarning("[PrimitiveBatchPipeline] Skip primitive item: unresolved recipe rows. shader_prog=%s",

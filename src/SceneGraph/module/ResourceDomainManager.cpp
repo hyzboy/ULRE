@@ -180,20 +180,45 @@ DeviceBuffer *ResourceDomainManager::EnsureBuffer(const mtl::SSBOAddress &addres
      && (binding.element_stride == 0 || binding.element_stride == requested_stride))
         return binding.buffer;
 
-    if (binding.buffer)
+    DeviceBuffer *old_buffer = binding.buffer;
+    DeviceBuffer *new_buffer = buffer_manager->CreateSSBO(name, byte_size, sm);
+
+    if (!new_buffer)
     {
-        buffer_manager->Release(binding.buffer);
         binding.buffer = nullptr;
         binding.element_capacity = 0;
         binding.element_stride = 0;
     }
-
-    binding.buffer = buffer_manager->CreateSSBO(name, byte_size, sm);
-    if (binding.buffer)
+    else
     {
+        // Copy-on-grow: preserve previously written rows when a domain buffer
+        // must be resized. Releasing the old buffer without copying would wipe
+        // rows written earlier in the same pass (EnsureBuffer growth used to
+        // zero previously-uploaded data for every domain user).
+        if (old_buffer)
+        {
+            IGPUBuffer *old_gpu = old_buffer->GetGPUBuffer();
+            IGPUBuffer *new_gpu = new_buffer->GetGPUBuffer();
+
+            if (old_gpu && new_gpu)
+            {
+                const VkDeviceSize old_bytes = old_buffer->GetSize();
+                void *old_ptr = old_gpu->Map(0, old_bytes);
+                if (old_ptr)
+                {
+                    new_gpu->Write(old_ptr, 0, old_bytes);
+                    old_gpu->Unmap();
+                }
+            }
+        }
+
+        binding.buffer = new_buffer;
         binding.element_capacity = required_capacity;
         binding.element_stride = requested_stride;
     }
+
+    if (old_buffer)
+        buffer_manager->Release(old_buffer);
 
     return binding.buffer;
 }

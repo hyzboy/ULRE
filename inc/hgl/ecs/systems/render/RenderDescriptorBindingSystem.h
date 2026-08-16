@@ -128,8 +128,8 @@ namespace hgl::ecs
         /**
          * 查询 resource_id 对应的 bindless descriptor index（1-based）。
          * 注册期间 RegisterTexture2D(Array)Resource 已把 handle 存入映射；
-         * 未注册/不存在返回 0。MaterializeRecipeRowsForPrimitive 用它为
-         * 资产纹理填充 texture_layer_values。
+         * 未注册/不存在返回 0。MaterializeRecipeRowsForPrimitive 用它
+         * 把纹理 handle 写入引擎管理的纹理行表域 SSBO。
          */
         uint32_t GetBindlessHandle(const AnsiString &resource_id) const;
 

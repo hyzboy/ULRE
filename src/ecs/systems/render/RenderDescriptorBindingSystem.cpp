@@ -874,24 +874,28 @@ namespace hgl::ecs
             }
             case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
             {
-                const graph::IGPUBuffer *table_buffer = nullptr;
-
-                // Prefer per-batch texture layer rows SSBO (keyed by the
-                // primitive's own data_index VALUE, written in draw order by
-                // PrimitiveBatchPipeline).
-                if (batch && batch->texture_layer_rows_buffer)
-                    table_buffer = batch->texture_layer_rows_buffer->GetGPUBuffer();
-
-                // Fall back to domain SSBO.
-                if (!table_buffer)
+                // The texture-layer rows live in the engine-managed domain SSBO
+                // keyed by the primitive's data-slot scope id (same scope as the
+                // per-batch data index rows). The collect side stores that scope
+                // in the resolved bindings; pipeline materials without an entity
+                // (Text2D) fall back to the normalized req.ssbo_id, which is
+                // exactly the domain address their own buffer was registered at.
+                uint32_t resolved_ssbo_id = req.ssbo_id;
+                if (batch)
                 {
-                    table_buffer = resolve_domain_ssbo(
-                        graph::mtl::SSBOAddress{
-                            req.ssbo_type,
-                            req.ssbo_id,
-                            static_cast<uint32_t>(req.texture_slot)},
-                        "MaterialTextureLayerTable");
+                    if (!resolve_recipe_batch_struct_ssbo_id(material, batch, req, resolved_ssbo_id))
+                    {
+                        log_bind_failure(material, batch, req, "unresolved MaterialTextureLayerTable binding");
+                        break;
+                    }
                 }
+
+                const graph::IGPUBuffer *table_buffer = resolve_domain_ssbo(
+                    graph::mtl::SSBOAddress{
+                        graph::mtl::SSBOType::TextureLayer,
+                        resolved_ssbo_id,
+                        0},
+                    "MaterialTextureLayerTable");
 
                 if (table_buffer)
                 {
@@ -900,7 +904,7 @@ namespace hgl::ecs
                 }
                 else
                 {
-                    log_missing_ssbo_once(material, req, batch ? "batch rows missing and domain binding not found" : "domain binding not found", static_cast<int32_t>(req.texture_slot));
+                    log_missing_ssbo_once(material, req, batch ? "unresolved scope binding and domain binding not found" : "domain binding not found", 0);
                     if (batch && req.required)
                         batch->descriptor_bind_valid = false;
                 }

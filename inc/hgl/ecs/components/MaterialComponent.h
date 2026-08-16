@@ -32,16 +32,8 @@ namespace hgl::ecs
 
         // Runtime row indices, materialized independently for this primitive.
         // They must not be sourced from a shared recipe/spec cache entry.
-        uint32_t texture_layer_row = uint32_t(-1);
         uint32_t data_index_row = uint32_t(-1);
         std::vector<uint32_t> data_index_values;
-
-        // Bindless handles (or authored direct values) for each texture slot,
-        // written during materialize. PrimitiveBatchPipeline assembles the
-        // per-batch MaterialTextureLayerTable rows from these, keyed by the
-        // primitive's own data_index VALUE. Slot is the TextureSlot enum value.
-        std::array<uint32_t, static_cast<size_t>(graph::mtl::TextureSlot::RANGE_SIZE)> texture_layer_values{};
-        bool has_texture_layer_values = false;
 
         // Dirty/lifecycle flags.
         // program_dirty — program (pipeline) must be re-resolved.

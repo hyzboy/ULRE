@@ -52,13 +52,6 @@ namespace hgl::ecs
             else
                 delete material_data_index_rows_buffer;
         }
-        if (texture_layer_rows_buffer)
-        {
-            if (buffer_manager)
-                buffer_manager->Release(texture_layer_rows_buffer);
-            else
-                delete texture_layer_rows_buffer;
-        }
         if (renderer)
             delete renderer;
     }

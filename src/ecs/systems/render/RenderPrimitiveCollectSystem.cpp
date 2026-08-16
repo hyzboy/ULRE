@@ -790,11 +790,8 @@ namespace hgl::ecs
          || !graph::mtl::MaterialRequiresRecipeRuntimeRows(
                 material_comp->program->GetShaderResourceSchema()))
         {
-            material_comp->texture_layer_row = 0;
             material_comp->data_index_row = 0;
             material_comp->data_index_values.clear();
-            material_comp->texture_layer_values.fill(0u);
-            material_comp->has_texture_layer_values = false;
             material_comp->runtime_dirty = false;
             material_comp->valid = false;
             return true;
@@ -867,21 +864,45 @@ namespace hgl::ecs
         // read back from those tables, so a non-data-index asset publishes its
         // authored data_index (0) there. Prefer an explicit use_data_index asset
         // when present, otherwise fall back to the first authored data_index.
+        //
+        // scope_ssbo_id is the data-slot asset's SSBO id — the same scope the
+        // per-batch data rows and the engine-managed texture-layer rows domain
+        // SSBO are keyed by. Materials without any data slot (TextureQuad /
+        // TextDrawTest) fall back to a program-derived scope id and own row 0.
         uint32_t entity_data_index = uint32_t(-1);
         uint32_t fallback_data_index = uint32_t(-1);
+        uint32_t scope_ssbo_id = 0;
         for (const auto &asset_binding : material_binding_recipe.ssbo_assets)
         {
             if (asset_binding.use_data_index)
             {
                 entity_data_index = asset_binding.data_index;
+                scope_ssbo_id = asset_binding.ssbo_id;
             }
             else if (fallback_data_index == uint32_t(-1))
             {
                 fallback_data_index = asset_binding.data_index;
+                scope_ssbo_id = asset_binding.ssbo_id;
             }
         }
         if (entity_data_index == uint32_t(-1))
             entity_data_index = fallback_data_index;
+
+        if (scope_ssbo_id == 0)
+        {
+            scope_ssbo_id = graph::mtl::MakeECSSSBOId(
+                static_cast<uint32_t>(material_comp->program->GetProgramKey().GetDigest())
+                & graph::mtl::SSBOIdLocalMask);
+        }
+
+        // Single source of truth for the texture-layer rows scope: the bind
+        // side (resolve_recipe_batch_struct_ssbo_id) reads back exactly this
+        // (name, data_slot, ssbo_type) triple from the resolved bindings.
+        material_comp->SetResolvedSSBOBinding(
+            "mtl_texture_layer_rows",
+            graph::mtl::DefaultMaterialDataSlot,
+            graph::mtl::SSBOType::TextureLayer,
+            scope_ssbo_id);
 
         // Fill the per-batch material data index table for every SSBO asset,
         // including use_data_index == false ones (the shader still reads
@@ -906,24 +927,21 @@ namespace hgl::ecs
             material_comp->data_index_values[data_slot] = asset_binding.data_index;
         }
 
-        material_comp->texture_layer_values.fill(0u);
-        material_comp->has_texture_layer_values = false;
-
-        // The texture-layer row is keyed by the primitive's data_index VALUE
-        // (shader: mtl_texture_layer_rows.values[iid * RANGE + slot], with iid =
-        // textureLayerID = dataIndex for uses_data_index materials). Publish the
-        // row even when the primitive authors no data slot: it still owns row 0,
-        // and its data_index resolves to 0 through mtl_data_index_rows, so
-        // bindless lookups stay aligned.
-        material_comp->texture_layer_row =
+        // The texture-layer row is keyed by the primitive's data_index VALUE.
+        // Publish the row even when the primitive authors no data slot: it
+        // still owns row 0, and its data_index resolves to 0 through
+        // mtl_data_index_rows, so bindless lookups stay aligned.
+        material_comp->data_index_row =
             entity_data_index != uint32_t(-1) ? entity_data_index : 0u;
-        material_comp->data_index_row = material_comp->texture_layer_row;
+        const uint32_t texture_layer_row = material_comp->data_index_row;
 
-        // Build this primitive's texture layer row from the single binding
-        // IR. Per-batch MaterialTextureLayerTable rows are keyed by the
-        // primitive's own data_index VALUE (see PrimitiveBatchPipeline), so
-        // each primitive fills exactly one row — no shared global table and
-        // no cross-primitive row collision.
+        // Build this primitive's texture layer row from the single binding IR
+        // and write it into the engine-managed domain SSBO keyed by
+        // scope_ssbo_id. The row layout is TextureLayerRowsData (10 uints,
+        // handle stored at the TextureSlot enum index) — byte-identical to the
+        // pre-p1-2d-3 flat values[RANGE_SIZE] layout.
+        uint32_t row_data[static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE)] = {};
+
         for (const auto &texture_binding : material_binding_recipe.textures)
         {
             graph::mtl::TextureSlot slot_enum;
@@ -969,8 +987,44 @@ namespace hgl::ecs
                             texture_binding.resource_id.empty() ? "<unnamed>" : texture_binding.resource_id.c_str());
             }
 
-            material_comp->texture_layer_values[slot] = handle;
-            material_comp->has_texture_layer_values = true;
+            if (slot < static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE))
+                row_data[slot] = handle;
+        }
+
+        auto *render_context = world->GetRenderContext();
+        auto *graphics_context = render_context
+            ? render_context->GetGraphicsContext()
+            : world->GetGraphicsContext();
+        auto *domain_manager = graphics_context
+            ? graphics_context->GetResourceDomainManager() : nullptr;
+
+        if (domain_manager)
+        {
+            const VkDeviceSize stride =
+                graph::mtl::GetSSBOTypeStructStride(graph::mtl::SSBOType::TextureLayer);
+            graph::DeviceBuffer *domain_buffer = domain_manager->EnsureBuffer(
+                graph::mtl::SSBOAddress{graph::mtl::SSBOType::TextureLayer, scope_ssbo_id, 0},
+                "mtl_texture_layer_rows",
+                stride * static_cast<VkDeviceSize>(texture_layer_row + 1),
+                texture_layer_row + 1);
+            if (domain_buffer)
+            {
+                auto *gpu = domain_buffer->GetGPUBuffer();
+                if (gpu)
+                    gpu->Write(row_data, static_cast<VkDeviceSize>(texture_layer_row) * stride, stride);
+            }
+            else
+            {
+                GLogWarning("[RenderPrimitiveCollectSystem] materialize: domain texture layer rows buffer missing for %s scope_ssbo_id=%u row=%u",
+                            GetPrimitiveOwnerName(primitive_comp),
+                            scope_ssbo_id,
+                            texture_layer_row);
+            }
+        }
+        else
+        {
+            GLogWarning("[RenderPrimitiveCollectSystem] materialize: domain manager missing, texture layer rows not written for %s",
+                        GetPrimitiveOwnerName(primitive_comp));
         }
 
         material_comp->runtime_dirty = false;

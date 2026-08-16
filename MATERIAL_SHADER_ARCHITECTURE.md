@@ -1161,7 +1161,7 @@ logical_resource_bindings
 profile_binding_views
 bindless_handles
 ssbo_resource_ids
-texture_layer_values
+texture_layer_rows   // 引擎管理的纹理行表域 SSBO（键 = data_index scope）
 material_data_indices
 instance_rows
 ```

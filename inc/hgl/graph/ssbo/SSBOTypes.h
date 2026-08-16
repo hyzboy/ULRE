@@ -136,10 +136,6 @@ namespace hgl::graph::mtl
     {
         constexpr uint32_t TransformIndexRows   = MakeECSSSBOId(1);
         constexpr uint32_t LocalToWorldData     = MakeECSSSBOId(2);
-
-        constexpr uint32_t MaterialDataIndexRows = MakeECSSSBOId(3);
-        constexpr uint32_t MaterialSSBOData      = MakeECSSSBOId(4);
-        constexpr uint32_t TextureLayerRows      = MakeECSSSBOId(5);
     }
 
     struct SSBOAddress
