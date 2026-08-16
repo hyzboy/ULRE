@@ -59,7 +59,6 @@ namespace hgl::graph::mtl
         std::vector<SerializedVertexEntry> vertices;
         VkFormat position_format = VK_FORMAT_UNDEFINED;
         VertexShaderNodeConfig vertex_node_config;
-        std::string extra_attributes;
         std::string resolved_vertex_input_glsl;
         std::string resolved_provider_glsl;
         uint64 resolved_provider_graph_hash = 0;

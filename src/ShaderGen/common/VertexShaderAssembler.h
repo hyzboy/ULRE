@@ -39,8 +39,6 @@ namespace hgl::graph::shadergen
     //  position_format:   Vulkan format of the position vertex attribute.
     //                     Used to select between vec2/vec3 Stage-1 files.
     //                     VK_FORMAT_UNDEFINED → fall back to node_cfg.input.
-    //  extra_attr_glsl:   Optional additional vertex attribute declarations
-    //                     (beyond position), emitted verbatim after Stage-1 include.
     //  resolved_input_glsl: Full resolver-derived input declarations. When
     //                     non-empty, replaces the default Stage-1 declaration.
     //  provider_glsl:      Selected provider module source, emitted after
@@ -54,7 +52,6 @@ namespace hgl::graph::shadergen
         const VertexShaderNodeConfig &node_cfg,
         const VertexVaryingConfig    &varying_cfg,
         VkFormat                      position_format,
-        const std::string            &extra_attr_glsl,
         const std::string            &shader_lib_path,
         const std::string            &resolved_input_glsl = {},
         const std::string            &provider_glsl = {},
@@ -179,11 +176,6 @@ namespace hgl::graph::shadergen
         }
 
         // ── Extra vertex attributes (color, UV, etc.) ─────────────────────────
-        if (!extra_attr_glsl.empty())
-        {
-            vs += extra_attr_glsl;
-            if (extra_attr_glsl.back() != '\n') vs += "\n";
-        }
         if (!provider_glsl.empty())
         {
             vs += provider_glsl;

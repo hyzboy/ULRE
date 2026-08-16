@@ -52,7 +52,6 @@ namespace hgl::graph::shadergen
         WorldPosition,
         WorldNormal,
         UV0,
-        UV1,
         Color,
         FragDirection,
         Luminance,

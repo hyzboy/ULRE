@@ -180,7 +180,6 @@ namespace hgl::graph::mtl
         {
             plan.vertex_node_config =
                 ResolveMaterialVertexNodeConfig(definition, request);
-            plan.extra_attributes.clear();
             plan.resolved_vertex_input_glsl.clear();
             plan.resolved_provider_glsl.clear();
             plan.resolved_provider_graph_hash = 0;
@@ -330,7 +329,7 @@ namespace hgl::graph::mtl
         {
             plan.vs = GenerateVertexShader(plan.vertex_node_config, plan.varying,
                                            plan.position_format,
-                                           plan.extra_attributes, GetShaderLibraryPath().c_str(),
+                                           GetShaderLibraryPath().c_str(),
                                            plan.resolved_vertex_input_glsl,
                                            plan.resolved_provider_glsl,
                                            &plan.stage_interface);
@@ -360,10 +359,10 @@ namespace hgl::graph::mtl
                 plan.coverage.mode == MaterialCoverageMode::Dither
              || plan.coverage.mode
                     == MaterialCoverageMode::AlphaTestDither;
-            compositor_options.use_resolved_render_state = true;
             compositor_options.fragment_inputs = &plan.stage_interface;
             compositor_options.output_contract = &plan.output_contract;
             compositor_options.coverage_contract = &plan.coverage;
+            compositor_options.use_resolved_render_state = true;
             const bool use_scene_lighting =
                 definition.compositor_surface != SurfaceType::Unlit
              && definition.compositor_surface != SurfaceType::Sky;

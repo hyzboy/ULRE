@@ -830,15 +830,11 @@ namespace
 
         const InterStageSemanticInfo *data_index =
             GetInterStageSemanticInfo(InterStageSemantic::DataIndexID);
-        const InterStageSemanticInfo *uv1 =
-            GetInterStageSemanticInfo(InterStageSemantic::UV1);
         const InterStageSemanticInfo *color =
             GetInterStageSemanticInfo(InterStageSemantic::Color);
         if (!data_index
          || data_index->stable_location != 0
          || data_index->interpolation != InterStageInterpolation::Flat
-         || !uv1
-         || uv1->stable_location != 4
          || !color
          || color->stable_location != 5)
         {
@@ -2562,8 +2558,8 @@ namespace
                 result.diagnostics.emplace_back(std::string("non-bootstrap material marked bootstrap: ") + id);
         }
 
-        if (BUILTIN_MTL_DEF_ERROR_CHECKER[0] == 0
-         || BUILTIN_MTL_DEF_PURE_DEPTH[0] == 0)
+        if (BUILTIN_MTL_DEF_TEXT[0] == 0
+         || BUILTIN_MTL_DEF_PURE_COLOR[0] == 0)
         {
             result.diagnostics.emplace_back("bootstrap canonical IDs must not be empty");
         }
@@ -3283,7 +3279,7 @@ namespace
         {
             return GenerateVertexShader(
                 graph, varying, VK_FORMAT_R32G32B32_SFLOAT,
-                std::string(), GetShaderLibraryPath());
+                GetShaderLibraryPath());
         };
 
         const std::string flat = build(VertexNodeConfigResolver::FlatXY());
