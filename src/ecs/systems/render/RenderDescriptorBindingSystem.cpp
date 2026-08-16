@@ -770,23 +770,11 @@ namespace hgl::ecs
                     }
                 }
 
-                // Fallback: global TransformIndexRows from TransformAssignmentBuffer.
-                if (!table_buffer && batch && batch->transform_buffer)
-                {
-                    auto *rows_buffer = batch->transform_buffer->GetTransformIndexRowsBuffer();
-                    const auto *candidate = rows_buffer ? rows_buffer->GetGPUBuffer() : nullptr;
-                    const uint32_t element_count = static_cast<uint32_t>(batch->items.size());
-                    if (validate_runtime_ssbo_stride("LocalToWorldIndexTable",
-                                                     graph::mtl::SSBOType::TransformIndexRows,
-                                                     candidate,
-                                                     element_count,
-                                                     sizeof(uint32_t)))
-                    {
-                        table_buffer = candidate;
-                    }
-                }
+                // W4 收敛：batch->transform_buffer 级与下方 TransformSystem 直接
+                // 解析同源（同一 TAB 实例）——删除，fallback 收敛为
+                // per-batch 行表 → TransformSystem 直接解析 → domain 缓存 3 级
 
-                                // Pipeline-only materials (no MaterialBatch) still need l2w_index_rows.
+                // Pipeline-only materials (no MaterialBatch) still need l2w_index_rows.
                 // Resolve from TransformSystem directly before falling back to domain cache.
                 if (!table_buffer && context)
                 {
