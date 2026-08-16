@@ -1,4 +1,4 @@
-﻿SET(ECS_INCLUDE_PATH ${ROOT_INCLUDE_PATH}/hgl/ecs)
+SET(ECS_INCLUDE_PATH ${ROOT_INCLUDE_PATH}/hgl/ecs)
 
 option(ULRE_ECS_DEBUG_API "Enable ECS debug API surface" ON)
 
@@ -200,11 +200,9 @@ set(ECS_SUPPORT_FILES
     ${ECS_INCLUDE_PATH}/support/TextHelper.h
     ${ECS_INCLUDE_PATH}/support/RenderPipelineBase.h
     ${ECS_INCLUDE_PATH}/support/RenderPipelineSystem.h
-    ${ECS_INCLUDE_PATH}/support/RenderPipelineGroup.h
     ${ECS_INCLUDE_PATH}/support/PrimitiveBatchPipeline.h
     ${ECS_INCLUDE_PATH}/support/TextRenderPipeline.h
     support/RenderPipelineSystem.cpp
-    support/RenderPipelineGroup.cpp
     support/VisibilityDataStorage.cpp
     support/TransformAssignmentBuffer.cpp
     support/PipelineMaterialRenderer.cpp
@@ -219,14 +217,12 @@ set(ECS_SUPPORT_PRIMITIVE_FILES
     ${ECS_INCLUDE_PATH}/support/primitive/PrimitiveBuildSystem.h
     ${ECS_INCLUDE_PATH}/support/primitive/PrimitiveRenderSystem.h
     ${ECS_INCLUDE_PATH}/support/primitive/PrimitiveOverlayRenderSystem.h
-    ${ECS_INCLUDE_PATH}/support/primitive/PrimitiveRenderPipelineGroup.h
     support/primitive/PrimitiveRenderPipeline.cpp
     support/primitive/PrimitiveCullSystem.cpp
     support/primitive/PrimitiveSortSystem.cpp
     support/primitive/PrimitiveBuildSystem.cpp
     support/primitive/PrimitiveRenderSystem.cpp
     support/primitive/PrimitiveOverlayRenderSystem.cpp
-    support/primitive/PrimitiveRenderPipelineGroup.cpp
 )
 
 set(ECS_SUPPORT_TEXT_FILES
@@ -235,13 +231,11 @@ set(ECS_SUPPORT_TEXT_FILES
     ${ECS_INCLUDE_PATH}/support/text/TextBuildSystem.h
     ${ECS_INCLUDE_PATH}/support/text/TextSyncSystem.h
     ${ECS_INCLUDE_PATH}/support/text/TextRenderSystem.h
-    ${ECS_INCLUDE_PATH}/support/text/TextRenderPipelineGroup.h
     support/text/TextRenderPipelineAdapter.cpp
     support/text/TextCollectSystem.cpp
     support/text/TextBuildSystem.cpp
     support/text/TextSyncSystem.cpp
     support/text/TextRenderSystem.cpp
-    support/text/TextRenderPipelineGroup.cpp
 )
 
 set(ECS_SUPPORT_LINE_FILES
@@ -249,12 +243,10 @@ set(ECS_SUPPORT_LINE_FILES
     ${ECS_INCLUDE_PATH}/support/line/LineCollectSystem.h
     ${ECS_INCLUDE_PATH}/support/line/LineBuildSystem.h
     ${ECS_INCLUDE_PATH}/support/line/LineRenderSystem.h
-    ${ECS_INCLUDE_PATH}/support/line/LineRenderPipelineGroup.h
     support/line/LineRenderPipeline.cpp
     support/line/LineCollectSystem.cpp
     support/line/LineBuildSystem.cpp
     support/line/LineRenderSystem.cpp
-    support/line/LineRenderPipelineGroup.cpp
 )
 
 set(ECS_SOURCE

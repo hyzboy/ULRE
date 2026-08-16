@@ -1,19 +1,30 @@
 ﻿#include <hgl/ecs/core/DefaultSystems.h>
+#include <memory>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/SystemGroup.h>
 #include <hgl/ecs/systems/tick/InputSystem.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/ecs/systems/tick/LineBoundsUpdateSystem.h>
-#include <hgl/ecs/support/text/TextRenderPipelineGroup.h>
-#include <hgl/ecs/support/line/LineRenderPipelineGroup.h>
+#include <hgl/ecs/support/line/LineRenderPipeline.h>
 #include <hgl/ecs/support/line/LineCollectSystem.h>
+#include <hgl/ecs/support/line/LineBuildSystem.h>
 #include <hgl/ecs/support/line/LineRenderSystem.h>
+#include <hgl/ecs/support/text/TextRenderPipelineAdapter.h>
+#include <hgl/ecs/support/text/TextCollectSystem.h>
+#include <hgl/ecs/support/text/TextBuildSystem.h>
+#include <hgl/ecs/support/text/TextSyncSystem.h>
+#include <hgl/ecs/support/text/TextRenderSystem.h>
 #include <hgl/ecs/systems/render/LineStatsSystem.h>
 #include <hgl/ecs/systems/render/EnvironmentSystem.h>
 #include <hgl/ecs/systems/render/ColorPaletteSystem.h>
 #include <hgl/ecs/systems/render/RenderTargetSystem.h>
 #include <hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
-#include <hgl/ecs/support/primitive/PrimitiveRenderPipelineGroup.h>
+#include <hgl/ecs/support/primitive/PrimitiveRenderPipeline.h>
+#include <hgl/ecs/support/primitive/PrimitiveCullSystem.h>
+#include <hgl/ecs/support/primitive/PrimitiveSortSystem.h>
+#include <hgl/ecs/support/primitive/PrimitiveBuildSystem.h>
+#include <hgl/ecs/support/primitive/PrimitiveRenderSystem.h>
+#include <hgl/ecs/support/primitive/PrimitiveOverlayRenderSystem.h>
 #include <hgl/ecs/systems/render/RenderBufferUploadSystem.h>
 #include <hgl/ecs/systems/render/SwapchainNextImageSystem.h>
 #include <hgl/ecs/systems/render/SwapchainSubmitSystem.h>
@@ -76,9 +87,17 @@ namespace
             render_upload_system->SetDevice(device);
         }
 
-        // New unified pipeline group replaces Cull/Sort/Build/Finalize/Submit systems
-        hgl::ecs::PrimitiveRenderPipelineGroup group;
-        group.Initialize(ctx);
+        // Register the Primitive pipeline and its thin proxy systems directly
+        // (the RenderPipelineGroup container abstraction was removed — it had
+        // devolved into a one-shot installer; Context stays element-agnostic
+        // via this installer mechanism instead)
+        auto pipeline = std::make_unique<hgl::ecs::PrimitiveRenderPipeline>(ctx);
+        ctx->RegisterRenderPipeline("Primitive", std::move(pipeline));
+        ctx->RegisterRenderSystem<hgl::ecs::PrimitiveCullSystem>();
+        ctx->RegisterRenderSystem<hgl::ecs::PrimitiveSortSystem>();
+        ctx->RegisterRenderSystem<hgl::ecs::PrimitiveBuildSystem>();
+        ctx->RegisterRenderSystem<hgl::ecs::PrimitiveRenderSystem>();
+        ctx->RegisterRenderSystem<hgl::ecs::PrimitiveOverlayRenderSystem>();
 
         return true;
     }
@@ -88,9 +107,13 @@ namespace
         if (!ctx)
             return false;
 
-        // New unified pipeline group replaces TextCollect/Build/Sync/Submit systems
-        hgl::ecs::TextRenderPipelineGroup group;
-        group.Initialize(ctx);
+        // Register the Text pipeline adapter and its thin proxy systems directly
+        auto adapter = std::make_unique<hgl::ecs::TextRenderPipelineAdapter>(ctx);
+        ctx->RegisterRenderPipeline("Text", std::move(adapter));
+        ctx->RegisterRenderSystem<hgl::ecs::TextCollectSystem>();
+        ctx->RegisterRenderSystem<hgl::ecs::TextBuildSystem>();
+        ctx->RegisterRenderSystem<hgl::ecs::TextSyncSystem>();
+        ctx->RegisterRenderSystem<hgl::ecs::TextRenderSystem>();
 
         return true;
     }
@@ -106,11 +129,14 @@ namespace
         if (line_bounds_update_system)
             line_bounds_update_system->SetWorld(ctx);
 
-        // New unified pipeline group replaces old LineCollectSystem + LineRenderSystem
-        hgl::ecs::LineRenderPipelineGroup group;
-        group.Initialize(ctx);
+        // Register the Line pipeline and its thin proxy systems directly
+        auto line_pipeline = std::make_unique<hgl::ecs::LineRenderPipeline>(ctx);
+        ctx->RegisterRenderPipeline("Line", std::move(line_pipeline));
+        ctx->RegisterRenderSystem<hgl::ecs::LineCollectSystem>();
+        ctx->RegisterRenderSystem<hgl::ecs::LineBuildSystem>();
+        ctx->RegisterRenderSystem<hgl::ecs::LineRenderSystem>();
 
-        // Stats system (thin stats logger, not part of the pipeline group)
+        // Stats system (thin stats logger, not part of the pipeline)
         EnsureRenderSystem<hgl::ecs::LineStatsSystem>(ctx);
 
         return true;
