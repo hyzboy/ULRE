@@ -158,6 +158,23 @@ namespace hgl::graph::mtl
             && lhs.max_component_count == rhs.max_component_count;
     }
 
+    // Explicit per-field hashing: the generic FNV1aHasher::operator<<(const T&)
+    // hashes raw struct bytes including padding, which is layout-coupled and
+    // indeterminate for partially-initialized objects. Cache keys must depend
+    // only on the semantic fields.
+    inline hgl::hash::FNV1aHasher64 &operator<<(
+        hgl::hash::FNV1aHasher64 &h,
+        const GLSLCodeModuleSemanticRequirement &v) noexcept
+    {
+        h << v.source
+          << v.semantic
+          << v.numeric_class_mask
+          << v.min_component_count
+          << v.max_component_count
+          << v.reserved;
+        return h;
+    }
+
     struct GLSLCodeModuleUBORequirement
     {
         UBODescriptorSemantic semantic = UBODescriptorSemantic::ViewportInfo;
@@ -173,6 +190,17 @@ namespace hgl::graph::mtl
             && lhs.stage_flags == rhs.stage_flags
             && lhs.required == rhs.required
             && lhs.allow_fallback == rhs.allow_fallback;
+    }
+
+    inline hgl::hash::FNV1aHasher64 &operator<<(
+        hgl::hash::FNV1aHasher64 &h,
+        const GLSLCodeModuleUBORequirement &v) noexcept
+    {
+        h << v.semantic
+          << v.stage_flags
+          << v.required
+          << v.allow_fallback;
+        return h;
     }
 
     struct GLSLCodeModuleSSBORequirement
@@ -213,6 +241,17 @@ namespace hgl::graph::mtl
             && lhs.stage_flags == rhs.stage_flags
             && lhs.required == rhs.required
             && lhs.allow_fallback == rhs.allow_fallback;
+    }
+
+    inline hgl::hash::FNV1aHasher64 &operator<<(
+        hgl::hash::FNV1aHasher64 &h,
+        const GLSLCodeModuleTextureLayerRequirement &v) noexcept
+    {
+        h << v.slot
+          << v.stage_flags
+          << v.required
+          << v.allow_fallback;
+        return h;
     }
 
     struct GLSLCodeModuleDefinition
