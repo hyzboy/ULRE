@@ -544,8 +544,7 @@ public:
         if (environment_system)
         {
             environment_system->EditSkyInfo();
-            environment_system->SyncSkyUBO();
-        }
+                    }
 
         if (!CreateOffscreenRT())
             return LogStageFail("RenderToTextureApp::Init", "CreateOffscreenRT failed");

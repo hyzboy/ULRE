@@ -8,7 +8,7 @@ namespace hgl::ecs
 {
 class ECSContext;
 class Entity;
-class EntityID;
+struct EntityID;
 class InputSystem;
 class TransformComponent;
 } // namespace hgl::ecs

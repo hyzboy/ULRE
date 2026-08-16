@@ -89,7 +89,6 @@ namespace hgl::ecs
         if (slot.entity)
         {
             if (auto *ctx = slot.entity->GetContext())
-                ctx->NotifyEntityDestroyed(id);
 
             slot.entity->DetachAllComponents(true);
             slot.entity->OnDestroy();
@@ -189,7 +188,6 @@ namespace hgl::ecs
             if (slot.entity)
             {
                 if (auto *ctx = slot.entity->GetContext())
-                    ctx->NotifyEntityDestroyed(slot.entity->GetID());
 
                 slot.entity->DetachAllComponents(true);
                 slot.entity->OnDestroy();

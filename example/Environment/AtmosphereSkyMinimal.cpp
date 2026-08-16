@@ -139,8 +139,7 @@ private:
         if (environment_system)
         {
             environment_system->EditSkyInfo();
-            environment_system->SyncSkyUBO();
-        }
+                    }
 
         if(!InitECSScene())
             return false;

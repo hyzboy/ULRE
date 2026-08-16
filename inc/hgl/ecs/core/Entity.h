@@ -29,8 +29,6 @@ namespace hgl
 
             void RegisterToContext(size_t type_hash, const std::shared_ptr<Component>& comp);
             void UnregisterFromContext(size_t type_hash, Component* comp_ptr);
-            void NotifyComponentAdded(const std::type_index& component_type);
-            void NotifyComponentRemoved(const std::type_index& component_type);
             void ReplaceComponent(size_t type_hash, const std::shared_ptr<Component>& component, const std::type_index& component_type);
 
         public:
@@ -91,7 +89,6 @@ namespace hgl
                 if (!component)
                     return;
 
-                NotifyComponentRemoved(std::type_index(typeid(T)));  // Notify systems
                 UnregisterFromContext(type_hash, component->get());
                 (*component)->OnDetach();
                 components.DeleteByKey(type_hash);

@@ -8,7 +8,6 @@ set(ECS_CORE_FILES
     ${ECS_INCLUDE_PATH}/core/Entity.h
     ${ECS_INCLUDE_PATH}/core/EntityHandle.h
     ${ECS_INCLUDE_PATH}/core/EntityManager.h
-    ${ECS_INCLUDE_PATH}/core/EntityQuery.h
     ${ECS_INCLUDE_PATH}/core/System.h
     ${ECS_INCLUDE_PATH}/core/SystemProfiler.h
     ${ECS_INCLUDE_PATH}/core/Context.h
@@ -25,7 +24,6 @@ set(ECS_CORE_FILES
     core/Component.cpp
     core/Entity.cpp
     core/EntityManager.cpp
-    core/EntityQuery.cpp
     core/System.cpp
     core/SystemProfiler.cpp
     core/Context.cpp

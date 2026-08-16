@@ -120,8 +120,7 @@ private:
             sky->sun_direction = math::Vector4f(0.2f, 0.7f, 0.68f, 0.0f);
         }
         environment_system->MarkSkyDirty();
-        environment_system->SyncSkyUBO();
-    #endif//DRAW_SKY_SPHERE
+            #endif//DRAW_SKY_SPHERE
 
     #ifdef DRAW_GIZMO
         sun_gizmo_system = ecs_context->GetSystem<SunDirectionControlSystem>();

@@ -149,8 +149,7 @@ private:
                 sky->sun_direction = math::Vector4f(0.2f, 0.7f, 0.68f, 0.0f);
             }
             environment_system->MarkSkyDirty();
-            environment_system->SyncSkyUBO();
-        }
+                    }
 
         sun_gizmo_system = ecs_context->GetSystem<hgl::graph::SunDirectionControlSystem>();
         if (!sun_gizmo_system)

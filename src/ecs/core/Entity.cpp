@@ -28,22 +28,6 @@ namespace hgl
                 context->UnregisterComponentInstance(type_hash, comp_ptr);
         }
 
-        void Entity::NotifyComponentAdded(const std::type_index& component_type)
-        {
-            if (context && id.IsValid())
-            {
-                context->NotifyComponentAdded(id, component_type);
-            }
-        }
-
-        void Entity::NotifyComponentRemoved(const std::type_index& component_type)
-        {
-            if (context && id.IsValid())
-            {
-                context->NotifyComponentRemoved(id, component_type);
-            }
-        }
-
         void Entity::ReplaceComponent(size_t type_hash, const std::shared_ptr<Component>& component, const std::type_index& component_type)
         {
             if (!component)
@@ -52,7 +36,6 @@ namespace hgl
             auto *existing = components.GetValuePointer(type_hash);
             if (existing && *existing)
             {
-                NotifyComponentRemoved(component_type);
                 UnregisterFromContext(type_hash, existing->get());
                 (*existing)->OnDetach();
             }
@@ -61,7 +44,6 @@ namespace hgl
             component->SetOwner(id, context);
             RegisterToContext(type_hash, component);
             component->OnAttach();
-            NotifyComponentAdded(component_type);
         }
 
         void Entity::OnUpdate(float deltaTime)
@@ -105,9 +87,6 @@ namespace hgl
                           GetName().c_str(),
                           pair.second->GetName().c_str());
 #endif
-
-                if (notify_systems)
-                    NotifyComponentRemoved(std::type_index(typeid(*pair.second)));
 
                 UnregisterFromContext(pair.first, pair.second.get());
                 pair.second->OnDetach();
