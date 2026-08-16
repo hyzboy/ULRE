@@ -101,12 +101,13 @@ namespace hgl
         };
 
         /**
-         * Initialize system groups from currently registered systems in context.
+         * Ensure system groups are registered for the currently registered systems in context.
+         * Idempotent: registers only groups that are missing (no Clear, no full rescan).
+         * Group records feed pass construction in CreateAdaptiveRenderGraph/
+         * CreateDefaultLinearGraph; the installer path (DefaultSystems) registers
+         * systems/pipelines, this fills in the group metadata once.
          */
-        void InitializeSystemGroups(ECSContext* context);
-
-        /// Backward-compatible alias
-        inline void InitializeRenderSystemGroups(ECSContext* context) { InitializeSystemGroups(context); }
+        void EnsureSystemGroupsRegistered(ECSContext* context);
 
         /**
          * Create the default linear render graph with all system groups enabled

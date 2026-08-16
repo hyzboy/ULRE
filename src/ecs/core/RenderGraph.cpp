@@ -16,24 +16,32 @@ namespace hgl
 {
     namespace ecs
     {
-        // ========== SystemGroup Initialization ==========
+        // ========== SystemGroup Registration ==========
 
-        void InitializeSystemGroups(ECSContext* context)
+        void EnsureSystemGroupsRegistered(ECSContext* context)
         {
             auto& registry = SystemGroupRegistry::Get();
-            registry.Clear();
 
             if (!context)
             {
-                MLogWarning(RenderGraph, "[RenderGraph] InitializeSystemGroups called with null context");
+                MLogWarning(RenderGraph, "[RenderGraph] EnsureSystemGroupsRegistered called with null context");
                 return;
             }
 
+            // Idempotent: register only missing groups. The installer path
+            // (DefaultSystems) registers systems/pipelines; this fills in the
+            // group metadata (name -> phase range) once, so per-frame graph
+            // rebuilds don't Clear + rescan. New element types appearing at
+            // runtime (component-driven installer) still get picked up.
             std::vector<std::string> element_types;
             context->GetAllRenderElementTypes(element_types);
 
+            size_t added = 0;
             for (const auto& element_type : element_types)
             {
+                if (registry.GetGroup(element_type))
+                    continue;
+
                 std::vector<std::shared_ptr<System>> systems;
                 context->GetSystemsByElementType(element_type, systems);
 
@@ -67,10 +75,15 @@ namespace hgl
                     continue;
 
                 registry.RegisterGroup(SystemGroup(element_type, start_phase, end_phase, true));
+                ++added;
             }
 
-            MLogInfo(RenderGraph, "[RenderGraph] Initialized %zu system groups", registry.GetAllGroups().size());
-            registry.DebugPrint();
+            if (added)
+            {
+                MLogInfo(RenderGraph, "[RenderGraph] Registered %zu system groups (total %zu)",
+                         added, registry.GetAllGroups().size());
+                registry.DebugPrint();
+            }
         }
 
         // ========== RenderGraph Implementations ==========
@@ -223,7 +236,7 @@ namespace hgl
                      stats.active_render_groups.size());
 
             auto& registry = SystemGroupRegistry::Get();
-            InitializeSystemGroups(context);
+            EnsureSystemGroupsRegistered(context);
 
             // Enable/disable groups based on detected component-driven groups
             const auto all_groups = registry.GetAllGroups();
@@ -277,7 +290,7 @@ namespace hgl
             RenderGraph graph;
 
             auto& registry = SystemGroupRegistry::Get();
-            InitializeSystemGroups(context);
+            EnsureSystemGroupsRegistered(context);
 
             // Enable all registered groups for default graph (full compatibility)
             const auto all_groups = registry.GetAllGroups();

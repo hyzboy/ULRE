@@ -234,6 +234,9 @@ namespace hgl::ecs
         EnsureSystemGroupSystems(ctx, "Text", default_rt);
         EnsureSystemGroupSystems(ctx, "Line", default_rt);
 
+        // Prime group metadata once so graph construction never rescans
+        hgl::ecs::EnsureSystemGroupsRegistered(ctx);
+
         systems.input_system = ctx->GetSystem<ecs::InputSystem>();
         systems.camera_system = ctx->GetSystem<ecs::CameraSystem>();
         systems.line_bounds_update_system = ctx->GetSystem<ecs::LineBoundsUpdateSystem>();

@@ -71,9 +71,6 @@ namespace hgl
             /// If a group with the same name exists, it will be overwritten
             void RegisterGroup(const SystemGroup& group);
 
-            /// Backward-compatible alias for RegisterGroup
-            void Register(const SystemGroup& group) { RegisterGroup(group); }
-
             /// Register installer callback for a group (plugin style)
             void RegisterGroupInstaller(const std::string& name, GroupInstaller installer);
 
