@@ -280,8 +280,6 @@ namespace
 
         VertexVaryingConfig varying{};
         varying.emit_data_index_id = effective_vertex_varying.emit_data_index_id;
-        varying.emit_texture_layer_id = effective_vertex_varying.emit_texture_layer_id;
-        varying.texture_layer_id_uses_data_index = effective_vertex_varying.texture_layer_id_uses_data_index;
         varying.emit_vertex_color = effective_vertex_varying.emit_vertex_color;
         varying.emit_uv0 = effective_vertex_varying.emit_uv0;
         varying.emit_world_pos = effective_vertex_varying.emit_world_pos;
@@ -412,8 +410,7 @@ namespace
                                 emit_data_index_id;
                         case DescriptorSemantic::
                             MaterialTextureLayerTable:
-                            return !effective_vertex_varying.
-                                emit_texture_layer_id;
+                            return !coverage_contract.requires_texture;
                         case DescriptorSemantic::MaterialColorPalette:
                             return !effective_vertex_varying.
                                 emit_vertex_color_from_palette;
@@ -754,8 +751,6 @@ MaterialVertexVaryingConfig ResolveMaterialVertexVaryingConfig(
     varying.emit_world_normal = false;
     varying.emit_frag_direction = false;
     varying.emit_data_index_id = false;
-    varying.emit_texture_layer_id = false;
-    varying.texture_layer_id_uses_data_index = false;
     varying.emit_vertex_color = false;
     varying.emit_uv0 = false;
     varying.emit_luminance = false;
@@ -772,13 +767,6 @@ MaterialVertexVaryingConfig ResolveMaterialVertexVaryingConfig(
     };
     varying.emit_data_index_id =
         needs_semantic(InterStageSemantic::DataIndexID);
-    varying.emit_texture_layer_id =
-        needs_semantic(InterStageSemantic::TextureLayerID);
-    varying.texture_layer_id_uses_data_index =
-        varying.emit_texture_layer_id
-     && varying.emit_data_index_id
-     && definition.vertex_varying.
-            texture_layer_id_uses_data_index;
     varying.emit_vertex_color =
         needs_semantic(InterStageSemantic::Color)
      && definition.vertex_varying.emit_vertex_color;

@@ -14,8 +14,6 @@ namespace hgl::graph::shadergen
     struct VertexVaryingConfig
     {
         bool emit_data_index_id    = false;  // location=0 flat out uint fragDataIndexID
-        bool emit_texture_layer_id = false;  // location=1 flat out uint fragTextureLayerID
-        bool texture_layer_id_uses_data_index = false; // true: fragTextureLayerID = fragDataIndexID (bindless row semantics)
         bool emit_vertex_color     = false;  // location=2 out vec4 fragVertexColor
         bool emit_uv0              = false;  // location=3 out vec2 fragUV0
         // Extended: for materials that need world-space outputs (e.g. DebugNormalColor)
@@ -74,10 +72,6 @@ namespace hgl::graph::shadergen
             MaterialVertexVaryingConfig material_varying{};
             material_varying.emit_data_index_id =
                 varying_cfg.emit_data_index_id;
-            material_varying.emit_texture_layer_id =
-                varying_cfg.emit_texture_layer_id;
-            material_varying.texture_layer_id_uses_data_index =
-                varying_cfg.texture_layer_id_uses_data_index;
             material_varying.emit_vertex_color =
                 varying_cfg.emit_vertex_color;
             material_varying.emit_uv0 = varying_cfg.emit_uv0;
@@ -153,9 +147,9 @@ namespace hgl::graph::shadergen
             vs += "L2W_SSBO;\n";
         }
 
-        // 行表 SSBO 声明（l2w_index_rows / mtl_data_index_rows / mtl_texture_layer_rows）
+        // 行表 SSBO 声明（l2w_index_rows / mtl_data_index_rows）
         // 不再在此展开：由 CompileCompositorMaterial 依据 descriptor_info 统一生成并
-        // 注入到 #version 之后（ResolveTransformID / ResolveDataIndexID / ResolveTextureLayerID
+        // 注入到 #version 之后（ResolveTransformID / ResolveDataIndexID
         // 同由该处提供定义）。
 
         vs += "\n";
@@ -248,14 +242,6 @@ namespace hgl::graph::shadergen
         if (FindMaterialStageInterfaceEntry(
                 stage_interface, InterStageSemantic::DataIndexID))
             vs += "    fragDataIndexID = ResolveDataIndexID(gl_InstanceIndex);\n";
-        if (FindMaterialStageInterfaceEntry(
-                stage_interface, InterStageSemantic::TextureLayerID))
-        {
-            if (varying_cfg.texture_layer_id_uses_data_index)
-                vs += "    fragTextureLayerID = fragDataIndexID;\n";
-            else
-                vs += "    fragTextureLayerID = ResolveTextureLayerID(gl_InstanceIndex);\n";
-        }
         if (FindMaterialStageInterfaceEntry(
                 stage_interface, InterStageSemantic::Color))
         {

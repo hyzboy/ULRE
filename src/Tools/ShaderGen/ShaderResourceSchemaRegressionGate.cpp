@@ -836,9 +836,9 @@ namespace
          || data_index->stable_location != 0
          || data_index->interpolation != InterStageInterpolation::Flat
          || !uv1
-         || uv1->stable_location != 5
+         || uv1->stable_location != 4
          || !color
-         || color->stable_location != 6)
+         || color->stable_location != 5)
         {
             result.diagnostics.emplace_back(
                 "inter-stage stable ABI metadata mismatch");
@@ -868,7 +868,6 @@ namespace
 
         VertexVaryingConfig lit_varying{};
         lit_varying.emit_data_index_id = true;
-        lit_varying.emit_texture_layer_id = true;
         lit_varying.emit_world_pos = true;
         lit_varying.emit_world_normal = true;
         lit_varying.emit_uv0 = true;
@@ -881,15 +880,15 @@ namespace
         if (lit_vs.find(
                 "layout(location=0) flat out uint fragDataIndexID;")
                 == std::string::npos
+         || lit_vs.find("layout(location=1) out vec3 fragWorldPos;")
+                == std::string::npos
+         || lit_vs.find("layout(location=2) out vec3 fragWorldNormal;")
+                == std::string::npos
+         || lit_vs.find("layout(location=3) out vec2 fragUV0;")
+                == std::string::npos
          || lit_vs.find(
                 "layout(location=1) flat out uint fragTextureLayerID;")
-                == std::string::npos
-         || lit_vs.find("layout(location=2) out vec3 fragWorldPos;")
-                == std::string::npos
-         || lit_vs.find("layout(location=3) out vec3 fragWorldNormal;")
-                == std::string::npos
-         || lit_vs.find("layout(location=4) out vec2 fragUV0;")
-                == std::string::npos)
+                != std::string::npos)
         {
             result.diagnostics.emplace_back(
                 "legacy generated lit varying ABI changed");
@@ -904,7 +903,7 @@ namespace
             {},
             GetShaderLibraryPath());
         if (color_vs.find(
-                "layout(location=6) out vec4 fragVertexColor;")
+                "layout(location=5) out vec4 fragVertexColor;")
                 == std::string::npos
          || color_vs.find(
                 "layout(location=0) out vec4 fragVertexColor;")
@@ -5319,8 +5318,6 @@ namespace
             DescriptorContract varying_contract = first_contract;
             MaterialVertexVaryingConfig varying{};
             varying.emit_data_index_id = true;
-            varying.emit_texture_layer_id = true;
-            varying.texture_layer_id_uses_data_index = false;
             ShaderResourceSchema varying_layout;
             if (!EnsureDescriptorContractVaryingResources(
                     varying, varying_contract)
@@ -5348,13 +5345,13 @@ namespace
                     if (requirement.semantic
                         == DescriptorSemantic::MaterialTextureLayerTable)
                     {
-                        has_texture_layer =
-                            requirement.stage_flags
-                                == uint32_t(
-                                    VK_SHADER_STAGE_ALL_GRAPHICS);
+                        has_texture_layer = true;
                     }
                 }
-                if (!has_data_index || !has_texture_layer)
+                // P1-2e：varying 路径只负责 MaterialDataIndexTable；
+                // MaterialTextureLayerTable 由 manifest/纹理槽声明提供，
+                // 不再由 varying 契约生成。
+                if (!has_data_index || has_texture_layer)
                     result.diagnostics.emplace_back(
                         "varying tables missing from runtime layout");
             }

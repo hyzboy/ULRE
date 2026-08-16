@@ -79,8 +79,6 @@ namespace hgl::graph::shadergen
 
         if (varying.emit_data_index_id)
             add(InterStageSemantic::DataIndexID);
-        if (varying.emit_texture_layer_id)
-            add(InterStageSemantic::TextureLayerID);
         if (varying.emit_world_pos)
             add(InterStageSemantic::WorldPosition);
         if (varying.emit_world_normal)
@@ -104,16 +102,6 @@ namespace hgl::graph::shadergen
     {
         out_entries.Clear();
         out_diagnostic = {};
-
-        if (varying.texture_layer_id_uses_data_index
-         && (!varying.emit_texture_layer_id
-          || !varying.emit_data_index_id))
-        {
-            return SetFailure(
-                out_diagnostic,
-                MaterialStageInterfaceError::InvalidVaryingConfiguration,
-                InterStageSemantic::TextureLayerID);
-        }
 
         const InterStageSemanticMask mask =
             GetMaterialInterStageSemanticMask(varying);
@@ -218,8 +206,7 @@ namespace hgl::graph::shadergen
             "    si.vertexColor = vec4(1.0);\n"
             "    si.viewDir = vec3(0.0, 0.0, 1.0);\n"
             "    si.screenPos = gl_FragCoord.xy;\n"
-            "    si.luminance = 1.0;\n"
-            "    si.textureLayerID = 0u;\n";
+            "    si.luminance = 1.0;\n";
 
         if (FindMaterialStageInterfaceEntry(
                 entries, InterStageSemantic::WorldPosition))
@@ -241,10 +228,6 @@ namespace hgl::graph::shadergen
         if (FindMaterialStageInterfaceEntry(
                 entries, InterStageSemantic::Luminance))
             out_code += "    si.luminance = fragLuminance;\n";
-        if (FindMaterialStageInterfaceEntry(
-                entries, InterStageSemantic::TextureLayerID))
-            out_code +=
-                "    si.textureLayerID = fragTextureLayerID;\n";
 
         out_code += "    const uint materialDataIndex = ";
         out_code += FindMaterialStageInterfaceEntry(

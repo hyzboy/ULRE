@@ -49,7 +49,6 @@ namespace hgl::graph::shadergen
     {
         Unknown = 0,
         DataIndexID,
-        TextureLayerID,
         WorldPosition,
         WorldNormal,
         UV0,

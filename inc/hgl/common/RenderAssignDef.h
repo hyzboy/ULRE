@@ -30,13 +30,4 @@ namespace hgl::graph::Assign
         constexpr const uint32_t    STRIDE_BYTES    = sizeof(ValueType);
     }
 
-    namespace TextureLayerID
-    {
-        using ValueType = uint16_t;
-        constexpr VkFormat          VAB_FMT         = VK_FORMAT_R16_UINT;
-        constexpr VertexSemantic    VIS_SEMANTIC    = VertexSemantic::TextureLayerID;
-        constexpr VAType            VAT_FMT         = VAT_UINT;
-        constexpr const uint32_t    STRIDE_BYTES    = sizeof(ValueType);
-    }
-
 }

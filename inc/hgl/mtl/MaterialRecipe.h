@@ -172,8 +172,6 @@ namespace hgl::graph::mtl
     struct MaterialVertexVaryingConfig
     {
         bool emit_data_index_id = false;
-        bool emit_texture_layer_id = false;
-        bool texture_layer_id_uses_data_index = false;
         bool emit_vertex_color = false;
         bool emit_uv0 = false;
         bool emit_world_pos = false;

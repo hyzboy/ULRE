@@ -202,8 +202,7 @@ static bool ValidateDefinitionCapabilitySubset(
             break;
 
         case DescriptorSemantic::MaterialTextureLayerTable:
-            allowed = !definition.data_slot_decls.empty()
-                   || definition.vertex_varying.emit_texture_layer_id;
+            allowed = !definition.texture_slot_decls.empty();
             break;
         case DescriptorSemantic::MaterialDataIndexTable:
             allowed = !definition.data_slot_decls.empty()
@@ -554,18 +553,6 @@ ShaderBuildContext *CompileCompositorMaterial(
                          SBS_MaterialDataIndexRows.struct_name,
                          SBS_MaterialDataIndexRows.name);
         }
-
-        if (vv.emit_texture_layer_id
-            && !vv.texture_layer_id_uses_data_index
-            && !HasDescriptorSemanticInDef(DescriptorSemantic::MaterialTextureLayerTable))
-        {
-            ctx->AddStruct(SBS_MaterialTextureLayerRows.struct_name, "");
-            ctx->AddSSBO(uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
-                         DescriptorSetType::Material,
-                         SBS_MaterialTextureLayerRows.struct_name,
-                         SBS_MaterialTextureLayerRows.name,
-                         int(declared_material_data_slot_count));
-        }
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -795,9 +782,8 @@ ShaderBuildContext *CompileCompositorMaterial(
                          { "DataIndexRows", "mtl_data_index_rows", "ResolveDataIndexID", true });
     // FS 阶段注入 bindless 纹理行表：TextureLayerRowsData struct + buffer（named slot）。
     // 字段名 = TextureSlot 的 snake_case 名（GetTextureSlotName），顺序与枚举一致；
-    // 内存布局与旧扁平 values[RANGE_SIZE] 逐字节相同，故 CPU 上传（p1-2d-3 前）无需改动。
-    // VS 阶段不再注入：ResolveTextureLayerID 仅在 texture_layer_id_uses_data_index=false
-    // 的死路径被引用；生产材质恒 uses_data_index=true，FS 直接复用 fragDataIndexID。
+    // 内存布局与旧扁平 values[RANGE_SIZE] 逐字节相同，故 CPU 上传无需改动。
+    // 行索引即 fragDataIndexID（P1-2e：TextureLayerID varying 已删除）。
     {
         // 仅当该材质确实注册了 mtl_texture_layer_rows（存在 MaterialTextureLayerTable
         // 描述符，即声明了纹理槽）时才注入 named-slot struct + buffer；否则跳过

@@ -169,28 +169,6 @@ namespace hgl::graph::shadergen
             generated.push_back(entry);
         }
 
-        if (varying.emit_texture_layer_id
-         && !varying.texture_layer_id_uses_data_index
-         && !has_semantic(
-                DescriptorSemantic::MaterialTextureLayerTable))
-        {
-            SerializedDescriptorEntry entry{};
-            entry.set_type = DescriptorSetType::Material;
-            entry.kind = DescriptorKind::SSBO;
-            entry.stage_flags =
-                uint32(VK_SHADER_STAGE_ALL_GRAPHICS);
-            entry.name = SBS_MaterialTextureLayerRows.name;
-            entry.struct_name =
-                SBS_MaterialTextureLayerRows.struct_name;
-            entry.semantic =
-                DescriptorSemantic::MaterialTextureLayerTable;
-            entry.semantic_layer = DescriptorSemanticLayer::SSBO;
-            entry.ssbo_type = SSBOType::TextureLayer;
-            entry.has_requirement_policy = true;
-            entry.required = true;
-            generated.push_back(entry);
-        }
-
         for (const SerializedDescriptorEntry &entry : generated)
         {
             if (!AppendEntry(entry, in_out_contract))

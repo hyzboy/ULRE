@@ -199,10 +199,15 @@ inline void AppendDefinitionMaterialDescriptors(
     }
 
     if (!definition.data_slot_decls.empty())
-    {
         PushMaterialDataIndexRows(v, stage_flags);
+
+    // P1-2e：mtl_texture_layer_rows 仅当材质声明纹理槽时才要求。
+    // 有数据槽但无纹理槽的材质（PureColor 等）不再隐式要求
+    // MaterialTextureLayerTable；纹理层行表改由
+    // AppendManifestTextureLayerDescriptors（manifest 元数据）或此处
+    // texture_slot_decls 声明提供。
+    if (!definition.texture_slot_decls.empty())
         PushMaterialTextureLayerRows(v, texture_layer_table_stage_flags);
-    }
 }
 
 inline bool CStrEqual(const char *lhs, const char *rhs) noexcept

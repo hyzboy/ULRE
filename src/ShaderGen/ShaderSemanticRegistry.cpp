@@ -35,24 +35,22 @@ namespace hgl::graph::shadergen
             {VertexSemantic::JointID,        "JointID",        UIntShape(4),   1},
             {VertexSemantic::JointWeight,    "JointWeight",    FloatShape(4),  1},
             {VertexSemantic::TransformID,    "TransformID",    UIntShape(1),   1},
-            {VertexSemantic::DataIndexID,    "DataIndexID",    UIntShape(1),   1},
-            {VertexSemantic::TextureLayerID, "TextureLayerID", UIntShape(1),   1}
+            {VertexSemantic::DataIndexID,    "DataIndexID",    UIntShape(1),   1}
         };
 
         constexpr InterStageSemanticInfo InterStageSemanticRegistry[] =
         {
             {InterStageSemantic::Unknown,        "Unknown",            {},           InterStageInterpolation::Smooth, 0, InvalidShaderSemanticLocation},
             {InterStageSemantic::DataIndexID,    "fragDataIndexID",    UIntShape(1),  InterStageInterpolation::Flat,   1, 0},
-            {InterStageSemantic::TextureLayerID, "fragTextureLayerID", UIntShape(1),  InterStageInterpolation::Flat,   1, 1},
-            {InterStageSemantic::WorldPosition,  "fragWorldPos",       FloatShape(3), InterStageInterpolation::Smooth, 1, 2},
-            {InterStageSemantic::WorldNormal,    "fragWorldNormal",    FloatShape(3), InterStageInterpolation::Smooth, 1, 3},
-            {InterStageSemantic::UV0,            "fragUV0",            FloatShape(2), InterStageInterpolation::Smooth, 1, 4},
-            {InterStageSemantic::UV1,            "fragUV1",            FloatShape(2), InterStageInterpolation::Smooth, 1, 5},
-            {InterStageSemantic::Color,          "fragVertexColor",    FloatShape(4), InterStageInterpolation::Smooth, 1, 6},
-            {InterStageSemantic::FragDirection,  "fragDirection",      FloatShape(3), InterStageInterpolation::Smooth, 1, 7},
-            {InterStageSemantic::Luminance,      "fragLuminance",      FloatShape(1), InterStageInterpolation::Smooth, 1, 8},
-            {InterStageSemantic::WorldTangent,   "fragWorldTangent",   FloatShape(3), InterStageInterpolation::Smooth, 1, 9},
-            {InterStageSemantic::WorldBinormal,  "fragWorldBinormal",  FloatShape(3), InterStageInterpolation::Smooth, 1, 10}
+            {InterStageSemantic::WorldPosition,  "fragWorldPos",       FloatShape(3), InterStageInterpolation::Smooth, 1, 1},
+            {InterStageSemantic::WorldNormal,    "fragWorldNormal",    FloatShape(3), InterStageInterpolation::Smooth, 1, 2},
+            {InterStageSemantic::UV0,            "fragUV0",            FloatShape(2), InterStageInterpolation::Smooth, 1, 3},
+            {InterStageSemantic::UV1,            "fragUV1",            FloatShape(2), InterStageInterpolation::Smooth, 1, 4},
+            {InterStageSemantic::Color,          "fragVertexColor",    FloatShape(4), InterStageInterpolation::Smooth, 1, 5},
+            {InterStageSemantic::FragDirection,  "fragDirection",      FloatShape(3), InterStageInterpolation::Smooth, 1, 6},
+            {InterStageSemantic::Luminance,      "fragLuminance",      FloatShape(1), InterStageInterpolation::Smooth, 1, 7},
+            {InterStageSemantic::WorldTangent,   "fragWorldTangent",   FloatShape(3), InterStageInterpolation::Smooth, 1, 8},
+            {InterStageSemantic::WorldBinormal,  "fragWorldBinormal",  FloatShape(3), InterStageInterpolation::Smooth, 1, 9}
         };
 
         constexpr uint32 GeometrySemanticRegistryCount =

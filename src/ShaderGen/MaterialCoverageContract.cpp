@@ -93,11 +93,8 @@ namespace hgl::graph::shadergen
                     source,
                     "material/pbr_texturearray_source.glsl") == 0)
             {
-                require_semantic(InterStageSemantic::TextureLayerID);
+                require_semantic(InterStageSemantic::DataIndexID);
                 require_semantic(InterStageSemantic::UV0);
-                if (definition.vertex_varying.
-                        texture_layer_id_uses_data_index)
-                    require_semantic(InterStageSemantic::DataIndexID);
                 out_contract.requires_texture = true;
                 out_contract.texture_slot = TextureSlot::OpacityMask;
             }
@@ -105,11 +102,8 @@ namespace hgl::graph::shadergen
                         source,
                         "material/texture_source.glsl") == 0)
             {
-                require_semantic(InterStageSemantic::TextureLayerID);
+                require_semantic(InterStageSemantic::DataIndexID);
                 require_semantic(InterStageSemantic::UV0);
-                if (definition.vertex_varying.
-                        texture_layer_id_uses_data_index)
-                    require_semantic(InterStageSemantic::DataIndexID);
                 out_contract.requires_texture = true;
                 out_contract.texture_slot = TextureSlot::BaseColor;
             }
@@ -120,7 +114,6 @@ namespace hgl::graph::shadergen
                         source,
                         "material/texture_array_source.glsl") == 0)
             {
-                require_semantic(InterStageSemantic::TextureLayerID);
                 require_semantic(InterStageSemantic::DataIndexID);
                 require_semantic(InterStageSemantic::UV0);
                 out_contract.requires_material_data = true;
@@ -201,7 +194,6 @@ namespace hgl::graph::shadergen
             generated += "    si.viewDir = vec3(0.0, 0.0, 1.0);\n";
             generated += "    si.screenPos = gl_FragCoord.xy;\n";
             generated += "    si.luminance = 1.0;\n";
-            generated += "    si.textureLayerID = 0u;\n";
 
             if (HasSemantic(
                     stage_interface,
@@ -223,11 +215,6 @@ namespace hgl::graph::shadergen
                     stage_interface,
                     InterStageSemantic::Luminance))
                 generated += "    si.luminance = fragLuminance;\n";
-            if (HasSemantic(
-                    stage_interface,
-                    InterStageSemantic::TextureLayerID))
-                generated +=
-                    "    si.textureLayerID = fragTextureLayerID;\n";
 
             generated += "    const float alpha = EvalAlpha(si, ";
             generated += HasSemantic(

@@ -635,8 +635,6 @@ namespace hgl::graph::mtl
                         return false;
                     const std::string field = item.as_string();
                     if (field == "emit_data_index_id") out.definition.vertex_varying.emit_data_index_id = true;
-                    else if (field == "emit_texture_layer_id") out.definition.vertex_varying.emit_texture_layer_id = true;
-                    else if (field == "texture_layer_id_uses_data_index") out.definition.vertex_varying.texture_layer_id_uses_data_index = true;
                     else if (field == "emit_vertex_color") out.definition.vertex_varying.emit_vertex_color = true;
                     else if (field == "emit_uv0") out.definition.vertex_varying.emit_uv0 = true;
                     else if (field == "emit_world_pos") out.definition.vertex_varying.emit_world_pos = true;

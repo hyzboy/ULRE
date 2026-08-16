@@ -25,9 +25,8 @@ namespace hgl::graph
         JointWeight,
         TransformID,
         DataIndexID,
-        TextureLayerID,
 
-        ENUM_CLASS_RANGE(Unknown,TextureLayerID)
+        ENUM_CLASS_RANGE(Unknown,DataIndexID)
     };
 
     enum class VertexAttribBaseType:uint8
@@ -110,7 +109,6 @@ namespace hgl::graph
             case VertexSemantic::JointWeight:      return "JointWeight";
             case VertexSemantic::TransformID:      return "TransformID";
             case VertexSemantic::DataIndexID:      return "DataIndexID";
-            case VertexSemantic::TextureLayerID:   return "TextureLayerID";
             default:                               return "Unknown";
         }
     }
@@ -134,7 +132,6 @@ namespace hgl::graph
         if(std::strcmp(name,"JointWeight")==0)    return VertexSemantic::JointWeight;
         if(std::strcmp(name,"TransformID")==0)    return VertexSemantic::TransformID;
         if(std::strcmp(name,"DataIndexID")==0)    return VertexSemantic::DataIndexID;
-        if(std::strcmp(name,"TextureLayerID")==0) return VertexSemantic::TextureLayerID;
 
         return VertexSemantic::Unknown;
     }
@@ -188,6 +185,5 @@ namespace hgl::graph
         constexpr VertexSemantic JointWeight    = VertexSemantic::JointWeight;
         constexpr VertexSemantic TransformID    = VertexSemantic::TransformID;
         constexpr VertexSemantic DataIndexID    = VertexSemantic::DataIndexID;
-        constexpr VertexSemantic TextureLayerID = VertexSemantic::TextureLayerID;
     }
 }

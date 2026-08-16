@@ -25,7 +25,7 @@ pass = "ForwardOpaque"
 
 [vertex]
 requirements = ["Position", "Normal"]
-varyings = ["emit_data_index_id", "emit_texture_layer_id", "texture_layer_id_uses_data_index", "emit_world_pos", "emit_world_normal"]
+varyings = ["emit_data_index_id", "emit_world_pos", "emit_world_normal"]
 
 [resources]
 ubos = ["ViewportInfo", "CameraInfo"]

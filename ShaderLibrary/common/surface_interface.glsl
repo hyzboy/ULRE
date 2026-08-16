@@ -21,7 +21,6 @@ struct SurfaceInput
     vec3 viewDir;        // normalize(-worldPos)，因为 cameraPos 恒为 0
     vec2 screenPos;
     float luminance;     // 顶点亮度（VertexLuminance 材质使用）
-    uint textureLayerID; // bindless 纹理行索引（= gl_InstanceIndex）；生产材质恒等于 dataIndex
 };
 
 // Material attributes returned by a surface module. Compositors must not
