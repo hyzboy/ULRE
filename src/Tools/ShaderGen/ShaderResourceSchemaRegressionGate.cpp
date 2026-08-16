@@ -393,7 +393,7 @@ namespace
 
         static const char *definition_ids[] = {
             BUILTIN_MTL_DEF_PURE_COLOR,
-            "Text2D"
+            BUILTIN_MTL_DEF_TEXT
         };
 
         for (const char *id : definition_ids)
@@ -1040,13 +1040,13 @@ namespace
             {VertexSemantic::Position, VF_V2I},
             {VertexSemantic::TexCoord, VF_V2F}
         };
-        check_preview("Text2D", text_geometry, 2);
+        check_preview(BUILTIN_MTL_DEF_TEXT, text_geometry, 2);
 
         // The opt-in ABI builder consumes the preview graph to generate both
         // SerializedVertexEntry data and GLSL declarations without invoking the
         // GLSL compiler plugin.
         MaterialDefinition text_definition{};
-        if (!TryGetMaterialDefinitionByID("Text2D", text_definition))
+        if (!TryGetMaterialDefinitionByID(BUILTIN_MTL_DEF_TEXT, text_definition))
         {
             result.diagnostics.emplace_back("missing switched-build definition: Text2D");
         }
@@ -1355,7 +1355,7 @@ namespace
             GLSLCodeModuleCapabilitySource::GeometryAttribute,
             GLSLCodeModuleSemantic::Normal,
             static_cast<uint32_t>(GLSLCodeModuleNumericClass::Float),
-            3, 3, 0
+            3, 3
         };
         const GLSLCodeModuleSemantic normal_provides[] = {
             GLSLCodeModuleSemantic::Normal
@@ -1374,7 +1374,7 @@ namespace
             GLSLCodeModuleCapabilitySource::GeometryAttribute,
             GLSLCodeModuleSemantic::UV0,
             static_cast<uint32_t>(GLSLCodeModuleNumericClass::Float),
-            2, 2, 0
+            2, 2
         };
         const GLSLCodeModuleSemantic uv_provides[] = {
             GLSLCodeModuleSemantic::UV0
@@ -2150,15 +2150,13 @@ namespace
                 GLSLCodeModuleSemantic::Position,
                 uint32_t(GLSLCodeModuleNumericClass::Float),
                 3,
-                3,
-                0
+                3
             });
         graph_a.aggregated_semantic_requirements.Add(
             {
                 GLSLCodeModuleCapabilitySource::Resource,
                 GLSLCodeModuleSemantic::MaterialData,
                 uint32_t(GLSLCodeModuleNumericClass::Any),
-                0,
                 0,
                 0
             });
@@ -2595,37 +2593,26 @@ namespace
         }
 
         MaterialDefinition text{};
-        MaterialDefinition text_alias{};
         MaterialDefinition text_creator{};
         if (!TryGetMaterialDefinitionByID(BUILTIN_MTL_DEF_TEXT, text)
-         || !TryGetMaterialDefinitionByID("Text2D", text_alias)
          || !TryGetMaterialDefinitionByBootstrapKind(
                 MaterialDefinitionBootstrapKind::TextAlphaBlend, text_creator))
         {
             result.diagnostics.emplace_back(
-                "Text canonical definition, alias, or creator route is missing");
+                "Text canonical definition or creator route is missing");
         }
         else if (text.definition_id != BUILTIN_MTL_DEF_TEXT
-              || text_alias.definition_id != text.definition_id
               || text_creator.definition_id != text.definition_id
-              || text_alias.source_kind != MaterialDefinitionSourceKind::BuiltIn
-              || !IsBootstrapMaterialDefinition(text_alias))
+              || text.source_kind != MaterialDefinitionSourceKind::BuiltIn
+              || !IsBootstrapMaterialDefinition(text))
         {
             result.diagnostics.emplace_back(
-                "Text2D alias and creator route must share one bootstrap identity");
+                "Text canonical definition and creator route must share one bootstrap identity");
         }
 
         MaterialRecipe canonical_recipe{};
         canonical_recipe.mtl_def_id = BUILTIN_MTL_DEF_TEXT;
-        MaterialRecipe alias_recipe{};
-        alias_recipe.mtl_def_id = "Text2D";
         NormalizeRecipe(canonical_recipe);
-        NormalizeRecipe(alias_recipe);
-        if (canonical_recipe.mtl_def_id != alias_recipe.mtl_def_id)
-        {
-            result.diagnostics.emplace_back(
-                "recipe normalization must collapse aliases to one shader identity");
-        }
 
         MaterialDefinition ordinary{};
         if (!TryGetMaterialDefinitionByID("Lit", ordinary)
@@ -5593,13 +5580,13 @@ namespace
             GLSLCodeModuleCapabilitySource::ProducedSemantic,
             GLSLCodeModuleSemantic::Normal,
             static_cast<uint32_t>(GLSLCodeModuleNumericClass::Float),
-            3, 3, 0
+            3, 3
         };
         const GLSLCodeModuleSemanticRequirement uv_requirement{
             GLSLCodeModuleCapabilitySource::ProducedSemantic,
             GLSLCodeModuleSemantic::UV0,
             static_cast<uint32_t>(GLSLCodeModuleNumericClass::Float),
-            2, 2, 0
+            2, 2
         };
 
         GLSLCodeModuleDefinition base{};
