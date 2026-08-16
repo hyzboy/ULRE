@@ -90,7 +90,6 @@ namespace hgl::example
 
             world_->SetResourceNamePrefix(cfg.resource_prefix);
             world_->SetRenderContext(owner->GetRenderContext());
-            world_->InitializeGraphics(owner->GetDevice(), rt_);
 
             rt_system_ = world_->RegisterRenderSystem<ecs::RenderTargetSystem>();
             collect_system_ = world_->RegisterRenderSystem<ecs::RenderPrimitiveCollectSystem>();
@@ -107,7 +106,8 @@ namespace hgl::example
             rt_system_->SetRenderTarget(rt_);
             collect_system_->SetWorld(world_);
 
-            world_->Initialize();
+            // W3 合并后单一入口：GPU 绑定 + 系统初始化（device 来自 :69）
+            world_->Initialize(device, rt_);
 
             if (camera_system_)
             {

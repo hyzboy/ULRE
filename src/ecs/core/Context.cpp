@@ -474,6 +474,26 @@ namespace hgl
 
 
 
+        void ECSContext::RenderDrawOnly(graph::RenderCmdBuffer* cmd, float deltaTime)
+        {
+            if (!active)
+                return;
+
+            // Draw-only entry: Update() phases (Collect/Batch/Upload) were already executed
+            // by PrepareRenderPassSetup() before BeginRenderPass. Only issue GPU draw commands here.
+            if (!current_render_cmd && cmd)
+                current_render_cmd = cmd;
+
+            RecordPreparedRenderPhaseRange(ExecutionPhase::RenderCollect,
+                                           ExecutionPhase::RenderStat,
+                                           deltaTime,
+                                           true,
+                                           "[ECSContext::RenderDrawOnly]");
+
+            if (current_render_cmd == cmd)
+                current_render_cmd = nullptr;
+        }
+
         void ECSContext::OnResize(const VkExtent2D &extent)
         {
             HGL_CAPTURE_SCOPE();

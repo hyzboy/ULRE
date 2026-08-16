@@ -231,6 +231,10 @@ namespace hgl
             void Tick(float deltaTime);
 
             /// Compatibility entry for recording into an existing command buffer.
+            /// 离屏/手动命令缓冲流程：Update 相位已由 PrepareRenderPassSetup
+            /// 执行，仅录制绘制命令（OffscreenWorldRuntime 依赖——真用例）
+            void RenderDrawOnly(graph::RenderCmdBuffer *cmd, float deltaTime);
+
             /// Preferred public frame driver is Render(float).
 
             /// Internal-style draw-only recording entry kept for compatibility with
