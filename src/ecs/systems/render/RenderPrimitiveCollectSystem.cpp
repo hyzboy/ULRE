@@ -337,28 +337,14 @@ namespace hgl::ecs
                     return false;
                 }
 
-                uint32_t handle = 0;
-                switch (resource->kind)
-                {
-                case PrimitiveComponent::
-                        MaterialTextureResourceKind::Texture2D:
-                    handle = rdbs->RegisterTexture2DResource(
-                        resource_id,
-                        resource->texture,
-                        resource->sampler,
-                        bindless_mgr);
-                    break;
-                case PrimitiveComponent::
-                        MaterialTextureResourceKind::Texture2DArray:
-                    handle = rdbs->RegisterTexture2DArrayResource(
-                        resource_id,
-                        resource->texture,
-                        resource->sampler,
-                        bindless_mgr);
-                    break;
-                default:
-                    break;
-                }
+                // 所有纹理（2D / 2DArray）统一走 bindless Register。
+                // resource->kind 仅保留用于资产加载（authoring）分支，
+                // 描述符侧 2D 与 2DArray 均落在 sampler2DArray[]（单层/多层）。
+                uint32_t handle = rdbs->RegisterTextureResource(
+                    resource_id,
+                    resource->texture,
+                    resource->sampler,
+                    bindless_mgr);
                 if (handle == 0)
                     return false;
             }

@@ -339,6 +339,7 @@ struct TextureData
     VkImage             image;
     VkImageLayout       image_layout;
     ImageView *         image_view;
+    ImageView *         array_view;     // 2D 纹理的 bindless 单层 2D_ARRAY companion view（惰性创建）
     uint32              miplevel;
     VkImageTiling       tiling;
 
@@ -354,6 +355,7 @@ public:
         memory      =tci->memory;
         image       =tci->image;
         image_view  =tci->image_view;
+        array_view  =nullptr;
         miplevel    =tci->target_mipmaps;
         tiling      =VkImageTiling(tci->tiling);
 

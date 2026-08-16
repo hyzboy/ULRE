@@ -19,6 +19,9 @@ Texture::~Texture()
             owner->UntrackObject(VK_OBJECT_TYPE_IMAGE, (uint64_t)(uintptr_t)data->image);
     }
 
+    if(data->array_view)
+        delete data->array_view;
+
     if(data->image_view)
         delete data->image_view;
 
@@ -29,5 +32,26 @@ Texture::~Texture()
         if(data->image)
             vkDestroyImage(manager->GetVkDevice(),data->image,nullptr);
     }
+}
+
+VkImageView Texture2D::GetBindlessArrayView()
+{
+    if(!data||!data->image_view)
+        return VK_NULL_HANDLE;
+
+    if(data->array_view)
+        return data->array_view->GetImageView();
+
+    VkExtent3D ext = data->image_view->GetExtent();
+    ext.depth      = 1;      // 单层 2D_ARRAY view（layerCount = ext.depth）
+
+    data->array_view = CreateImageView2DArray(manager->GetVkDevice(),
+                                              data->image_view->GetFormat(),
+                                              ext,
+                                              data->miplevel,
+                                              data->image_view->GetAspectFlags(),
+                                              data->image);
+
+    return data->array_view ? data->array_view->GetImageView() : VK_NULL_HANDLE;
 }
 }//namespace hgl::graph

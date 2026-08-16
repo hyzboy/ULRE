@@ -13,6 +13,7 @@
 //   vec4 color  = SampleBindless2D(handle, uv);
 //
 // handle 为 1-based（0 = 无效）；SampleBindless2D(0, uv) 返回 vec4(0)。
+// 所有纹理（2D / 2DArray）统一注册为 2DArray 数组；2D 纹理为单层。
 // TextureLayerRowsData 结构（含各 slot 字段）由 MaterialShaderCompiler 动态生成注入。
 
 #ifndef BINDLESS_TEXTURES_GLSL
@@ -22,8 +23,7 @@
 
 #include "descriptor_macros.glsl"
 
-layout(set=BINDLESS_SET, binding=0) uniform sampler2D      bindless_tex2d[];
-layout(set=BINDLESS_SET, binding=1) uniform sampler2DArray bindless_tex2darray[];
+layout(set=BINDLESS_SET, binding=0) uniform sampler2DArray bindless_tex2darray[];
 
 // ── 采样辅助函数 ─────────────────────────────────────────────────────
 
@@ -31,14 +31,7 @@ vec4 SampleBindless2D(uint handle, vec2 uv)
 {
     if (handle == 0u)
         return vec4(0.0);
-    return texture(bindless_tex2d[nonuniformEXT(handle - 1u)], uv);
-}
-
-vec4 SampleBindless2DLod(uint handle, vec2 uv, float lod)
-{
-    if (handle == 0u)
-        return vec4(0.0);
-    return textureLod(bindless_tex2d[nonuniformEXT(handle - 1u)], uv, lod);
+    return texture(bindless_tex2darray[nonuniformEXT(handle - 1u)], vec3(uv, 0.0));
 }
 
 vec4 SampleBindless2DArray(uint handle, vec2 uv, float layer)
@@ -46,13 +39,6 @@ vec4 SampleBindless2DArray(uint handle, vec2 uv, float layer)
     if (handle == 0u)
         return vec4(0.0);
     return texture(bindless_tex2darray[nonuniformEXT(handle - 1u)], vec3(uv, layer));
-}
-
-vec4 FetchBindless2D(uint handle, ivec2 coord, int lod)
-{
-    if (handle == 0u)
-        return vec4(0.0);
-    return texelFetch(bindless_tex2d[nonuniformEXT(handle - 1u)], coord, lod);
 }
 
 #endif // BINDLESS_TEXTURES_GLSL

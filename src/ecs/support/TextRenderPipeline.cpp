@@ -453,7 +453,7 @@ namespace hgl::ecs
         if (!bindless_mgr || !bindless_mgr->IsValid())
             return nullptr;
 
-        const uint32_t atlas_handle = bindless_mgr->Register2D(guard.tile_font->GetTexture(), guard.sampler);
+        const uint32_t atlas_handle = bindless_mgr->Register(guard.tile_font->GetTexture(), guard.sampler);
         if (atlas_handle == 0)
             return nullptr;
 

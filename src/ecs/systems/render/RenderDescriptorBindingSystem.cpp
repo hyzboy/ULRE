@@ -210,10 +210,10 @@ namespace hgl::ecs
         return true;
     }
 
-    uint32_t RenderDescriptorBindingSystem::RegisterTexture2DResource(const std::string &resource_id,
-                                                                      graph::Texture *tex,
-                                                                      graph::Sampler *sampler,
-                                                                      graph::BindlessTextureManager *bindless_mgr)
+    uint32_t RenderDescriptorBindingSystem::RegisterTextureResource(const std::string &resource_id,
+                                                                    graph::Texture *tex,
+                                                                    graph::Sampler *sampler,
+                                                                    graph::BindlessTextureManager *bindless_mgr)
     {
         if (!tex || !sampler || !bindless_mgr)
             return 0;
@@ -225,29 +225,7 @@ namespace hgl::ecs
         if (rid.empty())
             return 0;
 
-        const uint32_t handle = bindless_mgr->Register2D(tex, sampler);
-        if (handle != 0)
-            materialization_resource_handles.Add(AnsiString(rid.c_str()), handle);
-
-        return handle;
-    }
-
-    uint32_t RenderDescriptorBindingSystem::RegisterTexture2DArrayResource(const std::string &resource_id,
-                                                                             graph::Texture *tex,
-                                                                             graph::Sampler *sampler,
-                                                                             graph::BindlessTextureManager *bindless_mgr)
-    {
-        if (!tex || !sampler || !bindless_mgr)
-            return 0;
-
-        std::string rid = resource_id;
-        if (rid.empty())
-            rid = BuildTextureResourceId(tex);
-
-        if (rid.empty())
-            return 0;
-
-        const uint32_t handle = bindless_mgr->Register2DArray(tex, sampler);
+        const uint32_t handle = bindless_mgr->Register(tex, sampler);
         if (handle != 0)
             materialization_resource_handles.Add(AnsiString(rid.c_str()), handle);
 

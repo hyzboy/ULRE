@@ -107,27 +107,17 @@ namespace hgl::ecs
 
         /**
          * 便利版本：同时向 BindlessTextureManager 注册 Vulkan 侧描述符并预注册 pool 映射。
+         * 所有纹理（2D / 2DArray）统一注册到 sampler2DArray[]（binding=0）；2D 走单层 array view。
          * @return 1-based handle，失败返回 0
          */
-        uint32_t RegisterTexture2DResource(const std::string &resource_id,
-                                            graph::Texture *tex,
-                                            graph::Sampler *sampler,
-                                            graph::BindlessTextureManager *bindless_mgr);
-
-        /**
-         * RegisterTexture2DResource 的 2DArray 对称版本。
-         * 用于图标集、地形 TILE、植被、NPC 部件等统一格式资产池。
-         * 内部调用 bindless_mgr->Register2DArray，handle 写入 bindless_tex2darray[]（binding=1）。
-         * @return 1-based handle，失败返回 0
-         */
-        uint32_t RegisterTexture2DArrayResource(const std::string &resource_id,
-                                                 graph::Texture *tex,
-                                                 graph::Sampler *sampler,
-                                                 graph::BindlessTextureManager *bindless_mgr);
+        uint32_t RegisterTextureResource(const std::string &resource_id,
+                                         graph::Texture *tex,
+                                         graph::Sampler *sampler,
+                                         graph::BindlessTextureManager *bindless_mgr);
 
         /**
          * 查询 resource_id 对应的 bindless descriptor index（1-based）。
-         * 注册期间 RegisterTexture2D(Array)Resource 已把 handle 存入映射；
+         * 注册期间 RegisterTextureResource 已把 handle 存入映射；
          * 未注册/不存在返回 0。MaterializeRecipeRowsForPrimitive 用它
          * 把纹理 handle 写入引擎管理的纹理行表域 SSBO。
          */

@@ -46,6 +46,12 @@ public:
     const VkImageAspectFlags    GetAspect           ()const {return data?data->image_view->GetAspectFlags():0;}
     const VkExtent3D *          GetExtent           ()const {return data?&data->image_view->GetExtent():nullptr;}
 
+    /**
+     * 返回 bindless 采样用 image view。
+     * 默认即主 view；2D 纹理覆写为单层 2D_ARRAY companion view。
+     */
+    virtual VkImageView         GetBindlessArrayView ()       {return GetVulkanImageView();}
+
 public:
 
     Texture(TextureManager *tm,const TextureID &id,TextureData *td)
@@ -79,6 +85,12 @@ public:
 
     const uint32_t GetWidth ()const{return data?data->image_view->GetExtent().width:0;}
     const uint32_t GetHeight()const{return data?data->image_view->GetExtent().height:0;}
+
+    /**
+     * 惰性创建单层 2D_ARRAY companion view，供 bindless sampler2DArray[] 采样。
+     * 主 view 保持 2D 类型，不影响 RTV/DSV。
+     */
+    VkImageView GetBindlessArrayView() override;
 };//class Texture2D:public Texture
 
 class Texture2DArray:public Texture
