@@ -35,12 +35,6 @@ namespace hgl::ecs
     {
     public:
 
-        enum class Mode
-        {
-            StaticOnly,
-            MovableOnly
-        };
-
     private:
         uint32_t MaxTransformCount;             ///<单个SSBO最大支持的变换数量
         graph::BufferManager* buffer_manager;   ///<BufferManager用于创建缓冲区
@@ -50,48 +44,11 @@ namespace hgl::ecs
         uint32_t transform_buffer_max_count;    ///<LocalToWorld矩阵最大数量
         graph::DeviceBuffer* transform_buffer;  ///<LocalToWorld矩阵数据(SSBO)
         graph::BufferAllocPolicy transform_policy;     ///<Transform buffer allocation policy
-        bool static_only;                       ///<Only static transforms in this batch
-
-        Mode mode;
-
-        struct UpdateRange
-        {
-            int first=0;
-            int last=0;
-        };
-        std::vector<UpdateRange> pending_updates;
-        const std::vector<RenderItem*>* last_items=nullptr;
-
-        uint32_t last_static_count=0;
-        uint32_t last_dynamic_count=0;
 
         static std::vector<TransformAssignmentBuffer*> all_instances;
         graph::RingBufferWrapper ring_writer;
 
-        math::Vector3d camera_offset_{0.0, 0.0, 0.0};  ///<Camera-Relative Rendering 用相机世界坐标偏移
-
-        void ApplyCameraRelativeOffset(math::Matrix4f& m) const
-        {
-            m[3][0] -= static_cast<float>(camera_offset_.x);
-            m[3][1] -= static_cast<float>(camera_offset_.y);
-            m[3][2] -= static_cast<float>(camera_offset_.z);
-        }
-
         void StatTransform(const size_t required_count,graph::BufferAllocPolicy policy);
-        void QueueUpdateRange(const int first,const int last);
-        void WriteRange(const std::vector<RenderItem*>& items,const int first,const int last);
-        void SplitStaticAndMovableItems(const std::vector<RenderItem*>& items,
-                        std::vector<RenderItem*>& static_items,
-                        std::vector<RenderItem*>& movable_items) const;
-        void SortStaticItemsByHandle(std::vector<RenderItem*>& static_items) const;
-        void AssignTransformIndices(std::vector<RenderItem*>& static_items,
-                        std::vector<RenderItem*>& movable_items,
-                        const uint32_t ring_base) const;
-        bool WriteAllLocalToWorld(const std::vector<RenderItem*>& static_items,
-                      const std::vector<RenderItem*>& movable_items,
-                      const uint32_t static_count,
-                      const uint32_t dynamic_count,
-                      const uint32_t total_count);
         bool EnsureTransformIndexRowsCapacity(const uint32_t required_count);
         bool WriteTransformIndexRows(const uint32_t static_count, const uint32_t dynamic_count);
 
@@ -105,14 +62,8 @@ namespace hgl::ecs
     public:
         TransformAssignmentBuffer(graph::BufferManager* bm,
                                   graph::ResourceDomainManager* rdm = nullptr,
-                                  const Mode m = Mode::MovableOnly,
                                   uint32_t ring_frames = HGL_L2W_RING_FRAMES);
         ~TransformAssignmentBuffer() { Clear(); }
-
-        /**
-         * 设置 Camera-Relative Rendering 偏移（每帧更新）
-         */
-        void SetCameraOffset(const math::Vector3d& offset) { camera_offset_ = offset; }
 
         graph::DeviceBuffer* GetTransformDataBuffer() const { return transform_buffer; }
         graph::DeviceBuffer* GetTransformIndexRowsBuffer() const { return transform_index_rows_buffer; }
@@ -124,15 +75,7 @@ namespace hgl::ecs
 
         void EnsureCapacity(const uint32_t static_count,const uint32_t dynamic_count,graph::BufferAllocPolicy policy);
         uint32_t GetDynamicBaseIndex(const uint32_t static_count,const uint32_t dynamic_count) const;
-        uint32_t GetTotalCount(const uint32_t static_count,const uint32_t dynamic_count) const;
 
-        void WriteStaticFromStorage(const TransformDataStorage& storage,const uint32_t static_count);
-        void WriteDynamicFromStorage(const TransformDataStorage& storage,const uint32_t static_count,const uint32_t dynamic_count);
-        void WriteStaticFromHandles(const TransformDataStorage& storage,
-                        const std::vector<TransformDataStorage::HandleID>& handles);
-        void WriteDynamicFromHandles(const TransformDataStorage& storage,
-                         const uint32_t static_count,
-                         const std::vector<TransformDataStorage::HandleID>& handles);
         void WriteStaticDirtyIndices(const TransformDataStorage& storage,
                          const std::vector<TransformDataStorage::HandleID>& handles,
                          const std::vector<uint32_t>& dirty_indices);
@@ -141,27 +84,6 @@ namespace hgl::ecs
                           const std::vector<TransformDataStorage::HandleID>& handles,
                           const std::vector<uint32_t>& dirty_indices);
 
-        /**
-         * 写入所有RenderItem的变换数据
-         * @param items RenderItem列表
-         */
-        void WriteItems(const std::vector<RenderItem*>& items);
-
-        /**
-         * 更新变换数据（用于动态对象）
-         * @param items 需要更新的RenderItem列表
-         * @param first 第一个索引
-         * @param last 最后一个索引
-         */
-        void UpdateTransformData(const std::vector<RenderItem*>& items, const int first, const int last);
-
-        /**
-         * Flush pending update ranges once per frame
-         */
-        void FlushPendingUpdates();
-        static void FlushAllPendingUpdates();
-
-        static void AdvanceFrame();
-        static void SetFrameIndex(const uint32_t index);
+        static void SetFrameIndex(const uint32_t index);   ///<推进 ring 帧索引（Context::SetFrameIndex 转发）
     };
 }//namespace hgl::ecs

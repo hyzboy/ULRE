@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
@@ -386,7 +386,6 @@ namespace hgl::ecs
             }
 
             // 上传到GPU
-            UploadToGPU(camera_comp.get());
         }
 
         if (first_update_pending)
@@ -550,15 +549,6 @@ namespace hgl::ecs
         camera->matrix_dirty = false;
     }
 
-    void CameraSystem::UploadToGPU(CameraComponent* camera)
-    {
-        if (!camera || !camera->camera_ubo || !camera->camera_info)
-            return;
-
-        // 上传CameraInfo到GPU
-        // 注意：这里假设camera_ubo有Write方法，实际实现可能需要调整
-        // camera->camera_ubo->Write(camera->camera_info, sizeof(graph::CameraInfo));
-    }
 
     CameraComponent* CameraSystem::SelectMainCamera(const std::vector<std::shared_ptr<CameraComponent>>& cameras) const
     {

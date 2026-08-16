@@ -73,23 +73,14 @@ namespace hgl::ecs
             sky_ubo->MarkDirty();
     }
 
-    void EnvironmentSystem::SyncSkyUBO()
-    {
-        if (sky_ubo && sky_ubo->IsDirty())
-            sky_ubo->MarkDirty();
-    }
-
     void EnvironmentSystem::Initialize()
     {
         EnsureResources();
-        SyncSkyUBO();
     }
 
     void EnvironmentSystem::Update(float /*deltaTime*/)
     {
         EnsureResources();
-
-        SyncSkyUBO();
     }
     void EnvironmentSystem::EnsureResources()
     {

@@ -149,19 +149,14 @@ namespace hgl::ecs
         }
     }
 
-    std::vector<TransformAssignmentBuffer*> TransformAssignmentBuffer::all_instances;
-
     TransformAssignmentBuffer::TransformAssignmentBuffer(graph::BufferManager* bm,
                                                          graph::ResourceDomainManager* rdm,
-                                                         const Mode m,
                                                          uint32_t ring_frames)
         : buffer_manager(bm)
         , resource_domain_manager(rdm)
         , transform_buffer_max_count(0)
         , transform_buffer(nullptr)
         , transform_policy(graph::BufferAllocPolicy::Auto)
-        , static_only(false)
-        , mode(m)
         , transform_index_rows_max_count(0)
         , transform_index_rows_buffer(nullptr)
         , ring_writer(nullptr, sizeof(math::Matrix4f), ring_frames ? ring_frames : HGL_L2W_RING_FRAMES)
@@ -239,107 +234,10 @@ namespace hgl::ecs
         return ring_writer.GetBaseIndex(static_count + kFirstObjectL2WSlot, dynamic_count);
     }
 
-    uint32_t TransformAssignmentBuffer::GetTotalCount(const uint32_t static_count,const uint32_t dynamic_count) const
-    {
-        return ring_writer.GetTotalCount(static_count + kFirstObjectL2WSlot, dynamic_count);
-    }
 
-    void TransformAssignmentBuffer::WriteStaticFromStorage(const TransformDataStorage& storage,const uint32_t static_count)
-    {
-        if (!transform_buffer || static_count == 0)
-            return;
 
-        const auto &mats = storage.GetAllWorldMatrices();
-        const uint32_t write_count = static_cast<uint32_t>(mats.size() < static_count ? mats.size() : static_count);
-        if (write_count == 0)
-            return;
 
-        const VkDeviceSize map_offset = sizeof(math::Matrix4f) * kFirstObjectL2WSlot;
-        const VkDeviceSize map_size = sizeof(math::Matrix4f) * write_count;
-        auto *tbuf = transform_buffer->GetGPUBuffer();
-        math::Matrix4f* l2wp = tbuf ? (math::Matrix4f*)tbuf->Map(map_offset, map_size) : nullptr;
-        if (!l2wp)
-            return;
 
-        for (uint32_t i = 0; i < write_count; ++i)
-        {
-            l2wp[i] = *reinterpret_cast<const math::Matrix4f*>(&mats[i]);
-            ApplyCameraRelativeOffset(l2wp[i]);
-        }
-
-        if(tbuf) tbuf->Unmap();
-    }
-
-    void TransformAssignmentBuffer::WriteDynamicFromStorage(const TransformDataStorage& storage,const uint32_t static_count,const uint32_t dynamic_count)
-    {
-        if (!transform_buffer || dynamic_count == 0)
-            return;
-
-        const auto &mats = storage.GetAllWorldMatrices();
-        const uint32_t write_count = static_cast<uint32_t>(mats.size() < dynamic_count ? mats.size() : dynamic_count);
-        if (write_count == 0)
-            return;
-
-        math::Matrix4f* l2wp = (math::Matrix4f*)(ring_writer.MapDynamicRange(static_count + kFirstObjectL2WSlot, dynamic_count));
-        if (!l2wp)
-            return;
-
-        for (uint32_t i = 0; i < write_count; ++i)
-        {
-            l2wp[i] = *reinterpret_cast<const math::Matrix4f*>(&mats[i]);
-            ApplyCameraRelativeOffset(l2wp[i]);
-        }
-
-        ring_writer.Unmap();
-    }
-
-    void TransformAssignmentBuffer::WriteStaticFromHandles(const TransformDataStorage& storage,
-                                                              const std::vector<TransformDataStorage::HandleID>& handles)
-    {
-        const uint32_t write_count = static_cast<uint32_t>(handles.size());
-        if (!transform_buffer || write_count == 0)
-            return;
-
-        const VkDeviceSize map_offset = sizeof(math::Matrix4f) * kFirstObjectL2WSlot;
-        const VkDeviceSize map_size = sizeof(math::Matrix4f) * write_count;
-        auto *tbuf = transform_buffer->GetGPUBuffer();
-        math::Matrix4f* l2wp = tbuf ? (math::Matrix4f*)tbuf->Map(map_offset, map_size) : nullptr;
-        if (!l2wp)
-            return;
-
-        for (uint32_t i = 0; i < write_count; ++i)
-        {
-            const auto handle = handles[i];
-            const glm::mat4 world_matrix = storage.GetWorldMatrix(handle);
-            l2wp[i] = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
-            ApplyCameraRelativeOffset(l2wp[i]);
-        }
-
-        if(tbuf) tbuf->Unmap();
-    }
-
-    void TransformAssignmentBuffer::WriteDynamicFromHandles(const TransformDataStorage& storage,
-                                                               const uint32_t static_count,
-                                                               const std::vector<TransformDataStorage::HandleID>& handles)
-    {
-        const uint32_t write_count = static_cast<uint32_t>(handles.size());
-        if (!transform_buffer || write_count == 0)
-            return;
-
-        math::Matrix4f* l2wp = (math::Matrix4f*)(ring_writer.MapDynamicRange(static_count + kFirstObjectL2WSlot, write_count));
-        if (!l2wp)
-            return;
-
-        for (uint32_t i = 0; i < write_count; ++i)
-        {
-            const auto handle = handles[i];
-            const glm::mat4 world_matrix = storage.GetWorldMatrix(handle);
-            l2wp[i] = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
-            ApplyCameraRelativeOffset(l2wp[i]);
-        }
-
-        ring_writer.Unmap();
-    }
 
     void TransformAssignmentBuffer::WriteStaticDirtyIndices(const TransformDataStorage& storage,
                                                             const std::vector<TransformDataStorage::HandleID>& handles,
@@ -404,7 +302,6 @@ namespace hgl::ecs
                 const auto handle = handles[first + i];
                 const glm::mat4 world_matrix = storage.GetWorldMatrix(handle);
                 dst[i] = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
-                ApplyCameraRelativeOffset(dst[i]);
             }
 
             flush_ranges.push_back({byte_offset, byte_size});
@@ -503,7 +400,6 @@ namespace hgl::ecs
                 const auto handle = handles[first + i];
                 const glm::mat4 world_matrix = storage.GetWorldMatrix(handle);
                 dst[i] = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
-                ApplyCameraRelativeOffset(dst[i]);
             }
 
             flush_ranges.push_back({byte_offset, byte_size});
@@ -583,7 +479,6 @@ namespace hgl::ecs
 
         transform_buffer_max_count = 0;
         transform_index_rows_max_count = 0;
-        pending_updates.clear();
     }
 
     void TransformAssignmentBuffer::StatTransform(const size_t required_count,graph::BufferAllocPolicy policy)
@@ -745,194 +640,12 @@ namespace hgl::ecs
         return true;
     }
 
-    void TransformAssignmentBuffer::UpdateTransformData(const std::vector<RenderItem*>& items, const int first, const int last)
-    {
-        (void)items;
-        QueueUpdateRange(first,last);
-    }
 
-    void TransformAssignmentBuffer::QueueUpdateRange(const int first,const int last)
-    {
-        if (first > last)
-            return;
 
-        UpdateRange range;
-        range.first = first;
-        range.last = last;
 
-        for (auto &pending : pending_updates)
-        {
-            if (range.last + 1 < pending.first || range.first > pending.last + 1)
-                continue;
 
-            pending.first = hgl_min(pending.first, range.first);
-            pending.last = hgl_max(pending.last, range.last);
-            return;
-        }
 
-        pending_updates.push_back(range);
-    }
 
-    void TransformAssignmentBuffer::WriteRange(const std::vector<RenderItem*>& items,const int first,const int last)
-    {
-        if (!transform_buffer || items.empty() || first > last)
-            return;
-
-        const size_t map_size = sizeof(math::Matrix4f) * (last - first + 1);
-        const size_t map_offset = sizeof(math::Matrix4f) * first;
-
-        auto *tbuf = transform_buffer->GetGPUBuffer();
-        math::Matrix4f* l2wp = tbuf ? (math::Matrix4f*)tbuf->Map(map_offset, map_size) : nullptr;
-        if (!l2wp)
-            return;
-
-        const size_t count = items.size();
-        for (size_t i = 0; i < count; i++)
-        {
-            RenderItem* item = items[i];
-            if (!item)
-                continue;
-
-            const uint32_t transform_idx = item->transform_index;
-            if (transform_idx < static_cast<uint32_t>(first) || transform_idx > static_cast<uint32_t>(last))
-                continue;
-
-            math::Matrix4f l2w;
-            GetStorageWorldMatrix(item, l2w);
-            l2wp[transform_idx - first] = l2w;
-            ApplyCameraRelativeOffset(l2wp[transform_idx - first]);
-        }
-
-        if(tbuf) tbuf->Unmap();
-    }
-
-    void TransformAssignmentBuffer::SplitStaticAndMovableItems(const std::vector<RenderItem*>& items,
-                                                               std::vector<RenderItem*>& static_items,
-                                                               std::vector<RenderItem*>& movable_items) const
-    {
-        static_items.clear();
-        movable_items.clear();
-
-        static_items.reserve(items.size());
-        movable_items.reserve(items.size());
-
-        for (auto *item : items)
-        {
-            if (!item)
-                continue;
-
-            auto transform = item->GetTransform();
-            if (transform && !transform->IsMovable())
-                static_items.push_back(item);
-            else
-                movable_items.push_back(item);
-        }
-    }
-
-    void TransformAssignmentBuffer::SortStaticItemsByHandle(std::vector<RenderItem*>& static_items) const
-    {
-        std::sort(static_items.begin(), static_items.end(),
-            [](const RenderItem* a, const RenderItem* b)
-            {
-                const auto at = a ? a->GetTransform() : nullptr;
-                const auto bt = b ? b->GetTransform() : nullptr;
-                const auto ah = at ? at->GetStorageHandle() : TransformDataStorage::INVALID_HANDLE;
-                const auto bh = bt ? bt->GetStorageHandle() : TransformDataStorage::INVALID_HANDLE;
-
-                if (ah == TransformDataStorage::INVALID_HANDLE && bh == TransformDataStorage::INVALID_HANDLE)
-                    return false;
-                if (ah == TransformDataStorage::INVALID_HANDLE)
-                    return false;
-                if (bh == TransformDataStorage::INVALID_HANDLE)
-                    return true;
-                return ah < bh;
-            });
-    }
-
-    void TransformAssignmentBuffer::AssignTransformIndices(std::vector<RenderItem*>& static_items,
-                                                           std::vector<RenderItem*>& movable_items,
-                                                           const uint32_t ring_base) const
-    {
-        uint32_t transform_index = kFirstObjectL2WSlot;
-        for (auto *item : static_items)
-        {
-            if (item)
-                item->transform_index = transform_index++;
-        }
-
-        uint32_t dynamic_index = 0;
-        for (auto *item : movable_items)
-        {
-            if (item)
-                item->transform_index = ring_base + dynamic_index++;
-        }
-    }
-
-    bool TransformAssignmentBuffer::WriteAllLocalToWorld(const std::vector<RenderItem*>& static_items,
-                                                         const std::vector<RenderItem*>& movable_items,
-                                                         const uint32_t static_count,
-                                                         const uint32_t dynamic_count,
-                                                         const uint32_t total_count)
-    {
-        auto *wbuf = transform_buffer ? transform_buffer->GetGPUBuffer() : nullptr;
-        math::Matrix4f* l2wp = wbuf ? (math::Matrix4f*)wbuf->Map(0, wbuf->GetSize()) : nullptr;
-        if (!l2wp)
-        {
-            GLogWarning("[TransformAssignmentBuffer::WriteItems] L2W map failed: total=%u bytes=%llu",
-                        total_count,
-                        wbuf ? static_cast<unsigned long long>(wbuf->GetSize()) : 0ULL);
-            GLogWarning("[TransformAssignmentBuffer::WriteItems] L2W map context: static=%u dynamic=%u frame=%u base=%u",
-                        static_count,
-                        dynamic_count,
-                        ring_writer.GetFrameIndex(),
-                        ring_writer.GetBaseIndex(static_count + kFirstObjectL2WSlot, dynamic_count));
-            return false;
-        }
-
-        for (auto *item : static_items)
-        {
-            if (!item)
-                continue;
-
-            const uint32_t idx = item->transform_index;
-            math::Matrix4f l2w;
-            GetStorageWorldMatrix(item, l2w);
-            l2wp[idx] = l2w;
-            ApplyCameraRelativeOffset(l2wp[idx]);
-        }
-
-        for (auto *item : movable_items)
-        {
-            if (!item)
-                continue;
-
-            const uint32_t idx = item->transform_index;
-            math::Matrix4f l2w;
-            GetStorageWorldMatrix(item, l2w);
-            l2wp[idx] = l2w;
-            ApplyCameraRelativeOffset(l2wp[idx]);
-        }
-
-        if (wbuf)
-            wbuf->Unmap();
-
-        GLogInfo("[TransformAssignmentBuffer::WriteItems] L2W full write: static=%u dynamic=%u total=%u bytes=%llu dirty=%d",
-                  static_count,
-                  dynamic_count,
-                  total_count,
-                  static_cast<unsigned long long>(wbuf->GetSize()),
-                  wbuf->IsDirty() ? 1 : 0);
-
-        if (ShouldEmitPeriodicLog(90))
-        {
-            GLogInfo("[TransformAssignmentBuffer::WriteItems] L2W full context: frame=%u ring_base=%u ring_frames=%u",
-                     ring_writer.GetFrameIndex(),
-                     ring_writer.GetBaseIndex(static_count + kFirstObjectL2WSlot, dynamic_count),
-                     ring_writer.GetRingFrames());
-        }
-
-        return true;
-    }
 
     bool TransformAssignmentBuffer::EnsureTransformIndexRowsCapacity(const uint32_t required_count)
     {
@@ -1035,144 +748,7 @@ namespace hgl::ecs
         return true;
     }
 
-    void TransformAssignmentBuffer::WriteItems(const std::vector<RenderItem*>& items)
-    {
-        const size_t item_count = items.size();
-
-        if (item_count == 0)
-            return;
-
-        last_items = &items;
-
-        static_only = (mode == Mode::StaticOnly);
-
-        std::vector<RenderItem*> static_items;
-        std::vector<RenderItem*> movable_items;
-        SplitStaticAndMovableItems(items, static_items, movable_items);
-        SortStaticItemsByHandle(static_items);
-
-        const uint32_t static_count = static_cast<uint32_t>(static_items.size());
-        const uint32_t dynamic_count = static_cast<uint32_t>(movable_items.size());
-        const uint32_t ring_frames = ring_writer.GetRingFrames();
-        const uint32_t ring_base = ring_writer.GetBaseIndex(static_count + kFirstObjectL2WSlot, dynamic_count);
-        const uint32_t total_count = ring_writer.GetTotalCount(static_count + kFirstObjectL2WSlot, dynamic_count);
-
-        if (ShouldEmitPeriodicLog(60) || (dynamic_count > 0 && static_count == 0))
-        {
-            GLogInfo("[TransformAssignmentBuffer::WriteItems] Begin: items=%u static=%u dynamic=%u ring_base=%u total=%u frame=%u mode=%d",
-                     static_cast<uint32_t>(item_count),
-                     static_count,
-                     dynamic_count,
-                     ring_base,
-                     total_count,
-                     ring_writer.GetFrameIndex(),
-                     static_cast<int>(mode));
-        }
-
-        last_static_count = static_count;
-        last_dynamic_count = dynamic_count;
-
-        if (static_only)
-            StatTransform(total_count,graph::BufferAllocPolicy::GPUOnly);
-        else
-            StatTransform(total_count,graph::BufferAllocPolicy::Auto);
-
-        if (!transform_buffer)
-        {
-            GLogError("[TransformAssignmentBuffer::WriteItems] transform_buffer is null after StatTransform (total_count=%u)", total_count);
-            return;
-        }
-
-        if (ShouldEmitPeriodicLog(60))
-            LogDeviceBufferSnapshot("[TransformAssignmentBuffer::WriteItems] L2W before write", transform_buffer);
-
-        AssignTransformIndices(static_items, movable_items, ring_base);
-
-        WriteAllLocalToWorld(static_items, movable_items, static_count, dynamic_count, total_count);
-        WriteTransformIndexRows(static_count, dynamic_count);
-    }
-
-    void TransformAssignmentBuffer::FlushPendingUpdates()
-    {
-        if (pending_updates.empty() || !last_items || !transform_buffer)
-            return;
-
-        std::sort(pending_updates.begin(), pending_updates.end(),
-            [](const UpdateRange &a, const UpdateRange &b)
-            {
-                return a.first < b.first;
-            });
-
-        std::vector<graph::IGPUBuffer::DirtyRange> dirty_ranges;
-        dirty_ranges.reserve(pending_updates.size());
-
-        const VkDeviceSize matrix_size = sizeof(math::Matrix4f);
-        const VkDeviceSize buffer_size = transform_buffer->GetSize();
-
-        for (const auto &range : pending_updates)
-        {
-            if (range.first < 0 || range.last < range.first)
-                continue;
-
-            WriteRange(*last_items, range.first, range.last);
-
-            VkDeviceSize offset = matrix_size * static_cast<VkDeviceSize>(range.first);
-            VkDeviceSize size = matrix_size * static_cast<VkDeviceSize>(range.last - range.first + 1);
-
-            if (offset >= buffer_size)
-                continue;
-
-            if (offset + size > buffer_size)
-                size = buffer_size - offset;
-
-            if (size == 0)
-                continue;
-
-            dirty_ranges.push_back({offset, size});
-        }
-
-        if (!dirty_ranges.empty())
-        {
-            transform_buffer->FlushRanges(dirty_ranges.data(), dirty_ranges.size());
-
-            auto *gpu = transform_buffer->GetGPUBuffer();
-            GLogInfo("[TransformAssignmentBuffer] FlushPendingUpdates: ranges=%u buffer_dirty=%d",
-                      static_cast<uint32_t>(dirty_ranges.size()),
-                      gpu ? (gpu->IsDirty() ? 1 : 0) : -1);
-
-            if (ShouldEmitPeriodicLog(60))
-            {
-                const auto &first = dirty_ranges.front();
-                const auto &last = dirty_ranges.back();
-                GLogInfo("[TransformAssignmentBuffer] FlushPendingUpdates detail: first=[%llu,%llu] last=[%llu,%llu] frame=%u",
-                         static_cast<unsigned long long>(first.offset),
-                         static_cast<unsigned long long>(first.size),
-                         static_cast<unsigned long long>(last.offset),
-                         static_cast<unsigned long long>(last.size),
-                         ring_writer.GetFrameIndex());
-            }
-        }
-
-        pending_updates.clear();
-    }
-
-    void TransformAssignmentBuffer::FlushAllPendingUpdates()
-    {
-        for (auto *inst : all_instances)
-        {
-            if (inst)
-                inst->FlushPendingUpdates();
-        }
-    }
-
-    void TransformAssignmentBuffer::AdvanceFrame()
-    {
-        for (auto *inst : all_instances)
-        {
-            if (inst)
-                inst->ring_writer.AdvanceFrame();
-        }
-    }
+    std::vector<TransformAssignmentBuffer*> TransformAssignmentBuffer::all_instances;
 
     void TransformAssignmentBuffer::SetFrameIndex(const uint32_t index)
     {

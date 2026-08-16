@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/ecs/core/System.h>
 #include<hgl/ecs/components/CameraComponent.h>
@@ -144,7 +144,6 @@ namespace hgl
             void UpdateMatrices(CameraComponent* camera);
 
             /// 上传到GPU / Upload to GPU
-            void UploadToGPU(CameraComponent* camera);
 
             CameraModeProcessor* GetModeProcessor(CameraComponent::ControlMode mode) const;
 

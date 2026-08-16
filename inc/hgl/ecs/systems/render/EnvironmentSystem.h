@@ -44,7 +44,6 @@ namespace hgl
 
             void SetSkyInfo(const graph::SkyInfo &info, bool immediate = true);
             void MarkSkyDirty();
-            void SyncSkyUBO();
 
             void Initialize() override;
             void Update(float deltaTime) override;

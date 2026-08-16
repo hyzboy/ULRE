@@ -24,9 +24,5 @@ namespace hgl::ecs
         auto camera_system = context->GetSystem<CameraSystem>();
         if (camera_system)
             camera_system->SyncCameraUBO();
-
-        auto environment_system = context->GetSystem<EnvironmentSystem>();
-        if (environment_system)
-            environment_system->SyncSkyUBO();
     }
 }

@@ -393,7 +393,6 @@ namespace hgl::ecs
 
         transform_buffer = new TransformAssignmentBuffer(buffer_manager,
                                                          graphics_context->GetResourceDomainManager(),
-                                                         TransformAssignmentBuffer::Mode::MovableOnly,
                                                          ring_frames);
         static_dirty = true;
     }

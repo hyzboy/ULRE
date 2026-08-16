@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/log/Log.h>
 
@@ -83,14 +83,6 @@ namespace hgl
             }
         }
 
-        void Entity::AddComponentInstance(const std::shared_ptr<Component>& component)
-        {
-            if (!component)
-                return;
-
-            const size_t type_hash = typeid(*component).hash_code();
-            ReplaceComponent(type_hash, component, std::type_index(typeid(*component)));
-        }
 
         void Entity::DetachAllComponents(bool notify_systems)
         {

@@ -108,9 +108,6 @@ namespace hgl
             /// Get all components (for serialization)
             void GetAllComponents(std::vector<std::shared_ptr<Component>>& out) const;
 
-            /// Attach a pre-constructed component instance (for deserialization)
-            void AddComponentInstance(const std::shared_ptr<Component>& component);
-
             /// Detach all components from this entity
             void DetachAllComponents(bool notify_systems = true);
         };

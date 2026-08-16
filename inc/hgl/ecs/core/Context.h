@@ -220,13 +220,6 @@ namespace hgl
                                           const std::function<void(float)> &pre_render);
         public:
 
-            struct AssetInstance
-            {
-                std::vector<EntityID> entity_ids;
-            };
-
-        public:
-
             /// Initialize the world (基础初始化，获取 GPU 设备和渲染目标)
             /// @param device GPU 设备
             /// @param target 渲染目标
@@ -318,36 +311,6 @@ namespace hgl
 
             /// Clear all entities and component registries
             void ClearEntities();
-
-            /// Serialize world to JSON
-            bool SaveToJson(const std::string& path) const;
-
-            /// Deserialize world from JSON (IDs remapped)
-            bool LoadFromJson(const std::string& path);
-
-            /// Import entities from JSON and append into current world (without clearing existing entities)
-            /// Optional out_created_ids receives newly created entity IDs in import order.
-            bool ImportFromJson(const std::string& path, std::vector<EntityID>* out_created_ids = nullptr);
-
-            /// Serialize world to binary
-            bool SaveToBinary(const std::string& path) const;
-
-            /// Deserialize world from binary (IDs remapped)
-            bool LoadFromBinary(const std::string& path);
-
-            /// Import entities from binary and append into current world (without clearing existing entities)
-            /// Optional out_created_ids receives newly created entity IDs in import order.
-            bool ImportFromBinary(const std::string& path, std::vector<EntityID>* out_created_ids = nullptr);
-
-            /// Instantiate an asset file into current world and parent imported roots to parent_id.
-            /// Works for static mesh groups and prefab/blueprint-like compositions.
-            bool InstantiateAssetAsChildren(const std::string& path,
-                                            EntityID parent_id,
-                                            bool binary,
-                                            AssetInstance* out_instance = nullptr);
-
-            /// Destroy all entities created by a previous asset instance handle.
-            void DestroyAssetInstance(const AssetInstance& instance);
 
             void SetSystemProfilingEnabled(bool enabled) { system_profiling_enabled = enabled; }
             bool IsSystemProfilingEnabled() const { return system_profiling_enabled; }
