@@ -63,11 +63,11 @@ namespace hgl
             Shutdown();
         }
 
-        bool ECSContext::InitializeGraphics(hgl::graph::VulkanDevice* device, hgl::graph::IRenderTarget* target) {
-            if (!device || !target) {
-                // Phase 1 debug: device or target is null
+        bool ECSContext::Initialize(hgl::graph::VulkanDevice* device, hgl::graph::IRenderTarget* target)
+        {
+            // W3 合并：原 InitializeGraphics 的 GPU 绑定 + 原 Initialize 的系统初始化
+            if (!device || !target)
                 return false;
-            }
 
             gpu_device = device;
             render_target = target;
@@ -76,12 +76,6 @@ namespace hgl
             if (auto upload_system = GetSystem<RenderBufferUploadSystem>())
                 upload_system->SetDevice(gpu_device);
 
-            // Phase 1: Initialized with GPU device and render target
-            return true;
-        }
-
-        void ECSContext::Initialize()
-        {
             RegisterComponentQueryBase<RenderableComponent>();
             RegisterComponentQueryBase<PrimitiveComponent>();
             RegisterComponentQueryBase<MaterialComponent>();
@@ -125,7 +119,7 @@ namespace hgl
                 if (upload_system)
                 {
                     upload_system->SetWorld(this);
-                    upload_system->SetDevice(gpu_device); // may be null here for deferred init; set again in InitializeGraphics
+                    upload_system->SetDevice(gpu_device);
                 }
             }
 
@@ -153,6 +147,7 @@ namespace hgl
 
             active = true;
             OnCreate();
+            return true;
         }
 
         Entity* ECSContext::CreateChildEntity(Entity *parent,
@@ -477,71 +472,7 @@ namespace hgl
             RunRenderSystemsInRange(minPhase, maxPhase, deltaTime);
         }
 
-#if 0 // W2: Render(cmd) 兼容入口已删（0 调用）——保留实现供参考
-        void ECSContext::Render(graph::RenderCmdBuffer *cmd, float deltaTime)
-        {
-            if (!active)
-                return;
 
-            // Boundary rule (Phase 1): this overload executes render-phase ECS systems
-            // for an already-open frame command buffer. The frame lifecycle driver is
-            // ECSContext::Render(float) -> RenderSystemCore.
-            static bool warned_missing_cmd_once = false;
-            if (!cmd && !current_render_cmd && !warned_missing_cmd_once)
-            {
-                LogWarning("[ECSContext::Render(cmd)] called without command buffer. "
-                           "Use ECSContext::Render(float) for the canonical frame-driver path.");
-                warned_missing_cmd_once = true;
-            }
-
-            // (Phase 1) 设置当前渲染命令缓冲区（如果没有由 RenderSystemCore 设置）
-            if (!current_render_cmd && cmd) {
-                current_render_cmd = cmd;
-            }
-
-            // Run CPU-side Update() for Collect and Batch phases only.
-            // Buffer commit/upload (phases RenderBufferCommit, RenderBufferUpload) and
-            // FrameSync must NOT run inside an open Vulkan render pass — they are
-            // handled by PrepareRenderPassSetup() before BeginRenderPass().
-            // DrawSubmit systems (RenderPrimitiveSubmitSystem etc.) only override
-            // Render(), not Update(), so they are covered by the Render() loop below.
-            RunRenderUpdatesRange(ExecutionPhase::RenderCollect,
-                                  ExecutionPhase::RenderBatch,
-                                  deltaTime);
-            RecordPreparedRenderPhaseRange(ExecutionPhase::RenderCollect,
-                                           ExecutionPhase::RenderStat,
-                                           deltaTime,
-                                           true,
-                                           "[ECSContext::Render(cmd)]");
-
-            // (Phase 1) 清除当前命令缓冲区（如果是我们设置的）
-            if (current_render_cmd == cmd) {
-                current_render_cmd = nullptr;
-            }
-        }
-#endif // W2: Render(cmd) 兼容入口已删（0 调用）——保留实现供参考
-
-#if 0 // W2: RenderDrawOnly 已删（0 调用）
-        void ECSContext::RenderDrawOnly(graph::RenderCmdBuffer* cmd, float deltaTime)
-        {
-            if (!active)
-                return;
-
-            // Draw-only entry: Update() phases (Collect/Batch/Upload) were already executed
-            // by PrepareRenderPassSetup() before BeginRenderPass. Only issue GPU draw commands here.
-            if (!current_render_cmd && cmd)
-                current_render_cmd = cmd;
-
-            RecordPreparedRenderPhaseRange(ExecutionPhase::RenderCollect,
-                                           ExecutionPhase::RenderStat,
-                                           deltaTime,
-                                           true,
-                                           "[ECSContext::RenderDrawOnly]");
-
-            if (current_render_cmd == cmd)
-                current_render_cmd = nullptr;
-        }
-#endif // W2: Render(cmd)/RenderDrawOnly 已删（0 调用）——保留实现供参考
 
         void ECSContext::OnResize(const VkExtent2D &extent)
         {

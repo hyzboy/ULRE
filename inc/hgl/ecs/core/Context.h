@@ -217,14 +217,12 @@ namespace hgl
                                           const std::function<void(float)> &pre_render);
         public:
 
-            /// Initialize the world (基础初始化，获取 GPU 设备和渲染目标)
+            /// 初始化世界（W3 合并：GPU 设备/渲染目标绑定 + 系统注册与初始化，
+            /// 顺序敏感消除——旧 InitializeGraphics/Initialize 两步调用的兼容残留）
             /// @param device GPU 设备
             /// @param target 渲染目标
             /// @return 成功返回 true
-            bool InitializeGraphics(hgl::graph::VulkanDevice* device, hgl::graph::IRenderTarget* target);
-
-            /// Initialize the world (旧接口，保持向后兼容)
-            void Initialize();
+            bool Initialize(hgl::graph::VulkanDevice* device, hgl::graph::IRenderTarget* target);
 
             /// Shut down the world
             void Shutdown();

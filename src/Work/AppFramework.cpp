@@ -237,21 +237,15 @@ namespace hgl
             render_context->SetCurrentRenderTarget(GetSwapchainRenderTarget());
         }
 
-        // Initialize ECS graphics and systems
-        if (default_ecs_context)
-        {
-            default_ecs_context->InitializeGraphics(device, GetSwapchainRenderTarget());
-            default_ecs_context->SetRenderContext(render_context.get());
-        }
-
-        // Register ECS systems
+        // W3 合并：注册默认系统后一次性 Initialize（GPU 绑定 + 系统初始化）
         if (default_ecs_context)
         {
             auto systems = ecs::RegisterDefaultEcsSystems(default_ecs_context, GetSwapchainRenderTarget());
             if (systems.input_system)
                 AddChildDispatcher(systems.input_system->GetEventDispatcher());
 
-            default_ecs_context->Initialize();
+            default_ecs_context->SetRenderContext(render_context.get());
+            default_ecs_context->Initialize(device, GetSwapchainRenderTarget());
         }
 
         return true;
