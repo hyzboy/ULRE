@@ -337,6 +337,12 @@ namespace hgl::graph::shadergen
                     return false;
             }
 
+            // 三种标识的语义边界：
+            //  - stable_id（ShaderContractStableID）：图拓扑标识——模块名+提供的
+            //    语义集合的哈希，DFS 访问/去重用（与内容无关）
+            //  - module_content_hash：规范化内容指纹——GLSL 代码+解析后元数据
+            //    的规范化哈希（GetCanonicalGLSLCodeModuleContentHash 唯一计算器），
+            //    内容变更即变；module_id 只是它的图记录别名（同值）
             ResolvedModuleContractEntry module{};
             module.module_id = stable_id;
             module.module_content_hash =
@@ -348,7 +354,7 @@ namespace hgl::graph::shadergen
             if (module.module_content_hash == 0)
                 return SetGraphFailure(
                     state.diagnostic,
-                    ResolvedModuleGraphBuildError::StableIDConflict,
+                    ResolvedModuleGraphBuildError::InvalidCanonicalGraph,
                     definition.name);
 
             state.graph.modules.Add(module);

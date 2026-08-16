@@ -462,11 +462,9 @@ shadergen::ShaderBuildContext *CreateMaterialFromDefinition(
     const MaterialDefinition &definition,
     const MaterialDefinitionBuildRequest &request)
 {
-    MaterialDefinition canonical_definition = definition;
-
-    ShaderBuildContext *result =
-        BuildGenericMaterial(profile, request, canonical_definition);
-    return result;
+    // BuildGenericMaterial 不修改 definition（const&）——直接透传，
+    // 薄包装只承担 API 语义（名字即文档）
+    return BuildGenericMaterial(profile, request, definition);
 }
 
 void NormalizeRecipe(MaterialRecipe &recipe)
