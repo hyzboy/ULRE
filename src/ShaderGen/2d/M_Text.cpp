@@ -1,5 +1,4 @@
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
-#include<hgl/mtl/SamplerName.h>
 
 namespace hgl::graph::mtl{
 void RegisterText2DMaterialDefinition()
@@ -8,7 +7,6 @@ void RegisterText2DMaterialDefinition()
         definition.definition_id = BUILTIN_MTL_DEF_TEXT;
         definition.definition_name = "Text2D";
         definition.source_kind = MaterialDefinitionSourceKind::BuiltIn;
-        definition.usage_tag = MaterialDefinitionUsageTag::Text;
         definition.bootstrap_kind = MaterialDefinitionBootstrapKind::TextAlphaBlend;
         definition.ubo_requirements = {UBODescriptorSemantic::ViewportInfo};
         definition.data_slot_decls = {{"mtl", SSBOType::TransmissionSurface}};
@@ -30,7 +28,6 @@ void RegisterText2DMaterialDefinition()
         ConfigureMaterialVertexSemanticContract(
             definition, vertex_requirements, 2, MaterialVertexProviderPolicy::GeometryOnly);
         RegisterMaterialDefinition(definition);
-        RegisterMaterialDefinitionAlias("Text2D", BUILTIN_MTL_DEF_TEXT);
 }
 
 }//namespace hgl::graph::mtl

@@ -132,20 +132,13 @@ namespace hgl::graph::mtl
 
             if (data->name.IsEmpty())
             {
-                // 文件内无 name 指令时，用文件名（去目录、去扩展名）作为默认模块名
-                const OSString file_name(full_name);
-                int name_start = 0;
-                const int slash = file_name.FindRightChar(HGL_DIRECTORY_SEPARATOR);
-                if (slash >= 0)
-                    name_start = slash + 1;
-
-                const OSString base = file_name.SubString(name_start);
-                const int dot = base.FindRightChar(OS_TEXT('.'));
-                const OSString stem = (dot >= 0) ? base.SubString(0, dot) : base;
-
-                const U8String stem_u8 = hgl::ToU8String(stem);
-                data->name = AnsiString(reinterpret_cast<const char *>(stem_u8.c_str()),
-                                        stem_u8.Length());
+                // @ulre name 是必填身份——模块身份统一为 name（T2 起），
+                // 不接受"文件名即名字"的隐式特例
+                GLogError(u8"[GLSLCodeModuleRegistry] Code-module metadata missing @ulre name: file=%s",
+                          full_name.c_str());
+                file_data.DeleteAt(file_data.GetCount() - 1);
+                ++error_count;
+                continue;
             }
 
             if (FindByName(data->name.c_str()))

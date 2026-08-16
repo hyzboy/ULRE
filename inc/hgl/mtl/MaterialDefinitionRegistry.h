@@ -76,7 +76,9 @@ MaterialVertexVaryingConfig ResolveMaterialVertexVaryingConfig(
 uint64 HashMaterialProgramBuildContext(
     PrimitiveType primitive_type,
     const GeometryVertexFormat *geometry_vertex_format,
-    const shadergen::contract::PhysicalDeviceProfileLite *profile) noexcept;
+    const shadergen::contract::PhysicalDeviceProfileLite *profile,
+    const shadergen::ShaderProgramPurpose purpose =
+        shadergen::ShaderProgramPurpose::ForwardColor) noexcept;
 
 shadergen::ShaderBuildContext *CreateMaterialFromDefinition(
     const shadergen::contract::PhysicalDeviceProfileLite *profile,
@@ -116,14 +118,15 @@ inline VkFormat ResolveMaterialPositionFormat(const GeometryVertexFormat *gvf, V
 void RegisterMaterialDefinition(const MaterialDefinition &definition);
 // Compatibility-only route; aliases resolve to the canonical definition and
 // never create a second MaterialDefinition registry entry.
-void RegisterMaterialDefinitionAlias(const char *alias_id, const char *definition_id);
+
 bool TryGetMaterialDefinitionByID(const std::string &mtl_def_id, MaterialDefinition &out_definition);
 bool TryGetMaterialDefinitionByBootstrapKind(const MaterialDefinitionBootstrapKind kind, MaterialDefinition &out_definition);
 MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry();
 GLSLCodeModuleRegistry &GetGLSLCodeModuleRegistry();
 
 // ── built-in fallback definition ID 常量 ──────────────────────────────────────
-constexpr const char *BUILTIN_MTL_DEF_MISSING_MATERIAL  = "builtin/missing_material";
+// 缺材质安全网 = 纯色（原为独立 ID + alias 注册，alias 机制已删，常量直连）
+constexpr const char *BUILTIN_MTL_DEF_MISSING_MATERIAL  = "builtin/pure_color";
 constexpr const char *BUILTIN_MTL_DEF_TEXT              = "builtin/text";
 constexpr const char *BUILTIN_MTL_DEF_PURE_COLOR        = "builtin/pure_color";
 

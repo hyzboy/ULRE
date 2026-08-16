@@ -362,7 +362,7 @@ namespace hgl::ecs
             return nullptr;
 
         graph::mtl::MaterialRecipe recipe{};
-        recipe.mtl_def_id = "Text2D";
+        recipe.mtl_def_id = hgl::graph::mtl::BUILTIN_MTL_DEF_TEXT;
         recipe.render_state_overrides.pipeline_config = graph::mtl::MakeSolid2DConfig();
         const graph::GeometryVertexFormat text_gvf = graph::CreateTextGeometryVertexFormat();
 

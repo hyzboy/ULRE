@@ -290,30 +290,6 @@ namespace hgl::graph::mtl
             return false;
         }
 
-        bool ParseDescriptorSemantic(const char *token, DescriptorSemantic &out) noexcept
-        {
-            static const char *const names[] =
-            {
-                "ViewportInfo", "CameraInfo", "SkyInfo",
-                "MaterialTexture", "MaterialSampler"
-            };
-            static const DescriptorSemantic values[] =
-            {
-                DescriptorSemantic::ViewportInfo, DescriptorSemantic::CameraInfo,
-                DescriptorSemantic::SkyInfo,
-                DescriptorSemantic::MaterialTexture, DescriptorSemantic::MaterialSampler
-            };
-            for (uint32 i = 0; i < 5; ++i)
-            {
-                if (std::strcmp(token, names[i]) == 0)
-                {
-                    out = values[i];
-                    return true;
-                }
-            }
-            return false;
-        }
-
         bool ParseSSBOType(const char *token, SSBOType &out) noexcept
         {
             for (uint32 i = 0; i < static_cast<uint32>(SSBOType::RANGE_SIZE); ++i)
@@ -491,7 +467,6 @@ namespace hgl::graph::mtl
                 else if (std::strcmp(token, "ssbo") == 0)
                 {
                     GLSLCodeModuleSSBORequirement requirement;
-                    const int name_index = out_data.ssbo_name_storage.GetCount();
                     const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
                     if (!next || !token[0])
                         return GLSLCodeModuleParseResult::MissingDirectiveArgument;
@@ -515,7 +490,6 @@ namespace hgl::graph::mtl
                                                   requirement.allow_fallback))
                             return GLSLCodeModuleParseResult::InvalidResource;
                     }
-                    (void)name_index;
                     out_data.ssbo_requirements.Add(requirement);
                 }
                 else if (std::strcmp(token, "texture_layer") == 0)

@@ -27,14 +27,16 @@ namespace hgl::graph{
 namespace
 {
     bool ResolveMaterialDefinitionForRequest(const mtl::MaterialDefinitionBuildRequest &request,
-                                             const mtl::MaterialDefinitionFileRegistry *file_registry,
                                              mtl::MaterialDefinition &out_bmi)
     {
-        (void)file_registry;
         const std::string &mtl_def_id = request.recipe.mtl_def_id;
 
         if (mtl::TryGetMaterialDefinitionByID(mtl_def_id, out_bmi))
             return true;
+
+        // 显式诊断：材质 ID 配置错误不应静默消失（fallback 只是运行时安全网）
+        GLogError(u8"[ShaderProgramManager] material definition not found: %s — falling back to %s",
+                  mtl_def_id.c_str(), mtl::GetFallbackMaterialDefinitionID());
 
         return mtl::TryGetMaterialDefinitionByID(
             mtl::GetFallbackMaterialDefinitionID(), out_bmi);
@@ -412,7 +414,7 @@ bool ShaderProgramManager::BuildShaderResourceSchema(const mtl::MaterialDefiniti
 {
     mtl::MaterialDefinition definition{};
     if (!ResolveMaterialDefinitionForRequest(
-            request, &mtl::GetMaterialDefinitionFileRegistry(), definition))
+            request, definition))
         return false;
 
     const auto *profile = GetPhysicalDeviceProfile();
@@ -442,7 +444,7 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
 
     mtl::MaterialDefinition definition{};
     if (!ResolveMaterialDefinitionForRequest(
-            normalized_request, &mtl::GetMaterialDefinitionFileRegistry(), definition))
+            normalized_request, definition))
         return nullptr;
 
     const auto *profile = GetPhysicalDeviceProfile();

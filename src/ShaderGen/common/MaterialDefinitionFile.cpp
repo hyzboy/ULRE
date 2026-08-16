@@ -55,17 +55,6 @@ namespace hgl::graph::mtl
             return ReadString(table, key, out) && !out.empty();
         }
 
-        bool ParseUsage(const std::string &name, MaterialDefinitionUsageTag &out)
-        {
-            if (name == "General") out = MaterialDefinitionUsageTag::General;
-            else if (name == "Fallback") out = MaterialDefinitionUsageTag::Fallback;
-            else if (name == "Debug") out = MaterialDefinitionUsageTag::Debug;
-            else if (name == "Text") out = MaterialDefinitionUsageTag::Text;
-            else if (name == "Sky") out = MaterialDefinitionUsageTag::Sky;
-            else return false;
-            return true;
-        }
-
         bool ParseBootstrap(const std::string &name, MaterialDefinitionBootstrapKind &out)
         {
             if (name == "None") out = MaterialDefinitionBootstrapKind::None;
@@ -424,18 +413,15 @@ namespace hgl::graph::mtl
             std::string id;
             std::string name;
             std::string source;
-            std::string usage;
             std::string bootstrap;
             std::string policy;
 
             if (!ReadRequiredString(root, "id", id)
              || !ReadRequiredString(root, "name", name)
              || !ReadRequiredString(root, "source", source)
-             || !ReadRequiredString(root, "usage", usage)
              || !ReadRequiredString(root, "bootstrap", bootstrap)
              || !ReadRequiredString(root, "provider_policy", policy)
              || source != "file"
-             || !ParseUsage(usage, out.definition.usage_tag)
              || !ParseBootstrap(bootstrap, out.definition.bootstrap_kind)
              || !ParsePolicy(policy, out.definition.vertex_provider_policy))
                 return false;

@@ -150,19 +150,10 @@ namespace
         MaterialDefinition definition{};
     };
 
-    struct MaterialDefinitionAliasRegistryEntry
-    {
-        AnsiString alias_id;
-        AnsiString definition_id;
-    };
-
-    // Built-in materials (PureColor/Text2D) register lazily, driven by the
-    // query entry points below (TryGetMaterialDefinitionByIDInternal /
-    // TryGetMaterialDefinitionByBootstrapKind). The register functions live in
-    // their own TUs and are pulled in by this call. Deliberately NOT invoked
-    // from GetBaseMaterialInfoRegistry: the register path itself calls back
-    // into that registry, so triggering registration from inside its static
-    // initializer would dead-lock on the function-local static guard.
+    // Registration must be triggered from a caller OUTSIDE the registry getter:
+    // the register functions themselves resolve the registry (writing entries
+    // into it), so triggering registration from inside its static initializer
+    // would dead-lock on the function-local static guard.
     void EnsureBuiltinMaterialDefinitionsRegistered()
     {
         static const bool registered = []() -> bool
@@ -180,32 +171,11 @@ namespace
         return registry;
     }
 
-    ManagedArray<MaterialDefinitionAliasRegistryEntry> &GetMaterialDefinitionAliasRegistry()
-    {
-        static ManagedArray<MaterialDefinitionAliasRegistryEntry> registry;
-        return registry;
-    }
-
-    const AnsiString *FindMaterialDefinitionAlias(const char *alias_id)
-    {
-        if (!alias_id || !alias_id[0])
-            return nullptr;
-
-        auto &registry = GetMaterialDefinitionAliasRegistry();
-        for (int i = 0; i < registry.GetCount(); ++i)
-        {
-            if (std::strcmp(registry[i]->alias_id.c_str(), alias_id) == 0)
-                return &registry[i]->definition_id;
-        }
-        return nullptr;
-    }
-
     bool TryGetMaterialDefinitionByIDInternal(
         const char *mtl_def_id,
-        MaterialDefinition &out_definition,
-        const uint32 alias_depth)
+        MaterialDefinition &out_definition)
     {
-        if (!mtl_def_id || !mtl_def_id[0] || alias_depth > 8)
+        if (!mtl_def_id || !mtl_def_id[0])
             return false;
 
         EnsureBuiltinMaterialDefinitionsRegistered();
@@ -236,13 +206,6 @@ namespace
             out_definition = *file_definition;
             return true;
         }
-
-        const AnsiString *canonical_id =
-            FindMaterialDefinitionAlias(mtl_def_id);
-        if (canonical_id
-         && std::strcmp(canonical_id->c_str(), mtl_def_id) != 0)
-            return TryGetMaterialDefinitionByIDInternal(
-                canonical_id->c_str(), out_definition, alias_depth + 1);
 
         return false;
     }
@@ -283,14 +246,16 @@ VertexShaderNodeConfig ResolveMaterialVertexNodeConfig(
 uint64 HashMaterialProgramBuildContext(
     const PrimitiveType primitive_type,
     const GeometryVertexFormat *geometry_vertex_format,
-    const contract::PhysicalDeviceProfileLite *profile) noexcept
+    const contract::PhysicalDeviceProfileLite *profile,
+    const shadergen::ShaderProgramPurpose purpose) noexcept
 {
     hgl::hash::FNV1aHasher64 h;
 
     h << primitive_type
       << (geometry_vertex_format
             ? geometry_vertex_format->GetVertexInputHash() : 0)
-      << contract::GetPhysicalDeviceProfileHash(profile);
+      << contract::GetPhysicalDeviceProfileHash(profile)
+      << static_cast<uint32>(purpose);
     return h;
 }
 
@@ -427,37 +392,9 @@ void RegisterMaterialDefinition(const MaterialDefinition &definition)
     registry.emplace_back(std::move(entry));
 }
 
-void RegisterMaterialDefinitionAlias(const char *alias_id, const char *definition_id)
-{
-    if (!alias_id || !alias_id[0]
-     || !definition_id || !definition_id[0]
-     || std::strcmp(alias_id, definition_id) == 0)
-        return;
-
-    const auto &definitions = GetBaseMaterialInfoRegistry();
-    for (const auto &entry : definitions)
-    {
-        if (entry.definition.definition_id == alias_id)
-            return;
-    }
-
-    auto &aliases = GetMaterialDefinitionAliasRegistry();
-    for (int i = 0; i < aliases.GetCount(); ++i)
-    {
-        if (std::strcmp(aliases[i]->alias_id.c_str(), alias_id) == 0)
-            return;
-    }
-
-    MaterialDefinitionAliasRegistryEntry *entry = aliases.Create();
-    if (!entry)
-        return;
-    entry->alias_id = alias_id;
-    entry->definition_id = definition_id;
-}
-
 bool TryGetMaterialDefinitionByID(const std::string &mtl_def_id, MaterialDefinition &out_definition)
 {
-    return TryGetMaterialDefinitionByIDInternal(mtl_def_id.c_str(), out_definition, 0);
+    return TryGetMaterialDefinitionByIDInternal(mtl_def_id.c_str(), out_definition);
 }
 
 

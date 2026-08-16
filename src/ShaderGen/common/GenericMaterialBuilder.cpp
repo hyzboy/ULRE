@@ -95,8 +95,6 @@ namespace hgl::graph::mtl
             const MaterialDefinitionBuildRequest &request,
             GenericMaterialBuildPlan &plan)
         {
-            plan.render_state =
-                ResolveMaterialRenderState(definition, request.recipe);
             plan.purpose =
                 request.override_shader_program_purpose
                     ? request.shader_program_purpose

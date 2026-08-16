@@ -229,7 +229,7 @@ namespace hgl::graph::mtl
             const GLSLCodeModuleRegistry *registry)
         {
             hgl::hash::FNV1aHasher64 h;
-            // v3: code modules identified by name (numeric ID track removed).
+            // code modules identified by name.
             h << manifest.code_module_count;
             for (uint32 i = 0; i < manifest.code_module_count; ++i)
             {

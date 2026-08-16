@@ -190,16 +190,6 @@ namespace hgl::graph::mtl
         File,         // 外部 MaterialDefinition 文件（未来主路径）
     };
 
-    // MaterialDefinition 用途标签：辅助调试 / 统计 / fallback 降级判断。
-    enum class MaterialDefinitionUsageTag : uint8_t
-    {
-        General = 0,   // 普通材质
-        Fallback,      // 错误/缺失材质保底
-        Debug,         // 调试/编辑器专用
-        Text,          // 文字渲染专用
-        Sky,           // 天空专用
-    };
-
     enum class MaterialDefinitionBootstrapKind : uint8_t
     {
         None = 0,
@@ -219,7 +209,6 @@ namespace hgl::graph::mtl
         std::string definition_id;                                   // 正式主键（字符串 ID / 未来文件名）
         std::string definition_name;                                 // 人类可读名称
         MaterialDefinitionSourceKind source_kind = MaterialDefinitionSourceKind::BuiltIn;         // 来源类型
-        MaterialDefinitionUsageTag   usage_tag  = MaterialDefinitionUsageTag::General;            // 用途标签
         MaterialDefinitionBootstrapKind bootstrap_kind = MaterialDefinitionBootstrapKind::None;
 
         // Lod / 质量包络

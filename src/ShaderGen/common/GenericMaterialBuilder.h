@@ -44,7 +44,6 @@ namespace hgl::graph::mtl
     struct GenericMaterialBuildPlan
     {
         // Phase 1: purpose / coverage / varying / stage interface
-        ResolvedMaterialRenderState render_state;
         shadergen::ShaderProgramPurpose purpose =
             shadergen::ShaderProgramPurpose::ForwardColor;
         bool depth_purpose = false;

@@ -524,11 +524,30 @@ namespace hgl::ecs
             primitive_type = asset->GetPrimitiveType();
         }
 
+        // 渲染变体 purpose 必须先于脏检查解析——若 Forward↔Shadow 切换而
+        // recipe/geometry/profile 不变，哈希不含 purpose 会复用错误的 program
+        graph::shadergen::ShaderProgramPurpose effective_purpose =
+            graph::shadergen::ShaderProgramPurpose::ForwardColor;
+        switch (primitive_comp->GetPrimitiveVariantPurpose())
+        {
+        case graph::PrimitiveVariantPurpose::DepthOnly:
+            effective_purpose =
+                graph::shadergen::ShaderProgramPurpose::DepthOnly;
+            break;
+        case graph::PrimitiveVariantPurpose::ShadowCaster:
+            effective_purpose =
+                graph::shadergen::ShaderProgramPurpose::ShadowDepth;
+            break;
+        default:
+            break;
+        }
+
         const uint64_t build_context_hash =
             graph::mtl::HashMaterialProgramBuildContext(
                 primitive_type,
                 geometry_vertex_format,
-                graphics->GetPhysicalDeviceProfile());
+                graphics->GetPhysicalDeviceProfile(),
+                effective_purpose);
         if (material_comp->recipe_hash != recipe_hash
          || material_comp->program_build_context_hash
                 != build_context_hash)
@@ -562,20 +581,11 @@ namespace hgl::ecs
         mtl_request.recipe = effective_recipe;
         mtl_request.primitive_type = primitive_type;
         mtl_request.geometry_vertex_format = geometry_vertex_format;
-        switch (primitive_comp->GetPrimitiveVariantPurpose())
+        if (effective_purpose
+            != graph::shadergen::ShaderProgramPurpose::ForwardColor)
         {
-        case graph::PrimitiveVariantPurpose::DepthOnly:
             mtl_request.override_shader_program_purpose = true;
-            mtl_request.shader_program_purpose =
-                graph::shadergen::ShaderProgramPurpose::DepthOnly;
-            break;
-        case graph::PrimitiveVariantPurpose::ShadowCaster:
-            mtl_request.override_shader_program_purpose = true;
-            mtl_request.shader_program_purpose =
-                graph::shadergen::ShaderProgramPurpose::ShadowDepth;
-            break;
-        default:
-            break;
+            mtl_request.shader_program_purpose = effective_purpose;
         }
         graph::ShaderProgram *resolved_program =
             material_manager->AcquireShaderProgram(mtl_request);

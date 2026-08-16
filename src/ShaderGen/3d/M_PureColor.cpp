@@ -8,7 +8,6 @@ namespace hgl::graph::mtl
             definition.definition_id = BUILTIN_MTL_DEF_PURE_COLOR;
             definition.definition_name = "builtin/pure_color";
             definition.source_kind = MaterialDefinitionSourceKind::BuiltIn;
-            definition.usage_tag = MaterialDefinitionUsageTag::Fallback;
             definition.bootstrap_kind = MaterialDefinitionBootstrapKind::PureColor;
             definition.data_slot_decls = {{"mtl", SSBOType::EmissiveSurface}};
             definition.ubo_requirements = {
@@ -30,8 +29,5 @@ namespace hgl::graph::mtl
             ConfigureMaterialVertexSemanticContract(
                 definition, requirements, 1, MaterialVertexProviderPolicy::GeometryOnly);
             RegisterMaterialDefinition(definition);
-            RegisterMaterialDefinitionAlias(
-                   BUILTIN_MTL_DEF_MISSING_MATERIAL,
-                   BUILTIN_MTL_DEF_PURE_COLOR);
     }
 }

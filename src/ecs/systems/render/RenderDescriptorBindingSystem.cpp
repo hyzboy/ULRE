@@ -919,6 +919,14 @@ namespace hgl::ecs
                 }
                 break;
             }
+            case graph::mtl::DescriptorSemantic::MaterialTexture:
+            case graph::mtl::DescriptorSemantic::MaterialSampler:
+            {
+                // 纹理/采样器经 bindless RegisterTexture 回调通道注册，契约遍历
+                // 无 per-material 操作——显式 case 而非静默 default，与
+                // IsSemanticResolvable（bindless 通道可解析）语义对齐。
+                break;
+            }
             case graph::mtl::DescriptorSemantic::MaterialColorPalette:
             {
                 // P1-2a: color_palette 已迁至全局 Scene UBO 集（Set 0, binding=3），

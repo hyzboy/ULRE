@@ -101,7 +101,6 @@ namespace hgl::graph::mtl
         uint32 numeric_class_mask = static_cast<uint32>(GLSLCodeModuleNumericClass::Any);
         uint8 min_component_count = 0;
         uint8 max_component_count = 0;
-        uint16 reserved = 0;
     };
 
     // ValueArray<T> instantiates its virtual Find() for every concrete T, which
@@ -128,8 +127,7 @@ namespace hgl::graph::mtl
           << v.semantic
           << v.numeric_class_mask
           << v.min_component_count
-          << v.max_component_count
-          << v.reserved;
+          << v.max_component_count;
         return h;
     }
 
@@ -224,7 +222,7 @@ namespace hgl::graph::mtl
         uint32 ssbo_requirement_count = 0;
 
         // Capability metadata for file-backed/provider modules. Existing
-        // modules may omit these trailing fields until migrated.
+        // all real modules carry kind/semantic fields.
         GLSLCodeModuleKind kind = GLSLCodeModuleKind::Shared;
         const GLSLCodeModuleSemanticRequirement *semantic_requirements = nullptr;
         uint32 semantic_requirement_count = 0;

@@ -236,7 +236,7 @@ namespace hgl::graph::mtl
                 return lhs->priority > rhs->priority;
 
             // Same priority: earlier registration wins (stable declaration
-            // order, matching the legacy numeric-ID ordering).
+            // order).
             return GetRegistrationIndex(registry, lhs)
                 < GetRegistrationIndex(registry, rhs);
         }
@@ -671,13 +671,6 @@ namespace hgl::graph::mtl
         {
             const auto &selection = result.selections[static_cast<int>(order[i])];
             h << selection.requirement;
-
-            if (!selection.provider)
-            {
-                const uint32 missing_provider = 0xffffffffu;
-                h << missing_provider;
-                continue;
-            }
 
             const auto &provider = *selection.provider;
             h << provider.name
