@@ -141,6 +141,15 @@ std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names)
         if (name.empty())
             continue;
         const uint32_t idx = SamplerPresetLibrary::Instance().GetIndex(name.c_str());
+        if (idx == ~0u)
+        {
+            // sampler.toml 无此名字——不生成宏，shader 编译会因未定义
+            // 宏显式失败（vs 静默错位成 Nearest）
+            GLogError(u8"[MaterialShaderCompiler] sampler preset not found: %s — "
+                      u8"check sampler.toml ordering",
+                      name.c_str());
+            continue;
+        }
         macros += "#define ";
         macros += name;
         macros += "Sampler ";
@@ -581,17 +590,19 @@ ShaderBuildContext *CompileCompositorMaterial(
 
     std::string binding_preamble;
 
-    auto AppendDescriptorBindingDefine = [&](const char *macro_name, const ShaderDescriptor *sd)
+    // 显式双宏名（_SET/_BINDING 成对传入）——不做字符串推导：
+    // 推导依赖 "_SET" 子串存在，缺了即 std::out_of_range
+    auto AppendDescriptorBindingDefine = [&](const char *set_macro, const char *binding_macro, const ShaderDescriptor *sd)
     {
-        if (!macro_name || !sd || sd->set < 0 || sd->binding < 0)
+        if (!set_macro || !binding_macro || !sd || sd->set < 0 || sd->binding < 0)
             return;
         binding_preamble += "#define ";
-        binding_preamble += macro_name;
+        binding_preamble += set_macro;
         binding_preamble += " ";
         binding_preamble += std::to_string(sd->set);
         binding_preamble += "\n";
         binding_preamble += "#define ";
-        binding_preamble += std::string(macro_name).replace(std::string(macro_name).find("_SET"), 4, "_BINDING");
+        binding_preamble += binding_macro;
         binding_preamble += " ";
         binding_preamble += std::to_string(sd->binding);
         binding_preamble += "\n";
@@ -602,7 +613,7 @@ ShaderBuildContext *CompileCompositorMaterial(
     // 行表绑定（mtl_data_index_rows / mtl_texture_layer_rows / l2w_index_rows）不再注入
     // set/binding 宏：声明由下方 index table 生成逻辑依据 descriptor_info 直接以
     // layout(set=.., binding=..) 写出（统一声明生成，不再写死在 .glsl）。
-    AppendDescriptorBindingDefine("L2W_SET", descriptor_info.GetSSBO(SBS_LocalToWorld.name));
+    AppendDescriptorBindingDefine("L2W_SET", "L2W_BINDING", descriptor_info.GetSSBO(SBS_LocalToWorld.name));
 
     // ── Scene UBO（camera/sky/viewport/color_palette）已全局化（P1/P1-2a）：binding 号为
     //    P0/P1-2a 硬编码常量，不再从 per-material 分配器查询（Scene 不再进入 per-material 描述符集）。
@@ -615,10 +626,10 @@ ShaderBuildContext *CompileCompositorMaterial(
     sd_sky.set       = scene_set; sd_sky.binding       = kSceneBindingSky;
     sd_color_palette.set = scene_set; sd_color_palette.binding = kSceneBindingColorPalette;
 
-    AppendDescriptorBindingDefine("VIEWPORT_SET", &sd_viewport);
-    AppendDescriptorBindingDefine("CAMERA_SET", &sd_camera);
-    AppendDescriptorBindingDefine("SKY_SET", &sd_sky);
-    AppendDescriptorBindingDefine("COLOR_PALETTE_SET", &sd_color_palette);
+    AppendDescriptorBindingDefine("VIEWPORT_SET", "VIEWPORT_BINDING", &sd_viewport);
+    AppendDescriptorBindingDefine("CAMERA_SET", "CAMERA_BINDING", &sd_camera);
+    AppendDescriptorBindingDefine("SKY_SET", "SKY_BINDING", &sd_sky);
+    AppendDescriptorBindingDefine("COLOR_PALETTE_SET", "COLOR_PALETTE_BINDING", &sd_color_palette);
 
     // ── Material SSBO GLSL 声明 ─────────────────────────────────────────────
     // 材质实例 SSBO 的 struct + buffer 声明不再写死在 .glsl 中，
@@ -642,11 +653,11 @@ ShaderBuildContext *CompileCompositorMaterial(
             if (!struct_name || !struct_codes)
                 return FailAfterBuild("unsupported material ssbo type for GLSL generation");
 
-            std::string buffer_name(struct_name);
-            const size_t name_len = buffer_name.size();
-            if (name_len > 4 && buffer_name.compare(name_len - 4, 4, "Data") == 0)
-                buffer_name.resize(name_len - 4);
-            buffer_name += "Buffer";
+            const char *const buffer_base =
+                ssbo::GetMaterialSSBOBufferName(decl.ssbo_type);
+            if (!buffer_base)
+                return FailAfterBuild("material ssbo buffer name unsupported for GLSL generation");
+            std::string buffer_name(buffer_base);
 
             for (uint32_t suffix = 1;; ++suffix)
             {
@@ -796,6 +807,8 @@ ShaderBuildContext *CompileCompositorMaterial(
 
     std::string vs_index_table_decls;
     std::string fs_index_table_decls;
+    // 无 data_slot_decls 时回退 1：MTL_DATA_SLOT_COUNT 是 GLSL 侧行表
+    // 边界常量，至少为 1（material_data_index_rows 索引 0 仍有效）
     const uint32_t material_data_slot_count =
         use_slot_decls ? static_cast<uint32_t>(data_slot_decls->size()) : 1u;
     vs_index_table_decls = "#define MTL_DATA_SLOT_COUNT "

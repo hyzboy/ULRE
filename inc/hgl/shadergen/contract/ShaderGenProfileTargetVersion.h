@@ -78,6 +78,8 @@ namespace hgl::graph::shadergen::contract
             out_spv_version = profile.target_spv_version;
     }
 
+    // 设备能力哈希（vendor/device/limits/features）——编译目标哈希的超集包含它；
+    // 所有 key 维度统一用 GetShaderCompilerProfileHash（含目标版本解析结果）
     inline uint64 GetPhysicalDeviceProfileHash(
         const PhysicalDeviceProfileLite *profile) noexcept
     {

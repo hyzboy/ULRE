@@ -59,11 +59,14 @@ namespace hgl::graph::mtl
 
     uint32 SamplerPresetLibrary::GetIndex(const char *name) const
     {
+        // ~0u = 显式无效值：调用方必须处理查不到的情况。
+        // 此前保底 0（=Nearest）会把"未声明采样器"静默错位成 Nearest，
+        // 视觉问题难排查——显式无效让调用方报错暴露。
         if (!name || !name[0])
-            return 0u;
+            return ~0u;
         const AnsiString key(name);
         const uint32 *idx = name_to_index_.GetValuePointer(key);
-        return idx ? *idx : 0u;
+        return idx ? *idx : ~0u;
     }
 
     uint32 SamplerPresetLibrary::GetCount() const

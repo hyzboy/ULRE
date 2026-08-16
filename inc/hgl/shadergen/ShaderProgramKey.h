@@ -16,7 +16,6 @@ namespace hgl::graph::shadergen
         uint64 fragment_stage_digest = 0;
         uint64 resource_layout_hash = 0;
         uint64 vertex_input_hash = 0;
-        uint64 pipeline_state_hash = 0;
         uint64 render_target_hash = 0;
         uint64 compiler_hash = 0;
 
@@ -28,7 +27,6 @@ namespace hgl::graph::shadergen
               << fragment_stage_digest
               << resource_layout_hash
               << vertex_input_hash
-              << pipeline_state_hash
               << render_target_hash
               << compiler_hash;
 
@@ -46,7 +44,6 @@ namespace hgl::graph::shadergen
                 && fragment_stage_digest == rhs.fragment_stage_digest
                 && resource_layout_hash == rhs.resource_layout_hash
                 && vertex_input_hash == rhs.vertex_input_hash
-                && pipeline_state_hash == rhs.pipeline_state_hash
                 && render_target_hash == rhs.render_target_hash
                 && compiler_hash == rhs.compiler_hash;
         }
@@ -61,8 +58,6 @@ namespace hgl::graph::shadergen
                 return resource_layout_hash < rhs.resource_layout_hash;
             if (vertex_input_hash != rhs.vertex_input_hash)
                 return vertex_input_hash < rhs.vertex_input_hash;
-            if (pipeline_state_hash != rhs.pipeline_state_hash)
-                return pipeline_state_hash < rhs.pipeline_state_hash;
             if (render_target_hash != rhs.render_target_hash)
                 return render_target_hash < rhs.render_target_hash;
             return compiler_hash < rhs.compiler_hash;

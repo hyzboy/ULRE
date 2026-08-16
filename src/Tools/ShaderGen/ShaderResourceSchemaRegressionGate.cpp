@@ -5115,13 +5115,14 @@ namespace
             }
         }
 
-        // 3. 保底 0（未知名 / 空名 / 空指针）。
-        if (lib.GetIndex("DoesNotExistSampler") != 0u)
-            result.diagnostics.emplace_back("unknown name must fallback to 0");
-        if (lib.GetIndex("") != 0u)
-            result.diagnostics.emplace_back("empty name must fallback to 0");
-        if (lib.GetIndex(nullptr) != 0u)
-            result.diagnostics.emplace_back("null name must fallback to 0");
+        // 3. 未知名 / 空名 / 空指针 → 显式无效（~0u）——调用方必须处理，
+        //    不再静默保底 0（=Nearest）掩盖 sampler.toml 顺序错位。
+        if (lib.GetIndex("DoesNotExistSampler") != ~0u)
+            result.diagnostics.emplace_back("unknown name must yield invalid index");
+        if (lib.GetIndex("") != ~0u)
+            result.diagnostics.emplace_back("empty name must yield invalid index");
+        if (lib.GetIndex(nullptr) != ~0u)
+            result.diagnostics.emplace_back("null name must yield invalid index");
 
         // 4. max_lod 统一 15.0（不再按纹理 mip 级数派生）。
         for (uint32_t i = 0; i < lib.GetCount(); ++i)
@@ -5176,10 +5177,10 @@ namespace
                 "sampler macro injection mismatch: got [" + macros + "]");
         }
 
-        // 7. 宏保底（未知名 → 0）、空列表、空名跳过。
-        if (BuildSamplerMacros({ "UnknownSampler" })
-            != "#define UnknownSamplerSampler 0u\n")
-            result.diagnostics.emplace_back("sampler macro fallback mismatch");
+        // 7. 未知名 → 不生成宏（shader 编译显式失败暴露，不再静默保底 0）；
+        //    空列表、空名跳过。
+        if (!BuildSamplerMacros({ "UnknownSampler" }).empty())
+            result.diagnostics.emplace_back("unknown sampler must produce no macro");
         if (!BuildSamplerMacros({}).empty())
             result.diagnostics.emplace_back("empty sampler list must produce no macros");
         if (!BuildSamplerMacros({ "" }).empty())

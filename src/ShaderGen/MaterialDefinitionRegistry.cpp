@@ -254,7 +254,9 @@ uint64 HashMaterialProgramBuildContext(
     h << primitive_type
       << (geometry_vertex_format
             ? geometry_vertex_format->GetVertexInputHash() : 0)
-      << contract::GetPhysicalDeviceProfileHash(profile)
+      // 统一用编译目标超集哈希（设备能力 + 解析后的目标版本）——
+      // 此前与 compiler_hash 双轨并存（L4 N5），两处口径不一致
+      << contract::GetShaderCompilerProfileHash(profile)
       << static_cast<uint32>(purpose);
     return h;
 }

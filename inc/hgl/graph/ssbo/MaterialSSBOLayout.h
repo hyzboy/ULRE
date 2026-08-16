@@ -28,6 +28,20 @@ namespace hgl::graph::ssbo
         }
     }
 
+    // GLSL buffer 声明名（struct 名去 "Data" 后缀 + "Buffer"——显式表，
+    // 不做字符串剥除：改 struct 名时 buffer 名独立可控）
+    inline const char *GetMaterialSSBOBufferName(const mtl::SSBOType type) noexcept
+    {
+        switch (type)
+        {
+        case mtl::SSBOType::EmissiveSurface:         return "EmissiveSurfaceBuffer";
+        case mtl::SSBOType::TextureRectArraySurface: return "TextureRectArraySurfaceBuffer";
+        case mtl::SSBOType::PBRSurface:              return "PBRSurfaceBuffer";
+        case mtl::SSBOType::TransmissionSurface:     return "TransmissionSurfaceBuffer";
+        default:                                     return nullptr;
+        }
+    }
+
     inline const char *GetMaterialSSBOStructGLSL(const mtl::SSBOType type) noexcept
     {
         switch (type)

@@ -69,7 +69,7 @@ namespace hgl::graph::shadergen
             link.fragment_stage.GetDigest();
         out_metadata.compiler_profile_hash = link.compiler_hash;
         out_metadata.device_target_hash =
-            contract::GetPhysicalDeviceProfileHash(profile);
+            contract::GetShaderCompilerProfileHash(profile);
         out_metadata.generated_source_digest = source_digest;
         return IsValidShaderProgramArtifactMetadata(out_metadata);
     }
