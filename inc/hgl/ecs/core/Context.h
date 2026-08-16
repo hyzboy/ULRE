@@ -234,12 +234,9 @@ namespace hgl
 
             /// Compatibility entry for recording into an existing command buffer.
             /// Preferred public frame driver is Render(float).
-            void Render(graph::RenderCmdBuffer *cmd, float deltaTime);
 
             /// Internal-style draw-only recording entry kept for compatibility with
             /// prepared-frame callers such as subworld/offscreen helpers.
-            void RenderDrawOnly(graph::RenderCmdBuffer *cmd, float deltaTime);
-
             /// Run a full render frame (Begin/Render/End/Sync)
             void Render(float deltaTime);
 

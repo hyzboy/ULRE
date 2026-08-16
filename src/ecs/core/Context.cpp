@@ -477,6 +477,7 @@ namespace hgl
             RunRenderSystemsInRange(minPhase, maxPhase, deltaTime);
         }
 
+#if 0 // W2: Render(cmd) 兼容入口已删（0 调用）——保留实现供参考
         void ECSContext::Render(graph::RenderCmdBuffer *cmd, float deltaTime)
         {
             if (!active)
@@ -518,7 +519,9 @@ namespace hgl
                 current_render_cmd = nullptr;
             }
         }
+#endif // W2: Render(cmd) 兼容入口已删（0 调用）——保留实现供参考
 
+#if 0 // W2: RenderDrawOnly 已删（0 调用）
         void ECSContext::RenderDrawOnly(graph::RenderCmdBuffer* cmd, float deltaTime)
         {
             if (!active)
@@ -538,6 +541,7 @@ namespace hgl
             if (current_render_cmd == cmd)
                 current_render_cmd = nullptr;
         }
+#endif // W2: Render(cmd)/RenderDrawOnly 已删（0 调用）——保留实现供参考
 
         void ECSContext::OnResize(const VkExtent2D &extent)
         {
@@ -575,32 +579,8 @@ namespace hgl
 
         void ECSContext::Render(float deltaTime)
         {
-            if (use_adaptive_render_graph)
-            {
-                // Gather scene statistics and check if we need to rebuild the adaptive graph
-                SceneStats stats = GatherSceneStats(this);
-                uint64_t current_hash = stats.GetHash();
-
-                if (current_hash != cached_adaptive_scene_hash)
-                {
-                    LogDebug("[ECS] Adaptive RenderGraph scene hash changed: %llu -> %llu, regenerating",
-                             cached_adaptive_scene_hash, current_hash);
-                    cached_adaptive_render_graph = CreateAdaptiveRenderGraph(this);
-                    cached_adaptive_scene_hash = current_hash;
-                }
-
-                Render(deltaTime, cached_adaptive_render_graph);
-            }
-            else
-            {
-                // Lazy-initialize default graph cache on first use
-                if (!default_render_graph_initialized)
-                {
-                    cached_default_render_graph = CreateDefaultLinearGraph(this);
-                    default_render_graph_initialized = true;
-                }
-                Render(deltaTime, cached_default_render_graph);
-            }
+            // W2 收敛：图选择逻辑唯一实现在 Render(dt, pre)——此处纯转发
+            Render(deltaTime, std::function<void(float)>{});
         }
 
         void ECSContext::Render(float deltaTime, const std::function<void(float)> &pre_render)

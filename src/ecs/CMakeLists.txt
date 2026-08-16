@@ -13,7 +13,6 @@ set(ECS_CORE_FILES
     ${ECS_INCLUDE_PATH}/core/Context.h
     ${ECS_INCLUDE_PATH}/core/RenderGraph.h
     ${ECS_INCLUDE_PATH}/core/SystemGroup.h
-    ${ECS_INCLUDE_PATH}/core/World.h
     ${ECS_INCLUDE_PATH}/core/DefaultSystems.h
     ${ECS_INCLUDE_PATH}/core/MaterialBatch.h
     ${ECS_INCLUDE_PATH}/core/ShaderProgramPipelineKey.h
@@ -29,7 +28,6 @@ set(ECS_CORE_FILES
     core/Context.cpp
     core/RenderGraph.cpp
     core/SystemGroup.cpp
-    core/World.cpp
     core/DefaultSystems.cpp
     core/MaterialBatch.cpp
     core/RenderItem.cpp

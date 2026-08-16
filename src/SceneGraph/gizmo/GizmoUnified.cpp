@@ -17,7 +17,6 @@
 #include"modes/RotateGizmoMode.h"
 #include"modes/ScaleGizmoMode.h"
 #include<hgl/ecs/core/Context.h>
-#include<hgl/ecs/core/World.h>
 #include<hgl/ecs/core/Entity.h>
 
 #include<hgl/ecs/components/TransformComponent.h>
