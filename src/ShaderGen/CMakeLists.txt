@@ -86,7 +86,6 @@ set(STD_MTL_HEADER_PATH  ${ROOT_INCLUDE_PATH}/hgl/mtl)
 
 SET(SHADERGEN_COMMON_FILES  ${ROOT_INCLUDE_PATH}/hgl/graph/ShaderBufferSources.h
                             ${SHADERGEN_INCLUDE_PATH}/ShaderLibraryPath.h
-                            ${STD_MTL_HEADER_PATH}/SamplerName.h
                             common/GLSLCodeModule.cpp
                             common/ShaderResourceManifest.cpp
                             common/GenericMaterialBuilder.h
