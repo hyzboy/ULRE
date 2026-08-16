@@ -1879,7 +1879,7 @@ namespace
             MaterialDefinitionBuildRequest request{};
             request.recipe.mtl_def_id = definition.definition_id;
             request.geometry_vertex_format = &geometry;
-            request.generate_only = true;
+            request.defer_finalize = true;
             return std::unique_ptr<ShaderBuildContext>(
                 CreateMaterialFromDefinition(
                     profile, definition, request));
@@ -2746,7 +2746,7 @@ namespace
                     request.recipe.render_state_overrides.pipeline_config.alpha_to_coverage =
                         alpha_to_coverage;
                     request.geometry_vertex_format = &geometry;
-                    request.generate_only = true;
+                    request.defer_finalize = true;
                     request.override_shader_program_purpose =
                         override_purpose;
                     request.shader_program_purpose = purpose;
@@ -3073,7 +3073,7 @@ namespace
                 MaterialDefinitionBuildRequest request{};
                 request.recipe.mtl_def_id = definition.definition_id;
                 request.geometry_vertex_format = &geometry;
-                request.generate_only = true;
+                request.defer_finalize = true;
                 return std::unique_ptr<ShaderBuildContext>(
                     CreateMaterialFromDefinition(
                         nullptr, definition, request));
@@ -4966,7 +4966,7 @@ namespace
 
         CompositorMaterialBuildConfig config{};
         config.data_slot_decls = &slots;
-        config.generate_only = true;
+        config.defer_finalize = true;
 
         ShaderBuildContext *build_spec = CompileCompositorMaterial(
             nullptr,

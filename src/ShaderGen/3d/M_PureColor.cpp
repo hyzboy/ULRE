@@ -2,10 +2,8 @@
 
 namespace hgl::graph::mtl
 {
-    namespace
+    void RegisterPureColorMaterialDefinition()
     {
-        const bool kRegisteredPureColorBmi = []() -> bool
-        {
             MaterialDefinition definition{};
             definition.definition_id = BUILTIN_MTL_DEF_PURE_COLOR;
             definition.definition_name = "builtin/pure_color";
@@ -35,9 +33,5 @@ namespace hgl::graph::mtl
             RegisterMaterialDefinitionAlias(
                    BUILTIN_MTL_DEF_MISSING_MATERIAL,
                    BUILTIN_MTL_DEF_PURE_COLOR);
-            return true;
-        }();
     }
-
-    void ForceLinkPureColorMaterialDefinition() {}
 }

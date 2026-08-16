@@ -58,7 +58,7 @@ struct CompositorMaterialBuildConfig
     bool merge_resource_manifest_material_slots = true;
     ShaderArtifactStore *artifact_store = nullptr;
     const DescriptorContract *descriptor_contract = nullptr;
-    bool generate_only = false; // Preserve generated GLSL for contract tests without SPV compilation.
+    bool defer_finalize = false; // 生成 GLSL/契约后返回，SPV 编译推迟（生产主路径先查 program 缓存）
 };
 
 class ShaderBuildContext;

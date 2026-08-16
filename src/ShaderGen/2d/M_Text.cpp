@@ -2,10 +2,8 @@
 #include<hgl/mtl/SamplerName.h>
 
 namespace hgl::graph::mtl{
-namespace
+void RegisterText2DMaterialDefinition()
 {
-    const bool kRegisteredText2DBmi = []() -> bool
-    {
         MaterialDefinition definition{};
         definition.definition_id = BUILTIN_MTL_DEF_TEXT;
         definition.definition_name = "Text2D";
@@ -33,11 +31,6 @@ namespace
             definition, vertex_requirements, 2, MaterialVertexProviderPolicy::GeometryOnly);
         RegisterMaterialDefinition(definition);
         RegisterMaterialDefinitionAlias("Text2D", BUILTIN_MTL_DEF_TEXT);
-
-        return true;
-    }();
 }
-
-void ForceLinkText2DMaterialDefinition() {}
 
 }//namespace hgl::graph::mtl

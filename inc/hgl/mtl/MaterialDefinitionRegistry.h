@@ -46,7 +46,7 @@ struct MaterialDefinitionBuildRequest
     bool has_vertex_node_config_override = false;
     VertexShaderNodeConfig vertex_node_config_override;
     shadergen::ShaderArtifactStore *shader_artifact_store = nullptr;
-    bool generate_only = false;
+    bool defer_finalize = false;  // 生成 GLSL 与契约后延迟 SPV 编译（生产主路径：先查缓存）
     bool override_shader_program_purpose = false;
     shadergen::ShaderProgramPurpose shader_program_purpose =
         shadergen::ShaderProgramPurpose::ForwardColor;

@@ -16,8 +16,8 @@
 
 namespace hgl::graph::mtl{
 using namespace hgl::graph::shadergen;
-void ForceLinkPureColorMaterialDefinition();
-void ForceLinkText2DMaterialDefinition();
+void RegisterPureColorMaterialDefinition();
+void RegisterText2DMaterialDefinition();
 
 namespace
 {
@@ -143,17 +143,6 @@ namespace
         return out_position_format != VK_FORMAT_UNDEFINED;
     }
 
-    void EnsureBuiltinMaterialDefinitionsLinked()
-    {
-        static const bool linked = []() -> bool
-        {
-            ForceLinkPureColorMaterialDefinition();
-            ForceLinkText2DMaterialDefinition();
-            return true;
-        }();
-        (void)linked;
-    }
-
     struct BaseMaterialInfoRegistryEntry
     {
         bool has_preset = false;
@@ -167,9 +156,26 @@ namespace
         AnsiString definition_id;
     };
 
+    // Built-in materials (PureColor/Text2D) register lazily, driven by the
+    // query entry points below (TryGetMaterialDefinitionByIDInternal /
+    // TryGetMaterialDefinitionByBootstrapKind). The register functions live in
+    // their own TUs and are pulled in by this call. Deliberately NOT invoked
+    // from GetBaseMaterialInfoRegistry: the register path itself calls back
+    // into that registry, so triggering registration from inside its static
+    // initializer would dead-lock on the function-local static guard.
+    void EnsureBuiltinMaterialDefinitionsRegistered()
+    {
+        static const bool registered = []() -> bool
+        {
+            RegisterPureColorMaterialDefinition();
+            RegisterText2DMaterialDefinition();
+            return true;
+        }();
+        (void)registered;
+    }
+
     std::vector<BaseMaterialInfoRegistryEntry> &GetBaseMaterialInfoRegistry()
     {
-        EnsureBuiltinMaterialDefinitionsLinked();
         static std::vector<BaseMaterialInfoRegistryEntry> registry;
         return registry;
     }
@@ -201,6 +207,8 @@ namespace
     {
         if (!mtl_def_id || !mtl_def_id[0] || alias_depth > 8)
             return false;
+
+        EnsureBuiltinMaterialDefinitionsRegistered();
 
         const auto &registry = GetBaseMaterialInfoRegistry();
 
@@ -455,6 +463,8 @@ bool TryGetMaterialDefinitionByID(const std::string &mtl_def_id, MaterialDefinit
 
 bool TryGetMaterialDefinitionByBootstrapKind(const MaterialDefinitionBootstrapKind kind, MaterialDefinition &out_definition)
 {
+    EnsureBuiltinMaterialDefinitionsRegistered();
+
     const auto &registry = GetBaseMaterialInfoRegistry();
     for (const auto &entry : registry)
     {

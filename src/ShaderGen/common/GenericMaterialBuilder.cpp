@@ -497,7 +497,7 @@ namespace hgl::graph::mtl
                     ? nullptr
                     : definition.data_slot_decls.empty()
                         ? nullptr : &definition.data_slot_decls;
-            config.generate_only = request.generate_only;
+            config.defer_finalize = request.defer_finalize;
             return true;
         }
     }

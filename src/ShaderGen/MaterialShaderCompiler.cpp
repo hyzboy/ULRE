@@ -944,7 +944,7 @@ ShaderBuildContext *CompileCompositorMaterial(
     // Step 7: Compile directly → SPV
     // ─────────────────────────────────────────────────────────────
 
-    if (config.generate_only)
+    if (config.defer_finalize)
         return ctx;
 
     if (!FinalizeShaderBuildContext(ctx))

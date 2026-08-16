@@ -446,7 +446,7 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
         return nullptr;
 
     const auto *profile = GetPhysicalDeviceProfile();
-    normalized_request.generate_only = true;
+    normalized_request.defer_finalize = true;
     AutoDelete<shadergen::ShaderBuildContext> ctx =
         mtl::CreateMaterialFromDefinition(
             profile, definition, normalized_request);
