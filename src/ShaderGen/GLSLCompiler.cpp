@@ -45,6 +45,12 @@ namespace hgl
 
         struct GLSLCompilerInterface
         {
+            // 接口 ABI 版本：TBuiltInResourceCompat 按 sizeof 跨插件边界传递
+            // （本文件 :77/:128 ↔ 插件 glsl2spv.cpp GetLimit/SetLimit 的 size 校验），
+            // glslang 升版改 TBuiltInResource 布局时两端必须同步 bump，
+            // 否则 limits 静默 no-op。插件侧填常量，加载后校验。
+            uint32_t    abi_version;
+
             bool        (*Init)();
             void        (*Close)();
 
@@ -177,6 +183,9 @@ namespace hgl
 
         typedef GLSLCompilerInterface *(*GetInterfaceFUNC)();
 
+        // 与插件侧 glsl2spv.cpp 的 plug_in_interface 首字段同步
+        constexpr uint32_t kGLSLCompilerInterfaceABIVersion = 1;
+
         bool InitShaderCompiler()
         {
             compile_info.includes=nullptr;
@@ -198,6 +207,31 @@ namespace hgl
 
             if(!gsi_module)
             {
+                // fallback: 可执行文件目录（构建输出目录）——cwd 拼接仅覆盖
+                // 从仓库根运行的情况；exe 目录才是 dll 的常规位置
+#ifdef _WIN32
+                wchar_t module_path[MAX_PATH + 1] = {};
+                const DWORD module_path_len =
+                    GetModuleFileNameW(nullptr, module_path, MAX_PATH);
+                if (module_path_len > 0)
+                {
+                    const OSString exe_path(module_path);
+                    const int slash =
+                        exe_path.FindRightChar(HGL_DIRECTORY_SEPARATOR);
+                    if (slash >= 0)
+                    {
+                        glsl_compiler_fullname =
+                            filesystem::JoinPathWithFilename(
+                                exe_path.SubString(0, slash),
+                                OS_TEXT("GLSLCompiler") HGL_PLUGIN_EXTNAME);
+                        gsi_module = LoadExternalModule(glsl_compiler_fullname);
+                    }
+                }
+#endif
+            }
+
+            if(!gsi_module)
+            {
                 std::fprintf(stderr,
                     "[GLSLCompiler] Init failed: cannot load GLSLCompiler plugin module\n");
                 return(false);
@@ -212,6 +246,14 @@ namespace hgl
                 gsi=get_func();
                 if(gsi)
                 {
+                    if (gsi->abi_version != kGLSLCompilerInterfaceABIVersion)
+                    {
+                        GLogError(u8"[GLSLCompiler] interface ABI mismatch: plugin=%u expected=%u — "
+                                  u8"TBuiltInResourceCompat layout may have drifted (glslang upgrade?)",
+                                  gsi->abi_version, kGLSLCompilerInterfaceABIVersion);
+                        return false;
+                    }
+
                     if(gsi->Init())
                     {
                         if(g_pd_profile_valid)

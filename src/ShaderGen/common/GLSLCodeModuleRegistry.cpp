@@ -1,4 +1,5 @@
 #include <hgl/graph/glsl/GLSLCodeModuleRegistry.h>
+#include <hgl/graph/glsl/GLSLCodeModuleMetadata.h>
 
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/io/FileInputStream.h>
@@ -309,6 +310,20 @@ namespace hgl::graph::mtl
                     removed_incomplete_module = true;
                 }
             }
+        }
+
+        // 完整校验接线到生产加载收尾（DFS 环检测 / AmbiguousProviderPriority）：
+        // 此前校验层仅回归门使用，pass2 只有散装检查；此处补全生产侧约束。
+        GLSLCodeModuleMetadataValidationDiagnostic validation_diagnostic{};
+        if (!ValidateGLSLCodeModuleRegistryMetadata(
+                *this, validation_diagnostic))
+        {
+            GLogError(u8"[GLSLCodeModuleRegistry] Metadata validation failed: "
+                      u8"module=%s related=%s error=%u",
+                      validation_diagnostic.module_name.c_str(),
+                      validation_diagnostic.related_module_name.c_str(),
+                      static_cast<uint32>(validation_diagnostic.error));
+            ++error_count;
         }
 
         if (out_file_count)

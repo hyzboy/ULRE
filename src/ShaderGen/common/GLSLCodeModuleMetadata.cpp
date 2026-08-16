@@ -99,15 +99,13 @@ namespace hgl::graph::mtl
                 return false;
 
             const uint32 dependency_count =
-                GetNormalizedGLSLCodeModuleDependencyCount(*definition);
+                definition->dependency_count;
             for (uint32 dependency_index = 0;
                  dependency_index < dependency_count;
                  ++dependency_index)
             {
-                GLSLCodeModuleDependency dependency{};
-                if (!GetNormalizedGLSLCodeModuleDependency(
-                        *definition, dependency_index, dependency))
-                    return false;
+                GLSLCodeModuleDependency dependency =
+                    definition->dependencies[dependency_index];
 
                 int target_index = -1;
                 if (!FindModuleIndex(registry, dependency.module_name, target_index))
@@ -157,6 +155,8 @@ namespace hgl::graph::mtl
         return "Unknown";
     }
 
+    // 直通访问器——ResolvedModuleGraphBuilder 等公共调用方经此访问依赖表
+    // （Metadata.cpp 内部已直接访问字段）
     uint32 GetNormalizedGLSLCodeModuleDependencyCount(
         const GLSLCodeModuleDefinition &definition) noexcept
     {
@@ -296,19 +296,13 @@ namespace hgl::graph::mtl
         }
 
         const uint32 dependency_count =
-            GetNormalizedGLSLCodeModuleDependencyCount(definition);
+            definition.dependency_count;
         for (uint32 i = 0; i < dependency_count; ++i)
         {
-            GLSLCodeModuleDependency dependency{};
-            if (!GetNormalizedGLSLCodeModuleDependency(
-                    definition, i, dependency))
-            {
-                return SetMetadataFailure(
-                    out_diagnostic,
-                    GLSLCodeModuleMetadataValidationError::InvalidDefinition,
-                    definition.name,
-                    i);
-            }
+            // 内联访问（原 GetNormalizedGLSLCodeModuleDependency 的边界防御
+            // 由循环条件保证——i 恒 < dependency_count）
+            const GLSLCodeModuleDependency &dependency =
+                definition.dependencies[i];
 
             if (SameName(dependency.module_name, definition.name))
                 return SetMetadataFailure(
@@ -321,9 +315,9 @@ namespace hgl::graph::mtl
             for (uint32 j = 0; j < i; ++j)
             {
                 GLSLCodeModuleDependency other{};
-                if (GetNormalizedGLSLCodeModuleDependency(
-                        definition, j, other)
-                 && SameName(dependency.module_name, other.module_name))
+                if (j < definition.dependency_count
+                 && SameName(dependency.module_name,
+                             definition.dependencies[j].module_name))
                 {
                     return SetMetadataFailure(
                         out_diagnostic,
@@ -379,13 +373,11 @@ namespace hgl::graph::mtl
                 return false;
 
             const uint32 dependency_count =
-                GetNormalizedGLSLCodeModuleDependencyCount(*definition);
+                definition->dependency_count;
             for (uint32 i = 0; i < dependency_count; ++i)
             {
-                GLSLCodeModuleDependency dependency{};
-                if (!GetNormalizedGLSLCodeModuleDependency(
-                        *definition, i, dependency))
-                    return false;
+                GLSLCodeModuleDependency dependency =
+                    definition->dependencies[i];
 
                 const GLSLCodeModuleDefinition *target =
                     registry.FindByName(dependency.module_name);
