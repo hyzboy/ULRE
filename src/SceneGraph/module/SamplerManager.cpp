@@ -22,18 +22,4 @@ Sampler *SamplerManager::CreateSampler(VkSamplerCreateInfo *sci)
     return sampler;
 }
 
-Sampler *SamplerManager::CreateSampler(Texture *tex)
-{
-    auto dev = GetDevice();
-    Sampler *sampler = dev->CreateSampler(tex);
-    if (sampler)
-    {
-        AnsiString name = "Sampler_" + AnsiString::numberOf((uint64_t)(uintptr_t)sampler);
-        VkSampler vk_sampler = *sampler;
-        dev->TrackObject(VK_OBJECT_TYPE_SAMPLER, (uint64_t)(uintptr_t)vk_sampler, name);
-        Add(sampler);
-    }
-    return sampler;
-}
-
 }//namespace hgl::graph

@@ -30,7 +30,6 @@ public:
     }
 
     Sampler *CreateSampler(VkSamplerCreateInfo *sci = nullptr);
-    Sampler *CreateSampler(Texture *tex);
 };
 
 }//namespace hgl::graph

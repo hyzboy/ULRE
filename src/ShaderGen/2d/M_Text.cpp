@@ -23,6 +23,7 @@ namespace
         definition.fragment_surface_module = "surface/material_surface.glsl";
         definition.fragment_material_source_module =
             "material/text_source.glsl";
+        definition.sampler_names = {"Nearest"};
         definition.vertex_varying = varying;
         const GLSLCodeModuleSemanticRequirement vertex_requirements[] = {
             MakeMaterialVertexSemanticRequirement(VertexSemantic::Position),

@@ -12,6 +12,7 @@
 #include <hgl/shadergen/ShaderProgramArtifactBuilder.h>
 #include <hgl/graph/ShaderBufferSources.h>
 #include <hgl/mtl/MaterialRecipe.h>
+#include <hgl/mtl/SamplerPreset.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/graph/glsl/GLSLCodeModule.h>
@@ -128,6 +129,23 @@ static std::string BuildCodeModuleGLSL(const ShaderResourceManifest *manifest)
         result += "\n";
     }
     return result;
+}
+
+std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names)
+{
+    std::string macros;
+    for (const auto &name : sampler_names)
+    {
+        if (name.empty())
+            continue;
+        const uint32_t idx = SamplerPresetLibrary::Instance().GetIndex(name.c_str());
+        macros += "#define ";
+        macros += name;
+        macros += "Sampler ";
+        macros += std::to_string(idx);
+        macros += "u\n";
+    }
+    return macros;
 }
 
 static bool HasDescriptorSemantic(
@@ -716,6 +734,13 @@ ShaderBuildContext *CompileCompositorMaterial(
         material_slot_macros += "\n";
     }
 
+    // ── Sampler 预设宏（统一注册机制）──────────────────────────────────────
+    // 遍历 MaterialDefinition.sampler_names，为每个名字生成 "#define <name>Sampler <idx>u"。
+    // idx 经 SamplerPresetLibrary 查询（查不到保底 0），与运行时 binding=1 数组下标一致。
+    std::string sampler_macros;
+    if (config.material_definition)
+        sampler_macros = BuildSamplerMacros(config.material_definition->sampler_names);
+
     // ── Instance index table SSBO GLSL 声明 ──────────────────────────────────
     // mtl_data_index_rows / mtl_texture_layer_rows / l2w_index_rows 的 buffer
     // 声明与 Resolve 函数不再写死在 instance_rows_ssbo.glsl 中，统一依据
@@ -838,7 +863,7 @@ ShaderBuildContext *CompileCompositorMaterial(
 
     std::string vs_final = InsertAfterVersionLine(vs_glsl, binding_preamble + vs_index_table_decls);
     std::string fs_final = InsertAfterVersionLine(
-        fs_glsl, binding_preamble + fs_index_table_decls + material_ssbo_decls + material_slot_macros);
+        fs_glsl, binding_preamble + fs_index_table_decls + material_ssbo_decls + material_slot_macros + sampler_macros);
     const std::string code_module_glsl = BuildCodeModuleGLSL(config.resource_manifest);
     if (!code_module_glsl.empty())
     {

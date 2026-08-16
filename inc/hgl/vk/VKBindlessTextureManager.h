@@ -3,6 +3,7 @@
 #include <vulkan/vulkan.h>
 #include <hgl/type/String.h>
 #include <hgl/type/UnorderedMap.h>
+#include <hgl/type/ValueArray.h>
 
 namespace hgl::graph
 {
@@ -12,20 +13,26 @@ namespace hgl::graph
     /**
      * 全局 Bindless 纹理管理器（对应 Descriptor Set 3）。
      *
-     * 维护单一纹理数组：
-     *   binding=0 : sampler2DArray[]（2D 纹理注册为单层 2D_ARRAY view）
+     * 纹理与 sampler 彻底分离：
+     *   binding=0 : texture2DArray[]（SAMPLED_IMAGE，非均匀索引）
+     *   binding=1 : sampler[]        （SAMPLER，统一预设，按索引引用）
      *
-     * 每个纹理注册后返回一个 uint32_t handle（1-based，0 保留为无效）。
-     * handle 直接对应 GLSL 中 bindless_tex2darray[handle-1] 的数组下标。
+     * RegisterTexture 返回纯 tex_handle（1-based，0=无效）；
+     * RegisterSamplers 按 ShaderLibrary/sampler.toml 的顺序一次性创建全部 sampler，
+     * GLSL 侧以编译期 "#define <name>Sampler <idx>u" 引用，SSBO 只存纯 tex_handle。
      *
      * 注：描述符集使用 UPDATE_AFTER_BIND + PARTIALLY_BOUND，
-     *     可在帧内随时注册新纹理。
+     *     可在帧内随时注册新纹理（binding=0 支持 update-after-bind；
+     *     binding=1 采样器池仅 PARTIALLY_BOUND，注册须发生在集合绑定前）。
      */
     class BindlessTextureManager
     {
     public:
         // 一次最多支持的纹理数量（可按需调大，受 maxDescriptorSetSampledImages 约束）
         static constexpr uint32_t kMax = 8192;
+
+        // 采样器池上限（可按需调大，受 maxDescriptorSetSamplers 约束）
+        static constexpr uint32_t kMaxSampler = 64;
 
     private:
         VkDevice device_ = VK_NULL_HANDLE;
@@ -34,17 +41,14 @@ namespace hgl::graph
         VkDescriptorSetLayout layout_ = VK_NULL_HANDLE;
         VkDescriptorSet  set_         = VK_NULL_HANDLE;
 
-        // 1-based handle pool；0=无效
+        // 1-based 纹理 handle 池；0=无效
         uint32_t next_handle_ = 1;
 
-        // 防止同一 (texture, sampler) 对重复分配
-        hgl::UnorderedMap<uint64_t, uint32_t> handle_cache_;
+        // 纹理 → tex_handle（1-based）去重映射
+        hgl::UnorderedMap<const Texture *, uint32_t> tex_cache_;
 
-        static uint64_t MakeCacheKey(const void *tex, const void *sampler) noexcept
-        {
-            return (reinterpret_cast<uintptr_t>(tex) * 2654435761ULL)
-                 ^ (reinterpret_cast<uintptr_t>(sampler) * 40503ULL);
-        }
+        // 统一注册机制：由 RegisterSamplers 创建的 VkSampler 句柄，index = 预设索引。
+        hgl::ValueArray<VkSampler> samplers_;
 
     public:
         BindlessTextureManager() = default;
@@ -64,11 +68,32 @@ namespace hgl::graph
         VkDescriptorSetLayout GetLayout() const { return layout_; }
         VkDescriptorSet       GetSet()    const { return set_; }
 
+        // ── 统一 Sampler 注册 ─────────────────────────────────────────────
+        //
+        // RegisterTexture 只写 binding=0 返回纯 tex_handle；RegisterSamplers 按
+        // 预设数组顺序一次性创建并写入 binding=1；GLSL 侧以编译期
+        // "#define <name>Sampler <idx>u" 引用，SSBO 只存纯 tex_handle。
+
         /**
-         * 注册一张纹理（2D 或 2DArray 均可），返回 handle（1-based）。
-         * 相同 (tex, sampler) 对会直接返回已有 handle，不重复占用槽位。
+         * 注册一张纹理，返回纯 tex_handle（1-based，0=无效）。
          */
-        uint32_t Register(Texture *tex, Sampler *sampler);
+        uint32_t RegisterTexture(Texture *tex);
+
+        /**
+         * 按预设顺序创建并注册所有 sampler（写 binding=1，index=数组顺序）。
+         * 若之前已注册过 sampler，会先销毁旧句柄再重建。
+         * 需在描述符集绑定前调用（binding=1 无 UPDATE_AFTER_BIND）。
+         */
+        bool RegisterSamplers(const VkSamplerCreateInfo *infos, uint32_t count);
+
+        /**
+         * 运行时重建指定索引的 sampler（如动态重建 TerrainSampler）。
+         * 宏/索引不变，仅替换 binding=1 对应槽位的 VkSampler。
+         */
+        bool RebuildSampler(uint32_t index, const VkSamplerCreateInfo &info);
+
+        /** 已注册的 sampler 数量。 */
+        uint32_t GetSamplerCount() const { return static_cast<uint32_t>(samplers_.GetCount()); }
 
         /**
          * 绑定到命令缓冲区。

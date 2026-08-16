@@ -9,6 +9,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKSurface.h>
 #include<hgl/vk/VKPipelineConfig.h>
+#include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/shadergen/ShaderCompilerProfileAPI.h>
 
 #include<hgl/log/Log.h>
@@ -538,6 +539,49 @@ bool VulkanDeviceCreater::RequirementCheck()
 #undef VHRC_F13
 #undef VHRC_F10
 #undef VHRC
+
+    // ── bindless 纹理架构硬需求（descriptor indexing）────────────────────
+    // 现代 Vulkan 1.2+ 设备均支持；不支持即无法运行，直接报错退出。
+    {
+        const VkPhysicalDeviceVulkan12Features &features12 = physical_device->GetFeatures12();
+
+        // 注意：不存在 shaderSamplerArrayNonUniformIndexing 特性，
+        // 采样器数组非均匀访问由 ShaderNonUniform capability 覆盖
+        // （随 shaderSampledImageArrayNonUniformIndexing 一并启用）。
+        if(!features12.descriptorIndexing
+        || !features12.shaderSampledImageArrayNonUniformIndexing
+        || !features12.descriptorBindingPartiallyBound
+        || !features12.descriptorBindingSampledImageUpdateAfterBind
+        || !features12.runtimeDescriptorArray)
+        {
+            GLogError(u8"[VulkanDeviceCreater] 物理设备不支持 descriptor indexing（bindless 硬需求）: "
+                        u8"descriptorIndexing=%d shaderSampledImageArrayNonUniformIndexing=%d "
+                        u8"descriptorBindingPartiallyBound=%d descriptorBindingSampledImageUpdateAfterBind=%d runtimeDescriptorArray=%d",
+                features12.descriptorIndexing,
+                features12.shaderSampledImageArrayNonUniformIndexing,
+                features12.descriptorBindingPartiallyBound,
+                features12.descriptorBindingSampledImageUpdateAfterBind,
+                features12.runtimeDescriptorArray);
+            return(false);
+        }
+
+        // bindless 集使用 UPDATE_AFTER_BIND 池，普通与 update-after-bind 两类上限均须满足
+        const VkPhysicalDeviceVulkan12Properties &props12 = physical_device->GetProperties12();
+
+        if(limits.maxDescriptorSetSampledImages        < BindlessTextureManager::kMax
+        || props12.maxDescriptorSetUpdateAfterBindSampledImages < BindlessTextureManager::kMax
+        || limits.maxDescriptorSetSamplers             < BindlessTextureManager::kMaxSampler
+        || props12.maxDescriptorSetUpdateAfterBindSamplers      < BindlessTextureManager::kMaxSampler)
+        {
+            GLogError(u8"[VulkanDeviceCreater] 物理设备描述符集上限不足（bindless 硬需求）: "
+                        u8"需要 SampledImage=%u / Sampler=%u，实际 %u/%u %u/%u",
+                BindlessTextureManager::kMax,
+                BindlessTextureManager::kMaxSampler,
+                limits.maxDescriptorSetSampledImages,          props12.maxDescriptorSetUpdateAfterBindSampledImages,
+                limits.maxDescriptorSetSamplers,               props12.maxDescriptorSetUpdateAfterBindSamplers);
+            return(false);
+        }
+    }
 
     return(true);
 }

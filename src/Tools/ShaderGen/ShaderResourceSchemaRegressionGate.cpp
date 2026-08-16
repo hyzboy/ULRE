@@ -1,6 +1,7 @@
 #include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/MaterialDefinitionFile.h>
+#include <hgl/mtl/SamplerPreset.h>
 #include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/shadergen/MaterialShaderCompiler.h>
 #include <hgl/shadergen/DescriptorContract.h>
@@ -5370,6 +5371,130 @@ namespace
         return result;
     }
 
+    static GateResult RunSamplerPresetLibraryCase()
+    {
+        GateResult result;
+        result.name = "AC.sampler-preset-library";
+
+        auto &lib = SamplerPresetLibrary::Instance();
+
+        // 1. 加载 sampler.toml（统一注册机制唯一数据源）。
+        const std::string root = GetShaderLibraryPath();
+        const hgl::filesystem::Path sampler_toml(
+            hgl::ToOSString(root + "/sampler.toml"));
+        if (!lib.Load(sampler_toml.ToOSString()))
+        {
+            result.diagnostics.emplace_back("sampler.toml load failed");
+            result.passed = false;
+            return result;
+        }
+
+        // 2. 名字→索引一致（顺序 = sampler.toml 数组顺序）。
+        struct NameIndex
+        {
+            const char *name;
+            uint32_t index;
+        };
+        const NameIndex expected[] =
+        {
+            { "Nearest",        0u },
+            { "Linear",         1u },
+            { "Trilinear",      2u },
+            { "TrilinearAniso", 3u },
+            { "ShadowPCF",      4u },
+            { "Terrain",        5u },
+            { "UI",             6u },
+        };
+        if (lib.GetCount() != uint32_t(std::size(expected)))
+        {
+            result.diagnostics.emplace_back(
+                "preset count mismatch: expected "
+                + std::to_string(std::size(expected))
+                + " got " + std::to_string(lib.GetCount()));
+        }
+        for (const auto &e : expected)
+        {
+            if (lib.GetIndex(e.name) != e.index)
+            {
+                result.diagnostics.emplace_back(
+                    std::string("name->index mismatch: ") + e.name);
+            }
+        }
+
+        // 3. 保底 0（未知名 / 空名 / 空指针）。
+        if (lib.GetIndex("DoesNotExistSampler") != 0u)
+            result.diagnostics.emplace_back("unknown name must fallback to 0");
+        if (lib.GetIndex("") != 0u)
+            result.diagnostics.emplace_back("empty name must fallback to 0");
+        if (lib.GetIndex(nullptr) != 0u)
+            result.diagnostics.emplace_back("null name must fallback to 0");
+
+        // 4. max_lod 统一 15.0（不再按纹理 mip 级数派生）。
+        for (uint32_t i = 0; i < lib.GetCount(); ++i)
+        {
+            const VkSamplerCreateInfo *sci = lib.GetCreateInfo(i);
+            if (!sci)
+            {
+                result.diagnostics.emplace_back(
+                    "GetCreateInfo(" + std::to_string(i) + ") returned null");
+                continue;
+            }
+            if (sci->maxLod != 15.0f)
+            {
+                result.diagnostics.emplace_back(
+                    "preset " + std::to_string(i) + " maxLod != 15.0");
+            }
+        }
+
+        // 5. 关键预设过滤语义。
+        const VkSamplerCreateInfo *nearest = lib.GetCreateInfo(0);
+        if (nearest
+            && (nearest->magFilter != VK_FILTER_NEAREST
+             || nearest->minFilter != VK_FILTER_NEAREST))
+            result.diagnostics.emplace_back("Nearest filter mismatch");
+
+        const VkSamplerCreateInfo *trilinear = lib.GetCreateInfo(2);
+        if (trilinear
+            && trilinear->mipmapMode != VK_SAMPLER_MIPMAP_MODE_LINEAR)
+            result.diagnostics.emplace_back("Trilinear mipmap mode mismatch");
+
+        const VkSamplerCreateInfo *aniso = lib.GetCreateInfo(3);
+        if (aniso && aniso->anisotropyEnable != VK_TRUE)
+            result.diagnostics.emplace_back("TrilinearAniso anisotropy mismatch");
+
+        const VkSamplerCreateInfo *pcf = lib.GetCreateInfo(4);
+        if (pcf
+            && (pcf->compareEnable != VK_TRUE
+             || pcf->addressModeU != VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE))
+            result.diagnostics.emplace_back("ShadowPCF compare/clamp mismatch");
+
+        // 6. sampler 宏注入（name→idx 与运行时 binding=1 数组下标一致）。
+        const std::vector<std::string> names =
+            { "Trilinear", "Linear", "Terrain" };
+        const std::string macros = BuildSamplerMacros(names);
+        const std::string expected_macros =
+            "#define TrilinearSampler 2u\n"
+            "#define LinearSampler 1u\n"
+            "#define TerrainSampler 5u\n";
+        if (macros != expected_macros)
+        {
+            result.diagnostics.emplace_back(
+                "sampler macro injection mismatch: got [" + macros + "]");
+        }
+
+        // 7. 宏保底（未知名 → 0）、空列表、空名跳过。
+        if (BuildSamplerMacros({ "UnknownSampler" })
+            != "#define UnknownSamplerSampler 0u\n")
+            result.diagnostics.emplace_back("sampler macro fallback mismatch");
+        if (!BuildSamplerMacros({}).empty())
+            result.diagnostics.emplace_back("empty sampler list must produce no macros");
+        if (!BuildSamplerMacros({ "" }).empty())
+            result.diagnostics.emplace_back("empty sampler name must be skipped");
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunShaderLibraryPathCase()
     {
         GateResult result;
@@ -5630,6 +5755,7 @@ int main(const int argc, char **argv)
     if (run_pipeline) results.push_back(RunMaterialMultiSlotSourceCase());
     if (run_descriptor) results.push_back(RunDescriptorContractCase());
     if (run_pipeline) results.push_back(RunShaderLibraryPathCase());
+    if (run_materialization) results.push_back(RunSamplerPresetLibraryCase());
     if (run_descriptor) results.push_back(RunResourceContractBoundaryCase());
 
     bool all_passed = true;

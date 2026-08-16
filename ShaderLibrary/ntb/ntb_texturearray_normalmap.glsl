@@ -25,7 +25,7 @@ NTBSpace GetNTB(NTBInput ntb_input)
     if (normalTexHandle != 0u)
     {
         vec3 nm =
-            SampleBindless2DArray(normalTexHandle, si.uv0, layer).xyz
+            Sample2DArray(normalTexHandle, TrilinearSampler, si.uv0, layer).xyz
             * 2.0 - 1.0;
         nm.y = -nm.y;
         const vec3 tangentNormal =

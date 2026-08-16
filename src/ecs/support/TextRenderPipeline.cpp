@@ -16,7 +16,6 @@
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
-#include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/graph/DescriptorBindingSet.h>
@@ -120,7 +119,6 @@ namespace hgl::ecs
 
         auto* graphics_context = render_context ? render_context->GetGraphicsContext() : nullptr;
         auto* material_manager = graphics_context ? graphics_context->GetMaterialManager() : nullptr;
-        auto* sampler_manager = graphics_context ? graphics_context->GetSamplerManager() : nullptr;
         auto* buffer_manager = graphics_context ? graphics_context->GetBufferManager() : nullptr;
         auto descriptor_binding_system = world ? world->GetSystem<RenderDescriptorBindingSystem>() : nullptr;
 
@@ -158,12 +156,6 @@ namespace hgl::ecs
             {
                 delete res.descriptor_binding_set;
                 res.descriptor_binding_set = nullptr;
-            }
-
-            if (res.sampler && sampler_manager)
-            {
-                sampler_manager->Release(res.sampler);
-                res.sampler = nullptr;
             }
 
             if (res.material_data_buffer && buffer_manager)
@@ -299,17 +291,14 @@ namespace hgl::ecs
 
         RenderResources resources;
         graph::ShaderProgramManager* material_manager = nullptr;
-        graph::SamplerManager* sampler_manager = nullptr;
         graph::BufferManager* buffer_manager = nullptr;
 
         struct BuildGuard
         {
             graph::ShaderProgramManager* material_manager = nullptr;
-            graph::SamplerManager* sampler_manager = nullptr;
             graph::ShaderProgram* material = nullptr;
             graph::VIL* binding_vil = nullptr;
             graph::DescriptorBindingSet* descriptor_binding_set = nullptr;
-            graph::Sampler* sampler = nullptr;
             graph::BufferManager* buffer_manager = nullptr;
             graph::DeviceBuffer* material_data_buffer = nullptr;
             graph::DeviceBuffer* texture_layer_buffer = nullptr;
@@ -321,9 +310,6 @@ namespace hgl::ecs
             {
                 if (committed)
                     return;
-
-                if (sampler && sampler_manager)
-                    sampler_manager->Release(sampler);
 
                 if (material_data_buffer && buffer_manager)
                     buffer_manager->Release(material_data_buffer);
@@ -389,16 +375,6 @@ namespace hgl::ecs
         if (!guard.descriptor_binding_set)
             return nullptr;
 
-        sampler_manager = graphics_context->GetSamplerManager();
-        if (!sampler_manager)
-            return nullptr;
-
-        guard.sampler_manager = sampler_manager;
-
-        guard.sampler = sampler_manager->CreateSampler();
-        if (!guard.sampler)
-            return nullptr;
-
         buffer_manager = graphics_context->GetBufferManager();
         if (!buffer_manager)
             return nullptr;
@@ -453,7 +429,7 @@ namespace hgl::ecs
         if (!bindless_mgr || !bindless_mgr->IsValid())
             return nullptr;
 
-        const uint32_t atlas_handle = bindless_mgr->Register(guard.tile_font->GetTexture(), guard.sampler);
+        const uint32_t atlas_handle = bindless_mgr->RegisterTexture(guard.tile_font->GetTexture());
         if (atlas_handle == 0)
             return nullptr;
 
@@ -520,7 +496,6 @@ namespace hgl::ecs
         resources.material = guard.material;
         resources.binding_vil = guard.binding_vil;
         resources.descriptor_binding_set = guard.descriptor_binding_set;
-        resources.sampler = guard.sampler;
         guard.binding_vil = nullptr;
         guard.descriptor_binding_set = nullptr;
         guard.committed = true;

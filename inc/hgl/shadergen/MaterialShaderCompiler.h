@@ -67,6 +67,15 @@ bool FinalizeShaderBuildContext(
     ShaderBuildContext *build_spec);
 
 /**
+ * 生成 sampler 预设宏字符串（统一注册机制）。
+ *
+ * 遍历 sampler_names，为每个名字生成 "#define <name>Sampler <idx>u"。
+ * idx 经 SamplerPresetLibrary::GetIndex 查询（查不到保底 0），
+ * 与运行时 binding=1 的数组下标保持一致。空列表返回空字符串。
+ */
+std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names);
+
+/**
  * 编译 Compositor 模板产出的完整 GLSL → ShaderBuildContext*。
  *
  * 使用 SetFinalGLSL() + CreateShaderDirect() 直接编译。

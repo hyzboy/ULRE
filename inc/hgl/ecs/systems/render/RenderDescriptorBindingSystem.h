@@ -106,13 +106,13 @@ namespace hgl::ecs
                                           uint32_t byte_stride);
 
         /**
-         * 便利版本：同时向 BindlessTextureManager 注册 Vulkan 侧描述符并预注册 pool 映射。
+         * 便利版本：向 BindlessTextureManager 注册纹理并预注册 pool 映射。
          * 所有纹理（2D / 2DArray）统一注册到 sampler2DArray[]（binding=0）；2D 走单层 array view。
-         * @return 1-based handle，失败返回 0
+         * sampler 已由统一 Sampler 注册机制（binding=1）按名字提供，此处只注册纹理本身。
+         * @return 1-based tex_handle，失败返回 0
          */
         uint32_t RegisterTextureResource(const std::string &resource_id,
                                          graph::Texture *tex,
-                                         graph::Sampler *sampler,
                                          graph::BindlessTextureManager *bindless_mgr);
 
         /**

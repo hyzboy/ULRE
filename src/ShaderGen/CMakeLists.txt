@@ -36,7 +36,9 @@ ${SHADERGEN_INCLUDE_PATH}/ShaderKeyUtility.h
                                    ${ROOT_INCLUDE_PATH}/hgl/graph/glsl/GLSLCodeModuleCapabilityResolver.h
                                    common/GLSLCodeModuleCapabilityResolver.cpp
                                    ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialDefinitionFile.h
-                                   common/MaterialDefinitionFile.cpp)
+                                   common/MaterialDefinitionFile.cpp
+                                   ${ROOT_INCLUDE_PATH}/hgl/mtl/SamplerPreset.h
+                                   common/SamplerPreset.cpp)
 
 SOURCE_GROUP("Shader Artifact Contract" FILES ${SHADER_ARTIFACT_CONTRACT_FILES})
 

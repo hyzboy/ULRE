@@ -1,0 +1,72 @@
+# sampler.toml — 全局 Sampler 预设注册表（统一注册机制）
+#
+# 单一 array-of-tables，出现顺序即索引（从 0 开始），不写 index 字段。
+# 全链路以名字为键：material.toml 的 [resources].samplers 引用名字，
+# ShaderGen 生成 "#define <name>Sampler <idx>u" 宏，运行时按序 vkCreateSampler。
+#
+# 约定：
+#   * GetIndex(name) 查不到时保底返回 0（Nearest）。
+#   * 特殊 sampler（如 Terrain）可通过 RebuildSampler 运行时重建，宏/索引不变。
+#   * max_lod 统一 15.0（不再按纹理 mip 级数派生）。
+#
+# 字段：
+#   name          : 预设名（必须为合法 GLSL 标识符，作为宏名）
+#   mag_filter    : Nearest | Linear         （默认 Linear）
+#   min_filter    : Nearest | Linear         （默认 Linear）
+#   mipmap_mode   : Nearest | Linear         （默认 Linear）
+#   address_mode  : Repeat | MirroredRepeat | ClampToEdge | ClampToBorder | MirrorClampToEdge（默认 Repeat）
+#   anisotropy    : true/false               （默认 false）
+#   max_anisotropy: 浮点                     （仅 anisotropy=true 时生效，默认 16.0）
+#   max_lod       : 浮点                     （默认 15.0）
+#   compare_op    : Never|Less|Equal|LessOrEqual|Greater|NotEqual|GreaterOrEqual|Always（默认关闭比较）
+
+schema = 1
+
+[[samplers]]
+name = "Nearest"
+mag_filter = "Nearest"
+min_filter = "Nearest"
+mipmap_mode = "Nearest"
+
+[[samplers]]
+name = "Linear"
+mag_filter = "Linear"
+min_filter = "Linear"
+mipmap_mode = "Nearest"
+
+[[samplers]]
+name = "Trilinear"
+mag_filter = "Linear"
+min_filter = "Linear"
+mipmap_mode = "Linear"
+
+[[samplers]]
+name = "TrilinearAniso"
+mag_filter = "Linear"
+min_filter = "Linear"
+mipmap_mode = "Linear"
+anisotropy = true
+max_anisotropy = 16.0
+
+[[samplers]]
+name = "ShadowPCF"
+mag_filter = "Linear"
+min_filter = "Linear"
+mipmap_mode = "Linear"
+address_mode = "ClampToEdge"
+compare_op = "LessOrEqual"
+
+[[samplers]]
+name = "Terrain"
+mag_filter = "Linear"
+min_filter = "Linear"
+mipmap_mode = "Linear"
+anisotropy = true
+max_anisotropy = 8.0
+
+[[samplers]]
+name = "UI"
+mag_filter = "Linear"
+min_filter = "Linear"
+mipmap_mode = "Linear"
+address_mode = "ClampToEdge"

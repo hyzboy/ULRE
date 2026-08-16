@@ -34,7 +34,7 @@ NTBSpace GetNTB(NTBInput ntb_input)
         T = normalize(T - N * dot(N, T));
         vec3 B = cross(N, T);
 
-        vec3 nm = SampleBindless2D(normalTexHandle, si.uv0).xyz * 2.0 - 1.0;
+        vec3 nm = Sample2D(normalTexHandle, TrilinearSampler, si.uv0).xyz * 2.0 - 1.0;
         nm.y = -nm.y;
         vec3 tangentNormal =
             normalize(vec3(nm.xy * ntb_input.normalScale, nm.z));

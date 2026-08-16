@@ -45,7 +45,6 @@ namespace hgl
                 graph::TileFont* tile_font = nullptr;
                 graph::ShaderProgram* material = nullptr;
                 graph::Pipeline* pipeline = nullptr;
-                graph::Sampler* sampler = nullptr;
                 graph::DeviceBuffer* material_data_buffer = nullptr;
                 graph::DeviceBuffer* texture_layer_buffer = nullptr;
                 graph::DeviceBuffer* data_index_row_buffer = nullptr;

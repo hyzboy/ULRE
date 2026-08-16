@@ -242,6 +242,11 @@ namespace hgl::graph::mtl
         // sampler_type 区分 "sampler2D" vs "sampler2DArray" 等 GLSL 采样器变体。
         std::vector<TextureSlotDeclaration> texture_slot_decls;
 
+        // Part-B5: Sampler 预设能力声明（统一注册机制）。
+        // 列出此材质在 GLSL 中实际用到的 sampler 预设名（对应 ShaderLibrary/sampler.toml）。
+        // ShaderGen 据此生成 "#define <name>Sampler <idx>u" 宏；名字缺失时保底索引 0。
+        std::vector<std::string> sampler_names;
+
         std::vector<GLSLCodeModuleID> code_module_requirements;
 
         // PCG 顶点节点配置（单一真源）

@@ -382,7 +382,6 @@ public: //间接绘制
 public: //
 
     Sampler *CreateSampler(VkSamplerCreateInfo *sci=nullptr);
-    Sampler *CreateSampler(Texture *);
 
 public: //shader & material
 

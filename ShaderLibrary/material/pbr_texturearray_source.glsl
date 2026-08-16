@@ -36,13 +36,13 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
     const uint base_color_handle = mtl_texture_layer_rows.data[source_input.dataIndex].base_color;
     if (base_color_handle != 0u)
         material_output.baseColor *=
-            SampleBindless2DArray(base_color_handle, source_input.surface.uv0, layer).rgb;
+            Sample2DArray(base_color_handle, TrilinearSampler, source_input.surface.uv0, layer).rgb;
 
     const uint roughness_handle = mtl_texture_layer_rows.data[source_input.dataIndex].roughness;
     if (roughness_handle != 0u)
     {
         const float roughness_tex =
-            SampleBindless2DArray(roughness_handle, source_input.surface.uv0, layer).r;
+            Sample2DArray(roughness_handle, LinearSampler, source_input.surface.uv0, layer).r;
         material_output.roughness =
             clamp(material_output.roughness * roughness_tex, 0.04, 1.0);
     }
@@ -51,7 +51,7 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
     if (metallic_handle != 0u)
     {
         const float metallic_tex =
-            SampleBindless2DArray(metallic_handle, source_input.surface.uv0, layer).r;
+            Sample2DArray(metallic_handle, LinearSampler, source_input.surface.uv0, layer).r;
         material_output.metallic =
             clamp(material_output.metallic * metallic_tex, 0.0, 1.0);
     }
@@ -59,7 +59,7 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput source_input)
     const uint occlusion_handle = mtl_texture_layer_rows.data[source_input.dataIndex].occlusion;
     if (occlusion_handle != 0u)
         material_output.ao =
-            SampleBindless2DArray(occlusion_handle, source_input.surface.uv0, layer).r;
+            Sample2DArray(occlusion_handle, LinearSampler, source_input.surface.uv0, layer).r;
 
     return material_output;
 }
@@ -73,8 +73,9 @@ float EvalMaterialAlpha(MaterialSourceInput source_input)
 
     const float layer = float(
         mtl_texture_layer_rows.data[source_input.dataIndex].custom0);
-    return SampleBindless2DArray(
+    return Sample2DArray(
         opacity_handle,
+        LinearSampler,
         source_input.surface.uv0,
         layer).r;
 }

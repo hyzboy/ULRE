@@ -622,6 +622,26 @@ namespace hgl::graph::mtl
                             {slot_name, slot, sampler, item.at("required").as_boolean()});
                     }
                 }
+
+                if (resources.contains("samplers"))
+                {
+                    if (!resources.at("samplers").is_array())
+                        return false;
+                    for (const auto &item : resources.at("samplers").as_array())
+                    {
+                        if (!item.is_string())
+                            return false;
+                        const std::string name = item.as_string();
+                        if (name.empty())
+                            return false;
+                        for (const auto &existing : out.definition.sampler_names)
+                        {
+                            if (existing == name)
+                                return false;
+                        }
+                        out.definition.sampler_names.push_back(name);
+                    }
+                }
             }
 
             if (root.contains("vertex") && root.at("vertex").contains("varyings"))

@@ -75,6 +75,7 @@ public:
     const VkPhysicalDeviceVulkan14Features &GetFeatures14       ()const{return features14;}
 
     const VkPhysicalDeviceProperties &      GetProperties       ()const{return properties;}
+    const VkPhysicalDeviceVulkan12Properties &GetProperties12   ()const{return properties12;}
     const VkPhysicalDeviceMemoryProperties &GetMemoryProperties ()const{return memory_properties;}
     const VkPhysicalDeviceLimits &          GetLimits           ()const{return properties.limits;}
 

@@ -343,7 +343,6 @@ namespace hgl::ecs
                 uint32_t handle = rdbs->RegisterTextureResource(
                     resource_id,
                     resource->texture,
-                    resource->sampler,
                     bindless_mgr);
                 if (handle == 0)
                     return false;

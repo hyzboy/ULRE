@@ -12,6 +12,9 @@
 #include <hgl/graph/module/ResourceDomainManager.h>
 #include <hgl/vk/VKBindlessTextureManager.h>
 #include <hgl/vk/VKGlobalSceneUBOSet.h>
+#include <hgl/mtl/SamplerPreset.h>
+#include <hgl/shadergen/ShaderLibraryPath.h>
+#include <hgl/type/StdString.h>
 
 namespace hgl::graph
 {
@@ -70,6 +73,31 @@ namespace hgl::graph
 
         if (!bindless_texture_manager_->Init(device->GetDevice()))
             return false;
+
+        // 统一 Sampler 注册：解析 sampler.toml → 按序 vkCreateSampler 写 binding=1。
+        // 此处与 ShaderGen 的 SamplerPresetLibrary 同源，保证 name→index 唯一一致。
+        {
+            const hgl::filesystem::Path sampler_toml =
+                hgl::filesystem::Path(ToOSString(shadergen::GetShaderLibraryPath()))
+                / OSString(OS_TEXT("sampler.toml"));
+
+            auto &preset_lib = mtl::SamplerPresetLibrary::Instance();
+            if (preset_lib.Load(sampler_toml.ToOSString()))
+            {
+                const uint32 count = preset_lib.GetCount();
+                if (count > 0
+                    && !bindless_texture_manager_->RegisterSamplers(
+                        preset_lib.GetCreateInfo(0), count))
+                {
+                    GLogError("[GraphicsContext] RegisterSamplers failed");
+                    return false;
+                }
+            }
+            else
+            {
+                GLogWarning("[GraphicsContext] sampler.toml 加载失败，sampler 将不可用");
+            }
+        }
 
         material_manager->SetBindlessLayout(bindless_texture_manager_->GetLayout());
 

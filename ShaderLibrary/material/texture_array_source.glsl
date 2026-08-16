@@ -19,7 +19,7 @@ vec4 SampleMaterialColor(MaterialSourceInput sourceInput)
 {
     const uint handle = mtl_texture_layer_rows.data[sourceInput.dataIndex].base_color;
     const uint layer = MTL_DATA.data[sourceInput.dataIndex].id.x;
-    return SampleBindless2DArray(handle, sourceInput.surface.uv0, float(layer));
+    return Sample2DArray(handle, TrilinearSampler, sourceInput.surface.uv0, float(layer));
 }
 
 MaterialSourceOutput EvalMaterialSource(MaterialSourceInput sourceInput)
