@@ -153,6 +153,14 @@ namespace hgl::ecs
         if (!world)
             return;
 
+        // W5 帧级 once：同一帧内的重复调用（RenderGraph pass 循环 +
+        // Line 管线提交）只执行一次——变换在 Tick 相位已更新完毕，
+        // ring 段每帧填一次即可，所有 pass 读同一帧段
+        const uint32_t current_frame = world->GetFrameIndex();
+        if (current_frame == last_submit_frame_index)
+            return;
+        last_submit_frame_index = current_frame;
+
         {
             const auto& static_transforms = world->GetStaticTransforms();
 
