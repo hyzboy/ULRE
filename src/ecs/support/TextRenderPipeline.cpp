@@ -185,6 +185,17 @@ namespace hgl::ecs
         resources_by_font.Clear();
     }
 
+    const std::string& TextRenderPipeline::GetName() const
+    {
+        static const std::string kName{ "Text" };
+        return kName;
+    }
+
+    ECSContext* TextRenderPipeline::GetWorld() const
+    {
+        return world;
+    }
+
     bool TextRenderPipeline::PrepareFrame()
     {
         if (!world)
@@ -212,12 +223,16 @@ namespace hgl::ecs
 
     void TextRenderPipeline::RunCollect()
     {
+        if (!PrepareFrame())
+            return;
         frame_inputs.clear();
         BuildInputs(frame_texts, frame_inputs);
     }
 
     void TextRenderPipeline::RunBuild()
     {
+        if (!PrepareFrame())
+            return;
         ProcessInputs(frame_inputs,
                       frame_render_pass,
                       frame_device);
@@ -225,6 +240,8 @@ namespace hgl::ecs
 
     void TextRenderPipeline::RunSync()
     {
+        if (!PrepareFrame())
+            return;
         ClearChanges(frame_texts);
     }
 

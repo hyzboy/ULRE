@@ -226,12 +226,10 @@ set(ECS_SUPPORT_PRIMITIVE_FILES
 )
 
 set(ECS_SUPPORT_TEXT_FILES
-    ${ECS_INCLUDE_PATH}/support/text/TextRenderPipelineAdapter.h
     ${ECS_INCLUDE_PATH}/support/text/TextCollectSystem.h
     ${ECS_INCLUDE_PATH}/support/text/TextBuildSystem.h
     ${ECS_INCLUDE_PATH}/support/text/TextSyncSystem.h
     ${ECS_INCLUDE_PATH}/support/text/TextRenderSystem.h
-    support/text/TextRenderPipelineAdapter.cpp
     support/text/TextCollectSystem.cpp
     support/text/TextBuildSystem.cpp
     support/text/TextSyncSystem.cpp

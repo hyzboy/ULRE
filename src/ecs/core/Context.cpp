@@ -10,7 +10,6 @@
 #include<hgl/ecs/components/MaterialComponent.h>
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
-// TextRenderPipeline.h removed — now owned by TextRenderPipelineAdapter
 // LineRenderSystem.h removed — LineRenderSystem is now in support/line/
 #include<hgl/ecs/support/RenderPipelineBase.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>

@@ -1,5 +1,6 @@
 #pragma once
 
+#include<hgl/ecs/support/RenderPipelineBase.h>
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/graph/font/TextLayout.h>
 #include<cstdint>
@@ -37,7 +38,7 @@ namespace hgl
         class ECSContext;
         class TextComponent;
 
-        class TextRenderPipeline
+        class TextRenderPipeline : public RenderPipelineBase
         {
         private:
             struct RenderResources
@@ -86,16 +87,19 @@ namespace hgl
 
         public:
             TextRenderPipeline() = default;
-            ~TextRenderPipeline();
+            ~TextRenderPipeline() override;
 
             void SetWorld(ECSContext* w) { world = w; }
             void SetRenderContext(graph::RenderContext* ctx) { render_context = ctx; }
 
-            bool PrepareFrame();
-            void RunCollect();
-            void RunBuild();
-            void RunSync();
-            void Render(graph::RenderCmdBuffer* cmd);
+            const std::string& GetName()  const override;
+            ECSContext*         GetWorld() const override;
+
+            bool PrepareFrame() override;
+            void RunCollect()   override;
+            void RunBuild()     override;
+            void RunSync()      override;
+            void Render(graph::RenderCmdBuffer* cmd) override;
 
         private:
             RenderResources* GetOrCreateResources(graph::FontSource* font_source, uint32_t estimate_chars);

@@ -9,7 +9,7 @@
 #include <hgl/ecs/support/line/LineCollectSystem.h>
 #include <hgl/ecs/support/line/LineBuildSystem.h>
 #include <hgl/ecs/support/line/LineRenderSystem.h>
-#include <hgl/ecs/support/text/TextRenderPipelineAdapter.h>
+#include <hgl/ecs/support/TextRenderPipeline.h>
 #include <hgl/ecs/support/text/TextCollectSystem.h>
 #include <hgl/ecs/support/text/TextBuildSystem.h>
 #include <hgl/ecs/support/text/TextSyncSystem.h>
@@ -107,9 +107,12 @@ namespace
         if (!ctx)
             return false;
 
-        // Register the Text pipeline adapter and its thin proxy systems directly
-        auto adapter = std::make_unique<hgl::ecs::TextRenderPipelineAdapter>(ctx);
-        ctx->RegisterRenderPipeline("Text", std::move(adapter));
+        // Register the Text pipeline (direct RenderPipelineBase derived) and its
+        // thin proxy systems directly
+        auto text_pipeline = std::make_unique<hgl::ecs::TextRenderPipeline>();
+        text_pipeline->SetWorld(ctx);
+        text_pipeline->SetRenderContext(ctx->GetRenderContext());
+        ctx->RegisterRenderPipeline("Text", std::move(text_pipeline));
         ctx->RegisterRenderSystem<hgl::ecs::TextCollectSystem>();
         ctx->RegisterRenderSystem<hgl::ecs::TextBuildSystem>();
         ctx->RegisterRenderSystem<hgl::ecs::TextSyncSystem>();
