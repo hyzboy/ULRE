@@ -89,6 +89,8 @@ SET(SHADERGEN_COMMON_FILES  ${ROOT_INCLUDE_PATH}/hgl/graph/ShaderBufferSources.h
                             ${STD_MTL_HEADER_PATH}/SamplerName.h
                             common/GLSLCodeModule.cpp
                             common/ShaderResourceManifest.cpp
+                            common/GenericMaterialBuilder.h
+                            common/GenericMaterialBuilder.cpp
                             ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/SkyInfo.h
                             ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/ViewportInfo.h
                             ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/UBOShaderSources.h

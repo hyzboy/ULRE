@@ -1,0 +1,554 @@
+/// GenericMaterialBuilder.cpp — phase-split generic material compilation.
+///
+/// This file is the behavior-preserving decomposition of the former
+/// BuildGenericMaterial function in MaterialDefinitionRegistry.cpp. Every
+/// statement executes in the original order; intermediate values travel via
+/// GenericMaterialBuildPlan. Do not reorder statements here — stage keys and
+/// resource contracts depend on the exact hash input sequence.
+
+#include <hgl/shadergen/contract/ShaderGenContract.h>
+#include <hgl/mtl/MaterialDefinitionRegistry.h>
+#include <hgl/shadergen/MaterialShaderCompiler.h>
+#include <hgl/shadergen/CompositorAssembler.h>
+#include <hgl/shadergen/MaterialOutputContract.h>
+#include <hgl/shadergen/ShaderBuildContext.h>
+#include <hgl/shadergen/ShaderLibraryPath.h>
+#include <hgl/shadergen/ShaderKeyUtility.h>
+#include <hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
+#include <hgl/shadergen/MaterialStageInterface.h>
+#include <hgl/mtl/VertexNodeConfigResolver.h>
+#include <hgl/graph/geo/GeometryVertexFormat.h>
+#include <hgl/graph/glsl/GLSLCodeModuleCapabilityResolver.h>
+#include "3d/DefinitionDescriptorBuilder3D.h"
+#include "common/VertexShaderAssembler.h"
+#include "common/GenericMaterialBuilder.h"
+
+#include <cstring>
+#include <vector>
+
+namespace hgl::graph::mtl
+{
+    using namespace hgl::graph::shadergen;
+
+    namespace
+    {
+        bool IsVertexSemanticRequiredForVarying(
+            const VertexSemantic semantic,
+            const MaterialVertexVaryingConfig &varying) noexcept
+        {
+            switch (semantic)
+            {
+            case VertexSemantic::Position:
+                return true;
+            case VertexSemantic::Normal:
+                return varying.emit_world_normal;
+            case VertexSemantic::Tangent:
+            case VertexSemantic::Bitangent:
+                return false;
+            case VertexSemantic::TexCoord:
+                return varying.emit_uv0;
+            case VertexSemantic::Color:
+                return varying.emit_vertex_color
+                    || varying.emit_vertex_color_from_palette;
+            case VertexSemantic::Luminance:
+                return varying.emit_luminance;
+            case VertexSemantic::TransformID:
+                return varying.use_transform_id_attr;
+            default:
+                return true;
+            }
+        }
+
+        const GLSLCodeModuleDefinition *FindSelectedProviderModule(
+            const GLSLCodeModuleRegistry &registry,
+            const char *path)
+        {
+            if (!path || !path[0])
+                return nullptr;
+
+            const GLSLCodeModuleDefinition *definition = registry.FindByName(path);
+            if (definition)
+                return definition;
+
+            const char *stem = path;
+            const char *dot = nullptr;
+            for (const char *cursor = path; *cursor; ++cursor)
+            {
+                if (*cursor == '/' || *cursor == '\\')
+                {
+                    stem = cursor + 1;
+                    dot = nullptr;
+                }
+                else if (*cursor == '.' && !dot)
+                    dot = cursor;
+            }
+
+            const AnsiString name = dot ? AnsiString(stem, int(dot - stem)) : AnsiString(stem);
+            return registry.FindByName(name.c_str());
+        }
+
+        // Phase 1 — purpose / coverage / varying / stage interface
+        // (originally MaterialDefinitionRegistry.cpp:235-305)
+        // ═══════════════════════════════════════════════════════════════════
+        bool ResolvePurposeAndCoverage(
+            const MaterialDefinition &definition,
+            const MaterialDefinitionBuildRequest &request,
+            GenericMaterialBuildPlan &plan)
+        {
+            plan.render_state =
+                ResolveMaterialRenderState(definition, request.recipe);
+            plan.purpose =
+                request.override_shader_program_purpose
+                    ? request.shader_program_purpose
+                    : GetShaderProgramPurpose(
+                        definition.compositor_pass);
+            if (!BuildMaterialCoverageContract(
+                    definition,
+                    request.recipe,
+                    plan.purpose,
+                    plan.coverage))
+                return false;
+            plan.depth_purpose =
+                plan.purpose == ShaderProgramPurpose::DepthOnly
+             || plan.purpose == ShaderProgramPurpose::ShadowDepth;
+
+            plan.effective_vertex_varying =
+                ResolveMaterialVertexVaryingConfig(
+                    definition,
+                    plan.purpose,
+                    plan.coverage);
+            plan.vertex_definition = definition;
+            plan.vertex_definition.vertex_varying =
+                plan.effective_vertex_varying;
+            if (plan.depth_purpose)
+            {
+                plan.vertex_definition.vertex_semantic_requirements.Clear();
+                for (int i = 0;
+                     i < definition.vertex_semantic_requirements.GetCount();
+                     ++i)
+                {
+                    const auto &requirement =
+                        definition.vertex_semantic_requirements[i];
+                    const VertexSemantic semantic =
+                        GetVertexSemanticFromGLSLCodeModuleSemantic(
+                            requirement.semantic);
+                    if (IsVertexSemanticRequiredForVarying(
+                            semantic, plan.effective_vertex_varying))
+                    {
+                        plan.vertex_definition.vertex_semantic_requirements.Add(
+                            requirement);
+                    }
+                }
+            }
+
+            plan.varying = VertexVaryingConfig{};
+            plan.varying.emit_data_index_id = plan.effective_vertex_varying.emit_data_index_id;
+            plan.varying.emit_vertex_color = plan.effective_vertex_varying.emit_vertex_color;
+            plan.varying.emit_uv0 = plan.effective_vertex_varying.emit_uv0;
+            plan.varying.emit_world_pos = plan.effective_vertex_varying.emit_world_pos;
+            plan.varying.emit_world_normal = plan.effective_vertex_varying.emit_world_normal;
+            plan.varying.emit_luminance = plan.effective_vertex_varying.emit_luminance;
+            plan.varying.emit_frag_direction = plan.effective_vertex_varying.emit_frag_direction;
+            plan.varying.use_transform_id_attr = plan.effective_vertex_varying.use_transform_id_attr;
+            plan.varying.emit_vertex_color_from_palette = plan.effective_vertex_varying.emit_vertex_color_from_palette;
+
+            MaterialStageInterfaceDiagnostic stage_interface_diagnostic{};
+            if (!BuildMaterialStageInterface(
+                    plan.effective_vertex_varying,
+                    plan.stage_interface,
+                    stage_interface_diagnostic))
+            {
+                GLogError(
+                    "[ShaderGen] Material stage interface build failed: name=%s error=%s",
+                    definition.definition_name.c_str(),
+                    GetMaterialStageInterfaceErrorName(
+                        stage_interface_diagnostic.error));
+                return false;
+            }
+
+            return true;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // Phase 2 — resolved vertex ABI
+        // (originally MaterialDefinitionRegistry.cpp:307-338)
+        // ═══════════════════════════════════════════════════════════════════
+        bool ResolveVertexABI(
+            const MaterialDefinition &definition,
+            const MaterialDefinitionBuildRequest &request,
+            GenericMaterialBuildPlan &plan)
+        {
+            plan.vertex_node_config =
+                ResolveMaterialVertexNodeConfig(definition, request);
+            plan.extra_attributes.clear();
+            plan.resolved_vertex_input_glsl.clear();
+            plan.resolved_provider_glsl.clear();
+            plan.resolved_provider_graph_hash = 0;
+            {
+                MaterialResolvedVertexABI resolved_abi;
+                if (!BuildResolvedMaterialVertexABI(
+                        plan.vertex_definition, request, resolved_abi))
+                {
+                    GLogError("[ShaderGen] Resolved vertex ABI build failed: name=%s",
+                              definition.definition_name.c_str());
+                    return false;
+                }
+                plan.position_format = resolved_abi.position_format;
+                plan.resolved_vertex_input_glsl = resolved_abi.vertex_input_glsl.c_str();
+                plan.resolved_provider_glsl = resolved_abi.provider_glsl;
+                plan.resolved_provider_graph_hash = resolved_abi.provider_graph_hash;
+                {
+                    hgl::hash::FNV1aHasher64 h;
+                    h << VertexNodeConfigResolver::GetHash(plan.vertex_node_config)
+                      << resolved_abi.provider_graph_hash;
+                    plan.resolved_provider_graph_hash = h;
+                }
+                plan.vertices.reserve(static_cast<size_t>(resolved_abi.vertex_entries.GetCount()));
+                for (int i = 0; i < resolved_abi.vertex_entries.GetCount(); ++i)
+                    plan.vertices.push_back(resolved_abi.vertex_entries[i]);
+            }
+            return true;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // Phase 3 — resource manifest / descriptors / descriptor contract
+        // (originally MaterialDefinitionRegistry.cpp:339-438)
+        // ═══════════════════════════════════════════════════════════════════
+        bool BuildResourceContract(
+            const MaterialDefinition &definition,
+            GenericMaterialBuildPlan &plan)
+        {
+            plan.manifest = ShaderResourceManifest{};
+            plan.manifest_definition = definition;
+            if (plan.depth_purpose)
+                plan.manifest_definition.code_module_requirements.clear();
+            const char *provider_root_names[2]{};
+            uint32 provider_root_count = 0;
+            const GLSLCodeModuleRegistry &module_registry = GetGLSLCodeModuleRegistry();
+            const char *selected_provider_paths[] =
+            {
+                definition.fragment_material_source_module,
+                plan.depth_purpose ? nullptr : definition.fragment_ntb_module
+            };
+            const bool include_coverage_providers =
+                !plan.depth_purpose
+             || plan.coverage.requires_alpha_evaluation;
+            for (const char *provider_path : selected_provider_paths)
+            {
+                if (!include_coverage_providers)
+                    break;
+                if (!provider_path || !provider_path[0])
+                    continue;
+                const GLSLCodeModuleDefinition *provider =
+                    FindSelectedProviderModule(module_registry, provider_path);
+                if (!provider)
+                {
+                    GLogError("[ShaderGen] Selected provider has no registered metadata: %s",
+                              provider_path);
+                    return false;
+                }
+                if (provider_root_count < 2)
+                    provider_root_names[provider_root_count++] = provider->name;
+            }
+            if (!Build3DShaderResourceManifest(
+                    plan.manifest_definition, plan.manifest,
+                    provider_root_names, provider_root_count, &module_registry))
+            {
+                GLogError("[ShaderGen] Generic material resource manifest failed: name=%s",
+                          definition.definition_name.c_str());
+                return false;
+            }
+            plan.descriptors =
+                Build3DDescriptorsFromDefinition(definition, plan.manifest);
+            if (plan.depth_purpose)
+            {
+                plan.descriptors.erase(
+                    std::remove_if(
+                        plan.descriptors.begin(),
+                        plan.descriptors.end(),
+                        [&](const SerializedDescriptorEntry &entry)
+                        {
+                            if (entry.semantic == DescriptorSemantic::SkyInfo)
+                                return true;
+                            if (entry.set_type
+                                != DescriptorSetType::Material)
+                                return false;
+                            if (!plan.coverage.
+                                    requires_alpha_evaluation)
+                                return true;
+
+                            switch (entry.semantic)
+                            {
+                            case DescriptorSemantic::MaterialTexture:
+                            case DescriptorSemantic::MaterialSampler:
+                                return !plan.coverage.requires_texture
+                                    || entry.texture_slot
+                                        != plan.coverage.texture_slot;
+                            case DescriptorSemantic::MaterialDataSlotData:
+                                return !plan.coverage.
+                                    requires_material_data;
+                            case DescriptorSemantic::MaterialDataIndexTable:
+                                return !plan.effective_vertex_varying.
+                                    emit_data_index_id;
+                            case DescriptorSemantic::
+                                MaterialTextureLayerTable:
+                                return !plan.coverage.requires_texture;
+                            case DescriptorSemantic::MaterialColorPalette:
+                                return !plan.effective_vertex_varying.
+                                    emit_vertex_color_from_palette;
+                            default:
+                                return true;
+                            }
+                        }),
+                    plan.descriptors.end());
+            }
+            if (!plan.manifest.IsValid())
+            {
+                GLogError("[ShaderGen] Generic material resource contract failed: name=%s error=%s",
+                          definition.definition_name.c_str(),
+                          GetShaderResourceManifestErrorName(plan.manifest.error));
+                return false;
+            }
+            if (!BuildDescriptorContract(
+                    plan.descriptors, plan.descriptor_contract))
+            {
+                GLogError(
+                    "[ShaderGen] Material descriptor contract build failed: name=%s",
+                    definition.definition_name.c_str());
+                return false;
+            }
+            return true;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // Phase 4 — vertex + fragment stage sources
+        // (originally MaterialDefinitionRegistry.cpp:439-531)
+        // ═══════════════════════════════════════════════════════════════════
+        bool GenerateStageSources(
+            const MaterialDefinition &definition,
+            GenericMaterialBuildPlan &plan)
+        {
+            plan.vs = GenerateVertexShader(plan.vertex_node_config, plan.varying,
+                                           plan.position_format,
+                                           plan.extra_attributes, GetShaderLibraryPath().c_str(),
+                                           plan.resolved_vertex_input_glsl,
+                                           plan.resolved_provider_glsl,
+                                           &plan.stage_interface);
+
+            CompositorAssembler assembler(GetShaderLibraryPath());
+            MaterialOutputContractDiagnostic output_diagnostic{};
+            if (!BuildMaterialOutputContract(
+                    plan.purpose,
+                    plan.output_contract,
+                    output_diagnostic))
+            {
+                GLogError(
+                    "[ShaderGen] Material output contract build failed: name=%s error=%s",
+                    definition.definition_name.c_str(),
+                    GetMaterialOutputContractErrorName(
+                        output_diagnostic.error));
+                return false;
+            }
+            CompositorAssembler::CompositorModuleOptions compositor_options{};
+            compositor_options.alpha_test =
+                plan.coverage.mode == MaterialCoverageMode::AlphaTest
+             || plan.coverage.mode
+                    == MaterialCoverageMode::AlphaTestDither;
+            compositor_options.alpha_cutoff =
+                plan.coverage.alpha_cutoff;
+            compositor_options.dither =
+                plan.coverage.mode == MaterialCoverageMode::Dither
+             || plan.coverage.mode
+                    == MaterialCoverageMode::AlphaTestDither;
+            compositor_options.use_resolved_render_state = true;
+            compositor_options.fragment_inputs = &plan.stage_interface;
+            compositor_options.output_contract = &plan.output_contract;
+            compositor_options.coverage_contract = &plan.coverage;
+            const bool use_scene_lighting =
+                definition.compositor_surface != SurfaceType::Unlit
+             && definition.compositor_surface != SurfaceType::Sky;
+            compositor_options.enable_scene_lighting =
+                use_scene_lighting;
+            compositor_options.sky_module = use_scene_lighting
+                ? "sky/sky_atmosphere.glsl"
+                : nullptr;
+            compositor_options.forward_lighting_module =
+                use_scene_lighting
+                    ? "compositor/forward_lighting.glsl"
+                    : "compositor/flat_lighting.glsl";
+            compositor_options.lighting_algorithm_module =
+                use_scene_lighting
+                    ? "lighting/forward_pbr.glsl"
+                    : "lighting/forward_flat.glsl";
+            compositor_options.material_source_module =
+                definition.fragment_material_source_module;
+            compositor_options.ntb_module =
+                definition.fragment_ntb_module;
+
+            PassType effective_pass = definition.compositor_pass;
+            const char *effective_fragment_source =
+                definition.fragment_source;
+            if (plan.purpose
+                == ShaderProgramPurpose::DepthOnly)
+            {
+                effective_pass = plan.coverage.requires_alpha_evaluation
+                    ? PassType::EarlyZMasked
+                    : PassType::EarlyZSolid;
+                effective_fragment_source = nullptr;
+            }
+            else if (plan.purpose
+                == ShaderProgramPurpose::ShadowDepth)
+            {
+                effective_pass = plan.coverage.requires_alpha_evaluation
+                    ? PassType::ShadowMasked
+                    : PassType::ShadowOpaque;
+                effective_fragment_source = nullptr;
+            }
+
+            const auto assembled = assembler.Assemble(
+                definition.compositor_surface,
+                definition.compositor_blend,
+                effective_pass,
+                effective_fragment_source,
+                definition.fragment_surface_module,
+                compositor_options);
+            if (!assembled.success)
+            {
+                GLogError("[ShaderGen] Generic material fragment assembly failed: name=%s error=%s",
+                          definition.definition_name.c_str(),
+                          assembled.error_message.c_str());
+                return false;
+            }
+            plan.fs = assembled.fragment_glsl;
+            return true;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // Phase 5 — compiler input / link spec
+        // (originally MaterialDefinitionRegistry.cpp:533-596)
+        // ═══════════════════════════════════════════════════════════════════
+        bool FinalizeProgramLink(
+            const contract::PhysicalDeviceProfileLite *profile,
+            const MaterialDefinition &definition,
+            const MaterialDefinitionBuildRequest &request,
+            GenericMaterialBuildPlan &plan,
+            MaterialShaderCompilerInput &out_compiler_input,
+            CompositorMaterialBuildConfig &out_config)
+        {
+            out_compiler_input = MaterialShaderCompilerInput{
+                definition.definition_name.c_str(),
+                request.primitive_type,
+                plan.vertices.data(), static_cast<uint32>(plan.vertices.size()),
+                plan.descriptors.data(), static_cast<uint32>(plan.descriptors.size())
+            };
+            CompositorMaterialBuildConfig &config = out_config;
+            config.primitive_type = request.primitive_type;
+            config.shader_stage_flag_bits =
+                uint32(ShaderStage::VertexFragment);
+            plan.contract_definition = definition;
+            plan.contract_definition.vertex_varying =
+                plan.effective_vertex_varying;
+            config.material_definition = &plan.contract_definition;
+            config.resource_manifest = plan.manifest.IsValid() ? &plan.manifest : nullptr;
+            config.merge_resource_manifest_material_slots =
+                !plan.depth_purpose;
+            config.artifact_store = request.shader_artifact_store;
+            config.descriptor_contract = &plan.descriptor_contract;
+            const uint64 resource_contract_hash =
+                GetDescriptorContractHash(
+                    plan.descriptor_contract,
+                    plan.depth_purpose ? 0 : plan.manifest.stable_hash);
+            const uint64 vertex_input_hash = request.geometry_vertex_format
+                ? request.geometry_vertex_format->GetVertexInputHash() : 0;
+            const uint64 compiler_hash =
+                contract::GetShaderCompilerProfileHash(profile);
+            hgl::hash::FNV1aHasher64 vertex_interface_hasher;
+            vertex_interface_hasher << HashFinalShaderSource(plan.vs.data(), plan.vs.size())
+                                    << vertex_input_hash;
+            const uint64 vertex_interface_hash = vertex_interface_hasher;
+            const uint64 fragment_interface_hash =
+                HashFinalShaderSource(plan.fs.data(), plan.fs.size());
+
+            plan.program_link.vertex_stage = BuildFinalShaderStageKey(
+                ShaderStage::Vertex,
+                plan.vs.data(),
+                plan.vs.size(),
+                plan.resolved_provider_graph_hash,
+                vertex_interface_hash,
+                resource_contract_hash,
+                compiler_hash);
+            plan.program_link.fragment_stage = BuildFinalShaderStageKey(
+                ShaderStage::Fragment,
+                plan.fs.data(),
+                plan.fs.size(),
+                plan.manifest.stable_hash,
+                fragment_interface_hash,
+                resource_contract_hash,
+                compiler_hash);
+            plan.program_link.resource_layout_hash =
+                resource_contract_hash;
+            plan.program_link.vertex_input_hash = vertex_input_hash;
+            plan.program_link.render_target_hash =
+                GetOutputContractHash(plan.output_contract);
+            plan.program_link.compiler_hash = compiler_hash;
+            config.program_link = &plan.program_link;
+            config.data_slot_decls =
+                plan.depth_purpose
+             && !plan.coverage.requires_material_data
+                    ? nullptr
+                    : definition.data_slot_decls.empty()
+                        ? nullptr : &definition.data_slot_decls;
+            config.generate_only = request.generate_only;
+            return true;
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // BuildGenericMaterial — orchestration
+    // (originally MaterialDefinitionRegistry.cpp:218-603)
+    // ═══════════════════════════════════════════════════════════════════════
+    ShaderBuildContext *BuildGenericMaterial(
+        const contract::PhysicalDeviceProfileLite *profile,
+        const MaterialDefinitionBuildRequest &request,
+        const MaterialDefinition &definition)
+    {
+        const bool semantic_contract =
+            !definition.vertex_semantic_requirements.IsEmpty();
+        if (!definition.fragment_source
+         || !semantic_contract)
+        {
+            GLogError("[ShaderGen] Generic material contract invalid: name=%s fragment=%p semantic_requirements=%d",
+                      definition.definition_name.c_str(),
+                      definition.fragment_source,
+                      definition.vertex_semantic_requirements.GetCount());
+            return nullptr;
+        }
+
+        GenericMaterialBuildPlan plan{};
+
+        if (!ResolvePurposeAndCoverage(definition, request, plan))
+            return nullptr;
+
+        if (!ResolveVertexABI(definition, request, plan))
+            return nullptr;
+
+        if (!BuildResourceContract(definition, plan))
+            return nullptr;
+
+        if (!GenerateStageSources(definition, plan))
+            return nullptr;
+
+        MaterialShaderCompilerInput compiler_input{};
+        CompositorMaterialBuildConfig config{};
+        if (!FinalizeProgramLink(profile, definition, request, plan,
+                                 compiler_input, config))
+            return nullptr;
+
+        ShaderBuildContext *result = CompileCompositorMaterial(
+            profile, compiler_input, plan.vs, plan.fs, config);
+        if (!result)
+            GLogError("[ShaderGen] Generic material compilation failed: name=%s",
+                      definition.definition_name.c_str());
+        return result;
+    }
+}
