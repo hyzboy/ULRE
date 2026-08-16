@@ -322,11 +322,11 @@ void DestroyTransformGizmo(GizmoECS *gizmo)
         }
 
         if (gizmo->move_mode.entity)
-            gizmo->world->DestroyEntity(gizmo->move_mode.entity->GetID());
+            gizmo->world->DestroyEntity(gizmo->move_mode.entity->GetEntityID());
         if (gizmo->rotate_mode.entity)
-            gizmo->world->DestroyEntity(gizmo->rotate_mode.entity->GetID());
+            gizmo->world->DestroyEntity(gizmo->rotate_mode.entity->GetEntityID());
         if (gizmo->scale_mode.entity)
-            gizmo->world->DestroyEntity(gizmo->scale_mode.entity->GetID());
+            gizmo->world->DestroyEntity(gizmo->scale_mode.entity->GetEntityID());
         if (gizmo->root)
             gizmo->world->DestroyEntity(gizmo->root->GetID());
     }

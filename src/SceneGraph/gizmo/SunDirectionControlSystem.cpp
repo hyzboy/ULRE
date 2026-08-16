@@ -18,7 +18,7 @@ namespace hgl::graph{
 SunDirectionControlSystem::SunDirectionControlSystem()
     : hgl::ecs::System("SunDirectionControlSystem")
 {
-    SetExecutionOrder(hgl::ecs::ExecutionPhase::TickPostCamera);
+    SetExecutionPhase(hgl::ecs::ExecutionPhase::TickPostCamera);
     AddDependency<hgl::ecs::InputSystem>();
     AddDependency<hgl::ecs::CameraSystem>();
 }
@@ -129,7 +129,7 @@ void SunDirectionControlSystem::Shutdown()
 
     if (context && proxy_entity)
     {
-        context->DestroyEntity(proxy_entity->GetID());
+        context->DestroyEntity(proxy_entity->GetEntityID());
     }
 
     proxy_transform.reset();
