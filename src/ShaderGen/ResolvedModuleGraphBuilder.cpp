@@ -336,14 +336,14 @@ namespace hgl::graph::shadergen
                 }
 
                 const GLSLCodeModuleDefinition *target =
-                    state.registry.Find(dependency.module_id);
+                    state.registry.FindByName(dependency.module_name);
                 if (!target)
                 {
                     return SetGraphFailure(
                         state.diagnostic,
                         ResolvedModuleGraphBuildError::MissingDependency,
                         definition.name,
-                        GetGLSLCodeModuleName(dependency.module_id));
+                        dependency.module_name);
                 }
                 dependencies.Add({target, dependency});
             }
@@ -507,7 +507,7 @@ namespace hgl::graph::shadergen
                     definition, i, dependency))
                 return 0;
             const GLSLCodeModuleDefinition *target =
-                registry.Find(dependency.module_id);
+                registry.FindByName(dependency.module_name);
             if (!target)
                 return 0;
             dependencies.Add({target, dependency});
@@ -527,7 +527,7 @@ namespace hgl::graph::shadergen
         for (uint32 i = 0; i < definition.module_conflict_count; ++i)
         {
             const GLSLCodeModuleDefinition *target =
-                registry.Find(definition.module_conflicts[i]);
+                registry.FindByName(definition.module_conflict_names[i]);
             if (!target)
                 return 0;
             conflict_ids.Add(GetGLSLCodeModuleStableID(*target));
@@ -605,15 +605,15 @@ namespace hgl::graph::shadergen
         ValueArray<const GLSLCodeModuleDefinition *> roots;
         if (!depth_purpose)
         {
-            for (const GLSLCodeModuleID id :
-                 definition.code_module_requirements)
+            for (const auto &name : definition.code_module_requirements)
             {
-                const GLSLCodeModuleDefinition *root = registry.Find(id);
+                const GLSLCodeModuleDefinition *root =
+                    registry.FindByName(name.c_str());
                 if (!AddRoot(
                         roots,
                         root,
                         out_diagnostic,
-                        GetGLSLCodeModuleName(id)))
+                        name.c_str()))
                     return false;
             }
         }

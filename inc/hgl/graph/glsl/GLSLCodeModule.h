@@ -14,13 +14,12 @@ namespace hgl::graph::mtl
 
     // Reusable GLSL code is stage-agnostic. A module may be used by vertex,
     // fragment, or shared shader generation paths.
-    enum class GLSLCodeModuleID : uint16
-    {
-        TestProviderA = 0,
-        TestProviderB,
-        PBRSurface,
-        ENUM_CLASS_RANGE(TestProviderA, PBRSurface)
-    };
+    //
+    // Module identity is the unique `name` string (registered by name in the
+    // GLSLCodeModuleRegistry; the contract layer derives stable IDs from it as
+    // FNV1a(name)). There is deliberately no numeric ID track: file-backed
+    // modules are discovered by directory scan and dependencies/conflicts
+    // reference targets by name, resolved against the registry.
 
     enum class GLSLCodeModuleKind : uint8
     {
@@ -122,7 +121,7 @@ namespace hgl::graph::mtl
 
     struct GLSLCodeModuleDependency
     {
-        GLSLCodeModuleID module_id = GLSLCodeModuleID::TestProviderA;
+        const char *module_name = nullptr;      // 依赖目标模块名（注册表唯一键）
         uint16 min_metadata_version =
             GLSLCodeModuleUnversionedMetadataVersion;
         uint16 max_metadata_version = GLSLCodeModuleCurrentMetadataVersion;
@@ -131,7 +130,10 @@ namespace hgl::graph::mtl
     inline bool operator==(const GLSLCodeModuleDependency &lhs,
                            const GLSLCodeModuleDependency &rhs) noexcept
     {
-        return lhs.module_id == rhs.module_id
+        const bool same_name = lhs.module_name == rhs.module_name
+            || (lhs.module_name && rhs.module_name
+                && hgl::strcmp(lhs.module_name, rhs.module_name) == 0);
+        return same_name
             && lhs.min_metadata_version == rhs.min_metadata_version
             && lhs.max_metadata_version == rhs.max_metadata_version;
     }
@@ -256,7 +258,6 @@ namespace hgl::graph::mtl
 
     struct GLSLCodeModuleDefinition
     {
-        GLSLCodeModuleID id = GLSLCodeModuleID::TestProviderA;
         const char *name = nullptr;
         const char *glsl_code = nullptr;
 
@@ -265,9 +266,6 @@ namespace hgl::graph::mtl
 
         const GLSLCodeModuleSSBORequirement *ssbo_requirements = nullptr;
         uint32 ssbo_requirement_count = 0;
-
-        const GLSLCodeModuleID *code_module_requirements = nullptr;
-        uint32 code_module_requirement_count = 0;
 
         // Capability metadata for file-backed/provider modules. Existing
         // modules may omit these trailing fields until migrated.
@@ -292,14 +290,12 @@ namespace hgl::graph::mtl
         const GLSLCodeModuleCondition *conditions = nullptr;
         uint32 condition_count = 0;
 
-        const GLSLCodeModuleID *module_conflicts = nullptr;
+        // Names of mutually exclusive modules. The registry resolves them at
+        // load time; strings are owned by the registry's file-data storage.
+        const char **module_conflict_names = nullptr;
         uint32 module_conflict_count = 0;
     };
 
-    const GLSLCodeModuleDefinition *FindGLSLCodeModuleDefinition(GLSLCodeModuleID id) noexcept;
-    bool TryGetGLSLCodeModuleIDByName(const char *name, GLSLCodeModuleID &out) noexcept;
-    const char *GetGLSLCodeModuleName(GLSLCodeModuleID id) noexcept;
-    uint64 GetGLSLCodeModuleDefinitionHash(GLSLCodeModuleID id) noexcept;
     uint64 GetGLSLCodeModuleDefinitionHash(
         const GLSLCodeModuleDefinition &definition) noexcept;
 
@@ -312,8 +308,8 @@ namespace hgl::graph::mtl
           && !definition.semantic_requirements)
          || (definition.semantic_provide_count > 0
           && !definition.semantic_provides)
-         || (definition.code_module_requirement_count > 0
-          && !definition.code_module_requirements)
+         || (definition.dependency_count > 0
+          && !definition.dependencies)
          || (definition.ubo_requirement_count > 0
           && !definition.ubo_requirements)
          || (definition.ssbo_requirement_count > 0

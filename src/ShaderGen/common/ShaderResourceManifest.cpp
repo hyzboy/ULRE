@@ -6,7 +6,6 @@
 
 namespace hgl::graph::mtl
 {
-    using namespace hgl::graph::mtl;
     namespace
     {
         enum class VisitState : uint8
@@ -19,6 +18,16 @@ namespace hgl::graph::mtl
         bool CStrEqual(const char *lhs, const char *rhs) noexcept
         {
             return lhs && rhs && std::strcmp(lhs, rhs) == 0;
+        }
+
+        uint64 GetModuleStableID(const char *name) noexcept
+        {
+            if (!name || !*name)
+                return 0;
+
+            hgl::hash::FNV1aHasher64 h;
+            h << name;
+            return h;
         }
 
         bool AddUBO(ShaderResourceManifest &manifest, const GLSLCodeModuleUBORequirement &incoming)
@@ -108,32 +117,30 @@ namespace hgl::graph::mtl
             return true;
         }
 
-        const GLSLCodeModuleDefinition *FindModule(
-            const GLSLCodeModuleID id,
+        const GLSLCodeModuleDefinition *FindModuleByName(
+            const char *name,
             const GLSLCodeModuleRegistry *registry) noexcept
         {
-            if (registry)
-            {
-                const auto *definition = registry->Find(id);
-                if (definition)
-                    return definition;
-            }
-            return FindGLSLCodeModuleDefinition(id);
+            if (!registry || !name || !*name)
+                return nullptr;
+
+            return registry->FindByName(name);
         }
 
         bool AddModule(
-            const GLSLCodeModuleID id,
+            const char *name,
             const GLSLCodeModuleRegistry *registry,
-            GLSLCodeModuleID *visited_ids,
+            uint64 *visited_ids,
             VisitState *states,
             uint32 &visited_count,
             VisitState *mutable_states,
             ShaderResourceManifest &manifest)
         {
+            const uint64 stable_id = GetModuleStableID(name);
             int state_index = -1;
             for (uint32 i = 0; i < visited_count; ++i)
             {
-                if (visited_ids[i] == id)
+                if (visited_ids[i] == stable_id)
                 {
                     state_index = static_cast<int>(i);
                     break;
@@ -144,34 +151,34 @@ namespace hgl::graph::mtl
                 if (visited_count >= MaxShaderResourceManifestCodeModules)
                 {
                     manifest.error = ShaderResourceManifestError::CodeModuleCapacityExceeded;
-                    manifest.error_module = id;
+                    manifest.error_module_name = name;
                     return false;
                 }
                 state_index = static_cast<int>(visited_count);
-                visited_ids[visited_count] = id;
+                visited_ids[visited_count] = stable_id;
                 states[visited_count] = VisitState::Unvisited;
                 ++visited_count;
             }
 
-            const GLSLCodeModuleDefinition *definition = FindModule(id, registry);
+            const GLSLCodeModuleDefinition *definition = FindModuleByName(name, registry);
             if (!definition)
             {
                 manifest.error = ShaderResourceManifestError::UnknownCodeModule;
-                manifest.error_module = id;
+                manifest.error_module_name = name;
                 return false;
             }
 
             if (!definition->glsl_code)
             {
                 manifest.error = ShaderResourceManifestError::ResourceConflict;
-                manifest.error_module = id;
+                manifest.error_module_name = name;
                 return false;
             }
 
             if (states[state_index] == VisitState::Visiting)
             {
                 manifest.error = ShaderResourceManifestError::CodeModuleCycle;
-                manifest.error_module = id;
+                manifest.error_module_name = name;
                 return false;
             }
 
@@ -180,9 +187,9 @@ namespace hgl::graph::mtl
 
             mutable_states[state_index] = VisitState::Visiting;
 
-            for (uint32 i = 0; i < definition->code_module_requirement_count; ++i)
+            for (uint32 i = 0; i < definition->dependency_count; ++i)
             {
-                if (!AddModule(definition->code_module_requirements[i], registry,
+                if (!AddModule(definition->dependencies[i].module_name, registry,
                                visited_ids, states, visited_count, mutable_states, manifest))
                     return false;
             }
@@ -208,11 +215,11 @@ namespace hgl::graph::mtl
             if (manifest.code_module_count >= MaxShaderResourceManifestCodeModules)
             {
                 manifest.error = ShaderResourceManifestError::CodeModuleCapacityExceeded;
-                manifest.error_module = id;
+                manifest.error_module_name = name;
                 return false;
             }
 
-            manifest.code_modules[manifest.code_module_count++] = id;
+            manifest.code_module_names[manifest.code_module_count++] = definition->name;
             mutable_states[state_index] = VisitState::Visited;
             return true;
         }
@@ -222,18 +229,17 @@ namespace hgl::graph::mtl
             const GLSLCodeModuleRegistry *registry)
         {
             hgl::hash::FNV1aHasher64 h;
-            constexpr uint32 manifest_version = 2u;
+            // v3: code modules identified by name (numeric ID track removed).
+            constexpr uint32 manifest_version = 3u;
             h << manifest_version;
 
             h << manifest.code_module_count;
             for (uint32 i = 0; i < manifest.code_module_count; ++i)
             {
-                const auto id = manifest.code_modules[i];
-                const auto *definition = FindModule(id, registry);
-                h << id
-                  << (definition ? GetGLSLCodeModuleDefinitionHash(*definition) : 0)
-                  << (definition ? definition->name : nullptr)
-                  << (definition ? definition->glsl_code : nullptr);
+                const char *const name = manifest.code_module_names[i];
+                const auto *definition = FindModuleByName(name, registry);
+                h << name
+                  << (definition ? GetGLSLCodeModuleDefinitionHash(*definition) : 0);
             }
 
             h << manifest.ubo_count;
@@ -261,25 +267,25 @@ namespace hgl::graph::mtl
     }
 
     bool BuildShaderResourceManifest(
-        const GLSLCodeModuleID *root_modules,
+        const char *const *root_module_names,
         const uint32 root_module_count,
         ShaderResourceManifest &manifest,
         const GLSLCodeModuleRegistry *registry) noexcept
     {
         manifest = ShaderResourceManifest{};
-        if (!root_modules && root_module_count > 0)
+        if (!root_module_names && root_module_count > 0)
         {
             manifest.error = ShaderResourceManifestError::NullRootList;
             return false;
         }
 
-        GLSLCodeModuleID visited_ids[MaxShaderResourceManifestCodeModules]{};
+        uint64 visited_ids[MaxShaderResourceManifestCodeModules]{};
         VisitState states[MaxShaderResourceManifestCodeModules]{};
         uint32 visited_count = 0;
 
         for (uint32 i = 0; i < root_module_count; ++i)
         {
-            if (!AddModule(root_modules[i], registry, visited_ids, states,
+            if (!AddModule(root_module_names[i], registry, visited_ids, states,
                            visited_count, states, manifest))
                 return false;
         }

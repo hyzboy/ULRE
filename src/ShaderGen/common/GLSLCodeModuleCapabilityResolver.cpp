@@ -12,6 +12,17 @@ namespace hgl::graph::mtl
     {
         constexpr int kSemanticTableSize = 64;
 
+        uint64 GetModuleStableID(
+            const GLSLCodeModuleDefinition *module) noexcept
+        {
+            if (!module || !module->name)
+                return 0xffffffffffffffffull;
+
+            hgl::hash::FNV1aHasher64 h;
+            h << module->name;
+            return h;
+        }
+
         inline int GetSemanticIndex(const GLSLCodeModuleSemantic semantic) noexcept
         {
             const int index = static_cast<int>(semantic);
@@ -62,13 +73,13 @@ namespace hgl::graph::mtl
             GLSLCodeModuleResolutionResult &result;
 
             bool provided[kSemanticTableSize] = {};
-            ValueArray<GLSLCodeModuleID> selected_ids;
+            ValueArray<uint64> selected_ids;
 
-            bool IsSelected(const GLSLCodeModuleID id) const
+            bool IsSelected(const uint64 stable_id) const
             {
                 for (int i = 0; i < selected_ids.GetCount(); ++i)
                 {
-                    if (selected_ids[i] == id)
+                    if (selected_ids[i] == stable_id)
                         return true;
                 }
 
@@ -119,7 +130,7 @@ namespace hgl::graph::mtl
                 const auto *candidate = state.registry.GetModuleByIndex(i);
                 if (!IsProviderCandidate(candidate) || !ProvidesSemantic(candidate, semantic))
                     continue;
-                if (state.IsSelected(candidate->id))
+                if (state.IsSelected(GetModuleStableID(candidate)))
                     continue;
 
                 if (CandidateFeasible(state, candidate, next_in_progress, nullptr))
@@ -203,16 +214,36 @@ namespace hgl::graph::mtl
             }
         }
 
-        bool HasHigherPriority(const GLSLCodeModuleDefinition *lhs,
-                               const GLSLCodeModuleDefinition *rhs)
+        int GetRegistrationIndex(
+            const GLSLCodeModuleRegistry &registry,
+            const GLSLCodeModuleDefinition *module)
+        {
+            for (int i = 0; i < registry.GetCount(); ++i)
+            {
+                if (registry.GetModuleByIndex(i) == module)
+                    return i;
+            }
+
+            return registry.GetCount();
+        }
+
+        bool HasHigherPriority(
+            const GLSLCodeModuleRegistry &registry,
+            const GLSLCodeModuleDefinition *lhs,
+            const GLSLCodeModuleDefinition *rhs)
         {
             if (lhs->priority != rhs->priority)
                 return lhs->priority > rhs->priority;
 
-            return static_cast<uint32>(lhs->id) < static_cast<uint32>(rhs->id);
+            // Same priority: earlier registration wins (stable declaration
+            // order, matching the legacy numeric-ID ordering).
+            return GetRegistrationIndex(registry, lhs)
+                < GetRegistrationIndex(registry, rhs);
         }
 
-        void SortCandidates(ValueArray<const GLSLCodeModuleDefinition *> &candidates)
+        void SortCandidates(
+            const GLSLCodeModuleRegistry &registry,
+            ValueArray<const GLSLCodeModuleDefinition *> &candidates)
         {
             const int count = candidates.GetCount();
 
@@ -221,7 +252,7 @@ namespace hgl::graph::mtl
                 int best = i;
                 for (int k = i + 1; k < count; ++k)
                 {
-                    if (HasHigherPriority(candidates[k], candidates[best]))
+                    if (HasHigherPriority(registry, candidates[k], candidates[best]))
                         best = k;
                 }
 
@@ -253,7 +284,7 @@ namespace hgl::graph::mtl
 
             ValueArray<const GLSLCodeModuleDefinition *> candidates;
             CollectCandidates(state.registry, semantic, candidates);
-            SortCandidates(candidates);
+            SortCandidates(state.registry, candidates);
 
             bool in_progress[kSemanticTableSize];
             std::memcpy(in_progress, parent_in_progress, sizeof(in_progress));
@@ -262,7 +293,7 @@ namespace hgl::graph::mtl
             for (int i = 0; i < candidates.GetCount(); ++i)
             {
                 const auto *candidate = candidates[i];
-                if (state.IsSelected(candidate->id))
+                if (state.IsSelected(GetModuleStableID(candidate)))
                     continue;
 
                 const char *reason = nullptr;
@@ -312,7 +343,7 @@ namespace hgl::graph::mtl
                     continue;
                 }
 
-                state.selected_ids.Add(candidate->id);
+                state.selected_ids.Add(GetModuleStableID(candidate));
 
                 for (uint32 k = 0; k < candidate->semantic_provide_count; ++k)
                 {
@@ -625,10 +656,8 @@ namespace hgl::graph::mtl
             {
                 const auto &lhs = result.selections[static_cast<int>(order[j - 1])];
                 const auto &rhs = result.selections[static_cast<int>(order[j])];
-                const uint32 lhs_id = lhs.provider
-                    ? static_cast<uint32>(lhs.provider->id) : 0xffffffffu;
-                const uint32 rhs_id = rhs.provider
-                    ? static_cast<uint32>(rhs.provider->id) : 0xffffffffu;
+                const uint64 lhs_id = GetModuleStableID(lhs.provider);
+                const uint64 rhs_id = GetModuleStableID(rhs.provider);
                 const bool should_swap =
                     static_cast<uint32>(lhs.requirement) > static_cast<uint32>(rhs.requirement)
                     || (lhs.requirement == rhs.requirement && lhs_id > rhs_id);
@@ -653,13 +682,10 @@ namespace hgl::graph::mtl
             }
 
             const auto &provider = *selection.provider;
-            h << provider.id
+            h << provider.name
               << provider.kind
               << provider.priority
               << provider.flags;
-
-            if (provider.name)
-                h << provider.name;
 
             h << provider.semantic_requirement_count;
             for (uint32 k = 0; k < provider.semantic_requirement_count; ++k)

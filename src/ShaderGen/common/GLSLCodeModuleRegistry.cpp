@@ -10,7 +10,6 @@
 
 namespace hgl::graph::mtl
 {
-    using namespace hgl::graph::mtl;
     namespace
     {
         bool IsGLSLFile(const OSString &file_name)
@@ -46,22 +45,10 @@ namespace hgl::graph::mtl
         if (!IsValidGLSLCodeModuleDefinition(definition))
             return false;
 
-        if (modules.ContainsKey(definition.id))
+        if (FindByName(definition.name))
             return false;
 
-        return modules.Add(definition.id, &definition);
-    }
-
-    bool GLSLCodeModuleRegistry::RegisterBuiltinModules()
-    {
-        for (uint32 i = 0; i < static_cast<uint32>(GLSLCodeModuleID::RANGE_SIZE); ++i)
-        {
-            const auto id = static_cast<GLSLCodeModuleID>(i);
-            const auto *definition = FindGLSLCodeModuleDefinition(id);
-            if (!definition || !Register(*definition))
-                return false;
-        }
-
+        modules.push_back(&definition);
         return true;
     }
 
@@ -90,7 +77,7 @@ namespace hgl::graph::mtl
             GLSLCodeModuleFileData *data = file_data[i];
             if (!data
              || data->metadata_resolution_valid
-             || modules.ContainsKey(data->definition.id))
+             || FindByName(data->name.c_str()))
                 continue;
 
             Register(data->definition);
@@ -172,7 +159,6 @@ namespace hgl::graph::mtl
 
             // Finalize the definition. Pointers reference stable members of the
             // heap-allocated entry, which are not mutated afterwards.
-            data->definition.id = static_cast<GLSLCodeModuleID>(next_file_id++);
             data->definition.name = data->name.c_str();
             data->definition.glsl_code = data->glsl_code.c_str();
             data->definition.kind = data->kind;
@@ -211,17 +197,16 @@ namespace hgl::graph::mtl
             ++file_count;
         }
 
-        // Pass 2: resolve `uses <module-name>` references against the
-        // now-complete registry.
+        // Pass 2: validate `uses <module-name>` references against the
+        // now-complete registry and store dependency/conflict names.
         for (int i = 0; i < file_data.GetCount(); ++i)
         {
             GLSLCodeModuleFileData *data = file_data[i];
             if (!data || data->metadata_resolution_valid)
                 continue;
 
-            data->code_module_requirements.Clear();
             data->dependencies.Clear();
-            data->module_conflicts.Clear();
+            data->module_conflict_names.Clear();
             data->metadata_resolution_valid = true;
             const int pending_count = data->pending_module_requirements.GetCount();
             for (int k = 0; k < pending_count; ++k)
@@ -255,16 +240,12 @@ namespace hgl::graph::mtl
                     continue;
                 }
 
-                data->code_module_requirements.Add(dependency->id);
-
                 GLSLCodeModuleDependency versioned_dependency =
                     pending_dependency;
-                versioned_dependency.module_id = dependency->id;
+                versioned_dependency.module_name = dependency->name;
                 data->dependencies.Add(versioned_dependency);
             }
 
-            data->definition.code_module_requirements = data->code_module_requirements.GetData();
-            data->definition.code_module_requirement_count = static_cast<uint32>(data->code_module_requirements.GetCount());
             data->definition.dependencies = data->dependencies.GetData();
             data->definition.dependency_count =
                 static_cast<uint32>(data->dependencies.GetCount());
@@ -286,13 +267,13 @@ namespace hgl::graph::mtl
                     continue;
                 }
 
-                data->module_conflicts.Add(conflict->id);
+                data->module_conflict_names.Add(conflict->name);
             }
 
-            data->definition.module_conflicts =
-                data->module_conflicts.GetData();
+            data->definition.module_conflict_names =
+                data->module_conflict_names.GetData();
             data->definition.module_conflict_count =
-                static_cast<uint32>(data->module_conflicts.GetCount());
+                static_cast<uint32>(data->module_conflict_names.GetCount());
         }
 
         for (int i = 0; i < file_data.GetCount(); ++i)
@@ -301,7 +282,7 @@ namespace hgl::graph::mtl
             if (!data || data->metadata_resolution_valid)
                 continue;
 
-            if (modules.DeleteByKey(data->definition.id)
+            if (RemoveByName(data->name.c_str())
              && i >= first_new_file_index)
                 --file_count;
         }
@@ -314,23 +295,21 @@ namespace hgl::graph::mtl
             for (int i = 0; i < file_data.GetCount(); ++i)
             {
                 GLSLCodeModuleFileData *data = file_data[i];
-                if (!data || !modules.ContainsKey(data->definition.id))
+                if (!data || !FindByName(data->name.c_str()))
                     continue;
 
                 bool complete =
                     data->metadata_resolution_valid
-                 && data->code_module_requirements.GetCount()
-                        == data->pending_module_requirements.GetCount()
                  && data->dependencies.GetCount()
                         == data->pending_dependency_versions.GetCount()
-                 && data->module_conflicts.GetCount()
+                 && data->module_conflict_names.GetCount()
                         == data->pending_module_conflicts.GetCount();
                 for (int k = 0;
                      complete
-                        && k < data->code_module_requirements.GetCount();
+                        && k < data->dependencies.GetCount();
                      ++k)
                 {
-                    if (!modules.ContainsKey(data->code_module_requirements[k]))
+                    if (!FindByName(data->dependencies[k].module_name))
                     {
                         complete = false;
                         break;
@@ -340,10 +319,10 @@ namespace hgl::graph::mtl
                 if (complete)
                 {
                     for (int k = 0;
-                         k < data->module_conflicts.GetCount();
+                         k < data->module_conflict_names.GetCount();
                          ++k)
                     {
-                        if (!modules.ContainsKey(data->module_conflicts[k]))
+                        if (!FindByName(data->module_conflict_names[k]))
                         {
                             complete = false;
                             break;
@@ -351,7 +330,7 @@ namespace hgl::graph::mtl
                     }
                 }
 
-                if (!complete && modules.DeleteByKey(data->definition.id))
+                if (!complete && RemoveByName(data->name.c_str()))
                 {
                     data->metadata_resolution_valid = false;
                     if (i >= first_new_file_index)
@@ -373,21 +352,13 @@ namespace hgl::graph::mtl
         return true;
     }
 
-    const GLSLCodeModuleDefinition *GLSLCodeModuleRegistry::Find(const GLSLCodeModuleID id) const
-    {
-        const GLSLCodeModuleDefinition *definition = nullptr;
-        modules.Get(id, definition);
-        return definition;
-    }
-
     const GLSLCodeModuleDefinition *GLSLCodeModuleRegistry::FindByName(const char *name) const
     {
         if (!name || !*name)
             return nullptr;
 
-        for (const auto &entry : modules)
+        for (const auto *definition : modules)
         {
-            const auto *definition = entry.second;
             if (definition && definition->name && std::strcmp(definition->name, name) == 0)
                 return definition;
         }
@@ -395,16 +366,30 @@ namespace hgl::graph::mtl
         return nullptr;
     }
 
+    bool GLSLCodeModuleRegistry::RemoveByName(const char *name)
+    {
+        if (!name || !*name)
+            return false;
+
+        for (size_t i = 0; i < modules.size(); ++i)
+        {
+            const auto *definition = modules[i];
+            if (definition && definition->name && std::strcmp(definition->name, name) == 0)
+            {
+                modules.erase(modules.begin() + static_cast<ptrdiff_t>(i));
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     const GLSLCodeModuleDefinition *GLSLCodeModuleRegistry::GetModuleByIndex(const int index) const
     {
-        const int count = static_cast<int>(modules.GetCount());
+        const int count = static_cast<int>(modules.size());
         if (index < 0 || index >= count)
             return nullptr;
 
-        auto it = modules.begin();
-        for (int i = 0; i < index; ++i)
-            ++it;
-
-        return it->second;
+        return modules[index];
     }
 }

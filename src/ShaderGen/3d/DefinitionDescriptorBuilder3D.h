@@ -53,7 +53,7 @@ inline std::vector<SerializedDescriptorEntry> Build3DDescriptorsFromDefinition(
 inline bool Build3DShaderResourceManifest(
     const MaterialDefinition &definition,
     ShaderResourceManifest &manifest,
-    const GLSLCodeModuleID *provider_roots = nullptr,
+    const char *const *provider_roots = nullptr,
     const uint32 provider_root_count = 0,
     const GLSLCodeModuleRegistry *registry = nullptr)
 {

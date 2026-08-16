@@ -31,8 +31,8 @@ namespace hgl::graph::mtl
     {
         GLSLCodeModuleMetadataValidationError error =
             GLSLCodeModuleMetadataValidationError::None;
-        GLSLCodeModuleID module_id = GLSLCodeModuleID::TestProviderA;
-        GLSLCodeModuleID related_module_id = GLSLCodeModuleID::TestProviderA;
+        AnsiString module_name;
+        AnsiString related_module_name;
         GLSLCodeModuleSemantic semantic = GLSLCodeModuleSemantic::Unknown;
         uint32 item_index = 0;
     };

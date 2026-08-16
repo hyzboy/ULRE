@@ -378,17 +378,17 @@ inline void EnsureMaterialDataIndexTable(
 inline bool BuildDefinitionShaderResourceManifest(
     const MaterialDefinition &definition,
     ShaderResourceManifest &manifest,
-    const GLSLCodeModuleID *extra_roots = nullptr,
+    const char *const *extra_roots = nullptr,
     const uint32 extra_root_count = 0,
     const GLSLCodeModuleRegistry *registry = nullptr)
 {
-    GLSLCodeModuleID roots[MaxShaderResourceManifestCodeModules]{};
+    const char *roots[MaxShaderResourceManifestCodeModules]{};
     uint32 root_count = 0;
-    for (const GLSLCodeModuleID id : definition.code_module_requirements)
+    for (const auto &name : definition.code_module_requirements)
     {
         if (root_count >= MaxShaderResourceManifestCodeModules)
             return false;
-        roots[root_count++] = id;
+        roots[root_count++] = name.c_str();
     }
 
     if (extra_root_count > 0 && !extra_roots)

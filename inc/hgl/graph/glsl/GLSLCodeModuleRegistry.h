@@ -3,24 +3,24 @@
 #include <hgl/graph/glsl/GLSLCodeModule.h>
 #include <hgl/graph/glsl/GLSLCodeModuleFile.h>
 #include <hgl/type/ManagedArray.h>
-#include <hgl/type/UnorderedMap.h>
+#include <vector>
 
 namespace hgl::graph::mtl
 {
     class GLSLCodeModuleRegistry
     {
-        UnorderedMap<GLSLCodeModuleID, const GLSLCodeModuleDefinition *> modules;
+        // Registered modules in registration order. Identity is the module
+        // name (unique per registry); lookups are linear over a small set
+        // (~tens of modules), avoiding a second identity track.
+        std::vector<const GLSLCodeModuleDefinition *> modules;
 
         // File-backed module payloads. Entries are heap objects with stable
         // addresses; GLSLCodeModuleDefinition pointers inside each entry point
         // into the entry itself.
         ManagedArray<GLSLCodeModuleFileData> file_data;
 
-        uint16 next_file_id = static_cast<uint16>(GLSLCodeModuleID::RANGE_SIZE);
-
     public:
         bool Register(const GLSLCodeModuleDefinition &definition);
-        bool RegisterBuiltinModules();
 
         /**
          * Recursively scan a directory for `.glsl` files and register every
@@ -37,16 +37,19 @@ namespace hgl::graph::mtl
                            int *out_file_count = nullptr,
                            int *out_error_count = nullptr);
 
-        const GLSLCodeModuleDefinition *Find(const GLSLCodeModuleID id) const;
         const GLSLCodeModuleDefinition *FindByName(const char *name) const;
 
-        int GetCount() const { return modules.GetCount(); }
+        /// Remove the module registered under `name` (used when a module's
+        /// dependency/conflict graph is incomplete). Returns false when absent.
+        bool RemoveByName(const char *name);
+
+        int GetCount() const { return static_cast<int>(modules.size()); }
 
         /**
          * Access a module by iteration index. The order is not guaranteed to be
          * stable across calls; consumers that need determinism must sort.
          */
         const GLSLCodeModuleDefinition *GetModuleByIndex(const int index) const;
-        void Clear() { modules.Clear(); file_data.Clear(); next_file_id = static_cast<uint16>(GLSLCodeModuleID::RANGE_SIZE); }
+        void Clear() { modules.clear(); file_data.Clear(); }
     };
 }

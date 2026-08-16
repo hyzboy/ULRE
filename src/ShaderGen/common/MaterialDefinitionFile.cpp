@@ -358,11 +358,6 @@ namespace hgl::graph::mtl
             return true;
         }
 
-        bool ParseCodeModule(const std::string &name, GLSLCodeModuleID &out)
-        {
-            return TryGetGLSLCodeModuleIDByName(name.c_str(), out);
-        }
-
         bool ParseSemantic(const std::string &name, GLSLCodeModuleSemantic &out)
         {
             static const char *const names[] = {
@@ -567,10 +562,9 @@ namespace hgl::graph::mtl
                     {
                         if (!item.is_string())
                             return false;
-                        GLSLCodeModuleID module;
-                        if (!ParseCodeModule(item.as_string(), module))
-                            return false;
-                        out.definition.code_module_requirements.push_back(module);
+                        // 模块名即身份（注册表唯一键），字符串直存。
+                        out.definition.code_module_requirements.emplace_back(
+                            item.as_string().c_str());
                     }
                 }
 

@@ -340,7 +340,7 @@ namespace
         MaterialDefinition manifest_definition = definition;
         if (depth_purpose)
             manifest_definition.code_module_requirements.clear();
-        GLSLCodeModuleID provider_roots[2]{};
+        const char *provider_root_names[2]{};
         uint32 provider_root_count = 0;
         const GLSLCodeModuleRegistry &module_registry = GetGLSLCodeModuleRegistry();
         const char *selected_provider_paths[] =
@@ -366,12 +366,12 @@ namespace
                 return nullptr;
             }
             if (provider_root_count < 2)
-                provider_roots[provider_root_count++] = provider->id;
+                provider_root_names[provider_root_count++] = provider->name;
         }
         ShaderLinkSpec resolved_program_link{};
         if (!Build3DShaderResourceManifest(
                 manifest_definition, manifest,
-                provider_roots, provider_root_count, &module_registry))
+                provider_root_names, provider_root_count, &module_registry))
         {
             GLogError("[ShaderGen] Generic material resource manifest failed: name=%s",
                       definition.definition_name.c_str());
@@ -950,7 +950,6 @@ GLSLCodeModuleRegistry &GetGLSLCodeModuleRegistry()
     static bool loaded = false;
     if (!loaded)
     {
-        registry.RegisterBuiltinModules();
         registry.LoadDirectory(ToOSString(shadergen::GetShaderLibraryPath()));
         loaded = true;
     }

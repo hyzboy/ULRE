@@ -25,7 +25,9 @@ namespace hgl::graph::mtl
 
     struct ShaderResourceManifest
     {
-        GLSLCodeModuleID code_modules[MaxShaderResourceManifestCodeModules]{};
+        // Names of the code modules contributing to this material, in
+        // dependency order. Pointers reference registry-owned module names.
+        const char *code_module_names[MaxShaderResourceManifestCodeModules]{};
         uint32 code_module_count = 0;
 
         GLSLCodeModuleUBORequirement ubos[MaxShaderResourceManifestUBOs]{};
@@ -39,7 +41,7 @@ namespace hgl::graph::mtl
 
         uint64 stable_hash = 0;
         ShaderResourceManifestError error = ShaderResourceManifestError::None;
-        GLSLCodeModuleID error_module = GLSLCodeModuleID::TestProviderA;
+        const char *error_module_name = nullptr;
 
         bool IsValid() const noexcept
         {
@@ -48,7 +50,7 @@ namespace hgl::graph::mtl
     };
 
     bool BuildShaderResourceManifest(
-        const GLSLCodeModuleID *root_modules,
+        const char *const *root_module_names,
         uint32 root_module_count,
         ShaderResourceManifest &manifest,
         const GLSLCodeModuleRegistry *registry = nullptr) noexcept;

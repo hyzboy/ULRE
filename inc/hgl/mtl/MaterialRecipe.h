@@ -15,6 +15,7 @@
 #include <hgl/mtl/BlendMode.h>
 #include <hgl/mtl/PassType.h>
 #include <hgl/util/hash/FNV1a.h>
+#include <hgl/type/String.h>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -247,7 +248,8 @@ namespace hgl::graph::mtl
         // ShaderGen 据此生成 "#define <name>Sampler <idx>u" 宏；名字缺失时保底索引 0。
         std::vector<std::string> sampler_names;
 
-        std::vector<GLSLCodeModuleID> code_module_requirements;
+        // 材质根 GLSL 代码模块名（注册表唯一键；无数字 ID 轨道）。
+        std::vector<AnsiString> code_module_requirements;
 
         // PCG 顶点节点配置（单一真源）
         VertexShaderNodeConfig vertex_node_config;

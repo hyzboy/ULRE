@@ -1,81 +1,9 @@
 #include <hgl/graph/glsl/GLSLCodeModule.h>
 
-#include <hgl/common/RenderAssignDef.h>
 #include <hgl/type/StrChar.h>
 
 namespace hgl::graph::mtl
 {
-    namespace
-    {
-        constexpr GLSLCodeModuleDefinition MODULES[] =
-        {
-            {
-                GLSLCodeModuleID::TestProviderA,
-                "TestProviderA",
-                // 仅为 provider-graph 测试提供占位模块，不注入真实 GLSL 代码。
-                "// TestProviderA: reserved for provider-graph regression tests",
-                nullptr,
-                0,
-                nullptr,
-                0,
-                nullptr,
-                0
-            },
-            {
-                GLSLCodeModuleID::TestProviderB,
-                "TestProviderB",
-                // 仅为 provider-graph 测试提供占位模块，不注入真实 GLSL 代码。
-                "// TestProviderB: reserved for provider-graph regression tests",
-                nullptr,
-                0,
-                nullptr,
-                0,
-                nullptr,
-                0
-            },
-            {
-                GLSLCodeModuleID::PBRSurface,
-                "PBRSurface",
-                "",
-                nullptr, 0, nullptr, 0,
-                nullptr, 0
-             }
-        };
-    }
-
-    const GLSLCodeModuleDefinition *FindGLSLCodeModuleDefinition(const GLSLCodeModuleID id) noexcept
-    {
-        const uint32 index = static_cast<uint32>(id);
-        return index < static_cast<uint32>(sizeof(MODULES) / sizeof(MODULES[0]))
-            ? &MODULES[index]
-            : nullptr;
-    }
-
-    bool TryGetGLSLCodeModuleIDByName(const char *name, GLSLCodeModuleID &out) noexcept
-    {
-        if (!name || !*name)
-            return false;
-
-        constexpr uint32 module_count =
-            static_cast<uint32>(sizeof(MODULES) / sizeof(MODULES[0]));
-        for (uint32 i = 0; i < module_count; ++i)
-        {
-            if (MODULES[i].name && hgl::strcmp(MODULES[i].name, name) == 0)
-            {
-                out = MODULES[i].id;
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    const char *GetGLSLCodeModuleName(const GLSLCodeModuleID id) noexcept
-    {
-        const GLSLCodeModuleDefinition *definition = FindGLSLCodeModuleDefinition(id);
-        return definition ? definition->name : "Unknown";
-    }
-
     uint64 GetGLSLCodeModuleDefinitionHash(
         const GLSLCodeModuleDefinition &definition) noexcept
     {
@@ -83,8 +11,7 @@ namespace hgl::graph::mtl
 
         h << definition.name
           << definition.glsl_code;
-        h << definition.id
-          << definition.kind
+        h << definition.kind
           << definition.priority
           << definition.flags
           << definition.metadata_version;
@@ -117,16 +44,12 @@ namespace hgl::graph::mtl
         for (uint32 i = 0; i < definition.semantic_provide_count; ++i)
             h << definition.semantic_provides[i];
 
-        h << definition.code_module_requirement_count;
-        for (uint32 i = 0; i < definition.code_module_requirement_count; ++i)
-            h << definition.code_module_requirements[i];
-
         h << definition.dependency_count;
         for (uint32 i = 0; i < definition.dependency_count; ++i)
         {
             const GLSLCodeModuleDependency &dependency =
                 definition.dependencies[i];
-            h << dependency.module_id
+            h << dependency.module_name
               << dependency.min_metadata_version
               << dependency.max_metadata_version;
         }
@@ -143,14 +66,8 @@ namespace hgl::graph::mtl
 
         h << definition.module_conflict_count;
         for (uint32 i = 0; i < definition.module_conflict_count; ++i)
-            h << definition.module_conflicts[i];
+            h << definition.module_conflict_names[i];
 
         return h;
-    }
-
-    uint64 GetGLSLCodeModuleDefinitionHash(const GLSLCodeModuleID id) noexcept
-    {
-        const GLSLCodeModuleDefinition *definition = FindGLSLCodeModuleDefinition(id);
-        return definition ? GetGLSLCodeModuleDefinitionHash(*definition) : 0;
     }
 }

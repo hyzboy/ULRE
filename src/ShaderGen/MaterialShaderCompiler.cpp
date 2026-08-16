@@ -6,6 +6,7 @@
 ///   3. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
 
 #include <hgl/shadergen/MaterialShaderCompiler.h>
+#include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/shadergen/ShaderBuildContext.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
@@ -115,11 +116,12 @@ static std::string BuildCodeModuleGLSL(const ShaderResourceManifest *manifest)
     if (!manifest || !manifest->IsValid())
         return {};
 
+    const auto &module_registry = mtl::GetGLSLCodeModuleRegistry();
     std::string result;
     for (uint32 i = 0; i < manifest->code_module_count; ++i)
     {
         const GLSLCodeModuleDefinition *module =
-            FindGLSLCodeModuleDefinition(manifest->code_modules[i]);
+            module_registry.FindByName(manifest->code_module_names[i]);
         if (!module || !module->glsl_code)
             continue;
         result += "\n// GLSLCodeModule: ";

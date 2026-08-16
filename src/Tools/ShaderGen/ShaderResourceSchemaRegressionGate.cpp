@@ -1,4 +1,4 @@
-#include <hgl/mtl/ShaderResourceSchema.h>
+﻿#include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/MaterialDefinitionFile.h>
 #include <hgl/mtl/SamplerPreset.h>
@@ -103,7 +103,8 @@ namespace
             || std::strcmp(group, "descriptor") == 0
             || std::strcmp(group, "cache") == 0
             || std::strcmp(group, "materialization") == 0
-            || std::strcmp(group, "pipeline") == 0;
+            || std::strcmp(group, "pipeline") == 0
+            || std::strcmp(group, "module-invariants") == 0;
     }
 
     static bool IsRegressionGroupSelected(
@@ -946,7 +947,6 @@ namespace
         };
 
         GLSLCodeModuleDefinition position_provider{};
-        position_provider.id = GLSLCodeModuleID::TestProviderA;
         position_provider.name = "preview_position_from_geometry";
         position_provider.glsl_code = "// preview only";
         position_provider.kind = GLSLCodeModuleKind::VertexInput;
@@ -956,7 +956,6 @@ namespace
         position_provider.semantic_provide_count = 1;
 
         GLSLCodeModuleDefinition uv_provider{};
-        uv_provider.id = GLSLCodeModuleID::TestProviderB;
         uv_provider.name = "preview_uv_from_geometry";
         uv_provider.glsl_code = "// preview only";
         uv_provider.kind = GLSLCodeModuleKind::VertexInput;
@@ -966,7 +965,6 @@ namespace
         uv_provider.semantic_provide_count = 1;
 
         GLSLCodeModuleDefinition normal_provider{};
-        normal_provider.id = GLSLCodeModuleID::PBRSurface;
         normal_provider.name = "preview_normal_from_geometry";
         normal_provider.glsl_code = "// preview only";
         normal_provider.kind = GLSLCodeModuleKind::VertexInput;
@@ -1367,10 +1365,9 @@ namespace
             GLSLCodeModuleSemantic::Normal
         };
         const GLSLCodeModuleDefinition normal_provider{
-            GLSLCodeModuleID::TestProviderA,
             "identity_normal",
             "// identity",
-            nullptr, 0, nullptr, 0, nullptr, 0,
+            nullptr, 0, nullptr, 0,
             GLSLCodeModuleKind::VertexInput,
             &normal_requirement, 1,
             normal_provides, 1,
@@ -1387,10 +1384,9 @@ namespace
             GLSLCodeModuleSemantic::UV0
         };
         const GLSLCodeModuleDefinition uv_provider{
-            GLSLCodeModuleID::TestProviderB,
             "identity_uv",
             "// identity",
-            nullptr, 0, nullptr, 0, nullptr, 0,
+            nullptr, 0, nullptr, 0,
             GLSLCodeModuleKind::VertexInput,
             &uv_requirement, 1,
             uv_provides, 1,
@@ -1414,10 +1410,9 @@ namespace
 
         GLSLCodeModuleResolutionResult changed_result = first;
         const GLSLCodeModuleDefinition packed_normal_provider{
-            GLSLCodeModuleID::PBRSurface,
             "identity_normal_packed",
             "// identity",
-            nullptr, 0, nullptr, 0, nullptr, 0,
+            nullptr, 0, nullptr, 0,
             GLSLCodeModuleKind::Decode,
             &normal_requirement, 1,
             normal_provides, 1,
@@ -1447,18 +1442,16 @@ namespace
         result.name = "P.provider-graph-composition-interface";
 
         const GLSLCodeModuleDefinition position_provider{
-            GLSLCodeModuleID::TestProviderA,
             "compose_position",
             "vec4 GetLocalPos() { return vec4(Position, 1.0); }",
-            nullptr, 0, nullptr, 0, nullptr, 0,
+            nullptr, 0, nullptr, 0,
             GLSLCodeModuleKind::Position,
             nullptr, 0, nullptr, 0, 0, 0
         };
         const GLSLCodeModuleDefinition normal_provider{
-            GLSLCodeModuleID::TestProviderB,
             "compose_normal",
             "vec3 GetNormal() { return Normal; }",
-            nullptr, 0, nullptr, 0, nullptr, 0,
+            nullptr, 0, nullptr, 0,
             GLSLCodeModuleKind::Basis,
             nullptr, 0, nullptr, 0, 0, 0
         };
@@ -3677,8 +3670,6 @@ namespace
         result.name = "H1.provider-resource-manifest";
 
         GLSLCodeModuleRegistry registry;
-        if (!registry.RegisterBuiltinModules())
-            result.diagnostics.emplace_back("provider registry builtin registration failed");
 
         int file_count = 0;
         int error_count = 0;
@@ -3704,7 +3695,7 @@ namespace
         }
         else
         {
-            const GLSLCodeModuleID roots_2d[] = {pbr_2d->id, ntb_2d->id};
+            const char *roots_2d[] = {pbr_2d->name, ntb_2d->name};
             ShaderResourceManifest manifest_2d{};
             if (!BuildShaderResourceManifest(
                     roots_2d, uint32_t(std::size(roots_2d)), manifest_2d, &registry))
@@ -3744,7 +3735,7 @@ namespace
                         "Texture2D bindless providers must emit the layer-table descriptor");
             }
 
-            const GLSLCodeModuleID roots_array[] = {pbr_array->id, ntb_array->id};
+            const char *roots_array[] = {pbr_array->name, ntb_array->name};
             ShaderResourceManifest manifest_array{};
             if (!BuildShaderResourceManifest(
                     roots_array, uint32_t(std::size(roots_array)), manifest_array, &registry))
@@ -3779,7 +3770,7 @@ namespace
                         "Texture2DArray provider layer dependency must emit the layer-table descriptor");
             }
 
-            const GLSLCodeModuleID derivative_root = ntb_derivative->id;
+            const char *derivative_root = ntb_derivative->name;
             ShaderResourceManifest derivative_manifest{};
             if (!BuildShaderResourceManifest(
                     &derivative_root, 1, derivative_manifest, &registry)
@@ -3938,8 +3929,6 @@ namespace
 
         // Registry scan of the real ShaderLibrary directory.
         GLSLCodeModuleRegistry registry;
-        if (!registry.RegisterBuiltinModules())
-            result.diagnostics.emplace_back("RegisterBuiltinModules failed");
 
         int file_count = 0;
         int error_count = 0;
@@ -3954,7 +3943,7 @@ namespace
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 55 + int(GLSLCodeModuleID::RANGE_SIZE);
+            const int expected_count = 55;
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
@@ -3969,12 +3958,10 @@ namespace
                         GetGLSLCodeModuleMetadataValidationErrorName(
                             metadata_diagnostic.error))
                     + " module="
-                    + std::to_string(
-                        static_cast<uint32_t>(metadata_diagnostic.module_id))
+                    + std::string(metadata_diagnostic.module_name.c_str())
                     + " related="
-                    + std::to_string(
-                        static_cast<uint32_t>(
-                            metadata_diagnostic.related_module_id)));
+                    + std::string(
+                        metadata_diagnostic.related_module_name.c_str()));
             }
         }
 
@@ -4001,9 +3988,9 @@ namespace
         {
             if (compositor_lit->kind != GLSLCodeModuleKind::FragmentShader)
                 result.diagnostics.emplace_back("main_forward_surface kind mismatch");
-            if (compositor_lit->code_module_requirement_count != 4)
+            if (compositor_lit->dependency_count != 4)
                 result.diagnostics.emplace_back("main_forward_surface uses resolution expected 4 deps, got "
-                    + std::to_string(compositor_lit->code_module_requirement_count));
+                    + std::to_string(compositor_lit->dependency_count));
         }
 
         const auto *forward_input = registry.FindByName("forward_lighting");
@@ -4027,13 +4014,12 @@ namespace
             result.diagnostics.emplace_back("second LoadDirectory must report 55 duplicates, got files="
                 + std::to_string(dup_count) + " errors=" + std::to_string(dup_errors));
 
-        const int stable_count = 55 + int(GLSLCodeModuleID::RANGE_SIZE);
+        const int stable_count = 55;
         if (registry.GetCount() != stable_count)
             result.diagnostics.emplace_back("registry count changed after duplicate re-scan: got "
                 + std::to_string(registry.GetCount()));
         if (compositor_lit
-         && (compositor_lit->code_module_requirement_count != 4
-          || compositor_lit->dependency_count != 4))
+         && compositor_lit->dependency_count != 4)
         {
             result.diagnostics.emplace_back(
                 "duplicate re-scan must not append module dependencies");
@@ -4149,11 +4135,9 @@ namespace
         result.name = "I1.glsl-code-module-metadata-validation";
 
         const auto make_definition = [](
-            const uint16_t id,
             const char *name) -> GLSLCodeModuleDefinition
         {
             GLSLCodeModuleDefinition definition{};
-            definition.id = static_cast<GLSLCodeModuleID>(id);
             definition.name = name;
             definition.glsl_code = "// metadata validation";
             definition.kind = GLSLCodeModuleKind::VertexInput;
@@ -4169,7 +4153,7 @@ namespace
                 GLSLCodeModuleSemantic::Position
             };
             GLSLCodeModuleDefinition definition =
-                make_definition(200, "duplicate_provide");
+                make_definition("duplicate_provide");
             definition.semantic_provides = duplicate_provides;
             definition.semantic_provide_count = 2;
 
@@ -4185,16 +4169,16 @@ namespace
 
         {
             GLSLCodeModuleDefinition first =
-                make_definition(201, "cycle_first");
+                make_definition("cycle_first");
             GLSLCodeModuleDefinition second =
-                make_definition(202, "cycle_second");
+                make_definition("cycle_second");
             const GLSLCodeModuleDependency first_dependencies[] =
             {
-                {second.id, 0, 1}
+                {second.name, 0, 1}
             };
             const GLSLCodeModuleDependency second_dependencies[] =
             {
-                {first.id, 0, 1}
+                {first.name, 0, 1}
             };
             first.dependencies = first_dependencies;
             first.dependency_count = 1;
@@ -4220,9 +4204,9 @@ namespace
                 GLSLCodeModuleSemantic::Position
             };
             GLSLCodeModuleDefinition first =
-                make_definition(203, "ambiguous_first");
+                make_definition("ambiguous_first");
             GLSLCodeModuleDefinition second =
-                make_definition(204, "ambiguous_second");
+                make_definition("ambiguous_second");
             first.semantic_provides = position;
             first.semantic_provide_count = 1;
             second.semantic_provides = position;
@@ -4266,9 +4250,9 @@ namespace
                 }
             };
             GLSLCodeModuleDefinition high =
-                make_definition(205, "conditional_high");
+                make_definition("conditional_high");
             GLSLCodeModuleDefinition low =
-                make_definition(206, "conditional_low");
+                make_definition("conditional_low");
             high.semantic_provides = position;
             high.semantic_provide_count = 1;
             high.conditions = high_condition;
@@ -4292,14 +4276,14 @@ namespace
 
         {
             GLSLCodeModuleDefinition unversioned_target =
-                make_definition(207, "unversioned_target");
+                make_definition("unversioned_target");
             unversioned_target.metadata_version =
                 GLSLCodeModuleUnversionedMetadataVersion;
             GLSLCodeModuleDefinition versioned_source =
-                make_definition(208, "versioned_source");
+                make_definition("versioned_source");
             const GLSLCodeModuleDependency dependencies[] =
             {
-                {unversioned_target.id, 1, 1}
+                {unversioned_target.name, 1, 1}
             };
             versioned_source.dependencies = dependencies;
             versioned_source.dependency_count = 1;
@@ -4320,11 +4304,11 @@ namespace
 
         {
             GLSLCodeModuleDefinition first =
-                make_definition(209, "conflict_first");
+                make_definition("conflict_first");
             GLSLCodeModuleDefinition second =
-                make_definition(210, "conflict_second");
-            const GLSLCodeModuleID conflicts[] = {second.id};
-            first.module_conflicts = conflicts;
+                make_definition("conflict_second");
+            const char *conflicts[] = {second.name};
+            first.module_conflict_names = conflicts;
             first.module_conflict_count = 1;
             if (!AreGLSLCodeModulesConflicting(first, second)
              || !AreGLSLCodeModulesConflicting(second, first))
@@ -4336,7 +4320,7 @@ namespace
 
         {
             GLSLCodeModuleDefinition base =
-                make_definition(211, "metadata_hash");
+                make_definition("metadata_hash");
             GLSLCodeModuleDefinition changed = base;
             const GLSLCodeModuleCondition condition[] =
             {
@@ -4463,23 +4447,20 @@ namespace
             GLSLCodeModuleDefinition &stage2,
             GLSLCodeModuleDefinition &stage3,
             GLSLCodeModuleDependency &root_dependency,
-            const uint16_t first_id,
             const bool reverse_order) -> bool
         {
             dependency = {};
-            dependency.id = static_cast<GLSLCodeModuleID>(first_id);
             dependency.name = "shadow_dependency";
             dependency.glsl_code = "// shadow dependency";
             dependency.kind = GLSLCodeModuleKind::Utility;
             dependency.metadata_version = 1;
 
             root_dependency = {
-                dependency.id,
+                dependency.name,
                 GLSLCodeModuleUnversionedMetadataVersion,
                 GLSLCodeModuleCurrentMetadataVersion
             };
             root = {};
-            root.id = static_cast<GLSLCodeModuleID>(first_id + 1);
             root.name = "main_depth_only";
             root.glsl_code = "// shadow root";
             root.kind = GLSLCodeModuleKind::FragmentShader;
@@ -4488,14 +4469,12 @@ namespace
             root.dependency_count = 1;
 
             stage2 = {};
-            stage2.id = static_cast<GLSLCodeModuleID>(first_id + 2);
             stage2.name = "s2_passthrough3d";
             stage2.glsl_code = "// synthetic stage 2";
             stage2.kind = GLSLCodeModuleKind::Position;
             stage2.metadata_version = 1;
 
             stage3 = {};
-            stage3.id = static_cast<GLSLCodeModuleID>(first_id + 3);
             stage3.name = "s3_world_camera_vp";
             stage3.glsl_code = "// synthetic stage 3";
             stage3.kind = GLSLCodeModuleKind::Transform;
@@ -4535,7 +4514,6 @@ namespace
                 first_stage2,
                 first_stage3,
                 first_root_dependency,
-                400,
                 false)
          || !build_synthetic_registry(
                 second_registry,
@@ -4544,7 +4522,6 @@ namespace
                 second_stage2,
                 second_stage3,
                 second_root_dependency,
-                500,
                 true))
         {
             result.diagnostics.emplace_back(
@@ -4659,12 +4636,10 @@ namespace
         {
             GLSLCodeModuleRegistry registry;
             std::vector<std::unique_ptr<SyntheticModule>> storage;
-            uint16_t next_id = 100;
+
 
             ResolverFixture()
             {
-                if (!registry.RegisterBuiltinModules())
-                    throw std::runtime_error("RegisterBuiltinModules failed");
             }
 
             const GLSLCodeModuleDefinition *Add(const char *name,
@@ -4680,7 +4655,7 @@ namespace
                 module->provides = std::move(provides);
 
                 GLSLCodeModuleDefinition definition;
-                definition.id = static_cast<GLSLCodeModuleID>(next_id++);
+                
                 definition.name = module->name.c_str();
                 definition.glsl_code = module->code.c_str();
                 definition.kind = kind;
@@ -5655,6 +5630,126 @@ namespace
         result.passed = result.diagnostics.empty();
         return result;
     }
+
+    static GateResult RunModuleInvariantsCase()
+    {
+        GateResult result;
+        result.name = "MI.module-invariants";
+
+        // 1. Real ShaderLibrary scan: names unique, stable IDs unique.
+        GLSLCodeModuleRegistry registry;
+        int file_count = 0;
+        int error_count = 0;
+        if (!registry.LoadDirectory(
+                hgl::ToOSString(GetShaderLibraryPath()),
+                &file_count, &error_count))
+        {
+            result.diagnostics.emplace_back(
+                "module registry directory scan failed");
+        }
+        if (error_count != 0)
+        {
+            result.diagnostics.emplace_back(
+                "module registry scan reported "
+                + std::to_string(error_count) + " errors");
+        }
+
+        const int count = registry.GetCount();
+        for (int i = 0; i < count; ++i)
+        {
+            const auto *left = registry.GetModuleByIndex(i);
+            if (!left || !left->name || !left->name[0])
+            {
+                result.diagnostics.emplace_back(
+                    "module at index " + std::to_string(i)
+                    + " has no name");
+                continue;
+            }
+
+            const uint64_t left_id = GetGLSLCodeModuleStableID(*left);
+            for (int j = i + 1; j < count; ++j)
+            {
+                const auto *right = registry.GetModuleByIndex(j);
+                if (!right || !right->name)
+                    continue;
+
+                if (std::strcmp(left->name, right->name) == 0)
+                {
+                    result.diagnostics.emplace_back(
+                        "duplicate module name: "
+                        + std::string(left->name));
+                }
+                if (GetGLSLCodeModuleStableID(*right) == left_id)
+                {
+                    result.diagnostics.emplace_back(
+                        "stable ID collision between "
+                        + std::string(left->name) + " and "
+                        + std::string(right->name));
+                }
+            }
+        }
+
+        // 2. Content-hash sensitivity: changing kind / priority / a single
+        //    requirement must change the canonical content hash.
+        const GLSLCodeModuleSemanticRequirement normal_requirement{
+            GLSLCodeModuleCapabilitySource::ProducedSemantic,
+            GLSLCodeModuleSemantic::Normal,
+            static_cast<uint32_t>(GLSLCodeModuleNumericClass::Float),
+            3, 3, 0
+        };
+        const GLSLCodeModuleSemanticRequirement uv_requirement{
+            GLSLCodeModuleCapabilitySource::ProducedSemantic,
+            GLSLCodeModuleSemantic::UV0,
+            static_cast<uint32_t>(GLSLCodeModuleNumericClass::Float),
+            2, 2, 0
+        };
+
+        GLSLCodeModuleDefinition base{};
+        base.name = "invariant_base";
+        base.glsl_code = "// invariant base";
+        base.kind = GLSLCodeModuleKind::Utility;
+        base.priority = 10;
+        base.metadata_version = GLSLCodeModuleCurrentMetadataVersion;
+        base.semantic_requirements = &normal_requirement;
+        base.semantic_requirement_count = 1;
+
+        GLSLCodeModuleDefinition changed_kind = base;
+        changed_kind.kind = GLSLCodeModuleKind::Decode;
+
+        GLSLCodeModuleDefinition changed_priority = base;
+        changed_priority.priority = 20;
+
+        GLSLCodeModuleDefinition changed_requirement = base;
+        changed_requirement.semantic_requirements = &uv_requirement;
+
+        const uint64_t base_hash =
+            GetCanonicalGLSLCodeModuleContentHash(base, registry);
+        if (base_hash
+            == GetCanonicalGLSLCodeModuleContentHash(
+                changed_kind, registry))
+        {
+            result.diagnostics.emplace_back(
+                "content hash must change when kind changes");
+        }
+        if (base_hash
+            == GetCanonicalGLSLCodeModuleContentHash(
+                changed_priority, registry))
+        {
+            result.diagnostics.emplace_back(
+                "content hash must change when priority changes");
+        }
+        if (base_hash
+            == GetCanonicalGLSLCodeModuleContentHash(
+                changed_requirement, registry))
+        {
+            result.diagnostics.emplace_back(
+                "content hash must change when a requirement changes");
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
 }
 
 int main(const int argc, char **argv)
@@ -5682,6 +5777,8 @@ int main(const int argc, char **argv)
     const bool run_materialization =
         IsRegressionGroupSelected(selected_group, "materialization");
     const bool run_pipeline = IsRegressionGroupSelected(selected_group, "pipeline");
+    const bool run_module_invariants =
+        IsRegressionGroupSelected(selected_group, "module-invariants");
 
     std::vector<GateResult> results;
 
@@ -5757,6 +5854,7 @@ int main(const int argc, char **argv)
     if (run_pipeline) results.push_back(RunShaderLibraryPathCase());
     if (run_materialization) results.push_back(RunSamplerPresetLibraryCase());
     if (run_descriptor) results.push_back(RunResourceContractBoundaryCase());
+    if (run_module_invariants) results.push_back(RunModuleInvariantsCase());
 
     bool all_passed = true;
     for (const auto &result : results)

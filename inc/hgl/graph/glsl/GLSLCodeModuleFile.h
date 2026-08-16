@@ -53,15 +53,14 @@ namespace hgl::graph::mtl
         AnsiString name;
         AnsiString glsl_code;
 
-        // `uses <module-name>` references; resolved to IDs by the registry
-        // pass 2 after all files are registered.
+        // `uses <module-name>` references; validated against the registry
+        // by pass 2 after all files are registered. Names are the identity.
         AnsiStringList pending_module_requirements;
         ValueArray<GLSLCodeModuleDependency> pending_dependency_versions;
         AnsiStringList pending_module_conflicts;
 
         ValueArray<GLSLCodeModuleSemanticRequirement> semantic_requirements;
         ValueArray<GLSLCodeModuleSemantic> semantic_provides;
-        ValueArray<GLSLCodeModuleID> code_module_requirements;
         ValueArray<GLSLCodeModuleUBORequirement> ubo_requirements;
         ValueArray<GLSLCodeModuleSSBORequirement> ssbo_requirements;
         ValueArray<GLSLCodeModuleTextureLayerRequirement> texture_layer_requirements;
@@ -77,7 +76,8 @@ namespace hgl::graph::mtl
         bool metadata_resolution_valid = false;
         ValueArray<GLSLCodeModuleDependency> dependencies;
         ValueArray<GLSLCodeModuleCondition> conditions;
-        ValueArray<GLSLCodeModuleID> module_conflicts;
+        // Resolved conflict target names (pointing at target module names).
+        ValueArray<const char *> module_conflict_names;
 
         GLSLCodeModuleDefinition definition;
     };
