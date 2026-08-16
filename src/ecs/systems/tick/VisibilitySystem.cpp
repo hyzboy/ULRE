@@ -10,7 +10,7 @@ namespace hgl::ecs
         , world(nullptr)
         , visibility_storage(nullptr)
     {
-        SetExecutionOrder(ExecutionPhase::TickTransform);
+        SetExecutionPhase(ExecutionPhase::TickTransform);
 
         visibility_storage = new VisibilityDataStorage();
     }

@@ -328,11 +328,9 @@ namespace hgl::ecs
 
     graph::BufferManager* PrimitiveBatchPipeline::GetBufferManager() const
     {
-        auto render_ctx = world ? world->GetRenderContext() : nullptr;
-        auto graphics_context = render_ctx ? render_ctx->GetGraphicsContext() : nullptr;
-        if (!graphics_context && world)
-            graphics_context = world->GetGraphicsContext();
-        return graphics_context ? graphics_context->GetBufferManager() : nullptr;
+        // W7：GetGraphicsContext() 已内置 render_ctx fallback
+        auto *gc = world ? world->GetGraphicsContext() : nullptr;
+        return gc ? gc->GetBufferManager() : nullptr;
     }
 
     std::pair<graph::ObjectNameBuilder, graph::ObjectNameBuilder>

@@ -1,5 +1,6 @@
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/support/RenderResource.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/mesh/GeometryDataBuffer.h>
 #include<hgl/graph/mesh/GeometryDrawRange.h>
@@ -15,14 +16,6 @@ namespace hgl::ecs
 {
     namespace
     {
-        std::string BuildTextureResourceId(hgl::graph::Texture *texture)
-        {
-            if (!texture)
-                return {};
-
-            return "texid:" + std::to_string(texture->GetID());
-        }
-
         void ResetMaterialRecipe(hgl::graph::mtl::MaterialRecipe &recipe)
         {
             recipe.recipe_name.clear();

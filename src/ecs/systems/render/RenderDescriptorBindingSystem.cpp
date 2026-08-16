@@ -1,6 +1,7 @@
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<hgl/ecs/core/Context.h>
-#include<hgl/ecs/systems/render/RenderFrameBusinessSyncSystem.h>
+#include<hgl/ecs/support/RenderResource.h>
+#include<hgl/ecs/systems/render/RenderFrameUBOSyncSystem.h>
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -36,14 +37,6 @@ namespace hgl::ecs
 {
     namespace
     {
-        std::string BuildTextureResourceId(const graph::Texture *texture)
-        {
-            if (!texture)
-                return {};
-
-            return "texid:" + std::to_string(texture->GetID());
-        }
-
         graph::BufferManager *GetBufferManager(hgl::ecs::ECSContext *ctx)
         {
             if (!ctx)
@@ -99,8 +92,8 @@ namespace hgl::ecs
     RenderDescriptorBindingSystem::RenderDescriptorBindingSystem(const std::string& name)
         : System(name)
     {
-        SetExecutionOrder(ExecutionPhase::RenderFrameSync);
-        AddDependency<RenderFrameBusinessSyncSystem>();
+        SetExecutionPhase(ExecutionPhase::RenderFrameSync);
+        AddDependency<RenderFrameUBOSyncSystem>();
         AddDependency<EnvironmentSystem>();
         AddDependency<RenderTargetSystem>();
         AddDependency<CameraSystem>();

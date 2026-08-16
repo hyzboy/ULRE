@@ -12,7 +12,7 @@ namespace hgl::ecs
     BoundingBoxUpdateSystem::BoundingBoxUpdateSystem(const std::string& name)
         : System(name)
     {
-        SetExecutionOrder(ExecutionPhase::TickTransform);
+        SetExecutionPhase(ExecutionPhase::TickTransform);
         AddDependency<TransformSystem>();
     }
 

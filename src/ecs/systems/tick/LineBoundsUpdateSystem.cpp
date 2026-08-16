@@ -10,7 +10,7 @@ namespace hgl::ecs
     LineBoundsUpdateSystem::LineBoundsUpdateSystem(const std::string& name)
         : System(name)
     {
-        SetExecutionOrder(ExecutionPhase::TickTransform);
+        SetExecutionPhase(ExecutionPhase::TickTransform);
         AddDependency<TransformSystem>();
     }
 

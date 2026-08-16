@@ -1,4 +1,5 @@
 ﻿#include<hgl/ecs/core/Context.h>
+#include<hgl/graph/render/RenderContext.h>
 #include<hgl/ecs/core/EntityManager.h>
 #include<hgl/ecs/core/DefaultSystems.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
@@ -173,7 +174,7 @@ namespace hgl
                 *out_transform = transform;
 
             if (out_entity_ids)
-                out_entity_ids->push_back(entity->GetID());
+                out_entity_ids->push_back(entity->GetEntityID());
 
             return entity;
         }
@@ -778,7 +779,7 @@ namespace hgl
             }
         }
 
-        void ECSContext::RunRenderUpdatesRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime)
+        void ECSContext::RunRenderPhaseUpdates(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime)
         {
             SortRenderSystems();
 
@@ -1203,6 +1204,20 @@ namespace hgl
                 return true;
 
             return false;
+        }
+
+        hgl::graph::GraphicsContext* ECSContext::GetGraphicsContext()
+        {
+            if (!graphics_context && render_context)
+                graphics_context = render_context->GetGraphicsContext();
+            return graphics_context;
+        }
+
+        const hgl::graph::GraphicsContext* ECSContext::GetGraphicsContext() const
+        {
+            if (graphics_context)
+                return graphics_context;
+            return render_context ? render_context->GetGraphicsContext() : nullptr;
         }
 
         void ECSContext::SetFrameIndex(const uint32_t index)

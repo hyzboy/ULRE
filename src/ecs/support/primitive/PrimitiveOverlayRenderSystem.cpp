@@ -23,7 +23,7 @@ namespace hgl::ecs
     PrimitiveOverlayRenderSystem::PrimitiveOverlayRenderSystem(const std::string& name)
         : RenderPipelineDrawSystem(name)
     {
-        SetExecutionOrder(ExecutionPhase::RenderDebug);
+        SetExecutionPhase(ExecutionPhase::RenderDebug);
         SetRenderElementType("Primitive");
     }
 

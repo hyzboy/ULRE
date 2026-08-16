@@ -9,7 +9,7 @@ namespace hgl::ecs
     RenderTargetSystem::RenderTargetSystem(const std::string &name)
         : System(name)
     {
-        SetExecutionOrder(ExecutionPhase::RenderPreBeginFrame);
+        SetExecutionPhase(ExecutionPhase::RenderPreBeginFrame);
     }
 
     void RenderTargetSystem::SetRenderContext(graph::RenderContext *ctx)

@@ -200,7 +200,7 @@ namespace hgl
             bool SetSystemEnabledByKey(size_t key, bool enabled);
             bool RemoveSystemByKey(size_t key);
             void RunRenderPhaseUpdates(ExecutionPhase phase, float deltaTime);
-            void RunRenderUpdatesRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
+            void RunRenderPhaseUpdates(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
             void RunRenderSystemsInRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
             void RunSystemUpdate(System *system, float deltaTime);
             void RegisterComponentInstanceInternal(size_t type_hash, const std::shared_ptr<Component>& comp);
@@ -350,8 +350,10 @@ namespace hgl
 
             /// Graphics context adapter (Phase 2)
             void SetGraphicsContext(hgl::graph::GraphicsContext* ctx) { graphics_context = ctx; }
-            hgl::graph::GraphicsContext* GetGraphicsContext() { return graphics_context; }
-            const hgl::graph::GraphicsContext* GetGraphicsContext() const { return graphics_context; }
+            // W7：封装 render_ctx fallback（实现见 Context.cpp——RenderContext
+            // 前向声明，内联体无法调用成员函数）——此前各系统复制三段样板
+            hgl::graph::GraphicsContext* GetGraphicsContext();
+            const hgl::graph::GraphicsContext* GetGraphicsContext() const;
 
             /// Render context adapter (Phase 2)
             void SetRenderContext(hgl::graph::RenderContext* ctx) { render_context = ctx; }

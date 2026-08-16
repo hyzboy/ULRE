@@ -219,7 +219,7 @@ namespace hgl::ecs
     {
         SetContext(ctx);
         // Set system type and properties
-        SetExecutionOrder(ExecutionPhase::TickCamera);
+        SetExecutionPhase(ExecutionPhase::TickCamera);
 
         // Declare dependencies
         AddDependency<InputSystem>();     // Needs input for camera control

@@ -11,7 +11,7 @@ namespace hgl::ecs
         : System(name)
     {
         // Set system type and properties
-        SetExecutionOrder(ExecutionPhase::TickTransform);
+        SetExecutionPhase(ExecutionPhase::TickTransform);
 
         // No dependencies - Transform is fundamental
     }
@@ -377,11 +377,8 @@ namespace hgl::ecs
         if (!world)
             return;
 
-        auto render_ctx = world->GetRenderContext();
-        auto graphics_context = render_ctx ? render_ctx->GetGraphicsContext() : nullptr;
-        if (!graphics_context)
-            graphics_context = world->GetGraphicsContext();
-
+        // W7：GetGraphicsContext() 已内置 render_ctx fallback
+        auto *graphics_context = world->GetGraphicsContext();
         if (!graphics_context)
             return;
 

@@ -532,7 +532,7 @@ namespace hgl
                     Entity* owner_entity = owner_context ? owner_context->GetEntity(owner_id) : nullptr;
                     if (owner_entity)
                     {
-                        parentTransform->RemoveChild(owner_entity->GetID());
+                        parentTransform->RemoveChild(owner_entity->GetEntityID());
                     }
                 }
             }

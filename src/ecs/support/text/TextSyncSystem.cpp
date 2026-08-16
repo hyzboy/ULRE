@@ -7,7 +7,7 @@ namespace hgl::ecs
     TextSyncSystem::TextSyncSystem(const std::string& name)
         : SyncSystem(name)
     {
-        SetExecutionOrder(ExecutionPhase::RenderBatch);
+        SetExecutionPhase(ExecutionPhase::RenderBatch);
         SetRenderElementType("Text");
         AddDependency<TextBuildSystem>();
     }

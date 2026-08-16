@@ -141,7 +141,7 @@ namespace hgl
                         LogDebug("[ECS RENDER] Update phase range %d to %d (clamped from %d)",
                                 static_cast<int>(update_min), static_cast<int>(pass.endPhase),
                                 static_cast<int>(pass.startPhase));
-                        RunRenderUpdatesRange(update_min, pass.endPhase, deltaTime);
+                        RunRenderPhaseUpdates(update_min, pass.endPhase, deltaTime);
                     }
                 }
 

@@ -12,7 +12,7 @@ namespace hgl::ecs
     RenderBufferUploadSystem::RenderBufferUploadSystem(const std::string& name)
         : System(name)
     {
-        SetExecutionOrder(ExecutionPhase::RenderBufferUpload);
+        SetExecutionPhase(ExecutionPhase::RenderBufferUpload);
     }
 
     void RenderBufferUploadSystem::Update(float /*deltaTime*/)

@@ -43,7 +43,7 @@ namespace hgl
             RenderBufferCommit,     // finalize staged CPU writes
             RenderBufferUpload,     // GPU transfer: vkCmdCopyBuffer
             RenderFrameSync,        // sync frame UBOs/descriptors after upload
-                                    //   RenderFrameBusinessSyncSystem
+                                    //   RenderFrameUBOSyncSystem
 
             // ── Inside render pass ──────────────────────────────────────────
             RenderDrawSubmit,       // record draw commands
@@ -112,7 +112,7 @@ namespace hgl
         protected:
 
             /// Set execution order by phase
-            void SetExecutionOrder(ExecutionPhase phase)
+            void SetExecutionPhase(ExecutionPhase phase)
             {
                 executionPhase = phase;
             }

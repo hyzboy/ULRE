@@ -8,7 +8,7 @@ namespace hgl::ecs
     SwapchainNextImageSystem::SwapchainNextImageSystem(const std::string& name)
         : System(name)
     {
-        SetExecutionOrder(ExecutionPhase::RenderSwapchainNextImage);
+        SetExecutionPhase(ExecutionPhase::RenderSwapchainNextImage);
     }
 
     void SwapchainNextImageSystem::Update(float /*deltaTime*/)

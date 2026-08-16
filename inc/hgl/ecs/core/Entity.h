@@ -37,7 +37,9 @@ namespace hgl
             ~Entity() override;
 
             /// Get entity ID
-            EntityID GetID() const { return id; }
+            // GetEntityID：消除对 Object::GetID（对象 ID）的隐藏——EntityID
+            // 与 Object 的 ID 是两套体系，同名隐藏易混淆
+            EntityID GetEntityID() const { return id; }
 
             /// Set entity ID (called by EntityManager)
             void SetID(EntityID entity_id) { id = entity_id; }

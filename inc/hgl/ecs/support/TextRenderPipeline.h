@@ -41,6 +41,8 @@ namespace hgl
         class TextRenderPipeline : public RenderPipelineBase
         {
         private:
+            // W7 统一：类静态成员 kName（Line/Text/Primitive 三管线同模式）
+            static const std::string kName;
             struct RenderResources
             {
                 graph::TileFont* tile_font = nullptr;

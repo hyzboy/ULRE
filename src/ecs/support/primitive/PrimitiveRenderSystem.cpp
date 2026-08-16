@@ -27,7 +27,7 @@ namespace hgl::ecs
     PrimitiveRenderSystem::PrimitiveRenderSystem(const std::string& name)
         : RenderPipelineDrawSystem(name)
     {
-        SetExecutionOrder(ExecutionPhase::RenderDrawSubmit);
+        SetExecutionPhase(ExecutionPhase::RenderDrawSubmit);
         SetRenderElementType("Primitive");
     }
 

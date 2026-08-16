@@ -1,4 +1,4 @@
-#include<hgl/ecs/systems/render/RenderFrameBusinessSyncSystem.h>
+#include<hgl/ecs/systems/render/RenderFrameUBOSyncSystem.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
@@ -7,16 +7,16 @@
 
 namespace hgl::ecs
 {
-    RenderFrameBusinessSyncSystem::RenderFrameBusinessSyncSystem(const std::string& name)
+    RenderFrameUBOSyncSystem::RenderFrameUBOSyncSystem(const std::string& name)
         : System(name)
     {
-        SetExecutionOrder(ExecutionPhase::RenderFrameSync);
+        SetExecutionPhase(ExecutionPhase::RenderFrameSync);
         AddDependency<RenderBufferUploadSystem>();
         AddDependency<EnvironmentSystem>();
         AddDependency<RenderTargetSystem>();
     }
 
-    void RenderFrameBusinessSyncSystem::Update(float /*deltaTime*/)
+    void RenderFrameUBOSyncSystem::Update(float /*deltaTime*/)
     {
         if (!context)
             return;

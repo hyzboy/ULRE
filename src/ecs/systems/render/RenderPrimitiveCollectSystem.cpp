@@ -1,5 +1,6 @@
 #include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
 #include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/support/RenderResource.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/MaterialComponent.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
@@ -38,14 +39,6 @@ namespace hgl::ecs
             return owner->GetName().c_str();
         }
 
-
-        std::string BuildTextureResourceId(graph::Texture *texture)
-        {
-            if (!texture)
-                return {};
-
-            return "texid:" + std::to_string(texture->GetID());
-        }
 
         bool EnsureRuntimeGeometryFromAsset(ECSContext *world,
                                             const std::shared_ptr<PrimitiveComponent> &primitive_comp,
@@ -464,7 +457,7 @@ namespace hgl::ecs
         : System(name)
     {
         // Set system type and properties
-        SetExecutionOrder(ExecutionPhase::RenderCollect);
+        SetExecutionPhase(ExecutionPhase::RenderCollect);
         SetRenderElementType("Primitive");
 
         // Declare dependencies

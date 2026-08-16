@@ -3,7 +3,7 @@
 
 namespace hgl::ecs
 {
-    static const std::string kPipelineName{ "Primitive" };
+    const std::string PrimitiveRenderPipeline::kName{ "Primitive" };
 
     PrimitiveRenderPipeline::PrimitiveRenderPipeline(ECSContext* context)
         : context_(context)
@@ -13,7 +13,7 @@ namespace hgl::ecs
 
     const std::string& PrimitiveRenderPipeline::GetName() const
     {
-        return kPipelineName;
+        return kName;
     }
 
     ECSContext* PrimitiveRenderPipeline::GetWorld() const

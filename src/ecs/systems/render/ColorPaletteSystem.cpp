@@ -14,7 +14,7 @@ namespace hgl::ecs
     ColorPaletteSystem::ColorPaletteSystem(const std::string &name)
         : System(name)
     {
-        SetExecutionOrder(ExecutionPhase::RenderPreBeginFrame);
+        SetExecutionPhase(ExecutionPhase::RenderPreBeginFrame);
 
         // 使用 Color.h 的命名颜色表填充默认调色板（不足 256 项时循环填充）。
         const int color_count = int(hgl::COLOR::RANGE_SIZE);

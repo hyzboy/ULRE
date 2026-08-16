@@ -26,6 +26,7 @@ set(ECS_CORE_FILES
     core/System.cpp
     core/SystemProfiler.cpp
     core/Context.cpp
+    support/RenderResource.cpp
     core/RenderGraph.cpp
     core/SystemGroup.cpp
     core/DefaultSystems.cpp
@@ -105,9 +106,9 @@ set(ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES
     systems/render/RenderBufferUploadSystem.cpp
 )
 
-set(ECS_SYS_15_RenderFrameSync_RenderFrameBusinessSyncSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/RenderFrameBusinessSyncSystem.h
-    systems/render/RenderFrameBusinessSyncSystem.cpp
+set(ECS_SYS_15_RenderFrameSync_RenderFrameUBOSyncSystem_FILES
+    ${ECS_INCLUDE_PATH}/systems/render/RenderFrameUBOSyncSystem.h
+    systems/render/RenderFrameUBOSyncSystem.cpp
 )
 
 set(ECS_SYS_15B_RenderFrameSync_RenderDescriptorBindingSystem_FILES
@@ -260,7 +261,7 @@ set(ECS_SOURCE
     ${ECS_SYS_09B_RenderPreBeginFrame_ColorPaletteSystem_FILES}
 
     ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES}
-    ${ECS_SYS_15_RenderFrameSync_RenderFrameBusinessSyncSystem_FILES}
+    ${ECS_SYS_15_RenderFrameSync_RenderFrameUBOSyncSystem_FILES}
     ${ECS_SYS_15B_RenderFrameSync_RenderDescriptorBindingSystem_FILES}
     ${ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES}
     ${ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES}
@@ -294,7 +295,7 @@ source_group("ECS\\Systems\\08 RenderPreBeginFrame_RenderTargetSystem" FILES ${E
 source_group("ECS\\Systems\\09 RenderPreBeginFrame_EnvironmentSystem" FILES ${ECS_SYS_09_RenderPreBeginFrame_EnvironmentSystem_FILES})
 source_group("ECS\\Systems\\09B RenderPreBeginFrame_ColorPaletteSystem" FILES ${ECS_SYS_09B_RenderPreBeginFrame_ColorPaletteSystem_FILES})
 source_group("ECS\\Systems\\14 RenderBufferUpload_RenderBufferUploadSystem" FILES ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES})
-source_group("ECS\\Systems\\15 RenderFrameSync_RenderFrameBusinessSyncSystem" FILES ${ECS_SYS_15_RenderFrameSync_RenderFrameBusinessSyncSystem_FILES})
+source_group("ECS\\Systems\\15 RenderFrameSync_RenderFrameUBOSyncSystem" FILES ${ECS_SYS_15_RenderFrameSync_RenderFrameUBOSyncSystem_FILES})
 source_group("ECS\\Systems\\15B RenderFrameSync_RenderDescriptorBindingSystem" FILES ${ECS_SYS_15B_RenderFrameSync_RenderDescriptorBindingSystem_FILES})
 source_group("ECS\\Systems\\16 RenderCollect_RenderPrimitiveCollectSystem" FILES ${ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES})
 source_group("ECS\\Systems\\17 RenderCollect_RenderPrimitiveCullSystem" FILES ${ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES})

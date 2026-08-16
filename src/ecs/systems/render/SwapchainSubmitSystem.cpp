@@ -11,7 +11,7 @@ namespace hgl::ecs
     SwapchainSubmitSystem::SwapchainSubmitSystem(const std::string& name)
         : System(name)
     {
-        SetExecutionOrder(ExecutionPhase::RenderSubmit);
+        SetExecutionPhase(ExecutionPhase::RenderSubmit);
         AddDependency<PrimitiveRenderSystem>();
         AddDependency<TextRenderSystem>();
         AddDependency<LineRenderSystem>();
