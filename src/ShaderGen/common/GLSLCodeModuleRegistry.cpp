@@ -71,19 +71,6 @@ namespace hgl::graph::mtl
         int error_count = 0;
         const int first_new_file_index = file_data.GetCount();
 
-        // Previously unresolved entries remain in file_data so a later directory
-        // load can supply their missing dependencies or conflict targets.
-        for (int i = 0; i < first_new_file_index; ++i)
-        {
-            GLSLCodeModuleFileData *data = file_data[i];
-            if (!data
-             || data->metadata_resolution_valid
-             || FindByName(data->name.c_str()))
-                continue;
-
-            Register(data->definition);
-        }
-
         // Pass 1: read, parse and register every file-backed module.
         for (int i = 0; i < file_list.GetCount(); ++i)
         {

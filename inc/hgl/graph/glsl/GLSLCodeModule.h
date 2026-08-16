@@ -24,8 +24,6 @@ namespace hgl::graph::mtl
         Surface,
         VertexInput,
         Position,
-        Basis,
-        Decode,
         Transform,
         Utility,
         FragmentShader
@@ -74,11 +72,6 @@ namespace hgl::graph::mtl
         Any = 0xffffffffu
     };
 
-    enum class GLSLCodeModuleProviderFlag : uint32
-    {
-        None = 0,
-        Exclusive = 1u << 0
-    };
 
     struct GLSLCodeModuleDependency
     {

@@ -1409,7 +1409,7 @@ namespace
             "identity_normal_packed",
             "// identity",
             nullptr, 0, nullptr, 0,
-            GLSLCodeModuleKind::Decode,
+            GLSLCodeModuleKind::Utility,
             &normal_requirement, 1,
             normal_provides, 1,
             20, 0
@@ -1448,7 +1448,7 @@ namespace
             "compose_normal",
             "vec3 GetNormal() { return Normal; }",
             nullptr, 0, nullptr, 0,
-            GLSLCodeModuleKind::Basis,
+            GLSLCodeModuleKind::Utility,
             nullptr, 0, nullptr, 0, 0, 0
         };
 
@@ -3794,7 +3794,6 @@ namespace
             "// @ulre name sample_ntb\n"
             "// @ulre kind VertexInput\n"
             "// @ulre priority 10\n"
-            "// @ulre flags 0x3\n"
             "// @ulre require GeometryAttribute Normal Float 3 3\n"
             "// @ulre require GeometryAttribute Tangent Any\n"
             "// @ulre provide Normal\n"
@@ -3815,8 +3814,6 @@ namespace
                     result.diagnostics.emplace_back("full-metadata kind mismatch");
                 if (data.priority != 10)
                     result.diagnostics.emplace_back("full-metadata priority mismatch");
-                if (data.flags != 0x3u)
-                    result.diagnostics.emplace_back("full-metadata flags mismatch");
                 if (data.semantic_requirements.GetCount() != 2)
                     result.diagnostics.emplace_back("full-metadata require count mismatch");
                 else
@@ -3940,123 +3937,6 @@ namespace
         if (!alternate_algorithm || alternate_algorithm->kind != GLSLCodeModuleKind::Utility)
             result.diagnostics.emplace_back("forward_flat alternate lighting algorithm is missing or has wrong kind");
 
-        // Re-scan must detect every duplicate name and keep counts stable.
-        int dup_count = 0;
-        int dup_errors = 0;
-        if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()), &dup_count, &dup_errors))
-            result.diagnostics.emplace_back("second LoadDirectory failed");
-        else if (dup_count != 0 || dup_errors != 55)
-            result.diagnostics.emplace_back("second LoadDirectory must report 55 duplicates, got files="
-                + std::to_string(dup_count) + " errors=" + std::to_string(dup_errors));
-
-        const int stable_count = 55;
-        if (registry.GetCount() != stable_count)
-            result.diagnostics.emplace_back("registry count changed after duplicate re-scan: got "
-                + std::to_string(registry.GetCount()));
-        if (compositor_lit
-         && compositor_lit->dependency_count != 4)
-        {
-            result.diagnostics.emplace_back(
-                "duplicate re-scan must not append module dependencies");
-        }
-
-        hgl::filesystem::Path retry_root_path(RepoRootOSPath("build"));
-        retry_root_path /=
-            hgl::OSString(OS_TEXT("shader-module-registry-retry"));
-        const hgl::OSString retry_root = retry_root_path.ToOSString();
-        hgl::filesystem::Path dependent_path_builder(retry_root);
-        dependent_path_builder /= hgl::OSString(OS_TEXT("dependent"));
-        const hgl::OSString dependent_path =
-            dependent_path_builder.ToOSString();
-        hgl::filesystem::Path provider_path_builder(retry_root);
-        provider_path_builder /= hgl::OSString(OS_TEXT("provider"));
-        const hgl::OSString provider_path =
-            provider_path_builder.ToOSString();
-        hgl::filesystem::Path dependent_file_builder(dependent_path);
-        dependent_file_builder /= hgl::OSString(OS_TEXT("dependent.glsl"));
-        const hgl::OSString dependent_file =
-            dependent_file_builder.ToOSString();
-        hgl::filesystem::Path provider_file_builder(provider_path);
-        provider_file_builder /= hgl::OSString(OS_TEXT("provider.glsl"));
-        const hgl::OSString provider_file =
-            provider_file_builder.ToOSString();
-        const auto cleanup_retry_files = [&]()
-        {
-            if (hgl::filesystem::FileExist(dependent_file))
-                hgl::filesystem::FileDelete(dependent_file);
-            if (hgl::filesystem::FileExist(provider_file))
-                hgl::filesystem::FileDelete(provider_file);
-            if (hgl::filesystem::IsDirectory(dependent_path))
-                hgl::filesystem::DeletePath(dependent_path);
-            if (hgl::filesystem::IsDirectory(provider_path))
-                hgl::filesystem::DeletePath(provider_path);
-            if (hgl::filesystem::IsDirectory(retry_root))
-                hgl::filesystem::DeletePath(retry_root);
-        };
-        cleanup_retry_files();
-        if (!hgl::filesystem::MakePath(dependent_path)
-         || !hgl::filesystem::MakePath(provider_path))
-        {
-            result.diagnostics.emplace_back(
-                "failed to create registry retry test directories");
-        }
-        else
-        {
-            const char dependent_module[] =
-                "// @ulre begin\n"
-                "// @ulre name retry_dependent\n"
-                "// @ulre kind Utility\n"
-                "// @ulre uses retry_provider\n"
-                "// @ulre end\n";
-            const char provider_module[] =
-                "// @ulre begin\n"
-                "// @ulre name retry_provider\n"
-                "// @ulre kind Utility\n"
-                "// @ulre end\n";
-            if (hgl::filesystem::SaveMemoryToFile(
-                    dependent_file,
-                    dependent_module,
-                    hgl::int64(sizeof(dependent_module) - 1))
-                    != hgl::int64(sizeof(dependent_module) - 1)
-             || hgl::filesystem::SaveMemoryToFile(
-                    provider_file,
-                    provider_module,
-                    hgl::int64(sizeof(provider_module) - 1))
-                    != hgl::int64(sizeof(provider_module) - 1))
-            {
-                result.diagnostics.emplace_back(
-                    "failed to write registry retry test modules");
-            }
-            else
-            {
-                GLSLCodeModuleRegistry retry_registry;
-                int retry_files = 0;
-                int retry_errors = 0;
-                if (!retry_registry.LoadDirectory(
-                        dependent_path, &retry_files, &retry_errors)
-                 || retry_files != 0
-                 || retry_errors != 1
-                 || retry_registry.FindByName("retry_dependent"))
-                {
-                    result.diagnostics.emplace_back(
-                        "missing dependency module must remain pending");
-                }
-
-                retry_files = 0;
-                retry_errors = 0;
-                if (!retry_registry.LoadDirectory(
-                        provider_path, &retry_files, &retry_errors)
-                 || retry_files != 1
-                 || retry_errors != 0
-                 || !retry_registry.FindByName("retry_provider")
-                 || !retry_registry.FindByName("retry_dependent"))
-                {
-                    result.diagnostics.emplace_back(
-                        "later dependency load must recover pending modules");
-                }
-            }
-        }
-        cleanup_retry_files();
 
         result.passed = result.diagnostics.empty();
         return result;
@@ -4661,7 +4541,7 @@ namespace
             const auto *normal_only = fixture.Add("normal_only", GLSLCodeModuleKind::VertexInput, 100,
                 { geometry(GLSLCodeModuleSemantic::Normal, RESOLVER_FLOAT, 3, 3) },
                 { GLSLCodeModuleSemantic::Normal });
-            const auto *decode = fixture.Add("normal_decode_a2rgb10", GLSLCodeModuleKind::Decode, 100,
+            const auto *decode = fixture.Add("normal_decode_a2rgb10", GLSLCodeModuleKind::Utility, 100,
                 { geometry(GLSLCodeModuleSemantic::Normal, RESOLVER_NORM | RESOLVER_PACK) },
                 { GLSLCodeModuleSemantic::Normal });
 
@@ -4680,7 +4560,7 @@ namespace
         // 4. Position-derived sky NTB (geometry has only Position).
         {
             ResolverFixture fixture;
-            const auto *ntb_from_position = fixture.Add("ntb_from_position", GLSLCodeModuleKind::Basis, 50,
+            const auto *ntb_from_position = fixture.Add("ntb_from_position", GLSLCodeModuleKind::Utility, 50,
                 { geometry(GLSLCodeModuleSemantic::Position, RESOLVER_FLOAT, 3, 3) },
                 { GLSLCodeModuleSemantic::Normal, GLSLCodeModuleSemantic::Tangent, GLSLCodeModuleSemantic::Binormal });
             fixture.Add("ntb_direct", GLSLCodeModuleKind::VertexInput, 100,
@@ -4702,10 +4582,10 @@ namespace
         //    provider wins over the plain position-derived fallback.
         {
             ResolverFixture fixture;
-            fixture.Add("ntb_from_position", GLSLCodeModuleKind::Basis, 50,
+            fixture.Add("ntb_from_position", GLSLCodeModuleKind::Utility, 50,
                 { geometry(GLSLCodeModuleSemantic::Position, RESOLVER_FLOAT, 3, 3) },
                 { GLSLCodeModuleSemantic::Normal, GLSLCodeModuleSemantic::Tangent, GLSLCodeModuleSemantic::Binormal });
-            const auto *ntb_heightmap = fixture.Add("ntb_from_heightmap", GLSLCodeModuleKind::Basis, 60,
+            const auto *ntb_heightmap = fixture.Add("ntb_from_heightmap", GLSLCodeModuleKind::Utility, 60,
                 { geometry(GLSLCodeModuleSemantic::Position, RESOLVER_FLOAT, 3, 3),
                   geometry(GLSLCodeModuleSemantic::UV0, RESOLVER_FLOAT, 2, 2),
                   resource(GLSLCodeModuleSemantic::HeightMap) },
@@ -4729,7 +4609,7 @@ namespace
         // 6. Heightmap provider without the HeightMap resource must fail.
         {
             ResolverFixture fixture;
-            fixture.Add("ntb_heightmap", GLSLCodeModuleKind::Basis, 60,
+            fixture.Add("ntb_heightmap", GLSLCodeModuleKind::Utility, 60,
                 { geometry(GLSLCodeModuleSemantic::Position, RESOLVER_FLOAT, 3, 3),
                   geometry(GLSLCodeModuleSemantic::UV0, RESOLVER_FLOAT, 2, 2),
                   resource(GLSLCodeModuleSemantic::HeightMap) },
@@ -4754,7 +4634,7 @@ namespace
         // 7. Octahedral RG8SN normal (2-component, normalized).
         {
             ResolverFixture fixture;
-            const auto *octa = fixture.Add("normal_decode_octa", GLSLCodeModuleKind::Decode, 100,
+            const auto *octa = fixture.Add("normal_decode_octa", GLSLCodeModuleKind::Utility, 100,
                 { geometry(GLSLCodeModuleSemantic::Normal, RESOLVER_NORM, 2, 2) },
                 { GLSLCodeModuleSemantic::Normal });
             fixture.Add("normal_only", GLSLCodeModuleKind::VertexInput, 100,
@@ -4840,10 +4720,10 @@ namespace
         //     produced Normal semantic; dependencies commit first.
         {
             ResolverFixture fixture;
-            const auto *ntb_from_position = fixture.Add("ntb_from_position", GLSLCodeModuleKind::Basis, 50,
+            const auto *ntb_from_position = fixture.Add("ntb_from_position", GLSLCodeModuleKind::Utility, 50,
                 { geometry(GLSLCodeModuleSemantic::Position, RESOLVER_FLOAT, 3, 3) },
                 { GLSLCodeModuleSemantic::Normal, GLSLCodeModuleSemantic::Tangent, GLSLCodeModuleSemantic::Binormal });
-            const auto *world_normal = fixture.Add("world_normal_from_normal", GLSLCodeModuleKind::Basis, 50,
+            const auto *world_normal = fixture.Add("world_normal_from_normal", GLSLCodeModuleKind::Utility, 50,
                 { produced(GLSLCodeModuleSemantic::Normal) },
                 { GLSLCodeModuleSemantic::WorldNormal });
 
@@ -4876,7 +4756,7 @@ namespace
             const auto *color_direct = fixture.Add("color_direct", GLSLCodeModuleKind::VertexInput, 100,
                 { geometry(GLSLCodeModuleSemantic::Color) },
                 { GLSLCodeModuleSemantic::Color });
-            const auto *color_yuv = fixture.Add("color_decode_yuv", GLSLCodeModuleKind::Decode, 100,
+            const auto *color_yuv = fixture.Add("color_decode_yuv", GLSLCodeModuleKind::Utility, 100,
                 { geometry(GLSLCodeModuleSemantic::ColorY),
                   geometry(GLSLCodeModuleSemantic::ColorUV) },
                 { GLSLCodeModuleSemantic::Color });
@@ -5598,7 +5478,7 @@ namespace
         base.semantic_requirement_count = 1;
 
         GLSLCodeModuleDefinition changed_kind = base;
-        changed_kind.kind = GLSLCodeModuleKind::Decode;
+        changed_kind.kind = GLSLCodeModuleKind::Transform;
 
         GLSLCodeModuleDefinition changed_priority = base;
         changed_priority.priority = 20;

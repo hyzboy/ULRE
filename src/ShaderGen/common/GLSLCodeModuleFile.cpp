@@ -123,8 +123,6 @@ namespace hgl::graph::mtl
             else if (std::strcmp(token, "Surface") == 0) out_kind = GLSLCodeModuleKind::Surface;
             else if (std::strcmp(token, "VertexInput") == 0) out_kind = GLSLCodeModuleKind::VertexInput;
             else if (std::strcmp(token, "Position") == 0) out_kind = GLSLCodeModuleKind::Position;
-            else if (std::strcmp(token, "Basis") == 0) out_kind = GLSLCodeModuleKind::Basis;
-            else if (std::strcmp(token, "Decode") == 0) out_kind = GLSLCodeModuleKind::Decode;
             else if (std::strcmp(token, "Transform") == 0) out_kind = GLSLCodeModuleKind::Transform;
             else if (std::strcmp(token, "Utility") == 0) out_kind = GLSLCodeModuleKind::Utility;
             else if (std::strcmp(token, "FragmentShader") == 0) out_kind = GLSLCodeModuleKind::FragmentShader;
@@ -272,24 +270,6 @@ namespace hgl::graph::mtl
                 return false;
             return true;
         }
-
-        bool ParseUBOSemantic(const char *token, UBODescriptorSemantic &out) noexcept
-        {
-            static const char *const names[] =
-            {
-                "ViewportInfo", "CameraInfo", "SkyInfo", "MaterialColorPalette"
-            };
-            for (uint32 i = 0; i < 4; ++i)
-            {
-                if (std::strcmp(token, names[i]) == 0)
-                {
-                    out = static_cast<UBODescriptorSemantic>(i);
-                    return true;
-                }
-            }
-            return false;
-        }
-
         bool ParseSSBOType(const char *token, SSBOType &out) noexcept
         {
             for (uint32 i = 0; i < static_cast<uint32>(SSBOType::RANGE_SIZE); ++i)
@@ -346,7 +326,6 @@ namespace hgl::graph::mtl
         bool saw_end = false;
         bool saw_kind = false;
         bool saw_priority = false;
-        bool saw_flags = false;
         char token[TOKEN_CAPACITY];
 
         while (cursor < end && !saw_end)
@@ -430,39 +409,6 @@ namespace hgl::graph::mtl
                         return GLSLCodeModuleParseResult::InvalidNumber;
                     out_data.priority = value;
                     saw_priority = true;
-                }
-                else if (std::strcmp(token, "flags") == 0)
-                {
-                    if (saw_flags)
-                        return GLSLCodeModuleParseResult::DuplicateDirective;
-
-                    const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
-                    if (!next || !token[0])
-                        return GLSLCodeModuleParseResult::MissingDirectiveArgument;
-
-                    uint32 value = 0;
-                    if (!ParseUnsignedInt(token, value))
-                        return GLSLCodeModuleParseResult::InvalidNumber;
-                    out_data.flags = value;
-                    saw_flags = true;
-                }
-                else if (std::strcmp(token, "ubo") == 0)
-                {
-                    GLSLCodeModuleUBORequirement requirement;
-                    const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
-                    if (!next || !ParseUBOSemantic(token, requirement.semantic))
-                        return GLSLCodeModuleParseResult::InvalidResource;
-                    next = ReadToken(next, line_end, token, sizeof(token));
-                    if (!next || !ParseStageFlags(token, requirement.stage_flags))
-                        return GLSLCodeModuleParseResult::InvalidStage;
-
-                    while ((next = ReadToken(next, line_end, token, sizeof(token))) != nullptr)
-                    {
-                        if (!ParseResourcePolicy(token, requirement.required,
-                                                  requirement.allow_fallback))
-                            return GLSLCodeModuleParseResult::InvalidResource;
-                    }
-                    out_data.ubo_requirements.Add(requirement);
                 }
                 else if (std::strcmp(token, "ssbo") == 0)
                 {
