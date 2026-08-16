@@ -38,7 +38,9 @@ namespace hgl::ecs
         auto* line_pipeline = dynamic_cast<LineRenderPipeline*>(pipeline);
         if (line_pipeline)
         {
-            GLogInfo("[LineRenderSystem] Render begin: pipeline=%p cmd=%p total_lines=%u",
+            static uint32_t s_render_begin_tick = 0;
+            if ((++s_render_begin_tick % 60u) == 1u)
+                GLogInfo("[LineRenderSystem] Render begin: pipeline=%p cmd=%p total_lines=%u",
                      pipeline,
                      cmd,
                      line_pipeline->GetTotalLineCount());
@@ -48,7 +50,9 @@ namespace hgl::ecs
 
         if (line_pipeline)
         {
-            GLogInfo("[LineRenderSystem] Render end: pipeline=%p cmd=%p total_lines=%u",
+            static uint32_t s_render_end_tick = 0;
+            if ((++s_render_end_tick % 60u) == 1u)
+                GLogInfo("[LineRenderSystem] Render end: pipeline=%p cmd=%p total_lines=%u",
                      pipeline,
                      cmd,
                      line_pipeline->GetTotalLineCount());

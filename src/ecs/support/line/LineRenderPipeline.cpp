@@ -35,6 +35,16 @@
 
 namespace hgl::ecs
 {
+    // A5 限流日志：日志系统无级别过滤（GLogVerbose 与 GLogInfo 同输出），
+    // 每帧高频日志用计数器限流——每 60 帧输出一次
+    static uint32_t s_line_log_ticks[16] = {};
+
+    template<typename... Args>
+    void LinePeriodicLog(uint32_t &tick, const char *fmt, Args&&... args)
+    {
+        if ((++tick % 60u) == 1u)
+            GLogInfo(fmt, std::forward<Args>(args)...);
+    }
     namespace
     {
         graph::GeometryVertexFormat CreateLineGeometryVertexFormat()
@@ -66,7 +76,7 @@ namespace hgl::ecs
         bool color_valid = va_color.IsValid();
         bool transform_valid = va_transform.IsValid();
         
-        GLogInfo("[LineRenderPipeline] Reset: pos_valid=%d color_valid=%d transform_valid=%d",
+        LinePeriodicLog(s_line_log_ticks[0], "[LineRenderPipeline] Reset: pos_valid=%d color_valid=%d transform_valid=%d",
                  pos_valid ? 1 : 0,
              color_valid ? 1 : 0,
              transform_valid ? 1 : 0);
@@ -167,7 +177,7 @@ namespace hgl::ecs
         va_color.Bind(geometry->GetVAB(color_idx));
         va_transform.Bind(geometry->GetVAB(transform_idx));
 
-        GLogInfo("[LineRenderPipeline] Slot %u after Bind: pos_valid=%d color_valid=%d transform_valid=%d",
+        LinePeriodicLog(s_line_log_ticks[1], "[LineRenderPipeline] Slot %u after Bind: pos_valid=%d color_valid=%d transform_valid=%d",
                  width,
                  va_pos.IsValid() ? 1 : 0,
                  va_color.IsValid() ? 1 : 0,
@@ -279,7 +289,7 @@ namespace hgl::ecs
 
         cmd->Draw(data_buffer, draw_range);
 
-        GLogInfo("[LineRenderPipeline] Draw issued: data_buffer=%p draw_range=%p line_count=%u vertex_count=%u bound_with_tid=%d",
+        LinePeriodicLog(s_line_log_ticks[2], "[LineRenderPipeline] Draw issued: data_buffer=%p draw_range=%p line_count=%u vertex_count=%u bound_with_tid=%d",
                  data_buffer,
                  draw_range,
                  line_count,
@@ -496,7 +506,7 @@ namespace hgl::ecs
             ++stats_.visible_components;
         }
 
-        GLogInfo("[LineRenderPipeline] Collect summary: total=%u visible=%u collected=%zu culled_visibility=%u culled_frustum=%u culled_hzb=%u",
+        LinePeriodicLog(s_line_log_ticks[3], "[LineRenderPipeline] Collect summary: total=%u visible=%u collected=%zu culled_visibility=%u culled_frustum=%u culled_hzb=%u",
                  stats_.total_components,
                  stats_.visible_components,
                  collected_.size(),
@@ -668,7 +678,7 @@ namespace hgl::ecs
 
             if ((s_diag_frame % 120u) == 1u || resolved_transform_components == 0)
             {
-                GLogInfo("[LineRenderPipeline] TransformID resolve: owners=%u resolved_nonzero=%u static=%u dynamic=%u dynamic_base=%u",
+                LinePeriodicLog(s_line_log_ticks[4], "[LineRenderPipeline] TransformID resolve: owners=%u resolved_nonzero=%u static=%u dynamic=%u dynamic_base=%u",
                          transform_owner_components,
                          resolved_transform_components,
                          static_count,
@@ -677,7 +687,7 @@ namespace hgl::ecs
             }
         }
 
-        GLogInfo("[LineRenderPipeline] Build summary: collected=%zu non_empty_slots=%u expected_lines=%u built_lines=%u write_fail=%u",
+        LinePeriodicLog(s_line_log_ticks[5], "[LineRenderPipeline] Build summary: collected=%zu non_empty_slots=%u expected_lines=%u built_lines=%u write_fail=%u",
                  collected_.size(),
                  non_empty_slots,
                  expected_total,
@@ -746,7 +756,7 @@ namespace hgl::ecs
 
         const uint32_t num_slots = support_wide_lines_ ? MAX_WIDTHS : 1;
         uint32_t draw_lines = 0;
-        GLogInfo("[LineRenderPipeline] Render begin: total_line_count=%u num_slots=%u wide_lines=%d",
+        LinePeriodicLog(s_line_log_ticks[6], "[LineRenderPipeline] Render begin: total_line_count=%u num_slots=%u wide_lines=%d",
                  total_line_count_,
                  num_slots,
                  support_wide_lines_ ? 1 : 0);
@@ -759,7 +769,7 @@ namespace hgl::ecs
             if (support_wide_lines_)
                 cmd->SetLineWidth(static_cast<float>(i + 1));
 
-            GLogInfo("[LineRenderPipeline] Render slot: slot=%u line_count=%u capacity=%u data_buffer=%p",
+            LinePeriodicLog(s_line_log_ticks[7], "[LineRenderPipeline] Render slot: slot=%u line_count=%u capacity=%u data_buffer=%p",
                      i + 1,
                      slots_[i].line_count,
                      slots_[i].gpu_capacity,
@@ -775,7 +785,7 @@ namespace hgl::ecs
                         draw_lines);
         }
 
-        GLogInfo("[LineRenderPipeline] Render end: submitted_lines=%u expected_lines=%u",
+        LinePeriodicLog(s_line_log_ticks[8], "[LineRenderPipeline] Render end: submitted_lines=%u expected_lines=%u",
                  draw_lines,
                  total_line_count_);
     }
@@ -842,7 +852,7 @@ namespace hgl::ecs
         transform_buffer->EnsureCapacity(static_count, dynamic_count, graph::BufferAllocPolicy::Auto);
 
         auto *gpu = transform_data_buffer->GetGPUBuffer();
-        GLogInfo("[LineRenderPipeline] SyncTransformBinding snapshot: tab=0x%llX dbuf=0x%llX vk=0x%llX gpu=0x%llX size=%llu dirty=%d static=%u dynamic=%u",
+        LinePeriodicLog(s_line_log_ticks[9], "[LineRenderPipeline] SyncTransformBinding snapshot: tab=0x%llX dbuf=0x%llX vk=0x%llX gpu=0x%llX size=%llu dirty=%d static=%u dynamic=%u",
                  static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_buffer)),
                  static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_data_buffer)),
                  static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_data_buffer->GetBuffer())),
