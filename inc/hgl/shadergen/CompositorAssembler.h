@@ -5,7 +5,6 @@ namespace hgl::graph::mtl {}
 #include <hgl/mtl/SurfaceType.h>
 #include <hgl/mtl/BlendMode.h>
 #include <hgl/mtl/PassType.h>
-#include <hgl/shadergen/ShaderPermutationKey.h>
 #include <hgl/shadergen/MaterialStageInterface.h>
 #include <hgl/shadergen/MaterialOutputContract.h>
 #include <hgl/shadergen/MaterialCoverageContract.h>
@@ -91,7 +90,7 @@ namespace hgl::graph::shadergen
 
         std::string GetCompositorFSPath(SurfaceType surface, PassType pass) const;
         std::string GetSurfaceFunctionPath(SurfaceType surface) const;
-        std::string InjectDefines(const std::string &source, const ShaderPermutationKey &key, const CompositorModuleOptions &module_options) const;
+        std::string InjectDefines(const std::string &source, const CompositorModuleOptions &module_options) const;
         std::string ReplaceLightingModuleIncludes(const std::string &source, const CompositorModuleOptions &module_options) const;
         std::string ReplaceSurfaceInclude(const std::string &source, const std::string &surface_path) const;
         bool ApplyFragmentInputContract(

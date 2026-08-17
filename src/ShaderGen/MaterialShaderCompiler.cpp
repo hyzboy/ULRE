@@ -864,13 +864,10 @@ ShaderBuildContext *CompileCompositorMaterial(
     {
         if (inject.empty())
             return glsl;
+        // B6: 单一 marker（#include SURFACE_FUNCTION_FILE）——"#include "surface/" 旧格式
+        // 回退已删（全库 0 使用——ShaderLibrary 与回归门均无）
         const std::string marker = "#include SURFACE_FUNCTION_FILE";
-        auto pos = glsl.find(marker);
-        if (pos == std::string::npos)
-        {
-            const auto include_pos = glsl.find("#include \"surface/");
-            pos = include_pos;
-        }
+        const auto pos = glsl.find(marker);
         if (pos == std::string::npos)
             return glsl + "\n" + inject;
         return glsl.substr(0, pos) + inject + "\n" + glsl.substr(pos);
@@ -882,8 +879,7 @@ ShaderBuildContext *CompileCompositorMaterial(
     const std::string code_module_glsl = BuildCodeModuleGLSL(config.resource_manifest);
     if (!code_module_glsl.empty())
     {
-        if (fs_glsl.find("#include SURFACE_FUNCTION_FILE") == std::string::npos
-         && fs_glsl.find("#include \"surface/") == std::string::npos)
+        if (fs_glsl.find("#include SURFACE_FUNCTION_FILE") == std::string::npos)
             fs_final = InsertAfterVersionLine(fs_final, code_module_glsl);
         else
             fs_final = InsertBeforeSurfaceFunction(fs_final, code_module_glsl);

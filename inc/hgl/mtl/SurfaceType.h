@@ -8,23 +8,13 @@ namespace hgl::graph
     {
         Unlit = 0,
         Lit,
-        // Reserved (Skin—Water): no specialized surface implementation exists.
-        // CompositorAssembler resolves all of them to lit_surface.
-        Skin,
-        Hair,
-        Cloth,
-        Eye,
-        Foliage,
-        ClearCoat,
-        Water,
-        Sky,
+        Sky,   // Sky 有真特化（sky_minimal_surface）——B8 清理保留
 
         ENUM_CLASS_RANGE(Unlit, Sky)
     };
 
     constexpr const char* SurfaceTypeNames[] = {
-        "Unlit", "Lit", "Skin", "Hair", "Cloth",
-        "Eye", "Foliage", "ClearCoat", "Water", "Sky"
+        "Unlit", "Lit", "Sky"
     };
 
     inline const char* GetSurfaceTypeName(SurfaceType st)

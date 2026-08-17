@@ -1139,6 +1139,9 @@ namespace hgl
 
         bool ECSContext::RemoveSystemByKey(size_t key)
         {
+            // A6 生命周期语义：销毁后从注册表移除（GetSystem 返回 null——新查询安全）；
+            // 已持有的裸指针（如 MaterialBatch::transform_buffer）随之失效——
+            // 引擎惯例：系统不跨帧缓存系统指针；运行期销毁系统后旧指针不得再使用
             auto remove_from = [&](auto &sys_map,
                                    auto &order_list,
                                    auto &deps,

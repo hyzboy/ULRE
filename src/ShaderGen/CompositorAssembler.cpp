@@ -62,25 +62,15 @@ namespace hgl::graph::shadergen
         case SurfaceType::Lit:        return "surface/material_surface.glsl";
         case SurfaceType::Unlit:      return "surface/material_surface.glsl";
         case SurfaceType::Sky:        return "surface/sky_minimal_surface.glsl";
-        // Reserved: Skin, Hair, Cloth, Eye, Foliage, ClearCoat, Water — not yet specialized, fall through to Lit.
-        case SurfaceType::Skin:
-        case SurfaceType::Hair:
-        case SurfaceType::Cloth:
-        case SurfaceType::Eye:
-        case SurfaceType::Foliage:
-        case SurfaceType::ClearCoat:
-        case SurfaceType::Water:      return "surface/material_surface.glsl";
         default:                      return {};
         }
     }
 
     std::string CompositorAssembler::InjectDefines(
-        const std::string &source,
-        const ShaderPermutationKey &key,
-        const CompositorModuleOptions &module_options) const
-    {
-        std::string defines;
-        key.AppendGLSLDefines(defines);
+    const std::string &source,
+    const CompositorModuleOptions &module_options) const
+{
+    std::string defines;
         if (module_options.alpha_test)
         {
             defines += "#define HGL_ALPHA_TEST 1\n";
@@ -326,11 +316,7 @@ namespace hgl::graph::shadergen
     {
         AssembleResult result{};
 
-        // 1. 构建 permutation key
-        ShaderPermutationKey key;
-        key.SetSurfaceType(surface);
-
-        // 2. Resolve the canonical fragment source/template path.
+        // 1. Resolve the canonical fragment source/template path.
         std::string fs_path = (fragment_source_override && fragment_source_override[0])
             ? shader_lib_path_ + "/" + fragment_source_override
             : GetCompositorFSPath(surface, pass);

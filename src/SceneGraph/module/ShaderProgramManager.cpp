@@ -377,6 +377,14 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
      || !(ctx->GetProgramLink().BuildKey() == program_key))
         return(nullptr);
 
+    // B9：program 级缓存先查——此前只 Add 不查（TryGetCachedShaderProgram
+    // 无调用者，缓存从不命中，同 key 每次全新构建）。命中返回共享实例
+    // （调用方不释放——manager 拥有；同 key = 同构建输入——P1-7 后
+    // build_context_hash 含 purpose/profile/vertex_format，材质差异走
+    // batch 级 descriptor override/bindless 索引）。
+    if (auto *cached = TryGetCachedShaderProgram(program_key))
+        return cached;
+
     const AnsiString mtl_name = program_key.ToString();
     ShaderProgramCreatePrecheckResult precheck_result;
     const ShaderProgramCreatePrecheckDecision precheck_decision = RunShaderProgramCreatePrecheck(

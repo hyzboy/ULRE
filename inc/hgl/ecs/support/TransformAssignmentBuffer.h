@@ -30,6 +30,9 @@ namespace hgl::ecs
      * - 管理所有 RenderItem 的 LocalToWorld 矩阵数据（SSBO）
      * - 生成 TransformID 行表（SSBO）
      * - 支持动态更新变换矩阵
+     * 注意：类名中的 "Assignment" 为历史名（曾做变换分配）——现职责为
+     * L2W 域 SSBO 写者（static/dynamic 段 + ring + 行表），改名评估过
+     * 因引用面大而保留（W7 记录）
      */
     class TransformAssignmentBuffer
     {
