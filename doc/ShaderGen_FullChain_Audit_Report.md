@@ -114,6 +114,8 @@
 | W5 变换 | ab168b89e | SubmitTransformUpdates 帧级 once（ring 语义评估修正） |
 | W4 绑定表 | f9f311a93 | LocalToWorldIndexTable 4 级→3 级 fallback |
 | W7 命名 | 4044a679b | SetExecutionPhase/GetEntityID/UBOSyncSystem/管线名统一/RenderResource 上提 |
+| 回归修复 | e060ebfb4 + 7acaae8ca | W7 GetID 改名漏改 8 处（6 调用点 + CreateChildEntity 封装内部 + LoadGeometry 示例）——gizmo 视觉 asset 层级断裂根因；澄清 BasicLitSunDirection「最外圈不面向屏幕」实为该层级断裂（旋转环 aux_transform 经 CreateChildEntity 挂载），非 7.19 删除 Billboard 代码，无需恢复 |
 
 ECS 侧剩余（P4，MeshShader 转型时）：archetype/SoA 组件存储、GatherSceneStats 增量计数、
-绑定链脏门控、每帧日志限流。详细坑见技能 `ulre-cm-modules` 的 ecs-* 系列 references。
+绑定链脏门控（每帧日志限流已随 fd184b8bd + TransformComponent/TransformSystem 计数器限流完成）。
+详细坑见技能 `ulre-cm-modules` 的 ecs-* 系列 references。
