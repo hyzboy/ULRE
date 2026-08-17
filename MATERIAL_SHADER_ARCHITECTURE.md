@@ -1771,7 +1771,7 @@ generated_source_digest
 - 建立 ResolvedModuleGraph。
 - 提前定义 NTB/Geometry Provider 的标准 require/provide 数据模型。
 - 实现依赖拓扑、循环检测、Provider 选择和拒绝原因。
-- 将现有 ShaderResourceManifest 纳入统一 requirement aggregation。
+- 将现有 ModuleResourceManifest 纳入统一 requirement aggregation。
 
 本阶段可以继续使用旧 Compositor 输出，但新 Graph 必须能镜像解释旧路径需要的资源。
 

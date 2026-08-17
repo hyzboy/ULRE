@@ -111,7 +111,7 @@ static bool CStrEq(const char *lhs, const char *rhs)
     return lhs && rhs && std::strcmp(lhs, rhs) == 0;
 }
 
-static std::string BuildCodeModuleGLSL(const ShaderResourceManifest *manifest)
+static std::string BuildCodeModuleGLSL(const ModuleResourceManifest *manifest)
 {
     if (!manifest || !manifest->IsValid())
         return {};
@@ -195,7 +195,7 @@ static bool ValidateDefinitionCapabilitySubset(
     const MaterialDefinition &definition,
     const ShaderResourceSchema &layout,
     std::vector<std::string> &diagnostics,
-    const ShaderResourceManifest *manifest)
+    const ModuleResourceManifest *manifest)
 {
     diagnostics.clear();
 

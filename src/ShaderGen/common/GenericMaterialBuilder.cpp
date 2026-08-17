@@ -215,7 +215,7 @@ namespace hgl::graph::mtl
             const MaterialDefinition &definition,
             GenericMaterialBuildPlan &plan)
         {
-            plan.manifest = ShaderResourceManifest{};
+            plan.manifest = ModuleResourceManifest{};
             plan.manifest_definition = definition;
             if (plan.depth_purpose)
                 plan.manifest_definition.code_module_requirements.clear();
@@ -247,7 +247,7 @@ namespace hgl::graph::mtl
                 if (provider_root_count < 2)
                     provider_root_names[provider_root_count++] = provider->name;
             }
-            if (!BuildShaderResourceManifest(
+            if (!BuildModuleResourceManifest(
                     plan.manifest_definition, plan.manifest,
                     provider_root_names, provider_root_count, &module_registry))
             {
@@ -303,7 +303,7 @@ namespace hgl::graph::mtl
             {
                 GLogError("[ShaderGen] Generic material resource contract failed: name=%s error=%s",
                           definition.definition_name.c_str(),
-                          GetShaderResourceManifestErrorName(plan.manifest.error));
+                          GetModuleResourceManifestErrorName(plan.manifest.error));
                 return false;
             }
             if (!BuildDescriptorContract(

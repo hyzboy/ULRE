@@ -19,7 +19,7 @@
 #include <hgl/graph/glsl/GLSLCodeModuleFile.h>
 #include <hgl/graph/glsl/GLSLCodeModuleRegistry.h>
 #include <hgl/graph/glsl/GLSLCodeModuleMetadata.h>
-#include <hgl/graph/glsl/ShaderResourceManifest.h>
+#include <hgl/graph/glsl/ModuleResourceManifest.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/graph/asset/PrimitiveAsset.h>
@@ -3678,13 +3678,13 @@ namespace
         else
         {
             const char *roots_2d[] = {pbr_2d->name, ntb_2d->name};
-            ShaderResourceManifest manifest_2d{};
-            if (!BuildShaderResourceManifest(
+            ModuleResourceManifest manifest_2d{};
+            if (!BuildModuleResourceManifest(
                     roots_2d, uint32_t(std::size(roots_2d)), manifest_2d, &registry))
             {
                 result.diagnostics.emplace_back(
                     std::string("Texture2D provider manifest failed: ")
-                    + GetShaderResourceManifestErrorName(manifest_2d.error));
+                    + GetModuleResourceManifestErrorName(manifest_2d.error));
             }
             else
             {
@@ -3718,13 +3718,13 @@ namespace
             }
 
             const char *roots_array[] = {pbr_array->name, ntb_array->name};
-            ShaderResourceManifest manifest_array{};
-            if (!BuildShaderResourceManifest(
+            ModuleResourceManifest manifest_array{};
+            if (!BuildModuleResourceManifest(
                     roots_array, uint32_t(std::size(roots_array)), manifest_array, &registry))
             {
                 result.diagnostics.emplace_back(
                     std::string("Texture2DArray provider manifest failed: ")
-                    + GetShaderResourceManifestErrorName(manifest_array.error));
+                    + GetModuleResourceManifestErrorName(manifest_array.error));
             }
             else
             {
@@ -3753,8 +3753,8 @@ namespace
             }
 
             const char *derivative_root = ntb_derivative->name;
-            ShaderResourceManifest derivative_manifest{};
-            if (!BuildShaderResourceManifest(
+            ModuleResourceManifest derivative_manifest{};
+            if (!BuildModuleResourceManifest(
                     &derivative_root, 1, derivative_manifest, &registry)
              || derivative_manifest.texture_layer_count != 1)
                result.diagnostics.emplace_back(
@@ -5267,7 +5267,7 @@ namespace
             uint32_t(VK_SHADER_STAGE_VERTEX_BIT),
             uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT));
 
-        ShaderResourceManifest compatible_manifest{};
+        ModuleResourceManifest compatible_manifest{};
         compatible_manifest.texture_layer_count = 1;
         compatible_manifest.texture_layers[0] = {
             TextureSlot::BaseColor,
@@ -5319,7 +5319,7 @@ namespace
                     "Merged resource policy or SSBO identity was not preserved.");
         }
 
-        ShaderResourceManifest ssbo_name_conflict{};
+        ModuleResourceManifest ssbo_name_conflict{};
         ssbo_name_conflict.ssbo_count = 1;
         ssbo_name_conflict.ssbos[0] = {
             "mtl",
@@ -5329,7 +5329,7 @@ namespace
         };
         if (descriptor_builder_common::AppendManifestSSBODescriptors(
                 descriptors, ssbo_name_conflict)
-         || ssbo_name_conflict.error != ShaderResourceManifestError::ResourceConflict)
+         || ssbo_name_conflict.error != ModuleResourceManifestError::ResourceConflict)
         {
             result.diagnostics.emplace_back(
                 "Same-name SSBO type conflicts must fail explicitly.");

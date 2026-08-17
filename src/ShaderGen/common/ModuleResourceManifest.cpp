@@ -1,4 +1,4 @@
-#include <hgl/graph/glsl/ShaderResourceManifest.h>
+#include <hgl/graph/glsl/ModuleResourceManifest.h>
 #include <hgl/graph/glsl/GLSLCodeModuleRegistry.h>
 #include <hgl/util/hash/FNV1a.h>
 
@@ -30,7 +30,7 @@ namespace hgl::graph::mtl
             return h;
         }
 
-        bool AddUBO(ShaderResourceManifest &manifest, const GLSLCodeModuleUBORequirement &incoming)
+        bool AddUBO(ModuleResourceManifest &manifest, const GLSLCodeModuleUBORequirement &incoming)
         {
             for (uint32 i = 0; i < manifest.ubo_count; ++i)
             {
@@ -44,9 +44,9 @@ namespace hgl::graph::mtl
                 return true;
             }
 
-            if (manifest.ubo_count >= MaxShaderResourceManifestUBOs)
+            if (manifest.ubo_count >= MaxModuleResourceManifestUBOs)
             {
-                manifest.error = ShaderResourceManifestError::UBOCapacityExceeded;
+                manifest.error = ModuleResourceManifestError::UBOCapacityExceeded;
                 return false;
             }
 
@@ -54,11 +54,11 @@ namespace hgl::graph::mtl
             return true;
         }
 
-        bool AddSSBO(ShaderResourceManifest &manifest, const GLSLCodeModuleSSBORequirement &incoming)
+        bool AddSSBO(ModuleResourceManifest &manifest, const GLSLCodeModuleSSBORequirement &incoming)
         {
             if (!incoming.name || !incoming.name[0])
             {
-                manifest.error = ShaderResourceManifestError::ResourceConflict;
+                manifest.error = ModuleResourceManifestError::ResourceConflict;
                 return false;
             }
 
@@ -71,7 +71,7 @@ namespace hgl::graph::mtl
 
                 if (existing.ssbo_type != incoming.ssbo_type)
                 {
-                    manifest.error = ShaderResourceManifestError::ResourceConflict;
+                    manifest.error = ModuleResourceManifestError::ResourceConflict;
                     return false;
                 }
 
@@ -81,9 +81,9 @@ namespace hgl::graph::mtl
                 return true;
             }
 
-            if (manifest.ssbo_count >= MaxShaderResourceManifestSSBOs)
+            if (manifest.ssbo_count >= MaxModuleResourceManifestSSBOs)
             {
-                manifest.error = ShaderResourceManifestError::SSBOCapacityExceeded;
+                manifest.error = ModuleResourceManifestError::SSBOCapacityExceeded;
                 return false;
             }
 
@@ -92,7 +92,7 @@ namespace hgl::graph::mtl
         }
 
         bool AddTextureLayer(
-            ShaderResourceManifest &manifest,
+            ModuleResourceManifest &manifest,
             const GLSLCodeModuleTextureLayerRequirement &incoming)
         {
             for (uint32 i = 0; i < manifest.texture_layer_count; ++i)
@@ -107,9 +107,9 @@ namespace hgl::graph::mtl
                 return true;
             }
 
-            if (manifest.texture_layer_count >= MaxShaderResourceManifestTextureLayers)
+            if (manifest.texture_layer_count >= MaxModuleResourceManifestTextureLayers)
             {
-                manifest.error = ShaderResourceManifestError::TextureLayerCapacityExceeded;
+                manifest.error = ModuleResourceManifestError::TextureLayerCapacityExceeded;
                 return false;
             }
 
@@ -134,7 +134,7 @@ namespace hgl::graph::mtl
             VisitState *states,
             uint32 &visited_count,
             VisitState *mutable_states,
-            ShaderResourceManifest &manifest)
+            ModuleResourceManifest &manifest)
         {
             const uint64 stable_id = GetModuleStableID(name);
             int state_index = -1;
@@ -148,9 +148,9 @@ namespace hgl::graph::mtl
             }
             if (state_index < 0)
             {
-                if (visited_count >= MaxShaderResourceManifestCodeModules)
+                if (visited_count >= MaxModuleResourceManifestCodeModules)
                 {
-                    manifest.error = ShaderResourceManifestError::CodeModuleCapacityExceeded;
+                    manifest.error = ModuleResourceManifestError::CodeModuleCapacityExceeded;
                     manifest.error_module_name = name;
                     return false;
                 }
@@ -163,21 +163,21 @@ namespace hgl::graph::mtl
             const GLSLCodeModuleDefinition *definition = FindModuleByName(name, registry);
             if (!definition)
             {
-                manifest.error = ShaderResourceManifestError::UnknownCodeModule;
+                manifest.error = ModuleResourceManifestError::UnknownCodeModule;
                 manifest.error_module_name = name;
                 return false;
             }
 
             if (!definition->glsl_code)
             {
-                manifest.error = ShaderResourceManifestError::ResourceConflict;
+                manifest.error = ModuleResourceManifestError::ResourceConflict;
                 manifest.error_module_name = name;
                 return false;
             }
 
             if (states[state_index] == VisitState::Visiting)
             {
-                manifest.error = ShaderResourceManifestError::CodeModuleCycle;
+                manifest.error = ModuleResourceManifestError::CodeModuleCycle;
                 manifest.error_module_name = name;
                 return false;
             }
@@ -212,9 +212,9 @@ namespace hgl::graph::mtl
                     return false;
             }
 
-            if (manifest.code_module_count >= MaxShaderResourceManifestCodeModules)
+            if (manifest.code_module_count >= MaxModuleResourceManifestCodeModules)
             {
-                manifest.error = ShaderResourceManifestError::CodeModuleCapacityExceeded;
+                manifest.error = ModuleResourceManifestError::CodeModuleCapacityExceeded;
                 manifest.error_module_name = name;
                 return false;
             }
@@ -225,7 +225,7 @@ namespace hgl::graph::mtl
         }
 
         void BuildStableHash(
-            ShaderResourceManifest &manifest,
+            ModuleResourceManifest &manifest,
             const GLSLCodeModuleRegistry *registry)
         {
             hgl::hash::FNV1aHasher64 h;
@@ -263,21 +263,21 @@ namespace hgl::graph::mtl
         }
     }
 
-    bool BuildShaderResourceManifest(
+    bool BuildModuleResourceManifest(
         const char *const *root_module_names,
         const uint32 root_module_count,
-        ShaderResourceManifest &manifest,
+        ModuleResourceManifest &manifest,
         const GLSLCodeModuleRegistry *registry) noexcept
     {
-        manifest = ShaderResourceManifest{};
+        manifest = ModuleResourceManifest{};
         if (!root_module_names && root_module_count > 0)
         {
-            manifest.error = ShaderResourceManifestError::NullRootList;
+            manifest.error = ModuleResourceManifestError::NullRootList;
             return false;
         }
 
-        uint64 visited_ids[MaxShaderResourceManifestCodeModules]{};
-        VisitState states[MaxShaderResourceManifestCodeModules]{};
+        uint64 visited_ids[MaxModuleResourceManifestCodeModules]{};
+        VisitState states[MaxModuleResourceManifestCodeModules]{};
         uint32 visited_count = 0;
 
         for (uint32 i = 0; i < root_module_count; ++i)
@@ -291,19 +291,19 @@ namespace hgl::graph::mtl
         return true;
     }
 
-    const char *GetShaderResourceManifestErrorName(const ShaderResourceManifestError error) noexcept
+    const char *GetModuleResourceManifestErrorName(const ModuleResourceManifestError error) noexcept
     {
         switch (error)
         {
-        case ShaderResourceManifestError::None: return "None";
-        case ShaderResourceManifestError::NullRootList: return "NullRootList";
-        case ShaderResourceManifestError::UnknownCodeModule: return "UnknownCodeModule";
-        case ShaderResourceManifestError::CodeModuleCycle: return "CodeModuleCycle";
-        case ShaderResourceManifestError::CodeModuleCapacityExceeded: return "CodeModuleCapacityExceeded";
-        case ShaderResourceManifestError::UBOCapacityExceeded: return "UBOCapacityExceeded";
-        case ShaderResourceManifestError::SSBOCapacityExceeded: return "SSBOCapacityExceeded";
-        case ShaderResourceManifestError::TextureLayerCapacityExceeded: return "TextureLayerCapacityExceeded";
-        case ShaderResourceManifestError::ResourceConflict: return "ResourceConflict";
+        case ModuleResourceManifestError::None: return "None";
+        case ModuleResourceManifestError::NullRootList: return "NullRootList";
+        case ModuleResourceManifestError::UnknownCodeModule: return "UnknownCodeModule";
+        case ModuleResourceManifestError::CodeModuleCycle: return "CodeModuleCycle";
+        case ModuleResourceManifestError::CodeModuleCapacityExceeded: return "CodeModuleCapacityExceeded";
+        case ModuleResourceManifestError::UBOCapacityExceeded: return "UBOCapacityExceeded";
+        case ModuleResourceManifestError::SSBOCapacityExceeded: return "SSBOCapacityExceeded";
+        case ModuleResourceManifestError::TextureLayerCapacityExceeded: return "TextureLayerCapacityExceeded";
+        case ModuleResourceManifestError::ResourceConflict: return "ResourceConflict";
         }
 
         return "Unknown";

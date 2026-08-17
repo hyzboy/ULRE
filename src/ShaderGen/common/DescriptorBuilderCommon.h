@@ -2,7 +2,7 @@
 
 #include <hgl/mtl/SerializedDescriptorEntry.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
-#include <hgl/graph/glsl/ShaderResourceManifest.h>
+#include <hgl/graph/glsl/ModuleResourceManifest.h>
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/util/hash/FNV1a.h>
@@ -295,7 +295,7 @@ inline bool PushManifestSSBO(
 
 inline void AppendManifestUBODescriptors(
     std::vector<SerializedDescriptorEntry> &v,
-    const ShaderResourceManifest &manifest)
+    const ModuleResourceManifest &manifest)
 {
     for (uint32 i = 0; i < manifest.ubo_count; ++i)
     {
@@ -307,14 +307,14 @@ inline void AppendManifestUBODescriptors(
 
 inline bool AppendManifestSSBODescriptors(
     std::vector<SerializedDescriptorEntry> &v,
-    ShaderResourceManifest &manifest)
+    ModuleResourceManifest &manifest)
 {
     for (uint32 i = 0; i < manifest.ssbo_count; ++i)
     {
         if (PushManifestSSBO(v, manifest.ssbos[i]))
             continue;
 
-        manifest.error = ShaderResourceManifestError::ResourceConflict;
+        manifest.error = ModuleResourceManifestError::ResourceConflict;
         return false;
     }
 
@@ -323,7 +323,7 @@ inline bool AppendManifestSSBODescriptors(
 
 inline bool AppendManifestTextureLayerDescriptors(
     std::vector<SerializedDescriptorEntry> &v,
-    ShaderResourceManifest &manifest)
+    ModuleResourceManifest &manifest)
 {
     for (uint32 i = 0; i < manifest.texture_layer_count; ++i)
     {
@@ -341,7 +341,7 @@ inline bool AppendManifestTextureLayerDescriptors(
         entry.allow_fallback = layer.allow_fallback;
         if (!MergeSSBODescriptor(v, entry))
         {
-            manifest.error = ShaderResourceManifestError::ResourceConflict;
+            manifest.error = ModuleResourceManifestError::ResourceConflict;
             return false;
         }
     }
@@ -375,18 +375,18 @@ inline void EnsureMaterialDataIndexTable(
         PushMaterialDataIndexRows(v, stage_flags);
 }
 
-inline bool BuildDefinitionShaderResourceManifest(
+inline bool BuildDefinitionModuleResourceManifest(
     const MaterialDefinition &definition,
-    ShaderResourceManifest &manifest,
+    ModuleResourceManifest &manifest,
     const char *const *extra_roots = nullptr,
     const uint32 extra_root_count = 0,
     const GLSLCodeModuleRegistry *registry = nullptr)
 {
-    const char *roots[MaxShaderResourceManifestCodeModules]{};
+    const char *roots[MaxModuleResourceManifestCodeModules]{};
     uint32 root_count = 0;
     for (const auto &name : definition.code_module_requirements)
     {
-        if (root_count >= MaxShaderResourceManifestCodeModules)
+        if (root_count >= MaxModuleResourceManifestCodeModules)
             return false;
         roots[root_count++] = name.c_str();
     }
@@ -395,12 +395,12 @@ inline bool BuildDefinitionShaderResourceManifest(
         return false;
     for (uint32 i = 0; i < extra_root_count; ++i)
     {
-        if (root_count >= MaxShaderResourceManifestCodeModules)
+        if (root_count >= MaxModuleResourceManifestCodeModules)
             return false;
         roots[root_count++] = extra_roots[i];
     }
 
-    return BuildShaderResourceManifest(roots, root_count, manifest, registry);
+    return BuildModuleResourceManifest(roots, root_count, manifest, registry);
 }
 
 inline uint64 HashDescriptorEntries(

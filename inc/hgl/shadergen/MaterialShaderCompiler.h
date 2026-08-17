@@ -15,7 +15,7 @@ namespace hgl::graph::mtl {}
 #include<hgl/common/ShaderStageDef.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
 #include<hgl/mtl/MaterialRecipe.h>
-#include<hgl/graph/glsl/ShaderResourceManifest.h>
+#include<hgl/graph/glsl/ModuleResourceManifest.h>
 #include<hgl/shadergen/ShaderArtifactStore.h>
 #include<hgl/shadergen/DescriptorContract.h>
 #include <string>
@@ -54,7 +54,7 @@ struct CompositorMaterialBuildConfig
     // Optional unified stage/link contract. When supplied, the compiler
     // validates the declared VS/FS interface before compiling the local SPV.
     const ShaderLinkSpec *program_link = nullptr;
-    const ShaderResourceManifest *resource_manifest = nullptr;
+    const ModuleResourceManifest *resource_manifest = nullptr;
     bool merge_resource_manifest_material_slots = true;
     ShaderArtifactStore *artifact_store = nullptr;
     const DescriptorContract *descriptor_contract = nullptr;

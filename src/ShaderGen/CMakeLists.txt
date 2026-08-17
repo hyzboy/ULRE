@@ -87,7 +87,7 @@ set(STD_MTL_HEADER_PATH  ${ROOT_INCLUDE_PATH}/hgl/mtl)
 SET(SHADERGEN_COMMON_FILES  ${ROOT_INCLUDE_PATH}/hgl/graph/ShaderBufferSources.h
                             ${SHADERGEN_INCLUDE_PATH}/ShaderLibraryPath.h
                             common/GLSLCodeModule.cpp
-                            common/ShaderResourceManifest.cpp
+                            common/ModuleResourceManifest.cpp
                             common/GenericMaterialBuilder.h
                             common/GenericMaterialBuilder.cpp
                             ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/SkyInfo.h
@@ -95,7 +95,7 @@ SET(SHADERGEN_COMMON_FILES  ${ROOT_INCLUDE_PATH}/hgl/graph/ShaderBufferSources.h
                             ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/UBOShaderSources.h
                             ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/ColorPalette.h
                             ${ROOT_INCLUDE_PATH}/hgl/graph/glsl/GLSLCodeModule.h
-                            ${ROOT_INCLUDE_PATH}/hgl/graph/glsl/ShaderResourceManifest.h
+                            ${ROOT_INCLUDE_PATH}/hgl/graph/glsl/ModuleResourceManifest.h
 )
 
 SOURCE_GROUP("Common" FILES ${SHADERGEN_COMMON_FILES})

@@ -5,7 +5,7 @@
 #include <hgl/common/RenderOptions.h>
 #include <hgl/common/RenderAssignDef.h>
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
-#include <hgl/graph/glsl/ShaderResourceManifest.h>
+#include <hgl/graph/glsl/ModuleResourceManifest.h>
 #include <vector>
 #include "../common/DescriptorBuilderCommon.h"
 
@@ -50,20 +50,20 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
     return descriptors;
 }
 
-inline bool BuildShaderResourceManifest(
+inline bool BuildModuleResourceManifest(
     const MaterialDefinition &definition,
-    ShaderResourceManifest &manifest,
+    ModuleResourceManifest &manifest,
     const char *const *provider_roots = nullptr,
     const uint32 provider_root_count = 0,
     const GLSLCodeModuleRegistry *registry = nullptr)
 {
-    return descriptor_builder_common::BuildDefinitionShaderResourceManifest(
+    return descriptor_builder_common::BuildDefinitionModuleResourceManifest(
         definition, manifest, provider_roots, provider_root_count, registry);
 }
 
 inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
     const MaterialDefinition &definition,
-    ShaderResourceManifest &manifest,
+    ModuleResourceManifest &manifest,
     const BuildDescriptorOptions &opt = {})
 {
     std::vector<SerializedDescriptorEntry> descriptors = BuildDescriptorsFromDefinition(definition, opt);
@@ -79,10 +79,10 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
 
 inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
     const MaterialDefinition &definition,
-    const ShaderResourceManifest &manifest,
+    const ModuleResourceManifest &manifest,
     const BuildDescriptorOptions &opt = {})
 {
-    ShaderResourceManifest mutable_manifest = manifest;
+    ModuleResourceManifest mutable_manifest = manifest;
     return BuildDescriptorsFromDefinition(definition, mutable_manifest, opt);
 }
 

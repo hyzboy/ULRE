@@ -12,7 +12,7 @@
 #include <hgl/mtl/VertexShaderNodeConfig.h>
 #include <hgl/mtl/SerializedVertexEntry.h>
 #include <hgl/mtl/SerializedDescriptorEntry.h>
-#include <hgl/graph/glsl/ShaderResourceManifest.h>
+#include <hgl/graph/glsl/ModuleResourceManifest.h>
 #include <hgl/shadergen/CanonicalShaderContract.h>
 #include <hgl/shadergen/DescriptorContract.h>
 #include <hgl/shadergen/MaterialCoverageContract.h>
@@ -63,7 +63,7 @@ namespace hgl::graph::mtl
         uint64 resolved_provider_graph_hash = 0;
 
         // Phase 3: resource contract
-        ShaderResourceManifest manifest;
+        ModuleResourceManifest manifest;
         MaterialDefinition manifest_definition;
         std::vector<SerializedDescriptorEntry> descriptors;
         shadergen::DescriptorContract descriptor_contract;
