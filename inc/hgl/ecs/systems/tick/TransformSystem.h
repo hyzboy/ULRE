@@ -38,7 +38,7 @@ namespace hgl::ecs
         hgl::UnorderedMap<TransformDataStorage::HandleID, uint64_t> last_uploaded_version;
         // W5 帧级 once：同帧多次调用（RenderGraph pass 循环 + Line 管线）
         // 只执行一次全量提交——ring 段每帧填一次，所有 pass 读同一帧段
-        uint32_t last_submit_frame_index = ~0u;
+
 
     public:
 
