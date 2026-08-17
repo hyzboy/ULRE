@@ -592,20 +592,30 @@ ShaderBuildContext *CompileCompositorMaterial(
 
     // 显式双宏名（_SET/_BINDING 成对传入）——不做字符串推导：
     // 推导依赖 "_SET" 子串存在，缺了即 std::out_of_range
+    //
+    // #ifndef 保护：模块 include 链可能提前引入 descriptor_macros.glsl
+    // （其 L2W_SET=PER_OBJECT_SET 等宏体文本与这里不同——GLSL 重定义检查
+    // 比较宏体文本，同值不同体也报错）。先定义者胜——当前布局下两者展开
+    // 值一致（PER_OBJECT_SET=1=SBS set）；改 SBS 布局时需同步
+    // descriptor_macros.glsl 的默认值。
     auto AppendDescriptorBindingDefine = [&](const char *set_macro, const char *binding_macro, const ShaderDescriptor *sd)
     {
         if (!set_macro || !binding_macro || !sd || sd->set < 0 || sd->binding < 0)
             return;
-        binding_preamble += "#define ";
+        binding_preamble += "#ifndef ";
+        binding_preamble += set_macro;
+        binding_preamble += "\n#define ";
         binding_preamble += set_macro;
         binding_preamble += " ";
         binding_preamble += std::to_string(sd->set);
-        binding_preamble += "\n";
-        binding_preamble += "#define ";
+        binding_preamble += "\n#endif\n";
+        binding_preamble += "#ifndef ";
+        binding_preamble += binding_macro;
+        binding_preamble += "\n#define ";
         binding_preamble += binding_macro;
         binding_preamble += " ";
         binding_preamble += std::to_string(sd->binding);
-        binding_preamble += "\n";
+        binding_preamble += "\n#endif\n";
     };
 
     const DescriptorSetLayoutAllocator &descriptor_info = ctx->GetDescriptorAllocator();
