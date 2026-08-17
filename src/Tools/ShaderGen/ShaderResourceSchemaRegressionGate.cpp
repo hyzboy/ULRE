@@ -1174,9 +1174,8 @@ namespace
             if (assembled.fragment_glsl.compare(0, 8, "#version") != 0)
                 result.diagnostics.emplace_back(
                     "Compositor GLSL must begin with #version");
-            if (assembled.fragment_glsl.find("#define SURFACE_TYPE ") == std::string::npos)
-                result.diagnostics.emplace_back(
-                    "Compositor permutation defines were not injected");
+            // B7 后：SURFACE_TYPE/SHADOW_MODE define 输出已删
+            // （ShaderPermutationKey 删除——GLSL 模块 0 消费，无注入机制）
             if (assembled.fragment_glsl.find("#version", 8) != std::string::npos)
                 result.diagnostics.emplace_back(
                     "Compositor GLSL contains a second #version directive");
