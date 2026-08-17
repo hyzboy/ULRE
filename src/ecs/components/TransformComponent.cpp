@@ -600,12 +600,7 @@ namespace hgl
             if (parent)
             {
                 auto parentTransform = parent->GetComponent<TransformComponent>();
-                // 静态 parent 的 world 同样必须传播到子节点——原 IsMovable()
-                // 检查会拦截静态 parent 的递归更新，导致静态层级（RenderBoundBox
-                // 的 bbox、RecursiveCube 的子 cube）读到 parent 的未更新 world
-                // （默认/单位矩阵）。UpdateIfDirty 内部有 matrixDirty 快速返回，
-                // 静态 parent 不脏时递归成本仅一次标记检查。
-                if (parentTransform)
+                if (parentTransform && parentTransform->IsMovable())
                 {
                     parentTransform->UpdateIfDirty();
                 }

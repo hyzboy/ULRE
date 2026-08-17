@@ -230,7 +230,7 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
 
         auto move_transform = gizmo->move_mode.entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         move_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
-        move_transform->SetParent(gizmo->root->GetID());
+        move_transform->SetParent(gizmo->root->GetEntityID());
         move_transform->SetFixedPixelSizingParameters(gizmo->fixed_pixel_diameter,
                                                       GIZMO_ARROW_LENGTH * 2.0f,
                                                       0.01f);
@@ -252,7 +252,7 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
 
         auto rotate_transform = gizmo->rotate_mode.entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         rotate_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
-        rotate_transform->SetParent(gizmo->root->GetID());
+        rotate_transform->SetParent(gizmo->root->GetEntityID());
         rotate_transform->SetFixedPixelSizingParameters(gizmo->fixed_pixel_diameter,
                                                         GIZMO_ARROW_LENGTH * 2.0f,
                                                         0.01f);
@@ -274,7 +274,7 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
 
         auto scale_transform = gizmo->scale_mode.entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         scale_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
-        scale_transform->SetParent(gizmo->root->GetID());
+        scale_transform->SetParent(gizmo->root->GetEntityID());
         scale_transform->SetFixedPixelSizingParameters(gizmo->fixed_pixel_diameter,
                                                        GIZMO_ARROW_LENGTH * 2.0f,
                                                        0.01f);
@@ -328,7 +328,7 @@ void DestroyTransformGizmo(GizmoECS *gizmo)
         if (gizmo->scale_mode.entity)
             gizmo->world->DestroyEntity(gizmo->scale_mode.entity->GetEntityID());
         if (gizmo->root)
-            gizmo->world->DestroyEntity(gizmo->root->GetID());
+            gizmo->world->DestroyEntity(gizmo->root->GetEntityID());
     }
 
     delete gizmo;

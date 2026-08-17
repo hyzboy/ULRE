@@ -221,7 +221,7 @@ private:
         glm::vec3 local_pos = dir * (size * kStepScale);
 
         std::string name = name_prefix + "_" + std::to_string(depth);
-        EntityID parent_id = parent ? parent->GetID() : EntityID();
+        EntityID parent_id = parent ? parent->GetEntityID() : EntityID();
         Entity *child = CreateCubeEntity(local_pos, child_size, name.c_str(), true, parent_id);
         if (!child)
             return false;
