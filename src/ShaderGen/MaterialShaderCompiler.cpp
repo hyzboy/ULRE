@@ -884,8 +884,13 @@ ShaderBuildContext *CompileCompositorMaterial(
     };
 
     std::string vs_final = InsertAfterVersionLine(vs_glsl, binding_preamble + vs_index_table_decls);
+
+    // 注入顺序（InsertAfterVersionLine 后注入者位于 version 后更前）：
+    // 模块代码可能引用 SSBO 类型与 MTL_DATA 宏（unlit_source 的
+    // EmissiveSurfaceData / MTL_DATA）——ssbo 声明 + slot 宏必须最后注入
+    // （version 后最前，先于模块代码）
     std::string fs_final = InsertAfterVersionLine(
-        fs_glsl, binding_preamble + fs_index_table_decls + material_ssbo_decls + material_slot_macros + sampler_macros);
+        fs_glsl, binding_preamble + fs_index_table_decls + sampler_macros);
     const std::string code_module_glsl = BuildCodeModuleGLSL(config.resource_manifest);
     if (!code_module_glsl.empty())
     {
@@ -894,6 +899,7 @@ ShaderBuildContext *CompileCompositorMaterial(
         else
             fs_final = InsertBeforeSurfaceFunction(fs_final, code_module_glsl);
     }
+    fs_final = InsertAfterVersionLine(fs_final, material_ssbo_decls + material_slot_macros);
 
     ShaderCreateInfoVertex   *vert = ctx->GetVertexShader();
     ShaderCreateInfo         *frag = ctx->GetStageShader(ShaderStage::Fragment);
