@@ -539,16 +539,22 @@ namespace hgl
         {
             if (use_adaptive_render_graph)
             {
-                // Gather scene statistics and check if we need to rebuild the adaptive graph
-                SceneStats stats = GatherSceneStats(this);
-                uint64_t current_hash = stats.GetHash();
-
-                if (current_hash != cached_adaptive_scene_hash)
+                // 只在场景结构变化（scene_structure_dirty）时重新 gather，
+                // 避免每帧全量遍历所有 entity/component（结构稳定时零开销）。
+                if (scene_structure_dirty)
                 {
-                    LogDebug("[ECS] Adaptive RenderGraph scene hash changed: %llu -> %llu, regenerating",
-                             cached_adaptive_scene_hash, current_hash);
-                    cached_adaptive_render_graph = CreateAdaptiveRenderGraph(this);
-                    cached_adaptive_scene_hash = current_hash;
+                    SceneStats stats = GatherSceneStats(this);
+                    uint64_t current_hash = stats.GetHash();
+
+                    if (current_hash != cached_adaptive_scene_hash)
+                    {
+                        LogDebug("[ECS] Adaptive RenderGraph scene hash changed: %llu -> %llu, regenerating",
+                                 cached_adaptive_scene_hash, current_hash);
+                        cached_adaptive_render_graph = CreateAdaptiveRenderGraph(this, stats);
+                        cached_adaptive_scene_hash = current_hash;
+                    }
+
+                    scene_structure_dirty = false;
                 }
 
                 Render(deltaTime, cached_adaptive_render_graph, pre_render);

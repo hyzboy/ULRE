@@ -152,5 +152,12 @@ namespace hgl
          */
         RenderGraph CreateAdaptiveRenderGraph(ECSContext* context);
 
+        /**
+         * Create RenderGraph adapted to scene content using pre-gathered stats.
+         * Callers that already hold a SceneStats (e.g. the per-frame adaptive path)
+         * pass it here to avoid a second full entity scan.
+         */
+        RenderGraph CreateAdaptiveRenderGraph(ECSContext* context, const SceneStats& stats);
+
     } // namespace ecs
 } // namespace hgl

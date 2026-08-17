@@ -177,6 +177,7 @@ namespace hgl
             mutable RenderGraph cached_adaptive_render_graph;
             mutable uint64_t cached_adaptive_scene_hash = ~0ULL;  // sentinel: "not computed yet"
             mutable bool use_adaptive_render_graph = true;  // default: use adaptive mode
+            mutable bool scene_structure_dirty = true;  // 场景结构（entity/component 增删）变化标记，下次 Render 重 gather
 
             /// Graphics context adapter (Phase 2) - now raw pointer
             hgl::graph::GraphicsContext* graphics_context = nullptr;
@@ -259,6 +260,11 @@ namespace hgl
 
             /// Invalidate cached adaptive graph to force re-computation on next render
             void InvalidateAdaptiveRenderGraph() { cached_adaptive_scene_hash = ~0ULL; }
+
+            /// Mark scene structure (entity/component add/remove) as changed.
+            /// Called automatically by component attach/detach; next Render re-gathers
+            /// stats only when dirty, avoiding a per-frame full entity scan.
+            void MarkSceneStructureDirty() const { scene_structure_dirty = true; }
 
             /// Handle render target resize
             void OnResize(const VkExtent2D &extent);

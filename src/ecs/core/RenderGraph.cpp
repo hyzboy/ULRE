@@ -229,8 +229,12 @@ namespace hgl
 
         RenderGraph CreateAdaptiveRenderGraph(ECSContext* context)
         {
+            return CreateAdaptiveRenderGraph(context, GatherSceneStats(context));
+        }
+
+        RenderGraph CreateAdaptiveRenderGraph(ECSContext* context, const SceneStats& stats)
+        {
             RenderGraph graph;
-            SceneStats stats = GatherSceneStats(context);
 
             MLogDebug(RenderGraph,"[RenderGraph] Adaptive: detected %zu active groups",
                      stats.active_render_groups.size());

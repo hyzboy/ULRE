@@ -28,6 +28,12 @@ namespace hgl
                 context->UnregisterComponentInstance(type_hash, comp_ptr);
         }
 
+        void Entity::MarkSceneDirty() const
+        {
+            if (context)
+                context->MarkSceneStructureDirty();
+        }
+
         void Entity::ReplaceComponent(size_t type_hash, const std::shared_ptr<Component>& component, const std::type_index& component_type)
         {
             if (!component)
@@ -44,6 +50,7 @@ namespace hgl
             component->SetOwner(id, context);
             RegisterToContext(type_hash, component);
             component->OnAttach();
+            MarkSceneDirty();
         }
 
         void Entity::OnUpdate(float deltaTime)
@@ -92,6 +99,7 @@ namespace hgl
                 pair.second->OnDetach();
             }
             components.Clear();
+            MarkSceneDirty();
         }
     }//namespace ecs
 }//namespace hgl
