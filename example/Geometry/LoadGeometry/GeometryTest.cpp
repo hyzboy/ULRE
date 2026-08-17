@@ -293,7 +293,7 @@ private:
             bbox->transform = bbox->entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
             bbox->primitive_comp = bbox->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
-            bbox->transform->SetParent(rm->entity->GetID());
+            bbox->transform->SetParent(rm->entity->GetEntityID());
 
             const auto &center = local_aabb.GetCenter();
             const auto &size = local_aabb.GetLength();

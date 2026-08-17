@@ -168,7 +168,7 @@ namespace hgl
                 return nullptr;
 
             transform->SetLocalTRS(desc.position, desc.rotation, desc.scale);
-            transform->SetParent(parent->GetID());
+            transform->SetParent(parent->GetEntityID());
 
             if (out_transform)
                 *out_transform = transform;
