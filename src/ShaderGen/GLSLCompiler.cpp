@@ -263,6 +263,12 @@ namespace hgl
                             shadergen::GetShaderLibraryPath();
                         shadergen::AddShaderIncludePath(shader_library_path.c_str());
 
+                        // bindless_textures 等模块被拼接进 fs_final 后，其
+                        // `#include "descriptor_macros.glsl"`（原相对 common/）
+                        // 在无目录上下文中按 -I 搜索——补 common/ 搜索路径，
+                        // 与带 common/ 前缀的 include（-I 根下）双路径兼容
+                        shadergen::AddShaderIncludePath((shader_library_path + "/common").c_str());
+
                         return(true);
                     }
 
