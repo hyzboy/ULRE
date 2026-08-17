@@ -371,7 +371,7 @@ namespace hgl::graph::shadergen
                 || blend == BlendMode::Dither
                 || pass == PassType::ForwardDither;
         }
-        fs_source = InjectDefines(fs_source, key, effective_options);
+        fs_source = InjectDefines(fs_source, effective_options);
         if (fs_source.empty())
         {
             result.error_message =
