@@ -326,6 +326,21 @@ namespace hgl::graph::mtl
             return true;
         }
 
+        bool ParseTransport(const std::string &name, VertexTransportMode &out)
+        {
+            if (name == "vbo" || name == "VBO")
+            {
+                out = VertexTransportMode::VBO;
+                return true;
+            }
+            if (name == "ssbo" || name == "SSBO")
+            {
+                out = VertexTransportMode::SSBO;
+                return true;
+            }
+            return false;
+        }
+
         bool ParseTransformGraph(const toml::value &table,
                                  VertexShaderNodeConfig &out)
         {
@@ -341,6 +356,13 @@ namespace hgl::graph::mtl
              || !ReadRequiredString(table, "projection", value)
              || !ParseProjection(value, out.projection))
                 return false;
+            // transport 可选（默认 VBO）
+            if (table.contains("transport"))
+            {
+                if (!ReadRequiredString(table, "transport", value)
+                 || !ParseTransport(value, out.transport))
+                    return false;
+            }
             return true;
         }
 

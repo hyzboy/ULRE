@@ -103,6 +103,59 @@ namespace
         out_vertex_input_glsl.clear();
         out_position_format = VK_FORMAT_UNDEFINED;
 
+        if (definition.vertex_node_config.transport == VertexTransportMode::SSBO)
+        {
+            // SSBO 顶点输入：C++ 只做"选择"——按需求语义选 s1_* 模块，
+            // 读取代码在模块内（gl_VertexIndex），无 VBO attribute 布局。
+            const GeometryVertexAttributeFormat *position_attribute =
+                geometry.Find(VertexSemantic::Position);
+            if (!position_attribute)
+                return false;
+            out_position_format = position_attribute->format;
+
+            bool need_uv = false, need_ntb = false, need_joint = false;
+            for (int i = 0; i < definition.vertex_semantic_requirements.GetCount(); ++i)
+            {
+                const auto &requirement = definition.vertex_semantic_requirements[i];
+                const VertexSemantic semantic =
+                    GetVertexSemanticFromGLSLCodeModuleSemantic(requirement.semantic);
+                switch (semantic)
+                {
+                case VertexSemantic::TexCoord: need_uv = true; break;
+                case VertexSemantic::Normal:
+                case VertexSemantic::Tangent:
+                case VertexSemantic::Bitangent: need_ntb = true; break;
+                case VertexSemantic::JointID:
+                case VertexSemantic::JointWeight: need_joint = true; break;
+                default: break;  // Position 由 input mode 决定
+                }
+            }
+
+            // 各数据模块先 include（定义 HGL_*_LOADER 宏），
+            // Position 模块最后（LoadVertexData 以 #ifdef 展开全部 loader）
+            if (need_uv)
+                out_vertex_input_glsl += "#include \"vertex/s1_uv.glsl\"\n";
+            if (need_ntb)
+                out_vertex_input_glsl += "#include \"vertex/s1_ntb.glsl\"\n";
+            if (need_joint)
+                out_vertex_input_glsl += "#include \"vertex/s1_joint.glsl\"\n";
+
+            // 位置模块按 input mode 选择（T0.2a 试点：Vec3Position）
+            switch (definition.vertex_node_config.input)
+            {
+            case VertexInputMode::Vec3Position:
+                out_vertex_input_glsl += "#include \"vertex/s1_position_vec3.glsl\"\n";
+                break;
+            case VertexInputMode::Procedural:
+                out_vertex_input_glsl += "#include \"vertex/s1_input_procedural.glsl\"\n";
+                break;
+            default:
+                // Vec2/Vec2Int SSBO 模块待建（T0.2a 仅 Vec3Position 试点）
+                return false;
+            }
+        }
+        else
+        {
         for (int i = 0; i < definition.vertex_semantic_requirements.GetCount(); ++i)
         {
             const auto &requirement = definition.vertex_semantic_requirements[i];
@@ -135,6 +188,7 @@ namespace
                 + ") in " + type + " " + name + ";\n";
             if (semantic == VertexSemantic::Position)
                 out_position_format = attribute->format;
+        }
         }
 
         return out_position_format != VK_FORMAT_UNDEFINED;
