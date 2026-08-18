@@ -5,25 +5,23 @@
 // @ulre provide Normal
 // @ulre ssbo VertexNTB VertexNTB 3 Vertex required
 // @ulre end
-// Stage 1: NTB 从独立 SSBO 读取——uint 打包数组，格式由模块解码
-// 发行版格式：RG8 / RG16F / RGB10A2 / R11G11B10（模块内位解码）
-// 全量（有 tangent 数据）= Normal+Tangent+Bitangent 直读
-// 最小（仅 Normal）= Tangent/Bitangent cross 近似（草/地表粗精度）
-// 解码函数在 common/ 共享；光照消费插值语义，不关心 NTB 来源
-// 定义 HGL_NTB_LOADER 宏，由 s1_position_* 的 LoadVertexData 展开
+// Stage 1: NTB 从独立 SSBO 读取——内容可变（格式由模块解码）
+// 当前格式：开发格式 Normal = R32G32B32_SFLOAT（VAB 12B/顶点紧凑——scalar 布局）
+// 未来发行版格式：RG8/RG16F/RGB10A2/R11G11B10——uint 打包 + 模块内位解码
+//   （RG16F 用 unpackHalf2x16、RG8 用 unpackUnorm2x16、RGB10A2/R11G11B10 手写位解码）
+//   ——同一 VertexNTB SSBO，仅本模块的解码实现不同（C++ 侧零感知）
+// 接口约定：声明全局 Normal + HGL_NTB_LOADER 宏（s1_position_vec3 的 LoadVertexData 展开）
+// 注意：Vulkan gl_VertexIndex 已含 firstVertex（BaseVertex）——data[gl_VertexIndex] 即绝对顶点号
 #ifndef S1_NTB_GLSL
 #define S1_NTB_GLSL
 
-layout(set=VERTEX_SET, binding=VERTEX_NTB_BINDING) readonly buffer VertexNTBData
+layout(set=VERTEX_SET, binding=VERTEX_NTB_BINDING, std430, scalar) readonly buffer VertexNTBData
 {
-    uint data[];
+    vec3 data[];
 } sbo_vertex_ntb;
 
 vec3 Normal;
-// vec3 Tangent;   // 全量格式时启用
-// vec3 Bitangent;
 
-// TODO: 格式解码——按 GeometryVertexFormat 选定的格式实现
-// （RG8/RG16F 用 unpackHalf2x16/unpackUnorm2x16；RGB10A2/R11G11B10 手写位解码）
-#define HGL_NTB_LOADER { Normal = vec3(0.0, 0.0, 1.0); }
+#define HGL_NTB_LOADER { Normal = sbo_vertex_ntb.data[gl_VertexIndex]; }
+
 #endif // S1_NTB_GLSL
