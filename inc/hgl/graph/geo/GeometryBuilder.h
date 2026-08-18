@@ -19,6 +19,10 @@ namespace hgl::graph::inline_geometry
         BufferAccessor3f accessor_tangent;
         BufferAccessor2f accessor_texcoord;
 
+        // 压缩格式法线访问器（发行版：Normal 存 RG16F——xy 半浮点，z 由 shader 重建）
+        // 由构造函数按 VAB format 分派（VK_FORMAT_R16G16_SFLOAT 时使用）
+        BufferAccessor2hf accessor_normal_2hf;
+
     public:
         GeometryBuilder(GeometryCreater *pc);
         virtual ~GeometryBuilder();
@@ -45,8 +49,15 @@ namespace hgl::graph::inline_geometry
          */
         inline void WriteNormal(float x, float y, float z)
         {
-            if(accessor_normal.IsValid())
+            if(accessor_normal_2hf.IsValid())
+            {
+                // RG16F 压缩：只存 xy（半浮点）——z 由 shader 重建并 normalize
+                accessor_normal_2hf->Write(x, y);
+            }
+            else if(accessor_normal.IsValid())
+            {
                 accessor_normal->Write(x, y, z);
+            }
         }
 
         /**

@@ -478,6 +478,7 @@ using BufferAccessor1u8  = BufferAccessor<VB1u8>;
 using BufferAccessor1i8  = BufferAccessor<VB1i8>;
 using BufferAccessor2u8  = BufferAccessor<VB2u8>;
 using BufferAccessor2f   = BufferAccessor<VB2f>;
+using BufferAccessor2hf  = BufferAccessor<VB2hf>;
 using BufferAccessor3f   = BufferAccessor<VB3f>;
 using BufferAccessor4f   = BufferAccessor<VB4f>;
 using BufferAccessor2i   = BufferAccessor<VB2i>;
