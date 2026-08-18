@@ -10,6 +10,30 @@ namespace hgl::graph{
 
 class BufferManager;
 
+/**
+ * 顶点数据管理器——所有模型共享的大 VBO/SSBO（超级大缓冲）
+ *
+ * 设计：每个顶点语义（Position/UV/NTB/...）一个 VAB（大 buffer），所有模型的数据
+ * 通过 BlockAllocator 分段写入（AcquireVAB 分配段，GetStart() 即段起始顶点号）。
+ * 模型的顶点偏移 = vab_node->GetStart()（顶点号，非字节）——渲染时作为
+ * vkCmdDrawIndexed 的 firstVertex（vertexOffset）传给绘制命令。
+ *
+ * 顶点偏移计算（VBO 与 SSBO 顶点输入统一语义）：
+ * - VBO 模式（传统 attribute fetch）：硬件自动用 firstVertex + 索引取顶点——
+ *   shader 无需任何处理（attribute 已按绝对顶点寻址）。
+ * - SSBO 顶点输入模式（MeshShader 方向，s1_* 模块）：
+ *   Vulkan 的 gl_VertexIndex（SPIR-V VertexIndex）在 indexed draw 中 =
+ *   BaseVertex + index buffer 值（firstVertex 自动含入！）——
+ *   shader 直接 data[gl_VertexIndex] 即 VDM 大 buffer 的绝对顶点号，
+ *   不要再加 gl_BaseVertex/gl_BaseVertexARB（会双加错位——多对象场景
+ *   段偏移≠0 时暴露，RenderDoc 数据铁证：floor 段 0 → IDX 0..3、
+ *   cube 段 4 → IDX 4..27、cone 段 28 → IDX 28..40）。
+ * - 布局注意：VAB 数据是紧凑格式（如 vec3 = 12B/顶点）——SSBO 声明必须用
+ *   layout(std430, scalar)（GL_EXT_scalar_block_layout）——std430 默认的
+ *   vec3 数组 stride 16B 会错位（SimpleCube 顶点混乱的根因）。
+ * - 验证教训：单对象（BaseVertex=0）验证通过≠多对象正确——VDM 多对象
+ *   场景是顶点偏移类 bug 的必测项。
+ */
 class VertexDataManager
 {
     OBJECT_LOGGER
