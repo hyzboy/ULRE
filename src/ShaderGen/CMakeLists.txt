@@ -110,19 +110,10 @@ SET(SSBO_STRUCT_FILES   ${SSBO_HEADER_PATH}/LitMaterialData.h
 
 SOURCE_GROUP("Standard Material\\SSBO" FILES ${SSBO_STRUCT_FILES})
 
-SET(STD_MTL_2D_SOURCE_FILES	2d/M_Text.cpp
-)
-
-SET(STD_MTL_3D_SOURCE_FILES	3d/M_PureColor.cpp
-)
-
 SET(STD_MTL_SOURCE  ${ROOT_INCLUDE_PATH}/hgl/graph/ShaderBufferSource.h
 )
 
 SOURCE_GROUP("Standard Material" FILES ${STD_MTL_SOURCE})
-
-SOURCE_GROUP("Standard Material\\2D" FILES ${STD_MTL_2D_SOURCE_FILES})
-SOURCE_GROUP("Standard Material\\3D" FILES ${STD_MTL_3D_SOURCE_FILES})
 
 SET(SHADER_LIBRARY_FILES    MaterialDefinitionRegistry.cpp
                             ${STD_MTL_HEADER_PATH}/MaterialDefinitionRegistry.h)
@@ -172,8 +163,6 @@ add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_INCLUDE_PATH}
                                         ${SHADERGEN_COMMON_FILES}
                                         ${SHADER_LIBRARY_FILES}
                                         ${STD_MTL_SOURCE}
-                                        ${STD_MTL_2D_SOURCE_FILES}
-                                        ${STD_MTL_3D_SOURCE_FILES}
                                         ${SSBO_STRUCT_FILES}
                                         ${FIXED_MTL_FILES}
                                         ${MATERIAL_COMPILER_FILES}

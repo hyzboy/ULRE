@@ -115,12 +115,8 @@ inline VkFormat ResolveMaterialPositionFormat(const GeometryVertexFormat *gvf, V
 }
 
 // Material definition registry
-void RegisterMaterialDefinition(const MaterialDefinition &definition);
-// Compatibility-only route; aliases resolve to the canonical definition and
-// never create a second MaterialDefinition registry entry.
-
+// C++ 硬编码材质已移除——所有材质定义（含内置 bootstrap）均为 TOML 文件承载。
 bool TryGetMaterialDefinitionByID(const std::string &mtl_def_id, MaterialDefinition &out_definition);
-bool TryGetMaterialDefinitionByBootstrapKind(const MaterialDefinitionBootstrapKind kind, MaterialDefinition &out_definition);
 MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry();
 GLSLCodeModuleRegistry &GetGLSLCodeModuleRegistry();
 

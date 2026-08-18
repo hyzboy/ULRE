@@ -1,0 +1,32 @@
+schema = 1
+id = "builtin/pure_color"
+name = "builtin/pure_color"
+source = "file"
+usage = "General"
+bootstrap = "PureColor"
+provider_policy = "GeometryOnly"
+
+[transform]
+source = "Vec3Position"
+mapping = "Passthrough3D"
+orientation = "World"
+scale = "World"
+projection = "WorldCameraVP"
+
+[fragment]
+source = "compositor/main_forward_surface.frag.glsl"
+surface_module = "surface/material_surface.glsl"
+material_source_module = "material/unlit_source.glsl"
+
+[compositor]
+surface = "Unlit"
+blend = "Opaque"
+pass = "ForwardOpaque"
+
+[vertex]
+requirements = ["Position"]
+varyings = ["emit_data_index_id"]
+
+[resources]
+ubos = ["ViewportInfo", "CameraInfo"]
+ssbos = [{ name = "mtl", type = "EmissiveSurface" }]

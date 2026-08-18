@@ -2494,7 +2494,7 @@ namespace
 
             if (definition.definition_name.empty()
              || !IsBootstrapMaterialDefinition(definition)
-             || definition.source_kind != MaterialDefinitionSourceKind::BuiltIn)
+             || definition.source_kind != MaterialDefinitionSourceKind::File)
                 result.diagnostics.emplace_back(std::string("Empty material definition name: ") + entry.definition_id);
         }
 
@@ -2531,7 +2531,7 @@ namespace
 
             if (!IsBootstrapMaterialDefinition(definition)
              || definition.bootstrap_kind != entry.kind
-             || definition.source_kind != MaterialDefinitionSourceKind::BuiltIn)
+             || definition.source_kind != MaterialDefinitionSourceKind::File)
             {
                 result.diagnostics.emplace_back(
                     std::string("invalid bootstrap metadata: ") + entry.definition_id);
@@ -2592,21 +2592,17 @@ namespace
         }
 
         MaterialDefinition text{};
-        MaterialDefinition text_creator{};
-        if (!TryGetMaterialDefinitionByID(BUILTIN_MTL_DEF_TEXT, text)
-         || !TryGetMaterialDefinitionByBootstrapKind(
-                MaterialDefinitionBootstrapKind::TextAlphaBlend, text_creator))
+        if (!TryGetMaterialDefinitionByID(BUILTIN_MTL_DEF_TEXT, text))
         {
-            result.diagnostics.emplace_back(
-                "Text canonical definition or creator route is missing");
+            result.diagnostics.emplace_back("Text canonical definition is missing");
         }
         else if (text.definition_id != BUILTIN_MTL_DEF_TEXT
-              || text_creator.definition_id != text.definition_id
-              || text.source_kind != MaterialDefinitionSourceKind::BuiltIn
-              || !IsBootstrapMaterialDefinition(text))
+              || text.source_kind != MaterialDefinitionSourceKind::File
+              || !IsBootstrapMaterialDefinition(text)
+              || text.bootstrap_kind != MaterialDefinitionBootstrapKind::TextAlphaBlend)
         {
             result.diagnostics.emplace_back(
-                "Text canonical definition and creator route must share one bootstrap identity");
+                "Text canonical definition must be a file-backed TextAlphaBlend bootstrap");
         }
 
         MaterialRecipe canonical_recipe{};
@@ -3536,7 +3532,7 @@ namespace
         int error_count = 0;
         if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()),
                                     &file_count, &error_count)
-         || file_count != 9
+         || file_count != 11
          || error_count != 0)
         {
             result.diagnostics.emplace_back("material file registry bulk load failed");
@@ -3546,7 +3542,8 @@ namespace
             const char *expected_file_ids[] = {
                 "Lit", "LitTextureArray", "SkyMinimal", "DebugNormalColor",
                 "VertexColor", "UnlitTexture", "Texture2DArray",
-                "VertexLuminance", "VertexPaletteColor"
+                "VertexLuminance", "VertexPaletteColor",
+                "builtin/pure_color", "builtin/text"
             };
             for (const char *id : expected_file_ids)
             {

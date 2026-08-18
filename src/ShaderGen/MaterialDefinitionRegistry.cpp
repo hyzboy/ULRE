@@ -16,8 +16,6 @@
 
 namespace hgl::graph::mtl{
 using namespace hgl::graph::shadergen;
-void RegisterPureColorMaterialDefinition();
-void RegisterText2DMaterialDefinition();
 
 namespace
 {
@@ -143,34 +141,6 @@ namespace
         return out_position_format != VK_FORMAT_UNDEFINED;
     }
 
-    struct BaseMaterialInfoRegistryEntry
-    {
-        bool has_preset = false;
-        MaterialDefinitionBootstrapKind preset = MaterialDefinitionBootstrapKind::None;
-        MaterialDefinition definition{};
-    };
-
-    // Registration must be triggered from a caller OUTSIDE the registry getter:
-    // the register functions themselves resolve the registry (writing entries
-    // into it), so triggering registration from inside its static initializer
-    // would dead-lock on the function-local static guard.
-    void EnsureBuiltinMaterialDefinitionsRegistered()
-    {
-        static const bool registered = []() -> bool
-        {
-            RegisterPureColorMaterialDefinition();
-            RegisterText2DMaterialDefinition();
-            return true;
-        }();
-        (void)registered;
-    }
-
-    std::vector<BaseMaterialInfoRegistryEntry> &GetBaseMaterialInfoRegistry()
-    {
-        static std::vector<BaseMaterialInfoRegistryEntry> registry;
-        return registry;
-    }
-
     bool TryGetMaterialDefinitionByIDInternal(
         const char *mtl_def_id,
         MaterialDefinition &out_definition)
@@ -178,25 +148,8 @@ namespace
         if (!mtl_def_id || !mtl_def_id[0])
             return false;
 
-        EnsureBuiltinMaterialDefinitionsRegistered();
-
-        const auto &registry = GetBaseMaterialInfoRegistry();
-
-        // Bootstrap definitions are the only creator-backed runtime
-        // definitions. They are checked before files so a fallback cannot be
-        // replaced by a same-named TOML definition.
-        for (const auto &entry : registry)
-        {
-            if (entry.definition.definition_id == mtl_def_id
-             && IsBootstrapMaterialDefinition(entry.definition))
-            {
-                out_definition = entry.definition;
-                return true;
-            }
-        }
-
-        // Ordinary material identity is file-backed. A file lookup is exact;
-        // Registered aliases are considered only after canonical IDs.
+        // 全部材质定义（含内置 bootstrap：pure_color/text_2d）均为 TOML
+        // 文件承载——C++ 硬编码材质已移除，统一走文件注册表查询。
         const MaterialDefinitionFileRegistry &file_registry =
             GetMaterialDefinitionFileRegistry();
         const MaterialDefinition *file_definition =
@@ -367,56 +320,9 @@ bool BuildResolvedMaterialVertexABI(
     return true;
 }
 
-void RegisterMaterialDefinition(const MaterialDefinition &definition)
-{
-    MaterialDefinition normalized = definition;
-    if (normalized.definition_id.empty()
-     || normalized.source_kind != MaterialDefinitionSourceKind::BuiltIn
-     || !IsBootstrapMaterialDefinition(normalized))
-        return;
-
-    auto &registry = GetBaseMaterialInfoRegistry();
-    for (auto &entry : registry)
-    {
-        if (entry.definition.definition_id == normalized.definition_id)
-        {
-            entry.has_preset = true;
-            entry.preset = normalized.bootstrap_kind;
-            entry.definition = normalized;
-            return;
-        }
-    }
-
-    BaseMaterialInfoRegistryEntry entry{};
-    entry.has_preset = true;
-    entry.preset = normalized.bootstrap_kind;
-    entry.definition = normalized;
-    registry.emplace_back(std::move(entry));
-}
-
 bool TryGetMaterialDefinitionByID(const std::string &mtl_def_id, MaterialDefinition &out_definition)
 {
     return TryGetMaterialDefinitionByIDInternal(mtl_def_id.c_str(), out_definition);
-}
-
-
-bool TryGetMaterialDefinitionByBootstrapKind(const MaterialDefinitionBootstrapKind kind, MaterialDefinition &out_definition)
-{
-    EnsureBuiltinMaterialDefinitionsRegistered();
-
-    const auto &registry = GetBaseMaterialInfoRegistry();
-    for (const auto &entry : registry)
-    {
-        if (entry.has_preset
-         && entry.preset == kind
-         && IsBootstrapMaterialDefinition(entry.definition))
-        {
-            out_definition = entry.definition;
-            return true;
-        }
-    }
-
-    return false;
 }
 
 MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry()
