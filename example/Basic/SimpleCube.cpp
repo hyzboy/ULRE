@@ -87,9 +87,9 @@ private:
             CreateGizmo3DGeometryVertexFormat());
 
         CubeCreateInfo cci;
-        cci.segments_x = 2;
-        cci.segments_y = 3;
-        cci.segments_z = 4;
+        cci.segments_x = 1;
+        cci.segments_y = 1;
+        cci.segments_z = 1;
 
         geometry = CreateCube(pc.get(), &cci);
 

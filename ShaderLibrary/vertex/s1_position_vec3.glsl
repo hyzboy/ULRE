@@ -11,10 +11,12 @@
 // include 顺序：本模块须最后（以 #ifdef 展开 HGL_*_LOADER 宏）
 // 注意：Vulkan gl_VertexIndex = index buffer 纯索引值（不含 firstVertex），
 //       SSBO 手动寻址必须加 gl_BaseVertex（VDM 大 buffer 的段偏移）
+// 布局注意：顶点 Position buffer 是 VAB 格式（12B/顶点紧凑）——std430 默认
+//       vec3 数组 stride 16B 会错位，必须用 scalar 布局（GL_EXT_scalar_block_layout）
 #ifndef S1_POSITION_VEC3_GLSL
 #define S1_POSITION_VEC3_GLSL
 
-layout(set=VERTEX_SET, binding=VERTEX_POSITION_BINDING) readonly buffer VertexPositionData
+layout(set=VERTEX_SET, binding=VERTEX_POSITION_BINDING, std430, scalar) readonly buffer VertexPositionData
 {
     vec3 data[];
 } sbo_vertex_position;
