@@ -17,6 +17,6 @@ layout(set=VERTEX_SET, binding=VERTEX_UV_BINDING) readonly buffer VertexUVData
 
 vec2 TexCoord;
 
-#define HGL_UV_LOADER { TexCoord = sbo_vertex_uv.data[gl_BaseVertexARB + gl_VertexIndex]; }
+#define HGL_UV_LOADER { TexCoord = sbo_vertex_uv.data[gl_VertexIndex]; }
 
 #endif // S1_UV_GLSL
