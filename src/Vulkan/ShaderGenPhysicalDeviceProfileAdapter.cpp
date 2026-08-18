@@ -1,9 +1,9 @@
-#include <hgl/shadergen/contract/ShaderGenPhysicalDeviceProfileAdapter.h>
+#include <hgl/mtl/contract/ShaderGenPhysicalDeviceProfileAdapter.h>
 
-#include <hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
+#include <hgl/mtl/contract/ShaderGenProfileTargetVersion.h>
 #include <hgl/vk/VKPhysicalDevice.h>
 
-namespace hgl::graph::shadergen::contract
+namespace hgl::graph::mtl::contract
 {
     const char *ResolveCapabilityTier(const ::hgl::graph::VulkanPhyDevice &pd)
     {

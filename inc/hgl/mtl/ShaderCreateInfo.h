@@ -10,7 +10,7 @@ namespace hgl::graph::mtl {}
 namespace hgl::graph {}  // force open for forward decl
 namespace hgl::graph { struct SPVData; }
 
-namespace hgl{namespace graph::shadergen
+namespace hgl{namespace graph::mtl
 {
     using namespace hgl::graph::mtl;
     using hgl::graph::SPVData;
@@ -50,4 +50,4 @@ public:
     const uint32 *GetSPVData()const;
     const size_t GetSPVSize()const;
 };//class ShaderCreateInfo
-}}//namespace hgl::graph::shadergen
+}}//namespace hgl::graph::mtl

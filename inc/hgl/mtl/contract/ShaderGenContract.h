@@ -6,7 +6,7 @@ namespace hgl::graph::mtl {}
 #include <string>
 #include <vector>
 
-namespace hgl::graph::shadergen::contract
+namespace hgl::graph::mtl::contract
 {
     using namespace hgl::graph::mtl;
     enum class ResourceClass : uint8_t

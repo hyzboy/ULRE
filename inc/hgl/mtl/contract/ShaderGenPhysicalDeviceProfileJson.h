@@ -2,13 +2,13 @@
 
 namespace hgl::graph::mtl {}
 
-#include <hgl/shadergen/contract/ShaderGenContract.h>
-#include <hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
+#include <hgl/mtl/contract/ShaderGenContract.h>
+#include <hgl/mtl/contract/ShaderGenProfileTargetVersion.h>
 #include <cctype>
 #include <cstdint>
 #include <string>
 
-namespace hgl::graph::shadergen::contract
+namespace hgl::graph::mtl::contract
 {
     using namespace hgl::graph::mtl;
     namespace detail

@@ -6,9 +6,9 @@ namespace hgl::graph::mtl {}
 #include <hgl/common/ShaderStageDef.h>
 #include <hgl/type/ValueArray.h>
 #include <hgl/util/hash/FNV1a.h>
-#include <hgl/shadergen/ShaderStageKey.h>
+#include <hgl/mtl/ShaderStageKey.h>
 
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
     enum class ShaderStageValueType : uint32

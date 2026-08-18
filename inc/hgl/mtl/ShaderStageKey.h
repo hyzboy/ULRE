@@ -8,7 +8,7 @@ namespace hgl::graph::mtl {}
 #include <hgl/util/hash/FNV1a.h>
 #include <cstdint>
 
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
     struct ShaderStageKey

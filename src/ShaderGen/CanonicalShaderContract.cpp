@@ -1,8 +1,8 @@
-#include <hgl/shadergen/CanonicalShaderContract.h>
+#include <hgl/mtl/CanonicalShaderContract.h>
 
 #include "common/CanonicalContractWriter.h"
 
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
     namespace

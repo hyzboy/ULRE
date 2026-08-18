@@ -1,8 +1,8 @@
-#include<hgl/shadergen/ShaderCreateInfo.h>
+#include<hgl/mtl/ShaderCreateInfo.h>
 #include"GLSLCompiler.h"
-#include<hgl/shadergen/ShaderArtifactContract.h>
+#include<hgl/mtl/ShaderArtifactContract.h>
 #include<cstring>
-namespace hgl{namespace graph::shadergen{
+namespace hgl{namespace graph::mtl{
     using namespace hgl::graph::mtl;
 
 ShaderCreateInfo::ShaderCreateInfo(const ShaderStage stage)
@@ -53,7 +53,7 @@ bool ShaderCreateInfo::SetCachedSPVData(const void *data,const size_t byte_size)
     if(!data
      ||byte_size<sizeof(uint32)
      ||byte_size%sizeof(uint32)!=0
-     ||magic!=shadergen::ShaderArtifactSPVMagic)
+     ||magic!=mtl::ShaderArtifactSPVMagic)
         return(false);
 
     if(spv_data)
@@ -84,4 +84,4 @@ const size_t ShaderCreateInfo::GetSPVSize()const
         ?spv_data->spv_length
         :static_cast<size_t>(cached_spv_data.GetCount())*sizeof(uint32);
 }
-}}//namespace hgl::graph::shadergen
+}}//namespace hgl::graph::mtl

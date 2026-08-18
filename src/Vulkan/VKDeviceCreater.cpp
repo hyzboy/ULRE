@@ -10,7 +10,7 @@
 #include<hgl/vk/VKSurface.h>
 #include<hgl/vk/VKPipelineConfig.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
-#include<hgl/shadergen/ShaderCompilerProfileAPI.h>
+#include<hgl/mtl/ShaderCompilerProfileAPI.h>
 
 #include<hgl/log/Log.h>
 
@@ -598,7 +598,7 @@ VulkanDevice *VulkanDeviceCreater::Create()
         OutputPhysicalDeviceCaps(physical_device);
     #endif//_DEBUG
 
-    shadergen::SetShaderCompilerPhysicalDeviceProfile(physical_device->GetPhysicalDeviceProfile());
+    mtl::SetShaderCompilerPhysicalDeviceProfile(physical_device->GetPhysicalDeviceProfile());
 
     if(!RequirementCheck())
         return(nullptr);

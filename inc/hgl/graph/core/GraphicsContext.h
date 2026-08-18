@@ -109,7 +109,7 @@ namespace hgl::graph
         VulkanDevice *GetDevice() const { return device; }
         VulkanDevAttr *GetDevAttr() const;
         VulkanPhyDevice *GetPhyDevice() const;
-        const shadergen::contract::PhysicalDeviceProfileLite *GetPhysicalDeviceProfile() const;
+        const mtl::contract::PhysicalDeviceProfileLite *GetPhysicalDeviceProfile() const;
         VkDevice GetVkDevice() const;
 
         // 模块管理器访问

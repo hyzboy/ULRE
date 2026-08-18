@@ -3,10 +3,10 @@
 namespace hgl::graph::mtl {}
 
 #include <hgl/mtl/MaterialRecipe.h>
-#include <hgl/shadergen/CanonicalShaderContract.h>
+#include <hgl/mtl/CanonicalShaderContract.h>
 #include <string>
 
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
     enum class MaterialCoverageMode : uint8

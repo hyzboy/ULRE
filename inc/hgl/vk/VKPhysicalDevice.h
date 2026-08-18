@@ -2,7 +2,7 @@
 
 #include<hgl/vk/VK.h>
 #include<hgl/type/String.h>
-#include<hgl/shadergen/contract/ShaderGenContract.h>
+#include<hgl/mtl/contract/ShaderGenContract.h>
 #include<cstring>
 
 // Comparison operators for Vulkan structures used in ValueArray
@@ -55,7 +55,7 @@ class VulkanPhyDevice
 
     VkQueueFamilyPropertiesList         queue_family_properties;
 
-    shadergen::contract::PhysicalDeviceProfileLite physical_device_profile;
+    mtl::contract::PhysicalDeviceProfileLite physical_device_profile;
 
 private:
 
@@ -99,7 +99,7 @@ public:
     const bool              CheckExtensionSupport(const AnsiString &name)const;
 
     const VkQueueFamilyPropertiesList &GetQueueFamilyProperties()const{return queue_family_properties;}
-    const shadergen::contract::PhysicalDeviceProfileLite &GetPhysicalDeviceProfile()const{return physical_device_profile;}
+    const mtl::contract::PhysicalDeviceProfileLite &GetPhysicalDeviceProfile()const{return physical_device_profile;}
 
     const uint32_t          GetUBORange     ()const{return properties.limits.maxUniformBufferRange;}
     const VkDeviceSize      GetUBOAlign     ()const{return properties.limits.minUniformBufferOffsetAlignment;}

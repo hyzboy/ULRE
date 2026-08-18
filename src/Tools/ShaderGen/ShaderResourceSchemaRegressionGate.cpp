@@ -2,18 +2,18 @@
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/MaterialDefinitionFile.h>
 #include <hgl/mtl/SamplerPreset.h>
-#include <hgl/shadergen/CompositorAssembler.h>
-#include <hgl/shadergen/MaterialShaderCompiler.h>
-#include <hgl/shadergen/DescriptorContract.h>
-#include <hgl/shadergen/ShaderBuildContext.h>
-#include <hgl/shadergen/ResolvedModuleGraphBuilder.h>
+#include <hgl/mtl/CompositorAssembler.h>
+#include <hgl/mtl/MaterialShaderCompiler.h>
+#include <hgl/mtl/DescriptorContract.h>
+#include <hgl/mtl/ShaderBuildContext.h>
+#include <hgl/mtl/ResolvedModuleGraphBuilder.h>
 #include <hgl/mtl/BindingTableBuilder.h>
-#include <hgl/shadergen/ShaderCreateInfo.h>
-#include <hgl/shadergen/ShaderLibraryPath.h>
-#include <hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
-#include <hgl/shadergen/ShaderArtifactStore.h>
-#include <hgl/shadergen/CanonicalShaderContract.h>
-#include <hgl/shadergen/ShaderSemanticRegistry.h>
+#include <hgl/mtl/ShaderCreateInfo.h>
+#include <hgl/mtl/ShaderLibraryPath.h>
+#include <hgl/mtl/contract/ShaderGenProfileTargetVersion.h>
+#include <hgl/mtl/ShaderArtifactStore.h>
+#include <hgl/mtl/CanonicalShaderContract.h>
+#include <hgl/mtl/ShaderSemanticRegistry.h>
 #include <hgl/mtl/GLSLCodeModule.h>
 #include <hgl/mtl/GLSLCodeModuleCapabilityResolver.h>
 #include <hgl/mtl/GLSLCodeModuleFile.h>
@@ -45,7 +45,6 @@
 
 using namespace hgl::graph;
 using namespace hgl::graph::mtl;
-using namespace hgl::graph::shadergen;
 
 namespace
 {

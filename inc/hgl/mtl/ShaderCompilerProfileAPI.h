@@ -3,9 +3,9 @@
 namespace hgl::graph::mtl {}
 
 #include <hgl/type/DataType.h>
-#include <hgl/shadergen/contract/ShaderGenContract.h>
+#include <hgl/mtl/contract/ShaderGenContract.h>
 
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
     void SetShaderCompilerPhysicalDeviceProfile(const contract::PhysicalDeviceProfileLite &profile);

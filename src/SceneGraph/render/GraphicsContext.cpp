@@ -13,7 +13,7 @@
 #include <hgl/vk/VKBindlessTextureManager.h>
 #include <hgl/vk/VKGlobalSceneUBOSet.h>
 #include <hgl/mtl/SamplerPreset.h>
-#include <hgl/shadergen/ShaderLibraryPath.h>
+#include <hgl/mtl/ShaderLibraryPath.h>
 #include <hgl/type/StdString.h>
 
 namespace hgl::graph
@@ -78,7 +78,7 @@ namespace hgl::graph
         // 此处与 ShaderGen 的 SamplerPresetLibrary 同源，保证 name→index 唯一一致。
         {
             const hgl::filesystem::Path sampler_toml =
-                hgl::filesystem::Path(ToOSString(shadergen::GetShaderLibraryPath()))
+                hgl::filesystem::Path(ToOSString(mtl::GetShaderLibraryPath()))
                 / OSString(OS_TEXT("sampler.toml"));
 
             auto &preset_lib = mtl::SamplerPresetLibrary::Instance();
@@ -167,7 +167,7 @@ namespace hgl::graph
         return device ? const_cast<VulkanPhyDevice *>(device->GetPhyDevice()) : nullptr;
     }
 
-    const shadergen::contract::PhysicalDeviceProfileLite *GraphicsContext::GetPhysicalDeviceProfile() const
+    const mtl::contract::PhysicalDeviceProfileLite *GraphicsContext::GetPhysicalDeviceProfile() const
     {
         auto *pd = GetPhyDevice();
         return pd ? &pd->GetPhysicalDeviceProfile() : nullptr;

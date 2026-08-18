@@ -2,7 +2,7 @@
 #define HGL_GLSL_COMPILER_INCLUDE
 
 #include<hgl/type/DataType.h>
-#include<hgl/shadergen/ShaderCompilerProfileAPI.h>
+#include<hgl/mtl/ShaderCompilerProfileAPI.h>
 namespace hgl
 {
     namespace graph

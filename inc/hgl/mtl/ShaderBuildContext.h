@@ -1,10 +1,10 @@
 #pragma once
 
-#include<hgl/shadergen/DescriptorSetLayoutAllocator.h>
+#include<hgl/mtl/DescriptorSetLayoutAllocator.h>
 #include<hgl/mtl/ShaderResourceSchema.h>
-#include<hgl/shadergen/ShaderCreateInfoMap.h>
-#include<hgl/shadergen/ShaderLinkSpec.h>
-#include<hgl/shadergen/ShaderArtifactContract.h>
+#include<hgl/mtl/ShaderCreateInfoMap.h>
+#include<hgl/mtl/ShaderLinkSpec.h>
+#include<hgl/mtl/ShaderArtifactContract.h>
 #include<hgl/common/PrimitiveTypeDef.h>
 #include<hgl/common/ShaderStageDef.h>
 #include <hgl/common/TextureSamplerTypeDef.h>
@@ -16,7 +16,7 @@ namespace hgl::graph
     struct ShaderBufferSource;
 }
 
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
         using namespace hgl::graph::mtl;
         using hgl::graph::ShaderStage;
@@ -163,4 +163,4 @@ namespace hgl::graph::shadergen
 
             bool CreateShaderDirect();               ///< 直接编译各阶段的 FinalGLSL 到 SPV
         };//class ShaderBuildContext
-}//namespace hgl::graph::shadergen
+}//namespace hgl::graph::mtl

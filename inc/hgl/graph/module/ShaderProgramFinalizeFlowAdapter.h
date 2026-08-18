@@ -8,7 +8,7 @@ namespace hgl::graph
 {
     class MaterialDescriptorManager;
 
-    namespace shadergen
+    namespace mtl
     {
         class ShaderBuildContext;
     }
@@ -19,6 +19,6 @@ namespace hgl::graph
     };
 
     void BuildShaderProgramFinalizePlan(const MaterialDescriptorManager *desc_manager,
-                                   const shadergen::ShaderBuildContext &ctx,
+                                   const mtl::ShaderBuildContext &ctx,
                                    ShaderProgramFinalizePlan &out_plan);
 }

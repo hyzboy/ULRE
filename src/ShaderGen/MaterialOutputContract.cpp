@@ -1,8 +1,8 @@
-#include <hgl/shadergen/MaterialOutputContract.h>
+#include <hgl/mtl/MaterialOutputContract.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <cstring>
 
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
     namespace

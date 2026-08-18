@@ -1,6 +1,6 @@
-#include<hgl/shadergen/ShaderBuildContext.h>
-#include<hgl/shadergen/ShaderCreateInfoVertex.h>
-#include<hgl/shadergen/contract/ShaderGenContract.h>
+#include<hgl/mtl/ShaderBuildContext.h>
+#include<hgl/mtl/ShaderCreateInfoVertex.h>
+#include<hgl/mtl/contract/ShaderGenContract.h>
 #include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/math/Matrix.h>
 #include<string>
@@ -8,7 +8,7 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-namespace hgl::graph::shadergen{
+namespace hgl::graph::mtl{
     using namespace hgl::graph::mtl;
 
 static bool HasShaderStageBit(const uint32_t flag_bits,const ShaderStage stage)
@@ -262,4 +262,4 @@ bool ShaderBuildContext::CreateShaderDirect()
 
     return(true);
 }
-}//namespace hgl::graph::shadergen
+}//namespace hgl::graph::mtl

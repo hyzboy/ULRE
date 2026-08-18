@@ -11,11 +11,11 @@ namespace hgl::graph::mtl {}
 #include <hgl/graph/ssbo/TextureSlot.h>
 #include <hgl/mtl/DescriptorKind.h>
 #include <hgl/mtl/DescriptorSemantic.h>
-#include <hgl/shadergen/ShaderSemanticRegistry.h>
-#include <hgl/shadergen/ShaderStageBuildContext.h>
+#include <hgl/mtl/ShaderSemanticRegistry.h>
+#include <hgl/mtl/ShaderStageBuildContext.h>
 #include <hgl/type/ValueArray.h>
 
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
     using ShaderContractStableID = uint64;

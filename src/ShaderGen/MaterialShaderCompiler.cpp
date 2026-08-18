@@ -5,12 +5,12 @@
 ///   2. 从 SerializedVertexEntry[] 设置顶点输入
 ///   3. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
 
-#include <hgl/shadergen/MaterialShaderCompiler.h>
+#include <hgl/mtl/MaterialShaderCompiler.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
-#include <hgl/shadergen/ShaderBuildContext.h>
-#include <hgl/shadergen/ShaderCreateInfoVertex.h>
-#include <hgl/shadergen/ShaderProgramArtifactBuilder.h>
+#include <hgl/mtl/ShaderBuildContext.h>
+#include <hgl/mtl/ShaderCreateInfoVertex.h>
+#include <hgl/mtl/ShaderProgramArtifactBuilder.h>
 #include <hgl/graph/ShaderBufferSources.h>
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/SamplerPreset.h>
@@ -24,7 +24,7 @@
 #include <string>
 #include <vector>
 
-namespace hgl::graph::shadergen {
+namespace hgl::graph::mtl {
     using namespace hgl::graph::mtl;
 
 bool FinalizeShaderBuildContext(
@@ -980,4 +980,4 @@ ShaderBuildContext *CompileCompositorMaterial(
     return ctx;
 }
 
-}  // namespace hgl::graph::shadergen
+}  // namespace hgl::graph::mtl

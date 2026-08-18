@@ -4,13 +4,13 @@ namespace hgl::graph::mtl {}
 
 #include <hgl/CoreType.h>
 #include <hgl/filesystem/Path.h>
-#include <hgl/shadergen/ShaderArtifactContract.h>
-#include <hgl/shadergen/ShaderStageKey.h>
-#include <hgl/shadergen/ShaderLinkSpec.h>
+#include <hgl/mtl/ShaderArtifactContract.h>
+#include <hgl/mtl/ShaderStageKey.h>
+#include <hgl/mtl/ShaderLinkSpec.h>
 #include <hgl/type/String.h>
 #include <hgl/type/ValueArray.h>
 
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
     class ShaderArtifactStore

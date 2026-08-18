@@ -1,6 +1,6 @@
 #pragma once
 
-#include <hgl/shadergen/ShaderProgramKey.h>
+#include <hgl/mtl/ShaderProgramKey.h>
 #include <hgl/mtl/MaterialBindingContract.h>
 
 namespace hgl::graph::mtl
@@ -10,12 +10,11 @@ namespace hgl::graph::mtl
 }
 namespace hgl::graph::mtl
 {
-    using namespace hgl::graph::shadergen;
-
+    
     bool BuildBindingTable(
         const MaterialRecipe &recipe,
         const ShaderResourceSchema &layout,
-        const shadergen::ShaderProgramKey &program_key,
+        const mtl::ShaderProgramKey &program_key,
         ResolvedBindingTable &out_table,
         BindingBuildDiagnostic &out_diagnostic) noexcept;
 

@@ -519,17 +519,17 @@ namespace hgl::ecs
 
         // 渲染变体 purpose 必须先于脏检查解析——若 Forward↔Shadow 切换而
         // recipe/geometry/profile 不变，哈希不含 purpose 会复用错误的 program
-        graph::shadergen::ShaderProgramPurpose effective_purpose =
-            graph::shadergen::ShaderProgramPurpose::ForwardColor;
+        graph::mtl::ShaderProgramPurpose effective_purpose =
+            graph::mtl::ShaderProgramPurpose::ForwardColor;
         switch (primitive_comp->GetPrimitiveVariantPurpose())
         {
         case graph::PrimitiveVariantPurpose::DepthOnly:
             effective_purpose =
-                graph::shadergen::ShaderProgramPurpose::DepthOnly;
+                graph::mtl::ShaderProgramPurpose::DepthOnly;
             break;
         case graph::PrimitiveVariantPurpose::ShadowCaster:
             effective_purpose =
-                graph::shadergen::ShaderProgramPurpose::ShadowDepth;
+                graph::mtl::ShaderProgramPurpose::ShadowDepth;
             break;
         default:
             break;
@@ -575,7 +575,7 @@ namespace hgl::ecs
         mtl_request.primitive_type = primitive_type;
         mtl_request.geometry_vertex_format = geometry_vertex_format;
         if (effective_purpose
-            != graph::shadergen::ShaderProgramPurpose::ForwardColor)
+            != graph::mtl::ShaderProgramPurpose::ForwardColor)
         {
             mtl_request.override_shader_program_purpose = true;
             mtl_request.shader_program_purpose = effective_purpose;

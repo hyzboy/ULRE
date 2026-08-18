@@ -2,14 +2,14 @@
 
 namespace hgl::graph::mtl {}
 
-#include <hgl/shadergen/contract/ShaderGenContract.h>
+#include <hgl/mtl/contract/ShaderGenContract.h>
 
 namespace hgl::graph
 {
     class VulkanPhyDevice;
 }
 
-namespace hgl::graph::shadergen::contract
+namespace hgl::graph::mtl::contract
 {
     using namespace hgl::graph::mtl;
     const char *ResolveCapabilityTier(const ::hgl::graph::VulkanPhyDevice &pd);

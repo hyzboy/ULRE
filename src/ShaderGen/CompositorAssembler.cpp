@@ -1,8 +1,8 @@
-#include <hgl/shadergen/CompositorAssembler.h>
+#include <hgl/mtl/CompositorAssembler.h>
 #include <fstream>
 #include <sstream>
 
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
     CompositorAssembler::CompositorAssembler(const std::string &shader_library_path)
@@ -387,17 +387,17 @@ namespace hgl::graph::shadergen
         // 6. 替换 FS 中的 SURFACE_FUNCTION_FILE
         fs_source = ReplaceSurfaceInclude(fs_source, surface_rel);
 
-        shadergen::MaterialCoverageContract default_coverage_contract{};
-        const shadergen::MaterialCoverageContract *coverage_contract =
+        mtl::MaterialCoverageContract default_coverage_contract{};
+        const mtl::MaterialCoverageContract *coverage_contract =
             module_options.coverage_contract
                 ? module_options.coverage_contract
                 : &default_coverage_contract;
-        const shadergen::ShaderProgramPurpose output_purpose =
+        const mtl::ShaderProgramPurpose output_purpose =
             module_options.output_contract
                 ? module_options.output_contract->purpose
                 : GetShaderProgramPurpose(pass);
-        if (output_purpose == shadergen::ShaderProgramPurpose::DepthOnly
-         || output_purpose == shadergen::ShaderProgramPurpose::ShadowDepth)
+        if (output_purpose == mtl::ShaderProgramPurpose::DepthOnly
+         || output_purpose == mtl::ShaderProgramPurpose::ShadowDepth)
         {
             std::string covered_source;
             const hgl::ValueArray<
@@ -457,7 +457,7 @@ namespace hgl::graph::shadergen
         }
 
         OutputContract default_output_contract{};
-        shadergen::MaterialOutputContractDiagnostic output_diagnostic{};
+        mtl::MaterialOutputContractDiagnostic output_diagnostic{};
         const OutputContract *output_contract =
             module_options.output_contract;
         if (!output_contract)

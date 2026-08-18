@@ -1,7 +1,7 @@
 #pragma once
 
 #include <hgl/common/ShaderStageDef.h>
-#include <hgl/shadergen/ShaderStageKey.h>
+#include <hgl/mtl/ShaderStageKey.h>
 #include <hgl/type/String.h>
 #include <hgl/type/UnorderedMap.h>
 #include <hgl/type/ValueArray.h>
@@ -19,7 +19,7 @@ namespace hgl::graph
         }
 
     public:
-        ShaderModule *Find(const shadergen::ShaderStageKey &key) const
+        ShaderModule *Find(const mtl::ShaderStageKey &key) const
         {
             return FindName(key.stage, key.ToString());
         }
@@ -31,7 +31,7 @@ namespace hgl::graph
             return module;
         }
 
-        bool Add(const shadergen::ShaderStageKey &key, ShaderModule *module)
+        bool Add(const mtl::ShaderStageKey &key, ShaderModule *module)
         {
             return AddName(key.stage, key.ToString(), module);
         }

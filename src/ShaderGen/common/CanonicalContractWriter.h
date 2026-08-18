@@ -4,7 +4,7 @@
 #include <hgl/type/ValueArray.h>
 #include <hgl/util/hash/FNV1a.h>
 
-namespace hgl::graph::shadergen::contract_detail
+namespace hgl::graph::mtl::contract_detail
 {
     using namespace hgl::graph::mtl;
     class CanonicalContractWriter

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <hgl/shadergen/ShaderProgramKey.h>
+#include <hgl/mtl/ShaderProgramKey.h>
 #include <hgl/type/String.h>
 #include <hgl/type/UnorderedMap.h>
 #include <hgl/type/ValueArray.h>
@@ -14,7 +14,7 @@ namespace hgl::graph
         UnorderedMap<AnsiString, ShaderProgram *> programs;
 
     public:
-        ShaderProgram *Find(const shadergen::ShaderProgramKey &key) const
+        ShaderProgram *Find(const mtl::ShaderProgramKey &key) const
         {
             return FindName(key.ToString());
         }
@@ -26,7 +26,7 @@ namespace hgl::graph
             return program;
         }
 
-        bool Add(const shadergen::ShaderProgramKey &key, ShaderProgram *program)
+        bool Add(const mtl::ShaderProgramKey &key, ShaderProgram *program)
         {
             return AddName(key.ToString(), program);
         }
@@ -44,7 +44,7 @@ namespace hgl::graph
             return programs.DeleteByKey(name);
         }
 
-        bool Remove(const shadergen::ShaderProgramKey &key)
+        bool Remove(const mtl::ShaderProgramKey &key)
         {
             return RemoveName(key.ToString());
         }

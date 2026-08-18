@@ -1,6 +1,6 @@
-#include <hgl/shadergen/MaterialStageInterface.h>
+#include <hgl/mtl/MaterialStageInterface.h>
 
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
     namespace

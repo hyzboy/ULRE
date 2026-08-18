@@ -10,7 +10,7 @@ namespace hgl::graph
     class GeometryVertexFormat;
 }
 
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
     constexpr uint32 InvalidShaderSemanticLocation = uint32(-1);
@@ -130,4 +130,4 @@ namespace hgl::graph::shadergen
         ShaderSemanticRegistryValidationResult &out_result) noexcept;
     bool ValidateShaderSemanticRegistries(
         ShaderSemanticRegistryValidationResult &out_result) noexcept;
-}//namespace hgl::graph::shadergen
+}//namespace hgl::graph::mtl

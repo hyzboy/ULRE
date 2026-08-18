@@ -7,9 +7,6 @@
 
 namespace hgl::graph::mtl
 {
-    using namespace hgl::graph::shadergen;
-    namespace contract_detail = hgl::graph::shadergen::contract_detail;
-
     namespace
     {
         using contract_detail::CanonicalContractWriter;

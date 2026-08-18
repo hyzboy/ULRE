@@ -1,13 +1,13 @@
-#include <hgl/shadergen/ShaderProgramArtifactBuilder.h>
+#include <hgl/mtl/ShaderProgramArtifactBuilder.h>
 
 #include <hgl/mtl/ShaderResourceSchema.h>
-#include <hgl/shadergen/ShaderCreateInfo.h>
-#include <hgl/shadergen/ShaderKeyUtility.h>
-#include <hgl/shadergen/ShaderBuildContext.h>
-#include <hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
+#include <hgl/mtl/ShaderCreateInfo.h>
+#include <hgl/mtl/ShaderKeyUtility.h>
+#include <hgl/mtl/ShaderBuildContext.h>
+#include <hgl/mtl/contract/ShaderGenProfileTargetVersion.h>
 #include <hgl/util/hash/FNV1a.h>
 
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
     bool BuildShaderProgramArtifactMetadata(

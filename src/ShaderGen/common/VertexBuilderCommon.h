@@ -4,7 +4,7 @@
 #include <hgl/common/RenderAssignDef.h>
 #include <vector>
 
-namespace hgl::graph::shadergen::vertex_builder_common
+namespace hgl::graph::mtl::vertex_builder_common
 {
     using namespace hgl::graph::mtl;
 
@@ -95,4 +95,4 @@ inline LuminanceVertexBuildResult BuildLuminanceVertexEntries(
     return result;
 }
 
-} // namespace hgl::graph::shadergen::vertex_builder_common
+} // namespace hgl::graph::mtl::vertex_builder_common

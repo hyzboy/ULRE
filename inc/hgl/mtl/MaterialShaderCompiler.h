@@ -13,11 +13,11 @@ namespace hgl::graph::mtl {}
 #include <hgl/mtl/SerializedVertexEntry.h>
 #include <hgl/mtl/SerializedDescriptorEntry.h>
 #include<hgl/common/ShaderStageDef.h>
-#include<hgl/shadergen/contract/ShaderGenContract.h>
+#include<hgl/mtl/contract/ShaderGenContract.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/ModuleResourceManifest.h>
-#include<hgl/shadergen/ShaderArtifactStore.h>
-#include<hgl/shadergen/DescriptorContract.h>
+#include<hgl/mtl/ShaderArtifactStore.h>
+#include<hgl/mtl/DescriptorContract.h>
 #include <string>
 #include <vector>
 
@@ -27,7 +27,7 @@ namespace hgl::graph
     class GeometryVertexFormat;
 }
 
-namespace hgl::graph::shadergen{
+namespace hgl::graph::mtl{
     using namespace hgl::graph::mtl;
 struct MaterialShaderCompilerInput
 {
@@ -94,4 +94,4 @@ ShaderBuildContext *CompileCompositorMaterial(
     const std::string &         fs_glsl,
     const CompositorMaterialBuildConfig &config);
 
-}//namespace hgl::graph::shadergen
+}//namespace hgl::graph::mtl

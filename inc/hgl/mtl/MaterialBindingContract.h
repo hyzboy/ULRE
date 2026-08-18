@@ -11,7 +11,7 @@ namespace hgl::graph::mtl
     struct MaterialRecipe;
     struct ShaderResourceSchema;
 }
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
     struct DescriptorContract;
     struct ShaderProgramKey;
@@ -19,8 +19,7 @@ namespace hgl::graph::shadergen
 
 namespace hgl::graph::mtl
 {
-    using namespace hgl::graph::shadergen;
-
+    
     constexpr uint32 InvalidMaterialRecipeBindingIndex = ~uint32(0);
 
     enum class BindingSource : uint8

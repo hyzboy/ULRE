@@ -4,11 +4,11 @@ namespace hgl::graph::mtl {}
 
 #include <hgl/mtl/SerializedDescriptorEntry.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
-#include <hgl/shadergen/CanonicalShaderContract.h>
+#include <hgl/mtl/CanonicalShaderContract.h>
 #include <string>
 #include <vector>
 
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
     struct DescriptorContractEntry

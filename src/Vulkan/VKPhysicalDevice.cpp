@@ -2,7 +2,7 @@
 #include<hgl/vk/VKInstance.h>
 #include<hgl/vk/VKPipelineConfig.h>
 #include<hgl/log/Log.h>
-#include<hgl/shadergen/contract/ShaderGenPhysicalDeviceProfileAdapter.h>
+#include<hgl/mtl/contract/ShaderGenPhysicalDeviceProfileAdapter.h>
 #include"DebugOutProperties.h"
 
 namespace hgl::graph{
@@ -288,7 +288,7 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
         graphics_pipeline_library=(graphics_pipeline_library_features.graphicsPipelineLibrary==VK_TRUE);
     }
 
-    physical_device_profile = shadergen::contract::BuildPhysicalDeviceProfileFromVulkanPhyDevice(*this);
+    physical_device_profile = mtl::contract::BuildPhysicalDeviceProfileFromVulkanPhyDevice(*this);
 
 }
 

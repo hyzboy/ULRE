@@ -1,10 +1,10 @@
-#include <hgl/shadergen/MaterialCoverageContract.h>
+#include <hgl/mtl/MaterialCoverageContract.h>
 
-#include <hgl/shadergen/MaterialStageInterface.h>
+#include <hgl/mtl/MaterialStageInterface.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <cstring>
 
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
     namespace

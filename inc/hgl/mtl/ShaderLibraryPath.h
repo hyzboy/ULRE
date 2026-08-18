@@ -9,7 +9,7 @@ namespace hgl::graph::mtl {}
 #include <vector>
 #include <cstdlib>
 
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
 

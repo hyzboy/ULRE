@@ -1,7 +1,7 @@
-#include<hgl/shadergen/ShaderCreateInfoMap.h>
-#include<hgl/shadergen/ShaderCreateInfo.h>
+#include<hgl/mtl/ShaderCreateInfoMap.h>
+#include<hgl/mtl/ShaderCreateInfo.h>
 
-namespace hgl{namespace graph::shadergen{
+namespace hgl{namespace graph::mtl{
     using namespace hgl::graph::mtl;
 
 bool ShaderCreateInfoMap::Add(ShaderCreateInfo *sc)
@@ -18,4 +18,4 @@ bool ShaderCreateInfoMap::Add(ShaderCreateInfo *sc)
     return true;
 }
 
-}}//namespace hgl::graph::shadergen
+}}//namespace hgl::graph::mtl

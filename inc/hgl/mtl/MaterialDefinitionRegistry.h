@@ -1,9 +1,9 @@
 #pragma once
 
 #include<hgl/vk/VK.h>
-#include<hgl/shadergen/contract/ShaderGenContract.h>
-#include<hgl/shadergen/CanonicalShaderContract.h>
-#include<hgl/shadergen/MaterialCoverageContract.h>
+#include<hgl/mtl/contract/ShaderGenContract.h>
+#include<hgl/mtl/CanonicalShaderContract.h>
+#include<hgl/mtl/MaterialCoverageContract.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/GLSLCodeModuleCapabilityResolver.h>
 #include<hgl/mtl/GLSLCodeModuleRegistry.h>
@@ -18,7 +18,7 @@ namespace hgl::graph
     struct ShaderBufferSource;
 }
 
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
 class ShaderBuildContext;
 class ShaderArtifactStore;
@@ -29,7 +29,6 @@ namespace contract
 }
 
 namespace hgl::graph::mtl{
-    namespace shadergen = hgl::graph::shadergen;
 
 class MaterialDefinitionFileRegistry;
 
@@ -45,11 +44,11 @@ struct MaterialDefinitionBuildRequest
     const GeometryVertexFormat *geometry_vertex_format = nullptr;
     bool has_vertex_node_config_override = false;
     VertexShaderNodeConfig vertex_node_config_override;
-    shadergen::ShaderArtifactStore *shader_artifact_store = nullptr;
+    mtl::ShaderArtifactStore *shader_artifact_store = nullptr;
     bool defer_finalize = false;  // 生成 GLSL 与契约后延迟 SPV 编译（生产主路径：先查缓存）
     bool override_shader_program_purpose = false;
-    shadergen::ShaderProgramPurpose shader_program_purpose =
-        shadergen::ShaderProgramPurpose::ForwardColor;
+    mtl::ShaderProgramPurpose shader_program_purpose =
+        mtl::ShaderProgramPurpose::ForwardColor;
 
     const GLSLCodeModuleRegistry *vertex_code_module_registry = nullptr;
 
@@ -70,18 +69,18 @@ VertexShaderNodeConfig ResolveMaterialVertexNodeConfig(
 
 MaterialVertexVaryingConfig ResolveMaterialVertexVaryingConfig(
     const MaterialDefinition &definition,
-    shadergen::ShaderProgramPurpose purpose,
-    const shadergen::MaterialCoverageContract &coverage) noexcept;
+    mtl::ShaderProgramPurpose purpose,
+    const mtl::MaterialCoverageContract &coverage) noexcept;
 
 uint64 HashMaterialProgramBuildContext(
     PrimitiveType primitive_type,
     const GeometryVertexFormat *geometry_vertex_format,
-    const shadergen::contract::PhysicalDeviceProfileLite *profile,
-    const shadergen::ShaderProgramPurpose purpose =
-        shadergen::ShaderProgramPurpose::ForwardColor) noexcept;
+    const mtl::contract::PhysicalDeviceProfileLite *profile,
+    const mtl::ShaderProgramPurpose purpose =
+        mtl::ShaderProgramPurpose::ForwardColor) noexcept;
 
-shadergen::ShaderBuildContext *CreateMaterialFromDefinition(
-    const shadergen::contract::PhysicalDeviceProfileLite *profile,
+mtl::ShaderBuildContext *CreateMaterialFromDefinition(
+    const mtl::contract::PhysicalDeviceProfileLite *profile,
     const MaterialDefinition &definition,
     const MaterialDefinitionBuildRequest &request);
 

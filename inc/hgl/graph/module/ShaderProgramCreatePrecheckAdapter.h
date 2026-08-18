@@ -5,7 +5,7 @@
 namespace hgl::graph
 {
 
-    namespace shadergen
+    namespace mtl
     {
         class ShaderCreateInfoMap;
         class ShaderBuildContext;
@@ -19,10 +19,10 @@ namespace hgl::graph
 
     struct ShaderProgramCreatePrecheckResult
     {
-        const shadergen::ShaderCreateInfoMap *shader_map = nullptr;
+        const mtl::ShaderCreateInfoMap *shader_map = nullptr;
     };
 
-    ShaderProgramCreatePrecheckDecision RunShaderProgramCreatePrecheck(const shadergen::ShaderBuildContext *ctx,
+    ShaderProgramCreatePrecheckDecision RunShaderProgramCreatePrecheck(const mtl::ShaderBuildContext *ctx,
                                                              const AnsiString &material_name,
                                                              ShaderProgramCreatePrecheckResult &out_result);
 }

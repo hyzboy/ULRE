@@ -2,12 +2,12 @@
 
 namespace hgl::graph::mtl {}
 
-#include <hgl/shadergen/ShaderStageKey.h>
+#include <hgl/mtl/ShaderStageKey.h>
 #include <hgl/util/hash/FNV1a.h>
 
 #include <string_view>
 
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
     inline uint64 HashFinalShaderSource(

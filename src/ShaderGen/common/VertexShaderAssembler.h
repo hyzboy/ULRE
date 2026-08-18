@@ -2,11 +2,11 @@
 
 #include <hgl/mtl/VertexShaderNodeConfig.h>
 #include <hgl/mtl/VertexNodeConfigResolver.h>
-#include <hgl/shadergen/MaterialStageInterface.h>
+#include <hgl/mtl/MaterialStageInterface.h>
 #include <vulkan/vulkan.h>
 #include <string>
 
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
     // VertexVaryingConfig — declares what varying outputs the generated VS emits.
@@ -278,4 +278,4 @@ namespace hgl::graph::shadergen
         return vs;
     }
 
-} // namespace hgl::graph::shadergen
+} // namespace hgl::graph::mtl

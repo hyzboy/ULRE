@@ -4,9 +4,9 @@
 #include<hgl/type/StringList.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/log/Logger.h>
-#include<hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
-#include<hgl/shadergen/contract/ShaderGenPhysicalDeviceProfileJson.h>
-#include<hgl/shadergen/ShaderLibraryPath.h>
+#include<hgl/mtl/contract/ShaderGenProfileTargetVersion.h>
+#include<hgl/mtl/contract/ShaderGenPhysicalDeviceProfileJson.h>
+#include<hgl/mtl/ShaderLibraryPath.h>
 #include<vector>
 #include<string>
 
@@ -32,11 +32,11 @@ namespace hgl
 
             const char *        preamble        = nullptr;
 
-                  uint32_t      vulkan_version  = shadergen::contract::MakeVkVersion(1, 0);
-                  uint32_t      spv_version     = shadergen::contract::SPV_VERSION_1_0;
+                  uint32_t      vulkan_version  = mtl::contract::MakeVkVersion(1, 0);
+                  uint32_t      spv_version     = mtl::contract::SPV_VERSION_1_0;
         };
 
-        static shadergen::contract::PhysicalDeviceProfileLite g_pd_profile{};
+        static mtl::contract::PhysicalDeviceProfileLite g_pd_profile{};
         static bool g_pd_profile_valid = false;
 
         static CompileInfo compile_info;
@@ -74,7 +74,7 @@ namespace hgl
             return value > 0x7fffffffull ? 0x7fffffff : static_cast<int>(value);
         }
 
-        static void ApplyPhysicalDeviceProfileToCompilerLimits(const shadergen::contract::PhysicalDeviceProfileLite &profile)
+        static void ApplyPhysicalDeviceProfileToCompilerLimits(const mtl::contract::PhysicalDeviceProfileLite &profile)
         {
             if(!gsi || !gsi->GetLimit || !gsi->SetLimit)
                 return;
@@ -134,27 +134,27 @@ namespace hgl
             gsi->SetLimit(&bir, sizeof(TBuiltInResourceCompat));
         }
 
-        static void ApplyShaderCompilerPhysicalDeviceProfile(const shadergen::contract::PhysicalDeviceProfileLite &profile)
+        static void ApplyShaderCompilerPhysicalDeviceProfile(const mtl::contract::PhysicalDeviceProfileLite &profile)
         {
             g_pd_profile = profile;
             g_pd_profile_valid = true;
 
-            shadergen::contract::ResolveShaderTargetVersions(profile,
+            mtl::contract::ResolveShaderTargetVersions(profile,
                                                        compile_info.vulkan_version,
                                                        compile_info.spv_version);
 
             GLogInfo("[GLSLCompiler] target vulkan=%u.%u spv=%u.%u",
-                     shadergen::contract::VkVersionMajor(compile_info.vulkan_version),
-                     shadergen::contract::VkVersionMinor(compile_info.vulkan_version),
+                     mtl::contract::VkVersionMajor(compile_info.vulkan_version),
+                     mtl::contract::VkVersionMinor(compile_info.vulkan_version),
                      (compile_info.spv_version >> 16) & 0xff,
                      (compile_info.spv_version >> 8) & 0xff);
 
             ApplyPhysicalDeviceProfileToCompilerLimits(g_pd_profile);
         }
 
-        namespace shadergen
+        namespace mtl
         {
-        void SetShaderCompilerPhysicalDeviceProfile(const shadergen::contract::PhysicalDeviceProfileLite &profile)
+        void SetShaderCompilerPhysicalDeviceProfile(const mtl::contract::PhysicalDeviceProfileLite &profile)
         {
             ApplyShaderCompilerPhysicalDeviceProfile(profile);
         }
@@ -164,8 +164,8 @@ namespace hgl
             if(!json_text)
                 return false;
 
-            shadergen::contract::PhysicalDeviceProfileLite profile;
-            if(!shadergen::contract::BuildPhysicalDeviceProfileFromCollectorJson(json_text,profile))
+            mtl::contract::PhysicalDeviceProfileLite profile;
+            if(!mtl::contract::BuildPhysicalDeviceProfileFromCollectorJson(json_text,profile))
                 return false;
 
             SetShaderCompilerPhysicalDeviceProfile(profile);
@@ -177,7 +177,7 @@ namespace hgl
             vulkan_version=compile_info.vulkan_version;
             spv_version=compile_info.spv_version;
         }
-        }//namespace shadergen
+        }//namespace mtl
 
         static ExternalModule *gsi_module=nullptr;
 
@@ -260,14 +260,14 @@ namespace hgl
                             ApplyPhysicalDeviceProfileToCompilerLimits(g_pd_profile);
 
                         const std::string shader_library_path =
-                            shadergen::GetShaderLibraryPath();
-                        shadergen::AddShaderIncludePath(shader_library_path.c_str());
+                            mtl::GetShaderLibraryPath();
+                        mtl::AddShaderIncludePath(shader_library_path.c_str());
 
                         // bindless_textures 等模块被拼接进 fs_final 后，其
                         // `#include "descriptor_macros.glsl"`（原相对 common/）
                         // 在无目录上下文中按 -I 搜索——补 common/ 搜索路径，
                         // 与带 common/ 前缀的 include（-I 根下）双路径兼容
-                        shadergen::AddShaderIncludePath((shader_library_path + "/common").c_str());
+                        mtl::AddShaderIncludePath((shader_library_path + "/common").c_str());
 
                         return(true);
                     }
@@ -312,7 +312,7 @@ namespace hgl
             }
         }
 
-        namespace shadergen
+        namespace mtl
         {
         void AddShaderIncludePath(const char *path)
         {
@@ -328,7 +328,7 @@ namespace hgl
             compile_info.includes       = g_include_path_ptrs.data();
             compile_info.includes_count  = static_cast<uint32_t>(g_include_path_ptrs.size());
         }
-        }//namespace shadergen
+        }//namespace mtl
 
         void FreeSPVData(SPVData *spv_data)
         {

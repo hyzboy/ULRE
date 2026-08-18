@@ -1,4 +1,4 @@
-#include <hgl/shadergen/ShaderArtifactStore.h>
+#include <hgl/mtl/ShaderArtifactStore.h>
 
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/type/StrChar.h>
@@ -6,7 +6,7 @@
 #include <hgl/util/hash/FNV1a.h>
 #include <cstring>
 
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
     namespace

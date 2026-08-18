@@ -5,12 +5,12 @@ namespace hgl::graph::mtl {}
 #include <hgl/mtl/SurfaceType.h>
 #include <hgl/mtl/BlendMode.h>
 #include <hgl/mtl/PassType.h>
-#include <hgl/shadergen/MaterialStageInterface.h>
-#include <hgl/shadergen/MaterialOutputContract.h>
-#include <hgl/shadergen/MaterialCoverageContract.h>
+#include <hgl/mtl/MaterialStageInterface.h>
+#include <hgl/mtl/MaterialOutputContract.h>
+#include <hgl/mtl/MaterialCoverageContract.h>
 #include <string>
 
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
     /**

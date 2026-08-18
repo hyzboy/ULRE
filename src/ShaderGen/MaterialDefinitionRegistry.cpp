@@ -3,11 +3,11 @@
 #include<hgl/mtl/MaterialDefinitionFile.h>
 #include<hgl/graph/ShaderBufferSource.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
-#include<hgl/shadergen/contract/ShaderGenContract.h>
-#include <hgl/shadergen/MaterialCoverageContract.h>
-#include <hgl/shadergen/ShaderBuildContext.h>
-#include <hgl/shadergen/ShaderLibraryPath.h>
-#include <hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
+#include<hgl/mtl/contract/ShaderGenContract.h>
+#include <hgl/mtl/MaterialCoverageContract.h>
+#include <hgl/mtl/ShaderBuildContext.h>
+#include <hgl/mtl/ShaderLibraryPath.h>
+#include <hgl/mtl/contract/ShaderGenProfileTargetVersion.h>
 #include <hgl/log/Log.h>
 #include <cstring>
 #include <algorithm>
@@ -15,7 +15,6 @@
 #include <string>
 
 namespace hgl::graph::mtl{
-using namespace hgl::graph::shadergen;
 
 namespace
 {
@@ -200,7 +199,7 @@ uint64 HashMaterialProgramBuildContext(
     const PrimitiveType primitive_type,
     const GeometryVertexFormat *geometry_vertex_format,
     const contract::PhysicalDeviceProfileLite *profile,
-    const shadergen::ShaderProgramPurpose purpose) noexcept
+    const mtl::ShaderProgramPurpose purpose) noexcept
 {
     hgl::hash::FNV1aHasher64 h;
 
@@ -216,8 +215,8 @@ uint64 HashMaterialProgramBuildContext(
 
 MaterialVertexVaryingConfig ResolveMaterialVertexVaryingConfig(
     const MaterialDefinition &definition,
-    const shadergen::ShaderProgramPurpose purpose,
-    const shadergen::MaterialCoverageContract &coverage) noexcept
+    const mtl::ShaderProgramPurpose purpose,
+    const mtl::MaterialCoverageContract &coverage) noexcept
 {
     MaterialVertexVaryingConfig varying =
         definition.vertex_varying;
@@ -334,7 +333,7 @@ MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry()
         int file_count = 0;
         int error_count = 0;
         const hgl::filesystem::Path material_path =
-            hgl::filesystem::Path(ToOSString(shadergen::GetShaderLibraryPath()))
+            hgl::filesystem::Path(ToOSString(mtl::GetShaderLibraryPath()))
             / OSString(OS_TEXT("material"));
         if (!registry.LoadDirectory(
                 material_path.ToOSString(), &file_count, &error_count))
@@ -357,14 +356,14 @@ GLSLCodeModuleRegistry &GetGLSLCodeModuleRegistry()
     static bool loaded = false;
     if (!loaded)
     {
-        registry.LoadDirectory(ToOSString(shadergen::GetShaderLibraryPath()));
+        registry.LoadDirectory(ToOSString(mtl::GetShaderLibraryPath()));
         loaded = true;
     }
     return registry;
 }
 
-shadergen::ShaderBuildContext *CreateMaterialFromDefinition(
-    const shadergen::contract::PhysicalDeviceProfileLite *profile,
+mtl::ShaderBuildContext *CreateMaterialFromDefinition(
+    const mtl::contract::PhysicalDeviceProfileLite *profile,
     const MaterialDefinition &definition,
     const MaterialDefinitionBuildRequest &request)
 {

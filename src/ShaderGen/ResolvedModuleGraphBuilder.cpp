@@ -1,13 +1,13 @@
-#include <hgl/shadergen/ResolvedModuleGraphBuilder.h>
+#include <hgl/mtl/ResolvedModuleGraphBuilder.h>
 
 #include <hgl/mtl/GLSLCodeModuleMetadata.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
-#include <hgl/shadergen/MaterialOutputContract.h>
-#include <hgl/shadergen/MaterialCoverageContract.h>
+#include <hgl/mtl/MaterialOutputContract.h>
+#include <hgl/mtl/MaterialCoverageContract.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <cstring>
 
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
     namespace

@@ -12,10 +12,10 @@
 #include<hgl/graph/module/ShaderProgramCreatePrecheckAdapter.h>
 #include<hgl/graph/module/ShaderProgramFinalizeFlowAdapter.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
-#include<hgl/shadergen/ShaderBuildContext.h>
-#include<hgl/shadergen/MaterialShaderCompiler.h>
-#include<hgl/shadergen/ShaderArtifactStore.h>
-#include<hgl/shadergen/ShaderCreateInfoVertex.h>
+#include<hgl/mtl/ShaderBuildContext.h>
+#include<hgl/mtl/MaterialShaderCompiler.h>
+#include<hgl/mtl/ShaderArtifactStore.h>
+#include<hgl/mtl/ShaderCreateInfoVertex.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/MaterialDefinitionFile.h>
 #include<hgl/object/ObjectTracker.h>
@@ -62,8 +62,8 @@ namespace
 
     bool BuildShaderModulesFromCreateInfoMap(ShaderProgramManager *manager,
                                              const AnsiString &mtl_name,
-                                             const shadergen::ShaderCreateInfoMap &sci_map,
-                                             const shadergen::ShaderBuildContext *build_spec,
+                                             const mtl::ShaderCreateInfoMap &sci_map,
+                                             const mtl::ShaderBuildContext *build_spec,
                                              ShaderModuleMap *shader_maps)
     {
         if (!manager || !shader_maps)
@@ -80,9 +80,9 @@ namespace
                 return false;
 
             const ShaderModule *module = nullptr;
-            shadergen::ShaderArtifactStore *artifact_store =
+            mtl::ShaderArtifactStore *artifact_store =
                 build_spec ? build_spec->GetArtifactStore() : nullptr;
-            const shadergen::ShaderStageKey *cache_key = nullptr;
+            const mtl::ShaderStageKey *cache_key = nullptr;
             if (build_spec && build_spec->HasProgramLink())
             {
                 const auto &link = build_spec->GetProgramLink();
@@ -114,7 +114,7 @@ namespace
         return true;
     }
 
-    std::vector<ShaderDescriptor> CollectDescriptorsFromBuildContext(const shadergen::ShaderBuildContext *ctx)
+    std::vector<ShaderDescriptor> CollectDescriptorsFromBuildContext(const mtl::ShaderBuildContext *ctx)
     {
         std::vector<ShaderDescriptor> descriptors;
         if (!ctx)
@@ -149,7 +149,7 @@ GRAPH_MODULE_CONSTRUCT(ShaderProgramManager)
     (void)mtl::GetMaterialDefinitionFileRegistry();
 }
 
-const ShaderModule *ShaderProgramManager::CreateShaderModule(const AnsiString &sm_name,const shadergen::ShaderCreateInfo *sci)
+const ShaderModule *ShaderProgramManager::CreateShaderModule(const AnsiString &sm_name,const mtl::ShaderCreateInfo *sci)
 {
     VulkanDevice *device = GetDevice();
     if(!device)return(nullptr);
@@ -181,8 +181,8 @@ const ShaderModule *ShaderProgramManager::CreateShaderModule(const AnsiString &s
     return sm;
 }
 
-const ShaderModule *ShaderProgramManager::CreateShaderModule(const shadergen::ShaderStageKey &key,
-                                                             const shadergen::ShaderCreateInfo *sci)
+const ShaderModule *ShaderProgramManager::CreateShaderModule(const mtl::ShaderStageKey &key,
+                                                             const mtl::ShaderCreateInfo *sci)
 {
     if (!sci || key.stage != sci->GetShaderStage())
         return nullptr;
@@ -226,7 +226,7 @@ const ShaderModule *ShaderProgramManager::CreateShaderModuleFromSPV(const AnsiSt
     return sm;
 }
 
-const ShaderModule *ShaderProgramManager::CreateShaderModuleFromSPV(const shadergen::ShaderStageKey &key,
+const ShaderModule *ShaderProgramManager::CreateShaderModuleFromSPV(const mtl::ShaderStageKey &key,
                                                                      const uint32_t *spv_data,
                                                                      const size_t spv_size)
 {
@@ -278,7 +278,7 @@ MaterialParameters *ShaderProgramManager::CreateMaterialMP(const AnsiString &mtl
     return mp;
 }
 
-void ShaderProgramManager::ApplyMaterialFinalizePlan(ShaderProgram *mtl, const AnsiString &mtl_name, const shadergen::ShaderBuildContext &ctx)
+void ShaderProgramManager::ApplyMaterialFinalizePlan(ShaderProgram *mtl, const AnsiString &mtl_name, const mtl::ShaderBuildContext &ctx)
 {
     if(!mtl)
         return;
@@ -301,15 +301,15 @@ void ShaderProgramManager::ApplyMaterialFinalizePlan(ShaderProgram *mtl, const A
 }
 
 ShaderProgram *ShaderProgramManager::TryGetCachedShaderProgram(
-    const shadergen::ShaderProgramKey &key)
+    const mtl::ShaderProgramKey &key)
 {
     return shader_program_cache.Find(key);
 }
 
 bool ShaderProgramManager::ExecuteRuntimeMaterialBuildPipeline(ShaderProgram *mtl,
                                                           const AnsiString &mtl_name,
-                                                          const shadergen::ShaderBuildContext *ctx,
-                                                          const shadergen::ShaderCreateInfoMap &sci_map)
+                                                          const mtl::ShaderBuildContext *ctx,
+                                                          const mtl::ShaderCreateInfoMap &sci_map)
 {
     if(!mtl || !ctx)
         return false;
@@ -327,8 +327,8 @@ bool ShaderProgramManager::ExecuteRuntimeMaterialBuildPipeline(ShaderProgram *mt
 
 bool ShaderProgramManager::BuildRuntimeShaderProgramState(ShaderProgram *mtl,
                                                      const AnsiString &mtl_name,
-                                                     const shadergen::ShaderBuildContext *ctx,
-                                                     const shadergen::ShaderCreateInfoMap &sci_map)
+                                                     const mtl::ShaderBuildContext *ctx,
+                                                     const mtl::ShaderCreateInfoMap &sci_map)
 {
     if(!mtl || !ctx)
         return false;
@@ -344,7 +344,7 @@ bool ShaderProgramManager::BuildRuntimeShaderProgramState(ShaderProgram *mtl,
 
     CreateShaderStageList(mtl->shader_stage_list,mtl->shader_maps);
 
-    const shadergen::ShaderCreateInfoVertex *vert = ctx->GetVertexShader();
+    const mtl::ShaderCreateInfoVertex *vert = ctx->GetVertexShader();
     mtl->vertex_input = vert ? GetVertexInput(vert->GetInput()) : nullptr;
 
     return true;
@@ -352,7 +352,7 @@ bool ShaderProgramManager::BuildRuntimeShaderProgramState(ShaderProgram *mtl,
 
 bool ShaderProgramManager::BuildRuntimeDescriptorState(ShaderProgram *mtl,
                                                   const AnsiString &mtl_name,
-                                                  const shadergen::ShaderBuildContext *ctx)
+                                                  const mtl::ShaderBuildContext *ctx)
 {
     if(!mtl || !ctx)
         return false;
@@ -367,8 +367,8 @@ bool ShaderProgramManager::BuildRuntimeDescriptorState(ShaderProgram *mtl,
 }
 
 ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
-    const shadergen::ShaderProgramKey &program_key,
-    const shadergen::ShaderBuildContext *ctx)
+    const mtl::ShaderProgramKey &program_key,
+    const mtl::ShaderBuildContext *ctx)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -400,7 +400,7 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
         return nullptr;
     }
 
-    const shadergen::ShaderCreateInfoMap &sci_map = *precheck_result.shader_map;
+    const mtl::ShaderCreateInfoMap &sci_map = *precheck_result.shader_map;
 
     AutoDelete<ShaderProgram> mtl=new ShaderProgram(mtl_name,ctx);
     if(!ExecuteRuntimeMaterialBuildPipeline(mtl,
@@ -426,7 +426,7 @@ bool ShaderProgramManager::BuildShaderResourceSchema(const mtl::MaterialDefiniti
         return false;
 
     const auto *profile = GetPhysicalDeviceProfile();
-    AutoDelete<shadergen::ShaderBuildContext> ctx = mtl::CreateMaterialFromDefinition(profile, definition, request);
+    AutoDelete<mtl::ShaderBuildContext> ctx = mtl::CreateMaterialFromDefinition(profile, definition, request);
     if (!ctx)
     {
         GLogError("[ShaderProgramManager] Material definition build failed: id=%s name=%s",
@@ -457,7 +457,7 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
 
     const auto *profile = GetPhysicalDeviceProfile();
     normalized_request.defer_finalize = true;
-    AutoDelete<shadergen::ShaderBuildContext> ctx =
+    AutoDelete<mtl::ShaderBuildContext> ctx =
         mtl::CreateMaterialFromDefinition(
             profile, definition, normalized_request);
     if(!ctx)
@@ -475,12 +475,12 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
             definition.definition_id.c_str());
         return nullptr;
     }
-    const shadergen::ShaderProgramKey program_key =
+    const mtl::ShaderProgramKey program_key =
         ctx->GetProgramLink().BuildKey();
     if (ShaderProgram *cached = TryGetCachedShaderProgram(program_key))
         return cached;
 
-    if (!shadergen::FinalizeShaderBuildContext(ctx))
+    if (!mtl::FinalizeShaderBuildContext(ctx))
     {
         GLogError(
             "[ShaderProgramManager] Material build finalization failed: id=%s",

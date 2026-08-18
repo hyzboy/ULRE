@@ -6,16 +6,16 @@
 /// GenericMaterialBuildPlan. Do not reorder statements here — stage keys and
 /// resource contracts depend on the exact hash input sequence.
 
-#include <hgl/shadergen/contract/ShaderGenContract.h>
+#include <hgl/mtl/contract/ShaderGenContract.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
-#include <hgl/shadergen/MaterialShaderCompiler.h>
-#include <hgl/shadergen/CompositorAssembler.h>
-#include <hgl/shadergen/MaterialOutputContract.h>
-#include <hgl/shadergen/ShaderBuildContext.h>
-#include <hgl/shadergen/ShaderLibraryPath.h>
-#include <hgl/shadergen/ShaderKeyUtility.h>
-#include <hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
-#include <hgl/shadergen/MaterialStageInterface.h>
+#include <hgl/mtl/MaterialShaderCompiler.h>
+#include <hgl/mtl/CompositorAssembler.h>
+#include <hgl/mtl/MaterialOutputContract.h>
+#include <hgl/mtl/ShaderBuildContext.h>
+#include <hgl/mtl/ShaderLibraryPath.h>
+#include <hgl/mtl/ShaderKeyUtility.h>
+#include <hgl/mtl/contract/ShaderGenProfileTargetVersion.h>
+#include <hgl/mtl/MaterialStageInterface.h>
 #include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/mtl/GLSLCodeModuleCapabilityResolver.h>
@@ -28,8 +28,7 @@
 
 namespace hgl::graph::mtl
 {
-    using namespace hgl::graph::shadergen;
-
+    
     namespace
     {
         bool IsVertexSemanticRequiredForVarying(

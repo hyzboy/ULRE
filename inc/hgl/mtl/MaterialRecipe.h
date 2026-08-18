@@ -9,8 +9,8 @@
 #include <hgl/mtl/GLSLCodeModule.h>
 #include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/type/ValueArray.h>
-#include <hgl/shadergen/ShaderStageBuildContext.h>
-#include <hgl/shadergen/ShaderLinkSpec.h>
+#include <hgl/mtl/ShaderStageBuildContext.h>
+#include <hgl/mtl/ShaderLinkSpec.h>
 #include <hgl/mtl/SurfaceType.h>
 #include <hgl/mtl/BlendMode.h>
 #include <hgl/mtl/PassType.h>

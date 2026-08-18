@@ -1,9 +1,9 @@
-#include <hgl/shadergen/ShaderSemanticRegistry.h>
+#include <hgl/mtl/ShaderSemanticRegistry.h>
 
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <cstring>
 
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
     namespace

@@ -3,10 +3,10 @@
 namespace hgl::graph::mtl {}
 
 #include <hgl/CoreType.h>
-#include <hgl/shadergen/ShaderProgramKey.h>
-#include <hgl/shadergen/ShaderStageBuildContext.h>
+#include <hgl/mtl/ShaderProgramKey.h>
+#include <hgl/mtl/ShaderStageBuildContext.h>
 
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
     struct ShaderLinkSpec

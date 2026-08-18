@@ -2,11 +2,11 @@
 
 namespace hgl::graph::mtl {}
 
-#include<hgl/shadergen/ShaderCreateInfo.h>
+#include<hgl/mtl/ShaderCreateInfo.h>
 #include <hgl/common/VertexInputDef.h>
 #include<vulkan/vulkan.h>
 
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
     class ShaderCreateInfoVertex:public ShaderCreateInfo
@@ -28,4 +28,4 @@ namespace hgl::graph::shadergen
         int AddInput(const VAType &type,const std::string &name);
         int AddInput(const VkFormat format, const VertexSemantic semantic);
     };//class ShaderCreateInfoVertex:public ShaderCreateInfo
-}//namespace hgl::graph::shadergen
+}//namespace hgl::graph::mtl

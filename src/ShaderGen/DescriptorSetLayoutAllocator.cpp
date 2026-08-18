@@ -1,5 +1,5 @@
-#include<hgl/shadergen/DescriptorSetLayoutAllocator.h>
-namespace hgl{namespace graph::shadergen{
+#include<hgl/mtl/DescriptorSetLayoutAllocator.h>
+namespace hgl{namespace graph::mtl{
     using namespace hgl::graph::mtl;
 DescriptorSetLayoutAllocator::DescriptorSetLayoutAllocator()
 {
@@ -59,5 +59,5 @@ SSBODescriptor *DescriptorSetLayoutAllocator::GetSSBO(const std::string &name)
 
     return(nullptr);
 }
-}}//namespace hgl::graph::shadergen
+}}//namespace hgl::graph::mtl
 

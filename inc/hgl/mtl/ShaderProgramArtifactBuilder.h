@@ -2,9 +2,9 @@
 
 namespace hgl::graph::mtl {}
 
-#include <hgl/shadergen/ShaderArtifactContract.h>
+#include <hgl/mtl/ShaderArtifactContract.h>
 
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
     namespace contract

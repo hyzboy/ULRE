@@ -3,10 +3,10 @@
 namespace hgl::graph::mtl {}
 
 #include <hgl/type/DataType.h>
-#include <hgl/shadergen/contract/ShaderGenContract.h>
+#include <hgl/mtl/contract/ShaderGenContract.h>
 #include <hgl/util/hash/FNV1a.h>
 
-namespace hgl::graph::shadergen::contract
+namespace hgl::graph::mtl::contract
 {
     using namespace hgl::graph::mtl;
     constexpr uint32_t SPV_VERSION_1_0 = (1u << 16);

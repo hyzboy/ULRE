@@ -6,7 +6,7 @@ namespace hgl::graph::mtl {}
 #include <hgl/common/ShaderStageDef.h>
 #include <cstdint>
 
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
     constexpr uint32 ShaderArtifactFileMagic = 0x554C5350u; // "ULSP"

@@ -6,7 +6,7 @@ namespace hgl::graph::mtl {}
 #include <hgl/common/ShaderStageDef.h>
 #include<ankerl/unordered_dense.h>
 
-namespace hgl{namespace graph{namespace shadergen{
+namespace hgl{namespace graph{namespace mtl{
     using namespace hgl::graph::mtl;
 
 class ShaderCreateInfo;
@@ -59,4 +59,4 @@ public:
         return iter!=map.end()?iter->second:nullptr;
     }
 };
-}}}//namespace hgl::graph::shadergen
+}}}//namespace hgl::graph::mtl

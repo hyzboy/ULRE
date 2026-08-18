@@ -7,7 +7,7 @@ namespace hgl::graph::mtl {}
 #include<ankerl/unordered_dense.h>
 #include<string>
 
-namespace hgl{namespace graph{namespace shadergen{
+namespace hgl{namespace graph{namespace mtl{
     using namespace hgl::graph::mtl;
 /**
 * 材质描述符管理</p>
@@ -94,4 +94,4 @@ public:
         return desc_set_array[size_t(type)].count>0;
     }
 };//class DescriptorSetLayoutAllocator
-}}}//namespace hgl::graph::shadergen
+}}}//namespace hgl::graph::mtl

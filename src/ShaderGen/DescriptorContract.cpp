@@ -1,4 +1,4 @@
-#include <hgl/shadergen/DescriptorContract.h>
+#include <hgl/mtl/DescriptorContract.h>
 
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <cstring>
 
-namespace hgl::graph::shadergen
+namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
     namespace

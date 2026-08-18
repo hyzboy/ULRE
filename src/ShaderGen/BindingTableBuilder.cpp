@@ -2,15 +2,14 @@
 
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
-#include <hgl/shadergen/CanonicalShaderContract.h>
+#include <hgl/mtl/CanonicalShaderContract.h>
 #include <hgl/util/hash/FNV1a.h>
 
 #include "common/CanonicalContractWriter.h"
 
 namespace hgl::graph::mtl
 {
-    using namespace hgl::graph::shadergen;
-    namespace
+        namespace
     {
         bool SetBuildFailure(
             BindingBuildDiagnostic &diagnostic,
@@ -572,7 +571,7 @@ namespace hgl::graph::mtl
     bool BuildBindingTable(
         const MaterialRecipe &recipe,
         const ShaderResourceSchema &layout,
-        const shadergen::ShaderProgramKey &program_key,
+        const mtl::ShaderProgramKey &program_key,
         ResolvedBindingTable &out_table,
         BindingBuildDiagnostic &out_diagnostic) noexcept
     {
