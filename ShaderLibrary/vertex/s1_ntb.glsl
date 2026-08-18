@@ -26,5 +26,4 @@ vec3 Normal;
 // TODO: 格式解码——按 GeometryVertexFormat 选定的格式实现
 // （RG8/RG16F 用 unpackHalf2x16/unpackUnorm2x16；RGB10A2/R11G11B10 手写位解码）
 #define HGL_NTB_LOADER { Normal = vec3(0.0, 0.0, 1.0); }
-
 #endif // S1_NTB_GLSL

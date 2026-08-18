@@ -9,6 +9,8 @@
 // 需要 VERTEX_SET / VERTEX_POSITION_BINDING 宏（descriptor_macros.glsl 提供默认值）
 // 接口约定：声明全局 Position + LoadVertexData()（s2/s3 模块读 Position）
 // include 顺序：本模块须最后（以 #ifdef 展开 HGL_*_LOADER 宏）
+// 注意：Vulkan gl_VertexIndex = index buffer 纯索引值（不含 firstVertex），
+//       SSBO 手动寻址必须加 gl_BaseVertex（VDM 大 buffer 的段偏移）
 #ifndef S1_POSITION_VEC3_GLSL
 #define S1_POSITION_VEC3_GLSL
 
@@ -21,7 +23,7 @@ vec3 Position;
 
 void LoadVertexData()
 {
-    Position = sbo_vertex_position.data[gl_VertexIndex];
+    Position = sbo_vertex_position.data[gl_BaseVertex + gl_VertexIndex];
 #ifdef HGL_UV_LOADER
     HGL_UV_LOADER
 #endif
