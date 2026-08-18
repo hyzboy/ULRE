@@ -242,6 +242,13 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family,
     VkPhysicalDeviceIndexTypeUint8FeaturesEXT index_type_uint8_features;
     VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT graphics_pipeline_library_features{};
 
+    // Vulkan 1.1: shaderDrawParameters —— SSBO 顶点输入 gl_BaseVertexARB 读取必需
+    // （ShaderDrawParameters capability 由该特性启用；设备 v1.4 必支持）
+    VkPhysicalDeviceShaderDrawParametersFeatures shader_draw_params_features{};
+    shader_draw_params_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
+    shader_draw_params_features.shaderDrawParameters = VK_TRUE;
+    create_info.pNext = &shader_draw_params_features;
+
     // Vulkan 1.2 统一特性结构：descriptor indexing 与 scalarBlockLayout 均已
     // 提升并入 VkPhysicalDeviceVulkan12Features，因此必须在此单一结构中设置，
     // 不得再单独链入 VkPhysicalDeviceDescriptorIndexingFeatures
