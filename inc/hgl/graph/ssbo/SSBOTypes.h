@@ -18,8 +18,13 @@ namespace hgl::graph::mtl
         TransformIndexRows,
         LocalToWorld,
         UserDefined,
+        // 顶点数据 SSBO（MeshShader 方向：顶点输入统一为 SSBO）
+        VertexPosition,
+        VertexUV,
+        VertexNTB,
+        VertexJoint,
 
-        ENUM_CLASS_RANGE(TextureLayer, UserDefined)
+        ENUM_CLASS_RANGE(TextureLayer, VertexJoint)
     };
 
     using SSBOCategory = SSBOType;
@@ -58,6 +63,10 @@ namespace hgl::graph::mtl
         case SSBOType::TransformIndexRows: return "TransformIndexRows";
         case SSBOType::LocalToWorld: return "LocalToWorld";
         case SSBOType::UserDefined: return "UserDefined";
+        case SSBOType::VertexPosition: return "VertexPosition";
+        case SSBOType::VertexUV: return "VertexUV";
+        case SSBOType::VertexNTB: return "VertexNTB";
+        case SSBOType::VertexJoint: return "VertexJoint";
         default: return "Unknown";
         }
     }

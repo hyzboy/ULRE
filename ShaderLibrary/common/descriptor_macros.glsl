@@ -37,6 +37,24 @@
 #define L2W_SET PER_OBJECT_SET
 #endif
 
+// ── 顶点数据 SSBO（MeshShader 方向：顶点输入统一为 SSBO）──
+// s1_position_vec3 / s1_uv / s1_ntb / s1_joint 模块使用
+#ifndef VERTEX_SET
+#define VERTEX_SET PER_OBJECT_SET
+#endif
+#ifndef VERTEX_POSITION_BINDING
+#define VERTEX_POSITION_BINDING 1
+#endif
+#ifndef VERTEX_UV_BINDING
+#define VERTEX_UV_BINDING 2
+#endif
+#ifndef VERTEX_NTB_BINDING
+#define VERTEX_NTB_BINDING 3
+#endif
+#ifndef VERTEX_JOINT_BINDING
+#define VERTEX_JOINT_BINDING 4
+#endif
+
 #ifndef L2W_BINDING
 #define L2W_BINDING 0
 #endif
