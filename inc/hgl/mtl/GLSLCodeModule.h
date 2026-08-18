@@ -126,7 +126,7 @@ namespace hgl::graph::mtl
 
     struct GLSLCodeModuleUBORequirement
     {
-        UBODescriptorSemantic semantic = UBODescriptorSemantic::ViewportInfo;
+        DescriptorSemantic semantic = DescriptorSemantic::ViewportInfo;
         uint32 stage_flags = 0;
         bool required = true;
         bool allow_fallback = false;

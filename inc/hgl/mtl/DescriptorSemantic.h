@@ -35,14 +35,6 @@ namespace hgl::graph::mtl
         Custom,
     };
 
-    enum class UBODescriptorSemantic : uint8
-    {
-        ViewportInfo = 0,
-        CameraInfo,
-        SkyInfo,
-        MaterialColorPalette
-    };
-
     inline const char *GetDescriptorSemanticLayerName(const DescriptorSemanticLayer layer)
     {
         switch (layer)
@@ -97,19 +89,6 @@ namespace hgl::graph::mtl
         case DescriptorKind::SSBO: return DescriptorSemanticLayer::SSBO;
         default: return DescriptorSemanticLayer::Unknown;
         }
-    }
-    inline bool TryGetUBODescriptorSemantic(const DescriptorSemantic semantic, UBODescriptorSemantic &out)
-    {
-        switch (semantic)
-        {
-        case DescriptorSemantic::ViewportInfo: out = UBODescriptorSemantic::ViewportInfo; return true;
-        case DescriptorSemantic::CameraInfo: out = UBODescriptorSemantic::CameraInfo; return true;
-        case DescriptorSemantic::SkyInfo: out = UBODescriptorSemantic::SkyInfo; return true;
-        case DescriptorSemantic::MaterialColorPalette: out = UBODescriptorSemantic::MaterialColorPalette; return true;
-        default: break;
-        }
-
-        return false;
     }
 
 }

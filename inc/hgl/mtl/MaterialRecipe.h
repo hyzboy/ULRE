@@ -223,7 +223,7 @@ namespace hgl::graph::mtl
         // Part-B3: UBO 资源能力声明。
         // 显式列出此材质可使用的标准 UBO（ViewportInfo/CameraInfo/SkyInfo/MaterialColorPalette）。
         // 2D/3D 都走这条声明链路。
-        std::vector<UBODescriptorSemantic> ubo_requirements;
+        std::vector<DescriptorSemantic> ubo_requirements;
 
         // Part-B4: 纹理槽位能力声明。
         // 无纹理材质（PureColor、VertexColor 等）此列表为空。
@@ -351,7 +351,7 @@ namespace hgl::graph::mtl
         return state;
     }
 
-    inline bool HasUBORequirement(const MaterialDefinition &def, UBODescriptorSemantic s) noexcept
+    inline bool HasUBORequirement(const MaterialDefinition &def, DescriptorSemantic s) noexcept
     {
         for (const auto &r : def.ubo_requirements)
             if (r == s) return true;

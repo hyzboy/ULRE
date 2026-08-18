@@ -517,6 +517,12 @@ namespace hgl::graph::mtl
                     static const char *const names[] = {
                         "ViewportInfo", "CameraInfo", "SkyInfo", "MaterialColorPalette"
                     };
+                    static const DescriptorSemantic semantic_values[] = {
+                        DescriptorSemantic::ViewportInfo,
+                        DescriptorSemantic::CameraInfo,
+                        DescriptorSemantic::SkyInfo,
+                        DescriptorSemantic::MaterialColorPalette
+                    };
                     for (const auto &item : resources.at("ubos").as_array())
                     {
                         if (!item.is_string())
@@ -527,7 +533,7 @@ namespace hgl::graph::mtl
                             if (item.as_string() == names[i])
                             {
                                 out.definition.ubo_requirements.push_back(
-                                    static_cast<UBODescriptorSemantic>(i));
+                                    semantic_values[i]);
                                 found = true;
                                 break;
                             }

@@ -206,16 +206,16 @@ static bool ValidateDefinitionCapabilitySubset(
         switch (req.semantic)
         {
         case DescriptorSemantic::ViewportInfo:
-            allowed = HasUBORequirement(definition, UBODescriptorSemantic::ViewportInfo);
+            allowed = HasUBORequirement(definition, DescriptorSemantic::ViewportInfo);
             break;
         case DescriptorSemantic::CameraInfo:
-            allowed = HasUBORequirement(definition, UBODescriptorSemantic::CameraInfo);
+            allowed = HasUBORequirement(definition, DescriptorSemantic::CameraInfo);
             break;
         case DescriptorSemantic::SkyInfo:
-            allowed = HasUBORequirement(definition, UBODescriptorSemantic::SkyInfo);
+            allowed = HasUBORequirement(definition, DescriptorSemantic::SkyInfo);
             break;
         case DescriptorSemantic::MaterialColorPalette:
-            allowed = HasUBORequirement(definition, UBODescriptorSemantic::MaterialColorPalette);
+            allowed = HasUBORequirement(definition, DescriptorSemantic::MaterialColorPalette);
             break;
 
         case DescriptorSemantic::LocalToWorld:
@@ -248,9 +248,7 @@ static bool ValidateDefinitionCapabilitySubset(
         {
             for (uint32 i = 0; i < manifest->ubo_count && !allowed; ++i)
             {
-                UBODescriptorSemantic ubo_semantic{};
-                if (TryGetUBODescriptorSemantic(req.semantic, ubo_semantic)
-                 && manifest->ubos[i].semantic == ubo_semantic)
+                if (manifest->ubos[i].semantic == req.semantic)
                     allowed = true;
             }
             for (uint32 i = 0; i < manifest->ssbo_count && !allowed; ++i)

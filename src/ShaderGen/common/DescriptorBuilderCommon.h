@@ -53,7 +53,7 @@ inline void PushMaterialColorPalette(std::vector<SerializedDescriptorEntry> &v,
 
 inline void MergeUBODescriptor(
     std::vector<SerializedDescriptorEntry> &v,
-    const UBODescriptorSemantic semantic,
+    const DescriptorSemantic semantic,
     const uint32_t stage_flags,
     const bool has_policy = false,
     const bool required = true,
@@ -61,10 +61,8 @@ inline void MergeUBODescriptor(
 {
     for (auto &entry : v)
     {
-        UBODescriptorSemantic existing{};
         if (entry.kind != DescriptorKind::UBO
-         || !TryGetUBODescriptorSemantic(entry.semantic, existing)
-         || existing != semantic)
+         || entry.semantic != semantic)
             continue;
 
         entry.stage_flags |= stage_flags;
@@ -79,16 +77,16 @@ inline void MergeUBODescriptor(
 
     switch (semantic)
     {
-    case UBODescriptorSemantic::ViewportInfo:
+    case DescriptorSemantic::ViewportInfo:
         PushViewport(v, stage_flags);
         break;
-    case UBODescriptorSemantic::CameraInfo:
+    case DescriptorSemantic::CameraInfo:
         PushCamera(v, stage_flags);
         break;
-    case UBODescriptorSemantic::SkyInfo:
+    case DescriptorSemantic::SkyInfo:
         PushSky(v, stage_flags);
         break;
-    case UBODescriptorSemantic::MaterialColorPalette:
+    case DescriptorSemantic::MaterialColorPalette:
         PushMaterialColorPalette(v, stage_flags);
         break;
     }
@@ -108,12 +106,12 @@ inline void AppendDefinitionUBODescriptors(
     const uint32_t sky_stage_flags,
     const uint32_t color_palette_stage_flags)
 {
-    for (const UBODescriptorSemantic semantic : definition.ubo_requirements)
+    for (const DescriptorSemantic semantic : definition.ubo_requirements)
     {
         const uint32_t stage_flags =
-            semantic == UBODescriptorSemantic::SkyInfo
+            semantic == DescriptorSemantic::SkyInfo
                 ? sky_stage_flags
-                : semantic == UBODescriptorSemantic::MaterialColorPalette
+                : semantic == DescriptorSemantic::MaterialColorPalette
                     ? color_palette_stage_flags
                     : default_stage_flags;
         MergeUBODescriptor(v, semantic, stage_flags);
