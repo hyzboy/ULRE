@@ -136,6 +136,44 @@ inline void PushLocalToWorldIndexRows(std::vector<SerializedDescriptorEntry> &v,
     });
 }
 
+// ── 顶点数据 SSBO（MeshShader 方向：顶点输入统一为 SSBO）──
+// PerObject 集固定 binding（kPerObjectBindingVertex*），固定名路径
+inline void PushVertexPosition(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
+{
+    v.push_back({
+        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
+        SBS_VertexPosition.name, SBS_VertexPosition.struct_name, nullptr, DescriptorSemantic::VertexPosition,
+        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::VertexPosition, DescriptorSemanticLayer::SSBO
+    });
+}
+
+inline void PushVertexUV(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
+{
+    v.push_back({
+        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
+        SBS_VertexUV.name, SBS_VertexUV.struct_name, nullptr, DescriptorSemantic::VertexUV,
+        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::VertexUV, DescriptorSemanticLayer::SSBO
+    });
+}
+
+inline void PushVertexNTB(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
+{
+    v.push_back({
+        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
+        SBS_VertexNTB.name, SBS_VertexNTB.struct_name, nullptr, DescriptorSemantic::VertexNTB,
+        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::VertexNTB, DescriptorSemanticLayer::SSBO
+    });
+}
+
+inline void PushVertexJoint(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
+{
+    v.push_back({
+        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
+        SBS_VertexJoint.name, SBS_VertexJoint.struct_name, nullptr, DescriptorSemantic::VertexJoint,
+        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::VertexJoint, DescriptorSemanticLayer::SSBO
+    });
+}
+
 inline void PushMaterialDataSlot(std::vector<SerializedDescriptorEntry> &v,
                                  const uint32_t stage_flags,
                                  const char *name,
@@ -275,19 +313,50 @@ inline bool PushManifestSSBO(
         return false;
 
     SerializedDescriptorEntry entry{};
-    entry.set_type = DescriptorSetType::Material;
-    entry.kind = DescriptorKind::SSBO;
     entry.stage_flags = ssbo.stage_flags;
     entry.name = ssbo.name;
     entry.struct_name = ssbo::GetMaterialSSBOStructName(ssbo.ssbo_type);
-    entry.semantic = DescriptorSemantic::MaterialDataSlotData;
     entry.data_slot = ssbo.data_slot;
     entry.ssbo_type = ssbo.ssbo_type;
     entry.ssbo_id = MakeRecipeSSBOId(ssbo.data_slot);
-    entry.semantic_layer = DescriptorSemanticLayer::SSBO;
     entry.has_requirement_policy = true;
     entry.required = ssbo.required;
     entry.allow_fallback = ssbo.allow_fallback;
+
+    // 顶点数据 SSBO（MeshShader 方向）：PerObject 集 + 固定 binding（kPerObjectBindingVertex*）
+    switch (ssbo.ssbo_type)
+    {
+    case SSBOType::VertexPosition:
+        entry.set_type = DescriptorSetType::PerObject;
+        entry.kind = DescriptorKind::SSBO;
+        entry.semantic = DescriptorSemantic::VertexPosition;
+        entry.semantic_layer = DescriptorSemanticLayer::SSBO;
+        break;
+    case SSBOType::VertexUV:
+        entry.set_type = DescriptorSetType::PerObject;
+        entry.kind = DescriptorKind::SSBO;
+        entry.semantic = DescriptorSemantic::VertexUV;
+        entry.semantic_layer = DescriptorSemanticLayer::SSBO;
+        break;
+    case SSBOType::VertexNTB:
+        entry.set_type = DescriptorSetType::PerObject;
+        entry.kind = DescriptorKind::SSBO;
+        entry.semantic = DescriptorSemantic::VertexNTB;
+        entry.semantic_layer = DescriptorSemanticLayer::SSBO;
+        break;
+    case SSBOType::VertexJoint:
+        entry.set_type = DescriptorSetType::PerObject;
+        entry.kind = DescriptorKind::SSBO;
+        entry.semantic = DescriptorSemantic::VertexJoint;
+        entry.semantic_layer = DescriptorSemanticLayer::SSBO;
+        break;
+    default:
+        entry.set_type = DescriptorSetType::Material;
+        entry.kind = DescriptorKind::SSBO;
+        entry.semantic = DescriptorSemantic::MaterialDataSlotData;
+        entry.semantic_layer = DescriptorSemanticLayer::SSBO;
+        break;
+    }
     return MergeSSBODescriptor(v, entry);
 }
 

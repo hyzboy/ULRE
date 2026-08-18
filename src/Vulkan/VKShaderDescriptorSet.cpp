@@ -24,6 +24,11 @@ namespace
             if (strcmp(name, "l2w_index_rows") == 0)   { out_binding = kPerObjectBindingL2WIndexRows;  return true; }
             if (strcmp(name, "joint") == 0)            { out_binding = kPerObjectBindingJoint;         return true; }
             if (strcmp(name, "mtl_data_index_rows") == 0) { out_binding = kPerObjectBindingDataIndexRows; return true; }
+            // 顶点数据 SSBO（MeshShader 方向）
+            if (strcmp(name, "VertexPosition") == 0)   { out_binding = kPerObjectBindingVertexPosition; return true; }
+            if (strcmp(name, "VertexUV") == 0)         { out_binding = kPerObjectBindingVertexUV;       return true; }
+            if (strcmp(name, "VertexNTB") == 0)        { out_binding = kPerObjectBindingVertexNTB;      return true; }
+            if (strcmp(name, "VertexJoint") == 0)      { out_binding = kPerObjectBindingVertexJoint;    return true; }
             return false;
 
         case DescriptorSetType::Material:
@@ -39,8 +44,8 @@ namespace
         switch (set_type)
         {
         // 注：Scene 已全局化（P1），不再进入分配器，无动态绑定起点需求。
-        // P1-2c：PerObject 集固定成员占 binding 0..3（kPerObjectBinding*），动态从 4 起。
-        case DescriptorSetType::PerObject: return 4;
+        // P1-2c：PerObject 集固定成员占 binding 0..7（kPerObjectBinding*），动态从 8 起。
+        case DescriptorSetType::PerObject: return 8;
         case DescriptorSetType::Material:  return 0;
         default:                           return 0;
         }

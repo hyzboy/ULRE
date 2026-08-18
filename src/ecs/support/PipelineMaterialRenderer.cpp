@@ -105,11 +105,15 @@ namespace hgl::ecs
             // 更新缓冲状态
             last_data_buffer = batch->geom_data_buffer;
 
-            // 绑定新的顶点数组缓冲
-            if (!BindVAB(batch))
+            // 绑定新的顶点数组缓冲（SSBO 顶点输入材质管线无顶点输入——跳过）
+            const auto *vil = material->GetVertexInput();
+            if (vil && vil->GetCount() > 0)
             {
-                GLogError("[PipelineMaterialRenderer::Draw] BindVAB failed");
-                return false;
+                if (!BindVAB(batch))
+                {
+                    GLogError("[PipelineMaterialRenderer::Draw] BindVAB failed");
+                    return false;
+                }
             }
 
             // 如果有索引缓冲，也需要绑定

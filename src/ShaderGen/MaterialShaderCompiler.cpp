@@ -238,6 +238,14 @@ static bool ValidateDefinitionCapabilitySubset(
                    || definition.vertex_varying.emit_data_index_id;
             break;
 
+        // 顶点数据 SSBO（MeshShader 方向）：仅 SSBO 传输材质允许
+        case DescriptorSemantic::VertexPosition:
+        case DescriptorSemantic::VertexUV:
+        case DescriptorSemantic::VertexNTB:
+        case DescriptorSemantic::VertexJoint:
+            allowed = definition.vertex_node_config.transport == VertexTransportMode::SSBO;
+            break;
+
         case DescriptorSemantic::Unknown:
         case DescriptorSemantic::Custom:
             allowed = false;
@@ -516,6 +524,24 @@ ShaderBuildContext *CompileCompositorMaterial(
                 {
                     return FailAfterBuild("failed to add MaterialDataIndexRows SSBO");
                 }
+                break;
+            // 顶点数据 SSBO（MeshShader 方向：顶点输入统一为 SSBO）——
+            // PerObject 集固定 binding（kPerObjectBindingVertex*），走固定名路径
+            case DescriptorSemantic::VertexPosition:
+                if (!ctx->AddSSBOStruct(stage_bits, SBS_VertexPosition))
+                    return FailAfterBuild("failed to add VertexPosition SSBO");
+                break;
+            case DescriptorSemantic::VertexUV:
+                if (!ctx->AddSSBOStruct(stage_bits, SBS_VertexUV))
+                    return FailAfterBuild("failed to add VertexUV SSBO");
+                break;
+            case DescriptorSemantic::VertexNTB:
+                if (!ctx->AddSSBOStruct(stage_bits, SBS_VertexNTB))
+                    return FailAfterBuild("failed to add VertexNTB SSBO");
+                break;
+            case DescriptorSemantic::VertexJoint:
+                if (!ctx->AddSSBOStruct(stage_bits, SBS_VertexJoint))
+                    return FailAfterBuild("failed to add VertexJoint SSBO");
                 break;
             default:
                 break;

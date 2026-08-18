@@ -166,6 +166,11 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::MaterialColorPalette: return SBS_ColorPalette.name;
         case DescriptorSemantic::MaterialTextureLayerTable: return SBS_MaterialTextureLayerRows.name;
         case DescriptorSemantic::MaterialDataIndexTable: return SBS_MaterialDataIndexRows.name;
+        // 顶点数据 SSBO（MeshShader 方向）
+        case DescriptorSemantic::VertexPosition: return SBS_VertexPosition.name;
+        case DescriptorSemantic::VertexUV: return SBS_VertexUV.name;
+        case DescriptorSemantic::VertexNTB: return SBS_VertexNTB.name;
+        case DescriptorSemantic::VertexJoint: return SBS_VertexJoint.name;
         default: return nullptr;
         }
     }

@@ -32,6 +32,12 @@ namespace hgl::graph::mtl
         MaterialTextureLayerTable,
         MaterialDataIndexTable,
 
+        // 顶点数据 SSBO（MeshShader 方向：顶点输入统一为 SSBO）
+        VertexPosition,
+        VertexUV,
+        VertexNTB,
+        VertexJoint,
+
         Custom,
     };
 

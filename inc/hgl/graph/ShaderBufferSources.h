@@ -20,4 +20,17 @@ namespace hgl::graph::mtl
     constexpr const ShaderBufferSource SBS_JointInfo{
         DescriptorSetType::PerObject, "joint", "JointInfo"
     };
+    // 顶点数据 SSBO（MeshShader 方向：顶点输入统一为 SSBO）——每对象大 buffer
+    constexpr const ShaderBufferSource SBS_VertexPosition{
+        DescriptorSetType::PerObject, "VertexPosition", "VertexPositionData"
+    };
+    constexpr const ShaderBufferSource SBS_VertexUV{
+        DescriptorSetType::PerObject, "VertexUV", "VertexUVData"
+    };
+    constexpr const ShaderBufferSource SBS_VertexNTB{
+        DescriptorSetType::PerObject, "VertexNTB", "VertexNTBData"
+    };
+    constexpr const ShaderBufferSource SBS_VertexJoint{
+        DescriptorSetType::PerObject, "VertexJoint", "VertexJointData"
+    };
 }

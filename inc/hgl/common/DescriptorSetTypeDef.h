@@ -17,6 +17,11 @@ namespace hgl::graph
     constexpr const int kPerObjectBindingL2WIndexRows   = 1;    ///< 实例 → l2w 行索引表
     constexpr const int kPerObjectBindingJoint          = 2;    ///< 骨骼 joint 数据（预留）
     constexpr const int kPerObjectBindingDataIndexRows  = 3;    ///< 实例 → 材质数据槽行索引表
+    // 顶点数据 SSBO（MeshShader 方向：顶点输入统一为 SSBO）——每对象大 buffer
+    constexpr const int kPerObjectBindingVertexPosition = 4;    ///< 顶点位置 SSBO
+    constexpr const int kPerObjectBindingVertexUV       = 5;    ///< 顶点 UV SSBO
+    constexpr const int kPerObjectBindingVertexNTB      = 6;    ///< 顶点 NTB SSBO
+    constexpr const int kPerObjectBindingVertexJoint    = 7;    ///< 顶点 Joint SSBO
 
     enum class DescriptorSetType:int
     {

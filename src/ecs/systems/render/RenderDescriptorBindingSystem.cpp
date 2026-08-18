@@ -900,6 +900,66 @@ namespace hgl::ecs
                 }
                 break;
             }
+            // 顶点数据 SSBO（MeshShader 方向：顶点输入统一为 SSBO）
+            // 绑定 batch 首个 primitive 的几何 VAB（VDM 大 buffer——同批共享；
+            // 独立 VAB 场景按首对象绑定，试点范围）
+            case graph::mtl::DescriptorSemantic::VertexPosition:
+            case graph::mtl::DescriptorSemantic::VertexUV:
+            case graph::mtl::DescriptorSemantic::VertexNTB:
+            case graph::mtl::DescriptorSemantic::VertexJoint:
+            {
+                const graph::VertexSemantic vertex_semantic =
+                    [](const graph::mtl::DescriptorSemantic semantic)
+                {
+                    switch (semantic)
+                    {
+                    case graph::mtl::DescriptorSemantic::VertexPosition: return graph::VertexSemantic::Position;
+                    case graph::mtl::DescriptorSemantic::VertexUV:       return graph::VertexSemantic::TexCoord;
+                    case graph::mtl::DescriptorSemantic::VertexNTB:      return graph::VertexSemantic::Normal;
+                    case graph::mtl::DescriptorSemantic::VertexJoint:    return graph::VertexSemantic::JointID;
+                    default:                                             return graph::VertexSemantic::Unknown;
+                    }
+                }(req.semantic);
+
+                const graph::IGPUBuffer *gpu = nullptr;
+                if (batch)
+                {
+                    for (RenderItem *item : batch->items)
+                    {
+                        auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(item);
+                        if (!primitive_item)
+                            continue;
+                        auto primitive_comp = primitive_item->GetPrimitiveComponent();
+                        if (!primitive_comp)
+                            continue;
+                        const auto *asset = primitive_comp->GetPrimitiveAsset();
+                        if (!asset)
+                            continue;
+                        graph::Geometry *geometry = asset->GetGeometry();
+                        if (!geometry)
+                            continue;
+                        graph::VAB *vab = geometry->GetVAB(vertex_semantic);
+                        if (vab)
+                        {
+                            gpu = vab->GetGPUBuffer();
+                            break;
+                        }
+                    }
+                }
+
+                if (gpu)
+                {
+                    if (!bind_ssbo(material, batch, req, gpu))
+                        log_bind_failure(material, batch, req, "bind vertex SSBO failed");
+                }
+                else
+                {
+                    log_missing_ssbo_once(material, req, batch ? "geometry vertex buffer not found" : "domain binding not found", 0);
+                    if (batch && req.required)
+                        batch->descriptor_bind_valid = false;
+                }
+                break;
+            }
             case graph::mtl::DescriptorSemantic::MaterialTexture:
             case graph::mtl::DescriptorSemantic::MaterialSampler:
             {
