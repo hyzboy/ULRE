@@ -1,6 +1,6 @@
 #pragma once
 
-#include <hgl/graph/glsl/GLSLCodeModule.h>
+#include <hgl/mtl/GLSLCodeModule.h>
 
 namespace hgl::graph::mtl
 {

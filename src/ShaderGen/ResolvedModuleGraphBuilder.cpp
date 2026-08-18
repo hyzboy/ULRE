@@ -1,6 +1,6 @@
 #include <hgl/shadergen/ResolvedModuleGraphBuilder.h>
 
-#include <hgl/graph/glsl/GLSLCodeModuleMetadata.h>
+#include <hgl/mtl/GLSLCodeModuleMetadata.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/shadergen/MaterialOutputContract.h>
 #include <hgl/shadergen/MaterialCoverageContract.h>

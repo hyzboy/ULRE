@@ -6,7 +6,7 @@
 #include <hgl/mtl/DescriptorSemantic.h>
 #include <hgl/common/VertexAttribDef.h>
 #include <hgl/vk/VK.h>
-#include <hgl/graph/glsl/GLSLCodeModule.h>
+#include <hgl/mtl/GLSLCodeModule.h>
 #include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/type/ValueArray.h>
 #include <hgl/shadergen/ShaderStageBuildContext.h>

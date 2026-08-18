@@ -5,7 +5,7 @@
 #include <hgl/common/RenderOptions.h>
 #include <hgl/common/RenderAssignDef.h>
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
-#include <hgl/graph/glsl/ModuleResourceManifest.h>
+#include <hgl/mtl/ModuleResourceManifest.h>
 #include <vector>
 #include "../common/DescriptorBuilderCommon.h"
 

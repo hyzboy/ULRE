@@ -27,13 +27,13 @@ ${SHADERGEN_INCLUDE_PATH}/ShaderKeyUtility.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderProgramArtifactBuilder.h
                                    ShaderArtifactStore.cpp
                                    ShaderProgramArtifactBuilder.cpp
-                                   ${ROOT_INCLUDE_PATH}/hgl/graph/glsl/GLSLCodeModuleRegistry.h
+                                   ${ROOT_INCLUDE_PATH}/hgl/mtl/GLSLCodeModuleRegistry.h
                                    common/GLSLCodeModuleRegistry.cpp
-                                   ${ROOT_INCLUDE_PATH}/hgl/graph/glsl/GLSLCodeModuleMetadata.h
+                                   ${ROOT_INCLUDE_PATH}/hgl/mtl/GLSLCodeModuleMetadata.h
                                    common/GLSLCodeModuleMetadata.cpp
-                                   ${ROOT_INCLUDE_PATH}/hgl/graph/glsl/GLSLCodeModuleFile.h
+                                   ${ROOT_INCLUDE_PATH}/hgl/mtl/GLSLCodeModuleFile.h
                                    common/GLSLCodeModuleFile.cpp
-                                   ${ROOT_INCLUDE_PATH}/hgl/graph/glsl/GLSLCodeModuleCapabilityResolver.h
+                                   ${ROOT_INCLUDE_PATH}/hgl/mtl/GLSLCodeModuleCapabilityResolver.h
                                    common/GLSLCodeModuleCapabilityResolver.cpp
                                    ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialDefinitionFile.h
                                    common/MaterialDefinitionFile.cpp
@@ -94,8 +94,8 @@ SET(SHADERGEN_COMMON_FILES  ${ROOT_INCLUDE_PATH}/hgl/graph/ShaderBufferSources.h
                             ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/ViewportInfo.h
                             ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/UBOShaderSources.h
                             ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/ColorPalette.h
-                            ${ROOT_INCLUDE_PATH}/hgl/graph/glsl/GLSLCodeModule.h
-                            ${ROOT_INCLUDE_PATH}/hgl/graph/glsl/ModuleResourceManifest.h
+                            ${ROOT_INCLUDE_PATH}/hgl/mtl/GLSLCodeModule.h
+                            ${ROOT_INCLUDE_PATH}/hgl/mtl/ModuleResourceManifest.h
 )
 
 SOURCE_GROUP("Common" FILES ${SHADERGEN_COMMON_FILES})

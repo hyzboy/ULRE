@@ -12,7 +12,7 @@
 #include <hgl/mtl/VertexShaderNodeConfig.h>
 #include <hgl/mtl/SerializedVertexEntry.h>
 #include <hgl/mtl/SerializedDescriptorEntry.h>
-#include <hgl/graph/glsl/ModuleResourceManifest.h>
+#include <hgl/mtl/ModuleResourceManifest.h>
 #include <hgl/shadergen/CanonicalShaderContract.h>
 #include <hgl/shadergen/DescriptorContract.h>
 #include <hgl/shadergen/MaterialCoverageContract.h>

@@ -1,5 +1,5 @@
-#include <hgl/graph/glsl/GLSLCodeModuleRegistry.h>
-#include <hgl/graph/glsl/GLSLCodeModuleMetadata.h>
+#include <hgl/mtl/GLSLCodeModuleRegistry.h>
+#include <hgl/mtl/GLSLCodeModuleMetadata.h>
 
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/io/FileInputStream.h>

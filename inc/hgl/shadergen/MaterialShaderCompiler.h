@@ -15,7 +15,7 @@ namespace hgl::graph::mtl {}
 #include<hgl/common/ShaderStageDef.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
 #include<hgl/mtl/MaterialRecipe.h>
-#include<hgl/graph/glsl/ModuleResourceManifest.h>
+#include<hgl/mtl/ModuleResourceManifest.h>
 #include<hgl/shadergen/ShaderArtifactStore.h>
 #include<hgl/shadergen/DescriptorContract.h>
 #include <string>

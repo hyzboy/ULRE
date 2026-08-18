@@ -1,7 +1,7 @@
 #pragma once
 
-#include <hgl/graph/glsl/GLSLCodeModule.h>
-#include <hgl/graph/glsl/GLSLCodeModuleRegistry.h>
+#include <hgl/mtl/GLSLCodeModule.h>
+#include <hgl/mtl/GLSLCodeModuleRegistry.h>
 #include <hgl/type/ValueArray.h>
 #include <vulkan/vulkan.h>
 #include <string>

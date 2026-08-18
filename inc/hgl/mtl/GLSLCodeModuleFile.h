@@ -1,6 +1,6 @@
 #pragma once
 
-#include <hgl/graph/glsl/GLSLCodeModule.h>
+#include <hgl/mtl/GLSLCodeModule.h>
 #include <hgl/type/String.h>
 #include <hgl/type/StringList.h>
 #include <hgl/type/ManagedArray.h>

@@ -1,5 +1,5 @@
-#include <hgl/graph/glsl/ModuleResourceManifest.h>
-#include <hgl/graph/glsl/GLSLCodeModuleRegistry.h>
+#include <hgl/mtl/ModuleResourceManifest.h>
+#include <hgl/mtl/GLSLCodeModuleRegistry.h>
 #include <hgl/util/hash/FNV1a.h>
 
 #include <cstring>

@@ -16,7 +16,7 @@
 #include <hgl/mtl/SamplerPreset.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
-#include <hgl/graph/glsl/GLSLCodeModule.h>
+#include <hgl/mtl/GLSLCodeModule.h>
 #include "common/DescriptorBuilderCommon.h"
 #include <cstring>
 #include <cstdio>

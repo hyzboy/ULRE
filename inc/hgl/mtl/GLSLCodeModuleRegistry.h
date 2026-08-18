@@ -1,7 +1,7 @@
 #pragma once
 
-#include <hgl/graph/glsl/GLSLCodeModule.h>
-#include <hgl/graph/glsl/GLSLCodeModuleFile.h>
+#include <hgl/mtl/GLSLCodeModule.h>
+#include <hgl/mtl/GLSLCodeModuleFile.h>
 #include <hgl/type/ManagedArray.h>
 #include <vector>
 

@@ -2,7 +2,7 @@
 
 #include <hgl/mtl/SerializedDescriptorEntry.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
-#include <hgl/graph/glsl/ModuleResourceManifest.h>
+#include <hgl/mtl/ModuleResourceManifest.h>
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/util/hash/FNV1a.h>

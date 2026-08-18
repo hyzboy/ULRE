@@ -2,7 +2,7 @@
 
 namespace hgl::graph::mtl { struct MaterialDefinitionBuildRequest; }
 
-#include <hgl/graph/glsl/GLSLCodeModuleRegistry.h>
+#include <hgl/mtl/GLSLCodeModuleRegistry.h>
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/shadergen/CanonicalShaderContract.h>
 #include <hgl/type/String.h>

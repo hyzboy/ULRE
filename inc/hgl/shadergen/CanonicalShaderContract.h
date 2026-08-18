@@ -6,7 +6,7 @@ namespace hgl::graph::mtl {}
 #include <hgl/common/DescriptorSetTypeDef.h>
 #include <hgl/common/ShaderStageDef.h>
 #include <hgl/common/VertexAttribDef.h>
-#include <hgl/graph/glsl/GLSLCodeModule.h>
+#include <hgl/mtl/GLSLCodeModule.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
 #include <hgl/graph/ssbo/TextureSlot.h>
 #include <hgl/mtl/DescriptorKind.h>

@@ -18,7 +18,7 @@
 #include <hgl/shadergen/MaterialStageInterface.h>
 #include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
-#include <hgl/graph/glsl/GLSLCodeModuleCapabilityResolver.h>
+#include <hgl/mtl/GLSLCodeModuleCapabilityResolver.h>
 #include "3d/DefinitionDescriptorBuilder.h"
 #include "common/VertexShaderAssembler.h"
 #include "common/GenericMaterialBuilder.h"

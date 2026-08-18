@@ -1,4 +1,4 @@
-#include <hgl/graph/glsl/GLSLCodeModuleMetadata.h>
+#include <hgl/mtl/GLSLCodeModuleMetadata.h>
 
 #include <hgl/type/ValueArray.h>
 #include <hgl/type/StrChar.h>
