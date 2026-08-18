@@ -119,17 +119,6 @@ static void SyncAssetFixedPixelSizingContext(GizmoECS *gizmo,
     apply_ctx(gizmo->scale_mode.entity);
 }
 
-static bool BeginAssetMouseCapture(GizmoECS *gizmo, hgl::ecs::InputSystem *input_system)
-{
-    (void)gizmo; (void)input_system;
-    return true;  // Modes manage their own mouse capture; this stub satisfies any lingering call sites.
-}
-
-static void EndAssetMouseCapture(GizmoECS *gizmo)
-{
-    (void)gizmo; // Modes manage their own mouse capture.
-}
-
 static int GetScalePlaneNormalAxisFromEntry(const GizmoVisualPrimitive &entry)
 {
     if (!entry.transform || entry.shape != GizmoShape::Square)

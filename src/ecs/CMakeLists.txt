@@ -196,7 +196,6 @@ set(ECS_SUPPORT_FILES
     ${ECS_INCLUDE_PATH}/support/BoundingBoxDataStorage.h
     ${ECS_INCLUDE_PATH}/support/PipelineMaterialRenderer.h
     ${ECS_INCLUDE_PATH}/support/TransformAssignmentBuffer.h
-    ${ECS_INCLUDE_PATH}/support/TextHelper.h
     ${ECS_INCLUDE_PATH}/support/RenderPipelineBase.h
     ${ECS_INCLUDE_PATH}/support/RenderPipelineSystem.h
     ${ECS_INCLUDE_PATH}/support/PrimitiveBatchPipeline.h

@@ -605,42 +605,6 @@ namespace hgl::ecs
         }
     }
 
-    static bool GetStorageWorldMatrix(const RenderItem* item, math::Matrix4f& out)
-    {
-        if (!item)
-        {
-            out = math::Identity4f;
-            return false;
-        }
-
-        auto transform = item->GetTransform();
-        if (!transform)
-        {
-            out = math::Identity4f;
-            return false;
-        }
-
-        const auto handle = transform->GetStorageHandle();
-        if (handle == TransformDataStorage::INVALID_HANDLE)
-        {
-            out = math::Identity4f;
-            return false;
-        }
-
-        const auto storage = TransformComponent::GetSharedStorage();
-
-        if (!storage)
-        {
-            out = math::Identity4f;
-            return false;
-        }
-
-        const glm::mat4 world_matrix = storage->GetWorldMatrix(handle);
-        out = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
-        return true;
-    }
-
-
 
 
 
