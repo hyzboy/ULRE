@@ -61,7 +61,7 @@ namespace hgl::graph::mtl
     struct GLSLCodeModuleResolutionRequest
     {
         // Surface requirements to satisfy (ProducedSemantic drives provider
-        // selection; GeometryAttribute/Resource/Option are validated directly).
+        // selection; GeometryAttribute/Resource are validated directly).
         const GLSLCodeModuleSemanticRequirement *requirements = nullptr;
         uint32 requirement_count = 0;
 
@@ -71,8 +71,6 @@ namespace hgl::graph::mtl
         const GLSLCodeModuleSemantic *resources = nullptr;
         uint32 resource_count = 0;
 
-        const GLSLCodeModuleSemantic *options = nullptr;
-        uint32 option_count = 0;
     };
 
     struct GLSLCodeModuleResolutionResult

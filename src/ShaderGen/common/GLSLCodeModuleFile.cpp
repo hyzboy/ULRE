@@ -158,7 +158,6 @@ namespace hgl::graph::mtl
         {
             if (std::strcmp(token, "GeometryAttribute") == 0) out_source = GLSLCodeModuleCapabilitySource::GeometryAttribute;
             else if (std::strcmp(token, "Resource") == 0) out_source = GLSLCodeModuleCapabilitySource::Resource;
-            else if (std::strcmp(token, "Option") == 0) out_source = GLSLCodeModuleCapabilitySource::Option;
             else if (std::strcmp(token, "ProducedSemantic") == 0) out_source = GLSLCodeModuleCapabilitySource::ProducedSemantic;
             else return false;
             return true;

@@ -4398,8 +4398,7 @@ namespace
         auto resolve = [](const ResolverFixture &fixture,
                           const std::vector<GLSLCodeModuleSemanticRequirement> &reqs,
                           const std::vector<GLSLCodeModuleGeometryCapability> &caps,
-                          const std::vector<GLSLCodeModuleSemantic> &resources,
-                          const std::vector<GLSLCodeModuleSemantic> &options)
+                          const std::vector<GLSLCodeModuleSemantic> &resources)
         {
             GLSLCodeModuleResolutionRequest request;
             request.requirements = reqs.empty() ? nullptr : reqs.data();
@@ -4408,9 +4407,6 @@ namespace
             request.geometry_capability_count = uint32_t(caps.size());
             request.resources = resources.empty() ? nullptr : resources.data();
             request.resource_count = uint32_t(resources.size());
-            request.options = options.empty() ? nullptr : options.data();
-            request.option_count = uint32_t(options.size());
-
             const GLSLCodeModuleCapabilityResolver resolver;
             ResolveOutcome outcome;
             outcome.ok = resolver.Resolve(fixture.registry, request, outcome.result);
@@ -4418,7 +4414,6 @@ namespace
         };
 
         const std::vector<GLSLCodeModuleSemantic> kNoResources;
-        const std::vector<GLSLCodeModuleSemantic> kNoOptions;
 
         auto has_selection = [](const GLSLCodeModuleResolutionResult &res, const GLSLCodeModuleDefinition *expected)
         {
@@ -4494,7 +4489,7 @@ namespace
             gvf.Add(VertexSemantic::Tangent, VF_V3F);
             gvf.Add(VertexSemantic::Bitangent, VF_V3F);
 
-            const auto outcome = resolve(fixture, { produced(GLSLCodeModuleSemantic::Normal) }, ResolverBuildCaps(gvf), kNoResources, kNoOptions);
+            const auto outcome = resolve(fixture, { produced(GLSLCodeModuleSemantic::Normal) }, ResolverBuildCaps(gvf), kNoResources);
             check(outcome.ok, "J1 direct-ntb: resolution must succeed");
             check(outcome.result.resolved, "J1 direct-ntb: resolved flag must be set");
             check(has_selection(outcome.result, ntb_direct), "J1 direct-ntb: expected ntb_direct selected");
@@ -4518,7 +4513,7 @@ namespace
             gvf.Add(VertexSemantic::Position, VF_V3F);
             gvf.Add(VertexSemantic::Normal, VF_V3F);
 
-            const auto outcome = resolve(fixture, { produced(GLSLCodeModuleSemantic::Normal) }, ResolverBuildCaps(gvf), kNoResources, kNoOptions);
+            const auto outcome = resolve(fixture, { produced(GLSLCodeModuleSemantic::Normal) }, ResolverBuildCaps(gvf), kNoResources);
             check(outcome.ok, "J2 normal-only: resolution must succeed");
             check(has_selection(outcome.result, normal_only), "J2 normal-only: expected normal_only selected");
             check(rejected_candidate(outcome.result, ntb_direct), "J2 normal-only: ntb_direct must be rejected");
@@ -4545,7 +4540,7 @@ namespace
             // Packed formats have no VF_ macro; vec_size must be explicit.
             gvf.Add(VertexSemantic::Normal, PF_A2RGB10UN, 4, 0);
 
-            const auto outcome = resolve(fixture, { produced(GLSLCodeModuleSemantic::Normal) }, ResolverBuildCaps(gvf), kNoResources, kNoOptions);
+            const auto outcome = resolve(fixture, { produced(GLSLCodeModuleSemantic::Normal) }, ResolverBuildCaps(gvf), kNoResources);
             check(outcome.ok, "J3 packed-normal: resolution must succeed");
             check(has_selection(outcome.result, decode), "J3 packed-normal: expected decode provider selected");
             check(rejected_candidate(outcome.result, normal_only), "J3 packed-normal: float provider must be rejected");
@@ -4567,7 +4562,7 @@ namespace
             GeometryVertexFormat gvf;
             gvf.Add(VertexSemantic::Position, VF_V3F);
 
-            const auto outcome = resolve(fixture, { produced(GLSLCodeModuleSemantic::Normal) }, ResolverBuildCaps(gvf), kNoResources, kNoOptions);
+            const auto outcome = resolve(fixture, { produced(GLSLCodeModuleSemantic::Normal) }, ResolverBuildCaps(gvf), kNoResources);
             check(outcome.ok, "J4 sky-ntb: resolution must succeed");
             check(has_selection(outcome.result, ntb_from_position), "J4 sky-ntb: expected position-derived provider selected");
         }
@@ -4594,8 +4589,7 @@ namespace
                 fixture,
                 { produced(GLSLCodeModuleSemantic::Normal) },
                 ResolverBuildCaps(gvf),
-                { GLSLCodeModuleSemantic::HeightMap },
-                kNoOptions);
+                { GLSLCodeModuleSemantic::HeightMap });
             check(outcome.ok, "J5 terrain-ntb: resolution must succeed");
             check(has_selection(outcome.result, ntb_heightmap), "J5 terrain-ntb: expected heightmap provider selected");
         }
@@ -4618,8 +4612,7 @@ namespace
                 fixture,
                 { produced(GLSLCodeModuleSemantic::Normal) },
                 ResolverBuildCaps(gvf),
-                kNoResources,
-                kNoOptions);
+                kNoResources);
             check(!outcome.ok, "J6 missing-resource: resolution must fail");
             check(!outcome.result.resolved, "J6 missing-resource: resolved flag must be clear");
             check(outcome.result.diagnostics.GetCount() > 0, "J6 missing-resource: diagnostics must be present");
@@ -4640,7 +4633,7 @@ namespace
             gvf.Add(VertexSemantic::Position, VF_V3F);
             gvf.Add(VertexSemantic::Normal, VF_V2SN8);
 
-            const auto outcome = resolve(fixture, { produced(GLSLCodeModuleSemantic::Normal) }, ResolverBuildCaps(gvf), kNoResources, kNoOptions);
+            const auto outcome = resolve(fixture, { produced(GLSLCodeModuleSemantic::Normal) }, ResolverBuildCaps(gvf), kNoResources);
             check(outcome.ok, "J7 octa-normal: resolution must succeed");
             check(has_selection(outcome.result, octa), "J7 octa-normal: expected octa decoder selected");
         }
@@ -4660,7 +4653,7 @@ namespace
             gvf.Add(VertexSemantic::Position, VF_V3F);
             gvf.Add(VertexSemantic::Normal, VF_V3F);
 
-            const auto outcome = resolve(fixture, { produced(GLSLCodeModuleSemantic::Normal) }, ResolverBuildCaps(gvf), kNoResources, kNoOptions);
+            const auto outcome = resolve(fixture, { produced(GLSLCodeModuleSemantic::Normal) }, ResolverBuildCaps(gvf), kNoResources);
             check(outcome.ok, "J8 priority: resolution must succeed");
             check(has_selection(outcome.result, high), "J8 priority: expected high-priority provider selected");
             check(!has_selection(outcome.result, low), "J8 priority: low-priority provider must not be selected");
@@ -4681,7 +4674,7 @@ namespace
             gvf.Add(VertexSemantic::Position, VF_V3F);
             gvf.Add(VertexSemantic::Normal, VF_V3F);
 
-            const auto outcome = resolve(fixture, { produced(GLSLCodeModuleSemantic::Normal) }, ResolverBuildCaps(gvf), kNoResources, kNoOptions);
+            const auto outcome = resolve(fixture, { produced(GLSLCodeModuleSemantic::Normal) }, ResolverBuildCaps(gvf), kNoResources);
             check(outcome.ok, "J9 tie-break: resolution must succeed");
             check(has_selection(outcome.result, a), "J9 tie-break: expected first-registered (lower ID) provider selected");
             check(!has_selection(outcome.result, b), "J9 tie-break: second provider must not be selected");
@@ -4703,8 +4696,8 @@ namespace
             gvf16.Add(VertexSemantic::Position, VF_V3F);
             gvf16.Add(VertexSemantic::Normal, VF_V3HF);
 
-            const auto outcome32 = resolve(fixture, { produced(GLSLCodeModuleSemantic::Normal) }, ResolverBuildCaps(gvf32), kNoResources, kNoOptions);
-            const auto outcome16 = resolve(fixture, { produced(GLSLCodeModuleSemantic::Normal) }, ResolverBuildCaps(gvf16), kNoResources, kNoOptions);
+            const auto outcome32 = resolve(fixture, { produced(GLSLCodeModuleSemantic::Normal) }, ResolverBuildCaps(gvf32), kNoResources);
+            const auto outcome16 = resolve(fixture, { produced(GLSLCodeModuleSemantic::Normal) }, ResolverBuildCaps(gvf16), kNoResources);
             check(outcome32.ok && outcome16.ok, "J10 rg16f-rg32f: both resolutions must succeed");
             check(has_selection(outcome32.result, normal_only) && has_selection(outcome16.result, normal_only),
                   "J10 rg16f-rg32f: both formats must select the same provider");
@@ -4725,7 +4718,7 @@ namespace
             GeometryVertexFormat gvf;
             gvf.Add(VertexSemantic::Position, VF_V3F);
 
-            const auto outcome = resolve(fixture, { produced(GLSLCodeModuleSemantic::WorldNormal) }, ResolverBuildCaps(gvf), kNoResources, kNoOptions);
+            const auto outcome = resolve(fixture, { produced(GLSLCodeModuleSemantic::WorldNormal) }, ResolverBuildCaps(gvf), kNoResources);
             check(outcome.ok, "J11 composition: resolution must succeed");
             check(has_selection(outcome.result, ntb_from_position), "J11 composition: NTB provider must be selected first");
             check(has_selection(outcome.result, world_normal), "J11 composition: world-normal provider must be selected");
@@ -4768,7 +4761,7 @@ namespace
             cap_uv.component_count = 2;
             yuv_caps.push_back(cap_uv);
 
-            const auto outcome_yuv = resolve(fixture, { produced(GLSLCodeModuleSemantic::Color) }, yuv_caps, kNoResources, kNoOptions);
+            const auto outcome_yuv = resolve(fixture, { produced(GLSLCodeModuleSemantic::Color) }, yuv_caps, kNoResources);
             check(outcome_yuv.ok, "J12 yuv: resolution must succeed");
             check(has_selection(outcome_yuv.result, color_yuv), "J12 yuv: expected YUV decoder selected");
             check(rejected_candidate(outcome_yuv.result, color_direct), "J12 yuv: direct RGBA provider must be rejected");
@@ -4780,7 +4773,7 @@ namespace
             cap_color.component_count = 4;
             rgba_caps.push_back(cap_color);
 
-            const auto outcome_rgba = resolve(fixture, { produced(GLSLCodeModuleSemantic::Color) }, rgba_caps, kNoResources, kNoOptions);
+            const auto outcome_rgba = resolve(fixture, { produced(GLSLCodeModuleSemantic::Color) }, rgba_caps, kNoResources);
             check(outcome_rgba.ok, "J12 rgba: resolution must succeed");
             check(has_selection(outcome_rgba.result, color_direct), "J12 rgba: expected direct color provider selected");
             check(!has_selection(outcome_rgba.result, color_yuv), "J12 rgba: YUV decoder must not be selected");

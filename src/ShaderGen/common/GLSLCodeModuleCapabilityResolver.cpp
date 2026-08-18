@@ -174,13 +174,6 @@ namespace hgl::graph::mtl
                     detail = "resource unavailable";
                     break;
 
-                case GLSLCodeModuleCapabilitySource::Option:
-                    satisfied = ContainsSemantic(state.request.options,
-                                                 state.request.option_count,
-                                                 requirement.semantic);
-                    detail = "option not enabled";
-                    break;
-
                 case GLSLCodeModuleCapabilitySource::ProducedSemantic:
                     satisfied = CheckCanProvide(state, requirement.semantic, in_progress, &detail);
                     break;
@@ -594,18 +587,6 @@ namespace hgl::graph::mtl
                     diagnostic.requirement = requirement.semantic;
                     diagnostic.candidate = nullptr;
                     diagnostic.reason = "surface resource requirement not satisfied";
-                    result.diagnostics.Add(diagnostic);
-                    ok = false;
-                }
-                break;
-
-            case GLSLCodeModuleCapabilitySource::Option:
-                if (!ContainsSemantic(request.options, request.option_count, requirement.semantic))
-                {
-                    GLSLCodeModuleRejectDiagnostic diagnostic;
-                    diagnostic.requirement = requirement.semantic;
-                    diagnostic.candidate = nullptr;
-                    diagnostic.reason = "surface option requirement not satisfied";
                     result.diagnostics.Add(diagnostic);
                     ok = false;
                 }

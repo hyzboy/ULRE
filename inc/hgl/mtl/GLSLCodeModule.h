@@ -57,7 +57,6 @@ namespace hgl::graph::mtl
     {
         GeometryAttribute = 0,
         Resource,
-        Option,
         ProducedSemantic
     };
 

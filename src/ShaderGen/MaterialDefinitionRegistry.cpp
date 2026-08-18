@@ -285,8 +285,6 @@ bool PreviewMaterialVertexSemanticResolution(
         geometry_capabilities.GetData(),
         static_cast<uint32>(geometry_capabilities.GetCount()),
         nullptr,
-        0,
-        nullptr,
         0
     };
     GLSLCodeModuleCapabilityResolver resolver;
