@@ -40,7 +40,7 @@ namespace
         GeometryVertexFormat gvf{
             {VertexSemantic::Position, VF_V3F},
             {VertexSemantic::TexCoord, VF_V2F},
-            {VertexSemantic::Normal,   VF_V2HF},   // RG16F 压缩（xy 半浮点，z 重建）
+            {VertexSemantic::Normal,   VF_V2UN8},   // RG8 最小格式（octahedral uint8——2B/顶点）
         };
         return gvf;
     }

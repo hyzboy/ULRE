@@ -139,7 +139,9 @@ namespace
             {
                 // 按 Normal 属性格式选解码模块（格式=模块——发行版压缩格式各一模块）
                 const auto *normal_attr = geometry.Find(VertexSemantic::Normal);
-                if (normal_attr && normal_attr->format == VK_FORMAT_R16G16_SFLOAT)
+                if (normal_attr && normal_attr->format == VK_FORMAT_R8G8_UNORM)
+                    out_vertex_input_glsl += "#include \"vertex/s1_ntb_rg8.glsl\"\n";
+                else if (normal_attr && normal_attr->format == VK_FORMAT_R16G16_SFLOAT)
                     out_vertex_input_glsl += "#include \"vertex/s1_ntb_rg16f.glsl\"\n";
                 else
                     out_vertex_input_glsl += "#include \"vertex/s1_ntb.glsl\"\n";

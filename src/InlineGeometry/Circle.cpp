@@ -92,10 +92,12 @@ namespace hgl::graph::inline_geometry
         auto color  = pc->GetBufferAccessor<BufferAccessor4f>(VAN::Color);
         auto normal = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Normal);
 
-        // RG16F 压缩法线（octahedral）
+        // RG16F/RG8 压缩法线（octahedral）
         VAB *nrm_vab = pc->GetVAB(VAN::Normal);
+        const bool nrm_rg8   = (nrm_vab && nrm_vab->GetFormat() == VK_FORMAT_R8G8_UNORM);
         const bool nrm_rg16f = (nrm_vab && nrm_vab->GetFormat() == VK_FORMAT_R16G16_SFLOAT);
-        BufferAccessor2hf normal2 = nrm_rg16f ? pc->GetBufferAccessor<BufferAccessor2hf>(VAN::Normal) : BufferAccessor2hf();
+        BufferAccessor2u8 normal2u8 = nrm_rg8   ? pc->GetBufferAccessor<BufferAccessor2u8>(VAN::Normal) : BufferAccessor2u8();
+        BufferAccessor2hf normal2   = nrm_rg16f ? pc->GetBufferAccessor<BufferAccessor2hf>(VAN::Normal) : BufferAccessor2hf();
 
         if(!vertex.IsValid())
             return(nullptr);
@@ -108,7 +110,9 @@ namespace hgl::graph::inline_geometry
                 color->Write(cci->center_color);
 
             if(normal.IsValid())
-                if(normal2.IsValid())
+                if(normal2u8.IsValid())
+                    normal2u8->Write(QuantizeU8(0.0f), QuantizeU8(0.0f));
+                else if(normal2.IsValid())
                     normal2->Write(FloatToHalf(0.0f), FloatToHalf(0.0f));
                 else
                     normal->Write(math::AxisVector::Z);
@@ -127,7 +131,9 @@ namespace hgl::graph::inline_geometry
                 color->Write(cci->border_color);
 
             if(normal.IsValid())
-                if(normal2.IsValid())
+                if(normal2u8.IsValid())
+                    normal2u8->Write(QuantizeU8(0.0f), QuantizeU8(0.0f));
+                else if(normal2.IsValid())
                     normal2->Write(FloatToHalf(0.0f), FloatToHalf(0.0f));
                 else
                     normal->Write(math::AxisVector::Z);
@@ -184,10 +190,12 @@ namespace hgl::graph::inline_geometry
         auto color  = pc->GetBufferAccessor<BufferAccessor4f>(VAN::Color);
         auto normal = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Normal);
 
-        // RG16F 压缩法线（octahedral）
+        // RG16F/RG8 压缩法线（octahedral）
         VAB *nrm_vab = pc->GetVAB(VAN::Normal);
+        const bool nrm_rg8   = (nrm_vab && nrm_vab->GetFormat() == VK_FORMAT_R8G8_UNORM);
         const bool nrm_rg16f = (nrm_vab && nrm_vab->GetFormat() == VK_FORMAT_R16G16_SFLOAT);
-        BufferAccessor2hf normal2 = nrm_rg16f ? pc->GetBufferAccessor<BufferAccessor2hf>(VAN::Normal) : BufferAccessor2hf();
+        BufferAccessor2u8 normal2u8 = nrm_rg8   ? pc->GetBufferAccessor<BufferAccessor2u8>(VAN::Normal) : BufferAccessor2u8();
+        BufferAccessor2hf normal2   = nrm_rg16f ? pc->GetBufferAccessor<BufferAccessor2hf>(VAN::Normal) : BufferAccessor2hf();
 
         if(!vertex.IsValid())
             return(nullptr);
@@ -206,7 +214,9 @@ namespace hgl::graph::inline_geometry
                 color->Write(cci->border_color);
 
             if(normal.IsValid())
-                if(normal2.IsValid())
+                if(normal2u8.IsValid())
+                    normal2u8->Write(QuantizeU8(0.0f), QuantizeU8(0.0f));
+                else if(normal2.IsValid())
                     normal2->Write(FloatToHalf(0.0f), FloatToHalf(0.0f));
                 else
                     normal->Write(math::AxisVector::Z);

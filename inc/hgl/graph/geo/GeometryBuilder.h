@@ -16,6 +16,7 @@ namespace hgl::graph::inline_geometry
 
         BufferAccessor3f accessor_position;
         BufferAccessor3f accessor_normal;
+        BufferAccessor2u8 accessor_normal_2u8;  // RG8 压缩（octahedral → uint8 量化）
         BufferAccessor4f accessor_tangent_4f;   // 切线 V4F（含 w 分量——唯一切线访问器）
         BufferAccessor2f accessor_texcoord;
 
@@ -49,7 +50,14 @@ namespace hgl::graph::inline_geometry
          */
         inline void WriteNTB(float nx, float ny, float nz)
         {
-            if(accessor_normal_2hf.IsValid())
+            if(accessor_normal_2u8.IsValid())
+            {
+                // RG8 压缩：octahedral 编码 → uint8 量化（[-1,1] → [0,255]——2B/顶点）
+                float p, q;
+                EncodeOctahedralNormal(nx, ny, nz, p, q);
+                accessor_normal_2u8->Write(QuantizeU8(p), QuantizeU8(q));
+            }
+            else if(accessor_normal_2hf.IsValid())
             {
                 // RG16F 压缩：octahedral 编码（2 分量完整方向——z 符号保留）
                 // 注意：VB2hf 的 T 是 uint16（half 位模式）——必须显式 FloatToHalf

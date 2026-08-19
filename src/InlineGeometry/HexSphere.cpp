@@ -90,21 +90,30 @@ namespace hgl::graph::inline_geometry
         if(!pos.IsValid())
             return nullptr;
 
-        // RG16F 压缩法线（octahedral 编码）：Normal VAB 为 R16G16_SFLOAT 时用 2 分量访问器
+        // RG16F/RG8 压缩法线（octahedral）：Normal VAB 为压缩格式时用 2 分量编码
         VAB *nrm_vab = pc->GetVAB(VAN::Normal);
+        const bool nrm_rg8  = (nrm_vab && nrm_vab->GetFormat() == VK_FORMAT_R8G8_UNORM);
         const bool nrm_rg16f = (nrm_vab && nrm_vab->GetFormat() == VK_FORMAT_R16G16_SFLOAT);
-        BufferAccessor2hf nrm2 = nrm_rg16f ? pc->GetBufferAccessor<BufferAccessor2hf>(VAN::Normal) : BufferAccessor2hf();
+        BufferAccessor2u8 nrm2u8 = nrm_rg8  ? pc->GetBufferAccessor<BufferAccessor2u8>(VAN::Normal) : BufferAccessor2u8();
+        BufferAccessor2hf nrm2   = nrm_rg16f ? pc->GetBufferAccessor<BufferAccessor2hf>(VAN::Normal) : BufferAccessor2hf();
 
         // åé¡¶ç¹å±æ§ï¼æ³çº¿=åä½æ¹åï¼åçº¿åç»åæ¹åï¼å¨æç¹éåæ¶ç»åºå®å¼ï¼
         for(const auto &v:verts)
         {
             pos->Write(v);
 
-            if(nrm2.IsValid())
+            if(nrm2u8.IsValid())
             {
                 const Vector3f nn = glm::normalize(v);
                 float p, q;
                 EncodeOctahedralNormal(nn.x, nn.y, nn.z, p, q);
+                nrm2u8->Write(QuantizeU8(p), QuantizeU8(q));
+            }
+            else if(nrm2.IsValid())
+            {
+                const Vector3f n = glm::normalize(v);
+                float p, q;
+                EncodeOctahedralNormal(n.x, n.y, n.z, p, q);
                 nrm2->Write(FloatToHalf(p), FloatToHalf(q));
             }
             else if(nrm.IsValid())

@@ -21,8 +21,10 @@ namespace hgl::graph::inline_geometry
         vab = pc->GetVAB(VAN::Normal);
         if(vab)
         {
-            // 压缩格式分派：RG16F（R16G16_SFLOAT）→ 2 分量半浮点访问器（xy，z 重建）
-            if(vab->GetFormat() == VK_FORMAT_R16G16_SFLOAT)
+            // 压缩格式分派：RG8（R8G8_UNORM）→ uint8 量化；RG16F → 半浮点；V3F → 3f
+            if(vab->GetFormat() == VK_FORMAT_R8G8_UNORM)
+                accessor_normal_2u8.Bind(vab, vertex_offset, vertex_count);
+            else if(vab->GetFormat() == VK_FORMAT_R16G16_SFLOAT)
                 accessor_normal_2hf.Bind(vab, vertex_offset, vertex_count);
             else
                 accessor_normal.Bind(vab, vertex_offset, vertex_count);

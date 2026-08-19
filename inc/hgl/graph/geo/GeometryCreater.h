@@ -36,6 +36,15 @@ inline uint16 FloatToHalf(float f)
 }
 
 /**
+ * [-1,1] → [0,255] 量化（RG8 法线压缩用——octahedral 编码后写入 uint8）
+ */
+inline uint8 QuantizeU8(float v)
+{
+    const int32_t q = (int32_t)roundf(v * 127.5f + 127.5f);
+    return (uint8_t)(q < 0 ? 0 : (q > 255 ? 255 : q));
+}
+
+/**
  * 法线 octahedral 编码（2 分量保存完整方向——z 符号保留，RG16F/RG8 压缩用）
  * 输出 p,q ∈ [-1,1]；GPU 解码：n = vec3(p, 1-|p|-|q|)；if(n.z<0) n.xy=(1-|n.yx|)*sign(n.xy)；normalize
  */
