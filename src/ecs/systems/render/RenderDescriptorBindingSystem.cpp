@@ -945,8 +945,6 @@ namespace hgl::ecs
                         if (vab)
                         {
                             gpu = vab->GetGPUBuffer();
-                            fprintf(stderr, "[DIAG] RDBS vertex SSBO: material=%p gpu=%p semantic=%d\n",
-                                    (void*)material, (void*)gpu, (int)vertex_semantic);
                             break;
                         }
                     }
@@ -1123,11 +1121,6 @@ namespace hgl::ecs
                 {
                     ++frame_stats.required_missing;
                     all_required_ok = false;
-
-                    fprintf(stderr, "[DIAG] contract-missing: program=%p name=%s req.name=%s semantic=%d(%s)\n",
-                            (void*)shader_program, shader_program->GetName().c_str(),
-                            req.name.c_str(), (int)req.semantic,
-                            graph::mtl::GetDescriptorSemanticName(req.semantic));
 
                     if (first_error.empty())
                     {

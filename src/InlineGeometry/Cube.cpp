@@ -99,6 +99,17 @@ namespace hgl::graph::inline_geometry
                         WriteIndex(i2, idx8, idx16, idx32);
                         WriteIndex(i3, idx8, idx16, idx32);
                     }
+                    else
+                    {
+                        // 正常 CCW 顺序
+                        WriteIndex(i0, idx8, idx16, idx32);
+                        WriteIndex(i1, idx8, idx16, idx32);
+                        WriteIndex(i2, idx8, idx16, idx32);
+
+                        WriteIndex(i1, idx8, idx16, idx32);
+                        WriteIndex(i3, idx8, idx16, idx32);
+                        WriteIndex(i2, idx8, idx16, idx32);
+                    }
                 }
             }
 

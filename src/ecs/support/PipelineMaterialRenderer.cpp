@@ -234,9 +234,6 @@ namespace hgl::ecs
                     const VkBuffer ibuf = geom_buffer->ibo->GetVkBuffer();
                     if (ibuf != last_ssbo_index)
                     {
-                        fprintf(stderr, "[DIAG] Draw: material=%p name=%s ibuf=%p mp(PerObject)=%p\n",
-                                (void*)material, material->GetName().c_str(), (void*)ibuf,
-                                (void*)material->GetMP(graph::DescriptorSetType::PerObject));
                         material->BindSSBO(graph::DescriptorSetType::PerObject,
                                            "VertexIndex", ibuf, 0, VK_WHOLE_SIZE);
                         last_ssbo_index = ibuf;
@@ -245,9 +242,6 @@ namespace hgl::ecs
                         if (mp)
                         {
                             mp->Update();
-                            fprintf(stderr, "[DIAG] Draw: re-bind ds=%p layout=%p\n",
-                                    (void*)mp->GetVkDescriptorSet(),
-                                    (void*)material->GetPipelineLayout());
                             const VkDescriptorSet ds = mp->GetVkDescriptorSet();
                             cmd_buf->BindDescriptorSets(material->GetPipelineLayout(),
                                                         static_cast<uint32_t>(graph::DescriptorSetType::PerObject),
