@@ -7,11 +7,12 @@ bootstrap = "TextAlphaBlend"
 provider_policy = "GeometryOnly"
 
 [transform]
-source = "Vec2Position"
+source = "Vec2IntPosition"
 mapping = "PixelToLocal"
 orientation = "World"
 scale = "World"
 projection = "OrthoViewport"
+transport = "ssbo"
 
 [fragment]
 source = "compositor/main_forward_surface.frag.glsl"

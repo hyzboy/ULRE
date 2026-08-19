@@ -1036,7 +1036,7 @@ namespace
         check_preview(BUILTIN_MTL_DEF_PURE_COLOR, pure3d_geometry, 1);
 
         const GeometryVertexFormat text_geometry{
-            {VertexSemantic::Position, VF_V2I},
+            {VertexSemantic::Position, VF_V2I16},   // 与 CreateTextGeometryVertexFormat 一致（R16G16_SINT）
             {VertexSemantic::TexCoord, VF_V2F}
         };
         check_preview(BUILTIN_MTL_DEF_TEXT, text_geometry, 2);
@@ -1062,12 +1062,12 @@ namespace
             else
             {
                 const std::string source(abi.vertex_input_glsl.c_str());
-                if (abi.position_format != VF_V2I
-                 || abi.vertex_entries.GetCount() != 2
-                 || !(abi.vertex_entries[0] == SerializedVertexEntry{VF_V2I, VertexSemantic::Position})
-                 || !(abi.vertex_entries[1] == SerializedVertexEntry{VF_V2F, VertexSemantic::TexCoord})
-                 || source.find("layout(location=0) in ivec2 Position;") == std::string::npos
-                 || source.find("layout(location=1) in vec2 TexCoord;") == std::string::npos)
+                // text_2d transport=ssbo：顶点输入走 SSBO 解码模块——
+                // 无 VBO attribute 布局（vertex_entries 空）+ include s1_* 模块
+                if (abi.position_format != VF_V2I16
+                 || abi.vertex_entries.GetCount() != 0
+                 || source.find("#include \"vertex/s1_position_vec2i.glsl\"") == std::string::npos
+                 || source.find("#include \"vertex/s1_uv.glsl\"") == std::string::npos)
                 {
                     result.diagnostics.emplace_back(
                         "resolved vertex ABI does not match Geometry");

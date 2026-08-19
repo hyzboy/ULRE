@@ -19,15 +19,14 @@ layout(set=VERTEX_SET, binding=VERTEX_POSITION_BINDING, std430) readonly buffer 
     uint data[];
 } sbo_vertex_position;
 
-vec3 Position;
+vec2 Position;
 
 void LoadVertexData()
 {
     // 每顶点 1 uint：低 16 位 x、高 16 位 y（int16 符号扩展——算术右移）
     const uint d = sbo_vertex_position.data[gl_VertexIndex];
-    Position = vec3(float(int(d) << 16 >> 16),
-                    float(int(d) >> 16),
-                    0.0f);
+    Position = vec2(float(int(d) << 16 >> 16),
+                    float(int(d) >> 16));
 #ifdef HGL_UV_LOADER
     HGL_UV_LOADER
 #endif
