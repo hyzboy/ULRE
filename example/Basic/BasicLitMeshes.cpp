@@ -318,9 +318,9 @@ private:
 
         {
             CubeCreateInfo cci;
-            cci.segments_x = 2;
-            cci.segments_y = 2;
-            cci.segments_z = 2;
+            cci.segments_x = 1;
+            cci.segments_y = 1;
+            cci.segments_z = 1;
 
             auto geom = create_geometry([&](GeometryCreater* pc)
             {

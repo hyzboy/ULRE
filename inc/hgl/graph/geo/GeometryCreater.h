@@ -11,6 +11,74 @@
 
 namespace hgl::graph{
 class BufferManager;
+
+/**
+ * float → half 位模式（IEEE 754 半精度）——VB2hf（T=uint16）写入前必须显式转换
+ */
+inline uint16 FloatToHalf(float f)
+{
+    uint32_t x;
+    memcpy(&x, &f, sizeof(x));
+    const uint32_t sign = (x >> 16) & 0x8000u;
+    const int32_t exp   = (int32_t)((x >> 23) & 0xFF) - 127 + 15;
+    uint32_t mant = x & 0x7FFFFFu;
+
+    if(exp <= 0)
+    {
+        if(exp < -10)
+            return (uint16)sign;
+        mant |= 0x800000u;
+        return (uint16)(sign | (mant >> (uint32_t)(14 - exp)));
+    }
+    if(exp >= 31)
+        return (uint16)(sign | 0x7C00u);
+    return (uint16)(sign | ((uint32_t)exp << 10) | (mant >> 13));
+}
+
+/**
+ * 法线 octahedral 编码（2 分量保存完整方向——z 符号保留，RG16F/RG8 压缩用）
+ * 输出 p,q ∈ [-1,1]；GPU 解码：n = vec3(p, 1-|p|-|q|)；if(n.z<0) n.xy=(1-|n.yx|)*sign(n.xy)；normalize
+ */
+inline void EncodeOctahedralNormal(float nx, float ny, float nz, float &out_p, float &out_q)
+{
+    const float len = sqrt(nx * nx + ny * ny + nz * nz);
+
+    if(len < 0.0001f)
+    {
+        out_p = 0.0f;
+        out_q = 0.0f;
+        return;
+    }
+
+    nx /= len;
+    ny /= len;
+    nz /= len;
+
+    const float ax = fabsf(nx);
+    const float ay = fabsf(ny);
+    const float az = fabsf(nz);
+    const float l1 = ax + ay + az;
+
+    out_p = nx / l1;
+    out_q = ny / l1;
+
+    if(nz < 0.0f)
+    {
+        // 近纯 -Z 退化：|p'|+|q'|≈0 时折叠公式归零（与 +Z 同编码——解码成 +Z 方向反）
+        // 特判编码到折叠角 (1,1)——解码展开后恰好得 (0,0,-1)
+        if(out_p * out_p + out_q * out_q < 1e-6f)
+        {
+            out_p = 1.0f;
+            out_q = 1.0f;
+        }
+        else
+        {
+            out_p = (1.0f - ay / l1) * (nx >= 0.0f ? 1.0f : -1.0f);
+            out_q = (1.0f - ax / l1) * (ny >= 0.0f ? 1.0f : -1.0f);
+        }
+    }
+}
+
 /**
  * 可绘制原始图形创建器
  */
