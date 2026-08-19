@@ -436,6 +436,13 @@ namespace hgl::ecs
         RenderItem* item = batch.items[0];
         const graph::GeometryDataBuffer *data_buffer = item ? item->GetGeometryDataBuffer() : nullptr;
         const graph::GeometryDrawRange *draw_range = item ? item->GetGeometryDrawRange() : nullptr;
+        const graph::Geometry *geometry = nullptr;
+        if (auto *prim_item = dynamic_cast<PrimitiveRenderItem *>(item))
+        {
+            auto prim_comp = prim_item->GetPrimitiveComponent();
+            if (prim_comp && prim_comp->GetPrimitiveAsset())
+                geometry = prim_comp->GetPrimitiveAsset()->GetGeometry();
+        }
 
         if (!data_buffer || !draw_range)
         {
@@ -453,7 +460,7 @@ namespace hgl::ecs
         batch.draw_batches_count = 1;
         draw_batch->first_instance = base_instance;
         draw_batch->instance_count = 1;
-        draw_batch->Set(data_buffer, draw_range);
+        draw_batch->Set(data_buffer, draw_range, geometry);
 
         const graph::GeometryDataBuffer* current_data_buffer = draw_batch->geom_data_buffer;
         const graph::GeometryDrawRange* current_draw_range = draw_batch->geom_draw_range;

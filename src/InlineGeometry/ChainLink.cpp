@@ -98,13 +98,7 @@ namespace hgl::graph::inline_geometry
 
         // 8. 生成索引：重用圆环索引生成器
         const IndexType index_type = pc->GetIndexType();
-        if(index_type == IndexType::U16)
-            IndexGenerator::CreateTorusIndices<uint16>(pc, numberSlices, numberStacks);
-        else if(index_type == IndexType::U32)
-            IndexGenerator::CreateTorusIndices<uint32>(pc, numberSlices, numberStacks);
-        else if(index_type == IndexType::U8)
-            IndexGenerator::CreateTorusIndices<uint8>(pc, numberSlices, numberStacks);
-        else
+        if (index_type == IndexType::U32) IndexGenerator::CreateTorusIndices<uint32>(pc, numberSlices, numberStacks);else
             return nullptr;
 
         // 9. 创建几何体并设置包围体

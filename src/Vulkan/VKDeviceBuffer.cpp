@@ -156,32 +156,24 @@ VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,Buf
 
 const bool VulkanDevice::IsSupport(const IndexType &type)const
 {
-    if(type==IndexType::U16)return(true);
-    if(type==IndexType::U8 &&attr->uint8_index_type)return(true);
-    if(type==IndexType::U32&&attr->uint32_index_type)return(true);
-    return(false);
+    // 引擎统一 uint32 索引（废弃 U8/U16）
+    return(type==IndexType::U32);
 }
 
 const IndexType VulkanDevice::ChooseIndexType(const VkDeviceSize &vertex_count)const
 {
+    // 引擎统一 uint32 索引——恒 U32（废弃 U8/U16 自动选型）
     if(vertex_count<=0)return(IndexType::ERR);
 
-    if(attr->uint8_index_type&& vertex_count<=0xFF  )return IndexType::U8;  else
-    if(                         vertex_count<=0xFFFF)return IndexType::U16; else
-    if(attr->uint32_index_type  )return IndexType::U32; else
-
-    return IndexType::ERR;
+    return IndexType::U32;
 }
 
 const bool VulkanDevice::CheckIndexType(const IndexType it,const VkDeviceSize &vertex_count)const
 {
     if(vertex_count<=0)return(false);
 
-    if(it==IndexType::U16&&vertex_count<=0xFFFF)return(true);
-
+    // U8/U16 已废弃——引擎统一 uint32 索引
     if(it==IndexType::U32&&                     attr->uint32_index_type)return(true);
-
-    if(it==IndexType::U8 &&vertex_count<=0xFF&& attr->uint8_index_type)return(true);
 
     return(false);
 }
@@ -190,12 +182,8 @@ IndexBuffer *VulkanDevice::CreateIBO(const ObjectNameBuilder &name, IndexType in
 {
     if(count==0)return(nullptr);
 
-    uint32_t stride;
-
-    if(index_type==IndexType::U8 )stride=1;else
-    if(index_type==IndexType::U16)stride=2;else
-    if(index_type==IndexType::U32)stride=4;else
-        return(nullptr);
+    // 引擎统一 uint32 索引（U8/U16 已废弃）
+    const uint32_t stride=4;
 
     const VkDeviceSize size=stride*count;
 

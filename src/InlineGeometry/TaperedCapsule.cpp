@@ -222,31 +222,13 @@ namespace hgl::graph::inline_geometry
             }
         };
 
-        if(index_type == IndexType::U16)
-        {
-            auto ib = pc->GetIndexAccessor<uint16>();
-            auto *ip = ib.Get() ? ib.Get()->Get() : nullptr;
-            if(!ip)
-                return nullptr;
-            generateIndices(ip);
-        }
-        else if(index_type == IndexType::U32)
-        {
+        if (index_type == IndexType::U32) {
             auto ib = pc->GetIndexAccessor<uint32>();
             auto *ip = ib.Get() ? ib.Get()->Get() : nullptr;
             if(!ip)
                 return nullptr;
             generateIndices(ip);
-        }
-        else if(index_type == IndexType::U8)
-        {
-            auto ib = pc->GetIndexAccessor<uint8>();
-            auto *ip = ib.Get() ? ib.Get()->Get() : nullptr;
-            if(!ip)
-                return nullptr;
-            generateIndices(ip);
-        }
-        else
+        }else
             return nullptr;
 
         // 11. 创建几何体并设置包围体

@@ -244,7 +244,7 @@ private:
         if (!mesh_vdm)
             return false;
 
-        if (!mesh_vdm->Init(HGL_SIZE_1MB, HGL_SIZE_1MB, IndexType::U16))
+        if (!mesh_vdm->Init(HGL_SIZE_1MB, HGL_SIZE_1MB, IndexType::U32))
             return false;
 
         return true;

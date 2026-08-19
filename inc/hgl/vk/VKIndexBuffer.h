@@ -47,9 +47,6 @@ public:
      * Prefer this over GetBuffer() — does not require DeviceBuffer inheritance.
      */
     VkBuffer GetVkBuffer() const { return GetGPUBuffer()->GetVkDeviceBuffer(); }
-
-    const IndexType &GetIndexType() const { return index_type; }   ///<索引格式（U8/U16/U32——SSBO 顶点索引按此解码）
-    uint32_t        GetIndexStride() const { return stride; }       ///<每索引字节数
 };//class IndexBuffer:public VkBufferOwner
 
 }//namespace hgl::graph

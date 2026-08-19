@@ -60,12 +60,6 @@ namespace hgl::graph::inline_geometry
                 // Bottom half: scale down
                 r_scale = radius * (1.0f + sin_stack * (1.0f - bottom_scale));
             }
-            else
-            {
-                // Top half: keep circular
-                r_scale = radius;
-            }
-
             float z = sin_stack * total_height * 0.5f;
             float ring_radius = cos_stack * r_scale;
 
@@ -130,25 +124,11 @@ namespace hgl::graph::inline_geometry
             }
         };
 
-        if(index_type == IndexType::U16)
-        {
-            auto ib = pc->GetIndexAccessor<uint16>();
-            uint16 *ip = ib;
-            generate_indices(ip);
-        }
-        else if(index_type == IndexType::U32)
-        {
+        if (index_type == IndexType::U32) {
             auto ib = pc->GetIndexAccessor<uint32>();
             uint32 *ip = ib;
             generate_indices(ip);
-        }
-        else if(index_type == IndexType::U8)
-        {
-            auto ib = pc->GetIndexAccessor<uint8>();
-            uint8 *ip = ib;
-            generate_indices(ip);
-        }
-        else
+        }else
             return nullptr;
 
         // Set bounding box

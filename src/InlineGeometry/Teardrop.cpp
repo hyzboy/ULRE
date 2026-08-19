@@ -57,14 +57,6 @@ namespace hgl::graph::inline_geometry
                 float z = radius * (1.0f - cos(theta));
                 return {r, z};
             }
-            else
-            {
-                // Top half: taper to point
-                float s = (t - 0.5f) * 2.0f;  // 0 to 1
-                float r = radius * (1.0f - s);
-                float z = radius + (length - radius) * s;
-                return {r, z};
-            }
         };
 
         const float angle_step = (2.0f * std::numbers::pi_v<float>) / float(radial_segs);
@@ -142,25 +134,11 @@ namespace hgl::graph::inline_geometry
             }
         };
 
-        if(index_type == IndexType::U16)
-        {
-            auto ib = pc->GetIndexAccessor<uint16>();
-            uint16 *ip = ib;
-            generate_indices(ip);
-        }
-        else if(index_type == IndexType::U32)
-        {
+        if (index_type == IndexType::U32) {
             auto ib = pc->GetIndexAccessor<uint32>();
             uint32 *ip = ib;
             generate_indices(ip);
-        }
-        else if(index_type == IndexType::U8)
-        {
-            auto ib = pc->GetIndexAccessor<uint8>();
-            uint8 *ip = ib;
-            generate_indices(ip);
-        }
-        else
+        }else
             return nullptr;
 
         return pc->CreateWithAABB(

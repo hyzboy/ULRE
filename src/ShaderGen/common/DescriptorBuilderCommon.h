@@ -359,6 +359,12 @@ inline bool PushManifestSSBO(
         entry.semantic = DescriptorSemantic::VertexJoint;
         entry.semantic_layer = DescriptorSemanticLayer::SSBO;
         break;
+    case SSBOType::VertexIndex:
+        entry.set_type = DescriptorSetType::PerObject;
+        entry.kind = DescriptorKind::SSBO;
+        entry.semantic = DescriptorSemantic::VertexIndex;
+        entry.semantic_layer = DescriptorSemanticLayer::SSBO;
+        break;
     default:
         entry.set_type = DescriptorSetType::Material;
         entry.kind = DescriptorKind::SSBO;

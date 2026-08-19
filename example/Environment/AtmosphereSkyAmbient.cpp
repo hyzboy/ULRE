@@ -203,31 +203,31 @@ private:
                 return false;
         }
 
-        {
-            ConeCreateInfo cci;
-            cci.radius = 1;
-            cci.halfExtend = 1;
-            cci.numberSlices = 48;
-            cci.numberStacks = 3;
-            if (!add_mesh([&](GeometryCreater* pc) { return CreateCone(pc, &cci); }))
-                return false;
-        }
+        //{
+        //    ConeCreateInfo cci;
+        //    cci.radius = 1;
+        //    cci.halfExtend = 1;
+        //    cci.numberSlices = 48;
+        //    cci.numberStacks = 3;
+        //    if (!add_mesh([&](GeometryCreater* pc) { return CreateCone(pc, &cci); }))
+        //        return false;
+        //}
 
-        {
-            TorusCreateInfo tci;
-            tci.innerRadius = 0.8f;
-            tci.outerRadius = 1.0f;
-            tci.numberSlices = 48;
-            tci.numberStacks = 12;
-            if (!add_mesh([&](GeometryCreater* pc) { return CreateTorus(pc, &tci); }))
-                return false;
-        }
+        //{
+        //    TorusCreateInfo tci;
+        //    tci.innerRadius = 0.8f;
+        //    tci.outerRadius = 1.0f;
+        //    tci.numberSlices = 48;
+        //    tci.numberStacks = 12;
+        //    if (!add_mesh([&](GeometryCreater* pc) { return CreateTorus(pc, &tci); }))
+        //        return false;
+        //}
 
-        {
-            CapsuleCreateInfo cci;
-            if (!add_mesh([&](GeometryCreater* pc) { return CreateCapsule(pc, &cci); }))
-                return false;
-        }
+        //{
+        //    CapsuleCreateInfo cci;
+        //    if (!add_mesh([&](GeometryCreater* pc) { return CreateCapsule(pc, &cci); }))
+        //        return false;
+        //}
 
         return true;
     }

@@ -191,25 +191,11 @@ namespace hgl::graph::inline_geometry
             }
         };
 
-        if(index_type == IndexType::U16)
-        {
-            auto ib = pc->GetIndexAccessor<uint16>();
-            uint16 *ip = ib;
-            generate_indices(ip);
-        }
-        else if(index_type == IndexType::U32)
-        {
+        if (index_type == IndexType::U32) {
             auto ib = pc->GetIndexAccessor<uint32>();
             uint32 *ip = ib;
             generate_indices(ip);
-        }
-        else if(index_type == IndexType::U8)
-        {
-            auto ib = pc->GetIndexAccessor<uint8>();
-            uint8 *ip = ib;
-            generate_indices(ip);
-        }
-        else
+        }else
             return nullptr;
 
         return pc->CreateWithAABB(

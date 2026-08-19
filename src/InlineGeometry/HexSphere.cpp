@@ -146,25 +146,11 @@ namespace hgl::graph::inline_geometry
         // ç´¢å¼ï¼é¡ºæ¶éä¸ºæ­£é¢ï¼ç´æ¥æ?tris ä¸­ç (a,b,c) é¡ºåºå?
         {
             const IndexType it = pc->GetIndexType();
-            if(it==IndexType::U16)
-            {
-                auto im = pc->GetIndexAccessor<uint16>();
-                uint16 *ip = im;
-                for(const auto &t : tris){ *ip++=(uint16)t.a; *ip++=(uint16)t.b; *ip++=(uint16)t.c; }
-            }
-            else if(it==IndexType::U32)
-            {
+            if (pc->GetIndexType() == IndexType::U32) {
                 auto im = pc->GetIndexAccessor<uint32>();
                 uint32 *ip = im;
                 for(const auto &t : tris){ *ip++=t.a; *ip++=t.b; *ip++=t.c; }
-            }
-            else if(it==IndexType::U8)
-            {
-                auto im = pc->GetIndexAccessor<uint8>();
-                uint8 *ip = im;
-                for(const auto &t : tris){ *ip++=(uint8)t.a; *ip++=(uint8)t.b; *ip++=(uint8)t.c; }
-            }
-            else return nullptr;
+            }else return nullptr;
         }
 
         Geometry *p = pc->Create();

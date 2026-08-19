@@ -256,22 +256,11 @@ namespace hgl::ecs
                     }
                 }
 
-                // per-draw 段偏移 push constant（index_base=first_index / vertex_base=vertex_offset
-                // / index_format——IBO 可能是 U8/U16/U32——s1_index 按此解码）
-                uint32_t index_format = 1;   // 默认 U16
-                if (geom_buffer->ibo)
-                {
-                    switch (geom_buffer->ibo->GetIndexType())
-                    {
-                        case graph::IndexType::U8:  index_format = 0; break;
-                        case graph::IndexType::U32: index_format = 2; break;
-                        default:                    index_format = 1; break;
-                    }
-                }
-                const uint32_t pc_data[3] = {
+                // per-draw 段偏移 push constant（index_base=first_index / vertex_base=vertex_offset——
+                // 引擎统一 uint32 索引，s1_index 按 uint 数组直读）
+                const uint32_t pc_data[2] = {
                     static_cast<uint32_t>(batch->geom_draw_range->first_index),
-                    static_cast<uint32_t>(batch->geom_draw_range->vertex_offset),
-                    index_format
+                    static_cast<uint32_t>(batch->geom_draw_range->vertex_offset)
                 };
                 cmd_buf->PushConstants(material->GetPipelineLayout(), pc_data, sizeof(pc_data));
 

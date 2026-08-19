@@ -189,7 +189,7 @@ private:
         if (!mesh_vdm)
             return LogFail("InitGeometry", "failed to create vertex data manager");
 
-        if (!mesh_vdm->Init(HGL_SIZE_1MB, HGL_SIZE_1MB, IndexType::U16))
+        if (!mesh_vdm->Init(HGL_SIZE_1MB, HGL_SIZE_1MB, IndexType::U32))
             return LogFail("InitGeometry", "failed to init vertex data manager");
 
         GeometryCreater *pc = new GeometryCreater(mesh_vdm);

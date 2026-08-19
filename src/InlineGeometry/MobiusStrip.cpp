@@ -87,12 +87,6 @@ namespace hgl::graph::inline_geometry
                                           tangent_x, tangent_y, tangent_z,
                                           tex_u, tex_v);
                 }
-                else
-                {
-                    builder.WriteVertex(pos_x, pos_y, pos_z);
-                    builder.WriteNTB(rotated_normal_x, rotated_normal_y, rotated_normal_z);
-                    builder.WriteTexCoord(tex_u, tex_v);
-                }
             }
         }
 
@@ -100,13 +94,7 @@ namespace hgl::graph::inline_geometry
         {
             const IndexType index_type = pc->GetIndexType();
 
-            if(index_type == IndexType::U16)
-                IndexGenerator::CreateTorusIndices<uint16>(pc, nU, nV);
-            else if(index_type == IndexType::U32)
-                IndexGenerator::CreateTorusIndices<uint32>(pc, nU, nV);
-            else if(index_type == IndexType::U8)
-                IndexGenerator::CreateTorusIndices<uint8>(pc, nU, nV);
-            else
+            if (index_type == IndexType::U32) IndexGenerator::CreateTorusIndices<uint32>(pc, nU, nV);else
                 return nullptr;
         }
 

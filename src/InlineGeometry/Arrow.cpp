@@ -53,13 +53,6 @@ namespace hgl::graph::inline_geometry
             numberVertices += (slices + 1) + 1 + (slices + 1);
             numberIndices += slices * 3 + slices * 6;  // outer triangles + cone side
         }
-        else
-        {
-            // Flat tail: center + ring
-            numberVertices += 1 + (slices + 1);
-            numberIndices += slices * 3;
-        }
-
         // Connection disk at shaft top
         numberVertices += (slices + 1) * 2;
         numberIndices += slices * 6;
@@ -162,31 +155,6 @@ namespace hgl::graph::inline_geometry
 
             vertex_base += (slices + 1) + 1 + (slices + 1);
         }
-        else
-        {
-            // Flat tail: simple disk
-            // Center point
-            builder.WriteFullVertex(0.0f, 0.0f, tail_depth,
-                                   0.0f, 0.0f, -1.0f,
-                                   1.0f, 0.0f, 0.0f,
-                                   0.5f, 0.5f);
-
-            // Outer ring
-            for(uint i = 0; i <= slices; i++)
-            {
-                float angle = angleStep * float(i);
-                float cx = cos(angle);
-                float sy = -sin(angle);
-
-                builder.WriteFullVertex(cx * shaft_r, sy * shaft_r, tail_depth,
-                                       0.0f, 0.0f, -1.0f,
-                                       -sy, -cx, 0.0f,
-                                       0.5f + cx * 0.5f, 0.5f - sy * 0.5f);
-            }
-
-            vertex_base += 1 + (slices + 1);
-        }
-
         // Connection disk at shaft_len
         uint connection_base = vertex_base;
         for(uint i = 0; i <= slices; i++)
@@ -285,20 +253,6 @@ namespace hgl::graph::inline_geometry
                     *ip++ = v2; *ip++ = v1; *ip++ = v3;
                 }
             }
-            else
-            {
-                // Flat tail triangles
-                uint center = tail_base;
-                uint ring = tail_base + 1;
-
-                for(uint i = 0; i < slices; i++)
-                {
-                    *ip++ = center;
-                    *ip++ = ring + i + 1;
-                    *ip++ = ring + i;
-                }
-            }
-
             // Connection disk indices
             for(uint i = 0; i < slices; i++)
             {
@@ -324,25 +278,11 @@ namespace hgl::graph::inline_geometry
             }
         };
 
-        if(index_type == IndexType::U16)
-        {
-            auto ib = pc->GetIndexAccessor<uint16>();
-            uint16 *ip = ib;
-            generate_indices(ip);
-        }
-        else if(index_type == IndexType::U32)
-        {
+        if (index_type == IndexType::U32) {
             auto ib = pc->GetIndexAccessor<uint32>();
             uint32 *ip = ib;
             generate_indices(ip);
-        }
-        else if(index_type == IndexType::U8)
-        {
-            auto ib = pc->GetIndexAccessor<uint8>();
-            uint8 *ip = ib;
-            generate_indices(ip);
-        }
-        else
+        }else
             return nullptr;
 
         float max_radius = std::max(shaft_r, head_r);
@@ -379,13 +319,6 @@ namespace hgl::graph::inline_geometry
             numberVertices += 4 + 1 + 4 * 3;
             numberIndices += 4 * 3 + 4 * 3;
         }
-        else
-        {
-            // Flat tail: 4 corners + center
-            numberVertices += 4 + 1;
-            numberIndices += 4 * 3;
-        }
-
         // Connection square (transition from shaft to head)
         numberVertices += 8;  // 4 inner + 4 outer
         numberIndices += 4 * 6;
@@ -509,27 +442,6 @@ namespace hgl::graph::inline_geometry
 
             vertex_base += 4 + 1 + 4 * 3;
         }
-        else
-        {
-            // Center point
-            builder.WriteFullVertex(0.0f, 0.0f, tail_depth,
-                                   0.0f, 0.0f, -1.0f,
-                                   1.0f, 0.0f, 0.0f,
-                                   0.5f, 0.5f);
-
-            // 4 corners
-            for(int i = 0; i < 4; i++)
-            {
-                builder.WriteFullVertex(corners[i][0], corners[i][1], tail_depth,
-                                       0.0f, 0.0f, -1.0f,
-                                       1.0f, 0.0f, 0.0f,
-                                       corners[i][0] / shaft_hw * 0.5f + 0.5f,
-                                       corners[i][1] / shaft_hw * 0.5f + 0.5f);
-            }
-
-            vertex_base += 5;
-        }
-
         // Connection square at shaft_len
         uint connection_base = vertex_base;
 
@@ -637,17 +549,6 @@ namespace hgl::graph::inline_geometry
                     *ip++ = base + 2;
                 }
             }
-            else
-            {
-                // Flat tail triangles
-                for(uint i = 0; i < 4; i++)
-                {
-                    *ip++ = tail_base;  // center
-                    *ip++ = tail_base + 1 + (i + 1) % 4;
-                    *ip++ = tail_base + 1 + i;
-                }
-            }
-
             // Connection square (4 trapezoidal faces)
             for(uint i = 0; i < 4; i++)
             {
@@ -670,25 +571,11 @@ namespace hgl::graph::inline_geometry
             }
         };
 
-        if(index_type == IndexType::U16)
-        {
-            auto ib = pc->GetIndexAccessor<uint16>();
-            uint16 *ip = ib;
-            generate_indices(ip);
-        }
-        else if(index_type == IndexType::U32)
-        {
+        if (index_type == IndexType::U32) {
             auto ib = pc->GetIndexAccessor<uint32>();
             uint32 *ip = ib;
             generate_indices(ip);
-        }
-        else if(index_type == IndexType::U8)
-        {
-            auto ib = pc->GetIndexAccessor<uint8>();
-            uint8 *ip = ib;
-            generate_indices(ip);
-        }
-        else
+        }else
             return nullptr;
 
         float max_hw = std::max(shaft_hw, head_hw);

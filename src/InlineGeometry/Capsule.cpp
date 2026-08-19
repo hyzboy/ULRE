@@ -113,68 +113,7 @@ namespace hgl::graph::inline_geometry
 
         // Indices
         const IndexType index_type = pc->GetIndexType();
-        if(index_type==IndexType::U16)
-        {
-            auto ib = pc->GetIndexAccessor<uint16>();
-            uint16 *ip = ib;
-
-            // cylinder indices
-            uint base = 0;
-            uint ringVertexCount = slices + 1;
-            for(uint i=0;i<slices;i++)
-            {
-                uint a = base + i;
-                uint b = base + i + 1;
-                uint c = base + ringVertexCount + i;
-                uint d = base + ringVertexCount + i + 1;
-
-                // clockwise positive face: ensure order
-                *ip = a; ++ip; *ip = d; ++ip; *ip = b; ++ip;
-                *ip = a; ++ip; *ip = c; ++ip; *ip = d; ++ip;
-            }
-
-            // hemispheres indices
-            uint topBase = ringVertexCount*2; // after cylinder side
-            for(uint s=0;s<stacks;s++)
-            {
-                for(uint i=0;i<slices;i++)
-                {
-                    uint row1 = topBase + s*(slices+1);
-                    uint row2 = topBase + (s+1)*(slices+1);
-
-                    uint v0 = row1 + i;
-                    uint v1 = row1 + i + 1;
-                    uint v2 = row2 + i;
-                    uint v3 = row2 + i + 1;
-
-                    // top hemisphere
-                    *ip = v0; ++ip; *ip = v3; ++ip; *ip = v1; ++ip;
-                    *ip = v0; ++ip; *ip = v2; ++ip; *ip = v3; ++ip;
-                }
-            }
-
-            // bottom hemisphere indices: follows top hemisphere vertices
-            uint bottomBase = topBase + hemisphere_vertices;
-            for(uint s=0;s<stacks;s++)
-            {
-                for(uint i=0;i<slices;i++)
-                {
-                    uint row1 = bottomBase + s*(slices+1);
-                    uint row2 = bottomBase + (s+1)*(slices+1);
-
-                    uint v0 = row1 + i;
-                    uint v1 = row1 + i + 1;
-                    uint v2 = row2 + i;
-                    uint v3 = row2 + i + 1;
-
-                    // bottom hemisphere: reverse winding to match outer face
-                    *ip = v0; ++ip; *ip = v1; ++ip; *ip = v3; ++ip;
-                    *ip = v0; ++ip; *ip = v3; ++ip; *ip = v2; ++ip;
-                }
-            }
-        }
-        else if(index_type==IndexType::U32)
-        {
+        if (index_type == IndexType::U32) {
             auto ib = pc->GetIndexAccessor<uint32>();
             uint32 *ip = ib;
 
@@ -226,63 +165,7 @@ namespace hgl::graph::inline_geometry
                     *ip = v0; ++ip; *ip = v3; ++ip; *ip = v2; ++ip;
                 }
             }
-        }
-        else if(index_type==IndexType::U8)
-        {
-            auto ib = pc->GetIndexAccessor<uint8>();
-            uint8 *ip = ib;
-
-            uint base = 0;
-            uint ringVertexCount = slices + 1;
-            for(uint i=0;i<slices;i++)
-            {
-                uint8 a = base + i;
-                uint8 b = base + i + 1;
-                uint8 c = base + ringVertexCount + i;
-                uint8 d = base + ringVertexCount + i + 1;
-
-                *ip = a; ++ip; *ip = d; ++ip; *ip = b; ++ip;
-                *ip = a; ++ip; *ip = c; ++ip; *ip = d; ++ip;
-            }
-
-            uint topBase = ringVertexCount*2;
-            for(uint s=0;s<stacks;s++)
-            {
-                for(uint i=0;i<slices;i++)
-                {
-                    uint row1 = topBase + s*(slices+1);
-                    uint row2 = topBase + (s+1)*(slices+1);
-
-                    uint8 v0 = row1 + i;
-                    uint8 v1 = row1 + i + 1;
-                    uint8 v2 = row2 + i;
-                    uint8 v3 = row2 + i + 1;
-
-                    *ip = v0; ++ip; *ip = v3; ++ip; *ip = v1; ++ip;
-                    *ip = v0; ++ip; *ip = v2; ++ip; *ip = v3; ++ip;
-                }
-            }
-
-            uint bottomBase = topBase + hemisphere_vertices;
-            for(uint s=0;s<stacks;s++)
-            {
-                for(uint i=0;i<slices;i++)
-                {
-                    uint row1 = bottomBase + s*(slices+1);
-                    uint row2 = bottomBase + (s+1)*(slices+1);
-
-                    uint8 v0 = row1 + i;
-                    uint8 v1 = row1 + i + 1;
-                    uint8 v2 = row2 + i;
-                    uint8 v3 = row2 + i + 1;
-
-                    *ip = v0; ++ip; *ip = v1; ++ip; *ip = v3; ++ip;
-                    *ip = v0; ++ip; *ip = v3; ++ip; *ip = v2; ++ip;
-                }
-            }
-        }
-
-        return pc->CreateWithAABB(
+        }return pc->CreateWithAABB(
             math::Vector3f(-radius, -radius, -halfH - radius),
             Vector3f(radius, radius, halfH + radius)
         );

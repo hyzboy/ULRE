@@ -57,14 +57,6 @@ namespace hgl::graph::inline_geometry
                     pos_y = (R + r * cos_v) * sin_u;
                     pos_z = r * sin_v;
                 }
-                else
-                {
-                    // 穿过自身的部分
-                    pos_x = (R + r * cos_v) * cos_u;
-                    pos_y = (R + r * cos_v) * sin_u;
-                    pos_z = r * sin_v;
-                }
-
                 // 添加figure-8扭转
                 const float twist = sin(u);
                 pos_x += twist * r * 0.5f * sin_v * cos_u;
@@ -90,13 +82,6 @@ namespace hgl::graph::inline_geometry
                     pos_u_plus_y = (R + r * cos_v) * sin_u_next + twist_next * r * 0.5f * sin_v * sin_u_next;
                     pos_u_plus_z = r * sin_v;
                 }
-                else
-                {
-                    pos_u_plus_x = (R + r * cos_v) * cos_u_next + twist_next * r * 0.5f * sin_v * cos_u_next;
-                    pos_u_plus_y = (R + r * cos_v) * sin_u_next + twist_next * r * 0.5f * sin_v * sin_u_next;
-                    pos_u_plus_z = r * sin_v;
-                }
-
                 // dv方向
                 float cos_v_next = cos(v_next);
                 float sin_v_next = sin(v_next);
@@ -107,13 +92,6 @@ namespace hgl::graph::inline_geometry
                     pos_v_plus_y = (R + r * cos_v_next) * sin_u + twist * r * 0.5f * sin_v_next * sin_u;
                     pos_v_plus_z = r * sin_v_next;
                 }
-                else
-                {
-                    pos_v_plus_x = (R + r * cos_v_next) * cos_u + twist * r * 0.5f * sin_v_next * cos_u;
-                    pos_v_plus_y = (R + r * cos_v_next) * sin_u + twist * r * 0.5f * sin_v_next * sin_u;
-                    pos_v_plus_z = r * sin_v_next;
-                }
-
                 // 计算切向量
                 float du_x = pos_u_plus_x - pos_x;
                 float du_y = pos_u_plus_y - pos_y;
@@ -159,12 +137,6 @@ namespace hgl::graph::inline_geometry
                                           tangent_x, tangent_y, tangent_z,
                                           tex_u, tex_v);
                 }
-                else
-                {
-                    builder.WriteVertex(pos_x, pos_y, pos_z);
-                    builder.WriteNTB(normal_x, normal_y, normal_z);
-                    builder.WriteTexCoord(tex_u, tex_v);
-                }
             }
         }
 
@@ -172,13 +144,7 @@ namespace hgl::graph::inline_geometry
         {
             const IndexType index_type = pc->GetIndexType();
 
-            if(index_type == IndexType::U16)
-                IndexGenerator::CreateTorusIndices<uint16>(pc, nU, nV);
-            else if(index_type == IndexType::U32)
-                IndexGenerator::CreateTorusIndices<uint32>(pc, nU, nV);
-            else if(index_type == IndexType::U8)
-                IndexGenerator::CreateTorusIndices<uint8>(pc, nU, nV);
-            else
+            if (index_type == IndexType::U32) IndexGenerator::CreateTorusIndices<uint32>(pc, nU, nV);else
                 return nullptr;
         }
 

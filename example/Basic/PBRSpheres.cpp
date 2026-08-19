@@ -315,7 +315,7 @@ private:
             return false;
         }
 
-        if (!mesh_vdm->Init(HGL_SIZE_1MB, HGL_SIZE_1MB, IndexType::U16)) {
+        if (!mesh_vdm->Init(HGL_SIZE_1MB, HGL_SIZE_1MB, IndexType::U32)) {
             printf("[ERROR] InitVDM: Failed to init VertexDataManager\n");
             return false;
         }

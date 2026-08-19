@@ -86,24 +86,6 @@ namespace hgl::graph::inline_geometry
                 builder.WriteFullVertex(x2, y2, z2, nx, ny, nz, tx, ty, tz, 1.0f, 1.0f);
                 builder.WriteFullVertex(x3, y3, z3, nx, ny, nz, tx, ty, tz, 0.0f, 1.0f);
             }
-            else
-            {
-                builder.WriteVertex(x0, y0, z0);
-                builder.WriteNTB(nx, ny, nz);
-                builder.WriteTexCoord(0.0f, 0.0f);
-
-                builder.WriteVertex(x1, y1, z1);
-                builder.WriteNTB(nx, ny, nz);
-                builder.WriteTexCoord(1.0f, 0.0f);
-
-                builder.WriteVertex(x2, y2, z2);
-                builder.WriteNTB(nx, ny, nz);
-                builder.WriteTexCoord(1.0f, 1.0f);
-
-                builder.WriteVertex(x3, y3, z3);
-                builder.WriteNTB(nx, ny, nz);
-                builder.WriteTexCoord(0.0f, 1.0f);
-            }
         };
 
         // Vertical beam corners
@@ -168,25 +150,11 @@ namespace hgl::graph::inline_geometry
                 }
             };
 
-            if(index_type == IndexType::U16)
-            {
-                auto ib = pc->GetIndexAccessor<uint16>();
-                uint16 *ip = ib;
-                generate_indices(ip);
-            }
-            else if(index_type == IndexType::U32)
-            {
+            if (index_type == IndexType::U32) {
                 auto ib = pc->GetIndexAccessor<uint32>();
                 uint32 *ip = ib;
                 generate_indices(ip);
-            }
-            else if(index_type == IndexType::U8)
-            {
-                auto ib = pc->GetIndexAccessor<uint8>();
-                uint8 *ip = ib;
-                generate_indices(ip);
-            }
-            else
+            }else
                 return nullptr;
         }
 

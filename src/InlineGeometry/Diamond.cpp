@@ -124,37 +124,6 @@ namespace hgl::graph::inline_geometry
                 builder.WriteFullVertex(v6_x, v6_y, v6_z, facet_normal_x, facet_normal_y, facet_normal_z, 1.0f, 0.0f, 0.0f, float(i+1)/float(facets), 0.0f);
                 builder.WriteFullVertex(v5_x, v5_y, v5_z, facet_normal_x, facet_normal_y, facet_normal_z, 1.0f, 0.0f, 0.0f, float(i)/float(facets), 0.0f);
             }
-            else
-            {
-                // Triangle from top point to girdle
-                float v0_x = 0.0f, v0_y = top_height, v0_z = 0.0f;
-                float v1_x = radius * cos1, v1_y = 0.0f, v1_z = radius * sin1;
-                float v2_x = radius * cos2, v2_y = 0.0f, v2_z = radius * sin2;
-
-                float edge1_x = v1_x - v0_x;
-                float edge1_y = v1_y - v0_y;
-                float edge1_z = v1_z - v0_z;
-
-                float edge2_x = v2_x - v0_x;
-                float edge2_y = v2_y - v0_y;
-                float edge2_z = v2_z - v0_z;
-
-                float normal_x = edge1_y * edge2_z - edge1_z * edge2_y;
-                float normal_y = edge1_z * edge2_x - edge1_x * edge2_z;
-                float normal_z = edge1_x * edge2_y - edge1_y * edge2_x;
-
-                float normal_len = sqrtf(normal_x * normal_x + normal_y * normal_y + normal_z * normal_z);
-                if(normal_len > 0.0001f)
-                {
-                    normal_x /= normal_len;
-                    normal_y /= normal_len;
-                    normal_z /= normal_len;
-                }
-
-                builder.WriteFullVertex(v0_x, v0_y, v0_z, normal_x, normal_y, normal_z, 1.0f, 0.0f, 0.0f, 0.5f, 1.0f);
-                builder.WriteFullVertex(v1_x, v1_y, v1_z, normal_x, normal_y, normal_z, 1.0f, 0.0f, 0.0f, float(i)/float(facets), 0.5f);
-                builder.WriteFullVertex(v2_x, v2_y, v2_z, normal_x, normal_y, normal_z, 1.0f, 0.0f, 0.0f, float(i+1)/float(facets), 0.5f);
-            }
         }
 
         // Pavilion facets (bottom part)
@@ -227,65 +196,18 @@ namespace hgl::graph::inline_geometry
                 builder.WriteFullVertex(v3_x, v3_y, v3_z, normal_x, normal_y, normal_z, 1.0f, 0.0f, 0.0f, float(i+1)/float(facets), 0.0f);
                 builder.WriteFullVertex(v4_x, v4_y, v4_z, normal_x, normal_y, normal_z, 1.0f, 0.0f, 0.0f, 0.5f, 0.0f);
             }
-            else
-            {
-                // Triangle from girdle directly to culet point
-                float v0_x = radius * cos1, v0_y = 0.0f, v0_z = radius * sin1;
-                float v1_x = radius * cos2, v1_y = 0.0f, v1_z = radius * sin2;
-                float v2_x = 0.0f, v2_y = -bottom_height, v2_z = 0.0f;
-
-                float edge1_x = v2_x - v0_x;
-                float edge1_y = v2_y - v0_y;
-                float edge1_z = v2_z - v0_z;
-
-                float edge2_x = v1_x - v0_x;
-                float edge2_y = v1_y - v0_y;
-                float edge2_z = v1_z - v0_z;
-
-                float normal_x = edge1_y * edge2_z - edge1_z * edge2_y;
-                float normal_y = edge1_z * edge2_x - edge1_x * edge2_z;
-                float normal_z = edge1_x * edge2_y - edge1_y * edge2_x;
-
-                float normal_len = sqrtf(normal_x * normal_x + normal_y * normal_y + normal_z * normal_z);
-                if(normal_len > 0.0001f)
-                {
-                    normal_x /= normal_len;
-                    normal_y /= normal_len;
-                    normal_z /= normal_len;
-                }
-
-                builder.WriteFullVertex(v0_x, v0_y, v0_z, normal_x, normal_y, normal_z, 1.0f, 0.0f, 0.0f, float(i)/float(facets), 0.5f);
-                builder.WriteFullVertex(v1_x, v1_y, v1_z, normal_x, normal_y, normal_z, 1.0f, 0.0f, 0.0f, float(i+1)/float(facets), 0.5f);
-                builder.WriteFullVertex(v2_x, v2_y, v2_z, normal_x, normal_y, normal_z, 1.0f, 0.0f, 0.0f, 0.5f, 0.0f);
-            }
         }
 
         // Generate indices (simple sequential - 0, 1, 2, 3, 4, 5, ...)
         {
             const IndexType index_type = pc->GetIndexType();
 
-            if(index_type == IndexType::U16)
-            {
-                auto ib = pc->GetIndexAccessor<uint16>();
-                uint16 *ip = ib;
-                for(uint i = 0; i < numberIndices; i++)
-                    *ip++ = (uint16)i;
-            }
-            else if(index_type == IndexType::U32)
-            {
+            if (index_type == IndexType::U32) {
                 auto ib = pc->GetIndexAccessor<uint32>();
                 uint32 *ip = ib;
                 for(uint i = 0; i < numberIndices; i++)
                     *ip++ = i;
-            }
-            else if(index_type == IndexType::U8)
-            {
-                auto ib = pc->GetIndexAccessor<uint8>();
-                uint8 *ip = ib;
-                for(uint i = 0; i < numberIndices; i++)
-                    *ip++ = (uint8)i;
-            }
-            else
+            }else
                 return nullptr;
         }
 

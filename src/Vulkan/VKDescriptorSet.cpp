@@ -296,6 +296,15 @@ bool DescriptorSet::BindInputAttachment(const int binding,ImageView *iv)
 
 void DescriptorSet::Update()
 {
+    fprintf(stderr, "[DIAG] DescriptorSet::Update this=%p dirty=%d wds=%d touched=%d\n",
+            (void*)this, is_dirty ? 1 : 0, write_descriptor_sets.GetCount(), touched_bindings.GetCount());
+    for (int i = 0; i < write_descriptor_sets.GetCount(); ++i)
+        fprintf(stderr, "[DIAG]   wds[%d] binding=%u type=%u buf_idx=%d pBufferInfo=%p\n",
+                i, write_descriptor_sets[i].dstBinding,
+                (uint)write_descriptor_sets[i].descriptorType,
+                i < write_buffer_info_indices.GetCount() ? write_buffer_info_indices[i] : -1,
+                (void*)write_descriptor_sets[i].pBufferInfo);
+
     if(!is_dirty)
     {
         touched_bindings.Clear();

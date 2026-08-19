@@ -148,12 +148,6 @@ namespace hgl::graph::inline_geometry
                                           tangent_x, tangent_y, tangent_z,
                                           tex_u, tex_v);
                 }
-                else
-                {
-                    builder.WriteVertex(pos_x, pos_y, pos_z);
-                    builder.WriteNTB(normal_x, normal_y, normal_z);
-                    builder.WriteTexCoord(tex_u, tex_v);
-                }
             }
         }
 
@@ -161,13 +155,7 @@ namespace hgl::graph::inline_geometry
         {
             const IndexType index_type = pc->GetIndexType();
 
-            if(index_type == IndexType::U16)
-                IndexGenerator::CreateSphereIndices<uint16>(pc, nV, nU);
-            else if(index_type == IndexType::U32)
-                IndexGenerator::CreateSphereIndices<uint32>(pc, nV, nU);
-            else if(index_type == IndexType::U8)
-                IndexGenerator::CreateSphereIndices<uint8>(pc, nV, nU);
-            else
+            if (index_type == IndexType::U32) IndexGenerator::CreateSphereIndices<uint32>(pc, nV, nU);else
                 return nullptr;
         }
 

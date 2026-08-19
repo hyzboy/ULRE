@@ -182,6 +182,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,ShaderProgram *material,Pipeline
         const uint32_t bind_index=vif->binding;
         geom_data_buffer->vab_list[bind_index]=vab->GetVkBuffer();
         geom_data_buffer->vab_offset[bind_index]=0;
+        geom_data_buffer->vab_semantic[bind_index]=vif->semantic;   // SSBO 顶点绑定（per-DrawBatch）用
         ++vif;
     }
 

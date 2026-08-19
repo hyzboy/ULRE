@@ -63,15 +63,6 @@ namespace hgl::graph::inline_geometry
                 float y = sin(angle) * height;
                 return {x, y};
             }
-            else
-            {
-                // Pointed arch (simplified Gothic)
-                float angle = std::numbers::pi_v<float> * t;
-                float x = -cos(angle) * hw * radius_scale;
-                float y_scale = (t < 0.5f) ? 1.0f + t : 2.0f - t;  // Peak in middle
-                float y = sin(angle) * height * y_scale;
-                return {x, y};
-            }
         };
 
         // Front face - outer arc
@@ -146,25 +137,11 @@ namespace hgl::graph::inline_geometry
             }
         };
 
-        if(index_type == IndexType::U16)
-        {
-            auto ib = pc->GetIndexAccessor<uint16>();
-            uint16 *ip = ib;
-            generate_indices(ip);
-        }
-        else if(index_type == IndexType::U32)
-        {
+        if (index_type == IndexType::U32) {
             auto ib = pc->GetIndexAccessor<uint32>();
             uint32 *ip = ib;
             generate_indices(ip);
-        }
-        else if(index_type == IndexType::U8)
-        {
-            auto ib = pc->GetIndexAccessor<uint8>();
-            uint8 *ip = ib;
-            generate_indices(ip);
-        }
-        else
+        }else
             return nullptr;
 
         return pc->CreateWithAABB(

@@ -175,13 +175,6 @@ namespace hgl::graph::inline_geometry
                     s.nrm = Vector2f(0, 0);
                     s.len = 0;
                 }
-                else
-                {
-                    s.dir = Vector2f(d.x / L, d.y / L);
-                    s.nrm = Vector2f(-s.dir.y, s.dir.x);
-                    s.len = L;
-                }
-
                 s.left0 = Vector2f(s.p0.x + s.nrm.x * halfT, s.p0.y + s.nrm.y * halfT);
                 s.right0 = Vector2f(s.p0.x - s.nrm.x * halfT, s.p0.y - s.nrm.y * halfT);
                 s.left1 = Vector2f(s.p1.x + s.nrm.x * halfT, s.p1.y + s.nrm.y * halfT);
@@ -208,13 +201,6 @@ namespace hgl::graph::inline_geometry
                     s.nrm = Vector2f(0, 0);
                     s.len = 0;
                 }
-                else
-                {
-                    s.dir = Vector2f(d.x / L, d.y / L);
-                    s.nrm = Vector2f(-s.dir.y, s.dir.x);
-                    s.len = L;
-                }
-
                 s.left0 = Vector2f(s.p0.x + s.nrm.x * halfT, s.p0.y + s.nrm.y * halfT);
                 s.right0 = Vector2f(s.p0.x - s.nrm.x * halfT, s.p0.y - s.nrm.y * halfT);
                 s.left1 = Vector2f(s.p1.x + s.nrm.x * halfT, s.p1.y + s.nrm.y * halfT);
@@ -339,18 +325,6 @@ namespace hgl::graph::inline_geometry
                                                   (sPrev.right1.y + sNext.right0.y) * 0.5f);
                     vjoin[vi].rightPts.push_back(right_mid);
                 }
-                else
-                {
-                    // 右侧为钝角，左侧为锐角
-                    // right为Beval（两个顶点）
-                    vjoin[vi].rightPts.push_back(sPrev.right1);
-                    vjoin[vi].rightPts.push_back(sNext.right0);
-
-                    // left只保留一个顶点（中点）
-                    Vector2f left_mid = Vector2f((sPrev.left1.x + sNext.left0.x) * 0.5f,
-                                                 (sPrev.left1.y + sNext.left0.y) * 0.5f);
-                    vjoin[vi].leftPts.push_back(left_mid);
-                }
             }
             else // Round
             {
@@ -394,38 +368,6 @@ namespace hgl::graph::inline_geometry
 
                     sPrev.right1 = right_single;
                     sNext.right0 = right_single;
-                }
-                else
-                {
-                    // right is outer: generate right arc, keep left as single center
-                    float a1_right = a1_left + (float)std::numbers::pi_v<float>;
-                    float a2_right = a2_left + (float)std::numbers::pi_v<float>;
-                    float da_right = a2_right - a1_right;
-
-                    while(da_right <= -std::numbers::pi_v<float>) da_right += 2 * std::numbers::pi_v<float>;
-                    while(da_right > std::numbers::pi_v<float>) da_right -= 2 * std::numbers::pi_v<float>;
-
-                    for(int s = 0; s <= segs; s++)
-                    {
-                        float tseg = (float)s / (float)segs;
-                        float ang = a1_right + da_right * tseg;
-
-                        vjoin[vi].rightPts.push_back(Vector2f(verts[seq[vi]].x + cos(ang) * halfT,
-                                                              verts[seq[vi]].y + sin(ang) * halfT));
-                    }
-
-                    Vector2f left_single = Vector2f((sPrev.left1.x + sNext.left0.x) * 0.5f,
-                                                    (sPrev.left1.y + sNext.left0.y) * 0.5f);
-                    vjoin[vi].leftPts.push_back(left_single);
-
-                    if(!vjoin[vi].rightPts.empty())
-                    {
-                        sPrev.right1 = vjoin[vi].rightPts.front();
-                        sNext.right0 = vjoin[vi].rightPts.back();
-                    }
-
-                    sPrev.left1 = left_single;
-                    sNext.left0 = left_single;
                 }
             }
         }
@@ -477,17 +419,6 @@ namespace hgl::graph::inline_geometry
                 {
                     left_poly.push_back(vjoin[vi].leftPts[k]);
                     right_poly.push_back(vjoin[vi].rightPts[0]);
-                }
-            }
-            else
-            {
-                // fallback: sample min count
-                size_t cnt = std::min(lcount, rcount);
-
-                for(size_t k = 0; k < cnt; k++)
-                {
-                    left_poly.push_back(vjoin[vi].leftPts[k]);
-                    right_poly.push_back(vjoin[vi].rightPts[k]);
                 }
             }
         }
@@ -620,19 +551,6 @@ namespace hgl::graph::inline_geometry
                 finalIndices.push_back(base + 2);
                 finalIndices.push_back(base + 3);
             }
-            else
-            {
-                uint32_t l0 = orig_l0, l1 = orig_l1, l2 = orig_l2, l3 = orig_l3;
-
-                finalIndices.push_back(l0);
-                finalIndices.push_back(l1);
-                finalIndices.push_back(l2);
-
-                finalIndices.push_back(l0);
-                finalIndices.push_back(l2);
-                finalIndices.push_back(l3);
-            }
-
             // Right vertical face
             uint32_t orig_r0 = vertIndex(i, 1), orig_r1 = vertIndex(ni, 1);
             uint32_t orig_r2 = vertIndex(ni, 2), orig_r3 = vertIndex(i, 2);
@@ -658,18 +576,6 @@ namespace hgl::graph::inline_geometry
                 finalIndices.push_back(base + 0);
                 finalIndices.push_back(base + 2);
                 finalIndices.push_back(base + 3);
-            }
-            else
-            {
-                uint32_t r0 = orig_r0, r1 = orig_r1, r2 = orig_r2, r3 = orig_r3;
-
-                finalIndices.push_back(r0);
-                finalIndices.push_back(r1);
-                finalIndices.push_back(r2);
-
-                finalIndices.push_back(r0);
-                finalIndices.push_back(r2);
-                finalIndices.push_back(r3);
             }
         }
 
@@ -802,31 +708,13 @@ namespace hgl::graph::inline_geometry
 
         const IndexType itype = pc->GetIndexType();
 
-        if(itype == IndexType::U16)
-        {
-            auto im = pc->GetIndexAccessor<uint16>();
-            uint16 *ip = im;
-
-            for(size_t i = 0; i < finalIndices.size(); ++i)
-                *ip++ = (uint16)finalIndices[i];
-        }
-        else if(itype == IndexType::U32)
-        {
+        if (pc->GetIndexType() == IndexType::U32) {
             auto im = pc->GetIndexAccessor<uint32>();
             uint32 *ip = im;
 
             for(size_t i = 0; i < finalIndices.size(); ++i)
                 *ip++ = (uint32)finalIndices[i];
-        }
-        else if(itype == IndexType::U8)
-        {
-            auto im = pc->GetIndexAccessor<uint8>();
-            uint8 *ip = im;
-
-            for(size_t i = 0; i < finalIndices.size(); ++i)
-                *ip++ = (uint8)finalIndices[i];
-        }
-        else
+        }else
             return nullptr;
 
         float minX = finalVerts[0].x, maxX = finalVerts[0].x;

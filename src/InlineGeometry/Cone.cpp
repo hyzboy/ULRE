@@ -99,13 +99,7 @@ namespace hgl::graph::inline_geometry
 
         // 11. 生成索引
         const IndexType index_type = pc->GetIndexType();
-        if(index_type == IndexType::U16)
-            IndexGenerator::CreateConeIndices<uint16>(pc, cci->numberSlices, cci->numberStacks);
-        else if(index_type == IndexType::U32)
-            IndexGenerator::CreateConeIndices<uint32>(pc, cci->numberSlices, cci->numberStacks);
-        else if(index_type == IndexType::U8)
-            IndexGenerator::CreateConeIndices<uint8>(pc, cci->numberSlices, cci->numberStacks);
-        else
+        if (index_type == IndexType::U32) IndexGenerator::CreateConeIndices<uint32>(pc, cci->numberSlices, cci->numberStacks);else
             return nullptr;
 
         // 12. 创建几何体并设置包围体

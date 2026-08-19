@@ -93,9 +93,7 @@ namespace hgl::graph::inline_geometry
         {
             const IndexType index_type=pc->GetIndexType();
 
-            if(index_type==IndexType::U16)IndexGenerator::CreateCylinderIndices<uint16>(pc,cci->numberSlices);else
-            if(index_type==IndexType::U32)IndexGenerator::CreateCylinderIndices<uint32>(pc,cci->numberSlices);else
-            if(index_type==IndexType::U8 )IndexGenerator::CreateCylinderIndices<uint8 >(pc,cci->numberSlices);else
+            if (index_type == IndexType::U32) IndexGenerator::CreateCylinderIndices<uint32>(pc,cci->numberSlices);else
                 return(nullptr);
         }
 

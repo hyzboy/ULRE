@@ -46,7 +46,7 @@ namespace hgl::graph::inline_geometry
 
         if(!pc)return(nullptr);
 
-        if(!pc->Init("BoundingBox",8,24,IndexType::U16))
+        if(!pc->Init("BoundingBox",8,24,IndexType::U32))
             return(nullptr);
 
         if(!pc->WriteVAB(VAN::Position,VF_V3F,points))
@@ -84,7 +84,7 @@ namespace hgl::graph::inline_geometry
         const uint numberVertices=(row+1)*(col+1);
         const uint numberIndices=row*col*6;
 
-        if(!pc->Init("SquareArray",numberVertices,numberIndices,IndexType::U16))
+        if(!pc->Init("SquareArray",numberVertices,numberIndices,IndexType::U32))
             return(nullptr);
 
         {

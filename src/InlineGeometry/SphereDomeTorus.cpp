@@ -77,12 +77,6 @@ namespace hgl::graph::inline_geometry
                                           tangent.x, tangent.y, tangent.z,
                                           tex_x, tex_y);
                 }
-                else
-                {
-                    builder.WriteVertex(x, y, z);
-                    builder.WriteNTB(x, y, z);
-                    builder.WriteTexCoord(tex_x, tex_y);
-                }
             }
         }
 
@@ -90,9 +84,7 @@ namespace hgl::graph::inline_geometry
         {
             const IndexType index_type=pc->GetIndexType();
 
-            if(index_type==IndexType::U16)IndexGenerator::CreateSphereIndices<uint16>(pc,numberParallels,numberSlices);else
-            if(index_type==IndexType::U32)IndexGenerator::CreateSphereIndices<uint32>(pc,numberParallels,numberSlices);else
-            if(index_type==IndexType::U8 )IndexGenerator::CreateSphereIndices<uint8 >(pc,numberParallels,numberSlices);else
+            if (index_type == IndexType::U32) IndexGenerator::CreateSphereIndices<uint32>(pc,numberParallels,numberSlices);else
                 return(nullptr);
         }
 
@@ -162,13 +154,7 @@ namespace hgl::graph::inline_geometry
 
         // 8. 生成索引
         const IndexType index_type = pc->GetIndexType();
-        if(index_type == IndexType::U16)
-            IndexGenerator::CreateSphereIndices<uint16>(pc, numberParallels, numberSlices);
-        else if(index_type == IndexType::U32)
-            IndexGenerator::CreateSphereIndices<uint32>(pc, numberParallels, numberSlices);
-        else if(index_type == IndexType::U8)
-            IndexGenerator::CreateSphereIndices<uint8>(pc, numberParallels, numberSlices);
-        else
+        if (index_type == IndexType::U32) IndexGenerator::CreateSphereIndices<uint32>(pc, numberParallels, numberSlices);else
             return nullptr;
 
         // 9. 创建几何体并设置包围体（半球）
@@ -258,13 +244,7 @@ namespace hgl::graph::inline_geometry
 
         // 9. 生成索引
         const IndexType index_type = pc->GetIndexType();
-        if(index_type == IndexType::U16)
-            IndexGenerator::CreateTorusIndices<uint16>(pc, tci->numberSlices, tci->numberStacks);
-        else if(index_type == IndexType::U32)
-            IndexGenerator::CreateTorusIndices<uint32>(pc, tci->numberSlices, tci->numberStacks);
-        else if(index_type == IndexType::U8)
-            IndexGenerator::CreateTorusIndices<uint8>(pc, tci->numberSlices, tci->numberStacks);
-        else
+        if (index_type == IndexType::U32) IndexGenerator::CreateTorusIndices<uint32>(pc, tci->numberSlices, tci->numberStacks);else
             return nullptr;
 
         // 10. 创建几何体并设置包围体

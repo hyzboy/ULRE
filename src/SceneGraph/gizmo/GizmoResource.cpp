@@ -201,7 +201,7 @@ namespace hgl::graph
 
                 if(!gizmo_triangle.vdm->Init(   HGL_SIZE_1MB,       //最大顶点数量
                                                 HGL_SIZE_1MB,       //最大索引数量
-                                                IndexType::U16))    //索引类型
+                                                IndexType::U32))    //索引类型
                     return(false);
             }
 

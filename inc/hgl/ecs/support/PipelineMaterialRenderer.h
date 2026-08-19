@@ -48,12 +48,15 @@ namespace hgl::ecs
 
         const   graph::GeometryDataBuffer *    geom_data_buffer = nullptr;   ///<几何数据缓冲
         const   graph::GeometryDrawRange *     geom_draw_range = nullptr;    ///<绘制范围（顶点/索引偏移和数量）
+        const   graph::Geometry *              geometry = nullptr;           ///<几何体（per-DrawBatch 顶点 SSBO 绑定用——VAB 直取）
 
         void Set(const graph::GeometryDataBuffer *data_buffer,
-                 const graph::GeometryDrawRange *draw_range)
+                 const graph::GeometryDrawRange *draw_range,
+                 const graph::Geometry *geom = nullptr)
         {
             geom_data_buffer = data_buffer;
             geom_draw_range = draw_range;
+            geometry = geom;
         }
     };//struct DrawBatch
 
@@ -116,7 +119,8 @@ namespace hgl::ecs
         bool Draw(DrawBatch* batch,
                   TransformAssignmentBuffer* transform_buffer,
                   graph::IndirectDrawBuffer* icb_draw,
-                  graph::IndirectDrawIndexedBuffer* icb_draw_indexed);
+                  graph::IndirectDrawIndexedBuffer* icb_draw_indexed,
+                  const MaterialBatch *owner_batch = nullptr);
 
     public:
         PipelineMaterialRenderer(graph::ShaderProgram* m, graph::Pipeline* p);

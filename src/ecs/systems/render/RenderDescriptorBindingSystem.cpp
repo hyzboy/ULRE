@@ -945,6 +945,8 @@ namespace hgl::ecs
                         if (vab)
                         {
                             gpu = vab->GetGPUBuffer();
+                            fprintf(stderr, "[DIAG] RDBS vertex SSBO: material=%p gpu=%p semantic=%d\n",
+                                    (void*)material, (void*)gpu, (int)vertex_semantic);
                             break;
                         }
                     }
@@ -1074,6 +1076,14 @@ namespace hgl::ecs
             return true;
         case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
             return true;
+        // 顶点数据 SSBO（MeshShader 方向）：由 RDBS（batch 首对象）或
+        // PipelineMaterialRenderer（per-DrawBatch）绑定——有解析路径，非缺失
+        case graph::mtl::DescriptorSemantic::VertexPosition:
+        case graph::mtl::DescriptorSemantic::VertexUV:
+        case graph::mtl::DescriptorSemantic::VertexNTB:
+        case graph::mtl::DescriptorSemantic::VertexJoint:
+        case graph::mtl::DescriptorSemantic::VertexIndex:
+            return true;
         case graph::mtl::DescriptorSemantic::Unknown:
         case graph::mtl::DescriptorSemantic::Custom:
         default:
@@ -1114,10 +1124,17 @@ namespace hgl::ecs
                     ++frame_stats.required_missing;
                     all_required_ok = false;
 
+                    fprintf(stderr, "[DIAG] contract-missing: program=%p name=%s req.name=%s semantic=%d(%s)\n",
+                            (void*)shader_program, shader_program->GetName().c_str(),
+                            req.name.c_str(), (int)req.semantic,
+                            graph::mtl::GetDescriptorSemanticName(req.semantic));
+
                     if (first_error.empty())
                     {
                         first_error = "missing semantic=";
                         first_error += graph::mtl::GetDescriptorSemanticName(req.semantic);
+                        first_error += " name=";
+                        first_error += req.name.empty() ? "<empty>" : req.name;
                     }
                 }
                 else

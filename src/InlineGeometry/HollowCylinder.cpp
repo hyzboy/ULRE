@@ -123,11 +123,6 @@ namespace hgl::graph::inline_geometry
                         *ip++ = (decltype(*ip))v0; *ip++ = (decltype(*ip))v1; *ip++ = (decltype(*ip))v2;
                         *ip++ = (decltype(*ip))v2; *ip++ = (decltype(*ip))v1; *ip++ = (decltype(*ip))v3;
                     }
-                    else
-                    {   // 内壁：反向（正面朝内）
-                        *ip++ = (decltype(*ip))v0; *ip++ = (decltype(*ip))v2; *ip++ = (decltype(*ip))v1;
-                        *ip++ = (decltype(*ip))v2; *ip++ = (decltype(*ip))v3; *ip++ = (decltype(*ip))v1;
-                    }
                 }
                 return ip;
             };
@@ -145,43 +140,18 @@ namespace hgl::graph::inline_geometry
                         *ip++ = (decltype(*ip))o0; *ip++ = (decltype(*ip))i0; *ip++ = (decltype(*ip))o1;
                         *ip++ = (decltype(*ip))i0; *ip++ = (decltype(*ip))i1; *ip++ = (decltype(*ip))o1;
                     }
-                    else
-                    {   // 底盖：法线-Z，从 -Z 看为正面
-                        *ip++ = (decltype(*ip))o0; *ip++ = (decltype(*ip))o1; *ip++ = (decltype(*ip))i0;
-                        *ip++ = (decltype(*ip))i0; *ip++ = (decltype(*ip))o1; *ip++ = (decltype(*ip))i1;
-                    }
                 }
                 return ip;
             };
 
-        if(it==IndexType::U16)
-        {
-            auto im = pc->GetIndexAccessor<uint16>();
-            uint16 *ip = im;
-            ip = emit_wall_indices(ip, wall_outer_start, false);
-            ip = emit_wall_indices(ip, wall_inner_start, true);
-            ip = emit_cap_indices(ip, cap_top_start, true);
-            ip = emit_cap_indices(ip, cap_bottom_start, false);
-        }
-        else if(it==IndexType::U32)
-        {
+        if (pc->GetIndexType() == IndexType::U32) {
             auto im = pc->GetIndexAccessor<uint32>();
             uint32 *ip = im;
             ip = emit_wall_indices(ip, wall_outer_start, false);
             ip = emit_wall_indices(ip, wall_inner_start, true);
             ip = emit_cap_indices(ip, cap_top_start, true);
             ip = emit_cap_indices(ip, cap_bottom_start, false);
-        }
-        else if(it==IndexType::U8)
-        {
-            auto im = pc->GetIndexAccessor<uint8>();
-            uint8 *ip = im;
-            ip = emit_wall_indices(ip, wall_outer_start, false);
-            ip = emit_wall_indices(ip, wall_inner_start, true);
-            ip = emit_cap_indices(ip, cap_top_start, true);
-            ip = emit_cap_indices(ip, cap_bottom_start, false);
-        }
-        else return nullptr;
+        }else return nullptr;
 
         return pc->CreateWithAABB(
             math::Vector3f(-r1, -r1, -he),

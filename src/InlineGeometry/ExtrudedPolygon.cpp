@@ -31,11 +31,6 @@ namespace hgl::graph::inline_geometry
             // Z轴挤压：使用X作为right，Y作为up（与世界坐标系一致）
             right = Vector3f(1, 0, 0);
             up = Vector3f(0, 1, 0);
-        } else {
-            // 任意轴向：构建正交坐标系
-            Vector3f ref = (fabs(axis.x) < 0.9f) ? Vector3f(1, 0, 0) : Vector3f(0, 1, 0);
-            right = glm::normalize(glm::cross(ref, axis));
-            up = glm::cross(axis, right);
         }
     }
 
@@ -79,15 +74,10 @@ namespace hgl::graph::inline_geometry
                 Vector3f triA_n = glm::normalize(glm::cross(p1 - p0, p2 - p0));
                 if (glm::dot(triA_n, sideNormal) >= 0.0f) {
                     *ip++ = i0; *ip++ = i1; *ip++ = i2;
-                } else {
-                    *ip++ = i0; *ip++ = i2; *ip++ = i1;
                 }
-
                 Vector3f triB_n = glm::normalize(glm::cross(p1 - p2, p3 - p2));
                 if (glm::dot(triB_n, sideNormal) >= 0.0f) {
                     *ip++ = i2; *ip++ = i1; *ip++ = i3;
-                } else {
-                    *ip++ = i2; *ip++ = i3; *ip++ = i1;
                 }
             }
 
@@ -110,10 +100,6 @@ namespace hgl::graph::inline_geometry
                     *ip++ = bottomStart;
                     *ip++ = bottomStart + (IndexT)(i + 1);
                     *ip++ = bottomStart + (IndexT)i;
-                } else {
-                    *ip++ = bottomStart;
-                    *ip++ = bottomStart + (IndexT)i;
-                    *ip++ = bottomStart + (IndexT)(i + 1);
                 }
             }
 
@@ -131,10 +117,6 @@ namespace hgl::graph::inline_geometry
                     *ip++ = topStart;
                     *ip++ = topStart + (IndexT)i;
                     *ip++ = topStart + (IndexT)(i + 1);
-                } else {
-                    *ip++ = topStart;
-                    *ip++ = topStart + (IndexT)(i + 1);
-                    *ip++ = topStart + (IndexT)i;
                 }
             }
         }
@@ -260,28 +242,10 @@ namespace hgl::graph::inline_geometry
         // 使用辅助模板填充正确类型的索引
         switch (index_type)
         {
-            case IndexType::U16:
-            {
-                auto ib_map = pc->GetIndexAccessor<uint16>();
-                uint16 *ip = ib_map;
-                if (totalIndices > 0 && ip == nullptr) return nullptr;
-
-                FillExtrudedPolygonIndices(ip, epci, vertexCount, generateSides, generateCaps, right, up, forward, extrudeOffset, polygonCenter);
-                break;
-            }
             case IndexType::U32:
             {
                 auto ib_map = pc->GetIndexAccessor<uint32>();
                 uint32 *ip = ib_map;
-                if (totalIndices > 0 && ip == nullptr) return nullptr;
-
-                FillExtrudedPolygonIndices(ip, epci, vertexCount, generateSides, generateCaps, right, up, forward, extrudeOffset, polygonCenter);
-                break;
-            }
-            case IndexType::U8:
-            {
-                auto ib_map = pc->GetIndexAccessor<uint8>();
-                uint8 *ip = ib_map;
                 if (totalIndices > 0 && ip == nullptr) return nullptr;
 
                 FillExtrudedPolygonIndices(ip, epci, vertexCount, generateSides, generateCaps, right, up, forward, extrudeOffset, polygonCenter);

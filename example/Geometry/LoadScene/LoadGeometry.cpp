@@ -10,6 +10,8 @@
 #include<hgl/graph/geo/VKGeometryData.h>
 #include<hgl/io/MiniPack.h>
 #include<hgl/io/MemoryInputStream.h>
+#include<vector>
+#include<cstring>
 
 DEFINE_LOGGER_MODULE(LoadGeometry)
 
@@ -247,16 +249,14 @@ namespace
                          const GeometryHeader &header,
                          const OSString &filename)
     {
-        IndexType index_type;
-        if(header.indexStride==1)index_type=IndexType::U8;else
-        if(header.indexStride==2)index_type=IndexType::U16;else
-        if(header.indexStride==4)index_type=IndexType::U32;else
+        // 引擎统一 uint32 索引：外部文件索引按 stride 1/2/4 读入后统一展开为 uint32
+        if(header.indexStride!=1 && header.indexStride!=2 && header.indexStride!=4)
         {
             MLogError(LoadGeometry,OS_TEXT("Unsupported index stride ")+OSString::numberOf(header.indexStride)+OS_TEXT(" in file ") + filename);
             return false;
         }
 
-        IndexBuffer *ibo=geo_data->InitIBO(header.indexCount,index_type,"LoadGeometry:IBO");    //这里未来改成文件名
+        IndexBuffer *ibo=geo_data->InitIBO(header.indexCount,IndexType::U32,"LoadGeometry:IBO");    //这里未来改成文件名
         if(!ibo)
         {
             MLogError(LoadGeometry,OS_TEXT("Cannot create IBO for file ") + filename);
@@ -269,6 +269,7 @@ namespace
             MLogError(LoadGeometry,OS_TEXT("Cannot map IBO for file ") + filename);
             return false;
         }
+        (void)ibo_ptr;
 
         const size_t index_size = static_cast<size_t>(header.indexCount) * header.indexStride;
 
@@ -285,9 +286,33 @@ namespace
             return false;
         }
 
-        if(mpr->ReadFile(indices_index, ibo_ptr, 0, static_cast<uint32>(index_size)) != index_size)
+        std::vector<uint8> raw(index_size);
+        if(mpr->ReadFile(indices_index, raw.data(), 0, static_cast<uint32>(index_size)) != index_size)
         {
             MLogError(LoadGeometry,OS_TEXT("Cannot read index data from file ") + filename);
+            return false;
+        }
+
+        // stride 1/2/4 → uint32 统一展开（引擎废弃 U8/U16 索引）
+        std::vector<uint32> idx(header.indexCount);
+        if(header.indexStride==4)
+        {
+            memcpy(idx.data(), raw.data(), index_size);
+        }
+        else if(header.indexStride==2)
+        {
+            for(uint32_t i=0;i<header.indexCount;++i)
+                idx[i] = static_cast<uint32_t>(reinterpret_cast<const uint16*>(raw.data())[i]);
+        }
+        else
+        {
+            for(uint32_t i=0;i<header.indexCount;++i)
+                idx[i] = raw[i];
+        }
+
+        if(!ibo->Write(idx.data(), header.indexCount))
+        {
+            MLogError(LoadGeometry,OS_TEXT("Cannot write index data for file ") + filename);
             return false;
         }
 

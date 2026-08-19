@@ -34,15 +34,6 @@ namespace hgl::graph::inline_geometry
             // Indices: total_segs * coil_segs * 6 (triangles)
             numberIndices = total_segs * coil_segs * 6;
         }
-        else
-        {
-            // Wireframe: just the center line
-            // Note: This generates GL_LINES indices (pairs of vertex indices)
-            // The geometry should be rendered with line primitive topology
-            numberVertices = total_segs + 1;
-            numberIndices = total_segs * 2;  // Each line segment uses 2 indices
-        }
-
         if(!GeometryValidator::ValidateBasicParams(pc, numberVertices, numberIndices))
             return nullptr;
 
@@ -148,39 +139,6 @@ namespace hgl::graph::inline_geometry
                 }
             }
         }
-        else
-        {
-            // Generate wireframe (center line only)
-            for(uint s = 0; s <= total_segs; s++)
-            {
-                float t = angle_step * float(s);
-
-                float px = radius * cos(t);
-                float py = radius * sin(t);
-                float pz = z_per_angle * t;
-
-                // Tangent to helix (derivative of position)
-                float dx_dt = -radius * sin(t);
-                float dy_dt = radius * cos(t);
-                float dz_dt = z_per_angle;
-
-                // Normalize tangent
-                float tang_len = sqrtf(dx_dt*dx_dt + dy_dt*dy_dt + dz_dt*dz_dt);
-                float tx = (tang_len > 0.0f) ? dx_dt / tang_len : 0.0f;
-                float ty = (tang_len > 0.0f) ? dy_dt / tang_len : 0.0f;
-                float tz = (tang_len > 0.0f) ? dz_dt / tang_len : 0.0f;
-
-                // Normal (pointing towards axis)
-                float nx = -cos(t);
-                float ny = -sin(t);
-                float nz = 0.0f;
-
-                float u = float(s) / float(total_segs);
-
-                builder.WriteFullVertex(px, py, pz, nx, ny, nz, tx, ty, tz, u, 0.0f);
-            }
-        }
-
         // Generate indices
         const IndexType index_type = pc->GetIndexType();
 
@@ -210,36 +168,13 @@ namespace hgl::graph::inline_geometry
                     }
                 }
             }
-            else
-            {
-                // Line indices
-                for(uint s = 0; s < total_segs; s++)
-                {
-                    *ip++ = (IndexT)s;
-                    *ip++ = (IndexT)(s + 1);
-                }
-            }
         };
 
-        if(index_type == IndexType::U16)
-        {
-            auto ib = pc->GetIndexAccessor<uint16>();
-            uint16 *ip = ib;
-            generate_indices(ip);
-        }
-        else if(index_type == IndexType::U32)
-        {
+        if (index_type == IndexType::U32) {
             auto ib = pc->GetIndexAccessor<uint32>();
             uint32 *ip = ib;
             generate_indices(ip);
-        }
-        else if(index_type == IndexType::U8)
-        {
-            auto ib = pc->GetIndexAccessor<uint8>();
-            uint8 *ip = ib;
-            generate_indices(ip);
-        }
-        else
+        }else
             return nullptr;
 
         float max_radius = radius + coil_r;

@@ -7,6 +7,7 @@
 namespace hgl::graph{
 MaterialParameters::MaterialParameters(const MaterialDescriptorManager *mdm,const DescriptorSetType &type,DescriptorSet *ds)
 {
+    fprintf(stderr, "[DIAG] MaterialParameters ctor type=%d ds=%p\n", (int)type, (void*)ds);
     desc_manager=mdm;
     set_type=type;
     descriptor_set=ds;
@@ -62,6 +63,9 @@ bool MaterialParameters::BindSSBO(const AnsiString &name,const IGPUBuffer *gpu,b
 
     const int index=desc_manager->GetSSBO(set_type,name,dynamic);
 
+    fprintf(stderr, "[DIAG] MP::BindSSBO(gpu) this=%p type=%d name=%s index=%d ds=%p\n",
+            (void*)this, (int)set_type, name.c_str(), index, (void*)descriptor_set);
+
     if(index<0)
         return(false);
 
@@ -79,7 +83,11 @@ bool MaterialParameters::BindSSBO(const AnsiString &name,const VkBuffer buf,cons
     const int index=desc_manager->GetSSBO(set_type,name,dynamic);
 
     if(index<0)
+    {
+        fprintf(stderr, "[DIAG] MaterialParameters::BindSSBO name=%s index=-1 (NOT FOUND)\n", name.c_str());
         return(false);
+    }
+    fprintf(stderr, "[DIAG] MaterialParameters::BindSSBO name=%s index=%d\n", name.c_str(), index);
 
     if(!descriptor_set->BindSSBO(index,buf,offset,range,dynamic))
         return(false);

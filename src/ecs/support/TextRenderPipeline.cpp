@@ -279,18 +279,8 @@ namespace hgl::ecs
             }
 
             // per-draw 段偏移 push constant（text 独立 VAB——段偏移恒 0，
-            // 但 shader 静态使用 pc_vertex_index——必须设置；index_format 按 IBO 格式）
-            uint32_t index_format = 1;   // 默认 U16
-            if (auto* ibo = res.geometry ? res.geometry->GetIBO() : nullptr)
-            {
-                switch (ibo->GetIndexType())
-                {
-                    case graph::IndexType::U8:  index_format = 0; break;
-                    case graph::IndexType::U32: index_format = 2; break;
-                    default:                    index_format = 1; break;
-                }
-            }
-            const uint32_t pc_data[3] = {0, 0, index_format};
+            // 但 shader 静态使用 pc_vertex_index——必须设置；索引统一 uint32）
+            const uint32_t pc_data[2] = {0, 0};
             cmd->PushConstants(res.material->GetPipelineLayout(), pc_data, sizeof(pc_data));
 
             cmd->BindDescriptorSets(res.material);

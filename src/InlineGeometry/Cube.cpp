@@ -99,17 +99,6 @@ namespace hgl::graph::inline_geometry
                         WriteIndex(i2, idx8, idx16, idx32);
                         WriteIndex(i3, idx8, idx16, idx32);
                     }
-                    else
-                    {
-                        // 正常CCW顺序
-                        WriteIndex(i0, idx8, idx16, idx32);
-                        WriteIndex(i1, idx8, idx16, idx32);
-                        WriteIndex(i2, idx8, idx16, idx32);
-
-                        WriteIndex(i1, idx8, idx16, idx32);
-                        WriteIndex(i3, idx8, idx16, idx32);
-                        WriteIndex(i2, idx8, idx16, idx32);
-                    }
                 }
             }
 
@@ -224,24 +213,7 @@ namespace hgl::graph::inline_geometry
                 builder, cci, base_vertex, i8, i16, i32);
         };
 
-        if(index_type == IndexType::U8)
-        {
-            auto idx_accessor = pc->GetIndexAccessor<uint8>();
-            auto *i8 = idx_accessor.Get() ? idx_accessor.Get()->Get() : nullptr;
-            if(!i8)
-                return nullptr;
-            emit_faces(i8, nullptr, nullptr);
-        }
-        else if(index_type == IndexType::U16)
-        {
-            auto idx_accessor = pc->GetIndexAccessor<uint16>();
-            auto *i16 = idx_accessor.Get() ? idx_accessor.Get()->Get() : nullptr;
-            if(!i16)
-                return nullptr;
-            emit_faces(nullptr, i16, nullptr);
-        }
-        else if(index_type == IndexType::U32)
-        {
+        if (index_type == IndexType::U32) {
             auto idx_accessor = pc->GetIndexAccessor<uint32>();
             auto *i32 = idx_accessor.Get() ? idx_accessor.Get()->Get() : nullptr;
             if(!i32)

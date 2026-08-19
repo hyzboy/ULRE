@@ -82,46 +82,6 @@ namespace hgl::graph::inline_geometry
             builder.WriteFullVertex( hw,  hd, -hh, nzx, 0.0f, nz, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
             builder.WriteFullVertex(-hw,  hd,  hh, nzx, 0.0f, nz, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f);
         }
-        else
-        {
-            // Slope along Y direction
-            // Similar structure but rotated
-
-            // Triangular face 1 (at -hw, facing -X)
-            builder.WriteFullVertex(-hw, -hd, -hh, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
-            builder.WriteFullVertex(-hw,  hd, -hh, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
-            builder.WriteFullVertex(-hw, -hd,  hh, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f);
-            builder.WriteFullVertex(-hw,  hd, -hh, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
-
-            // Triangular face 2 (at +hw, facing +X)
-            builder.WriteFullVertex( hw, -hd, -hh, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f);
-            builder.WriteFullVertex( hw, -hd,  hh, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f, 1.0f);
-            builder.WriteFullVertex( hw,  hd, -hh, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f);
-            builder.WriteFullVertex( hw,  hd, -hh, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f);
-
-            // Bottom face (facing -Z)
-            builder.WriteFullVertex(-hw, -hd, -hh, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-            builder.WriteFullVertex( hw, -hd, -hh, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f);
-            builder.WriteFullVertex( hw,  hd, -hh, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f);
-            builder.WriteFullVertex(-hw,  hd, -hh, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f);
-
-            // Back face (at -hd, facing -Y)
-            builder.WriteFullVertex(-hw, -hd, -hh, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-            builder.WriteFullVertex(-hw, -hd,  hh, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f);
-            builder.WriteFullVertex( hw, -hd,  hh, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f);
-            builder.WriteFullVertex( hw, -hd, -hh, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f);
-
-            // Sloped face
-            float nx = 0.0f;
-            float ny = -depth / sqrtf(depth * depth + height * height);
-            float nz = depth / sqrtf(depth * depth + height * height);
-
-            builder.WriteFullVertex(-hw,  hd, -hh, nx, ny, nz, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-            builder.WriteFullVertex( hw,  hd, -hh, nx, ny, nz, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f);
-            builder.WriteFullVertex( hw, -hd,  hh, nx, ny, nz, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f);
-            builder.WriteFullVertex(-hw, -hd,  hh, nx, ny, nz, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f);
-        }
-
         // Generate indices
         const IndexType index_type = pc->GetIndexType();
 
@@ -148,25 +108,11 @@ namespace hgl::graph::inline_geometry
             *ip++ = 17; *ip++ = 19; *ip++ = 18;
         };
 
-        if(index_type == IndexType::U16)
-        {
-            auto ib = pc->GetIndexAccessor<uint16>();
-            uint16 *ip = ib;
-            generate_indices(ip);
-        }
-        else if(index_type == IndexType::U32)
-        {
+        if (index_type == IndexType::U32) {
             auto ib = pc->GetIndexAccessor<uint32>();
             uint32 *ip = ib;
             generate_indices(ip);
-        }
-        else if(index_type == IndexType::U8)
-        {
-            auto ib = pc->GetIndexAccessor<uint8>();
-            uint8 *ip = ib;
-            generate_indices(ip);
-        }
-        else
+        }else
             return nullptr;
 
         return pc->CreateWithAABB(

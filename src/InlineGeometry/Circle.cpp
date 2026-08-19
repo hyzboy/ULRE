@@ -18,13 +18,6 @@ namespace hgl::graph::inline_geometry
             edge = cci->field_count + 1;
             vertex_count = cci->field_count + 2;
         }
-        else
-        {
-            // Need one extra vertex to close the loop (duplicate of the first)
-            edge = cci->field_count + 1;
-            vertex_count = cci->field_count + 1;
-        }
-
         if(!pc->Init("Circle",vertex_count,0))return(nullptr);
 
         auto vertex = pc->GetBufferAccessor<BufferAccessor2f>(VAN::Position);
@@ -77,13 +70,6 @@ namespace hgl::graph::inline_geometry
             edge = cci->field_count + 1;
             vertex_count = cci->field_count + 2;
         }
-        else
-        {
-            // mirror 2D: need one extra vertex to close the loop
-            edge = cci->field_count + 1;
-            vertex_count = cci->field_count + 1;
-        }
-
         bool has_index = pc->hasIndex();
 
         if(!pc->Init("Circle",vertex_count,has_index ? vertex_count : 0))return(nullptr);
@@ -141,22 +127,10 @@ namespace hgl::graph::inline_geometry
 
         if(has_index)
         {
-            if(pc->GetIndexType() == IndexType::U16)
-            {
-                auto ib_accessor = pc->GetIndexAccessor<uint16>();
-                IndexGenerator::WriteSequentialIndices<uint16>((uint16*)ib_accessor,0,vertex_count);
-            }
-            else if(pc->GetIndexType() == IndexType::U32)
-            {
+            if (pc->GetIndexType() == IndexType::U32) {
                 auto ib_accessor = pc->GetIndexAccessor<uint32>();
                 IndexGenerator::WriteSequentialIndices<uint32>((uint32*)ib_accessor,0,vertex_count);
-            }
-            else if(pc->GetIndexType() == IndexType::U8)
-            {
-                auto ib_accessor = pc->GetIndexAccessor<uint8>();
-                IndexGenerator::WriteSequentialIndices<uint8>((uint8*)ib_accessor,0,vertex_count);
-            }
-        }
+            }}
 
         Geometry *p = pc->Create();
         if(p)
@@ -223,17 +197,10 @@ namespace hgl::graph::inline_geometry
         }
 
         {
-            if(pc->GetIndexType() == IndexType::U16) {
-                auto ib = pc->GetIndexAccessor<uint16>();
-                IndexGenerator::WriteCircleIndices<uint16>(ib, cci->field_count);
-            } else if(pc->GetIndexType() == IndexType::U32) {
+            if (pc->GetIndexType() == IndexType::U32) {
                 auto ib = pc->GetIndexAccessor<uint32>();
                 IndexGenerator::WriteCircleIndices<uint32>(ib, cci->field_count);
-            } else if(pc->GetIndexType() == IndexType::U8) {
-                auto ib = pc->GetIndexAccessor<uint8>();
-                IndexGenerator::WriteCircleIndices<uint8>(ib, cci->field_count);
-            }
-        }
+            }}
 
         // Set bounding box for 3D circle (flat in XY plane)
         float min_x = cci->center.x - cci->radius.x;

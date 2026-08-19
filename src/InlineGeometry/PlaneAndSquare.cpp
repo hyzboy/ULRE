@@ -43,11 +43,6 @@ namespace hgl::graph::inline_geometry
                     lum->Write(pgci->sub_lum);
                     lum->Write(pgci->sub_lum);
                 }
-                else
-                {
-                    lum->Write(pgci->lum);
-                    lum->Write(pgci->lum);
-                }
             }
 
             for(uint col=0;col<=pgci->grid_size.Width();col++)
@@ -56,11 +51,6 @@ namespace hgl::graph::inline_geometry
                 {
                     lum->Write(pgci->sub_lum);
                     lum->Write(pgci->sub_lum);
-                }
-                else
-                {
-                    lum->Write(pgci->lum);
-                    lum->Write(pgci->lum);
                 }
             }
         }
@@ -110,11 +100,6 @@ namespace hgl::graph::inline_geometry
                     lum->Write(pgci->sub_lum);
                     lum->Write(pgci->sub_lum);
                 }
-                else
-                {
-                    lum->Write(pgci->lum);
-                    lum->Write(pgci->lum);
-                }
             }
 
             for(uint col=0;col<=pgci->grid_size.Width();col++)
@@ -123,11 +108,6 @@ namespace hgl::graph::inline_geometry
                 {
                     lum->Write(pgci->sub_lum);
                     lum->Write(pgci->sub_lum);
-                }
-                else
-                {
-                    lum->Write(pgci->lum);
-                    lum->Write(pgci->lum);
                 }
             }
         }
@@ -148,7 +128,7 @@ namespace hgl::graph::inline_geometry
 
         if(!pc)return(nullptr);
 
-        if(!pc->Init("Plane",4,6,IndexType::U16))
+        if(!pc->Init("Plane",4,6,IndexType::U32))
             return(nullptr);
 
         if(!pc->WriteVAB(VAN::Position,VF_V3F,xy_vertices))
@@ -179,12 +159,6 @@ namespace hgl::graph::inline_geometry
                     for(int i = 0; i < 4; ++i)
                         normal2->Write(FloatToHalf(p), FloatToHalf(q));
                 }
-            }
-            else
-            {
-                auto normal = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Normal);
-                if(normal.IsValid())
-                    normal->RepeatWrite(xy_normal,4);
             }
         }
 
