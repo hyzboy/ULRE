@@ -259,6 +259,21 @@ namespace hgl::ecs
                 continue;
 
             cmd->BindPipeline(res.pipeline);
+
+            // 顶点 SSBO 绑定（text_2d transport=ssbo——SSBO 顶点输入）：
+            // TextGeometry 的 VAB buffer 直接绑 PerObject 集顶点槽（零复制——
+            // shader 按 gl_VertexIndex 读；与 RenderDescriptorBindingSystem 的
+            // 顶点 SSBO 绑定同一机制，text 不走 Primitive batch 路径故在此自绑）
+            if (auto* geom = res.geometry)
+            {
+                if (auto* vab = geom->GetPositionVAB())
+                    res.material->BindSSBO(graph::DescriptorSetType::PerObject,
+                                           "VertexPosition", vab->GetGPUBuffer());
+                if (auto* vab = geom->GetTexCoordVAB())
+                    res.material->BindSSBO(graph::DescriptorSetType::PerObject,
+                                           "VertexUV", vab->GetGPUBuffer());
+            }
+
             cmd->BindDescriptorSets(res.material);
 
             // Set 0（Scene UBO）/ Set 3（Bindless 纹理）按材质自身 layout 绑定。

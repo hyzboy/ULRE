@@ -164,8 +164,10 @@ bool RenderCmdBuffer::BindDataBuffer(const GeometryDataBuffer *geom_data_buffer)
 
     if(geom_data_buffer->vab_count<=0)
     {
-        LogError("No VABs to bind");
-        return(false);
+        // SSBO 顶点输入模式：管线无 VBO attribute（VIL 空）——顶点数据经
+        // 顶点 SSBO 读取，无需 vkCmdBindVertexBuffers——无 VAB 是合法常态，
+        // 返回 true（无绑定操作即成功）。VBO 模式 VIF 非空不会走到此分支。
+        return(true);
     }
 
 //    std::cerr << "[RenderCmdBuffer::BindDataBuffer] Calling vkCmdBindVertexBuffers..." << std::endl;

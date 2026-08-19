@@ -952,12 +952,14 @@ namespace hgl::ecs
                     if (!bind_ssbo(material, batch, req, gpu))
                         log_bind_failure(material, batch, req, "bind vertex SSBO failed");
                 }
-                else
+                else if (batch)
                 {
-                    log_missing_ssbo_once(material, req, batch ? "geometry vertex buffer not found" : "domain binding not found", 0);
-                    if (batch && req.required)
+                    log_missing_ssbo_once(material, req, "geometry vertex buffer not found", 0);
+                    if (req.required)
                         batch->descriptor_bind_valid = false;
                 }
+                // batch 空：该材质无 Primitive 渲染项——顶点 SSBO 由自绑管线
+                // 管理（如 TextRenderPipeline 的 TextGeometry VAB 直绑）——静默跳过
                 break;
             }
             case graph::mtl::DescriptorSemantic::MaterialTexture:
