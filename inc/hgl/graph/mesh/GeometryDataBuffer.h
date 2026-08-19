@@ -14,6 +14,7 @@ struct GeometryDataBuffer
 {
     uint32_t            vab_count;
     VkBuffer *          vab_list;
+    VertexSemantic *    vab_semantic;       //每个 binding 的顶点语义（Update 按 VIF 填充——SSBO 顶点绑定用）
 
     // 理论上讲，每个VAB绑定时都是可以指定byte offsets的。但是随后Draw时，又可以指定vertexOffset。
     // 在我们支持的两种draw模式中，一种是每个模型一批VAB，所有VAB的offset都是0。

@@ -12,6 +12,7 @@ GeometryDataBuffer::GeometryDataBuffer(const uint32_t c,IndexBuffer *ib,VertexDa
 
     vab_list=zero_new<VkBuffer>(vab_count);
     vab_offset=zero_new<VkDeviceSize>(vab_count);
+    vab_semantic=zero_new<VertexSemantic>(vab_count);
 
     ibo=ib;
     vdm=_vdm;
@@ -21,6 +22,7 @@ GeometryDataBuffer::~GeometryDataBuffer()
 {
     delete[] vab_offset;
     delete[] vab_list;
+    delete[] vab_semantic;
 }
 
 void GeometryDrawRange::Set(const Geometry *geometry)
@@ -206,6 +208,7 @@ bool GeometryDataBuffer::Update(const Geometry *geom,const VertexInputFormat *vi
     {
         vab_list[i]=VK_NULL_HANDLE;
         vab_offset[i]=0;
+        vab_semantic[i]=VertexSemantic::Unknown;
     }
 
     for(uint32_t i=0;i<vif_count;i++)
@@ -215,6 +218,7 @@ bool GeometryDataBuffer::Update(const Geometry *geom,const VertexInputFormat *vi
         {
             vab_list[vif.binding]=geom->GetVkBuffer(vif.semantic);
             vab_offset[vif.binding]=0;
+            vab_semantic[vif.binding]=vif.semantic;
         }
     }
 

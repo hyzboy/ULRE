@@ -128,19 +128,17 @@ namespace hgl::ecs
             if (ssbo_vertex_input)
             {
                 bool changed = false;
-                const auto *vil = material->GetDefaultVIL();
-                const auto *vif_list = vil ? vil->GetVIFList() : nullptr;
-                const uint32_t vif_count = vil ? vil->GetVertexAttribCount() : 0;
                 const auto *geom_buffer = batch->geom_data_buffer;
 
-                for (uint32_t vi = 0; vi < vif_count; ++vi)
+                // 按 VAB 自带语义遍历（GeometryDataBuffer::Update 按 VIF 填充——
+                // 不依赖 material 的 VIL，独立 VAB/VDM 场景均正确）
+                for (uint32_t vi = 0; vi < geom_buffer->vab_count; ++vi)
                 {
-                    const graph::VertexInputFormat &vif = vif_list[vi];
-                    const VkBuffer buf = (vif.binding < geom_buffer->vab_count)
-                        ? geom_buffer->vab_list[vif.binding]
-                        : VK_NULL_HANDLE;
+                    const VkBuffer buf = geom_buffer->vab_list[vi];
+                    if (!buf)
+                        continue;
 
-                    switch (vif.semantic)
+                    switch (geom_buffer->vab_semantic[vi])
                     {
                     case graph::VertexSemantic::Position:
                         if (buf != last_ssbo_pos)
