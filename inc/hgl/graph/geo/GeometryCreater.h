@@ -89,6 +89,41 @@ inline void EncodeOctahedralNormal(float nx, float ny, float nz, float &out_p, f
 }
 
 /**
+ * 批量：RGB32F 法线数组 → RG8（octahedral 编码 + uint8 量化）——资产导入/预处理用
+ * 输入 normals：count 个顶点的 float×3 连续数组（顶点 i 的法线 = normals[i*3..i*3+2]；
+ *               无需预先单位化——内部归一化）
+ * 输出 out_rg8：每顶点 2B（out_rg8[2i]=p、out_rg8[2i+1]=q）——R8G8_UNORM VAB 布局，
+ *               与 GPU 端 s1_ntb_rg8 解码（低字节 p、高字节 q）逐字节一致
+ */
+inline void EncodeNormalsToRG8(const float *normals, const int count, uint8_t *out_rg8)
+{
+    for(int i = 0; i < count; ++i)
+    {
+        const float *n = normals + i * 3;
+        float p, q;
+
+        EncodeOctahedralNormal(n[0], n[1], n[2], p, q);
+
+        out_rg8[i * 2]     = QuantizeU8(p);
+        out_rg8[i * 2 + 1] = QuantizeU8(q);
+    }
+}
+
+/** 批量：Vector3f 法线数组 → RG8（同 EncodeNormalsToRG8——输入形式重载） */
+inline void EncodeNormalsToRG8(const Vector3f *normals, const int count, uint8_t *out_rg8)
+{
+    for(int i = 0; i < count; ++i)
+    {
+        float p, q;
+
+        EncodeOctahedralNormal(normals[i].x, normals[i].y, normals[i].z, p, q);
+
+        out_rg8[i * 2]     = QuantizeU8(p);
+        out_rg8[i * 2 + 1] = QuantizeU8(q);
+    }
+}
+
+/**
  * 可绘制原始图形创建器
  */
 class GeometryCreater
