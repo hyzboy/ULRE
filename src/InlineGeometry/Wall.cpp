@@ -765,13 +765,24 @@ namespace hgl::graph::inline_geometry
         auto tan = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Tangent);
         auto uv  = pc->GetBufferAccessor<BufferAccessor2f>(VAN::TexCoord);
 
+        // RG16F 压缩法线（octahedral 编码）
+        VAB *nrm_vab = pc->GetVAB(VAN::Normal);
+        const bool nrm_rg16f = (nrm_vab && nrm_vab->GetFormat() == VK_FORMAT_R16G16_SFLOAT);
+        BufferAccessor2hf nrm2 = nrm_rg16f ? pc->GetBufferAccessor<BufferAccessor2hf>(VAN::Normal) : BufferAccessor2hf();
+
         for(size_t i = 0; i < finalVerts.size(); ++i)
         {
             const auto &v = finalVerts[i];
 
             pos->Write(v);
 
-            if(nrm.IsValid())
+            if(nrm2.IsValid())
+            {
+                float p, q;
+                EncodeOctahedralNormal(vertNormals[i].x, vertNormals[i].y, vertNormals[i].z, p, q);
+                nrm2->Write(FloatToHalf(p), FloatToHalf(q));
+            }
+            else if(nrm.IsValid())
                 nrm->Write(vertNormals[i]);
 
             if(tan.IsValid())

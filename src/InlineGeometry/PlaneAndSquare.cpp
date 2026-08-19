@@ -155,10 +155,25 @@ namespace hgl::graph::inline_geometry
             return(nullptr);
 
         {
-            auto normal = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Normal);
-
-            if(normal.IsValid())
-                normal->RepeatWrite(xy_normal,4);
+            VAB *nrm_vab = pc->GetVAB(VAN::Normal);
+            if(nrm_vab && nrm_vab->GetFormat() == VK_FORMAT_R16G16_SFLOAT)
+            {
+                // RG16F 压缩法线（octahedral 编码）
+                auto normal2 = pc->GetBufferAccessor<BufferAccessor2hf>(VAN::Normal);
+                if(normal2.IsValid())
+                {
+                    float p, q;
+                    EncodeOctahedralNormal(xy_normal.x, xy_normal.y, xy_normal.z, p, q);
+                    for(int i = 0; i < 4; ++i)
+                        normal2->Write(FloatToHalf(p), FloatToHalf(q));
+                }
+            }
+            else
+            {
+                auto normal = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Normal);
+                if(normal.IsValid())
+                    normal->RepeatWrite(xy_normal,4);
+            }
         }
 
         {

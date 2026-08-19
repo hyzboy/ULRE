@@ -436,7 +436,7 @@ private:
             CreateStandardGeometryVertexFormat());
         inline_geometry::CubeCreateInfo cci{};
         cci.tex_coord = true;
-        cci.normal = true;
+        cci.ntb = NTBType::Normal;
 
         Geometry *cube_geometry = inline_geometry::CreateCube(pc.get(), &cci);
         if (!cube_geometry)

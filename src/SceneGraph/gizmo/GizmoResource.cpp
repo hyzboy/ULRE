@@ -233,8 +233,7 @@ namespace hgl::graph
                 {
                     CubeCreateInfo cci;
 
-                    cci.normal=true;
-                    cci.tangent=false;
+                    cci.ntb = NTBType::Normal;
                     cci.tex_coord=false;
 
                     InitGizmoMesh(GizmoShape::Cube,CreateCube(gizmo_triangle.prim_creater,&cci));

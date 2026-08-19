@@ -62,11 +62,16 @@ namespace hgl::graph::inline_geometry
 
                     builder.WriteVertex(pos.x, pos.y, pos.z);
 
-                    if(cci->normal)
-                        builder.WriteNormal(normal.x, normal.y, normal.z);
-
-                    if(cci->tangent)
-                        builder.WriteTangent(tangent.x, tangent.y, tangent.z);
+                    if(cci->ntb == NTBType::Normal)
+                    {
+                        builder.WriteNTB(normal);
+                    }
+                    else if(cci->ntb == NTBType::NormalTangent)
+                    {
+                        // 切线 w 分量 = 面朝向（normalmap 副法线方向）
+                        Vector4f tangent_w(tangent.x, tangent.y, tangent.z, need_flip ? -1.0f : 1.0f);
+                        builder.WriteNTB(normal, tangent_w, Vector3f());
+                    }
 
                     if(cci->tex_coord)
                         builder.WriteTexCoord(tu, tv);

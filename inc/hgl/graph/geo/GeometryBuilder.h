@@ -17,6 +17,7 @@ namespace hgl::graph::inline_geometry
         BufferAccessor3f accessor_position;
         BufferAccessor3f accessor_normal;
         BufferAccessor3f accessor_tangent;
+        BufferAccessor4f accessor_tangent_4f;   // 切线 V4F（含 w 分量）
         BufferAccessor2f accessor_texcoord;
 
         // 压缩格式法线访问器（发行版：Normal 存 RG16F——xy 半浮点，z 由 shader 重建）
@@ -44,30 +45,49 @@ namespace hgl::graph::inline_geometry
         }
 
         /**
-         * 写入法线
-         * @param x, y, z 法线坐标
+         * 写入法线（只有 Normal）——输入 float×3，写入格式由内部按 VAB 自动选择
+         * （V3F → 3f 直写；RG16F → octahedral 编码 + half 位模式）
          */
-        inline void WriteNormal(float x, float y, float z)
+        inline void WriteNTB(float nx, float ny, float nz)
         {
             if(accessor_normal_2hf.IsValid())
             {
-                // RG16F 压缩：只存 xy（半浮点）——z 由 shader 重建并 normalize
-                accessor_normal_2hf->Write(x, y);
+                // RG16F 压缩：octahedral 编码（2 分量完整方向——z 符号保留）
+                // 注意：VB2hf 的 T 是 uint16（half 位模式）——必须显式 FloatToHalf
+                float p, q;
+                EncodeOctahedralNormal(nx, ny, nz, p, q);
+                accessor_normal_2hf->Write(FloatToHalf(p), FloatToHalf(q));
             }
             else if(accessor_normal.IsValid())
             {
-                accessor_normal->Write(x, y, z);
+                accessor_normal->Write(nx, ny, nz);
             }
         }
 
-        /**
-         * 写入切线
-         * @param x, y, z 切线坐标
-         */
-        inline void WriteTangent(float x, float y, float z)
+        /** 写入法线（Vector3f 版——只有 Normal） */
+        inline void WriteNTB(const Vector3f &normal)
         {
-            if(accessor_tangent.IsValid())
-                accessor_tangent->Write(x, y, z);
+            WriteNTB(normal.x, normal.y, normal.z);
+        }
+
+        /**
+         * 写入完整 NTB（法线+切线+副法线）——输入 float×3，写入格式与外部调用无关
+         * 注：binormal 当前无独立 VAB（GeometryVertexFormat 无 Binormal 语义）——暂不写入
+         */
+        /**
+         * 写入完整 NTB（法线+切线+副法线）——输入 float×3/×4，写入格式与外部调用无关
+         * 切线为 vec4（w 分量 = 面朝向符号——normalmap 副法线方向）
+         * 注：binormal 当前无独立 VAB（format 无 Binormal 语义）——暂不写入
+         */
+        inline void WriteNTB(const Vector3f &normal, const Vector4f &tangent, const Vector3f &binormal)
+        {
+            WriteNTB(normal.x, normal.y, normal.z);
+
+            if(accessor_tangent_4f.IsValid())
+                accessor_tangent_4f->Write(tangent.x, tangent.y, tangent.z, tangent.w);
+            else if(accessor_tangent.IsValid())
+                accessor_tangent->Write(tangent.x, tangent.y, tangent.z);   // V3F——w 无存储位
+            // binormal：GeometryVertexFormat 无 Binormal 语义——暂不写入（未来扩展）
         }
 
         /**
@@ -93,8 +113,9 @@ namespace hgl::graph::inline_geometry
                                    float u, float v)
         {
             WriteVertex(px, py, pz);
-            WriteNormal(nx, ny, nz);
-            WriteTangent(tx, ty, tz);
+            WriteNTB(nx, ny, nz);
+            if(accessor_tangent.IsValid())
+                accessor_tangent->Write(tx, ty, tz);
             WriteTexCoord(u, v);
         }
 

@@ -11,6 +11,20 @@ namespace hgl::graph
 {
     class GeometryCreater;
 
+    /**
+     * NTB（法线/切线/副法线）生成类型——几何体 CreateInfo 统一用此声明
+     * 写入格式由 GeometryBuilder 按 VAB 格式自动选择（与调用方无关）
+     */
+    enum class NTBType
+    {
+        None = 0,               ///< 不生成法线/切线
+        Normal,                 ///< 只有法线
+        NormalTangent,          ///< 法线+切线（切线含 w 分量）
+        NormalTangentBitangent, ///< 法线+切线+副法线
+
+        ENUM_CLASS_RANGE(None, NormalTangentBitangent)
+    };//enum class NTBType
+
     namespace inline_geometry
     {
         using namespace hgl::math;
@@ -23,7 +37,7 @@ namespace hgl::graph
             RectScope2f scope;
             uint segments_x = 1;    ///< X方向细分数量
             uint segments_y = 1;    ///< Y方向细分数量
-            bool normal = false;    ///< 是否生成法线
+            NTBType ntb = NTBType::None;    ///< NTB 生成类型
             bool tex_coord = true;  ///< 是否生成纹理坐标
 
             RectangleCreateInfo() = default;
@@ -107,8 +121,7 @@ namespace hgl::graph
             uint segments_y = 1;    ///< Y方向细分数量
             uint segments_z = 1;    ///< Z方向细分数量
 
-            bool normal = true;
-            bool tangent = false;
+            NTBType ntb = NTBType::Normal;  ///< NTB 生成类型
             bool tex_coord = true;
 
             enum class ColorType
@@ -138,7 +151,7 @@ namespace hgl::graph
 
         struct BoundingBoxCreateInfo
         {
-            bool normal;
+            NTBType ntb = NTBType::None;
 
             enum class ColorType
             {
@@ -154,9 +167,9 @@ namespace hgl::graph
 
         public:
 
-            BoundingBoxCreateInfo(bool n=false,ColorType ct=ColorType::NoColor)
+            BoundingBoxCreateInfo(NTBType ntb_type = NTBType::None, ColorType ct = ColorType::NoColor)
             {
-                normal=n;
+                ntb = ntb_type;
 
                 color_type=ct;
             }

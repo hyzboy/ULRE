@@ -50,8 +50,8 @@ namespace hgl::graph::inline_geometry
                 builder.WriteVertex(px, py, 0.0f);
 
                 // 写入法线 (Z+)
-                if(rci->normal)
-                    builder.WriteNormal(0.0f, 0.0f, 1.0f);
+                if(rci->ntb == NTBType::Normal)
+                    builder.WriteNTB(0.0f, 0.0f, 1.0f);
 
                 // 写入纹理坐标
                 if(rci->tex_coord)

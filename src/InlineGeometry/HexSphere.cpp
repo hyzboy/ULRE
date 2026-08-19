@@ -90,12 +90,24 @@ namespace hgl::graph::inline_geometry
         if(!pos.IsValid())
             return nullptr;
 
+        // RG16F 压缩法线（octahedral 编码）：Normal VAB 为 R16G16_SFLOAT 时用 2 分量访问器
+        VAB *nrm_vab = pc->GetVAB(VAN::Normal);
+        const bool nrm_rg16f = (nrm_vab && nrm_vab->GetFormat() == VK_FORMAT_R16G16_SFLOAT);
+        BufferAccessor2hf nrm2 = nrm_rg16f ? pc->GetBufferAccessor<BufferAccessor2hf>(VAN::Normal) : BufferAccessor2hf();
+
         // åé¡¶ç¹å±æ§ï¼æ³çº¿=åä½æ¹åï¼åçº¿åç»åæ¹åï¼å¨æç¹éåæ¶ç»åºå®å¼ï¼
         for(const auto &v:verts)
         {
             pos->Write(v);
 
-            if(nrm.IsValid())
+            if(nrm2.IsValid())
+            {
+                const Vector3f nn = glm::normalize(v);
+                float p, q;
+                EncodeOctahedralNormal(nn.x, nn.y, nn.z, p, q);
+                nrm2->Write(FloatToHalf(p), FloatToHalf(q));
+            }
+            else if(nrm.IsValid())
             {
                 Vector3f n = glm::normalize(v);
                 nrm->Write(n);
