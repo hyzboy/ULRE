@@ -77,6 +77,12 @@ namespace hgl::ecs
 
         const graph::GeometryDataBuffer* last_data_buffer;  ///<上次绑定的几何数据缓冲
 
+        // === SSBO 顶点输入缓存（per-DrawBatch 顶点 SSBO 绑定——buffer 未变跳过） ===
+        bool ssbo_vertex_input = false;                     ///<材质是否走 SSBO 顶点输入
+        VkBuffer last_ssbo_pos = VK_NULL_HANDLE;            ///<上次绑定的顶点 Position buffer
+        VkBuffer last_ssbo_uv  = VK_NULL_HANDLE;            ///<上次绑定的顶点 UV buffer
+        VkBuffer last_ssbo_ntb = VK_NULL_HANDLE;            ///<上次绑定的顶点 NTB buffer
+
         int first_indirect_draw_index;                      ///<首个间接绘制索引
         uint32_t indirect_draw_count;                       ///<累积的间接绘制数量
         uint32_t indirect_draw_command_offset = 0;          ///<本批次已提交的间接命令数（ICB 命令序号累计）

@@ -58,6 +58,7 @@ public:
 
     bool BindUBO(const AnsiString &name,const IGPUBuffer *gpu,bool dynamic=false);
     bool BindSSBO(const AnsiString &name,const IGPUBuffer *gpu,bool dynamic=false);
+    bool BindSSBO(const AnsiString &name,const VkBuffer buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic=false);
 
     void Update();
 };//class MaterialParameters

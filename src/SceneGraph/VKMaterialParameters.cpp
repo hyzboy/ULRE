@@ -71,6 +71,22 @@ bool MaterialParameters::BindSSBO(const AnsiString &name,const IGPUBuffer *gpu,b
     return(true);
 }
 
+bool MaterialParameters::BindSSBO(const AnsiString &name,const VkBuffer buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic)
+{
+    if(name.IsEmpty()||!buf)
+        return(false);
+
+    const int index=desc_manager->GetSSBO(set_type,name,dynamic);
+
+    if(index<0)
+        return(false);
+
+    if(!descriptor_set->BindSSBO(index,buf,offset,range,dynamic))
+        return(false);
+
+    return(true);
+}
+
 bool MaterialParameters::BindTexture(const int &index,Texture *tex)
 {
     if(index < 0 || !tex)

@@ -121,6 +121,71 @@ namespace hgl::ecs
             {
                 cmd_buf->BindIBO(batch->geom_data_buffer->ibo);
             }
+
+            // SSBO 顶点输入：把当前 DrawBatch 的顶点 buffer 绑到顶点 SSBO 槽
+            //（RDBS 帧前按 batch 首对象绑定——独立 VAB 多对象时其余对象 buffer 错位；
+            //  此处 per-DrawBatch 重绑——VDM 共享 buffer 同值缓存跳过，独立 VAB 每对象正确）
+            if (ssbo_vertex_input)
+            {
+                bool changed = false;
+                const auto *vil = material->GetDefaultVIL();
+                const auto *vif_list = vil ? vil->GetVIFList() : nullptr;
+                const uint32_t vif_count = vil ? vil->GetVertexAttribCount() : 0;
+                const auto *geom_buffer = batch->geom_data_buffer;
+
+                for (uint32_t vi = 0; vi < vif_count; ++vi)
+                {
+                    const graph::VertexInputFormat &vif = vif_list[vi];
+                    const VkBuffer buf = (vif.binding < geom_buffer->vab_count)
+                        ? geom_buffer->vab_list[vif.binding]
+                        : VK_NULL_HANDLE;
+
+                    switch (vif.semantic)
+                    {
+                    case graph::VertexSemantic::Position:
+                        if (buf != last_ssbo_pos)
+                        {
+                            material->BindSSBO(graph::DescriptorSetType::PerObject,
+                                               "VertexPosition", buf, 0, VK_WHOLE_SIZE);
+                            last_ssbo_pos = buf;
+                            changed = true;
+                        }
+                        break;
+                    case graph::VertexSemantic::TexCoord:
+                        if (buf != last_ssbo_uv)
+                        {
+                            material->BindSSBO(graph::DescriptorSetType::PerObject,
+                                               "VertexUV", buf, 0, VK_WHOLE_SIZE);
+                            last_ssbo_uv = buf;
+                            changed = true;
+                        }
+                        break;
+                    case graph::VertexSemantic::Normal:
+                        if (buf != last_ssbo_ntb)
+                        {
+                            material->BindSSBO(graph::DescriptorSetType::PerObject,
+                                               "VertexNTB", buf, 0, VK_WHOLE_SIZE);
+                            last_ssbo_ntb = buf;
+                            changed = true;
+                        }
+                        break;
+                    default: break;
+                    }
+                }
+
+                if (changed)
+                {
+                    auto *mp = material->GetMP(graph::DescriptorSetType::PerObject);
+                    if (mp)
+                    {
+                        mp->Update();
+                        const VkDescriptorSet ds = mp->GetVkDescriptorSet();
+                        cmd_buf->BindDescriptorSets(material->GetPipelineLayout(),
+                                                    static_cast<uint32_t>(graph::DescriptorSetType::PerObject),
+                                                    &ds, 1, nullptr, 0);
+                    }
+                }
+            }
         }
 
         // 提交绘制命令
@@ -204,6 +269,24 @@ namespace hgl::ecs
         indirect_draw_count = 0;
         indirect_draw_command_offset = 0;
         first_indirect_draw_index = -1;
+
+        // SSBO 顶点输入判定（schema 含顶点数据 SSBO 需求）——MeshShader 方向：
+        // 顶点 buffer 按对象绑定（VDM 共享 buffer 同值；独立 VAB 每对象正确）
+        ssbo_vertex_input = false;
+        last_ssbo_pos = VK_NULL_HANDLE;
+        last_ssbo_uv  = VK_NULL_HANDLE;
+        last_ssbo_ntb = VK_NULL_HANDLE;
+        {
+            const auto &schema = material->GetShaderResourceSchema();
+            for (const auto &res : schema.resources)
+            {
+                if (res.semantic == graph::mtl::DescriptorSemantic::VertexPosition)
+                {
+                    ssbo_vertex_input = true;
+                    break;
+                }
+            }
+        }
 
         // L2W / MI descriptor binding is unified in RenderDescriptorBindingSystem.
         // PipelineMaterialRenderer only handles VAB/IBO and draw submission here.

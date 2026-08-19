@@ -108,6 +108,16 @@ bool ShaderProgram::BindSSBO(const DescriptorSetType &type,const AnsiString &nam
     return mp->BindSSBO(name,gpu,dynamic);
 }
 
+bool ShaderProgram::BindSSBO(const DescriptorSetType &type,const AnsiString &name,const VkBuffer buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic)
+{
+    MaterialParameters *mp=GetMP(type);
+
+    if(!mp)
+        return(false);
+
+    return mp->BindSSBO(name,buf,offset,range,dynamic);
+}
+
 bool ShaderProgram::BindTexture(const DescriptorSetType &type,const AnsiString &name,Texture *tex)
 {
     MaterialParameters *mp = GetMP(type);

@@ -99,6 +99,7 @@ public:
 
     bool BindUBO    (const int binding,const VkBufferOwner *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic=false);
     bool BindSSBO   (const int binding,const VkBufferOwner *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic=false);
+    bool BindSSBO   (const int binding,const VkBuffer buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic=false);
 
     bool BindUBO    (const int binding,const IGPUBuffer *gpu,bool dynamic=false);
     bool BindSSBO   (const int binding,const IGPUBuffer *gpu,bool dynamic=false);

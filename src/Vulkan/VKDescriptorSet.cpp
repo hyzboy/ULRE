@@ -242,6 +242,16 @@ bool DescriptorSet::BindSSBO(const int binding,const VkBufferOwner *buf,const Vk
     return UpdateOrAppendBufferBinding(binding, desc_type, DescriptorBufferInfo(buf,offset,range));
 }
 
+bool DescriptorSet::BindSSBO(const int binding,const VkBuffer buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic)
+{
+    if(binding<0||!buf)
+        return(false);
+
+    const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    const VkDescriptorBufferInfo info{buf, offset, range};
+    return UpdateOrAppendBufferBinding(binding, desc_type, info);
+}
+
 bool DescriptorSet::BindUBO(const int binding,const IGPUBuffer *gpu,bool dynamic)
 {
     if(binding<0||!gpu)
