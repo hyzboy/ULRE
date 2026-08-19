@@ -39,7 +39,7 @@ namespace
     {
         GeometryVertexFormat gvf{
             {VertexSemantic::Position, VF_V3F},
-            {VertexSemantic::TexCoord, VF_V2F},
+            {VertexSemantic::TexCoord, VF_V2HF},   // UV RG16F（half×2——4B/顶点，发行版）
             {VertexSemantic::Normal,   VF_V2UN8},   // RG8 最小格式（octahedral uint8——2B/顶点）
             // 不存 Tangent——仅 RG8 Normal（试验：完全不存切线）
         };

@@ -134,7 +134,14 @@ namespace
             // 各数据模块先 include（定义 HGL_*_LOADER 宏），
             // Position 模块最后（LoadVertexData 以 #ifdef 展开全部 loader）
             if (need_uv)
-                out_vertex_input_glsl += "#include \"vertex/s1_uv.glsl\"\n";
+            {
+                // 按 UV 属性格式选解码模块（格式=模块——RG16F 发行版一模块）
+                const auto *uv_attr = geometry.Find(VertexSemantic::TexCoord);
+                if (uv_attr && uv_attr->format == VK_FORMAT_R16G16_SFLOAT)
+                    out_vertex_input_glsl += "#include \"vertex/s1_uv_rg16f.glsl\"\n";
+                else
+                    out_vertex_input_glsl += "#include \"vertex/s1_uv.glsl\"\n";
+            }
             if (need_ntb)
             {
                 // 按 Normal 属性格式选解码模块（格式=模块——发行版压缩格式各一模块）

@@ -36,7 +36,13 @@ namespace hgl::graph::inline_geometry
 
         vab = pc->GetVAB(VAN::TexCoord);
         if(vab)
-            accessor_texcoord.Bind(vab, vertex_offset, vertex_count);
+        {
+            // UV 压缩格式分派：RG16F（R16G16_SFLOAT）→ half×2；否则 V2F
+            if(vab->GetFormat() == VK_FORMAT_R16G16_SFLOAT)
+                accessor_texcoord_2hf.Bind(vab, vertex_offset, vertex_count);
+            else
+                accessor_texcoord.Bind(vab, vertex_offset, vertex_count);
+        }
     }
 
     GeometryBuilder::~GeometryBuilder()

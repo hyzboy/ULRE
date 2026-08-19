@@ -24,6 +24,10 @@ namespace hgl::graph::inline_geometry
         // 由构造函数按 VAB format 分派（VK_FORMAT_R16G16_SFLOAT 时使用）
         BufferAccessor2hf accessor_normal_2hf;
 
+        // 压缩格式 UV 访问器（发行版：UV 存 RG16F——half×2，4B/顶点）
+        // 由构造函数按 VAB format 分派（VK_FORMAT_R16G16_SFLOAT 时使用）
+        BufferAccessor2hf accessor_texcoord_2hf;
+
     public:
         GeometryBuilder(GeometryCreater *pc);
         virtual ~GeometryBuilder();
@@ -101,7 +105,9 @@ namespace hgl::graph::inline_geometry
          */
         inline void WriteTexCoord(float u, float v)
         {
-            if(accessor_texcoord.IsValid())
+            if(accessor_texcoord_2hf.IsValid())
+                accessor_texcoord_2hf->Write(FloatToHalf(u), FloatToHalf(v));
+            else if(accessor_texcoord.IsValid())
                 accessor_texcoord->Write(u, v);
         }
 
