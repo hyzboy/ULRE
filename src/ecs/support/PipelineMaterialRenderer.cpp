@@ -14,6 +14,7 @@
 #include<hgl/vk/VKGlobalSceneUBOSet.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKIndexBuffer.h>
+#include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
@@ -87,7 +88,8 @@ namespace hgl::ecs
     bool PipelineMaterialRenderer::Draw( DrawBatch* batch,
                                             TransformAssignmentBuffer* transform_buffer,
                                             graph::IndirectDrawBuffer* icb_draw,
-                                            graph::IndirectDrawIndexedBuffer* icb_draw_indexed)
+                                            graph::IndirectDrawIndexedBuffer* icb_draw_indexed,
+                                            const MaterialBatch *owner_batch)
     {
         (void)transform_buffer;
 
@@ -173,6 +175,45 @@ namespace hgl::ecs
                     }
                 }
 
+                // geometry 直取（渲染路径的 geom_data_buffer 无 VAB 数据
+                // （vab_count=0——PrimitiveComponent runtime buffer）时的补绑）
+                if (batch->geometry && geom_buffer->vab_count == 0)
+                {
+                    if (auto *vab = batch->geometry->GetVAB(graph::VertexSemantic::Position))
+                    {
+                        const VkBuffer buf = vab->GetVkBuffer();
+                        if (buf != last_ssbo_pos)
+                        {
+                            material->BindSSBO(graph::DescriptorSetType::PerObject,
+                                               "VertexPosition", buf, 0, VK_WHOLE_SIZE);
+                            last_ssbo_pos = buf;
+                            changed = true;
+                        }
+                    }
+                    if (auto *vab = batch->geometry->GetVAB(graph::VertexSemantic::TexCoord))
+                    {
+                        const VkBuffer buf = vab->GetVkBuffer();
+                        if (buf != last_ssbo_uv)
+                        {
+                            material->BindSSBO(graph::DescriptorSetType::PerObject,
+                                               "VertexUV", buf, 0, VK_WHOLE_SIZE);
+                            last_ssbo_uv = buf;
+                            changed = true;
+                        }
+                    }
+                    if (auto *vab = batch->geometry->GetVAB(graph::VertexSemantic::Normal))
+                    {
+                        const VkBuffer buf = vab->GetVkBuffer();
+                        if (buf != last_ssbo_ntb)
+                        {
+                            material->BindSSBO(graph::DescriptorSetType::PerObject,
+                                               "VertexNTB", buf, 0, VK_WHOLE_SIZE);
+                            last_ssbo_ntb = buf;
+                            changed = true;
+                        }
+                    }
+                }
+
                 if (changed)
                 {
                     auto *mp = material->GetMP(graph::DescriptorSetType::PerObject);
@@ -193,6 +234,9 @@ namespace hgl::ecs
                     const VkBuffer ibuf = geom_buffer->ibo->GetVkBuffer();
                     if (ibuf != last_ssbo_index)
                     {
+                        fprintf(stderr, "[DIAG] Draw: material=%p name=%s ibuf=%p mp(PerObject)=%p\n",
+                                (void*)material, material->GetName().c_str(), (void*)ibuf,
+                                (void*)material->GetMP(graph::DescriptorSetType::PerObject));
                         material->BindSSBO(graph::DescriptorSetType::PerObject,
                                            "VertexIndex", ibuf, 0, VK_WHOLE_SIZE);
                         last_ssbo_index = ibuf;
@@ -201,6 +245,9 @@ namespace hgl::ecs
                         if (mp)
                         {
                             mp->Update();
+                            fprintf(stderr, "[DIAG] Draw: re-bind ds=%p layout=%p\n",
+                                    (void*)mp->GetVkDescriptorSet(),
+                                    (void*)material->GetPipelineLayout());
                             const VkDescriptorSet ds = mp->GetVkDescriptorSet();
                             cmd_buf->BindDescriptorSets(material->GetPipelineLayout(),
                                                         static_cast<uint32_t>(graph::DescriptorSetType::PerObject),
@@ -209,12 +256,62 @@ namespace hgl::ecs
                     }
                 }
 
-                // per-draw 段偏移 push constant（index_base=first_index / vertex_base=vertex_offset）
-                const uint32_t pc_data[2] = {
+                // per-draw 段偏移 push constant（index_base=first_index / vertex_base=vertex_offset
+                // / index_format——IBO 可能是 U8/U16/U32——s1_index 按此解码）
+                uint32_t index_format = 1;   // 默认 U16
+                if (geom_buffer->ibo)
+                {
+                    switch (geom_buffer->ibo->GetIndexType())
+                    {
+                        case graph::IndexType::U8:  index_format = 0; break;
+                        case graph::IndexType::U32: index_format = 2; break;
+                        default:                    index_format = 1; break;
+                    }
+                }
+                const uint32_t pc_data[3] = {
                     static_cast<uint32_t>(batch->geom_draw_range->first_index),
-                    static_cast<uint32_t>(batch->geom_draw_range->vertex_offset)
+                    static_cast<uint32_t>(batch->geom_draw_range->vertex_offset),
+                    index_format
                 };
                 cmd_buf->PushConstants(material->GetPipelineLayout(), pc_data, sizeof(pc_data));
+
+                // l2w / index rows 补绑（独立 VAB 场景的 program 实例可能没有
+                // RDBS 预绑——Draw 侧统一补到 material 的 PerObject MP）
+                if (transform_buffer)
+                {
+                    transform_buffer->BindTransform(material);
+                    changed = true;
+                }
+                if (owner_batch)
+                {
+                    if (owner_batch->l2w_index_rows_buffer)
+                    {
+                        material->BindSSBO(graph::DescriptorSetType::PerObject,
+                                           "l2w_index_rows",
+                                           owner_batch->l2w_index_rows_buffer->GetGPUBuffer());
+                        changed = true;
+                    }
+                    if (owner_batch->material_data_index_rows_buffer)
+                    {
+                        material->BindSSBO(graph::DescriptorSetType::PerObject,
+                                           "mtl_data_index_rows",
+                                           owner_batch->material_data_index_rows_buffer->GetGPUBuffer());
+                        changed = true;
+                    }
+                }
+
+                if (changed)
+                {
+                    auto *mp = material->GetMP(graph::DescriptorSetType::PerObject);
+                    if (mp)
+                    {
+                        mp->Update();
+                        const VkDescriptorSet ds = mp->GetVkDescriptorSet();
+                        cmd_buf->BindDescriptorSets(material->GetPipelineLayout(),
+                                                    static_cast<uint32_t>(graph::DescriptorSetType::PerObject),
+                                                    &ds, 1, nullptr, 0);
+                    }
+                }
             }
         }
 
@@ -358,7 +455,7 @@ namespace hgl::ecs
 
         for (uint32_t i = 0; i < batch_count; i++)
         {
-            Draw(batch, transform_buffer, icb_draw, icb_draw_indexed);
+            Draw(batch, transform_buffer, icb_draw, icb_draw_indexed, owner_batch);
             ++batch;
         }
 

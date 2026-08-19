@@ -139,11 +139,11 @@ PipelineLayoutData *VulkanDevice::CreatePipelineLayoutData(const MaterialDescrip
     PipelineLayoutCreateInfo pPipelineLayoutCreateInfo;
     pPipelineLayoutCreateInfo.setLayoutCount            = pld->fin_dsl_count;
     pPipelineLayoutCreateInfo.pSetLayouts               = pld->fin_dsl;
-    // 顶点索引 SSBO（s1_index）：per-draw 段偏移 push constant（index_base + vertex_base 8B）
+    // 顶点索引 SSBO（s1_index）：per-draw 段偏移 push constant（index_base + vertex_base + index_format 12B）
     VkPushConstantRange push_constant_range{};
     push_constant_range.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     push_constant_range.offset     = 0;
-    push_constant_range.size       = 8;
+    push_constant_range.size       = 12;
     pPipelineLayoutCreateInfo.pushConstantRangeCount    = 1;
     pPipelineLayoutCreateInfo.pPushConstantRanges       = &push_constant_range;
 
