@@ -40,7 +40,7 @@ namespace hgl::graph::mtl
         {
             const char *sky_module = nullptr;              // e.g. "sky/sky_atmosphere.glsl"
             const char *direct_lighting_module = nullptr;  // e.g. "lighting/direct_cook_torrance_pbr.glsl"
-            const char *indirect_lighting_module = nullptr;// e.g. "lighting/indirect_simple_ambient.glsl"
+            const char *indirect_lighting_module = nullptr;// e.g. "lighting/indirect_sky_ambient.glsl"
             const char *lighting_algorithm_module = nullptr;// e.g. "lighting/forward_pbr.glsl"
             const char *material_source_module = nullptr;  // e.g. "material/pbr_surface_source.glsl"
             const char *ntb_module = nullptr;              // e.g. "ntb/ntb_tangent_vbo_normalmap.glsl"

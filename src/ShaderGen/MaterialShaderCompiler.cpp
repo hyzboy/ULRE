@@ -543,6 +543,10 @@ ShaderBuildContext *CompileCompositorMaterial(
                 if (!ctx->AddSSBOStruct(stage_bits, SBS_VertexJoint))
                     return FailAfterBuild("failed to add VertexJoint SSBO");
                 break;
+            case DescriptorSemantic::VertexIndex:
+                if (!ctx->AddSSBOStruct(stage_bits, SBS_VertexIndex))
+                    return FailAfterBuild("failed to add VertexIndex SSBO");
+                break;
             default:
                 break;
             }

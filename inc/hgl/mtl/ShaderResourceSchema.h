@@ -171,6 +171,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::VertexUV: return SBS_VertexUV.name;
         case DescriptorSemantic::VertexNTB: return SBS_VertexNTB.name;
         case DescriptorSemantic::VertexJoint: return SBS_VertexJoint.name;
+        case DescriptorSemantic::VertexIndex: return SBS_VertexIndex.name;
         default: return nullptr;
         }
     }

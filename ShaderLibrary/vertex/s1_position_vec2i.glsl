@@ -23,8 +23,11 @@ vec2 Position;
 
 void LoadVertexData()
 {
+#ifdef HGL_INDEX_LOADER
+    HGL_INDEX_LOADER
+#endif
     // 每顶点 1 uint：低 16 位 x、高 16 位 y（int16 符号扩展——算术右移）
-    const uint d = sbo_vertex_position.data[gl_VertexIndex];
+    const uint d = sbo_vertex_position.data[pc_vertex_index.vertex_base + VertexIndexID];
     Position = vec2(float(int(d) << 16 >> 16),
                     float(int(d) >> 16));
 #ifdef HGL_UV_LOADER

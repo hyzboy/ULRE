@@ -903,6 +903,10 @@ namespace hgl::ecs
             // 顶点数据 SSBO（MeshShader 方向：顶点输入统一为 SSBO）
             // 绑定 batch 首个 primitive 的几何 VAB（VDM 大 buffer——同批共享；
             // 独立 VAB 场景按首对象绑定，试点范围）
+            case graph::mtl::DescriptorSemantic::VertexIndex:
+                // 顶点索引 SSBO：PipelineMaterialRenderer per-DrawBatch 自绑
+                //（IBO buffer 绑 VertexIndex 槽——索引非 VAB 语义，RDBS 不做）
+                break;
             case graph::mtl::DescriptorSemantic::VertexPosition:
             case graph::mtl::DescriptorSemantic::VertexUV:
             case graph::mtl::DescriptorSemantic::VertexNTB:
@@ -920,7 +924,6 @@ namespace hgl::ecs
                     default:                                             return graph::VertexSemantic::Unknown;
                     }
                 }(req.semantic);
-
                 const graph::IGPUBuffer *gpu = nullptr;
                 if (batch)
                 {

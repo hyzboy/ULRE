@@ -22,6 +22,6 @@ layout(set=VERTEX_SET, binding=VERTEX_NTB_BINDING, std430, scalar) readonly buff
 
 vec3 Normal;
 
-#define HGL_NTB_LOADER { Normal = sbo_vertex_ntb.data[gl_VertexIndex]; }
+#define HGL_NTB_LOADER { Normal = sbo_vertex_ntb.data[pc_vertex_index.vertex_base + VertexIndexID]; }
 
 #endif // S1_NTB_GLSL

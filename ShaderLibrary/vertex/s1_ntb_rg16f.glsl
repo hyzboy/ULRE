@@ -24,7 +24,7 @@ vec3 Normal;
 #define HGL_NTB_LOADER \
     do \
     { \
-        const vec2 p = unpackHalf2x16(sbo_vertex_ntb.data[gl_VertexIndex]); \
+        const vec2 p = unpackHalf2x16(sbo_vertex_ntb.data[pc_vertex_index.vertex_base + VertexIndexID]); \
         vec3 n = vec3(p.x, p.y, 1.0 - abs(p.x) - abs(p.y)); \
         /* 展开阈值：half 舍入使 z≈0 抖动（±0.005）——误展开会 ±90° 翻转成黑斑 */ \
         if (n.z < -0.005) \

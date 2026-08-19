@@ -226,7 +226,7 @@ void RenderCmdBuffer::DrawIndexedIndirect(  VkBuffer        buffer,
         vkCmdDrawIndexedIndirect(cmd_buf,buffer,offset+i*stride,1,stride);
 }
 
-void RenderCmdBuffer::Draw(const GeometryDataBuffer *geom_data_buffer,const GeometryDrawRange *geom_draw_range,const uint32_t instance_count,const uint32_t first_instance)
+void RenderCmdBuffer::Draw(const GeometryDataBuffer *geom_data_buffer,const GeometryDrawRange *geom_draw_range,const uint32_t instance_count,const uint32_t first_instance,const bool use_indexed)
 {
     //LogVerbose(u"Draw entry");
 
@@ -236,7 +236,7 @@ void RenderCmdBuffer::Draw(const GeometryDataBuffer *geom_data_buffer,const Geom
         return;
     }
 
-    if (geom_data_buffer->ibo)
+    if (use_indexed && geom_data_buffer->ibo)
     {
         //std::cerr << "[RenderCmdBuffer::Draw] Using INDEXED draw" << std::endl;
         //std::cerr << "[RenderCmdBuffer::Draw]   index_count: " << geom_draw_range->index_count << std::endl;
@@ -258,10 +258,18 @@ void RenderCmdBuffer::Draw(const GeometryDataBuffer *geom_data_buffer,const Geom
         //std::cerr << "[RenderCmdBuffer::Draw]   vertex_count: " << geom_draw_range->vertex_count << std::endl;
         //std::cerr << "[RenderCmdBuffer::Draw]   vertex_offset: " << geom_draw_range->vertex_offset << std::endl;
 
+        // SSBO 顶点输入（use_indexed=false）：非索引绘制——顶点数 = 索引数
+        //（每个 gl_VertexIndex 查一次索引表）；firstVertex=0（段偏移走 push constant
+        //  index_base/vertex_base——VDM 大 buffer 段定位在 shader 内完成）
+        const uint32_t vertex_count = use_indexed
+            ? geom_draw_range->vertex_count
+            : geom_draw_range->index_count;
+        const uint32_t vertex_offset = use_indexed ? geom_draw_range->vertex_offset : 0;
+
         vkCmdDraw(          cmd_buf,
-                            geom_draw_range->vertex_count,
+                            vertex_count,
                             instance_count,
-                            geom_draw_range->vertex_offset,
+                            vertex_offset,
                             first_instance);
 
 //        std::cerr << "[RenderCmdBuffer::Draw] vkCmdDraw called" << std::endl;

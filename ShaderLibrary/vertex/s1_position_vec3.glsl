@@ -25,7 +25,10 @@ vec3 Position;
 
 void LoadVertexData()
 {
-    Position = sbo_vertex_position.data[gl_VertexIndex];
+#ifdef HGL_INDEX_LOADER
+    HGL_INDEX_LOADER
+#endif
+    Position = sbo_vertex_position.data[pc_vertex_index.vertex_base + VertexIndexID];
 #ifdef HGL_UV_LOADER
     HGL_UV_LOADER
 #endif

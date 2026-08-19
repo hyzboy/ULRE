@@ -3863,14 +3863,14 @@ namespace
             result.diagnostics.emplace_back("LoadDirectory failed to scan directory");
         else
         {
-            if (file_count != 63)
-                result.diagnostics.emplace_back("LoadDirectory expected 63 file modules, got "
+            if (file_count != 64)
+                result.diagnostics.emplace_back("LoadDirectory expected 64 file modules, got "
                                                 + std::to_string(file_count) + " (4 vertex SSBO modules added)");
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 63;
+            const int expected_count = 64;
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));

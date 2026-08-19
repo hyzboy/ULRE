@@ -22,6 +22,7 @@ namespace hgl::graph
     constexpr const int kPerObjectBindingVertexUV       = 5;    ///< 顶点 UV SSBO
     constexpr const int kPerObjectBindingVertexNTB      = 6;    ///< 顶点 NTB SSBO
     constexpr const int kPerObjectBindingVertexJoint    = 7;    ///< 顶点 Joint SSBO
+    constexpr const int kPerObjectBindingVertexIndex    = 8;    ///< 顶点索引 SSBO（非索引绘制——索引数据统一 SSBO）
 
     enum class DescriptorSetType:int
     {

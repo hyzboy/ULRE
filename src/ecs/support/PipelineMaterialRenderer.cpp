@@ -13,6 +13,7 @@
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/vk/VKGlobalSceneUBOSet.h>
 #include<hgl/vk/VKCommandBuffer.h>
+#include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
@@ -116,8 +117,9 @@ namespace hgl::ecs
                 }
             }
 
-            // 如果有索引缓冲，也需要绑定
-            if (batch->geom_data_buffer->ibo)
+            // 如果有索引缓冲，也需要绑定（SSBO 顶点输入材质除外——索引数据走
+            // 顶点索引 SSBO，非索引绘制——不再 vkCmdBindIndexBuffer）
+            if (batch->geom_data_buffer->ibo && !ssbo_vertex_input)
             {
                 cmd_buf->BindIBO(batch->geom_data_buffer->ibo);
             }
@@ -183,6 +185,36 @@ namespace hgl::ecs
                                                     &ds, 1, nullptr, 0);
                     }
                 }
+
+                // 顶点索引 SSBO（非索引绘制——索引数据统一 SSBO）：
+                // IBO buffer 绑 VertexIndex 槽（VDM 共享/独立 IBO 均正确——段偏移走 push constant）
+                if (geom_buffer->ibo)
+                {
+                    const VkBuffer ibuf = geom_buffer->ibo->GetVkBuffer();
+                    if (ibuf != last_ssbo_index)
+                    {
+                        material->BindSSBO(graph::DescriptorSetType::PerObject,
+                                           "VertexIndex", ibuf, 0, VK_WHOLE_SIZE);
+                        last_ssbo_index = ibuf;
+
+                        auto *mp = material->GetMP(graph::DescriptorSetType::PerObject);
+                        if (mp)
+                        {
+                            mp->Update();
+                            const VkDescriptorSet ds = mp->GetVkDescriptorSet();
+                            cmd_buf->BindDescriptorSets(material->GetPipelineLayout(),
+                                                        static_cast<uint32_t>(graph::DescriptorSetType::PerObject),
+                                                        &ds, 1, nullptr, 0);
+                        }
+                    }
+                }
+
+                // per-draw 段偏移 push constant（index_base=first_index / vertex_base=vertex_offset）
+                const uint32_t pc_data[2] = {
+                    static_cast<uint32_t>(batch->geom_draw_range->first_index),
+                    static_cast<uint32_t>(batch->geom_draw_range->vertex_offset)
+                };
+                cmd_buf->PushConstants(pc_data, sizeof(pc_data));
             }
         }
 
@@ -202,9 +234,11 @@ namespace hgl::ecs
         }
         else
         {
-            // 直接绘制：立即提交
+            // 直接绘制：立即提交（SSBO 顶点输入材质非索引绘制——索引数据走
+            // 顶点索引 SSBO，段偏移在 shader 内经 push constant 定位）
             cmd_buf->Draw(batch->geom_data_buffer, batch->geom_draw_range,
-                         batch->instance_count, batch->first_instance);
+                         batch->instance_count, batch->first_instance,
+                         !ssbo_vertex_input);
         }
 
         return true;
@@ -274,6 +308,7 @@ namespace hgl::ecs
         last_ssbo_pos = VK_NULL_HANDLE;
         last_ssbo_uv  = VK_NULL_HANDLE;
         last_ssbo_ntb = VK_NULL_HANDLE;
+        last_ssbo_index = VK_NULL_HANDLE;
         {
             const auto &schema = material->GetShaderResourceSchema();
             for (const auto &res : schema.resources)

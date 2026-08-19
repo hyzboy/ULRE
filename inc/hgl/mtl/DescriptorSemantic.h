@@ -37,6 +37,7 @@ namespace hgl::graph::mtl
         VertexUV,
         VertexNTB,
         VertexJoint,
+        VertexIndex,
 
         Custom,
     };

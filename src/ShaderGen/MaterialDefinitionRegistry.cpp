@@ -133,6 +133,8 @@ namespace
 
             // 各数据模块先 include（定义 HGL_*_LOADER 宏），
             // Position 模块最后（LoadVertexData 以 #ifdef 展开全部 loader）
+            // 索引模块最先（HGL_INDEX_LOADER——顶点数据间接读取 + push constant 段偏移）
+            out_vertex_input_glsl += "#include \"vertex/s1_index.glsl\"\n";
             if (need_uv)
             {
                 // 按 UV 属性格式选解码模块（格式=模块——RG16F 发行版一模块）

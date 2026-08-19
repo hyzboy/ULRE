@@ -54,6 +54,9 @@
 #ifndef VERTEX_JOINT_BINDING
 #define VERTEX_JOINT_BINDING 7
 #endif
+#ifndef VERTEX_INDEX_BINDING
+#define VERTEX_INDEX_BINDING 8
+#endif
 
 #ifndef L2W_BINDING
 #define L2W_BINDING 0
