@@ -214,16 +214,19 @@ namespace hgl::ecs
                     static_cast<uint32_t>(batch->geom_draw_range->first_index),
                     static_cast<uint32_t>(batch->geom_draw_range->vertex_offset)
                 };
-                cmd_buf->PushConstants(pc_data, sizeof(pc_data));
+                cmd_buf->PushConstants(material->GetPipelineLayout(), pc_data, sizeof(pc_data));
             }
         }
 
         // 提交绘制命令
-        if (batch->geom_data_buffer->vdm)
+        if (batch->geom_data_buffer->vdm && !ssbo_vertex_input)
         {
             // 间接绘制：累积命令。命令偏移取本批次 ICB 的命令序号累计，
             // 不能用 first_instance（实例索引）——vdm/非 vdm 混排时二者脱节，
             // 会读取到未写入/错误的 ICB 命令。
+            // 注：SSBO 顶点输入材质不走间接——段偏移（index_base/vertex_base）
+            // 经 push constant per-draw 传递，间接累积提交时只有最后一条命令
+            // 的 push constant 生效（多段偏移冲突）；直接绘制 per-draw 正确。
             if (indirect_draw_count == 0)
             {
                 first_indirect_draw_index =

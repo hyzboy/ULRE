@@ -243,6 +243,7 @@ static bool ValidateDefinitionCapabilitySubset(
         case DescriptorSemantic::VertexUV:
         case DescriptorSemantic::VertexNTB:
         case DescriptorSemantic::VertexJoint:
+        case DescriptorSemantic::VertexIndex:
             allowed = definition.vertex_node_config.transport == VertexTransportMode::SSBO;
             break;
 

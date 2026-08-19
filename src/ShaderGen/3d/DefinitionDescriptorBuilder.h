@@ -89,6 +89,8 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
             descriptor_builder_common::PushVertexNTB(descriptors, vertex_stage);
         // Position 恒有（S1 位置模块）
         descriptor_builder_common::PushVertexPosition(descriptors, vertex_stage);
+        // 索引恒有（s1_index 无条件 include——非索引绘制查表）
+        descriptor_builder_common::PushVertexIndex(descriptors, vertex_stage);
     }
     descriptor_builder_common::AppendManifestUBODescriptors(descriptors, manifest);
     if (!descriptor_builder_common::AppendManifestSSBODescriptors(descriptors, manifest)

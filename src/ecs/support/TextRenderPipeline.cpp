@@ -272,7 +272,16 @@ namespace hgl::ecs
                 if (auto* vab = geom->GetTexCoordVAB())
                     res.material->BindSSBO(graph::DescriptorSetType::PerObject,
                                            "VertexUV", vab->GetGPUBuffer());
+                // 顶点索引 SSBO（非索引绘制——索引数据统一 SSBO）
+                if (auto* ibo = geom->GetIBO())
+                    res.material->BindSSBO(graph::DescriptorSetType::PerObject,
+                                           "VertexIndex", ibo->GetVkBuffer(), 0, VK_WHOLE_SIZE);
             }
+
+            // per-draw 段偏移 push constant（text 独立 VAB——段偏移恒 0，
+            // 但 shader 静态使用 pc_vertex_index——必须设置）
+            const uint32_t pc_data[2] = {0, 0};
+            cmd->PushConstants(res.material->GetPipelineLayout(), pc_data, sizeof(pc_data));
 
             cmd->BindDescriptorSets(res.material);
 
@@ -299,7 +308,8 @@ namespace hgl::ecs
             }
 
             cmd->BindDataBuffer(res.data_buffer);
-            cmd->Draw(res.data_buffer, res.draw_range);
+            // 非索引绘制（SSBO 顶点输入——索引数据走 VertexIndex 槽，段偏移 push constant）
+            cmd->Draw(res.data_buffer, res.draw_range, 1, 0, false);
         }
     }
 

@@ -158,6 +158,12 @@ public:
         vkCmdPushConstants(cmd_buf,pipeline_layout,(VkShaderStageFlagBits)shader_stage_bit,offset,size,pValues);
     }
 
+    // 显式 layout 版（pipeline_layout 成员可能未设置——owner_batch 单集绑定分支）
+    void PushConstants(VkPipelineLayout layout,const void *data,const uint32_t size)
+    {
+        vkCmdPushConstants(cmd_buf,layout,(VkShaderStageFlagBits)ShaderStage::Vertex,0,size,data);
+    }
+
     void PushConstants(const void *data,const uint32_t size)                        {vkCmdPushConstants(cmd_buf,pipeline_layout,(VkShaderStageFlagBits)ShaderStage::Vertex,0,       size,data);}
     void PushConstants(const void *data,const uint32_t offset,const uint32_t size)  {vkCmdPushConstants(cmd_buf,pipeline_layout,(VkShaderStageFlagBits)ShaderStage::Vertex,offset,  size,data);}
 
