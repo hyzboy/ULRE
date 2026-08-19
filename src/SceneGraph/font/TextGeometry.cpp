@@ -3,6 +3,7 @@
 #include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/graph/geo/VKGeometryData.h>
+#include<hgl/graph/geo/GeometryCreater.h>   // FloatToHalf（UV RG16F 写入）
 
 namespace hgl::graph
 {
@@ -11,7 +12,7 @@ namespace hgl::graph
         GeometryVertexFormat gvf;
 
         gvf.Add(VertexSemantic::Position, VK_FORMAT_R16G16_SINT, 2, sizeof(int16) * 2);
-        gvf.Add(VertexSemantic::TexCoord, VK_FORMAT_R32G32_SFLOAT, 2, sizeof(float) * 2);
+        gvf.Add(VertexSemantic::TexCoord, VK_FORMAT_R16G16_SFLOAT, 2, sizeof(uint16) * 2);   // UV RG16F（half×2）
 
         return gvf;
     }
@@ -53,5 +54,19 @@ namespace hgl::graph
     }
 
     bool TextGeometry::WriteVertex    (const int16 *fp){if(!fp)return(false);if(!vab_position )return(false);return vab_position  ->Write(fp,draw_char_count);}
-    bool TextGeometry::WriteTexCoord  (const float *fp){if(!fp)return(false);if(!vab_tex_coord)return(false);return vab_tex_coord ->Write(fp,draw_char_count);}
+
+    bool TextGeometry::WriteTexCoord  (const float *fp)
+    {
+        if(!fp)return(false);
+        if(!vab_tex_coord)return(false);
+
+        // UV RG16F：float → half 位模式（VAB::Write 是原始字节拷贝——无格式转换）
+        std::vector<uint16> half_data;
+        half_data.resize(draw_char_count * 2);
+
+        for(uint32_t i = 0; i < draw_char_count * 2; ++i)
+            half_data[i] = FloatToHalf(fp[i]);
+
+        return vab_tex_coord->Write(half_data.data(), draw_char_count);
+    }
 }//namespace hgl::graph

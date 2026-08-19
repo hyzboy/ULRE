@@ -1037,7 +1037,7 @@ namespace
 
         const GeometryVertexFormat text_geometry{
             {VertexSemantic::Position, VF_V2I16},   // 与 CreateTextGeometryVertexFormat 一致（R16G16_SINT）
-            {VertexSemantic::TexCoord, VF_V2F}
+            {VertexSemantic::TexCoord, VF_V2HF}     // 与 CreateTextGeometryVertexFormat 一致（R16G16_SFLOAT）
         };
         check_preview(BUILTIN_MTL_DEF_TEXT, text_geometry, 2);
 
@@ -1067,7 +1067,7 @@ namespace
                 if (abi.position_format != VF_V2I16
                  || abi.vertex_entries.GetCount() != 0
                  || source.find("#include \"vertex/s1_position_vec2i.glsl\"") == std::string::npos
-                 || source.find("#include \"vertex/s1_uv.glsl\"") == std::string::npos)
+                 || source.find("#include \"vertex/s1_uv_rg16f.glsl\"") == std::string::npos)
                 {
                     result.diagnostics.emplace_back(
                         "resolved vertex ABI does not match Geometry");
