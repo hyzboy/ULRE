@@ -66,9 +66,10 @@ namespace hgl::graph::inline_geometry
                 if(vp){ *vp++=x; *vp++=y; *vp++=z; }
                 if(np){ *np++=nx; *np++=ny; *np++=nz; }
                 if(tp){
-                    // 壁面：切线 = 法线绕Z旋90度；端盖：给稳定切线(1,0,0)
+                    // 壁面：切线 = 法线绕Z旋90度；端盖：给稳定切线(1,0,0)；w=1（V4F 含 sign）
                     if(fabsf(nz) > 0.5f){ *tp++ = 1.0f; *tp++ = 0.0f; *tp++ = 0.0f; }
                     else                 { *tp++ = -ny;  *tp++ =  nx;  *tp++ = 0.0f; }
+                    *tp++ = 1.0f;
                 }
                 if(uvp){ *uvp++=u; *uvp++=v; }
             };

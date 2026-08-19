@@ -40,7 +40,8 @@ namespace
         GeometryVertexFormat gvf{
             {VertexSemantic::Position, VF_V3F},
             {VertexSemantic::TexCoord, VF_V2F},
-            {VertexSemantic::Normal,   VF_V2UN8},   // RG8 最小格式（octahedral uint8——2B/顶点）
+            {VertexSemantic::Normal,   VF_V2HF},    // RG16F 压缩（octahedral——4B/顶点）
+            {VertexSemantic::Tangent,  VF_V4F},     // 切线保持 RGB32F + w（完整）
         };
         return gvf;
     }
@@ -321,6 +322,7 @@ private:
             cci.segments_x = 1;
             cci.segments_y = 1;
             cci.segments_z = 1;
+            cci.ntb = NTBType::NormalTangent;   // 完整 NTB（切线含 w——验证最高质量链路）
 
             auto geom = create_geometry([&](GeometryCreater* pc)
             {
