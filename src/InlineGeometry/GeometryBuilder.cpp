@@ -29,14 +29,8 @@ namespace hgl::graph::inline_geometry
         }
 
         vab = pc->GetVAB(VAN::Tangent);
-        if(vab)
-        {
-            // 切线 V4F（含 w 分量）→ 4 分量访问器；V3F → 3 分量
-            if(vab->GetFormat() == VK_FORMAT_R32G32B32A32_SFLOAT)
-                accessor_tangent_4f.Bind(vab, vertex_offset, vertex_count);
-            else
-                accessor_tangent.Bind(vab, vertex_offset, vertex_count);
-        }
+        if(vab && vab->GetFormat() == VK_FORMAT_R32G32B32A32_SFLOAT)
+            accessor_tangent_4f.Bind(vab, vertex_offset, vertex_count);   // 切线唯一格式 V4F（含 w）
 
         vab = pc->GetVAB(VAN::TexCoord);
         if(vab)

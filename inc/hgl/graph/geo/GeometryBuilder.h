@@ -16,8 +16,7 @@ namespace hgl::graph::inline_geometry
 
         BufferAccessor3f accessor_position;
         BufferAccessor3f accessor_normal;
-        BufferAccessor3f accessor_tangent;
-        BufferAccessor4f accessor_tangent_4f;   // 切线 V4F（含 w 分量）
+        BufferAccessor4f accessor_tangent_4f;   // 切线 V4F（含 w 分量——唯一切线访问器）
         BufferAccessor2f accessor_texcoord;
 
         // 压缩格式法线访问器（发行版：Normal 存 RG16F——xy 半浮点，z 由 shader 重建）
@@ -85,8 +84,6 @@ namespace hgl::graph::inline_geometry
 
             if(accessor_tangent_4f.IsValid())
                 accessor_tangent_4f->Write(tangent.x, tangent.y, tangent.z, tangent.w);
-            else if(accessor_tangent.IsValid())
-                accessor_tangent->Write(tangent.x, tangent.y, tangent.z);   // V3F——w 无存储位
             // binormal：GeometryVertexFormat 无 Binormal 语义——暂不写入（未来扩展）
         }
 
@@ -114,8 +111,9 @@ namespace hgl::graph::inline_geometry
         {
             WriteVertex(px, py, pz);
             WriteNTB(nx, ny, nz);
-            if(accessor_tangent.IsValid())
-                accessor_tangent->Write(tx, ty, tz);
+            // 切线写入（V4F 唯一格式——w 固定 1；调用方无面朝向信息时默认右手系）
+            if(accessor_tangent_4f.IsValid())
+                accessor_tangent_4f->Write(tx, ty, tz, 1.0f);
             WriteTexCoord(u, v);
         }
 
@@ -127,7 +125,7 @@ namespace hgl::graph::inline_geometry
         /**
          * 检查是否有切线缓冲
          */
-        bool HasTangents() const { return accessor_tangent.IsValid(); }
+        bool HasTangents() const { return accessor_tangent_4f.IsValid(); }
 
         /**
          * 检查是否有纹理坐标缓冲
