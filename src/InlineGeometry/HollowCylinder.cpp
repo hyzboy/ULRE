@@ -5,6 +5,7 @@
 #include<hgl/vk/VertexAttribDataAccess.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/GeometryBuilder.h>
 #include <algorithm>
 #include <cmath>
 
@@ -45,33 +46,20 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("HollowCylinder", numberVertices, numberIndices))
             return nullptr;
 
-        // 直接获取 VAB 并手动 Map 来访问原始指针（高性能路径）
-        VAB *vab_pos = pc->GetVAB(VAN::Position);
-        VAB *vab_nrm = pc->GetVAB(VAN::Normal);
-        VAB *vab_tan = pc->GetVAB(VAN::Tangent);
-        VAB *vab_uv  = pc->GetVAB(VAN::TexCoord);
+        // 使用 GeometryBuilder：写入端按 VAB 实际格式自动分派
+        // （V3F → 3f 直写；RG16F → octahedral + half；RG8 → octahedral + uint8 量化）
+        GeometryBuilder builder(pc);
 
-        const int32_t vertex_offset = pc->GetVertexOffset();
-        const uint32_t vertex_count = pc->GetVertexCount();
-
-        float *vp  = vab_pos ? (float*)vab_pos->Map(vertex_offset, vertex_count) : nullptr;
-        float *np  = vab_nrm ? (float*)vab_nrm->Map(vertex_offset, vertex_count) : nullptr;
-        float *tp  = vab_tan ? (float*)vab_tan->Map(vertex_offset, vertex_count) : nullptr;
-        float *uvp = vab_uv  ? (float*)vab_uv->Map(vertex_offset, vertex_count)  : nullptr;
+        if(!builder.IsValid())
+            return nullptr;
 
         const float dtheta = (2.0f * std::numbers::pi_v<float>) / float(slices);
 
-        auto write_vertex = [&](float x,float y,float z, float nx, float ny, float nz, float u, float v)
+        // 切线：壁面 = 位置沿角度增加方向（U 方向，外/内壁一致）；端盖 = 稳定切线 (1,0,0)
+        // w 分量由 WriteFullVertex 固定写 1.0f（V4F 含 sign）
+        auto write_vertex = [&](float x,float y,float z, float nx, float ny, float nz, float tx, float ty, float u, float v)
             {
-                if(vp){ *vp++=x; *vp++=y; *vp++=z; }
-                if(np){ *np++=nx; *np++=ny; *np++=nz; }
-                if(tp){
-                    // 壁面：切线 = 法线绕Z旋90度；端盖：给稳定切线(1,0,0)；w=1（V4F 含 sign）
-                    if(fabsf(nz) > 0.5f){ *tp++ = 1.0f; *tp++ = 0.0f; *tp++ = 0.0f; }
-                    else                 { *tp++ = -ny;  *tp++ =  nx;  *tp++ = 0.0f; }
-                    *tp++ = 1.0f;
-                }
-                if(uvp){ *uvp++=u; *uvp++=v; }
+                builder.WriteFullVertex(x, y, z, nx, ny, nz, tx, ty, 0.0f, u, v);
             };
 
         // Track base indices
@@ -85,11 +73,13 @@ namespace hgl::graph::inline_geometry
                     // wall normal: outward from surface
                     float nx = outer? cx : -cx;
                     float ny = outer? sy : -sy;
+                    // 切线：位置沿角度增加的导数方向 (-sin,-cos)（= (sy,-cx)——与 CreateCylinder 一致）
+                    float tx = sy, ty = -cx;
                     float u = float(i) / float(slices);
                     // bottom
-                    write_vertex(radius*cx, radius*sy, -he, nx, ny, 0.0f, u, 0.0f);
+                    write_vertex(radius*cx, radius*sy, -he, nx, ny, 0.0f, tx, ty, u, 0.0f);
                     // top
-                    write_vertex(radius*cx, radius*sy,  he, nx, ny, 0.0f, u, 1.0f);
+                    write_vertex(radius*cx, radius*sy,  he, nx, ny, 0.0f, tx, ty, u, 1.0f);
                 }
             };
 
@@ -107,8 +97,8 @@ namespace hgl::graph::inline_geometry
                     float u = (float(i) / float(slices)) * hcci->cap_angular_tiles;
                     float v_outer = hcci->cap_radial_tiles; // at r1
                     float v_inner = 0.0f;                   // at r0
-                    write_vertex(r1*cx, r1*sy, z, nx, ny, nz, u, v_outer);
-                    write_vertex(r0*cx, r0*sy, z, nx, ny, nz, u, v_inner);
+                    write_vertex(r1*cx, r1*sy, z, nx, ny, nz, 1.0f, 0.0f, u, v_outer);
+                    write_vertex(r0*cx, r0*sy, z, nx, ny, nz, 1.0f, 0.0f, u, v_inner);
                 }
             };
 
@@ -158,7 +148,7 @@ namespace hgl::graph::inline_geometry
                     else
                     {   // 底盖：法线-Z，从 -Z 看为正面
                         *ip++ = (decltype(*ip))o0; *ip++ = (decltype(*ip))o1; *ip++ = (decltype(*ip))i0;
-                        *ip++ = (decltype(*ip))i0; *ip++ = (decltype(*ip))i1; *ip++ = (decltype(*ip))o1;
+                        *ip++ = (decltype(*ip))i0; *ip++ = (decltype(*ip))o1; *ip++ = (decltype(*ip))i1;
                     }
                 }
                 return ip;
@@ -192,12 +182,6 @@ namespace hgl::graph::inline_geometry
             ip = emit_cap_indices(ip, cap_bottom_start, false);
         }
         else return nullptr;
-
-        // 手动 Unmap VAB
-        if(vab_pos) vab_pos->Unmap();
-        if(vab_nrm) vab_nrm->Unmap();
-        if(vab_tan) vab_tan->Unmap();
-        if(vab_uv)  vab_uv->Unmap();
 
         return pc->CreateWithAABB(
             math::Vector3f(-r1, -r1, -he),
