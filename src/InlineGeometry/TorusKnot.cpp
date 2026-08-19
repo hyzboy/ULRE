@@ -135,7 +135,7 @@ namespace hgl::graph::inline_geometry
                 else
                 {
                     builder.WriteVertex(pos_x, pos_y, pos_z);
-                    builder.WriteNormal(normal_x, normal_y, normal_z);
+                    builder.WriteNTB(normal_x, normal_y, normal_z);
                     builder.WriteTexCoord(tex_u, tex_v);
                 }
             }

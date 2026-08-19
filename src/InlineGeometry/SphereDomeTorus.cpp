@@ -80,7 +80,7 @@ namespace hgl::graph::inline_geometry
                 else
                 {
                     builder.WriteVertex(x, y, z);
-                    builder.WriteNormal(x, y, z);
+                    builder.WriteNTB(x, y, z);
                     builder.WriteTexCoord(tex_x, tex_y);
                 }
             }

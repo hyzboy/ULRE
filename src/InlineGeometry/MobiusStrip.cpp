@@ -90,7 +90,7 @@ namespace hgl::graph::inline_geometry
                 else
                 {
                     builder.WriteVertex(pos_x, pos_y, pos_z);
-                    builder.WriteNormal(rotated_normal_x, rotated_normal_y, rotated_normal_z);
+                    builder.WriteNTB(rotated_normal_x, rotated_normal_y, rotated_normal_z);
                     builder.WriteTexCoord(tex_u, tex_v);
                 }
             }

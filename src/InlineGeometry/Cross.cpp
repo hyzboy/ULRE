@@ -89,19 +89,19 @@ namespace hgl::graph::inline_geometry
             else
             {
                 builder.WriteVertex(x0, y0, z0);
-                builder.WriteNormal(nx, ny, nz);
+                builder.WriteNTB(nx, ny, nz);
                 builder.WriteTexCoord(0.0f, 0.0f);
 
                 builder.WriteVertex(x1, y1, z1);
-                builder.WriteNormal(nx, ny, nz);
+                builder.WriteNTB(nx, ny, nz);
                 builder.WriteTexCoord(1.0f, 0.0f);
 
                 builder.WriteVertex(x2, y2, z2);
-                builder.WriteNormal(nx, ny, nz);
+                builder.WriteNTB(nx, ny, nz);
                 builder.WriteTexCoord(1.0f, 1.0f);
 
                 builder.WriteVertex(x3, y3, z3);
-                builder.WriteNormal(nx, ny, nz);
+                builder.WriteNTB(nx, ny, nz);
                 builder.WriteTexCoord(0.0f, 1.0f);
             }
         };

@@ -221,12 +221,12 @@ namespace hgl::graph::inline_geometry
 
                 // 底面顶点
                 builder.WriteVertex(v3d.x, v3d.y, v3d.z);
-                builder.WriteNormal(sideNormal.x, sideNormal.y, sideNormal.z);
+                builder.WriteNTB(sideNormal.x, sideNormal.y, sideNormal.z);
 
                 // 顶面顶点
                 Vector3f topVertex = v3d + extrudeOffset;
                 builder.WriteVertex(topVertex.x, topVertex.y, topVertex.z);
-                builder.WriteNormal(sideNormal.x, sideNormal.y, sideNormal.z);
+                builder.WriteNTB(sideNormal.x, sideNormal.y, sideNormal.z);
             }
         }
 
@@ -239,7 +239,7 @@ namespace hgl::graph::inline_geometry
                 Vector3f v3d = right * v2d.x + up * v2d.y;
 
                 builder.WriteVertex(v3d.x, v3d.y, v3d.z);
-                builder.WriteNormal(bottomNormal.x, bottomNormal.y, bottomNormal.z);
+                builder.WriteNTB(bottomNormal.x, bottomNormal.y, bottomNormal.z);
             }
 
             // 顶面顶点
@@ -250,7 +250,7 @@ namespace hgl::graph::inline_geometry
                 Vector3f topVertex = v3d + extrudeOffset;
 
                 builder.WriteVertex(topVertex.x, topVertex.y, topVertex.z);
-                builder.WriteNormal(topNormal.x, topNormal.y, topNormal.z);
+                builder.WriteNTB(topNormal.x, topNormal.y, topNormal.z);
             }
         }
 
