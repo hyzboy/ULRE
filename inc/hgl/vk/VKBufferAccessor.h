@@ -484,6 +484,8 @@ using BufferAccessor4f   = BufferAccessor<VB4f>;
 using BufferAccessor2i   = BufferAccessor<VB2i>;
 using BufferAccessor3i   = BufferAccessor<VB3i>;
 using BufferAccessor4i   = BufferAccessor<VB4i>;
+using BufferAccessor2i16 = BufferAccessor<VB2i16>;   // RG16i 位置（int16 raw——2D 压缩）
+using BufferAccessor2u16 = BufferAccessor<VB2u16>;   // RG16UI 位置（uint16 raw——2D 压缩）
 
 // 向后兼容别名 / Backward compatibility aliases
 // 推荐逐步迁移到 BufferAccessor，但旧代码可以继续使用这些别名

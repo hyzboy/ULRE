@@ -162,11 +162,14 @@ namespace
             case VertexInputMode::Vec3Position:
                 out_vertex_input_glsl += "#include \"vertex/s1_position_vec3.glsl\"\n";
                 break;
+            case VertexInputMode::Vec2IntPosition:
+                out_vertex_input_glsl += "#include \"vertex/s1_position_vec2i.glsl\"\n";
+                break;
             case VertexInputMode::Procedural:
                 out_vertex_input_glsl += "#include \"vertex/s1_input_procedural.glsl\"\n";
                 break;
             default:
-                // Vec2/Vec2Int SSBO 模块待建（T0.2a 仅 Vec3Position 试点）
+                // Vec2（float）SSBO 模块待建
                 return false;
             }
         }

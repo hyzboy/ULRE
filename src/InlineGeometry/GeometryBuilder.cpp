@@ -16,7 +16,13 @@ namespace hgl::graph::inline_geometry
 
         vab = pc->GetVAB(VAN::Position);
         if(vab)
-            accessor_position.Bind(vab, vertex_offset, vertex_count);
+        {
+            // 位置压缩分派：RG16i（R16G16_SINT）→ int16×2；否则 V3F
+            if(vab->GetFormat() == VK_FORMAT_R16G16_SINT)
+                accessor_position_2i16.Bind(vab, vertex_offset, vertex_count);
+            else
+                accessor_position.Bind(vab, vertex_offset, vertex_count);
+        }
 
         vab = pc->GetVAB(VAN::Normal);
         if(vab)

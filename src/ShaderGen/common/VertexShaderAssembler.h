@@ -96,7 +96,8 @@ namespace hgl::graph::mtl
 
         // Determine effective vertex input mode from position_format or node config.
         VertexInputMode effective_input = node_cfg.input;
-        if (position_format == VK_FORMAT_R32G32_SINT || position_format == VK_FORMAT_R32G32_UINT)
+        if (position_format == VK_FORMAT_R32G32_SINT || position_format == VK_FORMAT_R32G32_UINT ||
+            position_format == VK_FORMAT_R16G16_SINT || position_format == VK_FORMAT_R16G16_UINT)
             effective_input = VertexInputMode::Vec2IntPosition;
         else if (position_format == VK_FORMAT_R32G32_SFLOAT)
             effective_input = VertexInputMode::Vec2Position;

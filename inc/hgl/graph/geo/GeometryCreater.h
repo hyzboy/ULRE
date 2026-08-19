@@ -45,6 +45,15 @@ inline uint8 QuantizeU8(float v)
 }
 
 /**
+ * float → int16 量化（RG16i/RG16UI 2D 位置压缩用——输入像素坐标转 int16 写入）
+ */
+inline int16_t FloatToI16(float v)
+{
+    const int32_t q = (int32_t)roundf(v);
+    return (int16_t)(q < -32768 ? -32768 : (q > 32767 ? 32767 : q));
+}
+
+/**
  * 法线 octahedral 编码（2 分量保存完整方向——z 符号保留，RG16F/RG8 压缩用）
  * 输出 p,q ∈ [-1,1]；GPU 解码：n = vec3(p, 1-|p|-|q|)；if(n.z<0) n.xy=(1-|n.yx|)*sign(n.xy)；normalize
  */

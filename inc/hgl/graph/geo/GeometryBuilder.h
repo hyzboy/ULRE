@@ -15,6 +15,7 @@ namespace hgl::graph::inline_geometry
         GeometryCreater *creater;
 
         BufferAccessor3f accessor_position;
+        BufferAccessor2i16 accessor_position_2i16;  // RG16i 2D 位置（int16 raw——像素坐标压缩）
         BufferAccessor3f accessor_normal;
         BufferAccessor2u8 accessor_normal_2u8;  // RG8 压缩（octahedral → uint8 量化）
         BufferAccessor4f accessor_tangent_4f;   // 切线 V4F（含 w 分量——唯一切线访问器）
@@ -44,7 +45,9 @@ namespace hgl::graph::inline_geometry
          */
         inline void WriteVertex(float x, float y, float z)
         {
-            if(accessor_position.IsValid())
+            if(accessor_position_2i16.IsValid())
+                accessor_position_2i16->Write(FloatToI16(x), FloatToI16(y));   // 2D：z 分量丢弃（RG16i）
+            else if(accessor_position.IsValid())
                 accessor_position->Write(x, y, z);
         }
 
