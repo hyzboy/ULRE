@@ -36,7 +36,7 @@ void main()
 {
     SurfaceInput si;
     si.worldPos     = fragDirection;   // sky dome 里 worldPos 存放方向
-    si.worldNormal  = vec3(0.0, 0.0, 1.0);
+    si.worldNormal  = normalize(fragDirection);   // 球心=0：Position 方向即法线（SkyMinimal 只有 Position 无 Normal——推导）
     si.uv0          = vec2(0.0);
     si.uv1          = vec2(0.0);
     si.vertexColor  = vec4(1.0);

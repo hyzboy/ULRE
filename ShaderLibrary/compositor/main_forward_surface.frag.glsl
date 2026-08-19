@@ -32,7 +32,7 @@ SCENE_CAMERA_UBO;
 SCENE_SKY_UBO;
 #include "sky/sky_atmosphere.glsl"
 #include "lighting/direct_cook_torrance_pbr.glsl"
-#include "lighting/indirect_simple_ambient.glsl"
+#include "lighting/indirect_sky_ambient.glsl"
 #endif
 
 #include "lighting/forward_pbr.glsl"

@@ -600,7 +600,7 @@ namespace hgl::graph::mtl
                 ? "lighting/direct_cook_torrance_pbr.glsl"
                 : nullptr,
             scene_lighting
-                ? "lighting/indirect_simple_ambient.glsl"
+                ? "lighting/indirect_sky_ambient.glsl"
                 : nullptr,
             needs_sky_module
                 ? "sky/sky_atmosphere.glsl"

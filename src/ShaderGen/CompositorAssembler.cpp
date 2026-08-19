@@ -175,7 +175,7 @@ namespace hgl::graph::mtl
                 : "lighting/direct_cook_torrance_pbr.glsl",
             module_options.indirect_lighting_module && module_options.indirect_lighting_module[0]
                 ? module_options.indirect_lighting_module
-                : "lighting/indirect_simple_ambient.glsl",
+                : "lighting/indirect_sky_ambient.glsl",
             module_options.lighting_algorithm_module && module_options.lighting_algorithm_module[0]
                 ? module_options.lighting_algorithm_module
                 : "lighting/forward_pbr.glsl",
@@ -193,7 +193,7 @@ namespace hgl::graph::mtl
         {
             "sky/sky_atmosphere.glsl",
             "lighting/direct_cook_torrance_pbr.glsl",
-            "lighting/indirect_simple_ambient.glsl",
+            "lighting/indirect_sky_ambient.glsl",
             "lighting/forward_pbr.glsl",
             "material/pbr_surface_source.glsl",
             "ntb/ntb_tangent_vbo_normalmap.glsl",

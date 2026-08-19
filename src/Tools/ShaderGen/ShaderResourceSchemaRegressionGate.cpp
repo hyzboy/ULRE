@@ -1217,7 +1217,7 @@ namespace
         lighting_options.direct_lighting_module =
             "lighting/direct_cook_torrance_pbr.glsl";
         lighting_options.indirect_lighting_module =
-            "lighting/indirect_simple_ambient.glsl";
+            "lighting/indirect_sky_ambient.glsl";
         lighting_options.lighting_algorithm_module = "lighting/forward_flat.glsl";
         lighting_options.material_source_module = "material/pbr_texturearray_source.glsl";
         lighting_options.ntb_module = "ntb/ntb_texturearray_normalmap.glsl";
@@ -1234,7 +1234,7 @@ namespace
                 "#include \"lighting/direct_cook_torrance_pbr.glsl\"")
                 == std::string::npos
          || scheduled_lighting.fragment_glsl.find(
-                "#include \"lighting/indirect_simple_ambient.glsl\"")
+                "#include \"lighting/indirect_sky_ambient.glsl\"")
                 == std::string::npos
          || scheduled_lighting.fragment_glsl.find(
                 "#include \"lighting/forward_flat.glsl\"")

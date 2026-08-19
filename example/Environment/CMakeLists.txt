@@ -15,4 +15,6 @@ CreateProject(AtmosphereSkyMinimal              AtmosphereSkyMinimal.cpp)
 
 CreateProject(AtmosphereSkySunGizmo             AtmosphereSkySunGizmo.cpp)
 
+CreateProject(AtmosphereSkyAmbient              AtmosphereSkyAmbient.cpp)
+
 CreateProject(BasicLitSunDirection              BasicLitSunDirection.cpp)
