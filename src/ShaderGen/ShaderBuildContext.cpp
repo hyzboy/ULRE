@@ -214,6 +214,32 @@ bool ShaderBuildContext::AddSSBOStruct(const uint32_t flag_bits,const ShaderBuff
     return AddSSBO(flag_bits,ss.set_type,ss.struct_name,ss.name);
 }
 
+// —— 语义化 SSBO 注册（MeshShader 方向：按用途明确区分）——
+bool ShaderBuildContext::AddSSBOVertex(const uint32_t flag_bits,const ShaderBufferSource &ss)
+{
+    return AddSSBOStruct(flag_bits,ss);
+}
+
+bool ShaderBuildContext::AddSSBOVertexIndex(const uint32_t flag_bits)
+{
+    return AddSSBOStruct(flag_bits,SBS_VertexIndex);
+}
+
+bool ShaderBuildContext::AddSSBOMtlData(const uint32_t flag_bits,const std::string &struct_name,const std::string &name,const int data_slot)
+{
+    return AddSSBO(flag_bits,DescriptorSetType::Material,struct_name,name,data_slot);
+}
+
+bool ShaderBuildContext::AddSSBOMtlIndex(const uint32_t flag_bits)
+{
+    return AddSSBO(flag_bits,SBS_MaterialDataIndexRows.set_type,SBS_MaterialDataIndexRows.struct_name,SBS_MaterialDataIndexRows.name);
+}
+
+bool ShaderBuildContext::AddSSBOTextureLayer(const uint32_t flag_bits,const int binding)
+{
+    return AddSSBO(flag_bits,DescriptorSetType::Material,SBS_MaterialTextureLayerRows.struct_name,SBS_MaterialTextureLayerRows.name,binding);
+}
+
 bool ShaderBuildContext::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
 {
     if(shader_stage_flag_bits==0)return(false);

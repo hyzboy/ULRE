@@ -188,7 +188,7 @@ static bool AddMaterialDataSlotDescriptor(ShaderBuildContext &ctx,
     if (!ctx.AddStruct(struct_name, glsl_codes))
         return false;
 
-    return ctx.AddSSBO(stage_bits, DescriptorSetType::Material, struct_name, decl.name, int(data_slot));
+    return ctx.AddSSBOMtlData(stage_bits, struct_name, decl.name, int(data_slot));
 }
 
 static bool ValidateDefinitionCapabilitySubset(
@@ -504,11 +504,7 @@ ShaderBuildContext *CompileCompositorMaterial(
                 // 同一公式覆盖 use_slot_decls 两种路径，避免特例字面量。
                 // P1-2c：mtl_data_index_rows 已迁出 Material 集，texture_layer_rows
                 // 紧随数据槽之后（binding = N），不再 +1。
-                if (!ctx->AddSSBO(stage_bits,
-                                  DescriptorSetType::Material,
-                                  SBS_MaterialTextureLayerRows.struct_name,
-                                  SBS_MaterialTextureLayerRows.name,
-                                  int(declared_material_data_slot_count)))
+                if (!ctx->AddSSBOTextureLayer(stage_bits, int(declared_material_data_slot_count)))
                 {
                     return FailAfterBuild("failed to add MaterialTextureLayerRows SSBO");
                 }
@@ -518,10 +514,7 @@ ShaderBuildContext *CompileCompositorMaterial(
                     return FailAfterBuild("failed to add MaterialDataIndexRows struct");
                 // P1-2c：mtl_data_index_rows 迁至 PerObject 集，binding 由固定常量表
                 // kPerObjectBinding* 确定（走固定名路径，与 l2w_index_rows 同构）。
-                if (!ctx->AddSSBO(stage_bits,
-                                  SBS_MaterialDataIndexRows.set_type,
-                                  SBS_MaterialDataIndexRows.struct_name,
-                                  SBS_MaterialDataIndexRows.name))
+                if (!ctx->AddSSBOMtlIndex(stage_bits))
                 {
                     return FailAfterBuild("failed to add MaterialDataIndexRows SSBO");
                 }
@@ -529,23 +522,23 @@ ShaderBuildContext *CompileCompositorMaterial(
             // 顶点数据 SSBO（MeshShader 方向：顶点输入统一为 SSBO）——
             // PerObject 集固定 binding（kPerObjectBindingVertex*），走固定名路径
             case DescriptorSemantic::VertexPosition:
-                if (!ctx->AddSSBOStruct(stage_bits, SBS_VertexPosition))
+                if (!ctx->AddSSBOVertex(stage_bits, SBS_VertexPosition))
                     return FailAfterBuild("failed to add VertexPosition SSBO");
                 break;
             case DescriptorSemantic::VertexUV:
-                if (!ctx->AddSSBOStruct(stage_bits, SBS_VertexUV))
+                if (!ctx->AddSSBOVertex(stage_bits, SBS_VertexUV))
                     return FailAfterBuild("failed to add VertexUV SSBO");
                 break;
             case DescriptorSemantic::VertexNTB:
-                if (!ctx->AddSSBOStruct(stage_bits, SBS_VertexNTB))
+                if (!ctx->AddSSBOVertex(stage_bits, SBS_VertexNTB))
                     return FailAfterBuild("failed to add VertexNTB SSBO");
                 break;
             case DescriptorSemantic::VertexJoint:
-                if (!ctx->AddSSBOStruct(stage_bits, SBS_VertexJoint))
+                if (!ctx->AddSSBOVertex(stage_bits, SBS_VertexJoint))
                     return FailAfterBuild("failed to add VertexJoint SSBO");
                 break;
             case DescriptorSemantic::VertexIndex:
-                if (!ctx->AddSSBOStruct(stage_bits, SBS_VertexIndex))
+                if (!ctx->AddSSBOVertexIndex(stage_bits))
                     return FailAfterBuild("failed to add VertexIndex SSBO");
                 break;
             default:

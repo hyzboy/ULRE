@@ -161,6 +161,13 @@ namespace hgl::graph::mtl
 
             bool AddSSBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss);
 
+            // —— 语义化 SSBO 注册（MeshShader 方向：按用途明确区分）——
+            bool AddSSBOVertex(const uint32_t flag_bits,const ShaderBufferSource &ss);      ///< 顶点数据（Position/UV/NTB/Joint）
+            bool AddSSBOVertexIndex(const uint32_t flag_bits);                              ///< 顶点索引
+            bool AddSSBOMtlData(const uint32_t flag_bits,const std::string &struct_name,const std::string &name,const int data_slot);   ///< 材质数据槽
+            bool AddSSBOMtlIndex(const uint32_t flag_bits);                                 ///< 材质数据行表
+            bool AddSSBOTextureLayer(const uint32_t flag_bits,const int binding);           ///< 纹理层表
+
             bool CreateShaderDirect();               ///< 直接编译各阶段的 FinalGLSL 到 SPV
         };//class ShaderBuildContext
 }//namespace hgl::graph::mtl
