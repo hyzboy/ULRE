@@ -124,7 +124,7 @@ namespace hgl::graph::inline_geometry
                 float           xy_tex_coord[] = {  0.0f, 0.0f,        1.0f, 0.0f,          1.0f, 1.0f,          0.0f, 1.0f        };
         const   Vector3f  xy_normal(0.0f,0.0f,1.0f);
         const   Vector3f  xy_tangent(1.0f,0.0f,0.0f);
-        const   uint16          indices[]={0,1,2,0,2,3};
+        const   uint32          indices[]={0,1,2,0,2,3};
 
         if(!pc)return(nullptr);
 

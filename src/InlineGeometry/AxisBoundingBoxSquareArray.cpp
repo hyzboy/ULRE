@@ -38,7 +38,7 @@ namespace hgl::graph::inline_geometry
         const float points[]={  -0.5,-0.5, 0.5,     0.5,-0.5,0.5,   0.5,-0.5,-0.5,  -0.5,-0.5,-0.5,
                                 -0.5, 0.5, 0.5,     0.5, 0.5,0.5,   0.5, 0.5,-0.5,  -0.5, 0.5,-0.5};
 
-        const uint16 indices[]={
+        const uint32 indices[]={
             0,1,    1,2,    2,3,    3,0,
             4,5,    5,6,    6,7,    7,4,
             0,4,    1,5,    2,6,    3,7
@@ -68,7 +68,8 @@ namespace hgl::graph::inline_geometry
             }
         }
 
-        pc->WriteIBO<uint16>(indices);
+        if(!pc->WriteIBO<uint32>(indices))
+            return nullptr;
 
         return pc->CreateWithAABB(
             math::Vector3f(-0.5,-0.5,-0.5),

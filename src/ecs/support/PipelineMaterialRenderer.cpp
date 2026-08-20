@@ -250,14 +250,6 @@ namespace hgl::ecs
                     }
                 }
 
-                // per-draw 段偏移 push constant（index_base=first_index / vertex_base=vertex_offset——
-                // 引擎统一 uint32 索引，s1_index 按 uint 数组直读）
-                const uint32_t pc_data[2] = {
-                    static_cast<uint32_t>(batch->geom_draw_range->first_index),
-                    static_cast<uint32_t>(batch->geom_draw_range->vertex_offset)
-                };
-                cmd_buf->PushConstants(material->GetPipelineLayout(), pc_data, sizeof(pc_data));
-
                 // l2w / index rows 补绑（独立 VAB 场景的 program 实例可能没有
                 // RDBS 预绑——Draw 侧统一补到 material 的 PerObject MP）
                 if (transform_buffer)
@@ -296,6 +288,17 @@ namespace hgl::ecs
                     }
                 }
             }
+        }
+
+        // per-draw 段偏移 push constant（每 DrawBatch 必推——VDM 共享 buffer 各模型
+        // 段偏移不同；间接累积提交无法 per-draw——SSBO 材质直接绘制）
+        if (ssbo_vertex_input)
+        {
+            const uint32_t pc_data[2] = {
+                static_cast<uint32_t>(batch->geom_draw_range->first_index),
+                static_cast<uint32_t>(batch->geom_draw_range->vertex_offset)
+            };
+            cmd_buf->PushConstants(material->GetPipelineLayout(), pc_data, sizeof(pc_data));
         }
 
         // 提交绘制命令
