@@ -77,6 +77,15 @@ namespace hgl::graph::inline_geometry
                                           tangent.x, tangent.y, tangent.z,
                                           tex_x, tex_y);
                 }
+                else
+                {
+                    // 无 Tangent 的 gvf（如 SingleSphereMaterialSwitch）：WriteFullVertex
+                    // 内部按 accessor 有效性跳过 tangent 写入——不写则顶点数据全空
+                    builder.WriteFullVertex(x, y, z,
+                                          x, y, z,  // normal same as position for sphere
+                                          0.0f, 0.0f, 0.0f,
+                                          tex_x, tex_y);
+                }
             }
         }
 

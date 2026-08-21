@@ -148,6 +148,14 @@ namespace hgl::graph::inline_geometry
                                           tangent_x, tangent_y, tangent_z,
                                           tex_u, tex_v);
                 }
+                else
+                {
+                    // 无 Tangent 的 gvf：WriteFullVertex 内部按 accessor 有效性跳过 tangent
+                    builder.WriteFullVertex(pos_x, pos_y, pos_z,
+                                          normal_x, normal_y, normal_z,
+                                          0.0f, 0.0f, 0.0f,
+                                          tex_u, tex_v);
+                }
             }
         }
 
