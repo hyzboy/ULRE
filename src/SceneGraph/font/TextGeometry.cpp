@@ -49,6 +49,18 @@ namespace hgl::graph
 
         geometry_data->CreateAllVAB();
 
+        // identity IBO：SSBO 顶点输入（text_2d transport=ssbo——s1_index 查表直通
+        // gl_VertexIndex）必需——否则 sbo_index 无绑定（no resource）+ 绘制 vertexCount=0
+        geometry_data->InitIBO(max_count, IndexType::U32, "TextIBO");
+        if(auto *ibo=geometry_data->GetIBO())
+        {
+            std::vector<uint32> identity(max_count);
+            for(uint32_t i=0;i<max_count;++i)
+                identity[i]=i;
+
+            ibo->Write(identity.data(),max_count);
+        }
+
         vab_position    =geometry_data->GetVAB(VAN::Position);
         vab_tex_coord   =geometry_data->GetVAB(VAN::TexCoord);
     }
