@@ -66,6 +66,12 @@ namespace
 //            VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME,
 
             VK_KHR_SPIRV_1_4_EXTENSION_NAME,
+
+            // SSBO 8/16 位数据（Luminance/Color 压缩格式直读——uint8/uint16 数组）
+            // 特性在 VkPhysicalDeviceVulkan12Features 中启用（Vulkan 1.2 提升）
+            VK_KHR_8BIT_STORAGE_EXTENSION_NAME,
+            VK_KHR_16BIT_STORAGE_EXTENSION_NAME,
+            VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME,
         };
 
         for(const char *ext_name:require_ext_list)
@@ -275,7 +281,19 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family,
         // 使 uint[256] 紧凑打包（4 字节步长），与 C++ 端 1024 字节结构对齐。
         vk12_features.scalarBlockLayout = dev12.scalarBlockLayout;
 
+        // VK_KHR_8bit_storage：SSBO 顶点输入支持 uint8 数据（Vulkan12Features 字段）
+        vk12_features.storageBuffer8BitAccess                 = dev12.storageBuffer8BitAccess;
+        vk12_features.uniformAndStorageBuffer8BitAccess       = dev12.uniformAndStorageBuffer8BitAccess;
+
         create_info.pNext = &vk12_features;
+
+        // VK_KHR_16bit_storage（独立结构——Vulkan12Features 不含 16bit storage 字段）
+        VkPhysicalDevice16BitStorageFeatures storage16_features{};
+        storage16_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES;
+        storage16_features.pNext = const_cast<void*>(static_cast<const void*>(create_info.pNext));
+        storage16_features.storageBuffer16BitAccess           = physical_device->GetFeatures16().storageBuffer16BitAccess;
+        storage16_features.uniformAndStorageBuffer16BitAccess = physical_device->GetFeatures16().uniformAndStorageBuffer16BitAccess;
+        create_info.pNext = &storage16_features;
     }
 
 

@@ -87,6 +87,12 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
             // Build feature chain based on device's supported API version
             void** ppNext=&features2.pNext;
 
+            // VK_KHR_16bit_storage（Vulkan 1.0 提升）：独立结构，未并入 11/12/13/14
+            features16.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES;
+            features16.pNext=nullptr;
+            *ppNext=&features16;
+            ppNext=&features16.pNext;
+
             if(version_major > 1 || version_minor >= 1)
             {
                 features11.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;

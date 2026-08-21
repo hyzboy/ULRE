@@ -39,6 +39,7 @@ class VulkanPhyDevice
     VkPhysicalDeviceFeatures            features;
     VkPhysicalDeviceVulkan11Features    features11;
     VkPhysicalDeviceVulkan12Features    features12;
+    VkPhysicalDevice16BitStorageFeatures features16;
     VkPhysicalDeviceVulkan13Features    features13;
     VkPhysicalDeviceVulkan14Features    features14;
 
@@ -71,6 +72,7 @@ public:
     const VkPhysicalDeviceFeatures &        GetFeatures10       ()const{return features;}
     const VkPhysicalDeviceVulkan11Features &GetFeatures11       ()const{return features11;}
     const VkPhysicalDeviceVulkan12Features &GetFeatures12       ()const{return features12;}
+    const VkPhysicalDevice16BitStorageFeatures &GetFeatures16   ()const{return features16;}
     const VkPhysicalDeviceVulkan13Features &GetFeatures13       ()const{return features13;}
     const VkPhysicalDeviceVulkan14Features &GetFeatures14       ()const{return features14;}
 
