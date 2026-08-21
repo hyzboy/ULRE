@@ -66,26 +66,24 @@ namespace hgl::graph::inline_geometry
                 }
 
                 // Calculate tangent using CMMATH quaternion functions
+                float tangent_x = 0.0f, tangent_y = 0.0f, tangent_z = 0.0f;
+
                 if(builder.HasTangents())
                 {
                     Quatf quat = QuatFromAxisAngle(360.0f * tex_x, AxisVector::Y);
                     Matrix4f matrix = ToMatrix(quat);
                     Vector3f tangent = TransformDirection(matrix, helpVector);
 
-                    builder.WriteFullVertex(x, y, z,
-                                          x, y, z,  // normal same as position for sphere
-                                          tangent.x, tangent.y, tangent.z,
-                                          tex_x, tex_y);
+                    tangent_x = tangent.x;
+                    tangent_y = tangent.y;
+                    tangent_z = tangent.z;
                 }
-                else
-                {
-                    // 无 Tangent 的 gvf（如 SingleSphereMaterialSwitch）：WriteFullVertex
-                    // 内部按 accessor 有效性跳过 tangent 写入——不写则顶点数据全空
-                    builder.WriteFullVertex(x, y, z,
-                                          x, y, z,  // normal same as position for sphere
-                                          0.0f, 0.0f, 0.0f,
-                                          tex_x, tex_y);
-                }
+
+                // 无条件写入——WriteFullVertex 内部按 accessor 有效性跳过 tangent
+                builder.WriteFullVertex(x, y, z,
+                                      x, y, z,  // normal same as position for sphere
+                                      tangent_x, tangent_y, tangent_z,
+                                      tex_x, tex_y);
             }
         }
 

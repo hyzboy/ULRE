@@ -141,21 +141,11 @@ namespace hgl::graph::inline_geometry
                 const float tex_u = float(i) / float(nU);
                 const float tex_v = float(j) / float(nV);
 
-                if(builder.HasTangents())
-                {
-                    builder.WriteFullVertex(pos_x, pos_y, pos_z,
-                                          normal_x, normal_y, normal_z,
-                                          tangent_x, tangent_y, tangent_z,
-                                          tex_u, tex_v);
-                }
-                else
-                {
-                    // 无 Tangent 的 gvf：WriteFullVertex 内部按 accessor 有效性跳过 tangent
-                    builder.WriteFullVertex(pos_x, pos_y, pos_z,
-                                          normal_x, normal_y, normal_z,
-                                          0.0f, 0.0f, 0.0f,
-                                          tex_u, tex_v);
-                }
+                // 无条件写入——WriteFullVertex 内部按 accessor 有效性跳过 tangent
+                builder.WriteFullVertex(pos_x, pos_y, pos_z,
+                                      normal_x, normal_y, normal_z,
+                                      tangent_x, tangent_y, tangent_z,
+                                      tex_u, tex_v);
             }
         }
 
