@@ -36,22 +36,23 @@ namespace hgl::graph::inline_geometry
 
         if(lum.IsValid())
         {
+            // Luminance 与 Position 顶点一一对应：每行线 2 顶点、每列线 2 顶点，
+            // 主网格线（row%sub_count==0）用 sub_lum（加亮）、子网格线用 lum（暗线）。
+            // 修复：之前只为主网格线写值（数量<顶点数）→ 其余顶点未初始化（0）
             for(uint row=0;row<=pgci->grid_size.Height();row++)
             {
-                if((row%pgci->sub_count.Height())==0)
-                {
-                    lum->Write(pgci->sub_lum);
-                    lum->Write(pgci->sub_lum);
-                }
+                const uint8 lum_val=(row%pgci->sub_count.Height()==0)?pgci->sub_lum:pgci->lum;
+
+                lum->Write(lum_val);
+                lum->Write(lum_val);
             }
 
             for(uint col=0;col<=pgci->grid_size.Width();col++)
             {
-                if((col%pgci->sub_count.Width())==0)
-                {
-                    lum->Write(pgci->sub_lum);
-                    lum->Write(pgci->sub_lum);
-                }
+                const uint8 lum_val=(col%pgci->sub_count.Width()==0)?pgci->sub_lum:pgci->lum;
+
+                lum->Write(lum_val);
+                lum->Write(lum_val);
             }
         }
 
@@ -93,22 +94,21 @@ namespace hgl::graph::inline_geometry
 
         if(lum.IsValid())
         {
+            // Luminance 与 Position 顶点一一对应（同 CreatePlaneGrid2D 修复）
             for(uint row=0;row<=pgci->grid_size.Height();row++)
             {
-                if((row%pgci->sub_count.Height())==0)
-                {
-                    lum->Write(pgci->sub_lum);
-                    lum->Write(pgci->sub_lum);
-                }
+                const uint8 lum_val=(row%pgci->sub_count.Height()==0)?pgci->sub_lum:pgci->lum;
+
+                lum->Write(lum_val);
+                lum->Write(lum_val);
             }
 
             for(uint col=0;col<=pgci->grid_size.Width();col++)
             {
-                if((col%pgci->sub_count.Width())==0)
-                {
-                    lum->Write(pgci->sub_lum);
-                    lum->Write(pgci->sub_lum);
-                }
+                const uint8 lum_val=(col%pgci->sub_count.Width()==0)?pgci->sub_lum:pgci->lum;
+
+                lum->Write(lum_val);
+                lum->Write(lum_val);
             }
         }
 
