@@ -171,6 +171,24 @@ namespace hgl::ecs
                             changed = true;
                         }
                         break;
+                    case graph::VertexSemantic::Color:
+                        if (buf != last_ssbo_color)
+                        {
+                            material->BindSSBO(graph::DescriptorSetType::PerObject,
+                                               "VertexColor", buf, 0, VK_WHOLE_SIZE);
+                            last_ssbo_color = buf;
+                            changed = true;
+                        }
+                        break;
+                    case graph::VertexSemantic::Luminance:
+                        if (buf != last_ssbo_luminance)
+                        {
+                            material->BindSSBO(graph::DescriptorSetType::PerObject,
+                                               "VertexLuminance", buf, 0, VK_WHOLE_SIZE);
+                            last_ssbo_luminance = buf;
+                            changed = true;
+                        }
+                        break;
                     default: break;
                     }
                 }
@@ -209,6 +227,28 @@ namespace hgl::ecs
                             material->BindSSBO(graph::DescriptorSetType::PerObject,
                                                "VertexNTB", buf, 0, VK_WHOLE_SIZE);
                             last_ssbo_ntb = buf;
+                            changed = true;
+                        }
+                    }
+                    if (auto *vab = batch->geometry->GetVAB(graph::VertexSemantic::Color))
+                    {
+                        const VkBuffer buf = vab->GetVkBuffer();
+                        if (buf != last_ssbo_color)
+                        {
+                            material->BindSSBO(graph::DescriptorSetType::PerObject,
+                                               "VertexColor", buf, 0, VK_WHOLE_SIZE);
+                            last_ssbo_color = buf;
+                            changed = true;
+                        }
+                    }
+                    if (auto *vab = batch->geometry->GetVAB(graph::VertexSemantic::Luminance))
+                    {
+                        const VkBuffer buf = vab->GetVkBuffer();
+                        if (buf != last_ssbo_luminance)
+                        {
+                            material->BindSSBO(graph::DescriptorSetType::PerObject,
+                                               "VertexLuminance", buf, 0, VK_WHOLE_SIZE);
+                            last_ssbo_luminance = buf;
                             changed = true;
                         }
                     }
@@ -294,9 +334,10 @@ namespace hgl::ecs
         // 段偏移不同；间接累积提交无法 per-draw——SSBO 材质直接绘制）
         if (ssbo_vertex_input)
         {
-            const uint32_t pc_data[2] = {
+            const uint32_t pc_data[3] = {
                 static_cast<uint32_t>(batch->geom_draw_range->first_index),
-                static_cast<uint32_t>(batch->geom_draw_range->vertex_offset)
+                static_cast<uint32_t>(batch->geom_draw_range->vertex_offset),
+                batch->geom_draw_range->index_count > 0 ? 1u : 0u    // is_indexed：几何有 IBO 走索引绘制（查表）
             };
             cmd_buf->PushConstants(material->GetPipelineLayout(), pc_data, sizeof(pc_data));
         }

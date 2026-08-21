@@ -110,6 +110,7 @@ private:
         clock_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
         clock_recipe.domain = "Clock";
         clock_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
+        clock_recipe.vertex_node_config.transport = graph::mtl::VertexTransportMode::SSBO;   // 材质 TOML transport=ssbo——recipe 显式覆盖需同步
         graph::mtl::UpsertRecipeSSBOAssetBinding(clock_recipe,
                                                  graph::mtl::DefaultMaterialDataSlotName,
                                                  mtl_data_ssbo_accessor->GetSSBOBinding());
@@ -127,7 +128,7 @@ private:
             return false;
 
         GeometryCreater pc(device, CreateClockGeometryVertexFormat(), buffer_manager);
-        pc.Init("TriangleForClock", VERTEX_COUNT);
+        pc.Init("TriangleForClock", VERTEX_COUNT);   // 非索引几何：无 IBO（gl_VertexIndex 直通）
         if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data))
             return false;
 

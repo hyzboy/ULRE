@@ -30,6 +30,8 @@ namespace
             if (strcmp(name, "VertexNTB") == 0)        { out_binding = kPerObjectBindingVertexNTB;      return true; }
             if (strcmp(name, "VertexJoint") == 0)      { out_binding = kPerObjectBindingVertexJoint;    return true; }
             if (strcmp(name, "VertexIndex") == 0)      { out_binding = kPerObjectBindingVertexIndex;    return true; }
+            if (strcmp(name, "VertexColor") == 0)      { out_binding = kPerObjectBindingVertexColor;   return true; }
+            if (strcmp(name, "VertexLuminance") == 0)  { out_binding = kPerObjectBindingVertexLuminance; return true; }
             return false;
 
         case DescriptorSetType::Material:

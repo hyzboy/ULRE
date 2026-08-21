@@ -174,6 +174,24 @@ inline void PushVertexJoint(std::vector<SerializedDescriptorEntry> &v, const uin
     });
 }
 
+inline void PushVertexColor(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
+{
+    v.push_back({
+        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
+        SBS_VertexColor.name, SBS_VertexColor.struct_name, nullptr, DescriptorSemantic::VertexColor,
+        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::VertexColor, DescriptorSemanticLayer::SSBO
+    });
+}
+
+inline void PushVertexLuminance(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
+{
+    v.push_back({
+        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
+        SBS_VertexLuminance.name, SBS_VertexLuminance.struct_name, nullptr, DescriptorSemantic::VertexLuminance,
+        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::VertexLuminance, DescriptorSemanticLayer::SSBO
+    });
+}
+
 inline void PushVertexIndex(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
     v.push_back({

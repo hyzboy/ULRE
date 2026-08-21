@@ -33,6 +33,12 @@ namespace hgl::graph::mtl
     constexpr const ShaderBufferSource SBS_VertexJoint{
         DescriptorSetType::PerObject, "VertexJoint", "VertexJointData"
     };
+    constexpr const ShaderBufferSource SBS_VertexColor{
+        DescriptorSetType::PerObject, "VertexColor", "VertexColorData"
+    };
+    constexpr const ShaderBufferSource SBS_VertexLuminance{
+        DescriptorSetType::PerObject, "VertexLuminance", "VertexLuminanceData"
+    };
     constexpr const ShaderBufferSource SBS_VertexIndex{
         DescriptorSetType::PerObject, "VertexIndex", "VertexIndexData"
     };

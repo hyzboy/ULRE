@@ -70,7 +70,7 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
     if (definition.vertex_node_config.transport == VertexTransportMode::SSBO)
     {
         const uint32_t vertex_stage = uint32_t(VK_SHADER_STAGE_VERTEX_BIT);
-        bool need_uv = false, need_ntb = false;
+        bool need_uv = false, need_ntb = false, need_color = false, need_luminance = false;
         for (int i = 0; i < definition.vertex_semantic_requirements.GetCount(); ++i)
         {
             const auto &requirement = definition.vertex_semantic_requirements[i];
@@ -80,6 +80,8 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
             case GLSLCodeModuleSemantic::Normal:
             case GLSLCodeModuleSemantic::Tangent:
             case GLSLCodeModuleSemantic::Binormal: need_ntb = true; break;
+            case GLSLCodeModuleSemantic::Color: need_color = true; break;
+            case GLSLCodeModuleSemantic::Luminance: need_luminance = true; break;
             default: break;
             }
         }
@@ -87,6 +89,10 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
             descriptor_builder_common::PushVertexUV(descriptors, vertex_stage);
         if (need_ntb)
             descriptor_builder_common::PushVertexNTB(descriptors, vertex_stage);
+        if (need_color)
+            descriptor_builder_common::PushVertexColor(descriptors, vertex_stage);
+        if (need_luminance)
+            descriptor_builder_common::PushVertexLuminance(descriptors, vertex_stage);
         // Position 恒有（S1 位置模块）
         descriptor_builder_common::PushVertexPosition(descriptors, vertex_stage);
         // 索引恒有（s1_index 无条件 include——非索引绘制查表）

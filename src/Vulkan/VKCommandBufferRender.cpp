@@ -258,12 +258,13 @@ void RenderCmdBuffer::Draw(const GeometryDataBuffer *geom_data_buffer,const Geom
         //std::cerr << "[RenderCmdBuffer::Draw]   vertex_count: " << geom_draw_range->vertex_count << std::endl;
         //std::cerr << "[RenderCmdBuffer::Draw]   vertex_offset: " << geom_draw_range->vertex_offset << std::endl;
 
-        // SSBO 顶点输入（use_indexed=false）：非索引绘制——顶点数 = 索引数
-        //（每个 gl_VertexIndex 查一次索引表）；firstVertex=0（段偏移走 push constant
-        //  index_base/vertex_base——VDM 大 buffer 段定位在 shader 内完成）
-        const uint32_t vertex_count = use_indexed
-            ? geom_draw_range->vertex_count
-            : geom_draw_range->index_count;
+        // SSBO 顶点输入：非索引绘制（vkCmdDraw）——gl_VertexIndex 语义：
+        //   有 IBO 的几何：每个索引一次 vs（查表 sbo_index[gl_VertexIndex]→索引值）——
+        //                   vertexCount = index_count（漏则丢尾部索引——如 cube 丢 2 面）
+        //   无 IBO 的几何：顶点直通（gl_VertexIndex = 顶点序号）——vertexCount = vertex_count
+        const uint32_t vertex_count = (geom_draw_range->index_count > 0)
+            ? geom_draw_range->index_count
+            : geom_draw_range->vertex_count;
         const uint32_t vertex_offset = use_indexed ? geom_draw_range->vertex_offset : 0;
 
         vkCmdDraw(          cmd_buf,

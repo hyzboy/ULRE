@@ -1102,13 +1102,13 @@ namespace
             }};
             MaterialResolvedVertexABI rg16_abi{};
             MaterialResolvedVertexABI rg32_abi{};
+            // SSBO 顶点输入时代：无 VIL attribute entries（vertex_entries 空），
+            // RG16F/RG32F 共享同一 s1_position_vec2 模块（GLSL 相同）
             if (!build_abi(pure2d_definition, rg16_geometry, rg16_abi)
              || !build_abi(pure2d_definition, rg32_geometry, rg32_abi)
              || rg16_abi.vertex_input_glsl != rg32_abi.vertex_input_glsl
-             || rg16_abi.vertex_entries.GetCount() != 1
-             || rg32_abi.vertex_entries.GetCount() != 1
-             || rg16_abi.vertex_entries[0].format != VF_V2HF
-             || rg32_abi.vertex_entries[0].format != VF_V2F)
+             || !rg16_abi.vertex_entries.IsEmpty()
+             || !rg32_abi.vertex_entries.IsEmpty())
             {
                 result.diagnostics.emplace_back("RG16F/RG32F resolved ABI sharing failed");
             }
@@ -1139,11 +1139,13 @@ namespace
             };
             MaterialResolvedVertexABI float_normal_abi{};
             MaterialResolvedVertexABI packed_normal_abi{};
+            // SSBO 时代：packed normal（A2BGR10）走独立解码模块（s1_ntb_a2bgr10）——
+            // GLSL 与 float normal（s1_ntb）不同；无 VIL attribute entries
             if (!build_abi(normal_definition, float_normal_geometry, float_normal_abi)
              || !build_abi(normal_definition, packed_normal_geometry, packed_normal_abi)
              || float_normal_abi.vertex_input_glsl == packed_normal_abi.vertex_input_glsl
-             || packed_normal_abi.vertex_entries.GetCount() != 2
-             || packed_normal_abi.vertex_entries[1].format != PF_A2BGR10UN)
+             || !float_normal_abi.vertex_entries.IsEmpty()
+             || !packed_normal_abi.vertex_entries.IsEmpty())
             {
                 result.diagnostics.emplace_back("packed normal resolved ABI variant failed");
             }
@@ -3863,14 +3865,14 @@ namespace
             result.diagnostics.emplace_back("LoadDirectory failed to scan directory");
         else
         {
-            if (file_count != 64)
-                result.diagnostics.emplace_back("LoadDirectory expected 64 file modules, got "
+            if (file_count != 68)
+                result.diagnostics.emplace_back("LoadDirectory expected 68 file modules, got "
                                                 + std::to_string(file_count) + " (4 vertex SSBO modules added)");
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 64;
+            const int expected_count = 68;
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));

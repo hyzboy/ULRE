@@ -280,7 +280,7 @@ namespace hgl::ecs
 
             // per-draw 段偏移 push constant（text 独立 VAB——段偏移恒 0，
             // 但 shader 静态使用 pc_vertex_index——必须设置；索引统一 uint32）
-            const uint32_t pc_data[2] = {0, 0};
+            const uint32_t pc_data[3] = {0, 0, 0};   // text 非索引（is_indexed=0——gl_VertexIndex 直通）
             cmd->PushConstants(res.material->GetPipelineLayout(), pc_data, sizeof(pc_data));
 
             cmd->BindDescriptorSets(res.material);

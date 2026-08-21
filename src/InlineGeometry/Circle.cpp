@@ -18,7 +18,8 @@ namespace hgl::graph::inline_geometry
             edge = cci->field_count + 1;
             vertex_count = cci->field_count + 2;
         }
-        if(!pc->Init("Circle",vertex_count,0))return(nullptr);
+        if(!pc->Init("Circle",vertex_count,0))   // 非索引几何：无 IBO（gl_VertexIndex 直通）
+            return(nullptr);
 
         auto vertex = pc->GetBufferAccessor<BufferAccessor2f>(VAN::Position);
         auto color  = pc->GetBufferAccessor<BufferAccessor4f>(VAN::Color);

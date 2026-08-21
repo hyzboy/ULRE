@@ -2,29 +2,34 @@
 // @ulre name s1_index
 // @ulre kind Utility
 // @ulre priority 0
-// @ulre ssbo VertexIndex VertexIndex 8 Vertex required
+// @ulre ssbo VertexIndex VertexIndex 1 Vertex optional
 // @ulre end
-// Stage 1: 顶点索引从独立 SSBO 读取（非索引绘制——gl_VertexIndex 线性遍历索引表）。
-// 引擎统一 uint32 索引（废弃 U8/U16）——IBO 数据按 uint32 数组直读。
-// 段偏移 index_base/vertex_base 由 push constant 传入。
+// Stage 1: 顶点索引按绘制类型解析（pc_vertex_index.is_indexed 区分）：
+//   索引绘制（is_indexed=1）  ：gl_VertexIndex 是索引 buffer 下标——sbo_index 查表得索引值
+//   非索引绘制（is_indexed=0）：gl_VertexIndex 即顶点序号——直通
+// sbo_index 为 optional：非索引几何无 IBO 不绑定（descriptorBindingPartiallyBound
+// 下 if 分支不执行——安全）；索引几何绑定 IBO buffer。
 
 #ifndef HGL_INDEX_LOADER_DEFINED
 #define HGL_INDEX_LOADER_DEFINED
-
-layout(set=VERTEX_SET, binding=VERTEX_INDEX_BINDING, std430, scalar) readonly buffer VertexIndexData
-{
-    uint data[];
-} sbo_index;
 
 layout(push_constant) uniform PC_VertexIndex
 {
     uint index_base;
     uint vertex_base;
+    uint is_indexed;
 } pc_vertex_index;
 
-uint VertexIndexID;    // 解码后的顶点索引（顶点数据模块按此索引读）
+layout(set=VERTEX_SET, binding=VERTEX_INDEX_BINDING, std430) readonly buffer VertexIndexData
+{
+    uint data[];
+} sbo_vertex_index;
+
+uint VertexIndexID;    // 顶点索引（最终顶点序号）
 
 #define HGL_INDEX_LOADER \
-    VertexIndexID = sbo_index.data[pc_vertex_index.index_base + gl_VertexIndex];
+    VertexIndexID = (pc_vertex_index.is_indexed != 0u) \
+        ? sbo_vertex_index.data[pc_vertex_index.index_base + uint(gl_VertexIndex)] \
+        : uint(gl_VertexIndex);
 
 #endif//HGL_INDEX_LOADER_DEFINED

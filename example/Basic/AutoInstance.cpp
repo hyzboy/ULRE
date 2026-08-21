@@ -31,7 +31,7 @@ namespace
     {
         GeometryVertexFormat gvf{
             {VertexSemantic::Position, VF_V2F},
-            {VertexSemantic::Color,    VF_V4UN8},
+            {VertexSemantic::Color,    VF_V4F},
         };
         return gvf;
     }
@@ -48,11 +48,11 @@ constexpr float position_data[VERTEX_COUNT*2]=
      0.1,  0.9
 };
 
-constexpr uint8 color_data[VERTEX_COUNT][4]=
+constexpr float color_data[VERTEX_COUNT][4]=
 {
-    {255,0,0,255},
-    {0,255,0,255},
-    {0,0,255,255}
+    {1.0f,0.0f,0.0f,1.0f},
+    {0.0f,1.0f,0.0f,1.0f},
+    {0.0f,0.0f,1.0f,1.0f}
 };
 
 class TestApp:public WorkObject
@@ -82,6 +82,7 @@ private:
         triangle_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
         triangle_recipe.domain = "AutoInstance";
         triangle_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
+        triangle_recipe.vertex_node_config.transport = graph::mtl::VertexTransportMode::SSBO;   // 材质 TOML transport=ssbo——recipe 显式覆盖需同步
         triangle_asset = PrimitiveAsset(geom_triangle, &triangle_recipe, PrimitiveType::Triangles);
 
         return true;
@@ -96,9 +97,9 @@ private:
             return false;
 
         GeometryCreater pc(device, CreateAutoInstanceGeometryVertexFormat(), buffer_manager);
-        pc.Init("Triangle", VERTEX_COUNT);
+        pc.Init("Triangle", VERTEX_COUNT);   // 非索引几何：无 IBO（gl_VertexIndex 直通）
         if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data) ||
-            !pc.WriteVAB(VAN::Color, VF_V4UN8, color_data))
+            !pc.WriteVAB(VAN::Color, VF_V4F, color_data))
             return false;
 
         geom_triangle = pc.Create();

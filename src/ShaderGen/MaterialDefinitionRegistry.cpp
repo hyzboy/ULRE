@@ -113,7 +113,7 @@ namespace
                 return false;
             out_position_format = position_attribute->format;
 
-            bool need_uv = false, need_ntb = false, need_joint = false;
+            bool need_uv = false, need_ntb = false, need_joint = false, need_color = false, need_luminance = false;
             for (int i = 0; i < definition.vertex_semantic_requirements.GetCount(); ++i)
             {
                 const auto &requirement = definition.vertex_semantic_requirements[i];
@@ -127,6 +127,8 @@ namespace
                 case VertexSemantic::Bitangent: need_ntb = true; break;
                 case VertexSemantic::JointID:
                 case VertexSemantic::JointWeight: need_joint = true; break;
+                case VertexSemantic::Color: need_color = true; break;
+                case VertexSemantic::Luminance: need_luminance = true; break;
                 default: break;  // Position 由 input mode 决定
                 }
             }
@@ -152,14 +154,32 @@ namespace
                     out_vertex_input_glsl += "#include \"vertex/s1_ntb_rg8.glsl\"\n";
                 else if (normal_attr && normal_attr->format == VK_FORMAT_R16G16_SFLOAT)
                     out_vertex_input_glsl += "#include \"vertex/s1_ntb_rg16f.glsl\"\n";
+                else if (normal_attr && normal_attr->format == PF_A2BGR10UN)
+                    out_vertex_input_glsl += "#include \"vertex/s1_ntb_a2bgr10.glsl\"\n";
                 else
                     out_vertex_input_glsl += "#include \"vertex/s1_ntb.glsl\"\n";
             }
             if (need_joint)
                 out_vertex_input_glsl += "#include \"vertex/s1_joint.glsl\"\n";
+            if (need_color)
+                out_vertex_input_glsl += "#include \"vertex/s1_color.glsl\"\n";
+            if (need_luminance)
+                out_vertex_input_glsl += "#include \"vertex/s1_luminance.glsl\"\n";
 
-            // 位置模块按 input mode 选择（T0.2a 试点：Vec3Position）
-            switch (definition.vertex_node_config.input)
+            // 位置模块按 effective input 选择（position_format 判定——与
+            // VertexShaderAssembler 一致：geometry 格式说了算，recipe/TOML input 仅兜底）
+            VertexInputMode effective_input = definition.vertex_node_config.input;
+            if (out_position_format == VK_FORMAT_R32G32_SINT || out_position_format == VK_FORMAT_R32G32_UINT ||
+                out_position_format == VK_FORMAT_R16G16_SINT || out_position_format == VK_FORMAT_R16G16_UINT)
+                effective_input = VertexInputMode::Vec2IntPosition;
+            else if (out_position_format == VK_FORMAT_R32G32_SFLOAT ||
+                     out_position_format == VK_FORMAT_R16G16_SFLOAT)
+                effective_input = VertexInputMode::Vec2Position;
+            else if (out_position_format == VK_FORMAT_R32G32B32_SFLOAT ||
+                     out_position_format == VK_FORMAT_R32G32B32A32_SFLOAT)
+                effective_input = VertexInputMode::Vec3Position;
+
+            switch (effective_input)
             {
             case VertexInputMode::Vec3Position:
                 out_vertex_input_glsl += "#include \"vertex/s1_position_vec3.glsl\"\n";
@@ -167,11 +187,13 @@ namespace
             case VertexInputMode::Vec2IntPosition:
                 out_vertex_input_glsl += "#include \"vertex/s1_position_vec2i.glsl\"\n";
                 break;
+            case VertexInputMode::Vec2Position:
+                out_vertex_input_glsl += "#include \"vertex/s1_position_vec2.glsl\"\n";
+                break;
             case VertexInputMode::Procedural:
                 out_vertex_input_glsl += "#include \"vertex/s1_input_procedural.glsl\"\n";
                 break;
             default:
-                // Vec2（float）SSBO 模块待建
                 return false;
             }
         }

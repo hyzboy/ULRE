@@ -10,7 +10,7 @@ namespace hgl::graph::inline_geometry
 
         if(!pc)return(nullptr);
 
-        if(!pc->Init("Axis",6,0))
+        if(!pc->Init("Axis",6,0))   // 非索引几何：无 IBO（gl_VertexIndex 直通）
             return(nullptr);
 
         auto vertex = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Position);

@@ -243,6 +243,8 @@ static bool ValidateDefinitionCapabilitySubset(
         case DescriptorSemantic::VertexUV:
         case DescriptorSemantic::VertexNTB:
         case DescriptorSemantic::VertexJoint:
+        case DescriptorSemantic::VertexColor:
+        case DescriptorSemantic::VertexLuminance:
         case DescriptorSemantic::VertexIndex:
             allowed = definition.vertex_node_config.transport == VertexTransportMode::SSBO;
             break;
@@ -536,6 +538,14 @@ ShaderBuildContext *CompileCompositorMaterial(
             case DescriptorSemantic::VertexJoint:
                 if (!ctx->AddSSBOVertex(stage_bits, SBS_VertexJoint))
                     return FailAfterBuild("failed to add VertexJoint SSBO");
+                break;
+            case DescriptorSemantic::VertexColor:
+                if (!ctx->AddSSBOVertex(stage_bits, SBS_VertexColor))
+                    return FailAfterBuild("failed to add VertexColor SSBO");
+                break;
+            case DescriptorSemantic::VertexLuminance:
+                if (!ctx->AddSSBOVertex(stage_bits, SBS_VertexLuminance))
+                    return FailAfterBuild("failed to add VertexLuminance SSBO");
                 break;
             case DescriptorSemantic::VertexIndex:
                 if (!ctx->AddSSBOVertexIndex(stage_bits))

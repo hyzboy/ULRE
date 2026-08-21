@@ -45,7 +45,7 @@ static float position_data_float[VERTEX_COUNT][2]=
     {0.25,  0.75}
 };
 
-static int32 position_data[VERTEX_COUNT][2]={};
+static int16 position_data[VERTEX_COUNT][2]={};   // int16 与 VF_V2I（R16G16_SINT）匹配——s1_position_vec2i 按 int16 打包解码
 
 constexpr float color_data[VERTEX_COUNT][4]=
 {
@@ -80,8 +80,8 @@ private:
 
         for(uint i=0;i<VERTEX_COUNT;i++)
         {
-            position_data[i][0]=position_data_float[i][0]*ext->width;
-            position_data[i][1]=position_data_float[i][1]*ext->height;
+            position_data[i][0]=(int16)(position_data_float[i][0]*ext->width);
+            position_data[i][1]=(int16)(position_data_float[i][1]*ext->height);
         }
 
         auto* device = GetDevice();
@@ -91,6 +91,7 @@ private:
             return false;
 
         GeometryCreater pc(device, CreateDrawTriangleGeometryVertexFormat(), buffer_manager);
+        // 非索引几何：无 IBO（gl_VertexIndex 直通——s1_index 不再查表）
         if (!pc.Init("Triangle", VERTEX_COUNT))
             return false;
         if (!pc.WriteVAB(VAN::Position, POSITION_DATA_FORMAT, position_data) ||
@@ -141,6 +142,7 @@ private:
         triangle_recipe.mtl_def_id = "VertexColor";
         triangle_recipe.domain = "DrawTriangle";
         triangle_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigOrtho(false);
+        triangle_recipe.vertex_node_config.transport = graph::mtl::VertexTransportMode::SSBO;   // 材质 TOML transport=ssbo——recipe 显式覆盖需同步
         triangle_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
         triangle_asset = PrimitiveAsset(geom_triangle, &triangle_recipe, PrimitiveType::Triangles);
         ecs_primitive->SetPrimitiveAsset(&triangle_asset);

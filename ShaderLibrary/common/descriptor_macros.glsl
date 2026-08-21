@@ -58,6 +58,14 @@
 #define VERTEX_INDEX_BINDING 8
 #endif
 
+#ifndef VERTEX_COLOR_BINDING
+#define VERTEX_COLOR_BINDING 9
+#endif
+
+#ifndef VERTEX_LUMINANCE_BINDING
+#define VERTEX_LUMINANCE_BINDING 10
+#endif
+
 #ifndef L2W_BINDING
 #define L2W_BINDING 0
 #endif
