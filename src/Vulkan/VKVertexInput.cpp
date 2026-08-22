@@ -1,5 +1,4 @@
 #include<hgl/vk/VKVertexInput.h>
-#include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/type/ObjectManager.h>
 #include<cstring>
 

@@ -10,7 +10,7 @@
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/graph/ShaderBufferSources.h>
-#include<hgl/vk/VKVertexInputConfig.h>
+
 #include<hgl/color/Color.h>
 
 // ECS headers

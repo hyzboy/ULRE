@@ -13,7 +13,7 @@
 namespace hgl::graph{
 class PrimitiveAsset;
 /**
-* 图元 — 运行时绘制单元（geometry + material_program + VIL + pipeline）
+* 图元 — 运行时绘制单元（geometry + material_program + pipeline）
 * 不持有 DescriptorBindingSet；所有资源绑定由 ECS recipe runtime 负责。
 */
 class Primitive

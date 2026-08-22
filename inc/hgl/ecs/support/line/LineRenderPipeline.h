@@ -17,7 +17,6 @@ namespace hgl
         class DeviceBuffer;
         class ShaderProgram;
         class Pipeline;
-        class VertexInputLayout;
         class Geometry;
         struct GeometryDataBuffer;
         struct GeometryDrawRange;

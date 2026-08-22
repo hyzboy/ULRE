@@ -23,7 +23,6 @@ namespace hgl
         class ShaderProgram;
         class TextGeometry;
         class DescriptorBindingSet;
-        class VertexInputLayout;
         class Pipeline;
         class Sampler;
         class DeviceBuffer;

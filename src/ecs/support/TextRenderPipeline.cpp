@@ -13,7 +13,6 @@
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/vk/VKShaderProgram.h>
-#include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/graph/module/ShaderProgramManager.h>
 #include<hgl/graph/module/BufferManager.h>

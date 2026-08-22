@@ -35,7 +35,7 @@ namespace hgl::graph
      * It intentionally does NOT carry runtime-only state such as:
      * - ShaderProgram / MaterialInstance
      * - DescriptorBindingSet
-     * - Pipeline / VIL
+     * - Pipeline
      * - SSBO rows / bindless handles
      */
     class PrimitiveAsset

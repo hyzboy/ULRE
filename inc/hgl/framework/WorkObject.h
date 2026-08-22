@@ -13,7 +13,6 @@ namespace hgl
     namespace graph
     {
         class RenderContext;
-        class VILConfig;
         class Camera;
         struct ViewportInfo;
         struct CameraInfo;

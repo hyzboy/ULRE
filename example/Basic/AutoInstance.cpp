@@ -9,7 +9,6 @@
 // 5. ECS与渲染系统的集成
 
 #include<hgl/framework/WorkManager.h>
-#include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>

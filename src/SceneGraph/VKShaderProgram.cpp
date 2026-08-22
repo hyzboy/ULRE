@@ -2,7 +2,6 @@
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/vk/VKVertexInput.h>
-#include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/vk/pipeline/VKPipelineLayoutData.h>
 #include<hgl/mtl/ShaderBuildContext.h>
 #include<hgl/vk/VKBuffer.h>

@@ -122,16 +122,11 @@ SOURCE_GROUP("Memory" FILES ${VK_MEMORY_FILES})
 # --- 3. Vertex Input (与 Vulkan 底层密切) ---
 SET(VK_VERTEX_INPUT_FILES       ${VK_INCLUDE_PATH}/VKVertexInput.h
                                 ${VK_INCLUDE_PATH}/VKVertexInputAttribute.h
-                                ${VK_INCLUDE_PATH}/VKVertexInputConfig.h
                                 ${VK_INCLUDE_PATH}/VKVertexInputFormat.h
-                                ${VK_INCLUDE_PATH}/VKVertexInputLayout.h
-                                ${VK_INCLUDE_PATH}/VKVertexInputLayoutHash.h
                                 ${VK_INCLUDE_PATH}/VKVertexAttribBuffer.h
                                 ${VK_INCLUDE_PATH}/VKVABList.h
                                 ${VK_INCLUDE_PATH}/VKPrimitiveType.h
                                 VKVertexInput.cpp
-                                VKVertexInputLayout.cpp
-                                VKVertexInputLayoutHash.cpp
                                 VkPrimitiveType.cpp)
 
 SOURCE_GROUP("VertexInput" FILES ${VK_VERTEX_INPUT_FILES})

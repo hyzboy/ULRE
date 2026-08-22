@@ -26,7 +26,6 @@
 #include <hgl/vk/VKRenderAssign.h>
 #include <hgl/vk/VKBindlessTextureManager.h>
 #include <hgl/vk/VKGlobalSceneUBOSet.h>
-#include <hgl/vk/VKVertexInputConfig.h>
 #include <hgl/vk/VKVABList.h>
 #include <hgl/math/geometry/Frustum.h>
 #include <hgl/log/Log.h>

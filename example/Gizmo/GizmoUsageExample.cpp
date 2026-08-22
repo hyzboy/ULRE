@@ -16,7 +16,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
-#include<hgl/vk/VKVertexInputConfig.h>
+
 #include<hgl/color/Color.h>
 
 // ECS headers

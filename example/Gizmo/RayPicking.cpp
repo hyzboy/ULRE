@@ -20,7 +20,7 @@
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/vk/VertexDataManager.h>
-#include<hgl/vk/VKVertexInputConfig.h>
+
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
