@@ -342,7 +342,8 @@ namespace hgl::graph::mtl
                     is_lines ? 64u : 96u,
                     plan.resolved_vertex_input_glsl,
                     plan.resolved_provider_glsl,
-                    &plan.stage_interface);
+                    &plan.stage_interface,
+                    plan.primitive_type);
             }
             else
             {

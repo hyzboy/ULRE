@@ -43,7 +43,8 @@ namespace hgl::graph::mtl
         const std::string            &resolved_input_glsl = {},
         const std::string            &provider_glsl = {},
         const ValueArray<InterStageSemanticContractEntry>
-            *resolved_stage_interface = nullptr)
+            *resolved_stage_interface = nullptr,
+        const PrimitiveType           primitive_type = PrimitiveType::Triangles)
     {
         std::string ms;
         ms.reserve(3072);
@@ -303,7 +304,12 @@ namespace hgl::graph::mtl
             ms += "u, total_vertices - gl_WorkGroupID.x * ";
             ms += std::to_string(max_invocations);
             ms += "u);\n";
-            ms += "    SetMeshOutputsEXT(verts_this_group, verts_this_group / 3u);\n";
+            // 图元数按类型：list = verts/3；fan/strip = verts-2（单组小几何）
+            if (primitive_type == PrimitiveType::Fan ||
+                primitive_type == PrimitiveType::TriangleStrip)
+                ms += "    SetMeshOutputsEXT(verts_this_group, (verts_this_group >= 3u) ? (verts_this_group - 2u) : 0u);\n";
+            else
+                ms += "    SetMeshOutputsEXT(verts_this_group, verts_this_group / 3u);\n";
             ms += "    if (vid >= verts_this_group)\n";
             ms += "        return;\n";
             ms += "\n";
@@ -357,10 +363,33 @@ namespace hgl::graph::mtl
                 ms += "    gl_MeshVerticesEXT[vid].gl_Position = GetClipPos(GetLocalPos());\n";
             }
 
-            // 三角形索引：每 3 连续顶点 1 三角形（组内槽位；vid%3==0 的线程填）
-            // 非 3 倍数顶点余数不构成三角形（与 VS 的 vertexCount 语义一致）
-            ms += "    if ((vid % 3u) == 0u && (vid + 2u) < verts_this_group)\n";
-            ms += "        gl_PrimitiveTriangleIndicesEXT[vid / 3u] = uvec3(vid, vid + 1u, vid + 2u);\n";
+            // 三角形索引按图元类型（mesh 输出恒 triangle list——fan/strip 的拓扑由
+            // 三角形索引表达；管线侧强制 triangle list）：
+            //   Triangles（list）：每 3 连续顶点 1 三角形，vid%3==0 的线程写 (vid,vid+1,vid+2)
+            //   TriangleFan：三角形 t = (0, t+1, t+2)，vid 线程写（组内中心 = 组内顶点 0——
+            //     仅单组几何正确（quad/平面等小几何），跨组 fan 语义受限）
+            //   TriangleStrip：三角形 t = (t, t+1, t+2)，偶数 t 翻转绕序 (t+1, t, t+2)
+            if (primitive_type == PrimitiveType::Fan)
+            {
+                // 图元数 = 顶点数 - 2（fan）
+                ms += "    if (verts_this_group >= 3u && (vid + 2u) < verts_this_group)\n";
+                ms += "        gl_PrimitiveTriangleIndicesEXT[vid] = uvec3(0u, vid + 1u, vid + 2u);\n";
+            }
+            else if (primitive_type == PrimitiveType::TriangleStrip)
+            {
+                // 图元数 = 顶点数 - 2（strip；奇数三角形绕序翻转）
+                ms += "    if (verts_this_group >= 3u && (vid + 2u) < verts_this_group)\n";
+                ms += "        gl_PrimitiveTriangleIndicesEXT[vid] = ((vid & 1u) == 0u)\n";
+                ms += "            ? uvec3(vid, vid + 1u, vid + 2u)\n";
+                ms += "            : uvec3(vid + 1u, vid, vid + 2u);\n";
+            }
+            else
+            {
+                // 每 3 连续顶点 1 三角形（组内槽位；vid%3==0 的线程填）
+                // 非 3 倍数顶点余数不构成三角形（与 VS 的 vertexCount 语义一致）
+                ms += "    if ((vid % 3u) == 0u && (vid + 2u) < verts_this_group)\n";
+                ms += "        gl_PrimitiveTriangleIndicesEXT[vid / 3u] = uvec3(vid, vid + 1u, vid + 2u);\n";
+            }
             break;
         }
 

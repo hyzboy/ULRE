@@ -175,7 +175,18 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialRecip
         render_state.pipeline_config.cull_mode = VK_CULL_MODE_NONE;
 
     PipelineData *pd = BuildPipelineData(render_state);
-    pd->SetPrim(mtl->GetPrimitiveType(),prim_restart);
+    // mesh shader 输出恒 triangle list（fan/strip 拓扑由 shader 内三角形索引表达）——
+    // 管线拓扑必须强制 triangle list，否则 GPU 按原始图元类型（fan/strip）解释 mesh 输出
+    const bool is_mesh_program = [&]() {
+        for (const auto &stage : mtl->GetStageList())
+            if (stage.stage == VK_SHADER_STAGE_MESH_BIT_EXT)
+                return true;
+        return false;
+    }();
+    if (is_mesh_program)
+        pd->SetPrim(PrimitiveType::Triangles, prim_restart);
+    else
+        pd->SetPrim(mtl->GetPrimitiveType(), prim_restart);
 
     Pipeline *p = CreatePipeline(mtl->GetName(),
                                   pd,
