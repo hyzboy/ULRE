@@ -351,7 +351,7 @@ namespace hgl::graph::mtl
                 "Normal", "Tangent", "Binormal", "WorldPosition",
                 "WorldNormal", "WorldTangent", "WorldBinormal", "Luminance",
                 "HeightMap", "Camera", "Viewport", "SkyLight",
-                "MaterialData", "TransformID"
+                "MaterialData", "TransformID", "Size"
             };
             static const GLSLCodeModuleSemantic values[] = {
                 GLSLCodeModuleSemantic::Position, GLSLCodeModuleSemantic::UV0,
@@ -363,7 +363,7 @@ namespace hgl::graph::mtl
                 GLSLCodeModuleSemantic::Luminance, GLSLCodeModuleSemantic::HeightMap,
                 GLSLCodeModuleSemantic::Camera, GLSLCodeModuleSemantic::Viewport,
                 GLSLCodeModuleSemantic::SkyLight, GLSLCodeModuleSemantic::MaterialData,
-                GLSLCodeModuleSemantic::TransformID
+                GLSLCodeModuleSemantic::TransformID, GLSLCodeModuleSemantic::Size
             };
             for (uint32 i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
             {

@@ -18,6 +18,8 @@ layout(push_constant) uniform PC_VertexIndex
     uint index_base;
     uint vertex_base;
     uint is_indexed;
+    uint total_vertices;    // mesh shader 边界检查（每帧顶点总数）；VS 材质不用（恒 0）
+    float viewport_height;  // mesh shader 线宽像素换算（viewport 像素高度）；VS 材质不用（恒 0）
 } pc_vertex_index;
 
 layout(set=VERTEX_SET, binding=VERTEX_INDEX_BINDING, std430) readonly buffer VertexIndexData

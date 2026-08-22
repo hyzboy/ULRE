@@ -201,6 +201,15 @@ inline void PushVertexTransformID(std::vector<SerializedDescriptorEntry> &v, con
     });
 }
 
+inline void PushVertexSize(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
+{
+    v.push_back({
+        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
+        SBS_VertexSize.name, SBS_VertexSize.struct_name, nullptr, DescriptorSemantic::VertexSize,
+        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::VertexSize, DescriptorSemanticLayer::SSBO
+    });
+}
+
 inline void PushVertexIndex(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
     v.push_back({

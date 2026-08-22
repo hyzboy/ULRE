@@ -38,6 +38,9 @@ void LoadVertexData()
 #ifdef HGL_LUMINANCE_LOADER
     HGL_LUMINANCE_LOADER
 #endif
+#ifdef HGL_WIDTH_LOADER
+    HGL_WIDTH_LOADER
+#endif
 }
 
 #endif // S1_POSITION_VEC2_GLSL

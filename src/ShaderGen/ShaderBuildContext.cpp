@@ -107,6 +107,7 @@ ShaderBuildContext::ShaderBuildContext(const PrimitiveType primitive_type_value,
     : primitive_type(primitive_type_value), shader_stage_flag_bits(shader_stage_bits), has_local_to_world(has_local_to_world_value)
 {
     if(has_vertex    ())shader_map.Add(new ShaderCreateInfoVertex());
+    if(has_mesh      ())shader_map.Add(new ShaderCreateInfo(ShaderStage::Mesh));
     if(has_fragment  ())shader_map.Add(new ShaderCreateInfo(ShaderStage::Fragment));
 
     ubo_range=0;

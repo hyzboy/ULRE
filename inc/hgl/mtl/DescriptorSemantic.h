@@ -40,6 +40,7 @@ namespace hgl::graph::mtl
         VertexColor,
         VertexLuminance,
         VertexTransformID,
+        VertexSize,
         VertexIndex,
 
         Custom,

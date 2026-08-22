@@ -151,6 +151,7 @@ namespace hgl::graph::mtl
             if (std::strcmp(token, "SkyLight") == 0) return GLSLCodeModuleSemantic::SkyLight;
             if (std::strcmp(token, "MaterialData") == 0) return GLSLCodeModuleSemantic::MaterialData;
             if (std::strcmp(token, "TransformID") == 0) return GLSLCodeModuleSemantic::TransformID;
+            if (std::strcmp(token, "Size") == 0) return GLSLCodeModuleSemantic::Size;
             return GLSLCodeModuleSemantic::Unknown;
         }
 

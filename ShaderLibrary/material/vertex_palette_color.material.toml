@@ -24,7 +24,7 @@ blend = "Opaque"
 pass = "ForwardOpaque"
 
 [vertex]
-requirements = ["Position", "Color", "TransformID"]
+requirements = ["Position", "Color", "TransformID", "Size"]
 varyings = ["use_transform_id_attr", "emit_vertex_color_from_palette"]
 
 [resources]

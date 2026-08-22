@@ -1,6 +1,7 @@
 #include <hgl/vk/VKGlobalSceneUBOSet.h>
 #include <hgl/vk/IGPUBuffer.h>
 #include <hgl/log/Log.h>
+#include <hgl/common/ShaderStageDef.h>
 
 namespace hgl::graph
 {
@@ -36,25 +37,25 @@ bool GlobalSceneUBOSet::Init(VkDevice device)
         bindings[0].binding         = uint32_t(kSceneBindingCamera);
         bindings[0].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         bindings[0].descriptorCount = 1;
-        bindings[0].stageFlags      = VK_SHADER_STAGE_ALL_GRAPHICS;
+        bindings[0].stageFlags      = hgl::graph::kAllGraphicsOrMesh;
 
         // binding=1 : sky
         bindings[1].binding         = uint32_t(kSceneBindingSky);
         bindings[1].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         bindings[1].descriptorCount = 1;
-        bindings[1].stageFlags      = VK_SHADER_STAGE_ALL_GRAPHICS;
+        bindings[1].stageFlags      = hgl::graph::kAllGraphicsOrMesh;
 
         // binding=2 : viewport
         bindings[2].binding         = uint32_t(kSceneBindingViewport);
         bindings[2].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         bindings[2].descriptorCount = 1;
-        bindings[2].stageFlags      = VK_SHADER_STAGE_ALL_GRAPHICS;
+        bindings[2].stageFlags      = hgl::graph::kAllGraphicsOrMesh;
 
         // binding=3 : color_palette
         bindings[3].binding         = uint32_t(kSceneBindingColorPalette);
         bindings[3].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         bindings[3].descriptorCount = 1;
-        bindings[3].stageFlags      = VK_SHADER_STAGE_ALL_GRAPHICS;
+        bindings[3].stageFlags      = hgl::graph::kAllGraphicsOrMesh;
 
         // PARTIALLY_BOUND：允许未写入的 binding（如 palette/sky）保持为空而不触发校验错误。
         VkDescriptorBindingFlags binding_flags[4] = {

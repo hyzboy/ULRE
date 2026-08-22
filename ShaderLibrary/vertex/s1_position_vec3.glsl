@@ -50,6 +50,9 @@ void LoadVertexData()
 #ifdef HGL_TRANSFORMID_LOADER
     HGL_TRANSFORMID_LOADER
 #endif
+#ifdef HGL_WIDTH_LOADER
+    HGL_WIDTH_LOADER
+#endif
 }
 
 #endif // S1_POSITION_VEC3_GLSL

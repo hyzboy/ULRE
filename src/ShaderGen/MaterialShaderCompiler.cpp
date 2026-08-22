@@ -53,18 +53,20 @@ bool FinalizeShaderBuildContext(
             cached_fragment);
         if (cache_hit)
         {
+            // mesh shader 材质：顶点处理 stage 是 Mesh 而非 Vertex
             ShaderCreateInfo *vertex =
-                build_spec->GetStageShader(ShaderStage::Vertex);
+                build_spec->GetStageShader(
+                    build_spec->has_mesh() ? ShaderStage::Mesh : ShaderStage::Vertex);
             ShaderCreateInfo *fragment =
                 build_spec->GetStageShader(ShaderStage::Fragment);
             cache_hit = vertex
-                     && fragment
-                     && vertex->SetCachedSPVData(
-                            cached_vertex.GetData(),
-                            cached_vertex.GetCount())
-                     && fragment->SetCachedSPVData(
-                            cached_fragment.GetData(),
-                            cached_fragment.GetCount());
+                    && fragment
+                    && vertex->SetCachedSPVData(
+                           cached_vertex.GetData(),
+                           cached_vertex.GetCount())
+                    && fragment->SetCachedSPVData(
+                           cached_fragment.GetData(),
+                           cached_fragment.GetCount());
         }
     }
 
@@ -79,13 +81,15 @@ bool FinalizeShaderBuildContext(
     if (!cache_hit && artifact_store)
     {
         const auto &link = build_spec->GetProgramLink();
+        // mesh shader 材质：顶点处理 stage 是 Mesh 而非 Vertex
         const ShaderCreateInfo *vertex =
-            build_spec->GetStageShader(ShaderStage::Vertex);
+            build_spec->GetStageShader(
+                build_spec->has_mesh() ? ShaderStage::Mesh : ShaderStage::Vertex);
         const ShaderCreateInfo *fragment =
             build_spec->GetStageShader(ShaderStage::Fragment);
         if (!vertex || !fragment
          || !artifact_store->SaveStageSPV(
-                link.vertex_stage,
+                build_spec->has_mesh() ? link.mesh_stage : link.vertex_stage,
                 vertex->GetSPVData(),
                 vertex->GetSPVSize())
          || !artifact_store->SaveStageSPV(
@@ -246,6 +250,7 @@ static bool ValidateDefinitionCapabilitySubset(
         case DescriptorSemantic::VertexColor:
         case DescriptorSemantic::VertexLuminance:
         case DescriptorSemantic::VertexTransformID:
+        case DescriptorSemantic::VertexSize:
         case DescriptorSemantic::VertexIndex:
             allowed = true;
             break;
@@ -551,6 +556,10 @@ ShaderBuildContext *CompileCompositorMaterial(
             case DescriptorSemantic::VertexTransformID:
                 if (!ctx->AddSSBOVertex(stage_bits, SBS_VertexTransformID))
                     return FailAfterBuild("failed to add VertexTransformID SSBO");
+                break;
+            case DescriptorSemantic::VertexSize:
+                if (!ctx->AddSSBOVertex(stage_bits, SBS_VertexSize))
+                    return FailAfterBuild("failed to add VertexSize SSBO");
                 break;
             case DescriptorSemantic::VertexIndex:
                 if (!ctx->AddSSBOVertexIndex(stage_bits))
@@ -942,10 +951,15 @@ ShaderBuildContext *CompileCompositorMaterial(
         + material_slot_macros + fs_index_table_decls);
 
     ShaderCreateInfoVertex   *vert = ctx->GetVertexShader();
+    ShaderCreateInfo         *mesh = ctx->GetStageShader(ShaderStage::Mesh);
     ShaderCreateInfo         *frag = ctx->GetStageShader(ShaderStage::Fragment);
 
+    // mesh shader 材质（彻底废弃 VS 方向）：vs_glsl 实为 mesh stage 源码，
+    // 设到 mesh ShaderCreateInfo；vertex stage 不存在则跳过。
     if (vert)
         vert->SetFinalGLSL(vs_final);
+    else if (mesh)
+        mesh->SetFinalGLSL(vs_final);
 
     if (frag)
         frag->SetFinalGLSL(fs_final);

@@ -70,6 +70,10 @@
 #define VERTEX_TRANSFORMID_BINDING 11
 #endif
 
+#ifndef VERTEX_SIZE_BINDING
+#define VERTEX_SIZE_BINDING 12
+#endif
+
 #ifndef L2W_BINDING
 #define L2W_BINDING 0
 #endif

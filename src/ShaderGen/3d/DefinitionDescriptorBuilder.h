@@ -4,6 +4,7 @@
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/common/RenderAssignDef.h>
+#include <hgl/common/ShaderStageDef.h>
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/mtl/ModuleResourceManifest.h>
 #include <vector>
@@ -35,8 +36,8 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
     if (definition.vertex_node_config.projection != ProjectionMode::OrthoViewport
      && definition.vertex_node_config.projection != ProjectionMode::ClipPassthrough)
     {
-        descriptor_builder_common::PushLocalToWorld(descriptors, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
-        descriptor_builder_common::PushLocalToWorldIndexRows(descriptors, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
+        descriptor_builder_common::PushLocalToWorld(descriptors, DescriptorKind::SSBO, hgl::graph::kVertexOrMesh);
+        descriptor_builder_common::PushLocalToWorldIndexRows(descriptors, hgl::graph::kVertexOrMesh);
     }
 
     descriptor_builder_common::AppendDefinitionMaterialDescriptors(
@@ -67,9 +68,11 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
     std::vector<SerializedDescriptorEntry> descriptors = BuildDescriptorsFromDefinition(definition, opt);
     // 顶点数据 SSBO（MeshShader 方向）：按需求语义注入顶点 SSBO 绑定
     // 顶点输入统一为 SSBO，无条件注入；PerObject 集固定 binding（s1_* 模块声明与固定名路径匹配）
+    // stage 位用 ALL_GRAPHICS：mesh shader 材质（彻底废弃 VS 方向）在 Mesh stage 读顶点 SSBO，
+    // 传统材质在 Vertex stage 读——统一为 ALL_GRAPHICS 避免对具体 stage 的依赖
     {
-        const uint32_t vertex_stage = uint32_t(VK_SHADER_STAGE_VERTEX_BIT);
-        bool need_uv = false, need_ntb = false, need_color = false, need_luminance = false, need_transform_id = false;
+        const uint32_t vertex_stage = hgl::graph::kVertexOrMesh;
+        bool need_uv = false, need_ntb = false, need_color = false, need_luminance = false, need_transform_id = false, need_size = false;
         for (int i = 0; i < definition.vertex_semantic_requirements.GetCount(); ++i)
         {
             const auto &requirement = definition.vertex_semantic_requirements[i];
@@ -82,6 +85,7 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
             case GLSLCodeModuleSemantic::Color: need_color = true; break;
             case GLSLCodeModuleSemantic::Luminance: need_luminance = true; break;
             case GLSLCodeModuleSemantic::TransformID: need_transform_id = true; break;
+            case GLSLCodeModuleSemantic::Size: need_size = true; break;
             default: break;
             }
         }
@@ -95,6 +99,8 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
             descriptor_builder_common::PushVertexLuminance(descriptors, vertex_stage);
         if (need_transform_id)
             descriptor_builder_common::PushVertexTransformID(descriptors, vertex_stage);
+        if (need_size)
+            descriptor_builder_common::PushVertexSize(descriptors, vertex_stage);
         // Position 恒有（S1 位置模块）
         descriptor_builder_common::PushVertexPosition(descriptors, vertex_stage);
         // 索引恒有（s1_index 无条件 include——非索引绘制查表）

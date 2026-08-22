@@ -64,6 +64,7 @@ namespace hgl::graph::mtl
                     bool        has_shader      (const ShaderStage ss)const{return shader_stage_flag_bits&(uint32)ss;}
 
                     bool        has_vertex      ()const{return has_shader(ShaderStage::Vertex);}
+                    bool        has_mesh        ()const{return has_shader(ShaderStage::Mesh);}
 
                     bool        has_fragment    ()const{return has_shader(ShaderStage::Fragment);}
 

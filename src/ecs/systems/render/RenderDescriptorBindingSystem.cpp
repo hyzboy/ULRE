@@ -914,6 +914,7 @@ namespace hgl::ecs
             case graph::mtl::DescriptorSemantic::VertexColor:
             case graph::mtl::DescriptorSemantic::VertexLuminance:
             case graph::mtl::DescriptorSemantic::VertexTransformID:
+            case graph::mtl::DescriptorSemantic::VertexSize:
             {
                 const graph::VertexSemantic vertex_semantic =
                     [](const graph::mtl::DescriptorSemantic semantic)
@@ -927,6 +928,7 @@ namespace hgl::ecs
                     case graph::mtl::DescriptorSemantic::VertexColor:    return graph::VertexSemantic::Color;
                     case graph::mtl::DescriptorSemantic::VertexLuminance: return graph::VertexSemantic::Luminance;
                     case graph::mtl::DescriptorSemantic::VertexTransformID: return graph::VertexSemantic::TransformID;
+                    case graph::mtl::DescriptorSemantic::VertexSize: return graph::VertexSemantic::Size;
                     default:                                             return graph::VertexSemantic::Unknown;
                     }
                 }(req.semantic);
@@ -1089,6 +1091,7 @@ namespace hgl::ecs
         case graph::mtl::DescriptorSemantic::VertexColor:
         case graph::mtl::DescriptorSemantic::VertexLuminance:
         case graph::mtl::DescriptorSemantic::VertexTransformID:
+        case graph::mtl::DescriptorSemantic::VertexSize:
         case graph::mtl::DescriptorSemantic::VertexIndex:
             return true;
         case graph::mtl::DescriptorSemantic::Unknown:

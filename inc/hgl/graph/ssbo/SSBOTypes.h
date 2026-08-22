@@ -26,6 +26,7 @@ namespace hgl::graph::mtl
         VertexColor,
         VertexLuminance,
         VertexTransformID,
+        VertexSize,
         VertexIndex,
 
         ENUM_CLASS_RANGE(TextureLayer, VertexIndex)
@@ -74,6 +75,7 @@ namespace hgl::graph::mtl
         case SSBOType::VertexColor: return "VertexColor";
         case SSBOType::VertexLuminance: return "VertexLuminance";
         case SSBOType::VertexTransformID: return "VertexTransformID";
+        case SSBOType::VertexSize: return "VertexSize";
         case SSBOType::VertexIndex: return "VertexIndex";
         default: return "Unknown";
         }

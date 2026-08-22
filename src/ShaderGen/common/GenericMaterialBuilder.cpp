@@ -21,6 +21,7 @@
 #include <hgl/mtl/GLSLCodeModuleCapabilityResolver.h>
 #include "3d/DefinitionDescriptorBuilder.h"
 #include "common/VertexShaderAssembler.h"
+#include "common/MeshShaderAssembler.h"
 #include "common/GenericMaterialBuilder.h"
 
 #include <cstring>
@@ -324,12 +325,31 @@ namespace hgl::graph::mtl
             const MaterialDefinition &definition,
             GenericMaterialBuildPlan &plan)
         {
-            plan.vs = GenerateVertexShader(plan.vertex_node_config, plan.varying,
-                                           plan.position_format,
-                                           GetShaderLibraryPath().c_str(),
-                                           plan.resolved_vertex_input_glsl,
-                                           plan.resolved_provider_glsl,
-                                           &plan.stage_interface);
+            if (plan.mesh_shader)
+            {
+                // Mesh shader 材质（彻底废弃 VS 方向）：生成 mesh stage 替代 vertex stage
+                plan.ms = GenerateMeshShader(
+                    plan.vertex_node_config,
+                    plan.varying,
+                    plan.position_format,
+                    GetShaderLibraryPath().c_str(),
+                    (plan.primitive_type == hgl::graph::PrimitiveType::Lines)
+                        ? MeshShaderMode::LineQuad
+                        : MeshShaderMode::VertexPassthrough,
+                    64,
+                    plan.resolved_vertex_input_glsl,
+                    plan.resolved_provider_glsl,
+                    &plan.stage_interface);
+            }
+            else
+            {
+                plan.vs = GenerateVertexShader(plan.vertex_node_config, plan.varying,
+                                               plan.position_format,
+                                               GetShaderLibraryPath().c_str(),
+                                               plan.resolved_vertex_input_glsl,
+                                               plan.resolved_provider_glsl,
+                                               &plan.stage_interface);
+            }
 
             CompositorAssembler assembler(GetShaderLibraryPath());
             MaterialOutputContractDiagnostic output_diagnostic{};
@@ -440,7 +460,9 @@ namespace hgl::graph::mtl
             CompositorMaterialBuildConfig &config = out_config;
             config.primitive_type = request.primitive_type;
             config.shader_stage_flag_bits =
-                uint32(ShaderStage::VertexFragment);
+                plan.mesh_shader
+                    ? uint32(ShaderStage::MeshFragment)
+                    : uint32(ShaderStage::VertexFragment);
             plan.contract_definition = definition;
             plan.contract_definition.vertex_varying =
                 plan.effective_vertex_varying;
@@ -459,7 +481,9 @@ namespace hgl::graph::mtl
             const uint64 compiler_hash =
                 contract::GetShaderCompilerProfileHash(profile);
             hgl::hash::FNV1aHasher64 vertex_interface_hasher;
-            vertex_interface_hasher << HashFinalShaderSource(plan.vs.data(), plan.vs.size())
+            vertex_interface_hasher << HashFinalShaderSource(
+                plan.mesh_shader ? plan.ms.data() : plan.vs.data(),
+                plan.mesh_shader ? plan.ms.size() : plan.vs.size())
                                     << vertex_input_hash;
             const uint64 vertex_interface_hash = vertex_interface_hasher;
             const uint64 fragment_interface_hash =
@@ -473,6 +497,17 @@ namespace hgl::graph::mtl
                 vertex_interface_hash,
                 resource_contract_hash,
                 compiler_hash);
+            if (plan.mesh_shader)
+            {
+                plan.program_link.mesh_stage = BuildFinalShaderStageKey(
+                    ShaderStage::Mesh,
+                    plan.ms.data(),
+                    plan.ms.size(),
+                    plan.resolved_provider_graph_hash,
+                    vertex_interface_hash,
+                    resource_contract_hash,
+                    compiler_hash);
+            }
             plan.program_link.fragment_stage = BuildFinalShaderStageKey(
                 ShaderStage::Fragment,
                 plan.fs.data(),
@@ -522,6 +557,12 @@ namespace hgl::graph::mtl
 
         GenericMaterialBuildPlan plan{};
 
+        // Mesh shader 材质：mesh_shader=true 时生成 mesh stage 替代 vertex stage。
+        // 触发：request 显式 mesh_shader，或 primitive_type=Lines（Line 的 line-to-quad）。
+        // （彻底废弃 VS 方向——未来所有材质走 mesh）
+        plan.mesh_shader = request.primitive_type == hgl::graph::PrimitiveType::Lines;
+        plan.primitive_type = request.primitive_type;
+
         if (!ResolvePurposeAndCoverage(definition, request, plan))
             return nullptr;
 
@@ -541,7 +582,9 @@ namespace hgl::graph::mtl
             return nullptr;
 
         ShaderBuildContext *result = CompileCompositorMaterial(
-            profile, compiler_input, plan.vs, plan.fs, config);
+            profile, compiler_input,
+            plan.mesh_shader ? plan.ms : plan.vs,
+            plan.fs, config);
         if (!result)
             GLogError("[ShaderGen] Generic material compilation failed: name=%s",
                       definition.definition_name.c_str());

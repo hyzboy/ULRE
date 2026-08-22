@@ -50,7 +50,8 @@ namespace hgl::graph::mtl
         Viewport,
         SkyLight,
         MaterialData,
-        TransformID
+        TransformID,
+        Size
     };
 
     enum class GLSLCodeModuleCapabilitySource : uint8

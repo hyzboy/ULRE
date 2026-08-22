@@ -61,6 +61,11 @@ namespace hgl::graph::mtl
         std::string resolved_provider_glsl;
         uint64 resolved_provider_graph_hash = 0;
 
+        // Mesh shader 材质（彻底废弃 VS 方向）：
+        // mesh_shader=true 时生成 mesh stage（plan.ms）替代 vertex stage（plan.vs）
+        bool mesh_shader = false;
+        hgl::graph::PrimitiveType primitive_type = hgl::graph::PrimitiveType::Triangles;
+
         // Phase 3: resource contract
         ModuleResourceManifest manifest;
         MaterialDefinition manifest_definition;
@@ -69,6 +74,7 @@ namespace hgl::graph::mtl
 
         // Phase 4: stage sources
         std::string vs;
+        std::string ms;   // mesh stage（mesh shader 材质；替代 vs）
         std::string fs;
         mtl::OutputContract output_contract;
 

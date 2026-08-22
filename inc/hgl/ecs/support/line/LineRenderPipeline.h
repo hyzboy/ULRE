@@ -60,14 +60,13 @@ namespace hgl::ecs
     class LineRenderPipeline : public RenderPipelineBase
     {
     public:
-        static constexpr uint32_t MAX_WIDTHS     = 16;
         static constexpr uint32_t LINES_GRANULE  = 1024; ///< VAB capacity granularity
+        static constexpr uint32_t MESH_GROUP_SIZE = 64;  ///< mesh shader threadgroup（每线程 1 线段）
 
     private:
         // ------- Core state -------
         ECSContext*  context_           = nullptr;
         bool         initialized_       = false;
-        bool         support_wide_lines_= false;
         uint32_t     prepared_frame_    = UINT32_MAX;
 
         // ------- GPU resources (created in Initialize()) -------
@@ -77,10 +76,11 @@ namespace hgl::ecs
         graph::DescriptorBindingSet* binding_set_ = nullptr;
         graph::Pipeline*        pipeline_       = nullptr;
 
-        // ------- Per-width batch slots (replace LineWidthBatch) -------
-        struct LineWidthSlot
+        // ------- 单 Line buffer（P2：删 4 slot 分组——mesh shader 展开 quad，宽度入 SSBO）-------
+        struct LineBuffer
         {
             using TransformIDAccessor = hgl::graph::BufferAccessor<hgl::graph::RawDataAccess<hgl::graph::Assign::TransformID::ValueType>>;
+            using SizeAccessor        = hgl::graph::BufferAccessor<hgl::graph::RawDataAccess<hgl::math::Vector2f>>;
 
             uint32_t line_count   = 0;
             uint32_t gpu_capacity = 0;   ///< current VAB capacity in line-count
@@ -89,26 +89,26 @@ namespace hgl::ecs
             graph::GeometryDataBuffer* data_buffer = nullptr;
             graph::GeometryDrawRange*  draw_range  = nullptr;
             graph::ShaderProgram* material  = nullptr;   ///<SSBO 绑定用材质（LineRenderPipeline 设置）
-            graph::MaterialParameters* slot_mp = nullptr;  ///<每 slot 独立 PerObject set（避免共享 set 被 vkUpdateDescriptorSets 覆盖）
 
-            graph::BufferAccessor3f  va_pos;   ///< maps to StagedBuffer for positions
-            graph::BufferAccessor1u8 va_color; ///< maps to StagedBuffer for color indices
+            graph::BufferAccessor3f  va_pos;       ///< maps to StagedBuffer for positions
+            graph::BufferAccessor1u8 va_color;     ///< maps to StagedBuffer for color indices
             TransformIDAccessor      va_transform; ///< per-vertex TransformID stream
+            SizeAccessor             va_width;     ///< per-vertex width stream（Size 语义 R32_FLOAT）
 
             void Reset();
             void Clear();
             bool EnsureCapacity(uint32_t needed,
                                 graph::VulkanDevice*     dev,
-                                graph::DescriptorBindingSet* binding_set,
-                                uint32_t                 width);
+                                graph::DescriptorBindingSet* binding_set);
             bool AddSegment(const hgl::math::Vector3f& from,
                             const hgl::math::Vector3f& to,
                             uint8_t                     color_index,
+                            float                       width,
                             hgl::graph::Assign::TransformID::ValueType transform_index);
             void Draw(graph::RenderCmdBuffer* cmd);
         };
 
-        LineWidthSlot slots_[MAX_WIDTHS];
+        LineBuffer line_buffer_;
 
         // ------- Per-frame collect state -------
         std::vector<std::shared_ptr<LinesComponent>> collected_;
@@ -145,7 +145,6 @@ namespace hgl::ecs
 
     private:
         bool Initialize();
-        uint32_t GetSlotIndex(uint8_t width) const;
         void SyncTransformBinding();
     };
 

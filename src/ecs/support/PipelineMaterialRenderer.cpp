@@ -143,6 +143,15 @@ namespace hgl::ecs
                             changed = true;
                         }
                         break;
+                    case graph::VertexSemantic::Size:
+                        if (buf != last_ssbo_size)
+                        {
+                            material->BindSSBO(graph::DescriptorSetType::PerObject,
+                                               "VertexSize", buf, 0, VK_WHOLE_SIZE);
+                            last_ssbo_size = buf;
+                            changed = true;
+                        }
+                        break;
                     default: break;
                     }
                 }
@@ -203,6 +212,17 @@ namespace hgl::ecs
                             material->BindSSBO(graph::DescriptorSetType::PerObject,
                                                "VertexLuminance", buf, 0, VK_WHOLE_SIZE);
                             last_ssbo_luminance = buf;
+                            changed = true;
+                        }
+                    }
+                    if (auto *vab = batch->geometry->GetVAB(graph::VertexSemantic::Size))
+                    {
+                        const VkBuffer buf = vab->GetVkBuffer();
+                        if (buf != last_ssbo_size)
+                        {
+                            material->BindSSBO(graph::DescriptorSetType::PerObject,
+                                               "VertexSize", buf, 0, VK_WHOLE_SIZE);
+                            last_ssbo_size = buf;
                             changed = true;
                         }
                     }

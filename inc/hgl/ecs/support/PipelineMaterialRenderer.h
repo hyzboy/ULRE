@@ -86,6 +86,7 @@ namespace hgl::ecs
         VkBuffer last_ssbo_color = VK_NULL_HANDLE;          ///<上次绑定的顶点 Color buffer
         VkBuffer last_ssbo_luminance = VK_NULL_HANDLE;      ///<上次绑定的顶点 Luminance buffer
         VkBuffer last_ssbo_transform_id = VK_NULL_HANDLE;   ///<上次绑定的顶点 TransformID buffer
+        VkBuffer last_ssbo_size = VK_NULL_HANDLE;           ///<上次绑定的顶点 Size/宽度 buffer
         VkBuffer last_ssbo_index = VK_NULL_HANDLE;          ///<上次绑定的顶点索引 buffer
 
         int first_indirect_draw_index;                      ///<首个间接绘制索引

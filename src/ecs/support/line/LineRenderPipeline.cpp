@@ -56,6 +56,7 @@ namespace hgl::ecs
                     graph::Assign::TransformID::VAB_FMT,
                     1,
                     graph::Assign::TransformID::STRIDE_BYTES);
+            gvf.Add(graph::VertexSemantic::Size, VK_FORMAT_R32G32_SFLOAT, 2, sizeof(float) * 2);
 
             return gvf;
         }
@@ -65,46 +66,47 @@ namespace hgl::ecs
     const std::string LineRenderPipeline::kName{ "Line" };
 
     // -------------------------------------------------------------------------
-    // LineWidthSlot helpers
+    // LineBuffer helpers（P2：单 buffer——删 4 slot 分组）
     // -------------------------------------------------------------------------
 
-    void LineRenderPipeline::LineWidthSlot::Reset()
+    void LineRenderPipeline::LineBuffer::Reset()
     {
         line_count = 0;
         bool pos_valid = va_pos.IsValid();
         bool color_valid = va_color.IsValid();
         bool transform_valid = va_transform.IsValid();
+        bool width_valid = va_width.IsValid();
         
-        LinePeriodicLog(s_line_log_ticks[0], "[LineRenderPipeline] Reset: pos_valid=%d color_valid=%d transform_valid=%d",
+        LinePeriodicLog(s_line_log_ticks[0], "[LineRenderPipeline] Reset: pos_valid=%d color_valid=%d transform_valid=%d width_valid=%d",
                  pos_valid ? 1 : 0,
              color_valid ? 1 : 0,
-             transform_valid ? 1 : 0);
+             transform_valid ? 1 : 0,
+             width_valid ? 1 : 0);
         
         if (pos_valid)   va_pos.Seek(0);
         if (color_valid) va_color.Seek(0);
         if (transform_valid) va_transform.Seek(0);
+        if (width_valid) va_width.Seek(0);
         if (draw_range)  draw_range->vertex_count = 0;
     }
 
-    void LineRenderPipeline::LineWidthSlot::Clear()
+    void LineRenderPipeline::LineBuffer::Clear()
     {
         va_pos.Bind(nullptr);
         va_color.Bind(nullptr);
         va_transform.Bind(nullptr);
+        va_width.Bind(nullptr);
         SAFE_CLEAR(data_buffer);
         SAFE_CLEAR(draw_range);
         SAFE_CLEAR(geometry);
-        delete slot_mp;
-        slot_mp = nullptr;
         line_count   = 0;
         gpu_capacity = 0;
     }
 
-    bool LineRenderPipeline::LineWidthSlot::EnsureCapacity(
+    bool LineRenderPipeline::LineBuffer::EnsureCapacity(
         uint32_t needed,
         graph::VulkanDevice*     dev,
-        graph::DescriptorBindingSet* binding_set,
-        uint32_t                 width)
+        graph::DescriptorBindingSet* binding_set)
     {
         if (needed <= gpu_capacity)
             return true;
@@ -117,12 +119,14 @@ namespace hgl::ecs
         // Release old resources
         va_pos.Bind(nullptr);
         va_color.Bind(nullptr);
+        va_transform.Bind(nullptr);
+        va_width.Bind(nullptr);
         SAFE_CLEAR(data_buffer);
         SAFE_CLEAR(draw_range);
         SAFE_CLEAR(geometry);
 
         // Create new geometry (2 verts per line)
-        const AnsiString name = AnsiString("LineSlot_W") + AnsiString::numberOf(width);
+        const AnsiString name = AnsiString("LineBuffer");
         geometry = graph::CreateGeometry(dev,
                          CreateLineGeometryVertexFormat(),
                          name, new_cap * 2, 0,
@@ -159,8 +163,9 @@ namespace hgl::ecs
         const int pos_idx   = geometry->GetVABIndex(graph::VertexSemantic::Position);
         const int color_idx = geometry->GetVABIndex(graph::VertexSemantic::Color);
         const int transform_idx = geometry->GetVABIndex(graph::Assign::TransformID::VIS_SEMANTIC);
+        const int size_idx   = geometry->GetVABIndex(graph::VertexSemantic::Size);
 
-        if (pos_idx < 0 || color_idx < 0 || transform_idx < 0)
+        if (pos_idx < 0 || color_idx < 0 || transform_idx < 0 || size_idx < 0)
         {
             SAFE_CLEAR(data_buffer);
             SAFE_CLEAR(draw_range);
@@ -171,20 +176,21 @@ namespace hgl::ecs
         va_pos.Bind(geometry->GetVAB(pos_idx));
         va_color.Bind(geometry->GetVAB(color_idx));
         va_transform.Bind(geometry->GetVAB(transform_idx));
+        va_width.Bind(geometry->GetVAB(size_idx));
 
-        LinePeriodicLog(s_line_log_ticks[1], "[LineRenderPipeline] Slot %u after Bind: pos_valid=%d color_valid=%d transform_valid=%d",
-                 width,
+        LinePeriodicLog(s_line_log_ticks[1], "[LineRenderPipeline] LineBuffer after Bind: pos_valid=%d color_valid=%d transform_valid=%d width_valid=%d",
                  va_pos.IsValid() ? 1 : 0,
                  va_color.IsValid() ? 1 : 0,
-                 va_transform.IsValid() ? 1 : 0);
+                 va_transform.IsValid() ? 1 : 0,
+                 va_width.IsValid() ? 1 : 0);
 
-        if (!va_pos.IsValid() || !va_color.IsValid() || !va_transform.IsValid())
+        if (!va_pos.IsValid() || !va_color.IsValid() || !va_transform.IsValid() || !va_width.IsValid())
         {
-            GLogWarning("[LineRenderPipeline] Slot %u accessor bind failed (pos_valid=%d color_valid=%d transform_valid=%d)",
-                        width,
+            GLogWarning("[LineRenderPipeline] LineBuffer accessor bind failed (pos_valid=%d color_valid=%d transform_valid=%d width_valid=%d)",
                         va_pos.IsValid() ? 1 : 0,
                         va_color.IsValid() ? 1 : 0,
-                        va_transform.IsValid() ? 1 : 0);
+                        va_transform.IsValid() ? 1 : 0,
+                        va_width.IsValid() ? 1 : 0);
             SAFE_CLEAR(data_buffer);
             SAFE_CLEAR(draw_range);
             SAFE_CLEAR(geometry);
@@ -194,27 +200,31 @@ namespace hgl::ecs
         va_pos.Seek(0);
         va_color.Seek(0);
         va_transform.Seek(0);
+        va_width.Seek(0);
 
         gpu_capacity = new_cap;
         return true;
     }
 
-    bool LineRenderPipeline::LineWidthSlot::AddSegment(
+    bool LineRenderPipeline::LineBuffer::AddSegment(
         const hgl::math::Vector3f& from,
         const hgl::math::Vector3f& to,
         uint8_t                     color_index,
+        float                       width,
         graph::Assign::TransformID::ValueType transform_index)
     {
         bool pos_valid = va_pos.IsValid();
         bool color_valid = va_color.IsValid();
         bool transform_valid = va_transform.IsValid();
+        bool width_valid = va_width.IsValid();
         
-        if (!pos_valid || !color_valid || !transform_valid)
+        if (!pos_valid || !color_valid || !transform_valid || !width_valid)
         {
-            GLogWarning("[LineRenderPipeline] AddSegment accessor invalid: pos=%d color=%d transform=%d",
+            GLogWarning("[LineRenderPipeline] AddSegment accessor invalid: pos=%d color=%d transform=%d width=%d",
                         pos_valid ? 1 : 0,
                         color_valid ? 1 : 0,
-                        transform_valid ? 1 : 0);
+                        transform_valid ? 1 : 0,
+                        width_valid ? 1 : 0);
             return false;
         }
 
@@ -230,6 +240,10 @@ namespace hgl::ecs
             return false;
         if (!va_transform.Write(transform_index))
             return false;
+        if (!va_width.Write(hgl::math::Vector2f(width, 0.0f)))
+            return false;
+        if (!va_width.Write(hgl::math::Vector2f(width, 0.0f)))
+            return false;
 
         ++line_count;
         if (draw_range)
@@ -237,7 +251,7 @@ namespace hgl::ecs
         return true;
     }
 
-    void LineRenderPipeline::LineWidthSlot::Draw(graph::RenderCmdBuffer* cmd)
+    void LineRenderPipeline::LineBuffer::Draw(graph::RenderCmdBuffer* cmd)
     {
         if (!cmd)
         {
@@ -248,55 +262,64 @@ namespace hgl::ecs
         if (line_count == 0)
             return;
 
-        if (!data_buffer || !draw_range)
+        if (!data_buffer || !draw_range || !geometry || !material)
         {
-            GLogWarning("[LineRenderPipeline] Draw skipped: data_buffer/draw_range null while line_count=%u", line_count);
+            GLogWarning("[LineRenderPipeline] Draw skipped: data_buffer/draw_range/geometry/material null while line_count=%u", line_count);
             return;
         }
 
-        bool bound_ok = false;
-
-        if (data_buffer && geometry && material && slot_mp)
+        // P2：mesh shader 单 buffer——4 个顶点 SSBO 绑到 material 的 PerObject set
+        // （单 buffer 无 slot 竞争，直接绑共享 set 即可——不再需要每 slot 独立 set）
+        auto bind_ssbo = [&](const graph::VertexSemantic semantic, const char *name)
         {
-            // SSBO 顶点输入：Position/Color/TransformID 绑到本 slot 独立的 PerObject set
-            // （slot_mp 是每 slot 独立分配的 descriptor set——共享 material 的 set 会被
-            //   后续 slot 的 vkUpdateDescriptorSets 覆盖，导致所有 Draw 读到最后一次内容）
-            auto bind_ssbo = [&](const graph::VertexSemantic semantic, const char *name)
-            {
-                auto *vab = geometry->GetVAB(semantic);
-                if (!vab)
-                    return;
-                slot_mp->BindSSBO(name, vab->GetVkBuffer(), 0, VK_WHOLE_SIZE);
-            };
-            bind_ssbo(graph::VertexSemantic::Position, "VertexPosition");
-            bind_ssbo(graph::VertexSemantic::Color, "VertexColor");
-            bind_ssbo(graph::VertexSemantic::TransformID, "VertexTransformID");
+            auto *vab = geometry->GetVAB(semantic);
+            if (!vab)
+                return false;
+            material->BindSSBO(graph::DescriptorSetType::PerObject, name,
+                               vab->GetVkBuffer(), 0, VK_WHOLE_SIZE);
+            return true;
+        };
 
-            slot_mp->Update();
-            const VkDescriptorSet ds = slot_mp->GetVkDescriptorSet();
-            cmd->BindDescriptorSets(material->GetPipelineLayout(),
-                                    static_cast<uint32_t>(graph::DescriptorSetType::PerObject),
-                                    &ds, 1, nullptr, 0);
-            bound_ok = true;
-        }
+        if (!bind_ssbo(graph::VertexSemantic::Position, "VertexPosition")
+         || !bind_ssbo(graph::VertexSemantic::Color, "VertexColor")
+         || !bind_ssbo(graph::Assign::TransformID::VIS_SEMANTIC, "VertexTransformID")
+         || !bind_ssbo(graph::VertexSemantic::Size, "VertexSize"))
+            return;
 
-        if (!bound_ok)
-            return;   // SSBO 绑定失败不绘制（VBO fallback 已随 BindDataBuffer 删除）
+        auto *mp = material->GetMP(graph::DescriptorSetType::PerObject);
+        if (!mp)
+            return;
+        mp->Update();
+        const VkDescriptorSet ds = mp->GetVkDescriptorSet();
+        cmd->BindDescriptorSets(material->GetPipelineLayout(),
+                                static_cast<uint32_t>(graph::DescriptorSetType::PerObject),
+                                &ds, 1, nullptr, 0);
 
-        if (bound_ok && material)
+        // Push constant（20B）：index_base=0 vertex_base=0 is_indexed=0 total_vertices=line_count*2 viewport_height
+        // viewport_height 供 mesh shader 线宽像素换算（width 为像素，与旧 vkCmdSetLineWidth 语义一致）
+        struct LinePushConstant
         {
-            const uint32_t pc_data[3] = {0, 0, 0};   // line 非索引直通：index_base=0 vertex_base=0 is_indexed=0
-            cmd->PushConstants(material->GetPipelineLayout(), pc_data, sizeof(pc_data));
-        }
+            uint32_t index_base;
+            uint32_t vertex_base;
+            uint32_t is_indexed;
+            uint32_t total_vertices;
+            float    viewport_height;
+        } pc{};
 
-        cmd->Draw(data_buffer, draw_range);
+        pc.total_vertices = line_count * 2u;
+        pc.viewport_height = cmd->GetViewport().height;
+        cmd->PushConstants(material->GetPipelineLayout(), &pc, sizeof(pc));
 
-        LinePeriodicLog(s_line_log_ticks[2], "[LineRenderPipeline] Draw issued: data_buffer=%p draw_range=%p line_count=%u vertex_count=%u ssbo_bind=%d",
+        // Mesh shader 绘制：每线程 1 线段，threadgroup = MESH_GROUP_SIZE
+        const uint32_t group_count = (line_count + LineRenderPipeline::MESH_GROUP_SIZE - 1)
+                                    / LineRenderPipeline::MESH_GROUP_SIZE;
+        cmd->DrawMeshTasks(group_count);
+
+        LinePeriodicLog(s_line_log_ticks[2], "[LineRenderPipeline] DrawMeshTasks issued: data_buffer=%p line_count=%u vertex_count=%u groups=%u",
                  data_buffer,
-                 draw_range,
                  line_count,
                  line_count * 2u,
-                 bound_ok ? 1 : 0);
+                 group_count);
     }
 
     // -------------------------------------------------------------------------
@@ -345,8 +368,6 @@ namespace hgl::ecs
         if (!device_)
             return false;
 
-        support_wide_lines_ = device_->GetDevAttr() && device_->GetDevAttr()->wide_lines;
-
         const graph::GeometryVertexFormat line_gvf = CreateLineGeometryVertexFormat();
 
         // ------- Create material -------
@@ -375,30 +396,11 @@ namespace hgl::ecs
         binding_set_ = &binding_set_storage_;
 
         // ------- Create pipeline -------
-        pipeline_ = support_wide_lines_
-            ? rp->CreatePipeline(material_, graph::mtl::MakeDynamicLineWidth3DConfig(), false, &line_gvf)
-            : rp->CreatePipeline(material_, graph::mtl::MakeSolid3DConfig(), false, &line_gvf);
+        // P2：mesh 管线（宽度入 SSBO，cull off——quad 绕序不定，双面绘制）
+        pipeline_ = rp->CreatePipeline(material_, graph::mtl::MakeLineMeshConfig(), false, &line_gvf);
 
         if (!pipeline_)
             return false;
-
-        // 每 slot 独立 PerObject descriptor set：共享 material 的 set 会被后续 slot 的
-        // vkUpdateDescriptorSets 覆盖（Vulkan 下同一 command buffer 内 set 内容修改为 UB），
-        // 导致所有 Draw 读到最后一次更新的 VAB。每 slot 独立 set 彻底隔离。
-        {
-            auto *desc_mgr = material_->GetDescriptorManager();
-            auto *pld = material_->GetPipelineLayoutData();
-            for (uint32_t i = 0; i < MAX_WIDTHS; ++i)
-            {
-                if (!slots_[i].slot_mp)
-                    slots_[i].slot_mp = device_->CreateMP(desc_mgr, pld, graph::DescriptorSetType::PerObject);
-                if (!slots_[i].slot_mp)
-                {
-                    GLogError("[LineRenderPipeline] CreateMP(PerObject) failed for slot %u", i + 1);
-                    return false;
-                }
-            }
-        }
 
         SyncTransformBinding();
 
@@ -422,32 +424,14 @@ namespace hgl::ecs
 
         SyncTransformBinding();
 
-        // Reset all active slots
-        if (support_wide_lines_)
-        {
-            for (uint32_t i = 0; i < MAX_WIDTHS; ++i)
-                slots_[i].Reset();
-        }
-        else
-        {
-            slots_[0].Reset();
-        }
+        // Reset 单 Line buffer（P2：删 4 slot 分组）
+        line_buffer_.Reset();
 
         collected_.clear();
         stats_ = LineCollectStats{};
         total_line_count_ = 0;
 
         return true;
-    }
-
-    uint32_t LineRenderPipeline::GetSlotIndex(uint8_t width) const
-    {
-        if (!support_wide_lines_)
-            return 0;
-        if (width == 0)
-            return 0;
-        uint32_t idx = static_cast<uint32_t>(width) - 1;
-        return idx < MAX_WIDTHS ? idx : (MAX_WIDTHS - 1);
     }
 
     void LineRenderPipeline::RunCollect()
@@ -568,45 +552,30 @@ namespace hgl::ecs
             dynamic_base = transform_system->GetDynamicBaseIndex(static_count, dynamic_count);
         }
 
-        // First pass: count lines per slot
-        uint32_t slot_counts[MAX_WIDTHS] = {};
+        // P2：单 Line buffer（删 4 slot 分组）——first pass 只算总数
         uint32_t expected_total = 0;
-        uint32_t non_empty_slots = 0;
         for (const auto& comp : collected_)
         {
-            const uint32_t idx = GetSlotIndex(comp->width);
-            const uint32_t cnt = static_cast<uint32_t>(comp->lines.size());
-            if (slot_counts[idx] == 0 && cnt > 0)
-                ++non_empty_slots;
-            slot_counts[idx] += cnt;
-            expected_total += cnt;
+            expected_total += static_cast<uint32_t>(comp->lines.size());
         }
 
-        // Ensure GPU capacity per slot (recreate if needed)
-        const uint32_t num_slots = support_wide_lines_ ? MAX_WIDTHS : 1;
-        for (uint32_t i = 0; i < num_slots; ++i)
+        // Ensure GPU capacity（单 buffer，按总数）
+        if (!line_buffer_.EnsureCapacity(expected_total, device_, binding_set_))
         {
-            if (slot_counts[i] == 0)
-                continue;
-            if (!slots_[i].EnsureCapacity(slot_counts[i], device_, binding_set_, i + 1))
-            {
-                GLogWarning("[LineRenderPipeline] EnsureCapacity failed: slot=%u need=%u cap=%u",
-                            i + 1,
-                            slot_counts[i],
-                            slots_[i].gpu_capacity);
-                return; // Allocation failure: skip frame
-            }
-
-            if (slots_[i].gpu_capacity < slot_counts[i])
-            {
-                GLogWarning("[LineRenderPipeline] Slot capacity insufficient after ensure: slot=%u cap=%u need=%u",
-                            i + 1,
-                            slots_[i].gpu_capacity,
-                            slot_counts[i]);
-            }
-
-            slots_[i].Reset(); // seek back to 0
+            GLogWarning("[LineRenderPipeline] EnsureCapacity failed: need=%u cap=%u",
+                        expected_total,
+                        line_buffer_.gpu_capacity);
+            return; // Allocation failure: skip frame
         }
+
+        if (line_buffer_.gpu_capacity < expected_total)
+        {
+            GLogWarning("[LineRenderPipeline] LineBuffer capacity insufficient after ensure: cap=%u need=%u",
+                        line_buffer_.gpu_capacity,
+                        expected_total);
+        }
+
+        line_buffer_.Reset(); // seek back to 0
 
         // Second pass: write segments
         uint32_t write_fail_count = 0;
@@ -614,7 +583,6 @@ namespace hgl::ecs
         uint32_t resolved_transform_components = 0;
         for (const auto& comp : collected_)
         {
-            const uint32_t idx = GetSlotIndex(comp->width);
             bool comp_write_ok = true;
 
             graph::Assign::TransformID::ValueType transform_id = 0;
@@ -647,7 +615,10 @@ namespace hgl::ecs
 
             for (const auto& seg : comp->lines)
             {
-                if (!slots_[idx].AddSegment(seg.from, seg.to, seg.color_index, transform_id))
+                // P2：width 入 SSBO（删 slot 分组）——单 buffer 顺序写入
+                if (!line_buffer_.AddSegment(seg.from, seg.to, seg.color_index,
+                                             static_cast<float>(comp->width),
+                                             transform_id))
                 {
                     ++write_fail_count;
                     comp_write_ok = false;
@@ -659,9 +630,7 @@ namespace hgl::ecs
         }
 
         // Tally total
-        total_line_count_ = 0;
-        for (uint32_t i = 0; i < num_slots; ++i)
-            total_line_count_ += slots_[i].line_count;
+        total_line_count_ = line_buffer_.line_count;
 
         if (write_fail_count > 0 || total_line_count_ != expected_total)
         {
@@ -671,19 +640,11 @@ namespace hgl::ecs
                         write_fail_count,
                         collected_.size());
 
-            for (uint32_t i = 0; i < num_slots; ++i)
-            {
-                if (slot_counts[i] == 0 && slots_[i].line_count == 0)
-                    continue;
-
-                GLogWarning("[LineRenderPipeline]   slot=%u expected=%u built=%u capacity=%u pos_valid=%d color_valid=%d",
-                                i + 1,
-                                slot_counts[i],
-                                slots_[i].line_count,
-                                slots_[i].gpu_capacity,
-                                slots_[i].va_pos.IsValid() ? 1 : 0,
-                                slots_[i].va_color.IsValid() ? 1 : 0);
-            }
+            GLogWarning("[LineRenderPipeline]   line_buffer: built=%u capacity=%u pos_valid=%d color_valid=%d",
+                        line_buffer_.line_count,
+                        line_buffer_.gpu_capacity,
+                        line_buffer_.va_pos.IsValid() ? 1 : 0,
+                        line_buffer_.va_color.IsValid() ? 1 : 0);
         }
 
         if (transform_owner_components > 0)
@@ -702,9 +663,8 @@ namespace hgl::ecs
             }
         }
 
-        LinePeriodicLog(s_line_log_ticks[5], "[LineRenderPipeline] Build summary: collected=%zu non_empty_slots=%u expected_lines=%u built_lines=%u write_fail=%u",
+        LinePeriodicLog(s_line_log_ticks[5], "[LineRenderPipeline] Build summary: collected=%zu expected_lines=%u built_lines=%u write_fail=%u",
                  collected_.size(),
-                 non_empty_slots,
                  expected_total,
                  total_line_count_,
                  write_fail_count);
@@ -767,48 +727,19 @@ namespace hgl::ecs
             }
         }
 
-        const uint32_t num_slots = support_wide_lines_ ? MAX_WIDTHS : 1;
-        uint32_t draw_lines = 0;
-        LinePeriodicLog(s_line_log_ticks[6], "[LineRenderPipeline] Render begin: total_line_count=%u num_slots=%u wide_lines=%d",
-                 total_line_count_,
-                 num_slots,
-                 support_wide_lines_ ? 1 : 0);
-
-        for (uint32_t i = 0; i < num_slots; ++i)
-        {
-            if (slots_[i].line_count == 0)
-                continue;
-
-            if (support_wide_lines_)
-                cmd->SetLineWidth(static_cast<float>(i + 1));
-
-            LinePeriodicLog(s_line_log_ticks[7], "[LineRenderPipeline] Render slot: slot=%u line_count=%u capacity=%u data_buffer=%p",
-                     i + 1,
-                     slots_[i].line_count,
-                     slots_[i].gpu_capacity,
-                     slots_[i].data_buffer);
-            slots_[i].material = material_;
-            slots_[i].Draw(cmd);
-            draw_lines += slots_[i].line_count;
-        }
-
-        if (draw_lines != total_line_count_)
-        {
-            GLogWarning("[LineRenderPipeline] Render mismatch: total_line_count=%u draw_lines=%u",
-                        total_line_count_,
-                        draw_lines);
-        }
+        // P2：单 Line buffer（删 4 slot 分组 + SetLineWidth）——一次 DrawMeshTasks
+        line_buffer_.material = material_;
+        line_buffer_.Draw(cmd);
 
         LinePeriodicLog(s_line_log_ticks[8], "[LineRenderPipeline] Render end: submitted_lines=%u expected_lines=%u",
-                 draw_lines,
+                 total_line_count_,
                  total_line_count_);
     }
 
     void LineRenderPipeline::Shutdown()
     {
-        const uint32_t num_slots = support_wide_lines_ ? MAX_WIDTHS : 1;
-        for (uint32_t i = 0; i < num_slots; ++i)
-            slots_[i].Clear();
+        // P2：单 Line buffer（删 4 slot 分组）
+        line_buffer_.Clear();
 
         if (auto* gc = context_ ? context_->GetGraphicsContext() : nullptr)
         {
@@ -881,30 +812,9 @@ namespace hgl::ecs
             GLogInfo("[LineRenderPipeline] SyncTransformBinding: bound transform buffer for Line material");
         }
 
-        // 每 slot 独立 PerObject set 也需要 L2W / l2w_index_rows（shader 无条件声明
-        // l2w_index_rows binding，set 不绑会变 no resource；L2W 是 TransformID 变换的矩阵源）。
-        {
-            auto *gpu = transform_data_buffer->GetGPUBuffer();
-            auto *index_rows_gpu = transform_buffer->GetTransformIndexRowsBuffer()
-                                 ? transform_buffer->GetTransformIndexRowsBuffer()->GetGPUBuffer()
-                                 : nullptr;
-
-            for (uint32_t i = 0; i < MAX_WIDTHS; ++i)
-            {
-                auto *mp = slots_[i].slot_mp;
-                if (!mp)
-                    continue;
-
-                mp->BindSSBO(graph::mtl::SBS_LocalToWorld.name,
-                             gpu);
-                if (index_rows_gpu)
-                {
-                    mp->BindSSBO(graph::mtl::SBS_LocalToWorldIndexRows.name,
-                                 index_rows_gpu);
-                }
-                mp->Update();
-            }
-        }
+        // P2：单 material 共享 PerObject set——BindTransform(material_) 已绑 L2W 到共享 set，
+        // 无需再补每 slot 独立 set（slot_mp 机制已随 4 slot 分组整体删除）。
+        // mesh shader 的 GetL2W() 读 l2w.mats[TransformID]，即此绑定。
     }
 
 }  // namespace hgl::ecs

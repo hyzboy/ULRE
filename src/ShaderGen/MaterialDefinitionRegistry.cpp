@@ -112,7 +112,7 @@ namespace
                 return false;
             out_position_format = position_attribute->format;
 
-            bool need_uv = false, need_ntb = false, need_joint = false, need_color = false, need_luminance = false, need_transform_id = false;
+            bool need_uv = false, need_ntb = false, need_joint = false, need_color = false, need_luminance = false, need_transform_id = false, need_size = false;
             for (int i = 0; i < definition.vertex_semantic_requirements.GetCount(); ++i)
             {
                 const auto &requirement = definition.vertex_semantic_requirements[i];
@@ -129,6 +129,7 @@ namespace
                 case VertexSemantic::Color: need_color = true; break;
                 case VertexSemantic::Luminance: need_luminance = true; break;
                 case VertexSemantic::TransformID: need_transform_id = true; break;
+                case VertexSemantic::Size: need_size = true; break;
                 default: break;  // Position 由 input mode 决定
                 }
             }
@@ -172,6 +173,8 @@ namespace
                 out_vertex_input_glsl += "#include \"vertex/s1_luminance.glsl\"\n";
             if (need_transform_id)
                 out_vertex_input_glsl += "#include \"vertex/s1_transform_id.glsl\"\n";
+            if (need_size)
+                out_vertex_input_glsl += "#include \"vertex/s1_size.glsl\"\n";
 
             // 位置模块按 effective input 选择（position_format 判定——与
             // VertexShaderAssembler 一致：geometry 格式说了算，recipe/TOML input 仅兜底）

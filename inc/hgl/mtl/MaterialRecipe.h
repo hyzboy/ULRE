@@ -166,6 +166,7 @@ namespace hgl::graph::mtl
         case GLSLCodeModuleSemantic::Luminance: return VertexSemantic::Luminance;
         case GLSLCodeModuleSemantic::UV0:       return VertexSemantic::TexCoord;
         case GLSLCodeModuleSemantic::TransformID: return VertexSemantic::TransformID;
+        case GLSLCodeModuleSemantic::Size:        return VertexSemantic::Size;
         default:                                return VertexSemantic::Unknown;
         }
     }

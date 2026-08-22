@@ -42,6 +42,9 @@ namespace hgl::graph::mtl
     constexpr const ShaderBufferSource SBS_VertexTransformID{
         DescriptorSetType::PerObject, "VertexTransformID", "VertexTransformIDData"
     };
+    constexpr const ShaderBufferSource SBS_VertexSize{
+        DescriptorSetType::PerObject, "VertexSize", "VertexSizeData"
+    };
     constexpr const ShaderBufferSource SBS_VertexIndex{
         DescriptorSetType::PerObject, "VertexIndex", "VertexIndexData"
     };

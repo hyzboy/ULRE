@@ -19,8 +19,10 @@ namespace hgl::graph::mtl
         if (!build_spec.HasProgramLink())
             return false;
 
+        // mesh shader 材质（彻底废弃 VS 方向）：顶点处理 stage 是 Mesh 而非 Vertex
+        const bool is_mesh = build_spec.has_mesh();
         const ShaderCreateInfo *vertex =
-            build_spec.GetStageShader(ShaderStage::Vertex);
+            build_spec.GetStageShader(is_mesh ? ShaderStage::Mesh : ShaderStage::Vertex);
         const ShaderCreateInfo *fragment =
             build_spec.GetStageShader(ShaderStage::Fragment);
         if (!vertex || !fragment
@@ -42,12 +44,12 @@ namespace hgl::graph::mtl
             fragment->GetFinalGLSL().size());
 
         hgl::hash::FNV1aHasher64 module_graph_hasher;
-        module_graph_hasher << link.vertex_stage.glsl_module_graph_hash
+        module_graph_hasher << (is_mesh ? link.mesh_stage : link.vertex_stage).glsl_module_graph_hash
                             << link.fragment_stage.glsl_module_graph_hash;
         const uint64 module_graph_hash = module_graph_hasher;
 
         hgl::hash::FNV1aHasher64 interface_hasher;
-        interface_hasher << link.vertex_stage.interface_hash
+        interface_hasher << (is_mesh ? link.mesh_stage : link.vertex_stage).interface_hash
                          << link.fragment_stage.interface_hash
                          << HashShaderResourceSchema(
                              build_spec.GetShaderResourceSchema());
@@ -64,7 +66,7 @@ namespace hgl::graph::mtl
         out_metadata.shader_interface_hash = interface_hash;
         out_metadata.output_contract_hash = link.render_target_hash;
         out_metadata.vertex_stage_digest =
-            link.vertex_stage.GetDigest();
+            (is_mesh ? link.mesh_stage : link.vertex_stage).GetDigest();
         out_metadata.fragment_stage_digest =
             link.fragment_stage.GetDigest();
         out_metadata.compiler_profile_hash = link.compiler_hash;

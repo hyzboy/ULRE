@@ -20,9 +20,19 @@ namespace hgl::graph
         VertexGeometryFragment      = Vertex | Geometry | Fragment,
         Tessellation                = TessControl | TessEval,
 
+        MeshFragment                = Mesh | Fragment,
+
         TaskMesh                    = Task | Mesh,
         TaskMeshFragment            = Task | Mesh | Fragment,
 
         AllGraphics                 = VK_SHADER_STAGE_ALL_GRAPHICS
     };
+
+    // 顶点处理阶段（MeshShader 方向：彻底废弃 VS）——mesh shader 与 VS 共用同一批
+    // descriptor（顶点数据 SSBO / L2W / camera / palette 等），stage 位须覆盖两者。
+    // 注意 VK_SHADER_STAGE_ALL_GRAPHICS 不含 MESH/TASK 位，必须显式追加。
+    constexpr uint32_t kAllGraphicsOrMesh =
+        VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_MESH_BIT_EXT;
+    constexpr uint32_t kVertexOrMesh =
+        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_MESH_BIT_EXT;
 }

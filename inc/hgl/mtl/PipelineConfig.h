@@ -86,17 +86,19 @@ namespace hgl::graph::mtl
         return MaterialPipelineConfig{};
     }
 
+    inline MaterialPipelineConfig MakeLineMeshConfig()
+    {
+        // Line mesh shader（P2：line-to-quad）——quad 三角形绕序不定（clip 空间偏移可能翻转），
+        // 必须双面绘制（cull off）；深度行为与 Solid3D 一致（test+write）。
+        MaterialPipelineConfig config;
+        config.cull_mode = VK_CULL_MODE_NONE;
+        return config;
+    }
+
     inline MaterialPipelineConfig MakeAlpha3DConfig()
     {
         MaterialPipelineConfig config;
         config.alpha_blend = true;
-        return config;
-    }
-
-    inline MaterialPipelineConfig MakeDynamicLineWidth3DConfig()
-    {
-        MaterialPipelineConfig config;
-        config.dynamic_line_width = true;
         return config;
     }
 
