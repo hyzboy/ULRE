@@ -31,75 +31,9 @@ VertexInputConfig::~VertexInputConfig()
 
 VIL *VertexInputConfig::CreateVIL(const VILConfig *cfg)
 {
-    VIL *vil=new VIL(via_array.count);
-
-    VkVertexInputBindingDescription *bind_desc=vil->bind_list;
-    VkVertexInputAttributeDescription *attr_desc=vil->attr_list;
-    VertexInputFormat *vif=vil->vif_list;
-
-    const VertexInputAttribute *via=via_array.items;
-    VAConfig vac;
-    uint binding=0;
-
-    for(uint i=0;i<via_array.count;i++)
-    {
-        attr_desc->binding   =binding;
-        attr_desc->location  =via->location;
-        attr_desc->offset    =0;
-
-        bind_desc->binding   =binding;
-
-        ++binding;
-
-        const bool is_joint_id=(via->semantic==VertexSemantic::JointID);
-        const bool is_joint_weight=(via->semantic==VertexSemantic::JointWeight);
-
-        if(is_joint_id)
-        {
-            attr_desc->format   =VK_FORMAT_R8G8B8A8_UINT;
-            bind_desc->stride   =4;
-        }
-        else
-        if(is_joint_weight)
-        {
-            attr_desc->format   =VK_FORMAT_R8G8B8A8_UNORM;
-            bind_desc->stride   =4;
-        }
-        else
-        {
-            if(!cfg||!cfg->Get(via->name,vac))
-            {
-                if(!cfg||!cfg->Get(via->semantic,vac))
-                    attr_desc->format    =GetVulkanFormat(via);
-                else
-                {
-                    attr_desc->format    =(vac.format==PF_UNDEFINED?GetVulkanFormat(via):vac.format);
-                    bind_desc->inputRate =vac.input_rate;
-                }
-            }
-            else
-            {
-                attr_desc->format    =(vac.format==PF_UNDEFINED?GetVulkanFormat(via):vac.format);
-                bind_desc->inputRate =vac.input_rate;
-            }
-
-            bind_desc->stride=GetStrideByFormat(attr_desc->format);
-        }
-
-        vif->semantic   =via->semantic;
-        vif->format     =attr_desc->format;
-        vif->vec_size   =via->vec_size;
-        vif->stride     =bind_desc->stride;
-        vif->name       =GetVertexSemanticName(via->semantic);
-        vif->binding    =attr_desc->binding;
-
-        ++vif;
-        ++attr_desc;
-        ++bind_desc;
-        ++via;
-    }
-
-    return(vil);
+    // SSBO 顶点输入时代：管线无 VBO attribute（顶点数据经顶点 SSBO 读取）——
+    // 恒返回空 VIL（0 attribute 0 binding）。VBO 时代的 attribute 生成已删除。
+    return(new VIL(0));
 }
 
 VertexInput::VertexInput(const VIAArray &sa_array):vic(sa_array)

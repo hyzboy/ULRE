@@ -76,7 +76,7 @@ namespace hgl::ecs
 
         // === 渲染状态缓存 ===
         graph::RenderCmdBuffer* cmd_buf;                    ///<当前渲染命令缓冲
-        graph::VABList* vab_list;                           ///<顶点属性缓冲列表
+        graph::VABList* vab_list;                           ///<顶点属性缓冲列表（VBO 时代残留——待清理）
 
         const graph::GeometryDataBuffer* last_data_buffer;  ///<上次绑定的几何数据缓冲
 
@@ -87,6 +87,7 @@ namespace hgl::ecs
         VkBuffer last_ssbo_ntb = VK_NULL_HANDLE;            ///<上次绑定的顶点 NTB buffer
         VkBuffer last_ssbo_color = VK_NULL_HANDLE;          ///<上次绑定的顶点 Color buffer
         VkBuffer last_ssbo_luminance = VK_NULL_HANDLE;      ///<上次绑定的顶点 Luminance buffer
+        VkBuffer last_ssbo_transform_id = VK_NULL_HANDLE;   ///<上次绑定的顶点 TransformID buffer
         VkBuffer last_ssbo_index = VK_NULL_HANDLE;          ///<上次绑定的顶点索引 buffer
 
         int first_indirect_draw_index;                      ///<首个间接绘制索引
@@ -100,28 +101,24 @@ namespace hgl::ecs
          * @param batch 绘制批次
          * @return 绑定是否成功
          */
-        bool BindVAB(const DrawBatch* batch);
+        bool BindVAB(const DrawBatch* batch);   // VBO 时代残留——已随阶段 4 删除实现
 
         /**
          * 处理间接渲染
-         * @param icb_draw 间接绘制缓冲（无索引）
-         * @param icb_draw_indexed 间接绘制缓冲（有索引）
+         * @param icb_draw 间接绘制缓冲（SSBO 顶点输入统一非索引间接）
          */
-        void ProcIndirectRender(graph::IndirectDrawBuffer* icb_draw,
-                               graph::IndirectDrawIndexedBuffer* icb_draw_indexed);
+        void ProcIndirectRender(graph::IndirectDrawBuffer* icb_draw);
 
         /**
          * 绘制单个批次
          * @param batch 绘制批次
          * @param transform_buffer ECS Transform分配缓冲
-         * @param icb_draw 间接绘制缓冲（无索引）
-         * @param icb_draw_indexed 间接绘制缓冲（有索引）
+         * @param icb_draw 间接绘制缓冲（SSBO 顶点输入统一非索引间接）
          * @return 绘制是否成功
          */
         bool Draw(DrawBatch* batch,
                   TransformAssignmentBuffer* transform_buffer,
                   graph::IndirectDrawBuffer* icb_draw,
-                  graph::IndirectDrawIndexedBuffer* icb_draw_indexed,
                   const MaterialBatch *owner_batch = nullptr);
 
     public:
@@ -142,7 +139,6 @@ namespace hgl::ecs
                     uint32_t batch_count,
                     TransformAssignmentBuffer* transform_buffer,
                     graph::IndirectDrawBuffer* icb_draw,
-                    graph::IndirectDrawIndexedBuffer* icb_draw_indexed,
                     const MaterialBatch *owner_batch = nullptr,
                     graph::RenderContext *render_context = nullptr);
     };

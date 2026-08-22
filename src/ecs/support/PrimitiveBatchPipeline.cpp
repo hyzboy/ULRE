@@ -53,12 +53,6 @@ namespace hgl::ecs
                 delete batch.icb_draw;
                 batch.icb_draw = nullptr;
             }
-
-            if (batch.icb_draw_indexed)
-            {
-                delete batch.icb_draw_indexed;
-                batch.icb_draw_indexed = nullptr;
-            }
         }
 
         void WriteICB(VkDrawIndirectCommand* draw_cmd, DrawBatch* batch)
@@ -66,22 +60,12 @@ namespace hgl::ecs
             if (!draw_cmd || !batch || !batch->geom_draw_range)
                 return;
 
-            draw_cmd->vertexCount = batch->geom_draw_range->vertex_count;
+            draw_cmd->vertexCount = (batch->geom_draw_range->index_count > 0)
+                ? batch->geom_draw_range->index_count
+                : batch->geom_draw_range->vertex_count;
             draw_cmd->instanceCount = batch->instance_count;
-            draw_cmd->firstVertex = batch->geom_draw_range->vertex_offset;
+            draw_cmd->firstVertex = 0;   // SSBO 顶点输入：段偏移走 push constant（vertex_base）
             draw_cmd->firstInstance = batch->first_instance;
-        }
-
-        void WriteICB(VkDrawIndexedIndirectCommand* indexed_draw_cmd, DrawBatch* batch)
-        {
-            if (!indexed_draw_cmd || !batch || !batch->geom_draw_range)
-                return;
-
-            indexed_draw_cmd->indexCount = batch->geom_draw_range->index_count;
-            indexed_draw_cmd->instanceCount = batch->instance_count;
-            indexed_draw_cmd->firstIndex = batch->geom_draw_range->first_index;
-            indexed_draw_cmd->vertexOffset = batch->geom_draw_range->vertex_offset;
-            indexed_draw_cmd->firstInstance = batch->first_instance;
         }
 
         uint64_t ResolveSSBOBindingSignature(RenderItem *item)
@@ -333,27 +317,23 @@ namespace hgl::ecs
         return gc ? gc->GetBufferManager() : nullptr;
     }
 
-    std::pair<graph::ObjectNameBuilder, graph::ObjectNameBuilder>
+    graph::ObjectNameBuilder
     PrimitiveBatchPipeline::BuildICBNames() const
     {
         graph::ObjectNameBuilder draw_name;
-        graph::ObjectNameBuilder indexed_name;
 
         if (world && !world->GetResourceNamePrefix().empty())
         {
             std::string draw_str = world->GetResourceNamePrefix() + ":IndirectDrawBuffer";
-            std::string indexed_str = world->GetResourceNamePrefix() + ":IndirectDrawIndexedBuffer";
 
             draw_name = graph::ObjectNameBuilder(draw_str.c_str());
-            indexed_name = graph::ObjectNameBuilder(indexed_str.c_str());
         }
         else
         {
             draw_name = graph::ObjectNameBuilder("RPBS_IndirectDrawBuffer");
-            indexed_name = graph::ObjectNameBuilder("RPBS_IndirectDrawIndexedBuffer");
         }
 
-        return {draw_name, indexed_name};
+        return draw_name;
     }
 
     void PrimitiveBatchPipeline::ReallocICB(MaterialBatch& batch)
@@ -371,10 +351,9 @@ namespace hgl::ecs
 
         ReleaseICB(batch);
 
-        auto [draw_name, indexed_name] = BuildICBNames();
+        auto draw_name = BuildICBNames();
 
         batch.icb_draw = device->CreateIndirectDrawBuffer(icb_new_count, draw_name);
-        batch.icb_draw_indexed = device->CreateIndirectDrawIndexedBuffer(icb_new_count, indexed_name);
     }
 
     void PrimitiveBatchPipeline::BuildBatches(MaterialBatch& batch, const uint32_t base_instance)
@@ -399,7 +378,7 @@ namespace hgl::ecs
         {
             ReallocICB(batch);
 
-            if (!batch.icb_draw || !batch.icb_draw_indexed)
+            if (!batch.icb_draw)
             {
                 batch.draw_batches_count = 0;
                 batch.draw_batches.clear();
@@ -412,17 +391,14 @@ namespace hgl::ecs
         }
 
         VkDrawIndirectCommand* draw_cmd = nullptr;
-        VkDrawIndexedIndirectCommand* indexed_draw_cmd = nullptr;
 
         if (needs_indirect)
         {
             draw_cmd = batch.icb_draw->MapCmd();
-            indexed_draw_cmd = batch.icb_draw_indexed->MapCmd();
 
-            if (!draw_cmd || !indexed_draw_cmd)
+            if (!draw_cmd)
             {
                 batch.icb_draw->Unmap();
-                batch.icb_draw_indexed->Unmap();
                 batch.draw_batches_count = 0;
                 batch.draw_batches.clear();
                 return;
@@ -450,7 +426,6 @@ namespace hgl::ecs
             if (needs_indirect)
             {
                 batch.icb_draw->Unmap();
-                batch.icb_draw_indexed->Unmap();
             }
             batch.draw_batches_count = 0;
             batch.draw_batches.clear();
@@ -486,10 +461,7 @@ namespace hgl::ecs
 
             if (needs_indirect && draw_batch->geom_data_buffer && draw_batch->geom_data_buffer->vdm)
             {
-                if (draw_batch->geom_data_buffer->ibo)
-                    WriteICB(indexed_draw_cmd++, draw_batch);
-                else
-                    WriteICB(draw_cmd++, draw_batch);
+                WriteICB(draw_cmd++, draw_batch);
             }
 
             ++batch.draw_batches_count;
@@ -505,16 +477,12 @@ namespace hgl::ecs
 
         if (needs_indirect && draw_batch->geom_data_buffer && draw_batch->geom_data_buffer->vdm)
         {
-            if (draw_batch->geom_data_buffer->ibo)
-                WriteICB(indexed_draw_cmd, draw_batch);
-            else
-                WriteICB(draw_cmd, draw_batch);
+            WriteICB(draw_cmd, draw_batch);
         }
 
         if (needs_indirect)
         {
             batch.icb_draw->Unmap();
-            batch.icb_draw_indexed->Unmap();
         }
     }
 

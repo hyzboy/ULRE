@@ -307,9 +307,8 @@ namespace hgl::ecs
                 }
             }
 
-            cmd->BindDataBuffer(res.data_buffer);
             // 非索引绘制（SSBO 顶点输入——索引数据走 VertexIndex 槽，段偏移 push constant）
-            cmd->Draw(res.data_buffer, res.draw_range, 1, 0, false);
+            cmd->Draw(res.data_buffer, res.draw_range, 1, 0);
         }
     }
 

@@ -28,8 +28,8 @@ namespace
         case VertexSemantic::Bitangent:   return "Binormal";
         case VertexSemantic::Color:       return "Color";
         case VertexSemantic::Luminance:   return "Luminance";
-        case VertexSemantic::TexCoord:    return "TexCoord";
         case VertexSemantic::TransformID: return "TransformID";
+        case VertexSemantic::TexCoord:    return "TexCoord";
         default:                          return nullptr;
         }
     }
@@ -113,7 +113,7 @@ namespace
                 return false;
             out_position_format = position_attribute->format;
 
-            bool need_uv = false, need_ntb = false, need_joint = false, need_color = false, need_luminance = false;
+            bool need_uv = false, need_ntb = false, need_joint = false, need_color = false, need_luminance = false, need_transform_id = false;
             for (int i = 0; i < definition.vertex_semantic_requirements.GetCount(); ++i)
             {
                 const auto &requirement = definition.vertex_semantic_requirements[i];
@@ -129,6 +129,7 @@ namespace
                 case VertexSemantic::JointWeight: need_joint = true; break;
                 case VertexSemantic::Color: need_color = true; break;
                 case VertexSemantic::Luminance: need_luminance = true; break;
+                case VertexSemantic::TransformID: need_transform_id = true; break;
                 default: break;  // Position 由 input mode 决定
                 }
             }
@@ -162,9 +163,16 @@ namespace
             if (need_joint)
                 out_vertex_input_glsl += "#include \"vertex/s1_joint.glsl\"\n";
             if (need_color)
-                out_vertex_input_glsl += "#include \"vertex/s1_color.glsl\"\n";
+            {
+                if (definition.vertex_varying.emit_vertex_color_from_palette)
+                    out_vertex_input_glsl += "#include \"vertex/s1_palette_index.glsl\"\n";   // palette 材质：ColorIndex（R8_UINT 索引）
+                else
+                    out_vertex_input_glsl += "#include \"vertex/s1_color.glsl\"\n";           // 标准顶点色：vec4 直读
+            }
             if (need_luminance)
                 out_vertex_input_glsl += "#include \"vertex/s1_luminance.glsl\"\n";
+            if (need_transform_id)
+                out_vertex_input_glsl += "#include \"vertex/s1_transform_id.glsl\"\n";
 
             // 位置模块按 effective input 选择（position_format 判定——与
             // VertexShaderAssembler 一致：geometry 格式说了算，recipe/TOML input 仅兜底）

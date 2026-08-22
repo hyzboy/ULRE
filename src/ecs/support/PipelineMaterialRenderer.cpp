@@ -38,46 +38,10 @@ namespace hgl::ecs
         SAFE_CLEAR(vab_list);
     }
 
-    bool PipelineMaterialRenderer::BindVAB(const DrawBatch* batch)
+    void PipelineMaterialRenderer::ProcIndirectRender(graph::IndirectDrawBuffer* icb_draw)
     {
-        vab_list->Restart();
-
-        // 添加几何数据的VAB
-        if (!vab_list->Add(batch->geom_data_buffer))
-        {
-            GLogError("[PipelineMaterialRenderer::BindVAB] Failed to add geometry data buffer to VABList");
-            return false;
-        }
-
-        if (!vab_list->IsFull())
-        {
-            GLogWarning("[PipelineMaterialRenderer::BindVAB] VABList not full (%u/%u), padding with VK_NULL_HANDLE",
-                        vab_list->GetWriteCount(),
-                        material->GetVertexInput()->GetCount());
-
-            while (!vab_list->IsFull())
-            {
-                vab_list->Add(VK_NULL_HANDLE, 0);
-            }
-        }
-
-        cmd_buf->BindVAB(vab_list);
-
-        return true;
-    }
-
-    void PipelineMaterialRenderer::ProcIndirectRender(graph::IndirectDrawBuffer* icb_draw,
-                                                         graph::IndirectDrawIndexedBuffer* icb_draw_indexed)
-    {
-        // 提交累积的间接绘制命令
-        if (last_data_buffer->ibo)
-        {
-            icb_draw_indexed->DrawIndexed(*cmd_buf, first_indirect_draw_index, indirect_draw_count);
-        }
-        else
-        {
-            icb_draw->Draw(*cmd_buf, first_indirect_draw_index, indirect_draw_count);
-        }
+        // 提交累积的间接绘制命令（SSBO 顶点输入：统一非索引间接——索引数据走 sbo_index）
+        icb_draw->Draw(*cmd_buf, first_indirect_draw_index, indirect_draw_count);
 
         // 重置间接绘制状态（命令序号累计到本批次已提交段）
         first_indirect_draw_index = -1;
@@ -88,7 +52,6 @@ namespace hgl::ecs
     bool PipelineMaterialRenderer::Draw( DrawBatch* batch,
                                             TransformAssignmentBuffer* transform_buffer,
                                             graph::IndirectDrawBuffer* icb_draw,
-                                            graph::IndirectDrawIndexedBuffer* icb_draw_indexed,
                                             const MaterialBatch *owner_batch)
     {
         (void)transform_buffer;
@@ -102,29 +65,13 @@ namespace hgl::ecs
             // 先提交之前累积的间接绘制
             if (indirect_draw_count)
             {
-                ProcIndirectRender(icb_draw, icb_draw_indexed);
+                ProcIndirectRender(icb_draw);
             }
 
             // 更新缓冲状态
             last_data_buffer = batch->geom_data_buffer;
 
-            // 绑定新的顶点数组缓冲（SSBO 顶点输入材质管线无顶点输入——跳过）
-            const auto *vil = material->GetVertexInput();
-            if (vil && vil->GetCount() > 0)
-            {
-                if (!BindVAB(batch))
-                {
-                    GLogError("[PipelineMaterialRenderer::Draw] BindVAB failed");
-                    return false;
-                }
-            }
-
-            // 如果有索引缓冲，也需要绑定（SSBO 顶点输入材质除外——索引数据走
-            // 顶点索引 SSBO，非索引绘制——不再 vkCmdBindIndexBuffer）
-            if (batch->geom_data_buffer->ibo && !ssbo_vertex_input)
-            {
-                cmd_buf->BindIBO(batch->geom_data_buffer->ibo);
-            }
+            // 绑定新的顶点数组缓冲（SSBO 顶点输入材质管线无顶点输入——VBO 绑定已删除）
 
             // SSBO 顶点输入：把当前 DrawBatch 的顶点 buffer 绑到顶点 SSBO 槽
             //（RDBS 帧前按 batch 首对象绑定——独立 VAB 多对象时其余对象 buffer 错位；
@@ -186,6 +133,15 @@ namespace hgl::ecs
                             material->BindSSBO(graph::DescriptorSetType::PerObject,
                                                "VertexLuminance", buf, 0, VK_WHOLE_SIZE);
                             last_ssbo_luminance = buf;
+                            changed = true;
+                        }
+                        break;
+                    case graph::VertexSemantic::TransformID:
+                        if (buf != last_ssbo_transform_id)
+                        {
+                            material->BindSSBO(graph::DescriptorSetType::PerObject,
+                                               "VertexTransformID", buf, 0, VK_WHOLE_SIZE);
+                            last_ssbo_transform_id = buf;
                             changed = true;
                         }
                         break;
@@ -361,11 +317,10 @@ namespace hgl::ecs
         }
         else
         {
-            // 直接绘制：立即提交（SSBO 顶点输入材质非索引绘制——索引数据走
+            // 直接绘制：立即提交（SSBO 顶点输入统一非索引绘制——索引数据走
             // 顶点索引 SSBO，段偏移在 shader 内经 push constant 定位）
             cmd_buf->Draw(batch->geom_data_buffer, batch->geom_draw_range,
-                         batch->instance_count, batch->first_instance,
-                         !ssbo_vertex_input);
+                         batch->instance_count, batch->first_instance);
         }
 
         return true;
@@ -376,7 +331,6 @@ namespace hgl::ecs
                                               uint32_t batch_count,
                                               TransformAssignmentBuffer* transform_buffer,
                                               graph::IndirectDrawBuffer* icb_draw,
-                                              graph::IndirectDrawIndexedBuffer* icb_draw_indexed,
                                               const MaterialBatch *owner_batch,
                                               graph::RenderContext *render_context)
     {
@@ -482,14 +436,14 @@ namespace hgl::ecs
 
         for (uint32_t i = 0; i < batch_count; i++)
         {
-            Draw(batch, transform_buffer, icb_draw, icb_draw_indexed, owner_batch);
+            Draw(batch, transform_buffer, icb_draw, owner_batch);
             ++batch;
         }
 
         // 提交剩余的间接绘制命令
         if (indirect_draw_count)
         {
-            ProcIndirectRender(icb_draw, icb_draw_indexed);
+            ProcIndirectRender(icb_draw);
         }
     }
 }//namespace hgl::ecs

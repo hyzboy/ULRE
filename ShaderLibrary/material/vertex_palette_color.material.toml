@@ -12,7 +12,7 @@ mapping = "Passthrough3D"
 orientation = "World"
 scale = "World"
 projection = "WorldCameraVP"
-# transport = "ssbo"  # 待阶段 3.2（LineRenderPipeline SSBO 绑定）后启用——line 路径当前 VBO
+transport = "ssbo"
 
 [fragment]
 source = "compositor/main_forward_surface.frag.glsl"

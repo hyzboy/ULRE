@@ -39,6 +39,9 @@ namespace hgl::graph::mtl
     constexpr const ShaderBufferSource SBS_VertexLuminance{
         DescriptorSetType::PerObject, "VertexLuminance", "VertexLuminanceData"
     };
+    constexpr const ShaderBufferSource SBS_VertexTransformID{
+        DescriptorSetType::PerObject, "VertexTransformID", "VertexTransformIDData"
+    };
     constexpr const ShaderBufferSource SBS_VertexIndex{
         DescriptorSetType::PerObject, "VertexIndex", "VertexIndexData"
     };

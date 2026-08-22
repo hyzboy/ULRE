@@ -8,29 +8,6 @@
 #include<hgl/vk/VKRenderTarget.h>
 
 namespace hgl::graph{
-bool RenderCmdBuffer::BindVAB(const VABList *vab_list)
-{
-    if(!vab_list)
-    {
-        LogError("VABList is null");
-        return(false);
-    }
-
-    if(!vab_list->IsFull())
-    {
-        LogError("VABList is not full");
-        return(false);
-    }
-
-    vkCmdBindVertexBuffers(cmd_buf,
-                           0,                           //first binding
-                           vab_list->GetWriteCount(),   //binding count (use actual count, not capacity)
-                           vab_list->GetVABList(),      //buffers
-                           vab_list->GetVABOffset());   //buffer offsets
-
-    return(true);
-}
-
 RenderCmdBuffer::RenderCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb):VulkanCmdBuffer(attr,cb)
 {
     cv_count=0;
@@ -130,78 +107,6 @@ bool RenderCmdBuffer::BindDescriptorSets(ShaderProgram *mtl)
 
     return(true);
 }
-void RenderCmdBuffer::BindIBO(IndexBuffer *ibo,const VkDeviceSize byte_offset)
-{
-    //LogVerbose(u"BindIBO entry");
-
-    if(!ibo)
-    {
-        LogError("Null IBO");
-        return;
-    }
-
-    //std::cerr << "[RenderCmdBuffer::BindIBO] IBO buffer: " << ibo->GetBuffer() << std::endl;
-    //std::cerr << "[RenderCmdBuffer::BindIBO] IBO type: " << (int)ibo->GetType() << std::endl;
-    //std::cerr << "[RenderCmdBuffer::BindIBO] Byte offset: " << byte_offset << std::endl;
-
-    vkCmdBindIndexBuffer(cmd_buf,
-                         ibo->GetVkBuffer(),
-                         byte_offset,
-                         VkIndexType(ibo->GetType()));
-
-//    std::cerr << "[RenderCmdBuffer::BindIBO] === EXIT ===" << std::endl;
-}
-
-bool RenderCmdBuffer::BindDataBuffer(const GeometryDataBuffer *geom_data_buffer)
-{
-    //LogVerbose(u"BindDataBuffer entry");
-
-    if(!geom_data_buffer)
-    {
-        LogError("Null geometry data buffer");
-        return(false);
-    }
-
-    if(geom_data_buffer->vab_count<=0)
-    {
-        // SSBO 顶点输入模式：管线无 VBO attribute（VIL 空）——顶点数据经
-        // 顶点 SSBO 读取，无需 vkCmdBindVertexBuffers——无 VAB 是合法常态，
-        // 返回 true（无绑定操作即成功）。VBO 模式 VIF 非空不会走到此分支。
-        return(true);
-    }
-
-//    std::cerr << "[RenderCmdBuffer::BindDataBuffer] Calling vkCmdBindVertexBuffers..." << std::endl;
-
-    // Log each buffer
-    //for(uint32_t i = 0; i < geom_data_buffer->vab_count; i++)
-    //{
-    //    std::cerr << "[RenderCmdBuffer::BindDataBuffer]   Buffer[" << i << "]: "
-    //              << geom_data_buffer->vab_list[i]
-    //              << ", offset: " << geom_data_buffer->vab_offset[i] << std::endl;
-    //}
-
-    vkCmdBindVertexBuffers(cmd_buf,
-                           0,               //first binding
-                           geom_data_buffer->vab_count,
-                           geom_data_buffer->vab_list,
-                           geom_data_buffer->vab_offset);        //vab byte offsets
-
-//    std::cerr << "[RenderCmdBuffer::BindDataBuffer] Vertex buffers bound" << std::endl;
-
-    if(geom_data_buffer->ibo)
-    {
-//        std::cerr << "[RenderCmdBuffer::BindDataBuffer] Binding IBO: " << geom_data_buffer->ibo << std::endl;
-        BindIBO(geom_data_buffer->ibo);
-    }
-    else
-    {
-//        std::cerr << "[RenderCmdBuffer::BindDataBuffer] No IBO to bind" << std::endl;
-    }
-
-//    std::cerr << "[RenderCmdBuffer::BindDataBuffer] === EXIT (success) ===" << std::endl;
-    return(true);
-}
-
 void RenderCmdBuffer::DrawIndirect( VkBuffer        buffer,
                                     VkDeviceSize    offset,
                                     uint32_t        drawCount,
@@ -214,69 +119,26 @@ void RenderCmdBuffer::DrawIndirect( VkBuffer        buffer,
         vkCmdDrawIndirect(cmd_buf,buffer,offset+i*stride,1,stride);
 }
 
-void RenderCmdBuffer::DrawIndexedIndirect(  VkBuffer        buffer,
-                                            VkDeviceSize    offset,
-                                            uint32_t        drawCount,
-                                            uint32_t        stride)
+void RenderCmdBuffer::Draw(const GeometryDataBuffer *geom_data_buffer,const GeometryDrawRange *geom_draw_range,const uint32_t instance_count,const uint32_t first_instance)
 {
-    if(this->dev_attr->physical_device->SupportMDI())
-        vkCmdDrawIndexedIndirect(cmd_buf,buffer,offset,drawCount,stride);
-    else
-    for(uint32_t i=0;i<drawCount;i++)
-        vkCmdDrawIndexedIndirect(cmd_buf,buffer,offset+i*stride,1,stride);
-}
-
-void RenderCmdBuffer::Draw(const GeometryDataBuffer *geom_data_buffer,const GeometryDrawRange *geom_draw_range,const uint32_t instance_count,const uint32_t first_instance,const bool use_indexed)
-{
-    //LogVerbose(u"Draw entry");
-
     if(!geom_data_buffer||!geom_draw_range)
     {
         LogError("Null parameter in Draw");
         return;
     }
 
-    if (use_indexed && geom_data_buffer->ibo)
-    {
-        //std::cerr << "[RenderCmdBuffer::Draw] Using INDEXED draw" << std::endl;
-        //std::cerr << "[RenderCmdBuffer::Draw]   index_count: " << geom_draw_range->index_count << std::endl;
-        //std::cerr << "[RenderCmdBuffer::Draw]   first_index: " << geom_draw_range->first_index << std::endl;
-        //std::cerr << "[RenderCmdBuffer::Draw]   vertex_offset: " << geom_draw_range->vertex_offset << std::endl;
+    // SSBO 顶点输入：统一非索引绘制（vkCmdDraw）——gl_VertexIndex 语义：
+    //   有 IBO 的几何：每个索引一次 vs（查表 sbo_index[gl_VertexIndex]→索引值）——vertexCount = index_count
+    //   无 IBO 的几何：顶点直通（gl_VertexIndex = 顶点序号）——vertexCount = vertex_count
+    const uint32_t vertex_count = (geom_draw_range->index_count > 0)
+        ? geom_draw_range->index_count
+        : geom_draw_range->vertex_count;
 
-        vkCmdDrawIndexed(   cmd_buf,
-                            geom_draw_range->index_count,
-                            instance_count,
-                            geom_draw_range->first_index,
-                            geom_draw_range->vertex_offset, //这里的vertexOffset是针对所有VAB的
-                            first_instance);    //这里的first_instance针对的是instance Rate更新的VAB的起始实例数，不是指instance批量渲染
-
-//        std::cerr << "[RenderCmdBuffer::Draw] vkCmdDrawIndexed called" << std::endl;
-    }
-    else
-    {
-        //std::cerr << "[RenderCmdBuffer::Draw] Using NON-INDEXED draw" << std::endl;
-        //std::cerr << "[RenderCmdBuffer::Draw]   vertex_count: " << geom_draw_range->vertex_count << std::endl;
-        //std::cerr << "[RenderCmdBuffer::Draw]   vertex_offset: " << geom_draw_range->vertex_offset << std::endl;
-
-        // SSBO 顶点输入：非索引绘制（vkCmdDraw）——gl_VertexIndex 语义：
-        //   有 IBO 的几何：每个索引一次 vs（查表 sbo_index[gl_VertexIndex]→索引值）——
-        //                   vertexCount = index_count（漏则丢尾部索引——如 cube 丢 2 面）
-        //   无 IBO 的几何：顶点直通（gl_VertexIndex = 顶点序号）——vertexCount = vertex_count
-        const uint32_t vertex_count = (geom_draw_range->index_count > 0)
-            ? geom_draw_range->index_count
-            : geom_draw_range->vertex_count;
-        const uint32_t vertex_offset = use_indexed ? geom_draw_range->vertex_offset : 0;
-
-        vkCmdDraw(          cmd_buf,
-                            vertex_count,
-                            instance_count,
-                            vertex_offset,
-                            first_instance);
-
-//        std::cerr << "[RenderCmdBuffer::Draw] vkCmdDraw called" << std::endl;
-    }
-
-//    std::cerr << "[RenderCmdBuffer::Draw] === EXIT ===" << std::endl;
+    vkCmdDraw(cmd_buf,
+              vertex_count,
+              instance_count,
+              0,   // SSBO 顶点输入：段偏移走 push constant（vertex_base）——vkCmdDraw 的 firstVertex=0
+              first_instance);
 }
 
 //void RenderCmdBuffer::DrawIndexed(const IBAccess *iba,const uint32_t instance_count)

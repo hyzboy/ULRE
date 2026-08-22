@@ -192,6 +192,15 @@ inline void PushVertexLuminance(std::vector<SerializedDescriptorEntry> &v, const
     });
 }
 
+inline void PushVertexTransformID(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
+{
+    v.push_back({
+        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
+        SBS_VertexTransformID.name, SBS_VertexTransformID.struct_name, nullptr, DescriptorSemantic::VertexTransformID,
+        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::VertexTransformID, DescriptorSemanticLayer::SSBO
+    });
+}
+
 inline void PushVertexIndex(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
     v.push_back({

@@ -49,8 +49,7 @@ namespace hgl::ecs
         graph::VulkanDevice *                   device                  = nullptr;          ///<设备指针
         graph::BufferManager *                  buffer_manager          = nullptr;          ///<缓冲区管理器
 
-        graph::IndirectDrawBuffer *             icb_draw                = nullptr;          ///<间接绘制命令缓冲（无索引）
-        graph::IndirectDrawIndexedBuffer *      icb_draw_indexed        = nullptr;          ///<间接绘制命令缓冲（有索引）
+        graph::IndirectDrawBuffer *              icb_draw                = nullptr;          ///<间接绘制命令缓冲（SSBO 统一非索引间接）
 
         // Per-batch L2W index rows SSBO — written in draw order so gl_InstanceIndex
         // directly maps to the correct L2W matrix slot.

@@ -59,7 +59,7 @@ namespace hgl::ecs
         void FinalizeBatches();
 
         graph::BufferManager* GetBufferManager() const;
-        std::pair<graph::ObjectNameBuilder, graph::ObjectNameBuilder> BuildICBNames() const;
+        graph::ObjectNameBuilder BuildICBNames() const;
 
         void ReallocICB(MaterialBatch& batch);
         void BuildBatches(MaterialBatch& batch, const uint32_t base_instance);

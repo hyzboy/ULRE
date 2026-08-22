@@ -167,21 +167,6 @@ public:
     void PushConstants(const void *data,const uint32_t size)                        {vkCmdPushConstants(cmd_buf,pipeline_layout,(VkShaderStageFlagBits)ShaderStage::Vertex,0,       size,data);}
     void PushConstants(const void *data,const uint32_t offset,const uint32_t size)  {vkCmdPushConstants(cmd_buf,pipeline_layout,(VkShaderStageFlagBits)ShaderStage::Vertex,offset,  size,data);}
 
-    void BindVAB(const uint32_t first,const uint32_t count,const VkBuffer *vab,const VkDeviceSize *offsets)
-    {
-        vkCmdBindVertexBuffers(cmd_buf,first,count,vab,offsets);
-    }
-
-    bool BindVAB(const VABList *vab_list);
-
-    void BindIBO(IndexBuffer *,const VkDeviceSize byte_offset=0);
-
-    /**
-    * 直接绑定Mesh的VBO/IBO。
-    * 有点像是BindVAB+BindIBO,适用于完全使用Mesh数据.
-    */
-    bool BindDataBuffer(const GeometryDataBuffer *);
-
     void SetViewport        (uint32_t first,uint32_t count,const VkViewport *vp)    {vkCmdSetViewport(cmd_buf,first,count,vp);}
     void SetScissor         (uint32_t first,uint32_t count,const VkRect2D *sci)     {vkCmdSetScissor(cmd_buf,first,count,sci);}
 
@@ -213,11 +198,9 @@ public: //draw
 //    template<typename ...ARGS>  void DrawIndexed        (ARGS...args)                   {vkCmdDrawIndexed(cmd_buf,args...);}
 
                                 void DrawIndirect       (VkBuffer,VkDeviceSize, uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndirectCommand         ));
-                                void DrawIndexedIndirect(VkBuffer,VkDeviceSize, uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndexedIndirectCommand  ));
                                 void DrawIndirect       (VkBuffer buf,          uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndirectCommand         )){return DrawIndirect(         buf,0,drawCount,stride);}
-                                void DrawIndexedIndirect(VkBuffer buf,          uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndexedIndirectCommand  )){return DrawIndexedIndirect(  buf,0,drawCount,stride);}
 
-                                void Draw               (const GeometryDataBuffer *,const GeometryDrawRange *,const uint32_t instance_count=1,const uint32_t first_instance=0,const bool use_indexed=true);
+                                void Draw               (const GeometryDataBuffer *,const GeometryDrawRange *,const uint32_t instance_count=1,const uint32_t first_instance=0);
 
 public: //dynamic state
 

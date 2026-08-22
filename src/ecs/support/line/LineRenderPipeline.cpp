@@ -261,35 +261,34 @@ namespace hgl::ecs
 
         bool bound_ok = false;
 
-        if (data_buffer && geometry)
+        if (data_buffer && geometry && material)
         {
-            const int transform_idx = geometry->GetVABIndex(graph::Assign::TransformID::VIS_SEMANTIC);
-            const VkBuffer transform_vk = transform_idx >= 0 ? geometry->GetVkBuffer(transform_idx) : VK_NULL_HANDLE;
-
-            if (transform_vk != VK_NULL_HANDLE && data_buffer->vab_count > 0)
+            // SSBO 顶点输入：Position/Color/TransformID 绑 PerObject 顶点槽（gl_VertexIndex 直通）
+            auto bind_ssbo = [&](const graph::VertexSemantic semantic, const char *name)
             {
-                graph::VABList vab_list(data_buffer->vab_count + 1);
-                const bool base_ok = vab_list.Add(data_buffer);
-                const bool tid_ok = vab_list.Add(transform_vk, 0);
-                bound_ok = base_ok && tid_ok && cmd->BindVAB(&vab_list);
-
-                if (!bound_ok)
-                {
-                    GLogWarning("[LineRenderPipeline] Draw fallback bind failed: line_count=%u base_count=%u transform_idx=%d vk=0x%llX",
-                                line_count,
-                                data_buffer->vab_count,
-                                transform_idx,
-                                static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_vk)));
-                }
-            }
+                auto *vab = geometry->GetVAB(semantic);
+                if (!vab)
+                    return;
+                material->BindSSBO(graph::DescriptorSetType::PerObject, name, vab->GetVkBuffer(), 0, VK_WHOLE_SIZE);
+            };
+            bind_ssbo(graph::VertexSemantic::Position, "VertexPosition");
+            bind_ssbo(graph::VertexSemantic::Color, "VertexColor");
+            bind_ssbo(graph::VertexSemantic::TransformID, "VertexTransformID");
+            bound_ok = true;
         }
 
         if (!bound_ok)
-            cmd->BindDataBuffer(data_buffer);
+            return;   // SSBO 绑定失败不绘制（VBO fallback 已随 BindDataBuffer 删除）
+
+        if (bound_ok && material)
+        {
+            const uint32_t pc_data[3] = {0, 0, 0};   // line 非索引直通：index_base=0 vertex_base=0 is_indexed=0
+            cmd->PushConstants(material->GetPipelineLayout(), pc_data, sizeof(pc_data));
+        }
 
         cmd->Draw(data_buffer, draw_range);
 
-        LinePeriodicLog(s_line_log_ticks[2], "[LineRenderPipeline] Draw issued: data_buffer=%p draw_range=%p line_count=%u vertex_count=%u bound_with_tid=%d",
+        LinePeriodicLog(s_line_log_ticks[2], "[LineRenderPipeline] Draw issued: data_buffer=%p draw_range=%p line_count=%u vertex_count=%u ssbo_bind=%d",
                  data_buffer,
                  draw_range,
                  line_count,
@@ -774,6 +773,7 @@ namespace hgl::ecs
                      slots_[i].line_count,
                      slots_[i].gpu_capacity,
                      slots_[i].data_buffer);
+            slots_[i].material = material_;
             slots_[i].Draw(cmd);
             draw_lines += slots_[i].line_count;
         }
