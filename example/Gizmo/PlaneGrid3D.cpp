@@ -113,7 +113,6 @@ private:
         plane_grid_recipe.vertex_node_config.orientation = graph::mtl::OrientationMode::World;
         plane_grid_recipe.vertex_node_config.scale = graph::mtl::ScaleMode::World;
         plane_grid_recipe.vertex_node_config.projection = graph::mtl::ProjectionMode::WorldCameraVP;
-        plane_grid_recipe.vertex_node_config.transport = graph::mtl::VertexTransportMode::SSBO;   // 材质 TOML transport=ssbo——recipe 显式覆盖需同步
         graph::mtl::UpsertRecipeSSBOAssetBinding(plane_grid_recipe, graph::mtl::DefaultMaterialDataSlotName, mtl_data_ssbo_accessor->GetSSBOBinding());
         plane_grid_asset = PrimitiveAsset(geom_plane_grid, &plane_grid_recipe, PrimitiveType::Lines);
 

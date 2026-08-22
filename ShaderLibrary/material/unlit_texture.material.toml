@@ -12,7 +12,6 @@ mapping = "NDCLift"
 orientation = "World"
 scale = "World"
 projection = "LocalToWorldOnly"
-transport = "ssbo"
 
 [fragment]
 source = "compositor/main_forward_surface.frag.glsl"

@@ -232,8 +232,8 @@ namespace hgl::graph::mtl
         vs += "\nvoid main()\n{\n";
 
         // SSBO 顶点输入：从顶点 SSBO 加载数据（s1_* 模块的 LoadVertexData）
-        if (node_cfg.transport == VertexTransportMode::SSBO)
-            vs += "    LoadVertexData();\n";
+        // 顶点输入统一为 SSBO（MeshShader 方向），无条件调用
+        vs += "    LoadVertexData();\n";
 
         // Standard varying assignments (MI index IDs, color, UV).
         if (FindMaterialStageInterfaceEntry(

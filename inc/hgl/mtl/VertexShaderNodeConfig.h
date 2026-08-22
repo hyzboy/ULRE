@@ -14,15 +14,6 @@ namespace hgl::graph::mtl
         ENUM_CLASS_RANGE(Vec2Position, Procedural)
     };
 
-    // 顶点数据传输方式（MeshShader 方向：顶点输入统一为 SSBO）
-    enum class VertexTransportMode : uint8_t
-    {
-        VBO = 0,    // 传统 vertex attribute（默认）
-        SSBO,       // 顶点数据 SSBO（gl_VertexIndex 读取，s1_* 模块）
-
-        ENUM_CLASS_RANGE(VBO, SSBO)
-    };
-
     // Stage 2 — 物体空间位置映射策略
     // 输入为 Stage 1 的原始顶点位置，输出 vec4 local_pos（物体空间）
     enum class PositionMappingMode : uint8_t
@@ -74,7 +65,6 @@ namespace hgl::graph::mtl
     struct VertexShaderNodeConfig
     {
         VertexInputMode     input            = VertexInputMode::Vec3Position;
-        VertexTransportMode transport        = VertexTransportMode::VBO;
         PositionMappingMode position_mapping = PositionMappingMode::Passthrough3D;
         OrientationMode     orientation      = OrientationMode::World;
         ScaleMode           scale            = ScaleMode::World;
@@ -86,7 +76,6 @@ namespace hgl::graph::mtl
     {
         return VertexShaderNodeConfig{
             VertexInputMode::Vec3Position,
-            VertexTransportMode::VBO,
             PositionMappingMode::Passthrough3D,
             OrientationMode::World,
             ScaleMode::World,
@@ -97,7 +86,6 @@ namespace hgl::graph::mtl
     inline bool IsDefault3DNodeConfig(const VertexShaderNodeConfig &cfg) noexcept
     {
         return cfg.input == VertexInputMode::Vec3Position
-            && cfg.transport == VertexTransportMode::VBO
             && cfg.position_mapping == PositionMappingMode::Passthrough3D
             && cfg.orientation == OrientationMode::World
             && cfg.scale == ScaleMode::World

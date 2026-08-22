@@ -128,7 +128,6 @@ private:
             grid_recipe.vertex_node_config.orientation = graph::mtl::OrientationMode::World;
             grid_recipe.vertex_node_config.scale = graph::mtl::ScaleMode::World;
             grid_recipe.vertex_node_config.projection = graph::mtl::ProjectionMode::WorldCameraVP;
-            grid_recipe.vertex_node_config.transport = graph::mtl::VertexTransportMode::SSBO;   // 材质 TOML transport=ssbo——recipe 显式覆盖需同步
             graph::mtl::UpsertRecipeSSBOAssetBinding(grid_recipe,
                                                      graph::mtl::DefaultMaterialDataSlotName,
                                                      grid_mtl_data_ssbo_accessor->GetSSBOBinding());

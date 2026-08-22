@@ -103,10 +103,9 @@ namespace
         out_vertex_input_glsl.clear();
         out_position_format = VK_FORMAT_UNDEFINED;
 
-        if (definition.vertex_node_config.transport == VertexTransportMode::SSBO)
+        // SSBO 顶点输入：C++ 只做"选择"——按需求语义选 s1_* 模块，
+        // 读取代码在模块内（gl_VertexIndex），无 VBO attribute 布局。
         {
-            // SSBO 顶点输入：C++ 只做"选择"——按需求语义选 s1_* 模块，
-            // 读取代码在模块内（gl_VertexIndex），无 VBO attribute 布局。
             const GeometryVertexAttributeFormat *position_attribute =
                 geometry.Find(VertexSemantic::Position);
             if (!position_attribute)
@@ -204,42 +203,6 @@ namespace
             default:
                 return false;
             }
-        }
-        else
-        {
-        for (int i = 0; i < definition.vertex_semantic_requirements.GetCount(); ++i)
-        {
-            const auto &requirement = definition.vertex_semantic_requirements[i];
-            const VertexSemantic semantic =
-                GetVertexSemanticFromGLSLCodeModuleSemantic(requirement.semantic);
-            const char *name = GetVertexInputName(semantic);
-            if (semantic == VertexSemantic::Color
-             && definition.vertex_varying.emit_vertex_color_from_palette)
-                name = "ColorIndex";
-            const GeometryVertexAttributeFormat *attribute = geometry.Find(semantic);
-            if (!name || !attribute)
-                return false;
-
-            int location = -1;
-            for (uint32 index = 0; index < geometry.GetCount(); ++index)
-            {
-                if (geometry.Get(index) == attribute)
-                {
-                    location = static_cast<int>(index);
-                    break;
-                }
-            }
-            const char *const type = GetGLSLVertexInputType(
-                attribute->format, attribute->vec_size);
-            if (location < 0 || !type)
-                return false;
-
-            out_vertices.push_back({attribute->format, semantic});
-            out_vertex_input_glsl += "layout(location=" + std::to_string(location)
-                + ") in " + type + " " + name + ";\n";
-            if (semantic == VertexSemantic::Position)
-                out_position_format = attribute->format;
-        }
         }
 
         return out_position_format != VK_FORMAT_UNDEFINED;

@@ -142,7 +142,6 @@ private:
         triangle_recipe.mtl_def_id = "VertexColor";
         triangle_recipe.domain = "DrawTriangle";
         triangle_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigOrtho(false);
-        triangle_recipe.vertex_node_config.transport = graph::mtl::VertexTransportMode::SSBO;   // 材质 TOML transport=ssbo——recipe 显式覆盖需同步
         triangle_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
         triangle_asset = PrimitiveAsset(geom_triangle, &triangle_recipe, PrimitiveType::Triangles);
         ecs_primitive->SetPrimitiveAsset(&triangle_asset);

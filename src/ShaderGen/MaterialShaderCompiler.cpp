@@ -238,7 +238,7 @@ static bool ValidateDefinitionCapabilitySubset(
                    || definition.vertex_varying.emit_data_index_id;
             break;
 
-        // 顶点数据 SSBO（MeshShader 方向）：仅 SSBO 传输材质允许
+        // 顶点数据 SSBO（MeshShader 方向）：顶点 SSBO 语义无条件允许（顶点输入统一为 SSBO）
         case DescriptorSemantic::VertexPosition:
         case DescriptorSemantic::VertexUV:
         case DescriptorSemantic::VertexNTB:
@@ -247,7 +247,7 @@ static bool ValidateDefinitionCapabilitySubset(
         case DescriptorSemantic::VertexLuminance:
         case DescriptorSemantic::VertexTransformID:
         case DescriptorSemantic::VertexIndex:
-            allowed = definition.vertex_node_config.transport == VertexTransportMode::SSBO;
+            allowed = true;
             break;
 
         case DescriptorSemantic::Unknown:

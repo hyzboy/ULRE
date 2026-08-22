@@ -65,9 +65,8 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
     const BuildDescriptorOptions &opt = {})
 {
     std::vector<SerializedDescriptorEntry> descriptors = BuildDescriptorsFromDefinition(definition, opt);
-    // 顶点数据 SSBO（MeshShader 方向）：SSBO 传输时按需求语义注入
-    // PerObject 集固定 binding（s1_* 模块声明与固定名路径匹配）
-    if (definition.vertex_node_config.transport == VertexTransportMode::SSBO)
+    // 顶点数据 SSBO（MeshShader 方向）：按需求语义注入顶点 SSBO 绑定
+    // 顶点输入统一为 SSBO，无条件注入；PerObject 集固定 binding（s1_* 模块声明与固定名路径匹配）
     {
         const uint32_t vertex_stage = uint32_t(VK_SHADER_STAGE_VERTEX_BIT);
         bool need_uv = false, need_ntb = false, need_color = false, need_luminance = false, need_transform_id = false;

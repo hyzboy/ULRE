@@ -82,7 +82,6 @@ private:
         triangle_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
         triangle_recipe.domain = "AutoInstance";
         triangle_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
-        triangle_recipe.vertex_node_config.transport = graph::mtl::VertexTransportMode::SSBO;   // 材质 TOML transport=ssbo——recipe 显式覆盖需同步
         triangle_asset = PrimitiveAsset(geom_triangle, &triangle_recipe, PrimitiveType::Triangles);
 
         return true;

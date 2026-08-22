@@ -12,7 +12,6 @@ mapping = "PixelToLocal"
 orientation = "World"
 scale = "World"
 projection = "OrthoViewport"
-transport = "ssbo"
 
 [fragment]
 source = "compositor/main_forward_surface.frag.glsl"

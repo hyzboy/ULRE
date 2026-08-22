@@ -107,7 +107,6 @@ private:
         rect_recipe.mtl_def_id = "UnlitTexture";
         rect_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
         rect_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigZeroToOne(true);
-        rect_recipe.vertex_node_config.transport = graph::mtl::VertexTransportMode::SSBO;   // 材质 TOML transport=ssbo——recipe 显式覆盖需同步
         rect_recipe.domain = "TextureRect";
         rect_asset = PrimitiveAsset(geometry, &rect_recipe, PrimitiveType::Triangles);
 

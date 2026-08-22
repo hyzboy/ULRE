@@ -12,7 +12,6 @@ mapping = "Passthrough3D"
 orientation = "World"
 scale = "World"
 projection = "WorldCameraVP"
-transport = "ssbo"
 
 [fragment]
 source = "compositor/main_forward_sky.frag.glsl"
