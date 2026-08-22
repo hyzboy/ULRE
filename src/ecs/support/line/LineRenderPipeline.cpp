@@ -95,6 +95,8 @@ namespace hgl::ecs
         SAFE_CLEAR(data_buffer);
         SAFE_CLEAR(draw_range);
         SAFE_CLEAR(geometry);
+        delete slot_mp;
+        slot_mp = nullptr;
         line_count   = 0;
         gpu_capacity = 0;
     }
@@ -261,19 +263,27 @@ namespace hgl::ecs
 
         bool bound_ok = false;
 
-        if (data_buffer && geometry && material)
+        if (data_buffer && geometry && material && slot_mp)
         {
-            // SSBO 顶点输入：Position/Color/TransformID 绑 PerObject 顶点槽（gl_VertexIndex 直通）
+            // SSBO 顶点输入：Position/Color/TransformID 绑到本 slot 独立的 PerObject set
+            // （slot_mp 是每 slot 独立分配的 descriptor set——共享 material 的 set 会被
+            //   后续 slot 的 vkUpdateDescriptorSets 覆盖，导致所有 Draw 读到最后一次内容）
             auto bind_ssbo = [&](const graph::VertexSemantic semantic, const char *name)
             {
                 auto *vab = geometry->GetVAB(semantic);
                 if (!vab)
                     return;
-                material->BindSSBO(graph::DescriptorSetType::PerObject, name, vab->GetVkBuffer(), 0, VK_WHOLE_SIZE);
+                slot_mp->BindSSBO(name, vab->GetVkBuffer(), 0, VK_WHOLE_SIZE);
             };
             bind_ssbo(graph::VertexSemantic::Position, "VertexPosition");
             bind_ssbo(graph::VertexSemantic::Color, "VertexColor");
             bind_ssbo(graph::VertexSemantic::TransformID, "VertexTransformID");
+
+            slot_mp->Update();
+            const VkDescriptorSet ds = slot_mp->GetVkDescriptorSet();
+            cmd->BindDescriptorSets(material->GetPipelineLayout(),
+                                    static_cast<uint32_t>(graph::DescriptorSetType::PerObject),
+                                    &ds, 1, nullptr, 0);
             bound_ok = true;
         }
 
@@ -383,6 +393,24 @@ namespace hgl::ecs
 
         if (!pipeline_)
             return false;
+
+        // 每 slot 独立 PerObject descriptor set：共享 material 的 set 会被后续 slot 的
+        // vkUpdateDescriptorSets 覆盖（Vulkan 下同一 command buffer 内 set 内容修改为 UB），
+        // 导致所有 Draw 读到最后一次更新的 VAB。每 slot 独立 set 彻底隔离。
+        {
+            auto *desc_mgr = material_->GetDescriptorManager();
+            auto *pld = material_->GetPipelineLayoutData();
+            for (uint32_t i = 0; i < MAX_WIDTHS; ++i)
+            {
+                if (!slots_[i].slot_mp)
+                    slots_[i].slot_mp = device_->CreateMP(desc_mgr, pld, graph::DescriptorSetType::PerObject);
+                if (!slots_[i].slot_mp)
+                {
+                    GLogError("[LineRenderPipeline] CreateMP(PerObject) failed for slot %u", i + 1);
+                    return false;
+                }
+            }
+        }
 
         SyncTransformBinding();
 
@@ -661,12 +689,12 @@ namespace hgl::ecs
                     continue;
 
                 GLogWarning("[LineRenderPipeline]   slot=%u expected=%u built=%u capacity=%u pos_valid=%d color_valid=%d",
-                            i + 1,
-                            slot_counts[i],
-                            slots_[i].line_count,
-                            slots_[i].gpu_capacity,
-                            slots_[i].va_pos.IsValid() ? 1 : 0,
-                            slots_[i].va_color.IsValid() ? 1 : 0);
+                                i + 1,
+                                slot_counts[i],
+                                slots_[i].line_count,
+                                slots_[i].gpu_capacity,
+                                slots_[i].va_pos.IsValid() ? 1 : 0,
+                                slots_[i].va_color.IsValid() ? 1 : 0);
             }
         }
 
@@ -723,8 +751,6 @@ namespace hgl::ecs
                         material_);
             return;
         }
-
-        cmd->BindDescriptorSets(material_);
 
         cmd->BindPipeline(pipeline_);
 
@@ -871,6 +897,31 @@ namespace hgl::ecs
             bound_transform_data_buffer_ = transform_data_buffer;
 
             GLogInfo("[LineRenderPipeline] SyncTransformBinding: bound transform buffer for Line material");
+        }
+
+        // 每 slot 独立 PerObject set 也需要 L2W / l2w_index_rows（shader 无条件声明
+        // l2w_index_rows binding，set 不绑会变 no resource；L2W 是 TransformID 变换的矩阵源）。
+        {
+            auto *gpu = transform_data_buffer->GetGPUBuffer();
+            auto *index_rows_gpu = transform_buffer->GetTransformIndexRowsBuffer()
+                                 ? transform_buffer->GetTransformIndexRowsBuffer()->GetGPUBuffer()
+                                 : nullptr;
+
+            for (uint32_t i = 0; i < MAX_WIDTHS; ++i)
+            {
+                auto *mp = slots_[i].slot_mp;
+                if (!mp)
+                    continue;
+
+                mp->BindSSBO(graph::mtl::SBS_LocalToWorld.name,
+                             gpu);
+                if (index_rows_gpu)
+                {
+                    mp->BindSSBO(graph::mtl::SBS_LocalToWorldIndexRows.name,
+                                 index_rows_gpu);
+                }
+                mp->Update();
+            }
         }
     }
 

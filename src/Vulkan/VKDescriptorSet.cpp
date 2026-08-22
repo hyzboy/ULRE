@@ -306,22 +306,6 @@ void DescriptorSet::Update()
 
     if(write_descriptor_sets.GetCount()>0)
     {
-        //LogInfo(u8"[VKDescriptorSet] Update wds_count=%d image_count=%d buffer_count=%d desc_set=%p",
-        //    write_descriptor_sets.GetCount(),
-        //    image_info_list.GetCount(),
-        //    buffer_info_list.GetCount(),
-        //    (void*)desc_set);
-
-        //for(int i=0;i<write_descriptor_sets.GetCount();++i)
-        //{
-        //    const auto &wds = write_descriptor_sets[i];
-        //        LogInfo(u8"  [VKDescriptorSet] WDS[%d] binding=%u type=%u pImageInfo=%p pBufferInfo=%p",
-        //            i,
-        //            wds.dstBinding,
-        //            (uint)wds.descriptorType,
-        //            (void*)wds.pImageInfo,
-        //            (void*)wds.pBufferInfo);
-        //}
         vkUpdateDescriptorSets(device,write_descriptor_sets.GetCount(),write_descriptor_sets.GetData(),0,nullptr);
     }
 
