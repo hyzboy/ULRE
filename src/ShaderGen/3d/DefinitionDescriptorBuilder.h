@@ -14,9 +14,9 @@ namespace hgl::graph::mtl
 {
 struct BuildDescriptorOptions
 {
-    uint32_t sky_stage_flags = uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS);
+    uint32_t sky_stage_flags = uint32_t(hgl::graph::kAllGraphicsOrMesh);
     uint32_t color_palette_stage_flags = uint32_t(VK_SHADER_STAGE_VERTEX_BIT);
-    uint32_t material_texture_layer_table_stage_flags = uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS);
+    uint32_t material_texture_layer_table_stage_flags = uint32_t(hgl::graph::kAllGraphicsOrMesh);
 };
 
 inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
@@ -29,7 +29,7 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
     descriptor_builder_common::AppendDefinitionUBODescriptors(
         descriptors,
         definition,
-        uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
+        uint32_t(hgl::graph::kAllGraphicsOrMesh),
         opt.sky_stage_flags,
         opt.color_palette_stage_flags);
 
@@ -43,7 +43,7 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
     descriptor_builder_common::AppendDefinitionMaterialDescriptors(
         descriptors,
         definition,
-        uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
+        uint32_t(hgl::graph::kAllGraphicsOrMesh),
         opt.material_texture_layer_table_stage_flags);
 
     return descriptors;
@@ -111,7 +111,7 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
      || !descriptor_builder_common::AppendManifestTextureLayerDescriptors(descriptors, manifest))
         return {};
     descriptor_builder_common::EnsureMaterialDataIndexTable(
-        descriptors, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
+        descriptors, uint32_t(hgl::graph::kAllGraphicsOrMesh));
 
     return descriptors;
 }

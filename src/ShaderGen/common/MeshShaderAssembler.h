@@ -435,8 +435,17 @@ namespace hgl::graph::mtl
             ms += "        v0 = pc_vertex_index.vertex_base + sbo_vertex_index.data[i0];\n";
             ms += "        v1 = pc_vertex_index.vertex_base + sbo_vertex_index.data[i0 + 1u];\n";
             ms += "    }\n";
-            ms += "    const vec3 from = sbo_vertex_position.data[v0];\n";
-            ms += "    const vec3 to   = sbo_vertex_position.data[v1];\n";
+            // 端点按 position_format 适配：vec2（2D 平面材质）→ vec3 构造；vec3 直读
+            if (position_format == VK_FORMAT_R32G32_SFLOAT)
+            {
+                ms += "    const vec3 from = vec3(sbo_vertex_position.data[v0], 0.0);\n";
+                ms += "    const vec3 to   = vec3(sbo_vertex_position.data[v1], 0.0);\n";
+            }
+            else
+            {
+                ms += "    const vec3 from = sbo_vertex_position.data[v0];\n";
+                ms += "    const vec3 to   = sbo_vertex_position.data[v1];\n";
+            }
 
             // 材质自适应：按实际 include 的 s1_* 模块（材质 requirements）选择读取。
             // LineQuad 不假设 palette/Size/TransformID 属性都存在——BBox 线等材质
@@ -514,6 +523,30 @@ namespace hgl::graph::mtl
                 ms += "    fragVertexColor[vid + 1u] = lcolor;\n";
                 ms += "    fragVertexColor[vid + 2u] = lcolor;\n";
                 ms += "    fragVertexColor[vid + 3u] = lcolor;\n";
+            }
+            else if (FindMaterialStageInterfaceEntry(*resolved_stage_interface, InterStageSemantic::Color))
+            {
+                // 非 palette 顶点色（VertexColor 材质）：s1_color vec4 直读（LineQuad 不调
+                // LoadVertexData——Color 全局变量未赋值，必须直读 SSBO）
+                ms += "#ifdef S1_COLOR_GLSL\n";
+                ms += "    const vec4 vcolor = sbo_vertex_color.data[v0];\n";
+                ms += "    fragVertexColor[vid + 0u] = vcolor;\n";
+                ms += "    fragVertexColor[vid + 1u] = vcolor;\n";
+                ms += "    fragVertexColor[vid + 2u] = vcolor;\n";
+                ms += "    fragVertexColor[vid + 3u] = vcolor;\n";
+                ms += "#endif\n";
+            }
+            if (FindMaterialStageInterfaceEntry(*resolved_stage_interface, InterStageSemantic::Luminance))
+            {
+                // Luminance（VertexLuminance 材质）：R8 打包直读（与 s1_luminance 同解码公式）
+                ms += "#ifdef S1_LUMINANCE_GLSL\n";
+                ms += "    const uint lpacked = sbo_vertex_luminance.data[v0 >> 2u];\n";
+                ms += "    const float lum = float((lpacked >> ((v0 & 3u) * 8u)) & 0xFFu) / 255.0;\n";
+                ms += "    fragLuminance[vid + 0u] = lum;\n";
+                ms += "    fragLuminance[vid + 1u] = lum;\n";
+                ms += "    fragLuminance[vid + 2u] = lum;\n";
+                ms += "    fragLuminance[vid + 3u] = lum;\n";
+                ms += "#endif\n";
             }
             break;
         }
