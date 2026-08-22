@@ -15,7 +15,6 @@ namespace hgl
         class BufferManager;
         class VulkanDevice;
         class IndirectDrawBuffer;
-        class IndirectDrawIndexedBuffer;
         class MaterialParameters;
     }
 

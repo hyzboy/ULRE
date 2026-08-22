@@ -46,7 +46,6 @@ enum class ObjectTypeTag : uint8_t
 
     // ECS and system types
     IndirectDrawBuffer,
-    IndirectDrawIndexedBuffer,
     IndirectDispatchBuffer,
     VertexBuffer,
     IndexBuffer,
@@ -95,7 +94,6 @@ inline const char* GetTagString(ObjectTypeTag tag)
         case ObjectTypeTag::MaterialInstance:       return "MaterialInstance";
         case ObjectTypeTag::Mesh:                   return "Mesh";
         case ObjectTypeTag::IndirectDrawBuffer:     return "IndirectDrawBuf";
-        case ObjectTypeTag::IndirectDrawIndexedBuffer: return "IndirectDrawIdxBuf";
         case ObjectTypeTag::IndirectDispatchBuffer: return "IndirectDispatchBuf";
         case ObjectTypeTag::VertexBuffer:           return "VertexBuf";
         case ObjectTypeTag::IndexBuffer:            return "IndexBuf";

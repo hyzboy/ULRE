@@ -23,7 +23,6 @@ namespace hgl
         class RenderCmdBuffer;
         class VABList;
         class IndirectDrawBuffer;
-        class IndirectDrawIndexedBuffer;
         struct GeometryDataBuffer;
         struct GeometryDrawRange;
     }

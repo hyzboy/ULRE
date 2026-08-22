@@ -265,7 +265,6 @@ class VertexDataManager;
 using VDM=VertexDataManager;
 
 class IndirectDrawBuffer;
-class IndirectDrawIndexedBuffer;
 class IndirectDispatchBuffer;
 
 

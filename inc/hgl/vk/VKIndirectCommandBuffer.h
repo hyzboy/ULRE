@@ -69,24 +69,6 @@ public:
     }
 };//class IndirectDrawBuffer:public IndirectCommandBuffer<VkDrawIndirectCommand>
 
-class IndirectDrawIndexedBuffer:public IndirectCommandBuffer<VkDrawIndexedIndirectCommand>
-{
-    friend class VulkanDevice;
-
-public:
-
-    using IndirectCommandBuffer<VkDrawIndexedIndirectCommand>::IndirectCommandBuffer;
-
-    void DrawIndexed(VkCommandBuffer cmd_buf,uint32_t cmd_offset,uint32_t draw_count) const
-    {
-        vkCmdDrawIndexedIndirect(cmd_buf,
-                                 GetVkBuffer(),
-                                 cmd_offset*sizeof(VkDrawIndexedIndirectCommand),
-                                 draw_count,
-                                 sizeof(VkDrawIndexedIndirectCommand));
-    }
-};//class IndirectDrawIndexedBuffer:public IndirectCommandBuffer<VkDrawIndexedIndirectCommand>
-
 class IndirectDispatchBuffer:public IndirectCommandBuffer<VkDispatchIndirectCommand>
 {
     friend class VulkanDevice;
