@@ -16,7 +16,7 @@ class BufferManager;
  * 设计：每个顶点语义（Position/UV/NTB/...）一个 VAB（大 buffer），所有模型的数据
  * 通过 BlockAllocator 分段写入（AcquireVAB 分配段，GetStart() 即段起始顶点号）。
  * 模型的顶点偏移 = vab_node->GetStart()（顶点号，非字节）——渲染时作为
- * vkCmdDrawIndexed 的 firstVertex（vertexOffset）传给绘制命令。
+ * push constant 的 vertex_base（顶点号）传给 SSBO 绘制路径。
  *
  * 顶点偏移计算（VBO 与 SSBO 顶点输入统一语义）：
  * - VBO 模式（传统 attribute fetch）：硬件自动用 firstVertex + 索引取顶点——

@@ -353,7 +353,7 @@ namespace hgl::ecs
         // VVL 的 set 兼容 ID 取 layout 在 set 0..N 的全部 DSL 前缀，绑定 layout 必须与
         // draw 时管线 layout（= 材质 pipeline layout）一致。旧方案由
         // RenderDescriptorBindingSystem 用"第一个活跃材质"的 layout 统一绑定，
-        // 会导致使用 bindless 纹理的材质触发 VUID-vkCmdDrawIndexedIndirect-None-08600
+        // 会导致使用 bindless 纹理的材质触发 set 兼容性 VUID
         //（其 set 0..3 前缀 DSL 与绑定 layout 不同，set 3 被判为不兼容）。
         if (render_context)
         {

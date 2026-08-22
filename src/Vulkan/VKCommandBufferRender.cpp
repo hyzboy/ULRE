@@ -140,23 +140,6 @@ void RenderCmdBuffer::Draw(const GeometryDataBuffer *geom_data_buffer,const Geom
               0,   // SSBO 顶点输入：段偏移走 push constant（vertex_base）——vkCmdDraw 的 firstVertex=0
               first_instance);
 }
-
-//void RenderCmdBuffer::DrawIndexed(const IBAccess *iba,const uint32_t instance_count)
-//{
-//    if(!iba||instance_count<=0)return;
-//
-//    vkCmdBindIndexBuffer(cmd_buf,
-//                         iba->buffer->GetBuffer(),
-//                         iba->start*iba->buffer->GetStride(),
-//                         VkIndexType(iba->buffer->GetType()));
-//
-//    vkCmdDrawIndexed(cmd_buf,
-//                     iba->count,
-//                     instance_count,
-//                     0,                 //first index
-//                     0,                 //vertex offset
-//                     0);                //first instance
-//}
 }//namespace hgl::graph
 
 

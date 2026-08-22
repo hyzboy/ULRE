@@ -43,7 +43,7 @@ public:
     bool    Write   (const void *ptr,uint32_t size)                 {return GetGPUBuffer()->Write(ptr,0,size*stride);}
 
     /**
-     * Returns the underlying VkBuffer handle for vkCmdBindIndexBuffer.
+     * Returns the underlying VkBuffer handle for SSBO 顶点索引绑定（sbo_index 查表路径）。
      * Prefer this over GetBuffer() — does not require DeviceBuffer inheritance.
      */
     VkBuffer GetVkBuffer() const { return GetGPUBuffer()->GetVkDeviceBuffer(); }
