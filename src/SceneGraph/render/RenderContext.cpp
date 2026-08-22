@@ -4,7 +4,6 @@
 namespace hgl::graph
 {
     Pipeline* RenderContext::CreatePipeline(ShaderProgram* material,
-                                            const VertexInputLayout* vil,
                                             const PipelineData* pd,
                                             bool prim_restart)
     {
@@ -12,7 +11,7 @@ namespace hgl::graph
             return nullptr;
 
         RenderPass* rp = current_render_target->GetRenderPass();
-        return rp ? rp->CreatePipeline(material, vil, pd, prim_restart) : nullptr;
+        return rp ? rp->CreatePipeline(material, pd, prim_restart) : nullptr;
     }
 
 

@@ -86,12 +86,6 @@ public:
 
     const   bool                                hasSet                  (const DescriptorSetType &type)const;
 
-    const   VIL *                               GetDefaultVIL()const;
-            VIL *                               CreateVIL(const VILConfig *format_map=nullptr);
-            VIL *                               CreateVIL(const GeometryVertexFormat &geometry_vertex_format);
-            bool                                Release(VIL *);
-    const   uint                                GetVILCount();
-
 public:
 
     bool BindTexture(const DescriptorSetType &type,const AnsiString &name,Texture *tex);

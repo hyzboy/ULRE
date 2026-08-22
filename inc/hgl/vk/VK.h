@@ -248,14 +248,10 @@ struct PipelineData;
 class Pipeline;
 
 struct VAConfig;
-class VILConfig;
 class VertexInput;
 
 struct VertexInputFormat;
 using VIF=VertexInputFormat;
-
-class VertexInputLayout;
-using VIL=VertexInputLayout;
 
 class GeometryData;
 class Geometry;

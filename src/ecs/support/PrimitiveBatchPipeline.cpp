@@ -22,7 +22,7 @@
 #include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderPass.h>
-#include<hgl/vk/VKVertexInputLayout.h>
+#include<hgl/vk/VKVertexInputFormat.h>
 #include<hgl/log/Log.h>
 #include<algorithm>
 #include<chrono>

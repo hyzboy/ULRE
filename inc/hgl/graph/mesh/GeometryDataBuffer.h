@@ -101,7 +101,7 @@ public:
         return !(*this == other);
     }
 
-    bool Update(const Geometry *,const VertexInputFormat *,uint32_t);
+    bool Update(const Geometry *);
 };//struct GeometryDataBuffer
 }//namespace hgl::graph
 

@@ -12,7 +12,6 @@ enum class ResourceType
     VkPhysicalDevice,
     VkDevice,
 
-    VertexInputLayout,
     Material,
     MaterialInstance,
 

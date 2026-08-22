@@ -53,7 +53,6 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
                                       PipelineData *pd,
                                       const ShaderStageCreateInfoList &ssci_list,
                                       VkPipelineLayout pl,
-                                      const VIL *vil,
                                       const GeometryVertexFormat *gvf,
                                       const uint64_t pipeline_config_hash,
                                       const bool is_overlay)
@@ -73,7 +72,6 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
     request.pipeline_data = pd;
     request.shader_stages = &ssci_list;
     request.pipeline_layout = pl;
-    request.vertex_input_layout = vil;
     request.geometry_vertex_format = gvf;
 
     FinalPipelineResolveResult resolve_result{};
@@ -103,7 +101,7 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
         }
     }
 
-    Pipeline *pipeline = new Pipeline(name,*device,graphicsPipeline,vil,pd,is_overlay);
+    Pipeline *pipeline = new Pipeline(name,*device,graphicsPipeline,pd,is_overlay);
 
     const char *mode_name = resolve_result.materialize_mode == PipelineMaterializeMode::GraphicsPipelineLibrary
                           ? "GPL"
@@ -118,13 +116,13 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
     return pipeline;
 }
 
-Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const VIL *vil,const PipelineData *cpd,const bool prim_restart,const GeometryVertexFormat *gvf)
+Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const PipelineData *cpd,const bool prim_restart,const GeometryVertexFormat *gvf)
 {
     PipelineData *pd=new PipelineData(cpd);
 
     pd->SetPrim(mtl->GetPrimitiveType(),prim_restart);
 
-    Pipeline *p=CreatePipeline(mtl->GetName(),pd,mtl->GetStageList(),mtl->GetPipelineLayout(),vil,gvf,0,false);
+    Pipeline *p=CreatePipeline(mtl->GetName(),pd,mtl->GetStageList(),mtl->GetPipelineLayout(),gvf,0,false);
 
     if(p && !pipeline_list.Contains(p))
         pipeline_list.Add(p);
@@ -132,7 +130,7 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const VIL *vil,const Pip
     return(p);
 }
 
-Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const VIL *vil,const mtl::MaterialPipelineConfig &config,const bool prim_restart,const GeometryVertexFormat *gvf)
+Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialPipelineConfig &config,const bool prim_restart,const GeometryVertexFormat *gvf)
 {
     if(!mtl)
         return(nullptr);
@@ -144,7 +142,6 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const VIL *vil,const mtl
                                   pd,
                                   mtl->GetStageList(),
                                   mtl->GetPipelineLayout(),
-                                  vil,
                                   gvf,
                                   mtl::HashMaterialPipelineConfig(config),
                                   config.overlay);
@@ -155,7 +152,7 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const VIL *vil,const mtl
     return p;
 }
 
-Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const VIL *vil,const mtl::MaterialRecipe &recipe,const bool prim_restart,const GeometryVertexFormat *gvf)
+Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialRecipe &recipe,const bool prim_restart,const GeometryVertexFormat *gvf)
 {
     if(!mtl)
         return(nullptr);
@@ -180,7 +177,6 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const VIL *vil,const mtl
                                   pd,
                                   mtl->GetStageList(),
                                   mtl->GetPipelineLayout(),
-                                  vil,
                                   gvf,
                                   mtl::HashResolvedMaterialRenderState(render_state),
                                   render_state.pipeline_config.overlay);
@@ -191,20 +187,9 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const VIL *vil,const mtl
     return p;
 }
 
-Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const PipelineData *pd,const bool prim_restart)
-{
-    return CreatePipeline(mtl,mtl->GetDefaultVIL(),pd,prim_restart);
-}
-
-Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialPipelineConfig &config,const bool prim_restart)
-{
-    return CreatePipeline(mtl,mtl->GetDefaultVIL(),config,prim_restart);
-}
-
 Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
                                      const ShaderStageCreateInfoList &ssci,
                                      VkPipelineLayout layout,
-                                     const VIL *vil,
                                      const PipelineData *cpd,
                                      PrimitiveType prim,
                                      bool prim_restart,
@@ -214,7 +199,7 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
 
     pd->SetPrim(prim, prim_restart);
 
-    Pipeline *p = CreatePipeline(name, pd, ssci, layout, vil, gvf, 0, false);
+    Pipeline *p = CreatePipeline(name, pd, ssci, layout, gvf, 0, false);
 
     if(p && !pipeline_list.Contains(p))
         pipeline_list.Add(p);

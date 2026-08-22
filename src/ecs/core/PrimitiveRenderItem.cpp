@@ -64,11 +64,6 @@ namespace hgl::ecs
         return primitiveComp ? primitiveComp->GetRuntimeGeometryDrawRange() : nullptr;
     }
 
-    const hgl::graph::VertexInputLayout *PrimitiveRenderItem::GetGeometryBindingVIL() const
-    {
-        return primitiveComp ? primitiveComp->GetRuntimeVIL() : nullptr;
-    }
-
     TransformPolicySpec PrimitiveRenderItem::GetTransformPolicySpec() const
     {
         return primitiveComp ? primitiveComp->GetTransformPolicySpec() : TransformPolicySpec{};

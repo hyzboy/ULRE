@@ -137,12 +137,6 @@ namespace hgl::ecs
 
             if (res.material && material_manager)
             {
-                if (res.binding_vil)
-                {
-                    res.material->Release(res.binding_vil);
-                    res.binding_vil = nullptr;
-                }
-
                 if (descriptor_binding_system)
                 {
                     descriptor_binding_system->UnregisterPipelineMaterial(res.material);
@@ -339,7 +333,6 @@ namespace hgl::ecs
         {
             graph::ShaderProgramManager* material_manager = nullptr;
             graph::ShaderProgram* material = nullptr;
-            graph::VIL* binding_vil = nullptr;
             graph::DescriptorBindingSet* descriptor_binding_set = nullptr;
             graph::BufferManager* buffer_manager = nullptr;
             graph::DeviceBuffer* material_data_buffer = nullptr;
@@ -364,9 +357,6 @@ namespace hgl::ecs
 
                 if (descriptor_binding_set)
                     delete descriptor_binding_set;
-
-                if (material && binding_vil)
-                    material->Release(binding_vil);
 
                 if (material && material_manager)
                     material_manager->Release(material);
@@ -407,13 +397,7 @@ namespace hgl::ecs
         if (!guard.material)
             return nullptr;
 
-        {
-            guard.binding_vil = guard.material->CreateVIL(text_gvf);
-            if (!guard.binding_vil)
-                return nullptr;
-        }
-
-        guard.descriptor_binding_set = new graph::DescriptorBindingSet(guard.material, guard.binding_vil);
+        guard.descriptor_binding_set = new graph::DescriptorBindingSet(guard.material);
         if (!guard.descriptor_binding_set)
             return nullptr;
 
@@ -536,9 +520,7 @@ namespace hgl::ecs
 
         resources.tile_font = guard.tile_font.release();
         resources.material = guard.material;
-        resources.binding_vil = guard.binding_vil;
         resources.descriptor_binding_set = guard.descriptor_binding_set;
-        guard.binding_vil = nullptr;
         guard.descriptor_binding_set = nullptr;
         guard.committed = true;
 
@@ -636,7 +618,7 @@ namespace hgl::ecs
             }
 
             auto *binding_set = resources->descriptor_binding_set;
-            if (!binding_set || !resources->binding_vil)
+            if (!binding_set)
                 continue;
 
             if (input.dirty)
@@ -654,7 +636,6 @@ namespace hgl::ecs
             {
                 const graph::GeometryVertexFormat text_gvf = graph::CreateTextGeometryVertexFormat();
                 resources->pipeline = render_pass->CreatePipeline(resources->material,
-                                                                  resources->binding_vil,
                                                                   graph::mtl::MakeSolid2DConfig(),
                                                                   false,
                                                                   &text_gvf);
@@ -707,7 +688,10 @@ namespace hgl::ecs
                 SAFE_CLEAR(resources->data_buffer);
                 SAFE_CLEAR(resources->draw_range);
 
-                resources->data_buffer = new graph::GeometryDataBuffer(resources->binding_vil->GetVertexAttribCount(),
+                // 顶点输入统一为 SSBO：GeometryDataBuffer 槽位数 = Geometry 语义数
+                const uint32_t semantic_count = geometry->GetGeometryVertexFormat().GetCount();
+
+                resources->data_buffer = new graph::GeometryDataBuffer(semantic_count,
                                                                        geometry->GetIBO(),
                                                                        geometry->GetVDM());
                 if (!resources->data_buffer)
@@ -725,9 +709,7 @@ namespace hgl::ecs
                 }
             }
 
-            if (!resources->data_buffer->Update(geometry,
-                                                resources->binding_vil->GetVIFList(),
-                                                resources->binding_vil->GetVertexAttribCount()))
+            if (!resources->data_buffer->Update(geometry))
             {
                 GLogError("[TextRenderPipeline] GeometryDataBuffer::Update failed");
                 continue;

@@ -1,5 +1,5 @@
 ﻿#include<hgl/vk/pipeline/VKPipelineData.h>
-#include<hgl/vk/VKVertexInputLayout.h>
+#include<hgl/vk/VKVertexInputFormat.h>
 #include<hgl/vk/VKDeviceAttribute.h>
 #include<hgl/type/MemoryUtil.h>
 
@@ -272,31 +272,16 @@ void PipelineData::InitShaderStage(const ShaderStageCreateInfoList &ssl)
     pipeline_info.pStages = ssl.GetData();
 }
 
-void PipelineData::InitVertexInputState(const VIL *vil)
+void PipelineData::InitVertexInputState()
 {
+    // 空顶点输入 — 顶点数据统一走 SSBO 获取路径（MeshShader 方向）
     vertex_input_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertex_input_state.pNext = nullptr;
     vertex_input_state.flags = 0;
-
-    if(vil)
-    {
-        vertex_input_state.vertexBindingDescriptionCount   =
-        vertex_input_state.vertexAttributeDescriptionCount = vil->GetVertexAttribCount();
-
-        vertex_input_binding_description    =vil->NewBindListCopy();
-        vertex_input_attribute_description  =vil->NewAttrListCopy();
-
-        vertex_input_state.pVertexBindingDescriptions      = vertex_input_binding_description;
-        vertex_input_state.pVertexAttributeDescriptions    = vertex_input_attribute_description;
-    }
-    else
-    {
-        // 空顶点输入 — 用于 SSBO 顶点获取路径
-        vertex_input_state.vertexBindingDescriptionCount   = 0;
-        vertex_input_state.vertexAttributeDescriptionCount = 0;
-        vertex_input_state.pVertexBindingDescriptions      = nullptr;
-        vertex_input_state.pVertexAttributeDescriptions    = nullptr;
-    }
+    vertex_input_state.vertexBindingDescriptionCount   = 0;
+    vertex_input_state.vertexAttributeDescriptionCount = 0;
+    vertex_input_state.pVertexBindingDescriptions      = nullptr;
+    vertex_input_state.pVertexAttributeDescriptions    = nullptr;
 
     pipeline_info.pVertexInputState  = &vertex_input_state;
 }

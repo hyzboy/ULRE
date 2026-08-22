@@ -50,44 +50,6 @@ const bool ShaderProgram::hasSet(const DescriptorSetType &dst)const
     return desc_manager->hasSet(dst);
 }
 
-const VIL *ShaderProgram::GetDefaultVIL()const
-{
-    return vertex_input->GetDefaultVIL();
-}
-
-VIL *ShaderProgram::CreateVIL(const VILConfig *format_map)
-{
-    return vertex_input->CreateVIL(format_map);
-}
-
-VIL *ShaderProgram::CreateVIL(const GeometryVertexFormat &geometry_vertex_format)
-{
-    if(geometry_vertex_format.GetCount() <= 0)
-        return CreateVIL((const VILConfig *)nullptr);
-
-    VILConfig vil_config;
-    for(uint32_t i=0;i<geometry_vertex_format.GetCount();++i)
-    {
-        const GeometryVertexAttributeFormat *attribute = geometry_vertex_format.Get(i);
-        if(!attribute)
-            continue;
-
-        vil_config.Add(attribute->semantic, VAConfig(attribute->format, VK_VERTEX_INPUT_RATE_VERTEX));
-    }
-
-    return CreateVIL(&vil_config);
-}
-
-bool ShaderProgram::Release(VIL *vil)
-{
-    return vertex_input->Release(vil);
-}
-
-const uint ShaderProgram::GetVILCount()
-{
-    return vertex_input->GetInstanceCount();
-}
-
 bool ShaderProgram::BindUBO(const DescriptorSetType &type,const AnsiString &name,const IGPUBuffer *gpu,bool dynamic)
 {
     MaterialParameters *mp=GetMP(type);

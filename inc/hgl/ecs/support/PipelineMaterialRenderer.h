@@ -75,7 +75,6 @@ namespace hgl::ecs
 
         // === 渲染状态缓存 ===
         graph::RenderCmdBuffer* cmd_buf;                    ///<当前渲染命令缓冲
-        graph::VABList* vab_list;                           ///<顶点属性缓冲列表（VBO 时代残留——待清理）
 
         const graph::GeometryDataBuffer* last_data_buffer;  ///<上次绑定的几何数据缓冲
 

@@ -38,18 +38,14 @@ namespace hgl
 
         private:
             ShaderProgram *material = nullptr;
-            const VIL *vil = nullptr;
             SSBOBinding ssbo_bindings[size_t(mtl::SSBOType::RANGE_SIZE)]{};
             TextureBinding texture_bindings[size_t(mtl::TextureSlot::RANGE_SIZE)]{};
 
         public:
-            DescriptorBindingSet(ShaderProgram *mtl = nullptr, const VIL *binding_vil = nullptr);
+            DescriptorBindingSet(ShaderProgram *mtl = nullptr);
 
             void SetMaterial(ShaderProgram *mtl);
             ShaderProgram *GetShaderProgram() const { return material; }
-
-            void SetVIL(const VIL *binding_vil) { vil = binding_vil; }
-            const VIL *GetVIL() const;
 
             bool SetSSBOBinding(mtl::SSBOType ssbo_type, uint32_t ssbo_id, uint32_t data_slot);
             bool HasSSBOBinding(mtl::SSBOType ssbo_type) const;

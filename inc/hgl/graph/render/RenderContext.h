@@ -3,7 +3,7 @@
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKVertexInput.h>
-#include<hgl/vk/VKVertexInputLayout.h>
+#include<hgl/vk/VKVertexInputFormat.h>
 #include <hgl/graph/core/GraphicsContext.h>
 namespace hgl::graph
 {
@@ -69,7 +69,6 @@ namespace hgl::graph
          * @return 管线指针，失败返回 nullptr
          */
         Pipeline* CreatePipeline(ShaderProgram* material,
-                                const VertexInputLayout* vil,
                                 const PipelineData* pd,
                                 bool prim_restart = false);
 

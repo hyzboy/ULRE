@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/vk/VKPrimitiveType.h>
-#include<hgl/vk/VKVertexInputLayout.h>
+#include<hgl/vk/VKVertexInputFormat.h>
 #include<hgl/type/ValueArray.h>
 #include<hgl/type/String.h>
 #include<cmath>
@@ -74,7 +74,7 @@ public:
     ~PipelineData();
 
     void InitShaderStage(const ShaderStageCreateInfoList &);
-    void InitVertexInputState(const VIL *);
+    void InitVertexInputState();
     void InitDynamicState();
 
     void AddDynamicState(VkDynamicState);

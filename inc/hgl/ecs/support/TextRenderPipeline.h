@@ -57,7 +57,6 @@ namespace hgl
                 graph::TextGeometry* geometry = nullptr;
                 graph::GeometryDataBuffer* data_buffer = nullptr;
                 graph::GeometryDrawRange* draw_range = nullptr;
-                graph::VertexInputLayout* binding_vil = nullptr;
                 graph::DescriptorBindingSet* descriptor_binding_set = nullptr;
 
                 uint32_t last_draw_char_count = 0;

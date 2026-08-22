@@ -17,25 +17,14 @@ namespace hgl::graph
         }
     }
 
-    DescriptorBindingSet::DescriptorBindingSet(ShaderProgram *mtl, const VIL *binding_vil)
+    DescriptorBindingSet::DescriptorBindingSet(ShaderProgram *mtl)
     {
         material = mtl;
-        vil = binding_vil ? binding_vil : (material ? material->GetDefaultVIL() : nullptr);
     }
 
     void DescriptorBindingSet::SetMaterial(ShaderProgram *mtl)
     {
         material = mtl;
-        if (!vil && material)
-            vil = material->GetDefaultVIL();
-    }
-
-    const VIL *DescriptorBindingSet::GetVIL() const
-    {
-        if (vil)
-            return vil;
-
-        return material ? material->GetDefaultVIL() : nullptr;
     }
 
     bool DescriptorBindingSet::SetSSBOBinding(const mtl::SSBOType ssbo_type, const uint32_t ssbo_id, const uint32_t data_slot)

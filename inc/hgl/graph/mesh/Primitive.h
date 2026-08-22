@@ -20,8 +20,6 @@ class Primitive
 {
     Pipeline *          pipeline;
     ShaderProgram *   material_program;
-    const VIL *         binding_vil;
-    bool                owns_binding_vil = false;
     Geometry *          geometry;
 
     GeometryDataBuffer *data_buffer;
@@ -31,22 +29,18 @@ private:
 
     friend Primitive *DirectCreatePrimitive(Geometry *,ShaderProgram *,Pipeline *);
 
-    Primitive(Geometry *,ShaderProgram *,const VIL *,bool,Pipeline *,GeometryDataBuffer *);
+    Primitive(Geometry *,ShaderProgram *,Pipeline *,GeometryDataBuffer *);
 
 public:
 
     virtual ~Primitive()
     {
-        if (owns_binding_vil && binding_vil && material_program)
-            material_program->Release(const_cast<VIL *>(binding_vil));
-
         SAFE_CLEAR(data_buffer);
     }
 
             Pipeline *          GetPipeline         (){return pipeline;}
             VkPipelineLayout    GetPipelineLayout   (){return material_program ? material_program->GetPipelineLayout() : VK_NULL_HANDLE;}
             ShaderProgram *   GetShaderProgram  (){return material_program;}
-    const   VIL *               GetVIL              ()const{return binding_vil ? binding_vil : (material_program ? material_program->GetDefaultVIL() : nullptr);}
             Geometry *          GetGeometry         (){return geometry;}
             AnsiString          GetGeometryName     (){return geometry->GetName();}
     const   BoundingVolumes &   GetBoundingVolumes  ()const{return geometry->GetBoundingVolumes();}

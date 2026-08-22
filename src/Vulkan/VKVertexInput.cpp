@@ -29,46 +29,12 @@ VertexInputConfig::~VertexInputConfig()
     delete[] type_list;
 }
 
-VIL *VertexInputConfig::CreateVIL(const VILConfig *cfg)
-{
-    // SSBO 顶点输入时代：管线无 VBO attribute（顶点数据经顶点 SSBO 读取）——
-    // 恒返回空 VIL（0 attribute 0 binding）。VBO 时代的 attribute 生成已删除。
-    return(new VIL(0));
-}
-
 VertexInput::VertexInput(const VIAArray &sa_array):vic(sa_array)
 {
-    default_vil=vic.CreateVIL(nullptr);
 }
 
 VertexInput::~VertexInput()
 {
-    delete default_vil;
-
-    if(vil_sets.GetCount()>0)
-    {
-        //还有在用的，这是个错误
-    }
-}
-
-VIL *VertexInput::CreateVIL(const VILConfig *cfg)
-{
-    if(!cfg)
-        return(default_vil);
-
-    //原本是想在这里做根据VILConfig的Map缓冲管理，避免重复创建VIL。
-    //但VILConfig的复制与比较过于复杂，而且这种使用情况极少。所以放弃做这个事情，如未来真正产生这种需求时再做。
-
-    VIL *vil=vic.CreateVIL(cfg);
-
-    vil_sets.Add(vil);
-
-    return vil;
-}
-
-bool VertexInput::Release(VIL *vil)
-{
-    return vil_sets.Delete(vil);
 }
 
 namespace

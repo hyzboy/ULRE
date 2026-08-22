@@ -13,7 +13,6 @@ class Pipeline
 
     VkPipeline pipeline;
 
-    const VIL *vil;
     PipelineData *data;
     bool overlay;
 
@@ -27,14 +26,12 @@ private:
     Pipeline(const AnsiString &n,
              VkDevice dev,
              VkPipeline p,
-             const VIL *v,
              PipelineData *pd,
              const bool is_overlay)
     {
         name=n;
         device=dev;
         pipeline=p;
-        vil=v;
         data=pd;
         overlay=is_overlay;
 
@@ -49,8 +46,6 @@ public:
     const AnsiString &GetName()const{return name;}
 
     operator VkPipeline(){return pipeline;}
-
-    const VIL *GetVIL()const{return vil;}
     const PipelineData *GetData()const{return data;}
     const bool GetOverlay()const{return overlay;}
 

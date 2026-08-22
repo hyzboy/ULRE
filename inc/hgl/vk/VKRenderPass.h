@@ -39,7 +39,6 @@ protected:
                              PipelineData *,
                              const ShaderStageCreateInfoList &,
                              VkPipelineLayout,
-                             const VIL *,
                              const GeometryVertexFormat *gvf=nullptr,
                              const uint64_t pipeline_config_hash=0,
                              const bool is_overlay=false);
@@ -74,20 +73,16 @@ public:
 
 public:
 
-    Pipeline *CreatePipeline(ShaderProgram *,const VIL *,const PipelineData *,   const bool prim_restart=false,const GeometryVertexFormat *gvf=nullptr);
-    Pipeline *CreatePipeline(ShaderProgram *,const VIL *,const mtl::MaterialPipelineConfig &config, const bool prim_restart=false,const GeometryVertexFormat *gvf=nullptr);
-    Pipeline *CreatePipeline(ShaderProgram *,const VIL *,const mtl::MaterialRecipe &recipe, const bool prim_restart=false,const GeometryVertexFormat *gvf=nullptr);
-
-    Pipeline *CreatePipeline(ShaderProgram *mtl,         const PipelineData *,   const bool prim_restart=false);
-    Pipeline *CreatePipeline(ShaderProgram *mtl,         const mtl::MaterialPipelineConfig &config, const bool prim_restart=false);
+    Pipeline *CreatePipeline(ShaderProgram *,const PipelineData *,   const bool prim_restart=false,const GeometryVertexFormat *gvf=nullptr);
+    Pipeline *CreatePipeline(ShaderProgram *,const mtl::MaterialPipelineConfig &config, const bool prim_restart=false,const GeometryVertexFormat *gvf=nullptr);
+    Pipeline *CreatePipeline(ShaderProgram *,const mtl::MaterialRecipe &recipe, const bool prim_restart=false,const GeometryVertexFormat *gvf=nullptr);
 
     /**
-     * 从原始着色器阶段 + Pipeline Layout + VIL 创建管线（供 Compositor 系统使用）
+     * 从原始着色器阶段 + Pipeline Layout 创建管线（供 Compositor 系统使用）
      */
     Pipeline *CreatePipeline(const AnsiString &name,
                              const ShaderStageCreateInfoList &ssci,
                              VkPipelineLayout layout,
-                             const VIL *vil,
                              const PipelineData *pd,
                              PrimitiveType prim = PrimitiveType::Triangles,
                              bool prim_restart = false,

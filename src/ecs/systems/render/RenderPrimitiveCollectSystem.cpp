@@ -740,20 +740,7 @@ namespace hgl::ecs
          == material_comp->cached_effective_recipe_hash)
             effective_recipe = material_comp->cached_normalized_recipe;
 
-        const graph::VIL *vil = primitive_comp->GetRuntimeVIL();
-        if (!vil)
-            vil = material_comp->program->GetDefaultVIL();
-
-        if (!vil)
-        {
-            GLogWarning("[RenderPrimitiveCollectSystem] ResolveRuntimePipeline failed: missing effective VIL for %s material=%s",
-                        GetPrimitiveOwnerName(primitive_comp),
-                        material_comp->program ? material_comp->program->GetName().c_str() : "<null>");
-            return false;
-        }
-
         graph::Pipeline *resolved_pipeline = render_pass->CreatePipeline(material_comp->program,
-                                                                         vil,
                                                                          effective_recipe);
         if (!resolved_pipeline)
         {

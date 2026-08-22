@@ -26,7 +26,6 @@ namespace hgl::ecs
         : material(m)
         , pipeline(p)
         , cmd_buf(nullptr)
-        , vab_list(new graph::VABList(m->GetVertexInput()->GetCount()))
         , last_data_buffer(nullptr)
         , first_indirect_draw_index(-1)
         , indirect_draw_count(0)
@@ -35,7 +34,6 @@ namespace hgl::ecs
 
     PipelineMaterialRenderer::~PipelineMaterialRenderer()
     {
-        SAFE_CLEAR(vab_list);
     }
 
     void PipelineMaterialRenderer::ProcIndirectRender(graph::IndirectDrawBuffer* icb_draw)

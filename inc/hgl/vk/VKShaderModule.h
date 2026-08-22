@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/vk/VK.h>
-#include<hgl/vk/VKVertexInputLayout.h>
+#include<hgl/vk/VKVertexInputFormat.h>
 
 namespace hgl::graph{
 

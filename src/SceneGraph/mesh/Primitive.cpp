@@ -50,13 +50,11 @@ void GeometryDrawRange::Set(const Geometry *geometry)
     first_index     = geometry->GetFirstIndex();
 }
 
-Primitive::Primitive(Geometry *r,ShaderProgram *material,const VIL *vil,bool own_vil,Pipeline *p,GeometryDataBuffer *gdb)
+Primitive::Primitive(Geometry *r,ShaderProgram *material,Pipeline *p,GeometryDataBuffer *gdb)
 {
     geometry=r;
     pipeline=p;
     material_program = material;
-    binding_vil = vil;
-    owns_binding_vil = own_vil;
 
     data_buffer=gdb;
     draw_range.Set(geometry);
@@ -73,120 +71,39 @@ bool Primitive::UpdateGeometry()
     if(draw_range.index_count>draw_range.data_index_count)
         draw_range.index_count = draw_range.data_index_count;
 
-    const VIL *vil = GetVIL();
-    return data_buffer->Update(geometry, vil ? vil->GetVIFList() : nullptr, vil ? vil->GetVertexAttribCount() : 0);
+    return data_buffer->Update(geometry);
 }
 
 Primitive *DirectCreatePrimitive(Geometry *geom,ShaderProgram *material,Pipeline *p)
 {
-    if(!geom||!material)return(nullptr);
-
-    VIL *owned_vil = material->CreateVIL(geom->GetGeometryVertexFormat());
-    const VIL *vil = owned_vil ? owned_vil : material->GetDefaultVIL();
-
-    if(!material||!vil)
-    {
-        if (owned_vil)
-            material->Release(owned_vil);
+    if(!geom||!material)
         return(nullptr);
-    }
 
-    // VIL/pipeline consistency check: only performed when a pre-baked pipeline is provided.
-    // When p==null, the runtime render path is expected to resolve a compatible pipeline earlier.
-    if(p && *vil!=*p->GetVIL())
+    // 顶点输入统一为 SSBO：按 Geometry 自带语义列表填充顶点数据 SSBO 槽位
+    const GeometryVertexFormat &gvf=geom->GetGeometryVertexFormat();
+    const uint32_t attr_count=gvf.GetCount();
+
+    GeometryDataBuffer *geom_data_buffer=new GeometryDataBuffer(attr_count,geom->GetIBO(),geom->GetVDM());
+
+    for(uint32_t i=0;i<attr_count;i++)
     {
-        if (owned_vil)
-            material->Release(owned_vil);
-        return(nullptr);
+        const GeometryVertexAttributeFormat *attr=gvf.Get(i);
+        if(!attr||attr->semantic==VertexSemantic::Unknown)
+            continue;
+
+        const VkBuffer buf=geom->GetVkBuffer(attr->semantic);
+        if(buf==VK_NULL_HANDLE)
+            continue;
+
+        if(i>=geom_data_buffer->vab_count)
+            break;
+
+        geom_data_buffer->vab_list[i]=buf;
+        geom_data_buffer->vab_offset[i]=0;
+        geom_data_buffer->vab_semantic[i]=attr->semantic;
     }
 
-    const uint32_t input_count=vil->GetVertexAttribCount();
-    const AnsiString &mtl_name=material->GetName();
-    const GeometryVertexFormatMatch match_result=MatchGeometryVertexFormat(
-                                                    geom->GetGeometryVertexFormat(),
-                                                    vil->GetVIFList(),
-                                                    vil->GetVertexAttribCount());
-
-    if(geom->GetVABCount()<input_count)
-    {
-        GLogError("[FATAL ERROR] input buffer count of Primitive lesser than ShaderProgram, ShaderProgram name: "+mtl_name);
-        if (owned_vil)
-            material->Release(owned_vil);
-        return(nullptr);
-    }
-
-    if(!match_result.IsDirectBindSatisfied())
-    {
-        const GeometryVertexFailureSummary failure_summary = match_result.BuildFailureSummary();
-        const GeometryVertexAttributeMatch *first_issue = failure_summary.first_failure;
-
-        if(first_issue)
-        {
-            GLogError(  "[FATAL ERROR] GeometryVertexFormat can't satisfy ShaderProgram vertex input, ShaderProgram(")+mtl_name+
-                        AnsiString(") Attribute(")+AnsiString(GetVertexSemanticName(first_issue->semantic))+
-                        AnsiString(") Match(")+GetGeometryVertexMatchKindName(first_issue->kind)+
-                        AnsiString(") Semantic(")+GetVertexSemanticName(first_issue->semantic)+
-                        AnsiString(") MaterialFormat(")+(GetVulkanFormatName(first_issue->material_format)?GetVulkanFormatName(first_issue->material_format):"Unknown")+
-                        AnsiString(") GeometryFormat(")+(GetVulkanFormatName(first_issue->geometry_format)?GetVulkanFormatName(first_issue->geometry_format):"Unknown")+
-                        AnsiString(") HasCompatibilityRule(")+(first_issue->has_compatibility_rule?"true":"false")+
-                        AnsiString(") AutoApply(")+(first_issue->compatibility_allow_auto_apply?"true":"false")+
-                        AnsiString(") Lossless(")+(first_issue->compatibility_lossless?"true":"false")+
-                        AnsiString(") Precision(")+GetAttributePrecisionGradeName(first_issue->compatibility_precision)+
-                        AnsiString(") RuntimeCost(")+GetAttributeRuntimeCostName(first_issue->compatibility_runtime_cost)+
-                        AnsiString(") RequiresExplicitHandling(")+(failure_summary.requires_explicit_handling?"true":"false")+
-                        AnsiString(") HandlingPath(")+failure_summary.GetHandlingPathName()+
-                        AnsiString(") HasOnlyRegisteredCompatibilityDifferences(")+(failure_summary.has_only_registered_compatibility_differences?"true":"false")+
-                        AnsiString(") FailureKind(")+failure_summary.GetFailureKindName()+
-                        AnsiString(") HasMismatch(")+(failure_summary.has_mismatch?"true":"false")+
-                        AnsiString(") HasUnsupported(")+(failure_summary.has_unsupported?"true":"false")+
-                        AnsiString(") HasCompatible(")+(failure_summary.has_compatible?"true":"false")+
-                        AnsiString(") FirstMismatchSemantic(")+(failure_summary.first_mismatch?GetVertexSemanticName(failure_summary.first_mismatch->semantic):"None")+
-                        AnsiString(") FirstUnsupportedSemantic(")+(failure_summary.first_unsupported?GetVertexSemanticName(failure_summary.first_unsupported->semantic):"None")+
-                        AnsiString(") FirstCompatibleSemantic(")+(failure_summary.first_compatible?GetVertexSemanticName(failure_summary.first_compatible->semantic):"None")+
-                        AnsiString(") HasAnyRegisteredCompatibility(")+(failure_summary.first_registered_compatibility?"true":"false")+
-                        AnsiString(")");
-        }
-        else
-        {
-            GLogError("[FATAL ERROR] GeometryVertexFormat can't satisfy ShaderProgram vertex input, ShaderProgram: "+mtl_name);
-        }
-
-        if (owned_vil)
-            material->Release(owned_vil);
-        return(nullptr);
-    }
-
-    const VertexInputFormat *vif=vil->GetVIFList();
-    uint32_t max_binding=0;
-    for(uint i=0;i<input_count;i++)
-    {
-        if(vif[i].binding>max_binding)
-            max_binding=vif[i].binding;
-    }
-
-    GeometryDataBuffer *geom_data_buffer=new GeometryDataBuffer(max_binding+1,geom->GetIBO(),geom->GetVDM());
-
-    VAB *vab;
-    for(uint i=0;i<input_count;i++)
-    {
-        vab=geom->GetVAB(vif->semantic);
-
-        if(!vab)
-        {
-            GLogError("[FATAL ERROR] not found VAB \""+AnsiString(GetVertexSemanticName(vif->semantic))+"\" in ShaderProgram: "+mtl_name);
-            if (owned_vil)
-                material->Release(owned_vil);
-            return(nullptr);
-        }
-
-        const uint32_t bind_index=vif->binding;
-        geom_data_buffer->vab_list[bind_index]=vab->GetVkBuffer();
-        geom_data_buffer->vab_offset[bind_index]=0;
-        geom_data_buffer->vab_semantic[bind_index]=vif->semantic;   // SSBO 顶点绑定（per-DrawBatch）用
-        ++vif;
-    }
-
-    return(new Primitive(geom,material,owned_vil,owned_vil!=nullptr,p,geom_data_buffer));
+    return(new Primitive(geom,material,p,geom_data_buffer));
 }
 
 Primitive *CreatePrimitiveRuntime(Geometry *geom, ShaderProgram *material, Pipeline *p)
@@ -194,12 +111,9 @@ Primitive *CreatePrimitiveRuntime(Geometry *geom, ShaderProgram *material, Pipel
     return DirectCreatePrimitive(geom, material, p);
 }
 
-bool GeometryDataBuffer::Update(const Geometry *geom,const VertexInputFormat *vif_list,uint32_t vif_count)
+bool GeometryDataBuffer::Update(const Geometry *geom)
 {
     if(!geom)
-        return(false);
-
-    if(vif_count>0 && !vif_list)
         return(false);
 
     ibo=geom->GetIBO();
@@ -212,15 +126,27 @@ bool GeometryDataBuffer::Update(const Geometry *geom,const VertexInputFormat *vi
         vab_semantic[i]=VertexSemantic::Unknown;
     }
 
-    for(uint32_t i=0;i<vif_count;i++)
+    // 按 Geometry 自带的语义格式列表填充——每个语义一个 SSBO 槽位
+    //（顶点输入统一为 SSBO：vab_semantic/vab_list 即顶点数据 SSBO 绑定表）
+    const GeometryVertexFormat &gvf=geom->GetGeometryVertexFormat();
+    const uint32_t attr_count=gvf.GetCount();
+
+    for(uint32_t i=0;i<attr_count;i++)
     {
-        const VertexInputFormat &vif = vif_list[i];
-        if(vif.binding>=0 && uint32_t(vif.binding)<vab_count)
-        {
-            vab_list[vif.binding]=geom->GetVkBuffer(vif.semantic);
-            vab_offset[vif.binding]=0;
-            vab_semantic[vif.binding]=vif.semantic;
-        }
+        const GeometryVertexAttributeFormat *attr=gvf.Get(i);
+        if(!attr||attr->semantic==VertexSemantic::Unknown)
+            continue;
+
+        const VkBuffer buf=geom->GetVkBuffer(attr->semantic);
+        if(buf==VK_NULL_HANDLE)
+            continue;
+
+        if(i>=vab_count)    // 语义数超过槽位数（不应发生，防御）
+            break;
+
+        vab_list[i]=buf;
+        vab_offset[i]=0;
+        vab_semantic[i]=attr->semantic;
     }
 
     return(true);

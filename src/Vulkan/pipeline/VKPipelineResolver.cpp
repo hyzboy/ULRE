@@ -19,23 +19,6 @@ namespace hgl::graph
             return h;
         }
 
-        uint64_t HashVIL(const VIL *vil)
-        {
-            if(!vil)
-                return 0;
-
-            const uint32_t count = vil->GetVertexAttribCount();
-            const VertexInputFormat *vif_list = vil->GetVIFList();
-            if(!vif_list || count == 0)
-                return 0;
-
-            hgl::hash::FNV1aHasher64 h;
-
-            h << count;
-            h.AppendBytes(vif_list, sizeof(VertexInputFormat) * count);
-            return h;
-        }
-
         uint64_t HashGeometryVertexFormat(const GeometryVertexFormat *gvf)
         {
             if(!gvf)
@@ -741,28 +724,7 @@ namespace hgl::graph
         {
             out_key.vi.format_hash = HashGeometryVertexFormat(request.geometry_vertex_format);
             out_key.vi.attribute_count = request.geometry_vertex_format->GetCount();
-
-            // Phase 2 transition: preserve uniqueness against VIL-era binding layouts.
-            if(request.vertex_input_layout)
-            {
-                hgl::hash::FNV1aHasher64 h(out_key.vi.format_hash);
-                h << HashVIL(request.vertex_input_layout);
-                out_key.vi.format_hash = h;
-                out_key.vi.binding_count = request.vertex_input_layout->GetVertexAttribCount();
-            }
-            else
-            {
-                out_key.vi.binding_count = out_key.vi.attribute_count;
-            }
-        }
-        else
-        {
-            out_key.vi.format_hash = HashVIL(request.vertex_input_layout);
-            if(request.vertex_input_layout)
-            {
-                out_key.vi.attribute_count = request.vertex_input_layout->GetVertexAttribCount();
-                out_key.vi.binding_count = request.vertex_input_layout->GetVertexAttribCount();
-            }
+            out_key.vi.binding_count = out_key.vi.attribute_count;
         }
 
         out_key.pr.shader_program_hash = HashShaderStages(request.shader_stages);
@@ -810,7 +772,7 @@ namespace hgl::graph
 
         PipelineData *pd = request.pipeline_data;
         pd->InitShaderStage(*request.shader_stages);
-        pd->InitVertexInputState(request.vertex_input_layout);
+        pd->InitVertexInputState();
         pd->SetColorAttachments(request.frame_output.color_attachment_count);
         pd->pipeline_info.layout = request.pipeline_layout;
         pd->pipeline_info.renderPass = request.render_pass;
@@ -835,7 +797,7 @@ namespace hgl::graph
 
         PipelineData *pd = request.pipeline_data;
         pd->InitShaderStage(*request.shader_stages);
-        pd->InitVertexInputState(request.vertex_input_layout);
+        pd->InitVertexInputState();
         pd->SetColorAttachments(request.frame_output.color_attachment_count);
         pd->pipeline_info.layout = request.pipeline_layout;
         pd->pipeline_info.renderPass = request.render_pass;

@@ -1,5 +1,5 @@
 ﻿#include<hgl/vk/VKShaderModule.h>
-#include<hgl/vk/VKVertexInputLayout.h>
+#include<hgl/vk/VKVertexInputFormat.h>
 #include<hgl/vk/VKDevice.h>
 #include<cstdint>
 

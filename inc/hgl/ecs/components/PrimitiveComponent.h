@@ -27,7 +27,6 @@ namespace hgl
         class RenderPass;
         class Sampler;
         class Texture;
-        class VertexInputLayout;
     }
 }
 
@@ -89,8 +88,6 @@ namespace hgl::ecs
         hgl::graph::GeometryDrawRange *runtime_draw_range = nullptr;
         hgl::graph::Geometry *runtime_geometry = nullptr;
         hgl::graph::ShaderProgram *runtime_material = nullptr;
-        const hgl::graph::VertexInputLayout *runtime_vil = nullptr;
-        bool runtime_vil_owned = false;
         hgl::graph::Pipeline* overridePipeline = nullptr;  // Optional pipeline override (not owned)
         bool hasMaterialRecipeOverride = false;
         hgl::graph::mtl::MaterialRecipe materialRecipeOverride;
@@ -150,7 +147,6 @@ namespace hgl::ecs
         void ClearRuntimeGeometryBinding();
         const hgl::graph::GeometryDataBuffer *GetRuntimeGeometryDataBuffer() const;
         const hgl::graph::GeometryDrawRange *GetRuntimeGeometryDrawRange() const;
-        const hgl::graph::VertexInputLayout *GetRuntimeVIL() const;
 
         void SetOverridePipeline(hgl::graph::Pipeline* p) { overridePipeline = p; }
         hgl::graph::Pipeline* GetOverridePipeline() const { return overridePipeline; }

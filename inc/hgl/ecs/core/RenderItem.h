@@ -15,7 +15,6 @@ namespace hgl
         class Pipeline;
         struct GeometryDataBuffer;
         struct GeometryDrawRange;
-        class VertexInputLayout;
     }
 
     namespace ecs
@@ -59,7 +58,6 @@ namespace hgl::ecs
         virtual hgl::graph::Pipeline* GetPipeline() const = 0;
         virtual const hgl::graph::GeometryDataBuffer *GetGeometryDataBuffer() const = 0;
         virtual const hgl::graph::GeometryDrawRange *GetGeometryDrawRange() const = 0;
-        virtual const hgl::graph::VertexInputLayout *GetGeometryBindingVIL() const = 0;
 
         // Unified transform ingress for R08 (behavior stays unchanged until strategy rollout)
         virtual TransformPolicySpec GetTransformPolicySpec() const { return TransformPolicySpec{}; }

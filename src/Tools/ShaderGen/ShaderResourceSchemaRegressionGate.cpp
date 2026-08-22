@@ -3483,10 +3483,11 @@ namespace
             MaterialResolvedVertexABI allow_derived_abi{};
             if (!BuildResolvedMaterialVertexABI(
                     definition, allow_derived_request, allow_derived_abi)
-             || allow_derived_abi.vertex_entries.GetCount() != 3)
+             || allow_derived_abi.vertex_input_glsl.IsEmpty()
+             || allow_derived_abi.position_format != VK_FORMAT_R32G32B32_SFLOAT)
             {
                 result.diagnostics.emplace_back(
-                    "AllowDerived material definition must build a geometry ABI");
+                    "AllowDerived material definition must build a SSBO vertex ABI");
             }
         }
 

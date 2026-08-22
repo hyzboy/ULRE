@@ -122,7 +122,6 @@ namespace hgl::graph
         PipelineData *pipeline_data = nullptr;
         const ShaderStageCreateInfoList *shader_stages = nullptr;
         VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
-        const VIL *vertex_input_layout = nullptr;
         const GeometryVertexFormat *geometry_vertex_format = nullptr;
     };
 

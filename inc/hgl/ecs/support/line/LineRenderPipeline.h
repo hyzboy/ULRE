@@ -74,7 +74,6 @@ namespace hgl::ecs
         // ------- GPU resources (created in Initialize()) -------
         graph::VulkanDevice*    device_         = nullptr;
         graph::ShaderProgram*        material_       = nullptr;
-        graph::VertexInputLayout* binding_vil_  = nullptr;
         graph::DescriptorBindingSet binding_set_storage_{};
         graph::DescriptorBindingSet* binding_set_ = nullptr;
         graph::Pipeline*        pipeline_       = nullptr;

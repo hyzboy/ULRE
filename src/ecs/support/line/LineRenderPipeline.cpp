@@ -132,20 +132,14 @@ namespace hgl::ecs
         if (!geometry)
             return false;
 
-        if (!binding_set || !binding_set->GetVIL())
-        {
-            GLogError("[LineRenderPipeline] EnsureCapacity failed: binding_set/vil is null");
-            SAFE_CLEAR(geometry);
-            return false;
-        }
+        // 顶点输入统一为 SSBO：GeometryDataBuffer 槽位数 = Geometry 语义数
+        const uint32_t semantic_count = geometry->GetGeometryVertexFormat().GetCount();
 
-        data_buffer = new graph::GeometryDataBuffer(binding_set->GetVIL()->GetVertexAttribCount(),
+        data_buffer = new graph::GeometryDataBuffer(semantic_count,
                                                     geometry->GetIBO(),
                                                     geometry->GetVDM());
         if (!data_buffer
-         || !data_buffer->Update(geometry,
-                                 binding_set->GetVIL()->GetVIFList(),
-                                 binding_set->GetVIL()->GetVertexAttribCount()))
+         || !data_buffer->Update(geometry))
         {
             GLogError("[LineRenderPipeline] GeometryDataBuffer::Update failed");
             SAFE_CLEAR(data_buffer);
@@ -378,18 +372,13 @@ namespace hgl::ecs
             rdbs->RegisterPipelineMaterial(material_);
 
         // ------- Create descriptor binding set -------
-        binding_vil_ = material_->CreateVIL(line_gvf);
-        if (!binding_vil_)
-            return false;
-
         binding_set_storage_.SetMaterial(material_);
-        binding_set_storage_.SetVIL(binding_vil_);
         binding_set_ = &binding_set_storage_;
 
         // ------- Create pipeline -------
         pipeline_ = support_wide_lines_
-            ? rp->CreatePipeline(material_, binding_vil_, graph::mtl::MakeDynamicLineWidth3DConfig(), false, &line_gvf)
-            : rp->CreatePipeline(material_, binding_vil_, graph::mtl::MakeSolid3DConfig(), false, &line_gvf);
+            ? rp->CreatePipeline(material_, graph::mtl::MakeDynamicLineWidth3DConfig(), false, &line_gvf)
+            : rp->CreatePipeline(material_, graph::mtl::MakeSolid3DConfig(), false, &line_gvf);
 
         if (!pipeline_)
             return false;
@@ -827,12 +816,6 @@ namespace hgl::ecs
             auto* mat_mgr = gc->GetMaterialManager();
             if (mat_mgr)
             {
-                if (material_ && binding_vil_)
-                {
-                    material_->Release(binding_vil_);
-                    binding_vil_ = nullptr;
-                }
-                binding_set_storage_.SetVIL(nullptr);
                 binding_set_storage_.SetMaterial(nullptr);
                 binding_set_ = nullptr;
                 if (material_)
