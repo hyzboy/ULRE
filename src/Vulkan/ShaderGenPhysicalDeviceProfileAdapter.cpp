@@ -66,6 +66,21 @@ namespace hgl::graph::mtl::contract
         profile.limits.max_vertex_input_attributes = limits.maxVertexInputAttributes;
         profile.limits.max_bound_descriptor_sets = limits.maxBoundDescriptorSets;
 
+        // VK_EXT_mesh_shader limits（GLSLCompiler 编译 mesh shader 的 resource limits）
+        {
+            const auto &mesh_props = pd.GetMeshShaderProperties();
+
+            profile.limits.max_mesh_output_vertices    = mesh_props.maxMeshOutputVertices;
+            profile.limits.max_mesh_output_primitives  = mesh_props.maxMeshOutputPrimitives;
+            profile.limits.max_mesh_work_group_size_x  = mesh_props.maxMeshWorkGroupSize[0];
+            profile.limits.max_mesh_work_group_size_y  = mesh_props.maxMeshWorkGroupSize[1];
+            profile.limits.max_mesh_work_group_size_z  = mesh_props.maxMeshWorkGroupSize[2];
+            profile.limits.max_task_work_group_size_x  = mesh_props.maxTaskWorkGroupSize[0];
+            profile.limits.max_task_work_group_size_y  = mesh_props.maxTaskWorkGroupSize[1];
+            profile.limits.max_task_work_group_size_z  = mesh_props.maxTaskWorkGroupSize[2];
+            profile.limits.max_mesh_view_count         = mesh_props.maxMeshMultiviewViewCount;
+        }
+
         profile.features.geometry_shader = f10.geometryShader;
         profile.features.tessellation_shader = f10.tessellationShader;
         profile.features.wide_lines = f10.wideLines;

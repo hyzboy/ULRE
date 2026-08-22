@@ -179,7 +179,22 @@ int main(int argc, char **argv)
         json_out << "        \"maxStorageBufferRange\": " << limits.maxStorageBufferRange << ",\n";
         json_out << "        \"maxPushConstantsSize\": " << limits.maxPushConstantsSize << ",\n";
         json_out << "        \"maxVertexInputAttributes\": " << limits.maxVertexInputAttributes << ",\n";
-        json_out << "        \"maxBoundDescriptorSets\": " << limits.maxBoundDescriptorSets << "\n";
+        json_out << "        \"maxBoundDescriptorSets\": " << limits.maxBoundDescriptorSets << ",\n";
+
+        // VK_EXT_mesh_shader limits（供 GLSLCompiler 编译 mesh shader 的 resource limits）
+        {
+            const auto &mesh_props = pd->GetMeshShaderProperties();
+
+            json_out << "        \"maxMeshOutputVertices\": " << mesh_props.maxMeshOutputVertices << ",\n";
+            json_out << "        \"maxMeshOutputPrimitives\": " << mesh_props.maxMeshOutputPrimitives << ",\n";
+            json_out << "        \"maxMeshWorkGroupSizeX\": " << mesh_props.maxMeshWorkGroupSize[0] << ",\n";
+            json_out << "        \"maxMeshWorkGroupSizeY\": " << mesh_props.maxMeshWorkGroupSize[1] << ",\n";
+            json_out << "        \"maxMeshWorkGroupSizeZ\": " << mesh_props.maxMeshWorkGroupSize[2] << ",\n";
+            json_out << "        \"maxTaskWorkGroupSizeX\": " << mesh_props.maxTaskWorkGroupSize[0] << ",\n";
+            json_out << "        \"maxTaskWorkGroupSizeY\": " << mesh_props.maxTaskWorkGroupSize[1] << ",\n";
+            json_out << "        \"maxTaskWorkGroupSizeZ\": " << mesh_props.maxTaskWorkGroupSize[2] << ",\n";
+            json_out << "        \"maxMeshViewCount\": " << mesh_props.maxMeshMultiviewViewCount << "\n";
+        }
         json_out << "      },\n";
         json_out << "      \"features\": {\n";
         json_out << "        \"geometryShader\": " << (f10.geometryShader ? "true" : "false") << ",\n";

@@ -35,6 +35,17 @@ namespace hgl::graph::mtl::contract
         uint32_t max_bound_descriptor_sets = 0;
         uint64_t max_uniform_buffer_range = 0;
         uint64_t max_storage_buffer_range = 0;
+
+        // VK_EXT_mesh_shader limits（GLSLCompiler 编译 mesh shader 的 resource limits）
+        uint32_t max_mesh_output_vertices = 0;
+        uint32_t max_mesh_output_primitives = 0;
+        uint32_t max_mesh_work_group_size_x = 0;
+        uint32_t max_mesh_work_group_size_y = 0;
+        uint32_t max_mesh_work_group_size_z = 0;
+        uint32_t max_task_work_group_size_x = 0;
+        uint32_t max_task_work_group_size_y = 0;
+        uint32_t max_task_work_group_size_z = 0;
+        uint32_t max_mesh_view_count = 0;
     };
 
     struct PhysicalDeviceFeaturesLite

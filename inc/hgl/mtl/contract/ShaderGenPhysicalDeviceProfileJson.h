@@ -168,6 +168,17 @@ namespace hgl::graph::mtl::contract
             if (detail::ReadJsonUint64(json, "maxBoundDescriptorSets", v)) out_profile.limits.max_bound_descriptor_sets = static_cast<uint32_t>(v);
             if (detail::ReadJsonUint64(json, "maxUniformBufferRange", v)) out_profile.limits.max_uniform_buffer_range = v;
             if (detail::ReadJsonUint64(json, "maxStorageBufferRange", v)) out_profile.limits.max_storage_buffer_range = v;
+
+            // VK_EXT_mesh_shader limits
+            if (detail::ReadJsonUint64(json, "maxMeshOutputVertices", v)) out_profile.limits.max_mesh_output_vertices = static_cast<uint32_t>(v);
+            if (detail::ReadJsonUint64(json, "maxMeshOutputPrimitives", v)) out_profile.limits.max_mesh_output_primitives = static_cast<uint32_t>(v);
+            if (detail::ReadJsonUint64(json, "maxMeshWorkGroupSizeX", v)) out_profile.limits.max_mesh_work_group_size_x = static_cast<uint32_t>(v);
+            if (detail::ReadJsonUint64(json, "maxMeshWorkGroupSizeY", v)) out_profile.limits.max_mesh_work_group_size_y = static_cast<uint32_t>(v);
+            if (detail::ReadJsonUint64(json, "maxMeshWorkGroupSizeZ", v)) out_profile.limits.max_mesh_work_group_size_z = static_cast<uint32_t>(v);
+            if (detail::ReadJsonUint64(json, "maxTaskWorkGroupSizeX", v)) out_profile.limits.max_task_work_group_size_x = static_cast<uint32_t>(v);
+            if (detail::ReadJsonUint64(json, "maxTaskWorkGroupSizeY", v)) out_profile.limits.max_task_work_group_size_y = static_cast<uint32_t>(v);
+            if (detail::ReadJsonUint64(json, "maxTaskWorkGroupSizeZ", v)) out_profile.limits.max_task_work_group_size_z = static_cast<uint32_t>(v);
+            if (detail::ReadJsonUint64(json, "maxMeshViewCount", v)) out_profile.limits.max_mesh_view_count = static_cast<uint32_t>(v);
         }
 
         detail::ReadJsonBool(json, "geometryShader", out_profile.features.geometry_shader);

@@ -124,6 +124,20 @@ namespace hgl
             bir.maxTessPatchComponents = profile.features.tessellation_shader ? bir.maxTessPatchComponents : 0;
             bir.maxTessGenLevel = profile.features.tessellation_shader ? bir.maxTessGenLevel : 0;
 
+            // VK_EXT_mesh_shader limits（从物理设备实际查询，替代插件硬编码默认值）
+            if(profile.limits.max_mesh_work_group_size_x>0)
+            {
+                bir.maxMeshWorkGroupSizeX_EXT   = static_cast<int>(profile.limits.max_mesh_work_group_size_x);
+                bir.maxMeshWorkGroupSizeY_EXT   = static_cast<int>(profile.limits.max_mesh_work_group_size_y);
+                bir.maxMeshWorkGroupSizeZ_EXT   = static_cast<int>(profile.limits.max_mesh_work_group_size_z);
+                bir.maxTaskWorkGroupSizeX_EXT   = static_cast<int>(profile.limits.max_task_work_group_size_x);
+                bir.maxTaskWorkGroupSizeY_EXT   = static_cast<int>(profile.limits.max_task_work_group_size_y);
+                bir.maxTaskWorkGroupSizeZ_EXT   = static_cast<int>(profile.limits.max_task_work_group_size_z);
+                bir.maxMeshOutputVerticesEXT    = static_cast<int>(profile.limits.max_mesh_output_vertices);
+                bir.maxMeshOutputPrimitivesEXT  = static_cast<int>(profile.limits.max_mesh_output_primitives);
+                bir.maxMeshViewCountEXT         = static_cast<int>(profile.limits.max_mesh_view_count);
+            }
+
             // Vulkan 1.4 核心：descriptor indexing 无条件可用（vulkan1.4.md 第 1 项）
             bir.limits.generalUniformIndexing = true;
             bir.limits.generalSamplerIndexing = true;

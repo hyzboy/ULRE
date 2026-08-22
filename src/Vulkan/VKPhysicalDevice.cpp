@@ -188,6 +188,16 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
                 properties14.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_PROPERTIES;
                 properties14.pNext=nullptr;
                 *ppNext=&properties14;
+                ppNext=&properties14.pNext;
+            }
+
+            // VK_EXT_mesh_shader properties（mesh limits：maxMeshWorkGroupSizeX/Y/Z 等）
+            if(CheckExtensionSupport(VK_EXT_MESH_SHADER_EXTENSION_NAME))
+            {
+                mesh_shader_properties.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT;
+                mesh_shader_properties.pNext=nullptr;
+                *ppNext=&mesh_shader_properties;
+                ppNext=&mesh_shader_properties.pNext;
             }
 
             func(physical_device,&properties2);
