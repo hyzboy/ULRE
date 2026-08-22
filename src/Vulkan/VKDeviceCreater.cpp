@@ -51,20 +51,15 @@ namespace
         #ifdef _DEBUG
             VK_EXT_DEBUG_MARKER_EXTENSION_NAME,
         #endif//_DEBUG
+
+            // Vulkan 1.3/1.4 核心扩展：不再探测，直接启用
+            // （extended_dynamic_state 1/2 = 1.3 核心，3 = 1.4 核心；
+            //   dynamic_rendering = 1.3 核心；SPIRV_1_4/8bit/16bit/scalar_block_layout = 1.4/1.2 核心）
             VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME,
             VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME,
             VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,
-//            VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME,
             VK_EXT_PRIMITIVE_TOPOLOGY_LIST_RESTART_EXTENSION_NAME,
-//            VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME,
-//            VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
-//            VK_EXT_HDR_METADATA_EXTENSION_NAME,
-//            VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME,
-//            VK_AMD_DISPLAY_NATIVE_HDR_EXTENSION_NAME,
             VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
-
-//            VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME,
-
             VK_KHR_SPIRV_1_4_EXTENSION_NAME,
 
             // SSBO 8/16 位数据（Luminance/Color 压缩格式直读——uint8/uint16 数组）
@@ -74,9 +69,9 @@ namespace
             VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME,
         };
 
+        // 1.4 硬性：以上均为核心扩展，无条件启用（vulkan1.4.md 第 2 项）
         for(const char *ext_name:require_ext_list)
-            if(physical_device->CheckExtensionSupport(ext_name))
-                ext_list->Add(ext_name);
+            ext_list->Add(ext_name);
 
         if(enable_graphics_pipeline_library
         && !FORCE_DISABLE_GRAPHICS_PIPELINE_LIBRARY
@@ -91,9 +86,7 @@ namespace
 
         if(require.texture_compression.PVRTC>=VulkanHardwareRequirement::SupportLevel::Want)                   //前面检测过了，所以这里不用再次检测是否支持
             ext_list->Add(VK_IMG_FORMAT_PVRTC_EXTENSION_NAME);
-
-        if(require.fullDrawIndexUint8>=VulkanHardwareRequirement::SupportLevel::Want)
-            ext_list->Add(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME);
+        // indexTypeUint8 走 VkPhysicalDeviceVulkan14Features（1.4 核心），无需 EXT_INDEX_TYPE_UINT8 扩展
     }
 
     void SetDeviceFeatures(VkPhysicalDeviceFeatures *features,const VkPhysicalDeviceFeatures &pdf,const VulkanHardwareRequirement &require)
@@ -245,7 +238,6 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family,
     create_info.ppEnabledLayerNames     =nullptr;
     create_info.pEnabledFeatures        =&features;
 
-    VkPhysicalDeviceIndexTypeUint8FeaturesEXT index_type_uint8_features;
     VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT graphics_pipeline_library_features{};
 
     // Vulkan 1.1: shaderDrawParameters —— SSBO 顶点输入 gl_BaseVertexARB 读取必需
@@ -309,11 +301,14 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family,
     if(physical_device->SupportU8Index()
      &&require.fullDrawIndexUint8>=VulkanHardwareRequirement::SupportLevel::Want)
     {
-        index_type_uint8_features.sType         =VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT;
-        index_type_uint8_features.pNext         =const_cast<void*>(static_cast<const void*>(create_info.pNext));
-        index_type_uint8_features.indexTypeUint8=VK_TRUE;
+        // Vulkan 1.4 核心：indexTypeUint8 经 VkPhysicalDeviceVulkan14Features 启用
+        //（原 VkPhysicalDeviceIndexTypeUint8FeaturesEXT 扩展结构在 1.4 下冗余）
+        VkPhysicalDeviceVulkan14Features vulkan14_features{};
+        vulkan14_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
+        vulkan14_features.pNext = const_cast<void*>(static_cast<const void*>(create_info.pNext));
+        vulkan14_features.indexTypeUint8 = physical_device->GetFeatures14().indexTypeUint8;
 
-        create_info.pNext=&index_type_uint8_features;
+        create_info.pNext=&vulkan14_features;
     }
 
     VkDevice device;
@@ -521,7 +516,6 @@ bool VulkanDeviceCreater::RequirementCheck()
 #define VHRC(name,check) if(require.name>=VulkanHardwareRequirement::SupportLevel::Must&&(!check))return(false);
 
     #define VHRC_F10(name) VHRC(name,features10.name)
-    #define VHRC_F13(name) VHRC(name,features13.name)
     #define VHRC_PDE(name,pdename) VHRC(name,physical_device->CheckExtensionSupport(VK_##pdename##_EXTENSION_NAME))
     #define VHRC_TC10(name) VHRC(texture_compression.name,features10.textureCompression##name)
     #define VHRC_TC13(name) VHRC(texture_compression.name,features13.textureCompression##name)
@@ -545,7 +539,8 @@ bool VulkanDeviceCreater::RequirementCheck()
 
     VHRC_F10(imageCubeArray);
 
-    VHRC_PDE(fullDrawIndexUint8,      EXT_INDEX_TYPE_UINT8);
+    // Vulkan 1.4 硬性：indexTypeUint8 为核心特性（VkPhysicalDeviceVulkan14Features）
+    VHRC(fullDrawIndexUint8, physical_device->GetFeatures14().indexTypeUint8);
     VHRC_F10(fullDrawIndexUint32);
 
     VHRC_TC10(BC);
@@ -554,14 +549,10 @@ bool VulkanDeviceCreater::RequirementCheck()
     VHRC_TC13(ASTC_HDR);
     VHRC_PDE(texture_compression.PVRTC,     IMG_FORMAT_PVRTC);
 
-    VHRC_F13(dynamicRendering);
-
-    VHRC_PDE(dynamicState[0],      EXT_EXTENDED_DYNAMIC_STATE);
-    VHRC_PDE(dynamicState[1],      EXT_EXTENDED_DYNAMIC_STATE_2);
-    VHRC_PDE(dynamicState[2],      EXT_EXTENDED_DYNAMIC_STATE_3);
+    // Vulkan 1.3/1.4 硬性：dynamicRendering / extended_dynamic_state 1/2/3 均为核心，
+    // 无需再按扩展探测（vulkan1.4.md 第 2 项）
 
 #undef VHRC_PDE
-#undef VHRC_F13
 #undef VHRC_F10
 #undef VHRC
 

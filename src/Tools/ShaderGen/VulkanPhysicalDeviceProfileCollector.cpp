@@ -164,8 +164,6 @@ int main(int argc, char **argv)
         const auto &props = pd->GetProperties();
         const auto &limits = pd->GetLimits();
         const auto &f10 = pd->GetFeatures10();
-        const auto &f12 = pd->GetFeatures12();
-        const auto &f14 = pd->GetFeatures14();
 
         json_out << "    {\n";
         json_out << "      \"index\": " << i << ",\n";
@@ -187,10 +185,7 @@ int main(int argc, char **argv)
         json_out << "        \"geometryShader\": " << (f10.geometryShader ? "true" : "false") << ",\n";
         json_out << "        \"tessellationShader\": " << (f10.tessellationShader ? "true" : "false") << ",\n";
         json_out << "        \"wideLines\": " << (f10.wideLines ? "true" : "false") << ",\n";
-        json_out << "        \"samplerAnisotropy\": " << (f10.samplerAnisotropy ? "true" : "false") << ",\n";
-        json_out << "        \"indexTypeUint8\": " << (f14.indexTypeUint8 ? "true" : "false") << ",\n";
-        json_out << "        \"descriptorIndexing\": " << (f12.descriptorIndexing ? "true" : "false") << ",\n";
-        json_out << "        \"samplerMirrorClampToEdge\": " << (f12.samplerMirrorClampToEdge ? "true" : "false") << "\n";
+        json_out << "        \"samplerAnisotropy\": " << (f10.samplerAnisotropy ? "true" : "false") << "\n";
         json_out << "      },\n";
 
         WriteQueueFamilies(json_out, *pd);

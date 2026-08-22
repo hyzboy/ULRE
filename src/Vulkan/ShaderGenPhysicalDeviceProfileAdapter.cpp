@@ -48,8 +48,6 @@ namespace hgl::graph::mtl::contract
         const auto &props = pd.GetProperties();
         const auto &limits = pd.GetLimits();
         const auto &f10 = pd.GetFeatures10();
-        const auto &f12 = pd.GetFeatures12();
-        const auto &f14 = pd.GetFeatures14();
 
         profile.name = pd.GetDeviceName() ? pd.GetDeviceName() : "";
         profile.device_type = ResolveDeviceTypeName(pd.GetDeviceType());
@@ -58,11 +56,6 @@ namespace hgl::graph::mtl::contract
         profile.vendor_id = props.vendorID;
         profile.device_id = props.deviceID;
         profile.api_version = pd.GetVulkanVersion();
-
-        ResolveShaderTargetVersionsFromApi(profile.api_version,
-                                           pd.CheckExtensionSupport(VK_KHR_SPIRV_1_4_EXTENSION_NAME),
-                                           profile.target_vulkan_version,
-                                           profile.target_spv_version);
 
         profile.queue_family_count = static_cast<uint32_t>(pd.GetQueueFamilyProperties().GetCount());
 
@@ -77,9 +70,6 @@ namespace hgl::graph::mtl::contract
         profile.features.tessellation_shader = f10.tessellationShader;
         profile.features.wide_lines = f10.wideLines;
         profile.features.sampler_anisotropy = f10.samplerAnisotropy;
-        profile.features.index_type_uint8 = f14.indexTypeUint8;
-        profile.features.descriptor_indexing = f12.descriptorIndexing;
-        profile.features.sampler_mirror_clamp_to_edge = f12.samplerMirrorClampToEdge;
 
         return profile;
     }

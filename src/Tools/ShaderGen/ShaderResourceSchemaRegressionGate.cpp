@@ -1889,9 +1889,7 @@ namespace
         const auto lit_b = build(nullptr, lit, lit_geometry_b);
         const auto color = build(nullptr, vertex_color, color_geometry);
         contract::PhysicalDeviceProfileLite profile{};
-        profile.api_version = contract::MakeVkVersion(1, 3);
-        profile.target_vulkan_version = contract::MakeVkVersion(1, 3);
-        profile.target_spv_version = contract::SPV_VERSION_1_6;
+        profile.api_version = contract::MakeVkVersion(1, 4);
         profile.limits.max_uniform_buffer_range = 65536;
         profile.limits.max_storage_buffer_range = 1ull << 30;
         const auto lit_targeted = build(&profile, lit, lit_geometry_a);

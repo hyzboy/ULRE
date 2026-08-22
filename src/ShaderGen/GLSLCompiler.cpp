@@ -32,8 +32,8 @@ namespace hgl
 
             const char *        preamble        = nullptr;
 
-                  uint32_t      vulkan_version  = mtl::contract::MakeVkVersion(1, 0);
-                  uint32_t      spv_version     = mtl::contract::SPV_VERSION_1_0;
+            uint32_t            vulkan_version  = mtl::contract::TARGET_VULKAN_VERSION;
+            uint32_t            spv_version     = mtl::contract::TARGET_SPV_VERSION;
         };
 
         static mtl::contract::PhysicalDeviceProfileLite g_pd_profile{};
@@ -124,12 +124,10 @@ namespace hgl
             bir.maxTessPatchComponents = profile.features.tessellation_shader ? bir.maxTessPatchComponents : 0;
             bir.maxTessGenLevel = profile.features.tessellation_shader ? bir.maxTessGenLevel : 0;
 
-            if(profile.features.descriptor_indexing)
-            {
-                bir.limits.generalUniformIndexing = true;
-                bir.limits.generalSamplerIndexing = true;
-                bir.limits.generalVariableIndexing = true;
-            }
+            // Vulkan 1.4 核心：descriptor indexing 无条件可用（vulkan1.4.md 第 1 项）
+            bir.limits.generalUniformIndexing = true;
+            bir.limits.generalSamplerIndexing = true;
+            bir.limits.generalVariableIndexing = true;
 
             gsi->SetLimit(&bir, sizeof(TBuiltInResourceCompat));
         }
@@ -139,9 +137,8 @@ namespace hgl
             g_pd_profile = profile;
             g_pd_profile_valid = true;
 
-            mtl::contract::ResolveShaderTargetVersions(profile,
-                                                       compile_info.vulkan_version,
-                                                       compile_info.spv_version);
+            compile_info.vulkan_version = mtl::contract::TARGET_VULKAN_VERSION;
+            compile_info.spv_version = mtl::contract::TARGET_SPV_VERSION;
 
             GLogInfo("[GLSLCompiler] target vulkan=%u.%u spv=%u.%u",
                      mtl::contract::VkVersionMajor(compile_info.vulkan_version),

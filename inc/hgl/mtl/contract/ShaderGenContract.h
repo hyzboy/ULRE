@@ -43,9 +43,6 @@ namespace hgl::graph::mtl::contract
         bool tessellation_shader = false;
         bool wide_lines = false;
         bool sampler_anisotropy = false;
-        bool index_type_uint8 = false;
-        bool descriptor_indexing = false;
-        bool sampler_mirror_clamp_to_edge = false;
     };
 
     struct PhysicalDeviceProfileLite
@@ -57,8 +54,6 @@ namespace hgl::graph::mtl::contract
         uint32_t vendor_id = 0;
         uint32_t device_id = 0;
         uint32_t api_version = 0;
-        uint32_t target_vulkan_version = 0;
-        uint32_t target_spv_version = 0;
         uint32_t queue_family_count = 0;
 
         PhysicalDeviceLimitsLite limits;

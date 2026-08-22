@@ -170,23 +170,10 @@ namespace hgl::graph::mtl::contract
             if (detail::ReadJsonUint64(json, "maxStorageBufferRange", v)) out_profile.limits.max_storage_buffer_range = v;
         }
 
-        ResolveShaderTargetVersions(out_profile,
-                                    out_profile.target_vulkan_version,
-                                    out_profile.target_spv_version);
-
-        {
-            uint64_t v = 0;
-            if (detail::ReadJsonUint64(json, "target_vulkan_version", v)) out_profile.target_vulkan_version = static_cast<uint32_t>(v);
-            if (detail::ReadJsonUint64(json, "target_spv_version", v)) out_profile.target_spv_version = static_cast<uint32_t>(v);
-        }
-
         detail::ReadJsonBool(json, "geometryShader", out_profile.features.geometry_shader);
         detail::ReadJsonBool(json, "tessellationShader", out_profile.features.tessellation_shader);
         detail::ReadJsonBool(json, "wideLines", out_profile.features.wide_lines);
         detail::ReadJsonBool(json, "samplerAnisotropy", out_profile.features.sampler_anisotropy);
-        detail::ReadJsonBool(json, "indexTypeUint8", out_profile.features.index_type_uint8);
-        detail::ReadJsonBool(json, "descriptorIndexing", out_profile.features.descriptor_indexing);
-        detail::ReadJsonBool(json, "samplerMirrorClampToEdge", out_profile.features.sampler_mirror_clamp_to_edge);
 
         out_profile.queue_family_count = detail::CountQueueFamilies(json);
         return true;
