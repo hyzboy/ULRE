@@ -325,35 +325,24 @@ namespace hgl::graph::mtl
             const MaterialDefinition &definition,
             GenericMaterialBuildPlan &plan)
         {
-            if (plan.mesh_shader)
-            {
-                // Mesh shader 材质（彻底废弃 VS 方向）：生成 mesh stage 替代 vertex stage
-                const bool is_lines = (plan.primitive_type == hgl::graph::PrimitiveType::Lines);
-                // max_invocations：LineQuad=64（每线程 4 顶点 → max_vertices=256，AMD 上限内）；
-                // VertexPassthrough=96（3 的倍数——每 3 连续顶点 1 三角形，组内三角形永不跨组。
-                // 64 会导致跨 threadgroup 边界三角形引用未写槽位 → 丢失（球体瓣状缺口））
-                plan.ms = GenerateMeshShader(
-                    plan.vertex_node_config,
-                    plan.varying,
-                    plan.position_format,
-                    GetShaderLibraryPath().c_str(),
-                    is_lines ? MeshShaderMode::LineQuad
-                             : MeshShaderMode::VertexPassthrough,
-                    is_lines ? 64u : 96u,
-                    plan.resolved_vertex_input_glsl,
-                    plan.resolved_provider_glsl,
-                    &plan.stage_interface,
-                    plan.primitive_type);
-            }
-            else
-            {
-                plan.vs = GenerateVertexShader(plan.vertex_node_config, plan.varying,
-                                               plan.position_format,
-                                               GetShaderLibraryPath().c_str(),
-                                               plan.resolved_vertex_input_glsl,
-                                               plan.resolved_provider_glsl,
-                                               &plan.stage_interface);
-            }
+            // Mesh shader 材质（彻底废弃 VS 方向）：生成 mesh stage 替代 vertex stage。
+            // mesh 是唯一顶点路径，不做 VS 分支；Lines 走 LineQuad，其余走 VertexPassthrough。
+            const bool is_lines = (plan.primitive_type == hgl::graph::PrimitiveType::Lines);
+            // max_invocations：LineQuad=64（每线程 4 顶点 → max_vertices=256，AMD 上限内）；
+            // VertexPassthrough=96（3 的倍数——每 3 连续顶点 1 三角形，组内三角形永不跨组。
+            // 64 会导致跨 threadgroup 边界三角形引用未写槽位 → 丢失（球体瓣状缺口））
+            plan.ms = GenerateMeshShader(
+                plan.vertex_node_config,
+                plan.varying,
+                plan.position_format,
+                GetShaderLibraryPath().c_str(),
+                is_lines ? MeshShaderMode::LineQuad
+                         : MeshShaderMode::VertexPassthrough,
+                is_lines ? 64u : 96u,
+                plan.resolved_vertex_input_glsl,
+                plan.resolved_provider_glsl,
+                &plan.stage_interface,
+                plan.primitive_type);
 
             CompositorAssembler assembler(GetShaderLibraryPath());
             MaterialOutputContractDiagnostic output_diagnostic{};
@@ -464,9 +453,7 @@ namespace hgl::graph::mtl
             CompositorMaterialBuildConfig &config = out_config;
             config.primitive_type = request.primitive_type;
             config.shader_stage_flag_bits =
-                plan.mesh_shader
-                    ? uint32(ShaderStage::MeshFragment)
-                    : uint32(ShaderStage::VertexFragment);
+                uint32(ShaderStage::MeshFragment);
             plan.contract_definition = definition;
             plan.contract_definition.vertex_varying =
                 plan.effective_vertex_varying;
@@ -486,32 +473,21 @@ namespace hgl::graph::mtl
                 contract::GetShaderCompilerProfileHash(profile);
             hgl::hash::FNV1aHasher64 vertex_interface_hasher;
             vertex_interface_hasher << HashFinalShaderSource(
-                plan.mesh_shader ? plan.ms.data() : plan.vs.data(),
-                plan.mesh_shader ? plan.ms.size() : plan.vs.size())
+                plan.ms.data(), plan.ms.size())
                                     << vertex_input_hash;
             const uint64 vertex_interface_hash = vertex_interface_hasher;
             const uint64 fragment_interface_hash =
                 HashFinalShaderSource(plan.fs.data(), plan.fs.size());
 
-            plan.program_link.vertex_stage = BuildFinalShaderStageKey(
-                ShaderStage::Vertex,
-                plan.vs.data(),
-                plan.vs.size(),
+            // mesh shader 材质：顶点阶段走 mesh stage（彻底废弃 VS）
+            plan.program_link.mesh_stage = BuildFinalShaderStageKey(
+                ShaderStage::Mesh,
+                plan.ms.data(),
+                plan.ms.size(),
                 plan.resolved_provider_graph_hash,
                 vertex_interface_hash,
                 resource_contract_hash,
                 compiler_hash);
-            if (plan.mesh_shader)
-            {
-                plan.program_link.mesh_stage = BuildFinalShaderStageKey(
-                    ShaderStage::Mesh,
-                    plan.ms.data(),
-                    plan.ms.size(),
-                    plan.resolved_provider_graph_hash,
-                    vertex_interface_hash,
-                    resource_contract_hash,
-                    compiler_hash);
-            }
             plan.program_link.fragment_stage = BuildFinalShaderStageKey(
                 ShaderStage::Fragment,
                 plan.fs.data(),
@@ -586,7 +562,7 @@ namespace hgl::graph::mtl
 
         ShaderBuildContext *result = CompileCompositorMaterial(
             profile, compiler_input,
-            plan.mesh_shader ? plan.ms : plan.vs,
+            plan.ms,
             plan.fs, config);
         if (!result)
             GLogError("[ShaderGen] Generic material compilation failed: name=%s",
