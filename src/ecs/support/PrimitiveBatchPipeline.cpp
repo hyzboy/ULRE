@@ -298,6 +298,13 @@ namespace hgl::ecs
                             // R08 ingress-only stage: keep transform index behavior unchanged.
                         }
                         item->transform_index = transform->IsMovable() ? (dynamic_base + group_index) : (group_index + 1);
+                        // 【诊断】transform_index 分配（handle → group → 槽位）
+                        GLogInfo("[ASSIGN-TX] item_handle=%u movable=%d group=%u base=%u transform_index=%u",
+                                 static_cast<uint32_t>(handle),
+                                 transform->IsMovable() ? 1 : 0,
+                                 group_index,
+                                 transform->IsMovable() ? dynamic_base : 0u,
+                                 item->transform_index);
                         break;
                     }
                     break;
@@ -306,6 +313,10 @@ namespace hgl::ecs
             else
             {
                 item->transform_index = 0;
+                // 【诊断】transform 未找到 → identity 槽 0（多个此类对象会重叠在原点）
+                GLogWarning("[ASSIGN-TX] transform lookup FAILED: item_handle=%u movable=%d → transform_index=0 (identity)",
+                            static_cast<uint32_t>(handle),
+                            transform->IsMovable() ? 1 : 0);
             }
         }
     }

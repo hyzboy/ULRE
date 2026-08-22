@@ -203,31 +203,31 @@ private:
                 return false;
         }
 
-        //{
-        //    ConeCreateInfo cci;
-        //    cci.radius = 1;
-        //    cci.halfExtend = 1;
-        //    cci.numberSlices = 48;
-        //    cci.numberStacks = 3;
-        //    if (!add_mesh([&](GeometryCreater* pc) { return CreateCone(pc, &cci); }))
-        //        return false;
-        //}
+        {
+            ConeCreateInfo cci;
+            cci.radius = 1;
+            cci.halfExtend = 1;
+            cci.numberSlices = 48;
+            cci.numberStacks = 3;
+            if (!add_mesh([&](GeometryCreater* pc) { return CreateCone(pc, &cci); }))
+                return false;
+        }
 
-        //{
-        //    TorusCreateInfo tci;
-        //    tci.innerRadius = 0.8f;
-        //    tci.outerRadius = 1.0f;
-        //    tci.numberSlices = 48;
-        //    tci.numberStacks = 12;
-        //    if (!add_mesh([&](GeometryCreater* pc) { return CreateTorus(pc, &tci); }))
-        //        return false;
-        //}
+        {
+            TorusCreateInfo tci;
+            tci.innerRadius = 0.8f;
+            tci.outerRadius = 1.0f;
+            tci.numberSlices = 48;
+            tci.numberStacks = 12;
+            if (!add_mesh([&](GeometryCreater* pc) { return CreateTorus(pc, &tci); }))
+                return false;
+        }
 
-        //{
-        //    CapsuleCreateInfo cci;
-        //    if (!add_mesh([&](GeometryCreater* pc) { return CreateCapsule(pc, &cci); }))
-        //        return false;
-        //}
+        {
+            CapsuleCreateInfo cci;
+            if (!add_mesh([&](GeometryCreater* pc) { return CreateCapsule(pc, &cci); }))
+                return false;
+        }
 
         return true;
     }
@@ -273,9 +273,10 @@ private:
             auto primitive_comp = entity->AddComponent<PrimitiveComponent>();
 
             float angle = glm::radians(360.0f * static_cast<float>(index) / static_cast<float>(count));
-            glm::quat rotation = glm::angleAxis(angle, glm::vec3(0.0f, 0.0f, 1.0f));
-            glm::vec3 pos = glm::rotate(rotation, glm::vec3(4.5f, 0.0f, 0.0f));
-            pos.y = 1.0f;   // 抬高——与 sun 方向有夹角
+            // 水平环绕（xz 平面圆上 5 点）+ 高度 1.0——位置互不重叠；
+            // 绕 y 轴旋转（法线方向各不相同 → sky ambient 方向采样差异可见）
+            glm::quat rotation = glm::angleAxis(-angle, glm::vec3(0.0f, 1.0f, 0.0f));
+            glm::vec3 pos = glm::vec3(4.5f * glm::cos(angle), 1.0f, 4.5f * glm::sin(angle));
 
             transform->SetLocalPosition(pos);
             transform->SetLocalRotation(rotation);

@@ -34,6 +34,9 @@ namespace hgl::ecs
 
     PipelineMaterialRenderer::~PipelineMaterialRenderer()
     {
+        for (auto *mp : per_object_mp_pool)
+            delete mp;
+        per_object_mp_pool.clear();
     }
 
     void PipelineMaterialRenderer::ProcIndirectRender(graph::IndirectDrawBuffer* icb_draw)
@@ -92,7 +95,7 @@ namespace hgl::ecs
                     case graph::VertexSemantic::Position:
                         if (buf != last_ssbo_pos)
                         {
-                            material->BindSSBO(graph::DescriptorSetType::PerObject,
+                            batch->per_object_mp->BindSSBO(
                                                "VertexPosition", buf, 0, VK_WHOLE_SIZE);
                             last_ssbo_pos = buf;
                             changed = true;
@@ -101,7 +104,7 @@ namespace hgl::ecs
                     case graph::VertexSemantic::TexCoord:
                         if (buf != last_ssbo_uv)
                         {
-                            material->BindSSBO(graph::DescriptorSetType::PerObject,
+                            batch->per_object_mp->BindSSBO(
                                                "VertexUV", buf, 0, VK_WHOLE_SIZE);
                             last_ssbo_uv = buf;
                             changed = true;
@@ -110,7 +113,7 @@ namespace hgl::ecs
                     case graph::VertexSemantic::Normal:
                         if (buf != last_ssbo_ntb)
                         {
-                            material->BindSSBO(graph::DescriptorSetType::PerObject,
+                            batch->per_object_mp->BindSSBO(
                                                "VertexNTB", buf, 0, VK_WHOLE_SIZE);
                             last_ssbo_ntb = buf;
                             changed = true;
@@ -119,7 +122,7 @@ namespace hgl::ecs
                     case graph::VertexSemantic::Color:
                         if (buf != last_ssbo_color)
                         {
-                            material->BindSSBO(graph::DescriptorSetType::PerObject,
+                            batch->per_object_mp->BindSSBO(
                                                "VertexColor", buf, 0, VK_WHOLE_SIZE);
                             last_ssbo_color = buf;
                             changed = true;
@@ -128,7 +131,7 @@ namespace hgl::ecs
                     case graph::VertexSemantic::Luminance:
                         if (buf != last_ssbo_luminance)
                         {
-                            material->BindSSBO(graph::DescriptorSetType::PerObject,
+                            batch->per_object_mp->BindSSBO(
                                                "VertexLuminance", buf, 0, VK_WHOLE_SIZE);
                             last_ssbo_luminance = buf;
                             changed = true;
@@ -137,7 +140,7 @@ namespace hgl::ecs
                     case graph::VertexSemantic::TransformID:
                         if (buf != last_ssbo_transform_id)
                         {
-                            material->BindSSBO(graph::DescriptorSetType::PerObject,
+                            batch->per_object_mp->BindSSBO(
                                                "VertexTransformID", buf, 0, VK_WHOLE_SIZE);
                             last_ssbo_transform_id = buf;
                             changed = true;
@@ -146,7 +149,7 @@ namespace hgl::ecs
                     case graph::VertexSemantic::Size:
                         if (buf != last_ssbo_size)
                         {
-                            material->BindSSBO(graph::DescriptorSetType::PerObject,
+                            batch->per_object_mp->BindSSBO(
                                                "VertexSize", buf, 0, VK_WHOLE_SIZE);
                             last_ssbo_size = buf;
                             changed = true;
@@ -165,7 +168,7 @@ namespace hgl::ecs
                         const VkBuffer buf = vab->GetVkBuffer();
                         if (buf != last_ssbo_pos)
                         {
-                            material->BindSSBO(graph::DescriptorSetType::PerObject,
+                            batch->per_object_mp->BindSSBO(
                                                "VertexPosition", buf, 0, VK_WHOLE_SIZE);
                             last_ssbo_pos = buf;
                             changed = true;
@@ -176,7 +179,7 @@ namespace hgl::ecs
                         const VkBuffer buf = vab->GetVkBuffer();
                         if (buf != last_ssbo_uv)
                         {
-                            material->BindSSBO(graph::DescriptorSetType::PerObject,
+                            batch->per_object_mp->BindSSBO(
                                                "VertexUV", buf, 0, VK_WHOLE_SIZE);
                             last_ssbo_uv = buf;
                             changed = true;
@@ -187,7 +190,7 @@ namespace hgl::ecs
                         const VkBuffer buf = vab->GetVkBuffer();
                         if (buf != last_ssbo_ntb)
                         {
-                            material->BindSSBO(graph::DescriptorSetType::PerObject,
+                            batch->per_object_mp->BindSSBO(
                                                "VertexNTB", buf, 0, VK_WHOLE_SIZE);
                             last_ssbo_ntb = buf;
                             changed = true;
@@ -198,7 +201,7 @@ namespace hgl::ecs
                         const VkBuffer buf = vab->GetVkBuffer();
                         if (buf != last_ssbo_color)
                         {
-                            material->BindSSBO(graph::DescriptorSetType::PerObject,
+                            batch->per_object_mp->BindSSBO(
                                                "VertexColor", buf, 0, VK_WHOLE_SIZE);
                             last_ssbo_color = buf;
                             changed = true;
@@ -209,7 +212,7 @@ namespace hgl::ecs
                         const VkBuffer buf = vab->GetVkBuffer();
                         if (buf != last_ssbo_luminance)
                         {
-                            material->BindSSBO(graph::DescriptorSetType::PerObject,
+                            batch->per_object_mp->BindSSBO(
                                                "VertexLuminance", buf, 0, VK_WHOLE_SIZE);
                             last_ssbo_luminance = buf;
                             changed = true;
@@ -220,7 +223,7 @@ namespace hgl::ecs
                         const VkBuffer buf = vab->GetVkBuffer();
                         if (buf != last_ssbo_size)
                         {
-                            material->BindSSBO(graph::DescriptorSetType::PerObject,
+                            batch->per_object_mp->BindSSBO(
                                                "VertexSize", buf, 0, VK_WHOLE_SIZE);
                             last_ssbo_size = buf;
                             changed = true;
@@ -230,7 +233,7 @@ namespace hgl::ecs
 
                 if (changed)
                 {
-                    auto *mp = material->GetMP(graph::DescriptorSetType::PerObject);
+                    auto *mp = batch->per_object_mp;
                     if (mp)
                     {
                         mp->Update();
@@ -248,11 +251,11 @@ namespace hgl::ecs
                     const VkBuffer ibuf = geom_buffer->ibo->GetVkBuffer();
                     if (ibuf != last_ssbo_index)
                     {
-                        material->BindSSBO(graph::DescriptorSetType::PerObject,
+                        batch->per_object_mp->BindSSBO(
                                            "VertexIndex", ibuf, 0, VK_WHOLE_SIZE);
                         last_ssbo_index = ibuf;
 
-                        auto *mp = material->GetMP(graph::DescriptorSetType::PerObject);
+                        auto *mp = batch->per_object_mp;
                         if (mp)
                         {
                             mp->Update();
@@ -268,21 +271,25 @@ namespace hgl::ecs
                 // RDBS 预绑——Draw 侧统一补到 material 的 PerObject MP）
                 if (transform_buffer)
                 {
-                    transform_buffer->BindTransform(material);
+                    // per-draw 独立 set：l2w 绑到 batch 的 PerObject MP（descriptor set
+                    // 是状态非快照——共享单 set 时提交时刻全用最后一次内容）
+                    transform_buffer->BindTransform(batch->per_object_mp
+                        ? batch->per_object_mp
+                        : material->GetMP(graph::DescriptorSetType::PerObject));
                     changed = true;
                 }
                 if (owner_batch)
                 {
                     if (owner_batch->l2w_index_rows_buffer)
                     {
-                        material->BindSSBO(graph::DescriptorSetType::PerObject,
+                        batch->per_object_mp->BindSSBO(
                                            "l2w_index_rows",
                                            owner_batch->l2w_index_rows_buffer->GetGPUBuffer());
                         changed = true;
                     }
                     if (owner_batch->material_data_index_rows_buffer)
                     {
-                        material->BindSSBO(graph::DescriptorSetType::PerObject,
+                        batch->per_object_mp->BindSSBO(
                                            "mtl_data_index_rows",
                                            owner_batch->material_data_index_rows_buffer->GetGPUBuffer());
                         changed = true;
@@ -291,7 +298,7 @@ namespace hgl::ecs
 
                 if (changed)
                 {
-                    auto *mp = material->GetMP(graph::DescriptorSetType::PerObject);
+                    auto *mp = batch->per_object_mp;
                     if (mp)
                     {
                         mp->Update();
@@ -510,8 +517,31 @@ namespace hgl::ecs
         // 遍历绘制批次
         DrawBatch* batch = const_cast<DrawBatch*>(batches.data());
 
+        // per-draw 独立 PerObject MP 池（descriptor set 是状态非快照——多对象独立
+        // buffer 时共享单 set 被 per-draw 顺序更新，提交时刻所有 draw 读最后一次
+        // 更新的内容；每 draw 独立 set 各自更新+绑定）
+        const bool need_per_draw_mp = ssbo_vertex_input;
+
         for (uint32_t i = 0; i < batch_count; i++)
         {
+            if (need_per_draw_mp)
+            {
+                if (per_object_mp_pool.size() <= i)
+                    per_object_mp_pool.resize(i + 1, nullptr);
+
+                if (!per_object_mp_pool[i])
+                {
+                    auto *base_mp = material->GetMP(graph::DescriptorSetType::PerObject);
+
+                    if (base_mp && owner_batch && owner_batch->device)
+                        per_object_mp_pool[i] = owner_batch->device->CreateMP(base_mp->GetDescManager(),
+                                                                              material->GetPipelineLayoutData(),
+                                                                              graph::DescriptorSetType::PerObject);
+                }
+
+                batch->per_object_mp = per_object_mp_pool[i];
+            }
+
             Draw(batch, transform_buffer, icb_draw, owner_batch);
             ++batch;
         }

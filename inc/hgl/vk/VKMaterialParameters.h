@@ -26,6 +26,8 @@ public:
             DescriptorSet *     GetDescriptorSet    (){return descriptor_set;}
     const   VkDescriptorSet     GetVkDescriptorSet  ()const{return descriptor_set->GetDescriptorSet();}
 
+    const   MaterialDescriptorManager *GetDescManager ()const{return desc_manager;}   ///<per-draw 克隆 MP（多对象独立 buffer descriptor 切换）
+
     const   uint32_t            GetDescriptorCount  ()const{return desc_manager->GetBindCount(set_type);}   ///<获取总共需要绑定的描述符数量
     const   BindingMapArray &   GetBindingMap       ()const{return desc_manager->GetBindingMap(set_type);}
 

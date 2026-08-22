@@ -25,6 +25,7 @@ namespace hgl
         class IndirectDrawBuffer;
         struct GeometryDataBuffer;
         struct GeometryDrawRange;
+        class MaterialParameters;
     }
 
     namespace ecs
@@ -48,6 +49,8 @@ namespace hgl::ecs
         const   graph::GeometryDataBuffer *    geom_data_buffer = nullptr;   ///<几何数据缓冲
         const   graph::GeometryDrawRange *     geom_draw_range = nullptr;    ///<绘制范围（顶点/索引偏移和数量）
         const   graph::Geometry *              geometry = nullptr;           ///<几何体（per-DrawBatch 顶点 SSBO 绑定用——VAB 直取）
+
+        graph::MaterialParameters *            per_object_mp = nullptr;      ///<per-DrawBatch 独立 PerObject set（descriptor set 是状态非快照——多对象独立 buffer 时共享单 set 提交时刻全用最后一次内容）
 
         void Set(const graph::GeometryDataBuffer *data_buffer,
                  const graph::GeometryDrawRange *draw_range,
@@ -77,6 +80,11 @@ namespace hgl::ecs
         graph::RenderCmdBuffer* cmd_buf;                    ///<当前渲染命令缓冲
 
         const graph::GeometryDataBuffer* last_data_buffer;  ///<上次绑定的几何数据缓冲
+
+        // === per-DrawBatch 独立 PerObject MP 池（descriptor set 是状态非快照：
+        // 多对象独立 buffer 时，共享单 set 被 per-draw 顺序更新，提交时刻所有 draw
+        // 读到最后一次更新的内容——每 draw 独立 set 解决） ===
+        std::vector<graph::MaterialParameters*> per_object_mp_pool;   ///<per-draw PerObject MP 池（跨帧复用）
 
         // === SSBO 顶点输入缓存（per-DrawBatch 顶点 SSBO 绑定——buffer 未变跳过） ===
         bool ssbo_vertex_input = false;                     ///<材质是否走 SSBO 顶点输入

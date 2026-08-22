@@ -8,6 +8,7 @@
 #include<hgl/vk/VKShaderProgram.h>
 #include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/mtl/MaterialRecipe.h>
+#include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
 #include<hgl/ecs/components/TransformComponent.h>
@@ -172,9 +173,20 @@ namespace hgl::ecs
 
     void TransformAssignmentBuffer::BindTransform(graph::ShaderProgram* mtl) const
     {
+        // 委托到 MaterialParameters 版（l2w 绑定到指定 PerObject MP——per-draw 独立 set）
         if (!mtl)
         {
             GLogWarning("[TransformAssignmentBuffer::BindTransform] ShaderProgram is null");
+            return;
+        }
+        BindTransform(mtl->GetMP(hgl::graph::mtl::SBS_LocalToWorld.set_type));
+    }
+
+    void TransformAssignmentBuffer::BindTransform(graph::MaterialParameters* mp) const
+    {
+        if (!mp)
+        {
+            GLogWarning("[TransformAssignmentBuffer::BindTransform] MaterialParameters is null");
             return;
         }
 
@@ -201,8 +213,7 @@ namespace hgl::ecs
 
         LogDeviceBufferSnapshot("[TransformAssignmentBuffer::BindTransform] before bind", transform_buffer);
 
-        mtl->BindSSBO(hgl::graph::mtl::SBS_LocalToWorld.set_type,
-                  hgl::graph::mtl::SBS_LocalToWorld.name,
+        mp->BindSSBO(hgl::graph::mtl::SBS_LocalToWorld.name,
                   transform_buffer->GetGPUBuffer());
         GLogInfo("[TransformAssignmentBuffer::BindTransform] BindSSBO set_type=%d name=%s",
                  static_cast<int>(hgl::graph::mtl::SBS_LocalToWorld.set_type),
