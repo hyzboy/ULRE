@@ -67,6 +67,10 @@ namespace
             VK_KHR_8BIT_STORAGE_EXTENSION_NAME,
             VK_KHR_16BIT_STORAGE_EXTENSION_NAME,
             VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME,
+
+            // Mesh Shader（EXT 扩展，1.4 仍非核心——但目标设备 AMD 6700 XT 已实测支持；
+            // 特性在 VkPhysicalDeviceMeshShaderFeaturesEXT 中启用）
+            VK_EXT_MESH_SHADER_EXTENSION_NAME,
         };
 
         // 1.4 硬性：以上均为核心扩展，无条件启用（vulkan1.4.md 第 2 项）
@@ -288,6 +292,22 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family,
         create_info.pNext = &storage16_features;
     }
 
+    // Vulkan 1.3 统一特性结构：
+    // - dynamicRendering：vkCmdBeginRendering/EndRendering 必须启用（VUID-vkCmdBeginRendering-dynamicRendering-06446）
+    // - maintenance4：mesh shader 的 SPIR-V OpExecutionMode LocalSizeId 要求启用
+    //   （glslang 16 生成 SPIR-V 1.6 时使用 LocalSizeId 而非 LocalSize；VUID-RuntimeSpirv-LocalSizeId-06434）
+    {
+        const VkPhysicalDeviceVulkan13Features &dev13 = physical_device->GetFeatures13();
+
+        VkPhysicalDeviceVulkan13Features vulkan13_features{};
+        vulkan13_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+        vulkan13_features.pNext = const_cast<void*>(static_cast<const void*>(create_info.pNext));
+        vulkan13_features.dynamicRendering = dev13.dynamicRendering;
+        vulkan13_features.maintenance4     = dev13.maintenance4;
+
+        create_info.pNext = &vulkan13_features;
+    }
+
 
     if(enable_graphics_pipeline_library
     && !FORCE_DISABLE_GRAPHICS_PIPELINE_LIBRARY
@@ -309,6 +329,20 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family,
         vulkan14_features.indexTypeUint8 = physical_device->GetFeatures14().indexTypeUint8;
 
         create_info.pNext=&vulkan14_features;
+    }
+
+    // VK_EXT_mesh_shader：设备特性启用（meshShader/taskShader）——mesh shader 为必用路径，无条件启用
+    {
+        const VkPhysicalDeviceMeshShaderFeaturesEXT &dev_mesh = physical_device->GetMeshShaderFeatures();
+
+        VkPhysicalDeviceMeshShaderFeaturesEXT mesh_features{};
+        mesh_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
+        mesh_features.pNext = const_cast<void*>(static_cast<const void*>(create_info.pNext));
+        mesh_features.taskShader    = dev_mesh.taskShader;
+        mesh_features.meshShader    = dev_mesh.meshShader;
+        mesh_features.meshShaderQueries = dev_mesh.meshShaderQueries;
+
+        create_info.pNext=&mesh_features;
     }
 
     VkDevice device;
@@ -417,6 +451,13 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
 
     device_attr->graphics_pipeline_library = try_graphics_pipeline_library
                                             && device_attr->device != VK_NULL_HANDLE;
+
+    // VK_EXT_mesh_shader：加载扩展函数指针（仅一次——mesh shader 为必用路径）
+    {
+        auto func_ptr=device_attr->GetDeviceProc<PFN_vkCmdDrawMeshTasksEXT>("vkCmdDrawMeshTasksEXT");
+        if(func_ptr)
+            device_attr->cmd_draw_mesh_tasks=*func_ptr;
+    }
 
     device_attr->surface_format=surface_format;
 

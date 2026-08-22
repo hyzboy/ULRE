@@ -187,8 +187,6 @@ namespace hgl::graph
         {
             VulkanDevice *device = nullptr;
             VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
-            VkRenderPass render_pass = VK_NULL_HANDLE;
-            uint32_t subpass = 0;
             FinalPipelineKey key{};
             VkPipeline pipeline = VK_NULL_HANDLE;
             uint32_t references = 0;
@@ -197,8 +195,6 @@ namespace hgl::graph
             {
                 return device == rhs.device
                     && pipeline_layout == rhs.pipeline_layout
-                    && render_pass == rhs.render_pass
-                    && subpass == rhs.subpass
                     && key == rhs.key
                     && pipeline == rhs.pipeline
                     && references == rhs.references;
@@ -210,8 +206,6 @@ namespace hgl::graph
         {
             VulkanDevice *device = nullptr;
             VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
-            VkRenderPass render_pass = VK_NULL_HANDLE;
-            uint32_t subpass = 0;
             Key key{};
             VkPipeline pipeline = VK_NULL_HANDLE;
 
@@ -219,8 +213,6 @@ namespace hgl::graph
             {
                 return device == rhs.device
                     && pipeline_layout == rhs.pipeline_layout
-                    && render_pass == rhs.render_pass
-                    && subpass == rhs.subpass
                     && key == rhs.key
                     && pipeline == rhs.pipeline;
             }
@@ -260,7 +252,6 @@ namespace hgl::graph
             MissingPipelineData,
             MissingShaderStages,
             MissingPipelineLayout,
-            MissingRenderPass,
             MissingColorAttachmentConfig,
             FOColorBlendAttachmentMismatch
         };
@@ -276,7 +267,6 @@ namespace hgl::graph
             case ResolveError::MissingPipelineData: return "missing pipeline_data";
             case ResolveError::MissingShaderStages: return "missing shader_stages";
             case ResolveError::MissingPipelineLayout: return "missing pipeline_layout";
-            case ResolveError::MissingRenderPass: return "missing render_pass";
             case ResolveError::MissingColorAttachmentConfig: return "missing frame_output color attachments";
             case ResolveError::FOColorBlendAttachmentMismatch: return "fo mismatch: color_blend attachment count differs from frame_output";
             default: return "none";
@@ -296,9 +286,6 @@ namespace hgl::graph
 
             if(request.pipeline_layout == VK_NULL_HANDLE)
                 return ResolveError::MissingPipelineLayout;
-
-            if(request.render_pass == VK_NULL_HANDLE)
-                return ResolveError::MissingRenderPass;
 
             if(request.frame_output.color_attachment_count == 0 || !request.frame_output.color_formats)
                 return ResolveError::MissingColorAttachmentConfig;
@@ -341,8 +328,6 @@ namespace hgl::graph
                 const LibraryPipelineCacheEntry<Key> &entry = cache[i];
                 if(entry.device == request.device
                 && entry.pipeline_layout == request.pipeline_layout
-                && entry.render_pass == request.render_pass
-                && entry.subpass == request.subpass
                 && entry.key == key)
                     return entry.pipeline;
             }
@@ -361,8 +346,6 @@ namespace hgl::graph
             LibraryPipelineCacheEntry<VertexInterfaceKey> entry{};
             entry.device = request.device;
             entry.pipeline_layout = VK_NULL_HANDLE;
-            entry.render_pass = VK_NULL_HANDLE;
-            entry.subpass = 0;
             entry.key = key;
             entry.pipeline = pipeline;
             return cache.Add(entry) >= 0;
@@ -380,8 +363,6 @@ namespace hgl::graph
             LibraryPipelineCacheEntry<Key> entry{};
             entry.device = request.device;
             entry.pipeline_layout = request.pipeline_layout;
-            entry.render_pass = request.render_pass;
-            entry.subpass = request.subpass;
             entry.key = key;
             entry.pipeline = pipeline;
             return cache.Add(entry) >= 0;
@@ -489,8 +470,6 @@ namespace hgl::graph
                     continue;
                 if(entry.pipeline_layout != request.pipeline_layout)
                     continue;
-                if(entry.render_pass != request.render_pass || entry.subpass != request.subpass)
-                    continue;
                 if(!(entry.key == key))
                     continue;
                 if(entry.pipeline == VK_NULL_HANDLE)
@@ -515,8 +494,6 @@ namespace hgl::graph
             FinalPipelineCacheEntry entry{};
             entry.device = request.device;
             entry.pipeline_layout = request.pipeline_layout;
-            entry.render_pass = request.render_pass;
-            entry.subpass = request.subpass;
             entry.key = key;
             entry.pipeline = pipeline;
             entry.references = 1;
@@ -577,10 +554,22 @@ namespace hgl::graph
             create_info.pNext = &library_info;
             create_info.flags = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR;
             create_info.layout = vertex_input_interface ? VK_NULL_HANDLE : request.pipeline_layout;
-            create_info.renderPass = vertex_input_interface ? VK_NULL_HANDLE : request.render_pass;
+            create_info.renderPass = VK_NULL_HANDLE;   // Dynamic Rendering：管线无 render pass
             create_info.subpass = vertex_input_interface ? 0 : request.subpass;
             create_info.stageCount = stages.GetCount();
             create_info.pStages = stages.IsEmpty() ? nullptr : stages.GetData();
+
+            // Dynamic Rendering：GPL library 同样需要 VkPipelineRenderingCreateInfo
+            // 声明附件格式（挂到 library_info 之后）
+            VkPipelineRenderingCreateInfo rendering_ci{};
+            rendering_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+            rendering_ci.pNext = nullptr;
+            rendering_ci.colorAttachmentCount = request.frame_output.color_attachment_count;
+            rendering_ci.pColorAttachmentFormats = request.frame_output.color_formats;
+            rendering_ci.depthAttachmentFormat = request.frame_output.depth_stencil_format;
+            rendering_ci.stencilAttachmentFormat = request.frame_output.depth_stencil_format;
+
+            library_info.pNext = &rendering_ci;
 
             create_info.pVertexInputState = vertex_input_interface ? pd->pipeline_info.pVertexInputState : nullptr;
             create_info.pInputAssemblyState = vertex_input_interface ? pd->pipeline_info.pInputAssemblyState : nullptr;
@@ -775,8 +764,21 @@ namespace hgl::graph
         pd->InitVertexInputState();
         pd->SetColorAttachments(request.frame_output.color_attachment_count);
         pd->pipeline_info.layout = request.pipeline_layout;
-        pd->pipeline_info.renderPass = request.render_pass;
+        pd->pipeline_info.renderPass = VK_NULL_HANDLE;   // Dynamic Rendering
         pd->pipeline_info.subpass = request.subpass;
+
+        // Dynamic Rendering：renderPass=VK_NULL_HANDLE 时 pNext 必须含
+        // VkPipelineRenderingCreateInfo（VUID-VkGraphicsPipelineCreateInfo-renderPass-06061）
+        // ——附件格式在此声明，替代传统 render pass 的 attachment 布局
+        VkPipelineRenderingCreateInfo rendering_ci{};
+        rendering_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+        rendering_ci.pNext = pd->pipeline_info.pNext;
+        rendering_ci.colorAttachmentCount = request.frame_output.color_attachment_count;
+        rendering_ci.pColorAttachmentFormats = request.frame_output.color_formats;
+        rendering_ci.depthAttachmentFormat = request.frame_output.depth_stencil_format;
+        rendering_ci.stencilAttachmentFormat = request.frame_output.depth_stencil_format;
+
+        pd->pipeline_info.pNext = &rendering_ci;
 
         return vkCreateGraphicsPipelines(*request.device,
                                          request.pipeline_cache,
@@ -800,7 +802,7 @@ namespace hgl::graph
         pd->InitVertexInputState();
         pd->SetColorAttachments(request.frame_output.color_attachment_count);
         pd->pipeline_info.layout = request.pipeline_layout;
-        pd->pipeline_info.renderPass = request.render_pass;
+        pd->pipeline_info.renderPass = VK_NULL_HANDLE;   // Dynamic Rendering
         pd->pipeline_info.subpass = request.subpass;
 
         ShaderStageCreateInfoList pre_raster_stages;
@@ -873,11 +875,22 @@ namespace hgl::graph
             library_link_info.libraryCount = 4;
             library_link_info.pLibraries = libraries;
 
+            // Dynamic Rendering：GPL link 同样需要 VkPipelineRenderingCreateInfo（挂到 link_info 之后）
+            VkPipelineRenderingCreateInfo rendering_ci{};
+            rendering_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+            rendering_ci.pNext = nullptr;
+            rendering_ci.colorAttachmentCount = request.frame_output.color_attachment_count;
+            rendering_ci.pColorAttachmentFormats = request.frame_output.color_formats;
+            rendering_ci.depthAttachmentFormat = request.frame_output.depth_stencil_format;
+            rendering_ci.stencilAttachmentFormat = request.frame_output.depth_stencil_format;
+
+            library_link_info.pNext = &rendering_ci;
+
             VkGraphicsPipelineCreateInfo link_info = pd->pipeline_info;
             link_info.pNext = &library_link_info;
             link_info.flags = 0;
             link_info.layout = request.pipeline_layout;
-            link_info.renderPass = request.render_pass;
+            link_info.renderPass = VK_NULL_HANDLE;   // Dynamic Rendering
             link_info.subpass = request.subpass;
             link_info.stageCount = 0;
             link_info.pStages = nullptr;

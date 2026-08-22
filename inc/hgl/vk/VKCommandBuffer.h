@@ -64,7 +64,6 @@ private:
     VkRect2D render_area;
     VkViewport viewport;
 
-    RenderPassBeginInfo rp_begin;
     VkPipelineLayout pipeline_layout;
 
     /*
@@ -74,9 +73,6 @@ private:
     *    DescriptSetType::RenderTarget  即该由RenderTarget模块设置
     *    DescriptSetType::World         预留/旧体系标记
     */
-private:
-
-    void SetClear();
 
 public:
 
@@ -94,7 +90,13 @@ public:
 
     void SetClearColor(uint32_t index,const Color4f &cc)
     {
-        if(index>=cv_count)return;
+        if(index>=cv_count)
+        {
+            // clear_values 未就绪（BeginRendering 前调用）：延迟到 BeginRendering 时应用
+            if(index>=16)return;
+            clear_values=hgl_align_realloc<VkClearValue>(clear_values,index+1);
+            cv_count=index+1;
+        }
 
         mem_copy<float>(clear_values[index].color.float32,(const float *)&cc,4);
     }
@@ -116,23 +118,29 @@ public:
 
     //以上设定在Begin开始后即不可改变
 
-    bool BindFramebuffer(Framebuffer *);
+    bool BindDescriptorSets(ShaderProgram *);
 
-    bool BeginRenderPass();
-    void NextSubpass(){vkCmdNextSubpass(cmd_buf,VK_SUBPASS_CONTENTS_INLINE);}
-    void EndRenderPass(){vkCmdEndRenderPass(cmd_buf);}
-
-    void BeginRendering(const VkRenderingInfoKHR *ri)
+    void BeginRendering(const VkRenderingInfo *ri)
     {
         if(!ri)return;
 
-        vkCmdBeginRenderingKHR(cmd_buf,ri);
+        vkCmdBeginRendering(cmd_buf,ri);
     }
+
+    // Dynamic Rendering：直接从 render target 取附件构造 VkRenderingInfo
+    // （替代 BeginRenderPass 的 framebuffer 路径——无 render pass/framebuffer 依赖）
+    // 实现见 VKCommandBufferRender.cpp（需 IRenderTarget 完整定义，避免循环 include）
+    bool BeginRendering(IRenderTarget *rt);
 
     void EndRendering()
     {
-        vkCmdEndRenderingKHR(cmd_buf);
+        vkCmdEndRendering(cmd_buf);
     }
+
+    // EndRendering 后将 color 附件转换到 PRESENT_SRC（dynamic rendering 无自动转换）
+    // ——swapchain present 要求 image 处于 PRESENT_SRC_KHR（VUID-VkPresentInfoKHR-pImageIndices-01430）
+    // 实现见 VKCommandBufferRender.cpp（需 IRenderTarget 完整定义）
+    void EndRenderingPresent(IRenderTarget *rt);
 
     bool BindPipeline(Pipeline *p)
     {
@@ -150,8 +158,6 @@ public:
 
         return(true);
     }
-
-    bool BindDescriptorSets(ShaderProgram *);
 
     void PushConstants(VkShaderStageFlagBits shader_stage_bit,uint32_t offset,uint32_t size,const void *pValues)
     {
@@ -189,6 +195,10 @@ public: //draw
                                 void DrawIndirect       (VkBuffer buf,          uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndirectCommand         )){return DrawIndirect(         buf,0,drawCount,stride);}
 
                                 void Draw               (const GeometryDataBuffer *,const GeometryDrawRange *,const uint32_t instance_count=1,const uint32_t first_instance=0);
+
+    // Mesh Shader（VK_EXT_mesh_shader）：以 threadgroup 网格发起绘制，无顶点输入
+    // 实现见 VKCommandBufferRender.cpp——扩展函数需 vkGetDeviceProcAddr 动态加载
+    void DrawMeshTasks(const uint32_t group_count_x,const uint32_t group_count_y=1,const uint32_t group_count_z=1);
 
 public: //dynamic state
 

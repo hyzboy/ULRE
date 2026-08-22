@@ -199,7 +199,8 @@ RenderCmdBuffer* SwapchainRenderTarget::BeginRender()
     RenderCmdBuffer* cb = swapchain->sc_image[acquired_image].cmd_buf;
     if (!cb) return nullptr;
     cb->Begin();
-    cb->BindFramebuffer(swapchain->sc_image[acquired_image].fbo);
+    // Dynamic Rendering：不再 BindFramebuffer——附件由 RenderSystemCore::BeginRenderPass
+    // 经 IRenderTarget::GetColorAttachment/GetDepthAttachment 提供（见 VKCommandBuffer.h）
     return cb;
 }
 

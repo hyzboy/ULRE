@@ -34,6 +34,9 @@ struct VulkanDevAttr
 
     VkPipelineCache                     pipeline_cache  =VK_NULL_HANDLE;
 
+    // 扩展函数指针（设备创建后经 vkGetDeviceProcAddr 加载一次，避免每次调用查询）
+    PFN_vkCmdDrawMeshTasksEXT           cmd_draw_mesh_tasks =nullptr;
+
 #ifdef _DEBUG
     DebugUtils *                        debug_utils     =nullptr;
 #endif//_DEBUG
@@ -48,7 +51,7 @@ public:
 public:
 
     template<typename T>
-    T *GetDeviceProc(const char *name)
+    T GetDeviceProc(const char *name)
     {
         return instance->GetDeviceProc<T>(device,name);
     }

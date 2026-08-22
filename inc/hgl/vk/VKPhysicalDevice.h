@@ -63,6 +63,7 @@ private:
     bool support_u8_index=false;
     bool dynamic_state=false;
     bool graphics_pipeline_library=false;
+    VkPhysicalDeviceMeshShaderFeaturesEXT mesh_shader_features{};
     VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT graphics_pipeline_library_features{};
     VkPhysicalDeviceGraphicsPipelineLibraryPropertiesEXT graphics_pipeline_library_properties{};
     VkDeviceSize rebar_size=0;  // Resizable BAR size (0 if not available)
@@ -198,6 +199,7 @@ public:
 
     const VkBool32  SupportU32Index             ()const{return features.fullDrawIndexUint32;}
     const VkBool32  SupportU8Index              ()const{return support_u8_index;}
+    const VkPhysicalDeviceMeshShaderFeaturesEXT &GetMeshShaderFeatures()const{return mesh_shader_features;}
 
     const VkBool32  SupportWideLines            ()const{return features.wideLines;}
 

@@ -112,7 +112,6 @@ namespace hgl::graph
     {
         VulkanDevice *device = nullptr;
         VkPipelineCache pipeline_cache = VK_NULL_HANDLE;
-        VkRenderPass render_pass = VK_NULL_HANDLE;
         uint32_t subpass = 0;
 
         FrameOutputConfig frame_output{};

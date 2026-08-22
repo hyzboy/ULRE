@@ -122,7 +122,14 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
                 features14.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
                 features14.pNext=nullptr;
                 *ppNext=&features14;
+                ppNext=&features14.pNext;
             }
+
+            // VK_EXT_mesh_shader（独立扩展结构——mesh/task shader 特性）
+            mesh_shader_features.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
+            mesh_shader_features.pNext=nullptr;
+            *ppNext=&mesh_shader_features;
+            ppNext=&mesh_shader_features.pNext;
 
             func(physical_device,&features2);
 
@@ -258,6 +265,13 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
         support_u8_index=true;
     else
         support_u8_index=CheckExtensionSupport(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME);
+
+    // VK_EXT_mesh_shader：mesh shader 为必用路径，特性值仅作诊断记录
+    GLogInfo("%s mesh shader: (taskShader=%d meshShader=%d meshShaderQueries=%d)",
+             debug_front.c_str(),
+             mesh_shader_features.taskShader,
+             mesh_shader_features.meshShader,
+             mesh_shader_features.meshShaderQueries);
 
     dynamic_state=CheckExtensionSupport(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME);
 

@@ -13,6 +13,7 @@ endmacro()
 
 
 CreateProject(DrawTriangle                   DrawTriangle.cpp)
+CreateProject(SimpleMeshTriangle             SimpleMeshTriangle.cpp)
 CreateProject(AutoInstance                   AutoInstance.cpp)
 CreateProject(AutoMergeMaterialInstance      AutoMergeMaterialInstance.cpp)
 CreateProject(ClockUse                       ClockUse.cpp)

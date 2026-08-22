@@ -91,7 +91,7 @@ namespace hgl::graph{
         }
 
         template<typename T>
-        T *GetDeviceProc(VkDevice *dev,const char *name)
+        T GetDeviceProc(VkDevice dev,const char *name)
         {
             if(!GetDeviceProcAddr)return(nullptr);
 

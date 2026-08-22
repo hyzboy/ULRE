@@ -1,5 +1,6 @@
 ﻿#include <hgl/ecs/systems/render/RenderSystemCore.h>
 #include <hgl/ecs/core/Context.h>
+#include <hgl/graph/render/RenderContext.h>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/vk/VKRenderTarget.h>
@@ -61,6 +62,14 @@ bool RenderSystemCore::BeginFrame() {
         return false;
     }
 
+    // 接线到 RenderContext::current_render_cmd_buf——供 wo->Render（ECS pre_render 回调）
+    // 及示例经 GetCurrentRenderCmdBuffer() 获取当前命令缓冲（原接口从未被设置）
+    if (world)
+    {
+        if (auto *rc = world->GetRenderContext())
+            rc->SetCurrentRenderCmdBuffer(render_cmd);
+    }
+
     swapchain_image_index = render_target->GetCurrentFrameIndex();
 
     frame_begun = true;
@@ -76,8 +85,8 @@ bool RenderSystemCore::BeginRenderPass()
         return false;
     }
 
-    render_cmd->SetClearColor(0, clear_color);
-    render_cmd->BeginRenderPass();
+    render_cmd->BeginRendering(render_target);   // Dynamic Rendering（替代传统 BeginRenderPass）
+    render_cmd->SetClearColor(0, clear_color);   // BeginRendering 后 clear_values 已按附件数分配
     render_pass_begun = true;
     return true;
 }
@@ -101,7 +110,7 @@ void RenderSystemCore::EndFrame() {
     }
 
     if (render_cmd && render_pass_begun)
-        render_cmd->EndRenderPass();
+        render_cmd->EndRenderingPresent(render_target);   // Dynamic Rendering（EndRendering + color→PRESENT_SRC 布局转换）
 
     render_target->EndRender();
 

@@ -29,7 +29,7 @@ RenderCmdBuffer *RenderTargetData::BeginRender()
         return(nullptr);
 
     cmd_buf->Begin();
-    cmd_buf->BindFramebuffer(fbo);
+    // Dynamic Rendering：不再 BindFramebuffer——附件由渲染循环经 IRenderTarget 附件接口提供
     return cmd_buf;
 }
 

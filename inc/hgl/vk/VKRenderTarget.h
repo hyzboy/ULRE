@@ -7,6 +7,7 @@
 #include<hgl/vk/VKQueue.h>
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/graph/ubo/ViewportInfo.h>
+#include<hgl/vk/VKTexture.h>
 #include<hgl/vk/StructuredBufferAccessor.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/vk/VKCommandBuffer.h>
@@ -22,6 +23,18 @@ namespace hgl::graph{
 class VulkanDevice; // Forward declaration
 
 using UBOViewportInfo=StructuredBufferAccessor<ViewportInfo>;  ///< 统一使用 StructuredBufferAccessor
+
+// Dynamic Rendering 附件描述：image view + format + 布局
+// （替代传统 render pass 的 attachment 声明——渲染循环直接据此构造 VkRenderingInfoKHR）
+struct RenderingAttachment
+{
+    VkImageView     image_view = VK_NULL_HANDLE;
+    VkFormat        format = VK_FORMAT_UNDEFINED;
+    VkImageLayout   initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+    VkImageLayout   final_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    const bool IsValid()const{return image_view!=VK_NULL_HANDLE;}
+};
 
 class IRenderTarget
 {
@@ -53,6 +66,29 @@ public:
 
     virtual Texture2D *         GetColorTexture (const int index=0)=0;
     virtual Texture2D *         GetDepthTexture ()=0;
+
+    // Dynamic Rendering 附件（index 越界返回 invalid）
+    virtual RenderingAttachment GetColorAttachment(const int index=0)
+    {
+        RenderingAttachment att;
+        Texture2D *tex=GetColorTexture(index);
+        if(!tex)
+            return att;
+        att.image_view=tex->GetVulkanImageView();
+        att.format=tex->GetFormat();
+        return att;
+    }
+    virtual RenderingAttachment GetDepthAttachment()
+    {
+        RenderingAttachment att;
+        Texture2D *tex=GetDepthTexture();
+        if(!tex)
+            return att;
+        att.image_view=tex->GetVulkanImageView();
+        att.format=tex->GetFormat();
+        att.final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        return att;
+    }
 
 public: // Command Buffer
 

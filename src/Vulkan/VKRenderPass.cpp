@@ -62,7 +62,6 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
     FinalPipelineResolveRequest request{};
     request.device = device;
     request.pipeline_cache = pipeline_cache;
-    request.render_pass = render_pass;
     request.subpass = 0;
     request.frame_output.color_formats = color_formats.GetData();
     request.frame_output.color_attachment_count = color_formats.GetCount();
