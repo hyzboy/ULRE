@@ -39,6 +39,7 @@ namespace hgl::ecs
             hgl::math::Vector3f from;       ///< CN: 起始点 EN: Start point
             hgl::math::Vector3f to;         ///< CN: 结束点 EN: End point
             uint8_t color_index;            ///< CN: 颜色索引(0-255) EN: Color index (0-255)
+            float min_width = 0.0f;         ///< CN: 最细阈值(像素)——深度衰减下限；0=可细到消失 EN: Min width (px), depth-attenuation floor
         };
 
         std::vector<LineSegment> lines;      ///< CN: 线段列表 EN: Line segments

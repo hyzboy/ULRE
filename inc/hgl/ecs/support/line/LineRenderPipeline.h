@@ -104,6 +104,7 @@ namespace hgl::ecs
                             const hgl::math::Vector3f& to,
                             uint8_t                     color_index,
                             float                       width,
+                            float                       min_width,
                             hgl::graph::Assign::TransformID::ValueType transform_index);
             void Draw(graph::RenderCmdBuffer* cmd);
         };

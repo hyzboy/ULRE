@@ -328,15 +328,18 @@ namespace hgl::graph::mtl
             if (plan.mesh_shader)
             {
                 // Mesh shader 材质（彻底废弃 VS 方向）：生成 mesh stage 替代 vertex stage
+                const bool is_lines = (plan.primitive_type == hgl::graph::PrimitiveType::Lines);
+                // max_invocations：LineQuad=64（每线程 4 顶点 → max_vertices=256，AMD 上限内）；
+                // VertexPassthrough=96（3 的倍数——每 3 连续顶点 1 三角形，组内三角形永不跨组。
+                // 64 会导致跨 threadgroup 边界三角形引用未写槽位 → 丢失（球体瓣状缺口））
                 plan.ms = GenerateMeshShader(
                     plan.vertex_node_config,
                     plan.varying,
                     plan.position_format,
                     GetShaderLibraryPath().c_str(),
-                    (plan.primitive_type == hgl::graph::PrimitiveType::Lines)
-                        ? MeshShaderMode::LineQuad
-                        : MeshShaderMode::VertexPassthrough,
-                    64,
+                    is_lines ? MeshShaderMode::LineQuad
+                             : MeshShaderMode::VertexPassthrough,
+                    is_lines ? 64u : 96u,
                     plan.resolved_vertex_input_glsl,
                     plan.resolved_provider_glsl,
                     &plan.stage_interface);
@@ -557,10 +560,9 @@ namespace hgl::graph::mtl
 
         GenericMaterialBuildPlan plan{};
 
-        // Mesh shader 材质：mesh_shader=true 时生成 mesh stage 替代 vertex stage。
-        // 触发：request 显式 mesh_shader，或 primitive_type=Lines（Line 的 line-to-quad）。
-        // （彻底废弃 VS 方向——未来所有材质走 mesh）
-        plan.mesh_shader = request.primitive_type == hgl::graph::PrimitiveType::Lines;
+        // Mesh shader 材质：mesh_shader=true 无条件（彻底废弃 VS——mesh 是唯一顶点路径，
+        // 不做触发标志/分支；Lines 走 LineQuad，其余走 VertexPassthrough）
+        plan.mesh_shader = true;
         plan.primitive_type = request.primitive_type;
 
         if (!ResolvePurposeAndCoverage(definition, request, plan))

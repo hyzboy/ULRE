@@ -118,17 +118,25 @@ namespace hgl::graph::mtl
         ms += "\n";
 
         // ── Stage 1: 顶点输入（SSBO）───────────────────────────────────────
-        // mesh shader：无 gl_VertexIndex，VertexIndexID = gl_LocalInvocationIndex（非索引直通）。
-        // 跳过 s1_index（它的 VertexIndexID 变量声明与 mesh 的宏定义冲突，
-        // HGL_INDEX_LOADER 的 gl_VertexIndex 在 mesh 阶段不存在）。
-        // LineQuad 模式需要 pc_vertex_index push constant——由本生成器补声明（见下）。
-        ms += "// mesh shader：无 gl_VertexIndex，VertexIndexID = gl_LocalInvocationIndex（非索引直通）\n";
-        ms += "#define VertexIndexID (gl_LocalInvocationIndex)\n";
+        // mesh shader：无 gl_VertexIndex。VertexIndexID 映射到可变全局 MeshVertexIndex，
+        // 由 main 开头解析：非索引直通（全局顶点序号 = gl_WorkGroupID.x*group+局部）
+        // 或索引查表（sbo_vertex_index[index_base + 全局序号]）——与 VS 的 s1_index
+        // is_indexed 分支语义一致。宏必须指向**可变**变量（LoadVertexData 是独立函数，
+        // 函数体内不能引用 main 局部变量，且查表需要运行时赋值——不能用常量表达式宏）。
+        // 跳过 s1_index（其 VertexIndexID 变量声明与宏冲突、gl_VertexIndex 在 mesh 不存在）。
+        // 两模式都需要 pc_vertex_index push constant——由本生成器补声明（见下）。
+        ms += "// mesh shader：无 gl_VertexIndex；VertexIndexID = MeshVertexIndex（main 解析）\n";
+        ms += "uint MeshVertexIndex;\n";
+        ms += "#define VertexIndexID (MeshVertexIndex)\n";
         ms += "#define HGL_INDEX_LOADER_DEFINED\n";
         ms += "\n";
+        // 顶点索引 SSBO（is_indexed 查表用；非索引几何不写 descriptor——PARTIALLY_BOUND 安全，
+        // 与 VS 的 s1_index 声明一致：layout 恒有 binding 8）
+        ms += "layout(set=VERTEX_SET, binding=VERTEX_INDEX_BINDING, std430) readonly buffer VertexIndexData\n";
+        ms += "{ uint data[]; } sbo_vertex_index;\n";
+        ms += "\n";
 
-        // LineQuad 模式：补 pc_vertex_index push constant 声明（s1_index 被跳过）
-        if (mode == MeshShaderMode::LineQuad)
+        // 补 pc_vertex_index push constant 声明（s1_index 被跳过，两模式都需要）
         {
             ms += "layout(push_constant) uniform PC_VertexIndex\n";
             ms += "{\n";
@@ -137,6 +145,7 @@ namespace hgl::graph::mtl
             ms += "    uint is_indexed;\n";
             ms += "    uint total_vertices;\n";
             ms += "    float viewport_height;\n";
+            ms += "    uint first_instance;\n";
             ms += "} pc_vertex_index;\n";
             ms += "\n";
         }
@@ -184,6 +193,15 @@ namespace hgl::graph::mtl
             ms += "SCENE_COLOR_PALETTE_UBO;\n";
         }
 
+        ms += "\n";
+
+        // mesh shader 无 gl_InstanceIndex（VS 专属内置）——实例索引 = first_instance + gl_WorkGroupID.y：
+        // DrawMeshTasks(gx, gy) 的 gl_WorkGroupID.y = 实例内序号（0..gy-1），first_instance 是
+        // Draw 的 firstInstance（l2w_index_rows 按整批 item 序号写，VS 的 gl_InstanceIndex =
+        // firstInstance + 实例内序号 与之对应——mesh 必须补 first_instance 偏移，否则
+        // 多 draw_batch 场景所有 batch 都读 values[0] → 模型集中到第一个 transform）。
+        // 宏覆盖所有后续模块（orient_world 的 ResolveTransformID(gl_InstanceIndex) 等）。
+        ms += "#define gl_InstanceIndex (pc_vertex_index.first_instance + gl_WorkGroupID.y)\n";
         ms += "\n";
 
         // ── Stage 2: 位置映射 ─────────────────────────────────────────────
@@ -274,17 +292,41 @@ namespace hgl::graph::mtl
         case MeshShaderMode::VertexPassthrough:
         {
             // 每线程 1 顶点：位置变换 + varying 赋值，直通到 mesh 顶点槽
+            // 组内顶点槽位（0 .. max_vertices-1；全局顶点号由 VertexIndexID 宏处理）
             ms += "    const uint vid = gl_LocalInvocationIndex;\n";
-            ms += "    SetMeshOutputsEXT(";
-            ms += std::to_string(max_vertices);
-            ms += "u, ";
-            ms += std::to_string(max_primitives);
+            ms += "\n";
+            ms += "    const uint total_vertices = pc_vertex_index.total_vertices;\n";
+            // 本组有效顶点数（所有 invocation 相同值 → SetMeshOutputsEXT 一致；
+            // groupCountX = ceil(total/group_size)，末组起始 <= total，不会 uint 下溢）
+            ms += "    const uint verts_this_group = min(";
+            ms += std::to_string(max_invocations);
+            ms += "u, total_vertices - gl_WorkGroupID.x * ";
+            ms += std::to_string(max_invocations);
             ms += "u);\n";
+            ms += "    SetMeshOutputsEXT(verts_this_group, verts_this_group / 3u);\n";
+            ms += "    if (vid >= verts_this_group)\n";
+            ms += "        return;\n";
+            ms += "\n";
 
-            // LoadVertexData（读 SSBO 单顶点；VertexIndexID=gl_LocalInvocationIndex）
+            // 全局顶点号解析：非索引直通（绘制顺序 = 顶点号）或索引查表（is_indexed）。
+            // 与 VS 的 s1_index 分支语义一致（mesh 无 gl_VertexIndex，用跨组全局序号）
+            ms += "    MeshVertexIndex = gl_WorkGroupID.x * ";
+            ms += std::to_string(max_invocations);
+            ms += "u + gl_LocalInvocationIndex;\n";
+            ms += "    if (pc_vertex_index.is_indexed != 0u)\n";
+            ms += "        MeshVertexIndex = sbo_vertex_index.data[pc_vertex_index.index_base + MeshVertexIndex];\n";
+            ms += "\n";
+
+            // LoadVertexData（读 SSBO 单顶点；VertexIndexID 宏 = MeshVertexIndex）
             ms += "    LoadVertexData();\n";
 
-            // 变换
+            // 变换（对齐 VS：world pos/normal 一次 GetL2W + camera.vp 投影）
+            if (FindMaterialStageInterfaceEntry(*resolved_stage_interface, InterStageSemantic::DataIndexID))
+            {
+                // 与 VS 一致：实例 → mtl_data_index_rows 查表（材质数据槽——FS 用它查 mtl.data[].color 等）。
+                // gl_InstanceIndex 宏 = first_instance + gl_WorkGroupID.y（跨 draw_batch 正确）
+                ms += "    fragDataIndexID[vid] = ResolveDataIndexID(gl_InstanceIndex);\n";
+            }
             if (varying_cfg.emit_vertex_color_from_palette)
                 ms += "    fragVertexColor[vid] = unpackUnorm4x8(color_palette.color[ColorIndex]);\n";
             else if (FindMaterialStageInterfaceEntry(*resolved_stage_interface, InterStageSemantic::Color))
@@ -294,15 +336,30 @@ namespace hgl::graph::mtl
                 ms += "    fragUV0[vid] = TexCoord;\n";
             if (FindMaterialStageInterfaceEntry(*resolved_stage_interface, InterStageSemantic::Luminance))
                 ms += "    fragLuminance[vid] = Luminance;\n";
+            if (FindMaterialStageInterfaceEntry(*resolved_stage_interface, InterStageSemantic::FragDirection))
+                ms += "    fragDirection[vid] = normalize(Position);\n";
 
             const bool emit_world_pos = FindMaterialStageInterfaceEntry(*resolved_stage_interface, InterStageSemantic::WorldPosition);
-            if (emit_world_pos)
-                ms += "    fragWorldPos[vid] = (GetL2W() * GetLocalPos()).xyz;\n";
+            const bool emit_world_normal = FindMaterialStageInterfaceEntry(*resolved_stage_interface, InterStageSemantic::WorldNormal);
+            if (emit_world_pos || emit_world_normal)
+            {
+                ms += "    mat4 _l2w = GetL2W();\n";
+                ms += "    vec4 _world_pos = _l2w * GetLocalPos();\n";
+                if (emit_world_pos)
+                    ms += "    fragWorldPos[vid] = _world_pos.xyz;\n";
+                if (emit_world_normal)
+                    ms += "    fragWorldNormal[vid] = normalize(mat3(_l2w) * Normal);\n";
+                // world-normal 路径投影恒为 WorldCameraVP（与 VS 一致）
+                ms += "    gl_MeshVerticesEXT[vid].gl_Position = camera.vp * _world_pos;\n";
+            }
+            else
+            {
+                ms += "    gl_MeshVerticesEXT[vid].gl_Position = GetClipPos(GetLocalPos());\n";
+            }
 
-            ms += "    gl_MeshVerticesEXT[vid].gl_Position = GetClipPos(GetLocalPos());\n";
-
-            // 三角形索引：每 3 连续顶点 1 三角形（线程 vid 填 (vid, vid+1, vid+2)）
-            ms += "    if ((vid % 3u) == 0u && (vid + 2u) < max_vertices)\n";
+            // 三角形索引：每 3 连续顶点 1 三角形（组内槽位；vid%3==0 的线程填）
+            // 非 3 倍数顶点余数不构成三角形（与 VS 的 vertexCount 语义一致）
+            ms += "    if ((vid % 3u) == 0u && (vid + 2u) < verts_this_group)\n";
             ms += "        gl_PrimitiveTriangleIndicesEXT[vid / 3u] = uvec3(vid, vid + 1u, vid + 2u);\n";
             break;
         }
@@ -338,21 +395,38 @@ namespace hgl::graph::mtl
             // 线段端点（每线段 2 顶点——直接读 SSBO，不依赖 LoadVertexData 的全局变量：
             // LineQuad 每线程处理 1 条线段（2 顶点），LoadVertexData 只读 1 顶点，
             // 其 Width/TransformID/ColorIndex 全局变量在 LineQuad 下从不赋值 → NaN）
-            ms += "    const uint base = pc_vertex_index.vertex_base + line_id * 2u;\n";
-            ms += "    const vec3 from = sbo_vertex_position.data[base];\n";
-            ms += "    const vec3 to   = sbo_vertex_position.data[base + 1u];\n";
+            // 支持索引/非索引：非索引顶点号 = vertex_base + 绘制序号（每 2 连续 1 线段）；
+            // 索引走 sbo_vertex_index 查表（线段 = 每 2 连续索引，索引值 + vertex_base 定位——
+            // 与 VS 的 s1_index 语义一致；BoundingBox 线框即 8 顶点 + 24 索引的索引几何）
+            ms += "    uint v0 = pc_vertex_index.vertex_base + line_id * 2u;\n";
+            ms += "    uint v1 = v0 + 1u;\n";
+            ms += "    if (pc_vertex_index.is_indexed != 0u)\n";
+            ms += "    {\n";
+            ms += "        const uint i0 = pc_vertex_index.index_base + line_id * 2u;\n";
+            ms += "        v0 = pc_vertex_index.vertex_base + sbo_vertex_index.data[i0];\n";
+            ms += "        v1 = pc_vertex_index.vertex_base + sbo_vertex_index.data[i0 + 1u];\n";
+            ms += "    }\n";
+            ms += "    const vec3 from = sbo_vertex_position.data[v0];\n";
+            ms += "    const vec3 to   = sbo_vertex_position.data[v1];\n";
 
-            // palette 颜色索引（R8 打包解码——4 索引/uint，与 s1_palette_index 同公式）
-            ms += "    const uint color_index = (sbo_vertex_color.data[base >> 2u] >> ((base & 3u) * 8u)) & 0xFFu;\n";
-
-            // TransformID（uint 直读）
-            ms += "    const uint transform_id = sbo_vertex_transform_id.data[base];\n";
-
-            // 宽度（Size 语义 vec2 取 .x）
-            ms += "    const float width = sbo_vertex_size.data[base].x;\n";
-
-            // 世界空间 quad 展开（l2w 直查 transform_id）
+            // 材质自适应：按实际 include 的 s1_* 模块（材质 requirements）选择读取。
+            // LineQuad 不假设 palette/Size/TransformID 属性都存在——BBox 线等材质
+            // 可能只有 Position（pure_color fallback 等），缺失的属性用 fallback：
+            //   palette 颜色（S1_PALETTE_INDEX_GLSL）→ sbo_vertex_color R8 解码
+            //   TransformID（S1_TRANSFORM_ID_GLSL）→ 直读 + l2w.mats[transform_id]；
+            //     否则 Standard 路径 l2w_index_rows 查表（ResolveTransformID(gl_InstanceIndex)）
+            //   Size/宽度（S1_SIZE_GLSL）→ sbo_vertex_size（width/min_width 在下方统一线宽段定义）
+            ms += "#ifdef S1_PALETTE_INDEX_GLSL\n";
+            ms += "    const uint color_index = (sbo_vertex_color.data[v0 >> 2u] >> ((v0 & 3u) * 8u)) & 0xFFu;\n";
+            ms += "#endif\n";
+            ms += "#ifdef S1_TRANSFORM_ID_GLSL\n";
+            ms += "    const uint transform_id = sbo_vertex_transform_id.data[v0];\n";
             ms += "    const mat4 l2w_m = l2w.mats[transform_id];\n";
+            ms += "#else\n";
+            ms += "    const mat4 l2w_m = l2w.mats[ResolveTransformID(gl_InstanceIndex)];\n";
+            ms += "#endif\n";
+
+            // 世界空间 quad 展开（l2w_m 已在材质自适应段定义）
             ms += "    const vec3 from_world = (l2w_m * vec4(from, 1.0)).xyz;\n";
             ms += "    const vec3 to_world   = (l2w_m * vec4(to, 1.0)).xyz;\n";
 
@@ -368,11 +442,20 @@ namespace hgl::graph::mtl
             ms += "        dir_ndc = vec2(1.0, 0.0);   // 线段投影为点（朝向相机）——退化为水平方向\n";
             ms += "    dir_ndc = normalize(dir_ndc);\n";
             ms += "    const vec2 n_ndc = vec2(-dir_ndc.y, dir_ndc.x);\n";
-            // 深度衰减线宽（近粗远细）：width 为满宽上限（像素），depth（clip.w ≈ 视空间深度）
-            // 越大越细（趋近 0）。参考深度 10.0：深度 <10 满宽（clamp 上限），深度 >10 线性衰减。
-            // 调试线不需要像素级精度——近处粗可见、远处细不遮挡即可。
+            // 统一线宽（一套逻辑）：Size 语义 V2F 存 [满宽(最粗), 最细阈值]——
+            //   width_eff = clamp(满宽 × 深度衰减, 最细, 满宽)
+            //   有 Size（LineRenderPipeline 线宽入 SSBO）：.x=满宽 .y=最细（每线段可指定）
+            //   无 Size（BBox 线等固定线框）：width=1 min=1 → 恒 1 像素（同一公式退化）
+            ms += "#ifdef S1_SIZE_GLSL\n";
+            ms += "    const vec2 line_size = sbo_vertex_size.data[v0];\n";
+            ms += "    const float width = line_size.x;      // 满宽（最粗，用户指定）\n";
+            ms += "    const float min_width = line_size.y;  // 最细阈值（用户指定；深度越大越细，clamp 到此下限）\n";
+            ms += "#else\n";
+            ms += "    const float width = 1.0;              // 无 Size（固定线框）：恒 1 像素\n";
+            ms += "    const float min_width = 1.0;\n";
+            ms += "#endif\n";
             ms += "    const float depth = 0.5 * (c_from.w + c_to.w);\n";
-            ms += "    const float width_eff = width * clamp(10.0 / max(depth, 1e-4), 0.0, 1.0);\n";
+            ms += "    const float width_eff = clamp(width * (10.0 / max(depth, 1e-4)), min_width, width);\n";
             ms += "    const vec2 offset_ndc = n_ndc * (width_eff / pc_vertex_index.viewport_height);\n";
             ms += "    vec4 c0 = c_from; c0.xy += offset_ndc * c_from.w;\n";
             ms += "    vec4 c1 = c_from; c1.xy -= offset_ndc * c_from.w;\n";
@@ -386,6 +469,15 @@ namespace hgl::graph::mtl
             ms += "    gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationIndex * 2u + 1u] = uvec3(vid + 1u, vid + 3u, vid + 2u);\n";
 
             // varying（per-vertex）
+            if (FindMaterialStageInterfaceEntry(*resolved_stage_interface, InterStageSemantic::DataIndexID))
+            {
+                // 与 VS 一致：实例 → mtl_data_index_rows 查表（材质数据槽）
+                ms += "    const uint data_id = ResolveDataIndexID(gl_InstanceIndex);\n";
+                ms += "    fragDataIndexID[vid + 0u] = data_id;\n";
+                ms += "    fragDataIndexID[vid + 1u] = data_id;\n";
+                ms += "    fragDataIndexID[vid + 2u] = data_id;\n";
+                ms += "    fragDataIndexID[vid + 3u] = data_id;\n";
+            }
             if (varying_cfg.emit_vertex_color_from_palette)
             {
                 ms += "    const vec4 lcolor = unpackUnorm4x8(color_palette.color[color_index]);\n";

@@ -166,8 +166,13 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialRecip
                   normalized_recipe.mtl_def_id.c_str());
         return nullptr;
     }
-    const mtl::ResolvedMaterialRenderState render_state =
+    mtl::ResolvedMaterialRenderState render_state =
         mtl::ResolveMaterialRenderState(definition, normalized_recipe);
+
+    // Lines 图元（LineQuad mesh shader 输出 quad 三角形）：绕序不定——强制双面绘制
+    //（cull off；在 hash 前修改——管线缓存 key 一致）
+    if (mtl->GetPrimitiveType() == PrimitiveType::Lines)
+        render_state.pipeline_config.cull_mode = VK_CULL_MODE_NONE;
 
     PipelineData *pd = BuildPipelineData(render_state);
     pd->SetPrim(mtl->GetPrimitiveType(),prim_restart);

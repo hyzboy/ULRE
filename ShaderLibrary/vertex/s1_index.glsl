@@ -20,6 +20,7 @@ layout(push_constant) uniform PC_VertexIndex
     uint is_indexed;
     uint total_vertices;    // mesh shader 边界检查（每帧顶点总数）；VS 材质不用（恒 0）
     float viewport_height;  // mesh shader 线宽像素换算（viewport 像素高度）；VS 材质不用（恒 0）
+    uint first_instance;    // mesh shader 实例基址（= Draw 的 firstInstance——l2w_index_rows 按整批 item 序号写，实例索引 = first_instance + gl_WorkGroupID.y）
 } pc_vertex_index;
 
 layout(set=VERTEX_SET, binding=VERTEX_INDEX_BINDING, std430) readonly buffer VertexIndexData

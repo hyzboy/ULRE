@@ -308,6 +308,64 @@ namespace hgl::ecs
         // 段偏移不同；间接累积提交无法 per-draw——SSBO 材质直接绘制）
         if (ssbo_vertex_input)
         {
+            // mesh shader 材质（ShaderGen 全量 mesh 化后唯一路径）：20B push
+            // （index_base/vertex_base/is_indexed/total_vertices/viewport_height）
+            // + DrawMeshTasks（每线程 1 顶点，threadgroup=64）。
+            // 非 mesh（示例手写管线 VS 材质）：12B push + Draw 原路径。
+            bool is_mesh = false;
+            for (const auto &stage : material->GetStageList())
+            {
+                if (stage.stage == VK_SHADER_STAGE_MESH_BIT_EXT)
+                {
+                    is_mesh = true;
+                    break;
+                }
+            }
+
+            if (is_mesh)
+            {
+                // 实例化：DrawMeshTasks(gx, instance_count)——gl_WorkGroupID.y = 实例索引
+                //（mesh shader 的 gl_InstanceIndex 宏映射；顶点读取是实例内序号，
+                //  VDM 共享顶点/独立 VAB 均正确——每实例重复同一批顶点）
+                struct MeshPC
+                {
+                    uint32_t index_base;
+                    uint32_t vertex_base;
+                    uint32_t is_indexed;
+                    uint32_t total_vertices;
+                    float    viewport_height;
+                    uint32_t first_instance;
+                } pc{};
+
+                pc.index_base      = static_cast<uint32_t>(batch->geom_draw_range->first_index);
+                pc.vertex_base     = static_cast<uint32_t>(batch->geom_draw_range->vertex_offset);
+                pc.is_indexed      = batch->geom_draw_range->index_count > 0 ? 1u : 0u;
+                // total_vertices：索引几何=index_count（每索引 1 顶点查表），非索引=vertex_count（直通）
+                // ——与 VS 的 vertexCount 双语义一致（skill §10）；实例化时是每实例顶点数
+                pc.total_vertices  = batch->geom_draw_range->index_count > 0
+                                   ? static_cast<uint32_t>(batch->geom_draw_range->index_count)
+                                   : static_cast<uint32_t>(batch->geom_draw_range->vertex_count);
+                pc.viewport_height = cmd_buf->GetViewport().height;
+                // first_instance：l2w_index_rows 按整批 item 序号写，mesh 实例索引 =
+                // first_instance + gl_WorkGroupID.y（与 VS 的 gl_InstanceIndex 语义一致）
+                pc.first_instance  = batch->first_instance;
+                cmd_buf->PushConstants(material->GetPipelineLayout(), &pc, sizeof(pc));
+
+                // Mesh shader 绘制：threadgroup 大小按图元类型——Lines（LineQuad）每线程
+                // 1 线段 = 2 顶点 → 线段数 = total_vertices/2，组大小 64；
+                // 其它（VertexPassthrough）每线程 1 顶点，组大小 96（3 的倍数——组内
+                // 三角形永不跨组，避免 64 边界丢三角形）
+                const bool is_lines = material->GetPrimitiveType() == hgl::graph::PrimitiveType::Lines;
+                const uint32_t process_count = is_lines ? (pc.total_vertices >> 1u) : pc.total_vertices;
+                const uint32_t group_size = is_lines ? 64u : 96u;
+                const uint32_t group_count = (process_count + group_size - 1u) / group_size;
+                const uint32_t instance_count = batch->instance_count > 1
+                                              ? static_cast<uint32_t>(batch->instance_count)
+                                              : 1u;
+                cmd_buf->DrawMeshTasks(group_count, instance_count);
+                return true;
+            }
+
             const uint32_t pc_data[3] = {
                 static_cast<uint32_t>(batch->geom_draw_range->first_index),
                 static_cast<uint32_t>(batch->geom_draw_range->vertex_offset),

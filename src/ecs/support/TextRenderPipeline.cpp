@@ -273,8 +273,24 @@ namespace hgl::ecs
 
             // per-draw 段偏移 push constant（text 独立 VAB——段偏移恒 0，
             // 但 shader 静态使用 pc_vertex_index——必须设置；索引统一 uint32）
-            const uint32_t pc_data[3] = {0, 0, 0};   // text 非索引（is_indexed=0——gl_VertexIndex 直通）
-            cmd->PushConstants(res.material->GetPipelineLayout(), pc_data, sizeof(pc_data));
+            // mesh shader（text_2d 材质已 mesh 化）：24B + DrawMeshTasks
+            struct TextPC
+            {
+                uint32_t index_base;
+                uint32_t vertex_base;
+                uint32_t is_indexed;
+                uint32_t total_vertices;
+                float    viewport_height;
+                uint32_t first_instance;
+            } pc{};
+
+            pc.is_indexed      = res.draw_range->index_count > 0 ? 1u : 0u;
+            pc.total_vertices  = res.draw_range->index_count > 0
+                               ? static_cast<uint32_t>(res.draw_range->index_count)
+                               : static_cast<uint32_t>(res.draw_range->vertex_count);
+            pc.viewport_height = cmd->GetViewport().height;
+            pc.first_instance  = 0u;
+            cmd->PushConstants(res.material->GetPipelineLayout(), &pc, sizeof(pc));
 
             cmd->BindDescriptorSets(res.material);
 
@@ -301,7 +317,10 @@ namespace hgl::ecs
             }
 
             // 非索引绘制（SSBO 顶点输入——索引数据走 VertexIndex 槽，段偏移 push constant）
-            cmd->Draw(res.data_buffer, res.draw_range, 1, 0);
+            // mesh shader：DrawMeshTasks（每线程 1 顶点，threadgroup=96——3 的倍数，
+            // 组内三角形永不跨组，避免 64 边界丢三角形）
+            const uint32_t group_count = (pc.total_vertices + 95u) / 96u;
+            cmd->DrawMeshTasks(group_count);
         }
     }
 

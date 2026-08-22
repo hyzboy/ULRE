@@ -211,6 +211,7 @@ namespace hgl::ecs
         const hgl::math::Vector3f& to,
         uint8_t                     color_index,
         float                       width,
+        float                       min_width,
         graph::Assign::TransformID::ValueType transform_index)
     {
         bool pos_valid = va_pos.IsValid();
@@ -240,9 +241,11 @@ namespace hgl::ecs
             return false;
         if (!va_transform.Write(transform_index))
             return false;
-        if (!va_width.Write(hgl::math::Vector2f(width, 0.0f)))
+        // Size 语义 V2F：[满宽(最粗), 最细阈值]——mesh shader 统一 clamp(满宽×衰减, 最细, 满宽)
+        // 每线段 2 顶点（from/to）各写一次
+        if (!va_width.Write(hgl::math::Vector2f(width, min_width)))
             return false;
-        if (!va_width.Write(hgl::math::Vector2f(width, 0.0f)))
+        if (!va_width.Write(hgl::math::Vector2f(width, min_width)))
             return false;
 
         ++line_count;
@@ -295,8 +298,8 @@ namespace hgl::ecs
                                 static_cast<uint32_t>(graph::DescriptorSetType::PerObject),
                                 &ds, 1, nullptr, 0);
 
-        // Push constant（20B）：index_base=0 vertex_base=0 is_indexed=0 total_vertices=line_count*2 viewport_height
-        // viewport_height 供 mesh shader 线宽像素换算（width 为像素，与旧 vkCmdSetLineWidth 语义一致）
+        // Push constant（24B）：index_base=0 vertex_base=0 is_indexed=0 total_vertices=line_count*2
+        // viewport_height（线宽像素换算）first_instance=0（Line 非实例化）
         struct LinePushConstant
         {
             uint32_t index_base;
@@ -304,10 +307,12 @@ namespace hgl::ecs
             uint32_t is_indexed;
             uint32_t total_vertices;
             float    viewport_height;
+            uint32_t first_instance;
         } pc{};
 
         pc.total_vertices = line_count * 2u;
         pc.viewport_height = cmd->GetViewport().height;
+        pc.first_instance = 0u;
         cmd->PushConstants(material->GetPipelineLayout(), &pc, sizeof(pc));
 
         // Mesh shader 绘制：每线程 1 线段，threadgroup = MESH_GROUP_SIZE
@@ -618,6 +623,7 @@ namespace hgl::ecs
                 // P2：width 入 SSBO（删 slot 分组）——单 buffer 顺序写入
                 if (!line_buffer_.AddSegment(seg.from, seg.to, seg.color_index,
                                              static_cast<float>(comp->width),
+                                             seg.min_width,
                                              transform_id))
                 {
                     ++write_fail_count;
