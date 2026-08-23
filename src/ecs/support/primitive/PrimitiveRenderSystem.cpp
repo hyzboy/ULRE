@@ -90,7 +90,6 @@ namespace hgl::ecs
                              batch->draw_batches,
                              batch->draw_batches_count,
                              batch->transform_buffer,
-                             batch->icb_draw,
                              batch,
                              context->GetRenderContext());
         }

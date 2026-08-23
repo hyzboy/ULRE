@@ -240,17 +240,6 @@ bool RenderCmdBuffer::BindDescriptorSets(ShaderProgram *mtl)
 
     return(true);
 }
-void RenderCmdBuffer::DrawIndirect( VkBuffer        buffer,
-                                    VkDeviceSize    offset,
-                                    uint32_t        drawCount,
-                                    uint32_t        stride)
-{
-    if(this->dev_attr->physical_device->SupportMDI())
-        vkCmdDrawIndirect(cmd_buf,buffer,offset,drawCount,stride);
-    else
-    for(uint32_t i=0;i<drawCount;i++)
-        vkCmdDrawIndirect(cmd_buf,buffer,offset+i*stride,1,stride);
-}
 
 void RenderCmdBuffer::Draw(const GeometryDataBuffer *geom_data_buffer,const GeometryDrawRange *geom_draw_range,const uint32_t instance_count,const uint32_t first_instance)
 {

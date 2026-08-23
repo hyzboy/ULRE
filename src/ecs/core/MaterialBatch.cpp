@@ -34,8 +34,15 @@ namespace hgl::ecs
         }
         has_batch_descriptor_overrides = false;
 
-        if (icb_draw)
-            delete icb_draw;
+        if (icb_mesh_tasks)
+            delete icb_mesh_tasks;
+        if (mesh_draw_params_buffer)
+        {
+            if (buffer_manager)
+                buffer_manager->Release(mesh_draw_params_buffer);
+            else
+                delete mesh_draw_params_buffer;
+        }
         if (l2w_index_rows_buffer)
         {
             if (buffer_manager)

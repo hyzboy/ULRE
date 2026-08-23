@@ -14,7 +14,6 @@ namespace hgl
         class CameraInfo;
         class BufferManager;
         class VulkanDevice;
-        class IndirectDrawBuffer;
         class IndirectMeshTaskBuffer;
         class MaterialParameters;
     }
@@ -48,8 +47,6 @@ namespace hgl::ecs
         const graph::CameraInfo *               cameraInfo              = nullptr;          ///<相机信息
         graph::VulkanDevice *                   device                  = nullptr;          ///<设备指针
         graph::BufferManager *                  buffer_manager          = nullptr;          ///<缓冲区管理器
-
-        graph::IndirectDrawBuffer *              icb_draw                = nullptr;          ///<间接绘制命令缓冲（SSBO 统一非索引间接）
 
         // IndirectMeshDraw：mesh shader 间接命令（{X=组数, Y=实例数, Z=1}）+ per-draw 参数表
         //（BuildBatches 与命令同序写行；直接绘制/私有 VBO 走参数表 offset 视图）

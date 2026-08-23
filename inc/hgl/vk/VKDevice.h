@@ -30,7 +30,6 @@ namespace hgl::graph{
 class TileData;
 class TileFont;
 class FontDataSource;
-class IndirectDrawBuffer;
 class IndirectDispatchBuffer;
 class IndirectMeshTaskBuffer;
 class StagedBuffer;
@@ -372,8 +371,6 @@ public: //间接绘制
     bool CreateIndirectCommandBuffer(DeviceBufferData *,const uint32_t cmd_count,const uint32_t cmd_size,BufferAllocPolicy policy,IGPUBuffer **staged_out,const ObjectNameBuilder &name,SharingMode sm=SharingMode::Exclusive);
 
     // 间接绘制缓冲创建（必须传入名字用于追踪）
-    IndirectDrawBuffer *        CreateIndirectDrawBuffer(       const uint32_t cmd_count,const ObjectNameBuilder &name,SharingMode sm=SharingMode::Exclusive);
-    IndirectDrawBuffer *        CreateIndirectDrawBuffer(       const uint32_t cmd_count,BufferAllocPolicy policy,const ObjectNameBuilder &name,SharingMode sm=SharingMode::Exclusive);
     IndirectDispatchBuffer *    CreateIndirectDispatchBuffer(   const uint32_t cmd_count,const ObjectNameBuilder &name,SharingMode sm=SharingMode::Exclusive);
     IndirectDispatchBuffer *    CreateIndirectDispatchBuffer(   const uint32_t cmd_count,BufferAllocPolicy policy,const ObjectNameBuilder &name,SharingMode sm=SharingMode::Exclusive);
     IndirectMeshTaskBuffer *    CreateIndirectMeshTaskBuffer(   const uint32_t cmd_count,const ObjectNameBuilder &name,SharingMode sm=SharingMode::Exclusive);

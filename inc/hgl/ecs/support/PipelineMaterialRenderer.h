@@ -22,7 +22,6 @@ namespace hgl
         class Pipeline;
         class RenderCmdBuffer;
         class VABList;
-        class IndirectDrawBuffer;
         struct GeometryDataBuffer;
         struct GeometryDrawRange;
         class MaterialParameters;
@@ -124,21 +123,19 @@ namespace hgl::ecs
         void BindMeshDrawParamsView(const DrawBatch* batch);
 
         /**
-         * 处理间接渲染
-         * @param icb_draw 间接绘制缓冲（SSBO 顶点输入统一非索引间接）
+         * 处理间接渲染（mesh：一条 vkCmdDrawMeshTasksIndirectEXT multi-draw）
          */
-        void ProcIndirectRender(graph::IndirectDrawBuffer* icb_draw);
+        void ProcIndirectRender();
 
         /**
          * 绘制单个批次
          * @param batch 绘制批次
          * @param transform_buffer ECS Transform分配缓冲
-         * @param icb_draw 间接绘制缓冲（SSBO 顶点输入统一非索引间接）
+         * @param owner_batch 所属材质批（间接命令 + 参数表）
          * @return 绘制是否成功
          */
         bool Draw(DrawBatch* batch,
                   TransformAssignmentBuffer* transform_buffer,
-                  graph::IndirectDrawBuffer* icb_draw,
                   const MaterialBatch *owner_batch = nullptr);
 
     public:
@@ -151,14 +148,12 @@ namespace hgl::ecs
          * @param batches 绘制批次数组
          * @param batch_count 批次数量
          * @param transform_buffer ECS Transform分配缓冲（可为空）
-         * @param icb_draw 间接绘制缓冲（无索引）
-         * @param icb_draw_indexed 间接绘制缓冲（有索引）
+         * @param owner_batch 所属材质批（间接命令 + 参数表）
          */
         void Render(graph::RenderCmdBuffer* rcb,
                     const DrawBatchArray& batches,
                     uint32_t batch_count,
                     TransformAssignmentBuffer* transform_buffer,
-                    graph::IndirectDrawBuffer* icb_draw,
                     const MaterialBatch *owner_batch = nullptr,
                     graph::RenderContext *render_context = nullptr);
     };

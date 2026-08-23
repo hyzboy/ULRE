@@ -40,10 +40,11 @@ namespace hgl::ecs
         per_object_mp_pool.clear();
     }
 
-    void PipelineMaterialRenderer::ProcIndirectRender(graph::IndirectDrawBuffer* icb_draw)
+    void PipelineMaterialRenderer::ProcIndirectRender()
     {
-        // 提交累积的间接绘制命令
-        if (material_is_mesh && cur_owner_batch && cur_owner_batch->icb_mesh_tasks)
+        // 提交累积的 mesh 间接绘制命令：一条 multi-draw（每命令 {X=组数, Y=实例数, Z=1}）
+        //——per-draw 段偏移经 mesh_draw_params 参数表查表（rows[gl_DrawID]）
+        if (cur_owner_batch && cur_owner_batch->icb_mesh_tasks)
         {
             static bool s_logged_once = false;
             if (!s_logged_once)
@@ -52,18 +53,11 @@ namespace hgl::ecs
                 GLogInfo(u8"[IndirectMeshDraw] mesh indirect flush engaged: first=%d count=%u",
                          first_indirect_draw_index, indirect_draw_count);
             }
-            // mesh 间接：一条 multi-draw（每命令 {X=组数, Y=实例数, Z=1}）——
-            // per-draw 段偏移经 mesh_draw_params 参数表查表（rows[gl_DrawID]）
             cmd_buf->DrawMeshTasksIndirect(
                 cur_owner_batch->icb_mesh_tasks->GetVkBuffer(),
                 static_cast<VkDeviceSize>(first_indirect_draw_index)
                     * sizeof(VkDrawMeshTasksIndirectCommandEXT),
                 indirect_draw_count);
-        }
-        else if (icb_draw)
-        {
-            // legacy：统一非索引间接——索引数据走 sbo_index
-            icb_draw->Draw(*cmd_buf, first_indirect_draw_index, indirect_draw_count);
         }
 
         // 重置间接绘制状态（命令序号累计到本批次已提交段）
@@ -104,7 +98,6 @@ namespace hgl::ecs
 
     bool PipelineMaterialRenderer::Draw( DrawBatch* batch,
                                             TransformAssignmentBuffer* transform_buffer,
-                                            graph::IndirectDrawBuffer* icb_draw,
                                             const MaterialBatch *owner_batch)
     {
         (void)transform_buffer;
@@ -118,7 +111,7 @@ namespace hgl::ecs
             // 先提交之前累积的间接绘制
             if (indirect_draw_count)
             {
-                ProcIndirectRender(icb_draw);
+                ProcIndirectRender();
             }
 
             // 更新缓冲状态
@@ -300,40 +293,10 @@ namespace hgl::ecs
 
                 return true;
             }
-
-            const uint32_t pc_data[3] = {
-                static_cast<uint32_t>(batch->geom_draw_range->first_index),
-                static_cast<uint32_t>(batch->geom_draw_range->vertex_offset),
-                batch->geom_draw_range->index_count > 0 ? 1u : 0u    // is_indexed：几何有 IBO 走索引绘制（查表）
-            };
-            cmd_buf->PushConstants(material->GetPipelineLayout(), pc_data, sizeof(pc_data));
         }
 
-        // 提交绘制命令
-        if (batch->geom_data_buffer->vdm && !ssbo_vertex_input)
-        {
-            // 间接绘制：累积命令。命令偏移取本批次 ICB 的命令序号累计，
-            // 不能用 first_instance（实例索引）——vdm/非 vdm 混排时二者脱节，
-            // 会读取到未写入/错误的 ICB 命令。
-            // 注：SSBO 顶点输入材质不走间接——段偏移（index_base/vertex_base）
-            // 经 push constant per-draw 传递，间接累积提交时只有最后一条命令
-            // 的 push constant 生效（多段偏移冲突）；直接绘制 per-draw 正确。
-            if (indirect_draw_count == 0)
-            {
-                first_indirect_draw_index =
-                    static_cast<int32_t>(indirect_draw_command_offset);
-            }
-
-            ++indirect_draw_count;
-        }
-        else
-        {
-            // 直接绘制：立即提交（SSBO 顶点输入统一非索引绘制——索引数据走
-            // 顶点索引 SSBO，段偏移在 shader 内经 push constant 定位）
-            cmd_buf->Draw(batch->geom_data_buffer, batch->geom_draw_range,
-                         batch->instance_count, batch->first_instance);
-        }
-
+        // mesh 为唯一顶点路径（VS 已彻底删除）——SSBO 顶点输入材质必走上方 mesh
+        // 分支；执行到此说明材质 schema 异常（无顶点 SSBO 且非 mesh），无绘制路径
         return true;
     }
 
@@ -341,7 +304,6 @@ namespace hgl::ecs
                                               const DrawBatchArray& batches,
                                               uint32_t batch_count,
                                               TransformAssignmentBuffer* transform_buffer,
-                                              graph::IndirectDrawBuffer* icb_draw,
                                               const MaterialBatch *owner_batch,
                                               graph::RenderContext *render_context)
     {
@@ -506,14 +468,14 @@ namespace hgl::ecs
                 batch->per_object_mp = per_object_mp_pool[pool_index];
             }
 
-            Draw(batch, transform_buffer, icb_draw, owner_batch);
+            Draw(batch, transform_buffer, owner_batch);
             ++batch;
         }
 
         // 提交剩余的间接绘制命令
         if (indirect_draw_count)
         {
-            ProcIndirectRender(icb_draw);
+            ProcIndirectRender();
         }
     }
 }//namespace hgl::ecs

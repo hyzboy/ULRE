@@ -47,12 +47,6 @@ namespace hgl::ecs
 
         void ReleaseICB(MaterialBatch &batch)
         {
-            if (batch.icb_draw)
-            {
-                delete batch.icb_draw;
-                batch.icb_draw = nullptr;
-            }
-
             if (batch.icb_mesh_tasks)
             {
                 delete batch.icb_mesh_tasks;
@@ -73,19 +67,6 @@ namespace hgl::ecs
             }
 
             return false;
-        }
-
-        void WriteICB(VkDrawIndirectCommand* draw_cmd, DrawBatch* batch)
-        {
-            if (!draw_cmd || !batch || !batch->geom_draw_range)
-                return;
-
-            draw_cmd->vertexCount = (batch->geom_draw_range->index_count > 0)
-                ? batch->geom_draw_range->index_count
-                : batch->geom_draw_range->vertex_count;
-            draw_cmd->instanceCount = batch->instance_count;
-            draw_cmd->firstVertex = 0;   // SSBO 顶点输入：段偏移走 push constant（vertex_base）
-            draw_cmd->firstInstance = batch->first_instance;
         }
 
         uint64_t ResolveSSBOBindingSignature(RenderItem *item)
@@ -344,13 +325,13 @@ namespace hgl::ecs
 
         if (world && !world->GetResourceNamePrefix().empty())
         {
-            std::string draw_str = world->GetResourceNamePrefix() + ":IndirectDrawBuffer";
+            std::string draw_str = world->GetResourceNamePrefix() + ":IndirectMeshTaskBuffer";
 
             draw_name = graph::ObjectNameBuilder(draw_str.c_str());
         }
         else
         {
-            draw_name = graph::ObjectNameBuilder("RPBS_IndirectDrawBuffer");
+            draw_name = graph::ObjectNameBuilder("RPBS_IndirectMeshTaskBuffer");
         }
 
         return draw_name;
@@ -366,24 +347,18 @@ namespace hgl::ecs
         while (icb_new_count < batch.items.size())
             icb_new_count <<= 1;
 
-        // IndirectMeshDraw：mesh 材质需 mesh 命令缓冲（与 legacy ICB 同容量策略）
-        const bool mesh_material = ProgramHasMeshStage(batch.key.shader_program);
-
-        if (batch.icb_draw
-         && icb_new_count <= batch.icb_draw->GetMaxCount()
-         && (!mesh_material
-             || (batch.icb_mesh_tasks
-                 && icb_new_count <= batch.icb_mesh_tasks->GetMaxCount())))
+        if (batch.icb_mesh_tasks && icb_new_count <= batch.icb_mesh_tasks->GetMaxCount())
             return;
 
-        ReleaseICB(batch);
+        if (batch.icb_mesh_tasks)
+        {
+            delete batch.icb_mesh_tasks;
+            batch.icb_mesh_tasks = nullptr;
+        }
 
         auto draw_name = BuildICBNames();
 
-        batch.icb_draw = device->CreateIndirectDrawBuffer(icb_new_count, draw_name);
-
-        if (mesh_material)
-            batch.icb_mesh_tasks = device->CreateIndirectMeshTaskBuffer(icb_new_count, draw_name);
+        batch.icb_mesh_tasks = device->CreateIndirectMeshTaskBuffer(icb_new_count, draw_name);
     }
 
     void PrimitiveBatchPipeline::BuildBatches(MaterialBatch& batch, const uint32_t base_instance)
@@ -408,7 +383,7 @@ namespace hgl::ecs
         {
             ReallocICB(batch);
 
-            if (!batch.icb_draw)
+            if (!batch.icb_mesh_tasks)
             {
                 batch.draw_batches_count = 0;
                 batch.draw_batches.clear();
@@ -418,21 +393,6 @@ namespace hgl::ecs
         else
         {
             ReleaseICB(batch);
-        }
-
-        VkDrawIndirectCommand* draw_cmd = nullptr;
-
-        if (needs_indirect)
-        {
-            draw_cmd = batch.icb_draw->MapCmd();
-
-            if (!draw_cmd)
-            {
-                batch.icb_draw->Unmap();
-                batch.draw_batches_count = 0;
-                batch.draw_batches.clear();
-                return;
-            }
         }
 
         batch.draw_batches.clear();
@@ -452,11 +412,6 @@ namespace hgl::ecs
 
         if (!data_buffer || !draw_range)
         {
-            // needs_indirect==false 时 ICB 已被 ReleaseICB 置空，Unmap 会崩溃
-            if (needs_indirect)
-            {
-                batch.icb_draw->Unmap();
-            }
             batch.draw_batches_count = 0;
             batch.draw_batches.clear();
             return;
@@ -489,11 +444,6 @@ namespace hgl::ecs
                 continue;
             }
 
-            if (needs_indirect && draw_batch->geom_data_buffer && draw_batch->geom_data_buffer->vdm)
-            {
-                WriteICB(draw_cmd++, draw_batch);
-            }
-
             ++batch.draw_batches_count;
             ++draw_batch;
 
@@ -503,16 +453,6 @@ namespace hgl::ecs
 
             current_data_buffer = draw_batch->geom_data_buffer;
             current_draw_range = draw_batch->geom_draw_range;
-        }
-
-        if (needs_indirect && draw_batch->geom_data_buffer && draw_batch->geom_data_buffer->vdm)
-        {
-            WriteICB(draw_cmd, draw_batch);
-        }
-
-        if (needs_indirect)
-        {
-            batch.icb_draw->Unmap();
         }
 
         // ── IndirectMeshDraw：mesh 命令 + per-draw 参数行（后置统一写）──

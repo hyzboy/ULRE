@@ -72,31 +72,6 @@ bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint3
     return(true);
 }
 
-// 新版本：带名字追踪
-IndirectDrawBuffer *VulkanDevice::CreateIndirectDrawBuffer(const uint32_t cmd_count,const ObjectNameBuilder &name,SharingMode sm)
-{
-    return CreateIndirectDrawBuffer(cmd_count,BufferAllocPolicy::Auto,name,sm);
-}
-
-IndirectDrawBuffer *VulkanDevice::CreateIndirectDrawBuffer(const uint32_t cmd_count,BufferAllocPolicy policy,const ObjectNameBuilder &name,SharingMode sm)
-{
-    HGL_CAPTURE_SCOPE();
-    DeviceBufferData buf;
-    IGPUBuffer *staged=nullptr;
-
-    if(!CreateIndirectCommandBuffer(&buf,cmd_count,sizeof(VkDrawIndirectCommand),policy,&staged,name,sm))
-        return(nullptr);
-
-    if(staged)
-    {
-        auto *buf_obj = new IndirectDrawBuffer(attr->device,buf,cmd_count);
-        buf_obj->SetStagedSource(staged);
-        return buf_obj;
-    }
-
-    return(new IndirectDrawBuffer(attr->device,buf,cmd_count));
-}
-
 IndirectMeshTaskBuffer *VulkanDevice::CreateIndirectMeshTaskBuffer(const uint32_t cmd_count,const ObjectNameBuilder &name,SharingMode sm)
 {
     return CreateIndirectMeshTaskBuffer(cmd_count,BufferAllocPolicy::Auto,name,sm);

@@ -51,24 +51,6 @@ public:
     VkBuffer GetVkBuffer() const { return GetGPUBuffer()->GetVkDeviceBuffer(); }
 };//class IndirectCommandBuffer:public VkBufferOwner
 
-class IndirectDrawBuffer:public IndirectCommandBuffer<VkDrawIndirectCommand>
-{
-    friend class VulkanDevice;
-
-public:
-
-    using IndirectCommandBuffer<VkDrawIndirectCommand>::IndirectCommandBuffer;
-
-    void Draw(VkCommandBuffer cmd_buf,uint32_t cmd_offset,uint32_t draw_count) const
-    {
-        vkCmdDrawIndirect(cmd_buf,
-                          GetVkBuffer(),
-                          cmd_offset*sizeof(VkDrawIndirectCommand),
-                          draw_count,
-                          sizeof(VkDrawIndirectCommand));
-    }
-};//class IndirectDrawBuffer:public IndirectCommandBuffer<VkDrawIndirectCommand>
-
 /**
  * mesh shader 间接绘制命令缓冲（VK_EXT_mesh_shader）
  * 每条命令 {groupCountX, groupCountY, groupCountZ}——引擎约定：
