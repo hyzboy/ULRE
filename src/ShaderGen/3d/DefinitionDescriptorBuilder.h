@@ -15,7 +15,7 @@ namespace hgl::graph::mtl
 struct BuildDescriptorOptions
 {
     uint32_t sky_stage_flags = uint32_t(hgl::graph::kAllGraphicsOrMesh);
-    uint32_t color_palette_stage_flags = uint32_t(VK_SHADER_STAGE_VERTEX_BIT);
+    uint32_t color_palette_stage_flags = uint32_t(hgl::graph::kAllGraphicsOrMesh);
     uint32_t material_texture_layer_table_stage_flags = uint32_t(hgl::graph::kAllGraphicsOrMesh);
 };
 

@@ -28,7 +28,8 @@
 #include <hgl/filesystem/Path.h>
 #include "../../ShaderGen/3d/DefinitionDescriptorBuilder.h"
 #include "../../ShaderGen/common/VertexBuilderCommon.h"
-#include "../../ShaderGen/common/VertexShaderAssembler.h"
+#include "../../ShaderGen/common/VertexVaryingConfig.h"
+#include "../../ShaderGen/common/MeshShaderAssembler.h"   // GenerateMeshShader / MeshShaderMode
 
 #include <algorithm>
 #include <cstdint>
@@ -868,12 +869,17 @@ namespace
         lit_varying.emit_world_pos = true;
         lit_varying.emit_world_normal = true;
         lit_varying.emit_uv0 = true;
-        const std::string lit_vs = GenerateVertexShader(
+        const std::string lit_vs = GenerateMeshShader(
             MakeDefault3DNodeConfig(),
             lit_varying,
             VK_FORMAT_R32G32B32_SFLOAT,
             {},
-            GetShaderLibraryPath());
+            MeshShaderMode::VertexPassthrough,
+            96u,
+            GetShaderLibraryPath(),
+            {},
+            nullptr,
+            hgl::graph::PrimitiveType::Triangles);
         if (lit_vs.find(
                 "layout(location=0) flat out uint fragDataIndexID;")
                 == std::string::npos
@@ -893,12 +899,17 @@ namespace
 
         VertexVaryingConfig color_varying{};
         color_varying.emit_vertex_color = true;
-        const std::string color_vs = GenerateVertexShader(
+        const std::string color_vs = GenerateMeshShader(
             MakeDefault3DNodeConfig(),
             color_varying,
             VK_FORMAT_R32G32B32_SFLOAT,
             {},
-            GetShaderLibraryPath());
+            MeshShaderMode::VertexPassthrough,
+            96u,
+            GetShaderLibraryPath(),
+            {},
+            nullptr,
+            hgl::graph::PrimitiveType::Triangles);
         if (color_vs.find(
                 "layout(location=5) out vec4 fragVertexColor;")
                 == std::string::npos
@@ -3258,9 +3269,11 @@ namespace
 
         const auto build = [&](const VertexShaderNodeConfig &graph)
         {
-            return GenerateVertexShader(
+            return GenerateMeshShader(
                 graph, varying, VK_FORMAT_R32G32B32_SFLOAT,
-                GetShaderLibraryPath());
+                {}, MeshShaderMode::VertexPassthrough, 96u,
+                GetShaderLibraryPath(), {}, nullptr,
+                hgl::graph::PrimitiveType::Triangles);
         };
 
         const std::string flat = build(VertexNodeConfigResolver::FlatXY());
@@ -4800,7 +4813,7 @@ namespace
             {
                 DescriptorSetType::PerObject,
                 DescriptorKind::SSBO,
-                uint32_t(VK_SHADER_STAGE_VERTEX_BIT),
+                uint32_t(hgl::graph::kAllGraphicsOrMesh),
                 "mtl_data_index_rows",
                 "DataIndexRows",
                 nullptr,
@@ -4961,7 +4974,7 @@ namespace
                 entries[0], entries[1]
             };
             visibility_changed_entries[1].stage_flags =
-                uint32_t(VK_SHADER_STAGE_VERTEX_BIT);
+                uint32_t(hgl::graph::kAllGraphicsOrMesh);
             DescriptorContract visibility_changed{};
             if (!BuildDescriptorContract(
                     visibility_changed_entries,
@@ -5254,7 +5267,7 @@ namespace
         descriptor_builder_common::AppendDefinitionMaterialDescriptors(
             descriptors,
             definition,
-            uint32_t(VK_SHADER_STAGE_VERTEX_BIT),
+            uint32_t(hgl::graph::kAllGraphicsOrMesh),
             uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT));
 
         ModuleResourceManifest compatible_manifest{};
@@ -5566,7 +5579,7 @@ int main(const int argc, char **argv)
 
         constexpr SerializedDescriptorEntry palette_explicit[] =
         {
-            { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "color_palette", "ColorPalette", nullptr, DescriptorSemantic::MaterialColorPalette, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
+            { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(hgl::graph::kAllGraphicsOrMesh), "color_palette", "ColorPalette", nullptr, DescriptorSemantic::MaterialColorPalette, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
         };
         results.push_back(RunValidationCase("C.scene-color-palette-explicit", palette_explicit, 1, true));
     }

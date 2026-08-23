@@ -177,7 +177,7 @@ namespace
                 out_vertex_input_glsl += "#include \"vertex/s1_size.glsl\"\n";
 
             // 位置模块按 effective input 选择（position_format 判定——与
-            // VertexShaderAssembler 一致：geometry 格式说了算，recipe/TOML input 仅兜底）
+            // MeshShaderAssembler 一致：geometry 格式说了算，recipe/TOML input 仅兜底）
             VertexInputMode effective_input = definition.vertex_node_config.input;
             if (out_position_format == VK_FORMAT_R32G32_SINT || out_position_format == VK_FORMAT_R32G32_UINT ||
                 out_position_format == VK_FORMAT_R16G16_SINT || out_position_format == VK_FORMAT_R16G16_UINT)

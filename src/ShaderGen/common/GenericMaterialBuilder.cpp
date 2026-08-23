@@ -20,7 +20,7 @@
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/mtl/GLSLCodeModuleCapabilityResolver.h>
 #include "3d/DefinitionDescriptorBuilder.h"
-#include "common/VertexShaderAssembler.h"
+#include "common/VertexVaryingConfig.h"
 #include "common/MeshShaderAssembler.h"
 #include "common/GenericMaterialBuilder.h"
 
@@ -537,9 +537,8 @@ namespace hgl::graph::mtl
 
         GenericMaterialBuildPlan plan{};
 
-        // Mesh shader 材质：mesh_shader=true 无条件（彻底废弃 VS——mesh 是唯一顶点路径，
-        // 不做触发标志/分支；Lines 走 LineQuad，其余走 VertexPassthrough）
-        plan.mesh_shader = true;
+        // Mesh shader 材质：mesh 是唯一顶点路径（彻底废弃 VS——不做触发标志/分支；
+        // Lines 走 LineQuad，其余走 VertexPassthrough）
         plan.primitive_type = request.primitive_type;
 
         if (!ResolvePurposeAndCoverage(definition, request, plan))

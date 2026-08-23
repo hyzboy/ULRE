@@ -17,6 +17,7 @@
 #include <hgl/mtl/MaterialStageInterface.h>
 #include <vulkan/vulkan.h>
 #include <string>
+#include "VertexVaryingConfig.h"   // mtl::VertexVaryingConfig
 
 namespace hgl::graph::mtl
 {
