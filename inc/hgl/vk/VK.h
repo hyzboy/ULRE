@@ -235,8 +235,6 @@ enum class DynamicState:uint32_t
     ENUM_CLASS_RANGE(Viewport,LineStipple)
 };
 
-struct VertexInputAttribute;
-
 class ShaderResource;
 class ShaderModule;
 class ShaderModuleMap;
@@ -248,7 +246,6 @@ struct PipelineData;
 class Pipeline;
 
 struct VAConfig;
-class VertexInput;
 
 struct VertexInputFormat;
 using VIF=VertexInputFormat;

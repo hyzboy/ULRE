@@ -7,7 +7,7 @@
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/vk/VKShaderModuleMap.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
-#include<hgl/vk/VKVertexInput.h>
+#include<hgl/common/ShaderStageDef.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/ShaderProgramCreatePrecheckAdapter.h>
 #include<hgl/graph/module/ShaderProgramFinalizeFlowAdapter.h>

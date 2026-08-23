@@ -1,6 +1,5 @@
 ﻿#include<hgl/vk/VertexAttrib.h>
 #include<hgl/vk/VKFormat.h>
-#include<hgl/vk/VKVertexInputAttribute.h>
 
 namespace hgl
 {
@@ -97,18 +96,6 @@ namespace hgl
                 return VK_FORMAT_UNDEFINED;
 
             return vk_format_by_basetype[size_t(type->basetype)][type->vec_size-1];
-        }
-
-        const VkFormat GetVulkanFormat(const VertexInputAttribute *sa)
-        {
-            if(!sa)return VK_FORMAT_UNDEFINED;
-
-            RANGE_CHECK_RETURN(VABaseType(sa->basetype),VK_FORMAT_UNDEFINED)
-
-            if(sa->vec_size<=0||sa->vec_size>4)
-                return VK_FORMAT_UNDEFINED;
-
-            return vk_format_by_basetype[size_t(sa->basetype)][sa->vec_size-1];
         }
     }//namespace graph
 }//namespace hgl

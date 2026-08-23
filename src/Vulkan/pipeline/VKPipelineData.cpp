@@ -1,5 +1,4 @@
 ﻿#include<hgl/vk/pipeline/VKPipelineData.h>
-#include<hgl/vk/VKVertexInputFormat.h>
 #include<hgl/vk/VKDeviceAttribute.h>
 #include<hgl/type/MemoryUtil.h>
 

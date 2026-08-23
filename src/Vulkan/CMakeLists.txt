@@ -120,13 +120,11 @@ SET(VK_MEMORY_FILES             ${VK_INCLUDE_PATH}/VKMemory.h
 SOURCE_GROUP("Memory" FILES ${VK_MEMORY_FILES})
 
 # --- 3. Vertex Input (与 Vulkan 底层密切) ---
-SET(VK_VERTEX_INPUT_FILES       ${VK_INCLUDE_PATH}/VKVertexInput.h
-                                ${VK_INCLUDE_PATH}/VKVertexInputAttribute.h
-                                ${VK_INCLUDE_PATH}/VKVertexInputFormat.h
+# VBO 输入类已删（mesh 化后顶点输入统一走 SSBO）；保留 VIF(VertexInputFormat)/VAB/VABList
+SET(VK_VERTEX_INPUT_FILES       ${VK_INCLUDE_PATH}/VKVertexInputFormat.h
                                 ${VK_INCLUDE_PATH}/VKVertexAttribBuffer.h
                                 ${VK_INCLUDE_PATH}/VKVABList.h
                                 ${VK_INCLUDE_PATH}/VKPrimitiveType.h
-                                VKVertexInput.cpp
                                 VkPrimitiveType.cpp)
 
 SOURCE_GROUP("VertexInput" FILES ${VK_VERTEX_INPUT_FILES})

@@ -1,4 +1,6 @@
-﻿#include<hgl/vk/VKVertexInputAttribute.h>
+﻿#include<hgl/common/ShaderStageDef.h>
+#include<hgl/CoreType.h>
+#include<hgl/type/Str.Comp.h>
 
 namespace hgl
 {
@@ -14,10 +16,6 @@ namespace hgl
 
             constexpr const ShaderStageFlagBitName shader_stage_name_list[]=
             {
-                {VK_SHADER_STAGE_VERTEX_BIT,                    "Vertex"        },
-                {VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,      "TessControl"   },
-                {VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,   "TeseEval"      },
-                {VK_SHADER_STAGE_GEOMETRY_BIT,                  "Geometry"      },
                 {VK_SHADER_STAGE_FRAGMENT_BIT,                  "Fragment"      },
                 {VK_SHADER_STAGE_COMPUTE_BIT,                   "Compute"       },
                 {VK_SHADER_STAGE_TASK_BIT_NV,                   "Task"          },
@@ -37,7 +35,7 @@ namespace hgl
 
         const char *GetShaderStageName(const VkShaderStageFlagBits &type)
         {
-            if(type==0||type>VK_SHADER_STAGE_SUBPASS_SHADING_BIT_HUAWEI)
+            if(type==0||type>VK_SHADER_STAGE_CLUSTER_CULLING_BIT_HUAWEI)
                 return(UNKNOW_SHADER_STAGE_NAME);
 
             for(auto &ss:shader_stage_name_list)

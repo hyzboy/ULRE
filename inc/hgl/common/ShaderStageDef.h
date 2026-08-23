@@ -24,4 +24,10 @@ namespace hgl::graph
     // 声明不存在的 stage 位虽合法（Vulkan 允许超集），但零兼容原则下不保留。
     constexpr uint32_t kMeshFragment =
         VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    // ── shader stage 工具函数（原 VertexInputDef.h，VBO 输入类删除后迁移至此）──
+    const unsigned int GetShaderCountByBits(const uint32_t bits);
+    const unsigned int GetMaxShaderStage(const uint32_t bits);
+    const char *GetShaderStageName(const VkShaderStageFlagBits &);
+    const unsigned int GetShaderStageFlagBits(const char *,int len=0);
 }

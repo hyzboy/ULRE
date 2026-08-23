@@ -2,8 +2,6 @@
 
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKRenderTarget.h>
-#include<hgl/vk/VKVertexInput.h>
-#include<hgl/vk/VKVertexInputFormat.h>
 #include <hgl/graph/core/GraphicsContext.h>
 namespace hgl::graph
 {

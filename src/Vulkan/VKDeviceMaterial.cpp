@@ -4,7 +4,6 @@
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKDescriptorSet.h>
 #include<hgl/vk/VKShaderModuleMap.h>
-#include<hgl/vk/VKVertexInputFormat.h>
 #include<hgl/vk/pipeline/VKPipelineLayoutData.h>
 
 namespace hgl::graph{

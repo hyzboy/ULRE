@@ -546,9 +546,6 @@ namespace hgl::graph
                 (library_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) != 0;
             const bool fragment_output =
                 (library_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT) != 0;
-            const bool has_tessellation_shader =
-                HasShaderStage(stages, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)
-                || HasShaderStage(stages, VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
 
             VkGraphicsPipelineCreateInfo create_info = pd->pipeline_info;
             create_info.pNext = &library_info;
@@ -573,9 +570,8 @@ namespace hgl::graph
 
             create_info.pVertexInputState = vertex_input_interface ? pd->pipeline_info.pVertexInputState : nullptr;
             create_info.pInputAssemblyState = vertex_input_interface ? pd->pipeline_info.pInputAssemblyState : nullptr;
-            create_info.pTessellationState = pre_rasterization && has_tessellation_shader
-                                           ? pd->pipeline_info.pTessellationState
-                                           : nullptr;
+            // 引擎无 tessellation shader（VS/Tess/Geometry 已彻底废弃）——pTessellationState 恒 nullptr
+            create_info.pTessellationState = nullptr;
             create_info.pViewportState = pre_rasterization ? pd->pipeline_info.pViewportState : nullptr;
             create_info.pRasterizationState = pre_rasterization ? pd->pipeline_info.pRasterizationState : nullptr;
             create_info.pMultisampleState = (pre_rasterization || fragment_shader || fragment_output)
