@@ -611,7 +611,7 @@ ShaderBuildContext *CompileCompositorMaterial(
             && !HasDescriptorSemanticInDef(DescriptorSemantic::MaterialDataIndexTable))
         {
             ctx->AddStruct(SBS_MaterialDataIndexRows.struct_name, "");
-            ctx->AddSSBO(hgl::graph::kAllGraphicsOrMesh,
+            ctx->AddSSBO(hgl::graph::kMeshFragment,
                          SBS_MaterialDataIndexRows.set_type,
                          SBS_MaterialDataIndexRows.struct_name,
                          SBS_MaterialDataIndexRows.name);

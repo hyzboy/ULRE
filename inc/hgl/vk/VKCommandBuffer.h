@@ -168,11 +168,11 @@ public:
     // 显式 layout 版（pipeline_layout 成员可能未设置——owner_batch 单集绑定分支）
     void PushConstants(VkPipelineLayout layout,const void *data,const uint32_t size)
     {
-        vkCmdPushConstants(cmd_buf,layout,(VkShaderStageFlagBits)hgl::graph::kAllGraphicsOrMesh,0,size,data);
+        vkCmdPushConstants(cmd_buf,layout,(VkShaderStageFlagBits)hgl::graph::kMeshFragment,0,size,data);
     }
 
-    void PushConstants(const void *data,const uint32_t size)                        {vkCmdPushConstants(cmd_buf,pipeline_layout,(VkShaderStageFlagBits)hgl::graph::kAllGraphicsOrMesh,0,       size,data);}
-    void PushConstants(const void *data,const uint32_t offset,const uint32_t size)  {vkCmdPushConstants(cmd_buf,pipeline_layout,(VkShaderStageFlagBits)hgl::graph::kAllGraphicsOrMesh,offset,  size,data);}
+    void PushConstants(const void *data,const uint32_t size)                        {vkCmdPushConstants(cmd_buf,pipeline_layout,(VkShaderStageFlagBits)hgl::graph::kMeshFragment,0,       size,data);}
+    void PushConstants(const void *data,const uint32_t offset,const uint32_t size)  {vkCmdPushConstants(cmd_buf,pipeline_layout,(VkShaderStageFlagBits)hgl::graph::kMeshFragment,offset,  size,data);}
 
     void SetViewport        (uint32_t first,uint32_t count,const VkViewport *vp)    {vkCmdSetViewport(cmd_buf,first,count,vp);}
     void SetScissor         (uint32_t first,uint32_t count,const VkRect2D *sci)     {vkCmdSetScissor(cmd_buf,first,count,sci);}

@@ -14,9 +14,9 @@ namespace hgl::graph::mtl
 {
 struct BuildDescriptorOptions
 {
-    uint32_t sky_stage_flags = uint32_t(hgl::graph::kAllGraphicsOrMesh);
-    uint32_t color_palette_stage_flags = uint32_t(hgl::graph::kAllGraphicsOrMesh);
-    uint32_t material_texture_layer_table_stage_flags = uint32_t(hgl::graph::kAllGraphicsOrMesh);
+    uint32_t sky_stage_flags = uint32_t(hgl::graph::kMeshFragment);
+    uint32_t color_palette_stage_flags = uint32_t(hgl::graph::kMeshFragment);
+    uint32_t material_texture_layer_table_stage_flags = uint32_t(hgl::graph::kMeshFragment);
 };
 
 inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
@@ -29,21 +29,21 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
     descriptor_builder_common::AppendDefinitionUBODescriptors(
         descriptors,
         definition,
-        uint32_t(hgl::graph::kAllGraphicsOrMesh),
+        uint32_t(hgl::graph::kMeshFragment),
         opt.sky_stage_flags,
         opt.color_palette_stage_flags);
 
     if (definition.vertex_node_config.projection != ProjectionMode::OrthoViewport
      && definition.vertex_node_config.projection != ProjectionMode::ClipPassthrough)
     {
-        descriptor_builder_common::PushLocalToWorld(descriptors, DescriptorKind::SSBO, hgl::graph::kAllGraphicsOrMesh);
-        descriptor_builder_common::PushLocalToWorldIndexRows(descriptors, hgl::graph::kAllGraphicsOrMesh);
+        descriptor_builder_common::PushLocalToWorld(descriptors, DescriptorKind::SSBO, hgl::graph::kMeshFragment);
+        descriptor_builder_common::PushLocalToWorldIndexRows(descriptors, hgl::graph::kMeshFragment);
     }
 
     descriptor_builder_common::AppendDefinitionMaterialDescriptors(
         descriptors,
         definition,
-        uint32_t(hgl::graph::kAllGraphicsOrMesh),
+        uint32_t(hgl::graph::kMeshFragment),
         opt.material_texture_layer_table_stage_flags);
 
     return descriptors;
@@ -71,7 +71,7 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
     // stage 位用 ALL_GRAPHICS：mesh shader 材质（彻底废弃 VS 方向）在 Mesh stage 读顶点 SSBO，
     // 传统材质在 Vertex stage 读——统一为 ALL_GRAPHICS 避免对具体 stage 的依赖
     {
-        const uint32_t vertex_stage = hgl::graph::kAllGraphicsOrMesh;
+        const uint32_t vertex_stage = hgl::graph::kMeshFragment;
         bool need_uv = false, need_ntb = false, need_color = false, need_luminance = false, need_transform_id = false, need_size = false;
         for (int i = 0; i < definition.vertex_semantic_requirements.GetCount(); ++i)
         {
@@ -111,7 +111,7 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
      || !descriptor_builder_common::AppendManifestTextureLayerDescriptors(descriptors, manifest))
         return {};
     descriptor_builder_common::EnsureMaterialDataIndexTable(
-        descriptors, uint32_t(hgl::graph::kAllGraphicsOrMesh));
+        descriptors, uint32_t(hgl::graph::kMeshFragment));
 
     return descriptors;
 }

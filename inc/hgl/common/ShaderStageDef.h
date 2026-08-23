@@ -15,14 +15,13 @@ namespace hgl::graph
         MeshFragment                = Mesh | Fragment,
 
         TaskMesh                    = Task | Mesh,
-        TaskMeshFragment            = Task | Mesh | Fragment,
-
-        AllGraphics                 = VK_SHADER_STAGE_ALL_GRAPHICS
+        TaskMeshFragment            = Task | Mesh | Fragment
     };
 
-    // 顶点处理阶段（MeshShader 方向：彻底废弃 VS/Tess/Geometry）——mesh shader 使用
-    // descriptor（顶点数据 SSBO / L2W / camera / palette 等），stage 位须覆盖 mesh。
-    // 注意 VK_SHADER_STAGE_ALL_GRAPHICS 不含 MESH/TASK 位，必须显式追加。
-    constexpr uint32_t kAllGraphicsOrMesh =
-        VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_MESH_BIT_EXT;
+    // 所有实际存在的图形 stage 位（mesh shader 唯一顶点路径，VS/Tess/Geometry 已彻底废弃；
+    // 引擎无 Task stage，descriptor / push constant 只声明 Mesh + Fragment）。
+    // 注意：descriptor/push constant 的 stageFlags 只需包含实际访问的 stage；
+    // 声明不存在的 stage 位虽合法（Vulkan 允许超集），但零兼容原则下不保留。
+    constexpr uint32_t kMeshFragment =
+        VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_FRAGMENT_BIT;
 }

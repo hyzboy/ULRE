@@ -4836,7 +4836,7 @@ namespace
             {
                 DescriptorSetType::PerObject,
                 DescriptorKind::SSBO,
-                uint32_t(hgl::graph::kAllGraphicsOrMesh),
+                uint32_t(hgl::graph::kMeshFragment),
                 "mtl_data_index_rows",
                 "DataIndexRows",
                 nullptr,
@@ -4949,7 +4949,7 @@ namespace
                 {
                     DescriptorSetType::Scene,
                     DescriptorKind::UBO,
-                    uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS),
+                    uint32_t(hgl::graph::kMeshFragment),
                     viewport_name.c_str(),
                     viewport_struct.c_str(),
                     nullptr,
@@ -4999,7 +4999,7 @@ namespace
                 entries[0], entries[1]
             };
             visibility_changed_entries[1].stage_flags =
-                uint32_t(hgl::graph::kAllGraphicsOrMesh);
+                uint32_t(hgl::graph::kMeshFragment);
             DescriptorContract visibility_changed{};
             if (!BuildDescriptorContract(
                     visibility_changed_entries,
@@ -5062,7 +5062,7 @@ namespace
                         has_data_index =
                             requirement.stage_flags
                                 == uint32_t(
-                                    VK_SHADER_STAGE_ALL_GRAPHICS);
+                                    hgl::graph::kMeshFragment);
                     }
                     if (requirement.semantic
                         == DescriptorSemantic::MaterialTextureLayerTable)
@@ -5292,7 +5292,7 @@ namespace
         descriptor_builder_common::AppendDefinitionMaterialDescriptors(
             descriptors,
             definition,
-            uint32_t(hgl::graph::kAllGraphicsOrMesh),
+            uint32_t(hgl::graph::kMeshFragment),
             uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT));
 
         ModuleResourceManifest compatible_manifest{};
@@ -5578,15 +5578,15 @@ int main(const int argc, char **argv)
     {
         constexpr SerializedDescriptorEntry valid_entries[] =
         {
-            { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
-            { DescriptorSetType::PerObject, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl_data_index_rows", "DataIndexRows", nullptr, DescriptorSemantic::MaterialDataIndexTable, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::MaterialDataIndexTable, DescriptorSemanticLayer::SSBO },
+            { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(hgl::graph::kMeshFragment), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
+            { DescriptorSetType::PerObject, DescriptorKind::SSBO, uint32_t(hgl::graph::kMeshFragment), "mtl_data_index_rows", "DataIndexRows", nullptr, DescriptorSemantic::MaterialDataIndexTable, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::MaterialDataIndexTable, DescriptorSemanticLayer::SSBO },
             { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "mtl_texture_layer_rows", "TextureLayerRows", nullptr, DescriptorSemantic::MaterialTextureLayerTable, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::TextureLayer, DescriptorSemanticLayer::SSBO },
         };
         results.push_back(RunValidationCase("A.valid-layered-paths", valid_entries, uint32_t(std::size(valid_entries)), true));
 
         constexpr SerializedDescriptorEntry unknown_semantic[] =
         {
-            { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "broken", "ViewportInfo", nullptr, DescriptorSemantic::Unknown, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
+            { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(hgl::graph::kMeshFragment), "broken", "ViewportInfo", nullptr, DescriptorSemantic::Unknown, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
         };
         results.push_back(RunValidationCase("B1.unknown-semantic-hard-fail", unknown_semantic, 1, false));
 
@@ -5598,13 +5598,13 @@ int main(const int argc, char **argv)
 
         constexpr SerializedDescriptorEntry invalid_fixed_descriptor[] =
         {
-            { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl", "PBRSurfaceData", nullptr, DescriptorSemantic::MaterialDataSlotData, TextureSlot::BaseColor, 0xffu, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO },
+            { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(hgl::graph::kMeshFragment), "mtl", "PBRSurfaceData", nullptr, DescriptorSemantic::MaterialDataSlotData, TextureSlot::BaseColor, 0xffu, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO },
         };
         results.push_back(RunValidationCase("B3.invalid-fixed-descriptor-hard-fail", invalid_fixed_descriptor, 1, false));
 
         constexpr SerializedDescriptorEntry palette_explicit[] =
         {
-            { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(hgl::graph::kAllGraphicsOrMesh), "color_palette", "ColorPalette", nullptr, DescriptorSemantic::MaterialColorPalette, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
+            { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(hgl::graph::kMeshFragment), "color_palette", "ColorPalette", nullptr, DescriptorSemantic::MaterialColorPalette, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
         };
         results.push_back(RunValidationCase("C.scene-color-palette-explicit", palette_explicit, 1, true));
     }
