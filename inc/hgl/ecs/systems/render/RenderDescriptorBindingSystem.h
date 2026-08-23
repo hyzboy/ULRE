@@ -86,8 +86,11 @@ namespace hgl::ecs
         RenderDescriptorBindingSystem(const std::string& name = "RenderDescriptorBindingSystem");
         ~RenderDescriptorBindingSystem() override;
 
-        graph::ViewportInfo *GetViewportInfo();
-        void SetViewportExtent(uint32_t w, uint32_t h);
+    graph::ViewportInfo *GetViewportInfo();
+    void SetViewportExtent(uint32_t w, uint32_t h);
+
+    // ViewUBOCommitSystem 专用：pass 开始时无条件全量写入 viewport UBO
+    void CommitViewportUBO();
 
         void Update(float deltaTime) override;
         void Render(graph::RenderCmdBuffer *cmd, float deltaTime) override;

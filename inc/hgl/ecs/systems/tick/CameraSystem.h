@@ -123,6 +123,9 @@ namespace hgl
             graph::StructuredBufferAccessor<graph::CameraInfo>* GetCameraUBO() const { return camera_ubo; }
             void SyncCameraUBO();
 
+            // ViewUBOCommitSystem 专用：pass 开始时无条件全量写入（不依赖脏标记）
+            void CommitCameraUBO();
+
         private:
 
             /// 收集所有摄像机组件 / Collect all camera components

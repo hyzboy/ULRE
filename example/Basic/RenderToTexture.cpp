@@ -8,6 +8,7 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/module/EnvironmentManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/core/GraphicsContext.h>
@@ -42,15 +43,6 @@ using namespace hgl::ecs;
 
 namespace
 {
-    GeometryVertexFormat CreateGizmo3DGeometryVertexFormat()
-    {
-        GeometryVertexFormat gvf{
-            {VertexSemantic::Position, VF_V3F},
-            {VertexSemantic::Normal,   VF_V3F},
-        };
-        return gvf;
-    }
-
     GeometryVertexFormat CreateStandardGeometryVertexFormat()
     {
         GeometryVertexFormat gvf{
@@ -95,12 +87,17 @@ private:
     hgl::example::OffscreenWorldRuntime runtime;
 
     RenderContext *render_context = nullptr;
+    graph::EnvProfileID offscreen_env_profile = graph::kEnvProfileDefault;
 
     Geometry *geometry = nullptr;
     PrimitiveAsset sphere_asset;
     graph::mtl::MaterialRecipe sphere_recipe{};
-    graph::SSBOArrayAccessor<Color4f>* mtl_data_ssbo_accessor = nullptr;
-    Color4f sphere_color_data{};
+    graph::SSBOArrayAccessor<ssbo::LitMaterialData>* mtl_data_ssbo_accessor = nullptr;
+    ssbo::LitMaterialData sphere_material_data{};
+    Sampler *sphere_sampler = nullptr;
+    Texture2D *sphere_base_tex = nullptr;
+    Texture2D *sphere_normal_tex = nullptr;
+    Texture2D *sphere_roughness_tex = nullptr;
     Entity *sphere_entity = nullptr;
     std::shared_ptr<PrimitiveComponent> sphere_primitive_comp;
 
@@ -158,14 +155,14 @@ private:
         if (!domain_manager)
             return LogStageFail("OffscreenPass::InitMISSBO", "resource domain manager is null");
 
-        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<Color4f>(
-            graph::mtl::SSBOType::EmissiveSurface,
+        mtl_data_ssbo_accessor = domain_manager->AllocateArrayAccessor<ssbo::LitMaterialData>(
+            graph::mtl::SSBOType::PBRSurface,
             "RenderToTexture:OffscreenPass:MaterialData",
             1);
         if (!mtl_data_ssbo_accessor)
             return LogStageFail("OffscreenPass::InitMISSBO", "CreateSSBO failed");
 
-        (*mtl_data_ssbo_accessor)[0] = sphere_color_data;
+        (*mtl_data_ssbo_accessor)[0] = sphere_material_data;
         mtl_data_ssbo_accessor->Commit();
 
         LogStage("OffscreenPass::InitMISSBO", "success");
@@ -187,6 +184,13 @@ public:
             {
                 if (auto *gm = gc->GetGeometryManager())
                     gm->Release(geometry);
+            }
+
+            if (sphere_sampler)
+            {
+                if (auto *sm = gc->GetSamplerManager())
+                    sm->Release(sphere_sampler);
+                sphere_sampler = nullptr;
             }
         }
 
@@ -214,6 +218,22 @@ public:
         if (!runtime.Init(owner, cfg))
             return LogStageFail("OffscreenPass::Init", "runtime.Init failed");
 
+        // RTT 内容会被主场景 Lit 材质再乘一次光照（kd*NdotL/π ≈ 0.16），
+        // 离屏用高太阳强度 profile 补偿，避免贴到立方体上整体发黑。
+        if (auto *gc = owner->GetGraphicsContext())
+        {
+            if (auto *env_manager = gc->GetEnvironmentManager())
+            {
+                graph::EnvironmentInfo info{};
+                info.sky.SetTime(8, 30, 0);
+                info.sky.sun_intensity = 4.0f;
+
+                offscreen_env_profile = env_manager->Create("RenderToTexture.OffscreenBright", info);
+                if (runtime.GetRenderTarget())
+                    runtime.GetRenderTarget()->SetEnvironmentProfile(offscreen_env_profile);
+            }
+        }
+
         LogTextureInfo("offscreen_rt_color0_init", runtime.GetColorTexture(0));
         render_context = owner->GetRenderContext();
         GLogInfo("[RenderToTexture][OffscreenPass::Init] success world=%p rt=%p",
@@ -233,18 +253,34 @@ public:
             return LogStageFail("OffscreenPass::BuildSphere", "graphics context is null");
 
         auto *gm = owner->GetManager<GeometryManager>();
+        auto *sm = owner->GetManager<SamplerManager>();
+        auto *tm = owner->GetManager<TextureManager>();
         auto *device = gc->GetDevice();
-        if (!gm || !device)
+        if (!gm || !sm || !tm || !device)
             return LogStageFail("OffscreenPass::BuildSphere", "required managers/device missing");
 
-        sphere_color_data = GetColor4f(COLOR::SkyBlue, 1.0f);
+        // 离屏球用 Lit 材质：消费天光/太阳方向，让 RT 纹理内容有光照
+        sphere_material_data.base_color = GetColor4f(COLOR::SkyBlue, 1.0f);
+        sphere_material_data.metallic = 0.08f;
+        sphere_material_data.roughness = 0.92f;
+        sphere_material_data.normal_scale = 0.35f;
+
+        sphere_sampler = sm->CreateSampler();
+        if (!sphere_sampler)
+            return LogStageFail("OffscreenPass::BuildSphere", "CreateSampler failed");
+
+        sphere_base_tex = tm->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
+        sphere_normal_tex = tm->LoadTexture2D(OS_TEXT("res/image/Brickwall/Normal.Tex2D"), true);
+        sphere_roughness_tex = tm->LoadTexture2D(OS_TEXT("res/image/Brickwall/Roughness.Tex2D"), true);
+        if (!sphere_base_tex || !sphere_normal_tex || !sphere_roughness_tex)
+            return LogStageFail("OffscreenPass::BuildSphere", "load brickwall textures failed");
 
         if (!InitMISSBO(runtime.GetWorld()))
             return LogStageFail("OffscreenPass::BuildSphere", "InitMISSBO failed");
 
         auto pc = std::make_unique<GeometryCreater>(
             device,
-            CreateGizmo3DGeometryVertexFormat());
+            CreateStandardGeometryVertexFormat());
         geometry = inline_geometry::CreateSphere(pc.get(), 64);
         if (!geometry)
             return LogStageFail("OffscreenPass::BuildSphere", "CreateSphere geometry failed");
@@ -252,7 +288,7 @@ public:
         gm->Add(geometry);
 
         sphere_recipe.recipe_name = "RenderToTexture.OffscreenSphere";
-        sphere_recipe.mtl_def_id = "DebugNormalColor";
+        sphere_recipe.mtl_def_id = "Lit";
         sphere_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         sphere_recipe.domain = "RenderToTexture.Offscreen";
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
@@ -276,6 +312,9 @@ public:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitiveAsset(&sphere_asset);
+        prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, sphere_base_tex, sphere_sampler);
+        prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal, sphere_normal_tex, sphere_sampler);
+        prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, sphere_roughness_tex, sphere_sampler);
         hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource sphere_struct{};
         sphere_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
         sphere_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
@@ -310,7 +349,10 @@ public:
     {
         LogStage("OffscreenPass::RenderOnce", "begin");
         DumpOffscreenState("pre-renderonce");
-        if (!runtime.RenderOnce(GetColor4f(COLOR::DarkSlateBlue, 1.0f)))
+        // 清屏色会被主场景 Lit 再乘一次光照（受光面系数约 0.2~0.6），
+        // 深色（如 DarkSlateBlue）清出来贴到立方体上就是一片黑背景。
+        // 用亮天蓝，保证纹理背景过完立方体光照后仍可辨。
+        if (!runtime.RenderOnce(GetColor4f(COLOR::LightSkyBlue, 1.0f)))
             return LogStageFail("OffscreenPass::RenderOnce", "runtime.RenderOnce failed");
 
         DumpOffscreenState("post-renderonce");
@@ -543,8 +585,14 @@ public:
 
         if (environment_system)
         {
-            environment_system->EditSkyInfo();
-                    }
+            // 默认 10:00 太阳仰角 60°，本例相机平视立方体侧面（与太阳点积≈0），
+            // 只剩天顶环境光会显得整体偏暗。改 8:30（仰角 37.5°）让侧面吃到直射光。
+            if (auto *sky = environment_system->EditSkyInfo())
+            {
+                sky->SetTime(8, 30, 0);
+                environment_system->MarkSkyDirty();
+            }
+        }
 
         if (!CreateOffscreenRT())
             return LogStageFail("RenderToTextureApp::Init", "CreateOffscreenRT failed");

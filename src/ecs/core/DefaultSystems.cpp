@@ -29,6 +29,7 @@
 #include <hgl/ecs/systems/render/SwapchainNextImageSystem.h>
 #include <hgl/ecs/systems/render/SwapchainSubmitSystem.h>
 #include <hgl/ecs/systems/render/RenderFrameUBOSyncSystem.h>
+#include <hgl/ecs/systems/render/ViewUBOCommitSystem.h>
 #include <hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include <hgl/graph/render/RenderContext.h>
 #include <hgl/vk/VKRenderTarget.h>
@@ -180,12 +181,14 @@ namespace hgl::ecs
         auto swapchain_submit_system = EnsureRenderSystem<ecs::SwapchainSubmitSystem>(ctx);
         auto render_frame_business_sync_system = EnsureRenderSystem<ecs::RenderFrameUBOSyncSystem>(ctx);
         auto render_descriptor_binding_system = EnsureRenderSystem<ecs::RenderDescriptorBindingSystem>(ctx);
+        auto view_ubo_commit_system = EnsureRenderSystem<ecs::ViewUBOCommitSystem>(ctx);
 
         (void)input_system;
         (void)swapchain_next_image_system;
         (void)swapchain_submit_system;
         (void)render_frame_business_sync_system;
         (void)render_descriptor_binding_system;
+        (void)view_ubo_commit_system;
 
         if (environment_system)
             environment_system->SetRenderContext(rc);

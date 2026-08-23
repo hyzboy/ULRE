@@ -195,6 +195,7 @@ namespace hgl::graph::mtl
 
     bool BuildGLSLMaterialSurfaceInput(
         const ValueArray<InterStageSemanticContractEntry> &entries,
+        bool camera_ubo_available,
         AnsiString &out_code)
     {
         out_code =
@@ -212,8 +213,12 @@ namespace hgl::graph::mtl
                 entries, InterStageSemantic::WorldPosition))
         {
             out_code += "    si.worldPos = fragWorldPos;\n";
-            out_code +=
-                "    si.viewDir = normalize(-fragWorldPos);\n";
+            // viewDir 需要真实相机位置（相机绕目标轨道运动时不在原点）。
+            // camera UBO 仅在启用 scene lighting 的材质里声明；
+            // 未启用时 viewDir 不参与光照，退回原点假设即可。
+            out_code += camera_ubo_available
+                ? "    si.viewDir = normalize(camera.camera_world_pos - fragWorldPos);\n"
+                : "    si.viewDir = normalize(-fragWorldPos);\n";
         }
         if (FindMaterialStageInterfaceEntry(
                 entries, InterStageSemantic::WorldNormal))

@@ -85,8 +85,11 @@ bool RenderSystemCore::BeginRenderPass()
         return false;
     }
 
+    // clear 值必须在 vkCmdBeginRendering 之前写入——BeginRendering 构造
+    // VkRenderingAttachmentInfo 时即拷贝 clear_values，之后再设置只对下一帧
+    // 生效（RenderOnce 类一次性渲染会拿到未初始化的黑色清屏值）
+    render_cmd->SetClearColor(0, clear_color);
     render_cmd->BeginRendering(render_target);   // Dynamic Rendering（替代传统 BeginRenderPass）
-    render_cmd->SetClearColor(0, clear_color);   // BeginRendering 后 clear_values 已按附件数分配
     render_pass_begun = true;
     return true;
 }

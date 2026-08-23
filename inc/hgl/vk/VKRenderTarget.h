@@ -7,6 +7,7 @@
 #include<hgl/vk/VKQueue.h>
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/graph/ubo/ViewportInfo.h>
+#include<hgl/graph/ubo/EnvironmentInfo.h>
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/StructuredBufferAccessor.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
@@ -42,7 +43,14 @@ class IRenderTarget
 
     VkExtent2D extent;
 
+    // 环境选择：本 RT 使用哪个环境 Profile（数据归 EnvironmentManager，
+    // RT 只持引用；未设置即 default）。绑定由 RDBS 每帧按此解析。
+    EnvProfileID env_profile = kEnvProfileDefault;
+
 public:
+
+    void SetEnvironmentProfile(EnvProfileID id) { env_profile = id; }
+    EnvProfileID GetEnvironmentProfile() const { return env_profile; }
 
     VulkanDevice *      GetDevice           ()const;
     VkDevice            GetVkDevice         ()const;

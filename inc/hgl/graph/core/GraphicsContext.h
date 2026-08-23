@@ -37,6 +37,7 @@ namespace hgl::graph
     class SamplerManager;
     class GeometryManager;
     class ResourceDomainManager;
+    class EnvironmentManager;
     class BindlessTextureManager;
     class GlobalSceneUBOSet;
 
@@ -70,6 +71,7 @@ namespace hgl::graph
         SamplerManager *sampler_manager = nullptr;
         GeometryManager *geometry_manager = nullptr;
         ResourceDomainManager *resource_domain_manager = nullptr;
+        EnvironmentManager *env_manager = nullptr;
         BindlessTextureManager *bindless_texture_manager_ = nullptr;
         GlobalSceneUBOSet *global_scene_ubo_set_ = nullptr;
 
@@ -120,6 +122,7 @@ namespace hgl::graph
         SamplerManager *GetSamplerManager() { return sampler_manager; }
         GeometryManager *GetGeometryManager() { return geometry_manager; }
         ResourceDomainManager *GetResourceDomainManager() { return resource_domain_manager; }
+        EnvironmentManager *GetEnvironmentManager() { return env_manager; }
         BindlessTextureManager *GetBindlessTextureManager() { return bindless_texture_manager_; }
         const BindlessTextureManager *GetBindlessTextureManager() const { return bindless_texture_manager_; }
 
@@ -193,6 +196,12 @@ namespace hgl::graph
     inline GraphModuleManager *GraphicsContext::GetManager<GraphModuleManager>()
     {
         return GetModuleManager();
+    }
+
+    template<>
+    inline EnvironmentManager *GraphicsContext::GetManager<EnvironmentManager>()
+    {
+        return GetEnvironmentManager();
     }
 
     template<>

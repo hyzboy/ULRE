@@ -18,11 +18,7 @@ namespace hgl::ecs
 
     void RenderFrameUBOSyncSystem::Update(float /*deltaTime*/)
     {
-        if (!context)
-            return;
-
-        auto camera_system = context->GetSystem<CameraSystem>();
-        if (camera_system)
-            camera_system->SyncCameraUBO();
+        // camera UBO 的每帧写入已移交 ViewUBOCommitSystem
+        // （RenderBufferCommit 阶段、pass 开始时无条件全量写）
     }
 }

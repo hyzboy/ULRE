@@ -328,6 +328,18 @@ namespace hgl::ecs
         camera_ubo->MarkDirty();
     }
 
+    void CameraSystem::CommitCameraUBO()
+    {
+        if (!camera_ubo || !camera_info)
+            return;
+
+        // 视图三件套（camera/viewport/sky）契约：每个 RT/RenderPass 开始时
+        // 固定全量写入，不依赖脏标记（host-visible 映射直写，代价可忽略）
+        camera_ubo->Update(*camera_info);    // 拷贝数据 + 置脏
+        camera_ubo->Update();                // 写入 GPU
+        camera_ubo_dirty = false;
+    }
+
     void CameraSystem::Update(float deltaTime)
     {
         if (!context)

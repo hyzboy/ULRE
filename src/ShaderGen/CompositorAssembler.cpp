@@ -288,6 +288,7 @@ namespace hgl::graph::mtl
     bool CompositorAssembler::ApplySurfaceInputContract(
         const std::string &source,
         const hgl::ValueArray<InterStageSemanticContractEntry> &inputs,
+        bool camera_ubo_available,
         std::string &out_source) const
     {
         const std::string marker =
@@ -297,7 +298,7 @@ namespace hgl::graph::mtl
             return false;
 
         AnsiString generated;
-        if (!BuildGLSLMaterialSurfaceInput(inputs, generated))
+        if (!BuildGLSLMaterialSurfaceInput(inputs, camera_ubo_available, generated))
             return false;
         out_source = source;
         out_source.replace(
@@ -446,6 +447,7 @@ namespace hgl::graph::mtl
             if (!ApplySurfaceInputContract(
                     fs_source,
                     *module_options.fragment_inputs,
+                    module_options.enable_scene_lighting,
                     input_source))
             {
                 result.error_message =

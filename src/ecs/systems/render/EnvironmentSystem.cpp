@@ -2,10 +2,9 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
-#include<hgl/graph/ShaderBufferSources.h>
-#include<hgl/graph/module/BufferManager.h>
-#include<hgl/vk/VKBuffer.h>
-#include<hgl/vk/StructuredBufferAccessor.h>
+#include<hgl/graph/module/EnvironmentManager.h>
+#include<hgl/vk/VKRenderTarget.h>
+#include<hgl/log/Log.h>
 
 namespace hgl::ecs
 {
@@ -15,107 +14,86 @@ namespace hgl::ecs
         SetExecutionPhase(ExecutionPhase::RenderPreBeginFrame);
     }
 
-    EnvironmentSystem::~EnvironmentSystem()
+    graph::EnvProfileID EnvironmentSystem::ResolveProfileID() const
     {
-        if (sky_ubo)
+        if (context)
         {
-            graph::VkBufferOwner *buf = sky_ubo->ubo();
-            delete sky_ubo;
-            sky_ubo = nullptr;
-
-            if (sky_ubo_managed && buf)
-            {
-                graph::BufferManager *buffer_manager = nullptr;
-                if (render_context)
-                {
-                    if (auto *gc = render_context->GetGraphicsContext())
-                        buffer_manager = gc->GetBufferManager();
-                }
-                if (!buffer_manager && context)
-                {
-                    if (auto *gc = context->GetGraphicsContext())
-                        buffer_manager = gc->GetBufferManager();
-                }
-
-                if (buffer_manager)
-                    buffer_manager->Release(buf);
-            }
-            sky_ubo_managed = false;
+            if (auto *rt = context->GetRenderTarget())
+                return rt->GetEnvironmentProfile();
         }
+
+        return graph::kEnvProfileDefault;
+    }
+
+    graph::EnvironmentManager *EnvironmentSystem::ResolveManager()
+    {
+        if (render_context)
+        {
+            if (auto *gc = render_context->GetGraphicsContext())
+                return gc->GetEnvironmentManager();
+        }
+
+        if (context)
+        {
+            if (auto *rc = context->GetRenderContext())
+            {
+                if (auto *gc = rc->GetGraphicsContext())
+                    return gc->GetEnvironmentManager();
+            }
+
+            if (auto *gc = context->GetGraphicsContext())
+                return gc->GetEnvironmentManager();
+        }
+
+        return nullptr;
     }
 
     graph::SkyInfo *EnvironmentSystem::EditSkyInfo()
     {
-        EnsureResources();
-        return sky_ubo ? sky_ubo->Data() : nullptr;
+        auto *manager = ResolveManager();
+        if (!manager)
+            return nullptr;
+
+        auto *info = manager->Edit(ResolveProfileID());
+        if (!info)
+            return nullptr;
+
+        return &info->sky;
     }
 
     const graph::SkyInfo *EnvironmentSystem::GetSkyInfo() const
     {
-        return sky_ubo ? sky_ubo->Data() : nullptr;
+        // Edit 路径非 const（manager 懒物化），GetSkyInfo 只读 CPU 数据，
+        // 这里的 const_cast 不触发任何 GPU 操作。
+        auto *manager = const_cast<EnvironmentSystem *>(this)->ResolveManager();
+        if (!manager)
+            return nullptr;
+
+        const auto *info = manager->Get(ResolveProfileID());
+        if (!info)
+            return nullptr;
+
+        return &info->sky;
     }
 
     void EnvironmentSystem::SetSkyInfo(const graph::SkyInfo &info, bool immediate)
     {
-        EnsureResources();
-        if (!sky_ubo)
+        auto *manager = ResolveManager();
+        if (!manager)
             return;
 
-        sky_ubo->Update(info);
+        auto *env = manager->Edit(ResolveProfileID());
+        if (!env)
+            return;
+
+        env->sky = info;
         if (immediate)
-            sky_ubo->MarkDirty();
+            manager->MarkDirty(ResolveProfileID());
     }
 
     void EnvironmentSystem::MarkSkyDirty()
     {
-        if (sky_ubo)
-            sky_ubo->MarkDirty();
-    }
-
-    void EnvironmentSystem::Initialize()
-    {
-        EnsureResources();
-    }
-
-    void EnvironmentSystem::Update(float /*deltaTime*/)
-    {
-        EnsureResources();
-    }
-    void EnvironmentSystem::EnsureResources()
-    {
-        if (sky_ubo)
-            return;
-
-        if (!render_context && context)
-            render_context = context->GetRenderContext();
-
-        auto *graphics_context = context ? context->GetGraphicsContext() : nullptr;
-        if (!graphics_context && render_context)
-            graphics_context = render_context->GetGraphicsContext();
-
-        if (!render_context && !graphics_context)
-            return;
-
-        if (graphics_context)
-        {
-            auto *buffer_manager = graphics_context->GetBufferManager();
-            if (buffer_manager)
-            {
-                auto *buf = buffer_manager->CreateUBO("SkyUBO", graph::StructuredBufferAccessor<graph::SkyInfo>::GetSize());
-                if (buf)
-                {
-                    buf->SetUpdateClass(graph::BufferUpdateClass::Deferred);
-                    sky_ubo = graph::StructuredBufferAccessor<graph::SkyInfo>::Create(buf, &graph::mtl::SBS_SkyInfo, false);
-                }
-            }
-        }
-
-        if (sky_ubo)
-            sky_ubo_managed = true;
-        if (sky_ubo)
-        {
-            sky_ubo->Data()->SetTime(10, 0, 0);
-            sky_ubo->MarkDirty();
-        }
+        if (auto *manager = ResolveManager())
+            manager->MarkDirty(ResolveProfileID());
     }
 }//namespace hgl::ecs

@@ -46,5 +46,6 @@ namespace hgl::graph::mtl
 
     bool BuildGLSLMaterialSurfaceInput(
         const ValueArray<InterStageSemanticContractEntry> &entries,
+        bool camera_ubo_available,
         AnsiString &out_code);
 }

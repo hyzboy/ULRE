@@ -25,6 +25,7 @@
 #include<hgl/log/Log.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/ResourceDomainManager.h>
+#include<hgl/graph/module/EnvironmentManager.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/ShaderBufferSources.h>
@@ -147,6 +148,33 @@ namespace hgl::ecs
             if (auto *bm = GetBufferManager(context))
                 bm->Release(buf);
         }
+    }
+
+    void RenderDescriptorBindingSystem::CommitViewportUBO()
+    {
+        EnsureViewportUBO();
+        if (!viewport_ubo)
+            return;
+
+        // 视图三件套契约：pass 开始固定写入，extent 取 pending 或当前 RT
+        uint32_t w = pending_viewport_width;
+        uint32_t h = pending_viewport_height;
+        if ((w == 0 && h == 0) && context)
+        {
+            if (auto *rt = context->GetRenderTarget())
+            {
+                w = rt->GetExtent().width;
+                h = rt->GetExtent().height;
+            }
+        }
+
+        if (w == 0 || h == 0)
+            return;
+
+        graph::ViewportInfo vi{};
+        vi.Set(w, h);
+        viewport_ubo->Update(vi);    // 拷贝数据 + 置脏
+        viewport_ubo->Update();      // 写入 GPU
     }
 
     graph::ViewportInfo *RenderDescriptorBindingSystem::GetViewportInfo()
@@ -284,27 +312,25 @@ namespace hgl::ecs
         if (!context)
             return nullptr;
 
-        auto environment_system = context->GetSystem<EnvironmentSystem>();
-        if (!environment_system)
-        {
-            environment_system = context->RegisterRenderSystem<EnvironmentSystem>();
-            if (environment_system && context->IsActive())
-            {
-                environment_system->OnDependenciesReady();
-                environment_system->Initialize();
-            }
-        }
-
-        if (!environment_system)
+        // 环境数据统一归 EnvironmentManager；本 world 的 RT 决定用哪个
+        // Profile（未设置 = default）。不再依赖 EnvironmentSystem 的 UBO。
+        graph::GraphicsContext *graphics_context = nullptr;
+        if (auto *rc = context->GetRenderContext())
+            graphics_context = rc->GetGraphicsContext();
+        if (!graphics_context)
+            graphics_context = context->GetGraphicsContext();
+        if (!graphics_context)
             return nullptr;
 
-        environment_system->EditSkyInfo();
-
-        auto *sky_ubo = environment_system->GetSkyUBO();
-        if (!sky_ubo)
+        auto *env_manager = graphics_context->GetEnvironmentManager();
+        if (!env_manager)
             return nullptr;
 
-        return sky_ubo->GetGPUBuffer();
+        graph::EnvProfileID profile_id = graph::kEnvProfileDefault;
+        if (auto *rt = context->GetRenderTarget())
+            profile_id = rt->GetEnvironmentProfile();
+
+        return env_manager->GetSkyUBO(profile_id);
     }
 
     void RenderDescriptorBindingSystem::ApplyResourceLayoutBindings(graph::RenderCmdBuffer *cmd)
@@ -1068,8 +1094,14 @@ namespace hgl::ecs
 
         case graph::mtl::DescriptorSemantic::SkyInfo:
         {
-            auto environment_system = context->GetSystem<EnvironmentSystem>();
-            return environment_system && environment_system->GetSkyUBO();
+            // sky 数据由 EnvironmentManager 统一提供（default 保证存在）
+            graph::GraphicsContext *gc = nullptr;
+            if (auto *rc = context->GetRenderContext())
+                gc = rc->GetGraphicsContext();
+            if (!gc)
+                gc = context->GetGraphicsContext();
+            auto *env_manager = gc ? gc->GetEnvironmentManager() : nullptr;
+            return env_manager && env_manager->GetSkyUBO(graph::kEnvProfileDefault);
         }
         case graph::mtl::DescriptorSemantic::LocalToWorld:
         case graph::mtl::DescriptorSemantic::LocalToWorldIndexTable:

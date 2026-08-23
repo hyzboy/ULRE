@@ -10,6 +10,7 @@
 #include <hgl/graph/module/SamplerManager.h>
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/graph/module/ResourceDomainManager.h>
+#include <hgl/graph/module/EnvironmentManager.h>
 #include <hgl/vk/VKBindlessTextureManager.h>
 #include <hgl/vk/VKGlobalSceneUBOSet.h>
 #include <hgl/mtl/SamplerPreset.h>
@@ -65,6 +66,13 @@ namespace hgl::graph
 
         resource_domain_manager = module_manager->GetOrCreate<ResourceDomainManager>();
         if (!resource_domain_manager)
+            return false;
+
+        // 环境综合信息统一管理（sky 等）。必须在 BufferManager 之后创建：
+        // default profile 在模块获得 GraphicsContext 时立即物化 sky UBO，
+        // 保证任何 world（含离屏 RenderOnce）第一帧即拿到有效环境数据。
+        env_manager = module_manager->GetOrCreate<EnvironmentManager>();
+        if (!env_manager)
             return false;
 
         bindless_texture_manager_ = new BindlessTextureManager();
@@ -137,6 +145,7 @@ namespace hgl::graph
         sampler_manager = nullptr;
         geometry_manager = nullptr;
         resource_domain_manager = nullptr;
+        env_manager = nullptr;
 
         SAFE_CLEAR(bindless_texture_manager_)
         SAFE_CLEAR(global_scene_ubo_set_)

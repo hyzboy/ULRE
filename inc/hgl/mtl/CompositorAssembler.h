@@ -100,6 +100,7 @@ namespace hgl::graph::mtl
         bool ApplySurfaceInputContract(
             const std::string &source,
             const hgl::ValueArray<InterStageSemanticContractEntry> &inputs,
+            bool camera_ubo_available,
             std::string &out_source) const;
         bool        ReadFile(const std::string &path, std::string &out_content, std::string &out_error) const;
 

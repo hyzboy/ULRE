@@ -30,6 +30,7 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         ${SG_INCLUDE_PATH}/module/RenderTargetManager.h
                         ${SG_INCLUDE_PATH}/module/GeometryManager.h
                         ${SG_INCLUDE_PATH}/module/ResourceDomainManager.h
+                        ${SG_INCLUDE_PATH}/module/EnvironmentManager.h
                         ${SG_INCLUDE_PATH}/module/RenderModule.h
                         ${SG_INCLUDE_PATH}/module/SwapchainModule.h
                         module/GraphModule.cpp
@@ -44,6 +45,7 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         module/RenderTargetManager.cpp
                         module/GeometryManager.cpp
                         module/ResourceDomainManager.cpp
+                        module/EnvironmentManager.cpp
                         module/SwapChainModule.cpp)
 
 SOURCE_GROUP("1.Core\\Module" FILES ${GRAPH_MODULE_FILES})
@@ -53,6 +55,7 @@ SOURCE_GROUP("1.Core\\Module" FILES ${GRAPH_MODULE_FILES})
 # ============================================================================
 
 SET(SCENE_ENVIRONMENT_FILES ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/SkyInfo.h
+                            ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/EnvironmentInfo.h
                             env/SkyInfo.cpp)
 
 SOURCE_GROUP("2.Scene\\Environment" FILES ${SCENE_ENVIRONMENT_FILES})
