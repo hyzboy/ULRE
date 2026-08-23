@@ -201,6 +201,10 @@ public: //draw
     // 实现见 VKCommandBufferRender.cpp——扩展函数需 vkGetDeviceProcAddr 动态加载
     void DrawMeshTasks(const uint32_t group_count_x,const uint32_t group_count_y=1,const uint32_t group_count_z=1);
 
+    // Mesh Shader 间接绘制（multi-draw 合批）：不支持 multiDrawIndirect 时逐条退化
+    void DrawMeshTasksIndirect(VkBuffer,VkDeviceSize offset,uint32_t drawCount,uint32_t stride=sizeof(VkDrawMeshTasksIndirectCommandEXT));
+    void DrawMeshTasksIndirect(VkBuffer buf,uint32_t drawCount,uint32_t stride=sizeof(VkDrawMeshTasksIndirectCommandEXT)){return DrawMeshTasksIndirect(buf,0,drawCount,stride);}
+
 public: //dynamic state
 
 public:

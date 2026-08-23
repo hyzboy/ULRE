@@ -208,6 +208,18 @@ void RenderCmdBuffer::DrawMeshTasks(const uint32_t group_count_x,const uint32_t 
     dev_attr->cmd_draw_mesh_tasks(cmd_buf,group_count_x,group_count_y,group_count_z);
 }
 
+void RenderCmdBuffer::DrawMeshTasksIndirect(VkBuffer buffer,VkDeviceSize offset,uint32_t drawCount,uint32_t stride)
+{
+    if(!dev_attr||!dev_attr->cmd_draw_mesh_tasks_indirect)
+        return;
+
+    if(this->dev_attr->physical_device->SupportMDI())
+        dev_attr->cmd_draw_mesh_tasks_indirect(cmd_buf,buffer,offset,drawCount,stride);
+    else
+    for(uint32_t i=0;i<drawCount;i++)
+        dev_attr->cmd_draw_mesh_tasks_indirect(cmd_buf,buffer,offset+i*stride,1,stride);
+}
+
 bool RenderCmdBuffer::BindDescriptorSets(ShaderProgram *mtl)
 {
     if(!mtl)return(false);

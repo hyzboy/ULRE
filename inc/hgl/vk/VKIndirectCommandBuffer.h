@@ -69,6 +69,22 @@ public:
     }
 };//class IndirectDrawBuffer:public IndirectCommandBuffer<VkDrawIndirectCommand>
 
+/**
+ * mesh shader 间接绘制命令缓冲（VK_EXT_mesh_shader）
+ * 每条命令 {groupCountX, groupCountY, groupCountZ}——引擎约定：
+ * X=组数（total_vertices/组大小），Y=实例数（实例轴），Z 恒 1。
+ * 命令调用经 RenderCmdBuffer::DrawMeshTasksIndirect（PFN 加载 + MDI 退化），
+ * 不在本类直接调 vkCmdDrawMeshTasksIndirectEXT（扩展函数无静态原型）。
+ */
+class IndirectMeshTaskBuffer:public IndirectCommandBuffer<VkDrawMeshTasksIndirectCommandEXT>
+{
+    friend class VulkanDevice;
+
+public:
+
+    using IndirectCommandBuffer<VkDrawMeshTasksIndirectCommandEXT>::IndirectCommandBuffer;
+};//class IndirectMeshTaskBuffer:public IndirectCommandBuffer<VkDrawMeshTasksIndirectCommandEXT>
+
 class IndirectDispatchBuffer:public IndirectCommandBuffer<VkDispatchIndirectCommand>
 {
     friend class VulkanDevice;

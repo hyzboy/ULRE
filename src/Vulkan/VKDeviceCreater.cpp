@@ -457,6 +457,11 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
         auto func_ptr=device_attr->GetDeviceProc<PFN_vkCmdDrawMeshTasksEXT>("vkCmdDrawMeshTasksEXT");
         if(func_ptr)
             device_attr->cmd_draw_mesh_tasks=*func_ptr;
+
+        // indirect 变体（multi-draw 合批用；不支持 MDI 时逐条退化由 RenderCmdBuffer 处理）
+        auto func_ptr_indirect=device_attr->GetDeviceProc<PFN_vkCmdDrawMeshTasksIndirectEXT>("vkCmdDrawMeshTasksIndirectEXT");
+        if(func_ptr_indirect)
+            device_attr->cmd_draw_mesh_tasks_indirect=*func_ptr_indirect;
     }
 
     device_attr->surface_format=surface_format;

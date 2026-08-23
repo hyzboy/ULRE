@@ -36,6 +36,7 @@ struct VulkanDevAttr
 
     // 扩展函数指针（设备创建后经 vkGetDeviceProcAddr 加载一次，避免每次调用查询）
     PFN_vkCmdDrawMeshTasksEXT           cmd_draw_mesh_tasks =nullptr;
+    PFN_vkCmdDrawMeshTasksIndirectEXT   cmd_draw_mesh_tasks_indirect =nullptr;
 
 #ifdef _DEBUG
     DebugUtils *                        debug_utils     =nullptr;

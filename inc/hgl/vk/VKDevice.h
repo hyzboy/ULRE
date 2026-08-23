@@ -32,6 +32,7 @@ class TileFont;
 class FontDataSource;
 class IndirectDrawBuffer;
 class IndirectDispatchBuffer;
+class IndirectMeshTaskBuffer;
 class StagedBuffer;
 class IGPUBuffer;
 class ComputePipeline;
@@ -375,6 +376,8 @@ public: //间接绘制
     IndirectDrawBuffer *        CreateIndirectDrawBuffer(       const uint32_t cmd_count,BufferAllocPolicy policy,const ObjectNameBuilder &name,SharingMode sm=SharingMode::Exclusive);
     IndirectDispatchBuffer *    CreateIndirectDispatchBuffer(   const uint32_t cmd_count,const ObjectNameBuilder &name,SharingMode sm=SharingMode::Exclusive);
     IndirectDispatchBuffer *    CreateIndirectDispatchBuffer(   const uint32_t cmd_count,BufferAllocPolicy policy,const ObjectNameBuilder &name,SharingMode sm=SharingMode::Exclusive);
+    IndirectMeshTaskBuffer *    CreateIndirectMeshTaskBuffer(   const uint32_t cmd_count,const ObjectNameBuilder &name,SharingMode sm=SharingMode::Exclusive);
+    IndirectMeshTaskBuffer *    CreateIndirectMeshTaskBuffer(   const uint32_t cmd_count,BufferAllocPolicy policy,const ObjectNameBuilder &name,SharingMode sm=SharingMode::Exclusive);
 
 public: //
 
