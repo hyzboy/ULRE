@@ -40,7 +40,7 @@ namespace hgl::graph::mtl
         uint8 reserved = 0;
         uint16 reserved_pad = 0;
         uint32 header_size = ShaderArtifactFileHeaderSize;
-        uint32 stage = static_cast<uint32>(ShaderStage::Vertex);
+        uint32 stage = static_cast<uint32>(ShaderStage::Mesh);
         uint64 key_digest = 0;
         uint64 payload_size = 0;
         uint64 payload_hash = 0;
@@ -52,7 +52,7 @@ namespace hgl::graph::mtl
         uint64 resolved_module_graph_hash = 0;
         uint64 shader_interface_hash = 0;
         uint64 output_contract_hash = 0;
-        uint64 vertex_stage_digest = 0;
+        uint64 mesh_stage_digest = 0;
         uint64 fragment_stage_digest = 0;
         uint64 compiler_profile_hash = 0;
         uint64 device_target_hash = 0;
@@ -68,7 +68,7 @@ namespace hgl::graph::mtl
                 == rhs.resolved_module_graph_hash
             && lhs.shader_interface_hash == rhs.shader_interface_hash
             && lhs.output_contract_hash == rhs.output_contract_hash
-            && lhs.vertex_stage_digest == rhs.vertex_stage_digest
+            && lhs.mesh_stage_digest == rhs.mesh_stage_digest
             && lhs.fragment_stage_digest == rhs.fragment_stage_digest
             && lhs.compiler_profile_hash == rhs.compiler_profile_hash
             && lhs.device_target_hash == rhs.device_target_hash
@@ -83,7 +83,7 @@ namespace hgl::graph::mtl
             && metadata.resolved_module_graph_hash != 0
             && metadata.shader_interface_hash != 0
             && metadata.output_contract_hash != 0
-            && metadata.vertex_stage_digest != 0
+            && metadata.mesh_stage_digest != 0
             && metadata.fragment_stage_digest != 0
             && metadata.compiler_profile_hash != 0
             && metadata.device_target_hash != 0

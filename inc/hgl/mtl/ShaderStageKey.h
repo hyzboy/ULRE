@@ -13,7 +13,7 @@ namespace hgl::graph::mtl
     using namespace hgl::graph::mtl;
     struct ShaderStageKey
     {
-        ShaderStage stage = ShaderStage::Vertex;
+        ShaderStage stage = ShaderStage::Mesh;
         uint64 definition_hash = 0;
         uint64 glsl_module_graph_hash = 0;
         uint64 interface_hash = 0;

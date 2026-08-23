@@ -11,8 +11,7 @@ namespace hgl::graph::mtl
     using namespace hgl::graph::mtl;
     struct ShaderLinkSpec
     {
-        ShaderStageKey vertex_stage;
-        ShaderStageKey mesh_stage;    // mesh shader 材质（替代 vertex_stage）
+        ShaderStageKey mesh_stage;    // mesh shader 顶点处理 stage（VS 已彻底废弃）
         ShaderStageKey fragment_stage;
         // 注：管线状态（BlendMode/深度/模板）由运行时管，不参与 program key——
         // 曾存在恒 0 的 pipeline_state_hash 维度（BlendMode 不覆盖 GLSL 生成），
@@ -24,15 +23,13 @@ namespace hgl::graph::mtl
 
         bool IsValid() const noexcept
         {
-            return (vertex_stage.stage == ShaderStage::Vertex
-                 || mesh_stage.stage == ShaderStage::Mesh)
+            return mesh_stage.stage == ShaderStage::Mesh
                 && fragment_stage.stage == ShaderStage::Fragment;
         }
 
         ShaderProgramKey BuildKey() const noexcept
         {
             ShaderProgramKey key;
-            key.vertex_stage_digest = vertex_stage.GetDigest();
             key.mesh_stage_digest = mesh_stage.GetDigest();
             key.fragment_stage_digest = fragment_stage.GetDigest();
             key.resource_layout_hash = resource_layout_hash;

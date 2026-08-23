@@ -1,5 +1,5 @@
 #include<hgl/mtl/ShaderBuildContext.h>
-#include<hgl/mtl/ShaderCreateInfoVertex.h>
+#include<hgl/mtl/ShaderCreateInfo.h>
 #include<hgl/mtl/contract/ShaderGenContract.h>
 #include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/math/Matrix.h>
@@ -106,7 +106,6 @@ static const SSBODescriptor *ResolveSSBODescriptor(
 ShaderBuildContext::ShaderBuildContext(const PrimitiveType primitive_type_value,const uint32_t shader_stage_bits,const bool has_local_to_world_value)
     : primitive_type(primitive_type_value), shader_stage_flag_bits(shader_stage_bits), has_local_to_world(has_local_to_world_value)
 {
-    if(has_vertex    ())shader_map.Add(new ShaderCreateInfoVertex());
     if(has_mesh      ())shader_map.Add(new ShaderCreateInfo(ShaderStage::Mesh));
     if(has_fragment  ())shader_map.Add(new ShaderCreateInfo(ShaderStage::Fragment));
 

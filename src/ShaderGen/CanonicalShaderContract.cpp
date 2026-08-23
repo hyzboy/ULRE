@@ -70,10 +70,6 @@ namespace hgl::graph::mtl
         {
             switch (stage)
             {
-            case ShaderStage::Vertex:
-            case ShaderStage::TessControl:
-            case ShaderStage::TessEval:
-            case ShaderStage::Geometry:
             case ShaderStage::Fragment:
             case ShaderStage::Compute:
             case ShaderStage::Task:

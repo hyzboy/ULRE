@@ -15,7 +15,7 @@
 #include<hgl/mtl/ShaderBuildContext.h>
 #include<hgl/mtl/MaterialShaderCompiler.h>
 #include<hgl/mtl/ShaderArtifactStore.h>
-#include<hgl/mtl/ShaderCreateInfoVertex.h>
+#include<hgl/mtl/ShaderCreateInfo.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/MaterialDefinitionFile.h>
 #include<hgl/object/ObjectTracker.h>
@@ -86,8 +86,8 @@ namespace
             if (build_spec && build_spec->HasProgramLink())
             {
                 const auto &link = build_spec->GetProgramLink();
-                cache_key = stage == ShaderStage::Vertex
-                    ? &link.vertex_stage : stage == ShaderStage::Fragment
+                cache_key = stage == ShaderStage::Mesh
+                    ? &link.mesh_stage : stage == ShaderStage::Fragment
                         ? &link.fragment_stage : nullptr;
             }
 
@@ -344,8 +344,7 @@ bool ShaderProgramManager::BuildRuntimeShaderProgramState(ShaderProgram *mtl,
 
     CreateShaderStageList(mtl->shader_stage_list,mtl->shader_maps);
 
-    const mtl::ShaderCreateInfoVertex *vert = ctx->GetVertexShader();
-    mtl->vertex_input = vert ? GetVertexInput(vert->GetInput()) : nullptr;
+    // mesh 化后顶点输入统一走 SSBO，无 VBO 顶点输入布局（VS 遗留 vertex_input 已删）
 
     return true;
 }

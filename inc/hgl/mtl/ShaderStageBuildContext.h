@@ -91,7 +91,7 @@ namespace hgl::graph::mtl
 
     struct ShaderStageBuildContext
     {
-        ShaderStage stage = ShaderStage::Vertex;
+        ShaderStage stage = ShaderStage::Mesh;
         uint64 definition_hash = 0;
         uint64 glsl_module_graph_hash = 0;
         uint64 compiler_hash = 0;

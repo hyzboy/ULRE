@@ -1,12 +1,10 @@
 set(SHADERGEN_INCLUDE_PATH  ${ROOT_INCLUDE_PATH}/hgl/mtl)
 
 SET(SHADER_CREATER_HEADER_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfo.h
-                                ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfoMap.h
-                                ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfoVertex.h)
+                                ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfoMap.h)
 
 SET(SHADER_CREATER_SOURCE_FILES ShaderCreateInfo.cpp
-                                ShaderCreateInfoMap.cpp
-                                ShaderCreateInfoVertex.cpp)
+                                ShaderCreateInfoMap.cpp)
 
 SOURCE_GROUP("Material Create Info\\Shader" FILES   ${SHADER_CREATER_HEADER_FILES}
                                                     ${SHADER_CREATER_SOURCE_FILES})

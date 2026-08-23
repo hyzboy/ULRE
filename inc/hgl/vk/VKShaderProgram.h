@@ -34,8 +34,6 @@ class ShaderProgram
 
     PrimitiveType geometry;                       ///<图元类型
 
-    VertexInput *vertex_input;
-
     ShaderModuleMap *shader_maps;
 
     MaterialDescriptorManager *desc_manager;
@@ -65,8 +63,6 @@ public:
     const   mtl::ShaderProgramKey &             GetProgramKey          ()const{return program_key;}
 
     const   PrimitiveType &                     GetPrimitiveType        ()const{return geometry;}
-
-    const   VertexInput *                       GetVertexInput          ()const{return vertex_input;}
 
     const   ShaderStageCreateInfoList &         GetStageList            ()const{return shader_stage_list;}
 

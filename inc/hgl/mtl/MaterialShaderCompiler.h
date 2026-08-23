@@ -42,7 +42,7 @@ struct MaterialShaderCompilerInput
 struct CompositorMaterialBuildConfig
 {
     PrimitiveType primitive_type = PrimitiveType::Triangles;
-    uint32_t shader_stage_flag_bits = uint32_t(ShaderStage::VertexFragment);
+    uint32_t shader_stage_flag_bits = uint32_t(ShaderStage::MeshFragment);
     // Per-material SSBO slot declarations (index == data_slot).
     // When non-null and non-empty, MaterialShaderCompiler generates MaterialDataSlot
     // mtl::SerializedDescriptorEntry items and injects the material SSBO struct/buffer

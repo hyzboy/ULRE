@@ -426,7 +426,7 @@ namespace
         result.name = "L2.resolved-binding-table";
 
         ShaderProgramKey program_key{};
-        program_key.vertex_stage_digest = 0x7101u;
+        program_key.mesh_stage_digest = 0x7101u;
         program_key.fragment_stage_digest = 0x7102u;
         program_key.resource_layout_hash = 0x7103u;
         program_key.vertex_input_hash = 0x7104u;
@@ -1433,7 +1433,7 @@ namespace
             result.diagnostics.emplace_back("distinct provider graphs must hash differently");
 
         ShaderStageBuildContext stage{};
-        stage.stage = ShaderStage::Vertex;
+        stage.stage = ShaderStage::Mesh;
         const ShaderStageKey first_key = stage.BuildKeyWithProviderGraphHash(first_hash);
         const ShaderStageKey changed_key =
             stage.BuildKeyWithProviderGraphHash(
@@ -1494,7 +1494,7 @@ namespace
         }
 
         ShaderStageBuildContext vertex{};
-        vertex.stage = ShaderStage::Vertex;
+        vertex.stage = ShaderStage::Mesh;
         vertex.outputs.Add({0, ShaderStageValueType::Vec3, 0, 0});
         vertex.outputs.Add({0, ShaderStageValueType::Vec2, 1, 0});
         ShaderStageBuildContext fragment{};
@@ -1525,7 +1525,7 @@ namespace
         }};
 
         ShaderStageBuildContext stage{};
-        stage.stage = ShaderStage::Vertex;
+        stage.stage = ShaderStage::Mesh;
         stage.glsl_module_graph_hash = 0x13579bdf2468ace0ull;
         const ShaderStageKey stage_key = stage.BuildKey();
         const ShaderStageKey equivalent_stage_key = stage.BuildKey();
@@ -1536,7 +1536,7 @@ namespace
             result.diagnostics.emplace_back("raw Geometry formats must remain distinct");
 
         ShaderLinkSpec rg16_link{};
-        rg16_link.vertex_stage = stage_key;
+        rg16_link.mesh_stage = stage_key;
         rg16_link.fragment_stage.stage = ShaderStage::Fragment;
         rg16_link.vertex_input_hash = rg16_geometry.GetVertexInputHash();
         ShaderLinkSpec rg32_link = rg16_link;
@@ -1578,7 +1578,7 @@ namespace
                 "invalid SPV payload must be rejected");
 
         ShaderLinkSpec program_link{};
-        program_link.vertex_stage = stage_key;
+        program_link.mesh_stage = stage_key;
         program_link.fragment_stage.stage = ShaderStage::Fragment;
         program_link.fragment_stage.definition_hash = 0x2201u;
         program_link.fragment_stage.glsl_module_graph_hash = 0x2202u;
@@ -1590,7 +1590,7 @@ namespace
         program_link.render_target_hash = 0x2303u;
         program_link.compiler_hash = stage_key.compiler_hash != 0
             ? stage_key.compiler_hash : 0x2304u;
-        program_link.vertex_stage.compiler_hash =
+        program_link.mesh_stage.compiler_hash =
             program_link.compiler_hash;
         program_link.fragment_stage.compiler_hash =
             program_link.compiler_hash;
@@ -1602,8 +1602,8 @@ namespace
         metadata.shader_interface_hash = 0x2404u;
         metadata.output_contract_hash =
             program_link.render_target_hash;
-        metadata.vertex_stage_digest =
-            program_link.vertex_stage.GetDigest();
+        metadata.mesh_stage_digest =
+            program_link.mesh_stage.GetDigest();
         metadata.fragment_stage_digest =
             program_link.fragment_stage.GetDigest();
         metadata.compiler_profile_hash =
@@ -1614,7 +1614,7 @@ namespace
         const uint32_t fragment_payload[] =
             {0x07230203u, 7u, 8u, 9u};
         if (!store.SaveStageSPV(
-                program_link.vertex_stage,
+                program_link.mesh_stage,
                 payload,
                 sizeof(payload))
          || !store.SaveStageSPV(
@@ -1783,7 +1783,7 @@ namespace
         const uint32_t shadow_fragment_payload[] =
             {0x07230203u, 10u, 11u, 12u};
         if (!shadow_store.SaveStageSPV(
-                program_link.vertex_stage,
+                program_link.mesh_stage,
                 shadow_payload,
                 sizeof(shadow_payload))
          || !shadow_store.SaveStageSPV(
@@ -1809,7 +1809,7 @@ namespace
             }
 
             if (!shadow_store.LoadStageSPV(
-                    program_link.vertex_stage, shadow_loaded)
+                    program_link.mesh_stage, shadow_loaded)
              || shadow_loaded.GetCount() != static_cast<int>(sizeof(shadow_payload))
              || std::memcmp(
                     shadow_loaded.GetData(), shadow_payload, sizeof(shadow_payload)) != 0)
@@ -1932,7 +1932,7 @@ namespace
                     program_key_digest
                     != a.BuildKey().GetDigest()
              || lit_a->GetProgramArtifactMetadata().
-                    vertex_stage_digest
+                    mesh_stage_digest
                     != a.mesh_stage.GetDigest()
              || lit_a->GetProgramArtifactMetadata().
                     fragment_stage_digest
@@ -2284,7 +2284,7 @@ namespace
                 true
             });
         interface_a.entry_points.Add(
-            {ShaderStage::Vertex, StableID("main.vs")});
+            {ShaderStage::Mesh, StableID("main.msh")});
         interface_a.entry_points.Add(
             {ShaderStage::Fragment, StableID("main.fs")});
 
@@ -2376,7 +2376,7 @@ namespace
         result.name = "D1.materialization-shared-instance-separation";
 
         ShaderProgramKey program_key{};
-        program_key.vertex_stage_digest = 0x7201u;
+        program_key.mesh_stage_digest = 0x7201u;
         program_key.fragment_stage_digest = 0x7202u;
         program_key.resource_layout_hash = 0x7203u;
         program_key.vertex_input_hash = 0x7204u;
@@ -2829,19 +2829,19 @@ namespace
                         const auto *stage = ctx->GetStageShader(ShaderStage::Fragment);
                         return stage ? stage->GetFinalGLSL() : std::string{};
                     };
-                    const auto safe_vs = [](const ShaderBuildContext *ctx) -> std::string
+                    const auto safe_ms = [](const ShaderBuildContext *ctx) -> std::string
                     {
-                        if (!ctx || !ctx->has_vertex())
+                        if (!ctx || !ctx->has_mesh())
                             return {};
-                        const auto *stage = ctx->GetStageShader(ShaderStage::Vertex);
+                        const auto *stage = ctx->GetStageShader(ShaderStage::Mesh);
                         return stage ? stage->GetFinalGLSL() : std::string{};
                     };
 
                     const std::string opaque_fs = safe_fs(opaque.get());
                     const std::string depth_fs = safe_fs(depth.get());
-                    const std::string depth_vs = safe_vs(depth.get());
+                    const std::string depth_ms = safe_ms(depth.get());
                     const std::string masked_depth_fs = safe_fs(masked_depth.get());
-                    const std::string masked_depth_vs = safe_vs(masked_depth.get());
+                    const std::string masked_depth_ms = safe_ms(masked_depth.get());
                     const std::string dither_shadow_fs = safe_fs(dither_shadow.get());
                     const std::string a2c_depth_fs = safe_fs(a2c_depth.get());
                     // 结构化断言：opaque 必有 Fragment（强检查）；
@@ -2869,8 +2869,8 @@ namespace
                          || contains(depth_fs, "EvalAlpha("))
                             mismatch = true;
                     }
-                    if (has(depth.get(), ShaderStage::Vertex)
-                     && lacks(depth_vs, "fragDataIndexID"))
+                    if (has(depth.get(), ShaderStage::Mesh)
+                     && lacks(depth_ms, "fragDataIndexID"))
                         mismatch = true;
                     // masked_depth：alpha test，期望含 EvalAlpha/HGLApplyAlpha/ALPHA_TEST
                     if (has(masked_depth.get(), ShaderStage::Fragment)
@@ -2879,8 +2879,8 @@ namespace
                       || lacks(masked_depth_fs, "#define HGL_ALPHA_TEST 1")
                       || contains(masked_depth_fs, "EvalLighting(")))
                         mismatch = true;
-                    if (has(masked_depth.get(), ShaderStage::Vertex)
-                     && lacks(masked_depth_vs, "fragWorldPos"))
+                    if (has(masked_depth.get(), ShaderStage::Mesh)
+                     && lacks(masked_depth_ms, "fragWorldPos"))
                         mismatch = true;
                     // dither_shadow：期望含 ALPHA_DITHER + EvalLighting
                     if (has(dither_shadow.get(), ShaderStage::Fragment)
@@ -3315,7 +3315,7 @@ namespace
                 "transform graph source composition selected the wrong stage");
 
         ShaderStageBuildContext stage{};
-        stage.stage = ShaderStage::Vertex;
+        stage.stage = ShaderStage::Mesh;
         const ShaderStageKey flat_key =
             stage.BuildKeyWithProviderGraphHash(
                 VertexNodeConfigResolver::GetHash(VertexNodeConfigResolver::FlatXY()));

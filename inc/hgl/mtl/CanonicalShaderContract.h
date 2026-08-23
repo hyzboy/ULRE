@@ -172,7 +172,7 @@ namespace hgl::graph::mtl
 
     struct ShaderEntryPointContract
     {
-        ShaderStage stage = ShaderStage::Vertex;
+        ShaderStage stage = ShaderStage::Mesh;
         ShaderContractStableID entry_point_id = 0;
     };
 

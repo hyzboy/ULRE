@@ -9,7 +9,7 @@
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/mtl/ShaderBuildContext.h>
-#include <hgl/mtl/ShaderCreateInfoVertex.h>
+#include <hgl/mtl/ShaderCreateInfo.h>
 #include <hgl/mtl/ShaderProgramArtifactBuilder.h>
 #include <hgl/graph/ShaderBufferSources.h>
 #include <hgl/mtl/MaterialRecipe.h>
@@ -53,10 +53,9 @@ bool FinalizeShaderBuildContext(
             cached_fragment);
         if (cache_hit)
         {
-            // mesh shader 材质：顶点处理 stage 是 Mesh 而非 Vertex
+            // mesh shader 材质（VS 已彻底废弃）：顶点处理 stage 是 Mesh
             ShaderCreateInfo *vertex =
-                build_spec->GetStageShader(
-                    build_spec->has_mesh() ? ShaderStage::Mesh : ShaderStage::Vertex);
+                build_spec->GetStageShader(ShaderStage::Mesh);
             ShaderCreateInfo *fragment =
                 build_spec->GetStageShader(ShaderStage::Fragment);
             cache_hit = vertex
@@ -81,15 +80,14 @@ bool FinalizeShaderBuildContext(
     if (!cache_hit && artifact_store)
     {
         const auto &link = build_spec->GetProgramLink();
-        // mesh shader 材质：顶点处理 stage 是 Mesh 而非 Vertex
+        // mesh shader 材质（VS 已彻底废弃）：顶点处理 stage 是 Mesh
         const ShaderCreateInfo *vertex =
-            build_spec->GetStageShader(
-                build_spec->has_mesh() ? ShaderStage::Mesh : ShaderStage::Vertex);
+            build_spec->GetStageShader(ShaderStage::Mesh);
         const ShaderCreateInfo *fragment =
             build_spec->GetStageShader(ShaderStage::Fragment);
         if (!vertex || !fragment
          || !artifact_store->SaveStageSPV(
-                build_spec->has_mesh() ? link.mesh_stage : link.vertex_stage,
+                link.mesh_stage,
                 vertex->GetSPVData(),
                 vertex->GetSPVSize())
          || !artifact_store->SaveStageSPV(
@@ -573,18 +571,8 @@ ShaderBuildContext *CompileCompositorMaterial(
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Step 4: Add Vertex Inputs from SerializedVertexEntry[]
+    // Step 4: (mesh 化后顶点输入统一走 SSBO——无 VBO 顶点输入布局，VS 遗留已删)
     // ─────────────────────────────────────────────────────────────
-
-    ShaderCreateInfoVertex *vsc = ctx->GetVertexShader();
-    if (vsc)
-    {
-        for (uint32_t i = 0; i < input.vertex_entry_count; ++i)
-        {
-            const SerializedVertexEntry &entry = input.vertex_entries[i];
-            vsc->AddInput(entry.format, entry.semantic);
-        }
-    }
 
     if (use_slot_decls)
     {

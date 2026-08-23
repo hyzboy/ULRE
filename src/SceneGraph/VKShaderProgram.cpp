@@ -9,8 +9,6 @@
 
 namespace hgl::graph{
 
-void ReleaseVertexInput(VertexInput *vi);
-
 ShaderProgram::ShaderProgram(const AnsiString &n,const mtl::ShaderBuildContext *ctx)
 {
     name=n;
@@ -18,7 +16,7 @@ ShaderProgram::ShaderProgram(const AnsiString &n,const mtl::ShaderBuildContext *
     shader_resource_schema=ctx->GetShaderResourceSchema();
     program_key=ctx->GetProgramLink().BuildKey();
 
-    vertex_input=nullptr;
+    // mesh 化后无 VBO 顶点输入布局（VS 遗留 vertex_input 已删）
     shader_maps=new ShaderModuleMap;
     desc_manager=nullptr;
     pipeline_layout_data=nullptr;
@@ -30,7 +28,6 @@ ShaderProgram::ShaderProgram(const AnsiString &n,const mtl::ShaderBuildContext *
 
 ShaderProgram::~ShaderProgram()
 {
-    ReleaseVertexInput(vertex_input);
     delete shader_maps;             //不用SAFE_CLEAR是因为这个一定会有
     SAFE_CLEAR(desc_manager);
     SAFE_CLEAR(pipeline_layout_data);

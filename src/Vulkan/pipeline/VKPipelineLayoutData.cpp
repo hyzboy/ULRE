@@ -141,9 +141,10 @@ PipelineLayoutData *VulkanDevice::CreatePipelineLayoutData(const MaterialDescrip
     pPipelineLayoutCreateInfo.pSetLayouts               = pld->fin_dsl;
     // 顶点索引 SSBO（s1_index）：per-draw 段偏移 push constant
     // （index_base + vertex_base + is_indexed + total_vertices + viewport_height + first_instance 24B）
-    // stage 位含 VERTEX | MESH：mesh shader 材质（彻底废弃 VS 方向）也读同一 push constant
+    // stage 位用 kAllGraphicsOrMesh：mesh shader（唯一顶点路径，VS 已彻底废弃）读同一 push constant，
+    // 与 VKCommandBuffer::PushConstants 调用侧一致（调用 stageFlags 必须是 layout range 的子集）
     VkPushConstantRange push_constant_range{};
-    push_constant_range.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_MESH_BIT_EXT;
+    push_constant_range.stageFlags = hgl::graph::kAllGraphicsOrMesh;
     push_constant_range.offset     = 0;
     push_constant_range.size       = 24;
     pPipelineLayoutCreateInfo.pushConstantRangeCount    = 1;

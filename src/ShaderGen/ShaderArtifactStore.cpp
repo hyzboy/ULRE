@@ -11,12 +11,10 @@ namespace hgl::graph::mtl
     using namespace hgl::graph::mtl;
     namespace
     {
-        // mesh shader 材质：顶点处理 stage 是 Mesh（替代 Vertex）——统一取顶点 stage key
+        // mesh shader 材质：顶点处理 stage 是 Mesh（VS 已彻底废弃）
         const ShaderStageKey &GetVertexStageKey(const ShaderLinkSpec &link)
         {
-            return (link.mesh_stage.stage == ShaderStage::Mesh)
-                       ? link.mesh_stage
-                       : link.vertex_stage;
+            return link.mesh_stage;
         }
 
         OSString MakeStageFilename(const ShaderStageKey &key)
@@ -96,7 +94,7 @@ namespace hgl::graph::mtl
             AppendU64(out_payload, metadata.resolved_module_graph_hash);
             AppendU64(out_payload, metadata.shader_interface_hash);
             AppendU64(out_payload, metadata.output_contract_hash);
-            AppendU64(out_payload, metadata.vertex_stage_digest);
+            AppendU64(out_payload, metadata.mesh_stage_digest);
             AppendU64(out_payload, metadata.fragment_stage_digest);
             AppendU64(out_payload, metadata.compiler_profile_hash);
             AppendU64(out_payload, metadata.device_target_hash);
@@ -122,7 +120,7 @@ namespace hgl::graph::mtl
                     out_metadata.resolved_module_graph_hash)
                 && ReadU64(cursor, end, out_metadata.shader_interface_hash)
                 && ReadU64(cursor, end, out_metadata.output_contract_hash)
-                && ReadU64(cursor, end, out_metadata.vertex_stage_digest)
+                && ReadU64(cursor, end, out_metadata.mesh_stage_digest)
                 && ReadU64(cursor, end, out_metadata.fragment_stage_digest)
                 && ReadU64(cursor, end, out_metadata.compiler_profile_hash)
                 && ReadU64(cursor, end, out_metadata.device_target_hash)
@@ -312,7 +310,7 @@ namespace hgl::graph::mtl
              || !IsValidShaderProgramArtifactMetadata(out_metadata)
              || out_metadata.program_key_digest
                     != program_key.GetDigest()
-             || out_metadata.vertex_stage_digest
+             || out_metadata.mesh_stage_digest
                     != GetVertexStageKey(link).GetDigest()
              || out_metadata.fragment_stage_digest
                     != link.fragment_stage.GetDigest()
@@ -338,7 +336,7 @@ namespace hgl::graph::mtl
          || !link.IsValid()
          || !IsValidShaderProgramArtifactMetadata(metadata)
          || metadata.program_key_digest != link.BuildKey().GetDigest()
-         || metadata.vertex_stage_digest
+         || metadata.mesh_stage_digest
             != GetVertexStageKey(link).GetDigest()
          || metadata.fragment_stage_digest
             != link.fragment_stage.GetDigest()

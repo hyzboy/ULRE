@@ -12,8 +12,7 @@ namespace hgl::graph::mtl
     using namespace hgl::graph::mtl;
     struct ShaderProgramKey
     {
-        uint64 vertex_stage_digest = 0;
-        uint64 mesh_stage_digest = 0;   // mesh shader 材质（替代 vertex_stage_digest）
+        uint64 mesh_stage_digest = 0;   // mesh shader 顶点处理 stage（VS 已彻底废弃）
         uint64 fragment_stage_digest = 0;
         uint64 resource_layout_hash = 0;
         uint64 vertex_input_hash = 0;
@@ -24,8 +23,7 @@ namespace hgl::graph::mtl
         {
             hgl::hash::FNV1aHasher64 h;
 
-            h << vertex_stage_digest
-              << mesh_stage_digest
+            h << mesh_stage_digest
               << fragment_stage_digest
               << resource_layout_hash
               << vertex_input_hash
@@ -42,8 +40,7 @@ namespace hgl::graph::mtl
 
         bool operator==(const ShaderProgramKey &rhs) const noexcept
         {
-            return vertex_stage_digest == rhs.vertex_stage_digest
-                && mesh_stage_digest == rhs.mesh_stage_digest
+            return mesh_stage_digest == rhs.mesh_stage_digest
                 && fragment_stage_digest == rhs.fragment_stage_digest
                 && resource_layout_hash == rhs.resource_layout_hash
                 && vertex_input_hash == rhs.vertex_input_hash
@@ -53,8 +50,6 @@ namespace hgl::graph::mtl
 
         bool operator<(const ShaderProgramKey &rhs) const noexcept
         {
-            if (vertex_stage_digest != rhs.vertex_stage_digest)
-                return vertex_stage_digest < rhs.vertex_stage_digest;
             if (mesh_stage_digest != rhs.mesh_stage_digest)
                 return mesh_stage_digest < rhs.mesh_stage_digest;
             if (fragment_stage_digest != rhs.fragment_stage_digest)

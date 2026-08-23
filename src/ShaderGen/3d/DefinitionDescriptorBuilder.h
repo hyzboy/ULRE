@@ -36,8 +36,8 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
     if (definition.vertex_node_config.projection != ProjectionMode::OrthoViewport
      && definition.vertex_node_config.projection != ProjectionMode::ClipPassthrough)
     {
-        descriptor_builder_common::PushLocalToWorld(descriptors, DescriptorKind::SSBO, hgl::graph::kVertexOrMesh);
-        descriptor_builder_common::PushLocalToWorldIndexRows(descriptors, hgl::graph::kVertexOrMesh);
+        descriptor_builder_common::PushLocalToWorld(descriptors, DescriptorKind::SSBO, hgl::graph::kAllGraphicsOrMesh);
+        descriptor_builder_common::PushLocalToWorldIndexRows(descriptors, hgl::graph::kAllGraphicsOrMesh);
     }
 
     descriptor_builder_common::AppendDefinitionMaterialDescriptors(
@@ -71,7 +71,7 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
     // stage 位用 ALL_GRAPHICS：mesh shader 材质（彻底废弃 VS 方向）在 Mesh stage 读顶点 SSBO，
     // 传统材质在 Vertex stage 读——统一为 ALL_GRAPHICS 避免对具体 stage 的依赖
     {
-        const uint32_t vertex_stage = hgl::graph::kVertexOrMesh;
+        const uint32_t vertex_stage = hgl::graph::kAllGraphicsOrMesh;
         bool need_uv = false, need_ntb = false, need_color = false, need_luminance = false, need_transform_id = false, need_size = false;
         for (int i = 0; i < definition.vertex_semantic_requirements.GetCount(); ++i)
         {
