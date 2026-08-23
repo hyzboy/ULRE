@@ -28,3 +28,5 @@ CMakeFiles
 
 # CMake 构建缓存（误提交清理）
 CMakeCache.txt
+/.cmake/
+.kateproject.build
