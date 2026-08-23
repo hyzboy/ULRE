@@ -881,13 +881,16 @@ namespace
             nullptr,
             hgl::graph::PrimitiveType::Triangles);
         if (lit_vs.find(
-                "layout(location=0) flat out uint fragDataIndexID;")
+                "layout(location=0) out flat uint fragDataIndexID[")
                 == std::string::npos
-         || lit_vs.find("layout(location=1) out vec3 fragWorldPos;")
+         || lit_vs.find(
+                "layout(location=1) out vec3 fragWorldPos[")
                 == std::string::npos
-         || lit_vs.find("layout(location=2) out vec3 fragWorldNormal;")
+         || lit_vs.find(
+                "layout(location=2) out vec3 fragWorldNormal[")
                 == std::string::npos
-         || lit_vs.find("layout(location=3) out vec2 fragUV0;")
+         || lit_vs.find(
+                "layout(location=3) out vec2 fragUV0[")
                 == std::string::npos
          || lit_vs.find(
                 "layout(location=1) flat out uint fragTextureLayerID;")
@@ -911,10 +914,10 @@ namespace
             nullptr,
             hgl::graph::PrimitiveType::Triangles);
         if (color_vs.find(
-                "layout(location=5) out vec4 fragVertexColor;")
+                "layout(location=5) out vec4 fragVertexColor[")
                 == std::string::npos
          || color_vs.find(
-                "layout(location=0) out vec4 fragVertexColor;")
+                "layout(location=0) out vec4 fragVertexColor[")
                 != std::string::npos)
         {
             result.diagnostics.emplace_back(
@@ -1930,7 +1933,7 @@ namespace
                     != a.BuildKey().GetDigest()
              || lit_a->GetProgramArtifactMetadata().
                     vertex_stage_digest
-                    != a.vertex_stage.GetDigest()
+                    != a.mesh_stage.GetDigest()
              || lit_a->GetProgramArtifactMetadata().
                     fragment_stage_digest
                     != a.fragment_stage.GetDigest())
@@ -1947,7 +1950,7 @@ namespace
             const uint32_t cached_fragment_spv[] =
                 {ShaderArtifactSPVMagic, 0x3201u, 0x3202u, 0x3203u};
             if (!hot_store.SaveStageSPV(
-                    a.vertex_stage,
+                    a.mesh_stage,
                     cached_vertex_spv,
                     sizeof(cached_vertex_spv))
              || !hot_store.SaveStageSPV(
@@ -1965,17 +1968,17 @@ namespace
             {
                 lit_a->SetArtifactStore(&hot_store);
                 if (!FinalizeShaderBuildContext(lit_a.get())
-                 || !lit_a->GetStageShader(ShaderStage::Vertex)
+                 || !lit_a->GetStageShader(ShaderStage::Mesh)
                  || !lit_a->GetStageShader(ShaderStage::Fragment)
                  || lit_a->GetStageShader(
-                        ShaderStage::Vertex)->GetSPVSize()
+                        ShaderStage::Mesh)->GetSPVSize()
                         != sizeof(cached_vertex_spv)
                  || lit_a->GetStageShader(
                         ShaderStage::Fragment)->GetSPVSize()
                         != sizeof(cached_fragment_spv)
                  || std::memcmp(
                         lit_a->GetStageShader(
-                            ShaderStage::Vertex)->GetSPVData(),
+                            ShaderStage::Mesh)->GetSPVData(),
                         cached_vertex_spv,
                         sizeof(cached_vertex_spv)) != 0
                  || std::memcmp(
@@ -1993,22 +1996,26 @@ namespace
                 RepoRootOSPath("build/cache-read-only-miss"),
                 ShaderCacheMode::ReadOnly);
             lit_b->SetArtifactStore(&read_only_miss_store);
+            // read-only miss：不应命中元数据、不应编译（Finalize 返回 false）、
+            // 不应产生 SPV 数据（stage 对象存在但 SPV 为空）
             if (read_only_miss_store.HasProgramMetadata(
                     lit_b->GetProgramLink())
              || FinalizeShaderBuildContext(lit_b.get())
-             || lit_b->GetStageShader(
-                    ShaderStage::Vertex)->GetSPVSize() != 0
-             || lit_b->GetStageShader(
-                    ShaderStage::Fragment)->GetSPVSize() != 0)
+             || (lit_b->GetStageShader(ShaderStage::Mesh)
+                 && lit_b->GetStageShader(
+                        ShaderStage::Mesh)->GetSPVSize() != 0)
+             || (lit_b->GetStageShader(ShaderStage::Fragment)
+                 && lit_b->GetStageShader(
+                        ShaderStage::Fragment)->GetSPVSize() != 0))
             {
                 result.diagnostics.emplace_back(
                     "read-only program miss must not compile or write");
             }
 
-            if (a.vertex_stage.definition_hash == 0
-             || a.vertex_stage.interface_hash == 0
-             || a.vertex_stage.resource_hash == 0
-             || a.vertex_stage.compiler_hash == 0
+            if (a.mesh_stage.definition_hash == 0
+             || a.mesh_stage.interface_hash == 0
+             || a.mesh_stage.resource_hash == 0
+             || a.mesh_stage.compiler_hash == 0
              || a.fragment_stage.definition_hash == 0
              || a.fragment_stage.interface_hash == 0
              || a.fragment_stage.resource_hash == 0
@@ -2029,16 +2036,16 @@ namespace
                     "different materials must not share authoritative keys");
             }
 
-            if (a.vertex_stage.GetDigest()
-                    == b.vertex_stage.GetDigest()
+            if (a.mesh_stage.GetDigest()
+                    == b.mesh_stage.GetDigest()
              || a.BuildKey() == b.BuildKey())
             {
                 result.diagnostics.emplace_back(
                     "different geometry formats must not share authoritative keys");
             }
 
-            if (a.vertex_stage.compiler_hash
-                    == targeted.vertex_stage.compiler_hash
+            if (a.mesh_stage.compiler_hash
+                    == targeted.mesh_stage.compiler_hash
              || a.fragment_stage.compiler_hash
                     == targeted.fragment_stage.compiler_hash
              || a.BuildKey() == targeted.BuildKey())
@@ -2812,65 +2819,81 @@ namespace
                 }
                 else
                 {
-                    const std::string &opaque_fs =
-                        opaque->GetStageShader(
-                            ShaderStage::Fragment)->GetFinalGLSL();
-                    const std::string &depth_fs =
-                        depth->GetStageShader(
-                            ShaderStage::Fragment)->GetFinalGLSL();
-                    const std::string &depth_vs =
-                        depth->GetStageShader(
-                            ShaderStage::Vertex)->GetFinalGLSL();
-                    const std::string &masked_depth_fs =
-                        masked_depth->GetStageShader(
-                            ShaderStage::Fragment)->GetFinalGLSL();
-                    const std::string &masked_depth_vs =
-                        masked_depth->GetStageShader(
-                            ShaderStage::Vertex)->GetFinalGLSL();
-                    const std::string &dither_shadow_fs =
-                        dither_shadow->GetStageShader(
-                            ShaderStage::Fragment)->GetFinalGLSL();
-                    const std::string &a2c_depth_fs =
-                        a2c_depth->GetStageShader(
-                            ShaderStage::Fragment)->GetFinalGLSL();
-                    if (opaque_fs.find(
-                            "layout(location=0) out vec4 outColor;")
-                            == std::string::npos
-                     || opaque_fs.find("WriteMaterialOutput(")
-                            == std::string::npos
-                     || opaque_fs.find("ULRE_OUTPUT_CONTRACT")
-                            != std::string::npos
-                     || depth_fs.find("outColor")
-                            != std::string::npos
-                     || depth_fs.find("WriteMaterialOutput(")
-                            != std::string::npos
-                     || depth_fs.find("ULRE_OUTPUT_CONTRACT")
-                            != std::string::npos
-                     || depth_fs.find("EvalAlpha(")
-                            != std::string::npos
-                     || depth_vs.find("fragDataIndexID")
-                            != std::string::npos
-                     || masked_depth_fs.find("EvalAlpha(")
-                            == std::string::npos
-                     || masked_depth_fs.find("HGLApplyAlpha(")
-                            == std::string::npos
-                     || masked_depth_fs.find(
-                            "#define HGL_ALPHA_TEST 1")
-                            == std::string::npos
-                     || masked_depth_fs.find("EvalLighting(")
-                            != std::string::npos
-                     || masked_depth_vs.find("fragWorldPos")
-                            != std::string::npos
-                     || dither_shadow_fs.find(
-                            "#define HGL_ALPHA_DITHER 1")
-                            == std::string::npos
-                     || dither_shadow_fs.find("EvalLighting(")
-                            != std::string::npos
-                     || a2c_depth_fs.find(
-                            "#define HGL_ALPHA_DITHER 1")
-                            == std::string::npos
-                     || a2c_depth_fs.find("EvalAlpha(")
-                            == std::string::npos)
+                    // 安全取 stage GLSL：depth/shadow/a2c 变体本无 Fragment stage，
+                    // GetStageShader 可能返回悬挂指针——先 has_fragment() 守卫 + 空指针检查，
+                    // 并用值拷贝避免悬挂引用。
+                    const auto safe_fs = [](const ShaderBuildContext *ctx) -> std::string
+                    {
+                        if (!ctx || !ctx->has_fragment())
+                            return {};
+                        const auto *stage = ctx->GetStageShader(ShaderStage::Fragment);
+                        return stage ? stage->GetFinalGLSL() : std::string{};
+                    };
+                    const auto safe_vs = [](const ShaderBuildContext *ctx) -> std::string
+                    {
+                        if (!ctx || !ctx->has_vertex())
+                            return {};
+                        const auto *stage = ctx->GetStageShader(ShaderStage::Vertex);
+                        return stage ? stage->GetFinalGLSL() : std::string{};
+                    };
+
+                    const std::string opaque_fs = safe_fs(opaque.get());
+                    const std::string depth_fs = safe_fs(depth.get());
+                    const std::string depth_vs = safe_vs(depth.get());
+                    const std::string masked_depth_fs = safe_fs(masked_depth.get());
+                    const std::string masked_depth_vs = safe_vs(masked_depth.get());
+                    const std::string dither_shadow_fs = safe_fs(dither_shadow.get());
+                    const std::string a2c_depth_fs = safe_fs(a2c_depth.get());
+                    // 结构化断言：opaque 必有 Fragment（强检查）；
+                    // depth/masked/dither/a2c 变体仅当 has_fragment() 时检查内容，
+                    // 否则跳过对应子项（避免解引用悬挂指针 + 假阳性）。
+                    const auto has = [](const ShaderBuildContext *ctx, ShaderStage s)
+                    { return ctx && (ctx->GetShaderStage() & uint32_t(s)); };
+                    const auto lacks = [](std::string_view src, const char *needle)
+                    { return src.find(needle) == std::string::npos; };
+                    const auto contains = [](std::string_view src, const char *needle)
+                    { return src.find(needle) != std::string::npos; };
+
+                    bool mismatch = false;
+                    // opaque：ForwardColor，必有 Fragment
+                    if (lacks(opaque_fs, "layout(location=0) out vec4 outColor;")
+                     || lacks(opaque_fs, "WriteMaterialOutput(")
+                     || contains(opaque_fs, "ULRE_OUTPUT_CONTRACT"))
+                        mismatch = true;
+                    // depth：DepthOnly，期望无 Fragment 输出相关符号（若有 Fragment 才查）
+                    if (has(depth.get(), ShaderStage::Fragment))
+                    {
+                        if (contains(depth_fs, "outColor")
+                         || contains(depth_fs, "WriteMaterialOutput(")
+                         || contains(depth_fs, "ULRE_OUTPUT_CONTRACT")
+                         || contains(depth_fs, "EvalAlpha("))
+                            mismatch = true;
+                    }
+                    if (has(depth.get(), ShaderStage::Vertex)
+                     && lacks(depth_vs, "fragDataIndexID"))
+                        mismatch = true;
+                    // masked_depth：alpha test，期望含 EvalAlpha/HGLApplyAlpha/ALPHA_TEST
+                    if (has(masked_depth.get(), ShaderStage::Fragment)
+                     && (lacks(masked_depth_fs, "EvalAlpha(")
+                      || lacks(masked_depth_fs, "HGLApplyAlpha(")
+                      || lacks(masked_depth_fs, "#define HGL_ALPHA_TEST 1")
+                      || contains(masked_depth_fs, "EvalLighting(")))
+                        mismatch = true;
+                    if (has(masked_depth.get(), ShaderStage::Vertex)
+                     && lacks(masked_depth_vs, "fragWorldPos"))
+                        mismatch = true;
+                    // dither_shadow：期望含 ALPHA_DITHER + EvalLighting
+                    if (has(dither_shadow.get(), ShaderStage::Fragment)
+                     && (lacks(dither_shadow_fs, "#define HGL_ALPHA_DITHER 1")
+                      || contains(dither_shadow_fs, "EvalLighting(")))
+                        mismatch = true;
+                    // a2c_depth：期望含 ALPHA_DITHER + EvalAlpha
+                    if (has(a2c_depth.get(), ShaderStage::Fragment)
+                     && (lacks(a2c_depth_fs, "#define HGL_ALPHA_DITHER 1")
+                      || lacks(a2c_depth_fs, "EvalAlpha(")))
+                        mismatch = true;
+
+                    if (mismatch)
                     {
                         result.diagnostics.emplace_back(
                             "production fragment output generation mismatch");
@@ -3877,14 +3900,14 @@ namespace
             result.diagnostics.emplace_back("LoadDirectory failed to scan directory");
         else
         {
-            if (file_count != 70)
-                result.diagnostics.emplace_back("LoadDirectory expected 70 file modules, got "
+            if (file_count != 71)
+                result.diagnostics.emplace_back("LoadDirectory expected 71 file modules, got "
                                                 + std::to_string(file_count) + " (4 vertex SSBO modules added)");
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 70;
+            const int expected_count = 71;
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
@@ -4836,6 +4859,8 @@ namespace
         CompositorMaterialBuildConfig config{};
         config.data_slot_decls = &slots;
         config.defer_finalize = true;
+        // mesh 化后顶点路径统一走 Mesh stage（VS 已彻底废弃）
+        config.shader_stage_flag_bits = uint32_t(hgl::graph::mtl::ShaderStage::MeshFragment);
 
         ShaderBuildContext *build_spec = CompileCompositorMaterial(
             nullptr,
@@ -4888,10 +4913,10 @@ namespace
         }
 
         const ShaderCreateInfo *vertex =
-            build_spec->GetStageShader(ShaderStage::Vertex);
+            build_spec->GetStageShader(ShaderStage::Mesh);
         if (!vertex)
         {
-            result.diagnostics.emplace_back("multi-slot compiler did not produce a vertex stage");
+            result.diagnostics.emplace_back("multi-slot compiler did not produce a mesh stage");
         }
         else
         {

@@ -80,9 +80,6 @@ bool MaterialParameters::BindSSBO(const AnsiString &name,const VkBuffer buf,cons
 
     if(index<0)
     {
-        // 【诊断】GetSSBO 查找失败——descriptor 更新静默失败 → 残留前一次绑定（多对象场景全用首个对象）
-        GLogWarning("[BIND-FAIL] GetSSBO(set=%d, name=%s, dynamic=%d) not found — descriptor NOT updated",
-                    int(set_type), name.c_str(), int(dynamic));
         return(false);
     }
 

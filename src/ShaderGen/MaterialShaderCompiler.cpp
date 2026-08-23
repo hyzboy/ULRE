@@ -334,7 +334,7 @@ ShaderBuildContext *CompileCompositorMaterial(
     const PrimitiveType primitive_type = config.primitive_type;
     if (input.primitive_type != primitive_type)
         return nullptr;
-    const uint32_t shader_stage_bits = config.shader_stage_flag_bits != 0 ? config.shader_stage_flag_bits : uint32_t(ShaderStage::VertexFragment);
+    const uint32_t shader_stage_bits = config.shader_stage_flag_bits != 0 ? config.shader_stage_flag_bits : uint32_t(ShaderStage::MeshFragment);
 
     DescriptorContract base_descriptor_contract{};
     if (config.descriptor_contract)
@@ -950,15 +950,12 @@ ShaderBuildContext *CompileCompositorMaterial(
         binding_preamble + sampler_macros + material_ssbo_decls
         + material_slot_macros + fs_index_table_decls);
 
-    ShaderCreateInfoVertex   *vert = ctx->GetVertexShader();
     ShaderCreateInfo         *mesh = ctx->GetStageShader(ShaderStage::Mesh);
     ShaderCreateInfo         *frag = ctx->GetStageShader(ShaderStage::Fragment);
 
     // mesh shader 材质（彻底废弃 VS 方向）：vs_glsl 实为 mesh stage 源码，
-    // 设到 mesh ShaderCreateInfo；vertex stage 不存在则跳过。
-    if (vert)
-        vert->SetFinalGLSL(vs_final);
-    else if (mesh)
+    // 设到 mesh ShaderCreateInfo（Vertex stage 已不存在）。
+    if (mesh)
         mesh->SetFinalGLSL(vs_final);
 
     if (frag)
