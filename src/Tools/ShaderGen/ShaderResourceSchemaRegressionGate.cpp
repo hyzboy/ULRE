@@ -2869,8 +2869,9 @@ namespace
                          || contains(depth_fs, "EvalAlpha("))
                             mismatch = true;
                     }
+                    // depth：DepthOnly 的 mesh 源不应含 fragDataIndexID（depth 无需 data index）
                     if (has(depth.get(), ShaderStage::Mesh)
-                     && lacks(depth_ms, "fragDataIndexID"))
+                     && contains(depth_ms, "fragDataIndexID"))
                         mismatch = true;
                     // masked_depth：alpha test，期望含 EvalAlpha/HGLApplyAlpha/ALPHA_TEST
                     if (has(masked_depth.get(), ShaderStage::Fragment)
@@ -2879,8 +2880,9 @@ namespace
                       || lacks(masked_depth_fs, "#define HGL_ALPHA_TEST 1")
                       || contains(masked_depth_fs, "EvalLighting(")))
                         mismatch = true;
+                    // masked_depth：mesh 源不应含 fragWorldPos（depth 无需世界坐标输出）
                     if (has(masked_depth.get(), ShaderStage::Mesh)
-                     && lacks(masked_depth_ms, "fragWorldPos"))
+                     && contains(masked_depth_ms, "fragWorldPos"))
                         mismatch = true;
                     // dither_shadow：期望含 ALPHA_DITHER + EvalLighting
                     if (has(dither_shadow.get(), ShaderStage::Fragment)

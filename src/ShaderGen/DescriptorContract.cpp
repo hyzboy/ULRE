@@ -157,7 +157,7 @@ namespace hgl::graph::mtl
             entry.set_type = SBS_MaterialDataIndexRows.set_type;  // P1-2c：Transform 集
             entry.kind = DescriptorKind::SSBO;
             entry.stage_flags =
-                uint32(VK_SHADER_STAGE_ALL_GRAPHICS);
+                uint32(hgl::graph::kMeshFragment);
             entry.name = SBS_MaterialDataIndexRows.name;
             entry.struct_name = SBS_MaterialDataIndexRows.struct_name;
             entry.semantic =
