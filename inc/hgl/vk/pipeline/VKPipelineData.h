@@ -33,8 +33,7 @@ public:
 
     VkGraphicsPipelineCreateInfo                pipeline_info;
 
-    VkVertexInputBindingDescription *           vertex_input_binding_description;
-    VkVertexInputAttributeDescription *         vertex_input_attribute_description;
+    // 顶点输入已统一走 SSBO（mesh shader 唯一顶点路径）——无 VBO binding/attribute 描述
 
     VkPipelineVertexInputStateCreateInfo        vertex_input_state;
 

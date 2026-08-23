@@ -23,9 +23,6 @@ PipelineData::PipelineData(const PipelineData *pd)
 
     pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 
-    vertex_input_binding_description=nullptr;
-    vertex_input_attribute_description=nullptr;
-
     viewport=pd->viewport;
     scissor=pd->scissor;
 
@@ -85,9 +82,6 @@ PipelineData::PipelineData(const uint32_t color_attachment_count)
     //mem_zero(dynamic_state);
 
     pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-
-    vertex_input_binding_description=nullptr;
-    vertex_input_attribute_description=nullptr;
 
     InitViewportState();
     InitDynamicState();
@@ -235,9 +229,6 @@ PipelineData::PipelineData()
 
     pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
     pipeline_info.basePipelineIndex = -1;
-
-    vertex_input_attribute_description=nullptr;
-    vertex_input_binding_description=nullptr;
 
     sample_mask=nullptr;
 
