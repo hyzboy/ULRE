@@ -105,6 +105,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::LocalToWorld:
         case DescriptorSemantic::LocalToWorldIndexTable:
         case DescriptorSemantic::MaterialDataIndexTable:  // P1-2c：实例→材质行索引表迁至 PerObject 集
+        case DescriptorSemantic::MeshDrawParams:          // mesh per-draw 参数表（PerObject 固定 binding）
             return DescriptorSetType::PerObject;
 
         case DescriptorSemantic::MaterialDataSlotData:
@@ -172,6 +173,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::VertexNTB: return SBS_VertexNTB.name;
         case DescriptorSemantic::VertexJoint: return SBS_VertexJoint.name;
         case DescriptorSemantic::VertexIndex: return SBS_VertexIndex.name;
+        case DescriptorSemantic::MeshDrawParams: return SBS_MeshDrawParams.name;
         default: return nullptr;
         }
     }
@@ -189,6 +191,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::MaterialColorPalette: return SBS_ColorPalette.struct_name;
         case DescriptorSemantic::MaterialTextureLayerTable: return SBS_MaterialTextureLayerRows.struct_name;
         case DescriptorSemantic::MaterialDataIndexTable: return SBS_MaterialDataIndexRows.struct_name;
+        case DescriptorSemantic::MeshDrawParams: return SBS_MeshDrawParams.struct_name;
         default: return nullptr;
         }
     }
@@ -376,6 +379,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::MaterialSampler:  return "MaterialSampler";
         case DescriptorSemantic::MaterialTextureLayerTable: return "MaterialTextureLayerTable";
         case DescriptorSemantic::MaterialDataIndexTable: return "MaterialDataIndexTable";
+        case DescriptorSemantic::MeshDrawParams: return "MeshDrawParams";
         case DescriptorSemantic::Custom:           return "Custom";
         }
 

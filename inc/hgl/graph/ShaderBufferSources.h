@@ -48,4 +48,22 @@ namespace hgl::graph::mtl
     constexpr const ShaderBufferSource SBS_VertexIndex{
         DescriptorSetType::PerObject, "VertexIndex", "VertexIndexData"
     };
+    // mesh per-draw 参数表（IndirectMeshDraw：mesh shader 经 gl_DrawID 查表的
+    // per-draw 段偏移——替代 per-draw push constant，多 draw 合批的关键）
+    constexpr const ShaderBufferSource SBS_MeshDrawParams{
+        DescriptorSetType::PerObject, "mesh_draw_params", "MeshDrawParamsData"
+    };
+
+    // mesh per-draw 参数行——与 MeshShaderAssembler 生成的 GLSL struct MeshDrawParams
+    // 严格同构（std430 全 4 字节成员，24B 无 padding）
+    struct MeshDrawParams
+    {
+        uint32_t index_base;
+        uint32_t vertex_base;
+        uint32_t is_indexed;
+        uint32_t total_vertices;
+        float    viewport_height;
+        uint32_t first_instance;
+    };
+    static_assert(sizeof(MeshDrawParams) == 24, "MeshDrawParams must match GLSL std430 layout");
 }

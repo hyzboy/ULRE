@@ -299,6 +299,23 @@ namespace hgl::graph::mtl
                         }),
                     plan.descriptors.end());
             }
+            // mesh_draw_params：mesh 阶段统一 per-draw 参数表（IndirectMeshDraw——
+            // mesh shader 经 gl_DrawID 查表的段偏移，替代 per-draw push constant）。
+            // mesh 为唯一顶点路径，所有材质必备，不依赖材质定义/剔除规则。
+            {
+                SerializedDescriptorEntry mesh_params{};
+                mesh_params.set_type = SBS_MeshDrawParams.set_type;
+                mesh_params.kind = DescriptorKind::SSBO;
+                mesh_params.stage_flags = VK_SHADER_STAGE_MESH_BIT_EXT;
+                mesh_params.name = SBS_MeshDrawParams.name;
+                mesh_params.struct_name = SBS_MeshDrawParams.struct_name;
+                mesh_params.semantic = DescriptorSemantic::MeshDrawParams;
+                mesh_params.semantic_layer = DescriptorSemanticLayer::SSBO;
+                mesh_params.has_requirement_policy = true;
+                mesh_params.required = true;
+                mesh_params.allow_fallback = false;
+                plan.descriptors.push_back(mesh_params);
+            }
             if (!plan.manifest.IsValid())
             {
                 GLogError("[ShaderGen] Generic material resource contract failed: name=%s error=%s",

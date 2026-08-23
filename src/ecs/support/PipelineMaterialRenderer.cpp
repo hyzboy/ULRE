@@ -19,6 +19,7 @@
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
+#include<hgl/graph/ShaderBufferSources.h>
 
 namespace hgl::ecs
 {
@@ -41,13 +42,64 @@ namespace hgl::ecs
 
     void PipelineMaterialRenderer::ProcIndirectRender(graph::IndirectDrawBuffer* icb_draw)
     {
-        // 提交累积的间接绘制命令（SSBO 顶点输入：统一非索引间接——索引数据走 sbo_index）
-        icb_draw->Draw(*cmd_buf, first_indirect_draw_index, indirect_draw_count);
+        // 提交累积的间接绘制命令
+        if (material_is_mesh && cur_owner_batch && cur_owner_batch->icb_mesh_tasks)
+        {
+            static bool s_logged_once = false;
+            if (!s_logged_once)
+            {
+                s_logged_once = true;
+                GLogInfo(u8"[IndirectMeshDraw] mesh indirect flush engaged: first=%d count=%u",
+                         first_indirect_draw_index, indirect_draw_count);
+            }
+            // mesh 间接：一条 multi-draw（每命令 {X=组数, Y=实例数, Z=1}）——
+            // per-draw 段偏移经 mesh_draw_params 参数表查表（rows[gl_DrawID]）
+            cmd_buf->DrawMeshTasksIndirect(
+                cur_owner_batch->icb_mesh_tasks->GetVkBuffer(),
+                static_cast<VkDeviceSize>(first_indirect_draw_index)
+                    * sizeof(VkDrawMeshTasksIndirectCommandEXT),
+                indirect_draw_count);
+        }
+        else if (icb_draw)
+        {
+            // legacy：统一非索引间接——索引数据走 sbo_index
+            icb_draw->Draw(*cmd_buf, first_indirect_draw_index, indirect_draw_count);
+        }
 
         // 重置间接绘制状态（命令序号累计到本批次已提交段）
         first_indirect_draw_index = -1;
         indirect_draw_command_offset += indirect_draw_count;
         indirect_draw_count = 0;
+    }
+
+    void PipelineMaterialRenderer::BindMeshDrawParamsView(const DrawBatch* batch)
+    {
+        // 直接绘制路径：参数表按本 draw 行 offset 视图重绑（gl_DrawID=0 → rows[0]
+        // 恰为本行）。run 起点的 switch 绑定已覆盖单 draw run——offset 缓存跳过。
+        if (!cur_owner_batch || !cur_owner_batch->mesh_draw_params_buffer || !batch)
+            return;
+
+        auto *mp = batch->per_object_mp;
+        if (!mp)
+            return;
+
+        const VkDeviceSize offset =
+            static_cast<VkDeviceSize>(batch->params_row)
+            * sizeof(graph::mtl::MeshDrawParams);
+
+        if (offset == last_mesh_params_offset)
+            return;
+
+        mp->BindSSBO("mesh_draw_params",
+                     cur_owner_batch->mesh_draw_params_buffer->GetGPUBuffer()->GetVkDeviceBuffer(),
+                     offset,
+                     VK_WHOLE_SIZE);
+        mp->Update();
+        const VkDescriptorSet ds = mp->GetVkDescriptorSet();
+        cmd_buf->BindDescriptorSets(material->GetPipelineLayout(),
+                                    static_cast<uint32_t>(graph::DescriptorSetType::PerObject),
+                                    &ds, 1, nullptr, 0);
+        last_mesh_params_offset = offset;
     }
 
     bool PipelineMaterialRenderer::Draw( DrawBatch* batch,
@@ -166,6 +218,23 @@ namespace hgl::ecs
                                          owner_batch->material_data_index_rows_buffer->GetGPUBuffer());
                     }
 
+                    // IndirectMeshDraw：mesh per-draw 参数表——按 run 首行 offset 绑定
+                    //（switch 触发即 run 起点；rows[gl_DrawID] 在 run 内与命令序 1:1 对齐）
+                    if (material_is_mesh
+                     && owner_batch
+                     && owner_batch->mesh_draw_params_buffer)
+                    {
+                        const VkDeviceSize params_offset =
+                            static_cast<VkDeviceSize>(batch->params_row)
+                            * sizeof(graph::mtl::MeshDrawParams);
+                        mp->BindSSBO(
+                            "mesh_draw_params",
+                            owner_batch->mesh_draw_params_buffer->GetGPUBuffer()->GetVkDeviceBuffer(),
+                            params_offset,
+                            VK_WHOLE_SIZE);
+                        last_mesh_params_offset = params_offset;
+                    }
+
                     // 一次 Update + 绑定（此前分三段各自 Update/绑定一次）
                     mp->Update();
                     const VkDescriptorSet ds = mp->GetVkDescriptorSet();
@@ -181,65 +250,54 @@ namespace hgl::ecs
             }
         }
 
-        // per-draw 段偏移 push constant（每 DrawBatch 必推——VDM 共享 buffer 各模型
-        // 段偏移不同；间接累积提交无法 per-draw——SSBO 材质直接绘制）
+        // IndirectMeshDraw：mesh 材质 per-draw 参数走 mesh_draw_params 参数表 SSBO
+        //（BuildBatches 与命令同序写行），不再推 push constant。
+        // 非 mesh（手写管线遗留）：12B push + Draw 原路径。
         if (ssbo_vertex_input)
         {
-            // mesh shader 材质（ShaderGen 全量 mesh 化后唯一路径）：20B push
-            // （index_base/vertex_base/is_indexed/total_vertices/viewport_height）
-            // + DrawMeshTasks（每线程 1 顶点，threadgroup=64）。
-            // 非 mesh（示例手写管线 VS 材质）：12B push + Draw 原路径。
-            bool is_mesh = false;
-            for (const auto &stage : material->GetStageList())
+            if (material_is_mesh)
             {
-                if (stage.stage == VK_SHADER_STAGE_MESH_BIT_EXT)
-                {
-                    is_mesh = true;
-                    break;
-                }
-            }
-
-            if (is_mesh)
-            {
-                // 实例化：DrawMeshTasks(gx, instance_count)——gl_WorkGroupID.y = 实例索引
-                //（mesh shader 的 gl_InstanceIndex 宏映射；顶点读取是实例内序号，
-                //  VDM 共享顶点/独立 VAB 均正确——每实例重复同一批顶点）
-                struct MeshPC
-                {
-                    uint32_t index_base;
-                    uint32_t vertex_base;
-                    uint32_t is_indexed;
-                    uint32_t total_vertices;
-                    float    viewport_height;
-                    uint32_t first_instance;
-                } pc{};
-
-                pc.index_base      = static_cast<uint32_t>(batch->geom_draw_range->first_index);
-                pc.vertex_base     = static_cast<uint32_t>(batch->geom_draw_range->vertex_offset);
-                pc.is_indexed      = batch->geom_draw_range->index_count > 0 ? 1u : 0u;
-                // total_vertices：索引几何=index_count（每索引 1 顶点查表），非索引=vertex_count（直通）
-                // ——与 VS 的 vertexCount 双语义一致（skill §10）；实例化时是每实例顶点数
-                pc.total_vertices  = batch->geom_draw_range->index_count > 0
-                                   ? static_cast<uint32_t>(batch->geom_draw_range->index_count)
-                                   : static_cast<uint32_t>(batch->geom_draw_range->vertex_count);
-                pc.viewport_height = cmd_buf->GetViewport().height;
-                // first_instance：l2w_index_rows 按整批 item 序号写，mesh 实例索引 =
-                // first_instance + gl_WorkGroupID.y（与 VS 的 gl_InstanceIndex 语义一致）
-                pc.first_instance  = batch->first_instance;
-                cmd_buf->PushConstants(material->GetPipelineLayout(), &pc, sizeof(pc));
-
-                // Mesh shader 绘制：threadgroup 大小按图元类型——Lines（LineQuad）每线程
-                // 1 线段 = 2 顶点 → 线段数 = total_vertices/2，组大小 64；
-                // 其它（VertexPassthrough）每线程 1 顶点，组大小 96（3 的倍数——组内
-                // 三角形永不跨组，避免 64 边界丢三角形）
+                // 实例化：Y 轴 = 实例轴（gl_WorkGroupID.y = 实例内序号，
+                // + first_instance 后与 l2w_index_rows 行号对齐）
+                // total_vertices：索引几何 = index_count（每索引 1 顶点查表），非索引 = vertex_count
                 const bool is_lines = material->GetPrimitiveType() == hgl::graph::PrimitiveType::Lines;
-                const uint32_t process_count = is_lines ? (pc.total_vertices >> 1u) : pc.total_vertices;
-                const uint32_t group_size = is_lines ? 64u : 96u;
-                const uint32_t group_count = (process_count + group_size - 1u) / group_size;
+                const uint32_t total_vertices = batch->geom_draw_range->index_count > 0
+                    ? static_cast<uint32_t>(batch->geom_draw_range->index_count)
+                    : static_cast<uint32_t>(batch->geom_draw_range->vertex_count);
+                const uint32_t group_count = CalcMeshGroupCount(is_lines, total_vertices);
                 const uint32_t instance_count = batch->instance_count > 1
-                                              ? static_cast<uint32_t>(batch->instance_count)
-                                              : 1u;
-                cmd_buf->DrawMeshTasks(group_count, instance_count);
+                    ? static_cast<uint32_t>(batch->instance_count)
+                    : 1u;
+
+                // 间接合批：VDM 共享 buffer + MDI 支持 → 累积命令（buffer 切换/批末
+                // flush 一条 vkCmdDrawMeshTasksIndirectEXT）。
+                // 不支持 MDI 时走直接路径——逐条 fallback 的 DrawID 恒 0，无法区分命令
+                const bool use_indirect = batch->geom_data_buffer->vdm
+                                       && owner_batch
+                                       && owner_batch->icb_mesh_tasks
+                                       && owner_batch->device
+                                       && owner_batch->device->GetPhyDevice()->SupportMDI();
+
+                if (use_indirect)
+                {
+                    // 命令偏移取本批 ICB 命令序号累计（与 BuildBatches 写入序一致；
+                    // 不能用 first_instance——vdm/非 vdm 混排时二者脱节）
+                    if (indirect_draw_count == 0)
+                    {
+                        first_indirect_draw_index =
+                            static_cast<int32_t>(indirect_draw_command_offset);
+                    }
+
+                    ++indirect_draw_count;
+                }
+                else
+                {
+                    // 直接路径（私有 VBO / 无 MDI）：参数表 offset 视图重绑到本 draw 行
+                    //（gl_DrawID=0 → rows[0] 恰为本行）后直接 dispatch
+                    BindMeshDrawParamsView(batch);
+                    cmd_buf->DrawMeshTasks(group_count, instance_count);
+                }
+
                 return true;
             }
 
@@ -335,6 +393,19 @@ namespace hgl::ecs
         indirect_draw_count = 0;
         indirect_draw_command_offset = 0;
         first_indirect_draw_index = -1;
+        last_mesh_params_offset = UINT64_MAX;
+        cur_owner_batch = owner_batch;
+
+        // mesh stage 判定（批级一次——switch 块参数表绑定与间接 flush 分派共用）
+        material_is_mesh = false;
+        for (const auto &stage : material->GetStageList())
+        {
+            if (stage.stage == VK_SHADER_STAGE_MESH_BIT_EXT)
+            {
+                material_is_mesh = true;
+                break;
+            }
+        }
 
         // SSBO 顶点输入判定（schema 含顶点数据 SSBO 需求）——MeshShader 方向：
         // 顶点 buffer 按对象绑定（VDM 共享 buffer 同值；独立 VAB 每对象正确）

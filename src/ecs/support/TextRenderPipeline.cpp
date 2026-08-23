@@ -133,6 +133,7 @@ namespace hgl::ecs
 
             SAFE_CLEAR(res.data_buffer);
             SAFE_CLEAR(res.draw_range);
+            SAFE_CLEAR(res.mesh_draw_params);
 
             if (res.material && material_manager)
             {
@@ -271,26 +272,17 @@ namespace hgl::ecs
                                            "VertexIndex", ibo->GetVkBuffer(), 0, VK_WHOLE_SIZE);
             }
 
-            // per-draw 段偏移 push constant（text 独立 VAB——段偏移恒 0，
-            // 但 shader 静态使用 pc_vertex_index——必须设置；索引统一 uint32）
-            // mesh shader（text_2d 材质已 mesh 化）：24B + DrawMeshTasks
-            struct TextPC
-            {
-                uint32_t index_base;
-                uint32_t vertex_base;
-                uint32_t is_indexed;
-                uint32_t total_vertices;
-                float    viewport_height;
-                uint32_t first_instance;
-            } pc{};
+            // IndirectMeshDraw：mesh per-draw 参数表（row 0——每字体一次 draw，gl_DrawID=0）
+            //（per-draw 段偏移经参数表传递——shader 不再读 push constant）
+            if (res.mesh_draw_params)
+                res.material->BindSSBO(graph::DescriptorSetType::PerObject,
+                                       "mesh_draw_params",
+                                       res.mesh_draw_params->GetGPUBuffer()->GetVkDeviceBuffer(),
+                                       0, VK_WHOLE_SIZE);
 
-            pc.is_indexed      = res.draw_range->index_count > 0 ? 1u : 0u;
-            pc.total_vertices  = res.draw_range->index_count > 0
-                               ? static_cast<uint32_t>(res.draw_range->index_count)
-                               : static_cast<uint32_t>(res.draw_range->vertex_count);
-            pc.viewport_height = cmd->GetViewport().height;
-            pc.first_instance  = 0u;
-            cmd->PushConstants(res.material->GetPipelineLayout(), &pc, sizeof(pc));
+            const uint32_t total_vertices = res.draw_range->index_count > 0
+                ? static_cast<uint32_t>(res.draw_range->index_count)
+                : static_cast<uint32_t>(res.draw_range->vertex_count);
 
             cmd->BindDescriptorSets(res.material);
 
@@ -316,10 +308,10 @@ namespace hgl::ecs
                 }
             }
 
-            // 非索引绘制（SSBO 顶点输入——索引数据走 VertexIndex 槽，段偏移 push constant）
+            // 非索引绘制（SSBO 顶点输入——索引数据走 VertexIndex 槽，段偏移经参数表）
             // mesh shader：DrawMeshTasks（每线程 1 顶点，threadgroup=96——3 的倍数，
             // 组内三角形永不跨组，避免 64 边界丢三角形）
-            const uint32_t group_count = (pc.total_vertices + 95u) / 96u;
+            const uint32_t group_count = (total_vertices + 95u) / 96u;
             cmd->DrawMeshTasks(group_count);
         }
     }
@@ -735,6 +727,43 @@ namespace hgl::ecs
 
             resources->draw_range->Set(geometry);
             resources->last_string_count = static_cast<uint32_t>(input.texts.size());
+
+            // IndirectMeshDraw：写 mesh per-draw 参数行 row 0（每字体一次 draw，
+            // gl_DrawID=0；shader 不再读 push constant。build 阶段写入，
+            // RenderBufferUploadSystem 上传后再进录制）
+            if (device && resources->last_draw_char_count > 0)
+            {
+                if (!resources->mesh_draw_params)
+                    resources->mesh_draw_params = device->CreateSSBO(
+                        "ECS:Text:MeshDrawParams", sizeof(graph::mtl::MeshDrawParams));
+
+                if (resources->mesh_draw_params)
+                {
+                    uint32_t viewport_height = 1;
+                    if (auto *rt = world ? world->GetRenderTarget() : nullptr)
+                        viewport_height = rt->GetExtent().height;
+
+                    const auto *range = resources->draw_range;
+                    auto *gpu = resources->mesh_draw_params->GetGPUBuffer();
+                    auto *row = gpu ? static_cast<graph::mtl::MeshDrawParams *>(
+                        gpu->Map(0, sizeof(graph::mtl::MeshDrawParams))) : nullptr;
+
+                    if (row)
+                    {
+                        row->index_base      = 0;
+                        row->vertex_base     = 0;
+                        row->is_indexed      = (range && range->index_count > 0) ? 1u : 0u;
+                        row->total_vertices  = range
+                            ? static_cast<uint32_t>(range->index_count > 0
+                                 ? range->index_count
+                                 : range->vertex_count)
+                            : 0u;
+                        row->viewport_height = static_cast<float>(viewport_height);
+                        row->first_instance  = 0;
+                        gpu->Unmap();
+                    }
+                }
+            }
         }
     }
 

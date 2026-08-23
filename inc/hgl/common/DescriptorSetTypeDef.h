@@ -27,6 +27,7 @@ namespace hgl::graph
     constexpr const int kPerObjectBindingVertexLuminance = 10;   ///< 顶点亮度 SSBO
     constexpr const int kPerObjectBindingVertexTransformID = 11;  ///< 顶点 TransformID SSBO（调色板变换索引）
     constexpr const int kPerObjectBindingVertexSize      = 12;    ///< 顶点 Size/宽度 SSBO（Line width）
+    constexpr const int kPerObjectBindingMeshDrawParams  = 13;    ///< mesh per-draw 参数表 SSBO（indirect 合批查表）
 
     enum class DescriptorSetType:int
     {

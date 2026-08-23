@@ -250,6 +250,8 @@ static bool ValidateDefinitionCapabilitySubset(
         case DescriptorSemantic::VertexTransformID:
         case DescriptorSemantic::VertexSize:
         case DescriptorSemantic::VertexIndex:
+        // mesh per-draw 参数表（IndirectMeshDraw）：引擎级必备，同顶点 SSBO 无条件允许
+        case DescriptorSemantic::MeshDrawParams:
             allowed = true;
             break;
 
@@ -559,6 +561,13 @@ ShaderBuildContext *CompileCompositorMaterial(
                 if (!ctx->AddSSBOVertex(stage_bits, SBS_VertexSize))
                     return FailAfterBuild("failed to add VertexSize SSBO");
                 break;
+            case DescriptorSemantic::MeshDrawParams:
+                // mesh per-draw 参数表（IndirectMeshDraw）：GLSL 声明由
+                // MeshShaderAssembler 写出（MESH_DRAW_PARAMS_SET/BINDING 宏），
+                // 此处仅注册布局成员（固定名路径 → kPerObjectBindingMeshDrawParams）
+                if (!ctx->AddSSBOVertex(stage_bits, SBS_MeshDrawParams))
+                    return FailAfterBuild("failed to add MeshDrawParams SSBO");
+                break;
             case DescriptorSemantic::VertexIndex:
                 if (!ctx->AddSSBOVertexIndex(stage_bits))
                     return FailAfterBuild("failed to add VertexIndex SSBO");
@@ -658,6 +667,11 @@ ShaderBuildContext *CompileCompositorMaterial(
     // set/binding 宏：声明由下方 index table 生成逻辑依据 descriptor_info 直接以
     // layout(set=.., binding=..) 写出（统一声明生成，不再写死在 .glsl）。
     AppendDescriptorBindingDefine("L2W_SET", "L2W_BINDING", descriptor_info.GetSSBO(SBS_LocalToWorld.name));
+
+    // mesh per-draw 参数表（IndirectMeshDraw）：GLSL 声明在 MeshShaderAssembler 生成体内，
+    // 依赖此宏对取实际 set/binding（固定名路径 → PerObject/13）
+    AppendDescriptorBindingDefine("MESH_DRAW_PARAMS_SET", "MESH_DRAW_PARAMS_BINDING",
+                                  descriptor_info.GetSSBO(SBS_MeshDrawParams.name));
 
     // ── Scene UBO（camera/sky/viewport/color_palette）已全局化（P1/P1-2a）：binding 号为
     //    P0/P1-2a 硬编码常量，不再从 per-material 分配器查询（Scene 不再进入 per-material 描述符集）。

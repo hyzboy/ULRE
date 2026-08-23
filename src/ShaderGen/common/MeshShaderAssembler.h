@@ -70,7 +70,9 @@ namespace hgl::graph::mtl
         const uint32_t max_primitives  = max_invocations * ((prims_per_inv > 0) ? prims_per_inv : 1);
 
         // ── Header ─────────────────────────────────────────────────────────
-        ms += "#version 450\n";
+        // 460：glslang 仅在 GLSL 4.60 起（或 GL_ARB_shader_draw_parameters）在
+        // mesh 阶段符号表声明 gl_DrawID——450 下报 undeclared identifier
+        ms += "#version 460\n";
         ms += "#extension GL_EXT_mesh_shader : require\n";
         ms += "#extension GL_EXT_scalar_block_layout : require\n";
         ms += "\n";
@@ -126,7 +128,7 @@ namespace hgl::graph::mtl
         // is_indexed 分支语义一致。宏必须指向**可变**变量（LoadVertexData 是独立函数，
         // 函数体内不能引用 main 局部变量，且查表需要运行时赋值——不能用常量表达式宏）。
         // 跳过 s1_index（其 VertexIndexID 变量声明与宏冲突、gl_VertexIndex 在 mesh 不存在）。
-        // 两模式都需要 pc_vertex_index push constant——由本生成器补声明（见下）。
+        // 两模式都需要 mesh_draw_params 参数表——由本生成器补声明（见下）。
         ms += "// mesh shader：无 gl_VertexIndex；VertexIndexID = MeshVertexIndex（main 解析）\n";
         ms += "uint MeshVertexIndex;\n";
         ms += "#define VertexIndexID (MeshVertexIndex)\n";
@@ -138,9 +140,15 @@ namespace hgl::graph::mtl
         ms += "{ uint data[]; } sbo_vertex_index;\n";
         ms += "\n";
 
-        // 补 pc_vertex_index push constant 声明（s1_index 被跳过，两模式都需要）
+        // mesh per-draw 参数表（IndirectMeshDraw）：替代 push constant——per-draw 段偏移经
+        // gl_DrawID 查表（间接合批的关键：多命令一次 vkCmdDrawMeshTasksIndirectEXT 提交时
+        // 每命令各自的参数只能靠 GPU 侧查表；直接绘制 gl_DrawID=0 → row 0）。
+        // 声明用 MESH_DRAW_PARAMS_SET/BINDING 宏（descriptor_macros.glsl 默认值 +
+        // CompileCompositorMaterial binding_preamble 注入实际值）。字段顺序与 CPU 侧
+        // per-draw 参数行严格一致（std430 全 4 字节成员，24B 无 padding）。
+        // gl_DrawID 在 mesh 阶段合法（GLSL_EXT_mesh_shader：vertex/task/mesh 输入）。
         {
-            ms += "layout(push_constant) uniform PC_VertexIndex\n";
+            ms += "struct MeshDrawParams\n";
             ms += "{\n";
             ms += "    uint index_base;\n";
             ms += "    uint vertex_base;\n";
@@ -148,7 +156,14 @@ namespace hgl::graph::mtl
             ms += "    uint total_vertices;\n";
             ms += "    float viewport_height;\n";
             ms += "    uint first_instance;\n";
-            ms += "} pc_vertex_index;\n";
+            ms += "};\n";
+            ms += "layout(set=MESH_DRAW_PARAMS_SET, binding=MESH_DRAW_PARAMS_BINDING, std430) readonly buffer MeshDrawParamsData\n";
+            ms += "{ MeshDrawParams rows[]; } sbo_draw_params;\n";
+            ms += "\n";
+            // 全局可变参数行：模块函数（orient_world 等经 gl_InstanceIndex 宏）引用
+            // first_instance——必须在 main 开头按 gl_DrawID 加载后使用点才生效
+            //（跨函数可见，与上方 MeshVertexIndex 同模式）
+            ms += "MeshDrawParams pc_vertex_index;\n";
             ms += "\n";
         }
 
@@ -287,6 +302,11 @@ namespace hgl::graph::mtl
         }
 
         ms += "\nvoid main()\n{\n";
+
+        // per-draw 参数行加载（两模式统一）：间接合批经 gl_DrawID 定位本命令行，
+        // 直接绘制 gl_DrawID=0 → row 0（CPU 侧保证 row 0 = 本 draw 参数）
+        ms += "    pc_vertex_index = sbo_draw_params.rows[gl_DrawID];\n";
+        ms += "\n";
 
         // ── 每线程处理 ─────────────────────────────────────────────────────
         switch (mode)

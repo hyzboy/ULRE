@@ -28,8 +28,9 @@ namespace hgl::graph::mtl
         VertexTransformID,
         VertexSize,
         VertexIndex,
+        MeshDrawParams,
 
-        ENUM_CLASS_RANGE(TextureLayer, VertexIndex)
+        ENUM_CLASS_RANGE(TextureLayer, MeshDrawParams)
     };
 
     using SSBOCategory = SSBOType;

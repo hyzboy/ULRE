@@ -38,6 +38,17 @@ namespace hgl::ecs
 {
     struct MaterialBatch;
 
+    // mesh shader 组数计算（与 MeshShaderAssembler 的 dispatch 约定一致）：
+    // Lines（LineQuad）每线程 1 线段 = 2 顶点 → 线段数 = total/2，组大小 64；
+    // 其它（VertexPassthrough）每线程 1 顶点，组大小 96（3 的倍数——组内
+    // 三角形永不跨组，避免 64 边界丢三角形）
+    inline uint32_t CalcMeshGroupCount(const bool is_lines, const uint32_t total_vertices)
+    {
+        const uint32_t process_count = is_lines ? (total_vertices >> 1u) : total_vertices;
+        const uint32_t group_size = is_lines ? 64u : 96u;
+        return (process_count + group_size - 1u) / group_size;
+    }
+
     /**
      * 绘制批次：将使用相同几何数据的节点合并为一个批次
      */
@@ -45,6 +56,7 @@ namespace hgl::ecs
     {
                 uint32_t                first_instance = 0;     ///<第一个绘制实例(和instance渲染无关,对应InstanceRate的VAB)
                 uint32_t                instance_count = 0;     ///<此批次包含的实例数量
+                uint32_t                params_row = 0;         ///<本批参数行号（mesh_draw_params 表内——间接 flush 按 run 基址偏移绑定，直接绘制绑定本行 offset 视图）
 
         const   graph::GeometryDataBuffer *    geom_data_buffer = nullptr;   ///<几何数据缓冲
         const   graph::GeometryDrawRange *     geom_draw_range = nullptr;    ///<绘制范围（顶点/索引偏移和数量）
@@ -88,6 +100,9 @@ namespace hgl::ecs
 
         // === SSBO 顶点输入 ===
         bool ssbo_vertex_input = false;                     ///<材质是否走 SSBO 顶点输入
+        bool material_is_mesh = false;                      ///<材质是否含 mesh stage（间接 flush 分派）
+        const MaterialBatch *cur_owner_batch = nullptr;     ///<当前材质批（间接 flush 取 icb_mesh_tasks）
+        VkDeviceSize last_mesh_params_offset = UINT64_MAX;  ///<直接路径 mesh_draw_params offset 视图缓存
 
         int first_indirect_draw_index;                      ///<首个间接绘制索引
         uint32_t indirect_draw_count;                       ///<累积的间接绘制数量
@@ -101,6 +116,12 @@ namespace hgl::ecs
          * @return 绑定是否成功
          */
         bool BindVAB(const DrawBatch* batch);   // VBO 时代残留——已随阶段 4 删除实现
+
+        /**
+         * 绑定 mesh per-draw 参数表 offset 视图（直接绘制路径——gl_DrawID=0 → rows[0]）
+         * @param batch 绘制批次
+         */
+        void BindMeshDrawParamsView(const DrawBatch* batch);
 
         /**
          * 处理间接渲染

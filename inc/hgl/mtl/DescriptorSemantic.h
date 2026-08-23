@@ -43,6 +43,9 @@ namespace hgl::graph::mtl
         VertexSize,
         VertexIndex,
 
+        // mesh per-draw 参数表（IndirectMeshDraw：所有 mesh 材质必备）
+        MeshDrawParams,
+
         Custom,
     };
 
@@ -79,6 +82,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::LocalToWorldIndexTable:
         case DescriptorSemantic::MaterialTextureLayerTable:
         case DescriptorSemantic::MaterialDataIndexTable:
+        case DescriptorSemantic::MeshDrawParams:
             return DescriptorSemanticLayer::SSBO;
 
         case DescriptorSemantic::LocalToWorld:

@@ -23,6 +23,7 @@
 #include <hgl/vk/VKBuffer.h>
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/vk/VKRenderTarget.h>
+#include <hgl/graph/ShaderBufferSources.h>
 #include <hgl/vk/VKRenderAssign.h>
 #include <hgl/vk/VKBindlessTextureManager.h>
 #include <hgl/vk/VKGlobalSceneUBOSet.h>
@@ -99,6 +100,7 @@ namespace hgl::ecs
         SAFE_CLEAR(data_buffer);
         SAFE_CLEAR(draw_range);
         SAFE_CLEAR(geometry);
+        SAFE_CLEAR(mesh_draw_params);
         line_count   = 0;
         gpu_capacity = 0;
     }
@@ -289,6 +291,13 @@ namespace hgl::ecs
          || !bind_ssbo(graph::VertexSemantic::Size, "VertexSize"))
             return;
 
+        // IndirectMeshDraw：mesh per-draw 参数表（row 0——Line 单 draw，gl_DrawID=0）
+        if (mesh_draw_params)
+            material->BindSSBO(graph::DescriptorSetType::PerObject,
+                               "mesh_draw_params",
+                               mesh_draw_params->GetGPUBuffer()->GetVkDeviceBuffer(),
+                               0, VK_WHOLE_SIZE);
+
         auto *mp = material->GetMP(graph::DescriptorSetType::PerObject);
         if (!mp)
             return;
@@ -298,24 +307,8 @@ namespace hgl::ecs
                                 static_cast<uint32_t>(graph::DescriptorSetType::PerObject),
                                 &ds, 1, nullptr, 0);
 
-        // Push constant（24B）：index_base=0 vertex_base=0 is_indexed=0 total_vertices=line_count*2
-        // viewport_height（线宽像素换算）first_instance=0（Line 非实例化）
-        struct LinePushConstant
-        {
-            uint32_t index_base;
-            uint32_t vertex_base;
-            uint32_t is_indexed;
-            uint32_t total_vertices;
-            float    viewport_height;
-            uint32_t first_instance;
-        } pc{};
-
-        pc.total_vertices = line_count * 2u;
-        pc.viewport_height = cmd->GetViewport().height;
-        pc.first_instance = 0u;
-        cmd->PushConstants(material->GetPipelineLayout(), &pc, sizeof(pc));
-
         // Mesh shader 绘制：每线程 1 线段，threadgroup = MESH_GROUP_SIZE
+        //（per-draw 段偏移/线宽参数经 mesh_draw_params 参数表传递——不再推 push constant）
         const uint32_t group_count = (line_count + LineRenderPipeline::MESH_GROUP_SIZE - 1)
                                     / LineRenderPipeline::MESH_GROUP_SIZE;
         cmd->DrawMeshTasks(group_count);
@@ -674,6 +667,38 @@ namespace hgl::ecs
                  expected_total,
                  total_line_count_,
                  write_fail_count);
+
+        // IndirectMeshDraw：写 mesh per-draw 参数行 row 0（Line 单 draw 非实例化——
+        // 绘制时 gl_DrawID=0；shader 不再读 push constant。build 阶段写入，
+        // RenderBufferUploadSystem 上传后再进录制）
+        if (device_ && total_line_count_ > 0)
+        {
+            if (!line_buffer_.mesh_draw_params)
+                line_buffer_.mesh_draw_params = device_->CreateSSBO(
+                    "ECS:Line:MeshDrawParams", sizeof(graph::mtl::MeshDrawParams));
+
+            if (line_buffer_.mesh_draw_params)
+            {
+                uint32_t viewport_height = 1;
+                if (auto *rt = context_ ? context_->GetRenderTarget() : nullptr)
+                    viewport_height = rt->GetExtent().height;
+
+                auto *gpu = line_buffer_.mesh_draw_params->GetGPUBuffer();
+                auto *row = gpu ? static_cast<graph::mtl::MeshDrawParams *>(
+                    gpu->Map(0, sizeof(graph::mtl::MeshDrawParams))) : nullptr;
+
+                if (row)
+                {
+                    row->index_base      = 0;
+                    row->vertex_base     = 0;
+                    row->is_indexed      = 0;
+                    row->total_vertices  = total_line_count_ * 2u;
+                    row->viewport_height = static_cast<float>(viewport_height);
+                    row->first_instance  = 0;
+                    gpu->Unmap();
+                }
+            }
+        }
     }
 
     void LineRenderPipeline::Render(hgl::graph::RenderCmdBuffer* cmd)

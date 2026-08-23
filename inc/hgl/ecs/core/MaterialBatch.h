@@ -15,6 +15,7 @@ namespace hgl
         class BufferManager;
         class VulkanDevice;
         class IndirectDrawBuffer;
+        class IndirectMeshTaskBuffer;
         class MaterialParameters;
     }
 
@@ -49,6 +50,12 @@ namespace hgl::ecs
         graph::BufferManager *                  buffer_manager          = nullptr;          ///<缓冲区管理器
 
         graph::IndirectDrawBuffer *              icb_draw                = nullptr;          ///<间接绘制命令缓冲（SSBO 统一非索引间接）
+
+        // IndirectMeshDraw：mesh shader 间接命令（{X=组数, Y=实例数, Z=1}）+ per-draw 参数表
+        //（BuildBatches 与命令同序写行；直接绘制/私有 VBO 走参数表 offset 视图）
+        graph::IndirectMeshTaskBuffer *          icb_mesh_tasks          = nullptr;          ///<mesh 间接命令缓冲
+        graph::DeviceBuffer *                    mesh_draw_params_buffer = nullptr;          ///<mesh per-draw 参数表 SSBO（每 DrawBatch 一行）
+        uint32_t                                 mesh_draw_params_capacity = 0;              ///<参数表容量（行数）
 
         // Per-batch L2W index rows SSBO — written in draw order so gl_InstanceIndex
         // directly maps to the correct L2W matrix slot.

@@ -2702,7 +2702,7 @@ namespace
             std::string applied;
             if (ApplyMaterialOutputContract(
                     opaque_output,
-                    "#version 450\nvoid main(){}\n",
+                    "#version 460\nvoid main(){}\n",
                     applied,
                     diagnostic)
              || diagnostic.error
@@ -4867,8 +4867,8 @@ namespace
         ShaderBuildContext *build_spec = CompileCompositorMaterial(
             nullptr,
             compiler_input,
-            "#version 450\nlayout(location=0) in vec2 Position;\nvoid main(){gl_Position=vec4(Position,0.0,1.0);}\n",
-            "#version 450\nlayout(location=0) out vec4 outColor;\nvoid main(){outColor=vec4(1.0);}\n",
+            "#version 460\nlayout(location=0) in vec2 Position;\nvoid main(){gl_Position=vec4(Position,0.0,1.0);}\n",
+            "#version 460\nlayout(location=0) out vec4 outColor;\nvoid main(){outColor=vec4(1.0);}\n",
             config);
         if (!build_spec)
         {

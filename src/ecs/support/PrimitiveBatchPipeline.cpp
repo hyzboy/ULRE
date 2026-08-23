@@ -52,6 +52,27 @@ namespace hgl::ecs
                 delete batch.icb_draw;
                 batch.icb_draw = nullptr;
             }
+
+            if (batch.icb_mesh_tasks)
+            {
+                delete batch.icb_mesh_tasks;
+                batch.icb_mesh_tasks = nullptr;
+            }
+        }
+
+        // 材质是否含 mesh stage（ShaderGen 材质恒是——mesh 为唯一顶点路径）
+        bool ProgramHasMeshStage(const graph::ShaderProgram *program)
+        {
+            if (!program)
+                return false;
+
+            for (const auto &stage : program->GetStageList())
+            {
+                if (stage.stage == VK_SHADER_STAGE_MESH_BIT_EXT)
+                    return true;
+            }
+
+            return false;
         }
 
         void WriteICB(VkDrawIndirectCommand* draw_cmd, DrawBatch* batch)
@@ -345,7 +366,14 @@ namespace hgl::ecs
         while (icb_new_count < batch.items.size())
             icb_new_count <<= 1;
 
-        if (batch.icb_draw && icb_new_count <= batch.icb_draw->GetMaxCount())
+        // IndirectMeshDraw：mesh 材质需 mesh 命令缓冲（与 legacy ICB 同容量策略）
+        const bool mesh_material = ProgramHasMeshStage(batch.key.shader_program);
+
+        if (batch.icb_draw
+         && icb_new_count <= batch.icb_draw->GetMaxCount()
+         && (!mesh_material
+             || (batch.icb_mesh_tasks
+                 && icb_new_count <= batch.icb_mesh_tasks->GetMaxCount())))
             return;
 
         ReleaseICB(batch);
@@ -353,6 +381,9 @@ namespace hgl::ecs
         auto draw_name = BuildICBNames();
 
         batch.icb_draw = device->CreateIndirectDrawBuffer(icb_new_count, draw_name);
+
+        if (mesh_material)
+            batch.icb_mesh_tasks = device->CreateIndirectMeshTaskBuffer(icb_new_count, draw_name);
     }
 
     void PrimitiveBatchPipeline::BuildBatches(MaterialBatch& batch, const uint32_t base_instance)
@@ -483,13 +514,142 @@ namespace hgl::ecs
         {
             batch.icb_draw->Unmap();
         }
+
+        // ── IndirectMeshDraw：mesh 命令 + per-draw 参数行（后置统一写）──
+        WriteMeshDrawCommands(batch);
+    }
+
+    void PrimitiveBatchPipeline::EnsureMeshDrawParams(MaterialBatch& batch)
+    {
+        if (!batch.key.shader_program
+         || !ProgramHasMeshStage(batch.key.shader_program))
+            return;
+
+        if (!batch.buffer_manager || batch.items.empty())
+            return;
+
+        // 参数行数上限 = DrawBatch 数 ≤ item 数（实例合并只减不增）——与行表同策略 pow2 扩容
+        const uint32_t item_count = static_cast<uint32_t>(batch.items.size());
+        uint32_t new_capacity = 1;
+        while (new_capacity < item_count)
+            new_capacity <<= 1;
+
+        if (batch.mesh_draw_params_buffer
+         && batch.mesh_draw_params_capacity >= item_count)
+            return;
+
+        batch.mesh_draw_params_capacity = new_capacity;
+
+        if (batch.mesh_draw_params_buffer)
+        {
+            if (batch.buffer_manager)
+                batch.buffer_manager->Release(batch.mesh_draw_params_buffer);
+            else
+                delete batch.mesh_draw_params_buffer;
+            batch.mesh_draw_params_buffer = nullptr;
+        }
+
+        const VkDeviceSize byte_size =
+            static_cast<VkDeviceSize>(batch.mesh_draw_params_capacity)
+            * sizeof(graph::mtl::MeshDrawParams);
+        batch.mesh_draw_params_buffer = batch.buffer_manager->CreateSSBO(
+            "ECS:Batch:MeshDrawParams", byte_size, nullptr, graph::SharingMode::Exclusive);
+    }
+
+    void PrimitiveBatchPipeline::WriteMeshDrawCommands(MaterialBatch& batch)
+    {
+        const uint32_t count = batch.draw_batches_count;
+        if (count == 0 || !batch.key.shader_program)
+            return;
+
+        const bool is_lines =
+            batch.key.shader_program->GetPrimitiveType() == graph::PrimitiveType::Lines;
+
+        // viewport 高度（LineQuad 线宽换算用）——渲染目标高度，与录制期 cmd viewport 一致
+        uint32_t viewport_height = 1;
+        if (world)
+        {
+            auto *render_ctx = world->GetRenderContext();
+            auto *rt = render_ctx ? render_ctx->GetCurrentRenderTarget() : nullptr;
+            if (rt)
+                viewport_height = rt->GetExtent().height;
+        }
+
+        // 参数行：每个 DrawBatch 一行（含私有 VBO 直接绘制——渲染器按行 offset 视图绑定）
+        if (batch.mesh_draw_params_buffer)
+        {
+            auto *params_gpu = batch.mesh_draw_params_buffer->GetGPUBuffer();
+            auto *row = params_gpu
+                ? static_cast<graph::mtl::MeshDrawParams *>(params_gpu->Map(
+                      0, static_cast<VkDeviceSize>(count) * sizeof(graph::mtl::MeshDrawParams)))
+                : nullptr;
+
+            if (row)
+            {
+                for (uint32_t i = 0; i < count; ++i)
+                {
+                    DrawBatch &db = batch.draw_batches[i];
+                    const auto *range = db.geom_draw_range;
+
+                    db.params_row = i;
+                    row[i].index_base = static_cast<uint32_t>(range ? range->first_index : 0);
+                    row[i].vertex_base = static_cast<uint32_t>(range ? range->vertex_offset : 0);
+                    row[i].is_indexed = (range && range->index_count > 0) ? 1u : 0u;
+                    // total_vertices：索引几何 = index_count（每索引 1 顶点查表），非索引 = vertex_count
+                    row[i].total_vertices = range
+                        ? static_cast<uint32_t>(range->index_count > 0
+                             ? range->index_count
+                             : range->vertex_count)
+                        : 0u;
+                    row[i].viewport_height = static_cast<float>(viewport_height);
+                    row[i].first_instance = db.first_instance;
+                }
+
+                params_gpu->Unmap();
+            }
+        }
+
+        // mesh 命令：仅 VDM DrawBatch（与渲染器累积逻辑一致）。
+        // run（同 GeometryDataBuffer 连续段）内命令序与行序 1:1——间接 flush 按 run
+        // 首行 offset 绑定参数表，shader 内 rows[gl_DrawID]（每次 indirect 调用 0 起
+        // 编号）恰好对齐；Z 恒 1。
+        if (batch.icb_mesh_tasks)
+        {
+            auto *mesh_cmd = batch.icb_mesh_tasks->MapCmd();
+
+            if (mesh_cmd)
+            {
+                for (uint32_t i = 0; i < count; ++i)
+                {
+                    const DrawBatch &db = batch.draw_batches[i];
+                    if (!db.geom_data_buffer || !db.geom_data_buffer->vdm
+                     || !db.geom_draw_range)
+                        continue;
+
+                    const auto *range = db.geom_draw_range;
+                    const uint32_t total_vertices = static_cast<uint32_t>(
+                        range->index_count > 0 ? range->index_count
+                                               : range->vertex_count);
+
+                    mesh_cmd->groupCountX = CalcMeshGroupCount(is_lines, total_vertices);
+                    mesh_cmd->groupCountY = db.instance_count > 1
+                        ? db.instance_count
+                        : 1u;
+                    mesh_cmd->groupCountZ = 1u;
+                    ++mesh_cmd;
+                }
+
+                batch.icb_mesh_tasks->Unmap();
+            }
+        }
     }
 
     void PrimitiveBatchPipeline::FinalizeBatch(MaterialBatch& batch)
     {
         SortBatchItems(batch);
-        BuildBatches(batch, 0);
         EnsureBatchIndexRows(batch);
+        EnsureMeshDrawParams(batch);
+        BuildBatches(batch, 0);
         WriteBatchIndexRows(batch);
     }
 

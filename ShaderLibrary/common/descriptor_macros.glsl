@@ -42,6 +42,11 @@
 #ifndef VERTEX_SET
 #define VERTEX_SET PER_OBJECT_SET
 #endif
+
+// mesh per-draw 参数表（IndirectMeshDraw）
+#ifndef MESH_DRAW_PARAMS_SET
+#define MESH_DRAW_PARAMS_SET PER_OBJECT_SET
+#endif
 #ifndef VERTEX_POSITION_BINDING
 #define VERTEX_POSITION_BINDING 4
 #endif
@@ -72,6 +77,11 @@
 
 #ifndef VERTEX_SIZE_BINDING
 #define VERTEX_SIZE_BINDING 12
+#endif
+
+// mesh per-draw 参数表（IndirectMeshDraw：mesh shader 经 gl_DrawID 查表）
+#ifndef MESH_DRAW_PARAMS_BINDING
+#define MESH_DRAW_PARAMS_BINDING 13
 #endif
 
 #ifndef L2W_BINDING

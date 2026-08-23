@@ -20,7 +20,7 @@ namespace
 {
     // 最小 mesh shader：1 个 threadgroup，输出 1 个三角形（3 顶点 1 图元）
     const char *MESH_GLSL = R"GLSL(
-#version 450
+#version 460
 #extension GL_EXT_mesh_shader : require
 
 layout(local_size_x = 1) in;
@@ -39,7 +39,7 @@ void main()
 )GLSL";
 
     const char *FRAG_GLSL = R"GLSL(
-#version 450
+#version 460
 
 layout(location = 0) out vec4 outColor;
 

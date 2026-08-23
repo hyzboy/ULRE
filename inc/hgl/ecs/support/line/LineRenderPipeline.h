@@ -89,6 +89,7 @@ namespace hgl::ecs
             graph::GeometryDataBuffer* data_buffer = nullptr;
             graph::GeometryDrawRange*  draw_range  = nullptr;
             graph::ShaderProgram* material  = nullptr;   ///<SSBO 绑定用材质（LineRenderPipeline 设置）
+            graph::DeviceBuffer* mesh_draw_params = nullptr;  ///<mesh per-draw 参数表（row 0——单 draw 非实例化）
 
             graph::BufferAccessor3f  va_pos;       ///< maps to StagedBuffer for positions
             graph::BufferAccessor1u8 va_color;     ///< maps to StagedBuffer for color indices

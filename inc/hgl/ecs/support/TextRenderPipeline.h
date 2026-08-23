@@ -50,6 +50,7 @@ namespace hgl
                 graph::DeviceBuffer* material_data_buffer = nullptr;
                 graph::DeviceBuffer* texture_layer_buffer = nullptr;
                 graph::DeviceBuffer* data_index_row_buffer = nullptr;
+                graph::DeviceBuffer* mesh_draw_params = nullptr;    ///<mesh per-draw 参数表（row 0——每字体单 draw）
                 uint32_t bindless_atlas_handle = 0;
 
                 graph::layout::CharStyle char_style{};
