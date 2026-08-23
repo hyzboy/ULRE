@@ -72,241 +72,111 @@ namespace hgl::ecs
             // 更新缓冲状态
             last_data_buffer = batch->geom_data_buffer;
 
-            // 绑定新的顶点数组缓冲（SSBO 顶点输入材质管线无顶点输入——VBO 绑定已删除）
-
-            // SSBO 顶点输入：把当前 DrawBatch 的顶点 buffer 绑到顶点 SSBO 槽
-            //（RDBS 帧前按 batch 首对象绑定——独立 VAB 多对象时其余对象 buffer 错位；
-            //  此处 per-DrawBatch 重绑——VDM 共享 buffer 同值缓存跳过，独立 VAB 每对象正确）
+            // SSBO 顶点输入：把当前 DrawBatch 的顶点/索引 buffer 绑到 PerObject set
+            //（switch 触发即对目标 set 全量重绑，不做逐语义"buffer 未变跳过"——
+            //  目标 set 是 per-DrawBatch 独立的，按渲染器全局缓存跳过在部分语义
+            //  共享 buffer 时会漏绑；切换很少发生（VDM 共享 buffer 整批一次），
+            //  全量绑定开销可忽略）
             if (ssbo_vertex_input)
             {
-                bool changed = false;
-                const auto *geom_buffer = batch->geom_data_buffer;
+                auto *mp = batch->per_object_mp;
 
-                // 按 VAB 自带语义遍历（GeometryDataBuffer::Update 按 VIF 填充——
-                // 不依赖 material 的 VIL，独立 VAB/VDM 场景均正确）
-                for (uint32_t vi = 0; vi < geom_buffer->vab_count; ++vi)
+                if (mp)
                 {
-                    const VkBuffer buf = geom_buffer->vab_list[vi];
-                    if (!buf)
-                        continue;
+                    const auto *geom_buffer = batch->geom_data_buffer;
 
-                    switch (geom_buffer->vab_semantic[vi])
+                    // 按 VAB 自带语义遍历（GeometryDataBuffer::Update 按 VIF 填充——
+                    // 不依赖 material 的 VIL，独立 VAB/VDM 场景均正确）
+                    for (uint32_t vi = 0; vi < geom_buffer->vab_count; ++vi)
                     {
-                    case graph::VertexSemantic::Position:
-                        if (buf != last_ssbo_pos)
+                        const VkBuffer buf = geom_buffer->vab_list[vi];
+                        if (!buf)
+                            continue;
+
+                        switch (geom_buffer->vab_semantic[vi])
                         {
-                            batch->per_object_mp->BindSSBO(
-                                               "VertexPosition", buf, 0, VK_WHOLE_SIZE);
-                            last_ssbo_pos = buf;
-                            changed = true;
+                        case graph::VertexSemantic::Position:
+                            mp->BindSSBO("VertexPosition", buf, 0, VK_WHOLE_SIZE);
+                            break;
+                        case graph::VertexSemantic::TexCoord:
+                            mp->BindSSBO("VertexUV", buf, 0, VK_WHOLE_SIZE);
+                            break;
+                        case graph::VertexSemantic::Normal:
+                            mp->BindSSBO("VertexNTB", buf, 0, VK_WHOLE_SIZE);
+                            break;
+                        case graph::VertexSemantic::Color:
+                            mp->BindSSBO("VertexColor", buf, 0, VK_WHOLE_SIZE);
+                            break;
+                        case graph::VertexSemantic::Luminance:
+                            mp->BindSSBO("VertexLuminance", buf, 0, VK_WHOLE_SIZE);
+                            break;
+                        case graph::VertexSemantic::TransformID:
+                            mp->BindSSBO("VertexTransformID", buf, 0, VK_WHOLE_SIZE);
+                            break;
+                        case graph::VertexSemantic::Size:
+                            mp->BindSSBO("VertexSize", buf, 0, VK_WHOLE_SIZE);
+                            break;
+                        default: break;
                         }
-                        break;
-                    case graph::VertexSemantic::TexCoord:
-                        if (buf != last_ssbo_uv)
-                        {
-                            batch->per_object_mp->BindSSBO(
-                                               "VertexUV", buf, 0, VK_WHOLE_SIZE);
-                            last_ssbo_uv = buf;
-                            changed = true;
-                        }
-                        break;
-                    case graph::VertexSemantic::Normal:
-                        if (buf != last_ssbo_ntb)
-                        {
-                            batch->per_object_mp->BindSSBO(
-                                               "VertexNTB", buf, 0, VK_WHOLE_SIZE);
-                            last_ssbo_ntb = buf;
-                            changed = true;
-                        }
-                        break;
-                    case graph::VertexSemantic::Color:
-                        if (buf != last_ssbo_color)
-                        {
-                            batch->per_object_mp->BindSSBO(
-                                               "VertexColor", buf, 0, VK_WHOLE_SIZE);
-                            last_ssbo_color = buf;
-                            changed = true;
-                        }
-                        break;
-                    case graph::VertexSemantic::Luminance:
-                        if (buf != last_ssbo_luminance)
-                        {
-                            batch->per_object_mp->BindSSBO(
-                                               "VertexLuminance", buf, 0, VK_WHOLE_SIZE);
-                            last_ssbo_luminance = buf;
-                            changed = true;
-                        }
-                        break;
-                    case graph::VertexSemantic::TransformID:
-                        if (buf != last_ssbo_transform_id)
-                        {
-                            batch->per_object_mp->BindSSBO(
-                                               "VertexTransformID", buf, 0, VK_WHOLE_SIZE);
-                            last_ssbo_transform_id = buf;
-                            changed = true;
-                        }
-                        break;
-                    case graph::VertexSemantic::Size:
-                        if (buf != last_ssbo_size)
-                        {
-                            batch->per_object_mp->BindSSBO(
-                                               "VertexSize", buf, 0, VK_WHOLE_SIZE);
-                            last_ssbo_size = buf;
-                            changed = true;
-                        }
-                        break;
-                    default: break;
                     }
+
+                    // geometry 直取（渲染路径的 geom_data_buffer 无 VAB 数据
+                    // （vab_count=0——PrimitiveComponent runtime buffer）时的补绑）
+                    if (batch->geometry && geom_buffer->vab_count == 0)
+                    {
+                        static const struct
+                        {
+                            graph::VertexSemantic semantic;
+                            const char *name;
+                        } geometry_vab_bindings[] =
+                        {
+                            {graph::VertexSemantic::Position,   "VertexPosition"},
+                            {graph::VertexSemantic::TexCoord,   "VertexUV"},
+                            {graph::VertexSemantic::Normal,     "VertexNTB"},
+                            {graph::VertexSemantic::Color,      "VertexColor"},
+                            {graph::VertexSemantic::Luminance,  "VertexLuminance"},
+                            {graph::VertexSemantic::Size,       "VertexSize"},
+                        };
+
+                        for (const auto &binding : geometry_vab_bindings)
+                        {
+                            if (auto *vab = batch->geometry->GetVAB(binding.semantic))
+                                mp->BindSSBO(binding.name, vab->GetVkBuffer(), 0, VK_WHOLE_SIZE);
+                        }
+                    }
+
+                    // 顶点索引 SSBO（非索引绘制——索引数据统一 SSBO）：
+                    // IBO buffer 绑 VertexIndex 槽（VDM 共享/独立 IBO 均正确——段偏移走 push constant）
+                    if (geom_buffer->ibo)
+                        mp->BindSSBO("VertexIndex", geom_buffer->ibo->GetVkBuffer(), 0, VK_WHOLE_SIZE);
+
+                    // l2w / index rows 补绑（独立 VAB 场景的 program 实例可能没有
+                    // RDBS 预绑——Draw 侧统一补到本 draw 的 PerObject MP）
+                    if (transform_buffer)
+                        transform_buffer->BindTransform(mp);
+
+                    if (owner_batch)
+                    {
+                        if (owner_batch->l2w_index_rows_buffer)
+                            mp->BindSSBO("l2w_index_rows",
+                                         owner_batch->l2w_index_rows_buffer->GetGPUBuffer());
+
+                        if (owner_batch->material_data_index_rows_buffer)
+                            mp->BindSSBO("mtl_data_index_rows",
+                                         owner_batch->material_data_index_rows_buffer->GetGPUBuffer());
+                    }
+
+                    // 一次 Update + 绑定（此前分三段各自 Update/绑定一次）
+                    mp->Update();
+                    const VkDescriptorSet ds = mp->GetVkDescriptorSet();
+                    cmd_buf->BindDescriptorSets(material->GetPipelineLayout(),
+                                                static_cast<uint32_t>(graph::DescriptorSetType::PerObject),
+                                                &ds, 1, nullptr, 0);
                 }
-
-                // geometry 直取（渲染路径的 geom_data_buffer 无 VAB 数据
-                // （vab_count=0——PrimitiveComponent runtime buffer）时的补绑）
-                if (batch->geometry && geom_buffer->vab_count == 0)
+                else if (transform_buffer)
                 {
-                    if (auto *vab = batch->geometry->GetVAB(graph::VertexSemantic::Position))
-                    {
-                        const VkBuffer buf = vab->GetVkBuffer();
-                        if (buf != last_ssbo_pos)
-                        {
-                            batch->per_object_mp->BindSSBO(
-                                               "VertexPosition", buf, 0, VK_WHOLE_SIZE);
-                            last_ssbo_pos = buf;
-                            changed = true;
-                        }
-                    }
-                    if (auto *vab = batch->geometry->GetVAB(graph::VertexSemantic::TexCoord))
-                    {
-                        const VkBuffer buf = vab->GetVkBuffer();
-                        if (buf != last_ssbo_uv)
-                        {
-                            batch->per_object_mp->BindSSBO(
-                                               "VertexUV", buf, 0, VK_WHOLE_SIZE);
-                            last_ssbo_uv = buf;
-                            changed = true;
-                        }
-                    }
-                    if (auto *vab = batch->geometry->GetVAB(graph::VertexSemantic::Normal))
-                    {
-                        const VkBuffer buf = vab->GetVkBuffer();
-                        if (buf != last_ssbo_ntb)
-                        {
-                            batch->per_object_mp->BindSSBO(
-                                               "VertexNTB", buf, 0, VK_WHOLE_SIZE);
-                            last_ssbo_ntb = buf;
-                            changed = true;
-                        }
-                    }
-                    if (auto *vab = batch->geometry->GetVAB(graph::VertexSemantic::Color))
-                    {
-                        const VkBuffer buf = vab->GetVkBuffer();
-                        if (buf != last_ssbo_color)
-                        {
-                            batch->per_object_mp->BindSSBO(
-                                               "VertexColor", buf, 0, VK_WHOLE_SIZE);
-                            last_ssbo_color = buf;
-                            changed = true;
-                        }
-                    }
-                    if (auto *vab = batch->geometry->GetVAB(graph::VertexSemantic::Luminance))
-                    {
-                        const VkBuffer buf = vab->GetVkBuffer();
-                        if (buf != last_ssbo_luminance)
-                        {
-                            batch->per_object_mp->BindSSBO(
-                                               "VertexLuminance", buf, 0, VK_WHOLE_SIZE);
-                            last_ssbo_luminance = buf;
-                            changed = true;
-                        }
-                    }
-                    if (auto *vab = batch->geometry->GetVAB(graph::VertexSemantic::Size))
-                    {
-                        const VkBuffer buf = vab->GetVkBuffer();
-                        if (buf != last_ssbo_size)
-                        {
-                            batch->per_object_mp->BindSSBO(
-                                               "VertexSize", buf, 0, VK_WHOLE_SIZE);
-                            last_ssbo_size = buf;
-                            changed = true;
-                        }
-                    }
-                }
-
-                if (changed)
-                {
-                    auto *mp = batch->per_object_mp;
-                    if (mp)
-                    {
-                        mp->Update();
-                        const VkDescriptorSet ds = mp->GetVkDescriptorSet();
-                        cmd_buf->BindDescriptorSets(material->GetPipelineLayout(),
-                                                    static_cast<uint32_t>(graph::DescriptorSetType::PerObject),
-                                                    &ds, 1, nullptr, 0);
-                    }
-                }
-
-                // 顶点索引 SSBO（非索引绘制——索引数据统一 SSBO）：
-                // IBO buffer 绑 VertexIndex 槽（VDM 共享/独立 IBO 均正确——段偏移走 push constant）
-                if (geom_buffer->ibo)
-                {
-                    const VkBuffer ibuf = geom_buffer->ibo->GetVkBuffer();
-                    if (ibuf != last_ssbo_index)
-                    {
-                        batch->per_object_mp->BindSSBO(
-                                           "VertexIndex", ibuf, 0, VK_WHOLE_SIZE);
-                        last_ssbo_index = ibuf;
-
-                        auto *mp = batch->per_object_mp;
-                        if (mp)
-                        {
-                            mp->Update();
-                            const VkDescriptorSet ds = mp->GetVkDescriptorSet();
-                            cmd_buf->BindDescriptorSets(material->GetPipelineLayout(),
-                                                        static_cast<uint32_t>(graph::DescriptorSetType::PerObject),
-                                                        &ds, 1, nullptr, 0);
-                        }
-                    }
-                }
-
-                // l2w / index rows 补绑（独立 VAB 场景的 program 实例可能没有
-                // RDBS 预绑——Draw 侧统一补到 material 的 PerObject MP）
-                if (transform_buffer)
-                {
-                    // per-draw 独立 set：l2w 绑到 batch 的 PerObject MP（descriptor set
-                    // 是状态非快照——共享单 set 时提交时刻全用最后一次内容）
-                    transform_buffer->BindTransform(batch->per_object_mp
-                        ? batch->per_object_mp
-                        : material->GetMP(graph::DescriptorSetType::PerObject));
-                    changed = true;
-                }
-                if (owner_batch)
-                {
-                    if (owner_batch->l2w_index_rows_buffer)
-                    {
-                        batch->per_object_mp->BindSSBO(
-                                           "l2w_index_rows",
-                                           owner_batch->l2w_index_rows_buffer->GetGPUBuffer());
-                        changed = true;
-                    }
-                    if (owner_batch->material_data_index_rows_buffer)
-                    {
-                        batch->per_object_mp->BindSSBO(
-                                           "mtl_data_index_rows",
-                                           owner_batch->material_data_index_rows_buffer->GetGPUBuffer());
-                        changed = true;
-                    }
-                }
-
-                if (changed)
-                {
-                    auto *mp = batch->per_object_mp;
-                    if (mp)
-                    {
-                        mp->Update();
-                        const VkDescriptorSet ds = mp->GetVkDescriptorSet();
-                        cmd_buf->BindDescriptorSets(material->GetPipelineLayout(),
-                                                    static_cast<uint32_t>(graph::DescriptorSetType::PerObject),
-                                                    &ds, 1, nullptr, 0);
-                    }
+                    // per-draw MP 创建失败兜底：l2w 绑材质默认 PerObject（与旧路径一致）
+                    transform_buffer->BindTransform(material->GetMP(graph::DescriptorSetType::PerObject));
                 }
             }
         }
@@ -469,10 +339,6 @@ namespace hgl::ecs
         // SSBO 顶点输入判定（schema 含顶点数据 SSBO 需求）——MeshShader 方向：
         // 顶点 buffer 按对象绑定（VDM 共享 buffer 同值；独立 VAB 每对象正确）
         ssbo_vertex_input = false;
-        last_ssbo_pos = VK_NULL_HANDLE;
-        last_ssbo_uv  = VK_NULL_HANDLE;
-        last_ssbo_ntb = VK_NULL_HANDLE;
-        last_ssbo_index = VK_NULL_HANDLE;
         {
             const auto &schema = material->GetShaderResourceSchema();
             for (const auto &res : schema.resources)
@@ -520,26 +386,53 @@ namespace hgl::ecs
         // per-draw 独立 PerObject MP 池（descriptor set 是状态非快照——多对象独立
         // buffer 时共享单 set 被 per-draw 顺序更新，提交时刻所有 draw 读最后一次
         // 更新的内容；每 draw 独立 set 各自更新+绑定）
+        // VDM 共享 buffer：整批 GeometryDataBuffer 内容相同——单 set 即可（仅首
+        // draw 触发绑定，后续 draw 无切换直接沿用；避免按绘制数分配空置 set）
         const bool need_per_draw_mp = ssbo_vertex_input;
+        bool single_per_object_set = true;
+
+        if (need_per_draw_mp && batch_count > 1)
+        {
+            const auto *first_db = batch[0].geom_data_buffer;
+
+            if (!first_db)
+                single_per_object_set = false;
+
+            for (uint32_t i = 1; i < batch_count; i++)
+            {
+                const auto *db = batch[i].geom_data_buffer;
+                if (!db || *db != *first_db)
+                {
+                    single_per_object_set = false;
+                    break;
+                }
+            }
+        }
+
+        const uint32_t mp_count = !need_per_draw_mp ? 0u
+                              : single_per_object_set ? 1u
+                              : batch_count;
+
+        if (per_object_mp_pool.size() < mp_count)
+            per_object_mp_pool.resize(mp_count, nullptr);
 
         for (uint32_t i = 0; i < batch_count; i++)
         {
             if (need_per_draw_mp)
             {
-                if (per_object_mp_pool.size() <= i)
-                    per_object_mp_pool.resize(i + 1, nullptr);
+                const uint32_t pool_index = single_per_object_set ? 0u : i;
 
-                if (!per_object_mp_pool[i])
+                if (!per_object_mp_pool[pool_index])
                 {
                     auto *base_mp = material->GetMP(graph::DescriptorSetType::PerObject);
 
                     if (base_mp && owner_batch && owner_batch->device)
-                        per_object_mp_pool[i] = owner_batch->device->CreateMP(base_mp->GetDescManager(),
+                        per_object_mp_pool[pool_index] = owner_batch->device->CreateMP(base_mp->GetDescManager(),
                                                                               material->GetPipelineLayoutData(),
                                                                               graph::DescriptorSetType::PerObject);
                 }
 
-                batch->per_object_mp = per_object_mp_pool[i];
+                batch->per_object_mp = per_object_mp_pool[pool_index];
             }
 
             Draw(batch, transform_buffer, icb_draw, owner_batch);

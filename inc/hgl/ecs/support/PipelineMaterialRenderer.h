@@ -86,16 +86,8 @@ namespace hgl::ecs
         // 读到最后一次更新的内容——每 draw 独立 set 解决） ===
         std::vector<graph::MaterialParameters*> per_object_mp_pool;   ///<per-draw PerObject MP 池（跨帧复用）
 
-        // === SSBO 顶点输入缓存（per-DrawBatch 顶点 SSBO 绑定——buffer 未变跳过） ===
+        // === SSBO 顶点输入 ===
         bool ssbo_vertex_input = false;                     ///<材质是否走 SSBO 顶点输入
-        VkBuffer last_ssbo_pos = VK_NULL_HANDLE;            ///<上次绑定的顶点 Position buffer
-        VkBuffer last_ssbo_uv  = VK_NULL_HANDLE;            ///<上次绑定的顶点 UV buffer
-        VkBuffer last_ssbo_ntb = VK_NULL_HANDLE;            ///<上次绑定的顶点 NTB buffer
-        VkBuffer last_ssbo_color = VK_NULL_HANDLE;          ///<上次绑定的顶点 Color buffer
-        VkBuffer last_ssbo_luminance = VK_NULL_HANDLE;      ///<上次绑定的顶点 Luminance buffer
-        VkBuffer last_ssbo_transform_id = VK_NULL_HANDLE;   ///<上次绑定的顶点 TransformID buffer
-        VkBuffer last_ssbo_size = VK_NULL_HANDLE;           ///<上次绑定的顶点 Size/宽度 buffer
-        VkBuffer last_ssbo_index = VK_NULL_HANDLE;          ///<上次绑定的顶点索引 buffer
 
         int first_indirect_draw_index;                      ///<首个间接绘制索引
         uint32_t indirect_draw_count;                       ///<累积的间接绘制数量
