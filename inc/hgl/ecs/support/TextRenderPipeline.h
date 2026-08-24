@@ -21,13 +21,10 @@ namespace hgl
         class FontSource;
         class TileFont;
         class ShaderProgram;
-        class TextGeometry;
         class DescriptorBindingSet;
         class Pipeline;
         class Sampler;
         class DeviceBuffer;
-        struct GeometryDataBuffer;
-        struct GeometryDrawRange;
         class ShaderProgramManager;
         class RenderCmdBuffer;
     }
@@ -47,32 +44,22 @@ namespace hgl
                 graph::TileFont* tile_font = nullptr;
                 graph::ShaderProgram* material = nullptr;
                 graph::Pipeline* pipeline = nullptr;
-                graph::DeviceBuffer* material_data_buffer = nullptr;
                 graph::DeviceBuffer* texture_layer_buffer = nullptr;
                 graph::DeviceBuffer* data_index_row_buffer = nullptr;
                 graph::DeviceBuffer* mesh_draw_params = nullptr;    ///<mesh per-draw 参数表（row 0——每字体单 draw）
                 uint32_t bindless_atlas_handle = 0;
 
-                // New GPU path SSBOs
+                // GPU path SSBOs
                 graph::DeviceBuffer* char_info_buffer = nullptr;      // TextCharInfo SSBO (b14)
                 graph::DeviceBuffer* char_style_buffer = nullptr;     // CharStyleGPU SSBO (b15)
                 graph::DeviceBuffer* char_instance_buffer = nullptr;  // CharInstance SSBO (b16)
                 uint32_t unique_char_count = 0;
                 uint32_t style_count = 0;
-                bool use_gpu_quad = true;
 
-                // GPU path material/pipeline (created lazily when use_gpu_quad == true)
-                graph::ShaderProgram* gpu_material = nullptr;
-                graph::Pipeline* gpu_pipeline = nullptr;
-                graph::DeviceBuffer* gpu_texture_layer_buffer = nullptr;
-                graph::DeviceBuffer* gpu_data_index_row_buffer = nullptr;
-                graph::DescriptorBindingSet* gpu_descriptor_binding_set = nullptr;
+                graph::DescriptorBindingSet* descriptor_binding_set = nullptr;
 
                 std::vector<graph::layout::CharStyle> styles;   ///<收集的所有组件样式（GPU路径用）
-                graph::TextGeometry* geometry = nullptr;
-                graph::GeometryDataBuffer* data_buffer = nullptr;
-                graph::GeometryDrawRange* draw_range = nullptr;
-                graph::DescriptorBindingSet* descriptor_binding_set = nullptr;
+                graph::U32CharSet chars_sets;                   ///<当前字体图集中已注册字符合集（供字库图集逐帧淘汰）
 
                 uint32_t last_draw_char_count = 0;
                 uint32_t last_string_count = 0;

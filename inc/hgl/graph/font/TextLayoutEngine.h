@@ -37,11 +37,7 @@ namespace hgl::graph::layout
 
     protected:
 
-        TextGeometry *text_primitive=nullptr;
-
-        std::vector<int16> vertex;
-        std::vector<float> tex_coord;
-        //std::vector<uint8> char_style;
+        U32CharSet *atlas_chars_sets=nullptr;     ///<调用方持有的字符合集（排版结果回写，供字库图集淘汰）
 
     protected:  // GPU path data
 
@@ -63,15 +59,10 @@ namespace hgl::graph::layout
 
             CharDrawAttrIt it;
 
-            int16 *vertex;
-            float *tex_coord;
-
             bool operator==(const DrawStringItem& other) const
             {
                 return str.GetString() == other.str.GetString()
-                    && str.GetLength() == other.str.GetLength()
-                    && vertex == other.vertex
-                    && tex_coord == other.tex_coord;
+                    && str.GetLength() == other.str.GetLength();
             }
         };
 
@@ -102,7 +93,7 @@ namespace hgl::graph::layout
 
     public: //多次排版
 
-        bool Begin(TextGeometry *,int Estimate=1024);                  ///<开始排版
+        bool Begin(U32CharSet *,int Estimate=1024);                  ///<开始排版
 
         bool AddString(const U16StringView&,const TextDrawStyle &);     ///<添加一个要排版的字符串
 
@@ -110,9 +101,7 @@ namespace hgl::graph::layout
 
         void Clear()
         {
-            text_primitive=nullptr;
-            vertex.clear();
-            tex_coord.clear();
+            atlas_chars_sets=nullptr;
 
             draw_chars_count=0;
             chars_sets.Clear();

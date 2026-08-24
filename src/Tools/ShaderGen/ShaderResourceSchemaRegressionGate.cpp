@@ -1049,46 +1049,9 @@ namespace
         }};
         check_preview(BUILTIN_MTL_DEF_PURE_COLOR, pure3d_geometry, 1);
 
-        const GeometryVertexFormat text_geometry{
-            {VertexSemantic::Position, VF_V2I16},   // 与 CreateTextGeometryVertexFormat 一致（R16G16_SINT）
-            {VertexSemantic::TexCoord, VF_V2HF}     // 与 CreateTextGeometryVertexFormat 一致（R16G16_SFLOAT）
-        };
-        check_preview(BUILTIN_MTL_DEF_TEXT, text_geometry, 2);
-
         // The opt-in ABI builder consumes the preview graph to generate both
         // SerializedVertexEntry data and GLSL declarations without invoking the
         // GLSL compiler plugin.
-        MaterialDefinition text_definition{};
-        if (!TryGetMaterialDefinitionByID(BUILTIN_MTL_DEF_TEXT, text_definition))
-        {
-            result.diagnostics.emplace_back("missing switched-build definition: Text2D");
-        }
-        else
-        {
-            MaterialDefinitionBuildRequest request{};
-            request.geometry_vertex_format = &text_geometry;
-            request.vertex_code_module_registry = &registry;
-            MaterialResolvedVertexABI abi{};
-            if (!BuildResolvedMaterialVertexABI(text_definition, request, abi))
-            {
-                result.diagnostics.emplace_back("resolved vertex ABI builder failed");
-            }
-            else
-            {
-                const std::string source(abi.vertex_input_glsl.c_str());
-                // text_2d transport=ssbo：顶点输入走 SSBO 解码模块——
-                // 无 VBO attribute 布局（vertex_entries 空）+ include s1_* 模块
-                if (abi.position_format != VF_V2I16
-                 || abi.vertex_entries.GetCount() != 0
-                 || source.find("#include \"vertex/s1_position_vec2i.glsl\"") == std::string::npos
-                 || source.find("#include \"vertex/s1_uv_rg16f.glsl\"") == std::string::npos)
-                {
-                    result.diagnostics.emplace_back(
-                        "resolved vertex ABI does not match Geometry");
-                }
-            }
-        }
-
         const auto build_abi = [&](const MaterialDefinition &definition,
                                    const GeometryVertexFormat &geometry,
                                    MaterialResolvedVertexABI &out_abi) -> bool
@@ -3037,7 +3000,7 @@ namespace
             {"Lit", "material/pbr_surface_source.glsl"},
             {"LitTextureArray", "material/pbr_texturearray_source.glsl"},
             {BUILTIN_MTL_DEF_PURE_COLOR, "material/unlit_source.glsl"},
-            {BUILTIN_MTL_DEF_TEXT, "material/text_source.glsl"}
+            {BUILTIN_MTL_DEF_TEXT, "material/text_source_gpu.glsl"}
         };
 
         for (const ExpectedSource &expected : expected_sources)
@@ -3581,7 +3544,7 @@ namespace
                 "Lit", "LitTextureArray", "SkyMinimal", "DebugNormalColor",
                 "VertexColor", "UnlitTexture", "Texture2DArray",
                 "VertexLuminance", "VertexPaletteColor",
-                "builtin/pure_color", "builtin/text"
+                "builtin/pure_color", "builtin/text_gpu"
             };
             for (const char *id : expected_file_ids)
             {
@@ -3902,14 +3865,14 @@ namespace
             result.diagnostics.emplace_back("LoadDirectory failed to scan directory");
         else
         {
-            if (file_count != 71)
-                result.diagnostics.emplace_back("LoadDirectory expected 71 file modules, got "
+            if (file_count != 72)
+                result.diagnostics.emplace_back("LoadDirectory expected 72 file modules, got "
                                                 + std::to_string(file_count) + " (4 vertex SSBO modules added)");
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 71;
+            const int expected_count = 72;
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));

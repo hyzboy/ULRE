@@ -109,9 +109,6 @@ namespace hgl::graph::mtl
             }
             else if (std::strcmp(
                         source,
-                        "material/text_source.glsl") == 0
-                  || std::strcmp(
-                        source,
                         "material/texture_array_source.glsl") == 0)
             {
                 require_semantic(InterStageSemantic::DataIndexID);

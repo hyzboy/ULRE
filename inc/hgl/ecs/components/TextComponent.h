@@ -11,7 +11,6 @@ namespace hgl
     namespace graph
     {
         class FontSource;
-        enum class TextGeometryType : uint8;
     }
 }
 
@@ -44,13 +43,11 @@ namespace hgl::ecs
         graph::layout::TEXT_COORD_VEC start_position{0, 0};
 
         graph::FontSource* font_source = nullptr;   // Not owned
-        graph::TextGeometryType geometry_type;      // FixedStyle or StylePerChar
 
     public:
 
         explicit TextComponent(const std::string& name = "Text")
             : Component(name)
-            , geometry_type(static_cast<graph::TextGeometryType>(0))
         {
         }
 
@@ -104,14 +101,6 @@ namespace hgl::ecs
         {
             font_source = fs;
             TouchChange(static_cast<uint32_t>(TextChange::Font));
-        }
-
-        graph::TextGeometryType GetGeometryType() const { return geometry_type; }
-
-        void SetGeometryType(graph::TextGeometryType type)
-        {
-            geometry_type = type;
-            TouchChange(static_cast<uint32_t>(TextChange::Layout));
         }
     };//class TextComponent
 }//namespace hgl::ecs

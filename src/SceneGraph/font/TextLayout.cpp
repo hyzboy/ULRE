@@ -1,6 +1,5 @@
 ﻿#include<hgl/graph/font/TextLayoutEngine.h>
 #include<hgl/graph/font/TileFont.h>
-#include<hgl/graph/font/TextGeometry.h>
 #include<hgl/graph/font/TextCharSSBO.h>
 #include<hgl/graph/geo/GeometryCreater.h>   // FloatToHalf
 #include<hgl/type/Extent.h>
@@ -22,9 +21,9 @@ namespace hgl::graph::layout
         }
     }
 
-    bool TextLayout::Begin(TextGeometry *tr,int Estimate)
+    bool TextLayout::Begin(U32CharSet *cs,int Estimate)
     {
-        if(!tr||Estimate<=0)
+        if(!cs||Estimate<=0)
             return(false);
 
         draw_chars_count=0;
@@ -32,9 +31,7 @@ namespace hgl::graph::layout
         draw_chars_list.Clear();
         draw_chars_list.Reserve(Estimate);
 
-        text_primitive=tr;
-        vertex.reserve(Estimate*12);
-        tex_coord.reserve(Estimate*12);
+        atlas_chars_sets=cs;
 
         draw_all_strings.Clear();
         draw_string_list.Clear();
@@ -50,7 +47,7 @@ namespace hgl::graph::layout
 
     bool TextLayout::AddString(const U16StringView &str, const TextDrawStyle &style)
     {
-        if(!text_primitive)
+        if(!atlas_chars_sets)
             return(false);
 
         if(str.IsEmpty())
@@ -76,7 +73,7 @@ namespace hgl::graph::layout
     */
     bool TextLayout::StatChars()
     {
-        if(!text_primitive
+        if(!atlas_chars_sets
          ||!tile_font
          ||!font_source)
             return(false);
@@ -116,7 +113,7 @@ namespace hgl::graph::layout
 
         //释放不再使用的字符
         {
-            clear_chars_sets=text_primitive->GetCharsSets();        //获取不再使用的字符合集
+            clear_chars_sets=*atlas_chars_sets;                     //获取不再使用的字符合集
 
             // 清除下一步要用的字符合集
             for(auto ch : chars_sets)
@@ -142,7 +139,7 @@ namespace hgl::graph::layout
             return(false);
         }
 
-        text_primitive->SetCharsSets(chars_sets);                               //注册需要使用的字符合集
+        *atlas_chars_sets=chars_sets;                                             //注册需要使用的字符合集
 
         //为可绘制字符列表中的字符获取UV
         for(CharDrawAttr &cda:draw_chars_list)
@@ -219,9 +216,6 @@ namespace hgl::graph::layout
         int left=dsi.style.start_position.x;
         int top =dsi.style.start_position.y;
 
-        int16 *tp=dsi.vertex;
-        float *tcp=dsi.tex_coord;
-
         int visible_char_count=0;
 
         CharDrawAttrIt it_cda=dsi.it;
@@ -232,32 +226,6 @@ namespace hgl::graph::layout
 
             if(cda.cla->visible)
             {
-                const int16 rect_left  =int16(left+cda.cla->metrics.x);
-                const int16 rect_top   =int16(top -cda.cla->metrics.y+font_source->GetCharHeight());
-                const int16 rect_right =int16(rect_left+cda.cla->metrics.w);
-                const int16 rect_bottom=int16(rect_top +cda.cla->metrics.h);
-
-                const float uv_left   =cda.uv.GetLeft();
-                const float uv_top    =cda.uv.GetTop();
-                const float uv_right  =cda.uv.GetRight();
-                const float uv_bottom =cda.uv.GetBottom();
-
-                tp[0]=rect_left;  tp[1]=rect_top;
-                tp[2]=rect_left;  tp[3]=rect_bottom;
-                tp[4]=rect_right; tp[5]=rect_top;
-                tp[6]=rect_right; tp[7]=rect_top;
-                tp[8]=rect_left;  tp[9]=rect_bottom;
-                tp[10]=rect_right;tp[11]=rect_bottom;
-                tp+=12;
-
-                tcp[0]=uv_left;   tcp[1]=uv_top;
-                tcp[2]=uv_left;   tcp[3]=uv_bottom;
-                tcp[4]=uv_right;  tcp[5]=uv_top;
-                tcp[6]=uv_right;  tcp[7]=uv_top;
-                tcp[8]=uv_left;   tcp[9]=uv_bottom;
-                tcp[10]=uv_right; tcp[11]=uv_bottom;
-                tcp+=12;
-
                 // Store GPU instance data: pen position + char_id + style_id
                 const uint16_t cid=GetOrRegisterCharId(cda.cla->attr->ch,cda.cla->metrics,cda.uv);
                 gpu_char_instances.push_back({static_cast<int16_t>(left),static_cast<int16_t>(top),cid,dsi.style.style_id});
@@ -293,7 +261,7 @@ namespace hgl::graph::layout
 
     int TextLayout::End()
     {
-        if(!text_primitive)
+        if(!atlas_chars_sets)
             return(-1);
 
         if(draw_all_strings.IsEmpty())
@@ -305,45 +273,25 @@ namespace hgl::graph::layout
         if(draw_chars_count<=0)             //可绘制字符为0？？？这是全空格？
             return(-4);
 
-        vertex      .resize(draw_chars_count*12);
-        tex_coord   .resize(draw_chars_count*12);
-
-        if(vertex.empty()||tex_coord.empty())
-            return(-5);
-
         int total=0;
         int dc;
 
         auto it_cda=draw_chars_list.begin();
-        int16 *vp=vertex.data();
-        float *tcp=tex_coord.data();
 
         for(DrawStringItem &dsi:draw_string_list)
         {
             dsi.it=it_cda;
-            dsi.vertex=vp;
-            dsi.tex_coord=tcp;
 
             if(dsi.style.para_style.text_direction==TextDirection::Vertical)    dc=sl_v  (dsi);else
             if(dsi.style.para_style.text_direction==TextDirection::RightToLeft) dc=sl_r2l(dsi);else
                                                                                 dc=sl_l2r(dsi);
 
             it_cda+=dsi.str.length;
-            vp+=dc*12;
-            tcp+=dc*12;
 
             total+=dc;
         }
 
-        if(total>0) //理论上total==draw_chars_count，不然就是错误的
-        {
-            // --- old CPU vertex path (kept for backward compatibility) ---
-            text_primitive->SetCharCount(total*6);
-            text_primitive->WriteVertex(vertex.data());
-            text_primitive->WriteTexCoord(tex_coord.data());
-        }
-
-        text_primitive=nullptr;
+        atlas_chars_sets=nullptr;
         return(total);
     }
 }//namespace hgl::graph::layout

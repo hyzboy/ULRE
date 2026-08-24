@@ -996,7 +996,7 @@ namespace hgl::ecs
                         batch->descriptor_bind_valid = false;
                 }
                 // batch 空：该材质无 Primitive 渲染项——顶点 SSBO 由自绑管线
-                // 管理（如 TextRenderPipeline 的 TextGeometry VAB 直绑）——静默跳过
+                // 管理（如 TextRenderPipeline 自绑 CharQuad GPU SSBO）——静默跳过
                 break;
             }
             case graph::mtl::DescriptorSemantic::MaterialTexture:

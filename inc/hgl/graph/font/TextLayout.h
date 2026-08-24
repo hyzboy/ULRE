@@ -8,7 +8,6 @@
 namespace hgl::graph
 {
     class TileFont;
-    class TextGeometry;
 
     namespace layout
     {
