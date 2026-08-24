@@ -45,9 +45,22 @@ protected:
         std::default_random_engine dre;
         std::uniform_int_distribution<int> rand_x(0, WINDOW_WIDTH - FONT_SIZE);
         std::uniform_int_distribution<int> rand_y(0, WINDOW_HEIGHT - FONT_SIZE);
-        std::uniform_int_distribution<int> rand_color(64,255);
+
+        // 固定颜色调色板，便于视觉验证 per-paragraph 样式
+        static const hgl::Color4ub palette[] = {
+            hgl::Color4ub(255,   0,   0, 255),   // Red
+            hgl::Color4ub(  0, 255,   0, 255),   // Green
+            hgl::Color4ub(  0,   0, 255, 255),   // Blue
+            hgl::Color4ub(255, 255,   0, 255),   // Yellow
+            hgl::Color4ub(255,   0, 255, 255),   // Magenta
+            hgl::Color4ub(  0, 255, 255, 255),   // Cyan
+            hgl::Color4ub(255, 128,   0, 255),   // Orange
+            hgl::Color4ub(128,   0, 255, 255),   // Purple
+        };
+        constexpr int PALETTE_SIZE = 8;
 
         // Create one entity per text string
+        int line_index = 0;
         for (auto str : str_list)
         {
             auto* entity = ecs_world->CreateEntity();
@@ -60,10 +73,14 @@ protected:
             
             hgl::graph::layout::CharStyle cs;
 
-            cs.CharColor.r=rand_color(dre);
-            cs.CharColor.g=rand_color(dre);
-            cs.CharColor.b=rand_color(dre);
-            cs.CharColor.a=255;
+            cs.CharColor = palette[line_index % PALETTE_SIZE];
+
+            // 每 3 行设置不同的倾斜角度，测试 italic 特性
+            if (line_index % 3 == 1)
+                cs.italic = 0.3f;    // 轻微右斜
+            else if (line_index % 3 == 2)
+                cs.italic = -0.2f;   // 轻微左斜
+            // else cs.italic == 0.0f (default)
 
             // Set text, font, and random position
             text_comp->SetText(U16String(str.c_str(), str.Length()));
@@ -71,6 +88,7 @@ protected:
             text_comp->SetStartPosition({rand_x(dre), rand_y(dre)});
             text_comp->SetCharStyle(cs);
 
+            ++line_index;
             // TextRenderPipeline will batch by FontSource automatically!
         }
 

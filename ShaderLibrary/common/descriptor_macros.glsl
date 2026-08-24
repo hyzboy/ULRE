@@ -84,6 +84,19 @@
 #define MESH_DRAW_PARAMS_BINDING 13
 #endif
 
+// ── 文本字符 Quad SSBO（TextCharQuad mesh shader 模式）──
+#ifndef TEXT_CHARINFO_BINDING
+#define TEXT_CHARINFO_BINDING 14
+#endif
+
+#ifndef TEXT_CHARSTYLE_BINDING
+#define TEXT_CHARSTYLE_BINDING 15
+#endif
+
+#ifndef TEXT_CHARINSTANCE_BINDING
+#define TEXT_CHARINSTANCE_BINDING 16
+#endif
+
 #ifndef L2W_BINDING
 #define L2W_BINDING 0
 #endif

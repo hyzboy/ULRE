@@ -2,6 +2,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
+#include<hgl/vk/VKBuffer.h>
 #include<hgl/graph/geo/VKGeometryData.h>
 #include<hgl/graph/geo/GeometryCreater.h>   // FloatToHalf（UV RG16F 写入）
 

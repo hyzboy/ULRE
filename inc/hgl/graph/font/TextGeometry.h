@@ -3,6 +3,7 @@
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/type/OrderedSet.h>
 #include<hgl/graph/font/FontSource.h>
+#include<vector>
 
 namespace hgl::ecs
 {

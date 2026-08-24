@@ -26,6 +26,7 @@
 
 #include <cstring>
 #include <vector>
+#include <algorithm>
 
 namespace hgl::graph::mtl
 {
@@ -181,6 +182,11 @@ namespace hgl::graph::mtl
             plan.resolved_vertex_input_glsl.clear();
             plan.resolved_provider_glsl.clear();
             plan.resolved_provider_graph_hash = 0;
+
+            // CharQuad: mesh shader self-declares all SSBOs; no vertex ABI needed.
+            if (definition.mesh_shader_mode == "CharQuad")
+                return true;
+
             {
                 MaterialResolvedVertexABI resolved_abi;
                 if (!BuildResolvedMaterialVertexABI(
@@ -343,21 +349,50 @@ namespace hgl::graph::mtl
             GenericMaterialBuildPlan &plan)
         {
             // Mesh shader 材质（彻底废弃 VS 方向）：生成 mesh stage 替代 vertex stage。
-            // mesh 是唯一顶点路径，不做 VS 分支；Lines 走 LineQuad，其余走 VertexPassthrough。
-            const bool is_lines = (plan.primitive_type == hgl::graph::PrimitiveType::Lines);
-            // max_invocations：LineQuad=64（每线程 4 顶点 → max_vertices=256，AMD 上限内）；
-            // VertexPassthrough=96（3 的倍数——每 3 连续顶点 1 三角形，组内三角形永不跨组。
-            // 64 会导致跨 threadgroup 边界三角形引用未写槽位 → 丢失（球体瓣状缺口））
+            // mesh 是唯一顶点路径，不做 VS 分支。
+            // 模式选择优先级：definition.mesh_shader_mode > primitive_type 推断
+            const bool is_char_quad = (definition.mesh_shader_mode == "CharQuad");
+            const bool is_lines = !is_char_quad
+                && (plan.primitive_type == hgl::graph::PrimitiveType::Lines);
+
+            MeshShaderMode ms_mode;
+            uint32_t max_invocations;
+            std::string input_glsl_str;
+            std::string provider_glsl_str;
+
+            if (is_char_quad)
+            {
+                ms_mode = MeshShaderMode::CharQuad;
+                // CharQuad: 每线程 6 顶点，max_vertices ≤ 256（Vulkan 规范保证下限）
+                // 42 × 6 = 252 ≤ 256
+                max_invocations = definition.mesh_shader_max_invocations > 0
+                    ? std::min(definition.mesh_shader_max_invocations, 42u) : 42u;
+                // CharQuad 自声明所有 SSBO，不需要外部顶点输入/provider
+            }
+            else if (is_lines)
+            {
+                ms_mode = MeshShaderMode::LineQuad;
+                max_invocations = 64u;
+                input_glsl_str    = plan.resolved_vertex_input_glsl;
+                provider_glsl_str = plan.resolved_provider_glsl;
+            }
+            else
+            {
+                ms_mode = MeshShaderMode::VertexPassthrough;
+                max_invocations = 96u;
+                input_glsl_str    = plan.resolved_vertex_input_glsl;
+                provider_glsl_str = plan.resolved_provider_glsl;
+            }
+
             plan.ms = GenerateMeshShader(
                 plan.vertex_node_config,
                 plan.varying,
                 plan.position_format,
                 GetShaderLibraryPath().c_str(),
-                is_lines ? MeshShaderMode::LineQuad
-                         : MeshShaderMode::VertexPassthrough,
-                is_lines ? 64u : 96u,
-                plan.resolved_vertex_input_glsl,
-                plan.resolved_provider_glsl,
+                ms_mode,
+                max_invocations,
+                input_glsl_str,
+                provider_glsl_str,
                 &plan.stage_interface,
                 plan.primitive_type);
 

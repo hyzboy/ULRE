@@ -53,7 +53,22 @@ namespace hgl
                 graph::DeviceBuffer* mesh_draw_params = nullptr;    ///<mesh per-draw 参数表（row 0——每字体单 draw）
                 uint32_t bindless_atlas_handle = 0;
 
-                graph::layout::CharStyle char_style{};
+                // New GPU path SSBOs
+                graph::DeviceBuffer* char_info_buffer = nullptr;      // TextCharInfo SSBO (b14)
+                graph::DeviceBuffer* char_style_buffer = nullptr;     // CharStyleGPU SSBO (b15)
+                graph::DeviceBuffer* char_instance_buffer = nullptr;  // CharInstance SSBO (b16)
+                uint32_t unique_char_count = 0;
+                uint32_t style_count = 0;
+                bool use_gpu_quad = true;
+
+                // GPU path material/pipeline (created lazily when use_gpu_quad == true)
+                graph::ShaderProgram* gpu_material = nullptr;
+                graph::Pipeline* gpu_pipeline = nullptr;
+                graph::DeviceBuffer* gpu_texture_layer_buffer = nullptr;
+                graph::DeviceBuffer* gpu_data_index_row_buffer = nullptr;
+                graph::DescriptorBindingSet* gpu_descriptor_binding_set = nullptr;
+
+                std::vector<graph::layout::CharStyle> styles;   ///<收集的所有组件样式（GPU路径用）
                 graph::TextGeometry* geometry = nullptr;
                 graph::GeometryDataBuffer* data_buffer = nullptr;
                 graph::GeometryDrawRange* draw_range = nullptr;
@@ -67,7 +82,8 @@ namespace hgl
             {
                 graph::FontSource* font_source = nullptr;
                 std::vector<const TextComponent*> texts;
-                graph::layout::CharStyle batch_style{};
+                std::vector<graph::layout::CharStyle> styles;   ///<批次内所有组件的样式（去重后）
+                std::vector<uint16_t> style_ids;                ///<与 texts 平行的 style_id 表
                 uint32_t total_chars = 0;
                 bool dirty = false;
             };

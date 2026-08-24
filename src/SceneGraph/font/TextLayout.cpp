@@ -1,6 +1,8 @@
 ﻿#include<hgl/graph/font/TextLayoutEngine.h>
 #include<hgl/graph/font/TileFont.h>
 #include<hgl/graph/font/TextGeometry.h>
+#include<hgl/graph/font/TextCharSSBO.h>
+#include<hgl/graph/geo/GeometryCreater.h>   // FloatToHalf
 #include<hgl/type/Extent.h>
 
 namespace hgl::graph::layout
@@ -36,6 +38,12 @@ namespace hgl::graph::layout
 
         draw_all_strings.Clear();
         draw_string_list.Clear();
+        gpu_char_instances.clear();
+        gpu_char_instances.reserve(Estimate);
+
+        char_info_table.clear();
+        char_to_id.Clear();
+        char_styles.clear();
 
         return(true);
     }
@@ -182,6 +190,29 @@ namespace hgl::graph::layout
     //    return 0;
     //}
 
+    uint16_t TextLayout::GetOrRegisterCharId(u32char ch,const CharMetricsInfo &metrics,const TileUVFloat &uv)
+    {
+        uint16_t id;
+        if(char_to_id.Get(ch,id))
+            return id;
+
+        id=(uint16_t)char_info_table.size();
+        char_to_id.Add(ch,id);
+
+        layout::TextCharInfo info;
+        info.offset_x  =(int16_t)metrics.x;
+        info.offset_y  =(int16_t)metrics.y;
+        info.metrics_w =(uint16_t)metrics.w;
+        info.metrics_h =(uint16_t)metrics.h;
+        info.uv_left   =FloatToHalf(uv.GetLeft());
+        info.uv_top    =FloatToHalf(uv.GetTop());
+        info.uv_right  =FloatToHalf(uv.GetRight());
+        info.uv_bottom =FloatToHalf(uv.GetBottom());
+
+        char_info_table.push_back(info);
+        return id;
+    }
+
     int TextLayout::sl_l2r(const DrawStringItem &dsi)
     {
         int cur_size=0;
@@ -226,6 +257,10 @@ namespace hgl::graph::layout
                 tcp[8]=uv_left;   tcp[9]=uv_bottom;
                 tcp[10]=uv_right; tcp[11]=uv_bottom;
                 tcp+=12;
+
+                // Store GPU instance data: pen position + char_id + style_id
+                const uint16_t cid=GetOrRegisterCharId(cda.cla->attr->ch,cda.cla->metrics,cda.uv);
+                gpu_char_instances.push_back({static_cast<int16_t>(left),static_cast<int16_t>(top),cid,dsi.style.style_id});
 
                 left+=cda.cla->metrics.adv_x;
 
@@ -302,6 +337,7 @@ namespace hgl::graph::layout
 
         if(total>0) //理论上total==draw_chars_count，不然就是错误的
         {
+            // --- old CPU vertex path (kept for backward compatibility) ---
             text_primitive->SetCharCount(total*6);
             text_primitive->WriteVertex(vertex.data());
             text_primitive->WriteTexCoord(tex_coord.data());

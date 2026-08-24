@@ -123,6 +123,7 @@ GLSLCodeModuleRegistry &GetGLSLCodeModuleRegistry();
 // 缺材质安全网 = 纯色（原为独立 ID + alias 注册，alias 机制已删，常量直连）
 constexpr const char *BUILTIN_MTL_DEF_MISSING_MATERIAL  = "builtin/pure_color";
 constexpr const char *BUILTIN_MTL_DEF_TEXT              = "builtin/text";
+constexpr const char *BUILTIN_MTL_DEF_TEXT_GPU          = "builtin/text_gpu";
 constexpr const char *BUILTIN_MTL_DEF_PURE_COLOR        = "builtin/pure_color";
 
 inline bool IsPureColorMaterialDefinition(

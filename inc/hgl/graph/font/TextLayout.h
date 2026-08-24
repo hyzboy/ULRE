@@ -3,6 +3,7 @@
 #include<hgl/graph/font/FontSource.h>
 #include<hgl/color/Color4ub.h>
 #include<hgl/math/Vector.h>
+#include<cstdint>
 
 namespace hgl::graph
 {
@@ -20,10 +21,20 @@ namespace hgl::graph
             //Color4ub BackgroundColor;    ///<背景颜色
 
             //float   weight      =1.0f;  ///<粗细
-            //float   italic      =0.0f;  ///<倾斜角度(<0左斜,>0右斜)
+            float   italic      =0.0f;  ///<倾斜角度(<0左斜,>0右斜)
 
             //float   underline   =0.0f; ///<下划线粗细
             //float   strikeout   =0.0f; ///<删除线粗细
+
+            bool operator==(const CharStyle& o) const
+            {
+                return CharColor.r == o.CharColor.r
+                    && CharColor.g == o.CharColor.g
+                    && CharColor.b == o.CharColor.b
+                    && CharColor.a == o.CharColor.a
+                    && italic == o.italic;
+            }
+            bool operator!=(const CharStyle& o) const { return !(*this == o); }
         };//struct CharStyle
 
         using CharDrawStyleID=uint8;
@@ -105,6 +116,8 @@ namespace hgl::graph
             TEXT_COORD_TYPE char_gap;
             TEXT_COORD_TYPE line_gap;
             TEXT_COORD_TYPE line_height;
+
+            uint16_t style_id = 0;          ///<索引 CharStyleGPU SSBO 的样式 ID
 
             auto operator <=> (const TextDrawStyle &)const=default;
         };

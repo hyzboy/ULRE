@@ -263,6 +263,11 @@ namespace hgl::graph::mtl
         BlendMode compositor_blend = BlendMode::Opaque;
         PassType compositor_pass = PassType::ForwardOpaque;
         ResolvedMaterialRenderState default_render_state;
+
+        // Mesh shader 模式（来自 TOML [mesh_shader] 段；空串 = 默认 VertexPassthrough）
+        // 可选值: "CharQuad" | "LineQuad" | "" (VertexPassthrough)
+        std::string mesh_shader_mode;
+        uint32_t mesh_shader_max_invocations = 0;  // 0 = 使用 GenerateMeshShader 默认值
     };
 
     inline void SetMaterialFragmentSource(

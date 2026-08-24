@@ -1,0 +1,36 @@
+schema = 1
+id = "builtin/text_gpu"
+name = "Text2D_GPU"
+source = "file"
+usage = "General"
+bootstrap = "TextAlphaBlend"
+provider_policy = "GeometryOnly"
+
+[transform]
+source = "Procedural"
+mapping = "PixelToLocal"
+orientation = "World"
+scale = "World"
+projection = "OrthoViewport"
+
+[fragment]
+source = "compositor/main_forward_surface.frag.glsl"
+surface_module = "surface/material_surface.glsl"
+material_source_module = "material/text_source_gpu.glsl"
+
+[compositor]
+surface = "Unlit"
+blend = "Opaque"
+pass = "ForwardOpaque"
+
+[vertex]
+requirements = ["Position", "UV0"]
+varyings = ["emit_data_index_id", "emit_uv0", "emit_vertex_color"]
+
+[mesh_shader]
+mode = "CharQuad"
+max_invocations = 42
+
+[resources]
+ubos = ["ViewportInfo"]
+samplers = ["Nearest"]

@@ -650,6 +650,27 @@ namespace hgl::graph::mtl
                 }
             }
 
+            // ── [mesh_shader] 段（可选）──────────────────────────────
+            if (root.contains("mesh_shader"))
+            {
+                const toml::value &ms = root.at("mesh_shader");
+                if (ms.contains("mode"))
+                {
+                    std::string mode_str;
+                    if (!ReadRequiredString(ms, "mode", mode_str))
+                        return false;
+                    out.definition.mesh_shader_mode = mode_str;
+                }
+                if (ms.contains("max_invocations"))
+                {
+                    const auto &val = ms.at("max_invocations");
+                    if (!val.is_integer())
+                        return false;
+                    out.definition.mesh_shader_max_invocations =
+                        static_cast<uint32_t>(val.as_integer());
+                }
+            }
+
             return IsValidMaterialDefinitionFileData(out);
         }
     }

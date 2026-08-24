@@ -3,11 +3,12 @@
 #include<hgl/ecs/components/TextComponent.h>
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<hgl/graph/render/RenderContext.h>
-#include<hgl/graph/font/TileFont.h>
 #include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/font/TileFont.h>
 #include<hgl/graph/font/TextGeometry.h>
 #include<hgl/graph/font/FontSource.h>
 #include<hgl/graph/font/TextLayoutEngine.h>
+#include<hgl/graph/font/TextCharSSBO.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/mtl/MaterialRecipe.h>
@@ -31,9 +32,11 @@
 #include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/common/RenderOptions.h>
 #include<hgl/type/String.h>
+#include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/type/MemoryUtil.h>
 #include<hgl/type/AlignUtil.h>
 #include<cmath>
+#include<algorithm>
 
 namespace hgl::ecs
 {
@@ -94,10 +97,12 @@ namespace hgl::ecs
         void BuildDrawStyle(graph::layout::TextDrawStyle& out_style,
                             const graph::layout::ParagraphStyle& para_style,
                             const graph::layout::TEXT_COORD_VEC& start_pos,
-                            const int char_height)
+                            const int char_height,
+                            const uint16_t style_id = 0)
         {
             out_style.para_style = para_style;
             out_style.start_position = start_pos;
+            out_style.style_id = style_id;
 
             const float origin_char_height = static_cast<float>(char_height);
 
@@ -135,6 +140,24 @@ namespace hgl::ecs
             SAFE_CLEAR(res.draw_range);
             SAFE_CLEAR(res.mesh_draw_params);
 
+            if (res.char_info_buffer && buffer_manager)
+            {
+                buffer_manager->Release(res.char_info_buffer);
+                res.char_info_buffer = nullptr;
+            }
+
+            if (res.char_style_buffer && buffer_manager)
+            {
+                buffer_manager->Release(res.char_style_buffer);
+                res.char_style_buffer = nullptr;
+            }
+
+            if (res.char_instance_buffer && buffer_manager)
+            {
+                buffer_manager->Release(res.char_instance_buffer);
+                res.char_instance_buffer = nullptr;
+            }
+
             if (res.material && material_manager)
             {
                 if (descriptor_binding_system)
@@ -168,6 +191,33 @@ namespace hgl::ecs
             {
                 buffer_manager->Release(res.data_index_row_buffer);
                 res.data_index_row_buffer = nullptr;
+            }
+
+            // GPU path resources
+            if (res.gpu_descriptor_binding_set)
+            {
+                delete res.gpu_descriptor_binding_set;
+                res.gpu_descriptor_binding_set = nullptr;
+            }
+
+            if (res.gpu_texture_layer_buffer && buffer_manager)
+            {
+                buffer_manager->Release(res.gpu_texture_layer_buffer);
+                res.gpu_texture_layer_buffer = nullptr;
+            }
+
+            if (res.gpu_data_index_row_buffer && buffer_manager)
+            {
+                buffer_manager->Release(res.gpu_data_index_row_buffer);
+                res.gpu_data_index_row_buffer = nullptr;
+            }
+
+            if (res.gpu_material && material_manager)
+            {
+                if (descriptor_binding_system)
+                    descriptor_binding_system->UnregisterPipelineMaterial(res.gpu_material);
+                material_manager->Release(res.gpu_material);
+                res.gpu_material = nullptr;
             }
 
             if (res.tile_font)
@@ -249,70 +299,125 @@ namespace hgl::ecs
         {
             auto &res = pair.second;
 
-            if (!res.pipeline || !res.material || !res.data_buffer || !res.draw_range || res.last_draw_char_count == 0)
+            if (res.last_draw_char_count == 0)
                 continue;
 
-            cmd->BindPipeline(res.pipeline);
-
-            // 顶点 SSBO 绑定（text_2d transport=ssbo——SSBO 顶点输入）：
-            // TextGeometry 的 VAB buffer 直接绑 PerObject 集顶点槽（零复制——
-            // shader 按 gl_VertexIndex 读；与 RenderDescriptorBindingSystem 的
-            // 顶点 SSBO 绑定同一机制，text 不走 Primitive batch 路径故在此自绑）
-            if (auto* geom = res.geometry)
+            if (res.use_gpu_quad)
             {
-                if (auto* vab = geom->GetPositionVAB())
-                    res.material->BindSSBO(graph::DescriptorSetType::PerObject,
-                                           "VertexPosition", vab->GetGPUBuffer());
-                if (auto* vab = geom->GetTexCoordVAB())
-                    res.material->BindSSBO(graph::DescriptorSetType::PerObject,
-                                           "VertexUV", vab->GetGPUBuffer());
-                // 顶点索引 SSBO（非索引绘制——索引数据统一 SSBO）
-                if (auto* ibo = geom->GetIBO())
-                    res.material->BindSSBO(graph::DescriptorSetType::PerObject,
-                                           "VertexIndex", ibo->GetVkBuffer(), 0, VK_WHOLE_SIZE);
-            }
+                // ── GPU path: CharQuad mesh shader generates quads ──────────
+                if (!res.gpu_pipeline || !res.gpu_material)
+                    continue;
 
-            // IndirectMeshDraw：mesh per-draw 参数表（row 0——每字体一次 draw，gl_DrawID=0）
-            //（per-draw 段偏移经参数表传递——shader 不再读 push constant）
-            if (res.mesh_draw_params)
-                res.material->BindSSBO(graph::DescriptorSetType::PerObject,
-                                       "mesh_draw_params",
-                                       res.mesh_draw_params->GetGPUBuffer()->GetVkDeviceBuffer(),
-                                       0, VK_WHOLE_SIZE);
+                cmd->BindPipeline(res.gpu_pipeline);
 
-            const uint32_t total_vertices = res.draw_range->index_count > 0
-                ? static_cast<uint32_t>(res.draw_range->index_count)
-                : static_cast<uint32_t>(res.draw_range->vertex_count);
-
-            cmd->BindDescriptorSets(res.material);
-
-            // Set 0（Scene UBO）/ Set 3（Bindless 纹理）按材质自身 layout 绑定。
-            // VVL 的 set 兼容 ID 取 layout 在 set 0..N 的全部 DSL 前缀，绑定 layout 必须与
-            // draw 时管线 layout（= 材质 pipeline layout）一致。见 PipelineMaterialRenderer::Render。
-            if (auto* gc = render_context ? render_context->GetGraphicsContext() : nullptr)
-            {
-                const VkPipelineLayout layout = res.material->GetPipelineLayout();
-
-                if (auto *scene_set = gc->GetGlobalSceneUBOSet();
-                    scene_set && scene_set->IsValid())
+                // Bind GPU text SSBOs (b14/b15/b16) to gpu_material PerObject set
+                if (auto* mp = res.gpu_material->GetMP(graph::DescriptorSetType::PerObject))
                 {
-                    scene_set->BindToCmd(*cmd, layout);
+                    if (res.char_info_buffer && res.char_info_buffer->GetGPUBuffer())
+                        mp->BindSSBO(14, res.char_info_buffer->GetGPUBuffer());
+                    if (res.char_style_buffer && res.char_style_buffer->GetGPUBuffer())
+                        mp->BindSSBO(15, res.char_style_buffer->GetGPUBuffer());
+                    if (res.char_instance_buffer && res.char_instance_buffer->GetGPUBuffer())
+                        mp->BindSSBO(16, res.char_instance_buffer->GetGPUBuffer());
                 }
 
-                if (auto *bindless_mgr = gc->GetBindlessTextureManager();
-                    bindless_mgr && bindless_mgr->IsValid())
-                {
-                    bindless_mgr->BindToCmd(*cmd,
-                                            layout,
-                                            static_cast<uint32_t>(graph::DescriptorSetType::Bindless));
-                }
-            }
+                // Bind mesh_draw_params to gpu_material
+                if (res.mesh_draw_params)
+                    res.gpu_material->BindSSBO(graph::DescriptorSetType::PerObject,
+                                               "mesh_draw_params",
+                                               res.mesh_draw_params->GetGPUBuffer()->GetVkDeviceBuffer(),
+                                               0, VK_WHOLE_SIZE);
 
-            // 非索引绘制（SSBO 顶点输入——索引数据走 VertexIndex 槽，段偏移经参数表）
-            // mesh shader：DrawMeshTasks（每线程 1 顶点，threadgroup=96——3 的倍数，
-            // 组内三角形永不跨组，避免 64 边界丢三角形）
-            const uint32_t group_count = (total_vertices + 95u) / 96u;
-            cmd->DrawMeshTasks(group_count);
+                cmd->BindDescriptorSets(res.gpu_material);
+
+                // Scene / Bindless descriptor sets with gpu_material's pipeline layout
+                if (auto* gc = render_context ? render_context->GetGraphicsContext() : nullptr)
+                {
+                    const VkPipelineLayout layout = res.gpu_material->GetPipelineLayout();
+
+                    if (auto *scene_set = gc->GetGlobalSceneUBOSet();
+                        scene_set && scene_set->IsValid())
+                        scene_set->BindToCmd(*cmd, layout);
+
+                    if (auto *bindless_mgr = gc->GetBindlessTextureManager();
+                        bindless_mgr && bindless_mgr->IsValid())
+                        bindless_mgr->BindToCmd(*cmd, layout,
+                                                static_cast<uint32_t>(graph::DescriptorSetType::Bindless));
+                }
+
+                // CharQuad dispatch: 42 chars per group (max_invocations for CharQuad)
+                const uint32_t char_count = res.last_draw_char_count;
+                const uint32_t group_count = (char_count + 41u) / 42u;
+                cmd->DrawMeshTasks(group_count);
+            }
+            else
+            {
+                // ── Old path: CPU-generated vertices ─────────────────────────
+                if (!res.pipeline || !res.material || !res.data_buffer || !res.draw_range)
+                    continue;
+
+                cmd->BindPipeline(res.pipeline);
+
+                // 顶点 SSBO 绑定（text_2d transport=ssbo——SSBO 顶点输入）：
+                // TextGeometry 的 VAB buffer 直接绑 PerObject 集顶点槽（零复制——
+                // shader 按 gl_VertexIndex 读；与 RenderDescriptorBindingSystem 的
+                // 顶点 SSBO 绑定同一机制，text 不走 Primitive batch 路径故在此自绑）
+                if (auto* geom = res.geometry)
+                {
+                    if (auto* vab = geom->GetPositionVAB())
+                        res.material->BindSSBO(graph::DescriptorSetType::PerObject,
+                                               "VertexPosition", vab->GetGPUBuffer());
+                    if (auto* vab = geom->GetTexCoordVAB())
+                        res.material->BindSSBO(graph::DescriptorSetType::PerObject,
+                                               "VertexUV", vab->GetGPUBuffer());
+                    // 顶点索引 SSBO（非索引绘制——索引数据统一 SSBO）
+                    if (auto* ibo = geom->GetIBO())
+                        res.material->BindSSBO(graph::DescriptorSetType::PerObject,
+                                               "VertexIndex", ibo->GetVkBuffer(), 0, VK_WHOLE_SIZE);
+                }
+
+                // IndirectMeshDraw：mesh per-draw 参数表（row 0——每字体一次 draw，gl_DrawID=0）
+                //（per-draw 段偏移经参数表传递——shader 不再读 push constant）
+                if (res.mesh_draw_params)
+                    res.material->BindSSBO(graph::DescriptorSetType::PerObject,
+                                           "mesh_draw_params",
+                                           res.mesh_draw_params->GetGPUBuffer()->GetVkDeviceBuffer(),
+                                           0, VK_WHOLE_SIZE);
+
+                const uint32_t total_vertices = res.draw_range->index_count > 0
+                    ? static_cast<uint32_t>(res.draw_range->index_count)
+                    : static_cast<uint32_t>(res.draw_range->vertex_count);
+
+                cmd->BindDescriptorSets(res.material);
+
+                // Set 0（Scene UBO）/ Set 3（Bindless 纹理）按材质自身 layout 绑定。
+                // VVL 的 set 兼容 ID 取 layout 在 set 0..N 的全部 DSL 前缀，绑定 layout 必须与
+                // draw 时管线 layout（= 材质 pipeline layout）一致。见 PipelineMaterialRenderer::Render。
+                if (auto* gc = render_context ? render_context->GetGraphicsContext() : nullptr)
+                {
+                    const VkPipelineLayout layout = res.material->GetPipelineLayout();
+
+                    if (auto *scene_set = gc->GetGlobalSceneUBOSet();
+                        scene_set && scene_set->IsValid())
+                    {
+                        scene_set->BindToCmd(*cmd, layout);
+                    }
+
+                    if (auto *bindless_mgr = gc->GetBindlessTextureManager();
+                        bindless_mgr && bindless_mgr->IsValid())
+                    {
+                        bindless_mgr->BindToCmd(*cmd,
+                                                layout,
+                                                static_cast<uint32_t>(graph::DescriptorSetType::Bindless));
+                    }
+                }
+
+                // 非索引绘制（SSBO 顶点输入——索引数据走 VertexIndex 槽，段偏移经参数表）
+                // mesh shader：DrawMeshTasks（每线程 1 顶点，threadgroup=96——3 的倍数，
+                // 组内三角形永不跨组，避免 64 边界丢三角形）
+                const uint32_t group_count = (total_vertices + 95u) / 96u;
+                cmd->DrawMeshTasks(group_count);
+            }
         }
     }
 
@@ -534,6 +639,75 @@ namespace hgl::ecs
         guard.descriptor_binding_set = nullptr;
         guard.committed = true;
 
+        // ── Create GPU material (builtin/text_gpu) ──────────────────────────
+        // Created alongside old material; pipeline created lazily when use_gpu_quad = true.
+        {
+            graph::mtl::MaterialRecipe gpu_recipe{};
+            gpu_recipe.mtl_def_id = hgl::graph::mtl::BUILTIN_MTL_DEF_TEXT_GPU;
+            gpu_recipe.render_state_overrides.pipeline_config = graph::mtl::MakeSolid2DConfig();
+
+            graph::mtl::MaterialDefinitionBuildRequest gpu_mtl_request{};
+            gpu_mtl_request.recipe = gpu_recipe;
+            gpu_mtl_request.primitive_type = graph::PrimitiveType::Triangles;
+            // CharQuad mode: no geometry_vertex_format needed (self-declares SSBOs)
+
+            auto* gpu_mat = material_manager->AcquireShaderProgram(gpu_mtl_request);
+            if (!gpu_mat)
+            {
+                GLogError("[TextRenderPipeline] Failed to create GPU text material (builtin/text_gpu)");
+            }
+            else
+            {
+                resources.gpu_material = gpu_mat;
+
+                auto* gpu_dbs = new graph::DescriptorBindingSet(gpu_mat);
+                resources.gpu_descriptor_binding_set = gpu_dbs;
+
+                // GPU texture_layer_rows SSBO (same atlas handle as old path)
+                resources.gpu_texture_layer_buffer = buffer_manager->CreateSSBO(
+                    "Text2D_GPU_TextureLayerRows", texture_layer_row_bytes, graph::SharingMode::Exclusive);
+                if (resources.gpu_texture_layer_buffer)
+                {
+                    uint32_t gpu_tl_row[static_cast<uint32_t>(graph::mtl::TextureSlot::RANGE_SIZE)] = {};
+                    gpu_tl_row[0] = resources.bindless_atlas_handle;
+                    resources.gpu_texture_layer_buffer->GetGPUBuffer()->Write(gpu_tl_row, 0, sizeof(gpu_tl_row));
+
+                    gpu_mat->BindSSBO(graph::DescriptorSetType::Material,
+                                      graph::mtl::SBS_MaterialTextureLayerRows.name,
+                                      resources.gpu_texture_layer_buffer->GetGPUBuffer());
+
+                    domain_manager->RegisterBuffer(
+                        graph::mtl::SSBOAddress{graph::mtl::SSBOType::TextureLayer,
+                                                graph::mtl::MakeRecipeSSBOId(0), 0},
+                        resources.gpu_texture_layer_buffer, 1);
+                }
+
+                // GPU data_index_rows SSBO
+                resources.gpu_data_index_row_buffer = buffer_manager->CreateSSBO(
+                    "Text2D_GPU_DataIndexRows", data_index_row_bytes, graph::SharingMode::Exclusive);
+                if (resources.gpu_data_index_row_buffer)
+                {
+                    uint32_t gpu_di_row[graph::mtl::MaterialDataIndexRowStride] = {};
+                    resources.gpu_data_index_row_buffer->GetGPUBuffer()->Write(gpu_di_row, 0, sizeof(gpu_di_row));
+
+                    gpu_mat->BindSSBO(graph::mtl::SBS_MaterialDataIndexRows.set_type,
+                                      graph::mtl::SBS_MaterialDataIndexRows.name,
+                                      resources.gpu_data_index_row_buffer->GetGPUBuffer());
+
+                    domain_manager->RegisterBuffer(
+                        graph::mtl::SSBOAddress{graph::mtl::SSBOType::MaterialDataIndexTable,
+                                                graph::mtl::MakeRecipeSSBOId(0), 0},
+                        resources.gpu_data_index_row_buffer, 1);
+                }
+
+                if (world)
+                {
+                    if (auto descriptor_binding_system = world->GetSystem<RenderDescriptorBindingSystem>())
+                        descriptor_binding_system->RegisterPipelineMaterial(gpu_mat);
+                }
+            }
+        }
+
         resources_by_font.Add(font_source, resources);
         return resources_by_font.GetValuePointer(font_source);
     }
@@ -596,7 +770,21 @@ namespace hgl::ecs
             auto& input = inputs[font_source];
             input.texts.push_back(text_comp.get());
             input.total_chars += text_comp->GetText().Length();
-            input.batch_style = text_comp->GetCharStyle();
+
+            // 去重收集 CharStyle，分配 style_id
+            const auto& cs = text_comp->GetCharStyle();
+            uint16_t style_id = 0;
+            auto it_found = std::find(input.styles.begin(), input.styles.end(), cs);
+            if (it_found == input.styles.end())
+            {
+                style_id = static_cast<uint16_t>(input.styles.size());
+                input.styles.push_back(cs);
+            }
+            else
+            {
+                style_id = static_cast<uint16_t>(std::distance(input.styles.begin(), it_found));
+            }
+            input.style_ids.push_back(style_id);
 
             if (text_comp->GetChangeMask() != 0)
                 input.dirty = true;
@@ -619,11 +807,11 @@ namespace hgl::ecs
                 continue;
 
             const bool font_changed = !resources->tile_font;
-            const bool style_changed = font_changed || mem_compare(resources->char_style, input.batch_style) != 0;
+            const bool style_changed = font_changed || (resources->styles != input.styles);
 
             if (style_changed)
             {
-                resources->char_style = input.batch_style;
+                resources->styles = input.styles;
                 input.dirty = true;
             }
 
@@ -633,12 +821,12 @@ namespace hgl::ecs
 
             if (input.dirty)
             {
-                if (resources->material_data_buffer)
+                if (resources->material_data_buffer && !resources->styles.empty())
                 {
                     const uint32_t upload_bytes = hgl_min<uint32_t>(ResolveMaterialSSBOStride(resources->material),
                                                                     sizeof(graph::layout::CharStyle));
                     if(auto *mgpu = resources->material_data_buffer->GetGPUBuffer())
-                        mgpu->Write(&resources->char_style, 0, upload_bytes);
+                        mgpu->Write(&resources->styles[0], 0, upload_bytes);
                 }
             }
 
@@ -651,6 +839,18 @@ namespace hgl::ecs
                                                                   &text_gvf);
                 if (!resources->pipeline)
                     continue;
+            }
+
+            // GPU pipeline: created lazily when use_gpu_quad is true
+            if (resources->use_gpu_quad && !resources->gpu_pipeline && resources->gpu_material)
+            {
+                // CharQuad mesh shader self-declares all vertex SSBOs; no geometry_vertex_format
+                resources->gpu_pipeline = render_pass->CreatePipeline(resources->gpu_material,
+                                                                      graph::mtl::MakeSolid2DConfig(),
+                                                                      false,
+                                                                      nullptr);
+                if (!resources->gpu_pipeline)
+                    GLogError("[TextRenderPipeline] Failed to create GPU text pipeline");
             }
 
             graph::TextGeometry* geometry = resources->geometry;
@@ -672,13 +872,17 @@ namespace hgl::ecs
                 graph::layout::TextLayout layout_engine(resources->tile_font);
                 if (layout_engine.Begin(geometry, input.total_chars))
                 {
-                    for (const auto* text_comp : input.texts)
+                    for (size_t ti = 0; ti < input.texts.size(); ++ti)
                     {
+                        const auto* text_comp = input.texts[ti];
+                        const uint16_t comp_style_id = (ti < input.style_ids.size()) ? input.style_ids[ti] : 0;
+
                         graph::layout::TextDrawStyle draw_style;
                         BuildDrawStyle(draw_style,
                                        text_comp->GetParagraphStyle(),
                                        text_comp->GetStartPosition(),
-                                       resources->tile_font->GetFontSource()->GetCharHeight());
+                                       resources->tile_font->GetFontSource()->GetCharHeight(),
+                                       comp_style_id);
 
                         layout_engine.AddString(text_comp->GetText(), draw_style);
                     }
@@ -687,6 +891,89 @@ namespace hgl::ecs
                     if (draw_count > 0)
                     {
                         resources->last_draw_char_count = static_cast<uint32_t>(draw_count);
+
+                        // === Phase A: Build GPU three-layer data model ===
+                        auto* graphics_ctx = render_context ? render_context->GetGraphicsContext() : nullptr;
+                        auto* buf_mgr = graphics_ctx ? graphics_ctx->GetBufferManager() : nullptr;
+
+                        if (buf_mgr)
+                        {
+                            // 1. Use char_info_table and gpu_char_instances directly from TextLayout
+                            //    (TextLayout now builds the unique char table and assigns char_id during sl_l2r)
+                            const auto& unique_chars = layout_engine.GetCharInfoTable();
+                            const auto& gpu_instances = layout_engine.GetGpuCharInstances();
+
+                            // 2. Build CharStyleGPU table from all unique styles
+                            std::vector<graph::layout::CharStyleGPU> styles;
+                            styles.reserve(resources->styles.size() > 0 ? resources->styles.size() : 1);
+                            if (resources->styles.empty())
+                            {
+                                // fallback: one default style
+                                graph::layout::CharStyleGPU s{};
+                                s.text_color = HGL_U8_TO_RGBA8(255, 255, 255, 255);
+                                s.italic     = 0.0f;
+                                styles.push_back(s);
+                            }
+                            else
+                            {
+                                for (const auto& cs : resources->styles)
+                                {
+                                    graph::layout::CharStyleGPU s{};
+                                    const auto& c = cs.CharColor;
+                                    s.text_color = HGL_U8_TO_RGBA8(c.r, c.g, c.b, c.a);
+                                    s.italic     = cs.italic;
+                                    styles.push_back(s);
+                                }
+                            }
+
+                            // 3. Create / resize GPU SSBOs and upload data
+                            const VkDeviceSize char_info_bytes   = unique_chars.size()   * sizeof(graph::layout::TextCharInfo);
+                            const VkDeviceSize style_bytes     = styles.size()      * sizeof(graph::layout::CharStyleGPU);
+                            const VkDeviceSize instance_bytes  = gpu_instances.size() * sizeof(graph::layout::CharInstance);
+
+                            if (!resources->char_info_buffer || resources->char_info_buffer->GetSize() < char_info_bytes)
+                            {
+                                if (resources->char_info_buffer)
+                                    buf_mgr->Release(resources->char_info_buffer);
+                                resources->char_info_buffer = buf_mgr->CreateSSBO(
+                                    "Text2D_CharInfo", char_info_bytes, graph::SharingMode::Exclusive);
+                            }
+
+                            if (!resources->char_style_buffer || resources->char_style_buffer->GetSize() < style_bytes)
+                            {
+                                if (resources->char_style_buffer)
+                                    buf_mgr->Release(resources->char_style_buffer);
+                                resources->char_style_buffer = buf_mgr->CreateSSBO(
+                                    "Text2D_CharStyle", style_bytes, graph::SharingMode::Exclusive);
+                            }
+
+                            if (!resources->char_instance_buffer || resources->char_instance_buffer->GetSize() < instance_bytes)
+                            {
+                                if (resources->char_instance_buffer)
+                                    buf_mgr->Release(resources->char_instance_buffer);
+                                resources->char_instance_buffer = buf_mgr->CreateSSBO(
+                                    "Text2D_CharInstance", instance_bytes, graph::SharingMode::Exclusive);
+                            }
+
+                            if (resources->char_info_buffer)
+                            {
+                                auto* gpu = resources->char_info_buffer->GetGPUBuffer();
+                                if (gpu) gpu->Write(unique_chars.data(), 0, char_info_bytes);
+                            }
+                            if (resources->char_style_buffer)
+                            {
+                                auto* gpu = resources->char_style_buffer->GetGPUBuffer();
+                                if (gpu) gpu->Write(styles.data(), 0, style_bytes);
+                            }
+                            if (resources->char_instance_buffer)
+                            {
+                                auto* gpu = resources->char_instance_buffer->GetGPUBuffer();
+                                if (gpu) gpu->Write(gpu_instances.data(), 0, instance_bytes);
+                            }
+
+                            resources->unique_char_count = static_cast<uint32_t>(unique_chars.size());
+                            resources->style_count       = static_cast<uint32_t>(styles.size());
+                        }
                     }
                     else
                         resources->last_draw_char_count = 0;
@@ -739,11 +1026,6 @@ namespace hgl::ecs
 
                 if (resources->mesh_draw_params)
                 {
-                    uint32_t viewport_height = 1;
-                    if (auto *rt = world ? world->GetRenderTarget() : nullptr)
-                        viewport_height = rt->GetExtent().height;
-
-                    const auto *range = resources->draw_range;
                     auto *gpu = resources->mesh_draw_params->GetGPUBuffer();
                     auto *row = gpu ? static_cast<graph::mtl::MeshDrawParams *>(
                         gpu->Map(0, sizeof(graph::mtl::MeshDrawParams))) : nullptr;
@@ -752,14 +1034,32 @@ namespace hgl::ecs
                     {
                         row->index_base      = 0;
                         row->vertex_base     = 0;
-                        row->is_indexed      = (range && range->index_count > 0) ? 1u : 0u;
-                        row->total_vertices  = range
-                            ? static_cast<uint32_t>(range->index_count > 0
-                                 ? range->index_count
-                                 : range->vertex_count)
-                            : 0u;
-                        row->viewport_height = static_cast<float>(viewport_height);
                         row->first_instance  = 0;
+
+                        if (resources->use_gpu_quad)
+                        {
+                            // GPU path: total_vertices = character count (CharQuad reads this)
+                            // viewport_height = char_height (for baseline correction in shader)
+                            row->is_indexed      = 0;
+                            row->total_vertices  = resources->last_draw_char_count;
+                            row->viewport_height = static_cast<float>(input.font_source->GetCharHeight());
+                        }
+                        else
+                        {
+                            // Old path: total_vertices = vertex/index count from geometry
+                            uint32_t viewport_height = 1;
+                            if (auto *rt = world ? world->GetRenderTarget() : nullptr)
+                                viewport_height = rt->GetExtent().height;
+
+                            const auto *range = resources->draw_range;
+                            row->is_indexed      = (range && range->index_count > 0) ? 1u : 0u;
+                            row->total_vertices  = range
+                                ? static_cast<uint32_t>(range->index_count > 0
+                                     ? range->index_count
+                                     : range->vertex_count)
+                                : 0u;
+                            row->viewport_height = static_cast<float>(viewport_height);
+                        }
                         gpu->Unmap();
                     }
                 }

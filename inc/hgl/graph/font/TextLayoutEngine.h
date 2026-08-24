@@ -1,8 +1,10 @@
 ﻿#include<hgl/graph/font/TextLayout.h>
+#include<hgl/graph/font/TextCharSSBO.h>
 #include<hgl/graph/tile/TileData.h>
 #include<hgl/type/IndexedList.h>
 #include<hgl/type/ConstStringSet.h>
 #include<vector>
+#include<unordered_map>
 
 namespace hgl::graph::layout
 {
@@ -41,6 +43,14 @@ namespace hgl::graph::layout
         std::vector<float> tex_coord;
         //std::vector<uint8> char_style;
 
+    protected:  // GPU path data
+
+        std::vector<layout::TextCharInfo>   char_info_table;        ///< unique char info table (for SSBO binding 14)
+        UnorderedMap<u32char,uint16_t>       char_to_id;             ///< unicode → char_id mapping
+        std::vector<layout::CharStyleGPU>    char_styles;            ///< style table (for SSBO binding 15)
+
+        uint16_t GetOrRegisterCharId(u32char ch,const CharMetricsInfo &metrics,const TileUVFloat &uv);
+
     protected:
 
         ConstU16StringSet draw_all_strings;                 ///<所有绘制字符串合集
@@ -66,6 +76,18 @@ namespace hgl::graph::layout
         };
 
         ValueArray<DrawStringItem> draw_string_list;   ///<所有绘制字符串列表
+
+    public:
+
+        // GPU path: per-visible-character instance data (directly uses layout::CharInstance from TextCharSSBO.h)
+        std::vector<layout::CharInstance> gpu_char_instances;
+
+        const std::vector<layout::CharInstance>& GetGpuCharInstances() const { return gpu_char_instances; }
+        const IndexedList<CharDrawAttr>& GetDrawCharsList() const { return draw_chars_list; }
+
+        const std::vector<layout::TextCharInfo>&  GetCharInfoTable()  const { return char_info_table; }
+        const std::vector<layout::CharStyleGPU>&  GetCharStyles()     const { return char_styles; }
+        uint16_t GetUniqueCharCount() const { return (uint16_t)char_info_table.size(); }
 
     protected:
 
@@ -98,6 +120,11 @@ namespace hgl::graph::layout
             draw_chars_list.Clear();
             draw_all_strings.Clear();
             draw_string_list.Clear();
+            gpu_char_instances.clear();
+
+            char_info_table.clear();
+            char_to_id.Clear();
+            char_styles.clear();
         }
     };//class TextLayout
 }//namespace hgl::graph::layout

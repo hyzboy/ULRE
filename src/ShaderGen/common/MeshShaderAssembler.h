@@ -32,6 +32,7 @@ namespace hgl::graph::mtl
     {
         VertexPassthrough,   // 每线程 1 顶点（默认，模拟 VS）
         LineQuad,            // 每线程 1 线段 → quad
+        CharQuad,            // 每线程 1 字符实例 → quad（6 顶点 2 三角形）
     };
 
     inline std::string GenerateMeshShader(
@@ -63,6 +64,10 @@ namespace hgl::graph::mtl
         case MeshShaderMode::LineQuad:
             verts_per_inv = 4;
             prims_per_inv = 2;
+            break;
+        case MeshShaderMode::CharQuad:
+            verts_per_inv = 6;    // 6 vertices per character (2 triangles)
+            prims_per_inv = 2;    // 2 triangles per character
             break;
         }
 
@@ -167,40 +172,43 @@ namespace hgl::graph::mtl
             ms += "\n";
         }
 
-        if (!resolved_input_glsl.empty())
+        if (mode != MeshShaderMode::CharQuad)
         {
-            ms += resolved_input_glsl;
-            if (resolved_input_glsl.back() != '\n')
-                ms += "\n";
-        }
-        else
-        {
-            // 非索引直通：Position 从 SSBO 读（s1_position_* 模块）
-            // Vec2Position → s1_position_vec2；Vec3Position → s1_position_vec3
-            VertexInputMode effective_input = node_cfg.input;
-            if (position_format == VK_FORMAT_R32G32_SFLOAT)
-                effective_input = VertexInputMode::Vec2Position;
-            else if (position_format == VK_FORMAT_R32G32B32_SFLOAT ||
-                     position_format == VK_FORMAT_R32G32B32A32_SFLOAT)
-                effective_input = VertexInputMode::Vec3Position;
-
-            switch (effective_input)
+            if (!resolved_input_glsl.empty())
             {
-            case VertexInputMode::Vec2Position:
-                ms += "#include \"vertex/s1_position_vec2.glsl\"\n";
-                break;
-            case VertexInputMode::Vec3Position:
-            default:
-                ms += "#include \"vertex/s1_position_vec3.glsl\"\n";
-                break;
+                ms += resolved_input_glsl;
+                if (resolved_input_glsl.back() != '\n')
+                    ms += "\n";
             }
-        }
+            else
+            {
+                // 非索引直通：Position 从 SSBO 读（s1_position_* 模块）
+                // Vec2Position → s1_position_vec2；Vec3Position → s1_position_vec3
+                VertexInputMode effective_input = node_cfg.input;
+                if (position_format == VK_FORMAT_R32G32_SFLOAT)
+                    effective_input = VertexInputMode::Vec2Position;
+                else if (position_format == VK_FORMAT_R32G32B32_SFLOAT ||
+                         position_format == VK_FORMAT_R32G32B32A32_SFLOAT)
+                    effective_input = VertexInputMode::Vec3Position;
 
-        // 额外顶点属性（color/UV 等 provider 模块）
-        if (!provider_glsl.empty())
-        {
-            ms += provider_glsl;
-            if (provider_glsl.back() != '\n') ms += "\n";
+                switch (effective_input)
+                {
+                case VertexInputMode::Vec2Position:
+                    ms += "#include \"vertex/s1_position_vec2.glsl\"\n";
+                    break;
+                case VertexInputMode::Vec3Position:
+                default:
+                    ms += "#include \"vertex/s1_position_vec3.glsl\"\n";
+                    break;
+                }
+            }
+
+            // 额外顶点属性（color/UV 等 provider 模块）
+            if (!provider_glsl.empty())
+            {
+                ms += provider_glsl;
+                if (provider_glsl.back() != '\n') ms += "\n";
+            }
         }
 
         // MaterialColorPalette UBO（palette 材质）
@@ -222,23 +230,27 @@ namespace hgl::graph::mtl
         ms += "\n";
 
         // ── Stage 2: 位置映射 ─────────────────────────────────────────────
-        const char *stage2_module = VertexNodeConfigResolver::GetMappingModulePath(node_cfg);
-        if (stage2_module)
-            ms += "#include \"" + std::string(stage2_module) + "\"\n";
-        else
+        // CharQuad 在 main() 中直接用 viewport.ortho_matrix 做坐标变换，不需要 Stage2/3 模块
+        if (mode != MeshShaderMode::CharQuad)
         {
-            ms += "// TODO: TerrainGrid Stage2 not yet implemented\n";
-            ms += "vec4 GetLocalPos() { return vec4(0.0); }\n";
+            const char *stage2_module = VertexNodeConfigResolver::GetMappingModulePath(node_cfg);
+            if (stage2_module)
+                ms += "#include \"" + std::string(stage2_module) + "\"\n";
+            else
+            {
+                ms += "// TODO: TerrainGrid Stage2 not yet implemented\n";
+                ms += "vec4 GetLocalPos() { return vec4(0.0); }\n";
+            }
+
+            ms += "\n";
+
+            // ── Stage 3: 变换策略 ──────────────────────────────────────────────
+            if (varying_cfg.use_transform_id_attr)
+                ms += "#define HGL_L2W_FROM_VERTEX_ATTR\n";
+
+            ms += "#include \"" + std::string(VertexNodeConfigResolver::GetStage3ModulePath(node_cfg)) + "\"\n";
+            ms += "\n";
         }
-
-        ms += "\n";
-
-        // ── Stage 3: 变换策略 ──────────────────────────────────────────────
-        if (varying_cfg.use_transform_id_attr)
-            ms += "#define HGL_L2W_FROM_VERTEX_ATTR\n";
-
-        ms += "#include \"" + std::string(VertexNodeConfigResolver::GetStage3ModulePath(node_cfg)) + "\"\n";
-        ms += "\n";
 
         // ── Varying 输出（per-vertex 数组，mesh shader 要求）──────────────
         // 与 GenerateVertexShader 的 varying 声明同构，但声明为数组（按顶点索引）
@@ -299,6 +311,38 @@ namespace hgl::graph::mtl
             ms += "[";
             ms += array_size_str;
             ms += "];\n";
+        }
+
+        // CharQuad SSBO 声明必须在全局作用域（void main 之前）
+        if (mode == MeshShaderMode::CharQuad)
+        {
+            ms += "// ── Text CharQuad SSBOs ──\n";
+            ms += "struct TextCharInfo {\n";
+            ms += "    int   offset_xy;\n";
+            ms += "    uint  metrics_wh;\n";
+            ms += "    uint  uv_lt;\n";
+            ms += "    uint  uv_rb;\n";
+            ms += "};\n";
+            ms += "layout(set=PER_OBJECT_SET, binding=TEXT_CHARINFO_BINDING, std430) readonly buffer TextCharInfoData {\n";
+            ms += "    TextCharInfo chars[];\n";
+            ms += "} sbo_char_info;\n";
+            ms += "\n";
+            ms += "struct CharStyleData {\n";
+            ms += "    uint  text_color;\n";
+            ms += "    float italic;\n";
+            ms += "};\n";
+            ms += "layout(set=PER_OBJECT_SET, binding=TEXT_CHARSTYLE_BINDING, std430) readonly buffer CharStyleDataBuf {\n";
+            ms += "    CharStyleData styles[];\n";
+            ms += "} sbo_char_style;\n";
+            ms += "\n";
+            ms += "struct CharInstanceData {\n";
+            ms += "    int   pen_xy;\n";
+            ms += "    uint  char_style;\n";
+            ms += "};\n";
+            ms += "layout(set=PER_OBJECT_SET, binding=TEXT_CHARINSTANCE_BINDING, std430) readonly buffer CharInstanceDataBuf {\n";
+            ms += "    CharInstanceData instances[];\n";
+            ms += "} sbo_char_instance;\n";
+            ms += "\n";
         }
 
         ms += "\nvoid main()\n{\n";
@@ -568,6 +612,124 @@ namespace hgl::graph::mtl
                 ms += "    fragLuminance[vid + 2u] = lum;\n";
                 ms += "    fragLuminance[vid + 3u] = lum;\n";
                 ms += "#endif\n";
+            }
+            break;
+        }
+
+        case MeshShaderMode::CharQuad:
+        {
+            // 每线程 1 字符实例 → 6 顶点 2 三角形（字符 quad）
+            // 三层数据模型：CharInfo + CharStyle + CharInstance
+            const std::string group_size = std::to_string(max_invocations);
+
+            // ── 全局字符索引 + SetMeshOutputsEXT ──────────────────────
+            ms += "    const uint char_idx = gl_WorkGroupID.x * ";
+            ms += group_size;
+            ms += "u + gl_LocalInvocationIndex;\n";
+            ms += "    const uint base_vid = gl_LocalInvocationIndex * 6u;\n";
+            ms += "\n";
+            ms += "    const uint total_chars = pc_vertex_index.total_vertices;\n";
+            ms += "    const uint chars_this_group = min(";
+            ms += group_size;
+            ms += "u, total_chars - gl_WorkGroupID.x * ";
+            ms += group_size;
+            ms += "u);\n";
+            ms += "    SetMeshOutputsEXT(chars_this_group * 6u, chars_this_group * 2u);\n";
+            ms += "\n";
+            ms += "    if (char_idx >= total_chars)\n";
+            ms += "        return;\n";
+            ms += "\n";
+
+            // ── 读取 CharInstance ─────────────────────────────────────
+            ms += "    const CharInstanceData inst = sbo_char_instance.instances[char_idx];\n";
+            ms += "    const int   pen_x    = (inst.pen_xy << 16) >> 16;\n";
+            ms += "    const int   pen_y    = inst.pen_xy >> 16;\n";
+            ms += "    const uint  char_id  = inst.char_style & 0xFFFFu;\n";
+            ms += "    const uint  style_id = (inst.char_style >> 16) & 0xFFFFu;\n";
+            ms += "\n";
+
+            // ── 读取 TextCharInfo ─────────────────────────────────────
+            ms += "    const TextCharInfo ci = sbo_char_info.chars[char_id];\n";
+            ms += "    const int   mx = (ci.offset_xy << 16) >> 16;\n";
+            ms += "    const int   my = ci.offset_xy >> 16;\n";
+            ms += "    const uint  mw = ci.metrics_wh & 0xFFFFu;\n";
+            ms += "    const uint  mh = (ci.metrics_wh >> 16) & 0xFFFFu;\n";
+            ms += "\n";
+
+            // ── 读取 CharStyleData ────────────────────────────────────
+            ms += "    const CharStyleData cs = sbo_char_style.styles[style_id];\n";
+            ms += "\n";
+
+            // ── 计算 quad 像素坐标 ────────────────────────────────────
+            // rect_top = pen_y - metrics_y + char_height
+            // char_height 通过 MeshDrawParams.viewport_height 传递（CharQuad 模式复用）
+            ms += "    const int char_height = int(pc_vertex_index.viewport_height);\n";
+            ms += "    const int rect_left   = pen_x + mx;\n";
+            ms += "    const int rect_top    = pen_y - my + char_height;\n";
+            ms += "    const int rect_right  = rect_left + int(mw);\n";
+            ms += "    const int rect_bottom = rect_top + int(mh);\n";
+            ms += "\n";
+
+            // ── 斜体剪切变形 ──────────────────────────────────────────
+            ms += "    const float shear_factor = tan(cs.italic);\n";
+            ms += "    const float shear_top = float(mh) * shear_factor;\n";
+            ms += "\n";
+
+            // ── UV 解包（half-float → float）─────────────────────────
+            ms += "    const vec2 uv_lt = unpackHalf2x16(ci.uv_lt);  // .x=left, .y=top\n";
+            ms += "    const vec2 uv_rb = unpackHalf2x16(ci.uv_rb);  // .x=right, .y=bottom\n";
+            ms += "    const float uv_l = uv_lt.x;\n";
+            ms += "    const float uv_t = uv_lt.y;\n";
+            ms += "    const float uv_r = uv_rb.x;\n";
+            ms += "    const float uv_b = uv_rb.y;\n";
+            ms += "\n";
+
+            // ── 颜色解包 ─────────────────────────────────────────────
+            ms += "    const vec4 char_color = unpackUnorm4x8(cs.text_color);\n";
+            ms += "\n";
+
+            // ── 写入 6 个 mesh 顶点（三角形列表，匹配 sl_l2r 绕序）────
+            // Tri 1: TL(0), BL(1), TR(2)
+            // Tri 2: TR(3), BL(4), BR(5)
+            ms += "    // Triangle 1: TL, BL, TR\n";
+            ms += "    gl_MeshVerticesEXT[base_vid + 0u].gl_Position = viewport.ortho_matrix * vec4(float(rect_left) + shear_top,  float(rect_top),    0.0, 1.0);\n";
+            ms += "    gl_MeshVerticesEXT[base_vid + 1u].gl_Position = viewport.ortho_matrix * vec4(float(rect_left),               float(rect_bottom), 0.0, 1.0);\n";
+            ms += "    gl_MeshVerticesEXT[base_vid + 2u].gl_Position = viewport.ortho_matrix * vec4(float(rect_right) + shear_top,  float(rect_top),    0.0, 1.0);\n";
+            ms += "    // Triangle 2: TR, BL, BR\n";
+            ms += "    gl_MeshVerticesEXT[base_vid + 3u].gl_Position = viewport.ortho_matrix * vec4(float(rect_right) + shear_top,  float(rect_top),    0.0, 1.0);\n";
+            ms += "    gl_MeshVerticesEXT[base_vid + 4u].gl_Position = viewport.ortho_matrix * vec4(float(rect_left),               float(rect_bottom), 0.0, 1.0);\n";
+            ms += "    gl_MeshVerticesEXT[base_vid + 5u].gl_Position = viewport.ortho_matrix * vec4(float(rect_right),              float(rect_bottom), 0.0, 1.0);\n";
+            ms += "\n";
+
+            // ── 三角形索引 ───────────────────────────────────────────
+            ms += "    gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationIndex * 2u + 0u] = uvec3(base_vid, base_vid + 1u, base_vid + 2u);\n";
+            ms += "    gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationIndex * 2u + 1u] = uvec3(base_vid + 3u, base_vid + 4u, base_vid + 5u);\n";
+            ms += "\n";
+
+            // ── UV varying ───────────────────────────────────────────
+            if (FindMaterialStageInterfaceEntry(*resolved_stage_interface, InterStageSemantic::UV0))
+            {
+                ms += "    fragUV0[base_vid + 0u] = vec2(uv_l, uv_t);  // TL\n";
+                ms += "    fragUV0[base_vid + 1u] = vec2(uv_l, uv_b);  // BL\n";
+                ms += "    fragUV0[base_vid + 2u] = vec2(uv_r, uv_t);  // TR\n";
+                ms += "    fragUV0[base_vid + 3u] = vec2(uv_r, uv_t);  // TR\n";
+                ms += "    fragUV0[base_vid + 4u] = vec2(uv_l, uv_b);  // BL\n";
+                ms += "    fragUV0[base_vid + 5u] = vec2(uv_r, uv_b);  // BR\n";
+            }
+
+            // ── 颜色 varying ─────────────────────────────────────────
+            if (FindMaterialStageInterfaceEntry(*resolved_stage_interface, InterStageSemantic::Color))
+            {
+                ms += "    for (int i = 0; i < 6; i++)\n";
+                ms += "        fragVertexColor[base_vid + uint(i)] = char_color;\n";
+            }
+
+            // ── DataIndexID varying ──────────────────────────────────
+            if (FindMaterialStageInterfaceEntry(*resolved_stage_interface, InterStageSemantic::DataIndexID))
+            {
+                ms += "    const uint data_id = ResolveDataIndexID(gl_InstanceIndex);\n";
+                ms += "    for (int i = 0; i < 6; i++)\n";
+                ms += "        fragDataIndexID[base_vid + uint(i)] = data_id;\n";
             }
             break;
         }
