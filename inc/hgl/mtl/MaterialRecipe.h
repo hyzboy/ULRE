@@ -236,6 +236,11 @@ namespace hgl::graph::mtl
         // ShaderGen 据此生成 "#define <name>Sampler <idx>u" 宏；名字缺失时保底索引 0。
         std::vector<std::string> sampler_names;
 
+        // Part-B6: 编译期 GLSL 宏定义。
+        // 列出此材质需要注入到 GLSL 源码中的 #define 宏名（如 "TEXT_SDF_ENABLED"）。
+        // ShaderGen 据此生成 "#define <name> 1" 注入到 fragment shader。
+        std::vector<std::string> compile_defines;
+
         // 材质根 GLSL 代码模块名（注册表唯一键；无数字 ID 轨道）。
         std::vector<AnsiString> code_module_requirements;
 

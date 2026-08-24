@@ -1,6 +1,6 @@
 schema = 1
-id = "builtin/text_gpu"
-name = "Text2D_GPU"
+id = "builtin/text_gpu_bitmap"
+name = "Text2D_GPU_Bitmap"
 source = "file"
 usage = "General"
 bootstrap = "TextAlphaBlend"
@@ -33,5 +33,4 @@ max_invocations = 42
 
 [resources]
 ubos = ["ViewportInfo"]
-samplers = ["Linear"]
-defines = ["TEXT_SDF_ENABLED"]
+samplers = ["Nearest"]

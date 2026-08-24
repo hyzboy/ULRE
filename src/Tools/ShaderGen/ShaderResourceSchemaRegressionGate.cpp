@@ -3544,7 +3544,8 @@ namespace
                 "Lit", "LitTextureArray", "SkyMinimal", "DebugNormalColor",
                 "VertexColor", "UnlitTexture", "Texture2DArray",
                 "VertexLuminance", "VertexPaletteColor",
-                "builtin/pure_color", "builtin/text_gpu"
+                "builtin/pure_color", "builtin/text_gpu",
+                "builtin/text_gpu_bitmap"
             };
             for (const char *id : expected_file_ids)
             {

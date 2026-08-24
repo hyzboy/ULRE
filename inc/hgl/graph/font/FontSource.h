@@ -99,6 +99,8 @@ namespace hgl::graph
 
         UnorderedMap<u32char,FontBitmap *> chars_bitmap;                                             ///<字符位图
 
+        bool sdf_enabled{false};                                                                      ///<SDF距离场开关
+
     protected:
 
         virtual bool MakeCharBitmap(FontBitmap *,u32char)=0;                                    ///<产生字符位图数据
@@ -106,6 +108,9 @@ namespace hgl::graph
     public:
 
         FontBitmapDataSource(const Font &f){fnt=f;}
+
+        void SetSDFEnabled(bool enabled){ sdf_enabled=enabled; }
+        bool IsSDFEnabled()const{ return sdf_enabled; }
 
     protected:
 

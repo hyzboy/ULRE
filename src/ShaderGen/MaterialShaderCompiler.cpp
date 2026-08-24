@@ -839,6 +839,22 @@ ShaderBuildContext *CompileCompositorMaterial(
     if (config.material_definition)
         sampler_macros = BuildSamplerMacros(config.material_definition->sampler_names);
 
+    // ── 材质编译期宏定义（compile_defines）──────────────────────────────
+    // 遍历 MaterialDefinition.compile_defines，为每个名字生成 "#define <name> 1\n"。
+    // 用于在 GLSL 中通过 #ifdef 切换代码路径（如 TEXT_SDF_ENABLED）。
+    std::string compile_define_macros;
+    if (config.material_definition)
+    {
+        for (const auto &name : config.material_definition->compile_defines)
+        {
+            if (name.empty())
+                continue;
+            compile_define_macros += "#define ";
+            compile_define_macros += name;
+            compile_define_macros += " 1\n";
+        }
+    }
+
     // ── Instance index table SSBO GLSL 声明 ──────────────────────────────────
     // mtl_data_index_rows / mtl_texture_layer_rows / l2w_index_rows 的 buffer
     // 声明与 Resolve 函数不再写死在 instance_rows_ssbo.glsl 中，统一依据
@@ -976,7 +992,7 @@ ShaderBuildContext *CompileCompositorMaterial(
     }
     fs_final = InsertAfterVersionLine(
         fs_final,
-        binding_preamble + sampler_macros + material_ssbo_decls
+        binding_preamble + compile_define_macros + sampler_macros + material_ssbo_decls
         + material_slot_macros + fs_index_table_decls);
 
     ShaderCreateInfo         *mesh = ctx->GetStageShader(ShaderStage::Mesh);
