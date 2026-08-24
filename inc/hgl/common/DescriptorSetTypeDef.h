@@ -28,6 +28,10 @@ namespace hgl::graph
     constexpr const int kPerObjectBindingVertexTransformID = 11;  ///< 顶点 TransformID SSBO（调色板变换索引）
     constexpr const int kPerObjectBindingVertexSize      = 12;    ///< 顶点 Size/宽度 SSBO（Line width）
     constexpr const int kPerObjectBindingMeshDrawParams  = 13;    ///< mesh per-draw 参数表 SSBO（indirect 合批查表）
+    // CharQuad 文本字符 SSBO（TextCharQuad mesh shader 模式）
+    constexpr const int kPerObjectBindingTextCharInfo     = 14;    ///< 字符信息 SSBO
+    constexpr const int kPerObjectBindingTextCharStyle    = 15;    ///< 字符样式 SSBO
+    constexpr const int kPerObjectBindingTextCharInstance = 16;    ///< 字符实例 SSBO
 
     enum class DescriptorSetType:int
     {

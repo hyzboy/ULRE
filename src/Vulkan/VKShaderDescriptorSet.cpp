@@ -35,6 +35,10 @@ namespace
             if (strcmp(name, "VertexTransformID") == 0){ out_binding = kPerObjectBindingVertexTransformID; return true; }
             if (strcmp(name, "VertexSize") == 0)        { out_binding = kPerObjectBindingVertexSize;   return true; }
             if (strcmp(name, "mesh_draw_params") == 0) { out_binding = kPerObjectBindingMeshDrawParams; return true; }
+            // CharQuad 文本字符 SSBO（TextCharQuad mesh shader 模式）
+            if (strcmp(name, "sbo_char_info") == 0)     { out_binding = kPerObjectBindingTextCharInfo;     return true; }
+            if (strcmp(name, "sbo_char_style") == 0)    { out_binding = kPerObjectBindingTextCharStyle;    return true; }
+            if (strcmp(name, "sbo_char_instance") == 0) { out_binding = kPerObjectBindingTextCharInstance; return true; }
             return false;
 
         case DescriptorSetType::Material:

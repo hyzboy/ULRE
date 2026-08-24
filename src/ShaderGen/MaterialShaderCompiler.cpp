@@ -579,6 +579,33 @@ ShaderBuildContext *CompileCompositorMaterial(
         }
     }
 
+    // CharQuad text SSBOs: mesh shader declares these inline, register them into PerObject set layout
+    if (config.material_definition
+        && config.material_definition->mesh_shader_mode == "CharQuad")
+    {
+        // Register the three CharQuad SSBOs at fixed bindings 14/15/16
+        // matching TEXT_CHARINFO_BINDING/TEXT_CHARSTYLE_BINDING/TEXT_CHARINSTANCE_BINDING
+        // in descriptor_macros.glsl
+        // Structs are defined inline in GLSL (s1_text_char_quad.glsl), pass empty codes.
+        if (!ctx->AddStruct("TextCharInfo", ""))
+            return FailAfterBuild("failed to add TextCharInfo struct");
+        if (!ctx->AddSSBO(shader_stage_bits, DescriptorSetType::PerObject,
+                          "TextCharInfo", "sbo_char_info"))
+            return FailAfterBuild("failed to add sbo_char_info SSBO");
+
+        if (!ctx->AddStruct("CharStyleData", ""))
+            return FailAfterBuild("failed to add CharStyleData struct");
+        if (!ctx->AddSSBO(shader_stage_bits, DescriptorSetType::PerObject,
+                          "CharStyleData", "sbo_char_style"))
+            return FailAfterBuild("failed to add sbo_char_style SSBO");
+
+        if (!ctx->AddStruct("CharInstanceData", ""))
+            return FailAfterBuild("failed to add CharInstanceData struct");
+        if (!ctx->AddSSBO(shader_stage_bits, DescriptorSetType::PerObject,
+                          "CharInstanceData", "sbo_char_instance"))
+            return FailAfterBuild("failed to add sbo_char_instance SSBO");
+    }
+
     // ─────────────────────────────────────────────────────────────
     // Step 4: (mesh 化后顶点输入统一走 SSBO——无 VBO 顶点输入布局，VS 遗留已删)
     // ─────────────────────────────────────────────────────────────
