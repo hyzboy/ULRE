@@ -11,7 +11,7 @@ namespace hgl::graph::mtl
     using namespace hgl::graph::mtl;
     namespace
     {
-        // mesh shader 材质：顶点处理 stage 是 Mesh（VS 已彻底废弃）
+        // mesh shader 材质：顶点处理 stage 是 Mesh
         const ShaderStageKey &GetVertexStageKey(const ShaderLinkSpec &link)
         {
             return link.mesh_stage;

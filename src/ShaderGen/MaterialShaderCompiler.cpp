@@ -53,7 +53,7 @@ bool FinalizeShaderBuildContext(
             cached_fragment);
         if (cache_hit)
         {
-            // mesh shader 材质（VS 已彻底废弃）：顶点处理 stage 是 Mesh
+            // mesh shader 材质：顶点处理 stage 是 Mesh
             ShaderCreateInfo *vertex =
                 build_spec->GetStageShader(ShaderStage::Mesh);
             ShaderCreateInfo *fragment =
@@ -80,7 +80,7 @@ bool FinalizeShaderBuildContext(
     if (!cache_hit && artifact_store)
     {
         const auto &link = build_spec->GetProgramLink();
-        // mesh shader 材质（VS 已彻底废弃）：顶点处理 stage 是 Mesh
+        // mesh shader 材质：顶点处理 stage 是 Mesh
         const ShaderCreateInfo *vertex =
             build_spec->GetStageShader(ShaderStage::Mesh);
         const ShaderCreateInfo *fragment =
@@ -315,14 +315,14 @@ static bool ValidateDefinitionCapabilitySubset(
 ShaderBuildContext *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialShaderCompilerInput &input,
-    const std::string &         vs_glsl,
+    const std::string &         ms_glsl,
     const std::string &         fs_glsl,
     const CompositorMaterialBuildConfig &config)
 {
-    if (vs_glsl.empty() || fs_glsl.empty())
+    if (ms_glsl.empty() || fs_glsl.empty())
     {
         std::fprintf(stderr,
-            "[CompileCompositorMaterial] material=%s: vs_glsl or fs_glsl is empty\n",
+            "[CompileCompositorMaterial] material=%s: ms_glsl or fs_glsl is empty\n",
             input.debug_name ? input.debug_name : "<unnamed>");
         return nullptr;
     }
@@ -958,7 +958,7 @@ ShaderBuildContext *CompileCompositorMaterial(
         return glsl.substr(0, pos) + inject + "\n" + glsl.substr(pos);
     };
 
-    std::string vs_final = InsertAfterVersionLine(vs_glsl, binding_preamble + vs_index_table_decls);
+    std::string ms_final = InsertAfterVersionLine(ms_glsl, binding_preamble + vs_index_table_decls);
 
     // 注入顺序（InsertAfterVersionLine 后注入者位于 version 后更前）：
     // 模块代码可能引用 SSBO 类型、MTL_DATA 宏、索引行表与采样器宏
@@ -982,10 +982,10 @@ ShaderBuildContext *CompileCompositorMaterial(
     ShaderCreateInfo         *mesh = ctx->GetStageShader(ShaderStage::Mesh);
     ShaderCreateInfo         *frag = ctx->GetStageShader(ShaderStage::Fragment);
 
-    // mesh shader 材质（彻底废弃 VS 方向）：vs_glsl 实为 mesh stage 源码，
-    // 设到 mesh ShaderCreateInfo（Vertex stage 已不存在）。
+    // mesh shader 材质：ms_glsl 实为 mesh stage 源码，
+    // 设到 mesh ShaderCreateInfo。
     if (mesh)
-        mesh->SetFinalGLSL(vs_final);
+        mesh->SetFinalGLSL(ms_final);
 
     if (frag)
         frag->SetFinalGLSL(fs_final);

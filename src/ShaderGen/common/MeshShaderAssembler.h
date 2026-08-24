@@ -1,13 +1,13 @@
-// MeshShaderAssembler.h — 通用 mesh shader 生成器（彻底废弃 VS 的第一步）
+// MeshShaderAssembler.h — 通用 mesh shader 生成器
 //
-// 生成与 GenerateVertexShader 同构的 GLSL 骨架，但顶点输出走 mesh 图元：
+// 生成 GLSL 骨架，顶点输出走 mesh 图元：
 //   - 通用模式（默认）：每线程 1 顶点，直通到 gl_MeshVerticesEXT（模拟 VS 行为）
 //   - Line quad 模式：每线程 1 线段，展开成 quad（2 三角形）
 //
 // 复用现有 s1_* 模块（LoadVertexData 读 SSBO）——通过宏把 gl_VertexIndex
 // 替换为 gl_LocalInvocationIndex（mesh shader 无 gl_VertexIndex）。
 //
-// 输出契约与 GenerateVertexShader 一致（varying/descriptor/Stage1/2/3），
+// 输出契约：varying/descriptor/Stage1/2/3 结构，
 // 由 CompileCompositorMaterial 注入 binding_preamble + 索引表声明。
 
 #pragma once
@@ -23,7 +23,7 @@ namespace hgl::graph::mtl
 {
     // MeshShaderAssembler — 生成 mesh stage GLSL
     //
-    // 参数与 GenerateVertexShader 相同，另加：
+    // 参数说明：
     //   max_invocations — threadgroup 大小（受设备 maxMeshWorkGroupSizeX 限制）
     //
     // 通用模式输出拓扑：triangle list（每 3 连续顶点 1 三角形）
@@ -253,7 +253,7 @@ namespace hgl::graph::mtl
         }
 
         // ── Varying 输出（per-vertex 数组，mesh shader 要求）──────────────
-        // 与 GenerateVertexShader 的 varying 声明同构，但声明为数组（按顶点索引）
+        // varying 声明为数组（按顶点索引）
         ValueArray<InterStageSemanticContractEntry> adapted_stage_interface;
         MaterialStageInterfaceDiagnostic stage_interface_diagnostic{};
         if (!resolved_stage_interface)

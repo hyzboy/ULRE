@@ -15,51 +15,6 @@ namespace hgl::graph
         return(true);
     }
 
-    const bool Compare(const VkPipelineVertexInputStateCreateInfo *a,const VkPipelineVertexInputStateCreateInfo *b)
-    {
-        if(!a&&!b)return(true);
-        if(!a||!b)return(false);
-
-        if(a->vertexBindingDescriptionCount!=b->vertexBindingDescriptionCount)
-            return(false);
-
-        if(a->vertexAttributeDescriptionCount!=b->vertexAttributeDescriptionCount)
-            return(false);
-
-        if(mem_compare(a->pVertexBindingDescriptions,b->pVertexBindingDescriptions,a->vertexBindingDescriptionCount))
-            return(false);
-
-        if(mem_compare(a->pVertexAttributeDescriptions,b->pVertexAttributeDescriptions,a->vertexAttributeDescriptionCount))
-            return(false);
-
-        return(true);
-    }
-
-    const bool Compare(const VkPipelineInputAssemblyStateCreateInfo *a,const VkPipelineInputAssemblyStateCreateInfo *b)
-    {
-        if(!a&&!b)return(true);
-        if(!a||!b)return(false);
-
-        if(a->topology!=b->topology)
-            return(false);
-
-        if(a->primitiveRestartEnable!=b->primitiveRestartEnable)
-            return(false);
-
-        return(true);
-    }
-
-    const bool Compare(const VkPipelineTessellationStateCreateInfo *a,const VkPipelineTessellationStateCreateInfo *b)
-    {
-        if(!a&&!b)return(true);
-        if(!a||!b)return(false);
-
-        if(a->patchControlPoints!=b->patchControlPoints)
-            return(false);
-
-        return(true);
-    }
-
     const bool Compare(const VkPipelineViewportStateCreateInfo *a,const VkPipelineViewportStateCreateInfo *b)
     {
         if(!a&&!b)return(true);
@@ -225,17 +180,6 @@ namespace hgl::graph
         for(uint32_t i=0;i<a->stageCount;i++)
             if(!Compare(a->pStages[i],b->pStages[i]))
                 return(false);
-
-        if(!Compare(a->pVertexInputState,b->pVertexInputState))
-            return(false);
-
-        if(!Compare(a->pInputAssemblyState,b->pInputAssemblyState))
-            return(false);
-
-        if(!Compare(a->pTessellationState,b->pTessellationState))
-            return(false);
-
-        //if(!Compare(a->pViewportState,b->pViewportState))return(false);
 
         if(!Compare(a->pRasterizationState,b->pRasterizationState))
             return(false);

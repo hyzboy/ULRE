@@ -39,13 +39,6 @@ namespace
         }
     }
 
-    bool LoadFromToml(VkPipelineTessellationStateCreateInfo *tsci,toml::value &tv)
-    {
-        tsci->patchControlPoints=tv["PatchControlPoints"].as_integer();
-
-        return(true);
-    }
-
     bool LoadFromToml(VkPipelineRasterizationStateCreateInfo *rsci,toml::value &tv)
     {
         VkToBool(       rsci->depthClampEnable,        tv,"DepthClamp");
@@ -202,11 +195,6 @@ namespace
 bool LoadPipelineFromToml(PipelineData *pd,const std::string &toml_string)
 {
     toml::value root=toml::parse_str(toml_string);
-
-    if(!root.contains("Tessellation"))
-        return(false);
-    if(!LoadFromToml(pd->tessellation,root["Tessellation"]))
-        return(false);
 
     if(!root.contains("Rasterization"))
         return(false);

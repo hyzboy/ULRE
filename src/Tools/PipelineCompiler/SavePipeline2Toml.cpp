@@ -6,11 +6,6 @@ namespace hgl::graph{
 
 namespace
 {
-    void SaveToToml(toml::value &tv,const VkPipelineTessellationStateCreateInfo *tsci)
-    {
-        tv["PatchControlPoints"]=tsci->patchControlPoints;
-    }
-
     void SaveToToml(toml::value &tv,const VkPipelineRasterizationStateCreateInfo *rsci)
     {
         tv["DepthClamp" ]=bool(rsci->depthClampEnable);
@@ -162,11 +157,6 @@ std::string SavePipelineToToml(const PipelineData *data)
 {
     toml::value result;
 
-    {
-        toml::value tessellation;
-        SaveToToml(tessellation,data->tessellation);
-        result["Tessellation"]=tessellation;
-    }
     {
         toml::value rasterization;
         SaveToToml(rasterization,data->rasterization);

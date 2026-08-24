@@ -17,10 +17,6 @@ namespace
 
     #define COMPARE_END return(true);}
 
-    COMPARE_BEGIN(Tessellation)
-        COMPARE_VALUE(patchControlPoints)
-    COMPARE_END
-
     COMPARE_BEGIN(Rasterization)
         COMPARE_VALUE(depthClampEnable)
         COMPARE_VALUE(rasterizerDiscardEnable)
@@ -68,7 +64,6 @@ bool Compare(const PipelineData *pd1,const PipelineData *pd2)
 {
     if(!pd1||!pd2)return(false);
 
-    if(!Compare(pd1->tessellation,pd2->tessellation))return(false);
     if(!Compare(pd1->rasterization,pd2->rasterization))return(false);
     if(!Compare(pd1->multi_sample,pd2->multi_sample))return(false);
     if(!Compare(pd1->depth_stencil,pd2->depth_stencil))return(false);

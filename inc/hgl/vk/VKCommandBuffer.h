@@ -187,13 +187,6 @@ public:
 
 public: //draw
 
-                                void Draw               (const uint32_t vertex_count)                               {vkCmdDraw(cmd_buf,vertex_count,1,0,0);}
-                                void Draw               (const uint32_t vertex_count,const uint32_t instance_count) {vkCmdDraw(cmd_buf,vertex_count,instance_count,0,0);}
-
-//    template<typename ...ARGS>  void Draw               (ARS...args)                   {vkCmdDraw(cmd_buf,args...);}
-
-                                void Draw               (const GeometryDataBuffer *,const GeometryDrawRange *,const uint32_t instance_count=1,const uint32_t first_instance=0);
-
     // Mesh Shader（VK_EXT_mesh_shader）：以 threadgroup 网格发起绘制，无顶点输入
     // 实现见 VKCommandBufferRender.cpp——扩展函数需 vkGetDeviceProcAddr 动态加载
     void DrawMeshTasks(const uint32_t group_count_x,const uint32_t group_count_y=1,const uint32_t group_count_z=1);

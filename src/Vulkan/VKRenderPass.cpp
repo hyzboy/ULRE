@@ -115,11 +115,9 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
     return pipeline;
 }
 
-Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const PipelineData *cpd,const bool prim_restart,const GeometryVertexFormat *gvf)
+Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const PipelineData *cpd,const GeometryVertexFormat *gvf)
 {
     PipelineData *pd=new PipelineData(cpd);
-
-    pd->SetPrim(mtl->GetPrimitiveType(),prim_restart);
 
     Pipeline *p=CreatePipeline(mtl->GetName(),pd,mtl->GetStageList(),mtl->GetPipelineLayout(),gvf,0,false);
 
@@ -129,13 +127,12 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const PipelineData *cpd,
     return(p);
 }
 
-Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialPipelineConfig &config,const bool prim_restart,const GeometryVertexFormat *gvf)
+Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialPipelineConfig &config,const GeometryVertexFormat *gvf)
 {
     if(!mtl)
         return(nullptr);
 
     PipelineData *pd = BuildPipelineData(config);
-    pd->SetPrim(mtl->GetPrimitiveType(),prim_restart);
 
     Pipeline *p = CreatePipeline(mtl->GetName(),
                                   pd,
@@ -151,7 +148,7 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialPipel
     return p;
 }
 
-Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialRecipe &recipe,const bool prim_restart,const GeometryVertexFormat *gvf)
+Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialRecipe &recipe,const GeometryVertexFormat *gvf)
 {
     if(!mtl)
         return(nullptr);
@@ -175,18 +172,6 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialRecip
         render_state.pipeline_config.cull_mode = VK_CULL_MODE_NONE;
 
     PipelineData *pd = BuildPipelineData(render_state);
-    // mesh shader 输出恒 triangle list（fan/strip 拓扑由 shader 内三角形索引表达）——
-    // 管线拓扑必须强制 triangle list，否则 GPU 按原始图元类型（fan/strip）解释 mesh 输出
-    const bool is_mesh_program = [&]() {
-        for (const auto &stage : mtl->GetStageList())
-            if (stage.stage == VK_SHADER_STAGE_MESH_BIT_EXT)
-                return true;
-        return false;
-    }();
-    if (is_mesh_program)
-        pd->SetPrim(PrimitiveType::Triangles, prim_restart);
-    else
-        pd->SetPrim(mtl->GetPrimitiveType(), prim_restart);
 
     Pipeline *p = CreatePipeline(mtl->GetName(),
                                   pd,
@@ -206,13 +191,9 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
                                      const ShaderStageCreateInfoList &ssci,
                                      VkPipelineLayout layout,
                                      const PipelineData *cpd,
-                                     PrimitiveType prim,
-                                     bool prim_restart,
                                      const GeometryVertexFormat *gvf)
 {
     PipelineData *pd = new PipelineData(cpd);
-
-    pd->SetPrim(prim, prim_restart);
 
     Pipeline *p = CreatePipeline(name, pd, ssci, layout, gvf, 0, false);
 

@@ -240,28 +240,6 @@ bool RenderCmdBuffer::BindDescriptorSets(ShaderProgram *mtl)
 
     return(true);
 }
-
-void RenderCmdBuffer::Draw(const GeometryDataBuffer *geom_data_buffer,const GeometryDrawRange *geom_draw_range,const uint32_t instance_count,const uint32_t first_instance)
-{
-    if(!geom_data_buffer||!geom_draw_range)
-    {
-        LogError("Null parameter in Draw");
-        return;
-    }
-
-    // SSBO 顶点输入：统一非索引绘制（vkCmdDraw）——gl_VertexIndex 语义：
-    //   有 IBO 的几何：每个索引一次 vs（查表 sbo_index[gl_VertexIndex]→索引值）——vertexCount = index_count
-    //   无 IBO 的几何：顶点直通（gl_VertexIndex = 顶点序号）——vertexCount = vertex_count
-    const uint32_t vertex_count = (geom_draw_range->index_count > 0)
-        ? geom_draw_range->index_count
-        : geom_draw_range->vertex_count;
-
-    vkCmdDraw(cmd_buf,
-              vertex_count,
-              instance_count,
-              0,   // SSBO 顶点输入：段偏移走 push constant（vertex_base）——vkCmdDraw 的 firstVertex=0
-              first_instance);
-}
 }//namespace hgl::graph
 
 

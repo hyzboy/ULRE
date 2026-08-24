@@ -28,8 +28,6 @@ PipelineData::~PipelineData()
     SAFE_CLEAR_ARRAY(sample_mask);
 
     SAFE_CLEAR      (rasterization);
-
-    SAFE_CLEAR      (tessellation);
 }
 
 constexpr u8char PipelineFileHeader[]=u8"Pipeline\x1A";
@@ -45,7 +43,6 @@ bool PipelineData::SaveToStream(io::DataOutputStream *dos)const
     if(!dos->WriteUint16(1))return(false);     //file ver
 
     if(!dos->WriteUint32(pipeline_info.stageCount))return(false);
-    WRITE_AND_CHECK_SIZE(tessellation, VkPipelineTessellationStateCreateInfo   );
     WRITE_AND_CHECK_SIZE(rasterization,VkPipelineRasterizationStateCreateInfo  );
     WRITE_AND_CHECK_SIZE(multi_sample, VkPipelineMultisampleStateCreateInfo    );
 
@@ -75,7 +72,6 @@ bool PipelineData::SaveToStream(io::DataOutputStream *dos)const
 constexpr uint PIPELINE_FILE_MIN_LENGTH=PipelineFileHeaderLength+   //file header
                                         sizeof(uint16_t)+           //version
                                         sizeof(uint32_t)+           //stageCount
-                                        sizeof(VkPipelineTessellationStateCreateInfo)+
                                         sizeof(VkPipelineRasterizationStateCreateInfo)+
                                         sizeof(VkPipelineMultisampleStateCreateInfo)+
                                         sizeof(uint8)+              //sample mask count
@@ -116,7 +112,6 @@ bool PipelineData::LoadFromMemory(uchar *origin_data,uint size)
         return(false);
 
     CHECK_SIZE_AND_EQUAL(pipeline_info.stageCount,uint32_t);
-    CHECK_SIZE_AND_MAP(tessellation,VkPipelineTessellationStateCreateInfo);
     CHECK_SIZE_AND_MAP(rasterization,VkPipelineRasterizationStateCreateInfo);
 
     CHECK_SIZE_AND_MAP(multi_sample,VkPipelineMultisampleStateCreateInfo);
@@ -149,8 +144,6 @@ bool PipelineData::LoadFromMemory(uchar *origin_data,uint size)
 
     CHECK_SIZE_AND_EQUAL(alpha_test,float);
 
-    pipeline_info.pInputAssemblyState=&input_assembly;
-    pipeline_info.pTessellationState =tessellation;
     pipeline_info.pRasterizationState=rasterization;
     pipeline_info.pMultisampleState  =multi_sample;
     pipeline_info.pDepthStencilState =depth_stencil;

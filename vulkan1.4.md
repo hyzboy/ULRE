@@ -32,7 +32,7 @@
 
 \### 3. Scalar Block Layout 已可用，进一步统一 SSBO 布局
 
-`VertexShaderAssembler.h` / `glsl2spv.cpp` 已在 GLSL 里 emit `GL\_EXT\_scalar\_block\_layout`。1.4（1.2 核心）下这是无条件能力，可以放心让 ShaderGen 生成的 SSBO 布局\*\*直接按 C++ 结构体对齐\*\*，去掉 std140/std430 的 padding 折算逻辑。
+`glsl2spv.cpp` 已在 GLSL 里 emit `GL\_EXT\_scalar\_block\_layout`。1.4（1.2 核心）下这是无条件能力，可以放心让 ShaderGen 生成的 SSBO 布局\*\*直接按 C++ 结构体对齐\*\*，去掉 std140/std430 的 padding 折算逻辑。
 
 
 

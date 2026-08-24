@@ -35,7 +35,6 @@ PipelineData::PipelineData(const PipelineData *pd)
 
 #define PIPELINE_STRUCT_NEW_COPY(pname,name)  pipeline_info.pname=name=new_copy(pd->name);
 
-    PIPELINE_STRUCT_NEW_COPY(pTessellationState,tessellation);
     PIPELINE_STRUCT_NEW_COPY(pRasterizationState,rasterization);
 
     sample_mask=nullptr;
@@ -67,32 +66,10 @@ PipelineData::PipelineData(const uint32_t color_attachment_count)
     file_data=nullptr;
 
     mem_zero(pipeline_info);
-    //mem_zero(vis_create_info);
-    //mem_zero(input_assembly);
-    //mem_zero(tessellation);
-    //mem_zero(viewport);
-    //mem_zero(scissor);
-    //mem_zero(viewport_state);
-    //mem_zero(rasterization);
-    //mem_zero(sample_mask);
-    //mem_zero(multi_sample);
-    //mem_zero(depth_stencil);
-    //mem_zero(color_blend);
-    //mem_zero(dynamic_state_enables);
-    //mem_zero(dynamic_state);
-
     pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 
     InitViewportState();
     InitDynamicState();
-
-    tessellation=new VkPipelineTessellationStateCreateInfo;
-    tessellation->sType=VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
-    tessellation->pNext=nullptr;
-    tessellation->flags=0;
-    tessellation->patchControlPoints=0;
-
-    pipeline_info.pTessellationState=tessellation;
 
     rasterization=new VkPipelineRasterizationStateCreateInfo;
     rasterization->sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -232,7 +209,6 @@ PipelineData::PipelineData()
 
     sample_mask=nullptr;
 
-    tessellation              =zero_new<VkPipelineTessellationStateCreateInfo>();
     rasterization             =zero_new<VkPipelineRasterizationStateCreateInfo>();
     multi_sample              =zero_new<VkPipelineMultisampleStateCreateInfo>();
     sample_mask               =zero_new<VkSampleMask>(hgl::graph::MAX_SAMPLE_MASK_COUNT);
@@ -243,7 +219,6 @@ PipelineData::PipelineData()
 
     InitColorBlend(32);//暂时不可能MRT输出32个，就这样了
 
-    pipeline_info.pTessellationState =tessellation;
     pipeline_info.pRasterizationState=rasterization;
     pipeline_info.pMultisampleState  =multi_sample;
     pipeline_info.pDepthStencilState =depth_stencil;
@@ -274,33 +249,6 @@ void PipelineData::InitVertexInputState()
     vertex_input_state.pVertexAttributeDescriptions    = nullptr;
 
     pipeline_info.pVertexInputState  = &vertex_input_state;
-}
-namespace
-{
-    const VkPrimitiveTopology GetVkPrimitive(const PrimitiveType &p)
-    {
-        if(RangeCheck(p))
-            return VkPrimitiveTopology(p);
-
-        return VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
-    }
-}//namespace
-
-bool PipelineData::SetPrim(const PrimitiveType topology,bool prim_restart)
-{
-    VkPrimitiveTopology geometry=GetVkPrimitive(topology);
-
-    if(geometry==VK_PRIMITIVE_TOPOLOGY_MAX_ENUM)
-        return(false);
-
-    input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    input_assembly.pNext = nullptr;
-    input_assembly.flags = 0;
-    input_assembly.topology = geometry;
-    input_assembly.primitiveRestartEnable = prim_restart;
-
-    pipeline_info.pInputAssemblyState = &input_assembly;
-    return(true);
 }
 
 void PipelineData::InitViewportState()

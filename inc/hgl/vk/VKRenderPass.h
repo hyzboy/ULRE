@@ -73,9 +73,9 @@ public:
 
 public:
 
-    Pipeline *CreatePipeline(ShaderProgram *,const PipelineData *,   const bool prim_restart=false,const GeometryVertexFormat *gvf=nullptr);
-    Pipeline *CreatePipeline(ShaderProgram *,const mtl::MaterialPipelineConfig &config, const bool prim_restart=false,const GeometryVertexFormat *gvf=nullptr);
-    Pipeline *CreatePipeline(ShaderProgram *,const mtl::MaterialRecipe &recipe, const bool prim_restart=false,const GeometryVertexFormat *gvf=nullptr);
+    Pipeline *CreatePipeline(ShaderProgram *,const PipelineData *,   const GeometryVertexFormat *gvf=nullptr);
+    Pipeline *CreatePipeline(ShaderProgram *,const mtl::MaterialPipelineConfig &config, const GeometryVertexFormat *gvf=nullptr);
+    Pipeline *CreatePipeline(ShaderProgram *,const mtl::MaterialRecipe &recipe, const GeometryVertexFormat *gvf=nullptr);
 
     /**
      * 从原始着色器阶段 + Pipeline Layout 创建管线（供 Compositor 系统使用）
@@ -84,8 +84,6 @@ public:
                              const ShaderStageCreateInfoList &ssci,
                              VkPipelineLayout layout,
                              const PipelineData *pd,
-                             PrimitiveType prim = PrimitiveType::Triangles,
-                             bool prim_restart = false,
                              const GeometryVertexFormat *gvf=nullptr);
 };//class RenderPass
 }//namespace hgl::graph

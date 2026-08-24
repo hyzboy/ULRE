@@ -4,14 +4,13 @@
 namespace hgl::graph
 {
     Pipeline* RenderContext::CreatePipeline(ShaderProgram* material,
-                                            const PipelineData* pd,
-                                            bool prim_restart)
+                                            const PipelineData* pd)
     {
         if (!current_render_target)
             return nullptr;
 
         RenderPass* rp = current_render_target->GetRenderPass();
-        return rp ? rp->CreatePipeline(material, pd, prim_restart) : nullptr;
+        return rp ? rp->CreatePipeline(material, pd) : nullptr;
     }
 
 

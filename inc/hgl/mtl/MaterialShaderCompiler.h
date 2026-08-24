@@ -82,7 +82,7 @@ std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names);
  *
  * @param profile   设备能力 profile
  * @param input     canonical compiler input
- * @param vs_glsl   完整的 vertex shader GLSL（含 #version, layout, main）
+ * @param ms_glsl   完整的 mesh shader GLSL（含 #version, layout, main）
  * @param fs_glsl   完整的 fragment shader GLSL（含 #version, layout, main）
  * @param config    编译期配置视图
  * @return          编译好的 ShaderBuildContext*; 失败返回 nullptr
@@ -90,7 +90,7 @@ std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names);
 ShaderBuildContext *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialShaderCompilerInput &input,
-    const std::string &         vs_glsl,
+    const std::string &         ms_glsl,
     const std::string &         fs_glsl,
     const CompositorMaterialBuildConfig &config);
 

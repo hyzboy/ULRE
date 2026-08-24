@@ -348,8 +348,7 @@ namespace hgl::graph::mtl
             const MaterialDefinition &definition,
             GenericMaterialBuildPlan &plan)
         {
-            // Mesh shader 材质（彻底废弃 VS 方向）：生成 mesh stage 替代 vertex stage。
-            // mesh 是唯一顶点路径，不做 VS 分支。
+            // Mesh shader 材质：生成 mesh stage。mesh 是唯一顶点路径。
             // 模式选择优先级：definition.mesh_shader_mode > primitive_type 推断
             const bool is_char_quad = (definition.mesh_shader_mode == "CharQuad");
             const bool is_lines = !is_char_quad
@@ -531,7 +530,7 @@ namespace hgl::graph::mtl
             const uint64 fragment_interface_hash =
                 HashFinalShaderSource(plan.fs.data(), plan.fs.size());
 
-            // mesh shader 材质：顶点阶段走 mesh stage（彻底废弃 VS）
+            // mesh shader 材质：顶点阶段走 mesh stage
             plan.program_link.mesh_stage = BuildFinalShaderStageKey(
                 ShaderStage::Mesh,
                 plan.ms.data(),
@@ -589,7 +588,7 @@ namespace hgl::graph::mtl
 
         GenericMaterialBuildPlan plan{};
 
-        // Mesh shader 材质：mesh 是唯一顶点路径（彻底废弃 VS——不做触发标志/分支；
+        // Mesh shader 材质：mesh 是唯一顶点路径（不做触发标志/分支；
         // Lines 走 LineQuad，其余走 VertexPassthrough）
         plan.primitive_type = request.primitive_type;
 

@@ -122,6 +122,7 @@ namespace hgl::graph
         const ShaderStageCreateInfoList *shader_stages = nullptr;
         VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
         const GeometryVertexFormat *geometry_vertex_format = nullptr;
+        PrimitiveType primitive_type = PrimitiveType::Triangles;
     };
 
     struct FinalPipelineResolveResult

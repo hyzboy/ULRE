@@ -24,8 +24,8 @@
 ├─ L2 构建请求层 ─────────────────────────────────────────────────┤
 │  MaterialDefinitionBuildRequest = Recipe + 几何格式 + purpose + 设备 │
 ├─ L3 生成层（src/ShaderGen）─────────────────────────────────────┤
-│  BuildGenericMaterial：契约推导 → VS 组装 → FS 组装 → 描述符分配  │
-│  （ResolvedModuleGraphBuilder / VertexShaderAssembler /         │
+│  BuildGenericMaterial：契约推导 → MS 组装 → FS 组装 → 描述符分配  │
+│  （ResolvedModuleGraphBuilder / MeshShaderAssembler /              │
 │    CompositorAssembler / DescriptorContract / MaterialShaderCompiler）│
 ├─ L4 产物层 ─────────────────────────────────────────────────────┤
 │  ShaderBuildContext{ShaderCreateInfoMap, ShaderResourceSchema,  │
@@ -100,7 +100,7 @@ UpsertRecipeSSBOAssetBinding(mesh_recipe, "mtl",       // data_slot "mtl"
    - `MaterialCoverageContract`：alpha_test/dither/A2C 与所需 varyings/纹理槽
      （MaterialCoverageContract.cpp）；
    - `MaterialStageInterface`：varying 配置 → `InterStageSemanticContractEntry[]`
-     （VS 输出与 FS 输入的公共语言，MaterialStageInterface.cpp）；
+     （mesh stage 输出与 FS 输入的公共语言，MaterialStageInterface.cpp）；
    - `MaterialOutputContract`：purpose → 输出附件契约（location/类型）。
 4. **顶点 ABI 解析**：`BuildResolvedMaterialVertexABI`（MaterialDefinitionRegistry.cpp:818）
    ——把 definition 的语义需求逐条与 `GeometryVertexFormat` 匹配
@@ -111,8 +111,8 @@ UpsertRecipeSSBOAssetBinding(mesh_recipe, "mtl",       // data_slot "mtl"
    ——从 definition 的 ubo 需求 + provider 根（material_source/ntb 模块）的
    `@ulre` 资源声明聚合出 UBO/SSBO/纹理层需求，再 `Build3DDescriptorsFromDefinition`
    生成 `SerializedDescriptorEntry[]`。
-6. **顶点着色器组装**：`GenerateVertexShader`（src/ShaderGen/common/VertexShaderAssembler.h）
-   按 `vertex_node_config` 五元组把 vertex/ 下的 s1/s2/s3 模块拼成完整 VS。
+6. **网格着色器组装**：`GenerateMeshShader`（src/ShaderGen/common/MeshShaderAssembler.h）
+   按 `vertex_node_config` 五元组把 vertex/ 下的 s1/s2/s3 模块拼成完整 mesh shader。
 7. **片段着色器组装**：`CompositorAssembler::Assemble`（CompositorAssembler.cpp:318）：
    - 按 surface/pass 查模板路径（Lit→`compositor/main_forward_surface.frag.glsl`，
      深度 pass→`main_depth_only.frag.glsl`，Sky→`main_forward_sky.frag.glsl`）；
@@ -126,7 +126,7 @@ UpsertRecipeSSBOAssetBinding(mesh_recipe, "mtl",       // data_slot "mtl"
      `ULRE_SURFACE_INPUT_CONTRACT` 三处标记**注入由契约生成的声明**
      （varying in / 输出 location / SurfaceInput 构造）。
 8. **编译**：`CompileCompositorMaterial`（MaterialShaderCompiler.cpp:289）——
-   把完整 VS/FS GLSL 交给 `ShaderBuildContext`（AddStruct/AddUBO/AddSSBO 填描述符
+   把完整 MS/FS GLSL 交给 `ShaderBuildContext`（AddStruct/AddUBO/AddSSBO 填描述符
    分配器，data_slot 声明逐槽注入 SSBO 结构与 buffer 声明），
    `FinalizeShaderBuildContext` 先查 `ShaderArtifactStore` 磁盘 SPV 缓存，
    未命中才 `CreateShaderDirect()` → GLSLCompiler 插件（动态库 `GLSLCompiler.dll`，
@@ -223,7 +223,7 @@ FNV 哈希**。这带来两个关键收益：
      或 `ShaderArtifactStore` 磁盘缓存（stage .spv 文件 + program 元数据），
      从根上避免无谓重编译。
 2. **契约即文档**：`ValidateShaderInterfaceContract` 等校验（拓扑序合法、
-   descriptor 域合法、VS 输出覆盖 FS 输入，ShaderStageBuildContext.h:142）
+   descriptor 域合法、mesh stage 输出覆盖 FS 输入，ShaderStageBuildContext.h:142）
    在生成期而不是运行期暴露不一致。
 
 ### 原理 5：Compositor 模板 + 标记注入（生成器与手写模板的分工）
@@ -301,7 +301,7 @@ Text、Sky、billboard**——差异只在五元组与模块路径。
 | L3 | `src/ShaderGen/common/GLSLCodeModuleCapabilityResolver.cpp` | 语义需求 → provider 解析 |
 | L3 | `src/ShaderGen/ResolvedModuleGraphBuilder.cpp` | 模块依赖图（闭包/拓扑/聚合/哈希） |
 | L3 | `src/ShaderGen/CompositorAssembler.cpp` | FS 模板装配（宏注入/模块替换/契约标记） |
-| L3 | `src/ShaderGen/common/VertexShaderAssembler.h` | VS 三段式组装 |
+| L3 | `src/ShaderGen/common/MeshShaderAssembler.h` | Mesh shader 三段式组装 |
 | L3 | `src/ShaderGen/MaterialShaderCompiler.cpp` | 最终编译 + 描述符/SSBO 声明生成 |
 | L3 | `src/ShaderGen/GLSLCompiler.cpp` | GLSLCompiler 插件加载与 SPV 编译 |
 | L4 | `src/ShaderGen/ShaderArtifactStore.cpp` | SPV 磁盘缓存（stage/program 两级） |

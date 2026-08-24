@@ -69,16 +69,14 @@ namespace hgl::graph
             return h;
         }
 
-        uint64_t HashPreRasterConfig(const PipelineData *pd)
+        uint64_t HashPreRasterConfig(const PipelineData *pd, PrimitiveType primitive_type)
         {
             if(!pd)
                 return 0;
 
             hgl::hash::FNV1aHasher64 h;
 
-            h << pd->input_assembly.flags
-              << pd->input_assembly.topology
-              << pd->input_assembly.primitiveRestartEnable;
+            h << static_cast<uint32_t>(primitive_type);
             if(pd->rasterization)
             {
                 const VkPipelineRasterizationStateCreateInfo &rs = *pd->rasterization;
@@ -94,12 +92,6 @@ namespace hgl::graph
                   << rs.depthBiasSlopeFactor
                   << rs.lineWidth;
             }
-            if(pd->tessellation)
-            {
-                h << pd->tessellation->flags
-                  << pd->tessellation->patchControlPoints;
-            }
-
             h << pd->viewport_state.viewportCount
               << pd->viewport_state.scissorCount
               << pd->dynamic_state.dynamicStateCount;
@@ -568,8 +560,8 @@ namespace hgl::graph
 
             library_info.pNext = &rendering_ci;
 
-            create_info.pVertexInputState = vertex_input_interface ? pd->pipeline_info.pVertexInputState : nullptr;
-            create_info.pInputAssemblyState = vertex_input_interface ? pd->pipeline_info.pInputAssemblyState : nullptr;
+            create_info.pVertexInputState = nullptr;    // 引擎无 VBO，顶点数据走 SSBO
+            create_info.pInputAssemblyState = nullptr;  // 无 input assembly（mesh shader 唯一路径）
             // 引擎无 tessellation shader（VS/Tess/Geometry 已彻底废弃）——pTessellationState 恒 nullptr
             create_info.pTessellationState = nullptr;
             create_info.pViewportState = pre_rasterization ? pd->pipeline_info.pViewportState : nullptr;
@@ -713,11 +705,9 @@ namespace hgl::graph
         }
 
         out_key.pr.shader_program_hash = HashShaderStages(request.shader_stages);
-        out_key.pr.config_hash = HashPreRasterConfig(request.pipeline_data);
+        out_key.pr.config_hash = HashPreRasterConfig(request.pipeline_data, request.primitive_type);
         if(request.pipeline_data)
-            out_key.pr.primitive_type = request.pipeline_data->input_assembly.topology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST
-                                      ? PrimitiveType::Lines
-                                      : PrimitiveType::Triangles;
+            out_key.pr.primitive_type = request.primitive_type;
 
         out_key.fs.shader_program_hash = HashShaderStages(request.shader_stages);
         out_key.fs.variant_hash = 0;

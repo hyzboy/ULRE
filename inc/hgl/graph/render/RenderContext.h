@@ -61,14 +61,11 @@ namespace hgl::graph
         /**
          * 创建管线
          * @param material 材质
-         * @param vil      顶点输入配置
-         * @param cd       管线数据
-         * @param prim_restart 是否启用基元重启
+         * @param pd       管线数据
          * @return 管线指针，失败返回 nullptr
          */
         Pipeline* CreatePipeline(ShaderProgram* material,
-                                const PipelineData* pd,
-                                bool prim_restart = false);
+                                const PipelineData* pd);
 
     public:
         // ===== 渲染目标和命令缓冲区管理 =====

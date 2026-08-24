@@ -395,7 +395,7 @@ namespace hgl::ecs
 
         // ------- Create pipeline -------
         // P2：mesh 管线（宽度入 SSBO，cull off——quad 绕序不定，双面绘制）
-        pipeline_ = rp->CreatePipeline(material_, graph::mtl::MakeLineMeshConfig(), false, &line_gvf);
+        pipeline_ = rp->CreatePipeline(material_, graph::mtl::MakeLineMeshConfig(), &line_gvf);
 
         if (!pipeline_)
             return false;

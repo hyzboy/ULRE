@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include<hgl/vk/VKPrimitiveType.h>
 #include<hgl/vk/VKVertexInputFormat.h>
 #include<hgl/type/ValueArray.h>
 #include<hgl/type/String.h>
@@ -37,8 +36,6 @@ public:
 
     VkPipelineVertexInputStateCreateInfo        vertex_input_state;
 
-    VkPipelineInputAssemblyStateCreateInfo      input_assembly;
-    VkPipelineTessellationStateCreateInfo *     tessellation;
 
     VkViewport viewport;
     VkRect2D scissor;
@@ -79,8 +76,6 @@ public:
     void AddDynamicState(VkDynamicState);
 
 public:
-
-    bool SetPrim(const PrimitiveType prim,bool prim_restart=false);
 
     void SetViewport(       float x,float y,float w,float h){viewport.x=x;viewport.y=y;viewport.width=w;viewport.height=h;}
     void SetDepthRange(     float min_depth,float max_depth){viewport.minDepth=min_depth;viewport.maxDepth=max_depth;}

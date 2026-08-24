@@ -184,30 +184,6 @@ namespace
         VK_BLEND_OP_BLUE_EXT
     };
 
-    class TessellationElement:public xml::ElementAttribute
-    {
-        VkPipelineTessellationStateCreateInfo *tessellation;
-
-    public:
-
-        TessellationElement(VkPipelineTessellationStateCreateInfo *tsci):xml::ElementAttribute(u8"tessellation")
-        {
-            tessellation=tsci;
-
-            tessellation->sType=VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
-            tessellation->pNext=nullptr;
-            tessellation->flags=0;
-            tessellation->patchControlPoints=0;
-        }
-
-        bool Start() override
-        {
-            tessellation->patchControlPoints=ToUInteger(u8"PatchControlPoints");
-
-            return(true);
-        }
-    };//
-
     class DepthBiasElement:public xml::ElementAttribute
     {
         VkPipelineRasterizationStateCreateInfo *rasterizer;
@@ -510,7 +486,6 @@ namespace
     {
         VK_NAMESPACE::PipelineData *data;
 
-        TessellationElement *tess;
         RasterizerElement *rasterizer;
         MultisampleElement *ms;
         DepthStencilElement *ds;
@@ -522,13 +497,11 @@ namespace
         {
             data=pd;
 
-            tess=new TessellationElement(data->tessellation);
             rasterizer=new RasterizerElement(data->rasterization);
             ms=new MultisampleElement(data->multi_sample);
             ds=new DepthStencilElement(data->depth_stencil);
             cb=new ColorBlendElement(data->color_blend,data->color_blend_attachments);
 
-            Registry(tess);
             Registry(rasterizer);
             Registry(ms);
             Registry(ds);
@@ -541,7 +514,6 @@ namespace
             delete ds;
             delete ms;
             delete rasterizer;
-            delete tess;
         }
 
         bool Start() override
