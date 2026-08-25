@@ -10,6 +10,8 @@ using namespace hgl;
 
 namespace hgl::graph
 {
+    constexpr int TEXT_SDF_SPREAD=8;      ///<SDF距离场传播半径(象素)，同时作为勾边宽度的上限
+
     struct CharMetricsInfo
     {
         int x,y;        //图像显示偏移
@@ -82,6 +84,8 @@ namespace hgl::graph
         virtual const   bool        GetCharMetrics  (CharMetricsInfo &,const u32char &)=0;      ///<取得字符绘制信息
                 const   CLA *       GetCLA          (const u32char &);                          ///<取得字符排版信息
         virtual         int         GetCharHeight   ()const=0;                                  ///<取得字符高度
+        virtual         void        SetSDFEnabled   (bool){}                                    ///<SDF距离场开关(仅位图数据源实现)
+        virtual         bool        IsSDFEnabled    ()const{return false;}                      ///<SDF距离场是否启用
 
         void RefAcquire(void *);                                                                ///<引用请求
         void RefRelease(void *);                                                                ///<引用释放
@@ -109,8 +113,8 @@ namespace hgl::graph
 
         FontBitmapDataSource(const Font &f){fnt=f;}
 
-        void SetSDFEnabled(bool enabled){ sdf_enabled=enabled; }
-        bool IsSDFEnabled()const{ return sdf_enabled; }
+        void SetSDFEnabled(bool enabled)override;                                               ///<切换SDF距离场(同时清空并释放位图缓存)
+        bool IsSDFEnabled()const override{return sdf_enabled;}                                  ///<SDF距离场是否启用
 
     protected:
 
@@ -175,6 +179,9 @@ namespace hgl::graph
 
         void Remove(UnicodeBlock);
         void Remove(FontDataSource *);
+
+        void SetSDFEnabled(bool enabled);                                                       ///<切换所有数据源的SDF距离场开关
+        bool IsSDFEnabled()const;                                                               ///<缺省数据源的SDF距离场是否启用
 
     public:
 

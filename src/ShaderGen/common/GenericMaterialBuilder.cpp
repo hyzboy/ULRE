@@ -150,6 +150,7 @@ namespace hgl::graph::mtl
             plan.varying.emit_frag_direction = plan.effective_vertex_varying.emit_frag_direction;
             plan.varying.use_transform_id_attr = plan.effective_vertex_varying.use_transform_id_attr;
             plan.varying.emit_vertex_color_from_palette = plan.effective_vertex_varying.emit_vertex_color_from_palette;
+            plan.varying.emit_style_id = plan.effective_vertex_varying.emit_style_id;
 
             MaterialStageInterfaceDiagnostic stage_interface_diagnostic{};
             if (!BuildMaterialStageInterface(

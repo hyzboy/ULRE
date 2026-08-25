@@ -26,5 +26,8 @@ namespace hgl::graph::mtl
         // Vertex color sourced from a MaterialColorPalette UBO instead of a Color
         // vertex attribute: fragVertexColor = color_palette.color[ColorIndex].
         bool emit_vertex_color_from_palette = false;
+        // Text CharQuad: flat per-vertex style index into sbo_char_style
+        // (location=4 flat out uint fragStyleID).
+        bool emit_style_id           = false;
     };
 }

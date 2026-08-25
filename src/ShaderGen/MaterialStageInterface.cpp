@@ -92,6 +92,8 @@ namespace hgl::graph::mtl
             add(InterStageSemantic::FragDirection);
         if (varying.emit_luminance)
             add(InterStageSemantic::Luminance);
+        if (varying.emit_style_id)
+            add(InterStageSemantic::StyleID);
         return mask;
     }
 
@@ -207,7 +209,8 @@ namespace hgl::graph::mtl
             "    si.vertexColor = vec4(1.0);\n"
             "    si.viewDir = vec3(0.0, 0.0, 1.0);\n"
             "    si.screenPos = gl_FragCoord.xy;\n"
-            "    si.luminance = 1.0;\n";
+            "    si.luminance = 1.0;\n"
+            "    si.styleID = 0u;\n";
 
         if (FindMaterialStageInterfaceEntry(
                 entries, InterStageSemantic::WorldPosition))
@@ -238,6 +241,10 @@ namespace hgl::graph::mtl
         out_code += FindMaterialStageInterfaceEntry(
                 entries, InterStageSemantic::DataIndexID)
             ? "fragDataIndexID;\n" : "0u;\n";
+        out_code += "    si.styleID = ";
+        out_code += FindMaterialStageInterfaceEntry(
+                entries, InterStageSemantic::StyleID)
+            ? "fragStyleID;\n" : "0u;\n";
         return true;
     }
 }

@@ -182,6 +182,7 @@ namespace hgl::graph::mtl
         bool emit_frag_direction = false;
         bool use_transform_id_attr = false;
         bool emit_vertex_color_from_palette = false;
+        bool emit_style_id = false;
     };
 
     // MaterialDefinition 来源标记：区分 built-in 硬编码实现与未来的文件化实现。

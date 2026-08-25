@@ -25,13 +25,21 @@ namespace hgl::graph
             //float   underline   =0.0f; ///<下划线粗细
             //float   strikeout   =0.0f; ///<删除线粗细
 
+            float    bold        = 0.0f;          ///<加粗宽度(象素)，0=关闭
+            float    outline     = 0.0f;          ///<勾边宽度(象素)，0=关闭
+            Color4ub OutlineColor;                 ///<勾边颜色
+            bool     shadow      = false;          ///<阴影开关
+            Color4ub ShadowColor{0,0,0,255};       ///<阴影颜色，默认黑色
+
             bool operator==(const CharStyle& o) const
             {
-                return CharColor.r == o.CharColor.r
-                    && CharColor.g == o.CharColor.g
-                    && CharColor.b == o.CharColor.b
-                    && CharColor.a == o.CharColor.a
-                    && italic == o.italic;
+                return CharColor == o.CharColor
+                    && italic == o.italic
+                    && bold == o.bold
+                    && outline == o.outline
+                    && OutlineColor == o.OutlineColor
+                    && shadow == o.shadow
+                    && ShadowColor == o.ShadowColor;
             }
             bool operator!=(const CharStyle& o) const { return !(*this == o); }
         };//struct CharStyle
@@ -117,6 +125,9 @@ namespace hgl::graph
             TEXT_COORD_TYPE line_height;
 
             uint16_t style_id = 0;          ///<索引 CharStyleGPU SSBO 的样式 ID
+
+            float extra_advance_x = 0.0f;   ///<额外水平间距（像素），用于 bold/outline 扩展
+            float extra_advance_y = 0.0f;   ///<额外垂直间距（像素），用于 bold/outline 扩展
 
             auto operator <=> (const TextDrawStyle &)const=default;
         };

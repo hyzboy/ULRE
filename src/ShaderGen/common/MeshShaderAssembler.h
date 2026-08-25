@@ -268,6 +268,7 @@ namespace hgl::graph::mtl
             material_varying.emit_frag_direction  = varying_cfg.emit_frag_direction;
             material_varying.emit_vertex_color_from_palette =
                 varying_cfg.emit_vertex_color_from_palette;
+            material_varying.emit_style_id      = varying_cfg.emit_style_id;
             if (!BuildMaterialStageInterface(material_varying,
                                              adapted_stage_interface,
                                              stage_interface_diagnostic))
@@ -296,6 +297,7 @@ namespace hgl::graph::mtl
             case InterStageSemantic::WorldNormal: type_name = "vec3";       var_name = "fragWorldNormal"; break;
             case InterStageSemantic::Luminance:   type_name = "float";      var_name = "fragLuminance"; break;
             case InterStageSemantic::FragDirection: type_name = "vec3";     var_name = "fragDirection"; break;
+            case InterStageSemantic::StyleID:     type_name = "flat uint"; var_name = "fragStyleID"; break;
             default: continue;
             }
 
@@ -329,7 +331,13 @@ namespace hgl::graph::mtl
             ms += "\n";
             ms += "struct CharStyleData {\n";
             ms += "    uint  text_color;\n";
+            ms += "    uint  outline_color;\n";
+            ms += "    uint  shadow_color;\n";
+            ms += "    uint  flags;\n";
             ms += "    float italic;\n";
+            ms += "    float bold_px;\n";
+            ms += "    float outline_px;\n";
+            ms += "    uint  shadow_uv_offset;\n";
             ms += "};\n";
             ms += "layout(set=PER_OBJECT_SET, binding=TEXT_CHARSTYLE_BINDING, std430) readonly buffer CharStyleDataBuf {\n";
             ms += "    CharStyleData styles[];\n";
@@ -730,6 +738,13 @@ namespace hgl::graph::mtl
                 ms += "    const uint data_id = ResolveDataIndexID(gl_InstanceIndex);\n";
                 ms += "    for (int i = 0; i < 6; i++)\n";
                 ms += "        fragDataIndexID[base_vid + uint(i)] = data_id;\n";
+            }
+
+            // StyleID varying（flat per-vertex 样式索引 → FS 查 sbo_char_style）
+            if (FindMaterialStageInterfaceEntry(*resolved_stage_interface, InterStageSemantic::StyleID))
+            {
+                ms += "    for (int i = 0; i < 6; i++)\n";
+                ms += "        fragStyleID[base_vid + uint(i)] = style_id;\n";
             }
             break;
         }

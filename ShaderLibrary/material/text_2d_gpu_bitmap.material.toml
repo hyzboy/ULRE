@@ -20,8 +20,8 @@ material_source_module = "material/text_source_gpu.glsl"
 
 [compositor]
 surface = "Unlit"
-blend = "Opaque"
-pass = "ForwardOpaque"
+blend = "Transparent"
+pass = "ForwardTransparent"
 
 [vertex]
 requirements = ["Position", "UV0"]

@@ -230,7 +230,7 @@ namespace hgl::graph::layout
                 const uint16_t cid=GetOrRegisterCharId(cda.cla->attr->ch,cda.cla->metrics,cda.uv);
                 gpu_char_instances.push_back({static_cast<int16_t>(left),static_cast<int16_t>(top),cid,dsi.style.style_id});
 
-                left+=cda.cla->metrics.adv_x;
+                left+=cda.cla->metrics.adv_x + static_cast<int>(dsi.style.extra_advance_x);
 
                 ++visible_char_count;
             }
@@ -242,11 +242,11 @@ namespace hgl::graph::layout
                 if(cda.cla->attr->ch=='\n')
                 {
                     left=dsi.style.start_position.x;
-                    top+=font_source->GetCharHeight()+dsi.style.line_gap;
+                    top+=font_source->GetCharHeight()+dsi.style.line_gap+static_cast<int>(dsi.style.extra_advance_y);
                 }
                 else
                 {
-                    left+=cda.cla->metrics.adv_x;
+                    left+=cda.cla->metrics.adv_x + static_cast<int>(dsi.style.extra_advance_x);
                 }
             }
 

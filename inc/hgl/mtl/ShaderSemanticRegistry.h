@@ -57,8 +57,9 @@ namespace hgl::graph::mtl
         Luminance,
         WorldTangent,
         WorldBinormal,
+        StyleID,
 
-        ENUM_CLASS_RANGE(Unknown,WorldBinormal)
+        ENUM_CLASS_RANGE(Unknown,StyleID)
     };
 
     enum class InterStageInterpolation : uint8

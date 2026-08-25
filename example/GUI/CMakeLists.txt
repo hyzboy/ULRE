@@ -11,3 +11,4 @@ endmacro()
 
 CreateProject(TextDrawTest           TextDrawTest.cpp)
 CreateProject(DrawMultiLineText      DrawMultiLineText.cpp)
+CreateProject(SDFTextEffects         SDFTextEffects.cpp)

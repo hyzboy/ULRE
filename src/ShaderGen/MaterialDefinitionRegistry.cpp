@@ -305,6 +305,7 @@ MaterialVertexVaryingConfig ResolveMaterialVertexVaryingConfig(
     varying.emit_uv0 = false;
     varying.emit_luminance = false;
     varying.emit_vertex_color_from_palette = false;
+    varying.emit_style_id = false;
 
     if (!coverage.requires_alpha_evaluation)
         return varying;

@@ -666,6 +666,7 @@ namespace hgl::graph::mtl
                     else if (field == "emit_frag_direction") out.definition.vertex_varying.emit_frag_direction = true;
                     else if (field == "use_transform_id_attr") out.definition.vertex_varying.use_transform_id_attr = true;
                     else if (field == "emit_vertex_color_from_palette") out.definition.vertex_varying.emit_vertex_color_from_palette = true;
+                    else if (field == "emit_style_id") out.definition.vertex_varying.emit_style_id = true;
                     else return false;
                 }
             }

@@ -20,12 +20,12 @@ material_source_module = "material/text_source_gpu.glsl"
 
 [compositor]
 surface = "Unlit"
-blend = "Opaque"
-pass = "ForwardOpaque"
+blend = "Transparent"
+pass = "ForwardTransparent"
 
 [vertex]
 requirements = ["Position", "UV0"]
-varyings = ["emit_data_index_id", "emit_uv0", "emit_vertex_color"]
+varyings = ["emit_data_index_id", "emit_uv0", "emit_vertex_color", "emit_style_id"]
 
 [mesh_shader]
 mode = "CharQuad"

@@ -191,6 +191,7 @@ namespace hgl::graph::mtl
             generated += "    si.viewDir = vec3(0.0, 0.0, 1.0);\n";
             generated += "    si.screenPos = gl_FragCoord.xy;\n";
             generated += "    si.luminance = 1.0;\n";
+            generated += "    si.styleID = 0u;\n";
 
             if (HasSemantic(
                     stage_interface,

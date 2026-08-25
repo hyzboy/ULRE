@@ -119,6 +119,25 @@ namespace hgl::graph
         }
     }
 
+    void FontSource::SetSDFEnabled(bool enabled)
+    {
+        if(default_source)
+            default_source->SetSDFEnabled(enabled);
+
+        std::vector<FontSourcePointer> values;
+        source_map.GetValueArray(values);
+        for(auto *fsp:values)
+        {
+            if(fsp)
+                fsp->SetSDFEnabled(enabled);
+        }
+    }
+
+    bool FontSource::IsSDFEnabled()const
+    {
+        return default_source?default_source->IsSDFEnabled():false;
+    }
+
     FontDataSource *FontSource::GetFontDataSource(const u32char &ch)
     {
         if(hgl::is_space(ch))return(nullptr);   //不能显示的数据或是空格

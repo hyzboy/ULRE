@@ -21,6 +21,7 @@ struct SurfaceInput
     vec3 viewDir;        // normalize(-worldPos)，因为 cameraPos 恒为 0
     vec2 screenPos;
     float luminance;     // 顶点亮度（VertexLuminance 材质使用）
+    uint styleID;        // 文本样式索引（Text CharQuad：flat varying fragStyleID → sbo_char_style）
 };
 
 // Material attributes returned by a surface module. Compositors must not

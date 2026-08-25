@@ -8,6 +8,7 @@
 #include<hgl/graph/font/FontSource.h>
 #include<hgl/graph/font/TextLayoutEngine.h>
 #include<hgl/graph/font/TextCharSSBO.h>
+#include<hgl/graph/geo/GeometryCreater.h>   // FloatToHalf
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/mtl/MaterialRecipe.h>
@@ -50,7 +51,9 @@ namespace hgl::ecs
             if (!gc)
                 return nullptr;
 
-            const uint32_t height = hgl_align_pow2(fs->GetCharHeight() + 2, 4);
+            const uint32_t height = fs->IsSDFEnabled()
+                ? hgl_align_pow2(fs->GetCharHeight() + 2 + 2 * graph::TEXT_SDF_SPREAD, 4)   //SDF tile 需要四周额外 spread 空间
+                : hgl_align_pow2(fs->GetCharHeight() + 2, 4);
 
             if (limit_count <= 0)
             {
@@ -78,7 +81,8 @@ namespace hgl::ecs
                             const graph::layout::ParagraphStyle& para_style,
                             const graph::layout::TEXT_COORD_VEC& start_pos,
                             const int char_height,
-                            const uint16_t style_id = 0)
+                            const uint16_t style_id = 0,
+                            const graph::layout::CharStyle* char_style = nullptr)
         {
             out_style.para_style = para_style;
             out_style.start_position = start_pos;
@@ -93,6 +97,15 @@ namespace hgl::ecs
             out_style.char_gap = static_cast<graph::layout::TEXT_COORD_TYPE>(std::ceil(origin_char_height * para_style.char_gap));
             out_style.line_gap = static_cast<graph::layout::TEXT_COORD_TYPE>(std::ceil(origin_char_height * para_style.line_gap));
             out_style.line_height = static_cast<graph::layout::TEXT_COORD_TYPE>(std::ceil(origin_char_height + out_style.line_gap));
+
+            // bold/outline 使字形视觉尺寸每侧扩展 bold+outline 像素，
+            // 因此水平/垂直行间距各增加 2*(bold+outline) 以避免字符重叠
+            if (char_style)
+            {
+                const float extra = 2.0f * (char_style->bold + char_style->outline);
+                out_style.extra_advance_x = extra;
+                out_style.extra_advance_y = extra;
+            }
         }
     }
 
@@ -356,7 +369,11 @@ namespace hgl::ecs
             return nullptr;
 
         graph::mtl::MaterialRecipe recipe{};
-        recipe.mtl_def_id = hgl::graph::mtl::BUILTIN_MTL_DEF_TEXT;
+        // SDF 与原始位图走不同解码路径，按字体源开关选择对应材质定义，
+        // 修正原"原始位图也走 SDF 解码路径"的错配。
+        recipe.mtl_def_id = font_source->IsSDFEnabled()
+            ? hgl::graph::mtl::BUILTIN_MTL_DEF_TEXT           //"builtin/text_gpu" SDF 距离场解码路径
+            : hgl::graph::mtl::BUILTIN_MTL_DEF_TEXT_BITMAP;   //"builtin/text_gpu_bitmap" 原始位图采样路径
         recipe.render_state_overrides.pipeline_config = graph::mtl::MakeSolid2DConfig();
 
         material_manager = graphics_context->GetMaterialManager();
@@ -584,7 +601,7 @@ namespace hgl::ecs
             {
                 // CharQuad mesh shader self-declares all vertex SSBOs; no geometry_vertex_format
                 resources->pipeline = render_pass->CreatePipeline(resources->material,
-                                                                  graph::mtl::MakeSolid2DConfig(),
+                                                                  graph::mtl::MakeAlpha2DConfig(),
                                                                   nullptr);
                 if (!resources->pipeline)
                     GLogError("[TextRenderPipeline] Failed to create GPU text pipeline");
@@ -603,13 +620,17 @@ namespace hgl::ecs
                     {
                         const auto* text_comp = input.texts[ti];
                         const uint16_t comp_style_id = (ti < input.style_ids.size()) ? input.style_ids[ti] : 0;
+                        const graph::layout::CharStyle* comp_char_style =
+                            (comp_style_id < static_cast<uint16_t>(input.styles.size()))
+                            ? &input.styles[comp_style_id] : nullptr;
 
                         graph::layout::TextDrawStyle draw_style;
                         BuildDrawStyle(draw_style,
                                        text_comp->GetParagraphStyle(),
                                        text_comp->GetStartPosition(),
                                        resources->tile_font->GetFontSource()->GetCharHeight(),
-                                       comp_style_id);
+                                       comp_style_id,
+                                       comp_char_style);
 
                         layout_engine.AddString(text_comp->GetText(), draw_style);
                     }
@@ -630,15 +651,39 @@ namespace hgl::ecs
                             const auto& unique_chars = layout_engine.GetCharInfoTable();
                             const auto& gpu_instances = layout_engine.GetGpuCharInstances();
 
+                            // 阴影 UV 偏移：阴影偏移为 0.1 倍字符高度(像素)，
+                            // 换算为图集归一化坐标后打包为两个 half-float (du 低位, dv 高位)
+                            uint32_t shadow_uv_offset = 0;
+                            {
+                                const float off_px = 0.05f * static_cast<float>(
+                                    resources->tile_font->GetFontSource()->GetCharHeight());
+                                auto* atlas = resources->tile_font->GetTileData()->GetTexture();
+
+                                if (atlas && atlas->GetWidth() > 0 && atlas->GetHeight() > 0)
+                                {
+                                    const float du = off_px / static_cast<float>(atlas->GetWidth());
+                                    const float dv = off_px / static_cast<float>(atlas->GetHeight());
+
+                                    shadow_uv_offset = (static_cast<uint32_t>(graph::FloatToHalf(dv)) << 16)
+                                                     |  static_cast<uint32_t>(graph::FloatToHalf(du));
+                                }
+                            }
+
                             // 2. Build CharStyleGPU table from all unique styles
                             std::vector<graph::layout::CharStyleGPU> styles;
                             styles.reserve(resources->styles.size() > 0 ? resources->styles.size() : 1);
                             if (resources->styles.empty())
                             {
-                                // fallback: one default style
+                                // fallback: one default style，新增字段补零(阴影颜色保持默认黑)
                                 graph::layout::CharStyleGPU s{};
-                                s.text_color = HGL_U8_TO_RGBA8(255, 255, 255, 255);
-                                s.italic     = 0.0f;
+                                s.text_color    = HGL_U8_TO_RGBA8(255, 255, 255, 255);
+                                s.outline_color = 0;
+                                s.shadow_color  = HGL_U8_TO_RGBA8(0, 0, 0, 255);
+                                s.flags         = 0;
+                                s.italic        = 0.0f;
+                                s.bold_px       = 0.0f;
+                                s.outline_px    = 0.0f;
+                                s.shadow_uv_offset = 0;
                                 styles.push_back(s);
                             }
                             else
@@ -646,9 +691,18 @@ namespace hgl::ecs
                                 for (const auto& cs : resources->styles)
                                 {
                                     graph::layout::CharStyleGPU s{};
-                                    const auto& c = cs.CharColor;
-                                    s.text_color = HGL_U8_TO_RGBA8(c.r, c.g, c.b, c.a);
-                                    s.italic     = cs.italic;
+                                    const auto& c  = cs.CharColor;
+                                    const auto& oc = cs.OutlineColor;
+                                    const auto& sc = cs.ShadowColor;
+
+                                    s.text_color    = HGL_U8_TO_RGBA8(c.r, c.g, c.b, c.a);
+                                    s.outline_color = HGL_U8_TO_RGBA8(oc.r, oc.g, oc.b, oc.a);
+                                    s.shadow_color  = HGL_U8_TO_RGBA8(sc.r, sc.g, sc.b, sc.a);
+                                    s.flags         = cs.shadow ? 1u : 0u;      //bit0 = shadow_enabled
+                                    s.italic        = cs.italic;
+                                    s.bold_px       = cs.bold;
+                                    s.outline_px    = std::min(cs.outline, static_cast<float>(graph::TEXT_SDF_SPREAD));
+                                    s.shadow_uv_offset = shadow_uv_offset;
                                     styles.push_back(s);
                                 }
                             }
