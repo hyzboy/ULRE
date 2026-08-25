@@ -58,8 +58,8 @@ void EvalTextStyleEffects(
     const float sm = fwidth(sdf);            // 抗锯齿带宽
 
     // 缩放后的特效参数
-    const float scaled_bold = st.bold_px * st.scale;
-    const float scaled_outline = st.outline_px * st.scale;
+    const float scaled_bold = st.bold_px;
+    const float scaled_outline = st.outline_px;
 
     // 加粗：字身边界外扩 bold_px 像素
     const float body_a = smoothstep(-sm, sm, sdf + scaled_bold * du);
