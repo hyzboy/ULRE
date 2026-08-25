@@ -101,6 +101,8 @@ namespace hgl::graph
 
             float scale = 1.0f;             ///<缩放因子（1.0=原始大小，2.0=双倍）
 
+            int32_t rotation = 0;            ///<旋转角度 (0/90/180/270)
+
             auto operator <=> (const TextDrawStyle &)const=default;
         };
     }//namespace layout

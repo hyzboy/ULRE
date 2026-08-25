@@ -31,6 +31,7 @@ namespace hgl { namespace graph { namespace layout {
         float    outline_px;        // offset 24: 勾边宽度(像素)，0=关闭，钳制 <= TEXT_SDF_SPREAD
         uint32_t shadow_uv_offset;  // offset 28: packed half2 (du, dv)，阴影 UV 偏移(图集归一化坐标)
         float    scale = 1.0f;      // offset 32: 缩放因子，1.0=原始大小
+        int32_t  rotation = 0;      // offset 36: 旋转角度 (0=无旋转, 90=右转, 180=翻转, 270=左转)
 
         bool operator==(const CharStyle& o) const
         {
@@ -42,10 +43,11 @@ namespace hgl { namespace graph { namespace layout {
                 && bold_px == o.bold_px
                 && outline_px == o.outline_px
                 && shadow_uv_offset == o.shadow_uv_offset
-                && scale == o.scale;
+                && scale == o.scale
+                && rotation == o.rotation;
         }
         bool operator!=(const CharStyle& o) const { return !(*this == o); }
-    };  // 36 bytes
+    };  // 40 bytes
 
     // Per-char-instance data (8 bytes, std430) -> GPU SSBO binding 16
     struct CharInstance

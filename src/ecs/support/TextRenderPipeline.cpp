@@ -107,6 +107,7 @@ namespace hgl::ecs
                 out_style.extra_advance_x = extra;
                 out_style.extra_advance_y = extra;
                 out_style.scale = char_style->scale;
+                out_style.rotation = char_style->rotation;
             }
         }
     }
@@ -675,6 +676,7 @@ namespace hgl::ecs
                                 s.outline_px    = 0.0f;
                                 s.shadow_uv_offset = 0;
                                 s.scale           = 1.0f;
+                                s.rotation        = 0;
                                 fallback_styles.push_back(s);
                             }
                             const auto& upload_styles = styles.empty() ? fallback_styles : styles;
