@@ -99,6 +99,8 @@ namespace hgl::graph
             float extra_advance_x = 0.0f;   ///<额外水平间距（像素），用于 bold/outline 扩展
             float extra_advance_y = 0.0f;   ///<额外垂直间距（像素），用于 bold/outline 扩展
 
+            float scale = 1.0f;             ///<缩放因子（1.0=原始大小，2.0=双倍）
+
             auto operator <=> (const TextDrawStyle &)const=default;
         };
     }//namespace layout

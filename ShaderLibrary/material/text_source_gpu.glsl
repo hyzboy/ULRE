@@ -31,6 +31,7 @@ struct CharStyleData {
     float bold_px;
     float outline_px;
     uint  shadow_uv_offset;  // packHalf2x16 打包的 UV 偏移
+    float scale;             // 缩放因子
 };
 layout(set=PER_OBJECT_SET, binding=TEXT_CHARSTYLE_BINDING, std430) readonly buffer CharStyleDataBuf {
     CharStyleData styles[];
@@ -56,13 +57,17 @@ void EvalTextStyleEffects(
     const float du = 2.0 / TEXT_SDF_SPREAD;  // 每像素对应的 sdf 单位
     const float sm = fwidth(sdf);            // 抗锯齿带宽
 
+    // 缩放后的特效参数
+    const float scaled_bold = st.bold_px * st.scale;
+    const float scaled_outline = st.outline_px * st.scale;
+
     // 加粗：字身边界外扩 bold_px 像素
-    const float body_a = smoothstep(-sm, sm, sdf + st.bold_px * du);
+    const float body_a = smoothstep(-sm, sm, sdf + scaled_bold * du);
 
     // 勾边：边界外扩 outline_px 像素（outline_px=0 时强制归零，
     // 否则 over 合成会重复叠加字身覆盖率 → 零参数输出不再等价）
-    float outline_a = smoothstep(-sm, sm, sdf + st.outline_px * du);
-    if (st.outline_px <= 0.0)
+    float outline_a = smoothstep(-sm, sm, sdf + scaled_outline * du);
+    if (scaled_outline <= 0.0)
         outline_a = 0.0;
 
     // 阴影（flags bit0）：偏移采样同一距离场；阴影显示为右下偏移
@@ -79,7 +84,7 @@ void EvalTextStyleEffects(
         // 阴影跟随加粗（同为字身边界外扩）
         // 扩大 smoothstep 范围（-2px 到 +2px）产生更宽的半透明过渡带
         const float shadow_sm = 2.0 * du;  // 2 像素过渡带宽
-        const float shadow_base_a = smoothstep(-shadow_sm, shadow_sm, shadow_sdf + st.bold_px * du);
+        const float shadow_base_a = smoothstep(-shadow_sm, shadow_sm, shadow_sdf + scaled_bold * du);
         // 渐变淡出：利用原始 SDF 距离值调制阴影强度
         // 距离字形越远（sdf 越负），阴影越淡；字身边缘及内部阴影最强
         const float fade = smoothstep(-3.0 * du, 1.0 * du, sdf);

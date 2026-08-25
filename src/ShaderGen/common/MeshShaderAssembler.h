@@ -338,6 +338,7 @@ namespace hgl::graph::mtl
             ms += "    float bold_px;\n";
             ms += "    float outline_px;\n";
             ms += "    uint  shadow_uv_offset;\n";
+            ms += "    float scale;\n";
             ms += "};\n";
             ms += "layout(set=PER_OBJECT_SET, binding=TEXT_CHARSTYLE_BINDING, std430) readonly buffer CharStyleDataBuf {\n";
             ms += "    CharStyleData styles[];\n";
@@ -671,16 +672,21 @@ namespace hgl::graph::mtl
             // ── 计算 quad 像素坐标 ────────────────────────────────────
             // rect_top = pen_y - metrics_y + char_height
             // char_height 通过 MeshDrawParams.viewport_height 传递（CharQuad 模式复用）
+            ms += "    const float char_scale = cs.scale;\n";
             ms += "    const int char_height = int(pc_vertex_index.viewport_height);\n";
-            ms += "    const int rect_left   = pen_x + mx;\n";
-            ms += "    const int rect_top    = pen_y - my + char_height;\n";
-            ms += "    const int rect_right  = rect_left + int(mw);\n";
-            ms += "    const int rect_bottom = rect_top + int(mh);\n";
+            ms += "    const int mx_s = int(float(mx) * char_scale);\n";
+            ms += "    const int my_s = int(float(my) * char_scale);\n";
+            ms += "    const uint mw_s = uint(float(mw) * char_scale);\n";
+            ms += "    const uint mh_s = uint(float(mh) * char_scale);\n";
+            ms += "    const int rect_left   = pen_x + mx_s;\n";
+            ms += "    const int rect_top    = pen_y - my_s + char_height;\n";
+            ms += "    const int rect_right  = rect_left + int(mw_s);\n";
+            ms += "    const int rect_bottom = rect_top + int(mh_s);\n";
             ms += "\n";
 
             // ── 斜体剪切变形 ──────────────────────────────────────────
             ms += "    const float shear_factor = tan(cs.italic);\n";
-            ms += "    const float shear_top = float(mh) * shear_factor;\n";
+            ms += "    const float shear_top = float(mh_s) * shear_factor;\n";
             ms += "\n";
 
             // ── UV 解包（half-float → float）─────────────────────────

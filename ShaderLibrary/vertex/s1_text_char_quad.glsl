@@ -20,7 +20,7 @@
 //      char_id:     uint16 packed in uint32
 //      style_id:    uint16 packed in uint32
 //
-// std430 对齐：TextCharInfo=16B, CharStyleData=8B, CharInstanceData=8B
+// std430 对齐：TextCharInfo=16B, CharStyleData=36B, CharInstanceData=8B
 // 所有字段自然对齐，无额外 padding
 #ifndef S1_TEXT_CHAR_QUAD_GLSL
 #define S1_TEXT_CHAR_QUAD_GLSL
@@ -37,10 +37,17 @@ layout(set=PER_OBJECT_SET, binding=TEXT_CHARINFO_BINDING, std430) readonly buffe
     TextCharInfo chars[];
 } sbo_char_info;
 
-// ── Per-style 数据（8 bytes per entry）──
+// ── Per-style 数据（36 bytes per entry）──
 struct CharStyleData {
-    uint  text_color;   // packed RGBA8
-    float italic;       // shear angle in radians
+    uint  text_color;       // packed RGBA8
+    uint  outline_color;    // packed RGBA8
+    uint  shadow_color;     // packed RGBA8
+    uint  flags;            // bit0 = shadow_enabled
+    float italic;           // shear angle in radians
+    float bold_px;          // bold width in pixels
+    float outline_px;       // outline width in pixels
+    uint  shadow_uv_offset; // packHalf2x16 UV offset
+    float scale;            // scale factor
 };
 
 layout(set=PER_OBJECT_SET, binding=TEXT_CHARSTYLE_BINDING, std430) readonly buffer CharStyleDataBuf {

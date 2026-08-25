@@ -41,7 +41,7 @@ namespace hgl::graph::layout
 
     protected:  // GPU path data
 
-        std::vector<layout::TextCharInfo>   char_info_table;        ///< unique char info table (for SSBO binding 14)
+        std::vector<layout::TextCharInfo>    char_info_table;        ///< unique char info table (for SSBO binding 14)
         UnorderedMap<u32char,uint16_t>       char_to_id;             ///< unicode → char_id mapping
         std::vector<layout::CharStyle>       char_styles;            ///< style table (for SSBO binding 15)
 
@@ -79,6 +79,16 @@ namespace hgl::graph::layout
         const std::vector<layout::TextCharInfo>&  GetCharInfoTable()  const { return char_info_table; }
         const std::vector<layout::CharStyle>&   GetCharStyles()     const { return char_styles; }
         uint16_t GetUniqueCharCount() const { return (uint16_t)char_info_table.size(); }
+
+    private:
+        int layout_width_ = 0;   ///< 排版后文本宽度（像素）
+        int layout_height_ = 0;  ///< 排版后文本高度（像素）
+
+    public:
+        /// 获取排版后文本的宽度（像素）
+        int GetLayoutWidth() const { return layout_width_; }
+        /// 获取排版后文本的高度（像素）
+        int GetLayoutHeight() const { return layout_height_; }
 
     protected:
 

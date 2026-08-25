@@ -36,6 +36,14 @@ inline uint16 FloatToHalf(float f)
 }
 
 /**
+ * 两个 float 打包为 packed half2（低 16 位 = x，高 16 位 = y）
+ */
+inline uint32_t packHalf2x16(float x, float y)
+{
+    return (uint32_t)FloatToHalf(x) | ((uint32_t)FloatToHalf(y) << 16);
+}
+
+/**
  * [-1,1] → [0,255] 量化（RG8 法线压缩用——octahedral 编码后写入 uint8）
  */
 inline uint8 QuantizeU8(float v)

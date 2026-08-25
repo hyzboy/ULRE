@@ -106,6 +106,7 @@ namespace hgl::ecs
                 const float extra = 2.0f * (char_style->bold_px + char_style->outline_px);
                 out_style.extra_advance_x = extra;
                 out_style.extra_advance_y = extra;
+                out_style.scale = char_style->scale;
             }
         }
     }
@@ -673,6 +674,7 @@ namespace hgl::ecs
                                 s.bold_px       = 0.0f;
                                 s.outline_px    = 0.0f;
                                 s.shadow_uv_offset = 0;
+                                s.scale           = 1.0f;
                                 fallback_styles.push_back(s);
                             }
                             const auto& upload_styles = styles.empty() ? fallback_styles : styles;
@@ -754,7 +756,12 @@ namespace hgl::ecs
                         // viewport_height = char_height (for baseline correction in shader)
                         row->is_indexed      = 0;
                         row->total_vertices  = resources->last_draw_char_count;
-                        row->viewport_height = static_cast<float>(input.font_source->GetCharHeight());
+
+                        // viewport_height = char_height * max_scale（CharQuad 用 char_height 做 baseline 修正）
+                        float max_scale = 1.0f;
+                        for (const auto& cs : resources->styles)
+                            max_scale = std::max(max_scale, cs.scale);
+                        row->viewport_height = static_cast<float>(input.font_source->GetCharHeight()) * max_scale;
                         gpu->Unmap();
                     }
                 }

@@ -213,6 +213,7 @@ namespace hgl::graph::layout
     int TextLayout::sl_l2r(const DrawStringItem &dsi)
     {
         int cur_size=0;
+        const float scale = dsi.style.scale;
         int left=dsi.style.start_position.x;
         int top =dsi.style.start_position.y;
 
@@ -230,28 +231,32 @@ namespace hgl::graph::layout
                 const uint16_t cid=GetOrRegisterCharId(cda.cla->attr->ch,cda.cla->metrics,cda.uv);
                 gpu_char_instances.push_back({static_cast<int16_t>(left),static_cast<int16_t>(top),cid,dsi.style.style_id});
 
-                left+=cda.cla->metrics.adv_x + static_cast<int>(dsi.style.extra_advance_x);
+                left+=static_cast<int>((cda.cla->metrics.adv_x + dsi.style.extra_advance_x) * scale);
 
                 ++visible_char_count;
             }
             else
             {
-                if(cda.cla->attr->ch==' ')                  left+=dsi.style.space_size;       else
-                if(cda.cla->attr->ch==U32_FULL_WIDTH_SPACE) left+=dsi.style.full_space_size;  else
-                if(cda.cla->attr->ch=='\t')                 left+=dsi.style.tab_size;         else
+                if(cda.cla->attr->ch==' ')                  left+=static_cast<int>(dsi.style.space_size * scale);       else
+                if(cda.cla->attr->ch==U32_FULL_WIDTH_SPACE) left+=static_cast<int>(dsi.style.full_space_size * scale);  else
+                if(cda.cla->attr->ch=='\t')                 left+=static_cast<int>(dsi.style.tab_size * scale);         else
                 if(cda.cla->attr->ch=='\n')
                 {
                     left=dsi.style.start_position.x;
-                    top+=font_source->GetCharHeight()+dsi.style.line_gap+static_cast<int>(dsi.style.extra_advance_y);
+                    top+=static_cast<int>((font_source->GetCharHeight() + dsi.style.line_gap + dsi.style.extra_advance_y) * scale);
                 }
                 else
                 {
-                    left+=cda.cla->metrics.adv_x + static_cast<int>(dsi.style.extra_advance_x);
+                    left+=static_cast<int>((cda.cla->metrics.adv_x + dsi.style.extra_advance_x) * scale);
                 }
             }
 
             ++it_cda;
         }
+
+        // 记录排版后的最终尺寸
+        layout_width_ = left;
+        layout_height_ = top + font_source->GetCharHeight() + dsi.style.line_gap;
 
         return visible_char_count; //返回绘制的字符数量
     }

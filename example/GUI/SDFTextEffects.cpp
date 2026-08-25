@@ -3,9 +3,11 @@
 #include<hgl/graph/font/FontSource.h>
 #include<hgl/graph/font/TextLayout.h>
 #include<hgl/graph/font/TextCharSSBO.h>
+#include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/framework/WorkManager.h>
 #include<hgl/color/Color.h>
 #include<hgl/color/Color4ub.h>
+#include<hgl/math/Vector.h>
 
 using namespace hgl;
 using namespace hgl::ecs;
@@ -17,7 +19,6 @@ constexpr const uint32_t WINDOW_HEIGHT  = 1440;
 constexpr const uint32_t FONT_SIZE      = 48;     ///<独立字号，避开其它示例共享的数据源缓存
 constexpr const int      START_X        = 60;
 constexpr const int      START_Y        = 60;
-constexpr const int      LINE_GAP       = 70;     ///<每行垂直间隔(含特效溢出余量)
 
 class TestApp:public WorkObject
 {
@@ -27,7 +28,7 @@ private:
 
 protected:
 
-    bool CreateTextLine(FontSource *fs, const hgl::graph::layout::CharStyle &cs, const U16String &text, int line_index)
+    bool CreateTextLine(FontSource *fs, const hgl::graph::layout::CharStyle &cs, const U16String &text, const math::Vector2i &position)
     {
         auto* entity = ecs_world->CreateEntity();
         if(!entity)
@@ -39,7 +40,7 @@ protected:
 
         text_comp->SetText(text);
         text_comp->SetFontSource(fs);
-        text_comp->SetStartPosition({START_X, START_Y + line_index * LINE_GAP});
+        text_comp->SetStartPosition(position);
         text_comp->SetCharStyle(cs);
 
         return(true);
@@ -63,51 +64,113 @@ protected:
 
         const Color4ub WHITE(255, 255, 255, 255);
         const Color4ub RED  (255,   0,   0, 255);
+        const Color4ub BLUE (  0,   0, 255, 255);
 
         hgl::graph::layout::CharStyle cs;
+        math::Vector2i pos = {START_X, START_Y};
+
+        uint line_gap=FONT_SIZE*1.4;  // 行间距
 
         // 行1 普通：白色，无特效(对照组)
-        cs = {};
+        cs = layout::CharStyle{};
         cs.text_color = WHITE.toRGBA8();
-        if(!CreateTextLine(fs, cs, U16String(OS_TEXT("SDF 普通文本 Normal")), 0))
+        if(!CreateTextLine(fs, cs, U16String(OS_TEXT("普通文本 (48px)")), pos))
             return(false);
 
-        // 行2 加粗：bold = 2.0 像素
-        cs = {};
+        pos.y += line_gap;
+
+        // 行2 加粗：bold = 3.0 像素
+        cs = layout::CharStyle{};
         cs.text_color = WHITE.toRGBA8();
-        cs.bold_px = 2.0f;
-        if(!CreateTextLine(fs, cs, U16String(OS_TEXT("SDF 加粗文本 Bold 2px")), 1))
+        cs.bold_px = 3.0f;
+        if(!CreateTextLine(fs, cs, U16String(OS_TEXT("加粗 Bold (3px)")), pos))
             return(false);
 
-        // 行3 勾边：outline = 2.0 像素，勾边红色，字身白色
-        cs = {};
+        pos.y += line_gap;
+
+        // 行3 勾边：outline = 3.0 像素，勾边红色，字身白色
+        cs = layout::CharStyle{};
         cs.text_color = WHITE.toRGBA8();
-        cs.outline_px = 2.0f;
+        cs.outline_px = 3.0f;
         cs.outline_color = RED.toRGBA8();
-        if(!CreateTextLine(fs, cs, U16String(OS_TEXT("SDF 勾边文本 Outline 2px")), 2))
+        if(!CreateTextLine(fs, cs, U16String(OS_TEXT("勾边 Outline (3px)")), pos))
             return(false);
 
-        // 行4 阴影：默认黑色阴影，向右下偏移字号 1/10
-        cs = {};
+        pos.y += line_gap;
+
+        // 行4 阴影：灰色阴影，向右下偏移(2,2)
+        cs = layout::CharStyle{};
         cs.text_color = WHITE.toRGBA8();
-        cs.flags = 1;
-        if(!CreateTextLine(fs, cs, U16String(OS_TEXT("SDF 阴影文本 Shadow")), 3))
+        cs.shadow_color = Color4ub(64, 64, 64, 128).toRGBA8();
+        cs.flags = 1;  // shadow enabled
+        cs.shadow_uv_offset = hgl::graph::packHalf2x16(2.0f, 2.0f);
+        if(!CreateTextLine(fs, cs, U16String(OS_TEXT("阴影 Shadow (2,2)")), pos))
             return(false);
+
+        pos.y += line_gap;
 
         // 行5 叠加：加粗 + 勾边 + 阴影全开
-        cs = {};
+        cs = layout::CharStyle{};
         cs.text_color = WHITE.toRGBA8();
         cs.bold_px = 2.0f;
         cs.outline_px = 2.0f;
-        cs.outline_color = RED.toRGBA8();
+        cs.outline_color = BLUE.toRGBA8();
+        cs.shadow_color = Color4ub(0, 0, 0, 96).toRGBA8();
         cs.flags = 1;
-        if(!CreateTextLine(fs, cs, U16String(OS_TEXT("SDF 叠加文本 Bold+Outline+Shadow")), 4))
+        cs.shadow_uv_offset = hgl::graph::packHalf2x16(3.0f, 3.0f);
+        if(!CreateTextLine(fs, cs, U16String(OS_TEXT("叠加 Bold+Outline+Shadow")), pos))
             return(false);
 
+        pos.y += line_gap;
+
         // 行6 对照：再来一行普通白色长文本
-        cs = {};
+        cs = layout::CharStyle{};
         cs.text_color = WHITE.toRGBA8();
-        if(!CreateTextLine(fs, cs, U16String(OS_TEXT("SDF 对照文本：道可道，非常道；名可名，非常名。")), 5))
+        if(!CreateTextLine(fs, cs, U16String(OS_TEXT("对照: 无特效 (Bitmap)")), pos))
+            return(false);
+
+        // --- 放大测试：展示 SDF 缩放功能 ---
+        pos.y += line_gap;
+
+        cs = layout::CharStyle{};
+        cs.text_color = WHITE.toRGBA8();
+        cs.scale = 1.25f;
+        if(!CreateTextLine(fs, cs, U16String(OS_TEXT("SDF 1.25x Scale 缩放测试")), pos))
+            return(false);
+
+        pos.y += line_gap*1.25;
+
+        cs = layout::CharStyle{};
+        cs.text_color = WHITE.toRGBA8();
+        cs.scale = 1.5f;
+        if(!CreateTextLine(fs, cs, U16String(OS_TEXT("SDF 1.5x Scale 缩放测试")), pos))
+            return(false);
+
+        pos.y += line_gap*1.5;
+
+        cs = layout::CharStyle{};
+        cs.text_color = WHITE.toRGBA8();
+        cs.scale = 2.0f;
+        if(!CreateTextLine(fs, cs, U16String(OS_TEXT("SDF 2x Scale 缩放测试")), pos))
+            return(false);
+
+        pos.y += line_gap*2;
+
+        cs = layout::CharStyle{};
+        cs.text_color = WHITE.toRGBA8();
+        cs.scale = 3.0f;
+        if(!CreateTextLine(fs, cs, U16String(OS_TEXT("SDF 3x Scale 缩放测试")), pos))
+            return(false);
+
+        pos.y += line_gap*3;
+
+        // 4x 缩放 + 勾边
+        cs = layout::CharStyle{};
+        cs.text_color = WHITE.toRGBA8();
+        cs.scale = 4.0f;
+        cs.outline_px = 2.0f;
+        cs.outline_color = RED.toRGBA8();
+        if(!CreateTextLine(fs, cs, U16String(OS_TEXT("SDF 4x + Outline 缩放测试")), pos))
             return(false);
 
         return(true);
