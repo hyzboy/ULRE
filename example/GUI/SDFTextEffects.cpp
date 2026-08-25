@@ -2,8 +2,10 @@
 #include<hgl/ecs/components/TextComponent.h>
 #include<hgl/graph/font/FontSource.h>
 #include<hgl/graph/font/TextLayout.h>
+#include<hgl/graph/font/TextCharSSBO.h>
 #include<hgl/framework/WorkManager.h>
 #include<hgl/color/Color.h>
+#include<hgl/color/Color4ub.h>
 
 using namespace hgl;
 using namespace hgl::ecs;
@@ -66,45 +68,45 @@ protected:
 
         // 行1 普通：白色，无特效(对照组)
         cs = {};
-        cs.CharColor = WHITE;
+        cs.text_color = WHITE.toRGBA8();
         if(!CreateTextLine(fs, cs, U16String(OS_TEXT("SDF 普通文本 Normal")), 0))
             return(false);
 
         // 行2 加粗：bold = 2.0 像素
         cs = {};
-        cs.CharColor = WHITE;
-        cs.bold = 2.0f;
+        cs.text_color = WHITE.toRGBA8();
+        cs.bold_px = 2.0f;
         if(!CreateTextLine(fs, cs, U16String(OS_TEXT("SDF 加粗文本 Bold 2px")), 1))
             return(false);
 
         // 行3 勾边：outline = 2.0 像素，勾边红色，字身白色
         cs = {};
-        cs.CharColor = WHITE;
-        cs.outline = 2.0f;
-        cs.OutlineColor = RED;
+        cs.text_color = WHITE.toRGBA8();
+        cs.outline_px = 2.0f;
+        cs.outline_color = RED.toRGBA8();
         if(!CreateTextLine(fs, cs, U16String(OS_TEXT("SDF 勾边文本 Outline 2px")), 2))
             return(false);
 
         // 行4 阴影：默认黑色阴影，向右下偏移字号 1/10
         cs = {};
-        cs.CharColor = WHITE;
-        cs.shadow = true;
+        cs.text_color = WHITE.toRGBA8();
+        cs.flags = 1;
         if(!CreateTextLine(fs, cs, U16String(OS_TEXT("SDF 阴影文本 Shadow")), 3))
             return(false);
 
         // 行5 叠加：加粗 + 勾边 + 阴影全开
         cs = {};
-        cs.CharColor = WHITE;
-        cs.bold = 2.0f;
-        cs.outline = 2.0f;
-        cs.OutlineColor = RED;
-        cs.shadow = true;
+        cs.text_color = WHITE.toRGBA8();
+        cs.bold_px = 2.0f;
+        cs.outline_px = 2.0f;
+        cs.outline_color = RED.toRGBA8();
+        cs.flags = 1;
         if(!CreateTextLine(fs, cs, U16String(OS_TEXT("SDF 叠加文本 Bold+Outline+Shadow")), 4))
             return(false);
 
         // 行6 对照：再来一行普通白色长文本
         cs = {};
-        cs.CharColor = WHITE;
+        cs.text_color = WHITE.toRGBA8();
         if(!CreateTextLine(fs, cs, U16String(OS_TEXT("SDF 对照文本：道可道，非常道；名可名，非常名。")), 5))
             return(false);
 

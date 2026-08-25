@@ -2,6 +2,8 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/TextComponent.h>
 #include<hgl/graph/font/FontSource.h>
+#include<hgl/graph/font/TextCharSSBO.h>
+#include<hgl/color/Color4ub.h>
 #include<hgl/framework/WorkManager.h>
 
 using namespace hgl;
@@ -45,7 +47,7 @@ protected:
 
         hgl::graph::layout::CharStyle cs;
 
-        cs.CharColor.setOne();
+        cs.text_color = HGL_U8_TO_RGBA8(255, 255, 255, 255);
 
         // Just set text and font - TextRenderPipeline handles the rest!
         text_comp->SetText(str);

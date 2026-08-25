@@ -43,7 +43,7 @@ namespace hgl::graph::layout
 
         std::vector<layout::TextCharInfo>   char_info_table;        ///< unique char info table (for SSBO binding 14)
         UnorderedMap<u32char,uint16_t>       char_to_id;             ///< unicode → char_id mapping
-        std::vector<layout::CharStyleGPU>    char_styles;            ///< style table (for SSBO binding 15)
+        std::vector<layout::CharStyle>       char_styles;            ///< style table (for SSBO binding 15)
 
         uint16_t GetOrRegisterCharId(u32char ch,const CharMetricsInfo &metrics,const TileUVFloat &uv);
 
@@ -77,7 +77,7 @@ namespace hgl::graph::layout
         const IndexedList<CharDrawAttr>& GetDrawCharsList() const { return draw_chars_list; }
 
         const std::vector<layout::TextCharInfo>&  GetCharInfoTable()  const { return char_info_table; }
-        const std::vector<layout::CharStyleGPU>&  GetCharStyles()     const { return char_styles; }
+        const std::vector<layout::CharStyle>&   GetCharStyles()     const { return char_styles; }
         uint16_t GetUniqueCharCount() const { return (uint16_t)char_info_table.size(); }
 
     protected:

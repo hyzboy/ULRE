@@ -19,7 +19,8 @@ namespace hgl { namespace graph { namespace layout {
     };  // 16 bytes
 
     // Per-style data (32 bytes, std430) -> GPU SSBO binding 15
-    struct CharStyleGPU
+    // 同时作为 CPU 侧样式定义（CPU→GPU 转换在 TextRenderPipeline 中完成）
+    struct CharStyle
     {
         uint32_t text_color;        // offset  0: packed RGBA8 字符颜色
         uint32_t outline_color;     // offset  4: packed RGBA8 勾边颜色
@@ -29,6 +30,19 @@ namespace hgl { namespace graph { namespace layout {
         float    bold_px;           // offset 20: 加粗宽度(像素)，0=关闭
         float    outline_px;        // offset 24: 勾边宽度(像素)，0=关闭，钳制 <= TEXT_SDF_SPREAD
         uint32_t shadow_uv_offset;  // offset 28: packed half2 (du, dv)，阴影 UV 偏移(图集归一化坐标)
+
+        bool operator==(const CharStyle& o) const
+        {
+            return text_color == o.text_color
+                && outline_color == o.outline_color
+                && shadow_color == o.shadow_color
+                && flags == o.flags
+                && italic == o.italic
+                && bold_px == o.bold_px
+                && outline_px == o.outline_px
+                && shadow_uv_offset == o.shadow_uv_offset;
+        }
+        bool operator!=(const CharStyle& o) const { return !(*this == o); }
     };  // 32 bytes
 
     // Per-char-instance data (8 bytes, std430) -> GPU SSBO binding 16
@@ -37,7 +51,7 @@ namespace hgl { namespace graph { namespace layout {
         int16_t  pen_x;       // screen X position (from CPU layout)
         int16_t  pen_y;       // screen Y position (from CPU layout)
         uint16_t char_id;     // index into TextCharInfo SSBO
-        uint16_t style_id;    // index into CharStyleGPU SSBO
+        uint16_t style_id;    // index into CharStyle SSBO
     };  // 8 bytes
 
 }}}// namespace hgl::graph::layout

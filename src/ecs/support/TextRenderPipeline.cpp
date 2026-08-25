@@ -8,6 +8,7 @@
 #include<hgl/graph/font/FontSource.h>
 #include<hgl/graph/font/TextLayoutEngine.h>
 #include<hgl/graph/font/TextCharSSBO.h>
+#include<hgl/color/Color4ub.h>
 #include<hgl/graph/geo/GeometryCreater.h>   // FloatToHalf
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/vk/VKDevice.h>
@@ -102,7 +103,7 @@ namespace hgl::ecs
             // 因此水平/垂直行间距各增加 2*(bold+outline) 以避免字符重叠
             if (char_style)
             {
-                const float extra = 2.0f * (char_style->bold + char_style->outline);
+                const float extra = 2.0f * (char_style->bold_px + char_style->outline_px);
                 out_style.extra_advance_x = extra;
                 out_style.extra_advance_y = extra;
             }
@@ -669,13 +670,20 @@ namespace hgl::ecs
                                 }
                             }
 
-                            // 2. Build CharStyleGPU table from all unique styles
-                            std::vector<graph::layout::CharStyleGPU> styles;
-                            styles.reserve(resources->styles.size() > 0 ? resources->styles.size() : 1);
-                            if (resources->styles.empty())
+                            // 2. styles 已经是 packed CharStyle 格式，直接使用
+                            //    补丁 shadow_uv_offset（依赖图集尺寸，仅在上传前注入）
+                            //    钳制 outline_px <= TEXT_SDF_SPREAD
+                            for (auto& s : resources->styles)
                             {
-                                // fallback: one default style，新增字段补零(阴影颜色保持默认黑)
-                                graph::layout::CharStyleGPU s{};
+                                s.shadow_uv_offset = shadow_uv_offset;
+                                s.outline_px = std::min(s.outline_px, static_cast<float>(graph::TEXT_SDF_SPREAD));
+                            }
+                            const auto& styles = resources->styles;
+                            std::vector<graph::layout::CharStyle> fallback_styles;
+                            if (styles.empty())
+                            {
+                                // fallback: one default style
+                                graph::layout::CharStyle s{};
                                 s.text_color    = HGL_U8_TO_RGBA8(255, 255, 255, 255);
                                 s.outline_color = 0;
                                 s.shadow_color  = HGL_U8_TO_RGBA8(0, 0, 0, 255);
@@ -684,32 +692,13 @@ namespace hgl::ecs
                                 s.bold_px       = 0.0f;
                                 s.outline_px    = 0.0f;
                                 s.shadow_uv_offset = 0;
-                                styles.push_back(s);
+                                fallback_styles.push_back(s);
                             }
-                            else
-                            {
-                                for (const auto& cs : resources->styles)
-                                {
-                                    graph::layout::CharStyleGPU s{};
-                                    const auto& c  = cs.CharColor;
-                                    const auto& oc = cs.OutlineColor;
-                                    const auto& sc = cs.ShadowColor;
-
-                                    s.text_color    = HGL_U8_TO_RGBA8(c.r, c.g, c.b, c.a);
-                                    s.outline_color = HGL_U8_TO_RGBA8(oc.r, oc.g, oc.b, oc.a);
-                                    s.shadow_color  = HGL_U8_TO_RGBA8(sc.r, sc.g, sc.b, sc.a);
-                                    s.flags         = cs.shadow ? 1u : 0u;      //bit0 = shadow_enabled
-                                    s.italic        = cs.italic;
-                                    s.bold_px       = cs.bold;
-                                    s.outline_px    = std::min(cs.outline, static_cast<float>(graph::TEXT_SDF_SPREAD));
-                                    s.shadow_uv_offset = shadow_uv_offset;
-                                    styles.push_back(s);
-                                }
-                            }
+                            const auto& upload_styles = styles.empty() ? fallback_styles : styles;
 
                             // 3. Create / resize GPU SSBOs and upload data
                             const VkDeviceSize char_info_bytes   = unique_chars.size()   * sizeof(graph::layout::TextCharInfo);
-                            const VkDeviceSize style_bytes     = styles.size()      * sizeof(graph::layout::CharStyleGPU);
+                            const VkDeviceSize style_bytes     = upload_styles.size() * sizeof(graph::layout::CharStyle);
                             const VkDeviceSize instance_bytes  = gpu_instances.size() * sizeof(graph::layout::CharInstance);
 
                             if (!resources->char_info_buffer || resources->char_info_buffer->GetSize() < char_info_bytes)
@@ -727,7 +716,6 @@ namespace hgl::ecs
                                 resources->char_style_buffer = buf_mgr->CreateSSBO(
                                     "Text2D_CharStyle", style_bytes, graph::SharingMode::Exclusive);
                             }
-
                             if (!resources->char_instance_buffer || resources->char_instance_buffer->GetSize() < instance_bytes)
                             {
                                 if (resources->char_instance_buffer)
@@ -744,7 +732,7 @@ namespace hgl::ecs
                             if (resources->char_style_buffer)
                             {
                                 auto* gpu = resources->char_style_buffer->GetGPUBuffer();
-                                if (gpu) gpu->Write(styles.data(), 0, style_bytes);
+                                if (gpu) gpu->Write(upload_styles.data(), 0, style_bytes);
                             }
                             if (resources->char_instance_buffer)
                             {
@@ -753,7 +741,7 @@ namespace hgl::ecs
                             }
 
                             resources->unique_char_count = static_cast<uint32_t>(unique_chars.size());
-                            resources->style_count       = static_cast<uint32_t>(styles.size());
+                            resources->style_count       = static_cast<uint32_t>(upload_styles.size());
                         }
                     }
                     else

@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/font/FontSource.h>
-#include<hgl/color/Color4ub.h>
+#include<hgl/graph/font/TextCharSSBO.h>
 #include<hgl/math/Vector.h>
 #include<cstdint>
 
@@ -11,38 +11,8 @@ namespace hgl::graph
 
     namespace layout
     {
-        /**
-        * 字符风格
-        */
-        struct CharStyle
-        {
-            Color4ub CharColor;          ///<字符颜色
-            //Color4ub BackgroundColor;    ///<背景颜色
-
-            //float   weight      =1.0f;  ///<粗细
-            float   italic      =0.0f;  ///<倾斜角度(<0左斜,>0右斜)
-
-            //float   underline   =0.0f; ///<下划线粗细
-            //float   strikeout   =0.0f; ///<删除线粗细
-
-            float    bold        = 0.0f;          ///<加粗宽度(象素)，0=关闭
-            float    outline     = 0.0f;          ///<勾边宽度(象素)，0=关闭
-            Color4ub OutlineColor;                 ///<勾边颜色
-            bool     shadow      = false;          ///<阴影开关
-            Color4ub ShadowColor{0,0,0,255};       ///<阴影颜色，默认黑色
-
-            bool operator==(const CharStyle& o) const
-            {
-                return CharColor == o.CharColor
-                    && italic == o.italic
-                    && bold == o.bold
-                    && outline == o.outline
-                    && OutlineColor == o.OutlineColor
-                    && shadow == o.shadow
-                    && ShadowColor == o.ShadowColor;
-            }
-            bool operator!=(const CharStyle& o) const { return !(*this == o); }
-        };//struct CharStyle
+        // CharStyle 定义已移至 TextCharSSBO.h（CPU/GPU 共用，32B std430 布局）
+        // CPU 侧通过 TextRenderPipeline 做 Color4ub → packed uint32 转换
 
         using CharDrawStyleID=uint8;
 
@@ -124,7 +94,7 @@ namespace hgl::graph
             TEXT_COORD_TYPE line_gap;
             TEXT_COORD_TYPE line_height;
 
-            uint16_t style_id = 0;          ///<索引 CharStyleGPU SSBO 的样式 ID
+            uint16_t style_id = 0;          ///<索引 CharStyle SSBO 的样式 ID
 
             float extra_advance_x = 0.0f;   ///<额外水平间距（像素），用于 bold/outline 扩展
             float extra_advance_y = 0.0f;   ///<额外垂直间距（像素），用于 bold/outline 扩展

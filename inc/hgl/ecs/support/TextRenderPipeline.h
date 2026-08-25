@@ -51,7 +51,7 @@ namespace hgl
 
                 // GPU path SSBOs
                 graph::DeviceBuffer* char_info_buffer = nullptr;      // TextCharInfo SSBO (b14)
-                graph::DeviceBuffer* char_style_buffer = nullptr;     // CharStyleGPU SSBO (b15)
+                graph::DeviceBuffer* char_style_buffer = nullptr;     // CharStyle SSBO (b15)
                 graph::DeviceBuffer* char_instance_buffer = nullptr;  // CharInstance SSBO (b16)
                 uint32_t unique_char_count = 0;
                 uint32_t style_count = 0;

@@ -4,6 +4,7 @@
 #include<hgl/graph/font/FontSource.h>
 #include<hgl/framework/WorkManager.h>
 #include<hgl/color/Color.h>
+#include<hgl/color/Color4ub.h>
 #include<random>
 
 using namespace hgl;
@@ -73,7 +74,7 @@ protected:
             
             hgl::graph::layout::CharStyle cs;
 
-            cs.CharColor = palette[line_index % PALETTE_SIZE];
+            cs.text_color = palette[line_index % PALETTE_SIZE].toRGBA8();
 
             // 每 3 行设置不同的倾斜角度，测试 italic 特性
             if (line_index % 3 == 1)

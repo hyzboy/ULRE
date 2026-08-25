@@ -21,7 +21,7 @@
 #define TEXT_SAMPLER LinearSampler
 
 // ── 字符样式表（与 mesh 阶段 MeshShaderAssembler 生成的 CharStyleData 严格镜像，
-//    std430 32B；CPU 侧为 CharStyleGPU）──
+//    std430 32B；CPU/GPU 共用 CharStyle 定义，见 TextCharSSBO.h）──
 struct CharStyleData {
     uint  text_color;
     uint  outline_color;
