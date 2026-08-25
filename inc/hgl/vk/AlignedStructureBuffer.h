@@ -2,6 +2,7 @@
 
 #include<hgl/vk/IGPUBuffer.h>
 #include<hgl/vk/VKBufferOwner.h>
+#include<hgl/vk/VKDevice.h>
 
 namespace hgl::graph {
 

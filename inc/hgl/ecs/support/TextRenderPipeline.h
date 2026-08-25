@@ -3,6 +3,7 @@
 #include<hgl/ecs/support/RenderPipelineBase.h>
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/graph/font/TextLayout.h>
+#include<hgl/vk/AlignedStructureBuffer.h>
 #include<cstdint>
 #include<unordered_map>
 #include<vector>
@@ -49,12 +50,10 @@ namespace hgl
                 graph::DeviceBuffer* mesh_draw_params = nullptr;    ///<mesh per-draw 参数表（row 0——每字体单 draw）
                 uint32_t bindless_atlas_handle = 0;
 
-                // GPU path SSBOs
-                graph::DeviceBuffer* char_info_buffer = nullptr;      // TextCharInfo SSBO (b14)
-                graph::DeviceBuffer* char_style_buffer = nullptr;     // CharStyle SSBO (b15)
-                graph::DeviceBuffer* char_instance_buffer = nullptr;  // CharInstance SSBO (b16)
-                uint32_t unique_char_count = 0;
-                uint32_t style_count = 0;
+                // GPU path SSBOs (AlignedStructureBuffer 自动管理生命周期)
+                std::unique_ptr<graph::AlignedStructureBuffer<graph::layout::TextCharInfo>> char_info_asb;    // b14
+                std::unique_ptr<graph::AlignedStructureBuffer<graph::layout::CharStyle>>    char_style_asb;   // b15
+                std::unique_ptr<graph::AlignedStructureBuffer<graph::layout::CharInstance>> char_instance_asb; // b16
 
                 graph::DescriptorBindingSet* descriptor_binding_set = nullptr;
 

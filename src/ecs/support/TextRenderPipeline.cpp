@@ -126,23 +126,7 @@ namespace hgl::ecs
 
             SAFE_CLEAR(res.mesh_draw_params);
 
-            if (res.char_info_buffer && buffer_manager)
-            {
-                buffer_manager->Release(res.char_info_buffer);
-                res.char_info_buffer = nullptr;
-            }
-
-            if (res.char_style_buffer && buffer_manager)
-            {
-                buffer_manager->Release(res.char_style_buffer);
-                res.char_style_buffer = nullptr;
-            }
-
-            if (res.char_instance_buffer && buffer_manager)
-            {
-                buffer_manager->Release(res.char_instance_buffer);
-                res.char_instance_buffer = nullptr;
-            }
+            // char_info_asb / char_style_asb / char_instance_asb 由 unique_ptr 自动释放
 
             if (res.material && material_manager)
             {
@@ -264,12 +248,12 @@ namespace hgl::ecs
             // Bind GPU text SSBOs (b14/b15/b16) to material PerObject set
             if (auto* mp = res.material->GetMP(graph::DescriptorSetType::PerObject))
             {
-                if (res.char_info_buffer && res.char_info_buffer->GetGPUBuffer())
-                    mp->BindSSBO(14, res.char_info_buffer->GetGPUBuffer());
-                if (res.char_style_buffer && res.char_style_buffer->GetGPUBuffer())
-                    mp->BindSSBO(15, res.char_style_buffer->GetGPUBuffer());
-                if (res.char_instance_buffer && res.char_instance_buffer->GetGPUBuffer())
-                    mp->BindSSBO(16, res.char_instance_buffer->GetGPUBuffer());
+                if (res.char_info_asb && res.char_info_asb->IsValid())
+                    mp->BindSSBO(14, res.char_info_asb->GetGPUBuffer());
+                if (res.char_style_asb && res.char_style_asb->IsValid())
+                    mp->BindSSBO(15, res.char_style_asb->GetGPUBuffer());
+                if (res.char_instance_asb && res.char_instance_asb->IsValid())
+                    mp->BindSSBO(16, res.char_instance_asb->GetGPUBuffer());
             }
 
             // Bind mesh_draw_params to material
@@ -487,7 +471,7 @@ namespace hgl::ecs
         guard.committed = true;
 
 
-        resources_by_font.Add(font_source, resources);
+        resources_by_font.Add(font_source, std::move(resources));
         return resources_by_font.GetValuePointer(font_source);
     }
 
@@ -642,10 +626,7 @@ namespace hgl::ecs
                         resources->last_draw_char_count = static_cast<uint32_t>(draw_count);
 
                         // === Phase A: Build GPU three-layer data model ===
-                        auto* graphics_ctx = render_context ? render_context->GetGraphicsContext() : nullptr;
-                        auto* buf_mgr = graphics_ctx ? graphics_ctx->GetBufferManager() : nullptr;
-
-                        if (buf_mgr)
+                        if (device)
                         {
                             // 1. Use char_info_table and gpu_char_instances directly from TextLayout
                             //    (TextLayout now builds the unique char table and assigns char_id during sl_l2r)
@@ -696,52 +677,49 @@ namespace hgl::ecs
                             }
                             const auto& upload_styles = styles.empty() ? fallback_styles : styles;
 
-                            // 3. Create / resize GPU SSBOs and upload data
-                            const VkDeviceSize char_info_bytes   = unique_chars.size()   * sizeof(graph::layout::TextCharInfo);
-                            const VkDeviceSize style_bytes     = upload_styles.size() * sizeof(graph::layout::CharStyle);
-                            const VkDeviceSize instance_bytes  = gpu_instances.size() * sizeof(graph::layout::CharInstance);
+                            // 3. 获取 SSBO 对齐要求
+                            const VkDeviceSize ssbo_align = device->GetSSBOAlign();
 
-                            if (!resources->char_info_buffer || resources->char_info_buffer->GetSize() < char_info_bytes)
-                            {
-                                if (resources->char_info_buffer)
-                                    buf_mgr->Release(resources->char_info_buffer);
-                                resources->char_info_buffer = buf_mgr->CreateSSBO(
-                                    "Text2D_CharInfo", char_info_bytes, graph::SharingMode::Exclusive);
-                            }
+                            // 4. 创建/重建 AlignedStructureBuffer（大小变化时重建）
+                            const bool need_rebuild_char_info = !resources->char_info_asb || resources->char_info_asb->GetCount() < unique_chars.size();
+                            const bool need_rebuild_style     = !resources->char_style_asb || resources->char_style_asb->GetCount() < upload_styles.size();
+                            const bool need_rebuild_instance  = !resources->char_instance_asb || resources->char_instance_asb->GetCount() < gpu_instances.size();
 
-                            if (!resources->char_style_buffer || resources->char_style_buffer->GetSize() < style_bytes)
+                            if (need_rebuild_char_info)
                             {
-                                if (resources->char_style_buffer)
-                                    buf_mgr->Release(resources->char_style_buffer);
-                                resources->char_style_buffer = buf_mgr->CreateSSBO(
-                                    "Text2D_CharStyle", style_bytes, graph::SharingMode::Exclusive);
+                                resources->char_info_asb = std::make_unique<graph::AlignedStructureBuffer<graph::layout::TextCharInfo>>(
+                                    device, unique_chars.size(), ssbo_align,
+                                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, graph::BufferAllocPolicy::Auto);
                             }
-                            if (!resources->char_instance_buffer || resources->char_instance_buffer->GetSize() < instance_bytes)
+                            if (need_rebuild_style)
                             {
-                                if (resources->char_instance_buffer)
-                                    buf_mgr->Release(resources->char_instance_buffer);
-                                resources->char_instance_buffer = buf_mgr->CreateSSBO(
-                                    "Text2D_CharInstance", instance_bytes, graph::SharingMode::Exclusive);
+                                resources->char_style_asb = std::make_unique<graph::AlignedStructureBuffer<graph::layout::CharStyle>>(
+                                    device, upload_styles.size(), ssbo_align,
+                                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, graph::BufferAllocPolicy::Auto);
                             }
-
-                            if (resources->char_info_buffer)
+                            if (need_rebuild_instance)
                             {
-                                auto* gpu = resources->char_info_buffer->GetGPUBuffer();
-                                if (gpu) gpu->Write(unique_chars.data(), 0, char_info_bytes);
-                            }
-                            if (resources->char_style_buffer)
-                            {
-                                auto* gpu = resources->char_style_buffer->GetGPUBuffer();
-                                if (gpu) gpu->Write(upload_styles.data(), 0, style_bytes);
-                            }
-                            if (resources->char_instance_buffer)
-                            {
-                                auto* gpu = resources->char_instance_buffer->GetGPUBuffer();
-                                if (gpu) gpu->Write(gpu_instances.data(), 0, instance_bytes);
+                                resources->char_instance_asb = std::make_unique<graph::AlignedStructureBuffer<graph::layout::CharInstance>>(
+                                    device, gpu_instances.size(), ssbo_align,
+                                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, graph::BufferAllocPolicy::Auto);
                             }
 
-                            resources->unique_char_count = static_cast<uint32_t>(unique_chars.size());
-                            resources->style_count       = static_cast<uint32_t>(upload_styles.size());
+                            // 5. 写入 CPU 数据并同步到 GPU
+                            if (resources->char_info_asb && resources->char_info_asb->IsValid())
+                            {
+                                memcpy(resources->char_info_asb->GetData(), unique_chars.data(), unique_chars.size() * sizeof(graph::layout::TextCharInfo));
+                                resources->char_info_asb->SyncToGPU();
+                            }
+                            if (resources->char_style_asb && resources->char_style_asb->IsValid())
+                            {
+                                memcpy(resources->char_style_asb->GetData(), upload_styles.data(), upload_styles.size() * sizeof(graph::layout::CharStyle));
+                                resources->char_style_asb->SyncToGPU();
+                            }
+                            if (resources->char_instance_asb && resources->char_instance_asb->IsValid())
+                            {
+                                memcpy(resources->char_instance_asb->GetData(), gpu_instances.data(), gpu_instances.size() * sizeof(graph::layout::CharInstance));
+                                resources->char_instance_asb->SyncToGPU();
+                            }
                         }
                     }
                     else
