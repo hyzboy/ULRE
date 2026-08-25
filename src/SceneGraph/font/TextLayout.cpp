@@ -221,19 +221,40 @@ namespace hgl::graph::layout
 
         CharDrawAttrIt it_cda=dsi.it;
 
+        const bool check_border_symbols = dsi.style.para_style.disable_border_symbols;
+        bool at_paragraph_start = true;     // 当前是否处于段落起始位置（第一个可见字符不做行首禁用检查）
+
+        // 行尾禁用追踪：记录上一个可见字符的信息
+        bool     last_vis_has_end_disable = false;
+        int      last_vis_left_before     = 0;     // 上一个可见字符放置前的 left
+        int      last_vis_adv_x           = 0;     // 上一个可见字符的 advance（用于位置恢复）
+        uint16_t last_vis_cid             = 0;     // 上一个可见字符的 char_id
+        uint16_t last_vis_sid             = 0;     // 上一个可见字符的 style_id
+
         for(int i=0;i<dsi.str.length;i++)
         {
             const CharDrawAttr &cda=*it_cda;
 
             if(cda.cla->visible)
             {
+                const int adv=static_cast<int>((cda.cla->metrics.adv_x + dsi.style.extra_advance_x) * scale);
+
+                // 更新行尾禁用追踪
+                last_vis_has_end_disable = cda.cla->attr->end_disable;
+                last_vis_left_before     = left;
+                last_vis_adv_x           = adv;
+
                 // Store GPU instance data: pen position + char_id + style_id
                 const uint16_t cid=GetOrRegisterCharId(cda.cla->attr->ch,cda.cla->metrics,cda.uv);
                 gpu_char_instances.push_back({static_cast<int16_t>(left),static_cast<int16_t>(top),cid,dsi.style.style_id});
 
-                left+=static_cast<int>((cda.cla->metrics.adv_x + dsi.style.extra_advance_x) * scale);
+                last_vis_cid = cid;
+                last_vis_sid = dsi.style.style_id;
+
+                left+=adv;
 
                 ++visible_char_count;
+                at_paragraph_start = false;
             }
             else
             {
@@ -242,8 +263,78 @@ namespace hgl::graph::layout
                 if(cda.cla->attr->ch=='\t')                 left+=static_cast<int>(dsi.style.tab_size * scale);         else
                 if(cda.cla->attr->ch=='\n')
                 {
-                    left=dsi.style.start_position.x;
-                    top+=static_cast<int>((font_source->GetCharHeight() + dsi.style.line_gap + dsi.style.extra_advance_y) * scale);
+                    const int line_step=static_cast<int>((font_source->GetCharHeight() + dsi.style.line_gap + dsi.style.extra_advance_y) * scale);
+
+                    if(check_border_symbols)
+                    {
+                        // 前瞻：查找后续第一个可见字符
+                        bool next_vis_has_begin_disable = false;
+                        bool has_more_visible = false;
+                        {
+                            CharDrawAttrIt scan = it_cda;
+                            for(int j = i + 1; j < dsi.str.length; j++)
+                            {
+                                ++scan;
+                                const CharDrawAttr &sc = *scan;
+                                if(sc.cla->visible)
+                                {
+                                    has_more_visible = true;
+                                    next_vis_has_begin_disable = sc.cla->attr->begin_disable;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // 判断是否需要行尾回退（上一可见字符有 end_disable 且有后续可见字符）
+                        const bool need_end_rollback = last_vis_has_end_disable
+                                                    && visible_char_count > 0
+                                                    && has_more_visible;
+
+                        // 判断是否需要行首禁断（下一可见字符有 begin_disable 且非段首）
+                        const bool need_begin_keep = !at_paragraph_start
+                                                  && has_more_visible
+                                                  && next_vis_has_begin_disable;
+
+                        if(need_end_rollback && need_begin_keep)
+                        {
+                            // 两者同时触发：end-disable 要移到下一行，begin-disable 要留在当前行
+                            // 结果：不換行，被回退的字符留在当前行末尾
+                            // 无需任何操作：字符已在当前位置，left 也正确
+                        }
+                        else if(need_end_rollback)
+                        {
+                            // 仅行尾禁用：回退上一可见字符到下一行
+                            left = last_vis_left_before;
+                            gpu_char_instances.pop_back();
+
+                            // 执行换行
+                            left = dsi.style.start_position.x;
+                            top += line_step;
+
+                            // 在下一行重新放置被回退的字符
+                            gpu_char_instances.push_back({static_cast<int16_t>(left),static_cast<int16_t>(top),last_vis_cid,last_vis_sid});
+                            left += last_vis_adv_x;
+                        }
+                        else if(need_begin_keep)
+                        {
+                            // 仅行首禁用：不换行，留在当前行
+                            // 无需任何操作
+                        }
+                        else
+                        {
+                            // 正常换行
+                            left = dsi.style.start_position.x;
+                            top += line_step;
+                        }
+                    }
+                    else
+                    {
+                        left=dsi.style.start_position.x;
+                        top+=line_step;
+                    }
+
+                    at_paragraph_start = true;
+                    last_vis_has_end_disable = false;
                 }
                 else
                 {
