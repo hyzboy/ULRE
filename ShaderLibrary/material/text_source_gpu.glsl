@@ -77,7 +77,13 @@ void EvalTextStyleEffects(
                 TEXT_SAMPLER,
                 sourceInput.surface.uv0 - off).r * 2.0 - 1.0;
         // 阴影跟随加粗（同为字身边界外扩）
-        shadow_a = smoothstep(-sm, sm, shadow_sdf + st.bold_px * du);
+        // 扩大 smoothstep 范围（-2px 到 +2px）产生更宽的半透明过渡带
+        const float shadow_sm = 2.0 * du;  // 2 像素过渡带宽
+        const float shadow_base_a = smoothstep(-shadow_sm, shadow_sm, shadow_sdf + st.bold_px * du);
+        // 渐变淡出：利用原始 SDF 距离值调制阴影强度
+        // 距离字形越远（sdf 越负），阴影越淡；字身边缘及内部阴影最强
+        const float fade = smoothstep(-3.0 * du, 1.0 * du, sdf);
+        shadow_a = shadow_base_a * fade;
     }
 
     // 预乘 over 合成：top = body over outline；final = shadow over top（阴影在最底层）
