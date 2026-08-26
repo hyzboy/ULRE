@@ -151,50 +151,16 @@ namespace hgl::graph::layout
         return(true);
     }
 
-    //int TextLayout::SimpleLayout(const int mc,const String<T> &str)
-    //{
-    //    if(mc<=0
-    //        ||!str
-    //        ||!(*str))
-    //        return(-1);
-    //
-    //    max_chars=mc;
-    //    origin_string=str;
-    //
-    //    if(StatChars()<=0)
-    //        return(-3);
-    //
-    //    if(!rc->Init(draw_chars_count))
-    //        return(-4);
-    //
-    //    vertex      =rc->AccessVAD<VB4f>(VAN::Position);
-    //    tex_coord   =rc->AccessVAD<VB4f>(VAN::TexCoord);
-    //
-    //    if(!vertex||!tex_coord)
-    //        return(-5);
-    //
-    //    if(direction.vertical)
-    //    {
-    //        if(!v_splite_to_lines(para_style->max_height))
-    //            return(-4);
-    //    }
-    //    else
-    //    {
-    //        if(!h_splite_to_lines(para_style->max_width))
-    //            return(-4);
-    //    }
-    //
-    //    return 0;
-    //}
-
-    uint16_t TextLayout::GetOrRegisterCharId(u32char ch,const CharMetricsInfo &metrics,const TileUVFloat &uv)
+    uint16_t TextLayout::GetOrRegisterCharId(u32char ch,const CharMetricsInfo &metrics,const TileUVFloat &uv,uint16_t variant)
     {
+        const uint64 key=(static_cast<uint64>(variant)<<32)|static_cast<uint32_t>(ch);
+
         uint16_t id;
-        if(char_to_id.Get(ch,id))
+        if(char_to_id.Get(key,id))
             return id;
 
         id=(uint16_t)char_info_table.size();
-        char_to_id.Add(ch,id);
+        char_to_id.Add(key,id);
 
         layout::TextCharInfo info;
         info.offset_x  =(int16_t)metrics.x;
@@ -459,9 +425,11 @@ namespace hgl::graph::layout
                 // 居中修正：位图中心对齐全角格中心（仅正立标点）。
                 // 通过修正 offset_x/y 实现——mesh 用 char_info.offset 定位位图，
                 // 修正后 quad 中心 = 格中心（水平/垂直都居中）。
-                // 注意：同字符的修正版 char_info 会与横排共享（混排时以先注册者为准）。
+                // 注意：修正版 char_info 用 variant=1 单独注册，与横排（variant=0）
+                // 互不冲突——同字符横竖混排时各自取用正确版本。
+                const bool vcenter = (!vrot && hgl::strchr(VerticalCenterSymbols, cda.cla->attr->ch, VerticalCenterSymbolsCount));
                 CharMetricsInfo metrics = cda.cla->metrics;
-                if(!vrot && hgl::strchr(VerticalCenterSymbols, cda.cla->attr->ch, VerticalCenterSymbolsCount))
+                if(vcenter)
                 {
                     metrics.x = (cw - metrics.w) / 2;
                     metrics.y = (adv - metrics.h) / 2;
@@ -474,7 +442,7 @@ namespace hgl::graph::layout
                 last_vis_rot             = rot;
 
                 // Store GPU instance data: 框左上角 + char_id + style_id + 实例旋转
-                const uint16_t cid=GetOrRegisterCharId(cda.cla->attr->ch, metrics, cda.uv);
+                const uint16_t cid=GetOrRegisterCharId(cda.cla->attr->ch, metrics, cda.uv, vcenter ? 1 : 0);
                 gpu_char_instances.push_back({static_cast<int16_t>(left),static_cast<int16_t>(top),cid,dsi.style.style_id,rot});
 
                 last_vis_cid = cid;

@@ -289,7 +289,7 @@ namespace hgl::ecs
     }
 
     TextRenderPipeline::RenderResources* TextRenderPipeline::GetOrCreateResources(graph::FontSource* font_source,
-                                                                                   uint32_t estimate_chars)
+                                                                                  uint32_t estimate_chars)
     {
         if (!font_source)
             return nullptr;

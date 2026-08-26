@@ -42,10 +42,10 @@ namespace hgl::graph::layout
     protected:  // GPU path data
 
         std::vector<layout::TextCharInfo>    char_info_table;        ///< unique char info table (for SSBO binding 14)
-        UnorderedMap<u32char,uint16_t>       char_to_id;             ///< unicode → char_id mapping
+        UnorderedMap<uint64,uint16_t>       char_to_id;             ///< (variant<<32|unicode) → char_id mapping；variant 区分同一字符的不同排版变体（如竖排居中标点修正版）
         std::vector<layout::CharStyle>       char_styles;            ///< style table (for SSBO binding 15)
 
-        uint16_t GetOrRegisterCharId(u32char ch,const CharMetricsInfo &metrics,const TileUVFloat &uv);
+        uint16_t GetOrRegisterCharId(u32char ch,const CharMetricsInfo &metrics,const TileUVFloat &uv,uint16_t variant = 0);
 
     protected:
 

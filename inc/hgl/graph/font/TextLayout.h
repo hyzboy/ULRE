@@ -54,9 +54,6 @@ namespace hgl::graph
             float           char_gap                =0.0f;                                          ///<字间距
             float           line_gap                =0.1f;                                          ///<行间距(相对于字符高度)
 
-            float           max_width               =0.0f;                                          ///<最大宽度(<=0代表无限制)
-            float           max_height              =0.0f;                                          ///<最大高度(<=0代表无限制)
-
             bool            disable_border_symbols  =true;                                          ///<禁用边界符号(如行首禁用逗号)
     //      bool            disable_break_word      =true;                                          ///<禁用断字(如英文单词不允许断开)
     //      bool            auto_symbols_convert    =true;                                          ///<自动符号转换(如tm/(r)/(c)等)
