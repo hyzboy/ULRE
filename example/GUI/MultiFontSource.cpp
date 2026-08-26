@@ -1,4 +1,4 @@
-#include<hgl/ecs/core/Context.h>
+﻿#include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/TextComponent.h>
 #include<hgl/graph/font/FontSource.h>
 #include<hgl/graph/font/TextLayout.h>
@@ -78,16 +78,16 @@ protected:
             return(false);
 
         cs = layout::CharStyle{};
-        cs.text_color = WHITE.toRGBA8();
+        cs.text_color = WHITE.packUnorm4x8();
         if(!CreateTextLine(fs1, cs, U16String(OS_TEXT("字体源1: 微软雅黑 36px SDF (普通)")), pos))
             return(false);
 
         pos.y += 36*1.4;
 
         cs = layout::CharStyle{};
-        cs.text_color = BLUE.toRGBA8();
+        cs.text_color = BLUE.packUnorm4x8();
         cs.outline_px = 2.0f;
-        cs.outline_color = WHITE.toRGBA8();
+        cs.outline_color = WHITE.packUnorm4x8();
         if(!CreateTextLine(fs1, cs, U16String(OS_TEXT("字体源1: 36px 蓝字白边 (Outline)")), pos))
             return(false);
 
@@ -103,14 +103,14 @@ protected:
             return(false);
 
         cs = layout::CharStyle{};
-        cs.text_color = WHITE.toRGBA8();
+        cs.text_color = WHITE.packUnorm4x8();
         if(!CreateTextLine(fs2, cs, U16String(OS_TEXT("字体源2: 微软雅黑 72px SDF (普通)")), pos))
             return(false);
 
         pos.y += 72*1.4;
 
         cs = layout::CharStyle{};
-        cs.text_color = RED.toRGBA8();
+        cs.text_color = RED.packUnorm4x8();
         cs.bold_px = 2.0f;
         if(!CreateTextLine(fs2, cs, U16String(OS_TEXT("字体源2: 72px 红字加粗 (Bold)")), pos))
             return(false);
@@ -125,14 +125,14 @@ protected:
         // 不启用 SDF → 走原始位图采样路径（Nearest 采样）
 
         cs = layout::CharStyle{};
-        cs.text_color = WHITE.toRGBA8();
+        cs.text_color = WHITE.packUnorm4x8();
         if(!CreateTextLine(fs3, cs, U16String(OS_TEXT("字体源3: 楷体 48px 位图 (Bitmap)")), pos))
             return(false);
 
         pos.y += 48*1.4;
 
         cs = layout::CharStyle{};
-        cs.text_color = GREEN.toRGBA8();
+        cs.text_color = GREEN.packUnorm4x8();
         if(!CreateTextLine(fs3, cs, U16String(OS_TEXT("字体源3: 48px 绿字 (位图)")), pos))
             return(false);
 

@@ -720,11 +720,12 @@ namespace hgl::ecs
                             std::vector<graph::layout::CharStyle> fallback_styles;
                             if (styles.empty())
                             {
-                                // fallback: one default style
+                                // fallback: one default style（颜色为 packUnorm4x8 序：
+                                // 白 = 0xFFFFFFFF、黑 = 0xFF000000，与 CharStyle 约定一致）
                                 graph::layout::CharStyle s{};
-                                s.text_color    = HGL_U8_TO_RGBA8(255, 255, 255, 255);
+                                s.text_color    = 0xFFFFFFFF;   // 白
                                 s.outline_color = 0;
-                                s.shadow_color  = HGL_U8_TO_RGBA8(0, 0, 0, 255);
+                                s.shadow_color  = 0xFF000000;   // 黑
                                 s.flags         = 0;
                                 s.italic        = 0.0f;
                                 s.bold_px       = 0.0f;
@@ -776,18 +777,8 @@ namespace hgl::ecs
                             if (resources->char_style_asb && resources->char_style_asb->IsValid())
                             {
                                 memcpy(resources->char_style_asb->GetData(), upload_styles.data(), upload_styles.size() * sizeof(graph::layout::CharStyle));
-
-                                // 颜色字段转 packUnorm4x8 序：HGL_U8_TO_RGBA8 打包为
-                                // r<<24|g<<16|b<<8|a（r 最高字节），与 GLSL packUnorm4x8
-                                // （r 最低字节）相反；转换后 GLSL 端可直接用标准 unpackUnorm4x8，
-                                // 见 TextCharSSBO.h 的 PackUnorm4x8/HGL_TO_PACKUNORM4x8。
-                                for (size_t si = 0; si < upload_styles.size(); ++si)
-                                {
-                                    auto *s = &resources->char_style_asb->GetData()[si];
-                                    s->text_color    = graph::layout::HGL_TO_PACKUNORM4x8(s->text_color);
-                                    s->outline_color = graph::layout::HGL_TO_PACKUNORM4x8(s->outline_color);
-                                    s->shadow_color  = graph::layout::HGL_TO_PACKUNORM4x8(s->shadow_color);
-                                }
+                                // 颜色字段已是 packUnorm4x8 序（见 TextCharSSBO.h 约定），
+                                // GPU 端直接用标准 unpackUnorm4x8 解包。
                                 resources->char_style_asb->SyncToGPU();
                             }
                             if (resources->char_instance_asb && resources->char_instance_asb->IsValid())

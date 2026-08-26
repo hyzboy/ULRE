@@ -1,4 +1,4 @@
-#include<hgl/ecs/core/Context.h>
+﻿#include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/TextComponent.h>
 #include<hgl/graph/font/FontSource.h>
 #include<hgl/graph/font/TextLayout.h>
@@ -73,7 +73,7 @@ protected:
 
         // 行1 普通：白色，无特效(对照组)
         cs = layout::CharStyle{};
-        cs.text_color = WHITE.toRGBA8();
+        cs.text_color = WHITE.packUnorm4x8();
         if(!CreateTextLine(fs, cs, U16String(OS_TEXT("普通文本 (48px)")), pos))
             return(false);
 
@@ -81,7 +81,7 @@ protected:
 
         // 行2 加粗：bold = 3.0 像素
         cs = layout::CharStyle{};
-        cs.text_color = WHITE.toRGBA8();
+        cs.text_color = WHITE.packUnorm4x8();
         cs.bold_px = 3.0f;
         if(!CreateTextLine(fs, cs, U16String(OS_TEXT("加粗 Bold (3px)")), pos))
             return(false);
@@ -90,9 +90,9 @@ protected:
 
         // 行3 勾边：outline = 3.0 像素，勾边红色，字身白色
         cs = layout::CharStyle{};
-        cs.text_color = WHITE.toRGBA8();
+        cs.text_color = WHITE.packUnorm4x8();
         cs.outline_px = 3.0f;
-        cs.outline_color = RED.toRGBA8();
+        cs.outline_color = RED.packUnorm4x8();
         if(!CreateTextLine(fs, cs, U16String(OS_TEXT("勾边 Outline (3px)")), pos))
             return(false);
 
@@ -100,8 +100,8 @@ protected:
 
         // 行4 阴影：灰色阴影，向右下偏移(2,2)
         cs = layout::CharStyle{};
-        cs.text_color = WHITE.toRGBA8();
-        cs.shadow_color = Color4ub(64, 64, 64, 128).toRGBA8();
+        cs.text_color = WHITE.packUnorm4x8();
+        cs.shadow_color = Color4ub(64, 64, 64, 128).packUnorm4x8();
         cs.flags = 1;  // shadow enabled
         cs.shadow_uv_offset = hgl::graph::packHalf2x16(2.0f, 2.0f);
         if(!CreateTextLine(fs, cs, U16String(OS_TEXT("阴影 Shadow (2,2)")), pos))
@@ -111,11 +111,11 @@ protected:
 
         // 行5 叠加：加粗 + 勾边 + 阴影全开
         cs = layout::CharStyle{};
-        cs.text_color = WHITE.toRGBA8();
+        cs.text_color = WHITE.packUnorm4x8();
         cs.bold_px = 2.0f;
         cs.outline_px = 2.0f;
-        cs.outline_color = BLUE.toRGBA8();
-        cs.shadow_color = Color4ub(0, 0, 0, 96).toRGBA8();
+        cs.outline_color = BLUE.packUnorm4x8();
+        cs.shadow_color = Color4ub(0, 0, 0, 96).packUnorm4x8();
         cs.flags = 1;
         cs.shadow_uv_offset = hgl::graph::packHalf2x16(3.0f, 3.0f);
         if(!CreateTextLine(fs, cs, U16String(OS_TEXT("叠加 Bold+Outline+Shadow")), pos))
@@ -125,7 +125,7 @@ protected:
 
         // 行6 对照：再来一行普通白色长文本
         cs = layout::CharStyle{};
-        cs.text_color = WHITE.toRGBA8();
+        cs.text_color = WHITE.packUnorm4x8();
         if(!CreateTextLine(fs, cs, U16String(OS_TEXT("对照: 无特效 (Bitmap)")), pos))
             return(false);
 
@@ -133,7 +133,7 @@ protected:
         pos.y += line_gap;
 
         cs = layout::CharStyle{};
-        cs.text_color = WHITE.toRGBA8();
+        cs.text_color = WHITE.packUnorm4x8();
         cs.scale = 1.25f;
         if(!CreateTextLine(fs, cs, U16String(OS_TEXT("SDF 1.25x Scale 缩放测试")), pos))
             return(false);
@@ -141,7 +141,7 @@ protected:
         pos.y += line_gap*1.25;
 
         cs = layout::CharStyle{};
-        cs.text_color = WHITE.toRGBA8();
+        cs.text_color = WHITE.packUnorm4x8();
         cs.scale = 1.5f;
         if(!CreateTextLine(fs, cs, U16String(OS_TEXT("SDF 1.5x Scale 缩放测试")), pos))
             return(false);
@@ -149,10 +149,10 @@ protected:
         pos.y += line_gap*1.5;
 
         cs = layout::CharStyle{};
-        cs.text_color = WHITE.toRGBA8();
+        cs.text_color = WHITE.packUnorm4x8();
         cs.scale = 2.0f;
         cs.outline_px = 1.0f;
-        cs.outline_color = RED.toRGBA8();
+        cs.outline_color = RED.packUnorm4x8();
         if(!CreateTextLine(fs, cs, U16String(OS_TEXT("SDF 2x + Outline 缩放测试")), pos))
             return(false);
 
@@ -161,7 +161,7 @@ protected:
         // --- 旋转测试 ---
 
         cs = layout::CharStyle{};
-        cs.text_color = WHITE.toRGBA8();
+        cs.text_color = WHITE.packUnorm4x8();
         cs.rotation = 90;
         if(!CreateTextLine(fs, cs, U16String(OS_TEXT("旋转 90°")), pos))
             return(false);
@@ -169,7 +169,7 @@ protected:
         pos.y += line_gap;
 
         cs = layout::CharStyle{};
-        cs.text_color = WHITE.toRGBA8();
+        cs.text_color = WHITE.packUnorm4x8();
         cs.rotation = 180;
         if(!CreateTextLine(fs, cs, U16String(OS_TEXT("旋转 180°")), pos))
             return(false);
@@ -177,7 +177,7 @@ protected:
         pos.y += line_gap;
 
         cs = layout::CharStyle{};
-        cs.text_color = WHITE.toRGBA8();
+        cs.text_color = WHITE.packUnorm4x8();
         cs.rotation = 270;
         if(!CreateTextLine(fs, cs, U16String(OS_TEXT("旋转 270°")), pos))
             return(false);
