@@ -91,10 +91,10 @@ protected:
         if(!CreateTextLine(fs1, cs, U16String(OS_TEXT("字体源1: 36px 蓝字白边 (Outline)")), pos))
             return(false);
 
-        // ===== 字体源2：微软雅黑 72 号（SDF 距离场路径，大字号）=====
+        // ===== 字体源2：宋体 72 号（SDF 距离场路径，大字号）=====
         pos.y += 36*1.4 + 120;
 
-        FontSource *fs2 = CreateFontSource(OS_TEXT("微软雅黑"), 72);
+        FontSource *fs2 = CreateFontSource(OS_TEXT("宋体"), 72);
         if(!fs2)
             return(false);
 
@@ -104,7 +104,7 @@ protected:
 
         cs = layout::CharStyle{};
         cs.text_color = WHITE.packUnorm4x8();
-        if(!CreateTextLine(fs2, cs, U16String(OS_TEXT("字体源2: 微软雅黑 72px SDF (普通)")), pos))
+        if(!CreateTextLine(fs2, cs, U16String(OS_TEXT("字体源2: 宋体 72px SDF (普通)")), pos))
             return(false);
 
         pos.y += 72*1.4;

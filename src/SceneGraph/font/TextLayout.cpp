@@ -237,7 +237,13 @@ namespace hgl::graph::layout
 
             if(cda.cla->visible)
             {
-                const int adv=static_cast<int>((cda.cla->metrics.adv_x + dsi.style.extra_advance_x) * scale);
+                // 旋转 90/270° 时字符水平占位 = 字形高度（宽高互换）；
+                // 0/180° 保持原水平 advance。
+                // 注意不能改用 metrics.adv_y：FreeType 横排加载时垂直
+                // advance 恒为 0，会导致整行坍缩。
+                const bool rot_swap = (dsi.style.rotation == 90 || dsi.style.rotation == 270);
+                const int  adv_w    = rot_swap ? cda.cla->metrics.h : cda.cla->metrics.adv_x;
+                const int  adv      = static_cast<int>((adv_w + dsi.style.extra_advance_x) * scale);
 
                 // 更新行尾禁用追踪
                 last_vis_has_end_disable = cda.cla->attr->end_disable;
@@ -246,7 +252,7 @@ namespace hgl::graph::layout
 
                 // Store GPU instance data: pen position + char_id + style_id
                 const uint16_t cid=GetOrRegisterCharId(cda.cla->attr->ch,cda.cla->metrics,cda.uv);
-                gpu_char_instances.push_back({static_cast<int16_t>(left),static_cast<int16_t>(top),cid,dsi.style.style_id});
+                gpu_char_instances.push_back({static_cast<int16_t>(left),static_cast<int16_t>(top),cid,dsi.style.style_id,0});
 
                 last_vis_cid = cid;
                 last_vis_sid = dsi.style.style_id;
@@ -353,7 +359,160 @@ namespace hgl::graph::layout
     }
 
     int TextLayout::sl_r2l(const DrawStringItem &){return 0;}
-    int TextLayout::sl_v(const DrawStringItem &){return 0;}
+    int TextLayout::sl_v(const DrawStringItem &dsi)
+    {
+        const float scale = dsi.style.scale;
+
+        // 竖排（从上到下，从右到左）：首坐标为第一个字符的右上角
+        int pen_x = dsi.style.start_position.x;   // 列位置（字符右边缘 x）
+        int pen_y = dsi.style.start_position.y;   // 列顶（字符顶部 y）
+
+        int visible_char_count=0;
+
+        CharDrawAttrIt it_cda=dsi.it;
+
+        const bool check_border_symbols = dsi.style.para_style.disable_border_symbols;
+        bool at_paragraph_start = true;     // 当前是否处于段首位置（第一个可见字符不做列首禁用检查）
+
+        // 列尾禁用追踪：记录上一个可见字符的信息（竖排"行尾"= 列尾，即底部）
+        bool     last_vis_has_end_disable = false;
+        int      last_vis_left_before     = 0;     // 上一个可见字符放置前的 left（框左上角 x）
+        int      last_vis_adv_y           = 0;     // 上一个可见字符的垂直推进
+        uint16_t last_vis_cid             = 0;     // 上一个可见字符的 char_id
+        uint16_t last_vis_sid             = 0;     // 上一个可见字符的 style_id
+        int16_t  last_vis_rot             = 0;     // 上一个可见字符的实例旋转
+
+        // 竖排列宽（从右到左换列步进）：用字体高度（方字假设，并容纳 vrotate 字符旋转后的宽度）
+        const int column_step = static_cast<int>((font_source->GetCharHeight() + dsi.style.line_gap + dsi.style.extra_advance_y) * scale);
+
+        for(int i=0;i<dsi.str.length;i++)
+        {
+            const CharDrawAttr &cda=*it_cda;
+
+            if(cda.cla->visible)
+            {
+                const bool vrot = cda.cla->attr->vrotate;
+
+                // 垂直推进：vrotate 字符右旋 90° 后垂直占位 = 原字形宽；
+                // 正立字符 = 原字形高（adv_y 在横排 FreeType 下恒为 0，不可用）
+                const int  adv_h = vrot ? cda.cla->metrics.w : cda.cla->metrics.h;
+                const int  adv   = static_cast<int>((adv_h + dsi.style.extra_advance_y) * scale);
+                const int  cw    = cda.cla->metrics.w;          // 字符框宽（右上角 → 左上角换算）
+
+                const int   left = pen_x - cw;                  // 框左上角 x
+                const int   top  = pen_y;                       // 框顶部 y
+                const int16_t rot = static_cast<int16_t>(vrot ? 90 : 0);
+
+                // 更新列尾禁用追踪
+                last_vis_has_end_disable = cda.cla->attr->end_disable;
+                last_vis_left_before     = left;
+                last_vis_adv_y           = adv;
+                last_vis_rot             = rot;
+
+                // Store GPU instance data: 框左上角 + char_id + style_id + 实例旋转
+                const uint16_t cid=GetOrRegisterCharId(cda.cla->attr->ch,cda.cla->metrics,cda.uv);
+                gpu_char_instances.push_back({static_cast<int16_t>(left),static_cast<int16_t>(top),cid,dsi.style.style_id,rot});
+
+                last_vis_cid = cid;
+                last_vis_sid = dsi.style.style_id;
+
+                pen_y += adv;
+
+                ++visible_char_count;
+                at_paragraph_start = false;
+            }
+            else
+            {
+                if(cda.cla->attr->ch==' ')                  pen_y += static_cast<int>(dsi.style.space_size * scale);       else
+                if(cda.cla->attr->ch==U32_FULL_WIDTH_SPACE) pen_y += static_cast<int>(dsi.style.full_space_size * scale);  else
+                if(cda.cla->attr->ch=='\t')                 pen_y += static_cast<int>(dsi.style.tab_size * scale);         else
+                if(cda.cla->attr->ch=='\n')
+                {
+                    const int col_top = dsi.style.start_position.y;   // 列顶 = 首坐标 y
+
+                    if(check_border_symbols)
+                    {
+                        // 前瞻：查找后续第一个可见字符
+                        bool next_vis_has_begin_disable = false;
+                        bool has_more_visible = false;
+                        {
+                            CharDrawAttrIt scan = it_cda;
+                            for(int j = i + 1; j < dsi.str.length; j++)
+                            {
+                                ++scan;
+                                const CharDrawAttr &sc = *scan;
+                                if(sc.cla->visible)
+                                {
+                                    has_more_visible = true;
+                                    next_vis_has_begin_disable = sc.cla->attr->begin_disable;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // 判断是否需要列尾回退（上一可见字符有 end_disable 且有后续可见字符）
+                        const bool need_end_rollback = last_vis_has_end_disable
+                                                    && visible_char_count > 0
+                                                    && has_more_visible;
+
+                        // 判断是否需要列首禁断（下一可见字符有 begin_disable 且非段首）
+                        const bool need_begin_keep = !at_paragraph_start
+                                                  && has_more_visible
+                                                  && next_vis_has_begin_disable;
+
+                        if(need_end_rollback && need_begin_keep)
+                        {
+                            // 两者同时触发：end-disable 移到下一列、begin-disable 留在当前列
+                            // 结果：不换列，被回退的字符留在当前列末尾
+                        }
+                        else if(need_end_rollback)
+                        {
+                            // 仅列尾禁用：回退上一可见字符到下一列
+                            gpu_char_instances.pop_back();
+
+                            // 换列（从右到左）
+                            pen_x -= column_step;
+                            pen_y  = col_top;
+
+                            // 在下一列重新放置被回退的字符（left 随列左移一列宽）
+                            gpu_char_instances.push_back({static_cast<int16_t>(last_vis_left_before - column_step),static_cast<int16_t>(col_top),last_vis_cid,last_vis_sid,last_vis_rot});
+                            pen_y = col_top + last_vis_adv_y;
+                        }
+                        else if(need_begin_keep)
+                        {
+                            // 仅列首禁用：不换列，留在当前列
+                        }
+                        else
+                        {
+                            // 正常换列
+                            pen_x -= column_step;
+                            pen_y  = col_top;
+                        }
+                    }
+                    else
+                    {
+                        pen_x -= column_step;
+                        pen_y  = col_top;
+                    }
+
+                    at_paragraph_start = true;
+                    last_vis_has_end_disable = false;
+                }
+                else
+                {
+                    pen_y += static_cast<int>((cda.cla->metrics.h + dsi.style.extra_advance_y) * scale);
+                }
+            }
+
+            ++it_cda;
+        }
+
+        // 记录排版后的最终尺寸
+        layout_width_  = dsi.style.start_position.x - pen_x + column_step;
+        layout_height_ = pen_y + font_source->GetCharHeight();
+
+        return visible_char_count; //返回绘制的字符数量
+    }
 
     int TextLayout::End()
     {

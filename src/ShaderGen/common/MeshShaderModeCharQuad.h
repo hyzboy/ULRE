@@ -44,6 +44,7 @@ namespace hgl::graph::mtl
         ms += "struct CharInstanceData {\n";
         ms += "    int   pen_xy;\n";
         ms += "    uint  char_style;\n";
+        ms += "    int   rotation;   // 实例级旋转，与 CharStyleData.rotation 叠加\n";
         ms += "};\n";
         ms += "layout(set=PER_OBJECT_SET, binding=TEXT_CHARINSTANCE_BINDING, std430) readonly buffer CharInstanceDataBuf {\n";
         ms += "    CharInstanceData instances[];\n";
@@ -113,15 +114,19 @@ namespace hgl::graph::mtl
 
         // ── 旋转：计算旋转后的 quad 顶点坐标 ────────────────────────
         // 旋转中心 = 未加斜体的原始 quad 中心（旋转后斜体叠加在旋转结果上）
-        // 90° 右转: (dx,dy)→(dy,-dx)  180°: (dx,dy)→(-dx,-dy)  270° 左转: (dx,dy)→(-dy,dx)
+        // 90° 右转: (dx,dy)→(-dy,dx)  180°: (dx,dy)→(-dx,-dy)  270° 左转: (dx,dy)→(dy,-dx)
+        // 注意 90° 的 r10 必须为 +1：矩阵 [[r00,-r01],[r10,r11]] 行列式须为 +1
+        // （旋转）；若 r10=-1 行列式为 -1 会变成反射（镜像），字形左右翻转。
         ms += "    // Rotation: compute center, rotate offsets, add pen + shear\n";
         ms += "    const float half_mw = float(mw_s) * 0.5;\n";
         ms += "    const float half_mh = float(mh_s) * 0.5;\n";
         ms += "    const float cx = float(mx_s) + half_mw;\n";
         ms += "    const float cy = float(-my_s) + float(char_height) * char_scale + half_mh;\n";
-        ms += "    const int char_rot = cs.rotation;\n";
+        // rotation 只取低 16 位：CPU 侧 CharInstance.rotation 为 int16，
+        // 结构末尾 2B pad 未初始化，直接读 int 会带上垃圾高位
+        ms += "    const int char_rot = cs.rotation + (inst.rotation & 0xFFFF);\n";
         ms += "    float r00 = 1.0, r01 = 0.0, r10 = 0.0, r11 = 1.0;\n";
-        ms += "    if (char_rot == 90)       { r00 =  0.0; r01 =  1.0; r10 = -1.0; r11 =  0.0; }\n";
+        ms += "    if (char_rot == 90)       { r00 =  0.0; r01 =  1.0; r10 =  1.0; r11 =  0.0; }\n";
         ms += "    else if (char_rot == 180)  { r00 = -1.0; r01 =  0.0; r10 =  0.0; r11 = -1.0; }\n";
         ms += "    else if (char_rot == 270)  { r00 =  0.0; r01 = -1.0; r10 =  1.0; r11 =  0.0; }\n";
         ms += "    // TL offset from center\n";
@@ -158,29 +163,15 @@ namespace hgl::graph::mtl
         ms += "    const float uv_b = uv_rb.y;\n";
         ms += "\n";
 
-        // ── UV 旋转 ─────────────────────────────────────────────
-        // 90°: (u,v)→(1-v,u)  180°: (u,v)→(1-u,1-v)  270°: (u,v)→(v,1-u)
-        ms += "    // UV rotation\n";
-        ms += "    float rot_tl_u = uv_l, rot_tl_v = uv_t;\n";
-        ms += "    float rot_tr_u = uv_r, rot_tr_v = uv_t;\n";
-        ms += "    float rot_bl_u = uv_l, rot_bl_v = uv_b;\n";
-        ms += "    float rot_br_u = uv_r, rot_br_v = uv_b;\n";
-        ms += "    if (char_rot == 90) {\n";
-        ms += "        rot_tl_u = 1.0 - uv_t; rot_tl_v = uv_l;\n";
-        ms += "        rot_tr_u = 1.0 - uv_t; rot_tr_v = uv_r;\n";
-        ms += "        rot_bl_u = 1.0 - uv_b; rot_bl_v = uv_l;\n";
-        ms += "        rot_br_u = 1.0 - uv_b; rot_br_v = uv_r;\n";
-        ms += "    } else if (char_rot == 180) {\n";
-        ms += "        rot_tl_u = 1.0 - uv_l; rot_tl_v = 1.0 - uv_t;\n";
-        ms += "        rot_tr_u = 1.0 - uv_r; rot_tr_v = 1.0 - uv_t;\n";
-        ms += "        rot_bl_u = 1.0 - uv_l; rot_bl_v = 1.0 - uv_b;\n";
-        ms += "        rot_br_u = 1.0 - uv_r; rot_br_v = 1.0 - uv_b;\n";
-        ms += "    } else if (char_rot == 270) {\n";
-        ms += "        rot_tl_u = uv_b; rot_tl_v = 1.0 - uv_l;\n";
-        ms += "        rot_tr_u = uv_b; rot_tr_v = 1.0 - uv_r;\n";
-        ms += "        rot_bl_u = uv_t; rot_bl_v = 1.0 - uv_l;\n";
-        ms += "        rot_br_u = uv_t; rot_br_v = 1.0 - uv_r;\n";
-        ms += "    }\n";
+        // ── UV：保持原始方向（quad 已绕中心旋转，字形内容随 quad 一起转）──
+        // 顶点角与图集 UV 角一一对应（TL→uv_l/uv_t 等），quad 旋转后内容
+        // 沿 quad 方向映射，字形整体旋转且宽高比例保持 1:1。
+        // （旧实现对 UV 也做 (1-v,u) 变换，与位置旋转方向不配对导致内容错乱）
+        ms += "    // UV: keep original (quad rotates, content follows)\n";
+        ms += "    const float rot_tl_u = uv_l, rot_tl_v = uv_t;\n";
+        ms += "    const float rot_tr_u = uv_r, rot_tr_v = uv_t;\n";
+        ms += "    const float rot_bl_u = uv_l, rot_bl_v = uv_b;\n";
+        ms += "    const float rot_br_u = uv_r, rot_br_v = uv_b;\n";
         ms += "\n";
 
         // ── 颜色解包 ─────────────────────────────────────────────

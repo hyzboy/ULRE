@@ -58,14 +58,18 @@ namespace hgl { namespace graph { namespace layout {
     // 注意：HGL_U8_TO_RGBA8 打包为 r<<24 | g<<16 | b<<8 | a
     // （r 在最高字节），与 packUnorm4x8 相反，勿混用。
 
-    // Per-char-instance data (8 bytes, std430) -> GPU SSBO binding 16
-    struct CharInstance
+    // Per-char-instance data (12 bytes, std430) -> GPU SSBO binding 16
+    // 注意 alignas(4)：GPU 端 std430 布局为 pen_xy(4)+char_style(4)+rotation(4)=12B，
+    // CPU 侧不加对齐 sizeof 只有 10B（全 int16 成员），stride 不匹配会逐实例错位。
+    struct alignas(4) CharInstance
     {
         int16_t  pen_x;       // screen X position (from CPU layout)
         int16_t  pen_y;       // screen Y position (from CPU layout)
         uint16_t char_id;     // index into TextCharInfo SSBO
         uint16_t style_id;    // index into CharStyle SSBO
-    };  // 8 bytes
+        int16_t  rotation = 0;// 实例级旋转 (0/90/180/270)，与 CharStyle.rotation 叠加；
+                              // 竖排 vrotate 字符 = 90
+    };  // 12 bytes (alignas(4) 强制，与 GPU std430 一致)
 
 }}}// namespace hgl::graph::layout
 
