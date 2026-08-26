@@ -363,6 +363,12 @@ namespace hgl::graph::layout
     {
         const float scale = dsi.style.scale;
 
+        // 竖排居中标点：逗号/句号/分号/叹号/问号/顿号/冒号等正立标点，
+        // 在竖排中需要于整个字符位置（全角格）内居中显示
+        // （vrotate 旋转符号不居中，保持旋转后占位）
+        constexpr u32char   VerticalCenterSymbols []=U32_TEXT("，。；！？、：");
+        constexpr int       VerticalCenterSymbolsCount=(sizeof(VerticalCenterSymbols)/sizeof(u32char))-1;
+
         // 竖排（从上到下，从右到左）：首坐标为第一个字符的右上角
         int pen_x = dsi.style.start_position.x;   // 列位置（字符右边缘 x）
         int pen_y = dsi.style.start_position.y;   // 列顶（字符顶部 y）
@@ -393,21 +399,73 @@ namespace hgl::graph::layout
             {
                 const bool vrot = cda.cla->attr->vrotate;
 
-                // 垂直推进：vrotate 字符右旋 90° 后垂直占位 = 原字形宽；
-                // 正立字符（含标点）至少占一个全角格（max(字形高, 字体高度)），
-                // 否则逗号句号等小标点会把行距压缩得很小
                 const int  full_h = font_source->GetCharHeight();
-                const int  adv_h  = vrot ? cda.cla->metrics.w
-                                         : (cda.cla->metrics.h > full_h ? cda.cla->metrics.h : full_h);
-                const int  adv    = static_cast<int>((adv_h + dsi.style.extra_advance_y) * scale);
+
+                // 前瞻：下一个字符是否也是 vrotate（判断当前是否 vrot 组尾）
+                bool next_vrot = false;
+                if(i + 1 < dsi.str.length)
+                {
+                    CharDrawAttrIt next = it_cda;
+                    ++next;
+                    const CharDrawAttr &nxt = *next;
+                    if(nxt.cla->visible)
+                        next_vrot = nxt.cla->attr->vrotate;
+                }
+
+                int adv;
+                if(vrot)
+                {
+                    // vrotate：原样照搬 sl_l2r 横向排版——横向字距（adv_x + extra_advance_x），
+                    // 整体右转 90° 后字母沿 y 排列，字距 = 横向字距（不拉大）
+                    adv = static_cast<int>((cda.cla->metrics.adv_x + dsi.style.extra_advance_x) * scale);
+                    if(!next_vrot)
+                    {
+                        // 组尾：旋转 quad 底 = top + offset_y + (mh+mw)/2（逐字母绕框中心旋转），
+                        // 推进补足到底，否则与下一个正立字符（如中文）像素重叠
+                        const int bottom_need = (cda.cla->metrics.h + cda.cla->metrics.w + 1) / 2;
+                        if(adv < bottom_need) adv = bottom_need;
+                    }
+                }
+                else
+                {
+                    // 正立字符（含标点）至少占一个全角格（max(字形高, 字体高度)），
+                    // 否则逗号句号等小标点会把行距压缩得很小
+                    const int adv_h = cda.cla->metrics.h > full_h ? cda.cla->metrics.h : full_h;
+                    adv = static_cast<int>((adv_h + dsi.style.extra_advance_y) * scale);
+                }
                 // 字符框宽：vrotate 旋转 90° 后水平占位 = 原字形高（否则右溢列宽）；
                 // 正立字符框宽至少一个全角格（标点不再贴右缘，居右下显示）
                 const int  cw     = vrot ? cda.cla->metrics.h
                                          : (cda.cla->metrics.w > full_h ? cda.cla->metrics.w : full_h);
 
-                const int   left = pen_x - cw;                  // 框左上角 x
+                int left = pen_x - cw;                  // 框左上角 x
                 const int   top  = pen_y;                       // 框顶部 y
                 const int16_t rot = static_cast<int16_t>(vrot ? 90 : 0);
+
+                if(vrot)
+                {
+                    // vrotate 右旋 90°（视觉顺时针）：原底部（横向基线）旋转后朝左
+                    // 成为垂直线——所有字母应像横向排版基线对齐一样落在同一条
+                    // 垂直线上（基线 x = pen_x - full_h），否则字母旋转后参差不齐。
+                    // 注意只补偿 offset_x 与尺寸差，不含 offset_y（bitmap_top 较大，
+                    // 带上会把字母整体推到列右缘之外）；
+                    // (mh-mw)/2 用四舍五入而非截断，避免奇数差丢 0.5px 导致基线参差。
+                    const int mh_mw = cda.cla->metrics.h - cda.cla->metrics.w;
+                    left = pen_x - full_h
+                         - cda.cla->metrics.x
+                         + (mh_mw + (mh_mw >= 0 ? 1 : -1)) / 2;
+                }
+
+                // 居中修正：位图中心对齐全角格中心（仅正立标点）。
+                // 通过修正 offset_x/y 实现——mesh 用 char_info.offset 定位位图，
+                // 修正后 quad 中心 = 格中心（水平/垂直都居中）。
+                // 注意：同字符的修正版 char_info 会与横排共享（混排时以先注册者为准）。
+                CharMetricsInfo metrics = cda.cla->metrics;
+                if(!vrot && hgl::strchr(VerticalCenterSymbols, cda.cla->attr->ch, VerticalCenterSymbolsCount))
+                {
+                    metrics.x = (cw - metrics.w) / 2;
+                    metrics.y = (adv - metrics.h) / 2;
+                }
 
                 // 更新列尾禁用追踪
                 last_vis_has_end_disable = cda.cla->attr->end_disable;
@@ -416,7 +474,7 @@ namespace hgl::graph::layout
                 last_vis_rot             = rot;
 
                 // Store GPU instance data: 框左上角 + char_id + style_id + 实例旋转
-                const uint16_t cid=GetOrRegisterCharId(cda.cla->attr->ch,cda.cla->metrics,cda.uv);
+                const uint16_t cid=GetOrRegisterCharId(cda.cla->attr->ch, metrics, cda.uv);
                 gpu_char_instances.push_back({static_cast<int16_t>(left),static_cast<int16_t>(top),cid,dsi.style.style_id,rot});
 
                 last_vis_cid = cid;

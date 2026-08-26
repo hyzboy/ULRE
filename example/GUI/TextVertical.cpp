@@ -62,7 +62,7 @@ protected:
         text_comp->SetFontSource(fs);
 
         // 竖排：首坐标为第一个字符的右上角（列从右向左排）
-        text_comp->SetStartPosition({SCREEN_WIDTH, 0});
+        text_comp->SetStartPosition({SCREEN_WIDTH-24, 0});
         text_comp->SetCharStyle(cs);
 
         return(true);
