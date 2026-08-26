@@ -394,10 +394,16 @@ namespace hgl::graph::layout
                 const bool vrot = cda.cla->attr->vrotate;
 
                 // 垂直推进：vrotate 字符右旋 90° 后垂直占位 = 原字形宽；
-                // 正立字符 = 原字形高（adv_y 在横排 FreeType 下恒为 0，不可用）
-                const int  adv_h = vrot ? cda.cla->metrics.w : cda.cla->metrics.h;
-                const int  adv   = static_cast<int>((adv_h + dsi.style.extra_advance_y) * scale);
-                const int  cw    = cda.cla->metrics.w;          // 字符框宽（右上角 → 左上角换算）
+                // 正立字符（含标点）至少占一个全角格（max(字形高, 字体高度)），
+                // 否则逗号句号等小标点会把行距压缩得很小
+                const int  full_h = font_source->GetCharHeight();
+                const int  adv_h  = vrot ? cda.cla->metrics.w
+                                         : (cda.cla->metrics.h > full_h ? cda.cla->metrics.h : full_h);
+                const int  adv    = static_cast<int>((adv_h + dsi.style.extra_advance_y) * scale);
+                // 字符框宽：vrotate 旋转 90° 后水平占位 = 原字形高（否则右溢列宽）；
+                // 正立字符框宽至少一个全角格（标点不再贴右缘，居右下显示）
+                const int  cw     = vrot ? cda.cla->metrics.h
+                                         : (cda.cla->metrics.w > full_h ? cda.cla->metrics.w : full_h);
 
                 const int   left = pen_x - cw;                  // 框左上角 x
                 const int   top  = pen_y;                       // 框顶部 y
