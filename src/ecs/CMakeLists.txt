@@ -210,7 +210,7 @@ set(ECS_SUPPORT_FILES
     support/TransformAssignmentBuffer.cpp
     support/PipelineMaterialRenderer.cpp
     support/PrimitiveBatchPipeline.cpp
-    support/TextRenderPipeline.cpp
+    support/text/TextRenderPipeline.cpp
 )
 
 set(ECS_SUPPORT_PRIMITIVE_FILES
