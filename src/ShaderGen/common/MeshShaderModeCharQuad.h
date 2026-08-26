@@ -118,7 +118,7 @@ namespace hgl::graph::mtl
         ms += "    const float half_mw = float(mw_s) * 0.5;\n";
         ms += "    const float half_mh = float(mh_s) * 0.5;\n";
         ms += "    const float cx = float(mx_s) + half_mw;\n";
-        ms += "    const float cy = float(-my_s) + float(char_height) + half_mh;\n";
+        ms += "    const float cy = float(-my_s) + float(char_height) * char_scale + half_mh;\n";
         ms += "    const int char_rot = cs.rotation;\n";
         ms += "    float r00 = 1.0, r01 = 0.0, r10 = 0.0, r11 = 1.0;\n";
         ms += "    if (char_rot == 90)       { r00 =  0.0; r01 =  1.0; r10 = -1.0; r11 =  0.0; }\n";
@@ -226,7 +226,7 @@ namespace hgl::graph::mtl
         // ── DataIndexID varying ──────────────────────────────────
         if (FindMaterialStageInterfaceEntry(resolved_stage_interface, InterStageSemantic::DataIndexID))
         {
-            ms += "    const uint data_id = ResolveDataIndexID(gl_InstanceIndex);\n";
+            ms += "    const uint data_id = ResolveDataIndexID(gl_DrawID);\n";
             ms += "    for (int i = 0; i < 6; i++)\n";
             ms += "        fragDataIndexID[base_vid + uint(i)] = data_id;\n";
         }

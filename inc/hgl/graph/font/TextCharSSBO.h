@@ -18,7 +18,7 @@ namespace hgl { namespace graph { namespace layout {
         uint16_t uv_bottom;
     };  // 16 bytes
 
-    // Per-style data (32 bytes, std430) -> GPU SSBO binding 15
+    // Per-style data (40 bytes, std430) -> GPU SSBO binding 15
     // 同时作为 CPU 侧样式定义（CPU→GPU 转换在 TextRenderPipeline 中完成）
     struct CharStyle
     {

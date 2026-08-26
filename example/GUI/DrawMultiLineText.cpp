@@ -72,7 +72,7 @@ protected:
             if(!text_comp)
                 continue;
             
-            hgl::graph::layout::CharStyle cs;
+            hgl::graph::layout::CharStyle cs{};
 
             cs.text_color = palette[line_index % PALETTE_SIZE].toRGBA8();
 

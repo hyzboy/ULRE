@@ -682,7 +682,11 @@ namespace hgl::ecs
                             const auto& upload_styles = styles.empty() ? fallback_styles : styles;
 
                             // 3. 获取 SSBO 对齐要求
-                            const VkDeviceSize ssbo_align = device->GetSSBOAlign();
+                            // 注：minStorageBufferOffsetAlignment 仅约束 SSBO 绑定的起始偏移，
+                            // 不影响 buffer 内部数组元素 stride。
+                            // std430 下 shader 期望 stride = sizeof(struct)，
+                            // 因此传 0（不做额外填充），让 gpu_stride = sizeof(T)。
+                            constexpr VkDeviceSize ssbo_align = 0;
 
                             // 4. 创建/重建 AlignedStructureBuffer（大小变化时重建）
                             const bool need_rebuild_char_info = !resources->char_info_asb || resources->char_info_asb->GetCount() < unique_chars.size();
@@ -759,11 +763,9 @@ namespace hgl::ecs
                         row->is_indexed      = 0;
                         row->total_vertices  = resources->last_draw_char_count;
 
-                        // viewport_height = char_height * max_scale（CharQuad 用 char_height 做 baseline 修正）
-                        float max_scale = 1.0f;
-                        for (const auto& cs : resources->styles)
-                            max_scale = std::max(max_scale, cs.scale);
-                        row->viewport_height = static_cast<float>(input.font_source->GetCharHeight()) * max_scale;
+                        // viewport_height = char_height（基础值，不乘 scale）
+                        // GPU 侧会按每个字符的 char_scale 单独缩放
+                        row->viewport_height = static_cast<float>(input.font_source->GetCharHeight());
                         gpu->Unmap();
                     }
                 }

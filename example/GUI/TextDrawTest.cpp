@@ -45,7 +45,7 @@ protected:
         if(!text_comp)
             return(false);
 
-        hgl::graph::layout::CharStyle cs;
+        hgl::graph::layout::CharStyle cs{};
 
         cs.text_color = HGL_U8_TO_RGBA8(255, 255, 255, 255);
 

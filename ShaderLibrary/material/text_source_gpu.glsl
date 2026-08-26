@@ -125,9 +125,10 @@ MaterialSourceOutput EvalMaterialSource(MaterialSourceInput sourceInput)
     materialResult.baseColor = styled_rgb;
     materialResult.alpha = styled_alpha;
 #else
-    // 原始位图路径：直接灰度调制
-    materialResult.baseColor = textColor.rgb * rawSample;
-    materialResult.alpha = textColor.a;
+    // 原始位图路径：直接灰度调制（预乘 alpha 输出，与 SDF 路径一致）
+    const float coverage = rawSample;
+    materialResult.baseColor = textColor.rgb * textColor.a * coverage;
+    materialResult.alpha = textColor.a * coverage;
 #endif
 
     materialResult.metallic = 0.0;

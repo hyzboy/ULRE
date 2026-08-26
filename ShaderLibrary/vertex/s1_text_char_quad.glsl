@@ -12,16 +12,21 @@
 //      metrics_x/y: int16  packed in int32（符号扩展低 16 位）
 //      metrics_w/h: uint16 packed in uint32
 //      uv_*:        half-float (uint16 bit pattern stored in uint32)
-//   2. CharStyleData —— 每唯一样式（8B/条目）
-//      text_color:  packed RGBA8 (uint32)
-//      italic:      shear angle in radians (float)
+//   2. CharStyleData —— 每唯一样式（40B/条目）
+//      text_color / outline_color / shadow_color: packed RGBA8
+//      flags: bit0 = shadow_enabled
+//      italic: shear angle in radians
+//      bold_px / outline_px: pixel widths
+//      shadow_uv_offset: packHalf2x16 UV offset
+//      scale: scale factor
+//      rotation: 0/90/180/270
 //   3. CharInstanceData —— 每字符实例（8B/条目）
 //      pen_x/y:     int16  packed in int32
 //      char_id:     uint16 packed in uint32
 //      style_id:    uint16 packed in uint32
 //
-// std430 对齐：TextCharInfo=16B, CharStyleData=36B, CharInstanceData=8B
-// 所有字段自然对齐，无额外 padding
+// std430 对齐：TextCharInfo=16B, CharStyleData=40B, CharInstanceData=8B
+// CPU 侧不做额外 padding，gpu_stride = sizeof(struct)
 #ifndef S1_TEXT_CHAR_QUAD_GLSL
 #define S1_TEXT_CHAR_QUAD_GLSL
 
@@ -37,7 +42,7 @@ layout(set=PER_OBJECT_SET, binding=TEXT_CHARINFO_BINDING, std430) readonly buffe
     TextCharInfo chars[];
 } sbo_char_info;
 
-// ── Per-style 数据（36 bytes per entry）──
+// ── Per-style 数据（40 bytes per entry）──
 struct CharStyleData {
     uint  text_color;       // packed RGBA8
     uint  outline_color;    // packed RGBA8
@@ -48,6 +53,7 @@ struct CharStyleData {
     float outline_px;       // outline width in pixels
     uint  shadow_uv_offset; // packHalf2x16 UV offset
     float scale;            // scale factor
+    int   rotation;         // rotation angle (0/90/180/270)
 };
 
 layout(set=PER_OBJECT_SET, binding=TEXT_CHARSTYLE_BINDING, std430) readonly buffer CharStyleDataBuf {
