@@ -1,4 +1,4 @@
-// MeshShaderModeCharQuad.h — CharQuad 模式 SSBO 声明 + main() 体
+﻿// MeshShaderModeCharQuad.h — CharQuad 模式 SSBO 声明 + main() 体
 //
 // 每线程 1 字符实例 → 6 顶点 2 三角形（字符 quad）。
 // 三层数据模型：CharInfo + CharStyle + CharInstance。
@@ -184,6 +184,8 @@ namespace hgl::graph::mtl
         ms += "\n";
 
         // ── 颜色解包 ─────────────────────────────────────────────
+        // CPU 端已把颜色字段转成 packUnorm4x8 序（r 最低字节，
+        // TextCharSSBO.h 的 HGL_TO_PACKUNORM4x8），这里直接用标准解包。
         ms += "    const vec4 char_color = unpackUnorm4x8(cs.text_color);\n";
         ms += "\n";
 

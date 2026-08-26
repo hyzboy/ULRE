@@ -182,31 +182,7 @@ protected:
         if(!CreateTextLine(fs, cs, U16String(OS_TEXT("旋转 270°")), pos))
             return(false);
 
-        // --- 多 FontSource 测试：第二个字体源(72号)独立渲染，与 48号 互不影响 ---
-        pos.y += line_gap * 4;
-
-        FontSource *fs2 = CreateFontSource(OS_TEXT("微软雅黑"), 72);
-        if(!fs2)
-            return(false);
-
-        fs2->SetSDFEnabled(true);
-        if(!fs2->IsSDFEnabled())
-            return(false);
-
-        cs = layout::CharStyle{};
-        cs.text_color = RED.toRGBA8();
-        cs.outline_px = 2.0f;
-        cs.outline_color = WHITE.toRGBA8();
-        if(!CreateTextLine(fs2, cs, U16String(OS_TEXT("第二字体源 72号 红字白边")), pos))
-            return(false);
-
-        pos.y += line_gap * 1.5;
-
-        cs = layout::CharStyle{};
-        cs.text_color = BLUE.toRGBA8();
-        cs.scale = 1.5f;
-        if(!CreateTextLine(fs2, cs, U16String(OS_TEXT("第二字体源 72号 1.5x 蓝字")), pos))
-            return(false);
+        // 多 FontSource 互不影响演示见独立示例：MultiFontSource（example/GUI/MultiFontSource.cpp）
 
         return(true);
     }
