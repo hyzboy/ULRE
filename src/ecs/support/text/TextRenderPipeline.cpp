@@ -121,7 +121,6 @@ namespace hgl::ecs
         auto* graphics_context = render_context ? render_context->GetGraphicsContext() : nullptr;
         auto* material_manager = graphics_context ? graphics_context->GetMaterialManager() : nullptr;
         auto* buffer_manager = graphics_context ? graphics_context->GetBufferManager() : nullptr;
-        auto descriptor_binding_system = world ? world->GetSystem<RenderDescriptorBindingSystem>() : nullptr;
 
         for (auto& pair : resources_by_font)
         {
@@ -137,11 +136,6 @@ namespace hgl::ecs
 
             if (res.material && material_manager)
             {
-                if (descriptor_binding_system)
-                {
-                    descriptor_binding_system->UnregisterPipelineMaterial(res.material);
-                }
-
                 material_manager->Release(res.material);
                 res.material = nullptr;
             }
@@ -438,13 +432,11 @@ namespace hgl::ecs
 
         guard.buffer_manager = buffer_manager;
 
-        if (world)
-        {
-            if (auto descriptor_binding_system = world->GetSystem<RenderDescriptorBindingSystem>())
-            {
-                descriptor_binding_system->RegisterPipelineMaterial(guard.material);
-            }
-        }
+        // 注意：不向 RDBS 注册 pipeline material——text 渲染完全自足：
+        // Scene(0)/Bindless(3) 由 Render 自绑全局集，PerObject(1)/Material(2)
+        // 用每字体独立集并直接绑定 SSBO（不经 domain 解析）。注册反而会让
+        // RDBS 每帧尝试解析 mtl_texture_layer_rows/mtl_data_index_rows 的
+        // domain 绑定（text 不注册 domain）而刷 Missing SSBO 警告。
 
         // 将字库图集注册进全局 bindless 纹理池，并写入 texture-layer / data-index
         // 行表第 0 行（dataIndex=0，BaseColor 槽 = 图集句柄），供 Text shader 解析。
