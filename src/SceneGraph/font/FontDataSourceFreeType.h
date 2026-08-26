@@ -20,10 +20,6 @@ namespace hgl::graph
         FT_Library ft_library;
         FT_Face ft_face;
 
-        // Simple buffer for glyph data - will implement as needed
-        uint8 *buffer;
-        int buffer_size;
-
     public:
 
         FreeTypeBitmapFont(const Font &f);

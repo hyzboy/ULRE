@@ -8,8 +8,6 @@ namespace hgl::graph
     {
         ft_library = nullptr;
         ft_face = nullptr;
-        buffer = nullptr;
-        buffer_size = 0;
 
         // Initialize FreeType library
         FT_Error error = FT_Init_FreeType(&ft_library);
@@ -63,21 +61,10 @@ namespace hgl::graph
 
         // Set up character encoding
         FT_Select_Charmap(ft_face, FT_ENCODING_UNICODE);
-
-        // Allocate buffer for glyph data
-        buffer_size = fnt.width * fnt.height * 4;
-        buffer = new uint8[buffer_size];
-        memset(buffer, 0, buffer_size);
     }
 
     FreeTypeBitmapFont::~FreeTypeBitmapFont()
     {
-        if (buffer)
-        {
-            delete[] buffer;
-            buffer = nullptr;
-        }
-
         if (ft_face)
         {
             FT_Done_Face(ft_face);
