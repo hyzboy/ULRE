@@ -87,7 +87,7 @@ TextRenderPipeline 为三层 SSBO 各维护一个 `AlignedStructureBuffer`：
 | RenderBatch | TextSyncSystem (`src/ecs/support/text/TextSyncSystem.cpp`) | 清除变更标记 |
 | RenderDrawSubmit | TextRenderSystem (`src/ecs/support/text/TextRenderSystem.cpp`) | 绑定管线/描述符 → DrawMeshTasks |
 
-核心实现集中在 `TextRenderPipeline`（`src/ecs/support/TextRenderPipeline.cpp`）。
+核心实现集中在 `TextRenderPipeline`（`src/ecs/support/text/TextRenderPipeline.cpp`）。
 
 ---
 
@@ -114,11 +114,13 @@ SDF 编码约定：内部 = 高值（255），外部 = 低值（0）。Shader �
 
 `TextLayout::End()`（`src/SceneGraph/font/TextLayout.cpp`）调用 `sl_l2r()` 进行左到右排版。排版结果写入 `CharInstance` 数组（每字符 8B：pen_x/y, char_id, style_id）。
 
-实际的网格生成由 `MeshShaderAssembler`（`src/ShaderGen/common/MeshShaderAssembler.h`）的 **CharQuad 模式**在 GPU 端完成：
+实际的网格生成由 `MeshShaderAssembler`（`src/ShaderGen/common/MeshShaderAssembler.h`，统一调度入口，CharQuad 主体在子模块 `MeshShaderModeCharQuad.h`）的 **CharQuad 模式**在 GPU 端完成：
 - 每个 threadgroup 42 个线程（`max_invocations = 42`）
 - 每线程处理 **1 个字符实例**，生成 **6 个顶点（2 个三角形 = 1 个 quad）**
 - 顶点从三层 SSBO 读取数据，在 Mesh Shader 内计算像素坐标并做 NDC 变换
 - 支持斜体剪切变形（`shear_factor = tan(italic)`）
+- 支持 `CharStyle.scale` 缩放：quad 尺寸 = `metrics × scale`，绘制偏移同步缩放
+- 支持 `CharStyle.rotation` 旋转（0/90/180/270）：绕 quad 中心旋转顶点，UV 同步旋转
 
 **extra_advance 机制**：
 
@@ -151,7 +153,7 @@ struct TextCharInfo {
 };  // 16 bytes
 ```
 
-**CharStyle（binding 15，32B/样式，std430）**：
+**CharStyle（binding 15，40B/样式，std430）**：
 
 ```cpp
 struct CharStyle {
@@ -163,7 +165,9 @@ struct CharStyle {
     float    bold_px;           // 加粗宽度（像素），0=关闭
     float    outline_px;        // 勾边宽度（像素），0=关闭，钳制 <= TEXT_SDF_SPREAD
     uint32_t shadow_uv_offset;  // packed half2 (du, dv) 阴影 UV 偏移
-};  // 32 bytes
+    float    scale;             // 缩放因子（1.0=原始大小）
+    int32_t  rotation;          // 旋转角度（0/90/180/270）
+};  // 40 bytes
 ```
 
 CharStyle 定义在 `inc/hgl/graph/font/TextCharSSBO.h`，**CPU/GPU 共用同一布局**。CPU 侧通过 `TextRenderPipeline` 做 `Color4ub → packed uint32` 转换后直接写入。
@@ -214,10 +218,10 @@ cmd->DrawMeshTasks(group_count);
   └─ vkCmdDrawMeshTasksEXT(cmd_buf, group_count_x, 1, 1)
 ```
 
-Mesh Shader（由 `MeshShaderAssembler`（`src/ShaderGen/common/MeshShaderAssembler.h`）CharQuad 模式生成）工作方式：
+Mesh Shader（由 `MeshShaderAssembler`（`src/ShaderGen/common/MeshShaderAssembler.h`，CharQuad 主体在 `MeshShaderModeCharQuad.h`）CharQuad 模式生成）工作方式：
 - 每个 threadgroup 42 线程，每线程处理 1 个字符实例
 - 从三层 SSBO 读取 CharInstance → TextCharInfo → CharStyle
-- 计算 quad 像素坐标（含斜体剪切）→ `viewport.ortho_matrix` 变换到 NDC
+- 计算 quad 像素坐标：`metrics × scale` 缩放 + 斜体剪切 + rotation 绕中心旋转 → `viewport.ortho_matrix` 变换到 NDC
 - 生成 6 个顶点（2 三角形）+ UV/颜色/样式ID varying
 - Fragment Shader（`ShaderLibrary/material/text_source_gpu.glsl`）：
   - **SDF 路径**（`TEXT_SDF_ENABLED`）：解码距离场 `sdf = raw * 2.0 - 1.0`，调用 `EvalTextStyleEffects()` 合成加粗/勾边/阴影效果
@@ -229,7 +233,7 @@ Mesh Shader（由 `MeshShaderAssembler`（`src/ShaderGen/common/MeshShaderAssemb
 
 SDF 特效在 `text_source_gpu.glsl` 的 `EvalTextStyleEffects()` 函数中实现，通过 CharStyle SSBO 读取样式参数。
 
-### CharStyle 32B 布局详解
+### CharStyle 40B 布局详解
 
 | 偏移 | 大小 | 字段 | 说明 |
 |------|------|------|------|
@@ -241,6 +245,23 @@ SDF 特效在 `text_source_gpu.glsl` 的 `EvalTextStyleEffects()` 函数中实�
 | 20 | 4B | `bold_px` | 加粗像素，0=关闭 |
 | 24 | 4B | `outline_px` | 勾边像素，0=关闭，钳制 ≤ TEXT_SDF_SPREAD(8) |
 | 28 | 4B | `shadow_uv_offset` | packed half2 UV 偏移 |
+| 32 | 4B | `scale` | 缩放因子（1.0=原始大小） |
+| 36 | 4B | `rotation` | 旋转角度（0/90/180/270） |
+
+### 缩放（Scale）
+
+`CharStyle.scale` 控制字符缩放，CPU/GPU 两侧联动：
+- **排版侧**（`TextLayout::sl_l2r`）：字符 advance、空格/制表符宽度、换行行距全部乘 `scale`，保证放大后字符不重叠
+- **GPU 侧**（`MeshShaderModeCharQuad.h`）：quad 尺寸 = `metrics × scale`，绘制偏移（offset_x/y）同步缩放，基线校正使用 `char_height × scale`（viewport_height 传基础字符高度）
+- **图集位图保持原始字号光栅化，放大不重新采样**：SDF 路径下边缘由 smoothstep 抗锯齿保证平滑，这是 SDF 的核心优势；位图路径放大后会模糊
+- `TextRenderPipeline::BuildDrawStyle()` 将 `CharStyle.scale` 透传到 `TextDrawStyle.scale`
+
+### 旋转（Rotation）
+
+`CharStyle.rotation` 支持 0/90/180/270 四档：
+- GPU 侧绕 quad 中心旋转顶点（旋转中心 = 未加斜体的原始 quad 中心），斜体 shear 叠加在旋转结果上
+- UV 同步旋转（90°: (u,v)→(1-v,u)；180°: (u,v)→(1-u,1-v)；270°: (u,v)→(v,1-u)）
+- 排版 advance 不随旋转调整（旋转 90° 的字符仍占原始宽度）
 
 ### 加粗（Bold）
 
@@ -300,14 +321,15 @@ out_alpha = textColor.a * (top_a + shadow_a * (1 - top_a))
 ## 七、关键发现
 
 1. **使用 `vkCmdDrawMeshTasksEXT`** — CharQuad Mesh Shader 模式，每线程 1 字符实例生成 6 顶点 2 三角形
-2. **三层 SSBO 数据模型** — TextCharInfo (b14, 16B) / CharStyle (b15, 32B) / CharInstance (b16, 8B)，取代旧的 Position/UV/Index SSBO
+2. **三层 SSBO 数据模型** — TextCharInfo (b14, 16B) / CharStyle (b15, 40B) / CharInstance (b16, 8B)，取代旧的 Position/UV/Index SSBO
 3. **SDF 双路径渲染** — SDF 距离场（Linear 采样 + smoothstep 特效）与原始位图（Nearest 采样），通过 `TEXT_SDF_ENABLED` 编译宏切换
-4. **CharStyle CPU/GPU 统一定义** — `TextCharSSBO.h` 中 32B std430 布局，CPU 直接写入 packed 数据，GPU 直接读取，无需转换层
+4. **CharStyle CPU/GPU 统一定义** — `TextCharSSBO.h` 中 40B std430 布局，CPU 直接写入 packed 数据，GPU 直接读取，无需转换层
 5. **SDF 字体特效** — 加粗、勾边、阴影，全部在 Fragment Shader 端通过 smoothstep + over 合成实现
 6. **extra_advance 排版间距机制** — bold/outline 时自动增加字符间距 `2.0 × (bold_px + outline_px)`，普通文本不受影响
 7. **AlignedStructureBuffer 管理 SSBO 生命周期** — CPU 紧密存储 → GPU 自动对齐，`SyncToGPU()` 一次性上传
 8. **Transparent blend 模式** — 启用 alpha 混合，支持 SDF 平滑边缘和半透明特效效果
 9. **ECS 驱动架构** — TextComponent 是纯数据，TextRenderPipeline 管理所有运行时资源
+10. **scale/rotation 字符变换** — `CharStyle` 内置缩放（排版 advance 与 quad 尺寸联动缩放）与四档旋转（0/90/180/270，顶点 + UV 同步旋转），SDF 放大不重新采样仍保持边缘平滑
 
 ---
 
@@ -323,7 +345,7 @@ out_alpha = textColor.a * (top_a + shadow_a * (1 - top_a))
 | 默认系统注册 | `src/ecs/core/DefaultSystems.cpp` |
 | TextComponent | `inc/hgl/ecs/components/TextComponent.h` |
 | TextRenderPipeline（头） | `inc/hgl/ecs/support/TextRenderPipeline.h` |
-| TextRenderPipeline（实现） | `src/ecs/support/TextRenderPipeline.cpp` |
+| TextRenderPipeline（实现） | `src/ecs/support/text/TextRenderPipeline.cpp` |
 | Text ECS 系统 | `src/ecs/support/text/Text{Collect,Build,Sync,Render}System.cpp` |
 | TextLayout（排版） | `src/SceneGraph/font/TextLayout.cpp` |
 | TextLayout（头，TextDrawStyle/extra_advance） | `inc/hgl/graph/font/TextLayout.h` |
@@ -335,7 +357,7 @@ out_alpha = textColor.a * (top_a + shadow_a * (1 - top_a))
 | AlignedStructureBuffer（SSBO 容器） | `inc/hgl/vk/AlignedStructureBuffer.h` |
 | RenderCmdBuffer | `inc/hgl/vk/VKCommandBuffer.h` |
 | DrawMeshTasks 实现 | `src/Vulkan/VKCommandBufferRender.cpp` |
-| MeshShader 生成（CharQuad 模式） | `src/ShaderGen/common/MeshShaderAssembler.h` |
+| MeshShader 生成（CharQuad 模式） | `src/ShaderGen/common/MeshShaderAssembler.h`（调度）+ `MeshShaderModeCharQuad.h`（CharQuad 主体） |
 | SDF 材质定义 | `ShaderLibrary/material/text_2d_gpu.material.toml` |
 | 位图材质定义 | `ShaderLibrary/material/text_2d_gpu_bitmap.material.toml` |
 | 文本 Fragment 着色器（SDF/Bitmap 双路径） | `ShaderLibrary/material/text_source_gpu.glsl` |

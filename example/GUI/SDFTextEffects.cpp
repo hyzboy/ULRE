@@ -151,30 +151,14 @@ protected:
         cs = layout::CharStyle{};
         cs.text_color = WHITE.toRGBA8();
         cs.scale = 2.0f;
-        if(!CreateTextLine(fs, cs, U16String(OS_TEXT("SDF 2x Scale 缩放测试")), pos))
+        cs.outline_px = 1.0f;
+        cs.outline_color = RED.toRGBA8();
+        if(!CreateTextLine(fs, cs, U16String(OS_TEXT("SDF 2x + Outline 缩放测试")), pos))
             return(false);
 
         pos.y += line_gap*2;
 
-        cs = layout::CharStyle{};
-        cs.text_color = WHITE.toRGBA8();
-        cs.scale = 3.0f;
-        if(!CreateTextLine(fs, cs, U16String(OS_TEXT("SDF 3x Scale 缩放测试")), pos))
-            return(false);
-
-        pos.y += line_gap*3;
-
-        // 4x 缩放 + 勾边
-        cs = layout::CharStyle{};
-        cs.text_color = WHITE.toRGBA8();
-        cs.scale = 4.0f;
-        cs.outline_px = 2.0f;
-        cs.outline_color = RED.toRGBA8();
-        if(!CreateTextLine(fs, cs, U16String(OS_TEXT("SDF 4x + Outline 缩放测试")), pos))
-            return(false);
-
         // --- 旋转测试 ---
-        pos.y += line_gap * 4;
 
         cs = layout::CharStyle{};
         cs.text_color = WHITE.toRGBA8();
@@ -196,6 +180,32 @@ protected:
         cs.text_color = WHITE.toRGBA8();
         cs.rotation = 270;
         if(!CreateTextLine(fs, cs, U16String(OS_TEXT("旋转 270°")), pos))
+            return(false);
+
+        // --- 多 FontSource 测试：第二个字体源(72号)独立渲染，与 48号 互不影响 ---
+        pos.y += line_gap * 4;
+
+        FontSource *fs2 = CreateFontSource(OS_TEXT("微软雅黑"), 72);
+        if(!fs2)
+            return(false);
+
+        fs2->SetSDFEnabled(true);
+        if(!fs2->IsSDFEnabled())
+            return(false);
+
+        cs = layout::CharStyle{};
+        cs.text_color = RED.toRGBA8();
+        cs.outline_px = 2.0f;
+        cs.outline_color = WHITE.toRGBA8();
+        if(!CreateTextLine(fs2, cs, U16String(OS_TEXT("第二字体源 72号 红字白边")), pos))
+            return(false);
+
+        pos.y += line_gap * 1.5;
+
+        cs = layout::CharStyle{};
+        cs.text_color = BLUE.toRGBA8();
+        cs.scale = 1.5f;
+        if(!CreateTextLine(fs2, cs, U16String(OS_TEXT("第二字体源 72号 1.5x 蓝字")), pos))
             return(false);
 
         return(true);

@@ -11,7 +11,7 @@ namespace hgl::graph
 
     namespace layout
     {
-        // CharStyle 定义已移至 TextCharSSBO.h（CPU/GPU 共用，32B std430 布局）
+        // CharStyle 定义已移至 TextCharSSBO.h（CPU/GPU 共用，40B std430 布局，含 scale/rotation）
         // CPU 侧通过 TextRenderPipeline 做 Color4ub → packed uint32 转换
 
         using CharDrawStyleID=uint8;

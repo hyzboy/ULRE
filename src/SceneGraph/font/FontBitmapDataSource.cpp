@@ -58,7 +58,8 @@ namespace hgl::graph
             if(sdf_enabled)
             {
                 // SDF 转换：将灰度位图转为距离场，四周扩展 TEXT_SDF_SPREAD 象素保证边缘距离场完整，
-                // 勾边(outline)也依赖这部分额外空间。排版信息相应外扩，adv_x/adv_y 同步补偿 2P 以避免布局重叠。
+                // 勾边(outline)也依赖这部分额外空间。adv_x/adv_y 保持原始值（下方 metrics 更新仅外扩
+                // 尺寸并回退偏移），字形视觉扩展由 TextLayout 的 extra_advance 机制根据 bold/outline 动态补偿。
                 int32_t w = bmp->metrics_info.w;
                 int32_t h = bmp->metrics_info.h;
 

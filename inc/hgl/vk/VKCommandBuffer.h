@@ -9,6 +9,7 @@
 #include<hgl/type/MemoryUtil.h>
 #include<hgl/log/Log.h>
 namespace hgl::graph{
+class MaterialParameters;
 class VulkanCmdBuffer
 {
 public:
@@ -119,7 +120,7 @@ public:
 
     //以上设定在Begin开始后即不可改变
 
-    bool BindDescriptorSets(ShaderProgram *);
+    bool BindDescriptorSets(ShaderProgram *, MaterialParameters *override_per_object = nullptr, MaterialParameters *override_material = nullptr);
 
     void BeginRendering(const VkRenderingInfo *ri)
     {
