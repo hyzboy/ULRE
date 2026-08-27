@@ -700,17 +700,13 @@ namespace hgl::ecs
                                 }
                             }
 
-                            // 2. styles 已经是 packed CharStyle 格式，直接使用
-                            //    补丁 shadow_uv_offset（依赖图集尺寸，仅在上传前注入）
-                            //    钳制 outline_px <= TEXT_SDF_SPREAD
-                            for (auto& s : resources->styles)
-                            {
-                                s.shadow_uv_offset = shadow_uv_offset;
-                                s.outline_px = std::min(s.outline_px, static_cast<float>(graph::TEXT_SDF_SPREAD));
-                            }
-                            const auto& styles = resources->styles;
-                            std::vector<graph::layout::CharStyle> fallback_styles;
-                            if (styles.empty())
+                            // 2. styles 已经是 packed CharStyle 格式，直接使用。
+                            //    补丁 shadow_uv_offset（依赖图集尺寸）与钳制 outline_px
+                            //    只作用于"上传副本"——绝不写 resources->styles，否则下一帧
+                            //    resources->styles != input.styles 恒成立（注入值 vs 原始值），
+                            //    style_changed/dirty 每帧为 true，触发每帧重建 + 全量 SyncToGPU。
+                            std::vector<graph::layout::CharStyle> upload_styles;
+                            if (resources->styles.empty())
                             {
                                 // fallback: one default style（颜色为 packUnorm4x8 序：
                                 // 白 = 0xFFFFFFFF、黑 = 0xFF000000，与 CharStyle 约定一致）
@@ -725,9 +721,17 @@ namespace hgl::ecs
                                 s.shadow_uv_offset = 0;
                                 s.scale           = 1.0f;
                                 s.rotation        = 0;
-                                fallback_styles.push_back(s);
+                                upload_styles.push_back(s);
                             }
-                            const auto& upload_styles = styles.empty() ? fallback_styles : styles;
+                            else
+                            {
+                                upload_styles = resources->styles;
+                            }
+                            for (auto& s : upload_styles)
+                            {
+                                s.shadow_uv_offset = shadow_uv_offset;
+                                s.outline_px = std::min(s.outline_px, static_cast<float>(graph::TEXT_SDF_SPREAD));
+                            }
 
                             // 3. 获取 SSBO 对齐要求
                             // 注：minStorageBufferOffsetAlignment 仅约束 SSBO 绑定的起始偏移，
