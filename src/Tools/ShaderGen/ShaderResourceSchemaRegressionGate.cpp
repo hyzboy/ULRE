@@ -3533,7 +3533,7 @@ namespace
         int error_count = 0;
         if (!registry.LoadDirectory(hgl::ToOSString(GetShaderLibraryPath()),
                                     &file_count, &error_count)
-         || file_count != 11
+         || file_count != 12
          || error_count != 0)
         {
             result.diagnostics.emplace_back("material file registry bulk load failed");

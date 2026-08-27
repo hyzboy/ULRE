@@ -73,15 +73,12 @@ namespace hgl::graph::mtl
             return true;
         }
 
-        // Accepts all registered SurfaceType names for forward compatibility.
-        // Sky has a real specialization (sky_minimal_surface); others resolve to
-        // lit_surface at compositor assembly time.
         bool ParseSurface(const std::string &name, SurfaceType &out)
         {
             static const char *const names[] = {
                 "Unlit", "Lit", "Sky"
             };
-            for (uint32 i = 0; i < 10; ++i)
+            for (uint32 i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
             {
                 if (name == names[i])
                 {
