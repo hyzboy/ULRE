@@ -606,10 +606,6 @@ ShaderBuildContext *CompileCompositorMaterial(
             return FailAfterBuild("failed to add sbo_char_instance SSBO");
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // Step 4: (mesh 化后顶点输入统一走 SSBO——无 VBO 顶点输入布局，VS 遗留已删)
-    // ─────────────────────────────────────────────────────────────
-
     if (use_slot_decls)
     {
         for (uint32_t i = 0; i < static_cast<uint32_t>(data_slot_decls->size()); ++i)
@@ -620,7 +616,7 @@ ShaderBuildContext *CompileCompositorMaterial(
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Step 5a: Ensure index-table SSBOs for vertex-varying emissions.
+    // Step 4: Ensure index-table SSBOs for vertex-varying emissions.
     //
     //     The descriptor builder calls EnsureMaterialDataIndexTable only when a
     // MaterialDataSlotData entry exists.  Compositor materials without data
@@ -655,7 +651,7 @@ ShaderBuildContext *CompileCompositorMaterial(
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Step 6: Set complete GLSL (bypass ProcXXX pipeline)
+    // Step 5: Set complete GLSL (bypass ProcXXX pipeline)
     // ─────────────────────────────────────────────────────────────
 
     std::string binding_preamble;
@@ -1007,7 +1003,7 @@ ShaderBuildContext *CompileCompositorMaterial(
         frag->SetFinalGLSL(fs_final);
 
     // ─────────────────────────────────────────────────────────────
-    // Step 6b: Build ShaderResourceSchema from descriptor entries.
+    // Step 6: Build ShaderResourceSchema from descriptor entries.
     // When data_slot_decls is provided, material SSBO entries are
     // generated from it and merged with the canonical descriptor entries.
     // ─────────────────────────────────────────────────────────────
