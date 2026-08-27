@@ -333,9 +333,7 @@ namespace hgl::graph::mtl
     {
         hgl::hash::FNV1aHasher64 h;
 
-        constexpr uint32 contract_version = 4u;
-        h << contract_version
-          << static_cast<uint32>(schema.resources.size());
+        h << static_cast<uint32>(schema.resources.size());
 
         for (const auto &req : schema.resources)
         {

@@ -554,11 +554,9 @@ inline uint64 HashResourceContract(
     const std::vector<SerializedDescriptorEntry> &entries) noexcept
 {
     hgl::hash::FNV1aHasher64 h;
-    constexpr uint32 contract_version = 2u;
     const ShaderResourceSchema schema =
         BuildShaderResourceSchema(entries.data(), static_cast<uint32>(entries.size()));
-    h << contract_version
-      << manifest_hash
+    h << manifest_hash
       << HashShaderResourceSchema(schema);
     return h;
 }
