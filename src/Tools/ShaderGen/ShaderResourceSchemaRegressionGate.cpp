@@ -3237,14 +3237,12 @@ namespace
         const VertexShaderNodeConfig flat = VertexNodeConfigResolver::FlatXY();
         const VertexShaderNodeConfig wall = VertexNodeConfigResolver::WallXY();
         const VertexShaderNodeConfig world = VertexNodeConfigResolver::World3D();
-        const VertexShaderNodeConfig terrain = VertexNodeConfigResolver::Terrain();
         VertexShaderNodeConfig world_vec2 = world;
         world_vec2.input = VertexInputMode::Vec2Position;
         world_vec2.position_mapping = PositionMappingMode::LiftXY_XY0;
 
         if (VertexNodeConfigResolver::GetHash(flat) == VertexNodeConfigResolver::GetHash(wall)
-         || VertexNodeConfigResolver::GetHash(flat) == VertexNodeConfigResolver::GetHash(world)
-         || VertexNodeConfigResolver::GetHash(world) == VertexNodeConfigResolver::GetHash(terrain))
+         || VertexNodeConfigResolver::GetHash(flat) == VertexNodeConfigResolver::GetHash(world))
             result.diagnostics.emplace_back(
                 "transform graph variants must have distinct structural identity");
 
@@ -3262,10 +3260,6 @@ namespace
 
         if (wall.position_mapping != PositionMappingMode::LiftXY_X0Y)
             result.diagnostics.emplace_back("WallXY graph conversion mismatch");
-
-        if (terrain.position_mapping != PositionMappingMode::TerrainGrid
-         || terrain.projection != ProjectionMode::WorldCameraVP)
-            result.diagnostics.emplace_back("Terrain graph conversion mismatch");
 
         // Round-trip is identity now that VertexNodeConfigResolver is a static utility
         if (VertexNodeConfigResolver::GetHash(world) != VertexNodeConfigResolver::GetHash(world))
@@ -3295,15 +3289,13 @@ namespace
         const std::string flat = build(VertexNodeConfigResolver::FlatXY());
         const std::string wall = build(VertexNodeConfigResolver::WallXY());
         const std::string world = build(VertexNodeConfigResolver::World3D());
-        const std::string terrain = build(VertexNodeConfigResolver::Terrain());
 
-        if (flat == wall || flat == world || world == terrain)
+        if (flat == wall || flat == world)
             result.diagnostics.emplace_back(
                 "one material must produce distinct VS sources per transform graph");
         if (flat.find("vertex/s2_ndc_lift.glsl") == std::string::npos
          || wall.find("vertex/s2_lift_x0y.glsl") == std::string::npos
-         || world.find("vertex/s2_passthrough3d.glsl") == std::string::npos
-         || terrain.find("TerrainGrid") == std::string::npos)
+         || world.find("vertex/s2_passthrough3d.glsl") == std::string::npos)
             result.diagnostics.emplace_back(
                 "transform graph source composition selected the wrong stage");
 

@@ -19,9 +19,8 @@ namespace hgl::graph::mtl
             case PositionMappingMode::NDCLift:          return "vertex/s2_ndc_lift.glsl";
             case PositionMappingMode::ZeroOneToNDC:     return "vertex/s2_zeroone_to_ndc.glsl";
             case PositionMappingMode::PixelToLocal:     return "vertex/s2_pixel_to_local.glsl";
-            case PositionMappingMode::TerrainGrid:      return nullptr;
-            case PositionMappingMode::Passthrough3D:
-            default:                                   return "vertex/s2_passthrough3d.glsl";
+            case PositionMappingMode::Passthrough3D:    return "vertex/s2_passthrough3d.glsl";
+            default:                                    return nullptr;   // 未映射的枚举值 = 映射缺失，调用方必须硬失败而非静默兜底
             }
         }
 
@@ -95,13 +94,6 @@ namespace hgl::graph::mtl
         static VertexShaderNodeConfig World3D() noexcept
         {
             return MakeDefault3DNodeConfig();
-        }
-
-        static VertexShaderNodeConfig Terrain() noexcept
-        {
-            VertexShaderNodeConfig cfg = MakeDefault3DNodeConfig();
-            cfg.position_mapping = PositionMappingMode::TerrainGrid;
-            return cfg;
         }
     };
 }

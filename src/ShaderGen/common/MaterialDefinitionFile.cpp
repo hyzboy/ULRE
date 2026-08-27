@@ -282,9 +282,9 @@ namespace hgl::graph::mtl
         {
             static const char *const names[] = {
                 "Passthrough3D", "LiftXY_XY0", "LiftXY_X0Y", "LiftXY_0XY",
-                "NDCLift", "ZeroOneToNDC", "PixelToLocal", "TerrainGrid"
+                "NDCLift", "ZeroOneToNDC", "PixelToLocal"
             };
-            for (uint32 i = 0; i < 8; ++i)
+            for (uint32 i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
             {
                 if (name == names[i])
                 {

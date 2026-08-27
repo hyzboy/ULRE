@@ -137,13 +137,9 @@ namespace hgl::graph::mtl
             // ── Stage 2: 位置映射 ─────────────────────────────────────────
             // CharQuad 在 main() 中直接用 viewport.ortho_matrix 做坐标变换，不需要 Stage2/3 模块
             const char *stage2_module = VertexNodeConfigResolver::GetMappingModulePath(node_cfg);
-            if (stage2_module)
-                ms += "#include \"" + std::string(stage2_module) + "\"\n";
-            else
-            {
-                ms += "// TODO: TerrainGrid Stage2 not yet implemented\n";
-                ms += "vec4 GetLocalPos() { return vec4(0.0); }\n";
-            }
+            if (!stage2_module)
+                return {};   // 未映射的 position_mapping = 映射缺失，硬失败（编译失败）而非静默错渲
+            ms += "#include \"" + std::string(stage2_module) + "\"\n";
 
             ms += "\n";
 

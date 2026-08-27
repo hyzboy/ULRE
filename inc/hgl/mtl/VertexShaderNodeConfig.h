@@ -25,9 +25,8 @@ namespace hgl::graph::mtl
         NDCLift,            // 输入已是 NDC XY，直接升维（同 LiftXY_XY0 语义）
         ZeroOneToNDC,       // [0,1] → [-1,1]，再升维
         PixelToLocal,       // 像素坐标输入，直接传递（Ortho 投影前的本地坐标）
-        TerrainGrid,        // 程序化地形，依赖 gl_VertexID
 
-        ENUM_CLASS_RANGE(Passthrough3D, TerrainGrid)
+        ENUM_CLASS_RANGE(Passthrough3D, PixelToLocal)
     };
 
     // Stage 3a — 朝向策略
