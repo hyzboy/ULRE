@@ -37,7 +37,10 @@ namespace hgl::graph::mtl
         std::vector<ShaderResourceSlot> resources;
     };
 
-    inline bool IsSemanticRequired(DescriptorSemantic semantic)
+    // 可选语义：不强制要求绑定，且允许 fallback —— required 与 allow_fallback
+    // 是同一属性的两面（allow_fallback == !required），统一由本函数判定，
+    // 避免两份手写 case 表漂移。
+    inline bool IsSemanticOptional(DescriptorSemantic semantic)
     {
         switch (semantic)
         {
@@ -46,25 +49,20 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::MaterialSampler:
         case DescriptorSemantic::MaterialTextureLayerTable:
         case DescriptorSemantic::MaterialDataIndexTable:
-            return false;
-        default:
             return true;
+        default:
+            return false;
         }
+    }
+
+    inline bool IsSemanticRequired(DescriptorSemantic semantic)
+    {
+        return !IsSemanticOptional(semantic);
     }
 
     inline bool IsSemanticFallbackAllowed(DescriptorSemantic semantic)
     {
-        switch (semantic)
-        {
-        case DescriptorSemantic::SkyInfo:
-        case DescriptorSemantic::MaterialTexture:
-        case DescriptorSemantic::MaterialSampler:
-        case DescriptorSemantic::MaterialTextureLayerTable:
-        case DescriptorSemantic::MaterialDataIndexTable:
-            return true;
-        default:
-            return false;
-        }
+        return IsSemanticOptional(semantic);
     }
 
     // Whether a program's resource schema requires per-instance runtime rows:
