@@ -85,11 +85,6 @@ namespace hgl::graph::mtl
             return Make2DNodeConfigNDC(true);
         }
 
-        static VertexShaderNodeConfig PixelOrtho() noexcept
-        {
-            return Make2DNodeConfigOrtho(false);
-        }
-
         static VertexShaderNodeConfig WallXY() noexcept
         {
             VertexShaderNodeConfig cfg = Make2DNodeConfigNDC(true);
