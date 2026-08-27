@@ -586,7 +586,12 @@ ShaderBuildContext *CompileCompositorMaterial(
         // Register the three CharQuad SSBOs at fixed bindings 14/15/16
         // matching TEXT_CHARINFO_BINDING/TEXT_CHARSTYLE_BINDING/TEXT_CHARINSTANCE_BINDING
         // in descriptor_macros.glsl
-        // Structs are defined inline in GLSL (s1_text_char_quad.glsl), pass empty codes.
+        // 注意：结构体的 GLSL 声明真源是
+        //   src/ShaderGen/common/MeshShaderModeCharQuad.h::EmitCharQuadSSBODeclarations
+        // （C++ 字符串硬编码）。ShaderLibrary/vertex/s1_text_char_quad.glsl 声明了
+        // 同样结构但当前零 include——改结构布局必须改 MeshShaderModeCharQuad.h，
+        // 改那个 .glsl 不会生效（T2.1 计划做真源归一）。
+        // 此处只注册 set layout，结构体代码由 mesh shader 生成器提供（pass empty codes）。
         if (!ctx->AddStruct("TextCharInfo", ""))
             return FailAfterBuild("failed to add TextCharInfo struct");
         if (!ctx->AddSSBO(shader_stage_bits, DescriptorSetType::PerObject,
