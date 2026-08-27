@@ -13,20 +13,9 @@ namespace hgl::graph
         Triangles,
         TriangleStrip,
         Fan,
-        LinesAdj,
-        LineStripAdj,
-        TrianglesAdj,
-        TriangleStripAdj,
-        Patchs,
 
-        ENUM_CLASS_RANGE(Points,Patchs),
+        ENUM_CLASS_RANGE(Points,Fan),
 
         Error
     };
-
-    const char *GetPrimName(const PrimitiveType &prim);
-    const PrimitiveType ParsePrimitiveType(const char *name,int len=0);
-
-    bool CheckGeometryShaderIn(const PrimitiveType &);
-    bool CheckGeometryShaderOut(const PrimitiveType &);
 }

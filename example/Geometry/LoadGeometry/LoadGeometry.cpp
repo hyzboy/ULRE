@@ -56,7 +56,7 @@ namespace
             return false;
         }
 
-        if(header.primitiveType>static_cast<uint8_t>(PrimitiveType::Patchs))
+        if(header.primitiveType>static_cast<uint8_t>(PrimitiveType::Fan))
         {
             MLogError(LoadGeometry,OS_TEXT("Unsupported primitive type ")+OSString::numberOf(header.primitiveType)+OS_TEXT(" in file ") + filename);
             return false;

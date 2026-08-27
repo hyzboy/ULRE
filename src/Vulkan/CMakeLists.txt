@@ -124,8 +124,7 @@ SOURCE_GROUP("Memory" FILES ${VK_MEMORY_FILES})
 SET(VK_VERTEX_INPUT_FILES       ${VK_INCLUDE_PATH}/VKVertexInputFormat.h
                                 ${VK_INCLUDE_PATH}/VKVertexAttribBuffer.h
                                 ${VK_INCLUDE_PATH}/VKVABList.h
-                                ${VK_INCLUDE_PATH}/VKPrimitiveType.h
-                                VkPrimitiveType.cpp)
+                                ${VK_INCLUDE_PATH}/VKPrimitiveType.h)
 
 SOURCE_GROUP("VertexInput" FILES ${VK_VERTEX_INPUT_FILES})
 
