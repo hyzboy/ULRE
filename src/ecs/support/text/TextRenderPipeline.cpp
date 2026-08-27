@@ -743,26 +743,26 @@ namespace hgl::ecs
                             // 因此传 0（不做额外填充），让 gpu_stride = sizeof(T)。
                             constexpr VkDeviceSize ssbo_align = 0;
 
-                            // 4. 创建/重建 AlignedStructureBuffer（大小变化时重建）
+                            // 4. 创建/重建 MirroredStructArray（大小变化时重建）
                             const bool need_rebuild_char_info = !resources->char_info_asb || resources->char_info_asb->GetCount() < unique_chars.size();
                             const bool need_rebuild_style     = !resources->char_style_asb || resources->char_style_asb->GetCount() < upload_styles.size();
                             const bool need_rebuild_instance  = !resources->char_instance_asb || resources->char_instance_asb->GetCount() < gpu_instances.size();
 
                             if (need_rebuild_char_info)
                             {
-                                resources->char_info_asb = std::make_unique<graph::AlignedStructureBuffer<graph::layout::TextCharInfo>>(
+                                resources->char_info_asb = std::make_unique<graph::MirroredStructArray<graph::layout::TextCharInfo>>(
                                     device, unique_chars.size(), ssbo_align,
                                     VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, graph::BufferAllocPolicy::Auto);
                             }
                             if (need_rebuild_style)
                             {
-                                resources->char_style_asb = std::make_unique<graph::AlignedStructureBuffer<graph::layout::CharStyle>>(
+                                resources->char_style_asb = std::make_unique<graph::MirroredStructArray<graph::layout::CharStyle>>(
                                     device, upload_styles.size(), ssbo_align,
                                     VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, graph::BufferAllocPolicy::Auto);
                             }
                             if (need_rebuild_instance)
                             {
-                                resources->char_instance_asb = std::make_unique<graph::AlignedStructureBuffer<graph::layout::CharInstance>>(
+                                resources->char_instance_asb = std::make_unique<graph::MirroredStructArray<graph::layout::CharInstance>>(
                                     device, gpu_instances.size(), ssbo_align,
                                     VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, graph::BufferAllocPolicy::Auto);
                             }

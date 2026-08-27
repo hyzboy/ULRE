@@ -17,7 +17,7 @@ ECS 层 (ecs/)
         │
 渲染管线层 (TextRenderPipeline)
   RunCollect → RunBuild → RunSync → Render(cmd)
-  三层 SSBO 数据模型 (AlignedStructureBuffer 管理):
+  三层 SSBO 数据模型 (MirroredStructArray 管理):
     TextCharInfo (b14) / CharStyle (b15) / CharInstance (b16)
         │
 图形抽象层 (graph/font + SceneGraph)
@@ -38,18 +38,18 @@ Vulkan 层
 
 两条路径共用同一个 Fragment Shader 源 `text_source_gpu.glsl`，通过 `TEXT_SDF_ENABLED` 编译宏分流。
 
-### AlignedStructureBuffer 管理 SSBO
+### MirroredStructArray 管理 SSBO
 
-`AlignedStructureBuffer<T>`（`inc/hgl/vk/AlignedStructureBuffer.h`）是 SSBO 的核心容器：
+`MirroredStructArray<T>`（`inc/hgl/vk/MirroredStructArray.h`）是 SSBO 的核心容器：
 - CPU 侧紧密存储结构体数组（最优内存利用）
 - `SyncToGPU()` 时自动处理 CPU→GPU 的对齐扩展（std430 对齐填充）
 - 集成 `IGPUBuffer` 路径，支持 `StagedBuffer`/`ReBarBuffer` 双路由
 - 提供 `GetData()`、`operator[]` 透明访问，`GetVkBuffer()`/`GetBufferInfo()` 用于描述符绑定
 
-TextRenderPipeline 为三层 SSBO 各维护一个 `AlignedStructureBuffer`：
-- `AlignedStructureBuffer<TextCharInfo>` → binding 14
-- `AlignedStructureBuffer<CharStyle>` → binding 15
-- `AlignedStructureBuffer<CharInstance>` → binding 16
+TextRenderPipeline 为三层 SSBO 各维护一个 `MirroredStructArray`：
+- `MirroredStructArray<TextCharInfo>` → binding 14
+- `MirroredStructArray<CharStyle>` → binding 15
+- `MirroredStructArray<CharInstance>` → binding 16
 
 ---
 
@@ -136,7 +136,7 @@ out_style.extra_advance_y = extra;
 
 ### 4.3 GPU 缓冲区（三层 SSBO 模型）
 
-`TextRenderPipeline` 通过三个 `AlignedStructureBuffer` 将数据上传至 GPU SSBO：
+`TextRenderPipeline` 通过三个 `MirroredStructArray` 将数据上传至 GPU SSBO：
 
 **TextCharInfo（binding 14，16B/字符，std430）**：
 
@@ -326,7 +326,7 @@ out_alpha = textColor.a * (top_a + shadow_a * (1 - top_a))
 4. **CharStyle CPU/GPU 统一定义** — `TextCharSSBO.h` 中 40B std430 布局，CPU 直接写入 packed 数据，GPU 直接读取，无需转换层
 5. **SDF 字体特效** — 加粗、勾边、阴影，全部在 Fragment Shader 端通过 smoothstep + over 合成实现
 6. **extra_advance 排版间距机制** — bold/outline 时自动增加字符间距 `2.0 × (bold_px + outline_px)`，普通文本不受影响
-7. **AlignedStructureBuffer 管理 SSBO 生命周期** — CPU 紧密存储 → GPU 自动对齐，`SyncToGPU()` 一次性上传
+7. **MirroredStructArray 管理 SSBO 生命周期** — CPU 紧密存储 → GPU 自动对齐，`SyncToGPU()` 一次性上传
 8. **Transparent blend 模式** — 启用 alpha 混合，支持 SDF 平滑边缘和半透明特效效果
 9. **ECS 驱动架构** — TextComponent 是纯数据，TextRenderPipeline 管理所有运行时资源
 10. **scale/rotation 字符变换** — `CharStyle` 内置缩放（排版 advance 与 quad 尺寸联动缩放）与四档旋转（0/90/180/270，顶点 + UV 同步旋转），SDF 放大不重新采样仍保持边缘平滑
@@ -354,7 +354,7 @@ out_alpha = textColor.a * (top_a + shadow_a * (1 - top_a))
 | FontSource（字体源） | `inc/hgl/graph/font/FontSource.h` |
 | FontBitmapDataSource（SDF 距离场生成） | `src/SceneGraph/font/FontBitmapDataSource.cpp` |
 | SDF 距离场算法（CMUtil） | `CMUtil/src/sdf.c` |
-| AlignedStructureBuffer（SSBO 容器） | `inc/hgl/vk/AlignedStructureBuffer.h` |
+| MirroredStructArray（SSBO 容器） | `inc/hgl/vk/MirroredStructArray.h` |
 | RenderCmdBuffer | `inc/hgl/vk/VKCommandBuffer.h` |
 | DrawMeshTasks 实现 | `src/Vulkan/VKCommandBufferRender.cpp` |
 | MeshShader 生成（CharQuad 模式） | `src/ShaderGen/common/MeshShaderAssembler.h`（调度）+ `MeshShaderModeCharQuad.h`（CharQuad 主体） |

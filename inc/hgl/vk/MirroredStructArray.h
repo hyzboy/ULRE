@@ -7,27 +7,33 @@
 namespace hgl::graph {
 
 /**
- * AlignedStructureBuffer — UBO/SSBO 对齐数组缓冲区
+ * MirroredStructArray — CPU/GPU 双镜像结构体数组缓冲
  *
- * CN: 提供透明的 CPU 紧密布局到 GPU 对齐布局的自动转换。
- *     应用层看到的是普通的结构体数组，无需关心对齐细节。
+ * CN: 维护同一结构体数组的 CPU 侧镜像与 GPU 侧缓冲。
+ *     应用层把 CPU 镜像当作普通结构体数组写入，SyncToGPU() 一次性
+ *     完成布局转换（紧密 → 对齐）并同步到 GPU。数组元素个数、CPU 紧密
+ *     步长与 GPU 对齐步长均由本类管理，所有权（CPU 数组 + GPU 缓冲）
+ *     完全自持，随对象析构自动释放。
  *
- * EN: Transparent CPU-to-GPU alignment transformation for structured arrays.
- *     Applications work with tightly-packed CPU arrays while GPU buffer maintains proper alignment.
+ * EN: Maintains a mirrored copy of a structured array on CPU (tightly
+ *     packed) and the corresponding GPU buffer (aligned). Applications
+ *     write to the CPU mirror as a plain struct array, then SyncToGPU()
+ *     converts and uploads in one pass. Owns both sides; freed on destruction.
  *
  * 设计特色 / Design Features:
- * 1. CPU 侧数据紧密存储（最优内存利用）
+ * 1. CPU 侧镜像数据紧密存储（最优内存利用）
  * 2. GPU 侧自动对齐扩展（UBO/SSBO 合规）
  * 3. SyncToGPU() 一次性同步（包含对齐转换）
  * 4. 完全集成 IGPUBuffer 路径
  * 5. 支持 StagedBuffer/ReBarBuffer 双路由
+ * 6. 整体重写语义：适合每帧/按需整块重建的数组（如文本字符 SSBO）
  *
  * 典型对齐需求 / Typical Alignment:
  * - UBO/SSBO standard layout: 每个数组元素对齐到 140 字节（std430）或 256 字节（std140）
- * - 具体值由 device->GetUBOAlign() / device->GetSSBOAlign() 提供
+ * - 具体值由 device->GetUBOAlign() / device->GetSSBOAlign() 提供；SSBO 通常传 0（stride=sizeof(T)）
  */
 template<typename T>
-class AlignedStructureBuffer {
+class MirroredStructArray {
 private:
     size_t          element_count = 0;
     size_t          alignment     = 0;    ///< GPU 要求的对齐字节数
@@ -50,7 +56,7 @@ public:
      * @param buffer_usage VkBufferUsageFlags
      * @param alloc_policy 分配策略（默认 CPUVisible）
      */
-    AlignedStructureBuffer(
+    MirroredStructArray(
         VulkanDevice*      device,
         size_t             count,
         size_t             align,
@@ -80,7 +86,7 @@ public:
             gpu_buffer = owned_buf->GetGPUBuffer();
     }
 
-    ~AlignedStructureBuffer()
+    ~MirroredStructArray()
     {
         gpu_buffer = nullptr;
         delete owned_buf;
@@ -91,8 +97,8 @@ public:
     }
 
     // 禁止拷贝 / Disable copy
-    AlignedStructureBuffer(const AlignedStructureBuffer&) = delete;
-    AlignedStructureBuffer& operator=(const AlignedStructureBuffer&) = delete;
+    MirroredStructArray(const MirroredStructArray&) = delete;
+    MirroredStructArray& operator=(const MirroredStructArray&) = delete;
 
 public:
 
