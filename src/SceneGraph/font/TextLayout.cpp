@@ -358,6 +358,20 @@ namespace hgl::graph::layout
         uint16_t last_vis_sid             = 0;     // 上一个可见字符的 style_id
         int16_t  last_vis_rot             = 0;     // 上一个可见字符的实例旋转
 
+        // ── vrot 组整体旋转状态 ─────────────────────────────────────
+        // 连续 vrotate 字符按横向排版（框顶对齐、字距 = 横向 adv）排列，
+        // 再整体绕段首字符中心旋转 90°（视觉顺时针）。mesh 侧每字母绕
+        // 自身框中心旋转，CPU 放置"旋转前框左上角" = 目标中心 - (cx, cy)。
+        // 横向基线（= 框顶 + char_height，所有字母统一）旋转后成为竖直线
+        // x = C0_x + cy_0 - char_height = pen_x - my_0——与段内字母无关，
+        // 基线严格对齐，无需逐字母补偿公式。
+        bool in_vrot_run   = false;
+        int  vrot_run_adv  = 0;      // 段内累计横向字距（从段首起）
+        int  vrot_base_cx  = 0;      // 段首字符旋转中心（相对框左上角）
+        int  vrot_base_cy  = 0;
+        int  vrot_c0x      = 0;      // 段首字符旋转中心（绝对坐标）
+        int  vrot_c0y      = 0;
+
         // 竖排列宽（从右到左换列步进）：用字体高度（方字假设，并容纳 vrotate 字符旋转后的宽度）
         const int column_step = static_cast<int>((font_source->GetCharHeight() + dsi.style.line_gap + dsi.style.extra_advance_y) * scale);
 
@@ -386,15 +400,8 @@ namespace hgl::graph::layout
                 if(vrot)
                 {
                     // vrotate：原样照搬 sl_l2r 横向排版——横向字距（adv_x + extra_advance_x），
-                    // 整体右转 90° 后字母沿 y 排列，字距 = 横向字距（不拉大）
+                    // 段内整体右转 90° 后字母沿 y 排列，字距 = 横向字距（不拉大）
                     adv = static_cast<int>((cda.cla->metrics.adv_x + dsi.style.extra_advance_x) * scale);
-                    if(!next_vrot)
-                    {
-                        // 组尾：旋转 quad 底 = top + offset_y + (mh+mw)/2（逐字母绕框中心旋转），
-                        // 推进补足到底，否则与下一个正立字符（如中文）像素重叠
-                        const int bottom_need = (cda.cla->metrics.h + cda.cla->metrics.w + 1) / 2;
-                        if(adv < bottom_need) adv = bottom_need;
-                    }
                 }
                 else
                 {
@@ -408,22 +415,51 @@ namespace hgl::graph::layout
                 const int  cw     = vrot ? cda.cla->metrics.h
                                          : (cda.cla->metrics.w > full_h ? cda.cla->metrics.w : full_h);
 
-                int left = pen_x - cw;                  // 框左上角 x
-                const int   top  = pen_y;                       // 框顶部 y
+                int left = pen_x - cw;                  // 框左上角 x（正立默认）
+                int top  = pen_y;                       // 框顶部 y（正立默认）
                 const int16_t rot = static_cast<int16_t>(vrot ? 90 : 0);
 
                 if(vrot)
                 {
-                    // vrotate 右旋 90°（视觉顺时针）：原底部（横向基线）旋转后朝左
-                    // 成为垂直线——所有字母应像横向排版基线对齐一样落在同一条
-                    // 垂直线上（基线 x = pen_x - full_h），否则字母旋转后参差不齐。
-                    // 注意只补偿 offset_x 与尺寸差，不含 offset_y（bitmap_top 较大，
-                    // 带上会把字母整体推到列右缘之外）；
-                    // (mh-mw)/2 用四舍五入而非截断，避免奇数差丢 0.5px 导致基线参差。
-                    const int mh_mw = cda.cla->metrics.h - cda.cla->metrics.w;
-                    left = pen_x - full_h
-                         - cda.cla->metrics.x
-                         + (mh_mw + (mh_mw >= 0 ? 1 : -1)) / 2;
+                    // 段内第 k 字母：整体旋转中心（绝对坐标）
+                    //   Ck = C0 + (-(cy_k - cy_0), Σadv + (cx_k - cx_0))
+                    const int cx = cda.cla->metrics.x + cda.cla->metrics.w / 2;
+                    const int cy = -cda.cla->metrics.y + full_h + cda.cla->metrics.h / 2;
+
+                    if(!in_vrot_run)
+                    {
+                        // 段首：旋转中心 C0——右缘贴列右缘（pen_x）、顶贴列顶（pen_y）
+                        in_vrot_run  = true;
+                        vrot_run_adv = 0;
+                        vrot_base_cx = cx;
+                        vrot_base_cy = cy;
+                        vrot_c0x     = pen_x - cda.cla->metrics.h / 2;
+                        vrot_c0y     = pen_y + cda.cla->metrics.w / 2;
+                    }
+
+                    const int ck_abs_x = vrot_c0x - (cy - vrot_base_cy);
+                    const int ck_abs_y = vrot_c0y + vrot_run_adv + (cx - vrot_base_cx);
+
+                    left = ck_abs_x - cx;               // 旋转前框左上角
+                    top  = ck_abs_y - cy;
+
+                    if(!next_vrot)
+                    {
+                        // 组尾：pen_y 跳到最后字母视觉底（中心 y + 原宽/2）。
+                        // 下一正立字符位图顶 = pen_y + char_height - my ≈ 视觉底
+                        //（中文 my ≈ char_height），紧贴不重叠——与横向排版
+                        // 整体右转 90° 语义一致（不拉大间距）
+                        pen_y = ck_abs_y + cda.cla->metrics.w / 2;
+                        in_vrot_run = false;
+                    }
+                    else
+                    {
+                        vrot_run_adv += adv;
+                    }
+                }
+                else
+                {
+                    in_vrot_run = false;
                 }
 
                 // 居中修正：位图中心对齐全角格中心（仅正立标点）。
