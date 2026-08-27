@@ -9,9 +9,9 @@ namespace hgl::graph::mtl
         Vec2Position = 0,  // layout(location=0) in vec2 Position
         Vec3Position,      // layout(location=0) in vec3 Position
         Vec2IntPosition,   // layout(location=0) in ivec2 Position (integer, e.g. text pixel coords)
-        Procedural,        // 无 VBO 位置输入（依赖 gl_VertexID 等）
+        None,              // 无外部顶点输入（CharQuad 等自持全部 SSBO）
 
-        ENUM_CLASS_RANGE(Vec2Position, Procedural)
+        ENUM_CLASS_RANGE(Vec2Position, None)
     };
 
     // Stage 2 — 物体空间位置映射策略

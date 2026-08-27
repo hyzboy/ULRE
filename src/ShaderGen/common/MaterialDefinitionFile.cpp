@@ -273,7 +273,7 @@ namespace hgl::graph::mtl
             if (name == "Vec2Position") out = VertexInputMode::Vec2Position;
             else if (name == "Vec3Position") out = VertexInputMode::Vec3Position;
             else if (name == "Vec2IntPosition") out = VertexInputMode::Vec2IntPosition;
-            else if (name == "Procedural") out = VertexInputMode::Procedural;
+            else if (name == "None") out = VertexInputMode::None;
             else return false;
             return true;
         }

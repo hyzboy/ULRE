@@ -625,8 +625,6 @@ namespace hgl::graph::mtl
                 : definition.vertex_node_config;
         const char *vertex_paths[] =
         {
-            config.input == VertexInputMode::Procedural
-                ? "vertex/s1_input_procedural.glsl" : nullptr,
             VertexNodeConfigResolver::GetMappingModulePath(config),
             VertexNodeConfigResolver::GetStage3ModulePath(config)
         };

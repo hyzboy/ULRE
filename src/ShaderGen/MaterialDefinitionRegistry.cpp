@@ -196,9 +196,8 @@ namespace
             case VertexInputMode::Vec2Position:
                 out_vertex_input_glsl += "#include \"vertex/s1_position_vec2.glsl\"\n";
                 break;
-            case VertexInputMode::Procedural:
-                out_vertex_input_glsl += "#include \"vertex/s1_input_procedural.glsl\"\n";
-                break;
+            case VertexInputMode::None:
+                break;   // 无外部顶点输入（CharQuad 等自持全部 SSBO，不 include 顶点输入模块）
             default:
                 return false;
             }

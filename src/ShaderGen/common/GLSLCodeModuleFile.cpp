@@ -121,7 +121,6 @@ namespace hgl::graph::mtl
         {
             if (std::strcmp(token, "Shared") == 0) out_kind = GLSLCodeModuleKind::Shared;
             else if (std::strcmp(token, "Surface") == 0) out_kind = GLSLCodeModuleKind::Surface;
-            else if (std::strcmp(token, "VertexInput") == 0) out_kind = GLSLCodeModuleKind::VertexInput;
             else if (std::strcmp(token, "Position") == 0) out_kind = GLSLCodeModuleKind::Position;
             else if (std::strcmp(token, "Transform") == 0) out_kind = GLSLCodeModuleKind::Transform;
             else if (std::strcmp(token, "Utility") == 0) out_kind = GLSLCodeModuleKind::Utility;

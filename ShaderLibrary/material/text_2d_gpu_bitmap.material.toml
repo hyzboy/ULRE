@@ -6,7 +6,7 @@ bootstrap = "TextAlphaBlend"
 provider_policy = "GeometryOnly"
 
 [transform]
-source = "Procedural"
+source = "None"
 mapping = "PixelToLocal"
 orientation = "World"
 scale = "World"

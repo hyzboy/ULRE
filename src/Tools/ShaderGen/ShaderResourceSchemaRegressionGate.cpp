@@ -989,7 +989,7 @@ namespace
         GLSLCodeModuleDefinition position_provider{};
         position_provider.name = "preview_position_from_geometry";
         position_provider.glsl_code = "// preview only";
-        position_provider.kind = GLSLCodeModuleKind::VertexInput;
+        position_provider.kind = GLSLCodeModuleKind::Utility;
         position_provider.semantic_requirements = &position_geometry;
         position_provider.semantic_requirement_count = 1;
         position_provider.semantic_provides = position_provides;
@@ -998,7 +998,7 @@ namespace
         GLSLCodeModuleDefinition uv_provider{};
         uv_provider.name = "preview_uv_from_geometry";
         uv_provider.glsl_code = "// preview only";
-        uv_provider.kind = GLSLCodeModuleKind::VertexInput;
+        uv_provider.kind = GLSLCodeModuleKind::Utility;
         uv_provider.semantic_requirements = &uv_geometry;
         uv_provider.semantic_requirement_count = 1;
         uv_provider.semantic_provides = uv_provides;
@@ -1007,7 +1007,7 @@ namespace
         GLSLCodeModuleDefinition normal_provider{};
         normal_provider.name = "preview_normal_from_geometry";
         normal_provider.glsl_code = "// preview only";
-        normal_provider.kind = GLSLCodeModuleKind::VertexInput;
+        normal_provider.kind = GLSLCodeModuleKind::Utility;
         normal_provider.semantic_requirements = &normal_geometry;
         normal_provider.semantic_requirement_count = 1;
         normal_provider.semantic_provides = normal_provides;
@@ -1369,7 +1369,7 @@ namespace
             "identity_normal",
             "// identity",
             nullptr, 0, nullptr, 0,
-            GLSLCodeModuleKind::VertexInput,
+            GLSLCodeModuleKind::Utility,
             &normal_requirement, 1,
             normal_provides, 1,
             10, 0
@@ -1388,7 +1388,7 @@ namespace
             "identity_uv",
             "// identity",
             nullptr, 0, nullptr, 0,
-            GLSLCodeModuleKind::VertexInput,
+            GLSLCodeModuleKind::Utility,
             &uv_requirement, 1,
             uv_provides, 1,
             10, 0
@@ -3807,7 +3807,7 @@ namespace
         const char full_meta[] =
             "// @ulre begin\n"
             "// @ulre name sample_ntb\n"
-            "// @ulre kind VertexInput\n"
+            "// @ulre kind Utility\n"
             "// @ulre priority 10\n"
             "// @ulre require GeometryAttribute Normal Float 3 3\n"
             "// @ulre require GeometryAttribute Tangent Any\n"
@@ -3825,7 +3825,7 @@ namespace
             {
                 if (std::strcmp(data.name.c_str(), "sample_ntb") != 0)
                     result.diagnostics.emplace_back("full-metadata name mismatch");
-                if (data.kind != GLSLCodeModuleKind::VertexInput)
+                if (data.kind != GLSLCodeModuleKind::Utility)
                     result.diagnostics.emplace_back("full-metadata kind mismatch");
                 if (data.priority != 10)
                     result.diagnostics.emplace_back("full-metadata priority mismatch");
@@ -3883,14 +3883,14 @@ namespace
             result.diagnostics.emplace_back("LoadDirectory failed to scan directory");
         else
         {
-            if (file_count != 71)
-                result.diagnostics.emplace_back("LoadDirectory expected 71 file modules, got "
-                                                + std::to_string(file_count) + " (3 vertex SSBO modules added)");
+            if (file_count != 70)
+                result.diagnostics.emplace_back("LoadDirectory expected 70 file modules, got "
+                                                + std::to_string(file_count) + " (2 vertex SSBO modules added)");
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 71;
+            const int expected_count = 70;
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
@@ -3968,7 +3968,7 @@ namespace
             GLSLCodeModuleDefinition definition{};
             definition.name = name;
             definition.glsl_code = "// metadata validation";
-            definition.kind = GLSLCodeModuleKind::VertexInput;
+            definition.kind = GLSLCodeModuleKind::Utility;
             return definition;
         };
 
@@ -4497,7 +4497,7 @@ namespace
         // 1. Full NTB geometry selects the direct NTB provider.
         {
             ResolverFixture fixture;
-            const auto *ntb_direct = fixture.Add("ntb_direct", GLSLCodeModuleKind::VertexInput, 100,
+            const auto *ntb_direct = fixture.Add("ntb_direct", GLSLCodeModuleKind::Utility, 100,
                 { geometry(GLSLCodeModuleSemantic::Normal),
                   geometry(GLSLCodeModuleSemantic::Tangent),
                   geometry(GLSLCodeModuleSemantic::Binormal) },
@@ -4520,12 +4520,12 @@ namespace
         //    NTB provider is rejected because Tangent/Binormal are absent.
         {
             ResolverFixture fixture;
-            const auto *ntb_direct = fixture.Add("ntb_direct", GLSLCodeModuleKind::VertexInput, 100,
+            const auto *ntb_direct = fixture.Add("ntb_direct", GLSLCodeModuleKind::Utility, 100,
                 { geometry(GLSLCodeModuleSemantic::Normal),
                   geometry(GLSLCodeModuleSemantic::Tangent),
                   geometry(GLSLCodeModuleSemantic::Binormal) },
                 { GLSLCodeModuleSemantic::Normal, GLSLCodeModuleSemantic::Tangent, GLSLCodeModuleSemantic::Binormal });
-            const auto *normal_only = fixture.Add("normal_only", GLSLCodeModuleKind::VertexInput, 100,
+            const auto *normal_only = fixture.Add("normal_only", GLSLCodeModuleKind::Utility, 100,
                 { geometry(GLSLCodeModuleSemantic::Normal, RESOLVER_FLOAT, 3, 3) },
                 { GLSLCodeModuleSemantic::Normal });
 
@@ -4543,12 +4543,12 @@ namespace
         // 3. Packed RGB10A2 normal selects the decode provider.
         {
             ResolverFixture fixture;
-            fixture.Add("ntb_direct", GLSLCodeModuleKind::VertexInput, 100,
+            fixture.Add("ntb_direct", GLSLCodeModuleKind::Utility, 100,
                 { geometry(GLSLCodeModuleSemantic::Normal),
                   geometry(GLSLCodeModuleSemantic::Tangent),
                   geometry(GLSLCodeModuleSemantic::Binormal) },
                 { GLSLCodeModuleSemantic::Normal, GLSLCodeModuleSemantic::Tangent, GLSLCodeModuleSemantic::Binormal });
-            const auto *normal_only = fixture.Add("normal_only", GLSLCodeModuleKind::VertexInput, 100,
+            const auto *normal_only = fixture.Add("normal_only", GLSLCodeModuleKind::Utility, 100,
                 { geometry(GLSLCodeModuleSemantic::Normal, RESOLVER_FLOAT, 3, 3) },
                 { GLSLCodeModuleSemantic::Normal });
             const auto *decode = fixture.Add("normal_decode_a2rgb10", GLSLCodeModuleKind::Utility, 100,
@@ -4573,7 +4573,7 @@ namespace
             const auto *ntb_from_position = fixture.Add("ntb_from_position", GLSLCodeModuleKind::Utility, 50,
                 { geometry(GLSLCodeModuleSemantic::Position, RESOLVER_FLOAT, 3, 3) },
                 { GLSLCodeModuleSemantic::Normal, GLSLCodeModuleSemantic::Tangent, GLSLCodeModuleSemantic::Binormal });
-            fixture.Add("ntb_direct", GLSLCodeModuleKind::VertexInput, 100,
+            fixture.Add("ntb_direct", GLSLCodeModuleKind::Utility, 100,
                 { geometry(GLSLCodeModuleSemantic::Normal),
                   geometry(GLSLCodeModuleSemantic::Tangent),
                   geometry(GLSLCodeModuleSemantic::Binormal) },
@@ -4645,7 +4645,7 @@ namespace
             const auto *octa = fixture.Add("normal_decode_octa", GLSLCodeModuleKind::Utility, 100,
                 { geometry(GLSLCodeModuleSemantic::Normal, RESOLVER_NORM, 2, 2) },
                 { GLSLCodeModuleSemantic::Normal });
-            fixture.Add("normal_only", GLSLCodeModuleKind::VertexInput, 100,
+            fixture.Add("normal_only", GLSLCodeModuleKind::Utility, 100,
                 { geometry(GLSLCodeModuleSemantic::Normal, RESOLVER_FLOAT, 3, 3) },
                 { GLSLCodeModuleSemantic::Normal });
 
@@ -4662,10 +4662,10 @@ namespace
         // 8. Priority ordering: higher priority provider wins.
         {
             ResolverFixture fixture;
-            const auto *low = fixture.Add("normal_low", GLSLCodeModuleKind::VertexInput, 0,
+            const auto *low = fixture.Add("normal_low", GLSLCodeModuleKind::Utility, 0,
                 { geometry(GLSLCodeModuleSemantic::Normal, RESOLVER_FLOAT, 3, 3) },
                 { GLSLCodeModuleSemantic::Normal });
-            const auto *high = fixture.Add("normal_high", GLSLCodeModuleKind::VertexInput, 100,
+            const auto *high = fixture.Add("normal_high", GLSLCodeModuleKind::Utility, 100,
                 { geometry(GLSLCodeModuleSemantic::Normal, RESOLVER_FLOAT, 3, 3) },
                 { GLSLCodeModuleSemantic::Normal });
 
@@ -4683,10 +4683,10 @@ namespace
         // 9. Deterministic tie-break: equal priority picks the lower module ID.
         {
             ResolverFixture fixture;
-            const auto *a = fixture.Add("normal_a", GLSLCodeModuleKind::VertexInput, 0,
+            const auto *a = fixture.Add("normal_a", GLSLCodeModuleKind::Utility, 0,
                 { geometry(GLSLCodeModuleSemantic::Normal, RESOLVER_FLOAT, 3, 3) },
                 { GLSLCodeModuleSemantic::Normal });
-            const auto *b = fixture.Add("normal_b", GLSLCodeModuleKind::VertexInput, 0,
+            const auto *b = fixture.Add("normal_b", GLSLCodeModuleKind::Utility, 0,
                 { geometry(GLSLCodeModuleSemantic::Normal, RESOLVER_FLOAT, 3, 3) },
                 { GLSLCodeModuleSemantic::Normal });
 
@@ -4704,7 +4704,7 @@ namespace
         // 10. RG16F/RG32F normal geometries resolve to the same provider.
         {
             ResolverFixture fixture;
-            const auto *normal_only = fixture.Add("normal_only", GLSLCodeModuleKind::VertexInput, 100,
+            const auto *normal_only = fixture.Add("normal_only", GLSLCodeModuleKind::Utility, 100,
                 { geometry(GLSLCodeModuleSemantic::Normal, RESOLVER_FLOAT, 3, 3) },
                 { GLSLCodeModuleSemantic::Normal });
 
@@ -4761,7 +4761,7 @@ namespace
         //     cannot yet express YUV channels through VertexSemantic).
         {
             ResolverFixture fixture;
-            const auto *color_direct = fixture.Add("color_direct", GLSLCodeModuleKind::VertexInput, 100,
+            const auto *color_direct = fixture.Add("color_direct", GLSLCodeModuleKind::Utility, 100,
                 { geometry(GLSLCodeModuleSemantic::Color) },
                 { GLSLCodeModuleSemantic::Color });
             const auto *color_yuv = fixture.Add("color_decode_yuv", GLSLCodeModuleKind::Utility, 100,

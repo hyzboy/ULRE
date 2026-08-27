@@ -22,7 +22,6 @@ namespace hgl::graph::mtl
     {
         Shared = 0,
         Surface,
-        VertexInput,
         Position,
         Transform,
         Utility,
