@@ -18,24 +18,6 @@ namespace hgl::graph::mtl
             return {ShaderSemanticScalarType::UnsignedInteger, component_count};
         }
 
-        constexpr GeometrySemanticInfo GeometrySemanticRegistry[] =
-        {
-            {VertexSemantic::Unknown,        "Unknown",        {},            0},
-            {VertexSemantic::Position,       "Position",       FloatShape(3),  1},
-            {VertexSemantic::Normal,         "Normal",         FloatShape(3),  1},
-            {VertexSemantic::Tangent,        "Tangent",        FloatShape(3),  1},
-            {VertexSemantic::Bitangent,      "Binormal",       FloatShape(3),  1},
-            {VertexSemantic::Color,          "Color",          FloatShape(4),  1},
-            {VertexSemantic::Luminance,      "Luminance",      FloatShape(1),  1},
-            {VertexSemantic::TexCoord,       "TexCoord",       FloatShape(2),  1},
-            {VertexSemantic::AO,             "AO",             FloatShape(1),  1},
-            {VertexSemantic::Size,           "Size",           FloatShape(2),  1},
-            {VertexSemantic::Rotation,       "Rotation",       FloatShape(1),  1},
-            {VertexSemantic::Assign,         "Assign",         UIntShape(1),   1},
-            {VertexSemantic::TransformID,    "TransformID",    UIntShape(1),   1},
-            {VertexSemantic::DataIndexID,    "DataIndexID",    UIntShape(1),   1}
-        };
-
         constexpr InterStageSemanticInfo InterStageSemanticRegistry[] =
         {
             {InterStageSemantic::Unknown,        "Unknown",            {},           InterStageInterpolation::Smooth, 0, InvalidShaderSemanticLocation},
@@ -51,17 +33,10 @@ namespace hgl::graph::mtl
             {InterStageSemantic::StyleID,        "fragStyleID",        UIntShape(1),  InterStageInterpolation::Flat,   1, 4}
         };
 
-        constexpr uint32 GeometrySemanticRegistryCount =
-            static_cast<uint32>(sizeof(GeometrySemanticRegistry)
-                / sizeof(GeometrySemanticRegistry[0]));
         constexpr uint32 InterStageSemanticRegistryCount =
             static_cast<uint32>(sizeof(InterStageSemanticRegistry)
                 / sizeof(InterStageSemanticRegistry[0]));
 
-        static_assert(
-            GeometrySemanticRegistryCount
-                == static_cast<uint32>(VertexSemantic::RANGE_SIZE),
-            "Geometry semantic registry must cover VertexSemantic");
         static_assert(
             InterStageSemanticRegistryCount
                 == static_cast<uint32>(InterStageSemantic::RANGE_SIZE),
@@ -87,21 +62,6 @@ namespace hgl::graph::mtl
         }
     }
 
-    uint32 GetGeometrySemanticInfoCount() noexcept
-    {
-        return GeometrySemanticRegistryCount;
-    }
-
-    const GeometrySemanticInfo *GetGeometrySemanticInfo(
-        const VertexSemantic semantic) noexcept
-    {
-        const uint32 index = static_cast<uint32>(semantic);
-        if (index >= GeometrySemanticRegistryCount)
-            return nullptr;
-
-        return GeometrySemanticRegistry + index;
-    }
-
     uint32 GetInterStageSemanticInfoCount() noexcept
     {
         return InterStageSemanticRegistryCount;
@@ -115,73 +75,6 @@ namespace hgl::graph::mtl
             return nullptr;
 
         return InterStageSemanticRegistry + index;
-    }
-
-    bool ResolveCurrentGeometrySemanticLocation(
-        const GeometryVertexFormat &geometry,
-        const VertexSemantic semantic,
-        uint32 &out_location) noexcept
-    {
-        const GeometrySemanticInfo *info = GetGeometrySemanticInfo(semantic);
-        if (!info
-         || semantic == VertexSemantic::Unknown
-         || info->location_policy != GeometrySemanticLocationPolicy::GeometryAttributeOrder)
-            return false;
-
-        for (uint32 index = 0; index < geometry.GetCount(); ++index)
-        {
-            const GeometryVertexAttributeFormat *attribute = geometry.Get(index);
-            if (attribute && attribute->semantic == semantic)
-            {
-                out_location = index;
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    bool ValidateGeometrySemanticRegistry(
-        ShaderSemanticRegistryValidationResult &out_result) noexcept
-    {
-        out_result = {};
-
-        for (uint32 index = 0; index < GeometrySemanticRegistryCount; ++index)
-        {
-            const GeometrySemanticInfo &info = GeometrySemanticRegistry[index];
-            if (static_cast<uint32>(info.semantic) != index)
-                return SetValidationFailure(
-                    out_result,
-                    ShaderSemanticRegistryValidationError::GeometryEntryOrder,
-                    index);
-
-            if (index == 0)
-                continue;
-
-            if (!info.shader_symbol || !info.shader_symbol[0])
-                return SetValidationFailure(
-                    out_result,
-                    ShaderSemanticRegistryValidationError::GeometryNameMissing,
-                    index);
-
-            if (!HasValidShape(info.default_shape) || info.location_width == 0)
-                return SetValidationFailure(
-                    out_result,
-                    ShaderSemanticRegistryValidationError::GeometryTypeInvalid,
-                    index);
-
-            if (info.location_policy
-                != GeometrySemanticLocationPolicy::GeometryAttributeOrder)
-            {
-                return SetValidationFailure(
-                    out_result,
-                    ShaderSemanticRegistryValidationError::
-                        GeometryLocationPolicyInvalid,
-                    index);
-            }
-        }
-
-        return true;
     }
 
     bool ValidateInterStageSemanticRegistry(
@@ -267,7 +160,7 @@ namespace hgl::graph::mtl
     bool ValidateShaderSemanticRegistries(
         ShaderSemanticRegistryValidationResult &out_result) noexcept
     {
-        return ValidateGeometrySemanticRegistry(out_result)
-            && ValidateInterStageSemanticRegistry(out_result);
+        // GeometrySemantic 半边（VBO 顶点属性语义）已删除——只剩 InterStage 校验
+        return ValidateInterStageSemanticRegistry(out_result);
     }
 }

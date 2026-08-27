@@ -30,21 +30,6 @@ namespace hgl::graph::mtl
         uint8 component_count = 0;
     };
 
-    enum class GeometrySemanticLocationPolicy : uint8
-    {
-        GeometryAttributeOrder = 0
-    };
-
-    struct GeometrySemanticInfo
-    {
-        VertexSemantic semantic = VertexSemantic::Unknown;
-        const char *shader_symbol = nullptr;
-        ShaderSemanticValueShape default_shape{};
-        uint8 location_width = 0;
-        GeometrySemanticLocationPolicy location_policy =
-            GeometrySemanticLocationPolicy::GeometryAttributeOrder;
-    };
-
     enum class InterStageSemantic : uint8
     {
         Unknown = 0,
@@ -91,10 +76,6 @@ namespace hgl::graph::mtl
     enum class ShaderSemanticRegistryValidationError : uint8
     {
         None = 0,
-        GeometryEntryOrder,
-        GeometryNameMissing,
-        GeometryTypeInvalid,
-        GeometryLocationPolicyInvalid,
         InterStageEntryOrder,
         InterStageNameMissing,
         InterStageNameConflict,
@@ -112,21 +93,10 @@ namespace hgl::graph::mtl
         uint32 second_index = 0;
     };
 
-    uint32 GetGeometrySemanticInfoCount() noexcept;
-    const GeometrySemanticInfo *GetGeometrySemanticInfo(
-        VertexSemantic semantic) noexcept;
-
     uint32 GetInterStageSemanticInfoCount() noexcept;
     const InterStageSemanticInfo *GetInterStageSemanticInfo(
         InterStageSemantic semantic) noexcept;
 
-    bool ResolveCurrentGeometrySemanticLocation(
-        const GeometryVertexFormat &geometry,
-        VertexSemantic semantic,
-        uint32 &out_location) noexcept;
-
-    bool ValidateGeometrySemanticRegistry(
-        ShaderSemanticRegistryValidationResult &out_result) noexcept;
     bool ValidateInterStageSemanticRegistry(
         ShaderSemanticRegistryValidationResult &out_result) noexcept;
     bool ValidateShaderSemanticRegistries(

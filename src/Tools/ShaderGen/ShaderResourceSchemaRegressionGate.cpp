@@ -830,7 +830,7 @@ namespace
         result.name = "L0.shader-semantic-registry";
 
         ShaderSemanticRegistryValidationResult validation{};
-        if (!ValidateShaderSemanticRegistries(validation))
+        if (!ValidateInterStageSemanticRegistry(validation))
         {
             result.diagnostics.emplace_back(
                 "semantic registry validation failed: error="
@@ -839,24 +839,10 @@ namespace
                 + " second=" + std::to_string(validation.second_index));
         }
 
-        if (GetGeometrySemanticInfoCount()
-                != static_cast<hgl::uint32>(VertexSemantic::RANGE_SIZE)
-         || GetInterStageSemanticInfoCount()
+        if (GetInterStageSemanticInfoCount()
                 != static_cast<hgl::uint32>(InterStageSemantic::RANGE_SIZE))
         {
             result.diagnostics.emplace_back("semantic registry coverage mismatch");
-        }
-
-        const GeometrySemanticInfo *bitangent =
-            GetGeometrySemanticInfo(VertexSemantic::Bitangent);
-        if (!bitangent
-         || std::strcmp(bitangent->shader_symbol, "Binormal") != 0
-         || bitangent->default_shape.scalar_type
-                != ShaderSemanticScalarType::Float
-         || bitangent->default_shape.component_count != 3)
-        {
-            result.diagnostics.emplace_back(
-                "geometry semantic metadata mismatch");
         }
 
         const InterStageSemanticInfo *data_index =
@@ -871,28 +857,6 @@ namespace
         {
             result.diagnostics.emplace_back(
                 "inter-stage stable ABI metadata mismatch");
-        }
-
-        const GeometryVertexFormat geometry{
-            {VertexSemantic::Position, VF_V3F},
-            {VertexSemantic::TexCoord, VF_V2F},
-            {VertexSemantic::Color, VF_V4UN8}
-        };
-        hgl::uint32 location = InvalidShaderSemanticLocation;
-        if (!ResolveCurrentGeometrySemanticLocation(
-                geometry, VertexSemantic::Position, location)
-         || location != 0
-         || !ResolveCurrentGeometrySemanticLocation(
-                geometry, VertexSemantic::TexCoord, location)
-         || location != 1
-         || !ResolveCurrentGeometrySemanticLocation(
-                geometry, VertexSemantic::Color, location)
-         || location != 2
-         || ResolveCurrentGeometrySemanticLocation(
-                geometry, VertexSemantic::Normal, location))
-        {
-            result.diagnostics.emplace_back(
-                "current Geometry attribute-order mapping mismatch");
         }
 
         VertexVaryingConfig lit_varying{};
