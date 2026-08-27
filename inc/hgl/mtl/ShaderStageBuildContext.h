@@ -138,31 +138,4 @@ namespace hgl::graph::mtl
             return key;
         }
     };
-
-    inline bool HasCompatibleStageInterface(const ShaderStageBuildContext &vertex,
-                                             const ShaderStageBuildContext &fragment) noexcept
-    {
-        for (int i = 0; i < fragment.inputs.GetCount(); ++i)
-        {
-            const ShaderStageInterfaceVariable &fragment_input = fragment.inputs[i];
-            bool found = false;
-
-            for (int j = 0; j < vertex.outputs.GetCount(); ++j)
-            {
-                const ShaderStageInterfaceVariable &vertex_output = vertex.outputs[j];
-                if (vertex_output.location == fragment_input.location
-                 && vertex_output.value_type == fragment_input.value_type
-                 && vertex_output.flags == fragment_input.flags)
-                {
-                    found = true;
-                    break;
-                }
-            }
-
-            if (!found)
-                return false;
-        }
-
-        return true;
-    }
 }

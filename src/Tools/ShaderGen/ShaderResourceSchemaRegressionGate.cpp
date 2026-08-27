@@ -59,6 +59,37 @@ namespace
         return h;
     }
 
+    // mesh↔fragment stage 接口一致性校验（原生产头 ShaderStageBuildContext.h，
+    // 生产路径从不调用——生成器不校验接口，错位由 glslang 编译失败兜底；
+    // 仅回归门使用，故移入此处。mesh 是唯一顶点路径，参数命名 mesh）
+    static bool HasCompatibleStageInterface(
+        const ShaderStageBuildContext &mesh,
+        const ShaderStageBuildContext &fragment) noexcept
+    {
+        for (int i = 0; i < fragment.inputs.GetCount(); ++i)
+        {
+            const ShaderStageInterfaceVariable &fragment_input = fragment.inputs[i];
+            bool found = false;
+
+            for (int j = 0; j < mesh.outputs.GetCount(); ++j)
+            {
+                const ShaderStageInterfaceVariable &mesh_output = mesh.outputs[j];
+                if (mesh_output.location == fragment_input.location
+                 && mesh_output.value_type == fragment_input.value_type
+                 && mesh_output.flags == fragment_input.flags)
+                {
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
+                return false;
+        }
+
+        return true;
+    }
+
     static uint32_t CountAssetTextures(const ResolvedBindingTable &table)
     {
         uint32_t count = 0;
