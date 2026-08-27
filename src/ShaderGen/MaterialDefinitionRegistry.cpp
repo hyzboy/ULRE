@@ -34,11 +34,105 @@ namespace
         }
     }
 
+    static uint32 GetNumericClassFromVkFormat(const VkFormat format)
+    {
+        switch (format)
+        {
+        case VF_V1F:
+        case VF_V2F:
+        case VF_V3F:
+        case VF_V4F:
+        case VF_V1HF:
+        case VF_V2HF:
+        case VF_V3HF:
+        case VF_V4HF:
+            return static_cast<uint32>(GLSLCodeModuleNumericClass::Float);
+
+        case VF_V1UN8:
+        case VF_V2UN8:
+        case VF_V3UN8:
+        case VF_V4UN8:
+        case VF_V1UN16:
+        case VF_V2UN16:
+        case VF_V3UN16:
+        case VF_V4UN16:
+        case VF_V1SN8:
+        case VF_V2SN8:
+        case VF_V3SN8:
+        case VF_V4SN8:
+        case VF_V1SN16:
+        case VF_V2SN16:
+        case VF_V3SN16:
+        case VF_V4SN16:
+            return static_cast<uint32>(GLSLCodeModuleNumericClass::Normalized);
+
+        case VF_V1I:
+        case VF_V2I:
+        case VF_V3I:
+        case VF_V4I:
+        case VF_V1I16:
+        case VF_V2I16:
+        case VF_V3I16:
+        case VF_V4I16:
+        case VF_V1I8:
+        case VF_V2I8:
+        case VF_V3I8:
+        case VF_V4I8:
+            return static_cast<uint32>(GLSLCodeModuleNumericClass::SignedInteger);
+
+        case VF_V1U:
+        case VF_V2U:
+        case VF_V3U:
+        case VF_V4U:
+        case VF_V1U8:
+        case VF_V2U8:
+        case VF_V3U8:
+        case VF_V4U8:
+        case VF_V1U16:
+        case VF_V2U16:
+        case VF_V3U16:
+        case VF_V4U16:
+            return static_cast<uint32>(GLSLCodeModuleNumericClass::UnsignedInteger);
+
+        // Packed formats: the packed bit is combined with the storage class the
+        // decoder must expand (e.g. A2RGB10UN is both Normalized and Packed).
+        case PF_RG4UN:
+        case PF_RGBA4:
+        case PF_BGRA4:
+        case PF_RGB565:
+        case PF_BGR565:
+        case PF_RGB5A1:
+        case PF_BGR5A1:
+        case PF_A1RGB5:
+        case PF_A2RGB10UN:
+        case PF_A2RGB10SN:
+        case PF_A2BGR10UN:
+        case PF_A2BGR10SN:
+            return static_cast<uint32>(GLSLCodeModuleNumericClass::Normalized)
+                 | static_cast<uint32>(GLSLCodeModuleNumericClass::Packed);
+
+        case PF_A2RGB10U:
+        case PF_A2RGB10I:
+        case PF_A2BGR10U:
+        case PF_A2BGR10I:
+            return static_cast<uint32>(GLSLCodeModuleNumericClass::UnsignedInteger)
+                 | static_cast<uint32>(GLSLCodeModuleNumericClass::Packed);
+
+        case PF_B10GR11UF:
+        case PF_E5BGR9UF:
+            return static_cast<uint32>(GLSLCodeModuleNumericClass::Float)
+                 | static_cast<uint32>(GLSLCodeModuleNumericClass::Packed);
+
+        default:
+            return 0;
+        }
+    }
+
     const char *GetGLSLVertexInputType(const VkFormat format,
                                        const uint8 component_count)
     {
         const uint32 numeric_class =
-            GLSLCodeModuleCapabilityResolver::GetNumericClassFromVkFormat(format);
+            GetNumericClassFromVkFormat(format);
         if (numeric_class == 0 || component_count == 0 || component_count > 4)
             return nullptr;
 
@@ -85,18 +179,10 @@ namespace
         if (!request.geometry_vertex_format)
             return false;
 
-        if (request.vertex_code_module_registry)
-        {
-            if (!PreviewMaterialVertexSemanticResolution(
-                    *request.vertex_code_module_registry, definition, request, out_resolution)
-             || !out_resolution.resolved)
-                return false;
-        }
-        else
-        {
-            out_resolution = GLSLCodeModuleResolutionResult{};
-            out_resolution.resolved = true;
-        }
+        // SSBO 顶点输入：无模块能力匹配（能力解析系统已删）——顶点输入由
+        // 下方 s1_* 模块选择完成，resolved 恒为 true。
+        out_resolution = GLSLCodeModuleResolutionResult{};
+        out_resolution.resolved = true;
 
         const GeometryVertexFormat &geometry = *request.geometry_vertex_format;
         out_vertices.clear();
@@ -325,38 +411,6 @@ MaterialVertexVaryingConfig ResolveMaterialVertexVaryingConfig(
     varying.emit_luminance =
         needs_semantic(InterStageSemantic::Luminance);
     return varying;
-}
-
-bool PreviewMaterialVertexSemanticResolution(
-    const GLSLCodeModuleRegistry &registry,
-    const MaterialDefinition &definition,
-    const MaterialDefinitionBuildRequest &request,
-    GLSLCodeModuleResolutionResult &out_result)
-{
-    out_result.resolved = false;
-    out_result.selections.Clear();
-    out_result.diagnostics.Clear();
-
-    if (definition.vertex_semantic_requirements.IsEmpty()
-     || !request.geometry_vertex_format)
-        return false;
-
-    ValueArray<GLSLCodeModuleGeometryCapability> geometry_capabilities;
-    if (!GLSLCodeModuleCapabilityResolver::BuildGeometryCapabilities(
-            *request.geometry_vertex_format, geometry_capabilities))
-        return false;
-
-    const GLSLCodeModuleResolutionRequest resolution_request{
-        definition.vertex_semantic_requirements.GetData(),
-        static_cast<uint32>(definition.vertex_semantic_requirements.GetCount()),
-        geometry_capabilities.GetData(),
-        static_cast<uint32>(geometry_capabilities.GetCount()),
-        nullptr,
-        0
-    };
-    GLSLCodeModuleCapabilityResolver resolver;
-    resolver.Resolve(registry, resolution_request, out_result);
-    return true;
 }
 
 bool BuildResolvedMaterialVertexABI(

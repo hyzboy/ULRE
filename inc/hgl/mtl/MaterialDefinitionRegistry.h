@@ -50,8 +50,6 @@ struct MaterialDefinitionBuildRequest
     mtl::ShaderProgramPurpose shader_program_purpose =
         mtl::ShaderProgramPurpose::ForwardColor;
 
-    const GLSLCodeModuleRegistry *vertex_code_module_registry = nullptr;
-
 };
 
 struct MaterialResolvedVertexABI
@@ -83,20 +81,6 @@ mtl::ShaderBuildContext *CreateMaterialFromDefinition(
     const mtl::contract::PhysicalDeviceProfileLite *profile,
     const MaterialDefinition &definition,
     const MaterialDefinitionBuildRequest &request);
-
-/**
- * Resolve a definition's format-free vertex semantic contract against the
- * Geometry supplied for this build. This query has no effect on generated
- * GLSL, pipeline state, or caches.
- *
- * @return false only when there is no semantic contract or no Geometry format;
- *         otherwise `out_result.resolved` reports whether providers were found.
- */
-bool PreviewMaterialVertexSemanticResolution(
-    const GLSLCodeModuleRegistry &registry,
-    const MaterialDefinition &definition,
-    const MaterialDefinitionBuildRequest &request,
-    GLSLCodeModuleResolutionResult &out_result);
 
 /**
  * Build the resolver-derived vertex ABI without compiling shaders or mutating
