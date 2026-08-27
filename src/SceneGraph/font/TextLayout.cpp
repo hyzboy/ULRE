@@ -176,6 +176,57 @@ namespace hgl::graph::layout
         return id;
     }
 
+    // ── 禁断（行首/行尾禁用符号）决策 ─────────────────────────────
+    // sl_l2r 与 sl_v 共用：前瞻下一可见字符，判定换行/换列时是否需要
+    // 行尾回退（end_disable 符号不能停在行尾）或行首禁断（begin_disable
+    // 符号不能出现在行首）。
+    enum class BorderSymbolAction { NormalBreak, Rollback, Keep, RollbackAndKeep };
+
+    BorderSymbolAction DecideBorderSymbolAction(const bool check_border_symbols,
+                                                const CharDrawAttrIt &it_cda,
+                                                const int i,
+                                                const int str_length,
+                                                const bool last_vis_has_end_disable,
+                                                const int visible_char_count,
+                                                const bool at_paragraph_start)
+    {
+        if(!check_border_symbols)
+            return BorderSymbolAction::NormalBreak;
+
+        // 前瞻：查找后续第一个可见字符
+        bool next_vis_has_begin_disable = false;
+        bool has_more_visible = false;
+        {
+            CharDrawAttrIt scan = it_cda;
+            for(int j = i + 1; j < str_length; j++)
+            {
+                ++scan;
+                const CharDrawAttr &sc = *scan;
+                if(sc.cla->visible)
+                {
+                    has_more_visible = true;
+                    next_vis_has_begin_disable = sc.cla->attr->begin_disable;
+                    break;
+                }
+            }
+        }
+
+        // 行尾回退（上一可见字符有 end_disable 且有后续可见字符）
+        const bool need_end_rollback = last_vis_has_end_disable
+                                    && visible_char_count > 0
+                                    && has_more_visible;
+
+        // 行首禁断（下一可见字符有 begin_disable 且非段首）
+        const bool need_begin_keep = !at_paragraph_start
+                                  && has_more_visible
+                                  && next_vis_has_begin_disable;
+
+        if(need_end_rollback && need_begin_keep)  return BorderSymbolAction::RollbackAndKeep;
+        if(need_end_rollback)                     return BorderSymbolAction::Rollback;
+        if(need_begin_keep)                       return BorderSymbolAction::Keep;
+        return BorderSymbolAction::NormalBreak;
+    }
+
     int TextLayout::sl_l2r(const DrawStringItem &dsi)
     {
         int cur_size=0;
@@ -192,7 +243,6 @@ namespace hgl::graph::layout
 
         // 行尾禁用追踪：记录上一个可见字符的信息
         bool     last_vis_has_end_disable = false;
-        int      last_vis_left_before     = 0;     // 上一个可见字符放置前的 left
         int      last_vis_adv_x           = 0;     // 上一个可见字符的 advance（用于位置恢复）
         uint16_t last_vis_cid             = 0;     // 上一个可见字符的 char_id
         uint16_t last_vis_sid             = 0;     // 上一个可见字符的 style_id
@@ -213,7 +263,6 @@ namespace hgl::graph::layout
 
                 // 更新行尾禁用追踪
                 last_vis_has_end_disable = cda.cla->attr->end_disable;
-                last_vis_left_before     = left;
                 last_vis_adv_x           = adv;
 
                 // Store GPU instance data: pen position + char_id + style_id
@@ -237,73 +286,28 @@ namespace hgl::graph::layout
                 {
                     const int line_step=static_cast<int>((font_source->GetCharHeight() + dsi.style.line_gap + dsi.style.extra_advance_y) * scale);
 
-                    if(check_border_symbols)
+                    const BorderSymbolAction action = DecideBorderSymbolAction(check_border_symbols, it_cda, i, dsi.str.length,
+                                                                               last_vis_has_end_disable, visible_char_count,
+                                                                               at_paragraph_start);
+
+                    if(action == BorderSymbolAction::Rollback)
                     {
-                        // 前瞻：查找后续第一个可见字符
-                        bool next_vis_has_begin_disable = false;
-                        bool has_more_visible = false;
-                        {
-                            CharDrawAttrIt scan = it_cda;
-                            for(int j = i + 1; j < dsi.str.length; j++)
-                            {
-                                ++scan;
-                                const CharDrawAttr &sc = *scan;
-                                if(sc.cla->visible)
-                                {
-                                    has_more_visible = true;
-                                    next_vis_has_begin_disable = sc.cla->attr->begin_disable;
-                                    break;
-                                }
-                            }
-                        }
+                        // 仅行尾禁用：回退上一可见字符到下一行
+                        gpu_char_instances.pop_back();
 
-                        // 判断是否需要行尾回退（上一可见字符有 end_disable 且有后续可见字符）
-                        const bool need_end_rollback = last_vis_has_end_disable
-                                                    && visible_char_count > 0
-                                                    && has_more_visible;
+                        left = dsi.style.start_position.x;
+                        top += line_step;
 
-                        // 判断是否需要行首禁断（下一可见字符有 begin_disable 且非段首）
-                        const bool need_begin_keep = !at_paragraph_start
-                                                  && has_more_visible
-                                                  && next_vis_has_begin_disable;
-
-                        if(need_end_rollback && need_begin_keep)
-                        {
-                            // 两者同时触发：end-disable 要移到下一行，begin-disable 要留在当前行
-                            // 结果：不換行，被回退的字符留在当前行末尾
-                            // 无需任何操作：字符已在当前位置，left 也正确
-                        }
-                        else if(need_end_rollback)
-                        {
-                            // 仅行尾禁用：回退上一可见字符到下一行
-                            left = last_vis_left_before;
-                            gpu_char_instances.pop_back();
-
-                            // 执行换行
-                            left = dsi.style.start_position.x;
-                            top += line_step;
-
-                            // 在下一行重新放置被回退的字符
-                            gpu_char_instances.push_back({static_cast<int16_t>(left),static_cast<int16_t>(top),last_vis_cid,last_vis_sid});
-                            left += last_vis_adv_x;
-                        }
-                        else if(need_begin_keep)
-                        {
-                            // 仅行首禁用：不换行，留在当前行
-                            // 无需任何操作
-                        }
-                        else
-                        {
-                            // 正常换行
-                            left = dsi.style.start_position.x;
-                            top += line_step;
-                        }
+                        gpu_char_instances.push_back({static_cast<int16_t>(left),static_cast<int16_t>(top),last_vis_cid,last_vis_sid,0});
+                        left += last_vis_adv_x;
                     }
-                    else
+                    else if(action == BorderSymbolAction::NormalBreak)
                     {
-                        left=dsi.style.start_position.x;
-                        top+=line_step;
+                        // 正常换行（或未启用禁断检查）
+                        left = dsi.style.start_position.x;
+                        top += line_step;
                     }
+                    // Keep / RollbackAndKeep：不换行，被回退的字符留在当前行末尾
 
                     at_paragraph_start = true;
                     last_vis_has_end_disable = false;
@@ -462,70 +466,30 @@ namespace hgl::graph::layout
                 {
                     const int col_top = dsi.style.start_position.y;   // 列顶 = 首坐标 y
 
-                    if(check_border_symbols)
+                    const BorderSymbolAction action = DecideBorderSymbolAction(check_border_symbols, it_cda, i, dsi.str.length,
+                                                                               last_vis_has_end_disable, visible_char_count,
+                                                                               at_paragraph_start);
+
+                    if(action == BorderSymbolAction::Rollback)
                     {
-                        // 前瞻：查找后续第一个可见字符
-                        bool next_vis_has_begin_disable = false;
-                        bool has_more_visible = false;
-                        {
-                            CharDrawAttrIt scan = it_cda;
-                            for(int j = i + 1; j < dsi.str.length; j++)
-                            {
-                                ++scan;
-                                const CharDrawAttr &sc = *scan;
-                                if(sc.cla->visible)
-                                {
-                                    has_more_visible = true;
-                                    next_vis_has_begin_disable = sc.cla->attr->begin_disable;
-                                    break;
-                                }
-                            }
-                        }
+                        // 仅列尾禁用：回退上一可见字符到下一列
+                        gpu_char_instances.pop_back();
 
-                        // 判断是否需要列尾回退（上一可见字符有 end_disable 且有后续可见字符）
-                        const bool need_end_rollback = last_vis_has_end_disable
-                                                    && visible_char_count > 0
-                                                    && has_more_visible;
+                        // 换列（从右到左）
+                        pen_x -= column_step;
+                        pen_y  = col_top;
 
-                        // 判断是否需要列首禁断（下一可见字符有 begin_disable 且非段首）
-                        const bool need_begin_keep = !at_paragraph_start
-                                                  && has_more_visible
-                                                  && next_vis_has_begin_disable;
-
-                        if(need_end_rollback && need_begin_keep)
-                        {
-                            // 两者同时触发：end-disable 移到下一列、begin-disable 留在当前列
-                            // 结果：不换列，被回退的字符留在当前列末尾
-                        }
-                        else if(need_end_rollback)
-                        {
-                            // 仅列尾禁用：回退上一可见字符到下一列
-                            gpu_char_instances.pop_back();
-
-                            // 换列（从右到左）
-                            pen_x -= column_step;
-                            pen_y  = col_top;
-
-                            // 在下一列重新放置被回退的字符（left 随列左移一列宽）
-                            gpu_char_instances.push_back({static_cast<int16_t>(last_vis_left_before - column_step),static_cast<int16_t>(col_top),last_vis_cid,last_vis_sid,last_vis_rot});
-                            pen_y = col_top + last_vis_adv_y;
-                        }
-                        else if(need_begin_keep)
-                        {
-                            // 仅列首禁用：不换列，留在当前列
-                        }
-                        else
-                        {
-                            // 正常换列
-                            pen_x -= column_step;
-                            pen_y  = col_top;
-                        }
+                        // 在下一列重新放置被回退的字符（left 随列左移一列宽）
+                        gpu_char_instances.push_back({static_cast<int16_t>(last_vis_left_before - column_step),static_cast<int16_t>(col_top),last_vis_cid,last_vis_sid,last_vis_rot});
+                        pen_y = col_top + last_vis_adv_y;
                     }
-                    else
+                    else if(action == BorderSymbolAction::NormalBreak)
                     {
+                        // 正常换列（或未启用禁断检查）
                         pen_x -= column_step;
                         pen_y  = col_top;
                     }
+                    // Keep / RollbackAndKeep：不换列，被回退的字符留在当前列末尾
 
                     at_paragraph_start = true;
                     last_vis_has_end_disable = false;

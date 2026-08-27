@@ -8,6 +8,15 @@
 
 namespace hgl::graph::layout
 {
+    // 单字符排版属性（命名空间级：sl_* 排版函数与禁断决策共用）
+    struct CharDrawAttr
+    {
+        const CLA *cla;
+        TileUVFloat uv;
+    };
+
+    using CharDrawAttrIt=IndexedList<CharDrawAttr>::Iterator;
+
     class TextLayout
     {
     protected:
@@ -22,14 +31,6 @@ namespace hgl::graph::layout
         U32CharSet chars_sets;                      ///<不重复字符统计缓冲区
         U32CharSet clear_chars_sets;                ///<待清除的字符合集
         TileUVFloatMap chars_uv;                    ///<所有要绘制字符的uv
-
-        struct CharDrawAttr
-        {
-            const CLA *cla;
-            TileUVFloat uv;
-        };
-
-        using CharDrawAttrIt=IndexedList<CharDrawAttr>::Iterator;
 
         IndexedList<CharDrawAttr> draw_chars_list;  ///<所有字符属性列表
 
