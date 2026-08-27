@@ -1140,7 +1140,6 @@ namespace
         CompositorAssembler assembler(GetShaderLibraryPath());
         const auto assembled = assembler.Assemble(
             SurfaceType::Lit,
-            BlendMode::Opaque,
             PassType::ForwardOpaque);
         if (!assembled.success)
         {
@@ -1203,7 +1202,6 @@ namespace
         lighting_options.forward_lighting_module = "compositor/forward_lighting.glsl";
         const auto scheduled_lighting = assembler.Assemble(
             SurfaceType::Lit,
-            BlendMode::Opaque,
             PassType::ForwardOpaque,
             nullptr,
             "surface/material_surface.glsl",
@@ -1233,10 +1231,14 @@ namespace
             result.diagnostics.emplace_back(
                 "Lit compositor must route lighting and material surface modules through one scheduler");
 
+        CompositorAssembler::CompositorModuleOptions dither_options{};
+        dither_options.dither = true;
         const auto dithered = assembler.Assemble(
             SurfaceType::Unlit,
-            BlendMode::Dither,
-            PassType::ForwardDither);
+            PassType::ForwardDither,
+            nullptr,
+            nullptr,
+            dither_options);
         if (!dithered.success
          || dithered.fragment_glsl.find("#define HGL_ALPHA_DITHER 1") == std::string::npos
          || dithered.fragment_glsl.find("HGLComposeColor") == std::string::npos)
@@ -1250,7 +1252,6 @@ namespace
             "material/texture_source.glsl";
         const auto masked = assembler.Assemble(
             SurfaceType::Unlit,
-            BlendMode::Masked,
             PassType::ForwardMasked,
             nullptr,
             nullptr,
@@ -1263,7 +1264,6 @@ namespace
 
         const auto texture_template = assembler.Assemble(
             SurfaceType::Unlit,
-            BlendMode::Masked,
             PassType::ForwardMasked,
             "compositor/main_forward_surface.frag.glsl",
             "surface/material_surface.glsl",
@@ -1281,7 +1281,6 @@ namespace
 
         const auto alpha_to_coverage = assembler.Assemble(
             SurfaceType::Unlit,
-            BlendMode::AlphaToCoverage,
             PassType::ForwardA2C);
         if (!alpha_to_coverage.success
          || alpha_to_coverage.fragment_glsl.find("HGLComposeColor") == std::string::npos)
@@ -1290,7 +1289,6 @@ namespace
 
         const auto depth_only = assembler.Assemble(
             SurfaceType::Lit,
-            BlendMode::Opaque,
             PassType::ShadowOpaque);
         if (!depth_only.success
          || depth_only.fragment_glsl.find("void main()")
@@ -1304,7 +1302,6 @@ namespace
 
         const auto custom_surface = assembler.Assemble(
             SurfaceType::Unlit,
-            BlendMode::Opaque,
             PassType::ForwardOpaque);
         if (!custom_surface.success
          || custom_surface.fragment_glsl.find(
@@ -3158,7 +3155,7 @@ namespace
             "lighting/forward_flat.glsl";
         options.fragment_inputs = &stage_interface;
         const auto assembled = assembler.Assemble(
-            SurfaceType::Unlit, BlendMode::Opaque, PassType::ForwardOpaque,
+            SurfaceType::Unlit, PassType::ForwardOpaque,
             "compositor/main_forward_surface.frag.glsl",
             "surface/material_surface.glsl",
             options);

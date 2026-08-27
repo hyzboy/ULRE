@@ -425,7 +425,6 @@ namespace hgl::graph::mtl
             compositor_options.fragment_inputs = &plan.stage_interface;
             compositor_options.output_contract = &plan.output_contract;
             compositor_options.coverage_contract = &plan.coverage;
-            compositor_options.use_resolved_render_state = true;
             const bool use_scene_lighting =
                 definition.compositor_surface != SurfaceType::Unlit
              && definition.compositor_surface != SurfaceType::Sky;
@@ -469,7 +468,6 @@ namespace hgl::graph::mtl
 
             const auto assembled = assembler.Assemble(
                 definition.compositor_surface,
-                definition.compositor_blend,
                 effective_pass,
                 effective_fragment_source,
                 definition.fragment_surface_module,

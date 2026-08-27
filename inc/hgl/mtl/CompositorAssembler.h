@@ -18,7 +18,7 @@ namespace hgl::graph::mtl
      * Surface Function，生成完整 GLSL
      *
      * 第一版最小实现：
-     *   1. 输入：SurfaceType, BlendMode, PassType
+     *   1. 输入：SurfaceType, PassType
      *   2. 查表选择 FS Compositor Template 文件路径
      *   3. 读取模板文件内容
      *   4. 注入 #define 宏（ShaderPermutationKey::AppendGLSLDefines()）
@@ -51,7 +51,6 @@ namespace hgl::graph::mtl
             bool alpha_test = false;
             float alpha_cutoff = 0.5f;
             bool dither = false;
-            bool use_resolved_render_state = false;
             const hgl::ValueArray<
                 InterStageSemanticContractEntry>
                 *fragment_inputs = nullptr;
@@ -68,7 +67,6 @@ namespace hgl::graph::mtl
         /// surface_function_override: optional Surface Function path override.
         AssembleResult Assemble(
             SurfaceType                  surface,
-            BlendMode                    blend,
             PassType                     pass,
             const char                  *fragment_source_override,
             const char                  *surface_function_override,
@@ -77,13 +75,12 @@ namespace hgl::graph::mtl
 
         AssembleResult Assemble(
             SurfaceType                  surface,
-            BlendMode                    blend,
             PassType                     pass,
             const char                  *fs_template_override      = nullptr,
             const char                  *surface_function_override = nullptr
         ) const
         {
-            return Assemble(surface, blend, pass, fs_template_override, surface_function_override, CompositorModuleOptions{});
+            return Assemble(surface, pass, fs_template_override, surface_function_override, CompositorModuleOptions{});
         }
 
     private:

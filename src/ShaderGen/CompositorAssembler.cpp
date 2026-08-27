@@ -308,7 +308,6 @@ namespace hgl::graph::mtl
 
     CompositorAssembler::AssembleResult CompositorAssembler::Assemble(
         SurfaceType                  surface,
-        BlendMode                    blend,
         PassType                     pass,
         const char                  *fragment_source_override,
         const char                  *surface_function_override,
@@ -363,15 +362,6 @@ namespace hgl::graph::mtl
         effective_options.enable_scene_lighting =
             effective_options.enable_scene_lighting
             || is_lit_surface;
-        if (!effective_options.use_resolved_render_state)
-        {
-            effective_options.alpha_test = effective_options.alpha_test
-                || blend == BlendMode::Masked
-                || pass == PassType::ForwardMasked;
-            effective_options.dither = effective_options.dither
-                || blend == BlendMode::Dither
-                || pass == PassType::ForwardDither;
-        }
         fs_source = InjectDefines(fs_source, effective_options);
         if (fs_source.empty())
         {
