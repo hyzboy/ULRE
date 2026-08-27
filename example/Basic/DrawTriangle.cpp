@@ -140,7 +140,6 @@ private:
         auto ecs_primitive = triangle_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         triangle_recipe.recipe_name = "DrawTriangle.VertexColor";
         triangle_recipe.mtl_def_id = "VertexColor";
-        triangle_recipe.domain = "DrawTriangle";
         triangle_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigOrtho(false);
         triangle_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
         triangle_asset = PrimitiveAsset(geom_triangle, &triangle_recipe, PrimitiveType::Triangles);

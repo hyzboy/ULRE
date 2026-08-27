@@ -59,7 +59,6 @@ private:
         sky_recipe.recipe_name = "AtmosphereSkySunGizmo.Sky";
         sky_recipe.mtl_def_id = "SkyMinimal";
         sky_recipe.render_state_overrides.pipeline_config = mtl::MakeSkyConfig();
-        sky_recipe.domain = "AtmosphereSkySunGizmo";
         sky_asset = PrimitiveAsset(prim_sky_sphere, &sky_recipe, PrimitiveType::Triangles);
         return true;
     }

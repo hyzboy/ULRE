@@ -168,12 +168,10 @@ private:
         solid_recipe.recipe_name = "LoadGeometry.DebugNormalColor";
         solid_recipe.mtl_def_id = "DebugNormalColor";
         solid_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        solid_recipe.domain = "LoadGeometry";
 
         wire_recipe.recipe_name = "LoadGeometry.Wire";
         wire_recipe.mtl_def_id = "builtin/pure_color";
         wire_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        wire_recipe.domain = "LoadGeometry";
     }
 
     bool InitSolidMDP()

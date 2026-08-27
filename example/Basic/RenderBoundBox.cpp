@@ -178,12 +178,10 @@ private:
         solid_recipe.recipe_name = "RenderBoundBox.Solid";
         solid_recipe.mtl_def_id = "DebugNormalColor";
         solid_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        solid_recipe.domain = "RenderBoundBox.Solid";
 
         wire_recipe.recipe_name = "RenderBoundBox.Wire";
         wire_recipe.mtl_def_id = "builtin/pure_color";
         wire_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        wire_recipe.domain = "RenderBoundBox.Wire";
     }
 
     bool InitSolidMDP()

@@ -96,7 +96,6 @@ private:
         mesh_recipe.recipe_name = "AtmosphereSkyAmbient.Lit";
         mesh_recipe.mtl_def_id = "Lit";
         mesh_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        mesh_recipe.domain = "AtmosphereSkyAmbient";
         graph::mtl::UpsertRecipeSSBOAssetBinding(mesh_recipe,
                                                  graph::mtl::DefaultMaterialDataSlotName,
                                                  mtl_data_ssbo_accessor->GetSSBOBinding());
@@ -240,7 +239,6 @@ private:
         sky_recipe.recipe_name = "AtmosphereSkyAmbient.Sky";
         sky_recipe.mtl_def_id = "SkyMinimal";
         sky_recipe.render_state_overrides.pipeline_config = mtl::MakeSkyConfig();
-        sky_recipe.domain = "AtmosphereSkyAmbient";
 
         return true;
     }

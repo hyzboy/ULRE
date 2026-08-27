@@ -79,7 +79,6 @@ private:
         triangle_recipe.recipe_name = "AutoInstance.VertexColor";
         triangle_recipe.mtl_def_id = "VertexColor";
         triangle_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
-        triangle_recipe.domain = "AutoInstance";
         triangle_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
         triangle_asset = PrimitiveAsset(geom_triangle, &triangle_recipe, PrimitiveType::Triangles);
 

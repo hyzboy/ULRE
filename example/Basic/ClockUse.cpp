@@ -108,7 +108,6 @@ private:
         clock_recipe.recipe_name = "Clock.PureColor";
         clock_recipe.mtl_def_id = "builtin/pure_color";
         clock_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
-        clock_recipe.domain = "Clock";
         clock_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
         graph::mtl::UpsertRecipeSSBOAssetBinding(clock_recipe,
                                                  graph::mtl::DefaultMaterialDataSlotName,

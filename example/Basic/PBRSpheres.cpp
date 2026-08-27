@@ -149,7 +149,6 @@ private:
         sphere_recipe.recipe_name = "PBRSpheres.LitTextureArray";
         sphere_recipe.mtl_def_id = "LitTextureArray";
         sphere_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        sphere_recipe.domain = "PBRSpheres";
 
         sampler = sampler_manager->CreateSampler();
         if (!sampler) {

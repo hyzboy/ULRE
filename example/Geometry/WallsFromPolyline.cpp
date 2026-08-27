@@ -139,7 +139,6 @@ public:
         wall_recipe.recipe_name = "WallsFromPolyline.Lit";
         wall_recipe.mtl_def_id = "Lit";
         wall_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        wall_recipe.domain = "WallsFromPolyline";
 
         // Allocate SSBO first so the ID is available before UpsertRecipe.
         auto *domain_manager = GetManager<ResourceDomainManager>();

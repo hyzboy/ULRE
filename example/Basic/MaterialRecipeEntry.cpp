@@ -145,7 +145,6 @@ private:
         cube_recipe.recipe_name = "Phase2.MaterialRecipeEntry.Cube";
         cube_recipe.mtl_def_id = "DebugNormalColor";
         cube_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
-        cube_recipe.domain = "Phase2AuthoringTest";
         graph::mtl::UpsertRecipeSSBOAssetBinding(cube_recipe,
                                                  graph::mtl::DefaultMaterialDataSlotName,
                                                  mtl_data_ssbo_accessor->GetSSBOBinding());

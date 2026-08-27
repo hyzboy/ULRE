@@ -307,7 +307,6 @@ namespace hgl::graph::mtl
     {
         std::string recipe_name;               // 配方名称（人类可读）
         std::string mtl_def_id;                // MaterialDefinition字符串主键（材质标识 / 未来文件名）
-        std::string domain;                    // 资源/缓存域（用于隔离不同管线空间）
         VertexShaderNodeConfig vertex_node_config = MakeDefault3DNodeConfig();
         uint16_t material_lod = 0;            // 作者层选择的材质 LOD
 
@@ -488,8 +487,7 @@ namespace hgl::graph::mtl
         hgl::hash::FNV1aHasher64 h;
 
         h << recipe.recipe_name
-          << recipe.mtl_def_id
-          << recipe.domain;
+          << recipe.mtl_def_id;
 
         h << recipe.vertex_node_config
           << recipe.material_lod

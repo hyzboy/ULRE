@@ -20,7 +20,6 @@ namespace hgl::ecs
         {
             recipe.recipe_name.clear();
             recipe.mtl_def_id.clear();
-            recipe.domain.clear();
             recipe.vertex_node_config = hgl::graph::mtl::MakeDefault3DNodeConfig();
             recipe.material_lod = 0;
             recipe.render_state_overrides.has_double_sided = true;
