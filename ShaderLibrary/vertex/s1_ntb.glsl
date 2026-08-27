@@ -3,7 +3,7 @@
 // @ulre kind Utility
 // @ulre priority 0
 // @ulre provide Normal
-// @ulre ssbo VertexNTB VertexNTB 3 Vertex required
+// @ulre ssbo VertexNTB VertexNTB 3 Mesh required
 // @ulre end
 // Stage 1: NTB 从独立 SSBO 读取——内容可变（格式由模块解码）
 // 当前格式：开发格式 Normal = R32G32B32_SFLOAT（VAB 12B/顶点紧凑——scalar 布局）

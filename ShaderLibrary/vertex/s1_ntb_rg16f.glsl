@@ -3,7 +3,7 @@
 // @ulre kind Utility
 // @ulre priority 10
 // @ulre provide Normal
-// @ulre ssbo VertexNTB VertexNTB 3 Vertex required
+// @ulre ssbo VertexNTB VertexNTB 3 Mesh required
 // @ulre end
 // Stage 1: NTB 从独立 SSBO 读取——RG16F 压缩格式（发行版）
 // 数据：法线 octahedral 编码（2 分量半浮点——R16G16_SFLOAT 4B/顶点——完整方向含 z 符号）

@@ -3,7 +3,7 @@
 // @ulre kind Position
 // @ulre priority 10
 // @ulre provide Position
-// @ulre ssbo VertexPosition VertexPosition 1 Vertex required
+// @ulre ssbo VertexPosition VertexPosition 1 Mesh required
 // @ulre end
 // Stage 1: 顶点位置从 SSBO 读取（MeshShader 方向——顶点输入统一为 SSBO）
 // 需要 VERTEX_SET / VERTEX_POSITION_BINDING 宏（descriptor_macros.glsl 提供默认值）

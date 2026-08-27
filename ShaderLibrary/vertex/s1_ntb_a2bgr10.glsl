@@ -3,7 +3,7 @@
 // @ulre kind Utility
 // @ulre priority 9
 // @ulre provide Normal
-// @ulre ssbo VertexNTB VertexNTB 3 Vertex required
+// @ulre ssbo VertexNTB VertexNTB 3 Mesh required
 // @ulre end
 // Stage 1: NTB 压缩格式（A2BGR10UN——uint 打包 4B/顶点，模块内位解码）
 // 同一 VertexNTB SSBO——仅解码实现不同（C++ 侧零感知）

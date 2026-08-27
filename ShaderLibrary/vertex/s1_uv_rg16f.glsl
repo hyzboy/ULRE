@@ -3,7 +3,7 @@
 // @ulre kind Utility
 // @ulre priority 8
 // @ulre provide UV0
-// @ulre ssbo VertexUV VertexUV 2 Vertex required
+// @ulre ssbo VertexUV VertexUV 2 Mesh required
 // @ulre end
 // Stage 1: UV 从独立 SSBO 读取——RG16F 压缩格式（发行版——half×2，4B/顶点）
 // 数据：UV 半浮点打包（每顶点 1 个 uint——低 16 位 u、高 16 位 v）

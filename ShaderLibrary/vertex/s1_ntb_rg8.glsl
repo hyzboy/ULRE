@@ -3,7 +3,7 @@
 // @ulre kind Utility
 // @ulre priority 8
 // @ulre provide Normal
-// @ulre ssbo VertexNTB VertexNTB 3 Vertex required
+// @ulre ssbo VertexNTB VertexNTB 3 Mesh required
 // @ulre end
 // Stage 1: NTB 从独立 SSBO 读取——RG8 最小格式（发行版——草/地表等粗精度）
 // 数据：法线 octahedral 编码 → uint8 量化（R8G8_UNORM 2B/顶点）

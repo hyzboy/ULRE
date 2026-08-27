@@ -3,7 +3,7 @@
 // @ulre kind Position
 // @ulre priority 9
 // @ulre provide Position
-// @ulre ssbo VertexPosition VertexPosition 1 Vertex required
+// @ulre ssbo VertexPosition VertexPosition 1 Mesh required
 // @ulre end
 // Stage 1: 2D 顶点位置从独立 SSBO 读取——RG16i 压缩格式（像素坐标 int16×2，4B/顶点）
 // 数据：int16 打包（每顶点 1 个 uint——低 16 位 x、高 16 位 y）

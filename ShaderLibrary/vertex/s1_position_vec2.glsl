@@ -3,7 +3,7 @@
 // @ulre kind Position
 // @ulre priority 8
 // @ulre provide Position
-// @ulre ssbo VertexPosition VertexPosition 1 Vertex required
+// @ulre ssbo VertexPosition VertexPosition 1 Mesh required
 // @ulre end
 // Stage 1: 顶点位置从 SSBO 读取（2D float——VF_V2F，8B/顶点）
 // scalar 布局 vec2 数组 stride 8B 紧凑（VAB 格式直读）

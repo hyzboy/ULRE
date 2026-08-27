@@ -233,16 +233,16 @@ namespace hgl::graph::mtl
                 part[length] = 0;
 
                 uint32 bit = 0;
-                if (std::strcmp(part, "Vertex") == 0)
-                    bit = VK_SHADER_STAGE_VERTEX_BIT;
+                if (std::strcmp(part, "Mesh") == 0)
+                    bit = VK_SHADER_STAGE_MESH_BIT_EXT;
                 else if (std::strcmp(part, "Fragment") == 0)
                     bit = VK_SHADER_STAGE_FRAGMENT_BIT;
                 else if (std::strcmp(part, "Compute") == 0)
                     bit = VK_SHADER_STAGE_COMPUTE_BIT;
                 else if (std::strcmp(part, "AllGraphics") == 0)
                     bit = VK_SHADER_STAGE_ALL_GRAPHICS;
-                else if (std::strcmp(part, "VertexFragment") == 0)
-                    bit = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+                else if (std::strcmp(part, "MeshFragment") == 0)
+                    bit = VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_FRAGMENT_BIT;
                 else
                     return false;
 

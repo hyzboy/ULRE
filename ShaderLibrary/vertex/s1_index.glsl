@@ -2,7 +2,7 @@
 // @ulre name s1_index
 // @ulre kind Utility
 // @ulre priority 0
-// @ulre ssbo VertexIndex VertexIndex 1 Vertex optional
+// @ulre ssbo VertexIndex VertexIndex 1 Mesh optional
 // @ulre end
 // Stage 1: 顶点索引按绘制类型解析（pc_vertex_index.is_indexed 区分）：
 //   索引绘制（is_indexed=1）  ：gl_VertexIndex 是索引 buffer 下标——sbo_index 查表得索引值

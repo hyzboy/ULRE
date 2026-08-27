@@ -3,7 +3,7 @@
 // @ulre kind Utility
 // @ulre priority 0
 // @ulre provide Luminance
-// @ulre ssbo VertexLuminance VertexLuminance 1 Vertex required
+// @ulre ssbo VertexLuminance VertexLuminance 1 Mesh required
 // @ulre end
 // Stage 1: 顶点亮度从独立 SSBO 读取（VF_V1UN8——1B/顶点）
 // 打包布局：4 个亮度字节/uint（VAB stride 1 紧凑——uint 数组按 4B 对齐读）

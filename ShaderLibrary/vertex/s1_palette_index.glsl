@@ -3,7 +3,7 @@
 // @ulre kind Utility
 // @ulre priority 1
 // @ulre provide Color
-// @ulre ssbo VertexColor VertexColor 1 Vertex required
+// @ulre ssbo VertexColor VertexColor 1 Mesh required
 // @ulre end
 // Stage 1: 顶点色 palette 索引（R8_UINT——1B/顶点——uint 打包 4 索引/uint 解码）
 // 供 emit_vertex_color_from_palette 材质（line 等）——fragVertexColor = color_palette.color[ColorIndex]

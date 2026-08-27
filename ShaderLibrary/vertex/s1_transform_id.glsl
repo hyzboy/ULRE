@@ -2,7 +2,7 @@
 // @ulre name s1_transform_id
 // @ulre kind Utility
 // @ulre priority 0
-// @ulre ssbo VertexTransformID VertexTransformID 1 Vertex required
+// @ulre ssbo VertexTransformID VertexTransformID 1 Mesh required
 // @ulre end
 // Stage 1: 顶点 TransformID（调色板变换索引——uint32 直读）
 // 引擎强制 TransformID = R32_UINT（HGL_TRANSFORM_ID_U32=1），与 l2w_index_rows
