@@ -1,5 +1,6 @@
 #include <hgl/mtl/GLSLCodeModuleCapabilityResolver.h>
 
+#include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/vk/VKFormat.h>
 
@@ -450,25 +451,6 @@ namespace hgl::graph::mtl
         }
     }
 
-    namespace
-    {
-        GLSLCodeModuleSemantic MapVertexSemantic(const VertexSemantic semantic) noexcept
-        {
-            switch (semantic)
-            {
-            case VertexSemantic::Position:  return GLSLCodeModuleSemantic::Position;
-            case VertexSemantic::Normal:    return GLSLCodeModuleSemantic::Normal;
-            case VertexSemantic::Tangent:   return GLSLCodeModuleSemantic::Tangent;
-            case VertexSemantic::Bitangent: return GLSLCodeModuleSemantic::Binormal;
-            case VertexSemantic::Color:     return GLSLCodeModuleSemantic::Color;
-            case VertexSemantic::Luminance: return GLSLCodeModuleSemantic::Luminance;
-            case VertexSemantic::TexCoord:  return GLSLCodeModuleSemantic::UV0;
-            case VertexSemantic::TransformID: return GLSLCodeModuleSemantic::TransformID;
-            default:                        return GLSLCodeModuleSemantic::Unknown;
-            }
-        }
-    }
-
     bool GLSLCodeModuleCapabilityResolver::BuildGeometryCapabilities(
         const GeometryVertexFormat &format,
         ValueArray<GLSLCodeModuleGeometryCapability> &out)
@@ -482,7 +464,8 @@ namespace hgl::graph::mtl
             if (!attribute)
                 continue;
 
-            const GLSLCodeModuleSemantic semantic = MapVertexSemantic(attribute->semantic);
+            const GLSLCodeModuleSemantic semantic =
+                GetGLSLCodeModuleSemanticFromVertexSemantic(attribute->semantic);
             if (semantic == GLSLCodeModuleSemantic::Unknown)
                 continue;
 
