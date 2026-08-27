@@ -19,16 +19,14 @@ namespace
         //     故此处不再需要 Scene 固定绑定映射。
         case DescriptorSetType::PerObject:
             // P1-2c：PerObject 集 binding 由固定常量表 kPerObjectBinding* 确定
-            //（l2w / l2w_index_rows / joint / mtl_data_index_rows）。
+            //（l2w / l2w_index_rows / mtl_data_index_rows）。
             if (strcmp(name, "l2w") == 0)              { out_binding = kPerObjectBindingL2W;           return true; }
             if (strcmp(name, "l2w_index_rows") == 0)   { out_binding = kPerObjectBindingL2WIndexRows;  return true; }
-            if (strcmp(name, "joint") == 0)            { out_binding = kPerObjectBindingJoint;         return true; }
             if (strcmp(name, "mtl_data_index_rows") == 0) { out_binding = kPerObjectBindingDataIndexRows; return true; }
             // 顶点数据 SSBO（MeshShader 方向）
             if (strcmp(name, "VertexPosition") == 0)   { out_binding = kPerObjectBindingVertexPosition; return true; }
             if (strcmp(name, "VertexUV") == 0)         { out_binding = kPerObjectBindingVertexUV;       return true; }
             if (strcmp(name, "VertexNTB") == 0)        { out_binding = kPerObjectBindingVertexNTB;      return true; }
-            if (strcmp(name, "VertexJoint") == 0)      { out_binding = kPerObjectBindingVertexJoint;    return true; }
             if (strcmp(name, "VertexIndex") == 0)      { out_binding = kPerObjectBindingVertexIndex;    return true; }
             if (strcmp(name, "VertexColor") == 0)      { out_binding = kPerObjectBindingVertexColor;   return true; }
             if (strcmp(name, "VertexLuminance") == 0)  { out_binding = kPerObjectBindingVertexLuminance; return true; }

@@ -32,8 +32,6 @@ namespace hgl::graph::mtl
             {VertexSemantic::Size,           "Size",           FloatShape(2),  1},
             {VertexSemantic::Rotation,       "Rotation",       FloatShape(1),  1},
             {VertexSemantic::Assign,         "Assign",         UIntShape(1),   1},
-            {VertexSemantic::JointID,        "JointID",        UIntShape(4),   1},
-            {VertexSemantic::JointWeight,    "JointWeight",    FloatShape(4),  1},
             {VertexSemantic::TransformID,    "TransformID",    UIntShape(1),   1},
             {VertexSemantic::DataIndexID,    "DataIndexID",    UIntShape(1),   1}
         };

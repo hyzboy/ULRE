@@ -244,7 +244,6 @@ static bool ValidateDefinitionCapabilitySubset(
         case DescriptorSemantic::VertexPosition:
         case DescriptorSemantic::VertexUV:
         case DescriptorSemantic::VertexNTB:
-        case DescriptorSemantic::VertexJoint:
         case DescriptorSemantic::VertexColor:
         case DescriptorSemantic::VertexLuminance:
         case DescriptorSemantic::VertexTransformID:
@@ -540,10 +539,6 @@ ShaderBuildContext *CompileCompositorMaterial(
             case DescriptorSemantic::VertexNTB:
                 if (!ctx->AddSSBOVertex(stage_bits, SBS_VertexNTB))
                     return FailAfterBuild("failed to add VertexNTB SSBO");
-                break;
-            case DescriptorSemantic::VertexJoint:
-                if (!ctx->AddSSBOVertex(stage_bits, SBS_VertexJoint))
-                    return FailAfterBuild("failed to add VertexJoint SSBO");
                 break;
             case DescriptorSemantic::VertexColor:
                 if (!ctx->AddSSBOVertex(stage_bits, SBS_VertexColor))

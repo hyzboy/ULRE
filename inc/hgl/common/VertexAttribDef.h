@@ -21,8 +21,6 @@ namespace hgl::graph
         Size,
         Rotation,
         Assign,
-        JointID,
-        JointWeight,
         TransformID,
         DataIndexID,
 
@@ -105,8 +103,6 @@ namespace hgl::graph
             case VertexSemantic::Size:             return "Size";
             case VertexSemantic::Rotation:         return "Rotation";
             case VertexSemantic::Assign:           return "Assign";
-            case VertexSemantic::JointID:          return "JointID";
-            case VertexSemantic::JointWeight:      return "JointWeight";
             case VertexSemantic::TransformID:      return "TransformID";
             case VertexSemantic::DataIndexID:      return "DataIndexID";
             default:                               return "Unknown";
@@ -128,8 +124,6 @@ namespace hgl::graph
         if(std::strcmp(name,"Size")==0)           return VertexSemantic::Size;
         if(std::strcmp(name,"Rotation")==0)       return VertexSemantic::Rotation;
         if(std::strcmp(name,"Assign")==0)         return VertexSemantic::Assign;
-        if(std::strcmp(name,"JointID")==0)        return VertexSemantic::JointID;
-        if(std::strcmp(name,"JointWeight")==0)    return VertexSemantic::JointWeight;
         if(std::strcmp(name,"TransformID")==0)    return VertexSemantic::TransformID;
         if(std::strcmp(name,"DataIndexID")==0)    return VertexSemantic::DataIndexID;
 
@@ -181,8 +175,6 @@ namespace hgl::graph
         constexpr VertexSemantic Size           = VertexSemantic::Size;
         constexpr VertexSemantic Rotation       = VertexSemantic::Rotation;
         constexpr VertexSemantic Assign         = VertexSemantic::Assign;
-        constexpr VertexSemantic JointID        = VertexSemantic::JointID;
-        constexpr VertexSemantic JointWeight    = VertexSemantic::JointWeight;
         constexpr VertexSemantic TransformID    = VertexSemantic::TransformID;
         constexpr VertexSemantic DataIndexID    = VertexSemantic::DataIndexID;
     }

@@ -36,7 +36,6 @@ namespace hgl::graph::mtl
         VertexPosition,
         VertexUV,
         VertexNTB,
-        VertexJoint,
         VertexColor,
         VertexLuminance,
         VertexTransformID,

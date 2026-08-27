@@ -165,15 +165,6 @@ inline void PushVertexNTB(std::vector<SerializedDescriptorEntry> &v, const uint3
     });
 }
 
-inline void PushVertexJoint(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
-{
-    v.push_back({
-        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
-        SBS_VertexJoint.name, SBS_VertexJoint.struct_name, nullptr, DescriptorSemantic::VertexJoint,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::VertexJoint, DescriptorSemanticLayer::SSBO
-    });
-}
-
 inline void PushVertexColor(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
     v.push_back({
@@ -387,12 +378,6 @@ inline bool PushManifestSSBO(
         entry.set_type = DescriptorSetType::PerObject;
         entry.kind = DescriptorKind::SSBO;
         entry.semantic = DescriptorSemantic::VertexNTB;
-        entry.semantic_layer = DescriptorSemanticLayer::SSBO;
-        break;
-    case SSBOType::VertexJoint:
-        entry.set_type = DescriptorSetType::PerObject;
-        entry.kind = DescriptorKind::SSBO;
-        entry.semantic = DescriptorSemantic::VertexJoint;
         entry.semantic_layer = DescriptorSemanticLayer::SSBO;
         break;
     case SSBOType::VertexIndex:

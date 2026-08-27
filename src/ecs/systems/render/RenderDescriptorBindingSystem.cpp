@@ -936,7 +936,6 @@ namespace hgl::ecs
             case graph::mtl::DescriptorSemantic::VertexPosition:
             case graph::mtl::DescriptorSemantic::VertexUV:
             case graph::mtl::DescriptorSemantic::VertexNTB:
-            case graph::mtl::DescriptorSemantic::VertexJoint:
             case graph::mtl::DescriptorSemantic::VertexColor:
             case graph::mtl::DescriptorSemantic::VertexLuminance:
             case graph::mtl::DescriptorSemantic::VertexTransformID:
@@ -950,7 +949,6 @@ namespace hgl::ecs
                     case graph::mtl::DescriptorSemantic::VertexPosition: return graph::VertexSemantic::Position;
                     case graph::mtl::DescriptorSemantic::VertexUV:       return graph::VertexSemantic::TexCoord;
                     case graph::mtl::DescriptorSemantic::VertexNTB:      return graph::VertexSemantic::Normal;
-                    case graph::mtl::DescriptorSemantic::VertexJoint:    return graph::VertexSemantic::JointID;
                     case graph::mtl::DescriptorSemantic::VertexColor:    return graph::VertexSemantic::Color;
                     case graph::mtl::DescriptorSemantic::VertexLuminance: return graph::VertexSemantic::Luminance;
                     case graph::mtl::DescriptorSemantic::VertexTransformID: return graph::VertexSemantic::TransformID;
@@ -1119,7 +1117,6 @@ namespace hgl::ecs
         case graph::mtl::DescriptorSemantic::VertexPosition:
         case graph::mtl::DescriptorSemantic::VertexUV:
         case graph::mtl::DescriptorSemantic::VertexNTB:
-        case graph::mtl::DescriptorSemantic::VertexJoint:
         case graph::mtl::DescriptorSemantic::VertexColor:
         case graph::mtl::DescriptorSemantic::VertexLuminance:
         case graph::mtl::DescriptorSemantic::VertexTransformID:

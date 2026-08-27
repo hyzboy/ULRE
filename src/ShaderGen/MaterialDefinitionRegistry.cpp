@@ -112,7 +112,7 @@ namespace
                 return false;
             out_position_format = position_attribute->format;
 
-            bool need_uv = false, need_ntb = false, need_joint = false, need_color = false, need_luminance = false, need_transform_id = false, need_size = false;
+            bool need_uv = false, need_ntb = false, need_color = false, need_luminance = false, need_transform_id = false, need_size = false;
             for (int i = 0; i < definition.vertex_semantic_requirements.GetCount(); ++i)
             {
                 const auto &requirement = definition.vertex_semantic_requirements[i];
@@ -124,8 +124,6 @@ namespace
                 case VertexSemantic::Normal:
                 case VertexSemantic::Tangent:
                 case VertexSemantic::Bitangent: need_ntb = true; break;
-                case VertexSemantic::JointID:
-                case VertexSemantic::JointWeight: need_joint = true; break;
                 case VertexSemantic::Color: need_color = true; break;
                 case VertexSemantic::Luminance: need_luminance = true; break;
                 case VertexSemantic::TransformID: need_transform_id = true; break;
@@ -160,8 +158,6 @@ namespace
                 else
                     out_vertex_input_glsl += "#include \"vertex/s1_ntb.glsl\"\n";
             }
-            if (need_joint)
-                out_vertex_input_glsl += "#include \"vertex/s1_joint.glsl\"\n";
             if (need_color)
             {
                 if (definition.vertex_varying.emit_vertex_color_from_palette)
