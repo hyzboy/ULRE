@@ -63,10 +63,20 @@ SET(CANONICAL_SHADER_CONTRACT_FILES
     ${ROOT_INCLUDE_PATH}/hgl/mtl/BindingTableBuilder.h
     MaterialBindingContract.cpp
     BindingTableBuilder.cpp
-    common/CanonicalContractWriter.h)
+    common/CanonicalContractWriter.h
+    ${SHADERGEN_INCLUDE_PATH}/ShaderResourceSchema.h
+    ${SHADERGEN_INCLUDE_PATH}/DescriptorKind.h
+    ${SHADERGEN_INCLUDE_PATH}/DescriptorSemantic.h
+    ${SHADERGEN_INCLUDE_PATH}/SerializedDescriptorEntry.h
+    ${SHADERGEN_INCLUDE_PATH}/SerializedVertexEntry.h)
 
 SOURCE_GROUP("Canonical Shader Contract"
     FILES ${CANONICAL_SHADER_CONTRACT_FILES})
+
+SET(DESCRIPTOR_BUILDER_FILES   common/DescriptorBuilderCommon.h
+                               3d/DefinitionDescriptorBuilder.h)
+
+SOURCE_GROUP("Descriptor Builder" FILES ${DESCRIPTOR_BUILDER_FILES})
 
 SET(DS_LAYOUT_ALLOCATOR_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/DescriptorSetLayoutAllocator.h)
 
@@ -76,9 +86,22 @@ SOURCE_GROUP("Descriptor Set Layout" FILES  ${DS_LAYOUT_ALLOCATOR_HEADER_FILES}
                                             ${DS_LAYOUT_ALLOCATOR_SOURCE_FILES})
 
 SET(GLSL_COMPILER_SOURCE	GLSLCompiler.h
-                            GLSLCompiler.cpp)
+                            GLSLCompiler.cpp
+                            TBuiltInResourceCompat.h)
 
 SOURCE_GROUP("GLSL Compiler" FILES ${GLSL_COMPILER_SOURCE})
+
+SET(MESH_SHADER_FILES    common/MeshShaderAssembler.h
+                        common/MeshShaderHeaderGen.h
+                        common/MeshShaderModeCharQuad.h
+                        common/MeshShaderModeLineQuad.h
+                        common/MeshShaderModeVertexPassthrough.h
+                        common/MeshShaderVaryingGen.h
+                        common/MeshShaderVertexAdapter.h
+                        common/VertexVaryingConfig.h
+                        common/VertexBuilderCommon.h)
+
+SOURCE_GROUP("Mesh Shader" FILES ${MESH_SHADER_FILES})
 
 set(STD_MTL_HEADER_PATH  ${ROOT_INCLUDE_PATH}/hgl/mtl)
 
@@ -142,6 +165,10 @@ SOURCE_GROUP("Compositor" FILES ${COMPOSITOR_HEADER_FILES}
 SET(NEW_MTL_TYPE_FILES  ${ROOT_INCLUDE_PATH}/hgl/mtl/SurfaceType.h
                         ${ROOT_INCLUDE_PATH}/hgl/mtl/BlendMode.h
                         ${ROOT_INCLUDE_PATH}/hgl/mtl/PassType.h
+                        ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialRecipe.h
+                        ${ROOT_INCLUDE_PATH}/hgl/mtl/PipelineConfig.h
+                        ${ROOT_INCLUDE_PATH}/hgl/mtl/VertexShaderNodeConfig.h
+                        ${ROOT_INCLUDE_PATH}/hgl/mtl/VertexNodeConfigResolver.h
 )
 
 SOURCE_GROUP("Material Types" FILES ${NEW_MTL_TYPE_FILES})
@@ -158,6 +185,8 @@ add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_INCLUDE_PATH}
                                         ${SHADER_CREATER_HEADER_FILES}
                                         ${SHADER_CREATER_SOURCE_FILES}
                                         ${GLSL_COMPILER_SOURCE}
+                                        ${MESH_SHADER_FILES}
+                                        ${DESCRIPTOR_BUILDER_FILES}
                                         ${SHADERGEN_COMMON_FILES}
                                         ${SHADER_LIBRARY_FILES}
                                         ${STD_MTL_SOURCE}
