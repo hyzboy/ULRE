@@ -2,7 +2,6 @@ schema = 1
 id = "builtin/text_gpu_bitmap"
 name = "Text2D_GPU_Bitmap"
 source = "file"
-usage = "General"
 bootstrap = "TextAlphaBlend"
 provider_policy = "GeometryOnly"
 

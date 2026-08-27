@@ -2,7 +2,6 @@ schema = 1
 id = "DebugNormalColor"
 name = "DebugNormalColor"
 source = "file"
-usage = "Debug"
 bootstrap = "None"
 provider_policy = "GeometryOnly"
 

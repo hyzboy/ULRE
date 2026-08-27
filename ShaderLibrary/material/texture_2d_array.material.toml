@@ -2,7 +2,6 @@ schema = 1
 id = "Texture2DArray"
 name = "Texture2DArray"
 source = "file"
-usage = "General"
 bootstrap = "None"
 provider_policy = "GeometryOnly"
 

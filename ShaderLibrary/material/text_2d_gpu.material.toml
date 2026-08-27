@@ -2,7 +2,6 @@ schema = 1
 id = "builtin/text_gpu"
 name = "Text2D_GPU"
 source = "file"
-usage = "General"
 bootstrap = "TextAlphaBlend"
 provider_policy = "GeometryOnly"
 

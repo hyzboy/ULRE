@@ -13,7 +13,8 @@ namespace hgl::graph::mtl
         OK,
         InvalidValue,
         InvalidSemantic,
-        InvalidNumber
+        InvalidNumber,
+        UnknownKey
     };
 
     const char *GetMaterialDefinitionFileParseResultName(

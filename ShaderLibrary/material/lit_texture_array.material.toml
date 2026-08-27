@@ -2,7 +2,6 @@ schema = 1
 id = "LitTextureArray"
 name = "LitTextureArray"
 source = "file"
-usage = "General"
 bootstrap = "None"
 provider_policy = "GeometryOnly"
 

@@ -701,8 +701,93 @@ namespace hgl::graph::mtl
         case MaterialDefinitionFileParseResult::Skipped: return "Skipped";
         case MaterialDefinitionFileParseResult::OK: return "OK";
         case MaterialDefinitionFileParseResult::InvalidValue: return "InvalidValue";
+        case MaterialDefinitionFileParseResult::UnknownKey: return "UnknownKey";
         default: return "Invalid";
         }
+    }
+
+    // 层内键白名单校验：解析器不认识的键 → false。未知键 = 作者笔误或已删字段
+    // 残留（如 usage），静默吞掉会让作者以为配置生效而实际被忽略——TOML 化
+    // 材质最危险的失效模式，故显式报错。
+    static bool ValidateKnownKeys(
+        const toml::value &table,
+        std::initializer_list<const char *> allowed) noexcept
+    {
+        if (!table.is_table())
+            return true;
+        const auto &tbl = table.as_table();
+        for (const auto &pair : tbl)
+        {
+            const std::string &key = pair.first;
+            bool known = false;
+            for (const char *name : allowed)
+            {
+                if (key == name)
+                {
+                    known = true;
+                    break;
+                }
+            }
+            if (!known)
+                return false;
+        }
+        return true;
+    }
+
+    // 顶层 + 各子层键白名单（与 ParseDefinition/ParseRenderState 支持的键逐项对应）
+    static bool ValidateMaterialDefinitionKeys(const toml::value &root) noexcept
+    {
+        if (!ValidateKnownKeys(root, {
+                "schema", "id", "name", "source", "bootstrap", "provider_policy",
+                "transform", "fragment", "compositor", "vertex", "resources",
+                "mesh_shader", "render_state"}))
+            return false;
+
+        if (root.contains("transform")
+         && !ValidateKnownKeys(root.at("transform"), {
+                "source", "mapping", "orientation", "projection", "scale"}))
+            return false;
+
+        if (root.contains("fragment")
+         && !ValidateKnownKeys(root.at("fragment"), {
+                "source", "surface_module", "material_source_module", "ntb_module"}))
+            return false;
+
+        if (root.contains("compositor")
+         && !ValidateKnownKeys(root.at("compositor"), {
+                "surface", "blend", "pass"}))
+            return false;
+
+        if (root.contains("vertex")
+         && !ValidateKnownKeys(root.at("vertex"), {
+                "requirements", "varyings"}))
+            return false;
+
+        if (root.contains("resources")
+         && !ValidateKnownKeys(root.at("resources"), {
+                "ubos", "ssbos", "samplers", "textures", "defines"}))
+            return false;
+
+        if (root.contains("mesh_shader")
+         && !ValidateKnownKeys(root.at("mesh_shader"), {
+                "mode", "max_invocations"}))
+            return false;
+
+        if (root.contains("render_state"))
+        {
+            const toml::value &rs = root.at("render_state");
+            if (!ValidateKnownKeys(rs, {
+                    "double_sided", "alpha_test", "alpha_cutoff", "dither", "pipeline"}))
+                return false;
+            if (rs.contains("pipeline")
+             && !ValidateKnownKeys(rs.at("pipeline"), {
+                    "cull_mode", "depth_compare_op", "blend_src", "blend_dst",
+                    "depth_test", "depth_write", "alpha_blend", "alpha_to_coverage",
+                    "dynamic_line_width", "overlay", "wireframe", "line_width"}))
+                return false;
+        }
+
+        return true;
     }
 
     MaterialDefinitionFileParseResult ParseMaterialDefinitionFile(
@@ -722,9 +807,11 @@ namespace hgl::graph::mtl
              || !root.at("schema").is_integer()
              || root.at("schema").as_integer() != 1)
                 return MaterialDefinitionFileParseResult::InvalidValue;
-            return ParseDefinition(root, out_data)
-                ? MaterialDefinitionFileParseResult::OK
-                : MaterialDefinitionFileParseResult::InvalidValue;
+            if (!ParseDefinition(root, out_data))
+                return MaterialDefinitionFileParseResult::InvalidValue;
+            if (!ValidateMaterialDefinitionKeys(root))
+                return MaterialDefinitionFileParseResult::UnknownKey;
+            return MaterialDefinitionFileParseResult::OK;
         }
         catch (const toml::exception &)
         {

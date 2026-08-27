@@ -3450,7 +3450,6 @@ namespace
             "id = \"LitFile\"\n"
             "name = \"LitFile\"\n"
             "source = \"file\"\n"
-            "usage = \"General\"\n"
             "bootstrap = \"None\"\n"
             "provider_policy = \"AllowDerived\"\n"
             "[transform]\n"
@@ -3523,7 +3522,6 @@ namespace
             "id = \"LegacyDirect\"\n"
             "name = \"LegacyDirect\"\n"
             "source = \"file\"\n"
-            "usage = \"General\"\n"
             "bootstrap = \"None\"\n"
             "provider_policy = \"GeometryOnly\"\n"
             "[compositor]\n"
@@ -3544,7 +3542,6 @@ namespace
             "id = \"Broken\"\n"
             "name = \"Broken\"\n"
             "source = \"builtin\"\n"
-            "usage = \"General\"\n"
             "bootstrap = \"None\"\n"
             "provider_policy = \"GeometryOnly\"\n";
         MaterialDefinitionFileData invalid_data;

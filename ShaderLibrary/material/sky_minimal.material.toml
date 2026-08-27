@@ -2,7 +2,6 @@ schema = 1
 id = "SkyMinimal"
 name = "SkyMinimal"
 source = "file"
-usage = "Sky"
 bootstrap = "None"
 provider_policy = "GeometryOnly"
 

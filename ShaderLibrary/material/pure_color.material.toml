@@ -2,7 +2,6 @@ schema = 1
 id = "builtin/pure_color"
 name = "builtin/pure_color"
 source = "file"
-usage = "General"
 bootstrap = "PureColor"
 provider_policy = "GeometryOnly"
 
