@@ -10,6 +10,7 @@
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/MaterialShaderCompiler.h>
 #include <hgl/mtl/CompositorAssembler.h>
+#include <hgl/graph/font/CharQuadConfig.h>
 #include <hgl/mtl/MaterialOutputContract.h>
 #include <hgl/mtl/ShaderBuildContext.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
@@ -364,9 +365,9 @@ namespace hgl::graph::mtl
             {
                 ms_mode = MeshShaderMode::CharQuad;
                 // CharQuad: 每线程 6 顶点，max_vertices ≤ 256（Vulkan 规范保证下限）
-                // 42 × 6 = 252 ≤ 256
+                // 42 × 6 = 252 ≤ 256（TEXT_CHARQUAD_MAX_INVOCATIONS 与 CPU dispatch 共享）
                 max_invocations = definition.mesh_shader_max_invocations > 0
-                    ? std::min(definition.mesh_shader_max_invocations, 42u) : 42u;
+                    ? std::min(definition.mesh_shader_max_invocations, TEXT_CHARQUAD_MAX_INVOCATIONS) : TEXT_CHARQUAD_MAX_INVOCATIONS;
                 // CharQuad 自声明所有 SSBO，不需要外部顶点输入/provider
             }
             else if (is_lines)

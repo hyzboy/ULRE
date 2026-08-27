@@ -56,7 +56,13 @@ namespace hgl::graph
         error = FT_Set_Pixel_Sizes(ft_face, fnt.width, fnt.height);
         if (error)
         {
-            // Failed to set font size, but we can continue with default
+            // 字体像素尺寸不可用：按"加载失败"显式处理（与 FT_New_Face 失败一致），
+            // 不静默使用默认尺寸——后续 MakeCharBitmap 检测 ft_face==nullptr 直接返回 false
+            FT_Done_Face(ft_face);
+            ft_face = nullptr;
+            FT_Done_FreeType(ft_library);
+            ft_library = nullptr;
+            return;
         }
 
         // Set up character encoding

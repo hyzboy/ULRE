@@ -158,29 +158,7 @@ protected:
 
         pos.y += line_gap*2;
 
-        // --- 旋转测试 ---
-
-        cs = layout::CharStyle{};
-        cs.text_color = WHITE.packUnorm4x8();
-        cs.rotation = 90;
-        if(!CreateTextLine(fs, cs, U16String(OS_TEXT("旋转 90°")), pos))
-            return(false);
-
-        pos.y += line_gap;
-
-        cs = layout::CharStyle{};
-        cs.text_color = WHITE.packUnorm4x8();
-        cs.rotation = 180;
-        if(!CreateTextLine(fs, cs, U16String(OS_TEXT("旋转 180°")), pos))
-            return(false);
-
-        pos.y += line_gap;
-
-        cs = layout::CharStyle{};
-        cs.text_color = WHITE.packUnorm4x8();
-        cs.rotation = 270;
-        if(!CreateTextLine(fs, cs, U16String(OS_TEXT("旋转 270°")), pos))
-            return(false);
+        // 字符旋转（90/180/270）为 CharStyle 正式功能，竖排旋转见独立示例：TextVertical（example/GUI/TextVertical.cpp）
 
         // 多 FontSource 互不影响演示见独立示例：MultiFontSource（example/GUI/MultiFontSource.cpp）
 

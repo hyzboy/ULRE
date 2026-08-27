@@ -8,6 +8,7 @@
 #include<hgl/graph/font/FontSource.h>
 #include<hgl/graph/font/TextLayoutEngine.h>
 #include<hgl/graph/font/TextCharSSBO.h>
+#include<hgl/graph/font/CharQuadConfig.h>
 #include<hgl/color/Color4ub.h>
 #include<hgl/graph/geo/GeometryCreater.h>   // FloatToHalf
 #include<hgl/graph/module/TextureManager.h>
@@ -281,9 +282,11 @@ namespace hgl::ecs
                                             static_cast<uint32_t>(graph::DescriptorSetType::Bindless));
             }
 
-            // CharQuad dispatch: 42 chars per group (max_invocations for CharQuad)
+            // CharQuad dispatch：每工作组 TEXT_CHARQUAD_MAX_INVOCATIONS 字符
+            //（与 ShaderGen 的 group_size 共享同一常量，见 CharQuadConfig.h）
             const uint32_t char_count = res.last_draw_char_count;
-            const uint32_t group_count = (char_count + 41u) / 42u;
+            const uint32_t group_count = (char_count + graph::mtl::TEXT_CHARQUAD_MAX_INVOCATIONS - 1u)
+                                        / graph::mtl::TEXT_CHARQUAD_MAX_INVOCATIONS;
             cmd->DrawMeshTasks(group_count);
         }
     }
