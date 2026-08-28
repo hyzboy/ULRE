@@ -94,7 +94,8 @@ namespace hgl::graph::mtl
         ms += "    const vec3 to_world   = (l2w_m * vec4(to, 1.0)).xyz;\n";
 
         // 屏幕空间线宽：width 为像素（与旧 vkCmdSetLineWidth 语义一致）。
-        // clip 空间偏移——NDC 1 单位 = viewport_height/2 像素：
+        // clip 空间偏移——NDC 1 单位 = viewport 高度/2 像素（视口高从场景级
+        // viewport UBO 读取：切换 FBO 必绑，所有材质无条件 include）：
         //   偏移_ndc = n_ndc * (width_pixels * 0.5) / (viewport_height * 0.5) = n_ndc * width_pixels / viewport_height
         ms += "    const vec4 c_from = camera.vp * vec4(from_world, 1.0);\n";
         ms += "    const vec4 c_to   = camera.vp * vec4(to_world, 1.0);\n";
@@ -119,7 +120,7 @@ namespace hgl::graph::mtl
         ms += "#endif\n";
         ms += "    const float depth = 0.5 * (c_from.w + c_to.w);\n";
         ms += "    const float width_eff = clamp(width * (10.0 / max(depth, 1e-4)), min_width, width);\n";
-        ms += "    const vec2 offset_ndc = n_ndc * (width_eff / pc_vertex_index.viewport_height);\n";
+        ms += "    const vec2 offset_ndc = n_ndc * (width_eff / float(viewport.viewport_resolution.y));\n";
         ms += "    vec4 c0 = c_from; c0.xy += offset_ndc * c_from.w;\n";
         ms += "    vec4 c1 = c_from; c1.xy -= offset_ndc * c_from.w;\n";
         ms += "    vec4 c2 = c_to;   c2.xy += offset_ndc * c_to.w;\n";

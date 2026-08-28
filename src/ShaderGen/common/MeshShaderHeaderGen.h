@@ -42,26 +42,20 @@ namespace hgl::graph::mtl
         const bool needs_camera = (node_cfg.projection == ProjectionMode::WorldCameraVP ||
                                    node_cfg.orientation == OrientationMode::CameraFacingFree ||
                                    node_cfg.orientation == OrientationMode::CameraFacingAxisY);
-        const bool needs_viewport = (node_cfg.projection == ProjectionMode::OrthoViewport ||
-                                     node_cfg.projection == ProjectionMode::OrthoThenLocalToWorld ||
-                                     node_cfg.scale     == ScaleMode::FixedPixelSize);
+        // Viewport UBO 无条件 include：它是场景级 UBO（Scene set binding=2），
+        // 切换 FBO 必绑、所有材质可用——不再按投影条件裁剪（Line 的 3D 线宽
+        // 计算也读 viewport.viewport_resolution，取代 MeshDrawParams.viewport_height）。
         const bool needs_l2w = (node_cfg.orientation == OrientationMode::World ||
                                 node_cfg.orientation == OrientationMode::CameraFacingFree ||
                                 node_cfg.orientation == OrientationMode::CameraFacingAxisY);
 
-        if (needs_camera || needs_viewport)
+        if (needs_camera)
         {
-            if (needs_camera)
-            {
-                ms += "#include \"ubo/camera_info.glsl\"\n";
-                ms += "SCENE_CAMERA_UBO;\n";
-            }
-            if (needs_viewport)
-            {
-                ms += "#include \"ubo/viewport_info.glsl\"\n";
-                ms += "SCENE_VIEWPORT_UBO;\n";
-            }
+            ms += "#include \"ubo/camera_info.glsl\"\n";
+            ms += "SCENE_CAMERA_UBO;\n";
         }
+        ms += "#include \"ubo/viewport_info.glsl\"\n";
+        ms += "SCENE_VIEWPORT_UBO;\n";
 
         if (needs_l2w)
         {

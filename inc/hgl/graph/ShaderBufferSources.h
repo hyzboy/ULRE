@@ -56,7 +56,7 @@ namespace hgl::graph::mtl
         uint32_t vertex_base;
         uint32_t is_indexed;
         uint32_t total_vertices;
-        float    viewport_height;
+        float    char_height;       // CharQuad 专用：字符高度（基准线校正）；其余模式恒 0
         uint32_t first_instance;
     };
     static_assert(sizeof(MeshDrawParams) == 24, "MeshDrawParams must match GLSL std430 layout");

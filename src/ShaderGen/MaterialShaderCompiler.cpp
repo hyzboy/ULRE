@@ -208,7 +208,9 @@ static bool ValidateDefinitionCapabilitySubset(
         switch (req.semantic)
         {
         case DescriptorSemantic::ViewportInfo:
-            allowed = HasUBORequirement(definition, DescriptorSemantic::ViewportInfo);
+            // Viewport 是场景级 UBO（Scene set binding=2，切换 FBO 必绑）——恒允许，
+            // 不需要材质 TOML 显式声明（材质声明了也只是冗余）。
+            allowed = true;
             break;
         case DescriptorSemantic::CameraInfo:
             allowed = HasUBORequirement(definition, DescriptorSemantic::CameraInfo);

@@ -679,10 +679,6 @@ namespace hgl::ecs
 
             if (line_buffer_.mesh_draw_params)
             {
-                uint32_t viewport_height = 1;
-                if (auto *rt = context_ ? context_->GetRenderTarget() : nullptr)
-                    viewport_height = rt->GetExtent().height;
-
                 auto *gpu = line_buffer_.mesh_draw_params->GetGPUBuffer();
                 auto *row = gpu ? static_cast<graph::mtl::MeshDrawParams *>(
                     gpu->Map(0, sizeof(graph::mtl::MeshDrawParams))) : nullptr;
@@ -693,7 +689,6 @@ namespace hgl::ecs
                     row->vertex_base     = 0;
                     row->is_indexed      = 0;
                     row->total_vertices  = total_line_count_ * 2u;
-                    row->viewport_height = static_cast<float>(viewport_height);
                     row->first_instance  = 0;
                     gpu->Unmap();
                 }

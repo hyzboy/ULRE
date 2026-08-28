@@ -816,13 +816,12 @@ namespace hgl::ecs
                         row->first_instance  = 0;
 
                         // GPU path: total_vertices = character count (CharQuad reads this)
-                        // viewport_height = char_height (for baseline correction in shader)
                         row->is_indexed      = 0;
                         row->total_vertices  = resources->last_draw_char_count;
 
-                        // viewport_height = char_height（基础值，不乘 scale）
-                        // GPU 侧会按每个字符的 char_scale 单独缩放
-                        row->viewport_height = static_cast<float>(input.font_source->GetCharHeight());
+                        // char_height = 字符高度（基础值，不乘 scale；CharQuad 基准线校正用）
+                        // GPU 侧会按每个字符的 char_scale 单独缩放。
+                        row->char_height = static_cast<float>(input.font_source->GetCharHeight());
                         gpu->Unmap();
                     }
                 }

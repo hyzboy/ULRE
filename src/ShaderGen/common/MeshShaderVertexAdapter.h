@@ -43,7 +43,7 @@ namespace hgl::graph::mtl
         ms += "    uint vertex_base;\n";
         ms += "    uint is_indexed;\n";
         ms += "    uint total_vertices;\n";
-        ms += "    float viewport_height;\n";
+        ms += "    float char_height;\n";
         ms += "    uint first_instance;\n";
         ms += "};\n";
         ms += "layout(set=MESH_DRAW_PARAMS_SET, binding=MESH_DRAW_PARAMS_BINDING, std430) readonly buffer MeshDrawParamsData\n";

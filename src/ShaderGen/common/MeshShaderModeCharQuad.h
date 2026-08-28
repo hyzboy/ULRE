@@ -103,9 +103,9 @@ namespace hgl::graph::mtl
 
         // ── 计算 quad 像素坐标 ────────────────────────────────────
         // rect_top = pen_y - metrics_y + char_height
-        // char_height 通过 MeshDrawParams.viewport_height 传递（CharQuad 模式复用）
+        // char_height 通过 MeshDrawParams.char_height 传递（CharQuad 专用字段）
         ms += "    const float char_scale = cs.scale;\n";
-        ms += "    const int char_height = int(pc_vertex_index.viewport_height);\n";
+        ms += "    const int char_height = int(pc_vertex_index.char_height);\n";
         ms += "    const int mx_s = int(float(mx) * char_scale);\n";
         ms += "    const int my_s = int(float(my) * char_scale);\n";
         ms += "    const uint mw_s = uint(float(mw) * char_scale);\n";

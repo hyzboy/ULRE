@@ -505,16 +505,6 @@ namespace hgl::ecs
         const bool is_lines =
             batch.key.shader_program->GetPrimitiveType() == graph::PrimitiveType::Lines;
 
-        // viewport 高度（LineQuad 线宽换算用）——渲染目标高度，与录制期 cmd viewport 一致
-        uint32_t viewport_height = 1;
-        if (world)
-        {
-            auto *render_ctx = world->GetRenderContext();
-            auto *rt = render_ctx ? render_ctx->GetCurrentRenderTarget() : nullptr;
-            if (rt)
-                viewport_height = rt->GetExtent().height;
-        }
-
         // 参数行：每个 DrawBatch 一行（含私有 VBO 直接绘制——渲染器按行 offset 视图绑定）
         if (batch.mesh_draw_params_buffer)
         {
@@ -541,7 +531,6 @@ namespace hgl::ecs
                              ? range->index_count
                              : range->vertex_count)
                         : 0u;
-                    row[i].viewport_height = static_cast<float>(viewport_height);
                     row[i].first_instance = db.first_instance;
                 }
 
