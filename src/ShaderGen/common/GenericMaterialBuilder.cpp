@@ -436,8 +436,7 @@ namespace hgl::graph::mtl
                 max_invocations,
                 input_glsl_str,
                 provider_glsl_str,
-                &plan.stage_interface,
-                plan.primitive_type);
+                &plan.stage_interface);
 
             CompositorAssembler assembler(GetShaderLibraryPath());
             MaterialOutputContractDiagnostic output_diagnostic{};

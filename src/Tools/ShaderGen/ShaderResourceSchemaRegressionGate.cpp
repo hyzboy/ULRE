@@ -874,8 +874,7 @@ namespace
             kMeshVertexPassthroughMaxInvocations,
             GetShaderLibraryPath(),
             {},
-            nullptr,
-            hgl::graph::PrimitiveType::Triangles);
+            nullptr);
         if (lit_vs.find(
                 "layout(location=0) perprimitiveEXT out uint fragDataIndexID[")
                 == std::string::npos
@@ -907,8 +906,7 @@ namespace
             kMeshVertexPassthroughMaxInvocations,
             GetShaderLibraryPath(),
             {},
-            nullptr,
-            hgl::graph::PrimitiveType::Triangles);
+            nullptr);
         if (color_vs.find(
                 "layout(location=5) out vec4 fragVertexColor[")
                 == std::string::npos
@@ -3043,8 +3041,7 @@ namespace
             return GenerateMeshShader(
                 graph, varying, VK_FORMAT_R32G32B32_SFLOAT,
                 {}, MeshShaderMode::VertexPassthrough, kMeshVertexPassthroughMaxInvocations,
-                GetShaderLibraryPath(), {}, nullptr,
-                hgl::graph::PrimitiveType::Triangles);
+                GetShaderLibraryPath(), {}, nullptr);
         };
 
         const std::string flat = build(VertexNodeConfigResolver::FlatXY());

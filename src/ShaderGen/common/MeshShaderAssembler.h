@@ -50,8 +50,7 @@ namespace hgl::graph::mtl
         const std::string            &resolved_input_glsl = {},
         const std::string            &provider_glsl = {},
         const ValueArray<InterStageSemanticContractEntry>
-            *resolved_stage_interface = nullptr,
-        const PrimitiveType           primitive_type = PrimitiveType::Triangles)
+            *resolved_stage_interface = nullptr)
     {
         std::string ms;
         ms.reserve(3072);
@@ -63,22 +62,17 @@ namespace hgl::graph::mtl
         switch (mode)
         {
         case MeshShaderMode::VertexPassthrough:
-            // Triangles 模式下三角形按「组内每 3 连续槽位」装配（vid%3==0 线程写索引），
+            // 三角形按「组内每 3 连续槽位」装配（vid%3==0 线程写索引），
             // group size 必须是 3 的倍数——否则每组尾部 1-2 顶点无法成三角形，
             // 且跨组三角形永久丢失（静默几何撕裂，编译通过渲染缺面）。
-            if (primitive_type == PrimitiveType::Triangles
-             && (max_invocations % 3u) != 0u)
+            if ((max_invocations % 3u) != 0u)
             {
                 GLogError("[ShaderGen] VertexPassthrough 的 max_invocations(%u) 必须是 3 的倍数",
                           max_invocations);
                 return {};
             }
-            max_vertices = max_invocations;
-            // 每 3 顶点 1 三角形（list）；fan/strip 单组 = 顶点数-2
-            max_primitives = (primitive_type == PrimitiveType::Fan
-                           || primitive_type == PrimitiveType::TriangleStrip)
-                ? (max_invocations >= 2u ? max_invocations - 2u : 0u)
-                : (max_invocations / 3u);
+            max_vertices   = max_invocations;
+            max_primitives = max_invocations / 3u;   // 每 3 顶点 1 三角形（恒 triangle list）
             break;
         case MeshShaderMode::LineQuad:
             max_vertices   = max_invocations * 4u;
@@ -214,7 +208,7 @@ namespace hgl::graph::mtl
         switch (mode)
         {
         case MeshShaderMode::VertexPassthrough:
-            EmitVertexPassthroughBody(ms, mode_ctx, primitive_type);
+            EmitVertexPassthroughBody(ms, mode_ctx);
             break;
         case MeshShaderMode::LineQuad:
             EmitLineQuadBody(ms, mode_ctx, position_format);
