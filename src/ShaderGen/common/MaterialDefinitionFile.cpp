@@ -677,7 +677,8 @@ namespace hgl::graph::mtl
                     std::string mode_str;
                     if (!ReadRequiredString(ms, "mode", mode_str))
                         return false;
-                    out.definition.mesh_shader_mode = mode_str;
+                    if (!ParseMeshShaderMode(mode_str.c_str(), out.definition.mesh_shader_mode))
+                        return false;   // 未知模式名 = 拼写错误，硬失败而非静默降级
                 }
                 if (ms.contains("max_invocations"))
                 {

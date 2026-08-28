@@ -571,7 +571,7 @@ ShaderBuildContext *CompileCompositorMaterial(
 
     // CharQuad text SSBOs: mesh shader declares these inline, register them into PerObject set layout
     if (config.material_definition
-        && config.material_definition->mesh_shader_mode == "CharQuad")
+        && config.material_definition->mesh_shader_mode == MeshShaderMode::CharQuad)
     {
         // Register the three CharQuad SSBOs at fixed bindings 14/15/16
         // matching TEXT_CHARINFO_BINDING/TEXT_CHARSTYLE_BINDING/TEXT_CHARINSTANCE_BINDING

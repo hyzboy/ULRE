@@ -186,7 +186,7 @@ namespace hgl::graph::mtl
             plan.resolved_provider_graph_hash = 0;
 
             // CharQuad: mesh shader self-declares all SSBOs; no vertex ABI needed.
-            if (definition.mesh_shader_mode == "CharQuad")
+            if (definition.mesh_shader_mode == MeshShaderMode::CharQuad)
                 return true;
 
             {
@@ -352,7 +352,7 @@ namespace hgl::graph::mtl
         {
             // Mesh shader 材质：生成 mesh stage。mesh 是唯一顶点路径。
             // 模式选择优先级：definition.mesh_shader_mode > primitive_type 推断
-            const bool is_char_quad = (definition.mesh_shader_mode == "CharQuad");
+            const bool is_char_quad = (definition.mesh_shader_mode == MeshShaderMode::CharQuad);
             const bool is_lines = !is_char_quad
                 && (plan.primitive_type == hgl::graph::PrimitiveType::Lines);
 

@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <hgl/mtl/MeshShaderMode.h>
 #include <hgl/mtl/VertexShaderNodeConfig.h>
 #include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/mtl/MaterialStageInterface.h>
@@ -36,12 +37,7 @@ namespace hgl::graph::mtl
     //
     // 通用模式输出拓扑：triangle list（每 3 连续顶点 1 三角形）
     // Line 模式输出拓扑：triangle list（每线段 4 顶点 2 三角形）
-    enum class MeshShaderMode
-    {
-        VertexPassthrough,   // 每线程 1 顶点（默认，模拟 VS）
-        LineQuad,            // 每线程 1 线段 → quad
-        CharQuad,            // 每线程 1 字符实例 → quad（6 顶点 2 三角形）
-    };
+    // MeshShaderMode 枚举定义见 inc/hgl/mtl/MeshShaderMode.h（MaterialDefinition 共享）
 
     inline std::string GenerateMeshShader(
         const VertexShaderNodeConfig &node_cfg,
