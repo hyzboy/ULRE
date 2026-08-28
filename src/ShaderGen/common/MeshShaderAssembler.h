@@ -16,6 +16,7 @@
 #include <hgl/mtl/VertexShaderNodeConfig.h>
 #include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/mtl/MaterialStageInterface.h>
+#include <hgl/log/Log.h>
 #include <vulkan/vulkan.h>
 #include <string>
 #include "VertexVaryingConfig.h"   // mtl::VertexVaryingConfig
@@ -62,6 +63,16 @@ namespace hgl::graph::mtl
         switch (mode)
         {
         case MeshShaderMode::VertexPassthrough:
+            // Triangles 模式下三角形按「组内每 3 连续槽位」装配（vid%3==0 线程写索引），
+            // group size 必须是 3 的倍数——否则每组尾部 1-2 顶点无法成三角形，
+            // 且跨组三角形永久丢失（静默几何撕裂，编译通过渲染缺面）。
+            if (primitive_type == PrimitiveType::Triangles
+             && (max_invocations % 3u) != 0u)
+            {
+                GLogError("[ShaderGen] VertexPassthrough 的 max_invocations(%u) 必须是 3 的倍数",
+                          max_invocations);
+                return {};
+            }
             verts_per_inv = 1;
             prims_per_inv = 0;   // 三角形由 3 线程组填索引
             break;

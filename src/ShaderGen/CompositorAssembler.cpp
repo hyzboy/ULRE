@@ -1,4 +1,5 @@
 #include <hgl/mtl/CompositorAssembler.h>
+#include <hgl/log/Log.h>
 #include <fstream>
 #include <sstream>
 
@@ -165,52 +166,46 @@ namespace hgl::graph::mtl
         const std::string &source,
         const CompositorModuleOptions &module_options) const
     {
-        const char *module_paths[] =
+        struct CompositorModuleSlot
         {
-            module_options.sky_module && module_options.sky_module[0]
-                ? module_options.sky_module
-                : "sky/sky_atmosphere.glsl",
-            module_options.direct_lighting_module && module_options.direct_lighting_module[0]
-                ? module_options.direct_lighting_module
-                : "lighting/direct_cook_torrance_pbr.glsl",
-            module_options.indirect_lighting_module && module_options.indirect_lighting_module[0]
-                ? module_options.indirect_lighting_module
-                : "lighting/indirect_sky_ambient.glsl",
-            module_options.lighting_algorithm_module && module_options.lighting_algorithm_module[0]
-                ? module_options.lighting_algorithm_module
-                : "lighting/forward_pbr.glsl",
-            module_options.material_source_module && module_options.material_source_module[0]
-                ? module_options.material_source_module
-                : "material/pbr_surface_source.glsl",
-            module_options.ntb_module && module_options.ntb_module[0]
-                ? module_options.ntb_module
-                : "ntb/ntb_tangent_vbo_normalmap.glsl",
-            module_options.forward_lighting_module && module_options.forward_lighting_module[0]
-                ? module_options.forward_lighting_module
-                : "compositor/forward_lighting.glsl"
+            const char *default_path;                                      // 默认路径，同时是模板中被替换的 include 目标
+            const char *CompositorModuleOptions::*override_field;          // 显式 override 成员（成员指针，消除双表下标对应）
         };
-        const char *default_paths[] =
+
+        static constexpr CompositorModuleSlot kModuleSlots[] =
         {
-            "sky/sky_atmosphere.glsl",
-            "lighting/direct_cook_torrance_pbr.glsl",
-            "lighting/indirect_sky_ambient.glsl",
-            "lighting/forward_pbr.glsl",
-            "material/pbr_surface_source.glsl",
-            "ntb/ntb_tangent_vbo_normalmap.glsl",
-            "compositor/forward_lighting.glsl"
+            { "sky/sky_atmosphere.glsl",                  &CompositorModuleOptions::sky_module },
+            { "lighting/direct_cook_torrance_pbr.glsl",   &CompositorModuleOptions::direct_lighting_module },
+            { "lighting/indirect_sky_ambient.glsl",       &CompositorModuleOptions::indirect_lighting_module },
+            { "lighting/forward_pbr.glsl",                &CompositorModuleOptions::lighting_algorithm_module },
+            { "material/pbr_surface_source.glsl",         &CompositorModuleOptions::material_source_module },
+            { "ntb/ntb_tangent_vbo_normalmap.glsl",       &CompositorModuleOptions::ntb_module },
+            { "compositor/forward_lighting.glsl",         &CompositorModuleOptions::forward_lighting_module },
         };
 
         std::string result = source;
-        for (size_t i = 0; i < 7; ++i)
+        for (const auto &slot : kModuleSlots)
         {
             const std::string marker =
-                std::string("#include \"") + default_paths[i] + "\"";
+                std::string("#include \"") + slot.default_path + "\"";
             const size_t pos = result.find(marker);
-            if (pos == std::string::npos)
-                continue;
+            const char *override_path = module_options.*(slot.override_field);
 
+            if (pos == std::string::npos)
+            {
+                // 该 compositor 模板不含此模块 include（不同主文件只含部分模块）——
+                // 仅当调用方显式指定了 override 却找不到目标 include 行时才是真错误
+                //（默认路径改名而模板未同步 = 模块替换静默失效）。
+                if (override_path && override_path[0])
+                    GLogError("[CompositorAssembler] override module '%s' 未找到目标 include \"%s\"",
+                              override_path, slot.default_path);
+                continue;
+            }
+
+            const char *effective_path =
+                (override_path && override_path[0]) ? override_path : slot.default_path;
             const std::string replacement =
-                std::string("#include \"") + module_paths[i] + "\"";
+                std::string("#include \"") + effective_path + "\"";
             result.replace(pos, marker.size(), replacement);
         }
 
