@@ -71,6 +71,13 @@ namespace hgl { namespace graph { namespace layout {
                               // 竖排 vrotate 字符 = 90
     };  // 12 bytes (alignas(4) 强制，与 GPU std430 一致)
 
+    // ── 布局断言：CPU 结构与 GLSL 真源（ShaderLibrary/vertex/s1_text_char_quad.glsl）
+    // 的 std430 布局逐字段对应——改任何一侧的字段顺序/宽度必须同步另一侧，
+    // 否则 GPU 端逐实例错位（stride 不匹配）。
+    static_assert(sizeof(TextCharInfo) == 16, "TextCharInfo 必须与 GLSL TextCharInfo 一致（4×32位=16B）");
+    static_assert(sizeof(CharStyle) == 40, "CharStyle 必须与 GLSL CharStyleData 一致（40B）");
+    static_assert(sizeof(CharInstance) == 12, "CharInstance 必须与 GLSL CharInstanceData 一致（12B，alignas(4)）");
+
 }}}// namespace hgl::graph::layout
 
 #endif

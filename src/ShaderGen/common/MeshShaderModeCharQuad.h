@@ -12,43 +12,12 @@
 namespace hgl::graph::mtl
 {
     // CharQuad SSBO 声明（全局作用域，void main 之前）
+    // 结构体真源 = ShaderLibrary/vertex/s1_text_char_quad.glsl（GLSL 模块，
+    // 与 CPU 侧 TextCharSSBO.h 布局逐字段对应，见该文件的 static_assert）
     inline void EmitCharQuadSSBODeclarations(std::string &ms)
     {
-        ms += "// ── Text CharQuad SSBOs ──\n";
-        ms += "struct TextCharInfo {\n";
-        ms += "    int   offset_xy;\n";
-        ms += "    uint  metrics_wh;\n";
-        ms += "    uint  uv_lt;\n";
-        ms += "    uint  uv_rb;\n";
-        ms += "};\n";
-        ms += "layout(set=PER_OBJECT_SET, binding=TEXT_CHARINFO_BINDING, std430) readonly buffer TextCharInfoData {\n";
-        ms += "    TextCharInfo chars[];\n";
-        ms += "} sbo_char_info;\n";
-        ms += "\n";
-        ms += "struct CharStyleData {\n";
-        ms += "    uint  text_color;\n";
-        ms += "    uint  outline_color;\n";
-        ms += "    uint  shadow_color;\n";
-        ms += "    uint  flags;\n";
-        ms += "    float italic;\n";
-        ms += "    float bold_px;\n";
-        ms += "    float outline_px;\n";
-        ms += "    uint  shadow_uv_offset;\n";
-        ms += "    float scale;\n";
-        ms += "    int   rotation;\n";
-        ms += "};\n";
-        ms += "layout(set=PER_OBJECT_SET, binding=TEXT_CHARSTYLE_BINDING, std430) readonly buffer CharStyleDataBuf {\n";
-        ms += "    CharStyleData styles[];\n";
-        ms += "} sbo_char_style;\n";
-        ms += "\n";
-        ms += "struct CharInstanceData {\n";
-        ms += "    int   pen_xy;\n";
-        ms += "    uint  char_style;\n";
-        ms += "    int   rotation;   // 实例级旋转，与 CharStyleData.rotation 叠加\n";
-        ms += "};\n";
-        ms += "layout(set=PER_OBJECT_SET, binding=TEXT_CHARINSTANCE_BINDING, std430) readonly buffer CharInstanceDataBuf {\n";
-        ms += "    CharInstanceData instances[];\n";
-        ms += "} sbo_char_instance;\n";
+        ms += "// ── Text CharQuad SSBOs（结构真源：ShaderLibrary/vertex/s1_text_char_quad.glsl）──\n";
+        ms += "#include \"vertex/s1_text_char_quad.glsl\"\n";
         ms += "\n";
     }
 
