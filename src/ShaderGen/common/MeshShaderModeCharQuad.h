@@ -182,19 +182,19 @@ namespace hgl::graph::mtl
             ms += "        fragVertexColor[base_vid + uint(i)] = char_color;\n";
         }
 
-        // ── DataIndexID varying ──────────────────────────────────
+        // ── DataIndexID varying（perprimitiveEXT——每字符 2 图元各写 1 份）──
         if (FindMaterialStageInterfaceEntry(resolved_stage_interface, InterStageSemantic::DataIndexID))
         {
             ms += "    const uint data_id = ResolveDataIndexID(gl_DrawID);\n";
-            ms += "    for (int i = 0; i < 4; i++)\n";
-            ms += "        fragDataIndexID[base_vid + uint(i)] = data_id;\n";
+            ms += "    fragDataIndexID[gl_LocalInvocationIndex * 2u + 0u] = data_id;\n";
+            ms += "    fragDataIndexID[gl_LocalInvocationIndex * 2u + 1u] = data_id;\n";
         }
 
-        // StyleID varying（flat per-vertex 样式索引 → FS 查 sbo_char_style）
+        // StyleID varying（perprimitiveEXT——flat 每图元样式索引 → FS 查 sbo_char_style）
         if (FindMaterialStageInterfaceEntry(resolved_stage_interface, InterStageSemantic::StyleID))
         {
-            ms += "    for (int i = 0; i < 4; i++)\n";
-            ms += "        fragStyleID[base_vid + uint(i)] = style_id;\n";
+            ms += "    fragStyleID[gl_LocalInvocationIndex * 2u + 0u] = style_id;\n";
+            ms += "    fragStyleID[gl_LocalInvocationIndex * 2u + 1u] = style_id;\n";
         }
     }
 }

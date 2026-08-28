@@ -69,7 +69,18 @@ namespace hgl::graph::mtl
         {
             // 与 VS 一致：实例 → mtl_data_index_rows 查表（材质数据槽——FS 用它查 mtl.data[].color 等）。
             // gl_InstanceIndex 宏 = first_instance + gl_WorkGroupID.y（跨 draw_batch 正确）
-            ms += "    fragDataIndexID[vid] = ResolveDataIndexID(gl_InstanceIndex);\n";
+            // perprimitiveEXT：图元号 = vid/3（list）或 vid（fan/strip，每线程 1 图元）
+            // fan/strip 图元号上限 = verts-2（与图元索引写入同条件），否则 vid 越界
+            if (primitive_type == PrimitiveType::Fan
+             || primitive_type == PrimitiveType::TriangleStrip)
+            {
+                ms += "    if ((vid + 2u) < verts_this_group)\n";
+                ms += "        fragDataIndexID[vid] = ResolveDataIndexID(gl_InstanceIndex);\n";
+            }
+            else
+            {
+                ms += "    fragDataIndexID[vid / 3u] = ResolveDataIndexID(gl_InstanceIndex);\n";
+            }
         }
         if (varying_cfg.emit_vertex_color_from_palette)
             ms += "    fragVertexColor[vid] = unpackUnorm4x8(color_palette.color[ColorIndex]);\n";

@@ -983,9 +983,14 @@ ShaderBuildContext *CompileCompositorMaterial(
         else
             fs_final = InsertBeforeSurfaceFunction(fs_final, code_module_glsl);
     }
+    // FS 统一启用 GL_EXT_mesh_shader：per-primitive 语义（DataIndexID/StyleID）的
+    // FS 输入用 perprimitiveEXT in（mesh out perprimitiveEXT → FS in 必须同装饰，
+    // 否则 VUID-RuntimeSpirv-OpVariable-08746 接口装饰不匹配）。
+    // 扩展声明必须在 #version 之后（InsertAfterVersionLine 保证）。
+    const std::string fs_mesh_extension = "#extension GL_EXT_mesh_shader : require\n";
     fs_final = InsertAfterVersionLine(
         fs_final,
-        binding_preamble + compile_define_macros + sampler_macros + material_ssbo_decls
+        fs_mesh_extension + binding_preamble + compile_define_macros + sampler_macros + material_ssbo_decls
         + material_slot_macros + fs_index_table_decls);
 
     ShaderCreateInfo         *mesh = ctx->GetStageShader(ShaderStage::Mesh);

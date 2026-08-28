@@ -187,8 +187,8 @@ namespace hgl::graph::mtl
             resolved_stage_interface = &adapted_stage_interface;
         }
 
-        // varying 声明为数组（按顶点索引）
-        EmitVaryingDeclarations(ms, *resolved_stage_interface, max_vertices);
+        // varying 声明为数组（按顶点索引；per-primitive 语义按图元索引）
+        EmitVaryingDeclarations(ms, *resolved_stage_interface, max_vertices, max_primitives);
 
         // CharQuad SSBO 声明必须在全局作用域（void main 之前）
         if (mode == MeshShaderMode::CharQuad)
