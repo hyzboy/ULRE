@@ -31,5 +31,4 @@ mode = "CharQuad"
 max_invocations = 42
 
 [resources]
-ubos = ["ViewportInfo"]
 samplers = ["Nearest"]

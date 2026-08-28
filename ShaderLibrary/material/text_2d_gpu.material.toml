@@ -31,6 +31,5 @@ mode = "CharQuad"
 max_invocations = 42
 
 [resources]
-ubos = ["ViewportInfo"]
 samplers = ["Linear"]
 defines = ["TEXT_SDF_ENABLED"]

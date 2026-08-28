@@ -26,4 +26,4 @@ requirements = ["Position"]
 varyings = ["emit_frag_direction"]
 
 [resources]
-ubos = ["ViewportInfo", "CameraInfo", "SkyInfo"]
+ubos = ["CameraInfo", "SkyInfo"]

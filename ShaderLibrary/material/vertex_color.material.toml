@@ -27,4 +27,4 @@ requirements = ["Position", "Color"]
 varyings = ["emit_vertex_color"]
 
 [resources]
-ubos = ["ViewportInfo", "CameraInfo"]
+ubos = ["CameraInfo"]
