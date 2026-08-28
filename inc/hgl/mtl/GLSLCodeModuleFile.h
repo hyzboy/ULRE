@@ -58,7 +58,6 @@ namespace hgl::graph::mtl
 
         ValueArray<GLSLCodeModuleSemanticRequirement> semantic_requirements;
         ValueArray<GLSLCodeModuleSemantic> semantic_provides;
-        ValueArray<GLSLCodeModuleUBORequirement> ubo_requirements;
         ValueArray<GLSLCodeModuleSSBORequirement> ssbo_requirements;
         ValueArray<GLSLCodeModuleTextureLayerRequirement> texture_layer_requirements;
         ManagedArray<AnsiString> ssbo_name_storage;

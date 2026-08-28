@@ -15,10 +15,6 @@ namespace hgl::graph::mtl
           << definition.priority
           << definition.flags;
 
-        h << definition.ubo_requirement_count;
-        for (uint32 i = 0; i < definition.ubo_requirement_count; ++i)
-            h << definition.ubo_requirements[i];
-
         h << definition.ssbo_requirement_count;
         for (uint32 i = 0; i < definition.ssbo_requirement_count; ++i)
         {

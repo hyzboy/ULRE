@@ -222,9 +222,6 @@ namespace hgl::graph::mtl
                 definition.module_conflict_names,
                 definition.module_conflict_count)
          || !HasValidArray(
-                definition.ubo_requirements,
-                definition.ubo_requirement_count)
-         || !HasValidArray(
                 definition.ssbo_requirements,
                 definition.ssbo_requirement_count)
          || !HasValidArray(

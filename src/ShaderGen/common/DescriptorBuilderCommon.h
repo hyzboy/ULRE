@@ -396,17 +396,7 @@ inline bool PushManifestSSBO(
     return MergeSSBODescriptor(v, entry);
 }
 
-inline void AppendManifestUBODescriptors(
-    std::vector<SerializedDescriptorEntry> &v,
-    const ModuleResourceManifest &manifest)
-{
-    for (uint32 i = 0; i < manifest.ubo_count; ++i)
-    {
-        const auto &ubo = manifest.ubos[i];
-        MergeUBODescriptor(v, ubo.semantic, ubo.stage_flags, true,
-                           ubo.required, ubo.allow_fallback);
-    }
-}
+
 
 inline bool AppendManifestSSBODescriptors(
     std::vector<SerializedDescriptorEntry> &v,

@@ -6,7 +6,6 @@ namespace hgl::graph::mtl
 {
     class GLSLCodeModuleRegistry;
     constexpr uint32 MaxModuleResourceManifestCodeModules = 64u;
-    constexpr uint32 MaxModuleResourceManifestUBOs = 64u;
     constexpr uint32 MaxModuleResourceManifestSSBOs = 64u;
     constexpr uint32 MaxModuleResourceManifestTextureLayers = 16u;
 
@@ -17,7 +16,6 @@ namespace hgl::graph::mtl
         UnknownCodeModule,
         CodeModuleCycle,
         CodeModuleCapacityExceeded,
-        UBOCapacityExceeded,
         SSBOCapacityExceeded,
         TextureLayerCapacityExceeded,
         ResourceConflict
@@ -29,9 +27,6 @@ namespace hgl::graph::mtl
         // dependency order. Pointers reference registry-owned module names.
         const char *code_module_names[MaxModuleResourceManifestCodeModules]{};
         uint32 code_module_count = 0;
-
-        GLSLCodeModuleUBORequirement ubos[MaxModuleResourceManifestUBOs]{};
-        uint32 ubo_count = 0;
 
         GLSLCodeModuleSSBORequirement ssbos[MaxModuleResourceManifestSSBOs]{};
         uint32 ssbo_count = 0;

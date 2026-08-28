@@ -123,34 +123,6 @@ namespace hgl::graph::mtl
         return h;
     }
 
-    struct GLSLCodeModuleUBORequirement
-    {
-        DescriptorSemantic semantic = DescriptorSemantic::ViewportInfo;
-        uint32 stage_flags = 0;
-        bool required = true;
-        bool allow_fallback = false;
-    };
-
-    inline bool operator==(const GLSLCodeModuleUBORequirement &lhs,
-                           const GLSLCodeModuleUBORequirement &rhs) noexcept
-    {
-        return lhs.semantic == rhs.semantic
-            && lhs.stage_flags == rhs.stage_flags
-            && lhs.required == rhs.required
-            && lhs.allow_fallback == rhs.allow_fallback;
-    }
-
-    inline hgl::hash::FNV1aHasher64 &operator<<(
-        hgl::hash::FNV1aHasher64 &h,
-        const GLSLCodeModuleUBORequirement &v) noexcept
-    {
-        h << v.semantic
-          << v.stage_flags
-          << v.required
-          << v.allow_fallback;
-        return h;
-    }
-
     struct GLSLCodeModuleSSBORequirement
     {
         const char *name = nullptr;
@@ -207,9 +179,6 @@ namespace hgl::graph::mtl
         const char *name = nullptr;
         const char *glsl_code = nullptr;
 
-        const GLSLCodeModuleUBORequirement *ubo_requirements = nullptr;
-        uint32 ubo_requirement_count = 0;
-
         const GLSLCodeModuleSSBORequirement *ssbo_requirements = nullptr;
         uint32 ssbo_requirement_count = 0;
 
@@ -249,8 +218,6 @@ namespace hgl::graph::mtl
           && !definition.semantic_provides)
          || (definition.dependency_count > 0
           && !definition.dependencies)
-         || (definition.ubo_requirement_count > 0
-          && !definition.ubo_requirements)
          || (definition.ssbo_requirement_count > 0
           && !definition.ssbo_requirements)
          || (definition.texture_layer_requirement_count > 0

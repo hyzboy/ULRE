@@ -262,11 +262,6 @@ static bool ValidateDefinitionCapabilitySubset(
 
         if (!allowed && manifest && manifest->IsValid())
         {
-            for (uint32 i = 0; i < manifest->ubo_count && !allowed; ++i)
-            {
-                if (manifest->ubos[i].semantic == req.semantic)
-                    allowed = true;
-            }
             for (uint32 i = 0; i < manifest->ssbo_count && !allowed; ++i)
             {
                 const auto &ssbo = manifest->ssbos[i];

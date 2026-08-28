@@ -106,7 +106,6 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
         // 索引恒有（s1_index 无条件 include——非索引绘制查表）
         descriptor_builder_common::PushVertexIndex(descriptors, vertex_stage);
     }
-    descriptor_builder_common::AppendManifestUBODescriptors(descriptors, manifest);
     if (!descriptor_builder_common::AppendManifestSSBODescriptors(descriptors, manifest)
      || !descriptor_builder_common::AppendManifestTextureLayerDescriptors(descriptors, manifest))
         return {};

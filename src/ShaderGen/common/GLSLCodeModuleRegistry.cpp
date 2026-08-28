@@ -149,8 +149,6 @@ namespace hgl::graph::mtl
             data->definition.semantic_requirement_count = static_cast<uint32>(data->semantic_requirements.GetCount());
             data->definition.semantic_provides = data->semantic_provides.GetData();
             data->definition.semantic_provide_count = static_cast<uint32>(data->semantic_provides.GetCount());
-            data->definition.ubo_requirements = data->ubo_requirements.GetData();
-            data->definition.ubo_requirement_count = static_cast<uint32>(data->ubo_requirements.GetCount());
             for (int k = 0; k < data->ssbo_requirements.GetCount(); ++k)
             {
                 data->ssbo_requirements[k].name = data->ssbo_name_storage[k]->c_str();

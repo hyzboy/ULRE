@@ -30,30 +30,6 @@ namespace hgl::graph::mtl
             return h;
         }
 
-        bool AddUBO(ModuleResourceManifest &manifest, const GLSLCodeModuleUBORequirement &incoming)
-        {
-            for (uint32 i = 0; i < manifest.ubo_count; ++i)
-            {
-                auto &existing = manifest.ubos[i];
-                if (existing.semantic != incoming.semantic)
-                    continue;
-
-                existing.stage_flags |= incoming.stage_flags;
-                existing.required = existing.required || incoming.required;
-                existing.allow_fallback = existing.allow_fallback && incoming.allow_fallback;
-                return true;
-            }
-
-            if (manifest.ubo_count >= MaxModuleResourceManifestUBOs)
-            {
-                manifest.error = ModuleResourceManifestError::UBOCapacityExceeded;
-                return false;
-            }
-
-            manifest.ubos[manifest.ubo_count++] = incoming;
-            return true;
-        }
-
         bool AddSSBO(ModuleResourceManifest &manifest, const GLSLCodeModuleSSBORequirement &incoming)
         {
             if (!incoming.name || !incoming.name[0])
@@ -194,12 +170,6 @@ namespace hgl::graph::mtl
                     return false;
             }
 
-            for (uint32 i = 0; i < definition->ubo_requirement_count; ++i)
-            {
-                if (!AddUBO(manifest, definition->ubo_requirements[i]))
-                    return false;
-            }
-
             for (uint32 i = 0; i < definition->ssbo_requirement_count; ++i)
             {
                 if (!AddSSBO(manifest, definition->ssbo_requirements[i]))
@@ -238,10 +208,6 @@ namespace hgl::graph::mtl
                 h << name
                   << (definition ? GetGLSLCodeModuleDefinitionHash(*definition) : 0);
             }
-
-            h << manifest.ubo_count;
-            for (uint32 i = 0; i < manifest.ubo_count; ++i)
-                h << manifest.ubos[i];
 
             h << manifest.ssbo_count;
             for (uint32 i = 0; i < manifest.ssbo_count; ++i)
@@ -300,7 +266,6 @@ namespace hgl::graph::mtl
         case ModuleResourceManifestError::UnknownCodeModule: return "UnknownCodeModule";
         case ModuleResourceManifestError::CodeModuleCycle: return "CodeModuleCycle";
         case ModuleResourceManifestError::CodeModuleCapacityExceeded: return "CodeModuleCapacityExceeded";
-        case ModuleResourceManifestError::UBOCapacityExceeded: return "UBOCapacityExceeded";
         case ModuleResourceManifestError::SSBOCapacityExceeded: return "SSBOCapacityExceeded";
         case ModuleResourceManifestError::TextureLayerCapacityExceeded: return "TextureLayerCapacityExceeded";
         case ModuleResourceManifestError::ResourceConflict: return "ResourceConflict";

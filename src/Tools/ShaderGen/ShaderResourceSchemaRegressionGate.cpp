@@ -1128,7 +1128,7 @@ namespace
         const GLSLCodeModuleDefinition normal_provider{
             "identity_normal",
             "// identity",
-            nullptr, 0, nullptr, 0,
+            nullptr, 0,
             GLSLCodeModuleKind::Utility,
             &normal_requirement, 1,
             normal_provides, 1,
@@ -1147,7 +1147,7 @@ namespace
         const GLSLCodeModuleDefinition uv_provider{
             "identity_uv",
             "// identity",
-            nullptr, 0, nullptr, 0,
+            nullptr, 0,
             GLSLCodeModuleKind::Utility,
             &uv_requirement, 1,
             uv_provides, 1,
@@ -1173,7 +1173,7 @@ namespace
         const GLSLCodeModuleDefinition packed_normal_provider{
             "identity_normal_packed",
             "// identity",
-            nullptr, 0, nullptr, 0,
+            nullptr, 0,
             GLSLCodeModuleKind::Utility,
             &normal_requirement, 1,
             normal_provides, 1,
@@ -1205,14 +1205,14 @@ namespace
         const GLSLCodeModuleDefinition position_provider{
             "compose_position",
             "vec4 GetLocalPos() { return vec4(Position, 1.0); }",
-            nullptr, 0, nullptr, 0,
+            nullptr, 0,
             GLSLCodeModuleKind::Position,
             nullptr, 0, nullptr, 0, 0, 0
         };
         const GLSLCodeModuleDefinition normal_provider{
             "compose_normal",
             "vec3 GetNormal() { return Normal; }",
-            nullptr, 0, nullptr, 0,
+            nullptr, 0,
             GLSLCodeModuleKind::Utility,
             nullptr, 0, nullptr, 0, 0, 0
         };
