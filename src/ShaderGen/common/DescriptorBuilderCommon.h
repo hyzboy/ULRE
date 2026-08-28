@@ -13,42 +13,54 @@ namespace hgl::graph::mtl::descriptor_builder_common
 {
     using namespace hgl::graph::mtl;
 
+    // 同构 Push 的通用入表函数（T4.2）：name/struct/semantic/ssbo_type 等差异
+    // 由调用方以参数给出，消除每个 Push* 重复 9 行样板。新增顶点语义时只需
+    // 加一个一行包装（数据在此集中，layer 由 kind 推导）。
+    inline void PushBySpec(
+        std::vector<SerializedDescriptorEntry> &v,
+        const DescriptorSetType set_type,
+        const DescriptorKind kind,
+        const char *name,
+        const char *struct_name,
+        const DescriptorSemantic semantic,
+        const SSBOType ssbo_type,
+        const uint32_t stage_flags)
+    {
+        v.push_back({
+            set_type, kind, stage_flags,
+            name, struct_name, nullptr, semantic,
+            TextureSlot::BaseColor, DefaultMaterialDataSlot, ssbo_type,
+            GetDescriptorSemanticLayerByKind(kind)
+        });
+    }
+
 inline void PushViewport(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
-    v.push_back({
-        DescriptorSetType::Scene, DescriptorKind::UBO, stage_flags,
-        "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO
-    });
+    PushBySpec(v, DescriptorSetType::Scene, DescriptorKind::UBO,
+               "viewport", "ViewportInfo", DescriptorSemantic::ViewportInfo,
+               SSBOType::UserDefined, stage_flags);
 }
 
 inline void PushCamera(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
-    v.push_back({
-        DescriptorSetType::Scene, DescriptorKind::UBO, stage_flags,
-        "camera", "CameraInfo", nullptr, DescriptorSemantic::CameraInfo,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO
-    });
+    PushBySpec(v, DescriptorSetType::Scene, DescriptorKind::UBO,
+               "camera", "CameraInfo", DescriptorSemantic::CameraInfo,
+               SSBOType::UserDefined, stage_flags);
 }
 
 inline void PushSky(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
-    v.push_back({
-        DescriptorSetType::Scene, DescriptorKind::UBO, stage_flags,
-        "sky", "SkyInfo", nullptr, DescriptorSemantic::SkyInfo,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO
-    });
+    PushBySpec(v, DescriptorSetType::Scene, DescriptorKind::UBO,
+               "sky", "SkyInfo", DescriptorSemantic::SkyInfo,
+               SSBOType::UserDefined, stage_flags);
 }
 
 inline void PushMaterialColorPalette(std::vector<SerializedDescriptorEntry> &v,
                                      const uint32_t stage_flags)
 {
-    v.push_back({
-        DescriptorSetType::Scene, DescriptorKind::UBO, stage_flags,
-        "color_palette", "ColorPalette", nullptr, DescriptorSemantic::MaterialColorPalette,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined,
-        DescriptorSemanticLayer::UBO
-    });
+    PushBySpec(v, DescriptorSetType::Scene, DescriptorKind::UBO,
+               "color_palette", "ColorPalette", DescriptorSemantic::MaterialColorPalette,
+               SSBOType::UserDefined, stage_flags);
 }
 
 inline void MergeUBODescriptor(
@@ -120,94 +132,74 @@ inline void AppendDefinitionUBODescriptors(
 
 inline void PushLocalToWorld(std::vector<SerializedDescriptorEntry> &v, const DescriptorKind kind, const uint32_t stage_flags)
 {
-    v.push_back({
-        DescriptorSetType::PerObject, kind, stage_flags,
-        "l2w", "LocalToWorldData", nullptr, DescriptorSemantic::LocalToWorld,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, GetDescriptorSemanticLayerByKind(kind)
-    });
+    PushBySpec(v, DescriptorSetType::PerObject, kind,
+               "l2w", "LocalToWorldData", DescriptorSemantic::LocalToWorld,
+               SSBOType::UserDefined, stage_flags);
 }
 
 inline void PushLocalToWorldIndexRows(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
-    v.push_back({
-        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
-        "l2w_index_rows", "LocalToWorldIndexRows", nullptr, DescriptorSemantic::LocalToWorldIndexTable,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO
-    });
+    PushBySpec(v, DescriptorSetType::PerObject, DescriptorKind::SSBO,
+               "l2w_index_rows", "LocalToWorldIndexRows", DescriptorSemantic::LocalToWorldIndexTable,
+               SSBOType::UserDefined, stage_flags);
 }
 
 // ── 顶点数据 SSBO（MeshShader 方向：顶点输入统一为 SSBO）──
 // PerObject 集固定 binding（kPerObjectBindingVertex*），固定名路径
 inline void PushVertexPosition(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
-    v.push_back({
-        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
-        SBS_VertexPosition.name, SBS_VertexPosition.struct_name, nullptr, DescriptorSemantic::VertexPosition,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::VertexPosition, DescriptorSemanticLayer::SSBO
-    });
+    PushBySpec(v, DescriptorSetType::PerObject, DescriptorKind::SSBO,
+               SBS_VertexPosition.name, SBS_VertexPosition.struct_name,
+               DescriptorSemantic::VertexPosition, SSBOType::VertexPosition, stage_flags);
 }
 
 inline void PushVertexUV(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
-    v.push_back({
-        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
-        SBS_VertexUV.name, SBS_VertexUV.struct_name, nullptr, DescriptorSemantic::VertexUV,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::VertexUV, DescriptorSemanticLayer::SSBO
-    });
+    PushBySpec(v, DescriptorSetType::PerObject, DescriptorKind::SSBO,
+               SBS_VertexUV.name, SBS_VertexUV.struct_name,
+               DescriptorSemantic::VertexUV, SSBOType::VertexUV, stage_flags);
 }
 
 inline void PushVertexNTB(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
-    v.push_back({
-        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
-        SBS_VertexNTB.name, SBS_VertexNTB.struct_name, nullptr, DescriptorSemantic::VertexNTB,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::VertexNTB, DescriptorSemanticLayer::SSBO
-    });
+    PushBySpec(v, DescriptorSetType::PerObject, DescriptorKind::SSBO,
+               SBS_VertexNTB.name, SBS_VertexNTB.struct_name,
+               DescriptorSemantic::VertexNTB, SSBOType::VertexNTB, stage_flags);
 }
 
 inline void PushVertexColor(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
-    v.push_back({
-        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
-        SBS_VertexColor.name, SBS_VertexColor.struct_name, nullptr, DescriptorSemantic::VertexColor,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::VertexColor, DescriptorSemanticLayer::SSBO
-    });
+    PushBySpec(v, DescriptorSetType::PerObject, DescriptorKind::SSBO,
+               SBS_VertexColor.name, SBS_VertexColor.struct_name,
+               DescriptorSemantic::VertexColor, SSBOType::VertexColor, stage_flags);
 }
 
 inline void PushVertexLuminance(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
-    v.push_back({
-        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
-        SBS_VertexLuminance.name, SBS_VertexLuminance.struct_name, nullptr, DescriptorSemantic::VertexLuminance,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::VertexLuminance, DescriptorSemanticLayer::SSBO
-    });
+    PushBySpec(v, DescriptorSetType::PerObject, DescriptorKind::SSBO,
+               SBS_VertexLuminance.name, SBS_VertexLuminance.struct_name,
+               DescriptorSemantic::VertexLuminance, SSBOType::VertexLuminance, stage_flags);
 }
 
 inline void PushVertexTransformID(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
-    v.push_back({
-        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
-        SBS_VertexTransformID.name, SBS_VertexTransformID.struct_name, nullptr, DescriptorSemantic::VertexTransformID,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::VertexTransformID, DescriptorSemanticLayer::SSBO
-    });
+    PushBySpec(v, DescriptorSetType::PerObject, DescriptorKind::SSBO,
+               SBS_VertexTransformID.name, SBS_VertexTransformID.struct_name,
+               DescriptorSemantic::VertexTransformID, SSBOType::VertexTransformID, stage_flags);
 }
 
 inline void PushVertexSize(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
-    v.push_back({
-        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
-        SBS_VertexSize.name, SBS_VertexSize.struct_name, nullptr, DescriptorSemantic::VertexSize,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::VertexSize, DescriptorSemanticLayer::SSBO
-    });
+    PushBySpec(v, DescriptorSetType::PerObject, DescriptorKind::SSBO,
+               SBS_VertexSize.name, SBS_VertexSize.struct_name,
+               DescriptorSemantic::VertexSize, SSBOType::VertexSize, stage_flags);
 }
 
 inline void PushVertexIndex(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
-    v.push_back({
-        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
-        SBS_VertexIndex.name, SBS_VertexIndex.struct_name, nullptr, DescriptorSemantic::VertexIndex,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::VertexIndex, DescriptorSemanticLayer::SSBO
-    });
+    PushBySpec(v, DescriptorSetType::PerObject, DescriptorKind::SSBO,
+               SBS_VertexIndex.name, SBS_VertexIndex.struct_name,
+               DescriptorSemantic::VertexIndex, SSBOType::VertexIndex, stage_flags);
 }
 
 inline void PushMaterialDataSlot(std::vector<SerializedDescriptorEntry> &v,
@@ -226,12 +218,10 @@ inline void PushMaterialDataSlot(std::vector<SerializedDescriptorEntry> &v,
 
 inline void PushMaterialDataIndexRows(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
-    v.push_back({
-        // P1-2c：mtl_data_index_rows 迁至 PerObject 集（实例→材质行索引表）。
-        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
-        "mtl_data_index_rows", "DataIndexRows", nullptr, DescriptorSemantic::MaterialDataIndexTable,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::MaterialDataIndexTable, DescriptorSemanticLayer::SSBO
-    });
+    // P1-2c：mtl_data_index_rows 迁至 PerObject 集（实例→材质行索引表）。
+    PushBySpec(v, DescriptorSetType::PerObject, DescriptorKind::SSBO,
+               "mtl_data_index_rows", "DataIndexRows", DescriptorSemantic::MaterialDataIndexTable,
+               SSBOType::MaterialDataIndexTable, stage_flags);
 }
 
 inline void PushMaterialTextureLayerRows(
