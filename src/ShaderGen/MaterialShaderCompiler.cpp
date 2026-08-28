@@ -973,25 +973,29 @@ ShaderBuildContext *CompileCompositorMaterial(
     // 模块代码可能引用 SSBO 类型、MTL_DATA 宏、索引行表与采样器宏
     // （unlit_source 的 EmissiveSurfaceData / MTL_DATA；bindless_textures 的
     // mtl_texture_layer_rows / TrilinearSampler）——全部注入统一放最后
-    // （version 后最前，先于模块代码）
+    // （version 后最前，先于模块代码）。T4.1：一次性组装，顺序在单个串里
+    // 显式可见（宏/声明在前、模块代码在后），不再依赖多次调用的反向次序。
     std::string fs_final = fs_glsl;
     const std::string code_module_glsl = BuildCodeModuleGLSL(config.resource_manifest);
-    if (!code_module_glsl.empty())
-    {
-        if (fs_glsl.find("#include SURFACE_FUNCTION_FILE") == std::string::npos)
-            fs_final = InsertAfterVersionLine(fs_final, code_module_glsl);
-        else
-            fs_final = InsertBeforeSurfaceFunction(fs_final, code_module_glsl);
-    }
+
     // FS 统一启用 GL_EXT_mesh_shader：per-primitive 语义（DataIndexID/StyleID）的
     // FS 输入用 perprimitiveEXT in（mesh out perprimitiveEXT → FS in 必须同装饰，
     // 否则 VUID-RuntimeSpirv-OpVariable-08746 接口装饰不匹配）。
     // 扩展声明必须在 #version 之后（InsertAfterVersionLine 保证）。
-    const std::string fs_mesh_extension = "#extension GL_EXT_mesh_shader : require\n";
-    fs_final = InsertAfterVersionLine(
-        fs_final,
-        fs_mesh_extension + binding_preamble + compile_define_macros + sampler_macros + material_ssbo_decls
-        + material_slot_macros + fs_index_table_decls);
+    std::string fs_injects = "#extension GL_EXT_mesh_shader : require\n"
+        + binding_preamble + compile_define_macros + sampler_macros + material_ssbo_decls
+        + material_slot_macros + fs_index_table_decls;
+
+    if (!code_module_glsl.empty())
+    {
+        if (fs_glsl.find("#include SURFACE_FUNCTION_FILE") != std::string::npos)
+            // marker 模板：模块代码插到 surface function 前（独立于 version 后注入组）
+            fs_final = InsertBeforeSurfaceFunction(fs_final, code_module_glsl);
+        else
+            fs_injects += code_module_glsl;   // 排在注入组尾部（保持原顺序：宏/声明在前、模块代码在后）
+    }
+
+    fs_final = InsertAfterVersionLine(fs_final, fs_injects);
 
     ShaderCreateInfo         *mesh = ctx->GetStageShader(ShaderStage::Mesh);
     ShaderCreateInfo         *frag = ctx->GetStageShader(ShaderStage::Fragment);
