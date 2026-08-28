@@ -49,3 +49,6 @@
 [submodule "CMAudio"]
 	path = CMAudio
 	url = https://github.com/hyzboy/CMAudio.git
+[submodule "CMQT"]
+	path = CMQT
+	url = https://github.com/hyzboy/CMQT.git
