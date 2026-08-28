@@ -28,7 +28,7 @@ namespace hgl::graph::mtl
     {
         const auto &resolved_stage_interface = *ctx.stage_interface;
 
-        // 每线程 1 字符实例 → 6 顶点 2 三角形（字符 quad）
+        // 每线程 1 字符实例 → 4 顶点 2 三角形（字符 quad，顶点复用——TR/BL 共享）
         // 三层数据模型：CharInfo + CharStyle + CharInstance
         const std::string group_size = std::to_string(ctx.max_invocations);
 
@@ -36,7 +36,7 @@ namespace hgl::graph::mtl
         ms += "    const uint char_idx = gl_WorkGroupID.x * ";
         ms += group_size;
         ms += "u + gl_LocalInvocationIndex;\n";
-        ms += "    const uint base_vid = gl_LocalInvocationIndex * 6u;\n";
+        ms += "    const uint base_vid = gl_LocalInvocationIndex * 4u;\n";
         ms += "\n";
         ms += "    const uint total_chars = pc_vertex_index.total_vertices;\n";
         ms += "    const uint chars_this_group = min(";
@@ -44,7 +44,7 @@ namespace hgl::graph::mtl
         ms += "u, total_chars - gl_WorkGroupID.x * ";
         ms += group_size;
         ms += "u);\n";
-        ms += "    SetMeshOutputsEXT(chars_this_group * 6u, chars_this_group * 2u);\n";
+        ms += "    SetMeshOutputsEXT(chars_this_group * 4u, chars_this_group * 2u);\n";
         ms += "\n";
         ms += "    if (char_idx >= total_chars)\n";
         ms += "        return;\n";
@@ -149,22 +149,21 @@ namespace hgl::graph::mtl
         ms += "    const vec4 char_color = unpackUnorm4x8(cs.text_color);\n";
         ms += "\n";
 
-        // ── 写入 6 个 mesh 顶点（三角形列表，匹配 sl_l2r 绕序）────
-        // Tri 1: TL(0), BL(1), TR(2)
-        // Tri 2: TR(3), BL(4), BR(5)
+        // ── 写入 4 个 mesh 顶点（三角形列表，匹配 sl_l2r 绕序）────
+        // 槽位：+0=TL +1=BL +2=TR +3=BR（TR/BL 由两个三角形共享——顶点复用）
+        // Tri 1: TL, BL, TR
+        // Tri 2: TR, BL, BR
         ms += "    // Triangle 1: TL, BL, TR\n";
         ms += "    gl_MeshVerticesEXT[base_vid + 0u].gl_Position = viewport.ortho_matrix * vec4(pos_tl_x, pos_tl_y, 0.0, 1.0);\n";
         ms += "    gl_MeshVerticesEXT[base_vid + 1u].gl_Position = viewport.ortho_matrix * vec4(pos_bl_x, pos_bl_y, 0.0, 1.0);\n";
         ms += "    gl_MeshVerticesEXT[base_vid + 2u].gl_Position = viewport.ortho_matrix * vec4(pos_tr_x, pos_tr_y, 0.0, 1.0);\n";
         // Triangle 2: TR, BL, BR
-        ms += "    gl_MeshVerticesEXT[base_vid + 3u].gl_Position = viewport.ortho_matrix * vec4(pos_tr_x, pos_tr_y, 0.0, 1.0);\n";
-        ms += "    gl_MeshVerticesEXT[base_vid + 4u].gl_Position = viewport.ortho_matrix * vec4(pos_bl_x, pos_bl_y, 0.0, 1.0);\n";
-        ms += "    gl_MeshVerticesEXT[base_vid + 5u].gl_Position = viewport.ortho_matrix * vec4(pos_br_x, pos_br_y, 0.0, 1.0);\n";
+        ms += "    gl_MeshVerticesEXT[base_vid + 3u].gl_Position = viewport.ortho_matrix * vec4(pos_br_x, pos_br_y, 0.0, 1.0);\n";
         ms += "\n";
 
         // ── 三角形索引 ───────────────────────────────────────────
         ms += "    gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationIndex * 2u + 0u] = uvec3(base_vid, base_vid + 1u, base_vid + 2u);\n";
-        ms += "    gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationIndex * 2u + 1u] = uvec3(base_vid + 3u, base_vid + 4u, base_vid + 5u);\n";
+        ms += "    gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationIndex * 2u + 1u] = uvec3(base_vid + 2u, base_vid + 1u, base_vid + 3u);\n";
         ms += "\n";
 
         // ── UV varying ───────────────────────────────────────────
@@ -173,15 +172,13 @@ namespace hgl::graph::mtl
             ms += "    fragUV0[base_vid + 0u] = vec2(rot_tl_u, rot_tl_v);  // TL\n";
             ms += "    fragUV0[base_vid + 1u] = vec2(rot_bl_u, rot_bl_v);  // BL\n";
             ms += "    fragUV0[base_vid + 2u] = vec2(rot_tr_u, rot_tr_v);  // TR\n";
-            ms += "    fragUV0[base_vid + 3u] = vec2(rot_tr_u, rot_tr_v);  // TR\n";
-            ms += "    fragUV0[base_vid + 4u] = vec2(rot_bl_u, rot_bl_v);  // BL\n";
-            ms += "    fragUV0[base_vid + 5u] = vec2(rot_br_u, rot_br_v);  // BR\n";
+            ms += "    fragUV0[base_vid + 3u] = vec2(rot_br_u, rot_br_v);  // BR\n";
         }
 
         // ── 颜色 varying ─────────────────────────────────────────
         if (FindMaterialStageInterfaceEntry(resolved_stage_interface, InterStageSemantic::Color))
         {
-            ms += "    for (int i = 0; i < 6; i++)\n";
+            ms += "    for (int i = 0; i < 4; i++)\n";
             ms += "        fragVertexColor[base_vid + uint(i)] = char_color;\n";
         }
 
@@ -189,14 +186,14 @@ namespace hgl::graph::mtl
         if (FindMaterialStageInterfaceEntry(resolved_stage_interface, InterStageSemantic::DataIndexID))
         {
             ms += "    const uint data_id = ResolveDataIndexID(gl_DrawID);\n";
-            ms += "    for (int i = 0; i < 6; i++)\n";
+            ms += "    for (int i = 0; i < 4; i++)\n";
             ms += "        fragDataIndexID[base_vid + uint(i)] = data_id;\n";
         }
 
         // StyleID varying（flat per-vertex 样式索引 → FS 查 sbo_char_style）
         if (FindMaterialStageInterfaceEntry(resolved_stage_interface, InterStageSemantic::StyleID))
         {
-            ms += "    for (int i = 0; i < 6; i++)\n";
+            ms += "    for (int i = 0; i < 4; i++)\n";
             ms += "        fragStyleID[base_vid + uint(i)] = style_id;\n";
         }
     }

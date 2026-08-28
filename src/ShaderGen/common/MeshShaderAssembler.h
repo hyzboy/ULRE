@@ -57,8 +57,8 @@ namespace hgl::graph::mtl
         ms.reserve(3072);
 
         // ── 拓扑/容量 ──────────────────────────────────────────────────────
-        uint32_t verts_per_inv = 1;
-        uint32_t prims_per_inv = 0;
+        uint32_t max_vertices   = 0;
+        uint32_t max_primitives = 0;
 
         switch (mode)
         {
@@ -73,21 +73,22 @@ namespace hgl::graph::mtl
                           max_invocations);
                 return {};
             }
-            verts_per_inv = 1;
-            prims_per_inv = 0;   // 三角形由 3 线程组填索引
+            max_vertices = max_invocations;
+            // 每 3 顶点 1 三角形（list）；fan/strip 单组 = 顶点数-2
+            max_primitives = (primitive_type == PrimitiveType::Fan
+                           || primitive_type == PrimitiveType::TriangleStrip)
+                ? (max_invocations >= 2u ? max_invocations - 2u : 0u)
+                : (max_invocations / 3u);
             break;
         case MeshShaderMode::LineQuad:
-            verts_per_inv = 4;
-            prims_per_inv = 2;
+            max_vertices   = max_invocations * 4u;
+            max_primitives = max_invocations * 2u;
             break;
         case MeshShaderMode::CharQuad:
-            verts_per_inv = 6;    // 6 vertices per character (2 triangles)
-            prims_per_inv = 2;    // 2 triangles per character
+            max_vertices   = max_invocations * 4u;   // 4 顶点/字符（顶点复用）
+            max_primitives = max_invocations * 2u;
             break;
         }
-
-        const uint32_t max_vertices    = max_invocations * verts_per_inv;
-        const uint32_t max_primitives  = max_invocations * ((prims_per_inv > 0) ? prims_per_inv : 1);
 
         // ── Header ─────────────────────────────────────────────────────────
         EmitMeshShaderHeader(ms, node_cfg, max_invocations, max_vertices, max_primitives);
