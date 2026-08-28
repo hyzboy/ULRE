@@ -17,6 +17,7 @@
 #include <hgl/mtl/ShaderKeyUtility.h>
 #include <hgl/mtl/contract/ShaderGenProfileTargetVersion.h>
 #include <hgl/mtl/MaterialStageInterface.h>
+#include <hgl/mtl/MeshShaderLimits.h>
 #include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/mtl/GLSLCodeModuleCapabilityResolver.h>
@@ -34,6 +35,42 @@ namespace hgl::graph::mtl
     
     namespace
     {
+        // 设备能力推导：group size ≤ min(max_mesh_work_group_size_x,
+        //   floor(max_mesh_output_vertices / 每线程顶点数),
+        //   floor(max_mesh_output_primitives / 每线程图元数))。
+        // 拒绝生成侧硬编码——设备上限由主程序从物理设备实测后经 profile 传入；
+        // profile 为 null 或 limits 未填（0）时退回理想值。
+        // VertexPassthrough 向下取整到 3 的倍数（组内三角形不跨组，MeshShaderAssembler % 3 守卫）。
+        uint32_t ClampMeshInvocationsByDevice(
+            const contract::PhysicalDeviceProfileLite *profile,
+            const MeshShaderMode mode,
+            const uint32_t ideal) noexcept
+        {
+            if (!profile)
+                return ideal;
+
+            const auto &l = profile->limits;
+            const uint32_t verts_per_inv =
+                (mode == MeshShaderMode::LineQuad || mode == MeshShaderMode::CharQuad) ? 4u : 1u;
+            const uint32_t prims_per_inv =
+                (mode == MeshShaderMode::LineQuad || mode == MeshShaderMode::CharQuad) ? 2u : 1u;
+
+            uint32_t cap = l.max_mesh_work_group_size_x;
+            if (l.max_mesh_output_vertices > 0)
+                cap = std::min(cap, l.max_mesh_output_vertices / verts_per_inv);
+            if (l.max_mesh_output_primitives > 0)
+                cap = std::min(cap, l.max_mesh_output_primitives / prims_per_inv);
+
+            if (cap == 0)
+                return ideal;   // limits 未填（0）= 无约束，用理想值
+
+            uint32_t result = std::min(ideal, cap);
+            if (mode == MeshShaderMode::VertexPassthrough && result > 0)
+                result -= result % 3u;   // 3 的倍数（T2.4 守卫要求）
+
+            return result > 0 ? result : ideal;
+        }
+
         bool IsVertexSemanticRequiredForVarying(
             const VertexSemantic semantic,
             const MaterialVertexVaryingConfig &varying) noexcept
@@ -347,6 +384,7 @@ namespace hgl::graph::mtl
         // (originally MaterialDefinitionRegistry.cpp:439-531)
         // ═══════════════════════════════════════════════════════════════════
         bool GenerateStageSources(
+            const contract::PhysicalDeviceProfileLite *profile,
             const MaterialDefinition &definition,
             GenericMaterialBuildPlan &plan)
         {
@@ -364,23 +402,27 @@ namespace hgl::graph::mtl
             if (is_char_quad)
             {
                 ms_mode = MeshShaderMode::CharQuad;
-                // CharQuad: 每线程 6 顶点，max_vertices ≤ 256（Vulkan 规范保证下限）
-                // 42 × 6 = 252 ≤ 256（TEXT_CHARQUAD_MAX_INVOCATIONS 与 CPU dispatch 共享）
-                max_invocations = definition.mesh_shader_max_invocations > 0
-                    ? std::min(definition.mesh_shader_max_invocations, TEXT_CHARQUAD_MAX_INVOCATIONS) : TEXT_CHARQUAD_MAX_INVOCATIONS;
+                // CharQuad: 每线程 4 顶点，max_vertices ≤ 256（Vulkan 规范保证下限）
+                // 64 × 4 = 256（TEXT_CHARQUAD_MAX_INVOCATIONS 与 CPU dispatch 共享）
+                const uint32_t toml_or_ideal = definition.mesh_shader_max_invocations > 0
+                    ? std::min(definition.mesh_shader_max_invocations, TEXT_CHARQUAD_MAX_INVOCATIONS)
+                    : TEXT_CHARQUAD_MAX_INVOCATIONS;
+                max_invocations = ClampMeshInvocationsByDevice(profile, ms_mode, toml_or_ideal);
                 // CharQuad 自声明所有 SSBO，不需要外部顶点输入/provider
             }
             else if (is_lines)
             {
                 ms_mode = MeshShaderMode::LineQuad;
-                max_invocations = 64u;
+                max_invocations = ClampMeshInvocationsByDevice(
+                    profile, ms_mode, kMeshLineQuadMaxInvocations);
                 input_glsl_str    = plan.resolved_vertex_input_glsl;
                 provider_glsl_str = plan.resolved_provider_glsl;
             }
             else
             {
                 ms_mode = MeshShaderMode::VertexPassthrough;
-                max_invocations = 96u;
+                max_invocations = ClampMeshInvocationsByDevice(
+                    profile, ms_mode, kMeshVertexPassthroughMaxInvocations);
                 input_glsl_str    = plan.resolved_vertex_input_glsl;
                 provider_glsl_str = plan.resolved_provider_glsl;
             }
@@ -601,7 +643,7 @@ namespace hgl::graph::mtl
         if (!BuildResourceContract(definition, plan))
             return nullptr;
 
-        if (!GenerateStageSources(definition, plan))
+        if (!GenerateStageSources(profile, definition, plan))
             return nullptr;
 
         MaterialShaderCompilerInput compiler_input{};

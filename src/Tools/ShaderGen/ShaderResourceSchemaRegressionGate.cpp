@@ -27,6 +27,7 @@
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/filesystem/Path.h>
 #include "../../ShaderGen/3d/DefinitionDescriptorBuilder.h"
+#include <hgl/mtl/MeshShaderLimits.h>
 #include "../../ShaderGen/common/VertexBuilderCommon.h"
 #include "../../ShaderGen/common/VertexVaryingConfig.h"
 #include "../../ShaderGen/common/MeshShaderAssembler.h"   // GenerateMeshShader / MeshShaderMode
@@ -870,13 +871,13 @@ namespace
             VK_FORMAT_R32G32B32_SFLOAT,
             {},
             MeshShaderMode::VertexPassthrough,
-            96u,
+            kMeshVertexPassthroughMaxInvocations,
             GetShaderLibraryPath(),
             {},
             nullptr,
             hgl::graph::PrimitiveType::Triangles);
         if (lit_vs.find(
-                "layout(location=0) out flat uint fragDataIndexID[")
+                "layout(location=0) perprimitiveEXT out uint fragDataIndexID[")
                 == std::string::npos
          || lit_vs.find(
                 "layout(location=1) out vec3 fragWorldPos[")
@@ -903,7 +904,7 @@ namespace
             VK_FORMAT_R32G32B32_SFLOAT,
             {},
             MeshShaderMode::VertexPassthrough,
-            96u,
+            kMeshVertexPassthroughMaxInvocations,
             GetShaderLibraryPath(),
             {},
             nullptr,
@@ -3041,7 +3042,7 @@ namespace
         {
             return GenerateMeshShader(
                 graph, varying, VK_FORMAT_R32G32B32_SFLOAT,
-                {}, MeshShaderMode::VertexPassthrough, 96u,
+                {}, MeshShaderMode::VertexPassthrough, kMeshVertexPassthroughMaxInvocations,
                 GetShaderLibraryPath(), {}, nullptr,
                 hgl::graph::PrimitiveType::Triangles);
         };

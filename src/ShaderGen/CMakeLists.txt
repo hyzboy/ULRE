@@ -166,6 +166,7 @@ SET(NEW_MTL_TYPE_FILES  ${ROOT_INCLUDE_PATH}/hgl/mtl/SurfaceType.h
                         ${ROOT_INCLUDE_PATH}/hgl/mtl/BlendMode.h
                         ${ROOT_INCLUDE_PATH}/hgl/mtl/PassType.h
                         ${ROOT_INCLUDE_PATH}/hgl/mtl/MeshShaderMode.h
+                        ${ROOT_INCLUDE_PATH}/hgl/mtl/MeshShaderLimits.h
                         ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialRecipe.h
                         ${ROOT_INCLUDE_PATH}/hgl/mtl/PipelineConfig.h
                         ${ROOT_INCLUDE_PATH}/hgl/mtl/VertexShaderNodeConfig.h
