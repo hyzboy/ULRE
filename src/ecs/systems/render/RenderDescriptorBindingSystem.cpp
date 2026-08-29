@@ -894,7 +894,7 @@ namespace hgl::ecs
                 }
                 break;
             }
-            case graph::mtl::DescriptorSemantic::MaterialPrivateDataIndexTable:
+            case graph::mtl::DescriptorSemantic::MaterialPrivateDataIndex:
             {
                 const graph::IGPUBuffer *table_buffer = nullptr;
 
@@ -910,13 +910,13 @@ namespace hgl::ecs
                             req.ssbo_type,
                             req.ssbo_id,
                             req.material_private_data_slot},
-                        "MaterialPrivateDataIndexTable");
+                        "MaterialPrivateDataIndex");
                 }
 
                 if (table_buffer)
                 {
                     if (!bind_ssbo(material, batch, req, table_buffer))
-                        log_bind_failure(material, batch, req, "bind MaterialPrivateDataIndexTable failed");
+                        log_bind_failure(material, batch, req, "bind MaterialPrivateDataIndex failed");
                 }
                 else
                 {
@@ -1110,7 +1110,7 @@ namespace hgl::ecs
             return true;
         case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
             return true;
-        case graph::mtl::DescriptorSemantic::MaterialPrivateDataIndexTable:
+        case graph::mtl::DescriptorSemantic::MaterialPrivateDataIndex:
             return true;
         // 顶点数据 SSBO（MeshShader 方向）：由 RDBS（batch 首对象）或
         // PipelineMaterialRenderer（per-DrawBatch）绑定——有解析路径，非缺失

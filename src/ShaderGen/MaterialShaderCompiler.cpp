@@ -237,7 +237,7 @@ static bool ValidateDefinitionCapabilitySubset(
         case DescriptorSemantic::MaterialTextureLayerTable:
             allowed = !definition.texture_slot_decls.empty();
             break;
-        case DescriptorSemantic::MaterialPrivateDataIndexTable:
+        case DescriptorSemantic::MaterialPrivateDataIndex:
             allowed = !definition.material_private_data_slot_decls.empty()
                    || definition.vertex_varying.emit_data_index_id;
             break;
@@ -282,7 +282,7 @@ static bool ValidateDefinitionCapabilitySubset(
             // declared purely via provider manifest metadata (no matching
             // TOML [resources].ssbos entry), the index table requirement is
             // implied and must be accepted the same way.
-            if (req.semantic == DescriptorSemantic::MaterialPrivateDataIndexTable
+            if (req.semantic == DescriptorSemantic::MaterialPrivateDataIndex
              && manifest->ssbo_count > 0)
                 allowed = true;
         }
@@ -524,7 +524,7 @@ static const DescriptorRegisterEntry kDescriptorRegisterTable[] = {
     { DescriptorSemantic::LocalToWorld,             DescriptorKind::SSBO, RegisterOp::SetLocalToWorld,   nullptr,                    "LocalToWorld" },
     { DescriptorSemantic::LocalToWorldIndexTable,   DescriptorKind::SSBO, RegisterOp::AddSSBOStruct,     &SBS_LocalToWorldIndexRows,  "LocalToWorldIndexRows" },
     { DescriptorSemantic::MaterialTextureLayerTable,DescriptorKind::SSBO, RegisterOp::AddSSBOTextureLayer,nullptr,                    "MaterialTextureLayerRows" },
-    { DescriptorSemantic::MaterialPrivateDataIndexTable,   DescriptorKind::SSBO, RegisterOp::AddSSBOMaterialPrivateDataIndex,   nullptr,                    "MaterialPrivateDataIndexRows" },
+    { DescriptorSemantic::MaterialPrivateDataIndex,   DescriptorKind::SSBO, RegisterOp::AddSSBOMaterialPrivateDataIndex,   nullptr,                    "MaterialPrivateDataIndex" },
     { DescriptorSemantic::VertexPosition,           DescriptorKind::SSBO, RegisterOp::AddSSBOVertex,     &SBS_VertexPosition,        "VertexPosition" },
     { DescriptorSemantic::VertexUV,                 DescriptorKind::SSBO, RegisterOp::AddSSBOVertex,     &SBS_VertexUV,              "VertexUV" },
     { DescriptorSemantic::VertexNTB,                DescriptorKind::SSBO, RegisterOp::AddSSBOVertex,     &SBS_VertexNTB,             "VertexNTB" },
@@ -699,7 +699,7 @@ static void EnsureIndexTableSSBOs(
     bool has_index_table = false;
     for (const SerializedDescriptorEntry &entry : descriptor_entries)
     {
-        if (entry.semantic == DescriptorSemantic::MaterialPrivateDataIndexTable)
+        if (entry.semantic == DescriptorSemantic::MaterialPrivateDataIndex)
         {
             has_index_table = true;
             break;
@@ -707,7 +707,7 @@ static void EnsureIndexTableSSBOs(
     }
 
     // P1-2c：MaterialPrivateDataIndexRows 迁至 Transform 集，binding 由固定常量表确定，
-    // 与 Step 3 的 MaterialPrivateDataIndexTable 分支同构。
+    // 与 Step 3 的 MaterialPrivateDataIndex 分支同构。
     if (vv.emit_data_index_id && !has_index_table)
     {
         ctx->AddStruct(SBS_MaterialPrivateDataIndexRows.struct_name, "");
@@ -921,7 +921,7 @@ struct IndexTableSpec
 
 static const IndexTableSpec kVSIndexTableSpecs[] = {
     { SBS_LocalToWorldIndexRows.name, "LocalToWorldIndexRows", "l2w_index_rows",     "ResolveTransformID" },
-    { SBS_MaterialPrivateDataIndexRows.name, "MaterialPrivateDataIndexRows", "material_private_data_index_rows", "ResolveMaterialPrivateDataIndex" },
+    { SBS_MaterialPrivateDataIndexRows.name, "MaterialPrivateDataIndex", "mtl_private_data_index", "ResolveMaterialPrivateDataIndex" },
 };
 
 static void AppendIndexTableDecl(

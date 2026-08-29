@@ -48,7 +48,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::MaterialTexture:
         case DescriptorSemantic::MaterialSampler:
         case DescriptorSemantic::MaterialTextureLayerTable:
-        case DescriptorSemantic::MaterialPrivateDataIndexTable:
+        case DescriptorSemantic::MaterialPrivateDataIndex:
             return true;
         default:
             return false;
@@ -66,7 +66,7 @@ namespace hgl::graph::mtl
     }
 
     // Whether a program's resource schema requires per-instance runtime rows:
-    // a MaterialPrivateDataIndexTable / MaterialTextureLayerTable / MaterialPrivateData
+    // a MaterialPrivateDataIndex / MaterialTextureLayerTable / MaterialPrivateData
     // descriptor must be fed from per-batch row buffers keyed by the entity's own
     // data_index, rather than a static binding. Shared by RenderPrimitiveCollectSystem
     // and PrimitiveBatchPipeline so both agree on the same contract.
@@ -77,7 +77,7 @@ namespace hgl::graph::mtl
             switch (req.semantic)
             {
             case DescriptorSemantic::MaterialPrivateData:
-            case DescriptorSemantic::MaterialPrivateDataIndexTable:
+            case DescriptorSemantic::MaterialPrivateDataIndex:
             case DescriptorSemantic::MaterialTextureLayerTable:
                 return true;
             default:
@@ -102,7 +102,7 @@ namespace hgl::graph::mtl
 
         case DescriptorSemantic::LocalToWorld:
         case DescriptorSemantic::LocalToWorldIndexTable:
-        case DescriptorSemantic::MaterialPrivateDataIndexTable:  // P1-2c：实例→材质行索引表迁至 PerObject 集
+        case DescriptorSemantic::MaterialPrivateDataIndex:  // P1-2c：实例→材质行索引表迁至 PerObject 集
         case DescriptorSemantic::MeshDrawParams:          // mesh per-draw 参数表（PerObject 固定 binding）
             return DescriptorSetType::PerObject;
 
@@ -164,7 +164,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::MaterialPrivateData: return DefaultMaterialPrivateDataSlotName;
         case DescriptorSemantic::MaterialColorPalette: return SBS_ColorPalette.name;
         case DescriptorSemantic::MaterialTextureLayerTable: return SBS_MaterialTextureLayerRows.name;
-        case DescriptorSemantic::MaterialPrivateDataIndexTable: return SBS_MaterialPrivateDataIndexRows.name;
+        case DescriptorSemantic::MaterialPrivateDataIndex: return SBS_MaterialPrivateDataIndexRows.name;
         // 顶点数据 SSBO（MeshShader 方向）
         case DescriptorSemantic::VertexPosition: return SBS_VertexPosition.name;
         case DescriptorSemantic::VertexUV: return SBS_VertexUV.name;
@@ -187,7 +187,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::MaterialPrivateData: return nullptr;
         case DescriptorSemantic::MaterialColorPalette: return SBS_ColorPalette.struct_name;
         case DescriptorSemantic::MaterialTextureLayerTable: return SBS_MaterialTextureLayerRows.struct_name;
-        case DescriptorSemantic::MaterialPrivateDataIndexTable: return SBS_MaterialPrivateDataIndexRows.struct_name;
+        case DescriptorSemantic::MaterialPrivateDataIndex: return SBS_MaterialPrivateDataIndexRows.struct_name;
         case DescriptorSemantic::MeshDrawParams: return SBS_MeshDrawParams.struct_name;
         default: return nullptr;
         }
@@ -265,12 +265,12 @@ namespace hgl::graph::mtl
                 req.ssbo_id = MakeRecipeSSBOId(static_cast<uint32_t>(req.texture_slot));
             }
 
-            if (req.semantic == DescriptorSemantic::MaterialPrivateDataIndexTable
+            if (req.semantic == DescriptorSemantic::MaterialPrivateDataIndex
              && req.ssbo_type == SSBOType::UserDefined)
             {
-                req.ssbo_type = SSBOType::MaterialPrivateDataIndexTable;
+                req.ssbo_type = SSBOType::MaterialPrivateDataIndex;
             }
-            if (req.semantic == DescriptorSemantic::MaterialPrivateDataIndexTable
+            if (req.semantic == DescriptorSemantic::MaterialPrivateDataIndex
              && req.ssbo_id == MakeRecipeSSBOId(0))
             {
                 req.ssbo_id = MakeRecipeSSBOId(req.material_private_data_slot);
@@ -373,7 +373,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::MaterialTexture:  return "MaterialTexture";
         case DescriptorSemantic::MaterialSampler:  return "MaterialSampler";
         case DescriptorSemantic::MaterialTextureLayerTable: return "MaterialTextureLayerTable";
-        case DescriptorSemantic::MaterialPrivateDataIndexTable: return "MaterialPrivateDataIndexTable";
+        case DescriptorSemantic::MaterialPrivateDataIndex: return "MaterialPrivateDataIndex";
         case DescriptorSemantic::MeshDrawParams: return "MeshDrawParams";
         case DescriptorSemantic::Custom:           return "Custom";
         }
@@ -471,7 +471,7 @@ namespace hgl::graph::mtl
             const bool requires_data_ssbo =
                 req.semantic == DescriptorSemantic::MaterialPrivateData
              || req.semantic == DescriptorSemantic::MaterialTextureLayerTable
-             || req.semantic == DescriptorSemantic::MaterialPrivateDataIndexTable;
+             || req.semantic == DescriptorSemantic::MaterialPrivateDataIndex;
             if (requires_data_ssbo)
             {
                 if (req.material_private_data_slot >= MaxMaterialPrivateDataSlotsPerMaterial)

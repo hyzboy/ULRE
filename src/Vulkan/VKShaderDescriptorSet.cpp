@@ -22,7 +22,7 @@ namespace
             //（l2w / l2w_index_rows / material_private_data_index_rows）。
             if (strcmp(name, "l2w") == 0)              { out_binding = kPerObjectBindingL2W;           return true; }
             if (strcmp(name, "l2w_index_rows") == 0)   { out_binding = kPerObjectBindingL2WIndexRows;  return true; }
-            if (strcmp(name, "material_private_data_index_rows") == 0) { out_binding = kPerObjectBindingDataIndexRows; return true; }
+            if (strcmp(name, "mtl_private_data_index") == 0) { out_binding = kPerObjectBindingDataIndexRows; return true; }
             // 顶点数据 SSBO（MeshShader 方向）
             if (strcmp(name, "VertexPosition") == 0)   { out_binding = kPerObjectBindingVertexPosition; return true; }
             if (strcmp(name, "VertexUV") == 0)         { out_binding = kPerObjectBindingVertexUV;       return true; }

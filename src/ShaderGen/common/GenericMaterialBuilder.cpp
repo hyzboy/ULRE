@@ -329,7 +329,7 @@ namespace hgl::graph::mtl
                             case DescriptorSemantic::MaterialPrivateData:
                                 return !plan.coverage.
                                     requires_material_data;
-                            case DescriptorSemantic::MaterialPrivateDataIndexTable:
+                            case DescriptorSemantic::MaterialPrivateDataIndex:
                                 return !plan.effective_vertex_varying.
                                     emit_data_index_id;
                             case DescriptorSemantic::

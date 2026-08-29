@@ -4108,13 +4108,13 @@ namespace
                 DescriptorSetType::PerObject,
                 DescriptorKind::SSBO,
                 uint32_t(hgl::graph::kMeshFragment),
-                "material_private_data_index_rows",
-                "MaterialPrivateDataIndexRows",
+                "mtl_private_data_index",
+                "MaterialPrivateDataIndex",
                 nullptr,
-                DescriptorSemantic::MaterialPrivateDataIndexTable,
+                DescriptorSemantic::MaterialPrivateDataIndex,
                 TextureSlot::BaseColor,
                 DefaultMaterialPrivateDataSlot,
-                SSBOType::MaterialPrivateDataIndexTable,
+                SSBOType::MaterialPrivateDataIndex,
                 DescriptorSemanticLayer::SSBO
             }
         };
@@ -4326,7 +4326,7 @@ namespace
                      varying_layout.resources)
                 {
                     if (requirement.semantic
-                        == DescriptorSemantic::MaterialPrivateDataIndexTable)
+                        == DescriptorSemantic::MaterialPrivateDataIndex)
                     {
                         has_data_index =
                             requirement.stage_flags
@@ -4339,7 +4339,7 @@ namespace
                         has_texture_layer = true;
                     }
                 }
-                // P1-2e：varying 路径只负责 MaterialPrivateDataIndexTable；
+                // P1-2e：varying 路径只负责 MaterialPrivateDataIndex；
                 // MaterialTextureLayerTable 由 manifest/纹理槽声明提供，
                 // 不再由 varying 契约生成。
                 if (!has_data_index || has_texture_layer)
@@ -4848,7 +4848,7 @@ int main(const int argc, char **argv)
         constexpr SerializedDescriptorEntry valid_entries[] =
         {
             { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(hgl::graph::kMeshFragment), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
-            { DescriptorSetType::PerObject, DescriptorKind::SSBO, uint32_t(hgl::graph::kMeshFragment), "material_private_data_index_rows", "MaterialPrivateDataIndexRows", nullptr, DescriptorSemantic::MaterialPrivateDataIndexTable, TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, SSBOType::MaterialPrivateDataIndexTable, DescriptorSemanticLayer::SSBO },
+            { DescriptorSetType::PerObject, DescriptorKind::SSBO, uint32_t(hgl::graph::kMeshFragment), "mtl_private_data_index", "MaterialPrivateDataIndex", nullptr, DescriptorSemantic::MaterialPrivateDataIndex, TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, SSBOType::MaterialPrivateDataIndex, DescriptorSemanticLayer::SSBO },
             { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "mtl_texture_layer_rows", "TextureLayerRows", nullptr, DescriptorSemantic::MaterialTextureLayerTable, TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, SSBOType::TextureLayer, DescriptorSemanticLayer::SSBO },
         };
         results.push_back(RunValidationCase("A.valid-layered-paths", valid_entries, uint32_t(std::size(valid_entries)), true));
@@ -4861,7 +4861,7 @@ int main(const int argc, char **argv)
 
         constexpr SerializedDescriptorEntry semantic_kind_mismatch[] =
         {
-            { DescriptorSetType::PerObject, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "material_private_data_index_rows", "MaterialPrivateDataIndexRows", nullptr, DescriptorSemantic::MaterialPrivateDataIndexTable, TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, SSBOType::MaterialPrivateDataIndexTable, DescriptorSemanticLayer::SSBO },
+            { DescriptorSetType::PerObject, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "mtl_private_data_index", "MaterialPrivateDataIndex", nullptr, DescriptorSemantic::MaterialPrivateDataIndex, TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, SSBOType::MaterialPrivateDataIndex, DescriptorSemanticLayer::SSBO },
         };
         results.push_back(RunValidationCase("B2.semantic-kind-mismatch-hard-fail", semantic_kind_mismatch, 1, false));
 

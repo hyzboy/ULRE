@@ -30,7 +30,7 @@ namespace hgl::graph::mtl
         MaterialTexture,
         MaterialSampler,
         MaterialTextureLayerTable,
-        MaterialPrivateDataIndexTable,
+        MaterialPrivateDataIndex,
 
         // 顶点数据 SSBO（MeshShader 方向：顶点输入统一为 SSBO）
         VertexPosition,
@@ -80,7 +80,7 @@ namespace hgl::graph::mtl
 
         case DescriptorSemantic::LocalToWorldIndexTable:
         case DescriptorSemantic::MaterialTextureLayerTable:
-        case DescriptorSemantic::MaterialPrivateDataIndexTable:
+        case DescriptorSemantic::MaterialPrivateDataIndex:
         case DescriptorSemantic::MeshDrawParams:
             return DescriptorSemanticLayer::SSBO;
 

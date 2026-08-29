@@ -681,7 +681,7 @@ namespace hgl::ecs
                         static_cast<VkDeviceSize>(batch.material_data_index_rows_capacity)
                         * graph::mtl::MaterialPrivateDataIndexRowStride * sizeof(uint32_t);
                     batch.material_data_index_rows_buffer = batch.buffer_manager->CreateSSBO(
-                        "ECS:Batch:MaterialPrivateDataIndexRows", byte_size, nullptr, graph::SharingMode::Exclusive);
+                        "ECS:Batch:MaterialPrivateDataIndex", byte_size, nullptr, graph::SharingMode::Exclusive);
                 }
             }
         }

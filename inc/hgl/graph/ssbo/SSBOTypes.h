@@ -24,7 +24,7 @@ namespace hgl::graph::mtl
         LocalToWorld,
 
         UserDefined,
-        MaterialPrivateDataIndexTable,
+        MaterialPrivateDataIndex,
 
         TextureLayer,
 
@@ -64,7 +64,7 @@ namespace hgl::graph::mtl
         {
         case SSBOType::MeshDrawParams: return "MeshDrawParams";
         case SSBOType::TextureLayer: return "TextureLayer";
-        case SSBOType::MaterialPrivateDataIndexTable: return "MaterialPrivateDataIndexTable";
+        case SSBOType::MaterialPrivateDataIndex: return "MaterialPrivateDataIndex";
         case SSBOType::PBRSurface: return "PBRSurface";
         case SSBOType::EmissiveSurface: return "EmissiveSurface";
         case SSBOType::TextureRectArraySurface: return "TextureRectArraySurface";
@@ -89,7 +89,7 @@ namespace hgl::graph::mtl
         switch (type)
         {
         case SSBOType::TextureLayer:
-        case SSBOType::MaterialPrivateDataIndexTable:
+        case SSBOType::MaterialPrivateDataIndex:
         case SSBOType::TransformIndexRows:
         case SSBOType::LocalToWorld:
         case SSBOType::PBRSurface:
@@ -110,7 +110,7 @@ namespace hgl::graph::mtl
         {
         case SSBOType::TextureLayer:
             return sizeof(uint32_t) * static_cast<uint32_t>(TextureSlot::RANGE_SIZE);
-        case SSBOType::MaterialPrivateDataIndexTable:
+        case SSBOType::MaterialPrivateDataIndex:
             return 0;  // dynamic: stride = material_private_data_slot_decls.size() * sizeof(uint32_t) per material
         case SSBOType::PBRSurface:
             return sizeof(float) * 8; // vec4 base_color + metallic + roughness + normal_scale + fresnel

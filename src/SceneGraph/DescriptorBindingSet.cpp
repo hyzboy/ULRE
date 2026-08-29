@@ -138,7 +138,7 @@ namespace hgl::graph
             {
             case mtl::DescriptorSemantic::MaterialPrivateData:
             case mtl::DescriptorSemantic::MaterialTextureLayerTable:
-            case mtl::DescriptorSemantic::MaterialPrivateDataIndexTable:
+            case mtl::DescriptorSemantic::MaterialPrivateDataIndex:
             {
                 SSBOBinding binding;
                 if (!GetSSBOBinding(req.ssbo_type, binding))

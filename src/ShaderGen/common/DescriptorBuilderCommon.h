@@ -220,8 +220,8 @@ inline void PushMaterialPrivateDataIndexRows(std::vector<SerializedDescriptorEnt
 {
     // P1-2c：MaterialPrivateDataIndexRows 迁至 PerObject 集（实例→材质行索引表）。
     PushBySpec(v, DescriptorSetType::PerObject, DescriptorKind::SSBO,
-               "material_private_data_index_rows", "MaterialPrivateDataIndexRows", DescriptorSemantic::MaterialPrivateDataIndexTable,
-               SSBOType::MaterialPrivateDataIndexTable, stage_flags);
+               "mtl_private_data_index", "MaterialPrivateDataIndex", DescriptorSemantic::MaterialPrivateDataIndex,
+               SSBOType::MaterialPrivateDataIndex, stage_flags);
 }
 
 inline void PushMaterialTextureLayerRows(
@@ -442,7 +442,7 @@ inline bool AppendManifestTextureLayerDescriptors(
 // index table — yet ResolveMaterialPrivateDataIndex() is still referenced unconditionally by
 // the vertex assembler. Scan the merged descriptor list for any
 // MaterialPrivateData entry (from either source) and make sure the matching
-// MaterialPrivateDataIndexTable entry exists.
+// MaterialPrivateDataIndex entry exists.
 inline void EnsureMaterialPrivateDataIndexTable(
     std::vector<SerializedDescriptorEntry> &v,
     const uint32_t stage_flags)
@@ -453,7 +453,7 @@ inline void EnsureMaterialPrivateDataIndexTable(
     {
         if (entry.semantic == DescriptorSemantic::MaterialPrivateData)
             has_material_private_data_slot = true;
-        else if (entry.semantic == DescriptorSemantic::MaterialPrivateDataIndexTable)
+        else if (entry.semantic == DescriptorSemantic::MaterialPrivateDataIndex)
             has_index_table = true;
     }
 

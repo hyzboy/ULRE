@@ -15,7 +15,7 @@ namespace hgl::graph::mtl
         DescriptorSetType::Material, "mtl_texture_layer_rows", "TextureLayerRows"
     };
     constexpr const ShaderBufferSource SBS_MaterialPrivateDataIndexRows{
-        DescriptorSetType::PerObject, "material_private_data_index_rows", "MaterialPrivateDataIndexRows"
+        DescriptorSetType::PerObject, "mtl_private_data_index", "MaterialPrivateDataIndex"
     };
     // 顶点数据 SSBO（MeshShader 方向：顶点输入统一为 SSBO）——每对象大 buffer
     constexpr const ShaderBufferSource SBS_VertexPosition{

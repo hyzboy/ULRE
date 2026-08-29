@@ -88,9 +88,9 @@ namespace hgl::graph::mtl
                     == DescriptorSemantic::MaterialTextureLayerTable)
                 entry.canonical.ssbo_type = SSBOType::TextureLayer;
             else if (source.semantic
-                    == DescriptorSemantic::MaterialPrivateDataIndexTable)
+                    == DescriptorSemantic::MaterialPrivateDataIndex)
                 entry.canonical.ssbo_type =
-                    SSBOType::MaterialPrivateDataIndexTable;
+                    SSBOType::MaterialPrivateDataIndex;
             else if (source.semantic
                     == DescriptorSemantic::LocalToWorldIndexTable)
                 entry.canonical.ssbo_type = SSBOType::TransformIndexRows;
@@ -151,7 +151,7 @@ namespace hgl::graph::mtl
 
         std::vector<SerializedDescriptorEntry> generated;
         if (varying.emit_data_index_id
-         && !has_semantic(DescriptorSemantic::MaterialPrivateDataIndexTable))
+         && !has_semantic(DescriptorSemantic::MaterialPrivateDataIndex))
         {
             SerializedDescriptorEntry entry{};
             entry.set_type = SBS_MaterialPrivateDataIndexRows.set_type;  // P1-2c：Transform 集
@@ -161,9 +161,9 @@ namespace hgl::graph::mtl
             entry.name = SBS_MaterialPrivateDataIndexRows.name;
             entry.struct_name = SBS_MaterialPrivateDataIndexRows.struct_name;
             entry.semantic =
-                DescriptorSemantic::MaterialPrivateDataIndexTable;
+                DescriptorSemantic::MaterialPrivateDataIndex;
             entry.semantic_layer = DescriptorSemanticLayer::SSBO;
-            entry.ssbo_type = SSBOType::MaterialPrivateDataIndexTable;
+            entry.ssbo_type = SSBOType::MaterialPrivateDataIndex;
             entry.has_requirement_policy = true;
             entry.required = true;
             generated.push_back(entry);
@@ -393,7 +393,7 @@ namespace hgl::graph::mtl
                     static_cast<uint32>(req.texture_slot));
             }
             if (req.semantic
-                    == DescriptorSemantic::MaterialPrivateDataIndexTable
+                    == DescriptorSemantic::MaterialPrivateDataIndex
              && req.ssbo_id == MakeRecipeSSBOId(0))
             {
                 req.ssbo_id = MakeRecipeSSBOId(req.material_private_data_slot);
