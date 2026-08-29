@@ -326,10 +326,10 @@ namespace hgl::graph::mtl
                                 return !plan.coverage.requires_texture
                                     || entry.texture_slot
                                         != plan.coverage.texture_slot;
-                            case DescriptorSemantic::MaterialDataSlotData:
+                            case DescriptorSemantic::MaterialPrivateData:
                                 return !plan.coverage.
                                     requires_material_data;
-                            case DescriptorSemantic::MaterialDataIndexTable:
+                            case DescriptorSemantic::MaterialPrivateDataIndexTable:
                                 return !plan.effective_vertex_varying.
                                     emit_data_index_id;
                             case DescriptorSemantic::
@@ -595,12 +595,12 @@ namespace hgl::graph::mtl
                 GetOutputContractHash(plan.output_contract);
             plan.program_link.compiler_hash = compiler_hash;
             config.program_link = &plan.program_link;
-            config.data_slot_decls =
+            config.material_private_data_slot_decls =
                 plan.depth_purpose
              && !plan.coverage.requires_material_data
                     ? nullptr
-                    : definition.data_slot_decls.empty()
-                        ? nullptr : &definition.data_slot_decls;
+                    : definition.material_private_data_slot_decls.empty()
+                        ? nullptr : &definition.material_private_data_slot_decls;
             config.defer_finalize = request.defer_finalize;
             return true;
         }

@@ -144,7 +144,7 @@ namespace hgl::graph::mtl
         DescriptorKind kind = DescriptorKind::UBO;
         TextureSlot texture_slot = TextureSlot::BaseColor;
         SSBOType ssbo_type = SSBOType::UserDefined;
-        uint32 data_slot = 0;
+        uint32 material_private_data_slot = 0;
         uint32 stage_flags = 0;
         uint32 array_count = 1;
         bool required = true;
@@ -163,7 +163,7 @@ namespace hgl::graph::mtl
             && lhs.kind == rhs.kind
             && lhs.texture_slot == rhs.texture_slot
             && lhs.ssbo_type == rhs.ssbo_type
-            && lhs.data_slot == rhs.data_slot
+            && lhs.material_private_data_slot == rhs.material_private_data_slot
             && lhs.stage_flags == rhs.stage_flags
             && lhs.array_count == rhs.array_count
             && lhs.required == rhs.required

@@ -42,7 +42,7 @@ namespace hgl::graph::mtl
             {
                 auto &existing = manifest.ssbos[i];
                 if (!CStrEqual(existing.name, incoming.name)
-                 || existing.data_slot != incoming.data_slot)
+                 || existing.material_private_data_slot != incoming.material_private_data_slot)
                     continue;
 
                 if (existing.ssbo_type != incoming.ssbo_type)
@@ -215,7 +215,7 @@ namespace hgl::graph::mtl
                 const auto &ssbo = manifest.ssbos[i];
                 h << ssbo.name;
                 h << ssbo.ssbo_type
-                  << ssbo.data_slot
+                  << ssbo.material_private_data_slot
                   << ssbo.stage_flags
                   << ssbo.required
                   << ssbo.allow_fallback;

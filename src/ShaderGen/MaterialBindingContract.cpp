@@ -53,7 +53,7 @@ namespace hgl::graph::mtl
             return binding.logical_resource_id != 0
                 && binding.asset_identity_hash != 0
                 && binding.asset_metadata_hash != 0
-                && binding.semantic == DescriptorSemantic::MaterialDataSlotData
+                && binding.semantic == DescriptorSemantic::MaterialPrivateData
                 && binding.ssbo_type >= SSBOType::BEGIN_RANGE
                 && binding.ssbo_type <= SSBOType::END_RANGE
                 && IsValidDataSource(binding.source)
@@ -89,7 +89,7 @@ namespace hgl::graph::mtl
             hgl::hash::FNV1aHasher64 h;
             h << binding.logical_resource_id
               << binding.semantic
-              << binding.data_slot
+              << binding.material_private_data_slot
               << binding.ssbo_id
               << binding.data_index
               << binding.ssbo_type
@@ -118,8 +118,8 @@ namespace hgl::graph::mtl
         {
             if (lhs.logical_resource_id != rhs.logical_resource_id)
                 return lhs.logical_resource_id < rhs.logical_resource_id;
-            if (lhs.data_slot != rhs.data_slot)
-                return lhs.data_slot < rhs.data_slot;
+            if (lhs.material_private_data_slot != rhs.material_private_data_slot)
+                return lhs.material_private_data_slot < rhs.material_private_data_slot;
             if (lhs.ssbo_type != rhs.ssbo_type)
                 return lhs.ssbo_type < rhs.ssbo_type;
             return lhs.recipe_binding_index < rhs.recipe_binding_index;
@@ -149,7 +149,7 @@ namespace hgl::graph::mtl
             writer.WriteU64(binding.asset_identity_hash);
             writer.WriteU64(binding.asset_metadata_hash);
             writer.WriteU16(static_cast<uint16>(binding.semantic));
-            writer.WriteU32(binding.data_slot);
+            writer.WriteU32(binding.material_private_data_slot);
             writer.WriteU32(binding.ssbo_id);
             writer.WriteU32(binding.data_index);
             writer.WriteU32(binding.recipe_binding_index);
@@ -230,7 +230,7 @@ namespace hgl::graph::mtl
             for (int j = 0; j < i; ++j)
             {
                 if (table.data[j].logical_resource_id == binding.logical_resource_id
-                 || (table.data[j].data_slot == binding.data_slot
+                 || (table.data[j].material_private_data_slot == binding.material_private_data_slot
                   && table.data[j].ssbo_type == binding.ssbo_type))
                     return false;
             }
@@ -297,8 +297,8 @@ namespace hgl::graph::mtl
         h << static_cast<uint32>(recipe.ssbo_assets.size());
         for (const auto &binding : recipe.ssbo_assets)
         {
-            h << binding.data_slot_name;
-            h << binding.data_slot
+            h << binding.material_private_data_slot_name;
+            h << binding.material_private_data_slot
               << binding.ssbo_type
               << binding.ssbo_id
               << binding.data_index
@@ -323,12 +323,12 @@ namespace hgl::graph::mtl
     uint64 GetResolvedDataAssetIdentityHash(
         const SSBOType ssbo_type,
         const uint32 ssbo_id,
-        const uint32 data_slot) noexcept
+        const uint32 material_private_data_slot) noexcept
     {
         hgl::hash::FNV1aHasher64 h;
         h << ssbo_type
           << ssbo_id
-          << data_slot;
+          << material_private_data_slot;
         return h;
     }
 

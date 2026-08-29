@@ -24,13 +24,13 @@ namespace hgl::graph::mtl
 
         LocalToWorld,
         LocalToWorldIndexTable,
-        MaterialDataSlotData,      // per-instance SSBO slot (one entry per data_slot_decls[i])
+        MaterialPrivateData,      // per-instance SSBO slot (one entry per material_private_data_slot_decls[i])
         MaterialColorPalette,
 
         MaterialTexture,
         MaterialSampler,
         MaterialTextureLayerTable,
-        MaterialDataIndexTable,
+        MaterialPrivateDataIndexTable,
 
         // 顶点数据 SSBO（MeshShader 方向：顶点输入统一为 SSBO）
         VertexPosition,
@@ -80,12 +80,12 @@ namespace hgl::graph::mtl
 
         case DescriptorSemantic::LocalToWorldIndexTable:
         case DescriptorSemantic::MaterialTextureLayerTable:
-        case DescriptorSemantic::MaterialDataIndexTable:
+        case DescriptorSemantic::MaterialPrivateDataIndexTable:
         case DescriptorSemantic::MeshDrawParams:
             return DescriptorSemanticLayer::SSBO;
 
         case DescriptorSemantic::LocalToWorld:
-        case DescriptorSemantic::MaterialDataSlotData:
+        case DescriptorSemantic::MaterialPrivateData:
         case DescriptorSemantic::Unknown:
         case DescriptorSemantic::Custom:
             return DescriptorSemanticLayer::Unknown;

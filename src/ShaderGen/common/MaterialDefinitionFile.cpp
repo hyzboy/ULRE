@@ -558,7 +558,7 @@ namespace hgl::graph::mtl
                 {
                     // 单槽化：一个材质只有一个私有数据 SSBO（MaterialPrivateData）。
                     // TOML 形态：material_data = { type = "EmissiveSurface" }
-                    // 无 name 段（固定 DefaultMaterialDataSlotName）；type 必须是材质 SSBO 类型。
+                    // 无 name 段（固定 DefaultMaterialPrivateDataSlotName）；type 必须是材质 SSBO 类型。
                     const auto &item = resources.at("material_data");
                     if (!item.is_table()
                      || !item.contains("type") || !item.at("type").is_string())
@@ -568,8 +568,8 @@ namespace hgl::graph::mtl
                      || type == SSBOType::UserDefined
                      || !IsMaterialSSBOType(type))
                         return false;
-                    out.definition.data_slot_decls.push_back(
-                        {DefaultMaterialDataSlotName, type});
+                    out.definition.material_private_data_slot_decls.push_back(
+                        {DefaultMaterialPrivateDataSlotName, type});
                 }
 
                 if (resources.contains("textures"))

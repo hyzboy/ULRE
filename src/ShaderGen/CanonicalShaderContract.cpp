@@ -505,7 +505,7 @@ namespace hgl::graph::mtl
             writer.WriteU8(static_cast<uint8>(entry.kind));
             writer.WriteU8(static_cast<uint8>(entry.texture_slot));
             writer.WriteU16(static_cast<uint16>(entry.ssbo_type));
-            writer.WriteU32(entry.data_slot);
+            writer.WriteU32(entry.material_private_data_slot);
             writer.WriteU32(entry.stage_flags);
             writer.WriteU32(entry.array_count);
             writer.WriteBool(entry.required);

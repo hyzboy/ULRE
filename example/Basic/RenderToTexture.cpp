@@ -292,7 +292,7 @@ public:
         sphere_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 sphere_recipe,
-                graph::mtl::DefaultMaterialDataSlotName,
+                graph::mtl::DefaultMaterialPrivateDataSlotName,
                 mtl_data_ssbo_accessor->GetSSBOBinding()))
             return LogStageFail("OffscreenPass::BuildSphere", "register material SSBO binding failed");
 
@@ -314,13 +314,13 @@ public:
         prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, sphere_base_tex, sphere_sampler);
         prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal, sphere_normal_tex, sphere_sampler);
         prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, sphere_roughness_tex, sphere_sampler);
-        hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource sphere_struct{};
-        sphere_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
+        hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource sphere_struct{};
+        sphere_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
         sphere_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
         sphere_struct.data_index = 0;
         sphere_struct.use_data_index = true;
         sphere_struct.shared_across_instances = true;
-        prim_comp->SetMaterialDataSlotResource(sphere_struct);
+        prim_comp->SetMaterialPrivateDataSlotResource(sphere_struct);
         prim_comp->SetVisible(true);
 
         sphere_primitive_comp = prim_comp;
@@ -490,7 +490,7 @@ private:
         cube_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 cube_recipe,
-                graph::mtl::DefaultMaterialDataSlotName,
+                graph::mtl::DefaultMaterialPrivateDataSlotName,
                 cube_mtl_data_ssbo_accessor->GetSSBOBinding()))
             return LogStageFail("RenderToTextureApp::CreateCube", "register material SSBO binding failed");
 
@@ -511,13 +511,13 @@ private:
         cube_prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_tex, cube_sampler);
         cube_prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal, normal_tex, cube_sampler);
         cube_prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_tex, cube_sampler);
-        hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource cube_struct{};
-        cube_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
+        hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource cube_struct{};
+        cube_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
         cube_struct.ssbo_id = cube_mtl_data_ssbo_accessor->GetSSBOId();
         cube_struct.data_index = 0;
         cube_struct.use_data_index = true;
         cube_struct.shared_across_instances = true;
-        cube_prim_comp->SetMaterialDataSlotResource(cube_struct);
+        cube_prim_comp->SetMaterialPrivateDataSlotResource(cube_struct);
         cube_prim_comp->SetVisible(true);
         LogStage("RenderToTextureApp::CreateCube", "success");
         return true;

@@ -127,7 +127,7 @@ namespace hgl::graph::mtl
     {
         const char *name = nullptr;
         SSBOType ssbo_type = SSBOType::UserDefined;
-        uint32 data_slot = 0;
+        uint32 material_private_data_slot = 0;
         uint32 stage_flags = 0;
         bool required = true;
         bool allow_fallback = false;
@@ -140,7 +140,7 @@ namespace hgl::graph::mtl
             || (lhs.name && rhs.name && hgl::strcmp(lhs.name, rhs.name) == 0);
         return same_name
             && lhs.ssbo_type == rhs.ssbo_type
-            && lhs.data_slot == rhs.data_slot
+            && lhs.material_private_data_slot == rhs.material_private_data_slot
             && lhs.stage_flags == rhs.stage_flags
             && lhs.required == rhs.required
             && lhs.allow_fallback == rhs.allow_fallback;

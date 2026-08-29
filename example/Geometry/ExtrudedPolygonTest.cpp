@@ -81,7 +81,7 @@ private:
         mesh_recipe.mtl_def_id = "DebugNormalColor";
         mesh_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         graph::mtl::UpsertRecipeSSBOAssetBinding(mesh_recipe,
-                                                 graph::mtl::DefaultMaterialDataSlotName,
+                                                 graph::mtl::DefaultMaterialPrivateDataSlotName,
                                                  mtl_data_ssbo_accessor->GetSSBOBinding());
 
         return true;
@@ -185,13 +185,13 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitiveAsset(mesh_asset);
-        hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource mesh_struct{};
-        mesh_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
+        hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource mesh_struct{};
+        mesh_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
         mesh_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
         mesh_struct.data_index = 0;
         mesh_struct.use_data_index = true;
         mesh_struct.shared_across_instances = true;
-        prim_comp->SetMaterialDataSlotResource(mesh_struct);
+        prim_comp->SetMaterialPrivateDataSlotResource(mesh_struct);
         prim_comp->SetVisible(true);
 
         return true;

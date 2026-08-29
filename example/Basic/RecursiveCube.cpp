@@ -126,7 +126,7 @@ private:
         cube_recipe.mtl_def_id = "DebugNormalColor";
         cube_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         graph::mtl::UpsertRecipeSSBOAssetBinding(cube_recipe,
-                                                 graph::mtl::DefaultMaterialDataSlotName,
+                                                 graph::mtl::DefaultMaterialPrivateDataSlotName,
                                                  mtl_data_ssbo_accessor->GetSSBOBinding());
         cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
 
@@ -186,13 +186,13 @@ private:
         primitive_comp->SetPrimitiveAsset(&cube_asset);
         if (mtl_data_ssbo_accessor && mtl_data_ssbo_accessor->GetSSBOId() != 0)
         {
-            hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource cube_struct{};
-            cube_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
+            hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource cube_struct{};
+            cube_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
             cube_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             cube_struct.data_index = 0;
             cube_struct.use_data_index = true;
             cube_struct.shared_across_instances = true;
-            primitive_comp->SetMaterialDataSlotResource(cube_struct);
+            primitive_comp->SetMaterialPrivateDataSlotResource(cube_struct);
         }
         primitive_comp->SetVisible(true);
 

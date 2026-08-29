@@ -34,7 +34,7 @@ namespace hgl::graph::mtl
               << entry.set_type
               << entry.kind
               << entry.texture_slot
-              << entry.data_slot
+              << entry.material_private_data_slot
               << entry.ssbo_type;
             return h;
         }
@@ -81,20 +81,20 @@ namespace hgl::graph::mtl
             entry.canonical.texture_slot = source.texture_slot;
             entry.canonical.ssbo_type = source.ssbo_type;
             if (source.semantic
-                    == DescriptorSemantic::MaterialDataSlotData
+                    == DescriptorSemantic::MaterialPrivateData
              && entry.canonical.ssbo_type == SSBOType::UserDefined)
                 entry.canonical.ssbo_type = SSBOType::PBRSurface;
             else if (source.semantic
                     == DescriptorSemantic::MaterialTextureLayerTable)
                 entry.canonical.ssbo_type = SSBOType::TextureLayer;
             else if (source.semantic
-                    == DescriptorSemantic::MaterialDataIndexTable)
+                    == DescriptorSemantic::MaterialPrivateDataIndexTable)
                 entry.canonical.ssbo_type =
-                    SSBOType::MaterialDataIndexTable;
+                    SSBOType::MaterialPrivateDataIndexTable;
             else if (source.semantic
                     == DescriptorSemantic::LocalToWorldIndexTable)
                 entry.canonical.ssbo_type = SSBOType::TransformIndexRows;
-            entry.canonical.data_slot = source.data_slot;
+            entry.canonical.material_private_data_slot = source.material_private_data_slot;
             entry.canonical.stage_flags = source.stage_flags;
             entry.canonical.array_count = 1;
             entry.canonical.required =
@@ -151,7 +151,7 @@ namespace hgl::graph::mtl
 
         std::vector<SerializedDescriptorEntry> generated;
         if (varying.emit_data_index_id
-         && !has_semantic(DescriptorSemantic::MaterialDataIndexTable))
+         && !has_semantic(DescriptorSemantic::MaterialPrivateDataIndexTable))
         {
             SerializedDescriptorEntry entry{};
             entry.set_type = SBS_MaterialPrivateDataIndexRows.set_type;  // P1-2c：Transform 集
@@ -161,9 +161,9 @@ namespace hgl::graph::mtl
             entry.name = SBS_MaterialPrivateDataIndexRows.name;
             entry.struct_name = SBS_MaterialPrivateDataIndexRows.struct_name;
             entry.semantic =
-                DescriptorSemantic::MaterialDataIndexTable;
+                DescriptorSemantic::MaterialPrivateDataIndexTable;
             entry.semantic_layer = DescriptorSemanticLayer::SSBO;
-            entry.ssbo_type = SSBOType::MaterialDataIndexTable;
+            entry.ssbo_type = SSBOType::MaterialPrivateDataIndexTable;
             entry.has_requirement_policy = true;
             entry.required = true;
             generated.push_back(entry);
@@ -189,12 +189,12 @@ namespace hgl::graph::mtl
 
     bool BuildEffectiveDescriptorContract(
         const DescriptorContract &base_contract,
-        const std::vector<DataSlotDeclaration> *data_slot_decls,
+        const std::vector<MaterialPrivateDataSlotDeclaration> *material_private_data_slot_decls,
         const uint32 material_ssbo_stage_bits,
         DescriptorContract &out_contract)
     {
         out_contract = base_contract;
-        if (!data_slot_decls || data_slot_decls->empty())
+        if (!material_private_data_slot_decls || material_private_data_slot_decls->empty())
             return ValidateDescriptorContract(out_contract);
 
         out_contract.entries.erase(
@@ -204,15 +204,15 @@ namespace hgl::graph::mtl
                 [](const DescriptorContractEntry &entry)
                 {
                     return entry.canonical.semantic
-                        == DescriptorSemantic::MaterialDataSlotData;
+                        == DescriptorSemantic::MaterialPrivateData;
                 }),
             out_contract.entries.end());
 
         for (uint32 i = 0;
-             i < static_cast<uint32>(data_slot_decls->size());
+             i < static_cast<uint32>(material_private_data_slot_decls->size());
              ++i)
         {
-            const DataSlotDeclaration &decl = (*data_slot_decls)[i];
+            const MaterialPrivateDataSlotDeclaration &decl = (*material_private_data_slot_decls)[i];
             SerializedDescriptorEntry fixed{};
             fixed.set_type = DescriptorSetType::Material;
             fixed.kind = DescriptorKind::SSBO;
@@ -221,9 +221,9 @@ namespace hgl::graph::mtl
             fixed.struct_name =
                 ssbo::GetMaterialSSBOStructName(decl.ssbo_type);
             fixed.semantic =
-                DescriptorSemantic::MaterialDataSlotData;
+                DescriptorSemantic::MaterialPrivateData;
             fixed.texture_slot = TextureSlot::BaseColor;
-            fixed.data_slot = i;
+            fixed.material_private_data_slot = i;
             fixed.ssbo_type = decl.ssbo_type;
             fixed.semantic_layer = DescriptorSemanticLayer::SSBO;
             fixed.ssbo_id = MakeRecipeSSBOId(i);
@@ -261,7 +261,7 @@ namespace hgl::graph::mtl
                 ? nullptr : entry.glsl_type.c_str();
             fixed.semantic = entry.canonical.semantic;
             fixed.texture_slot = entry.canonical.texture_slot;
-            fixed.data_slot = entry.canonical.data_slot;
+            fixed.material_private_data_slot = entry.canonical.material_private_data_slot;
             fixed.ssbo_type = entry.canonical.ssbo_type;
             fixed.semantic_layer = entry.canonical.semantic_layer;
             fixed.ssbo_id = entry.ssbo_id;
@@ -306,7 +306,7 @@ namespace hgl::graph::mtl
                 return mapped;
 
             if (can.semantic == DescriptorSemantic::LocalToWorld
-             || can.semantic == DescriptorSemantic::MaterialDataSlotData)
+             || can.semantic == DescriptorSemantic::MaterialPrivateData)
             {
                 switch (can.kind)
                 {
@@ -347,7 +347,7 @@ namespace hgl::graph::mtl
             req.set_type = can.set_type;
             req.kind = can.kind;
             req.texture_slot = can.texture_slot;
-            req.data_slot = can.data_slot;
+            req.material_private_data_slot = can.material_private_data_slot;
             req.ssbo_type = can.ssbo_type;
             req.ssbo_id = entry.ssbo_id;
             req.stage_flags = can.stage_flags;
@@ -380,10 +380,10 @@ namespace hgl::graph::mtl
             }
 
             // ── SSBO id corrections (matching BuildShaderResourceSchema) ──
-            if (req.semantic == DescriptorSemantic::MaterialDataSlotData
+            if (req.semantic == DescriptorSemantic::MaterialPrivateData
              && req.ssbo_id == MakeRecipeSSBOId(0))
             {
-                req.ssbo_id = MakeRecipeSSBOId(req.data_slot);
+                req.ssbo_id = MakeRecipeSSBOId(req.material_private_data_slot);
             }
             if (req.semantic
                     == DescriptorSemantic::MaterialTextureLayerTable
@@ -393,10 +393,10 @@ namespace hgl::graph::mtl
                     static_cast<uint32>(req.texture_slot));
             }
             if (req.semantic
-                    == DescriptorSemantic::MaterialDataIndexTable
+                    == DescriptorSemantic::MaterialPrivateDataIndexTable
              && req.ssbo_id == MakeRecipeSSBOId(0))
             {
-                req.ssbo_id = MakeRecipeSSBOId(req.data_slot);
+                req.ssbo_id = MakeRecipeSSBOId(req.material_private_data_slot);
             }
 
             out_schema.resources.push_back(std::move(req));

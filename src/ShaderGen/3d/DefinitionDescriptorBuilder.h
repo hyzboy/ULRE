@@ -109,7 +109,7 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
     if (!descriptor_builder_common::AppendManifestSSBODescriptors(descriptors, manifest)
      || !descriptor_builder_common::AppendManifestTextureLayerDescriptors(descriptors, manifest))
         return {};
-    descriptor_builder_common::EnsureMaterialDataIndexTable(
+    descriptor_builder_common::EnsureMaterialPrivateDataIndexTable(
         descriptors, uint32_t(hgl::graph::kMeshFragment));
 
     return descriptors;

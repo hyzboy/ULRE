@@ -47,20 +47,20 @@ namespace hgl::ecs
         data_index_values.clear();
     }
 
-    void MaterialComponent::SetResolvedSSBOBinding(const char *data_slot_name,
-                                                   const uint32_t data_slot,
+    void MaterialComponent::SetResolvedSSBOBinding(const char *material_private_data_slot_name,
+                                                   const uint32_t material_private_data_slot,
                                                    graph::mtl::SSBOType ssbo_type,
                                                    const uint32_t ssbo_id)
     {
-        if (!data_slot_name || !*data_slot_name)
+        if (!material_private_data_slot_name || !*material_private_data_slot_name)
             return;
 
         for (auto &binding : resolved_ssbo_bindings)
         {
             if (binding.valid
-             && binding.data_slot == data_slot
-             && binding.data_slot_name
-             && std::strcmp(binding.data_slot_name, data_slot_name) == 0)
+             && binding.material_private_data_slot == material_private_data_slot
+             && binding.material_private_data_slot_name
+             && std::strcmp(binding.material_private_data_slot_name, material_private_data_slot_name) == 0)
             {
                 binding.ssbo_type = ssbo_type;
                 binding.ssbo_id = ssbo_id;
@@ -69,8 +69,8 @@ namespace hgl::ecs
         }
 
         ResolvedSSBOBinding binding{};
-        binding.data_slot_name = data_slot_name;
-        binding.data_slot = data_slot;
+        binding.material_private_data_slot_name = material_private_data_slot_name;
+        binding.material_private_data_slot = material_private_data_slot;
         binding.ssbo_type = ssbo_type;
         binding.ssbo_id = ssbo_id;
         binding.valid = true;
@@ -79,20 +79,20 @@ namespace hgl::ecs
 
     const MaterialComponent::ResolvedSSBOBinding *
         MaterialComponent::FindResolvedSSBOBinding(
-            const char *data_slot_name,
-            const uint32_t data_slot,
+            const char *material_private_data_slot_name,
+            const uint32_t material_private_data_slot,
             graph::mtl::SSBOType ssbo_type) const
     {
-        if (!data_slot_name || !*data_slot_name)
+        if (!material_private_data_slot_name || !*material_private_data_slot_name)
             return nullptr;
 
         for (const auto &binding : resolved_ssbo_bindings)
         {
             if (binding.valid
-             && binding.data_slot == data_slot
+             && binding.material_private_data_slot == material_private_data_slot
              && binding.ssbo_type == ssbo_type
-             && binding.data_slot_name
-             && std::strcmp(binding.data_slot_name, data_slot_name) == 0)
+             && binding.material_private_data_slot_name
+             && std::strcmp(binding.material_private_data_slot_name, material_private_data_slot_name) == 0)
                 return &binding;
         }
 

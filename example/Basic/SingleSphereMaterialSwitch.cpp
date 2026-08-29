@@ -168,7 +168,7 @@ private:
         near_recipe.mtl_def_id = "LitTextureArray";
         near_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         graph::mtl::UpsertRecipeSSBOAssetBinding(near_recipe,
-                                                 graph::mtl::DefaultMaterialDataSlotName,
+                                                 graph::mtl::DefaultMaterialPrivateDataSlotName,
                                                  mtl_data_ssbo_accessor->GetSSBOBinding());
 
         far_recipe = near_recipe;
@@ -238,13 +238,13 @@ private:
                                                                   PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray);
         }
 
-        hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource sphere_struct{};
-        sphere_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
+        hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource sphere_struct{};
+        sphere_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
         sphere_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
         sphere_struct.data_index = 0;
         sphere_struct.use_data_index = false;
         sphere_struct.shared_across_instances = false;
-        sphere_primitive_component->SetMaterialDataSlotResource(sphere_struct);
+        sphere_primitive_component->SetMaterialPrivateDataSlotResource(sphere_struct);
         return true;
     }
 

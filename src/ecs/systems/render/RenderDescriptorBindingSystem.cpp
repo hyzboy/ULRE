@@ -643,7 +643,7 @@ namespace hgl::ecs
                     auto material_comp = entity->GetComponent<MaterialComponent>();
                     if (const auto *resolved = material_comp
                         ? material_comp->FindResolvedSSBOBinding(
-                            req.name.c_str(), req.data_slot, req.ssbo_type)
+                            req.name.c_str(), req.material_private_data_slot, req.ssbo_type)
                         : nullptr)
                     {
                         candidate_ssbo_id = resolved->ssbo_id;
@@ -657,7 +657,7 @@ namespace hgl::ecs
                     if (primitive_comp->BuildResolvedAuthoringMaterialRecipe(effective_recipe, material))
                     {
                         if (const auto *asset = graph::mtl::FindRecipeSSBOAssetBinding(
-                                effective_recipe, req.name.c_str(), req.data_slot, req.ssbo_type))
+                                effective_recipe, req.name.c_str(), req.material_private_data_slot, req.ssbo_type))
                         {
                             candidate_ssbo_id = asset->ssbo_id;
                             has_candidate = true;
@@ -670,7 +670,7 @@ namespace hgl::ecs
                                 if (auto material_comp = entity->GetComponent<MaterialComponent>())
                                     material_comp->SetResolvedSSBOBinding(
                                         req.name.c_str(),
-                                        req.data_slot,
+                                        req.material_private_data_slot,
                                         req.ssbo_type,
                                         candidate_ssbo_id);
                             }
@@ -694,7 +694,7 @@ namespace hgl::ecs
                               material->GetName().c_str(),
                               graph::mtl::GetDescriptorSemanticName(req.semantic),
                               req.name.c_str(),
-                              req.data_slot,
+                              req.material_private_data_slot,
                               ssbo_id,
                               candidate_ssbo_id);
                     batch->descriptor_bind_valid = false;
@@ -827,26 +827,26 @@ namespace hgl::ecs
                 }
                 break;
             }
-            case graph::mtl::DescriptorSemantic::MaterialDataSlotData:
+            case graph::mtl::DescriptorSemantic::MaterialPrivateData:
             {
                 uint32_t resolved_ssbo_id = req.ssbo_id;
                 if (batch)
                 {
                     if (!resolve_recipe_batch_struct_ssbo_id(material, batch, req, resolved_ssbo_id))
                     {
-                        log_bind_failure(material, batch, req, "unresolved MaterialDataSlotData binding");
+                        log_bind_failure(material, batch, req, "unresolved MaterialPrivateData binding");
                         break;
                     }
                 }
 
                 const graph::IGPUBuffer *material_data_ssbo = resolve_domain_ssbo(
                     graph::mtl::SSBOAddress{req.ssbo_type, resolved_ssbo_id, 0},
-                    "MaterialDataSlot");
+                    "MaterialPrivateDataSlot");
 
                 if (material_data_ssbo)
                 {
                     if (!bind_ssbo(material, batch, req, material_data_ssbo))
-                        log_bind_failure(material, batch, req, "bind MaterialDataSlot failed");
+                        log_bind_failure(material, batch, req, "bind MaterialPrivateDataSlot failed");
                 }
                 else
                 {
@@ -894,7 +894,7 @@ namespace hgl::ecs
                 }
                 break;
             }
-            case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
+            case graph::mtl::DescriptorSemantic::MaterialPrivateDataIndexTable:
             {
                 const graph::IGPUBuffer *table_buffer = nullptr;
 
@@ -909,18 +909,18 @@ namespace hgl::ecs
                         graph::mtl::SSBOAddress{
                             req.ssbo_type,
                             req.ssbo_id,
-                            req.data_slot},
-                        "MaterialDataIndexTable");
+                            req.material_private_data_slot},
+                        "MaterialPrivateDataIndexTable");
                 }
 
                 if (table_buffer)
                 {
                     if (!bind_ssbo(material, batch, req, table_buffer))
-                        log_bind_failure(material, batch, req, "bind MaterialDataIndexTable failed");
+                        log_bind_failure(material, batch, req, "bind MaterialPrivateDataIndexTable failed");
                 }
                 else
                 {
-                    log_missing_ssbo_once(material, req, batch ? "batch rows missing and domain binding not found" : "domain binding not found", static_cast<int32_t>(req.data_slot));
+                    log_missing_ssbo_once(material, req, batch ? "batch rows missing and domain binding not found" : "domain binding not found", static_cast<int32_t>(req.material_private_data_slot));
                     if (batch && req.required)
                         batch->descriptor_bind_valid = false;
                 }
@@ -1104,13 +1104,13 @@ namespace hgl::ecs
         case graph::mtl::DescriptorSemantic::LocalToWorld:
         case graph::mtl::DescriptorSemantic::LocalToWorldIndexTable:
         case graph::mtl::DescriptorSemantic::MaterialColorPalette:
-        case graph::mtl::DescriptorSemantic::MaterialDataSlotData:
+        case graph::mtl::DescriptorSemantic::MaterialPrivateData:
         case graph::mtl::DescriptorSemantic::MaterialTexture:
         case graph::mtl::DescriptorSemantic::MaterialSampler:
             return true;
         case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
             return true;
-        case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
+        case graph::mtl::DescriptorSemantic::MaterialPrivateDataIndexTable:
             return true;
         // 顶点数据 SSBO（MeshShader 方向）：由 RDBS（batch 首对象）或
         // PipelineMaterialRenderer（per-DrawBatch）绑定——有解析路径，非缺失

@@ -225,12 +225,12 @@ bool ShaderBuildContext::AddSSBOVertexIndex(const uint32_t flag_bits)
     return AddSSBOStruct(flag_bits,SBS_VertexIndex);
 }
 
-bool ShaderBuildContext::AddSSBOMtlData(const uint32_t flag_bits,const std::string &struct_name,const std::string &name,const int data_slot)
+bool ShaderBuildContext::AddSSBOMaterialPrivateData(const uint32_t flag_bits,const std::string &struct_name,const std::string &name,const int material_private_data_slot)
 {
-    return AddSSBO(flag_bits,DescriptorSetType::Material,struct_name,name,data_slot);
+    return AddSSBO(flag_bits,DescriptorSetType::Material,struct_name,name,material_private_data_slot);
 }
 
-bool ShaderBuildContext::AddSSBOMtlIndex(const uint32_t flag_bits)
+bool ShaderBuildContext::AddSSBOMaterialPrivateDataIndex(const uint32_t flag_bits)
 {
     return AddSSBO(flag_bits,SBS_MaterialPrivateDataIndexRows.set_type,SBS_MaterialPrivateDataIndexRows.struct_name,SBS_MaterialPrivateDataIndexRows.name);
 }

@@ -175,9 +175,9 @@ static bool HasDescriptorSemantic(
     return false;
 }
 
-static bool AddMaterialDataSlotDescriptor(ShaderBuildContext &ctx,
-                                          const DataSlotDeclaration &decl,
-                                          const uint32_t data_slot,
+static bool AddMaterialPrivateDataSlotDescriptor(ShaderBuildContext &ctx,
+                                          const MaterialPrivateDataSlotDeclaration &decl,
+                                          const uint32_t material_private_data_slot,
                                           const uint32_t stage_bits)
 {
     const char *struct_name = nullptr;
@@ -190,7 +190,7 @@ static bool AddMaterialDataSlotDescriptor(ShaderBuildContext &ctx,
     if (!ctx.AddStruct(struct_name, glsl_codes))
         return false;
 
-    return ctx.AddSSBOMtlData(stage_bits, struct_name, decl.name, int(data_slot));
+    return ctx.AddSSBOMaterialPrivateData(stage_bits, struct_name, decl.name, int(material_private_data_slot));
 }
 
 static bool ValidateDefinitionCapabilitySubset(
@@ -228,17 +228,17 @@ static bool ValidateDefinitionCapabilitySubset(
                    && definition.vertex_node_config.projection != ProjectionMode::ClipPassthrough;
             break;
 
-        case DescriptorSemantic::MaterialDataSlotData:
-            allowed = req.data_slot < definition.data_slot_decls.size();
+        case DescriptorSemantic::MaterialPrivateData:
+            allowed = req.material_private_data_slot < definition.material_private_data_slot_decls.size();
             if (allowed)
-                allowed = definition.data_slot_decls[req.data_slot].ssbo_type == req.ssbo_type;
+                allowed = definition.material_private_data_slot_decls[req.material_private_data_slot].ssbo_type == req.ssbo_type;
             break;
 
         case DescriptorSemantic::MaterialTextureLayerTable:
             allowed = !definition.texture_slot_decls.empty();
             break;
-        case DescriptorSemantic::MaterialDataIndexTable:
-            allowed = !definition.data_slot_decls.empty()
+        case DescriptorSemantic::MaterialPrivateDataIndexTable:
+            allowed = !definition.material_private_data_slot_decls.empty()
                    || definition.vertex_varying.emit_data_index_id;
             break;
 
@@ -267,8 +267,8 @@ static bool ValidateDefinitionCapabilitySubset(
             for (uint32 i = 0; i < manifest->ssbo_count && !allowed; ++i)
             {
                 const auto &ssbo = manifest->ssbos[i];
-                if (req.semantic == DescriptorSemantic::MaterialDataSlotData
-                 && req.data_slot == ssbo.data_slot
+                if (req.semantic == DescriptorSemantic::MaterialPrivateData
+                 && req.material_private_data_slot == ssbo.material_private_data_slot
                  && req.ssbo_type == ssbo.ssbo_type
                  && CStrEq(req.name.c_str(), ssbo.name))
                     allowed = true;
@@ -282,7 +282,7 @@ static bool ValidateDefinitionCapabilitySubset(
             // declared purely via provider manifest metadata (no matching
             // TOML [resources].ssbos entry), the index table requirement is
             // implied and must be accepted the same way.
-            if (req.semantic == DescriptorSemantic::MaterialDataIndexTable
+            if (req.semantic == DescriptorSemantic::MaterialPrivateDataIndexTable
              && manifest->ssbo_count > 0)
                 allowed = true;
         }
@@ -391,19 +391,19 @@ static bool CreateBuildContext(
     return true;
 }
 
-// ── Step 3a: 合并 provider manifest 与 data_slot_decls 的材质数据槽声明 ─────
+// ── Step 3a: 合并 provider manifest 与 material_private_data_slot_decls 的材质数据槽声明 ─────
 // 单槽化：一个材质只有一个私有数据 SSBO（MaterialPrivateData，slot 0）。
 // 顶点数据 SSBO（Vertex*）走固定名路径（PerObject 集），不进入材质数据槽。
-static bool MergeDataSlotDeclarations(
+static bool MergeMaterialPrivateDataSlotDeclarations(
     const CompositorMaterialBuildConfig &config,
     CompileContext &c,
-    std::vector<DataSlotDeclaration> &out_effective_decls)
+    std::vector<MaterialPrivateDataSlotDeclaration> &out_effective_decls)
 {
-    if (config.data_slot_decls)
+    if (config.material_private_data_slot_decls)
     {
-        if (config.data_slot_decls->size() > MaxMaterialDataSlotsPerMaterial)
+        if (config.material_private_data_slot_decls->size() > MaxMaterialPrivateDataSlotsPerMaterial)
             return c.Fail("a material may declare at most one MaterialPrivateData slot");
-        out_effective_decls = *config.data_slot_decls;
+        out_effective_decls = *config.material_private_data_slot_decls;
     }
 
     if (config.merge_resource_manifest_material_slots
@@ -414,12 +414,12 @@ static bool MergeDataSlotDeclarations(
         {
             const auto &ssbo = config.resource_manifest->ssbos[i];
 
-            if (ssbo.data_slot != DefaultMaterialDataSlot)
+            if (ssbo.material_private_data_slot != DefaultMaterialPrivateDataSlot)
                 continue;
 
             if (out_effective_decls.empty())
             {
-                DataSlotDeclaration decl;
+                MaterialPrivateDataSlotDeclaration decl;
                 decl.name = ssbo.name;
                 decl.ssbo_type = ssbo.ssbo_type;
                 out_effective_decls.push_back(decl);
@@ -440,20 +440,20 @@ static bool MergeDataSlotDeclarations(
 static bool BuildEffectiveDescriptorEntries(
     const CompositorMaterialBuildConfig &config,
     const DescriptorContract &base_contract,
-    const std::vector<DataSlotDeclaration> *data_slot_decls,
+    const std::vector<MaterialPrivateDataSlotDeclaration> *material_private_data_slot_decls,
     const uint32_t material_ssbo_stage_bits,
     CompileContext &c,
     DescriptorContract &out_effective_contract,
     std::vector<SerializedDescriptorEntry> &out_entries,
     uint32_t &out_declared_slot_count)
 {
-    const bool use_slot_decls = data_slot_decls != nullptr;
+    const bool use_slot_decls = material_private_data_slot_decls != nullptr;
     out_declared_slot_count = use_slot_decls
-        ? static_cast<uint32_t>(data_slot_decls->size()) : 0u;
+        ? static_cast<uint32_t>(material_private_data_slot_decls->size()) : 0u;
 
     if (!BuildEffectiveDescriptorContract(
             base_contract,
-            data_slot_decls,
+            material_private_data_slot_decls,
             material_ssbo_stage_bits,
             out_effective_contract))
         return c.Fail("invalid effective material descriptor contract");
@@ -471,16 +471,16 @@ static bool BuildEffectiveDescriptorEntries(
     if (use_slot_decls)
     {
         // 单槽化：一个材质至多一个 MaterialPrivateData 槽，名称固定。
-        if (out_declared_slot_count > MaxMaterialDataSlotsPerMaterial)
+        if (out_declared_slot_count > MaxMaterialPrivateDataSlotsPerMaterial)
             return c.Fail("a material may declare at most one MaterialPrivateData slot");
 
         for (uint32_t i = 0; i < out_declared_slot_count; ++i)
         {
-            const auto &decl = (*data_slot_decls)[i];
-            if (!IsValidMaterialDataSlotName(decl.name))
+            const auto &decl = (*material_private_data_slot_decls)[i];
+            if (!IsValidMaterialPrivateDataSlotName(decl.name))
                 return c.Fail("invalid material data slot GLSL name");
 
-            if (decl.name != DefaultMaterialDataSlotName)
+            if (decl.name != DefaultMaterialPrivateDataSlotName)
                 return c.Fail("material data slot GLSL name must be MaterialPrivateData");
         }
     }
@@ -497,7 +497,7 @@ enum class RegisterOp : int
     AddSSBOVertex,       // AddSSBOVertex(stage_bits, *sbs)（顶点数据 / MeshDrawParams）
     AddSSBOVertexIndex,  // AddSSBOVertexIndex(stage_bits)
     AddSSBOTextureLayer, // 纹理层行表（binding = 数据槽数）
-    AddSSBOMtlIndex,     // 材质数据行表（固定 binding 常量路径）
+    AddSSBOMaterialPrivateDataIndex,     // 材质数据行表（固定 binding 常量路径）
 };
 
 struct DescriptorRegisterEntry
@@ -524,7 +524,7 @@ static const DescriptorRegisterEntry kDescriptorRegisterTable[] = {
     { DescriptorSemantic::LocalToWorld,             DescriptorKind::SSBO, RegisterOp::SetLocalToWorld,   nullptr,                    "LocalToWorld" },
     { DescriptorSemantic::LocalToWorldIndexTable,   DescriptorKind::SSBO, RegisterOp::AddSSBOStruct,     &SBS_LocalToWorldIndexRows,  "LocalToWorldIndexRows" },
     { DescriptorSemantic::MaterialTextureLayerTable,DescriptorKind::SSBO, RegisterOp::AddSSBOTextureLayer,nullptr,                    "MaterialTextureLayerRows" },
-    { DescriptorSemantic::MaterialDataIndexTable,   DescriptorKind::SSBO, RegisterOp::AddSSBOMtlIndex,   nullptr,                    "MaterialPrivateDataIndexRows" },
+    { DescriptorSemantic::MaterialPrivateDataIndexTable,   DescriptorKind::SSBO, RegisterOp::AddSSBOMaterialPrivateDataIndex,   nullptr,                    "MaterialPrivateDataIndexRows" },
     { DescriptorSemantic::VertexPosition,           DescriptorKind::SSBO, RegisterOp::AddSSBOVertex,     &SBS_VertexPosition,        "VertexPosition" },
     { DescriptorSemantic::VertexUV,                 DescriptorKind::SSBO, RegisterOp::AddSSBOVertex,     &SBS_VertexUV,              "VertexUV" },
     { DescriptorSemantic::VertexNTB,                DescriptorKind::SSBO, RegisterOp::AddSSBOVertex,     &SBS_VertexNTB,             "VertexNTB" },
@@ -551,7 +551,7 @@ static const DescriptorRegisterEntry *FindDescriptorRegisterEntry(
 static bool RegisterCanonicalDescriptors(
     ShaderBuildContext *ctx,
     const std::vector<SerializedDescriptorEntry> &descriptor_entries,
-    const uint32_t declared_material_data_slot_count,
+    const uint32_t declared_material_private_data_slot_count,
     uint32_t &io_material_ssbo_stage_bits,
     CompileContext &c)
 {
@@ -559,10 +559,10 @@ static bool RegisterCanonicalDescriptors(
     {
         const uint32_t stage_bits = entry.stage_flags;
 
-        // MaterialDataSlotData：MaterialSSBOBuilder 依据 data_slot_decls 注册，
+        // MaterialPrivateData：MaterialSSBOBuilder 依据 material_private_data_slot_decls 注册，
         // 此处只累加其 stage bits（UBO/SSBO 两分支同语义，先于 kind 判断统一处理）。
         if ((entry.kind == DescriptorKind::UBO || entry.kind == DescriptorKind::SSBO)
-         && entry.semantic == DescriptorSemantic::MaterialDataSlotData)
+         && entry.semantic == DescriptorSemantic::MaterialPrivateData)
         {
             io_material_ssbo_stage_bits = stage_bits;
             continue;
@@ -602,16 +602,16 @@ static bool RegisterCanonicalDescriptors(
                 return c.Fail(std::string("failed to add ") + reg->label + " struct");
             // 单槽化：材质至多一个 MaterialPrivateData 槽，declared 计数为 0 或 1。
             // 纹理层行表紧随数据槽之后（binding = N），无数据槽时 N = 0。
-            if (!ctx->AddSSBOTextureLayer(stage_bits, int(declared_material_data_slot_count)))
+            if (!ctx->AddSSBOTextureLayer(stage_bits, int(declared_material_private_data_slot_count)))
                 return c.Fail(std::string("failed to add ") + reg->label + " SSBO");
             break;
 
-        case RegisterOp::AddSSBOMtlIndex:
+        case RegisterOp::AddSSBOMaterialPrivateDataIndex:
             if (!ctx->AddStruct(SBS_MaterialPrivateDataIndexRows.struct_name, ""))
                 return c.Fail(std::string("failed to add ") + reg->label + " struct");
             // P1-2c：MaterialPrivateDataIndexRows 迁至 PerObject 集，binding 由固定常量表
             // kPerObjectBinding* 确定（走固定名路径，与 l2w_index_rows 同构）。
-            if (!ctx->AddSSBOMtlIndex(stage_bits))
+            if (!ctx->AddSSBOMaterialPrivateDataIndex(stage_bits))
                 return c.Fail(std::string("failed to add ") + reg->label + " SSBO");
             break;
         }
@@ -659,20 +659,20 @@ static bool RegisterCharQuadSSBOs(
     return true;
 }
 
-// ── Step 3d: 材质数据槽描述符（data_slot_decls 驱动）─────────────────────────
-// 单槽化：固定 slot 0（DefaultMaterialDataSlot），至多一个声明。
-static bool RegisterMaterialDataSlotDescriptors(
+// ── Step 3d: 材质数据槽描述符（material_private_data_slot_decls 驱动）─────────────────────────
+// 单槽化：固定 slot 0（DefaultMaterialPrivateDataSlot），至多一个声明。
+static bool RegisterMaterialPrivateDataSlotDescriptors(
     ShaderBuildContext *ctx,
-    const std::vector<DataSlotDeclaration> &data_slot_decls,
+    const std::vector<MaterialPrivateDataSlotDeclaration> &material_private_data_slot_decls,
     const uint32_t material_ssbo_stage_bits,
     CompileContext &c)
 {
-    if (data_slot_decls.size() > MaxMaterialDataSlotsPerMaterial)
+    if (material_private_data_slot_decls.size() > MaxMaterialPrivateDataSlotsPerMaterial)
         return c.Fail("a material may declare at most one MaterialPrivateData slot");
 
-    for (uint32_t i = 0; i < static_cast<uint32_t>(data_slot_decls.size()); ++i)
+    for (uint32_t i = 0; i < static_cast<uint32_t>(material_private_data_slot_decls.size()); ++i)
     {
-        if (!AddMaterialDataSlotDescriptor(*ctx, data_slot_decls[i], DefaultMaterialDataSlot, material_ssbo_stage_bits))
+        if (!AddMaterialPrivateDataSlotDescriptor(*ctx, material_private_data_slot_decls[i], DefaultMaterialPrivateDataSlot, material_ssbo_stage_bits))
             return c.Fail("failed to add declared material ssbo slot descriptor");
     }
 
@@ -681,8 +681,8 @@ static bool RegisterMaterialDataSlotDescriptors(
 
 // ── Step 4: Ensure index-table SSBOs for vertex-varying emissions ────────────
 //
-//     The descriptor builder calls EnsureMaterialDataIndexTable only when a
-// MaterialDataSlotData entry exists.  Compositor materials without data
+//     The descriptor builder calls EnsureMaterialPrivateDataIndexTable only when a
+// MaterialPrivateData entry exists.  Compositor materials without data
 // slots may still emit fragDataIndexID (declared as a varying in
 // .material.toml).  Without the corresponding SSBO the VS GLSL injection
 // skips ResolveMaterialPrivateDataIndex → compile error.
@@ -699,7 +699,7 @@ static void EnsureIndexTableSSBOs(
     bool has_index_table = false;
     for (const SerializedDescriptorEntry &entry : descriptor_entries)
     {
-        if (entry.semantic == DescriptorSemantic::MaterialDataIndexTable)
+        if (entry.semantic == DescriptorSemantic::MaterialPrivateDataIndexTable)
         {
             has_index_table = true;
             break;
@@ -707,7 +707,7 @@ static void EnsureIndexTableSSBOs(
     }
 
     // P1-2c：MaterialPrivateDataIndexRows 迁至 Transform 集，binding 由固定常量表确定，
-    // 与 Step 3 的 MaterialDataIndexTable 分支同构。
+    // 与 Step 3 的 MaterialPrivateDataIndexTable 分支同构。
     if (vv.emit_data_index_id && !has_index_table)
     {
         ctx->AddStruct(SBS_MaterialPrivateDataIndexRows.struct_name, "");
@@ -807,22 +807,22 @@ static std::string BuildBindingPreamble(
 
 // ── Step 5b: Material SSBO GLSL 声明 ─────────────────────────────────────────
 // 材质实例 SSBO 的 struct + buffer 声明不再写死在 .glsl 中，
-// 统一依据 data_slot_decls 生成并注入 Fragment 阶段。
+// 统一依据 material_private_data_slot_decls 生成并注入 Fragment 阶段。
 // 单槽化：一个材质固定生成一个 buffer（MaterialPrivateData，slot 0）。
 static bool BuildMaterialSSBODeclarations(
     const DescriptorSetLayoutAllocator &descriptor_info,
-    const std::vector<DataSlotDeclaration> *data_slot_decls,
+    const std::vector<MaterialPrivateDataSlotDeclaration> *material_private_data_slot_decls,
     CompileContext &c,
     std::string &out_decls,
     std::string &out_macros)
 {
-    if (!data_slot_decls || data_slot_decls->empty())
+    if (!material_private_data_slot_decls || material_private_data_slot_decls->empty())
         return true;
 
-    if (data_slot_decls->size() > MaxMaterialDataSlotsPerMaterial)
+    if (material_private_data_slot_decls->size() > MaxMaterialPrivateDataSlotsPerMaterial)
         return c.Fail("a material may declare at most one MaterialPrivateData slot");
 
-    const DataSlotDeclaration &decl = (*data_slot_decls)[0];
+    const MaterialPrivateDataSlotDeclaration &decl = (*material_private_data_slot_decls)[0];
     const ShaderDescriptor *sd = descriptor_info.GetSSBO(decl.name.c_str());
     if (!sd || sd->set < 0 || sd->binding < 0)
         return c.Fail("material ssbo descriptor unresolved for GLSL generation");
@@ -1190,25 +1190,25 @@ ShaderBuildContext *CompileCompositorMaterial(
     // ── Step 3: Add Descriptors from SerializedDescriptorEntry[] ──
     // Provider metadata contributes material SSBO slots to the same canonical
     // declaration list as the material definition.
-    std::vector<DataSlotDeclaration> effective_data_slot_decls;
-    if (!MergeDataSlotDeclarations(config, c, effective_data_slot_decls))
+    std::vector<MaterialPrivateDataSlotDeclaration> effective_material_private_data_slot_decls;
+    if (!MergeMaterialPrivateDataSlotDeclarations(config, c, effective_material_private_data_slot_decls))
         return FailCompile(c);
 
-    const std::vector<DataSlotDeclaration> *data_slot_decls =
-        effective_data_slot_decls.empty() ? nullptr : &effective_data_slot_decls;
+    const std::vector<MaterialPrivateDataSlotDeclaration> *material_private_data_slot_decls =
+        effective_material_private_data_slot_decls.empty() ? nullptr : &effective_material_private_data_slot_decls;
 
     DescriptorContract effective_descriptor_contract{};
     std::vector<SerializedDescriptorEntry> descriptor_entries;
-    uint32_t declared_material_data_slot_count = 0;
+    uint32_t declared_material_private_data_slot_count = 0;
     if (!BuildEffectiveDescriptorEntries(
-            config, base_descriptor_contract, data_slot_decls,
+            config, base_descriptor_contract, material_private_data_slot_decls,
             material_ssbo_stage_bits, c,
             effective_descriptor_contract, descriptor_entries,
-            declared_material_data_slot_count))
+            declared_material_private_data_slot_count))
         return FailCompile(c);
 
     if (!RegisterCanonicalDescriptors(ctx, descriptor_entries,
-                                      declared_material_data_slot_count,
+                                      declared_material_private_data_slot_count,
                                       material_ssbo_stage_bits, c))
         return FailCompile(c);
 
@@ -1220,9 +1220,9 @@ ShaderBuildContext *CompileCompositorMaterial(
             return FailCompile(c);
     }
 
-    if (data_slot_decls
-     && !RegisterMaterialDataSlotDescriptors(
-            ctx, *data_slot_decls, material_ssbo_stage_bits, c))
+    if (material_private_data_slot_decls
+     && !RegisterMaterialPrivateDataSlotDescriptors(
+            ctx, *material_private_data_slot_decls, material_ssbo_stage_bits, c))
         return FailCompile(c);
 
     // ── Step 4: Ensure index-table SSBOs for vertex-varying emissions ──
@@ -1235,7 +1235,7 @@ ShaderBuildContext *CompileCompositorMaterial(
 
     std::string material_ssbo_decls;
     std::string material_slot_macros;
-    if (!BuildMaterialSSBODeclarations(descriptor_info, data_slot_decls, c,
+    if (!BuildMaterialSSBODeclarations(descriptor_info, material_private_data_slot_decls, c,
                                        material_ssbo_decls, material_slot_macros))
         return FailCompile(c);
 
@@ -1261,7 +1261,7 @@ ShaderBuildContext *CompileCompositorMaterial(
                       fs_index_table_decls);
 
     // ── Step 6: Build ShaderResourceSchema from descriptor entries. ──
-    // When data_slot_decls is provided, material SSBO entries are
+    // When material_private_data_slot_decls is provided, material SSBO entries are
     // generated from it and merged with the canonical descriptor entries.
     ShaderResourceSchema shader_resource_schema;
     if (!BuildAndValidateResourceSchema(effective_descriptor_contract, config, c,

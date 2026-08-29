@@ -91,7 +91,7 @@ private:
         triangle_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
         triangle_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
         graph::mtl::UpsertRecipeSSBOAssetBinding(triangle_recipe,
-                                                 graph::mtl::DefaultMaterialDataSlotName,
+                                                 graph::mtl::DefaultMaterialPrivateDataSlotName,
                                                  mtl_data_ssbo_accessor->GetSSBOBinding());
 
         triangle_asset = PrimitiveAsset(geometry, &triangle_recipe, PrimitiveType::Triangles);
@@ -169,13 +169,13 @@ private:
             // 每个实体共享同一 PrimitiveAsset，颜色来自不同结构体行
             auto primitive_comp = triangles[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&triangle_asset);
-            hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource tri_struct{};
-            tri_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
+            hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource tri_struct{};
+            tri_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
             tri_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             tri_struct.data_index = i;
             tri_struct.use_data_index = true;
             tri_struct.shared_across_instances = false;
-            primitive_comp->SetMaterialDataSlotResource(tri_struct);
+            primitive_comp->SetMaterialPrivateDataSlotResource(tri_struct);
             primitive_comp->SetVisible(true);
 
             std::cout << "[TestApp::InitECS] Entity[" << i << "] setup complete" << std::endl;

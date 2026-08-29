@@ -75,7 +75,7 @@ namespace hgl::ecs
                                         uint32_t &out_ssbo_id)
         {
             if (const auto *asset = graph::mtl::FindRecipeSSBOAssetBinding(
-                    recipe, req.name.c_str(), req.data_slot, req.ssbo_type))
+                    recipe, req.name.c_str(), req.material_private_data_slot, req.ssbo_type))
             {
                 out_ssbo_id = asset->ssbo_id;
                 return true;
@@ -154,7 +154,7 @@ namespace hgl::ecs
                     i,
                     static_cast<unsigned long long>(
                         binding.logical_resource_id),
-                    binding.data_slot,
+                    binding.material_private_data_slot,
                     graph::mtl::GetSSBOTypeName(binding.ssbo_type),
                     static_cast<uint32_t>(binding.ssbo_type),
                     graph::mtl::GetBindingSourceName(
@@ -189,8 +189,8 @@ namespace hgl::ecs
                 GLogWarning(
                     "[MaterialBinding][RecipeData] index=%zu name=%s slot=%u type=%s(%u) ssbo_id=%u data_index=%u use_data_index=%d shared=%d",
                     i,
-                    binding.data_slot_name.c_str(),
-                    binding.data_slot,
+                    binding.material_private_data_slot_name.c_str(),
+                    binding.material_private_data_slot,
                     graph::mtl::GetSSBOTypeName(binding.ssbo_type),
                     static_cast<uint32_t>(binding.ssbo_type),
                     binding.ssbo_id,
@@ -211,10 +211,10 @@ namespace hgl::ecs
                         != graph::mtl::DescriptorSemantic::MaterialSampler
                  && requirement.semantic
                         != graph::mtl::DescriptorSemantic::
-                            MaterialDataSlotData)
+                            MaterialPrivateData)
                     continue;
                 GLogWarning(
-                    "[MaterialBinding][Layout] index=%zu name=%s semantic=%s kind=%s required=%d allow_fallback=%d texture_slot=%u data_slot=%u type=%s(%u) ssbo_id=%u",
+                    "[MaterialBinding][Layout] index=%zu name=%s semantic=%s kind=%s required=%d allow_fallback=%d texture_slot=%u material_private_data_slot=%u type=%s(%u) ssbo_id=%u",
                     i,
                     requirement.name.empty() ? "<unnamed>" : requirement.name.c_str(),
                     graph::mtl::GetDescriptorSemanticName(
@@ -223,7 +223,7 @@ namespace hgl::ecs
                     requirement.required ? 1 : 0,
                     requirement.allow_fallback ? 1 : 0,
                     static_cast<uint32_t>(requirement.texture_slot),
-                    requirement.data_slot,
+                    requirement.material_private_data_slot,
                     graph::mtl::GetSSBOTypeName(requirement.ssbo_type),
                     static_cast<uint32_t>(requirement.ssbo_type),
                     requirement.ssbo_id);
@@ -357,12 +357,12 @@ namespace hgl::ecs
                     const graph::mtl::RecipeSSBOAssetBinding
                         &candidate = active_recipe.ssbo_assets[
                             binding.recipe_binding_index];
-                    if (candidate.data_slot == binding.data_slot
+                    if (candidate.material_private_data_slot == binding.material_private_data_slot
                      && candidate.ssbo_type == binding.ssbo_type
                      && graph::mtl::GetResolvedDataAssetIdentityHash(
                             candidate.ssbo_type,
                             candidate.ssbo_id,
-                            candidate.data_slot)
+                            candidate.material_private_data_slot)
                             == binding.asset_identity_hash)
                     {
                         recipe_binding = &candidate;
@@ -379,8 +379,8 @@ namespace hgl::ecs
                 {
                     if (requirement.semantic
                             == graph::mtl::DescriptorSemantic::
-                                MaterialDataSlotData
-                     && requirement.data_slot == binding.data_slot
+                                MaterialPrivateData
+                     && requirement.material_private_data_slot == binding.material_private_data_slot
                      && requirement.ssbo_type == binding.ssbo_type)
                     {
                         layout_requirement = &requirement;
@@ -401,9 +401,9 @@ namespace hgl::ecs
                  || domain_binding.element_stride == 0)
                 {
                     const auto *resource =
-                        primitive_comp->GetMaterialDataSlotResource(
+                        primitive_comp->GetMaterialPrivateDataSlotResource(
                             layout_requirement->name,
-                            binding.data_slot);
+                            binding.material_private_data_slot);
                     if (!resource
                      || !resource->buffer
                      || resource->ssbo_id != recipe_binding->ssbo_id)
@@ -631,7 +631,7 @@ namespace hgl::ecs
         {
             for (const auto &req : resolved_program->GetShaderResourceSchema().resources)
             {
-                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialDataSlotData)
+                if (req.semantic != graph::mtl::DescriptorSemantic::MaterialPrivateData)
                     continue;
 
                 const uint32_t stride = graph::mtl::GetSSBOTypeStructStride(req.ssbo_type);
@@ -801,7 +801,7 @@ namespace hgl::ecs
         material_comp->data_index_values.clear();
         for (const auto &req : material_comp->program->GetShaderResourceSchema().resources)
         {
-            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialDataSlotData)
+            if (req.semantic != graph::mtl::DescriptorSemantic::MaterialPrivateData)
                 continue;
 
             uint32_t resolved_ssbo_id = 0;
@@ -811,13 +811,13 @@ namespace hgl::ecs
                 GLogWarning("[RenderPrimitiveCollectSystem] Materialize failed: unresolved SSBO binding for %s descriptor=%s slot=%u type=%s",
                             GetPrimitiveOwnerName(primitive_comp),
                             req.name.empty() ? "<unnamed>" : req.name.c_str(),
-                            req.data_slot,
+                            req.material_private_data_slot,
                             graph::mtl::GetSSBOTypeName(req.ssbo_type));
                 return false;
             }
 
             material_comp->SetResolvedSSBOBinding(
-                req.name.c_str(), req.data_slot, req.ssbo_type, resolved_ssbo_id);
+                req.name.c_str(), req.material_private_data_slot, req.ssbo_type, resolved_ssbo_id);
         }
 
         auto rdbs = world->GetSystem<RenderDescriptorBindingSystem>();
@@ -871,10 +871,10 @@ namespace hgl::ecs
 
         // Single source of truth for the texture-layer rows scope: the bind
         // side (resolve_recipe_batch_struct_ssbo_id) reads back exactly this
-        // (name, data_slot, ssbo_type) triple from the resolved bindings.
+        // (name, material_private_data_slot, ssbo_type) triple from the resolved bindings.
         material_comp->SetResolvedSSBOBinding(
             "mtl_texture_layer_rows",
-            graph::mtl::DefaultMaterialDataSlot,
+            graph::mtl::DefaultMaterialPrivateDataSlot,
             graph::mtl::SSBOType::TextureLayer,
             scope_ssbo_id);
 
@@ -889,10 +889,10 @@ namespace hgl::ecs
 
             for (const auto &req : material_comp->program->GetShaderResourceSchema().resources)
             {
-                if (req.semantic == graph::mtl::DescriptorSemantic::MaterialDataSlotData
-                 && req.data_slot == graph::mtl::DefaultMaterialDataSlot
+                if (req.semantic == graph::mtl::DescriptorSemantic::MaterialPrivateData
+                 && req.material_private_data_slot == graph::mtl::DefaultMaterialPrivateDataSlot
                  && req.ssbo_type == asset_binding.ssbo_type
-                 && asset_binding.data_slot_name == req.name)
+                 && asset_binding.material_private_data_slot_name == req.name)
                 {
                     material_comp->data_index_values[0] = asset_binding.data_index;
                     break;

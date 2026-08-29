@@ -484,9 +484,9 @@ namespace hgl::ecs
         resources.texture_layer_buffer = guard.texture_layer_buffer;
         guard.texture_layer_buffer = nullptr;
 
-        // material_private_data_index_rows：MaterialDataIndexRowStride 个 uint 一行；行 0 value = 0。
+        // material_private_data_index_rows：MaterialPrivateDataIndexRowStride 个 uint 一行；行 0 value = 0。
         constexpr uint32_t data_index_row_bytes =
-            sizeof(uint32_t) * graph::mtl::MaterialDataIndexRowStride;
+            sizeof(uint32_t) * graph::mtl::MaterialPrivateDataIndexRowStride;
 
         guard.data_index_row_buffer = buffer_manager->CreateSSBO(
             "Text2D_DataIndexRows", data_index_row_bytes, graph::SharingMode::Exclusive);
@@ -495,7 +495,7 @@ namespace hgl::ecs
             return nullptr;
         }
 
-        uint32_t data_index_row[graph::mtl::MaterialDataIndexRowStride] = {};
+        uint32_t data_index_row[graph::mtl::MaterialPrivateDataIndexRowStride] = {};
         guard.data_index_row_buffer->GetGPUBuffer()->Write(data_index_row, 0, sizeof(data_index_row));
 
         // 注意：material_private_data_index_rows 声明在 PerObject set（SBS_MaterialPrivateDataIndexRows.set_type），

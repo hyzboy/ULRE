@@ -423,7 +423,7 @@ namespace hgl::graph::mtl
                     if (!next || !ParseSSBOType(token, requirement.ssbo_type))
                         return GLSLCodeModuleParseResult::InvalidResource;
                     next = ReadToken(next, line_end, token, sizeof(token));
-                    if (!next || !ParseUnsignedInt(token, requirement.data_slot))
+                    if (!next || !ParseUnsignedInt(token, requirement.material_private_data_slot))
                         return GLSLCodeModuleParseResult::InvalidNumber;
                     next = ReadToken(next, line_end, token, sizeof(token));
                     if (!next || !ParseStageFlags(token, requirement.stage_flags))

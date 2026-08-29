@@ -43,11 +43,11 @@ struct CompositorMaterialBuildConfig
 {
     PrimitiveType primitive_type = PrimitiveType::Triangles;
     uint32_t shader_stage_flag_bits = uint32_t(ShaderStage::MeshFragment);
-    // Per-material SSBO slot declarations (index == data_slot).
-    // When non-null and non-empty, MaterialShaderCompiler generates MaterialDataSlot
+    // Per-material SSBO slot declarations (index == material_private_data_slot).
+    // When non-null and non-empty, MaterialShaderCompiler generates MaterialPrivateData
     // mtl::SerializedDescriptorEntry items and injects the material SSBO struct/buffer
     // declarations into the fragment GLSL.
-    const std::vector<mtl::DataSlotDeclaration> *data_slot_decls = nullptr;
+    const std::vector<mtl::MaterialPrivateDataSlotDeclaration> *material_private_data_slot_decls = nullptr;
     // Optional: capability declaration source for development-time subset validation.
     // When non-null, CompileCompositorMaterial checks Layout requirements ⊆ Definition capabilities.
     const mtl::MaterialDefinition *material_definition = nullptr;

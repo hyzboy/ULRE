@@ -679,9 +679,9 @@ namespace hgl::ecs
                 {
                     const VkDeviceSize byte_size =
                         static_cast<VkDeviceSize>(batch.material_data_index_rows_capacity)
-                        * graph::mtl::MaterialDataIndexRowStride * sizeof(uint32_t);
+                        * graph::mtl::MaterialPrivateDataIndexRowStride * sizeof(uint32_t);
                     batch.material_data_index_rows_buffer = batch.buffer_manager->CreateSSBO(
-                        "ECS:Batch:MaterialDataIndexRows", byte_size, nullptr, graph::SharingMode::Exclusive);
+                        "ECS:Batch:MaterialPrivateDataIndexRows", byte_size, nullptr, graph::SharingMode::Exclusive);
                 }
             }
         }
@@ -717,7 +717,7 @@ namespace hgl::ecs
         }
 
         // Write per-batch single-column DataIndex rows in draw order.
-        // 单槽化：行表收敛为单列（MaterialDataIndexRowStride == 1）。
+        // 单槽化：行表收敛为单列（MaterialPrivateDataIndexRowStride == 1）。
         if (batch.material_data_index_rows_buffer)
         {
             auto *mi_gpu = batch.material_data_index_rows_buffer->GetGPUBuffer();
@@ -727,7 +727,7 @@ namespace hgl::ecs
                     mi_gpu->Map(
                         0,
                         static_cast<VkDeviceSize>(item_count)
-                        * graph::mtl::MaterialDataIndexRowStride
+                        * graph::mtl::MaterialPrivateDataIndexRowStride
                         * sizeof(uint32_t)));
                 if (row_ptr)
                 {

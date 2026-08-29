@@ -139,19 +139,19 @@ private:
         cube_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 cube_recipe,
-                graph::mtl::DefaultMaterialDataSlotName,
+                graph::mtl::DefaultMaterialPrivateDataSlotName,
                 mtl_data_ssbo_accessor->GetSSBOBinding()))
             return false;
 
         cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
         primitive_comp->SetPrimitiveAsset(&cube_asset);
-        hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource named_struct{};
-        named_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
+        hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource named_struct{};
+        named_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
         named_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
         named_struct.data_index = 0;
         named_struct.use_data_index = true;
         named_struct.shared_across_instances = true;
-        primitive_comp->SetMaterialDataSlotResource(named_struct);
+        primitive_comp->SetMaterialPrivateDataSlotResource(named_struct);
         primitive_comp->SetVisible(true);
 
         return true;

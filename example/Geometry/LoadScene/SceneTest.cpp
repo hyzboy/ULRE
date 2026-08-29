@@ -155,7 +155,7 @@ private:
         scene_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         if (!graph::mtl::UpsertRecipeSSBOAssetBinding(
                 scene_recipe,
-                graph::mtl::DefaultMaterialDataSlotName,
+                graph::mtl::DefaultMaterialPrivateDataSlotName,
                 solid.mtl_data_ssbo_accessor->GetSSBOBinding()))
             return false;
 
@@ -207,13 +207,13 @@ private:
                 se.transform->SetMovable(false);
 
                 se.primitive_comp->SetPrimitiveAsset(&asset);
-                hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource scene_struct{};
-                scene_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
+                hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource scene_struct{};
+                scene_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
                 scene_struct.ssbo_id = solid.mtl_data_ssbo_accessor->GetSSBOId();
                 scene_struct.data_index = (entity_idx - 1) % COLOR_COUNT;
                 scene_struct.use_data_index = true;
                 scene_struct.shared_across_instances = true;
-                se.primitive_comp->SetMaterialDataSlotResource(scene_struct);
+                se.primitive_comp->SetMaterialPrivateDataSlotResource(scene_struct);
                 se.primitive_comp->SetVisible(true);
 
                 scene_entities_.push_back(std::move(se));
