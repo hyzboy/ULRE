@@ -1,4 +1,5 @@
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
+#include<hgl/mtl/DescriptorResourceCatalog.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/support/RenderResource.h>
 #include<hgl/ecs/systems/render/RenderFrameUBOSyncSystem.h>
@@ -941,20 +942,14 @@ namespace hgl::ecs
             case graph::mtl::DescriptorSemantic::VertexTransformID:
             case graph::mtl::DescriptorSemantic::VertexSize:
             {
+                // 语义→VAB 语义映射唯一真源：DescriptorResourceCatalog（VertexGeometry 行）
                 const graph::VertexSemantic vertex_semantic =
                     [](const graph::mtl::DescriptorSemantic semantic)
                 {
-                    switch (semantic)
-                    {
-                    case graph::mtl::DescriptorSemantic::VertexPosition: return graph::VertexSemantic::Position;
-                    case graph::mtl::DescriptorSemantic::VertexUV:       return graph::VertexSemantic::TexCoord;
-                    case graph::mtl::DescriptorSemantic::VertexNTB:      return graph::VertexSemantic::Normal;
-                    case graph::mtl::DescriptorSemantic::VertexColor:    return graph::VertexSemantic::Color;
-                    case graph::mtl::DescriptorSemantic::VertexLuminance: return graph::VertexSemantic::Luminance;
-                    case graph::mtl::DescriptorSemantic::VertexTransformID: return graph::VertexSemantic::TransformID;
-                    case graph::mtl::DescriptorSemantic::VertexSize: return graph::VertexSemantic::Size;
-                    default:                                             return graph::VertexSemantic::Unknown;
-                    }
+                    const auto *cat = graph::mtl::FindResourceCatalogEntry(semantic);
+                    if (cat && cat->cls == graph::mtl::ResourceCatalogClass::VertexGeometry)
+                        return cat->vab_semantic;
+                    return graph::VertexSemantic::Unknown;
                 }(req.semantic);
                 const graph::IGPUBuffer *gpu = nullptr;
                 if (batch)
@@ -1111,6 +1106,11 @@ namespace hgl::ecs
         case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
             return true;
         case graph::mtl::DescriptorSemantic::MaterialPrivateDataIndex:
+            return true;
+        // mesh per-draw 参数表：由 PrimitiveBatchPipeline 写行 +
+        // PipelineMaterialRenderer/TextRenderPipeline 绑定——有解析路径，非缺失
+        //（缺此 case 会造成"unresolved required contract"误报）
+        case graph::mtl::DescriptorSemantic::MeshDrawParams:
             return true;
         // 顶点数据 SSBO（MeshShader 方向）：由 RDBS（batch 首对象）或
         // PipelineMaterialRenderer（per-DrawBatch）绑定——有解析路径，非缺失

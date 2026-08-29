@@ -20,6 +20,7 @@
 #include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/graph/ShaderBufferSources.h>
+#include<hgl/mtl/DescriptorResourceCatalog.h>
 
 namespace hgl::ecs
 {
@@ -135,62 +136,33 @@ namespace hgl::ecs
                               : material->GetMP(graph::DescriptorSetType::Vertex))
                 {
                     // 按 VAB 自带语义遍历（GeometryDataBuffer::Update 按 VIF 填充——
-                    // 不依赖 material 的 VIL，独立 VAB/VDM 场景均正确）
+                    // 不依赖 material 的 VIL，独立 VAB/VDM 场景均正确）。
+                    // 语义→描述符名映射唯一真源：DescriptorResourceCatalog
                     for (uint32_t vi = 0; vi < geom_buffer->vab_count; ++vi)
                     {
                         const VkBuffer buf = geom_buffer->vab_list[vi];
                         if (!buf)
                             continue;
 
-                        switch (geom_buffer->vab_semantic[vi])
-                        {
-                        case graph::VertexSemantic::Position:
-                            vmp->BindSSBO("VertexPosition", buf, 0, VK_WHOLE_SIZE);
-                            break;
-                        case graph::VertexSemantic::TexCoord:
-                            vmp->BindSSBO("VertexUV", buf, 0, VK_WHOLE_SIZE);
-                            break;
-                        case graph::VertexSemantic::Normal:
-                            vmp->BindSSBO("VertexNTB", buf, 0, VK_WHOLE_SIZE);
-                            break;
-                        case graph::VertexSemantic::Color:
-                            vmp->BindSSBO("VertexColor", buf, 0, VK_WHOLE_SIZE);
-                            break;
-                        case graph::VertexSemantic::Luminance:
-                            vmp->BindSSBO("VertexLuminance", buf, 0, VK_WHOLE_SIZE);
-                            break;
-                        case graph::VertexSemantic::TransformID:
-                            vmp->BindSSBO("VertexTransformID", buf, 0, VK_WHOLE_SIZE);
-                            break;
-                        case graph::VertexSemantic::Size:
-                            vmp->BindSSBO("VertexSize", buf, 0, VK_WHOLE_SIZE);
-                            break;
-                        default: break;
-                        }
+                        if (const auto *cat = graph::mtl::FindVertexCatalogEntryByVABSemantic(
+                                geom_buffer->vab_semantic[vi]))
+                            vmp->BindSSBO(cat->sbs->name, buf, 0, VK_WHOLE_SIZE);
                     }
 
                     // geometry 直取（渲染路径的 geom_data_buffer 无 VAB 数据
-                    // （vab_count=0——PrimitiveComponent runtime buffer）时的补绑）
+                    // （vab_count=0——PrimitiveComponent runtime buffer）时的补绑）：
+                    // 遍历目录表全部 VertexGeometry 行（含 TransformID）
                     if (batch->geometry && geom_buffer->vab_count == 0)
                     {
-                        static const struct
+                        for (size_t ci = 0; ci < graph::mtl::DESCRIPTOR_RESOURCE_CATALOG_COUNT; ++ci)
                         {
-                            graph::VertexSemantic semantic;
-                            const char *name;
-                        } geometry_vab_bindings[] =
-                        {
-                            {graph::VertexSemantic::Position,   "VertexPosition"},
-                            {graph::VertexSemantic::TexCoord,   "VertexUV"},
-                            {graph::VertexSemantic::Normal,     "VertexNTB"},
-                            {graph::VertexSemantic::Color,      "VertexColor"},
-                            {graph::VertexSemantic::Luminance,  "VertexLuminance"},
-                            {graph::VertexSemantic::Size,       "VertexSize"},
-                        };
+                            const auto &cat = graph::mtl::kDescriptorResourceCatalog[ci];
+                            if (cat.cls != graph::mtl::ResourceCatalogClass::VertexGeometry
+                             || cat.vab_semantic == graph::VertexSemantic::Unknown)
+                                continue;
 
-                        for (const auto &binding : geometry_vab_bindings)
-                        {
-                            if (auto *vab = batch->geometry->GetVAB(binding.semantic))
-                                vmp->BindSSBO(binding.name, vab->GetVkBuffer(), 0, VK_WHOLE_SIZE);
+                            if (auto *vab = batch->geometry->GetVAB(cat.vab_semantic))
+                                vmp->BindSSBO(cat.sbs->name, vab->GetVkBuffer(), 0, VK_WHOLE_SIZE);
                         }
                     }
 
