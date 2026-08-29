@@ -34,10 +34,9 @@ namespace hgl::graph::mtl
 
     using SSBOCategory = SSBOType;
     constexpr uint32_t DefaultMaterialDataSlot = 0;
-    // Hard upper bound for SSBO slot validation; actual count is per-material (data_slot_decls.size()).
-    constexpr uint32_t MaxMaterialDataSlotsPerMaterial = 64u;
-    // The shared DataIndex table uses a fixed row width so materials with
-    // different slot counts can share one runtime buffer safely.
+    // 单槽化：一个材质只有一个私有数据 SSBO（MaterialPrivateData）。
+    // 槽位数恒为 1，行表写单列。
+    constexpr uint32_t MaxMaterialDataSlotsPerMaterial = 1u;
     constexpr uint32_t MaterialDataIndexRowStride = MaxMaterialDataSlotsPerMaterial;
 
     constexpr bool IsMaterialSSBOType(const SSBOType type) noexcept

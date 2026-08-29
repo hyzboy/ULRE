@@ -23,7 +23,7 @@
 
 namespace hgl::graph::mtl
 {
-    constexpr const char DefaultMaterialDataSlotName[] = "mtl";
+    constexpr const char DefaultMaterialDataSlotName[] = "MaterialPrivateData";
 
     // 逻辑纹理槽位（与具体 descriptor set/binding 解耦）。
     // Resolve 阶段会把这些语义槽映射到 bindless handle + 运行时索引。

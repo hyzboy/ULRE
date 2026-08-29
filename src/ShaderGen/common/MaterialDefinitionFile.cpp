@@ -554,31 +554,22 @@ namespace hgl::graph::mtl
                     }
                 }
 
-                if (resources.contains("ssbos"))
+                if (resources.contains("material_data"))
                 {
-                    if (!resources.at("ssbos").is_array())
+                    // 单槽化：一个材质只有一个私有数据 SSBO（MaterialPrivateData）。
+                    // TOML 形态：material_data = { type = "EmissiveSurface" }
+                    // 无 name 段（固定 DefaultMaterialDataSlotName）；type 必须是材质 SSBO 类型。
+                    const auto &item = resources.at("material_data");
+                    if (!item.is_table()
+                     || !item.contains("type") || !item.at("type").is_string())
                         return false;
-                    for (const auto &item : resources.at("ssbos").as_array())
-                    {
-                        if (!item.is_table()
-                         || !item.contains("name") || !item.at("name").is_string()
-                         || !item.contains("type") || !item.at("type").is_string())
-                            return false;
-                        const std::string slot_name = item.at("name").as_string();
-                        if (!IsValidMaterialDataSlotName(slot_name)
-                         || out.definition.data_slot_decls.size() >= MaxMaterialDataSlotsPerMaterial)
-                            return false;
-                        for (const auto &existing : out.definition.data_slot_decls)
-                        {
-                            if (existing.name == slot_name)
-                                return false;
-                        }
-                        SSBOType type;
-                        if (!ParseSSBOType(item.at("type").as_string(), type))
-                            return false;
-                        out.definition.data_slot_decls.push_back(
-                            {slot_name, type});
-                    }
+                    SSBOType type;
+                    if (!ParseSSBOType(item.at("type").as_string(), type)
+                     || type == SSBOType::UserDefined
+                     || !IsMaterialSSBOType(type))
+                        return false;
+                    out.definition.data_slot_decls.push_back(
+                        {DefaultMaterialDataSlotName, type});
                 }
 
                 if (resources.contains("textures"))
@@ -766,7 +757,7 @@ namespace hgl::graph::mtl
 
         if (root.contains("resources")
          && !ValidateKnownKeys(root.at("resources"), {
-                "ubos", "ssbos", "samplers", "textures", "defines"}))
+                "ubos", "material_data", "samplers", "textures", "defines"}))
             return false;
 
         if (root.contains("mesh_shader")

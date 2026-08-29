@@ -3,7 +3,7 @@
 // @ulre kind Utility
 // @ulre priority 0
 // @ulre require Resource MaterialData
-// @ulre ssbo mtl EmissiveSurface 0 Fragment optional fallback
+// @ulre ssbo MaterialPrivateData EmissiveSurface 0 Fragment optional fallback
 // @ulre uses material_source_interface
 // @ulre end
 // Unlit material source provider — reads emissive color from SSBO.

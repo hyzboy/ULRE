@@ -28,4 +28,4 @@ varyings = ["emit_data_index_id", "emit_world_pos", "emit_world_normal"]
 
 [resources]
 ubos = ["CameraInfo"]
-ssbos = [{ name = "mtl", type = "EmissiveSurface" }]
+material_data = { type = "EmissiveSurface" }

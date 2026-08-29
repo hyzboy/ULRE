@@ -500,7 +500,7 @@ namespace
         recipe.textures.push_back(
             {GetTextureSlotName(TextureSlot::Custom0), std::string(), 7, true, false});
         RecipeSSBOAssetBinding data_binding{};
-        data_binding.data_slot_name = "mtl";
+        data_binding.data_slot_name = "MaterialPrivateData";
         data_binding.data_slot = 0;
         data_binding.ssbo_type = SSBOType::PBRSurface;
         data_binding.ssbo_id = 17;
@@ -3463,7 +3463,7 @@ namespace
             else
             {
                 if (manifest_2d.ssbo_count != 1
-                 || std::strcmp(manifest_2d.ssbos[0].name, "mtl") != 0
+                 || std::strcmp(manifest_2d.ssbos[0].name, "MaterialPrivateData") != 0
                  || manifest_2d.ssbos[0].ssbo_type != SSBOType::PBRSurface
                  || manifest_2d.ssbos[0].data_slot != 0)
                     result.diagnostics.emplace_back(
@@ -4095,11 +4095,10 @@ namespace
     static GateResult RunMaterialMultiSlotSourceCase()
     {
         GateResult result;
-        result.name = "Z.material-multislot-source";
+        result.name = "Z.material-privatedata-slot-source";
 
         std::vector<DataSlotDeclaration> slots = {
-            {"surface_a", SSBOType::EmissiveSurface},
-            {"surface_b", SSBOType::EmissiveSurface}
+            {DefaultMaterialDataSlotName, SSBOType::EmissiveSurface}
         };
         const SerializedVertexEntry vertices[] = {
             {VF_V2F, VertexSemantic::Position}
@@ -4120,7 +4119,7 @@ namespace
             }
         };
         const MaterialShaderCompilerInput compiler_input{
-            "MultiSlotMaterial",
+            "MaterialPrivateDataSlotMaterial",
             PrimitiveType::Triangles,
             vertices,
             1,
@@ -4142,7 +4141,7 @@ namespace
             config);
         if (!build_spec)
         {
-            result.diagnostics.emplace_back("multi-slot compiler did not produce a build spec");
+            result.diagnostics.emplace_back("single-slot compiler did not produce a build spec");
             result.passed = false;
             return result;
         }
@@ -4151,7 +4150,7 @@ namespace
             build_spec->GetStageShader(ShaderStage::Fragment);
         if (!fragment)
         {
-            result.diagnostics.emplace_back("multi-slot compiler did not produce a fragment stage");
+            result.diagnostics.emplace_back("single-slot compiler did not produce a fragment stage");
         }
         else
         {
@@ -4171,31 +4170,29 @@ namespace
                 return count;
             };
 
-            if (source.find("#define MTL_DATA surface_a") == std::string::npos
-             || source.find("#define MTL_DATA_SLOT_1 surface_b") == std::string::npos
-             || source.find("#define MTL_DATA_SLOT_COUNT 2u") == std::string::npos)
-                result.diagnostics.emplace_back("multi-slot aliases were not injected");
+            if (source.find("#define MTL_DATA MaterialPrivateData") == std::string::npos
+             || source.find("#define MTL_DATA_SLOT_COUNT 1u") == std::string::npos)
+                result.diagnostics.emplace_back("single-slot aliases were not injected");
 
             if (count_occurrences("struct EmissiveSurfaceData") != 1)
                 result.diagnostics.emplace_back("repeated SSBO type emitted duplicate GLSL struct");
 
-            if (source.find("} surface_a;") == std::string::npos
-             || source.find("} surface_b;") == std::string::npos)
-                result.diagnostics.emplace_back("named multi-slot SSBO declarations are incomplete");
+            if (source.find("} MaterialPrivateData;") == std::string::npos)
+                result.diagnostics.emplace_back("single-slot SSBO declaration is incomplete");
         }
 
         const ShaderCreateInfo *vertex =
             build_spec->GetStageShader(ShaderStage::Mesh);
         if (!vertex)
         {
-            result.diagnostics.emplace_back("multi-slot compiler did not produce a mesh stage");
+            result.diagnostics.emplace_back("single-slot compiler did not produce a mesh stage");
         }
         else
         {
             const std::string &source = vertex->GetFinalGLSL();
-            if (source.find("ResolveDataIndexID(uint iid, uint data_slot)") == std::string::npos
-             || source.find("iid * MTL_DATA_INDEX_ROW_STRIDE + data_slot") == std::string::npos)
-                result.diagnostics.emplace_back("data-index resolver is not slot-aware");
+            if (source.find("ResolveDataIndexID(uint iid)") == std::string::npos
+             || source.find("mtl_data_index_rows.values[iid]") == std::string::npos)
+                result.diagnostics.emplace_back("data-index resolver is not single-slot");
         }
 
         delete build_spec;
@@ -4214,7 +4211,7 @@ namespace
         {
             std::string viewport_name = "viewport";
             std::string viewport_struct = "ViewportInfo";
-            std::string material_name = "mtl";
+            std::string material_name = "MaterialPrivateData";
             std::string material_struct = "PBRSurfaceData";
             SerializedDescriptorEntry entries[] =
             {
@@ -4558,7 +4555,7 @@ namespace
         result.name = "AD.resource-contract-boundary";
 
         MaterialDefinition definition{};
-        definition.data_slot_decls = {{"mtl", SSBOType::PBRSurface}};
+        definition.data_slot_decls = {{DefaultMaterialDataSlotName, SSBOType::PBRSurface}};
 
         std::vector<SerializedDescriptorEntry> descriptors;
         descriptor_builder_common::AppendDefinitionMaterialDescriptors(
@@ -4577,7 +4574,7 @@ namespace
         };
         compatible_manifest.ssbo_count = 1;
         compatible_manifest.ssbos[0] = {
-            "mtl",
+            "MaterialPrivateData",
             SSBOType::PBRSurface,
             DefaultMaterialDataSlot,
             uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT)
@@ -4622,7 +4619,7 @@ namespace
         ModuleResourceManifest ssbo_name_conflict{};
         ssbo_name_conflict.ssbo_count = 1;
         ssbo_name_conflict.ssbos[0] = {
-            "mtl",
+            "MaterialPrivateData",
             SSBOType::TextureLayer,
             DefaultMaterialDataSlot,
             uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT)
@@ -4639,7 +4636,7 @@ namespace
         hash_entry.set_type = DescriptorSetType::Material;
         hash_entry.kind = DescriptorKind::SSBO;
         hash_entry.stage_flags = uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT);
-        hash_entry.name = "mtl";
+        hash_entry.name = "MaterialPrivateData";
         hash_entry.struct_name = "PBRSurfaceData";
         hash_entry.semantic = DescriptorSemantic::MaterialDataSlotData;
         hash_entry.semantic_layer = DescriptorSemanticLayer::SSBO;
@@ -4674,7 +4671,7 @@ namespace
         ssbo_hash_entry.set_type = DescriptorSetType::Material;
         ssbo_hash_entry.kind = DescriptorKind::SSBO;
         ssbo_hash_entry.stage_flags = uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT);
-        ssbo_hash_entry.name = "mtl";
+        ssbo_hash_entry.name = "MaterialPrivateData";
         ssbo_hash_entry.struct_name = "PBRSurfaceData";
         ssbo_hash_entry.semantic = DescriptorSemantic::MaterialDataSlotData;
         ssbo_hash_entry.semantic_layer = DescriptorSemanticLayer::SSBO;
@@ -4870,7 +4867,7 @@ int main(const int argc, char **argv)
 
         constexpr SerializedDescriptorEntry invalid_fixed_descriptor[] =
         {
-            { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(hgl::graph::kMeshFragment), "mtl", "PBRSurfaceData", nullptr, DescriptorSemantic::MaterialDataSlotData, TextureSlot::BaseColor, 0xffu, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO },
+            { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(hgl::graph::kMeshFragment), "MaterialPrivateData", "PBRSurfaceData", nullptr, DescriptorSemantic::MaterialDataSlotData, TextureSlot::BaseColor, 0xffu, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO },
         };
         results.push_back(RunValidationCase("B3.invalid-fixed-descriptor-hard-fail", invalid_fixed_descriptor, 1, false));
 

@@ -256,7 +256,7 @@ inline void AppendDefinitionMaterialDescriptors(
             stage_flags,
             decl.name.c_str(),
             ssbo::GetMaterialSSBOStructName(decl.ssbo_type),
-            i,
+            DefaultMaterialDataSlot,
             decl.ssbo_type);
     }
 
@@ -377,6 +377,9 @@ inline bool PushManifestSSBO(
         entry.semantic_layer = DescriptorSemanticLayer::SSBO;
         break;
     default:
+        // 材质私有数据 SSBO：单槽方案下固定 data_slot == 0（MaterialPrivateData）。
+        if (ssbo.data_slot != DefaultMaterialDataSlot)
+            return false;
         entry.set_type = DescriptorSetType::Material;
         entry.kind = DescriptorKind::SSBO;
         entry.semantic = DescriptorSemantic::MaterialDataSlotData;

@@ -392,13 +392,19 @@ static bool CreateBuildContext(
 }
 
 // ── Step 3a: 合并 provider manifest 与 data_slot_decls 的材质数据槽声明 ─────
+// 单槽化：一个材质只有一个私有数据 SSBO（MaterialPrivateData，slot 0）。
+// 顶点数据 SSBO（Vertex*）走固定名路径（PerObject 集），不进入材质数据槽。
 static bool MergeDataSlotDeclarations(
     const CompositorMaterialBuildConfig &config,
     CompileContext &c,
     std::vector<DataSlotDeclaration> &out_effective_decls)
 {
     if (config.data_slot_decls)
+    {
+        if (config.data_slot_decls->size() > MaxMaterialDataSlotsPerMaterial)
+            return c.Fail("a material may declare at most one MaterialPrivateData slot");
         out_effective_decls = *config.data_slot_decls;
+    }
 
     if (config.merge_resource_manifest_material_slots
      && config.resource_manifest
@@ -407,12 +413,11 @@ static bool MergeDataSlotDeclarations(
         for (uint32_t i = 0; i < config.resource_manifest->ssbo_count; ++i)
         {
             const auto &ssbo = config.resource_manifest->ssbos[i];
-            if (ssbo.data_slot > MaxMaterialDataSlotsPerMaterial)
-                return c.Fail("provider material data slot exceeds the supported limit");
-            if (ssbo.data_slot > out_effective_decls.size())
-                return c.Fail("provider material data slots must be contiguous");
 
-            if (ssbo.data_slot == out_effective_decls.size())
+            if (ssbo.data_slot != DefaultMaterialDataSlot)
+                continue;
+
+            if (out_effective_decls.empty())
             {
                 DataSlotDeclaration decl;
                 decl.name = ssbo.name;
@@ -421,7 +426,7 @@ static bool MergeDataSlotDeclarations(
             }
             else
             {
-                const auto &decl = out_effective_decls[ssbo.data_slot];
+                const auto &decl = out_effective_decls[0];
                 if (decl.name != ssbo.name || decl.ssbo_type != ssbo.ssbo_type)
                     return c.Fail("provider material data slot conflicts with definition");
             }
@@ -465,8 +470,9 @@ static bool BuildEffectiveDescriptorEntries(
 
     if (use_slot_decls)
     {
+        // 单槽化：一个材质至多一个 MaterialPrivateData 槽，名称固定。
         if (out_declared_slot_count > MaxMaterialDataSlotsPerMaterial)
-            return c.Fail("material data slot count exceeds the supported limit");
+            return c.Fail("a material may declare at most one MaterialPrivateData slot");
 
         for (uint32_t i = 0; i < out_declared_slot_count; ++i)
         {
@@ -474,11 +480,8 @@ static bool BuildEffectiveDescriptorEntries(
             if (!IsValidMaterialDataSlotName(decl.name))
                 return c.Fail("invalid material data slot GLSL name");
 
-            for (uint32_t j = 0; j < i; ++j)
-            {
-                if ((*data_slot_decls)[j].name == decl.name)
-                    return c.Fail("duplicate material data slot GLSL name");
-            }
+            if (decl.name != DefaultMaterialDataSlotName)
+                return c.Fail("material data slot GLSL name must be MaterialPrivateData");
         }
     }
 
@@ -597,10 +600,8 @@ static bool RegisterCanonicalDescriptors(
         case RegisterOp::AddSSBOTextureLayer:
             if (!ctx->AddStruct(SBS_MaterialTextureLayerRows.struct_name, ""))
                 return c.Fail(std::string("failed to add ") + reg->label + " struct");
-            // 行表 binding 统一为「数据槽数 + 行表序号」：无 data slot 时 declared 计数为 0，
-            // 同一公式覆盖 use_slot_decls 两种路径，避免特例字面量。
-            // P1-2c：mtl_data_index_rows 已迁出 Material 集，texture_layer_rows
-            // 紧随数据槽之后（binding = N），不再 +1。
+            // 单槽化：材质至多一个 MaterialPrivateData 槽，declared 计数为 0 或 1。
+            // 纹理层行表紧随数据槽之后（binding = N），无数据槽时 N = 0。
             if (!ctx->AddSSBOTextureLayer(stage_bits, int(declared_material_data_slot_count)))
                 return c.Fail(std::string("failed to add ") + reg->label + " SSBO");
             break;
@@ -659,15 +660,19 @@ static bool RegisterCharQuadSSBOs(
 }
 
 // ── Step 3d: 材质数据槽描述符（data_slot_decls 驱动）─────────────────────────
+// 单槽化：固定 slot 0（DefaultMaterialDataSlot），至多一个声明。
 static bool RegisterMaterialDataSlotDescriptors(
     ShaderBuildContext *ctx,
     const std::vector<DataSlotDeclaration> &data_slot_decls,
     const uint32_t material_ssbo_stage_bits,
     CompileContext &c)
 {
+    if (data_slot_decls.size() > MaxMaterialDataSlotsPerMaterial)
+        return c.Fail("a material may declare at most one MaterialPrivateData slot");
+
     for (uint32_t i = 0; i < static_cast<uint32_t>(data_slot_decls.size()); ++i)
     {
-        if (!AddMaterialDataSlotDescriptor(*ctx, data_slot_decls[i], i, material_ssbo_stage_bits))
+        if (!AddMaterialDataSlotDescriptor(*ctx, data_slot_decls[i], DefaultMaterialDataSlot, material_ssbo_stage_bits))
             return c.Fail("failed to add declared material ssbo slot descriptor");
     }
 
@@ -803,6 +808,7 @@ static std::string BuildBindingPreamble(
 // ── Step 5b: Material SSBO GLSL 声明 ─────────────────────────────────────────
 // 材质实例 SSBO 的 struct + buffer 声明不再写死在 .glsl 中，
 // 统一依据 data_slot_decls 生成并注入 Fragment 阶段。
+// 单槽化：一个材质固定生成一个 buffer（MaterialPrivateData，slot 0）。
 static bool BuildMaterialSSBODeclarations(
     const DescriptorSetLayoutAllocator &descriptor_info,
     const std::vector<DataSlotDeclaration> *data_slot_decls,
@@ -813,111 +819,66 @@ static bool BuildMaterialSSBODeclarations(
     if (!data_slot_decls || data_slot_decls->empty())
         return true;
 
-    std::vector<std::string> emitted_struct_names;
-    std::vector<std::string> emitted_buffer_names;
-    for (uint32_t i = 0; i < static_cast<uint32_t>(data_slot_decls->size()); ++i)
+    if (data_slot_decls->size() > MaxMaterialDataSlotsPerMaterial)
+        return c.Fail("a material may declare at most one MaterialPrivateData slot");
+
+    const DataSlotDeclaration &decl = (*data_slot_decls)[0];
+    const ShaderDescriptor *sd = descriptor_info.GetSSBO(decl.name.c_str());
+    if (!sd || sd->set < 0 || sd->binding < 0)
+        return c.Fail("material ssbo descriptor unresolved for GLSL generation");
+
+    const char *struct_name  = ssbo::GetMaterialSSBOStructName(decl.ssbo_type);
+    const char *struct_codes = ssbo::GetMaterialSSBOStructGLSL(decl.ssbo_type);
+    if (!struct_name || !struct_codes)
+        return c.Fail("unsupported material ssbo type for GLSL generation");
+
+    const char *const buffer_base =
+        ssbo::GetMaterialSSBOBufferName(decl.ssbo_type);
+    if (!buffer_base)
+        return c.Fail("material ssbo buffer name unsupported for GLSL generation");
+
+    out_decls += "struct ";
+    out_decls += struct_name;
+    out_decls += "\n{\n";
+
+    // 规范化字段文本：去掉行首空白、统一 4 空格缩进。
+    std::string line;
+    const char *p = struct_codes;
+    auto FlushFieldLine = [&]()
     {
-        const DataSlotDeclaration &decl = (*data_slot_decls)[i];
-        const ShaderDescriptor *sd = descriptor_info.GetSSBO(decl.name.c_str());
-        if (!sd || sd->set < 0 || sd->binding < 0)
-            return c.Fail("material ssbo descriptor unresolved for GLSL generation");
-
-        const char *struct_name  = ssbo::GetMaterialSSBOStructName(decl.ssbo_type);
-        const char *struct_codes = ssbo::GetMaterialSSBOStructGLSL(decl.ssbo_type);
-        if (!struct_name || !struct_codes)
-            return c.Fail("unsupported material ssbo type for GLSL generation");
-
-        const char *const buffer_base =
-            ssbo::GetMaterialSSBOBufferName(decl.ssbo_type);
-        if (!buffer_base)
-            return c.Fail("material ssbo buffer name unsupported for GLSL generation");
-        std::string buffer_name(buffer_base);
-
-        for (uint32_t suffix = 1;; ++suffix)
+        size_t start = 0;
+        while (start < line.size() && (line[start] == ' ' || line[start] == '\t'))
+            ++start;
+        if (start < line.size())
         {
-            bool used = false;
-            for (const auto &used_name : emitted_buffer_names)
-            {
-                if (used_name == buffer_name)
-                {
-                    used = true;
-                    break;
-                }
-            }
-            if (!used)
-                break;
-            buffer_name = std::string(struct_name) + "Buffer_" + std::to_string(suffix);
+            out_decls += "    ";
+            out_decls.append(line, start, line.size() - start);
+            out_decls += '\n';
         }
-        emitted_buffer_names.push_back(buffer_name);
-
-        bool struct_emitted = false;
-        for (const auto &emitted_name : emitted_struct_names)
-        {
-            if (emitted_name == struct_name)
-            {
-                struct_emitted = true;
-                break;
-            }
-        }
-
-        if (!struct_emitted)
-        {
-            emitted_struct_names.emplace_back(struct_name);
-            out_decls += "struct ";
-            out_decls += struct_name;
-            out_decls += "\n{\n";
-
-            // 规范化字段文本：去掉行首空白、统一 4 空格缩进。
-            std::string line;
-            const char *p = struct_codes;
-            auto FlushFieldLine = [&]()
-            {
-                size_t start = 0;
-                while (start < line.size() && (line[start] == ' ' || line[start] == '\t'))
-                    ++start;
-                if (start < line.size())
-                {
-                    out_decls += "    ";
-                    out_decls.append(line, start, line.size() - start);
-                    out_decls += '\n';
-                }
-                line.clear();
-            };
-            for (; *p; ++p)
-            {
-                if (*p == '\n')
-                    FlushFieldLine();
-                else
-                    line += *p;
-            }
+        line.clear();
+    };
+    for (; *p; ++p)
+    {
+        if (*p == '\n')
             FlushFieldLine();
-
-            out_decls += "};\n";
-        }
-
-        out_decls += "layout(set=" + std::to_string(sd->set) + ", binding=" + std::to_string(sd->binding) + ") readonly buffer ";
-        out_decls += buffer_name;
-        out_decls += " {\n    ";
-        out_decls += struct_name;
-        out_decls += " data[];\n} ";
-        out_decls += decl.name;
-        out_decls += ";\n";
+        else
+            line += *p;
     }
+    FlushFieldLine();
 
-    out_macros += "#define MTL_DATA_SLOT_COUNT "
-        + std::to_string(data_slot_decls->size()) + "u\n";
-    out_macros += "#define MTL_DATA_INDEX_ROW_STRIDE "
-        + std::to_string(MaterialDataIndexRowStride) + "u\n";
-    for (uint32_t i = 0; i < static_cast<uint32_t>(data_slot_decls->size()); ++i)
-    {
-        out_macros += "#define MTL_DATA_SLOT_";
-        out_macros += std::to_string(i);
-        out_macros += " ";
-        out_macros += (*data_slot_decls)[i].name;
-        out_macros += "\n";
-    }
+    out_decls += "};\n";
+
+    out_decls += "layout(set=" + std::to_string(sd->set) + ", binding=" + std::to_string(sd->binding) + ") readonly buffer ";
+    out_decls += buffer_base;
+    out_decls += " {\n    ";
+    out_decls += struct_name;
+    out_decls += " data[];\n} ";
+    out_decls += decl.name;
+    out_decls += ";\n";
+
+    out_macros += "#define MTL_DATA_SLOT_COUNT 1u\n";
     out_macros += "#define MTL_DATA ";
-    out_macros += (*data_slot_decls)[0].name;
+    out_macros += decl.name;
     out_macros += "\n";
 
     return true;
@@ -956,12 +917,11 @@ struct IndexTableSpec
     const char *buffer_name;
     const char *var_name;
     const char *resolve_func;    // 为空则仅生成 buffer 声明
-    bool slot_aware = false;
 };
 
 static const IndexTableSpec kVSIndexTableSpecs[] = {
-    { SBS_LocalToWorldIndexRows.name, "LocalToWorldIndexRows", "l2w_index_rows",     "ResolveTransformID", false },
-    { SBS_MaterialDataIndexRows.name, "DataIndexRows",         "mtl_data_index_rows", "ResolveDataIndexID", true },
+    { SBS_LocalToWorldIndexRows.name, "LocalToWorldIndexRows", "l2w_index_rows",     "ResolveTransformID" },
+    { SBS_MaterialDataIndexRows.name, "DataIndexRows",         "mtl_data_index_rows", "ResolveDataIndexID" },
 };
 
 static void AppendIndexTableDecl(
@@ -980,40 +940,20 @@ static void AppendIndexTableDecl(
 
     if (spec.resolve_func)
     {
-        if (spec.slot_aware)
-        {
-            out += "uint ";
-            out += spec.resolve_func;
-            out += "(uint iid, uint data_slot) { return ";
-            out += spec.var_name;
-            out += ".values[iid * MTL_DATA_INDEX_ROW_STRIDE + data_slot]; }\n";
-        }
+        // 单槽化：行表写单列（values[iid]），不再按 slot 索引。
         out += "uint ";
         out += spec.resolve_func;
         out += "(uint iid) { return ";
-        if (spec.slot_aware)
-        {
-            out += spec.resolve_func;
-            out += "(iid, 0u); }\n";
-        }
-        else
-        {
-            out += spec.var_name;
-            out += ".values[iid]; }\n";
-        }
+        out += spec.var_name;
+        out += ".values[iid]; }\n";
     }
 }
 
 static std::string BuildVSIndexTableDecls(
-    const DescriptorSetLayoutAllocator &descriptor_info,
-    const uint32_t material_data_slot_count)
+    const DescriptorSetLayoutAllocator &descriptor_info)
 {
-    // 无 data_slot_decls 时回退 1：MTL_DATA_SLOT_COUNT 是 GLSL 侧行表
-    // 边界常量，至少为 1（material_data_index_rows 索引 0 仍有效）
-    std::string out = "#define MTL_DATA_SLOT_COUNT "
-        + std::to_string(material_data_slot_count) + "u\n"
-        + "#define MTL_DATA_INDEX_ROW_STRIDE "
-        + std::to_string(MaterialDataIndexRowStride) + "u\n";
+    // 单槽化：MTL_DATA_SLOT_COUNT 恒 1（material_data_index_rows 索引 0 仍有效）
+    std::string out = "#define MTL_DATA_SLOT_COUNT 1u\n";
 
     for (const IndexTableSpec &spec : kVSIndexTableSpecs)
         AppendIndexTableDecl(out, descriptor_info.GetSSBO(spec.sbs_name), spec);
@@ -1308,12 +1248,9 @@ ShaderBuildContext *CompileCompositorMaterial(
 
     const std::string compile_define_macros = BuildCompileDefineMacros(config);
 
-    // 无 data_slot_decls 时回退 1：MTL_DATA_SLOT_COUNT 是 GLSL 侧行表
-    // 边界常量，至少为 1（material_data_index_rows 索引 0 仍有效）
-    const uint32_t material_data_slot_count =
-        data_slot_decls ? static_cast<uint32_t>(data_slot_decls->size()) : 1u;
+    // 单槽化：MTL_DATA_SLOT_COUNT 恒 1（material_data_index_rows 索引 0 仍有效）
     const std::string vs_index_table_decls =
-        BuildVSIndexTableDecls(descriptor_info, material_data_slot_count);
+        BuildVSIndexTableDecls(descriptor_info);
     const std::string fs_index_table_decls =
         BuildFSIndexTableDecls(descriptor_info);
 

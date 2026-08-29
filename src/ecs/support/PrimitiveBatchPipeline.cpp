@@ -716,7 +716,8 @@ namespace hgl::ecs
             }
         }
 
-        // Write per-batch fixed-width DataIndex rows in draw order.
+        // Write per-batch single-column DataIndex rows in draw order.
+        // 单槽化：行表收敛为单列（MaterialDataIndexRowStride == 1）。
         if (batch.material_data_index_rows_buffer)
         {
             auto *mi_gpu = batch.material_data_index_rows_buffer->GetGPUBuffer();
@@ -732,23 +733,14 @@ namespace hgl::ecs
                 {
                     for (size_t i = 0; i < item_count; ++i)
                     {
-                        const uint32_t base =
-                            static_cast<uint32_t>(i) * graph::mtl::MaterialDataIndexRowStride;
-                        for (uint32_t slot = 0; slot < graph::mtl::MaterialDataIndexRowStride; ++slot)
-                            row_ptr[base + slot] = 0u;
+                        row_ptr[i] = 0u;
 
                         auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(batch.items[i]);
                         auto material_comp = primitive_item
                             ? primitive_item->GetMaterialComponent()
                             : nullptr;
                         if (material_comp && !material_comp->data_index_values.empty())
-                        {
-                            for (uint32_t slot = 0;
-                                 slot < material_comp->data_index_values.size()
-                                  && slot < graph::mtl::MaterialDataIndexRowStride;
-                                 ++slot)
-                                row_ptr[base + slot] = material_comp->data_index_values[slot];
-                        }
+                            row_ptr[i] = material_comp->data_index_values[0];
                     }
                     mi_gpu->Unmap();
                 }

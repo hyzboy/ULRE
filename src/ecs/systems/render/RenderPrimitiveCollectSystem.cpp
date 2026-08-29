@@ -881,24 +881,23 @@ namespace hgl::ecs
         // Fill the per-batch material data index table for every SSBO asset,
         // including use_data_index == false ones (the shader still reads
         // data[data_index], so the authored index must be published in the table).
+        // 单槽化：材质唯一私有数据 SSBO 固定 slot 0，data_index_values 恒为单元素。
         for (const auto &asset_binding : material_binding_recipe.ssbo_assets)
         {
-            uint32_t data_slot = asset_binding.data_slot;
+            if (material_comp->data_index_values.empty())
+                material_comp->data_index_values.resize(1, 0u);
+
             for (const auto &req : material_comp->program->GetShaderResourceSchema().resources)
             {
                 if (req.semantic == graph::mtl::DescriptorSemantic::MaterialDataSlotData
-                 && req.data_slot == asset_binding.data_slot
+                 && req.data_slot == graph::mtl::DefaultMaterialDataSlot
                  && req.ssbo_type == asset_binding.ssbo_type
                  && asset_binding.data_slot_name == req.name)
                 {
-                    data_slot = req.data_slot;
+                    material_comp->data_index_values[0] = asset_binding.data_index;
                     break;
                 }
             }
-
-            if (data_slot >= material_comp->data_index_values.size())
-                material_comp->data_index_values.resize(data_slot + 1, 0u);
-            material_comp->data_index_values[data_slot] = asset_binding.data_index;
         }
 
         // The texture-layer row is keyed by the primitive's data_index VALUE.
