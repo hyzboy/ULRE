@@ -1,6 +1,6 @@
 # ShaderGen 描述符 ABI 统一化 + Vertex 集独立 — 实施方案
 
-> 状态：实施中（Phase 0–6 已完成，2026-08-29；仅剩 Phase 7 清理收尾）
+> 状态：✅ 全部完成（Phase 0–7，2026-08-29）
 > 日期：2026-08-29
 > 分支基线：ShaderGenClean
 > 关联文档：MATERIAL_SHADER_ARCHITECTURE.md、doc/mesh-shader-multi-object-per-draw-descriptor-set.md

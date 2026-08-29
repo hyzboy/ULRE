@@ -80,7 +80,7 @@ namespace hgl::graph
 
     enum class DescriptorSetType:int
     {
-        Unknow=-1,
+        Unknown=-1,        ///<Phase 7 拼写修正：Unknown（枚举值不变，序列化契约不受影响）
 
         Scene=0,        ///< 全局 UBO 集（camera/sky/viewport/color_palette），所有材质共用，一帧写/绑一次
         PerObject,      ///< per-object/per-draw SSBO 集（l2w/l2w_index/material_private_data_index/mesh_draw_params）
@@ -104,7 +104,7 @@ namespace hgl::graph
 
     inline const char *GetDescriptorSetTypeName(const enum class DescriptorSetType &type)
     {
-        if(type==DescriptorSetType::Unknow)return "Unknow";
+        if(type==DescriptorSetType::Unknown)return "Unknown";
 
         RANGE_CHECK_RETURN_NULLPTR(type);
 

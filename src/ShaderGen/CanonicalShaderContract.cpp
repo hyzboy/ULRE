@@ -247,7 +247,7 @@ namespace hgl::graph::mtl
              || entry.semantic == DescriptorSemantic::Unknown
              || entry.semantic_layer == DescriptorSemanticLayer::Unknown
              || entry.semantic_layer > DescriptorSemanticLayer::Sampler
-             || entry.set_type == DescriptorSetType::Unknow
+             || entry.set_type == DescriptorSetType::Unknown
              || entry.set_type < DescriptorSetType::Scene
              || entry.set_type > DescriptorSetType::Vertex   // Phase 5：Vertex 为最后一个集合类型
              || entry.texture_slot < TextureSlot::BEGIN_RANGE

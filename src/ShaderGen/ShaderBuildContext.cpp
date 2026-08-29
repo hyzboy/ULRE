@@ -49,31 +49,6 @@ static bool ExecuteOnShadersByStage(
     return expected>0&&result==expected;
 }
 
-static const UBODescriptor *ResolveUBODescriptor(
-    DescriptorSetLayoutAllocator &allocator,
-    const ShaderStage flag_bit,
-    const DescriptorSetType set_type,
-    const std::string &struct_name,
-    const std::string &name)
-{
-    UBODescriptor *ubo=allocator.GetUBO(name);
-
-    if(ubo)
-    {
-        if(std::strcmp(ubo->type.c_str()?ubo->type.c_str():"",struct_name.c_str())!=0)
-            return nullptr;
-
-        ubo->stage_flag|=(uint32_t)flag_bit;
-        return ubo;
-    }
-
-    ubo=new UBODescriptor();
-    ubo->type=struct_name.c_str();
-    hgl::strcpy(ubo->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
-
-    return allocator.AddUBO((uint32_t)flag_bit,set_type,ubo);
-}
-
 static const SSBODescriptor *ResolveSSBODescriptor(
     DescriptorSetLayoutAllocator &allocator,
     const ShaderStage flag_bit,
@@ -112,6 +87,10 @@ ShaderBuildContext::ShaderBuildContext(const PrimitiveType primitive_type_value,
     ubo_range=0;
     ssbo_range=0;
 
+    // Phase 7：补齐初始化——两成员曾未初始化，其值会经 SetLocalToWorld/
+    // GetLocalToWorld 相关路径进入未定义行为
+    local_to_world_max_count=0;
+    local_to_world_stage_bits=0;
     local_to_world_ssbo=nullptr;
 
 }
@@ -136,46 +115,10 @@ bool ShaderBuildContext::AddStruct(const std::string &struct_name,const std::str
     return descriptor_allocator.AddStruct(struct_name,codes);
 }
 
-bool ShaderBuildContext::AddUBO(const ShaderStage flag_bit,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name)
-{
-    if(!shader_map.ContainsKey(flag_bit))
-        return(false);
+// ── AddUBO 家族已删除（Phase 7）：Scene UBO 全局化（P1）后引擎无 per-material
+//    UBO 注册路径，全部实现为死代码 ──
 
-    if(!descriptor_allocator.hasStruct(struct_name))
-        return(false);
-
-    const UBODescriptor *ubo=ResolveUBODescriptor(descriptor_allocator,flag_bit,set_type,struct_name,name);
-    return ubo != nullptr;
-}
-
-bool ShaderBuildContext::AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name)
-{
-    if(flag_bits==0)return(false);          //没有任何SHADER用?
-
-    if(!descriptor_allocator.hasStruct(struct_name))
-        return(false);
-
-    return ExecuteOnShadersByStage(shader_map,flag_bits,
-        [&](const ShaderStage stage)
-        {
-            return AddUBO(stage,set_type,struct_name,name);
-        });
-}
-
-bool ShaderBuildContext::AddUBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss)
-{
-    if(!AddStruct(ss.struct_name,""))
-        return(false);
-
-    return AddUBO(flag_bits,ss.set_type,ss.struct_name,ss.name);
-}
-
-bool ShaderBuildContext::AddSSBO(const ShaderStage flag_bit,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name)
-{
-    return AddSSBO(flag_bit,set_type,struct_name,name,-1);
-}
-
-bool ShaderBuildContext::AddSSBO(const ShaderStage flag_bit,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name,const int preferred_binding)
+bool ShaderBuildContext::AddSSBOCore(const ShaderStage flag_bit,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name,const int preferred_binding)
 {
     if(!shader_map.ContainsKey(flag_bit))
         return(false);
@@ -202,7 +145,7 @@ bool ShaderBuildContext::AddSSBO(const uint32_t flag_bits,const DescriptorSetTyp
     return ExecuteOnShadersByStage(shader_map,flag_bits,
         [&](const ShaderStage stage)
         {
-            return AddSSBO(stage,set_type,struct_name,name,preferred_binding);
+            return AddSSBOCore(stage,set_type,struct_name,name,preferred_binding);
         });
 }
 

@@ -139,7 +139,7 @@ namespace hgl::graph::mtl
         DescriptorSemantic semantic = DescriptorSemantic::Unknown;
         DescriptorSemanticLayer semantic_layer =
             DescriptorSemanticLayer::Unknown;
-        DescriptorSetType set_type = DescriptorSetType::Unknow;
+        DescriptorSetType set_type = DescriptorSetType::Unknown;
         TextureSlot texture_slot = TextureSlot::BaseColor;
         SSBOType ssbo_type = SSBOType::UserDefined;
         uint32 material_private_data_slot = 0;

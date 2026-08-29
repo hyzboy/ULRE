@@ -17,7 +17,7 @@ namespace hgl::graph::mtl
         uint64 resource_schema_id = 0;
         DescriptorSemantic semantic = DescriptorSemantic::Unknown;
         DescriptorSemanticLayer semantic_layer = DescriptorSemanticLayer::Unknown;
-        DescriptorSetType set_type = DescriptorSetType::Unknow;
+        DescriptorSetType set_type = DescriptorSetType::Unknown;
         TextureSlot texture_slot = TextureSlot::BaseColor;
         uint32_t material_private_data_slot = DefaultMaterialPrivateDataSlot;
         SSBOType ssbo_type = SSBOType::UserDefined;
@@ -93,7 +93,7 @@ namespace hgl::graph::mtl
         // 唯一真源：DescriptorResourceCatalog（语义→集合映射随目录表维护）
         const DescriptorResourceCatalogEntry *cat =
             FindResourceCatalogEntry(semantic);
-        return cat ? cat->set_type : DescriptorSetType::Unknow;
+        return cat ? cat->set_type : DescriptorSetType::Unknown;
     }
 
     inline DescriptorSemanticLayer NormalizeSemanticLayer(const SerializedDescriptorEntry &entry)
@@ -366,7 +366,7 @@ namespace hgl::graph::mtl
             }
 
             const DescriptorSetType expected_set = GetExpectedSetType(req.semantic);
-            if (expected_set != DescriptorSetType::Unknow && expected_set != req.set_type)
+            if (expected_set != DescriptorSetType::Unknown && expected_set != req.set_type)
             {
                 std::string message = "Descriptor semantic set mismatch: ";
                 message += context;

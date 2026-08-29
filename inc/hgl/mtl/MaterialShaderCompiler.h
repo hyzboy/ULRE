@@ -70,8 +70,9 @@ bool FinalizeShaderBuildContext(
  * 生成 sampler 预设宏字符串（统一注册机制）。
  *
  * 遍历 sampler_names，为每个名字生成 "#define <name>Sampler <idx>u"。
- * idx 经 SamplerPresetLibrary::GetIndex 查询（查不到保底 0），
- * 与运行时 binding=1 的数组下标保持一致。空列表返回空字符串。
+ * idx 经 SamplerPresetLibrary::GetIndex 查询（查不到则报错并跳过——不生成宏，
+ * 让 shader 编译因未定义宏显式失败，而非静默错位成错误采样器），
+ * 与运行时 bindless 采样器数组的下标保持一致。空列表返回空字符串。
  */
 std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names);
 
