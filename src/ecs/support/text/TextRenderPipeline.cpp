@@ -1,4 +1,5 @@
 ﻿#include<hgl/ecs/support/TextRenderPipeline.h>
+#include<hgl/common/DescriptorSetTypeDef.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/TextComponent.h>
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
@@ -251,11 +252,11 @@ namespace hgl::ecs
             if (res.per_object_mp)
             {
                 if (res.char_info_asb && res.char_info_asb->IsValid())
-                    res.per_object_mp->BindSSBO(14, res.char_info_asb->GetGPUBuffer());
+                    res.per_object_mp->BindSSBO(hgl::graph::kPerObjectBindingTextCharInfo, res.char_info_asb->GetGPUBuffer());
                 if (res.char_style_asb && res.char_style_asb->IsValid())
-                    res.per_object_mp->BindSSBO(15, res.char_style_asb->GetGPUBuffer());
+                    res.per_object_mp->BindSSBO(hgl::graph::kPerObjectBindingTextCharStyle, res.char_style_asb->GetGPUBuffer());
                 if (res.char_instance_asb && res.char_instance_asb->IsValid())
-                    res.per_object_mp->BindSSBO(16, res.char_instance_asb->GetGPUBuffer());
+                    res.per_object_mp->BindSSBO(hgl::graph::kPerObjectBindingTextCharInstance, res.char_instance_asb->GetGPUBuffer());
 
                 if (res.mesh_draw_params)
                     res.per_object_mp->BindSSBO("mesh_draw_params",

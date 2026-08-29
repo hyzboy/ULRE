@@ -156,13 +156,16 @@ namespace hgl::graph::mtl
                 return AddSSBO(flag_bits,set_type,std::string(struct_name?struct_name:""),std::string(name?name:""),preferred_binding);
             }
 
-            bool AddSSBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss);
+            bool AddSSBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss,const int preferred_binding);
 
             // —— 语义化 SSBO 注册（MeshShader 方向：按用途明确区分）——
-            bool AddSSBOVertex(const uint32_t flag_bits,const ShaderBufferSource &ss);      ///< 顶点数据（Position/UV/NTB）
-            bool AddSSBOVertexIndex(const uint32_t flag_bits);                              ///< 顶点索引
+            // Phase 4：固定 ABI 资源的 binding 唯一来源是调用方显式传入的
+            // preferred_binding（数值真源 DescriptorSetTypeDef.h 绑定枚举），
+            // 运行时不再有名字表/动态分配兜底。
+            bool AddSSBOVertex(const uint32_t flag_bits,const ShaderBufferSource &ss,const int preferred_binding);      ///< 顶点数据（Position/UV/NTB）
+            bool AddSSBOVertexIndex(const uint32_t flag_bits);                              ///< 顶点索引（binding=VertexBinding::Index）
             bool AddSSBOMaterialPrivateData(const uint32_t flag_bits,const std::string &struct_name,const std::string &name,const int material_private_data_slot);   ///< 材质数据槽
-            bool AddSSBOMaterialPrivateDataIndex(const uint32_t flag_bits);                                 ///< 材质数据行表
+            bool AddSSBOMaterialPrivateDataIndex(const uint32_t flag_bits);                                 ///< 材质数据行表（binding=PerObjectBinding::PrivateDataIndex）
             bool AddSSBOTextureLayer(const uint32_t flag_bits,const int binding);           ///< 纹理层表
 
             bool CreateShaderDirect();               ///< 直接编译各阶段的 FinalGLSL 到 SPV

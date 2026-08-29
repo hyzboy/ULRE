@@ -206,23 +206,23 @@ bool ShaderBuildContext::AddSSBO(const uint32_t flag_bits,const DescriptorSetTyp
         });
 }
 
-bool ShaderBuildContext::AddSSBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss)
+bool ShaderBuildContext::AddSSBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss,const int preferred_binding)
 {
     if(!AddStruct(ss.struct_name,""))
         return(false);
 
-    return AddSSBO(flag_bits,ss.set_type,ss.struct_name,ss.name);
+    return AddSSBO(flag_bits,ss.set_type,ss.struct_name,ss.name,preferred_binding);
 }
 
 // —— 语义化 SSBO 注册（MeshShader 方向：按用途明确区分）——
-bool ShaderBuildContext::AddSSBOVertex(const uint32_t flag_bits,const ShaderBufferSource &ss)
+bool ShaderBuildContext::AddSSBOVertex(const uint32_t flag_bits,const ShaderBufferSource &ss,const int preferred_binding)
 {
-    return AddSSBOStruct(flag_bits,ss);
+    return AddSSBOStruct(flag_bits,ss,preferred_binding);
 }
 
 bool ShaderBuildContext::AddSSBOVertexIndex(const uint32_t flag_bits)
 {
-    return AddSSBOStruct(flag_bits,SBS_VertexIndex);
+    return AddSSBOStruct(flag_bits,SBS_VertexIndex,int(PerObjectBinding::VertexIndex));
 }
 
 bool ShaderBuildContext::AddSSBOMaterialPrivateData(const uint32_t flag_bits,const std::string &struct_name,const std::string &name,const int material_private_data_slot)
@@ -232,7 +232,7 @@ bool ShaderBuildContext::AddSSBOMaterialPrivateData(const uint32_t flag_bits,con
 
 bool ShaderBuildContext::AddSSBOMaterialPrivateDataIndex(const uint32_t flag_bits)
 {
-    return AddSSBO(flag_bits,SBS_MaterialPrivateDataIndexRows.set_type,SBS_MaterialPrivateDataIndexRows.struct_name,SBS_MaterialPrivateDataIndexRows.name);
+    return AddSSBO(flag_bits,SBS_MaterialPrivateDataIndexRows.set_type,SBS_MaterialPrivateDataIndexRows.struct_name,SBS_MaterialPrivateDataIndexRows.name,int(PerObjectBinding::PrivateDataIndex));
 }
 
 bool ShaderBuildContext::AddSSBOTextureLayer(const uint32_t flag_bits,const int binding)
@@ -246,7 +246,7 @@ bool ShaderBuildContext::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
 
     local_to_world_max_count=std::min<uint32_t>(ssbo_range/sizeof(math::Matrix4f),HGL_U16_MAX);
 
-    if(!AddSSBOStruct(shader_stage_flag_bits,SBS_LocalToWorld))
+    if(!AddSSBOStruct(shader_stage_flag_bits,SBS_LocalToWorld,int(PerObjectBinding::L2W)))
         return(false);
 
     local_to_world_ssbo=descriptor_allocator.GetSSBO(SBS_LocalToWorld.name);

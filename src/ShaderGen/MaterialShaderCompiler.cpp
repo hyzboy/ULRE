@@ -505,6 +505,10 @@ struct DescriptorRegisterEntry
     RegisterOp op;
     const ShaderBufferSource *sbs;   // AddSSBOStruct / AddSSBOVertex 使用
     const char *label;               // 诊断名
+    int binding;                     // 固定 ABI binding（PerObjectBinding/VertexBinding 枚举）；
+                                     // op 内部自行定值（SetLocalToWorld/AddSSBOVertexIndex/
+                                     // AddSSBOMaterialPrivateDataIndex/AddSSBOTextureLayer）或
+                                     // per-material 动态（纹理层=槽数）时为 -1
 };
 
 // 顶点数据 SSBO（MeshShader 方向：顶点输入统一为 SSBO）——
@@ -515,24 +519,24 @@ struct DescriptorRegisterEntry
 // 不再维护 UBO/SSBO 双映射。
 static const DescriptorRegisterEntry kDescriptorRegisterTable[] = {
     // ── UBO ──
-    { DescriptorSemantic::ViewportInfo,           RegisterOp::None,              nullptr,                "Scene UBO" },
-    { DescriptorSemantic::CameraInfo,             RegisterOp::None,              nullptr,                "Scene UBO" },
-    { DescriptorSemantic::SkyInfo,                RegisterOp::None,              nullptr,                "Scene UBO" },
-    { DescriptorSemantic::MaterialColorPalette,   RegisterOp::None,              nullptr,                "Scene UBO" },
+    { DescriptorSemantic::ViewportInfo,           RegisterOp::None,              nullptr,                "Scene UBO", -1 },
+    { DescriptorSemantic::CameraInfo,             RegisterOp::None,              nullptr,                "Scene UBO", -1 },
+    { DescriptorSemantic::SkyInfo,                RegisterOp::None,              nullptr,                "Scene UBO", -1 },
+    { DescriptorSemantic::MaterialColorPalette,   RegisterOp::None,              nullptr,                "Scene UBO", -1 },
     // ── SSBO ──
-    { DescriptorSemantic::LocalToWorld,             RegisterOp::SetLocalToWorld,   nullptr,                    "LocalToWorld" },
-    { DescriptorSemantic::LocalToWorldIndex,        RegisterOp::AddSSBOStruct,     &SBS_LocalToWorldIndex,     "LocalToWorldIndex" },
-    { DescriptorSemantic::MaterialTextureLayerTable,RegisterOp::AddSSBOTextureLayer,nullptr,                   "MaterialTextureLayerRows" },
-    { DescriptorSemantic::MaterialPrivateDataIndex, RegisterOp::AddSSBOMaterialPrivateDataIndex,   nullptr,    "MaterialPrivateDataIndex" },
-    { DescriptorSemantic::VertexPosition,           RegisterOp::AddSSBOVertex,     &SBS_VertexPosition,        "VertexPosition" },
-    { DescriptorSemantic::VertexUV,                 RegisterOp::AddSSBOVertex,     &SBS_VertexUV,              "VertexUV" },
-    { DescriptorSemantic::VertexNTB,                RegisterOp::AddSSBOVertex,     &SBS_VertexNTB,             "VertexNTB" },
-    { DescriptorSemantic::VertexColor,              RegisterOp::AddSSBOVertex,     &SBS_VertexColor,           "VertexColor" },
-    { DescriptorSemantic::VertexLuminance,          RegisterOp::AddSSBOVertex,     &SBS_VertexLuminance,       "VertexLuminance" },
-    { DescriptorSemantic::VertexTransformID,        RegisterOp::AddSSBOVertex,     &SBS_VertexTransformID,     "VertexTransformID" },
-    { DescriptorSemantic::VertexSize,               RegisterOp::AddSSBOVertex,     &SBS_VertexSize,            "VertexSize" },
-    { DescriptorSemantic::MeshDrawParams,           RegisterOp::AddSSBOVertex,     &SBS_MeshDrawParams,        "MeshDrawParams" },
-    { DescriptorSemantic::VertexIndex,              RegisterOp::AddSSBOVertexIndex,nullptr,                    "VertexIndex" },
+    { DescriptorSemantic::LocalToWorld,             RegisterOp::SetLocalToWorld,   nullptr,                    "LocalToWorld", -1 },
+    { DescriptorSemantic::LocalToWorldIndex,        RegisterOp::AddSSBOStruct,     &SBS_LocalToWorldIndex,     "LocalToWorldIndex", int(PerObjectBinding::L2WIndex) },
+    { DescriptorSemantic::MaterialTextureLayerTable,RegisterOp::AddSSBOTextureLayer,nullptr,                   "MaterialTextureLayerRows", -1 },
+    { DescriptorSemantic::MaterialPrivateDataIndex, RegisterOp::AddSSBOMaterialPrivateDataIndex,   nullptr,    "MaterialPrivateDataIndex", -1 },
+    { DescriptorSemantic::VertexPosition,           RegisterOp::AddSSBOVertex,     &SBS_VertexPosition,        "VertexPosition", int(PerObjectBinding::VertexPosition) },
+    { DescriptorSemantic::VertexUV,                 RegisterOp::AddSSBOVertex,     &SBS_VertexUV,              "VertexUV", int(PerObjectBinding::VertexUV) },
+    { DescriptorSemantic::VertexNTB,                RegisterOp::AddSSBOVertex,     &SBS_VertexNTB,             "VertexNTB", int(PerObjectBinding::VertexNTB) },
+    { DescriptorSemantic::VertexColor,              RegisterOp::AddSSBOVertex,     &SBS_VertexColor,           "VertexColor", int(PerObjectBinding::VertexColor) },
+    { DescriptorSemantic::VertexLuminance,          RegisterOp::AddSSBOVertex,     &SBS_VertexLuminance,       "VertexLuminance", int(PerObjectBinding::VertexLuminance) },
+    { DescriptorSemantic::VertexTransformID,        RegisterOp::AddSSBOVertex,     &SBS_VertexTransformID,     "VertexTransformID", int(PerObjectBinding::VertexTransformID) },
+    { DescriptorSemantic::VertexSize,               RegisterOp::AddSSBOVertex,     &SBS_VertexSize,            "VertexSize", int(PerObjectBinding::VertexSize) },
+    { DescriptorSemantic::MeshDrawParams,           RegisterOp::AddSSBOVertex,     &SBS_MeshDrawParams,        "MeshDrawParams", int(PerObjectBinding::MeshDrawParams) },
+    { DescriptorSemantic::VertexIndex,              RegisterOp::AddSSBOVertexIndex,nullptr,                    "VertexIndex", -1 },
 };
 
 static const DescriptorRegisterEntry *FindDescriptorRegisterEntry(
@@ -580,12 +584,12 @@ static bool RegisterCanonicalDescriptors(
             break;
 
         case RegisterOp::AddSSBOStruct:
-            if (!ctx->AddSSBOStruct(stage_bits, *reg->sbs))
+            if (!ctx->AddSSBOStruct(stage_bits, *reg->sbs, reg->binding))
                 return c.Fail(std::string("failed to add ") + reg->label + " SSBO");
             break;
 
         case RegisterOp::AddSSBOVertex:
-            if (!ctx->AddSSBOVertex(stage_bits, *reg->sbs))
+            if (!ctx->AddSSBOVertex(stage_bits, *reg->sbs, reg->binding))
                 return c.Fail(std::string("failed to add ") + reg->label + " SSBO");
             break;
 
@@ -631,12 +635,13 @@ struct CharQuadSSBOReg
 {
     const char *struct_name;
     const char *sbo_name;
+    int binding;        // PerObjectBinding::TextChar* 枚举
 };
 
 static const CharQuadSSBOReg kCharQuadSSBOTable[] = {
-    { "TextCharInfo",     "sbo_char_info" },
-    { "CharStyleData",    "sbo_char_style" },
-    { "CharInstanceData", "sbo_char_instance" },
+    { "TextCharInfo",     "sbo_char_info",     int(PerObjectBinding::TextCharInfo) },
+    { "CharStyleData",    "sbo_char_style",    int(PerObjectBinding::TextCharStyle) },
+    { "CharInstanceData", "sbo_char_instance", int(PerObjectBinding::TextCharInstance) },
 };
 
 static bool RegisterCharQuadSSBOs(
@@ -649,7 +654,7 @@ static bool RegisterCharQuadSSBOs(
         if (!ctx->AddStruct(reg.struct_name, ""))
             return c.Fail(std::string("failed to add ") + reg.struct_name + " struct");
         if (!ctx->AddSSBO(stage_bits, DescriptorSetType::PerObject,
-                          reg.struct_name, reg.sbo_name))
+                          reg.struct_name, reg.sbo_name, reg.binding))
             return c.Fail(std::string("failed to add ") + reg.sbo_name + " SSBO");
     }
 
@@ -711,7 +716,8 @@ static void EnsureIndexTableSSBOs(
         ctx->AddSSBO(hgl::graph::kMeshFragment,
                      SBS_MaterialPrivateDataIndexRows.set_type,
                      SBS_MaterialPrivateDataIndexRows.struct_name,
-                     SBS_MaterialPrivateDataIndexRows.name);
+                     SBS_MaterialPrivateDataIndexRows.name,
+                     int(PerObjectBinding::PrivateDataIndex));
     }
 }
 
