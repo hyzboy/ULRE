@@ -185,7 +185,7 @@ namespace hgl::graph::mtl
         // ── DataIndexID varying（perprimitiveEXT——每字符 2 图元各写 1 份）──
         if (FindMaterialStageInterfaceEntry(resolved_stage_interface, InterStageSemantic::DataIndexID))
         {
-            ms += "    const uint data_id = ResolveDataIndexID(gl_DrawID);\n";
+            ms += "    const uint data_id = ResolveMaterialPrivateDataIndex(gl_DrawID);\n";
             ms += "    fragDataIndexID[gl_LocalInvocationIndex * 2u + 0u] = data_id;\n";
             ms += "    fragDataIndexID[gl_LocalInvocationIndex * 2u + 1u] = data_id;\n";
         }

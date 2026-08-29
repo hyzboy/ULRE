@@ -8,7 +8,7 @@
 
 namespace hgl::graph
 {
-    constexpr size_t DESCRIPTOR_NAME_MAX_LENGTH=32;
+    constexpr size_t DESCRIPTOR_NAME_MAX_LENGTH=48;
 
     struct ShaderDescriptor
     {

@@ -277,7 +277,7 @@ static bool ValidateDefinitionCapabilitySubset(
              && manifest->texture_layer_count > 0)
                 allowed = true;
 
-            // The mtl_data_index_rows table only exists to route instance IDs
+            // The MaterialPrivateDataIndexRows table only exists to route instance IDs
             // to material data-slot SSBOs. If any material data-slot SSBO was
             // declared purely via provider manifest metadata (no matching
             // TOML [resources].ssbos entry), the index table requirement is
@@ -524,7 +524,7 @@ static const DescriptorRegisterEntry kDescriptorRegisterTable[] = {
     { DescriptorSemantic::LocalToWorld,             DescriptorKind::SSBO, RegisterOp::SetLocalToWorld,   nullptr,                    "LocalToWorld" },
     { DescriptorSemantic::LocalToWorldIndexTable,   DescriptorKind::SSBO, RegisterOp::AddSSBOStruct,     &SBS_LocalToWorldIndexRows,  "LocalToWorldIndexRows" },
     { DescriptorSemantic::MaterialTextureLayerTable,DescriptorKind::SSBO, RegisterOp::AddSSBOTextureLayer,nullptr,                    "MaterialTextureLayerRows" },
-    { DescriptorSemantic::MaterialDataIndexTable,   DescriptorKind::SSBO, RegisterOp::AddSSBOMtlIndex,   nullptr,                    "MaterialDataIndexRows" },
+    { DescriptorSemantic::MaterialDataIndexTable,   DescriptorKind::SSBO, RegisterOp::AddSSBOMtlIndex,   nullptr,                    "MaterialPrivateDataIndexRows" },
     { DescriptorSemantic::VertexPosition,           DescriptorKind::SSBO, RegisterOp::AddSSBOVertex,     &SBS_VertexPosition,        "VertexPosition" },
     { DescriptorSemantic::VertexUV,                 DescriptorKind::SSBO, RegisterOp::AddSSBOVertex,     &SBS_VertexUV,              "VertexUV" },
     { DescriptorSemantic::VertexNTB,                DescriptorKind::SSBO, RegisterOp::AddSSBOVertex,     &SBS_VertexNTB,             "VertexNTB" },
@@ -607,9 +607,9 @@ static bool RegisterCanonicalDescriptors(
             break;
 
         case RegisterOp::AddSSBOMtlIndex:
-            if (!ctx->AddStruct(SBS_MaterialDataIndexRows.struct_name, ""))
+            if (!ctx->AddStruct(SBS_MaterialPrivateDataIndexRows.struct_name, ""))
                 return c.Fail(std::string("failed to add ") + reg->label + " struct");
-            // P1-2c：mtl_data_index_rows 迁至 PerObject 集，binding 由固定常量表
+            // P1-2c：MaterialPrivateDataIndexRows 迁至 PerObject 集，binding 由固定常量表
             // kPerObjectBinding* 确定（走固定名路径，与 l2w_index_rows 同构）。
             if (!ctx->AddSSBOMtlIndex(stage_bits))
                 return c.Fail(std::string("failed to add ") + reg->label + " SSBO");
@@ -685,7 +685,7 @@ static bool RegisterMaterialDataSlotDescriptors(
 // MaterialDataSlotData entry exists.  Compositor materials without data
 // slots may still emit fragDataIndexID (declared as a varying in
 // .material.toml).  Without the corresponding SSBO the VS GLSL injection
-// skips ResolveDataIndexID → compile error.
+// skips ResolveMaterialPrivateDataIndex → compile error.
 static void EnsureIndexTableSSBOs(
     ShaderBuildContext *ctx,
     const CompositorMaterialBuildConfig &config,
@@ -706,15 +706,15 @@ static void EnsureIndexTableSSBOs(
         }
     }
 
-    // P1-2c：mtl_data_index_rows 迁至 Transform 集，binding 由固定常量表确定，
+    // P1-2c：MaterialPrivateDataIndexRows 迁至 Transform 集，binding 由固定常量表确定，
     // 与 Step 3 的 MaterialDataIndexTable 分支同构。
     if (vv.emit_data_index_id && !has_index_table)
     {
-        ctx->AddStruct(SBS_MaterialDataIndexRows.struct_name, "");
+        ctx->AddStruct(SBS_MaterialPrivateDataIndexRows.struct_name, "");
         ctx->AddSSBO(hgl::graph::kMeshFragment,
-                     SBS_MaterialDataIndexRows.set_type,
-                     SBS_MaterialDataIndexRows.struct_name,
-                     SBS_MaterialDataIndexRows.name);
+                     SBS_MaterialPrivateDataIndexRows.set_type,
+                     SBS_MaterialPrivateDataIndexRows.struct_name,
+                     SBS_MaterialPrivateDataIndexRows.name);
     }
 }
 
@@ -728,7 +728,7 @@ static void EnsureIndexTableSSBOs(
 // 值一致（PER_OBJECT_SET=1=SBS set）；改 SBS 布局时需同步
 // descriptor_macros.glsl 的默认值。
 //
-// 行表绑定（mtl_data_index_rows / mtl_texture_layer_rows / l2w_index_rows）不再
+// 行表绑定（material_private_data_index_rows / mtl_texture_layer_rows / l2w_index_rows）不再
 // 注入 set/binding 宏：声明由 index table 生成逻辑依据 descriptor_info 直接以
 // layout(set=.., binding=..) 写出（统一声明生成，不再写死在 .glsl）。
 struct BindingDefineSpec
@@ -906,10 +906,10 @@ static std::string BuildCompileDefineMacros(
 }
 
 // ── Step 5d: Instance index table SSBO GLSL 声明 ─────────────────────────────
-// mtl_data_index_rows / mtl_texture_layer_rows / l2w_index_rows 的 buffer
+// material_private_data_index_rows / mtl_texture_layer_rows / l2w_index_rows 的 buffer
 // 声明与 Resolve 函数不再写死在 instance_rows_ssbo.glsl 中，统一依据
-// descriptor_info 生成注入：VS 阶段提供 l2w_index_rows / mtl_data_index_rows
-//（含 ResolveTransformID / ResolveDataIndexID），FS 阶段提供
+// descriptor_info 生成注入：VS 阶段提供 l2w_index_rows / material_private_data_index_rows
+//（含 ResolveTransformID / ResolveMaterialPrivateDataIndex），FS 阶段提供
 // mtl_texture_layer_rows（named-slot TextureLayerRowsData，见下方注入）。
 struct IndexTableSpec
 {
@@ -921,7 +921,7 @@ struct IndexTableSpec
 
 static const IndexTableSpec kVSIndexTableSpecs[] = {
     { SBS_LocalToWorldIndexRows.name, "LocalToWorldIndexRows", "l2w_index_rows",     "ResolveTransformID" },
-    { SBS_MaterialDataIndexRows.name, "DataIndexRows",         "mtl_data_index_rows", "ResolveDataIndexID" },
+    { SBS_MaterialPrivateDataIndexRows.name, "MaterialPrivateDataIndexRows", "material_private_data_index_rows", "ResolveMaterialPrivateDataIndex" },
 };
 
 static void AppendIndexTableDecl(
@@ -952,7 +952,7 @@ static void AppendIndexTableDecl(
 static std::string BuildVSIndexTableDecls(
     const DescriptorSetLayoutAllocator &descriptor_info)
 {
-    // 单槽化：MTL_DATA_SLOT_COUNT 恒 1（material_data_index_rows 索引 0 仍有效）
+    // 单槽化：MTL_DATA_SLOT_COUNT 恒 1（MaterialPrivateDataIndexRows 索引 0 仍有效）
     std::string out = "#define MTL_DATA_SLOT_COUNT 1u\n";
 
     for (const IndexTableSpec &spec : kVSIndexTableSpecs)
@@ -1248,7 +1248,7 @@ ShaderBuildContext *CompileCompositorMaterial(
 
     const std::string compile_define_macros = BuildCompileDefineMacros(config);
 
-    // 单槽化：MTL_DATA_SLOT_COUNT 恒 1（material_data_index_rows 索引 0 仍有效）
+    // 单槽化：MTL_DATA_SLOT_COUNT 恒 1（MaterialPrivateDataIndexRows 索引 0 仍有效）
     const std::string vs_index_table_decls =
         BuildVSIndexTableDecls(descriptor_info);
     const std::string fs_index_table_decls =

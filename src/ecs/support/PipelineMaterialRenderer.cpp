@@ -207,7 +207,7 @@ namespace hgl::ecs
                                          owner_batch->l2w_index_rows_buffer->GetGPUBuffer());
 
                         if (owner_batch->material_data_index_rows_buffer)
-                            mp->BindSSBO("mtl_data_index_rows",
+                            mp->BindSSBO("material_private_data_index_rows",
                                          owner_batch->material_data_index_rows_buffer->GetGPUBuffer());
                     }
 

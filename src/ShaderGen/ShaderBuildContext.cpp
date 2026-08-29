@@ -232,7 +232,7 @@ bool ShaderBuildContext::AddSSBOMtlData(const uint32_t flag_bits,const std::stri
 
 bool ShaderBuildContext::AddSSBOMtlIndex(const uint32_t flag_bits)
 {
-    return AddSSBO(flag_bits,SBS_MaterialDataIndexRows.set_type,SBS_MaterialDataIndexRows.struct_name,SBS_MaterialDataIndexRows.name);
+    return AddSSBO(flag_bits,SBS_MaterialPrivateDataIndexRows.set_type,SBS_MaterialPrivateDataIndexRows.struct_name,SBS_MaterialPrivateDataIndexRows.name);
 }
 
 bool ShaderBuildContext::AddSSBOTextureLayer(const uint32_t flag_bits,const int binding)

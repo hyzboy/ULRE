@@ -164,7 +164,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::MaterialDataSlotData: return DefaultMaterialDataSlotName;
         case DescriptorSemantic::MaterialColorPalette: return SBS_ColorPalette.name;
         case DescriptorSemantic::MaterialTextureLayerTable: return SBS_MaterialTextureLayerRows.name;
-        case DescriptorSemantic::MaterialDataIndexTable: return SBS_MaterialDataIndexRows.name;
+        case DescriptorSemantic::MaterialDataIndexTable: return SBS_MaterialPrivateDataIndexRows.name;
         // 顶点数据 SSBO（MeshShader 方向）
         case DescriptorSemantic::VertexPosition: return SBS_VertexPosition.name;
         case DescriptorSemantic::VertexUV: return SBS_VertexUV.name;
@@ -187,7 +187,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::MaterialDataSlotData: return nullptr;
         case DescriptorSemantic::MaterialColorPalette: return SBS_ColorPalette.struct_name;
         case DescriptorSemantic::MaterialTextureLayerTable: return SBS_MaterialTextureLayerRows.struct_name;
-        case DescriptorSemantic::MaterialDataIndexTable: return SBS_MaterialDataIndexRows.struct_name;
+        case DescriptorSemantic::MaterialDataIndexTable: return SBS_MaterialPrivateDataIndexRows.struct_name;
         case DescriptorSemantic::MeshDrawParams: return SBS_MeshDrawParams.struct_name;
         default: return nullptr;
         }

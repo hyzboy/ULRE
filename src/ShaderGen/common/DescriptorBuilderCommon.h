@@ -216,11 +216,11 @@ inline void PushMaterialDataSlot(std::vector<SerializedDescriptorEntry> &v,
     });
 }
 
-inline void PushMaterialDataIndexRows(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
+inline void PushMaterialPrivateDataIndexRows(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
-    // P1-2c：mtl_data_index_rows 迁至 PerObject 集（实例→材质行索引表）。
+    // P1-2c：MaterialPrivateDataIndexRows 迁至 PerObject 集（实例→材质行索引表）。
     PushBySpec(v, DescriptorSetType::PerObject, DescriptorKind::SSBO,
-               "mtl_data_index_rows", "DataIndexRows", DescriptorSemantic::MaterialDataIndexTable,
+               "material_private_data_index_rows", "MaterialPrivateDataIndexRows", DescriptorSemantic::MaterialDataIndexTable,
                SSBOType::MaterialDataIndexTable, stage_flags);
 }
 
@@ -261,7 +261,7 @@ inline void AppendDefinitionMaterialDescriptors(
     }
 
     if (!definition.data_slot_decls.empty())
-        PushMaterialDataIndexRows(v, stage_flags);
+        PushMaterialPrivateDataIndexRows(v, stage_flags);
 
     // P1-2e：mtl_texture_layer_rows 仅当材质声明纹理槽时才要求。
     // 有数据槽但无纹理槽的材质（PureColor 等）不再隐式要求
@@ -438,8 +438,8 @@ inline bool AppendManifestTextureLayerDescriptors(
 // Provider modules may declare their own "mtl"-style data-slot SSBO purely via
 // manifest metadata (`@ulre ssbo ...`), without the material TOML also listing it
 // under [resources].ssbos. In that case `definition.data_slot_decls` stays empty,
-// so AppendDefinitionMaterialDescriptors() never pushes the mtl_data_index_rows
-// index table — yet ResolveDataIndexID() is still referenced unconditionally by
+// so AppendDefinitionMaterialDescriptors() never pushes the MaterialPrivateDataIndexRows
+// index table — yet ResolveMaterialPrivateDataIndex() is still referenced unconditionally by
 // the vertex assembler. Scan the merged descriptor list for any
 // MaterialDataSlotData entry (from either source) and make sure the matching
 // MaterialDataIndexTable entry exists.
@@ -458,7 +458,7 @@ inline void EnsureMaterialDataIndexTable(
     }
 
     if (has_data_slot && !has_index_table)
-        PushMaterialDataIndexRows(v, stage_flags);
+        PushMaterialPrivateDataIndexRows(v, stage_flags);
 }
 
 inline bool BuildDefinitionModuleResourceManifest(

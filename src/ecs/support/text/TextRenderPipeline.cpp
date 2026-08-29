@@ -438,7 +438,7 @@ namespace hgl::ecs
         // 注意：不向 RDBS 注册 pipeline material——text 渲染完全自足：
         // Scene(0)/Bindless(3) 由 Render 自绑全局集，PerObject(1)/Material(2)
         // 用每字体独立集并直接绑定 SSBO（不经 domain 解析）。注册反而会让
-        // RDBS 每帧尝试解析 mtl_texture_layer_rows/mtl_data_index_rows 的
+        // RDBS 每帧尝试解析 mtl_texture_layer_rows/material_private_data_index_rows 的
         // domain 绑定（text 不注册 domain）而刷 Missing SSBO 警告。
 
         // 将字库图集注册进全局 bindless 纹理池，并写入 texture-layer / data-index
@@ -484,7 +484,7 @@ namespace hgl::ecs
         resources.texture_layer_buffer = guard.texture_layer_buffer;
         guard.texture_layer_buffer = nullptr;
 
-        // mtl_data_index_rows：MaterialDataIndexRowStride 个 uint 一行；行 0 value = 0。
+        // material_private_data_index_rows：MaterialDataIndexRowStride 个 uint 一行；行 0 value = 0。
         constexpr uint32_t data_index_row_bytes =
             sizeof(uint32_t) * graph::mtl::MaterialDataIndexRowStride;
 
@@ -498,10 +498,10 @@ namespace hgl::ecs
         uint32_t data_index_row[graph::mtl::MaterialDataIndexRowStride] = {};
         guard.data_index_row_buffer->GetGPUBuffer()->Write(data_index_row, 0, sizeof(data_index_row));
 
-        // 注意：mtl_data_index_rows 声明在 PerObject set（SBS_MaterialDataIndexRows.set_type），
+        // 注意：material_private_data_index_rows 声明在 PerObject set（SBS_MaterialPrivateDataIndexRows.set_type），
         // 与 b14/15/16 + mesh_draw_params 同集——绑到 per_object_mp；mtl_texture_layer_rows 在 Material set。
         // 同样不注册 ResourceDomain（多字体同地址注册会互相释放 buffer，见上方注释）。
-        if (!guard.per_object_mp->BindSSBO(graph::mtl::SBS_MaterialDataIndexRows.name,
+        if (!guard.per_object_mp->BindSSBO(graph::mtl::SBS_MaterialPrivateDataIndexRows.name,
                                            guard.data_index_row_buffer->GetGPUBuffer()))
         {
             return nullptr;

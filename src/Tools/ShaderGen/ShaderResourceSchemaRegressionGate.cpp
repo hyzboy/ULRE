@@ -4108,8 +4108,8 @@ namespace
                 DescriptorSetType::PerObject,
                 DescriptorKind::SSBO,
                 uint32_t(hgl::graph::kMeshFragment),
-                "mtl_data_index_rows",
-                "DataIndexRows",
+                "material_private_data_index_rows",
+                "MaterialPrivateDataIndexRows",
                 nullptr,
                 DescriptorSemantic::MaterialDataIndexTable,
                 TextureSlot::BaseColor,
@@ -4190,8 +4190,8 @@ namespace
         else
         {
             const std::string &source = vertex->GetFinalGLSL();
-            if (source.find("ResolveDataIndexID(uint iid)") == std::string::npos
-             || source.find("mtl_data_index_rows.values[iid]") == std::string::npos)
+            if (source.find("ResolveMaterialPrivateDataIndex(uint iid)") == std::string::npos
+             || source.find("material_private_data_index_rows.values[iid]") == std::string::npos)
                 result.diagnostics.emplace_back("data-index resolver is not single-slot");
         }
 
@@ -4848,7 +4848,7 @@ int main(const int argc, char **argv)
         constexpr SerializedDescriptorEntry valid_entries[] =
         {
             { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(hgl::graph::kMeshFragment), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
-            { DescriptorSetType::PerObject, DescriptorKind::SSBO, uint32_t(hgl::graph::kMeshFragment), "mtl_data_index_rows", "DataIndexRows", nullptr, DescriptorSemantic::MaterialDataIndexTable, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::MaterialDataIndexTable, DescriptorSemanticLayer::SSBO },
+            { DescriptorSetType::PerObject, DescriptorKind::SSBO, uint32_t(hgl::graph::kMeshFragment), "material_private_data_index_rows", "MaterialPrivateDataIndexRows", nullptr, DescriptorSemantic::MaterialDataIndexTable, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::MaterialDataIndexTable, DescriptorSemanticLayer::SSBO },
             { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "mtl_texture_layer_rows", "TextureLayerRows", nullptr, DescriptorSemantic::MaterialTextureLayerTable, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::TextureLayer, DescriptorSemanticLayer::SSBO },
         };
         results.push_back(RunValidationCase("A.valid-layered-paths", valid_entries, uint32_t(std::size(valid_entries)), true));
@@ -4861,7 +4861,7 @@ int main(const int argc, char **argv)
 
         constexpr SerializedDescriptorEntry semantic_kind_mismatch[] =
         {
-            { DescriptorSetType::PerObject, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "mtl_data_index_rows", "DataIndexRows", nullptr, DescriptorSemantic::MaterialDataIndexTable, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::MaterialDataIndexTable, DescriptorSemanticLayer::SSBO },
+            { DescriptorSetType::PerObject, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "material_private_data_index_rows", "MaterialPrivateDataIndexRows", nullptr, DescriptorSemantic::MaterialDataIndexTable, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::MaterialDataIndexTable, DescriptorSemanticLayer::SSBO },
         };
         results.push_back(RunValidationCase("B2.semantic-kind-mismatch-hard-fail", semantic_kind_mismatch, 1, false));
 

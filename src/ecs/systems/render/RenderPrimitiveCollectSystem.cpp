@@ -834,7 +834,7 @@ namespace hgl::ecs
         //
         // A use_data_index == false asset (e.g. every mesh in BasicLitMeshes /
         // TextureBlinnPhongMeshes) still owns a concrete row: the shader indexes
-        // mtl_data_index_rows and mtl_texture_layer_rows by the data_index VALUE
+        // material_private_data_index_rows and mtl_texture_layer_rows by the data_index VALUE
         // read back from those tables, so a non-data-index asset publishes its
         // authored data_index (0) there. Prefer an explicit use_data_index asset
         // when present, otherwise fall back to the first authored data_index.
@@ -903,7 +903,7 @@ namespace hgl::ecs
         // The texture-layer row is keyed by the primitive's data_index VALUE.
         // Publish the row even when the primitive authors no data slot: it
         // still owns row 0, and its data_index resolves to 0 through
-        // mtl_data_index_rows, so bindless lookups stay aligned.
+        // material_private_data_index_rows, so bindless lookups stay aligned.
         material_comp->data_index_row =
             entity_data_index != uint32_t(-1) ? entity_data_index : 0u;
         const uint32_t texture_layer_row = material_comp->data_index_row;

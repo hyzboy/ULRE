@@ -154,12 +154,12 @@ namespace hgl::graph::mtl
          && !has_semantic(DescriptorSemantic::MaterialDataIndexTable))
         {
             SerializedDescriptorEntry entry{};
-            entry.set_type = SBS_MaterialDataIndexRows.set_type;  // P1-2c：Transform 集
+            entry.set_type = SBS_MaterialPrivateDataIndexRows.set_type;  // P1-2c：Transform 集
             entry.kind = DescriptorKind::SSBO;
             entry.stage_flags =
                 uint32(hgl::graph::kMeshFragment);
-            entry.name = SBS_MaterialDataIndexRows.name;
-            entry.struct_name = SBS_MaterialDataIndexRows.struct_name;
+            entry.name = SBS_MaterialPrivateDataIndexRows.name;
+            entry.struct_name = SBS_MaterialPrivateDataIndexRows.struct_name;
             entry.semantic =
                 DescriptorSemantic::MaterialDataIndexTable;
             entry.semantic_layer = DescriptorSemanticLayer::SSBO;

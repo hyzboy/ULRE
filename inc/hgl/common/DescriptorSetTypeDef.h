@@ -15,7 +15,7 @@ namespace hgl::graph
     ///< PerObject 集（Set 1）编译期固定 SSBO 硬编码绑定号。成员为引擎内部 per-object 结构，非 TOML 动态列表。
     constexpr const int kPerObjectBindingL2W            = 0;    ///< per-draw 变换数据
     constexpr const int kPerObjectBindingL2WIndexRows   = 1;    ///< 实例 → l2w 行索引表
-    constexpr const int kPerObjectBindingDataIndexRows  = 3;    ///< 实例 → 材质数据槽行索引表
+    constexpr const int kPerObjectBindingDataIndexRows  = 3;    ///< 实例 → 材质私有数据行索引表（MaterialPrivateDataIndexRows）
     // 顶点数据 SSBO（MeshShader 方向：顶点输入统一为 SSBO）——每对象大 buffer
     constexpr const int kPerObjectBindingVertexPosition = 4;    ///< 顶点位置 SSBO
     constexpr const int kPerObjectBindingVertexUV       = 5;    ///< 顶点 UV SSBO
@@ -36,7 +36,7 @@ namespace hgl::graph
         Unknow=-1,
 
         Scene=0,        ///< 全局 UBO 集（camera/sky/viewport/color_palette），所有材质共用，一帧写/绑一次
-        PerObject,      ///< per-object/per-draw SSBO 集（l2w/l2w_index_rows/joint/mtl_data_index_rows）
+        PerObject,      ///< per-object/per-draw SSBO 集（l2w/l2w_index_rows/joint/material_private_data_index_rows）
         Material,       ///< per-material 描述符集（mtl 数据槽/索引表）
         Bindless,       ///< 全局 Bindless 纹理数组集合（Set 3），一帧绑一次
 
