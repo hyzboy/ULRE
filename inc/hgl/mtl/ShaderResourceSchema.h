@@ -363,6 +363,7 @@ namespace hgl::graph::mtl
         switch (semantic)
         {
         case DescriptorSemantic::Unknown:          return "Unknown";
+        case DescriptorSemantic::MeshDrawParams: return "MeshDrawParams";
         case DescriptorSemantic::ViewportInfo:     return "ViewportInfo";
         case DescriptorSemantic::CameraInfo:       return "CameraInfo";
         case DescriptorSemantic::SkyInfo:          return "SkyInfo";
@@ -374,8 +375,6 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::MaterialSampler:  return "MaterialSampler";
         case DescriptorSemantic::MaterialTextureLayerTable: return "MaterialTextureLayerTable";
         case DescriptorSemantic::MaterialPrivateDataIndex: return "MaterialPrivateDataIndex";
-        case DescriptorSemantic::MeshDrawParams: return "MeshDrawParams";
-        case DescriptorSemantic::Custom:           return "Custom";
         }
 
         return "Unknown";
@@ -416,12 +415,6 @@ namespace hgl::graph::mtl
             if (req.semantic == DescriptorSemantic::Unknown)
             {
                 diagnostics.emplace_back("Descriptor semantic is Unknown; every descriptor must use an explicit semantic enum (" + context + ").");
-                continue;
-            }
-
-            if (req.semantic == DescriptorSemantic::Custom)
-            {
-                diagnostics.emplace_back("Descriptor semantic is Custom; runtime schema requires concrete semantic enums (" + context + ").");
                 continue;
             }
 

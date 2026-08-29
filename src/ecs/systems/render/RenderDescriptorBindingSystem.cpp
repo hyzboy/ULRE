@@ -1124,7 +1124,6 @@ namespace hgl::ecs
         case graph::mtl::DescriptorSemantic::VertexIndex:
             return true;
         case graph::mtl::DescriptorSemantic::Unknown:
-        case graph::mtl::DescriptorSemantic::Custom:
         default:
             return false;
         }

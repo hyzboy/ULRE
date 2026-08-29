@@ -257,7 +257,6 @@ static bool ValidateDefinitionCapabilitySubset(
             break;
 
         case DescriptorSemantic::Unknown:
-        case DescriptorSemantic::Custom:
             allowed = false;
             break;
         }

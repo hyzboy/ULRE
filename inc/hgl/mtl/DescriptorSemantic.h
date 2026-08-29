@@ -1,5 +1,6 @@
 #pragma once
 
+#include <hgl/type/EnumUtil.h>
 #include <hgl/CoreType.h>
 #include <hgl/mtl/DescriptorKind.h>
 
@@ -18,19 +19,22 @@ namespace hgl::graph::mtl
     {
         Unknown = 0,
 
+        // mesh per-draw 参数表（IndirectMeshDraw：所有 mesh 材质必备）
+        MeshDrawParams,
+
         ViewportInfo,
         CameraInfo,
         SkyInfo,
 
         LocalToWorld,
         LocalToWorldIndex,
+
         MaterialPrivateData,      // per-instance SSBO slot (one entry per material_private_data_slot_decls[i])
-        MaterialColorPalette,
+        MaterialPrivateDataIndex,
 
         MaterialTexture,
         MaterialSampler,
         MaterialTextureLayerTable,
-        MaterialPrivateDataIndex,
 
         // 顶点数据 SSBO（MeshShader 方向：顶点输入统一为 SSBO）
         VertexPosition,
@@ -42,10 +46,9 @@ namespace hgl::graph::mtl
         VertexSize,
         VertexIndex,
 
-        // mesh per-draw 参数表（IndirectMeshDraw：所有 mesh 材质必备）
-        MeshDrawParams,
+        MaterialColorPalette,
 
-        Custom,
+        ENUM_CLASS_RANGE(Unknown,MaterialColorPalette)
     };
 
     inline const char *GetDescriptorSemanticLayerName(const DescriptorSemanticLayer layer)
@@ -66,29 +69,31 @@ namespace hgl::graph::mtl
     {
         switch (semantic)
         {
-        case DescriptorSemantic::ViewportInfo:
-        case DescriptorSemantic::CameraInfo:
-        case DescriptorSemantic::SkyInfo:
-        case DescriptorSemantic::MaterialColorPalette:
-            return DescriptorSemanticLayer::UBO;
+            case DescriptorSemantic::MeshDrawParams:
+                return DescriptorSemanticLayer::SSBO;
 
-        case DescriptorSemantic::MaterialTexture:
-            return DescriptorSemanticLayer::Texture;
+            case DescriptorSemantic::ViewportInfo:
+            case DescriptorSemantic::CameraInfo:
+            case DescriptorSemantic::SkyInfo:
+                return DescriptorSemanticLayer::UBO;
 
-        case DescriptorSemantic::MaterialSampler:
-            return DescriptorSemanticLayer::Sampler;
+            case DescriptorSemantic::MaterialTexture:
+                return DescriptorSemanticLayer::Texture;
 
-        case DescriptorSemantic::LocalToWorldIndex:
-        case DescriptorSemantic::MaterialTextureLayerTable:
-        case DescriptorSemantic::MaterialPrivateDataIndex:
-        case DescriptorSemantic::MeshDrawParams:
-            return DescriptorSemanticLayer::SSBO;
+            case DescriptorSemantic::MaterialSampler:
+                return DescriptorSemanticLayer::Sampler;
 
-        case DescriptorSemantic::LocalToWorld:
-        case DescriptorSemantic::MaterialPrivateData:
-        case DescriptorSemantic::Unknown:
-        case DescriptorSemantic::Custom:
-            return DescriptorSemanticLayer::Unknown;
+            case DescriptorSemantic::LocalToWorld:
+            case DescriptorSemantic::LocalToWorldIndex:
+
+            case DescriptorSemantic::MaterialPrivateData:
+            case DescriptorSemantic::MaterialPrivateDataIndex:
+
+            case DescriptorSemantic::MaterialTextureLayerTable:
+                return DescriptorSemanticLayer::SSBO;
+
+            case DescriptorSemantic::MaterialColorPalette:
+                return DescriptorSemanticLayer::UBO;
         }
 
         return DescriptorSemanticLayer::Unknown;
