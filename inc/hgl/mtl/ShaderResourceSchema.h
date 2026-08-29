@@ -369,7 +369,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::LocalToWorld:     return "LocalToWorld";
         case DescriptorSemantic::LocalToWorldIndexTable: return "LocalToWorldIndexTable";
         case DescriptorSemantic::MaterialColorPalette: return "MaterialColorPalette";
-        case DescriptorSemantic::MaterialPrivateData: return "MaterialPrivateData";
+        case DescriptorSemantic::MaterialPrivateData: return "mtl_private_data";
         case DescriptorSemantic::MaterialTexture:  return "MaterialTexture";
         case DescriptorSemantic::MaterialSampler:  return "MaterialSampler";
         case DescriptorSemantic::MaterialTextureLayerTable: return "MaterialTextureLayerTable";

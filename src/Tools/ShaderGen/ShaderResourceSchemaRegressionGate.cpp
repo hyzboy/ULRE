@@ -500,7 +500,7 @@ namespace
         recipe.textures.push_back(
             {GetTextureSlotName(TextureSlot::Custom0), std::string(), 7, true, false});
         RecipeSSBOAssetBinding data_binding{};
-        data_binding.material_private_data_slot_name = "MaterialPrivateData";
+        data_binding.material_private_data_slot_name = "mtl_private_data";
         data_binding.material_private_data_slot = 0;
         data_binding.ssbo_type = SSBOType::PBRSurface;
         data_binding.ssbo_id = 17;
@@ -3463,7 +3463,7 @@ namespace
             else
             {
                 if (manifest_2d.ssbo_count != 1
-                 || std::strcmp(manifest_2d.ssbos[0].name, "MaterialPrivateData") != 0
+                 || std::strcmp(manifest_2d.ssbos[0].name, "mtl_private_data") != 0
                  || manifest_2d.ssbos[0].ssbo_type != SSBOType::PBRSurface
                  || manifest_2d.ssbos[0].material_private_data_slot != 0)
                     result.diagnostics.emplace_back(
@@ -4211,7 +4211,7 @@ namespace
         {
             std::string viewport_name = "viewport";
             std::string viewport_struct = "ViewportInfo";
-            std::string material_name = "MaterialPrivateData";
+            std::string material_name = "mtl_private_data";
             std::string material_struct = "PBRSurfaceData";
             SerializedDescriptorEntry entries[] =
             {
@@ -4574,7 +4574,7 @@ namespace
         };
         compatible_manifest.ssbo_count = 1;
         compatible_manifest.ssbos[0] = {
-            "MaterialPrivateData",
+            "mtl_private_data",
             SSBOType::PBRSurface,
             DefaultMaterialPrivateDataSlot,
             uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT)
@@ -4619,7 +4619,7 @@ namespace
         ModuleResourceManifest ssbo_name_conflict{};
         ssbo_name_conflict.ssbo_count = 1;
         ssbo_name_conflict.ssbos[0] = {
-            "MaterialPrivateData",
+            "mtl_private_data",
             SSBOType::TextureLayer,
             DefaultMaterialPrivateDataSlot,
             uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT)
@@ -4636,7 +4636,7 @@ namespace
         hash_entry.set_type = DescriptorSetType::Material;
         hash_entry.kind = DescriptorKind::SSBO;
         hash_entry.stage_flags = uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT);
-        hash_entry.name = "MaterialPrivateData";
+        hash_entry.name = "mtl_private_data";
         hash_entry.struct_name = "PBRSurfaceData";
         hash_entry.semantic = DescriptorSemantic::MaterialPrivateData;
         hash_entry.semantic_layer = DescriptorSemanticLayer::SSBO;
@@ -4671,7 +4671,7 @@ namespace
         ssbo_hash_entry.set_type = DescriptorSetType::Material;
         ssbo_hash_entry.kind = DescriptorKind::SSBO;
         ssbo_hash_entry.stage_flags = uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT);
-        ssbo_hash_entry.name = "MaterialPrivateData";
+        ssbo_hash_entry.name = "mtl_private_data";
         ssbo_hash_entry.struct_name = "PBRSurfaceData";
         ssbo_hash_entry.semantic = DescriptorSemantic::MaterialPrivateData;
         ssbo_hash_entry.semantic_layer = DescriptorSemanticLayer::SSBO;
@@ -4867,7 +4867,7 @@ int main(const int argc, char **argv)
 
         constexpr SerializedDescriptorEntry invalid_fixed_descriptor[] =
         {
-            { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(hgl::graph::kMeshFragment), "MaterialPrivateData", "PBRSurfaceData", nullptr, DescriptorSemantic::MaterialPrivateData, TextureSlot::BaseColor, 0xffu, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO },
+            { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(hgl::graph::kMeshFragment), "mtl_private_data", "PBRSurfaceData", nullptr, DescriptorSemantic::MaterialPrivateData, TextureSlot::BaseColor, 0xffu, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO },
         };
         results.push_back(RunValidationCase("B3.invalid-fixed-descriptor-hard-fail", invalid_fixed_descriptor, 1, false));
 

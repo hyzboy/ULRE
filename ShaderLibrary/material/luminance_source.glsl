@@ -4,7 +4,7 @@
 // @ulre priority 0
 // @ulre require ProducedSemantic Luminance
 // @ulre require Resource MaterialData
-// @ulre ssbo MaterialPrivateData EmissiveSurface 0 Fragment required
+// @ulre ssbo mtl_private_data EmissiveSurface 0 Fragment required
 // @ulre uses material_source_interface
 // @ulre end
 
