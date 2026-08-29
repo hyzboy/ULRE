@@ -4191,6 +4191,97 @@ namespace
         return result;
     }
 
+    static GateResult RunBindingMacroSingleSourceCase()
+    {
+        GateResult result;
+        result.name = "AE.binding-macro-single-source";
+
+        // 固定 ABI 的 set/binding 宏唯一真源是 descriptor_macros.glsl（生成物）。
+        // 编译器不得再注入 #define（原 kBindingDefineTable 注入路径已删除，Phase 3）。
+        // 输入 GLSL 特意 include 并使用宏（与真实模板一致），且携带 LocalToWorld
+        // 描述符——旧注入路径会因此向 mesh 阶段注入 L2W_SET/L2W_BINDING。
+        const SerializedVertexEntry vertices[] = {
+            {VF_V2F, VertexSemantic::Position}
+        };
+        const SerializedDescriptorEntry descriptors[] = {
+            {
+                DescriptorSetType::PerObject,
+                uint32_t(hgl::graph::kMeshFragment),
+                "l2w",
+                "LocalToWorldData",
+                nullptr,
+                DescriptorSemantic::LocalToWorld,
+                TextureSlot::BaseColor,
+                DefaultMaterialPrivateDataSlot,
+                SSBOType::UserDefined,
+                DescriptorSemanticLayer::SSBO
+            }
+        };
+        const MaterialShaderCompilerInput compiler_input{
+            "BindingMacroSingleSourceMaterial",
+            PrimitiveType::Triangles,
+            vertices,
+            1,
+            descriptors,
+            1
+        };
+
+        CompositorMaterialBuildConfig config{};
+        config.defer_finalize = true;
+        config.shader_stage_flag_bits = uint32_t(hgl::graph::mtl::ShaderStage::MeshFragment);
+
+        ShaderBuildContext *build_spec = CompileCompositorMaterial(
+            nullptr,
+            compiler_input,
+            "#version 460\n"
+            "#include \"common/descriptor_macros.glsl\"\n"
+            "layout(location=0) in vec2 Position;\n"
+            "void main(){gl_Position=vec4(Position,L2W_SET,L2W_BINDING);}\n",
+            "#version 460\n"
+            "layout(location=0) out vec4 outColor;\n"
+            "void main(){outColor=vec4(1.0);}\n",
+            config);
+        if (!build_spec)
+        {
+            result.diagnostics.emplace_back("compiler did not produce a build spec");
+            result.passed = false;
+            return result;
+        }
+
+        static const char *injected_defines[] = {
+            "#define L2W_SET",
+            "#define L2W_BINDING",
+            "#define MESH_DRAW_PARAMS_SET",
+            "#define MESH_DRAW_PARAMS_BINDING",
+            "#define VIEWPORT_SET",
+            "#define CAMERA_SET",
+            "#define SKY_SET",
+            "#define COLOR_PALETTE_SET",
+        };
+
+        const ShaderCreateInfo *mesh = build_spec->GetStageShader(ShaderStage::Mesh);
+        if (!mesh)
+        {
+            result.diagnostics.emplace_back("did not produce a mesh stage");
+        }
+        else
+        {
+            const std::string &source = mesh->GetFinalGLSL();
+            if (source.find("#include \"common/descriptor_macros.glsl\"")
+                == std::string::npos)
+                result.diagnostics.emplace_back("descriptor_macros include is missing");
+
+            for (const char *macro : injected_defines)
+                if (source.find(macro) != std::string::npos)
+                    result.diagnostics.emplace_back(
+                        std::string("compiler injected fixed-ABI define: ") + macro);
+        }
+
+        delete build_spec;
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
     static GateResult RunDescriptorContractCase()
     {
         GateResult result;
@@ -4890,6 +4981,7 @@ int main(const int argc, char **argv)
     if (run_cache) results.push_back(RunResolvedStageCacheIdentityCase());
     if (run_cache) results.push_back(RunCanonicalShaderContractCase());
     if (run_pipeline) results.push_back(RunMaterialMultiSlotSourceCase());
+    if (run_pipeline) results.push_back(RunBindingMacroSingleSourceCase());
     if (run_descriptor) results.push_back(RunDescriptorContractCase());
     if (run_pipeline) results.push_back(RunShaderLibraryPathCase());
     if (run_materialization) results.push_back(RunSamplerPresetLibraryCase());

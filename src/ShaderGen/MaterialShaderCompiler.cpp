@@ -715,92 +715,15 @@ static void EnsureIndexTableSSBOs(
     }
 }
 
-// ── Step 5a: set/binding 宏注入（配表）───────────────────────────────────────
-// 显式双宏名（_SET/_BINDING 成对传入）——不做字符串推导：
-// 推导依赖 "_SET" 子串存在，缺了即 std::out_of_range。
+// ── Step 5a: set/binding 宏 ──────────────────────────────────────────────────
+// 固定 ABI 的 set/binding 宏（L2W/MESH_DRAW_PARAMS/VIEWPORT/CAMERA/SKY/COLOR_PALETTE
+// 及顶点系列）不再由编译器注入：descriptor_macros.glsl 为生成物
+//（DescriptorMacroGen，数值真源 DescriptorSetTypeDef.h 的绑定枚举），模板与模块
+// #include 后直接使用默认值，单一真源（原 kBindingDefineTable 注入路径已删除）。
 //
-// #ifndef 保护：模块 include 链可能提前引入 descriptor_macros.glsl
-// （其 L2W_SET=PER_OBJECT_SET 等宏体文本与这里不同——GLSL 重定义检查
-// 比较宏体文本，同值不同体也报错）。先定义者胜——当前布局下两者展开
-// 值一致（PER_OBJECT_SET=1=SBS set）；改 SBS 布局时需同步
-// descriptor_macros.glsl 的默认值。
-//
-// 行表绑定（material_private_data_index_rows / mtl_texture_layer_rows / l2w_index）不再
+// 行表绑定（material_private_data_index_rows / mtl_texture_layer_rows / l2w_index）不在此
 // 注入 set/binding 宏：声明由 index table 生成逻辑依据 descriptor_info 直接以
 // layout(set=.., binding=..) 写出（统一声明生成，不再写死在 .glsl）。
-struct BindingDefineSpec
-{
-    const char *set_macro;
-    const char *binding_macro;
-    DescriptorSetType set_type;      // Scene 固定注入路径使用
-    int binding;                     // < 0 表示运行期从 descriptor_info 解析
-    const ShaderBufferSource *sbs;   // binding < 0 时用于 GetSSBO(name)
-};
-
-static const BindingDefineSpec kBindingDefineTable[] = {
-    // 运行期从 per-material 分配器解析 set/binding（固定名路径）
-    { "L2W_SET", "L2W_BINDING", DescriptorSetType::PerObject, -1, &SBS_LocalToWorld },
-    // mesh per-draw 参数表（IndirectMeshDraw）：GLSL 声明在 MeshShaderAssembler
-    // 生成体内，依赖此宏对取实际 set/binding（固定名路径 → PerObject/13）
-    { "MESH_DRAW_PARAMS_SET", "MESH_DRAW_PARAMS_BINDING", DescriptorSetType::PerObject, -1, &SBS_MeshDrawParams },
-    // ── Scene UBO（camera/sky/viewport/color_palette）已全局化（P1/P1-2a）：
-    //    binding 为硬编码常量，不再从 per-material 分配器查询
-    //    （Scene 不再进入 per-material 描述符集）。显式注入 _SET/_BINDING 宏，
-    //    保证 shader ABI（descriptor_macros.glsl 默认值与此一致）。
-    { "VIEWPORT_SET", "VIEWPORT_BINDING", DescriptorSetType::Scene, kSceneBindingViewport, nullptr },
-    { "CAMERA_SET", "CAMERA_BINDING", DescriptorSetType::Scene, kSceneBindingCamera, nullptr },
-    { "SKY_SET", "SKY_BINDING", DescriptorSetType::Scene, kSceneBindingSky, nullptr },
-    { "COLOR_PALETTE_SET", "COLOR_PALETTE_BINDING", DescriptorSetType::Scene, kSceneBindingColorPalette, nullptr },
-};
-
-static void AppendBindingDefine(
-    std::string &out,
-    const char *set_macro,
-    const char *binding_macro,
-    const int set,
-    const int binding)
-{
-    if (!set_macro || !binding_macro || set < 0 || binding < 0)
-        return;
-    out += "#ifndef ";
-    out += set_macro;
-    out += "\n#define ";
-    out += set_macro;
-    out += " ";
-    out += std::to_string(set);
-    out += "\n#endif\n";
-    out += "#ifndef ";
-    out += binding_macro;
-    out += "\n#define ";
-    out += binding_macro;
-    out += " ";
-    out += std::to_string(binding);
-    out += "\n#endif\n";
-}
-
-static std::string BuildBindingPreamble(
-    const DescriptorSetLayoutAllocator &descriptor_info)
-{
-    std::string preamble;
-
-    for (const BindingDefineSpec &spec : kBindingDefineTable)
-    {
-        if (spec.binding >= 0)
-        {
-            AppendBindingDefine(preamble, spec.set_macro, spec.binding_macro,
-                                int(spec.set_type), spec.binding);
-            continue;
-        }
-
-        const ShaderDescriptor *sd = descriptor_info.GetSSBO(spec.sbs->name);
-        if (!sd)
-            continue;
-        AppendBindingDefine(preamble, spec.set_macro, spec.binding_macro,
-                            sd->set, sd->binding);
-    }
-
-    return preamble;
-}
 
 // ── Step 5b: Material SSBO GLSL 声明 ─────────────────────────────────────────
 // 材质实例 SSBO 的 struct + buffer 声明不再写死在 .glsl 中，
@@ -1023,7 +946,6 @@ static void AssembleFinalGLSL(
     const std::string &ms_glsl,
     const std::string &fs_glsl,
     const ModuleResourceManifest *manifest,
-    const std::string &binding_preamble,
     const std::string &vs_index_table_decls,
     const std::string &compile_define_macros,
     const std::string &sampler_macros,
@@ -1031,7 +953,7 @@ static void AssembleFinalGLSL(
     const std::string &material_slot_macros,
     const std::string &fs_index_table_decls)
 {
-    std::string ms_final = InsertAfterVersionLine(ms_glsl, binding_preamble + vs_index_table_decls);
+    std::string ms_final = InsertAfterVersionLine(ms_glsl, vs_index_table_decls);
 
     // 注入顺序（InsertAfterVersionLine 后注入者位于 version 后更前）：
     // 模块代码可能引用 SSBO 类型、MTL_DATA 宏、索引行表与采样器宏
@@ -1047,7 +969,7 @@ static void AssembleFinalGLSL(
     // 否则 VUID-RuntimeSpirv-OpVariable-08746 接口装饰不匹配）。
     // 扩展声明必须在 #version 之后（InsertAfterVersionLine 保证）。
     std::string fs_injects = "#extension GL_EXT_mesh_shader : require\n"
-        + binding_preamble + compile_define_macros + sampler_macros + material_ssbo_decls
+        + compile_define_macros + sampler_macros + material_ssbo_decls
         + material_slot_macros + fs_index_table_decls;
 
     if (!code_module_glsl.empty())
@@ -1228,8 +1150,6 @@ ShaderBuildContext *CompileCompositorMaterial(
     // ── Step 5: Set complete GLSL (bypass ProcXXX pipeline) ───────
     const DescriptorSetLayoutAllocator &descriptor_info = ctx->GetDescriptorAllocator();
 
-    const std::string binding_preamble = BuildBindingPreamble(descriptor_info);
-
     std::string material_ssbo_decls;
     std::string material_slot_macros;
     if (!BuildMaterialSSBODeclarations(descriptor_info, material_private_data_slot_decls, c,
@@ -1252,7 +1172,7 @@ ShaderBuildContext *CompileCompositorMaterial(
         BuildFSIndexTableDecls(descriptor_info);
 
     AssembleFinalGLSL(ctx, ms_glsl, fs_glsl, config.resource_manifest,
-                      binding_preamble, vs_index_table_decls,
+                      vs_index_table_decls,
                       compile_define_macros, sampler_macros,
                       material_ssbo_decls, material_slot_macros,
                       fs_index_table_decls);
