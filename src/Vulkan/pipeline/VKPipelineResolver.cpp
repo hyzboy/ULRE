@@ -560,8 +560,18 @@ namespace hgl::graph
 
             library_info.pNext = &rendering_ci;
 
-            create_info.pVertexInputState = nullptr;    // 引擎无 VBO，顶点数据走 SSBO
-            create_info.pInputAssemblyState = nullptr;  // 无 input assembly（mesh shader 唯一路径）
+            // VI（Vertex Input Interface）段必须显式定义顶点输入与 input assembly 状态
+            //（VUID-08898 / VUID-09031）——引擎顶点数据走 SSBO、拓扑由 mesh shader 决定，
+            // 两个状态均定义为合法的空/默认值，不引入任何 VBO 路径。
+            VkPipelineVertexInputStateCreateInfo empty_vertex_input{};
+            empty_vertex_input.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+            VkPipelineInputAssemblyStateCreateInfo empty_input_assembly{};
+            empty_input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+            empty_input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;    // mesh shader 不消费，仅满足状态合法性
+
+            create_info.pVertexInputState = vertex_input_interface ? &empty_vertex_input : nullptr;
+            create_info.pInputAssemblyState = vertex_input_interface ? &empty_input_assembly : nullptr;
             // 引擎无 tessellation shader（VS/Tess/Geometry 已彻底废弃）——pTessellationState 恒 nullptr
             create_info.pTessellationState = nullptr;
             create_info.pViewportState = pre_rasterization ? pd->pipeline_info.pViewportState : nullptr;
@@ -679,8 +689,10 @@ namespace hgl::graph
         if(!physical_device)
             return info;
 
-        info.graphics_pipeline_library = !FORCE_DISABLE_GRAPHICS_PIPELINE_LIBRARY
-                                      && physical_device->SupportGraphicsPipelineLibrary();
+        // 注：此处为 PhyDevice 能力层的初步推导；GPL 的最终启用以设备创建时
+        // 写入 device_attr->graphics_pipeline_library 的权威决定为准
+        //（含 RenderDoc 注入检测），ResolveFinalPipeline 会做交叉修正。
+        info.graphics_pipeline_library = physical_device->SupportGraphicsPipelineLibrary();
         info.preferred_materialize_mode = info.graphics_pipeline_library
                                         ? PipelineMaterializeMode::GraphicsPipelineLibrary
                                         : PipelineMaterializeMode::Monolithic;

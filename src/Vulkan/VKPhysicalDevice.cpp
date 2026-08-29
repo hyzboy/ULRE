@@ -289,8 +289,10 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
     mem_zero(graphics_pipeline_library_features);
     mem_zero(graphics_pipeline_library_properties);
 
-    if(!FORCE_DISABLE_GRAPHICS_PIPELINE_LIBRARY
-    && CheckExtensionSupport(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME)
+    // 纯硬件能力检测：扩展与特性是否被物理设备支持。
+    // 注入环境策略（如 RenderDoc 下禁用 GPL）由设备创建处决策，
+    // 不在本层——SupportGraphicsPipelineLibrary() 始终报告真实能力。
+    if(CheckExtensionSupport(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME)
     && CheckExtensionSupport(VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME))
     {
         auto get_features2=(PFN_vkGetPhysicalDeviceFeatures2KHR)vkGetInstanceProcAddr(inst,"vkGetPhysicalDeviceFeatures2KHR");

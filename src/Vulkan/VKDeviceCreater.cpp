@@ -14,8 +14,24 @@
 
 #include<hgl/log/Log.h>
 
+#ifdef _WIN32
+#include<windows.h>
+#endif//_WIN32
+
 namespace hgl::graph{
 VkPipelineCache CreatePipelineCache(VkDevice device,const VkPhysicalDeviceProperties &);
+
+/// RenderDoc 注入检测：其 in-process 捕获库固定为 renderdoc.dll
+///（GetModuleHandle 对模块名不区分大小写）。
+/// 非 Windows 平台暂无此检测需求，恒返回 false。
+bool IsRenderDocInjected()
+{
+#ifdef _WIN32
+    return GetModuleHandleW(L"renderdoc.dll") != nullptr;
+#else
+    return false;
+#endif//_WIN32
+}
 
 #ifdef _DEBUG
 DebugUtils *CreateDebugUtils(VkDevice);
@@ -78,7 +94,6 @@ namespace
             ext_list->Add(ext_name);
 
         if(enable_graphics_pipeline_library
-        && !FORCE_DISABLE_GRAPHICS_PIPELINE_LIBRARY
         && physical_device->SupportGraphicsPipelineLibrary())
         {
             ext_list->Add(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME);
@@ -310,7 +325,6 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family,
 
 
     if(enable_graphics_pipeline_library
-    && !FORCE_DISABLE_GRAPHICS_PIPELINE_LIBRARY
     && physical_device->SupportGraphicsPipelineLibrary())
     {
         graphics_pipeline_library_features.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT;
@@ -409,8 +423,14 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
     if(graphics_family==ERROR_FAMILY_INDEX)
         return(nullptr);
 
-    bool try_graphics_pipeline_library = !FORCE_DISABLE_GRAPHICS_PIPELINE_LIBRARY
-                                       && physical_device->SupportGraphicsPipelineLibrary();
+    // GPL 启用决策：硬件支持 + 未被 RenderDoc 注入（RenderDoc 不支持 GPL 管线）。
+    // 失败回退（下方 retry）与本决定会写入 device_attr->graphics_pipeline_library，
+    // 管线物化层（PipelineResolver）以该值为权威。
+    bool try_graphics_pipeline_library = physical_device->SupportGraphicsPipelineLibrary()
+                                       && !IsRenderDocInjected();
+
+    if(IsRenderDocInjected())
+        GLogInfo(u8"[VulkanDeviceCreater] RenderDoc detected — GraphicsPipelineLibrary disabled, using Monolithic materialization");
 
     SetDeviceExtension(&ext_list,physical_device,require,try_graphics_pipeline_library);
     SetDeviceFeatures(&features,physical_device->GetFeatures10(),require);
