@@ -222,7 +222,7 @@ bool ShaderBuildContext::AddSSBOVertex(const uint32_t flag_bits,const ShaderBuff
 
 bool ShaderBuildContext::AddSSBOVertexIndex(const uint32_t flag_bits)
 {
-    return AddSSBOStruct(flag_bits,SBS_VertexIndex,int(PerObjectBinding::VertexIndex));
+    return AddSSBOStruct(flag_bits,SBS_VertexIndex,int(VertexBinding::Index));
 }
 
 bool ShaderBuildContext::AddSSBOMaterialPrivateData(const uint32_t flag_bits,const std::string &struct_name,const std::string &name,const int material_private_data_slot)

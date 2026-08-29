@@ -511,8 +511,8 @@ struct DescriptorRegisterEntry
                                      // per-material 动态（纹理层=槽数）时为 -1
 };
 
-// 顶点数据 SSBO（MeshShader 方向：顶点输入统一为 SSBO）——
-// PerObject 集固定 binding（kPerObjectBindingVertex*），走固定名路径。
+// 顶点数据 SSBO（Vertex 集：顶点输入统一为 SSBO，Phase 5 自 PerObject 迁出）——
+// Vertex 集固定 binding（VertexBinding 枚举），走固定名路径。
 // Scene UBO（ViewportInfo/CameraInfo/SkyInfo/ColorPalette）已全局化（P1/P1-2a），
 // 不再进入 per-material 分配器（desc_manager/finalize/绑定均跳过 Scene）。
 // LocalToWorld 语义在渲染侧固定为 SSBO（PushLocalToWorld 唯一调用点传 SSBO），
@@ -528,13 +528,13 @@ static const DescriptorRegisterEntry kDescriptorRegisterTable[] = {
     { DescriptorSemantic::LocalToWorldIndex,        RegisterOp::AddSSBOStruct,     &SBS_LocalToWorldIndex,     "LocalToWorldIndex", int(PerObjectBinding::L2WIndex) },
     { DescriptorSemantic::MaterialTextureLayerTable,RegisterOp::AddSSBOTextureLayer,nullptr,                   "MaterialTextureLayerRows", -1 },
     { DescriptorSemantic::MaterialPrivateDataIndex, RegisterOp::AddSSBOMaterialPrivateDataIndex,   nullptr,    "MaterialPrivateDataIndex", -1 },
-    { DescriptorSemantic::VertexPosition,           RegisterOp::AddSSBOVertex,     &SBS_VertexPosition,        "VertexPosition", int(PerObjectBinding::VertexPosition) },
-    { DescriptorSemantic::VertexUV,                 RegisterOp::AddSSBOVertex,     &SBS_VertexUV,              "VertexUV", int(PerObjectBinding::VertexUV) },
-    { DescriptorSemantic::VertexNTB,                RegisterOp::AddSSBOVertex,     &SBS_VertexNTB,             "VertexNTB", int(PerObjectBinding::VertexNTB) },
-    { DescriptorSemantic::VertexColor,              RegisterOp::AddSSBOVertex,     &SBS_VertexColor,           "VertexColor", int(PerObjectBinding::VertexColor) },
-    { DescriptorSemantic::VertexLuminance,          RegisterOp::AddSSBOVertex,     &SBS_VertexLuminance,       "VertexLuminance", int(PerObjectBinding::VertexLuminance) },
-    { DescriptorSemantic::VertexTransformID,        RegisterOp::AddSSBOVertex,     &SBS_VertexTransformID,     "VertexTransformID", int(PerObjectBinding::VertexTransformID) },
-    { DescriptorSemantic::VertexSize,               RegisterOp::AddSSBOVertex,     &SBS_VertexSize,            "VertexSize", int(PerObjectBinding::VertexSize) },
+    { DescriptorSemantic::VertexPosition,           RegisterOp::AddSSBOVertex,     &SBS_VertexPosition,        "VertexPosition", int(VertexBinding::Position) },
+    { DescriptorSemantic::VertexUV,                 RegisterOp::AddSSBOVertex,     &SBS_VertexUV,              "VertexUV", int(VertexBinding::UV) },
+    { DescriptorSemantic::VertexNTB,                RegisterOp::AddSSBOVertex,     &SBS_VertexNTB,             "VertexNTB", int(VertexBinding::NTB) },
+    { DescriptorSemantic::VertexColor,              RegisterOp::AddSSBOVertex,     &SBS_VertexColor,           "VertexColor", int(VertexBinding::Color) },
+    { DescriptorSemantic::VertexLuminance,          RegisterOp::AddSSBOVertex,     &SBS_VertexLuminance,       "VertexLuminance", int(VertexBinding::Luminance) },
+    { DescriptorSemantic::VertexTransformID,        RegisterOp::AddSSBOVertex,     &SBS_VertexTransformID,     "VertexTransformID", int(VertexBinding::TransformID) },
+    { DescriptorSemantic::VertexSize,               RegisterOp::AddSSBOVertex,     &SBS_VertexSize,            "VertexSize", int(VertexBinding::Size) },
     { DescriptorSemantic::MeshDrawParams,           RegisterOp::AddSSBOVertex,     &SBS_MeshDrawParams,        "MeshDrawParams", int(PerObjectBinding::MeshDrawParams) },
     { DescriptorSemantic::VertexIndex,              RegisterOp::AddSSBOVertexIndex,nullptr,                    "VertexIndex", -1 },
 };

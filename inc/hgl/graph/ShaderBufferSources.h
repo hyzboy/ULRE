@@ -17,30 +17,30 @@ namespace hgl::graph::mtl
     constexpr const ShaderBufferSource SBS_MaterialPrivateDataIndexRows{
         DescriptorSetType::PerObject, "mtl_private_data_index", "MaterialPrivateDataIndex"
     };
-    // 顶点数据 SSBO（MeshShader 方向：顶点输入统一为 SSBO）——每对象大 buffer
+    // 顶点数据 SSBO（Vertex 集：顶点输入统一为 SSBO，Phase 5 自 PerObject 迁出）——每对象大 buffer
     constexpr const ShaderBufferSource SBS_VertexPosition{
-        DescriptorSetType::PerObject, "VertexPosition", "VertexPositionData"
+        DescriptorSetType::Vertex, "VertexPosition", "VertexPositionData"
     };
     constexpr const ShaderBufferSource SBS_VertexUV{
-        DescriptorSetType::PerObject, "VertexUV", "VertexUVData"
+        DescriptorSetType::Vertex, "VertexUV", "VertexUVData"
     };
     constexpr const ShaderBufferSource SBS_VertexNTB{
-        DescriptorSetType::PerObject, "VertexNTB", "VertexNTBData"
+        DescriptorSetType::Vertex, "VertexNTB", "VertexNTBData"
     };
     constexpr const ShaderBufferSource SBS_VertexColor{
-        DescriptorSetType::PerObject, "VertexColor", "VertexColorData"
+        DescriptorSetType::Vertex, "VertexColor", "VertexColorData"
     };
     constexpr const ShaderBufferSource SBS_VertexLuminance{
-        DescriptorSetType::PerObject, "VertexLuminance", "VertexLuminanceData"
+        DescriptorSetType::Vertex, "VertexLuminance", "VertexLuminanceData"
     };
     constexpr const ShaderBufferSource SBS_VertexTransformID{
-        DescriptorSetType::PerObject, "VertexTransformID", "VertexTransformIDData"
+        DescriptorSetType::Vertex, "VertexTransformID", "VertexTransformIDData"
     };
     constexpr const ShaderBufferSource SBS_VertexSize{
-        DescriptorSetType::PerObject, "VertexSize", "VertexSizeData"
+        DescriptorSetType::Vertex, "VertexSize", "VertexSizeData"
     };
     constexpr const ShaderBufferSource SBS_VertexIndex{
-        DescriptorSetType::PerObject, "VertexIndex", "VertexIndexData"
+        DescriptorSetType::Vertex, "VertexIndex", "VertexIndexData"
     };
     // mesh per-draw 参数表（IndirectMeshDraw：mesh shader 经 gl_DrawID 查表的
     // per-draw 段偏移——替代 per-draw push constant，多 draw 合批的关键）

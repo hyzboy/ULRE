@@ -38,6 +38,10 @@ namespace hgl::ecs
         for (auto *mp : per_object_mp_pool)
             delete mp;
         per_object_mp_pool.clear();
+
+        for (auto *mp : vertex_mp_pool)
+            delete mp;
+        vertex_mp_pool.clear();
     }
 
     void PipelineMaterialRenderer::ProcIndirectRender()
@@ -117,19 +121,19 @@ namespace hgl::ecs
             // 更新缓冲状态
             last_data_buffer = batch->geom_data_buffer;
 
-            // SSBO 顶点输入：把当前 DrawBatch 的顶点/索引 buffer 绑到 PerObject set
-            //（switch 触发即对目标 set 全量重绑，不做逐语义"buffer 未变跳过"——
-            //  目标 set 是 per-DrawBatch 独立的，按渲染器全局缓存跳过在部分语义
-            //  共享 buffer 时会漏绑；切换很少发生（VDM 共享 buffer 整批一次），
-            //  全量绑定开销可忽略）
+            // SSBO 顶点输入：顶点/索引 buffer 绑 Vertex 集（Set 4，Phase 5 自 PerObject 迁出），
+            // l2w / 行表 / per-draw 参数表仍绑 PerObject 集（Set 1）。
+            // switch 触发即对目标 set 全量重绑（集是 per-DrawBatch 独立的，全量绑定开销可忽略）
             if (ssbo_vertex_input)
             {
-                auto *mp = batch->per_object_mp;
+                const auto *geom_buffer = batch->geom_data_buffer;
 
-                if (mp)
+                // ── Vertex 集：顶点数据/索引 SSBO（per-DrawBatch 独立 Vertex MP，
+                //    克隆理由与 PerObject 相同——descriptor set 是状态非快照）──
+                if (auto *vmp = batch->vertex_mp
+                              ? batch->vertex_mp
+                              : material->GetMP(graph::DescriptorSetType::Vertex))
                 {
-                    const auto *geom_buffer = batch->geom_data_buffer;
-
                     // 按 VAB 自带语义遍历（GeometryDataBuffer::Update 按 VIF 填充——
                     // 不依赖 material 的 VIL，独立 VAB/VDM 场景均正确）
                     for (uint32_t vi = 0; vi < geom_buffer->vab_count; ++vi)
@@ -141,25 +145,25 @@ namespace hgl::ecs
                         switch (geom_buffer->vab_semantic[vi])
                         {
                         case graph::VertexSemantic::Position:
-                            mp->BindSSBO("VertexPosition", buf, 0, VK_WHOLE_SIZE);
+                            vmp->BindSSBO("VertexPosition", buf, 0, VK_WHOLE_SIZE);
                             break;
                         case graph::VertexSemantic::TexCoord:
-                            mp->BindSSBO("VertexUV", buf, 0, VK_WHOLE_SIZE);
+                            vmp->BindSSBO("VertexUV", buf, 0, VK_WHOLE_SIZE);
                             break;
                         case graph::VertexSemantic::Normal:
-                            mp->BindSSBO("VertexNTB", buf, 0, VK_WHOLE_SIZE);
+                            vmp->BindSSBO("VertexNTB", buf, 0, VK_WHOLE_SIZE);
                             break;
                         case graph::VertexSemantic::Color:
-                            mp->BindSSBO("VertexColor", buf, 0, VK_WHOLE_SIZE);
+                            vmp->BindSSBO("VertexColor", buf, 0, VK_WHOLE_SIZE);
                             break;
                         case graph::VertexSemantic::Luminance:
-                            mp->BindSSBO("VertexLuminance", buf, 0, VK_WHOLE_SIZE);
+                            vmp->BindSSBO("VertexLuminance", buf, 0, VK_WHOLE_SIZE);
                             break;
                         case graph::VertexSemantic::TransformID:
-                            mp->BindSSBO("VertexTransformID", buf, 0, VK_WHOLE_SIZE);
+                            vmp->BindSSBO("VertexTransformID", buf, 0, VK_WHOLE_SIZE);
                             break;
                         case graph::VertexSemantic::Size:
-                            mp->BindSSBO("VertexSize", buf, 0, VK_WHOLE_SIZE);
+                            vmp->BindSSBO("VertexSize", buf, 0, VK_WHOLE_SIZE);
                             break;
                         default: break;
                         }
@@ -186,15 +190,25 @@ namespace hgl::ecs
                         for (const auto &binding : geometry_vab_bindings)
                         {
                             if (auto *vab = batch->geometry->GetVAB(binding.semantic))
-                                mp->BindSSBO(binding.name, vab->GetVkBuffer(), 0, VK_WHOLE_SIZE);
+                                vmp->BindSSBO(binding.name, vab->GetVkBuffer(), 0, VK_WHOLE_SIZE);
                         }
                     }
 
-                    // 顶点索引 SSBO（非索引绘制——索引数据统一 SSBO）：
-                    // IBO buffer 绑 VertexIndex 槽（VDM 共享/独立 IBO 均正确——段偏移走 push constant）
+                    // 顶点索引 SSBO（非索引绘制——索引数据统一 SSBO）
                     if (geom_buffer->ibo)
-                        mp->BindSSBO("VertexIndex", geom_buffer->ibo->GetVkBuffer(), 0, VK_WHOLE_SIZE);
+                        vmp->BindSSBO("VertexIndex", geom_buffer->ibo->GetVkBuffer(), 0, VK_WHOLE_SIZE);
 
+                    // Update + 绑定 Vertex 集（几何切换粒度，与 PerObject 的 run 粒度解耦）
+                    vmp->Update();
+                    const VkDescriptorSet vds = vmp->GetVkDescriptorSet();
+                    cmd_buf->BindDescriptorSets(material->GetPipelineLayout(),
+                                                static_cast<uint32_t>(graph::DescriptorSetType::Vertex),
+                                                &vds, 1, nullptr, 0);
+                }
+
+                // ── PerObject 集：l2w / 行表 / per-draw 参数表 ──
+                if (auto *mp = batch->per_object_mp)
+                {
                     // l2w / index rows 补绑（独立 VAB 场景的 program 实例可能没有
                     // RDBS 预绑——Draw 侧统一补到本 draw 的 PerObject MP）
                     if (transform_buffer)
@@ -448,6 +462,8 @@ namespace hgl::ecs
 
         if (per_object_mp_pool.size() < mp_count)
             per_object_mp_pool.resize(mp_count, nullptr);
+        if (vertex_mp_pool.size() < mp_count)
+            vertex_mp_pool.resize(mp_count, nullptr);
 
         for (uint32_t i = 0; i < batch_count; i++)
         {
@@ -466,6 +482,20 @@ namespace hgl::ecs
                 }
 
                 batch->per_object_mp = per_object_mp_pool[pool_index];
+
+                // Vertex 集（Set 4）克隆：材质不含顶点数据（GetMP(Vertex)==null）时留空，
+                // 顶点绑定路径随之跳过——与 PerObject 克隆同索引（几何身份一致）
+                if (!vertex_mp_pool[pool_index])
+                {
+                    auto *base_vertex_mp = material->GetMP(graph::DescriptorSetType::Vertex);
+
+                    if (base_vertex_mp && owner_batch && owner_batch->device)
+                        vertex_mp_pool[pool_index] = owner_batch->device->CreateMP(base_vertex_mp->GetDescManager(),
+                                                                              material->GetPipelineLayoutData(),
+                                                                              graph::DescriptorSetType::Vertex);
+                }
+
+                batch->vertex_mp = vertex_mp_pool[pool_index];
             }
 
             Draw(batch, transform_buffer, owner_batch);

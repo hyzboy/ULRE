@@ -105,6 +105,16 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::MeshDrawParams:          // mesh per-draw 参数表（PerObject 固定 binding）
             return DescriptorSetType::PerObject;
 
+        case DescriptorSemantic::VertexPosition:          // 顶点数据 SSBO（Phase 5 自 PerObject 迁出）
+        case DescriptorSemantic::VertexUV:
+        case DescriptorSemantic::VertexNTB:
+        case DescriptorSemantic::VertexColor:
+        case DescriptorSemantic::VertexLuminance:
+        case DescriptorSemantic::VertexTransformID:
+        case DescriptorSemantic::VertexSize:
+        case DescriptorSemantic::VertexIndex:
+            return DescriptorSetType::Vertex;
+
         case DescriptorSemantic::MaterialPrivateData:
         case DescriptorSemantic::MaterialTexture:
         case DescriptorSemantic::MaterialSampler:
