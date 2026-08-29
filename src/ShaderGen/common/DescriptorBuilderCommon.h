@@ -1,6 +1,7 @@
 #pragma once
 
 #include <hgl/mtl/SerializedDescriptorEntry.h>
+#include <hgl/mtl/DescriptorResourceCatalog.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/mtl/ModuleResourceManifest.h>
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
@@ -348,37 +349,23 @@ inline bool PushManifestSSBO(
     entry.required = ssbo.required;
     entry.allow_fallback = ssbo.allow_fallback;
 
-    // 顶点数据 SSBO（MeshShader 方向）：Vertex 集 + 固定 binding（VertexBinding 枚举）
-    switch (ssbo.ssbo_type)
+    // 顶点数据 SSBO（Vertex 集）：set/semantic 由目录表按 ssbo_type 反查
+    if (const DescriptorResourceCatalogEntry *cat =
+            FindResourceCatalogEntryBySSBOType(ssbo.ssbo_type);
+        cat && cat->cls == ResourceCatalogClass::VertexGeometry)
     {
-    case SSBOType::VertexPosition:
-        entry.set_type = DescriptorSetType::Vertex;
-        entry.semantic = DescriptorSemantic::VertexPosition;
+        entry.set_type = cat->set_type;
+        entry.semantic = cat->semantic;
         entry.semantic_layer = DescriptorSemanticLayer::SSBO;
-        break;
-    case SSBOType::VertexUV:
-        entry.set_type = DescriptorSetType::Vertex;
-        entry.semantic = DescriptorSemantic::VertexUV;
-        entry.semantic_layer = DescriptorSemanticLayer::SSBO;
-        break;
-    case SSBOType::VertexNTB:
-        entry.set_type = DescriptorSetType::Vertex;
-        entry.semantic = DescriptorSemantic::VertexNTB;
-        entry.semantic_layer = DescriptorSemanticLayer::SSBO;
-        break;
-    case SSBOType::VertexIndex:
-        entry.set_type = DescriptorSetType::Vertex;
-        entry.semantic = DescriptorSemantic::VertexIndex;
-        entry.semantic_layer = DescriptorSemanticLayer::SSBO;
-        break;
-    default:
+    }
+    else
+    {
         // 材质私有数据 SSBO：单槽方案下固定 material_private_data_slot == 0（MaterialPrivateData）。
         if (ssbo.material_private_data_slot != DefaultMaterialPrivateDataSlot)
             return false;
         entry.set_type = DescriptorSetType::Material;
         entry.semantic = DescriptorSemantic::MaterialPrivateData;
         entry.semantic_layer = DescriptorSemanticLayer::SSBO;
-        break;
     }
     return MergeSSBODescriptor(v, entry);
 }

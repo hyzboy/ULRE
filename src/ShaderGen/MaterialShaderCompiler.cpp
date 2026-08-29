@@ -203,62 +203,47 @@ static bool ValidateDefinitionCapabilitySubset(
 
     for (const auto &req : layout.resources)
     {
-        bool allowed = false;
+        const DescriptorResourceCatalogEntry *cat =
+            FindResourceCatalogEntry(req.semantic);
 
-        switch (req.semantic)
+        // 无条件内置资源：目录表 engine_builtin（ViewportInfo/顶点 SSBO/MeshDrawParams）
+        bool allowed = cat && cat->engine_builtin;
+
+        if (!allowed && cat)
         {
-        case DescriptorSemantic::ViewportInfo:
-            // Viewport 是场景级 UBO（Scene set binding=2，切换 FBO 必绑）——恒允许，
-            // 不需要材质 TOML 显式声明（材质声明了也只是冗余）。
-            allowed = true;
-            break;
-        case DescriptorSemantic::CameraInfo:
-            allowed = HasUBORequirement(definition, DescriptorSemantic::CameraInfo);
-            break;
-        case DescriptorSemantic::SkyInfo:
-            allowed = HasUBORequirement(definition, DescriptorSemantic::SkyInfo);
-            break;
-        case DescriptorSemantic::MaterialColorPalette:
-            allowed = HasUBORequirement(definition, DescriptorSemantic::MaterialColorPalette);
-            break;
+            // 有条件的内置规则（依赖材质定义内容）
+            switch (req.semantic)
+            {
+            case DescriptorSemantic::CameraInfo:
+            case DescriptorSemantic::SkyInfo:
+            case DescriptorSemantic::MaterialColorPalette:
+                allowed = HasUBORequirement(definition, req.semantic);
+                break;
 
-        case DescriptorSemantic::LocalToWorld:
-        case DescriptorSemantic::LocalToWorldIndex:
-            allowed = definition.vertex_node_config.projection != ProjectionMode::OrthoViewport
-                   && definition.vertex_node_config.projection != ProjectionMode::ClipPassthrough;
-            break;
+            case DescriptorSemantic::LocalToWorld:
+            case DescriptorSemantic::LocalToWorldIndex:
+                allowed = definition.vertex_node_config.projection != ProjectionMode::OrthoViewport
+                       && definition.vertex_node_config.projection != ProjectionMode::ClipPassthrough;
+                break;
 
-        case DescriptorSemantic::MaterialPrivateData:
-            allowed = req.material_private_data_slot < definition.material_private_data_slot_decls.size();
-            if (allowed)
-                allowed = definition.material_private_data_slot_decls[req.material_private_data_slot].ssbo_type == req.ssbo_type;
-            break;
+            case DescriptorSemantic::MaterialPrivateData:
+                allowed = req.material_private_data_slot < definition.material_private_data_slot_decls.size();
+                if (allowed)
+                    allowed = definition.material_private_data_slot_decls[req.material_private_data_slot].ssbo_type == req.ssbo_type;
+                break;
 
-        case DescriptorSemantic::MaterialTextureLayerTable:
-            allowed = !definition.texture_slot_decls.empty();
-            break;
-        case DescriptorSemantic::MaterialPrivateDataIndex:
-            allowed = !definition.material_private_data_slot_decls.empty()
-                   || definition.vertex_varying.emit_data_index_id;
-            break;
+            case DescriptorSemantic::MaterialTextureLayerTable:
+                allowed = !definition.texture_slot_decls.empty();
+                break;
 
-        // 顶点数据 SSBO（MeshShader 方向）：顶点 SSBO 语义无条件允许（顶点输入统一为 SSBO）
-        case DescriptorSemantic::VertexPosition:
-        case DescriptorSemantic::VertexUV:
-        case DescriptorSemantic::VertexNTB:
-        case DescriptorSemantic::VertexColor:
-        case DescriptorSemantic::VertexLuminance:
-        case DescriptorSemantic::VertexTransformID:
-        case DescriptorSemantic::VertexSize:
-        case DescriptorSemantic::VertexIndex:
-        // mesh per-draw 参数表（IndirectMeshDraw）：引擎级必备，同顶点 SSBO 无条件允许
-        case DescriptorSemantic::MeshDrawParams:
-            allowed = true;
-            break;
+            case DescriptorSemantic::MaterialPrivateDataIndex:
+                allowed = !definition.material_private_data_slot_decls.empty()
+                       || definition.vertex_varying.emit_data_index_id;
+                break;
 
-        case DescriptorSemantic::Unknown:
-            allowed = false;
-            break;
+            default:
+                break;  // 未收录/无规则语义（Unknown、MaterialTexture/Sampler）——保持 false 走 manifest 回退
+            }
         }
 
         if (!allowed && manifest && manifest->IsValid())
@@ -487,69 +472,11 @@ static bool BuildEffectiveDescriptorEntries(
     return true;
 }
 
-// ── Step 3c: canonical 描述符注册（配表）─────────────────────────────────────
-enum class RegisterOp : int
-{
-    None,                // Scene UBO 已全局化，无需 per-material 注册
-    SetLocalToWorld,     // UBO/SSBO LocalToWorld → SetLocalToWorld(stage_bits)
-    AddSSBOStruct,       // AddSSBOStruct(stage_bits, *sbs)
-    AddSSBOVertex,       // AddSSBOVertex(stage_bits, *sbs)（顶点数据 / MeshDrawParams）
-    AddSSBOVertexIndex,  // AddSSBOVertexIndex(stage_bits)
-    AddSSBOTextureLayer, // 纹理层行表（binding = 数据槽数）
-    AddSSBOMaterialPrivateDataIndex,     // 材质数据行表（固定 binding 常量路径）
-};
-
-struct DescriptorRegisterEntry
-{
-    DescriptorSemantic semantic;
-    RegisterOp op;
-    const ShaderBufferSource *sbs;   // AddSSBOStruct / AddSSBOVertex 使用
-    const char *label;               // 诊断名
-    int binding;                     // 固定 ABI binding（PerObjectBinding/VertexBinding 枚举）；
-                                     // op 内部自行定值（SetLocalToWorld/AddSSBOVertexIndex/
-                                     // AddSSBOMaterialPrivateDataIndex/AddSSBOTextureLayer）或
-                                     // per-material 动态（纹理层=槽数）时为 -1
-};
-
-// 顶点数据 SSBO（Vertex 集：顶点输入统一为 SSBO，Phase 5 自 PerObject 迁出）——
-// Vertex 集固定 binding（VertexBinding 枚举），走固定名路径。
-// Scene UBO（ViewportInfo/CameraInfo/SkyInfo/ColorPalette）已全局化（P1/P1-2a），
-// 不再进入 per-material 分配器（desc_manager/finalize/绑定均跳过 Scene）。
-// LocalToWorld 语义在渲染侧固定为 SSBO（PushLocalToWorld 唯一调用点传 SSBO），
-// 不再维护 UBO/SSBO 双映射。
-static const DescriptorRegisterEntry kDescriptorRegisterTable[] = {
-    // ── UBO ──
-    { DescriptorSemantic::ViewportInfo,           RegisterOp::None,              nullptr,                "Scene UBO", -1 },
-    { DescriptorSemantic::CameraInfo,             RegisterOp::None,              nullptr,                "Scene UBO", -1 },
-    { DescriptorSemantic::SkyInfo,                RegisterOp::None,              nullptr,                "Scene UBO", -1 },
-    { DescriptorSemantic::MaterialColorPalette,   RegisterOp::None,              nullptr,                "Scene UBO", -1 },
-    // ── SSBO ──
-    { DescriptorSemantic::LocalToWorld,             RegisterOp::SetLocalToWorld,   nullptr,                    "LocalToWorld", -1 },
-    { DescriptorSemantic::LocalToWorldIndex,        RegisterOp::AddSSBOStruct,     &SBS_LocalToWorldIndex,     "LocalToWorldIndex", int(PerObjectBinding::L2WIndex) },
-    { DescriptorSemantic::MaterialTextureLayerTable,RegisterOp::AddSSBOTextureLayer,nullptr,                   "MaterialTextureLayerRows", -1 },
-    { DescriptorSemantic::MaterialPrivateDataIndex, RegisterOp::AddSSBOMaterialPrivateDataIndex,   nullptr,    "MaterialPrivateDataIndex", -1 },
-    { DescriptorSemantic::VertexPosition,           RegisterOp::AddSSBOVertex,     &SBS_VertexPosition,        "VertexPosition", int(VertexBinding::Position) },
-    { DescriptorSemantic::VertexUV,                 RegisterOp::AddSSBOVertex,     &SBS_VertexUV,              "VertexUV", int(VertexBinding::UV) },
-    { DescriptorSemantic::VertexNTB,                RegisterOp::AddSSBOVertex,     &SBS_VertexNTB,             "VertexNTB", int(VertexBinding::NTB) },
-    { DescriptorSemantic::VertexColor,              RegisterOp::AddSSBOVertex,     &SBS_VertexColor,           "VertexColor", int(VertexBinding::Color) },
-    { DescriptorSemantic::VertexLuminance,          RegisterOp::AddSSBOVertex,     &SBS_VertexLuminance,       "VertexLuminance", int(VertexBinding::Luminance) },
-    { DescriptorSemantic::VertexTransformID,        RegisterOp::AddSSBOVertex,     &SBS_VertexTransformID,     "VertexTransformID", int(VertexBinding::TransformID) },
-    { DescriptorSemantic::VertexSize,               RegisterOp::AddSSBOVertex,     &SBS_VertexSize,            "VertexSize", int(VertexBinding::Size) },
-    { DescriptorSemantic::MeshDrawParams,           RegisterOp::AddSSBOVertex,     &SBS_MeshDrawParams,        "MeshDrawParams", int(PerObjectBinding::MeshDrawParams) },
-    { DescriptorSemantic::VertexIndex,              RegisterOp::AddSSBOVertexIndex,nullptr,                    "VertexIndex", -1 },
-};
-
-static const DescriptorRegisterEntry *FindDescriptorRegisterEntry(
-    const DescriptorSemantic semantic)
-{
-    for (const DescriptorRegisterEntry &reg : kDescriptorRegisterTable)
-    {
-        if (reg.semantic == semantic)
-            return &reg;
-    }
-    return nullptr;
-}
-
+// ── Step 3c: canonical 描述符注册（目录表驱动）───────────────────────────────
+// 唯一真源：inc/hgl/mtl/DescriptorResourceCatalog.h（语义→类别/集合/绑定/SBS）。
+// 按类别三分支：SceneGlobal 全局化跳过；PerDraw/VertexGeometry 固定 ABI 注册；
+// MaterialData per-material 动态（数据槽由 RegisterMaterialPrivateDataSlotDescriptors
+// 单独处理，此处仅纹理层表/行表）。原 kDescriptorRegisterTable + RegisterOp 已删除。
 static bool RegisterCanonicalDescriptors(
     ShaderBuildContext *ctx,
     const std::vector<SerializedDescriptorEntry> &descriptor_entries,
@@ -569,51 +496,62 @@ static bool RegisterCanonicalDescriptors(
             continue;
         }
 
-        const DescriptorRegisterEntry *reg =
-            FindDescriptorRegisterEntry(entry.semantic);
-        if (!reg)
+        const DescriptorResourceCatalogEntry *cat =
+            FindResourceCatalogEntry(entry.semantic);
+        if (!cat)
             continue;
 
-        switch (reg->op)
+        switch (cat->cls)
         {
-        case RegisterOp::None:
+        case ResourceCatalogClass::SceneGlobal:
+            // Scene UBO 已全局化（P1/P1-2a），不再进入 per-material 分配器
             break;
 
-        case RegisterOp::SetLocalToWorld:
-            ctx->SetLocalToWorld(stage_bits);
+        case ResourceCatalogClass::PerDraw:
+            if (cat->semantic == DescriptorSemantic::LocalToWorld)
+            {
+                if (!ctx->SetLocalToWorld(stage_bits))
+                    return c.Fail("failed to set LocalToWorld SSBO");
+            }
+            else if (cat->semantic == DescriptorSemantic::MaterialPrivateDataIndex)
+            {
+                if (!ctx->AddStruct(SBS_MaterialPrivateDataIndexRows.struct_name, ""))
+                    return c.Fail("failed to add MaterialPrivateDataIndex struct");
+                // P1-2c：行表迁至 PerObject 集，binding 由固定枚举确定（固定名路径）
+                if (!ctx->AddSSBOMaterialPrivateDataIndex(stage_bits))
+                    return c.Fail("failed to add MaterialPrivateDataIndex SSBO");
+            }
+            else
+            {
+                // LocalToWorldIndex / MeshDrawParams：SBS + 固定 binding 目录行
+                if (!ctx->AddSSBOVertex(stage_bits, *cat->sbs, cat->binding))
+                    return c.Fail(std::string("failed to add ") + cat->sbs->name + " SSBO");
+            }
             break;
 
-        case RegisterOp::AddSSBOStruct:
-            if (!ctx->AddSSBOStruct(stage_bits, *reg->sbs, reg->binding))
-                return c.Fail(std::string("failed to add ") + reg->label + " SSBO");
+        case ResourceCatalogClass::VertexGeometry:
+            if (cat->semantic == DescriptorSemantic::VertexIndex)
+            {
+                if (!ctx->AddSSBOVertexIndex(stage_bits))
+                    return c.Fail("failed to add VertexIndex SSBO");
+            }
+            else
+            {
+                if (!ctx->AddSSBOVertex(stage_bits, *cat->sbs, cat->binding))
+                    return c.Fail(std::string("failed to add ") + cat->sbs->name + " SSBO");
+            }
             break;
 
-        case RegisterOp::AddSSBOVertex:
-            if (!ctx->AddSSBOVertex(stage_bits, *reg->sbs, reg->binding))
-                return c.Fail(std::string("failed to add ") + reg->label + " SSBO");
-            break;
-
-        case RegisterOp::AddSSBOVertexIndex:
-            if (!ctx->AddSSBOVertexIndex(stage_bits))
-                return c.Fail(std::string("failed to add ") + reg->label + " SSBO");
-            break;
-
-        case RegisterOp::AddSSBOTextureLayer:
-            if (!ctx->AddStruct(SBS_MaterialTextureLayerRows.struct_name, ""))
-                return c.Fail(std::string("failed to add ") + reg->label + " struct");
-            // 单槽化：材质至多一个 MaterialPrivateData 槽，declared 计数为 0 或 1。
-            // 纹理层行表紧随数据槽之后（binding = N），无数据槽时 N = 0。
-            if (!ctx->AddSSBOTextureLayer(stage_bits, int(declared_material_private_data_slot_count)))
-                return c.Fail(std::string("failed to add ") + reg->label + " SSBO");
-            break;
-
-        case RegisterOp::AddSSBOMaterialPrivateDataIndex:
-            if (!ctx->AddStruct(SBS_MaterialPrivateDataIndexRows.struct_name, ""))
-                return c.Fail(std::string("failed to add ") + reg->label + " struct");
-            // P1-2c：MaterialPrivateDataIndexRows 迁至 PerObject 集，binding 由固定常量表
-            // kPerObjectBinding* 确定（走固定名路径，与 l2w_index 同构）。
-            if (!ctx->AddSSBOMaterialPrivateDataIndex(stage_bits))
-                return c.Fail(std::string("failed to add ") + reg->label + " SSBO");
+        case ResourceCatalogClass::MaterialData:
+            if (cat->semantic == DescriptorSemantic::MaterialTextureLayerTable)
+            {
+                if (!ctx->AddStruct(SBS_MaterialTextureLayerRows.struct_name, ""))
+                    return c.Fail("failed to add MaterialTextureLayerRows struct");
+                // 单槽化：材质至多一个数据槽，纹理层行表紧随其后（binding=槽数）
+                if (!ctx->AddSSBOTextureLayer(stage_bits, int(declared_material_private_data_slot_count)))
+                    return c.Fail("failed to add MaterialTextureLayerRows SSBO");
+            }
+            // MaterialTexture/MaterialSampler：bindless 通道，无 per-material 描述符
             break;
         }
     }
@@ -681,45 +619,11 @@ static bool RegisterMaterialPrivateDataSlotDescriptors(
     return true;
 }
 
-// ── Step 4: Ensure index-table SSBOs for vertex-varying emissions ────────────
-//
-//     The descriptor builder calls EnsureMaterialPrivateDataIndexTable only when a
-// MaterialPrivateData entry exists.  Compositor materials without data
-// slots may still emit fragDataIndexID (declared as a varying in
-// .material.toml).  Without the corresponding SSBO the VS GLSL injection
-// skips ResolveMaterialPrivateDataIndex → compile error.
-static void EnsureIndexTableSSBOs(
-    ShaderBuildContext *ctx,
-    const CompositorMaterialBuildConfig &config,
-    const std::vector<SerializedDescriptorEntry> &descriptor_entries)
-{
-    if (!config.material_definition)
-        return;
-
-    const auto &vv = config.material_definition->vertex_varying;
-
-    bool has_index_table = false;
-    for (const SerializedDescriptorEntry &entry : descriptor_entries)
-    {
-        if (entry.semantic == DescriptorSemantic::MaterialPrivateDataIndex)
-        {
-            has_index_table = true;
-            break;
-        }
-    }
-
-    // P1-2c：MaterialPrivateDataIndexRows 迁至 Transform 集，binding 由固定常量表确定，
-    // 与 Step 3 的 MaterialPrivateDataIndex 分支同构。
-    if (vv.emit_data_index_id && !has_index_table)
-    {
-        ctx->AddStruct(SBS_MaterialPrivateDataIndexRows.struct_name, "");
-        ctx->AddSSBO(hgl::graph::kMeshFragment,
-                     SBS_MaterialPrivateDataIndexRows.set_type,
-                     SBS_MaterialPrivateDataIndexRows.struct_name,
-                     SBS_MaterialPrivateDataIndexRows.name,
-                     int(PerObjectBinding::PrivateDataIndex));
-    }
-}
+// ── Step 4: 行表 SSBO 的补齐已上收至契约层 ───────────────────────────────────
+// emit_data_index_id 的 MaterialPrivateDataIndex 行表由
+// EnsureDescriptorContractVaryingResources（DescriptorContract.cpp）在契约构建期
+// 补入并经 RegisterCanonicalDescriptors 注册——原 EnsureIndexTableSSBOs 后置补漏
+// 与之重复，已删除。（Phase 6：目录表收敛）
 
 // ── Step 5a: set/binding 宏 ──────────────────────────────────────────────────
 // 固定 ABI 的 set/binding 宏（L2W/MESH_DRAW_PARAMS/VIEWPORT/CAMERA/SKY/COLOR_PALETTE
@@ -1150,8 +1054,7 @@ ShaderBuildContext *CompileCompositorMaterial(
             ctx, *material_private_data_slot_decls, material_ssbo_stage_bits, c))
         return FailCompile(c);
 
-    // ── Step 4: Ensure index-table SSBOs for vertex-varying emissions ──
-    EnsureIndexTableSSBOs(ctx, config, descriptor_entries);
+    // （原 Step 4 EnsureIndexTableSSBOs 已删除——行表补齐上收至契约层，见 Step 3c 注释）
 
     // ── Step 5: Set complete GLSL (bypass ProcXXX pipeline) ───────
     const DescriptorSetLayoutAllocator &descriptor_info = ctx->GetDescriptorAllocator();

@@ -1,6 +1,7 @@
 #pragma once
 
 #include<hgl/mtl/SerializedDescriptorEntry.h>
+#include<hgl/mtl/DescriptorResourceCatalog.h>
 #include<hgl/graph/ShaderBufferSources.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <cstring>
@@ -89,41 +90,10 @@ namespace hgl::graph::mtl
 
     inline DescriptorSetType GetExpectedSetType(DescriptorSemantic semantic)
     {
-        switch (semantic)
-        {
-        case DescriptorSemantic::ViewportInfo:
-        case DescriptorSemantic::MaterialColorPalette:
-            return DescriptorSetType::Scene;
-
-        case DescriptorSemantic::CameraInfo:
-        case DescriptorSemantic::SkyInfo:
-            return DescriptorSetType::Scene;
-
-        case DescriptorSemantic::LocalToWorld:
-        case DescriptorSemantic::LocalToWorldIndex:
-        case DescriptorSemantic::MaterialPrivateDataIndex:  // P1-2c：实例→材质行索引表迁至 PerObject 集
-        case DescriptorSemantic::MeshDrawParams:          // mesh per-draw 参数表（PerObject 固定 binding）
-            return DescriptorSetType::PerObject;
-
-        case DescriptorSemantic::VertexPosition:          // 顶点数据 SSBO（Phase 5 自 PerObject 迁出）
-        case DescriptorSemantic::VertexUV:
-        case DescriptorSemantic::VertexNTB:
-        case DescriptorSemantic::VertexColor:
-        case DescriptorSemantic::VertexLuminance:
-        case DescriptorSemantic::VertexTransformID:
-        case DescriptorSemantic::VertexSize:
-        case DescriptorSemantic::VertexIndex:
-            return DescriptorSetType::Vertex;
-
-        case DescriptorSemantic::MaterialPrivateData:
-        case DescriptorSemantic::MaterialTexture:
-        case DescriptorSemantic::MaterialSampler:
-        case DescriptorSemantic::MaterialTextureLayerTable:
-            return DescriptorSetType::Material;
-
-        default:
-            return DescriptorSetType::Unknow;
-        }
+        // 唯一真源：DescriptorResourceCatalog（语义→集合映射随目录表维护）
+        const DescriptorResourceCatalogEntry *cat =
+            FindResourceCatalogEntry(semantic);
+        return cat ? cat->set_type : DescriptorSetType::Unknow;
     }
 
     inline DescriptorSemanticLayer NormalizeSemanticLayer(const SerializedDescriptorEntry &entry)
@@ -140,43 +110,21 @@ namespace hgl::graph::mtl
 
     inline const char *GetDefaultDescriptorNameBySemantic(const DescriptorSemantic semantic)
     {
-        switch (semantic)
-        {
-        case DescriptorSemantic::ViewportInfo: return SBS_ViewportInfo.name;
-        case DescriptorSemantic::CameraInfo: return SBS_CameraInfo.name;
-        case DescriptorSemantic::SkyInfo: return SBS_SkyInfo.name;
-        case DescriptorSemantic::LocalToWorld: return SBS_LocalToWorld.name;
-        case DescriptorSemantic::LocalToWorldIndex: return SBS_LocalToWorldIndex.name;
-        case DescriptorSemantic::MaterialPrivateData: return DefaultMaterialPrivateDataSlotName;
-        case DescriptorSemantic::MaterialColorPalette: return SBS_ColorPalette.name;
-        case DescriptorSemantic::MaterialTextureLayerTable: return SBS_MaterialTextureLayerRows.name;
-        case DescriptorSemantic::MaterialPrivateDataIndex: return SBS_MaterialPrivateDataIndexRows.name;
-        // 顶点数据 SSBO（MeshShader 方向）
-        case DescriptorSemantic::VertexPosition: return SBS_VertexPosition.name;
-        case DescriptorSemantic::VertexUV: return SBS_VertexUV.name;
-        case DescriptorSemantic::VertexNTB: return SBS_VertexNTB.name;
-        case DescriptorSemantic::VertexIndex: return SBS_VertexIndex.name;
-        case DescriptorSemantic::MeshDrawParams: return SBS_MeshDrawParams.name;
-        default: return nullptr;
-        }
+        // 唯一真源：DescriptorResourceCatalog 的 SBS 行
+        if (semantic == DescriptorSemantic::MaterialPrivateData)
+            return DefaultMaterialPrivateDataSlotName;
+
+        const DescriptorResourceCatalogEntry *cat =
+            FindResourceCatalogEntry(semantic);
+        return (cat && cat->sbs) ? cat->sbs->name : nullptr;
     }
 
     inline const char *GetDefaultStructNameBySemantic(const DescriptorSemantic semantic)
     {
-        switch (semantic)
-        {
-        case DescriptorSemantic::ViewportInfo: return SBS_ViewportInfo.struct_name;
-        case DescriptorSemantic::CameraInfo: return SBS_CameraInfo.struct_name;
-        case DescriptorSemantic::SkyInfo: return SBS_SkyInfo.struct_name;
-        case DescriptorSemantic::LocalToWorld: return SBS_LocalToWorld.struct_name;
-        case DescriptorSemantic::LocalToWorldIndex: return SBS_LocalToWorldIndex.struct_name;
-        case DescriptorSemantic::MaterialPrivateData: return nullptr;
-        case DescriptorSemantic::MaterialColorPalette: return SBS_ColorPalette.struct_name;
-        case DescriptorSemantic::MaterialTextureLayerTable: return SBS_MaterialTextureLayerRows.struct_name;
-        case DescriptorSemantic::MaterialPrivateDataIndex: return SBS_MaterialPrivateDataIndexRows.struct_name;
-        case DescriptorSemantic::MeshDrawParams: return SBS_MeshDrawParams.struct_name;
-        default: return nullptr;
-        }
+        // 唯一真源：DescriptorResourceCatalog 的 SBS 行
+        const DescriptorResourceCatalogEntry *cat =
+            FindResourceCatalogEntry(semantic);
+        return (cat && cat->sbs) ? cat->sbs->struct_name : nullptr;
     }
 
     inline ShaderResourceSchema BuildShaderResourceSchema(const SerializedDescriptorEntry *descriptor_entries,
