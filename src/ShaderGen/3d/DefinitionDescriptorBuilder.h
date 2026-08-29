@@ -36,7 +36,7 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
     if (definition.vertex_node_config.projection != ProjectionMode::OrthoViewport
      && definition.vertex_node_config.projection != ProjectionMode::ClipPassthrough)
     {
-        descriptor_builder_common::PushLocalToWorld(descriptors, DescriptorKind::SSBO, hgl::graph::kMeshFragment);
+        descriptor_builder_common::PushLocalToWorld(descriptors, hgl::graph::kMeshFragment);
         descriptor_builder_common::PushLocalToWorldIndexRows(descriptors, hgl::graph::kMeshFragment);
     }
 

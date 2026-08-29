@@ -9,7 +9,6 @@ namespace hgl::graph::mtl {}
 #include <hgl/mtl/GLSLCodeModule.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
 #include <hgl/graph/ssbo/TextureSlot.h>
-#include <hgl/mtl/DescriptorKind.h>
 #include <hgl/mtl/DescriptorSemantic.h>
 #include <hgl/mtl/ShaderSemanticRegistry.h>
 #include <hgl/mtl/ShaderStageBuildContext.h>
@@ -141,7 +140,6 @@ namespace hgl::graph::mtl
         DescriptorSemanticLayer semantic_layer =
             DescriptorSemanticLayer::Unknown;
         DescriptorSetType set_type = DescriptorSetType::Unknow;
-        DescriptorKind kind = DescriptorKind::UBO;
         TextureSlot texture_slot = TextureSlot::BaseColor;
         SSBOType ssbo_type = SSBOType::UserDefined;
         uint32 material_private_data_slot = 0;
@@ -160,7 +158,6 @@ namespace hgl::graph::mtl
             && lhs.semantic == rhs.semantic
             && lhs.semantic_layer == rhs.semantic_layer
             && lhs.set_type == rhs.set_type
-            && lhs.kind == rhs.kind
             && lhs.texture_slot == rhs.texture_slot
             && lhs.ssbo_type == rhs.ssbo_type
             && lhs.material_private_data_slot == rhs.material_private_data_slot

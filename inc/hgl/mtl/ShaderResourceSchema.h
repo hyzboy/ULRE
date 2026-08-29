@@ -17,7 +17,6 @@ namespace hgl::graph::mtl
         DescriptorSemantic semantic = DescriptorSemantic::Unknown;
         DescriptorSemanticLayer semantic_layer = DescriptorSemanticLayer::Unknown;
         DescriptorSetType set_type = DescriptorSetType::Unknow;
-        DescriptorKind kind = DescriptorKind::UBO;
         TextureSlot texture_slot = TextureSlot::BaseColor;
         uint32_t material_private_data_slot = DefaultMaterialPrivateDataSlot;
         SSBOType ssbo_type = SSBOType::UserDefined;
@@ -117,17 +116,6 @@ namespace hgl::graph::mtl
         }
     }
 
-    inline const char *GetDescriptorKindName(const DescriptorKind kind)
-    {
-        switch (kind)
-        {
-        case DescriptorKind::UBO: return "UBO";
-        case DescriptorKind::SSBO: return "SSBO";
-        }
-
-        return "Unknown";
-    }
-
     inline DescriptorSemanticLayer NormalizeSemanticLayer(const SerializedDescriptorEntry &entry)
     {
         if (entry.semantic_layer != DescriptorSemanticLayer::Unknown)
@@ -136,18 +124,6 @@ namespace hgl::graph::mtl
         const DescriptorSemanticLayer mapped = GetDescriptorSemanticLayer(entry.semantic);
         if (mapped != DescriptorSemanticLayer::Unknown)
             return mapped;
-
-        // Semantics that can legally map to either UBO/SSBO remain kind-driven.
-        if (entry.semantic == DescriptorSemantic::LocalToWorld
-         || entry.semantic == DescriptorSemantic::MaterialPrivateData)
-        {
-            switch (entry.kind)
-            {
-            case DescriptorKind::UBO: return DescriptorSemanticLayer::UBO;
-            case DescriptorKind::SSBO: return DescriptorSemanticLayer::SSBO;
-            default: return DescriptorSemanticLayer::Unknown;
-            }
-        }
 
         return DescriptorSemanticLayer::Unknown;
     }
@@ -210,7 +186,6 @@ namespace hgl::graph::mtl
             req.semantic = entry.semantic;
             req.semantic_layer = NormalizeSemanticLayer(entry);
             req.set_type = entry.set_type;
-            req.kind = entry.kind;
             req.texture_slot = entry.texture_slot;
             req.material_private_data_slot = entry.material_private_data_slot;
             req.ssbo_type = entry.ssbo_type;
@@ -295,7 +270,6 @@ namespace hgl::graph::mtl
                 h << req.semantic
                   << req.semantic_layer
                   << req.set_type
-                  << req.kind
                   << req.texture_slot
                   << req.material_private_data_slot
                   << req.ssbo_type;
@@ -315,8 +289,7 @@ namespace hgl::graph::mtl
             {
                 hgl::hash::FNV1aHasher64 h;
 
-                h << req.kind
-                  << req.ssbo_type;
+                h << req.ssbo_type;
 
                 req.resource_schema_id = h;
             }
@@ -341,7 +314,6 @@ namespace hgl::graph::mtl
               << req.semantic
               << req.semantic_layer
               << req.set_type
-              << req.kind
               << req.texture_slot
               << req.material_private_data_slot
               << req.ssbo_type
@@ -390,8 +362,6 @@ namespace hgl::graph::mtl
             message += GetDescriptorSemanticName(req.semantic);
             message += ", layer=";
             message += GetDescriptorSemanticLayerName(req.semantic_layer);
-            message += ", kind=";
-            message += GetDescriptorKindName(req.kind);
 
             message += ", name=";
             const char *entry_name = req.name.empty() ? "<unnamed>" : req.name.c_str();
@@ -449,18 +419,6 @@ namespace hgl::graph::mtl
                 diagnostics.push_back(std::move(message));
             }
 
-            const bool layer_kind_mismatch =
-                   (req.semantic_layer == DescriptorSemanticLayer::UBO && req.kind != DescriptorKind::UBO)
-                || (req.semantic_layer == DescriptorSemanticLayer::SSBO && req.kind != DescriptorKind::SSBO);
-
-            if (layer_kind_mismatch)
-            {
-                std::string message = "Descriptor semantic-kind mismatch: ";
-                message += context;
-                diagnostics.push_back(std::move(message));
-                continue;
-            }
-
             const bool requires_data_ssbo =
                 req.semantic == DescriptorSemantic::MaterialPrivateData
              || req.semantic == DescriptorSemantic::MaterialTextureLayerTable
@@ -512,7 +470,6 @@ namespace hgl::graph::mtl
                  && lhs.semantic == rhs.semantic
                  && lhs.semantic_layer == rhs.semantic_layer
                  && lhs.set_type == rhs.set_type
-                 && lhs.kind == rhs.kind
                  && lhs.texture_slot == rhs.texture_slot
                  && lhs.material_private_data_slot == rhs.material_private_data_slot
                  && lhs.ssbo_type == rhs.ssbo_type

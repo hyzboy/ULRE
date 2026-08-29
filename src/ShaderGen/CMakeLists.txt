@@ -65,7 +65,6 @@ SET(CANONICAL_SHADER_CONTRACT_FILES
     BindingTableBuilder.cpp
     common/CanonicalContractWriter.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderResourceSchema.h
-    ${SHADERGEN_INCLUDE_PATH}/DescriptorKind.h
     ${SHADERGEN_INCLUDE_PATH}/DescriptorSemantic.h
     ${SHADERGEN_INCLUDE_PATH}/SerializedDescriptorEntry.h
     ${SHADERGEN_INCLUDE_PATH}/SerializedVertexEntry.h)

@@ -101,8 +101,7 @@ namespace hgl::graph::mtl
               << entry.semantic
               << entry.texture_slot
               << entry.material_private_data_slot
-              << entry.ssbo_type
-              << entry.kind;
+              << entry.ssbo_type;
             return h != 0 ? h.Result() : 1;
         }
 
@@ -238,7 +237,6 @@ namespace hgl::graph::mtl
                 entry.semantic = req.semantic;
                 entry.semantic_layer = req.semantic_layer;
                 entry.set_type = req.set_type;
-                entry.kind = req.kind;
                 entry.texture_slot = req.texture_slot;
                 entry.ssbo_type = req.ssbo_type;
                 entry.material_private_data_slot = req.material_private_data_slot;

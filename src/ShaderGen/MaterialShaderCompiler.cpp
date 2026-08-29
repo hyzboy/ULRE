@@ -502,7 +502,6 @@ enum class RegisterOp : int
 struct DescriptorRegisterEntry
 {
     DescriptorSemantic semantic;
-    DescriptorKind kind;
     RegisterOp op;
     const ShaderBufferSource *sbs;   // AddSSBOStruct / AddSSBOVertex 使用
     const char *label;               // 诊断名
@@ -512,36 +511,36 @@ struct DescriptorRegisterEntry
 // PerObject 集固定 binding（kPerObjectBindingVertex*），走固定名路径。
 // Scene UBO（ViewportInfo/CameraInfo/SkyInfo/ColorPalette）已全局化（P1/P1-2a），
 // 不再进入 per-material 分配器（desc_manager/finalize/绑定均跳过 Scene）。
+// LocalToWorld 语义在渲染侧固定为 SSBO（PushLocalToWorld 唯一调用点传 SSBO），
+// 不再维护 UBO/SSBO 双映射。
 static const DescriptorRegisterEntry kDescriptorRegisterTable[] = {
     // ── UBO ──
-    { DescriptorSemantic::ViewportInfo,           DescriptorKind::UBO,  RegisterOp::None,              nullptr,                "Scene UBO" },
-    { DescriptorSemantic::CameraInfo,             DescriptorKind::UBO,  RegisterOp::None,              nullptr,                "Scene UBO" },
-    { DescriptorSemantic::SkyInfo,                DescriptorKind::UBO,  RegisterOp::None,              nullptr,                "Scene UBO" },
-    { DescriptorSemantic::MaterialColorPalette,   DescriptorKind::UBO,  RegisterOp::None,              nullptr,                "Scene UBO" },
-    { DescriptorSemantic::LocalToWorld,           DescriptorKind::UBO,  RegisterOp::SetLocalToWorld,   nullptr,                "LocalToWorld" },
+    { DescriptorSemantic::ViewportInfo,           RegisterOp::None,              nullptr,                "Scene UBO" },
+    { DescriptorSemantic::CameraInfo,             RegisterOp::None,              nullptr,                "Scene UBO" },
+    { DescriptorSemantic::SkyInfo,                RegisterOp::None,              nullptr,                "Scene UBO" },
+    { DescriptorSemantic::MaterialColorPalette,   RegisterOp::None,              nullptr,                "Scene UBO" },
     // ── SSBO ──
-    { DescriptorSemantic::LocalToWorld,             DescriptorKind::SSBO, RegisterOp::SetLocalToWorld,   nullptr,                    "LocalToWorld" },
-    { DescriptorSemantic::LocalToWorldIndex,        DescriptorKind::SSBO, RegisterOp::AddSSBOStruct,     &SBS_LocalToWorldIndex,     "LocalToWorldIndex" },
-    { DescriptorSemantic::MaterialTextureLayerTable,DescriptorKind::SSBO, RegisterOp::AddSSBOTextureLayer,nullptr,                   "MaterialTextureLayerRows" },
-    { DescriptorSemantic::MaterialPrivateDataIndex, DescriptorKind::SSBO, RegisterOp::AddSSBOMaterialPrivateDataIndex,   nullptr,    "MaterialPrivateDataIndex" },
-    { DescriptorSemantic::VertexPosition,           DescriptorKind::SSBO, RegisterOp::AddSSBOVertex,     &SBS_VertexPosition,        "VertexPosition" },
-    { DescriptorSemantic::VertexUV,                 DescriptorKind::SSBO, RegisterOp::AddSSBOVertex,     &SBS_VertexUV,              "VertexUV" },
-    { DescriptorSemantic::VertexNTB,                DescriptorKind::SSBO, RegisterOp::AddSSBOVertex,     &SBS_VertexNTB,             "VertexNTB" },
-    { DescriptorSemantic::VertexColor,              DescriptorKind::SSBO, RegisterOp::AddSSBOVertex,     &SBS_VertexColor,           "VertexColor" },
-    { DescriptorSemantic::VertexLuminance,          DescriptorKind::SSBO, RegisterOp::AddSSBOVertex,     &SBS_VertexLuminance,       "VertexLuminance" },
-    { DescriptorSemantic::VertexTransformID,        DescriptorKind::SSBO, RegisterOp::AddSSBOVertex,     &SBS_VertexTransformID,     "VertexTransformID" },
-    { DescriptorSemantic::VertexSize,               DescriptorKind::SSBO, RegisterOp::AddSSBOVertex,     &SBS_VertexSize,            "VertexSize" },
-    { DescriptorSemantic::MeshDrawParams,           DescriptorKind::SSBO, RegisterOp::AddSSBOVertex,     &SBS_MeshDrawParams,        "MeshDrawParams" },
-    { DescriptorSemantic::VertexIndex,              DescriptorKind::SSBO, RegisterOp::AddSSBOVertexIndex,nullptr,                    "VertexIndex" },
+    { DescriptorSemantic::LocalToWorld,             RegisterOp::SetLocalToWorld,   nullptr,                    "LocalToWorld" },
+    { DescriptorSemantic::LocalToWorldIndex,        RegisterOp::AddSSBOStruct,     &SBS_LocalToWorldIndex,     "LocalToWorldIndex" },
+    { DescriptorSemantic::MaterialTextureLayerTable,RegisterOp::AddSSBOTextureLayer,nullptr,                   "MaterialTextureLayerRows" },
+    { DescriptorSemantic::MaterialPrivateDataIndex, RegisterOp::AddSSBOMaterialPrivateDataIndex,   nullptr,    "MaterialPrivateDataIndex" },
+    { DescriptorSemantic::VertexPosition,           RegisterOp::AddSSBOVertex,     &SBS_VertexPosition,        "VertexPosition" },
+    { DescriptorSemantic::VertexUV,                 RegisterOp::AddSSBOVertex,     &SBS_VertexUV,              "VertexUV" },
+    { DescriptorSemantic::VertexNTB,                RegisterOp::AddSSBOVertex,     &SBS_VertexNTB,             "VertexNTB" },
+    { DescriptorSemantic::VertexColor,              RegisterOp::AddSSBOVertex,     &SBS_VertexColor,           "VertexColor" },
+    { DescriptorSemantic::VertexLuminance,          RegisterOp::AddSSBOVertex,     &SBS_VertexLuminance,       "VertexLuminance" },
+    { DescriptorSemantic::VertexTransformID,        RegisterOp::AddSSBOVertex,     &SBS_VertexTransformID,     "VertexTransformID" },
+    { DescriptorSemantic::VertexSize,               RegisterOp::AddSSBOVertex,     &SBS_VertexSize,            "VertexSize" },
+    { DescriptorSemantic::MeshDrawParams,           RegisterOp::AddSSBOVertex,     &SBS_MeshDrawParams,        "MeshDrawParams" },
+    { DescriptorSemantic::VertexIndex,              RegisterOp::AddSSBOVertexIndex,nullptr,                    "VertexIndex" },
 };
 
 static const DescriptorRegisterEntry *FindDescriptorRegisterEntry(
-    const DescriptorKind kind,
     const DescriptorSemantic semantic)
 {
     for (const DescriptorRegisterEntry &reg : kDescriptorRegisterTable)
     {
-        if (reg.kind == kind && reg.semantic == semantic)
+        if (reg.semantic == semantic)
             return &reg;
     }
     return nullptr;
@@ -559,16 +558,15 @@ static bool RegisterCanonicalDescriptors(
         const uint32_t stage_bits = entry.stage_flags;
 
         // MaterialPrivateData：MaterialSSBOBuilder 依据 material_private_data_slot_decls 注册，
-        // 此处只累加其 stage bits（UBO/SSBO 两分支同语义，先于 kind 判断统一处理）。
-        if ((entry.kind == DescriptorKind::UBO || entry.kind == DescriptorKind::SSBO)
-         && entry.semantic == DescriptorSemantic::MaterialPrivateData)
+        // 此处只累加其 stage bits（渲染侧固定为 SSBO 语义）。
+        if (entry.semantic == DescriptorSemantic::MaterialPrivateData)
         {
             io_material_ssbo_stage_bits = stage_bits;
             continue;
         }
 
         const DescriptorRegisterEntry *reg =
-            FindDescriptorRegisterEntry(entry.kind, entry.semantic);
+            FindDescriptorRegisterEntry(entry.semantic);
         if (!reg)
             continue;
 

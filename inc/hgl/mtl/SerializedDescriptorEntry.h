@@ -1,7 +1,6 @@
 #pragma once
 
 #include<hgl/CoreType.h>
-#include<hgl/mtl/DescriptorKind.h>
 #include<hgl/mtl/DescriptorSemantic.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/common/DescriptorSetTypeDef.h>
@@ -11,7 +10,6 @@ namespace hgl::graph::mtl
     struct SerializedDescriptorEntry
     {
         DescriptorSetType   set_type;
-        DescriptorKind      kind;
         uint32_t            stage_flags;
         const char *        name;
         const char *        struct_name;

@@ -350,7 +350,6 @@ namespace hgl::graph::mtl
             {
                 SerializedDescriptorEntry mesh_params{};
                 mesh_params.set_type = SBS_MeshDrawParams.set_type;
-                mesh_params.kind = DescriptorKind::SSBO;
                 mesh_params.stage_flags = VK_SHADER_STAGE_MESH_BIT_EXT;
                 mesh_params.name = SBS_MeshDrawParams.name;
                 mesh_params.struct_name = SBS_MeshDrawParams.struct_name;

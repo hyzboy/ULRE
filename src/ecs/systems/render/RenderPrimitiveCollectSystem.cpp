@@ -214,12 +214,13 @@ namespace hgl::ecs
                             MaterialPrivateData)
                     continue;
                 GLogWarning(
-                    "[MaterialBinding][Layout] index=%zu name=%s semantic=%s kind=%s required=%d allow_fallback=%d texture_slot=%u material_private_data_slot=%u type=%s(%u) ssbo_id=%u",
+                    "[MaterialBinding][Layout] index=%zu name=%s semantic=%s layer=%s required=%d allow_fallback=%d texture_slot=%u material_private_data_slot=%u type=%s(%u) ssbo_id=%u",
                     i,
                     requirement.name.empty() ? "<unnamed>" : requirement.name.c_str(),
                     graph::mtl::GetDescriptorSemanticName(
                         requirement.semantic),
-                    graph::mtl::GetDescriptorKindName(requirement.kind),
+                    graph::mtl::GetDescriptorSemanticLayerName(
+                        requirement.semantic_layer),
                     requirement.required ? 1 : 0,
                     requirement.allow_fallback ? 1 : 0,
                     static_cast<uint32_t>(requirement.texture_slot),

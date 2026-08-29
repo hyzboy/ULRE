@@ -250,7 +250,6 @@ namespace hgl::graph::mtl
              || entry.set_type == DescriptorSetType::Unknow
              || entry.set_type < DescriptorSetType::Scene
              || entry.set_type > DescriptorSetType::Bindless
-             || entry.kind > DescriptorKind::SSBO
              || entry.texture_slot < TextureSlot::BEGIN_RANGE
              || entry.texture_slot > TextureSlot::END_RANGE
              || entry.ssbo_type < SSBOType::BEGIN_RANGE
@@ -502,7 +501,6 @@ namespace hgl::graph::mtl
             writer.WriteU8(static_cast<uint8>(entry.semantic));
             writer.WriteU8(static_cast<uint8>(entry.semantic_layer));
             writer.WriteI32(static_cast<int32>(entry.set_type));
-            writer.WriteU8(static_cast<uint8>(entry.kind));
             writer.WriteU8(static_cast<uint8>(entry.texture_slot));
             writer.WriteU16(static_cast<uint16>(entry.ssbo_type));
             writer.WriteU32(entry.material_private_data_slot);

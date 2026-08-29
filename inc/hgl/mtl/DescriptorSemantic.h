@@ -2,7 +2,6 @@
 
 #include <hgl/type/EnumUtil.h>
 #include <hgl/CoreType.h>
-#include <hgl/mtl/DescriptorKind.h>
 
 namespace hgl::graph::mtl
 {
@@ -90,6 +89,17 @@ namespace hgl::graph::mtl
             case DescriptorSemantic::MaterialPrivateDataIndex:
 
             case DescriptorSemantic::MaterialTextureLayerTable:
+
+            // 顶点数据 SSBO（MeshShader 方向：顶点输入统一为 SSBO）
+            case DescriptorSemantic::VertexPosition:
+            case DescriptorSemantic::VertexUV:
+            case DescriptorSemantic::VertexNTB:
+            case DescriptorSemantic::VertexColor:
+            case DescriptorSemantic::VertexLuminance:
+            case DescriptorSemantic::VertexTransformID:
+            case DescriptorSemantic::VertexSize:
+            case DescriptorSemantic::VertexIndex:
+
                 return DescriptorSemanticLayer::SSBO;
 
             case DescriptorSemantic::MaterialColorPalette:
@@ -99,16 +109,4 @@ namespace hgl::graph::mtl
         return DescriptorSemanticLayer::Unknown;
     }
 
-
-    constexpr DescriptorSemanticLayer GetDescriptorSemanticLayerByKind(const DescriptorKind kind)
-    {
-        switch (kind)
-        {
-        case DescriptorKind::UBO: return DescriptorSemanticLayer::UBO;
-        case DescriptorKind::SSBO: return DescriptorSemanticLayer::SSBO;
-        default: return DescriptorSemanticLayer::Unknown;
-        }
-    }
-
 }
-

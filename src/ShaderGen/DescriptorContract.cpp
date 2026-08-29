@@ -32,7 +32,6 @@ namespace hgl::graph::mtl
             h << entry.semantic
               << entry.semantic_layer
               << entry.set_type
-              << entry.kind
               << entry.texture_slot
               << entry.material_private_data_slot
               << entry.ssbo_type;
@@ -48,8 +47,7 @@ namespace hgl::graph::mtl
                 return HashText(entry.glsl_type);
 
             hgl::hash::FNV1aHasher64 h;
-            h << entry.kind
-              << entry.ssbo_type;
+            h << entry.ssbo_type;
             return h;
         }
 
@@ -75,9 +73,8 @@ namespace hgl::graph::mtl
             entry.canonical.semantic_layer =
                 source.semantic_layer != DescriptorSemanticLayer::Unknown
                     ? source.semantic_layer
-                    : GetDescriptorSemanticLayerByKind(source.kind);
+                    : GetDescriptorSemanticLayer(source.semantic);
             entry.canonical.set_type = source.set_type;
-            entry.canonical.kind = source.kind;
             entry.canonical.texture_slot = source.texture_slot;
             entry.canonical.ssbo_type = source.ssbo_type;
             if (source.semantic
@@ -155,7 +152,6 @@ namespace hgl::graph::mtl
         {
             SerializedDescriptorEntry entry{};
             entry.set_type = SBS_MaterialPrivateDataIndexRows.set_type;  // P1-2c：Transform 集
-            entry.kind = DescriptorKind::SSBO;
             entry.stage_flags =
                 uint32(hgl::graph::kMeshFragment);
             entry.name = SBS_MaterialPrivateDataIndexRows.name;
@@ -215,7 +211,6 @@ namespace hgl::graph::mtl
             const MaterialPrivateDataSlotDeclaration &decl = (*material_private_data_slot_decls)[i];
             SerializedDescriptorEntry fixed{};
             fixed.set_type = DescriptorSetType::Material;
-            fixed.kind = DescriptorKind::SSBO;
             fixed.stage_flags = material_ssbo_stage_bits;
             fixed.name = decl.name.c_str();
             fixed.struct_name =
@@ -251,7 +246,6 @@ namespace hgl::graph::mtl
         {
             SerializedDescriptorEntry fixed{};
             fixed.set_type = entry.canonical.set_type;
-            fixed.kind = entry.canonical.kind;
             fixed.stage_flags = entry.canonical.stage_flags;
             fixed.name = entry.name.empty()
                 ? nullptr : entry.name.c_str();
@@ -305,19 +299,6 @@ namespace hgl::graph::mtl
             if (mapped != DescriptorSemanticLayer::Unknown)
                 return mapped;
 
-            if (can.semantic == DescriptorSemantic::LocalToWorld
-             || can.semantic == DescriptorSemantic::MaterialPrivateData)
-            {
-                switch (can.kind)
-                {
-                case DescriptorKind::UBO:
-                    return DescriptorSemanticLayer::UBO;
-                case DescriptorKind::SSBO:
-                    return DescriptorSemanticLayer::SSBO;
-                default:
-                    return DescriptorSemanticLayer::Unknown;
-                }
-            }
             return DescriptorSemanticLayer::Unknown;
         }
     }
@@ -345,7 +326,6 @@ namespace hgl::graph::mtl
             req.semantic = can.semantic;
             req.semantic_layer = NormalizeContractSemanticLayer(can);
             req.set_type = can.set_type;
-            req.kind = can.kind;
             req.texture_slot = can.texture_slot;
             req.material_private_data_slot = can.material_private_data_slot;
             req.ssbo_type = can.ssbo_type;
