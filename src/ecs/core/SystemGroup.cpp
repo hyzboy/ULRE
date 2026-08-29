@@ -1,4 +1,4 @@
-#include <hgl/ecs/core/SystemGroup.h>
+﻿#include <hgl/ecs/core/SystemGroup.h>
 #include <hgl/log/Log.h>
 #include <algorithm>
 

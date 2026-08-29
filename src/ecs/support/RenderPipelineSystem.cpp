@@ -1,4 +1,4 @@
-#include <hgl/ecs/support/RenderPipelineSystem.h>
+﻿#include <hgl/ecs/support/RenderPipelineSystem.h>
 #include <hgl/ecs/core/Context.h>
 
 namespace hgl::ecs
@@ -7,14 +7,14 @@ namespace hgl::ecs
     {
         if (!IsEnabled())
             return false;
-        
+
         if (!context)
             return false;
-        
+
         auto pipeline = GetPipeline(context);
         if (!pipeline)
             return false;
-        
+
         return true;
     }
 
@@ -25,7 +25,7 @@ namespace hgl::ecs
     {
         if (!ValidatePipeline(context))
             return;
-        
+
         auto pipeline = GetPipeline(context);
         OnCollect(pipeline);
     }
@@ -37,7 +37,7 @@ namespace hgl::ecs
     {
         if (!ValidatePipeline(context))
             return;
-        
+
         auto pipeline = GetPipeline(context);
         OnCull(pipeline);
     }
@@ -49,7 +49,7 @@ namespace hgl::ecs
     {
         if (!ValidatePipeline(context))
             return;
-        
+
         auto pipeline = GetPipeline(context);
         OnSort(pipeline);
     }
@@ -61,7 +61,7 @@ namespace hgl::ecs
     {
         if (!ValidatePipeline(context))
             return;
-        
+
         auto pipeline = GetPipeline(context);
         OnBuild(pipeline);
     }
@@ -73,7 +73,7 @@ namespace hgl::ecs
     {
         if (!ValidatePipeline(context))
             return;
-        
+
         auto pipeline = GetPipeline(context);
         OnSync(pipeline);
     }
@@ -85,7 +85,7 @@ namespace hgl::ecs
     {
         if (!ValidatePipeline(context))
             return;
-        
+
         auto pipeline = GetPipeline(context);
         OnRender(pipeline, cmd);
     }

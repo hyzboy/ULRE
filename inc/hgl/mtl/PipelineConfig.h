@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/vk/VK.h>
 #include <hgl/util/hash/FNV1a.h>

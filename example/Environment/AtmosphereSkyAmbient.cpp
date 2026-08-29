@@ -1,4 +1,4 @@
-// AtmosphereSkyAmbient — 同一个 sky light 算法双用途演示
+﻿// AtmosphereSkyAmbient — 同一个 sky light 算法双用途演示
 // ① 天空球向内显示（SkyMinimal——Position 方向即法线）
 // ② 低画质间接光 ambient：物体世界法线采样同一算法（EvalSkyAtmosphere）
 //    ——无 GI/IBL 探针时 sky ambient 参与 PBR 计算（indirect_sky_ambient）

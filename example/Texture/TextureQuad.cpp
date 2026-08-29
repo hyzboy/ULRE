@@ -1,4 +1,4 @@
-// 画一个带纹理的四边形 (ECS)
+﻿// 画一个带纹理的四边形 (ECS)
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/GeometryCreater.h>

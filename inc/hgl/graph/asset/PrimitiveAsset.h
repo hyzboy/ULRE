@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/graph/geo/VKGeometry.h>
 #include <hgl/mtl/MaterialRecipe.h>

@@ -1,4 +1,4 @@
-#include<hgl/ecs/components/MaterialComponent.h>
+﻿#include<hgl/ecs/components/MaterialComponent.h>
 #include<cstring>
 
 namespace hgl::ecs

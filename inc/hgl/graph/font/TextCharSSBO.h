@@ -1,4 +1,4 @@
-#ifndef HGL_GRAPH_FONT_TEXT_CHAR_SSBO_H
+﻿#ifndef HGL_GRAPH_FONT_TEXT_CHAR_SSBO_H
 #define HGL_GRAPH_FONT_TEXT_CHAR_SSBO_H
 
 #include <cstdint>

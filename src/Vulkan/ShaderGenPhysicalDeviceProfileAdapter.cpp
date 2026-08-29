@@ -1,4 +1,4 @@
-#include <hgl/mtl/contract/ShaderGenPhysicalDeviceProfileAdapter.h>
+﻿#include <hgl/mtl/contract/ShaderGenPhysicalDeviceProfileAdapter.h>
 
 #include <hgl/mtl/contract/ShaderGenProfileTargetVersion.h>
 #include <hgl/vk/VKPhysicalDevice.h>

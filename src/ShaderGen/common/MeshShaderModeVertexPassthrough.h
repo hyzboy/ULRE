@@ -1,4 +1,4 @@
-// MeshShaderModeVertexPassthrough.h — VertexPassthrough 模式 main() 体
+﻿// MeshShaderModeVertexPassthrough.h — VertexPassthrough 模式 main() 体
 //
 // 每线程 1 顶点：位置变换 + varying 赋值，直通到 mesh 顶点槽。
 //

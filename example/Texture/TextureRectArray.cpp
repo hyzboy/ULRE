@@ -1,4 +1,4 @@
-// 画一个带纹理的矩形，2D模式专用 (ECS)
+﻿// 画一个带纹理的矩形，2D模式专用 (ECS)
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>

@@ -1,4 +1,4 @@
-#include <hgl/ecs/support/text/TextSyncSystem.h>
+﻿#include <hgl/ecs/support/text/TextSyncSystem.h>
 #include <hgl/ecs/support/text/TextBuildSystem.h>
 #include <hgl/ecs/core/Context.h>
 

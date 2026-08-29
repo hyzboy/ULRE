@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/vk/VK.h>

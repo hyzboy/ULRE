@@ -1,4 +1,4 @@
-#include <hgl/mtl/MaterialBindingContract.h>
+﻿#include <hgl/mtl/MaterialBindingContract.h>
 #include <hgl/mtl/MaterialRecipe.h>
 
 #include "common/CanonicalContractWriter.h"

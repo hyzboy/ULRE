@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/mtl/VertexShaderNodeConfig.h>
 #include <hgl/mtl/PipelineConfig.h>

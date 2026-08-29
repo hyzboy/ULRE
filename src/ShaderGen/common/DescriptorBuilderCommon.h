@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/mtl/SerializedDescriptorEntry.h>
 #include <hgl/mtl/DescriptorResourceCatalog.h>

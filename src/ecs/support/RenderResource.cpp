@@ -1,4 +1,4 @@
-#include<hgl/ecs/support/RenderResource.h>
+﻿#include<hgl/ecs/support/RenderResource.h>
 #include<hgl/vk/VKTexture.h>
 
 namespace hgl::ecs

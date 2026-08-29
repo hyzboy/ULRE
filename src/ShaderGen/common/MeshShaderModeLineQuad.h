@@ -1,4 +1,4 @@
-// MeshShaderModeLineQuad.h — LineQuad 模式 main() 体
+﻿// MeshShaderModeLineQuad.h — LineQuad 模式 main() 体
 //
 // 每线程 1 线段 → 4 顶点 2 三角形（line-to-quad 展开）。
 

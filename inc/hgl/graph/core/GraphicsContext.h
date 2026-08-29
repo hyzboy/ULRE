@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 /**
  * GraphicsContext - 图形系统资源管理

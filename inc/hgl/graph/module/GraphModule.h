@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/vk/VK.h>
 #include<hgl/graph/GraphTypes.h>

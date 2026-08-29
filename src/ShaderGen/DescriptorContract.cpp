@@ -1,4 +1,4 @@
-#include <hgl/mtl/DescriptorContract.h>
+﻿#include <hgl/mtl/DescriptorContract.h>
 
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/mtl/ShaderResourceSchema.h>

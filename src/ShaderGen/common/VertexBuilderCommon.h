@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/mtl/SerializedVertexEntry.h>
 #include <hgl/common/RenderAssignDef.h>

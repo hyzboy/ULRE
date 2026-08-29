@@ -1,4 +1,4 @@
-// 该范例主要演示使用ECS架构绘制一个立方体，并通过ECS CameraSystem使用ViewModel模式
+﻿// 该范例主要演示使用ECS架构绘制一个立方体，并通过ECS CameraSystem使用ViewModel模式
 // This example demonstrates rendering a cube with ECS and driving the camera via ViewModel mode
 //
 // 本范例展示了：

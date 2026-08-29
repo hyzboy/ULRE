@@ -1,4 +1,4 @@
-// RayPicking (ECS Version)
+﻿// RayPicking (ECS Version)
 // 该范例主要演示使用ECS架构实现射线拾取功能
 // This example demonstrates ray picking using ECS architecture
 //

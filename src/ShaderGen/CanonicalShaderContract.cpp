@@ -1,4 +1,4 @@
-#include <hgl/mtl/CanonicalShaderContract.h>
+﻿#include <hgl/mtl/CanonicalShaderContract.h>
 
 #include "common/CanonicalContractWriter.h"
 
@@ -469,7 +469,7 @@ namespace hgl::graph::mtl
 
         CanonicalContractWriter writer(out_bytes);
         writer.WriteU32(ShaderInterfaceTag);
-        
+
         writer.WriteU32(static_cast<uint32>(geometry.GetCount()));
         for (int i = 0; i < geometry.GetCount(); ++i)
         {

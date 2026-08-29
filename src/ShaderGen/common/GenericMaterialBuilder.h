@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 /// GenericMaterialBuilder.h — phase-split generic material compilation.
 ///

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/vk/VKInstance.h>
 #include<hgl/vk/VKTexture.h>

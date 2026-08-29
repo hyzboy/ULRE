@@ -1,4 +1,4 @@
-#include <hgl/mtl/CompositorAssembler.h>
+﻿#include <hgl/mtl/CompositorAssembler.h>
 #include <hgl/log/Log.h>
 #include <fstream>
 #include <sstream>

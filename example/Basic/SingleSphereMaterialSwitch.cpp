@@ -1,4 +1,4 @@
-// NOTE (test-only):
+﻿// NOTE (test-only):
 // This sample exists only to validate runtime material switching behavior in isolation.
 // It is NOT the production path for material LOD.
 //

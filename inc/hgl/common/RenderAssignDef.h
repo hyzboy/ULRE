@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/common/RenderOptions.h>
 #include <hgl/common/VertexAttribDef.h>

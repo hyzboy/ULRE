@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/ecs/components/RenderableComponent.h>
 #include<hgl/ecs/support/PositionSourceSpec.h>

@@ -1,4 +1,4 @@
-#include <hgl/mtl/BindingTableBuilder.h>
+﻿#include <hgl/mtl/BindingTableBuilder.h>
 
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/ShaderResourceSchema.h>

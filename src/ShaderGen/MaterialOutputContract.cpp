@@ -1,4 +1,4 @@
-#include <hgl/mtl/MaterialOutputContract.h>
+﻿#include <hgl/mtl/MaterialOutputContract.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <cstring>
 

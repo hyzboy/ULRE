@@ -1,4 +1,4 @@
-#include<hgl/ecs/core/Entity.h>
+﻿#include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/log/Log.h>
 

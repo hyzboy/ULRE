@@ -1,4 +1,4 @@
-/// GenericMaterialBuilder.cpp — phase-split generic material compilation.
+﻿/// GenericMaterialBuilder.cpp — phase-split generic material compilation.
 ///
 /// This file is the behavior-preserving decomposition of the former
 /// BuildGenericMaterial function in MaterialDefinitionRegistry.cpp. Every
@@ -32,7 +32,7 @@
 
 namespace hgl::graph::mtl
 {
-    
+
     namespace
     {
         // 设备能力推导：group size ≤ min(max_mesh_work_group_size_x,

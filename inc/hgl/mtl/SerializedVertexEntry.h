@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 // SerializedVertexEntry —— 仅 ShaderGen 生成侧使用的顶点条目中间表示。
 // 运行时已不消费（顶点数据统一走 Vertex 集 SSBO，传统 VAB/VBO 路径已删除）；

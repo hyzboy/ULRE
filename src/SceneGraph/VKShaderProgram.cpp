@@ -1,4 +1,4 @@
-#include<hgl/vk/VKShaderProgram.h>
+﻿#include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/common/ShaderStageDef.h>

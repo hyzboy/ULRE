@@ -1,4 +1,4 @@
-#include<hgl/ecs/systems/tick/LineBoundsUpdateSystem.h>
+﻿#include<hgl/ecs/systems/tick/LineBoundsUpdateSystem.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/LinesComponent.h>
 #include<hgl/ecs/components/BoundingBoxComponent.h>

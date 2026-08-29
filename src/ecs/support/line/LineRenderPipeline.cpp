@@ -1,4 +1,4 @@
-#include <hgl/ecs/support/line/LineRenderPipeline.h>
+﻿#include <hgl/ecs/support/line/LineRenderPipeline.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/components/LinesComponent.h>
 #include <hgl/ecs/components/BoundingBoxComponent.h>
@@ -77,13 +77,13 @@ namespace hgl::ecs
         bool color_valid = va_color.IsValid();
         bool transform_valid = va_transform.IsValid();
         bool width_valid = va_width.IsValid();
-        
+
         LinePeriodicLog(s_line_log_ticks[0], "[LineRenderPipeline] Reset: pos_valid=%d color_valid=%d transform_valid=%d width_valid=%d",
                  pos_valid ? 1 : 0,
              color_valid ? 1 : 0,
              transform_valid ? 1 : 0,
              width_valid ? 1 : 0);
-        
+
         if (pos_valid)   va_pos.Seek(0);
         if (color_valid) va_color.Seek(0);
         if (transform_valid) va_transform.Seek(0);
@@ -220,7 +220,7 @@ namespace hgl::ecs
         bool color_valid = va_color.IsValid();
         bool transform_valid = va_transform.IsValid();
         bool width_valid = va_width.IsValid();
-        
+
         if (!pos_valid || !color_valid || !transform_valid || !width_valid)
         {
             GLogWarning("[LineRenderPipeline] AddSegment accessor invalid: pos=%d color=%d transform=%d width=%d",
@@ -414,7 +414,7 @@ namespace hgl::ecs
         SyncTransformBinding();
 
         initialized_ = true;
-        
+
         return true;
     }
 

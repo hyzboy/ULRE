@@ -1,4 +1,4 @@
-// MeshShaderAssembler.h — 通用 mesh shader 生成器（调度入口）
+﻿// MeshShaderAssembler.h — 通用 mesh shader 生成器（调度入口）
 //
 // 生成 GLSL 骨架，顶点输出走 mesh 图元：
 //   - 通用模式（默认）：每线程 1 顶点，直通到 gl_MeshVerticesEXT（模拟 VS 行为）

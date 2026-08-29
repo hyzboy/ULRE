@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/ecs/core/ShaderProgramPipelineKey.h>
 #include<hgl/ecs/support/PipelineMaterialRenderer.h>

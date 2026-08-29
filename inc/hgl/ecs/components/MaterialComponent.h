@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/ecs/core/Component.h>
 #include<hgl/mtl/ShaderResourceSchema.h>

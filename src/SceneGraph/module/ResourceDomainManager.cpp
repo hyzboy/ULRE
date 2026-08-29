@@ -1,4 +1,4 @@
-#include <hgl/graph/module/ResourceDomainManager.h>
+﻿#include <hgl/graph/module/ResourceDomainManager.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/vk/VKBuffer.h>

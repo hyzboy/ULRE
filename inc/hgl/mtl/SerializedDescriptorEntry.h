@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/CoreType.h>
 #include<hgl/mtl/DescriptorSemantic.h>

@@ -1,4 +1,4 @@
-#include <hgl/ecs/support/primitive/PrimitiveRenderSystem.h>
+﻿#include <hgl/ecs/support/primitive/PrimitiveRenderSystem.h>
 #include <hgl/ecs/support/primitive/PrimitiveRenderPipeline.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/MaterialBatch.h>

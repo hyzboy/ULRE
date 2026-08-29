@@ -1,4 +1,4 @@
-// MeshShaderVertexAdapter.h — 顶点索引适配层
+﻿// MeshShaderVertexAdapter.h — 顶点索引适配层
 //
 // mesh shader 无 gl_VertexIndex，提供 MeshVertexIndex 变量 + 宏、
 // VertexIndex SSBO、MeshDrawParams struct + SSBO 声明。

@@ -1,4 +1,4 @@
-#include <hgl/ecs/support/line/LineCollectSystem.h>
+﻿#include <hgl/ecs/support/line/LineCollectSystem.h>
 #include <hgl/ecs/support/line/LineRenderPipeline.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/log/Log.h>

@@ -1,4 +1,4 @@
-#include <hgl/mtl/MaterialCoverageContract.h>
+﻿#include <hgl/mtl/MaterialCoverageContract.h>
 
 #include <hgl/mtl/MaterialStageInterface.h>
 #include <hgl/util/hash/FNV1a.h>

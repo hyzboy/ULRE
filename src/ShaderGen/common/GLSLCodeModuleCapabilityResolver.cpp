@@ -1,4 +1,4 @@
-// GLSLCodeModuleCapabilityResolver.cpp — 能力解析系统（已删除）
+﻿// GLSLCodeModuleCapabilityResolver.cpp — 能力解析系统（已删除）
 //
 // 历史：生产路径从不执行的能力/需求匹配解析器（Resolve/BuildGeometryCapabilities/
 // MatchGeometryCapability/GetNumericClassFromVkFormat）已于 2026-08-28 整体删除——

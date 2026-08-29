@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/framework/WorkManager.h>
 #include <hgl/vk/VKRenderTarget.h>

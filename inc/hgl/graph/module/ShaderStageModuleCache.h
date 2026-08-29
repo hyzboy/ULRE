@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/common/ShaderStageDef.h>
 #include <hgl/mtl/ShaderStageKey.h>

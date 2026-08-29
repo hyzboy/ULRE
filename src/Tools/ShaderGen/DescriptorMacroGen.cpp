@@ -1,4 +1,4 @@
-/// DescriptorMacroGen — descriptor_macros.glsl 生成器
+﻿/// DescriptorMacroGen — descriptor_macros.glsl 生成器
 ///
 /// 唯一输入：inc/hgl/common/DescriptorSetTypeDef.h 的 kDescriptorBindingMacros 规范表
 ///（绑定号数值真源为同文件 SceneBinding/PerObjectBinding 枚举）。

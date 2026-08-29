@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 // ShaderCompilerAPI.h — 引擎公开的 GLSL 编译接口（封装 GLSLCompiler 插件 D:\GLSLCompiler.dll）
 //

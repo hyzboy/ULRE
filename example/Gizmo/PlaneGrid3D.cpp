@@ -1,4 +1,4 @@
-// PlaneGrid3D
+﻿// PlaneGrid3D
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>

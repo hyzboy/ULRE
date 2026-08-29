@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/math/VectorTypes.h>
 #include<glm/gtc/quaternion.hpp>

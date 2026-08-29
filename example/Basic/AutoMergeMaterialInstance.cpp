@@ -1,4 +1,4 @@
-// 该范例主要演示使用ECS架构，在一个材质下使用不同结构体行传递颜色参数绘制三角形
+﻿// 该范例主要演示使用ECS架构，在一个材质下使用不同结构体行传递颜色参数绘制三角形
 // 并依赖RenderCollector中的自动合并功能，让同一材质下所有不同颜色的对象一次渲染完成
 // This example demonstrates using different material rows under one material with ECS architecture
 //

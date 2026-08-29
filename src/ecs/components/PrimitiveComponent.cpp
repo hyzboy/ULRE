@@ -1,4 +1,4 @@
-#include<hgl/ecs/components/PrimitiveComponent.h>
+﻿#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/RenderResource.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>

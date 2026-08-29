@@ -1,4 +1,4 @@
-#include <hgl/vk/VKBindlessTextureManager.h>
+﻿#include <hgl/vk/VKBindlessTextureManager.h>
 #include <hgl/vk/VKTexture.h>
 #include <hgl/vk/VKSampler.h>
 #include <hgl/log/Log.h>

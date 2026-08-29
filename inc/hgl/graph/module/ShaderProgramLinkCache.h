@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/mtl/ShaderProgramKey.h>
 #include <hgl/type/String.h>

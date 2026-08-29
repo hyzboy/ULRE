@@ -1,4 +1,4 @@
-#include <hgl/graph/geo/AttributeCompatibility.h>
+﻿#include <hgl/graph/geo/AttributeCompatibility.h>
 #include <vector>
 
 namespace hgl::graph

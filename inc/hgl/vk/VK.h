@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/type/ValueArray.h>
 #include<hgl/type/UnorderedMap.h>

@@ -1,4 +1,4 @@
-#include <hgl/mtl/ResolvedModuleGraphBuilder.h>
+﻿#include <hgl/mtl/ResolvedModuleGraphBuilder.h>
 
 #include <hgl/mtl/GLSLCodeModuleMetadata.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>

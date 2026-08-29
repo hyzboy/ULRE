@@ -1,4 +1,4 @@
-// ExtrudedPolygonTest.cpp
+﻿// ExtrudedPolygonTest.cpp
 // 测试2D多边形挤压为3D多边形功能
 
 #include<hgl/framework/WorkManager.h>

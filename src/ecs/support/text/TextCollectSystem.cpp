@@ -1,4 +1,4 @@
-#include <hgl/ecs/support/text/TextCollectSystem.h>
+﻿#include <hgl/ecs/support/text/TextCollectSystem.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
 

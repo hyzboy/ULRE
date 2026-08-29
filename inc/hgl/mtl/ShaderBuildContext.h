@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/mtl/DescriptorSetLayoutAllocator.h>
 #include<hgl/mtl/ShaderResourceSchema.h>

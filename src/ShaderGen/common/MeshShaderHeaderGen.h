@@ -1,4 +1,4 @@
-// MeshShaderHeaderGen.h — GLSL mesh shader 头部生成
+﻿// MeshShaderHeaderGen.h — GLSL mesh shader 头部生成
 //
 // 生成 #version、extension、layout、UBO/SSBO 条件包含、
 // ColorPalette UBO、gl_InstanceIndex 宏。

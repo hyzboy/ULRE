@@ -1,4 +1,4 @@
-// NOTE (test-only):
+﻿// NOTE (test-only):
 // This sample validates the MaterialRecipe authoring entry on PrimitiveComponent.
 // It is NOT the final production authoring/runtime pipeline.
 //

@@ -1,4 +1,4 @@
-#include<hgl/mtl/ShaderBuildContext.h>
+﻿#include<hgl/mtl/ShaderBuildContext.h>
 #include<hgl/mtl/ShaderCreateInfo.h>
 #include<hgl/mtl/contract/ShaderGenContract.h>
 #include<hgl/graph/ShaderBufferSources.h>

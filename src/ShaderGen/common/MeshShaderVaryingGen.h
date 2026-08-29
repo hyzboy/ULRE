@@ -1,4 +1,4 @@
-// MeshShaderVaryingGen.h — Varying 声明生成
+﻿// MeshShaderVaryingGen.h — Varying 声明生成
 //
 // 按语义生成 mesh shader per-vertex 数组型 varying 声明。
 

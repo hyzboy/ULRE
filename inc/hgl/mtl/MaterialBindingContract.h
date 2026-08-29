@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/CoreType.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
@@ -19,7 +19,7 @@ namespace hgl::graph::mtl
 
 namespace hgl::graph::mtl
 {
-    
+
     constexpr uint32 InvalidMaterialRecipeBindingIndex = ~uint32(0);
 
     enum class BindingSource : uint8

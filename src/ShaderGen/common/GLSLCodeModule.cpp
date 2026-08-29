@@ -1,4 +1,4 @@
-#include <hgl/mtl/GLSLCodeModule.h>
+﻿#include <hgl/mtl/GLSLCodeModule.h>
 
 #include <hgl/type/StrChar.h>
 

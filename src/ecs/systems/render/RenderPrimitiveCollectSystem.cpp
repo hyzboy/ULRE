@@ -1,4 +1,4 @@
-#include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
+﻿#include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/support/RenderResource.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
