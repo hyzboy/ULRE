@@ -9,15 +9,7 @@ namespace hgl::graph::mtl
     // SSBO 类型枚举：用于在 Recipe/Spec 中以稳定整数传递“结构体数据落在哪类缓冲”。
     enum class SSBOType : uint16_t
     {
-        TextureLayer = 0,
-        MaterialPrivateDataIndexTable,
-        PBRSurface,
-        EmissiveSurface,
-        TextureRectArraySurface,
-        TransmissionSurface,
-        TransformIndexRows,
-        LocalToWorld,
-        UserDefined,
+        MeshDrawParams=0,
         // 顶点数据 SSBO（MeshShader 方向：顶点输入统一为 SSBO）
         VertexPosition,
         VertexUV,
@@ -27,9 +19,21 @@ namespace hgl::graph::mtl
         VertexTransformID,
         VertexSize,
         VertexIndex,
-        MeshDrawParams,
 
-        ENUM_CLASS_RANGE(TextureLayer, MeshDrawParams)
+        TransformIndexRows,
+        LocalToWorld,
+
+        UserDefined,
+        MaterialPrivateDataIndexTable,
+
+        TextureLayer,
+
+        PBRSurface,
+        EmissiveSurface,
+        TextureRectArraySurface,
+        TransmissionSurface,
+
+        ENUM_CLASS_RANGE(MeshDrawParams,TransmissionSurface)
     };
 
     using SSBOCategory = SSBOType;
@@ -58,6 +62,7 @@ namespace hgl::graph::mtl
     {
         switch (type)
         {
+        case SSBOType::MeshDrawParams: return "MeshDrawParams";
         case SSBOType::TextureLayer: return "TextureLayer";
         case SSBOType::MaterialPrivateDataIndexTable: return "MaterialPrivateDataIndexTable";
         case SSBOType::PBRSurface: return "PBRSurface";
