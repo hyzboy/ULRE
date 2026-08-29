@@ -160,7 +160,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::CameraInfo: return SBS_CameraInfo.name;
         case DescriptorSemantic::SkyInfo: return SBS_SkyInfo.name;
         case DescriptorSemantic::LocalToWorld: return SBS_LocalToWorld.name;
-        case DescriptorSemantic::LocalToWorldIndex: return SBS_LocalToWorldIndexRows.name;
+        case DescriptorSemantic::LocalToWorldIndex: return SBS_LocalToWorldIndex.name;
         case DescriptorSemantic::MaterialPrivateData: return DefaultMaterialPrivateDataSlotName;
         case DescriptorSemantic::MaterialColorPalette: return SBS_ColorPalette.name;
         case DescriptorSemantic::MaterialTextureLayerTable: return SBS_MaterialTextureLayerRows.name;
@@ -183,7 +183,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::CameraInfo: return SBS_CameraInfo.struct_name;
         case DescriptorSemantic::SkyInfo: return SBS_SkyInfo.struct_name;
         case DescriptorSemantic::LocalToWorld: return SBS_LocalToWorld.struct_name;
-        case DescriptorSemantic::LocalToWorldIndex: return SBS_LocalToWorldIndexRows.struct_name;
+        case DescriptorSemantic::LocalToWorldIndex: return SBS_LocalToWorldIndex.struct_name;
         case DescriptorSemantic::MaterialPrivateData: return nullptr;
         case DescriptorSemantic::MaterialColorPalette: return SBS_ColorPalette.struct_name;
         case DescriptorSemantic::MaterialTextureLayerTable: return SBS_MaterialTextureLayerRows.struct_name;

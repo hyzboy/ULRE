@@ -77,7 +77,7 @@ namespace hgl::graph::mtl
         // 可能只有 Position（pure_color fallback 等），缺失的属性用 fallback：
         //   palette 颜色（S1_PALETTE_INDEX_GLSL）→ sbo_vertex_color R8 解码
         //   TransformID（S1_TRANSFORM_ID_GLSL）→ 直读 + l2w.mats[transform_id]；
-        //     否则 Standard 路径 l2w_index_rows 查表（ResolveTransformID(gl_InstanceIndex)）
+        //     否则 Standard 路径 l2w_index 查表（ResolveTransformID(gl_InstanceIndex)）
         //   Size/宽度（S1_SIZE_GLSL）→ sbo_vertex_size（width/min_width 在下方统一线宽段定义）
         ms += "#ifdef S1_PALETTE_INDEX_GLSL\n";
         ms += "    const uint color_index = (sbo_vertex_color.data[v0 >> 2u] >> ((v0 & 3u) * 8u)) & 0xFFu;\n";

@@ -8,11 +8,11 @@ namespace hgl::graph::mtl
     constexpr const ShaderBufferSource SBS_LocalToWorld{
         DescriptorSetType::PerObject, "l2w", "LocalToWorldData"
     };
-    constexpr const ShaderBufferSource SBS_LocalToWorldIndexRows{
-        DescriptorSetType::PerObject, "l2w_index_rows", "LocalToWorldIndexRows"
+    constexpr const ShaderBufferSource SBS_LocalToWorldIndex{
+        DescriptorSetType::PerObject, "l2w_index", "LocalToWorldIndex"
     };
     constexpr const ShaderBufferSource SBS_MaterialTextureLayerRows{
-        DescriptorSetType::Material, "mtl_texture_layer_rows", "TextureLayerRows"
+        DescriptorSetType::Material,  "mtl_texture_layer_rows", "TextureLayerRows"
     };
     constexpr const ShaderBufferSource SBS_MaterialPrivateDataIndexRows{
         DescriptorSetType::PerObject, "mtl_private_data_index", "MaterialPrivateDataIndex"

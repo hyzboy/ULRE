@@ -21,7 +21,7 @@ namespace hgl::graph::mtl
         bool emit_frag_direction   = false;  // out vec3 fragDirection (= normalize(Position)), sky dome
         // Palette-color materials: GetL2W reads the TransformID vertex attribute
         // directly (l2w.mats[TransformID]) instead of resolving gl_InstanceIndex
-        // through the l2w_index_rows table.
+        // through the l2w_index table.
         bool use_transform_id_attr = false;
         // Vertex color sourced from a MaterialColorPalette UBO instead of a Color
         // vertex attribute: fragVertexColor = color_palette.color[ColorIndex].

@@ -202,9 +202,9 @@ namespace hgl::ecs
 
                     if (owner_batch)
                     {
-                        if (owner_batch->l2w_index_rows_buffer)
-                            mp->BindSSBO("l2w_index_rows",
-                                         owner_batch->l2w_index_rows_buffer->GetGPUBuffer());
+                        if (owner_batch->l2w_index_buffer)
+                            mp->BindSSBO("l2w_index",
+                                         owner_batch->l2w_index_buffer->GetGPUBuffer());
 
                         if (owner_batch->material_data_index_rows_buffer)
                             mp->BindSSBO("mtl_private_data_index",
@@ -251,7 +251,7 @@ namespace hgl::ecs
             if (material_is_mesh)
             {
                 // 实例化：Y 轴 = 实例轴（gl_WorkGroupID.y = 实例内序号，
-                // + first_instance 后与 l2w_index_rows 行号对齐）
+                // + first_instance 后与 l2w_index 索引号对齐）
                 // total_vertices：索引几何 = index_count（每索引 1 顶点查表），非索引 = vertex_count
                 const bool is_lines = material->GetPrimitiveType() == hgl::graph::PrimitiveType::Lines;
                 const uint32_t total_vertices = batch->geom_draw_range->index_count > 0

@@ -521,9 +521,9 @@ static const DescriptorRegisterEntry kDescriptorRegisterTable[] = {
     { DescriptorSemantic::LocalToWorld,           DescriptorKind::UBO,  RegisterOp::SetLocalToWorld,   nullptr,                "LocalToWorld" },
     // ── SSBO ──
     { DescriptorSemantic::LocalToWorld,             DescriptorKind::SSBO, RegisterOp::SetLocalToWorld,   nullptr,                    "LocalToWorld" },
-    { DescriptorSemantic::LocalToWorldIndex,   DescriptorKind::SSBO, RegisterOp::AddSSBOStruct,     &SBS_LocalToWorldIndexRows,  "LocalToWorldIndexRows" },
-    { DescriptorSemantic::MaterialTextureLayerTable,DescriptorKind::SSBO, RegisterOp::AddSSBOTextureLayer,nullptr,                    "MaterialTextureLayerRows" },
-    { DescriptorSemantic::MaterialPrivateDataIndex,   DescriptorKind::SSBO, RegisterOp::AddSSBOMaterialPrivateDataIndex,   nullptr,                    "MaterialPrivateDataIndex" },
+    { DescriptorSemantic::LocalToWorldIndex,        DescriptorKind::SSBO, RegisterOp::AddSSBOStruct,     &SBS_LocalToWorldIndex,     "LocalToWorldIndex" },
+    { DescriptorSemantic::MaterialTextureLayerTable,DescriptorKind::SSBO, RegisterOp::AddSSBOTextureLayer,nullptr,                   "MaterialTextureLayerRows" },
+    { DescriptorSemantic::MaterialPrivateDataIndex, DescriptorKind::SSBO, RegisterOp::AddSSBOMaterialPrivateDataIndex,   nullptr,    "MaterialPrivateDataIndex" },
     { DescriptorSemantic::VertexPosition,           DescriptorKind::SSBO, RegisterOp::AddSSBOVertex,     &SBS_VertexPosition,        "VertexPosition" },
     { DescriptorSemantic::VertexUV,                 DescriptorKind::SSBO, RegisterOp::AddSSBOVertex,     &SBS_VertexUV,              "VertexUV" },
     { DescriptorSemantic::VertexNTB,                DescriptorKind::SSBO, RegisterOp::AddSSBOVertex,     &SBS_VertexNTB,             "VertexNTB" },
@@ -609,7 +609,7 @@ static bool RegisterCanonicalDescriptors(
             if (!ctx->AddStruct(SBS_MaterialPrivateDataIndexRows.struct_name, ""))
                 return c.Fail(std::string("failed to add ") + reg->label + " struct");
             // P1-2c：MaterialPrivateDataIndexRows 迁至 PerObject 集，binding 由固定常量表
-            // kPerObjectBinding* 确定（走固定名路径，与 l2w_index_rows 同构）。
+            // kPerObjectBinding* 确定（走固定名路径，与 l2w_index 同构）。
             if (!ctx->AddSSBOMaterialPrivateDataIndex(stage_bits))
                 return c.Fail(std::string("failed to add ") + reg->label + " SSBO");
             break;
@@ -727,7 +727,7 @@ static void EnsureIndexTableSSBOs(
 // 值一致（PER_OBJECT_SET=1=SBS set）；改 SBS 布局时需同步
 // descriptor_macros.glsl 的默认值。
 //
-// 行表绑定（material_private_data_index_rows / mtl_texture_layer_rows / l2w_index_rows）不再
+// 行表绑定（material_private_data_index_rows / mtl_texture_layer_rows / l2w_index）不再
 // 注入 set/binding 宏：声明由 index table 生成逻辑依据 descriptor_info 直接以
 // layout(set=.., binding=..) 写出（统一声明生成，不再写死在 .glsl）。
 struct BindingDefineSpec
@@ -905,9 +905,9 @@ static std::string BuildCompileDefineMacros(
 }
 
 // ── Step 5d: Instance index table SSBO GLSL 声明 ─────────────────────────────
-// material_private_data_index_rows / mtl_texture_layer_rows / l2w_index_rows 的 buffer
+// material_private_data_index_rows / mtl_texture_layer_rows / l2w_index 的 buffer
 // 声明与 Resolve 函数不再写死在 instance_rows_ssbo.glsl 中，统一依据
-// descriptor_info 生成注入：VS 阶段提供 l2w_index_rows / material_private_data_index_rows
+// descriptor_info 生成注入：VS 阶段提供 l2w_index / material_private_data_index_rows
 //（含 ResolveTransformID / ResolveMaterialPrivateDataIndex），FS 阶段提供
 // mtl_texture_layer_rows（named-slot TextureLayerRowsData，见下方注入）。
 struct IndexTableSpec
@@ -919,7 +919,7 @@ struct IndexTableSpec
 };
 
 static const IndexTableSpec kVSIndexTableSpecs[] = {
-    { SBS_LocalToWorldIndexRows.name, "LocalToWorldIndexRows", "l2w_index_rows",     "ResolveTransformID" },
+    { SBS_LocalToWorldIndex.name, "LocalToWorldIndex", "l2w_index",     "ResolveTransformID" },
     { SBS_MaterialPrivateDataIndexRows.name, "MaterialPrivateDataIndex", "mtl_private_data_index", "ResolveMaterialPrivateDataIndex" },
 };
 

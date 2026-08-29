@@ -775,9 +775,9 @@ namespace hgl::ecs
                 const graph::IGPUBuffer *table_buffer = nullptr;
 
                 // Prefer the per-batch buffer written in draw order by PrimitiveBatchPipeline.
-                if (batch && batch->l2w_index_rows_buffer)
+                if (batch && batch->l2w_index_buffer)
                 {
-                    const auto *candidate = batch->l2w_index_rows_buffer->GetGPUBuffer();
+                    const auto *candidate = batch->l2w_index_buffer->GetGPUBuffer();
                     const uint32_t element_count = static_cast<uint32_t>(batch->items.size());
                     if (validate_runtime_ssbo_stride("LocalToWorldIndex",
                                                      graph::mtl::SSBOType::LocalToWorldIndex,
@@ -793,7 +793,7 @@ namespace hgl::ecs
                 // 解析同源（同一 TAB 实例）——删除，fallback 收敛为
                 // per-batch 行表 → TransformSystem 直接解析 → domain 缓存 3 级
 
-                // Pipeline-only materials (no MaterialBatch) still need l2w_index_rows.
+                // Pipeline-only materials (no MaterialBatch) still need l2w_index.
                 // Resolve from TransformSystem directly before falling back to domain cache.
                 if (!table_buffer && context)
                 {
