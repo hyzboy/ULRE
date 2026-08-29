@@ -24,8 +24,8 @@ namespace hgl::ecs
         constexpr uint32_t kIdentityL2WSlot = 0;
         constexpr uint32_t kFirstObjectL2WSlot = 1;
         constexpr graph::mtl::SSBOAddress kTransformIndexRowsAddress{
-            graph::mtl::SSBOType::TransformIndexRows,
-            graph::mtl::ECSReservedSSBOId::TransformIndexRows,
+            graph::mtl::SSBOType::LocalToWorldIndex,
+            graph::mtl::ECSReservedSSBOId::LocalToWorldIndex,
             0};
         constexpr graph::mtl::SSBOAddress kLocalToWorldAddress{
             graph::mtl::SSBOType::LocalToWorld,
@@ -653,7 +653,7 @@ namespace hgl::ecs
 
         if (!transform_index_rows_buffer && buffer_manager)
         {
-            transform_index_rows_buffer = buffer_manager->CreateSSBO("ECS:TransformIndexRows",
+            transform_index_rows_buffer = buffer_manager->CreateSSBO("ECS:LocalToWorldIndex",
                                                                      sizeof(uint32_t) * transform_index_rows_max_count,
                                                                      nullptr,
                                                                      graph::SharingMode::Exclusive);
@@ -666,7 +666,7 @@ namespace hgl::ecs
                                                          transform_index_rows_buffer,
                                                          transform_index_rows_max_count))
             {
-                GLogError("[R11] Failed to register TransformIndexRows domain buffer: capacity=%u bytes=%llu",
+                GLogError("[R11] Failed to register LocalToWorldIndex domain buffer: capacity=%u bytes=%llu",
                           transform_index_rows_max_count,
                           static_cast<unsigned long long>(transform_index_rows_buffer->GetSize()));
 
@@ -684,7 +684,7 @@ namespace hgl::ecs
         if (recreated && transform_index_rows_buffer)
         {
             auto *gpu = transform_index_rows_buffer->GetGPUBuffer();
-            GLogInfo("[TransformAssignmentBuffer] TransformIndexRows buffer ready: required=%u capacity=%u bytes=%llu gpu=0x%llX",
+            GLogInfo("[TransformAssignmentBuffer] LocalToWorldIndex buffer ready: required=%u capacity=%u bytes=%llu gpu=0x%llX",
                      required_count,
                      transform_index_rows_max_count,
                      static_cast<unsigned long long>(gpu ? gpu->GetSize() : 0ULL),

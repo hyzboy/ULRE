@@ -23,7 +23,7 @@ namespace hgl::graph::mtl
         SkyInfo,
 
         LocalToWorld,
-        LocalToWorldIndexTable,
+        LocalToWorldIndex,
         MaterialPrivateData,      // per-instance SSBO slot (one entry per material_private_data_slot_decls[i])
         MaterialColorPalette,
 
@@ -78,7 +78,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::MaterialSampler:
             return DescriptorSemanticLayer::Sampler;
 
-        case DescriptorSemantic::LocalToWorldIndexTable:
+        case DescriptorSemantic::LocalToWorldIndex:
         case DescriptorSemantic::MaterialTextureLayerTable:
         case DescriptorSemantic::MaterialPrivateDataIndex:
         case DescriptorSemantic::MeshDrawParams:

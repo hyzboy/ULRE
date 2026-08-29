@@ -140,7 +140,7 @@ inline void PushLocalToWorld(std::vector<SerializedDescriptorEntry> &v, const De
 inline void PushLocalToWorldIndexRows(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
     PushBySpec(v, DescriptorSetType::PerObject, DescriptorKind::SSBO,
-               "l2w_index_rows", "LocalToWorldIndexRows", DescriptorSemantic::LocalToWorldIndexTable,
+               "l2w_index_rows", "LocalToWorldIndexRows", DescriptorSemantic::LocalToWorldIndex,
                SSBOType::UserDefined, stage_flags);
 }
 

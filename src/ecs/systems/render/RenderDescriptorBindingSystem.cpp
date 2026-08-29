@@ -770,7 +770,7 @@ namespace hgl::ecs
                 }
                 break;
             }
-            case graph::mtl::DescriptorSemantic::LocalToWorldIndexTable:
+            case graph::mtl::DescriptorSemantic::LocalToWorldIndex:
             {
                 const graph::IGPUBuffer *table_buffer = nullptr;
 
@@ -779,8 +779,8 @@ namespace hgl::ecs
                 {
                     const auto *candidate = batch->l2w_index_rows_buffer->GetGPUBuffer();
                     const uint32_t element_count = static_cast<uint32_t>(batch->items.size());
-                    if (validate_runtime_ssbo_stride("LocalToWorldIndexTable",
-                                                     graph::mtl::SSBOType::TransformIndexRows,
+                    if (validate_runtime_ssbo_stride("LocalToWorldIndex",
+                                                     graph::mtl::SSBOType::LocalToWorldIndex,
                                                      candidate,
                                                      element_count,
                                                      sizeof(uint32_t)))
@@ -814,16 +814,16 @@ namespace hgl::ecs
                 {
                     table_buffer = resolve_domain_ssbo(
                         graph::mtl::SSBOAddress{
-                            graph::mtl::SSBOType::TransformIndexRows,
-                            graph::mtl::ECSReservedSSBOId::TransformIndexRows,
+                            graph::mtl::SSBOType::LocalToWorldIndex,
+                            graph::mtl::ECSReservedSSBOId::LocalToWorldIndex,
                             0},
-                        "LocalToWorldIndexTable");
+                        "LocalToWorldIndex");
                 }
 
                 if (table_buffer)
                 {
                     if (!bind_ssbo(material, batch, req, table_buffer))
-                        log_bind_failure(material, batch, req, "bind LocalToWorldIndexTable failed");
+                        log_bind_failure(material, batch, req, "bind LocalToWorldIndex failed");
                 }
                 break;
             }
@@ -1102,7 +1102,7 @@ namespace hgl::ecs
             return env_manager && env_manager->GetSkyUBO(graph::kEnvProfileDefault);
         }
         case graph::mtl::DescriptorSemantic::LocalToWorld:
-        case graph::mtl::DescriptorSemantic::LocalToWorldIndexTable:
+        case graph::mtl::DescriptorSemantic::LocalToWorldIndex:
         case graph::mtl::DescriptorSemantic::MaterialColorPalette:
         case graph::mtl::DescriptorSemantic::MaterialPrivateData:
         case graph::mtl::DescriptorSemantic::MaterialTexture:

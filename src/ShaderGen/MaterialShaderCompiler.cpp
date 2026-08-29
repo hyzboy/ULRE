@@ -223,7 +223,7 @@ static bool ValidateDefinitionCapabilitySubset(
             break;
 
         case DescriptorSemantic::LocalToWorld:
-        case DescriptorSemantic::LocalToWorldIndexTable:
+        case DescriptorSemantic::LocalToWorldIndex:
             allowed = definition.vertex_node_config.projection != ProjectionMode::OrthoViewport
                    && definition.vertex_node_config.projection != ProjectionMode::ClipPassthrough;
             break;
@@ -522,7 +522,7 @@ static const DescriptorRegisterEntry kDescriptorRegisterTable[] = {
     { DescriptorSemantic::LocalToWorld,           DescriptorKind::UBO,  RegisterOp::SetLocalToWorld,   nullptr,                "LocalToWorld" },
     // ── SSBO ──
     { DescriptorSemantic::LocalToWorld,             DescriptorKind::SSBO, RegisterOp::SetLocalToWorld,   nullptr,                    "LocalToWorld" },
-    { DescriptorSemantic::LocalToWorldIndexTable,   DescriptorKind::SSBO, RegisterOp::AddSSBOStruct,     &SBS_LocalToWorldIndexRows,  "LocalToWorldIndexRows" },
+    { DescriptorSemantic::LocalToWorldIndex,   DescriptorKind::SSBO, RegisterOp::AddSSBOStruct,     &SBS_LocalToWorldIndexRows,  "LocalToWorldIndexRows" },
     { DescriptorSemantic::MaterialTextureLayerTable,DescriptorKind::SSBO, RegisterOp::AddSSBOTextureLayer,nullptr,                    "MaterialTextureLayerRows" },
     { DescriptorSemantic::MaterialPrivateDataIndex,   DescriptorKind::SSBO, RegisterOp::AddSSBOMaterialPrivateDataIndex,   nullptr,                    "MaterialPrivateDataIndex" },
     { DescriptorSemantic::VertexPosition,           DescriptorKind::SSBO, RegisterOp::AddSSBOVertex,     &SBS_VertexPosition,        "VertexPosition" },

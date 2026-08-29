@@ -92,8 +92,8 @@ namespace hgl::graph::mtl
                 entry.canonical.ssbo_type =
                     SSBOType::MaterialPrivateDataIndex;
             else if (source.semantic
-                    == DescriptorSemantic::LocalToWorldIndexTable)
-                entry.canonical.ssbo_type = SSBOType::TransformIndexRows;
+                    == DescriptorSemantic::LocalToWorldIndex)
+                entry.canonical.ssbo_type = SSBOType::LocalToWorldIndex;
             entry.canonical.material_private_data_slot = source.material_private_data_slot;
             entry.canonical.stage_flags = source.stage_flags;
             entry.canonical.array_count = 1;

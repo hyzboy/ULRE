@@ -20,8 +20,8 @@ namespace hgl::graph::mtl
         VertexSize,
         VertexIndex,
 
-        TransformIndexRows,
         LocalToWorld,
+        LocalToWorldIndex,
 
         UserDefined,
         MaterialPrivateDataIndex,
@@ -69,7 +69,7 @@ namespace hgl::graph::mtl
         case SSBOType::EmissiveSurface: return "EmissiveSurface";
         case SSBOType::TextureRectArraySurface: return "TextureRectArraySurface";
         case SSBOType::TransmissionSurface: return "TransmissionSurface";
-        case SSBOType::TransformIndexRows: return "TransformIndexRows";
+        case SSBOType::LocalToWorldIndex: return "LocalToWorldIndex";
         case SSBOType::LocalToWorld: return "LocalToWorld";
         case SSBOType::UserDefined: return "UserDefined";
         case SSBOType::VertexPosition: return "VertexPosition";
@@ -90,7 +90,7 @@ namespace hgl::graph::mtl
         {
         case SSBOType::TextureLayer:
         case SSBOType::MaterialPrivateDataIndex:
-        case SSBOType::TransformIndexRows:
+        case SSBOType::LocalToWorldIndex:
         case SSBOType::LocalToWorld:
         case SSBOType::PBRSurface:
         case SSBOType::EmissiveSurface:
@@ -120,7 +120,7 @@ namespace hgl::graph::mtl
             return sizeof(uint32_t) * 4;                // uvec4 id
         case SSBOType::TransmissionSurface:
             return sizeof(uint32_t);                     // packed uint payload
-        case SSBOType::TransformIndexRows:
+        case SSBOType::LocalToWorldIndex:
             return sizeof(uint32_t);
         case SSBOType::LocalToWorld:
             return sizeof(float) * 16;
@@ -156,7 +156,7 @@ namespace hgl::graph::mtl
 
     namespace ECSReservedSSBOId
     {
-        constexpr uint32_t TransformIndexRows   = MakeECSSSBOId(1);
+        constexpr uint32_t LocalToWorldIndex   = MakeECSSSBOId(1);
         constexpr uint32_t LocalToWorldData     = MakeECSSSBOId(2);
     }
 

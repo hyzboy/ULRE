@@ -101,7 +101,7 @@ namespace hgl::graph::mtl
             return DescriptorSetType::Scene;
 
         case DescriptorSemantic::LocalToWorld:
-        case DescriptorSemantic::LocalToWorldIndexTable:
+        case DescriptorSemantic::LocalToWorldIndex:
         case DescriptorSemantic::MaterialPrivateDataIndex:  // P1-2c：实例→材质行索引表迁至 PerObject 集
         case DescriptorSemantic::MeshDrawParams:          // mesh per-draw 参数表（PerObject 固定 binding）
             return DescriptorSetType::PerObject;
@@ -160,7 +160,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::CameraInfo: return SBS_CameraInfo.name;
         case DescriptorSemantic::SkyInfo: return SBS_SkyInfo.name;
         case DescriptorSemantic::LocalToWorld: return SBS_LocalToWorld.name;
-        case DescriptorSemantic::LocalToWorldIndexTable: return SBS_LocalToWorldIndexRows.name;
+        case DescriptorSemantic::LocalToWorldIndex: return SBS_LocalToWorldIndexRows.name;
         case DescriptorSemantic::MaterialPrivateData: return DefaultMaterialPrivateDataSlotName;
         case DescriptorSemantic::MaterialColorPalette: return SBS_ColorPalette.name;
         case DescriptorSemantic::MaterialTextureLayerTable: return SBS_MaterialTextureLayerRows.name;
@@ -183,7 +183,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::CameraInfo: return SBS_CameraInfo.struct_name;
         case DescriptorSemantic::SkyInfo: return SBS_SkyInfo.struct_name;
         case DescriptorSemantic::LocalToWorld: return SBS_LocalToWorld.struct_name;
-        case DescriptorSemantic::LocalToWorldIndexTable: return SBS_LocalToWorldIndexRows.struct_name;
+        case DescriptorSemantic::LocalToWorldIndex: return SBS_LocalToWorldIndexRows.struct_name;
         case DescriptorSemantic::MaterialPrivateData: return nullptr;
         case DescriptorSemantic::MaterialColorPalette: return SBS_ColorPalette.struct_name;
         case DescriptorSemantic::MaterialTextureLayerTable: return SBS_MaterialTextureLayerRows.struct_name;
@@ -276,10 +276,10 @@ namespace hgl::graph::mtl
                 req.ssbo_id = MakeRecipeSSBOId(req.material_private_data_slot);
             }
 
-            if (req.semantic == DescriptorSemantic::LocalToWorldIndexTable
+            if (req.semantic == DescriptorSemantic::LocalToWorldIndex
              && req.ssbo_type == SSBOType::UserDefined)
             {
-                req.ssbo_type = SSBOType::TransformIndexRows;
+                req.ssbo_type = SSBOType::LocalToWorldIndex;
             }
 
             if (!req.name.empty())
@@ -367,7 +367,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::CameraInfo:       return "CameraInfo";
         case DescriptorSemantic::SkyInfo:          return "SkyInfo";
         case DescriptorSemantic::LocalToWorld:     return "LocalToWorld";
-        case DescriptorSemantic::LocalToWorldIndexTable: return "LocalToWorldIndexTable";
+        case DescriptorSemantic::LocalToWorldIndex: return "LocalToWorldIndex";
         case DescriptorSemantic::MaterialColorPalette: return "MaterialColorPalette";
         case DescriptorSemantic::MaterialPrivateData: return "mtl_private_data";
         case DescriptorSemantic::MaterialTexture:  return "MaterialTexture";
