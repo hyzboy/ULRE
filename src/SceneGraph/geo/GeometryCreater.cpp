@@ -223,20 +223,15 @@ Geometry *CreateGeometry(VulkanDevice *device, const GeometryVertexFormat &geome
 
     if(index_count>0)
     {
-        if(it==IndexType::AUTO)
-        {
-            index_type = device->ChooseIndexType(vertex_count);
+        // 索引 buffer 统一使用 U32：mesh shader 的 SSBO 顶点取索按 uint[]（4 字节
+        // 步长）读取 sbo_vertex_index（MeshShaderModeVertexPassthrough），U16/U8
+        // buffer 会被错读出乱值索引；引擎已无 vkCmdDrawIndexed 路径，U32 化无副作用。
+        it=IndexType::U32;
 
-            if(!IsIndexType(index_type))
-                return nullptr;
-        }
-        else
-        {
-            if(!device->CheckIndexType(it, vertex_count))
-                return nullptr;
+        if(!device->CheckIndexType(it, vertex_count))
+            return nullptr;
 
-            index_type = it;
-        }
+        index_type = it;
     }
 
 // 创建 GeometryData（使用 device 分配私有缓冲）

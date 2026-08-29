@@ -244,6 +244,27 @@ public: //索引缓冲区
             template<typename T>
             bool            WriteIBO(const T *data){return WriteIBO(data,index_number);}
 
+            /**
+             * 写入 U16 索引：扩展为 U32 后写入。
+             * 索引 buffer 统一 U32（mesh shader 的 sbo_vertex_index 按 uint[]
+             * 4 字节步长读取），U16 索引直接写入会被错读出乱值。
+             */
+            bool            WriteIBO(const uint16_t *data)
+            {
+                if(!data)return(false);
+                if(index_number==0)return(true);
+
+                uint32_t *expanded=new uint32_t[index_number];
+
+                for(uint32_t i=0;i<index_number;i++)
+                    expanded[i]=uint32_t(data[i]);
+
+                const bool result=WriteIBO(expanded,index_number);
+
+                delete[] expanded;
+                return(result);
+            }
+
 public: //创建可渲染对象
 
             Geometry *     Create();                                                                                       ///<创建一个可渲染对象，并清除创建器数据
