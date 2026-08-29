@@ -1,0 +1,208 @@
+/// DescriptorMacroGen — descriptor_macros.glsl 生成器
+///
+/// 唯一输入：inc/hgl/common/DescriptorSetTypeDef.h 的 kDescriptorBindingMacros 规范表
+///（绑定号数值真源为同文件 SceneBinding/PerObjectBinding 枚举）。
+///
+/// 用法：
+///   DescriptorMacroGen --emit            向 stdout 输出完整 descriptor_macros.glsl（CRLF）
+///   DescriptorMacroGen --verify <path>   生成内容与指定文件比对（忽略行尾差异）
+///
+/// ShaderLibrary/common/descriptor_macros.glsl 是生成物，禁止手改；
+/// 绑定号/宏变更入口在 DescriptorSetTypeDef.h，改后运行本工具重新生成。
+/// --verify 已接入 ctest（VerifyDescriptorMacros），漂移会在构建期暴露。
+///
+/// 参见：ShaderGen_Descriptor_ABI_Unification_Plan.md Phase 2
+
+#include <hgl/common/DescriptorSetTypeDef.h>
+
+#include <cstdio>
+#include <cstring>
+#include <string>
+#include <io.h>
+#include <fcntl.h>
+
+namespace
+{
+    using hgl::graph::DescriptorMacroKind;
+    using hgl::graph::kDescriptorBindingMacros;
+
+    // 文件头（@ulre 元数据块为 GLSLCodeModuleRegistry 解析所必需，原样保留）
+    constexpr const char *FILE_PREAMBLE =
+        "// @ulre begin\n"
+        "// @ulre name descriptor_macros\n"
+        "// @ulre kind Utility\n"
+        "// @ulre priority 0\n"
+        "// @ulre end\n"
+        "// descriptor_macros.glsl — 标准描述符集/绑定宏定义\n"
+        "//\n"
+        "// 默认值对应 3D 标准布局（Scene=0, PerObject=1, Material=2, Bindless=3）。\n"
+        "// 2D 生成器或自定义材质可在 #include 之前 #define 覆盖默认值。\n"
+        "//\n"
+        "// 固定布局：set 间按 Scene(0) < PerObject(1) < Material(2) < Bindless(3)。\n"
+        "// 行表 SSBO 声明（mtl_private_data_index / mtl_texture_layer_rows / l2w_index_rows）\n"
+        "// 不在此定义默认值：由 CompileCompositorMaterial 依据 descriptor_info 统一生成并\n"
+        "// 注入（buffer 声明 + Resolve 函数，不再写死在 .glsl）。\n"
+        "// 材质实例 mtl SSBO 的 struct/buffer 声明同样由 CompileCompositorMaterial 统一生成并注入。\n"
+        "\n"
+        "#ifndef DESCRIPTOR_MACROS_GLSL\n"
+        "#define DESCRIPTOR_MACROS_GLSL\n";
+
+    constexpr const char *FILE_EPILOGUE = "\n#endif // DESCRIPTOR_MACROS_GLSL\n";
+
+    // 以 '\n' 行尾生成全部内容
+    std::string GenerateGLSL()
+    {
+        std::string out(FILE_PREAMBLE);
+
+        for (const auto &spec : kDescriptorBindingMacros)
+        {
+            if (spec.blank_before)
+                out += '\n';
+
+            if (spec.comment)
+            {
+                out += spec.comment;
+                out += '\n';
+
+                if (spec.blank_after_comment)
+                    out += '\n';
+            }
+
+            out += "#ifndef ";
+            out += spec.name;
+            out += "\n#define ";
+            out += spec.name;
+            out += ' ';
+
+            switch (spec.kind)
+            {
+            case DescriptorMacroKind::SetIndex:
+                out += std::to_string(int(spec.set_type));
+                break;
+
+            case DescriptorMacroKind::SetAlias:
+                out += spec.alias_target;
+                break;
+
+            case DescriptorMacroKind::Binding:
+                out += std::to_string(spec.binding);
+                break;
+            }
+
+            out += "\n#endif\n";
+        }
+
+        out += FILE_EPILOGUE;
+        return out;
+    }
+
+    std::string ToCRLF(const std::string &src)
+    {
+        std::string out;
+        out.reserve(src.size() + src.size() / 8);
+
+        for (const char c : src)
+        {
+            if (c == '\n')
+                out += "\r\n";
+            else
+                out += c;
+        }
+
+        return out;
+    }
+
+    // 忽略行尾差异（\r\n 与 \n 等价），使校验不受 git 检出行尾策略影响
+    std::string NormalizeEOL(const std::string &src)
+    {
+        std::string out;
+        out.reserve(src.size());
+
+        for (size_t i = 0; i < src.size(); ++i)
+        {
+            if (src[i] == '\r')
+                continue;
+            out += src[i];
+        }
+
+        return out;
+    }
+
+    bool ReadTextFile(const char *filename, std::string &out)
+    {
+        FILE *fp = std::fopen(filename, "rb");
+        if (!fp)
+            return false;
+
+        char buf[4096];
+        size_t n;
+        while ((n = std::fread(buf, 1, sizeof(buf), fp)) > 0)
+            out.append(buf, n);
+
+        std::fclose(fp);
+        return true;
+    }
+
+    int Verify(const char *filename)
+    {
+        std::string disk;
+        if (!ReadTextFile(filename, disk))
+        {
+            std::fprintf(stderr, "[DescriptorMacroGen] cannot read file: %s\n", filename);
+            return 2;
+        }
+
+        const std::string generated = NormalizeEOL(GenerateGLSL());
+        const std::string on_disk   = NormalizeEOL(disk);
+
+        if (generated == on_disk)
+        {
+            std::printf("[DescriptorMacroGen] verify OK: %s\n", filename);
+            return 0;
+        }
+
+        size_t line = 1, pos = 0;
+        while (pos < generated.size() && pos < on_disk.size()
+            && generated[pos] == on_disk[pos])
+        {
+            if (generated[pos] == '\n')
+                ++line;
+            ++pos;
+        }
+
+        std::fprintf(stderr,
+            "[DescriptorMacroGen] MISMATCH: %s line %zu\n"
+            "  generated: %.96s\n"
+            "  on disk  : %.96s\n"
+            "\n"
+            "descriptor_macros.glsl 是生成物，禁止手改。\n"
+            "如需变更：修改 inc/hgl/common/DescriptorSetTypeDef.h 的枚举/规范表，\n"
+            "再运行 DescriptorMacroGen --emit 重新生成。\n",
+            filename, line,
+            generated.c_str() + pos,
+            on_disk.c_str() + pos);
+        return 1;
+    }
+}//namespace
+
+int main(int argc, char **argv)
+{
+    if (argc >= 2 && std::strcmp(argv[1], "--emit") == 0)
+    {
+        // 文本模式会把 "\r\n" 再翻译成 "\r\r\n"，必须切二进制输出
+        _setmode(_fileno(stdout), _O_BINARY);
+
+        const std::string crlf = ToCRLF(GenerateGLSL());
+        std::fwrite(crlf.data(), 1, crlf.size(), stdout);
+        return 0;
+    }
+
+    if (argc >= 3 && std::strcmp(argv[1], "--verify") == 0)
+        return Verify(argv[2]);
+
+    std::fprintf(stderr,
+        "usage:\n"
+        "  DescriptorMacroGen --emit            输出 descriptor_macros.glsl 到 stdout\n"
+        "  DescriptorMacroGen --verify <path>   校验文件与规范表一致\n");
+    return 3;
+}

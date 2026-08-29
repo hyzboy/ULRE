@@ -30,6 +30,29 @@ CreateProject(VulkanPhysicalDeviceProfileCollector)
 
 ####################################################################################################
 
+# descriptor_macros.glsl 生成器（真源：inc/hgl/common/DescriptorSetTypeDef.h）
+add_executable(DescriptorMacroGen
+    DescriptorMacroGen.cpp)
+
+target_link_libraries(DescriptorMacroGen
+    PRIVATE ULRE.ShaderGen
+            CMCore
+            CMCoreType)
+
+CreateProject(DescriptorMacroGen)
+
+if(BUILD_TESTING)
+    add_test(
+        NAME VerifyDescriptorMacros
+        COMMAND DescriptorMacroGen --verify ${CMAKE_SOURCE_DIR}/ShaderLibrary/common/descriptor_macros.glsl)
+
+    set_tests_properties(
+        VerifyDescriptorMacros
+        PROPERTIES LABELS "shadergen;baseline")
+endif()
+
+####################################################################################################
+
 add_executable(ShaderResourceSchemaRegressionGate
     ShaderResourceSchemaRegressionGate.cpp)
 

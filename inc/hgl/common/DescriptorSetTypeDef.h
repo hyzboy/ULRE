@@ -126,6 +126,9 @@ namespace hgl::graph
     ///
     /// 宏名与 Binding 枚举名不做机械推导（历史拼写不规则：TRANSFORMID/CHARINFO），
     /// 一律在此表显式给出；修改绑定号只改枚举，宏文本只改本表，再重新生成 .glsl。
+    ///
+    /// blank_before/blank_after_comment 用于逐字节复刻现行手写文件的空行布局
+    ///（该文件文本经模块系统拼入 FinalGLSL 参与内容哈希，格式必须稳定）。
     struct DescriptorBindingMacroSpec
     {
         DescriptorMacroKind kind;
@@ -134,27 +137,29 @@ namespace hgl::graph
         const char *alias_target;      ///< 仅 SetAlias：目标集合宏名（如 "PER_OBJECT_SET"）；其余 nullptr
         int binding;                   ///< 仅 Binding：绑定号（取自 Binding 枚举）；其余 -1
         const char *comment;           ///< 输出在该宏之前的注释（可含 '\n' 表多行，行内自带 "//"；nullptr 表示无）
+        bool blank_before        = true;  ///< 本条目之前输出一个空行（连续绑定宏块为 false）
+        bool blank_after_comment = false; ///< 注释之后再输出一个空行（区块标题历史格式，仅 3 处）
     };
 
     /// 与 descriptor_macros.glsl 一一对应（该 .glsl 为 DescriptorMacroGen 生成物）。
     constexpr const DescriptorBindingMacroSpec kDescriptorBindingMacros[]=
     {
         {DescriptorMacroKind::SetIndex,DescriptorSetType::Scene,    "SCENE_SET",                 nullptr,                                   -1,
-            "// ── Descriptor Set 索引 ──"},
+            "// ── Descriptor Set 索引 ──",                            true, true},
         {DescriptorMacroKind::SetIndex,DescriptorSetType::PerObject,"PER_OBJECT_SET",            nullptr,                                   -1, nullptr},
         {DescriptorMacroKind::SetIndex,DescriptorSetType::Material, "MATERIAL_SET",              nullptr,                                   -1, nullptr},
 
         {DescriptorMacroKind::SetAlias,DescriptorSetType::PerObject,"L2W_SET",                   "PER_OBJECT_SET",                          -1,
-            "// ── PerObject set ──"},
+            "// ── PerObject set ──",                                  true, true},
         {DescriptorMacroKind::SetAlias,DescriptorSetType::PerObject,"VERTEX_SET",                "PER_OBJECT_SET",                          -1,
             "// ── 顶点数据 SSBO（MeshShader 方向：顶点输入统一为 SSBO）──\n// s1_position_vec3 / s1_uv / s1_ntb / s1_joint 模块使用"},
         {DescriptorMacroKind::SetAlias,DescriptorSetType::PerObject,"MESH_DRAW_PARAMS_SET",      "PER_OBJECT_SET",                          -1,
             "// mesh per-draw 参数表（IndirectMeshDraw）"},
 
-        {DescriptorMacroKind::Binding, DescriptorSetType::PerObject,"VERTEX_POSITION_BINDING",   nullptr,   int(PerObjectBinding::VertexPosition),     nullptr},
-        {DescriptorMacroKind::Binding, DescriptorSetType::PerObject,"VERTEX_UV_BINDING",         nullptr,   int(PerObjectBinding::VertexUV),           nullptr},
-        {DescriptorMacroKind::Binding, DescriptorSetType::PerObject,"VERTEX_NTB_BINDING",        nullptr,   int(PerObjectBinding::VertexNTB),          nullptr},
-        {DescriptorMacroKind::Binding, DescriptorSetType::PerObject,"VERTEX_INDEX_BINDING",      nullptr,   int(PerObjectBinding::VertexIndex),        nullptr},
+        {DescriptorMacroKind::Binding, DescriptorSetType::PerObject,"VERTEX_POSITION_BINDING",   nullptr,   int(PerObjectBinding::VertexPosition),     nullptr, false},
+        {DescriptorMacroKind::Binding, DescriptorSetType::PerObject,"VERTEX_UV_BINDING",         nullptr,   int(PerObjectBinding::VertexUV),           nullptr, false},
+        {DescriptorMacroKind::Binding, DescriptorSetType::PerObject,"VERTEX_NTB_BINDING",        nullptr,   int(PerObjectBinding::VertexNTB),          nullptr, false},
+        {DescriptorMacroKind::Binding, DescriptorSetType::PerObject,"VERTEX_INDEX_BINDING",      nullptr,   int(PerObjectBinding::VertexIndex),        nullptr, false},
         {DescriptorMacroKind::Binding, DescriptorSetType::PerObject,"VERTEX_COLOR_BINDING",      nullptr,   int(PerObjectBinding::VertexColor),        nullptr},
         {DescriptorMacroKind::Binding, DescriptorSetType::PerObject,"VERTEX_LUMINANCE_BINDING",  nullptr,   int(PerObjectBinding::VertexLuminance),    nullptr},
         {DescriptorMacroKind::Binding, DescriptorSetType::PerObject,"VERTEX_TRANSFORMID_BINDING",nullptr,   int(PerObjectBinding::VertexTransformID),  nullptr},
@@ -170,7 +175,7 @@ namespace hgl::graph
         {DescriptorMacroKind::Binding, DescriptorSetType::PerObject,"L2W_BINDING",               nullptr,   int(PerObjectBinding::L2W),                nullptr},
 
         {DescriptorMacroKind::Binding, DescriptorSetType::Scene,    "CAMERA_BINDING",            nullptr,   int(SceneBinding::Camera),
-            "// ── Scene set ──"},
+            "// ── Scene set ──",                                      true, true},
         {DescriptorMacroKind::Binding, DescriptorSetType::Scene,    "SKY_BINDING",               nullptr,   int(SceneBinding::Sky),                    nullptr},
         {DescriptorMacroKind::Binding, DescriptorSetType::Scene,    "VIEWPORT_BINDING",          nullptr,   int(SceneBinding::Viewport),               nullptr},
         {DescriptorMacroKind::Binding, DescriptorSetType::Scene,    "COLOR_PALETTE_BINDING",     nullptr,   int(SceneBinding::ColorPalette),           nullptr},
