@@ -75,19 +75,7 @@ namespace hgl::ecs
         // 直接绘制路径：参数表按本 draw 行 offset 视图重绑（gl_DrawID=0 → rows[0]
         // 恰为本行）。run 起点的 switch 绑定已覆盖单 draw run——offset 缓存跳过。
         if (!cur_owner_batch || !cur_owner_batch->mesh_draw_params_buffer || !batch)
-        {
-            static bool s_dbg_params_skip = false;
-            if (!s_dbg_params_skip)
-            {
-                s_dbg_params_skip = true;
-                std::fprintf(stderr,
-                    "[DBG-PARAMS] BindMeshDrawParamsView skip: owner=%p params_buf=%p batch=%p\n",
-                    (void *)cur_owner_batch,
-                    cur_owner_batch ? (void *)cur_owner_batch->mesh_draw_params_buffer : nullptr,
-                    (void *)batch);
-            }
             return;
-        }
 
         auto *mp = batch->per_object_mp;
         if (!mp)
@@ -365,11 +353,6 @@ namespace hgl::ecs
                 {
                     scene_set->BindToCmd(*cmd_buf, layout);
                 }
-                else
-                {
-                    std::fprintf(stderr, "[DBG-SET03] scene_set invalid: %p valid=%d\n",
-                                 (void *)scene_set, scene_set ? (int)scene_set->IsValid() : -1);
-                }
 
                 if (auto *bindless_mgr = gc->GetBindlessTextureManager();
                     bindless_mgr && bindless_mgr->IsValid())
@@ -378,20 +361,7 @@ namespace hgl::ecs
                                             layout,
                                             static_cast<uint32_t>(graph::DescriptorSetType::Bindless));
                 }
-                else
-                {
-                    std::fprintf(stderr, "[DBG-SET03] bindless_mgr invalid: %p valid=%d\n",
-                                 (void *)bindless_mgr, bindless_mgr ? (int)bindless_mgr->IsValid() : -1);
-                }
             }
-            else
-            {
-                std::fprintf(stderr, "[DBG-SET03] graphics context null\n");
-            }
-        }
-        else
-        {
-            std::fprintf(stderr, "[DBG-SET03] render_context NULL — set 0/3 not bound\n");
         }
 
         // 重置渲染状态缓存（每批次 ICB 命令从 0 开始）
