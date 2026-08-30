@@ -95,6 +95,8 @@ SET(MESH_SHADER_FILES    common/MeshShaderAssembler.h
                         common/MeshShaderModeCharQuad.h
                         common/MeshShaderModeLineQuad.h
                         common/MeshShaderModeVertexPassthrough.h
+                        common/MeshShaderTemplate.h
+                        common/MeshShaderTemplate.cpp
                         common/MeshShaderVaryingGen.h
                         common/MeshShaderVertexAdapter.h
                         common/VertexVaryingConfig.h
