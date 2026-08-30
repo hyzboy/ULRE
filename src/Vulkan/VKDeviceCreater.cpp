@@ -409,10 +409,10 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
     if(graphics_family==ERROR_FAMILY_INDEX)
         return(nullptr);
 
-    // 管线物化路径：仅 Monolithic（GPL 路径已整体删除——激活实测在混合材质上
-    // 存在渲染正确性问题且无法用 RenderDoc 调试，详见 2026-08-29 提交记录与
-    // ShaderGen_Descriptor_ABI_Unification_Plan.md 相关评估。后续替代方向为
-    // extended_dynamic_state 全动态最小管线，再远期为 VK_EXT_shader_object）。
+    // 管线物化路径：仅单 pipeline（GPL 已整体删除——激活实测在混合材质上存在
+    // 渲染正确性问题且无法用 RenderDoc 调试，详见 2026-08-29 提交记录）。
+    // 现状：pipeline 只保留 shader 部分，全部渲染状态走 EDS 1/2/3 动态设置
+    //（vkCmdSet* 渲染侧应用材质配置）；远期可迁 VK_EXT_shader_object。
     SetDeviceExtension(&ext_list,physical_device,require);
     SetDeviceFeatures(&features,physical_device->GetFeatures10(),require);
 

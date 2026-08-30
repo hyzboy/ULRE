@@ -9,10 +9,7 @@
 
 namespace hgl::graph{
 
-class GeometryVertexFormat;
-
 using VkFormatList=ValueArray<VkFormat>;
-
 /**
  * RenderPass功能封装<br>
  * RenderPass在创建时，需要指定输入的color imageview与depth imageview象素格式，
