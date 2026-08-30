@@ -3,17 +3,6 @@
 
 namespace hgl::graph
 {
-    Pipeline* RenderContext::CreatePipeline(ShaderProgram* material,
-                                            const PipelineData* pd)
-    {
-        if (!current_render_target)
-            return nullptr;
-
-        RenderPass* rp = current_render_target->GetRenderPass();
-        return rp ? rp->CreatePipeline(material, pd) : nullptr;
-    }
-
-
     void RenderContext::SetCurrentRenderTarget(IRenderTarget* rt)
     {
         current_render_target = rt;

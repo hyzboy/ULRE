@@ -282,8 +282,6 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
              mesh_shader_features.meshShader,
              mesh_shader_features.meshShaderQueries);
 
-    dynamic_state=CheckExtensionSupport(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME);
-
     physical_device_profile = mtl::contract::BuildPhysicalDeviceProfileFromVulkanPhyDevice(*this);
 
 }

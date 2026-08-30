@@ -200,6 +200,47 @@ void RenderCmdBuffer::EndRenderingPresent(IRenderTarget *rt)
                              color_count,barriers);
 }
 
+void RenderCmdBuffer::ApplyPipelineState(const mtl::MaterialPipelineConfig &config)
+{
+    // EDS 1/2/3 动态状态应用（与 Resolver 的 pDynamicState 列表一一对应）：
+    // pipeline 只保留 shader 部分，材质渲染状态全部在渲染侧设置。
+
+    vkCmdSetCullModeEXT(cmd_buf, static_cast<VkCullModeFlags>(config.cull_mode));
+
+    vkCmdSetDepthTestEnableEXT(cmd_buf, config.depth_test ? VK_TRUE : VK_FALSE);
+    vkCmdSetDepthWriteEnableEXT(cmd_buf, config.depth_write ? VK_TRUE : VK_FALSE);
+    vkCmdSetDepthCompareOpEXT(cmd_buf, config.depth_compare_op);
+
+    // 颜色混合：attachment 0（alpha 通道 src=ONE/dst=ZERO——RGB 通道混合、alpha 通道直通，
+    // 与旧 pipeline 烘焙路径的 SetAlphaBlend 一致）
+    const VkBool32 blend_enable = config.alpha_blend ? VK_TRUE : VK_FALSE;
+
+    vkCmdSetColorBlendEnableEXT(cmd_buf, 0u, 1u, &blend_enable);
+
+    VkColorBlendEquationEXT blend_equation{};
+    blend_equation.srcColorBlendFactor = config.blend_src;
+    blend_equation.dstColorBlendFactor = config.blend_dst;
+    blend_equation.colorBlendOp = VK_BLEND_OP_ADD;
+    blend_equation.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    blend_equation.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    blend_equation.alphaBlendOp = VK_BLEND_OP_ADD;
+    vkCmdSetColorBlendEquationEXT(cmd_buf, 0u, 1u, &blend_equation);
+
+    const VkColorComponentFlags write_mask =
+        VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+        | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    vkCmdSetColorWriteMaskEXT(cmd_buf, 0u, 1u, &write_mask);
+
+    const float blend_constants[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+    vkCmdSetBlendConstantsEXT(cmd_buf, blend_constants);
+
+    vkCmdSetPolygonModeEXT(cmd_buf, config.wireframe ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL);
+
+    vkCmdSetLineWidth(cmd_buf, config.line_width);
+
+    vkCmdSetAlphaToCoverageEnableEXT(cmd_buf, config.alpha_to_coverage ? VK_TRUE : VK_FALSE);
+}
+
 void RenderCmdBuffer::DrawMeshTasks(const uint32_t group_count_x,const uint32_t group_count_y,const uint32_t group_count_z)
 {
     if(!dev_attr||!dev_attr->cmd_draw_mesh_tasks)

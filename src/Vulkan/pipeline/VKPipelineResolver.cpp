@@ -1,7 +1,6 @@
 ﻿#include<hgl/vk/pipeline/VKPipelineResolver.h>
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/thread/ThreadMutex.h>
 #include<hgl/util/hash/FNV1a.h>
 #include<hgl/log/Log.h>
@@ -15,34 +14,6 @@ namespace hgl::graph
         {
             hgl::hash::FNV1aHasher64 h;
             h.AppendBytes(data, size);
-            return h;
-        }
-
-        uint64_t HashGeometryVertexFormat(const GeometryVertexFormat *gvf)
-        {
-            if(!gvf)
-                return 0;
-
-            const uint32_t count = gvf->GetCount();
-            if(count == 0)
-                return 0;
-
-            hgl::hash::FNV1aHasher64 h;
-
-            h << count;
-
-            for(uint32_t i=0;i<count;i++)
-            {
-                const GeometryVertexAttributeFormat *attr = gvf->Get(i);
-                if(!attr)
-                    continue;
-
-                h << attr->semantic
-                  << attr->format
-                  << attr->vec_size
-                  << attr->stride;
-            }
-
             return h;
         }
 
@@ -68,112 +39,6 @@ namespace hgl::graph
             return h;
         }
 
-        uint64_t HashPreRasterConfig(const PipelineData *pd, PrimitiveType primitive_type)
-        {
-            if(!pd)
-                return 0;
-
-            hgl::hash::FNV1aHasher64 h;
-
-            h << static_cast<uint32_t>(primitive_type);
-            if(pd->rasterization)
-            {
-                const VkPipelineRasterizationStateCreateInfo &rs = *pd->rasterization;
-                h << rs.flags
-                  << rs.depthClampEnable
-                  << rs.rasterizerDiscardEnable
-                  << rs.polygonMode
-                  << rs.cullMode
-                  << rs.frontFace
-                  << rs.depthBiasEnable
-                  << rs.depthBiasConstantFactor
-                  << rs.depthBiasClamp
-                  << rs.depthBiasSlopeFactor
-                  << rs.lineWidth;
-            }
-            h << pd->viewport_state.viewportCount
-              << pd->viewport_state.scissorCount
-              << pd->dynamic_state.dynamicStateCount;
-            if(pd->dynamic_state.dynamicStateCount > 0 && pd->dynamic_state.pDynamicStates)
-                h.AppendBytes(pd->dynamic_state.pDynamicStates,
-                              sizeof(VkDynamicState) * pd->dynamic_state.dynamicStateCount);
-            return h;
-        }
-
-        uint64_t HashFragmentOutputState(const PipelineData *pd)
-        {
-            if(!pd)
-                return 0;
-
-            hgl::hash::FNV1aHasher64 h;
-
-            const bool has_multisample = pd->multi_sample != nullptr;
-            h << has_multisample;
-            if(has_multisample)
-            {
-                const VkPipelineMultisampleStateCreateInfo *ms = pd->multi_sample;
-                h << ms->flags
-                  << ms->rasterizationSamples
-                  << ms->sampleShadingEnable
-                  << ms->minSampleShading
-                  << ms->alphaToCoverageEnable
-                  << ms->alphaToOneEnable;
-
-                const uint32_t sample_count = static_cast<uint32_t>(ms->rasterizationSamples);
-                const uint32_t sample_mask_word_count = (sample_count + 31u) / 32u;
-                h << sample_mask_word_count;
-
-                if(sample_mask_word_count > 0 && ms->pSampleMask)
-                    h.AppendBytes(ms->pSampleMask, sizeof(VkSampleMask) * sample_mask_word_count);
-            }
-
-            const bool has_depth_stencil = pd->depth_stencil != nullptr;
-            h << has_depth_stencil;
-            if(has_depth_stencil)
-            {
-                const VkPipelineDepthStencilStateCreateInfo *ds = pd->depth_stencil;
-                h << ds->flags
-                  << ds->depthTestEnable
-                  << ds->depthWriteEnable
-                  << ds->depthCompareOp
-                  << ds->depthBoundsTestEnable
-                  << ds->stencilTestEnable
-                  << ds->front.failOp
-                  << ds->front.passOp
-                  << ds->front.depthFailOp
-                  << ds->front.compareOp
-                  << ds->front.compareMask
-                  << ds->front.writeMask
-                  << ds->front.reference
-                  << ds->back.failOp
-                  << ds->back.passOp
-                  << ds->back.depthFailOp
-                  << ds->back.compareOp
-                  << ds->back.compareMask
-                  << ds->back.writeMask
-                  << ds->back.reference
-                  << ds->minDepthBounds
-                  << ds->maxDepthBounds;
-            }
-
-            const bool has_color_blend = pd->color_blend != nullptr;
-            h << has_color_blend;
-            if(pd->color_blend)
-            {
-                h << pd->color_blend->attachmentCount
-                  << pd->color_blend->flags
-                  << pd->color_blend->logicOpEnable
-                  << pd->color_blend->logicOp
-                  << pd->color_blend->blendConstants[0]
-                  << pd->color_blend->blendConstants[1]
-                  << pd->color_blend->blendConstants[2]
-                  << pd->color_blend->blendConstants[3];
-            }
-            if(pd->color_blend_attachments && pd->color_blend)
-                h.AppendBytes(pd->color_blend_attachments, sizeof(VkPipelineColorBlendAttachmentState) * pd->color_blend->attachmentCount);
-            return h;
-        }
-
         struct FinalPipelineCacheEntry
         {
             VulkanDevice *device = nullptr;
@@ -192,14 +57,13 @@ namespace hgl::graph
             }
         };
 
-        ValueArray<FinalPipelineCacheEntry> g_monolithic_pipeline_cache;
+        ValueArray<FinalPipelineCacheEntry> g_pipeline_cache;
 
         struct PipelineResolveStats
         {
             uint64_t requests = 0;
             uint64_t invalid_request = 0;
             uint64_t incomplete_key = 0;
-            uint64_t fo_mismatch = 0;
             uint64_t final_cache_hit = 0;
             uint64_t final_cache_miss = 0;
             uint64_t materialize_success = 0;
@@ -210,11 +74,9 @@ namespace hgl::graph
         {
             None = 0,
             MissingDevice,
-            MissingPipelineData,
             MissingShaderStages,
             MissingPipelineLayout,
-            MissingColorAttachmentConfig,
-            FOColorBlendAttachmentMismatch
+            MissingColorAttachmentConfig
         };
 
         PipelineResolveStats g_resolve_stats;
@@ -225,11 +87,9 @@ namespace hgl::graph
             switch(error)
             {
             case ResolveError::MissingDevice: return "missing device";
-            case ResolveError::MissingPipelineData: return "missing pipeline_data";
             case ResolveError::MissingShaderStages: return "missing shader_stages";
             case ResolveError::MissingPipelineLayout: return "missing pipeline_layout";
             case ResolveError::MissingColorAttachmentConfig: return "missing frame_output color attachments";
-            case ResolveError::FOColorBlendAttachmentMismatch: return "fo mismatch: color_blend attachment count differs from frame_output";
             default: return "none";
             }
         }
@@ -238,9 +98,6 @@ namespace hgl::graph
         {
             if(!request.device)
                 return ResolveError::MissingDevice;
-
-            if(!request.pipeline_data)
-                return ResolveError::MissingPipelineData;
 
             if(!request.shader_stages || request.shader_stages->IsEmpty())
                 return ResolveError::MissingShaderStages;
@@ -251,14 +108,6 @@ namespace hgl::graph
             if(request.frame_output.color_attachment_count == 0 || !request.frame_output.color_formats)
                 return ResolveError::MissingColorAttachmentConfig;
 
-            if(request.pipeline_data->color_blend)
-            {
-                const uint32_t blend_attachment_count = request.pipeline_data->color_blend->attachmentCount;
-                if(blend_attachment_count > 0
-                && blend_attachment_count != request.frame_output.color_attachment_count)
-                    return ResolveError::FOColorBlendAttachmentMismatch;
-            }
-
             return ResolveError::None;
         }
 
@@ -267,11 +116,10 @@ namespace hgl::graph
             if((g_resolve_stats.requests % 64u) != 0u)
                 return;
 
-            GLogInfo("[PipelineResolver] req=%llu invalid=%llu incomplete_key=%llu fo_mismatch=%llu final_cache(h/m)=%llu/%llu materialize(ok/fail)=%llu/%llu",
+            GLogInfo("[PipelineResolver] req=%llu invalid=%llu incomplete_key=%llu final_cache(h/m)=%llu/%llu materialize(ok/fail)=%llu/%llu",
                      (unsigned long long)g_resolve_stats.requests,
                      (unsigned long long)g_resolve_stats.invalid_request,
                      (unsigned long long)g_resolve_stats.incomplete_key,
-                     (unsigned long long)g_resolve_stats.fo_mismatch,
                      (unsigned long long)g_resolve_stats.final_cache_hit,
                      (unsigned long long)g_resolve_stats.final_cache_miss,
                      (unsigned long long)g_resolve_stats.materialize_success,
@@ -280,13 +128,13 @@ namespace hgl::graph
 
         ValueArray<FinalPipelineCacheEntry> &GetFinalPipelineCache()
         {
-            return g_monolithic_pipeline_cache;
+            return g_pipeline_cache;
         }
 
         bool TryGetCachedFinalPipeline(
-                                       const FinalPipelineResolveRequest &request,
-                                       const FinalPipelineKey &key,
-                                       VkPipeline &out_pipeline)
+                                      const FinalPipelineResolveRequest &request,
+                                      const FinalPipelineKey &key,
+                                      VkPipeline &out_pipeline)
         {
             if(!request.device || request.pipeline_layout == VK_NULL_HANDLE)
                 return false;
@@ -336,81 +184,156 @@ namespace hgl::graph
     bool PipelineResolver::BuildFinalPipelineKey(const FinalPipelineResolveRequest &request, FinalPipelineKey &out_key)
     {
         out_key = {};
-        out_key.pipeline_config_hash = request.pipeline_config_hash;
 
-        if(request.geometry_vertex_format)
-        {
-            out_key.vi.format_hash = HashGeometryVertexFormat(request.geometry_vertex_format);
-            out_key.vi.attribute_count = request.geometry_vertex_format->GetCount();
-            out_key.vi.binding_count = out_key.vi.attribute_count;
-        }
+        out_key.shader_stages_hash = HashShaderStages(request.shader_stages);
 
-        out_key.pr.shader_program_hash = HashShaderStages(request.shader_stages);
-        out_key.pr.config_hash = HashPreRasterConfig(request.pipeline_data, request.primitive_type);
-        if(request.pipeline_data)
-            out_key.pr.primitive_type = request.primitive_type;
-
-        out_key.fs.shader_program_hash = HashShaderStages(request.shader_stages);
-        out_key.fs.variant_hash = 0;
-
-        out_key.fo.color_attachment_count = request.frame_output.color_attachment_count;
-        out_key.fo.color_formats_hash = (request.frame_output.color_formats && request.frame_output.color_attachment_count > 0)
-                                      ? HashBytes(request.frame_output.color_formats, sizeof(VkFormat) * request.frame_output.color_attachment_count)
-                                      : 0;
-        out_key.fo.depth_stencil_format = request.frame_output.depth_stencil_format;
-        out_key.fo.output_state_hash = HashFragmentOutputState(request.pipeline_data);
-        if(request.pipeline_data && request.pipeline_data->multi_sample)
-            out_key.fo.sample_count = static_cast<uint32_t>(request.pipeline_data->multi_sample->rasterizationSamples);
+        out_key.color_attachment_count = request.frame_output.color_attachment_count;
+        out_key.color_formats_hash = (request.frame_output.color_formats && request.frame_output.color_attachment_count > 0)
+                                   ? HashBytes(request.frame_output.color_formats, sizeof(VkFormat) * request.frame_output.color_attachment_count)
+                                   : 0;
+        out_key.depth_stencil_format = request.frame_output.depth_stencil_format;
 
         return true;
     }
 
     bool PipelineResolver::HasCompleteFinalKey(const FinalPipelineKey &key)
     {
-        if(key.pr.shader_program_hash == 0 || key.pr.config_hash == 0)
+        if(key.shader_stages_hash == 0)
             return false;
 
-        if(key.fs.shader_program_hash == 0)
-            return false;
-
-        if(key.fo.color_attachment_count == 0)
+        if(key.color_attachment_count == 0)
             return false;
 
         return true;
     }
 
-    bool PipelineResolver::MaterializeMonolithic(const FinalPipelineResolveRequest &request, VkPipeline &out_pipeline)
+    bool PipelineResolver::MaterializePipeline(const FinalPipelineResolveRequest &request, VkPipeline &out_pipeline)
     {
         out_pipeline = VK_NULL_HANDLE;
 
-        if(!request.device || !request.pipeline_data || !request.shader_stages)
+        if(!request.device || !request.shader_stages)
             return false;
 
-        PipelineData *pd = request.pipeline_data;
-        pd->InitShaderStage(*request.shader_stages);
-        pd->InitVertexInputState();
-        pd->SetColorAttachments(request.frame_output.color_attachment_count);
-        pd->pipeline_info.layout = request.pipeline_layout;
-        pd->pipeline_info.renderPass = VK_NULL_HANDLE;   // Dynamic Rendering
-        pd->pipeline_info.subpass = request.subpass;
+        // ── pipeline 只保留 shader 部分 ──
+        // 所有可变渲染状态（剔除/深度/混合/线框/线宽/alpha-to-coverage 等）由
+        // VK_EXT_extended_dynamic_state 1/2/3 动态设置（渲染侧 vkCmdSet* 应用材质配置），
+        // 创建时一律给 Vulkan 要求的合法默认值结构。
+
+        // 空顶点输入（mesh shader 唯一顶点路径，顶点数据走 SSBO）
+        VkPipelineVertexInputStateCreateInfo vertex_input_state{};
+        vertex_input_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+        VkPipelineInputAssemblyStateCreateInfo input_assembly{};
+        input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;  // mesh shader 管线中无 VS 输入组装，此值被忽略
+
+        // viewport/scissor 动态——创建时给占位值
+        VkViewport viewport{0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f};
+        VkRect2D scissor{{0, 0}, {1u, 1u}};
+
+        VkPipelineViewportStateCreateInfo viewport_state{};
+        viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        viewport_state.viewportCount = 1;
+        viewport_state.pViewports = &viewport;
+        viewport_state.scissorCount = 1;
+        viewport_state.pScissors = &scissor;
+
+        VkPipelineRasterizationStateCreateInfo rasterization{};
+        rasterization.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        rasterization.depthClampEnable = VK_FALSE;
+        rasterization.rasterizerDiscardEnable = VK_FALSE;
+        rasterization.polygonMode = VK_POLYGON_MODE_FILL;   // 动态（EDS2）
+        rasterization.cullMode = VK_CULL_MODE_BACK_BIT;     // 动态（EDS1）
+        rasterization.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        rasterization.depthBiasEnable = VK_FALSE;
+        rasterization.lineWidth = 1.0f;                     // 动态
+
+        VkPipelineMultisampleStateCreateInfo multisample{};
+        multisample.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        multisample.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+        multisample.alphaToCoverageEnable = VK_FALSE;       // 动态（EDS3）
+
+        VkPipelineDepthStencilStateCreateInfo depth_stencil{};
+        depth_stencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        depth_stencil.depthTestEnable = VK_FALSE;           // 动态（EDS1）
+        depth_stencil.depthWriteEnable = VK_FALSE;          // 动态（EDS1）
+        depth_stencil.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;  // 动态（EDS1）
+        depth_stencil.front.failOp = VK_STENCIL_OP_KEEP;
+        depth_stencil.front.passOp = VK_STENCIL_OP_KEEP;
+        depth_stencil.front.depthFailOp = VK_STENCIL_OP_KEEP;
+        depth_stencil.front.compareOp = VK_COMPARE_OP_ALWAYS;
+        depth_stencil.back = depth_stencil.front;
+
+        VkPipelineColorBlendAttachmentState blend_attachment{};
+        blend_attachment.blendEnable = VK_FALSE;            // 动态（EDS2）
+        blend_attachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        blend_attachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        blend_attachment.colorBlendOp = VK_BLEND_OP_ADD;
+        blend_attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        blend_attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+        blend_attachment.alphaBlendOp = VK_BLEND_OP_ADD;
+        blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+                                        | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;  // 动态（EDS2）
+
+        VkPipelineColorBlendStateCreateInfo color_blend{};
+        color_blend.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        color_blend.attachmentCount = 1;
+        color_blend.pAttachments = &blend_attachment;
+
+        // EDS 动态状态：pipeline 只留 shader，材质配置全部渲染侧 vkCmdSet* 应用
+        //（VIEWPORT/SCISSOR/LINE_WIDTH 为 1.0 核心；其余 EDS 1/2/3 用 EXT 名——兼容任意 SDK 头）
+        const VkDynamicState dynamic_states[] =
+        {
+            VK_DYNAMIC_STATE_VIEWPORT,
+            VK_DYNAMIC_STATE_SCISSOR,
+            VK_DYNAMIC_STATE_CULL_MODE_EXT,
+            VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE_EXT,
+            VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE_EXT,
+            VK_DYNAMIC_STATE_DEPTH_COMPARE_OP_EXT,
+            VK_DYNAMIC_STATE_COLOR_BLEND_ENABLE_EXT,
+            VK_DYNAMIC_STATE_COLOR_BLEND_EQUATION_EXT,
+            VK_DYNAMIC_STATE_COLOR_WRITE_MASK_EXT,
+            VK_DYNAMIC_STATE_BLEND_CONSTANTS_EXT,
+            VK_DYNAMIC_STATE_POLYGON_MODE_EXT,
+            VK_DYNAMIC_STATE_LINE_WIDTH,
+            VK_DYNAMIC_STATE_ALPHA_TO_COVERAGE_ENABLE_EXT,
+        };
+
+        VkPipelineDynamicStateCreateInfo dynamic_state{};
+        dynamic_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dynamic_state.dynamicStateCount = static_cast<uint32_t>(sizeof(dynamic_states) / sizeof(dynamic_states[0]));
+        dynamic_state.pDynamicStates = dynamic_states;
 
         // Dynamic Rendering：renderPass=VK_NULL_HANDLE 时 pNext 必须含
         // VkPipelineRenderingCreateInfo（VUID-VkGraphicsPipelineCreateInfo-renderPass-06061）
-        // ——附件格式在此声明，替代传统 render pass 的 attachment 布局
         VkPipelineRenderingCreateInfo rendering_ci{};
         rendering_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
-        rendering_ci.pNext = pd->pipeline_info.pNext;
         rendering_ci.colorAttachmentCount = request.frame_output.color_attachment_count;
         rendering_ci.pColorAttachmentFormats = request.frame_output.color_formats;
         rendering_ci.depthAttachmentFormat = request.frame_output.depth_stencil_format;
         rendering_ci.stencilAttachmentFormat = request.frame_output.depth_stencil_format;
 
-        pd->pipeline_info.pNext = &rendering_ci;
+        VkGraphicsPipelineCreateInfo ci{};
+        ci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        ci.stageCount = request.shader_stages->GetCount();
+        ci.pStages = request.shader_stages->GetData();
+        ci.pVertexInputState = &vertex_input_state;
+        ci.pInputAssemblyState = &input_assembly;
+        ci.pViewportState = &viewport_state;
+        ci.pRasterizationState = &rasterization;
+        ci.pMultisampleState = &multisample;
+        ci.pDepthStencilState = &depth_stencil;
+        ci.pColorBlendState = &color_blend;
+        ci.pDynamicState = &dynamic_state;
+        ci.layout = request.pipeline_layout;
+        ci.renderPass = VK_NULL_HANDLE;   // Dynamic Rendering
+        ci.subpass = 0;
+        ci.pNext = &rendering_ci;
 
         return vkCreateGraphicsPipelines(*request.device,
                                          request.pipeline_cache,
                                          1,
-                                         &pd->pipeline_info,
+                                         &ci,
                                          nullptr,
                                          &out_pipeline) == VK_SUCCESS;
     }
@@ -426,16 +349,11 @@ namespace hgl::graph
         if(request_error != ResolveError::None)
         {
             ++g_resolve_stats.invalid_request;
-            if(request_error == ResolveError::FOColorBlendAttachmentMismatch)
-                ++g_resolve_stats.fo_mismatch;
 
             GLogError("[PipelineResolver] Resolve failed: %s", ResolveErrorText(request_error));
             LogResolveStatsIfNeeded();
             return false;
         }
-
-        const VulkanPhyDevice *physical_device = request.device ? request.device->GetPhyDevice() : nullptr;
-
 
         BuildFinalPipelineKey(request, out_result.key);
         if(!HasCompleteFinalKey(out_result.key))
@@ -446,11 +364,6 @@ namespace hgl::graph
             return false;
         }
 
-        bool vi_hit = false;
-        bool pr_hit = false;
-        bool fs_hit = false;
-        bool fo_hit = false;
-
         if(TryGetCachedFinalPipeline(request, out_result.key, out_result.pipeline))
         {
             ++g_resolve_stats.final_cache_hit;
@@ -460,10 +373,10 @@ namespace hgl::graph
 
         ++g_resolve_stats.final_cache_miss;
 
-        if(!MaterializeMonolithic(request, out_result.pipeline))
+        if(!MaterializePipeline(request, out_result.pipeline))
         {
             ++g_resolve_stats.materialize_failed;
-            GLogError("[PipelineResolver] Materialize failed in monolithic mode");
+            GLogError("[PipelineResolver] Materialize failed");
             LogResolveStatsIfNeeded();
             return false;
         }
@@ -480,24 +393,21 @@ namespace hgl::graph
         if(!device || pipeline == VK_NULL_HANDLE)
             return;
 
-        auto ReleaseFromCache = [device, pipeline](ValueArray<FinalPipelineCacheEntry> &cache)
+        ValueArray<FinalPipelineCacheEntry> &cache = GetFinalPipelineCache();
+
+        for(int i = cache.GetCount() - 1; i >= 0; --i)
         {
-            for(int i = cache.GetCount() - 1; i >= 0; --i)
+            if(cache[i].device == device && cache[i].pipeline == pipeline)
             {
-                if(cache[i].device == device && cache[i].pipeline == pipeline)
+                if(cache[i].references > 1)
                 {
-                    if(cache[i].references > 1)
-                    {
-                        --cache[i].references;
-                        continue;
-                    }
-
-                    cache.Delete(i);
+                    --cache[i].references;
+                    continue;
                 }
-            }
-        };
 
-        ReleaseFromCache(g_monolithic_pipeline_cache);
+                cache.Delete(i);
+            }
+        }
     }
 
     void PipelineResolver::ClearCacheForDevice(VulkanDevice *device)
@@ -507,32 +417,25 @@ namespace hgl::graph
         if(!device)
             return;
 
-        auto ClearFromCache = [device](ValueArray<FinalPipelineCacheEntry> &cache)
+        ValueArray<FinalPipelineCacheEntry> &cache = GetFinalPipelineCache();
+
+        int write = 0;
+        const int count = cache.GetCount();
+        for(int i = 0; i < count; ++i)
         {
-            int write = 0;
-            const int count = cache.GetCount();
-            for(int i = 0; i < count; ++i)
+            if(cache[i].device != device)
             {
-                if(cache[i].device != device)
-                {
-                    if(write != i)
-                        cache[write] = cache[i];
-                    ++write;
-                }
+                if(write != i)
+                    cache[write] = cache[i];
+                ++write;
             }
-            while(cache.GetCount() > write)
-                cache.Delete(cache.GetCount() - 1);
-        };
+        }
+        while(cache.GetCount() > write)
+            cache.Delete(cache.GetCount() - 1);
 
-        ClearFromCache(g_monolithic_pipeline_cache);
-        // Final executable pipelines have been released by their owners before
-        // VulkanDevice destruction reaches this resolver cache. Destroy the
-        // four library pipelines explicitly so they do not remain tracked as
-        // live Vulkan objects.
-
-        GLogInfo("[PipelineResolver] Cleared caches for device %p. Remaining: monolithic=%d",
+        GLogInfo("[PipelineResolver] Cleared caches for device %p. Remaining: %d",
                  (void *)device,
-                 g_monolithic_pipeline_cache.GetCount());
+                 cache.GetCount());
     }
 
 

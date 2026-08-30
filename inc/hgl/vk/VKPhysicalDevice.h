@@ -61,7 +61,6 @@ class VulkanPhyDevice
 private:
 
     bool support_u8_index=false;
-    bool dynamic_state=false;
     VkPhysicalDeviceMeshShaderFeaturesEXT mesh_shader_features{};
     VkPhysicalDeviceMeshShaderPropertiesEXT mesh_shader_properties{};
     VkDeviceSize rebar_size=0;  // Resizable BAR size (0 if not available)
@@ -251,8 +250,6 @@ public:
         min_width   =properties.limits.lineWidthRange[0];
         max_width   =properties.limits.lineWidthRange[1];
     }
-
-    const bool      SupportDynamicState() const {return dynamic_state;}
 
 public: // Vulkan API
 

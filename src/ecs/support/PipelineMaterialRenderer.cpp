@@ -308,6 +308,10 @@ namespace hgl::ecs
         // 绑定管线
         cmd_buf->BindPipeline(pipeline);
 
+        // EDS 1/2/3：pipeline 只保留 shader 部分——材质渲染状态渲染侧动态应用
+        if (pipeline)
+            cmd_buf->ApplyPipelineState(pipeline->GetConfig());
+
         // Set 0（Scene UBO）/ Set 3（Bindless 纹理）按材质自身 layout 绑定。
         // VVL 的 set 兼容 ID 取 layout 在 set 0..N 的全部 DSL 前缀，绑定 layout 必须与
         // draw 时管线 layout（= 材质 pipeline layout）一致。旧方案由

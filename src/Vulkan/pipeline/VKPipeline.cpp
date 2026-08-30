@@ -24,7 +24,6 @@ Pipeline::~Pipeline()
     if (owner)
         PipelineResolver::ReleaseFinalPipeline(owner, pipeline);
 
-    delete data;
     GLogDebug("[Pipeline::~Pipeline]   Calling vkDestroyPipeline for '%s'", name.c_str());
     vkDestroyPipeline(device,pipeline,nullptr);
     GLogDebug("[Pipeline::~Pipeline]   Destroyed Pipeline '%s'", name.c_str());

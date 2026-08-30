@@ -406,7 +406,7 @@ namespace hgl::ecs
 
         // ------- Create pipeline -------
         // P2：mesh 管线（宽度入 SSBO，cull off——quad 绕序不定，双面绘制）
-        pipeline_ = rp->CreatePipeline(material_, graph::mtl::MakeLineMeshConfig(), &line_gvf);
+        pipeline_ = rp->CreatePipeline(material_, graph::mtl::MakeLineMeshConfig());
 
         if (!pipeline_)
             return false;
@@ -738,6 +738,9 @@ namespace hgl::ecs
         }
 
         cmd->BindPipeline(pipeline_);
+
+        // EDS 1/2/3：pipeline 只保留 shader 部分——Line 材质状态（cull off）渲染侧动态应用
+        cmd->ApplyPipelineState(pipeline_->GetConfig());
 
         // Set 0（Scene UBO）/ Set 3（Bindless 纹理）按材质自身 layout 绑定。
         // VVL 的 set 兼容 ID 取 layout 在 set 0..N 的全部 DSL 前缀，绑定 layout 必须与

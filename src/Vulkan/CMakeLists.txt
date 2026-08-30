@@ -132,17 +132,10 @@ SET(PIPELINE_HEADER_PATH   ${VK_INCLUDE_PATH}/pipeline)
 SET(PIPELINE_SOURCE_PATH   pipeline)
 
 SET(VK_PIPELINE_FILES       ${PIPELINE_HEADER_PATH}/VKPipeline.h
-                            ${PIPELINE_HEADER_PATH}/VKPipelineData.h
                             ${PIPELINE_HEADER_PATH}/VKPipelineLayoutData.h
-                            ${PIPELINE_HEADER_PATH}/VKPipelineHash.h
                             ${PIPELINE_HEADER_PATH}/VKPipelineResolver.h
-                            ${PIPELINE_HEADER_PATH}/VKPipelineDataBuild.h
                             ${PIPELINE_HEADER_PATH}/VKComputePipeline.h
                             ${PIPELINE_SOURCE_PATH}/VKPipelineCompare.cpp
-                            ${PIPELINE_SOURCE_PATH}/VKPipelineData.cpp
-                            ${PIPELINE_SOURCE_PATH}/VKPipelineDataManage.cpp
-                            ${PIPELINE_SOURCE_PATH}/VKPipelineDataSaveLoad.cpp
-                            ${PIPELINE_SOURCE_PATH}/VKPipelineHash.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipelineResolver.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipeline.cpp
                             ${PIPELINE_SOURCE_PATH}/VKPipelineCache.cpp

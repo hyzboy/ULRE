@@ -58,15 +58,6 @@ namespace hgl::graph
     public:
         // ===== 渲染状态相关接口 =====
 
-        /**
-         * 创建管线
-         * @param material 材质
-         * @param pd       管线数据
-         * @return 管线指针，失败返回 nullptr
-         */
-        Pipeline* CreatePipeline(ShaderProgram* material,
-                                const PipelineData* pd);
-
     public:
         // ===== 渲染目标和命令缓冲区管理 =====
 
