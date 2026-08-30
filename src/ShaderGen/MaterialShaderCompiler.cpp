@@ -836,6 +836,19 @@ static std::string InsertAfterVersionLine(const std::string &glsl, const std::st
     return glsl.substr(0, pos + 1) + inject + glsl.substr(pos + 1);
 }
 
+static std::string InsertBeforeSurfaceFunction(const std::string &glsl, const std::string &inject)
+{
+    if (inject.empty())
+        return glsl;
+    // B6: 单一 marker（#include SURFACE_FUNCTION_FILE）——"#include "surface/" 旧格式
+    // 回退已删（全库 0 使用——ShaderLibrary 与回归门均无）
+    const std::string marker = "#include SURFACE_FUNCTION_FILE";
+    const auto pos = glsl.find(marker);
+    if (pos == std::string::npos)
+        return glsl + "\n" + inject;
+    return glsl.substr(0, pos) + inject + "\n" + glsl.substr(pos);
+}
+
 // C3：注入段数据驱动——组装内容声明为有序段列表，不再散在拼接表达式里。
 // AfterVersion 组合并后一次注入（InsertAfterVersionLine 多次调用会逆序——
 // 组内顺序 = 列表顺序，保持「单串一次注入」语义）。
@@ -900,19 +913,6 @@ static void AssembleFinalGLSL(
 
     if (frag)
         frag->SetFinalGLSL(fs_final);
-}
-
-static std::string InsertBeforeSurfaceFunction(const std::string &glsl, const std::string &inject)
-{
-    if (inject.empty())
-        return glsl;
-    // B6: 单一 marker（#include SURFACE_FUNCTION_FILE）——"#include "surface/" 旧格式
-    // 回退已删（全库 0 使用——ShaderLibrary 与回归门均无）
-    const std::string marker = "#include SURFACE_FUNCTION_FILE";
-    const auto pos = glsl.find(marker);
-    if (pos == std::string::npos)
-        return glsl + "\n" + inject;
-    return glsl.substr(0, pos) + inject + "\n" + glsl.substr(pos);
 }
 
 // ── Step 6: ShaderResourceSchema 构建与校验 ──────────────────────────────────
