@@ -10,12 +10,6 @@ namespace hgl::graph
 {
     class GeometryVertexFormat;
 
-    enum class PipelineMaterializeMode:uint8
-    {
-        Monolithic = 0,
-        GraphicsPipelineLibrary
-    };
-
     struct VertexInterfaceKey
     {
         uint64_t format_hash = 0;
@@ -99,12 +93,6 @@ namespace hgl::graph
         }
     };
 
-    struct PipelineCapabilityInfo
-    {
-        bool graphics_pipeline_library = false;
-        PipelineMaterializeMode preferred_materialize_mode = PipelineMaterializeMode::Monolithic;
-    };
-
     class VulkanDevice;
     class VulkanPhyDevice;
 
@@ -128,48 +116,15 @@ namespace hgl::graph
     struct FinalPipelineResolveResult
     {
         FinalPipelineKey key{};
-        PipelineCapabilityInfo capability{};
-        PipelineMaterializeMode materialize_mode = PipelineMaterializeMode::Monolithic;
         VkPipeline pipeline = VK_NULL_HANDLE;
-    };
-
-    struct PipelineResolverQueryStats
-    {
-        uint64_t requests                = 0;
-        uint64_t invalid_request         = 0;
-        uint64_t incomplete_key          = 0;
-        uint64_t fo_mismatch             = 0;
-        uint64_t final_cache_hit         = 0;
-        uint64_t final_cache_miss        = 0;
-        uint64_t materialize_success     = 0;
-        uint64_t materialize_failed      = 0;
-        uint64_t vi_library_hit          = 0;
-        uint64_t vi_library_miss         = 0;
-        uint64_t pr_library_hit          = 0;
-        uint64_t pr_library_miss         = 0;
-        uint64_t fs_library_hit          = 0;
-        uint64_t fs_library_miss         = 0;
-        uint64_t fo_library_hit          = 0;
-        uint64_t fo_library_miss         = 0;
-        uint32_t monolithic_cache_entries = 0;
-        uint32_t gpl_cache_entries        = 0;
-        uint32_t vi_library_entries       = 0;
-        uint32_t pr_library_entries       = 0;
-        uint32_t fs_library_entries       = 0;
-        uint32_t fo_library_entries       = 0;
     };
 
     class PipelineResolver
     {
     public:
-        static PipelineCapabilityInfo BuildCapabilityInfo(const VulkanPhyDevice *physical_device);
-        static PipelineMaterializeMode ResolveMaterializeMode(const VulkanPhyDevice *physical_device);
         static bool BuildFinalPipelineKey(const FinalPipelineResolveRequest &request, FinalPipelineKey &out_key);
         static bool HasCompleteFinalKey(const FinalPipelineKey &key);
         static bool MaterializeMonolithic(const FinalPipelineResolveRequest &request, VkPipeline &out_pipeline);
-        static bool MaterializeGraphicsPipelineLibrary(const FinalPipelineResolveRequest &request,
-                                                        const FinalPipelineKey &key,
-                                                        VkPipeline &out_pipeline);
         static bool ResolveFinalPipeline(const FinalPipelineResolveRequest &request, FinalPipelineResolveResult &out_result);
 
         /// Release a final pipeline reference held by the resolver cache.
@@ -180,7 +135,5 @@ namespace hgl::graph
         /// Must be called before the device is destroyed.
         static void ClearCacheForDevice(VulkanDevice *device);
 
-        /// Query accumulated resolver statistics (thread-unsafe snapshot).
-        static PipelineResolverQueryStats QueryStats();
     };
 }//namespace hgl::graph

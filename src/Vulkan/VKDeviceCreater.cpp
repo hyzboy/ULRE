@@ -8,30 +8,13 @@
 #include<hgl/vk/VKDeviceCreater.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKSurface.h>
-#include<hgl/vk/VKPipelineConfig.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/mtl/ShaderCompilerProfileAPI.h>
 
 #include<hgl/log/Log.h>
 
-#ifdef _WIN32
-#include<windows.h>
-#endif//_WIN32
-
 namespace hgl::graph{
 VkPipelineCache CreatePipelineCache(VkDevice device,const VkPhysicalDeviceProperties &);
-
-/// RenderDoc 注入检测：其 in-process 捕获库固定为 renderdoc.dll
-///（GetModuleHandle 对模块名不区分大小写）。
-/// 非 Windows 平台暂无此检测需求，恒返回 false。
-bool IsRenderDocInjected()
-{
-#ifdef _WIN32
-    return GetModuleHandleW(L"renderdoc.dll") != nullptr;
-#else
-    return false;
-#endif//_WIN32
-}
 
 #ifdef _DEBUG
 DebugUtils *CreateDebugUtils(VkDevice);
@@ -57,8 +40,7 @@ namespace
 {
     void SetDeviceExtension(CharPointerList *ext_list,
                             const VulkanPhyDevice *physical_device,
-                            const VulkanHardwareRequirement &require,
-                            const bool enable_graphics_pipeline_library)
+                            const VulkanHardwareRequirement &require)
     {
         ext_list->Add(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
@@ -92,13 +74,6 @@ namespace
         // 1.4 硬性：以上均为核心扩展，无条件启用（vulkan1.4.md 第 2 项）
         for(const char *ext_name:require_ext_list)
             ext_list->Add(ext_name);
-
-        if(enable_graphics_pipeline_library
-        && physical_device->SupportGraphicsPipelineLibrary())
-        {
-            ext_list->Add(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME);
-            ext_list->Add(VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME);
-        }
 
         if(require.lineRasterization>=VulkanHardwareRequirement::SupportLevel::Want)
             ext_list->Add(VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME);
@@ -231,8 +206,7 @@ constexpr size_t VK_DRIVER_ID_RANGE_SIZE=VK_DRIVER_ID_END_RANGE-VK_DRIVER_ID_BEG
 void OutputPhysicalDeviceCaps(const VulkanPhyDevice *);
 #endif//_DEBUG
 
-VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family,
-                                           const bool enable_graphics_pipeline_library)
+VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
 {
     float queue_priorities[1]={0.0};
 
@@ -256,8 +230,6 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family,
     create_info.enabledLayerCount       =0;
     create_info.ppEnabledLayerNames     =nullptr;
     create_info.pEnabledFeatures        =&features;
-
-    VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT graphics_pipeline_library_features{};
 
     // Vulkan 1.1: shaderDrawParameters —— SSBO 顶点输入 gl_BaseVertexARB 读取必需
     // （ShaderDrawParameters capability 由该特性启用；设备 v1.4 必支持）
@@ -324,14 +296,6 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family,
     }
 
 
-    if(enable_graphics_pipeline_library
-    && physical_device->SupportGraphicsPipelineLibrary())
-    {
-        graphics_pipeline_library_features.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT;
-        graphics_pipeline_library_features.pNext=const_cast<void*>(static_cast<const void*>(create_info.pNext));
-        graphics_pipeline_library_features.graphicsPipelineLibrary=VK_TRUE;
-        create_info.pNext=&graphics_pipeline_library_features;
-    }
     if(physical_device->SupportU8Index()
      &&require.fullDrawIndexUint8>=VulkanHardwareRequirement::SupportLevel::Want)
     {
@@ -423,49 +387,14 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
     if(graphics_family==ERROR_FAMILY_INDEX)
         return(nullptr);
 
-    // GPL 启用决策（2026-08-29 更新）：**默认关闭**。
-    //
-    // GPL 激活实测（AMD RX 6700 XT / Vulkan 1.4）暴露出混合材质的渲染正确性
-    // 问题：依赖 alpha 混合的材质（文字 TextAlphaBlend、部分纹理材质）输出
-    // 异常（文字全黑、纹理呈纯色），不透明材质正常。经 14 轮 shader 侧二分
-    // 调试，FS 全部输入（vertexColor/uv0/rawSample/fwidth/CharStyle）在 GPL
-    // 下与 Monolithic 完全一致，问题指向 GPL 库化链接的驱动级实现或休眠
-    // GPL 代码的深层缺陷——且该环节无法用 RenderDoc 调试（注入即触发
-    // IsRenderDocInjected 强制回退，死循环）。
-    //
-    // 后续方向：以 VK_EXT_extended_dynamic_state/2/3 的"全动态最小管线"
-    // （管线仅保留 shader stages + layout + multisample，其余状态全动态）
-    // 取代 GPL——驱动成熟度高，且为将来迁移 VK_EXT_shader_object 铺路。
-    // 定位/替代完成后可重新评估 GPL。
-    //
-    // 保留的调试设施：
-    //   IsRenderDocInjected() —— RenderDoc 注入检测（GPL 回归排查用）
-    //   ULRE_FORCE_MONOLITHIC=1 —— 强制 Monolithic（A/B 对照用）
-    const bool force_monolithic=[]()
-    {
-        char buf[8]{};
-        size_t size=sizeof(buf);
-        return getenv_s(&size,buf,size,"ULRE_FORCE_MONOLITHIC")==0 && buf[0]=='1';
-    }();
-
-    bool try_graphics_pipeline_library = false;    // 默认 Monolithic（GPL 正确性问题未解决，见上）
-
-    if(force_monolithic)
-        GLogInfo(u8"[VulkanDeviceCreater] ULRE_FORCE_MONOLITHIC set — using Monolithic materialization");
-
-    SetDeviceExtension(&ext_list,physical_device,require,try_graphics_pipeline_library);
+    // 管线物化路径：仅 Monolithic（GPL 路径已整体删除——激活实测在混合材质上
+    // 存在渲染正确性问题且无法用 RenderDoc 调试，详见 2026-08-29 提交记录与
+    // ShaderGen_Descriptor_ABI_Unification_Plan.md 相关评估。后续替代方向为
+    // extended_dynamic_state 全动态最小管线，再远期为 VK_EXT_shader_object）。
+    SetDeviceExtension(&ext_list,physical_device,require);
     SetDeviceFeatures(&features,physical_device->GetFeatures10(),require);
 
-    device_attr->device=CreateDevice(graphics_family, try_graphics_pipeline_library);
-
-    if(!device_attr->device && try_graphics_pipeline_library)
-    {
-        GLogWarning("[VulkanDeviceCreater] GPL device creation failed, retrying without GPL extensions");
-        ext_list.Clear();
-        SetDeviceExtension(&ext_list,physical_device,require,false);
-        device_attr->device=CreateDevice(graphics_family, false);
-        try_graphics_pipeline_library = false;
-    }
+    device_attr->device=CreateDevice(graphics_family);
 
     if(!device_attr->device)
         return(nullptr);
@@ -489,9 +418,6 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
     {
         device_attr->wide_lines = true;
     }
-
-    device_attr->graphics_pipeline_library = try_graphics_pipeline_library
-                                            && device_attr->device != VK_NULL_HANDLE;
 
     // VK_EXT_mesh_shader：加载扩展函数指针（仅一次——mesh shader 为必用路径）
     {

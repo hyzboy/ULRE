@@ -102,12 +102,8 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
 
     Pipeline *pipeline = new Pipeline(name,*device,graphicsPipeline,pd,is_overlay);
 
-    const char *mode_name = resolve_result.materialize_mode == PipelineMaterializeMode::GraphicsPipelineLibrary
-                          ? "GPL"
-                          : "Monolithic";
-
-    LogInfo("[RenderPass::CreatePipeline] Created Pipeline '%s' in RenderPass '%s' (VkPipeline=0x%llx, mode=%s, Pipeline*=0x%llx)",
-             name.c_str(), this->name.c_str(), (unsigned long long)(uintptr_t)graphicsPipeline, mode_name, (unsigned long long)(uintptr_t)pipeline);
+    LogInfo("[RenderPass::CreatePipeline] Created Pipeline '%s' in RenderPass '%s' (VkPipeline=0x%llx, mode=Monolithic, Pipeline*=0x%llx)",
+             name.c_str(), this->name.c_str(), (unsigned long long)(uintptr_t)graphicsPipeline, (unsigned long long)(uintptr_t)pipeline);
 
     if (device)
         device->TrackObject(VK_OBJECT_TYPE_PIPELINE, (uint64_t)(uintptr_t)graphicsPipeline, ObjectNameBuilder(name).Append(ObjectTypeTag::VKPipeline));
