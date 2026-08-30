@@ -52,9 +52,16 @@ namespace hgl::graph::mtl
         }
 
         bool AppendEntry(
-            const SerializedDescriptorEntry &source,
+            SerializedDescriptorEntry &source,
             DescriptorContract &out_contract)
         {
+            // C1：就地规范化——身份 ID 计算一次填回 source，
+            // canonical 从规范化后的 source 提取（T2 后 entries 直接存 source）。
+            source.logical_resource_id =
+                GetLogicalResourceID(source);
+            source.resource_schema_id =
+                GetResourceSchemaID(source);
+
             DescriptorContractEntry entry{};
             entry.name = source.name ? source.name : "";
             entry.struct_name =
@@ -66,9 +73,9 @@ namespace hgl::graph::mtl
                 source.has_requirement_policy;
 
             entry.canonical.logical_resource_id =
-                GetLogicalResourceID(source);
+                source.logical_resource_id;
             entry.canonical.resource_schema_id =
-                GetResourceSchemaID(source);
+                source.resource_schema_id;
             entry.canonical.semantic = source.semantic;
             entry.canonical.semantic_layer =
                 source.semantic_layer != DescriptorSemanticLayer::Unknown
@@ -93,7 +100,7 @@ namespace hgl::graph::mtl
                 entry.canonical.ssbo_type = SSBOType::LocalToWorldIndex;
             entry.canonical.material_private_data_slot = source.material_private_data_slot;
             entry.canonical.stage_flags = source.stage_flags;
-            entry.canonical.array_count = 1;
+            entry.canonical.array_count = source.array_count;
             entry.canonical.required =
                 source.has_requirement_policy
                     ? source.required
@@ -124,7 +131,10 @@ namespace hgl::graph::mtl
         out_contract.entries.reserve(entry_count);
         for (uint32 i = 0; i < entry_count; ++i)
         {
-            if (!AppendEntry(entries[i], out_contract))
+            // C1：入口 const 数组——拷贝后就地规范化（ID 写入拷贝；
+            // T2 后该规范化条目即 entries 元素）
+            SerializedDescriptorEntry normalized = entries[i];
+            if (!AppendEntry(normalized, out_contract))
                 return false;
         }
         return ValidateDescriptorContract(out_contract);

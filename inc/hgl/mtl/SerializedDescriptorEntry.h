@@ -27,5 +27,11 @@ namespace hgl::graph::mtl
         bool                has_requirement_policy = false;
         bool                required = true;
         bool                allow_fallback = false;
+
+        // C1：规范化身份字段——BuildDescriptorContract（AppendEntry）就地填充，
+        // 使 SerializedDescriptorEntry 成为唯一编译期条目（canonical 提取源）。
+        uint64_t            logical_resource_id = 0;
+        uint64_t            resource_schema_id = 0;
+        uint32_t            array_count = 1;
     };
 }//namespace hgl::graph::mtl
