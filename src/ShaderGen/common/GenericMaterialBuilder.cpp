@@ -339,8 +339,14 @@ namespace hgl::graph::mtl
                           definition.definition_name.c_str());
                 return false;
             }
+            // 顶点需求真源统一：描述符与模块 include 必须来自同一份「变体有效 definition」。
+            // plan.vertex_definition 已在 Phase 2 按 effective_vertex_varying 裁剪过
+            // vertex_semantic_requirements（depth 变体去掉 UV/NTB 等）——原先此处用原始
+            // definition，导致**模块侧已裁剪、描述符侧未裁剪**：depth mesh shader 不声明
+            // VertexUV/VertexNTB buffer，但 set layout 仍含这两个 binding，且运行期绑定
+            // 会去找几何的 UV/NTB VAB（几何未提供即报 no resource）。
             plan.descriptors =
-                BuildDescriptorsFromDefinition(definition, plan.manifest);
+                BuildDescriptorsFromDefinition(plan.vertex_definition, plan.manifest);
             if (plan.depth_purpose)
             {
                 plan.descriptors.erase(
