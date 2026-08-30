@@ -431,6 +431,36 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
             device_attr->cmd_draw_mesh_tasks_indirect=*func_ptr_indirect;
     }
 
+    // EDS 1/2/3 动态状态函数指针（pipeline 只保留 shader 部分——渲染状态全部 vkCmdSet* 应用）
+    {
+        auto fp=device_attr->GetDeviceProc<PFN_vkCmdSetCullModeEXT>("vkCmdSetCullModeEXT");
+        if(fp)device_attr->cmd_set_cull_mode=*fp;
+
+        fp=device_attr->GetDeviceProc<PFN_vkCmdSetDepthTestEnableEXT>("vkCmdSetDepthTestEnableEXT");
+        if(fp)device_attr->cmd_set_depth_test_enable=*fp;
+
+        fp=device_attr->GetDeviceProc<PFN_vkCmdSetDepthWriteEnableEXT>("vkCmdSetDepthWriteEnableEXT");
+        if(fp)device_attr->cmd_set_depth_write_enable=*fp;
+
+        fp=device_attr->GetDeviceProc<PFN_vkCmdSetDepthCompareOpEXT>("vkCmdSetDepthCompareOpEXT");
+        if(fp)device_attr->cmd_set_depth_compare_op=*fp;
+
+        fp=device_attr->GetDeviceProc<PFN_vkCmdSetColorBlendEnableEXT>("vkCmdSetColorBlendEnableEXT");
+        if(fp)device_attr->cmd_set_color_blend_enable=*fp;
+
+        fp=device_attr->GetDeviceProc<PFN_vkCmdSetColorBlendEquationEXT>("vkCmdSetColorBlendEquationEXT");
+        if(fp)device_attr->cmd_set_color_blend_equation=*fp;
+
+        fp=device_attr->GetDeviceProc<PFN_vkCmdSetColorWriteMaskEXT>("vkCmdSetColorWriteMaskEXT");
+        if(fp)device_attr->cmd_set_color_write_mask=*fp;
+
+        fp=device_attr->GetDeviceProc<PFN_vkCmdSetPolygonModeEXT>("vkCmdSetPolygonModeEXT");
+        if(fp)device_attr->cmd_set_polygon_mode=*fp;
+
+        fp=device_attr->GetDeviceProc<PFN_vkCmdSetAlphaToCoverageEnableEXT>("vkCmdSetAlphaToCoverageEnableEXT");
+        if(fp)device_attr->cmd_set_alpha_to_coverage_enable=*fp;
+    }
+
     device_attr->surface_format=surface_format;
 
     GetDeviceQueue(device_attr);
