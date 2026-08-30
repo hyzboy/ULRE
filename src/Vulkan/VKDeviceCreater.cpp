@@ -323,9 +323,10 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
         create_info.pNext=&mesh_features;
     }
 
-    // EDS 1/2/3 特性：pipeline 只保留 shader 部分——材质渲染状态全部动态（vkCmdSet* 应用），
-    // 必用路径无条件启用。EDS1 在 Vulkan13Features（extendedDynamicState）；
-    // EDS2/3 在 Vulkan 1.4 已 promote 到 VkPhysicalDeviceVulkan14Features（EXT 结构成员已移除）
+    // EDS 1/3 特性：pipeline 只保留 shader 部分——材质渲染状态全部动态（vkCmdSet* 应用），
+    // 必用路径无条件启用。EDS1 管 CULL_MODE/DEPTH_*（VkPhysicalDeviceExtendedDynamicStateFeaturesEXT）；
+    // COLOR_BLEND_*/POLYGON_MODE/ALPHA_TO_COVERAGE 均属 EDS3
+    //（VkPhysicalDeviceExtendedDynamicState3FeaturesEXT——SDK 1.4 头里 EDS2 结构无这些成员）
     {
         VkPhysicalDeviceExtendedDynamicStateFeaturesEXT eds1{};
         eds1.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
@@ -333,15 +334,15 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
         eds1.extendedDynamicState = VK_TRUE;   // CULL_MODE / DEPTH_TEST / DEPTH_WRITE / DEPTH_COMPARE_OP
         create_info.pNext = &eds1;
 
-        VkPhysicalDeviceVulkan14Features vk14_eds{};
-        vk14_eds.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
-        vk14_eds.pNext = const_cast<void*>(static_cast<const void*>(create_info.pNext));
-        vk14_eds.extendedDynamicState2ColorBlendEnable    = VK_TRUE;   // COLOR_BLEND_ENABLE
-        vk14_eds.extendedDynamicState2ColorWriteMask      = VK_TRUE;   // COLOR_WRITE_MASK
-        vk14_eds.extendedDynamicState2PolygonMode         = VK_TRUE;   // POLYGON_MODE
-        vk14_eds.extendedDynamicState3ColorBlendEquation  = VK_TRUE;   // COLOR_BLEND_EQUATION
-        vk14_eds.extendedDynamicState3AlphaToCoverageEnable = VK_TRUE; // ALPHA_TO_COVERAGE_ENABLE
-        create_info.pNext = &vk14_eds;
+        VkPhysicalDeviceExtendedDynamicState3FeaturesEXT eds3{};
+        eds3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT;
+        eds3.pNext = const_cast<void*>(static_cast<const void*>(create_info.pNext));
+        eds3.extendedDynamicState3ColorBlendEnable    = VK_TRUE;   // COLOR_BLEND_ENABLE
+        eds3.extendedDynamicState3ColorBlendEquation  = VK_TRUE;   // COLOR_BLEND_EQUATION
+        eds3.extendedDynamicState3ColorWriteMask      = VK_TRUE;   // COLOR_WRITE_MASK
+        eds3.extendedDynamicState3PolygonMode         = VK_TRUE;   // POLYGON_MODE
+        eds3.extendedDynamicState3AlphaToCoverageEnable = VK_TRUE; // ALPHA_TO_COVERAGE_ENABLE
+        create_info.pNext = &eds3;
     }
 
     VkDevice device;
