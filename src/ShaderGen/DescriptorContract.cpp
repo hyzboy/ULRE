@@ -55,67 +55,72 @@ namespace hgl::graph::mtl
             SerializedDescriptorEntry &source,
             DescriptorContract &out_contract)
         {
-            // C1：就地规范化——身份 ID 计算一次填回 source，
-            // canonical 从规范化后的 source 提取（T2 后 entries 直接存 source）。
+            // C1-T2：就地完整规范化——ID/ssbo_type 语义推导/layer 默认/policy 默认
+            // 全部写入 source；DescriptorContract.entries 直接存规范化条目
+            //（原 DescriptorContractEntry 包装已删）。
             source.logical_resource_id =
                 GetLogicalResourceID(source);
             source.resource_schema_id =
                 GetResourceSchemaID(source);
 
-            DescriptorContractEntry entry{};
-            entry.name = source.name ? source.name : "";
-            entry.struct_name =
-                source.struct_name ? source.struct_name : "";
-            entry.glsl_type =
-                source.glsl_type ? source.glsl_type : "";
-            entry.ssbo_id = source.ssbo_id;
-            entry.has_explicit_policy =
-                source.has_requirement_policy;
+            if (source.semantic_layer
+                    == DescriptorSemanticLayer::Unknown)
+            {
+                source.semantic_layer =
+                    GetDescriptorSemanticLayer(source.semantic);
+            }
 
-            entry.canonical.logical_resource_id =
-                source.logical_resource_id;
-            entry.canonical.resource_schema_id =
-                source.resource_schema_id;
-            entry.canonical.semantic = source.semantic;
-            entry.canonical.semantic_layer =
-                source.semantic_layer != DescriptorSemanticLayer::Unknown
-                    ? source.semantic_layer
-                    : GetDescriptorSemanticLayer(source.semantic);
-            entry.canonical.set_type = source.set_type;
-            entry.canonical.texture_slot = source.texture_slot;
-            entry.canonical.ssbo_type = source.ssbo_type;
             if (source.semantic
                     == DescriptorSemantic::MaterialPrivateData
-             && entry.canonical.ssbo_type == SSBOType::UserDefined)
-                entry.canonical.ssbo_type = SSBOType::PBRSurface;
+             && source.ssbo_type == SSBOType::UserDefined)
+                source.ssbo_type = SSBOType::PBRSurface;
             else if (source.semantic
                     == DescriptorSemantic::MaterialTextureLayerTable)
-                entry.canonical.ssbo_type = SSBOType::TextureLayer;
+                source.ssbo_type = SSBOType::TextureLayer;
             else if (source.semantic
                     == DescriptorSemantic::MaterialPrivateDataIndex)
-                entry.canonical.ssbo_type =
+                source.ssbo_type =
                     SSBOType::MaterialPrivateDataIndex;
             else if (source.semantic
                     == DescriptorSemantic::LocalToWorldIndex)
-                entry.canonical.ssbo_type = SSBOType::LocalToWorldIndex;
-            entry.canonical.material_private_data_slot = source.material_private_data_slot;
-            entry.canonical.stage_flags = source.stage_flags;
-            entry.canonical.array_count = source.array_count;
-            entry.canonical.required =
-                source.has_requirement_policy
-                    ? source.required
-                    : IsSemanticRequired(source.semantic);
-            entry.canonical.allow_fallback =
-                source.has_requirement_policy
-                    ? source.allow_fallback
-                    : IsSemanticFallbackAllowed(source.semantic);
+                source.ssbo_type = SSBOType::LocalToWorldIndex;
 
-            if (entry.canonical.logical_resource_id == 0
-             || entry.canonical.resource_schema_id == 0)
+            if (!source.has_requirement_policy)
+            {
+                source.required =
+                    IsSemanticRequired(source.semantic);
+                source.allow_fallback =
+                    IsSemanticFallbackAllowed(source.semantic);
+            }
+
+            if (source.logical_resource_id == 0
+             || source.resource_schema_id == 0)
                 return false;
 
-            out_contract.entries.emplace_back(std::move(entry));
+            out_contract.entries.push_back(source);
             return true;
+        }
+
+        // C1-T2：规范化 SerializedDescriptorEntry → canonical（ShaderInterfaceContract
+        // 元素类型）。字段均已由 AppendEntry 规范化——纯读取提取。
+        ShaderDescriptorContractEntry ToCanonicalShaderContractEntry(
+            const SerializedDescriptorEntry &entry) noexcept
+        {
+            ShaderDescriptorContractEntry can;
+            can.logical_resource_id = entry.logical_resource_id;
+            can.resource_schema_id = entry.resource_schema_id;
+            can.semantic = entry.semantic;
+            can.semantic_layer = entry.semantic_layer;
+            can.set_type = entry.set_type;
+            can.texture_slot = entry.texture_slot;
+            can.ssbo_type = entry.ssbo_type;
+            can.material_private_data_slot =
+                entry.material_private_data_slot;
+            can.stage_flags = entry.stage_flags;
+            can.array_count = entry.array_count;
+            can.required = entry.required;
+            can.allow_fallback = entry.allow_fallback;
+            return can;
         }
     }
 
@@ -147,10 +152,10 @@ namespace hgl::graph::mtl
         const auto has_semantic =
             [&in_out_contract](const DescriptorSemantic semantic)
         {
-            for (const DescriptorContractEntry &entry :
+            for (const SerializedDescriptorEntry &entry :
                  in_out_contract.entries)
             {
-                if (entry.canonical.semantic == semantic)
+                if (entry.semantic == semantic)
                     return true;
             }
             return false;
@@ -207,9 +212,9 @@ namespace hgl::graph::mtl
             std::remove_if(
                 out_contract.entries.begin(),
                 out_contract.entries.end(),
-                [](const DescriptorContractEntry &entry)
+                [](const SerializedDescriptorEntry &entry)
                 {
-                    return entry.canonical.semantic
+                    return entry.semantic
                         == DescriptorSemantic::MaterialPrivateData;
                 }),
             out_contract.entries.end());
@@ -242,75 +247,21 @@ namespace hgl::graph::mtl
         return ValidateDescriptorContract(out_contract);
     }
 
-    bool ConvertDescriptorContractToFixed(
-        const DescriptorContract &contract,
-        std::vector<SerializedDescriptorEntry> &out_entries)
-    {
-        out_entries.clear();
-        if (!ValidateDescriptorContract(contract))
-            return false;
-
-        out_entries.reserve(contract.entries.size());
-        for (const DescriptorContractEntry &entry :
-             contract.entries)
-        {
-            SerializedDescriptorEntry fixed{};
-            fixed.set_type = entry.canonical.set_type;
-            fixed.stage_flags = entry.canonical.stage_flags;
-            fixed.name = entry.name.empty()
-                ? nullptr : entry.name.c_str();
-            fixed.struct_name = entry.struct_name.empty()
-                ? nullptr : entry.struct_name.c_str();
-            fixed.glsl_type = entry.glsl_type.empty()
-                ? nullptr : entry.glsl_type.c_str();
-            fixed.semantic = entry.canonical.semantic;
-            fixed.texture_slot = entry.canonical.texture_slot;
-            fixed.material_private_data_slot = entry.canonical.material_private_data_slot;
-            fixed.ssbo_type = entry.canonical.ssbo_type;
-            fixed.semantic_layer = entry.canonical.semantic_layer;
-            fixed.ssbo_id = entry.ssbo_id;
-            fixed.has_requirement_policy =
-                entry.has_explicit_policy;
-            fixed.required = entry.canonical.required;
-            fixed.allow_fallback =
-                entry.canonical.allow_fallback;
-            out_entries.push_back(fixed);
-        }
-        return true;
-    }
-
     bool ValidateDescriptorContract(
         const DescriptorContract &contract) noexcept
     {
         ShaderInterfaceContract interface_contract{};
         interface_contract.descriptor_requirements.Reserve(
             static_cast<int>(contract.entries.size()));
-        for (const DescriptorContractEntry &entry :
+        for (const SerializedDescriptorEntry &entry :
              contract.entries)
         {
-            if (entry.name.empty())
+            if (!entry.name || !entry.name[0])
                 return false;
             interface_contract.descriptor_requirements.Add(
-                entry.canonical);
+                ToCanonicalShaderContractEntry(entry));
         }
         return ValidateShaderInterfaceContract(interface_contract);
-    }
-
-    namespace
-    {
-        DescriptorSemanticLayer NormalizeContractSemanticLayer(
-            const ShaderDescriptorContractEntry &can)
-        {
-            if (can.semantic_layer != DescriptorSemanticLayer::Unknown)
-                return can.semantic_layer;
-
-            const DescriptorSemanticLayer mapped =
-                GetDescriptorSemanticLayer(can.semantic);
-            if (mapped != DescriptorSemanticLayer::Unknown)
-                return mapped;
-
-            return DescriptorSemanticLayer::Unknown;
-        }
     }
 
     bool BuildResourceSchemaFromContract(
@@ -323,35 +274,31 @@ namespace hgl::graph::mtl
 
         out_schema.resources.reserve(contract.entries.size());
 
-        for (const DescriptorContractEntry &entry :
+        // C1-T2：entries 为规范化 SerializedDescriptorEntry——直读字段
+        //（原经 DescriptorContractEntry.canonical 间接访问已删除）。
+        for (const SerializedDescriptorEntry &entry :
              contract.entries)
         {
-            const ShaderDescriptorContractEntry &can =
-                entry.canonical;
             ShaderResourceSlot req;
 
-            // ── Identity from canonical (already computed by AppendEntry) ──
-            req.logical_resource_id = can.logical_resource_id;
-            req.resource_schema_id = can.resource_schema_id;
-            req.semantic = can.semantic;
-            req.semantic_layer = NormalizeContractSemanticLayer(can);
-            req.set_type = can.set_type;
-            req.texture_slot = can.texture_slot;
-            req.material_private_data_slot = can.material_private_data_slot;
-            req.ssbo_type = can.ssbo_type;
+            // ── Identity（AppendEntry 已就地计算）──
+            req.logical_resource_id = entry.logical_resource_id;
+            req.resource_schema_id = entry.resource_schema_id;
+            req.semantic = entry.semantic;
+            req.semantic_layer = entry.semantic_layer;
+            req.set_type = entry.set_type;
+            req.texture_slot = entry.texture_slot;
+            req.material_private_data_slot = entry.material_private_data_slot;
+            req.ssbo_type = entry.ssbo_type;
             req.ssbo_id = entry.ssbo_id;
-            req.stage_flags = can.stage_flags;
-            req.required = entry.has_explicit_policy
-                ? can.required
-                : IsSemanticRequired(req.semantic);
-            req.allow_fallback = entry.has_explicit_policy
-                ? can.allow_fallback
-                : IsSemanticFallbackAllowed(req.semantic);
+            req.stage_flags = entry.stage_flags;
+            req.required = entry.required;
+            req.allow_fallback = entry.allow_fallback;
 
-            // ── Names from entry ──
-            req.name = entry.name;
-            req.struct_name = entry.struct_name;
-            req.glsl_type = entry.glsl_type;
+            // ── Names ──
+            req.name = entry.name ? entry.name : "";
+            req.struct_name = entry.struct_name ? entry.struct_name : "";
+            req.glsl_type = entry.glsl_type ? entry.glsl_type : "";
 
             // ── Fallback names by semantic ──
             if (req.name.empty())
@@ -404,11 +351,11 @@ namespace hgl::graph::mtl
         ShaderInterfaceContract interface_contract{};
         interface_contract.descriptor_requirements.Reserve(
             static_cast<int>(contract.entries.size()));
-        for (const DescriptorContractEntry &entry :
+        for (const SerializedDescriptorEntry &entry :
              contract.entries)
         {
             interface_contract.descriptor_requirements.Add(
-                entry.canonical);
+                ToCanonicalShaderContractEntry(entry));
         }
 
         hgl::hash::FNV1aHasher64 h;

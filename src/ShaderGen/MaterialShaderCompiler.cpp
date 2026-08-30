@@ -448,9 +448,9 @@ static bool BuildEffectiveDescriptorEntries(
             out_effective_contract))
         return c.Fail("failed to add varying descriptor contract resources");
 
-    if (!ConvertDescriptorContractToFixed(
-            out_effective_contract, out_entries))
-        return c.Fail("failed to adapt material descriptor contract");
+    // C1-T2：entries 即规范化 SerializedDescriptorEntry[]（原
+    // ConvertDescriptorContractToFixed 往返转换已删——直接取契约条目）
+    out_entries = out_effective_contract.entries;
 
     if (use_slot_decls)
     {

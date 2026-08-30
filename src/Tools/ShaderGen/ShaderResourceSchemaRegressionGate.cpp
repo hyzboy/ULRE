@@ -4361,10 +4361,10 @@ namespace
                     "descriptor stage visibility must affect contract hash");
             }
 
-            std::vector<SerializedDescriptorEntry> roundtrip;
-            if (!ConvertDescriptorContractToFixed(
-                    first_contract, roundtrip)
-             || roundtrip.size() != 2
+            // C1-T2：entries 即规范化 SerializedDescriptorEntry[]——直接校验契约条目
+            //（原 ConvertDescriptorContractToFixed 往返已删）
+            const auto &roundtrip = first_contract.entries;
+            if (roundtrip.size() != 2
              || std::strcmp(roundtrip[0].name, "viewport") != 0
              || std::strcmp(
                     roundtrip[1].struct_name, "PBRSurfaceData") != 0)

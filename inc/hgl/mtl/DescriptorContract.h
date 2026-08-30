@@ -11,19 +11,13 @@ namespace hgl::graph::mtl {}
 namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
-    struct DescriptorContractEntry
-    {
-        ShaderDescriptorContractEntry canonical;
-        std::string name;
-        std::string struct_name;
-        std::string glsl_type;
-        uint32 ssbo_id = MakeRecipeSSBOId(0);
-        bool has_explicit_policy = false;
-    };
-
+    // C1-T2：DescriptorContract 直接承载规范化后的 SerializedDescriptorEntry[]
+    //（AppendEntry 就地完整规范化：ID/ssbo_type/layer/policy 全填回）。
+    // 原 DescriptorContractEntry 包装与 ConvertDescriptorContractToFixed 往返
+    // 转换已删除——条目结构唯一（SerializedDescriptorEntry）。
     struct DescriptorContract
     {
-        std::vector<DescriptorContractEntry> entries;
+        std::vector<SerializedDescriptorEntry> entries;
     };
 
     bool BuildDescriptorContract(
@@ -44,10 +38,6 @@ namespace hgl::graph::mtl
     bool EnsureDescriptorContractVaryingResources(
         const mtl::MaterialVertexVaryingConfig &varying,
         DescriptorContract &in_out_contract);
-
-    bool ConvertDescriptorContractToFixed(
-        const DescriptorContract &contract,
-        std::vector<mtl::SerializedDescriptorEntry> &out_entries);
 
     bool BuildResourceSchemaFromContract(
         const DescriptorContract &contract,
