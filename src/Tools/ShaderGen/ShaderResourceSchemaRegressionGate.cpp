@@ -26,6 +26,9 @@
 #include <hgl/log/Log.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/filesystem/Path.h>
+#include <hgl/mtl/ShaderStructureDump.h>
+#include <fstream>
+#include <filesystem>
 #include "../../ShaderGen/3d/DefinitionDescriptorBuilder.h"
 #include <hgl/mtl/MeshShaderLimits.h>
 #include "../../ShaderGen/common/VertexBuilderCommon.h"
@@ -4888,6 +4891,182 @@ namespace
         return result;
     }
 
+    // ══════════════════════════════════════════════════════════════════════
+    // S4 试点：结构快照 golden 比对（取代 GLSL 文本子串断言）
+    //
+    // 现状问题：本文件大量断言形如 contains(fs, "layout(set=2, binding=0)")，
+    // 生成器格式一变就要改断言 → 生成器与测试双向锁死。
+    // 试点做法：DumpShaderStructure(ctx) 产出结构快照（资源 semantic/layer/
+    // set/binding/stages/required + stage 存在性 + program_link 存在性，
+    // **不含 hash 值与 GLSL 文本**），与 golden 文件逐行比对。
+    //
+    // golden 缺失时**自动生成**并通过（首跑引导）——生成后须人工审阅并入库；
+    // 已存在时不一致即 FAIL，并落地 .actual 便于 diff。
+    // ══════════════════════════════════════════════════════════════════════
+    static bool ReadGoldenFile(const std::string &path, std::string &out)
+    {
+        std::ifstream in(path, std::ios::binary);
+        if (!in)
+            return false;
+
+        out.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+        return true;
+    }
+
+    static bool WriteTextFile(const std::string &path, const std::string &text)
+    {
+        std::error_code ec;
+        std::filesystem::create_directories(
+            std::filesystem::path(path).parent_path(), ec);
+
+        std::ofstream out(path, std::ios::binary | std::ios::trunc);
+        if (!out)
+            return false;
+
+        out.write(text.data(), std::streamsize(text.size()));
+        return bool(out);
+    }
+
+    /// 行尾归一（golden 入库后 git 可能改行尾，比对不应受其影响）
+    static std::string NormalizeDumpEOL(const std::string &src)
+    {
+        std::string out;
+        out.reserve(src.size());
+        for (const char c : src)
+            if (c != '\r')
+                out += c;
+        return out;
+    }
+
+    static GateResult RunShaderStructureDumpPilotCase()
+    {
+        GateResult result;
+        result.name = "SD.structure-dump-golden-pilot";
+
+        const GeometryVertexFormat geometry{
+            {VertexSemantic::Position, VF_V3F},
+            {VertexSemantic::TexCoord, VF_V2F},
+            {VertexSemantic::Normal, VF_V3F},
+            {VertexSemantic::Color, VF_V4F},
+            {VertexSemantic::TransformID, VK_FORMAT_R32_UINT},
+            {VertexSemantic::Size, VF_V2F}
+        };
+
+        struct PilotVariant
+        {
+            const char *definition_id;
+            const char *golden_slug;
+            ShaderProgramPurpose purpose;
+            bool override_purpose;
+            PassType pass;
+        };
+
+        static const PilotVariant kVariants[] =
+        {
+            { "Lit", "lit-forward-opaque",
+              ShaderProgramPurpose::ForwardColor, false, PassType::ForwardOpaque },
+            { "Lit", "lit-depth-only",
+              ShaderProgramPurpose::DepthOnly, true, PassType::ForwardOpaque },
+            { "VertexPaletteColor", "vertex-palette-color-forward",
+              ShaderProgramPurpose::ForwardColor, false, PassType::ForwardOpaque },
+        };
+
+        for (const PilotVariant &variant : kVariants)
+        {
+            MaterialDefinition definition{};
+            if (!TryGetMaterialDefinitionByID(variant.definition_id, definition))
+            {
+                result.diagnostics.emplace_back(
+                    std::string("definition unavailable: ") + variant.definition_id);
+                continue;
+            }
+
+            definition.compositor_pass = variant.pass;
+
+            MaterialDefinitionBuildRequest request{};
+            request.recipe.mtl_def_id = definition.definition_id;
+            request.geometry_vertex_format = &geometry;
+            request.defer_finalize = true;
+            request.override_shader_program_purpose = variant.override_purpose;
+            request.shader_program_purpose = variant.purpose;
+
+            const std::unique_ptr<ShaderBuildContext> ctx(
+                CreateMaterialFromDefinition(nullptr, definition, request));
+
+            if (!ctx)
+            {
+                result.diagnostics.emplace_back(
+                    std::string("material build failed: ") + variant.golden_slug);
+                continue;
+            }
+
+            const std::string label =
+                std::string(variant.definition_id)
+                + " golden=" + variant.golden_slug;
+
+            const std::string dump =
+                NormalizeDumpEOL(DumpShaderStructure(*ctx, label.c_str()));
+
+            const std::string golden_path =
+                RepoRootPath((std::string("src/Tools/ShaderGen/golden/")
+                              + variant.golden_slug + ".txt").c_str());
+
+            std::string golden;
+            if (!ReadGoldenFile(golden_path, golden))
+            {
+                // 首跑引导：生成 golden 并通过，提示人工审阅入库
+                if (!WriteTextFile(golden_path, dump))
+                {
+                    result.diagnostics.emplace_back(
+                        std::string("cannot write golden: ") + golden_path);
+                    continue;
+                }
+
+                std::printf(
+                    "[SD.pilot] golden 已生成（首跑引导），请审阅后入库: %s\n",
+                    golden_path.c_str());
+                continue;
+            }
+
+            if (NormalizeDumpEOL(golden) == dump)
+                continue;
+
+            const std::string actual_path = golden_path + ".actual";
+            WriteTextFile(actual_path, dump);
+
+            // 定位首个差异行，便于直接看出结构变化
+            const std::string normalized_golden = NormalizeDumpEOL(golden);
+            size_t pos = 0;
+            size_t line = 1;
+            while (pos < dump.size() && pos < normalized_golden.size()
+                && dump[pos] == normalized_golden[pos])
+            {
+                if (dump[pos] == '\n')
+                    ++line;
+                ++pos;
+            }
+
+            const auto line_of = [](const std::string &text, const size_t at)
+            {
+                const size_t begin = text.rfind('\n', at) == std::string::npos
+                    ? 0 : text.rfind('\n', at) + 1;
+                const size_t end = text.find('\n', at);
+                return text.substr(begin,
+                    (end == std::string::npos ? text.size() : end) - begin);
+            };
+
+            result.diagnostics.emplace_back(
+                std::string("structure dump mismatch: ") + variant.golden_slug
+                + " line " + std::to_string(line)
+                + "\n  golden: " + line_of(normalized_golden, std::min(pos, normalized_golden.size() ? normalized_golden.size() - 1 : 0))
+                + "\n  actual: " + line_of(dump, std::min(pos, dump.size() ? dump.size() - 1 : 0))
+                + "\n  actual 全文: " + actual_path);
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
 }
 
 int main(const int argc, char **argv)
@@ -4986,6 +5165,7 @@ int main(const int argc, char **argv)
     if (run_materialization) results.push_back(RunSamplerPresetLibraryCase());
     if (run_descriptor) results.push_back(RunResourceContractBoundaryCase());
     if (run_module_invariants) results.push_back(RunModuleInvariantsCase());
+    if (run_pipeline) results.push_back(RunShaderStructureDumpPilotCase());
 
     bool all_passed = true;
     for (const auto &result : results)
