@@ -126,6 +126,45 @@ namespace hgl::graph::mtl
             return registry.FindByName(name.c_str());
         }
 
+        // T3：surface → 光照管线配置（单一真源）
+        // Lit 的 forward_lighting/lighting_algorithm 传 nullptr——走 CompositorAssembler
+        // 的 kModuleSlots 默认路径（forward_pbr 等），模块路径只存在于 Assembler 一处，
+        // 不再重复 override（消除双真源）。
+        struct SurfaceLightingConfig
+        {
+            bool        enable_scene_lighting;
+            const char *sky_module;               // nullptr = 不注入 sky
+            const char *forward_lighting_module;  // nullptr = 走 Assembler 默认
+            const char *lighting_algorithm_module;// nullptr = 走 Assembler 默认
+        };
+
+        const SurfaceLightingConfig *GetSurfaceLightingConfig(
+            const SurfaceType surface) noexcept
+        {
+            switch (surface)
+            {
+            case SurfaceType::Unlit:
+            case SurfaceType::Sky:
+            {
+                // 无场景光照：flat 管线（无 sky 大气、无 PBR）
+                static const SurfaceLightingConfig cfg =
+                    { false, nullptr,
+                      "compositor/flat_lighting.glsl",
+                      "lighting/forward_flat.glsl" };
+                return &cfg;
+            }
+            case SurfaceType::Lit:
+            {
+                // 场景光照：PBR + 大气（模块走 Assembler 默认路径）
+                static const SurfaceLightingConfig cfg =
+                    { true, "sky/sky_atmosphere.glsl", nullptr, nullptr };
+                return &cfg;
+            }
+            default:
+                return nullptr;
+            }
+        }
+
         // Phase 1 — purpose / coverage / varying / stage interface
         // (originally MaterialDefinitionRegistry.cpp:235-305)
         // ═══════════════════════════════════════════════════════════════════
@@ -465,22 +504,23 @@ namespace hgl::graph::mtl
             compositor_options.fragment_inputs = &plan.stage_interface;
             compositor_options.output_contract = &plan.output_contract;
             compositor_options.coverage_contract = &plan.coverage;
-            const bool use_scene_lighting =
-                definition.compositor_surface != SurfaceType::Unlit
-             && definition.compositor_surface != SurfaceType::Sky;
+            // T3：surface → 光照管线查表（GetSurfaceLightingConfig——单一真源）
+            const SurfaceLightingConfig *lighting =
+                GetSurfaceLightingConfig(definition.compositor_surface);
+            if (!lighting)
+            {
+                GLogError("[ShaderGen] Unsupported compositor surface type: %d",
+                          static_cast<int>(definition.compositor_surface));
+                return false;
+            }
             compositor_options.enable_scene_lighting =
-                use_scene_lighting;
-            compositor_options.sky_module = use_scene_lighting
-                ? "sky/sky_atmosphere.glsl"
-                : nullptr;
+                lighting->enable_scene_lighting;
+            compositor_options.sky_module =
+                lighting->sky_module;
             compositor_options.forward_lighting_module =
-                use_scene_lighting
-                    ? "compositor/forward_lighting.glsl"
-                    : "compositor/flat_lighting.glsl";
+                lighting->forward_lighting_module;
             compositor_options.lighting_algorithm_module =
-                use_scene_lighting
-                    ? "lighting/forward_pbr.glsl"
-                    : "lighting/forward_flat.glsl";
+                lighting->lighting_algorithm_module;
             compositor_options.material_source_module =
                 definition.fragment_material_source_module;
             compositor_options.ntb_module =
