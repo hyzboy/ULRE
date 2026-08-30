@@ -824,7 +824,7 @@ static std::string BuildFSIndexTableDecls(
     return out;
 }
 
-// ── Step 5e: 最终 GLSL 组装 ──────────────────────────────────────────────────
+// ── Step 5e: 最终 GLSL 组装（注入段列表驱动）───────────────────────────────
 // GLSL requires #version to be the very first token.
 static std::string InsertAfterVersionLine(const std::string &glsl, const std::string &inject)
 {
@@ -834,6 +834,72 @@ static std::string InsertAfterVersionLine(const std::string &glsl, const std::st
     if (pos == std::string::npos)
         return glsl + "\n" + inject;
     return glsl.substr(0, pos + 1) + inject + glsl.substr(pos + 1);
+}
+
+// C3：注入段数据驱动——组装内容声明为有序段列表，不再散在拼接表达式里。
+// AfterVersion 组合并后一次注入（InsertAfterVersionLine 多次调用会逆序——
+// 组内顺序 = 列表顺序，保持「单串一次注入」语义）。
+enum class GLSLInjectStage : uint8
+{
+    Mesh,       // 注入 mesh stage 源码
+    Fragment    // 注入 fragment stage 源码
+};
+
+enum class GLSLInjectPoint : uint8
+{
+    AfterVersion,           // #version 行后（注入组，顺序 = 列表顺序）
+    BeforeSurfaceFunction   // #include SURFACE_FUNCTION_FILE marker 前
+};
+
+struct GLSLInjectSegment
+{
+    GLSLInjectStage stage;
+    GLSLInjectPoint point;
+    std::string text;
+};
+
+static void AssembleFinalGLSL(
+    ShaderBuildContext *ctx,
+    const std::string &ms_glsl,
+    const std::string &fs_glsl,
+    const std::vector<GLSLInjectSegment> &segments)
+{
+    // 按 point 归组（AfterVersion 组内顺序 = 列表顺序）
+    std::string ms_version_injects;
+    std::string fs_version_injects;
+    std::string fs_surface_injects;
+
+    for (const auto &seg : segments)
+    {
+        if (seg.text.empty())
+            continue;
+
+        if (seg.stage == GLSLInjectStage::Mesh)
+            ms_version_injects += seg.text;
+        else if (seg.point == GLSLInjectPoint::BeforeSurfaceFunction)
+            fs_surface_injects += seg.text;
+        else
+            fs_version_injects += seg.text;
+    }
+
+    std::string ms_final = InsertAfterVersionLine(ms_glsl, ms_version_injects);
+
+    std::string fs_final = fs_glsl;
+    if (!fs_surface_injects.empty())
+        fs_final = InsertBeforeSurfaceFunction(fs_final, fs_surface_injects);
+    if (!fs_version_injects.empty())
+        fs_final = InsertAfterVersionLine(fs_final, fs_version_injects);
+
+    ShaderCreateInfo *mesh = ctx->GetStageShader(ShaderStage::Mesh);
+    ShaderCreateInfo *frag = ctx->GetStageShader(ShaderStage::Fragment);
+
+    // mesh shader 材质：ms_glsl 实为 mesh stage 源码，
+    // 设到 mesh ShaderCreateInfo。
+    if (mesh)
+        mesh->SetFinalGLSL(ms_final);
+
+    if (frag)
+        frag->SetFinalGLSL(fs_final);
 }
 
 static std::string InsertBeforeSurfaceFunction(const std::string &glsl, const std::string &inject)
@@ -847,60 +913,6 @@ static std::string InsertBeforeSurfaceFunction(const std::string &glsl, const st
     if (pos == std::string::npos)
         return glsl + "\n" + inject;
     return glsl.substr(0, pos) + inject + "\n" + glsl.substr(pos);
-}
-
-static void AssembleFinalGLSL(
-    ShaderBuildContext *ctx,
-    const std::string &ms_glsl,
-    const std::string &fs_glsl,
-    const ModuleResourceManifest *manifest,
-    const std::string &mesh_index_table_decls,
-    const std::string &compile_define_macros,
-    const std::string &sampler_macros,
-    const std::string &material_ssbo_decls,
-    const std::string &material_slot_macros,
-    const std::string &fs_index_table_decls)
-{
-    std::string ms_final = InsertAfterVersionLine(ms_glsl, mesh_index_table_decls);
-
-    // 注入顺序（InsertAfterVersionLine 后注入者位于 version 后更前）：
-    // 模块代码可能引用 SSBO 类型、MTL_DATA 宏、索引行表与采样器宏
-    // （unlit_source 的 EmissiveSurfaceData / MTL_DATA；bindless_textures 的
-    // mtl_texture_layer_rows / TrilinearSampler）——全部注入统一放最后
-    // （version 后最前，先于模块代码）。T4.1：一次性组装，顺序在单个串里
-    // 显式可见（宏/声明在前、模块代码在后），不再依赖多次调用的反向次序。
-    std::string fs_final = fs_glsl;
-    const std::string code_module_glsl = BuildCodeModuleGLSL(manifest);
-
-    // FS 统一启用 GL_EXT_mesh_shader：per-primitive 语义（DataIndexID/StyleID）的
-    // FS 输入用 perprimitiveEXT in（mesh out perprimitiveEXT → FS in 必须同装饰，
-    // 否则 VUID-RuntimeSpirv-OpVariable-08746 接口装饰不匹配）。
-    // 扩展声明必须在 #version 之后（InsertAfterVersionLine 保证）。
-    std::string fs_injects = "#extension GL_EXT_mesh_shader : require\n"
-        + compile_define_macros + sampler_macros + material_ssbo_decls
-        + material_slot_macros + fs_index_table_decls;
-
-    if (!code_module_glsl.empty())
-    {
-        if (fs_glsl.find("#include SURFACE_FUNCTION_FILE") != std::string::npos)
-            // marker 模板：模块代码插到 surface function 前（独立于 version 后注入组）
-            fs_final = InsertBeforeSurfaceFunction(fs_final, code_module_glsl);
-        else
-            fs_injects += code_module_glsl;   // 排在注入组尾部（保持原顺序：宏/声明在前、模块代码在后）
-    }
-
-    fs_final = InsertAfterVersionLine(fs_final, fs_injects);
-
-    ShaderCreateInfo *mesh = ctx->GetStageShader(ShaderStage::Mesh);
-    ShaderCreateInfo *frag = ctx->GetStageShader(ShaderStage::Fragment);
-
-    // mesh shader 材质：ms_glsl 实为 mesh stage 源码，
-    // 设到 mesh ShaderCreateInfo。
-    if (mesh)
-        mesh->SetFinalGLSL(ms_final);
-
-    if (frag)
-        frag->SetFinalGLSL(fs_final);
 }
 
 // ── Step 6: ShaderResourceSchema 构建与校验 ──────────────────────────────────
@@ -1077,11 +1089,40 @@ ShaderBuildContext *CompileCompositorMaterial(
     const std::string fs_index_table_decls =
         BuildFSIndexTableDecls(descriptor_info);
 
-    AssembleFinalGLSL(ctx, ms_glsl, fs_glsl, config.resource_manifest,
-                      mesh_index_table_decls,
-                      compile_define_macros, sampler_macros,
-                      material_ssbo_decls, material_slot_macros,
-                      fs_index_table_decls);
+    // ── Step 5e: 组装注入段列表（C3——注入内容数据驱动，顺序 = 列表顺序）──
+    std::vector<GLSLInjectSegment> segments;
+
+    // mesh 阶段：行表声明（version 后）
+    segments.push_back({ GLSLInjectStage::Mesh, GLSLInjectPoint::AfterVersion,
+                         mesh_index_table_decls });
+
+    // FS 统一启用 GL_EXT_mesh_shader：per-primitive 语义（DataIndexID/StyleID）的
+    // FS 输入用 perprimitiveEXT in（mesh out perprimitiveEXT → FS in 必须同装饰，
+    // 否则 VUID-RuntimeSpirv-OpVariable-08746 接口装饰不匹配）。
+    // 扩展声明必须在 #version 之后（InsertAfterVersionLine 保证）。
+    // version 后注入组顺序（= 列表顺序）：扩展 → 宏/声明 → 索引行表
+    segments.push_back({ GLSLInjectStage::Fragment, GLSLInjectPoint::AfterVersion,
+                         "#extension GL_EXT_mesh_shader : require\n"
+                         + compile_define_macros + sampler_macros
+                         + material_ssbo_decls + material_slot_macros
+                         + fs_index_table_decls });
+
+    // 模块代码：有 surface function marker 走 marker 前，否则并入 version 组尾部
+    //（unlit_source 的 EmissiveSurfaceData / MTL_DATA；bindless_textures 的
+    //  mtl_texture_layer_rows / TrilinearSampler——模块代码可能引用上述宏/声明，
+    //  必须排在注入组最后）
+    const std::string code_module_glsl = BuildCodeModuleGLSL(config.resource_manifest);
+    if (!code_module_glsl.empty())
+    {
+        segments.push_back({
+            GLSLInjectStage::Fragment,
+            fs_glsl.find("#include SURFACE_FUNCTION_FILE") != std::string::npos
+                ? GLSLInjectPoint::BeforeSurfaceFunction
+                : GLSLInjectPoint::AfterVersion,
+            code_module_glsl });
+    }
+
+    AssembleFinalGLSL(ctx, ms_glsl, fs_glsl, segments);
 
     // ── Step 6: Build ShaderResourceSchema from descriptor entries. ──
     // When material_private_data_slot_decls is provided, material SSBO entries are
