@@ -131,27 +131,10 @@ namespace hgl::graph::mtl
 
         GLSLCodeModuleSemantic ParseSemantic(const char *token) noexcept
         {
-            if (std::strcmp(token, "Position") == 0) return GLSLCodeModuleSemantic::Position;
-            if (std::strcmp(token, "UV0") == 0) return GLSLCodeModuleSemantic::UV0;
-            if (std::strcmp(token, "Color") == 0) return GLSLCodeModuleSemantic::Color;
-            if (std::strcmp(token, "ColorY") == 0) return GLSLCodeModuleSemantic::ColorY;
-            if (std::strcmp(token, "ColorUV") == 0) return GLSLCodeModuleSemantic::ColorUV;
-            if (std::strcmp(token, "Normal") == 0) return GLSLCodeModuleSemantic::Normal;
-            if (std::strcmp(token, "Tangent") == 0) return GLSLCodeModuleSemantic::Tangent;
-            if (std::strcmp(token, "Binormal") == 0) return GLSLCodeModuleSemantic::Binormal;
-            if (std::strcmp(token, "WorldPosition") == 0) return GLSLCodeModuleSemantic::WorldPosition;
-            if (std::strcmp(token, "WorldNormal") == 0) return GLSLCodeModuleSemantic::WorldNormal;
-            if (std::strcmp(token, "WorldTangent") == 0) return GLSLCodeModuleSemantic::WorldTangent;
-            if (std::strcmp(token, "WorldBinormal") == 0) return GLSLCodeModuleSemantic::WorldBinormal;
-            if (std::strcmp(token, "Luminance") == 0) return GLSLCodeModuleSemantic::Luminance;
-            if (std::strcmp(token, "HeightMap") == 0) return GLSLCodeModuleSemantic::HeightMap;
-            if (std::strcmp(token, "Camera") == 0) return GLSLCodeModuleSemantic::Camera;
-            if (std::strcmp(token, "Viewport") == 0) return GLSLCodeModuleSemantic::Viewport;
-            if (std::strcmp(token, "SkyLight") == 0) return GLSLCodeModuleSemantic::SkyLight;
-            if (std::strcmp(token, "MaterialData") == 0) return GLSLCodeModuleSemantic::MaterialData;
-            if (std::strcmp(token, "TransformID") == 0) return GLSLCodeModuleSemantic::TransformID;
-            if (std::strcmp(token, "Size") == 0) return GLSLCodeModuleSemantic::Size;
-            return GLSLCodeModuleSemantic::Unknown;
+            // T1：语义名字单一真源 GLSLCodeModule.h——此处不再维护平行 if-else 表。
+            GLSLCodeModuleSemantic semantic = GLSLCodeModuleSemantic::Unknown;
+            ParseGLSLCodeModuleSemantic(token, semantic);
+            return semantic;    // 解析失败返回 Unknown（旧行为一致）
         }
 
         bool ParseSource(const char *token, GLSLCodeModuleCapabilitySource &out_source) noexcept

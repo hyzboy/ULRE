@@ -102,20 +102,8 @@ namespace hgl::graph::mtl
 
         bool ParsePass(const std::string &name, PassType &out)
         {
-            static const char *const names[] = {
-                "ForwardOpaque", "ForwardMasked", "ForwardTransparent",
-                "ForwardDither", "ForwardA2C", "ShadowOpaque", "ShadowMasked",
-                "EarlyZSolid", "EarlyZMasked"
-            };
-            for (uint32 i = 0; i < 9; ++i)
-            {
-                if (name == names[i])
-                {
-                    out = static_cast<PassType>(i);
-                    return true;
-                }
-            }
-            return false;
+            // T1：PassType 名字单一真源 PassType.h（GetPassTypeName/ParsePassType）
+            return ParsePassType(name.c_str(), out);
         }
 
         bool ParseCullMode(const std::string &name, VkCullModeFlags &out)
@@ -343,34 +331,9 @@ namespace hgl::graph::mtl
 
         bool ParseSemantic(const std::string &name, GLSLCodeModuleSemantic &out)
         {
-            static const char *const names[] = {
-                "Position", "UV0", "Color", "ColorY", "ColorUV",
-                "Normal", "Tangent", "Binormal", "WorldPosition",
-                "WorldNormal", "WorldTangent", "WorldBinormal", "Luminance",
-                "HeightMap", "Camera", "Viewport", "SkyLight",
-                "MaterialData", "TransformID", "Size"
-            };
-            static const GLSLCodeModuleSemantic values[] = {
-                GLSLCodeModuleSemantic::Position, GLSLCodeModuleSemantic::UV0,
-                GLSLCodeModuleSemantic::Color, GLSLCodeModuleSemantic::ColorY,
-                GLSLCodeModuleSemantic::ColorUV, GLSLCodeModuleSemantic::Normal,
-                GLSLCodeModuleSemantic::Tangent, GLSLCodeModuleSemantic::Binormal,
-                GLSLCodeModuleSemantic::WorldPosition, GLSLCodeModuleSemantic::WorldNormal,
-                GLSLCodeModuleSemantic::WorldTangent, GLSLCodeModuleSemantic::WorldBinormal,
-                GLSLCodeModuleSemantic::Luminance, GLSLCodeModuleSemantic::HeightMap,
-                GLSLCodeModuleSemantic::Camera, GLSLCodeModuleSemantic::Viewport,
-                GLSLCodeModuleSemantic::SkyLight, GLSLCodeModuleSemantic::MaterialData,
-                GLSLCodeModuleSemantic::TransformID, GLSLCodeModuleSemantic::Size
-            };
-            for (uint32 i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
-            {
-                if (name == names[i])
-                {
-                    out = values[i];
-                    return true;
-                }
-            }
-            return false;
+            // T1：语义名字单一真源 GLSLCodeModule.h（GetGLSLCodeModuleSemanticName/
+            // ParseGLSLCodeModuleSemantic）——此处不再维护平行表。
+            return ParseGLSLCodeModuleSemantic(name.c_str(), out);
         }
 
         bool ParseSSBOType(const std::string &name, SSBOType &out)
