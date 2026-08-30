@@ -175,7 +175,7 @@ namespace hgl::graph::mtl
             generated.push_back(entry);
         }
 
-        for (const SerializedDescriptorEntry &entry : generated)
+        for (SerializedDescriptorEntry &entry : generated)
         {
             if (!AppendEntry(entry, in_out_contract))
                 return false;
