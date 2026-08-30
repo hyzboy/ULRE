@@ -58,13 +58,12 @@ namespace hgl::graph::mtl
     const char *GetMaterialStageInterfaceErrorName(
         const MaterialStageInterfaceError error) noexcept
     {
+#define HGL_ERROR(name) case MaterialStageInterfaceError::name: return #name;
         switch (error)
         {
-        case MaterialStageInterfaceError::None: return "None";
-        case MaterialStageInterfaceError::InvalidVaryingConfiguration: return "InvalidVaryingConfiguration";
-        case MaterialStageInterfaceError::MissingSemanticMetadata: return "MissingSemanticMetadata";
-        case MaterialStageInterfaceError::InvalidContract: return "InvalidContract";
+            HGL_MATERIAL_STAGE_INTERFACE_ERROR_LIST
         }
+#undef HGL_ERROR
         return "Unknown";
     }
 

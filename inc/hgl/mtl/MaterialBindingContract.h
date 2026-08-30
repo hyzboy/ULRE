@@ -113,13 +113,19 @@ namespace hgl::graph::mtl
         uint64 GetStableHash() const noexcept;
     };
 
+    // 契约错误 X 列表（单一真源——枚举与 GetXxxErrorName 同源，新增错误只改此处）
+#define HGL_BINDING_BUILD_ERROR_LIST \
+    HGL_ERROR(None) \
+    HGL_ERROR(InvalidShaderProgramKey) \
+    HGL_ERROR(DuplicateRecipeTexture) \
+    HGL_ERROR(DuplicateRecipeData) \
+    HGL_ERROR(InvalidBindingTable)
+
     enum class BindingBuildError : uint8
     {
-        None = 0,
-        InvalidShaderProgramKey,
-        DuplicateRecipeTexture,
-        DuplicateRecipeData,
-        InvalidBindingTable
+#define HGL_ERROR(name) name,
+        HGL_BINDING_BUILD_ERROR_LIST
+#undef HGL_ERROR
     };
 
     struct BindingBuildDiagnostic

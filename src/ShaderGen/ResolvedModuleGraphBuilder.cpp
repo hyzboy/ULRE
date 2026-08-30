@@ -368,17 +368,12 @@ namespace hgl::graph::mtl
     const char *GetResolvedModuleGraphBuildErrorName(
         const ResolvedModuleGraphBuildError error) noexcept
     {
+#define HGL_ERROR(name) case ResolvedModuleGraphBuildError::name: return #name;
         switch (error)
         {
-        case ResolvedModuleGraphBuildError::None: return "None";
-        case ResolvedModuleGraphBuildError::MissingRootModule: return "MissingRootModule";
-        case ResolvedModuleGraphBuildError::MissingDependency: return "MissingDependency";
-        case ResolvedModuleGraphBuildError::DependencyCycle: return "DependencyCycle";
-        case ResolvedModuleGraphBuildError::ModuleConflict: return "ModuleConflict";
-        case ResolvedModuleGraphBuildError::RequirementConflict: return "RequirementConflict";
-        case ResolvedModuleGraphBuildError::StableIDConflict: return "StableIDConflict";
-        case ResolvedModuleGraphBuildError::InvalidCanonicalGraph: return "InvalidCanonicalGraph";
+            HGL_RESOLVED_MODULE_GRAPH_BUILD_ERROR_LIST
         }
+#undef HGL_ERROR
         return "Unknown";
     }
 

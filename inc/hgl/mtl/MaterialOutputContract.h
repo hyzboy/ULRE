@@ -9,13 +9,19 @@ namespace hgl::graph::mtl {}
 namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
+    // 契约错误 X 列表（单一真源——枚举与 GetXxxErrorName 同源，新增错误只改此处）
+#define HGL_MATERIAL_OUTPUT_CONTRACT_ERROR_LIST \
+    HGL_ERROR(None) \
+    HGL_ERROR(UnsupportedPurpose) \
+    HGL_ERROR(MissingContractMarker) \
+    HGL_ERROR(UnsupportedAttachment) \
+    HGL_ERROR(InvalidContract)
+
     enum class MaterialOutputContractError : uint8
     {
-        None = 0,
-        UnsupportedPurpose,
-        MissingContractMarker,
-        UnsupportedAttachment,
-        InvalidContract
+#define HGL_ERROR(name) name,
+        HGL_MATERIAL_OUTPUT_CONTRACT_ERROR_LIST
+#undef HGL_ERROR
     };
 
     struct MaterialOutputContractDiagnostic

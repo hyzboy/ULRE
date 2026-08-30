@@ -165,18 +165,12 @@ namespace hgl::graph::mtl
     const char *GetBindingBuildErrorName(
         const BindingBuildError error) noexcept
     {
+#define HGL_ERROR(name) case BindingBuildError::name: return #name;
         switch (error)
         {
-        case BindingBuildError::None: return "None";
-        case BindingBuildError::InvalidShaderProgramKey:
-            return "InvalidShaderProgramKey";
-        case BindingBuildError::DuplicateRecipeTexture:
-            return "DuplicateRecipeTexture";
-        case BindingBuildError::DuplicateRecipeData:
-            return "DuplicateRecipeData";
-        case BindingBuildError::InvalidBindingTable:
-            return "InvalidBindingTable";
+            HGL_BINDING_BUILD_ERROR_LIST
         }
+#undef HGL_ERROR
         return "Unknown";
     }
 

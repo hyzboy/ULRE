@@ -259,18 +259,12 @@ namespace hgl::graph::mtl
 
     const char *GetModuleResourceManifestErrorName(const ModuleResourceManifestError error) noexcept
     {
+#define HGL_ERROR(name) case ModuleResourceManifestError::name: return #name;
         switch (error)
         {
-        case ModuleResourceManifestError::None: return "None";
-        case ModuleResourceManifestError::NullRootList: return "NullRootList";
-        case ModuleResourceManifestError::UnknownCodeModule: return "UnknownCodeModule";
-        case ModuleResourceManifestError::CodeModuleCycle: return "CodeModuleCycle";
-        case ModuleResourceManifestError::CodeModuleCapacityExceeded: return "CodeModuleCapacityExceeded";
-        case ModuleResourceManifestError::SSBOCapacityExceeded: return "SSBOCapacityExceeded";
-        case ModuleResourceManifestError::TextureLayerCapacityExceeded: return "TextureLayerCapacityExceeded";
-        case ModuleResourceManifestError::ResourceConflict: return "ResourceConflict";
+            HGL_MODULE_RESOURCE_MANIFEST_ERROR_LIST
         }
-
+#undef HGL_ERROR
         return "Unknown";
     }
 }

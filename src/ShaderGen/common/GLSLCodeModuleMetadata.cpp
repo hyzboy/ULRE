@@ -134,24 +134,12 @@ namespace hgl::graph::mtl
     const char *GetGLSLCodeModuleMetadataValidationErrorName(
         const GLSLCodeModuleMetadataValidationError error) noexcept
     {
+#define HGL_ERROR(name) case GLSLCodeModuleMetadataValidationError::name: return #name;
         switch (error)
         {
-        case GLSLCodeModuleMetadataValidationError::None: return "None";
-        case GLSLCodeModuleMetadataValidationError::InvalidDefinition: return "InvalidDefinition";
-        case GLSLCodeModuleMetadataValidationError::InvalidArray: return "InvalidArray";
-        case GLSLCodeModuleMetadataValidationError::InvalidRequirement: return "InvalidRequirement";
-        case GLSLCodeModuleMetadataValidationError::DuplicateRequirement: return "DuplicateRequirement";
-        case GLSLCodeModuleMetadataValidationError::DuplicateProvide: return "DuplicateProvide";
-        case GLSLCodeModuleMetadataValidationError::DuplicateDependency: return "DuplicateDependency";
-        case GLSLCodeModuleMetadataValidationError::SelfDependency: return "SelfDependency";
-        case GLSLCodeModuleMetadataValidationError::MissingDependency: return "MissingDependency";
-        case GLSLCodeModuleMetadataValidationError::DuplicateConflict: return "DuplicateConflict";
-        case GLSLCodeModuleMetadataValidationError::SelfConflict: return "SelfConflict";
-        case GLSLCodeModuleMetadataValidationError::MissingConflictTarget: return "MissingConflictTarget";
-        case GLSLCodeModuleMetadataValidationError::DependencyCycle: return "DependencyCycle";
-        case GLSLCodeModuleMetadataValidationError::AmbiguousProviderPriority: return "AmbiguousProviderPriority";
+            HGL_GLSL_CODE_MODULE_METADATA_VALIDATION_ERROR_LIST
         }
-
+#undef HGL_ERROR
         return "Unknown";
     }
 
