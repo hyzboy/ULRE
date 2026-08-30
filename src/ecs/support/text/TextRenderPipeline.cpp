@@ -638,8 +638,7 @@ namespace hgl::ecs
             {
                 // CharQuad mesh shader self-declares all vertex SSBOs; no geometry_vertex_format
                 resources->pipeline = render_pass->CreatePipeline(resources->material,
-                                                                  graph::mtl::MakeAlpha2DConfig(),
-                                                                  nullptr);
+                                                                  graph::mtl::MakeAlpha2DConfig());
                 if (!resources->pipeline)
                     GLogError("[TextRenderPipeline] Failed to create GPU text pipeline");
             }
