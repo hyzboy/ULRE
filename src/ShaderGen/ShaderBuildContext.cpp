@@ -1,6 +1,7 @@
 ﻿#include<hgl/mtl/ShaderBuildContext.h>
 #include<hgl/mtl/ShaderCreateInfo.h>
 #include<hgl/mtl/contract/ShaderGenContract.h>
+#include<hgl/mtl/DescriptorResourceCatalog.h>
 #include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/math/Matrix.h>
 #include<string>
@@ -10,6 +11,23 @@ using namespace hgl::graph;
 
 namespace hgl::graph::mtl{
     using namespace hgl::graph::mtl;
+
+/// S1-T1.6：按语义从资源目录取固定资源行——消除调用点手写 "SBS_X + int(XBinding::Y)" 配对。
+/// 未登记 / 无固定 SBS / 无固定绑定号（per-material 动态）三种情况均为**编译错误**。
+template<DescriptorSemantic SEMANTIC>
+static constexpr const DescriptorResourceCatalogEntry &CatalogFixedRow() noexcept
+{
+    constexpr const DescriptorResourceCatalogEntry *row=FindResourceCatalogEntry(SEMANTIC);
+
+    static_assert(row!=nullptr,
+                  "该语义未在 kDescriptorResourceCatalog 登记——先在资源目录加一行");
+    static_assert(row->sbs!=nullptr,
+                  "该语义无固定 SBS 行（动态命名资源不可走此路径）");
+    static_assert(row->binding>=0,
+                  "该语义无固定绑定号（per-material 动态分配，binding=-1）");
+
+    return *row;
+}
 
 static bool HasShaderStageBit(const uint32_t flag_bits,const ShaderStage stage)
 {
@@ -165,7 +183,9 @@ bool ShaderBuildContext::AddSSBOVertex(const uint32_t flag_bits,const ShaderBuff
 
 bool ShaderBuildContext::AddSSBOVertexIndex(const uint32_t flag_bits)
 {
-    return AddSSBOStruct(flag_bits,SBS_VertexIndex,int(VertexBinding::Index));
+    const DescriptorResourceCatalogEntry &row=CatalogFixedRow<DescriptorSemantic::VertexIndex>();
+
+    return AddSSBOStruct(flag_bits,*row.sbs,row.binding);
 }
 
 bool ShaderBuildContext::AddSSBOMaterialPrivateData(const uint32_t flag_bits,const std::string &struct_name,const std::string &name,const int material_private_data_slot)
@@ -175,7 +195,9 @@ bool ShaderBuildContext::AddSSBOMaterialPrivateData(const uint32_t flag_bits,con
 
 bool ShaderBuildContext::AddSSBOMaterialPrivateDataIndex(const uint32_t flag_bits)
 {
-    return AddSSBO(flag_bits,SBS_MaterialPrivateDataIndexRows.set_type,SBS_MaterialPrivateDataIndexRows.struct_name,SBS_MaterialPrivateDataIndexRows.name,int(PerObjectBinding::PrivateDataIndex));
+    const DescriptorResourceCatalogEntry &row=CatalogFixedRow<DescriptorSemantic::MaterialPrivateDataIndex>();
+
+    return AddSSBO(flag_bits,row.set_type,row.sbs->struct_name,row.sbs->name,row.binding);
 }
 
 bool ShaderBuildContext::AddSSBOTextureLayer(const uint32_t flag_bits,const int binding)
@@ -189,10 +211,12 @@ bool ShaderBuildContext::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
 
     local_to_world_max_count=std::min<uint32_t>(ssbo_range/sizeof(math::Matrix4f),HGL_U16_MAX);
 
-    if(!AddSSBOStruct(shader_stage_flag_bits,SBS_LocalToWorld,int(PerObjectBinding::L2W)))
+    const DescriptorResourceCatalogEntry &row=CatalogFixedRow<DescriptorSemantic::LocalToWorld>();
+
+    if(!AddSSBOStruct(shader_stage_flag_bits,*row.sbs,row.binding))
         return(false);
 
-    local_to_world_ssbo=descriptor_allocator.GetSSBO(SBS_LocalToWorld.name);
+    local_to_world_ssbo=descriptor_allocator.GetSSBO(row.sbs->name);
 
     local_to_world_stage_bits=shader_stage_flag_bits;
 

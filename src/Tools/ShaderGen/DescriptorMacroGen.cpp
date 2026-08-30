@@ -14,6 +14,7 @@
 /// 参见：ShaderGen_Descriptor_ABI_Unification_Plan.md Phase 2
 
 #include <hgl/common/DescriptorSetTypeDef.h>
+#include <hgl/mtl/DescriptorResourceCatalog.h>
 
 #include <cstdio>
 #include <cstring>
@@ -25,6 +26,11 @@ namespace
 {
     using hgl::graph::DescriptorMacroKind;
     using hgl::graph::kDescriptorBindingMacros;
+    using hgl::graph::DescriptorSetType;
+    using hgl::graph::GetDescriptorSetTypeName;
+    using hgl::graph::mtl::kDescriptorResourceCatalog;
+    using hgl::graph::mtl::DescriptorResourceCatalogEntry;
+    using hgl::graph::mtl::ResourceCatalogClass;
 
     // 文件头（@ulre 元数据块为 GLSLCodeModuleRegistry 解析所必需，原样保留）
     constexpr const char *FILE_PREAMBLE =
@@ -146,8 +152,102 @@ namespace
         return true;
     }
 
+    // ── 目录 ↔ 宏规范表 交叉覆盖校验（S1-T1.5）────────────────────────────────
+    //
+    // kDescriptorResourceCatalog（mtl 层）与 kDescriptorBindingMacros（common 层）
+    // 都从 SceneBinding/VertexBinding 等枚举取绑定号，故**数值**不会各自漂移；
+    // 真正的缺口是**覆盖**：新增一条顶点/全局资源却忘记加 GLSL 默认宏 → shader 侧
+    // 无法按宏引用该 binding。分层禁止 common 依赖 mtl，故该断言只能落在同时可见
+    // 两者的工具侧（本工具已链 ULRE.ShaderGen）。
+    //
+    // 参与检查的类别：VertexGeometry（几何 ABI，s1_* 模块按宏声明 binding）与
+    // SceneGlobal（全局 UBO）。不参与：PerDraw 行表类（l2w_index/private_data_index
+    // 的 buffer 声明由 CompileCompositorMaterial 生成注入，无默认宏）、MaterialData
+    // （binding=-1 per-material 动态）、以及 CharQuad 文本三 SSBO（宏侧有、目录未收录，
+    // 属 mesh 模式内部约定，非通用资源）。
+    bool NeedsGLSLBindingMacro(const DescriptorResourceCatalogEntry &row)
+    {
+        return (row.cls == ResourceCatalogClass::VertexGeometry
+             || row.cls == ResourceCatalogClass::SceneGlobal)
+            && row.binding >= 0;
+    }
+
+    const char *RowName(const DescriptorResourceCatalogEntry &row)
+    {
+        return row.sbs && row.sbs->name ? row.sbs->name : "(dynamic)";
+    }
+
+    int CrossCheckCatalogCoverage()
+    {
+        int fail = 0;
+
+        // ① 目录 → 宏：每个需要宏的资源行都必须有同集同绑定号的 Binding 宏
+        for (const DescriptorResourceCatalogEntry &row : kDescriptorResourceCatalog)
+        {
+            if (!NeedsGLSLBindingMacro(row))
+                continue;
+
+            bool found = false;
+
+            for (const auto &spec : kDescriptorBindingMacros)
+                if (spec.kind == DescriptorMacroKind::Binding
+                 && spec.set_type == row.set_type
+                 && spec.binding == row.binding)
+                {
+                    found = true;
+                    break;
+                }
+
+            if (!found)
+            {
+                std::fprintf(stderr,
+                    "[DescriptorMacroGen] 资源目录行缺少 GLSL binding 宏: %s (set=%s binding=%d)\n"
+                    "  → 在 inc/hgl/common/DescriptorSetTypeDef.h 的 kDescriptorBindingMacros 补一行\n",
+                    RowName(row), GetDescriptorSetTypeName(row.set_type), row.binding);
+                ++fail;
+            }
+        }
+
+        // ② 宏 → 目录（仅 Vertex 集：几何 ABI 要求宏与目录一一对应）
+        for (const auto &spec : kDescriptorBindingMacros)
+        {
+            if (spec.kind != DescriptorMacroKind::Binding
+             || spec.set_type != DescriptorSetType::Vertex)
+                continue;
+
+            bool found = false;
+
+            for (const DescriptorResourceCatalogEntry &row : kDescriptorResourceCatalog)
+                if (row.set_type == DescriptorSetType::Vertex
+                 && row.binding == spec.binding)
+                {
+                    found = true;
+                    break;
+                }
+
+            if (!found)
+            {
+                std::fprintf(stderr,
+                    "[DescriptorMacroGen] Vertex 宏 %s (binding=%d) 在资源目录无对应行\n"
+                    "  → 在 inc/hgl/mtl/DescriptorResourceCatalog.h 登记该顶点资源\n",
+                    spec.name, spec.binding);
+                ++fail;
+            }
+        }
+
+        if (fail > 0)
+            std::fprintf(stderr,
+                "[DescriptorMacroGen] 交叉校验失败 %d 项"
+                "（资源目录与 GLSL 宏规范表覆盖不一致）\n", fail);
+
+        return fail;
+    }
+
     int Verify(const char *filename)
     {
+        if (CrossCheckCatalogCoverage() > 0)
+            return 4;
+
         std::string disk;
         if (!ReadTextFile(filename, disk))
         {
@@ -192,6 +292,10 @@ int main(int argc, char **argv)
 {
     if (argc >= 2 && std::strcmp(argv[1], "--emit") == 0)
     {
+        // 覆盖不一致时拒绝发射（避免把不自洽的 .glsl 写进仓库）
+        if (CrossCheckCatalogCoverage() > 0)
+            return 4;
+
         // 文本模式会把 "\r\n" 再翻译成 "\r\r\n"，必须切二进制输出
         _setmode(_fileno(stdout), _O_BINARY);
 
