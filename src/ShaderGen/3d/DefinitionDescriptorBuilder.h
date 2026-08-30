@@ -90,21 +90,21 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
             }
         }
         if (need_uv)
-            descriptor_builder_common::PushVertexUV(descriptors, vertex_stage);
+            descriptor_builder_common::PushVertexResource<DescriptorSemantic::VertexUV>(descriptors, vertex_stage);
         if (need_ntb)
-            descriptor_builder_common::PushVertexNTB(descriptors, vertex_stage);
+            descriptor_builder_common::PushVertexResource<DescriptorSemantic::VertexNTB>(descriptors, vertex_stage);
         if (need_color)
-            descriptor_builder_common::PushVertexColor(descriptors, vertex_stage);
+            descriptor_builder_common::PushVertexResource<DescriptorSemantic::VertexColor>(descriptors, vertex_stage);
         if (need_luminance)
-            descriptor_builder_common::PushVertexLuminance(descriptors, vertex_stage);
+            descriptor_builder_common::PushVertexResource<DescriptorSemantic::VertexLuminance>(descriptors, vertex_stage);
         if (need_transform_id)
-            descriptor_builder_common::PushVertexTransformID(descriptors, vertex_stage);
+            descriptor_builder_common::PushVertexResource<DescriptorSemantic::VertexTransformID>(descriptors, vertex_stage);
         if (need_size)
-            descriptor_builder_common::PushVertexSize(descriptors, vertex_stage);
+            descriptor_builder_common::PushVertexResource<DescriptorSemantic::VertexSize>(descriptors, vertex_stage);
         // Position 恒有（S1 位置模块）
-        descriptor_builder_common::PushVertexPosition(descriptors, vertex_stage);
+        descriptor_builder_common::PushVertexResource<DescriptorSemantic::VertexPosition>(descriptors, vertex_stage);
         // 索引恒有（s1_index 无条件 include——非索引绘制查表）
-        descriptor_builder_common::PushVertexIndex(descriptors, vertex_stage);
+        descriptor_builder_common::PushVertexResource<DescriptorSemantic::VertexIndex>(descriptors, vertex_stage);
     }
     if (!descriptor_builder_common::AppendManifestSSBODescriptors(descriptors, manifest)
      || !descriptor_builder_common::AppendManifestTextureLayerDescriptors(descriptors, manifest))

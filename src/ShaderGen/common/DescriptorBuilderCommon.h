@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include <hgl/mtl/SerializedDescriptorEntry.h>
+#include <hgl/mtl/ShaderResourceSpec.h>
 #include <hgl/mtl/DescriptorResourceCatalog.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/mtl/ModuleResourceManifest.h>
@@ -145,61 +146,19 @@ inline void PushLocalToWorldIndexRows(std::vector<SerializedDescriptorEntry> &v,
 }
 
 // ── 顶点数据 SSBO（Vertex 集：顶点输入统一为 SSBO，Phase 5 自 PerObject 迁出）──
-// Vertex 集固定 binding（VertexBinding 枚举），固定名路径；set 取自 SBS_*.set_type 单一真源
-inline void PushVertexPosition(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
+// S1-T1.3：原 8 个同形 PushVertexXxx 已收敛为表驱动模板——set/name/struct/ssbo_type
+// 全部取自 ShaderResourceSpec 规范表（唯一真源）。语义作为模板参数：未在表中声明的
+// 语义 = **编译错误**（不是运行期静默无操作）。新增顶点语义无需在此加任何包装。
+template<DescriptorSemantic SEMANTIC>
+inline void PushVertexResource(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
-    PushBySpec(v, SBS_VertexPosition.set_type,
-               SBS_VertexPosition.name, SBS_VertexPosition.struct_name,
-               DescriptorSemantic::VertexPosition, SSBOType::VertexPosition, stage_flags);
-}
+    static constexpr const ShaderResourceSpec *spec = FindShaderResourceSpec(SEMANTIC);
+    static_assert(spec != nullptr,
+                  "该语义未在 ShaderResourceSpec 表中声明——先在 kShaderResourceSpecs 加一行");
 
-inline void PushVertexUV(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
-{
-    PushBySpec(v, SBS_VertexUV.set_type,
-               SBS_VertexUV.name, SBS_VertexUV.struct_name,
-               DescriptorSemantic::VertexUV, SSBOType::VertexUV, stage_flags);
-}
-
-inline void PushVertexNTB(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
-{
-    PushBySpec(v, SBS_VertexNTB.set_type,
-               SBS_VertexNTB.name, SBS_VertexNTB.struct_name,
-               DescriptorSemantic::VertexNTB, SSBOType::VertexNTB, stage_flags);
-}
-
-inline void PushVertexColor(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
-{
-    PushBySpec(v, SBS_VertexColor.set_type,
-               SBS_VertexColor.name, SBS_VertexColor.struct_name,
-               DescriptorSemantic::VertexColor, SSBOType::VertexColor, stage_flags);
-}
-
-inline void PushVertexLuminance(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
-{
-    PushBySpec(v, SBS_VertexLuminance.set_type,
-               SBS_VertexLuminance.name, SBS_VertexLuminance.struct_name,
-               DescriptorSemantic::VertexLuminance, SSBOType::VertexLuminance, stage_flags);
-}
-
-inline void PushVertexTransformID(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
-{
-    PushBySpec(v, SBS_VertexTransformID.set_type,
-               SBS_VertexTransformID.name, SBS_VertexTransformID.struct_name,
-               DescriptorSemantic::VertexTransformID, SSBOType::VertexTransformID, stage_flags);
-}
-
-inline void PushVertexSize(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
-{
-    PushBySpec(v, SBS_VertexSize.set_type,
-               SBS_VertexSize.name, SBS_VertexSize.struct_name,
-               DescriptorSemantic::VertexSize, SSBOType::VertexSize, stage_flags);
-}
-
-inline void PushVertexIndex(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
-{
-    PushBySpec(v, SBS_VertexIndex.set_type,
-               SBS_VertexIndex.name, SBS_VertexIndex.struct_name,
-               DescriptorSemantic::VertexIndex, SSBOType::VertexIndex, stage_flags);
+    PushBySpec(v, spec->set_type,
+               spec->name, spec->struct_name,
+               spec->semantic, spec->ssbo_type, stage_flags);
 }
 
 inline void PushMaterialPrivateDataSlot(std::vector<SerializedDescriptorEntry> &v,

@@ -78,4 +78,32 @@ namespace hgl::graph::mtl
 
         return nullptr;
     }
+
+    // ── ABI 一致性证明（S1-T1.2）：表 ↔ 既有枚举/常量，任一偏离即编译失败 ──
+    // 这是删除平行声明（SBS_Vertex* / PushVertexXxx 等）的安全凭据：先证明等价，再删除。
+    // name/struct_name 与 SBS_Vertex* 的逐字节一致性需 constexpr strcmp，改由
+    // ctest VerifyShaderResourceSpec（T1.7）在运行期断言。
+    static_assert(kShaderResourceSpecCount==8,
+                  "顶点资源表应为 8 行（Position/UV/NTB/Index/Color/Luminance/TransformID/Size）");
+
+    static_assert(kShaderResourceSpecs[0].binding==0
+               && kShaderResourceSpecs[7].binding==7,
+                  "行序必须为 binding 升序——DescriptorMacroGen 顶点段按此顺序发射");
+
+    static_assert(FindShaderResourceSpec(DescriptorSemantic::VertexPosition)->binding==int(VertexBinding::Position)
+               && FindShaderResourceSpec(DescriptorSemantic::VertexUV)->binding==int(VertexBinding::UV)
+               && FindShaderResourceSpec(DescriptorSemantic::VertexNTB)->binding==int(VertexBinding::NTB)
+               && FindShaderResourceSpec(DescriptorSemantic::VertexIndex)->binding==int(VertexBinding::Index)
+               && FindShaderResourceSpec(DescriptorSemantic::VertexColor)->binding==int(VertexBinding::Color)
+               && FindShaderResourceSpec(DescriptorSemantic::VertexLuminance)->binding==int(VertexBinding::Luminance)
+               && FindShaderResourceSpec(DescriptorSemantic::VertexTransformID)->binding==int(VertexBinding::TransformID)
+               && FindShaderResourceSpec(DescriptorSemantic::VertexSize)->binding==int(VertexBinding::Size),
+                  "表 binding 与 VertexBinding 枚举漂移");
+
+    static_assert(FindShaderResourceSpec(DescriptorSemantic::VertexPosition)->set_type==DescriptorSetType::Vertex
+               && FindShaderResourceSpec(DescriptorSemantic::VertexSize)->layer==DescriptorSemanticLayer::SSBO,
+                  "顶点资源必须归 Vertex 集且为 SSBO 层");
+
+    static_assert(FindShaderResourceSpec(DescriptorSemantic::MaterialTexture)==nullptr,
+                  "未在表中声明的语义必须返回 nullptr（不做静默默认）");
 }//namespace hgl::graph::mtl
