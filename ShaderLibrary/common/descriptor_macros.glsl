@@ -41,7 +41,7 @@
 #endif
 
 // ── 顶点数据 SSBO（Vertex 集，Phase 5 自 PerObject 迁出）──
-// s1_position_vec3 / s1_uv / s1_ntb / s1_joint 模块使用
+// s1_position_vec3 / s1_uv / s1_ntb 模块使用
 #ifndef VERTEX_SET
 #define VERTEX_SET 4
 #endif

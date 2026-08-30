@@ -35,9 +35,6 @@ void LoadVertexData()
 #ifdef HGL_NTB_LOADER
     HGL_NTB_LOADER
 #endif
-#ifdef HGL_JOINT_LOADER
-    HGL_JOINT_LOADER
-#endif
 #ifdef HGL_COLOR_LOADER
     HGL_COLOR_LOADER
 #endif

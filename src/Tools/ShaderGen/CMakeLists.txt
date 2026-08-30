@@ -53,6 +53,25 @@ endif()
 
 ####################################################################################################
 
+# s1_* 顶点 loader 宏一致性校验（规则从 GLSL 文本推导，无平行清单）
+# 漏展开 HGL_*_LOADER = 属性静默为 0，无编译/运行期报错——故必须 CI 断言
+add_executable(VertexLoaderConsistency
+    VertexLoaderConsistency.cpp)
+
+CreateProject(VertexLoaderConsistency)
+
+if(BUILD_TESTING)
+    add_test(
+        NAME VerifyVertexLoaderConsistency
+        COMMAND VertexLoaderConsistency ${CMAKE_SOURCE_DIR}/ShaderLibrary/vertex)
+
+    set_tests_properties(
+        VerifyVertexLoaderConsistency
+        PROPERTIES LABELS "shadergen;baseline")
+endif()
+
+####################################################################################################
+
 add_executable(ShaderResourceSchemaRegressionGate
     ShaderResourceSchemaRegressionGate.cpp)
 

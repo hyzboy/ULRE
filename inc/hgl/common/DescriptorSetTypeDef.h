@@ -152,7 +152,7 @@ namespace hgl::graph
         {DescriptorMacroKind::SetAlias,DescriptorSetType::PerObject,"L2W_SET",                   "PER_OBJECT_SET",                          -1,
             "// ── PerObject set ──",                                  true, true},
         {DescriptorMacroKind::SetIndex,DescriptorSetType::Vertex,   "VERTEX_SET",                nullptr,                                   -1,
-            "// ── 顶点数据 SSBO（Vertex 集，Phase 5 自 PerObject 迁出）──\n// s1_position_vec3 / s1_uv / s1_ntb / s1_joint 模块使用"},
+            "// ── 顶点数据 SSBO（Vertex 集，Phase 5 自 PerObject 迁出）──\n// s1_position_vec3 / s1_uv / s1_ntb 模块使用"},
         {DescriptorMacroKind::SetAlias,DescriptorSetType::PerObject,"MESH_DRAW_PARAMS_SET",      "PER_OBJECT_SET",                          -1,
             "// mesh per-draw 参数表（IndirectMeshDraw）"},
 
