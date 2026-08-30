@@ -423,14 +423,35 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
     if(graphics_family==ERROR_FAMILY_INDEX)
         return(nullptr);
 
-    // GPL 启用决策：硬件支持 + 未被 RenderDoc 注入（RenderDoc 不支持 GPL 管线）。
-    // 失败回退（下方 retry）与本决定会写入 device_attr->graphics_pipeline_library，
-    // 管线物化层（PipelineResolver）以该值为权威。
-    bool try_graphics_pipeline_library = physical_device->SupportGraphicsPipelineLibrary()
-                                       && !IsRenderDocInjected();
+    // GPL 启用决策（2026-08-29 更新）：**默认关闭**。
+    //
+    // GPL 激活实测（AMD RX 6700 XT / Vulkan 1.4）暴露出混合材质的渲染正确性
+    // 问题：依赖 alpha 混合的材质（文字 TextAlphaBlend、部分纹理材质）输出
+    // 异常（文字全黑、纹理呈纯色），不透明材质正常。经 14 轮 shader 侧二分
+    // 调试，FS 全部输入（vertexColor/uv0/rawSample/fwidth/CharStyle）在 GPL
+    // 下与 Monolithic 完全一致，问题指向 GPL 库化链接的驱动级实现或休眠
+    // GPL 代码的深层缺陷——且该环节无法用 RenderDoc 调试（注入即触发
+    // IsRenderDocInjected 强制回退，死循环）。
+    //
+    // 后续方向：以 VK_EXT_extended_dynamic_state/2/3 的"全动态最小管线"
+    // （管线仅保留 shader stages + layout + multisample，其余状态全动态）
+    // 取代 GPL——驱动成熟度高，且为将来迁移 VK_EXT_shader_object 铺路。
+    // 定位/替代完成后可重新评估 GPL。
+    //
+    // 保留的调试设施：
+    //   IsRenderDocInjected() —— RenderDoc 注入检测（GPL 回归排查用）
+    //   ULRE_FORCE_MONOLITHIC=1 —— 强制 Monolithic（A/B 对照用）
+    const bool force_monolithic=[]()
+    {
+        char buf[8]{};
+        size_t size=sizeof(buf);
+        return getenv_s(&size,buf,size,"ULRE_FORCE_MONOLITHIC")==0 && buf[0]=='1';
+    }();
 
-    if(IsRenderDocInjected())
-        GLogInfo(u8"[VulkanDeviceCreater] RenderDoc detected — GraphicsPipelineLibrary disabled, using Monolithic materialization");
+    bool try_graphics_pipeline_library = false;    // 默认 Monolithic（GPL 正确性问题未解决，见上）
+
+    if(force_monolithic)
+        GLogInfo(u8"[VulkanDeviceCreater] ULRE_FORCE_MONOLITHIC set — using Monolithic materialization");
 
     SetDeviceExtension(&ext_list,physical_device,require,try_graphics_pipeline_library);
     SetDeviceFeatures(&features,physical_device->GetFeatures10(),require);
