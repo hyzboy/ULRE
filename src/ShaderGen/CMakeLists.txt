@@ -151,7 +151,9 @@ SET(FIXED_MTL_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderCompilerProfileAPI.h
 SOURCE_GROUP("Fixed Material" FILES ${FIXED_MTL_FILES})
 
 SET(MATERIAL_COMPILER_FILES  ${SHADERGEN_INCLUDE_PATH}/MaterialShaderCompiler.h
-                             MaterialShaderCompiler.cpp)
+                             MaterialShaderCompiler.cpp
+                             MaterialShaderEmitter.h
+                             MaterialShaderEmitter.cpp)
 
 SOURCE_GROUP("Material Compiler" FILES ${MATERIAL_COMPILER_FILES})
 
