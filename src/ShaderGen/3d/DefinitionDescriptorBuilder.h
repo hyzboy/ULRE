@@ -68,10 +68,16 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
     std::vector<SerializedDescriptorEntry> descriptors = BuildDescriptorsFromDefinition(definition, opt);
     // 顶点数据 SSBO（MeshShader 方向）：按需求语义注入顶点 SSBO 绑定
     // 顶点输入统一为 SSBO，无条件注入；PerObject 集固定 binding（s1_* 模块声明与固定名路径匹配）
-    // stage 位用 ALL_GRAPHICS：在 Mesh stage 读顶点 SSBO，
-    // 统一为 ALL_GRAPHICS 避免对具体 stage 的依赖
+    // 顶点数据 SSBO 注册（stage 可见性见下方 vertex_stage 的证据注释）
     {
-        const uint32_t vertex_stage = hgl::graph::kMeshFragment;
+        // 顶点数据 SSBO 只被 mesh 阶段读取——FS 拿的是 varying，不直读顶点流。
+        // 证据（2026-08-31 全库 grep）：sbo_vertex_* 仅出现在 ShaderLibrary/vertex/s1_*.glsl
+        // 与 mesh/line_quad.glsl.tmpl（均为 mesh 阶段），compositor/surface/material/
+        // lighting/sky 零引用；且无任何 FS 源 #include "vertex/..."。
+        // 对比：文本三 SSBO（TextCharInfo/Style/Instance）确实被 FS 直读
+        //（material/text_source_gpu.glsl、common/surface_interface.glsl），故其
+        // kMeshFragment 可见性是必需的——两者不可一概而论。
+        const uint32_t vertex_stage = uint32_t(hgl::graph::ShaderStage::Mesh);
         bool need_uv = false, need_ntb = false, need_color = false, need_luminance = false, need_transform_id = false, need_size = false;
         for (int i = 0; i < definition.vertex_semantic_requirements.GetCount(); ++i)
         {
