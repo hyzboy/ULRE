@@ -248,6 +248,9 @@ namespace hgl::ecs
 
             cmd->BindPipeline(res.pipeline);
 
+            // EDS 1/2/3：pipeline 只保留 shader 部分——文字材质状态（alpha blend）渲染侧动态应用
+            cmd->ApplyPipelineState(res.pipeline->GetConfig());
+
             // Bind GPU text SSBOs (b14/b15/b16) + mesh_draw_params 到每字体独立 PerObject 集
             if (res.per_object_mp)
             {
