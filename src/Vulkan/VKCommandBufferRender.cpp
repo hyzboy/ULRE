@@ -232,7 +232,7 @@ void RenderCmdBuffer::ApplyPipelineState(const mtl::MaterialPipelineConfig &conf
     vkCmdSetColorWriteMaskEXT(cmd_buf, 0u, 1u, &write_mask);
 
     const float blend_constants[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-    vkCmdSetBlendConstantsEXT(cmd_buf, blend_constants);
+    vkCmdSetBlendConstants(cmd_buf, blend_constants);   // 1.0 核心函数（无 EXT 名）
 
     vkCmdSetPolygonModeEXT(cmd_buf, config.wireframe ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL);
 
