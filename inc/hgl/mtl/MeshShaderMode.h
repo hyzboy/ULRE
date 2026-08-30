@@ -27,4 +27,22 @@ namespace hgl::graph::mtl
         if (std::strcmp(name, "CharQuad") == 0)          { out = MeshShaderMode::CharQuad;          return true; }
         return false;
     }
+
+    // ── 模式辅助（C4：CharQuad 特判集中于此，调用方不再散写枚举比较）──
+    inline bool IsCharQuadMode(const MeshShaderMode mode) noexcept
+    {
+        return mode == MeshShaderMode::CharQuad;
+    }
+
+    // 每线程输出量（mesh 生成器约定）：
+    // VertexPassthrough：1 顶点 1 图元；LineQuad/CharQuad：4 顶点 2 图元（quad）
+    inline uint8_t GetMeshModeVerticesPerInvocation(const MeshShaderMode mode) noexcept
+    {
+        return (mode == MeshShaderMode::LineQuad || mode == MeshShaderMode::CharQuad) ? 4u : 1u;
+    }
+
+    inline uint8_t GetMeshModePrimitivesPerInvocation(const MeshShaderMode mode) noexcept
+    {
+        return (mode == MeshShaderMode::LineQuad || mode == MeshShaderMode::CharQuad) ? 2u : 1u;
+    }
 }
