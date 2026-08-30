@@ -46,6 +46,8 @@ namespace hgl::graph
         Luminance   = 5,    ///< 顶点亮度 SSBO
         TransformID = 6,    ///< 顶点 TransformID SSBO（调色板变换索引）
         Size        = 7,    ///< 顶点 Size/宽度 SSBO（Line width）
+
+        ENUM_CLASS_RANGE(Position,Size)  ///< RANGE_SIZE 供资源目录覆盖性断言使用（漏登记即编译失败）
     };
 
     /// ABI 锚点：以下数值被 ShaderLibrary/common/descriptor_macros.glsl 与运行时绑定表依赖，

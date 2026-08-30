@@ -1,7 +1,6 @@
 ﻿#pragma once
 
 #include <hgl/mtl/SerializedDescriptorEntry.h>
-#include <hgl/mtl/ShaderResourceSpec.h>
 #include <hgl/mtl/DescriptorResourceCatalog.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/mtl/ModuleResourceManifest.h>
@@ -147,18 +146,21 @@ inline void PushLocalToWorldIndexRows(std::vector<SerializedDescriptorEntry> &v,
 
 // ── 顶点数据 SSBO（Vertex 集：顶点输入统一为 SSBO，Phase 5 自 PerObject 迁出）──
 // S1-T1.3：原 8 个同形 PushVertexXxx 已收敛为表驱动模板——set/name/struct/ssbo_type
-// 全部取自 ShaderResourceSpec 规范表（唯一真源）。语义作为模板参数：未在表中声明的
-// 语义 = **编译错误**（不是运行期静默无操作）。新增顶点语义无需在此加任何包装。
+// 全部取自 kDescriptorResourceCatalog（"语义 → 集合/绑定/SBS"唯一真源）。
+// 语义作模板参数：未登记 / 无固定 SBS 的语义 = **编译错误**，不是运行期静默无操作。
+// 新增顶点语义只需在资源目录登记一行（目录侧 static_assert 保证不漏登记）。
 template<DescriptorSemantic SEMANTIC>
 inline void PushVertexResource(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
-    static constexpr const ShaderResourceSpec *spec = FindShaderResourceSpec(SEMANTIC);
-    static_assert(spec != nullptr,
-                  "该语义未在 ShaderResourceSpec 表中声明——先在 kShaderResourceSpecs 加一行");
+    static constexpr const DescriptorResourceCatalogEntry *row = FindResourceCatalogEntry(SEMANTIC);
+    static_assert(row != nullptr,
+                  "该语义未在 kDescriptorResourceCatalog 登记——先在资源目录加一行");
+    static_assert(row->sbs != nullptr,
+                  "顶点资源必须有固定 SBS 行（name/struct 取自 SBS，不接受动态命名）");
 
-    PushBySpec(v, spec->set_type,
-               spec->name, spec->struct_name,
-               spec->semantic, spec->ssbo_type, stage_flags);
+    PushBySpec(v, row->set_type,
+               row->sbs->name, row->sbs->struct_name,
+               row->semantic, row->ssbo_type, stage_flags);
 }
 
 inline void PushMaterialPrivateDataSlot(std::vector<SerializedDescriptorEntry> &v,

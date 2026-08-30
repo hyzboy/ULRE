@@ -78,7 +78,7 @@ namespace hgl::graph::mtl
         sizeof(kDescriptorResourceCatalog)/sizeof(kDescriptorResourceCatalog[0]);
 
     /// 按语义查找；未收录语义（未知/未来扩展）返回 nullptr
-    inline const DescriptorResourceCatalogEntry *FindResourceCatalogEntry(const DescriptorSemantic semantic)
+    constexpr const DescriptorResourceCatalogEntry *FindResourceCatalogEntry(const DescriptorSemantic semantic)
     {
         for (const auto &row : kDescriptorResourceCatalog)
             if (row.semantic == semantic)
@@ -88,7 +88,7 @@ namespace hgl::graph::mtl
     }
 
     /// 按 SSBO 类型查找；仅匹配有专属类型的行（UserDefined 行不参与，避免误命中）
-    inline const DescriptorResourceCatalogEntry *FindResourceCatalogEntryBySSBOType(const SSBOType ssbo_type)
+    constexpr const DescriptorResourceCatalogEntry *FindResourceCatalogEntryBySSBOType(const SSBOType ssbo_type)
     {
         if (ssbo_type == SSBOType::UserDefined)
             return(nullptr);
@@ -101,7 +101,7 @@ namespace hgl::graph::mtl
     }
 
     /// 按 VAB 语义查找顶点数据行（VertexIndex 无 VAB 语义，不参与）
-    inline const DescriptorResourceCatalogEntry *FindVertexCatalogEntryByVABSemantic(const VertexSemantic vab_semantic)
+    constexpr const DescriptorResourceCatalogEntry *FindVertexCatalogEntryByVABSemantic(const VertexSemantic vab_semantic)
     {
         if (vab_semantic == VertexSemantic::Unknown)
             return(nullptr);
@@ -113,4 +113,97 @@ namespace hgl::graph::mtl
 
         return(nullptr);
     }
+
+    // ── 目录自洽性断言（编译期，遍历全表——新增行/新增绑定枚举项自动纳入检查）──
+    namespace catalog_check
+    {
+        constexpr bool StrEqual(const char *a,const char *b) noexcept
+        {
+            if(!a||!b)return a==b;
+
+            while(*a&&*b)
+            {
+                if(*a!=*b)return false;
+                ++a;++b;
+            }
+
+            return *a==*b;
+        }
+
+        /// 全表唯一性：语义不重复；同集内固定绑定号不撞号（binding=-1 动态行不参与）；
+        /// 固定 SBS 的 buffer 名不重复（复制粘贴错误的主要形态）
+        constexpr bool RowsUnique() noexcept
+        {
+            for(size_t i=0;i<DESCRIPTOR_RESOURCE_CATALOG_COUNT;++i)
+                for(size_t j=i+1;j<DESCRIPTOR_RESOURCE_CATALOG_COUNT;++j)
+                {
+                    const DescriptorResourceCatalogEntry &a=kDescriptorResourceCatalog[i];
+                    const DescriptorResourceCatalogEntry &b=kDescriptorResourceCatalog[j];
+
+                    if(a.semantic==b.semantic)return false;
+
+                    if(a.binding>=0&&a.set_type==b.set_type&&a.binding==b.binding)return false;
+
+                    if(a.sbs&&b.sbs&&StrEqual(a.sbs->name,b.sbs->name))return false;
+                }
+
+            return true;
+        }
+
+        /// Vertex 集完整覆盖：每个 VertexBinding 枚举项恰有一行登记（顺序无关，位图判定）。
+        /// 新增 VertexBinding 项却忘记加目录行 → 计数/位图不满 → **编译失败**。
+        /// 顶点行同时强制：归 Vertex 集、有固定 SBS、有专属 SSBOType。
+        constexpr bool VertexBindingsFullyCovered() noexcept
+        {
+            constexpr int slot_count=int(VertexBinding::RANGE_SIZE);
+
+            uint32 seen=0;
+            int    count=0;
+
+            for(const DescriptorResourceCatalogEntry &row:kDescriptorResourceCatalog)
+            {
+                if(row.cls!=ResourceCatalogClass::VertexGeometry)continue;
+
+                if(row.set_type!=DescriptorSetType::Vertex)return false;
+                if(row.binding<0||row.binding>=slot_count)return false;
+                if(row.sbs==nullptr)return false;
+                if(row.ssbo_type==SSBOType::UserDefined)return false;
+
+                const uint32 bit=uint32(1)<<row.binding;
+
+                if(seen&bit)return false;
+
+                seen|=bit;
+                ++count;
+            }
+
+            return count==slot_count
+                && seen==((uint32(1)<<slot_count)-uint32(1));
+        }
+
+        /// Scene 全局行：必须有固定 SBS 与固定绑定号（全局集无 per-material 动态项）
+        constexpr bool SceneRowsWellFormed() noexcept
+        {
+            for(const DescriptorResourceCatalogEntry &row:kDescriptorResourceCatalog)
+            {
+                if(row.cls!=ResourceCatalogClass::SceneGlobal)continue;
+
+                if(row.set_type!=DescriptorSetType::Scene)return false;
+                if(row.sbs==nullptr)return false;
+                if(row.binding<0)return false;
+            }
+
+            return true;
+        }
+    }//namespace catalog_check
+
+    static_assert(catalog_check::RowsUnique(),
+                  "资源目录存在重复语义 / 同集绑定号撞号 / 重复 buffer 名");
+
+    static_assert(catalog_check::VertexBindingsFullyCovered(),
+                  "VertexBinding 枚举项与目录 VertexGeometry 行未一一对应"
+                  "（新增顶点绑定后须在 kDescriptorResourceCatalog 登记一行）");
+
+    static_assert(catalog_check::SceneRowsWellFormed(),
+                  "Scene 全局行必须具备固定 SBS 与固定绑定号");
 }//namespace hgl::graph::mtl
