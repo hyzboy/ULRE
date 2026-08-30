@@ -738,7 +738,7 @@ static std::string BuildCompileDefineMacros(
 // ── Step 5d: Instance index table SSBO GLSL 声明 ─────────────────────────────
 // material_private_data_index_rows / mtl_texture_layer_rows / l2w_index 的 buffer
 // 声明与 Resolve 函数不再写死在 instance_rows_ssbo.glsl 中，统一依据
-// descriptor_info 生成注入：VS 阶段提供 l2w_index / material_private_data_index_rows
+// descriptor_info 生成注入：mesh 阶段提供 l2w_index / material_private_data_index_rows
 //（含 ResolveTransformID / ResolveMaterialPrivateDataIndex），FS 阶段提供
 // mtl_texture_layer_rows（named-slot TextureLayerRowsData，见下方注入）。
 struct IndexTableSpec
@@ -749,7 +749,7 @@ struct IndexTableSpec
     const char *resolve_func;    // 为空则仅生成 buffer 声明
 };
 
-static const IndexTableSpec kVSIndexTableSpecs[] = {
+static const IndexTableSpec kMeshIndexTableSpecs[] = {
     { SBS_LocalToWorldIndex.name, "LocalToWorldIndex", "l2w_index",     "ResolveTransformID" },
     { SBS_MaterialPrivateDataIndexRows.name, "MaterialPrivateDataIndex", "mtl_private_data_index", "ResolveMaterialPrivateDataIndex" },
 };
@@ -779,13 +779,13 @@ static void AppendIndexTableDecl(
     }
 }
 
-static std::string BuildVSIndexTableDecls(
+static std::string BuildMeshIndexTableDecls(
     const DescriptorSetLayoutAllocator &descriptor_info)
 {
     // 单槽化：MTL_DATA_SLOT_COUNT 恒 1（MaterialPrivateDataIndexRows 索引 0 仍有效）
     std::string out = "#define MTL_DATA_SLOT_COUNT 1u\n";
 
-    for (const IndexTableSpec &spec : kVSIndexTableSpecs)
+    for (const IndexTableSpec &spec : kMeshIndexTableSpecs)
         AppendIndexTableDecl(out, descriptor_info.GetSSBO(spec.sbs_name), spec);
 
     return out;
@@ -856,14 +856,14 @@ static void AssembleFinalGLSL(
     const std::string &ms_glsl,
     const std::string &fs_glsl,
     const ModuleResourceManifest *manifest,
-    const std::string &vs_index_table_decls,
+    const std::string &mesh_index_table_decls,
     const std::string &compile_define_macros,
     const std::string &sampler_macros,
     const std::string &material_ssbo_decls,
     const std::string &material_slot_macros,
     const std::string &fs_index_table_decls)
 {
-    std::string ms_final = InsertAfterVersionLine(ms_glsl, vs_index_table_decls);
+    std::string ms_final = InsertAfterVersionLine(ms_glsl, mesh_index_table_decls);
 
     // 注入顺序（InsertAfterVersionLine 后注入者位于 version 后更前）：
     // 模块代码可能引用 SSBO 类型、MTL_DATA 宏、索引行表与采样器宏
@@ -1075,13 +1075,13 @@ ShaderBuildContext *CompileCompositorMaterial(
     const std::string compile_define_macros = BuildCompileDefineMacros(config);
 
     // 单槽化：MTL_DATA_SLOT_COUNT 恒 1（MaterialPrivateDataIndexRows 索引 0 仍有效）
-    const std::string vs_index_table_decls =
-        BuildVSIndexTableDecls(descriptor_info);
+    const std::string mesh_index_table_decls =
+        BuildMeshIndexTableDecls(descriptor_info);
     const std::string fs_index_table_decls =
         BuildFSIndexTableDecls(descriptor_info);
 
     AssembleFinalGLSL(ctx, ms_glsl, fs_glsl, config.resource_manifest,
-                      vs_index_table_decls,
+                      mesh_index_table_decls,
                       compile_define_macros, sampler_macros,
                       material_ssbo_decls, material_slot_macros,
                       fs_index_table_decls);

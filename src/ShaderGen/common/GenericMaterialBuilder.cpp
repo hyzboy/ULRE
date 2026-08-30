@@ -602,11 +602,11 @@ namespace hgl::graph::mtl
                 ? request.geometry_vertex_format->GetVertexInputHash() : 0;
             const uint64 compiler_hash =
                 contract::GetShaderCompilerProfileHash(profile);
-            hgl::hash::FNV1aHasher64 vertex_interface_hasher;
-            vertex_interface_hasher << HashFinalShaderSource(
+            hgl::hash::FNV1aHasher64 mesh_interface_hasher;
+            mesh_interface_hasher << HashFinalShaderSource(
                 plan.ms.data(), plan.ms.size())
-                                    << vertex_input_hash;
-            const uint64 vertex_interface_hash = vertex_interface_hasher;
+                                  << vertex_input_hash;
+            const uint64 mesh_interface_hash = mesh_interface_hasher;
             const uint64 fragment_interface_hash =
                 HashFinalShaderSource(plan.fs.data(), plan.fs.size());
 
@@ -616,7 +616,7 @@ namespace hgl::graph::mtl
                 plan.ms.data(),
                 plan.ms.size(),
                 plan.resolved_provider_graph_hash,
-                vertex_interface_hash,
+                mesh_interface_hash,
                 resource_contract_hash,
                 compiler_hash);
             plan.program_link.fragment_stage = BuildFinalShaderStageKey(
