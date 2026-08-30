@@ -109,27 +109,6 @@ namespace hgl::graph
         }
     }
 
-    inline VertexSemantic GetVertexSemanticByName(const char *name)
-    {
-        if(!name||!*name)return VertexSemantic::Unknown;
-
-        if(std::strcmp(name,"Position")==0)       return VertexSemantic::Position;
-        if(std::strcmp(name,"Normal")==0)         return VertexSemantic::Normal;
-        if(std::strcmp(name,"Tangent")==0)        return VertexSemantic::Tangent;
-        if(std::strcmp(name,"Bitangent")==0)      return VertexSemantic::Bitangent;
-        if(std::strcmp(name,"Color")==0)          return VertexSemantic::Color;
-        if(std::strcmp(name,"Luminance")==0)      return VertexSemantic::Luminance;
-        if(std::strcmp(name,"TexCoord")==0)       return VertexSemantic::TexCoord;
-        if(std::strcmp(name,"AO")==0)             return VertexSemantic::AO;
-        if(std::strcmp(name,"Size")==0)           return VertexSemantic::Size;
-        if(std::strcmp(name,"Rotation")==0)       return VertexSemantic::Rotation;
-        if(std::strcmp(name,"Assign")==0)         return VertexSemantic::Assign;
-        if(std::strcmp(name,"TransformID")==0)    return VertexSemantic::TransformID;
-        if(std::strcmp(name,"DataIndexID")==0)    return VertexSemantic::DataIndexID;
-
-        return VertexSemantic::Unknown;
-    }
-
     bool ParseVertexAttribType(VAType *,const char *);
 
     const char *GetVertexAttribName(const VABaseType &base_type,const uint vec_size);
