@@ -168,35 +168,6 @@ namespace
         return hgl::ToOSString(RepoRootPath(suffix));
     }
 
-    static std::vector<std::string> SummarizeConstraintShape(const ShaderResourceSchema &contract)
-    {
-        std::vector<std::string> rows;
-        rows.reserve(contract.resources.size());
-
-        for (const auto &req : contract.resources)
-        {
-            std::string row;
-            row += GetDescriptorSemanticName(req.semantic);
-            row += "|";
-            row += GetDescriptorSemanticLayerName(req.semantic_layer);
-            row += "|";
-            row += GetDescriptorSetTypeName(req.set_type);
-            row += "|";
-            row += std::to_string(static_cast<uint32_t>(req.texture_slot));
-            row += "|";
-            row += std::to_string(req.material_private_data_slot);
-            row += "|";
-            row += GetSSBOTypeName(req.ssbo_type);
-            row += "|";
-            row += req.required ? "required" : "optional";
-            row += "|";
-            row += req.allow_fallback ? "fallback" : "strict";
-            rows.push_back(std::move(row));
-        }
-
-        return rows;
-    }
-
     static GateResult RunValidationCase(const char *name,
                                         const SerializedDescriptorEntry *entries,
                                         const uint32_t count,

@@ -288,28 +288,6 @@ namespace hgl::graph::mtl
         return h;
     }
 
-    inline const char *GetDescriptorSemanticName(DescriptorSemantic semantic)
-    {
-        switch (semantic)
-        {
-        case DescriptorSemantic::Unknown:          return "Unknown";
-        case DescriptorSemantic::MeshDrawParams: return "MeshDrawParams";
-        case DescriptorSemantic::ViewportInfo:     return "ViewportInfo";
-        case DescriptorSemantic::CameraInfo:       return "CameraInfo";
-        case DescriptorSemantic::SkyInfo:          return "SkyInfo";
-        case DescriptorSemantic::LocalToWorld:     return "LocalToWorld";
-        case DescriptorSemantic::LocalToWorldIndex: return "LocalToWorldIndex";
-        case DescriptorSemantic::MaterialColorPalette: return "MaterialColorPalette";
-        case DescriptorSemantic::MaterialPrivateData: return "mtl_private_data";
-        case DescriptorSemantic::MaterialTexture:  return "MaterialTexture";
-        case DescriptorSemantic::MaterialSampler:  return "MaterialSampler";
-        case DescriptorSemantic::MaterialTextureLayerTable: return "MaterialTextureLayerTable";
-        case DescriptorSemantic::MaterialPrivateDataIndex: return "MaterialPrivateDataIndex";
-        }
-
-        return "Unknown";
-    }
-
     inline bool ValidateShaderResourceSchema(const ShaderResourceSchema &schema, std::vector<std::string> &diagnostics)
     {
         diagnostics.clear();

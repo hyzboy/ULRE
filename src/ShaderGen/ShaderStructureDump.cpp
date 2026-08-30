@@ -144,12 +144,22 @@ std::string DumpShaderStructure(const ShaderBuildContext &ctx, const char *label
         row.set = set;
         row.binding = binding;
 
+        // 未在材质分配器中命中的两种情形要区分开：
+        //   Scene 全局集——按帧绑定，per-material 不注册（正常，非缺失）
+        //   其余——确实未解出（异常，值得注意）
+        const std::string set_text = set >= 0
+            ? std::to_string(set)
+            : (res.set_type == DescriptorSetType::Scene ? "global" : "unallocated");
+        const std::string binding_text = binding >= 0
+            ? std::to_string(binding)
+            : (res.set_type == DescriptorSetType::Scene ? "global" : "unallocated");
+
         row.text = "resource";
         AppendKV(row.text, "semantic", GetDescriptorSemanticName(res.semantic));
         AppendKV(row.text, "layer", GetDescriptorSemanticLayerName(res.semantic_layer));
         AppendKV(row.text, "declared_set", GetDescriptorSetTypeName(res.set_type));
-        AppendKV(row.text, "set", set);
-        AppendKV(row.text, "binding", binding);
+        AppendKV(row.text, "set", set_text);
+        AppendKV(row.text, "binding", binding_text);
         AppendKV(row.text, "stages", StageBitsText(res.stage_flags));
         AppendKV(row.text, "ssbo_type", GetSSBOTypeName(res.ssbo_type));
         AppendKV(row.text, "name", res.name);
