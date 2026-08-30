@@ -165,10 +165,10 @@ static bool HasDescriptorSemantic(
     const DescriptorContract &contract,
     const DescriptorSemantic semantic)
 {
-    for (const DescriptorContractEntry &entry :
+    for (const SerializedDescriptorEntry &entry :
          contract.entries)
     {
-        if (entry.canonical.semantic == semantic)
+        if (entry.semantic == semantic)
             return true;
     }
 
