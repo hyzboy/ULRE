@@ -4161,8 +4161,7 @@ namespace
                 return count;
             };
 
-            if (source.find("#define MTL_DATA mtl_private_data") == std::string::npos
-             || source.find("#define MTL_DATA_SLOT_COUNT 1u") == std::string::npos)
+            if (source.find("#define MTL_DATA mtl_private_data") == std::string::npos)
                 result.diagnostics.emplace_back("single-slot aliases were not injected");
 
             if (count_occurrences("struct EmissiveSurfaceData") != 1)

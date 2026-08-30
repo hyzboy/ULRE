@@ -706,7 +706,6 @@ static bool BuildMaterialSSBODeclarations(
     out_decls += decl.name;
     out_decls += ";\n";
 
-    out_macros += "#define MTL_DATA_SLOT_COUNT 1u\n";
     out_macros += "#define MTL_DATA ";
     out_macros += decl.name;
     out_macros += "\n";
@@ -782,8 +781,7 @@ static void AppendIndexTableDecl(
 static std::string BuildMeshIndexTableDecls(
     const DescriptorSetLayoutAllocator &descriptor_info)
 {
-    // 单槽化：MTL_DATA_SLOT_COUNT 恒 1（MaterialPrivateDataIndexRows 索引 0 仍有效）
-    std::string out = "#define MTL_DATA_SLOT_COUNT 1u\n";
+    std::string out;
 
     for (const IndexTableSpec &spec : kMeshIndexTableSpecs)
         AppendIndexTableDecl(out, descriptor_info.GetSSBO(spec.sbs_name), spec);
@@ -1074,7 +1072,6 @@ ShaderBuildContext *CompileCompositorMaterial(
 
     const std::string compile_define_macros = BuildCompileDefineMacros(config);
 
-    // 单槽化：MTL_DATA_SLOT_COUNT 恒 1（MaterialPrivateDataIndexRows 索引 0 仍有效）
     const std::string mesh_index_table_decls =
         BuildMeshIndexTableDecls(descriptor_info);
     const std::string fs_index_table_decls =
