@@ -195,6 +195,63 @@ namespace hgl::graph::mtl
 
             return true;
         }
+
+        /// Scene 集完整覆盖：每个 SceneBinding 枚举项恰有一行登记（位图判定）。
+        /// 新增 SceneBinding 项却忘记加目录行 → 计数/位图不满 → **编译失败**。
+        constexpr bool SceneBindingsFullyCovered() noexcept
+        {
+            constexpr int slot_count=int(SceneBinding::RANGE_SIZE);
+
+            uint32 seen=0;
+            int    count=0;
+
+            for(const DescriptorResourceCatalogEntry &row:kDescriptorResourceCatalog)
+            {
+                if(row.cls!=ResourceCatalogClass::SceneGlobal)continue;
+
+                if(row.binding<0||row.binding>=slot_count)return false;
+
+                const uint32 bit=uint32(1)<<row.binding;
+
+                if(seen&bit)return false;
+
+                seen|=bit;
+                ++count;
+            }
+
+            return count==slot_count
+                && seen==((uint32(1)<<slot_count)-uint32(1));
+        }
+
+        /// PerObject 集覆盖：固定 ABI 的枚举项（L2W/L2WIndex/PrivateDataIndex/MeshDrawParams）
+        /// 必须各有一目录行。TextChar* 三项**刻意排除**——它们是 CharQuad mesh 模式内部
+        /// 约定（宏侧有、目录未收录），非通用 per-object 资源，故不参与覆盖断言。
+        constexpr bool PerObjectFixedBindingsCovered() noexcept
+        {
+            uint32 seen=0;
+
+            for(const DescriptorResourceCatalogEntry &row:kDescriptorResourceCatalog)
+            {
+                if(row.cls!=ResourceCatalogClass::PerDraw)continue;
+
+                if(row.set_type!=DescriptorSetType::PerObject)return false;
+                if(row.binding<0)return false;
+
+                const uint32 bit=uint32(1)<<row.binding;
+
+                if(seen&bit)return false;
+
+                seen|=bit;
+            }
+
+            const uint32 required_bits =
+                  (uint32(1)<<int(PerObjectBinding::L2W))
+                | (uint32(1)<<int(PerObjectBinding::L2WIndex))
+                | (uint32(1)<<int(PerObjectBinding::PrivateDataIndex))
+                | (uint32(1)<<int(PerObjectBinding::MeshDrawParams));
+
+            return (seen&required_bits)==required_bits;
+        }
     }//namespace catalog_check
 
     static_assert(catalog_check::RowsUnique(),
@@ -206,4 +263,12 @@ namespace hgl::graph::mtl
 
     static_assert(catalog_check::SceneRowsWellFormed(),
                   "Scene 全局行必须具备固定 SBS 与固定绑定号");
+
+    static_assert(catalog_check::SceneBindingsFullyCovered(),
+                  "SceneBinding 枚举项与目录 SceneGlobal 行未一一对应"
+                  "（新增 Scene 绑定后须在 kDescriptorResourceCatalog 登记一行）");
+
+    static_assert(catalog_check::PerObjectFixedBindingsCovered(),
+                  "PerObject 固定 ABI 枚举项（L2W/L2WIndex/PrivateDataIndex/MeshDrawParams）"
+                  "在资源目录缺行——新增固定 per-object 绑定后须登记目录行");
 }//namespace hgl::graph::mtl
