@@ -31,3 +31,4 @@ CMakeCache.txt
 /.cmake/
 .kateproject.build
 /.qoder
+/.zcode
