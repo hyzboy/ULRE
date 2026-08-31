@@ -32,3 +32,6 @@ CMakeCache.txt
 .kateproject.build
 /.qoder
 /.zcode
+
+# ShaderGen 运行时 SPV 磁盘缓存（ShaderProgramManager 生成）
+shader-cache/

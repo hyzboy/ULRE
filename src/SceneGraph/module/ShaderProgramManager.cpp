@@ -19,8 +19,11 @@
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/MaterialDefinitionFile.h>
 #include<hgl/object/ObjectTracker.h>
+#include<hgl/filesystem/FileSystem.h>
+#include<hgl/utf.h>
 #include<cstdint>
 #include<vector>
+#include<cstdlib>
 
 namespace hgl::graph{
 
@@ -140,6 +143,57 @@ namespace
         }
 
         return descriptors;
+    }
+
+    // ── 运行时 SPV 磁盘缓存（跨进程）────────────────────────────────────────
+    // 根目录解析优先级：环境变量 ULRE_SHADER_CACHE_PATH > exe 所在目录 > cwd。
+    // GetCurrentProgramPath 返回的已是程序目录（内部去除文件名），直接使用。
+    // 空根目录时 store 的读写全部安全失败——等价于无缓存，不阻断材质创建。
+    OSString ResolveShaderCacheRoot()
+    {
+        const wchar_t *env_value = _wgetenv(L"ULRE_SHADER_CACHE_PATH");
+        if (env_value && env_value[0])
+            return OSString(env_value);
+
+        OSString program_path;
+        if (filesystem::GetCurrentProgramPath(program_path))
+            return program_path;
+
+        OSString current_path;
+        if (filesystem::GetCurrentPath(current_path))
+            return current_path;
+
+        return OSString();
+    }
+
+    // 进程级单例（与 GetMaterialDefinitionFileRegistry 同一模式）。
+    // BuildIfMissing：命中免 glslang 重编，未命中编译后回填缓存文件。
+    // 缓存 key 含 GLSL 源码/资源契约/编译器 profile 哈希，任何输入变化自然
+    // miss 并覆盖旧条目；损坏文件因 header/payload 哈希校验失败按 miss 处理。
+    // 注意不可改用 ReadOnly：该模式在 miss 时硬失败（FinalizeShaderBuildContext
+    // 直接返回 false），须等离线 cook 步骤存在后才可启用。
+    mtl::ShaderArtifactStore *GetRuntimeShaderArtifactStore()
+    {
+        static const OSString cache_root = ResolveShaderCacheRoot();
+        static mtl::ShaderArtifactStore store(
+            cache_root,
+            mtl::ShaderCacheMode::BuildIfMissing);
+        static bool logged = false;
+        if (!logged)
+        {
+            logged = true;
+            if (cache_root.IsEmpty())
+            {
+                GLogWarning(u8"[ShaderProgramManager] shader SPV cache disabled: cannot resolve cache root");
+            }
+            else
+            {
+                const U8String root_utf8 = ToU8String(cache_root);
+                GLogInfo(u8"[ShaderProgramManager] shader SPV cache root=%s (mode=BuildIfMissing)",
+                         root_utf8.c_str());
+            }
+        }
+        return &store;
     }
 
 }//namespace
@@ -456,6 +510,11 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
 
     const auto *profile = GetPhysicalDeviceProfile();
     normalized_request.defer_finalize = true;
+    // 接通跨进程 SPV 磁盘缓存：FinalizeShaderBuildContext 先查缓存，未命中
+    // 才走 glslang 编译并回填（BuildIfMissing）。FinalizeShaderBuildContext 在
+    // store 非空时要求 program link + artifact metadata 齐备——生产路径的
+    // BuildGenericMaterial 两者恒备（回归门已全变体验证）。
+    normalized_request.shader_artifact_store = GetRuntimeShaderArtifactStore();
     AutoDelete<mtl::ShaderBuildContext> ctx =
         mtl::CreateMaterialFromDefinition(
             profile, definition, normalized_request);
