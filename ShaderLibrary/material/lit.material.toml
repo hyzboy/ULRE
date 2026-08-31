@@ -28,5 +28,5 @@ requirements = ["Position", "UV0", "Normal"]
 varyings = ["emit_data_index_id", "emit_world_pos", "emit_world_normal", "emit_uv0"]
 
 [resources]
-ubos = ["ViewportInfo", "CameraInfo", "SkyInfo"]
+ubos = ["CameraInfo", "SkyInfo"]
 samplers = ["Trilinear", "Linear"]

@@ -65,7 +65,6 @@ SET(CANONICAL_SHADER_CONTRACT_FILES
     BindingTableBuilder.cpp
     common/CanonicalContractWriter.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderResourceSchema.h
-    ${SHADERGEN_INCLUDE_PATH}/DescriptorKind.h
     ${SHADERGEN_INCLUDE_PATH}/DescriptorSemantic.h
     ${SHADERGEN_INCLUDE_PATH}/SerializedDescriptorEntry.h
     ${SHADERGEN_INCLUDE_PATH}/SerializedVertexEntry.h)
@@ -96,6 +95,8 @@ SET(MESH_SHADER_FILES    common/MeshShaderAssembler.h
                         common/MeshShaderModeCharQuad.h
                         common/MeshShaderModeLineQuad.h
                         common/MeshShaderModeVertexPassthrough.h
+                        common/MeshShaderTemplate.h
+                        common/MeshShaderTemplate.cpp
                         common/MeshShaderVaryingGen.h
                         common/MeshShaderVertexAdapter.h
                         common/VertexVaryingConfig.h
@@ -152,7 +153,11 @@ SET(FIXED_MTL_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderCompilerProfileAPI.h
 SOURCE_GROUP("Fixed Material" FILES ${FIXED_MTL_FILES})
 
 SET(MATERIAL_COMPILER_FILES  ${SHADERGEN_INCLUDE_PATH}/MaterialShaderCompiler.h
-                             MaterialShaderCompiler.cpp)
+                             MaterialShaderCompiler.cpp
+                             MaterialShaderEmitter.h
+                             MaterialShaderEmitter.cpp
+                             ${ROOT_INCLUDE_PATH}/hgl/mtl/ShaderStructureDump.h
+                             ShaderStructureDump.cpp)
 
 SOURCE_GROUP("Material Compiler" FILES ${MATERIAL_COMPILER_FILES})
 
@@ -165,6 +170,8 @@ SOURCE_GROUP("Compositor" FILES ${COMPOSITOR_HEADER_FILES}
 SET(NEW_MTL_TYPE_FILES  ${ROOT_INCLUDE_PATH}/hgl/mtl/SurfaceType.h
                         ${ROOT_INCLUDE_PATH}/hgl/mtl/BlendMode.h
                         ${ROOT_INCLUDE_PATH}/hgl/mtl/PassType.h
+                        ${ROOT_INCLUDE_PATH}/hgl/mtl/MeshShaderMode.h
+                        ${ROOT_INCLUDE_PATH}/hgl/mtl/MeshShaderLimits.h
                         ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialRecipe.h
                         ${ROOT_INCLUDE_PATH}/hgl/mtl/PipelineConfig.h
                         ${ROOT_INCLUDE_PATH}/hgl/mtl/VertexShaderNodeConfig.h

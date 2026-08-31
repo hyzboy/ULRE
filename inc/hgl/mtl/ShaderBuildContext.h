@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/mtl/DescriptorSetLayoutAllocator.h>
 #include<hgl/mtl/ShaderResourceSchema.h>
@@ -122,49 +122,28 @@ namespace hgl::graph::mtl
                 return AddStruct(std::string(ubo_typename?ubo_typename:""),std::string(codes?codes:""));
             }
 
-            bool AddUBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name);
-            bool AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name);
-            bool AddUBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const char *struct_name,const char *name)
-            {
-                return AddUBO(flag_bits,set_type,std::string(struct_name?struct_name:""),std::string(name?name:""));
-            }
-            bool AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const char *struct_name,const char *name)
-            {
-                return AddUBO(flag_bits,set_type,std::string(struct_name?struct_name:""),std::string(name?name:""));
-            }
-
-            bool AddUBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss);
-
-            bool AddSSBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name);
+            // ── 描述符注册（Phase 7 收敛后仅保留实际使用的形态）──
+            // flag_bits 为 ShaderStage 位组合；对位含的每个阶段分别注册一条。
             bool AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name);
-            bool AddSSBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name,const int preferred_binding);
             bool AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name,const int preferred_binding);
-            bool AddSSBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const char *struct_name,const char *name)
-            {
-                return AddSSBO(flag_bits,set_type,std::string(struct_name?struct_name:""),std::string(name?name:""));
-            }
-            bool AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const char *struct_name,const char *name)
-            {
-                return AddSSBO(flag_bits,set_type,std::string(struct_name?struct_name:""),std::string(name?name:""));
-            }
-            bool AddSSBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const char *struct_name,const char *name,const int preferred_binding)
-            {
-                return AddSSBO(flag_bits,set_type,std::string(struct_name?struct_name:""),std::string(name?name:""),preferred_binding);
-            }
-            bool AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const char *struct_name,const char *name,const int preferred_binding)
-            {
-                return AddSSBO(flag_bits,set_type,std::string(struct_name?struct_name:""),std::string(name?name:""),preferred_binding);
-            }
 
-            bool AddSSBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss);
+            bool AddSSBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss,const int preferred_binding);
 
             // —— 语义化 SSBO 注册（MeshShader 方向：按用途明确区分）——
-            bool AddSSBOVertex(const uint32_t flag_bits,const ShaderBufferSource &ss);      ///< 顶点数据（Position/UV/NTB）
-            bool AddSSBOVertexIndex(const uint32_t flag_bits);                              ///< 顶点索引
-            bool AddSSBOMtlData(const uint32_t flag_bits,const std::string &struct_name,const std::string &name,const int data_slot);   ///< 材质数据槽
-            bool AddSSBOMtlIndex(const uint32_t flag_bits);                                 ///< 材质数据行表
+            // Phase 4：固定 ABI 资源的 binding 唯一来源是调用方显式传入的
+            // preferred_binding（数值真源 DescriptorSetTypeDef.h 绑定枚举），
+            // 运行时不再有名字表/动态分配兜底。
+            bool AddSSBOVertex(const uint32_t flag_bits,const ShaderBufferSource &ss,const int preferred_binding);      ///< 顶点数据（Position/UV/NTB）
+            bool AddSSBOVertexIndex(const uint32_t flag_bits);                              ///< 顶点索引（binding=VertexBinding::Index）
+            bool AddSSBOMaterialPrivateData(const uint32_t flag_bits,const std::string &struct_name,const std::string &name,const int material_private_data_slot);   ///< 材质数据槽
+            bool AddSSBOMaterialPrivateDataIndex(const uint32_t flag_bits);                                 ///< 材质数据行表（binding=PerObjectBinding::PrivateDataIndex）
             bool AddSSBOTextureLayer(const uint32_t flag_bits,const int binding);           ///< 纹理层表
 
             bool CreateShaderDirect();               ///< 直接编译各阶段的 FinalGLSL 到 SPV
+
+        private:
+
+            // 单阶段注册核心（public 的 uint32 位展开版本逐阶段调用）
+            bool AddSSBOCore(const ShaderStage flag_bit,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name,const int preferred_binding);
         };//class ShaderBuildContext
 }//namespace hgl::graph::mtl

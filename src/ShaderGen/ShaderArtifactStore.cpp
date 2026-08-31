@@ -12,7 +12,7 @@ namespace hgl::graph::mtl
     namespace
     {
         // mesh shader 材质：顶点处理 stage 是 Mesh
-        const ShaderStageKey &GetVertexStageKey(const ShaderLinkSpec &link)
+        const ShaderStageKey &GetMeshStageKey(const ShaderLinkSpec &link)
         {
             return link.mesh_stage;
         }
@@ -311,7 +311,7 @@ namespace hgl::graph::mtl
              || out_metadata.program_key_digest
                     != program_key.GetDigest()
              || out_metadata.mesh_stage_digest
-                    != GetVertexStageKey(link).GetDigest()
+                    != GetMeshStageKey(link).GetDigest()
              || out_metadata.fragment_stage_digest
                     != link.fragment_stage.GetDigest()
              || out_metadata.compiler_profile_hash
@@ -337,7 +337,7 @@ namespace hgl::graph::mtl
          || !IsValidShaderProgramArtifactMetadata(metadata)
          || metadata.program_key_digest != link.BuildKey().GetDigest()
          || metadata.mesh_stage_digest
-            != GetVertexStageKey(link).GetDigest()
+            != GetMeshStageKey(link).GetDigest()
          || metadata.fragment_stage_digest
             != link.fragment_stage.GetDigest()
          || metadata.compiler_profile_hash != link.compiler_hash)
@@ -389,7 +389,7 @@ namespace hgl::graph::mtl
         ShaderProgramArtifactMetadata stored_metadata{};
         if (!LoadProgramMetadata(link, stored_metadata)
          || !(stored_metadata == expected_metadata)
-         || !LoadStageSPV(GetVertexStageKey(link), out_vertex_spv)
+         || !LoadStageSPV(GetMeshStageKey(link), out_vertex_spv)
          || !LoadStageSPV(link.fragment_stage, out_fragment_spv))
         {
             out_vertex_spv.Clear();

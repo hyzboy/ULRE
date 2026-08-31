@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/ecs/support/RenderPipelineBase.h>
 #include<hgl/type/UnorderedMap.h>

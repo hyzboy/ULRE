@@ -1,4 +1,4 @@
-#include <hgl/ecs/support/line/LineRenderPipeline.h>
+﻿#include <hgl/ecs/support/line/LineRenderPipeline.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/components/LinesComponent.h>
 #include <hgl/ecs/components/BoundingBoxComponent.h>
@@ -77,13 +77,13 @@ namespace hgl::ecs
         bool color_valid = va_color.IsValid();
         bool transform_valid = va_transform.IsValid();
         bool width_valid = va_width.IsValid();
-        
+
         LinePeriodicLog(s_line_log_ticks[0], "[LineRenderPipeline] Reset: pos_valid=%d color_valid=%d transform_valid=%d width_valid=%d",
                  pos_valid ? 1 : 0,
              color_valid ? 1 : 0,
              transform_valid ? 1 : 0,
              width_valid ? 1 : 0);
-        
+
         if (pos_valid)   va_pos.Seek(0);
         if (color_valid) va_color.Seek(0);
         if (transform_valid) va_transform.Seek(0);
@@ -220,7 +220,7 @@ namespace hgl::ecs
         bool color_valid = va_color.IsValid();
         bool transform_valid = va_transform.IsValid();
         bool width_valid = va_width.IsValid();
-        
+
         if (!pos_valid || !color_valid || !transform_valid || !width_valid)
         {
             GLogWarning("[LineRenderPipeline] AddSegment accessor invalid: pos=%d color=%d transform=%d width=%d",
@@ -273,14 +273,14 @@ namespace hgl::ecs
             return;
         }
 
-        // P2：mesh shader 单 buffer——4 个顶点 SSBO 绑到 material 的 PerObject set
-        // （单 buffer 无 slot 竞争，直接绑共享 set 即可——不再需要每 slot 独立 set）
+        // P2：mesh shader 单 buffer——顶点 SSBO 绑 Vertex 集（Set 4，Phase 5 自
+        // PerObject 迁出；单 buffer 无 slot 竞争，直接绑共享 set 即可）
         auto bind_ssbo = [&](const graph::VertexSemantic semantic, const char *name)
         {
             auto *vab = geometry->GetVAB(semantic);
             if (!vab)
                 return false;
-            material->BindSSBO(graph::DescriptorSetType::PerObject, name,
+            material->BindSSBO(graph::DescriptorSetType::Vertex, name,
                                vab->GetVkBuffer(), 0, VK_WHOLE_SIZE);
             return true;
         };
@@ -306,6 +306,17 @@ namespace hgl::ecs
         cmd->BindDescriptorSets(material->GetPipelineLayout(),
                                 static_cast<uint32_t>(graph::DescriptorSetType::PerObject),
                                 &ds, 1, nullptr, 0);
+
+        // Vertex 集（Set 4）：Update + 绑定（与 PerObject 同为程序级共享 MP，
+        // bind→draw 顺序录制，模式与上方 PerObject 一致）
+        if (auto *vmp = material->GetMP(graph::DescriptorSetType::Vertex))
+        {
+            vmp->Update();
+            const VkDescriptorSet vds = vmp->GetVkDescriptorSet();
+            cmd->BindDescriptorSets(material->GetPipelineLayout(),
+                                    static_cast<uint32_t>(graph::DescriptorSetType::Vertex),
+                                    &vds, 1, nullptr, 0);
+        }
 
         // Mesh shader 绘制：每线程 1 线段，threadgroup = MESH_GROUP_SIZE
         //（per-draw 段偏移/线宽参数经 mesh_draw_params 参数表传递——不再推 push constant）
@@ -395,7 +406,7 @@ namespace hgl::ecs
 
         // ------- Create pipeline -------
         // P2：mesh 管线（宽度入 SSBO，cull off——quad 绕序不定，双面绘制）
-        pipeline_ = rp->CreatePipeline(material_, graph::mtl::MakeLineMeshConfig(), &line_gvf);
+        pipeline_ = rp->CreatePipeline(material_, graph::mtl::MakeLineMeshConfig());
 
         if (!pipeline_)
             return false;
@@ -403,7 +414,7 @@ namespace hgl::ecs
         SyncTransformBinding();
 
         initialized_ = true;
-        
+
         return true;
     }
 
@@ -679,10 +690,6 @@ namespace hgl::ecs
 
             if (line_buffer_.mesh_draw_params)
             {
-                uint32_t viewport_height = 1;
-                if (auto *rt = context_ ? context_->GetRenderTarget() : nullptr)
-                    viewport_height = rt->GetExtent().height;
-
                 auto *gpu = line_buffer_.mesh_draw_params->GetGPUBuffer();
                 auto *row = gpu ? static_cast<graph::mtl::MeshDrawParams *>(
                     gpu->Map(0, sizeof(graph::mtl::MeshDrawParams))) : nullptr;
@@ -693,7 +700,6 @@ namespace hgl::ecs
                     row->vertex_base     = 0;
                     row->is_indexed      = 0;
                     row->total_vertices  = total_line_count_ * 2u;
-                    row->viewport_height = static_cast<float>(viewport_height);
                     row->first_instance  = 0;
                     gpu->Unmap();
                 }
@@ -732,6 +738,9 @@ namespace hgl::ecs
         }
 
         cmd->BindPipeline(pipeline_);
+
+        // EDS 1/2/3：pipeline 只保留 shader 部分——Line 材质状态（cull off）渲染侧动态应用
+        cmd->ApplyPipelineState(pipeline_->GetConfig());
 
         // Set 0（Scene UBO）/ Set 3（Bindless 纹理）按材质自身 layout 绑定。
         // VVL 的 set 兼容 ID 取 layout 在 set 0..N 的全部 DSL 前缀，绑定 layout 必须与

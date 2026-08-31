@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 namespace hgl::graph::mtl {}
 
@@ -9,12 +9,18 @@ namespace hgl::graph::mtl {}
 namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
+    // 契约错误 X 列表（单一真源——枚举与 GetXxxErrorName 同源，新增错误只改此处）
+#define HGL_MATERIAL_STAGE_INTERFACE_ERROR_LIST \
+    HGL_ERROR(None) \
+    HGL_ERROR(InvalidVaryingConfiguration) \
+    HGL_ERROR(MissingSemanticMetadata) \
+    HGL_ERROR(InvalidContract)
+
     enum class MaterialStageInterfaceError : uint8
     {
-        None = 0,
-        InvalidVaryingConfiguration,
-        MissingSemanticMetadata,
-        InvalidContract
+#define HGL_ERROR(name) name,
+        HGL_MATERIAL_STAGE_INTERFACE_ERROR_LIST
+#undef HGL_ERROR
     };
 
     struct MaterialStageInterfaceDiagnostic
@@ -48,4 +54,14 @@ namespace hgl::graph::mtl
         const ValueArray<InterStageSemanticContractEntry> &entries,
         bool camera_ubo_available,
         AnsiString &out_code);
+
+    // 该语义在 mesh shader 里是 per-primitive（perprimitiveEXT）而非 per-vertex：
+    // 每图元恒定一份（DataIndexID/StyleID——flat 且按图元共享）。
+    // mesh 侧 out 数组尺寸 = max_primitives，FS 侧 in 必须同加 perprimitiveEXT。
+    inline bool IsPerPrimitiveInterStageSemantic(
+        const InterStageSemantic semantic) noexcept
+    {
+        return semantic == InterStageSemantic::DataIndexID
+            || semantic == InterStageSemantic::StyleID;
+    }
 }

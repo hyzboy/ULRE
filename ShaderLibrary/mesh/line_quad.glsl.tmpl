@@ -1,0 +1,59 @@
+    const uint line_id = gl_WorkGroupID.x * {{group_size}}u + gl_LocalInvocationIndex;
+    const uint vid = gl_LocalInvocationIndex * 4u;
+
+    const uint total_lines = pc_vertex_index.total_vertices >> 1u;
+    const uint lines_this_group = min({{group_size}}u, total_lines - gl_WorkGroupID.x * {{group_size}}u);
+    SetMeshOutputsEXT(lines_this_group * 4u, lines_this_group * 2u);
+
+    if (line_id >= total_lines)
+        return;
+
+    uint v0 = pc_vertex_index.vertex_base + line_id * 2u;
+    uint v1 = v0 + 1u;
+    if (pc_vertex_index.is_indexed != 0u)
+    {
+        const uint i0 = pc_vertex_index.index_base + line_id * 2u;
+        v0 = pc_vertex_index.vertex_base + sbo_vertex_index.data[i0];
+        v1 = pc_vertex_index.vertex_base + sbo_vertex_index.data[i0 + 1u];
+    }
+{{endpoint_read}}#ifdef S1_PALETTE_INDEX_GLSL
+    const uint color_index = (sbo_vertex_color.data[v0 >> 2u] >> ((v0 & 3u) * 8u)) & 0xFFu;
+#endif
+#ifdef S1_TRANSFORM_ID_GLSL
+    const uint transform_id = sbo_vertex_transform_id.data[v0];
+    const mat4 l2w_m = l2w.mats[transform_id];
+#else
+    const mat4 l2w_m = l2w.mats[ResolveTransformID(gl_InstanceIndex)];
+#endif
+    const vec3 from_world = (l2w_m * vec4(from, 1.0)).xyz;
+    const vec3 to_world   = (l2w_m * vec4(to, 1.0)).xyz;
+    const vec4 c_from = camera.vp * vec4(from_world, 1.0);
+    const vec4 c_to   = camera.vp * vec4(to_world, 1.0);
+    const vec2 ndc_from = c_from.xy / c_from.w;
+    const vec2 ndc_to   = c_to.xy / c_to.w;
+    vec2 dir_ndc = ndc_to - ndc_from;
+    if (length(dir_ndc) < 1e-6)
+        dir_ndc = vec2(1.0, 0.0);   // 线段投影为点（朝向相机）——退化为水平方向
+    dir_ndc = normalize(dir_ndc);
+    const vec2 n_ndc = vec2(-dir_ndc.y, dir_ndc.x);
+#ifdef S1_SIZE_GLSL
+    const vec2 line_size = sbo_vertex_size.data[v0];
+    const float width = line_size.x;      // 满宽（最粗，用户指定）
+    const float min_width = line_size.y;  // 最细阈值（用户指定；深度越大越细，clamp 到此下限）
+#else
+    const float width = 1.0;              // 无 Size（固定线框）：恒 1 像素
+    const float min_width = 1.0;
+#endif
+    const float depth = 0.5 * (c_from.w + c_to.w);
+    const float width_eff = clamp(width * (10.0 / max(depth, 1e-4)), min_width, width);
+    const vec2 offset_ndc = n_ndc * (width_eff / float(viewport.viewport_resolution.y));
+    vec4 c0 = c_from; c0.xy += offset_ndc * c_from.w;
+    vec4 c1 = c_from; c1.xy -= offset_ndc * c_from.w;
+    vec4 c2 = c_to;   c2.xy += offset_ndc * c_to.w;
+    vec4 c3 = c_to;   c3.xy -= offset_ndc * c_to.w;
+    gl_MeshVerticesEXT[vid + 0u].gl_Position = c0;
+    gl_MeshVerticesEXT[vid + 1u].gl_Position = c1;
+    gl_MeshVerticesEXT[vid + 2u].gl_Position = c2;
+    gl_MeshVerticesEXT[vid + 3u].gl_Position = c3;
+    gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationIndex * 2u + 0u] = uvec3(vid + 0u, vid + 1u, vid + 2u);
+    gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationIndex * 2u + 1u] = uvec3(vid + 1u, vid + 3u, vid + 2u);

@@ -1,4 +1,4 @@
-// 该范例演示 10x10 的 Standard 网格：
+﻿// 该范例演示 10x10 的 Standard 网格：
 // 使用 baseColor + normal 纹理（Albedo+Normal）
 // 通过 metallic/roughness 参数渐变来控制材质
 // This example renders a 10x10 Standard grid:
@@ -188,7 +188,7 @@ private:
         Texture2D *probe_base = texture_manager->LoadTexture2D(first_base, true);
         Texture2D *probe_normal = texture_manager->LoadTexture2D(first_normal, true);
         if (!probe_base || !probe_normal) {
-            printf("[ERROR] InitTextures: Failed to load probe textures - base=%p normal=%p\n", 
+            printf("[ERROR] InitTextures: Failed to load probe textures - base=%p normal=%p\n",
                    probe_base, probe_normal);
             return false;
         }
@@ -210,7 +210,7 @@ private:
         SAFE_CLEAR(probe_normal)
 
         if (!base_color_texture || !normal_texture) {
-            printf("[ERROR] InitTextures: Failed to create Texture2DArray - base_color=%p normal=%p\n", 
+            printf("[ERROR] InitTextures: Failed to create Texture2DArray - base_color=%p normal=%p\n",
                    base_color_texture, normal_texture);
             return false;
         }
@@ -449,7 +449,7 @@ private:
             return false;
 
         graph::mtl::UpsertRecipeSSBOAssetBinding(sphere_recipe,
-                                                 graph::mtl::DefaultMaterialDataSlotName,
+                                                 graph::mtl::DefaultMaterialPrivateDataSlotName,
                                                  mtl_data_ssbo_accessor->GetSSBOBinding());
 
         if (!CreateBasePrimitives())
@@ -491,13 +491,13 @@ private:
                                                       sampler,
                                                       PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray);
                 prim_comp->SetMaterialTextureValue(graph::mtl::TextureSlot::Custom0, row);
-                hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource sphere_struct{};
-                sphere_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
+                hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource sphere_struct{};
+                sphere_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
                 sphere_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
                 sphere_struct.data_index = sphere_slot_rows[row][col];
                 sphere_struct.use_data_index = true;
                 sphere_struct.shared_across_instances = false;
-                prim_comp->SetMaterialDataSlotResource(sphere_struct);
+                prim_comp->SetMaterialPrivateDataSlotResource(sphere_struct);
                 prim_comp->SetVisible(true);
             }
         }

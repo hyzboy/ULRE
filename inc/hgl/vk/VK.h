@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/type/ValueArray.h>
 #include<hgl/type/UnorderedMap.h>
@@ -242,7 +242,6 @@ class MaterialDescriptorManager;
 
 class ShaderProgram;
 class MaterialParameters;
-struct PipelineData;
 class Pipeline;
 
 struct VAConfig;

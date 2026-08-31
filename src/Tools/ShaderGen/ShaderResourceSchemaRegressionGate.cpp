@@ -26,7 +26,11 @@
 #include <hgl/log/Log.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/filesystem/Path.h>
+#include <hgl/mtl/ShaderStructureDump.h>
+#include <fstream>
+#include <filesystem>
 #include "../../ShaderGen/3d/DefinitionDescriptorBuilder.h"
+#include <hgl/mtl/MeshShaderLimits.h>
 #include "../../ShaderGen/common/VertexBuilderCommon.h"
 #include "../../ShaderGen/common/VertexVaryingConfig.h"
 #include "../../ShaderGen/common/MeshShaderAssembler.h"   // GenerateMeshShader / MeshShaderMode
@@ -162,37 +166,6 @@ namespace
     static hgl::OSString RepoRootOSPath(const char *suffix)
     {
         return hgl::ToOSString(RepoRootPath(suffix));
-    }
-
-    static std::vector<std::string> SummarizeConstraintShape(const ShaderResourceSchema &contract)
-    {
-        std::vector<std::string> rows;
-        rows.reserve(contract.resources.size());
-
-        for (const auto &req : contract.resources)
-        {
-            std::string row;
-            row += GetDescriptorSemanticName(req.semantic);
-            row += "|";
-            row += GetDescriptorSemanticLayerName(req.semantic_layer);
-            row += "|";
-            row += GetDescriptorKindName(req.kind);
-            row += "|";
-            row += GetDescriptorSetTypeName(req.set_type);
-            row += "|";
-            row += std::to_string(static_cast<uint32_t>(req.texture_slot));
-            row += "|";
-            row += std::to_string(req.data_slot);
-            row += "|";
-            row += GetSSBOTypeName(req.ssbo_type);
-            row += "|";
-            row += req.required ? "required" : "optional";
-            row += "|";
-            row += req.allow_fallback ? "fallback" : "strict";
-            rows.push_back(std::move(row));
-        }
-
-        return rows;
     }
 
     static GateResult RunValidationCase(const char *name,
@@ -470,7 +443,6 @@ namespace
             StableID("schema.TextureLayer");
         texture_layer_resources.semantic =
             DescriptorSemantic::MaterialTextureLayerTable;
-        texture_layer_resources.kind = DescriptorKind::SSBO;
         texture_layer_resources.ssbo_type = SSBOType::TextureLayer;
         texture_layer_resources.required = true;
         layout.resources.push_back(texture_layer_resources);
@@ -481,9 +453,8 @@ namespace
         data_resources.resource_schema_id =
             StableID("schema.PBRSurface");
         data_resources.semantic =
-            DescriptorSemantic::MaterialDataSlotData;
-        data_resources.kind = DescriptorKind::SSBO;
-        data_resources.data_slot = 0;
+            DescriptorSemantic::MaterialPrivateData;
+        data_resources.material_private_data_slot = 0;
         data_resources.ssbo_type = SSBOType::PBRSurface;
         data_resources.required = true;
         data_resources.allow_fallback = false;
@@ -499,8 +470,8 @@ namespace
         recipe.textures.push_back(
             {GetTextureSlotName(TextureSlot::Custom0), std::string(), 7, true, false});
         RecipeSSBOAssetBinding data_binding{};
-        data_binding.data_slot_name = "mtl";
-        data_binding.data_slot = 0;
+        data_binding.material_private_data_slot_name = "mtl_private_data";
+        data_binding.material_private_data_slot = 0;
         data_binding.ssbo_type = SSBOType::PBRSurface;
         data_binding.ssbo_id = 17;
         data_binding.data_index = 9;
@@ -605,7 +576,7 @@ namespace
                 const ResolvedDataBinding &binding =
                     binding_table.data[i];
                 if (binding.source == BindingSource::Asset
-                 && binding.data_slot == 0
+                 && binding.material_private_data_slot == 0
                  && binding.ssbo_type == SSBOType::PBRSurface)
                     planned_data = true;
             }
@@ -870,13 +841,12 @@ namespace
             VK_FORMAT_R32G32B32_SFLOAT,
             {},
             MeshShaderMode::VertexPassthrough,
-            96u,
+            kMeshVertexPassthroughMaxInvocations,
             GetShaderLibraryPath(),
             {},
-            nullptr,
-            hgl::graph::PrimitiveType::Triangles);
+            nullptr);
         if (lit_vs.find(
-                "layout(location=0) out flat uint fragDataIndexID[")
+                "layout(location=0) perprimitiveEXT out uint fragDataIndexID[")
                 == std::string::npos
          || lit_vs.find(
                 "layout(location=1) out vec3 fragWorldPos[")
@@ -903,11 +873,10 @@ namespace
             VK_FORMAT_R32G32B32_SFLOAT,
             {},
             MeshShaderMode::VertexPassthrough,
-            96u,
+            kMeshVertexPassthroughMaxInvocations,
             GetShaderLibraryPath(),
             {},
-            nullptr,
-            hgl::graph::PrimitiveType::Triangles);
+            nullptr);
         if (color_vs.find(
                 "layout(location=5) out vec4 fragVertexColor[")
                 == std::string::npos
@@ -2006,10 +1975,9 @@ namespace
             {
                 StableID("resource.material_data"),
                 StableID("schema.PBRSurface.v1"),
-                DescriptorSemantic::MaterialDataSlotData,
+                DescriptorSemantic::MaterialPrivateData,
                 DescriptorSemanticLayer::SSBO,
                 DescriptorSetType::Material,
-                DescriptorKind::SSBO,
                 TextureSlot::BaseColor,
                 SSBOType::PBRSurface,
                 0,
@@ -2025,7 +1993,6 @@ namespace
                 DescriptorSemantic::MaterialTextureLayerTable,
                 DescriptorSemanticLayer::SSBO,
                 DescriptorSetType::Material,
-                DescriptorKind::SSBO,
                 TextureSlot::BaseColor,
                 SSBOType::TextureLayer,
                 0,
@@ -2140,7 +2107,6 @@ namespace
             StableID("schema.TextureLayer");
         texture_resources.semantic =
             DescriptorSemantic::MaterialTextureLayerTable;
-        texture_resources.kind = DescriptorKind::SSBO;
         texture_resources.ssbo_type = SSBOType::TextureLayer;
         texture_resources.required = true;
         layout.resources.push_back(texture_resources);
@@ -2151,9 +2117,8 @@ namespace
         data_resources.resource_schema_id =
             StableID("schema.PBRSurface");
         data_resources.semantic =
-            DescriptorSemantic::MaterialDataSlotData;
-        data_resources.kind = DescriptorKind::SSBO;
-        data_resources.data_slot = 0;
+            DescriptorSemantic::MaterialPrivateData;
+        data_resources.material_private_data_slot = 0;
         data_resources.ssbo_type = SSBOType::PBRSurface;
         data_resources.required = true;
         data_resources.allow_fallback = false;
@@ -2169,7 +2134,7 @@ namespace
         recipe.textures.emplace_back(texture);
 
         RecipeSSBOAssetBinding asset{};
-        asset.data_slot = DefaultMaterialDataSlot;
+        asset.material_private_data_slot = DefaultMaterialPrivateDataSlot;
         asset.ssbo_type = SSBOType::PBRSurface;
         asset.ssbo_id = 41;
         asset.data_index = 3;
@@ -2402,8 +2367,8 @@ namespace
             result.diagnostics.emplace_back("canonical PureColor must exist");
         }
         else if (!IsPureColorMaterialDefinition(pure_color)
-               || pure_color.data_slot_decls.size() != 1
-              || pure_color.data_slot_decls[0].ssbo_type != SSBOType::EmissiveSurface
+               || pure_color.material_private_data_slot_decls.size() != 1
+              || pure_color.material_private_data_slot_decls[0].ssbo_type != SSBOType::EmissiveSurface
               || pure_color.vertex_semantic_requirements.GetCount() != 1)
             result.diagnostics.emplace_back("canonical PureColor contract is not semantic-only");
 
@@ -2979,8 +2944,8 @@ namespace
         else
         {
             if (!IsPureColorMaterialDefinition(pure_color)
-             || pure_color.data_slot_decls.size() != 1
-             || pure_color.data_slot_decls[0].ssbo_type != SSBOType::EmissiveSurface
+             || pure_color.material_private_data_slot_decls.size() != 1
+             || pure_color.material_private_data_slot_decls[0].ssbo_type != SSBOType::EmissiveSurface
              || pure_color.vertex_semantic_requirements.GetCount() != 1)
                 result.diagnostics.emplace_back("PureColor contract is not canonical");
         }
@@ -3041,9 +3006,8 @@ namespace
         {
             return GenerateMeshShader(
                 graph, varying, VK_FORMAT_R32G32B32_SFLOAT,
-                {}, MeshShaderMode::VertexPassthrough, 96u,
-                GetShaderLibraryPath(), {}, nullptr,
-                hgl::graph::PrimitiveType::Triangles);
+                {}, MeshShaderMode::VertexPassthrough, kMeshVertexPassthroughMaxInvocations,
+                GetShaderLibraryPath(), {}, nullptr);
         };
 
         const std::string flat = build(VertexNodeConfigResolver::FlatXY());
@@ -3364,8 +3328,8 @@ namespace
                     != registry_definition.vertex_semantic_requirements.GetCount()
              || file_definition->ubo_requirements.size()
                     != registry_definition.ubo_requirements.size()
-             || file_definition->data_slot_decls.size()
-                    != registry_definition.data_slot_decls.size()
+             || file_definition->material_private_data_slot_decls.size()
+                    != registry_definition.material_private_data_slot_decls.size()
              || file_definition->texture_slot_decls.size()
                     != registry_definition.texture_slot_decls.size())
             {
@@ -3465,9 +3429,9 @@ namespace
             else
             {
                 if (manifest_2d.ssbo_count != 1
-                 || std::strcmp(manifest_2d.ssbos[0].name, "mtl") != 0
+                 || std::strcmp(manifest_2d.ssbos[0].name, "mtl_private_data") != 0
                  || manifest_2d.ssbos[0].ssbo_type != SSBOType::PBRSurface
-                 || manifest_2d.ssbos[0].data_slot != 0)
+                 || manifest_2d.ssbos[0].material_private_data_slot != 0)
                     result.diagnostics.emplace_back(
                         "Texture2D providers must declare one PBRSurface material SSBO");
 
@@ -4097,11 +4061,10 @@ namespace
     static GateResult RunMaterialMultiSlotSourceCase()
     {
         GateResult result;
-        result.name = "Z.material-multislot-source";
+        result.name = "Z.material-privatedata-slot-source";
 
-        std::vector<DataSlotDeclaration> slots = {
-            {"surface_a", SSBOType::EmissiveSurface},
-            {"surface_b", SSBOType::EmissiveSurface}
+        std::vector<MaterialPrivateDataSlotDeclaration> slots = {
+            {DefaultMaterialPrivateDataSlotName, SSBOType::EmissiveSurface}
         };
         const SerializedVertexEntry vertices[] = {
             {VF_V2F, VertexSemantic::Position}
@@ -4109,20 +4072,19 @@ namespace
         const SerializedDescriptorEntry descriptors[] = {
             {
                 DescriptorSetType::PerObject,
-                DescriptorKind::SSBO,
                 uint32_t(hgl::graph::kMeshFragment),
-                "mtl_data_index_rows",
-                "DataIndexRows",
+                "mtl_private_data_index",
+                "MaterialPrivateDataIndex",
                 nullptr,
-                DescriptorSemantic::MaterialDataIndexTable,
+                DescriptorSemantic::MaterialPrivateDataIndex,
                 TextureSlot::BaseColor,
-                DefaultMaterialDataSlot,
-                SSBOType::MaterialDataIndexTable,
+                DefaultMaterialPrivateDataSlot,
+                SSBOType::MaterialPrivateDataIndex,
                 DescriptorSemanticLayer::SSBO
             }
         };
         const MaterialShaderCompilerInput compiler_input{
-            "MultiSlotMaterial",
+            "MaterialPrivateDataSlotMaterial",
             PrimitiveType::Triangles,
             vertices,
             1,
@@ -4131,7 +4093,7 @@ namespace
         };
 
         CompositorMaterialBuildConfig config{};
-        config.data_slot_decls = &slots;
+        config.material_private_data_slot_decls = &slots;
         config.defer_finalize = true;
         // mesh 化后顶点路径统一走 Mesh stage（VS 已彻底废弃）
         config.shader_stage_flag_bits = uint32_t(hgl::graph::mtl::ShaderStage::MeshFragment);
@@ -4144,7 +4106,7 @@ namespace
             config);
         if (!build_spec)
         {
-            result.diagnostics.emplace_back("multi-slot compiler did not produce a build spec");
+            result.diagnostics.emplace_back("single-slot compiler did not produce a build spec");
             result.passed = false;
             return result;
         }
@@ -4153,7 +4115,7 @@ namespace
             build_spec->GetStageShader(ShaderStage::Fragment);
         if (!fragment)
         {
-            result.diagnostics.emplace_back("multi-slot compiler did not produce a fragment stage");
+            result.diagnostics.emplace_back("single-slot compiler did not produce a fragment stage");
         }
         else
         {
@@ -4173,31 +4135,119 @@ namespace
                 return count;
             };
 
-            if (source.find("#define MTL_DATA surface_a") == std::string::npos
-             || source.find("#define MTL_DATA_SLOT_1 surface_b") == std::string::npos
-             || source.find("#define MTL_DATA_SLOT_COUNT 2u") == std::string::npos)
-                result.diagnostics.emplace_back("multi-slot aliases were not injected");
+            if (source.find("#define MTL_DATA mtl_private_data") == std::string::npos)
+                result.diagnostics.emplace_back("single-slot aliases were not injected");
 
             if (count_occurrences("struct EmissiveSurfaceData") != 1)
                 result.diagnostics.emplace_back("repeated SSBO type emitted duplicate GLSL struct");
 
-            if (source.find("} surface_a;") == std::string::npos
-             || source.find("} surface_b;") == std::string::npos)
-                result.diagnostics.emplace_back("named multi-slot SSBO declarations are incomplete");
+            if (source.find("} mtl_private_data;") == std::string::npos)
+                result.diagnostics.emplace_back("single-slot SSBO declaration is incomplete");
         }
 
         const ShaderCreateInfo *vertex =
             build_spec->GetStageShader(ShaderStage::Mesh);
         if (!vertex)
         {
-            result.diagnostics.emplace_back("multi-slot compiler did not produce a mesh stage");
+            result.diagnostics.emplace_back("single-slot compiler did not produce a mesh stage");
         }
         else
         {
             const std::string &source = vertex->GetFinalGLSL();
-            if (source.find("ResolveDataIndexID(uint iid, uint data_slot)") == std::string::npos
-             || source.find("iid * MTL_DATA_INDEX_ROW_STRIDE + data_slot") == std::string::npos)
-                result.diagnostics.emplace_back("data-index resolver is not slot-aware");
+            if (source.find("ResolveMaterialPrivateDataIndex(uint iid)") == std::string::npos
+             || source.find("mtl_private_data_index.values[iid]") == std::string::npos)
+                result.diagnostics.emplace_back("data-index resolver is not single-slot");
+        }
+
+        delete build_spec;
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
+    static GateResult RunBindingMacroSingleSourceCase()
+    {
+        GateResult result;
+        result.name = "AE.binding-macro-single-source";
+
+        // 固定 ABI 的 set/binding 宏唯一真源是 descriptor_macros.glsl（生成物）。
+        // 编译器不得再注入 #define（原 kBindingDefineTable 注入路径已删除，Phase 3）。
+        // 输入 GLSL 特意 include 并使用宏（与真实模板一致），且携带 LocalToWorld
+        // 描述符——旧注入路径会因此向 mesh 阶段注入 L2W_SET/L2W_BINDING。
+        const SerializedVertexEntry vertices[] = {
+            {VF_V2F, VertexSemantic::Position}
+        };
+        const SerializedDescriptorEntry descriptors[] = {
+            {
+                DescriptorSetType::PerObject,
+                uint32_t(hgl::graph::kMeshFragment),
+                "l2w",
+                "LocalToWorldData",
+                nullptr,
+                DescriptorSemantic::LocalToWorld,
+                TextureSlot::BaseColor,
+                DefaultMaterialPrivateDataSlot,
+                SSBOType::UserDefined,
+                DescriptorSemanticLayer::SSBO
+            }
+        };
+        const MaterialShaderCompilerInput compiler_input{
+            "BindingMacroSingleSourceMaterial",
+            PrimitiveType::Triangles,
+            vertices,
+            1,
+            descriptors,
+            1
+        };
+
+        CompositorMaterialBuildConfig config{};
+        config.defer_finalize = true;
+        config.shader_stage_flag_bits = uint32_t(hgl::graph::mtl::ShaderStage::MeshFragment);
+
+        ShaderBuildContext *build_spec = CompileCompositorMaterial(
+            nullptr,
+            compiler_input,
+            "#version 460\n"
+            "#include \"common/descriptor_macros.glsl\"\n"
+            "layout(location=0) in vec2 Position;\n"
+            "void main(){gl_Position=vec4(Position,L2W_SET,L2W_BINDING);}\n",
+            "#version 460\n"
+            "layout(location=0) out vec4 outColor;\n"
+            "void main(){outColor=vec4(1.0);}\n",
+            config);
+        if (!build_spec)
+        {
+            result.diagnostics.emplace_back("compiler did not produce a build spec");
+            result.passed = false;
+            return result;
+        }
+
+        static const char *injected_defines[] = {
+            "#define L2W_SET",
+            "#define L2W_BINDING",
+            "#define MESH_DRAW_PARAMS_SET",
+            "#define MESH_DRAW_PARAMS_BINDING",
+            "#define VIEWPORT_SET",
+            "#define CAMERA_SET",
+            "#define SKY_SET",
+            "#define COLOR_PALETTE_SET",
+        };
+
+        const ShaderCreateInfo *mesh = build_spec->GetStageShader(ShaderStage::Mesh);
+        if (!mesh)
+        {
+            result.diagnostics.emplace_back("did not produce a mesh stage");
+        }
+        else
+        {
+            const std::string &source = mesh->GetFinalGLSL();
+            if (source.find("#include \"common/descriptor_macros.glsl\"")
+                == std::string::npos)
+                result.diagnostics.emplace_back("descriptor_macros include is missing");
+
+            for (const char *macro : injected_defines)
+                if (source.find(macro) != std::string::npos)
+                    result.diagnostics.emplace_back(
+                        std::string("compiler injected fixed-ABI define: ") + macro);
         }
 
         delete build_spec;
@@ -4216,33 +4266,31 @@ namespace
         {
             std::string viewport_name = "viewport";
             std::string viewport_struct = "ViewportInfo";
-            std::string material_name = "mtl";
+            std::string material_name = "mtl_private_data";
             std::string material_struct = "PBRSurfaceData";
             SerializedDescriptorEntry entries[] =
             {
                 {
                     DescriptorSetType::Scene,
-                    DescriptorKind::UBO,
                     uint32_t(hgl::graph::kMeshFragment),
                     viewport_name.c_str(),
                     viewport_struct.c_str(),
                     nullptr,
                     DescriptorSemantic::ViewportInfo,
                     TextureSlot::BaseColor,
-                    DefaultMaterialDataSlot,
+                    DefaultMaterialPrivateDataSlot,
                     SSBOType::UserDefined,
                     DescriptorSemanticLayer::UBO
                 },
                 {
                     DescriptorSetType::Material,
-                    DescriptorKind::SSBO,
                     uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
                     material_name.c_str(),
                     material_struct.c_str(),
                     nullptr,
-                    DescriptorSemantic::MaterialDataSlotData,
+                    DescriptorSemantic::MaterialPrivateData,
                     TextureSlot::BaseColor,
-                    DefaultMaterialDataSlot,
+                    DefaultMaterialPrivateDataSlot,
                     SSBOType::PBRSurface,
                     DescriptorSemanticLayer::SSBO,
                     MakeRecipeSSBOId(0),
@@ -4287,10 +4335,10 @@ namespace
                     "descriptor stage visibility must affect contract hash");
             }
 
-            std::vector<SerializedDescriptorEntry> roundtrip;
-            if (!ConvertDescriptorContractToFixed(
-                    first_contract, roundtrip)
-             || roundtrip.size() != 2
+            // C1-T2：entries 即规范化 SerializedDescriptorEntry[]——直接校验契约条目
+            //（原 ConvertDescriptorContractToFixed 往返已删）
+            const auto &roundtrip = first_contract.entries;
+            if (roundtrip.size() != 2
              || std::strcmp(roundtrip[0].name, "viewport") != 0
              || std::strcmp(
                     roundtrip[1].struct_name, "PBRSurfaceData") != 0)
@@ -4331,7 +4379,7 @@ namespace
                      varying_layout.resources)
                 {
                     if (requirement.semantic
-                        == DescriptorSemantic::MaterialDataIndexTable)
+                        == DescriptorSemantic::MaterialPrivateDataIndex)
                     {
                         has_data_index =
                             requirement.stage_flags
@@ -4344,7 +4392,7 @@ namespace
                         has_texture_layer = true;
                     }
                 }
-                // P1-2e：varying 路径只负责 MaterialDataIndexTable；
+                // P1-2e：varying 路径只负责 MaterialPrivateDataIndex；
                 // MaterialTextureLayerTable 由 manifest/纹理槽声明提供，
                 // 不再由 varying 契约生成。
                 if (!has_data_index || has_texture_layer)
@@ -4560,7 +4608,7 @@ namespace
         result.name = "AD.resource-contract-boundary";
 
         MaterialDefinition definition{};
-        definition.data_slot_decls = {{"mtl", SSBOType::PBRSurface}};
+        definition.material_private_data_slot_decls = {{DefaultMaterialPrivateDataSlotName, SSBOType::PBRSurface}};
 
         std::vector<SerializedDescriptorEntry> descriptors;
         descriptor_builder_common::AppendDefinitionMaterialDescriptors(
@@ -4579,9 +4627,9 @@ namespace
         };
         compatible_manifest.ssbo_count = 1;
         compatible_manifest.ssbos[0] = {
-            "mtl",
+            "mtl_private_data",
             SSBOType::PBRSurface,
-            DefaultMaterialDataSlot,
+            DefaultMaterialPrivateDataSlot,
             uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT)
         };
 
@@ -4612,8 +4660,8 @@ namespace
                 if (req.semantic == DescriptorSemantic::MaterialTextureLayerTable
                  && req.texture_slot == TextureSlot::BaseColor)
                     has_required_texture_layer = req.required && !req.allow_fallback;
-                if (req.semantic == DescriptorSemantic::MaterialDataSlotData
-                 && req.data_slot == DefaultMaterialDataSlot)
+                if (req.semantic == DescriptorSemantic::MaterialPrivateData
+                 && req.material_private_data_slot == DefaultMaterialPrivateDataSlot)
                     has_single_material_ssbo = true;
             }
             if (!has_required_texture_layer || !has_single_material_ssbo)
@@ -4624,9 +4672,9 @@ namespace
         ModuleResourceManifest ssbo_name_conflict{};
         ssbo_name_conflict.ssbo_count = 1;
         ssbo_name_conflict.ssbos[0] = {
-            "mtl",
+            "mtl_private_data",
             SSBOType::TextureLayer,
-            DefaultMaterialDataSlot,
+            DefaultMaterialPrivateDataSlot,
             uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT)
         };
         if (descriptor_builder_common::AppendManifestSSBODescriptors(
@@ -4639,13 +4687,12 @@ namespace
 
         SerializedDescriptorEntry hash_entry{};
         hash_entry.set_type = DescriptorSetType::Material;
-        hash_entry.kind = DescriptorKind::SSBO;
         hash_entry.stage_flags = uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT);
-        hash_entry.name = "mtl";
+        hash_entry.name = "mtl_private_data";
         hash_entry.struct_name = "PBRSurfaceData";
-        hash_entry.semantic = DescriptorSemantic::MaterialDataSlotData;
+        hash_entry.semantic = DescriptorSemantic::MaterialPrivateData;
         hash_entry.semantic_layer = DescriptorSemanticLayer::SSBO;
-        hash_entry.data_slot = DefaultMaterialDataSlot;
+        hash_entry.material_private_data_slot = DefaultMaterialPrivateDataSlot;
         hash_entry.ssbo_type = SSBOType::PBRSurface;
         hash_entry.ssbo_id = 11;
         hash_entry.has_requirement_policy = true;
@@ -4674,13 +4721,12 @@ namespace
 
         SerializedDescriptorEntry ssbo_hash_entry{};
         ssbo_hash_entry.set_type = DescriptorSetType::Material;
-        ssbo_hash_entry.kind = DescriptorKind::SSBO;
         ssbo_hash_entry.stage_flags = uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT);
-        ssbo_hash_entry.name = "mtl";
+        ssbo_hash_entry.name = "mtl_private_data";
         ssbo_hash_entry.struct_name = "PBRSurfaceData";
-        ssbo_hash_entry.semantic = DescriptorSemantic::MaterialDataSlotData;
+        ssbo_hash_entry.semantic = DescriptorSemantic::MaterialPrivateData;
         ssbo_hash_entry.semantic_layer = DescriptorSemanticLayer::SSBO;
-        ssbo_hash_entry.data_slot = DefaultMaterialDataSlot;
+        ssbo_hash_entry.material_private_data_slot = DefaultMaterialPrivateDataSlot;
         ssbo_hash_entry.ssbo_type = SSBOType::PBRSurface;
         ssbo_hash_entry.ssbo_id = 11;
 
@@ -4816,6 +4862,182 @@ namespace
         return result;
     }
 
+    // ══════════════════════════════════════════════════════════════════════
+    // S4 试点：结构快照 golden 比对（取代 GLSL 文本子串断言）
+    //
+    // 现状问题：本文件大量断言形如 contains(fs, "layout(set=2, binding=0)")，
+    // 生成器格式一变就要改断言 → 生成器与测试双向锁死。
+    // 试点做法：DumpShaderStructure(ctx) 产出结构快照（资源 semantic/layer/
+    // set/binding/stages/required + stage 存在性 + program_link 存在性，
+    // **不含 hash 值与 GLSL 文本**），与 golden 文件逐行比对。
+    //
+    // golden 缺失时**自动生成**并通过（首跑引导）——生成后须人工审阅并入库；
+    // 已存在时不一致即 FAIL，并落地 .actual 便于 diff。
+    // ══════════════════════════════════════════════════════════════════════
+    static bool ReadGoldenFile(const std::string &path, std::string &out)
+    {
+        std::ifstream in(path, std::ios::binary);
+        if (!in)
+            return false;
+
+        out.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+        return true;
+    }
+
+    static bool WriteTextFile(const std::string &path, const std::string &text)
+    {
+        std::error_code ec;
+        std::filesystem::create_directories(
+            std::filesystem::path(path).parent_path(), ec);
+
+        std::ofstream out(path, std::ios::binary | std::ios::trunc);
+        if (!out)
+            return false;
+
+        out.write(text.data(), std::streamsize(text.size()));
+        return bool(out);
+    }
+
+    /// 行尾归一（golden 入库后 git 可能改行尾，比对不应受其影响）
+    static std::string NormalizeDumpEOL(const std::string &src)
+    {
+        std::string out;
+        out.reserve(src.size());
+        for (const char c : src)
+            if (c != '\r')
+                out += c;
+        return out;
+    }
+
+    static GateResult RunShaderStructureDumpPilotCase()
+    {
+        GateResult result;
+        result.name = "SD.structure-dump-golden-pilot";
+
+        const GeometryVertexFormat geometry{
+            {VertexSemantic::Position, VF_V3F},
+            {VertexSemantic::TexCoord, VF_V2F},
+            {VertexSemantic::Normal, VF_V3F},
+            {VertexSemantic::Color, VF_V4F},
+            {VertexSemantic::TransformID, VK_FORMAT_R32_UINT},
+            {VertexSemantic::Size, VF_V2F}
+        };
+
+        struct PilotVariant
+        {
+            const char *definition_id;
+            const char *golden_slug;
+            ShaderProgramPurpose purpose;
+            bool override_purpose;
+            PassType pass;
+        };
+
+        static const PilotVariant kVariants[] =
+        {
+            { "Lit", "lit-forward-opaque",
+              ShaderProgramPurpose::ForwardColor, false, PassType::ForwardOpaque },
+            { "Lit", "lit-depth-only",
+              ShaderProgramPurpose::DepthOnly, true, PassType::ForwardOpaque },
+            { "VertexPaletteColor", "vertex-palette-color-forward",
+              ShaderProgramPurpose::ForwardColor, false, PassType::ForwardOpaque },
+        };
+
+        for (const PilotVariant &variant : kVariants)
+        {
+            MaterialDefinition definition{};
+            if (!TryGetMaterialDefinitionByID(variant.definition_id, definition))
+            {
+                result.diagnostics.emplace_back(
+                    std::string("definition unavailable: ") + variant.definition_id);
+                continue;
+            }
+
+            definition.compositor_pass = variant.pass;
+
+            MaterialDefinitionBuildRequest request{};
+            request.recipe.mtl_def_id = definition.definition_id;
+            request.geometry_vertex_format = &geometry;
+            request.defer_finalize = true;
+            request.override_shader_program_purpose = variant.override_purpose;
+            request.shader_program_purpose = variant.purpose;
+
+            const std::unique_ptr<ShaderBuildContext> ctx(
+                CreateMaterialFromDefinition(nullptr, definition, request));
+
+            if (!ctx)
+            {
+                result.diagnostics.emplace_back(
+                    std::string("material build failed: ") + variant.golden_slug);
+                continue;
+            }
+
+            const std::string label =
+                std::string(variant.definition_id)
+                + " golden=" + variant.golden_slug;
+
+            const std::string dump =
+                NormalizeDumpEOL(DumpShaderStructure(*ctx, label.c_str()));
+
+            const std::string golden_path =
+                RepoRootPath((std::string("src/Tools/ShaderGen/golden/")
+                              + variant.golden_slug + ".txt").c_str());
+
+            std::string golden;
+            if (!ReadGoldenFile(golden_path, golden))
+            {
+                // 首跑引导：生成 golden 并通过，提示人工审阅入库
+                if (!WriteTextFile(golden_path, dump))
+                {
+                    result.diagnostics.emplace_back(
+                        std::string("cannot write golden: ") + golden_path);
+                    continue;
+                }
+
+                std::printf(
+                    "[SD.pilot] golden 已生成（首跑引导），请审阅后入库: %s\n",
+                    golden_path.c_str());
+                continue;
+            }
+
+            if (NormalizeDumpEOL(golden) == dump)
+                continue;
+
+            const std::string actual_path = golden_path + ".actual";
+            WriteTextFile(actual_path, dump);
+
+            // 定位首个差异行，便于直接看出结构变化
+            const std::string normalized_golden = NormalizeDumpEOL(golden);
+            size_t pos = 0;
+            size_t line = 1;
+            while (pos < dump.size() && pos < normalized_golden.size()
+                && dump[pos] == normalized_golden[pos])
+            {
+                if (dump[pos] == '\n')
+                    ++line;
+                ++pos;
+            }
+
+            const auto line_of = [](const std::string &text, const size_t at)
+            {
+                const size_t begin = text.rfind('\n', at) == std::string::npos
+                    ? 0 : text.rfind('\n', at) + 1;
+                const size_t end = text.find('\n', at);
+                return text.substr(begin,
+                    (end == std::string::npos ? text.size() : end) - begin);
+            };
+
+            result.diagnostics.emplace_back(
+                std::string("structure dump mismatch: ") + variant.golden_slug
+                + " line " + std::to_string(line)
+                + "\n  golden: " + line_of(normalized_golden, std::min(pos, normalized_golden.size() ? normalized_golden.size() - 1 : 0))
+                + "\n  actual: " + line_of(dump, std::min(pos, dump.size() ? dump.size() - 1 : 0))
+                + "\n  actual 全文: " + actual_path);
+        }
+
+        result.passed = result.diagnostics.empty();
+        return result;
+    }
+
 }
 
 int main(const int argc, char **argv)
@@ -4852,33 +5074,27 @@ int main(const int argc, char **argv)
     {
         constexpr SerializedDescriptorEntry valid_entries[] =
         {
-            { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(hgl::graph::kMeshFragment), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
-            { DescriptorSetType::PerObject, DescriptorKind::SSBO, uint32_t(hgl::graph::kMeshFragment), "mtl_data_index_rows", "DataIndexRows", nullptr, DescriptorSemantic::MaterialDataIndexTable, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::MaterialDataIndexTable, DescriptorSemanticLayer::SSBO },
-            { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "mtl_texture_layer_rows", "TextureLayerRows", nullptr, DescriptorSemantic::MaterialTextureLayerTable, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::TextureLayer, DescriptorSemanticLayer::SSBO },
+            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo, TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
+            { DescriptorSetType::PerObject, uint32_t(hgl::graph::kMeshFragment), "mtl_private_data_index", "MaterialPrivateDataIndex", nullptr, DescriptorSemantic::MaterialPrivateDataIndex, TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, SSBOType::MaterialPrivateDataIndex, DescriptorSemanticLayer::SSBO },
+            { DescriptorSetType::Material, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "mtl_texture_layer_rows", "TextureLayerRows", nullptr, DescriptorSemantic::MaterialTextureLayerTable, TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, SSBOType::TextureLayer, DescriptorSemanticLayer::SSBO },
         };
         results.push_back(RunValidationCase("A.valid-layered-paths", valid_entries, uint32_t(std::size(valid_entries)), true));
 
         constexpr SerializedDescriptorEntry unknown_semantic[] =
         {
-            { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(hgl::graph::kMeshFragment), "broken", "ViewportInfo", nullptr, DescriptorSemantic::Unknown, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
+            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "broken", "ViewportInfo", nullptr, DescriptorSemantic::Unknown, TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
         };
         results.push_back(RunValidationCase("B1.unknown-semantic-hard-fail", unknown_semantic, 1, false));
 
-        constexpr SerializedDescriptorEntry semantic_kind_mismatch[] =
-        {
-            { DescriptorSetType::PerObject, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "mtl_data_index_rows", "DataIndexRows", nullptr, DescriptorSemantic::MaterialDataIndexTable, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::MaterialDataIndexTable, DescriptorSemanticLayer::SSBO },
-        };
-        results.push_back(RunValidationCase("B2.semantic-kind-mismatch-hard-fail", semantic_kind_mismatch, 1, false));
-
         constexpr SerializedDescriptorEntry invalid_fixed_descriptor[] =
         {
-            { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(hgl::graph::kMeshFragment), "mtl", "PBRSurfaceData", nullptr, DescriptorSemantic::MaterialDataSlotData, TextureSlot::BaseColor, 0xffu, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO },
+            { DescriptorSetType::Material, uint32_t(hgl::graph::kMeshFragment), "mtl_private_data", "PBRSurfaceData", nullptr, DescriptorSemantic::MaterialPrivateData, TextureSlot::BaseColor, 0xffu, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO },
         };
         results.push_back(RunValidationCase("B3.invalid-fixed-descriptor-hard-fail", invalid_fixed_descriptor, 1, false));
 
         constexpr SerializedDescriptorEntry palette_explicit[] =
         {
-            { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(hgl::graph::kMeshFragment), "color_palette", "ColorPalette", nullptr, DescriptorSemantic::MaterialColorPalette, TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
+            { DescriptorSetType::Scene, uint32_t(hgl::graph::kMeshFragment), "color_palette", "ColorPalette", nullptr, DescriptorSemantic::MaterialColorPalette, TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO },
         };
         results.push_back(RunValidationCase("C.scene-color-palette-explicit", palette_explicit, 1, true));
     }
@@ -4914,11 +5130,13 @@ int main(const int argc, char **argv)
     if (run_cache) results.push_back(RunResolvedStageCacheIdentityCase());
     if (run_cache) results.push_back(RunCanonicalShaderContractCase());
     if (run_pipeline) results.push_back(RunMaterialMultiSlotSourceCase());
+    if (run_pipeline) results.push_back(RunBindingMacroSingleSourceCase());
     if (run_descriptor) results.push_back(RunDescriptorContractCase());
     if (run_pipeline) results.push_back(RunShaderLibraryPathCase());
     if (run_materialization) results.push_back(RunSamplerPresetLibraryCase());
     if (run_descriptor) results.push_back(RunResourceContractBoundaryCase());
     if (run_module_invariants) results.push_back(RunModuleInvariantsCase());
+    if (run_pipeline) results.push_back(RunShaderStructureDumpPilotCase());
 
     bool all_passed = true;
     for (const auto &result : results)

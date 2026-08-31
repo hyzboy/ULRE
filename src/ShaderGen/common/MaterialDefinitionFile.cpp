@@ -57,20 +57,38 @@ namespace hgl::graph::mtl
 
         bool ParseBootstrap(const std::string &name, MaterialDefinitionBootstrapKind &out)
         {
-            if (name == "None") out = MaterialDefinitionBootstrapKind::None;
-            else if (name == "PureColor") out = MaterialDefinitionBootstrapKind::PureColor;
-            else if (name == "TextAlphaBlend") out = MaterialDefinitionBootstrapKind::TextAlphaBlend;
-            else return false;
-            return true;
+            static const struct { const char *name; MaterialDefinitionBootstrapKind value; } table[] = {
+                { "None",          MaterialDefinitionBootstrapKind::None },
+                { "PureColor",     MaterialDefinitionBootstrapKind::PureColor },
+                { "TextAlphaBlend", MaterialDefinitionBootstrapKind::TextAlphaBlend },
+            };
+            for (const auto &entry : table)
+            {
+                if (name == entry.name)
+                {
+                    out = entry.value;
+                    return true;
+                }
+            }
+            return false;
         }
 
         bool ParsePolicy(const std::string &name, MaterialVertexProviderPolicy &out)
         {
-            if (name == "Auto") out = MaterialVertexProviderPolicy::Auto;
-            else if (name == "GeometryOnly") out = MaterialVertexProviderPolicy::GeometryOnly;
-            else if (name == "AllowDerived") out = MaterialVertexProviderPolicy::AllowDerived;
-            else return false;
-            return true;
+            static const struct { const char *name; MaterialVertexProviderPolicy value; } table[] = {
+                { "Auto",         MaterialVertexProviderPolicy::Auto },
+                { "GeometryOnly", MaterialVertexProviderPolicy::GeometryOnly },
+                { "AllowDerived", MaterialVertexProviderPolicy::AllowDerived },
+            };
+            for (const auto &entry : table)
+            {
+                if (name == entry.name)
+                {
+                    out = entry.value;
+                    return true;
+                }
+            }
+            return false;
         }
 
         bool ParseSurface(const std::string &name, SurfaceType &out)
@@ -91,41 +109,47 @@ namespace hgl::graph::mtl
 
         bool ParseBlend(const std::string &name, BlendMode &out)
         {
-            if (name == "Opaque") out = BlendMode::Opaque;
-            else if (name == "Masked") out = BlendMode::Masked;
-            else if (name == "Transparent") out = BlendMode::Transparent;
-            else if (name == "Dither") out = BlendMode::Dither;
-            else if (name == "AlphaToCoverage") out = BlendMode::AlphaToCoverage;
-            else return false;
-            return true;
-        }
-
-        bool ParsePass(const std::string &name, PassType &out)
-        {
-            static const char *const names[] = {
-                "ForwardOpaque", "ForwardMasked", "ForwardTransparent",
-                "ForwardDither", "ForwardA2C", "ShadowOpaque", "ShadowMasked",
-                "EarlyZSolid", "EarlyZMasked"
+            static const struct { const char *name; BlendMode value; } table[] = {
+                { "Opaque",        BlendMode::Opaque },
+                { "Masked",        BlendMode::Masked },
+                { "Transparent",   BlendMode::Transparent },
+                { "Dither",        BlendMode::Dither },
+                { "AlphaToCoverage", BlendMode::AlphaToCoverage },
             };
-            for (uint32 i = 0; i < 9; ++i)
+            for (const auto &entry : table)
             {
-                if (name == names[i])
+                if (name == entry.name)
                 {
-                    out = static_cast<PassType>(i);
+                    out = entry.value;
                     return true;
                 }
             }
             return false;
         }
 
+        bool ParsePass(const std::string &name, PassType &out)
+        {
+            // T1：PassType 名字单一真源 PassType.h（GetPassTypeName/ParsePassType）
+            return ParsePassType(name.c_str(), out);
+        }
+
         bool ParseCullMode(const std::string &name, VkCullModeFlags &out)
         {
-            if (name == "None") out = VK_CULL_MODE_NONE;
-            else if (name == "Front") out = VK_CULL_MODE_FRONT_BIT;
-            else if (name == "Back") out = VK_CULL_MODE_BACK_BIT;
-            else if (name == "FrontAndBack") out = VK_CULL_MODE_FRONT_AND_BACK;
-            else return false;
-            return true;
+            static const struct { const char *name; VkCullModeFlags value; } table[] = {
+                { "None",         VK_CULL_MODE_NONE },
+                { "Front",        VK_CULL_MODE_FRONT_BIT },
+                { "Back",         VK_CULL_MODE_BACK_BIT },
+                { "FrontAndBack", VK_CULL_MODE_FRONT_AND_BACK },
+            };
+            for (const auto &entry : table)
+            {
+                if (name == entry.name)
+                {
+                    out = entry.value;
+                    return true;
+                }
+            }
+            return false;
         }
 
         bool ParseCompareOp(const std::string &name, VkCompareOp &out)
@@ -270,12 +294,21 @@ namespace hgl::graph::mtl
 
         bool ParseVertexInput(const std::string &name, VertexInputMode &out)
         {
-            if (name == "Vec2Position") out = VertexInputMode::Vec2Position;
-            else if (name == "Vec3Position") out = VertexInputMode::Vec3Position;
-            else if (name == "Vec2IntPosition") out = VertexInputMode::Vec2IntPosition;
-            else if (name == "None") out = VertexInputMode::None;
-            else return false;
-            return true;
+            static const struct { const char *name; VertexInputMode value; } table[] = {
+                { "Vec2Position",    VertexInputMode::Vec2Position },
+                { "Vec3Position",    VertexInputMode::Vec3Position },
+                { "Vec2IntPosition", VertexInputMode::Vec2IntPosition },
+                { "None",            VertexInputMode::None },
+            };
+            for (const auto &entry : table)
+            {
+                if (name == entry.name)
+                {
+                    out = entry.value;
+                    return true;
+                }
+            }
+            return false;
         }
 
         bool ParseMapping(const std::string &name, PositionMappingMode &out)
@@ -297,30 +330,57 @@ namespace hgl::graph::mtl
 
         bool ParseOrientation(const std::string &name, OrientationMode &out)
         {
-            if (name == "World") out = OrientationMode::World;
-            else if (name == "CameraFacingFree") out = OrientationMode::CameraFacingFree;
-            else if (name == "CameraFacingAxisY") out = OrientationMode::CameraFacingAxisY;
-            else return false;
-            return true;
+            static const struct { const char *name; OrientationMode value; } table[] = {
+                { "World",            OrientationMode::World },
+                { "CameraFacingFree", OrientationMode::CameraFacingFree },
+                { "CameraFacingAxisY", OrientationMode::CameraFacingAxisY },
+            };
+            for (const auto &entry : table)
+            {
+                if (name == entry.name)
+                {
+                    out = entry.value;
+                    return true;
+                }
+            }
+            return false;
         }
 
         bool ParseScale(const std::string &name, ScaleMode &out)
         {
-            if (name == "World") out = ScaleMode::World;
-            else if (name == "FixedPixelSize") out = ScaleMode::FixedPixelSize;
-            else return false;
-            return true;
+            static const struct { const char *name; ScaleMode value; } table[] = {
+                { "World",          ScaleMode::World },
+                { "FixedPixelSize", ScaleMode::FixedPixelSize },
+            };
+            for (const auto &entry : table)
+            {
+                if (name == entry.name)
+                {
+                    out = entry.value;
+                    return true;
+                }
+            }
+            return false;
         }
 
         bool ParseProjection(const std::string &name, ProjectionMode &out)
         {
-            if (name == "WorldCameraVP") out = ProjectionMode::WorldCameraVP;
-            else if (name == "LocalToWorldOnly") out = ProjectionMode::LocalToWorldOnly;
-            else if (name == "OrthoViewport") out = ProjectionMode::OrthoViewport;
-            else if (name == "OrthoThenLocalToWorld") out = ProjectionMode::OrthoThenLocalToWorld;
-            else if (name == "ClipPassthrough") out = ProjectionMode::ClipPassthrough;
-            else return false;
-            return true;
+            static const struct { const char *name; ProjectionMode value; } table[] = {
+                { "WorldCameraVP",        ProjectionMode::WorldCameraVP },
+                { "LocalToWorldOnly",     ProjectionMode::LocalToWorldOnly },
+                { "OrthoViewport",        ProjectionMode::OrthoViewport },
+                { "OrthoThenLocalToWorld", ProjectionMode::OrthoThenLocalToWorld },
+                { "ClipPassthrough",      ProjectionMode::ClipPassthrough },
+            };
+            for (const auto &entry : table)
+            {
+                if (name == entry.name)
+                {
+                    out = entry.value;
+                    return true;
+                }
+            }
+            return false;
         }
 
         bool ParseTransformGraph(const toml::value &table,
@@ -343,34 +403,9 @@ namespace hgl::graph::mtl
 
         bool ParseSemantic(const std::string &name, GLSLCodeModuleSemantic &out)
         {
-            static const char *const names[] = {
-                "Position", "UV0", "Color", "ColorY", "ColorUV",
-                "Normal", "Tangent", "Binormal", "WorldPosition",
-                "WorldNormal", "WorldTangent", "WorldBinormal", "Luminance",
-                "HeightMap", "Camera", "Viewport", "SkyLight",
-                "MaterialData", "TransformID", "Size"
-            };
-            static const GLSLCodeModuleSemantic values[] = {
-                GLSLCodeModuleSemantic::Position, GLSLCodeModuleSemantic::UV0,
-                GLSLCodeModuleSemantic::Color, GLSLCodeModuleSemantic::ColorY,
-                GLSLCodeModuleSemantic::ColorUV, GLSLCodeModuleSemantic::Normal,
-                GLSLCodeModuleSemantic::Tangent, GLSLCodeModuleSemantic::Binormal,
-                GLSLCodeModuleSemantic::WorldPosition, GLSLCodeModuleSemantic::WorldNormal,
-                GLSLCodeModuleSemantic::WorldTangent, GLSLCodeModuleSemantic::WorldBinormal,
-                GLSLCodeModuleSemantic::Luminance, GLSLCodeModuleSemantic::HeightMap,
-                GLSLCodeModuleSemantic::Camera, GLSLCodeModuleSemantic::Viewport,
-                GLSLCodeModuleSemantic::SkyLight, GLSLCodeModuleSemantic::MaterialData,
-                GLSLCodeModuleSemantic::TransformID, GLSLCodeModuleSemantic::Size
-            };
-            for (uint32 i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
-            {
-                if (name == names[i])
-                {
-                    out = values[i];
-                    return true;
-                }
-            }
-            return false;
+            // T1：语义名字单一真源 GLSLCodeModule.h（GetGLSLCodeModuleSemanticName/
+            // ParseGLSLCodeModuleSemantic）——此处不再维护平行表。
+            return ParseGLSLCodeModuleSemantic(name.c_str(), out);
         }
 
         bool ParseSSBOType(const std::string &name, SSBOType &out)
@@ -554,31 +589,22 @@ namespace hgl::graph::mtl
                     }
                 }
 
-                if (resources.contains("ssbos"))
+                if (resources.contains("material_data"))
                 {
-                    if (!resources.at("ssbos").is_array())
+                    // 单槽化：一个材质只有一个私有数据 SSBO（MaterialPrivateData）。
+                    // TOML 形态：material_data = { type = "EmissiveSurface" }
+                    // 无 name 段（固定 DefaultMaterialPrivateDataSlotName）；type 必须是材质 SSBO 类型。
+                    const auto &item = resources.at("material_data");
+                    if (!item.is_table()
+                     || !item.contains("type") || !item.at("type").is_string())
                         return false;
-                    for (const auto &item : resources.at("ssbos").as_array())
-                    {
-                        if (!item.is_table()
-                         || !item.contains("name") || !item.at("name").is_string()
-                         || !item.contains("type") || !item.at("type").is_string())
-                            return false;
-                        const std::string slot_name = item.at("name").as_string();
-                        if (!IsValidMaterialDataSlotName(slot_name)
-                         || out.definition.data_slot_decls.size() >= MaxMaterialDataSlotsPerMaterial)
-                            return false;
-                        for (const auto &existing : out.definition.data_slot_decls)
-                        {
-                            if (existing.name == slot_name)
-                                return false;
-                        }
-                        SSBOType type;
-                        if (!ParseSSBOType(item.at("type").as_string(), type))
-                            return false;
-                        out.definition.data_slot_decls.push_back(
-                            {slot_name, type});
-                    }
+                    SSBOType type;
+                    if (!ParseSSBOType(item.at("type").as_string(), type)
+                     || type == SSBOType::UserDefined
+                     || !IsMaterialSSBOType(type))
+                        return false;
+                    out.definition.material_private_data_slot_decls.push_back(
+                        {DefaultMaterialPrivateDataSlotName, type});
                 }
 
                 if (resources.contains("textures"))
@@ -649,22 +675,42 @@ namespace hgl::graph::mtl
                 const toml::value &varyings = root.at("vertex").at("varyings");
                 if (!varyings.is_array())
                     return false;
+                // T2：varying 字段表驱动（成员指针表——字段名单一真源在此表，
+                // 新增 varying 只需加一行）
+                struct VaryingFieldEntry
+                {
+                    const char *name;
+                    bool MaterialVertexVaryingConfig::*field;
+                };
+                static const VaryingFieldEntry kVaryingFieldTable[] = {
+                    { "emit_data_index_id",             &MaterialVertexVaryingConfig::emit_data_index_id },
+                    { "emit_vertex_color",              &MaterialVertexVaryingConfig::emit_vertex_color },
+                    { "emit_uv0",                       &MaterialVertexVaryingConfig::emit_uv0 },
+                    { "emit_world_pos",                 &MaterialVertexVaryingConfig::emit_world_pos },
+                    { "emit_world_normal",              &MaterialVertexVaryingConfig::emit_world_normal },
+                    { "emit_luminance",                 &MaterialVertexVaryingConfig::emit_luminance },
+                    { "emit_frag_direction",            &MaterialVertexVaryingConfig::emit_frag_direction },
+                    { "use_transform_id_attr",          &MaterialVertexVaryingConfig::use_transform_id_attr },
+                    { "emit_vertex_color_from_palette", &MaterialVertexVaryingConfig::emit_vertex_color_from_palette },
+                    { "emit_style_id",                  &MaterialVertexVaryingConfig::emit_style_id },
+                };
                 for (const auto &item : varyings.as_array())
                 {
                     if (!item.is_string())
                         return false;
                     const std::string field = item.as_string();
-                    if (field == "emit_data_index_id") out.definition.vertex_varying.emit_data_index_id = true;
-                    else if (field == "emit_vertex_color") out.definition.vertex_varying.emit_vertex_color = true;
-                    else if (field == "emit_uv0") out.definition.vertex_varying.emit_uv0 = true;
-                    else if (field == "emit_world_pos") out.definition.vertex_varying.emit_world_pos = true;
-                    else if (field == "emit_world_normal") out.definition.vertex_varying.emit_world_normal = true;
-                    else if (field == "emit_luminance") out.definition.vertex_varying.emit_luminance = true;
-                    else if (field == "emit_frag_direction") out.definition.vertex_varying.emit_frag_direction = true;
-                    else if (field == "use_transform_id_attr") out.definition.vertex_varying.use_transform_id_attr = true;
-                    else if (field == "emit_vertex_color_from_palette") out.definition.vertex_varying.emit_vertex_color_from_palette = true;
-                    else if (field == "emit_style_id") out.definition.vertex_varying.emit_style_id = true;
-                    else return false;
+                    bool found = false;
+                    for (const VaryingFieldEntry &entry : kVaryingFieldTable)
+                    {
+                        if (field == entry.name)
+                        {
+                            out.definition.vertex_varying.*(entry.field) = true;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found)
+                        return false;
                 }
             }
 
@@ -677,7 +723,8 @@ namespace hgl::graph::mtl
                     std::string mode_str;
                     if (!ReadRequiredString(ms, "mode", mode_str))
                         return false;
-                    out.definition.mesh_shader_mode = mode_str;
+                    if (!ParseMeshShaderMode(mode_str.c_str(), out.definition.mesh_shader_mode))
+                        return false;   // 未知模式名 = 拼写错误，硬失败而非静默降级
                 }
                 if (ms.contains("max_invocations"))
                 {
@@ -765,7 +812,7 @@ namespace hgl::graph::mtl
 
         if (root.contains("resources")
          && !ValidateKnownKeys(root.at("resources"), {
-                "ubos", "ssbos", "samplers", "textures", "defines"}))
+                "ubos", "material_data", "samplers", "textures", "defines"}))
             return false;
 
         if (root.contains("mesh_shader")

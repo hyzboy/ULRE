@@ -1,4 +1,4 @@
-#include<hgl/ecs/core/MaterialBatch.h>
+﻿#include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/core/RenderItem.h>
 #include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKDevice.h>
@@ -43,12 +43,12 @@ namespace hgl::ecs
             else
                 delete mesh_draw_params_buffer;
         }
-        if (l2w_index_rows_buffer)
+        if (l2w_index_buffer)
         {
             if (buffer_manager)
-                buffer_manager->Release(l2w_index_rows_buffer);
+                buffer_manager->Release(l2w_index_buffer);
             else
-                delete l2w_index_rows_buffer;
+                delete l2w_index_buffer;
         }
         if (material_data_index_rows_buffer)
         {

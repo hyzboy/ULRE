@@ -1,4 +1,4 @@
-#include <hgl/mtl/ModuleResourceManifest.h>
+﻿#include <hgl/mtl/ModuleResourceManifest.h>
 #include <hgl/mtl/GLSLCodeModuleRegistry.h>
 #include <hgl/util/hash/FNV1a.h>
 
@@ -42,7 +42,7 @@ namespace hgl::graph::mtl
             {
                 auto &existing = manifest.ssbos[i];
                 if (!CStrEqual(existing.name, incoming.name)
-                 || existing.data_slot != incoming.data_slot)
+                 || existing.material_private_data_slot != incoming.material_private_data_slot)
                     continue;
 
                 if (existing.ssbo_type != incoming.ssbo_type)
@@ -215,7 +215,7 @@ namespace hgl::graph::mtl
                 const auto &ssbo = manifest.ssbos[i];
                 h << ssbo.name;
                 h << ssbo.ssbo_type
-                  << ssbo.data_slot
+                  << ssbo.material_private_data_slot
                   << ssbo.stage_flags
                   << ssbo.required
                   << ssbo.allow_fallback;
@@ -259,18 +259,12 @@ namespace hgl::graph::mtl
 
     const char *GetModuleResourceManifestErrorName(const ModuleResourceManifestError error) noexcept
     {
+#define HGL_ERROR(name) case ModuleResourceManifestError::name: return #name;
         switch (error)
         {
-        case ModuleResourceManifestError::None: return "None";
-        case ModuleResourceManifestError::NullRootList: return "NullRootList";
-        case ModuleResourceManifestError::UnknownCodeModule: return "UnknownCodeModule";
-        case ModuleResourceManifestError::CodeModuleCycle: return "CodeModuleCycle";
-        case ModuleResourceManifestError::CodeModuleCapacityExceeded: return "CodeModuleCapacityExceeded";
-        case ModuleResourceManifestError::SSBOCapacityExceeded: return "SSBOCapacityExceeded";
-        case ModuleResourceManifestError::TextureLayerCapacityExceeded: return "TextureLayerCapacityExceeded";
-        case ModuleResourceManifestError::ResourceConflict: return "ResourceConflict";
+            HGL_MODULE_RESOURCE_MANIFEST_ERROR_LIST
         }
-
+#undef HGL_ERROR
         return "Unknown";
     }
 }

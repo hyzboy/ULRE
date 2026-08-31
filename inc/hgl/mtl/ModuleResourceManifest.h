@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/mtl/GLSLCodeModule.h>
 
@@ -9,16 +9,22 @@ namespace hgl::graph::mtl
     constexpr uint32 MaxModuleResourceManifestSSBOs = 64u;
     constexpr uint32 MaxModuleResourceManifestTextureLayers = 16u;
 
+    // 契约错误 X 列表（单一真源——枚举与 GetXxxErrorName 同源，新增错误只改此处）
+#define HGL_MODULE_RESOURCE_MANIFEST_ERROR_LIST \
+    HGL_ERROR(None) \
+    HGL_ERROR(NullRootList) \
+    HGL_ERROR(UnknownCodeModule) \
+    HGL_ERROR(CodeModuleCycle) \
+    HGL_ERROR(CodeModuleCapacityExceeded) \
+    HGL_ERROR(SSBOCapacityExceeded) \
+    HGL_ERROR(TextureLayerCapacityExceeded) \
+    HGL_ERROR(ResourceConflict)
+
     enum class ModuleResourceManifestError : uint8
     {
-        None = 0,
-        NullRootList,
-        UnknownCodeModule,
-        CodeModuleCycle,
-        CodeModuleCapacityExceeded,
-        SSBOCapacityExceeded,
-        TextureLayerCapacityExceeded,
-        ResourceConflict
+#define HGL_ERROR(name) name,
+        HGL_MODULE_RESOURCE_MANIFEST_ERROR_LIST
+#undef HGL_ERROR
     };
 
     struct ModuleResourceManifest

@@ -1,4 +1,4 @@
-// 画一个带纹理的矩形，2D模式专用 (ECS)
+﻿// 画一个带纹理的矩形，2D模式专用 (ECS)
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
@@ -144,7 +144,7 @@ private:
         rect_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
         rect_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigZeroToOne(true);
         graph::mtl::UpsertRecipeSSBOAssetBinding(rect_recipe,
-                                                 graph::mtl::DefaultMaterialDataSlotName,
+                                                 graph::mtl::DefaultMaterialPrivateDataSlotName,
                                                  mtl_data_ssbo_accessor->GetSSBOBinding());
 
         return(true);
@@ -199,13 +199,13 @@ private:
                                                   texture,
                                                   sampler,
                                                   PrimitiveComponent::MaterialTextureResourceKind::Texture2DArray);
-            hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource rect_struct{};
-            rect_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
+            hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource rect_struct{};
+            rect_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
             rect_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             rect_struct.data_index = i;
             rect_struct.use_data_index = true;
             rect_struct.shared_across_instances = false;
-            primitive->SetMaterialDataSlotResource(rect_struct);
+            primitive->SetMaterialPrivateDataSlotResource(rect_struct);
             primitive->SetVisible(true);
         }
 

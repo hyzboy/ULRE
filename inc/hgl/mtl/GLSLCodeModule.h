@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/CoreType.h>
 #include <hgl/mtl/DescriptorSemantic.h>
@@ -52,6 +52,71 @@ namespace hgl::graph::mtl
         TransformID,
         Size
     };
+
+    // ── 语义名字注册表（单一真源，T1）───────────────────────────────
+    // GLSLCodeModuleSemantic 的字符串名字只在本处定义一次：
+    //   GetGLSLCodeModuleSemanticName：枚举 → 名字（switch）
+    //   ParseGLSLCodeModuleSemantic：名字 → 枚举（线性查表，跳过 Unknown）
+    // 旧 MaterialDefinitionFile.cpp / GLSLCodeModuleFile.cpp 各自维护的
+    // 平行名字表已删除——新增语义只需改枚举 + 本 switch 一处。
+    inline constexpr uint32 GLSLCodeModuleSemanticCount =
+        static_cast<uint32>(GLSLCodeModuleSemantic::Size) + 1;
+
+    inline const char *GetGLSLCodeModuleSemanticName(
+        const GLSLCodeModuleSemantic semantic) noexcept
+    {
+        switch (semantic)
+        {
+        case GLSLCodeModuleSemantic::Unknown:       return "Unknown";
+        case GLSLCodeModuleSemantic::Position:      return "Position";
+        case GLSLCodeModuleSemantic::UV0:           return "UV0";
+        case GLSLCodeModuleSemantic::Color:         return "Color";
+        case GLSLCodeModuleSemantic::ColorY:        return "ColorY";
+        case GLSLCodeModuleSemantic::ColorUV:       return "ColorUV";
+        case GLSLCodeModuleSemantic::Normal:        return "Normal";
+        case GLSLCodeModuleSemantic::Tangent:       return "Tangent";
+        case GLSLCodeModuleSemantic::Binormal:      return "Binormal";
+        case GLSLCodeModuleSemantic::WorldPosition: return "WorldPosition";
+        case GLSLCodeModuleSemantic::WorldNormal:   return "WorldNormal";
+        case GLSLCodeModuleSemantic::WorldTangent:  return "WorldTangent";
+        case GLSLCodeModuleSemantic::WorldBinormal: return "WorldBinormal";
+        case GLSLCodeModuleSemantic::Luminance:     return "Luminance";
+        case GLSLCodeModuleSemantic::HeightMap:     return "HeightMap";
+        case GLSLCodeModuleSemantic::Camera:        return "Camera";
+        case GLSLCodeModuleSemantic::Viewport:      return "Viewport";
+        case GLSLCodeModuleSemantic::SkyLight:      return "SkyLight";
+        case GLSLCodeModuleSemantic::MaterialData:  return "MaterialData";
+        case GLSLCodeModuleSemantic::TransformID:   return "TransformID";
+        case GLSLCodeModuleSemantic::Size:          return "Size";
+        default:                                    return "Unknown";
+        }
+    }
+
+    inline bool ParseGLSLCodeModuleSemantic(
+        const char *name,
+        GLSLCodeModuleSemantic &out_semantic) noexcept
+    {
+        if (!name || !name[0])
+        {
+            out_semantic = GLSLCodeModuleSemantic::Unknown;
+            return false;
+        }
+
+        // 跳过 Unknown（旧解析表均不含它——"Unknown" 解析失败保持旧行为）
+        for (uint32 i = 1; i < GLSLCodeModuleSemanticCount; ++i)
+        {
+            const GLSLCodeModuleSemantic semantic =
+                static_cast<GLSLCodeModuleSemantic>(i);
+            if (hgl::strcmp(name, GetGLSLCodeModuleSemanticName(semantic)) == 0)
+            {
+                out_semantic = semantic;
+                return true;
+            }
+        }
+
+        out_semantic = GLSLCodeModuleSemantic::Unknown;
+        return false;
+    }
 
     enum class GLSLCodeModuleCapabilitySource : uint8
     {
@@ -127,7 +192,7 @@ namespace hgl::graph::mtl
     {
         const char *name = nullptr;
         SSBOType ssbo_type = SSBOType::UserDefined;
-        uint32 data_slot = 0;
+        uint32 material_private_data_slot = 0;
         uint32 stage_flags = 0;
         bool required = true;
         bool allow_fallback = false;
@@ -140,7 +205,7 @@ namespace hgl::graph::mtl
             || (lhs.name && rhs.name && hgl::strcmp(lhs.name, rhs.name) == 0);
         return same_name
             && lhs.ssbo_type == rhs.ssbo_type
-            && lhs.data_slot == rhs.data_slot
+            && lhs.material_private_data_slot == rhs.material_private_data_slot
             && lhs.stage_flags == rhs.stage_flags
             && lhs.required == rhs.required
             && lhs.allow_fallback == rhs.allow_fallback;

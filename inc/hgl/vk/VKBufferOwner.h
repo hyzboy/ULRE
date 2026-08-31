@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/vk/VKMemory.h>
 #include<hgl/vk/BufferPolicy.h>

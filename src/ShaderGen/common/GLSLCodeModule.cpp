@@ -1,4 +1,4 @@
-#include <hgl/mtl/GLSLCodeModule.h>
+﻿#include <hgl/mtl/GLSLCodeModule.h>
 
 #include <hgl/type/StrChar.h>
 
@@ -21,7 +21,7 @@ namespace hgl::graph::mtl
             const auto &requirement = definition.ssbo_requirements[i];
             h << requirement.name;
             h << requirement.ssbo_type
-              << requirement.data_slot
+              << requirement.material_private_data_slot
               << requirement.stage_flags
               << requirement.required
               << requirement.allow_fallback;

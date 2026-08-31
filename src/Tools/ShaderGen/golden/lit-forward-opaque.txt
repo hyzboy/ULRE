@@ -1,0 +1,17 @@
+material Lit golden=lit-forward-opaque
+stage mesh present=1 glsl_nonempty=1
+stage fragment present=1 glsl_nonempty=1
+program_link present=1 valid=1 resource_layout_hash_set=1 vertex_input_hash_set=1 render_target_hash_set=1 compiler_hash_set=1
+resource_count=12
+resource semantic=CameraInfo layer=UBO declared_set=Scene set=global binding=global stages=Mesh|Fragment ssbo_type=UserDefined name=camera struct=CameraInfo required=1 fallback=0
+resource semantic=SkyInfo layer=UBO declared_set=Scene set=global binding=global stages=Mesh|Fragment ssbo_type=UserDefined name=sky struct=SkyInfo required=0 fallback=1
+resource semantic=LocalToWorld layer=SSBO declared_set=PerObject set=1 binding=0 stages=Mesh|Fragment ssbo_type=UserDefined name=l2w struct=LocalToWorldData required=1 fallback=0
+resource semantic=LocalToWorldIndex layer=SSBO declared_set=PerObject set=1 binding=1 stages=Mesh|Fragment ssbo_type=LocalToWorldIndex name=l2w_index struct=LocalToWorldIndex required=1 fallback=0
+resource semantic=MaterialPrivateDataIndex layer=SSBO declared_set=PerObject set=1 binding=3 stages=Mesh|Fragment ssbo_type=MaterialPrivateDataIndex name=mtl_private_data_index struct=MaterialPrivateDataIndex required=0 fallback=1
+resource semantic=MeshDrawParams layer=SSBO declared_set=PerObject set=1 binding=13 stages=Mesh ssbo_type=UserDefined name=mesh_draw_params struct=MeshDrawParamsData required=1 fallback=0
+resource semantic=MaterialPrivateData layer=SSBO declared_set=Material set=2 binding=0 stages=Fragment ssbo_type=PBRSurface name=mtl_private_data struct=PBRSurfaceData required=1 fallback=0
+resource semantic=MaterialTextureLayerTable layer=SSBO declared_set=Material set=2 binding=1 stages=Fragment ssbo_type=TextureLayer name=mtl_texture_layer_rows struct=TextureLayerRows required=0 fallback=1
+resource semantic=VertexPosition layer=SSBO declared_set=Vertex set=4 binding=0 stages=Mesh ssbo_type=VertexPosition name=VertexPosition struct=VertexPositionData required=1 fallback=0
+resource semantic=VertexUV layer=SSBO declared_set=Vertex set=4 binding=1 stages=Mesh ssbo_type=VertexUV name=VertexUV struct=VertexUVData required=1 fallback=0
+resource semantic=VertexNTB layer=SSBO declared_set=Vertex set=4 binding=2 stages=Mesh ssbo_type=VertexNTB name=VertexNTB struct=VertexNTBData required=1 fallback=0
+resource semantic=VertexIndex layer=SSBO declared_set=Vertex set=4 binding=3 stages=Mesh ssbo_type=VertexIndex name=VertexIndex struct=VertexIndexData required=1 fallback=0

@@ -1,4 +1,4 @@
-// RayPicking (ECS Version)
+﻿// RayPicking (ECS Version)
 // 该范例主要演示使用ECS架构实现射线拾取功能
 // This example demonstrates ray picking using ECS architecture
 //
@@ -194,10 +194,10 @@ private:
             return false;
 
         graph::mtl::UpsertRecipeSSBOAssetBinding(plane_recipe,
-                                                 graph::mtl::DefaultMaterialDataSlotName,
+                                                 graph::mtl::DefaultMaterialPrivateDataSlotName,
                                                  mtl_data_ssbo_accessor->GetSSBOBinding());
         graph::mtl::UpsertRecipeSSBOAssetBinding(line_recipe,
-                                                 graph::mtl::DefaultMaterialDataSlotName,
+                                                 graph::mtl::DefaultMaterialPrivateDataSlotName,
                                                  mtl_data_ssbo_accessor->GetSSBOBinding());
 
         (*mtl_data_ssbo_accessor)[plane_slot] = white_color;
@@ -217,13 +217,13 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = plane_grid_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&plane_asset);
-            hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource plane_struct{};
-            plane_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
+            hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource plane_struct{};
+            plane_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
             plane_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             plane_struct.data_index = plane_slot;
             plane_struct.use_data_index = true;
             plane_struct.shared_across_instances = true;
-            primitive_comp->SetMaterialDataSlotResource(plane_struct);
+            primitive_comp->SetMaterialPrivateDataSlotResource(plane_struct);
             primitive_comp->SetVisible(true);
         }
 
@@ -241,13 +241,13 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = ray_line_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&line_asset);
-            hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource line_struct{};
-            line_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
+            hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource line_struct{};
+            line_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
             line_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             line_struct.data_index = line_slot;
             line_struct.use_data_index = true;
             line_struct.shared_across_instances = true;
-            primitive_comp->SetMaterialDataSlotResource(line_struct);
+            primitive_comp->SetMaterialPrivateDataSlotResource(line_struct);
             primitive_comp->SetVisible(true);
         }
 

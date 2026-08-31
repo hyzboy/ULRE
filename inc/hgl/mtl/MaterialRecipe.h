@@ -1,7 +1,8 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/mtl/VertexShaderNodeConfig.h>
 #include <hgl/mtl/PipelineConfig.h>
+#include <hgl/mtl/MeshShaderMode.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
 #include <hgl/mtl/DescriptorSemantic.h>
 #include <hgl/common/VertexAttribDef.h>
@@ -22,7 +23,7 @@
 
 namespace hgl::graph::mtl
 {
-    constexpr const char DefaultMaterialDataSlotName[] = "mtl";
+    constexpr const char DefaultMaterialPrivateDataSlotName[] = "mtl_private_data";
 
     // 逻辑纹理槽位（与具体 descriptor set/binding 解耦）。
     // Resolve 阶段会把这些语义槽映射到 bindless handle + 运行时索引。
@@ -39,8 +40,8 @@ namespace hgl::graph::mtl
 
     struct RecipeSSBOAssetBinding
     {
-        std::string data_slot_name;
-        uint32_t data_slot = DefaultMaterialDataSlot;
+        std::string material_private_data_slot_name;
+        uint32_t material_private_data_slot = DefaultMaterialPrivateDataSlot;
         SSBOType ssbo_type = SSBOType::UserDefined;
         uint32_t ssbo_id = 0;
         uint32_t data_index = 0;
@@ -49,14 +50,14 @@ namespace hgl::graph::mtl
     };
 
     // 每个材质的 SSBO slot 声明（由 MaterialDefinition 显式列出）。
-    // index 即 data_slot；name 同时作为 GLSL 变量名与 C++ 绑定 key。
-    struct DataSlotDeclaration
+    // index 即 material_private_data_slot；name 同时作为 GLSL 变量名与 C++ 绑定 key。
+    struct MaterialPrivateDataSlotDeclaration
     {
         std::string name;           // GLSL 变量名 / C++ 绑定 key，如 "pbr_surface" / "pbr_surface_a"
         SSBOType    ssbo_type = SSBOType::UserDefined; // 数据结构语义
     };
 
-    inline bool IsValidMaterialDataSlotName(const std::string &name) noexcept
+    inline bool IsValidMaterialPrivateDataSlotName(const std::string &name) noexcept
     {
         if (name.empty())
             return false;
@@ -217,10 +218,10 @@ namespace hgl::graph::mtl
         uint16_t default_lod   = 0;
         uint16_t lod_count     = 1;
 
-        // Part-B: 材质 SSBO slot 显式声明（index == data_slot）
-        // name 用于 GLSL 变量名 与 C++ SetMaterialDataSlotResource(name,...) 绑定。
+        // Part-B: 材质 SSBO slot 显式声明（index == material_private_data_slot）
+        // name 用于 GLSL 变量名 与 C++ SetMaterialPrivateDataSlotResource(name,...) 绑定。
         // 无 SSBO 的材质此列表为空。
-        std::vector<DataSlotDeclaration> data_slot_decls;
+        std::vector<MaterialPrivateDataSlotDeclaration> material_private_data_slot_decls;
 
         // Part-B3: UBO 资源能力声明。
         // 显式列出此材质可使用的标准 UBO（ViewportInfo/CameraInfo/SkyInfo/MaterialColorPalette）。
@@ -270,9 +271,8 @@ namespace hgl::graph::mtl
         PassType compositor_pass = PassType::ForwardOpaque;
         ResolvedMaterialRenderState default_render_state;
 
-        // Mesh shader 模式（来自 TOML [mesh_shader] 段；空串 = 默认 VertexPassthrough）
-        // 可选值: "CharQuad" | "LineQuad" | "" (VertexPassthrough)
-        std::string mesh_shader_mode;
+        // Mesh shader 模式（来自 TOML [mesh_shader] 段；缺省 = VertexPassthrough）
+        MeshShaderMode mesh_shader_mode = MeshShaderMode::VertexPassthrough;
         uint32_t mesh_shader_max_invocations = 0;  // 0 = 使用 GenerateMeshShader 默认值
     };
 
@@ -371,15 +371,15 @@ namespace hgl::graph::mtl
 
     inline const RecipeSSBOAssetBinding *FindRecipeSSBOAssetBindingByKey(
         const MaterialRecipe &recipe,
-        const char *data_slot_name,
-        const uint32_t data_slot) noexcept
+        const char *material_private_data_slot_name,
+        const uint32_t material_private_data_slot) noexcept
     {
-        if (!data_slot_name || !*data_slot_name)
+        if (!material_private_data_slot_name || !*material_private_data_slot_name)
             return nullptr;
 
         for (const auto &asset : recipe.ssbo_assets)
         {
-            if (asset.data_slot_name != data_slot_name || asset.data_slot != data_slot)
+            if (asset.material_private_data_slot_name != material_private_data_slot_name || asset.material_private_data_slot != material_private_data_slot)
                 continue;
 
             return &asset;
@@ -390,15 +390,15 @@ namespace hgl::graph::mtl
 
     inline SSBOType ResolveRecipeSSBOType(
         const MaterialRecipe &recipe,
-        const char *data_slot_name,
-        const uint32_t data_slot,
+        const char *material_private_data_slot_name,
+        const uint32_t material_private_data_slot,
         const SSBOType authored_type) noexcept
     {
         if (authored_type != SSBOType::UserDefined)
             return authored_type;
 
         if (const auto *asset = FindRecipeSSBOAssetBindingByKey(
-                recipe, data_slot_name, data_slot))
+                recipe, material_private_data_slot_name, material_private_data_slot))
             return asset->ssbo_type;
 
         return authored_type;
@@ -406,36 +406,36 @@ namespace hgl::graph::mtl
 
     inline const RecipeSSBOAssetBinding *FindRecipeSSBOAssetBinding(
         const MaterialRecipe &recipe,
-        const char *data_slot_name,
-        const uint32_t data_slot,
+        const char *material_private_data_slot_name,
+        const uint32_t material_private_data_slot,
         const SSBOType ssbo_type) noexcept
     {
         const auto *asset = FindRecipeSSBOAssetBindingByKey(
-            recipe, data_slot_name, data_slot);
+            recipe, material_private_data_slot_name, material_private_data_slot);
         return asset && asset->ssbo_type == ssbo_type ? asset : nullptr;
     }
 
     inline bool UpsertRecipeSSBOAssetBinding(MaterialRecipe &recipe,
-                                             const std::string &data_slot_name,
+                                             const std::string &material_private_data_slot_name,
                                              const SSBOType ssbo_type,
                                              const uint32_t ssbo_id,
-                                             const uint32_t data_slot = DefaultMaterialDataSlot,
+                                             const uint32_t material_private_data_slot = DefaultMaterialPrivateDataSlot,
                                              const uint32_t data_index = 0,
                                              const bool use_data_index = false,
                                              const bool shared_across_instances = false)
     {
-        if (!IsValidMaterialDataSlotName(data_slot_name))
+        if (!IsValidMaterialPrivateDataSlotName(material_private_data_slot_name))
             return false;
 
         for (auto &asset : recipe.ssbo_assets)
         {
-            if (asset.data_slot_name == data_slot_name
-             && asset.data_slot == data_slot)
+            if (asset.material_private_data_slot_name == material_private_data_slot_name
+             && asset.material_private_data_slot == material_private_data_slot)
             {
-                asset.data_slot_name = data_slot_name;
+                asset.material_private_data_slot_name = material_private_data_slot_name;
                 asset.ssbo_type = ssbo_type;
                 asset.ssbo_id = ssbo_id;
-                asset.data_slot = data_slot;
+                asset.material_private_data_slot = material_private_data_slot;
                 asset.data_index = data_index;
                 asset.use_data_index = use_data_index;
                 asset.shared_across_instances = shared_across_instances;
@@ -444,8 +444,8 @@ namespace hgl::graph::mtl
         }
 
         RecipeSSBOAssetBinding asset{};
-        asset.data_slot_name = data_slot_name;
-        asset.data_slot = data_slot;
+        asset.material_private_data_slot_name = material_private_data_slot_name;
+        asset.material_private_data_slot = material_private_data_slot;
         asset.ssbo_type = ssbo_type;
         asset.ssbo_id = ssbo_id;
         asset.data_index = data_index;
@@ -462,12 +462,12 @@ namespace hgl::graph::mtl
      * EN: Unified overload accepting SSBOBinding so type/id need not be passed separately.
      */
     inline bool UpsertRecipeSSBOAssetBinding(MaterialRecipe &recipe,
-                                             const std::string &data_slot_name,
+                                             const std::string &material_private_data_slot_name,
                                              const SSBOBinding &binding,
-                                             const uint32_t data_slot = DefaultMaterialDataSlot)
+                                             const uint32_t material_private_data_slot = DefaultMaterialPrivateDataSlot)
     {
         return UpsertRecipeSSBOAssetBinding(
-            recipe, data_slot_name, binding.ssbo_type, binding.ssbo_id, data_slot);
+            recipe, material_private_data_slot_name, binding.ssbo_type, binding.ssbo_id, material_private_data_slot);
     }
 
     inline void ApplyBaseMaterialInfoDefaults(MaterialRecipe &recipe,
@@ -517,8 +517,8 @@ namespace hgl::graph::mtl
         h << ssbo_asset_count;
         for (const auto &asset : recipe.ssbo_assets)
         {
-            h << asset.data_slot_name
-              << asset.data_slot
+            h << asset.material_private_data_slot_name
+              << asset.material_private_data_slot
               << asset.ssbo_type
               << asset.ssbo_id
               << asset.use_data_index

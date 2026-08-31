@@ -1,4 +1,4 @@
-// PlaneGrid3D
+﻿// PlaneGrid3D
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
@@ -87,13 +87,13 @@ private:
         transform->SetMovable(false);
 
         prim_comp->SetPrimitiveAsset(&plane_grid_asset);
-        hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource named_struct{};
-        named_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
+        hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource named_struct{};
+        named_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
         named_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
         named_struct.data_index = data_index;
         named_struct.use_data_index = true;
         named_struct.shared_across_instances = true;
-        prim_comp->SetMaterialDataSlotResource(named_struct);
+        prim_comp->SetMaterialPrivateDataSlotResource(named_struct);
         prim_comp->SetVisible(true);
 
         return true;
@@ -112,7 +112,7 @@ private:
         plane_grid_recipe.vertex_node_config.orientation = graph::mtl::OrientationMode::World;
         plane_grid_recipe.vertex_node_config.scale = graph::mtl::ScaleMode::World;
         plane_grid_recipe.vertex_node_config.projection = graph::mtl::ProjectionMode::WorldCameraVP;
-        graph::mtl::UpsertRecipeSSBOAssetBinding(plane_grid_recipe, graph::mtl::DefaultMaterialDataSlotName, mtl_data_ssbo_accessor->GetSSBOBinding());
+        graph::mtl::UpsertRecipeSSBOAssetBinding(plane_grid_recipe, graph::mtl::DefaultMaterialPrivateDataSlotName, mtl_data_ssbo_accessor->GetSSBOBinding());
         plane_grid_asset = PrimitiveAsset(geom_plane_grid, &plane_grid_recipe, PrimitiveType::Lines);
 
         if(!Add("PlaneXY", 0, glm::quat(1.0f, 0.0f, 0.0f, 0.0f)))

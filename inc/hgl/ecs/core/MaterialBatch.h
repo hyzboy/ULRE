@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/ecs/core/ShaderProgramPipelineKey.h>
 #include<hgl/ecs/support/PipelineMaterialRenderer.h>
@@ -56,11 +56,11 @@ namespace hgl::ecs
 
         // Per-batch L2W index rows SSBO — written in draw order so gl_InstanceIndex
         // directly maps to the correct L2W matrix slot.
-        graph::DeviceBuffer *                   l2w_index_rows_buffer       = nullptr;      ///<每批 L2W 行表 SSBO（draw order）
-        uint32_t                                l2w_index_rows_capacity     = 0;            ///<L2W 行表容量（元素数）
+        graph::DeviceBuffer *                   l2w_index_buffer        = nullptr;      ///<每批 L2W 索引表 SSBO（draw order）
+        uint32_t                                l2w_index_capacity      = 0;            ///<L2W 索引表容量（元素数）
 
         // Per-batch DataIndex rows SSBO — each row carries one struct slot index per instance.
-        // row[i].values[DefaultMaterialDataSlot] = data_index of items[i].
+        // row[i].values[DefaultMaterialPrivateDataSlot] = data_index of items[i].
         graph::DeviceBuffer *                   material_data_index_rows_buffer   = nullptr;  ///<每批 DataIndex 行表 SSBO（draw order）
         uint32_t                                material_data_index_rows_capacity = 0;        ///<DataIndex 行表容量（元素数）
 

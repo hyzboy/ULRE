@@ -1,4 +1,4 @@
-#include <hgl/mtl/BindingTableBuilder.h>
+﻿#include <hgl/mtl/BindingTableBuilder.h>
 
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
@@ -15,12 +15,12 @@ namespace hgl::graph::mtl
             BindingBuildDiagnostic &diagnostic,
             const BindingBuildError error,
             const TextureSlot texture_slot = TextureSlot::BaseColor,
-            const uint32 data_slot = 0,
+            const uint32 material_private_data_slot = 0,
             const SSBOType ssbo_type = SSBOType::UserDefined) noexcept
         {
             diagnostic.error = error;
             diagnostic.texture_slot = texture_slot;
-            diagnostic.data_slot = data_slot;
+            diagnostic.material_private_data_slot = material_private_data_slot;
             diagnostic.ssbo_type = ssbo_type;
             return false;
         }
@@ -41,7 +41,7 @@ namespace hgl::graph::mtl
             const uint64 program_key_digest,
             const DescriptorSemantic semantic,
             const TextureSlot texture_slot,
-            const uint32 data_slot,
+            const uint32 material_private_data_slot,
             const SSBOType ssbo_type,
             const uint64 resource_schema_id) noexcept
         {
@@ -50,7 +50,7 @@ namespace hgl::graph::mtl
               << resource_schema_id
               << semantic
               << texture_slot
-              << data_slot
+              << material_private_data_slot
               << ssbo_type;
             return h != 0 ? h.Result() : 1;
         }
@@ -76,7 +76,7 @@ namespace hgl::graph::mtl
             hgl::hash::FNV1aHasher64 h;
             h << binding.logical_resource_id
               << binding.semantic
-              << binding.data_slot
+              << binding.material_private_data_slot
               << binding.ssbo_id
               << binding.data_index
               << binding.ssbo_type
@@ -100,9 +100,8 @@ namespace hgl::graph::mtl
               << entry.resource_schema_id
               << entry.semantic
               << entry.texture_slot
-              << entry.data_slot
-              << entry.ssbo_type
-              << entry.kind;
+              << entry.material_private_data_slot
+              << entry.ssbo_type;
             return h != 0 ? h.Result() : 1;
         }
 
@@ -133,12 +132,12 @@ namespace hgl::graph::mtl
 
         ResolvedDataBinding *FindDataBinding(
             ResolvedBindingTable &table,
-            const uint32 data_slot,
+            const uint32 material_private_data_slot,
             const SSBOType ssbo_type) noexcept
         {
             for (int i = 0; i < table.data.GetCount(); ++i)
             {
-                if (table.data[i].data_slot == data_slot
+                if (table.data[i].material_private_data_slot == material_private_data_slot
                  && table.data[i].ssbo_type == ssbo_type)
                     return &table.data[i];
             }
@@ -172,7 +171,7 @@ namespace hgl::graph::mtl
 
         int FindRecipeData(
             const MaterialRecipe &recipe,
-            const uint32 data_slot,
+            const uint32 material_private_data_slot,
             const SSBOType ssbo_type,
             BindingBuildDiagnostic &diagnostic) noexcept
         {
@@ -183,7 +182,7 @@ namespace hgl::graph::mtl
             {
                 const RecipeSSBOAssetBinding &binding =
                     recipe.ssbo_assets[static_cast<size_t>(i)];
-                if (binding.data_slot != data_slot
+                if (binding.material_private_data_slot != material_private_data_slot
                  || binding.ssbo_type != ssbo_type)
                     continue;
                 if (found >= 0)
@@ -192,7 +191,7 @@ namespace hgl::graph::mtl
                         diagnostic,
                         BindingBuildError::DuplicateRecipeData,
                         TextureSlot::BaseColor,
-                        data_slot,
+                        material_private_data_slot,
                         ssbo_type);
                     return -2;
                 }
@@ -217,8 +216,8 @@ namespace hgl::graph::mtl
             {
                 if (lhs.logical_resource_id != rhs.logical_resource_id)
                     return lhs.logical_resource_id < rhs.logical_resource_id;
-                if (lhs.data_slot != rhs.data_slot)
-                    return lhs.data_slot < rhs.data_slot;
+                if (lhs.material_private_data_slot != rhs.material_private_data_slot)
+                    return lhs.material_private_data_slot < rhs.material_private_data_slot;
                 return lhs.ssbo_type < rhs.ssbo_type;
             });
         }
@@ -238,10 +237,9 @@ namespace hgl::graph::mtl
                 entry.semantic = req.semantic;
                 entry.semantic_layer = req.semantic_layer;
                 entry.set_type = req.set_type;
-                entry.kind = req.kind;
                 entry.texture_slot = req.texture_slot;
                 entry.ssbo_type = req.ssbo_type;
-                entry.data_slot = req.data_slot;
+                entry.material_private_data_slot = req.material_private_data_slot;
                 entry.stage_flags = req.stage_flags;
                 entry.array_count = 1;
                 entry.required = req.required;
@@ -313,19 +311,19 @@ namespace hgl::graph::mtl
                     continue;
                 }
 
-                if (entry.semantic == DescriptorSemantic::MaterialDataSlotData)
+                if (entry.semantic == DescriptorSemantic::MaterialPrivateData)
                 {
                     const uint64 logical_resource_id =
                         ResolveDescriptorLogicalResourceID(entry, program_key_digest);
                     ResolvedDataBinding *binding =
-                        FindDataBinding(out_table, entry.data_slot, entry.ssbo_type);
+                        FindDataBinding(out_table, entry.material_private_data_slot, entry.ssbo_type);
                     if (!binding)
                     {
                         const int index = out_table.data.Add(ResolvedDataBinding{});
                         binding = &out_table.data[index];
                         binding->logical_resource_id = logical_resource_id;
                         binding->semantic = entry.semantic;
-                        binding->data_slot = entry.data_slot;
+                        binding->material_private_data_slot = entry.material_private_data_slot;
                         binding->ssbo_type = entry.ssbo_type;
                         binding->required = entry.required;
                         binding->allow_fallback = entry.allow_fallback;
@@ -443,7 +441,7 @@ namespace hgl::graph::mtl
                 ResolvedDataBinding &binding = out_table.data[i];
                 const int binding_index = FindRecipeData(
                     recipe,
-                    binding.data_slot,
+                    binding.material_private_data_slot,
                     binding.ssbo_type,
                     out_diagnostic);
                 if (binding_index == -2)
@@ -465,7 +463,7 @@ namespace hgl::graph::mtl
                     binding.asset_identity_hash = GetResolvedDataAssetIdentityHash(
                         recipe_binding.ssbo_type,
                         recipe_binding.ssbo_id,
-                        recipe_binding.data_slot);
+                        recipe_binding.material_private_data_slot);
                 }
 
                 if (binding.recipe_binding_index
@@ -557,7 +555,7 @@ namespace hgl::graph::mtl
 
                 const RecipeSSBOAssetBinding &recipe_binding =
                     source_recipe.ssbo_assets[binding.recipe_binding_index];
-                if (recipe_binding.data_slot != binding.data_slot
+                if (recipe_binding.material_private_data_slot != binding.material_private_data_slot
                  || recipe_binding.ssbo_type != binding.ssbo_type
                  || recipe_binding.ssbo_id != binding.ssbo_id)
                     return false;

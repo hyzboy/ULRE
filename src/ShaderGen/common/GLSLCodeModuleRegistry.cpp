@@ -1,4 +1,4 @@
-#include <hgl/mtl/GLSLCodeModuleRegistry.h>
+﻿#include <hgl/mtl/GLSLCodeModuleRegistry.h>
 #include <hgl/mtl/GLSLCodeModuleMetadata.h>
 
 #include <hgl/filesystem/FileSystem.h>

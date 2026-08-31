@@ -4,7 +4,7 @@
 // @ulre priority 0
 // @ulre require Resource MaterialData
 // @ulre require ProducedSemantic UV0
-// @ulre ssbo mtl PBRSurface 0 Fragment optional fallback
+// @ulre ssbo mtl_private_data PBRSurface 0 Fragment optional fallback
 // @ulre texture_layer custom0 Fragment required fallback
 // @ulre uses material_source_interface
 // @ulre uses bindless_textures

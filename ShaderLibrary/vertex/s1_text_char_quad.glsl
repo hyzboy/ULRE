@@ -20,12 +20,13 @@
 //      shadow_uv_offset: packHalf2x16 UV offset
 //      scale: scale factor
 //      rotation: 0/90/180/270
-//   3. CharInstanceData —— 每字符实例（8B/条目）
+//   3. CharInstanceData —— 每字符实例（12B/条目）
 //      pen_x/y:     int16  packed in int32
 //      char_id:     uint16 packed in uint32
 //      style_id:    uint16 packed in uint32
+//      rotation:    实例级旋转 (0/90/180/270)，与 CharStyleData.rotation 叠加
 //
-// std430 对齐：TextCharInfo=16B, CharStyleData=40B, CharInstanceData=8B
+// std430 对齐：TextCharInfo=16B, CharStyleData=40B, CharInstanceData=12B
 // CPU 侧不做额外 padding，gpu_stride = sizeof(struct)
 #ifndef S1_TEXT_CHAR_QUAD_GLSL
 #define S1_TEXT_CHAR_QUAD_GLSL
@@ -60,10 +61,11 @@ layout(set=PER_OBJECT_SET, binding=TEXT_CHARSTYLE_BINDING, std430) readonly buff
     CharStyleData styles[];
 } sbo_char_style;
 
-// ── Per-char-instance 数据（8 bytes per entry）──
+// ── Per-char-instance 数据（12 bytes per entry）──
 struct CharInstanceData {
     int   pen_xy;       // int16_x (low16) + int16_y (high16) packed in int32
     uint  char_style;   // uint16_char_id (low16) + uint16_style_id (high16) packed in uint32
+    int   rotation;     // 实例级旋转，与 CharStyleData.rotation 叠加
 };
 
 layout(set=PER_OBJECT_SET, binding=TEXT_CHARINSTANCE_BINDING, std430) readonly buffer CharInstanceDataBuf {

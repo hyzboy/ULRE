@@ -1,4 +1,4 @@
-#include<hgl/ecs/support/PrimitiveBatchPipeline.h>
+﻿#include<hgl/ecs/support/PrimitiveBatchPipeline.h>
 #include<source_location>
 #include<cstdio>
 #include<hgl/ecs/core/Context.h>
@@ -505,16 +505,6 @@ namespace hgl::ecs
         const bool is_lines =
             batch.key.shader_program->GetPrimitiveType() == graph::PrimitiveType::Lines;
 
-        // viewport 高度（LineQuad 线宽换算用）——渲染目标高度，与录制期 cmd viewport 一致
-        uint32_t viewport_height = 1;
-        if (world)
-        {
-            auto *render_ctx = world->GetRenderContext();
-            auto *rt = render_ctx ? render_ctx->GetCurrentRenderTarget() : nullptr;
-            if (rt)
-                viewport_height = rt->GetExtent().height;
-        }
-
         // 参数行：每个 DrawBatch 一行（含私有 VBO 直接绘制——渲染器按行 offset 视图绑定）
         if (batch.mesh_draw_params_buffer)
         {
@@ -541,7 +531,6 @@ namespace hgl::ecs
                              ? range->index_count
                              : range->vertex_count)
                         : 0u;
-                    row[i].viewport_height = static_cast<float>(viewport_height);
                     row[i].first_instance = db.first_instance;
                 }
 
@@ -648,24 +637,24 @@ namespace hgl::ecs
             new_node_count <<= 1;
 
         // Per-batch L2W index rows SSBO — written in draw order.
-        if (!batch.l2w_index_rows_buffer || batch.l2w_index_rows_capacity < item_count)
+        if (!batch.l2w_index_buffer || batch.l2w_index_capacity < item_count)
         {
-            batch.l2w_index_rows_capacity = new_node_count;
+            batch.l2w_index_capacity = new_node_count;
 
-            if (batch.l2w_index_rows_buffer)
+            if (batch.l2w_index_buffer)
             {
                 if (batch.buffer_manager)
-                    batch.buffer_manager->Release(batch.l2w_index_rows_buffer);
+                    batch.buffer_manager->Release(batch.l2w_index_buffer);
                 else
-                    delete batch.l2w_index_rows_buffer;
-                batch.l2w_index_rows_buffer = nullptr;
+                    delete batch.l2w_index_buffer;
+                batch.l2w_index_buffer = nullptr;
             }
 
             if (batch.buffer_manager)
             {
-                const VkDeviceSize byte_size = static_cast<VkDeviceSize>(batch.l2w_index_rows_capacity) * sizeof(uint32_t);
-                batch.l2w_index_rows_buffer = batch.buffer_manager->CreateSSBO(
-                    "ECS:Batch:L2WIndexRows", byte_size, nullptr, graph::SharingMode::Exclusive);
+                const VkDeviceSize byte_size = static_cast<VkDeviceSize>(batch.l2w_index_capacity) * sizeof(uint32_t);
+                batch.l2w_index_buffer = batch.buffer_manager->CreateSSBO(
+                    "ECS:Batch:L2WIndex", byte_size, nullptr, graph::SharingMode::Exclusive);
             }
         }
 
@@ -690,9 +679,9 @@ namespace hgl::ecs
                 {
                     const VkDeviceSize byte_size =
                         static_cast<VkDeviceSize>(batch.material_data_index_rows_capacity)
-                        * graph::mtl::MaterialDataIndexRowStride * sizeof(uint32_t);
+                        * graph::mtl::MaterialPrivateDataIndexRowStride * sizeof(uint32_t);
                     batch.material_data_index_rows_buffer = batch.buffer_manager->CreateSSBO(
-                        "ECS:Batch:MaterialDataIndexRows", byte_size, nullptr, graph::SharingMode::Exclusive);
+                        "ECS:Batch:MaterialPrivateDataIndex", byte_size, nullptr, graph::SharingMode::Exclusive);
                 }
             }
         }
@@ -708,9 +697,9 @@ namespace hgl::ecs
 
         // Also write per-batch L2W index rows SSBO in the same draw order.
         // This is what the shader reads via ResolveTransformID(gl_InstanceIndex).
-        if (batch.l2w_index_rows_buffer)
+        if (batch.l2w_index_buffer)
         {
-            auto *l2w_gpu = batch.l2w_index_rows_buffer->GetGPUBuffer();
+            auto *l2w_gpu = batch.l2w_index_buffer->GetGPUBuffer();
             if (l2w_gpu)
             {
                 uint32_t *l2w_ptr = static_cast<uint32_t *>(l2w_gpu->Map(0, static_cast<VkDeviceSize>(item_count) * sizeof(uint32_t)));
@@ -727,7 +716,8 @@ namespace hgl::ecs
             }
         }
 
-        // Write per-batch fixed-width DataIndex rows in draw order.
+        // Write per-batch single-column DataIndex rows in draw order.
+        // 单槽化：行表收敛为单列（MaterialPrivateDataIndexRowStride == 1）。
         if (batch.material_data_index_rows_buffer)
         {
             auto *mi_gpu = batch.material_data_index_rows_buffer->GetGPUBuffer();
@@ -737,29 +727,20 @@ namespace hgl::ecs
                     mi_gpu->Map(
                         0,
                         static_cast<VkDeviceSize>(item_count)
-                        * graph::mtl::MaterialDataIndexRowStride
+                        * graph::mtl::MaterialPrivateDataIndexRowStride
                         * sizeof(uint32_t)));
                 if (row_ptr)
                 {
                     for (size_t i = 0; i < item_count; ++i)
                     {
-                        const uint32_t base =
-                            static_cast<uint32_t>(i) * graph::mtl::MaterialDataIndexRowStride;
-                        for (uint32_t slot = 0; slot < graph::mtl::MaterialDataIndexRowStride; ++slot)
-                            row_ptr[base + slot] = 0u;
+                        row_ptr[i] = 0u;
 
                         auto *primitive_item = dynamic_cast<PrimitiveRenderItem *>(batch.items[i]);
                         auto material_comp = primitive_item
                             ? primitive_item->GetMaterialComponent()
                             : nullptr;
                         if (material_comp && !material_comp->data_index_values.empty())
-                        {
-                            for (uint32_t slot = 0;
-                                 slot < material_comp->data_index_values.size()
-                                  && slot < graph::mtl::MaterialDataIndexRowStride;
-                                 ++slot)
-                                row_ptr[base + slot] = material_comp->data_index_values[slot];
-                        }
+                            row_ptr[i] = material_comp->data_index_values[0];
                     }
                     mi_gpu->Unmap();
                 }

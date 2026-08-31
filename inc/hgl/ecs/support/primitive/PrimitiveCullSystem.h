@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/ecs/support/RenderPipelineSystem.h>
 
@@ -6,7 +6,7 @@ namespace hgl::ecs
 {
     /**
      * PrimitiveCullSystem - RenderCull phase for primitives
-     * 
+     *
      * Performs frustum culling and visibility tests on collected primitive items.
      * Derived from CullSystem to provide unified System interface.
      */

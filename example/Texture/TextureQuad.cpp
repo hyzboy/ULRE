@@ -1,4 +1,4 @@
-// 画一个带纹理的四边形 (ECS)
+﻿// 画一个带纹理的四边形 (ECS)
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -35,6 +35,7 @@ namespace
 }
 
 constexpr uint32_t VERTEX_COUNT=4;
+constexpr uint32_t INDEX_COUNT=6;
 
 constexpr float position_data[VERTEX_COUNT][2]=
 {
@@ -50,6 +51,13 @@ constexpr float tex_coord_data[VERTEX_COUNT][2]=
     {1,0},
     {1,1},
     {0,1}
+};
+
+// 两个三角形（绕序与原 Fan 装配一致——(0,1,2),(0,2,3)，顶点复用）
+constexpr uint16_t index_data[INDEX_COUNT]=
+{
+    0, 1, 2,
+    0, 2, 3,
 };
 
 class TestApp:public WorkObject
@@ -91,9 +99,10 @@ private:
             return false;
 
         GeometryCreater pc(device, CreatePureTexture2DGeometryVertexFormat(), buffer_manager);
-        pc.Init("TextureQuad", VERTEX_COUNT);
+        pc.Init("TextureQuad", VERTEX_COUNT, INDEX_COUNT);
         if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data) ||
-            !pc.WriteVAB(VAN::TexCoord, VF_V2F, tex_coord_data))
+            !pc.WriteVAB(VAN::TexCoord, VF_V2F, tex_coord_data) ||
+            !pc.WriteIBO(index_data))
             return false;
 
         auto* geometry = pc.Create();
@@ -103,7 +112,7 @@ private:
         quad_recipe.recipe_name = "TextureQuad.UnlitTexture";
         quad_recipe.mtl_def_id = "UnlitTexture";
         quad_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
-        quad_asset = PrimitiveAsset(geometry, &quad_recipe, PrimitiveType::Fan);
+        quad_asset = PrimitiveAsset(geometry, &quad_recipe, PrimitiveType::Triangles);
 
         return(true);
     }

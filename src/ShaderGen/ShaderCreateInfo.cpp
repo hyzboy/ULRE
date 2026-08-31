@@ -1,4 +1,4 @@
-#include<hgl/mtl/ShaderCreateInfo.h>
+﻿#include<hgl/mtl/ShaderCreateInfo.h>
 #include"GLSLCompiler.h"
 #include<hgl/mtl/ShaderArtifactContract.h>
 #include<cstring>

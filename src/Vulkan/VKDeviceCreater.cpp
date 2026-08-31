@@ -1,4 +1,4 @@
-#include<hgl/platform/Vulkan.h>
+﻿#include<hgl/platform/Vulkan.h>
 #include<hgl/platform/Window.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKInstance.h>
@@ -8,7 +8,6 @@
 #include<hgl/vk/VKDeviceCreater.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKSurface.h>
-#include<hgl/vk/VKPipelineConfig.h>
 #include<hgl/vk/VKBindlessTextureManager.h>
 #include<hgl/mtl/ShaderCompilerProfileAPI.h>
 
@@ -41,8 +40,7 @@ namespace
 {
     void SetDeviceExtension(CharPointerList *ext_list,
                             const VulkanPhyDevice *physical_device,
-                            const VulkanHardwareRequirement &require,
-                            const bool enable_graphics_pipeline_library)
+                            const VulkanHardwareRequirement &require)
     {
         ext_list->Add(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
@@ -76,14 +74,6 @@ namespace
         // 1.4 硬性：以上均为核心扩展，无条件启用（vulkan1.4.md 第 2 项）
         for(const char *ext_name:require_ext_list)
             ext_list->Add(ext_name);
-
-        if(enable_graphics_pipeline_library
-        && !FORCE_DISABLE_GRAPHICS_PIPELINE_LIBRARY
-        && physical_device->SupportGraphicsPipelineLibrary())
-        {
-            ext_list->Add(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME);
-            ext_list->Add(VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME);
-        }
 
         if(require.lineRasterization>=VulkanHardwareRequirement::SupportLevel::Want)
             ext_list->Add(VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME);
@@ -216,8 +206,7 @@ constexpr size_t VK_DRIVER_ID_RANGE_SIZE=VK_DRIVER_ID_END_RANGE-VK_DRIVER_ID_BEG
 void OutputPhysicalDeviceCaps(const VulkanPhyDevice *);
 #endif//_DEBUG
 
-VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family,
-                                           const bool enable_graphics_pipeline_library)
+VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
 {
     float queue_priorities[1]={0.0};
 
@@ -241,8 +230,6 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family,
     create_info.enabledLayerCount       =0;
     create_info.ppEnabledLayerNames     =nullptr;
     create_info.pEnabledFeatures        =&features;
-
-    VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT graphics_pipeline_library_features{};
 
     // Vulkan 1.1: shaderDrawParameters —— SSBO 顶点输入 gl_BaseVertexARB 读取必需
     // （ShaderDrawParameters capability 由该特性启用；设备 v1.4 必支持）
@@ -309,15 +296,6 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family,
     }
 
 
-    if(enable_graphics_pipeline_library
-    && !FORCE_DISABLE_GRAPHICS_PIPELINE_LIBRARY
-    && physical_device->SupportGraphicsPipelineLibrary())
-    {
-        graphics_pipeline_library_features.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT;
-        graphics_pipeline_library_features.pNext=const_cast<void*>(static_cast<const void*>(create_info.pNext));
-        graphics_pipeline_library_features.graphicsPipelineLibrary=VK_TRUE;
-        create_info.pNext=&graphics_pipeline_library_features;
-    }
     if(physical_device->SupportU8Index()
      &&require.fullDrawIndexUint8>=VulkanHardwareRequirement::SupportLevel::Want)
     {
@@ -343,6 +321,28 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family,
         mesh_features.meshShaderQueries = dev_mesh.meshShaderQueries;
 
         create_info.pNext=&mesh_features;
+    }
+
+    // EDS 1/3 特性：pipeline 只保留 shader 部分——材质渲染状态全部动态（vkCmdSet* 应用），
+    // 必用路径无条件启用。EDS1 管 CULL_MODE/DEPTH_*（VkPhysicalDeviceExtendedDynamicStateFeaturesEXT）；
+    // COLOR_BLEND_*/POLYGON_MODE/ALPHA_TO_COVERAGE 均属 EDS3
+    //（VkPhysicalDeviceExtendedDynamicState3FeaturesEXT——SDK 1.4 头里 EDS2 结构无这些成员）
+    {
+        VkPhysicalDeviceExtendedDynamicStateFeaturesEXT eds1{};
+        eds1.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
+        eds1.pNext = const_cast<void*>(static_cast<const void*>(create_info.pNext));
+        eds1.extendedDynamicState = VK_TRUE;   // CULL_MODE / DEPTH_TEST / DEPTH_WRITE / DEPTH_COMPARE_OP
+        create_info.pNext = &eds1;
+
+        VkPhysicalDeviceExtendedDynamicState3FeaturesEXT eds3{};
+        eds3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT;
+        eds3.pNext = const_cast<void*>(static_cast<const void*>(create_info.pNext));
+        eds3.extendedDynamicState3ColorBlendEnable    = VK_TRUE;   // COLOR_BLEND_ENABLE
+        eds3.extendedDynamicState3ColorBlendEquation  = VK_TRUE;   // COLOR_BLEND_EQUATION
+        eds3.extendedDynamicState3ColorWriteMask      = VK_TRUE;   // COLOR_WRITE_MASK
+        eds3.extendedDynamicState3PolygonMode         = VK_TRUE;   // POLYGON_MODE
+        eds3.extendedDynamicState3AlphaToCoverageEnable = VK_TRUE; // ALPHA_TO_COVERAGE_ENABLE
+        create_info.pNext = &eds3;
     }
 
     VkDevice device;
@@ -409,22 +409,14 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
     if(graphics_family==ERROR_FAMILY_INDEX)
         return(nullptr);
 
-    bool try_graphics_pipeline_library = !FORCE_DISABLE_GRAPHICS_PIPELINE_LIBRARY
-                                       && physical_device->SupportGraphicsPipelineLibrary();
-
-    SetDeviceExtension(&ext_list,physical_device,require,try_graphics_pipeline_library);
+    // 管线物化路径：仅单 pipeline（GPL 已整体删除——激活实测在混合材质上存在
+    // 渲染正确性问题且无法用 RenderDoc 调试，详见 2026-08-29 提交记录）。
+    // 现状：pipeline 只保留 shader 部分，全部渲染状态走 EDS 1/2/3 动态设置
+    //（vkCmdSet* 渲染侧应用材质配置）；远期可迁 VK_EXT_shader_object。
+    SetDeviceExtension(&ext_list,physical_device,require);
     SetDeviceFeatures(&features,physical_device->GetFeatures10(),require);
 
-    device_attr->device=CreateDevice(graphics_family, try_graphics_pipeline_library);
-
-    if(!device_attr->device && try_graphics_pipeline_library)
-    {
-        GLogWarning("[VulkanDeviceCreater] GPL device creation failed, retrying without GPL extensions");
-        ext_list.Clear();
-        SetDeviceExtension(&ext_list,physical_device,require,false);
-        device_attr->device=CreateDevice(graphics_family, false);
-        try_graphics_pipeline_library = false;
-    }
+    device_attr->device=CreateDevice(graphics_family);
 
     if(!device_attr->device)
         return(nullptr);
@@ -449,9 +441,6 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
         device_attr->wide_lines = true;
     }
 
-    device_attr->graphics_pipeline_library = try_graphics_pipeline_library
-                                            && device_attr->device != VK_NULL_HANDLE;
-
     // VK_EXT_mesh_shader：加载扩展函数指针（仅一次——mesh shader 为必用路径）
     {
         auto func_ptr=device_attr->GetDeviceProc<PFN_vkCmdDrawMeshTasksEXT>("vkCmdDrawMeshTasksEXT");
@@ -462,6 +451,36 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
         auto func_ptr_indirect=device_attr->GetDeviceProc<PFN_vkCmdDrawMeshTasksIndirectEXT>("vkCmdDrawMeshTasksIndirectEXT");
         if(func_ptr_indirect)
             device_attr->cmd_draw_mesh_tasks_indirect=*func_ptr_indirect;
+    }
+
+    // EDS 1/2/3 动态状态函数指针（pipeline 只保留 shader 部分——渲染状态全部 vkCmdSet* 应用）
+    {
+        if(auto fp=device_attr->GetDeviceProc<PFN_vkCmdSetCullModeEXT>("vkCmdSetCullModeEXT"))
+            device_attr->cmd_set_cull_mode=*fp;
+
+        if(auto fp=device_attr->GetDeviceProc<PFN_vkCmdSetDepthTestEnableEXT>("vkCmdSetDepthTestEnableEXT"))
+            device_attr->cmd_set_depth_test_enable=*fp;
+
+        if(auto fp=device_attr->GetDeviceProc<PFN_vkCmdSetDepthWriteEnableEXT>("vkCmdSetDepthWriteEnableEXT"))
+            device_attr->cmd_set_depth_write_enable=*fp;
+
+        if(auto fp=device_attr->GetDeviceProc<PFN_vkCmdSetDepthCompareOpEXT>("vkCmdSetDepthCompareOpEXT"))
+            device_attr->cmd_set_depth_compare_op=*fp;
+
+        if(auto fp=device_attr->GetDeviceProc<PFN_vkCmdSetColorBlendEnableEXT>("vkCmdSetColorBlendEnableEXT"))
+            device_attr->cmd_set_color_blend_enable=*fp;
+
+        if(auto fp=device_attr->GetDeviceProc<PFN_vkCmdSetColorBlendEquationEXT>("vkCmdSetColorBlendEquationEXT"))
+            device_attr->cmd_set_color_blend_equation=*fp;
+
+        if(auto fp=device_attr->GetDeviceProc<PFN_vkCmdSetColorWriteMaskEXT>("vkCmdSetColorWriteMaskEXT"))
+            device_attr->cmd_set_color_write_mask=*fp;
+
+        if(auto fp=device_attr->GetDeviceProc<PFN_vkCmdSetPolygonModeEXT>("vkCmdSetPolygonModeEXT"))
+            device_attr->cmd_set_polygon_mode=*fp;
+
+        if(auto fp=device_attr->GetDeviceProc<PFN_vkCmdSetAlphaToCoverageEnableEXT>("vkCmdSetAlphaToCoverageEnableEXT"))
+            device_attr->cmd_set_alpha_to_coverage_enable=*fp;
     }
 
     device_attr->surface_format=surface_format;

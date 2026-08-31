@@ -1,8 +1,6 @@
-#include<hgl/vk/VKRenderPass.h>
+﻿#include<hgl/vk/VKRenderPass.h>
 #include<hgl/vk/VKDevice.h>
 #include<cstdint>
-#include<hgl/vk/pipeline/VKPipelineDataBuild.h>
-#include<hgl/vk/pipeline/VKPipelineData.h>
 #include<hgl/vk/pipeline/VKPipelineResolver.h>
 #include<hgl/vk/VKShaderProgram.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
@@ -50,33 +48,25 @@ RenderPass::~RenderPass()
 }
 
 Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
-                                      PipelineData *pd,
                                       const ShaderStageCreateInfoList &ssci_list,
                                       VkPipelineLayout pl,
-                                      const GeometryVertexFormat *gvf,
-                                      const uint64_t pipeline_config_hash,
-                                      const bool is_overlay)
+                                      const mtl::MaterialPipelineConfig &config)
 {
     HGL_CAPTURE_SCOPE();
 
     FinalPipelineResolveRequest request{};
     request.device = device;
     request.pipeline_cache = pipeline_cache;
-    request.subpass = 0;
     request.frame_output.color_formats = color_formats.GetData();
     request.frame_output.color_attachment_count = color_formats.GetCount();
     request.frame_output.depth_stencil_format = depth_format;
     request.debug_name = &name;
-    request.pipeline_config_hash = pipeline_config_hash;
-    request.pipeline_data = pd;
     request.shader_stages = &ssci_list;
     request.pipeline_layout = pl;
-    request.geometry_vertex_format = gvf;
 
     FinalPipelineResolveResult resolve_result{};
     if(!PipelineResolver::ResolveFinalPipeline(request, resolve_result))
     {
-        delete pd;
         return(nullptr);
     }
 
@@ -90,7 +80,6 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
         if(existing_pipeline && VkPipeline(*existing_pipeline) == graphicsPipeline)
         {
             PipelineResolver::ReleaseFinalPipeline(device, graphicsPipeline);
-            delete pd;
             LogDebug("[RenderPass::CreatePipeline] Reuse existing Pipeline wrapper '%s' in RenderPass '%s' (VkPipeline=0x%llx, Pipeline*=0x%llx)",
                      existing_pipeline->GetName().c_str(),
                      this->name.c_str(),
@@ -100,14 +89,10 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
         }
     }
 
-    Pipeline *pipeline = new Pipeline(name,*device,graphicsPipeline,pd,is_overlay);
+    Pipeline *pipeline = new Pipeline(name,*device,graphicsPipeline,config,config.overlay);
 
-    const char *mode_name = resolve_result.materialize_mode == PipelineMaterializeMode::GraphicsPipelineLibrary
-                          ? "GPL"
-                          : "Monolithic";
-
-    LogInfo("[RenderPass::CreatePipeline] Created Pipeline '%s' in RenderPass '%s' (VkPipeline=0x%llx, mode=%s, Pipeline*=0x%llx)",
-             name.c_str(), this->name.c_str(), (unsigned long long)(uintptr_t)graphicsPipeline, mode_name, (unsigned long long)(uintptr_t)pipeline);
+    LogInfo("[RenderPass::CreatePipeline] Created Pipeline '%s' in RenderPass '%s' (VkPipeline=0x%llx, Pipeline*=0x%llx)",
+             name.c_str(), this->name.c_str(), (unsigned long long)(uintptr_t)graphicsPipeline, (unsigned long long)(uintptr_t)pipeline);
 
     if (device)
         device->TrackObject(VK_OBJECT_TYPE_PIPELINE, (uint64_t)(uintptr_t)graphicsPipeline, ObjectNameBuilder(name).Append(ObjectTypeTag::VKPipeline));
@@ -115,32 +100,15 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
     return pipeline;
 }
 
-Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const PipelineData *cpd,const GeometryVertexFormat *gvf)
-{
-    PipelineData *pd=new PipelineData(cpd);
-
-    Pipeline *p=CreatePipeline(mtl->GetName(),pd,mtl->GetStageList(),mtl->GetPipelineLayout(),gvf,0,false);
-
-    if(p && !pipeline_list.Contains(p))
-        pipeline_list.Add(p);
-
-    return(p);
-}
-
-Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialPipelineConfig &config,const GeometryVertexFormat *gvf)
+Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialPipelineConfig &config)
 {
     if(!mtl)
         return(nullptr);
 
-    PipelineData *pd = BuildPipelineData(config);
-
     Pipeline *p = CreatePipeline(mtl->GetName(),
-                                  pd,
                                   mtl->GetStageList(),
                                   mtl->GetPipelineLayout(),
-                                  gvf,
-                                  mtl::HashMaterialPipelineConfig(config),
-                                  config.overlay);
+                                  config);
 
     if(p && !pipeline_list.Contains(p))
         pipeline_list.Add(p);
@@ -148,7 +116,7 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialPipel
     return p;
 }
 
-Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialRecipe &recipe,const GeometryVertexFormat *gvf)
+Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialRecipe &recipe)
 {
     if(!mtl)
         return(nullptr);
@@ -167,35 +135,18 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialRecip
         mtl::ResolveMaterialRenderState(definition, normalized_recipe);
 
     // Lines 图元（LineQuad mesh shader 输出 quad 三角形）：绕序不定——强制双面绘制
-    //（cull off；在 hash 前修改——管线缓存 key 一致）
+    //（cull off）
     if (mtl->GetPrimitiveType() == PrimitiveType::Lines)
         render_state.pipeline_config.cull_mode = VK_CULL_MODE_NONE;
 
-    PipelineData *pd = BuildPipelineData(render_state);
+    // double_sided 合并进 config（渲染侧 EDS 动态状态只读 config）
+    if (render_state.double_sided)
+        render_state.pipeline_config.cull_mode = VK_CULL_MODE_NONE;
 
     Pipeline *p = CreatePipeline(mtl->GetName(),
-                                  pd,
                                   mtl->GetStageList(),
                                   mtl->GetPipelineLayout(),
-                                  gvf,
-                                  mtl::HashResolvedMaterialRenderState(render_state),
-                                  render_state.pipeline_config.overlay);
-
-    if(p && !pipeline_list.Contains(p))
-        pipeline_list.Add(p);
-
-    return p;
-}
-
-Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
-                                     const ShaderStageCreateInfoList &ssci,
-                                     VkPipelineLayout layout,
-                                     const PipelineData *cpd,
-                                     const GeometryVertexFormat *gvf)
-{
-    PipelineData *pd = new PipelineData(cpd);
-
-    Pipeline *p = CreatePipeline(name, pd, ssci, layout, gvf, 0, false);
+                                  render_state.pipeline_config);
 
     if(p && !pipeline_list.Contains(p))
         pipeline_list.Add(p);

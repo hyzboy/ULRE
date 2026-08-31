@@ -1,4 +1,4 @@
-/// MaterialShaderCompiler.cpp — canonical material input compiler
+﻿/// MaterialShaderCompiler.cpp — canonical material input compiler
 ///
 /// 流程：
 ///   1. 从 SerializedDescriptorEntry[] 构建 DescriptorSetLayoutAllocator（描述符布局）
@@ -18,6 +18,7 @@
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/mtl/GLSLCodeModule.h>
 #include "common/DescriptorBuilderCommon.h"
+#include "MaterialShaderEmitter.h"
 #include <cstring>
 #include <cstdio>
 #include <cstdint>
@@ -113,71 +114,23 @@ static bool CStrEq(const char *lhs, const char *rhs)
     return lhs && rhs && std::strcmp(lhs, rhs) == 0;
 }
 
-static std::string BuildCodeModuleGLSL(const ModuleResourceManifest *manifest)
-{
-    if (!manifest || !manifest->IsValid())
-        return {};
-
-    const auto &module_registry = mtl::GetGLSLCodeModuleRegistry();
-    std::string result;
-    for (uint32 i = 0; i < manifest->code_module_count; ++i)
-    {
-        const GLSLCodeModuleDefinition *module =
-            module_registry.FindByName(manifest->code_module_names[i]);
-        if (!module || !module->glsl_code)
-            continue;
-        result += "\n// GLSLCodeModule: ";
-        result += module->name ? module->name : "Unknown";
-        result += "\n";
-        result += module->glsl_code;
-        result += "\n";
-    }
-    return result;
-}
-
-std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names)
-{
-    std::string macros;
-    for (const auto &name : sampler_names)
-    {
-        if (name.empty())
-            continue;
-        const uint32_t idx = SamplerPresetLibrary::Instance().GetIndex(name.c_str());
-        if (idx == ~0u)
-        {
-            // sampler.toml 无此名字——不生成宏，shader 编译会因未定义
-            // 宏显式失败（vs 静默错位成 Nearest）
-            GLogError(u8"[MaterialShaderCompiler] sampler preset not found: %s — "
-                      u8"check sampler.toml ordering",
-                      name.c_str());
-            continue;
-        }
-        macros += "#define ";
-        macros += name;
-        macros += "Sampler ";
-        macros += std::to_string(idx);
-        macros += "u\n";
-    }
-    return macros;
-}
-
 static bool HasDescriptorSemantic(
     const DescriptorContract &contract,
     const DescriptorSemantic semantic)
 {
-    for (const DescriptorContractEntry &entry :
+    for (const SerializedDescriptorEntry &entry :
          contract.entries)
     {
-        if (entry.canonical.semantic == semantic)
+        if (entry.semantic == semantic)
             return true;
     }
 
     return false;
 }
 
-static bool AddMaterialDataSlotDescriptor(ShaderBuildContext &ctx,
-                                          const DataSlotDeclaration &decl,
-                                          const uint32_t data_slot,
+static bool AddMaterialPrivateDataSlotDescriptor(ShaderBuildContext &ctx,
+                                          const MaterialPrivateDataSlotDeclaration &decl,
+                                          const uint32_t material_private_data_slot,
                                           const uint32_t stage_bits)
 {
     const char *struct_name = nullptr;
@@ -190,7 +143,7 @@ static bool AddMaterialDataSlotDescriptor(ShaderBuildContext &ctx,
     if (!ctx.AddStruct(struct_name, glsl_codes))
         return false;
 
-    return ctx.AddSSBOMtlData(stage_bits, struct_name, decl.name, int(data_slot));
+    return ctx.AddSSBOMaterialPrivateData(stage_bits, struct_name, decl.name, int(material_private_data_slot));
 }
 
 static bool ValidateDefinitionCapabilitySubset(
@@ -203,61 +156,47 @@ static bool ValidateDefinitionCapabilitySubset(
 
     for (const auto &req : layout.resources)
     {
-        bool allowed = false;
+        const DescriptorResourceCatalogEntry *cat =
+            FindResourceCatalogEntry(req.semantic);
 
-        switch (req.semantic)
+        // 无条件内置资源：目录表 engine_builtin（ViewportInfo/顶点 SSBO/MeshDrawParams）
+        bool allowed = cat && cat->engine_builtin;
+
+        if (!allowed && cat)
         {
-        case DescriptorSemantic::ViewportInfo:
-            allowed = HasUBORequirement(definition, DescriptorSemantic::ViewportInfo);
-            break;
-        case DescriptorSemantic::CameraInfo:
-            allowed = HasUBORequirement(definition, DescriptorSemantic::CameraInfo);
-            break;
-        case DescriptorSemantic::SkyInfo:
-            allowed = HasUBORequirement(definition, DescriptorSemantic::SkyInfo);
-            break;
-        case DescriptorSemantic::MaterialColorPalette:
-            allowed = HasUBORequirement(definition, DescriptorSemantic::MaterialColorPalette);
-            break;
+            // 有条件的内置规则（依赖材质定义内容）
+            switch (req.semantic)
+            {
+            case DescriptorSemantic::CameraInfo:
+            case DescriptorSemantic::SkyInfo:
+            case DescriptorSemantic::MaterialColorPalette:
+                allowed = HasUBORequirement(definition, req.semantic);
+                break;
 
-        case DescriptorSemantic::LocalToWorld:
-        case DescriptorSemantic::LocalToWorldIndexTable:
-            allowed = definition.vertex_node_config.projection != ProjectionMode::OrthoViewport
-                   && definition.vertex_node_config.projection != ProjectionMode::ClipPassthrough;
-            break;
+            case DescriptorSemantic::LocalToWorld:
+            case DescriptorSemantic::LocalToWorldIndex:
+                allowed = definition.vertex_node_config.projection != ProjectionMode::OrthoViewport
+                       && definition.vertex_node_config.projection != ProjectionMode::ClipPassthrough;
+                break;
 
-        case DescriptorSemantic::MaterialDataSlotData:
-            allowed = req.data_slot < definition.data_slot_decls.size();
-            if (allowed)
-                allowed = definition.data_slot_decls[req.data_slot].ssbo_type == req.ssbo_type;
-            break;
+            case DescriptorSemantic::MaterialPrivateData:
+                allowed = req.material_private_data_slot < definition.material_private_data_slot_decls.size();
+                if (allowed)
+                    allowed = definition.material_private_data_slot_decls[req.material_private_data_slot].ssbo_type == req.ssbo_type;
+                break;
 
-        case DescriptorSemantic::MaterialTextureLayerTable:
-            allowed = !definition.texture_slot_decls.empty();
-            break;
-        case DescriptorSemantic::MaterialDataIndexTable:
-            allowed = !definition.data_slot_decls.empty()
-                   || definition.vertex_varying.emit_data_index_id;
-            break;
+            case DescriptorSemantic::MaterialTextureLayerTable:
+                allowed = !definition.texture_slot_decls.empty();
+                break;
 
-        // 顶点数据 SSBO（MeshShader 方向）：顶点 SSBO 语义无条件允许（顶点输入统一为 SSBO）
-        case DescriptorSemantic::VertexPosition:
-        case DescriptorSemantic::VertexUV:
-        case DescriptorSemantic::VertexNTB:
-        case DescriptorSemantic::VertexColor:
-        case DescriptorSemantic::VertexLuminance:
-        case DescriptorSemantic::VertexTransformID:
-        case DescriptorSemantic::VertexSize:
-        case DescriptorSemantic::VertexIndex:
-        // mesh per-draw 参数表（IndirectMeshDraw）：引擎级必备，同顶点 SSBO 无条件允许
-        case DescriptorSemantic::MeshDrawParams:
-            allowed = true;
-            break;
+            case DescriptorSemantic::MaterialPrivateDataIndex:
+                allowed = !definition.material_private_data_slot_decls.empty()
+                       || definition.vertex_varying.emit_data_index_id;
+                break;
 
-        case DescriptorSemantic::Unknown:
-        case DescriptorSemantic::Custom:
-            allowed = false;
-            break;
+            default:
+                break;  // 未收录/无规则语义（Unknown、MaterialTexture/Sampler）——保持 false 走 manifest 回退
+            }
         }
 
         if (!allowed && manifest && manifest->IsValid())
@@ -265,8 +204,8 @@ static bool ValidateDefinitionCapabilitySubset(
             for (uint32 i = 0; i < manifest->ssbo_count && !allowed; ++i)
             {
                 const auto &ssbo = manifest->ssbos[i];
-                if (req.semantic == DescriptorSemantic::MaterialDataSlotData
-                 && req.data_slot == ssbo.data_slot
+                if (req.semantic == DescriptorSemantic::MaterialPrivateData
+                 && req.material_private_data_slot == ssbo.material_private_data_slot
                  && req.ssbo_type == ssbo.ssbo_type
                  && CStrEq(req.name.c_str(), ssbo.name))
                     allowed = true;
@@ -275,12 +214,12 @@ static bool ValidateDefinitionCapabilitySubset(
              && manifest->texture_layer_count > 0)
                 allowed = true;
 
-            // The mtl_data_index_rows table only exists to route instance IDs
+            // The MaterialPrivateDataIndexRows table only exists to route instance IDs
             // to material data-slot SSBOs. If any material data-slot SSBO was
             // declared purely via provider manifest metadata (no matching
             // TOML [resources].ssbos entry), the index table requirement is
             // implied and must be accepted the same way.
-            if (req.semantic == DescriptorSemantic::MaterialDataIndexTable
+            if (req.semantic == DescriptorSemantic::MaterialPrivateDataIndex
              && manifest->ssbo_count > 0)
                 allowed = true;
         }
@@ -306,6 +245,413 @@ static bool ValidateDefinitionCapabilitySubset(
 // 使用 SetFinalGLSL + CreateShaderDirect 直接编译。
 // ═══════════════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════════════
+// CompileCompositorMaterial 内部辅助实现
+//
+// CompileCompositorMaterial 的 7 步流水线被拆分为多个静态辅助函数，
+// 描述符注册 / 行表声明 / binding 宏注入改为配表驱动，主函数仅做编排。
+// 所有失败路径统一走 CompileContext::Fail() + FailCompile()（打印并 delete ctx）。
+// ═══════════════════════════════════════════════════════════════════════════
+
+struct CompileContext
+{
+    const MaterialShaderCompilerInput *input = nullptr;
+    ShaderBuildContext *ctx = nullptr;
+    std::string last_error;
+
+    bool Fail(const std::string &reason)
+    {
+        last_error = reason;
+        return false;
+    }
+};
+
+static ShaderBuildContext *FailCompile(CompileContext &c)
+{
+    if (!c.last_error.empty())
+    {
+        std::fprintf(stderr,
+            "[CompileCompositorMaterial] material=%s failed: %s\n",
+            c.input && c.input->debug_name ? c.input->debug_name : "<unnamed>",
+            c.last_error.c_str());
+    }
+    delete c.ctx;
+    c.ctx = nullptr;
+    return nullptr;
+}
+
+// ── Step 1: Config（primitive 校验留在主函数）────────────────────────────────
+static bool PrepareBaseDescriptorContract(
+    const MaterialShaderCompilerInput &input,
+    const CompositorMaterialBuildConfig &config,
+    uint32_t &out_shader_stage_bits,
+    DescriptorContract &out_base_contract,
+    bool &out_with_local_to_world,
+    CompileContext &c)
+{
+    out_shader_stage_bits = config.shader_stage_flag_bits != 0
+        ? config.shader_stage_flag_bits
+        : uint32_t(ShaderStage::MeshFragment);
+
+    if (config.descriptor_contract)
+    {
+        out_base_contract = *config.descriptor_contract;
+    }
+    else if (!BuildDescriptorContract(
+                input.descriptor_entries,
+                input.descriptor_entry_count,
+                out_base_contract))
+    {
+        // 原实现此处静默失败（ctx 尚未创建，不打印、不 delete），保持行为一致。
+        return false;
+    }
+
+    out_with_local_to_world = HasDescriptorSemantic(
+        out_base_contract, DescriptorSemantic::LocalToWorld);
+    return true;
+}
+
+// ── Step 2: 创建 ShaderBuildContext ─────────────────────────────────────────
+static bool CreateBuildContext(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const CompositorMaterialBuildConfig &config,
+    const uint32_t shader_stage_bits,
+    const bool with_local_to_world,
+    CompileContext &c)
+{
+    c.ctx = new ShaderBuildContext(config.primitive_type, shader_stage_bits, with_local_to_world);
+    if (profile)
+        c.ctx->SetDevice(profile);
+    if (config.program_link)
+        c.ctx->SetProgramLink(*config.program_link);
+    c.ctx->SetArtifactStore(config.artifact_store);
+    return true;
+}
+
+// ── Step 3a: 合并 provider manifest 与 material_private_data_slot_decls 的材质数据槽声明 ─────
+// 单槽化：一个材质只有一个私有数据 SSBO（MaterialPrivateData，slot 0）。
+// 顶点数据 SSBO（Vertex*）走固定名路径（PerObject 集），不进入材质数据槽。
+static bool MergeMaterialPrivateDataSlotDeclarations(
+    const CompositorMaterialBuildConfig &config,
+    CompileContext &c,
+    std::vector<MaterialPrivateDataSlotDeclaration> &out_effective_decls)
+{
+    if (config.material_private_data_slot_decls)
+    {
+        if (config.material_private_data_slot_decls->size() > MaxMaterialPrivateDataSlotsPerMaterial)
+            return c.Fail("a material may declare at most one MaterialPrivateData slot");
+        out_effective_decls = *config.material_private_data_slot_decls;
+    }
+
+    if (config.merge_resource_manifest_material_slots
+     && config.resource_manifest
+     && config.resource_manifest->IsValid())
+    {
+        for (uint32_t i = 0; i < config.resource_manifest->ssbo_count; ++i)
+        {
+            const auto &ssbo = config.resource_manifest->ssbos[i];
+
+            if (ssbo.material_private_data_slot != DefaultMaterialPrivateDataSlot)
+                continue;
+
+            if (out_effective_decls.empty())
+            {
+                MaterialPrivateDataSlotDeclaration decl;
+                decl.name = ssbo.name;
+                decl.ssbo_type = ssbo.ssbo_type;
+                out_effective_decls.push_back(decl);
+            }
+            else
+            {
+                const auto &decl = out_effective_decls[0];
+                if (decl.name != ssbo.name || decl.ssbo_type != ssbo.ssbo_type)
+                    return c.Fail("provider material data slot conflicts with definition");
+            }
+        }
+    }
+
+    return true;
+}
+
+// ── Step 3b: 有效契约 → 固定序列化条目 + 槽位名校验 ─────────────────────────
+static bool BuildEffectiveDescriptorEntries(
+    const CompositorMaterialBuildConfig &config,
+    const DescriptorContract &base_contract,
+    const std::vector<MaterialPrivateDataSlotDeclaration> *material_private_data_slot_decls,
+    const uint32_t material_ssbo_stage_bits,
+    CompileContext &c,
+    DescriptorContract &out_effective_contract,
+    std::vector<SerializedDescriptorEntry> &out_entries,
+    uint32_t &out_declared_slot_count)
+{
+    const bool use_slot_decls = material_private_data_slot_decls != nullptr;
+    out_declared_slot_count = use_slot_decls
+        ? static_cast<uint32_t>(material_private_data_slot_decls->size()) : 0u;
+
+    if (!BuildEffectiveDescriptorContract(
+            base_contract,
+            material_private_data_slot_decls,
+            material_ssbo_stage_bits,
+            out_effective_contract))
+        return c.Fail("invalid effective material descriptor contract");
+
+    if (config.material_definition
+     && !EnsureDescriptorContractVaryingResources(
+            config.material_definition->vertex_varying,
+            out_effective_contract))
+        return c.Fail("failed to add varying descriptor contract resources");
+
+    // C1-T2：entries 即规范化 SerializedDescriptorEntry[]（原
+    // ConvertDescriptorContractToFixed 往返转换已删——直接取契约条目）
+    out_entries = out_effective_contract.entries;
+
+    if (use_slot_decls)
+    {
+        // 单槽化：一个材质至多一个 MaterialPrivateData 槽，名称固定。
+        if (out_declared_slot_count > MaxMaterialPrivateDataSlotsPerMaterial)
+            return c.Fail("a material may declare at most one MaterialPrivateData slot");
+
+        for (uint32_t i = 0; i < out_declared_slot_count; ++i)
+        {
+            const auto &decl = (*material_private_data_slot_decls)[i];
+            if (!IsValidMaterialPrivateDataSlotName(decl.name))
+                return c.Fail("invalid material data slot GLSL name");
+
+            if (decl.name != DefaultMaterialPrivateDataSlotName)
+                return c.Fail("material data slot GLSL name must be MaterialPrivateData");
+        }
+    }
+
+    return true;
+}
+
+// ── Step 3c: canonical 描述符注册（目录表驱动）───────────────────────────────
+// 唯一真源：inc/hgl/mtl/DescriptorResourceCatalog.h（语义→类别/集合/绑定/SBS）。
+// 按类别三分支：SceneGlobal 全局化跳过；PerDraw/VertexGeometry 固定 ABI 注册；
+// MaterialData per-material 动态（数据槽由 RegisterMaterialPrivateDataSlotDescriptors
+// 单独处理，此处仅纹理层表/行表）。原 kDescriptorRegisterTable + RegisterOp 已删除。
+static bool RegisterCanonicalDescriptors(
+    ShaderBuildContext *ctx,
+    const std::vector<SerializedDescriptorEntry> &descriptor_entries,
+    const uint32_t declared_material_private_data_slot_count,
+    uint32_t &io_material_ssbo_stage_bits,
+    CompileContext &c)
+{
+    for (const SerializedDescriptorEntry &entry : descriptor_entries)
+    {
+        const uint32_t stage_bits = entry.stage_flags;
+
+        // MaterialPrivateData：MaterialSSBOBuilder 依据 material_private_data_slot_decls 注册，
+        // 此处只累加其 stage bits（渲染侧固定为 SSBO 语义）。
+        if (entry.semantic == DescriptorSemantic::MaterialPrivateData)
+        {
+            io_material_ssbo_stage_bits = stage_bits;
+            continue;
+        }
+
+        const DescriptorResourceCatalogEntry *cat =
+            FindResourceCatalogEntry(entry.semantic);
+        if (!cat)
+            continue;
+
+        switch (cat->cls)
+        {
+        case ResourceCatalogClass::SceneGlobal:
+            // Scene UBO 已全局化（P1/P1-2a），不再进入 per-material 分配器
+            break;
+
+        case ResourceCatalogClass::PerDraw:
+            if (cat->semantic == DescriptorSemantic::LocalToWorld)
+            {
+                if (!ctx->SetLocalToWorld(stage_bits))
+                    return c.Fail("failed to set LocalToWorld SSBO");
+            }
+            else if (cat->semantic == DescriptorSemantic::MaterialPrivateDataIndex)
+            {
+                if (!ctx->AddStruct(SBS_MaterialPrivateDataIndexRows.struct_name, ""))
+                    return c.Fail("failed to add MaterialPrivateDataIndex struct");
+                // P1-2c：行表迁至 PerObject 集，binding 由固定枚举确定（固定名路径）
+                if (!ctx->AddSSBOMaterialPrivateDataIndex(stage_bits))
+                    return c.Fail("failed to add MaterialPrivateDataIndex SSBO");
+            }
+            else
+            {
+                // LocalToWorldIndex / MeshDrawParams：SBS + 固定 binding 目录行
+                if (!ctx->AddSSBOVertex(stage_bits, *cat->sbs, cat->binding))
+                    return c.Fail(std::string("failed to add ") + cat->sbs->name + " SSBO");
+            }
+            break;
+
+        case ResourceCatalogClass::VertexGeometry:
+            if (cat->semantic == DescriptorSemantic::VertexIndex)
+            {
+                if (!ctx->AddSSBOVertexIndex(stage_bits))
+                    return c.Fail("failed to add VertexIndex SSBO");
+            }
+            else
+            {
+                if (!ctx->AddSSBOVertex(stage_bits, *cat->sbs, cat->binding))
+                    return c.Fail(std::string("failed to add ") + cat->sbs->name + " SSBO");
+            }
+            break;
+
+        case ResourceCatalogClass::MaterialData:
+            if (cat->semantic == DescriptorSemantic::MaterialTextureLayerTable)
+            {
+                if (!ctx->AddStruct(SBS_MaterialTextureLayerRows.struct_name, ""))
+                    return c.Fail("failed to add MaterialTextureLayerRows struct");
+                // 单槽化：材质至多一个数据槽，纹理层行表紧随其后（binding=槽数）
+                if (!ctx->AddSSBOTextureLayer(stage_bits, int(declared_material_private_data_slot_count)))
+                    return c.Fail("failed to add MaterialTextureLayerRows SSBO");
+            }
+            // MaterialTexture/MaterialSampler：bindless 通道，无 per-material 描述符
+            break;
+        }
+    }
+
+    return true;
+}
+
+// ── CharQuad text SSBOs: mesh shader declares these inline, register them into PerObject set layout ──
+// Register the three CharQuad SSBOs at fixed bindings 14/15/16
+// matching TEXT_CHARINFO_BINDING/TEXT_CHARSTYLE_BINDING/TEXT_CHARINSTANCE_BINDING
+// in descriptor_macros.glsl
+// 注意：结构体的 GLSL 声明真源是
+//   结构体 GLSL 真源 = ShaderLibrary/vertex/s1_text_char_quad.glsl（T2.1 已归一，
+//   由 MeshShaderModeCharQuad.h::EmitCharQuadSSBODeclarations include）；
+//   CPU 侧布局 = inc/hgl/graph/font/TextCharSSBO.h（static_assert 校验）。
+//   改结构布局必须改 .glsl + TextCharSSBO.h 两侧。
+// 此处只注册 set layout，结构体代码由 mesh shader 生成器提供（pass empty codes）。
+struct CharQuadSSBOReg
+{
+    const char *struct_name;
+    const char *sbo_name;
+    int binding;        // PerObjectBinding::TextChar* 枚举
+};
+
+static const CharQuadSSBOReg kCharQuadSSBOTable[] = {
+    { "TextCharInfo",     "sbo_char_info",     int(PerObjectBinding::TextCharInfo) },
+    { "CharStyleData",    "sbo_char_style",    int(PerObjectBinding::TextCharStyle) },
+    { "CharInstanceData", "sbo_char_instance", int(PerObjectBinding::TextCharInstance) },
+};
+
+static bool RegisterCharQuadSSBOs(
+    ShaderBuildContext *ctx,
+    const uint32_t stage_bits,
+    CompileContext &c)
+{
+    for (const CharQuadSSBOReg &reg : kCharQuadSSBOTable)
+    {
+        if (!ctx->AddStruct(reg.struct_name, ""))
+            return c.Fail(std::string("failed to add ") + reg.struct_name + " struct");
+        if (!ctx->AddSSBO(stage_bits, DescriptorSetType::PerObject,
+                          reg.struct_name, reg.sbo_name, reg.binding))
+            return c.Fail(std::string("failed to add ") + reg.sbo_name + " SSBO");
+    }
+
+    return true;
+}
+
+// ── Step 3d: 材质数据槽描述符（material_private_data_slot_decls 驱动）─────────────────────────
+// 单槽化：固定 slot 0（DefaultMaterialPrivateDataSlot），至多一个声明。
+static bool RegisterMaterialPrivateDataSlotDescriptors(
+    ShaderBuildContext *ctx,
+    const std::vector<MaterialPrivateDataSlotDeclaration> &material_private_data_slot_decls,
+    const uint32_t material_ssbo_stage_bits,
+    CompileContext &c)
+{
+    if (material_private_data_slot_decls.size() > MaxMaterialPrivateDataSlotsPerMaterial)
+        return c.Fail("a material may declare at most one MaterialPrivateData slot");
+
+    for (uint32_t i = 0; i < static_cast<uint32_t>(material_private_data_slot_decls.size()); ++i)
+    {
+        if (!AddMaterialPrivateDataSlotDescriptor(*ctx, material_private_data_slot_decls[i], DefaultMaterialPrivateDataSlot, material_ssbo_stage_bits))
+            return c.Fail("failed to add declared material ssbo slot descriptor");
+    }
+
+    return true;
+}
+
+// ── Step 4: 行表 SSBO 的补齐已上收至契约层 ───────────────────────────────────
+// emit_data_index_id 的 MaterialPrivateDataIndex 行表由
+// EnsureDescriptorContractVaryingResources（DescriptorContract.cpp）在契约构建期
+// 补入并经 RegisterCanonicalDescriptors 注册——原 EnsureIndexTableSSBOs 后置补漏
+// 与之重复，已删除。（Phase 6：目录表收敛）
+
+// ── Step 5a: set/binding 宏 ──────────────────────────────────────────────────
+// 固定 ABI 的 set/binding 宏（L2W/MESH_DRAW_PARAMS/VIEWPORT/CAMERA/SKY/COLOR_PALETTE
+// 及顶点系列）不再由编译器注入：descriptor_macros.glsl 为生成物
+//（DescriptorMacroGen，数值真源 DescriptorSetTypeDef.h 的绑定枚举），模板与模块
+// #include 后直接使用默认值，单一真源（原 kBindingDefineTable 注入路径已删除）。
+//
+// 行表绑定（material_private_data_index_rows / mtl_texture_layer_rows / l2w_index）不在此
+// 注入 set/binding 宏：声明由 index table 生成逻辑依据 descriptor_info 直接以
+// layout(set=.., binding=..) 写出（统一声明生成，不再写死在 .glsl）。
+
+// ── Step 6: ShaderResourceSchema 构建与校验 ──────────────────────────────────
+static bool BuildAndValidateResourceSchema(
+    const DescriptorContract &effective_descriptor_contract,
+    const CompositorMaterialBuildConfig &config,
+    CompileContext &c,
+    ShaderResourceSchema &out_schema)
+{
+    if (!BuildResourceSchemaFromContract(
+            effective_descriptor_contract,
+            out_schema))
+        return c.Fail("descriptor contract/layout build failed");
+
+    std::vector<std::string> contract_diagnostics;
+    if (!ValidateShaderResourceSchema(out_schema, contract_diagnostics))
+    {
+        for (const auto &diag : contract_diagnostics)
+        {
+            std::fprintf(stderr,
+                "[CompileCompositorMaterial][ShaderResourceSchema] material=%s: %s\n",
+                c.input->debug_name ? c.input->debug_name : "<unnamed>",
+                diag.c_str());
+        }
+        return c.Fail("ShaderResourceSchema validation failed");
+    }
+
+    if (config.material_definition)
+    {
+        std::vector<std::string> capability_diagnostics;
+        if (!ValidateDefinitionCapabilitySubset(
+                *config.material_definition,
+                out_schema,
+                capability_diagnostics,
+                config.resource_manifest))
+        {
+            for (const auto &diag : capability_diagnostics)
+            {
+                std::fprintf(stderr,
+                    "[CompileCompositorMaterial][DefinitionCapability] material=%s: %s\n",
+                    c.input->debug_name ? c.input->debug_name : "<unnamed>",
+                    diag.c_str());
+            }
+            return c.Fail("Definition capability subset validation failed");
+        }
+    }
+
+    return true;
+}
+
+// ── Step 6b: ShaderProgram artifact metadata ─────────────────────────────────
+static bool BuildArtifactMetadata(
+    const contract::PhysicalDeviceProfileLite *profile,
+    ShaderBuildContext *ctx,
+    CompileContext &c)
+{
+    if (!ctx->HasProgramLink())
+        return true;
+
+    ShaderProgramArtifactMetadata metadata{};
+    if (!BuildShaderProgramArtifactMetadata(profile, *ctx, metadata))
+        return c.Fail("failed to build ShaderProgram artifact metadata");
+    ctx->SetProgramArtifactMetadata(metadata);
+    return true;
+}
+
 ShaderBuildContext *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialShaderCompilerInput &input,
@@ -321,52 +667,28 @@ ShaderBuildContext *CompileCompositorMaterial(
         return nullptr;
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // Step 1: Config
-    // ─────────────────────────────────────────────────────────────
-
+    // ── Step 1: Config ────────────────────────────────────────────
     const PrimitiveType primitive_type = config.primitive_type;
     if (input.primitive_type != primitive_type)
         return nullptr;
-    const uint32_t shader_stage_bits = config.shader_stage_flag_bits != 0 ? config.shader_stage_flag_bits : uint32_t(ShaderStage::MeshFragment);
+
+    CompileContext c{&input};
 
     DescriptorContract base_descriptor_contract{};
-    if (config.descriptor_contract)
-    {
-        base_descriptor_contract = *config.descriptor_contract;
-    }
-    else if (!BuildDescriptorContract(
-                input.descriptor_entries,
-                input.descriptor_entry_count,
-                base_descriptor_contract))
-    {
-        return nullptr;
-    }
+    uint32_t shader_stage_bits = 0;
+    bool with_local_to_world = false;
+    if (!PrepareBaseDescriptorContract(input, config,
+                                       shader_stage_bits,
+                                       base_descriptor_contract,
+                                       with_local_to_world,
+                                       c))
+        return FailCompile(c);
 
-    const bool infer_has_l2w = HasDescriptorSemantic(
-        base_descriptor_contract, DescriptorSemantic::LocalToWorld);
-    const bool with_local_to_world = infer_has_l2w;
+    // ── Step 2: Create ShaderBuildContext ─────────────────────────
+    if (!CreateBuildContext(profile, config, shader_stage_bits, with_local_to_world, c))
+        return FailCompile(c);
 
-    // ─────────────────────────────────────────────────────────────
-    // Step 2: Create ShaderBuildContext
-    // ─────────────────────────────────────────────────────────────
-
-    ShaderBuildContext *ctx = new ShaderBuildContext(primitive_type, shader_stage_bits, with_local_to_world);
-    if (profile)
-        ctx->SetDevice(profile);
-    if (config.program_link)
-        ctx->SetProgramLink(*config.program_link);
-    ctx->SetArtifactStore(config.artifact_store);
-
-    auto FailAfterBuild = [&](const char *reason) -> ShaderBuildContext *
-    {
-        std::fprintf(stderr,
-            "[CompileCompositorMaterial] material=%s failed: %s\n",
-            input.debug_name ? input.debug_name : "<unnamed>",
-            reason ? reason : "<unknown>");
-        delete ctx;
-        return nullptr;
-    };
+    ShaderBuildContext *ctx = c.ctx;
 
     uint32_t material_ssbo_stage_bits = uint32_t(ShaderStage::Fragment);
     if (config.merge_resource_manifest_material_slots
@@ -377,691 +699,130 @@ ShaderBuildContext *CompileCompositorMaterial(
             material_ssbo_stage_bits |= config.resource_manifest->ssbos[i].stage_flags;
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // Step 3: Add Descriptors from SerializedDescriptorEntry[]
+    // ── Step 3: Add Descriptors from SerializedDescriptorEntry[] ──
     // Provider metadata contributes material SSBO slots to the same canonical
     // declaration list as the material definition.
-    // ─────────────────────────────────────────────────────────────
+    std::vector<MaterialPrivateDataSlotDeclaration> effective_material_private_data_slot_decls;
+    if (!MergeMaterialPrivateDataSlotDeclarations(config, c, effective_material_private_data_slot_decls))
+        return FailCompile(c);
 
-    std::vector<DataSlotDeclaration> effective_data_slot_decls;
-    if (config.data_slot_decls)
-        effective_data_slot_decls = *config.data_slot_decls;
-    if (config.merge_resource_manifest_material_slots
-     && config.resource_manifest
-     && config.resource_manifest->IsValid())
-    {
-        for (uint32_t i = 0; i < config.resource_manifest->ssbo_count; ++i)
-        {
-            const auto &ssbo = config.resource_manifest->ssbos[i];
-            if (ssbo.data_slot > MaxMaterialDataSlotsPerMaterial)
-                return FailAfterBuild("provider material data slot exceeds the supported limit");
-            if (ssbo.data_slot > effective_data_slot_decls.size())
-                return FailAfterBuild("provider material data slots must be contiguous");
-
-            if (ssbo.data_slot == effective_data_slot_decls.size())
-            {
-                DataSlotDeclaration decl;
-                decl.name = ssbo.name;
-                decl.ssbo_type = ssbo.ssbo_type;
-                effective_data_slot_decls.push_back(decl);
-            }
-            else
-            {
-                const auto &decl = effective_data_slot_decls[ssbo.data_slot];
-                if (decl.name != ssbo.name || decl.ssbo_type != ssbo.ssbo_type)
-                    return FailAfterBuild("provider material data slot conflicts with definition");
-            }
-        }
-    }
-
-    const std::vector<DataSlotDeclaration> *data_slot_decls =
-        effective_data_slot_decls.empty() ? nullptr : &effective_data_slot_decls;
-    const bool use_slot_decls = data_slot_decls != nullptr;
+    const std::vector<MaterialPrivateDataSlotDeclaration> *material_private_data_slot_decls =
+        effective_material_private_data_slot_decls.empty() ? nullptr : &effective_material_private_data_slot_decls;
 
     DescriptorContract effective_descriptor_contract{};
-    if (!BuildEffectiveDescriptorContract(
-            base_descriptor_contract,
-            data_slot_decls,
-            material_ssbo_stage_bits,
-            effective_descriptor_contract))
-        return FailAfterBuild("invalid effective material descriptor contract");
-    if (config.material_definition
-     && !EnsureDescriptorContractVaryingResources(
-            config.material_definition->vertex_varying,
-            effective_descriptor_contract))
-    {
-        return FailAfterBuild(
-            "failed to add varying descriptor contract resources");
-    }
-
     std::vector<SerializedDescriptorEntry> descriptor_entries;
-    if (!ConvertDescriptorContractToFixed(
-            effective_descriptor_contract, descriptor_entries))
-        return FailAfterBuild("failed to adapt material descriptor contract");
+    uint32_t declared_material_private_data_slot_count = 0;
+    if (!BuildEffectiveDescriptorEntries(
+            config, base_descriptor_contract, material_private_data_slot_decls,
+            material_ssbo_stage_bits, c,
+            effective_descriptor_contract, descriptor_entries,
+            declared_material_private_data_slot_count))
+        return FailCompile(c);
 
-    const uint32_t declared_material_data_slot_count = use_slot_decls ? static_cast<uint32_t>(data_slot_decls->size()) : 0u;
-    if (use_slot_decls)
-    {
-        if (declared_material_data_slot_count > MaxMaterialDataSlotsPerMaterial)
-            return FailAfterBuild("material data slot count exceeds the supported limit");
-
-        for (uint32_t i = 0; i < declared_material_data_slot_count; ++i)
-        {
-            const auto &decl = (*data_slot_decls)[i];
-            if (!IsValidMaterialDataSlotName(decl.name))
-                return FailAfterBuild("invalid material data slot GLSL name");
-
-            for (uint32_t j = 0; j < i; ++j)
-            {
-                if ((*data_slot_decls)[j].name == decl.name)
-                    return FailAfterBuild("duplicate material data slot GLSL name");
-            }
-        }
-    }
-
-    for (const SerializedDescriptorEntry &entry : descriptor_entries)
-    {
-        const uint32_t stage_bits = entry.stage_flags;
-
-        switch (entry.kind)
-        {
-        case DescriptorKind::UBO:
-            switch (entry.semantic)
-            {
-            // 注：Scene UBO（ViewportInfo/CameraInfo/SkyInfo/ColorPalette）已全局化（P1/P1-2a），
-            //     不再进入 per-material 分配器（desc_manager/finalize/绑定均跳过 Scene），
-            //     GLSL 声明与 set/binding 由全局集与宏注入保证。
-            case DescriptorSemantic::ViewportInfo:
-            case DescriptorSemantic::CameraInfo:
-            case DescriptorSemantic::SkyInfo:
-            case DescriptorSemantic::MaterialColorPalette:
-                break;
-            case DescriptorSemantic::LocalToWorld:
-                ctx->SetLocalToWorld(stage_bits);
-                break;
-            case DescriptorSemantic::MaterialDataSlotData:
-                material_ssbo_stage_bits = stage_bits;
-                break;
-            default:
-                break;
-            }
-            break;
-
-        case DescriptorKind::SSBO:
-            switch (entry.semantic)
-            {
-            case DescriptorSemantic::LocalToWorld:
-                ctx->SetLocalToWorld(stage_bits);
-                break;
-            case DescriptorSemantic::LocalToWorldIndexTable:
-                ctx->AddSSBOStruct(stage_bits, SBS_LocalToWorldIndexRows);
-                break;
-            case DescriptorSemantic::MaterialDataSlotData:
-                material_ssbo_stage_bits = stage_bits;
-                break;
-            case DescriptorSemantic::MaterialTextureLayerTable:
-                if (!ctx->AddStruct(SBS_MaterialTextureLayerRows.struct_name, ""))
-                    return FailAfterBuild("failed to add MaterialTextureLayerRows struct");
-                // 行表 binding 统一为「数据槽数 + 行表序号」：无 data slot 时 declared 计数为 0，
-                // 同一公式覆盖 use_slot_decls 两种路径，避免特例字面量。
-                // P1-2c：mtl_data_index_rows 已迁出 Material 集，texture_layer_rows
-                // 紧随数据槽之后（binding = N），不再 +1。
-                if (!ctx->AddSSBOTextureLayer(stage_bits, int(declared_material_data_slot_count)))
-                {
-                    return FailAfterBuild("failed to add MaterialTextureLayerRows SSBO");
-                }
-                break;
-            case DescriptorSemantic::MaterialDataIndexTable:
-                if (!ctx->AddStruct(SBS_MaterialDataIndexRows.struct_name, ""))
-                    return FailAfterBuild("failed to add MaterialDataIndexRows struct");
-                // P1-2c：mtl_data_index_rows 迁至 PerObject 集，binding 由固定常量表
-                // kPerObjectBinding* 确定（走固定名路径，与 l2w_index_rows 同构）。
-                if (!ctx->AddSSBOMtlIndex(stage_bits))
-                {
-                    return FailAfterBuild("failed to add MaterialDataIndexRows SSBO");
-                }
-                break;
-            // 顶点数据 SSBO（MeshShader 方向：顶点输入统一为 SSBO）——
-            // PerObject 集固定 binding（kPerObjectBindingVertex*），走固定名路径
-            case DescriptorSemantic::VertexPosition:
-                if (!ctx->AddSSBOVertex(stage_bits, SBS_VertexPosition))
-                    return FailAfterBuild("failed to add VertexPosition SSBO");
-                break;
-            case DescriptorSemantic::VertexUV:
-                if (!ctx->AddSSBOVertex(stage_bits, SBS_VertexUV))
-                    return FailAfterBuild("failed to add VertexUV SSBO");
-                break;
-            case DescriptorSemantic::VertexNTB:
-                if (!ctx->AddSSBOVertex(stage_bits, SBS_VertexNTB))
-                    return FailAfterBuild("failed to add VertexNTB SSBO");
-                break;
-            case DescriptorSemantic::VertexColor:
-                if (!ctx->AddSSBOVertex(stage_bits, SBS_VertexColor))
-                    return FailAfterBuild("failed to add VertexColor SSBO");
-                break;
-            case DescriptorSemantic::VertexLuminance:
-                if (!ctx->AddSSBOVertex(stage_bits, SBS_VertexLuminance))
-                    return FailAfterBuild("failed to add VertexLuminance SSBO");
-                break;
-            case DescriptorSemantic::VertexTransformID:
-                if (!ctx->AddSSBOVertex(stage_bits, SBS_VertexTransformID))
-                    return FailAfterBuild("failed to add VertexTransformID SSBO");
-                break;
-            case DescriptorSemantic::VertexSize:
-                if (!ctx->AddSSBOVertex(stage_bits, SBS_VertexSize))
-                    return FailAfterBuild("failed to add VertexSize SSBO");
-                break;
-            case DescriptorSemantic::MeshDrawParams:
-                // mesh per-draw 参数表（IndirectMeshDraw）：GLSL 声明由
-                // MeshShaderAssembler 写出（MESH_DRAW_PARAMS_SET/BINDING 宏），
-                // 此处仅注册布局成员（固定名路径 → kPerObjectBindingMeshDrawParams）
-                if (!ctx->AddSSBOVertex(stage_bits, SBS_MeshDrawParams))
-                    return FailAfterBuild("failed to add MeshDrawParams SSBO");
-                break;
-            case DescriptorSemantic::VertexIndex:
-                if (!ctx->AddSSBOVertexIndex(stage_bits))
-                    return FailAfterBuild("failed to add VertexIndex SSBO");
-                break;
-            default:
-                break;
-            }
-            break;
-        }
-    }
+    if (!RegisterCanonicalDescriptors(ctx, descriptor_entries,
+                                      declared_material_private_data_slot_count,
+                                      material_ssbo_stage_bits, c))
+        return FailCompile(c);
 
     // CharQuad text SSBOs: mesh shader declares these inline, register them into PerObject set layout
     if (config.material_definition
-        && config.material_definition->mesh_shader_mode == "CharQuad")
+     && IsCharQuadMode(config.material_definition->mesh_shader_mode))
     {
-        // Register the three CharQuad SSBOs at fixed bindings 14/15/16
-        // matching TEXT_CHARINFO_BINDING/TEXT_CHARSTYLE_BINDING/TEXT_CHARINSTANCE_BINDING
-        // in descriptor_macros.glsl
-        // 注意：结构体的 GLSL 声明真源是
-        //   src/ShaderGen/common/MeshShaderModeCharQuad.h::EmitCharQuadSSBODeclarations
-        // （C++ 字符串硬编码）。ShaderLibrary/vertex/s1_text_char_quad.glsl 声明了
-        // 同样结构但当前零 include——改结构布局必须改 MeshShaderModeCharQuad.h，
-        // 改那个 .glsl 不会生效（T2.1 计划做真源归一）。
-        // 此处只注册 set layout，结构体代码由 mesh shader 生成器提供（pass empty codes）。
-        if (!ctx->AddStruct("TextCharInfo", ""))
-            return FailAfterBuild("failed to add TextCharInfo struct");
-        if (!ctx->AddSSBO(shader_stage_bits, DescriptorSetType::PerObject,
-                          "TextCharInfo", "sbo_char_info"))
-            return FailAfterBuild("failed to add sbo_char_info SSBO");
-
-        if (!ctx->AddStruct("CharStyleData", ""))
-            return FailAfterBuild("failed to add CharStyleData struct");
-        if (!ctx->AddSSBO(shader_stage_bits, DescriptorSetType::PerObject,
-                          "CharStyleData", "sbo_char_style"))
-            return FailAfterBuild("failed to add sbo_char_style SSBO");
-
-        if (!ctx->AddStruct("CharInstanceData", ""))
-            return FailAfterBuild("failed to add CharInstanceData struct");
-        if (!ctx->AddSSBO(shader_stage_bits, DescriptorSetType::PerObject,
-                          "CharInstanceData", "sbo_char_instance"))
-            return FailAfterBuild("failed to add sbo_char_instance SSBO");
+        if (!RegisterCharQuadSSBOs(ctx, shader_stage_bits, c))
+            return FailCompile(c);
     }
 
-    if (use_slot_decls)
-    {
-        for (uint32_t i = 0; i < static_cast<uint32_t>(data_slot_decls->size()); ++i)
-        {
-            if (!AddMaterialDataSlotDescriptor(*ctx, (*data_slot_decls)[i], i, material_ssbo_stage_bits))
-                return FailAfterBuild("failed to add declared material ssbo slot descriptor");
-        }
-    }
+    if (material_private_data_slot_decls
+     && !RegisterMaterialPrivateDataSlotDescriptors(
+            ctx, *material_private_data_slot_decls, material_ssbo_stage_bits, c))
+        return FailCompile(c);
 
-    // ─────────────────────────────────────────────────────────────
-    // Step 4: Ensure index-table SSBOs for vertex-varying emissions.
-    //
-    //     The descriptor builder calls EnsureMaterialDataIndexTable only when a
-    // MaterialDataSlotData entry exists.  Compositor materials without data
-    // slots may still emit fragDataIndexID (declared as a varying in
-    // .material.toml).  Without the corresponding SSBO the VS GLSL injection
-    // skips ResolveDataIndexID → compile error.
-    // ─────────────────────────────────────────────────────────────
+    // （原 Step 4 EnsureIndexTableSSBOs 已删除——行表补齐上收至契约层，见 Step 3c 注释）
 
-    if (config.material_definition)
-    {
-        const auto &vv = config.material_definition->vertex_varying;
-
-        auto HasDescriptorSemanticInDef = [&](DescriptorSemantic sem) -> bool
-        {
-            for (const SerializedDescriptorEntry &entry : descriptor_entries)
-                if (entry.semantic == sem)
-                    return true;
-            return false;
-        };
-
-        // P1-2c：mtl_data_index_rows 迁至 Transform 集，binding 由固定常量表确定，
-        // 与 Step 3 的 MaterialDataIndexTable 分支同构。
-        if (vv.emit_data_index_id
-            && !HasDescriptorSemanticInDef(DescriptorSemantic::MaterialDataIndexTable))
-        {
-            ctx->AddStruct(SBS_MaterialDataIndexRows.struct_name, "");
-            ctx->AddSSBO(hgl::graph::kMeshFragment,
-                         SBS_MaterialDataIndexRows.set_type,
-                         SBS_MaterialDataIndexRows.struct_name,
-                         SBS_MaterialDataIndexRows.name);
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // Step 5: Set complete GLSL (bypass ProcXXX pipeline)
-    // ─────────────────────────────────────────────────────────────
-
-    std::string binding_preamble;
-
-    // 显式双宏名（_SET/_BINDING 成对传入）——不做字符串推导：
-    // 推导依赖 "_SET" 子串存在，缺了即 std::out_of_range
-    //
-    // #ifndef 保护：模块 include 链可能提前引入 descriptor_macros.glsl
-    // （其 L2W_SET=PER_OBJECT_SET 等宏体文本与这里不同——GLSL 重定义检查
-    // 比较宏体文本，同值不同体也报错）。先定义者胜——当前布局下两者展开
-    // 值一致（PER_OBJECT_SET=1=SBS set）；改 SBS 布局时需同步
-    // descriptor_macros.glsl 的默认值。
-    auto AppendDescriptorBindingDefine = [&](const char *set_macro, const char *binding_macro, const ShaderDescriptor *sd)
-    {
-        if (!set_macro || !binding_macro || !sd || sd->set < 0 || sd->binding < 0)
-            return;
-        binding_preamble += "#ifndef ";
-        binding_preamble += set_macro;
-        binding_preamble += "\n#define ";
-        binding_preamble += set_macro;
-        binding_preamble += " ";
-        binding_preamble += std::to_string(sd->set);
-        binding_preamble += "\n#endif\n";
-        binding_preamble += "#ifndef ";
-        binding_preamble += binding_macro;
-        binding_preamble += "\n#define ";
-        binding_preamble += binding_macro;
-        binding_preamble += " ";
-        binding_preamble += std::to_string(sd->binding);
-        binding_preamble += "\n#endif\n";
-    };
-
+    // ── Step 5: Set complete GLSL (bypass ProcXXX pipeline) ───────
     const DescriptorSetLayoutAllocator &descriptor_info = ctx->GetDescriptorAllocator();
 
-    // 行表绑定（mtl_data_index_rows / mtl_texture_layer_rows / l2w_index_rows）不再注入
-    // set/binding 宏：声明由下方 index table 生成逻辑依据 descriptor_info 直接以
-    // layout(set=.., binding=..) 写出（统一声明生成，不再写死在 .glsl）。
-    AppendDescriptorBindingDefine("L2W_SET", "L2W_BINDING", descriptor_info.GetSSBO(SBS_LocalToWorld.name));
-
-    // mesh per-draw 参数表（IndirectMeshDraw）：GLSL 声明在 MeshShaderAssembler 生成体内，
-    // 依赖此宏对取实际 set/binding（固定名路径 → PerObject/13）
-    AppendDescriptorBindingDefine("MESH_DRAW_PARAMS_SET", "MESH_DRAW_PARAMS_BINDING",
-                                  descriptor_info.GetSSBO(SBS_MeshDrawParams.name));
-
-    // ── Scene UBO（camera/sky/viewport/color_palette）已全局化（P1/P1-2a）：binding 号为
-    //    P0/P1-2a 硬编码常量，不再从 per-material 分配器查询（Scene 不再进入 per-material 描述符集）。
-    //    显式注入 _SET/_BINDING 宏，保证 shader ABI（descriptor_macros.glsl 默认值与此一致）。
-    const int scene_set = int(DescriptorSetType::Scene);
-
-    ShaderDescriptor sd_viewport, sd_camera, sd_sky, sd_color_palette;
-    sd_viewport.set = scene_set; sd_viewport.binding = kSceneBindingViewport;
-    sd_camera.set    = scene_set; sd_camera.binding    = kSceneBindingCamera;
-    sd_sky.set       = scene_set; sd_sky.binding       = kSceneBindingSky;
-    sd_color_palette.set = scene_set; sd_color_palette.binding = kSceneBindingColorPalette;
-
-    AppendDescriptorBindingDefine("VIEWPORT_SET", "VIEWPORT_BINDING", &sd_viewport);
-    AppendDescriptorBindingDefine("CAMERA_SET", "CAMERA_BINDING", &sd_camera);
-    AppendDescriptorBindingDefine("SKY_SET", "SKY_BINDING", &sd_sky);
-    AppendDescriptorBindingDefine("COLOR_PALETTE_SET", "COLOR_PALETTE_BINDING", &sd_color_palette);
-
-    // ── Material SSBO GLSL 声明 ─────────────────────────────────────────────
-    // 材质实例 SSBO 的 struct + buffer 声明不再写死在 .glsl 中，
-    // 统一由此处依据 data_slot_decls 生成并注入 Fragment 阶段。
     std::string material_ssbo_decls;
     std::string material_slot_macros;
-
-    if (use_slot_decls && data_slot_decls && !data_slot_decls->empty())
+    std::string emit_error;
+    if (!BuildMaterialSSBODeclarations(descriptor_info, material_private_data_slot_decls,
+                                       material_ssbo_decls, material_slot_macros, emit_error))
     {
-        std::vector<std::string> emitted_struct_names;
-        std::vector<std::string> emitted_buffer_names;
-        for (uint32_t i = 0; i < static_cast<uint32_t>(data_slot_decls->size()); ++i)
-        {
-            const DataSlotDeclaration &decl = (*data_slot_decls)[i];
-            const ShaderDescriptor *sd = descriptor_info.GetSSBO(decl.name.c_str());
-            if (!sd || sd->set < 0 || sd->binding < 0)
-                return FailAfterBuild("material ssbo descriptor unresolved for GLSL generation");
-
-            const char *struct_name  = ssbo::GetMaterialSSBOStructName(decl.ssbo_type);
-            const char *struct_codes = ssbo::GetMaterialSSBOStructGLSL(decl.ssbo_type);
-            if (!struct_name || !struct_codes)
-                return FailAfterBuild("unsupported material ssbo type for GLSL generation");
-
-            const char *const buffer_base =
-                ssbo::GetMaterialSSBOBufferName(decl.ssbo_type);
-            if (!buffer_base)
-                return FailAfterBuild("material ssbo buffer name unsupported for GLSL generation");
-            std::string buffer_name(buffer_base);
-
-            for (uint32_t suffix = 1;; ++suffix)
-            {
-                bool used = false;
-                for (const auto &used_name : emitted_buffer_names)
-                {
-                    if (used_name == buffer_name)
-                    {
-                        used = true;
-                        break;
-                    }
-                }
-                if (!used)
-                    break;
-                buffer_name = std::string(struct_name) + "Buffer_" + std::to_string(suffix);
-            }
-            emitted_buffer_names.push_back(buffer_name);
-
-            bool struct_emitted = false;
-            for (const auto &emitted_name : emitted_struct_names)
-            {
-                if (emitted_name == struct_name)
-                {
-                    struct_emitted = true;
-                    break;
-                }
-            }
-
-            if (!struct_emitted)
-            {
-                emitted_struct_names.emplace_back(struct_name);
-                material_ssbo_decls += "struct ";
-                material_ssbo_decls += struct_name;
-                material_ssbo_decls += "\n{\n";
-
-                // 规范化字段文本：去掉行首空白、统一 4 空格缩进。
-                std::string line;
-                const char *p = struct_codes;
-                auto FlushFieldLine = [&]()
-                {
-                    size_t start = 0;
-                    while (start < line.size() && (line[start] == ' ' || line[start] == '\t'))
-                        ++start;
-                    if (start < line.size())
-                    {
-                        material_ssbo_decls += "    ";
-                        material_ssbo_decls.append(line, start, line.size() - start);
-                        material_ssbo_decls += '\n';
-                    }
-                    line.clear();
-                };
-                for (; *p; ++p)
-                {
-                    if (*p == '\n')
-                        FlushFieldLine();
-                    else
-                        line += *p;
-                }
-                FlushFieldLine();
-
-                material_ssbo_decls += "};\n";
-            }
-
-            material_ssbo_decls += "layout(set=" + std::to_string(sd->set) + ", binding=" + std::to_string(sd->binding) + ") readonly buffer ";
-            material_ssbo_decls += buffer_name;
-            material_ssbo_decls += " {\n    ";
-            material_ssbo_decls += struct_name;
-            material_ssbo_decls += " data[];\n} ";
-            material_ssbo_decls += decl.name;
-            material_ssbo_decls += ";\n";
-        }
-
-        material_slot_macros += "#define MTL_DATA_SLOT_COUNT "
-            + std::to_string(data_slot_decls->size()) + "u\n";
-        material_slot_macros += "#define MTL_DATA_INDEX_ROW_STRIDE "
-            + std::to_string(MaterialDataIndexRowStride) + "u\n";
-        for (uint32_t i = 0; i < static_cast<uint32_t>(data_slot_decls->size()); ++i)
-        {
-            material_slot_macros += "#define MTL_DATA_SLOT_";
-            material_slot_macros += std::to_string(i);
-            material_slot_macros += " ";
-            material_slot_macros += (*data_slot_decls)[i].name;
-            material_slot_macros += "\n";
-        }
-        material_slot_macros += "#define MTL_DATA ";
-        material_slot_macros += (*data_slot_decls)[0].name;
-        material_slot_macros += "\n";
+        c.Fail(emit_error);
+        return FailCompile(c);
     }
 
-    // ── Sampler 预设宏（统一注册机制）──────────────────────────────────────
+    // ── Sampler 预设宏（统一注册机制）──────────────────────────────
     // 遍历 MaterialDefinition.sampler_names，为每个名字生成 "#define <name>Sampler <idx>u"。
     // idx 经 SamplerPresetLibrary 查询（查不到保底 0），与运行时 binding=1 数组下标一致。
     std::string sampler_macros;
     if (config.material_definition)
         sampler_macros = BuildSamplerMacros(config.material_definition->sampler_names);
 
-    // ── 材质编译期宏定义（compile_defines）──────────────────────────────
-    // 遍历 MaterialDefinition.compile_defines，为每个名字生成 "#define <name> 1\n"。
-    // 用于在 GLSL 中通过 #ifdef 切换代码路径（如 TEXT_SDF_ENABLED）。
-    std::string compile_define_macros;
-    if (config.material_definition)
-    {
-        for (const auto &name : config.material_definition->compile_defines)
-        {
-            if (name.empty())
-                continue;
-            compile_define_macros += "#define ";
-            compile_define_macros += name;
-            compile_define_macros += " 1\n";
-        }
-    }
+    const std::string compile_define_macros = BuildCompileDefineMacros(config);
 
-    // ── Instance index table SSBO GLSL 声明 ──────────────────────────────────
-    // mtl_data_index_rows / mtl_texture_layer_rows / l2w_index_rows 的 buffer
-    // 声明与 Resolve 函数不再写死在 instance_rows_ssbo.glsl 中，统一依据
-    // descriptor_info 生成注入：VS 阶段提供 l2w_index_rows / mtl_data_index_rows
-    //（含 ResolveTransformID / ResolveDataIndexID），FS 阶段提供
-    // mtl_texture_layer_rows（named-slot TextureLayerRowsData，见下方注入）。
-    struct IndexTableSpec
-    {
-        const char *buffer_name;
-        const char *var_name;
-        const char *resolve_func;   // 为空则仅生成 buffer 声明
-        bool slot_aware = false;
-    };
+    const std::string mesh_index_table_decls =
+        BuildMeshIndexTableDecls(descriptor_info);
+    const std::string fs_index_table_decls =
+        BuildFSIndexTableDecls(descriptor_info);
 
-    auto AppendIndexTableDecl = [](std::string &out, const ShaderDescriptor *sd, const IndexTableSpec &spec)
-    {
-        if (!sd || sd->set < 0 || sd->binding < 0)
-            return;
+    // ── Step 5e: 组装注入段列表（C3——注入内容数据驱动，顺序 = 列表顺序）──
+    std::vector<GLSLInjectSegment> segments;
 
-        out += "layout(set=" + std::to_string(sd->set) + ", binding=" + std::to_string(sd->binding) + ") readonly buffer ";
-        out += spec.buffer_name;
-        out += " { uint values[]; } ";
-        out += spec.var_name;
-        out += ";\n";
+    // mesh 阶段：行表声明（version 后）
+    segments.push_back({ GLSLInjectStage::Mesh, GLSLInjectPoint::AfterVersion,
+                         mesh_index_table_decls });
 
-        if (spec.resolve_func)
-        {
-            if (spec.slot_aware)
-            {
-                out += "uint ";
-                out += spec.resolve_func;
-                out += "(uint iid, uint data_slot) { return ";
-                out += spec.var_name;
-                out += ".values[iid * MTL_DATA_INDEX_ROW_STRIDE + data_slot]; }\n";
-            }
-            out += "uint ";
-            out += spec.resolve_func;
-            out += "(uint iid) { return ";
-            if (spec.slot_aware)
-            {
-                out += spec.resolve_func;
-                out += "(iid, 0u); }\n";
-            }
-            else
-            {
-                out += spec.var_name;
-                out += ".values[iid]; }\n";
-            }
-        }
-    };
+    // FS 统一启用 GL_EXT_mesh_shader：per-primitive 语义（DataIndexID/StyleID）的
+    // FS 输入用 perprimitiveEXT in（mesh out perprimitiveEXT → FS in 必须同装饰，
+    // 否则 VUID-RuntimeSpirv-OpVariable-08746 接口装饰不匹配）。
+    // 扩展声明必须在 #version 之后（InsertAfterVersionLine 保证）。
+    // version 后注入组顺序（= 列表顺序）：扩展 → 宏/声明 → 索引行表
+    segments.push_back({ GLSLInjectStage::Fragment, GLSLInjectPoint::AfterVersion,
+                         "#extension GL_EXT_mesh_shader : require\n"
+                         + compile_define_macros + sampler_macros
+                         + material_ssbo_decls + material_slot_macros
+                         + fs_index_table_decls });
 
-    std::string vs_index_table_decls;
-    std::string fs_index_table_decls;
-    // 无 data_slot_decls 时回退 1：MTL_DATA_SLOT_COUNT 是 GLSL 侧行表
-    // 边界常量，至少为 1（material_data_index_rows 索引 0 仍有效）
-    const uint32_t material_data_slot_count =
-        use_slot_decls ? static_cast<uint32_t>(data_slot_decls->size()) : 1u;
-    vs_index_table_decls = "#define MTL_DATA_SLOT_COUNT "
-        + std::to_string(material_data_slot_count) + "u\n"
-        + "#define MTL_DATA_INDEX_ROW_STRIDE "
-        + std::to_string(MaterialDataIndexRowStride) + "u\n";
-
-    AppendIndexTableDecl(vs_index_table_decls, descriptor_info.GetSSBO(SBS_LocalToWorldIndexRows.name),
-                         { "LocalToWorldIndexRows", "l2w_index_rows", "ResolveTransformID" });
-    AppendIndexTableDecl(vs_index_table_decls, descriptor_info.GetSSBO(SBS_MaterialDataIndexRows.name),
-                         { "DataIndexRows", "mtl_data_index_rows", "ResolveDataIndexID", true });
-    // FS 阶段注入 bindless 纹理行表：TextureLayerRowsData struct + buffer（named slot）。
-    // 字段名 = TextureSlot 的 snake_case 名（GetTextureSlotName），顺序与枚举一致；
-    // 内存布局与旧扁平 values[RANGE_SIZE] 逐字节相同，故 CPU 上传无需改动。
-    // 行索引即 fragDataIndexID（P1-2e：TextureLayerID varying 已删除）。
-    {
-        // 仅当该材质确实注册了 mtl_texture_layer_rows（存在 MaterialTextureLayerTable
-        // 描述符，即声明了纹理槽）时才注入 named-slot struct + buffer；否则跳过
-        //（与旧 AppendIndexTableDecl 的静默跳过行为一致，无纹理槽材质 FS 不引用该 buffer）。
-        const ShaderDescriptor *sd =
-            descriptor_info.GetSSBO(SBS_MaterialTextureLayerRows.name);
-        if (sd && sd->set >= 0 && sd->binding >= 0)
-        {
-            fs_index_table_decls += "struct TextureLayerRowsData\n{\n";
-            for (uint32_t i = 0;
-                 i < static_cast<uint32_t>(TextureSlot::RANGE_SIZE); ++i)
-            {
-                fs_index_table_decls += "    uint ";
-                fs_index_table_decls += GetTextureSlotName(static_cast<TextureSlot>(i));
-                fs_index_table_decls += ";\n";
-            }
-            fs_index_table_decls += "};\n";
-            fs_index_table_decls += "layout(set=" + std::to_string(sd->set)
-                                  + ", binding=" + std::to_string(sd->binding)
-                                  + ") readonly buffer TextureLayerRowsBuffer\n{\n"
-                                  + "    TextureLayerRowsData data[];\n"
-                                  + "} mtl_texture_layer_rows;\n";
-        }
-    }
-
-    // GLSL requires #version to be the very first token.
-    auto InsertAfterVersionLine = [](const std::string &glsl, const std::string &inject) -> std::string
-    {
-        if (inject.empty())
-            return glsl;
-        const auto pos = glsl.find('\n');
-        if (pos == std::string::npos)
-            return glsl + "\n" + inject;
-        return glsl.substr(0, pos + 1) + inject + glsl.substr(pos + 1);
-    };
-
-    auto InsertBeforeSurfaceFunction = [](const std::string &glsl, const std::string &inject) -> std::string
-    {
-        if (inject.empty())
-            return glsl;
-        // B6: 单一 marker（#include SURFACE_FUNCTION_FILE）——"#include "surface/" 旧格式
-        // 回退已删（全库 0 使用——ShaderLibrary 与回归门均无）
-        const std::string marker = "#include SURFACE_FUNCTION_FILE";
-        const auto pos = glsl.find(marker);
-        if (pos == std::string::npos)
-            return glsl + "\n" + inject;
-        return glsl.substr(0, pos) + inject + "\n" + glsl.substr(pos);
-    };
-
-    std::string ms_final = InsertAfterVersionLine(ms_glsl, binding_preamble + vs_index_table_decls);
-
-    // 注入顺序（InsertAfterVersionLine 后注入者位于 version 后更前）：
-    // 模块代码可能引用 SSBO 类型、MTL_DATA 宏、索引行表与采样器宏
-    // （unlit_source 的 EmissiveSurfaceData / MTL_DATA；bindless_textures 的
-    // mtl_texture_layer_rows / TrilinearSampler）——全部注入统一放最后
-    // （version 后最前，先于模块代码）
-    std::string fs_final = fs_glsl;
+    // 模块代码：有 surface function marker 走 marker 前，否则并入 version 组尾部
+    //（unlit_source 的 EmissiveSurfaceData / MTL_DATA；bindless_textures 的
+    //  mtl_texture_layer_rows / TrilinearSampler——模块代码可能引用上述宏/声明，
+    //  必须排在注入组最后）
     const std::string code_module_glsl = BuildCodeModuleGLSL(config.resource_manifest);
     if (!code_module_glsl.empty())
     {
-        if (fs_glsl.find("#include SURFACE_FUNCTION_FILE") == std::string::npos)
-            fs_final = InsertAfterVersionLine(fs_final, code_module_glsl);
-        else
-            fs_final = InsertBeforeSurfaceFunction(fs_final, code_module_glsl);
+        segments.push_back({
+            GLSLInjectStage::Fragment,
+            fs_glsl.find("#include SURFACE_FUNCTION_FILE") != std::string::npos
+                ? GLSLInjectPoint::BeforeSurfaceFunction
+                : GLSLInjectPoint::AfterVersion,
+            code_module_glsl });
     }
-    fs_final = InsertAfterVersionLine(
-        fs_final,
-        binding_preamble + compile_define_macros + sampler_macros + material_ssbo_decls
-        + material_slot_macros + fs_index_table_decls);
 
-    ShaderCreateInfo         *mesh = ctx->GetStageShader(ShaderStage::Mesh);
-    ShaderCreateInfo         *frag = ctx->GetStageShader(ShaderStage::Fragment);
+    AssembleFinalGLSL(ctx, ms_glsl, fs_glsl, segments);
 
-    // mesh shader 材质：ms_glsl 实为 mesh stage 源码，
-    // 设到 mesh ShaderCreateInfo。
-    if (mesh)
-        mesh->SetFinalGLSL(ms_final);
-
-    if (frag)
-        frag->SetFinalGLSL(fs_final);
-
-    // ─────────────────────────────────────────────────────────────
-    // Step 6: Build ShaderResourceSchema from descriptor entries.
-    // When data_slot_decls is provided, material SSBO entries are
+    // ── Step 6: Build ShaderResourceSchema from descriptor entries. ──
+    // When material_private_data_slot_decls is provided, material SSBO entries are
     // generated from it and merged with the canonical descriptor entries.
-    // ─────────────────────────────────────────────────────────────
-
     ShaderResourceSchema shader_resource_schema;
-    if (!BuildResourceSchemaFromContract(
-            effective_descriptor_contract,
-            shader_resource_schema))
-        return FailAfterBuild("descriptor contract/layout build failed");
-
-    std::vector<std::string> contract_diagnostics;
-    if (!ValidateShaderResourceSchema(shader_resource_schema, contract_diagnostics))
-    {
-        for (const auto &diag : contract_diagnostics)
-        {
-            std::fprintf(stderr,
-                "[CompileCompositorMaterial][ShaderResourceSchema] material=%s: %s\n",
-                input.debug_name ? input.debug_name : "<unnamed>",
-                diag.c_str());
-        }
-        return FailAfterBuild("ShaderResourceSchema validation failed");
-    }
-
-    if (config.material_definition)
-    {
-        const MaterialDefinition &material_definition = *config.material_definition;
-        std::vector<std::string> capability_diagnostics;
-        if (!ValidateDefinitionCapabilitySubset(
-                material_definition, shader_resource_schema,
-                capability_diagnostics, config.resource_manifest))
-        {
-            for (const auto &diag : capability_diagnostics)
-            {
-                std::fprintf(stderr,
-                    "[CompileCompositorMaterial][DefinitionCapability] material=%s: %s\n",
-                    input.debug_name ? input.debug_name : "<unnamed>",
-                    diag.c_str());
-            }
-            return FailAfterBuild("Definition capability subset validation failed");
-        }
-    }
+    if (!BuildAndValidateResourceSchema(effective_descriptor_contract, config, c,
+                                        shader_resource_schema))
+        return FailCompile(c);
 
     ctx->SetShaderResourceSchema(shader_resource_schema);
-    if (ctx->HasProgramLink())
-    {
-        ShaderProgramArtifactMetadata metadata{};
-        if (!BuildShaderProgramArtifactMetadata(
-                profile, *ctx, metadata))
-            return FailAfterBuild(
-                "failed to build ShaderProgram artifact metadata");
-        ctx->SetProgramArtifactMetadata(metadata);
-    }
 
-    // ─────────────────────────────────────────────────────────────
-    // Step 7: Compile directly → SPV
-    // ─────────────────────────────────────────────────────────────
+    if (!BuildArtifactMetadata(profile, ctx, c))
+        return FailCompile(c);
 
+    // ── Step 7: Compile directly → SPV ────────────────────────────
     if (config.defer_finalize)
         return ctx;
 
     if (!FinalizeShaderBuildContext(ctx))
-        return FailAfterBuild(
-            "FinalizeShaderBuildContext() failed");
+    {
+        c.Fail("FinalizeShaderBuildContext() failed");
+        return FailCompile(c);
+    }
 
     return ctx;
 }

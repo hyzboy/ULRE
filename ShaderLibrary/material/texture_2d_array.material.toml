@@ -27,7 +27,6 @@ requirements = ["Position", "UV0"]
 varyings = ["emit_data_index_id", "emit_uv0"]
 
 [resources]
-ubos = ["ViewportInfo"]
-ssbos = [{ name = "mtl", type = "TextureRectArraySurface" }]
+material_data = { type = "TextureRectArraySurface" }
 textures = [{ name = "base_color", sampler = "Sampler2DArray", required = true }]
 samplers = ["Trilinear"]

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/CoreType.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
@@ -19,7 +19,7 @@ namespace hgl::graph::mtl
 
 namespace hgl::graph::mtl
 {
-    
+
     constexpr uint32 InvalidMaterialRecipeBindingIndex = ~uint32(0);
 
     enum class BindingSource : uint8
@@ -65,8 +65,8 @@ namespace hgl::graph::mtl
         uint64 logical_resource_id = 0;
         uint64 asset_identity_hash = 0;
         uint64 asset_metadata_hash = 0;
-        DescriptorSemantic semantic = DescriptorSemantic::MaterialDataSlotData;
-        uint32 data_slot = 0;
+        DescriptorSemantic semantic = DescriptorSemantic::MaterialPrivateData;
+        uint32 material_private_data_slot = 0;
         uint32 ssbo_id = 0;
         uint32 data_index = 0;
         uint32 recipe_binding_index = InvalidMaterialRecipeBindingIndex;
@@ -86,7 +86,7 @@ namespace hgl::graph::mtl
             && lhs.asset_identity_hash == rhs.asset_identity_hash
             && lhs.asset_metadata_hash == rhs.asset_metadata_hash
             && lhs.semantic == rhs.semantic
-            && lhs.data_slot == rhs.data_slot
+            && lhs.material_private_data_slot == rhs.material_private_data_slot
             && lhs.ssbo_id == rhs.ssbo_id
             && lhs.data_index == rhs.data_index
             && lhs.recipe_binding_index == rhs.recipe_binding_index
@@ -113,20 +113,26 @@ namespace hgl::graph::mtl
         uint64 GetStableHash() const noexcept;
     };
 
+    // 契约错误 X 列表（单一真源——枚举与 GetXxxErrorName 同源，新增错误只改此处）
+#define HGL_BINDING_BUILD_ERROR_LIST \
+    HGL_ERROR(None) \
+    HGL_ERROR(InvalidShaderProgramKey) \
+    HGL_ERROR(DuplicateRecipeTexture) \
+    HGL_ERROR(DuplicateRecipeData) \
+    HGL_ERROR(InvalidBindingTable)
+
     enum class BindingBuildError : uint8
     {
-        None = 0,
-        InvalidShaderProgramKey,
-        DuplicateRecipeTexture,
-        DuplicateRecipeData,
-        InvalidBindingTable
+#define HGL_ERROR(name) name,
+        HGL_BINDING_BUILD_ERROR_LIST
+#undef HGL_ERROR
     };
 
     struct BindingBuildDiagnostic
     {
         BindingBuildError error = BindingBuildError::None;
         TextureSlot texture_slot = TextureSlot::BaseColor;
-        uint32 data_slot = 0;
+        uint32 material_private_data_slot = 0;
         SSBOType ssbo_type = SSBOType::UserDefined;
     };
 
@@ -143,7 +149,7 @@ namespace hgl::graph::mtl
     uint64 GetResolvedDataAssetIdentityHash(
         SSBOType ssbo_type,
         uint32 ssbo_id,
-        uint32 data_slot) noexcept;
+        uint32 material_private_data_slot) noexcept;
 
     bool ValidateResolvedBindingTable(
         const ResolvedBindingTable &table) noexcept;

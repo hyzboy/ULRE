@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKSwapchain.h>

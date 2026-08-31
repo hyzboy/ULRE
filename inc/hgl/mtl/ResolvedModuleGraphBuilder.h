@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 namespace hgl::graph::mtl { struct MaterialDefinitionBuildRequest; }
 
@@ -11,16 +11,22 @@ namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
 
+    // 契约错误 X 列表（单一真源——枚举与 GetXxxErrorName 同源，新增错误只改此处）
+#define HGL_RESOLVED_MODULE_GRAPH_BUILD_ERROR_LIST \
+    HGL_ERROR(None) \
+    HGL_ERROR(MissingRootModule) \
+    HGL_ERROR(MissingDependency) \
+    HGL_ERROR(DependencyCycle) \
+    HGL_ERROR(ModuleConflict) \
+    HGL_ERROR(RequirementConflict) \
+    HGL_ERROR(StableIDConflict) \
+    HGL_ERROR(InvalidCanonicalGraph)
+
     enum class ResolvedModuleGraphBuildError : uint8
     {
-        None = 0,
-        MissingRootModule,
-        MissingDependency,
-        DependencyCycle,
-        ModuleConflict,
-        RequirementConflict,
-        StableIDConflict,
-        InvalidCanonicalGraph
+#define HGL_ERROR(name) name,
+        HGL_RESOLVED_MODULE_GRAPH_BUILD_ERROR_LIST
+#undef HGL_ERROR
     };
 
     struct ResolvedModuleGraphBuildDiagnostic

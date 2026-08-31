@@ -7,6 +7,7 @@
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/color/Color4f.h>
 #include<hgl/type/MemoryUtil.h>
+#include<hgl/mtl/PipelineConfig.h>
 #include<hgl/log/Log.h>
 namespace hgl::graph{
 class MaterialParameters;
@@ -197,6 +198,10 @@ public: //draw
     void DrawMeshTasksIndirect(VkBuffer buf,uint32_t drawCount,uint32_t stride=sizeof(VkDrawMeshTasksIndirectCommandEXT)){return DrawMeshTasksIndirect(buf,0,drawCount,stride);}
 
 public: //dynamic state
+
+    // EDS 1/2/3 全动态状态：材质配置渲染侧应用（pipeline 只保留 shader 部分）。
+    // 实现见 VKCommandBufferRender.cpp
+    void ApplyPipelineState(const mtl::MaterialPipelineConfig &config);
 
 public:
 

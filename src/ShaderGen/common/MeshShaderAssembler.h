@@ -1,4 +1,4 @@
-// MeshShaderAssembler.h — 通用 mesh shader 生成器（调度入口）
+﻿// MeshShaderAssembler.h — 通用 mesh shader 生成器（调度入口）
 //
 // 生成 GLSL 骨架，顶点输出走 mesh 图元：
 //   - 通用模式（默认）：每线程 1 顶点，直通到 gl_MeshVerticesEXT（模拟 VS 行为）
@@ -12,9 +12,11 @@
 
 #pragma once
 
+#include <hgl/mtl/MeshShaderMode.h>
 #include <hgl/mtl/VertexShaderNodeConfig.h>
 #include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/mtl/MaterialStageInterface.h>
+#include <hgl/log/Log.h>
 #include <vulkan/vulkan.h>
 #include <string>
 #include "VertexVaryingConfig.h"   // mtl::VertexVaryingConfig
@@ -36,12 +38,7 @@ namespace hgl::graph::mtl
     //
     // 通用模式输出拓扑：triangle list（每 3 连续顶点 1 三角形）
     // Line 模式输出拓扑：triangle list（每线段 4 顶点 2 三角形）
-    enum class MeshShaderMode
-    {
-        VertexPassthrough,   // 每线程 1 顶点（默认，模拟 VS）
-        LineQuad,            // 每线程 1 线段 → quad
-        CharQuad,            // 每线程 1 字符实例 → quad（6 顶点 2 三角形）
-    };
+    // MeshShaderMode 枚举定义见 inc/hgl/mtl/MeshShaderMode.h（MaterialDefinition 共享）
 
     inline std::string GenerateMeshShader(
         const VertexShaderNodeConfig &node_cfg,
@@ -53,34 +50,39 @@ namespace hgl::graph::mtl
         const std::string            &resolved_input_glsl = {},
         const std::string            &provider_glsl = {},
         const ValueArray<InterStageSemanticContractEntry>
-            *resolved_stage_interface = nullptr,
-        const PrimitiveType           primitive_type = PrimitiveType::Triangles)
+            *resolved_stage_interface = nullptr)
     {
         std::string ms;
         ms.reserve(3072);
 
         // ── 拓扑/容量 ──────────────────────────────────────────────────────
-        uint32_t verts_per_inv = 1;
-        uint32_t prims_per_inv = 0;
+        uint32_t max_vertices   = 0;
+        uint32_t max_primitives = 0;
 
         switch (mode)
         {
         case MeshShaderMode::VertexPassthrough:
-            verts_per_inv = 1;
-            prims_per_inv = 0;   // 三角形由 3 线程组填索引
+            // 三角形按「组内每 3 连续槽位」装配（vid%3==0 线程写索引），
+            // group size 必须是 3 的倍数——否则每组尾部 1-2 顶点无法成三角形，
+            // 且跨组三角形永久丢失（静默几何撕裂，编译通过渲染缺面）。
+            if ((max_invocations % 3u) != 0u)
+            {
+                GLogError("[ShaderGen] VertexPassthrough 的 max_invocations(%u) 必须是 3 的倍数",
+                          max_invocations);
+                return {};
+            }
+            max_vertices   = max_invocations;
+            max_primitives = max_invocations / 3u;   // 每 3 顶点 1 三角形（恒 triangle list）
             break;
         case MeshShaderMode::LineQuad:
-            verts_per_inv = 4;
-            prims_per_inv = 2;
+            max_vertices   = max_invocations * 4u;
+            max_primitives = max_invocations * 2u;
             break;
         case MeshShaderMode::CharQuad:
-            verts_per_inv = 6;    // 6 vertices per character (2 triangles)
-            prims_per_inv = 2;    // 2 triangles per character
+            max_vertices   = max_invocations * 4u;   // 4 顶点/字符（顶点复用）
+            max_primitives = max_invocations * 2u;
             break;
         }
-
-        const uint32_t max_vertices    = max_invocations * verts_per_inv;
-        const uint32_t max_primitives  = max_invocations * ((prims_per_inv > 0) ? prims_per_inv : 1);
 
         // ── Header ─────────────────────────────────────────────────────────
         EmitMeshShaderHeader(ms, node_cfg, max_invocations, max_vertices, max_primitives);
@@ -179,8 +181,8 @@ namespace hgl::graph::mtl
             resolved_stage_interface = &adapted_stage_interface;
         }
 
-        // varying 声明为数组（按顶点索引）
-        EmitVaryingDeclarations(ms, *resolved_stage_interface, max_vertices);
+        // varying 声明为数组（按顶点索引；per-primitive 语义按图元索引）
+        EmitVaryingDeclarations(ms, *resolved_stage_interface, max_vertices, max_primitives);
 
         // CharQuad SSBO 声明必须在全局作用域（void main 之前）
         if (mode == MeshShaderMode::CharQuad)
@@ -206,7 +208,7 @@ namespace hgl::graph::mtl
         switch (mode)
         {
         case MeshShaderMode::VertexPassthrough:
-            EmitVertexPassthroughBody(ms, mode_ctx, primitive_type);
+            EmitVertexPassthroughBody(ms, mode_ctx);
             break;
         case MeshShaderMode::LineQuad:
             EmitLineQuadBody(ms, mode_ctx, position_format);

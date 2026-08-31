@@ -1,4 +1,4 @@
-#include <hgl/mtl/SamplerPreset.h>
+﻿#include <hgl/mtl/SamplerPreset.h>
 
 #include <hgl/io/FileInputStream.h>
 #include <hgl/log/Log.h>

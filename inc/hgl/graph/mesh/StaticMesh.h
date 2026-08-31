@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/type/ManagedArray.h>
 #include <hgl/type/OrderedSet.h>

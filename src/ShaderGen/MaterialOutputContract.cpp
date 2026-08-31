@@ -1,4 +1,4 @@
-#include <hgl/mtl/MaterialOutputContract.h>
+﻿#include <hgl/mtl/MaterialOutputContract.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <cstring>
 
@@ -62,14 +62,12 @@ namespace hgl::graph::mtl
     const char *GetMaterialOutputContractErrorName(
         const MaterialOutputContractError error) noexcept
     {
+#define HGL_ERROR(name) case MaterialOutputContractError::name: return #name;
         switch (error)
         {
-        case MaterialOutputContractError::None: return "None";
-        case MaterialOutputContractError::UnsupportedPurpose: return "UnsupportedPurpose";
-        case MaterialOutputContractError::MissingContractMarker: return "MissingContractMarker";
-        case MaterialOutputContractError::UnsupportedAttachment: return "UnsupportedAttachment";
-        case MaterialOutputContractError::InvalidContract: return "InvalidContract";
+            HGL_MATERIAL_OUTPUT_CONTRACT_ERROR_LIST
         }
+#undef HGL_ERROR
         return "Unknown";
     }
 

@@ -13,7 +13,7 @@
 核心约束：
 
 1. 绑定资源解析只认 `SSBOType + ssbo_id (+ slot)`。
-2. `MaterialTextureLayerTable` / `MaterialDataIndexTable` 不再 `id=0` 回退。
+2. `MaterialTextureLayerTable` / `MaterialPrivateDataIndexTable` 不再 `id=0` 回退。
 3. recipe 负责“声明关联”，资源存在性由独立 SSBO 注册链路保证。
 
 ---
@@ -39,7 +39,7 @@
 
 - `LocalToWorld` / `LocalToWorldIndexTable`：从 Transform 相关缓冲或 domain 资源解析。
 - `MaterialTextureLayerTable`：按 `SSBOAddress{req.ssbo_type, req.ssbo_id, texture_slot}` 解析。
-- `MaterialDataIndexTable`：按 `SSBOAddress{req.ssbo_type, req.ssbo_id, data_slot}` 解析。
+- `MaterialPrivateDataIndexTable`：按 `SSBOAddress{req.ssbo_type, req.ssbo_id, data_slot}` 解析。
 - 纹理/采样器语义按注册表绑定。
 
 已移除：

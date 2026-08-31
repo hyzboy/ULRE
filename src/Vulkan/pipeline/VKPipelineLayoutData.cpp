@@ -1,4 +1,4 @@
-#include<hgl/vk/pipeline/VKPipelineLayoutData.h>
+﻿#include<hgl/vk/pipeline/VKPipelineLayoutData.h>
 #include<hgl/vk/VKDescriptorSet.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
@@ -50,7 +50,9 @@ PipelineLayoutData *VulkanDevice::CreatePipelineLayoutData(const MaterialDescrip
     memset(pld, 0, sizeof(PipelineLayoutData));
     pld->device = attr->device;
 
-    for(int i = int(DescriptorSetType::Scene); i < int(DescriptorSetType::Bindless); ++i)
+    // 遍历全部集合类型：per-material 集在此构布局；全局集（Scene/Bindless）特判跳过。
+    // Phase 5 新增 Vertex（Set 4）也走 per-material 路径——新增集合类型自动纳入本循环。
+    for(int i = int(DescriptorSetType::Scene); i < int(DESCRIPTOR_SET_TYPE_COUNT); ++i)
     {
         VkDescriptorSetLayout layout = VK_NULL_HANDLE;
 
@@ -59,6 +61,14 @@ PipelineLayoutData *VulkanDevice::CreatePipelineLayoutData(const MaterialDescrip
             // 全局 Scene UBO 集（P1）：layout 由设备级 GlobalSceneUBOSet 提供，
             // 所有材质共用同一 layout；不构建 per-material 布局、不分配 per-material MP。
             pld->fin_dsl[i] = scene_layout;
+            pld->layouts[i] = VK_NULL_HANDLE;
+            pld->vab_count[i] = 0;
+            continue;
+        }
+
+        if(i == int(DescriptorSetType::Bindless))
+        {
+            // 全局 Bindless 集：layout 循环外由 bindless_layout 提供（见下）。
             pld->layouts[i] = VK_NULL_HANDLE;
             pld->vab_count[i] = 0;
             continue;

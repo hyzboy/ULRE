@@ -27,5 +27,5 @@ requirements = ["Position"]
 varyings = ["emit_data_index_id"]
 
 [resources]
-ubos = ["ViewportInfo", "CameraInfo"]
-ssbos = [{ name = "mtl", type = "EmissiveSurface" }]
+ubos = ["CameraInfo"]
+material_data = { type = "EmissiveSurface" }

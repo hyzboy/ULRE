@@ -1,4 +1,4 @@
-#include <hgl/mtl/ShaderProgramArtifactBuilder.h>
+﻿#include <hgl/mtl/ShaderProgramArtifactBuilder.h>
 
 #include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/mtl/ShaderCreateInfo.h>

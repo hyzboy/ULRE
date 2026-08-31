@@ -1,4 +1,4 @@
-/// GenericMaterialBuilder.cpp — phase-split generic material compilation.
+﻿/// GenericMaterialBuilder.cpp — phase-split generic material compilation.
 ///
 /// This file is the behavior-preserving decomposition of the former
 /// BuildGenericMaterial function in MaterialDefinitionRegistry.cpp. Every
@@ -17,6 +17,7 @@
 #include <hgl/mtl/ShaderKeyUtility.h>
 #include <hgl/mtl/contract/ShaderGenProfileTargetVersion.h>
 #include <hgl/mtl/MaterialStageInterface.h>
+#include <hgl/mtl/MeshShaderLimits.h>
 #include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/mtl/GLSLCodeModuleCapabilityResolver.h>
@@ -31,9 +32,45 @@
 
 namespace hgl::graph::mtl
 {
-    
+
     namespace
     {
+        // 设备能力推导：group size ≤ min(max_mesh_work_group_size_x,
+        //   floor(max_mesh_output_vertices / 每线程顶点数),
+        //   floor(max_mesh_output_primitives / 每线程图元数))。
+        // 拒绝生成侧硬编码——设备上限由主程序从物理设备实测后经 profile 传入；
+        // profile 为 null 或 limits 未填（0）时退回理想值。
+        // VertexPassthrough 向下取整到 3 的倍数（组内三角形不跨组，MeshShaderAssembler % 3 守卫）。
+        uint32_t ClampMeshInvocationsByDevice(
+            const contract::PhysicalDeviceProfileLite *profile,
+            const MeshShaderMode mode,
+            const uint32_t ideal) noexcept
+        {
+            if (!profile)
+                return ideal;
+
+            const auto &l = profile->limits;
+            const uint32_t verts_per_inv =
+                GetMeshModeVerticesPerInvocation(mode);
+            const uint32_t prims_per_inv =
+                GetMeshModePrimitivesPerInvocation(mode);
+
+            uint32_t cap = l.max_mesh_work_group_size_x;
+            if (l.max_mesh_output_vertices > 0)
+                cap = std::min(cap, l.max_mesh_output_vertices / verts_per_inv);
+            if (l.max_mesh_output_primitives > 0)
+                cap = std::min(cap, l.max_mesh_output_primitives / prims_per_inv);
+
+            if (cap == 0)
+                return ideal;   // limits 未填（0）= 无约束，用理想值
+
+            uint32_t result = std::min(ideal, cap);
+            if (mode == MeshShaderMode::VertexPassthrough && result > 0)
+                result -= result % 3u;   // 3 的倍数（T2.4 守卫要求）
+
+            return result > 0 ? result : ideal;
+        }
+
         bool IsVertexSemanticRequiredForVarying(
             const VertexSemantic semantic,
             const MaterialVertexVaryingConfig &varying) noexcept
@@ -87,6 +124,45 @@ namespace hgl::graph::mtl
 
             const AnsiString name = dot ? AnsiString(stem, int(dot - stem)) : AnsiString(stem);
             return registry.FindByName(name.c_str());
+        }
+
+        // T3：surface → 光照管线配置（单一真源）
+        // Lit 的 forward_lighting/lighting_algorithm 传 nullptr——走 CompositorAssembler
+        // 的 kModuleSlots 默认路径（forward_pbr 等），模块路径只存在于 Assembler 一处，
+        // 不再重复 override（消除双真源）。
+        struct SurfaceLightingConfig
+        {
+            bool        enable_scene_lighting;
+            const char *sky_module;               // nullptr = 不注入 sky
+            const char *forward_lighting_module;  // nullptr = 走 Assembler 默认
+            const char *lighting_algorithm_module;// nullptr = 走 Assembler 默认
+        };
+
+        const SurfaceLightingConfig *GetSurfaceLightingConfig(
+            const SurfaceType surface) noexcept
+        {
+            switch (surface)
+            {
+            case SurfaceType::Unlit:
+            case SurfaceType::Sky:
+            {
+                // 无场景光照：flat 管线（无 sky 大气、无 PBR）
+                static const SurfaceLightingConfig cfg =
+                    { false, nullptr,
+                      "compositor/flat_lighting.glsl",
+                      "lighting/forward_flat.glsl" };
+                return &cfg;
+            }
+            case SurfaceType::Lit:
+            {
+                // 场景光照：PBR + 大气（模块走 Assembler 默认路径）
+                static const SurfaceLightingConfig cfg =
+                    { true, "sky/sky_atmosphere.glsl", nullptr, nullptr };
+                return &cfg;
+            }
+            default:
+                return nullptr;
+            }
         }
 
         // Phase 1 — purpose / coverage / varying / stage interface
@@ -186,7 +262,7 @@ namespace hgl::graph::mtl
             plan.resolved_provider_graph_hash = 0;
 
             // CharQuad: mesh shader self-declares all SSBOs; no vertex ABI needed.
-            if (definition.mesh_shader_mode == "CharQuad")
+            if (IsCharQuadMode(definition.mesh_shader_mode))
                 return true;
 
             {
@@ -263,8 +339,14 @@ namespace hgl::graph::mtl
                           definition.definition_name.c_str());
                 return false;
             }
+            // 顶点需求真源统一：描述符与模块 include 必须来自同一份「变体有效 definition」。
+            // plan.vertex_definition 已在 Phase 2 按 effective_vertex_varying 裁剪过
+            // vertex_semantic_requirements（depth 变体去掉 UV/NTB 等）——原先此处用原始
+            // definition，导致**模块侧已裁剪、描述符侧未裁剪**：depth mesh shader 不声明
+            // VertexUV/VertexNTB buffer，但 set layout 仍含这两个 binding，且运行期绑定
+            // 会去找几何的 UV/NTB VAB（几何未提供即报 no resource）。
             plan.descriptors =
-                BuildDescriptorsFromDefinition(definition, plan.manifest);
+                BuildDescriptorsFromDefinition(plan.vertex_definition, plan.manifest);
             if (plan.depth_purpose)
             {
                 plan.descriptors.erase(
@@ -289,10 +371,10 @@ namespace hgl::graph::mtl
                                 return !plan.coverage.requires_texture
                                     || entry.texture_slot
                                         != plan.coverage.texture_slot;
-                            case DescriptorSemantic::MaterialDataSlotData:
+                            case DescriptorSemantic::MaterialPrivateData:
                                 return !plan.coverage.
                                     requires_material_data;
-                            case DescriptorSemantic::MaterialDataIndexTable:
+                            case DescriptorSemantic::MaterialPrivateDataIndex:
                                 return !plan.effective_vertex_varying.
                                     emit_data_index_id;
                             case DescriptorSemantic::
@@ -313,7 +395,6 @@ namespace hgl::graph::mtl
             {
                 SerializedDescriptorEntry mesh_params{};
                 mesh_params.set_type = SBS_MeshDrawParams.set_type;
-                mesh_params.kind = DescriptorKind::SSBO;
                 mesh_params.stage_flags = VK_SHADER_STAGE_MESH_BIT_EXT;
                 mesh_params.name = SBS_MeshDrawParams.name;
                 mesh_params.struct_name = SBS_MeshDrawParams.struct_name;
@@ -347,12 +428,13 @@ namespace hgl::graph::mtl
         // (originally MaterialDefinitionRegistry.cpp:439-531)
         // ═══════════════════════════════════════════════════════════════════
         bool GenerateStageSources(
+            const contract::PhysicalDeviceProfileLite *profile,
             const MaterialDefinition &definition,
             GenericMaterialBuildPlan &plan)
         {
             // Mesh shader 材质：生成 mesh stage。mesh 是唯一顶点路径。
             // 模式选择优先级：definition.mesh_shader_mode > primitive_type 推断
-            const bool is_char_quad = (definition.mesh_shader_mode == "CharQuad");
+            const bool is_char_quad = IsCharQuadMode(definition.mesh_shader_mode);
             const bool is_lines = !is_char_quad
                 && (plan.primitive_type == hgl::graph::PrimitiveType::Lines);
 
@@ -364,23 +446,27 @@ namespace hgl::graph::mtl
             if (is_char_quad)
             {
                 ms_mode = MeshShaderMode::CharQuad;
-                // CharQuad: 每线程 6 顶点，max_vertices ≤ 256（Vulkan 规范保证下限）
-                // 42 × 6 = 252 ≤ 256（TEXT_CHARQUAD_MAX_INVOCATIONS 与 CPU dispatch 共享）
-                max_invocations = definition.mesh_shader_max_invocations > 0
-                    ? std::min(definition.mesh_shader_max_invocations, TEXT_CHARQUAD_MAX_INVOCATIONS) : TEXT_CHARQUAD_MAX_INVOCATIONS;
+                // CharQuad: 每线程 4 顶点，max_vertices ≤ 256（Vulkan 规范保证下限）
+                // 64 × 4 = 256（TEXT_CHARQUAD_MAX_INVOCATIONS 与 CPU dispatch 共享）
+                const uint32_t toml_or_ideal = definition.mesh_shader_max_invocations > 0
+                    ? std::min(definition.mesh_shader_max_invocations, TEXT_CHARQUAD_MAX_INVOCATIONS)
+                    : TEXT_CHARQUAD_MAX_INVOCATIONS;
+                max_invocations = ClampMeshInvocationsByDevice(profile, ms_mode, toml_or_ideal);
                 // CharQuad 自声明所有 SSBO，不需要外部顶点输入/provider
             }
             else if (is_lines)
             {
                 ms_mode = MeshShaderMode::LineQuad;
-                max_invocations = 64u;
+                max_invocations = ClampMeshInvocationsByDevice(
+                    profile, ms_mode, kMeshLineQuadMaxInvocations);
                 input_glsl_str    = plan.resolved_vertex_input_glsl;
                 provider_glsl_str = plan.resolved_provider_glsl;
             }
             else
             {
                 ms_mode = MeshShaderMode::VertexPassthrough;
-                max_invocations = 96u;
+                max_invocations = ClampMeshInvocationsByDevice(
+                    profile, ms_mode, kMeshVertexPassthroughMaxInvocations);
                 input_glsl_str    = plan.resolved_vertex_input_glsl;
                 provider_glsl_str = plan.resolved_provider_glsl;
             }
@@ -394,8 +480,7 @@ namespace hgl::graph::mtl
                 max_invocations,
                 input_glsl_str,
                 provider_glsl_str,
-                &plan.stage_interface,
-                plan.primitive_type);
+                &plan.stage_interface);
 
             CompositorAssembler assembler(GetShaderLibraryPath());
             MaterialOutputContractDiagnostic output_diagnostic{};
@@ -425,22 +510,23 @@ namespace hgl::graph::mtl
             compositor_options.fragment_inputs = &plan.stage_interface;
             compositor_options.output_contract = &plan.output_contract;
             compositor_options.coverage_contract = &plan.coverage;
-            const bool use_scene_lighting =
-                definition.compositor_surface != SurfaceType::Unlit
-             && definition.compositor_surface != SurfaceType::Sky;
+            // T3：surface → 光照管线查表（GetSurfaceLightingConfig——单一真源）
+            const SurfaceLightingConfig *lighting =
+                GetSurfaceLightingConfig(definition.compositor_surface);
+            if (!lighting)
+            {
+                GLogError("[ShaderGen] Unsupported compositor surface type: %d",
+                          static_cast<int>(definition.compositor_surface));
+                return false;
+            }
             compositor_options.enable_scene_lighting =
-                use_scene_lighting;
-            compositor_options.sky_module = use_scene_lighting
-                ? "sky/sky_atmosphere.glsl"
-                : nullptr;
+                lighting->enable_scene_lighting;
+            compositor_options.sky_module =
+                lighting->sky_module;
             compositor_options.forward_lighting_module =
-                use_scene_lighting
-                    ? "compositor/forward_lighting.glsl"
-                    : "compositor/flat_lighting.glsl";
+                lighting->forward_lighting_module;
             compositor_options.lighting_algorithm_module =
-                use_scene_lighting
-                    ? "lighting/forward_pbr.glsl"
-                    : "lighting/forward_flat.glsl";
+                lighting->lighting_algorithm_module;
             compositor_options.material_source_module =
                 definition.fragment_material_source_module;
             compositor_options.ntb_module =
@@ -522,11 +608,11 @@ namespace hgl::graph::mtl
                 ? request.geometry_vertex_format->GetVertexInputHash() : 0;
             const uint64 compiler_hash =
                 contract::GetShaderCompilerProfileHash(profile);
-            hgl::hash::FNV1aHasher64 vertex_interface_hasher;
-            vertex_interface_hasher << HashFinalShaderSource(
+            hgl::hash::FNV1aHasher64 mesh_interface_hasher;
+            mesh_interface_hasher << HashFinalShaderSource(
                 plan.ms.data(), plan.ms.size())
-                                    << vertex_input_hash;
-            const uint64 vertex_interface_hash = vertex_interface_hasher;
+                                  << vertex_input_hash;
+            const uint64 mesh_interface_hash = mesh_interface_hasher;
             const uint64 fragment_interface_hash =
                 HashFinalShaderSource(plan.fs.data(), plan.fs.size());
 
@@ -536,7 +622,7 @@ namespace hgl::graph::mtl
                 plan.ms.data(),
                 plan.ms.size(),
                 plan.resolved_provider_graph_hash,
-                vertex_interface_hash,
+                mesh_interface_hash,
                 resource_contract_hash,
                 compiler_hash);
             plan.program_link.fragment_stage = BuildFinalShaderStageKey(
@@ -554,12 +640,12 @@ namespace hgl::graph::mtl
                 GetOutputContractHash(plan.output_contract);
             plan.program_link.compiler_hash = compiler_hash;
             config.program_link = &plan.program_link;
-            config.data_slot_decls =
+            config.material_private_data_slot_decls =
                 plan.depth_purpose
              && !plan.coverage.requires_material_data
                     ? nullptr
-                    : definition.data_slot_decls.empty()
-                        ? nullptr : &definition.data_slot_decls;
+                    : definition.material_private_data_slot_decls.empty()
+                        ? nullptr : &definition.material_private_data_slot_decls;
             config.defer_finalize = request.defer_finalize;
             return true;
         }
@@ -601,7 +687,7 @@ namespace hgl::graph::mtl
         if (!BuildResourceContract(definition, plan))
             return nullptr;
 
-        if (!GenerateStageSources(definition, plan))
+        if (!GenerateStageSources(profile, definition, plan))
             return nullptr;
 
         MaterialShaderCompilerInput compiler_input{};

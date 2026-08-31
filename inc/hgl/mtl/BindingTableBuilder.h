@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/mtl/ShaderProgramKey.h>
 #include <hgl/mtl/MaterialBindingContract.h>
@@ -10,7 +10,7 @@ namespace hgl::graph::mtl
 }
 namespace hgl::graph::mtl
 {
-    
+
     bool BuildBindingTable(
         const MaterialRecipe &recipe,
         const ShaderResourceSchema &layout,

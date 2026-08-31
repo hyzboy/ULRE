@@ -28,8 +28,6 @@ varyings = ["emit_data_index_id", "emit_uv0", "emit_vertex_color"]
 
 [mesh_shader]
 mode = "CharQuad"
-max_invocations = 42
 
 [resources]
-ubos = ["ViewportInfo"]
 samplers = ["Nearest"]

@@ -1,4 +1,4 @@
-/*
+﻿/*
  SunDirectionControlSystem 使用示例
 
  展示如何使用 SunDirectionControlSystem 控制太阳方向

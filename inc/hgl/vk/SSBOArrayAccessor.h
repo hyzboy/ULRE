@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/vk/VKBufferAccessBase.h>
 #include<hgl/mtl/MaterialRecipe.h>     ///< for mtl::SSBOType / mtl::SSBOBinding

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/ecs/support/RenderPipelineBase.h>
 #include <hgl/ecs/support/PrimitiveBatchPipeline.h>
@@ -10,10 +10,10 @@ namespace hgl::ecs
 
     /**
      * PrimitiveRenderPipeline - RenderPipelineBase adapter for PrimitiveBatchPipeline
-     * 
+     *
      * This class wraps the existing PrimitiveBatchPipeline to conform to RenderPipelineBase interface.
      * It delegates all pipeline operations to the underlying PrimitiveBatchPipeline instance.
-     * 
+     *
      * All rendering logic remains in PrimitiveBatchPipeline - this class just provides
      * the unified interface that the ECS framework expects.
      */

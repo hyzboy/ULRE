@@ -2,16 +2,14 @@
 
 #include<hgl/vk/VK.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
+#include<hgl/vk/VKShaderProgram.h>
 #include<hgl/type/ManagedArray.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/log/Log.h>
 
 namespace hgl::graph{
 
-class GeometryVertexFormat;
-
 using VkFormatList=ValueArray<VkFormat>;
-
 /**
  * RenderPass功能封装<br>
  * RenderPass在创建时，需要指定输入的color imageview与depth imageview象素格式，
@@ -36,12 +34,9 @@ protected:
     ManagedArray<Pipeline> pipeline_list;
 
     Pipeline *CreatePipeline(const AnsiString &,
-                             PipelineData *,
                              const ShaderStageCreateInfoList &,
                              VkPipelineLayout,
-                             const GeometryVertexFormat *gvf=nullptr,
-                             const uint64_t pipeline_config_hash=0,
-                             const bool is_overlay=false);
+                             const mtl::MaterialPipelineConfig &config);
 
 private:
 
@@ -73,17 +68,14 @@ public:
 
 public:
 
-    Pipeline *CreatePipeline(ShaderProgram *,const PipelineData *,   const GeometryVertexFormat *gvf=nullptr);
-    Pipeline *CreatePipeline(ShaderProgram *,const mtl::MaterialPipelineConfig &config, const GeometryVertexFormat *gvf=nullptr);
-    Pipeline *CreatePipeline(ShaderProgram *,const mtl::MaterialRecipe &recipe, const GeometryVertexFormat *gvf=nullptr);
+    Pipeline *CreatePipeline(ShaderProgram *,const mtl::MaterialPipelineConfig &config);
+    Pipeline *CreatePipeline(ShaderProgram *,const mtl::MaterialRecipe &recipe);
 
     /**
      * 从原始着色器阶段 + Pipeline Layout 创建管线（供 Compositor 系统使用）
      */
     Pipeline *CreatePipeline(const AnsiString &name,
                              const ShaderStageCreateInfoList &ssci,
-                             VkPipelineLayout layout,
-                             const PipelineData *pd,
-                             const GeometryVertexFormat *gvf=nullptr);
+                             VkPipelineLayout layout);
 };//class RenderPass
 }//namespace hgl::graph

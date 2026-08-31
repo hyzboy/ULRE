@@ -1,4 +1,4 @@
-#include<hgl/ecs/components/PrimitiveComponent.h>
+﻿#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/support/RenderResource.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
@@ -47,10 +47,10 @@ namespace hgl::ecs
             resource.required = false;
         }
 
-        void ResetMaterialDataSlotAuthoringResource(PrimitiveComponent::MaterialDataSlotAuthoringResource &resource)
+        void ResetMaterialPrivateDataSlotAuthoringResource(PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource &resource)
         {
-            resource.data_slot_name.clear();
-            resource.data_slot = hgl::graph::mtl::DefaultMaterialDataSlot;
+            resource.material_private_data_slot_name.clear();
+            resource.material_private_data_slot = hgl::graph::mtl::DefaultMaterialPrivateDataSlot;
             resource.ssbo_type = hgl::graph::mtl::SSBOType::UserDefined;
             resource.ssbo_id = 0;
             resource.buffer = nullptr;
@@ -290,7 +290,7 @@ namespace hgl::ecs
             UpsertRecipeTextureBinding(out_recipe, hgl::graph::mtl::GetTextureSlotName(slot), resource_id, resource->required);
         }
 
-        for (const auto &resource : materialDataSlotResources)
+        for (const auto &resource : materialPrivateDataSlotResources)
         {
             if (!resource.authored)
                 continue;
@@ -298,17 +298,17 @@ namespace hgl::ecs
             hgl::graph::mtl::SSBOType ssbo_type =
                 hgl::graph::mtl::ResolveRecipeSSBOType(
                     out_recipe,
-                    resource.data_slot_name.c_str(),
-                    resource.data_slot,
+                    resource.material_private_data_slot_name.c_str(),
+                    resource.material_private_data_slot,
                     resource.ssbo_type);
 
             if (material_program)
             {
                 for (const auto &req : material_program->GetShaderResourceSchema().resources)
                 {
-                    if (req.semantic != hgl::graph::mtl::DescriptorSemantic::MaterialDataSlotData
-                     || req.data_slot != resource.data_slot
-                     || resource.data_slot_name != req.name)
+                    if (req.semantic != hgl::graph::mtl::DescriptorSemantic::MaterialPrivateData
+                     || req.material_private_data_slot != resource.material_private_data_slot
+                     || resource.material_private_data_slot_name != req.name)
                         continue;
 
                     if (ssbo_type != hgl::graph::mtl::SSBOType::UserDefined
@@ -323,10 +323,10 @@ namespace hgl::ecs
             if (!hgl::graph::mtl::IsMaterialSSBOType(ssbo_type)
              || !hgl::graph::mtl::UpsertRecipeSSBOAssetBinding(
                     out_recipe,
-                    resource.data_slot_name,
+                    resource.material_private_data_slot_name,
                     ssbo_type,
                     resource.ssbo_id,
-                    resource.data_slot,
+                    resource.material_private_data_slot,
                     resource.data_index,
                     resource.use_data_index,
                     resource.shared_across_instances))
@@ -388,21 +388,21 @@ namespace hgl::ecs
         return (resource.use_direct_value || (resource.texture && resource.sampler)) ? &resource : nullptr;
     }
 
-    void PrimitiveComponent::SetMaterialDataSlotResource(const MaterialDataSlotAuthoringResource &resource)
+    void PrimitiveComponent::SetMaterialPrivateDataSlotResource(const MaterialPrivateDataSlotAuthoringResource &resource)
     {
-        if (!hgl::graph::mtl::IsValidMaterialDataSlotName(resource.data_slot_name))
+        if (!hgl::graph::mtl::IsValidMaterialPrivateDataSlotName(resource.material_private_data_slot_name))
             return;
 
         if (resource.ssbo_id == 0)
         {
-            ClearMaterialDataSlotResource(resource.data_slot_name, resource.data_slot);
+            ClearMaterialPrivateDataSlotResource(resource.material_private_data_slot_name, resource.material_private_data_slot);
             return;
         }
 
-        for (auto &existing : materialDataSlotResources)
+        for (auto &existing : materialPrivateDataSlotResources)
         {
-            if (existing.data_slot_name != resource.data_slot_name
-             || existing.data_slot != resource.data_slot)
+            if (existing.material_private_data_slot_name != resource.material_private_data_slot_name
+             || existing.material_private_data_slot != resource.material_private_data_slot)
                 continue;
 
             existing = resource;
@@ -411,45 +411,45 @@ namespace hgl::ecs
             return;
         }
 
-        MaterialDataSlotAuthoringResource authored_resource = resource;
+        MaterialPrivateDataSlotAuthoringResource authored_resource = resource;
         authored_resource.authored = true;
-        materialDataSlotResources.emplace_back(std::move(authored_resource));
+        materialPrivateDataSlotResources.emplace_back(std::move(authored_resource));
         ++material_authored_generation;
     }
 
-    const PrimitiveComponent::MaterialDataSlotAuthoringResource *
-        PrimitiveComponent::GetMaterialDataSlotResource(
-            const std::string &data_slot_name,
-            const uint32_t data_slot) const
+    const PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource *
+        PrimitiveComponent::GetMaterialPrivateDataSlotResource(
+            const std::string &material_private_data_slot_name,
+            const uint32_t material_private_data_slot) const
     {
-        if (!hgl::graph::mtl::IsValidMaterialDataSlotName(data_slot_name))
+        if (!hgl::graph::mtl::IsValidMaterialPrivateDataSlotName(material_private_data_slot_name))
             return nullptr;
 
-        for (const auto &resource : materialDataSlotResources)
+        for (const auto &resource : materialPrivateDataSlotResources)
         {
             if (resource.authored
-             && resource.data_slot_name == data_slot_name
-             && resource.data_slot == data_slot)
+             && resource.material_private_data_slot_name == material_private_data_slot_name
+             && resource.material_private_data_slot == material_private_data_slot)
                 return &resource;
         }
 
         return nullptr;
     }
 
-    void PrimitiveComponent::ClearMaterialDataSlotResource(
-        const std::string &data_slot_name,
-        const uint32_t data_slot)
+    void PrimitiveComponent::ClearMaterialPrivateDataSlotResource(
+        const std::string &material_private_data_slot_name,
+        const uint32_t material_private_data_slot)
     {
-        if (!hgl::graph::mtl::IsValidMaterialDataSlotName(data_slot_name))
+        if (!hgl::graph::mtl::IsValidMaterialPrivateDataSlotName(material_private_data_slot_name))
             return;
 
-        for (auto &resource : materialDataSlotResources)
+        for (auto &resource : materialPrivateDataSlotResources)
         {
-            if (resource.data_slot_name != data_slot_name
-             || resource.data_slot != data_slot)
+            if (resource.material_private_data_slot_name != material_private_data_slot_name
+             || resource.material_private_data_slot != material_private_data_slot)
                 continue;
 
-            ResetMaterialDataSlotAuthoringResource(resource);
+            ResetMaterialPrivateDataSlotAuthoringResource(resource);
             ++material_authored_generation;
             return;
         }
@@ -460,9 +460,9 @@ namespace hgl::ecs
         for (auto &resource : materialTextureResources)
             ResetMaterialTextureAuthoringResource(resource);
 
-        for (auto &resource : materialDataSlotResources)
-            ResetMaterialDataSlotAuthoringResource(resource);
-        materialDataSlotResources.clear();
+        for (auto &resource : materialPrivateDataSlotResources)
+            ResetMaterialPrivateDataSlotAuthoringResource(resource);
+        materialPrivateDataSlotResources.clear();
     }
 
     void PrimitiveComponent::InvalidateResolvedRuntimePipeline()

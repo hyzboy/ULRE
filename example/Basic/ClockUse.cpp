@@ -1,4 +1,4 @@
-// 该范例主要演示使用ECS架构结合Static/Movable Transform分离的时钟示例
+﻿// 该范例主要演示使用ECS架构结合Static/Movable Transform分离的时钟示例
 // 刻度是静态的三角形（Static Transform），指针是动态更新的三角形（Movable Transform）
 // This example demonstrates a clock using ECS architecture with Static/Movable Transform separation
 //
@@ -110,7 +110,7 @@ private:
         clock_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid2DConfig();
         clock_recipe.vertex_node_config = graph::mtl::Make2DNodeConfigNDC(true);
         graph::mtl::UpsertRecipeSSBOAssetBinding(clock_recipe,
-                                                 graph::mtl::DefaultMaterialDataSlotName,
+                                                 graph::mtl::DefaultMaterialPrivateDataSlotName,
                                                  mtl_data_ssbo_accessor->GetSSBOBinding());
         clock_asset = PrimitiveAsset(geometry, &clock_recipe, PrimitiveType::Triangles);
 
@@ -221,13 +221,13 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = ticks[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&clock_asset);
-            hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource tick_struct{};
-            tick_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
+            hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource tick_struct{};
+            tick_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
             tick_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             tick_struct.data_index = tick_slot;
             tick_struct.use_data_index = true;
             tick_struct.shared_across_instances = false;
-            primitive_comp->SetMaterialDataSlotResource(tick_struct);
+            primitive_comp->SetMaterialPrivateDataSlotResource(tick_struct);
             primitive_comp->SetVisible(true);
 
             GLogInfo(u8"[ClockApp::InitECS] Created static tick at angle %f degrees", 30.0f * i);
@@ -258,13 +258,13 @@ private:
             // 添加PrimitiveComponent
             auto primitive_comp = hands[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitiveAsset(&clock_asset);
-            hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource hand_struct{};
-            hand_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
+            hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource hand_struct{};
+            hand_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
             hand_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             hand_struct.data_index = hand_slots[i];
             hand_struct.use_data_index = true;
             hand_struct.shared_across_instances = false;
-            primitive_comp->SetMaterialDataSlotResource(hand_struct);
+            primitive_comp->SetMaterialPrivateDataSlotResource(hand_struct);
             primitive_comp->SetVisible(true);
 
             GLogInfo(u8"[ClockApp::InitECS] Created movable hand [%u] (%s)", i, hand_names[i]);

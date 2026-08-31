@@ -18,22 +18,6 @@ namespace hgl::graph::mtl{
 
 namespace
 {
-    const char *GetVertexInputName(const VertexSemantic semantic)
-    {
-        switch (semantic)
-        {
-        case VertexSemantic::Position:    return "Position";
-        case VertexSemantic::Normal:      return "Normal";
-        case VertexSemantic::Tangent:     return "Tangent";
-        case VertexSemantic::Bitangent:   return "Binormal";
-        case VertexSemantic::Color:       return "Color";
-        case VertexSemantic::Luminance:   return "Luminance";
-        case VertexSemantic::TransformID: return "TransformID";
-        case VertexSemantic::TexCoord:    return "TexCoord";
-        default:                          return nullptr;
-        }
-    }
-
     static uint32 GetNumericClassFromVkFormat(const VkFormat format)
     {
         switch (format)

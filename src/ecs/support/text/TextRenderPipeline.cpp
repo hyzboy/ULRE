@@ -1,4 +1,5 @@
 ﻿#include<hgl/ecs/support/TextRenderPipeline.h>
+#include<hgl/common/DescriptorSetTypeDef.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/TextComponent.h>
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
@@ -247,15 +248,18 @@ namespace hgl::ecs
 
             cmd->BindPipeline(res.pipeline);
 
+            // EDS 1/2/3：pipeline 只保留 shader 部分——文字材质状态（alpha blend）渲染侧动态应用
+            cmd->ApplyPipelineState(res.pipeline->GetConfig());
+
             // Bind GPU text SSBOs (b14/b15/b16) + mesh_draw_params 到每字体独立 PerObject 集
             if (res.per_object_mp)
             {
                 if (res.char_info_asb && res.char_info_asb->IsValid())
-                    res.per_object_mp->BindSSBO(14, res.char_info_asb->GetGPUBuffer());
+                    res.per_object_mp->BindSSBO(hgl::graph::kPerObjectBindingTextCharInfo, res.char_info_asb->GetGPUBuffer());
                 if (res.char_style_asb && res.char_style_asb->IsValid())
-                    res.per_object_mp->BindSSBO(15, res.char_style_asb->GetGPUBuffer());
+                    res.per_object_mp->BindSSBO(hgl::graph::kPerObjectBindingTextCharStyle, res.char_style_asb->GetGPUBuffer());
                 if (res.char_instance_asb && res.char_instance_asb->IsValid())
-                    res.per_object_mp->BindSSBO(16, res.char_instance_asb->GetGPUBuffer());
+                    res.per_object_mp->BindSSBO(hgl::graph::kPerObjectBindingTextCharInstance, res.char_instance_asb->GetGPUBuffer());
 
                 if (res.mesh_draw_params)
                     res.per_object_mp->BindSSBO("mesh_draw_params",
@@ -438,7 +442,7 @@ namespace hgl::ecs
         // 注意：不向 RDBS 注册 pipeline material——text 渲染完全自足：
         // Scene(0)/Bindless(3) 由 Render 自绑全局集，PerObject(1)/Material(2)
         // 用每字体独立集并直接绑定 SSBO（不经 domain 解析）。注册反而会让
-        // RDBS 每帧尝试解析 mtl_texture_layer_rows/mtl_data_index_rows 的
+        // RDBS 每帧尝试解析 mtl_texture_layer_rows/material_private_data_index_rows 的
         // domain 绑定（text 不注册 domain）而刷 Missing SSBO 警告。
 
         // 将字库图集注册进全局 bindless 纹理池，并写入 texture-layer / data-index
@@ -484,9 +488,9 @@ namespace hgl::ecs
         resources.texture_layer_buffer = guard.texture_layer_buffer;
         guard.texture_layer_buffer = nullptr;
 
-        // mtl_data_index_rows：MaterialDataIndexRowStride 个 uint 一行；行 0 value = 0。
+        // material_private_data_index_rows：MaterialPrivateDataIndexRowStride 个 uint 一行；行 0 value = 0。
         constexpr uint32_t data_index_row_bytes =
-            sizeof(uint32_t) * graph::mtl::MaterialDataIndexRowStride;
+            sizeof(uint32_t) * graph::mtl::MaterialPrivateDataIndexRowStride;
 
         guard.data_index_row_buffer = buffer_manager->CreateSSBO(
             "Text2D_DataIndexRows", data_index_row_bytes, graph::SharingMode::Exclusive);
@@ -495,13 +499,13 @@ namespace hgl::ecs
             return nullptr;
         }
 
-        uint32_t data_index_row[graph::mtl::MaterialDataIndexRowStride] = {};
+        uint32_t data_index_row[graph::mtl::MaterialPrivateDataIndexRowStride] = {};
         guard.data_index_row_buffer->GetGPUBuffer()->Write(data_index_row, 0, sizeof(data_index_row));
 
-        // 注意：mtl_data_index_rows 声明在 PerObject set（SBS_MaterialDataIndexRows.set_type），
+        // 注意：material_private_data_index_rows 声明在 PerObject set（SBS_MaterialPrivateDataIndexRows.set_type），
         // 与 b14/15/16 + mesh_draw_params 同集——绑到 per_object_mp；mtl_texture_layer_rows 在 Material set。
         // 同样不注册 ResourceDomain（多字体同地址注册会互相释放 buffer，见上方注释）。
-        if (!guard.per_object_mp->BindSSBO(graph::mtl::SBS_MaterialDataIndexRows.name,
+        if (!guard.per_object_mp->BindSSBO(graph::mtl::SBS_MaterialPrivateDataIndexRows.name,
                                            guard.data_index_row_buffer->GetGPUBuffer()))
         {
             return nullptr;
@@ -637,8 +641,7 @@ namespace hgl::ecs
             {
                 // CharQuad mesh shader self-declares all vertex SSBOs; no geometry_vertex_format
                 resources->pipeline = render_pass->CreatePipeline(resources->material,
-                                                                  graph::mtl::MakeAlpha2DConfig(),
-                                                                  nullptr);
+                                                                  graph::mtl::MakeAlpha2DConfig());
                 if (!resources->pipeline)
                     GLogError("[TextRenderPipeline] Failed to create GPU text pipeline");
             }
@@ -816,13 +819,12 @@ namespace hgl::ecs
                         row->first_instance  = 0;
 
                         // GPU path: total_vertices = character count (CharQuad reads this)
-                        // viewport_height = char_height (for baseline correction in shader)
                         row->is_indexed      = 0;
                         row->total_vertices  = resources->last_draw_char_count;
 
-                        // viewport_height = char_height（基础值，不乘 scale）
-                        // GPU 侧会按每个字符的 char_scale 单独缩放
-                        row->viewport_height = static_cast<float>(input.font_source->GetCharHeight());
+                        // char_height = 字符高度（基础值，不乘 scale；CharQuad 基准线校正用）
+                        // GPU 侧会按每个字符的 char_scale 单独缩放。
+                        row->char_height = static_cast<float>(input.font_source->GetCharHeight());
                         gpu->Unmap();
                     }
                 }

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 namespace hgl::graph::mtl {}
 
@@ -43,11 +43,11 @@ struct CompositorMaterialBuildConfig
 {
     PrimitiveType primitive_type = PrimitiveType::Triangles;
     uint32_t shader_stage_flag_bits = uint32_t(ShaderStage::MeshFragment);
-    // Per-material SSBO slot declarations (index == data_slot).
-    // When non-null and non-empty, MaterialShaderCompiler generates MaterialDataSlot
+    // Per-material SSBO slot declarations (index == material_private_data_slot).
+    // When non-null and non-empty, MaterialShaderCompiler generates MaterialPrivateData
     // mtl::SerializedDescriptorEntry items and injects the material SSBO struct/buffer
     // declarations into the fragment GLSL.
-    const std::vector<mtl::DataSlotDeclaration> *data_slot_decls = nullptr;
+    const std::vector<mtl::MaterialPrivateDataSlotDeclaration> *material_private_data_slot_decls = nullptr;
     // Optional: capability declaration source for development-time subset validation.
     // When non-null, CompileCompositorMaterial checks Layout requirements ⊆ Definition capabilities.
     const mtl::MaterialDefinition *material_definition = nullptr;
@@ -70,8 +70,9 @@ bool FinalizeShaderBuildContext(
  * 生成 sampler 预设宏字符串（统一注册机制）。
  *
  * 遍历 sampler_names，为每个名字生成 "#define <name>Sampler <idx>u"。
- * idx 经 SamplerPresetLibrary::GetIndex 查询（查不到保底 0），
- * 与运行时 binding=1 的数组下标保持一致。空列表返回空字符串。
+ * idx 经 SamplerPresetLibrary::GetIndex 查询（查不到则报错并跳过——不生成宏，
+ * 让 shader 编译因未定义宏显式失败，而非静默错位成错误采样器），
+ * 与运行时 bindless 采样器数组的下标保持一致。空列表返回空字符串。
  */
 std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names);
 

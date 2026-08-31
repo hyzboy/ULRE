@@ -1,4 +1,4 @@
-#include<hgl/framework/WorkManager.h>
+﻿#include<hgl/framework/WorkManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
@@ -91,7 +91,7 @@ private:
         mesh_recipe.mtl_def_id = "Lit";
         mesh_recipe.render_state_overrides.pipeline_config = mtl::MakeSolid3DConfig();
         graph::mtl::UpsertRecipeSSBOAssetBinding(mesh_recipe,
-                                                 graph::mtl::DefaultMaterialDataSlotName,
+                                                 graph::mtl::DefaultMaterialPrivateDataSlotName,
                                                  mtl_data_ssbo_accessor->GetSSBOBinding());
 
         base_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
@@ -403,13 +403,13 @@ private:
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_texture, sampler);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal, normal_texture, sampler);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_texture, sampler);
-            hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource floor_struct{};
-            floor_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
+            hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource floor_struct{};
+            floor_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
             floor_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             floor_struct.data_index = 0;
             floor_struct.use_data_index = false;
             floor_struct.shared_across_instances = false;
-            primitive_comp->SetMaterialDataSlotResource(floor_struct);
+            primitive_comp->SetMaterialPrivateDataSlotResource(floor_struct);
             primitive_comp->SetVisible(true);
         }
 
@@ -440,13 +440,13 @@ private:
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_texture, sampler);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Normal, normal_texture, sampler);
             primitive_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::Roughness, roughness_texture, sampler);
-            hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource mesh_struct{};
-            mesh_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
+            hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource mesh_struct{};
+            mesh_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
             mesh_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             mesh_struct.data_index = 0;
             mesh_struct.use_data_index = false;
             mesh_struct.shared_across_instances = false;
-            primitive_comp->SetMaterialDataSlotResource(mesh_struct);
+            primitive_comp->SetMaterialPrivateDataSlotResource(mesh_struct);
             primitive_comp->SetVisible(true);
 
             ++index;

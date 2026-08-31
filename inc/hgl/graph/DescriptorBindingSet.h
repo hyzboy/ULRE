@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/vk/VK.h>
@@ -26,7 +26,7 @@ namespace hgl
                 bool valid = false;
                 mtl::SSBOType ssbo_type = mtl::SSBOType::UserDefined;
                 uint32_t ssbo_id = 0;
-                uint32_t data_slot = 0;
+                uint32_t material_private_data_slot = 0;
             };
 
             struct TextureBinding
@@ -47,11 +47,11 @@ namespace hgl
             void SetMaterial(ShaderProgram *mtl);
             ShaderProgram *GetShaderProgram() const { return material; }
 
-            bool SetSSBOBinding(mtl::SSBOType ssbo_type, uint32_t ssbo_id, uint32_t data_slot);
+            bool SetSSBOBinding(mtl::SSBOType ssbo_type, uint32_t ssbo_id, uint32_t material_private_data_slot);
             bool HasSSBOBinding(mtl::SSBOType ssbo_type) const;
             bool GetSSBOBinding(mtl::SSBOType ssbo_type, SSBOBinding &out_binding) const;
             uint32_t GetSSBOID(mtl::SSBOType ssbo_type) const;
-            uint32_t GetDataSlot(mtl::SSBOType ssbo_type) const;
+            uint32_t GetMaterialPrivateDataSlot(mtl::SSBOType ssbo_type) const;
             void ClearSSBOBinding(mtl::SSBOType ssbo_type);
 
             bool SetTextureBinding(mtl::TextureSlot slot, Texture *texture, Sampler *sampler = nullptr);

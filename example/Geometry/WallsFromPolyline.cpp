@@ -1,4 +1,4 @@
-#include<hgl/framework/WorkManager.h>
+﻿#include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
 #include<hgl/graph/geo/Wall.h>
@@ -108,13 +108,13 @@ public:
 
             prim_comp->SetPrimitiveAsset(&wall_meshes[i]);
             prim_comp->SetMaterialTextureResource(graph::mtl::TextureSlot::BaseColor, base_color_texture, sampler);
-            hgl::ecs::PrimitiveComponent::MaterialDataSlotAuthoringResource wall_struct{};
-            wall_struct.data_slot_name = graph::mtl::DefaultMaterialDataSlotName;
+            hgl::ecs::PrimitiveComponent::MaterialPrivateDataSlotAuthoringResource wall_struct{};
+            wall_struct.material_private_data_slot_name = graph::mtl::DefaultMaterialPrivateDataSlotName;
             wall_struct.ssbo_id = mtl_data_ssbo_accessor->GetSSBOId();
             wall_struct.data_index = 0;
             wall_struct.use_data_index = true;
             wall_struct.shared_across_instances = true;
-            prim_comp->SetMaterialDataSlotResource(wall_struct);
+            prim_comp->SetMaterialPrivateDataSlotResource(wall_struct);
             prim_comp->SetVisible(true);
         }
 
@@ -157,7 +157,7 @@ public:
         mtl_data_ssbo_accessor->Commit();
 
         graph::mtl::UpsertRecipeSSBOAssetBinding(wall_recipe,
-                                                 graph::mtl::DefaultMaterialDataSlotName,
+                                                 graph::mtl::DefaultMaterialPrivateDataSlotName,
                                                  mtl_data_ssbo_accessor->GetSSBOBinding());
 
         // Standard surface (QUALITY_TIER=Medium) samples TexAlbedo; bind a fallback texture.

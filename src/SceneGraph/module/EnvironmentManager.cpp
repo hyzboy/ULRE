@@ -1,4 +1,4 @@
-#include<hgl/graph/module/EnvironmentManager.h>
+﻿#include<hgl/graph/module/EnvironmentManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/ShaderBufferSources.h>

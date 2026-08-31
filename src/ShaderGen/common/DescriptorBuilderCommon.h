@@ -1,6 +1,7 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/mtl/SerializedDescriptorEntry.h>
+#include <hgl/mtl/DescriptorResourceCatalog.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
 #include <hgl/mtl/ModuleResourceManifest.h>
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
@@ -13,42 +14,53 @@ namespace hgl::graph::mtl::descriptor_builder_common
 {
     using namespace hgl::graph::mtl;
 
+    // 同构 Push 的通用入表函数（T4.2）：name/struct/semantic/ssbo_type 等差异
+    // 由调用方以参数给出，消除每个 Push* 重复 9 行样板。新增顶点语义时只需
+    // 加一个一行包装（数据在此集中，layer 由 semantic 推导）。
+    inline void PushBySpec(
+        std::vector<SerializedDescriptorEntry> &v,
+        const DescriptorSetType set_type,
+        const char *name,
+        const char *struct_name,
+        const DescriptorSemantic semantic,
+        const SSBOType ssbo_type,
+        const uint32_t stage_flags)
+    {
+        v.push_back({
+            set_type, stage_flags,
+            name, struct_name, nullptr, semantic,
+            TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, ssbo_type,
+            GetDescriptorSemanticLayer(semantic)
+        });
+    }
+
 inline void PushViewport(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
-    v.push_back({
-        DescriptorSetType::Scene, DescriptorKind::UBO, stage_flags,
-        "viewport", "ViewportInfo", nullptr, DescriptorSemantic::ViewportInfo,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO
-    });
+    PushBySpec(v, DescriptorSetType::Scene,
+               "viewport", "ViewportInfo", DescriptorSemantic::ViewportInfo,
+               SSBOType::UserDefined, stage_flags);
 }
 
 inline void PushCamera(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
-    v.push_back({
-        DescriptorSetType::Scene, DescriptorKind::UBO, stage_flags,
-        "camera", "CameraInfo", nullptr, DescriptorSemantic::CameraInfo,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO
-    });
+    PushBySpec(v, DescriptorSetType::Scene,
+               "camera", "CameraInfo", DescriptorSemantic::CameraInfo,
+               SSBOType::UserDefined, stage_flags);
 }
 
 inline void PushSky(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
-    v.push_back({
-        DescriptorSetType::Scene, DescriptorKind::UBO, stage_flags,
-        "sky", "SkyInfo", nullptr, DescriptorSemantic::SkyInfo,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::UBO
-    });
+    PushBySpec(v, DescriptorSetType::Scene,
+               "sky", "SkyInfo", DescriptorSemantic::SkyInfo,
+               SSBOType::UserDefined, stage_flags);
 }
 
 inline void PushMaterialColorPalette(std::vector<SerializedDescriptorEntry> &v,
                                      const uint32_t stage_flags)
 {
-    v.push_back({
-        DescriptorSetType::Scene, DescriptorKind::UBO, stage_flags,
-        "color_palette", "ColorPalette", nullptr, DescriptorSemantic::MaterialColorPalette,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined,
-        DescriptorSemanticLayer::UBO
-    });
+    PushBySpec(v, DescriptorSetType::Scene,
+               "color_palette", "ColorPalette", DescriptorSemantic::MaterialColorPalette,
+               SSBOType::UserDefined, stage_flags);
 }
 
 inline void MergeUBODescriptor(
@@ -61,7 +73,7 @@ inline void MergeUBODescriptor(
 {
     for (auto &entry : v)
     {
-        if (entry.kind != DescriptorKind::UBO
+        if (entry.semantic_layer != DescriptorSemanticLayer::UBO
          || entry.semantic != semantic)
             continue;
 
@@ -118,120 +130,59 @@ inline void AppendDefinitionUBODescriptors(
     }
 }
 
-inline void PushLocalToWorld(std::vector<SerializedDescriptorEntry> &v, const DescriptorKind kind, const uint32_t stage_flags)
+inline void PushLocalToWorld(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
-    v.push_back({
-        DescriptorSetType::PerObject, kind, stage_flags,
-        "l2w", "LocalToWorldData", nullptr, DescriptorSemantic::LocalToWorld,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, GetDescriptorSemanticLayerByKind(kind)
-    });
+    PushBySpec(v, DescriptorSetType::PerObject,
+               "l2w", "LocalToWorldData", DescriptorSemantic::LocalToWorld,
+               SSBOType::UserDefined, stage_flags);
 }
 
 inline void PushLocalToWorldIndexRows(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
-    v.push_back({
-        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
-        "l2w_index_rows", "LocalToWorldIndexRows", nullptr, DescriptorSemantic::LocalToWorldIndexTable,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO
-    });
+    PushBySpec(v, DescriptorSetType::PerObject,
+               "l2w_index", "LocalToWorldIndex", DescriptorSemantic::LocalToWorldIndex,
+               SSBOType::UserDefined, stage_flags);
 }
 
-// ── 顶点数据 SSBO（MeshShader 方向：顶点输入统一为 SSBO）──
-// PerObject 集固定 binding（kPerObjectBindingVertex*），固定名路径
-inline void PushVertexPosition(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
+// ── 顶点数据 SSBO（Vertex 集：顶点输入统一为 SSBO，Phase 5 自 PerObject 迁出）──
+// S1-T1.3：原 8 个同形 PushVertexXxx 已收敛为表驱动模板——set/name/struct/ssbo_type
+// 全部取自 kDescriptorResourceCatalog（"语义 → 集合/绑定/SBS"唯一真源）。
+// 语义作模板参数：未登记 / 无固定 SBS 的语义 = **编译错误**，不是运行期静默无操作。
+// 新增顶点语义只需在资源目录登记一行（目录侧 static_assert 保证不漏登记）。
+template<DescriptorSemantic SEMANTIC>
+inline void PushVertexResource(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
-    v.push_back({
-        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
-        SBS_VertexPosition.name, SBS_VertexPosition.struct_name, nullptr, DescriptorSemantic::VertexPosition,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::VertexPosition, DescriptorSemanticLayer::SSBO
-    });
+    static constexpr const DescriptorResourceCatalogEntry *row = FindResourceCatalogEntry(SEMANTIC);
+    static_assert(row != nullptr,
+                  "该语义未在 kDescriptorResourceCatalog 登记——先在资源目录加一行");
+    static_assert(row->sbs != nullptr,
+                  "顶点资源必须有固定 SBS 行（name/struct 取自 SBS，不接受动态命名）");
+
+    PushBySpec(v, row->set_type,
+               row->sbs->name, row->sbs->struct_name,
+               row->semantic, row->ssbo_type, stage_flags);
 }
 
-inline void PushVertexUV(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
-{
-    v.push_back({
-        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
-        SBS_VertexUV.name, SBS_VertexUV.struct_name, nullptr, DescriptorSemantic::VertexUV,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::VertexUV, DescriptorSemanticLayer::SSBO
-    });
-}
-
-inline void PushVertexNTB(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
-{
-    v.push_back({
-        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
-        SBS_VertexNTB.name, SBS_VertexNTB.struct_name, nullptr, DescriptorSemantic::VertexNTB,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::VertexNTB, DescriptorSemanticLayer::SSBO
-    });
-}
-
-inline void PushVertexColor(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
-{
-    v.push_back({
-        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
-        SBS_VertexColor.name, SBS_VertexColor.struct_name, nullptr, DescriptorSemantic::VertexColor,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::VertexColor, DescriptorSemanticLayer::SSBO
-    });
-}
-
-inline void PushVertexLuminance(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
-{
-    v.push_back({
-        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
-        SBS_VertexLuminance.name, SBS_VertexLuminance.struct_name, nullptr, DescriptorSemantic::VertexLuminance,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::VertexLuminance, DescriptorSemanticLayer::SSBO
-    });
-}
-
-inline void PushVertexTransformID(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
-{
-    v.push_back({
-        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
-        SBS_VertexTransformID.name, SBS_VertexTransformID.struct_name, nullptr, DescriptorSemantic::VertexTransformID,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::VertexTransformID, DescriptorSemanticLayer::SSBO
-    });
-}
-
-inline void PushVertexSize(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
-{
-    v.push_back({
-        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
-        SBS_VertexSize.name, SBS_VertexSize.struct_name, nullptr, DescriptorSemantic::VertexSize,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::VertexSize, DescriptorSemanticLayer::SSBO
-    });
-}
-
-inline void PushVertexIndex(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
-{
-    v.push_back({
-        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
-        SBS_VertexIndex.name, SBS_VertexIndex.struct_name, nullptr, DescriptorSemantic::VertexIndex,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::VertexIndex, DescriptorSemanticLayer::SSBO
-    });
-}
-
-inline void PushMaterialDataSlot(std::vector<SerializedDescriptorEntry> &v,
+inline void PushMaterialPrivateDataSlot(std::vector<SerializedDescriptorEntry> &v,
                                  const uint32_t stage_flags,
                                  const char *name,
                                  const char *struct_name,
-                                 const uint32_t data_slot,
+                                 const uint32_t material_private_data_slot,
                                  const SSBOType ssbo_type)
 {
     v.push_back({
-        DescriptorSetType::Material, DescriptorKind::SSBO, stage_flags,
-        name, struct_name, nullptr, DescriptorSemantic::MaterialDataSlotData,
-        TextureSlot::BaseColor, data_slot, ssbo_type, GetDescriptorSemanticLayerByKind(DescriptorKind::SSBO)
+        DescriptorSetType::Material, stage_flags,
+        name, struct_name, nullptr, DescriptorSemantic::MaterialPrivateData,
+        TextureSlot::BaseColor, material_private_data_slot, ssbo_type, DescriptorSemanticLayer::SSBO
     });
 }
 
-inline void PushMaterialDataIndexRows(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
+inline void PushMaterialPrivateDataIndexRows(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
-    v.push_back({
-        // P1-2c：mtl_data_index_rows 迁至 PerObject 集（实例→材质行索引表）。
-        DescriptorSetType::PerObject, DescriptorKind::SSBO, stage_flags,
-        "mtl_data_index_rows", "DataIndexRows", nullptr, DescriptorSemantic::MaterialDataIndexTable,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::MaterialDataIndexTable, DescriptorSemanticLayer::SSBO
-    });
+    // P1-2c：MaterialPrivateDataIndexRows 迁至 PerObject 集（实例→材质行索引表）。
+    PushBySpec(v, DescriptorSetType::PerObject,
+               "mtl_private_data_index", "MaterialPrivateDataIndex", DescriptorSemantic::MaterialPrivateDataIndex,
+               SSBOType::MaterialPrivateDataIndex, stage_flags);
 }
 
 inline void PushMaterialTextureLayerRows(
@@ -242,9 +193,9 @@ inline void PushMaterialTextureLayerRows(
     const bool allow_fallback = false)
 {
     SerializedDescriptorEntry entry{
-        DescriptorSetType::Material, DescriptorKind::SSBO, stage_flags,
+        DescriptorSetType::Material, stage_flags,
         "mtl_texture_layer_rows", "TextureLayerRows", nullptr, DescriptorSemantic::MaterialTextureLayerTable,
-        TextureSlot::BaseColor, DefaultMaterialDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO
+        TextureSlot::BaseColor, DefaultMaterialPrivateDataSlot, SSBOType::UserDefined, DescriptorSemanticLayer::SSBO
     };
     entry.has_requirement_policy = has_policy;
     entry.required = required;
@@ -258,20 +209,20 @@ inline void AppendDefinitionMaterialDescriptors(
     const uint32_t stage_flags,
     const uint32_t texture_layer_table_stage_flags)
 {
-    for (uint32_t i = 0; i < static_cast<uint32_t>(definition.data_slot_decls.size()); ++i)
+    for (uint32_t i = 0; i < static_cast<uint32_t>(definition.material_private_data_slot_decls.size()); ++i)
     {
-        const auto &decl = definition.data_slot_decls[i];
-        PushMaterialDataSlot(
+        const auto &decl = definition.material_private_data_slot_decls[i];
+        PushMaterialPrivateDataSlot(
             v,
             stage_flags,
             decl.name.c_str(),
             ssbo::GetMaterialSSBOStructName(decl.ssbo_type),
-            i,
+            DefaultMaterialPrivateDataSlot,
             decl.ssbo_type);
     }
 
-    if (!definition.data_slot_decls.empty())
-        PushMaterialDataIndexRows(v, stage_flags);
+    if (!definition.material_private_data_slot_decls.empty())
+        PushMaterialPrivateDataIndexRows(v, stage_flags);
 
     // P1-2e：mtl_texture_layer_rows 仅当材质声明纹理槽时才要求。
     // 有数据槽但无纹理槽的材质（PureColor 等）不再隐式要求
@@ -311,14 +262,14 @@ inline bool MergeSSBODescriptor(
 {
     for (auto &existing : v)
     {
-        if (existing.kind != DescriptorKind::SSBO
-         || incoming.kind != DescriptorKind::SSBO)
+        if (existing.semantic_layer != DescriptorSemanticLayer::SSBO
+         || incoming.semantic_layer != DescriptorSemanticLayer::SSBO)
             continue;
 
         const bool same_name = CStrEqual(existing.name, incoming.name);
         const bool same_semantic_slot =
             existing.semantic == incoming.semantic
-         && existing.data_slot == incoming.data_slot;
+         && existing.material_private_data_slot == incoming.material_private_data_slot;
         if (!same_name && !same_semantic_slot)
             continue;
 
@@ -352,46 +303,30 @@ inline bool PushManifestSSBO(
     entry.stage_flags = ssbo.stage_flags;
     entry.name = ssbo.name;
     entry.struct_name = ssbo::GetMaterialSSBOStructName(ssbo.ssbo_type);
-    entry.data_slot = ssbo.data_slot;
+    entry.material_private_data_slot = ssbo.material_private_data_slot;
     entry.ssbo_type = ssbo.ssbo_type;
-    entry.ssbo_id = MakeRecipeSSBOId(ssbo.data_slot);
+    entry.ssbo_id = MakeRecipeSSBOId(ssbo.material_private_data_slot);
     entry.has_requirement_policy = true;
     entry.required = ssbo.required;
     entry.allow_fallback = ssbo.allow_fallback;
 
-    // 顶点数据 SSBO（MeshShader 方向）：PerObject 集 + 固定 binding（kPerObjectBindingVertex*）
-    switch (ssbo.ssbo_type)
+    // 顶点数据 SSBO（Vertex 集）：set/semantic 由目录表按 ssbo_type 反查
+    if (const DescriptorResourceCatalogEntry *cat =
+            FindResourceCatalogEntryBySSBOType(ssbo.ssbo_type);
+        cat && cat->cls == ResourceCatalogClass::VertexGeometry)
     {
-    case SSBOType::VertexPosition:
-        entry.set_type = DescriptorSetType::PerObject;
-        entry.kind = DescriptorKind::SSBO;
-        entry.semantic = DescriptorSemantic::VertexPosition;
+        entry.set_type = cat->set_type;
+        entry.semantic = cat->semantic;
         entry.semantic_layer = DescriptorSemanticLayer::SSBO;
-        break;
-    case SSBOType::VertexUV:
-        entry.set_type = DescriptorSetType::PerObject;
-        entry.kind = DescriptorKind::SSBO;
-        entry.semantic = DescriptorSemantic::VertexUV;
-        entry.semantic_layer = DescriptorSemanticLayer::SSBO;
-        break;
-    case SSBOType::VertexNTB:
-        entry.set_type = DescriptorSetType::PerObject;
-        entry.kind = DescriptorKind::SSBO;
-        entry.semantic = DescriptorSemantic::VertexNTB;
-        entry.semantic_layer = DescriptorSemanticLayer::SSBO;
-        break;
-    case SSBOType::VertexIndex:
-        entry.set_type = DescriptorSetType::PerObject;
-        entry.kind = DescriptorKind::SSBO;
-        entry.semantic = DescriptorSemantic::VertexIndex;
-        entry.semantic_layer = DescriptorSemanticLayer::SSBO;
-        break;
-    default:
+    }
+    else
+    {
+        // 材质私有数据 SSBO：单槽方案下固定 material_private_data_slot == 0（MaterialPrivateData）。
+        if (ssbo.material_private_data_slot != DefaultMaterialPrivateDataSlot)
+            return false;
         entry.set_type = DescriptorSetType::Material;
-        entry.kind = DescriptorKind::SSBO;
-        entry.semantic = DescriptorSemantic::MaterialDataSlotData;
+        entry.semantic = DescriptorSemantic::MaterialPrivateData;
         entry.semantic_layer = DescriptorSemanticLayer::SSBO;
-        break;
     }
     return MergeSSBODescriptor(v, entry);
 }
@@ -423,7 +358,6 @@ inline bool AppendManifestTextureLayerDescriptors(
         const auto &layer = manifest.texture_layers[i];
         SerializedDescriptorEntry entry{};
         entry.set_type = DescriptorSetType::Material;
-        entry.kind = DescriptorKind::SSBO;
         entry.stage_flags = layer.stage_flags;
         entry.name = "mtl_texture_layer_rows";
         entry.struct_name = "TextureLayerRows";
@@ -444,28 +378,28 @@ inline bool AppendManifestTextureLayerDescriptors(
 
 // Provider modules may declare their own "mtl"-style data-slot SSBO purely via
 // manifest metadata (`@ulre ssbo ...`), without the material TOML also listing it
-// under [resources].ssbos. In that case `definition.data_slot_decls` stays empty,
-// so AppendDefinitionMaterialDescriptors() never pushes the mtl_data_index_rows
-// index table — yet ResolveDataIndexID() is still referenced unconditionally by
+// under [resources].ssbos. In that case `definition.material_private_data_slot_decls` stays empty,
+// so AppendDefinitionMaterialDescriptors() never pushes the MaterialPrivateDataIndexRows
+// index table — yet ResolveMaterialPrivateDataIndex() is still referenced unconditionally by
 // the vertex assembler. Scan the merged descriptor list for any
-// MaterialDataSlotData entry (from either source) and make sure the matching
-// MaterialDataIndexTable entry exists.
-inline void EnsureMaterialDataIndexTable(
+// MaterialPrivateData entry (from either source) and make sure the matching
+// MaterialPrivateDataIndex entry exists.
+inline void EnsureMaterialPrivateDataIndexTable(
     std::vector<SerializedDescriptorEntry> &v,
     const uint32_t stage_flags)
 {
-    bool has_data_slot = false;
+    bool has_material_private_data_slot = false;
     bool has_index_table = false;
     for (const auto &entry : v)
     {
-        if (entry.semantic == DescriptorSemantic::MaterialDataSlotData)
-            has_data_slot = true;
-        else if (entry.semantic == DescriptorSemantic::MaterialDataIndexTable)
+        if (entry.semantic == DescriptorSemantic::MaterialPrivateData)
+            has_material_private_data_slot = true;
+        else if (entry.semantic == DescriptorSemantic::MaterialPrivateDataIndex)
             has_index_table = true;
     }
 
-    if (has_data_slot && !has_index_table)
-        PushMaterialDataIndexRows(v, stage_flags);
+    if (has_material_private_data_slot && !has_index_table)
+        PushMaterialPrivateDataIndexRows(v, stage_flags);
 }
 
 inline bool BuildDefinitionModuleResourceManifest(
@@ -505,11 +439,10 @@ inline uint64 HashDescriptorEntries(
     for (const auto &entry : entries)
     {
         h << entry.set_type
-          << entry.kind
           << entry.stage_flags
           << entry.semantic
           << entry.texture_slot
-          << entry.data_slot
+          << entry.material_private_data_slot
           << entry.ssbo_type
           << entry.semantic_layer
           << entry.ssbo_id

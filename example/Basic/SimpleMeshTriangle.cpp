@@ -1,4 +1,4 @@
-// P1: MeshShader 最小验证示例——手写 mesh+frag GLSL，裸 vkCreateGraphicsPipelines 建 mesh 管线，
+﻿// P1: MeshShader 最小验证示例——手写 mesh+frag GLSL，裸 vkCreateGraphicsPipelines 建 mesh 管线，
 // vkCmdDrawMeshTasksEXT 出图。验证 VK_EXT_mesh_shader 全链（编译→管线→绘制）在 AMD 6700 XT 上可用。
 //
 // 注意：本示例故意绕过 ShaderGen/ECS——P1 目标是打通 mesh shader 硬链路的 smoke test。

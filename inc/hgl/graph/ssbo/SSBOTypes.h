@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/type/EnumUtil.h>
 #include <hgl/CoreType.h>
@@ -9,15 +9,7 @@ namespace hgl::graph::mtl
     // SSBO 类型枚举：用于在 Recipe/Spec 中以稳定整数传递“结构体数据落在哪类缓冲”。
     enum class SSBOType : uint16_t
     {
-        TextureLayer = 0,
-        MaterialDataIndexTable,
-        PBRSurface,
-        EmissiveSurface,
-        TextureRectArraySurface,
-        TransmissionSurface,
-        TransformIndexRows,
-        LocalToWorld,
-        UserDefined,
+        MeshDrawParams=0,
         // 顶点数据 SSBO（MeshShader 方向：顶点输入统一为 SSBO）
         VertexPosition,
         VertexUV,
@@ -27,18 +19,29 @@ namespace hgl::graph::mtl
         VertexTransformID,
         VertexSize,
         VertexIndex,
-        MeshDrawParams,
 
-        ENUM_CLASS_RANGE(TextureLayer, MeshDrawParams)
+        LocalToWorld,
+        LocalToWorldIndex,
+
+        UserDefined,
+        MaterialPrivateDataIndex,
+
+        TextureLayer,
+
+        PBRSurface,
+        EmissiveSurface,
+        TextureRectArraySurface,
+        TransmissionSurface,
+
+        ENUM_CLASS_RANGE(MeshDrawParams,TransmissionSurface)
     };
 
     using SSBOCategory = SSBOType;
-    constexpr uint32_t DefaultMaterialDataSlot = 0;
-    // Hard upper bound for SSBO slot validation; actual count is per-material (data_slot_decls.size()).
-    constexpr uint32_t MaxMaterialDataSlotsPerMaterial = 64u;
-    // The shared DataIndex table uses a fixed row width so materials with
-    // different slot counts can share one runtime buffer safely.
-    constexpr uint32_t MaterialDataIndexRowStride = MaxMaterialDataSlotsPerMaterial;
+    constexpr uint32_t DefaultMaterialPrivateDataSlot = 0;
+    // 单槽化：一个材质只有一个私有数据 SSBO（MaterialPrivateData）。
+    // 槽位数恒为 1，行表写单列。
+    constexpr uint32_t MaxMaterialPrivateDataSlotsPerMaterial = 1u;
+    constexpr uint32_t MaterialPrivateDataIndexRowStride = MaxMaterialPrivateDataSlotsPerMaterial;
 
     constexpr bool IsMaterialSSBOType(const SSBOType type) noexcept
     {
@@ -59,13 +62,14 @@ namespace hgl::graph::mtl
     {
         switch (type)
         {
+        case SSBOType::MeshDrawParams: return "MeshDrawParams";
         case SSBOType::TextureLayer: return "TextureLayer";
-        case SSBOType::MaterialDataIndexTable: return "MaterialDataIndexTable";
+        case SSBOType::MaterialPrivateDataIndex: return "MaterialPrivateDataIndex";
         case SSBOType::PBRSurface: return "PBRSurface";
         case SSBOType::EmissiveSurface: return "EmissiveSurface";
         case SSBOType::TextureRectArraySurface: return "TextureRectArraySurface";
         case SSBOType::TransmissionSurface: return "TransmissionSurface";
-        case SSBOType::TransformIndexRows: return "TransformIndexRows";
+        case SSBOType::LocalToWorldIndex: return "LocalToWorldIndex";
         case SSBOType::LocalToWorld: return "LocalToWorld";
         case SSBOType::UserDefined: return "UserDefined";
         case SSBOType::VertexPosition: return "VertexPosition";
@@ -85,8 +89,8 @@ namespace hgl::graph::mtl
         switch (type)
         {
         case SSBOType::TextureLayer:
-        case SSBOType::MaterialDataIndexTable:
-        case SSBOType::TransformIndexRows:
+        case SSBOType::MaterialPrivateDataIndex:
+        case SSBOType::LocalToWorldIndex:
         case SSBOType::LocalToWorld:
         case SSBOType::PBRSurface:
         case SSBOType::EmissiveSurface:
@@ -106,8 +110,8 @@ namespace hgl::graph::mtl
         {
         case SSBOType::TextureLayer:
             return sizeof(uint32_t) * static_cast<uint32_t>(TextureSlot::RANGE_SIZE);
-        case SSBOType::MaterialDataIndexTable:
-            return 0;  // dynamic: stride = data_slot_decls.size() * sizeof(uint32_t) per material
+        case SSBOType::MaterialPrivateDataIndex:
+            return 0;  // dynamic: stride = material_private_data_slot_decls.size() * sizeof(uint32_t) per material
         case SSBOType::PBRSurface:
             return sizeof(float) * 8; // vec4 base_color + metallic + roughness + normal_scale + fresnel
         case SSBOType::EmissiveSurface:
@@ -116,7 +120,7 @@ namespace hgl::graph::mtl
             return sizeof(uint32_t) * 4;                // uvec4 id
         case SSBOType::TransmissionSurface:
             return sizeof(uint32_t);                     // packed uint payload
-        case SSBOType::TransformIndexRows:
+        case SSBOType::LocalToWorldIndex:
             return sizeof(uint32_t);
         case SSBOType::LocalToWorld:
             return sizeof(float) * 16;
@@ -152,7 +156,7 @@ namespace hgl::graph::mtl
 
     namespace ECSReservedSSBOId
     {
-        constexpr uint32_t TransformIndexRows   = MakeECSSSBOId(1);
+        constexpr uint32_t LocalToWorldIndex   = MakeECSSSBOId(1);
         constexpr uint32_t LocalToWorldData     = MakeECSSSBOId(2);
     }
 
@@ -174,9 +178,9 @@ namespace hgl::graph::mtl
         }
     };
 
-    inline SSBOAddress MakeSSBOAddress(const SSBOType ssbo_type, const uint32_t ssbo_id, const uint32_t data_slot) noexcept
+    inline SSBOAddress MakeSSBOAddress(const SSBOType ssbo_type, const uint32_t ssbo_id, const uint32_t material_private_data_slot) noexcept
     {
-        return SSBOAddress{ssbo_type, ssbo_id, data_slot};
+        return SSBOAddress{ssbo_type, ssbo_id, material_private_data_slot};
     }
 
     inline SSBOAddress MakeSSBOAddress(const SSBOType ssbo_type, const uint32_t ssbo_id, const TextureSlot slot) noexcept

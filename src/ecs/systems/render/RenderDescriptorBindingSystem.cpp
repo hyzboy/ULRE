@@ -1,4 +1,5 @@
-#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
+﻿#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
+#include<hgl/mtl/DescriptorResourceCatalog.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/support/RenderResource.h>
 #include<hgl/ecs/systems/render/RenderFrameUBOSyncSystem.h>
@@ -643,7 +644,7 @@ namespace hgl::ecs
                     auto material_comp = entity->GetComponent<MaterialComponent>();
                     if (const auto *resolved = material_comp
                         ? material_comp->FindResolvedSSBOBinding(
-                            req.name.c_str(), req.data_slot, req.ssbo_type)
+                            req.name.c_str(), req.material_private_data_slot, req.ssbo_type)
                         : nullptr)
                     {
                         candidate_ssbo_id = resolved->ssbo_id;
@@ -657,7 +658,7 @@ namespace hgl::ecs
                     if (primitive_comp->BuildResolvedAuthoringMaterialRecipe(effective_recipe, material))
                     {
                         if (const auto *asset = graph::mtl::FindRecipeSSBOAssetBinding(
-                                effective_recipe, req.name.c_str(), req.data_slot, req.ssbo_type))
+                                effective_recipe, req.name.c_str(), req.material_private_data_slot, req.ssbo_type))
                         {
                             candidate_ssbo_id = asset->ssbo_id;
                             has_candidate = true;
@@ -670,7 +671,7 @@ namespace hgl::ecs
                                 if (auto material_comp = entity->GetComponent<MaterialComponent>())
                                     material_comp->SetResolvedSSBOBinding(
                                         req.name.c_str(),
-                                        req.data_slot,
+                                        req.material_private_data_slot,
                                         req.ssbo_type,
                                         candidate_ssbo_id);
                             }
@@ -694,7 +695,7 @@ namespace hgl::ecs
                               material->GetName().c_str(),
                               graph::mtl::GetDescriptorSemanticName(req.semantic),
                               req.name.c_str(),
-                              req.data_slot,
+                              req.material_private_data_slot,
                               ssbo_id,
                               candidate_ssbo_id);
                     batch->descriptor_bind_valid = false;
@@ -770,17 +771,17 @@ namespace hgl::ecs
                 }
                 break;
             }
-            case graph::mtl::DescriptorSemantic::LocalToWorldIndexTable:
+            case graph::mtl::DescriptorSemantic::LocalToWorldIndex:
             {
                 const graph::IGPUBuffer *table_buffer = nullptr;
 
                 // Prefer the per-batch buffer written in draw order by PrimitiveBatchPipeline.
-                if (batch && batch->l2w_index_rows_buffer)
+                if (batch && batch->l2w_index_buffer)
                 {
-                    const auto *candidate = batch->l2w_index_rows_buffer->GetGPUBuffer();
+                    const auto *candidate = batch->l2w_index_buffer->GetGPUBuffer();
                     const uint32_t element_count = static_cast<uint32_t>(batch->items.size());
-                    if (validate_runtime_ssbo_stride("LocalToWorldIndexTable",
-                                                     graph::mtl::SSBOType::TransformIndexRows,
+                    if (validate_runtime_ssbo_stride("LocalToWorldIndex",
+                                                     graph::mtl::SSBOType::LocalToWorldIndex,
                                                      candidate,
                                                      element_count,
                                                      sizeof(uint32_t)))
@@ -793,7 +794,7 @@ namespace hgl::ecs
                 // 解析同源（同一 TAB 实例）——删除，fallback 收敛为
                 // per-batch 行表 → TransformSystem 直接解析 → domain 缓存 3 级
 
-                // Pipeline-only materials (no MaterialBatch) still need l2w_index_rows.
+                // Pipeline-only materials (no MaterialBatch) still need l2w_index.
                 // Resolve from TransformSystem directly before falling back to domain cache.
                 if (!table_buffer && context)
                 {
@@ -814,39 +815,39 @@ namespace hgl::ecs
                 {
                     table_buffer = resolve_domain_ssbo(
                         graph::mtl::SSBOAddress{
-                            graph::mtl::SSBOType::TransformIndexRows,
-                            graph::mtl::ECSReservedSSBOId::TransformIndexRows,
+                            graph::mtl::SSBOType::LocalToWorldIndex,
+                            graph::mtl::ECSReservedSSBOId::LocalToWorldIndex,
                             0},
-                        "LocalToWorldIndexTable");
+                        "LocalToWorldIndex");
                 }
 
                 if (table_buffer)
                 {
                     if (!bind_ssbo(material, batch, req, table_buffer))
-                        log_bind_failure(material, batch, req, "bind LocalToWorldIndexTable failed");
+                        log_bind_failure(material, batch, req, "bind LocalToWorldIndex failed");
                 }
                 break;
             }
-            case graph::mtl::DescriptorSemantic::MaterialDataSlotData:
+            case graph::mtl::DescriptorSemantic::MaterialPrivateData:
             {
                 uint32_t resolved_ssbo_id = req.ssbo_id;
                 if (batch)
                 {
                     if (!resolve_recipe_batch_struct_ssbo_id(material, batch, req, resolved_ssbo_id))
                     {
-                        log_bind_failure(material, batch, req, "unresolved MaterialDataSlotData binding");
+                        log_bind_failure(material, batch, req, "unresolved MaterialPrivateData binding");
                         break;
                     }
                 }
 
                 const graph::IGPUBuffer *material_data_ssbo = resolve_domain_ssbo(
                     graph::mtl::SSBOAddress{req.ssbo_type, resolved_ssbo_id, 0},
-                    "MaterialDataSlot");
+                    "MaterialPrivateDataSlot");
 
                 if (material_data_ssbo)
                 {
                     if (!bind_ssbo(material, batch, req, material_data_ssbo))
-                        log_bind_failure(material, batch, req, "bind MaterialDataSlot failed");
+                        log_bind_failure(material, batch, req, "bind MaterialPrivateDataSlot failed");
                 }
                 else
                 {
@@ -894,7 +895,7 @@ namespace hgl::ecs
                 }
                 break;
             }
-            case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
+            case graph::mtl::DescriptorSemantic::MaterialPrivateDataIndex:
             {
                 const graph::IGPUBuffer *table_buffer = nullptr;
 
@@ -909,18 +910,18 @@ namespace hgl::ecs
                         graph::mtl::SSBOAddress{
                             req.ssbo_type,
                             req.ssbo_id,
-                            req.data_slot},
-                        "MaterialDataIndexTable");
+                            req.material_private_data_slot},
+                        "MaterialPrivateDataIndex");
                 }
 
                 if (table_buffer)
                 {
                     if (!bind_ssbo(material, batch, req, table_buffer))
-                        log_bind_failure(material, batch, req, "bind MaterialDataIndexTable failed");
+                        log_bind_failure(material, batch, req, "bind MaterialPrivateDataIndex failed");
                 }
                 else
                 {
-                    log_missing_ssbo_once(material, req, batch ? "batch rows missing and domain binding not found" : "domain binding not found", static_cast<int32_t>(req.data_slot));
+                    log_missing_ssbo_once(material, req, batch ? "batch rows missing and domain binding not found" : "domain binding not found", static_cast<int32_t>(req.material_private_data_slot));
                     if (batch && req.required)
                         batch->descriptor_bind_valid = false;
                 }
@@ -941,20 +942,14 @@ namespace hgl::ecs
             case graph::mtl::DescriptorSemantic::VertexTransformID:
             case graph::mtl::DescriptorSemantic::VertexSize:
             {
+                // 语义→VAB 语义映射唯一真源：DescriptorResourceCatalog（VertexGeometry 行）
                 const graph::VertexSemantic vertex_semantic =
                     [](const graph::mtl::DescriptorSemantic semantic)
                 {
-                    switch (semantic)
-                    {
-                    case graph::mtl::DescriptorSemantic::VertexPosition: return graph::VertexSemantic::Position;
-                    case graph::mtl::DescriptorSemantic::VertexUV:       return graph::VertexSemantic::TexCoord;
-                    case graph::mtl::DescriptorSemantic::VertexNTB:      return graph::VertexSemantic::Normal;
-                    case graph::mtl::DescriptorSemantic::VertexColor:    return graph::VertexSemantic::Color;
-                    case graph::mtl::DescriptorSemantic::VertexLuminance: return graph::VertexSemantic::Luminance;
-                    case graph::mtl::DescriptorSemantic::VertexTransformID: return graph::VertexSemantic::TransformID;
-                    case graph::mtl::DescriptorSemantic::VertexSize: return graph::VertexSemantic::Size;
-                    default:                                             return graph::VertexSemantic::Unknown;
-                    }
+                    const auto *cat = graph::mtl::FindResourceCatalogEntry(semantic);
+                    if (cat && cat->cls == graph::mtl::ResourceCatalogClass::VertexGeometry)
+                        return cat->vab_semantic;
+                    return graph::VertexSemantic::Unknown;
                 }(req.semantic);
                 const graph::IGPUBuffer *gpu = nullptr;
                 if (batch)
@@ -1102,15 +1097,20 @@ namespace hgl::ecs
             return env_manager && env_manager->GetSkyUBO(graph::kEnvProfileDefault);
         }
         case graph::mtl::DescriptorSemantic::LocalToWorld:
-        case graph::mtl::DescriptorSemantic::LocalToWorldIndexTable:
+        case graph::mtl::DescriptorSemantic::LocalToWorldIndex:
         case graph::mtl::DescriptorSemantic::MaterialColorPalette:
-        case graph::mtl::DescriptorSemantic::MaterialDataSlotData:
+        case graph::mtl::DescriptorSemantic::MaterialPrivateData:
         case graph::mtl::DescriptorSemantic::MaterialTexture:
         case graph::mtl::DescriptorSemantic::MaterialSampler:
             return true;
         case graph::mtl::DescriptorSemantic::MaterialTextureLayerTable:
             return true;
-        case graph::mtl::DescriptorSemantic::MaterialDataIndexTable:
+        case graph::mtl::DescriptorSemantic::MaterialPrivateDataIndex:
+            return true;
+        // mesh per-draw 参数表：由 PrimitiveBatchPipeline 写行 +
+        // PipelineMaterialRenderer/TextRenderPipeline 绑定——有解析路径，非缺失
+        //（缺此 case 会造成"unresolved required contract"误报）
+        case graph::mtl::DescriptorSemantic::MeshDrawParams:
             return true;
         // 顶点数据 SSBO（MeshShader 方向）：由 RDBS（batch 首对象）或
         // PipelineMaterialRenderer（per-DrawBatch）绑定——有解析路径，非缺失
@@ -1124,7 +1124,6 @@ namespace hgl::ecs
         case graph::mtl::DescriptorSemantic::VertexIndex:
             return true;
         case graph::mtl::DescriptorSemantic::Unknown:
-        case graph::mtl::DescriptorSemantic::Custom:
         default:
             return false;
         }

@@ -1,4 +1,4 @@
-#include <hgl/mtl/ShaderSemanticRegistry.h>
+﻿#include <hgl/mtl/ShaderSemanticRegistry.h>
 
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <cstring>

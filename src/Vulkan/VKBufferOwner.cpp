@@ -1,4 +1,4 @@
-#include<hgl/vk/VKBufferOwner.h>
+﻿#include<hgl/vk/VKBufferOwner.h>
 #include<hgl/vk/VKStagedBuffer.h>   // complete type for ~StagedBuffer via IGPUBuffer*
 #include<hgl/vk/VKReBarBuffer.h>    // complete type for ~ReBarBuffer via IGPUBuffer*
 

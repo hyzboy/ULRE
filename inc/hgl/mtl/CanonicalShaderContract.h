@@ -9,7 +9,6 @@ namespace hgl::graph::mtl {}
 #include <hgl/mtl/GLSLCodeModule.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
 #include <hgl/graph/ssbo/TextureSlot.h>
-#include <hgl/mtl/DescriptorKind.h>
 #include <hgl/mtl/DescriptorSemantic.h>
 #include <hgl/mtl/ShaderSemanticRegistry.h>
 #include <hgl/mtl/ShaderStageBuildContext.h>
@@ -140,11 +139,10 @@ namespace hgl::graph::mtl
         DescriptorSemantic semantic = DescriptorSemantic::Unknown;
         DescriptorSemanticLayer semantic_layer =
             DescriptorSemanticLayer::Unknown;
-        DescriptorSetType set_type = DescriptorSetType::Unknow;
-        DescriptorKind kind = DescriptorKind::UBO;
+        DescriptorSetType set_type = DescriptorSetType::Unknown;
         TextureSlot texture_slot = TextureSlot::BaseColor;
         SSBOType ssbo_type = SSBOType::UserDefined;
-        uint32 data_slot = 0;
+        uint32 material_private_data_slot = 0;
         uint32 stage_flags = 0;
         uint32 array_count = 1;
         bool required = true;
@@ -160,10 +158,9 @@ namespace hgl::graph::mtl
             && lhs.semantic == rhs.semantic
             && lhs.semantic_layer == rhs.semantic_layer
             && lhs.set_type == rhs.set_type
-            && lhs.kind == rhs.kind
             && lhs.texture_slot == rhs.texture_slot
             && lhs.ssbo_type == rhs.ssbo_type
-            && lhs.data_slot == rhs.data_slot
+            && lhs.material_private_data_slot == rhs.material_private_data_slot
             && lhs.stage_flags == rhs.stage_flags
             && lhs.array_count == rhs.array_count
             && lhs.required == rhs.required

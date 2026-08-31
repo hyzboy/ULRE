@@ -1,4 +1,4 @@
-#include <hgl/mtl/CanonicalShaderContract.h>
+﻿#include <hgl/mtl/CanonicalShaderContract.h>
 
 #include "common/CanonicalContractWriter.h"
 
@@ -247,10 +247,9 @@ namespace hgl::graph::mtl
              || entry.semantic == DescriptorSemantic::Unknown
              || entry.semantic_layer == DescriptorSemanticLayer::Unknown
              || entry.semantic_layer > DescriptorSemanticLayer::Sampler
-             || entry.set_type == DescriptorSetType::Unknow
+             || entry.set_type == DescriptorSetType::Unknown
              || entry.set_type < DescriptorSetType::Scene
-             || entry.set_type > DescriptorSetType::Bindless
-             || entry.kind > DescriptorKind::SSBO
+             || entry.set_type > DescriptorSetType::Vertex   // Phase 5：Vertex 为最后一个集合类型
              || entry.texture_slot < TextureSlot::BEGIN_RANGE
              || entry.texture_slot > TextureSlot::END_RANGE
              || entry.ssbo_type < SSBOType::BEGIN_RANGE
@@ -470,7 +469,7 @@ namespace hgl::graph::mtl
 
         CanonicalContractWriter writer(out_bytes);
         writer.WriteU32(ShaderInterfaceTag);
-        
+
         writer.WriteU32(static_cast<uint32>(geometry.GetCount()));
         for (int i = 0; i < geometry.GetCount(); ++i)
         {
@@ -502,10 +501,9 @@ namespace hgl::graph::mtl
             writer.WriteU8(static_cast<uint8>(entry.semantic));
             writer.WriteU8(static_cast<uint8>(entry.semantic_layer));
             writer.WriteI32(static_cast<int32>(entry.set_type));
-            writer.WriteU8(static_cast<uint8>(entry.kind));
             writer.WriteU8(static_cast<uint8>(entry.texture_slot));
             writer.WriteU16(static_cast<uint16>(entry.ssbo_type));
-            writer.WriteU32(entry.data_slot);
+            writer.WriteU32(entry.material_private_data_slot);
             writer.WriteU32(entry.stage_flags);
             writer.WriteU32(entry.array_count);
             writer.WriteBool(entry.required);

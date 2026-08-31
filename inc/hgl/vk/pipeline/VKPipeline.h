@@ -1,8 +1,7 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/vk/VK.h>
-#include<hgl/vk/pipeline/VKPipelineData.h>
-#include<hgl/io/DataOutputStream.h>
+#include<hgl/mtl/PipelineConfig.h>
 
 namespace hgl::graph{
 class Pipeline
@@ -13,11 +12,8 @@ class Pipeline
 
     VkPipeline pipeline;
 
-    PipelineData *data;
+    mtl::MaterialPipelineConfig config;
     bool overlay;
-
-    bool alpha_test;
-    bool alpha_blend;
 
 private:
 
@@ -26,17 +22,14 @@ private:
     Pipeline(const AnsiString &n,
              VkDevice dev,
              VkPipeline p,
-             PipelineData *pd,
+             const mtl::MaterialPipelineConfig &cfg,
              const bool is_overlay)
     {
         name=n;
         device=dev;
         pipeline=p;
-        data=pd;
+        config=cfg;
         overlay=is_overlay;
-
-        alpha_test=false;
-        alpha_blend=false;
     }
 
 public:
@@ -46,10 +39,7 @@ public:
     const AnsiString &GetName()const{return name;}
 
     operator VkPipeline(){return pipeline;}
-    const PipelineData *GetData()const{return data;}
+    const mtl::MaterialPipelineConfig &GetConfig()const{return config;}
     const bool GetOverlay()const{return overlay;}
-
-    const bool IsAlphaTest()const{return data->alpha_test>0;}
-    const bool IsAlphaBlend()const{return data->alpha_blend;}
-};//class GraphicsPipeline
+};//class Pipeline
 }//namespace hgl::graph

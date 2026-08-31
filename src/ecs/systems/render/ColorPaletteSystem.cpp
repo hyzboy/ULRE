@@ -1,4 +1,4 @@
-#include<hgl/ecs/systems/render/ColorPaletteSystem.h>
+﻿#include<hgl/ecs/systems/render/ColorPaletteSystem.h>
 #include<hgl/color/Color.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/graph/render/RenderContext.h>

@@ -260,7 +260,7 @@ protected:
 
 protected:
 
-    VkDevice CreateDevice(const uint32_t, bool enable_graphics_pipeline_library);
+    VkDevice CreateDevice(const uint32_t);
 
 public:
 

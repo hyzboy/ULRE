@@ -1,4 +1,4 @@
-#include <hgl/mtl/MaterialStageInterface.h>
+﻿#include <hgl/mtl/MaterialStageInterface.h>
 
 namespace hgl::graph::mtl
 {
@@ -58,13 +58,12 @@ namespace hgl::graph::mtl
     const char *GetMaterialStageInterfaceErrorName(
         const MaterialStageInterfaceError error) noexcept
     {
+#define HGL_ERROR(name) case MaterialStageInterfaceError::name: return #name;
         switch (error)
         {
-        case MaterialStageInterfaceError::None: return "None";
-        case MaterialStageInterfaceError::InvalidVaryingConfiguration: return "InvalidVaryingConfiguration";
-        case MaterialStageInterfaceError::MissingSemanticMetadata: return "MissingSemanticMetadata";
-        case MaterialStageInterfaceError::InvalidContract: return "InvalidContract";
+            HGL_MATERIAL_STAGE_INTERFACE_ERROR_LIST
         }
+#undef HGL_ERROR
         return "Unknown";
     }
 
@@ -181,12 +180,22 @@ namespace hgl::graph::mtl
             AnsiString("layout(location=")
             + AnsiString::numberOf(entry.location)
             + AnsiString(") ");
-        if (entry.interpolation == InterStageInterpolation::Flat)
-            out_declaration += "flat ";
-        else if (entry.interpolation
-            == InterStageInterpolation::NoPerspective)
-            out_declaration += "noperspective ";
-        out_declaration += direction;
+        // per-primitive 语义（DataIndexID/StyleID）：mesh 侧 out 是 perprimitiveEXT
+        // 数组，FS 侧 in 必须同加 perprimitiveEXT（VUID-08746 接口装饰匹配；
+        // 扩展 GL_EXT_mesh_shader 由 MaterialShaderCompiler 统一注入 FS）。
+        // glslang 要求 uint 必须 flat 且顺序为 flat 在前（perprimitiveEXT flat 报
+        // unexpected FLAT——qualifier 组合顺序坑，实测 flat perprimitiveEXT 合法）。
+        if (IsPerPrimitiveInterStageSemantic(entry.semantic))
+            out_declaration += "flat perprimitiveEXT in ";
+        else
+        {
+            if (entry.interpolation == InterStageInterpolation::Flat)
+                out_declaration += "flat ";
+            else if (entry.interpolation
+                == InterStageInterpolation::NoPerspective)
+                out_declaration += "noperspective ";
+            out_declaration += direction;
+        }
         out_declaration += " ";
         out_declaration += type_name;
         out_declaration += " ";
