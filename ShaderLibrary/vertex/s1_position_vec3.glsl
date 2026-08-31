@@ -47,8 +47,8 @@ void LoadVertexData()
 #ifdef HGL_TRANSFORMID_LOADER
     HGL_TRANSFORMID_LOADER
 #endif
-#ifdef HGL_WIDTH_LOADER
-    HGL_WIDTH_LOADER
+#ifdef HGL_SIZE_LOADER
+    HGL_SIZE_LOADER
 #endif
 }
 

@@ -40,7 +40,7 @@
 运行期报错，症状是「几何正确但属性为零」（历史事故：AutoInstance 全黑 = `s1_position_vec2`
 漏 `HGL_COLOR_LOADER`）。
 
-### 当前三模块的 loader 覆盖（2026-08-30 实测，存在不对称）
+### 当前三模块的 loader 覆盖（2026-08-31 实测，已完全对称）
 
 | loader | vec2 | vec2i | vec3 | 定义方 |
 |---|---|---|---|---|
@@ -49,17 +49,12 @@
 | `HGL_COLOR_LOADER` | ✅ | ✅ | ✅ | s1_color |
 | `HGL_LUMINANCE_LOADER` | ✅ | ✅ | ✅ | s1_luminance |
 | `HGL_INDEX_LOADER` | ✅ | ✅ | ✅ | s1_index |
-| `HGL_WIDTH_LOADER`（Size 语义） | ✅ | ✅ | ✅ | s1_size |
-| `HGL_TRANSFORMID_LOADER` | ❌ | ❌ | ✅ | s1_transform_id |
-| `HGL_COLORINDEX_LOADER` | ❌ | ❌ | ✅ | s1_palette_index |
-| `HGL_JOINT_LOADER` | ⚠️ | ⚠️ | ⚠️ | **无**（s1_joint 已删） |
+| `HGL_SIZE_LOADER` | ✅ | ✅ | ✅ | s1_size |
+| `HGL_TRANSFORMID_LOADER` | ✅ | ✅ | ✅ | s1_transform_id |
+| `HGL_COLORINDEX_LOADER` | ✅ | ✅ | ✅ | s1_palette_index |
 
-- **TRANSFORMID / COLORINDEX 在 2D 位置模块缺失**：2D 材质若声明 TransformID 或调色板颜色索引，
-  该属性静默为 0。是否可达取决于是否存在这类 2D 材质（未确认）。
-- **`HGL_JOINT_LOADER` 是死残留**：`s1_joint.glsl` 已在 T1.1 删除，无任何模块定义该宏，
-  三个位置模块里的 `#ifdef` 块永不进入——死代码。
-
-⚠️ 宏名与语义名不一致的历史遗留：`Size` 语义的 loader 叫 **`HGL_WIDTH_LOADER`**（非 `HGL_SIZE_LOADER`）。
+- 三模块各 8 个 loader **完全对称**（选项 A 对称化 69b4dd41e + loader 对称门禁
+  `VerifyVertexLoaderConsistency` 守护）。无死残留（`HGL_JOINT_LOADER` 已删，s1_joint 已删）。
 
 ## 四、改完必做的验证
 
