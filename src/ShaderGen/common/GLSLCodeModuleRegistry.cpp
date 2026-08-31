@@ -1,5 +1,6 @@
 ﻿#include <hgl/mtl/GLSLCodeModuleRegistry.h>
 #include <hgl/mtl/GLSLCodeModuleMetadata.h>
+#include <hgl/mtl/ShaderLibraryPath.h>
 
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/io/FileInputStream.h>
@@ -361,5 +362,17 @@ namespace hgl::graph::mtl
             return nullptr;
 
         return modules[index];
+    }
+
+    GLSLCodeModuleRegistry &GetGLSLCodeModuleRegistry()
+    {
+        static GLSLCodeModuleRegistry registry;
+        static bool loaded = false;
+        if (!loaded)
+        {
+            registry.LoadDirectory(ToOSString(mtl::GetShaderLibraryPath()));
+            loaded = true;
+        }
+        return registry;
     }
 }

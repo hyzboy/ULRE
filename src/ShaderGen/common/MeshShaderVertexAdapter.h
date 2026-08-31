@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <hgl/graph/ShaderBufferSources.h>
 #include <string>
 
 namespace hgl::graph::mtl
@@ -35,16 +36,22 @@ namespace hgl::graph::mtl
         // 每命令各自的参数只能靠 GPU 侧查表；直接绘制 gl_DrawID=0 → row 0）。
         // 声明用 MESH_DRAW_PARAMS_SET/BINDING 宏（descriptor_macros.glsl 默认值 +
         // CompileCompositorMaterial binding_preamble 注入实际值）。字段顺序与 CPU 侧
-        // per-draw 参数行严格一致（std430 全 4 字节成员，24B 无 padding）。
+        // per-draw 参数行严格一致（std430 全 4 字节成员，24B 无 padding）——
+        // 字段名/类型遍历 kMeshDrawParamsField*（ShaderBufferSources.h X 列表单一真源，
+        // 与 CPU struct MeshDrawParams 同源，改字段只改那一处）。
         // gl_DrawID 在 mesh 阶段合法（GLSL_EXT_mesh_shader：vertex/task/mesh 输入）。
         ms += "struct MeshDrawParams\n";
         ms += "{\n";
-        ms += "    uint index_base;\n";
-        ms += "    uint vertex_base;\n";
-        ms += "    uint is_indexed;\n";
-        ms += "    uint total_vertices;\n";
-        ms += "    float char_height;\n";
-        ms += "    uint first_instance;\n";
+        for (uint32 field_index = 0;
+             field_index < kMeshDrawParamsFieldCount;
+             ++field_index)
+        {
+            ms += "    ";
+            ms += kMeshDrawParamsFieldGLSLTypes[field_index];
+            ms += " ";
+            ms += kMeshDrawParamsFieldNames[field_index];
+            ms += ";\n";
+        }
         ms += "};\n";
         ms += "layout(set=MESH_DRAW_PARAMS_SET, binding=MESH_DRAW_PARAMS_BINDING, std430) readonly buffer MeshDrawParamsData\n";
         ms += "{ MeshDrawParams rows[]; } sbo_draw_params;\n";

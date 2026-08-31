@@ -101,7 +101,6 @@ inline VkFormat ResolveMaterialPositionFormat(const GeometryVertexFormat *gvf, V
 // C++ 硬编码材质已移除——所有材质定义（含内置 bootstrap）均为 TOML 文件承载。
 bool TryGetMaterialDefinitionByID(const std::string &mtl_def_id, MaterialDefinition &out_definition);
 MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry();
-GLSLCodeModuleRegistry &GetGLSLCodeModuleRegistry();
 
 // ── built-in fallback definition ID 常量 ──────────────────────────────────────
 // 缺材质安全网 = 纯色（原为独立 ID + alias 注册，alias 机制已删，常量直连）

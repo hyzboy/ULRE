@@ -138,7 +138,8 @@ SET(STD_MTL_SOURCE  ${ROOT_INCLUDE_PATH}/hgl/graph/ShaderBufferSource.h
 SOURCE_GROUP("Standard Material" FILES ${STD_MTL_SOURCE})
 
 SET(SHADER_LIBRARY_FILES    MaterialDefinitionRegistry.cpp
-                            ${STD_MTL_HEADER_PATH}/MaterialDefinitionRegistry.h)
+                            ${STD_MTL_HEADER_PATH}/MaterialDefinitionRegistry.h
+                            common/VertexABIBuilder.cpp)
 
 SOURCE_GROUP("Shader Library" FILES ${SHADER_LIBRARY_FILES})
 

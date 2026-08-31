@@ -40,11 +40,14 @@ namespace hgl::graph::mtl
     // Line 模式输出拓扑：triangle list（每线段 4 顶点 2 三角形）
     // MeshShaderMode 枚举定义见 inc/hgl/mtl/MeshShaderMode.h（MaterialDefinition 共享）
 
+    // mesh shader GLSL 初始预留字节数（纯性能提示，防 realloc——典型 mesh 输出
+    // 规模量级；内容由最终 GLSL 长度决定，无需精确）
+    static constexpr uint32_t kMeshShaderInitialReserve = 3072;
+
     inline std::string GenerateMeshShader(
         const VertexShaderNodeConfig &node_cfg,
         const VertexVaryingConfig    &varying_cfg,
         VkFormat                      position_format,
-        const std::string            &shader_lib_path,
         const MeshShaderMode          mode = MeshShaderMode::VertexPassthrough,
         const uint32_t                max_invocations = 64,
         const std::string            &resolved_input_glsl = {},
@@ -53,7 +56,7 @@ namespace hgl::graph::mtl
             *resolved_stage_interface = nullptr)
     {
         std::string ms;
-        ms.reserve(3072);
+        ms.reserve(kMeshShaderInitialReserve);
 
         // ── 拓扑/容量 ──────────────────────────────────────────────────────
         uint32_t max_vertices   = 0;

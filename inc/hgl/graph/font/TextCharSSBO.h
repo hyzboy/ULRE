@@ -74,6 +74,47 @@ namespace hgl { namespace graph { namespace layout {
     // ── 布局断言：CPU 结构与 GLSL 真源（ShaderLibrary/vertex/s1_text_char_quad.glsl）
     // 的 std430 布局逐字段对应——改任何一侧的字段顺序/宽度必须同步另一侧，
     // 否则 GPU 端逐实例错位（stride 不匹配）。
+    // sizeof 断言之外补字段级连续性断言（抓调序/加字段/改宽度——sizeof 不变时
+    // 只有字段级断言能抓）。GLSL 侧为资产文件（非 C++ 发射），跨文本校验由
+    // VertexLoaderConsistency 门禁扩展覆盖（TODO）。
+    constexpr bool CharStyleStd430Contiguous() noexcept
+    {
+        const size_t offsets[] = {
+            offsetof(CharStyle, text_color),      offsetof(CharStyle, outline_color),
+            offsetof(CharStyle, shadow_color),    offsetof(CharStyle, flags),
+            offsetof(CharStyle, italic),          offsetof(CharStyle, bold_px),
+            offsetof(CharStyle, outline_px),      offsetof(CharStyle, shadow_uv_offset),
+            offsetof(CharStyle, scale),           offsetof(CharStyle, rotation),
+        };
+        for (size_t i = 0; i < 10; ++i)
+        {
+            if (offsets[i] != i * 4u)
+                return false;
+        }
+        return true;
+    }
+    static_assert(CharStyleStd430Contiguous(), "CharStyle 字段必须连续 4B（std430，对应 GLSL CharStyleData）");
+
+    // std430 布局：pen_x(0) pen_y(2) char_id(4) style_id(6) rotation(8)，尾对齐 12
+    constexpr size_t CharInstanceFieldOffsets[] = {0u, 2u, 4u, 6u, 8u, 12u};
+
+    constexpr bool CharInstanceStd430Layout() noexcept
+    {
+        const size_t offsets[] = {
+            offsetof(CharInstance, pen_x), offsetof(CharInstance, pen_y),
+            offsetof(CharInstance, char_id), offsetof(CharInstance, style_id),
+            offsetof(CharInstance, rotation),
+        };
+        for (size_t i = 0; i < 5; ++i)
+        {
+            if (offsets[i] != CharInstanceFieldOffsets[i])
+                return false;
+        }
+        return true;
+    }
+    static_assert(CharInstanceStd430Layout(),
+        "CharInstance 字段偏移必须 0/2/4/6/8（std430，alignas(4) 尾对齐 12B，对应 GLSL CharInstanceData）");
+
     static_assert(sizeof(TextCharInfo) == 16, "TextCharInfo 必须与 GLSL TextCharInfo 一致（4×32位=16B）");
     static_assert(sizeof(CharStyle) == 40, "CharStyle 必须与 GLSL CharStyleData 一致（40B）");
     static_assert(sizeof(CharInstance) == 12, "CharInstance 必须与 GLSL CharInstanceData 一致（12B，alignas(4)）");

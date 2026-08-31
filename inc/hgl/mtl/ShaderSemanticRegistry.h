@@ -66,6 +66,46 @@ namespace hgl::graph::mtl
 
     using InterStageSemanticMask = uint32;
 
+    // shape → GLSL 类型名（单一真源：mesh 侧 VaryingGen 与 FS 侧声明生成共用）。
+    // 原 MaterialStageInterface.cpp 匿名命名空间实现提升至此。
+    inline const char *GetGLSLTypeName(
+        const ShaderSemanticScalarType scalar_type,
+        const uint8 component_count) noexcept
+    {
+        if (component_count == 0 || component_count > 4)
+            return nullptr;
+
+        switch (scalar_type)
+        {
+        case ShaderSemanticScalarType::Float:
+        {
+            static const char *const names[] =
+                {nullptr, "float", "vec2", "vec3", "vec4"};
+            return names[component_count];
+        }
+        case ShaderSemanticScalarType::SignedInteger:
+        {
+            static const char *const names[] =
+                {nullptr, "int", "ivec2", "ivec3", "ivec4"};
+            return names[component_count];
+        }
+        case ShaderSemanticScalarType::UnsignedInteger:
+        {
+            static const char *const names[] =
+                {nullptr, "uint", "uvec2", "uvec3", "uvec4"};
+            return names[component_count];
+        }
+        case ShaderSemanticScalarType::Boolean:
+        {
+            static const char *const names[] =
+                {nullptr, "bool", "bvec2", "bvec3", "bvec4"};
+            return names[component_count];
+        }
+        default:
+            return nullptr;
+        }
+    }
+
     constexpr InterStageSemanticMask GetInterStageSemanticMask(
         const InterStageSemantic semantic) noexcept
     {

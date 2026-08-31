@@ -839,10 +839,9 @@ namespace
             MakeDefault3DNodeConfig(),
             lit_varying,
             VK_FORMAT_R32G32B32_SFLOAT,
-            {},
             MeshShaderMode::VertexPassthrough,
             kMeshVertexPassthroughMaxInvocations,
-            GetShaderLibraryPath(),
+            {},
             {},
             nullptr);
         if (lit_vs.find(
@@ -871,10 +870,9 @@ namespace
             MakeDefault3DNodeConfig(),
             color_varying,
             VK_FORMAT_R32G32B32_SFLOAT,
-            {},
             MeshShaderMode::VertexPassthrough,
             kMeshVertexPassthroughMaxInvocations,
-            GetShaderLibraryPath(),
+            {},
             {},
             nullptr);
         if (color_vs.find(
@@ -3006,8 +3004,8 @@ namespace
         {
             return GenerateMeshShader(
                 graph, varying, VK_FORMAT_R32G32B32_SFLOAT,
-                {}, MeshShaderMode::VertexPassthrough, kMeshVertexPassthroughMaxInvocations,
-                GetShaderLibraryPath(), {}, nullptr);
+                MeshShaderMode::VertexPassthrough, kMeshVertexPassthroughMaxInvocations,
+                {}, {}, nullptr);
         };
 
         const std::string flat = build(VertexNodeConfigResolver::FlatXY());

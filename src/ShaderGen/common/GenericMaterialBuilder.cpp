@@ -475,7 +475,6 @@ namespace hgl::graph::mtl
                 plan.vertex_node_config,
                 plan.varying,
                 plan.position_format,
-                GetShaderLibraryPath().c_str(),
                 ms_mode,
                 max_invocations,
                 input_glsl_str,

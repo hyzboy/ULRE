@@ -2,6 +2,7 @@
 
 #include <hgl/graph/ShaderBufferSource.h>
 #include <hgl/graph/ubo/UBOShaderSources.h>
+#include <cstddef>
 
 namespace hgl::graph::mtl
 {
@@ -49,15 +50,64 @@ namespace hgl::graph::mtl
     };
 
     // mesh per-draw 参数行——与 MeshShaderAssembler 生成的 GLSL struct MeshDrawParams
-    // 严格同构（std430 全 4 字节成员，24B 无 padding）
+    // 严格同构（std430 全 4 字节成员，24B 无 padding）。
+    //
+    // 单一真源（X 列表）：CPU struct 成员 / GLSL 字段名 / GLSL 字段类型 /
+    // std430 布局断言全部从这一份生成——改字段只改这里，GLSL 发射侧
+    // （MeshShaderVertexAdapter 的 EmitVertexAdapter）遍历名字+类型表发射，
+    // 漂移（改名/调序/漏字段）由下方 static_assert 编译期抓死。
+    #define HGL_MESH_DRAW_PARAMS_FIELD_LIST(M)   \
+        M(index_base,     "uint",  uint32_t)     \
+        M(vertex_base,    "uint",  uint32_t)     \
+        M(is_indexed,     "uint",  uint32_t)     \
+        M(total_vertices, "uint",  uint32_t)     \
+        M(char_height,    "float", float)        \
+        M(first_instance, "uint",  uint32_t)
+
     struct MeshDrawParams
     {
-        uint32_t index_base;
-        uint32_t vertex_base;
-        uint32_t is_indexed;
-        uint32_t total_vertices;
-        float    char_height;       // CharQuad 专用：字符高度（基准线校正）；其余模式恒 0
-        uint32_t first_instance;
+    #define HGL_MDP_CPU_FIELD(name, glsl_type, cpu_type) cpu_type name;
+        HGL_MESH_DRAW_PARAMS_FIELD_LIST(HGL_MDP_CPU_FIELD)
+
+    #undef HGL_MDP_CPU_FIELD
     };
+
+    // GLSL 字段名（发射器遍历，顺序 = std430 布局顺序）
+    constexpr const char *const kMeshDrawParamsFieldNames[] =
+    {
+    #define HGL_MDP_NAME_FIELD(name, glsl_type, cpu_type) #name,
+        HGL_MESH_DRAW_PARAMS_FIELD_LIST(HGL_MDP_NAME_FIELD)
+    #undef HGL_MDP_NAME_FIELD
+    };
+
+    // GLSL 字段类型（std430 scalar/vec 基元）
+    constexpr const char *const kMeshDrawParamsFieldGLSLTypes[] =
+    {
+    #define HGL_MDP_GLSL_FIELD(name, glsl_type, cpu_type) glsl_type,
+        HGL_MESH_DRAW_PARAMS_FIELD_LIST(HGL_MDP_GLSL_FIELD)
+    #undef HGL_MDP_GLSL_FIELD
+    };
+
+    constexpr uint32 kMeshDrawParamsFieldCount =
+        static_cast<uint32>(sizeof(kMeshDrawParamsFieldNames) / sizeof(kMeshDrawParamsFieldNames[0]));
+
+    // std430 布局断言：字段连续 4 字节对齐（无 padding），顺序 = 表顺序。
+    constexpr bool MeshDrawParamsStd430Contiguous() noexcept
+    {
+        const size_t offsets[] =
+        {
+    #define HGL_MDP_OFFSET_FIELD(name, glsl_type, cpu_type) offsetof(MeshDrawParams, name),
+            HGL_MESH_DRAW_PARAMS_FIELD_LIST(HGL_MDP_OFFSET_FIELD)
+    #undef HGL_MDP_OFFSET_FIELD
+        };
+        for (uint32 i = 0; i < kMeshDrawParamsFieldCount; ++i)
+        {
+            if (offsets[i] != static_cast<size_t>(i) * 4u)
+                return false;
+        }
+        return true;
+    }
+    static_assert(MeshDrawParamsStd430Contiguous(),
+        "MeshDrawParams 字段必须连续 4 字节对齐（std430），顺序必须与字段表一致");
     static_assert(sizeof(MeshDrawParams) == 24, "MeshDrawParams must match GLSL std430 layout");
 }
