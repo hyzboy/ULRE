@@ -103,6 +103,34 @@ std::string DumpShaderStructure(const ShaderBuildContext &ctx, const char *label
     }
     out += '\n';
 
+    // ── 求解层状态：模块列表（依赖序）与有效 varying 配置 ────────────────────
+    const std::vector<std::string> &module_names = ctx.GetResolvedModules();
+    out += "modules";
+    AppendKV(out, "count", static_cast<long long>(module_names.size()));
+    out += '\n';
+    for (const std::string &name : module_names)
+    {
+        out += "module";
+        AppendKV(out, "name", name);
+        out += '\n';
+    }
+
+    if (const MaterialVertexVaryingConfig *varying = ctx.GetEffectiveVarying())
+    {
+        out += "varying";
+        AppendKV(out, "data_index_id", varying->emit_data_index_id ? 1 : 0);
+        AppendKV(out, "vertex_color", varying->emit_vertex_color ? 1 : 0);
+        AppendKV(out, "uv0", varying->emit_uv0 ? 1 : 0);
+        AppendKV(out, "world_pos", varying->emit_world_pos ? 1 : 0);
+        AppendKV(out, "world_normal", varying->emit_world_normal ? 1 : 0);
+        AppendKV(out, "luminance", varying->emit_luminance ? 1 : 0);
+        AppendKV(out, "frag_direction", varying->emit_frag_direction ? 1 : 0);
+        AppendKV(out, "transform_id_attr", varying->use_transform_id_attr ? 1 : 0);
+        AppendKV(out, "palette_color", varying->emit_vertex_color_from_palette ? 1 : 0);
+        AppendKV(out, "style_id", varying->emit_style_id ? 1 : 0);
+        out += '\n';
+    }
+
     // ── 资源（结构 + 解出的 set/binding）──────────────────────────────────────
     const ShaderResourceSchema &schema = ctx.GetShaderResourceSchema();
     const DescriptorSetLayoutAllocator &alloc = ctx.GetDescriptorAllocator();

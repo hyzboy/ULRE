@@ -4930,16 +4930,21 @@ namespace
             ShaderProgramPurpose purpose;
             bool override_purpose;
             PassType pass;
+            bool has_geometry;   // CharQuad 文本材质无需几何顶点格式（mesh 自声明 SSBO）
         };
 
         static const PilotVariant kVariants[] =
         {
             { "Lit", "lit-forward-opaque",
-              ShaderProgramPurpose::ForwardColor, false, PassType::ForwardOpaque },
+              ShaderProgramPurpose::ForwardColor, false, PassType::ForwardOpaque, true },
             { "Lit", "lit-depth-only",
-              ShaderProgramPurpose::DepthOnly, true, PassType::ForwardOpaque },
+              ShaderProgramPurpose::DepthOnly, true, PassType::ForwardOpaque, true },
+            { "Lit", "lit-shadow-depth",
+              ShaderProgramPurpose::ShadowDepth, true, PassType::ForwardOpaque, true },
             { "VertexPaletteColor", "vertex-palette-color-forward",
-              ShaderProgramPurpose::ForwardColor, false, PassType::ForwardOpaque },
+              ShaderProgramPurpose::ForwardColor, false, PassType::ForwardOpaque, true },
+            { "builtin/text_gpu", "text-gpu-charquad",
+              ShaderProgramPurpose::ForwardColor, false, PassType::ForwardTransparent, false },
         };
 
         for (const PilotVariant &variant : kVariants)
@@ -4956,7 +4961,7 @@ namespace
 
             MaterialDefinitionBuildRequest request{};
             request.recipe.mtl_def_id = definition.definition_id;
-            request.geometry_vertex_format = &geometry;
+            request.geometry_vertex_format = variant.has_geometry ? &geometry : nullptr;
             request.defer_finalize = true;
             request.override_shader_program_purpose = variant.override_purpose;
             request.shader_program_purpose = variant.purpose;

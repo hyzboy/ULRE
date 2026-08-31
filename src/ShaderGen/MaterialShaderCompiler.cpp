@@ -811,6 +811,23 @@ ShaderBuildContext *CompileCompositorMaterial(
 
     ctx->SetShaderResourceSchema(shader_resource_schema);
 
+    // ── 结构快照观察字段（不参与 shader 生成语义，仅 ShaderStructureDump 用）──
+    // 把求解层产出的模块列表与有效 varying 存到 ctx，回归门/快照无需持有 plan。
+    if (config.resource_manifest && config.resource_manifest->IsValid())
+    {
+        std::vector<std::string> module_names;
+        module_names.reserve(config.resource_manifest->code_module_count);
+        for (uint32_t i = 0; i < config.resource_manifest->code_module_count; ++i)
+        {
+            const char *name = config.resource_manifest->code_module_names[i];
+            if (name && name[0])
+                module_names.emplace_back(name);
+        }
+        ctx->SetResolvedModules(std::move(module_names));
+    }
+    if (config.material_definition)
+        ctx->SetEffectiveVarying(config.material_definition->vertex_varying);
+
     if (!BuildArtifactMetadata(profile, ctx, c))
         return FailCompile(c);
 
