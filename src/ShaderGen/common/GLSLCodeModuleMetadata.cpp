@@ -143,7 +143,7 @@ namespace hgl::graph::mtl
         return "Unknown";
     }
 
-    // 直通访问器——ResolvedModuleGraphBuilder 等公共调用方经此访问依赖表
+    // 直通访问器——ModuleResourceManifest 等公共调用方经此访问依赖表
     // （Metadata.cpp 内部已直接访问字段）
     uint32 GetNormalizedGLSLCodeModuleDependencyCount(
         const GLSLCodeModuleDefinition &definition) noexcept

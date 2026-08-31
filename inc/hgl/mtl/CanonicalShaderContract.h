@@ -26,65 +26,6 @@ namespace hgl::graph::mtl
         ShadowDepth
     };
 
-    struct ResolvedModuleContractEntry
-    {
-        ShaderContractStableID module_id = 0;
-        uint64 module_content_hash = 0;
-        uint32 topological_order = 0;
-        uint32 flags = 0;
-    };
-
-    inline bool operator==(
-        const ResolvedModuleContractEntry &lhs,
-        const ResolvedModuleContractEntry &rhs) noexcept
-    {
-        return lhs.module_id == rhs.module_id
-            && lhs.module_content_hash == rhs.module_content_hash
-            && lhs.topological_order == rhs.topological_order
-            && lhs.flags == rhs.flags;
-    }
-
-    struct ResolvedModuleDependencyContract
-    {
-        ShaderContractStableID source_module_id = 0;
-        ShaderContractStableID target_module_id = 0;
-    };
-
-    inline bool operator==(
-        const ResolvedModuleDependencyContract &lhs,
-        const ResolvedModuleDependencyContract &rhs) noexcept
-    {
-        return lhs.source_module_id == rhs.source_module_id
-            && lhs.target_module_id == rhs.target_module_id;
-    }
-
-    struct ResolvedProviderSelectionContract
-    {
-        GLSLCodeModuleSemantic semantic = GLSLCodeModuleSemantic::Unknown;
-        ShaderContractStableID provider_module_id = 0;
-        int32 priority = 0;
-        uint32 flags = 0;
-    };
-
-    inline bool operator==(
-        const ResolvedProviderSelectionContract &lhs,
-        const ResolvedProviderSelectionContract &rhs) noexcept
-    {
-        return lhs.semantic == rhs.semantic
-            && lhs.provider_module_id == rhs.provider_module_id
-            && lhs.priority == rhs.priority
-            && lhs.flags == rhs.flags;
-    }
-
-    struct ResolvedModuleGraph
-    {
-        ValueArray<ResolvedModuleContractEntry> modules;
-        ValueArray<ResolvedModuleDependencyContract> dependencies;
-        ValueArray<ResolvedProviderSelectionContract> provider_selections;
-        ValueArray<GLSLCodeModuleSemanticRequirement>
-            aggregated_semantic_requirements;
-    };
-
     struct GeometrySemanticContractEntry
     {
         VertexSemantic semantic = VertexSemantic::Unknown;
@@ -216,23 +157,16 @@ namespace hgl::graph::mtl
         ValueArray<ShaderOutputAttachmentContract> attachments;
     };
 
-    bool ValidateResolvedModuleGraph(
-        const ResolvedModuleGraph &graph) noexcept;
     bool ValidateShaderInterfaceContract(
         const ShaderInterfaceContract &contract) noexcept;
     bool ValidateOutputContract(const OutputContract &contract) noexcept;
 
-    bool SerializeResolvedModuleGraph(
-        const ResolvedModuleGraph &graph,
-        ValueArray<uint8> &out_bytes);
     bool SerializeShaderInterfaceContract(
         const ShaderInterfaceContract &contract,
         ValueArray<uint8> &out_bytes);
     bool SerializeOutputContract(
         const OutputContract &contract,
         ValueArray<uint8> &out_bytes);
-    uint64 GetResolvedModuleGraphHash(
-        const ResolvedModuleGraph &graph) noexcept;
     uint64 GetShaderInterfaceContractHash(
         const ShaderInterfaceContract &contract) noexcept;
     uint64 GetOutputContractHash(

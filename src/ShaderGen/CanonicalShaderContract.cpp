@@ -9,28 +9,8 @@ namespace hgl::graph::mtl
     {
         using contract_detail::CanonicalContractWriter;
 
-        constexpr uint32 ResolvedModuleGraphTag = 0x31474D52u; // RMG1
         constexpr uint32 ShaderInterfaceTag = 0x31494653u;     // SFI1
         constexpr uint32 OutputContractTag = 0x3154554Fu;      // OUT1
-
-        bool HasModule(
-            const ResolvedModuleGraph &graph,
-            const ShaderContractStableID module_id,
-            uint32 *out_topological_order = nullptr) noexcept
-        {
-            for (int i = 0; i < graph.modules.GetCount(); ++i)
-            {
-                if (graph.modules[i].module_id != module_id)
-                    continue;
-
-                if (out_topological_order)
-                    *out_topological_order =
-                        graph.modules[i].topological_order;
-                return true;
-            }
-
-            return false;
-        }
 
         bool HasLocationConflict(
             const uint32 first_location,
@@ -80,104 +60,6 @@ namespace hgl::graph::mtl
                 return false;
             }
         }
-
-        void WriteSemanticRequirement(
-            CanonicalContractWriter &writer,
-            const GLSLCodeModuleSemanticRequirement &requirement)
-        {
-            writer.WriteU8(static_cast<uint8>(requirement.source));
-            writer.WriteU16(static_cast<uint16>(requirement.semantic));
-            writer.WriteU32(requirement.numeric_class_mask);
-            writer.WriteU8(requirement.min_component_count);
-            writer.WriteU8(requirement.max_component_count);
-        }
-    }
-
-    bool ValidateResolvedModuleGraph(
-        const ResolvedModuleGraph &graph) noexcept
-    {
-        if (graph.modules.IsEmpty())
-            return false;
-
-        for (int i = 0; i < graph.modules.GetCount(); ++i)
-        {
-            const ResolvedModuleContractEntry &module = graph.modules[i];
-            if (module.module_id == 0 || module.module_content_hash == 0)
-                return false;
-
-            for (int j = 0; j < i; ++j)
-            {
-                if (module.module_id == graph.modules[j].module_id)
-                    return false;
-            }
-        }
-
-        for (int i = 0; i < graph.dependencies.GetCount(); ++i)
-        {
-            const ResolvedModuleDependencyContract &dependency =
-                graph.dependencies[i];
-            uint32 source_order = 0;
-            uint32 target_order = 0;
-            if (dependency.source_module_id == dependency.target_module_id
-             || !HasModule(
-                    graph, dependency.source_module_id, &source_order)
-             || !HasModule(
-                    graph, dependency.target_module_id, &target_order)
-             || source_order <= target_order)
-                return false;
-
-            for (int j = 0; j < i; ++j)
-            {
-                if (dependency.source_module_id
-                        == graph.dependencies[j].source_module_id
-                 && dependency.target_module_id
-                        == graph.dependencies[j].target_module_id)
-                    return false;
-            }
-        }
-
-        for (int i = 0; i < graph.provider_selections.GetCount(); ++i)
-        {
-            const ResolvedProviderSelectionContract &selection =
-                graph.provider_selections[i];
-            if (selection.semantic == GLSLCodeModuleSemantic::Unknown
-             || !HasModule(graph, selection.provider_module_id))
-                return false;
-
-            for (int j = 0; j < i; ++j)
-            {
-                if (selection.semantic
-                    == graph.provider_selections[j].semantic)
-                    return false;
-            }
-        }
-
-        for (int i = 0;
-             i < graph.aggregated_semantic_requirements.GetCount();
-             ++i)
-        {
-            const GLSLCodeModuleSemanticRequirement &requirement =
-                graph.aggregated_semantic_requirements[i];
-            if (requirement.semantic == GLSLCodeModuleSemantic::Unknown
-             || requirement.numeric_class_mask == 0
-             || requirement.min_component_count > 4
-             || requirement.max_component_count > 4
-             || (requirement.max_component_count > 0
-              && requirement.min_component_count
-                    > requirement.max_component_count))
-                return false;
-
-            for (int j = 0; j < i; ++j)
-            {
-                const GLSLCodeModuleSemanticRequirement &other =
-                    graph.aggregated_semantic_requirements[j];
-                if (requirement.source == other.source
-                 && requirement.semantic == other.semantic)
-                    return false;
-            }
-        }
-
-        return true;
     }
 
     bool ValidateShaderInterfaceContract(
@@ -316,102 +198,6 @@ namespace hgl::graph::mtl
                     return false;
             }
         }
-
-        return true;
-    }
-
-    bool SerializeResolvedModuleGraph(
-        const ResolvedModuleGraph &graph,
-        ValueArray<uint8> &out_bytes)
-    {
-        out_bytes.Clear();
-        if (!ValidateResolvedModuleGraph(graph))
-            return false;
-
-        ValueArray<ResolvedModuleContractEntry> modules = graph.modules;
-        contract_detail::CanonicalSort(
-            modules,
-            [](const ResolvedModuleContractEntry &lhs,
-               const ResolvedModuleContractEntry &rhs)
-            {
-                return lhs.module_id < rhs.module_id;
-            });
-
-        ValueArray<ResolvedModuleDependencyContract> dependencies =
-            graph.dependencies;
-        contract_detail::CanonicalSort(
-            dependencies,
-            [](const ResolvedModuleDependencyContract &lhs,
-               const ResolvedModuleDependencyContract &rhs)
-            {
-                if (lhs.source_module_id != rhs.source_module_id)
-                    return lhs.source_module_id < rhs.source_module_id;
-                return lhs.target_module_id < rhs.target_module_id;
-            });
-
-        ValueArray<ResolvedProviderSelectionContract> providers =
-            graph.provider_selections;
-        contract_detail::CanonicalSort(
-            providers,
-            [](const ResolvedProviderSelectionContract &lhs,
-               const ResolvedProviderSelectionContract &rhs)
-            {
-                if (lhs.semantic != rhs.semantic)
-                    return static_cast<uint16>(lhs.semantic)
-                        < static_cast<uint16>(rhs.semantic);
-                return lhs.provider_module_id < rhs.provider_module_id;
-            });
-
-        ValueArray<GLSLCodeModuleSemanticRequirement> requirements =
-            graph.aggregated_semantic_requirements;
-        contract_detail::CanonicalSort(
-            requirements,
-            [](const GLSLCodeModuleSemanticRequirement &lhs,
-               const GLSLCodeModuleSemanticRequirement &rhs)
-            {
-                if (lhs.source != rhs.source)
-                    return static_cast<uint8>(lhs.source)
-                        < static_cast<uint8>(rhs.source);
-                if (lhs.semantic != rhs.semantic)
-                    return static_cast<uint16>(lhs.semantic)
-                        < static_cast<uint16>(rhs.semantic);
-                if (lhs.numeric_class_mask != rhs.numeric_class_mask)
-                    return lhs.numeric_class_mask < rhs.numeric_class_mask;
-                if (lhs.min_component_count != rhs.min_component_count)
-                    return lhs.min_component_count < rhs.min_component_count;
-                return lhs.max_component_count < rhs.max_component_count;
-            });
-
-        CanonicalContractWriter writer(out_bytes);
-        writer.WriteU32(ResolvedModuleGraphTag);
-                writer.WriteU32(static_cast<uint32>(modules.GetCount()));
-        for (int i = 0; i < modules.GetCount(); ++i)
-        {
-            writer.WriteU64(modules[i].module_id);
-            writer.WriteU64(modules[i].module_content_hash);
-            writer.WriteU32(modules[i].topological_order);
-            writer.WriteU32(modules[i].flags);
-        }
-
-        writer.WriteU32(static_cast<uint32>(dependencies.GetCount()));
-        for (int i = 0; i < dependencies.GetCount(); ++i)
-        {
-            writer.WriteU64(dependencies[i].source_module_id);
-            writer.WriteU64(dependencies[i].target_module_id);
-        }
-
-        writer.WriteU32(static_cast<uint32>(providers.GetCount()));
-        for (int i = 0; i < providers.GetCount(); ++i)
-        {
-            writer.WriteU16(static_cast<uint16>(providers[i].semantic));
-            writer.WriteU64(providers[i].provider_module_id);
-            writer.WriteI32(providers[i].priority);
-            writer.WriteU32(providers[i].flags);
-        }
-
-        writer.WriteU32(static_cast<uint32>(requirements.GetCount()));
-        for (int i = 0; i < requirements.GetCount(); ++i)
-            WriteSemanticRequirement(writer, requirements[i]);
 
         return true;
     }
@@ -556,14 +342,6 @@ namespace hgl::graph::mtl
         }
 
         return true;
-    }
-
-    uint64 GetResolvedModuleGraphHash(
-        const ResolvedModuleGraph &graph) noexcept
-    {
-        ValueArray<uint8> bytes;
-        return SerializeResolvedModuleGraph(graph, bytes)
-            ? contract_detail::HashCanonicalBytes(bytes) : 0;
     }
 
     uint64 GetShaderInterfaceContractHash(

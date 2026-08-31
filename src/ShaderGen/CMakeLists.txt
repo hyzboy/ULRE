@@ -53,12 +53,10 @@ SET(CANONICAL_SHADER_CONTRACT_FILES
     ${SHADERGEN_INCLUDE_PATH}/DescriptorContract.h
     ${SHADERGEN_INCLUDE_PATH}/MaterialOutputContract.h
     ${SHADERGEN_INCLUDE_PATH}/MaterialCoverageContract.h
-    ${SHADERGEN_INCLUDE_PATH}/ResolvedModuleGraphBuilder.h
     CanonicalShaderContract.cpp
     DescriptorContract.cpp
     MaterialOutputContract.cpp
     MaterialCoverageContract.cpp
-    ResolvedModuleGraphBuilder.cpp
     ${ROOT_INCLUDE_PATH}/hgl/mtl/MaterialBindingContract.h
     ${ROOT_INCLUDE_PATH}/hgl/mtl/BindingTableBuilder.h
     MaterialBindingContract.cpp
