@@ -132,16 +132,24 @@ inline void AppendDefinitionUBODescriptors(
 
 inline void PushLocalToWorld(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
-    PushBySpec(v, DescriptorSetType::PerObject,
-               "l2w", "LocalToWorldData", DescriptorSemantic::LocalToWorld,
-               SSBOType::UserDefined, stage_flags);
+    constexpr const DescriptorResourceCatalogEntry *row =
+        FindResourceCatalogEntry(DescriptorSemantic::LocalToWorld);
+    static_assert(row != nullptr && row->sbs != nullptr && row->binding >= 0,
+                  "LocalToWorld 目录行缺失或非固定绑定");
+
+    PushBySpec(v, row->set_type, row->sbs->name, row->sbs->struct_name,
+               row->semantic, row->ssbo_type, stage_flags);
 }
 
 inline void PushLocalToWorldIndexRows(std::vector<SerializedDescriptorEntry> &v, const uint32_t stage_flags)
 {
-    PushBySpec(v, DescriptorSetType::PerObject,
-               "l2w_index", "LocalToWorldIndex", DescriptorSemantic::LocalToWorldIndex,
-               SSBOType::UserDefined, stage_flags);
+    constexpr const DescriptorResourceCatalogEntry *row =
+        FindResourceCatalogEntry(DescriptorSemantic::LocalToWorldIndex);
+    static_assert(row != nullptr && row->sbs != nullptr && row->binding >= 0,
+                  "LocalToWorldIndex 目录行缺失或非固定绑定");
+
+    PushBySpec(v, row->set_type, row->sbs->name, row->sbs->struct_name,
+               row->semantic, row->ssbo_type, stage_flags);
 }
 
 // ── 顶点数据 SSBO（Vertex 集：顶点输入统一为 SSBO，Phase 5 自 PerObject 迁出）──
