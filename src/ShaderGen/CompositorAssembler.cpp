@@ -434,6 +434,8 @@ namespace hgl::graph::mtl
         }
         else if (skeleton == Skeleton::DepthOnly)
         {
+            // 代码模块紧跟 defines（原无 marker 模板的 AfterVersion 注入位置）
+            glsl += code_module_glsl;
             glsl += input_declarations;
             glsl += "\n";
             glsl += output_declarations;

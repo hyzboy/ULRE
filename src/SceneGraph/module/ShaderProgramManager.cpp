@@ -24,6 +24,7 @@
 #include<cstdint>
 #include<vector>
 #include<cstdlib>
+#include<cwchar>
 
 namespace hgl::graph{
 
@@ -167,17 +168,29 @@ namespace
     }
 
     // 进程级单例（与 GetMaterialDefinitionFileRegistry 同一模式）。
-    // BuildIfMissing：命中免 glslang 重编，未命中编译后回填缓存文件。
+    // 模式由环境变量 ULRE_SHADER_CACHE_MODE 控制：
+    //   readonly —— 只读（发布形态：配合 ShaderCooker 离线 cook 的产物分发，
+    //              缓存 miss 即材质构建失败，用于验证 cook 覆盖完整性）；
+    //   默认 BuildIfMissing（开发形态：命中免编译，未命中编译后回填）。
     // 缓存 key 含 GLSL 源码/资源契约/编译器 profile 哈希，任何输入变化自然
     // miss 并覆盖旧条目；损坏文件因 header/payload 哈希校验失败按 miss 处理。
-    // 注意不可改用 ReadOnly：该模式在 miss 时硬失败（FinalizeShaderBuildContext
-    // 直接返回 false），须等离线 cook 步骤存在后才可启用。
+    // ReadOnly 的 miss 硬失败（FinalizeShaderBuildContext 返回 false）是设计
+    // 行为——发布前必须用 ShaderCooker 完成全变体 cook。
     mtl::ShaderArtifactStore *GetRuntimeShaderArtifactStore()
     {
         static const OSString cache_root = ResolveShaderCacheRoot();
+        static const bool readonly_mode = []()
+        {
+            const wchar_t *mode = _wgetenv(L"ULRE_SHADER_CACHE_MODE");
+            return mode
+                && (wcscmp(mode, L"readonly") == 0
+                 || wcscmp(mode, L"ro") == 0);
+        }();
         static mtl::ShaderArtifactStore store(
             cache_root,
-            mtl::ShaderCacheMode::BuildIfMissing);
+            readonly_mode
+                ? mtl::ShaderCacheMode::ReadOnly
+                : mtl::ShaderCacheMode::BuildIfMissing);
         static bool logged = false;
         if (!logged)
         {
@@ -189,8 +202,9 @@ namespace
             else
             {
                 const U8String root_utf8 = ToU8String(cache_root);
-                GLogInfo(u8"[ShaderProgramManager] shader SPV cache root=%s (mode=BuildIfMissing)",
-                         root_utf8.c_str());
+                GLogInfo(u8"[ShaderProgramManager] shader SPV cache root=%s (mode=%s)",
+                         root_utf8.c_str(),
+                         readonly_mode ? "ReadOnly" : "BuildIfMissing");
             }
         }
         return &store;

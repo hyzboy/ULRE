@@ -120,3 +120,34 @@ endif()
 #   cmake --build <build_dir> --target ShaderResourceSchemaRegressionGate
 # 在生成目录执行：
 #   .\\test\\Debug\\MaterialPresetExhaustiveCompile.exe
+
+
+####################################################################################################
+
+# 离线 shader 预编译（方向三：离线 cook + 运行时 readonly 加载）
+# 枚举 材质×purpose×图元 变体，经生产管线编译 SPV 写入 ShaderArtifactStore
+add_executable(ShaderCooker
+    ShaderCooker.cpp)
+
+target_link_libraries(ShaderCooker
+    PRIVATE ULRE.ShaderGen
+            ULRE.Vulkan
+            CMCore
+            CMMath
+            CMCoreType)
+
+CreateProject(ShaderCooker)
+
+if(BUILD_TESTING)
+    # 冒烟：只 cook 一个内置材质（需要 cwd=仓库根以定位 GLSLCompiler.dll 与 ShaderLibrary）
+    add_test(
+        NAME ShaderCookSmoke
+        COMMAND ShaderCooker --material builtin/pure_color
+                --store ${CMAKE_BINARY_DIR}/shader-cook-smoke
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(
+        ShaderCookSmoke
+        PROPERTIES LABELS "shadergen;baseline")
+endif()
+
+####################################################################################################

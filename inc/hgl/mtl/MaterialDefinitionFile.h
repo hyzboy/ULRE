@@ -50,5 +50,13 @@ namespace hgl::graph::mtl
         const MaterialDefinition *FindByID(const char *definition_id) const;
         int GetCount() const { return files.GetCount(); }
         void Clear() { files.Clear(); }
+
+        /// 按序枚举（ShaderCooker 离线 cook 用）；越界返回 nullptr
+        const MaterialDefinitionFileData *GetAt(const int index) const
+        {
+            if (index < 0 || index >= files.GetCount())
+                return nullptr;
+            return files[index];
+        }
     };
 }
