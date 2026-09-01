@@ -298,6 +298,7 @@ namespace hgl::graph::mtl
                     "Unsupported compositor fragment source: " + path;
                 return result;
             }
+
         }
 
         // ── 2. 有效化选项（原 Assemble 的 lit 强制逻辑）────────────────────
@@ -489,5 +490,37 @@ namespace hgl::graph::mtl
         result.fragment_glsl = std::move(glsl);
         result.success       = true;
         return result;
+    }
+
+    bool CompositorAssembler::AssembleDocument(
+        const SurfaceType surface,
+        const PassType pass,
+        const char *fragment_source_override,
+        const char *surface_function_override,
+        const CompositorModuleOptions &module_options,
+        const std::string &code_module_glsl,
+        ShaderDocument &out_document,
+        ShaderDocumentDiagnostics &out_diagnostics) const
+    {
+        const AssembleResult result = Assemble(
+            surface,
+            pass,
+            fragment_source_override,
+            surface_function_override,
+            module_options,
+            code_module_glsl);
+        if (!result.success)
+            return false;
+
+        ShaderDocumentSource source;
+        source.stage = "fragment";
+        source.logical_name = "CompositorAssembler";
+        out_document.Clear();
+        out_document.Add(
+            ShaderDocumentBlockKind::Raw,
+            AnsiString(result.fragment_glsl.c_str()),
+            source);
+        AnsiString serialized;
+        return out_document.SerializeFragment(serialized, out_diagnostics);
     }
 }

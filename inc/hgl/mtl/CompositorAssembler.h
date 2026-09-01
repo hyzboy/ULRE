@@ -74,6 +74,16 @@ namespace hgl::graph::mtl
             const CompositorModuleOptions &module_options,
             const std::string           &code_module_glsl = {}) const;
 
+        bool AssembleDocument(
+            SurfaceType                  surface,
+            PassType                     pass,
+            const char                  *fragment_source_override,
+            const char                  *surface_function_override,
+            const CompositorModuleOptions &module_options,
+            const std::string           &code_module_glsl,
+            ShaderDocument              &out_document,
+            ShaderDocumentDiagnostics    &out_diagnostics) const;
+
         AssembleResult Assemble(
             SurfaceType                  surface,
             PassType                     pass,
