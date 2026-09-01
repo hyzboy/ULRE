@@ -23,6 +23,13 @@ set(SHADERGEN_COMMON_FILES
     ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/ColorPalette.h)
 SOURCE_GROUP("Common" FILES ${SHADERGEN_COMMON_FILES})
 
+set(DOCUMENT_FILES
+    ${SHADERGEN_INCLUDE_PATH}/ShaderDocument.h
+    ${SHADERGEN_INCLUDE_PATH}/ShaderDocumentLegacyAdapter.h
+    document/ShaderDocument.cpp
+    document/ShaderDocumentLegacyAdapter.cpp)
+SOURCE_GROUP("Document" FILES ${DOCUMENT_FILES})
+
 set(SSBO_STRUCT_FILES
     ${ROOT_INCLUDE_PATH}/hgl/graph/ssbo/LitMaterialData.h
     ${ROOT_INCLUDE_PATH}/hgl/graph/ssbo/TextureSlot.h
@@ -166,6 +173,7 @@ add_cm_library(ULRE.ShaderGen "ULRE"
     ${SHADERGEN_INCLUDE_PATH}
 
     ${SHADERGEN_COMMON_FILES}
+    ${DOCUMENT_FILES}
     ${SSBO_STRUCT_FILES}
     ${COMPILE_FILES}
     ${GLSL_MODULE_FILES}

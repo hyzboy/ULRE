@@ -114,6 +114,26 @@ endif()
 
 ####################################################################################################
 
+add_executable(ShaderDocumentRegression
+    ShaderDocumentRegression.cpp)
+
+target_link_libraries(ShaderDocumentRegression
+    PRIVATE ULRE.ShaderGen
+            CMCore
+            CMCoreType)
+
+CreateProject(ShaderDocumentRegression)
+
+if(BUILD_TESTING)
+    add_test(
+        NAME shader_document_regression
+        COMMAND ShaderDocumentRegression)
+    set_tests_properties(
+        shader_document_regression
+        PROPERTIES LABELS "shadergen;document")
+endif()
+
+####################################################################################################
 
 # 需要时可直接运行：
 #   cmake --build <build_dir> --target MaterialPresetExhaustiveCompile
