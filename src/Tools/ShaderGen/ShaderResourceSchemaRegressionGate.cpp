@@ -30,7 +30,8 @@
 #include <filesystem>
 #include "../../ShaderGen/3d/DefinitionDescriptorBuilder.h"
 #include <hgl/mtl/MeshShaderLimits.h>
-#include "../../ShaderGen/common/VertexBuilderCommon.h"
+#include "VertexBuilderCommon.h"
+#include "StageBuildContextTest.h"
 #include "../../ShaderGen/common/VertexVaryingConfig.h"
 #include "../../ShaderGen/common/MeshShaderAssembler.h"   // GenerateMeshShader / MeshShaderMode
 
@@ -4229,13 +4230,14 @@ namespace
         hash_entry.required = true;
         hash_entry.allow_fallback = false;
 
+        // 契约哈希统一用生产实现 GetDescriptorContractHash（原
+        // HashResourceContract 双轨哈希已删——它经由 schema 额外把 ssbo_id/
+        // 名字文本计入，与生产 shader 身份语义不一致）。
         std::vector<SerializedDescriptorEntry> hash_entries{hash_entry};
-        const uint64_t strict_hash =
-            descriptor_builder_common::HashResourceContract(0, hash_entries);
+        const uint64_t strict_hash = GetDescriptorContractHash(hash_entries, 0);
         hash_entries[0].required = false;
         hash_entries[0].allow_fallback = true;
-        const uint64_t optional_hash =
-            descriptor_builder_common::HashResourceContract(0, hash_entries);
+        const uint64_t optional_hash = GetDescriptorContractHash(hash_entries, 0);
         if (strict_hash == optional_hash)
             result.diagnostics.emplace_back(
                 "Required/fallback policy changes must change the resource contract hash.");
@@ -4243,8 +4245,7 @@ namespace
         hash_entries[0].required = true;
         hash_entries[0].allow_fallback = false;
         hash_entries[0].ssbo_type = SSBOType::TextureLayer;
-        const uint64_t ssbo_type_hash =
-            descriptor_builder_common::HashResourceContract(0, hash_entries);
+        const uint64_t ssbo_type_hash = GetDescriptorContractHash(hash_entries, 0);
         if (strict_hash == ssbo_type_hash)
             result.diagnostics.emplace_back(
                 "SSBO type changes must change the resource contract hash.");
@@ -4261,14 +4262,14 @@ namespace
         ssbo_hash_entry.ssbo_id = 11;
 
         std::vector<SerializedDescriptorEntry> ssbo_hash_entries{ssbo_hash_entry};
-        const uint64_t first_ssbo_hash =
-            descriptor_builder_common::HashResourceContract(0, ssbo_hash_entries);
+        const uint64_t first_ssbo_hash = GetDescriptorContractHash(ssbo_hash_entries, 0);
         ssbo_hash_entries[0].ssbo_id = 12;
-        const uint64_t second_ssbo_hash =
-            descriptor_builder_common::HashResourceContract(0, ssbo_hash_entries);
-        if (first_ssbo_hash == second_ssbo_hash)
+        const uint64_t second_ssbo_hash = GetDescriptorContractHash(ssbo_hash_entries, 0);
+        // ssbo_id 是运行时行绑定信息，不影响 shader 内容与描述符布局——
+        // 生产契约哈希有意排除（变化不得改变 shader 身份，否则缓存碎片化）
+        if (first_ssbo_hash != second_ssbo_hash)
             result.diagnostics.emplace_back(
-                "SSBO buffer identity changes must change the resource contract hash.");
+                "SSBO buffer identity (runtime binding) must not change the resource contract hash.");
 
         result.passed = result.diagnostics.empty();
         return result;

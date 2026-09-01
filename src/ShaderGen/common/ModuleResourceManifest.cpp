@@ -1,5 +1,6 @@
 ﻿#include <hgl/mtl/ModuleResourceManifest.h>
 #include <hgl/mtl/GLSLCodeModuleRegistry.h>
+#include "DescriptorBuilderCommon.h"
 #include <hgl/util/hash/FNV1a.h>
 
 #include <cstring>
@@ -14,11 +15,6 @@ namespace hgl::graph::mtl
             Visiting,
             Visited
         };
-
-        bool CStrEqual(const char *lhs, const char *rhs) noexcept
-        {
-            return lhs && rhs && std::strcmp(lhs, rhs) == 0;
-        }
 
         uint64 GetModuleStableID(const char *name) noexcept
         {
@@ -41,7 +37,7 @@ namespace hgl::graph::mtl
             for (uint32 i = 0; i < manifest.ssbo_count; ++i)
             {
                 auto &existing = manifest.ssbos[i];
-                if (!CStrEqual(existing.name, incoming.name)
+                if (!descriptor_builder_common::CStrEqual(existing.name, incoming.name)
                  || existing.material_private_data_slot != incoming.material_private_data_slot)
                     continue;
 

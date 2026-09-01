@@ -8,6 +8,7 @@
 #include <hgl/common/RenderOptions.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <cstring>
+#include <cstdint>
 #include <vector>
 
 namespace hgl::graph::mtl::descriptor_builder_common
@@ -240,10 +241,18 @@ inline void AppendDefinitionMaterialDescriptors(
         PushMaterialTextureLayerRows(v, texture_layer_table_stage_flags);
 }
 
-inline bool CStrEqual(const char *lhs, const char *rhs) noexcept
-{
-    return lhs && rhs && std::strcmp(lhs, rhs) == 0;
-}
+    // strcmp 包装（唯一实现，原三处副本收敛于此）：
+    // 带 <0x10000 指针防御——manifest/描述符条目指针损坏时不比
+    // 较、返回不等（原 MaterialShaderCompiler CStrEq 的防御语义），
+    // 避免对垃圾指针解引用。
+    inline bool CStrEqual(const char *lhs, const char *rhs) noexcept
+    {
+        if (lhs && reinterpret_cast<uintptr_t>(lhs) < 0x10000u)
+            return false;
+        if (rhs && reinterpret_cast<uintptr_t>(rhs) < 0x10000u)
+            return false;
+        return lhs && rhs && std::strcmp(lhs, rhs) == 0;
+    }
 
 inline void MergeResourcePolicy(
     SerializedDescriptorEntry &existing,
@@ -435,45 +444,6 @@ inline bool BuildDefinitionModuleResourceManifest(
     }
 
     return BuildModuleResourceManifest(roots, root_count, manifest, registry);
-}
-
-inline uint64 HashDescriptorEntries(
-    const std::vector<SerializedDescriptorEntry> &entries) noexcept
-{
-    hgl::hash::FNV1aHasher64 h;
-    h << static_cast<uint32>(entries.size());
-
-    for (const auto &entry : entries)
-    {
-        h << entry.set_type
-          << entry.stage_flags
-          << entry.semantic
-          << entry.texture_slot
-          << entry.material_private_data_slot
-          << entry.ssbo_type
-          << entry.semantic_layer
-          << entry.ssbo_id
-          << entry.has_requirement_policy
-          << entry.required
-          << entry.allow_fallback
-          << entry.name
-          << entry.struct_name
-          << entry.glsl_type;
-    }
-
-    return h;
-}
-
-inline uint64 HashResourceContract(
-    const uint64 manifest_hash,
-    const std::vector<SerializedDescriptorEntry> &entries) noexcept
-{
-    hgl::hash::FNV1aHasher64 h;
-    const ShaderResourceSchema schema =
-        BuildShaderResourceSchema(entries.data(), static_cast<uint32>(entries.size()));
-    h << manifest_hash
-      << HashShaderResourceSchema(schema);
-    return h;
 }
 
 } // namespace hgl::graph::mtl::descriptor_builder_common

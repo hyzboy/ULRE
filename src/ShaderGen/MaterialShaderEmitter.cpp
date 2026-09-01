@@ -284,26 +284,12 @@ void AssembleFinalGLSL(
     ShaderBuildContext *ctx,
     const std::string &ms_glsl,
     const std::string &fs_glsl,
-    const std::vector<GLSLInjectSegment> &segments)
+    const std::string &ms_inject,
+    const std::string &fs_inject)
 {
-    // 按 point 归组（AfterVersion 组内顺序 = 列表顺序）
-    std::string ms_version_injects;
-    std::string fs_version_injects;
+    std::string ms_final = InsertAfterVersionLine(ms_glsl, ms_inject);
 
-    for (const auto &seg : segments)
-    {
-        if (seg.text.empty())
-            continue;
-
-        if (seg.stage == GLSLInjectStage::Mesh)
-            ms_version_injects += seg.text;
-        else
-            fs_version_injects += seg.text;
-    }
-
-    std::string ms_final = InsertAfterVersionLine(ms_glsl, ms_version_injects);
-
-    std::string fs_final = InsertAfterVersionLine(fs_glsl, fs_version_injects);
+    std::string fs_final = InsertAfterVersionLine(fs_glsl, fs_inject);
 
     ShaderCreateInfo *mesh = ctx->GetStageShader(ShaderStage::Mesh);
     ShaderCreateInfo *frag = ctx->GetStageShader(ShaderStage::Fragment);

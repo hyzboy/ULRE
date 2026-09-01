@@ -3,8 +3,9 @@
 namespace hgl::graph::mtl {}
 
 #include <hgl/CoreType.h>
+#include <hgl/common/ShaderStageDef.h>
+#include <hgl/mtl/ShaderStageKey.h>
 #include <hgl/mtl/ShaderProgramKey.h>
-#include <hgl/mtl/ShaderStageBuildContext.h>
 
 namespace hgl::graph::mtl
 {

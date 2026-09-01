@@ -34,8 +34,6 @@ namespace hgl::graph::mtl
         Position,
         UV0,
         Color,
-        ColorY,
-        ColorUV,
         Normal,
         Tangent,
         Binormal,
@@ -44,7 +42,6 @@ namespace hgl::graph::mtl
         WorldTangent,
         WorldBinormal,
         Luminance,
-        HeightMap,
         Camera,
         Viewport,
         SkyLight,
@@ -52,6 +49,8 @@ namespace hgl::graph::mtl
         TransformID,
         Size
     };
+    // 2026-09 清扫：ColorY/ColorUV/HeightMap 死枚举值删除（ShaderLibrary
+    // 全部模块 0 引用，名表 switch 同步收敛）。
 
     // ── 语义名字注册表（单一真源，T1）───────────────────────────────
     // GLSLCodeModuleSemantic 的字符串名字只在本处定义一次：
@@ -70,8 +69,6 @@ namespace hgl::graph::mtl
         case GLSLCodeModuleSemantic::Position:      return "Position";
         case GLSLCodeModuleSemantic::UV0:           return "UV0";
         case GLSLCodeModuleSemantic::Color:         return "Color";
-        case GLSLCodeModuleSemantic::ColorY:        return "ColorY";
-        case GLSLCodeModuleSemantic::ColorUV:       return "ColorUV";
         case GLSLCodeModuleSemantic::Normal:        return "Normal";
         case GLSLCodeModuleSemantic::Tangent:       return "Tangent";
         case GLSLCodeModuleSemantic::Binormal:      return "Binormal";
@@ -80,7 +77,6 @@ namespace hgl::graph::mtl
         case GLSLCodeModuleSemantic::WorldTangent:  return "WorldTangent";
         case GLSLCodeModuleSemantic::WorldBinormal: return "WorldBinormal";
         case GLSLCodeModuleSemantic::Luminance:     return "Luminance";
-        case GLSLCodeModuleSemantic::HeightMap:     return "HeightMap";
         case GLSLCodeModuleSemantic::Camera:        return "Camera";
         case GLSLCodeModuleSemantic::Viewport:      return "Viewport";
         case GLSLCodeModuleSemantic::SkyLight:      return "SkyLight";

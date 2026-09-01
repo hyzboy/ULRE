@@ -18,6 +18,7 @@
 #include<hgl/mtl/ShaderCreateInfo.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/MaterialDefinitionFile.h>
+#include<hgl/mtl/ShaderCacheRoot.h>
 #include<hgl/object/ObjectTracker.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/utf.h>
@@ -146,27 +147,6 @@ namespace
         return descriptors;
     }
 
-    // ── 运行时 SPV 磁盘缓存（跨进程）────────────────────────────────────────
-    // 根目录解析优先级：环境变量 ULRE_SHADER_CACHE_PATH > exe 所在目录 > cwd。
-    // GetCurrentProgramPath 返回的已是程序目录（内部去除文件名），直接使用。
-    // 空根目录时 store 的读写全部安全失败——等价于无缓存，不阻断材质创建。
-    OSString ResolveShaderCacheRoot()
-    {
-        const wchar_t *env_value = _wgetenv(L"ULRE_SHADER_CACHE_PATH");
-        if (env_value && env_value[0])
-            return OSString(env_value);
-
-        OSString program_path;
-        if (filesystem::GetCurrentProgramPath(program_path))
-            return program_path;
-
-        OSString current_path;
-        if (filesystem::GetCurrentPath(current_path))
-            return current_path;
-
-        return OSString();
-    }
-
     // 进程级单例（与 GetMaterialDefinitionFileRegistry 同一模式）。
     // 模式由环境变量 ULRE_SHADER_CACHE_MODE 控制：
     //   readonly —— 只读（发布形态：配合 ShaderCooker 离线 cook 的产物分发，
@@ -178,7 +158,7 @@ namespace
     // 行为——发布前必须用 ShaderCooker 完成全变体 cook。
     mtl::ShaderArtifactStore *GetRuntimeShaderArtifactStore()
     {
-        static const OSString cache_root = ResolveShaderCacheRoot();
+        static const OSString cache_root = mtl::GetShaderCacheRootPath();
         static const bool readonly_mode = []()
         {
             const wchar_t *mode = _wgetenv(L"ULRE_SHADER_CACHE_MODE");

@@ -10,7 +10,6 @@
 #include <hgl/mtl/GLSLCodeModule.h>
 #include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/type/ValueArray.h>
-#include <hgl/mtl/ShaderStageBuildContext.h>
 #include <hgl/mtl/ShaderLinkSpec.h>
 #include <hgl/mtl/SurfaceType.h>
 #include <hgl/mtl/MaterialVertexVaryingConfig.h>

@@ -5,7 +5,7 @@ namespace hgl::graph::mtl {}
 #include <hgl/CoreType.h>
 #include <hgl/common/VertexAttribDef.h>
 #include <hgl/mtl/ShaderSemanticRegistry.h>
-#include <hgl/mtl/ShaderStageBuildContext.h>
+#include <hgl/mtl/ShaderStageValueType.h>
 #include <hgl/type/ValueArray.h>
 
 namespace hgl::graph::mtl

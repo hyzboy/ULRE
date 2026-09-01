@@ -103,16 +103,6 @@ bool FinalizeShaderBuildContext(
     return true;
 }
 
-static bool CStrEq(const char *lhs, const char *rhs)
-{
-    // Guard against corrupted/non-string pointers from malformed descriptor entries.
-    if (lhs && reinterpret_cast<uintptr_t>(lhs) < 0x10000u)
-        return false;
-    if (rhs && reinterpret_cast<uintptr_t>(rhs) < 0x10000u)
-        return false;
-    return lhs && rhs && std::strcmp(lhs, rhs) == 0;
-}
-
 static bool HasDescriptorSemantic(
     const DescriptorContract &contract,
     const DescriptorSemantic semantic)
@@ -272,7 +262,7 @@ static bool ValidateDefinitionCapabilitySubset(
                 if (req.semantic == DescriptorSemantic::MaterialPrivateData
                  && req.material_private_data_slot == ssbo.material_private_data_slot
                  && req.ssbo_type == ssbo.ssbo_type
-                 && CStrEq(req.name.c_str(), ssbo.name))
+                 && descriptor_builder_common::CStrEqual(req.name.c_str(), ssbo.name))
                     allowed = true;
             }
             if (req.semantic == DescriptorSemantic::MaterialTextureLayerTable
@@ -377,15 +367,12 @@ static bool PrepareBaseDescriptorContract(
 
 // ── Step 2: 创建 ShaderBuildContext ─────────────────────────────────────────
 static bool CreateBuildContext(
-    const contract::PhysicalDeviceProfileLite *profile,
     const CompositorMaterialBuildConfig &config,
     const uint32_t shader_stage_bits,
     const bool with_local_to_world,
     CompileContext &c)
 {
     c.ctx = new ShaderBuildContext(config.primitive_type, shader_stage_bits, with_local_to_world);
-    if (profile)
-        c.ctx->SetDevice(profile);
     if (config.program_link)
         c.ctx->SetProgramLink(*config.program_link);
     c.ctx->SetArtifactStore(config.artifact_store);
@@ -716,7 +703,7 @@ ShaderBuildContext *CompileCompositorMaterial(
         return FailCompile(c);
 
     // ── Step 2: Create ShaderBuildContext ─────────────────────────
-    if (!CreateBuildContext(profile, config, shader_stage_bits, with_local_to_world, c))
+    if (!CreateBuildContext(config, shader_stage_bits, with_local_to_world, c))
         return FailCompile(c);
 
     ShaderBuildContext *ctx = c.ctx;
@@ -792,28 +779,21 @@ ShaderBuildContext *CompileCompositorMaterial(
     const std::string fs_index_table_decls =
         BuildFSIndexTableDecls(descriptor_info);
 
-    // ── Step 5e: 组装注入段列表（C3——注入内容数据驱动，顺序 = 列表顺序）──
-    std::vector<GLSLInjectSegment> segments;
-
-    // mesh 阶段：行表声明（version 后）
-    segments.push_back({ GLSLInjectStage::Mesh, GLSLInjectPoint::AfterVersion,
-                         mesh_index_table_decls });
-
+    // ── Step 5e: version 后注入文本（每 stage 恰一段）────────────────────
     // FS 统一启用 GL_EXT_mesh_shader：per-primitive 语义（DataIndexID/StyleID）的
     // FS 输入用 perprimitiveEXT in（mesh out perprimitiveEXT → FS in 必须同装饰，
     // 否则 VUID-RuntimeSpirv-OpVariable-08746 接口装饰不匹配）。
-    // 扩展声明必须在 #version 之后（InsertAfterVersionLine 保证）。
-    // version 后注入组顺序（= 列表顺序）：扩展 → 宏/声明 → 索引行表
-    segments.push_back({ GLSLInjectStage::Fragment, GLSLInjectPoint::AfterVersion,
-                         "#extension GL_EXT_mesh_shader : require\n"
-                         + compile_define_macros + sampler_macros
-                         + material_ssbo_decls + material_slot_macros
-                         + fs_index_table_decls });
+    // FS 注入顺序：扩展 → 宏/声明 → 索引行表
+    const std::string fs_inject =
+        "#extension GL_EXT_mesh_shader : require\n"
+        + compile_define_macros + sampler_macros
+        + material_ssbo_decls + material_slot_macros
+        + fs_index_table_decls;
 
     // 模块代码不再经注入段进入 FS——发射器组装时已置于 surface 函数 include
     // 之前（原 BeforeSurfaceFunction 注入点随 marker 体系删除，见 CompositorAssembler）。
 
-    AssembleFinalGLSL(ctx, ms_glsl, fs_glsl, segments);
+    AssembleFinalGLSL(ctx, ms_glsl, fs_glsl, mesh_index_table_decls, fs_inject);
 
     // ── Step 6: Build ShaderResourceSchema from descriptor entries. ──
     // When material_private_data is declared (definition or provider manifest), the

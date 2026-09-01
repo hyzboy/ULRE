@@ -1,46 +1,23 @@
 ﻿#pragma once
 
-namespace hgl::graph::mtl {}
+// StageBuildContextTest.h — 回归门专用的 stage key/接口一致性测试辅助。
+// 原生产头 ShaderStageBuildContext.h（2026-09 清扫迁出）：生产路径构建
+// ShaderStageKey 的唯一位置是 ShaderKeyUtility/GenericMaterialBuilder，
+// 本结构仅供门用例构造键与做 mesh↔fragment 接口一致性断言。
+// 已相对原生产版删减：resources 集合与 GetResourceHash（全库零使用）、
+// ShaderStageInterfaceFlags / ShaderStageResourceKind /
+// ShaderStageResourceRequirement（零使用）。
 
 #include <hgl/CoreType.h>
 #include <hgl/common/ShaderStageDef.h>
 #include <hgl/type/ValueArray.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <hgl/mtl/ShaderStageKey.h>
+#include <hgl/mtl/ShaderStageValueType.h>
 
 namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
-    enum class ShaderStageValueType : uint32
-    {
-        Unknown = 0,
-        Float,
-        Vec2,
-        Vec3,
-        Vec4,
-        Int,
-        UInt,
-        Bool
-    };
-
-    enum class ShaderStageInterfaceFlags : uint32
-    {
-        None = 0,
-        Flat = 1u << 0,
-        NoPerspective = 1u << 1,
-        Centroid = 1u << 2,
-        Sample = 1u << 3
-    };
-
-    enum class ShaderStageResourceKind : uint32
-    {
-        Unknown = 0,
-        UniformBuffer,
-        StorageBuffer,
-        SampledImage,
-        Sampler,
-        CombinedImageSampler
-    };
 
     struct ShaderStageInterfaceVariable
     {
@@ -54,26 +31,6 @@ namespace hgl::graph::mtl
             return symbol_id == rhs.symbol_id
                 && value_type == rhs.value_type
                 && location == rhs.location
-                && flags == rhs.flags;
-        }
-    };
-
-    struct ShaderStageResourceRequirement
-    {
-        uint64 resource_id = 0;
-        ShaderStageResourceKind kind = ShaderStageResourceKind::Unknown;
-        uint32 set = 0;
-        uint32 binding = 0;
-        uint32 value_type = 0;
-        uint32 flags = 0;
-
-        bool operator==(const ShaderStageResourceRequirement &rhs) const noexcept
-        {
-            return resource_id == rhs.resource_id
-                && kind == rhs.kind
-                && set == rhs.set
-                && binding == rhs.binding
-                && value_type == rhs.value_type
                 && flags == rhs.flags;
         }
     };
@@ -98,7 +55,6 @@ namespace hgl::graph::mtl
 
         ValueArray<ShaderStageInterfaceVariable> inputs;
         ValueArray<ShaderStageInterfaceVariable> outputs;
-        ValueArray<ShaderStageResourceRequirement> resources;
 
         uint64 GetInterfaceHash() const noexcept
         {
@@ -110,14 +66,6 @@ namespace hgl::graph::mtl
             return h;
         }
 
-        uint64 GetResourceHash() const noexcept
-        {
-            hgl::hash::FNV1aHasher64 h;
-
-            HashShaderStageValueArray(h, resources);
-            return h;
-        }
-
         ShaderStageKey BuildKey() const noexcept
         {
             ShaderStageKey key;
@@ -125,7 +73,7 @@ namespace hgl::graph::mtl
             key.definition_hash = definition_hash;
             key.glsl_module_graph_hash = glsl_module_graph_hash;
             key.interface_hash = GetInterfaceHash();
-            key.resource_hash = GetResourceHash();
+            key.resource_hash = 0;
             key.compiler_hash = compiler_hash;
             return key;
         }

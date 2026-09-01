@@ -38,15 +38,9 @@ namespace hgl::graph::mtl
 
             PrimitiveType primitive_type = PrimitiveType::Triangles;
             uint32_t shader_stage_flag_bits = 0;
-            uint32_t ubo_range;
-            uint32_t ssbo_range;
 
             DescriptorSetLayoutAllocator descriptor_allocator;                  ///<材质描述符分配器
             mtl::ShaderResourceSchema shader_resource_schema;                       ///<descriptor semantic contract (phase 2)
-
-            uint32_t local_to_world_max_count;
-            uint32_t local_to_world_stage_bits;
-            SSBODescriptor *local_to_world_ssbo;
 
             ShaderCreateInfoMap shader_map;                         ///<着色器列表
 
@@ -143,8 +137,6 @@ namespace hgl::graph::mtl
 
             ShaderBuildContext(const PrimitiveType primitive_type, const uint32_t shader_stage_bits, const bool has_local_to_world);
             ~ShaderBuildContext();  // Need explicit destructor to properly clean up shader_map
-
-            void SetDevice(const contract::PhysicalDeviceProfileLite *profile);
 
             bool SetLocalToWorld(const uint32_t shader_stage_flag_bits);
 

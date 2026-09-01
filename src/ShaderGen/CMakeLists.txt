@@ -19,7 +19,6 @@ SET(SHADER_ARTIFACT_CONTRACT_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderStageKey.h
 ${SHADERGEN_INCLUDE_PATH}/ShaderKeyUtility.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderProgramKey.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderArtifactContract.h
-                                   ${SHADERGEN_INCLUDE_PATH}/ShaderStageBuildContext.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderLinkSpec.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderArtifactStore.h
                                    ${SHADERGEN_INCLUDE_PATH}/ShaderProgramArtifactBuilder.h
@@ -97,8 +96,7 @@ SET(MESH_SHADER_FILES    common/MeshShaderAssembler.h
                         common/MeshShaderTemplate.cpp
                         common/MeshShaderVaryingGen.h
                         common/MeshShaderVertexAdapter.h
-                        common/VertexVaryingConfig.h
-                        common/VertexBuilderCommon.h)
+                        common/VertexVaryingConfig.h)
 
 SOURCE_GROUP("Mesh Shader" FILES ${MESH_SHADER_FILES})
 

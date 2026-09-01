@@ -34,6 +34,7 @@
 #include <hgl/mtl/contract/ShaderGenPhysicalDeviceProfileJson.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/mtl/SamplerPreset.h>
+#include <hgl/mtl/ShaderCacheRoot.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
 #include <hgl/filesystem/Path.h>
 #include <hgl/type/Smart.h>
@@ -98,24 +99,6 @@ namespace
         return true;
     }
 
-    // 与运行时 GetRuntimeShaderArtifactStore 同源的根目录解析：
-    // 环境变量 ULRE_SHADER_CACHE_PATH > exe 所在目录 > cwd
-    OSString ResolveStoreRoot()
-    {
-        const wchar_t *env_value = _wgetenv(L"ULRE_SHADER_CACHE_PATH");
-        if (env_value && env_value[0])
-            return OSString(env_value);
-
-        OSString program_path;
-        if (filesystem::GetCurrentProgramPath(program_path))
-            return program_path;
-
-        OSString current_path;
-        if (filesystem::GetCurrentPath(current_path))
-            return current_path;
-
-        return OSString();
-    }
 
     // 材质顶点语义 → 代表性格式。与引擎内联几何的常规布局对齐：
     // cook 出的是"该材质的规范几何类"变体（运行时几何恰好多携带属性时，
@@ -235,7 +218,7 @@ int main(const int argc, char **argv)
 
     // ── store ──────────────────────────────────────────────────────────
     const OSString store_root = !options.store_root.IsEmpty()
-        ? options.store_root : ResolveStoreRoot();
+        ? options.store_root : mtl::GetShaderCacheRootPath();
     if (store_root.IsEmpty())
     {
         std::fprintf(stderr, "[ShaderCooker] cannot resolve store root\n");

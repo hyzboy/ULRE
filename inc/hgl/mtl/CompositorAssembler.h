@@ -3,7 +3,6 @@
 namespace hgl::graph::mtl {}
 
 #include <hgl/mtl/SurfaceType.h>
-#include <hgl/mtl/BlendMode.h>
 #include <hgl/mtl/PassType.h>
 #include <hgl/mtl/MaterialStageInterface.h>
 #include <hgl/mtl/MaterialOutputContract.h>

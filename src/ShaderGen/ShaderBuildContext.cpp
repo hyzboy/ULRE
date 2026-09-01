@@ -3,9 +3,7 @@
 #include<hgl/mtl/contract/ShaderGenContract.h>
 #include<hgl/mtl/DescriptorResourceCatalog.h>
 #include<hgl/graph/ShaderBufferSources.h>
-#include<hgl/math/Matrix.h>
 #include<string>
-#include<limits>
 using namespace hgl;
 using namespace hgl::graph;
 
@@ -101,16 +99,6 @@ ShaderBuildContext::ShaderBuildContext(const PrimitiveType primitive_type_value,
 {
     if(has_mesh      ())shader_map.Add(new ShaderCreateInfo(ShaderStage::Mesh));
     if(has_fragment  ())shader_map.Add(new ShaderCreateInfo(ShaderStage::Fragment));
-
-    ubo_range=0;
-    ssbo_range=0;
-
-    // Phase 7：补齐初始化——两成员曾未初始化，其值会经 SetLocalToWorld/
-    // GetLocalToWorld 相关路径进入未定义行为
-    local_to_world_max_count=0;
-    local_to_world_stage_bits=0;
-    local_to_world_ssbo=nullptr;
-
 }
 
 ShaderBuildContext::~ShaderBuildContext()
@@ -206,35 +194,9 @@ bool ShaderBuildContext::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
 {
     if(shader_stage_flag_bits==0)return(false);
 
-    local_to_world_max_count=std::min<uint32_t>(ssbo_range/sizeof(math::Matrix4f),HGL_U16_MAX);
-
     const DescriptorResourceCatalogEntry &row=CatalogFixedRow<DescriptorSemantic::LocalToWorld>();
 
-    if(!AddSSBOStruct(shader_stage_flag_bits,*row.sbs,row.binding))
-        return(false);
-
-    local_to_world_ssbo=descriptor_allocator.GetSSBO(row.sbs->name);
-
-    local_to_world_stage_bits=shader_stage_flag_bits;
-
-    return(true);
-}
-//
-void ShaderBuildContext::SetDevice(const contract::PhysicalDeviceProfileLite *profile)
-{
-    if(!profile)
-    {
-        ubo_range=0;
-        ssbo_range=0;
-        return;
-    }
-
-    const uint64_t max_u32=std::numeric_limits<uint32_t>::max();
-    const uint64_t profile_ubo=profile->limits.max_uniform_buffer_range;
-    const uint64_t profile_ssbo=profile->limits.max_storage_buffer_range;
-
-    ubo_range=static_cast<uint32_t>((profile_ubo>max_u32)?max_u32:profile_ubo);
-    ssbo_range=static_cast<uint32_t>((profile_ssbo>max_u32)?max_u32:profile_ssbo);
+    return AddSSBOStruct(shader_stage_flag_bits,*row.sbs,row.binding);
 }
 
 bool ShaderBuildContext::CreateShaderDirect()
