@@ -135,6 +135,27 @@ endif()
 
 ####################################################################################################
 
+add_executable(ShaderLegacyDocumentCompare
+    ShaderLegacyDocumentCompare.cpp)
+
+target_link_libraries(ShaderLegacyDocumentCompare
+    PRIVATE ULRE.ShaderGen
+            CMCore
+            CMCoreType)
+
+CreateProject(ShaderLegacyDocumentCompare)
+
+if(BUILD_TESTING)
+    add_test(
+        NAME shader_legacy_document_compare
+        COMMAND ShaderLegacyDocumentCompare)
+    set_tests_properties(
+        shader_legacy_document_compare
+        PROPERTIES LABELS "shadergen;document;comparison")
+endif()
+
+####################################################################################################
+
 # 需要时可直接运行：
 #   cmake --build <build_dir> --target MaterialPresetExhaustiveCompile
 #   cmake --build <build_dir> --target ShaderResourceSchemaRegressionGate

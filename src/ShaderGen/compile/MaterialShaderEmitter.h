@@ -36,7 +36,16 @@ namespace hgl::graph::mtl
         std::string &out_macros,
         std::string &out_error);
 
+    bool BuildMaterialResourceDocument(
+        const DescriptorSetLayoutAllocator &descriptor_info,
+        SSBOType material_private_data,
+        ShaderDocument &out_document,
+        std::string &out_error);
+
     /// MaterialDefinition.compile_defines → "#define <name> 1"
+    bool BuildCompileDefineDocument(
+        const CompositorMaterialBuildConfig &config,
+        ShaderDocument &out_document);
     std::string BuildCompileDefineMacros(const CompositorMaterialBuildConfig &config);
 
     /// mesh 阶段行表声明（l2w_index / mtl_private_data_index + Resolve 函数）

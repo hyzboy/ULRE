@@ -170,15 +170,82 @@ bool BuildMaterialSSBODeclarations(
     return true;
 }
 
+bool BuildMaterialResourceDocument(
+    const DescriptorSetLayoutAllocator &descriptor_info,
+    const SSBOType material_private_data,
+    ShaderDocument &out_document,
+    std::string &out_error)
+{
+    out_document.Clear();
+    out_error.clear();
+
+    std::string declarations;
+    std::string macros;
+    if (!BuildMaterialSSBODeclarations(
+            descriptor_info,
+            material_private_data,
+            declarations,
+            macros,
+            out_error))
+        return false;
+
+    ShaderDocumentSource source;
+    source.stage = "fragment";
+    source.logical_name = "MaterialResources";
+    if (!declarations.empty())
+        out_document.Add(
+            ShaderDocumentBlockKind::Resource,
+            AnsiString(declarations.c_str()),
+            source);
+    if (!macros.empty())
+        out_document.Add(
+            ShaderDocumentBlockKind::Define,
+            AnsiString(macros.c_str()),
+            source);
+
+    const std::string mesh_index_tables =
+        BuildMeshIndexTableDecls(descriptor_info);
+    if (!mesh_index_tables.empty())
+        out_document.Add(
+            ShaderDocumentBlockKind::Resource,
+            AnsiString(mesh_index_tables.c_str()),
+            source);
+
+    const std::string fragment_index_tables =
+        BuildFSIndexTableDecls(descriptor_info);
+    if (!fragment_index_tables.empty())
+        out_document.Add(
+            ShaderDocumentBlockKind::Resource,
+            AnsiString(fragment_index_tables.c_str()),
+            source);
+    return true;
+}
+
 // ── Step 5c: 编译期宏（compile_defines）──────────────────────────────────────
 // 遍历 MaterialDefinition.compile_defines，为每个名字生成 "#define <name> 1\n"。
 // 用于在 GLSL 中通过 #ifdef 切换代码路径（如 TEXT_SDF_ENABLED）。
 std::string BuildCompileDefineMacros(
     const CompositorMaterialBuildConfig &config)
 {
+    ShaderDocument document;
+    if (!BuildCompileDefineDocument(config, document))
+        return {};
+
+    ShaderDocumentDiagnostics diagnostics;
+    AnsiString serialized;
+    if (!document.SerializeFragment(serialized, diagnostics))
+        return {};
+    return std::string(serialized.c_str(), serialized.Length());
+}
+
+bool BuildCompileDefineDocument(
+    const CompositorMaterialBuildConfig &config,
+    ShaderDocument &out_document)
+{
+    out_document.Clear();
     std::string macros;
     if (!config.material_definition)
-        return macros;
+        return true;
 
     for (const auto &name : config.material_definition->compile_defines)
     {
@@ -189,18 +256,13 @@ std::string BuildCompileDefineMacros(
         macros += " 1\n";
     }
 
-    ShaderDocument document;
-    ShaderDocumentDiagnostics diagnostics;
     ShaderDocumentSource source;
     source.logical_name = "MaterialCompileDefines";
-    document.Add(
+    out_document.Add(
         ShaderDocumentBlockKind::Define,
         AnsiString(macros.c_str()),
         source);
-    AnsiString serialized;
-    if (!document.SerializeFragment(serialized, diagnostics))
-        return {};
-    return std::string(serialized.c_str(), serialized.Length());
+    return true;
 }
 
 // ── Step 5d: Instance index table SSBO GLSL 声明 ─────────────────────────────
