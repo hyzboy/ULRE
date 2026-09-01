@@ -584,7 +584,32 @@ namespace hgl::graph::mtl
             }
             else
             {
-                if (main_begin > resource_begin)
+                const size_t interface_begin =
+                    glsl.find("layout(location", resource_begin);
+                const size_t interface_end =
+                    interface_begin != std::string::npos
+                        && interface_begin < main_begin
+                        ? main_begin
+                        : std::string::npos;
+                if (interface_begin != std::string::npos
+                 && interface_begin > resource_begin)
+                {
+                    source.logical_name = "CompositorAssembler.Modules";
+                    out_document.Add(
+                        ShaderDocumentBlockKind::Module,
+                        AnsiString(glsl.substr(
+                            resource_begin,
+                            interface_begin - resource_begin).c_str()),
+                        source);
+                    source.logical_name = "CompositorAssembler.Interfaces";
+                    out_document.Add(
+                        ShaderDocumentBlockKind::Interface,
+                        AnsiString(glsl.substr(
+                            interface_begin,
+                            interface_end - interface_begin).c_str()),
+                        source);
+                }
+                else if (main_begin > resource_begin)
                 {
                     source.logical_name = "CompositorAssembler.Functions";
                     out_document.Add(

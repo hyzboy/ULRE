@@ -227,4 +227,32 @@ namespace hgl::graph::mtl
             return {};
         return std::string(serialized.c_str(), serialized.Length());
     }
+
+    inline bool GenerateMeshShaderDocument(
+        const VertexShaderNodeConfig &node_cfg,
+        const MaterialVertexVaryingConfig &varying_cfg,
+        VkFormat position_format,
+        MeshShaderMode mode,
+        uint32_t max_invocations,
+        ShaderDocument &out_document)
+    {
+        const std::string glsl = GenerateMeshShader(
+            node_cfg,
+            varying_cfg,
+            position_format,
+            mode,
+            max_invocations);
+        if (glsl.empty())
+            return false;
+
+        out_document.Clear();
+        ShaderDocumentSource source;
+        source.stage = "mesh";
+        source.logical_name = "MeshShaderAssembler";
+        out_document.Add(
+            ShaderDocumentBlockKind::Raw,
+            AnsiString(glsl.c_str()),
+            source);
+        return true;
+    }
 }//namespace hgl::graph::mtl
