@@ -680,12 +680,9 @@ namespace hgl::ecs
         material_comp->program_build_context_hash =
             build_context_hash;
 
-        // Cache normalized recipe so CreatePipeline can skip duplicate NormalizeRecipe.
-        {
-            graph::mtl::MaterialRecipe cached_recipe = effective_recipe;
-            graph::mtl::NormalizeRecipe(cached_recipe);
-            material_comp->cached_normalized_recipe = std::move(cached_recipe);
-        }
+        // effective_recipe 出自 BuildResolvedAuthoringMaterialRecipe（组件边界
+        // 已 NormalizeRecipe），直接缓存供 CreatePipeline 使用，无需再规范化。
+        material_comp->cached_normalized_recipe = effective_recipe;
 
         // P3: Cache effective recipe (with program-resolved SSBO types)
         // to avoid redundant BuildResolvedRecipe downstream.

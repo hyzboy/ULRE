@@ -470,23 +470,39 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
     return mtl.Finish();
 }
 
+namespace
+{
+    // AcquireShaderProgram(request) 与 BuildShaderResourceSchema 的公共前半段：
+    // 解析 definition → 创建构建上下文。失败返回 nullptr 并写日志。
+    mtl::ShaderBuildContext *BuildContextFromRequest(
+        const mtl::contract::PhysicalDeviceProfileLite *profile,
+        const mtl::MaterialDefinitionBuildRequest &request,
+        mtl::MaterialDefinition &out_definition)
+    {
+        if (!ResolveMaterialDefinitionForRequest(request, out_definition))
+            return nullptr;
+
+        AutoDelete<mtl::ShaderBuildContext> ctx =
+            mtl::CreateMaterialFromDefinition(profile, out_definition, request);
+        if (!ctx)
+        {
+            GLogError("[ShaderProgramManager] Material definition build failed: id=%s name=%s",
+                      out_definition.definition_id.c_str(),
+                      out_definition.definition_name.c_str());
+            return nullptr;
+        }
+        return ctx.Finish();
+    }
+}//namespace
+
 bool ShaderProgramManager::BuildShaderResourceSchema(const mtl::MaterialDefinitionBuildRequest &request,
                                                   mtl::ShaderResourceSchema &out_schema)
 {
     mtl::MaterialDefinition definition{};
-    if (!ResolveMaterialDefinitionForRequest(
-            request, definition))
-        return false;
-
-    const auto *profile = GetPhysicalDeviceProfile();
-    AutoDelete<mtl::ShaderBuildContext> ctx = mtl::CreateMaterialFromDefinition(profile, definition, request);
+    AutoDelete<mtl::ShaderBuildContext> ctx =
+        BuildContextFromRequest(GetPhysicalDeviceProfile(), request, definition);
     if (!ctx)
-    {
-        GLogError("[ShaderProgramManager] Material definition build failed: id=%s name=%s",
-                  definition.definition_id.c_str(),
-                  definition.definition_name.c_str());
         return false;
-    }
 
     out_schema = ctx->GetShaderResourceSchema();
     return true;
@@ -502,29 +518,18 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
 
     mtl::MaterialDefinitionBuildRequest normalized_request = request;
     normalized_request.recipe = normalized_recipe;
-
-    mtl::MaterialDefinition definition{};
-    if (!ResolveMaterialDefinitionForRequest(
-            normalized_request, definition))
-        return nullptr;
-
-    const auto *profile = GetPhysicalDeviceProfile();
     normalized_request.defer_finalize = true;
     // 接通跨进程 SPV 磁盘缓存：FinalizeShaderBuildContext 先查缓存，未命中
     // 才走 glslang 编译并回填（BuildIfMissing）。FinalizeShaderBuildContext 在
     // store 非空时要求 program link + artifact metadata 齐备——生产路径的
     // BuildGenericMaterial 两者恒备（回归门已全变体验证）。
     normalized_request.shader_artifact_store = GetRuntimeShaderArtifactStore();
+
+    mtl::MaterialDefinition definition{};
     AutoDelete<mtl::ShaderBuildContext> ctx =
-        mtl::CreateMaterialFromDefinition(
-            profile, definition, normalized_request);
-    if(!ctx)
-    {
-        GLogError("[ShaderProgramManager] Material definition build failed: id=%s name=%s",
-                  definition.definition_id.c_str(),
-                  definition.definition_name.c_str());
+        BuildContextFromRequest(GetPhysicalDeviceProfile(), normalized_request, definition);
+    if (!ctx)
         return nullptr;
-    }
 
     if (!ctx->HasProgramLink())
     {

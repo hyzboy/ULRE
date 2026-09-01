@@ -369,6 +369,39 @@ namespace hgl::graph::mtl
         return false;
     }
 
+    /**
+     * 从已 Normalize 的 recipe 重建解析后的渲染状态。
+     *
+     * NormalizeRecipe 会把 ResolveMaterialRenderState 的结果写回
+     * render_state_overrides（has_* 全 true），此后 definition 不再参与——
+     * 本函数与 ResolveMaterialRenderState(definition, normalized_recipe) 等价，
+     * 供管线创建侧使用，避免为取渲染状态反查材质定义。
+     */
+    inline ResolvedMaterialRenderState GetNormalizedRecipeRenderState(
+        const MaterialRecipe &recipe) noexcept
+    {
+        const MaterialRenderStateOverrides &overrides = recipe.render_state_overrides;
+
+        ResolvedMaterialRenderState state{};
+        state.double_sided = overrides.double_sided;
+        state.alpha_test = overrides.alpha_test;
+        state.alpha_cutoff = overrides.alpha_cutoff;
+        state.dither = overrides.dither;
+        state.pipeline_config = overrides.pipeline_config;
+        return state;
+    }
+
+    /** recipe 是否已经 Normalize（render_state_overrides 被写回为权威值）*/
+    inline bool IsRecipeNormalized(const MaterialRecipe &recipe) noexcept
+    {
+        const auto &overrides = recipe.render_state_overrides;
+        return overrides.has_double_sided
+            && overrides.has_alpha_test
+            && overrides.has_alpha_cutoff
+            && overrides.has_dither
+            && overrides.has_pipeline_config;
+    }
+
     inline const RecipeSSBOAssetBinding *FindRecipeSSBOAssetBindingByKey(
         const MaterialRecipe &recipe,
         const char *material_private_data_slot_name,
@@ -468,6 +501,40 @@ namespace hgl::graph::mtl
     {
         return UpsertRecipeSSBOAssetBinding(
             recipe, material_private_data_slot_name, binding.ssbo_type, binding.ssbo_id, material_private_data_slot);
+    }
+
+    // 纹理绑定 upsert（与 UpsertRecipeSSBOAssetBinding 对称）：
+    // slot_name 已存在则原位更新，否则追加。
+    inline bool UpsertRecipeTextureBinding(MaterialRecipe &recipe,
+                                           const std::string &slot_name,
+                                           const std::string &resource_id,
+                                           const bool required,
+                                           const uint32_t direct_value = 0,
+                                           const bool use_direct_value = false)
+    {
+        if (slot_name.empty())
+            return false;
+
+        for (auto &binding : recipe.textures)
+        {
+            if (binding.slot_name != slot_name)
+                continue;
+
+            binding.resource_id = resource_id;
+            binding.direct_value = direct_value;
+            binding.use_direct_value = use_direct_value;
+            binding.required = required;
+            return true;
+        }
+
+        RecipeTextureBinding binding{};
+        binding.slot_name = slot_name;
+        binding.resource_id = resource_id;
+        binding.direct_value = direct_value;
+        binding.use_direct_value = use_direct_value;
+        binding.required = required;
+        recipe.textures.emplace_back(std::move(binding));
+        return true;
     }
 
     inline void ApplyBaseMaterialInfoDefaults(MaterialRecipe &recipe,
