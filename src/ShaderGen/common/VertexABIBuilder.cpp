@@ -8,7 +8,6 @@
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/mtl/GLSLCodeModuleRegistry.h>
 #include<hgl/mtl/ShaderLibraryPath.h>
-#include<hgl/mtl/SerializedVertexEntry.h>
 #include<hgl/log/Log.h>
 #include<cstring>
 #include<algorithm>
@@ -147,7 +146,6 @@ namespace
     bool BuildResolvedVertexABI(
         const MaterialDefinition &definition,
         const MaterialDefinitionBuildRequest &request,
-        std::vector<SerializedVertexEntry> &out_vertices,
         VkFormat &out_position_format,
         std::string &out_vertex_input_glsl,
         GLSLCodeModuleResolutionResult &out_resolution)
@@ -170,7 +168,6 @@ namespace
         out_resolution.resolved = true;
 
         const GeometryVertexFormat &geometry = *request.geometry_vertex_format;
-        out_vertices.clear();
         out_vertex_input_glsl.clear();
         out_position_format = VK_FORMAT_UNDEFINED;
 
@@ -295,20 +292,16 @@ bool BuildResolvedMaterialVertexABI(
     const MaterialDefinitionBuildRequest &request,
     MaterialResolvedVertexABI &out_abi)
 {
-    std::vector<SerializedVertexEntry> vertices;
     std::string vertex_input_glsl;
     VkFormat position_format = VK_FORMAT_UNDEFINED;
     GLSLCodeModuleResolutionResult resolution;
-    if (!BuildResolvedVertexABI(definition, request, vertices, position_format,
+    if (!BuildResolvedVertexABI(definition, request, position_format,
                                 vertex_input_glsl, resolution))
         return false;
 
     out_abi.position_format = position_format;
     out_abi.provider_graph_hash =
         GetGLSLCodeModuleProviderGraphHash(resolution);
-    out_abi.vertex_entries.Clear();
-    for (const SerializedVertexEntry &entry : vertices)
-        out_abi.vertex_entries.Add(entry);
     out_abi.vertex_input_glsl = vertex_input_glsl.c_str();
     if (!ComposeGLSLCodeModuleProviderGraph(resolution, out_abi.provider_glsl))
         return false;

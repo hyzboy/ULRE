@@ -57,8 +57,7 @@ namespace hgl::graph::mtl
     // GLSLCodeModuleSemantic 的字符串名字只在本处定义一次：
     //   GetGLSLCodeModuleSemanticName：枚举 → 名字（switch）
     //   ParseGLSLCodeModuleSemantic：名字 → 枚举（线性查表，跳过 Unknown）
-    // 旧 MaterialDefinitionFile.cpp / GLSLCodeModuleFile.cpp 各自维护的
-    // 平行名字表已删除——新增语义只需改枚举 + 本 switch 一处。
+    // 新增语义只需改枚举 + 本 switch 一处。
     inline constexpr uint32 GLSLCodeModuleSemanticCount =
         static_cast<uint32>(GLSLCodeModuleSemantic::Size) + 1;
 

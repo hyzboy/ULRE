@@ -4,7 +4,7 @@
 //
 // 输出恒 triangle list：mesh shader 的图元拓扑由 layout 声明（triangles），
 // Fan/TriangleStrip 是固定管线的装配规则（依赖连续顶点流）——mesh 的分组
-// 模型下跨组必然错（扇心错位/组边界丢三角形），已删除（T3.5）。
+// 模型下跨组必然错（扇心错位/组边界丢三角形）。
 // 需要 fan/strip 语义的几何必须在 CPU 侧转成 triangle list。
 
 #pragma once

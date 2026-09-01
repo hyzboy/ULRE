@@ -133,9 +133,6 @@ bool ShaderBuildContext::AddStruct(const std::string &struct_name,const std::str
     return descriptor_allocator.AddStruct(struct_name,codes);
 }
 
-// ── AddUBO 家族已删除（Phase 7）：Scene UBO 全局化（P1）后引擎无 per-material
-//    UBO 注册路径，全部实现为死代码 ──
-
 bool ShaderBuildContext::AddSSBOCore(const ShaderStage flag_bit,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name,const int preferred_binding)
 {
     if(!shader_map.ContainsKey(flag_bit))

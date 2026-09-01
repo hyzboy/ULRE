@@ -5,10 +5,10 @@ namespace hgl::graph::mtl
 {
     namespace
     {
-        // ── 骨架选择键（原 compositor 模板路径，TOML fragment.source 引用）──
-        constexpr const char ForwardSurfaceSkeletonKey[] = "compositor/main_forward_surface.frag.glsl";
-        constexpr const char DepthOnlySkeletonKey[]      = "compositor/main_depth_only.frag.glsl";
-        constexpr const char SkySkeletonKey[]            = "compositor/main_forward_sky.frag.glsl";
+        // ── 骨架选择键（TOML fragment.source 引用）────────────────────
+        constexpr const char ForwardSurfaceSkeletonKey[] = "forward_surface";
+        constexpr const char DepthOnlySkeletonKey[]      = "depth_only";
+        constexpr const char SkySkeletonKey[]            = "forward_sky";
 
         enum class Skeleton
         {

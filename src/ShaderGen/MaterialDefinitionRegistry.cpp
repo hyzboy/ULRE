@@ -27,7 +27,7 @@ namespace
             return false;
 
         // 全部材质定义（含内置 bootstrap：pure_color/text_2d）均为 TOML
-        // 文件承载——C++ 硬编码材质已移除，统一走文件注册表查询。
+        // 文件承载，统一走文件注册表查询。
         const MaterialDefinitionFileRegistry &file_registry =
             GetMaterialDefinitionFileRegistry();
         const MaterialDefinition *file_definition =

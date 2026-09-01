@@ -2,15 +2,11 @@
 
 /// GenericMaterialBuilder.h — phase-split generic material compilation.
 ///
-/// BuildGenericMaterial (formerly a ~390-line function in
-/// MaterialDefinitionRegistry.cpp) is decomposed into five ordered phases that
-/// share a GenericMaterialBuildPlan. The phases are behavior-preserving: they
-/// execute exactly the same statements in the same order as the original
-/// function, so every produced hash / stage key is identical (zero drift).
+/// BuildGenericMaterial is decomposed into five ordered phases that
+/// share a GenericMaterialBuildPlan.
 
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/VertexShaderNodeConfig.h>
-#include <hgl/mtl/SerializedVertexEntry.h>
 #include <hgl/mtl/SerializedDescriptorEntry.h>
 #include <hgl/mtl/ModuleResourceManifest.h>
 #include <hgl/mtl/CanonicalShaderContract.h>
@@ -18,7 +14,6 @@
 #include <hgl/mtl/MaterialCoverageContract.h>
 #include <hgl/mtl/MaterialStageInterface.h>
 #include <hgl/mtl/ShaderLinkSpec.h>
-#include "VertexVaryingConfig.h"      // mtl::VertexVaryingConfig
 
 #include <string>
 #include <vector>
@@ -49,12 +44,11 @@ namespace hgl::graph::mtl
         mtl::MaterialCoverageContract coverage;
         MaterialVertexVaryingConfig effective_vertex_varying;
         MaterialDefinition vertex_definition;
-        mtl::VertexVaryingConfig varying;
+        MaterialVertexVaryingConfig varying;
         hgl::ValueArray<mtl::InterStageSemanticContractEntry>
             stage_interface;
 
         // Phase 2: vertex ABI
-        std::vector<SerializedVertexEntry> vertices;
         VkFormat position_format = VK_FORMAT_UNDEFINED;
         VertexShaderNodeConfig vertex_node_config;
         std::string resolved_vertex_input_glsl;

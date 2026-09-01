@@ -13,6 +13,7 @@
 #include <hgl/mtl/ShaderStageBuildContext.h>
 #include <hgl/mtl/ShaderLinkSpec.h>
 #include <hgl/mtl/SurfaceType.h>
+#include <hgl/mtl/MaterialVertexVaryingConfig.h>
 #include <hgl/mtl/BlendMode.h>
 #include <hgl/mtl/PassType.h>
 #include <hgl/util/hash/FNV1a.h>
@@ -170,19 +171,7 @@ namespace hgl::graph::mtl
         }
     }
 
-    struct MaterialVertexVaryingConfig
-    {
-        bool emit_data_index_id = false;
-        bool emit_vertex_color = false;
-        bool emit_uv0 = false;
-        bool emit_world_pos = false;
-        bool emit_world_normal = false;
-        bool emit_luminance = false;
-        bool emit_frag_direction = false;
-        bool use_transform_id_attr = false;
-        bool emit_vertex_color_from_palette = false;
-        bool emit_style_id = false;
-    };
+    // MaterialVertexVaryingConfig — see <hgl/mtl/MaterialVertexVaryingConfig.h>
 
     // MaterialDefinition 来源标记：区分 built-in 硬编码实现与未来的文件化实现。
     enum class MaterialDefinitionSourceKind : uint8_t

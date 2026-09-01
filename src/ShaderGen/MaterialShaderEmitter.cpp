@@ -238,7 +238,7 @@ std::string BuildFSIndexTableDecls(
     // FS 阶段注入 bindless 纹理行表：TextureLayerRowsData struct + buffer（named slot）。
     // 字段名 = TextureSlot 的 snake_case 名（GetTextureSlotName），顺序与枚举一致；
     // 内存布局与旧扁平 values[RANGE_SIZE] 逐字节相同，故 CPU 上传无需改动。
-    // 行索引即 fragDataIndexID（P1-2e：TextureLayerID varying 已删除）。
+    // 行索引即 fragDataIndexID。
     // 仅当该材质确实注册了 mtl_texture_layer_rows（存在 MaterialTextureLayerTable
     // 描述符，即声明了纹理槽）时才注入 named-slot struct + buffer；否则跳过
     //（与 AppendIndexTableDecl 的静默跳过行为一致，无纹理槽材质 FS 不引用该 buffer）。

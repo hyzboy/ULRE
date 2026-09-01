@@ -25,9 +25,8 @@ namespace hgl::graph::mtl
      *   （fragment 输入 / 输出附件）→ main 骨架（本文件常量）内嵌契约驱动的
      *   si 装配 → 代码模块（调用方传入，置于 surface 函数 include 之前）。
      *
-     * 骨架常量承载于实现文件（原 3 个 compositor 模板文件已删除，TOML 的
-     * fragment.source 路径降级为骨架选择键）；算法代码仍在 ShaderLibrary/*.glsl，
-     * 经 glslang 原生 #include 组合。marker 体系与行嗅探消亡。
+     * 骨架常量承载于实现文件；算法代码仍在 ShaderLibrary/*.glsl，
+     * 经 glslang 原生 #include 组合。
      */
     class CompositorAssembler
     {

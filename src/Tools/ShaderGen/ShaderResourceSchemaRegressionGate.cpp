@@ -1022,7 +1022,7 @@ namespace
         const auto texture_template = assembler.Assemble(
             SurfaceType::Unlit,
             PassType::ForwardMasked,
-            "compositor/main_forward_surface.frag.glsl",
+            "forward_surface",
             "surface/material_surface.glsl",
             alpha_options);
         if (!texture_template.success
@@ -2564,7 +2564,7 @@ namespace
              || !definition.fragment_source
              || std::strcmp(
                     definition.fragment_source,
-                    "compositor/main_forward_surface.frag.glsl") != 0
+                    "forward_surface") != 0
              || !definition.fragment_surface_module
              || std::strcmp(
                     definition.fragment_surface_module,
@@ -2680,7 +2680,7 @@ namespace
 
         if (!pure_color.fragment_source
          || std::strcmp(pure_color.fragment_source,
-                        "compositor/main_forward_surface.frag.glsl") != 0
+                        "forward_surface") != 0
          || !pure_color.fragment_surface_module
          || std::strcmp(
                 pure_color.fragment_surface_module,
@@ -2712,7 +2712,7 @@ namespace
         options.fragment_inputs = &stage_interface;
         const auto assembled = assembler.Assemble(
             SurfaceType::Unlit, PassType::ForwardOpaque,
-            "compositor/main_forward_surface.frag.glsl",
+            "forward_surface",
             "surface/material_surface.glsl",
             options);
         if (!assembled.success
@@ -2974,7 +2974,7 @@ namespace
             "scale = \"World\"\n"
             "projection = \"WorldCameraVP\"\n"
             "[fragment]\n"
-            "source = \"compositor/main_forward_surface.frag.glsl\"\n"
+            "source = \"forward_surface\"\n"
             "surface_module = \"surface/material_surface.glsl\"\n"
             "material_source_module = \"material/pbr_surface_source.glsl\"\n"
             "ntb_module = \"ntb/ntb_tangent_vbo_normalmap.glsl\"\n"
@@ -3007,7 +3007,7 @@ namespace
              || definition.vertex_semantic_requirements.GetCount() != 3
              || definition.ubo_requirements.size() != 2
              || std::strcmp(definition.fragment_source,
-                            "compositor/main_forward_surface.frag.glsl") != 0
+                            "forward_surface") != 0
              || std::strcmp(definition.fragment_surface_module,
                             "surface/material_surface.glsl") != 0)
             {
@@ -3453,8 +3453,8 @@ namespace
         else if (surface_interface->kind != GLSLCodeModuleKind::Shared)
             result.diagnostics.emplace_back("surface_interface kind mismatch");
 
-        // 单趟发射改造（2026-09）：compositor 骨架降级为发射器常量，模板文件
-        // 已删除——main_forward_surface 不再作为 GLSL 代码模块注册。
+        // 单趟发射改造（2026-09）：compositor 骨架降级为发射器常量，
+        // skeleton key 为 "forward_surface" / "depth_only" / "forward_sky"。
 
         const auto *forward_input = registry.FindByName("forward_lighting");
         if (!forward_input || forward_input->kind != GLSLCodeModuleKind::Utility)
@@ -3606,9 +3606,6 @@ namespace
         GateResult result;
         result.name = "Z.material-privatedata-slot-source";
 
-        const SerializedVertexEntry vertices[] = {
-            {VF_V2F, VertexSemantic::Position}
-        };
         const SerializedDescriptorEntry descriptors[] = {
             {
                 DescriptorSetType::PerObject,
@@ -3626,8 +3623,6 @@ namespace
         const MaterialShaderCompilerInput compiler_input{
             "MaterialPrivateDataSlotMaterial",
             PrimitiveType::Triangles,
-            vertices,
-            1,
             descriptors,
             1
         };
@@ -3713,9 +3708,6 @@ namespace
         // 编译器不得再注入 #define（原 kBindingDefineTable 注入路径已删除，Phase 3）。
         // 输入 GLSL 特意 include 并使用宏（与真实模板一致），且携带 LocalToWorld
         // 描述符——旧注入路径会因此向 mesh 阶段注入 L2W_SET/L2W_BINDING。
-        const SerializedVertexEntry vertices[] = {
-            {VF_V2F, VertexSemantic::Position}
-        };
         const SerializedDescriptorEntry descriptors[] = {
             {
                 DescriptorSetType::PerObject,
@@ -3733,8 +3725,6 @@ namespace
         const MaterialShaderCompilerInput compiler_input{
             "BindingMacroSingleSourceMaterial",
             PrimitiveType::Triangles,
-            vertices,
-            1,
             descriptors,
             1
         };

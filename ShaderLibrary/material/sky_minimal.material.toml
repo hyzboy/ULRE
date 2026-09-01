@@ -13,7 +13,7 @@ scale = "World"
 projection = "WorldCameraVP"
 
 [fragment]
-source = "compositor/main_forward_sky.frag.glsl"
+source = "forward_sky"
 surface_module = "surface/sky_minimal_surface.glsl"
 
 [compositor]

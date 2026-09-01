@@ -44,15 +44,10 @@ namespace hgl::graph::mtl
             && lhs.location == rhs.location;
     }
 
-    // ── ShaderInterfaceContract 体系已删除（2026-09 契约删减）───────────────
-    // 原 GeometrySemanticContractEntry / ShaderDescriptorContractEntry /
-    // ShaderEntryPointContract / ShaderInterfaceContract 及其 Validate/Serialize/
-    // GetHash 仅服务于"把生产数据转成第二套表示再校验/哈希"的往返用法与
-    // 回归门自测，生产零消费。校验已就地化：
+    // ── 校验已就地化（不再经第二套表示中转）───────────────────────────
     //   inter-stage 条目 → MaterialStageInterface.cpp::ValidateInterStageEntries
     //   描述符条目       → DescriptorContract.cpp::ValidateDescriptorContract
     //   描述符契约哈希   → DescriptorContract.cpp::GetDescriptorContractHash
-    // 保留本头文件中生产实际消费的部分：InterStage/Output 契约。
 
     struct ShaderOutputAttachmentContract
     {

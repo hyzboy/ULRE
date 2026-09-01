@@ -23,7 +23,6 @@
 #include <hgl/mtl/GLSLCodeModuleCapabilityResolver.h>
 #include "MaterialShaderEmitter.h"
 #include "3d/DefinitionDescriptorBuilder.h"
-#include "common/VertexVaryingConfig.h"
 #include "common/MeshShaderAssembler.h"
 #include "common/GenericMaterialBuilder.h"
 
@@ -59,7 +58,12 @@ namespace hgl::graph::mtl
             uint32_t cap = l.max_mesh_work_group_size_x;
             if (l.max_mesh_output_vertices > 0)
                 cap = std::min(cap, l.max_mesh_output_vertices / verts_per_inv);
-            if (l.max_mesh_output_primitives > 0)
+            // VertexPassthrough: 1 vertex/invocation, but 3 invocations per
+            // triangle — GetMeshModePrimitivesPerInvocation returns 1 which
+            // would over-state the primitive cap 3x. The vertex constraint
+            // already covers this mode correctly, so skip primitives here.
+            if (mode != MeshShaderMode::VertexPassthrough
+             && l.max_mesh_output_primitives > 0)
                 cap = std::min(cap, l.max_mesh_output_primitives / prims_per_inv);
 
             if (cap == 0)
@@ -218,17 +222,7 @@ namespace hgl::graph::mtl
                 }
             }
 
-            plan.varying = VertexVaryingConfig{};
-            plan.varying.emit_data_index_id = plan.effective_vertex_varying.emit_data_index_id;
-            plan.varying.emit_vertex_color = plan.effective_vertex_varying.emit_vertex_color;
-            plan.varying.emit_uv0 = plan.effective_vertex_varying.emit_uv0;
-            plan.varying.emit_world_pos = plan.effective_vertex_varying.emit_world_pos;
-            plan.varying.emit_world_normal = plan.effective_vertex_varying.emit_world_normal;
-            plan.varying.emit_luminance = plan.effective_vertex_varying.emit_luminance;
-            plan.varying.emit_frag_direction = plan.effective_vertex_varying.emit_frag_direction;
-            plan.varying.use_transform_id_attr = plan.effective_vertex_varying.use_transform_id_attr;
-            plan.varying.emit_vertex_color_from_palette = plan.effective_vertex_varying.emit_vertex_color_from_palette;
-            plan.varying.emit_style_id = plan.effective_vertex_varying.emit_style_id;
+            plan.varying = plan.effective_vertex_varying;
 
             MaterialStageInterfaceDiagnostic stage_interface_diagnostic{};
             if (!BuildMaterialStageInterface(
@@ -285,9 +279,6 @@ namespace hgl::graph::mtl
                       << resolved_abi.provider_graph_hash;
                     plan.resolved_provider_graph_hash = h;
                 }
-                plan.vertices.reserve(static_cast<size_t>(resolved_abi.vertex_entries.GetCount()));
-                for (int i = 0; i < resolved_abi.vertex_entries.GetCount(); ++i)
-                    plan.vertices.push_back(resolved_abi.vertex_entries[i]);
             }
             return true;
         }
@@ -586,7 +577,6 @@ namespace hgl::graph::mtl
             out_compiler_input = MaterialShaderCompilerInput{
                 definition.definition_name.c_str(),
                 request.primitive_type,
-                plan.vertices.data(), static_cast<uint32>(plan.vertices.size()),
                 plan.descriptors.data(), static_cast<uint32>(plan.descriptors.size())
             };
             CompositorMaterialBuildConfig &config = out_config;

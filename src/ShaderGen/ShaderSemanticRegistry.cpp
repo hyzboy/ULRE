@@ -160,7 +160,7 @@ namespace hgl::graph::mtl
     bool ValidateShaderSemanticRegistries(
         ShaderSemanticRegistryValidationResult &out_result) noexcept
     {
-        // GeometrySemantic 半边（VBO 顶点属性语义）已删除——只剩 InterStage 校验
+        // VBO 顶点属性语义不走此校验——仅 InterStage 校验
         return ValidateInterStageSemanticRegistry(out_result);
     }
 }

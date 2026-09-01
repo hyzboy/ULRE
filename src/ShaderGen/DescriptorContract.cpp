@@ -272,7 +272,6 @@ namespace hgl::graph::mtl
         out_schema.resources.reserve(contract.size());
 
         // C1-T2：entries 为规范化 SerializedDescriptorEntry——直读字段
-        //（原经 DescriptorContractEntry.canonical 间接访问已删除）。
         for (const SerializedDescriptorEntry &entry : contract)
         {
             ShaderResourceSlot req;

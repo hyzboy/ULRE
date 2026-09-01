@@ -20,8 +20,7 @@ namespace hgl::graph
         ENUM_CLASS_RANGE(ForwardOpaque, EarlyZMasked)
     };
 
-    // ── PassType 名字注册表（单一真源，T1）──────────────────────────
-    // 旧 MaterialDefinitionFile.cpp 的 ParsePass 平行表已删除。
+    // ── PassType 名字注册表（单一真源）──────────────────────────
     inline const char *GetPassTypeName(const PassType pass) noexcept
     {
         switch (pass)

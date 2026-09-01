@@ -166,18 +166,7 @@ namespace hgl::graph::mtl
         MaterialStageInterfaceDiagnostic stage_interface_diagnostic{};
         if (!resolved_stage_interface)
         {
-            MaterialVertexVaryingConfig material_varying{};
-            material_varying.emit_data_index_id   = varying_cfg.emit_data_index_id;
-            material_varying.emit_vertex_color    = varying_cfg.emit_vertex_color;
-            material_varying.emit_uv0             = varying_cfg.emit_uv0;
-            material_varying.emit_world_pos       = varying_cfg.emit_world_pos;
-            material_varying.emit_world_normal    = varying_cfg.emit_world_normal;
-            material_varying.emit_luminance       = varying_cfg.emit_luminance;
-            material_varying.emit_frag_direction  = varying_cfg.emit_frag_direction;
-            material_varying.emit_vertex_color_from_palette =
-                varying_cfg.emit_vertex_color_from_palette;
-            material_varying.emit_style_id      = varying_cfg.emit_style_id;
-            if (!BuildMaterialStageInterface(material_varying,
+            if (!BuildMaterialStageInterface(varying_cfg,
                                              adapted_stage_interface,
                                              stage_interface_diagnostic))
                 return {};

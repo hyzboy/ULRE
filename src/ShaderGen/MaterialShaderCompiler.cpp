@@ -2,8 +2,7 @@
 ///
 /// 流程：
 ///   1. 从 SerializedDescriptorEntry[] 构建 DescriptorSetLayoutAllocator（描述符布局）
-///   2. 从 SerializedVertexEntry[] 设置顶点输入
-///   3. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
+///   2. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
 
 #include <hgl/mtl/MaterialShaderCompiler.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
@@ -368,8 +367,7 @@ static bool PrepareBaseDescriptorContract(
                 input.descriptor_entry_count,
                 out_base_contract))
     {
-        // 原实现此处静默失败（ctx 尚未创建，不打印、不 delete），保持行为一致。
-        return false;
+        return c.Fail("BuildDescriptorContract failed");
     }
 
     out_with_local_to_world = HasDescriptorSemantic(
@@ -465,7 +463,7 @@ static bool BuildEffectiveDescriptorEntries(
 // 唯一真源：inc/hgl/mtl/DescriptorResourceCatalog.h（语义→类别/集合/绑定/SBS）。
 // 按类别三分支：SceneGlobal 全局化跳过；PerDraw/VertexGeometry 固定 ABI 注册；
 // MaterialData per-material 动态（数据槽由 RegisterMaterialPrivateDataSlotDescriptors
-// 单独处理，此处仅纹理层表/行表）。原 kDescriptorRegisterTable + RegisterOp 已删除。
+// 单独处理，此处仅纹理层表/行表）。
 static bool RegisterCanonicalDescriptors(
     ShaderBuildContext *ctx,
     const std::vector<SerializedDescriptorEntry> &descriptor_entries,
@@ -604,17 +602,11 @@ static bool RegisterMaterialPrivateDataSlotDescriptors(
     return true;
 }
 
-// ── Step 4: 行表 SSBO 的补齐已上收至契约层 ───────────────────────────────────
-// emit_data_index_id 的 MaterialPrivateDataIndex 行表由
-// EnsureDescriptorContractVaryingResources（DescriptorContract.cpp）在契约构建期
-// 补入并经 RegisterCanonicalDescriptors 注册——原 EnsureIndexTableSSBOs 后置补漏
-// 与之重复，已删除。（Phase 6：目录表收敛）
-
 // ── Step 5a: set/binding 宏 ──────────────────────────────────────────────────
 // 固定 ABI 的 set/binding 宏（L2W/MESH_DRAW_PARAMS/VIEWPORT/CAMERA/SKY/COLOR_PALETTE
 // 及顶点系列）不再由编译器注入：descriptor_macros.glsl 为生成物
 //（DescriptorMacroGen，数值真源 DescriptorSetTypeDef.h 的绑定枚举），模板与模块
-// #include 后直接使用默认值，单一真源（原 kBindingDefineTable 注入路径已删除）。
+// #include 后直接使用默认值，单一真源。
 //
 // 行表绑定（material_private_data_index_rows / mtl_texture_layer_rows / l2w_index）不在此
 // 注入 set/binding 宏：声明由 index table 生成逻辑依据 descriptor_info 直接以
@@ -702,7 +694,14 @@ ShaderBuildContext *CompileCompositorMaterial(
     // ── Step 1: Config ────────────────────────────────────────────
     const PrimitiveType primitive_type = config.primitive_type;
     if (input.primitive_type != primitive_type)
+    {
+        std::fprintf(stderr,
+            "[CompileCompositorMaterial] material=%s: primitive_type mismatch "
+            "(input=%d, config=%d)\n",
+            input.debug_name ? input.debug_name : "<unnamed>",
+            int(input.primitive_type), int(primitive_type));
         return nullptr;
+    }
 
     CompileContext c{&input};
 
@@ -765,7 +764,6 @@ ShaderBuildContext *CompileCompositorMaterial(
             ctx, effective_material_private_data, material_ssbo_stage_bits, c))
         return FailCompile(c);
 
-    // （原 Step 4 EnsureIndexTableSSBOs 已删除——行表补齐上收至契约层，见 Step 3c 注释）
 
     // ── Step 5: Set complete GLSL (bypass ProcXXX pipeline) ───────
     const DescriptorSetLayoutAllocator &descriptor_info = ctx->GetDescriptorAllocator();
