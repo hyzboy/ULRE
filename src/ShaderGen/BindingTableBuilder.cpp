@@ -89,7 +89,7 @@ namespace hgl::graph::mtl
         }
 
         uint64 ResolveDescriptorLogicalResourceID(
-            const ShaderDescriptorContractEntry &entry,
+            const ShaderResourceSlot &entry,
             const uint64 program_key_digest) noexcept
         {
             if (entry.logical_resource_id != 0)
@@ -222,37 +222,9 @@ namespace hgl::graph::mtl
             });
         }
 
-        bool AppendLayoutRequirements(
-            const ShaderResourceSchema &layout,
-            ValueArray<ShaderDescriptorContractEntry> &out_requirements) noexcept
-        {
-            out_requirements.Clear();
-            out_requirements.Reserve(static_cast<int>(layout.resources.size()));
-
-            for (const ShaderResourceSlot &req : layout.resources)
-            {
-                ShaderDescriptorContractEntry entry{};
-                entry.logical_resource_id = req.logical_resource_id;
-                entry.resource_schema_id = req.resource_schema_id;
-                entry.semantic = req.semantic;
-                entry.semantic_layer = req.semantic_layer;
-                entry.set_type = req.set_type;
-                entry.texture_slot = req.texture_slot;
-                entry.ssbo_type = req.ssbo_type;
-                entry.material_private_data_slot = req.material_private_data_slot;
-                entry.stage_flags = req.stage_flags;
-                entry.array_count = 1;
-                entry.required = req.required;
-                entry.allow_fallback = req.allow_fallback;
-                out_requirements.Add(entry);
-            }
-
-            return true;
-        }
-
         bool BuildBindingTableFromRequirements(
             const MaterialRecipe &recipe,
-            const ValueArray<ShaderDescriptorContractEntry> &requirements,
+            const ShaderResourceSchema &layout,
             const uint64 program_key_digest,
             ResolvedBindingTable &out_table,
             BindingBuildDiagnostic &out_diagnostic) noexcept
@@ -268,7 +240,7 @@ namespace hgl::graph::mtl
             out_table.source_binding_hash = GetBindingSourceHash(recipe);
 
             bool uses_texture_layer_table = false;
-            for (const ShaderDescriptorContractEntry &entry : requirements)
+            for (const ShaderResourceSlot &entry : layout.resources)
             {
                 if (entry.semantic == DescriptorSemantic::MaterialTextureLayerTable)
                 {
@@ -573,14 +545,12 @@ namespace hgl::graph::mtl
         ResolvedBindingTable &out_table,
         BindingBuildDiagnostic &out_diagnostic) noexcept
     {
-        ValueArray<ShaderDescriptorContractEntry> requirements;
-        if (!AppendLayoutRequirements(layout, requirements))
-            return SetBuildFailure(
-                out_diagnostic,
-                BindingBuildError::InvalidBindingTable);
+        // 契约删减：直接消费 ShaderResourceSchema（原
+        // AppendLayoutRequirements 的 ShaderDescriptorContractEntry 逐字段
+        // 拷贝中间体已随 ShaderInterfaceContract 体系删除）
         return BuildBindingTableFromRequirements(
             recipe,
-            requirements,
+            layout,
             program_key.GetDigest(),
             out_table,
             out_diagnostic);

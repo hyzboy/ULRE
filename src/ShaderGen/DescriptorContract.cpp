@@ -97,30 +97,8 @@ namespace hgl::graph::mtl
              || source.resource_schema_id == 0)
                 return false;
 
-            out_contract.entries.push_back(source);
+            out_contract.push_back(source);
             return true;
-        }
-
-        // C1-T2：规范化 SerializedDescriptorEntry → canonical（ShaderInterfaceContract
-        // 元素类型）。字段均已由 AppendEntry 规范化——纯读取提取。
-        ShaderDescriptorContractEntry ToCanonicalShaderContractEntry(
-            const SerializedDescriptorEntry &entry) noexcept
-        {
-            ShaderDescriptorContractEntry can;
-            can.logical_resource_id = entry.logical_resource_id;
-            can.resource_schema_id = entry.resource_schema_id;
-            can.semantic = entry.semantic;
-            can.semantic_layer = entry.semantic_layer;
-            can.set_type = entry.set_type;
-            can.texture_slot = entry.texture_slot;
-            can.ssbo_type = entry.ssbo_type;
-            can.material_private_data_slot =
-                entry.material_private_data_slot;
-            can.stage_flags = entry.stage_flags;
-            can.array_count = entry.array_count;
-            can.required = entry.required;
-            can.allow_fallback = entry.allow_fallback;
-            return can;
         }
     }
 
@@ -133,7 +111,7 @@ namespace hgl::graph::mtl
         if (entry_count > 0 && !entries)
             return false;
 
-        out_contract.entries.reserve(entry_count);
+        out_contract.reserve(entry_count);
         for (uint32 i = 0; i < entry_count; ++i)
         {
             // C1：入口 const 数组——拷贝后就地规范化（ID 写入拷贝；
@@ -152,8 +130,7 @@ namespace hgl::graph::mtl
         const auto has_semantic =
             [&in_out_contract](const DescriptorSemantic semantic)
         {
-            for (const SerializedDescriptorEntry &entry :
-                 in_out_contract.entries)
+            for (const SerializedDescriptorEntry &entry : in_out_contract)
             {
                 if (entry.semantic == semantic)
                     return true;
@@ -208,16 +185,16 @@ namespace hgl::graph::mtl
         if (!material_private_data_slot_decls || material_private_data_slot_decls->empty())
             return ValidateDescriptorContract(out_contract);
 
-        out_contract.entries.erase(
+        out_contract.erase(
             std::remove_if(
-                out_contract.entries.begin(),
-                out_contract.entries.end(),
+                out_contract.begin(),
+                out_contract.end(),
                 [](const SerializedDescriptorEntry &entry)
                 {
                     return entry.semantic
                         == DescriptorSemantic::MaterialPrivateData;
                 }),
-            out_contract.entries.end());
+            out_contract.end());
 
         for (uint32 i = 0;
              i < static_cast<uint32>(material_private_data_slot_decls->size());
@@ -250,18 +227,37 @@ namespace hgl::graph::mtl
     bool ValidateDescriptorContract(
         const DescriptorContract &contract) noexcept
     {
-        ShaderInterfaceContract interface_contract{};
-        interface_contract.descriptor_requirements.Reserve(
-            static_cast<int>(contract.entries.size()));
-        for (const SerializedDescriptorEntry &entry :
-             contract.entries)
+        // 直接在规范化条目上校验（原"转 ShaderInterfaceContract 再校验"的
+        // 往返已删）。规则与原 ValidateShaderInterfaceContract 的 descriptor
+        // 段 + 名字检查逐条一致。
+        const size_t count = contract.size();
+        for (size_t i = 0; i < count; ++i)
         {
-            if (!entry.name || !entry.name[0])
+            const SerializedDescriptorEntry &entry = contract[i];
+            if (!entry.name || !entry.name[0]
+             || entry.logical_resource_id == 0
+             || entry.semantic == DescriptorSemantic::Unknown
+             || entry.semantic_layer == DescriptorSemanticLayer::Unknown
+             || entry.semantic_layer > DescriptorSemanticLayer::Sampler
+             || entry.set_type == DescriptorSetType::Unknown
+             || entry.set_type < DescriptorSetType::Scene
+             || entry.set_type > DescriptorSetType::Vertex   // Phase 5：Vertex 为最后一个集合类型
+             || entry.texture_slot < TextureSlot::BEGIN_RANGE
+             || entry.texture_slot > TextureSlot::END_RANGE
+             || entry.ssbo_type < SSBOType::BEGIN_RANGE
+             || entry.ssbo_type > SSBOType::END_RANGE
+             || entry.array_count == 0
+             || entry.stage_flags == 0)
                 return false;
-            interface_contract.descriptor_requirements.Add(
-                ToCanonicalShaderContractEntry(entry));
+
+            for (size_t j = 0; j < i; ++j)
+            {
+                if (entry.logical_resource_id
+                    == contract[j].logical_resource_id)
+                    return false;
+            }
         }
-        return ValidateShaderInterfaceContract(interface_contract);
+        return true;
     }
 
     bool BuildResourceSchemaFromContract(
@@ -272,12 +268,11 @@ namespace hgl::graph::mtl
         if (!ValidateDescriptorContract(contract))
             return false;
 
-        out_schema.resources.reserve(contract.entries.size());
+        out_schema.resources.reserve(contract.size());
 
         // C1-T2：entries 为规范化 SerializedDescriptorEntry——直读字段
         //（原经 DescriptorContractEntry.canonical 间接访问已删除）。
-        for (const SerializedDescriptorEntry &entry :
-             contract.entries)
+        for (const SerializedDescriptorEntry &entry : contract)
         {
             ShaderResourceSlot req;
 
@@ -348,19 +343,44 @@ namespace hgl::graph::mtl
         if (!ValidateDescriptorContract(contract))
             return 0;
 
-        ShaderInterfaceContract interface_contract{};
-        interface_contract.descriptor_requirements.Reserve(
-            static_cast<int>(contract.entries.size()));
-        for (const SerializedDescriptorEntry &entry :
-             contract.entries)
+        // 序列化恒等：按 logical_resource_id 排序后逐字段哈希（排序键与
+        // 字段集沿用原 ShaderInterfaceContract 序列化——保证输入顺序无关；
+        // 哈希值与旧值不同属预期，缓存键一次性整体更替）。
+        std::vector<const SerializedDescriptorEntry *> ordered;
+        ordered.reserve(contract.size());
+        for (const SerializedDescriptorEntry &entry : contract)
+            ordered.push_back(&entry);
+        std::sort(
+            ordered.begin(),
+            ordered.end(),
+            [](const SerializedDescriptorEntry *lhs,
+               const SerializedDescriptorEntry *rhs)
+            {
+                return lhs->logical_resource_id
+                    < rhs->logical_resource_id;
+            });
+
+        hgl::hash::FNV1aHasher64 entries_hasher;
+        entries_hasher << static_cast<uint32>(ordered.size());
+        for (const SerializedDescriptorEntry *entry : ordered)
         {
-            interface_contract.descriptor_requirements.Add(
-                ToCanonicalShaderContractEntry(entry));
+            entries_hasher << entry->logical_resource_id
+                           << entry->resource_schema_id
+                           << entry->semantic
+                           << entry->semantic_layer
+                           << entry->set_type
+                           << entry->texture_slot
+                           << entry->ssbo_type
+                           << entry->material_private_data_slot
+                           << entry->stage_flags
+                           << entry->array_count
+                           << entry->required
+                           << entry->allow_fallback;
         }
 
         hgl::hash::FNV1aHasher64 h;
         h << module_manifest_hash
-          << GetShaderInterfaceContractHash(interface_contract);
+          << static_cast<uint64>(entries_hasher);
         return h;
     }
 }

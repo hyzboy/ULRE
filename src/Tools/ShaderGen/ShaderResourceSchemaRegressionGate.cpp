@@ -1847,122 +1847,8 @@ namespace
         GateResult result;
         result.name = "Q1.canonical-shader-contract";
 
-        const auto bytes_equal = [](const hgl::ValueArray<hgl::uint8> &lhs,
-                                    const hgl::ValueArray<hgl::uint8> &rhs)
-        {
-            return lhs.GetCount() == rhs.GetCount()
-                && (lhs.IsEmpty()
-                 || std::memcmp(
-                        lhs.GetData(),
-                        rhs.GetData(),
-                        static_cast<size_t>(lhs.GetCount())) == 0);
-        };
-
-        ShaderInterfaceContract interface_a{};
-        interface_a.geometry_semantics.Add(
-            {
-                VertexSemantic::Position,
-                ShaderSemanticScalarType::Float,
-                3,
-                1,
-                0,
-                uint32_t(VK_FORMAT_R32G32B32_SFLOAT)
-            });
-        interface_a.geometry_semantics.Add(
-            {
-                VertexSemantic::TexCoord,
-                ShaderSemanticScalarType::Float,
-                2,
-                1,
-                1,
-                uint32_t(VK_FORMAT_R32G32_SFLOAT)
-            });
-        interface_a.inter_stage_semantics.Add(
-            {
-                InterStageSemantic::DataIndexID,
-                ShaderSemanticScalarType::UnsignedInteger,
-                InterStageInterpolation::Flat,
-                1,
-                1,
-                0
-            });
-        interface_a.inter_stage_semantics.Add(
-            {
-                InterStageSemantic::UV0,
-                ShaderSemanticScalarType::Float,
-                InterStageInterpolation::Smooth,
-                2,
-                1,
-                1
-            });
-        interface_a.descriptor_requirements.Add(
-            {
-                StableID("resource.material_data"),
-                StableID("schema.PBRSurface.v1"),
-                DescriptorSemantic::MaterialPrivateData,
-                DescriptorSemanticLayer::SSBO,
-                DescriptorSetType::Material,
-                TextureSlot::BaseColor,
-                SSBOType::PBRSurface,
-                0,
-                uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
-                1,
-                true,
-                false
-            });
-        interface_a.descriptor_requirements.Add(
-            {
-                StableID("resource.texture_layers"),
-                StableID("schema.TextureLayer.v1"),
-                DescriptorSemantic::MaterialTextureLayerTable,
-                DescriptorSemanticLayer::SSBO,
-                DescriptorSetType::Material,
-                TextureSlot::BaseColor,
-                SSBOType::TextureLayer,
-                0,
-                uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
-                1,
-                false,
-                true
-            });
-        interface_a.entry_points.Add(
-            {ShaderStage::Mesh, StableID("main.msh")});
-        interface_a.entry_points.Add(
-            {ShaderStage::Fragment, StableID("main.fs")});
-
-        ShaderInterfaceContract interface_b{};
-        interface_b.geometry_semantics.Add(interface_a.geometry_semantics[1]);
-        interface_b.geometry_semantics.Add(interface_a.geometry_semantics[0]);
-        interface_b.inter_stage_semantics.Add(
-            interface_a.inter_stage_semantics[1]);
-        interface_b.inter_stage_semantics.Add(
-            interface_a.inter_stage_semantics[0]);
-        interface_b.descriptor_requirements.Add(
-            interface_a.descriptor_requirements[1]);
-        interface_b.descriptor_requirements.Add(
-            interface_a.descriptor_requirements[0]);
-        interface_b.entry_points.Add(interface_a.entry_points[1]);
-        interface_b.entry_points.Add(interface_a.entry_points[0]);
-
-        hgl::ValueArray<hgl::uint8> interface_bytes_a;
-        hgl::ValueArray<hgl::uint8> interface_bytes_b;
-        if (!SerializeShaderInterfaceContract(
-                interface_a, interface_bytes_a)
-         || !SerializeShaderInterfaceContract(
-                interface_b, interface_bytes_b)
-         || !bytes_equal(interface_bytes_a, interface_bytes_b)
-         || GetShaderInterfaceContractHash(interface_a)
-                != GetShaderInterfaceContractHash(interface_b))
-        {
-            result.diagnostics.emplace_back(
-                "shader interface serialization must ignore input order");
-        }
-
-        ShaderInterfaceContract conflicting_interface = interface_a;
-        conflicting_interface.inter_stage_semantics[1].location = 0;
-        if (ValidateShaderInterfaceContract(conflicting_interface))
-            result.diagnostics.emplace_back(
-                "inter-stage location conflicts must be rejected");
+        // Q1 只保留 OutputContract 序列化恒等/校验段——ShaderInterfaceContract
+        // 体系（interface 序列化恒等/location 冲突段）已随生产删除一并移除。
 
         OutputContract output_a{};
         output_a.purpose = ShaderProgramPurpose::ForwardColor;
@@ -4010,9 +3896,9 @@ namespace
                     "descriptor stage visibility must affect contract hash");
             }
 
-            // C1-T2：entries 即规范化 SerializedDescriptorEntry[]——直接校验契约条目
-            //（原 ConvertDescriptorContractToFixed 往返已删）
-            const auto &roundtrip = first_contract.entries;
+            // C1-T2 + 契约删减：DescriptorContract 即规范化条目数组本身，
+            // 直接校验契约条目（原 ConvertDescriptorContractToFixed 往返已删）
+            const auto &roundtrip = first_contract;
             if (roundtrip.size() != 2
              || std::strcmp(roundtrip[0].name, "viewport") != 0
              || std::strcmp(

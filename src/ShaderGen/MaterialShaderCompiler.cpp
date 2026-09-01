@@ -118,8 +118,7 @@ static bool HasDescriptorSemantic(
     const DescriptorContract &contract,
     const DescriptorSemantic semantic)
 {
-    for (const SerializedDescriptorEntry &entry :
-         contract.entries)
+    for (const SerializedDescriptorEntry &entry : contract)
     {
         if (entry.semantic == semantic)
             return true;
@@ -403,7 +402,7 @@ static bool BuildEffectiveDescriptorEntries(
 
     // C1-T2：entries 即规范化 SerializedDescriptorEntry[]（原
     // ConvertDescriptorContractToFixed 往返转换已删——直接取契约条目）
-    out_entries = out_effective_contract.entries;
+    out_entries = out_effective_contract;
 
     if (use_slot_decls)
     {
