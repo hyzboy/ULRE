@@ -215,7 +215,13 @@ namespace hgl::graph::mtl
 
         ShaderDocument document;
         ShaderDocumentDiagnostics diagnostics;
-        document.Add(ShaderDocumentBlockKind::Raw, AnsiString(ms.c_str()));
+        ShaderDocumentSource source;
+        source.stage = "mesh";
+        source.logical_name = "MeshShaderAssembler";
+        document.Add(
+            ShaderDocumentBlockKind::Raw,
+            AnsiString(ms.c_str()),
+            source);
         AnsiString serialized;
         if (!document.Serialize(serialized, diagnostics))
             return {};

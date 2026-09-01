@@ -74,8 +74,13 @@ namespace hgl::graph::mtl
 
             ShaderDocument document;
             ShaderDocumentDiagnostics diagnostics;
-            document.Add(ShaderDocumentBlockKind::Define,
-                         AnsiString(defines.c_str()));
+            ShaderDocumentSource source;
+            source.stage = "fragment";
+            source.logical_name = "CompositorModuleOptions";
+            document.Add(
+                ShaderDocumentBlockKind::Define,
+                AnsiString(defines.c_str()),
+                source);
             AnsiString serialized;
             if (!document.SerializeFragment(serialized, diagnostics))
                 return {};

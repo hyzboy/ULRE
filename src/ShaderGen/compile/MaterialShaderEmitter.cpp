@@ -191,7 +191,12 @@ std::string BuildCompileDefineMacros(
 
     ShaderDocument document;
     ShaderDocumentDiagnostics diagnostics;
-    document.Add(ShaderDocumentBlockKind::Define, AnsiString(macros.c_str()));
+    ShaderDocumentSource source;
+    source.logical_name = "MaterialCompileDefines";
+    document.Add(
+        ShaderDocumentBlockKind::Define,
+        AnsiString(macros.c_str()),
+        source);
     AnsiString serialized;
     if (!document.SerializeFragment(serialized, diagnostics))
         return {};
