@@ -514,12 +514,49 @@ namespace hgl::graph::mtl
 
         ShaderDocumentSource source;
         source.stage = "fragment";
-        source.logical_name = "CompositorAssembler";
+        source.logical_name = "CompositorAssembler.Version";
         out_document.Clear();
+        const std::string &glsl = result.fragment_glsl;
+        const size_t version_end = glsl.find('\n');
+        if (version_end == std::string::npos)
+            return false;
+
         out_document.Add(
-            ShaderDocumentBlockKind::Raw,
-            AnsiString(result.fragment_glsl.c_str()),
+            ShaderDocumentBlockKind::Version,
+            AnsiString(glsl.substr(0, version_end + 1).c_str()),
             source);
+
+        const size_t first_include = glsl.find("#include", version_end + 1);
+        const size_t define_end = first_include == std::string::npos
+            ? std::string::npos
+            : first_include;
+        if (define_end != std::string::npos
+         && define_end > version_end + 1
+         && glsl.substr(version_end + 1, define_end - version_end - 1)
+                .find("#define") != std::string::npos)
+        {
+            source.logical_name = "CompositorAssembler.Defines";
+            out_document.Add(
+                ShaderDocumentBlockKind::Define,
+                AnsiString(glsl.substr(
+                    version_end + 1,
+                    define_end - version_end - 1).c_str()),
+                source);
+        }
+
+        const size_t body_begin = define_end == std::string::npos
+            || glsl.substr(version_end + 1, define_end - version_end - 1)
+                   .find("#define") == std::string::npos
+            ? version_end + 1
+            : define_end;
+        if (body_begin < glsl.size())
+        {
+            source.logical_name = "CompositorAssembler.Body";
+            out_document.Add(
+                ShaderDocumentBlockKind::Raw,
+                AnsiString(glsl.substr(body_begin).c_str()),
+                source);
+        }
         AnsiString serialized;
         return out_document.SerializeFragment(serialized, out_diagnostics);
     }
