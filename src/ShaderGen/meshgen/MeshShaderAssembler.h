@@ -248,11 +248,53 @@ namespace hgl::graph::mtl
         out_document.Clear();
         ShaderDocumentSource source;
         source.stage = "mesh";
-        source.logical_name = "MeshShaderAssembler";
+        const size_t version_end = glsl.find('\n');
+        if (version_end == std::string::npos)
+            return false;
+
+        source.logical_name = "MeshShaderAssembler.Version";
         out_document.Add(
-            ShaderDocumentBlockKind::Raw,
-            AnsiString(glsl.c_str()),
+            ShaderDocumentBlockKind::Version,
+            AnsiString(glsl.substr(0, version_end + 1).c_str()),
             source);
+
+        const size_t first_include = glsl.find("#include", version_end + 1);
+        if (first_include != std::string::npos
+         && first_include > version_end + 1)
+        {
+            source.logical_name = "MeshShaderAssembler.Extensions";
+            out_document.Add(
+                ShaderDocumentBlockKind::Extension,
+                AnsiString(glsl.substr(
+                    version_end + 1,
+                    first_include - version_end - 1).c_str()),
+                source);
+        }
+
+        const size_t main_begin = glsl.find("void main()", first_include);
+        const size_t resource_end = main_begin == std::string::npos
+            ? glsl.size()
+            : main_begin;
+        if (resource_end > first_include
+         && first_include != std::string::npos)
+        {
+            source.logical_name = "MeshShaderAssembler.Resources";
+            out_document.Add(
+                ShaderDocumentBlockKind::Resource,
+                AnsiString(glsl.substr(
+                    first_include,
+                    resource_end - first_include).c_str()),
+                source);
+        }
+
+        if (main_begin != std::string::npos)
+        {
+            source.logical_name = "MeshShaderAssembler.MainBody";
+            out_document.Add(
+                ShaderDocumentBlockKind::MainBody,
+                AnsiString(glsl.substr(main_begin).c_str()),
+                source);
+        }
         return true;
     }
 }//namespace hgl::graph::mtl
