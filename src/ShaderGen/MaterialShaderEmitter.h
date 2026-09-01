@@ -46,10 +46,11 @@ namespace hgl::graph::mtl
     std::string BuildCodeModuleGLSL(const ModuleResourceManifest *manifest);
 
     /// 材质实例 SSBO 的 struct + buffer 声明与 MTL_DATA 别名宏。
+    /// material_private_data 为 UserDefined 时返回 true 且不生成。
     /// 失败返回 false 并写 out_error（发射层不依赖求解层的 CompileContext）。
     bool BuildMaterialSSBODeclarations(
         const DescriptorSetLayoutAllocator &descriptor_info,
-        const std::vector<MaterialPrivateDataSlotDeclaration> *material_private_data_slot_decls,
+        SSBOType material_private_data,
         std::string &out_decls,
         std::string &out_macros,
         std::string &out_error);

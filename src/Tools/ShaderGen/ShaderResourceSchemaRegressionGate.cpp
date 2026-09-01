@@ -2177,9 +2177,8 @@ namespace
             result.diagnostics.emplace_back("canonical PureColor must exist");
         }
         else if (!IsPureColorMaterialDefinition(pure_color)
-               || pure_color.material_private_data_slot_decls.size() != 1
-              || pure_color.material_private_data_slot_decls[0].ssbo_type != SSBOType::EmissiveSurface
-              || pure_color.vertex_semantic_requirements.GetCount() != 1)
+               || pure_color.material_private_data != SSBOType::EmissiveSurface
+               || pure_color.vertex_semantic_requirements.GetCount() != 1)
             result.diagnostics.emplace_back("canonical PureColor contract is not semantic-only");
 
         result.passed = result.diagnostics.empty();
@@ -2754,8 +2753,7 @@ namespace
         else
         {
             if (!IsPureColorMaterialDefinition(pure_color)
-             || pure_color.material_private_data_slot_decls.size() != 1
-             || pure_color.material_private_data_slot_decls[0].ssbo_type != SSBOType::EmissiveSurface
+             || pure_color.material_private_data != SSBOType::EmissiveSurface
              || pure_color.vertex_semantic_requirements.GetCount() != 1)
                 result.diagnostics.emplace_back("PureColor contract is not canonical");
         }
@@ -3138,8 +3136,8 @@ namespace
                     != registry_definition.vertex_semantic_requirements.GetCount()
              || file_definition->ubo_requirements.size()
                     != registry_definition.ubo_requirements.size()
-             || file_definition->material_private_data_slot_decls.size()
-                    != registry_definition.material_private_data_slot_decls.size()
+             || file_definition->material_private_data
+                    != registry_definition.material_private_data
              || file_definition->texture_slot_decls.size()
                     != registry_definition.texture_slot_decls.size())
             {
@@ -3624,9 +3622,6 @@ namespace
         GateResult result;
         result.name = "Z.material-privatedata-slot-source";
 
-        std::vector<MaterialPrivateDataSlotDeclaration> slots = {
-            {DefaultMaterialPrivateDataSlotName, SSBOType::EmissiveSurface}
-        };
         const SerializedVertexEntry vertices[] = {
             {VF_V2F, VertexSemantic::Position}
         };
@@ -3654,7 +3649,7 @@ namespace
         };
 
         CompositorMaterialBuildConfig config{};
-        config.material_private_data_slot_decls = &slots;
+        config.material_private_data = SSBOType::EmissiveSurface;
         config.defer_finalize = true;
         // mesh 化后顶点路径统一走 Mesh stage（VS 已彻底废弃）
         config.shader_stage_flag_bits = uint32_t(hgl::graph::mtl::ShaderStage::MeshFragment);
@@ -4169,7 +4164,7 @@ namespace
         result.name = "AD.resource-contract-boundary";
 
         MaterialDefinition definition{};
-        definition.material_private_data_slot_decls = {{DefaultMaterialPrivateDataSlotName, SSBOType::PBRSurface}};
+        definition.material_private_data = SSBOType::PBRSurface;
 
         std::vector<SerializedDescriptorEntry> descriptors;
         descriptor_builder_common::AppendDefinitionMaterialDescriptors(

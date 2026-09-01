@@ -49,36 +49,10 @@ namespace hgl::graph::mtl
         bool shared_across_instances = false;
     };
 
-    // 每个材质的 SSBO slot 声明（由 MaterialDefinition 显式列出）。
-    // index 即 material_private_data_slot；name 同时作为 GLSL 变量名与 C++ 绑定 key。
-    struct MaterialPrivateDataSlotDeclaration
-    {
-        std::string name;           // GLSL 变量名 / C++ 绑定 key，如 "pbr_surface" / "pbr_surface_a"
-        SSBOType    ssbo_type = SSBOType::UserDefined; // 数据结构语义
-    };
-
-    inline bool IsValidMaterialPrivateDataSlotName(const std::string &name) noexcept
-    {
-        if (name.empty())
-            return false;
-
-        const auto is_letter = [](const char c)
-        {
-            return (c >= 'a' && c <= 'z')
-                || (c >= 'A' && c <= 'Z')
-                || c == '_';
-        };
-        if (!is_letter(name[0]))
-            return false;
-
-        for (size_t i = 1; i < name.size(); ++i)
-        {
-            const char c = name[i];
-            if (!is_letter(c) && !(c >= '0' && c <= '9'))
-                return false;
-        }
-        return true;
-    }
+    // 单槽化：一个材质至多一个私有数据 SSBO，GLSL 变量名 / C++ 绑定 key 固定为
+    // DefaultMaterialPrivateDataSlotName（"mtl_private_data"），槽号固定为
+    // DefaultMaterialPrivateDataSlot（0）。原 vector<MaterialPrivateDataSlotDeclaration>
+    // 的容量/名字/槽号校验随类型收敛删除（2026-09 单槽类型收敛）。
 
     // 纹理槽位能力声明（由 MaterialDefinition 显式列出）。
     // 供 Step C 的 Definition→SerializedDescriptorEntry 推导使用。
@@ -117,6 +91,30 @@ namespace hgl::graph::mtl
         GLSLSamplerType  sampler_type = GLSLSamplerType::Sampler2D;   // GLSL 采样器类型
         bool             required     = false;                         // true: 缺失应触发错误；false: 可选
     };
+
+    // 材质数据槽 / recipe SSBO 绑定名的 GLSL 合法性校验
+    inline bool IsValidMaterialPrivateDataSlotName(const std::string &name) noexcept
+    {
+        if (name.empty())
+            return false;
+
+        const auto is_letter = [](const char c)
+        {
+            return (c >= 'a' && c <= 'z')
+                || (c >= 'A' && c <= 'Z')
+                || c == '_';
+        };
+        if (!is_letter(name[0]))
+            return false;
+
+        for (size_t i = 1; i < name.size(); ++i)
+        {
+            const char c = name[i];
+            if (!is_letter(c) && !(c >= '0' && c <= '9'))
+                return false;
+        }
+        return true;
+    }
 
     // Policy for resolving a material vertex semantic. GeometryOnly and
     // AllowDerived share the same ABI builder; the resolver is activated when
@@ -218,10 +216,9 @@ namespace hgl::graph::mtl
         uint16_t default_lod   = 0;
         uint16_t lod_count     = 1;
 
-        // Part-B: 材质 SSBO slot 显式声明（index == material_private_data_slot）
-        // name 用于 GLSL 变量名 与 C++ SetMaterialPrivateDataSlotResource(name,...) 绑定。
-        // 无 SSBO 的材质此列表为空。
-        std::vector<MaterialPrivateDataSlotDeclaration> material_private_data_slot_decls;
+        // Part-B: 材质私有数据 SSBO（单槽，固定 slot 0 / 名字 DefaultMaterialPrivateDataSlotName）。
+        // UserDefined = 无私有数据 SSBO。
+        SSBOType material_private_data = SSBOType::UserDefined;
 
         // Part-B3: UBO 资源能力声明。
         // 显式列出此材质可使用的标准 UBO（ViewportInfo/CameraInfo/SkyInfo/MaterialColorPalette）。

@@ -177,12 +177,12 @@ namespace hgl::graph::mtl
 
     bool BuildEffectiveDescriptorContract(
         const DescriptorContract &base_contract,
-        const std::vector<MaterialPrivateDataSlotDeclaration> *material_private_data_slot_decls,
+        const SSBOType material_private_data,
         const uint32 material_ssbo_stage_bits,
         DescriptorContract &out_contract)
     {
         out_contract = base_contract;
-        if (!material_private_data_slot_decls || material_private_data_slot_decls->empty())
+        if (material_private_data == SSBOType::UserDefined)
             return ValidateDescriptorContract(out_contract);
 
         out_contract.erase(
@@ -196,30 +196,25 @@ namespace hgl::graph::mtl
                 }),
             out_contract.end());
 
-        for (uint32 i = 0;
-             i < static_cast<uint32>(material_private_data_slot_decls->size());
-             ++i)
-        {
-            const MaterialPrivateDataSlotDeclaration &decl = (*material_private_data_slot_decls)[i];
-            SerializedDescriptorEntry fixed{};
-            fixed.set_type = DescriptorSetType::Material;
-            fixed.stage_flags = material_ssbo_stage_bits;
-            fixed.name = decl.name.c_str();
-            fixed.struct_name =
-                ssbo::GetMaterialSSBOStructName(decl.ssbo_type);
-            fixed.semantic =
-                DescriptorSemantic::MaterialPrivateData;
-            fixed.texture_slot = TextureSlot::BaseColor;
-            fixed.material_private_data_slot = i;
-            fixed.ssbo_type = decl.ssbo_type;
-            fixed.semantic_layer = DescriptorSemanticLayer::SSBO;
-            fixed.ssbo_id = MakeRecipeSSBOId(i);
-            fixed.has_requirement_policy = true;
-            fixed.required = true;
-            fixed.allow_fallback = false;
-            if (!AppendEntry(fixed, out_contract))
-                return false;
-        }
+        // 单槽化：固定 slot 0 / DefaultMaterialPrivateDataSlotName
+        SerializedDescriptorEntry fixed{};
+        fixed.set_type = DescriptorSetType::Material;
+        fixed.stage_flags = material_ssbo_stage_bits;
+        fixed.name = DefaultMaterialPrivateDataSlotName;
+        fixed.struct_name =
+            ssbo::GetMaterialSSBOStructName(material_private_data);
+        fixed.semantic =
+            DescriptorSemantic::MaterialPrivateData;
+        fixed.texture_slot = TextureSlot::BaseColor;
+        fixed.material_private_data_slot = DefaultMaterialPrivateDataSlot;
+        fixed.ssbo_type = material_private_data;
+        fixed.semantic_layer = DescriptorSemanticLayer::SSBO;
+        fixed.ssbo_id = MakeRecipeSSBOId(DefaultMaterialPrivateDataSlot);
+        fixed.has_requirement_policy = true;
+        fixed.required = true;
+        fixed.allow_fallback = false;
+        if (!AppendEntry(fixed, out_contract))
+            return false;
 
         return ValidateDescriptorContract(out_contract);
     }

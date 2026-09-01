@@ -111,7 +111,7 @@ namespace hgl::graph::mtl
         case SSBOType::TextureLayer:
             return sizeof(uint32_t) * static_cast<uint32_t>(TextureSlot::RANGE_SIZE);
         case SSBOType::MaterialPrivateDataIndex:
-            return 0;  // dynamic: stride = material_private_data_slot_decls.size() * sizeof(uint32_t) per material
+            return 0;  // dynamic: 单槽单列 uint32 per material
         case SSBOType::PBRSurface:
             return sizeof(float) * 8; // vec4 base_color + metallic + roughness + normal_scale + fresnel
         case SSBOType::EmissiveSurface:

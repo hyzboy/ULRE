@@ -217,20 +217,19 @@ inline void AppendDefinitionMaterialDescriptors(
     const uint32_t stage_flags,
     const uint32_t texture_layer_table_stage_flags)
 {
-    for (uint32_t i = 0; i < static_cast<uint32_t>(definition.material_private_data_slot_decls.size()); ++i)
+    // 单槽化：固定 slot 0 / DefaultMaterialPrivateDataSlotName
+    if (definition.material_private_data != SSBOType::UserDefined)
     {
-        const auto &decl = definition.material_private_data_slot_decls[i];
         PushMaterialPrivateDataSlot(
             v,
             stage_flags,
-            decl.name.c_str(),
-            ssbo::GetMaterialSSBOStructName(decl.ssbo_type),
+            DefaultMaterialPrivateDataSlotName,
+            ssbo::GetMaterialSSBOStructName(definition.material_private_data),
             DefaultMaterialPrivateDataSlot,
-            decl.ssbo_type);
-    }
+            definition.material_private_data);
 
-    if (!definition.material_private_data_slot_decls.empty())
         PushMaterialPrivateDataIndexRows(v, stage_flags);
+    }
 
     // P1-2e：mtl_texture_layer_rows 仅当材质声明纹理槽时才要求。
     // 有数据槽但无纹理槽的材质（PureColor 等）不再隐式要求

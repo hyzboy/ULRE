@@ -25,7 +25,7 @@ namespace hgl::graph::mtl
     HGL_SEMANTIC(SkyInfo) \
     HGL_SEMANTIC(LocalToWorld) \
     HGL_SEMANTIC(LocalToWorldIndex) \
-    /* per-instance SSBO slot（一条 material_private_data_slot_decls 一项）*/ \
+    /* per-instance SSBO 私有数据槽（单槽，slot 0）*/ \
     HGL_SEMANTIC(MaterialPrivateData) \
     HGL_SEMANTIC(MaterialPrivateDataIndex) \
     HGL_SEMANTIC(MaterialTexture) \

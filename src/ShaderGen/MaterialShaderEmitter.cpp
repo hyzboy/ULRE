@@ -68,34 +68,29 @@ std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names)
 
 // ── Step 5b: Material SSBO GLSL 声明 ─────────────────────────────────────────
 // 材质实例 SSBO 的 struct + buffer 声明不再写死在 .glsl 中，
-// 统一依据 material_private_data_slot_decls 生成并注入 Fragment 阶段。
-// 单槽化：一个材质固定生成一个 buffer（MaterialPrivateData，slot 0）。
+// 统一依据单槽 material_private_data 生成并注入 Fragment 阶段。
+// 单槽化：一个材质固定生成一个 buffer（MaterialPrivateData，slot 0，
+// 变量名固定 DefaultMaterialPrivateDataSlotName）。
 bool BuildMaterialSSBODeclarations(
     const DescriptorSetLayoutAllocator &descriptor_info,
-    const std::vector<MaterialPrivateDataSlotDeclaration> *material_private_data_slot_decls,
+    const SSBOType material_private_data,
     std::string &out_decls,
     std::string &out_macros,
     std::string &out_error)
 {
-    if (!material_private_data_slot_decls || material_private_data_slot_decls->empty())
+    if (material_private_data == SSBOType::UserDefined)
         return true;
 
-    if (material_private_data_slot_decls->size() > MaxMaterialPrivateDataSlotsPerMaterial)
-    {
-        out_error = "a material may declare at most one MaterialPrivateData slot";
-        return false;
-    }
-
-    const MaterialPrivateDataSlotDeclaration &decl = (*material_private_data_slot_decls)[0];
-    const ShaderDescriptor *sd = descriptor_info.GetSSBO(decl.name.c_str());
+    const char *slot_name = DefaultMaterialPrivateDataSlotName;
+    const ShaderDescriptor *sd = descriptor_info.GetSSBO(slot_name);
     if (!sd || sd->set < 0 || sd->binding < 0)
     {
         out_error = "material ssbo descriptor unresolved for GLSL generation";
         return false;
     }
 
-    const char *struct_name  = ssbo::GetMaterialSSBOStructName(decl.ssbo_type);
-    const char *struct_codes = ssbo::GetMaterialSSBOStructGLSL(decl.ssbo_type);
+    const char *struct_name  = ssbo::GetMaterialSSBOStructName(material_private_data);
+    const char *struct_codes = ssbo::GetMaterialSSBOStructGLSL(material_private_data);
     if (!struct_name || !struct_codes)
     {
         out_error = "unsupported material ssbo type for GLSL generation";
@@ -103,7 +98,7 @@ bool BuildMaterialSSBODeclarations(
     }
 
     const char *const buffer_base =
-        ssbo::GetMaterialSSBOBufferName(decl.ssbo_type);
+        ssbo::GetMaterialSSBOBufferName(material_private_data);
     if (!buffer_base)
     {
         out_error = "material ssbo buffer name unsupported for GLSL generation";
@@ -146,11 +141,11 @@ bool BuildMaterialSSBODeclarations(
     out_decls += " {\n    ";
     out_decls += struct_name;
     out_decls += " data[];\n} ";
-    out_decls += decl.name;
+    out_decls += slot_name;
     out_decls += ";\n";
 
     out_macros += "#define MTL_DATA ";
-    out_macros += decl.name;
+    out_macros += slot_name;
     out_macros += "\n";
 
     return true;
