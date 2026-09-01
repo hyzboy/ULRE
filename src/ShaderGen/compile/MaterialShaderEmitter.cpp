@@ -382,12 +382,7 @@ namespace
     {
         ShaderDocument document;
         ShaderDocumentDiagnostics diagnostics;
-        if (!BuildInjectedShaderDocument(
-                AnsiString(glsl.c_str()),
-                AnsiString(inject.c_str()),
-                AnsiString("unknown"),
-                document,
-                diagnostics))
+        if (!BuildFinalStageDocument(glsl, inject, "unknown", document, diagnostics))
             return {};
 
         AnsiString serialized;
@@ -396,6 +391,21 @@ namespace
         return std::string(serialized.c_str(), serialized.Length());
     }
 }//namespace
+
+bool BuildFinalStageDocument(
+    const std::string &stage_glsl,
+    const std::string &version_inject,
+    const char *stage,
+    ShaderDocument &out_document,
+    ShaderDocumentDiagnostics &out_diagnostics)
+{
+    return BuildInjectedShaderDocument(
+        AnsiString(stage_glsl.c_str()),
+        AnsiString(version_inject.c_str()),
+        AnsiString(stage ? stage : "unknown"),
+        out_document,
+        out_diagnostics);
+}
 
 void AssembleFinalGLSL(
     ShaderBuildContext *ctx,

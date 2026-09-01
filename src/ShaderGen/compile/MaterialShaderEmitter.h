@@ -68,4 +68,11 @@ namespace hgl::graph::mtl
         const std::string &fs_glsl,
         const std::string &ms_inject,
         const std::string &fs_inject);
+
+    bool BuildFinalStageDocument(
+        const std::string &stage_glsl,
+        const std::string &version_inject,
+        const char *stage,
+        ShaderDocument &out_document,
+        ShaderDocumentDiagnostics &out_diagnostics);
 }//namespace hgl::graph::mtl
