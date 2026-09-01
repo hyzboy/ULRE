@@ -3,7 +3,7 @@
 /// S2-T2.1：纯函数，零决策——只把求解层已解出的状态（DescriptorSetLayoutAllocator /
 /// manifest / 槽位声明 / config）转成 GLSL 文本。本文件内容为整体搬移，行为逐字节不变。
 
-#include "MaterialShaderEmitter.h"
+#include "compile/MaterialShaderEmitter.h"
 
 #include <hgl/mtl/MaterialShaderCompiler.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>

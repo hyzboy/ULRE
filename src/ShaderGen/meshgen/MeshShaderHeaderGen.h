@@ -8,7 +8,7 @@
 #include <hgl/mtl/VertexShaderNodeConfig.h>
 #include <hgl/mtl/MaterialStageInterface.h>
 #include <string>
-#include "VertexVaryingConfig.h"
+#include <hgl/mtl/MaterialVertexVaryingConfig.h>
 
 namespace hgl::graph::mtl
 {
@@ -69,7 +69,7 @@ namespace hgl::graph::mtl
     // MaterialColorPalette UBO（palette 材质）
     inline void EmitColorPaletteUBO(
         std::string &ms,
-        const VertexVaryingConfig &varying_cfg)
+        const MaterialVertexVaryingConfig &varying_cfg)
     {
         if (varying_cfg.emit_vertex_color_from_palette)
         {

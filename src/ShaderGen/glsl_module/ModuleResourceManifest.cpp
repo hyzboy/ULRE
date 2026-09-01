@@ -1,6 +1,6 @@
 ﻿#include <hgl/mtl/ModuleResourceManifest.h>
 #include <hgl/mtl/GLSLCodeModuleRegistry.h>
-#include "DescriptorBuilderCommon.h"
+#include "builder/DescriptorBuilderCommon.h"
 #include <hgl/util/hash/FNV1a.h>
 
 #include <cstring>

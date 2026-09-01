@@ -1,7 +1,7 @@
 ﻿#include <hgl/mtl/MaterialBindingContract.h>
 #include <hgl/mtl/MaterialRecipe.h>
 
-#include "common/CanonicalContractWriter.h"
+#include "contract/CanonicalContractWriter.h"
 #include <cstring>
 #include <string_view>
 

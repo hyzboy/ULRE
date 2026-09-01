@@ -21,10 +21,10 @@
 #include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/mtl/GLSLCodeModuleCapabilityResolver.h>
-#include "MaterialShaderEmitter.h"
-#include "3d/DefinitionDescriptorBuilder.h"
-#include "common/MeshShaderAssembler.h"
-#include "common/GenericMaterialBuilder.h"
+#include "compile/MaterialShaderEmitter.h"
+#include "builder/DefinitionDescriptorBuilder.h"
+#include "meshgen/MeshShaderAssembler.h"
+#include "builder/GenericMaterialBuilder.h"
 
 #include <cstring>
 #include <vector>

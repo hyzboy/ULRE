@@ -5,7 +5,7 @@
 #include <hgl/mtl/CanonicalShaderContract.h>
 #include <hgl/util/hash/FNV1a.h>
 
-#include "common/CanonicalContractWriter.h"
+#include "contract/CanonicalContractWriter.h"
 
 namespace hgl::graph::mtl
 {

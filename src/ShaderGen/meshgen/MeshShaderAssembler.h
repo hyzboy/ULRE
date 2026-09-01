@@ -19,7 +19,7 @@
 #include <hgl/log/Log.h>
 #include <vulkan/vulkan.h>
 #include <string>
-#include "VertexVaryingConfig.h"   // mtl::VertexVaryingConfig
+#include <hgl/mtl/MaterialVertexVaryingConfig.h>
 
 // 子模块
 #include "MeshShaderHeaderGen.h"
@@ -46,7 +46,7 @@ namespace hgl::graph::mtl
 
     inline std::string GenerateMeshShader(
         const VertexShaderNodeConfig &node_cfg,
-        const VertexVaryingConfig    &varying_cfg,
+        const MaterialVertexVaryingConfig &varying_cfg,
         VkFormat                      position_format,
         const MeshShaderMode          mode = MeshShaderMode::VertexPassthrough,
         const uint32_t                max_invocations = 64,

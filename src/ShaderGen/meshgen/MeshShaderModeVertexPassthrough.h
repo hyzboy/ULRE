@@ -11,7 +11,7 @@
 
 #include <hgl/mtl/MaterialStageInterface.h>
 #include <string>
-#include "VertexVaryingConfig.h"
+#include <hgl/mtl/MaterialVertexVaryingConfig.h>
 
 namespace hgl::graph::mtl
 {
@@ -21,7 +21,7 @@ namespace hgl::graph::mtl
         const ValueArray<InterStageSemanticContractEntry> *stage_interface;
         uint32_t                max_invocations;
         uint32_t                max_vertices;
-        const VertexVaryingConfig *varying_cfg;
+        const MaterialVertexVaryingConfig *varying_cfg;
         bool                    emit_world_pos;
         bool                    emit_world_normal;
     };

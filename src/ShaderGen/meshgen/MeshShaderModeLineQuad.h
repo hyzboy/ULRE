@@ -7,7 +7,7 @@
 #include <hgl/mtl/MaterialStageInterface.h>
 #include <vulkan/vulkan.h>
 #include <string>
-#include "VertexVaryingConfig.h"
+#include <hgl/mtl/MaterialVertexVaryingConfig.h>
 #include "MeshShaderModeVertexPassthrough.h"   // MeshShaderModeContext
 #include "MeshShaderTemplate.h"
 

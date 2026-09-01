@@ -8,7 +8,7 @@
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/mtl/ModuleResourceManifest.h>
 #include <vector>
-#include "../common/DescriptorBuilderCommon.h"
+#include "DescriptorBuilderCommon.h"
 
 namespace hgl::graph::mtl
 {

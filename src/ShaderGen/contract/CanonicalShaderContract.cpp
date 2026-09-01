@@ -1,6 +1,6 @@
 ﻿#include <hgl/mtl/CanonicalShaderContract.h>
 
-#include "common/CanonicalContractWriter.h"
+#include "contract/CanonicalContractWriter.h"
 
 namespace hgl::graph::mtl
 {

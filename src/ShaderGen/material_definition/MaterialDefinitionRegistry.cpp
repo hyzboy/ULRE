@@ -1,5 +1,5 @@
 ﻿#include<hgl/mtl/MaterialDefinitionRegistry.h>
-#include "common/GenericMaterialBuilder.h"
+#include "builder/GenericMaterialBuilder.h"
 #include<hgl/mtl/MaterialDefinitionFile.h>
 #include<hgl/graph/ShaderBufferSource.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>

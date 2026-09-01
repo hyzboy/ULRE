@@ -28,12 +28,12 @@
 #include <hgl/mtl/ShaderStructureDump.h>
 #include <fstream>
 #include <filesystem>
-#include "../../ShaderGen/3d/DefinitionDescriptorBuilder.h"
+#include "../../ShaderGen/builder/DefinitionDescriptorBuilder.h"
 #include <hgl/mtl/MeshShaderLimits.h>
 #include "VertexBuilderCommon.h"
 #include "StageBuildContextTest.h"
-#include "../../ShaderGen/common/VertexVaryingConfig.h"
-#include "../../ShaderGen/common/MeshShaderAssembler.h"   // GenerateMeshShader / MeshShaderMode
+#include <hgl/mtl/MaterialVertexVaryingConfig.h>
+#include "../../ShaderGen/meshgen/MeshShaderAssembler.h"   // GenerateMeshShader / MeshShaderMode
 
 #include <algorithm>
 #include <cstdint>
@@ -830,7 +830,7 @@ namespace
                 "inter-stage stable ABI metadata mismatch");
         }
 
-        VertexVaryingConfig lit_varying{};
+        MaterialVertexVaryingConfig lit_varying{};
         lit_varying.emit_data_index_id = true;
         lit_varying.emit_world_pos = true;
         lit_varying.emit_world_normal = true;
@@ -864,7 +864,7 @@ namespace
                 "legacy generated lit varying ABI changed");
         }
 
-        VertexVaryingConfig color_varying{};
+        MaterialVertexVaryingConfig color_varying{};
         color_varying.emit_vertex_color = true;
         const std::string color_vs = GenerateMeshShader(
             MakeDefault3DNodeConfig(),
@@ -2799,7 +2799,7 @@ namespace
         GateResult result;
         result.name = "X.transform-graph-composition";
 
-        VertexVaryingConfig varying{};
+        MaterialVertexVaryingConfig varying{};
         varying.emit_data_index_id = true;
 
         const auto build = [&](const VertexShaderNodeConfig &graph)
@@ -4233,22 +4233,33 @@ namespace
         // 契约哈希统一用生产实现 GetDescriptorContractHash（原
         // HashResourceContract 双轨哈希已删——它经由 schema 额外把 ssbo_id/
         // 名字文本计入，与生产 shader 身份语义不一致）。
+        // 生产入口要求规范化条目（logical/schema ID 由 BuildDescriptorContract
+        // 就地计算），手工构造的夹具先规范化再哈希。
         std::vector<SerializedDescriptorEntry> hash_entries{hash_entry};
-        const uint64_t strict_hash = GetDescriptorContractHash(hash_entries, 0);
-        hash_entries[0].required = false;
-        hash_entries[0].allow_fallback = true;
-        const uint64_t optional_hash = GetDescriptorContractHash(hash_entries, 0);
-        if (strict_hash == optional_hash)
+        DescriptorContract normalized_entries{};
+        if (!BuildDescriptorContract(hash_entries, normalized_entries))
+        {
             result.diagnostics.emplace_back(
-                "Required/fallback policy changes must change the resource contract hash.");
+                "Resource contract hash fixture entries must normalize.");
+        }
+        else
+        {
+            const uint64_t strict_hash = GetDescriptorContractHash(normalized_entries, 0);
+            normalized_entries[0].required = false;
+            normalized_entries[0].allow_fallback = true;
+            const uint64_t optional_hash = GetDescriptorContractHash(normalized_entries, 0);
+            if (strict_hash == optional_hash)
+                result.diagnostics.emplace_back(
+                    "Required/fallback policy changes must change the resource contract hash.");
 
-        hash_entries[0].required = true;
-        hash_entries[0].allow_fallback = false;
-        hash_entries[0].ssbo_type = SSBOType::TextureLayer;
-        const uint64_t ssbo_type_hash = GetDescriptorContractHash(hash_entries, 0);
-        if (strict_hash == ssbo_type_hash)
-            result.diagnostics.emplace_back(
-                "SSBO type changes must change the resource contract hash.");
+            normalized_entries[0].required = true;
+            normalized_entries[0].allow_fallback = false;
+            normalized_entries[0].ssbo_type = SSBOType::TextureLayer;
+            const uint64_t ssbo_type_hash = GetDescriptorContractHash(normalized_entries, 0);
+            if (strict_hash == ssbo_type_hash)
+                result.diagnostics.emplace_back(
+                    "SSBO type changes must change the resource contract hash.");
+        }
 
         SerializedDescriptorEntry ssbo_hash_entry{};
         ssbo_hash_entry.set_type = DescriptorSetType::Material;
@@ -4262,14 +4273,25 @@ namespace
         ssbo_hash_entry.ssbo_id = 11;
 
         std::vector<SerializedDescriptorEntry> ssbo_hash_entries{ssbo_hash_entry};
-        const uint64_t first_ssbo_hash = GetDescriptorContractHash(ssbo_hash_entries, 0);
-        ssbo_hash_entries[0].ssbo_id = 12;
-        const uint64_t second_ssbo_hash = GetDescriptorContractHash(ssbo_hash_entries, 0);
-        // ssbo_id 是运行时行绑定信息，不影响 shader 内容与描述符布局——
-        // 生产契约哈希有意排除（变化不得改变 shader 身份，否则缓存碎片化）
-        if (first_ssbo_hash != second_ssbo_hash)
+        DescriptorContract normalized_ssbo_entries{};
+        if (!BuildDescriptorContract(ssbo_hash_entries, normalized_ssbo_entries))
+        {
             result.diagnostics.emplace_back(
-                "SSBO buffer identity (runtime binding) must not change the resource contract hash.");
+                "SSBO identity hash fixture entries must normalize.");
+        }
+        else
+        {
+            const uint64_t first_ssbo_hash =
+                GetDescriptorContractHash(normalized_ssbo_entries, 0);
+            normalized_ssbo_entries[0].ssbo_id = 12;
+            const uint64_t second_ssbo_hash =
+                GetDescriptorContractHash(normalized_ssbo_entries, 0);
+            // ssbo_id 是运行时行绑定信息，不影响 shader 内容与描述符布局——
+            // 生产契约哈希有意排除（变化不得改变 shader 身份，否则缓存碎片化）
+            if (first_ssbo_hash != second_ssbo_hash)
+                result.diagnostics.emplace_back(
+                    "SSBO buffer identity (runtime binding) must not change the resource contract hash.");
+        }
 
         result.passed = result.diagnostics.empty();
         return result;

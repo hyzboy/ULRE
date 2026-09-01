@@ -16,8 +16,8 @@
 #include <hgl/common/RenderOptions.h>
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/mtl/GLSLCodeModule.h>
-#include "common/DescriptorBuilderCommon.h"
-#include "MaterialShaderEmitter.h"
+#include "builder/DescriptorBuilderCommon.h"
+#include "compile/MaterialShaderEmitter.h"
 #include <cstring>
 #include <cstdio>
 #include <cstdint>
