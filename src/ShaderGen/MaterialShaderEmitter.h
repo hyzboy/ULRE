@@ -31,8 +31,7 @@ namespace hgl::graph::mtl
 
     enum class GLSLInjectPoint : uint8
     {
-        AfterVersion,           ///< #version 行后（注入组，顺序 = 列表顺序）
-        BeforeSurfaceFunction   ///< #include SURFACE_FUNCTION_FILE marker 前
+        AfterVersion            ///< #version 行后（注入组，顺序 = 列表顺序）
     };
 
     struct GLSLInjectSegment

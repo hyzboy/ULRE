@@ -1,58 +1,228 @@
 ﻿#include <hgl/mtl/CompositorAssembler.h>
 #include <hgl/log/Log.h>
-#include <fstream>
-#include <sstream>
 
 namespace hgl::graph::mtl
 {
-    using namespace hgl::graph::mtl;
-    CompositorAssembler::CompositorAssembler(const std::string &shader_library_path)
-        : shader_lib_path_(shader_library_path)
-    {}
-
-    bool CompositorAssembler::ReadFile(const std::string &path, std::string &out_content, std::string &out_error) const
+    namespace
     {
-        std::ifstream ifs(path, std::ios::in);
-        if (!ifs.is_open())
-        {
-            out_error = "Failed to open file: " + path;
-            return false;
-        }
-        std::ostringstream ss;
-        ss << ifs.rdbuf();
-        out_content = ss.str();
-        return true;
-    }
+        // ── 骨架选择键（原 compositor 模板路径，TOML fragment.source 引用）──
+        constexpr const char ForwardSurfaceSkeletonKey[] = "compositor/main_forward_surface.frag.glsl";
+        constexpr const char DepthOnlySkeletonKey[]      = "compositor/main_depth_only.frag.glsl";
+        constexpr const char SkySkeletonKey[]            = "compositor/main_forward_sky.frag.glsl";
 
-    std::string CompositorAssembler::GetCompositorFSPath(SurfaceType surface, PassType pass) const
-    {
-        // Sky 表面使用专用 FS 模板
-        if (surface == SurfaceType::Sky)
+        enum class Skeleton
         {
-            switch (pass)
+            ForwardSurface,
+            DepthOnly,
+            Sky
+        };
+
+        // ── 骨架段常量（原模板的不可推导部分，语义逐字保留）────────────────
+
+        // Forward Surface main 尾段（契约驱动的 si 装配之后）
+        constexpr const char ForwardSurfaceMainTail[] =
+            "    const SurfaceOutput surface =\n"
+            "        EvalSurface(si, materialDataIndex);\n"
+            "    const LightingInput lighting =\n"
+            "        BuildForwardLightingInput(surface, si);\n"
+            "    const vec4 finalColor = EvalLighting(lighting);\n"
+            "    WriteMaterialOutput(HGLComposeColor(finalColor));\n"
+            "}\n";
+
+        // Sky main 体（静态 si 装配——天空只有方向，无逐语义输入）
+        constexpr const char SkyMainBody[] =
+            "    SurfaceInput si;\n"
+            "    si.worldPos     = fragDirection;\n"
+            "    si.worldNormal  = normalize(fragDirection);\n"
+            "    si.uv0          = vec2(0.0);\n"
+            "    si.uv1          = vec2(0.0);\n"
+            "    si.vertexColor  = vec4(1.0);\n"
+            "    si.viewDir      = fragDirection;\n"
+            "    si.screenPos    = vec2(0.0);\n"
+            "    si.luminance    = 0.0;\n"
+            "\n"
+            "    SurfaceOutput so = EvalSurface(si, 0u);\n"
+            "\n"
+            "    WriteMaterialOutput(HGLComposeColor(vec4(so.baseColor, so.alpha)));\n"
+            "}\n";
+
+        // ── 发射辅助 ────────────────────────────────────────────────────────
+
+        // HGL_* 编译宏（原 InjectDefines 的 define 段，顺序与文本一致）
+        std::string BuildOptionDefines(const CompositorAssembler::CompositorModuleOptions &options)
+        {
+            std::string defines;
+            if (options.alpha_test)
             {
-            case PassType::ShadowOpaque:
-            case PassType::ShadowMasked:
-            case PassType::EarlyZSolid:
-            case PassType::EarlyZMasked:
-                return {};  // Sky 无深度/阴影 pass
-
-            default:
-                return shader_lib_path_ + "/compositor/main_forward_sky.frag.glsl";
+                defines += "#define HGL_ALPHA_TEST 1\n";
+                defines += "#define HGL_ALPHA_CUTOFF ";
+                defines += std::to_string(options.alpha_cutoff);
+                defines += "\n";
             }
+            if (options.dither)
+                defines += "#define HGL_ALPHA_DITHER 1\n";
+            defines += options.enable_material_source_provider
+                ? "#define HGL_USE_MATERIAL_SOURCE_PROVIDER 1\n"
+                : "#define HGL_USE_MATERIAL_SOURCE_PROVIDER 0\n";
+            defines += options.enable_ntb_provider
+                ? "#define HGL_USE_NTB_PROVIDER 1\n"
+                : "#define HGL_USE_NTB_PROVIDER 0\n";
+            defines += options.enable_scene_lighting
+                ? "#define HGL_USE_SCENE_LIGHTING 1\n"
+                : "#define HGL_USE_SCENE_LIGHTING 0\n";
+            return defines;
         }
 
-        // Unlit / Lit 及其它表面类型 — 统一路径
-        switch (pass)
+        std::string IncludeLine(const std::string &path)
         {
-        case PassType::ShadowOpaque:
-        case PassType::ShadowMasked:
-        case PassType::EarlyZSolid:
-        case PassType::EarlyZMasked:
-            return shader_lib_path_ + "/compositor/main_depth_only.frag.glsl";
+            return "#include \"" + path + "\"\n";
+        }
 
-        default:
-            return shader_lib_path_ + "/compositor/main_forward_surface.frag.glsl";
+        // 槽位最终路径：override 优先，否则默认模块（原 kModuleSlots 语义）
+        std::string SlotPath(const char *override_path, const char *default_path)
+        {
+            return (override_path && override_path[0]) ? override_path : default_path;
+        }
+
+        // fragment 输入声明（契约驱动；原 ApplyFragmentInputContract 的插入段）
+        bool BuildInputDeclarations(
+            const hgl::ValueArray<InterStageSemanticContractEntry> *inputs,
+            std::string &out_declarations)
+        {
+            out_declarations.clear();
+            if (!inputs)
+                return true;
+
+            for (int i = 0; i < inputs->GetCount(); ++i)
+            {
+                AnsiString declaration;
+                if (!BuildGLSLInterStageDeclaration(
+                        (*inputs)[i], "in", declaration))
+                    return false;
+                out_declarations += declaration.c_str();
+                out_declarations += "\n";
+            }
+            return true;
+        }
+
+        // 输出附件声明 + WriteMaterialOutput 转发（契约驱动；
+        // 原 ApplyMaterialOutputContract 的生成段，文本一致）
+        bool BuildOutputDeclarations(
+            const OutputContract &contract,
+            std::string &out_declarations,
+            MaterialOutputContractDiagnostic &out_diagnostic)
+        {
+            out_declarations.clear();
+            out_diagnostic = {};
+            out_diagnostic.purpose = contract.purpose;
+            if (!ValidateOutputContract(contract))
+            {
+                out_diagnostic.error = MaterialOutputContractError::InvalidContract;
+                return false;
+            }
+
+            for (int i = 0; i < contract.attachments.GetCount(); ++i)
+            {
+                const ShaderOutputAttachmentContract &attachment =
+                    contract.attachments[i];
+                const char *type_name;
+                switch (attachment.value_type)
+                {
+                case ShaderStageValueType::Float: type_name = "float"; break;
+                case ShaderStageValueType::Vec2:  type_name = "vec2";  break;
+                case ShaderStageValueType::Vec3:  type_name = "vec3";  break;
+                case ShaderStageValueType::Vec4:  type_name = "vec4";  break;
+                case ShaderStageValueType::Int:   type_name = "int";   break;
+                case ShaderStageValueType::UInt:  type_name = "uint";  break;
+                case ShaderStageValueType::Bool:  type_name = "bool";  break;
+                default: type_name = nullptr; break;
+                }
+
+                // 输出语义名解析（outColor 单语义，共享实现见 MaterialOutputContract.h）
+                const char *output_name =
+                    GetMaterialOutputName(attachment.write_semantic_id);
+                if (!type_name || !output_name)
+                {
+                    out_diagnostic.error =
+                        MaterialOutputContractError::UnsupportedAttachment;
+                    out_diagnostic.attachment_semantic_id =
+                        attachment.write_semantic_id;
+                    return false;
+                }
+
+                out_declarations += "layout(location=";
+                out_declarations += std::to_string(attachment.location);
+                out_declarations += ") out ";
+                out_declarations += type_name;
+                out_declarations += " ";
+                out_declarations += output_name;
+                out_declarations += ";\n";
+                out_declarations += "void WriteMaterialOutput(";
+                out_declarations += type_name;
+                out_declarations += " value) { ";
+                out_declarations += output_name;
+                out_declarations += " = value; }\n";
+            }
+            return true;
+        }
+
+        // depth/shadow 覆盖率 main（原 ApplyDepthCoverageContract 的生成段，
+        // 逐行一致；si 装配由覆盖契约语义驱动）
+        void AppendCoverageMain(
+            const MaterialCoverageContract &coverage,
+            const hgl::ValueArray<InterStageSemanticContractEntry> &stage_interface,
+            const char *material_source_module,
+            const char *surface_module,
+            std::string &out_glsl)
+        {
+            if (!coverage.requires_alpha_evaluation)
+            {
+                out_glsl += "void main()\n{\n}\n";
+                return;
+            }
+
+            out_glsl += "#include \"common/surface_interface.glsl\"\n";
+            out_glsl += "#include \"common/alpha_compositor.glsl\"\n";
+            out_glsl += "#define HGL_COVERAGE_ONLY 1\n";
+            if (material_source_module && material_source_module[0])
+                out_glsl += IncludeLine(material_source_module);
+            if (surface_module && surface_module[0])
+                out_glsl += IncludeLine(surface_module);
+            out_glsl += "\nvoid main()\n{\n";
+            out_glsl += "    SurfaceInput si;\n";
+            out_glsl += "    si.worldPos = vec3(0.0);\n";
+            out_glsl += "    si.worldNormal = vec3(0.0, 0.0, 1.0);\n";
+            out_glsl += "    si.uv0 = vec2(0.0);\n";
+            out_glsl += "    si.uv1 = vec2(0.0);\n";
+            out_glsl += "    si.vertexColor = vec4(1.0);\n";
+            out_glsl += "    si.viewDir = vec3(0.0, 0.0, 1.0);\n";
+            out_glsl += "    si.screenPos = gl_FragCoord.xy;\n";
+            out_glsl += "    si.luminance = 1.0;\n";
+            out_glsl += "    si.styleID = 0u;\n";
+
+            const auto has_semantic =
+                [&stage_interface](const InterStageSemantic semantic)
+            {
+                return FindMaterialStageInterfaceEntry(stage_interface, semantic)
+                    != nullptr;
+            };
+            if (has_semantic(InterStageSemantic::WorldPosition))
+                out_glsl += "    si.worldPos = fragWorldPos;\n";
+            if (has_semantic(InterStageSemantic::WorldNormal))
+                out_glsl += "    si.worldNormal = fragWorldNormal;\n";
+            if (has_semantic(InterStageSemantic::UV0))
+                out_glsl += "    si.uv0 = fragUV0;\n";
+            if (has_semantic(InterStageSemantic::Color))
+                out_glsl += "    si.vertexColor = fragVertexColor;\n";
+            if (has_semantic(InterStageSemantic::Luminance))
+                out_glsl += "    si.luminance = fragLuminance;\n";
+
+            out_glsl += "    const float alpha = EvalAlpha(si, ";
+            out_glsl += has_semantic(InterStageSemantic::DataIndexID)
+                ? "fragDataIndexID" : "0u";
+            out_glsl += ");\n";
+            out_glsl += "    HGLApplyAlpha(alpha);\n";
+            out_glsl += "}\n";
         }
     }
 
@@ -67,380 +237,95 @@ namespace hgl::graph::mtl
         }
     }
 
-    std::string CompositorAssembler::InjectDefines(
-    const std::string &source,
-    const CompositorModuleOptions &module_options) const
-{
-    std::string defines;
-        if (module_options.alpha_test)
-        {
-            defines += "#define HGL_ALPHA_TEST 1\n";
-            defines += "#define HGL_ALPHA_CUTOFF ";
-            defines += std::to_string(module_options.alpha_cutoff);
-            defines += "\n";
-        }
-        if (module_options.dither)
-            defines += "#define HGL_ALPHA_DITHER 1\n";
-        if (module_options.enable_material_source_provider)
-            defines += "#define HGL_USE_MATERIAL_SOURCE_PROVIDER 1\n";
-        else
-            defines += "#define HGL_USE_MATERIAL_SOURCE_PROVIDER 0\n";
-        if (module_options.enable_ntb_provider)
-            defines += "#define HGL_USE_NTB_PROVIDER 1\n";
-        else
-            defines += "#define HGL_USE_NTB_PROVIDER 0\n";
-        defines += module_options.enable_scene_lighting
-            ? "#define HGL_USE_SCENE_LIGHTING 1\n"
-            : "#define HGL_USE_SCENE_LIGHTING 0\n";
-
-        // Metadata/comments may precede #version in file-backed templates, but
-        // GLSL requires #version to be the first preprocessing token.
-        size_t version_line_start = std::string::npos;
-        size_t version_token_start = std::string::npos;
-        size_t version_line_end = std::string::npos;
-        size_t line_start = 0;
-        while (line_start < source.size())
-        {
-            const size_t line_end = source.find('\n', line_start);
-            const size_t content_end = line_end == std::string::npos ? source.size() : line_end;
-            size_t token_start = line_start;
-            while (token_start < content_end
-                && (source[token_start] == ' ' || source[token_start] == '\t'
-                 || source[token_start] == '\r'))
-                ++token_start;
-
-            if (content_end - token_start >= 8
-             && source.compare(token_start, 8, "#version") == 0)
-            {
-                version_line_start = line_start;
-                version_token_start = token_start;
-                version_line_end = content_end;
-                break;
-            }
-
-            if (line_end == std::string::npos)
-                break;
-            line_start = line_end + 1;
-        }
-
-        if (version_token_start != std::string::npos)
-        {
-            std::string result;
-            result.reserve(source.size() + defines.size() + 32);
-            result.append(source, version_token_start, version_line_end - version_token_start);
-            result.append("\n");
-            result.append(source, 0, version_line_start);
-            if (!defines.empty())
-            {
-                result.append(defines);
-                result.append("\n");
-            }
-
-            const size_t suffix_start = version_line_end < source.size()
-                ? version_line_end + 1 : version_line_end;
-            result.append(source, suffix_start, std::string::npos);
-            return result;
-        }
-
-        return {};
-    }
-
-    std::string CompositorAssembler::ReplaceSurfaceInclude(const std::string &source, const std::string &surface_path) const
-    {
-        const std::string marker = "#include SURFACE_FUNCTION_FILE";
-        auto pos = source.find(marker);
-        if (pos == std::string::npos)
-            return source;
-
-        std::string replacement = "#include \"" + surface_path + "\"";
-
-        std::string result;
-        result.reserve(source.size() + replacement.size());
-        result.append(source, 0, pos);
-        result.append(replacement);
-        result.append(source, pos + marker.size(), std::string::npos);
-        return result;
-    }
-
-    std::string CompositorAssembler::ReplaceLightingModuleIncludes(
-        const std::string &source,
-        const CompositorModuleOptions &module_options) const
-    {
-        struct CompositorModuleSlot
-        {
-            const char *default_path;                                      // 默认路径，同时是模板中被替换的 include 目标
-            const char *CompositorModuleOptions::*override_field;          // 显式 override 成员（成员指针，消除双表下标对应）
-        };
-
-        static constexpr CompositorModuleSlot kModuleSlots[] =
-        {
-            { "sky/sky_atmosphere.glsl",                  &CompositorModuleOptions::sky_module },
-            { "lighting/direct_cook_torrance_pbr.glsl",   &CompositorModuleOptions::direct_lighting_module },
-            { "lighting/indirect_sky_ambient.glsl",       &CompositorModuleOptions::indirect_lighting_module },
-            { "lighting/forward_pbr.glsl",                &CompositorModuleOptions::lighting_algorithm_module },
-            { "material/pbr_surface_source.glsl",         &CompositorModuleOptions::material_source_module },
-            { "ntb/ntb_tangent_vbo_normalmap.glsl",       &CompositorModuleOptions::ntb_module },
-            { "compositor/forward_lighting.glsl",         &CompositorModuleOptions::forward_lighting_module },
-        };
-
-        std::string result = source;
-        for (const auto &slot : kModuleSlots)
-        {
-            const std::string marker =
-                std::string("#include \"") + slot.default_path + "\"";
-            const size_t pos = result.find(marker);
-            const char *override_path = module_options.*(slot.override_field);
-
-            if (pos == std::string::npos)
-            {
-                // 该 compositor 模板不含此模块 include（不同主文件只含部分模块）——
-                // 仅当调用方显式指定了 override 却找不到目标 include 行时才是真错误
-                //（默认路径改名而模板未同步 = 模块替换静默失效）。
-                if (override_path && override_path[0])
-                    GLogError("[CompositorAssembler] override module '%s' 未找到目标 include \"%s\"",
-                              override_path, slot.default_path);
-                continue;
-            }
-
-            const char *effective_path =
-                (override_path && override_path[0]) ? override_path : slot.default_path;
-            const std::string replacement =
-                std::string("#include \"") + effective_path + "\"";
-            result.replace(pos, marker.size(), replacement);
-        }
-
-        return result;
-    }
-
-    bool CompositorAssembler::ApplyFragmentInputContract(
-        const std::string &source,
-        const hgl::ValueArray<InterStageSemanticContractEntry> &inputs,
-        std::string &out_source) const
-    {
-        out_source.clear();
-        std::string declarations;
-        for (int i = 0; i < inputs.GetCount(); ++i)
-        {
-            AnsiString declaration;
-            if (!BuildGLSLInterStageDeclaration(
-                    inputs[i], "in", declaration))
-                return false;
-            declarations += declaration.c_str();
-            declarations += "\n";
-        }
-
-        out_source.reserve(source.size() + declarations.size() + 1);
-        bool declarations_inserted = false;
-
-        size_t line_start = 0;
-        while (line_start < source.size())
-        {
-            const size_t line_end = source.find('\n', line_start);
-            const size_t length = line_end == std::string::npos
-                ? source.size() - line_start
-                : line_end - line_start;
-            const std::string line = source.substr(line_start, length);
-            const bool is_fragment_input =
-                line.find("layout(location=") != std::string::npos
-             && line.find(" in ") != std::string::npos;
-            if (is_fragment_input)
-            {
-                if (!declarations_inserted)
-                {
-                    out_source += declarations;
-                    declarations_inserted = true;
-                }
-            }
-            else
-            {
-                out_source.append(line);
-                if (line_end != std::string::npos)
-                    out_source.push_back('\n');
-            }
-
-            if (line_end == std::string::npos)
-                break;
-            line_start = line_end + 1;
-        }
-
-        const std::string input_marker =
-            "// ULRE_FRAGMENT_INPUT_CONTRACT";
-        const size_t marker = out_source.find(input_marker);
-        if (!declarations_inserted)
-        {
-            if (!inputs.IsEmpty() && marker == std::string::npos)
-                return false;
-            if (marker != std::string::npos)
-                out_source.replace(marker, input_marker.size(), declarations);
-        }
-        else if (marker != std::string::npos)
-        {
-            out_source.erase(marker, input_marker.size());
-        }
-        return true;
-    }
-
-    bool CompositorAssembler::ApplySurfaceInputContract(
-        const std::string &source,
-        const hgl::ValueArray<InterStageSemanticContractEntry> &inputs,
-        bool camera_ubo_available,
-        std::string &out_source) const
-    {
-        const std::string marker =
-            "// ULRE_SURFACE_INPUT_CONTRACT";
-        const size_t marker_pos = source.find(marker);
-        if (marker_pos == std::string::npos)
-            return false;
-
-        AnsiString generated;
-        if (!BuildGLSLMaterialSurfaceInput(inputs, camera_ubo_available, generated))
-            return false;
-        out_source = source;
-        out_source.replace(
-            marker_pos, marker.size(), generated.c_str());
-        return true;
-    }
-
     CompositorAssembler::AssembleResult CompositorAssembler::Assemble(
         SurfaceType                  surface,
         PassType                     pass,
         const char                  *fragment_source_override,
         const char                  *surface_function_override,
-        const CompositorModuleOptions &module_options
-    ) const
+        const CompositorModuleOptions &module_options,
+        const std::string           &code_module_glsl) const
     {
         AssembleResult result{};
 
-        // 1. Resolve the canonical fragment source/template path.
-        std::string fs_path = (fragment_source_override && fragment_source_override[0])
-            ? shader_lib_path_ + "/" + fragment_source_override
-            : GetCompositorFSPath(surface, pass);
-        std::string surface_rel = (surface_function_override && surface_function_override[0])
-            ? surface_function_override
-            : GetSurfaceFunctionPath(surface);
-
-        if (fs_path.empty())
+        // ── 1. 骨架选择（原 GetCompositorFSPath + override 覆盖）───────────
+        Skeleton skeleton;
         {
-            result.error_message = "Unsupported compositor pass";
-            result.success = false;
-            return result;
-        }
-        if (surface_rel.empty())
-        {
-            result.error_message = "Unsupported compositor surface";
-            result.success = false;
-            return result;
+            const std::string path =
+                (fragment_source_override && fragment_source_override[0])
+                    ? fragment_source_override
+                    : (surface == SurfaceType::Sky
+                        ? (pass == PassType::ShadowOpaque
+                        || pass == PassType::ShadowMasked
+                        || pass == PassType::EarlyZSolid
+                        || pass == PassType::EarlyZMasked
+                            ? ""                 // Sky 无深度/阴影 pass（原返回空 → 报错）
+                            : SkySkeletonKey)
+                        : (pass == PassType::ShadowOpaque
+                        || pass == PassType::ShadowMasked
+                        || pass == PassType::EarlyZSolid
+                        || pass == PassType::EarlyZMasked
+                            ? DepthOnlySkeletonKey
+                            : ForwardSurfaceSkeletonKey));
+
+            if (path == ForwardSurfaceSkeletonKey)
+                skeleton = Skeleton::ForwardSurface;
+            else if (path == DepthOnlySkeletonKey)
+                skeleton = Skeleton::DepthOnly;
+            else if (path == SkySkeletonKey)
+                skeleton = Skeleton::Sky;
+            else if (path.empty())
+            {
+                result.error_message = "Unsupported compositor pass";
+                return result;
+            }
+            else
+            {
+                result.error_message =
+                    "Unsupported compositor fragment source: " + path;
+                return result;
+            }
         }
 
-        // 3. 读取 FS 模板
-        std::string fs_source;
-        if (!ReadFile(fs_path, fs_source, result.error_message))
-        {
-            result.success = false;
-            return result;
-        }
-
-        // 4. 注入 #define
-        CompositorModuleOptions effective_options = module_options;
+        // ── 2. 有效化选项（原 Assemble 的 lit 强制逻辑）────────────────────
+        CompositorModuleOptions options = module_options;
         const bool is_lit_surface =
             surface != SurfaceType::Unlit && surface != SurfaceType::Sky;
-        effective_options.enable_material_source_provider =
-            effective_options.enable_material_source_provider
+        options.enable_material_source_provider =
+            options.enable_material_source_provider
             || is_lit_surface
-            || (effective_options.material_source_module
-                && effective_options.material_source_module[0]);
-        effective_options.enable_ntb_provider =
-            effective_options.enable_ntb_provider
+            || (options.material_source_module
+                && options.material_source_module[0]);
+        options.enable_ntb_provider =
+            options.enable_ntb_provider
             || is_lit_surface
-            || (effective_options.ntb_module
-                && effective_options.ntb_module[0]);
-        effective_options.enable_scene_lighting =
-            effective_options.enable_scene_lighting
+            || (options.ntb_module
+                && options.ntb_module[0]);
+        options.enable_scene_lighting =
+            options.enable_scene_lighting
             || is_lit_surface;
-        fs_source = InjectDefines(fs_source, effective_options);
-        if (fs_source.empty())
-        {
-            result.error_message =
-                "fragment template must declare #version";
-            return result;
-        }
 
-        // 5. Resolve configurable module includes to literal header names.
-        // GLSL does not allow a macro to stand in for the header token of #include.
-        fs_source = ReplaceLightingModuleIncludes(
-            fs_source, effective_options);
-
-        // 6. 替换 FS 中的 SURFACE_FUNCTION_FILE
-        fs_source = ReplaceSurfaceInclude(fs_source, surface_rel);
-
-        mtl::MaterialCoverageContract default_coverage_contract{};
-        const mtl::MaterialCoverageContract *coverage_contract =
-            module_options.coverage_contract
-                ? module_options.coverage_contract
-                : &default_coverage_contract;
+        // ── 3. 输出用途 / surface 函数路径 ─────────────────────────────────
         const mtl::ShaderProgramPurpose output_purpose =
             module_options.output_contract
                 ? module_options.output_contract->purpose
                 : GetShaderProgramPurpose(pass);
-        if (output_purpose == mtl::ShaderProgramPurpose::DepthOnly
-         || output_purpose == mtl::ShaderProgramPurpose::ShadowDepth)
+
+        std::string surface_rel = (surface_function_override && surface_function_override[0])
+            ? surface_function_override
+            : GetSurfaceFunctionPath(surface);
+        if (surface_rel.empty())
         {
-            std::string covered_source;
-            const hgl::ValueArray<
-                InterStageSemanticContractEntry> empty_inputs;
-            const auto &coverage_inputs =
-                module_options.fragment_inputs
-                    ? *module_options.fragment_inputs
-                    : empty_inputs;
-            if (!ApplyDepthCoverageContract(
-                    *coverage_contract,
-                    coverage_inputs,
-                    module_options.material_source_module,
-                    surface_rel.c_str(),
-                    fs_source,
-                    covered_source))
-            {
-                result.error_message =
-                    "Failed to apply depth coverage contract";
-                result.success = false;
-                return result;
-            }
-            fs_source = std::move(covered_source);
+            result.error_message = "Unsupported compositor surface";
+            return result;
         }
 
-        if (module_options.fragment_inputs)
+        // ── 4. 契约数据（输入声明 / 输出附件 / 覆盖率）─────────────────────
+        std::string input_declarations;
+        if (!BuildInputDeclarations(module_options.fragment_inputs, input_declarations))
         {
-            std::string contracted_source;
-            if (!ApplyFragmentInputContract(
-                    fs_source,
-                    *module_options.fragment_inputs,
-                    contracted_source))
-            {
-                result.error_message =
-                    "Failed to apply fragment stage interface contract";
-                result.success = false;
-                return result;
-            }
-            fs_source = std::move(contracted_source);
-        }
-
-        if (module_options.fragment_inputs
-         && fs_source.find("// ULRE_SURFACE_INPUT_CONTRACT")
-                != std::string::npos)
-        {
-            std::string input_source;
-            if (!ApplySurfaceInputContract(
-                    fs_source,
-                    *module_options.fragment_inputs,
-                    module_options.enable_scene_lighting,
-                    input_source))
-            {
-                result.error_message =
-                    "Failed to apply material surface input contract";
-                result.success = false;
-                return result;
-            }
-            fs_source = std::move(input_source);
+            result.error_message =
+                "Failed to apply fragment stage interface contract";
+            return result;
         }
 
         OutputContract default_output_contract{};
@@ -458,29 +343,134 @@ namespace hgl::graph::mtl
                     std::string("Failed to build output contract: ")
                     + GetMaterialOutputContractErrorName(
                         output_diagnostic.error);
-                result.success = false;
                 return result;
             }
             output_contract = &default_output_contract;
         }
 
-        std::string contracted_source;
-        if (!ApplyMaterialOutputContract(
+        std::string output_declarations;
+        if (!BuildOutputDeclarations(
                 *output_contract,
-                fs_source,
-                contracted_source,
+                output_declarations,
                 output_diagnostic))
         {
             result.error_message =
                 std::string("Failed to apply output contract: ")
-                + GetMaterialOutputContractErrorName(
-                    output_diagnostic.error);
-            result.success = false;
+                + GetMaterialOutputContractErrorName(output_diagnostic.error);
             return result;
         }
-        fs_source = std::move(contracted_source);
 
-        result.fragment_glsl = std::move(fs_source);
+        mtl::MaterialCoverageContract default_coverage_contract{};
+        const mtl::MaterialCoverageContract *coverage_contract =
+            module_options.coverage_contract
+                ? module_options.coverage_contract
+                : &default_coverage_contract;
+
+        // ── 5. 单趟组装 ────────────────────────────────────────────────────
+        std::string glsl = "#version 450\n";
+        const std::string defines = BuildOptionDefines(options);
+        glsl += defines;
+        if (!defines.empty())
+            glsl += "\n";
+
+        if (skeleton == Skeleton::ForwardSurface)
+        {
+            glsl += "#include \"common/descriptor_macros.glsl\"\n";
+            glsl += "#include \"common/surface_interface.glsl\"\n";
+
+            if (options.enable_scene_lighting)
+            {
+                glsl += "#include \"ubo/camera_info.glsl\"\n";
+                glsl += "#include \"ubo/sky_info.glsl\"\n";
+                glsl += "SCENE_CAMERA_UBO;\n";
+                glsl += "SCENE_SKY_UBO;\n";
+                glsl += IncludeLine(SlotPath(
+                    options.sky_module, "sky/sky_atmosphere.glsl"));
+                glsl += IncludeLine(SlotPath(
+                    options.direct_lighting_module,
+                    "lighting/direct_cook_torrance_pbr.glsl"));
+                glsl += IncludeLine(SlotPath(
+                    options.indirect_lighting_module,
+                    "lighting/indirect_sky_ambient.glsl"));
+            }
+
+            glsl += IncludeLine(SlotPath(
+                options.lighting_algorithm_module, "lighting/forward_pbr.glsl"));
+            if (options.enable_material_source_provider)
+                glsl += IncludeLine(SlotPath(
+                    options.material_source_module,
+                    "material/pbr_surface_source.glsl"));
+            if (options.enable_ntb_provider)
+                glsl += IncludeLine(SlotPath(
+                    options.ntb_module, "ntb/ntb_tangent_vbo_normalmap.glsl"));
+            glsl += IncludeLine(SlotPath(
+                options.forward_lighting_module, "compositor/forward_lighting.glsl"));
+
+            glsl += "\n";
+            glsl += input_declarations;
+            glsl += "\n";
+            glsl += output_declarations;
+            glsl += "\n";
+
+            // 代码模块置于 surface 函数 include 之前——模块代码可能提供
+            // EvalMaterialSource 等被 surface 函数调用的定义（原
+            // BeforeSurfaceFunction 注入点语义）
+            glsl += code_module_glsl;
+
+            glsl += IncludeLine(surface_rel);
+            glsl += "#include \"common/alpha_compositor.glsl\"\n";
+
+            glsl += "\nvoid main()\n{\n";
+            if (module_options.fragment_inputs)
+            {
+                AnsiString wiring;
+                BuildGLSLMaterialSurfaceInput(
+                    *module_options.fragment_inputs,
+                    options.enable_scene_lighting,
+                    wiring);
+                glsl += wiring.c_str();
+            }
+            glsl += ForwardSurfaceMainTail;
+        }
+        else if (skeleton == Skeleton::DepthOnly)
+        {
+            glsl += input_declarations;
+            glsl += "\n";
+            glsl += output_declarations;
+
+            // 覆盖率契约：非 alpha 评估变体为空 main；否则按语义装配 EvalAlpha
+            AppendCoverageMain(
+                *coverage_contract,
+                module_options.fragment_inputs
+                    ? *module_options.fragment_inputs
+                    : hgl::ValueArray<InterStageSemanticContractEntry>{},
+                module_options.material_source_module,
+                surface_rel.c_str(),
+                glsl);
+        }
+        else // Skeleton::Sky
+        {
+            glsl += "#include \"common/descriptor_macros.glsl\"\n";
+            glsl += "#include \"ubo/sky_info.glsl\"\n";
+            glsl += "SCENE_SKY_UBO;\n";
+            glsl += "#include \"sky/sky_atmosphere.glsl\"\n";
+
+            glsl += "\n";
+            glsl += "#include \"common/surface_interface.glsl\"\n";
+            glsl += IncludeLine(surface_rel);
+            glsl += "#include \"common/alpha_compositor.glsl\"\n";
+
+            glsl += "\n";
+            glsl += input_declarations;
+            glsl += "\n";
+            glsl += output_declarations;
+            glsl += "\n";
+
+            glsl += "void main()\n{\n";
+            glsl += SkyMainBody;
+        }
+
+        result.fragment_glsl = std::move(glsl);
         result.success       = true;
         return result;
     }

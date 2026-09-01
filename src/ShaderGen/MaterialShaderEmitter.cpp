@@ -278,19 +278,6 @@ namespace
             return glsl + "\n" + inject;
         return glsl.substr(0, pos + 1) + inject + glsl.substr(pos + 1);
     }
-
-    std::string InsertBeforeSurfaceFunction(const std::string &glsl, const std::string &inject)
-    {
-        if (inject.empty())
-            return glsl;
-        // B6: 单一 marker（#include SURFACE_FUNCTION_FILE）——"#include "surface/" 旧格式
-        // 回退已删（全库 0 使用——ShaderLibrary 与回归门均无）
-        const std::string marker = "#include SURFACE_FUNCTION_FILE";
-        const auto pos = glsl.find(marker);
-        if (pos == std::string::npos)
-            return glsl + "\n" + inject;
-        return glsl.substr(0, pos) + inject + "\n" + glsl.substr(pos);
-    }
 }//namespace
 
 void AssembleFinalGLSL(
@@ -302,7 +289,6 @@ void AssembleFinalGLSL(
     // 按 point 归组（AfterVersion 组内顺序 = 列表顺序）
     std::string ms_version_injects;
     std::string fs_version_injects;
-    std::string fs_surface_injects;
 
     for (const auto &seg : segments)
     {
@@ -311,19 +297,13 @@ void AssembleFinalGLSL(
 
         if (seg.stage == GLSLInjectStage::Mesh)
             ms_version_injects += seg.text;
-        else if (seg.point == GLSLInjectPoint::BeforeSurfaceFunction)
-            fs_surface_injects += seg.text;
         else
             fs_version_injects += seg.text;
     }
 
     std::string ms_final = InsertAfterVersionLine(ms_glsl, ms_version_injects);
 
-    std::string fs_final = fs_glsl;
-    if (!fs_surface_injects.empty())
-        fs_final = InsertBeforeSurfaceFunction(fs_final, fs_surface_injects);
-    if (!fs_version_injects.empty())
-        fs_final = InsertAfterVersionLine(fs_final, fs_version_injects);
+    std::string fs_final = InsertAfterVersionLine(fs_glsl, fs_version_injects);
 
     ShaderCreateInfo *mesh = ctx->GetStageShader(ShaderStage::Mesh);
     ShaderCreateInfo *frag = ctx->GetStageShader(ShaderStage::Fragment);

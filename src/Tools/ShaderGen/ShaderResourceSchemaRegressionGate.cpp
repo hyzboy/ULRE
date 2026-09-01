@@ -894,7 +894,7 @@ namespace
         GateResult result;
         result.name = "N.compositor-version-placement";
 
-        CompositorAssembler assembler(GetShaderLibraryPath());
+        CompositorAssembler assembler;
         const auto assembled = assembler.Assemble(
             SurfaceType::Lit,
             PassType::ForwardOpaque);
@@ -2224,18 +2224,9 @@ namespace
                     "output purpose contract mapping mismatch");
             }
 
-            std::string applied;
-            if (ApplyMaterialOutputContract(
-                    opaque_output,
-                    "#version 460\nvoid main(){}\n",
-                    applied,
-                    diagnostic)
-             || diagnostic.error
-                    != MaterialOutputContractError::MissingContractMarker)
-            {
-                result.diagnostics.emplace_back(
-                    "output contract marker must be mandatory");
-            }
+            // 单趟发射改造（2026-09）：FS 由发射器组装，输出附件声明不再经
+            // marker 替换注入——原 ApplyMaterialOutputContract/MissingContractMarker
+            // 机制随 marker 体系删除。
 
             MaterialDefinition lit{};
             if (!TryGetMaterialDefinitionByID("Lit", lit))
@@ -2700,7 +2691,7 @@ namespace
                 "material/unlit_source.glsl") != 0)
             result.diagnostics.emplace_back("PureColor must use one FS module");
 
-        CompositorAssembler assembler(GetShaderLibraryPath());
+        CompositorAssembler assembler;
         hgl::ValueArray<InterStageSemanticContractEntry> stage_interface;
         MaterialStageInterfaceDiagnostic interface_diagnostic{};
         MaterialVertexVaryingConfig pure_color_varying{};
@@ -3415,14 +3406,16 @@ namespace
             result.diagnostics.emplace_back("LoadDirectory failed to scan directory");
         else
         {
-            if (file_count != 70)
-                result.diagnostics.emplace_back("LoadDirectory expected 70 file modules, got "
+            // 单趟发射改造（2026-09）：3 个 compositor 模板文件删除（骨架
+            // 降级为发射器常量），模块总数 70 -> 67。
+            if (file_count != 67)
+                result.diagnostics.emplace_back("LoadDirectory expected 67 file modules, got "
                                                 + std::to_string(file_count) + " (2 vertex SSBO modules added)");
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 70;
+            const int expected_count = 67;
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
@@ -3460,17 +3453,8 @@ namespace
         else if (surface_interface->kind != GLSLCodeModuleKind::Shared)
             result.diagnostics.emplace_back("surface_interface kind mismatch");
 
-        const auto *compositor_lit = registry.FindByName("main_forward_surface");
-        if (!compositor_lit)
-            result.diagnostics.emplace_back("main_forward_surface not found by name");
-        else
-        {
-            if (compositor_lit->kind != GLSLCodeModuleKind::FragmentShader)
-                result.diagnostics.emplace_back("main_forward_surface kind mismatch");
-            if (compositor_lit->dependency_count != 4)
-                result.diagnostics.emplace_back("main_forward_surface uses resolution expected 4 deps, got "
-                    + std::to_string(compositor_lit->dependency_count));
-        }
+        // 单趟发射改造（2026-09）：compositor 骨架降级为发射器常量，模板文件
+        // 已删除——main_forward_surface 不再作为 GLSL 代码模块注册。
 
         const auto *forward_input = registry.FindByName("forward_lighting");
         if (!forward_input || forward_input->kind != GLSLCodeModuleKind::Utility)

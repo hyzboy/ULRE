@@ -14,16 +14,20 @@ namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
     /**
-     * CompositorAssembler — 统一组合 raw fragment source/template 与
-     * Surface Function，生成完整 GLSL
+     * CompositorAssembler — Fragment 单趟发射器
      *
-     * 第一版最小实现：
-     *   1. 输入：SurfaceType, PassType
-     *   2. 查表选择 FS Compositor Template 文件路径
-     *   3. 读取模板文件内容
-     *   4. 注入 #define 宏（ShaderPermutationKey::AppendGLSLDefines()）
-     *   5. 替换 #include SURFACE_FUNCTION_FILE 为实际路径
-     *   6. 返回完整 FS GLSL 字符串
+     * 2026-09 组装模型统一：原"读模板 + 8 遍文本手术"（InjectDefines /
+     * ReplaceLightingModuleIncludes / ReplaceSurfaceInclude /
+     * ApplyDepthCoverageContract / ApplyFragmentInputContract /
+     * ApplySurfaceInputContract / ApplyMaterialOutputContract /
+     * 编译期 BeforeSurfaceFunction 注入）收敛为单趟组装：
+     *   #version → defines → includes（数据驱动的最终路径）→ 契约声明
+     *   （fragment 输入 / 输出附件）→ main 骨架（本文件常量）内嵌契约驱动的
+     *   si 装配 → 代码模块（调用方传入，置于 surface 函数 include 之前）。
+     *
+     * 骨架常量承载于实现文件（原 3 个 compositor 模板文件已删除，TOML 的
+     * fragment.source 路径降级为骨架选择键）；算法代码仍在 ShaderLibrary/*.glsl，
+     * 经 glslang 原生 #include 组合。marker 体系与行嗅探消亡。
      */
     class CompositorAssembler
     {
@@ -59,19 +63,18 @@ namespace hgl::graph::mtl
                 *coverage_contract = nullptr;
         };
 
-        /// shader_library_path: ShaderLibrary 根目录的绝对路径（不带尾部斜杠）
-        explicit CompositorAssembler(const std::string &shader_library_path);
-
-        /// fragment_source_override: compositor template path, relative to the
-        /// ShaderLibrary root.
-        /// surface_function_override: optional Surface Function path override.
+        /// fragment_source_override: 骨架选择键（原 compositor 模板路径），
+        /// 空则按 surface/pass 分派。
+        /// surface_function_override: surface 函数路径覆盖。
+        /// code_module_glsl: GLSLCodeModule 代码模块拼接文本（调用方依据
+        /// manifest 生成；置于 surface 函数 include 之前，保证先于其使用声明）。
         AssembleResult Assemble(
             SurfaceType                  surface,
             PassType                     pass,
             const char                  *fragment_source_override,
             const char                  *surface_function_override,
-            const CompositorModuleOptions &module_options
-        ) const;
+            const CompositorModuleOptions &module_options,
+            const std::string           &code_module_glsl = {}) const;
 
         AssembleResult Assemble(
             SurfaceType                  surface,
@@ -85,22 +88,6 @@ namespace hgl::graph::mtl
 
     private:
 
-        std::string GetCompositorFSPath(SurfaceType surface, PassType pass) const;
         std::string GetSurfaceFunctionPath(SurfaceType surface) const;
-        std::string InjectDefines(const std::string &source, const CompositorModuleOptions &module_options) const;
-        std::string ReplaceLightingModuleIncludes(const std::string &source, const CompositorModuleOptions &module_options) const;
-        std::string ReplaceSurfaceInclude(const std::string &source, const std::string &surface_path) const;
-        bool ApplyFragmentInputContract(
-            const std::string &source,
-            const hgl::ValueArray<InterStageSemanticContractEntry> &inputs,
-            std::string &out_source) const;
-        bool ApplySurfaceInputContract(
-            const std::string &source,
-            const hgl::ValueArray<InterStageSemanticContractEntry> &inputs,
-            bool camera_ubo_available,
-            std::string &out_source) const;
-        bool        ReadFile(const std::string &path, std::string &out_content, std::string &out_error) const;
-
-        std::string shader_lib_path_;
     };
 }

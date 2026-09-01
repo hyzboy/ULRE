@@ -7,30 +7,6 @@
 namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
-    namespace
-    {
-        constexpr const char CoverageMarker[] =
-            "// ULRE_COVERAGE_CONTRACT";
-
-        bool HasSemantic(
-            const ValueArray<InterStageSemanticContractEntry> &entries,
-            const InterStageSemantic semantic) noexcept
-        {
-            return FindMaterialStageInterfaceEntry(entries, semantic)
-                != nullptr;
-        }
-
-        void AppendOptionalInclude(
-            std::string &code,
-            const char *path)
-        {
-            if (!path || !path[0])
-                return;
-            code += "#include \"";
-            code += path;
-            code += "\"\n";
-        }
-    }
 
     bool BuildMaterialCoverageContract(
         const MaterialDefinition &definition,
@@ -151,88 +127,6 @@ namespace hgl::graph::mtl
                 out_contract.texture_slot = TextureSlot::BaseColor;
             }
         }
-        return true;
-    }
-
-    bool ApplyDepthCoverageContract(
-        const MaterialCoverageContract &coverage,
-        const ValueArray<InterStageSemanticContractEntry> &stage_interface,
-        const char *material_source_module,
-        const char *surface_module,
-        const std::string &source,
-        std::string &out_source)
-    {
-        out_source.clear();
-        const size_t marker = source.find(CoverageMarker);
-        if (marker == std::string::npos)
-            return false;
-
-        std::string generated;
-        if (!coverage.requires_alpha_evaluation)
-        {
-            generated = "void main()\n{\n}\n";
-        }
-        else
-        {
-            generated +=
-                "#include \"common/surface_interface.glsl\"\n";
-            generated +=
-                "#include \"common/alpha_compositor.glsl\"\n";
-            generated += "#define HGL_COVERAGE_ONLY 1\n";
-            AppendOptionalInclude(generated, material_source_module);
-            AppendOptionalInclude(generated, surface_module);
-            generated += "\nvoid main()\n{\n";
-            generated += "    SurfaceInput si;\n";
-            generated += "    si.worldPos = vec3(0.0);\n";
-            generated += "    si.worldNormal = vec3(0.0, 0.0, 1.0);\n";
-            generated += "    si.uv0 = vec2(0.0);\n";
-            generated += "    si.uv1 = vec2(0.0);\n";
-            generated += "    si.vertexColor = vec4(1.0);\n";
-            generated += "    si.viewDir = vec3(0.0, 0.0, 1.0);\n";
-            generated += "    si.screenPos = gl_FragCoord.xy;\n";
-            generated += "    si.luminance = 1.0;\n";
-            generated += "    si.styleID = 0u;\n";
-
-            if (HasSemantic(
-                    stage_interface,
-                    InterStageSemantic::WorldPosition))
-                generated += "    si.worldPos = fragWorldPos;\n";
-            if (HasSemantic(
-                    stage_interface,
-                    InterStageSemantic::WorldNormal))
-                generated += "    si.worldNormal = fragWorldNormal;\n";
-            if (HasSemantic(
-                    stage_interface,
-                    InterStageSemantic::UV0))
-                generated += "    si.uv0 = fragUV0;\n";
-            if (HasSemantic(
-                    stage_interface,
-                    InterStageSemantic::Color))
-                generated += "    si.vertexColor = fragVertexColor;\n";
-            if (HasSemantic(
-                    stage_interface,
-                    InterStageSemantic::Luminance))
-                generated += "    si.luminance = fragLuminance;\n";
-
-            generated += "    const float alpha = EvalAlpha(si, ";
-            generated += HasSemantic(
-                    stage_interface,
-                    InterStageSemantic::DataIndexID)
-                ? "fragDataIndexID" : "0u";
-            generated += ");\n";
-            generated += "    HGLApplyAlpha(alpha);\n";
-            generated += "}\n";
-        }
-
-        out_source.reserve(
-            source.size() - sizeof(CoverageMarker)
-            + generated.size() + 1);
-        out_source.append(source, 0, marker);
-        out_source += generated;
-        out_source.append(
-            source,
-            marker + sizeof(CoverageMarker) - 1,
-            std::string::npos);
         return true;
     }
 }

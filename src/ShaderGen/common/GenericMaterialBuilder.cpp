@@ -21,6 +21,7 @@
 #include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/mtl/GLSLCodeModuleCapabilityResolver.h>
+#include "MaterialShaderEmitter.h"
 #include "3d/DefinitionDescriptorBuilder.h"
 #include "common/VertexVaryingConfig.h"
 #include "common/MeshShaderAssembler.h"
@@ -481,7 +482,7 @@ namespace hgl::graph::mtl
                 provider_glsl_str,
                 &plan.stage_interface);
 
-            CompositorAssembler assembler(GetShaderLibraryPath());
+            CompositorAssembler assembler;
             MaterialOutputContractDiagnostic output_diagnostic{};
             if (!BuildMaterialOutputContract(
                     plan.purpose,
@@ -556,7 +557,9 @@ namespace hgl::graph::mtl
                 effective_pass,
                 effective_fragment_source,
                 definition.fragment_surface_module,
-                compositor_options);
+                compositor_options,
+                BuildCodeModuleGLSL(
+                    plan.manifest.IsValid() ? &plan.manifest : nullptr));
             if (!assembled.success)
             {
                 GLogError("[ShaderGen] Generic material fragment assembly failed: name=%s error=%s",

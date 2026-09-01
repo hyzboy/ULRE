@@ -812,20 +812,8 @@ ShaderBuildContext *CompileCompositorMaterial(
                          + material_ssbo_decls + material_slot_macros
                          + fs_index_table_decls });
 
-    // 模块代码：有 surface function marker 走 marker 前，否则并入 version 组尾部
-    //（unlit_source 的 EmissiveSurfaceData / MTL_DATA；bindless_textures 的
-    //  mtl_texture_layer_rows / TrilinearSampler——模块代码可能引用上述宏/声明，
-    //  必须排在注入组最后）
-    const std::string code_module_glsl = BuildCodeModuleGLSL(config.resource_manifest);
-    if (!code_module_glsl.empty())
-    {
-        segments.push_back({
-            GLSLInjectStage::Fragment,
-            fs_glsl.find("#include SURFACE_FUNCTION_FILE") != std::string::npos
-                ? GLSLInjectPoint::BeforeSurfaceFunction
-                : GLSLInjectPoint::AfterVersion,
-            code_module_glsl });
-    }
+    // 模块代码不再经注入段进入 FS——发射器组装时已置于 surface 函数 include
+    // 之前（原 BeforeSurfaceFunction 注入点随 marker 体系删除，见 CompositorAssembler）。
 
     AssembleFinalGLSL(ctx, ms_glsl, fs_glsl, segments);
 

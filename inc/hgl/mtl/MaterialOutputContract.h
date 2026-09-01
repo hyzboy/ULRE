@@ -1,9 +1,10 @@
-﻿#pragma once
+#pragma once
 
 namespace hgl::graph::mtl {}
 
 #include <hgl/mtl/PassType.h>
 #include <hgl/mtl/CanonicalShaderContract.h>
+#include <hgl/util/hash/FNV1a.h>
 #include <string>
 
 namespace hgl::graph::mtl
@@ -13,7 +14,6 @@ namespace hgl::graph::mtl
 #define HGL_MATERIAL_OUTPUT_CONTRACT_ERROR_LIST \
     HGL_ERROR(None) \
     HGL_ERROR(UnsupportedPurpose) \
-    HGL_ERROR(MissingContractMarker) \
     HGL_ERROR(UnsupportedAttachment) \
     HGL_ERROR(InvalidContract)
 
@@ -49,9 +49,22 @@ namespace hgl::graph::mtl
         OutputContract &out_contract,
         MaterialOutputContractDiagnostic &out_diagnostic);
 
-    bool ApplyMaterialOutputContract(
-        const OutputContract &contract,
-        const std::string &source,
-        std::string &out_source,
-        MaterialOutputContractDiagnostic &out_diagnostic);
+    // ── 输出附件语义（单语义：outColor）────────────────────────────────
+    // 契约构建（稳定 ID）与发射器（GLSL 变量名）共用同一映射。
+    inline ShaderContractStableID GetMaterialOutputStableID(
+        const char *name) noexcept
+    {
+        if (!name || !name[0])
+            return 0;
+        hgl::hash::FNV1aHasher64 h;
+        h << name;
+        return h;
+    }
+
+    inline const char *GetMaterialOutputName(
+        const ShaderContractStableID semantic_id) noexcept
+    {
+        return semantic_id == GetMaterialOutputStableID("outColor")
+            ? "outColor" : nullptr;
+    }
 }
