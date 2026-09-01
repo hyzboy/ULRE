@@ -145,6 +145,101 @@ static bool AddMaterialPrivateDataSlotDescriptor(ShaderBuildContext &ctx,
     return ctx.AddSSBOMaterialPrivateData(stage_bits, struct_name, decl.name, int(material_private_data_slot));
 }
 
+// ── 能力子集授权规则表（原 10 分支 switch 表驱动化）────────────────────────
+// 有条件内置资源的 definition 侧授权谓词，与资源目录（DescriptorResourceCatalog）
+// 平行：目录行 engine_builtin=false 且有 definition 侧规则的语义在此登记，
+// 交叉覆盖由下方 static_assert 保证。manifest 侧回退（provider 元数据授权）
+// 不在此表——它是独立的第二授权源，见 ValidateDefinitionCapabilitySubset。
+using DefinitionCapabilityRule =
+    bool (*)(const MaterialDefinition &definition,
+             const ShaderResourceSlot &req) noexcept;
+
+bool RuleUBORequirement(
+    const MaterialDefinition &definition,
+    const ShaderResourceSlot &req) noexcept
+{
+    return HasUBORequirement(definition, req.semantic);
+}
+
+// L2W/L2WIndex：仅世界空间投影需要（OrthoViewport/ClipPassthrough 不经 L2W）
+bool RuleWorldTransform(
+    const MaterialDefinition &definition,
+    const ShaderResourceSlot &) noexcept
+{
+    return definition.vertex_node_config.projection != ProjectionMode::OrthoViewport
+        && definition.vertex_node_config.projection != ProjectionMode::ClipPassthrough;
+}
+
+bool RulePrivateDataSlot(
+    const MaterialDefinition &definition,
+    const ShaderResourceSlot &req) noexcept
+{
+    if (req.material_private_data_slot
+        >= definition.material_private_data_slot_decls.size())
+        return false;
+    return definition.material_private_data_slot_decls[req.material_private_data_slot]
+        .ssbo_type == req.ssbo_type;
+}
+
+bool RuleTextureLayerTable(
+    const MaterialDefinition &definition,
+    const ShaderResourceSlot &) noexcept
+{
+    return !definition.texture_slot_decls.empty();
+}
+
+bool RulePrivateDataIndex(
+    const MaterialDefinition &definition,
+    const ShaderResourceSlot &) noexcept
+{
+    return !definition.material_private_data_slot_decls.empty()
+        || definition.vertex_varying.emit_data_index_id;
+}
+
+struct DefinitionCapabilityRuleEntry
+{
+    DescriptorSemantic semantic;
+    DefinitionCapabilityRule rule;
+};
+
+constexpr DefinitionCapabilityRuleEntry kDefinitionCapabilityRules[] =
+{
+    { DescriptorSemantic::CameraInfo,                &RuleUBORequirement },
+    { DescriptorSemantic::SkyInfo,                   &RuleUBORequirement },
+    { DescriptorSemantic::MaterialColorPalette,      &RuleUBORequirement },
+    { DescriptorSemantic::LocalToWorld,              &RuleWorldTransform },
+    { DescriptorSemantic::LocalToWorldIndex,         &RuleWorldTransform },
+    { DescriptorSemantic::MaterialPrivateData,       &RulePrivateDataSlot },
+    { DescriptorSemantic::MaterialTextureLayerTable, &RuleTextureLayerTable },
+    { DescriptorSemantic::MaterialPrivateDataIndex,  &RulePrivateDataIndex },
+};
+
+constexpr DefinitionCapabilityRule FindDefinitionCapabilityRule(
+    const DescriptorSemantic semantic) noexcept
+{
+    for (const auto &row : kDefinitionCapabilityRules)
+        if (row.semantic == semantic)
+            return row.rule;
+    return nullptr;
+}
+
+// 交叉覆盖：规则表每一行必须是目录中 engine_builtin=false 的有条件行——
+// 无条件内置行不需要规则；未登记目录的语义查表不可达。
+constexpr bool CapabilityRulesMatchCatalog() noexcept
+{
+    for (const auto &row : kDefinitionCapabilityRules)
+    {
+        const DescriptorResourceCatalogEntry *cat =
+            FindResourceCatalogEntry(row.semantic);
+        if (!cat || cat->engine_builtin)
+            return false;
+    }
+    return true;
+}
+
+static_assert(CapabilityRulesMatchCatalog(),
+              "能力规则表行必须在资源目录中登记为有条件内置（engine_builtin=false）");
+
 static bool ValidateDefinitionCapabilitySubset(
     const MaterialDefinition &definition,
     const ShaderResourceSchema &layout,
@@ -158,44 +253,18 @@ static bool ValidateDefinitionCapabilitySubset(
         const DescriptorResourceCatalogEntry *cat =
             FindResourceCatalogEntry(req.semantic);
 
-        // 无条件内置资源：目录表 engine_builtin（ViewportInfo/顶点 SSBO/MeshDrawParams）
+        // 授权三层：① 无条件内置（目录 engine_builtin）→
+        // ② definition 侧规则（能力规则表）→ ③ manifest 侧回退（provider 元数据）。
         bool allowed = cat && cat->engine_builtin;
 
         if (!allowed && cat)
         {
-            // 有条件的内置规则（依赖材质定义内容）
-            switch (req.semantic)
-            {
-            case DescriptorSemantic::CameraInfo:
-            case DescriptorSemantic::SkyInfo:
-            case DescriptorSemantic::MaterialColorPalette:
-                allowed = HasUBORequirement(definition, req.semantic);
-                break;
-
-            case DescriptorSemantic::LocalToWorld:
-            case DescriptorSemantic::LocalToWorldIndex:
-                allowed = definition.vertex_node_config.projection != ProjectionMode::OrthoViewport
-                       && definition.vertex_node_config.projection != ProjectionMode::ClipPassthrough;
-                break;
-
-            case DescriptorSemantic::MaterialPrivateData:
-                allowed = req.material_private_data_slot < definition.material_private_data_slot_decls.size();
-                if (allowed)
-                    allowed = definition.material_private_data_slot_decls[req.material_private_data_slot].ssbo_type == req.ssbo_type;
-                break;
-
-            case DescriptorSemantic::MaterialTextureLayerTable:
-                allowed = !definition.texture_slot_decls.empty();
-                break;
-
-            case DescriptorSemantic::MaterialPrivateDataIndex:
-                allowed = !definition.material_private_data_slot_decls.empty()
-                       || definition.vertex_varying.emit_data_index_id;
-                break;
-
-            default:
-                break;  // 未收录/无规则语义（Unknown、MaterialTexture/Sampler）——保持 false 走 manifest 回退
-            }
+            const DefinitionCapabilityRule rule =
+                FindDefinitionCapabilityRule(req.semantic);
+            if (rule)
+                allowed = rule(definition, req);
+            // 未登记规则 = 无 definition 侧授权（Unknown、MaterialTexture/Sampler
+            // 等 bindless 通道）——保持 false 走 manifest 回退
         }
 
         if (!allowed && manifest && manifest->IsValid())

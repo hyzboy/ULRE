@@ -230,6 +230,12 @@ namespace hgl::graph::mtl
         // 直接在规范化条目上校验（原"转 ShaderInterfaceContract 再校验"的
         // 往返已删）。规则与原 ValidateShaderInterfaceContract 的 descriptor
         // 段 + 名字检查逐条一致。
+        //
+        // 校验分层：本函数 = entry 级结构守卫 + 身份碰撞快速失败（构建步
+        // 早期短路，bool 无诊断；W1 用例锚定重复身份必须在此拒绝）。
+        // ValidateShaderResourceSchema = 结构权威——两两对比在 schema 层
+        // 以三键（name/logical_id/semantic）判定 duplicate vs conflict，
+        // 输出可操作的诊断信息。
         const size_t count = contract.size();
         for (size_t i = 0; i < count; ++i)
         {
