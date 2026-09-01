@@ -21,7 +21,10 @@ namespace hgl::graph::mtl
 {
     /// 模块代码拼接（manifest 中登记的 ShaderCodeModule 按序拼接）
     std::string BuildCodeModuleGLSL(const ShaderCodeResourceManifest *manifest);
-    ShaderDocument BuildCodeModuleDocument(const ShaderCodeResourceManifest *manifest);
+    ShaderDocument BuildCodeModuleDocument(
+        const ShaderCodeResourceManifest *manifest,
+        const char *stage = nullptr,
+        const char *material = nullptr);
 
     /// 材质实例 SSBO 的 struct + buffer 声明与 MTL_DATA 别名宏。
     /// material_private_data 为 UserDefined 时返回 true 且不生成。

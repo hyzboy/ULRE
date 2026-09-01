@@ -30,7 +30,9 @@ std::string BuildCodeModuleGLSL(const ShaderCodeResourceManifest *manifest)
 }
 
 ShaderDocument BuildCodeModuleDocument(
-    const ShaderCodeResourceManifest *manifest)
+    const ShaderCodeResourceManifest *manifest,
+    const char *stage,
+    const char *material)
 {
     ShaderDocument document;
     if (!manifest || !manifest->IsValid())
@@ -50,6 +52,8 @@ ShaderDocument BuildCodeModuleDocument(
         code += "\n";
         ShaderDocumentSource source;
         source.module = module->name ? module->name : "Unknown";
+        source.stage = stage ? stage : "";
+        source.material = material ? material : "";
         document.Add(ShaderDocumentBlockKind::Module, code, source);
     }
     return document;
