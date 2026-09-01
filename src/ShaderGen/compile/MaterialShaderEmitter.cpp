@@ -6,6 +6,7 @@
 #include "compile/MaterialShaderEmitter.h"
 
 #include <hgl/mtl/MaterialShaderCompiler.h>
+#include <hgl/mtl/ShaderDocumentLegacyAdapter.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/ShaderCreateInfo.h>
 #include <hgl/mtl/SamplerPreset.h>
@@ -271,12 +272,20 @@ namespace
     // GLSL requires #version to be the very first token.
     std::string InsertAfterVersionLine(const std::string &glsl, const std::string &inject)
     {
-        if (inject.empty())
-            return glsl;
-        const auto pos = glsl.find('\n');
-        if (pos == std::string::npos)
-            return glsl + "\n" + inject;
-        return glsl.substr(0, pos + 1) + inject + glsl.substr(pos + 1);
+        ShaderDocument document;
+        ShaderDocumentDiagnostics diagnostics;
+        if (!BuildInjectedShaderDocument(
+                AnsiString(glsl.c_str()),
+                AnsiString(inject.c_str()),
+                AnsiString("unknown"),
+                document,
+                diagnostics))
+            return {};
+
+        AnsiString serialized;
+        if (!document.Serialize(serialized, diagnostics))
+            return {};
+        return std::string(serialized.c_str(), serialized.Length());
     }
 }//namespace
 

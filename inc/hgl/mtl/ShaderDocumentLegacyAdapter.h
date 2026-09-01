@@ -14,4 +14,11 @@ namespace hgl::graph::mtl
         const AnsiString &legacy_glsl,
         const ShaderDocument &document,
         ShaderDocumentDiagnostics &out_diagnostics);
+
+    bool BuildInjectedShaderDocument(
+        const AnsiString &legacy_glsl,
+        const AnsiString &injection,
+        const AnsiString &stage,
+        ShaderDocument &out_document,
+        ShaderDocumentDiagnostics &out_diagnostics);
 }

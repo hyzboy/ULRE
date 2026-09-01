@@ -44,5 +44,19 @@ int main()
             legacy_without_newline, exact_document, diagnostics))
         return 4;
 
+    ShaderDocument injected;
+    if (!BuildInjectedShaderDocument(
+            "#version 460\nvoid main() {}\n",
+            "#define INJECTED 1\n",
+            "mesh",
+            injected,
+            diagnostics))
+        return 7;
+    if (!IsByteIdenticalLegacyShader(
+            "#version 460\n#define INJECTED 1\nvoid main() {}\n",
+            injected,
+            diagnostics))
+        return 8;
+
     return 0;
 }
