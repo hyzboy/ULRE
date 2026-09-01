@@ -573,11 +573,33 @@ namespace hgl::graph::mtl
 
         if (resource_begin < glsl.size())
         {
-            source.logical_name = "CompositorAssembler.Body";
-            out_document.Add(
-                ShaderDocumentBlockKind::Raw,
-                AnsiString(glsl.substr(resource_begin).c_str()),
-                source);
+            const size_t main_begin = glsl.find("void main()", resource_begin);
+            if (main_begin == std::string::npos)
+            {
+                source.logical_name = "CompositorAssembler.Body";
+                out_document.Add(
+                    ShaderDocumentBlockKind::Raw,
+                    AnsiString(glsl.substr(resource_begin).c_str()),
+                    source);
+            }
+            else
+            {
+                if (main_begin > resource_begin)
+                {
+                    source.logical_name = "CompositorAssembler.Functions";
+                    out_document.Add(
+                        ShaderDocumentBlockKind::Function,
+                        AnsiString(glsl.substr(
+                            resource_begin,
+                            main_begin - resource_begin).c_str()),
+                        source);
+                }
+                source.logical_name = "CompositorAssembler.MainBody";
+                out_document.Add(
+                    ShaderDocumentBlockKind::MainBody,
+                    AnsiString(glsl.substr(main_begin).c_str()),
+                    source);
+            }
         }
         AnsiString serialized;
         return out_document.SerializeFragment(serialized, out_diagnostics);
