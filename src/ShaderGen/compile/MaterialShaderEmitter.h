@@ -21,6 +21,11 @@ namespace hgl::graph::mtl
 {
     /// 模块代码拼接（manifest 中登记的 ShaderCodeModule 按序拼接）
     std::string BuildCodeModuleGLSL(const ShaderCodeResourceManifest *manifest);
+    bool BuildCodeModuleDocument(
+        const ShaderCodeResourceManifest *manifest,
+        const char *stage,
+        const char *material,
+        ShaderDocument &out_document);
     ShaderDocument BuildCodeModuleDocument(
         const ShaderCodeResourceManifest *manifest,
         const char *stage = nullptr,

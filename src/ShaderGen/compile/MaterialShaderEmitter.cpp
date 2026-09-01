@@ -21,12 +21,48 @@ namespace hgl::graph::mtl
 
 std::string BuildCodeModuleGLSL(const ShaderCodeResourceManifest *manifest)
 {
-    ShaderDocument document = BuildCodeModuleDocument(manifest);
+    ShaderDocument document;
+    if (!BuildCodeModuleDocument(manifest, nullptr, nullptr, document))
+        return {};
     ShaderDocumentDiagnostics diagnostics;
     AnsiString serialized;
     if (!document.SerializeFragment(serialized, diagnostics))
         return {};
     return std::string(serialized.c_str(), serialized.Length());
+}
+
+bool BuildCodeModuleDocument(
+    const ShaderCodeResourceManifest *manifest,
+    const char *stage,
+    const char *material,
+    ShaderDocument &out_document)
+{
+    out_document.Clear();
+    if (!manifest || !manifest->IsValid())
+        return true;
+
+    const auto &module_registry = mtl::GetShaderCodeModuleRegistry();
+    for (uint32 i = 0; i < manifest->code_module_count; ++i)
+    {
+        const ShaderCodeModuleDefinition *module =
+            module_registry.FindByName(manifest->code_module_names[i]);
+        if (!module || !module->glsl_code)
+            return false;
+
+        AnsiString code = "\n// ShaderCodeModule: ";
+        code += module->name ? module->name : "Unknown";
+        code += "\n";
+        code += module->glsl_code;
+        code += "\n";
+        ShaderDocumentSource source;
+        source.module = module->name ? module->name : "Unknown";
+        source.logical_name = "ShaderCodeModule";
+        source.path = module->name ? module->name : "Unknown";
+        source.stage = stage ? stage : "";
+        source.material = material ? material : "";
+        out_document.Add(ShaderDocumentBlockKind::Module, code, source);
+    }
+    return true;
 }
 
 ShaderDocument BuildCodeModuleDocument(
@@ -35,27 +71,7 @@ ShaderDocument BuildCodeModuleDocument(
     const char *material)
 {
     ShaderDocument document;
-    if (!manifest || !manifest->IsValid())
-        return document;
-
-    const auto &module_registry = mtl::GetShaderCodeModuleRegistry();
-    for (uint32 i = 0; i < manifest->code_module_count; ++i)
-    {
-        const ShaderCodeModuleDefinition *module =
-            module_registry.FindByName(manifest->code_module_names[i]);
-        if (!module || !module->glsl_code)
-            continue;
-        AnsiString code = "\n// ShaderCodeModule: ";
-        code += module->name ? module->name : "Unknown";
-        code += "\n";
-        code += module->glsl_code;
-        code += "\n";
-        ShaderDocumentSource source;
-        source.module = module->name ? module->name : "Unknown";
-        source.stage = stage ? stage : "";
-        source.material = material ? material : "";
-        document.Add(ShaderDocumentBlockKind::Module, code, source);
-    }
+    BuildCodeModuleDocument(manifest, stage, material, document);
     return document;
 }
 
