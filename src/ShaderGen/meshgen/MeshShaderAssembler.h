@@ -271,19 +271,21 @@ namespace hgl::graph::mtl
                 source);
         }
 
-        const size_t main_begin = glsl.find("void main()", first_include);
+        const size_t resource_begin = first_include == std::string::npos
+            ? version_end + 1
+            : first_include;
+        const size_t main_begin = glsl.find("void main()", resource_begin);
         const size_t resource_end = main_begin == std::string::npos
             ? glsl.size()
             : main_begin;
-        if (resource_end > first_include
-         && first_include != std::string::npos)
+        if (resource_end > resource_begin)
         {
             source.logical_name = "MeshShaderAssembler.Resources";
             out_document.Add(
                 ShaderDocumentBlockKind::Resource,
                 AnsiString(glsl.substr(
-                    first_include,
-                    resource_end - first_include).c_str()),
+                    resource_begin,
+                    resource_end - resource_begin).c_str()),
                 source);
         }
 
