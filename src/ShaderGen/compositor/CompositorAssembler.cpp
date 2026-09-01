@@ -549,12 +549,34 @@ namespace hgl::graph::mtl
                    .find("#define") == std::string::npos
             ? version_end + 1
             : define_end;
-        if (body_begin < glsl.size())
+        size_t resource_begin = first_include != std::string::npos
+            ? first_include
+            : body_begin;
+        size_t resource_end = body_begin;
+        if (first_include != std::string::npos
+         && first_include >= body_begin)
+        {
+            const size_t separator = glsl.find("\n\n", first_include);
+            if (separator != std::string::npos)
+            {
+                resource_end = separator + 1;
+                source.logical_name = "CompositorAssembler.Resources";
+                out_document.Add(
+                    ShaderDocumentBlockKind::Resource,
+                    AnsiString(glsl.substr(
+                        resource_begin,
+                        resource_end - resource_begin).c_str()),
+                    source);
+                resource_begin = resource_end;
+            }
+        }
+
+        if (resource_begin < glsl.size())
         {
             source.logical_name = "CompositorAssembler.Body";
             out_document.Add(
                 ShaderDocumentBlockKind::Raw,
-                AnsiString(glsl.substr(body_begin).c_str()),
+                AnsiString(glsl.substr(resource_begin).c_str()),
                 source);
         }
         AnsiString serialized;
