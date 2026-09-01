@@ -116,6 +116,26 @@ namespace hgl::graph::mtl
         return true;
     }
 
+    bool ShaderDocument::SerializeFragment(
+        AnsiString &out_text,
+        ShaderDocumentDiagnostics &out_diagnostics) const
+    {
+        out_text = AnsiString();
+        out_diagnostics.Clear();
+        for (int i = 0; i < blocks.GetCount(); ++i)
+        {
+            const ShaderDocumentBlock &block = *blocks[i];
+            if (block.text.IsEmpty())
+            {
+                AddDiagnostic(out_diagnostics, "empty-block",
+                              BlockKindName(block.kind), i);
+                continue;
+            }
+            out_text += block.text;
+        }
+        return out_diagnostics.GetCount() == 0;
+    }
+
     hgl::uint64 ShaderDocument::GetSerializedHash(
         ShaderDocumentDiagnostics &out_diagnostics) const
     {

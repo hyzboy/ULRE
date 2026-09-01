@@ -17,6 +17,11 @@ int main()
         return 1;
     if (serialized.IsEmpty() || diagnostics.GetCount() != 0)
         return 6;
+    ShaderDocumentDiagnostics fragment_diagnostics;
+    AnsiString fragment;
+    if (!document.SerializeFragment(fragment, fragment_diagnostics)
+     || fragment != serialized)
+        return 9;
     const hgl::uint64 first_hash = document.GetSerializedHash(diagnostics);
     const hgl::uint64 second_hash = document.GetSerializedHash(diagnostics);
     if (first_hash != second_hash)

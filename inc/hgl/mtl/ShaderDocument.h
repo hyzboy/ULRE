@@ -60,6 +60,9 @@ namespace hgl::graph::mtl
         bool Serialize(AnsiString &out_text,
                        ShaderDocumentDiagnostics &out_diagnostics) const;
 
+        bool SerializeFragment(AnsiString &out_text,
+                               ShaderDocumentDiagnostics &out_diagnostics) const;
+
         hgl::uint64 GetSerializedHash(ShaderDocumentDiagnostics &out_diagnostics) const;
     };
 }

@@ -170,7 +170,14 @@ std::string BuildCompileDefineMacros(
         macros += name;
         macros += " 1\n";
     }
-    return macros;
+
+    ShaderDocument document;
+    ShaderDocumentDiagnostics diagnostics;
+    document.Add(ShaderDocumentBlockKind::Define, AnsiString(macros.c_str()));
+    AnsiString serialized;
+    if (!document.SerializeFragment(serialized, diagnostics))
+        return {};
+    return std::string(serialized.c_str(), serialized.Length());
 }
 
 // ── Step 5d: Instance index table SSBO GLSL 声明 ─────────────────────────────

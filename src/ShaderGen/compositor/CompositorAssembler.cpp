@@ -1,4 +1,5 @@
 ﻿#include <hgl/mtl/CompositorAssembler.h>
+#include <hgl/mtl/ShaderDocument.h>
 #include <hgl/log/Log.h>
 
 namespace hgl::graph::mtl
@@ -70,7 +71,15 @@ namespace hgl::graph::mtl
             defines += options.enable_scene_lighting
                 ? "#define HGL_USE_SCENE_LIGHTING 1\n"
                 : "#define HGL_USE_SCENE_LIGHTING 0\n";
-            return defines;
+
+            ShaderDocument document;
+            ShaderDocumentDiagnostics diagnostics;
+            document.Add(ShaderDocumentBlockKind::Define,
+                         AnsiString(defines.c_str()));
+            AnsiString serialized;
+            if (!document.SerializeFragment(serialized, diagnostics))
+                return {};
+            return std::string(serialized.c_str(), serialized.Length());
         }
 
         std::string IncludeLine(const std::string &path)
