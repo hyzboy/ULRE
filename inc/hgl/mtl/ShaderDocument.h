@@ -33,6 +33,7 @@ namespace hgl::graph::mtl
         AnsiString code;
         AnsiString message;
         int block_index = -1;
+        ShaderDocumentSource source;
     };
 
     using ShaderDocumentDiagnostics = hgl::ManagedArray<ShaderDocumentDiagnostic>;

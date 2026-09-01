@@ -28,12 +28,16 @@ int main()
         return 5;
 
     ShaderDocument invalid;
+    ShaderDocumentSource invalid_source;
+    invalid_source.stage = "fragment";
     invalid.Add(ShaderDocumentBlockKind::Raw, "raw");
-    invalid.Add(ShaderDocumentBlockKind::Version, "#version 460");
-    invalid.Add(ShaderDocumentBlockKind::Version, "#version 460");
+    invalid.Add(ShaderDocumentBlockKind::Version, "#version 460", invalid_source);
+    invalid.Add(ShaderDocumentBlockKind::Version, "#version 460", invalid_source);
     if (invalid.Serialize(serialized, diagnostics)
      || diagnostics.GetCount() < 2)
         return 2;
+    if (diagnostics[0]->source.stage.IsEmpty())
+        return 10;
 
     const AnsiString legacy = "#version 460\nvoid main() {}\n";
     ShaderDocument legacy_document = MakeLegacyShaderDocument(legacy, "fragment");

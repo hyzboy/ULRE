@@ -24,12 +24,15 @@ namespace hgl::graph::mtl
         static void AddDiagnostic(ShaderDocumentDiagnostics &diagnostics,
                                   const char *code,
                                   const char *message,
-                                  const int block_index)
+                                  const int block_index,
+                                  const ShaderDocumentSource *source = nullptr)
         {
             ShaderDocumentDiagnostic diagnostic;
             diagnostic.code = code;
             diagnostic.message = message;
             diagnostic.block_index = block_index;
+            if (source)
+                diagnostic.source = *source;
             ShaderDocumentDiagnostic *item = diagnostics.Create();
             *item = diagnostic;
         }
@@ -85,7 +88,8 @@ namespace hgl::graph::mtl
                 ++version_count;
                 if (first_non_version >= 0)
                     AddDiagnostic(out_diagnostics, "version-order",
-                                  "Version block must be the first block", i);
+                                  "Version block must be the first block", i,
+                                  &block.source);
             }
             else if (first_non_version < 0)
             {
@@ -94,7 +98,7 @@ namespace hgl::graph::mtl
 
             if (block.text.IsEmpty())
                 AddDiagnostic(out_diagnostics, "empty-block",
-                              BlockKindName(block.kind), i);
+                              BlockKindName(block.kind), i, &block.source);
         }
 
         if (version_count > 1)
@@ -128,7 +132,7 @@ namespace hgl::graph::mtl
             if (block.text.IsEmpty())
             {
                 AddDiagnostic(out_diagnostics, "empty-block",
-                              BlockKindName(block.kind), i);
+                              BlockKindName(block.kind), i, &block.source);
                 continue;
             }
             out_text += block.text;

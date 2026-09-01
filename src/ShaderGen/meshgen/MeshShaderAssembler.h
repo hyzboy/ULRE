@@ -16,6 +16,7 @@
 #include <hgl/mtl/VertexShaderNodeConfig.h>
 #include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/mtl/MaterialStageInterface.h>
+#include <hgl/mtl/ShaderDocument.h>
 #include <hgl/log/Log.h>
 #include <vulkan/vulkan.h>
 #include <string>
@@ -212,6 +213,12 @@ namespace hgl::graph::mtl
 
         ms += "}\n";
 
-        return ms;
+        ShaderDocument document;
+        ShaderDocumentDiagnostics diagnostics;
+        document.Add(ShaderDocumentBlockKind::Raw, AnsiString(ms.c_str()));
+        AnsiString serialized;
+        if (!document.Serialize(serialized, diagnostics))
+            return {};
+        return std::string(serialized.c_str(), serialized.Length());
     }
 }//namespace hgl::graph::mtl
