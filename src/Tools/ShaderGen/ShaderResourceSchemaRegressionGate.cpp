@@ -13,12 +13,12 @@
 #include <hgl/mtl/ShaderArtifactStore.h>
 #include <hgl/mtl/CanonicalShaderContract.h>
 #include <hgl/mtl/ShaderSemanticRegistry.h>
-#include <hgl/mtl/GLSLCodeModule.h>
-#include <hgl/mtl/GLSLCodeModuleCapabilityResolver.h>
-#include <hgl/mtl/GLSLCodeModuleFile.h>
-#include <hgl/mtl/GLSLCodeModuleRegistry.h>
-#include <hgl/mtl/GLSLCodeModuleMetadata.h>
-#include <hgl/mtl/ModuleResourceManifest.h>
+#include <hgl/mtl/ShaderCodeModule.h>
+#include <hgl/mtl/ShaderCodeModuleCapabilityResolver.h>
+#include <hgl/mtl/ShaderCodeModuleFile.h>
+#include <hgl/mtl/ShaderCodeModuleRegistry.h>
+#include <hgl/mtl/ShaderCodeModuleMetadata.h>
+#include <hgl/mtl/ShaderCodeResourceManifest.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/graph/asset/PrimitiveAsset.h>
@@ -1083,71 +1083,71 @@ namespace
         GateResult result;
         result.name = "O.provider-graph-stage-identity";
 
-        const GLSLCodeModuleSemanticRequirement normal_requirement{
-            GLSLCodeModuleCapabilitySource::GeometryAttribute,
-            GLSLCodeModuleSemantic::Normal,
-            static_cast<uint32_t>(GLSLCodeModuleNumericClass::Float),
+        const ShaderCodeModuleSemanticRequirement normal_requirement{
+            ShaderCodeModuleCapabilitySource::GeometryAttribute,
+            ShaderCodeModuleSemantic::Normal,
+            static_cast<uint32_t>(ShaderCodeModuleNumericClass::Float),
             3, 3
         };
-        const GLSLCodeModuleSemantic normal_provides[] = {
-            GLSLCodeModuleSemantic::Normal
+        const ShaderCodeModuleSemantic normal_provides[] = {
+            ShaderCodeModuleSemantic::Normal
         };
-        const GLSLCodeModuleDefinition normal_provider{
+        const ShaderCodeModuleDefinition normal_provider{
             "identity_normal",
             "// identity",
             nullptr, 0,
-            GLSLCodeModuleKind::Utility,
+            ShaderCodeModuleKind::Utility,
             &normal_requirement, 1,
             normal_provides, 1,
             10, 0
         };
 
-        const GLSLCodeModuleSemanticRequirement uv_requirement{
-            GLSLCodeModuleCapabilitySource::GeometryAttribute,
-            GLSLCodeModuleSemantic::UV0,
-            static_cast<uint32_t>(GLSLCodeModuleNumericClass::Float),
+        const ShaderCodeModuleSemanticRequirement uv_requirement{
+            ShaderCodeModuleCapabilitySource::GeometryAttribute,
+            ShaderCodeModuleSemantic::UV0,
+            static_cast<uint32_t>(ShaderCodeModuleNumericClass::Float),
             2, 2
         };
-        const GLSLCodeModuleSemantic uv_provides[] = {
-            GLSLCodeModuleSemantic::UV0
+        const ShaderCodeModuleSemantic uv_provides[] = {
+            ShaderCodeModuleSemantic::UV0
         };
-        const GLSLCodeModuleDefinition uv_provider{
+        const ShaderCodeModuleDefinition uv_provider{
             "identity_uv",
             "// identity",
             nullptr, 0,
-            GLSLCodeModuleKind::Utility,
+            ShaderCodeModuleKind::Utility,
             &uv_requirement, 1,
             uv_provides, 1,
             10, 0
         };
 
-        GLSLCodeModuleResolutionResult first{};
+        ShaderCodeModuleResolutionResult first{};
         first.resolved = true;
-        first.selections.Add({GLSLCodeModuleSemantic::Normal, &normal_provider});
-        first.selections.Add({GLSLCodeModuleSemantic::UV0, &uv_provider});
+        first.selections.Add({ShaderCodeModuleSemantic::Normal, &normal_provider});
+        first.selections.Add({ShaderCodeModuleSemantic::UV0, &uv_provider});
 
-        GLSLCodeModuleResolutionResult equivalent_result{};
+        ShaderCodeModuleResolutionResult equivalent_result{};
         equivalent_result.resolved = true;
-        equivalent_result.selections.Add({GLSLCodeModuleSemantic::UV0, &uv_provider});
-        equivalent_result.selections.Add({GLSLCodeModuleSemantic::Normal, &normal_provider});
+        equivalent_result.selections.Add({ShaderCodeModuleSemantic::UV0, &uv_provider});
+        equivalent_result.selections.Add({ShaderCodeModuleSemantic::Normal, &normal_provider});
 
-        const uint64_t first_hash = GetGLSLCodeModuleProviderGraphHash(first);
-        const uint64_t equivalent_hash = GetGLSLCodeModuleProviderGraphHash(equivalent_result);
+        const uint64_t first_hash = GetShaderCodeModuleProviderGraphHash(first);
+        const uint64_t equivalent_hash = GetShaderCodeModuleProviderGraphHash(equivalent_result);
         if (first_hash == 0 || first_hash != equivalent_hash)
             result.diagnostics.emplace_back("equivalent provider graphs must hash identically");
 
-        GLSLCodeModuleResolutionResult changed_result = first;
-        const GLSLCodeModuleDefinition packed_normal_provider{
+        ShaderCodeModuleResolutionResult changed_result = first;
+        const ShaderCodeModuleDefinition packed_normal_provider{
             "identity_normal_packed",
             "// identity",
             nullptr, 0,
-            GLSLCodeModuleKind::Utility,
+            ShaderCodeModuleKind::Utility,
             &normal_requirement, 1,
             normal_provides, 1,
             20, 0
         };
         changed_result.selections[0].provider = &packed_normal_provider;
-        if (GetGLSLCodeModuleProviderGraphHash(changed_result) == first_hash)
+        if (GetShaderCodeModuleProviderGraphHash(changed_result) == first_hash)
             result.diagnostics.emplace_back("distinct provider graphs must hash differently");
 
         ShaderStageBuildContext stage{};
@@ -1155,7 +1155,7 @@ namespace
         const ShaderStageKey first_key = stage.BuildKeyWithProviderGraphHash(first_hash);
         const ShaderStageKey changed_key =
             stage.BuildKeyWithProviderGraphHash(
-                GetGLSLCodeModuleProviderGraphHash(changed_result));
+                GetShaderCodeModuleProviderGraphHash(changed_result));
         if (first_key == changed_key
          || first_key.glsl_module_graph_hash != first_hash)
             result.diagnostics.emplace_back("provider graph hash must participate in ShaderStageKey");
@@ -1169,32 +1169,32 @@ namespace
         GateResult result;
         result.name = "P.provider-graph-composition-interface";
 
-        const GLSLCodeModuleDefinition position_provider{
+        const ShaderCodeModuleDefinition position_provider{
             "compose_position",
             "vec4 GetLocalPos() { return vec4(Position, 1.0); }",
             nullptr, 0,
-            GLSLCodeModuleKind::Position,
+            ShaderCodeModuleKind::Position,
             nullptr, 0, nullptr, 0, 0, 0
         };
-        const GLSLCodeModuleDefinition normal_provider{
+        const ShaderCodeModuleDefinition normal_provider{
             "compose_normal",
             "vec3 GetNormal() { return Normal; }",
             nullptr, 0,
-            GLSLCodeModuleKind::Utility,
+            ShaderCodeModuleKind::Utility,
             nullptr, 0, nullptr, 0, 0, 0
         };
 
-        GLSLCodeModuleResolutionResult result_graph{};
+        ShaderCodeModuleResolutionResult result_graph{};
         result_graph.resolved = true;
         result_graph.selections.Add(
-            {GLSLCodeModuleSemantic::Position, &position_provider});
+            {ShaderCodeModuleSemantic::Position, &position_provider});
         result_graph.selections.Add(
-            {GLSLCodeModuleSemantic::Normal, &normal_provider});
+            {ShaderCodeModuleSemantic::Normal, &normal_provider});
         result_graph.selections.Add(
-            {GLSLCodeModuleSemantic::WorldNormal, &normal_provider});
+            {ShaderCodeModuleSemantic::WorldNormal, &normal_provider});
 
         std::string composed;
-        if (!ComposeGLSLCodeModuleProviderGraph(result_graph, composed))
+        if (!ComposeShaderCodeModuleProviderGraph(result_graph, composed))
             result.diagnostics.emplace_back("provider graph composition failed");
         else
         {
@@ -3191,7 +3191,7 @@ namespace
         GateResult result;
         result.name = "H1.provider-resource-manifest";
 
-        GLSLCodeModuleRegistry registry;
+        ShaderCodeModuleRegistry registry;
 
         int file_count = 0;
         int error_count = 0;
@@ -3218,13 +3218,13 @@ namespace
         else
         {
             const char *roots_2d[] = {pbr_2d->name, ntb_2d->name};
-            ModuleResourceManifest manifest_2d{};
-            if (!BuildModuleResourceManifest(
+            ShaderCodeResourceManifest manifest_2d{};
+            if (!BuildShaderCodeResourceManifest(
                     roots_2d, uint32_t(std::size(roots_2d)), manifest_2d, &registry))
             {
                 result.diagnostics.emplace_back(
                     std::string("Texture2D provider manifest failed: ")
-                    + GetModuleResourceManifestErrorName(manifest_2d.error));
+                    + GetShaderCodeResourceManifestErrorName(manifest_2d.error));
             }
             else
             {
@@ -3258,13 +3258,13 @@ namespace
             }
 
             const char *roots_array[] = {pbr_array->name, ntb_array->name};
-            ModuleResourceManifest manifest_array{};
-            if (!BuildModuleResourceManifest(
+            ShaderCodeResourceManifest manifest_array{};
+            if (!BuildShaderCodeResourceManifest(
                     roots_array, uint32_t(std::size(roots_array)), manifest_array, &registry))
             {
                 result.diagnostics.emplace_back(
                     std::string("Texture2DArray provider manifest failed: ")
-                    + GetModuleResourceManifestErrorName(manifest_array.error));
+                    + GetShaderCodeResourceManifestErrorName(manifest_array.error));
             }
             else
             {
@@ -3293,8 +3293,8 @@ namespace
             }
 
             const char *derivative_root = ntb_derivative->name;
-            ModuleResourceManifest derivative_manifest{};
-            if (!BuildModuleResourceManifest(
+            ShaderCodeResourceManifest derivative_manifest{};
+            if (!BuildShaderCodeResourceManifest(
                     &derivative_root, 1, derivative_manifest, &registry)
              || derivative_manifest.texture_layer_count != 1)
                result.diagnostics.emplace_back(
@@ -3305,23 +3305,23 @@ namespace
         return result;
     }
 
-    static GateResult RunGLSLCodeModuleFileCase()
+    static GateResult RunShaderCodeModuleFileCase()
     {
         GateResult result;
         result.name = "I.glsl-code-module-file-parse";
 
         auto expect_parse = [&result](const char *content,
-                                      const GLSLCodeModuleParseResult expected,
+                                      const ShaderCodeModuleParseResult expected,
                                       const char *label)
         {
-            GLSLCodeModuleFileData data;
-            const GLSLCodeModuleParseResult actual =
-                ParseGLSLCodeModuleFile(content, int(std::strlen(content)), data);
+            ShaderCodeModuleFileData data;
+            const ShaderCodeModuleParseResult actual =
+                ParseShaderCodeModuleFile(content, int(std::strlen(content)), data);
             if (actual != expected)
             {
                 result.diagnostics.emplace_back(std::string(label) + ": got "
-                    + GetGLSLCodeModuleParseResultName(actual)
-                    + " expected " + GetGLSLCodeModuleParseResultName(expected));
+                    + GetShaderCodeModuleParseResultName(actual)
+                    + " expected " + GetShaderCodeModuleParseResultName(expected));
                 return false;
             }
             return true;
@@ -3340,16 +3340,16 @@ namespace
             "// @ulre uses s2_lift_xy0\n"
             "// @ulre end\n";
         {
-            GLSLCodeModuleFileData data;
-            const GLSLCodeModuleParseResult parse =
-                ParseGLSLCodeModuleFile(full_meta, int(std::strlen(full_meta)), data);
-            if (parse != GLSLCodeModuleParseResult::OK)
+            ShaderCodeModuleFileData data;
+            const ShaderCodeModuleParseResult parse =
+                ParseShaderCodeModuleFile(full_meta, int(std::strlen(full_meta)), data);
+            if (parse != ShaderCodeModuleParseResult::OK)
                 result.diagnostics.emplace_back("full-metadata parse failed");
             else
             {
                 if (std::strcmp(data.name.c_str(), "sample_ntb") != 0)
                     result.diagnostics.emplace_back("full-metadata name mismatch");
-                if (data.kind != GLSLCodeModuleKind::Utility)
+                if (data.kind != ShaderCodeModuleKind::Utility)
                     result.diagnostics.emplace_back("full-metadata kind mismatch");
                 if (data.priority != 10)
                     result.diagnostics.emplace_back("full-metadata priority mismatch");
@@ -3358,24 +3358,24 @@ namespace
                 else
                 {
                     const auto &normal_req = data.semantic_requirements[0];
-                    if (normal_req.source != GLSLCodeModuleCapabilitySource::GeometryAttribute
-                     || normal_req.semantic != GLSLCodeModuleSemantic::Normal
-                     || normal_req.numeric_class_mask != uint32_t(GLSLCodeModuleNumericClass::Float)
+                    if (normal_req.source != ShaderCodeModuleCapabilitySource::GeometryAttribute
+                     || normal_req.semantic != ShaderCodeModuleSemantic::Normal
+                     || normal_req.numeric_class_mask != uint32_t(ShaderCodeModuleNumericClass::Float)
                      || normal_req.min_component_count != 3
                      || normal_req.max_component_count != 3)
                         result.diagnostics.emplace_back("full-metadata require[0] mismatch");
 
                     const auto &tangent_req = data.semantic_requirements[1];
-                    if (tangent_req.source != GLSLCodeModuleCapabilitySource::GeometryAttribute
-                     || tangent_req.semantic != GLSLCodeModuleSemantic::Tangent
-                     || tangent_req.numeric_class_mask != uint32_t(GLSLCodeModuleNumericClass::Any)
+                    if (tangent_req.source != ShaderCodeModuleCapabilitySource::GeometryAttribute
+                     || tangent_req.semantic != ShaderCodeModuleSemantic::Tangent
+                     || tangent_req.numeric_class_mask != uint32_t(ShaderCodeModuleNumericClass::Any)
                      || tangent_req.min_component_count != 0
                      || tangent_req.max_component_count != 0)
                         result.diagnostics.emplace_back("full-metadata require[1] mismatch");
                 }
                 if (data.semantic_provides.GetCount() != 2
-                 || data.semantic_provides[0] != GLSLCodeModuleSemantic::Normal
-                 || data.semantic_provides[1] != GLSLCodeModuleSemantic::Tangent)
+                 || data.semantic_provides[0] != ShaderCodeModuleSemantic::Normal
+                 || data.semantic_provides[1] != ShaderCodeModuleSemantic::Tangent)
                     result.diagnostics.emplace_back("full-metadata provide mismatch");
                 if (data.pending_module_requirements.GetCount() != 1
                  || std::strcmp(data.pending_module_requirements[0].c_str(), "s2_lift_xy0") != 0)
@@ -3383,23 +3383,23 @@ namespace
             }
         }
 
-        expect_parse("// @ulre begin\n// @ulre end\n", GLSLCodeModuleParseResult::OK, "minimal");
-        expect_parse("void main() {}\n", GLSLCodeModuleParseResult::Skipped, "no-metadata");
-        expect_parse("// @ulre name x\n// @ulre begin\n// @ulre end\n", GLSLCodeModuleParseResult::MissingBegin, "missing-begin");
-        expect_parse("// @ulre begin\n// @ulre begin\n// @ulre end\n", GLSLCodeModuleParseResult::DuplicateBegin, "duplicate-begin");
-        expect_parse("// @ulre begin\n// @ulre name x\n", GLSLCodeModuleParseResult::MissingEnd, "missing-end");
-        expect_parse("// @ulre begin\n// @ulre nope 1\n// @ulre end\n", GLSLCodeModuleParseResult::UnknownDirective, "unknown-directive");
-        expect_parse("// @ulre begin\n// @ulre name a\n// @ulre name b\n// @ulre end\n", GLSLCodeModuleParseResult::DuplicateDirective, "duplicate-directive");
-        expect_parse("// @ulre begin\n// @ulre kind\n// @ulre end\n", GLSLCodeModuleParseResult::MissingDirectiveArgument, "missing-argument");
-        expect_parse("// @ulre begin\n// @ulre kind NoSuchKind\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidKind, "invalid-kind");
-        expect_parse("// @ulre begin\n// @ulre provide NoSuchSemantic\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidSemantic, "invalid-semantic");
-        expect_parse("// @ulre begin\n// @ulre require BadSource Normal\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidSource, "invalid-source");
-        expect_parse("// @ulre begin\n// @ulre require GeometryAttribute Normal NotAClass\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidNumericClass, "invalid-numclass");
-        expect_parse("// @ulre begin\n// @ulre priority notanumber\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidNumber, "invalid-number");
-        expect_parse("// @ulre begin\n// @ulre conflicts\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidConflict, "invalid-conflict");
+        expect_parse("// @ulre begin\n// @ulre end\n", ShaderCodeModuleParseResult::OK, "minimal");
+        expect_parse("void main() {}\n", ShaderCodeModuleParseResult::Skipped, "no-metadata");
+        expect_parse("// @ulre name x\n// @ulre begin\n// @ulre end\n", ShaderCodeModuleParseResult::MissingBegin, "missing-begin");
+        expect_parse("// @ulre begin\n// @ulre begin\n// @ulre end\n", ShaderCodeModuleParseResult::DuplicateBegin, "duplicate-begin");
+        expect_parse("// @ulre begin\n// @ulre name x\n", ShaderCodeModuleParseResult::MissingEnd, "missing-end");
+        expect_parse("// @ulre begin\n// @ulre nope 1\n// @ulre end\n", ShaderCodeModuleParseResult::UnknownDirective, "unknown-directive");
+        expect_parse("// @ulre begin\n// @ulre name a\n// @ulre name b\n// @ulre end\n", ShaderCodeModuleParseResult::DuplicateDirective, "duplicate-directive");
+        expect_parse("// @ulre begin\n// @ulre kind\n// @ulre end\n", ShaderCodeModuleParseResult::MissingDirectiveArgument, "missing-argument");
+        expect_parse("// @ulre begin\n// @ulre kind NoSuchKind\n// @ulre end\n", ShaderCodeModuleParseResult::InvalidKind, "invalid-kind");
+        expect_parse("// @ulre begin\n// @ulre provide NoSuchSemantic\n// @ulre end\n", ShaderCodeModuleParseResult::InvalidSemantic, "invalid-semantic");
+        expect_parse("// @ulre begin\n// @ulre require BadSource Normal\n// @ulre end\n", ShaderCodeModuleParseResult::InvalidSource, "invalid-source");
+        expect_parse("// @ulre begin\n// @ulre require GeometryAttribute Normal NotAClass\n// @ulre end\n", ShaderCodeModuleParseResult::InvalidNumericClass, "invalid-numclass");
+        expect_parse("// @ulre begin\n// @ulre priority notanumber\n// @ulre end\n", ShaderCodeModuleParseResult::InvalidNumber, "invalid-number");
+        expect_parse("// @ulre begin\n// @ulre conflicts\n// @ulre end\n", ShaderCodeModuleParseResult::InvalidConflict, "invalid-conflict");
 
         // Registry scan of the real ShaderLibrary directory.
-        GLSLCodeModuleRegistry registry;
+        ShaderCodeModuleRegistry registry;
 
         int file_count = 0;
         int error_count = 0;
@@ -3421,14 +3421,14 @@ namespace
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
 
-            GLSLCodeModuleMetadataValidationDiagnostic metadata_diagnostic{};
-            if (!ValidateGLSLCodeModuleRegistryMetadata(
+            ShaderCodeModuleMetadataValidationDiagnostic metadata_diagnostic{};
+            if (!ValidateShaderCodeModuleRegistryMetadata(
                     registry, metadata_diagnostic))
             {
                 result.diagnostics.emplace_back(
                     "formal metadata validation failed: error="
                     + std::string(
-                        GetGLSLCodeModuleMetadataValidationErrorName(
+                        GetShaderCodeModuleMetadataValidationErrorName(
                             metadata_diagnostic.error))
                     + " module="
                     + std::string(metadata_diagnostic.module_name.c_str())
@@ -3441,9 +3441,9 @@ namespace
         const auto *lift = registry.FindByName("s2_lift_xy0");
         if (!lift)
             result.diagnostics.emplace_back("s2_lift_xy0 not found by name");
-        else if (lift->kind != GLSLCodeModuleKind::Position
+        else if (lift->kind != ShaderCodeModuleKind::Position
               || lift->semantic_requirement_count != 1
-              || lift->semantic_requirements[0].semantic != GLSLCodeModuleSemantic::Position
+              || lift->semantic_requirements[0].semantic != ShaderCodeModuleSemantic::Position
               || lift->semantic_requirements[0].min_component_count != 2
               || lift->semantic_requirements[0].max_component_count != 2)
             result.diagnostics.emplace_back("s2_lift_xy0 capability metadata mismatch");
@@ -3451,22 +3451,22 @@ namespace
         const auto *surface_interface = registry.FindByName("surface_interface");
         if (!surface_interface)
             result.diagnostics.emplace_back("surface_interface not found by name");
-        else if (surface_interface->kind != GLSLCodeModuleKind::Shared)
+        else if (surface_interface->kind != ShaderCodeModuleKind::Shared)
             result.diagnostics.emplace_back("surface_interface kind mismatch");
 
         // 单趟发射改造（2026-09）：compositor 骨架降级为发射器常量，
         // skeleton key 为 "forward_surface" / "depth_only" / "forward_sky"。
 
         const auto *forward_input = registry.FindByName("forward_lighting");
-        if (!forward_input || forward_input->kind != GLSLCodeModuleKind::Utility)
+        if (!forward_input || forward_input->kind != ShaderCodeModuleKind::Utility)
             result.diagnostics.emplace_back("forward_lighting input assembly module is missing or has wrong kind");
 
         const auto *forward_algorithm = registry.FindByName("forward_pbr");
-        if (!forward_algorithm || forward_algorithm->kind != GLSLCodeModuleKind::Utility)
+        if (!forward_algorithm || forward_algorithm->kind != ShaderCodeModuleKind::Utility)
             result.diagnostics.emplace_back("forward_pbr lighting algorithm module is missing or has wrong kind");
 
         const auto *alternate_algorithm = registry.FindByName("forward_flat");
-        if (!alternate_algorithm || alternate_algorithm->kind != GLSLCodeModuleKind::Utility)
+        if (!alternate_algorithm || alternate_algorithm->kind != ShaderCodeModuleKind::Utility)
             result.diagnostics.emplace_back("forward_flat alternate lighting algorithm is missing or has wrong kind");
 
 
@@ -3474,36 +3474,36 @@ namespace
         return result;
     }
 
-    static GateResult RunGLSLCodeModuleMetadataValidationCase()
+    static GateResult RunShaderCodeModuleMetadataValidationCase()
     {
         GateResult result;
         result.name = "I1.glsl-code-module-metadata-validation";
 
         const auto make_definition = [](
-            const char *name) -> GLSLCodeModuleDefinition
+            const char *name) -> ShaderCodeModuleDefinition
         {
-            GLSLCodeModuleDefinition definition{};
+            ShaderCodeModuleDefinition definition{};
             definition.name = name;
             definition.glsl_code = "// metadata validation";
-            definition.kind = GLSLCodeModuleKind::Utility;
+            definition.kind = ShaderCodeModuleKind::Utility;
             return definition;
         };
 
         {
-            const GLSLCodeModuleSemantic duplicate_provides[] =
+            const ShaderCodeModuleSemantic duplicate_provides[] =
             {
-                GLSLCodeModuleSemantic::Position,
-                GLSLCodeModuleSemantic::Position
+                ShaderCodeModuleSemantic::Position,
+                ShaderCodeModuleSemantic::Position
             };
-            GLSLCodeModuleDefinition definition =
+            ShaderCodeModuleDefinition definition =
                 make_definition("duplicate_provide");
             definition.semantic_provides = duplicate_provides;
             definition.semantic_provide_count = 2;
 
-            GLSLCodeModuleMetadataValidationDiagnostic diagnostic{};
-            if (ValidateGLSLCodeModuleMetadata(definition, diagnostic)
+            ShaderCodeModuleMetadataValidationDiagnostic diagnostic{};
+            if (ValidateShaderCodeModuleMetadata(definition, diagnostic)
              || diagnostic.error
-                    != GLSLCodeModuleMetadataValidationError::DuplicateProvide)
+                    != ShaderCodeModuleMetadataValidationError::DuplicateProvide)
             {
                 result.diagnostics.emplace_back(
                     "duplicate provide metadata must be rejected");
@@ -3511,15 +3511,15 @@ namespace
         }
 
         {
-            GLSLCodeModuleDefinition first =
+            ShaderCodeModuleDefinition first =
                 make_definition("cycle_first");
-            GLSLCodeModuleDefinition second =
+            ShaderCodeModuleDefinition second =
                 make_definition("cycle_second");
-            const GLSLCodeModuleDependency first_dependencies[] =
+            const ShaderCodeModuleDependency first_dependencies[] =
             {
                 {second.name}
             };
-            const GLSLCodeModuleDependency second_dependencies[] =
+            const ShaderCodeModuleDependency second_dependencies[] =
             {
                 {first.name}
             };
@@ -3528,13 +3528,13 @@ namespace
             second.dependencies = second_dependencies;
             second.dependency_count = 1;
 
-            GLSLCodeModuleRegistry registry;
-            GLSLCodeModuleMetadataValidationDiagnostic diagnostic{};
+            ShaderCodeModuleRegistry registry;
+            ShaderCodeModuleMetadataValidationDiagnostic diagnostic{};
             if (!registry.Register(first)
              || !registry.Register(second)
-             || ValidateGLSLCodeModuleRegistryMetadata(registry, diagnostic)
+             || ValidateShaderCodeModuleRegistryMetadata(registry, diagnostic)
              || diagnostic.error
-                    != GLSLCodeModuleMetadataValidationError::DependencyCycle)
+                    != ShaderCodeModuleMetadataValidationError::DependencyCycle)
             {
                 result.diagnostics.emplace_back(
                     "explicit dependency cycle must be rejected");
@@ -3542,26 +3542,26 @@ namespace
         }
 
         {
-            const GLSLCodeModuleSemantic position[] =
+            const ShaderCodeModuleSemantic position[] =
             {
-                GLSLCodeModuleSemantic::Position
+                ShaderCodeModuleSemantic::Position
             };
-            GLSLCodeModuleDefinition first =
+            ShaderCodeModuleDefinition first =
                 make_definition("ambiguous_first");
-            GLSLCodeModuleDefinition second =
+            ShaderCodeModuleDefinition second =
                 make_definition("ambiguous_second");
             first.semantic_provides = position;
             first.semantic_provide_count = 1;
             second.semantic_provides = position;
             second.semantic_provide_count = 1;
 
-            GLSLCodeModuleRegistry registry;
-            GLSLCodeModuleMetadataValidationDiagnostic diagnostic{};
+            ShaderCodeModuleRegistry registry;
+            ShaderCodeModuleMetadataValidationDiagnostic diagnostic{};
             if (!registry.Register(first)
              || !registry.Register(second)
-             || ValidateGLSLCodeModuleRegistryMetadata(registry, diagnostic)
+             || ValidateShaderCodeModuleRegistryMetadata(registry, diagnostic)
              || diagnostic.error
-                    != GLSLCodeModuleMetadataValidationError::
+                    != ShaderCodeModuleMetadataValidationError::
                         AmbiguousProviderPriority)
             {
                 result.diagnostics.emplace_back(
@@ -3570,15 +3570,15 @@ namespace
         }
 
         {
-            GLSLCodeModuleDefinition first =
+            ShaderCodeModuleDefinition first =
                 make_definition("conflict_first");
-            GLSLCodeModuleDefinition second =
+            ShaderCodeModuleDefinition second =
                 make_definition("conflict_second");
             const char *conflicts[] = {second.name};
             first.module_conflict_names = conflicts;
             first.module_conflict_count = 1;
-            if (!AreGLSLCodeModulesConflicting(first, second)
-             || !AreGLSLCodeModulesConflicting(second, first))
+            if (!AreShaderCodeModulesConflicting(first, second)
+             || !AreShaderCodeModulesConflicting(second, first))
             {
                 result.diagnostics.emplace_back(
                     "module conflicts must be symmetric at query time");
@@ -3586,12 +3586,12 @@ namespace
         }
 
         {
-            GLSLCodeModuleDefinition base =
+            ShaderCodeModuleDefinition base =
                 make_definition("metadata_hash");
-            GLSLCodeModuleDefinition changed = base;
+            ShaderCodeModuleDefinition changed = base;
             changed.priority = 10;
-            if (GetGLSLCodeModuleDefinitionHash(base)
-                == GetGLSLCodeModuleDefinitionHash(changed))
+            if (GetShaderCodeModuleDefinitionHash(base)
+                == GetShaderCodeModuleDefinitionHash(changed))
             {
                 result.diagnostics.emplace_back(
                     "module metadata changes must affect definition hash");
@@ -4148,7 +4148,7 @@ namespace
             uint32_t(hgl::graph::kMeshFragment),
             uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT));
 
-        ModuleResourceManifest compatible_manifest{};
+        ShaderCodeResourceManifest compatible_manifest{};
         compatible_manifest.texture_layer_count = 1;
         compatible_manifest.texture_layers[0] = {
             TextureSlot::BaseColor,
@@ -4200,7 +4200,7 @@ namespace
                     "Merged resource policy or SSBO identity was not preserved.");
         }
 
-        ModuleResourceManifest ssbo_name_conflict{};
+        ShaderCodeResourceManifest ssbo_name_conflict{};
         ssbo_name_conflict.ssbo_count = 1;
         ssbo_name_conflict.ssbos[0] = {
             "mtl_private_data",
@@ -4210,7 +4210,7 @@ namespace
         };
         if (descriptor_builder_common::AppendManifestSSBODescriptors(
                 descriptors, ssbo_name_conflict)
-         || ssbo_name_conflict.error != ModuleResourceManifestError::ResourceConflict)
+         || ssbo_name_conflict.error != ShaderCodeResourceManifestError::ResourceConflict)
         {
             result.diagnostics.emplace_back(
                 "Same-name SSBO type conflicts must fail explicitly.");
@@ -4303,7 +4303,7 @@ namespace
         result.name = "MI.module-invariants";
 
         // 1. Real ShaderLibrary scan: names unique, stable IDs unique.
-        GLSLCodeModuleRegistry registry;
+        ShaderCodeModuleRegistry registry;
         int file_count = 0;
         int error_count = 0;
         if (!registry.LoadDirectory(
@@ -4611,8 +4611,8 @@ int main(const int argc, char **argv)
     if (run_materialization) results.push_back(RunMaterialDefinitionFileSchemaCase());
     if (run_materialization) results.push_back(RunFallbackInferenceCase());
     if (run_glsl) results.push_back(RunProviderResourceManifestCase());
-    if (run_glsl) results.push_back(RunGLSLCodeModuleFileCase());
-    if (run_glsl) results.push_back(RunGLSLCodeModuleMetadataValidationCase());
+    if (run_glsl) results.push_back(RunShaderCodeModuleFileCase());
+    if (run_glsl) results.push_back(RunShaderCodeModuleMetadataValidationCase());
     if (run_interface) results.push_back(RunShaderSemanticRegistryCase());
     if (run_materialization) results.push_back(RunResolvedBindingTableCase());
     if (run_interface) results.push_back(RunMaterialVertexABICharacterizationCase());

@@ -15,8 +15,8 @@ set(SHADERGEN_COMMON_FILES
     ${ROOT_INCLUDE_PATH}/hgl/graph/ShaderBufferSources.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderLibraryPath.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderCacheRoot.h
-    ${SHADERGEN_INCLUDE_PATH}/GLSLCodeModule.h
-    ${SHADERGEN_INCLUDE_PATH}/ModuleResourceManifest.h
+    ${SHADERGEN_INCLUDE_PATH}/ShaderCodeModule.h
+    ${SHADERGEN_INCLUDE_PATH}/ShaderCodeResourceManifest.h
     ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/SkyInfo.h
     ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/ViewportInfo.h
     ${ROOT_INCLUDE_PATH}/hgl/graph/ubo/UBOShaderSources.h
@@ -68,17 +68,17 @@ SOURCE_GROUP("Compile" FILES ${COMPILE_FILES})
 
 # ── glsl_module/ ─────────────────────────────────────────────────────────────
 set(GLSL_MODULE_FILES
-    ${SHADERGEN_INCLUDE_PATH}/GLSLCodeModuleRegistry.h
-    glsl_module/GLSLCodeModuleRegistry.cpp
-    ${SHADERGEN_INCLUDE_PATH}/GLSLCodeModuleMetadata.h
-    glsl_module/GLSLCodeModuleMetadata.cpp
-    ${SHADERGEN_INCLUDE_PATH}/GLSLCodeModuleFile.h
-    glsl_module/GLSLCodeModuleFile.cpp
-    ${SHADERGEN_INCLUDE_PATH}/GLSLCodeModuleCapabilityResolver.h
-    glsl_module/GLSLCodeModuleCapabilityResolver.cpp
-    glsl_module/GLSLCodeModule.cpp
-    ${SHADERGEN_INCLUDE_PATH}/ModuleResourceManifest.h
-    glsl_module/ModuleResourceManifest.cpp
+    ${SHADERGEN_INCLUDE_PATH}/ShaderCodeModuleRegistry.h
+    glsl_module/ShaderCodeModuleRegistry.cpp
+    ${SHADERGEN_INCLUDE_PATH}/ShaderCodeModuleMetadata.h
+    glsl_module/ShaderCodeModuleMetadata.cpp
+    ${SHADERGEN_INCLUDE_PATH}/ShaderCodeModuleFile.h
+    glsl_module/ShaderCodeModuleFile.cpp
+    ${SHADERGEN_INCLUDE_PATH}/ShaderCodeModuleCapabilityResolver.h
+    glsl_module/ShaderCodeModuleCapabilityResolver.cpp
+    glsl_module/ShaderCodeModule.cpp
+    ${SHADERGEN_INCLUDE_PATH}/ShaderCodeResourceManifest.h
+    glsl_module/ShaderCodeResourceManifest.cpp
     ${SHADERGEN_INCLUDE_PATH}/SamplerPreset.h
     glsl_module/SamplerPreset.cpp)
 SOURCE_GROUP("GLSL Module" FILES ${GLSL_MODULE_FILES})

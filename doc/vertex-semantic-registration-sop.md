@@ -21,8 +21,8 @@
 | 4 | `inc/hgl/graph/ssbo/SSBOTypes.h` | `SSBOType` 项 + `GetSSBOTypeName` case | 类型名 "Unknown" | — |
 | 5 | `inc/hgl/graph/ShaderBufferSources.h` | `SBS_VertexX{set, name, struct}` | 无 buffer/struct 名 | ✅ 编译期（目录断言要求 `sbs != nullptr`） |
 | 6 | `inc/hgl/mtl/DescriptorResourceCatalog.h` | **登记一行**（引用 1/3/4/5 的定义） | 描述符全链缺失 | ✅ **编译期**（`VertexBindingsFullyCovered` 位图判定） |
-| 7 | `inc/hgl/mtl/GLSLCodeModule.h` | `GLSLCodeModuleSemantic` 项 + 名字（T1 注册表单一真源） | TOML 解析失败 | 运行期显式报错 |
-| 8 | `inc/hgl/mtl/MaterialRecipe.h:170` | `GLSLCodeModuleSemantic → VertexSemantic` 映射 | need_ 判定恒 false | — |
+| 7 | `inc/hgl/mtl/ShaderCodeModule.h` | `ShaderCodeModuleSemantic` 项 + 名字（T1 注册表单一真源） | TOML 解析失败 | 运行期显式报错 |
+| 8 | `inc/hgl/mtl/MaterialRecipe.h:170` | `ShaderCodeModuleSemantic → VertexSemantic` 映射 | need_ 判定恒 false | — |
 | 9 | `src/ShaderGen/3d/DefinitionDescriptorBuilder.h` | `need_X` 标志 + case + `PushVertexResource<DescriptorSemantic::X>` | 描述符不注册 | 部分（模板保证语义已登记） |
 | 10 | `src/ShaderGen/MaterialDefinitionRegistry.cpp` | `need_X` + `VertexSemantic::X` case + 模块 include | shader 缺模块 | — |
 | 11 | `ShaderLibrary/vertex/s1_x.glsl` | 新模块：`@ulre provide/ssbo` + buffer 声明 + `HGL_X_LOADER` 宏 | — | @ulre 元数据校验 |

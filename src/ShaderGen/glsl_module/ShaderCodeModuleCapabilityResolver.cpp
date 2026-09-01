@@ -1,9 +1,9 @@
-﻿// GLSLCodeModuleCapabilityResolver.cpp — provider 图哈希与组合。
+﻿// ShaderCodeModuleCapabilityResolver.cpp — provider 图哈希与组合。
 //
-// 提供 GetGLSLCodeModuleProviderGraphHash / ComposeGLSLCodeModuleProviderGraph，
+// 提供 GetShaderCodeModuleProviderGraphHash / ComposeShaderCodeModuleProviderGraph，
 // BuildResolvedMaterialVertexABI 生产依赖。
 
-#include <hgl/mtl/GLSLCodeModuleCapabilityResolver.h>
+#include <hgl/mtl/ShaderCodeModuleCapabilityResolver.h>
 
 #include <hgl/util/hash/FNV1a.h>
 
@@ -14,7 +14,7 @@ namespace hgl::graph::mtl
     namespace
     {
         uint64 GetModuleStableID(
-            const GLSLCodeModuleDefinition *module) noexcept
+            const ShaderCodeModuleDefinition *module) noexcept
         {
             if (!module || !module->name)
                 return 0xffffffffffffffffull;
@@ -25,8 +25,8 @@ namespace hgl::graph::mtl
         }
     }
 
-    uint64 GetGLSLCodeModuleProviderGraphHash(
-        const GLSLCodeModuleResolutionResult &result) noexcept
+    uint64 GetShaderCodeModuleProviderGraphHash(
+        const ShaderCodeModuleResolutionResult &result) noexcept
     {
         constexpr uint32 kMaxSelectionCount = 64;
 
@@ -82,19 +82,19 @@ namespace hgl::graph::mtl
         return h;
     }
 
-    bool ComposeGLSLCodeModuleProviderGraph(
-        const GLSLCodeModuleResolutionResult &result,
+    bool ComposeShaderCodeModuleProviderGraph(
+        const ShaderCodeModuleResolutionResult &result,
         std::string &out_glsl)
     {
         out_glsl.clear();
         if (!result.resolved)
             return false;
 
-        const GLSLCodeModuleDefinition *emitted[64] = {};
+        const ShaderCodeModuleDefinition *emitted[64] = {};
         uint32 emitted_count = 0;
         for (int i = 0; i < result.selections.GetCount(); ++i)
         {
-            const GLSLCodeModuleDefinition *provider = result.selections[i].provider;
+            const ShaderCodeModuleDefinition *provider = result.selections[i].provider;
             if (!provider || !provider->glsl_code)
                 return false;
 
@@ -114,7 +114,7 @@ namespace hgl::graph::mtl
                 return false;
 
             emitted[emitted_count++] = provider;
-            out_glsl += "\n// GLSLCodeModule provider: ";
+            out_glsl += "\n// ShaderCodeModule provider: ";
             out_glsl += provider->name ? provider->name : "Unknown";
             out_glsl += "\n";
             out_glsl += provider->glsl_code;

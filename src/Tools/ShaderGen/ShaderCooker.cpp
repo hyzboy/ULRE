@@ -277,7 +277,7 @@ int main(const int argc, char **argv)
              ++req_index)
         {
             const VertexSemantic semantic =
-                GetVertexSemanticFromGLSLCodeModuleSemantic(
+                GetVertexSemanticFromShaderCodeModuleSemantic(
                     definition.vertex_semantic_requirements[req_index].semantic);
             if (semantic == VertexSemantic::Unknown)
                 continue;

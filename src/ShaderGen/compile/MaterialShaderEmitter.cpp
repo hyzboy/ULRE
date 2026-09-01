@@ -10,7 +10,7 @@
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/ShaderCreateInfo.h>
 #include <hgl/mtl/SamplerPreset.h>
-#include <hgl/mtl/GLSLCodeModule.h>
+#include <hgl/mtl/ShaderCodeModule.h>
 #include <hgl/graph/ShaderBufferSources.h>
 #include <cstdio>
 #include <cstring>
@@ -19,26 +19,40 @@ namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
 
-std::string BuildCodeModuleGLSL(const ModuleResourceManifest *manifest)
+std::string BuildCodeModuleGLSL(const ShaderCodeResourceManifest *manifest)
 {
-    if (!manifest || !manifest->IsValid())
+    ShaderDocument document = BuildCodeModuleDocument(manifest);
+    ShaderDocumentDiagnostics diagnostics;
+    AnsiString serialized;
+    if (!document.SerializeFragment(serialized, diagnostics))
         return {};
+    return std::string(serialized.c_str(), serialized.Length());
+}
 
-    const auto &module_registry = mtl::GetGLSLCodeModuleRegistry();
-    std::string result;
+ShaderDocument BuildCodeModuleDocument(
+    const ShaderCodeResourceManifest *manifest)
+{
+    ShaderDocument document;
+    if (!manifest || !manifest->IsValid())
+        return document;
+
+    const auto &module_registry = mtl::GetShaderCodeModuleRegistry();
     for (uint32 i = 0; i < manifest->code_module_count; ++i)
     {
-        const GLSLCodeModuleDefinition *module =
+        const ShaderCodeModuleDefinition *module =
             module_registry.FindByName(manifest->code_module_names[i]);
         if (!module || !module->glsl_code)
             continue;
-        result += "\n// GLSLCodeModule: ";
-        result += module->name ? module->name : "Unknown";
-        result += "\n";
-        result += module->glsl_code;
-        result += "\n";
+        AnsiString code = "\n// ShaderCodeModule: ";
+        code += module->name ? module->name : "Unknown";
+        code += "\n";
+        code += module->glsl_code;
+        code += "\n";
+        ShaderDocumentSource source;
+        source.module = module->name ? module->name : "Unknown";
+        document.Add(ShaderDocumentBlockKind::Module, code, source);
     }
-    return result;
+    return document;
 }
 
 std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names)

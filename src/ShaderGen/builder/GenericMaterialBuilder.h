@@ -8,7 +8,7 @@
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/VertexShaderNodeConfig.h>
 #include <hgl/mtl/SerializedDescriptorEntry.h>
-#include <hgl/mtl/ModuleResourceManifest.h>
+#include <hgl/mtl/ShaderCodeResourceManifest.h>
 #include <hgl/mtl/CanonicalShaderContract.h>
 #include <hgl/mtl/DescriptorContract.h>
 #include <hgl/mtl/MaterialCoverageContract.h>
@@ -58,7 +58,7 @@ namespace hgl::graph::mtl
         hgl::graph::PrimitiveType primitive_type = hgl::graph::PrimitiveType::Triangles;
 
         // Phase 3: resource contract
-        ModuleResourceManifest manifest;
+        ShaderCodeResourceManifest manifest;
         MaterialDefinition manifest_definition;
         std::vector<SerializedDescriptorEntry> descriptors;
         mtl::DescriptorContract descriptor_contract;

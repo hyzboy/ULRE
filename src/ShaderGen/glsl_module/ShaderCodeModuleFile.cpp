@@ -1,4 +1,4 @@
-﻿#include <hgl/mtl/GLSLCodeModuleFile.h>
+﻿#include <hgl/mtl/ShaderCodeModuleFile.h>
 #include <hgl/vk/VK.h>
 
 #include <cstring>
@@ -117,31 +117,31 @@ namespace hgl::graph::mtl
             return true;
         }
 
-        bool ParseKind(const char *token, GLSLCodeModuleKind &out_kind) noexcept
+        bool ParseKind(const char *token, ShaderCodeModuleKind &out_kind) noexcept
         {
-            if (std::strcmp(token, "Shared") == 0) out_kind = GLSLCodeModuleKind::Shared;
-            else if (std::strcmp(token, "Surface") == 0) out_kind = GLSLCodeModuleKind::Surface;
-            else if (std::strcmp(token, "Position") == 0) out_kind = GLSLCodeModuleKind::Position;
-            else if (std::strcmp(token, "Transform") == 0) out_kind = GLSLCodeModuleKind::Transform;
-            else if (std::strcmp(token, "Utility") == 0) out_kind = GLSLCodeModuleKind::Utility;
-            else if (std::strcmp(token, "FragmentShader") == 0) out_kind = GLSLCodeModuleKind::FragmentShader;
+            if (std::strcmp(token, "Shared") == 0) out_kind = ShaderCodeModuleKind::Shared;
+            else if (std::strcmp(token, "Surface") == 0) out_kind = ShaderCodeModuleKind::Surface;
+            else if (std::strcmp(token, "Position") == 0) out_kind = ShaderCodeModuleKind::Position;
+            else if (std::strcmp(token, "Transform") == 0) out_kind = ShaderCodeModuleKind::Transform;
+            else if (std::strcmp(token, "Utility") == 0) out_kind = ShaderCodeModuleKind::Utility;
+            else if (std::strcmp(token, "FragmentShader") == 0) out_kind = ShaderCodeModuleKind::FragmentShader;
             else return false;
             return true;
         }
 
-        GLSLCodeModuleSemantic ParseSemantic(const char *token) noexcept
+        ShaderCodeModuleSemantic ParseSemantic(const char *token) noexcept
         {
-            // T1：语义名字单一真源 GLSLCodeModule.h——此处不再维护平行 if-else 表。
-            GLSLCodeModuleSemantic semantic = GLSLCodeModuleSemantic::Unknown;
-            ParseGLSLCodeModuleSemantic(token, semantic);
+            // T1：语义名字单一真源 ShaderCodeModule.h——此处不再维护平行 if-else 表。
+            ShaderCodeModuleSemantic semantic = ShaderCodeModuleSemantic::Unknown;
+            ParseShaderCodeModuleSemantic(token, semantic);
             return semantic;    // 解析失败返回 Unknown（旧行为一致）
         }
 
-        bool ParseSource(const char *token, GLSLCodeModuleCapabilitySource &out_source) noexcept
+        bool ParseSource(const char *token, ShaderCodeModuleCapabilitySource &out_source) noexcept
         {
-            if (std::strcmp(token, "GeometryAttribute") == 0) out_source = GLSLCodeModuleCapabilitySource::GeometryAttribute;
-            else if (std::strcmp(token, "Resource") == 0) out_source = GLSLCodeModuleCapabilitySource::Resource;
-            else if (std::strcmp(token, "ProducedSemantic") == 0) out_source = GLSLCodeModuleCapabilitySource::ProducedSemantic;
+            if (std::strcmp(token, "GeometryAttribute") == 0) out_source = ShaderCodeModuleCapabilitySource::GeometryAttribute;
+            else if (std::strcmp(token, "Resource") == 0) out_source = ShaderCodeModuleCapabilitySource::Resource;
+            else if (std::strcmp(token, "ProducedSemantic") == 0) out_source = ShaderCodeModuleCapabilitySource::ProducedSemantic;
             else return false;
             return true;
         }
@@ -166,15 +166,15 @@ namespace hgl::graph::mtl
                 part[length] = 0;
 
                 if (std::strcmp(part, "Float") == 0)
-                    mask |= uint32(GLSLCodeModuleNumericClass::Float);
+                    mask |= uint32(ShaderCodeModuleNumericClass::Float);
                 else if (std::strcmp(part, "SignedInteger") == 0)
-                    mask |= uint32(GLSLCodeModuleNumericClass::SignedInteger);
+                    mask |= uint32(ShaderCodeModuleNumericClass::SignedInteger);
                 else if (std::strcmp(part, "UnsignedInteger") == 0)
-                    mask |= uint32(GLSLCodeModuleNumericClass::UnsignedInteger);
+                    mask |= uint32(ShaderCodeModuleNumericClass::UnsignedInteger);
                 else if (std::strcmp(part, "Normalized") == 0)
-                    mask |= uint32(GLSLCodeModuleNumericClass::Normalized);
+                    mask |= uint32(ShaderCodeModuleNumericClass::Normalized);
                 else if (std::strcmp(part, "Packed") == 0)
-                    mask |= uint32(GLSLCodeModuleNumericClass::Packed);
+                    mask |= uint32(ShaderCodeModuleNumericClass::Packed);
                 else if (std::strcmp(part, "Any") == 0)
                     any_parsed = true;
                 else
@@ -189,7 +189,7 @@ namespace hgl::graph::mtl
                 return false;
 
             out_mask = any_parsed
-                ? uint32(GLSLCodeModuleNumericClass::Any)
+                ? uint32(ShaderCodeModuleNumericClass::Any)
                 : mask;
             return true;
         }
@@ -268,37 +268,37 @@ namespace hgl::graph::mtl
 
     }
 
-    const char *GetGLSLCodeModuleParseResultName(const GLSLCodeModuleParseResult result) noexcept
+    const char *GetShaderCodeModuleParseResultName(const ShaderCodeModuleParseResult result) noexcept
     {
         switch (result)
         {
-            case GLSLCodeModuleParseResult::Skipped: return "Skipped";
-            case GLSLCodeModuleParseResult::OK: return "OK";
-            case GLSLCodeModuleParseResult::MissingBegin: return "MissingBegin";
-            case GLSLCodeModuleParseResult::DuplicateBegin: return "DuplicateBegin";
-            case GLSLCodeModuleParseResult::MissingEnd: return "MissingEnd";
-            case GLSLCodeModuleParseResult::UnknownDirective: return "UnknownDirective";
-            case GLSLCodeModuleParseResult::DuplicateDirective: return "DuplicateDirective";
-            case GLSLCodeModuleParseResult::MissingDirectiveArgument: return "MissingDirectiveArgument";
-            case GLSLCodeModuleParseResult::InvalidKind: return "InvalidKind";
-            case GLSLCodeModuleParseResult::InvalidSemantic: return "InvalidSemantic";
-            case GLSLCodeModuleParseResult::InvalidSource: return "InvalidSource";
-            case GLSLCodeModuleParseResult::InvalidNumericClass: return "InvalidNumericClass";
-            case GLSLCodeModuleParseResult::InvalidNumber: return "InvalidNumber";
-            case GLSLCodeModuleParseResult::InvalidResource: return "InvalidResource";
-            case GLSLCodeModuleParseResult::InvalidStage: return "InvalidStage";
-            case GLSLCodeModuleParseResult::InvalidDependency: return "InvalidDependency";
-            case GLSLCodeModuleParseResult::InvalidConflict: return "InvalidConflict";
+            case ShaderCodeModuleParseResult::Skipped: return "Skipped";
+            case ShaderCodeModuleParseResult::OK: return "OK";
+            case ShaderCodeModuleParseResult::MissingBegin: return "MissingBegin";
+            case ShaderCodeModuleParseResult::DuplicateBegin: return "DuplicateBegin";
+            case ShaderCodeModuleParseResult::MissingEnd: return "MissingEnd";
+            case ShaderCodeModuleParseResult::UnknownDirective: return "UnknownDirective";
+            case ShaderCodeModuleParseResult::DuplicateDirective: return "DuplicateDirective";
+            case ShaderCodeModuleParseResult::MissingDirectiveArgument: return "MissingDirectiveArgument";
+            case ShaderCodeModuleParseResult::InvalidKind: return "InvalidKind";
+            case ShaderCodeModuleParseResult::InvalidSemantic: return "InvalidSemantic";
+            case ShaderCodeModuleParseResult::InvalidSource: return "InvalidSource";
+            case ShaderCodeModuleParseResult::InvalidNumericClass: return "InvalidNumericClass";
+            case ShaderCodeModuleParseResult::InvalidNumber: return "InvalidNumber";
+            case ShaderCodeModuleParseResult::InvalidResource: return "InvalidResource";
+            case ShaderCodeModuleParseResult::InvalidStage: return "InvalidStage";
+            case ShaderCodeModuleParseResult::InvalidDependency: return "InvalidDependency";
+            case ShaderCodeModuleParseResult::InvalidConflict: return "InvalidConflict";
             default: return "Unknown";
         }
     }
 
-    GLSLCodeModuleParseResult ParseGLSLCodeModuleFile(const char *content,
+    ShaderCodeModuleParseResult ParseShaderCodeModuleFile(const char *content,
                                                       const int content_size,
-                                                      GLSLCodeModuleFileData &out_data) noexcept
+                                                      ShaderCodeModuleFileData &out_data) noexcept
     {
         if (!content || content_size <= 0)
-            return GLSLCodeModuleParseResult::Skipped;
+            return ShaderCodeModuleParseResult::Skipped;
 
         const char *end = content + content_size;
         const char *cursor = content;
@@ -331,137 +331,137 @@ namespace hgl::graph::mtl
                 if (!after_keyword || !token[0])
                 {
                     if (!in_block)
-                        return GLSLCodeModuleParseResult::MissingBegin;
-                    return GLSLCodeModuleParseResult::UnknownDirective;
+                        return ShaderCodeModuleParseResult::MissingBegin;
+                    return ShaderCodeModuleParseResult::UnknownDirective;
                 }
 
                 if (std::strcmp(token, "begin") == 0)
                 {
                     if (in_block)
-                        return GLSLCodeModuleParseResult::DuplicateBegin;
+                        return ShaderCodeModuleParseResult::DuplicateBegin;
                     in_block = true;
                 }
                 else if (std::strcmp(token, "end") == 0)
                 {
                     if (!in_block)
-                        return GLSLCodeModuleParseResult::MissingBegin;
+                        return ShaderCodeModuleParseResult::MissingBegin;
                     in_block = false;
                     saw_end = true;
                 }
                 else if (!in_block)
                 {
-                    return GLSLCodeModuleParseResult::MissingBegin;
+                    return ShaderCodeModuleParseResult::MissingBegin;
                 }
                 else if (std::strcmp(token, "name") == 0)
                 {
                     if (!out_data.name.IsEmpty())
-                        return GLSLCodeModuleParseResult::DuplicateDirective;
+                        return ShaderCodeModuleParseResult::DuplicateDirective;
 
                     const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
                     if (!next || !token[0])
-                        return GLSLCodeModuleParseResult::MissingDirectiveArgument;
+                        return ShaderCodeModuleParseResult::MissingDirectiveArgument;
                     out_data.name = AnsiString(token);
                 }
                 else if (std::strcmp(token, "kind") == 0)
                 {
                     if (saw_kind)
-                        return GLSLCodeModuleParseResult::DuplicateDirective;
+                        return ShaderCodeModuleParseResult::DuplicateDirective;
 
                     const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
                     if (!next || !token[0])
-                        return GLSLCodeModuleParseResult::MissingDirectiveArgument;
+                        return ShaderCodeModuleParseResult::MissingDirectiveArgument;
 
-                    GLSLCodeModuleKind kind;
+                    ShaderCodeModuleKind kind;
                     if (!ParseKind(token, kind))
-                        return GLSLCodeModuleParseResult::InvalidKind;
+                        return ShaderCodeModuleParseResult::InvalidKind;
                     out_data.kind = kind;
                     saw_kind = true;
                 }
                 else if (std::strcmp(token, "priority") == 0)
                 {
                     if (saw_priority)
-                        return GLSLCodeModuleParseResult::DuplicateDirective;
+                        return ShaderCodeModuleParseResult::DuplicateDirective;
 
                     const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
                     if (!next || !token[0])
-                        return GLSLCodeModuleParseResult::MissingDirectiveArgument;
+                        return ShaderCodeModuleParseResult::MissingDirectiveArgument;
 
                     int value = 0;
                     if (!ParseSignedInt(token, value))
-                        return GLSLCodeModuleParseResult::InvalidNumber;
+                        return ShaderCodeModuleParseResult::InvalidNumber;
                     out_data.priority = value;
                     saw_priority = true;
                 }
                 else if (std::strcmp(token, "ssbo") == 0)
                 {
-                    GLSLCodeModuleSSBORequirement requirement;
+                    ShaderCodeModuleSSBORequirement requirement;
                     const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
                     if (!next || !token[0])
-                        return GLSLCodeModuleParseResult::MissingDirectiveArgument;
+                        return ShaderCodeModuleParseResult::MissingDirectiveArgument;
                     AnsiString *ssbo_name = out_data.ssbo_name_storage.Create();
                     if (!ssbo_name)
-                        return GLSLCodeModuleParseResult::InvalidResource;
+                        return ShaderCodeModuleParseResult::InvalidResource;
                     *ssbo_name = token;
                     next = ReadToken(next, line_end, token, sizeof(token));
                     if (!next || !ParseSSBOType(token, requirement.ssbo_type))
-                        return GLSLCodeModuleParseResult::InvalidResource;
+                        return ShaderCodeModuleParseResult::InvalidResource;
                     next = ReadToken(next, line_end, token, sizeof(token));
                     if (!next || !ParseUnsignedInt(token, requirement.material_private_data_slot))
-                        return GLSLCodeModuleParseResult::InvalidNumber;
+                        return ShaderCodeModuleParseResult::InvalidNumber;
                     next = ReadToken(next, line_end, token, sizeof(token));
                     if (!next || !ParseStageFlags(token, requirement.stage_flags))
-                        return GLSLCodeModuleParseResult::InvalidStage;
+                        return ShaderCodeModuleParseResult::InvalidStage;
 
                     while ((next = ReadToken(next, line_end, token, sizeof(token))) != nullptr)
                     {
                         if (!ParseResourcePolicy(token, requirement.required,
                                                   requirement.allow_fallback))
-                            return GLSLCodeModuleParseResult::InvalidResource;
+                            return ShaderCodeModuleParseResult::InvalidResource;
                     }
                     out_data.ssbo_requirements.Add(requirement);
                 }
                 else if (std::strcmp(token, "texture_layer") == 0)
                 {
-                    GLSLCodeModuleTextureLayerRequirement requirement;
+                    ShaderCodeModuleTextureLayerRequirement requirement;
                     const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
                     if (!next || !ParseTextureSlotName(token, requirement.slot))
-                        return GLSLCodeModuleParseResult::InvalidResource;
+                        return ShaderCodeModuleParseResult::InvalidResource;
                     next = ReadToken(next, line_end, token, sizeof(token));
                     if (!next || !ParseStageFlags(token, requirement.stage_flags))
-                        return GLSLCodeModuleParseResult::InvalidStage;
+                        return ShaderCodeModuleParseResult::InvalidStage;
 
                     while ((next = ReadToken(next, line_end, token, sizeof(token))) != nullptr)
                     {
                         if (!ParseResourcePolicy(token, requirement.required,
                                                   requirement.allow_fallback))
-                            return GLSLCodeModuleParseResult::InvalidResource;
+                            return ShaderCodeModuleParseResult::InvalidResource;
                     }
                     out_data.texture_layer_requirements.Add(requirement);
                 }
                 else if (std::strcmp(token, "require") == 0)
                 {
-                    GLSLCodeModuleSemanticRequirement requirement;
+                    ShaderCodeModuleSemanticRequirement requirement;
 
                     // <source> <semantic> [<numclass> [<min> [<max>]]]
                     const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
                     if (!next || !token[0])
-                        return GLSLCodeModuleParseResult::MissingDirectiveArgument;
+                        return ShaderCodeModuleParseResult::MissingDirectiveArgument;
                     if (!ParseSource(token, requirement.source))
-                        return GLSLCodeModuleParseResult::InvalidSource;
+                        return ShaderCodeModuleParseResult::InvalidSource;
 
                     next = ReadToken(next, line_end, token, sizeof(token));
                     if (!next || !token[0])
-                        return GLSLCodeModuleParseResult::MissingDirectiveArgument;
+                        return ShaderCodeModuleParseResult::MissingDirectiveArgument;
                     requirement.semantic = ParseSemantic(token);
-                    if (requirement.semantic == GLSLCodeModuleSemantic::Unknown)
-                        return GLSLCodeModuleParseResult::InvalidSemantic;
+                    if (requirement.semantic == ShaderCodeModuleSemantic::Unknown)
+                        return ShaderCodeModuleParseResult::InvalidSemantic;
 
                     next = ReadToken(next, line_end, token, sizeof(token));
                     if (next && token[0])
                     {
                         uint32 mask = 0;
                         if (!ParseNumericClassMask(token, mask))
-                            return GLSLCodeModuleParseResult::InvalidNumericClass;
+                            return ShaderCodeModuleParseResult::InvalidNumericClass;
                         requirement.numeric_class_mask = mask;
 
                         next = ReadToken(next, line_end, token, sizeof(token));
@@ -469,7 +469,7 @@ namespace hgl::graph::mtl
                         {
                             uint32 min_components = 0;
                             if (!ParseUnsignedInt(token, min_components))
-                                return GLSLCodeModuleParseResult::InvalidNumber;
+                                return ShaderCodeModuleParseResult::InvalidNumber;
                             requirement.min_component_count = uint8(min_components);
 
                             next = ReadToken(next, line_end, token, sizeof(token));
@@ -477,7 +477,7 @@ namespace hgl::graph::mtl
                             {
                                 uint32 max_components = 0;
                                 if (!ParseUnsignedInt(token, max_components))
-                                    return GLSLCodeModuleParseResult::InvalidNumber;
+                                    return ShaderCodeModuleParseResult::InvalidNumber;
                                 requirement.max_component_count = uint8(max_components);
                             }
                         }
@@ -489,21 +489,21 @@ namespace hgl::graph::mtl
                 {
                     const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
                     if (!next || !token[0])
-                        return GLSLCodeModuleParseResult::MissingDirectiveArgument;
+                        return ShaderCodeModuleParseResult::MissingDirectiveArgument;
 
-                    const GLSLCodeModuleSemantic semantic = ParseSemantic(token);
-                    if (semantic == GLSLCodeModuleSemantic::Unknown)
-                        return GLSLCodeModuleParseResult::InvalidSemantic;
+                    const ShaderCodeModuleSemantic semantic = ParseSemantic(token);
+                    if (semantic == ShaderCodeModuleSemantic::Unknown)
+                        return ShaderCodeModuleParseResult::InvalidSemantic;
                     out_data.semantic_provides.Add(semantic);
                 }
                 else if (std::strcmp(token, "uses") == 0)
                 {
                     const char *next = ReadToken(after_keyword, line_end, token, sizeof(token));
                     if (!next || !token[0])
-                        return GLSLCodeModuleParseResult::MissingDirectiveArgument;
+                        return ShaderCodeModuleParseResult::MissingDirectiveArgument;
 
                     const AnsiString dependency_name(token);
-                    GLSLCodeModuleDependency dependency{};
+                    ShaderCodeModuleDependency dependency{};
                     dependency.module_name = dependency_name.c_str();
 
                     out_data.pending_module_requirements.Add(dependency_name);
@@ -514,13 +514,13 @@ namespace hgl::graph::mtl
                     const char *next =
                         ReadToken(after_keyword, line_end, token, sizeof(token));
                     if (!next || !token[0])
-                        return GLSLCodeModuleParseResult::InvalidConflict;
+                        return ShaderCodeModuleParseResult::InvalidConflict;
 
                     out_data.pending_module_conflicts.Add(AnsiString(token));
                 }
                 else
                 {
-                    return GLSLCodeModuleParseResult::UnknownDirective;
+                    return ShaderCodeModuleParseResult::UnknownDirective;
                 }
             }
 
@@ -528,11 +528,11 @@ namespace hgl::graph::mtl
         }
 
         if (!saw_any_ulre)
-            return GLSLCodeModuleParseResult::Skipped;
+            return ShaderCodeModuleParseResult::Skipped;
 
         if (in_block)
-            return GLSLCodeModuleParseResult::MissingEnd;
+            return ShaderCodeModuleParseResult::MissingEnd;
 
-        return GLSLCodeModuleParseResult::OK;
+        return ShaderCodeModuleParseResult::OK;
     }
 }

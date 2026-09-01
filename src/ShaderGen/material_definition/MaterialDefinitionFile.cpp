@@ -401,11 +401,11 @@ namespace hgl::graph::mtl
             return true;
         }
 
-        bool ParseSemantic(const std::string &name, GLSLCodeModuleSemantic &out)
+        bool ParseSemantic(const std::string &name, ShaderCodeModuleSemantic &out)
         {
-            // T1：语义名字单一真源 GLSLCodeModule.h（GetGLSLCodeModuleSemanticName/
-            // ParseGLSLCodeModuleSemantic）——此处不再维护平行表。
-            return ParseGLSLCodeModuleSemantic(name.c_str(), out);
+            // T1：语义名字单一真源 ShaderCodeModule.h（GetShaderCodeModuleSemanticName/
+            // ParseShaderCodeModuleSemantic）——此处不再维护平行表。
+            return ParseShaderCodeModuleSemantic(name.c_str(), out);
         }
 
         bool ParseSSBOType(const std::string &name, SSBOType &out)
@@ -530,11 +530,11 @@ namespace hgl::graph::mtl
             {
                 if (!item.is_string())
                     return false;
-                GLSLCodeModuleSemantic semantic;
+                ShaderCodeModuleSemantic semantic;
                 if (!ParseSemantic(item.as_string(), semantic))
                     return false;
-                GLSLCodeModuleSemanticRequirement requirement;
-                requirement.source = GLSLCodeModuleCapabilitySource::ProducedSemantic;
+                ShaderCodeModuleSemanticRequirement requirement;
+                requirement.source = ShaderCodeModuleCapabilitySource::ProducedSemantic;
                 requirement.semantic = semantic;
                 out.definition.vertex_semantic_requirements.Add(requirement);
             }

@@ -6,7 +6,7 @@
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/graph/ShaderBufferSource.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
-#include<hgl/mtl/GLSLCodeModuleRegistry.h>
+#include<hgl/mtl/ShaderCodeModuleRegistry.h>
 #include<hgl/mtl/ShaderLibraryPath.h>
 #include<hgl/log/Log.h>
 #include<cstring>
@@ -30,7 +30,7 @@ namespace
         case VF_V2HF:
         case VF_V3HF:
         case VF_V4HF:
-            return static_cast<uint32>(GLSLCodeModuleNumericClass::Float);
+            return static_cast<uint32>(ShaderCodeModuleNumericClass::Float);
 
         case VF_V1UN8:
         case VF_V2UN8:
@@ -48,7 +48,7 @@ namespace
         case VF_V2SN16:
         case VF_V3SN16:
         case VF_V4SN16:
-            return static_cast<uint32>(GLSLCodeModuleNumericClass::Normalized);
+            return static_cast<uint32>(ShaderCodeModuleNumericClass::Normalized);
 
         case VF_V1I:
         case VF_V2I:
@@ -62,7 +62,7 @@ namespace
         case VF_V2I8:
         case VF_V3I8:
         case VF_V4I8:
-            return static_cast<uint32>(GLSLCodeModuleNumericClass::SignedInteger);
+            return static_cast<uint32>(ShaderCodeModuleNumericClass::SignedInteger);
 
         case VF_V1U:
         case VF_V2U:
@@ -76,7 +76,7 @@ namespace
         case VF_V2U16:
         case VF_V3U16:
         case VF_V4U16:
-            return static_cast<uint32>(GLSLCodeModuleNumericClass::UnsignedInteger);
+            return static_cast<uint32>(ShaderCodeModuleNumericClass::UnsignedInteger);
 
         // Packed formats: the packed bit is combined with the storage class the
         // decoder must expand (e.g. A2RGB10UN is both Normalized and Packed).
@@ -92,20 +92,20 @@ namespace
         case PF_A2RGB10SN:
         case PF_A2BGR10UN:
         case PF_A2BGR10SN:
-            return static_cast<uint32>(GLSLCodeModuleNumericClass::Normalized)
-                 | static_cast<uint32>(GLSLCodeModuleNumericClass::Packed);
+            return static_cast<uint32>(ShaderCodeModuleNumericClass::Normalized)
+                 | static_cast<uint32>(ShaderCodeModuleNumericClass::Packed);
 
         case PF_A2RGB10U:
         case PF_A2RGB10I:
         case PF_A2BGR10U:
         case PF_A2BGR10I:
-            return static_cast<uint32>(GLSLCodeModuleNumericClass::UnsignedInteger)
-                 | static_cast<uint32>(GLSLCodeModuleNumericClass::Packed);
+            return static_cast<uint32>(ShaderCodeModuleNumericClass::UnsignedInteger)
+                 | static_cast<uint32>(ShaderCodeModuleNumericClass::Packed);
 
         case PF_B10GR11UF:
         case PF_E5BGR9UF:
-            return static_cast<uint32>(GLSLCodeModuleNumericClass::Float)
-                 | static_cast<uint32>(GLSLCodeModuleNumericClass::Packed);
+            return static_cast<uint32>(ShaderCodeModuleNumericClass::Float)
+                 | static_cast<uint32>(ShaderCodeModuleNumericClass::Packed);
 
         default:
             return 0;
@@ -121,9 +121,9 @@ namespace
             return nullptr;
 
         const bool is_signed_integer = numeric_class
-            & uint32(GLSLCodeModuleNumericClass::SignedInteger);
+            & uint32(ShaderCodeModuleNumericClass::SignedInteger);
         const bool is_unsigned_integer = numeric_class
-            & uint32(GLSLCodeModuleNumericClass::UnsignedInteger);
+            & uint32(ShaderCodeModuleNumericClass::UnsignedInteger);
         if (component_count == 1)
             return is_signed_integer ? "int" : is_unsigned_integer ? "uint" : "float";
 
@@ -148,7 +148,7 @@ namespace
         const MaterialDefinitionBuildRequest &request,
         VkFormat &out_position_format,
         std::string &out_vertex_input_glsl,
-        GLSLCodeModuleResolutionResult &out_resolution)
+        ShaderCodeModuleResolutionResult &out_resolution)
     {
         switch (definition.vertex_provider_policy)
         {
@@ -164,7 +164,7 @@ namespace
 
         // SSBO 顶点输入：无模块能力匹配（能力解析系统已删）——顶点输入由
         // 下方 s1_* 模块选择完成，resolved 恒为 true。
-        out_resolution = GLSLCodeModuleResolutionResult{};
+        out_resolution = ShaderCodeModuleResolutionResult{};
         out_resolution.resolved = true;
 
         const GeometryVertexFormat &geometry = *request.geometry_vertex_format;
@@ -185,7 +185,7 @@ namespace
             {
                 const auto &requirement = definition.vertex_semantic_requirements[i];
                 const VertexSemantic semantic =
-                    GetVertexSemanticFromGLSLCodeModuleSemantic(requirement.semantic);
+                    GetVertexSemanticFromShaderCodeModuleSemantic(requirement.semantic);
                 switch (semantic)
                 {
                 case VertexSemantic::TexCoord: need_uv = true; break;
@@ -294,16 +294,16 @@ bool BuildResolvedMaterialVertexABI(
 {
     std::string vertex_input_glsl;
     VkFormat position_format = VK_FORMAT_UNDEFINED;
-    GLSLCodeModuleResolutionResult resolution;
+    ShaderCodeModuleResolutionResult resolution;
     if (!BuildResolvedVertexABI(definition, request, position_format,
                                 vertex_input_glsl, resolution))
         return false;
 
     out_abi.position_format = position_format;
     out_abi.provider_graph_hash =
-        GetGLSLCodeModuleProviderGraphHash(resolution);
+        GetShaderCodeModuleProviderGraphHash(resolution);
     out_abi.vertex_input_glsl = vertex_input_glsl.c_str();
-    if (!ComposeGLSLCodeModuleProviderGraph(resolution, out_abi.provider_glsl))
+    if (!ComposeShaderCodeModuleProviderGraph(resolution, out_abi.provider_glsl))
         return false;
     return true;
 }

@@ -6,7 +6,7 @@
 #include <hgl/common/RenderAssignDef.h>
 #include <hgl/common/ShaderStageDef.h>
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
-#include <hgl/mtl/ModuleResourceManifest.h>
+#include <hgl/mtl/ShaderCodeResourceManifest.h>
 #include <vector>
 #include "DescriptorBuilderCommon.h"
 
@@ -49,20 +49,20 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
     return descriptors;
 }
 
-inline bool BuildModuleResourceManifest(
+inline bool BuildShaderCodeResourceManifest(
     const MaterialDefinition &definition,
-    ModuleResourceManifest &manifest,
+    ShaderCodeResourceManifest &manifest,
     const char *const *provider_roots = nullptr,
     const uint32 provider_root_count = 0,
-    const GLSLCodeModuleRegistry *registry = nullptr)
+    const ShaderCodeModuleRegistry *registry = nullptr)
 {
-    return descriptor_builder_common::BuildDefinitionModuleResourceManifest(
+    return descriptor_builder_common::BuildDefinitionShaderCodeResourceManifest(
         definition, manifest, provider_roots, provider_root_count, registry);
 }
 
 inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
     const MaterialDefinition &definition,
-    ModuleResourceManifest &manifest,
+    ShaderCodeResourceManifest &manifest,
     const BuildDescriptorOptions &opt = {})
 {
     std::vector<SerializedDescriptorEntry> descriptors = BuildDescriptorsFromDefinition(definition, opt);
@@ -84,14 +84,14 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
             const auto &requirement = definition.vertex_semantic_requirements[i];
             switch (requirement.semantic)
             {
-            case GLSLCodeModuleSemantic::UV0: need_uv = true; break;
-            case GLSLCodeModuleSemantic::Normal:
-            case GLSLCodeModuleSemantic::Tangent:
-            case GLSLCodeModuleSemantic::Binormal: need_ntb = true; break;
-            case GLSLCodeModuleSemantic::Color: need_color = true; break;
-            case GLSLCodeModuleSemantic::Luminance: need_luminance = true; break;
-            case GLSLCodeModuleSemantic::TransformID: need_transform_id = true; break;
-            case GLSLCodeModuleSemantic::Size: need_size = true; break;
+            case ShaderCodeModuleSemantic::UV0: need_uv = true; break;
+            case ShaderCodeModuleSemantic::Normal:
+            case ShaderCodeModuleSemantic::Tangent:
+            case ShaderCodeModuleSemantic::Binormal: need_ntb = true; break;
+            case ShaderCodeModuleSemantic::Color: need_color = true; break;
+            case ShaderCodeModuleSemantic::Luminance: need_luminance = true; break;
+            case ShaderCodeModuleSemantic::TransformID: need_transform_id = true; break;
+            case ShaderCodeModuleSemantic::Size: need_size = true; break;
             default: break;
             }
         }
@@ -123,10 +123,10 @@ inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
 
 inline std::vector<SerializedDescriptorEntry> BuildDescriptorsFromDefinition(
     const MaterialDefinition &definition,
-    const ModuleResourceManifest &manifest,
+    const ShaderCodeResourceManifest &manifest,
     const BuildDescriptorOptions &opt = {})
 {
-    ModuleResourceManifest mutable_manifest = manifest;
+    ShaderCodeResourceManifest mutable_manifest = manifest;
     return BuildDescriptorsFromDefinition(definition, mutable_manifest, opt);
 }
 

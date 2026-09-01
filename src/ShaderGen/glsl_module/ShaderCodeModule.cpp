@@ -1,11 +1,11 @@
-﻿#include <hgl/mtl/GLSLCodeModule.h>
+﻿#include <hgl/mtl/ShaderCodeModule.h>
 
 #include <hgl/type/StrChar.h>
 
 namespace hgl::graph::mtl
 {
-    uint64 GetGLSLCodeModuleDefinitionHash(
-        const GLSLCodeModuleDefinition &definition) noexcept
+    uint64 GetShaderCodeModuleDefinitionHash(
+        const ShaderCodeModuleDefinition &definition) noexcept
     {
         hgl::hash::FNV1aHasher64 h;
 
@@ -42,7 +42,7 @@ namespace hgl::graph::mtl
         h << definition.dependency_count;
         for (uint32 i = 0; i < definition.dependency_count; ++i)
         {
-            const GLSLCodeModuleDependency &dependency =
+            const ShaderCodeModuleDependency &dependency =
                 definition.dependencies[i];
             h << dependency.module_name;
         }

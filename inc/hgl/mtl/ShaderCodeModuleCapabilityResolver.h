@@ -1,7 +1,7 @@
 ﻿#pragma once
 
-#include <hgl/mtl/GLSLCodeModule.h>
-#include <hgl/mtl/GLSLCodeModuleRegistry.h>
+#include <hgl/mtl/ShaderCodeModule.h>
+#include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/type/ValueArray.h>
 #include <vulkan/vulkan.h>
 #include <string>
@@ -14,15 +14,15 @@ namespace hgl::graph
 namespace hgl::graph::mtl
 {
     // A capability contributed by a single Geometry vertex attribute.
-    struct GLSLCodeModuleGeometryCapability
+    struct ShaderCodeModuleGeometryCapability
     {
-        GLSLCodeModuleSemantic semantic = GLSLCodeModuleSemantic::Unknown;
+        ShaderCodeModuleSemantic semantic = ShaderCodeModuleSemantic::Unknown;
         uint32 numeric_class_mask = 0;
         uint8 component_count = 0;
     };
 
-    inline bool operator==(const GLSLCodeModuleGeometryCapability &lhs,
-                           const GLSLCodeModuleGeometryCapability &rhs) noexcept
+    inline bool operator==(const ShaderCodeModuleGeometryCapability &lhs,
+                           const ShaderCodeModuleGeometryCapability &rhs) noexcept
     {
         return lhs.semantic == rhs.semantic
             && lhs.numeric_class_mask == rhs.numeric_class_mask
@@ -30,54 +30,54 @@ namespace hgl::graph::mtl
     }
 
     // One selected provider edge: which required semantic the provider satisfies.
-    struct GLSLCodeModuleProviderSelection
+    struct ShaderCodeModuleProviderSelection
     {
-        GLSLCodeModuleSemantic requirement = GLSLCodeModuleSemantic::Unknown;
-        const GLSLCodeModuleDefinition *provider = nullptr;
+        ShaderCodeModuleSemantic requirement = ShaderCodeModuleSemantic::Unknown;
+        const ShaderCodeModuleDefinition *provider = nullptr;
     };
 
     // ValueArray<T> instantiates its virtual Find() for every concrete T, which
     // requires an equality operator.
-    inline bool operator==(const GLSLCodeModuleProviderSelection &lhs,
-                           const GLSLCodeModuleProviderSelection &rhs) noexcept
+    inline bool operator==(const ShaderCodeModuleProviderSelection &lhs,
+                           const ShaderCodeModuleProviderSelection &rhs) noexcept
     {
         return lhs.requirement == rhs.requirement && lhs.provider == rhs.provider;
     }
 
     // A candidate provider rejected for a required semantic, with the reason.
-    struct GLSLCodeModuleRejectDiagnostic
+    struct ShaderCodeModuleRejectDiagnostic
     {
-        GLSLCodeModuleSemantic requirement = GLSLCodeModuleSemantic::Unknown;
-        const GLSLCodeModuleDefinition *candidate = nullptr;
+        ShaderCodeModuleSemantic requirement = ShaderCodeModuleSemantic::Unknown;
+        const ShaderCodeModuleDefinition *candidate = nullptr;
         const char *reason = nullptr;
     };
 
-    inline bool operator==(const GLSLCodeModuleRejectDiagnostic &lhs,
-                           const GLSLCodeModuleRejectDiagnostic &rhs) noexcept
+    inline bool operator==(const ShaderCodeModuleRejectDiagnostic &lhs,
+                           const ShaderCodeModuleRejectDiagnostic &rhs) noexcept
     {
         return lhs.requirement == rhs.requirement && lhs.candidate == rhs.candidate;
     }
 
-    struct GLSLCodeModuleResolutionRequest
+    struct ShaderCodeModuleResolutionRequest
     {
         // Surface requirements to satisfy (ProducedSemantic drives provider
         // selection; GeometryAttribute/Resource are validated directly).
-        const GLSLCodeModuleSemanticRequirement *requirements = nullptr;
+        const ShaderCodeModuleSemanticRequirement *requirements = nullptr;
         uint32 requirement_count = 0;
 
-        const GLSLCodeModuleGeometryCapability *geometry_capabilities = nullptr;
+        const ShaderCodeModuleGeometryCapability *geometry_capabilities = nullptr;
         uint32 geometry_capability_count = 0;
 
-        const GLSLCodeModuleSemantic *resources = nullptr;
+        const ShaderCodeModuleSemantic *resources = nullptr;
         uint32 resource_count = 0;
 
     };
 
-    struct GLSLCodeModuleResolutionResult
+    struct ShaderCodeModuleResolutionResult
     {
         bool resolved = false;
-        ValueArray<GLSLCodeModuleProviderSelection> selections;
-        ValueArray<GLSLCodeModuleRejectDiagnostic> diagnostics;
+        ValueArray<ShaderCodeModuleProviderSelection> selections;
+        ValueArray<ShaderCodeModuleRejectDiagnostic> diagnostics;
     };
 
     /**
@@ -85,14 +85,14 @@ namespace hgl::graph::mtl
      * Selection order is canonicalized by requirement semantic and provider
      * identity, so equivalent graphs produce the same digest.
      */
-    uint64 GetGLSLCodeModuleProviderGraphHash(
-        const GLSLCodeModuleResolutionResult &result) noexcept;
+    uint64 GetShaderCodeModuleProviderGraphHash(
+        const ShaderCodeModuleResolutionResult &result) noexcept;
 
     /**
      * Compose selected provider source in resolver dependency order.
      * Providers selected for multiple semantics are emitted once.
      */
-    bool ComposeGLSLCodeModuleProviderGraph(
-        const GLSLCodeModuleResolutionResult &result,
+    bool ComposeShaderCodeModuleProviderGraph(
+        const ShaderCodeModuleResolutionResult &result,
         std::string &out_glsl);
 }

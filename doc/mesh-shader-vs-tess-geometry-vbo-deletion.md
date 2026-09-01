@@ -143,7 +143,7 @@ f1272b106 删除VertexInputAttribute/VertexInputAttributeArray/VertexInputConfig
 
 ## 9. 遗留/注意
 
-- `GLSLCodeModuleFile.cpp` 的 stage 字符串解析（`// @ulre stage Vertex` 等）保留——
+- `ShaderCodeModuleFile.cpp` 的 stage 字符串解析（`// @ulre stage Vertex` 等）保留——
   通用模块元数据工具，非引擎顶点路径；shader 库当前无 `@ulre stage` 声明
 - `glsl2spv.cpp` 工具自己的 `VK_SHADER_STAGE_ALL_GRAPHICS = 0x1F` 枚举保留（编译器工具枚举）
 - `VertexInputMode` 枚举（VertexShaderNodeConfig.h）保留——SSBO 顶点数据读取模式

@@ -20,7 +20,7 @@
 #include <hgl/mtl/MeshShaderLimits.h>
 #include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
-#include <hgl/mtl/GLSLCodeModuleCapabilityResolver.h>
+#include <hgl/mtl/ShaderCodeModuleCapabilityResolver.h>
 #include "compile/MaterialShaderEmitter.h"
 #include "builder/DefinitionDescriptorBuilder.h"
 #include "meshgen/MeshShaderAssembler.h"
@@ -103,14 +103,14 @@ namespace hgl::graph::mtl
             }
         }
 
-        const GLSLCodeModuleDefinition *FindSelectedProviderModule(
-            const GLSLCodeModuleRegistry &registry,
+        const ShaderCodeModuleDefinition *FindSelectedProviderModule(
+            const ShaderCodeModuleRegistry &registry,
             const char *path)
         {
             if (!path || !path[0])
                 return nullptr;
 
-            const GLSLCodeModuleDefinition *definition = registry.FindByName(path);
+            const ShaderCodeModuleDefinition *definition = registry.FindByName(path);
             if (definition)
                 return definition;
 
@@ -211,7 +211,7 @@ namespace hgl::graph::mtl
                     const auto &requirement =
                         definition.vertex_semantic_requirements[i];
                     const VertexSemantic semantic =
-                        GetVertexSemanticFromGLSLCodeModuleSemantic(
+                        GetVertexSemanticFromShaderCodeModuleSemantic(
                             requirement.semantic);
                     if (IsVertexSemanticRequiredForVarying(
                             semantic, plan.effective_vertex_varying))
@@ -291,13 +291,13 @@ namespace hgl::graph::mtl
             const MaterialDefinition &definition,
             GenericMaterialBuildPlan &plan)
         {
-            plan.manifest = ModuleResourceManifest{};
+            plan.manifest = ShaderCodeResourceManifest{};
             plan.manifest_definition = definition;
             if (plan.depth_purpose)
                 plan.manifest_definition.code_module_requirements.clear();
             const char *provider_root_names[2]{};
             uint32 provider_root_count = 0;
-            const GLSLCodeModuleRegistry &module_registry = GetGLSLCodeModuleRegistry();
+            const ShaderCodeModuleRegistry &module_registry = GetShaderCodeModuleRegistry();
             const char *selected_provider_paths[] =
             {
                 definition.fragment_material_source_module,
@@ -312,7 +312,7 @@ namespace hgl::graph::mtl
                     break;
                 if (!provider_path || !provider_path[0])
                     continue;
-                const GLSLCodeModuleDefinition *provider =
+                const ShaderCodeModuleDefinition *provider =
                     FindSelectedProviderModule(module_registry, provider_path);
                 if (!provider)
                 {
@@ -323,7 +323,7 @@ namespace hgl::graph::mtl
                 if (provider_root_count < 2)
                     provider_root_names[provider_root_count++] = provider->name;
             }
-            if (!BuildModuleResourceManifest(
+            if (!BuildShaderCodeResourceManifest(
                     plan.manifest_definition, plan.manifest,
                     provider_root_names, provider_root_count, &module_registry))
             {
@@ -401,7 +401,7 @@ namespace hgl::graph::mtl
             {
                 GLogError("[ShaderGen] Generic material resource contract failed: name=%s error=%s",
                           definition.definition_name.c_str(),
-                          GetModuleResourceManifestErrorName(plan.manifest.error));
+                          GetShaderCodeResourceManifestErrorName(plan.manifest.error));
                 return false;
             }
             if (!BuildDescriptorContract(

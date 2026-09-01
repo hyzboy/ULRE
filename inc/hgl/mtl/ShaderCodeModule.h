@@ -13,12 +13,12 @@ namespace hgl::graph::mtl
     // fragment, or shared shader generation paths.
     //
     // Module identity is the unique `name` string (registered by name in the
-    // GLSLCodeModuleRegistry; the contract layer derives stable IDs from it as
+    // ShaderCodeModuleRegistry; the contract layer derives stable IDs from it as
     // FNV1a(name)). There is deliberately no numeric ID track: file-backed
     // modules are discovered by directory scan and dependencies/conflicts
     // reference targets by name, resolved against the registry.
 
-    enum class GLSLCodeModuleKind : uint8
+    enum class ShaderCodeModuleKind : uint8
     {
         Shared = 0,
         Surface,
@@ -28,7 +28,7 @@ namespace hgl::graph::mtl
         FragmentShader
     };
 
-    enum class GLSLCodeModuleSemantic : uint16
+    enum class ShaderCodeModuleSemantic : uint16
     {
         Unknown = 0,
         Position,
@@ -53,74 +53,74 @@ namespace hgl::graph::mtl
     // 全部模块 0 引用，名表 switch 同步收敛）。
 
     // ── 语义名字注册表（单一真源，T1）───────────────────────────────
-    // GLSLCodeModuleSemantic 的字符串名字只在本处定义一次：
-    //   GetGLSLCodeModuleSemanticName：枚举 → 名字（switch）
-    //   ParseGLSLCodeModuleSemantic：名字 → 枚举（线性查表，跳过 Unknown）
+    // ShaderCodeModuleSemantic 的字符串名字只在本处定义一次：
+    //   GetShaderCodeModuleSemanticName：枚举 → 名字（switch）
+    //   ParseShaderCodeModuleSemantic：名字 → 枚举（线性查表，跳过 Unknown）
     // 新增语义只需改枚举 + 本 switch 一处。
-    inline constexpr uint32 GLSLCodeModuleSemanticCount =
-        static_cast<uint32>(GLSLCodeModuleSemantic::Size) + 1;
+    inline constexpr uint32 ShaderCodeModuleSemanticCount =
+        static_cast<uint32>(ShaderCodeModuleSemantic::Size) + 1;
 
-    inline const char *GetGLSLCodeModuleSemanticName(
-        const GLSLCodeModuleSemantic semantic) noexcept
+    inline const char *GetShaderCodeModuleSemanticName(
+        const ShaderCodeModuleSemantic semantic) noexcept
     {
         switch (semantic)
         {
-        case GLSLCodeModuleSemantic::Unknown:       return "Unknown";
-        case GLSLCodeModuleSemantic::Position:      return "Position";
-        case GLSLCodeModuleSemantic::UV0:           return "UV0";
-        case GLSLCodeModuleSemantic::Color:         return "Color";
-        case GLSLCodeModuleSemantic::Normal:        return "Normal";
-        case GLSLCodeModuleSemantic::Tangent:       return "Tangent";
-        case GLSLCodeModuleSemantic::Binormal:      return "Binormal";
-        case GLSLCodeModuleSemantic::WorldPosition: return "WorldPosition";
-        case GLSLCodeModuleSemantic::WorldNormal:   return "WorldNormal";
-        case GLSLCodeModuleSemantic::WorldTangent:  return "WorldTangent";
-        case GLSLCodeModuleSemantic::WorldBinormal: return "WorldBinormal";
-        case GLSLCodeModuleSemantic::Luminance:     return "Luminance";
-        case GLSLCodeModuleSemantic::Camera:        return "Camera";
-        case GLSLCodeModuleSemantic::Viewport:      return "Viewport";
-        case GLSLCodeModuleSemantic::SkyLight:      return "SkyLight";
-        case GLSLCodeModuleSemantic::MaterialData:  return "MaterialData";
-        case GLSLCodeModuleSemantic::TransformID:   return "TransformID";
-        case GLSLCodeModuleSemantic::Size:          return "Size";
+        case ShaderCodeModuleSemantic::Unknown:       return "Unknown";
+        case ShaderCodeModuleSemantic::Position:      return "Position";
+        case ShaderCodeModuleSemantic::UV0:           return "UV0";
+        case ShaderCodeModuleSemantic::Color:         return "Color";
+        case ShaderCodeModuleSemantic::Normal:        return "Normal";
+        case ShaderCodeModuleSemantic::Tangent:       return "Tangent";
+        case ShaderCodeModuleSemantic::Binormal:      return "Binormal";
+        case ShaderCodeModuleSemantic::WorldPosition: return "WorldPosition";
+        case ShaderCodeModuleSemantic::WorldNormal:   return "WorldNormal";
+        case ShaderCodeModuleSemantic::WorldTangent:  return "WorldTangent";
+        case ShaderCodeModuleSemantic::WorldBinormal: return "WorldBinormal";
+        case ShaderCodeModuleSemantic::Luminance:     return "Luminance";
+        case ShaderCodeModuleSemantic::Camera:        return "Camera";
+        case ShaderCodeModuleSemantic::Viewport:      return "Viewport";
+        case ShaderCodeModuleSemantic::SkyLight:      return "SkyLight";
+        case ShaderCodeModuleSemantic::MaterialData:  return "MaterialData";
+        case ShaderCodeModuleSemantic::TransformID:   return "TransformID";
+        case ShaderCodeModuleSemantic::Size:          return "Size";
         default:                                    return "Unknown";
         }
     }
 
-    inline bool ParseGLSLCodeModuleSemantic(
+    inline bool ParseShaderCodeModuleSemantic(
         const char *name,
-        GLSLCodeModuleSemantic &out_semantic) noexcept
+        ShaderCodeModuleSemantic &out_semantic) noexcept
     {
         if (!name || !name[0])
         {
-            out_semantic = GLSLCodeModuleSemantic::Unknown;
+            out_semantic = ShaderCodeModuleSemantic::Unknown;
             return false;
         }
 
         // 跳过 Unknown（旧解析表均不含它——"Unknown" 解析失败保持旧行为）
-        for (uint32 i = 1; i < GLSLCodeModuleSemanticCount; ++i)
+        for (uint32 i = 1; i < ShaderCodeModuleSemanticCount; ++i)
         {
-            const GLSLCodeModuleSemantic semantic =
-                static_cast<GLSLCodeModuleSemantic>(i);
-            if (hgl::strcmp(name, GetGLSLCodeModuleSemanticName(semantic)) == 0)
+            const ShaderCodeModuleSemantic semantic =
+                static_cast<ShaderCodeModuleSemantic>(i);
+            if (hgl::strcmp(name, GetShaderCodeModuleSemanticName(semantic)) == 0)
             {
                 out_semantic = semantic;
                 return true;
             }
         }
 
-        out_semantic = GLSLCodeModuleSemantic::Unknown;
+        out_semantic = ShaderCodeModuleSemantic::Unknown;
         return false;
     }
 
-    enum class GLSLCodeModuleCapabilitySource : uint8
+    enum class ShaderCodeModuleCapabilitySource : uint8
     {
         GeometryAttribute = 0,
         Resource,
         ProducedSemantic
     };
 
-    enum class GLSLCodeModuleNumericClass : uint32
+    enum class ShaderCodeModuleNumericClass : uint32
     {
         None = 0,
         Float = 1u << 0,
@@ -132,13 +132,13 @@ namespace hgl::graph::mtl
     };
 
 
-    struct GLSLCodeModuleDependency
+    struct ShaderCodeModuleDependency
     {
         const char *module_name = nullptr;      // 依赖目标模块名（注册表唯一键）
     };
 
-    inline bool operator==(const GLSLCodeModuleDependency &lhs,
-                           const GLSLCodeModuleDependency &rhs) noexcept
+    inline bool operator==(const ShaderCodeModuleDependency &lhs,
+                           const ShaderCodeModuleDependency &rhs) noexcept
     {
         const bool same_name = lhs.module_name == rhs.module_name
             || (lhs.module_name && rhs.module_name
@@ -146,19 +146,19 @@ namespace hgl::graph::mtl
         return same_name;
     }
 
-    struct GLSLCodeModuleSemanticRequirement
+    struct ShaderCodeModuleSemanticRequirement
     {
-        GLSLCodeModuleCapabilitySource source = GLSLCodeModuleCapabilitySource::GeometryAttribute;
-        GLSLCodeModuleSemantic semantic = GLSLCodeModuleSemantic::Unknown;
-        uint32 numeric_class_mask = static_cast<uint32>(GLSLCodeModuleNumericClass::Any);
+        ShaderCodeModuleCapabilitySource source = ShaderCodeModuleCapabilitySource::GeometryAttribute;
+        ShaderCodeModuleSemantic semantic = ShaderCodeModuleSemantic::Unknown;
+        uint32 numeric_class_mask = static_cast<uint32>(ShaderCodeModuleNumericClass::Any);
         uint8 min_component_count = 0;
         uint8 max_component_count = 0;
     };
 
     // ValueArray<T> instantiates its virtual Find() for every concrete T, which
     // requires an equality operator.
-    inline bool operator==(const GLSLCodeModuleSemanticRequirement &lhs,
-                           const GLSLCodeModuleSemanticRequirement &rhs) noexcept
+    inline bool operator==(const ShaderCodeModuleSemanticRequirement &lhs,
+                           const ShaderCodeModuleSemanticRequirement &rhs) noexcept
     {
         return lhs.source == rhs.source
             && lhs.semantic == rhs.semantic
@@ -173,7 +173,7 @@ namespace hgl::graph::mtl
     // only on the semantic fields.
     inline hgl::hash::FNV1aHasher64 &operator<<(
         hgl::hash::FNV1aHasher64 &h,
-        const GLSLCodeModuleSemanticRequirement &v) noexcept
+        const ShaderCodeModuleSemanticRequirement &v) noexcept
     {
         h << v.source
           << v.semantic
@@ -183,7 +183,7 @@ namespace hgl::graph::mtl
         return h;
     }
 
-    struct GLSLCodeModuleSSBORequirement
+    struct ShaderCodeModuleSSBORequirement
     {
         const char *name = nullptr;
         SSBOType ssbo_type = SSBOType::UserDefined;
@@ -193,8 +193,8 @@ namespace hgl::graph::mtl
         bool allow_fallback = false;
     };
 
-    inline bool operator==(const GLSLCodeModuleSSBORequirement &lhs,
-                           const GLSLCodeModuleSSBORequirement &rhs) noexcept
+    inline bool operator==(const ShaderCodeModuleSSBORequirement &lhs,
+                           const ShaderCodeModuleSSBORequirement &rhs) noexcept
     {
         const bool same_name = lhs.name == rhs.name
             || (lhs.name && rhs.name && hgl::strcmp(lhs.name, rhs.name) == 0);
@@ -206,7 +206,7 @@ namespace hgl::graph::mtl
             && lhs.allow_fallback == rhs.allow_fallback;
     }
 
-    struct GLSLCodeModuleTextureLayerRequirement
+    struct ShaderCodeModuleTextureLayerRequirement
     {
         TextureSlot slot = TextureSlot::Custom0;
         uint32 stage_flags = 0;
@@ -214,8 +214,8 @@ namespace hgl::graph::mtl
         bool allow_fallback = false;
     };
 
-    inline bool operator==(const GLSLCodeModuleTextureLayerRequirement &lhs,
-                           const GLSLCodeModuleTextureLayerRequirement &rhs) noexcept
+    inline bool operator==(const ShaderCodeModuleTextureLayerRequirement &lhs,
+                           const ShaderCodeModuleTextureLayerRequirement &rhs) noexcept
     {
         return lhs.slot == rhs.slot
             && lhs.stage_flags == rhs.stage_flags
@@ -225,7 +225,7 @@ namespace hgl::graph::mtl
 
     inline hgl::hash::FNV1aHasher64 &operator<<(
         hgl::hash::FNV1aHasher64 &h,
-        const GLSLCodeModuleTextureLayerRequirement &v) noexcept
+        const ShaderCodeModuleTextureLayerRequirement &v) noexcept
     {
         h << v.slot
           << v.stage_flags
@@ -234,28 +234,28 @@ namespace hgl::graph::mtl
         return h;
     }
 
-    struct GLSLCodeModuleDefinition
+    struct ShaderCodeModuleDefinition
     {
         const char *name = nullptr;
         const char *glsl_code = nullptr;
 
-        const GLSLCodeModuleSSBORequirement *ssbo_requirements = nullptr;
+        const ShaderCodeModuleSSBORequirement *ssbo_requirements = nullptr;
         uint32 ssbo_requirement_count = 0;
 
         // Capability metadata for file-backed/provider modules. Existing
         // all real modules carry kind/semantic fields.
-        GLSLCodeModuleKind kind = GLSLCodeModuleKind::Shared;
-        const GLSLCodeModuleSemanticRequirement *semantic_requirements = nullptr;
+        ShaderCodeModuleKind kind = ShaderCodeModuleKind::Shared;
+        const ShaderCodeModuleSemanticRequirement *semantic_requirements = nullptr;
         uint32 semantic_requirement_count = 0;
-        const GLSLCodeModuleSemantic *semantic_provides = nullptr;
+        const ShaderCodeModuleSemantic *semantic_provides = nullptr;
         uint32 semantic_provide_count = 0;
         int32 priority = 0;
         uint32 flags = 0;
 
-        const GLSLCodeModuleTextureLayerRequirement *texture_layer_requirements = nullptr;
+        const ShaderCodeModuleTextureLayerRequirement *texture_layer_requirements = nullptr;
         uint32 texture_layer_requirement_count = 0;
 
-        const GLSLCodeModuleDependency *dependencies = nullptr;
+        const ShaderCodeModuleDependency *dependencies = nullptr;
         uint32 dependency_count = 0;
 
         // Names of mutually exclusive modules. The registry resolves them at
@@ -264,10 +264,10 @@ namespace hgl::graph::mtl
         uint32 module_conflict_count = 0;
     };
 
-    uint64 GetGLSLCodeModuleDefinitionHash(
-        const GLSLCodeModuleDefinition &definition) noexcept;
+    uint64 GetShaderCodeModuleDefinitionHash(
+        const ShaderCodeModuleDefinition &definition) noexcept;
 
-    inline bool IsValidGLSLCodeModuleDefinition(const GLSLCodeModuleDefinition &definition) noexcept
+    inline bool IsValidShaderCodeModuleDefinition(const ShaderCodeModuleDefinition &definition) noexcept
     {
         if (!definition.name || !*definition.name || !definition.glsl_code)
             return false;
@@ -287,7 +287,7 @@ namespace hgl::graph::mtl
         for (uint32 i = 0; i < definition.semantic_requirement_count; ++i)
         {
             const auto &requirement = definition.semantic_requirements[i];
-            if (requirement.semantic == GLSLCodeModuleSemantic::Unknown
+            if (requirement.semantic == ShaderCodeModuleSemantic::Unknown
              || requirement.numeric_class_mask == 0
              || (requirement.max_component_count != 0
               && requirement.min_component_count > requirement.max_component_count))

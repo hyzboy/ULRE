@@ -3,7 +3,7 @@
 #include <hgl/mtl/SerializedDescriptorEntry.h>
 #include <hgl/mtl/DescriptorResourceCatalog.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
-#include <hgl/mtl/ModuleResourceManifest.h>
+#include <hgl/mtl/ShaderCodeResourceManifest.h>
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/util/hash/FNV1a.h>
@@ -310,7 +310,7 @@ inline bool MergeSSBODescriptor(
 
 inline bool PushManifestSSBO(
     std::vector<SerializedDescriptorEntry> &v,
-    const GLSLCodeModuleSSBORequirement &ssbo)
+    const ShaderCodeModuleSSBORequirement &ssbo)
 {
     if (!ssbo.name || !*ssbo.name)
         return false;
@@ -351,14 +351,14 @@ inline bool PushManifestSSBO(
 
 inline bool AppendManifestSSBODescriptors(
     std::vector<SerializedDescriptorEntry> &v,
-    ModuleResourceManifest &manifest)
+    ShaderCodeResourceManifest &manifest)
 {
     for (uint32 i = 0; i < manifest.ssbo_count; ++i)
     {
         if (PushManifestSSBO(v, manifest.ssbos[i]))
             continue;
 
-        manifest.error = ModuleResourceManifestError::ResourceConflict;
+        manifest.error = ShaderCodeResourceManifestError::ResourceConflict;
         return false;
     }
 
@@ -367,7 +367,7 @@ inline bool AppendManifestSSBODescriptors(
 
 inline bool AppendManifestTextureLayerDescriptors(
     std::vector<SerializedDescriptorEntry> &v,
-    ModuleResourceManifest &manifest)
+    ShaderCodeResourceManifest &manifest)
 {
     for (uint32 i = 0; i < manifest.texture_layer_count; ++i)
     {
@@ -384,7 +384,7 @@ inline bool AppendManifestTextureLayerDescriptors(
         entry.allow_fallback = layer.allow_fallback;
         if (!MergeSSBODescriptor(v, entry))
         {
-            manifest.error = ModuleResourceManifestError::ResourceConflict;
+            manifest.error = ShaderCodeResourceManifestError::ResourceConflict;
             return false;
         }
     }
@@ -418,18 +418,18 @@ inline void EnsureMaterialPrivateDataIndexTable(
         PushMaterialPrivateDataIndexRows(v, stage_flags);
 }
 
-inline bool BuildDefinitionModuleResourceManifest(
+inline bool BuildDefinitionShaderCodeResourceManifest(
     const MaterialDefinition &definition,
-    ModuleResourceManifest &manifest,
+    ShaderCodeResourceManifest &manifest,
     const char *const *extra_roots = nullptr,
     const uint32 extra_root_count = 0,
-    const GLSLCodeModuleRegistry *registry = nullptr)
+    const ShaderCodeModuleRegistry *registry = nullptr)
 {
-    const char *roots[MaxModuleResourceManifestCodeModules]{};
+    const char *roots[MaxShaderCodeResourceManifestCodeModules]{};
     uint32 root_count = 0;
     for (const auto &name : definition.code_module_requirements)
     {
-        if (root_count >= MaxModuleResourceManifestCodeModules)
+        if (root_count >= MaxShaderCodeResourceManifestCodeModules)
             return false;
         roots[root_count++] = name.c_str();
     }
@@ -438,12 +438,12 @@ inline bool BuildDefinitionModuleResourceManifest(
         return false;
     for (uint32 i = 0; i < extra_root_count; ++i)
     {
-        if (root_count >= MaxModuleResourceManifestCodeModules)
+        if (root_count >= MaxShaderCodeResourceManifestCodeModules)
             return false;
         roots[root_count++] = extra_roots[i];
     }
 
-    return BuildModuleResourceManifest(roots, root_count, manifest, registry);
+    return BuildShaderCodeResourceManifest(roots, root_count, manifest, registry);
 }
 
 } // namespace hgl::graph::mtl::descriptor_builder_common

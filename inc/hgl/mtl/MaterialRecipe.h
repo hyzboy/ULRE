@@ -7,7 +7,7 @@
 #include <hgl/mtl/DescriptorSemantic.h>
 #include <hgl/common/VertexAttribDef.h>
 #include <hgl/vk/VK.h>
-#include <hgl/mtl/GLSLCodeModule.h>
+#include <hgl/mtl/ShaderCodeModule.h>
 #include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/type/ValueArray.h>
 #include <hgl/mtl/ShaderLinkSpec.h>
@@ -126,46 +126,46 @@ namespace hgl::graph::mtl
         AllowDerived
     };
 
-    inline GLSLCodeModuleSemantic GetGLSLCodeModuleSemanticFromVertexSemantic(
+    inline ShaderCodeModuleSemantic GetShaderCodeModuleSemanticFromVertexSemantic(
         const VertexSemantic semantic) noexcept
     {
         switch (semantic)
         {
-        case VertexSemantic::Position:  return GLSLCodeModuleSemantic::Position;
-        case VertexSemantic::Normal:    return GLSLCodeModuleSemantic::Normal;
-        case VertexSemantic::Tangent:   return GLSLCodeModuleSemantic::Tangent;
-        case VertexSemantic::Bitangent: return GLSLCodeModuleSemantic::Binormal;
-        case VertexSemantic::Color:     return GLSLCodeModuleSemantic::Color;
-        case VertexSemantic::Luminance: return GLSLCodeModuleSemantic::Luminance;
-        case VertexSemantic::TexCoord:  return GLSLCodeModuleSemantic::UV0;
-        case VertexSemantic::TransformID: return GLSLCodeModuleSemantic::TransformID;
-        default:                        return GLSLCodeModuleSemantic::Unknown;
+        case VertexSemantic::Position:  return ShaderCodeModuleSemantic::Position;
+        case VertexSemantic::Normal:    return ShaderCodeModuleSemantic::Normal;
+        case VertexSemantic::Tangent:   return ShaderCodeModuleSemantic::Tangent;
+        case VertexSemantic::Bitangent: return ShaderCodeModuleSemantic::Binormal;
+        case VertexSemantic::Color:     return ShaderCodeModuleSemantic::Color;
+        case VertexSemantic::Luminance: return ShaderCodeModuleSemantic::Luminance;
+        case VertexSemantic::TexCoord:  return ShaderCodeModuleSemantic::UV0;
+        case VertexSemantic::TransformID: return ShaderCodeModuleSemantic::TransformID;
+        default:                        return ShaderCodeModuleSemantic::Unknown;
         }
     }
 
-    inline GLSLCodeModuleSemanticRequirement MakeMaterialVertexSemanticRequirement(
+    inline ShaderCodeModuleSemanticRequirement MakeMaterialVertexSemanticRequirement(
         const VertexSemantic semantic) noexcept
     {
-        GLSLCodeModuleSemanticRequirement requirement;
-        requirement.source = GLSLCodeModuleCapabilitySource::ProducedSemantic;
-        requirement.semantic = GetGLSLCodeModuleSemanticFromVertexSemantic(semantic);
+        ShaderCodeModuleSemanticRequirement requirement;
+        requirement.source = ShaderCodeModuleCapabilitySource::ProducedSemantic;
+        requirement.semantic = GetShaderCodeModuleSemanticFromVertexSemantic(semantic);
         return requirement;
     }
 
-    inline VertexSemantic GetVertexSemanticFromGLSLCodeModuleSemantic(
-        const GLSLCodeModuleSemantic semantic) noexcept
+    inline VertexSemantic GetVertexSemanticFromShaderCodeModuleSemantic(
+        const ShaderCodeModuleSemantic semantic) noexcept
     {
         switch (semantic)
         {
-        case GLSLCodeModuleSemantic::Position:  return VertexSemantic::Position;
-        case GLSLCodeModuleSemantic::Normal:    return VertexSemantic::Normal;
-        case GLSLCodeModuleSemantic::Tangent:   return VertexSemantic::Tangent;
-        case GLSLCodeModuleSemantic::Binormal:  return VertexSemantic::Bitangent;
-        case GLSLCodeModuleSemantic::Color:     return VertexSemantic::Color;
-        case GLSLCodeModuleSemantic::Luminance: return VertexSemantic::Luminance;
-        case GLSLCodeModuleSemantic::UV0:       return VertexSemantic::TexCoord;
-        case GLSLCodeModuleSemantic::TransformID: return VertexSemantic::TransformID;
-        case GLSLCodeModuleSemantic::Size:        return VertexSemantic::Size;
+        case ShaderCodeModuleSemantic::Position:  return VertexSemantic::Position;
+        case ShaderCodeModuleSemantic::Normal:    return VertexSemantic::Normal;
+        case ShaderCodeModuleSemantic::Tangent:   return VertexSemantic::Tangent;
+        case ShaderCodeModuleSemantic::Binormal:  return VertexSemantic::Bitangent;
+        case ShaderCodeModuleSemantic::Color:     return VertexSemantic::Color;
+        case ShaderCodeModuleSemantic::Luminance: return VertexSemantic::Luminance;
+        case ShaderCodeModuleSemantic::UV0:       return VertexSemantic::TexCoord;
+        case ShaderCodeModuleSemantic::TransformID: return VertexSemantic::TransformID;
+        case ShaderCodeModuleSemantic::Size:        return VertexSemantic::Size;
         default:                                return VertexSemantic::Unknown;
         }
     }
@@ -238,7 +238,7 @@ namespace hgl::graph::mtl
         // file-backed definitions. The generator must not infer this from
         // the material name.
         //
-        ValueArray<GLSLCodeModuleSemanticRequirement> vertex_semantic_requirements;
+        ValueArray<ShaderCodeModuleSemanticRequirement> vertex_semantic_requirements;
         MaterialVertexProviderPolicy vertex_provider_policy = MaterialVertexProviderPolicy::Auto;
         // Canonical fragment assembly input.
         const char *fragment_source = nullptr;
@@ -270,7 +270,7 @@ namespace hgl::graph::mtl
 
     inline void ConfigureMaterialVertexSemanticContract(
         MaterialDefinition &definition,
-        const GLSLCodeModuleSemanticRequirement *requirements,
+        const ShaderCodeModuleSemanticRequirement *requirements,
         const uint32 requirement_count,
         const MaterialVertexProviderPolicy provider_policy =
             MaterialVertexProviderPolicy::Auto)

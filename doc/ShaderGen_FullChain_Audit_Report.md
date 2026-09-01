@@ -75,7 +75,7 @@
 22. ✅ **L2 N2/N3 三份哈希**——已文档化语义边界 + 错误码修正（88d27779d；计算本就单源）
 23. ⏭️→**B11** **L1 四结构重叠**——评估：现存三形态互补非重叠（报告基于已清理旧代码）；概念层 MaterialBindingContract vs DescriptorContract 可再查
 24. ⏭️→**B3** **L1 DescriptorSemantic/UBODescriptorSemantic 双枚举**——未做（UBO 解析链已删（c541f4781）；哈希敏感）
-25. ⏭️→**B2** **L1 Schema/Manifest 命名**——未做（Manifest→ModuleResourceManifest + 目录/命名空间错位 inc/hgl/graph/glsl 但 namespace mtl）
+25. ⏭️→**B2** **L1 Schema/Manifest 命名**——未做（Manifest→ShaderCodeResourceManifest + 目录/命名空间错位 inc/hgl/graph/glsl 但 namespace mtl）
 26. ⏭️→**B1** **L4 N2 Binormal→Bitangent**——未做（哈希敏感：语义名进哈希，需全链一次性替换+零漂移验证）
 27. ⏭️→**B4** **L4 S6/S10/S4 coverage 数据化**——未做（声明式裁剪：S6 契约数据化 + S10 输出白名单 + S4 depth 布尔提显式相位）
 28. ⏭️ **L1 双套顶点构造入口**——未做（顶点侧，随 VBO 废弃——保持）

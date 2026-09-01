@@ -11,15 +11,17 @@
 ///     不得读取全局状态、不得改 ctx（AssembleFinalGLSL 例外：终点写入 SetFinalGLSL）。
 
 #include <hgl/mtl/MaterialShaderCompiler.h>
-#include <hgl/mtl/ModuleResourceManifest.h>
+#include <hgl/mtl/ShaderCodeResourceManifest.h>
 #include <hgl/mtl/ShaderBuildContext.h>
+#include <hgl/mtl/ShaderDocument.h>
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
 #include <string>
 
 namespace hgl::graph::mtl
 {
-    /// 模块代码拼接（manifest 中登记的 GLSLCodeModule 按序拼接）
-    std::string BuildCodeModuleGLSL(const ModuleResourceManifest *manifest);
+    /// 模块代码拼接（manifest 中登记的 ShaderCodeModule 按序拼接）
+    std::string BuildCodeModuleGLSL(const ShaderCodeResourceManifest *manifest);
+    ShaderDocument BuildCodeModuleDocument(const ShaderCodeResourceManifest *manifest);
 
     /// 材质实例 SSBO 的 struct + buffer 声明与 MTL_DATA 别名宏。
     /// material_private_data 为 UserDefined 时返回 true 且不生成。

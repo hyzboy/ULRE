@@ -15,7 +15,7 @@
 #include <hgl/mtl/SamplerPreset.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/graph/ssbo/MaterialSSBOLayout.h>
-#include <hgl/mtl/GLSLCodeModule.h>
+#include <hgl/mtl/ShaderCodeModule.h>
 #include "builder/DescriptorBuilderCommon.h"
 #include "compile/MaterialShaderEmitter.h"
 #include <cstring>
@@ -231,7 +231,7 @@ static bool ValidateDefinitionCapabilitySubset(
     const MaterialDefinition &definition,
     const ShaderResourceSchema &layout,
     std::vector<std::string> &diagnostics,
-    const ModuleResourceManifest *manifest)
+    const ShaderCodeResourceManifest *manifest)
 {
     diagnostics.clear();
 

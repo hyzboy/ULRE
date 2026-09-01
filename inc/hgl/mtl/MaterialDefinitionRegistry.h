@@ -5,8 +5,8 @@
 #include<hgl/mtl/CanonicalShaderContract.h>
 #include<hgl/mtl/MaterialCoverageContract.h>
 #include<hgl/mtl/MaterialRecipe.h>
-#include<hgl/mtl/GLSLCodeModuleCapabilityResolver.h>
-#include<hgl/mtl/GLSLCodeModuleRegistry.h>
+#include<hgl/mtl/ShaderCodeModuleCapabilityResolver.h>
+#include<hgl/mtl/ShaderCodeModuleRegistry.h>
 #include<hgl/type/String.h>
 #include<hgl/common/VertexAttribDef.h>
 #include<hgl/common/RenderTargetOutputConfig.h>

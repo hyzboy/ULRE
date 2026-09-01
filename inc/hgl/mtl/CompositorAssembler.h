@@ -64,7 +64,7 @@ namespace hgl::graph::mtl
         /// fragment_source_override: 骨架选择键（原 compositor 模板路径），
         /// 空则按 surface/pass 分派。
         /// surface_function_override: surface 函数路径覆盖。
-        /// code_module_glsl: GLSLCodeModule 代码模块拼接文本（调用方依据
+        /// code_module_glsl: ShaderCodeModule 代码模块拼接文本（调用方依据
         /// manifest 生成；置于 surface 函数 include 之前，保证先于其使用声明）。
         AssembleResult Assemble(
             SurfaceType                  surface,
