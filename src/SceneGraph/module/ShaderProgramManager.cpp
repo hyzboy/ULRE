@@ -109,7 +109,15 @@ namespace
             }
 
             if (!module)
+            {
+                if (artifact_store
+                 && artifact_store->GetCacheMode() == mtl::ShaderCacheMode::ReadOnly)
+                {
+                    GLogError(u8"[ShaderProgramManager] readonly shader artifact missing");
+                    return false;
+                }
                 module = manager->CreateShaderModule(mtl_name, sci_ptr);
+            }
             if (!module)
                 return false;
 
