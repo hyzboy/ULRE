@@ -13,7 +13,7 @@ scale = "World"
 projection = "WorldCameraVP"
 
 [fragment]
-source = "compositor/main_forward_surface.frag.glsl"
+source = "forward_surface"
 surface_module = "surface/material_surface.glsl"
 material_source_module = "material/debug_normal_source.glsl"
 

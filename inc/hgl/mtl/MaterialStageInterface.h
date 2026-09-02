@@ -4,6 +4,7 @@ namespace hgl::graph::mtl {}
 
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/CanonicalShaderContract.h>
+#include <hgl/mtl/ShaderDocument.h>
 #include <hgl/type/String.h>
 
 namespace hgl::graph::mtl
@@ -54,6 +55,12 @@ namespace hgl::graph::mtl
         const ValueArray<InterStageSemanticContractEntry> &entries,
         bool camera_ubo_available,
         AnsiString &out_code);
+
+    bool BuildStageInterfaceDocument(
+        const ValueArray<InterStageSemanticContractEntry> &entries,
+        const char *direction,
+        const char *stage,
+        ShaderDocument &out_document);
 
     // 该语义在 mesh shader 里是 per-primitive（perprimitiveEXT）而非 per-vertex：
     // 每图元恒定一份（DataIndexID/StyleID——flat 且按图元共享）。

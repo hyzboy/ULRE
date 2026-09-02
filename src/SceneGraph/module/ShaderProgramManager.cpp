@@ -18,9 +18,14 @@
 #include<hgl/mtl/ShaderCreateInfo.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/MaterialDefinitionFile.h>
+#include<hgl/mtl/ShaderCacheRoot.h>
 #include<hgl/object/ObjectTracker.h>
+#include<hgl/filesystem/FileSystem.h>
+#include<hgl/utf.h>
 #include<cstdint>
 #include<vector>
+#include<cstdlib>
+#include<cwchar>
 
 namespace hgl::graph{
 
@@ -104,7 +109,15 @@ namespace
             }
 
             if (!module)
+            {
+                if (artifact_store
+                 && artifact_store->GetCacheMode() == mtl::ShaderCacheMode::ReadOnly)
+                {
+                    GLogError(u8"[ShaderProgramManager] readonly shader artifact missing");
+                    return false;
+                }
                 module = manager->CreateShaderModule(mtl_name, sci_ptr);
+            }
             if (!module)
                 return false;
 
@@ -140,6 +153,49 @@ namespace
         }
 
         return descriptors;
+    }
+
+    // 进程级单例（与 GetMaterialDefinitionFileRegistry 同一模式）。
+    // 模式由环境变量 ULRE_SHADER_CACHE_MODE 控制：
+    //   readonly —— 只读（发布形态：配合 ShaderCooker 离线 cook 的产物分发，
+    //              缓存 miss 即材质构建失败，用于验证 cook 覆盖完整性）；
+    //   默认 BuildIfMissing（开发形态：命中免编译，未命中编译后回填）。
+    // 缓存 key 含 GLSL 源码/资源契约/编译器 profile 哈希，任何输入变化自然
+    // miss 并覆盖旧条目；损坏文件因 header/payload 哈希校验失败按 miss 处理。
+    // ReadOnly 的 miss 硬失败（FinalizeShaderBuildContext 返回 false）是设计
+    // 行为——发布前必须用 ShaderCooker 完成全变体 cook。
+    mtl::ShaderArtifactStore *GetRuntimeShaderArtifactStore()
+    {
+        static const OSString cache_root = mtl::GetShaderCacheRootPath();
+        static const bool readonly_mode = []()
+        {
+            const wchar_t *mode = _wgetenv(L"ULRE_SHADER_CACHE_MODE");
+            return mode
+                && (wcscmp(mode, L"readonly") == 0
+                 || wcscmp(mode, L"ro") == 0);
+        }();
+        static mtl::ShaderArtifactStore store(
+            cache_root,
+            readonly_mode
+                ? mtl::ShaderCacheMode::ReadOnly
+                : mtl::ShaderCacheMode::BuildIfMissing);
+        static bool logged = false;
+        if (!logged)
+        {
+            logged = true;
+            if (cache_root.IsEmpty())
+            {
+                GLogWarning(u8"[ShaderProgramManager] shader SPV cache disabled: cannot resolve cache root");
+            }
+            else
+            {
+                const U8String root_utf8 = ToU8String(cache_root);
+                GLogInfo(u8"[ShaderProgramManager] shader SPV cache root=%s (mode=%s)",
+                         root_utf8.c_str(),
+                         readonly_mode ? "ReadOnly" : "BuildIfMissing");
+            }
+        }
+        return &store;
     }
 
 }//namespace
@@ -416,23 +472,39 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
     return mtl.Finish();
 }
 
+namespace
+{
+    // AcquireShaderProgram(request) 与 BuildShaderResourceSchema 的公共前半段：
+    // 解析 definition → 创建构建上下文。失败返回 nullptr 并写日志。
+    mtl::ShaderBuildContext *BuildContextFromRequest(
+        const mtl::contract::PhysicalDeviceProfileLite *profile,
+        const mtl::MaterialDefinitionBuildRequest &request,
+        mtl::MaterialDefinition &out_definition)
+    {
+        if (!ResolveMaterialDefinitionForRequest(request, out_definition))
+            return nullptr;
+
+        AutoDelete<mtl::ShaderBuildContext> ctx =
+            mtl::CreateMaterialFromDefinition(profile, out_definition, request);
+        if (!ctx)
+        {
+            GLogError("[ShaderProgramManager] Material definition build failed: id=%s name=%s",
+                      out_definition.definition_id.c_str(),
+                      out_definition.definition_name.c_str());
+            return nullptr;
+        }
+        return ctx.Finish();
+    }
+}//namespace
+
 bool ShaderProgramManager::BuildShaderResourceSchema(const mtl::MaterialDefinitionBuildRequest &request,
                                                   mtl::ShaderResourceSchema &out_schema)
 {
     mtl::MaterialDefinition definition{};
-    if (!ResolveMaterialDefinitionForRequest(
-            request, definition))
-        return false;
-
-    const auto *profile = GetPhysicalDeviceProfile();
-    AutoDelete<mtl::ShaderBuildContext> ctx = mtl::CreateMaterialFromDefinition(profile, definition, request);
+    AutoDelete<mtl::ShaderBuildContext> ctx =
+        BuildContextFromRequest(GetPhysicalDeviceProfile(), request, definition);
     if (!ctx)
-    {
-        GLogError("[ShaderProgramManager] Material definition build failed: id=%s name=%s",
-                  definition.definition_id.c_str(),
-                  definition.definition_name.c_str());
         return false;
-    }
 
     out_schema = ctx->GetShaderResourceSchema();
     return true;
@@ -448,24 +520,18 @@ ShaderProgram *ShaderProgramManager::AcquireShaderProgram(
 
     mtl::MaterialDefinitionBuildRequest normalized_request = request;
     normalized_request.recipe = normalized_recipe;
+    normalized_request.defer_finalize = true;
+    // 接通跨进程 SPV 磁盘缓存：FinalizeShaderBuildContext 先查缓存，未命中
+    // 才走 glslang 编译并回填（BuildIfMissing）。FinalizeShaderBuildContext 在
+    // store 非空时要求 program link + artifact metadata 齐备——生产路径的
+    // BuildGenericMaterial 两者恒备（回归门已全变体验证）。
+    normalized_request.shader_artifact_store = GetRuntimeShaderArtifactStore();
 
     mtl::MaterialDefinition definition{};
-    if (!ResolveMaterialDefinitionForRequest(
-            normalized_request, definition))
-        return nullptr;
-
-    const auto *profile = GetPhysicalDeviceProfile();
-    normalized_request.defer_finalize = true;
     AutoDelete<mtl::ShaderBuildContext> ctx =
-        mtl::CreateMaterialFromDefinition(
-            profile, definition, normalized_request);
-    if(!ctx)
-    {
-        GLogError("[ShaderProgramManager] Material definition build failed: id=%s name=%s",
-                  definition.definition_id.c_str(),
-                  definition.definition_name.c_str());
+        BuildContextFromRequest(GetPhysicalDeviceProfile(), normalized_request, definition);
+    if (!ctx)
         return nullptr;
-    }
 
     if (!ctx->HasProgramLink())
     {

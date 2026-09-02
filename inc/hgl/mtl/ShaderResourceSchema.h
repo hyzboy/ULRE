@@ -288,6 +288,9 @@ namespace hgl::graph::mtl
         return h;
     }
 
+    // 结构校验权威（schema 级）：逐条不变量 + 目录 set 交叉校验 + 材质 SSBO
+    // 规则 + 两两重复/冲突诊断（三键判定，O(n²)）。entry 级的
+    // ValidateDescriptorContract 是边界守卫（构建步早期短路 + 身份碰撞快速失败）。
     inline bool ValidateShaderResourceSchema(const ShaderResourceSchema &schema, std::vector<std::string> &diagnostics)
     {
         diagnostics.clear();

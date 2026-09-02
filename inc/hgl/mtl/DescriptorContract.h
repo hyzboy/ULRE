@@ -4,7 +4,6 @@ namespace hgl::graph::mtl {}
 
 #include <hgl/mtl/SerializedDescriptorEntry.h>
 #include <hgl/mtl/ShaderResourceSchema.h>
-#include <hgl/mtl/CanonicalShaderContract.h>
 #include <string>
 #include <vector>
 
@@ -13,12 +12,9 @@ namespace hgl::graph::mtl
     using namespace hgl::graph::mtl;
     // C1-T2：DescriptorContract 直接承载规范化后的 SerializedDescriptorEntry[]
     //（AppendEntry 就地完整规范化：ID/ssbo_type/layer/policy 全填回）。
-    // 原 DescriptorContractEntry 包装与 ConvertDescriptorContractToFixed 往返
-    // 转换已删除——条目结构唯一（SerializedDescriptorEntry）。
-    struct DescriptorContract
-    {
-        std::vector<SerializedDescriptorEntry> entries;
-    };
+    // 契约删减（2026-09）：原单成员包装结构降级为类型别名——
+    // 条目数组本身就是契约，类型数量不再超过表达力。
+    using DescriptorContract = std::vector<SerializedDescriptorEntry>;
 
     bool BuildDescriptorContract(
         const mtl::SerializedDescriptorEntry *entries,
@@ -31,7 +27,7 @@ namespace hgl::graph::mtl
 
     bool BuildEffectiveDescriptorContract(
         const DescriptorContract &base_contract,
-        const std::vector<mtl::MaterialPrivateDataSlotDeclaration> *material_private_data_slot_decls,
+        SSBOType material_private_data,
         uint32 material_ssbo_stage_bits,
         DescriptorContract &out_contract);
 

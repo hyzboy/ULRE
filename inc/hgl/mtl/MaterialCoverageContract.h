@@ -34,12 +34,4 @@ namespace hgl::graph::mtl
         const mtl::MaterialRecipe &recipe,
         ShaderProgramPurpose purpose,
         MaterialCoverageContract &out_contract) noexcept;
-
-    bool ApplyDepthCoverageContract(
-        const MaterialCoverageContract &coverage,
-        const ValueArray<InterStageSemanticContractEntry> &stage_interface,
-        const char *material_source_module,
-        const char *surface_module,
-        const std::string &source,
-        std::string &out_source);
 }

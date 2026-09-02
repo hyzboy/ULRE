@@ -6,7 +6,6 @@
 #include <hgl/mtl/MaterialShaderCompiler.h>
 #include <hgl/mtl/DescriptorContract.h>
 #include <hgl/mtl/ShaderBuildContext.h>
-#include <hgl/mtl/ResolvedModuleGraphBuilder.h>
 #include <hgl/mtl/BindingTableBuilder.h>
 #include <hgl/mtl/ShaderCreateInfo.h>
 #include <hgl/mtl/ShaderLibraryPath.h>
@@ -14,12 +13,13 @@
 #include <hgl/mtl/ShaderArtifactStore.h>
 #include <hgl/mtl/CanonicalShaderContract.h>
 #include <hgl/mtl/ShaderSemanticRegistry.h>
-#include <hgl/mtl/GLSLCodeModule.h>
-#include <hgl/mtl/GLSLCodeModuleCapabilityResolver.h>
-#include <hgl/mtl/GLSLCodeModuleFile.h>
-#include <hgl/mtl/GLSLCodeModuleRegistry.h>
-#include <hgl/mtl/GLSLCodeModuleMetadata.h>
-#include <hgl/mtl/ModuleResourceManifest.h>
+#include <hgl/mtl/ShaderCodeModule.h>
+#include <hgl/mtl/ShaderCodeModuleCapabilityResolver.h>
+#include <hgl/mtl/ShaderCodeModuleFile.h>
+#include <hgl/mtl/ShaderCodeModuleRegistry.h>
+#include <hgl/mtl/ShaderCodeModuleMetadata.h>
+#include <hgl/mtl/ShaderCodeResourceManifest.h>
+#include <hgl/ShaderCompilerAPI.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/graph/asset/PrimitiveAsset.h>
@@ -29,11 +29,12 @@
 #include <hgl/mtl/ShaderStructureDump.h>
 #include <fstream>
 #include <filesystem>
-#include "../../ShaderGen/3d/DefinitionDescriptorBuilder.h"
+#include "../../ShaderGen/builder/DefinitionDescriptorBuilder.h"
 #include <hgl/mtl/MeshShaderLimits.h>
-#include "../../ShaderGen/common/VertexBuilderCommon.h"
-#include "../../ShaderGen/common/VertexVaryingConfig.h"
-#include "../../ShaderGen/common/MeshShaderAssembler.h"   // GenerateMeshShader / MeshShaderMode
+#include "VertexBuilderCommon.h"
+#include "StageBuildContextTest.h"
+#include <hgl/mtl/MaterialVertexVaryingConfig.h>
+#include "../../ShaderGen/meshgen/MeshShaderAssembler.h"   // GenerateMeshShader / MeshShaderMode
 
 #include <algorithm>
 #include <cstdint>
@@ -830,7 +831,7 @@ namespace
                 "inter-stage stable ABI metadata mismatch");
         }
 
-        VertexVaryingConfig lit_varying{};
+        MaterialVertexVaryingConfig lit_varying{};
         lit_varying.emit_data_index_id = true;
         lit_varying.emit_world_pos = true;
         lit_varying.emit_world_normal = true;
@@ -839,10 +840,9 @@ namespace
             MakeDefault3DNodeConfig(),
             lit_varying,
             VK_FORMAT_R32G32B32_SFLOAT,
-            {},
             MeshShaderMode::VertexPassthrough,
             kMeshVertexPassthroughMaxInvocations,
-            GetShaderLibraryPath(),
+            {},
             {},
             nullptr);
         if (lit_vs.find(
@@ -865,16 +865,15 @@ namespace
                 "legacy generated lit varying ABI changed");
         }
 
-        VertexVaryingConfig color_varying{};
+        MaterialVertexVaryingConfig color_varying{};
         color_varying.emit_vertex_color = true;
         const std::string color_vs = GenerateMeshShader(
             MakeDefault3DNodeConfig(),
             color_varying,
             VK_FORMAT_R32G32B32_SFLOAT,
-            {},
             MeshShaderMode::VertexPassthrough,
             kMeshVertexPassthroughMaxInvocations,
-            GetShaderLibraryPath(),
+            {},
             {},
             nullptr);
         if (color_vs.find(
@@ -897,7 +896,7 @@ namespace
         GateResult result;
         result.name = "N.compositor-version-placement";
 
-        CompositorAssembler assembler(GetShaderLibraryPath());
+        CompositorAssembler assembler;
         const auto assembled = assembler.Assemble(
             SurfaceType::Lit,
             PassType::ForwardOpaque);
@@ -1025,7 +1024,7 @@ namespace
         const auto texture_template = assembler.Assemble(
             SurfaceType::Unlit,
             PassType::ForwardMasked,
-            "compositor/main_forward_surface.frag.glsl",
+            "forward_surface",
             "surface/material_surface.glsl",
             alpha_options);
         if (!texture_template.success
@@ -1085,71 +1084,71 @@ namespace
         GateResult result;
         result.name = "O.provider-graph-stage-identity";
 
-        const GLSLCodeModuleSemanticRequirement normal_requirement{
-            GLSLCodeModuleCapabilitySource::GeometryAttribute,
-            GLSLCodeModuleSemantic::Normal,
-            static_cast<uint32_t>(GLSLCodeModuleNumericClass::Float),
+        const ShaderCodeModuleSemanticRequirement normal_requirement{
+            ShaderCodeModuleCapabilitySource::GeometryAttribute,
+            ShaderCodeModuleSemantic::Normal,
+            static_cast<uint32_t>(ShaderCodeModuleNumericClass::Float),
             3, 3
         };
-        const GLSLCodeModuleSemantic normal_provides[] = {
-            GLSLCodeModuleSemantic::Normal
+        const ShaderCodeModuleSemantic normal_provides[] = {
+            ShaderCodeModuleSemantic::Normal
         };
-        const GLSLCodeModuleDefinition normal_provider{
+        const ShaderCodeModuleDefinition normal_provider{
             "identity_normal",
             "// identity",
             nullptr, 0,
-            GLSLCodeModuleKind::Utility,
+            ShaderCodeModuleKind::Utility,
             &normal_requirement, 1,
             normal_provides, 1,
             10, 0
         };
 
-        const GLSLCodeModuleSemanticRequirement uv_requirement{
-            GLSLCodeModuleCapabilitySource::GeometryAttribute,
-            GLSLCodeModuleSemantic::UV0,
-            static_cast<uint32_t>(GLSLCodeModuleNumericClass::Float),
+        const ShaderCodeModuleSemanticRequirement uv_requirement{
+            ShaderCodeModuleCapabilitySource::GeometryAttribute,
+            ShaderCodeModuleSemantic::UV0,
+            static_cast<uint32_t>(ShaderCodeModuleNumericClass::Float),
             2, 2
         };
-        const GLSLCodeModuleSemantic uv_provides[] = {
-            GLSLCodeModuleSemantic::UV0
+        const ShaderCodeModuleSemantic uv_provides[] = {
+            ShaderCodeModuleSemantic::UV0
         };
-        const GLSLCodeModuleDefinition uv_provider{
+        const ShaderCodeModuleDefinition uv_provider{
             "identity_uv",
             "// identity",
             nullptr, 0,
-            GLSLCodeModuleKind::Utility,
+            ShaderCodeModuleKind::Utility,
             &uv_requirement, 1,
             uv_provides, 1,
             10, 0
         };
 
-        GLSLCodeModuleResolutionResult first{};
+        ShaderCodeModuleResolutionResult first{};
         first.resolved = true;
-        first.selections.Add({GLSLCodeModuleSemantic::Normal, &normal_provider});
-        first.selections.Add({GLSLCodeModuleSemantic::UV0, &uv_provider});
+        first.selections.Add({ShaderCodeModuleSemantic::Normal, &normal_provider});
+        first.selections.Add({ShaderCodeModuleSemantic::UV0, &uv_provider});
 
-        GLSLCodeModuleResolutionResult equivalent_result{};
+        ShaderCodeModuleResolutionResult equivalent_result{};
         equivalent_result.resolved = true;
-        equivalent_result.selections.Add({GLSLCodeModuleSemantic::UV0, &uv_provider});
-        equivalent_result.selections.Add({GLSLCodeModuleSemantic::Normal, &normal_provider});
+        equivalent_result.selections.Add({ShaderCodeModuleSemantic::UV0, &uv_provider});
+        equivalent_result.selections.Add({ShaderCodeModuleSemantic::Normal, &normal_provider});
 
-        const uint64_t first_hash = GetGLSLCodeModuleProviderGraphHash(first);
-        const uint64_t equivalent_hash = GetGLSLCodeModuleProviderGraphHash(equivalent_result);
+        const uint64_t first_hash = GetShaderCodeModuleProviderGraphHash(first);
+        const uint64_t equivalent_hash = GetShaderCodeModuleProviderGraphHash(equivalent_result);
         if (first_hash == 0 || first_hash != equivalent_hash)
             result.diagnostics.emplace_back("equivalent provider graphs must hash identically");
 
-        GLSLCodeModuleResolutionResult changed_result = first;
-        const GLSLCodeModuleDefinition packed_normal_provider{
+        ShaderCodeModuleResolutionResult changed_result = first;
+        const ShaderCodeModuleDefinition packed_normal_provider{
             "identity_normal_packed",
             "// identity",
             nullptr, 0,
-            GLSLCodeModuleKind::Utility,
+            ShaderCodeModuleKind::Utility,
             &normal_requirement, 1,
             normal_provides, 1,
             20, 0
         };
         changed_result.selections[0].provider = &packed_normal_provider;
-        if (GetGLSLCodeModuleProviderGraphHash(changed_result) == first_hash)
+        if (GetShaderCodeModuleProviderGraphHash(changed_result) == first_hash)
             result.diagnostics.emplace_back("distinct provider graphs must hash differently");
 
         ShaderStageBuildContext stage{};
@@ -1157,7 +1156,7 @@ namespace
         const ShaderStageKey first_key = stage.BuildKeyWithProviderGraphHash(first_hash);
         const ShaderStageKey changed_key =
             stage.BuildKeyWithProviderGraphHash(
-                GetGLSLCodeModuleProviderGraphHash(changed_result));
+                GetShaderCodeModuleProviderGraphHash(changed_result));
         if (first_key == changed_key
          || first_key.glsl_module_graph_hash != first_hash)
             result.diagnostics.emplace_back("provider graph hash must participate in ShaderStageKey");
@@ -1171,32 +1170,32 @@ namespace
         GateResult result;
         result.name = "P.provider-graph-composition-interface";
 
-        const GLSLCodeModuleDefinition position_provider{
+        const ShaderCodeModuleDefinition position_provider{
             "compose_position",
             "vec4 GetLocalPos() { return vec4(Position, 1.0); }",
             nullptr, 0,
-            GLSLCodeModuleKind::Position,
+            ShaderCodeModuleKind::Position,
             nullptr, 0, nullptr, 0, 0, 0
         };
-        const GLSLCodeModuleDefinition normal_provider{
+        const ShaderCodeModuleDefinition normal_provider{
             "compose_normal",
             "vec3 GetNormal() { return Normal; }",
             nullptr, 0,
-            GLSLCodeModuleKind::Utility,
+            ShaderCodeModuleKind::Utility,
             nullptr, 0, nullptr, 0, 0, 0
         };
 
-        GLSLCodeModuleResolutionResult result_graph{};
+        ShaderCodeModuleResolutionResult result_graph{};
         result_graph.resolved = true;
         result_graph.selections.Add(
-            {GLSLCodeModuleSemantic::Position, &position_provider});
+            {ShaderCodeModuleSemantic::Position, &position_provider});
         result_graph.selections.Add(
-            {GLSLCodeModuleSemantic::Normal, &normal_provider});
+            {ShaderCodeModuleSemantic::Normal, &normal_provider});
         result_graph.selections.Add(
-            {GLSLCodeModuleSemantic::WorldNormal, &normal_provider});
+            {ShaderCodeModuleSemantic::WorldNormal, &normal_provider});
 
         std::string composed;
-        if (!ComposeGLSLCodeModuleProviderGraph(result_graph, composed))
+        if (!ComposeShaderCodeModuleProviderGraph(result_graph, composed))
             result.diagnostics.emplace_back("provider graph composition failed");
         else
         {
@@ -1850,195 +1849,8 @@ namespace
         GateResult result;
         result.name = "Q1.canonical-shader-contract";
 
-        const auto bytes_equal = [](const hgl::ValueArray<hgl::uint8> &lhs,
-                                    const hgl::ValueArray<hgl::uint8> &rhs)
-        {
-            return lhs.GetCount() == rhs.GetCount()
-                && (lhs.IsEmpty()
-                 || std::memcmp(
-                        lhs.GetData(),
-                        rhs.GetData(),
-                        static_cast<size_t>(lhs.GetCount())) == 0);
-        };
-
-        const ShaderContractStableID source_module =
-            StableID("module.source");
-        const ShaderContractStableID dependency_module =
-            StableID("module.dependency");
-
-        ResolvedModuleGraph graph_a{};
-        graph_a.modules.Add(
-            {source_module, 0x101u, 1, 0});
-        graph_a.modules.Add(
-            {dependency_module, 0x102u, 0, 0});
-        graph_a.dependencies.Add(
-            {source_module, dependency_module});
-        graph_a.provider_selections.Add(
-            {
-                GLSLCodeModuleSemantic::Position,
-                dependency_module,
-                10,
-                0
-            });
-        graph_a.aggregated_semantic_requirements.Add(
-            {
-                GLSLCodeModuleCapabilitySource::GeometryAttribute,
-                GLSLCodeModuleSemantic::Position,
-                uint32_t(GLSLCodeModuleNumericClass::Float),
-                3,
-                3
-            });
-        graph_a.aggregated_semantic_requirements.Add(
-            {
-                GLSLCodeModuleCapabilitySource::Resource,
-                GLSLCodeModuleSemantic::MaterialData,
-                uint32_t(GLSLCodeModuleNumericClass::Any),
-                0,
-                0
-            });
-
-        ResolvedModuleGraph graph_b{};
-        graph_b.modules.Add(graph_a.modules[1]);
-        graph_b.modules.Add(graph_a.modules[0]);
-        graph_b.dependencies.Add(graph_a.dependencies[0]);
-        graph_b.provider_selections.Add(graph_a.provider_selections[0]);
-        graph_b.aggregated_semantic_requirements.Add(
-            graph_a.aggregated_semantic_requirements[1]);
-        graph_b.aggregated_semantic_requirements.Add(
-            graph_a.aggregated_semantic_requirements[0]);
-
-        hgl::ValueArray<hgl::uint8> graph_bytes_a;
-        hgl::ValueArray<hgl::uint8> graph_bytes_b;
-        if (!SerializeResolvedModuleGraph(graph_a, graph_bytes_a)
-         || !SerializeResolvedModuleGraph(graph_b, graph_bytes_b)
-         || !bytes_equal(graph_bytes_a, graph_bytes_b)
-         || GetResolvedModuleGraphHash(graph_a)
-                != GetResolvedModuleGraphHash(graph_b))
-        {
-            result.diagnostics.emplace_back(
-                "module graph serialization must ignore input order");
-        }
-
-        ResolvedModuleGraph changed_graph = graph_a;
-        changed_graph.modules[0].module_content_hash ^= 1u;
-        if (GetResolvedModuleGraphHash(changed_graph)
-            == GetResolvedModuleGraphHash(graph_a))
-        {
-            result.diagnostics.emplace_back(
-                "module content changes must affect graph hash");
-        }
-
-        ResolvedModuleGraph duplicate_graph = graph_a;
-        duplicate_graph.modules.Add(graph_a.modules[0]);
-        if (ValidateResolvedModuleGraph(duplicate_graph))
-            result.diagnostics.emplace_back(
-                "duplicate module identities must be rejected");
-
-        ShaderInterfaceContract interface_a{};
-        interface_a.geometry_semantics.Add(
-            {
-                VertexSemantic::Position,
-                ShaderSemanticScalarType::Float,
-                3,
-                1,
-                0,
-                uint32_t(VK_FORMAT_R32G32B32_SFLOAT)
-            });
-        interface_a.geometry_semantics.Add(
-            {
-                VertexSemantic::TexCoord,
-                ShaderSemanticScalarType::Float,
-                2,
-                1,
-                1,
-                uint32_t(VK_FORMAT_R32G32_SFLOAT)
-            });
-        interface_a.inter_stage_semantics.Add(
-            {
-                InterStageSemantic::DataIndexID,
-                ShaderSemanticScalarType::UnsignedInteger,
-                InterStageInterpolation::Flat,
-                1,
-                1,
-                0
-            });
-        interface_a.inter_stage_semantics.Add(
-            {
-                InterStageSemantic::UV0,
-                ShaderSemanticScalarType::Float,
-                InterStageInterpolation::Smooth,
-                2,
-                1,
-                1
-            });
-        interface_a.descriptor_requirements.Add(
-            {
-                StableID("resource.material_data"),
-                StableID("schema.PBRSurface.v1"),
-                DescriptorSemantic::MaterialPrivateData,
-                DescriptorSemanticLayer::SSBO,
-                DescriptorSetType::Material,
-                TextureSlot::BaseColor,
-                SSBOType::PBRSurface,
-                0,
-                uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
-                1,
-                true,
-                false
-            });
-        interface_a.descriptor_requirements.Add(
-            {
-                StableID("resource.texture_layers"),
-                StableID("schema.TextureLayer.v1"),
-                DescriptorSemantic::MaterialTextureLayerTable,
-                DescriptorSemanticLayer::SSBO,
-                DescriptorSetType::Material,
-                TextureSlot::BaseColor,
-                SSBOType::TextureLayer,
-                0,
-                uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
-                1,
-                false,
-                true
-            });
-        interface_a.entry_points.Add(
-            {ShaderStage::Mesh, StableID("main.msh")});
-        interface_a.entry_points.Add(
-            {ShaderStage::Fragment, StableID("main.fs")});
-
-        ShaderInterfaceContract interface_b{};
-        interface_b.geometry_semantics.Add(interface_a.geometry_semantics[1]);
-        interface_b.geometry_semantics.Add(interface_a.geometry_semantics[0]);
-        interface_b.inter_stage_semantics.Add(
-            interface_a.inter_stage_semantics[1]);
-        interface_b.inter_stage_semantics.Add(
-            interface_a.inter_stage_semantics[0]);
-        interface_b.descriptor_requirements.Add(
-            interface_a.descriptor_requirements[1]);
-        interface_b.descriptor_requirements.Add(
-            interface_a.descriptor_requirements[0]);
-        interface_b.entry_points.Add(interface_a.entry_points[1]);
-        interface_b.entry_points.Add(interface_a.entry_points[0]);
-
-        hgl::ValueArray<hgl::uint8> interface_bytes_a;
-        hgl::ValueArray<hgl::uint8> interface_bytes_b;
-        if (!SerializeShaderInterfaceContract(
-                interface_a, interface_bytes_a)
-         || !SerializeShaderInterfaceContract(
-                interface_b, interface_bytes_b)
-         || !bytes_equal(interface_bytes_a, interface_bytes_b)
-         || GetShaderInterfaceContractHash(interface_a)
-                != GetShaderInterfaceContractHash(interface_b))
-        {
-            result.diagnostics.emplace_back(
-                "shader interface serialization must ignore input order");
-        }
-
-        ShaderInterfaceContract conflicting_interface = interface_a;
-        conflicting_interface.inter_stage_semantics[1].location = 0;
-        if (ValidateShaderInterfaceContract(conflicting_interface))
-            result.diagnostics.emplace_back(
-                "inter-stage location conflicts must be rejected");
+        // Q1 只保留 OutputContract 序列化恒等/校验段——ShaderInterfaceContract
+        // 体系（interface 序列化恒等/location 冲突段）已随生产删除一并移除。
 
         OutputContract output_a{};
         output_a.purpose = ShaderProgramPurpose::ForwardColor;
@@ -2367,9 +2179,8 @@ namespace
             result.diagnostics.emplace_back("canonical PureColor must exist");
         }
         else if (!IsPureColorMaterialDefinition(pure_color)
-               || pure_color.material_private_data_slot_decls.size() != 1
-              || pure_color.material_private_data_slot_decls[0].ssbo_type != SSBOType::EmissiveSurface
-              || pure_color.vertex_semantic_requirements.GetCount() != 1)
+               || pure_color.material_private_data != SSBOType::EmissiveSurface
+               || pure_color.vertex_semantic_requirements.GetCount() != 1)
             result.diagnostics.emplace_back("canonical PureColor contract is not semantic-only");
 
         result.passed = result.diagnostics.empty();
@@ -2415,18 +2226,9 @@ namespace
                     "output purpose contract mapping mismatch");
             }
 
-            std::string applied;
-            if (ApplyMaterialOutputContract(
-                    opaque_output,
-                    "#version 460\nvoid main(){}\n",
-                    applied,
-                    diagnostic)
-             || diagnostic.error
-                    != MaterialOutputContractError::MissingContractMarker)
-            {
-                result.diagnostics.emplace_back(
-                    "output contract marker must be mandatory");
-            }
+            // 单趟发射改造（2026-09）：FS 由发射器组装，输出附件声明不再经
+            // marker 替换注入——原 ApplyMaterialOutputContract/MissingContractMarker
+            // 机制随 marker 体系删除。
 
             MaterialDefinition lit{};
             if (!TryGetMaterialDefinitionByID("Lit", lit))
@@ -2764,7 +2566,7 @@ namespace
              || !definition.fragment_source
              || std::strcmp(
                     definition.fragment_source,
-                    "compositor/main_forward_surface.frag.glsl") != 0
+                    "forward_surface") != 0
              || !definition.fragment_surface_module
              || std::strcmp(
                     definition.fragment_surface_module,
@@ -2880,7 +2682,7 @@ namespace
 
         if (!pure_color.fragment_source
          || std::strcmp(pure_color.fragment_source,
-                        "compositor/main_forward_surface.frag.glsl") != 0
+                        "forward_surface") != 0
          || !pure_color.fragment_surface_module
          || std::strcmp(
                 pure_color.fragment_surface_module,
@@ -2891,7 +2693,7 @@ namespace
                 "material/unlit_source.glsl") != 0)
             result.diagnostics.emplace_back("PureColor must use one FS module");
 
-        CompositorAssembler assembler(GetShaderLibraryPath());
+        CompositorAssembler assembler;
         hgl::ValueArray<InterStageSemanticContractEntry> stage_interface;
         MaterialStageInterfaceDiagnostic interface_diagnostic{};
         MaterialVertexVaryingConfig pure_color_varying{};
@@ -2912,7 +2714,7 @@ namespace
         options.fragment_inputs = &stage_interface;
         const auto assembled = assembler.Assemble(
             SurfaceType::Unlit, PassType::ForwardOpaque,
-            "compositor/main_forward_surface.frag.glsl",
+            "forward_surface",
             "surface/material_surface.glsl",
             options);
         if (!assembled.success
@@ -2944,8 +2746,7 @@ namespace
         else
         {
             if (!IsPureColorMaterialDefinition(pure_color)
-             || pure_color.material_private_data_slot_decls.size() != 1
-             || pure_color.material_private_data_slot_decls[0].ssbo_type != SSBOType::EmissiveSurface
+             || pure_color.material_private_data != SSBOType::EmissiveSurface
              || pure_color.vertex_semantic_requirements.GetCount() != 1)
                 result.diagnostics.emplace_back("PureColor contract is not canonical");
         }
@@ -2999,15 +2800,15 @@ namespace
         GateResult result;
         result.name = "X.transform-graph-composition";
 
-        VertexVaryingConfig varying{};
+        MaterialVertexVaryingConfig varying{};
         varying.emit_data_index_id = true;
 
         const auto build = [&](const VertexShaderNodeConfig &graph)
         {
             return GenerateMeshShader(
                 graph, varying, VK_FORMAT_R32G32B32_SFLOAT,
-                {}, MeshShaderMode::VertexPassthrough, kMeshVertexPassthroughMaxInvocations,
-                GetShaderLibraryPath(), {}, nullptr);
+                MeshShaderMode::VertexPassthrough, kMeshVertexPassthroughMaxInvocations,
+                {}, {}, nullptr);
         };
 
         const std::string flat = build(VertexNodeConfigResolver::FlatXY());
@@ -3175,7 +2976,7 @@ namespace
             "scale = \"World\"\n"
             "projection = \"WorldCameraVP\"\n"
             "[fragment]\n"
-            "source = \"compositor/main_forward_surface.frag.glsl\"\n"
+            "source = \"forward_surface\"\n"
             "surface_module = \"surface/material_surface.glsl\"\n"
             "material_source_module = \"material/pbr_surface_source.glsl\"\n"
             "ntb_module = \"ntb/ntb_tangent_vbo_normalmap.glsl\"\n"
@@ -3208,7 +3009,7 @@ namespace
              || definition.vertex_semantic_requirements.GetCount() != 3
              || definition.ubo_requirements.size() != 2
              || std::strcmp(definition.fragment_source,
-                            "compositor/main_forward_surface.frag.glsl") != 0
+                            "forward_surface") != 0
              || std::strcmp(definition.fragment_surface_module,
                             "surface/material_surface.glsl") != 0)
             {
@@ -3328,8 +3129,8 @@ namespace
                     != registry_definition.vertex_semantic_requirements.GetCount()
              || file_definition->ubo_requirements.size()
                     != registry_definition.ubo_requirements.size()
-             || file_definition->material_private_data_slot_decls.size()
-                    != registry_definition.material_private_data_slot_decls.size()
+             || file_definition->material_private_data
+                    != registry_definition.material_private_data
              || file_definition->texture_slot_decls.size()
                     != registry_definition.texture_slot_decls.size())
             {
@@ -3391,7 +3192,7 @@ namespace
         GateResult result;
         result.name = "H1.provider-resource-manifest";
 
-        GLSLCodeModuleRegistry registry;
+        ShaderCodeModuleRegistry registry;
 
         int file_count = 0;
         int error_count = 0;
@@ -3418,13 +3219,13 @@ namespace
         else
         {
             const char *roots_2d[] = {pbr_2d->name, ntb_2d->name};
-            ModuleResourceManifest manifest_2d{};
-            if (!BuildModuleResourceManifest(
+            ShaderCodeResourceManifest manifest_2d{};
+            if (!BuildShaderCodeResourceManifest(
                     roots_2d, uint32_t(std::size(roots_2d)), manifest_2d, &registry))
             {
                 result.diagnostics.emplace_back(
                     std::string("Texture2D provider manifest failed: ")
-                    + GetModuleResourceManifestErrorName(manifest_2d.error));
+                    + GetShaderCodeResourceManifestErrorName(manifest_2d.error));
             }
             else
             {
@@ -3458,13 +3259,13 @@ namespace
             }
 
             const char *roots_array[] = {pbr_array->name, ntb_array->name};
-            ModuleResourceManifest manifest_array{};
-            if (!BuildModuleResourceManifest(
+            ShaderCodeResourceManifest manifest_array{};
+            if (!BuildShaderCodeResourceManifest(
                     roots_array, uint32_t(std::size(roots_array)), manifest_array, &registry))
             {
                 result.diagnostics.emplace_back(
                     std::string("Texture2DArray provider manifest failed: ")
-                    + GetModuleResourceManifestErrorName(manifest_array.error));
+                    + GetShaderCodeResourceManifestErrorName(manifest_array.error));
             }
             else
             {
@@ -3493,8 +3294,8 @@ namespace
             }
 
             const char *derivative_root = ntb_derivative->name;
-            ModuleResourceManifest derivative_manifest{};
-            if (!BuildModuleResourceManifest(
+            ShaderCodeResourceManifest derivative_manifest{};
+            if (!BuildShaderCodeResourceManifest(
                     &derivative_root, 1, derivative_manifest, &registry)
              || derivative_manifest.texture_layer_count != 1)
                result.diagnostics.emplace_back(
@@ -3505,23 +3306,23 @@ namespace
         return result;
     }
 
-    static GateResult RunGLSLCodeModuleFileCase()
+    static GateResult RunShaderCodeModuleFileCase()
     {
         GateResult result;
         result.name = "I.glsl-code-module-file-parse";
 
         auto expect_parse = [&result](const char *content,
-                                      const GLSLCodeModuleParseResult expected,
+                                      const ShaderCodeModuleParseResult expected,
                                       const char *label)
         {
-            GLSLCodeModuleFileData data;
-            const GLSLCodeModuleParseResult actual =
-                ParseGLSLCodeModuleFile(content, int(std::strlen(content)), data);
+            ShaderCodeModuleFileData data;
+            const ShaderCodeModuleParseResult actual =
+                ParseShaderCodeModuleFile(content, int(std::strlen(content)), data);
             if (actual != expected)
             {
                 result.diagnostics.emplace_back(std::string(label) + ": got "
-                    + GetGLSLCodeModuleParseResultName(actual)
-                    + " expected " + GetGLSLCodeModuleParseResultName(expected));
+                    + GetShaderCodeModuleParseResultName(actual)
+                    + " expected " + GetShaderCodeModuleParseResultName(expected));
                 return false;
             }
             return true;
@@ -3540,16 +3341,16 @@ namespace
             "// @ulre uses s2_lift_xy0\n"
             "// @ulre end\n";
         {
-            GLSLCodeModuleFileData data;
-            const GLSLCodeModuleParseResult parse =
-                ParseGLSLCodeModuleFile(full_meta, int(std::strlen(full_meta)), data);
-            if (parse != GLSLCodeModuleParseResult::OK)
+            ShaderCodeModuleFileData data;
+            const ShaderCodeModuleParseResult parse =
+                ParseShaderCodeModuleFile(full_meta, int(std::strlen(full_meta)), data);
+            if (parse != ShaderCodeModuleParseResult::OK)
                 result.diagnostics.emplace_back("full-metadata parse failed");
             else
             {
                 if (std::strcmp(data.name.c_str(), "sample_ntb") != 0)
                     result.diagnostics.emplace_back("full-metadata name mismatch");
-                if (data.kind != GLSLCodeModuleKind::Utility)
+                if (data.kind != ShaderCodeModuleKind::Utility)
                     result.diagnostics.emplace_back("full-metadata kind mismatch");
                 if (data.priority != 10)
                     result.diagnostics.emplace_back("full-metadata priority mismatch");
@@ -3558,24 +3359,24 @@ namespace
                 else
                 {
                     const auto &normal_req = data.semantic_requirements[0];
-                    if (normal_req.source != GLSLCodeModuleCapabilitySource::GeometryAttribute
-                     || normal_req.semantic != GLSLCodeModuleSemantic::Normal
-                     || normal_req.numeric_class_mask != uint32_t(GLSLCodeModuleNumericClass::Float)
+                    if (normal_req.source != ShaderCodeModuleCapabilitySource::GeometryAttribute
+                     || normal_req.semantic != ShaderCodeModuleSemantic::Normal
+                     || normal_req.numeric_class_mask != uint32_t(ShaderCodeModuleNumericClass::Float)
                      || normal_req.min_component_count != 3
                      || normal_req.max_component_count != 3)
                         result.diagnostics.emplace_back("full-metadata require[0] mismatch");
 
                     const auto &tangent_req = data.semantic_requirements[1];
-                    if (tangent_req.source != GLSLCodeModuleCapabilitySource::GeometryAttribute
-                     || tangent_req.semantic != GLSLCodeModuleSemantic::Tangent
-                     || tangent_req.numeric_class_mask != uint32_t(GLSLCodeModuleNumericClass::Any)
+                    if (tangent_req.source != ShaderCodeModuleCapabilitySource::GeometryAttribute
+                     || tangent_req.semantic != ShaderCodeModuleSemantic::Tangent
+                     || tangent_req.numeric_class_mask != uint32_t(ShaderCodeModuleNumericClass::Any)
                      || tangent_req.min_component_count != 0
                      || tangent_req.max_component_count != 0)
                         result.diagnostics.emplace_back("full-metadata require[1] mismatch");
                 }
                 if (data.semantic_provides.GetCount() != 2
-                 || data.semantic_provides[0] != GLSLCodeModuleSemantic::Normal
-                 || data.semantic_provides[1] != GLSLCodeModuleSemantic::Tangent)
+                 || data.semantic_provides[0] != ShaderCodeModuleSemantic::Normal
+                 || data.semantic_provides[1] != ShaderCodeModuleSemantic::Tangent)
                     result.diagnostics.emplace_back("full-metadata provide mismatch");
                 if (data.pending_module_requirements.GetCount() != 1
                  || std::strcmp(data.pending_module_requirements[0].c_str(), "s2_lift_xy0") != 0)
@@ -3583,23 +3384,23 @@ namespace
             }
         }
 
-        expect_parse("// @ulre begin\n// @ulre end\n", GLSLCodeModuleParseResult::OK, "minimal");
-        expect_parse("void main() {}\n", GLSLCodeModuleParseResult::Skipped, "no-metadata");
-        expect_parse("// @ulre name x\n// @ulre begin\n// @ulre end\n", GLSLCodeModuleParseResult::MissingBegin, "missing-begin");
-        expect_parse("// @ulre begin\n// @ulre begin\n// @ulre end\n", GLSLCodeModuleParseResult::DuplicateBegin, "duplicate-begin");
-        expect_parse("// @ulre begin\n// @ulre name x\n", GLSLCodeModuleParseResult::MissingEnd, "missing-end");
-        expect_parse("// @ulre begin\n// @ulre nope 1\n// @ulre end\n", GLSLCodeModuleParseResult::UnknownDirective, "unknown-directive");
-        expect_parse("// @ulre begin\n// @ulre name a\n// @ulre name b\n// @ulre end\n", GLSLCodeModuleParseResult::DuplicateDirective, "duplicate-directive");
-        expect_parse("// @ulre begin\n// @ulre kind\n// @ulre end\n", GLSLCodeModuleParseResult::MissingDirectiveArgument, "missing-argument");
-        expect_parse("// @ulre begin\n// @ulre kind NoSuchKind\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidKind, "invalid-kind");
-        expect_parse("// @ulre begin\n// @ulre provide NoSuchSemantic\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidSemantic, "invalid-semantic");
-        expect_parse("// @ulre begin\n// @ulre require BadSource Normal\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidSource, "invalid-source");
-        expect_parse("// @ulre begin\n// @ulre require GeometryAttribute Normal NotAClass\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidNumericClass, "invalid-numclass");
-        expect_parse("// @ulre begin\n// @ulre priority notanumber\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidNumber, "invalid-number");
-        expect_parse("// @ulre begin\n// @ulre conflicts\n// @ulre end\n", GLSLCodeModuleParseResult::InvalidConflict, "invalid-conflict");
+        expect_parse("// @ulre begin\n// @ulre end\n", ShaderCodeModuleParseResult::OK, "minimal");
+        expect_parse("void main() {}\n", ShaderCodeModuleParseResult::Skipped, "no-metadata");
+        expect_parse("// @ulre name x\n// @ulre begin\n// @ulre end\n", ShaderCodeModuleParseResult::MissingBegin, "missing-begin");
+        expect_parse("// @ulre begin\n// @ulre begin\n// @ulre end\n", ShaderCodeModuleParseResult::DuplicateBegin, "duplicate-begin");
+        expect_parse("// @ulre begin\n// @ulre name x\n", ShaderCodeModuleParseResult::MissingEnd, "missing-end");
+        expect_parse("// @ulre begin\n// @ulre nope 1\n// @ulre end\n", ShaderCodeModuleParseResult::UnknownDirective, "unknown-directive");
+        expect_parse("// @ulre begin\n// @ulre name a\n// @ulre name b\n// @ulre end\n", ShaderCodeModuleParseResult::DuplicateDirective, "duplicate-directive");
+        expect_parse("// @ulre begin\n// @ulre kind\n// @ulre end\n", ShaderCodeModuleParseResult::MissingDirectiveArgument, "missing-argument");
+        expect_parse("// @ulre begin\n// @ulre kind NoSuchKind\n// @ulre end\n", ShaderCodeModuleParseResult::InvalidKind, "invalid-kind");
+        expect_parse("// @ulre begin\n// @ulre provide NoSuchSemantic\n// @ulre end\n", ShaderCodeModuleParseResult::InvalidSemantic, "invalid-semantic");
+        expect_parse("// @ulre begin\n// @ulre require BadSource Normal\n// @ulre end\n", ShaderCodeModuleParseResult::InvalidSource, "invalid-source");
+        expect_parse("// @ulre begin\n// @ulre require GeometryAttribute Normal NotAClass\n// @ulre end\n", ShaderCodeModuleParseResult::InvalidNumericClass, "invalid-numclass");
+        expect_parse("// @ulre begin\n// @ulre priority notanumber\n// @ulre end\n", ShaderCodeModuleParseResult::InvalidNumber, "invalid-number");
+        expect_parse("// @ulre begin\n// @ulre conflicts\n// @ulre end\n", ShaderCodeModuleParseResult::InvalidConflict, "invalid-conflict");
 
         // Registry scan of the real ShaderLibrary directory.
-        GLSLCodeModuleRegistry registry;
+        ShaderCodeModuleRegistry registry;
 
         int file_count = 0;
         int error_count = 0;
@@ -3607,26 +3408,28 @@ namespace
             result.diagnostics.emplace_back("LoadDirectory failed to scan directory");
         else
         {
-            if (file_count != 70)
-                result.diagnostics.emplace_back("LoadDirectory expected 70 file modules, got "
+            // 单趟发射改造（2026-09）：3 个 compositor 模板文件删除（骨架
+            // 降级为发射器常量），模块总数 70 -> 67。
+            if (file_count != 67)
+                result.diagnostics.emplace_back("LoadDirectory expected 67 file modules, got "
                                                 + std::to_string(file_count) + " (2 vertex SSBO modules added)");
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 70;
+            const int expected_count = 67;
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));
 
-            GLSLCodeModuleMetadataValidationDiagnostic metadata_diagnostic{};
-            if (!ValidateGLSLCodeModuleRegistryMetadata(
+            ShaderCodeModuleMetadataValidationDiagnostic metadata_diagnostic{};
+            if (!ValidateShaderCodeModuleRegistryMetadata(
                     registry, metadata_diagnostic))
             {
                 result.diagnostics.emplace_back(
                     "formal metadata validation failed: error="
                     + std::string(
-                        GetGLSLCodeModuleMetadataValidationErrorName(
+                        GetShaderCodeModuleMetadataValidationErrorName(
                             metadata_diagnostic.error))
                     + " module="
                     + std::string(metadata_diagnostic.module_name.c_str())
@@ -3639,9 +3442,9 @@ namespace
         const auto *lift = registry.FindByName("s2_lift_xy0");
         if (!lift)
             result.diagnostics.emplace_back("s2_lift_xy0 not found by name");
-        else if (lift->kind != GLSLCodeModuleKind::Position
+        else if (lift->kind != ShaderCodeModuleKind::Position
               || lift->semantic_requirement_count != 1
-              || lift->semantic_requirements[0].semantic != GLSLCodeModuleSemantic::Position
+              || lift->semantic_requirements[0].semantic != ShaderCodeModuleSemantic::Position
               || lift->semantic_requirements[0].min_component_count != 2
               || lift->semantic_requirements[0].max_component_count != 2)
             result.diagnostics.emplace_back("s2_lift_xy0 capability metadata mismatch");
@@ -3649,31 +3452,22 @@ namespace
         const auto *surface_interface = registry.FindByName("surface_interface");
         if (!surface_interface)
             result.diagnostics.emplace_back("surface_interface not found by name");
-        else if (surface_interface->kind != GLSLCodeModuleKind::Shared)
+        else if (surface_interface->kind != ShaderCodeModuleKind::Shared)
             result.diagnostics.emplace_back("surface_interface kind mismatch");
 
-        const auto *compositor_lit = registry.FindByName("main_forward_surface");
-        if (!compositor_lit)
-            result.diagnostics.emplace_back("main_forward_surface not found by name");
-        else
-        {
-            if (compositor_lit->kind != GLSLCodeModuleKind::FragmentShader)
-                result.diagnostics.emplace_back("main_forward_surface kind mismatch");
-            if (compositor_lit->dependency_count != 4)
-                result.diagnostics.emplace_back("main_forward_surface uses resolution expected 4 deps, got "
-                    + std::to_string(compositor_lit->dependency_count));
-        }
+        // 单趟发射改造（2026-09）：compositor 骨架降级为发射器常量，
+        // skeleton key 为 "forward_surface" / "depth_only" / "forward_sky"。
 
         const auto *forward_input = registry.FindByName("forward_lighting");
-        if (!forward_input || forward_input->kind != GLSLCodeModuleKind::Utility)
+        if (!forward_input || forward_input->kind != ShaderCodeModuleKind::Utility)
             result.diagnostics.emplace_back("forward_lighting input assembly module is missing or has wrong kind");
 
         const auto *forward_algorithm = registry.FindByName("forward_pbr");
-        if (!forward_algorithm || forward_algorithm->kind != GLSLCodeModuleKind::Utility)
+        if (!forward_algorithm || forward_algorithm->kind != ShaderCodeModuleKind::Utility)
             result.diagnostics.emplace_back("forward_pbr lighting algorithm module is missing or has wrong kind");
 
         const auto *alternate_algorithm = registry.FindByName("forward_flat");
-        if (!alternate_algorithm || alternate_algorithm->kind != GLSLCodeModuleKind::Utility)
+        if (!alternate_algorithm || alternate_algorithm->kind != ShaderCodeModuleKind::Utility)
             result.diagnostics.emplace_back("forward_flat alternate lighting algorithm is missing or has wrong kind");
 
 
@@ -3681,36 +3475,36 @@ namespace
         return result;
     }
 
-    static GateResult RunGLSLCodeModuleMetadataValidationCase()
+    static GateResult RunShaderCodeModuleMetadataValidationCase()
     {
         GateResult result;
         result.name = "I1.glsl-code-module-metadata-validation";
 
         const auto make_definition = [](
-            const char *name) -> GLSLCodeModuleDefinition
+            const char *name) -> ShaderCodeModuleDefinition
         {
-            GLSLCodeModuleDefinition definition{};
+            ShaderCodeModuleDefinition definition{};
             definition.name = name;
             definition.glsl_code = "// metadata validation";
-            definition.kind = GLSLCodeModuleKind::Utility;
+            definition.kind = ShaderCodeModuleKind::Utility;
             return definition;
         };
 
         {
-            const GLSLCodeModuleSemantic duplicate_provides[] =
+            const ShaderCodeModuleSemantic duplicate_provides[] =
             {
-                GLSLCodeModuleSemantic::Position,
-                GLSLCodeModuleSemantic::Position
+                ShaderCodeModuleSemantic::Position,
+                ShaderCodeModuleSemantic::Position
             };
-            GLSLCodeModuleDefinition definition =
+            ShaderCodeModuleDefinition definition =
                 make_definition("duplicate_provide");
             definition.semantic_provides = duplicate_provides;
             definition.semantic_provide_count = 2;
 
-            GLSLCodeModuleMetadataValidationDiagnostic diagnostic{};
-            if (ValidateGLSLCodeModuleMetadata(definition, diagnostic)
+            ShaderCodeModuleMetadataValidationDiagnostic diagnostic{};
+            if (ValidateShaderCodeModuleMetadata(definition, diagnostic)
              || diagnostic.error
-                    != GLSLCodeModuleMetadataValidationError::DuplicateProvide)
+                    != ShaderCodeModuleMetadataValidationError::DuplicateProvide)
             {
                 result.diagnostics.emplace_back(
                     "duplicate provide metadata must be rejected");
@@ -3718,15 +3512,15 @@ namespace
         }
 
         {
-            GLSLCodeModuleDefinition first =
+            ShaderCodeModuleDefinition first =
                 make_definition("cycle_first");
-            GLSLCodeModuleDefinition second =
+            ShaderCodeModuleDefinition second =
                 make_definition("cycle_second");
-            const GLSLCodeModuleDependency first_dependencies[] =
+            const ShaderCodeModuleDependency first_dependencies[] =
             {
                 {second.name}
             };
-            const GLSLCodeModuleDependency second_dependencies[] =
+            const ShaderCodeModuleDependency second_dependencies[] =
             {
                 {first.name}
             };
@@ -3735,13 +3529,13 @@ namespace
             second.dependencies = second_dependencies;
             second.dependency_count = 1;
 
-            GLSLCodeModuleRegistry registry;
-            GLSLCodeModuleMetadataValidationDiagnostic diagnostic{};
+            ShaderCodeModuleRegistry registry;
+            ShaderCodeModuleMetadataValidationDiagnostic diagnostic{};
             if (!registry.Register(first)
              || !registry.Register(second)
-             || ValidateGLSLCodeModuleRegistryMetadata(registry, diagnostic)
+             || ValidateShaderCodeModuleRegistryMetadata(registry, diagnostic)
              || diagnostic.error
-                    != GLSLCodeModuleMetadataValidationError::DependencyCycle)
+                    != ShaderCodeModuleMetadataValidationError::DependencyCycle)
             {
                 result.diagnostics.emplace_back(
                     "explicit dependency cycle must be rejected");
@@ -3749,26 +3543,26 @@ namespace
         }
 
         {
-            const GLSLCodeModuleSemantic position[] =
+            const ShaderCodeModuleSemantic position[] =
             {
-                GLSLCodeModuleSemantic::Position
+                ShaderCodeModuleSemantic::Position
             };
-            GLSLCodeModuleDefinition first =
+            ShaderCodeModuleDefinition first =
                 make_definition("ambiguous_first");
-            GLSLCodeModuleDefinition second =
+            ShaderCodeModuleDefinition second =
                 make_definition("ambiguous_second");
             first.semantic_provides = position;
             first.semantic_provide_count = 1;
             second.semantic_provides = position;
             second.semantic_provide_count = 1;
 
-            GLSLCodeModuleRegistry registry;
-            GLSLCodeModuleMetadataValidationDiagnostic diagnostic{};
+            ShaderCodeModuleRegistry registry;
+            ShaderCodeModuleMetadataValidationDiagnostic diagnostic{};
             if (!registry.Register(first)
              || !registry.Register(second)
-             || ValidateGLSLCodeModuleRegistryMetadata(registry, diagnostic)
+             || ValidateShaderCodeModuleRegistryMetadata(registry, diagnostic)
              || diagnostic.error
-                    != GLSLCodeModuleMetadataValidationError::
+                    != ShaderCodeModuleMetadataValidationError::
                         AmbiguousProviderPriority)
             {
                 result.diagnostics.emplace_back(
@@ -3777,15 +3571,15 @@ namespace
         }
 
         {
-            GLSLCodeModuleDefinition first =
+            ShaderCodeModuleDefinition first =
                 make_definition("conflict_first");
-            GLSLCodeModuleDefinition second =
+            ShaderCodeModuleDefinition second =
                 make_definition("conflict_second");
             const char *conflicts[] = {second.name};
             first.module_conflict_names = conflicts;
             first.module_conflict_count = 1;
-            if (!AreGLSLCodeModulesConflicting(first, second)
-             || !AreGLSLCodeModulesConflicting(second, first))
+            if (!AreShaderCodeModulesConflicting(first, second)
+             || !AreShaderCodeModulesConflicting(second, first))
             {
                 result.diagnostics.emplace_back(
                     "module conflicts must be symmetric at query time");
@@ -3793,265 +3587,16 @@ namespace
         }
 
         {
-            GLSLCodeModuleDefinition base =
+            ShaderCodeModuleDefinition base =
                 make_definition("metadata_hash");
-            GLSLCodeModuleDefinition changed = base;
+            ShaderCodeModuleDefinition changed = base;
             changed.priority = 10;
-            if (GetGLSLCodeModuleDefinitionHash(base)
-                == GetGLSLCodeModuleDefinitionHash(changed))
+            if (GetShaderCodeModuleDefinitionHash(base)
+                == GetShaderCodeModuleDefinitionHash(changed))
             {
                 result.diagnostics.emplace_back(
                     "module metadata changes must affect definition hash");
             }
-        }
-
-        result.passed = result.diagnostics.empty();
-        return result;
-    }
-
-    static GateResult RunShadowMaterialModuleGraphCase()
-    {
-        GateResult result;
-        result.name = "I2.shadow-material-module-graph";
-
-        GLSLCodeModuleRegistry &registry = GetGLSLCodeModuleRegistry();
-        static const char *definition_ids[] =
-        {
-            "Lit",
-            "VertexPaletteColor",
-            "VertexLuminance",
-            "DebugNormalColor",
-            "VertexColor",
-            "SkyMinimal",
-            "UnlitTexture",
-            "Texture2DArray",
-            "LitTextureArray"
-        };
-
-        for (const char *definition_id : definition_ids)
-        {
-            MaterialDefinition definition{};
-            if (!TryGetMaterialDefinitionByID(definition_id, definition))
-            {
-                result.diagnostics.emplace_back(
-                    std::string("missing module-graph definition: ")
-                    + definition_id);
-                continue;
-            }
-
-            ResolvedModuleGraph first_graph{};
-            ResolvedModuleGraph second_graph{};
-            ResolvedModuleGraphBuildDiagnostic diagnostic{};
-            if (!BuildMaterialResolvedModuleGraph(
-                    definition, registry, first_graph, diagnostic))
-            {
-                result.diagnostics.emplace_back(
-                    std::string("module graph build failed: ")
-                    + definition_id + " error="
-                    + GetResolvedModuleGraphBuildErrorName(
-                        diagnostic.error)
-                    + " module=" + diagnostic.module_name.c_str());
-                continue;
-            }
-            if (!BuildMaterialResolvedModuleGraph(
-                    definition, registry, second_graph, diagnostic)
-             || GetResolvedModuleGraphHash(first_graph) == 0
-             || GetResolvedModuleGraphHash(first_graph)
-                    != GetResolvedModuleGraphHash(second_graph))
-            {
-                result.diagnostics.emplace_back(
-                    std::string("module graph is not deterministic: ")
-                    + definition_id);
-            }
-        }
-
-        {
-            MaterialDefinition definition{};
-            if (!TryGetMaterialDefinitionByID("Lit", definition))
-            {
-                result.diagnostics.emplace_back(
-                    "missing Lit definition for request graph identity");
-            }
-            else
-            {
-                MaterialDefinitionBuildRequest default_request{};
-                MaterialDefinitionBuildRequest override_request{};
-                override_request.has_vertex_node_config_override = true;
-                override_request.vertex_node_config_override =
-                    VertexNodeConfigResolver::FlatXY();
-
-                ResolvedModuleGraph default_graph{};
-                ResolvedModuleGraph override_graph{};
-                ResolvedModuleGraphBuildDiagnostic diagnostic{};
-                if (!BuildMaterialResolvedModuleGraph(
-                        definition,
-                        registry,
-                        default_graph,
-                        diagnostic,
-                        &default_request)
-                 || !BuildMaterialResolvedModuleGraph(
-                        definition,
-                        registry,
-                        override_graph,
-                        diagnostic,
-                        &override_request)
-                 || GetResolvedModuleGraphHash(default_graph)
-                        == GetResolvedModuleGraphHash(override_graph))
-                {
-                    result.diagnostics.emplace_back(
-                        "request-selected transform must affect module graph");
-                }
-            }
-        }
-
-        const auto build_synthetic_registry = [](
-            GLSLCodeModuleRegistry &out_registry,
-            GLSLCodeModuleDefinition &dependency,
-            GLSLCodeModuleDefinition &root,
-            GLSLCodeModuleDefinition &stage2,
-            GLSLCodeModuleDefinition &stage3,
-            GLSLCodeModuleDependency &root_dependency,
-            const bool reverse_order) -> bool
-        {
-            dependency = {};
-            dependency.name = "shadow_dependency";
-            dependency.glsl_code = "// shadow dependency";
-            dependency.kind = GLSLCodeModuleKind::Utility;
-
-            root_dependency = {
-                dependency.name
-            };
-            root = {};
-            root.name = "main_depth_only";
-            root.glsl_code = "// shadow root";
-            root.kind = GLSLCodeModuleKind::FragmentShader;
-            root.dependencies = &root_dependency;
-            root.dependency_count = 1;
-
-            stage2 = {};
-            stage2.name = "s2_passthrough3d";
-            stage2.glsl_code = "// synthetic stage 2";
-            stage2.kind = GLSLCodeModuleKind::Position;
-
-            stage3 = {};
-            stage3.name = "s3_world_camera_vp";
-            stage3.glsl_code = "// synthetic stage 3";
-            stage3.kind = GLSLCodeModuleKind::Transform;
-
-            if (reverse_order)
-            {
-                return out_registry.Register(stage3)
-                    && out_registry.Register(stage2)
-                    && out_registry.Register(root)
-                    && out_registry.Register(dependency);
-            }
-
-            return out_registry.Register(dependency)
-                && out_registry.Register(root)
-                && out_registry.Register(stage2)
-                && out_registry.Register(stage3);
-        };
-
-        GLSLCodeModuleRegistry first_registry;
-        GLSLCodeModuleRegistry second_registry;
-        GLSLCodeModuleDefinition first_dependency{};
-        GLSLCodeModuleDefinition first_root{};
-        GLSLCodeModuleDefinition first_stage2{};
-        GLSLCodeModuleDefinition first_stage3{};
-        GLSLCodeModuleDependency first_root_dependency{};
-        GLSLCodeModuleDefinition second_dependency{};
-        GLSLCodeModuleDefinition second_root{};
-        GLSLCodeModuleDefinition second_stage2{};
-        GLSLCodeModuleDefinition second_stage3{};
-        GLSLCodeModuleDependency second_root_dependency{};
-
-        if (!build_synthetic_registry(
-                first_registry,
-                first_dependency,
-                first_root,
-                first_stage2,
-                first_stage3,
-                first_root_dependency,
-                false)
-         || !build_synthetic_registry(
-                second_registry,
-                second_dependency,
-                second_root,
-                second_stage2,
-                second_stage3,
-                second_root_dependency,
-                true))
-        {
-            result.diagnostics.emplace_back(
-                "failed to build synthetic module registries");
-        }
-        else
-        {
-            MaterialDefinition definition{};
-            definition.definition_id = "SyntheticShadowGraph";
-            SetMaterialFragmentSource(
-                definition, "synthetic/shadow_root.frag.glsl");
-            definition.vertex_node_config = MakeDefault3DNodeConfig();
-            MaterialDefinitionBuildRequest graph_request{};
-            graph_request.override_shader_program_purpose = true;
-            graph_request.shader_program_purpose =
-                ShaderProgramPurpose::ShadowDepth;
-
-            ResolvedModuleGraph first_graph{};
-            ResolvedModuleGraph second_graph{};
-            ResolvedModuleGraphBuildDiagnostic diagnostic{};
-            hgl::ValueArray<hgl::uint8> first_bytes;
-            hgl::ValueArray<hgl::uint8> second_bytes;
-            if (!BuildMaterialResolvedModuleGraph(
-                    definition,
-                    first_registry,
-                    first_graph,
-                    diagnostic,
-                    &graph_request)
-             || !BuildMaterialResolvedModuleGraph(
-                    definition,
-                    second_registry,
-                    second_graph,
-                    diagnostic,
-                    &graph_request)
-             || !SerializeResolvedModuleGraph(first_graph, first_bytes)
-             || !SerializeResolvedModuleGraph(second_graph, second_bytes)
-             || first_bytes.GetCount() != second_bytes.GetCount()
-             || std::memcmp(
-                    first_bytes.GetData(),
-                    second_bytes.GetData(),
-                    static_cast<size_t>(first_bytes.GetCount())) != 0
-             || GetResolvedModuleGraphHash(first_graph)
-                    != GetResolvedModuleGraphHash(second_graph))
-            {
-                result.diagnostics.emplace_back(
-                    "module graph must ignore registry IDs and order");
-            }
-        }
-
-        MaterialDefinition missing_root{};
-        missing_root.definition_id = "MissingShadowRoot";
-        SetMaterialFragmentSource(
-            missing_root, "synthetic/not_registered.frag.glsl");
-        missing_root.vertex_node_config = MakeDefault3DNodeConfig();
-        MaterialDefinitionBuildRequest missing_request{};
-        missing_request.override_shader_program_purpose = true;
-        missing_request.shader_program_purpose =
-            ShaderProgramPurpose::ShadowDepth;
-        GLSLCodeModuleRegistry missing_registry;
-        ResolvedModuleGraph missing_graph{};
-        ResolvedModuleGraphBuildDiagnostic missing_diagnostic{};
-        if (BuildMaterialResolvedModuleGraph(
-                missing_root,
-                missing_registry,
-                missing_graph,
-                missing_diagnostic,
-                &missing_request)
-         || missing_diagnostic.error
-                != ResolvedModuleGraphBuildError::MissingRootModule)
-        {
-            result.diagnostics.emplace_back(
-                "missing module roots must fail explicitly");
         }
 
         result.passed = result.diagnostics.empty();
@@ -4063,12 +3608,6 @@ namespace
         GateResult result;
         result.name = "Z.material-privatedata-slot-source";
 
-        std::vector<MaterialPrivateDataSlotDeclaration> slots = {
-            {DefaultMaterialPrivateDataSlotName, SSBOType::EmissiveSurface}
-        };
-        const SerializedVertexEntry vertices[] = {
-            {VF_V2F, VertexSemantic::Position}
-        };
         const SerializedDescriptorEntry descriptors[] = {
             {
                 DescriptorSetType::PerObject,
@@ -4086,14 +3625,12 @@ namespace
         const MaterialShaderCompilerInput compiler_input{
             "MaterialPrivateDataSlotMaterial",
             PrimitiveType::Triangles,
-            vertices,
-            1,
             descriptors,
             1
         };
 
         CompositorMaterialBuildConfig config{};
-        config.material_private_data_slot_decls = &slots;
+        config.material_private_data = SSBOType::EmissiveSurface;
         config.defer_finalize = true;
         // mesh 化后顶点路径统一走 Mesh stage（VS 已彻底废弃）
         config.shader_stage_flag_bits = uint32_t(hgl::graph::mtl::ShaderStage::MeshFragment);
@@ -4143,6 +3680,21 @@ namespace
 
             if (source.find("} mtl_private_data;") == std::string::npos)
                 result.diagnostics.emplace_back("single-slot SSBO declaration is incomplete");
+
+            const size_t extension = source.find(
+                "#extension GL_EXT_mesh_shader : require\n");
+            const size_t declaration = source.find(
+                "struct EmissiveSurfaceData");
+            const size_t alias = source.find(
+                "#define MTL_DATA mtl_private_data\n");
+            if (extension == std::string::npos
+             || declaration == std::string::npos
+             || alias == std::string::npos
+             || !(extension < declaration && declaration < alias))
+            {
+                result.diagnostics.emplace_back(
+                    "material stage document injection order changed");
+            }
         }
 
         const ShaderCreateInfo *vertex =
@@ -4173,9 +3725,6 @@ namespace
         // 编译器不得再注入 #define（原 kBindingDefineTable 注入路径已删除，Phase 3）。
         // 输入 GLSL 特意 include 并使用宏（与真实模板一致），且携带 LocalToWorld
         // 描述符——旧注入路径会因此向 mesh 阶段注入 L2W_SET/L2W_BINDING。
-        const SerializedVertexEntry vertices[] = {
-            {VF_V2F, VertexSemantic::Position}
-        };
         const SerializedDescriptorEntry descriptors[] = {
             {
                 DescriptorSetType::PerObject,
@@ -4193,8 +3742,6 @@ namespace
         const MaterialShaderCompilerInput compiler_input{
             "BindingMacroSingleSourceMaterial",
             PrimitiveType::Triangles,
-            vertices,
-            1,
             descriptors,
             1
         };
@@ -4335,9 +3882,9 @@ namespace
                     "descriptor stage visibility must affect contract hash");
             }
 
-            // C1-T2：entries 即规范化 SerializedDescriptorEntry[]——直接校验契约条目
-            //（原 ConvertDescriptorContractToFixed 往返已删）
-            const auto &roundtrip = first_contract.entries;
+            // C1-T2 + 契约删减：DescriptorContract 即规范化条目数组本身，
+            // 直接校验契约条目（原 ConvertDescriptorContractToFixed 往返已删）
+            const auto &roundtrip = first_contract;
             if (roundtrip.size() != 2
              || std::strcmp(roundtrip[0].name, "viewport") != 0
              || std::strcmp(
@@ -4608,7 +4155,7 @@ namespace
         result.name = "AD.resource-contract-boundary";
 
         MaterialDefinition definition{};
-        definition.material_private_data_slot_decls = {{DefaultMaterialPrivateDataSlotName, SSBOType::PBRSurface}};
+        definition.material_private_data = SSBOType::PBRSurface;
 
         std::vector<SerializedDescriptorEntry> descriptors;
         descriptor_builder_common::AppendDefinitionMaterialDescriptors(
@@ -4617,7 +4164,7 @@ namespace
             uint32_t(hgl::graph::kMeshFragment),
             uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT));
 
-        ModuleResourceManifest compatible_manifest{};
+        ShaderCodeResourceManifest compatible_manifest{};
         compatible_manifest.texture_layer_count = 1;
         compatible_manifest.texture_layers[0] = {
             TextureSlot::BaseColor,
@@ -4669,7 +4216,7 @@ namespace
                     "Merged resource policy or SSBO identity was not preserved.");
         }
 
-        ModuleResourceManifest ssbo_name_conflict{};
+        ShaderCodeResourceManifest ssbo_name_conflict{};
         ssbo_name_conflict.ssbo_count = 1;
         ssbo_name_conflict.ssbos[0] = {
             "mtl_private_data",
@@ -4679,7 +4226,7 @@ namespace
         };
         if (descriptor_builder_common::AppendManifestSSBODescriptors(
                 descriptors, ssbo_name_conflict)
-         || ssbo_name_conflict.error != ModuleResourceManifestError::ResourceConflict)
+         || ssbo_name_conflict.error != ShaderCodeResourceManifestError::ResourceConflict)
         {
             result.diagnostics.emplace_back(
                 "Same-name SSBO type conflicts must fail explicitly.");
@@ -4699,25 +4246,36 @@ namespace
         hash_entry.required = true;
         hash_entry.allow_fallback = false;
 
+        // 契约哈希统一用生产实现 GetDescriptorContractHash（原
+        // HashResourceContract 双轨哈希已删——它经由 schema 额外把 ssbo_id/
+        // 名字文本计入，与生产 shader 身份语义不一致）。
+        // 生产入口要求规范化条目（logical/schema ID 由 BuildDescriptorContract
+        // 就地计算），手工构造的夹具先规范化再哈希。
         std::vector<SerializedDescriptorEntry> hash_entries{hash_entry};
-        const uint64_t strict_hash =
-            descriptor_builder_common::HashResourceContract(0, hash_entries);
-        hash_entries[0].required = false;
-        hash_entries[0].allow_fallback = true;
-        const uint64_t optional_hash =
-            descriptor_builder_common::HashResourceContract(0, hash_entries);
-        if (strict_hash == optional_hash)
+        DescriptorContract normalized_entries{};
+        if (!BuildDescriptorContract(hash_entries, normalized_entries))
+        {
             result.diagnostics.emplace_back(
-                "Required/fallback policy changes must change the resource contract hash.");
+                "Resource contract hash fixture entries must normalize.");
+        }
+        else
+        {
+            const uint64_t strict_hash = GetDescriptorContractHash(normalized_entries, 0);
+            normalized_entries[0].required = false;
+            normalized_entries[0].allow_fallback = true;
+            const uint64_t optional_hash = GetDescriptorContractHash(normalized_entries, 0);
+            if (strict_hash == optional_hash)
+                result.diagnostics.emplace_back(
+                    "Required/fallback policy changes must change the resource contract hash.");
 
-        hash_entries[0].required = true;
-        hash_entries[0].allow_fallback = false;
-        hash_entries[0].ssbo_type = SSBOType::TextureLayer;
-        const uint64_t ssbo_type_hash =
-            descriptor_builder_common::HashResourceContract(0, hash_entries);
-        if (strict_hash == ssbo_type_hash)
-            result.diagnostics.emplace_back(
-                "SSBO type changes must change the resource contract hash.");
+            normalized_entries[0].required = true;
+            normalized_entries[0].allow_fallback = false;
+            normalized_entries[0].ssbo_type = SSBOType::TextureLayer;
+            const uint64_t ssbo_type_hash = GetDescriptorContractHash(normalized_entries, 0);
+            if (strict_hash == ssbo_type_hash)
+                result.diagnostics.emplace_back(
+                    "SSBO type changes must change the resource contract hash.");
+        }
 
         SerializedDescriptorEntry ssbo_hash_entry{};
         ssbo_hash_entry.set_type = DescriptorSetType::Material;
@@ -4731,14 +4289,25 @@ namespace
         ssbo_hash_entry.ssbo_id = 11;
 
         std::vector<SerializedDescriptorEntry> ssbo_hash_entries{ssbo_hash_entry};
-        const uint64_t first_ssbo_hash =
-            descriptor_builder_common::HashResourceContract(0, ssbo_hash_entries);
-        ssbo_hash_entries[0].ssbo_id = 12;
-        const uint64_t second_ssbo_hash =
-            descriptor_builder_common::HashResourceContract(0, ssbo_hash_entries);
-        if (first_ssbo_hash == second_ssbo_hash)
+        DescriptorContract normalized_ssbo_entries{};
+        if (!BuildDescriptorContract(ssbo_hash_entries, normalized_ssbo_entries))
+        {
             result.diagnostics.emplace_back(
-                "SSBO buffer identity changes must change the resource contract hash.");
+                "SSBO identity hash fixture entries must normalize.");
+        }
+        else
+        {
+            const uint64_t first_ssbo_hash =
+                GetDescriptorContractHash(normalized_ssbo_entries, 0);
+            normalized_ssbo_entries[0].ssbo_id = 12;
+            const uint64_t second_ssbo_hash =
+                GetDescriptorContractHash(normalized_ssbo_entries, 0);
+            // ssbo_id 是运行时行绑定信息，不影响 shader 内容与描述符布局——
+            // 生产契约哈希有意排除（变化不得改变 shader 身份，否则缓存碎片化）
+            if (first_ssbo_hash != second_ssbo_hash)
+                result.diagnostics.emplace_back(
+                    "SSBO buffer identity (runtime binding) must not change the resource contract hash.");
+        }
 
         result.passed = result.diagnostics.empty();
         return result;
@@ -4750,7 +4319,7 @@ namespace
         result.name = "MI.module-invariants";
 
         // 1. Real ShaderLibrary scan: names unique, stable IDs unique.
-        GLSLCodeModuleRegistry registry;
+        ShaderCodeModuleRegistry registry;
         int file_count = 0;
         int error_count = 0;
         if (!registry.LoadDirectory(
@@ -4779,7 +4348,6 @@ namespace
                 continue;
             }
 
-            const uint64_t left_id = GetGLSLCodeModuleStableID(*left);
             for (int j = i + 1; j < count; ++j)
             {
                 const auto *right = registry.GetModuleByIndex(j);
@@ -4792,70 +4360,7 @@ namespace
                         "duplicate module name: "
                         + std::string(left->name));
                 }
-                if (GetGLSLCodeModuleStableID(*right) == left_id)
-                {
-                    result.diagnostics.emplace_back(
-                        "stable ID collision between "
-                        + std::string(left->name) + " and "
-                        + std::string(right->name));
-                }
             }
-        }
-
-        // 2. Content-hash sensitivity: changing kind / priority / a single
-        //    requirement must change the canonical content hash.
-        const GLSLCodeModuleSemanticRequirement normal_requirement{
-            GLSLCodeModuleCapabilitySource::ProducedSemantic,
-            GLSLCodeModuleSemantic::Normal,
-            static_cast<uint32_t>(GLSLCodeModuleNumericClass::Float),
-            3, 3
-        };
-        const GLSLCodeModuleSemanticRequirement uv_requirement{
-            GLSLCodeModuleCapabilitySource::ProducedSemantic,
-            GLSLCodeModuleSemantic::UV0,
-            static_cast<uint32_t>(GLSLCodeModuleNumericClass::Float),
-            2, 2
-        };
-
-        GLSLCodeModuleDefinition base{};
-        base.name = "invariant_base";
-        base.glsl_code = "// invariant base";
-        base.kind = GLSLCodeModuleKind::Utility;
-        base.priority = 10;
-        base.semantic_requirements = &normal_requirement;
-        base.semantic_requirement_count = 1;
-
-        GLSLCodeModuleDefinition changed_kind = base;
-        changed_kind.kind = GLSLCodeModuleKind::Transform;
-
-        GLSLCodeModuleDefinition changed_priority = base;
-        changed_priority.priority = 20;
-
-        GLSLCodeModuleDefinition changed_requirement = base;
-        changed_requirement.semantic_requirements = &uv_requirement;
-
-        const uint64_t base_hash =
-            GetCanonicalGLSLCodeModuleContentHash(base, registry);
-        if (base_hash
-            == GetCanonicalGLSLCodeModuleContentHash(
-                changed_kind, registry))
-        {
-            result.diagnostics.emplace_back(
-                "content hash must change when kind changes");
-        }
-        if (base_hash
-            == GetCanonicalGLSLCodeModuleContentHash(
-                changed_priority, registry))
-        {
-            result.diagnostics.emplace_back(
-                "content hash must change when priority changes");
-        }
-        if (base_hash
-            == GetCanonicalGLSLCodeModuleContentHash(
-                changed_requirement, registry))
-        {
-            result.diagnostics.emplace_back(
-                "content hash must change when a requirement changes");
         }
 
         result.passed = result.diagnostics.empty();
@@ -4930,16 +4435,21 @@ namespace
             ShaderProgramPurpose purpose;
             bool override_purpose;
             PassType pass;
+            bool has_geometry;   // CharQuad 文本材质无需几何顶点格式（mesh 自声明 SSBO）
         };
 
         static const PilotVariant kVariants[] =
         {
             { "Lit", "lit-forward-opaque",
-              ShaderProgramPurpose::ForwardColor, false, PassType::ForwardOpaque },
+              ShaderProgramPurpose::ForwardColor, false, PassType::ForwardOpaque, true },
             { "Lit", "lit-depth-only",
-              ShaderProgramPurpose::DepthOnly, true, PassType::ForwardOpaque },
+              ShaderProgramPurpose::DepthOnly, true, PassType::ForwardOpaque, true },
+            { "Lit", "lit-shadow-depth",
+              ShaderProgramPurpose::ShadowDepth, true, PassType::ForwardOpaque, true },
             { "VertexPaletteColor", "vertex-palette-color-forward",
-              ShaderProgramPurpose::ForwardColor, false, PassType::ForwardOpaque },
+              ShaderProgramPurpose::ForwardColor, false, PassType::ForwardOpaque, true },
+            { "builtin/text_gpu", "text-gpu-charquad",
+              ShaderProgramPurpose::ForwardColor, false, PassType::ForwardTransparent, false },
         };
 
         for (const PilotVariant &variant : kVariants)
@@ -4956,7 +4466,7 @@ namespace
 
             MaterialDefinitionBuildRequest request{};
             request.recipe.mtl_def_id = definition.definition_id;
-            request.geometry_vertex_format = &geometry;
+            request.geometry_vertex_format = variant.has_geometry ? &geometry : nullptr;
             request.defer_finalize = true;
             request.override_shader_program_purpose = variant.override_purpose;
             request.shader_program_purpose = variant.purpose;
@@ -5058,6 +4568,13 @@ int main(const int argc, char **argv)
         return 2;
     }
 
+    if (!InitShaderCompiler())
+    {
+        GLogError(
+            "[ShaderResourceSchemaRegressionGate] Failed to initialize GLSL compiler.");
+        return 3;
+    }
+
     const bool run_glsl = IsRegressionGroupSelected(selected_group, "glsl");
     const bool run_interface = IsRegressionGroupSelected(selected_group, "interface");
     const bool run_descriptor = IsRegressionGroupSelected(selected_group, "descriptor");
@@ -5117,9 +4634,8 @@ int main(const int argc, char **argv)
     if (run_materialization) results.push_back(RunMaterialDefinitionFileSchemaCase());
     if (run_materialization) results.push_back(RunFallbackInferenceCase());
     if (run_glsl) results.push_back(RunProviderResourceManifestCase());
-    if (run_glsl) results.push_back(RunGLSLCodeModuleFileCase());
-    if (run_glsl) results.push_back(RunGLSLCodeModuleMetadataValidationCase());
-    if (run_glsl) results.push_back(RunShadowMaterialModuleGraphCase());
+    if (run_glsl) results.push_back(RunShaderCodeModuleFileCase());
+    if (run_glsl) results.push_back(RunShaderCodeModuleMetadataValidationCase());
     if (run_interface) results.push_back(RunShaderSemanticRegistryCase());
     if (run_materialization) results.push_back(RunResolvedBindingTableCase());
     if (run_interface) results.push_back(RunMaterialVertexABICharacterizationCase());

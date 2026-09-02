@@ -167,7 +167,7 @@ UpsertRecipeSSBOAssetBinding(mesh_recipe, "mtl",       // data_slot "mtl"
 ### 原理 2：GLSL 代码模块自描述（@ulre 元数据）
 
 ShaderLibrary 的每个 `.glsl` 头部有一段 `// @ulre begin/end` 注释块，把模块的
-能力声明为结构化数据（GLSLCodeModuleFile.cpp:436-728）：
+能力声明为结构化数据（ShaderCodeModuleFile.cpp:436-728）：
 
 ```glsl
 // @ulre name pbr_surface_source
@@ -180,9 +180,9 @@ ShaderLibrary 的每个 `.glsl` 头部有一段 `// @ulre begin/end` 注释块�
 // @ulre uses bindless_textures
 ```
 
-解析器产出 `GLSLCodeModuleDefinition`（名字、GLSL 源码指针、需求数组、依赖、
-条件、冲突）。注册表三来源：显式注册 + 内置表（`GLSLCodeModuleID` 枚举）+
-**目录递归扫描**（GLSLCodeModuleRegistry.cpp:68-374，`uses/conflicts` 两阶段
+解析器产出 `ShaderCodeModuleDefinition`（名字、GLSL 源码指针、需求数组、依赖、
+条件、冲突）。注册表三来源：显式注册 + 内置表（`ShaderCodeModuleID` 枚举）+
+**目录递归扫描**（ShaderCodeModuleRegistry.cpp:68-374，`uses/conflicts` 两阶段
 名字→ID 解析，收敛循环剔除悬空依赖）。这是整个系统的"编译器前端"：
 **GLSL 文件本身同时是源码与清单**，改一行 shader 代码 = 改缓存 key，
 无手工同步。
@@ -192,7 +192,7 @@ ShaderLibrary 的每个 `.glsl` 头部有一段 `// @ulre begin/end` 注释块�
 材质定义不直接说"用哪个法线模块"，而是声明
 `[vertex].requirements = ["Position","UV0","Normal"]` +
 `ntb_module = "ntb/ntb_tangent_vbo_normalmap.glsl"`。
-CapabilityResolver 把需求按四类来源处理（GLSLCodeModuleCapabilityResolver.cpp:510-606）：
+CapabilityResolver 把需求按四类来源处理（ShaderCodeModuleCapabilityResolver.cpp:510-606）：
 
 - `GeometryAttribute` → 与几何格式能力表匹配（语义 + 数值类掩码 + 分量数区间，
   `GetNumericClassFromVkFormat` 把 VkFormat 归类为
@@ -202,7 +202,7 @@ CapabilityResolver 把需求按四类来源处理（GLSLCodeModuleCapabilityReso
   前向可行性 + in_progress 环检测。
 
 选中的 provider 集合会被拼装成**顶点 provider GLSL**
-（`ComposeGLSLCodeModuleProviderGraph`）并参与顶点 stage key——
+（`ComposeShaderCodeModuleProviderGraph`）并参与顶点 stage key——
 这就是"同一个材质换一个法线模块，缓存自动失效"的机制。
 
 ### 原理 4：契约化 = 可序列化、可哈希、可校验
@@ -279,10 +279,10 @@ Text、Sky、billboard**——差异只在五元组与模块路径。
 
 - `BuildGenericMaterial` 是 ~390 行的单函数（MaterialDefinitionRegistry.cpp:218-603），
   承担了目的裁剪/契约推导/资源清单/组装/哈希全流程，是后续拆分的候选点；
-- `GLSLCodeModuleID` 仍是手写枚举（TestProviderA/PBRSurface）与目录扫描并存的
+- `ShaderCodeModuleID` 仍是手写枚举（TestProviderA/PBRSurface）与目录扫描并存的
   双轨制，文件模块的 ID 是运行时自增，稳定性依赖名字哈希
   （stable ID = FNV1a(name)）——这是缓存正确性的关键，值得关注
-  `GetCanonicalGLSLCodeModuleContentHash` 的字段覆盖完整性；
+  `GetCanonicalShaderCodeModuleContentHash` 的字段覆盖完整性；
 - shader 库路径靠运行时可执行文件向上搜索 `ShaderLibrary/` 目录
   （ShaderLibraryPath.h:27-76），部署时需保证目录可达。
 
@@ -296,9 +296,9 @@ Text、Sky、billboard**——差异只在五元组与模块路径。
 | L1 | `inc/hgl/mtl/MaterialDefinitionFile.h` + `src/ShaderGen/common/MaterialDefinitionFile.cpp` | .material.toml 解析 |
 | L1 | `inc/hgl/mtl/MaterialDefinitionRegistry.h` + `src/ShaderGen/MaterialDefinitionRegistry.cpp` | 定义注册表 + BuildGenericMaterial 主流程 |
 | L2 | `inc/hgl/shadergen/ShaderBuildContext.h` | 编译产物容器（描述符分配器/Stage Map/链接规格） |
-| L3 | `src/ShaderGen/common/GLSLCodeModuleFile.cpp` | @ulre 元数据解析 |
-| L3 | `src/ShaderGen/common/GLSLCodeModuleRegistry.cpp` | 模块注册表（内置+目录扫描） |
-| L3 | `src/ShaderGen/common/GLSLCodeModuleCapabilityResolver.cpp` | 语义需求 → provider 解析 |
+| L3 | `src/ShaderGen/common/ShaderCodeModuleFile.cpp` | @ulre 元数据解析 |
+| L3 | `src/ShaderGen/common/ShaderCodeModuleRegistry.cpp` | 模块注册表（内置+目录扫描） |
+| L3 | `src/ShaderGen/common/ShaderCodeModuleCapabilityResolver.cpp` | 语义需求 → provider 解析 |
 | L3 | `src/ShaderGen/ResolvedModuleGraphBuilder.cpp` | 模块依赖图（闭包/拓扑/聚合/哈希） |
 | L3 | `src/ShaderGen/CompositorAssembler.cpp` | FS 模板装配（宏注入/模块替换/契约标记） |
 | L3 | `src/ShaderGen/common/MeshShaderAssembler.h` | Mesh shader 三段式组装 |

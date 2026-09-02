@@ -61,39 +61,6 @@ namespace hgl::ecs
             resource.shared_across_instances = false;
             resource.authored = false;
         }
-
-        void UpsertRecipeTextureBinding(hgl::graph::mtl::MaterialRecipe &recipe,
-                                        const std::string &slot_name,
-                                        const std::string &resource_id,
-                                        const bool required,
-                                        const uint32_t direct_value = 0,
-                                        const bool use_direct_value = false)
-        {
-            for (auto &binding : recipe.textures)
-            {
-                if (binding.slot_name != slot_name)
-                    continue;
-
-                binding.resource_id = resource_id;
-                binding.direct_value = direct_value;
-                binding.use_direct_value = use_direct_value;
-                binding.required = required;
-                return;
-            }
-
-            hgl::graph::mtl::RecipeTextureBinding binding{};
-            binding.slot_name = slot_name;
-            binding.resource_id = resource_id;
-            binding.direct_value = direct_value;
-            binding.use_direct_value = use_direct_value;
-            binding.required = required;
-            recipe.textures.emplace_back(std::move(binding));
-        }
-
-        void NormalizeRecipeWithBaseMaterialInfo(hgl::graph::mtl::MaterialRecipe &recipe)
-        {
-            hgl::graph::mtl::NormalizeRecipe(recipe);
-        }
     }
 
     bool PrimitiveComponent::EnsureRuntimeGeometryBinding(hgl::graph::ShaderProgram *material)
@@ -272,12 +239,12 @@ namespace hgl::ecs
 
             if (resource->use_direct_value)
             {
-                UpsertRecipeTextureBinding(out_recipe,
-                                           hgl::graph::mtl::GetTextureSlotName(slot),
-                                           std::string(),
-                                           resource->required,
-                                           resource->direct_value,
-                                           true);
+                hgl::graph::mtl::UpsertRecipeTextureBinding(out_recipe,
+                                                            hgl::graph::mtl::GetTextureSlotName(slot),
+                                                            std::string(),
+                                                            resource->required,
+                                                            resource->direct_value,
+                                                            true);
                 continue;
             }
 
@@ -287,7 +254,7 @@ namespace hgl::ecs
             if (resource_id.empty())
                 continue;
 
-            UpsertRecipeTextureBinding(out_recipe, hgl::graph::mtl::GetTextureSlotName(slot), resource_id, resource->required);
+            hgl::graph::mtl::UpsertRecipeTextureBinding(out_recipe, hgl::graph::mtl::GetTextureSlotName(slot), resource_id, resource->required);
         }
 
         for (const auto &resource : materialPrivateDataSlotResources)
@@ -333,7 +300,9 @@ namespace hgl::ecs
                 return false;
         }
 
-        NormalizeRecipeWithBaseMaterialInfo(out_recipe);
+        // 组件边界规范化：写回 mtl_def_id 权威值与解析后的渲染状态，
+        // 下游（acquire / 管线创建）不再重复。
+        hgl::graph::mtl::NormalizeRecipe(out_recipe);
         return true;
     }
 

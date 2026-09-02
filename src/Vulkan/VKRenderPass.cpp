@@ -3,7 +3,7 @@
 #include<cstdint>
 #include<hgl/vk/pipeline/VKPipelineResolver.h>
 #include<hgl/vk/VKShaderProgram.h>
-#include<hgl/mtl/MaterialDefinitionRegistry.h>
+#include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/object/ObjectTracker.h>
 #include<hgl/log/Log.h>
 namespace hgl::graph{
@@ -121,18 +121,17 @@ Pipeline *RenderPass::CreatePipeline(ShaderProgram *mtl,const mtl::MaterialRecip
     if(!mtl)
         return(nullptr);
 
-    mtl::MaterialRecipe normalized_recipe = recipe;
-    mtl::NormalizeRecipe(normalized_recipe);
-
-    mtl::MaterialDefinition definition{};
-    if(!mtl::TryGetMaterialDefinitionByID(normalized_recipe.mtl_def_id, definition))
+    // recipe 必须已完成 NormalizeRecipe（组件/acquire 边界负责），此处直接从
+    // 规范化 overrides 重建渲染状态，不再反查 MaterialDefinition——Vulkan 层
+    // 由此不依赖材质注册表。
+    if(!mtl::IsRecipeNormalized(recipe))
     {
-        GLogError(u8"[RenderPass::CreatePipeline] MaterialDefinition not found: '%s'",
-                  normalized_recipe.mtl_def_id.c_str());
+        GLogError(u8"[RenderPass::CreatePipeline] recipe not normalized (call NormalizeRecipe at the authoring/acquire boundary): '%s'",
+                  recipe.mtl_def_id.c_str());
         return nullptr;
     }
     mtl::ResolvedMaterialRenderState render_state =
-        mtl::ResolveMaterialRenderState(definition, normalized_recipe);
+        mtl::GetNormalizedRecipeRenderState(recipe);
 
     // Lines 图元（LineQuad mesh shader 输出 quad 三角形）：绕序不定——强制双面绘制
     //（cull off）

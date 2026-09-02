@@ -25,7 +25,7 @@ namespace hgl::graph::mtl
     HGL_SEMANTIC(SkyInfo) \
     HGL_SEMANTIC(LocalToWorld) \
     HGL_SEMANTIC(LocalToWorldIndex) \
-    /* per-instance SSBO slot（一条 material_private_data_slot_decls 一项）*/ \
+    /* per-instance SSBO 私有数据槽（单槽，slot 0）*/ \
     HGL_SEMANTIC(MaterialPrivateData) \
     HGL_SEMANTIC(MaterialPrivateDataIndex) \
     HGL_SEMANTIC(MaterialTexture) \
@@ -52,9 +52,6 @@ namespace hgl::graph::mtl
     };
 
     /// 语义名（诊断/校验消息用）。与枚举同源：新增语义无需改本函数。
-    /// ⚠️ 2026-08-31 修正：原实现（ShaderResourceSchema.h 手写 switch）漏了全部 8 个
-    /// Vertex* 语义 → 顶点资源的诊断消息一律显示 "Unknown"；且 MaterialPrivateData
-    /// 错返 GLSL buffer 名 "mtl_private_data" 而非枚举名。X 列表化后不可能再漏。
     inline const char *GetDescriptorSemanticName(const DescriptorSemantic semantic) noexcept
     {
 #define HGL_SEMANTIC(name) case DescriptorSemantic::name: return #name;

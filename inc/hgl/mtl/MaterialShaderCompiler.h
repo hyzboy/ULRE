@@ -10,14 +10,14 @@ namespace hgl::graph::mtl {}
 ///   2. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
 ///   3. 填充并返回 ShaderBuildContext*
 
-#include <hgl/mtl/SerializedVertexEntry.h>
 #include <hgl/mtl/SerializedDescriptorEntry.h>
 #include<hgl/common/ShaderStageDef.h>
 #include<hgl/mtl/contract/ShaderGenContract.h>
 #include<hgl/mtl/MaterialRecipe.h>
-#include<hgl/mtl/ModuleResourceManifest.h>
+#include<hgl/mtl/ShaderCodeResourceManifest.h>
 #include<hgl/mtl/ShaderArtifactStore.h>
 #include<hgl/mtl/DescriptorContract.h>
+#include <hgl/mtl/ShaderDocument.h>
 #include <string>
 #include <vector>
 
@@ -29,12 +29,21 @@ namespace hgl::graph
 
 namespace hgl::graph::mtl{
     using namespace hgl::graph::mtl;
+
+struct MaterialShaderDocumentCapture
+{
+    // Optional production-pipeline observability for regression gates. The
+    // compiler serializes final documents from these exact instances.
+    ShaderDocument mesh_source_document;
+    ShaderDocument fragment_source_document;
+    ShaderDocument mesh_final_document;
+    ShaderDocument fragment_final_document;
+};
+
 struct MaterialShaderCompilerInput
 {
     const char *debug_name = nullptr;
     PrimitiveType primitive_type = PrimitiveType::Triangles;
-    const mtl::SerializedVertexEntry *vertex_entries = nullptr;
-    uint32 vertex_entry_count = 0;
     const mtl::SerializedDescriptorEntry *descriptor_entries = nullptr;
     uint32 descriptor_entry_count = 0;
 };
@@ -43,18 +52,17 @@ struct CompositorMaterialBuildConfig
 {
     PrimitiveType primitive_type = PrimitiveType::Triangles;
     uint32_t shader_stage_flag_bits = uint32_t(ShaderStage::MeshFragment);
-    // Per-material SSBO slot declarations (index == material_private_data_slot).
-    // When non-null and non-empty, MaterialShaderCompiler generates MaterialPrivateData
-    // mtl::SerializedDescriptorEntry items and injects the material SSBO struct/buffer
-    // declarations into the fragment GLSL.
-    const std::vector<mtl::MaterialPrivateDataSlotDeclaration> *material_private_data_slot_decls = nullptr;
+    // Per-material SSBO 单槽声明（固定 slot 0 / DefaultMaterialPrivateDataSlotName）。
+    // UserDefined = 无私有数据 SSBO。原 vector<MaterialPrivateDataSlotDeclaration>*
+    // 已随单槽类型收敛删除。
+    SSBOType material_private_data = SSBOType::UserDefined;
     // Optional: capability declaration source for development-time subset validation.
     // When non-null, CompileCompositorMaterial checks Layout requirements ⊆ Definition capabilities.
     const mtl::MaterialDefinition *material_definition = nullptr;
     // Optional unified stage/link contract. When supplied, the compiler
     // validates the declared VS/FS interface before compiling the local SPV.
     const ShaderLinkSpec *program_link = nullptr;
-    const ModuleResourceManifest *resource_manifest = nullptr;
+    const ShaderCodeResourceManifest *resource_manifest = nullptr;
     bool merge_resource_manifest_material_slots = true;
     ShaderArtifactStore *artifact_store = nullptr;
     const DescriptorContract *descriptor_contract = nullptr;
@@ -94,5 +102,15 @@ ShaderBuildContext *CompileCompositorMaterial(
     const std::string &         ms_glsl,
     const std::string &         fs_glsl,
     const CompositorMaterialBuildConfig &config);
+
+// Diagnostic-only overload. Keeping capture outside CompositorMaterialBuildConfig
+// preserves the layout of the production compiler configuration.
+ShaderBuildContext *CompileCompositorMaterial(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const MaterialShaderCompilerInput &input,
+    const std::string &         ms_glsl,
+    const std::string &         fs_glsl,
+    const CompositorMaterialBuildConfig &config,
+    MaterialShaderDocumentCapture *document_capture);
 
 }//namespace hgl::graph::mtl

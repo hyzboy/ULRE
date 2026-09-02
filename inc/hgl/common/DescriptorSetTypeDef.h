@@ -15,6 +15,8 @@ namespace hgl::graph
         Sky=1,           ///< 天空/太阳光 UBO
         Viewport=2,      ///< 视口 UBO
         ColorPalette=3,  ///< 顶点调色板 UBO
+
+        ENUM_CLASS_RANGE(Camera,ColorPalette)  ///< RANGE_SIZE 供资源目录覆盖性断言（漏登记即编译失败）
     };
 
     /// PerObject 集（Set 1）编译期固定 SSBO 绑定号。
@@ -31,6 +33,8 @@ namespace hgl::graph
         TextCharInfo     = 14,  ///< 字符信息 SSBO
         TextCharStyle    = 15,  ///< 字符样式 SSBO
         TextCharInstance = 16,  ///< 字符实例 SSBO
+
+        ENUM_CLASS_RANGE(L2W,TextCharInstance)  ///< RANGE_SIZE 供资源目录覆盖性断言
     };
 
     /// Vertex 集（Set 4）绑定号——顶点数据 SSBO 专用集（Phase 5 自 PerObject 迁出）。

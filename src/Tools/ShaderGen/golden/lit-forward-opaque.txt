@@ -2,6 +2,14 @@ material Lit golden=lit-forward-opaque
 stage mesh present=1 glsl_nonempty=1
 stage fragment present=1 glsl_nonempty=1
 program_link present=1 valid=1 resource_layout_hash_set=1 vertex_input_hash_set=1 render_target_hash_set=1 compiler_hash_set=1
+modules count=6
+module name=material_source_interface
+module name=descriptor_macros
+module name=bindless_textures
+module name=pbr_surface_source
+module name=ntb_interface
+module name=ntb_tangent_vbo_normalmap
+varying data_index_id=1 vertex_color=0 uv0=1 world_pos=1 world_normal=1 luminance=0 frag_direction=0 transform_id_attr=0 palette_color=0 style_id=0
 resource_count=12
 resource semantic=CameraInfo layer=UBO declared_set=Scene set=global binding=global stages=Mesh|Fragment ssbo_type=UserDefined name=camera struct=CameraInfo required=1 fallback=0
 resource semantic=SkyInfo layer=UBO declared_set=Scene set=global binding=global stages=Mesh|Fragment ssbo_type=UserDefined name=sky struct=SkyInfo required=0 fallback=1

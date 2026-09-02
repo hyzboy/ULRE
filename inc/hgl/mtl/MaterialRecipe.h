@@ -7,12 +7,12 @@
 #include <hgl/mtl/DescriptorSemantic.h>
 #include <hgl/common/VertexAttribDef.h>
 #include <hgl/vk/VK.h>
-#include <hgl/mtl/GLSLCodeModule.h>
+#include <hgl/mtl/ShaderCodeModule.h>
 #include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/type/ValueArray.h>
-#include <hgl/mtl/ShaderStageBuildContext.h>
 #include <hgl/mtl/ShaderLinkSpec.h>
 #include <hgl/mtl/SurfaceType.h>
+#include <hgl/mtl/MaterialVertexVaryingConfig.h>
 #include <hgl/mtl/BlendMode.h>
 #include <hgl/mtl/PassType.h>
 #include <hgl/util/hash/FNV1a.h>
@@ -49,36 +49,10 @@ namespace hgl::graph::mtl
         bool shared_across_instances = false;
     };
 
-    // 每个材质的 SSBO slot 声明（由 MaterialDefinition 显式列出）。
-    // index 即 material_private_data_slot；name 同时作为 GLSL 变量名与 C++ 绑定 key。
-    struct MaterialPrivateDataSlotDeclaration
-    {
-        std::string name;           // GLSL 变量名 / C++ 绑定 key，如 "pbr_surface" / "pbr_surface_a"
-        SSBOType    ssbo_type = SSBOType::UserDefined; // 数据结构语义
-    };
-
-    inline bool IsValidMaterialPrivateDataSlotName(const std::string &name) noexcept
-    {
-        if (name.empty())
-            return false;
-
-        const auto is_letter = [](const char c)
-        {
-            return (c >= 'a' && c <= 'z')
-                || (c >= 'A' && c <= 'Z')
-                || c == '_';
-        };
-        if (!is_letter(name[0]))
-            return false;
-
-        for (size_t i = 1; i < name.size(); ++i)
-        {
-            const char c = name[i];
-            if (!is_letter(c) && !(c >= '0' && c <= '9'))
-                return false;
-        }
-        return true;
-    }
+    // 单槽化：一个材质至多一个私有数据 SSBO，GLSL 变量名 / C++ 绑定 key 固定为
+    // DefaultMaterialPrivateDataSlotName（"mtl_private_data"），槽号固定为
+    // DefaultMaterialPrivateDataSlot（0）。原 vector<MaterialPrivateDataSlotDeclaration>
+    // 的容量/名字/槽号校验随类型收敛删除（2026-09 单槽类型收敛）。
 
     // 纹理槽位能力声明（由 MaterialDefinition 显式列出）。
     // 供 Step C 的 Definition→SerializedDescriptorEntry 推导使用。
@@ -118,6 +92,30 @@ namespace hgl::graph::mtl
         bool             required     = false;                         // true: 缺失应触发错误；false: 可选
     };
 
+    // 材质数据槽 / recipe SSBO 绑定名的 GLSL 合法性校验
+    inline bool IsValidMaterialPrivateDataSlotName(const std::string &name) noexcept
+    {
+        if (name.empty())
+            return false;
+
+        const auto is_letter = [](const char c)
+        {
+            return (c >= 'a' && c <= 'z')
+                || (c >= 'A' && c <= 'Z')
+                || c == '_';
+        };
+        if (!is_letter(name[0]))
+            return false;
+
+        for (size_t i = 1; i < name.size(); ++i)
+        {
+            const char c = name[i];
+            if (!is_letter(c) && !(c >= '0' && c <= '9'))
+                return false;
+        }
+        return true;
+    }
+
     // Policy for resolving a material vertex semantic. GeometryOnly and
     // AllowDerived share the same ABI builder; the resolver is activated when
     // a vertex code-module registry is supplied.
@@ -128,63 +126,51 @@ namespace hgl::graph::mtl
         AllowDerived
     };
 
-    inline GLSLCodeModuleSemantic GetGLSLCodeModuleSemanticFromVertexSemantic(
+    inline ShaderCodeModuleSemantic GetShaderCodeModuleSemanticFromVertexSemantic(
         const VertexSemantic semantic) noexcept
     {
         switch (semantic)
         {
-        case VertexSemantic::Position:  return GLSLCodeModuleSemantic::Position;
-        case VertexSemantic::Normal:    return GLSLCodeModuleSemantic::Normal;
-        case VertexSemantic::Tangent:   return GLSLCodeModuleSemantic::Tangent;
-        case VertexSemantic::Bitangent: return GLSLCodeModuleSemantic::Binormal;
-        case VertexSemantic::Color:     return GLSLCodeModuleSemantic::Color;
-        case VertexSemantic::Luminance: return GLSLCodeModuleSemantic::Luminance;
-        case VertexSemantic::TexCoord:  return GLSLCodeModuleSemantic::UV0;
-        case VertexSemantic::TransformID: return GLSLCodeModuleSemantic::TransformID;
-        default:                        return GLSLCodeModuleSemantic::Unknown;
+        case VertexSemantic::Position:  return ShaderCodeModuleSemantic::Position;
+        case VertexSemantic::Normal:    return ShaderCodeModuleSemantic::Normal;
+        case VertexSemantic::Tangent:   return ShaderCodeModuleSemantic::Tangent;
+        case VertexSemantic::Bitangent: return ShaderCodeModuleSemantic::Binormal;
+        case VertexSemantic::Color:     return ShaderCodeModuleSemantic::Color;
+        case VertexSemantic::Luminance: return ShaderCodeModuleSemantic::Luminance;
+        case VertexSemantic::TexCoord:  return ShaderCodeModuleSemantic::UV0;
+        case VertexSemantic::TransformID: return ShaderCodeModuleSemantic::TransformID;
+        default:                        return ShaderCodeModuleSemantic::Unknown;
         }
     }
 
-    inline GLSLCodeModuleSemanticRequirement MakeMaterialVertexSemanticRequirement(
+    inline ShaderCodeModuleSemanticRequirement MakeMaterialVertexSemanticRequirement(
         const VertexSemantic semantic) noexcept
     {
-        GLSLCodeModuleSemanticRequirement requirement;
-        requirement.source = GLSLCodeModuleCapabilitySource::ProducedSemantic;
-        requirement.semantic = GetGLSLCodeModuleSemanticFromVertexSemantic(semantic);
+        ShaderCodeModuleSemanticRequirement requirement;
+        requirement.source = ShaderCodeModuleCapabilitySource::ProducedSemantic;
+        requirement.semantic = GetShaderCodeModuleSemanticFromVertexSemantic(semantic);
         return requirement;
     }
 
-    inline VertexSemantic GetVertexSemanticFromGLSLCodeModuleSemantic(
-        const GLSLCodeModuleSemantic semantic) noexcept
+    inline VertexSemantic GetVertexSemanticFromShaderCodeModuleSemantic(
+        const ShaderCodeModuleSemantic semantic) noexcept
     {
         switch (semantic)
         {
-        case GLSLCodeModuleSemantic::Position:  return VertexSemantic::Position;
-        case GLSLCodeModuleSemantic::Normal:    return VertexSemantic::Normal;
-        case GLSLCodeModuleSemantic::Tangent:   return VertexSemantic::Tangent;
-        case GLSLCodeModuleSemantic::Binormal:  return VertexSemantic::Bitangent;
-        case GLSLCodeModuleSemantic::Color:     return VertexSemantic::Color;
-        case GLSLCodeModuleSemantic::Luminance: return VertexSemantic::Luminance;
-        case GLSLCodeModuleSemantic::UV0:       return VertexSemantic::TexCoord;
-        case GLSLCodeModuleSemantic::TransformID: return VertexSemantic::TransformID;
-        case GLSLCodeModuleSemantic::Size:        return VertexSemantic::Size;
+        case ShaderCodeModuleSemantic::Position:  return VertexSemantic::Position;
+        case ShaderCodeModuleSemantic::Normal:    return VertexSemantic::Normal;
+        case ShaderCodeModuleSemantic::Tangent:   return VertexSemantic::Tangent;
+        case ShaderCodeModuleSemantic::Binormal:  return VertexSemantic::Bitangent;
+        case ShaderCodeModuleSemantic::Color:     return VertexSemantic::Color;
+        case ShaderCodeModuleSemantic::Luminance: return VertexSemantic::Luminance;
+        case ShaderCodeModuleSemantic::UV0:       return VertexSemantic::TexCoord;
+        case ShaderCodeModuleSemantic::TransformID: return VertexSemantic::TransformID;
+        case ShaderCodeModuleSemantic::Size:        return VertexSemantic::Size;
         default:                                return VertexSemantic::Unknown;
         }
     }
 
-    struct MaterialVertexVaryingConfig
-    {
-        bool emit_data_index_id = false;
-        bool emit_vertex_color = false;
-        bool emit_uv0 = false;
-        bool emit_world_pos = false;
-        bool emit_world_normal = false;
-        bool emit_luminance = false;
-        bool emit_frag_direction = false;
-        bool use_transform_id_attr = false;
-        bool emit_vertex_color_from_palette = false;
-        bool emit_style_id = false;
-    };
+    // MaterialVertexVaryingConfig — see <hgl/mtl/MaterialVertexVaryingConfig.h>
 
     // MaterialDefinition 来源标记：区分 built-in 硬编码实现与未来的文件化实现。
     enum class MaterialDefinitionSourceKind : uint8_t
@@ -218,10 +204,9 @@ namespace hgl::graph::mtl
         uint16_t default_lod   = 0;
         uint16_t lod_count     = 1;
 
-        // Part-B: 材质 SSBO slot 显式声明（index == material_private_data_slot）
-        // name 用于 GLSL 变量名 与 C++ SetMaterialPrivateDataSlotResource(name,...) 绑定。
-        // 无 SSBO 的材质此列表为空。
-        std::vector<MaterialPrivateDataSlotDeclaration> material_private_data_slot_decls;
+        // Part-B: 材质私有数据 SSBO（单槽，固定 slot 0 / 名字 DefaultMaterialPrivateDataSlotName）。
+        // UserDefined = 无私有数据 SSBO。
+        SSBOType material_private_data = SSBOType::UserDefined;
 
         // Part-B3: UBO 资源能力声明。
         // 显式列出此材质可使用的标准 UBO（ViewportInfo/CameraInfo/SkyInfo/MaterialColorPalette）。
@@ -253,7 +238,7 @@ namespace hgl::graph::mtl
         // file-backed definitions. The generator must not infer this from
         // the material name.
         //
-        ValueArray<GLSLCodeModuleSemanticRequirement> vertex_semantic_requirements;
+        ValueArray<ShaderCodeModuleSemanticRequirement> vertex_semantic_requirements;
         MaterialVertexProviderPolicy vertex_provider_policy = MaterialVertexProviderPolicy::Auto;
         // Canonical fragment assembly input.
         const char *fragment_source = nullptr;
@@ -285,7 +270,7 @@ namespace hgl::graph::mtl
 
     inline void ConfigureMaterialVertexSemanticContract(
         MaterialDefinition &definition,
-        const GLSLCodeModuleSemanticRequirement *requirements,
+        const ShaderCodeModuleSemanticRequirement *requirements,
         const uint32 requirement_count,
         const MaterialVertexProviderPolicy provider_policy =
             MaterialVertexProviderPolicy::Auto)
@@ -367,6 +352,39 @@ namespace hgl::graph::mtl
         for (const auto &r : def.ubo_requirements)
             if (r == s) return true;
         return false;
+    }
+
+    /**
+     * 从已 Normalize 的 recipe 重建解析后的渲染状态。
+     *
+     * NormalizeRecipe 会把 ResolveMaterialRenderState 的结果写回
+     * render_state_overrides（has_* 全 true），此后 definition 不再参与——
+     * 本函数与 ResolveMaterialRenderState(definition, normalized_recipe) 等价，
+     * 供管线创建侧使用，避免为取渲染状态反查材质定义。
+     */
+    inline ResolvedMaterialRenderState GetNormalizedRecipeRenderState(
+        const MaterialRecipe &recipe) noexcept
+    {
+        const MaterialRenderStateOverrides &overrides = recipe.render_state_overrides;
+
+        ResolvedMaterialRenderState state{};
+        state.double_sided = overrides.double_sided;
+        state.alpha_test = overrides.alpha_test;
+        state.alpha_cutoff = overrides.alpha_cutoff;
+        state.dither = overrides.dither;
+        state.pipeline_config = overrides.pipeline_config;
+        return state;
+    }
+
+    /** recipe 是否已经 Normalize（render_state_overrides 被写回为权威值）*/
+    inline bool IsRecipeNormalized(const MaterialRecipe &recipe) noexcept
+    {
+        const auto &overrides = recipe.render_state_overrides;
+        return overrides.has_double_sided
+            && overrides.has_alpha_test
+            && overrides.has_alpha_cutoff
+            && overrides.has_dither
+            && overrides.has_pipeline_config;
     }
 
     inline const RecipeSSBOAssetBinding *FindRecipeSSBOAssetBindingByKey(
@@ -468,6 +486,40 @@ namespace hgl::graph::mtl
     {
         return UpsertRecipeSSBOAssetBinding(
             recipe, material_private_data_slot_name, binding.ssbo_type, binding.ssbo_id, material_private_data_slot);
+    }
+
+    // 纹理绑定 upsert（与 UpsertRecipeSSBOAssetBinding 对称）：
+    // slot_name 已存在则原位更新，否则追加。
+    inline bool UpsertRecipeTextureBinding(MaterialRecipe &recipe,
+                                           const std::string &slot_name,
+                                           const std::string &resource_id,
+                                           const bool required,
+                                           const uint32_t direct_value = 0,
+                                           const bool use_direct_value = false)
+    {
+        if (slot_name.empty())
+            return false;
+
+        for (auto &binding : recipe.textures)
+        {
+            if (binding.slot_name != slot_name)
+                continue;
+
+            binding.resource_id = resource_id;
+            binding.direct_value = direct_value;
+            binding.use_direct_value = use_direct_value;
+            binding.required = required;
+            return true;
+        }
+
+        RecipeTextureBinding binding{};
+        binding.slot_name = slot_name;
+        binding.resource_id = resource_id;
+        binding.direct_value = direct_value;
+        binding.use_direct_value = use_direct_value;
+        binding.required = required;
+        recipe.textures.emplace_back(std::move(binding));
+        return true;
     }
 
     inline void ApplyBaseMaterialInfoDefaults(MaterialRecipe &recipe,

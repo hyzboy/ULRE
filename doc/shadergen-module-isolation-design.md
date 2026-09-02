@@ -2,8 +2,11 @@
 
 > 2026-08-31 定稿。基于对 `src/ShaderGen/` 全量扫描（47 源文件 + `inc/hgl/mtl/` 50 公共头 +
 > `src/Tools/ShaderGen/` 4 工具）梳理的整体工作流、现状耦合分析、目录隔离方案，
-> 以及对「目录隔离 ≠ 复杂度削减」这一认知修正的展开。
-> 仅分析，未改动任何代码。配套方法论文档见 `shadergen-refactoring-methodology.md`。
+> 以及对「目录隔离 ≠ 复杂度削减」这一认知修正的展开。配套方法论文档见 `shadergen-refactoring-methodology.md`。
+>
+> **执行状态（2026-08-31 晚）**：评估后用户选 A——执行第七节（去硬编码/隐式协议）全部 + 第六节
+> ③（拆 MaterialDefinitionRegistry 职责），**不动目录**（①④⑤② 目录搬移与 ⑥ CMake 多 target 评估后不做，
+> 见 §十）。执行提交：`afed984f7`（15 文件 +543/-387）。
 
 ---
 
@@ -34,7 +37,7 @@ ShaderGen 是 ULRE 的材质 → Shader 全链生成与编译模块（mesh shade
         │ LoadDirectory（懒加载单例，首次使用时扫描）
         ▼
 ┌─ 加载层 ───────────────────────────────────────────────────────────┐
-│ MaterialDefinitionRegistry.cpp:456  GetGLSLCodeModuleRegistry()    │
+│ MaterialDefinitionRegistry.cpp:456  GetShaderCodeModuleRegistry()    │
 │ MaterialDefinitionRegistry.cpp:430  GetMaterialDefinitionFileRegistry()│
 └───────────────────────────────────────────────────────────────────┘
         ▼
@@ -76,7 +79,7 @@ ShaderBuildContext（mesh + fragment SPV、描述符布局、schema）
 
 | 逻辑模块 | 头文件位置 | 实现位置 | 关键依赖 |
 |---|---|---|---|
-| **GLSLCodeModule 家族**（读取/解析/注册/校验/哈希/取用） | `inc/hgl/mtl/GLSLCodeModule*.h`（5 头） | **全部挤在 `common/`** | 文件系统、hgl 容器、DescriptorSemantic、SSBO/TextureSlot 类型 |
+| **ShaderCodeModule 家族**（读取/解析/注册/校验/哈希/取用） | `inc/hgl/mtl/ShaderCodeModule*.h`（5 头） | **全部挤在 `common/`** | 文件系统、hgl 容器、DescriptorSemantic、SSBO/TextureSlot 类型 |
 | **材质定义**（TOML 解析 + 注册表） | `MaterialDefinitionFile.h`、`MaterialRecipe.h` | `common/MaterialDefinitionFile.cpp`（962 行） | toml 库 |
 | **契约层**（描述符/输出/覆盖/阶段接口/语义/模块图） | `*Contract.h`、`ShaderSemanticRegistry.h` 等 | **散在根目录** | — |
 | **求解编排** | `MaterialShaderCompiler.h`、`GenericMaterialBuilder.h` | 根目录 + `common/` | 契约层、mesh、compositor |
@@ -88,16 +91,19 @@ ShaderBuildContext（mesh + fragment SPV、描述符布局、schema）
 ### 现状的三个核心耦合问题
 
 **问题 1：`common/` 是杂货铺，不是模块。**
-`src/ShaderGen/common/` 25 个文件混装 4 个无关逻辑模块：GLSLCodeModule 家族（5 cpp）、
+`src/ShaderGen/common/` 25 个文件混装 4 个无关逻辑模块：ShaderCodeModule 家族（5 cpp）、
 GenericMaterialBuilder、MaterialDefinitionFile、MeshShader 生成器、SamplerPreset、
-ModuleResourceManifest、VertexBuilderCommon。改任何一个，同目录其它模块文件全部在
+ShaderCodeResourceManifest、VertexBuilderCommon。改任何一个，同目录其它模块文件全部在
 include 图上可见——物理目录不表达模块边界。
 
-**问题 2：GLSLCodeModule 家族被"劫持"在注册表层。**
-读取（LoadDirectory/解析）在 `common/GLSLCodeModule*.cpp`，但取用的单例
-`GetGLSLCodeModuleRegistry()` 却定义在 `MaterialDefinitionRegistry.cpp:456`——生命周期、加载时机、
+**问题 2：ShaderCodeModule 家族被"劫持"在注册表层。**
+读取（LoadDirectory/解析）在 `common/ShaderCodeModule*.cpp`，但取用的单例
+`GetShaderCodeModuleRegistry()` 却定义在 `MaterialDefinitionRegistry.cpp:456`——生命周期、加载时机、
 存储都挂在材质定义注册表上。想单独用 GLSL 模块（如给工具链离线解析），必须连带拉进
 MaterialDefinitionRegistry 及其全部依赖。这是「这一部分受其它部分影响」的实锤。
+
+> ✅ **已修复（afed984f7）**：单例下沉回 `common/ShaderCodeModuleRegistry.cpp`，声明迁回
+> `ShaderCodeModuleRegistry.h`——生命周期与材质注册表完全脱钩，调用者 include 链零改动。
 
 **问题 3：头文件全平铺在 `inc/hgl/mtl/`，无层次。**
 50 个公共头 + 4 个 contract/ 头全在一个目录，`#include <hgl/mtl/Xxx.h>` 无法表达
@@ -110,12 +116,12 @@ MaterialDefinitionRegistry 及其全部依赖。这是「这一部分受其它�
 
 ```
 src/ShaderGen/
-├── glsl_module/          ← GLSLCodeModule 家族（完全独立）
-│   ├── GLSLCodeModule.h / .cpp              （类型 + 语义注册表 + 哈希）
-│   ├── GLSLCodeModuleFile.h / .cpp          （@ulre 元数据解析）
-│   ├── GLSLCodeModuleRegistry.h / .cpp      （目录扫描 + 注册 + 依赖解析）
-│   ├── GLSLCodeModuleMetadata.h / .cpp      （契约校验 / 环检测）
-│   └── GLSLCodeModuleCapabilityResolver.h / .cpp（provider 图哈希 / 组合）
+├── glsl_module/          ← ShaderCodeModule 家族（完全独立）
+│   ├── ShaderCodeModule.h / .cpp              （类型 + 语义注册表 + 哈希）
+│   ├── ShaderCodeModuleFile.h / .cpp          （@ulre 元数据解析）
+│   ├── ShaderCodeModuleRegistry.h / .cpp      （目录扫描 + 注册 + 依赖解析）
+│   ├── ShaderCodeModuleMetadata.h / .cpp      （契约校验 / 环检测）
+│   └── ShaderCodeModuleCapabilityResolver.h / .cpp（provider 图哈希 / 组合）
 ├── material_definition/  ← 材质 TOML 读取
 │   ├── MaterialDefinitionFile.h / .cpp
 │   └── MaterialRecipe.h
@@ -123,7 +129,7 @@ src/ShaderGen/
 │   ├── CanonicalShaderContract.h/.cpp  DescriptorContract.h/.cpp
 │   ├── MaterialOutputContract.h/.cpp   MaterialCoverageContract.h/.cpp
 │   ├── MaterialStageInterface.h/.cpp   ShaderSemanticRegistry.h/.cpp
-│   ├── ModuleResourceManifest.h/.cpp   ResolvedModuleGraphBuilder.h/.cpp
+│   ├── ShaderCodeResourceManifest.h/.cpp   ResolvedModuleGraphBuilder.h/.cpp
 │   └── BindingTableBuilder.h/.cpp      MaterialBindingContract.h/.cpp
 ├── meshgen/              ← mesh shader 生成器
 │   ├── MeshShaderAssembler.h  MeshShaderHeaderGen.h
@@ -148,9 +154,10 @@ src/ShaderGen/
 
 ### 配套动作
 
-1. **注册表单例下沉**：`GetGLSLCodeModuleRegistry()` 从 `MaterialDefinitionRegistry.cpp` 移入
-   `glsl_module/GLSLCodeModuleRegistry.cpp`（连同 `GetShaderLibraryPath()` 调用一起）。材质注册表只保留
+1. **注册表单例下沉**：`GetShaderCodeModuleRegistry()` 从 `MaterialDefinitionRegistry.cpp` 移入
+   `glsl_module/ShaderCodeModuleRegistry.cpp`（连同 `GetShaderLibraryPath()` 调用一起）。材质注册表只保留
    自己的 `GetMaterialDefinitionFileRegistry()`。GLSL 模块加载时机与生命周期完全自治。
+   > ✅ **已执行（afed984f7）**——落点 `common/ShaderCodeModuleRegistry.cpp`（未搬目录，见 §十）。
 2. **include 策略**：模块内部用相对路径（`../contract/...`），模块对外只暴露该模块公开头；
    回归门改为 include 各模块目录头，不再穿透 `common/`。
 3. **CMake**：`add_cm_library(ULRE.ShaderGen)` 的 SOURCE_GROUP 按新目录名（glsl_module / contract /
@@ -171,11 +178,11 @@ src/ShaderGen/
 
 **风险与注意点**
 
-- **头文件搬移破坏面小但存在**：外部仅 7 个文件 include `<hgl/mtl/*>`（SceneGraph 3、ecs 1、
-  Vulkan 1、Tools 2），且集中在公共头；GLSLCodeModule 的 5 个头外部零依赖（仅回归门用）——迁移它最安全。
+- **头文件搬移破坏面小但存在**：外部约 10 个文件 include `<hgl/mtl/*>`（SceneGraph 6、ecs 3、Tools 1，
+  2026-08-31 实测），且集中在公共头；ShaderCodeModule 的 5 个头外部零依赖（仅回归门用）——迁移它最安全。
 - **行为不变纪律**：纯搬移必须逐字节等价——不改函数体、不改 hash 输入序列、GLSL 输出不变；
-  验证 = 回归门全 PASS（43 用例）+ 删缓存双跑 IDENTICAL。
-- 回归门 5,634 行 include 要跟着改（约 25 个 hgl/mtl 头 + 4 个相对路径头），是主要机械工作量。
+  验证 = 回归门全 PASS（39 用例，5,163 行——2026-08-31 B6 实测）+ 删缓存双跑 IDENTICAL。
+- 回归门（5,163 行）include 要跟着改（约 25 个 hgl/mtl 头 + 4 个相对路径头），是主要机械工作量。
 - `MeshShaderAssembler.h` 等 9 个 mesh 头建议保留 inline header 形态（纯文本发射器，无 .cpp 可搬，
   且回归门直接调用 `GenerateMeshShader` 做文本断言）——目录归位即可，不强行拆 .cpp。
 
@@ -194,7 +201,7 @@ src/ShaderGen/
           DescriptorSemantic / SSBOTypes / contract/ShaderGenContract 等
 第 1 层  资产读取：glsl_module、material_definition、sampler_preset
           （都只依赖第 0 层 + hgl 基础库）
-第 2 层  契约/解析：contract（ModuleResourceManifest、ResolvedModuleGraphBuilder
+第 2 层  契约/解析：contract（ShaderCodeResourceManifest、ResolvedModuleGraphBuilder
           —— 依赖第 1 层的 glsl_module registry）
 第 3 层  生成器：meshgen、compositor（依赖第 2 层）
 第 4 层  编排：builder（依赖 1+2+3）
@@ -214,13 +221,15 @@ src/ShaderGen/
 
 `MaterialDefinitionRegistry.cpp`（511 行）混了 5 种职责：
 
-| 职责 | 正确归属 |
-|---|---|
-| `GetGLSLCodeModuleRegistry()` 单例 | glsl_module |
-| `GetMaterialDefinitionFileRegistry()` 单例 | material_definition |
-| `GetNumericClassFromVkFormat` / `GetGLSLVertexInputType` | vertex_abi（或独立） |
-| `BuildResolvedVertexABI`（s1_* 模块选择） | vertex_abi |
-| `CreateMaterialFromDefinition` / `NormalizeRecipe` / `ResolveMaterialVertex*Config` | 入口编排 |
+| 职责 | 正确归属 | 状态 |
+|---|---|---|
+| `GetShaderCodeModuleRegistry()` 单例 | glsl_module | ✅ 已下沉（afed984f7） |
+| `GetMaterialDefinitionFileRegistry()` 单例 | material_definition | ✅ 留原地（本就归属） |
+| `GetNumericClassFromVkFormat` / `GetGLSLVertexInputType` | vertex_abi（或独立） | ✅ 已拆出（afed984f7） |
+| `BuildResolvedVertexABI`（s1_* 模块选择） | vertex_abi | ✅ 已拆出（afed984f7） |
+| `CreateMaterialFromDefinition` / `NormalizeRecipe` / `ResolveMaterialVertex*Config` | 入口编排 | ✅ 留原地（本就归属） |
+
+> 执行后 `MaterialDefinitionRegistry.cpp` 512→200 行；vertex_abi 组落点 `common/VertexABIBuilder.cpp`（新文件）。
 
 "单模块复杂度"靠拆职责降，不靠挪目录降。
 
@@ -232,13 +241,23 @@ src/ShaderGen/
 
 1. **`GenerateMeshShader` 的 `shader_lib_path` 参数是死参数**——函数体全程未使用
    （`MeshShaderAssembler.h:47` 声明，正文只做 include 拼接）。直接删。
+   > ✅ **已删（afed984f7）**；顺带修复回归门 3 处历史参数错位（路径字符串曾被当 `resolved_input_glsl` 传入 GLSL）。
 2. **varying 语义 → 类型/名字映射双份维护**：`MeshShaderVaryingGen.h` 手写一份
    `semantic → "flat uint" / "fragDataIndexID"`，`ShaderSemanticRegistry.cpp:53` 又一份
    `location=4` 注册表。漂移即 link 错误，收敛到 registry 单源。
+   > ✅ **已收敛（afed984f7）**——VaryingGen 改查 `GetInterStageSemanticInfo`；实际共三份（另加
+   > `MaterialStageInterface.cpp` 的 `GetGLSLTypeName`），`GetGLSLTypeName` 已提升为公共 inline 单源；
+   > 新旧输出逐字节一致验证。
 3. **MeshDrawParams / TextCharInfo 等 GLSL↔CPU 结构双份手改**：GLSL 侧
    `MeshShaderVertexAdapter.h`、CPU 侧 `ShaderBufferSources.h`（有 `static_assert(sizeof==24)`，
    但只保大小不保字段顺序）。要么反射生成，要么字段级生成期校验。
+   > ✅ **MeshDrawParams 已单源化（afed984f7）**：X 列表 `HGL_MESH_DRAW_PARAMS_FIELD_LIST` 一行生成
+   > CPU struct 成员/GLSL 字段名/类型/std430 offsetof 断言，发射器遍历表——改字段只改一处，
+   > 负向验证（绕过列表加成员→编译失败）通过。
+   > 🟡 **TextCharSSBO 部分完成**：CPU 侧字段级布局断言已补（CharStyle 连续 4B / CharInstance 偏移
+   > 0/2/4/6/8），但 GLSL 是资产文件（非 C++ 发射），跨文本校验留 TODO（见 §十-6）。
 4. `ms.reserve(3072)` 等魔法数。
+   > ✅ **已命名化（afed984f7）**：`kMeshShaderInitialReserve`。
 5. 已收敛、保持不回退：`kCharQuadSSBOTable`、`kMeshIndexTableSpecs`、语义名 X-macro、
    `IsCharQuadMode` 等表驱动/单源化成果。
 
@@ -247,24 +266,28 @@ src/ShaderGen/
 1. **mesh 模式分派 3 处**（`MeshShaderAssembler.h` 容量 switch + `mode != CharQuad` 门控 +
    main 体 switch）——枚举与 `IsCharQuadMode` 已抽到 `MeshShaderMode.h`，但 Assembler 内 3 处判断还在。
    可做模式描述符表（每线程顶点数/图元数/是否走 vertex pipeline/发射函数指针），新加模式只加一行。
+   > ⏸️ **裁剪（评估后不做）**：当前仅 3 个模式，表驱动收益小；未来加第 4 个模式时再做。
 2. `MaterialDefinitionFile.cpp`（962 行）TOML 解析是"每字段一个 Parse* 函数"的样板——可用
    成员指针表驱动（`{"field", &Struct::field}`），与 `ResolveMaterialVertexVaryingConfig` 已用手法一致，
    只是尚未推广到解析层。
+   > ⏸️ **裁剪（评估后不做）**：实测形态与文档描述不符——18 个 Parse 函数是"每枚举一个紧凑的
+   > name→value 解析"（ParseSurface/ParseBlend…），非"每字段一个样板"；表驱动收益不成立。
 3. "结构体 GLSL 真源在 .glsl、CPU 布局在 .h、两侧手改"（CharQuad 的 `TextCharSSBO`）——
    最危险的隐式协议，应在生成期加跨侧校验。
+   > 🟡 **部分完成（afed984f7）**：CPU 侧字段级断言已补；GLSL 资产侧的文本解析校验未做（见 §十-6）。
 
 ---
 
 ## 八、落地顺序
 
 ```
-① glsl_module 独立 + GetGLSLCodeModuleRegistry 单例迁回   ← 零外部依赖，最安全，先做
-② contract + profile 归位（纯类型/校验，机械搬移）
-③ 拆 MaterialDefinitionRegistry.cpp 的 5 职责
-④ meshgen + compositor + vertex_abi 归位
-⑤ builder + compile 归位（依赖最重，最后）
-⑥ CMake 改多 target + 白名单 include
-⑦ 回归门 include 更新 → 删缓存双跑 IDENTICAL 验证
+① glsl_module 独立 + GetShaderCodeModuleRegistry 单例迁回   ← 已执行（afed984f7，单例部分；目录未搬）
+② contract + profile 归位（纯类型/校验，机械搬移）            ← 未做（目录搬移，见 §十）
+③ 拆 MaterialDefinitionRegistry.cpp 的 5 职责                ← 已执行（afed984f7）
+④ meshgen + compositor + vertex_abi 归位                    ← 未做（目录搬移，见 §十）
+⑤ builder + compile 归位（依赖最重，最后）                  ← 未做（目录搬移，见 §十）
+⑥ CMake 改多 target + 白名单 include                        ← 不做（评估后否决，见 §十-1）
+⑦ 回归门 include 更新 → 删缓存双跑 IDENTICAL 验证            ← 未做（依赖 ②④⑤）
 ```
 
 每步满足"行为不变原则"（搬移逐字节等价，hash 不变）。
@@ -273,8 +296,38 @@ src/ShaderGen/
 
 ## 九、验证清单
 
-1. VS 构建零错误。
-2. 回归门全 PASS（`ShaderResourceSchemaRegressionGate.exe all`，43 用例）。
-3. hash / 缓存稳定性：删缓存目录后两遍运行 IDENTICAL。
-4. 示例渲染视觉确认（PBR / 文字 blend / 大气）。
-5. 文档收尾：本设计文档 + 方法论文档同步更新。
+1. VS 构建零错误。 ✅ 已通过（用户确认 2026-08-31）
+2. 回归门全 PASS（`ShaderResourceSchemaRegressionGate.exe all`，39 用例）。 ✅ 已通过
+3. hash / 缓存稳定性：删缓存目录后两遍运行 IDENTICAL。 ✅ 已通过（B2+B3 后确认）
+4. 示例渲染视觉确认（PBR / 文字 blend / 大气）。 ✅ 已通过（用户确认「所有示例全部运行通过」）
+5. 文档收尾：本设计文档 + 方法论文档同步更新。 ✅ 本节即本次更新
+---
+
+## 十、执行结论与未完成部分（2026-08-31 评估后）
+
+### 执行结论
+
+- **执行范围**（用户选 A）：第七节全部（去硬编码/去隐式协议）+ 第六节 ③（拆职责），提交 `afed984f7`。
+- **不做**（评估后否决，勿重复评估）：
+  1. **⑥ CMake 多 target + include 白名单**——47 源文件规模下靠评审即可，拆 target 是过度工程；
+     且破坏 VC solution 文件夹一致性偏好（单库 + SOURCE_GROUP 已表达分组）。
+  2. **七-2-1 mesh 模式描述符表**——仅 3 模式收益小，加第 4 个模式时再做。
+  3. **七-2-2 TOML 解析表驱动**——实测为「每枚举一个紧凑 name→value 解析」（18 个），
+     非文档所述「每字段一个样板」，表驱动收益不成立。
+
+### 未完成部分（全部评估关闭，2026-08-31 用户拍板）
+
+> 下列各项经逐项评估后**全部不做**，正式关闭。理由如下，勿重复评估。
+
+| # | 事项 | 关闭理由 |
+|---|---|---|
+| 1 | TextCharSSBO 跨文本校验（七-2-3 剩余） | 抓「大小不变但字段调序」漂移，发生频率极低；CPU 侧 sizeof + 字段级布局断言已兜底大部分；文本渲染结构改动时渲染数据流强耦合两侧必同步改。**唯一留档**：未来改 `TextCharSSBO.h` / `s1_text_char_quad.glsl` 任一侧字段顺序时，两侧必须一起改（现状注释已写） |
+| 2 | 目录搬移 ①（余）/②/④/⑤/⑦ | 纯工程体验（边界可读 + VS 可导航），无行为改进；成本 5 轮 VS 验证周期 |
+| 3 | 回归门 fixture 收敛（B6 量化结论） | 纯机械省 ~800-1200 行，不碰正确性；未来若回归门大改顺手做 |
+| 4 | 结构快照盲区（CharQuad 文本三 SSBO） | 已知盲区，不影响正确性；文本资源护栏不在 dump 层 |
+| 5 | D3（dump 继续投资） | 边际收益递减 |
+
+### 文档引用数字修正（量化纪律）
+
+- 回归门：5,634 行/43 用例 → **5,163 行/39 用例**（B6 实测）
+- 外部 include `<hgl/mtl/*>`：7 个文件 → **约 10 个**（实测 SceneGraph 6 + ecs 3 + Tools 1）

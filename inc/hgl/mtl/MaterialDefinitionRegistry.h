@@ -5,9 +5,8 @@
 #include<hgl/mtl/CanonicalShaderContract.h>
 #include<hgl/mtl/MaterialCoverageContract.h>
 #include<hgl/mtl/MaterialRecipe.h>
-#include<hgl/mtl/GLSLCodeModuleCapabilityResolver.h>
-#include<hgl/mtl/GLSLCodeModuleRegistry.h>
-#include<hgl/mtl/SerializedVertexEntry.h>
+#include<hgl/mtl/ShaderCodeModuleCapabilityResolver.h>
+#include<hgl/mtl/ShaderCodeModuleRegistry.h>
 #include<hgl/type/String.h>
 #include<hgl/common/VertexAttribDef.h>
 #include<hgl/common/RenderTargetOutputConfig.h>
@@ -22,6 +21,7 @@ namespace hgl::graph::mtl
 {
 class ShaderBuildContext;
 class ShaderArtifactStore;
+struct MaterialShaderDocumentCapture;
 namespace contract
 {
     struct PhysicalDeviceProfileLite;
@@ -56,7 +56,6 @@ struct MaterialResolvedVertexABI
 {
     VkFormat position_format = VK_FORMAT_UNDEFINED;
     uint64 provider_graph_hash = 0;
-    ValueArray<SerializedVertexEntry> vertex_entries;
     AnsiString vertex_input_glsl;
     std::string provider_glsl;
 };
@@ -82,6 +81,14 @@ mtl::ShaderBuildContext *CreateMaterialFromDefinition(
     const MaterialDefinition &definition,
     const MaterialDefinitionBuildRequest &request);
 
+// Document capture is diagnostic-only. Keep it out of the frequently passed
+// build request so adding observability does not change that request's ABI.
+mtl::ShaderBuildContext *CreateMaterialFromDefinition(
+    const mtl::contract::PhysicalDeviceProfileLite *profile,
+    const MaterialDefinition &definition,
+    const MaterialDefinitionBuildRequest &request,
+    mtl::MaterialShaderDocumentCapture *document_capture);
+
 /**
  * Build the resolver-derived vertex ABI without compiling shaders or mutating
  * a program/cache. This is the explicit Phase 4.4 switched-path payload.
@@ -98,13 +105,12 @@ inline VkFormat ResolveMaterialPositionFormat(const GeometryVertexFormat *gvf, V
 }
 
 // Material definition registry
-// C++ 硬编码材质已移除——所有材质定义（含内置 bootstrap）均为 TOML 文件承载。
+// 所有材质定义（含内置 bootstrap）均为 TOML 文件承载。
 bool TryGetMaterialDefinitionByID(const std::string &mtl_def_id, MaterialDefinition &out_definition);
 MaterialDefinitionFileRegistry &GetMaterialDefinitionFileRegistry();
-GLSLCodeModuleRegistry &GetGLSLCodeModuleRegistry();
 
 // ── built-in fallback definition ID 常量 ──────────────────────────────────────
-// 缺材质安全网 = 纯色（原为独立 ID + alias 注册，alias 机制已删，常量直连）
+// 缺材质安全网 = 纯色
 constexpr const char *BUILTIN_MTL_DEF_MISSING_MATERIAL  = "builtin/pure_color";
 constexpr const char *BUILTIN_MTL_DEF_TEXT              = "builtin/text_gpu";
 constexpr const char *BUILTIN_MTL_DEF_TEXT_BITMAP       = "builtin/text_gpu_bitmap";
