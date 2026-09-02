@@ -54,6 +54,37 @@ using namespace hgl::graph::mtl;
 
 namespace
 {
+    static std::string GenerateMeshShaderDocumentText(
+        const VertexShaderNodeConfig &node_cfg,
+        const MaterialVertexVaryingConfig &varying_cfg,
+        VkFormat position_format,
+        MeshShaderMode mode = MeshShaderMode::VertexPassthrough,
+        uint32_t max_invocations = 64,
+        const std::string &resolved_input_glsl = {},
+        const std::string &provider_glsl = {},
+        const hgl::ValueArray<InterStageSemanticContractEntry>
+            *resolved_stage_interface = nullptr)
+    {
+        ShaderDocument document;
+        if (!GenerateMeshShaderDocument(
+                node_cfg,
+                varying_cfg,
+                position_format,
+                mode,
+                max_invocations,
+                document,
+                resolved_input_glsl,
+                provider_glsl,
+                resolved_stage_interface))
+            return {};
+
+        ShaderDocumentDiagnostics diagnostics;
+        hgl::AnsiString serialized;
+        if (!document.Serialize(serialized, diagnostics))
+            return {};
+        return std::string(serialized.c_str(), serialized.Length());
+    }
+
     static hgl::uint64 StableID(const char *text)
     {
         if (!(text && text[0]))
@@ -836,7 +867,7 @@ namespace
         lit_varying.emit_world_pos = true;
         lit_varying.emit_world_normal = true;
         lit_varying.emit_uv0 = true;
-        const std::string lit_vs = GenerateMeshShader(
+        const std::string lit_vs = GenerateMeshShaderDocumentText(
             MakeDefault3DNodeConfig(),
             lit_varying,
             VK_FORMAT_R32G32B32_SFLOAT,
@@ -867,7 +898,7 @@ namespace
 
         MaterialVertexVaryingConfig color_varying{};
         color_varying.emit_vertex_color = true;
-        const std::string color_vs = GenerateMeshShader(
+        const std::string color_vs = GenerateMeshShaderDocumentText(
             MakeDefault3DNodeConfig(),
             color_varying,
             VK_FORMAT_R32G32B32_SFLOAT,
@@ -2805,7 +2836,7 @@ namespace
 
         const auto build = [&](const VertexShaderNodeConfig &graph)
         {
-            return GenerateMeshShader(
+            return GenerateMeshShaderDocumentText(
                 graph, varying, VK_FORMAT_R32G32B32_SFLOAT,
                 MeshShaderMode::VertexPassthrough, kMeshVertexPassthroughMaxInvocations,
                 {}, {}, nullptr);
