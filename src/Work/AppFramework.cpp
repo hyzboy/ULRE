@@ -102,7 +102,14 @@ namespace hgl
         SAFE_CLEAR(device);
         GLogDebug("Step 7 complete");
         SAFE_CLEAR(inst);
-        SAFE_CLEAR(win);
+        if (owns_window)
+        {
+            SAFE_CLEAR(win);
+        }
+        else
+        {
+            win = nullptr;   // 外部窗口由创建方管理
+        }
         GLogDebug("================ AppFramework Destructor End ================");
 
         --APP_FRAMEWORK_COUNT;
@@ -142,6 +149,16 @@ namespace hgl
         return io::WindowEvent::OnEvent(header, data);
     }
 
+    bool AppFramework::SetExternalWindow(Window *external_win)
+    {
+        if (win || !external_win)
+            return false;
+
+        win          = external_win;
+        owns_window  = false;
+        return true;
+    }
+
     bool AppFramework::Init(uint w, uint h)
     {
         return Init(w, h, 0, nullptr);
@@ -164,16 +181,27 @@ namespace hgl
 
         ++APP_FRAMEWORK_COUNT;
 
-        // Create window
-        win = CreateRenderWindow(app_name);
+        // Create window（已注入外部窗口则跳过创建）
         if (!win)
-            return false;
-
-        if (!win->Create(w, h))
         {
-            delete win;
-            win = nullptr;
-            return false;
+            win = CreateRenderWindow(app_name);
+            if (!win)
+                return false;
+
+            if (!win->Create(w, h))
+            {
+                delete win;
+                win = nullptr;
+                return false;
+            }
+
+            owns_window = true;
+        }
+        else
+        {
+            // 外部注入的窗口：仅同步初始尺寸（不创建 OS 窗口）
+            if (!win->Create(w, h))
+                return false;
         }
 
         // Create Vulkan instance

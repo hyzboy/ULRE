@@ -23,33 +23,14 @@ include(vulkan)
 include(use_cm_module)
 
 # Qt 支持（CMQT 模块）
-# CMQT 链接 Qt6 的 Core/Gui/Widgets/Svg/Xml，需要配套的 llvm-mingw 工具链与 Qt 套件
-# （本机：D:/Qt/6.11.2/llvm-mingw_64 + D:/Qt/Tools/llvm-mingw1706_64），
-# 与 MSVC 主构建 ABI 不兼容，故默认关闭；Qt 构建请使用 CMakePresets.json 的 windows-qt-* preset。
+# CMQT 链接 Qt6 的 Core/Gui/Widgets/Svg/Xml，Qt6 由 vcpkg 提供（find_package 自动处理）。
+# 使用前请确保 vcpkg 已安装完整 Qt6：vcpkg install qt6-base qtsvg（x64-windows）
 option(ULRE_ENABLE_QT "Build the CMQT (Qt6) module" OFF)
 
 set(CM_QT_MAJOR_VERSION 6)
 set(QT_MIN_VERSION "6.5")
 
 if(ULRE_ENABLE_QT)
-    # 未显式指定 Qt 路径时，按编译器探测本机 Qt6 套件：
-    #   MSVC           → msvc2022_64（官方 msvc 套件，MSVC2015+ 二进制兼容，VS2026 可链接）
-    #   clang/MinGW    → llvm-mingw_64
-    if(NOT CMAKE_PREFIX_PATH)
-        if(MSVC)
-            set(_qt_candidates "D:/Qt/6.11.2/msvc2022_64" "C:/Qt/6.11.2/msvc2022_64")
-        else()
-            set(_qt_candidates "D:/Qt/6.11.2/llvm-mingw_64" "C:/Qt/6.11.2/llvm-mingw_64")
-        endif()
-        foreach(_qt_dir IN LISTS _qt_candidates)
-            if(EXISTS "${_qt_dir}/lib/cmake/Qt6")
-                list(APPEND CMAKE_PREFIX_PATH "${_qt_dir}")
-                break()
-            endif()
-        endforeach()
-    endif()
-
-    use_cm_module(QT)
     set(ULRE_QT_MODULE CMQT)
 endif()
 
@@ -82,6 +63,18 @@ use_cm_module(2D)
 use_cm_module(GUI)
 use_cm_module(AssetsManage)
 
+# CMQT 依赖 CMCore 的头（hgl/platform/Window.h 等），须在其他 CM 模块之后引入
+# （此时 CMCore/inc 已全局 include、CMCore target 已存在，CMQT 才能编译/链接 CMCore）
+if(ULRE_ENABLE_QT)
+    use_cm_module(QT)
+endif()
+
 add_subdirectory(src)
 
 add_subdirectory(example)
+
+# Qt + ULRE 集成示例（依赖 ULRE 主树 target 与 ${ULRE} 链接列表，
+# 故须在 add_subdirectory(src)/example 之后引入；源码位于 CMQT/examples）
+if(ULRE_ENABLE_QT AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/CMQT/examples/QtULREExample/CMakeLists.txt)
+    add_subdirectory(CMQT/examples/QtULREExample)
+endif()

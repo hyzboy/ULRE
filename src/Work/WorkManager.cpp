@@ -75,6 +75,14 @@ namespace hgl
         }
     }
 
+    void WorkManager::RunFrame(WorkObject *wo)
+    {
+        cur_time=GetTimeSec();
+
+        Tick(wo);
+        Render(wo);
+    }
+
     void WorkManager::Run(WorkObject *wo)
     {
         if(!wo)return;

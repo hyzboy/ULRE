@@ -58,6 +58,13 @@ namespace hgl
         virtual void Render (WorkObject *wo);
                 void Run    (WorkObject *wo);
 
+        /**
+         * 外部事件循环（Qt/GTK 等）驱动的单帧推进：
+         * 等效于 Run() 循环体的一次迭代（更新时间 → Tick → Render）。
+         * 由外部定时器每帧调用；wo 需先经 Run() 的初始化流程（或手动 OnChangeWorkObject + Init）。
+         */
+        void RunFrame(WorkObject *wo);
+
         // Called when the current active WorkObject changes. Default does nothing.
         virtual void OnChangeWorkObject(WorkObject *old_work,WorkObject *new_work);
     };//class WorkManager

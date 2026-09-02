@@ -52,6 +52,7 @@ namespace hgl
         OSString app_name;
 
         Window *win = nullptr;
+        bool owns_window = true;        ///< 窗口是否由 AppFramework 创建并拥有（外部注入时为 false）
         graph::VulkanInstance *inst = nullptr;
         graph::VulkanDevice *device = nullptr;
 
@@ -85,6 +86,13 @@ namespace hgl
          */
         virtual bool Init(uint w, uint h);
         virtual bool Init(uint w, uint h, int argc, os_char **argv);
+
+        /**
+         * 注入外部已创建的窗口（Qt/GTK 等 GUI 后端）。
+         * 注入后 AppFramework 不再创建/拥有窗口，窗口生命周期由外部管理。
+         * 必须在 Init() 之前调用；原生路径无需调用（自动 CreateRenderWindow）。
+         */
+        bool SetExternalWindow(Window *external_win);
 
     public:
         // Event callbacks
