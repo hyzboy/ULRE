@@ -192,6 +192,22 @@ void NormalizeRecipe(MaterialRecipe &recipe)
         // runtime identity used by hashing and caches.
         recipe.mtl_def_id = definition.definition_id;
         ApplyBaseMaterialInfoDefaults(recipe, definition, false);
+        const FixedPipelineVariant *const variant =
+            ResolveFixedPipelineVariantForQuality(
+                definition.pipeline_family,
+                definition.allowed_shader_profiles,
+                definition.default_shader_profile,
+                recipe.quality_tier);
+        if (!variant)
+        {
+            recipe.resolved_shader_profile = FixedShaderProfile::Unknown;
+            GLogError(
+                "[ShaderGen] Definition '%s' has no registered profile for quality tier %u",
+                definition.definition_id.c_str(),
+                uint32(recipe.quality_tier));
+            return;
+        }
+        recipe.resolved_shader_profile = variant->key.profile;
 
         const ResolvedMaterialRenderState resolved =
             ResolveMaterialRenderState(definition, recipe);

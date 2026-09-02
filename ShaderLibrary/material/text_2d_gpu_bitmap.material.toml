@@ -1,9 +1,14 @@
-schema = 1
+schema = 2
 id = "builtin/text_gpu_bitmap"
 name = "Text2D_GPU_Bitmap"
 source = "file"
 bootstrap = "TextAlphaBlend"
 provider_policy = "GeometryOnly"
+
+[pipeline]
+family = "forward_unlit"
+profiles = ["texture"]
+default_profile = "texture"
 
 [transform]
 source = "None"

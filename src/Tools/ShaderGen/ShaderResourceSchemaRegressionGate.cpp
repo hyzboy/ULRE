@@ -3030,12 +3030,16 @@ namespace
         result.name = "S.material-definition-file-schema";
 
         const char material_file[] =
-            "schema = 1\n"
+            "schema = 2\n"
             "id = \"LitFile\"\n"
             "name = \"LitFile\"\n"
             "source = \"file\"\n"
             "bootstrap = \"None\"\n"
             "provider_policy = \"AllowDerived\"\n"
+            "[pipeline]\n"
+            "family = \"forward_lit\"\n"
+            "profiles = [\"pbr_ibl_rgba16f2\"]\n"
+            "default_profile = \"pbr_ibl_rgba16f2\"\n"
             "[transform]\n"
             "source = \"Vec3Position\"\n"
             "mapping = \"Passthrough3D\"\n"
@@ -3075,6 +3079,12 @@ namespace
              || definition.vertex_node_config.position_mapping != PositionMappingMode::Passthrough3D
              || definition.vertex_semantic_requirements.GetCount() != 3
              || definition.ubo_requirements.size() != 2
+             || definition.pipeline_family != FixedPipelineFamily::ForwardLit
+             || !IsFixedShaderProfileAllowed(
+                    definition.allowed_shader_profiles,
+                    FixedShaderProfile::ForwardLitPBRIBLRGBA16F2)
+             || definition.default_shader_profile
+                    != FixedShaderProfile::ForwardLitPBRIBLRGBA16F2
              || std::strcmp(definition.fragment_source,
                             "forward_surface") != 0
              || std::strcmp(definition.fragment_surface_module,

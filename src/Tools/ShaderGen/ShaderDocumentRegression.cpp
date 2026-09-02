@@ -1,4 +1,5 @@
 #include <hgl/mtl/ShaderDocument.h>
+#include <hgl/mtl/FixedPipelineVariant.h>
 #include <hgl/mtl/RenderTemplate.h>
 #include <hgl/mtl/ShaderLegacyAuditShell.h>
 #include <hgl/mtl/ShaderRuntimeReadOnlyValidationShell.h>
@@ -182,6 +183,30 @@ int main()
      || template_diagnostic.error
             != RenderTemplateValidationError::DuplicateSlotRole)
         return 21;
+
+    const FixedShaderVariantKey variant_key{
+        FixedPipelineFamily::ForwardLit,
+        FixedShaderProfile::ForwardLitPBRIBLRGBA16F2,
+        FixedShaderQualityTier::High
+    };
+    const FixedPipelineVariant *variant =
+        ResolveFixedPipelineVariant(variant_key);
+    if (!variant
+     || variant->fragment_template != RenderTemplateID::ForwardLitShadowedAO
+     || variant->template_version != 1
+     || !IsFixedShaderProfileAllowed(
+            GetFixedShaderProfileMask(
+                FixedShaderProfile::ForwardLitPBRIBLRGBA16F2),
+            FixedShaderProfile::ForwardLitPBRIBLRGBA16F2)
+     || IsFixedShaderProfileAllowed(
+            GetFixedShaderProfileMask(
+                FixedShaderProfile::ForwardLitPBRIBLRGBA16F2),
+            FixedShaderProfile::ForwardLitFakePBRSH)
+     || ResolveFixedPipelineVariant({
+            FixedPipelineFamily::ForwardLit,
+            FixedShaderProfile::ForwardLitPBRIBLRGBA16F2,
+            FixedShaderQualityTier::Low }))
+        return 22;
 
     return 0;
 }

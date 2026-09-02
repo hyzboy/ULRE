@@ -15,6 +15,7 @@
 #include <hgl/mtl/MaterialVertexVaryingConfig.h>
 #include <hgl/mtl/BlendMode.h>
 #include <hgl/mtl/PassType.h>
+#include <hgl/mtl/FixedPipelineVariant.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <hgl/type/String.h>
 #include <cstdint>
@@ -259,6 +260,13 @@ namespace hgl::graph::mtl
         // Mesh shader 模式（来自 TOML [mesh_shader] 段；缺省 = VertexPassthrough）
         MeshShaderMode mesh_shader_mode = MeshShaderMode::VertexPassthrough;
         uint32_t mesh_shader_max_invocations = 0;  // 0 = 使用 GenerateMeshShader 默认值
+
+        // Fixed template selection envelope. Root modules remain the
+        // responsibility of ECS/render preparation, never this definition.
+        FixedPipelineFamily pipeline_family = FixedPipelineFamily::Unknown;
+        FixedShaderProfileMask allowed_shader_profiles = 0;
+        FixedShaderProfile default_shader_profile =
+            FixedShaderProfile::Unknown;
     };
 
     inline void SetMaterialFragmentSource(
@@ -296,6 +304,10 @@ namespace hgl::graph::mtl
         uint16_t material_lod = 0;            // 作者层选择的材质 LOD
 
         MaterialRenderStateOverrides render_state_overrides;
+        FixedShaderQualityTier quality_tier =
+            FixedShaderQualityTier::Default;
+        FixedShaderProfile resolved_shader_profile =
+            FixedShaderProfile::Unknown;
 
         std::vector<RecipeTextureBinding> textures; // 所有纹理语义绑定
         std::vector<RecipeSSBOAssetBinding> ssbo_assets; // 所有 SSBO 运行时绑定（name/slot/type/id/row）

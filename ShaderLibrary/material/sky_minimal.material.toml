@@ -1,9 +1,14 @@
-schema = 1
+schema = 2
 id = "SkyMinimal"
 name = "SkyMinimal"
 source = "file"
 bootstrap = "None"
 provider_policy = "GeometryOnly"
+
+[pipeline]
+family = "sky"
+profiles = ["constant"]
+default_profile = "constant"
 
 [transform]
 source = "Vec3Position"

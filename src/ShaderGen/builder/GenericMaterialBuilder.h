@@ -14,6 +14,7 @@
 #include <hgl/mtl/MaterialCoverageContract.h>
 #include <hgl/mtl/MaterialStageInterface.h>
 #include <hgl/mtl/ShaderLinkSpec.h>
+#include <hgl/mtl/FixedPipelineVariant.h>
 
 #include <string>
 #include <vector>
@@ -42,6 +43,7 @@ namespace hgl::graph::mtl
         mtl::ShaderProgramPurpose purpose =
             mtl::ShaderProgramPurpose::ForwardColor;
         bool depth_purpose = false;
+        const FixedPipelineVariant *pipeline_variant = nullptr;
         mtl::MaterialCoverageContract coverage;
         MaterialVertexVaryingConfig effective_vertex_varying;
         MaterialDefinition vertex_definition;

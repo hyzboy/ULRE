@@ -1,9 +1,14 @@
-schema = 1
+schema = 2
 id = "VertexColor"
 name = "VertexColor"
 source = "file"
 bootstrap = "None"
 provider_policy = "GeometryOnly"
+
+[pipeline]
+family = "forward_unlit"
+profiles = ["vertex_color"]
+default_profile = "vertex_color"
 
 [transform]
 source = "Vec3Position"

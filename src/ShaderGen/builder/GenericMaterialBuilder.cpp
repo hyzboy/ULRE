@@ -10,6 +10,8 @@
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/MaterialShaderCompiler.h>
 #include <hgl/mtl/CompositorAssembler.h>
+#include <hgl/mtl/FragmentTemplateComposer.h>
+#include <hgl/mtl/MeshTemplateComposer.h>
 #include <hgl/graph/font/CharQuadConfig.h>
 #include <hgl/mtl/MaterialOutputContract.h>
 #include <hgl/mtl/ShaderBuildContext.h>
@@ -183,6 +185,23 @@ namespace hgl::graph::mtl
                     ? request.shader_program_purpose
                     : GetShaderProgramPurpose(
                         definition.compositor_pass);
+            const FixedShaderProfile selected_profile =
+                request.recipe.resolved_shader_profile
+                    != FixedShaderProfile::Unknown
+                ? request.recipe.resolved_shader_profile
+                : definition.default_shader_profile;
+            plan.pipeline_variant = ResolveFixedPipelineVariantForQuality(
+                definition.pipeline_family,
+                definition.allowed_shader_profiles,
+                selected_profile,
+                request.recipe.quality_tier);
+            if (!plan.pipeline_variant)
+            {
+                GLogError(
+                    "[ShaderGen] Material has no registered pipeline variant: name=%s",
+                    definition.definition_name.c_str());
+                return false;
+            }
             if (!BuildMaterialCoverageContract(
                     definition,
                     request.recipe,
@@ -468,16 +487,18 @@ namespace hgl::graph::mtl
             ShaderDocument &mesh_document = document_capture
                 ? document_capture->mesh_source_document
                 : local_mesh_document;
-            if (!GenerateMeshShaderDocument(
-                plan.vertex_node_config,
-                plan.varying,
-                plan.position_format,
-                ms_mode,
-                max_invocations,
-                mesh_document,
-                input_glsl_str,
-                provider_glsl_str,
-                &plan.stage_interface))
+            MeshTemplateComposer mesh_composer;
+            MeshTemplateComposer::ComposeInput mesh_compose_input{};
+            mesh_compose_input.node_config = plan.vertex_node_config;
+            mesh_compose_input.varying_config = plan.varying;
+            mesh_compose_input.position_format = plan.position_format;
+            mesh_compose_input.mode = ms_mode;
+            mesh_compose_input.max_invocations = max_invocations;
+            mesh_compose_input.resolved_input_glsl = &input_glsl_str;
+            mesh_compose_input.provider_glsl = &provider_glsl_str;
+            mesh_compose_input.stage_interface = &plan.stage_interface;
+            mesh_compose_input.variant = plan.pipeline_variant;
+            if (!mesh_composer.Compose(mesh_compose_input, mesh_document))
             {
                 GLogError("[ShaderGen] Generic material mesh document build failed: name=%s",
                           definition.definition_name.c_str());
@@ -495,7 +516,7 @@ namespace hgl::graph::mtl
                 plan.ms.assign(serialized.c_str(), serialized.Length());
             }
 
-            CompositorAssembler assembler;
+            FragmentTemplateComposer composer;
             MaterialOutputContractDiagnostic output_diagnostic{};
             if (!BuildMaterialOutputContract(
                     plan.purpose,
@@ -570,16 +591,17 @@ namespace hgl::graph::mtl
                 ? document_capture->fragment_source_document
                 : local_fragment_document;
             ShaderDocumentDiagnostics fragment_diagnostics;
-            if (!assembler.AssembleDocument(
-                definition.compositor_surface,
-                effective_pass,
-                effective_fragment_source,
-                definition.fragment_surface_module,
-                compositor_options,
-                BuildCodeModuleGLSL(
-                    plan.manifest.IsValid() ? &plan.manifest : nullptr),
-                fragment_document,
-                fragment_diagnostics))
+            const std::string code_module_glsl = BuildCodeModuleGLSL(
+                plan.manifest.IsValid() ? &plan.manifest : nullptr);
+            FragmentTemplateComposer::ComposeInput compose_input{};
+            compose_input.surface = definition.compositor_surface;
+            compose_input.pass = effective_pass;
+            compose_input.fragment_source = effective_fragment_source;
+            compose_input.surface_module = definition.fragment_surface_module;
+            compose_input.module_options = compositor_options;
+            compose_input.code_module_glsl = &code_module_glsl;
+            if (!composer.Compose(
+                    compose_input, fragment_document, fragment_diagnostics))
             {
                 GLogError("[ShaderGen] Generic material fragment document build failed: name=%s",
                           definition.definition_name.c_str());

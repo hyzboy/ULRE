@@ -35,7 +35,13 @@ SOURCE_GROUP("Document" FILES ${DOCUMENT_FILES})
 
 set(TEMPLATE_FILES
     ${SHADERGEN_INCLUDE_PATH}/RenderTemplate.h
-    template/RenderTemplate.cpp)
+    template/RenderTemplate.cpp
+    ${SHADERGEN_INCLUDE_PATH}/FixedPipelineVariant.h
+    template/FixedPipelineVariant.cpp
+    ${SHADERGEN_INCLUDE_PATH}/FragmentTemplateComposer.h
+    template/FragmentTemplateComposer.cpp
+    ${SHADERGEN_INCLUDE_PATH}/MeshTemplateComposer.h
+    template/MeshTemplateComposer.cpp)
 SOURCE_GROUP("Template" FILES ${TEMPLATE_FILES})
 
 set(SSBO_STRUCT_FILES

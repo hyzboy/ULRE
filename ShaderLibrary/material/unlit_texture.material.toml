@@ -1,9 +1,14 @@
-schema = 1
+schema = 2
 id = "UnlitTexture"
 name = "UnlitTexture"
 source = "file"
 bootstrap = "None"
 provider_policy = "GeometryOnly"
+
+[pipeline]
+family = "forward_unlit"
+profiles = ["texture"]
+default_profile = "texture"
 
 [transform]
 source = "Vec2Position"
