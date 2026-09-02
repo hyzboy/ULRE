@@ -9,7 +9,6 @@
 #include <hgl/mtl/contract/ShaderGenContract.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/MaterialShaderCompiler.h>
-#include <hgl/mtl/CompositorAssembler.h>
 #include <hgl/mtl/FragmentTemplateComposer.h>
 #include <hgl/mtl/MeshTemplateComposer.h>
 #include <hgl/graph/font/CharQuadConfig.h>
@@ -23,6 +22,7 @@
 #include <hgl/mtl/VertexNodeConfigResolver.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/mtl/ShaderCodeModuleCapabilityResolver.h>
+#include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include "compile/MaterialShaderEmitter.h"
 #include "builder/DefinitionDescriptorBuilder.h"
 #include "meshgen/MeshShaderAssembler.h"
@@ -202,14 +202,27 @@ namespace hgl::graph::mtl
                     definition.definition_name.c_str());
                 return false;
             }
+            {
+                hgl::hash::FNV1aHasher64 template_hasher;
+                template_hasher << plan.pipeline_variant->fragment_template
+                                << plan.pipeline_variant->template_version
+                                << plan.pipeline_variant->key.family
+                                << plan.pipeline_variant->key.profile
+                                << plan.pipeline_variant->key.quality_tier;
+                plan.resolved_template_hash = template_hasher;
+            }
             if (request.render_template_request.template_id
                 != RenderTemplateID::Unknown)
             {
                 plan.render_template_request =
                     &request.render_template_request;
                 RenderTemplateValidationDiagnostic diagnostic{};
+                const ShaderCodeModuleRegistry &module_registry =
+                    GetShaderCodeModuleRegistry();
                 if (!ValidateRenderTemplateRequest(
-                        *plan.render_template_request, diagnostic)
+                        *plan.render_template_request,
+                        module_registry,
+                        diagnostic)
                  || plan.render_template_request->template_id
                         != plan.pipeline_variant->fragment_template
                  || plan.render_template_request->template_version
@@ -220,6 +233,8 @@ namespace hgl::graph::mtl
                         definition.definition_name.c_str());
                     return false;
                 }
+                plan.resolved_template_hash =
+                    plan.render_template_request->GetHash();
             }
             if (!BuildMaterialCoverageContract(
                     definition,
@@ -549,7 +564,7 @@ namespace hgl::graph::mtl
                         output_diagnostic.error));
                 return false;
             }
-            CompositorAssembler::CompositorModuleOptions compositor_options{};
+            FragmentTemplateComposer::ModuleOptions compositor_options{};
             compositor_options.alpha_test =
                 plan.coverage.mode == MaterialCoverageMode::AlphaTest
              || plan.coverage.mode
@@ -696,11 +711,16 @@ namespace hgl::graph::mtl
                 mesh_interface_hash,
                 resource_contract_hash,
                 compiler_hash);
+            hgl::hash::FNV1aHasher64 fragment_module_graph_hasher;
+            fragment_module_graph_hasher << plan.manifest.stable_hash
+                                         << plan.resolved_template_hash;
+            const uint64 fragment_module_graph_hash =
+                fragment_module_graph_hasher;
             plan.program_link.fragment_stage = BuildFinalShaderStageKey(
                 ShaderStage::Fragment,
                 plan.fs.data(),
                 plan.fs.size(),
-                plan.manifest.stable_hash,
+                fragment_module_graph_hash,
                 fragment_interface_hash,
                 resource_contract_hash,
                 compiler_hash);

@@ -45,6 +45,7 @@ namespace hgl::graph::mtl
         bool depth_purpose = false;
         const FixedPipelineVariant *pipeline_variant = nullptr;
         const RenderTemplateRequest *render_template_request = nullptr;
+        uint64 resolved_template_hash = 0;
         mtl::MaterialCoverageContract coverage;
         MaterialVertexVaryingConfig effective_vertex_varying;
         MaterialDefinition vertex_definition;
