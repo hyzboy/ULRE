@@ -119,11 +119,16 @@ namespace
                  && artifact_store->GetCacheMode() == mtl::ShaderCacheMode::ReadOnly)
                 {
                     if (artifact_loaded)
+                    {
                         GLogError(u8"[ShaderProgramManager] readonly SPV artifact is invalid or incompatible: %s",
                                   cache_key ? cache_key->ToString().c_str() : "<unknown>");
+                    }
                     else
+                    {
                         GLogError(u8"[ShaderProgramManager] readonly shader artifact missing: %s",
                                   cache_key ? cache_key->ToString().c_str() : "<unknown>");
+                    }
+
                     return false;
                 }
                 module = manager->CreateShaderModule(mtl_name, sci_ptr);
