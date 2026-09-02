@@ -1,5 +1,6 @@
 #pragma once
 
+#include <hgl/mtl/ShaderArtifactStore.h>
 #include <hgl/type/String.h>
 
 namespace hgl::graph::mtl
@@ -38,6 +39,10 @@ namespace hgl::graph::mtl
         void SetSchemaState(bool schema_valid);
         void SetModuleReady(bool module_ready);
         void CompleteValidation();
+        bool ValidateProgramArtifacts(
+            const ShaderArtifactStore &store,
+            const ShaderLinkSpec &link,
+            const ShaderProgramArtifactMetadata &expected_metadata);
 
         ShaderRuntimeValidationStage GetStage() const;
         const ShaderRuntimeReadOnlyValidationSummary &GetSummary() const;

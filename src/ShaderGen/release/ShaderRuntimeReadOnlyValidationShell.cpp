@@ -61,6 +61,40 @@ namespace hgl::graph::mtl
         summary.dry_run = true;
     }
 
+    bool ShaderRuntimeReadOnlyValidationShell::ValidateProgramArtifacts(
+        const ShaderArtifactStore &store,
+        const ShaderLinkSpec &link,
+        const ShaderProgramArtifactMetadata &expected_metadata)
+    {
+        BeginValidation();
+
+        const bool cache_valid = store.HasProgramMetadata(link);
+        SetCacheState(cache_valid);
+
+        ValueArray<uint8> vertex_spv;
+        ValueArray<uint8> fragment_spv;
+        const bool artifacts_readable =
+            store.LoadProgramArtifacts(
+                link,
+                expected_metadata,
+                vertex_spv,
+                fragment_spv);
+        SetArtifactReadable(artifacts_readable);
+
+        const bool schema_valid =
+            artifacts_readable
+            && IsValidShaderProgramArtifactMetadata(expected_metadata);
+        SetSchemaState(schema_valid);
+
+        const bool module_ready =
+            schema_valid
+            && vertex_spv.GetCount() > 0
+            && fragment_spv.GetCount() > 0;
+        SetModuleReady(module_ready);
+        CompleteValidation();
+        return module_ready;
+    }
+
     ShaderRuntimeValidationStage ShaderRuntimeReadOnlyValidationShell::GetStage() const
     {
         return stage;

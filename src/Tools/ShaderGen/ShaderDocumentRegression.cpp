@@ -1,5 +1,6 @@
 #include <hgl/mtl/ShaderDocument.h>
 #include <hgl/mtl/ShaderLegacyAuditShell.h>
+#include <hgl/mtl/ShaderRuntimeReadOnlyValidationShell.h>
 #include "../../ShaderGen/document/DocumentFragmentBuilder.h"
 
 using namespace hgl::graph::mtl;
@@ -91,6 +92,19 @@ int main()
     if (audit.GetState() != ShaderLegacyAuditState::ReadyForCleanup
      || !audit.IsCleanupSafe())
         return 12;
+
+    ShaderRuntimeReadOnlyValidationShell validation;
+    validation.BeginValidation();
+    validation.SetCacheState(false);
+    validation.SetArtifactReadable(false);
+    validation.SetSchemaState(false);
+    validation.SetModuleReady(false);
+    validation.CompleteValidation();
+    if (validation.GetStage() != ShaderRuntimeValidationStage::Complete
+     || !validation.GetSummary().dry_run
+     || validation.GetSummary().cache_valid
+     || validation.GetSummary().artifact_readable)
+        return 13;
 
     return 0;
 }
