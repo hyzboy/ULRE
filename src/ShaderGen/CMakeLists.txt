@@ -1,5 +1,9 @@
 set(SHADERGEN_INCLUDE_PATH  ${ROOT_INCLUDE_PATH}/hgl/mtl)
 
+option(ULRE_ENABLE_RELEASE_SHELL
+    "Prepare release-shell interfaces without forcing a final SPV-only runtime split during active shader development"
+    OFF)
+
 # ── 物理目录 = SOURCE_GROUP = 管线角色（2026-09 目录整理，对齐模块隔离设计 §四）──
 #   compile/             编译执行：glslang 封装 + 构建上下文 + SPV 产物 + 求解/发射
 #   glsl_module/         GLSL 代码模块体系（registry/metadata/file/manifest/preset）
@@ -168,6 +172,11 @@ set(PROFILE_FILES
     ${ROOT_INCLUDE_PATH}/hgl/mtl/contract/ShaderGenProfileTargetVersion.h)
 SOURCE_GROUP("Device Profile" FILES ${PROFILE_FILES})
 
+set(RELEASE_SHELL_FILES
+    ${SHADERGEN_INCLUDE_PATH}/ShaderRuntimeReleaseShell.h
+    release/ShaderRuntimeReleaseShell.cpp)
+SOURCE_GROUP("Release Shell" FILES ${RELEASE_SHELL_FILES})
+
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 add_cm_library(ULRE.ShaderGen "ULRE"
@@ -185,4 +194,10 @@ add_cm_library(ULRE.ShaderGen "ULRE"
     ${BUILDER_FILES}
     ${MATERIAL_TYPE_FILES}
     ${PROFILE_FILES}
+    ${RELEASE_SHELL_FILES}
 )
+
+if(ULRE_ENABLE_RELEASE_SHELL)
+    target_compile_definitions(ULRE.ShaderGen PRIVATE ULRE_ENABLE_RELEASE_SHELL=1)
+    message(STATUS "ULRE_ENABLE_RELEASE_SHELL is ON: development-first runtime packaging guard is active.")
+endif()
