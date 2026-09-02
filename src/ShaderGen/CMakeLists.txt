@@ -176,9 +176,11 @@ set(RELEASE_SHELL_FILES
     ${SHADERGEN_INCLUDE_PATH}/ShaderRuntimeReleaseShell.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderRuntimeReadOnlyValidationShell.h
     ${SHADERGEN_INCLUDE_PATH}/ShaderRuntimeReleaseDocumentation.h
+    ${SHADERGEN_INCLUDE_PATH}/ShaderLegacyAuditShell.h
     release/ShaderRuntimeReleaseShell.cpp
     release/ShaderRuntimeReadOnlyValidationShell.cpp
-    release/ShaderRuntimeReleaseDocumentation.cpp)
+    release/ShaderRuntimeReleaseDocumentation.cpp
+    release/ShaderLegacyAuditShell.cpp)
 SOURCE_GROUP("Release Shell" FILES ${RELEASE_SHELL_FILES})
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
