@@ -88,6 +88,7 @@ namespace
             mtl::ShaderArtifactStore *artifact_store =
                 build_spec ? build_spec->GetArtifactStore() : nullptr;
             const mtl::ShaderStageKey *cache_key = nullptr;
+            bool artifact_loaded = false;
             if (build_spec && build_spec->HasProgramLink())
             {
                 const auto &link = build_spec->GetProgramLink();
@@ -101,10 +102,14 @@ namespace
                 hgl::ValueArray<hgl::uint8> cached_spv;
                 if (artifact_store->LoadStageSPV(*cache_key, cached_spv))
                 {
+                    artifact_loaded = true;
                     module = manager->CreateShaderModuleFromSPV(
                         *cache_key,
                         reinterpret_cast<const uint32_t *>(cached_spv.GetData()),
                         static_cast<size_t>(cached_spv.GetCount()));
+                    if (!module)
+                        GLogError(u8"[ShaderProgramManager] failed to create Vulkan shader module from SPV: %s",
+                                  cache_key->ToString().c_str());
                 }
             }
 
@@ -113,7 +118,12 @@ namespace
                 if (artifact_store
                  && artifact_store->GetCacheMode() == mtl::ShaderCacheMode::ReadOnly)
                 {
-                    GLogError(u8"[ShaderProgramManager] readonly shader artifact missing");
+                    if (artifact_loaded)
+                        GLogError(u8"[ShaderProgramManager] readonly SPV artifact is invalid or incompatible: %s",
+                                  cache_key ? cache_key->ToString().c_str() : "<unknown>");
+                    else
+                        GLogError(u8"[ShaderProgramManager] readonly shader artifact missing: %s",
+                                  cache_key ? cache_key->ToString().c_str() : "<unknown>");
                     return false;
                 }
                 module = manager->CreateShaderModule(mtl_name, sci_ptr);
