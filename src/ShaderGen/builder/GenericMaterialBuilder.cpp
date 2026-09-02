@@ -202,6 +202,25 @@ namespace hgl::graph::mtl
                     definition.definition_name.c_str());
                 return false;
             }
+            if (request.render_template_request.template_id
+                != RenderTemplateID::Unknown)
+            {
+                plan.render_template_request =
+                    &request.render_template_request;
+                RenderTemplateValidationDiagnostic diagnostic{};
+                if (!ValidateRenderTemplateRequest(
+                        *plan.render_template_request, diagnostic)
+                 || plan.render_template_request->template_id
+                        != plan.pipeline_variant->fragment_template
+                 || plan.render_template_request->template_version
+                        != plan.pipeline_variant->template_version)
+                {
+                    GLogError(
+                        "[ShaderGen] Render template request does not match pipeline variant: name=%s",
+                        definition.definition_name.c_str());
+                    return false;
+                }
+            }
             if (!BuildMaterialCoverageContract(
                     definition,
                     request.recipe,
@@ -594,6 +613,8 @@ namespace hgl::graph::mtl
             const std::string code_module_glsl = BuildCodeModuleGLSL(
                 plan.manifest.IsValid() ? &plan.manifest : nullptr);
             FragmentTemplateComposer::ComposeInput compose_input{};
+            compose_input.request = plan.render_template_request;
+            compose_input.variant = plan.pipeline_variant;
             compose_input.surface = definition.compositor_surface;
             compose_input.pass = effective_pass;
             compose_input.fragment_source = effective_fragment_source;

@@ -44,6 +44,7 @@ namespace hgl::graph::mtl
             mtl::ShaderProgramPurpose::ForwardColor;
         bool depth_purpose = false;
         const FixedPipelineVariant *pipeline_variant = nullptr;
+        const RenderTemplateRequest *render_template_request = nullptr;
         mtl::MaterialCoverageContract coverage;
         MaterialVertexVaryingConfig effective_vertex_varying;
         MaterialDefinition vertex_definition;

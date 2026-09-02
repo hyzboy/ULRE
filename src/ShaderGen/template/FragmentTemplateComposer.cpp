@@ -12,6 +12,10 @@ namespace hgl::graph::mtl
             RenderTemplateValidationDiagnostic diagnostic{};
             if (!ValidateRenderTemplateRequest(*input.request, diagnostic))
                 return false;
+            if (input.variant
+             && (input.request->template_id != input.variant->fragment_template
+              || input.request->template_version != input.variant->template_version))
+                return false;
         }
 
         const std::string empty_code_module_glsl;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <hgl/mtl/CompositorAssembler.h>
+#include <hgl/mtl/FixedPipelineVariant.h>
 #include <hgl/mtl/RenderTemplate.h>
 
 namespace hgl::graph::mtl
@@ -14,6 +15,7 @@ namespace hgl::graph::mtl
         struct ComposeInput
         {
             const RenderTemplateRequest *request = nullptr;
+            const FixedPipelineVariant *variant = nullptr;
             SurfaceType surface = SurfaceType::Unlit;
             PassType pass = PassType::ForwardOpaque;
             const char *fragment_source = nullptr;
