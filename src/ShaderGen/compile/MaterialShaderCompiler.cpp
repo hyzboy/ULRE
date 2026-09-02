@@ -764,78 +764,60 @@ ShaderBuildContext *CompileCompositorMaterial(
         return FailCompile(c);
 
 
-    // ── Step 5: Set complete GLSL (bypass ProcXXX pipeline) ───────
+    // ── Step 5: Complete both stages through ShaderDocument ───────
     const DescriptorSetLayoutAllocator &descriptor_info = ctx->GetDescriptorAllocator();
 
+    ShaderDocument local_mesh_final_document;
+    ShaderDocument local_fragment_final_document;
+    ShaderDocument *mesh_final_document = &local_mesh_final_document;
+    ShaderDocument *fragment_final_document = &local_fragment_final_document;
     if (document_capture)
     {
-        ShaderDocumentDiagnostics document_diagnostics;
-        const AnsiString mesh_stage_glsl(
-            ms_glsl.c_str(), int(ms_glsl.size()));
-        const AnsiString fragment_stage_glsl(
-            fs_glsl.c_str(), int(fs_glsl.size()));
-        if (!BuildMaterialStageDocument(
-                mesh_stage_glsl,
-                ShaderStage::Mesh,
-                input.debug_name,
-                config,
-                descriptor_info,
-                effective_material_private_data,
-                document_capture->mesh_final_document,
-                document_diagnostics)
-         || !BuildMaterialStageDocument(
-                fragment_stage_glsl,
-                ShaderStage::Fragment,
-                input.debug_name,
-                config,
-                descriptor_info,
-                effective_material_private_data,
-                document_capture->fragment_final_document,
-                document_diagnostics))
-        {
-            c.Fail("Material stage document build failed");
-            return FailCompile(c);
-        }
+        mesh_final_document = &document_capture->mesh_final_document;
+        fragment_final_document = &document_capture->fragment_final_document;
     }
-
-    // Keep the established stage injection path as the compilation boundary
-    // while Document captures are validated by the production compare gate.
-    // The Document serializer's output is checked above; this avoids changing
-    // artifact generation until its full release-path equivalence is proven.
-    std::string material_ssbo_decls;
-    std::string material_slot_macros;
-    std::string emit_error;
-    if (!BuildMaterialSSBODeclarations(
+    ShaderDocumentDiagnostics document_diagnostics;
+    const AnsiString mesh_stage_glsl(ms_glsl.c_str(), int(ms_glsl.size()));
+    const AnsiString fragment_stage_glsl(fs_glsl.c_str(), int(fs_glsl.size()));
+    if (!BuildMaterialStageDocument(
+            mesh_stage_glsl,
+            ShaderStage::Mesh,
+            input.debug_name,
+            config,
             descriptor_info,
             effective_material_private_data,
-            material_ssbo_decls,
-            material_slot_macros,
-            emit_error))
+            *mesh_final_document,
+            document_diagnostics)
+     || !BuildMaterialStageDocument(
+            fragment_stage_glsl,
+            ShaderStage::Fragment,
+            input.debug_name,
+            config,
+            descriptor_info,
+            effective_material_private_data,
+            *fragment_final_document,
+            document_diagnostics))
     {
-        c.Fail(emit_error);
+        c.Fail("Material stage document build failed");
         return FailCompile(c);
     }
 
-    std::string sampler_macros;
-    if (config.material_definition)
-        sampler_macros =
-            BuildSamplerMacros(config.material_definition->sampler_names);
-    const std::string compile_define_macros = BuildCompileDefineMacros(config);
-    const std::string mesh_index_table_decls =
-        BuildMeshIndexTableDecls(descriptor_info);
-    const std::string fs_index_table_decls =
-        BuildFSIndexTableDecls(descriptor_info);
-    const std::string fs_inject =
-        "#extension GL_EXT_mesh_shader : require\n"
-        + compile_define_macros + sampler_macros
-        + material_ssbo_decls + material_slot_macros
-        + fs_index_table_decls;
-    AssembleFinalGLSL(
-        ctx,
-        ms_glsl,
-        fs_glsl,
-        mesh_index_table_decls,
-        fs_inject);
+    AnsiString mesh_final_glsl;
+    AnsiString fragment_final_glsl;
+    if (!mesh_final_document->Serialize(mesh_final_glsl, document_diagnostics)
+     || !fragment_final_document->Serialize(fragment_final_glsl, document_diagnostics))
+    {
+        c.Fail("Material stage document serialization failed");
+        return FailCompile(c);
+    }
+
+    ShaderCreateInfo *mesh = ctx->GetStageShader(ShaderStage::Mesh);
+    ShaderCreateInfo *frag = ctx->GetStageShader(ShaderStage::Fragment);
+    if (mesh)
+        mesh->SetFinalGLSL(std::string(mesh_final_glsl.c_str(), mesh_final_glsl.Length()));
+    if (frag)
+        frag->SetFinalGLSL(std::string(fragment_final_glsl.c_str(), fragment_final_glsl.Length()));
+
 
     // ── Step 6: Build ShaderResourceSchema from descriptor entries. ──
     // When material_private_data is declared (definition or provider manifest), the

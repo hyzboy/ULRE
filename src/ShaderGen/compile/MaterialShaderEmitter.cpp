@@ -7,7 +7,6 @@
 #include "../document/DocumentFragmentBuilder.h"
 
 #include <hgl/mtl/MaterialShaderCompiler.h>
-#include <hgl/mtl/ShaderDocumentLegacyAdapter.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/ShaderCreateInfo.h>
 #include <hgl/mtl/SamplerPreset.h>
@@ -581,12 +580,49 @@ bool BuildFinalStageDocument(
     ShaderDocument &out_document,
     ShaderDocumentDiagnostics &out_diagnostics)
 {
-    return BuildInjectedShaderDocument(
-        AnsiString(stage_glsl.c_str()),
-        AnsiString(version_inject.c_str()),
-        AnsiString(stage ? stage : "unknown"),
-        out_document,
-        out_diagnostics);
+    out_document.Clear();
+    out_diagnostics.Clear();
+
+    ShaderDocumentSource source;
+    source.stage = stage ? stage : "unknown";
+
+    const AnsiString glsl(stage_glsl.c_str());
+    const AnsiString inject(version_inject.c_str());
+    if (inject.IsEmpty())
+    {
+        out_document.Add(ShaderDocumentBlockKind::Raw, glsl, source);
+    }
+    else
+    {
+        const int version_end = glsl.FindChar('\n');
+        if (version_end < 0)
+        {
+            out_document.Add(
+                ShaderDocumentBlockKind::Raw,
+                glsl + "\n" + inject,
+                source);
+        }
+        else
+        {
+            out_document.Add(
+                ShaderDocumentBlockKind::Raw,
+                glsl.Left(version_end + 1),
+                source);
+            out_document.Add(ShaderDocumentBlockKind::Raw, inject, source);
+            if (version_end + 1 < glsl.Length())
+            {
+                out_document.Add(
+                    ShaderDocumentBlockKind::Raw,
+                    glsl.SubString(
+                        version_end + 1,
+                        glsl.Length() - version_end - 1),
+                    source);
+            }
+        }
+    }
+
+    AnsiString serialized;
+    return out_document.Serialize(serialized, out_diagnostics);
 }
 
 void AssembleFinalGLSL(
