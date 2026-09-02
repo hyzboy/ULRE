@@ -61,19 +61,6 @@ namespace hgl::graph::mtl
                 *coverage_contract = nullptr;
         };
 
-        /// fragment_source_override: 骨架选择键（原 compositor 模板路径），
-        /// 空则按 surface/pass 分派。
-        /// surface_function_override: surface 函数路径覆盖。
-        /// code_module_glsl: ShaderCodeModule 代码模块拼接文本（调用方依据
-        /// manifest 生成；置于 surface 函数 include 之前，保证先于其使用声明）。
-        AssembleResult Assemble(
-            SurfaceType                  surface,
-            PassType                     pass,
-            const char                  *fragment_source_override,
-            const char                  *surface_function_override,
-            const CompositorModuleOptions &module_options,
-            const std::string           &code_module_glsl = {}) const;
-
         bool AssembleDocument(
             SurfaceType                  surface,
             PassType                     pass,
@@ -83,16 +70,6 @@ namespace hgl::graph::mtl
             const std::string           &code_module_glsl,
             ShaderDocument              &out_document,
             ShaderDocumentDiagnostics    &out_diagnostics) const;
-
-        AssembleResult Assemble(
-            SurfaceType                  surface,
-            PassType                     pass,
-            const char                  *fs_template_override      = nullptr,
-            const char                  *surface_function_override = nullptr
-        ) const
-        {
-            return Assemble(surface, pass, fs_template_override, surface_function_override, CompositorModuleOptions{});
-        }
 
     private:
 

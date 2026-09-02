@@ -322,47 +322,6 @@ namespace hgl::graph::mtl
         }
     }
 
-    CompositorAssembler::AssembleResult CompositorAssembler::Assemble(
-        SurfaceType                  surface,
-        PassType                     pass,
-        const char                  *fragment_source_override,
-        const char                  *surface_function_override,
-        const CompositorModuleOptions &module_options,
-        const std::string           &code_module_glsl) const
-    {
-        AssembleResult result{};
-        ShaderDocument document;
-        ShaderDocumentDiagnostics diagnostics;
-        if (!AssembleDocument(
-                surface,
-                pass,
-                fragment_source_override,
-                surface_function_override,
-                module_options,
-                code_module_glsl,
-                document,
-                diagnostics))
-        {
-            if (diagnostics.GetCount() > 0)
-                result.error_message = diagnostics[0]->message.c_str();
-            return result;
-        }
-
-        AnsiString serialized;
-        if (!document.SerializeFragment(serialized, diagnostics))
-        {
-            if (diagnostics.GetCount() > 0)
-                result.error_message = diagnostics[0]->message.c_str();
-            return result;
-        }
-
-        result.fragment_glsl.assign(
-            serialized.c_str(),
-            static_cast<size_t>(serialized.Length()));
-        result.success = true;
-        return result;
-    }
-
     bool CompositorAssembler::AssembleDocument(
         const SurfaceType surface,
         const PassType pass,

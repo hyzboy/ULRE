@@ -54,6 +54,42 @@ using namespace hgl::graph::mtl;
 
 namespace
 {
+    static CompositorAssembler::AssembleResult AssembleCompositorText(
+        const CompositorAssembler &assembler,
+        SurfaceType surface,
+        PassType pass,
+        const char *fragment_source_override = nullptr,
+        const char *surface_function_override = nullptr,
+        const CompositorAssembler::CompositorModuleOptions &module_options = {},
+        const std::string &code_module_glsl = {})
+    {
+        CompositorAssembler::AssembleResult result{};
+        ShaderDocument document;
+        ShaderDocumentDiagnostics diagnostics;
+        hgl::AnsiString serialized;
+        if (!assembler.AssembleDocument(
+                surface,
+                pass,
+                fragment_source_override,
+                surface_function_override,
+                module_options,
+                code_module_glsl,
+                document,
+                diagnostics)
+         || !document.SerializeFragment(serialized, diagnostics))
+        {
+            if (diagnostics.GetCount() > 0)
+                result.error_message = diagnostics[0]->message.c_str();
+            return result;
+        }
+
+        result.fragment_glsl.assign(
+            serialized.c_str(),
+            static_cast<size_t>(serialized.Length()));
+        result.success = true;
+        return result;
+    }
+
     static std::string GenerateMeshShaderDocumentText(
         const VertexShaderNodeConfig &node_cfg,
         const MaterialVertexVaryingConfig &varying_cfg,
@@ -928,7 +964,7 @@ namespace
         result.name = "N.compositor-version-placement";
 
         CompositorAssembler assembler;
-        const auto assembled = assembler.Assemble(
+        const auto assembled = AssembleCompositorText(assembler,
             SurfaceType::Lit,
             PassType::ForwardOpaque);
         if (!assembled.success)
@@ -990,7 +1026,7 @@ namespace
         lighting_options.material_source_module = "material/pbr_texturearray_source.glsl";
         lighting_options.ntb_module = "ntb/ntb_texturearray_normalmap.glsl";
         lighting_options.forward_lighting_module = "compositor/forward_lighting.glsl";
-        const auto scheduled_lighting = assembler.Assemble(
+        const auto scheduled_lighting = AssembleCompositorText(assembler,
             SurfaceType::Lit,
             PassType::ForwardOpaque,
             nullptr,
@@ -1023,7 +1059,7 @@ namespace
 
         CompositorAssembler::CompositorModuleOptions dither_options{};
         dither_options.dither = true;
-        const auto dithered = assembler.Assemble(
+        const auto dithered = AssembleCompositorText(assembler,
             SurfaceType::Unlit,
             PassType::ForwardDither,
             nullptr,
@@ -1040,7 +1076,7 @@ namespace
         alpha_options.alpha_cutoff = 0.25f;
         alpha_options.material_source_module =
             "material/texture_source.glsl";
-        const auto masked = assembler.Assemble(
+        const auto masked = AssembleCompositorText(assembler,
             SurfaceType::Unlit,
             PassType::ForwardMasked,
             nullptr,
@@ -1052,7 +1088,7 @@ namespace
             result.diagnostics.emplace_back(
                 "Masked compositor must inject alpha-test cutoff");
 
-        const auto texture_template = assembler.Assemble(
+        const auto texture_template = AssembleCompositorText(assembler,
             SurfaceType::Unlit,
             PassType::ForwardMasked,
             "forward_surface",
@@ -1069,7 +1105,7 @@ namespace
                 "UnlitTexture Compositor must inject alpha into template + surface");
         }
 
-        const auto alpha_to_coverage = assembler.Assemble(
+        const auto alpha_to_coverage = AssembleCompositorText(assembler,
             SurfaceType::Unlit,
             PassType::ForwardA2C);
         if (!alpha_to_coverage.success
@@ -1077,7 +1113,7 @@ namespace
             result.diagnostics.emplace_back(
                 "Alpha-to-coverage compositor must preserve alpha output");
 
-        const auto depth_only = assembler.Assemble(
+        const auto depth_only = AssembleCompositorText(assembler,
             SurfaceType::Lit,
             PassType::ShadowOpaque);
         if (!depth_only.success
@@ -1090,7 +1126,7 @@ namespace
             result.diagnostics.emplace_back(
                 "Shadow depth compositor must emit no color attachment");
 
-        const auto custom_surface = assembler.Assemble(
+        const auto custom_surface = AssembleCompositorText(assembler,
             SurfaceType::Unlit,
             PassType::ForwardOpaque);
         if (!custom_surface.success
@@ -2743,7 +2779,7 @@ namespace
         options.lighting_algorithm_module =
             "lighting/forward_flat.glsl";
         options.fragment_inputs = &stage_interface;
-        const auto assembled = assembler.Assemble(
+        const auto assembled = AssembleCompositorText(assembler,
             SurfaceType::Unlit, PassType::ForwardOpaque,
             "forward_surface",
             "surface/material_surface.glsl",
