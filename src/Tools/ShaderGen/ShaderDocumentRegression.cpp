@@ -1,5 +1,6 @@
 #include <hgl/mtl/ShaderDocument.h>
 #include <hgl/mtl/ShaderDocumentLegacyAdapter.h>
+#include <hgl/mtl/ShaderLegacyAuditShell.h>
 #include "../../ShaderGen/document/DocumentFragmentBuilder.h"
 
 using namespace hgl::graph::mtl;
@@ -77,6 +78,13 @@ int main()
      || builder.Add(ShaderDocumentBlockKind::Resource, "layout(set=0) uniform X {};\n")
      || builder_diagnostics.GetCount() != 1)
         return 11;
+
+    ShaderLegacyAuditShell audit;
+    audit.BeginAudit();
+    audit.CompleteAudit();
+    if (audit.GetState() != ShaderLegacyAuditState::ReadyForCleanup
+     || !audit.IsCleanupSafe())
+        return 12;
 
     return 0;
 }

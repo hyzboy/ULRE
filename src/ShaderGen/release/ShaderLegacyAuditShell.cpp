@@ -43,10 +43,8 @@ namespace hgl::graph::mtl
     {
         if (cleanup_blocked || runtime_reference_found)
             state = ShaderLegacyAuditState::Blocked;
-        else if (entries.GetCount() > 0)
-            state = ShaderLegacyAuditState::ReadyForCleanup;
         else
-            state = ShaderLegacyAuditState::NotStarted;
+            state = ShaderLegacyAuditState::ReadyForCleanup;
     }
 
     ShaderLegacyAuditState ShaderLegacyAuditShell::GetState() const
