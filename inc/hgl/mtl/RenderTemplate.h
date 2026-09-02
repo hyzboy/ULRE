@@ -91,6 +91,8 @@ namespace hgl::graph::mtl
         ,ModuleNotFound
         ,ModuleSlotMismatch
         ,MissingModuleCapability
+        ,ModuleGraphInvalid
+        ,ModuleConflict
     };
 
     struct RenderTemplateValidationDiagnostic

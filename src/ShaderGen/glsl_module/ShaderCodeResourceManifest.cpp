@@ -1,5 +1,6 @@
 ﻿#include <hgl/mtl/ShaderCodeResourceManifest.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
+#include <hgl/mtl/ShaderCodeModuleMetadata.h>
 #include "builder/DescriptorBuilderCommon.h"
 #include <hgl/util/hash/FNV1a.h>
 
@@ -176,6 +177,20 @@ namespace hgl::graph::mtl
             {
                 if (!AddTextureLayer(manifest, definition->texture_layer_requirements[i]))
                     return false;
+            }
+
+            for (uint32 i = 0; i < manifest.code_module_count; ++i)
+            {
+                const ShaderCodeModuleDefinition *existing =
+                    FindModuleByName(manifest.code_module_names[i], registry);
+                if (existing
+                 && AreShaderCodeModulesConflicting(*existing, *definition))
+                {
+                    manifest.error =
+                        ShaderCodeResourceManifestError::ResourceConflict;
+                    manifest.error_module_name = definition->name;
+                    return false;
+                }
             }
 
             if (manifest.code_module_count >= MaxShaderCodeResourceManifestCodeModules)

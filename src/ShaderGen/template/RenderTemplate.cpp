@@ -1,5 +1,6 @@
 #include <hgl/mtl/RenderTemplate.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
+#include <hgl/mtl/ShaderCodeResourceManifest.h>
 
 namespace hgl::graph::mtl
 {
@@ -196,6 +197,8 @@ namespace hgl::graph::mtl
         case RenderTemplateValidationError::ModuleNotFound: return "ModuleNotFound";
         case RenderTemplateValidationError::ModuleSlotMismatch: return "ModuleSlotMismatch";
         case RenderTemplateValidationError::MissingModuleCapability: return "MissingModuleCapability";
+        case RenderTemplateValidationError::ModuleGraphInvalid: return "ModuleGraphInvalid";
+        case RenderTemplateValidationError::ModuleConflict: return "ModuleConflict";
         }
         return "Unknown";
     }
@@ -296,6 +299,7 @@ namespace hgl::graph::mtl
 
         uint32 provided_capabilities = 0;
         uint32 required_capabilities = 0;
+        const char *root_names[MaxRenderTemplateModuleRoots]{};
         for (uint32 index = 0; index < request.module_root_count; ++index)
         {
             const RenderTemplateModuleRoot &root = request.module_roots[index];
@@ -315,6 +319,35 @@ namespace hgl::graph::mtl
                     request,
                     root.role,
                     root.module_name);
+            provided_capabilities |= definition->provided_capabilities;
+            required_capabilities |= definition->required_capabilities;
+            root_names[index] = definition->name;
+        }
+
+        ShaderCodeResourceManifest manifest;
+        if (!BuildShaderCodeResourceManifest(
+                root_names,
+                request.module_root_count,
+                manifest,
+                &module_registry))
+            return SetFailure(
+                out_diagnostic,
+                manifest.error == ShaderCodeResourceManifestError::ResourceConflict
+                    ? RenderTemplateValidationError::ModuleConflict
+                    : RenderTemplateValidationError::ModuleGraphInvalid,
+                request);
+
+        provided_capabilities = 0;
+        required_capabilities = 0;
+        for (uint32 index = 0; index < manifest.code_module_count; ++index)
+        {
+            const ShaderCodeModuleDefinition *definition =
+                module_registry.FindByName(manifest.code_module_names[index]);
+            if (!definition)
+                return SetFailure(
+                    out_diagnostic,
+                    RenderTemplateValidationError::ModuleGraphInvalid,
+                    request);
             provided_capabilities |= definition->provided_capabilities;
             required_capabilities |= definition->required_capabilities;
         }

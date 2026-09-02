@@ -279,6 +279,15 @@ int main()
      || template_diagnostic.error
             != RenderTemplateValidationError::ModuleSlotMismatch)
         return 27;
+    root_modules[0].slot_role = root_roles[0];
+    const char *surface_conflicts[] = {"direct/sun"};
+    root_modules[0].module_conflict_names = surface_conflicts;
+    root_modules[0].module_conflict_count = 1;
+    if (ValidateRenderTemplateRequest(
+            template_request, root_registry, template_diagnostic)
+     || template_diagnostic.error
+            != RenderTemplateValidationError::ModuleConflict)
+        return 28;
 
     return 0;
 }
