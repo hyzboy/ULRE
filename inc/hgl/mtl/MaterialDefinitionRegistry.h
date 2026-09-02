@@ -5,6 +5,7 @@
 #include<hgl/mtl/CanonicalShaderContract.h>
 #include<hgl/mtl/MaterialCoverageContract.h>
 #include<hgl/mtl/MaterialRecipe.h>
+#include <hgl/mtl/RenderTemplate.h>
 #include<hgl/mtl/ShaderCodeModuleCapabilityResolver.h>
 #include<hgl/mtl/ShaderCodeModuleRegistry.h>
 #include<hgl/type/String.h>
@@ -49,6 +50,9 @@ struct MaterialDefinitionBuildRequest
     bool override_shader_program_purpose = false;
     mtl::ShaderProgramPurpose shader_program_purpose =
         mtl::ShaderProgramPurpose::ForwardColor;
+    // ECS render preparation will populate this once template composition
+    // replaces the current material-definition shader selection path.
+    RenderTemplateRequest render_template_request;
 
 };
 

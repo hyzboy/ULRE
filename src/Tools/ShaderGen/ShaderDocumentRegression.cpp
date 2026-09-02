@@ -1,4 +1,5 @@
 #include <hgl/mtl/ShaderDocument.h>
+#include <hgl/mtl/RenderTemplate.h>
 #include <hgl/mtl/ShaderLegacyAuditShell.h>
 #include <hgl/mtl/ShaderRuntimeReadOnlyValidationShell.h>
 #include "../../ShaderGen/document/DocumentFragmentBuilder.h"
@@ -105,6 +106,82 @@ int main()
      || validation.GetSummary().cache_valid
      || validation.GetSummary().artifact_readable)
         return 13;
+
+    RenderTemplateRequest template_request{};
+    template_request.template_id = RenderTemplateID::ForwardLitShadowedAO;
+    template_request.template_version = 1;
+    if (!template_request.AddModuleRoot(
+            ShaderModuleSlotRole::SurfaceProvider, "surface/pbr_texture")
+     || !template_request.AddModuleRoot(
+            ShaderModuleSlotRole::DirectLightProvider, "direct/sun")
+     || !template_request.AddModuleRoot(
+            ShaderModuleSlotRole::ShadowProvider, "shadow/pcf")
+     || !template_request.AddModuleRoot(
+            ShaderModuleSlotRole::AmbientLightProvider, "ambient/ibl")
+     || !template_request.AddModuleRoot(
+            ShaderModuleSlotRole::AmbientOcclusionProvider, "ao/identity")
+     || !template_request.AddModuleRoot(
+            ShaderModuleSlotRole::LightingModel, "lighting/pbr")
+     || !template_request.AddModuleRoot(
+            ShaderModuleSlotRole::OutputPolicy, "output/forward_hdr"))
+        return 14;
+
+    RenderTemplateValidationDiagnostic template_diagnostic{};
+    if (!ValidateRenderTemplateRequest(template_request, template_diagnostic)
+     || template_request.GetHash() == 0)
+        return 15;
+
+    RenderTemplateRequest incomplete_request{};
+    incomplete_request.template_id = RenderTemplateID::ForwardLitShadowedAO;
+    incomplete_request.template_version = 1;
+    if (ValidateRenderTemplateRequest(incomplete_request, template_diagnostic)
+     || template_diagnostic.error
+            != RenderTemplateValidationError::MissingRequiredSlot)
+        return 16;
+
+    RenderTemplateRequest unknown_template_request{};
+    unknown_template_request.template_version = 1;
+    if (ValidateRenderTemplateRequest(
+            unknown_template_request, template_diagnostic)
+     || template_diagnostic.error
+            != RenderTemplateValidationError::UnknownTemplate)
+        return 17;
+
+    RenderTemplateRequest wrong_stage_request = template_request;
+    wrong_stage_request.stage = hgl::graph::ShaderStage::Mesh;
+    if (ValidateRenderTemplateRequest(wrong_stage_request, template_diagnostic)
+     || template_diagnostic.error
+            != RenderTemplateValidationError::StageMismatch)
+        return 18;
+
+    RenderTemplateRequest wrong_version_request = template_request;
+    ++wrong_version_request.template_version;
+    if (ValidateRenderTemplateRequest(wrong_version_request, template_diagnostic)
+     || template_diagnostic.error
+            != RenderTemplateValidationError::VersionMismatch)
+        return 19;
+
+    RenderTemplateRequest unexpected_slot_request{};
+    unexpected_slot_request.template_id = RenderTemplateID::ForwardUnlit;
+    unexpected_slot_request.template_version = 1;
+    if (!unexpected_slot_request.AddModuleRoot(
+            ShaderModuleSlotRole::SurfaceProvider, "surface/pbr_texture")
+     || !unexpected_slot_request.AddModuleRoot(
+            ShaderModuleSlotRole::ShadowProvider, "shadow/pcf")
+     || ValidateRenderTemplateRequest(
+            unexpected_slot_request, template_diagnostic)
+     || template_diagnostic.error
+            != RenderTemplateValidationError::UnexpectedSlotRole)
+        return 20;
+
+    RenderTemplateRequest duplicate_slot_request = template_request;
+    duplicate_slot_request.module_roots[duplicate_slot_request.module_root_count] =
+        duplicate_slot_request.module_roots[0];
+    ++duplicate_slot_request.module_root_count;
+    if (ValidateRenderTemplateRequest(duplicate_slot_request, template_diagnostic)
+     || template_diagnostic.error
+            != RenderTemplateValidationError::DuplicateSlotRole)
+        return 21;
 
     return 0;
 }

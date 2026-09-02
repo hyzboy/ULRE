@@ -33,6 +33,11 @@ set(DOCUMENT_FILES
     document/DocumentFragmentBuilder.cpp)
 SOURCE_GROUP("Document" FILES ${DOCUMENT_FILES})
 
+set(TEMPLATE_FILES
+    ${SHADERGEN_INCLUDE_PATH}/RenderTemplate.h
+    template/RenderTemplate.cpp)
+SOURCE_GROUP("Template" FILES ${TEMPLATE_FILES})
+
 set(SSBO_STRUCT_FILES
     ${ROOT_INCLUDE_PATH}/hgl/graph/ssbo/LitMaterialData.h
     ${ROOT_INCLUDE_PATH}/hgl/graph/ssbo/TextureSlot.h
@@ -188,6 +193,7 @@ add_cm_library(ULRE.ShaderGen "ULRE"
 
     ${SHADERGEN_COMMON_FILES}
     ${DOCUMENT_FILES}
+    ${TEMPLATE_FILES}
     ${SSBO_STRUCT_FILES}
     ${COMPILE_FILES}
     ${GLSL_MODULE_FILES}

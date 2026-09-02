@@ -14,6 +14,14 @@ namespace hgl::graph::mtl
         h << definition.kind
           << definition.priority
           << definition.flags;
+        if (definition.slot_role != ShaderModuleSlotRole::Unknown
+         || definition.provided_capabilities != 0
+         || definition.required_capabilities != 0)
+        {
+            h << definition.slot_role
+              << definition.provided_capabilities
+              << definition.required_capabilities;
+        }
 
         h << definition.ssbo_requirement_count;
         for (uint32 i = 0; i < definition.ssbo_requirement_count; ++i)

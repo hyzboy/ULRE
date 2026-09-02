@@ -4,6 +4,7 @@
 #include <hgl/mtl/DescriptorSemantic.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
 #include <hgl/graph/ssbo/TextureSlot.h>
+#include <hgl/mtl/RenderTemplate.h>
 #include <hgl/type/StrChar.h>
 #include <hgl/util/hash/FNV1a.h>
 
@@ -129,6 +130,22 @@ namespace hgl::graph::mtl
         Normalized = 1u << 3,
         Packed = 1u << 4,
         Any = 0xffffffffu
+    };
+
+    enum class ShaderModuleCapability : uint32
+    {
+        None = 0,
+        SurfaceBaseColor = 1u << 0,
+        SurfaceNormal = 1u << 1,
+        SurfaceMetallic = 1u << 2,
+        SurfaceRoughness = 1u << 3,
+        SurfaceOpacity = 1u << 4,
+        DirectLight = 1u << 5,
+        ShadowFactor = 1u << 6,
+        AmbientDiffuse = 1u << 7,
+        AmbientSpecular = 1u << 8,
+        AmbientOcclusion = 1u << 9,
+        ForwardOutput = 1u << 10
     };
 
 
@@ -262,6 +279,12 @@ namespace hgl::graph::mtl
         // load time; strings are owned by the registry's file-data storage.
         const char **module_conflict_names = nullptr;
         uint32 module_conflict_count = 0;
+
+        // A root selected by RenderTemplateRequest occupies exactly one slot.
+        // Dependency-only utility modules retain Unknown.
+        ShaderModuleSlotRole slot_role = ShaderModuleSlotRole::Unknown;
+        uint32 provided_capabilities = 0;
+        uint32 required_capabilities = 0;
     };
 
     uint64 GetShaderCodeModuleDefinitionHash(
