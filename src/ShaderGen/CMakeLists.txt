@@ -174,7 +174,11 @@ SOURCE_GROUP("Device Profile" FILES ${PROFILE_FILES})
 
 set(RELEASE_SHELL_FILES
     ${SHADERGEN_INCLUDE_PATH}/ShaderRuntimeReleaseShell.h
-    release/ShaderRuntimeReleaseShell.cpp)
+    ${SHADERGEN_INCLUDE_PATH}/ShaderRuntimeReadOnlyValidationShell.h
+    ${SHADERGEN_INCLUDE_PATH}/ShaderRuntimeReleaseDocumentation.h
+    release/ShaderRuntimeReleaseShell.cpp
+    release/ShaderRuntimeReadOnlyValidationShell.cpp
+    release/ShaderRuntimeReleaseDocumentation.cpp)
 SOURCE_GROUP("Release Shell" FILES ${RELEASE_SHELL_FILES})
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
