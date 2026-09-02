@@ -1,5 +1,6 @@
 #include <hgl/mtl/ShaderDocument.h>
 #include <hgl/mtl/ShaderDocumentLegacyAdapter.h>
+#include "../../ShaderGen/document/DocumentFragmentBuilder.h"
 
 using namespace hgl::graph::mtl;
 using hgl::AnsiString;
@@ -66,6 +67,16 @@ int main()
             injected,
             diagnostics))
         return 8;
+
+    ShaderDocument builder_document;
+    ShaderDocumentDiagnostics builder_diagnostics;
+    DocumentFragmentBuilder builder(builder_document, builder_diagnostics);
+    if (!builder.Add(ShaderDocumentBlockKind::Version, "#version 460\n")
+     || !builder.Add(ShaderDocumentBlockKind::Define, "#define TEST 1\n")
+     || !builder.Add(ShaderDocumentBlockKind::MainBody, "void main() {}\n")
+     || builder.Add(ShaderDocumentBlockKind::Resource, "layout(set=0) uniform X {};\n")
+     || builder_diagnostics.GetCount() != 1)
+        return 11;
 
     return 0;
 }

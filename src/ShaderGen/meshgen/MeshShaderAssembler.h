@@ -89,7 +89,15 @@ namespace hgl::graph::mtl
         }
 
         // ── Header ─────────────────────────────────────────────────────────
-        EmitMeshShaderHeader(ms, node_cfg, max_invocations, max_vertices, max_primitives);
+        // LineQuad projects segment endpoints with camera.vp even when its
+        // configured vertex mapping is otherwise screen/NDC based.
+        EmitMeshShaderHeader(
+            ms,
+            node_cfg,
+            max_invocations,
+            max_vertices,
+            max_primitives,
+            mode == MeshShaderMode::LineQuad);
 
         // ── Stage 1: 顶点输入（SSBO）───────────────────────────────────────
         if (mode != MeshShaderMode::CharQuad)

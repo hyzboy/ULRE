@@ -18,7 +18,8 @@ namespace hgl::graph::mtl
         const VertexShaderNodeConfig &node_cfg,
         uint32_t max_invocations,
         uint32_t max_vertices,
-        uint32_t max_primitives)
+        uint32_t max_primitives,
+        const bool force_camera_ubo = false)
     {
         // 460：glslang 仅在 GLSL 4.60 起（或 GL_ARB_shader_draw_parameters）在
         // mesh 阶段符号表声明 gl_DrawID——450 下报 undeclared identifier
@@ -39,9 +40,10 @@ namespace hgl::graph::mtl
         // ── Descriptor macros ──────────────────────────────────────────────
         ms += "#include \"common/descriptor_macros.glsl\"\n";
 
-        const bool needs_camera = (node_cfg.projection == ProjectionMode::WorldCameraVP ||
-                                   node_cfg.orientation == OrientationMode::CameraFacingFree ||
-                                   node_cfg.orientation == OrientationMode::CameraFacingAxisY);
+        const bool needs_camera = force_camera_ubo
+                               || node_cfg.projection == ProjectionMode::WorldCameraVP
+                               || node_cfg.orientation == OrientationMode::CameraFacingFree
+                               || node_cfg.orientation == OrientationMode::CameraFacingAxisY;
         // Viewport UBO 无条件 include：它是场景级 UBO（Scene set binding=2），
         // 切换 FBO 必绑、所有材质可用——不再按投影条件裁剪（Line 的 3D 线宽
         // 计算也读 viewport.viewport_resolution，取代 MeshDrawParams.viewport_height）。

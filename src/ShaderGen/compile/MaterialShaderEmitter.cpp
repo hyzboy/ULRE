@@ -4,6 +4,7 @@
 /// manifest / 槽位声明 / config）转成 GLSL 文本。本文件内容为整体搬移，行为逐字节不变。
 
 #include "compile/MaterialShaderEmitter.h"
+#include "../document/DocumentFragmentBuilder.h"
 
 #include <hgl/mtl/MaterialShaderCompiler.h>
 #include <hgl/mtl/ShaderDocumentLegacyAdapter.h>
@@ -272,12 +273,17 @@ bool BuildCompileDefineDocument(
         macros += " 1\n";
     }
 
+    if (macros.empty())
+        return true;
+
     ShaderDocumentSource source;
     source.logical_name = "MaterialCompileDefines";
-    out_document.Add(
+    ShaderDocumentDiagnostics diagnostics;
+    DocumentFragmentBuilder builder(out_document, diagnostics, source);
+    if (!builder.Add(
         ShaderDocumentBlockKind::Define,
-        AnsiString(macros.c_str()),
-        source);
+        AnsiString(macros.c_str())))
+        return false;
     return true;
 }
 
