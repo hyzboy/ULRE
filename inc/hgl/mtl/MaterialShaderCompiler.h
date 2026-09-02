@@ -17,6 +17,7 @@ namespace hgl::graph::mtl {}
 #include<hgl/mtl/ShaderCodeResourceManifest.h>
 #include<hgl/mtl/ShaderArtifactStore.h>
 #include<hgl/mtl/DescriptorContract.h>
+#include <hgl/mtl/ShaderDocument.h>
 #include <string>
 #include <vector>
 
@@ -28,6 +29,17 @@ namespace hgl::graph
 
 namespace hgl::graph::mtl{
     using namespace hgl::graph::mtl;
+
+struct MaterialShaderDocumentCapture
+{
+    // Optional production-pipeline observability for regression gates. The
+    // compiler serializes final documents from these exact instances.
+    ShaderDocument mesh_source_document;
+    ShaderDocument fragment_source_document;
+    ShaderDocument mesh_final_document;
+    ShaderDocument fragment_final_document;
+};
+
 struct MaterialShaderCompilerInput
 {
     const char *debug_name = nullptr;
@@ -90,5 +102,15 @@ ShaderBuildContext *CompileCompositorMaterial(
     const std::string &         ms_glsl,
     const std::string &         fs_glsl,
     const CompositorMaterialBuildConfig &config);
+
+// Diagnostic-only overload. Keeping capture outside CompositorMaterialBuildConfig
+// preserves the layout of the production compiler configuration.
+ShaderBuildContext *CompileCompositorMaterial(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const MaterialShaderCompilerInput &input,
+    const std::string &         ms_glsl,
+    const std::string &         fs_glsl,
+    const CompositorMaterialBuildConfig &config,
+    MaterialShaderDocumentCapture *document_capture);
 
 }//namespace hgl::graph::mtl

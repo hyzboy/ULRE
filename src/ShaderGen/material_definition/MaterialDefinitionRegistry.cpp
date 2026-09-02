@@ -166,7 +166,16 @@ mtl::ShaderBuildContext *CreateMaterialFromDefinition(
 {
     // BuildGenericMaterial 不修改 definition（const&）——直接透传，
     // 薄包装只承担 API 语义（名字即文档）
-    return BuildGenericMaterial(profile, request, definition);
+    return BuildGenericMaterial(profile, request, definition, nullptr);
+}
+
+mtl::ShaderBuildContext *CreateMaterialFromDefinition(
+    const mtl::contract::PhysicalDeviceProfileLite *profile,
+    const MaterialDefinition &definition,
+    const MaterialDefinitionBuildRequest &request,
+    mtl::MaterialShaderDocumentCapture *document_capture)
+{
+    return BuildGenericMaterial(profile, request, definition, document_capture);
 }
 
 void NormalizeRecipe(MaterialRecipe &recipe)

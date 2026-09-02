@@ -21,6 +21,7 @@ namespace hgl::graph::mtl
 {
 class ShaderBuildContext;
 class ShaderArtifactStore;
+struct MaterialShaderDocumentCapture;
 namespace contract
 {
     struct PhysicalDeviceProfileLite;
@@ -79,6 +80,14 @@ mtl::ShaderBuildContext *CreateMaterialFromDefinition(
     const mtl::contract::PhysicalDeviceProfileLite *profile,
     const MaterialDefinition &definition,
     const MaterialDefinitionBuildRequest &request);
+
+// Document capture is diagnostic-only. Keep it out of the frequently passed
+// build request so adding observability does not change that request's ABI.
+mtl::ShaderBuildContext *CreateMaterialFromDefinition(
+    const mtl::contract::PhysicalDeviceProfileLite *profile,
+    const MaterialDefinition &definition,
+    const MaterialDefinitionBuildRequest &request,
+    mtl::MaterialShaderDocumentCapture *document_capture);
 
 /**
  * Build the resolver-derived vertex ABI without compiling shaders or mutating

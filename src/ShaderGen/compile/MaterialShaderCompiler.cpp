@@ -670,6 +670,18 @@ ShaderBuildContext *CompileCompositorMaterial(
     const std::string &         fs_glsl,
     const CompositorMaterialBuildConfig &config)
 {
+    return CompileCompositorMaterial(
+        profile, input, ms_glsl, fs_glsl, config, nullptr);
+}
+
+ShaderBuildContext *CompileCompositorMaterial(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const MaterialShaderCompilerInput &input,
+    const std::string &ms_glsl,
+    const std::string &fs_glsl,
+    const CompositorMaterialBuildConfig &config,
+    MaterialShaderDocumentCapture *document_capture)
+{
     if (ms_glsl.empty() || fs_glsl.empty())
     {
         std::fprintf(stderr,
@@ -755,45 +767,75 @@ ShaderBuildContext *CompileCompositorMaterial(
     // ── Step 5: Set complete GLSL (bypass ProcXXX pipeline) ───────
     const DescriptorSetLayoutAllocator &descriptor_info = ctx->GetDescriptorAllocator();
 
+    if (document_capture)
+    {
+        ShaderDocumentDiagnostics document_diagnostics;
+        const AnsiString mesh_stage_glsl(
+            ms_glsl.c_str(), int(ms_glsl.size()));
+        const AnsiString fragment_stage_glsl(
+            fs_glsl.c_str(), int(fs_glsl.size()));
+        if (!BuildMaterialStageDocument(
+                mesh_stage_glsl,
+                ShaderStage::Mesh,
+                input.debug_name,
+                config,
+                descriptor_info,
+                effective_material_private_data,
+                document_capture->mesh_final_document,
+                document_diagnostics)
+         || !BuildMaterialStageDocument(
+                fragment_stage_glsl,
+                ShaderStage::Fragment,
+                input.debug_name,
+                config,
+                descriptor_info,
+                effective_material_private_data,
+                document_capture->fragment_final_document,
+                document_diagnostics))
+        {
+            c.Fail("Material stage document build failed");
+            return FailCompile(c);
+        }
+    }
+
+    // Keep the established stage injection path as the compilation boundary
+    // while Document captures are validated by the production compare gate.
+    // The Document serializer's output is checked above; this avoids changing
+    // artifact generation until its full release-path equivalence is proven.
     std::string material_ssbo_decls;
     std::string material_slot_macros;
     std::string emit_error;
-    if (!BuildMaterialSSBODeclarations(descriptor_info, effective_material_private_data,
-                                       material_ssbo_decls, material_slot_macros, emit_error))
+    if (!BuildMaterialSSBODeclarations(
+            descriptor_info,
+            effective_material_private_data,
+            material_ssbo_decls,
+            material_slot_macros,
+            emit_error))
     {
         c.Fail(emit_error);
         return FailCompile(c);
     }
 
-    // ── Sampler 预设宏（统一注册机制）──────────────────────────────
-    // 遍历 MaterialDefinition.sampler_names，为每个名字生成 "#define <name>Sampler <idx>u"。
-    // idx 经 SamplerPresetLibrary 查询（查不到保底 0），与运行时 binding=1 数组下标一致。
     std::string sampler_macros;
     if (config.material_definition)
-        sampler_macros = BuildSamplerMacros(config.material_definition->sampler_names);
-
+        sampler_macros =
+            BuildSamplerMacros(config.material_definition->sampler_names);
     const std::string compile_define_macros = BuildCompileDefineMacros(config);
-
     const std::string mesh_index_table_decls =
         BuildMeshIndexTableDecls(descriptor_info);
     const std::string fs_index_table_decls =
         BuildFSIndexTableDecls(descriptor_info);
-
-    // ── Step 5e: version 后注入文本（每 stage 恰一段）────────────────────
-    // FS 统一启用 GL_EXT_mesh_shader：per-primitive 语义（DataIndexID/StyleID）的
-    // FS 输入用 perprimitiveEXT in（mesh out perprimitiveEXT → FS in 必须同装饰，
-    // 否则 VUID-RuntimeSpirv-OpVariable-08746 接口装饰不匹配）。
-    // FS 注入顺序：扩展 → 宏/声明 → 索引行表
     const std::string fs_inject =
         "#extension GL_EXT_mesh_shader : require\n"
         + compile_define_macros + sampler_macros
         + material_ssbo_decls + material_slot_macros
         + fs_index_table_decls;
-
-    // 模块代码不再经注入段进入 FS——发射器组装时已置于 surface 函数 include
-    // 之前（原 BeforeSurfaceFunction 注入点随 marker 体系删除，见 CompositorAssembler）。
-
-    AssembleFinalGLSL(ctx, ms_glsl, fs_glsl, mesh_index_table_decls, fs_inject);
+    AssembleFinalGLSL(
+        ctx,
+        ms_glsl,
+        fs_glsl,
+        mesh_index_table_decls,
+        fs_inject);
 
     // ── Step 6: Build ShaderResourceSchema from descriptor entries. ──
     // When material_private_data is declared (definition or provider manifest), the

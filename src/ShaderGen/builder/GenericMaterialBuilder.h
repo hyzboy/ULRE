@@ -31,6 +31,7 @@ namespace hgl::graph::mtl
 {
     struct MaterialDefinition;
     struct MaterialDefinitionBuildRequest;
+    struct MaterialShaderDocumentCapture;
 
 
     /// 中间产物：BuildGenericMaterial 各相位之间共享的全部状态。
@@ -78,5 +79,6 @@ namespace hgl::graph::mtl
     mtl::ShaderBuildContext *BuildGenericMaterial(
         const mtl::contract::PhysicalDeviceProfileLite *profile,
         const MaterialDefinitionBuildRequest &request,
-        const MaterialDefinition &definition);
+        const MaterialDefinition &definition,
+        MaterialShaderDocumentCapture *document_capture);
 }

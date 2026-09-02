@@ -19,6 +19,7 @@
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/mtl/ShaderCodeModuleMetadata.h>
 #include <hgl/mtl/ShaderCodeResourceManifest.h>
+#include <hgl/ShaderCompilerAPI.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/graph/asset/PrimitiveAsset.h>
@@ -3679,6 +3680,21 @@ namespace
 
             if (source.find("} mtl_private_data;") == std::string::npos)
                 result.diagnostics.emplace_back("single-slot SSBO declaration is incomplete");
+
+            const size_t extension = source.find(
+                "#extension GL_EXT_mesh_shader : require\n");
+            const size_t declaration = source.find(
+                "struct EmissiveSurfaceData");
+            const size_t alias = source.find(
+                "#define MTL_DATA mtl_private_data\n");
+            if (extension == std::string::npos
+             || declaration == std::string::npos
+             || alias == std::string::npos
+             || !(extension < declaration && declaration < alias))
+            {
+                result.diagnostics.emplace_back(
+                    "material stage document injection order changed");
+            }
         }
 
         const ShaderCreateInfo *vertex =
@@ -4550,6 +4566,13 @@ int main(const int argc, char **argv)
             "[ShaderResourceSchemaRegressionGate] Unknown regression group: %s",
             selected_group);
         return 2;
+    }
+
+    if (!InitShaderCompiler())
+    {
+        GLogError(
+            "[ShaderResourceSchemaRegressionGate] Failed to initialize GLSL compiler.");
+        return 3;
     }
 
     const bool run_glsl = IsRegressionGroupSelected(selected_group, "glsl");

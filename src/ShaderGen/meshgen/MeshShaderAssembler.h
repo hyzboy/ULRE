@@ -45,20 +45,18 @@ namespace hgl::graph::mtl
     // 规模量级；内容由最终 GLSL 长度决定，无需精确）
     static constexpr uint32_t kMeshShaderInitialReserve = 3072;
 
-    inline std::string GenerateMeshShader(
+    inline bool GenerateMeshShaderDocument(
         const VertexShaderNodeConfig &node_cfg,
         const MaterialVertexVaryingConfig &varying_cfg,
-        VkFormat                      position_format,
-        const MeshShaderMode          mode = MeshShaderMode::VertexPassthrough,
-        const uint32_t                max_invocations = 64,
-        const std::string            &resolved_input_glsl = {},
-        const std::string            &provider_glsl = {},
+        VkFormat position_format,
+        MeshShaderMode mode,
+        uint32_t max_invocations,
+        ShaderDocument &out_document,
+        const std::string &resolved_input_glsl = {},
+        const std::string &provider_glsl = {},
         const ValueArray<InterStageSemanticContractEntry>
             *resolved_stage_interface = nullptr)
     {
-        std::string ms;
-        ms.reserve(kMeshShaderInitialReserve);
-
         // ── 拓扑/容量 ──────────────────────────────────────────────────────
         uint32_t max_vertices   = 0;
         uint32_t max_primitives = 0;
@@ -73,7 +71,7 @@ namespace hgl::graph::mtl
             {
                 GLogError("[ShaderGen] VertexPassthrough 的 max_invocations(%u) 必须是 3 的倍数",
                           max_invocations);
-                return {};
+                return false;
             }
             max_vertices   = max_invocations;
             max_primitives = max_invocations / 3u;   // 每 3 顶点 1 三角形（恒 triangle list）
@@ -88,29 +86,89 @@ namespace hgl::graph::mtl
             break;
         }
 
-        // ── Header ─────────────────────────────────────────────────────────
+        ValueArray<InterStageSemanticContractEntry> adapted_stage_interface;
+        MaterialStageInterfaceDiagnostic stage_interface_diagnostic{};
+        if (!resolved_stage_interface)
+        {
+            if (!BuildMaterialStageInterface(varying_cfg,
+                                             adapted_stage_interface,
+                                             stage_interface_diagnostic))
+                return false;
+            resolved_stage_interface = &adapted_stage_interface;
+        }
+
+        const char *stage2_module = nullptr;
+        if (mode != MeshShaderMode::CharQuad)
+        {
+            // CharQuad 在 main() 中直接用 viewport.ortho_matrix 做坐标变换，不需要 Stage2/3 模块
+            stage2_module = VertexNodeConfigResolver::GetMappingModulePath(node_cfg);
+            if (!stage2_module)
+                return false;   // 未映射的 position_mapping = 映射缺失，硬失败（编译失败）而非静默错渲
+        }
+
+        out_document.Clear();
+        const auto add_block =
+            [&out_document](
+                const ShaderDocumentBlockKind kind,
+                const std::string &text,
+                const char *logical_name,
+                const char *module = nullptr,
+                const char *path = nullptr)
+            {
+                if (text.empty())
+                    return;
+
+                ShaderDocumentSource source;
+                source.stage = "mesh";
+                source.logical_name = logical_name;
+                if (module)
+                    source.module = module;
+                if (path)
+                    source.path = path;
+                out_document.Add(kind, AnsiString(text.c_str()), source);
+            };
+
+        std::string fragment;
+        fragment.reserve(kMeshShaderInitialReserve);
+
+        EmitMeshShaderVersion(fragment);
+        add_block(ShaderDocumentBlockKind::Version, fragment,
+                  "MeshShaderAssembler.Version", "MeshShaderHeaderGen");
+
+        fragment.clear();
+        EmitMeshShaderExtensions(fragment);
+        add_block(ShaderDocumentBlockKind::Extension, fragment,
+                  "MeshShaderAssembler.Extensions", "MeshShaderHeaderGen");
+
+        fragment.clear();
         // LineQuad projects segment endpoints with camera.vp even when its
         // configured vertex mapping is otherwise screen/NDC based.
-        EmitMeshShaderHeader(
-            ms,
+        EmitMeshShaderHeaderResources(
+            fragment,
             node_cfg,
             max_invocations,
             max_vertices,
             max_primitives,
             mode == MeshShaderMode::LineQuad);
+        add_block(ShaderDocumentBlockKind::Resource, fragment,
+                  "MeshShaderAssembler.HeaderResources", "MeshShaderHeaderGen");
 
         // ── Stage 1: 顶点输入（SSBO）───────────────────────────────────────
+        fragment.clear();
+        EmitVertexAdapter(fragment);
+        add_block(ShaderDocumentBlockKind::Resource, fragment,
+                  "MeshShaderAssembler.VertexAdapter", "MeshShaderVertexAdapter");
+
         if (mode != MeshShaderMode::CharQuad)
         {
-            // 顶点适配层（MeshVertexIndex + VertexIndex SSBO + MeshDrawParams SSBO）
-            EmitVertexAdapter(ms);
-
-            // 顶点输入模块（resolved_input_glsl 或默认 s1_position_*）
+            fragment.clear();
             if (!resolved_input_glsl.empty())
             {
-                ms += resolved_input_glsl;
+                fragment += resolved_input_glsl;
                 if (resolved_input_glsl.back() != '\n')
-                    ms += "\n";
+                    fragment += "\n";
+                add_block(ShaderDocumentBlockKind::Module, fragment,
+                          "MeshShaderAssembler.ResolvedInput", "vertex-input");
             }
             else
             {
@@ -123,78 +181,83 @@ namespace hgl::graph::mtl
                          position_format == VK_FORMAT_R32G32B32A32_SFLOAT)
                     effective_input = VertexInputMode::Vec3Position;
 
-                switch (effective_input)
-                {
-                case VertexInputMode::Vec2Position:
-                    ms += "#include \"vertex/s1_position_vec2.glsl\"\n";
-                    break;
-                case VertexInputMode::Vec3Position:
-                default:
-                    ms += "#include \"vertex/s1_position_vec3.glsl\"\n";
-                    break;
-                }
+                const char *input_module = "vertex/s1_position_vec3.glsl";
+                if (effective_input == VertexInputMode::Vec2Position)
+                    input_module = "vertex/s1_position_vec2.glsl";
+                fragment += "#include \"";
+                fragment += input_module;
+                fragment += "\"\n";
+                add_block(ShaderDocumentBlockKind::Module, fragment,
+                          "MeshShaderAssembler.DefaultInput", "vertex-input", input_module);
             }
 
-            // 额外顶点属性（color/UV 等 provider 模块）
+            fragment.clear();
             if (!provider_glsl.empty())
             {
-                ms += provider_glsl;
-                if (provider_glsl.back() != '\n') ms += "\n";
+                fragment += provider_glsl;
+                if (provider_glsl.back() != '\n')
+                    fragment += "\n";
+                add_block(ShaderDocumentBlockKind::Module, fragment,
+                          "MeshShaderAssembler.Provider", "vertex-provider");
             }
 
-            // MaterialColorPalette UBO（palette 材质）
-            EmitColorPaletteUBO(ms, varying_cfg);
+            fragment.clear();
+            EmitColorPaletteUBO(fragment, varying_cfg);
+            add_block(ShaderDocumentBlockKind::Resource, fragment,
+                      "MeshShaderAssembler.ColorPalette", "MeshShaderHeaderGen");
 
-            // gl_InstanceIndex 宏
-            EmitGlInstanceIndexMacro(ms);
+            fragment.clear();
+            EmitGlInstanceIndexMacro(fragment);
+            add_block(ShaderDocumentBlockKind::Define, fragment,
+                      "MeshShaderAssembler.InstanceIndex", "MeshShaderHeaderGen");
 
-            // ── Stage 2: 位置映射 ─────────────────────────────────────────
-            // CharQuad 在 main() 中直接用 viewport.ortho_matrix 做坐标变换，不需要 Stage2/3 模块
-            const char *stage2_module = VertexNodeConfigResolver::GetMappingModulePath(node_cfg);
-            if (!stage2_module)
-                return {};   // 未映射的 position_mapping = 映射缺失，硬失败（编译失败）而非静默错渲
-            ms += "#include \"" + std::string(stage2_module) + "\"\n";
+            fragment.clear();
+            fragment += "#include \"";
+            fragment += stage2_module;
+            fragment += "\"\n\n";
+            add_block(ShaderDocumentBlockKind::Module, fragment,
+                      "MeshShaderAssembler.Stage2", "stage2", stage2_module);
 
-            ms += "\n";
-
-            // ── Stage 3: 变换策略 ──────────────────────────────────────────
             if (varying_cfg.use_transform_id_attr)
-                ms += "#define HGL_L2W_FROM_VERTEX_ATTR\n";
+            {
+                fragment.clear();
+                fragment += "#define HGL_L2W_FROM_VERTEX_ATTR\n";
+                add_block(ShaderDocumentBlockKind::Define, fragment,
+                          "MeshShaderAssembler.TransformID", "stage3");
+            }
 
-            ms += "#include \"" + std::string(VertexNodeConfigResolver::GetStage3ModulePath(node_cfg)) + "\"\n";
-            ms += "\n";
-        }
-        else
-        {
-            // CharQuad：仅需顶点适配层
-            EmitVertexAdapter(ms);
+            const char *stage3_module = VertexNodeConfigResolver::GetStage3ModulePath(node_cfg);
+            fragment.clear();
+            fragment += "#include \"";
+            fragment += stage3_module;
+            fragment += "\"\n\n";
+            add_block(ShaderDocumentBlockKind::Module, fragment,
+                      "MeshShaderAssembler.Stage3", "stage3", stage3_module);
         }
 
         // ── Varying 输出（per-vertex 数组，mesh shader 要求）──────────────
-        ValueArray<InterStageSemanticContractEntry> adapted_stage_interface;
-        MaterialStageInterfaceDiagnostic stage_interface_diagnostic{};
-        if (!resolved_stage_interface)
-        {
-            if (!BuildMaterialStageInterface(varying_cfg,
-                                             adapted_stage_interface,
-                                             stage_interface_diagnostic))
-                return {};
-            resolved_stage_interface = &adapted_stage_interface;
-        }
-
-        // varying 声明为数组（按顶点索引；per-primitive 语义按图元索引）
-        EmitVaryingDeclarations(ms, *resolved_stage_interface, max_vertices, max_primitives);
+        fragment.clear();
+        EmitVaryingDeclarations(
+            fragment, *resolved_stage_interface, max_vertices, max_primitives);
+        add_block(ShaderDocumentBlockKind::Interface, fragment,
+                  "MeshShaderAssembler.Varyings", "MeshShaderVaryingGen");
 
         // CharQuad SSBO 声明必须在全局作用域（void main 之前）
         if (mode == MeshShaderMode::CharQuad)
-            EmitCharQuadSSBODeclarations(ms);
+        {
+            fragment.clear();
+            EmitCharQuadSSBODeclarations(fragment);
+            add_block(ShaderDocumentBlockKind::Resource, fragment,
+                      "MeshShaderAssembler.CharQuadResources", "MeshShaderModeCharQuad");
+        }
 
-        ms += "\nvoid main()\n{\n";
+        fragment.clear();
+        fragment += "\nvoid main()\n{\n";
 
         // per-draw 参数行加载（两模式统一）：间接合批经 gl_DrawID 定位本命令行，
         // 直接绘制 gl_DrawID=0 → row 0（CPU 侧保证 row 0 = 本 draw 参数）
-        ms += "    pc_vertex_index = sbo_draw_params.rows[gl_DrawID];\n";
-        ms += "\n";
+        fragment += "    pc_vertex_index = sbo_draw_params.rows[gl_DrawID];\n";
+        fragment += "\n";
 
         // ── 每线程处理 ─────────────────────────────────────────────────────
         // 构建模式函数共享上下文
@@ -209,102 +272,51 @@ namespace hgl::graph::mtl
         switch (mode)
         {
         case MeshShaderMode::VertexPassthrough:
-            EmitVertexPassthroughBody(ms, mode_ctx);
+            EmitVertexPassthroughBody(fragment, mode_ctx);
             break;
         case MeshShaderMode::LineQuad:
-            EmitLineQuadBody(ms, mode_ctx, position_format);
+            EmitLineQuadBody(fragment, mode_ctx, position_format);
             break;
         case MeshShaderMode::CharQuad:
-            EmitCharQuadBody(ms, mode_ctx);
+            EmitCharQuadBody(fragment, mode_ctx);
             break;
         }
 
-        ms += "}\n";
+        fragment += "}\n";
+        add_block(ShaderDocumentBlockKind::MainBody, fragment,
+                  "MeshShaderAssembler.MainBody", "mesh-main");
+        return true;
+    }
 
+    inline std::string GenerateMeshShader(
+        const VertexShaderNodeConfig &node_cfg,
+        const MaterialVertexVaryingConfig &varying_cfg,
+        VkFormat                      position_format,
+        const MeshShaderMode          mode = MeshShaderMode::VertexPassthrough,
+        const uint32_t                max_invocations = 64,
+        const std::string            &resolved_input_glsl = {},
+        const std::string            &provider_glsl = {},
+        const ValueArray<InterStageSemanticContractEntry>
+            *resolved_stage_interface = nullptr)
+    {
         ShaderDocument document;
+        if (!GenerateMeshShaderDocument(
+                node_cfg,
+                varying_cfg,
+                position_format,
+                mode,
+                max_invocations,
+                document,
+                resolved_input_glsl,
+                provider_glsl,
+                resolved_stage_interface))
+            return {};
+
         ShaderDocumentDiagnostics diagnostics;
-        ShaderDocumentSource source;
-        source.stage = "mesh";
-        source.logical_name = "MeshShaderAssembler";
-        document.Add(
-            ShaderDocumentBlockKind::Raw,
-            AnsiString(ms.c_str()),
-            source);
         AnsiString serialized;
         if (!document.Serialize(serialized, diagnostics))
             return {};
         return std::string(serialized.c_str(), serialized.Length());
     }
 
-    inline bool GenerateMeshShaderDocument(
-        const VertexShaderNodeConfig &node_cfg,
-        const MaterialVertexVaryingConfig &varying_cfg,
-        VkFormat position_format,
-        MeshShaderMode mode,
-        uint32_t max_invocations,
-        ShaderDocument &out_document)
-    {
-        const std::string glsl = GenerateMeshShader(
-            node_cfg,
-            varying_cfg,
-            position_format,
-            mode,
-            max_invocations);
-        if (glsl.empty())
-            return false;
-
-        out_document.Clear();
-        ShaderDocumentSource source;
-        source.stage = "mesh";
-        const size_t version_end = glsl.find('\n');
-        if (version_end == std::string::npos)
-            return false;
-
-        source.logical_name = "MeshShaderAssembler.Version";
-        out_document.Add(
-            ShaderDocumentBlockKind::Version,
-            AnsiString(glsl.substr(0, version_end + 1).c_str()),
-            source);
-
-        const size_t first_include = glsl.find("#include", version_end + 1);
-        if (first_include != std::string::npos
-         && first_include > version_end + 1)
-        {
-            source.logical_name = "MeshShaderAssembler.Extensions";
-            out_document.Add(
-                ShaderDocumentBlockKind::Extension,
-                AnsiString(glsl.substr(
-                    version_end + 1,
-                    first_include - version_end - 1).c_str()),
-                source);
-        }
-
-        const size_t resource_begin = first_include == std::string::npos
-            ? version_end + 1
-            : first_include;
-        const size_t main_begin = glsl.find("void main()", resource_begin);
-        const size_t resource_end = main_begin == std::string::npos
-            ? glsl.size()
-            : main_begin;
-        if (resource_end > resource_begin)
-        {
-            source.logical_name = "MeshShaderAssembler.Resources";
-            out_document.Add(
-                ShaderDocumentBlockKind::Resource,
-                AnsiString(glsl.substr(
-                    resource_begin,
-                    resource_end - resource_begin).c_str()),
-                source);
-        }
-
-        if (main_begin != std::string::npos)
-        {
-            source.logical_name = "MeshShaderAssembler.MainBody";
-            out_document.Add(
-                ShaderDocumentBlockKind::MainBody,
-                AnsiString(glsl.substr(main_begin).c_str()),
-                source);
-        }
-        return true;
-    }
 }//namespace hgl::graph::mtl

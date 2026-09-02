@@ -208,33 +208,44 @@ bool BuildMaterialResourceDocument(
 
     ShaderDocumentSource source;
     source.stage = "fragment";
-    source.logical_name = "MaterialResources";
     if (!declarations.empty())
+    {
+        source.logical_name = "MaterialSSBO";
         out_document.Add(
             ShaderDocumentBlockKind::Resource,
             AnsiString(declarations.c_str()),
             source);
+    }
     if (!macros.empty())
+    {
+        source.logical_name = "MaterialSSBOAlias";
         out_document.Add(
             ShaderDocumentBlockKind::Define,
             AnsiString(macros.c_str()),
             source);
+    }
 
     const std::string mesh_index_tables =
         BuildMeshIndexTableDecls(descriptor_info);
     if (!mesh_index_tables.empty())
+    {
+        source.logical_name = "MaterialMeshIndexTables";
         out_document.Add(
             ShaderDocumentBlockKind::Resource,
             AnsiString(mesh_index_tables.c_str()),
             source);
+    }
 
     const std::string fragment_index_tables =
         BuildFSIndexTableDecls(descriptor_info);
     if (!fragment_index_tables.empty())
+    {
+        source.logical_name = "MaterialFragmentIndexTables";
         out_document.Add(
             ShaderDocumentBlockKind::Resource,
             AnsiString(fragment_index_tables.c_str()),
             source);
+    }
     return true;
 }
 
@@ -378,6 +389,171 @@ std::string BuildFSIndexTableDecls(
     }
 
     return out;
+}
+
+namespace
+{
+    void AddStageDiagnostic(
+        ShaderDocumentDiagnostics &diagnostics,
+        const char *code,
+        const char *message)
+    {
+        ShaderDocumentDiagnostic *diagnostic = diagnostics.Create();
+        diagnostic->code = code;
+        diagnostic->message = message;
+    }
+
+    void AppendDocumentBlocks(
+        ShaderDocument &out_document,
+        const ShaderDocument &fragment,
+        const char *stage,
+        const char *material)
+    {
+        for (int i = 0; i < fragment.GetBlockCount(); ++i)
+        {
+            const ShaderDocumentBlock &block = fragment.GetBlock(i);
+            ShaderDocumentSource source = block.source;
+            source.stage = stage;
+            source.material = material ? material : "";
+            out_document.Add(block.kind, block.text, source);
+        }
+    }
+
+    void AppendStageResourceBlocks(
+        ShaderDocument &out_document,
+        const ShaderDocument &resources,
+        const ShaderStage stage,
+        const char *stage_name,
+        const char *material)
+    {
+        for (int i = 0; i < resources.GetBlockCount(); ++i)
+        {
+            const ShaderDocumentBlock &block = resources.GetBlock(i);
+            const bool mesh_index_tables =
+                std::strcmp(
+                    block.source.logical_name.c_str(),
+                    "MaterialMeshIndexTables") == 0;
+            if ((stage == ShaderStage::Mesh) != mesh_index_tables)
+                continue;
+
+            ShaderDocumentSource source = block.source;
+            source.stage = stage_name;
+            source.material = material ? material : "";
+            out_document.Add(block.kind, block.text, source);
+        }
+    }
+}
+
+bool BuildMaterialStageDocument(
+    const AnsiString &stage_glsl,
+    const ShaderStage stage,
+    const char *material,
+    const CompositorMaterialBuildConfig &config,
+    const DescriptorSetLayoutAllocator &descriptor_info,
+    const SSBOType material_private_data,
+    ShaderDocument &out_document,
+    ShaderDocumentDiagnostics &out_diagnostics)
+{
+    out_document.Clear();
+    out_diagnostics.Clear();
+
+    const char *stage_name = nullptr;
+    if (stage == ShaderStage::Mesh)
+        stage_name = "mesh";
+    else if (stage == ShaderStage::Fragment)
+        stage_name = "fragment";
+    else
+    {
+        AddStageDiagnostic(
+            out_diagnostics,
+            "unsupported-stage",
+            "Material stage document requires Mesh or Fragment stage");
+        return false;
+    }
+
+    ShaderDocument injection;
+    if (stage == ShaderStage::Fragment)
+    {
+        ShaderDocumentSource source;
+        source.stage = stage_name;
+        source.material = material ? material : "";
+        source.logical_name = "MaterialMeshShaderExtension";
+        injection.Add(
+            ShaderDocumentBlockKind::Extension,
+            "#extension GL_EXT_mesh_shader : require\n",
+            source);
+
+        ShaderDocument compile_defines;
+        if (!BuildCompileDefineDocument(config, compile_defines))
+            return false;
+        AppendDocumentBlocks(
+            injection, compile_defines, stage_name, material);
+
+        if (config.material_definition)
+        {
+            const std::string sampler_macros =
+                BuildSamplerMacros(config.material_definition->sampler_names);
+            if (!sampler_macros.empty())
+            {
+                source.logical_name = "MaterialSamplerMacros";
+                injection.Add(
+                    ShaderDocumentBlockKind::Define,
+                    AnsiString(sampler_macros.c_str()),
+                    source);
+            }
+        }
+    }
+
+    ShaderDocument resources;
+    std::string error;
+    if (!BuildMaterialResourceDocument(
+            descriptor_info,
+            material_private_data,
+            resources,
+            error))
+    {
+        AddStageDiagnostic(
+            out_diagnostics,
+            "material-resource",
+            error.c_str());
+        return false;
+    }
+    AppendStageResourceBlocks(
+        injection, resources, stage, stage_name, material);
+
+    ShaderDocumentSource source;
+    source.stage = stage_name;
+    source.material = material ? material : "";
+    source.logical_name = "MaterialStageSource";
+    const int version_end = stage_glsl.FindChar('\n');
+    if (version_end < 0)
+    {
+        AnsiString first_block(stage_glsl);
+        if (injection.GetBlockCount() > 0)
+            first_block += "\n";
+        out_document.Add(ShaderDocumentBlockKind::Raw, first_block, source);
+    }
+    else
+    {
+        out_document.Add(
+            ShaderDocumentBlockKind::Raw,
+            stage_glsl.Left(version_end + 1),
+            source);
+    }
+
+    AppendDocumentBlocks(out_document, injection, stage_name, material);
+
+    if (version_end >= 0
+     && version_end + 1 < stage_glsl.Length())
+    {
+        out_document.Add(
+            ShaderDocumentBlockKind::Raw,
+            stage_glsl.SubString(
+                version_end + 1,
+                stage_glsl.Length() - version_end - 1),
+            source);
+    }
+    return true;
 }
 
 // ── Step 5e: 最终 GLSL 组装（注入段列表驱动）───────────────────────────────

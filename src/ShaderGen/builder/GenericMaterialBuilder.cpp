@@ -422,6 +422,7 @@ namespace hgl::graph::mtl
         bool GenerateStageSources(
             const contract::PhysicalDeviceProfileLite *profile,
             const MaterialDefinition &definition,
+            MaterialShaderDocumentCapture *document_capture,
             GenericMaterialBuildPlan &plan)
         {
             // Mesh shader 材质：生成 mesh stage。mesh 是唯一顶点路径。
@@ -463,15 +464,36 @@ namespace hgl::graph::mtl
                 provider_glsl_str = plan.resolved_provider_glsl;
             }
 
-            plan.ms = GenerateMeshShader(
+            ShaderDocument local_mesh_document;
+            ShaderDocument &mesh_document = document_capture
+                ? document_capture->mesh_source_document
+                : local_mesh_document;
+            if (!GenerateMeshShaderDocument(
                 plan.vertex_node_config,
                 plan.varying,
                 plan.position_format,
                 ms_mode,
                 max_invocations,
+                mesh_document,
                 input_glsl_str,
                 provider_glsl_str,
-                &plan.stage_interface);
+                &plan.stage_interface))
+            {
+                GLogError("[ShaderGen] Generic material mesh document build failed: name=%s",
+                          definition.definition_name.c_str());
+                return false;
+            }
+            {
+                ShaderDocumentDiagnostics diagnostics;
+                AnsiString serialized;
+                if (!mesh_document.Serialize(serialized, diagnostics))
+                {
+                    GLogError("[ShaderGen] Generic material mesh document serialization failed: name=%s",
+                              definition.definition_name.c_str());
+                    return false;
+                }
+                plan.ms.assign(serialized.c_str(), serialized.Length());
+            }
 
             CompositorAssembler assembler;
             MaterialOutputContractDiagnostic output_diagnostic{};
@@ -543,22 +565,36 @@ namespace hgl::graph::mtl
                 effective_fragment_source = nullptr;
             }
 
-            const auto assembled = assembler.Assemble(
+            ShaderDocument local_fragment_document;
+            ShaderDocument &fragment_document = document_capture
+                ? document_capture->fragment_source_document
+                : local_fragment_document;
+            ShaderDocumentDiagnostics fragment_diagnostics;
+            if (!assembler.AssembleDocument(
                 definition.compositor_surface,
                 effective_pass,
                 effective_fragment_source,
                 definition.fragment_surface_module,
                 compositor_options,
                 BuildCodeModuleGLSL(
-                    plan.manifest.IsValid() ? &plan.manifest : nullptr));
-            if (!assembled.success)
+                    plan.manifest.IsValid() ? &plan.manifest : nullptr),
+                fragment_document,
+                fragment_diagnostics))
             {
-                GLogError("[ShaderGen] Generic material fragment assembly failed: name=%s error=%s",
-                          definition.definition_name.c_str(),
-                          assembled.error_message.c_str());
+                GLogError("[ShaderGen] Generic material fragment document build failed: name=%s",
+                          definition.definition_name.c_str());
                 return false;
             }
-            plan.fs = assembled.fragment_glsl;
+            {
+                AnsiString serialized;
+                if (!fragment_document.Serialize(serialized, fragment_diagnostics))
+                {
+                    GLogError("[ShaderGen] Generic material fragment document serialization failed: name=%s",
+                              definition.definition_name.c_str());
+                    return false;
+                }
+                plan.fs.assign(serialized.c_str(), serialized.Length());
+            }
             return true;
         }
 
@@ -649,7 +685,8 @@ namespace hgl::graph::mtl
     ShaderBuildContext *BuildGenericMaterial(
         const contract::PhysicalDeviceProfileLite *profile,
         const MaterialDefinitionBuildRequest &request,
-        const MaterialDefinition &definition)
+        const MaterialDefinition &definition,
+        MaterialShaderDocumentCapture *document_capture)
     {
         const bool semantic_contract =
             !definition.vertex_semantic_requirements.IsEmpty();
@@ -678,7 +715,7 @@ namespace hgl::graph::mtl
         if (!BuildResourceContract(definition, plan))
             return nullptr;
 
-        if (!GenerateStageSources(profile, definition, plan))
+        if (!GenerateStageSources(profile, definition, document_capture, plan))
             return nullptr;
 
         MaterialShaderCompilerInput compiler_input{};
@@ -690,7 +727,7 @@ namespace hgl::graph::mtl
         ShaderBuildContext *result = CompileCompositorMaterial(
             profile, compiler_input,
             plan.ms,
-            plan.fs, config);
+            plan.fs, config, document_capture);
         if (!result)
             GLogError("[ShaderGen] Generic material compilation failed: name=%s",
                       definition.definition_name.c_str());

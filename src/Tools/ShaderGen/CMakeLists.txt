@@ -94,7 +94,8 @@ if(BUILD_TESTING)
 
     set_tests_properties(
         shader_resource_schema_regression_gate
-        PROPERTIES LABELS "shadergen;baseline")
+        PROPERTIES LABELS "shadergen;baseline"
+                   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
     foreach(regression_group
             glsl
@@ -108,7 +109,8 @@ if(BUILD_TESTING)
             COMMAND ShaderResourceSchemaRegressionGate ${regression_group})
         set_tests_properties(
             shader_resource_schema_regression_gate.${regression_group}
-            PROPERTIES LABELS "shadergen;baseline;${regression_group}")
+            PROPERTIES LABELS "shadergen;baseline;${regression_group}"
+                       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
     endforeach()
 endif()
 
@@ -140,7 +142,9 @@ add_executable(ShaderLegacyDocumentCompare
 
 target_link_libraries(ShaderLegacyDocumentCompare
     PRIVATE ULRE.ShaderGen
+            ULRE.Vulkan
             CMCore
+            CMMath
             CMCoreType)
 
 CreateProject(ShaderLegacyDocumentCompare)
@@ -148,7 +152,8 @@ CreateProject(ShaderLegacyDocumentCompare)
 if(BUILD_TESTING)
     add_test(
         NAME shader_legacy_document_compare
-        COMMAND ShaderLegacyDocumentCompare)
+        COMMAND ShaderLegacyDocumentCompare --smoke
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
     set_tests_properties(
         shader_legacy_document_compare
         PROPERTIES LABELS "shadergen;document;comparison")

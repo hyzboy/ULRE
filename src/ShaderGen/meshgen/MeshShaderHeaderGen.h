@@ -12,8 +12,21 @@
 
 namespace hgl::graph::mtl
 {
-    // 生成 mesh shader 头部：版本声明、extension、layout、UBO/SSBO 条件包含。
-    inline void EmitMeshShaderHeader(
+    inline void EmitMeshShaderVersion(std::string &ms)
+    {
+        // 460：glslang 仅在 GLSL 4.60 起（或 GL_ARB_shader_draw_parameters）在
+        // mesh 阶段符号表声明 gl_DrawID——450 下报 undeclared identifier
+        ms += "#version 460\n";
+    }
+
+    inline void EmitMeshShaderExtensions(std::string &ms)
+    {
+        ms += "#extension GL_EXT_mesh_shader : require\n";
+        ms += "#extension GL_EXT_scalar_block_layout : require\n";
+        ms += "\n";
+    }
+
+    inline void EmitMeshShaderHeaderResources(
         std::string &ms,
         const VertexShaderNodeConfig &node_cfg,
         uint32_t max_invocations,
@@ -21,12 +34,6 @@ namespace hgl::graph::mtl
         uint32_t max_primitives,
         const bool force_camera_ubo = false)
     {
-        // 460：glslang 仅在 GLSL 4.60 起（或 GL_ARB_shader_draw_parameters）在
-        // mesh 阶段符号表声明 gl_DrawID——450 下报 undeclared identifier
-        ms += "#version 460\n";
-        ms += "#extension GL_EXT_mesh_shader : require\n";
-        ms += "#extension GL_EXT_scalar_block_layout : require\n";
-        ms += "\n";
         ms += "layout(local_size_x = ";
         ms += std::to_string(max_invocations);
         ms += ") in;\n";
@@ -66,6 +73,26 @@ namespace hgl::graph::mtl
         }
 
         ms += "\n";
+    }
+
+    // 生成 mesh shader 头部：版本声明、extension、layout、UBO/SSBO 条件包含。
+    inline void EmitMeshShaderHeader(
+        std::string &ms,
+        const VertexShaderNodeConfig &node_cfg,
+        uint32_t max_invocations,
+        uint32_t max_vertices,
+        uint32_t max_primitives,
+        const bool force_camera_ubo = false)
+    {
+        EmitMeshShaderVersion(ms);
+        EmitMeshShaderExtensions(ms);
+        EmitMeshShaderHeaderResources(
+            ms,
+            node_cfg,
+            max_invocations,
+            max_vertices,
+            max_primitives,
+            force_camera_ubo);
     }
 
     // MaterialColorPalette UBO（palette 材质）
