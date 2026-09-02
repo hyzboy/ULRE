@@ -288,35 +288,4 @@ namespace hgl::graph::mtl
         return true;
     }
 
-    inline std::string GenerateMeshShader(
-        const VertexShaderNodeConfig &node_cfg,
-        const MaterialVertexVaryingConfig &varying_cfg,
-        VkFormat                      position_format,
-        const MeshShaderMode          mode = MeshShaderMode::VertexPassthrough,
-        const uint32_t                max_invocations = 64,
-        const std::string            &resolved_input_glsl = {},
-        const std::string            &provider_glsl = {},
-        const ValueArray<InterStageSemanticContractEntry>
-            *resolved_stage_interface = nullptr)
-    {
-        ShaderDocument document;
-        if (!GenerateMeshShaderDocument(
-                node_cfg,
-                varying_cfg,
-                position_format,
-                mode,
-                max_invocations,
-                document,
-                resolved_input_glsl,
-                provider_glsl,
-                resolved_stage_interface))
-            return {};
-
-        ShaderDocumentDiagnostics diagnostics;
-        AnsiString serialized;
-        if (!document.Serialize(serialized, diagnostics))
-            return {};
-        return std::string(serialized.c_str(), serialized.Length());
-    }
-
 }//namespace hgl::graph::mtl

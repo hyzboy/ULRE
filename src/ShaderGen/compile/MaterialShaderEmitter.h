@@ -7,8 +7,8 @@
 /// 分工约定（S2 的核心不变量）：
 ///   - **求解层**（MaterialShaderCompiler.cpp）：做决策——契约、描述符注册、槽位合并，
 ///     产生 ShaderBuildContext 与 DescriptorSetLayoutAllocator 状态。
-///   - **发射层**（本文件 + .cpp）：**纯函数，零决策**——只把已解出的状态转成 GLSL 文本。
-///     不得读取全局状态、不得改 ctx（AssembleFinalGLSL 例外：终点写入 SetFinalGLSL）。
+///   - **发射层**（本文件 + .cpp）：**纯函数，零决策**——只把已解出的状态转成
+///     ShaderDocument 和离线 GLSL 文本。
 
 #include <hgl/mtl/MaterialShaderCompiler.h>
 #include <hgl/mtl/ShaderCodeResourceManifest.h>
@@ -71,18 +71,4 @@ namespace hgl::graph::mtl
         ShaderDocument &out_document,
         ShaderDocumentDiagnostics &out_diagnostics);
 
-    /// 最终组装：把两 stage 的已完成 Document 序列化后写入各 stage 的 FinalGLSL。
-    void AssembleFinalGLSL(
-        ShaderBuildContext *ctx,
-        const std::string &ms_glsl,
-        const std::string &fs_glsl,
-        const std::string &ms_inject,
-        const std::string &fs_inject);
-
-    bool BuildFinalStageDocument(
-        const std::string &stage_glsl,
-        const std::string &version_inject,
-        const char *stage,
-        ShaderDocument &out_document,
-        ShaderDocumentDiagnostics &out_diagnostics);
 }//namespace hgl::graph::mtl

@@ -81,7 +81,7 @@ namespace hgl::graph::mtl
 
     AnsiString ShaderLegacyAuditShell::GetAuditChecklist() const
     {
-        return AnsiString("1. Audit runtime references to ShaderDocumentLegacyAdapter and legacy shader entry points\n")
+        return AnsiString("1. Audit runtime references to legacy shader entry points and compatibility symbols\n")
              + "2. Separate compatibility-only uses from real runtime contracts\n"
              + "3. Require zero runtime references before deleting any safety wrapper\n"
              + "4. Run full Debug/Release regression after every cleanup step\n"

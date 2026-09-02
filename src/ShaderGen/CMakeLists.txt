@@ -29,10 +29,8 @@ SOURCE_GROUP("Common" FILES ${SHADERGEN_COMMON_FILES})
 
 set(DOCUMENT_FILES
     ${SHADERGEN_INCLUDE_PATH}/ShaderDocument.h
-    ${SHADERGEN_INCLUDE_PATH}/ShaderDocumentLegacyAdapter.h
     document/ShaderDocument.cpp
-    document/DocumentFragmentBuilder.cpp
-    document/ShaderDocumentLegacyAdapter.cpp)
+    document/DocumentFragmentBuilder.cpp)
 SOURCE_GROUP("Document" FILES ${DOCUMENT_FILES})
 
 set(SSBO_STRUCT_FILES

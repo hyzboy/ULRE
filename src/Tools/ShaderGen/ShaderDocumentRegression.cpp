@@ -1,5 +1,4 @@
 #include <hgl/mtl/ShaderDocument.h>
-#include <hgl/mtl/ShaderDocumentLegacyAdapter.h>
 #include <hgl/mtl/ShaderLegacyAuditShell.h>
 #include "../../ShaderGen/document/DocumentFragmentBuilder.h"
 
@@ -42,32 +41,39 @@ int main()
         return 10;
 
     const AnsiString legacy = "#version 460\nvoid main() {}\n";
-    ShaderDocument legacy_document = MakeLegacyShaderDocument(legacy, "fragment");
-    if (!IsByteIdenticalLegacyShader(legacy, legacy_document, diagnostics)
-     || legacy_document.GetBlockCount() != 1
-     || legacy_document.GetBlock(0).source.stage != "fragment")
+    ShaderDocument raw_document;
+    ShaderDocumentSource raw_source;
+    raw_source.stage = "fragment";
+    raw_document.Add(ShaderDocumentBlockKind::Raw, legacy, raw_source);
+    AnsiString raw_serialized;
+    ShaderDocumentDiagnostics raw_diagnostics;
+    if (!raw_document.Serialize(raw_serialized, raw_diagnostics)
+     || raw_serialized != legacy
+     || raw_document.GetBlockCount() != 1
+     || raw_document.GetBlock(0).source.stage != "fragment")
         return 3;
 
-    const AnsiString legacy_without_newline = "#version 460";
-    ShaderDocument exact_document = MakeLegacyShaderDocument(
-        legacy_without_newline, "mesh");
-    if (!IsByteIdenticalLegacyShader(
-            legacy_without_newline, exact_document, diagnostics))
-        return 4;
-
     ShaderDocument injected;
-    if (!BuildInjectedShaderDocument(
-            "#version 460\nvoid main() {}\n",
-            "#define INJECTED 1\n",
-            "mesh",
-            injected,
-            diagnostics))
+    ShaderDocumentSource injected_source;
+    injected_source.stage = "mesh";
+    injected.Add(
+        ShaderDocumentBlockKind::Raw,
+        "#version 460\n",
+        injected_source);
+    injected.Add(
+        ShaderDocumentBlockKind::Define,
+        "#define INJECTED 1\n",
+        injected_source);
+    injected.Add(
+        ShaderDocumentBlockKind::Raw,
+        "void main() {}\n",
+        injected_source);
+    AnsiString injected_serialized;
+    ShaderDocumentDiagnostics injected_diagnostics;
+    if (!injected.Serialize(injected_serialized, injected_diagnostics)
+     || injected_serialized !=
+            "#version 460\n#define INJECTED 1\nvoid main() {}\n")
         return 7;
-    if (!IsByteIdenticalLegacyShader(
-            "#version 460\n#define INJECTED 1\nvoid main() {}\n",
-            injected,
-            diagnostics))
-        return 8;
 
     ShaderDocument builder_document;
     ShaderDocumentDiagnostics builder_diagnostics;
