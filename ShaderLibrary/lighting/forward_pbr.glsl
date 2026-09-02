@@ -2,6 +2,8 @@
 // @ulre name forward_pbr
 // @ulre kind Utility
 // @ulre priority 0
+// @ulre slot lighting_model
+// @ulre requires_capability surface_base_color|surface_normal|surface_metallic|surface_roughness|direct_light|ambient_diffuse
 // @ulre uses lighting_interface
 // @ulre end
 // Default forward lighting algorithm.

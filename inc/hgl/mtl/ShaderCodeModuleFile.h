@@ -31,6 +31,8 @@ namespace hgl::graph::mtl
         InvalidNumber,
         InvalidResource,
         InvalidStage,
+        InvalidSlotRole,
+        InvalidCapability,
         InvalidDependency,
         InvalidConflict
     };
@@ -65,6 +67,9 @@ namespace hgl::graph::mtl
         ShaderCodeModuleKind kind = ShaderCodeModuleKind::Shared;
         int32 priority = 0;
         uint32 flags = 0;
+        ShaderModuleSlotRole slot_role = ShaderModuleSlotRole::Unknown;
+        uint32 provided_capabilities = 0;
+        uint32 required_capabilities = 0;
         bool metadata_resolution_valid = false;
         ValueArray<ShaderCodeModuleDependency> dependencies;
         // Resolved conflict target names (pointing at target module names).

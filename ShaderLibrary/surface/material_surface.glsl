@@ -2,6 +2,8 @@
 // @ulre name material_surface
 // @ulre kind Surface
 // @ulre priority 0
+// @ulre slot surface_provider
+// @ulre provides_capability surface_base_color|surface_normal|surface_metallic|surface_roughness|surface_opacity
 // @ulre uses surface_interface
 // @ulre uses material_source_interface
 // @ulre end

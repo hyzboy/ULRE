@@ -129,6 +129,69 @@ namespace hgl::graph::mtl
             return true;
         }
 
+        bool ParseSlotRole(
+            const char *token, ShaderModuleSlotRole &out_role) noexcept
+        {
+            for (uint32 value = uint32(ShaderModuleSlotRole::Unknown) + 1;
+                 value <= uint32(ShaderModuleSlotRole::OutputPolicy);
+                 ++value)
+            {
+                const ShaderModuleSlotRole role = ShaderModuleSlotRole(value);
+                if (std::strcmp(token, GetShaderModuleSlotRoleName(role)) == 0)
+                {
+                    out_role = role;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool ParseCapabilityMask(
+            const char *token, uint32 &out_mask) noexcept
+        {
+            static const struct
+            {
+                const char *name;
+                ShaderModuleCapability capability;
+            } capabilities[] =
+            {
+                { "surface_base_color", ShaderModuleCapability::SurfaceBaseColor },
+                { "surface_normal", ShaderModuleCapability::SurfaceNormal },
+                { "surface_metallic", ShaderModuleCapability::SurfaceMetallic },
+                { "surface_roughness", ShaderModuleCapability::SurfaceRoughness },
+                { "surface_opacity", ShaderModuleCapability::SurfaceOpacity },
+                { "direct_light", ShaderModuleCapability::DirectLight },
+                { "shadow_factor", ShaderModuleCapability::ShadowFactor },
+                { "ambient_diffuse", ShaderModuleCapability::AmbientDiffuse },
+                { "ambient_specular", ShaderModuleCapability::AmbientSpecular },
+                { "ambient_occlusion", ShaderModuleCapability::AmbientOcclusion },
+                { "forward_output", ShaderModuleCapability::ForwardOutput }
+            };
+
+            out_mask = 0;
+            const char *begin = token;
+            while (begin && *begin)
+            {
+                const char *end = std::strchr(begin, '|');
+                const size_t length = end ? size_t(end - begin) : std::strlen(begin);
+                bool found = false;
+                for (const auto &entry : capabilities)
+                {
+                    if (std::strlen(entry.name) == length
+                     && std::strncmp(begin, entry.name, length) == 0)
+                    {
+                        out_mask |= uint32(entry.capability);
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                    return false;
+                begin = end ? end + 1 : nullptr;
+            }
+            return out_mask != 0;
+        }
+
         ShaderCodeModuleSemantic ParseSemantic(const char *token) noexcept
         {
             // T1：语义名字单一真源 ShaderCodeModule.h——此处不再维护平行 if-else 表。
@@ -287,6 +350,8 @@ namespace hgl::graph::mtl
             case ShaderCodeModuleParseResult::InvalidNumber: return "InvalidNumber";
             case ShaderCodeModuleParseResult::InvalidResource: return "InvalidResource";
             case ShaderCodeModuleParseResult::InvalidStage: return "InvalidStage";
+            case ShaderCodeModuleParseResult::InvalidSlotRole: return "InvalidSlotRole";
+            case ShaderCodeModuleParseResult::InvalidCapability: return "InvalidCapability";
             case ShaderCodeModuleParseResult::InvalidDependency: return "InvalidDependency";
             case ShaderCodeModuleParseResult::InvalidConflict: return "InvalidConflict";
             default: return "Unknown";
@@ -391,6 +456,33 @@ namespace hgl::graph::mtl
                         return ShaderCodeModuleParseResult::InvalidNumber;
                     out_data.priority = value;
                     saw_priority = true;
+                }
+                else if (std::strcmp(token, "slot") == 0)
+                {
+                    if (out_data.slot_role != ShaderModuleSlotRole::Unknown)
+                        return ShaderCodeModuleParseResult::DuplicateDirective;
+                    const char *next =
+                        ReadToken(after_keyword, line_end, token, sizeof(token));
+                    if (!next || !ParseSlotRole(token, out_data.slot_role))
+                        return ShaderCodeModuleParseResult::InvalidSlotRole;
+                }
+                else if (std::strcmp(token, "provides_capability") == 0
+                      || std::strcmp(token, "requires_capability") == 0)
+                {
+                    const bool provides =
+                        std::strcmp(token, "provides_capability") == 0;
+                    uint32 capabilities = 0;
+                    const char *next =
+                        ReadToken(after_keyword, line_end, token, sizeof(token));
+                    if (!next || !ParseCapabilityMask(token, capabilities))
+                        return ShaderCodeModuleParseResult::InvalidCapability;
+                    uint32 &target =
+                        provides
+                            ? out_data.provided_capabilities
+                            : out_data.required_capabilities;
+                    if (target != 0)
+                        return ShaderCodeModuleParseResult::DuplicateDirective;
+                    target = capabilities;
                 }
                 else if (std::strcmp(token, "ssbo") == 0)
                 {

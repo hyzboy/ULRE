@@ -6,6 +6,7 @@
 
 namespace hgl::graph::mtl
 {
+    class ShaderCodeModuleRegistry;
     enum class RenderTemplateID : uint8
     {
         Unknown = 0,
@@ -87,6 +88,9 @@ namespace hgl::graph::mtl
         UnexpectedSlotRole,
         DuplicateSlotRole,
         MissingRequiredSlot
+        ,ModuleNotFound
+        ,ModuleSlotMismatch
+        ,MissingModuleCapability
     };
 
     struct RenderTemplateValidationDiagnostic
@@ -108,5 +112,10 @@ namespace hgl::graph::mtl
 
     bool ValidateRenderTemplateRequest(
         const RenderTemplateRequest &request,
+        RenderTemplateValidationDiagnostic &out_diagnostic) noexcept;
+
+    bool ValidateRenderTemplateRequest(
+        const RenderTemplateRequest &request,
+        const ShaderCodeModuleRegistry &module_registry,
         RenderTemplateValidationDiagnostic &out_diagnostic) noexcept;
 }

@@ -1,6 +1,8 @@
 #include <hgl/mtl/ShaderDocument.h>
 #include <hgl/mtl/FixedPipelineVariant.h>
 #include <hgl/mtl/RenderTemplate.h>
+#include <hgl/mtl/ShaderCodeModuleFile.h>
+#include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/mtl/ShaderLegacyAuditShell.h>
 #include <hgl/mtl/ShaderRuntimeReadOnlyValidationShell.h>
 #include "../../ShaderGen/document/DocumentFragmentBuilder.h"
@@ -207,6 +209,76 @@ int main()
             FixedShaderProfile::ForwardLitPBRIBLRGBA16F2,
             FixedShaderQualityTier::Low }))
         return 22;
+
+    const char slot_module[] =
+        "// @ulre begin\n"
+        "// @ulre name test_ambient\n"
+        "// @ulre kind Utility\n"
+        "// @ulre slot ambient_light_provider\n"
+        "// @ulre provides_capability ambient_diffuse|ambient_specular\n"
+        "// @ulre requires_capability surface_normal\n"
+        "// @ulre end\n"
+        "void TestAmbient() {}\n";
+    ShaderCodeModuleFileData module_file_data{};
+    if (ParseShaderCodeModuleFile(
+            slot_module,
+            int(sizeof(slot_module) - 1),
+            module_file_data) != ShaderCodeModuleParseResult::OK
+     || module_file_data.slot_role
+            != ShaderModuleSlotRole::AmbientLightProvider
+     || module_file_data.provided_capabilities
+            != (hgl::uint32(ShaderModuleCapability::AmbientDiffuse)
+              | hgl::uint32(ShaderModuleCapability::AmbientSpecular))
+     || module_file_data.required_capabilities
+            != hgl::uint32(ShaderModuleCapability::SurfaceNormal))
+        return 23;
+
+    const ShaderModuleSlotRole root_roles[] =
+    {
+        ShaderModuleSlotRole::SurfaceProvider,
+        ShaderModuleSlotRole::DirectLightProvider,
+        ShaderModuleSlotRole::ShadowProvider,
+        ShaderModuleSlotRole::AmbientLightProvider,
+        ShaderModuleSlotRole::AmbientOcclusionProvider,
+        ShaderModuleSlotRole::LightingModel,
+        ShaderModuleSlotRole::OutputPolicy
+    };
+    const char *const root_names[] =
+    {
+        "surface/pbr_texture", "direct/sun", "shadow/pcf", "ambient/ibl",
+        "ao/identity", "lighting/pbr", "output/forward_hdr"
+    };
+    ShaderCodeModuleDefinition root_modules[7]{};
+    ShaderCodeModuleRegistry root_registry;
+    for (int index = 0; index < 7; ++index)
+    {
+        root_modules[index].name = root_names[index];
+        root_modules[index].glsl_code = "";
+        root_modules[index].slot_role = root_roles[index];
+        if (!root_registry.Register(root_modules[index]))
+            return 24;
+    }
+    root_modules[1].provided_capabilities =
+        static_cast<hgl::uint32>(ShaderModuleCapability::DirectLight);
+    root_modules[5].required_capabilities =
+        static_cast<hgl::uint32>(ShaderModuleCapability::DirectLight);
+    if (!ValidateRenderTemplateRequest(
+            template_request, root_registry, template_diagnostic))
+        return 25;
+    root_modules[1].provided_capabilities = 0;
+    if (ValidateRenderTemplateRequest(
+            template_request, root_registry, template_diagnostic)
+     || template_diagnostic.error
+            != RenderTemplateValidationError::MissingModuleCapability)
+        return 26;
+    root_modules[1].provided_capabilities =
+        static_cast<hgl::uint32>(ShaderModuleCapability::DirectLight);
+    root_modules[0].slot_role = ShaderModuleSlotRole::LightingModel;
+    if (ValidateRenderTemplateRequest(
+            template_request, root_registry, template_diagnostic)
+     || template_diagnostic.error
+            != RenderTemplateValidationError::ModuleSlotMismatch)
+        return 27;
 
     return 0;
 }

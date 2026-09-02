@@ -2,6 +2,8 @@
 // @ulre name forward_lighting
 // @ulre kind Utility
 // @ulre priority 0
+// @ulre slot output_policy
+// @ulre provides_capability forward_output
 // @ulre uses surface_interface
 // @ulre uses lighting_interface
 // @ulre end

@@ -2,6 +2,8 @@
 // @ulre name sky_atmosphere
 // @ulre kind Utility
 // @ulre priority 0
+// @ulre slot ambient_light_provider
+// @ulre provides_capability ambient_diffuse
 // @ulre uses sky_info
 // @ulre end
 // Sky Atmosphere — 大气天光与太阳光数据源

@@ -146,6 +146,11 @@ namespace hgl::graph::mtl
             data->definition.kind = data->kind;
             data->definition.priority = data->priority;
             data->definition.flags = data->flags;
+            data->definition.slot_role = data->slot_role;
+            data->definition.provided_capabilities =
+                data->provided_capabilities;
+            data->definition.required_capabilities =
+                data->required_capabilities;
             data->definition.semantic_requirements = data->semantic_requirements.GetData();
             data->definition.semantic_requirement_count = static_cast<uint32>(data->semantic_requirements.GetCount());
             data->definition.semantic_provides = data->semantic_provides.GetData();

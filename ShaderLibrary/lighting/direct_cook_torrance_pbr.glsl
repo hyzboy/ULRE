@@ -2,6 +2,8 @@
 // @ulre name direct_cook_torrance_pbr
 // @ulre kind Utility
 // @ulre priority 0
+// @ulre slot direct_light_provider
+// @ulre provides_capability direct_light
 // @ulre uses lighting_interface
 // @ulre end
 // Direct Lighting — Cook-Torrance GGX PBR

@@ -1,4 +1,5 @@
 #include <hgl/mtl/RenderTemplate.h>
+#include <hgl/mtl/ShaderCodeModuleRegistry.h>
 
 namespace hgl::graph::mtl
 {
@@ -192,6 +193,9 @@ namespace hgl::graph::mtl
         case RenderTemplateValidationError::UnexpectedSlotRole: return "UnexpectedSlotRole";
         case RenderTemplateValidationError::DuplicateSlotRole: return "DuplicateSlotRole";
         case RenderTemplateValidationError::MissingRequiredSlot: return "MissingRequiredSlot";
+        case RenderTemplateValidationError::ModuleNotFound: return "ModuleNotFound";
+        case RenderTemplateValidationError::ModuleSlotMismatch: return "ModuleSlotMismatch";
+        case RenderTemplateValidationError::MissingModuleCapability: return "MissingModuleCapability";
         }
         return "Unknown";
     }
@@ -279,6 +283,48 @@ namespace hgl::graph::mtl
                     slot.role);
         }
 
+        return true;
+    }
+
+    bool ValidateRenderTemplateRequest(
+        const RenderTemplateRequest &request,
+        const ShaderCodeModuleRegistry &module_registry,
+        RenderTemplateValidationDiagnostic &out_diagnostic) noexcept
+    {
+        if (!ValidateRenderTemplateRequest(request, out_diagnostic))
+            return false;
+
+        uint32 provided_capabilities = 0;
+        uint32 required_capabilities = 0;
+        for (uint32 index = 0; index < request.module_root_count; ++index)
+        {
+            const RenderTemplateModuleRoot &root = request.module_roots[index];
+            const ShaderCodeModuleDefinition *definition =
+                module_registry.FindByName(root.module_name.c_str());
+            if (!definition)
+                return SetFailure(
+                    out_diagnostic,
+                    RenderTemplateValidationError::ModuleNotFound,
+                    request,
+                    root.role,
+                    root.module_name);
+            if (definition->slot_role != root.role)
+                return SetFailure(
+                    out_diagnostic,
+                    RenderTemplateValidationError::ModuleSlotMismatch,
+                    request,
+                    root.role,
+                    root.module_name);
+            provided_capabilities |= definition->provided_capabilities;
+            required_capabilities |= definition->required_capabilities;
+        }
+        if ((required_capabilities & ~provided_capabilities) != 0)
+            return SetFailure(
+                out_diagnostic,
+                RenderTemplateValidationError::MissingModuleCapability,
+                request,
+                ShaderModuleSlotRole::Unknown,
+                "");
         return true;
     }
 }
