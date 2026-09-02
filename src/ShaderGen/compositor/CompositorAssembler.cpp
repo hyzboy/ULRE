@@ -627,6 +627,20 @@ namespace hgl::graph::mtl
             }
         }
         AnsiString serialized;
-        return out_document.SerializeFragment(serialized, out_diagnostics);
+        if (!out_document.SerializeFragment(serialized, out_diagnostics))
+            return false;
+        if (serialized != glsl.c_str())
+        {
+            ShaderDocumentDiagnostic *diagnostic =
+                out_diagnostics.Create();
+            diagnostic->code = "compositor-byte-mismatch";
+            diagnostic->message =
+                "Compositor Document serialization differs from assembled GLSL";
+            diagnostic->block_index = -1;
+            diagnostic->source.stage = "fragment";
+            diagnostic->source.logical_name = "CompositorAssembler";
+            return false;
+        }
+        return true;
     }
 }
