@@ -1,4 +1,7 @@
 #include <hgl/mtl/SceneRenderTemplateResolver.h>
+#include <hgl/mtl/ResolvedRenderTemplate.h>
+#include <hgl/mtl/FragmentTemplateComposer.h>
+#include <hgl/mtl/ShaderCodeModuleRegistry.h>
 
 using namespace hgl::graph::mtl;
 
@@ -26,6 +29,32 @@ int main()
     if (request.template_id != RenderTemplateID::ForwardUnlit
      || request.module_root_count != 2)
         return 3;
+    ShaderCodeModuleDefinition modules[2]{};
+    modules[0].name = "material_surface";
+    modules[0].glsl_code = "";
+    modules[0].slot_role = ShaderModuleSlotRole::SurfaceProvider;
+    modules[1].name = "forward_lighting";
+    modules[1].glsl_code = "";
+    modules[1].slot_role = ShaderModuleSlotRole::OutputPolicy;
+    ShaderCodeModuleRegistry registry;
+    if (!registry.Register(modules[0]) || !registry.Register(modules[1]))
+        return 5;
+    ResolvedRenderTemplate resolved{};
+    if (!ResolveRenderTemplate(request, registry, resolved, diagnostic)
+     || !resolved.IsValid()
+     || resolved.request.module_roots[0].include_path
+            != "surface/material_surface.glsl")
+        return 6;
+    FragmentTemplateComposer composer;
+    FragmentTemplateComposer::ComposeInput compose_input{};
+    compose_input.request = &request;
+    compose_input.resolved_template = &resolved;
+    ShaderDocument document;
+    ShaderDocumentDiagnostics document_diagnostics;
+    if (!composer.Compose(
+            compose_input, document, document_diagnostics)
+     || document.GetBlockCount() == 0)
+        return 7;
 
     SceneRenderTemplateProfile duplicate;
     if (!duplicate.AddModule(
