@@ -102,7 +102,7 @@ namespace
             *resolved_stage_interface = nullptr)
     {
         ShaderDocument document;
-        if (!GenerateMeshShaderDocument(
+        if (!EmitMeshTemplateDocument(
                 node_cfg,
                 varying_cfg,
                 position_format,

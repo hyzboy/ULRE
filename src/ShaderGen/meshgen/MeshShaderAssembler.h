@@ -45,7 +45,7 @@ namespace hgl::graph::mtl
     // 规模量级；内容由最终 GLSL 长度决定，无需精确）
     static constexpr uint32_t kMeshShaderInitialReserve = 3072;
 
-    inline bool GenerateMeshShaderDocument(
+    inline bool EmitMeshTemplateDocument(
         const VertexShaderNodeConfig &node_cfg,
         const MaterialVertexVaryingConfig &varying_cfg,
         VkFormat position_format,
@@ -57,7 +57,7 @@ namespace hgl::graph::mtl
         const ValueArray<InterStageSemanticContractEntry>
             *resolved_stage_interface = nullptr)
     {
-        // ── 拓扑/容量 ──────────────────────────────────────────────────────
+        // ── Explicit mesh template strategy: topology and capacity ────────
         uint32_t max_vertices   = 0;
         uint32_t max_primitives = 0;
 

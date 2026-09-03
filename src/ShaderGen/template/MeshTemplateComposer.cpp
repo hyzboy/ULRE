@@ -9,7 +9,7 @@ namespace hgl::graph::mtl
         ShaderDocument &out_document) const
     {
         const std::string empty;
-        return GenerateMeshShaderDocument(
+        return EmitMeshTemplateDocument(
             input.node_config,
             input.varying_config,
             input.position_format,
