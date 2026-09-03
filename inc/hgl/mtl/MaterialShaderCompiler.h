@@ -35,7 +35,7 @@ struct MaterialShaderDocumentCapture
     // Optional production-pipeline observability for regression gates. The
     // compiler serializes final documents from these exact instances.
     ShaderDocument mesh_source_document;
-    ShaderDocument fragment_source_document;
+    ShaderDocument fragment_document;
     ShaderDocument mesh_final_document;
     ShaderDocument fragment_final_document;
 };

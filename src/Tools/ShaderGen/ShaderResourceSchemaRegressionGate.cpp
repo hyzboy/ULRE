@@ -2702,10 +2702,6 @@ namespace
             MaterialDefinition definition{};
             if (!TryGetMaterialDefinitionByID(
                     expected.definition_id, definition)
-             || !definition.fragment_source
-             || std::strcmp(
-                    definition.fragment_source,
-                    "forward_surface") != 0
              || !definition.fragment_surface_module
              || std::strcmp(
                     definition.fragment_surface_module,
@@ -2858,10 +2854,7 @@ namespace
             return result;
         }
 
-        if (!pure_color.fragment_source
-         || std::strcmp(pure_color.fragment_source,
-                        "forward_surface") != 0
-         || !pure_color.fragment_surface_module
+        if (!pure_color.fragment_surface_module
          || std::strcmp(
                 pure_color.fragment_surface_module,
                 "surface/material_surface.glsl") != 0
@@ -3158,7 +3151,6 @@ namespace
             "scale = \"World\"\n"
             "projection = \"WorldCameraVP\"\n"
             "[fragment]\n"
-            "source = \"forward_surface\"\n"
             "surface_module = \"surface/material_surface.glsl\"\n"
             "material_source_module = \"material/pbr_surface_source.glsl\"\n"
             "ntb_module = \"ntb/ntb_tangent_vbo_normalmap.glsl\"\n"
@@ -3196,8 +3188,6 @@ namespace
                     FixedShaderProfile::ForwardLitPBRIBLRGBA16F2)
              || definition.default_shader_profile
                     != FixedShaderProfile::ForwardLitPBRIBLRGBA16F2
-             || std::strcmp(definition.fragment_source,
-                            "forward_surface") != 0
              || std::strcmp(definition.fragment_surface_module,
                             "surface/material_surface.glsl") != 0)
             {

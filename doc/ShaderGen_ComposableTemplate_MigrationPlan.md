@@ -42,7 +42,7 @@ module，资源缺失即为错误，不得用 no-op fallback 伪装为合法组�
 | `MaterialDefinition.definition_id/name` | `MaterialRecipe.h` | Definition identity | 保持不变 |
 | `ubo_requirements`、`texture_slot_decls`、`sampler_names`、私有 SSBO | `MaterialDefinition` | Definition resource envelope | 保持为资源能力上限 |
 | `code_module_requirements` | `MaterialDefinition` | 共享/必需 module roots | 保持，禁止承载 template slot 选择 |
-| `fragment_source`、surface/material/NTB module path | `MaterialDefinition` | 迁移兼容字段 | 逐步由 profile/table 替代，最后删除 |
+| 直接 fragment skeleton selector、surface/material/NTB module path | `MaterialDefinition` | 迁移兼容字段 | selector 已由 explicit template root 替代；provider module fields 按各自迁移计划保留 |
 | `compositor_surface/blend/pass` | `MaterialDefinition` | family/default policy | 迁移为默认 family/coverage policy |
 | `mesh_shader_mode`、`VertexShaderNodeConfig` | `MaterialDefinition`/`MaterialRecipe` | geometry profile + geometry strategy input | 保留现有实际生成器 |
 | `material_lod` | `MaterialRecipe` | quality/profile preference | 扩展为有限 quality tier，不存 GLSL path |
@@ -163,8 +163,7 @@ FixedPipelineVariantTable:
 2. 记录每个 fixture 的序列化 GLSL hash、stage key、program key、descriptor contract、
    interface contract、output contract、SPV artifact hash。
 3. 固定现有 `GenericMaterialBuildPlan` 的五阶段输出作为对照。
-4. 将当前 `fragment_source`、`fragment_surface_module`、
-   `fragment_material_source_module`、`fragment_ntb_module` 的实际值列为迁移映射表。
+4. 将当前 surface/material-source/NTB provider module field 的实际值列为迁移映射表。
 
 **完成条件**：每个当前 material 都有可重复运行的基线 fixture；无基线的 material 不进入
 后续迁移。
@@ -258,8 +257,8 @@ fragment document 的 block source 能追溯到 template 和 slot module。
    复用，但不共享 Forward Lit 的 surface/main。
 2. SSAO、DOF、tone mapping 建立独立 fullscreen template/cooker entry，不接入
    `MaterialDefinition`、`MaterialRecipe` 或 mesh contract。
-3. 全部 Definition file 完成 profile 化后，删除 `fragment_source` 和各
-   `fragment_*_module` legacy 字段、loader 逻辑与 compatibility test。
+3. 全部 Definition file 完成 profile 化后，删除 obsolete direct fragment selector；
+   provider module fields、loader 逻辑与 compatibility test 按各自迁移进度处理。
 4. 当 `CompositorAssembler` 只剩委托时删除 façade，保留 `FragmentStageComposer`。
 
 **完成条件**：`GenericMaterialBuilder` 只编排 resolver、contract、stage composer；

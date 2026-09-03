@@ -241,8 +241,6 @@ namespace hgl::graph::mtl
         //
         ValueArray<ShaderCodeModuleSemanticRequirement> vertex_semantic_requirements;
         MaterialVertexProviderPolicy vertex_provider_policy = MaterialVertexProviderPolicy::Auto;
-        // Canonical fragment assembly input.
-        const char *fragment_source = nullptr;
         // Legacy surface implementation capability, retained while material
         // definitions are migrated to fully declarative template data.
         const char *fragment_surface_module = nullptr;
@@ -269,13 +267,6 @@ namespace hgl::graph::mtl
         FixedShaderProfile default_shader_profile =
             FixedShaderProfile::Unknown;
     };
-
-    inline void SetMaterialFragmentSource(
-        MaterialDefinition &definition,
-        const char *source)
-    {
-        definition.fragment_source = source;
-    }
 
     inline void ConfigureMaterialVertexSemanticContract(
         MaterialDefinition &definition,

@@ -18,7 +18,6 @@ scale = "World"
 projection = "WorldCameraVP"
 
 [fragment]
-source = "forward_surface"
 surface_module = "surface/material_surface.glsl"
 material_source_module = "material/luminance_source.glsl"
 

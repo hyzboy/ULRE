@@ -6,7 +6,7 @@ namespace hgl::graph::mtl
 {
     namespace
     {
-        // ── 骨架选择键（TOML fragment.source 引用）────────────────────
+        // ── Standalone compositor override skeleton keys ───────────────────
         constexpr const char ForwardSurfaceSkeletonKey[] = "forward_surface";
         constexpr const char DepthOnlySkeletonKey[]      = "depth_only";
         constexpr const char SkySkeletonKey[]            = "forward_sky";

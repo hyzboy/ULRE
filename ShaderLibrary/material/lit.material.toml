@@ -18,7 +18,6 @@ scale = "World"
 projection = "WorldCameraVP"
 
 [fragment]
-source = "forward_surface"
 surface_module = "surface/material_surface.glsl"
 material_source_module = "material/pbr_surface_source.glsl"
 ntb_module = "ntb/ntb_tangent_vbo_normalmap.glsl"

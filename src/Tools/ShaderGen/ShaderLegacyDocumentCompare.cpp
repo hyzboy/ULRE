@@ -415,7 +415,7 @@ namespace
             capture.mesh_final_document,
             context->GetStageShader(ShaderStage::Mesh), link.mesh_stage);
         valid = VerifyStage(
-            fixture.name, "fragment", capture.fragment_source_document,
+            fixture.name, "fragment", capture.fragment_document,
             capture.fragment_final_document,
             context->GetStageShader(ShaderStage::Fragment), link.fragment_stage)
             && valid;

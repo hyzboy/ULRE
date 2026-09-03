@@ -541,7 +541,7 @@ namespace hgl::graph::mtl
             }
             ShaderDocument local_fragment_document;
             ShaderDocument &fragment_document = document_capture
-                ? document_capture->fragment_source_document
+                ? document_capture->fragment_document
                 : local_fragment_document;
             ShaderDocumentDiagnostics fragment_diagnostics;
             const std::string code_module_glsl = BuildCodeModuleGLSL(
@@ -682,12 +682,10 @@ namespace hgl::graph::mtl
     {
         const bool semantic_contract =
             !definition.vertex_semantic_requirements.IsEmpty();
-        if (!definition.fragment_source
-         || !semantic_contract)
+        if (!semantic_contract)
         {
-            GLogError("[ShaderGen] Generic material contract invalid: name=%s fragment=%p semantic_requirements=%d",
+            GLogError("[ShaderGen] Generic material contract invalid: name=%s semantic_requirements=%d",
                       definition.definition_name.c_str(),
-                      definition.fragment_source,
                       definition.vertex_semantic_requirements.GetCount());
             return nullptr;
         }

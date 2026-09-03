@@ -556,11 +556,6 @@ namespace hgl::graph::mtl
             std::string value;
             if (fragment)
             {
-                if (!ReadRequiredString(*fragment, "source", value))
-                    return false;
-                out.fragment_source_storage = value.c_str();
-                SetMaterialFragmentSource(
-                    out.definition, out.fragment_source_storage.c_str());
                 if (fragment->contains("surface_module"))
                 {
                     if (!ReadRequiredString(*fragment, "surface_module", value))
@@ -597,9 +592,6 @@ namespace hgl::graph::mtl
               || !ReadRequiredString(*compositor, "pass", value)
               || !ParsePass(value, out.definition.compositor_pass))
                return false;
-
-            if (!out.definition.fragment_source)
-                return false;
 
             if (!ParseRenderState(root, out.definition))
                 return false;
@@ -885,7 +877,7 @@ namespace hgl::graph::mtl
 
         if (root.contains("fragment")
          && !ValidateKnownKeys(root.at("fragment"), {
-                "source", "surface_module", "material_source_module", "ntb_module"}))
+                "surface_module", "material_source_module", "ntb_module"}))
             return false;
 
         if (root.contains("compositor")
@@ -966,9 +958,7 @@ namespace hgl::graph::mtl
             && definition.allowed_shader_profiles != 0
             && IsFixedShaderProfileAllowed(
                 definition.allowed_shader_profiles,
-                definition.default_shader_profile)
-            && definition.fragment_source
-            && definition.fragment_source[0] != 0;
+                definition.default_shader_profile);
     }
 
     bool MaterialDefinitionFileRegistry::LoadFile(const OSString &path)
