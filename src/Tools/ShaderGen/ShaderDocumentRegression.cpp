@@ -129,6 +129,16 @@ int main()
      || !template_request.AddModuleRoot(
             ShaderModuleSlotRole::OutputPolicy, "output/forward_hdr"))
         return 14;
+    const char *template_paths[] =
+    {
+        "surface/pbr_texture.glsl", "direct/sun.glsl",
+        "shadow/pcf.glsl", "ambient/ibl.glsl",
+        "ao/identity.glsl", "lighting/pbr.glsl",
+        "output/forward_hdr.glsl"
+    };
+    for (hgl::uint32 index = 0;
+         index < template_request.module_root_count; ++index)
+        template_request.module_roots[index].include_path = template_paths[index];
 
     RenderTemplateValidationDiagnostic template_diagnostic{};
     if (!ValidateRenderTemplateRequest(template_request, template_diagnostic)

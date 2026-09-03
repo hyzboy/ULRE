@@ -384,6 +384,13 @@ namespace hgl::graph::mtl
         out_template.module_root_count = request.module_root_count;
         for (uint32 index = 0; index < request.module_root_count; ++index)
         {
+            if (request.module_roots[index].include_path.IsEmpty())
+                return SetFailure(
+                    out_diagnostic,
+                    RenderTemplateValidationError::EmptyModuleRoot,
+                    request,
+                    request.module_roots[index].role,
+                    request.module_roots[index].module_name);
             const ShaderCodeModuleDefinition *module =
                 module_registry.FindByName(
                     request.module_roots[index].module_name.c_str());
