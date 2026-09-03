@@ -9,6 +9,7 @@ namespace hgl::graph::mtl
     {
         if (role == ShaderModuleSlotRole::Unknown
          || module_name.IsEmpty()
+         || include_path.IsEmpty()
          || module_count >= MaxRenderTemplateModuleRoots)
             return false;
         for (uint32 index = 0; index < module_count; ++index)
@@ -18,8 +19,7 @@ namespace hgl::graph::mtl
         }
         roles[module_count] = role;
         module_names[module_count] = module_name;
-        include_paths[module_count] = include_path.IsEmpty()
-            ? module_name : include_path;
+        include_paths[module_count] = include_path;
         ++module_count;
         return true;
     }

@@ -5,8 +5,8 @@
 
 namespace hgl::graph::mtl
 {
-    // Render-preparation output. Provider roots are always explicit; this
-    // resolver never invents identity or fallback modules.
+    // Render-preparation output. Provider roots and include paths are always
+    // explicit; this resolver never invents identity or fallback modules.
     struct SceneRenderTemplateProfile
     {
         ShaderModuleSlotRole roles[MaxRenderTemplateModuleRoots]{};

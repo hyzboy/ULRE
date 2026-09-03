@@ -58,9 +58,11 @@ int main()
 
     SceneRenderTemplateProfile duplicate;
     if (!duplicate.AddModule(
-            ShaderModuleSlotRole::SurfaceProvider, "surface/a")
+            ShaderModuleSlotRole::SurfaceProvider, "surface/a",
+            "surface/a.glsl")
      || duplicate.AddModule(
-            ShaderModuleSlotRole::SurfaceProvider, "surface/b"))
+            ShaderModuleSlotRole::SurfaceProvider, "surface/b",
+            "surface/b.glsl"))
         return 4;
     return 0;
 }
