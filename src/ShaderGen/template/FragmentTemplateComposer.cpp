@@ -181,6 +181,244 @@ namespace
             AnsiString(main_body.c_str()), "ForwardUnlit.Main");
         return true;
     }
+
+    bool ComposeSky(
+        const FragmentTemplateComposer::ComposeInput &input,
+        ShaderDocument &document)
+    {
+        document.Clear();
+        AddTemplateBlock(document, ShaderDocumentBlockKind::Version,
+            AnsiString("#version 450\n"), "Sky.Version");
+        AddTemplateBlock(document, ShaderDocumentBlockKind::Resource,
+            IncludeTemplate("common/descriptor_macros.glsl"),
+            "Sky.DescriptorMacros", "common/descriptor_macros.glsl");
+        AddTemplateBlock(document, ShaderDocumentBlockKind::Resource,
+            IncludeTemplate("ubo/sky_info.glsl"),
+            "Sky.SkyInfo", "ubo/sky_info.glsl");
+        AddTemplateBlock(document, ShaderDocumentBlockKind::Resource,
+            AnsiString("SCENE_SKY_UBO;\n"), "Sky.SkyUBO");
+
+        const char *sky_module =
+            input.module_options.sky_module && input.module_options.sky_module[0]
+                ? input.module_options.sky_module
+                : "sky/sky_atmosphere.glsl";
+        AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
+            IncludeTemplate(sky_module), "Sky.Provider", sky_module);
+        AddTemplateBlock(document, ShaderDocumentBlockKind::Resource,
+            IncludeTemplate("common/surface_interface.glsl"),
+            "Sky.SurfaceInterface", "common/surface_interface.glsl");
+        const char *surface_module =
+            input.surface_module && input.surface_module[0]
+                ? input.surface_module
+                : "surface/sky_minimal_surface.glsl";
+        AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
+            IncludeTemplate(surface_module), "Sky.Surface", surface_module);
+        AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
+            IncludeTemplate("common/alpha_compositor.glsl"),
+            "Sky.Alpha", "common/alpha_compositor.glsl");
+
+        if (input.module_options.fragment_inputs)
+        {
+            std::string declarations;
+            for (int index = 0;
+                 index < input.module_options.fragment_inputs->GetCount();
+                 ++index)
+            {
+                AnsiString declaration;
+                if (!BuildGLSLInterStageDeclaration(
+                        (*input.module_options.fragment_inputs)[index],
+                        "in", declaration))
+                    return false;
+                declarations += declaration.c_str();
+                declarations += "\n";
+            }
+            AddTemplateBlock(document, ShaderDocumentBlockKind::Interface,
+                AnsiString(declarations.c_str()), "Sky.FragmentInputs");
+        }
+
+        if (input.module_options.output_contract)
+        {
+            const OutputContract &output = *input.module_options.output_contract;
+            for (int index = 0; index < output.attachments.GetCount(); ++index)
+            {
+                const ShaderOutputAttachmentContract &attachment =
+                    output.attachments[index];
+                const char *type_name = nullptr;
+                switch (attachment.value_type)
+                {
+                case ShaderStageValueType::Float: type_name = "float"; break;
+                case ShaderStageValueType::Vec2: type_name = "vec2"; break;
+                case ShaderStageValueType::Vec3: type_name = "vec3"; break;
+                case ShaderStageValueType::Vec4: type_name = "vec4"; break;
+                default: return false;
+                }
+                const char *output_name =
+                    GetMaterialOutputName(attachment.write_semantic_id);
+                if (!type_name || !output_name)
+                    return false;
+                std::string declaration = "layout(location=";
+                declaration += std::to_string(attachment.location);
+                declaration += ") out ";
+                declaration += type_name;
+                declaration += " ";
+                declaration += output_name;
+                declaration += ";\nvoid WriteMaterialOutput(";
+                declaration += type_name;
+                declaration += " value) { ";
+                declaration += output_name;
+                declaration += " = value; }\n";
+                AddTemplateBlock(document, ShaderDocumentBlockKind::Interface,
+                    AnsiString(declaration.c_str()), "Sky.Output");
+            }
+        }
+
+        std::string main_body =
+            "\nvoid main()\n{\n"
+            "    SurfaceInput si;\n"
+            "    si.worldPos = fragDirection;\n"
+            "    si.worldNormal = normalize(fragDirection);\n"
+            "    si.uv0 = vec2(0.0);\n"
+            "    si.uv1 = vec2(0.0);\n"
+            "    si.vertexColor = vec4(1.0);\n"
+            "    si.viewDir = fragDirection;\n"
+            "    si.screenPos = vec2(0.0);\n"
+            "    si.luminance = 0.0;\n"
+            "    SurfaceOutput so = EvalSurface(si, 0u);\n"
+            "    WriteMaterialOutput(HGLComposeColor(vec4(so.baseColor, so.alpha)));\n"
+            "}\n";
+        AddTemplateBlock(document, ShaderDocumentBlockKind::MainBody,
+            AnsiString(main_body.c_str()), "Sky.Main");
+        return true;
+    }
+
+    bool ComposeShadow(
+        const FragmentTemplateComposer::ComposeInput &input,
+        ShaderDocument &document)
+    {
+        document.Clear();
+        AddTemplateBlock(document, ShaderDocumentBlockKind::Version,
+            AnsiString("#version 450\n"), "ShadowCaster.Version");
+        AddTemplateBlock(document, ShaderDocumentBlockKind::Define,
+            AnsiString("#define HGL_COVERAGE_ONLY 1\n"), "ShadowCaster.Defines");
+        if (input.code_module_glsl)
+            AddTemplateBlock(document, ShaderDocumentBlockKind::Module,
+                AnsiString(input.code_module_glsl->c_str()),
+                "ShadowCaster.CodeModule");
+
+        if (input.module_options.output_contract)
+        {
+            const OutputContract &output = *input.module_options.output_contract;
+            for (int index = 0; index < output.attachments.GetCount(); ++index)
+            {
+                const ShaderOutputAttachmentContract &attachment =
+                    output.attachments[index];
+                const char *type_name = nullptr;
+                switch (attachment.value_type)
+                {
+                case ShaderStageValueType::Float: type_name = "float"; break;
+                case ShaderStageValueType::Vec2: type_name = "vec2"; break;
+                case ShaderStageValueType::Vec3: type_name = "vec3"; break;
+                case ShaderStageValueType::Vec4: type_name = "vec4"; break;
+                case ShaderStageValueType::Int: type_name = "int"; break;
+                case ShaderStageValueType::UInt: type_name = "uint"; break;
+                case ShaderStageValueType::Bool: type_name = "bool"; break;
+                default: return false;
+                }
+                const char *output_name =
+                    GetMaterialOutputName(attachment.write_semantic_id);
+                if (!type_name || !output_name)
+                    return false;
+                std::string declaration = "layout(location=";
+                declaration += std::to_string(attachment.location);
+                declaration += ") out ";
+                declaration += type_name;
+                declaration += " ";
+                declaration += output_name;
+                declaration += ";\nvoid WriteMaterialOutput(";
+                declaration += type_name;
+                declaration += " value) { ";
+                declaration += output_name;
+                declaration += " = value; }\n";
+                AddTemplateBlock(document, ShaderDocumentBlockKind::Interface,
+                    AnsiString(declaration.c_str()), "ShadowCaster.Output");
+            }
+        }
+
+        if (!input.module_options.coverage_contract
+            || !input.module_options.coverage_contract->requires_alpha_evaluation)
+        {
+            AddTemplateBlock(document, ShaderDocumentBlockKind::MainBody,
+                AnsiString("void main()\n{\n}\n"), "ShadowCaster.Main");
+            return true;
+        }
+
+        AddTemplateBlock(document, ShaderDocumentBlockKind::Resource,
+            IncludeTemplate("common/surface_interface.glsl"),
+            "ShadowCaster.SurfaceInterface", "common/surface_interface.glsl");
+        AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
+            IncludeTemplate("common/alpha_compositor.glsl"),
+            "ShadowCaster.Alpha", "common/alpha_compositor.glsl");
+        if (input.module_options.material_source_module
+            && input.module_options.material_source_module[0])
+            AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
+                IncludeTemplate(input.module_options.material_source_module),
+                "ShadowCaster.MaterialSource",
+                input.module_options.material_source_module);
+        const char *surface_module =
+            input.surface_module && input.surface_module[0]
+                ? input.surface_module
+                : "surface/material_surface.glsl";
+        AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
+            IncludeTemplate(surface_module), "ShadowCaster.Surface",
+            surface_module);
+
+        std::string declarations;
+        if (input.module_options.fragment_inputs)
+        {
+            for (int index = 0;
+                 index < input.module_options.fragment_inputs->GetCount();
+                 ++index)
+            {
+                AnsiString declaration;
+                if (!BuildGLSLInterStageDeclaration(
+                        (*input.module_options.fragment_inputs)[index],
+                        "in", declaration))
+                    return false;
+                declarations += declaration.c_str();
+                declarations += "\n";
+            }
+        }
+        AddTemplateBlock(document, ShaderDocumentBlockKind::Interface,
+            AnsiString(declarations.c_str()), "ShadowCaster.FragmentInputs");
+
+        std::string main_body =
+            "\nvoid main()\n{\n"
+            "    SurfaceInput si;\n"
+            "    si.worldPos = vec3(0.0);\n"
+            "    si.worldNormal = vec3(0.0, 0.0, 1.0);\n"
+            "    si.uv0 = vec2(0.0);\n"
+            "    si.uv1 = vec2(0.0);\n"
+            "    si.vertexColor = vec4(1.0);\n"
+            "    si.viewDir = vec3(0.0, 0.0, 1.0);\n"
+            "    si.screenPos = gl_FragCoord.xy;\n"
+            "    si.luminance = 1.0;\n"
+            "    si.styleID = 0u;\n";
+        if (input.module_options.fragment_inputs)
+        {
+            AnsiString wiring;
+            if (!BuildGLSLMaterialSurfaceInput(
+                    *input.module_options.fragment_inputs, false, wiring))
+                return false;
+            main_body += wiring.c_str();
+        }
+        main_body +=
+            "    const float alpha = EvalAlpha(si, 0u);\n"
+            "    HGLApplyAlpha(alpha);\n"
+            "}\n";
+        AddTemplateBlock(document, ShaderDocumentBlockKind::MainBody,
+            AnsiString(main_body.c_str()), "ShadowCaster.Main");
+        return true;
+    }
 }
 
 namespace hgl::graph::mtl
@@ -207,6 +445,13 @@ namespace hgl::graph::mtl
         if (input.request
          && input.request->template_id == RenderTemplateID::ForwardUnlit)
             return ComposeForwardUnlit(input, out_document);
+        if (input.request
+         && input.request->template_id == RenderTemplateID::Sky)
+            return ComposeSky(input, out_document);
+        if (input.request
+         && (input.request->template_id == RenderTemplateID::ShadowCasterOpaque
+          || input.request->template_id == RenderTemplateID::ShadowCasterMasked))
+            return ComposeShadow(input, out_document);
 
         const std::string empty_code_module_glsl;
         const std::string &code_module_glsl = input.code_module_glsl
