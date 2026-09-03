@@ -241,9 +241,6 @@ namespace hgl::graph::mtl
         //
         ValueArray<ShaderCodeModuleSemanticRequirement> vertex_semantic_requirements;
         MaterialVertexProviderPolicy vertex_provider_policy = MaterialVertexProviderPolicy::Auto;
-        // Legacy surface implementation capability, retained while material
-        // definitions are migrated to fully declarative template data.
-        const char *fragment_surface_module = nullptr;
         // Material-source provider capability. Render preparation maps it into
         // the selected MaterialSourceProvider template root.
         const char *fragment_material_source_module = nullptr;

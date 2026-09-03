@@ -51,8 +51,6 @@ namespace hgl::graph::mtl
 
         if (out_contract.requires_alpha_evaluation)
         {
-            const char *surface = definition.fragment_surface_module
-                ? definition.fragment_surface_module : "";
             const char *source =
                 definition.fragment_material_source_module
                     ? definition.fragment_material_source_module : "";

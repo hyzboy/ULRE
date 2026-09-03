@@ -42,7 +42,7 @@ module，资源缺失即为错误，不得用 no-op fallback 伪装为合法组�
 | `MaterialDefinition.definition_id/name` | `MaterialRecipe.h` | Definition identity | 保持不变 |
 | `ubo_requirements`、`texture_slot_decls`、`sampler_names`、私有 SSBO | `MaterialDefinition` | Definition resource envelope | 保持为资源能力上限 |
 | `code_module_requirements` | `MaterialDefinition` | 共享/必需 module roots | 保持，禁止承载 template slot 选择 |
-| 直接 fragment skeleton selector、surface/material/NTB module path | `MaterialDefinition` | 迁移兼容字段 | selector 已由 explicit template root 替代；provider module fields 按各自迁移计划保留 |
+| fragment material/NTB module path | `MaterialDefinition` | 迁移兼容字段 | surface provider 已由 explicit template root 替代；material/NTB provider fields 按各自迁移计划保留 |
 | `compositor_surface/blend/pass` | `MaterialDefinition` | family/default policy | 迁移为默认 family/coverage policy |
 | `mesh_shader_mode`、`VertexShaderNodeConfig` | `MaterialDefinition`/`MaterialRecipe` | geometry profile + geometry strategy input | 保留现有实际生成器 |
 | `material_lod` | `MaterialRecipe` | quality/profile preference | 扩展为有限 quality tier，不存 GLSL path |

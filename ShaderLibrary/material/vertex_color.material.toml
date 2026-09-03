@@ -18,7 +18,6 @@ scale = "World"
 projection = "WorldCameraVP"
 
 [fragment]
-surface_module = "surface/material_surface.glsl"
 material_source_module = "material/vertex_color_source.glsl"
 
 [compositor]

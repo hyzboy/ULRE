@@ -556,14 +556,6 @@ namespace hgl::graph::mtl
             std::string value;
             if (fragment)
             {
-                if (fragment->contains("surface_module"))
-                {
-                    if (!ReadRequiredString(*fragment, "surface_module", value))
-                        return false;
-                    out.surface_module_storage = value.c_str();
-                    out.definition.fragment_surface_module =
-                        out.surface_module_storage.c_str();
-                }
                 if (fragment->contains("material_source_module"))
                 {
                     if (!ReadRequiredString(*fragment, "material_source_module", value))
@@ -877,7 +869,7 @@ namespace hgl::graph::mtl
 
         if (root.contains("fragment")
          && !ValidateKnownKeys(root.at("fragment"), {
-                "surface_module", "material_source_module", "ntb_module"}))
+                "material_source_module", "ntb_module"}))
             return false;
 
         if (root.contains("compositor")

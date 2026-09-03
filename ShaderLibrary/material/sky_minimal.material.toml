@@ -18,7 +18,6 @@ scale = "World"
 projection = "WorldCameraVP"
 
 [fragment]
-surface_module = "surface/sky_minimal_surface.glsl"
 
 [compositor]
 surface = "Sky"

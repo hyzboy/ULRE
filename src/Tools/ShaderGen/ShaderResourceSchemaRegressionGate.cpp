@@ -2702,10 +2702,6 @@ namespace
             MaterialDefinition definition{};
             if (!TryGetMaterialDefinitionByID(
                     expected.definition_id, definition)
-             || !definition.fragment_surface_module
-             || std::strcmp(
-                    definition.fragment_surface_module,
-                    "surface/material_surface.glsl") != 0
              || !definition.fragment_material_source_module
              || std::strcmp(
                     definition.fragment_material_source_module,
@@ -2854,11 +2850,7 @@ namespace
             return result;
         }
 
-        if (!pure_color.fragment_surface_module
-         || std::strcmp(
-                pure_color.fragment_surface_module,
-                "surface/material_surface.glsl") != 0
-         || !pure_color.fragment_material_source_module
+        if (!pure_color.fragment_material_source_module
          || std::strcmp(
                 pure_color.fragment_material_source_module,
                 "material/unlit_source.glsl") != 0)
@@ -3151,7 +3143,6 @@ namespace
             "scale = \"World\"\n"
             "projection = \"WorldCameraVP\"\n"
             "[fragment]\n"
-            "surface_module = \"surface/material_surface.glsl\"\n"
             "material_source_module = \"material/pbr_surface_source.glsl\"\n"
             "ntb_module = \"ntb/ntb_tangent_vbo_normalmap.glsl\"\n"
             "[compositor]\n"
@@ -3187,9 +3178,7 @@ namespace
                     definition.allowed_shader_profiles,
                     FixedShaderProfile::ForwardLitPBRIBLRGBA16F2)
              || definition.default_shader_profile
-                    != FixedShaderProfile::ForwardLitPBRIBLRGBA16F2
-             || std::strcmp(definition.fragment_surface_module,
-                            "surface/material_surface.glsl") != 0)
+                   != FixedShaderProfile::ForwardLitPBRIBLRGBA16F2)
             {
                 result.diagnostics.emplace_back("material schema fields mismatch");
             }
@@ -3291,18 +3280,10 @@ namespace
                 continue;
             }
 
-            const bool same_surface_reference =
-                (!file_definition->fragment_surface_module
-                 && !registry_definition.fragment_surface_module)
-                || (file_definition->fragment_surface_module
-                 && registry_definition.fragment_surface_module
-                 && std::strcmp(file_definition->fragment_surface_module,
-                                registry_definition.fragment_surface_module) == 0);
             if (file_definition->compositor_surface != registry_definition.compositor_surface
              || file_definition->compositor_blend != registry_definition.compositor_blend
              || file_definition->compositor_pass != registry_definition.compositor_pass
              || file_definition->vertex_provider_policy != registry_definition.vertex_provider_policy
-             || !same_surface_reference
              || file_definition->vertex_semantic_requirements.GetCount()
                     != registry_definition.vertex_semantic_requirements.GetCount()
              || file_definition->ubo_requirements.size()
