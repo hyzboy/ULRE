@@ -2,6 +2,35 @@
 
 namespace hgl::graph::mtl
 {
+    SceneRenderTemplateProfile MakeIdentityForwardLitProfile() noexcept
+    {
+        SceneRenderTemplateProfile profile;
+        profile.AddModule(
+            ShaderModuleSlotRole::SurfaceProvider,
+            "material_surface", "surface/material_surface.glsl");
+        profile.AddModule(
+            ShaderModuleSlotRole::DirectLightProvider,
+            "direct_cook_torrance_pbr",
+            "lighting/direct_cook_torrance_pbr.glsl");
+        profile.AddModule(
+            ShaderModuleSlotRole::ShadowProvider,
+            "identity_shadow", "shadow/identity.glsl");
+        profile.AddModule(
+            ShaderModuleSlotRole::AmbientLightProvider,
+            "indirect_sky_ambient",
+            "lighting/indirect_sky_ambient.glsl");
+        profile.AddModule(
+            ShaderModuleSlotRole::AmbientOcclusionProvider,
+            "identity_ao", "ao/identity.glsl");
+        profile.AddModule(
+            ShaderModuleSlotRole::LightingModel,
+            "forward_pbr", "lighting/forward_pbr.glsl");
+        profile.AddModule(
+            ShaderModuleSlotRole::OutputPolicy,
+            "forward_lighting", "compositor/forward_lighting.glsl");
+        return profile;
+    }
+
     bool SceneRenderTemplateProfile::AddModule(
         const ShaderModuleSlotRole role,
         const AnsiString &module_name,

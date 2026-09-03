@@ -1706,40 +1706,21 @@ namespace
                 request.render_template_request.template_version = 1;
                 request.render_template_request.stage =
                     hgl::graph::ShaderStage::Fragment;
-                const struct Root
-                {
-                    ShaderModuleSlotRole role;
-                    const char *name;
-                    const char *path;
-                } roots[] =
-                {
-                    { ShaderModuleSlotRole::SurfaceProvider,
-                      "material_surface", "surface/material_surface.glsl" },
-                    { ShaderModuleSlotRole::DirectLightProvider,
-                      "direct_cook_torrance_pbr",
-                      "lighting/direct_cook_torrance_pbr.glsl" },
-                    { ShaderModuleSlotRole::ShadowProvider,
-                      "identity_shadow", "shadow/identity.glsl" },
-                    { ShaderModuleSlotRole::AmbientLightProvider,
-                      "indirect_sky_ambient",
-                      "lighting/indirect_sky_ambient.glsl" },
-                    { ShaderModuleSlotRole::AmbientOcclusionProvider,
-                      "identity_ao", "ao/identity.glsl" },
-                    { ShaderModuleSlotRole::LightingModel,
-                      "forward_pbr", "lighting/forward_pbr.glsl" },
-                    { ShaderModuleSlotRole::OutputPolicy,
-                      "forward_lighting", "compositor/forward_lighting.glsl" }
-                };
-                for (const Root &root : roots)
-                {
-                    const hgl::uint32 root_index =
-                        request.render_template_request.module_root_count;
-                    if (!request.render_template_request.AddModuleRoot(
-                            root.role, root.name))
-                        return std::unique_ptr<ShaderBuildContext>();
-                    request.render_template_request.module_roots[root_index]
-                        .include_path = root.path;
-                }
+                SceneRenderTemplateProfile profile =
+                    MakeIdentityForwardLitProfile();
+                const FixedPipelineVariant *variant =
+                    ResolveFixedPipelineVariant(
+                        { FixedPipelineFamily::ForwardLit,
+                          FixedShaderProfile::ForwardLitPBRIBLRGBA16F2,
+                          FixedShaderQualityTier::High });
+                RenderTemplateValidationDiagnostic template_diagnostic{};
+                if (!variant
+                 || !ResolveSceneRenderTemplateRequest(
+                        *variant,
+                        hgl::graph::ShaderStage::Fragment,
+                        profile, request.render_template_request,
+                        template_diagnostic))
+                    return std::unique_ptr<ShaderBuildContext>();
             }
             return std::unique_ptr<ShaderBuildContext>(
                 CreateMaterialFromDefinition(

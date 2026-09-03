@@ -20,6 +20,8 @@ namespace hgl::graph::mtl
             const AnsiString &include_path = {}) noexcept;
     };
 
+    SceneRenderTemplateProfile MakeIdentityForwardLitProfile() noexcept;
+
     bool ResolveSceneRenderTemplateRequest(
         const FixedPipelineVariant &variant,
         ShaderStage stage,
