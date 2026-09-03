@@ -490,8 +490,6 @@ namespace
         const char *sky_module =
             input.module_options.sky_module && input.module_options.sky_module[0]
                 ? input.module_options.sky_module : "sky/sky_atmosphere.glsl";
-        sky_module = ResolvedInclude(
-            input, ShaderModuleSlotRole::AmbientLightProvider, sky_module);
         const char *direct_module =
             input.module_options.direct_lighting_module
                 && input.module_options.direct_lighting_module[0]

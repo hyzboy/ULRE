@@ -57,6 +57,10 @@ int main()
         return 7;
 
     SceneRenderTemplateProfile duplicate;
+    SceneRenderTemplateProfile missing_path;
+    if (missing_path.AddModule(
+            ShaderModuleSlotRole::SurfaceProvider, "material_surface"))
+        return 8;
     if (!duplicate.AddModule(
             ShaderModuleSlotRole::SurfaceProvider, "surface/a",
             "surface/a.glsl")
