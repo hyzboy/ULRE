@@ -419,6 +419,186 @@ namespace
             AnsiString(main_body.c_str()), "ShadowCaster.Main");
         return true;
     }
+
+    bool ComposeForwardLit(
+        const FragmentTemplateComposer::ComposeInput &input,
+        ShaderDocument &document)
+    {
+        document.Clear();
+        AddTemplateBlock(document, ShaderDocumentBlockKind::Version,
+            AnsiString("#version 450\n"), "ForwardLit.Version");
+
+        std::string defines =
+            "#define HGL_USE_MATERIAL_SOURCE_PROVIDER 1\n"
+            "#define HGL_USE_NTB_PROVIDER 1\n"
+            "#define HGL_USE_SCENE_LIGHTING 1\n";
+        if (input.module_options.alpha_test)
+        {
+            defines += "#define HGL_ALPHA_TEST 1\n#define HGL_ALPHA_CUTOFF ";
+            defines += std::to_string(input.module_options.alpha_cutoff);
+            defines += "\n";
+        }
+        if (input.module_options.dither)
+            defines += "#define HGL_ALPHA_DITHER 1\n";
+        AddTemplateBlock(document, ShaderDocumentBlockKind::Define,
+            AnsiString(defines.c_str()), "ForwardLit.Defines");
+
+        const char *resource_paths[] =
+        {
+            "common/descriptor_macros.glsl",
+            "common/surface_interface.glsl",
+            "ubo/camera_info.glsl",
+            "ubo/sky_info.glsl"
+        };
+        const char *resource_names[] =
+        {
+            "ForwardLit.DescriptorMacros",
+            "ForwardLit.SurfaceInterface",
+            "ForwardLit.CameraInfo",
+            "ForwardLit.SkyInfo"
+        };
+        for (int index = 0; index < 4; ++index)
+            AddTemplateBlock(document, ShaderDocumentBlockKind::Resource,
+                IncludeTemplate(resource_paths[index]), resource_names[index],
+                resource_paths[index]);
+        AddTemplateBlock(document, ShaderDocumentBlockKind::Resource,
+            AnsiString("SCENE_CAMERA_UBO;\nSCENE_SKY_UBO;\n"),
+            "ForwardLit.SceneUBO");
+
+        const char *sky_module =
+            input.module_options.sky_module && input.module_options.sky_module[0]
+                ? input.module_options.sky_module : "sky/sky_atmosphere.glsl";
+        const char *direct_module =
+            input.module_options.direct_lighting_module
+                && input.module_options.direct_lighting_module[0]
+                ? input.module_options.direct_lighting_module
+                : "lighting/direct_cook_torrance_pbr.glsl";
+        const char *indirect_module =
+            input.module_options.indirect_lighting_module
+                && input.module_options.indirect_lighting_module[0]
+                ? input.module_options.indirect_lighting_module
+                : "lighting/indirect_sky_ambient.glsl";
+        const char *algorithm_module =
+            input.module_options.lighting_algorithm_module
+                && input.module_options.lighting_algorithm_module[0]
+                ? input.module_options.lighting_algorithm_module
+                : "lighting/forward_pbr.glsl";
+        const char *material_module =
+            input.module_options.material_source_module
+                && input.module_options.material_source_module[0]
+                ? input.module_options.material_source_module
+                : "material/pbr_surface_source.glsl";
+        const char *ntb_module =
+            input.module_options.ntb_module && input.module_options.ntb_module[0]
+                ? input.module_options.ntb_module
+                : "ntb/ntb_tangent_vbo_normalmap.glsl";
+        const char *forward_module =
+            input.module_options.forward_lighting_module
+                && input.module_options.forward_lighting_module[0]
+                ? input.module_options.forward_lighting_module
+                : "compositor/forward_lighting.glsl";
+        const char *paths[] =
+        {
+            sky_module, direct_module, indirect_module, algorithm_module,
+            material_module, ntb_module, forward_module
+        };
+        const char *names[] =
+        {
+            "ForwardLit.Sky", "ForwardLit.Direct", "ForwardLit.Indirect",
+            "ForwardLit.LightingModel", "ForwardLit.MaterialSource",
+            "ForwardLit.NTB", "ForwardLit.ForwardLighting"
+        };
+        for (int index = 0; index < 7; ++index)
+            AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
+                IncludeTemplate(paths[index]), names[index], paths[index]);
+
+        const char *surface_module =
+            input.surface_module && input.surface_module[0]
+                ? input.surface_module : "surface/material_surface.glsl";
+        AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
+            IncludeTemplate(surface_module), "ForwardLit.Surface",
+            surface_module);
+        AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
+            IncludeTemplate("common/alpha_compositor.glsl"),
+            "ForwardLit.Alpha", "common/alpha_compositor.glsl");
+
+        if (input.module_options.fragment_inputs)
+        {
+            std::string declarations;
+            for (int index = 0;
+                 index < input.module_options.fragment_inputs->GetCount();
+                 ++index)
+            {
+                AnsiString declaration;
+                if (!BuildGLSLInterStageDeclaration(
+                        (*input.module_options.fragment_inputs)[index],
+                        "in", declaration))
+                    return false;
+                declarations += declaration.c_str();
+                declarations += "\n";
+            }
+            AddTemplateBlock(document, ShaderDocumentBlockKind::Interface,
+                AnsiString(declarations.c_str()), "ForwardLit.FragmentInputs");
+        }
+        if (input.module_options.output_contract)
+        {
+            const OutputContract &output = *input.module_options.output_contract;
+            for (int index = 0; index < output.attachments.GetCount(); ++index)
+            {
+                const ShaderOutputAttachmentContract &attachment =
+                    output.attachments[index];
+                const char *type_name = nullptr;
+                switch (attachment.value_type)
+                {
+                case ShaderStageValueType::Float: type_name = "float"; break;
+                case ShaderStageValueType::Vec2: type_name = "vec2"; break;
+                case ShaderStageValueType::Vec3: type_name = "vec3"; break;
+                case ShaderStageValueType::Vec4: type_name = "vec4"; break;
+                default: return false;
+                }
+                const char *output_name =
+                    GetMaterialOutputName(attachment.write_semantic_id);
+                if (!type_name || !output_name)
+                    return false;
+                std::string declaration = "layout(location=";
+                declaration += std::to_string(attachment.location);
+                declaration += ") out ";
+                declaration += type_name;
+                declaration += " ";
+                declaration += output_name;
+                declaration += ";\nvoid WriteMaterialOutput(";
+                declaration += type_name;
+                declaration += " value) { ";
+                declaration += output_name;
+                declaration += " = value; }\n";
+                AddTemplateBlock(document, ShaderDocumentBlockKind::Interface,
+                    AnsiString(declaration.c_str()), "ForwardLit.Output");
+            }
+        }
+        if (input.code_module_glsl)
+            AddTemplateBlock(document, ShaderDocumentBlockKind::Module,
+                AnsiString(input.code_module_glsl->c_str()),
+                "ForwardLit.CodeModule");
+
+        std::string main_body = "\nvoid main()\n{\n";
+        if (input.module_options.fragment_inputs)
+        {
+            AnsiString wiring;
+            if (!BuildGLSLMaterialSurfaceInput(
+                    *input.module_options.fragment_inputs, true, wiring))
+                return false;
+            main_body += wiring.c_str();
+        }
+        main_body +=
+            "    const SurfaceOutput surface = EvalSurface(si, materialDataIndex);\n"
+            "    const LightingInput lighting = BuildForwardLightingInput(surface, si);\n"
+            "    const vec4 finalColor = EvalLighting(lighting);\n"
+            "    WriteMaterialOutput(HGLComposeColor(finalColor));\n"
+            "}\n";
+        AddTemplateBlock(document, ShaderDocumentBlockKind::MainBody,
+            AnsiString(main_body.c_str()), "ForwardLit.Main");
+        return true;
+    }
 }
 
 namespace hgl::graph::mtl
@@ -452,6 +632,12 @@ namespace hgl::graph::mtl
          && (input.request->template_id == RenderTemplateID::ShadowCasterOpaque
           || input.request->template_id == RenderTemplateID::ShadowCasterMasked))
             return ComposeShadow(input, out_document);
+        if (input.request
+         && (input.request->template_id == RenderTemplateID::ForwardLitShadowedAO
+          || input.request->template_id
+                 == RenderTemplateID::ForwardLitShadowedIdentityAO
+          || input.request->template_id == RenderTemplateID::ForwardLitUnshadowedAO))
+            return ComposeForwardLit(input, out_document);
 
         const std::string empty_code_module_glsl;
         const std::string &code_module_glsl = input.code_module_glsl
