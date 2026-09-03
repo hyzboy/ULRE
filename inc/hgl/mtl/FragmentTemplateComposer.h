@@ -7,6 +7,7 @@
 #include <hgl/mtl/PassType.h>
 #include <hgl/mtl/RenderTemplate.h>
 #include <hgl/mtl/SurfaceType.h>
+#include <hgl/mtl/ShaderDocument.h>
 
 #include <string>
 
