@@ -235,6 +235,12 @@ namespace hgl::graph::mtl
                 }
                 plan.resolved_template_hash =
                     plan.render_template_request->GetHash();
+                if (!ResolveRenderTemplate(
+                        *plan.render_template_request,
+                        GetShaderCodeModuleRegistry(),
+                        plan.resolved_render_template,
+                        diagnostic))
+                    return false;
             }
             if (!BuildMaterialCoverageContract(
                     definition,
@@ -629,6 +635,9 @@ namespace hgl::graph::mtl
                 plan.manifest.IsValid() ? &plan.manifest : nullptr);
             FragmentTemplateComposer::ComposeInput compose_input{};
             compose_input.request = plan.render_template_request;
+            compose_input.resolved_template =
+                plan.resolved_render_template.IsValid()
+                    ? &plan.resolved_render_template : nullptr;
             compose_input.variant = plan.pipeline_variant;
             compose_input.surface = definition.compositor_surface;
             compose_input.pass = effective_pass;

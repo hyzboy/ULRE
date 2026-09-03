@@ -15,6 +15,7 @@
 #include <hgl/mtl/MaterialStageInterface.h>
 #include <hgl/mtl/ShaderLinkSpec.h>
 #include <hgl/mtl/FixedPipelineVariant.h>
+#include <hgl/mtl/ResolvedRenderTemplate.h>
 
 #include <string>
 #include <vector>
@@ -45,6 +46,7 @@ namespace hgl::graph::mtl
         bool depth_purpose = false;
         const FixedPipelineVariant *pipeline_variant = nullptr;
         const RenderTemplateRequest *render_template_request = nullptr;
+        ResolvedRenderTemplate resolved_render_template;
         uint64 resolved_template_hash = 0;
         mtl::MaterialCoverageContract coverage;
         MaterialVertexVaryingConfig effective_vertex_varying;
