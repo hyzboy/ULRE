@@ -347,19 +347,31 @@ int main(const int argc, char **argv)
                              == FixedPipelineFamily::ForwardLit)
                     {
                         scene_profile = MakeIdentityForwardLitProfile();
-                        variant = ResolveFixedPipelineVariant(
-                            { FixedPipelineFamily::ForwardLit,
-                              definition.default_shader_profile,
-                              request.recipe.quality_tier });
+                        variant = ResolveFixedPipelineVariantForQuality(
+                            FixedPipelineFamily::ForwardLit,
+                            definition.allowed_shader_profiles,
+                            definition.default_shader_profile,
+                            request.recipe.quality_tier);
+                    }
+                    else if (definition.pipeline_family
+                             == FixedPipelineFamily::ForwardUnlit)
+                    {
+                        scene_profile = MakeForwardUnlitProfile();
+                        variant = ResolveFixedPipelineVariantForQuality(
+                            FixedPipelineFamily::ForwardUnlit,
+                            definition.allowed_shader_profiles,
+                            definition.default_shader_profile,
+                            FixedShaderQualityTier::Default);
                     }
                     else if (definition.pipeline_family
                              == FixedPipelineFamily::Sky)
                     {
                         scene_profile = MakeSkyProfile();
-                        variant = ResolveFixedPipelineVariant(
-                            { FixedPipelineFamily::Sky,
-                              definition.default_shader_profile,
-                              request.recipe.quality_tier });
+                        variant = ResolveFixedPipelineVariantForQuality(
+                            FixedPipelineFamily::Sky,
+                            definition.allowed_shader_profiles,
+                            definition.default_shader_profile,
+                            request.recipe.quality_tier);
                     }
                     const bool requires_template_request =
                         purpose == ShaderProgramPurpose::DepthOnly

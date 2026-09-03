@@ -45,6 +45,7 @@ namespace hgl::graph::mtl
             mtl::ShaderProgramPurpose::ForwardColor;
         bool depth_purpose = false;
         const FixedPipelineVariant *pipeline_variant = nullptr;
+        RenderTemplateRequest render_template_request_storage;
         const RenderTemplateRequest *render_template_request = nullptr;
         ResolvedRenderTemplate resolved_render_template;
         uint64 resolved_template_hash = 0;

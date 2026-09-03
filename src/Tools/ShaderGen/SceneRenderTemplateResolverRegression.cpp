@@ -16,8 +16,8 @@ int main()
             ShaderModuleSlotRole::SurfaceProvider, "material_surface",
             "surface/material_surface.glsl")
      || !profile.AddModule(
-            ShaderModuleSlotRole::OutputPolicy, "forward_lighting",
-            "compositor/forward_lighting.glsl"))
+            ShaderModuleSlotRole::OutputPolicy, "flat_lighting",
+            "compositor/flat_lighting.glsl"))
         return 1;
 
     RenderTemplateRequest request;

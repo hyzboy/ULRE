@@ -39,7 +39,7 @@ namespace hgl::graph::mtl
             "material_surface", "surface/material_surface.glsl");
         profile.AddModule(
             ShaderModuleSlotRole::OutputPolicy,
-            "forward_lighting", "compositor/forward_lighting.glsl");
+            "flat_lighting", "compositor/flat_lighting.glsl");
         return profile;
     }
 

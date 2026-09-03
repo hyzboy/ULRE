@@ -23,6 +23,7 @@
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/mtl/ShaderCodeModuleCapabilityResolver.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
+#include <hgl/mtl/SceneRenderTemplateResolver.h>
 #include "compile/MaterialShaderEmitter.h"
 #include "builder/DefinitionDescriptorBuilder.h"
 #include "meshgen/MeshShaderAssembler.h"
@@ -133,45 +134,6 @@ namespace hgl::graph::mtl
             return registry.FindByName(name.c_str());
         }
 
-        // T3：surface → 光照管线配置（单一真源）
-        // Lit 的 forward_lighting/lighting_algorithm 传 nullptr——走 CompositorAssembler
-        // 的 kModuleSlots 默认路径（forward_pbr 等），模块路径只存在于 Assembler 一处，
-        // 不再重复 override（消除双真源）。
-        struct SurfaceLightingConfig
-        {
-            bool        enable_scene_lighting;
-            const char *sky_module;               // nullptr = 不注入 sky
-            const char *forward_lighting_module;  // nullptr = 走 Assembler 默认
-            const char *lighting_algorithm_module;// nullptr = 走 Assembler 默认
-        };
-
-        const SurfaceLightingConfig *GetSurfaceLightingConfig(
-            const SurfaceType surface) noexcept
-        {
-            switch (surface)
-            {
-            case SurfaceType::Unlit:
-            case SurfaceType::Sky:
-            {
-                // 无场景光照：flat 管线（无 sky 大气、无 PBR）
-                static const SurfaceLightingConfig cfg =
-                    { false, nullptr,
-                      "compositor/flat_lighting.glsl",
-                      "lighting/forward_flat.glsl" };
-                return &cfg;
-            }
-            case SurfaceType::Lit:
-            {
-                // 场景光照：PBR + 大气（模块走 Assembler 默认路径）
-                static const SurfaceLightingConfig cfg =
-                    { true, "sky/sky_atmosphere.glsl", nullptr, nullptr };
-                return &cfg;
-            }
-            default:
-                return nullptr;
-            }
-        }
-
         // Phase 1 — purpose / coverage / varying / stage interface
         // (originally MaterialDefinitionRegistry.cpp:235-305)
         // ═══════════════════════════════════════════════════════════════════
@@ -205,47 +167,93 @@ namespace hgl::graph::mtl
             {
                 hgl::hash::FNV1aHasher64 template_hasher;
                 template_hasher << plan.pipeline_variant->fragment_template
-                                << plan.pipeline_variant->template_version
-                                << plan.pipeline_variant->key.family
-                                << plan.pipeline_variant->key.profile
-                                << plan.pipeline_variant->key.quality_tier;
+                               << plan.pipeline_variant->template_version
+                               << plan.pipeline_variant->key.family
+                               << plan.pipeline_variant->key.profile
+                               << plan.pipeline_variant->key.quality_tier;
                 plan.resolved_template_hash = template_hasher;
             }
-            if (request.render_template_request.template_id
-                != RenderTemplateID::Unknown)
+            RenderTemplateRequest resolved_request = request.render_template_request;
+            if (resolved_request.template_id == RenderTemplateID::Unknown)
             {
-                plan.render_template_request =
-                    &request.render_template_request;
+                SceneRenderTemplateProfile default_profile{};
+                switch (plan.pipeline_variant->fragment_template)
+                {
+                case RenderTemplateID::ForwardLitShadowedAO:
+                case RenderTemplateID::ForwardLitShadowedIdentityAO:
+                case RenderTemplateID::ForwardLitUnshadowedAO:
+                   default_profile = MakeIdentityForwardLitProfile();
+                   break;
+                case RenderTemplateID::ForwardUnlit:
+                   default_profile = MakeForwardUnlitProfile();
+                   break;
+                case RenderTemplateID::Sky:
+                   default_profile = MakeSkyProfile();
+                   break;
+                case RenderTemplateID::ShadowCasterOpaque:
+                case RenderTemplateID::ShadowCasterMasked:
+                   default_profile = MakeShadowCasterProfile(
+                       plan.pipeline_variant->fragment_template == RenderTemplateID::ShadowCasterMasked);
+                   break;
+                default:
+                   break;
+                }
+                if (default_profile.module_count > 0)
+                {
+                   RenderTemplateValidationDiagnostic diagnostic{};
+                   if (!ResolveSceneRenderTemplateRequest(
+                           *plan.pipeline_variant,
+                           ShaderStage::Fragment,
+                           default_profile,
+                           resolved_request,
+                           diagnostic))
+                   {
+                       GLogError(
+                           "[ShaderGen] Default render template request resolution failed: name=%s error=%s",
+                           definition.definition_name.c_str(),
+                           GetRenderTemplateValidationErrorName(
+                               diagnostic.error));
+                       return false;
+                   }
+                }
+            }
+            if (resolved_request.template_id != RenderTemplateID::Unknown)
+            {
+                plan.render_template_request_storage = resolved_request;
+                plan.render_template_request = &plan.render_template_request_storage;
                 RenderTemplateValidationDiagnostic diagnostic{};
                 const ShaderCodeModuleRegistry &module_registry =
-                    GetShaderCodeModuleRegistry();
+                  GetShaderCodeModuleRegistry();
                 if (!ValidateRenderTemplateRequest(
-                        *plan.render_template_request,
-                        module_registry,
-                        diagnostic)
-                 || plan.render_template_request->template_id
+                       *plan.render_template_request,
+                       module_registry,
+                       diagnostic)
+                  || plan.render_template_request->template_id
                         != ((plan.purpose == ShaderProgramPurpose::DepthOnly
                              || plan.purpose == ShaderProgramPurpose::ShadowDepth)
                             ? (plan.coverage.requires_alpha_evaluation
                                 ? RenderTemplateID::ShadowCasterMasked
                                 : RenderTemplateID::ShadowCasterOpaque)
                             : plan.pipeline_variant->fragment_template)
-                 || plan.render_template_request->template_version
+                  || plan.render_template_request->template_version
                         != plan.pipeline_variant->template_version)
                 {
-                    GLogError(
-                        "[ShaderGen] Render template request does not match pipeline variant: name=%s",
-                        definition.definition_name.c_str());
-                    return false;
+                   GLogError(
+                       "[ShaderGen] Render template request does not match pipeline variant: name=%s",
+                       definition.definition_name.c_str());
+                   return false;
                 }
                 plan.resolved_template_hash =
-                    plan.render_template_request->GetHash();
+                   plan.render_template_request->GetHash();
                 if (!ResolveRenderTemplate(
-                        *plan.render_template_request,
-                        GetShaderCodeModuleRegistry(),
-                        plan.resolved_render_template,
-                        diagnostic))
-                    return false;
+                       *plan.render_template_request,
+                       GetShaderCodeModuleRegistry(),
+                       plan.resolved_render_template,
+                       diagnostic))
+                   return false;
+            }            else
+            {
+                plan.render_template_request = nullptr;
             }
             if (!BuildMaterialCoverageContract(
                     definition,
@@ -575,42 +583,6 @@ namespace hgl::graph::mtl
                         output_diagnostic.error));
                 return false;
             }
-            FragmentTemplateComposer::ModuleOptions compositor_options{};
-            compositor_options.alpha_test =
-                plan.coverage.mode == MaterialCoverageMode::AlphaTest
-             || plan.coverage.mode
-                    == MaterialCoverageMode::AlphaTestDither;
-            compositor_options.alpha_cutoff =
-                plan.coverage.alpha_cutoff;
-            compositor_options.dither =
-                plan.coverage.mode == MaterialCoverageMode::Dither
-             || plan.coverage.mode
-                    == MaterialCoverageMode::AlphaTestDither;
-            compositor_options.fragment_inputs = &plan.stage_interface;
-            compositor_options.output_contract = &plan.output_contract;
-            compositor_options.coverage_contract = &plan.coverage;
-            // T3：surface → 光照管线查表（GetSurfaceLightingConfig——单一真源）
-            const SurfaceLightingConfig *lighting =
-                GetSurfaceLightingConfig(definition.compositor_surface);
-            if (!lighting)
-            {
-                GLogError("[ShaderGen] Unsupported compositor surface type: %d",
-                          static_cast<int>(definition.compositor_surface));
-                return false;
-            }
-            compositor_options.enable_scene_lighting =
-                lighting->enable_scene_lighting;
-            compositor_options.sky_module =
-                lighting->sky_module;
-            compositor_options.forward_lighting_module =
-                lighting->forward_lighting_module;
-            compositor_options.lighting_algorithm_module =
-                lighting->lighting_algorithm_module;
-            compositor_options.material_source_module =
-                definition.fragment_material_source_module;
-            compositor_options.ntb_module =
-                definition.fragment_ntb_module;
-
             PassType effective_pass = definition.compositor_pass;
             const char *effective_fragment_source =
                 definition.fragment_source;
@@ -648,7 +620,29 @@ namespace hgl::graph::mtl
             compose_input.pass = effective_pass;
             compose_input.fragment_source = effective_fragment_source;
             compose_input.surface_module = definition.fragment_surface_module;
-            compose_input.module_options = compositor_options;
+            compose_input.alpha_test =
+                plan.coverage.mode == MaterialCoverageMode::AlphaTest
+             || plan.coverage.mode
+                    == MaterialCoverageMode::AlphaTestDither;
+            compose_input.alpha_cutoff = plan.coverage.alpha_cutoff;
+            compose_input.dither =
+                plan.coverage.mode == MaterialCoverageMode::Dither
+             || plan.coverage.mode
+                    == MaterialCoverageMode::AlphaTestDither;
+            compose_input.fragment_inputs = &plan.stage_interface;
+            compose_input.output_contract = &plan.output_contract;
+            compose_input.coverage_contract = &plan.coverage;
+            compose_input.material_source_module =
+                definition.fragment_material_source_module;
+            compose_input.ntb_module = definition.fragment_ntb_module;
+            compose_input.enable_material_source_provider =
+                compose_input.material_source_module != nullptr
+                && compose_input.material_source_module[0] != '\0';
+            compose_input.enable_ntb_provider =
+                compose_input.ntb_module != nullptr
+                && compose_input.ntb_module[0] != '\0';
+            compose_input.enable_scene_lighting =
+                plan.purpose == ShaderProgramPurpose::ForwardColor;
             compose_input.code_module_glsl = &code_module_glsl;
             if (!composer.Compose(
                     compose_input, fragment_document, fragment_diagnostics))

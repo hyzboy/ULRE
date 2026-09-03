@@ -14,17 +14,22 @@
 
 namespace hgl::graph::mtl
 {
-    // Transitional template entry point. Its public input is a validated
-    // template request; legacy source details remain private migration data
-    // until each template owns its complete document emission.
+    // Template-first fragment emission entry point.
+    // Normal callers must provide a validated RenderTemplateRequest or
+    // ResolvedRenderTemplate; the legacy CompositorAssembler fallback is
+    // intentionally disabled to prevent implicit auto-composition.
     class FragmentTemplateComposer
     {
     public:
-        // Temporary source-path input retained while legacy definitions are
-        // migrated. This type intentionally belongs to the new composer, not
-        // the legacy compositor implementation.
-        struct ModuleOptions
+        struct ComposeInput
         {
+            const RenderTemplateRequest *request = nullptr;
+            const ResolvedRenderTemplate *resolved_template = nullptr;
+            const FixedPipelineVariant *variant = nullptr;
+            SurfaceType surface = SurfaceType::Unlit;
+            PassType pass = PassType::ForwardOpaque;
+            const char *fragment_source = nullptr;
+            const char *surface_module = nullptr;
             const char *sky_module = nullptr;
             const char *direct_lighting_module = nullptr;
             const char *indirect_lighting_module = nullptr;
@@ -42,18 +47,6 @@ namespace hgl::graph::mtl
                 *fragment_inputs = nullptr;
             const OutputContract *output_contract = nullptr;
             const MaterialCoverageContract *coverage_contract = nullptr;
-        };
-
-        struct ComposeInput
-        {
-            const RenderTemplateRequest *request = nullptr;
-            const ResolvedRenderTemplate *resolved_template = nullptr;
-            const FixedPipelineVariant *variant = nullptr;
-            SurfaceType surface = SurfaceType::Unlit;
-            PassType pass = PassType::ForwardOpaque;
-            const char *fragment_source = nullptr;
-            const char *surface_module = nullptr;
-            ModuleOptions module_options;
             const std::string *code_module_glsl = nullptr;
         };
 

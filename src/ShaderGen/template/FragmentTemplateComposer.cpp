@@ -1,6 +1,5 @@
 #include <hgl/mtl/FragmentTemplateComposer.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
-#include <hgl/mtl/CompositorAssembler.h>
 #include <hgl/mtl/MaterialOutputContract.h>
 #include <hgl/mtl/MaterialStageInterface.h>
 
@@ -60,18 +59,18 @@ namespace
             AnsiString("#version 450\n"), "ForwardUnlit.Version");
 
         std::string defines;
-        if (input.module_options.alpha_test)
+        if (input.alpha_test)
         {
             defines += "#define HGL_ALPHA_TEST 1\n#define HGL_ALPHA_CUTOFF ";
-            defines += std::to_string(input.module_options.alpha_cutoff);
+            defines += std::to_string(input.alpha_cutoff);
             defines += "\n";
         }
-        if (input.module_options.dither)
+        if (input.dither)
             defines += "#define HGL_ALPHA_DITHER 1\n";
         defines += "#define HGL_USE_MATERIAL_SOURCE_PROVIDER ";
-        defines += input.module_options.enable_material_source_provider ? "1\n" : "0\n";
+        defines += input.enable_material_source_provider ? "1\n" : "0\n";
         defines += "#define HGL_USE_NTB_PROVIDER ";
-        defines += input.module_options.enable_ntb_provider ? "1\n" : "0\n";
+        defines += input.enable_ntb_provider ? "1\n" : "0\n";
         defines += "#define HGL_USE_SCENE_LIGHTING 0\n";
         AddTemplateBlock(
             document, ShaderDocumentBlockKind::Define,
@@ -92,12 +91,25 @@ namespace
             IncludeTemplate("lighting/forward_flat.glsl"),
             "ForwardUnlit.LightingModel",
             "lighting/forward_flat.glsl");
-        if (input.module_options.enable_material_source_provider)
+        const char *output_policy_module = ResolvedInclude(
+            input, ShaderModuleSlotRole::OutputPolicy,
+            "compositor/flat_lighting.glsl");
+        AddTemplateBlock(
+            document, ShaderDocumentBlockKind::Function,
+            IncludeTemplate(output_policy_module),
+            "ForwardUnlit.OutputPolicy",
+            output_policy_module);
+        if (input.code_module_glsl)
+            AddTemplateBlock(
+                document, ShaderDocumentBlockKind::Module,
+                AnsiString(input.code_module_glsl->c_str()),
+                "ForwardUnlit.CodeModule");
+        if (input.enable_material_source_provider)
             AddTemplateBlock(
                 document, ShaderDocumentBlockKind::Function,
-                IncludeTemplate(input.module_options.material_source_module
-                    && input.module_options.material_source_module[0]
-                    ? input.module_options.material_source_module
+                IncludeTemplate(input.material_source_module
+                    && input.material_source_module[0]
+                    ? input.material_source_module
                     : "material/unlit_source.glsl"),
                 "ForwardUnlit.MaterialSource");
         AddTemplateBlock(
@@ -114,16 +126,16 @@ namespace
             "ForwardUnlit.Alpha",
             "common/alpha_compositor.glsl");
 
-        if (input.module_options.fragment_inputs)
+        if (input.fragment_inputs)
         {
             std::string declarations;
             for (int index = 0;
-                 index < input.module_options.fragment_inputs->GetCount();
+                 index < input.fragment_inputs->GetCount();
                  ++index)
             {
                 AnsiString declaration;
                 if (!BuildGLSLInterStageDeclaration(
-                        (*input.module_options.fragment_inputs)[index],
+                        (*input.fragment_inputs)[index],
                         "in", declaration))
                     return false;
                 declarations += declaration.c_str();
@@ -134,9 +146,9 @@ namespace
                 AnsiString(declarations.c_str()), "ForwardUnlit.FragmentInputs");
         }
 
-        if (input.module_options.output_contract)
+        if (input.output_contract)
         {
-            const OutputContract &output = *input.module_options.output_contract;
+            const OutputContract &output = *input.output_contract;
             for (int index = 0; index < output.attachments.GetCount(); ++index)
             {
                 const ShaderOutputAttachmentContract &attachment =
@@ -171,18 +183,12 @@ namespace
             }
         }
 
-        if (input.code_module_glsl)
-            AddTemplateBlock(
-                document, ShaderDocumentBlockKind::Module,
-                AnsiString(input.code_module_glsl->c_str()),
-                "ForwardUnlit.CodeModule");
-
         std::string main_body = "\nvoid main()\n{\n";
-        if (input.module_options.fragment_inputs)
+        if (input.fragment_inputs)
         {
             AnsiString wiring;
             if (!BuildGLSLMaterialSurfaceInput(
-                    *input.module_options.fragment_inputs, false, wiring))
+                    *input.fragment_inputs, false, wiring))
                 return false;
             main_body += wiring.c_str();
         }
@@ -215,8 +221,8 @@ namespace
             AnsiString("SCENE_SKY_UBO;\n"), "Sky.SkyUBO");
 
         const char *sky_module =
-            input.module_options.sky_module && input.module_options.sky_module[0]
-                ? input.module_options.sky_module
+            input.sky_module && input.sky_module[0]
+                ? input.sky_module
                 : "sky/sky_atmosphere.glsl";
         sky_module = ResolvedInclude(
             input, ShaderModuleSlotRole::AmbientLightProvider, sky_module);
@@ -237,16 +243,16 @@ namespace
             IncludeTemplate("common/alpha_compositor.glsl"),
             "Sky.Alpha", "common/alpha_compositor.glsl");
 
-        if (input.module_options.fragment_inputs)
+        if (input.fragment_inputs)
         {
             std::string declarations;
             for (int index = 0;
-                 index < input.module_options.fragment_inputs->GetCount();
+                 index < input.fragment_inputs->GetCount();
                  ++index)
             {
                 AnsiString declaration;
                 if (!BuildGLSLInterStageDeclaration(
-                        (*input.module_options.fragment_inputs)[index],
+                        (*input.fragment_inputs)[index],
                         "in", declaration))
                     return false;
                 declarations += declaration.c_str();
@@ -256,9 +262,9 @@ namespace
                 AnsiString(declarations.c_str()), "Sky.FragmentInputs");
         }
 
-        if (input.module_options.output_contract)
+        if (input.output_contract)
         {
-            const OutputContract &output = *input.module_options.output_contract;
+            const OutputContract &output = *input.output_contract;
             for (int index = 0; index < output.attachments.GetCount(); ++index)
             {
                 const ShaderOutputAttachmentContract &attachment =
@@ -325,9 +331,9 @@ namespace
                 AnsiString(input.code_module_glsl->c_str()),
                 "ShadowCaster.CodeModule");
 
-        if (input.module_options.output_contract)
+        if (input.output_contract)
         {
-            const OutputContract &output = *input.module_options.output_contract;
+            const OutputContract &output = *input.output_contract;
             for (int index = 0; index < output.attachments.GetCount(); ++index)
             {
                 const ShaderOutputAttachmentContract &attachment =
@@ -364,8 +370,8 @@ namespace
             }
         }
 
-        if (!input.module_options.coverage_contract
-            || !input.module_options.coverage_contract->requires_alpha_evaluation)
+        if (!input.coverage_contract
+            || !input.coverage_contract->requires_alpha_evaluation)
         {
             AddTemplateBlock(document, ShaderDocumentBlockKind::MainBody,
                 AnsiString("void main()\n{\n}\n"), "ShadowCaster.Main");
@@ -378,12 +384,12 @@ namespace
         AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
             IncludeTemplate("common/alpha_compositor.glsl"),
             "ShadowCaster.Alpha", "common/alpha_compositor.glsl");
-        if (input.module_options.material_source_module
-            && input.module_options.material_source_module[0])
+        if (input.material_source_module
+            && input.material_source_module[0])
             AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
-                IncludeTemplate(input.module_options.material_source_module),
+                IncludeTemplate(input.material_source_module),
                 "ShadowCaster.MaterialSource",
-                input.module_options.material_source_module);
+                input.material_source_module);
         const char *surface_module =
             input.surface_module && input.surface_module[0]
                 ? input.surface_module
@@ -395,15 +401,15 @@ namespace
             surface_module);
 
         std::string declarations;
-        if (input.module_options.fragment_inputs)
+        if (input.fragment_inputs)
         {
             for (int index = 0;
-                 index < input.module_options.fragment_inputs->GetCount();
+                 index < input.fragment_inputs->GetCount();
                  ++index)
             {
                 AnsiString declaration;
                 if (!BuildGLSLInterStageDeclaration(
-                        (*input.module_options.fragment_inputs)[index],
+                        (*input.fragment_inputs)[index],
                         "in", declaration))
                     return false;
                 declarations += declaration.c_str();
@@ -425,11 +431,11 @@ namespace
             "    si.screenPos = gl_FragCoord.xy;\n"
             "    si.luminance = 1.0;\n"
             "    si.styleID = 0u;\n";
-        if (input.module_options.fragment_inputs)
+        if (input.fragment_inputs)
         {
             AnsiString wiring;
             if (!BuildGLSLMaterialSurfaceInput(
-                    *input.module_options.fragment_inputs, false, wiring))
+                    *input.fragment_inputs, false, wiring))
                 return false;
             main_body += wiring.c_str();
         }
@@ -454,13 +460,13 @@ namespace
             "#define HGL_USE_MATERIAL_SOURCE_PROVIDER 1\n"
             "#define HGL_USE_NTB_PROVIDER 1\n"
             "#define HGL_USE_SCENE_LIGHTING 1\n";
-        if (input.module_options.alpha_test)
+        if (input.alpha_test)
         {
             defines += "#define HGL_ALPHA_TEST 1\n#define HGL_ALPHA_CUTOFF ";
-            defines += std::to_string(input.module_options.alpha_cutoff);
+            defines += std::to_string(input.alpha_cutoff);
             defines += "\n";
         }
-        if (input.module_options.dither)
+        if (input.dither)
             defines += "#define HGL_ALPHA_DITHER 1\n";
         AddTemplateBlock(document, ShaderDocumentBlockKind::Define,
             AnsiString(defines.c_str()), "ForwardLit.Defines");
@@ -488,19 +494,19 @@ namespace
             "ForwardLit.SceneUBO");
 
         const char *sky_module =
-            input.module_options.sky_module && input.module_options.sky_module[0]
-                ? input.module_options.sky_module : "sky/sky_atmosphere.glsl";
+            input.sky_module && input.sky_module[0]
+                ? input.sky_module : "sky/sky_atmosphere.glsl";
         const char *direct_module =
-            input.module_options.direct_lighting_module
-                && input.module_options.direct_lighting_module[0]
-                ? input.module_options.direct_lighting_module
+            input.direct_lighting_module
+                && input.direct_lighting_module[0]
+                ? input.direct_lighting_module
                 : "lighting/direct_cook_torrance_pbr.glsl";
         direct_module = ResolvedInclude(
             input, ShaderModuleSlotRole::DirectLightProvider, direct_module);
         const char *indirect_module =
-            input.module_options.indirect_lighting_module
-                && input.module_options.indirect_lighting_module[0]
-                ? input.module_options.indirect_lighting_module
+            input.indirect_lighting_module
+                && input.indirect_lighting_module[0]
+                ? input.indirect_lighting_module
                 : "lighting/indirect_sky_ambient.glsl";
         indirect_module = ResolvedInclude(
             input, ShaderModuleSlotRole::AmbientLightProvider, indirect_module);
@@ -511,25 +517,25 @@ namespace
             input, ShaderModuleSlotRole::AmbientOcclusionProvider,
             "ao/identity.glsl");
         const char *algorithm_module =
-            input.module_options.lighting_algorithm_module
-                && input.module_options.lighting_algorithm_module[0]
-                ? input.module_options.lighting_algorithm_module
+            input.lighting_algorithm_module
+                && input.lighting_algorithm_module[0]
+                ? input.lighting_algorithm_module
                 : "lighting/forward_pbr.glsl";
         algorithm_module = ResolvedInclude(
             input, ShaderModuleSlotRole::LightingModel, algorithm_module);
         const char *material_module =
-            input.module_options.material_source_module
-                && input.module_options.material_source_module[0]
-                ? input.module_options.material_source_module
+            input.material_source_module
+                && input.material_source_module[0]
+                ? input.material_source_module
                 : "material/pbr_surface_source.glsl";
         const char *ntb_module =
-            input.module_options.ntb_module && input.module_options.ntb_module[0]
-                ? input.module_options.ntb_module
+            input.ntb_module && input.ntb_module[0]
+                ? input.ntb_module
                 : "ntb/ntb_tangent_vbo_normalmap.glsl";
         const char *forward_module =
-            input.module_options.forward_lighting_module
-                && input.module_options.forward_lighting_module[0]
-                ? input.module_options.forward_lighting_module
+            input.forward_lighting_module
+                && input.forward_lighting_module[0]
+                ? input.forward_lighting_module
                 : "compositor/forward_lighting.glsl";
         forward_module = ResolvedInclude(
             input, ShaderModuleSlotRole::OutputPolicy, forward_module);
@@ -560,16 +566,16 @@ namespace
             IncludeTemplate("common/alpha_compositor.glsl"),
             "ForwardLit.Alpha", "common/alpha_compositor.glsl");
 
-        if (input.module_options.fragment_inputs)
+        if (input.fragment_inputs)
         {
             std::string declarations;
             for (int index = 0;
-                 index < input.module_options.fragment_inputs->GetCount();
+                 index < input.fragment_inputs->GetCount();
                  ++index)
             {
                 AnsiString declaration;
                 if (!BuildGLSLInterStageDeclaration(
-                        (*input.module_options.fragment_inputs)[index],
+                        (*input.fragment_inputs)[index],
                         "in", declaration))
                     return false;
                 declarations += declaration.c_str();
@@ -578,9 +584,9 @@ namespace
             AddTemplateBlock(document, ShaderDocumentBlockKind::Interface,
                 AnsiString(declarations.c_str()), "ForwardLit.FragmentInputs");
         }
-        if (input.module_options.output_contract)
+        if (input.output_contract)
         {
-            const OutputContract &output = *input.module_options.output_contract;
+            const OutputContract &output = *input.output_contract;
             for (int index = 0; index < output.attachments.GetCount(); ++index)
             {
                 const ShaderOutputAttachmentContract &attachment =
@@ -619,11 +625,11 @@ namespace
                 "ForwardLit.CodeModule");
 
         std::string main_body = "\nvoid main()\n{\n";
-        if (input.module_options.fragment_inputs)
+        if (input.fragment_inputs)
         {
             AnsiString wiring;
             if (!BuildGLSLMaterialSurfaceInput(
-                    *input.module_options.fragment_inputs, true, wiring))
+                    *input.fragment_inputs, true, wiring))
                 return false;
             main_body += wiring.c_str();
         }
@@ -673,27 +679,39 @@ namespace hgl::graph::mtl
         ShaderDocumentDiagnostics &out_diagnostics) const
     {
         ComposeInput resolved_input = input;
+        if (!input.request && !input.resolved_template)
+        {
+           ShaderDocumentDiagnostic *diagnostic = out_diagnostics.Create();
+           diagnostic->code = "template-no-request";
+           diagnostic->message =
+               "FragmentTemplateComposer requires a validated RenderTemplateRequest or ResolvedRenderTemplate; legacy composition fallback is disabled.";
+           diagnostic->block_index = -1;
+           diagnostic->source.stage = "fragment";
+           diagnostic->source.logical_name = "FragmentTemplateComposer";
+           return false;
+        }
+
         if (input.resolved_template)
         {
-            if (!input.resolved_template->IsValid())
+           if (!input.resolved_template->IsValid())
                return false;
-            if (input.request
-             && input.request->GetHash()
+           if (input.request
+            && input.request->GetHash()
                    != input.resolved_template->request.GetHash())
                return false;
-            resolved_input.request = &input.resolved_template->request;
+           resolved_input.request = &input.resolved_template->request;
         }
 
         if (resolved_input.request)
         {
-            RenderTemplateValidationDiagnostic diagnostic{};
-            if (!ValidateRenderTemplateRequest(
+           RenderTemplateValidationDiagnostic diagnostic{};
+           if (!ValidateRenderTemplateRequest(
                    *resolved_input.request,
                    GetShaderCodeModuleRegistry(),
                    diagnostic))
                return false;
-            if (resolved_input.variant
-             && (resolved_input.request->template_id
+           if (resolved_input.variant
+            && (resolved_input.request->template_id
                    != resolved_input.variant->fragment_template
                  && resolved_input.request->template_id
                        != RenderTemplateID::ShadowCasterOpaque
@@ -706,52 +724,34 @@ namespace hgl::graph::mtl
 
         if (resolved_input.request
          && resolved_input.request->template_id == RenderTemplateID::ForwardUnlit)
-            return ComposeForwardUnlit(resolved_input, out_document);
+           return ComposeForwardUnlit(resolved_input, out_document);
         if (resolved_input.request
          && resolved_input.request->template_id == RenderTemplateID::Sky)
-            return ComposeSky(resolved_input, out_document);
+           return ComposeSky(resolved_input, out_document);
         if (resolved_input.request
          && (resolved_input.request->template_id == RenderTemplateID::ShadowCasterOpaque
           || resolved_input.request->template_id == RenderTemplateID::ShadowCasterMasked))
-            return ComposeShadow(resolved_input, out_document);
+           return ComposeShadow(resolved_input, out_document);
         if (resolved_input.request
          && (resolved_input.request->template_id == RenderTemplateID::ForwardLitShadowedAO
           || resolved_input.request->template_id
                 == RenderTemplateID::ForwardLitShadowedIdentityAO
           || resolved_input.request->template_id == RenderTemplateID::ForwardLitUnshadowedAO))
-            return ComposeForwardLit(resolved_input, out_document);
+           return ComposeForwardLit(resolved_input, out_document);
         if (resolved_input.request
          && (resolved_input.request->template_id == RenderTemplateID::Decal
           || resolved_input.request->template_id == RenderTemplateID::PostProcessSSAO
           || resolved_input.request->template_id == RenderTemplateID::PostProcessDOF))
-            return ComposeUnimplemented(
+           return ComposeUnimplemented(
                resolved_input.request->template_id, out_document);
 
-        const std::string empty_code_module_glsl;
-        const std::string &code_module_glsl = input.code_module_glsl
-            ? *input.code_module_glsl
-            : empty_code_module_glsl;
-        CompositorAssembler::CompositorModuleOptions legacy_options{};
-        legacy_options.sky_module = input.module_options.sky_module;
-        legacy_options.direct_lighting_module = input.module_options.direct_lighting_module;
-        legacy_options.indirect_lighting_module = input.module_options.indirect_lighting_module;
-        legacy_options.lighting_algorithm_module = input.module_options.lighting_algorithm_module;
-        legacy_options.material_source_module = input.module_options.material_source_module;
-        legacy_options.ntb_module = input.module_options.ntb_module;
-        legacy_options.forward_lighting_module = input.module_options.forward_lighting_module;
-        legacy_options.enable_material_source_provider = input.module_options.enable_material_source_provider;
-        legacy_options.enable_ntb_provider = input.module_options.enable_ntb_provider;
-        legacy_options.enable_scene_lighting = input.module_options.enable_scene_lighting;
-        legacy_options.alpha_test = input.module_options.alpha_test;
-        legacy_options.alpha_cutoff = input.module_options.alpha_cutoff;
-        legacy_options.dither = input.module_options.dither;
-        legacy_options.fragment_inputs = input.module_options.fragment_inputs;
-        legacy_options.output_contract = input.module_options.output_contract;
-        legacy_options.coverage_contract = input.module_options.coverage_contract;
-        CompositorAssembler legacy_assembler;
-        return legacy_assembler.AssembleDocument(
-            input.surface, input.pass, input.fragment_source,
-            input.surface_module, legacy_options, code_module_glsl,
-            out_document, out_diagnostics);
+        ShaderDocumentDiagnostic *diagnostic = out_diagnostics.Create();
+        diagnostic->code = "template-unregistered";
+        diagnostic->message =
+           "No registered native fragment template matches the requested render template; legacy assembler fallback is intentionally disabled.";
+        diagnostic->block_index = -1;
+        diagnostic->source.stage = "fragment";
+        diagnostic->source.logical_name = "FragmentTemplateComposer";
+        return false;
     }
 }
