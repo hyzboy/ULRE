@@ -2,6 +2,7 @@
 // @ulre name texture_array_source
 // @ulre kind Utility
 // @ulre priority 0
+// @ulre slot material_source_provider
 // @ulre require ProducedSemantic UV0
 // @ulre require Resource MaterialData
 // @ulre ssbo mtl_private_data TextureRectArraySurface 0 Fragment optional fallback

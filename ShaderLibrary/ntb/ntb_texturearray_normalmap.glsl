@@ -2,6 +2,7 @@
 // @ulre name ntb_texturearray_normalmap
 // @ulre kind Utility
 // @ulre priority 0
+// @ulre slot ntb_provider
 // @ulre uses ntb_interface
 // @ulre uses bindless_textures
 // @ulre texture_layer custom0 Fragment required fallback

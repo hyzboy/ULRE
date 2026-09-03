@@ -38,4 +38,5 @@ namespace hgl::graph::mtl
         const SceneRenderTemplateProfile &profile,
         RenderTemplateRequest &out_request,
         RenderTemplateValidationDiagnostic &out_diagnostic) noexcept;
+
 }

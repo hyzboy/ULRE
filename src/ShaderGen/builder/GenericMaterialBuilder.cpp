@@ -105,34 +105,6 @@ namespace hgl::graph::mtl
             }
         }
 
-        const ShaderCodeModuleDefinition *FindSelectedProviderModule(
-            const ShaderCodeModuleRegistry &registry,
-            const char *path)
-        {
-            if (!path || !path[0])
-                return nullptr;
-
-            const ShaderCodeModuleDefinition *definition = registry.FindByName(path);
-            if (definition)
-                return definition;
-
-            const char *stem = path;
-            const char *dot = nullptr;
-            for (const char *cursor = path; *cursor; ++cursor)
-            {
-                if (*cursor == '/' || *cursor == '\\')
-                {
-                    stem = cursor + 1;
-                    dot = nullptr;
-                }
-                else if (*cursor == '.' && !dot)
-                    dot = cursor;
-            }
-
-            const AnsiString name = dot ? AnsiString(stem, int(dot - stem)) : AnsiString(stem);
-            return registry.FindByName(name.c_str());
-        }
-
         // Phase 1 — purpose / coverage / varying / stage interface
         // (originally MaterialDefinitionRegistry.cpp:235-305)
         // ═══════════════════════════════════════════════════════════════════
@@ -350,26 +322,30 @@ namespace hgl::graph::mtl
             const char *provider_root_names[2]{};
             uint32 provider_root_count = 0;
             const ShaderCodeModuleRegistry &module_registry = GetShaderCodeModuleRegistry();
-            const char *selected_provider_paths[] =
-            {
-                definition.fragment_material_source_module,
-                plan.depth_purpose ? nullptr : definition.fragment_ntb_module
-            };
             const bool include_coverage_providers =
                 !plan.depth_purpose
              || plan.coverage.requires_alpha_evaluation;
-            for (const char *provider_path : selected_provider_paths)
+            const ShaderModuleSlotRole provider_roles[] =
             {
-                if (!include_coverage_providers)
+                ShaderModuleSlotRole::MaterialSourceProvider,
+                ShaderModuleSlotRole::NTBProvider
+            };
+            for (const ShaderModuleSlotRole role : provider_roles)
+            {
+                if (!include_coverage_providers
+                 || (plan.depth_purpose
+                  && role == ShaderModuleSlotRole::NTBProvider))
                     break;
-                if (!provider_path || !provider_path[0])
+                const RenderTemplateModuleRoot *root =
+                    plan.render_template_request->FindModuleRoot(role);
+                if (!root)
                     continue;
                 const ShaderCodeModuleDefinition *provider =
-                    FindSelectedProviderModule(module_registry, provider_path);
+                    module_registry.FindByName(root->module_name.c_str());
                 if (!provider)
                 {
                     GLogError("[ShaderGen] Selected provider has no registered metadata: %s",
-                              provider_path);
+                              root->module_name.c_str());
                     return false;
                 }
                 if (provider_root_count < 2)
@@ -576,7 +552,6 @@ namespace hgl::graph::mtl
                 plan.resolved_render_template.IsValid()
                     ? &plan.resolved_render_template : nullptr;
             compose_input.variant = plan.pipeline_variant;
-            compose_input.surface_module = definition.fragment_surface_module;
             compose_input.alpha_test =
                 plan.coverage.mode == MaterialCoverageMode::AlphaTest
              || plan.coverage.mode
@@ -589,15 +564,6 @@ namespace hgl::graph::mtl
             compose_input.fragment_inputs = &plan.stage_interface;
             compose_input.output_contract = &plan.output_contract;
             compose_input.coverage_contract = &plan.coverage;
-            compose_input.material_source_module =
-                definition.fragment_material_source_module;
-            compose_input.ntb_module = definition.fragment_ntb_module;
-            compose_input.enable_material_source_provider =
-                compose_input.material_source_module != nullptr
-                && compose_input.material_source_module[0] != '\0';
-            compose_input.enable_ntb_provider =
-                compose_input.ntb_module != nullptr
-                && compose_input.ntb_module[0] != '\0';
             compose_input.code_module_glsl = &code_module_glsl;
             if (!composer.Compose(
                     compose_input, fragment_document, fragment_diagnostics))

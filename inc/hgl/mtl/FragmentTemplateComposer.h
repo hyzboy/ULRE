@@ -24,16 +24,6 @@ namespace hgl::graph::mtl
             const RenderTemplateRequest *request = nullptr;
             const ResolvedRenderTemplate *resolved_template = nullptr;
             const FixedPipelineVariant *variant = nullptr;
-            const char *surface_module = nullptr;
-            const char *sky_module = nullptr;
-            const char *direct_lighting_module = nullptr;
-            const char *indirect_lighting_module = nullptr;
-            const char *lighting_algorithm_module = nullptr;
-            const char *material_source_module = nullptr;
-            const char *ntb_module = nullptr;
-            const char *forward_lighting_module = nullptr;
-            bool enable_material_source_provider = false;
-            bool enable_ntb_provider = false;
             bool alpha_test = false;
             float alpha_cutoff = 0.5f;
             bool dither = false;

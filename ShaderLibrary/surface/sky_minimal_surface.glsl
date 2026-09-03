@@ -2,6 +2,7 @@
 // @ulre name sky_minimal_surface
 // @ulre kind Surface
 // @ulre priority 0
+// @ulre slot surface_provider
 // @ulre require ProducedSemantic WorldPosition
 // @ulre require Resource SkyLight
 // @ulre uses surface_interface

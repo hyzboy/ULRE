@@ -2,6 +2,7 @@
 // @ulre name ntb_orthonormal
 // @ulre kind Utility
 // @ulre priority 0
+// @ulre slot ntb_provider
 // @ulre uses ntb_interface
 // @ulre end
 // Concrete orthonormal tangent-frame construction.

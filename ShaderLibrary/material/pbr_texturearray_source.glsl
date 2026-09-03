@@ -2,6 +2,7 @@
 // @ulre name pbr_texturearray_source
 // @ulre kind Utility
 // @ulre priority 0
+// @ulre slot material_source_provider
 // @ulre require Resource MaterialData
 // @ulre require ProducedSemantic UV0
 // @ulre ssbo mtl_private_data PBRSurface 0 Fragment optional fallback

@@ -70,7 +70,8 @@ namespace
         return variant && profile.module_count > 0
             && ResolveSceneRenderTemplateRequest(
                 *variant, ShaderStage::Fragment, profile,
-                out_request, diagnostic);
+                out_request, diagnostic)
+            && AppendMaterialRenderTemplateRoots(definition, out_request);
     }
 
     const char *GetBlockKindName(const ShaderDocumentBlockKind kind)

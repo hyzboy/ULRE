@@ -17,7 +17,10 @@ int main()
             "surface/material_surface.glsl")
      || !profile.AddModule(
             ShaderModuleSlotRole::OutputPolicy, "flat_lighting",
-            "compositor/flat_lighting.glsl"))
+            "compositor/flat_lighting.glsl")
+     || !profile.AddModule(
+            ShaderModuleSlotRole::MaterialSourceProvider, "unlit_source",
+            "material/unlit_source.glsl"))
         return 1;
 
     RenderTemplateRequest request;
@@ -27,17 +30,21 @@ int main()
             profile, request, diagnostic))
         return 2;
     if (request.template_id != RenderTemplateID::ForwardUnlit
-     || request.module_root_count != 2)
+     || request.module_root_count != 3)
         return 3;
-    ShaderCodeModuleDefinition modules[2]{};
+    ShaderCodeModuleDefinition modules[3]{};
     modules[0].name = "material_surface";
     modules[0].glsl_code = "";
     modules[0].slot_role = ShaderModuleSlotRole::SurfaceProvider;
-    modules[1].name = "forward_lighting";
+    modules[1].name = "flat_lighting";
     modules[1].glsl_code = "";
     modules[1].slot_role = ShaderModuleSlotRole::OutputPolicy;
+    modules[2].name = "unlit_source";
+    modules[2].glsl_code = "";
+    modules[2].slot_role = ShaderModuleSlotRole::MaterialSourceProvider;
     ShaderCodeModuleRegistry registry;
-    if (!registry.Register(modules[0]) || !registry.Register(modules[1]))
+    if (!registry.Register(modules[0]) || !registry.Register(modules[1])
+     || !registry.Register(modules[2]))
         return 5;
     ResolvedRenderTemplate resolved{};
     if (!ResolveRenderTemplate(request, registry, resolved, diagnostic)
@@ -56,7 +63,7 @@ int main()
      || document.GetBlockCount() == 0)
         return 7;
     const SceneRenderTemplateProfile sky_profile = MakeSkyProfile();
-    if (sky_profile.module_count != 2
+    if (sky_profile.module_count != 3
      || sky_profile.roles[0] != ShaderModuleSlotRole::AmbientLightProvider)
         return 9;
     const SceneRenderTemplateProfile shadow_profile =

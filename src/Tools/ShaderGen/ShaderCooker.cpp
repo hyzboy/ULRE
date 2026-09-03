@@ -382,8 +382,9 @@ int main(const int argc, char **argv)
                     if (requires_template_request && variant
                      && ResolveSceneRenderTemplateRequest(
                             *variant, ShaderStage::Fragment, scene_profile,
-                            request.render_template_request,
-                            template_diagnostic))
+                            request.render_template_request, template_diagnostic)
+                     && AppendMaterialRenderTemplateRoots(
+                            definition, request.render_template_request))
                         ;
                     else if (requires_template_request)
                     {

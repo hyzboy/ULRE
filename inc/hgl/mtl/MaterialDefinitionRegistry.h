@@ -56,6 +56,13 @@ struct MaterialDefinitionBuildRequest
 
 };
 
+// Render preparation calls this after selecting the scene template. It copies
+// material capabilities into that request and structurally validates the
+// completed request without selecting quality, scene, or provider policy.
+bool AppendMaterialRenderTemplateRoots(
+    const MaterialDefinition &definition,
+    RenderTemplateRequest &request) noexcept;
+
 struct MaterialResolvedVertexABI
 {
     VkFormat position_format = VK_FORMAT_UNDEFINED;

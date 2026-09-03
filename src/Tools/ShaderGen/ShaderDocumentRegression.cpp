@@ -127,14 +127,19 @@ int main()
      || !template_request.AddModuleRoot(
             ShaderModuleSlotRole::LightingModel, "lighting/pbr")
      || !template_request.AddModuleRoot(
-            ShaderModuleSlotRole::OutputPolicy, "output/forward_hdr"))
+            ShaderModuleSlotRole::OutputPolicy, "output/forward_hdr")
+     || !template_request.AddModuleRoot(
+            ShaderModuleSlotRole::MaterialSourceProvider, "material/source")
+     || !template_request.AddModuleRoot(
+            ShaderModuleSlotRole::NTBProvider, "ntb/provider"))
         return 14;
     const char *template_paths[] =
     {
         "surface/pbr_texture.glsl", "direct/sun.glsl",
         "shadow/pcf.glsl", "ambient/ibl.glsl",
         "ao/identity.glsl", "lighting/pbr.glsl",
-        "output/forward_hdr.glsl"
+        "output/forward_hdr.glsl", "material/source.glsl",
+        "ntb/provider.glsl"
     };
     for (hgl::uint32 index = 0;
          index < template_request.module_root_count; ++index)
@@ -252,16 +257,19 @@ int main()
         ShaderModuleSlotRole::AmbientLightProvider,
         ShaderModuleSlotRole::AmbientOcclusionProvider,
         ShaderModuleSlotRole::LightingModel,
-        ShaderModuleSlotRole::OutputPolicy
+        ShaderModuleSlotRole::OutputPolicy,
+        ShaderModuleSlotRole::MaterialSourceProvider,
+        ShaderModuleSlotRole::NTBProvider
     };
     const char *const root_names[] =
     {
         "surface/pbr_texture", "direct/sun", "shadow/pcf", "ambient/ibl",
-        "ao/identity", "lighting/pbr", "output/forward_hdr"
+        "ao/identity", "lighting/pbr", "output/forward_hdr",
+        "material/source", "ntb/provider"
     };
-    ShaderCodeModuleDefinition root_modules[7]{};
+    ShaderCodeModuleDefinition root_modules[9]{};
     ShaderCodeModuleRegistry root_registry;
-    for (int index = 0; index < 7; ++index)
+    for (int index = 0; index < 9; ++index)
     {
         root_modules[index].name = root_names[index];
         root_modules[index].glsl_code = "";
@@ -283,7 +291,7 @@ int main()
      || !resolved_template.IsValid()
      || resolved_template.definition->id != template_request.template_id
      || resolved_template.module_root_count != template_request.module_root_count
-     || resolved_template.manifest.code_module_count != 7
+     || resolved_template.manifest.code_module_count != 9
      || resolved_template.stable_hash == 0)
         return 29;
     root_modules[1].provided_capabilities = 0;

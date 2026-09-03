@@ -243,13 +243,14 @@ namespace hgl::graph::mtl
         MaterialVertexProviderPolicy vertex_provider_policy = MaterialVertexProviderPolicy::Auto;
         // Canonical fragment assembly input.
         const char *fragment_source = nullptr;
-        // Optional surface function include replacement used by compositor
-        // templates (and harmless for raw sources without the marker).
+        // Legacy surface implementation capability, retained while material
+        // definitions are migrated to fully declarative template data.
         const char *fragment_surface_module = nullptr;
-        // Optional material-source provider include used by lit compositor
-        // templates. The provider owns material data and texture extraction.
+        // Material-source provider capability. Render preparation maps it into
+        // the selected MaterialSourceProvider template root.
         const char *fragment_material_source_module = nullptr;
-        // Optional NTB provider include used by lit compositor templates.
+        // NTB provider capability. Render preparation maps it into the
+        // selected NTBProvider template root.
         const char *fragment_ntb_module = nullptr;
         MaterialVertexVaryingConfig vertex_varying;
         SurfaceType compositor_surface = SurfaceType::Unlit;

@@ -2,6 +2,7 @@
 // @ulre name ntb_derivative_normalmap
 // @ulre kind Utility
 // @ulre priority 0
+// @ulre slot ntb_provider
 // @ulre uses ntb_interface
 // @ulre uses bindless_textures
 // @ulre texture_layer normal Fragment optional fallback

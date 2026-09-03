@@ -2,6 +2,7 @@
 // @ulre name vertex_color_source
 // @ulre kind Utility
 // @ulre priority 0
+// @ulre slot material_source_provider
 // @ulre require ProducedSemantic Color
 // @ulre uses material_source_interface
 // @ulre end

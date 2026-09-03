@@ -50,6 +50,9 @@ namespace hgl::graph::mtl
             ShaderModuleSlotRole::AmbientLightProvider,
             "sky_atmosphere", "sky/sky_atmosphere.glsl");
         profile.AddModule(
+            ShaderModuleSlotRole::SurfaceProvider,
+            "sky_minimal_surface", "surface/sky_minimal_surface.glsl");
+        profile.AddModule(
             ShaderModuleSlotRole::OutputPolicy,
             "forward_lighting", "compositor/forward_lighting.glsl");
         return profile;
@@ -134,6 +137,11 @@ namespace hgl::graph::mtl
             out_request.module_roots[index].include_path =
                 profile.include_paths[index];
         }
-        return ValidateRenderTemplateRequest(out_request, out_diagnostic);
+        // Material capability roots are appended by the caller after selecting
+        // this scene profile. Full template validation runs once that request
+        // is complete in the material build path.
+        out_diagnostic = {};
+        return true;
     }
+
 }

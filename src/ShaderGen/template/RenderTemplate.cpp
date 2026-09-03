@@ -15,7 +15,9 @@ namespace hgl::graph::mtl
             { ShaderModuleSlotRole::AmbientLightProvider },
             { ShaderModuleSlotRole::AmbientOcclusionProvider },
             { ShaderModuleSlotRole::LightingModel },
-            { ShaderModuleSlotRole::OutputPolicy }
+            { ShaderModuleSlotRole::OutputPolicy },
+            { ShaderModuleSlotRole::MaterialSourceProvider },
+            { ShaderModuleSlotRole::NTBProvider }
         };
 
         constexpr RenderTemplateSlot ForwardLitUnshadowedSlots[] =
@@ -31,18 +33,28 @@ namespace hgl::graph::mtl
         constexpr RenderTemplateSlot ForwardUnlitSlots[] =
         {
             { ShaderModuleSlotRole::SurfaceProvider },
-            { ShaderModuleSlotRole::OutputPolicy }
+            { ShaderModuleSlotRole::OutputPolicy },
+            { ShaderModuleSlotRole::MaterialSourceProvider }
         };
 
-        constexpr RenderTemplateSlot ShadowCasterSlots[] =
+        constexpr RenderTemplateSlot ShadowCasterOpaqueSlots[] =
         {
             { ShaderModuleSlotRole::SurfaceProvider },
-            { ShaderModuleSlotRole::OutputPolicy }
+            { ShaderModuleSlotRole::OutputPolicy },
+            { ShaderModuleSlotRole::MaterialSourceProvider, false }
+        };
+
+        constexpr RenderTemplateSlot ShadowCasterMaskedSlots[] =
+        {
+            { ShaderModuleSlotRole::SurfaceProvider },
+            { ShaderModuleSlotRole::OutputPolicy },
+            { ShaderModuleSlotRole::MaterialSourceProvider }
         };
 
         constexpr RenderTemplateSlot SkySlots[] =
         {
             { ShaderModuleSlotRole::AmbientLightProvider },
+            { ShaderModuleSlotRole::SurfaceProvider },
             { ShaderModuleSlotRole::OutputPolicy }
         };
 
@@ -73,10 +85,10 @@ namespace hgl::graph::mtl
               ForwardUnlitSlots, uint32(sizeof(ForwardUnlitSlots) / sizeof(ForwardUnlitSlots[0])) },
             { RenderTemplateID::ShadowCasterOpaque,
               "shadow_caster_opaque", ShaderStage::Fragment, 1,
-              ShadowCasterSlots, uint32(sizeof(ShadowCasterSlots) / sizeof(ShadowCasterSlots[0])) },
+              ShadowCasterOpaqueSlots, uint32(sizeof(ShadowCasterOpaqueSlots) / sizeof(ShadowCasterOpaqueSlots[0])) },
             { RenderTemplateID::ShadowCasterMasked,
               "shadow_caster_masked", ShaderStage::Fragment, 1,
-              ShadowCasterSlots, uint32(sizeof(ShadowCasterSlots) / sizeof(ShadowCasterSlots[0])) },
+              ShadowCasterMaskedSlots, uint32(sizeof(ShadowCasterMaskedSlots) / sizeof(ShadowCasterMaskedSlots[0])) },
             { RenderTemplateID::Sky,
               "sky", ShaderStage::Fragment, 1,
               SkySlots, uint32(sizeof(SkySlots) / sizeof(SkySlots[0])) },
@@ -180,6 +192,8 @@ namespace hgl::graph::mtl
         case ShaderModuleSlotRole::AmbientOcclusionProvider: return "ambient_occlusion_provider";
         case ShaderModuleSlotRole::LightingModel: return "lighting_model";
         case ShaderModuleSlotRole::OutputPolicy: return "output_policy";
+        case ShaderModuleSlotRole::MaterialSourceProvider: return "material_source_provider";
+        case ShaderModuleSlotRole::NTBProvider: return "ntb_provider";
         default: return "unknown";
         }
     }

@@ -133,7 +133,7 @@ namespace hgl::graph::mtl
             const char *token, ShaderModuleSlotRole &out_role) noexcept
         {
             for (uint32 value = uint32(ShaderModuleSlotRole::Unknown) + 1;
-                 value <= uint32(ShaderModuleSlotRole::OutputPolicy);
+                 value <= uint32(ShaderModuleSlotRole::NTBProvider);
                  ++value)
             {
                 const ShaderModuleSlotRole role = ShaderModuleSlotRole(value);

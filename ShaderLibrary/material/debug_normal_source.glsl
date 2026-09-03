@@ -2,6 +2,7 @@
 // @ulre name debug_normal_source
 // @ulre kind Utility
 // @ulre priority 0
+// @ulre slot material_source_provider
 // @ulre require ProducedSemantic WorldNormal
 // @ulre require Resource MaterialData
 // @ulre ssbo mtl_private_data EmissiveSurface 0 Fragment required

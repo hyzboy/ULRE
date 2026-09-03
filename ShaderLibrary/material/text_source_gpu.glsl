@@ -2,6 +2,7 @@
 // @ulre name text_source_gpu
 // @ulre kind Utility
 // @ulre priority 0
+// @ulre slot material_source_provider
 // @ulre require ProducedSemantic UV0
 // @ulre require ProducedSemantic Color
 // @ulre texture_layer base_color Fragment required

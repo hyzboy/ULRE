@@ -18,6 +18,38 @@ namespace hgl::graph::mtl{
 
 namespace
 {
+    bool AddMaterialProviderRoot(
+        RenderTemplateRequest &request,
+        const ShaderModuleSlotRole role,
+        const char *include_path) noexcept
+    {
+        if (!include_path || !include_path[0])
+            return true;
+
+        const char *name_begin = include_path;
+        const char *path_end = include_path;
+        const char *extension = nullptr;
+        for (const char *cursor = include_path; *cursor; ++cursor)
+        {
+            path_end = cursor + 1;
+            if (*cursor == '/' || *cursor == '\\')
+            {
+                name_begin = cursor + 1;
+                extension = nullptr;
+            }
+            else if (*cursor == '.')
+                extension = cursor;
+        }
+        const char *name_end = extension ? extension : path_end;
+        if (name_begin == name_end
+         || !request.AddModuleRoot(
+                role, AnsiString(name_begin, int(name_end - name_begin))))
+            return false;
+
+        request.module_roots[request.module_root_count - 1].include_path =
+            include_path;
+        return true;
+    }
 
     bool TryGetMaterialDefinitionByIDInternal(
         const char *mtl_def_id,
@@ -40,6 +72,38 @@ namespace
 
         return false;
     }
+}
+
+bool AppendMaterialRenderTemplateRoots(
+    const MaterialDefinition &definition,
+    RenderTemplateRequest &request) noexcept
+{
+    bool appended = true;
+    switch (request.template_id)
+    {
+    case RenderTemplateID::ForwardLitShadowedAO:
+    case RenderTemplateID::ForwardLitShadowedIdentityAO:
+    case RenderTemplateID::ForwardLitUnshadowedAO:
+        appended = AddMaterialProviderRoot(
+                       request, ShaderModuleSlotRole::MaterialSourceProvider,
+                       definition.fragment_material_source_module)
+            && AddMaterialProviderRoot(
+                   request, ShaderModuleSlotRole::NTBProvider,
+                   definition.fragment_ntb_module);
+        break;
+    case RenderTemplateID::ForwardUnlit:
+    case RenderTemplateID::ShadowCasterOpaque:
+    case RenderTemplateID::ShadowCasterMasked:
+        appended = AddMaterialProviderRoot(
+            request, ShaderModuleSlotRole::MaterialSourceProvider,
+            definition.fragment_material_source_module);
+        break;
+    default:
+        break;
+    }
+
+    RenderTemplateValidationDiagnostic diagnostic{};
+    return appended && ValidateRenderTemplateRequest(request, diagnostic);
 }
 
 VertexShaderNodeConfig ResolveMaterialVertexNodeConfig(

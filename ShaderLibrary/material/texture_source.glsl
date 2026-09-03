@@ -2,6 +2,7 @@
 // @ulre name texture_source
 // @ulre kind Utility
 // @ulre priority 0
+// @ulre slot material_source_provider
 // @ulre require ProducedSemantic UV0
 // @ulre texture_layer base_color Fragment optional fallback
 // @ulre uses material_source_interface

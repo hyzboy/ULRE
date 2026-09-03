@@ -31,10 +31,12 @@ namespace hgl::graph::mtl
         AmbientLightProvider,
         AmbientOcclusionProvider,
         LightingModel,
-        OutputPolicy
+        OutputPolicy,
+        MaterialSourceProvider,
+        NTBProvider
     };
 
-    constexpr uint32 MaxRenderTemplateModuleRoots = 8;
+    constexpr uint32 MaxRenderTemplateModuleRoots = 10;
 
     struct RenderTemplateModuleRoot
     {

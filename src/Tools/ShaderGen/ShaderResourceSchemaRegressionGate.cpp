@@ -1695,7 +1695,9 @@ namespace
                 if (!variant || !ResolveSceneRenderTemplateRequest(
                         *variant, hgl::graph::ShaderStage::Fragment,
                         profile, request.render_template_request,
-                        template_diagnostic))
+                        template_diagnostic)
+                 || !AppendMaterialRenderTemplateRoots(
+                        definition, request.render_template_request))
                     return std::unique_ptr<ShaderBuildContext>();
             }
             else if (definition.pipeline_family == FixedPipelineFamily::ForwardLit)
@@ -1718,7 +1720,9 @@ namespace
                         *variant,
                         hgl::graph::ShaderStage::Fragment,
                         profile, request.render_template_request,
-                        template_diagnostic))
+                        template_diagnostic)
+                 || !AppendMaterialRenderTemplateRoots(
+                        definition, request.render_template_request))
                     return std::unique_ptr<ShaderBuildContext>();
             }
             return std::unique_ptr<ShaderBuildContext>(
@@ -2398,7 +2402,9 @@ namespace
                     if (!variant || !ResolveSceneRenderTemplateRequest(
                             *variant, hgl::graph::ShaderStage::Fragment,
                             profile, request.render_template_request,
-                            template_diagnostic))
+                            template_diagnostic)
+                     || !AppendMaterialRenderTemplateRoots(
+                            selected, request.render_template_request))
                         return std::unique_ptr<ShaderBuildContext>();
                     return std::unique_ptr<ShaderBuildContext>(
                         CreateMaterialFromDefinition(
@@ -2757,7 +2763,9 @@ namespace
                     if (!ResolveSceneRenderTemplateRequest(
                             *variant, hgl::graph::ShaderStage::Fragment,
                             profile, request.render_template_request,
-                            template_diagnostic))
+                            template_diagnostic)
+                     || !AppendMaterialRenderTemplateRoots(
+                            definition, request.render_template_request))
                         return std::unique_ptr<ShaderBuildContext>();
                 }
                 else if (definition.pipeline_family
@@ -2774,7 +2782,9 @@ namespace
                      || !ResolveSceneRenderTemplateRequest(
                             *variant, hgl::graph::ShaderStage::Fragment,
                             profile, request.render_template_request,
-                            template_diagnostic))
+                            template_diagnostic)
+                     || !AppendMaterialRenderTemplateRoots(
+                            definition, request.render_template_request))
                         return std::unique_ptr<ShaderBuildContext>();
                 }
                 return std::unique_ptr<ShaderBuildContext>(
@@ -4665,7 +4675,9 @@ namespace
                 if (!ResolveSceneRenderTemplateRequest(
                         shadow_variant, hgl::graph::ShaderStage::Fragment,
                         profile, request.render_template_request,
-                        template_diagnostic))
+                        template_diagnostic)
+                 || !AppendMaterialRenderTemplateRoots(
+                        definition, request.render_template_request))
                 {
                     result.diagnostics.emplace_back(
                         std::string("shadow request resolve failed: ")
@@ -4698,7 +4710,9 @@ namespace
                 if (!ResolveSceneRenderTemplateRequest(
                         *forward_variant, hgl::graph::ShaderStage::Fragment,
                         profile, request.render_template_request,
-                        template_diagnostic))
+                        template_diagnostic)
+                 || !AppendMaterialRenderTemplateRoots(
+                        definition, request.render_template_request))
                 {
                     result.diagnostics.emplace_back(
                         std::string("forward request resolve failed: ")

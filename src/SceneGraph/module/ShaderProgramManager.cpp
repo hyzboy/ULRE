@@ -105,7 +105,8 @@ namespace
         if (variant && scene_profile.module_count > 0
          && mtl::ResolveSceneRenderTemplateRequest(
                 *variant, ShaderStage::Fragment, scene_profile,
-                out_request, diagnostic))
+                out_request, diagnostic)
+         && mtl::AppendMaterialRenderTemplateRoots(definition, out_request))
             return true;
 
         GLogError(
