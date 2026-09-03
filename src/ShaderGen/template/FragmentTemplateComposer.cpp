@@ -599,6 +599,32 @@ namespace
             AnsiString(main_body.c_str()), "ForwardLit.Main");
         return true;
     }
+
+    bool ComposeUnimplemented(
+        const RenderTemplateID template_id,
+        ShaderDocument &document)
+    {
+        document.Clear();
+        const char *name = "Unimplemented";
+        switch (template_id)
+        {
+        case RenderTemplateID::Decal: name = "Decal"; break;
+        case RenderTemplateID::PostProcessSSAO: name = "PostProcessSSAO"; break;
+        case RenderTemplateID::PostProcessDOF: name = "PostProcessDOF"; break;
+        default: return false;
+        }
+
+        AddTemplateBlock(document, ShaderDocumentBlockKind::Version,
+            AnsiString("#version 450\n"), name);
+        AnsiString main_body = AnsiString("\n// ") + AnsiString(name)
+            + AnsiString(" is registered but not implemented yet.\n"
+                         "void main()\n"
+                         "{\n"
+                         "}\n");
+        AddTemplateBlock(document, ShaderDocumentBlockKind::MainBody,
+            main_body, name);
+        return true;
+    }
 }
 
 namespace hgl::graph::mtl
@@ -638,6 +664,12 @@ namespace hgl::graph::mtl
                  == RenderTemplateID::ForwardLitShadowedIdentityAO
           || input.request->template_id == RenderTemplateID::ForwardLitUnshadowedAO))
             return ComposeForwardLit(input, out_document);
+        if (input.request
+         && (input.request->template_id == RenderTemplateID::Decal
+          || input.request->template_id == RenderTemplateID::PostProcessSSAO
+          || input.request->template_id == RenderTemplateID::PostProcessDOF))
+            return ComposeUnimplemented(
+                input.request->template_id, out_document);
 
         const std::string empty_code_module_glsl;
         const std::string &code_module_glsl = input.code_module_glsl
