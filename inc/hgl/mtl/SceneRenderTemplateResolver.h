@@ -21,6 +21,7 @@ namespace hgl::graph::mtl
     };
 
     SceneRenderTemplateProfile MakeIdentityForwardLitProfile() noexcept;
+    SceneRenderTemplateProfile MakeForwardUnlitProfile() noexcept;
 
     bool ResolveSceneRenderTemplateRequest(
         const FixedPipelineVariant &variant,

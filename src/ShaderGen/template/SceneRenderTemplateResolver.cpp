@@ -31,6 +31,18 @@ namespace hgl::graph::mtl
         return profile;
     }
 
+    SceneRenderTemplateProfile MakeForwardUnlitProfile() noexcept
+    {
+        SceneRenderTemplateProfile profile;
+        profile.AddModule(
+            ShaderModuleSlotRole::SurfaceProvider,
+            "material_surface", "surface/material_surface.glsl");
+        profile.AddModule(
+            ShaderModuleSlotRole::OutputPolicy,
+            "forward_lighting", "compositor/forward_lighting.glsl");
+        return profile;
+    }
+
     bool SceneRenderTemplateProfile::AddModule(
         const ShaderModuleSlotRole role,
         const AnsiString &module_name,

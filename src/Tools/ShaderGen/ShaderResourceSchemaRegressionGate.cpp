@@ -2740,15 +2740,7 @@ namespace
                          == FixedPipelineFamily::ForwardUnlit)
                 {
                     SceneRenderTemplateProfile profile;
-                    if (!profile.AddModule(
-                            ShaderModuleSlotRole::SurfaceProvider,
-                            "material_surface",
-                            "surface/material_surface.glsl")
-                     || !profile.AddModule(
-                            ShaderModuleSlotRole::OutputPolicy,
-                            "forward_lighting",
-                            "compositor/forward_lighting.glsl"))
-                        return std::unique_ptr<ShaderBuildContext>();
+                    profile = MakeForwardUnlitProfile();
                     const FixedPipelineVariant *variant =
                         ResolveFixedPipelineVariant(
                             { FixedPipelineFamily::ForwardUnlit,
