@@ -19,6 +19,7 @@
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/mtl/ShaderCodeModuleMetadata.h>
 #include <hgl/mtl/ShaderCodeResourceManifest.h>
+#include <hgl/mtl/SceneRenderTemplateResolver.h>
 #include <hgl/ShaderCompilerAPI.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
@@ -1680,6 +1681,66 @@ namespace
             request.recipe.mtl_def_id = definition.definition_id;
             request.geometry_vertex_format = &geometry;
             request.defer_finalize = true;
+            if (definition.pipeline_family == FixedPipelineFamily::ForwardUnlit)
+            {
+                request.render_template_request.template_id =
+                    RenderTemplateID::ForwardUnlit;
+                request.render_template_request.template_version = 1;
+                request.render_template_request.stage =
+                    hgl::graph::ShaderStage::Fragment;
+                request.render_template_request.AddModuleRoot(
+                    ShaderModuleSlotRole::SurfaceProvider,
+                    "material_surface");
+                request.render_template_request.module_roots[0].include_path =
+                    "surface/material_surface.glsl";
+                request.render_template_request.AddModuleRoot(
+                    ShaderModuleSlotRole::OutputPolicy,
+                    "forward_lighting");
+                request.render_template_request.module_roots[1].include_path =
+                    "compositor/forward_lighting.glsl";
+            }
+            else if (definition.pipeline_family == FixedPipelineFamily::ForwardLit)
+            {
+                request.render_template_request.template_id =
+                    RenderTemplateID::ForwardLitShadowedAO;
+                request.render_template_request.template_version = 1;
+                request.render_template_request.stage =
+                    hgl::graph::ShaderStage::Fragment;
+                const struct Root
+                {
+                    ShaderModuleSlotRole role;
+                    const char *name;
+                    const char *path;
+                } roots[] =
+                {
+                    { ShaderModuleSlotRole::SurfaceProvider,
+                      "material_surface", "surface/material_surface.glsl" },
+                    { ShaderModuleSlotRole::DirectLightProvider,
+                      "direct_cook_torrance_pbr",
+                      "lighting/direct_cook_torrance_pbr.glsl" },
+                    { ShaderModuleSlotRole::ShadowProvider,
+                      "identity_shadow", "shadow/identity.glsl" },
+                    { ShaderModuleSlotRole::AmbientLightProvider,
+                      "indirect_sky_ambient",
+                      "lighting/indirect_sky_ambient.glsl" },
+                    { ShaderModuleSlotRole::AmbientOcclusionProvider,
+                      "identity_ao", "ao/identity.glsl" },
+                    { ShaderModuleSlotRole::LightingModel,
+                      "forward_pbr", "lighting/forward_pbr.glsl" },
+                    { ShaderModuleSlotRole::OutputPolicy,
+                      "forward_lighting", "compositor/forward_lighting.glsl" }
+                };
+                for (const Root &root : roots)
+                {
+                    const hgl::uint32 root_index =
+                        request.render_template_request.module_root_count;
+                    if (!request.render_template_request.AddModuleRoot(
+                            root.role, root.name))
+                        return std::unique_ptr<ShaderBuildContext>();
+                    request.render_template_request.module_roots[root_index]
+                        .include_path = root.path;
+                }
+            }
             return std::unique_ptr<ShaderBuildContext>(
                 CreateMaterialFromDefinition(
                     profile, definition, request));
@@ -3485,16 +3546,15 @@ namespace
             result.diagnostics.emplace_back("LoadDirectory failed to scan directory");
         else
         {
-            // 单趟发射改造（2026-09）：3 个 compositor 模板文件删除（骨架
-            // 降级为发射器常量），模块总数 70 -> 67。
-            if (file_count != 67)
-                result.diagnostics.emplace_back("LoadDirectory expected 67 file modules, got "
-                                                + std::to_string(file_count) + " (2 vertex SSBO modules added)");
+            // Native template migration adds explicit identity shadow/AO providers.
+            if (file_count != 69)
+                result.diagnostics.emplace_back("LoadDirectory expected 69 file modules, got "
+                                                + std::to_string(file_count));
             if (error_count != 0)
                 result.diagnostics.emplace_back("LoadDirectory reported "
                     + std::to_string(error_count) + " errors");
 
-            const int expected_count = 67;
+            const int expected_count = 69;
             if (registry.GetCount() != expected_count)
                 result.diagnostics.emplace_back("registry count after LoadDirectory mismatch: got "
                     + std::to_string(registry.GetCount()));

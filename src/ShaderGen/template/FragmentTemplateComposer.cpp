@@ -506,6 +506,12 @@ namespace
                 : "lighting/indirect_sky_ambient.glsl";
         indirect_module = ResolvedInclude(
             input, ShaderModuleSlotRole::AmbientLightProvider, indirect_module);
+        const char *shadow_module = ResolvedInclude(
+            input, ShaderModuleSlotRole::ShadowProvider,
+            "shadow/identity.glsl");
+        const char *ao_module = ResolvedInclude(
+            input, ShaderModuleSlotRole::AmbientOcclusionProvider,
+            "ao/identity.glsl");
         const char *algorithm_module =
             input.module_options.lighting_algorithm_module
                 && input.module_options.lighting_algorithm_module[0]
@@ -531,16 +537,18 @@ namespace
             input, ShaderModuleSlotRole::OutputPolicy, forward_module);
         const char *paths[] =
         {
-            sky_module, direct_module, indirect_module, algorithm_module,
+            sky_module, direct_module, indirect_module, shadow_module,
+            ao_module, algorithm_module,
             material_module, ntb_module, forward_module
         };
         const char *names[] =
         {
             "ForwardLit.Sky", "ForwardLit.Direct", "ForwardLit.Indirect",
+            "ForwardLit.Shadow", "ForwardLit.AO",
             "ForwardLit.LightingModel", "ForwardLit.MaterialSource",
             "ForwardLit.NTB", "ForwardLit.ForwardLighting"
         };
-        for (int index = 0; index < 7; ++index)
+        for (int index = 0; index < 9; ++index)
             AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
                 IncludeTemplate(paths[index]), names[index], paths[index]);
 
