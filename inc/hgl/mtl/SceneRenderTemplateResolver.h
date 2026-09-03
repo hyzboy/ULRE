@@ -22,6 +22,8 @@ namespace hgl::graph::mtl
 
     SceneRenderTemplateProfile MakeIdentityForwardLitProfile() noexcept;
     SceneRenderTemplateProfile MakeForwardUnlitProfile() noexcept;
+    SceneRenderTemplateProfile MakeSkyProfile() noexcept;
+    SceneRenderTemplateProfile MakeShadowCasterProfile(bool masked) noexcept;
 
     bool ResolveSceneRenderTemplateRequest(
         const FixedPipelineVariant &variant,

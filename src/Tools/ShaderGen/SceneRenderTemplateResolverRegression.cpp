@@ -55,6 +55,15 @@ int main()
             compose_input, document, document_diagnostics)
      || document.GetBlockCount() == 0)
         return 7;
+    const SceneRenderTemplateProfile sky_profile = MakeSkyProfile();
+    if (sky_profile.module_count != 2
+     || sky_profile.roles[0] != ShaderModuleSlotRole::AmbientLightProvider)
+        return 9;
+    const SceneRenderTemplateProfile shadow_profile =
+        MakeShadowCasterProfile(true);
+    if (shadow_profile.module_count != 2
+     || shadow_profile.roles[0] != ShaderModuleSlotRole::SurfaceProvider)
+        return 10;
 
     SceneRenderTemplateProfile duplicate;
     SceneRenderTemplateProfile missing_path;
