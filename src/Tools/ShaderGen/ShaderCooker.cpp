@@ -27,6 +27,7 @@
 #include <hgl/filesystem/FileSystem.h>
 
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
+#include <hgl/mtl/SceneRenderTemplateResolver.h>
 #include <hgl/mtl/MaterialDefinitionFile.h>
 #include <hgl/mtl/MaterialShaderCompiler.h>
 #include <hgl/mtl/ShaderArtifactStore.h>
@@ -48,6 +49,7 @@ namespace
 {
     using namespace hgl;
     using namespace hgl::graph;
+    using namespace hgl::graph::mtl;
 
     struct CookOptions
     {
@@ -325,6 +327,62 @@ int main(const int argc, char **argv)
                 request.shader_program_purpose = purpose;
                 request.shader_artifact_store = &store;
                 request.defer_finalize = false;
+                {
+                    RenderTemplateValidationDiagnostic template_diagnostic{};
+                    const FixedPipelineVariant *variant = nullptr;
+                    SceneRenderTemplateProfile scene_profile;
+                    if (purpose == ShaderProgramPurpose::DepthOnly
+                     || purpose == ShaderProgramPurpose::ShadowDepth)
+                    {
+                        const bool masked =
+                            definition.compositor_blend == BlendMode::Masked;
+                        scene_profile = MakeShadowCasterProfile(masked);
+                        variant = ResolveFixedPipelineVariant(
+                            { FixedPipelineFamily::ShadowCaster,
+                              masked ? FixedShaderProfile::ShadowCasterMasked
+                                     : FixedShaderProfile::ShadowCasterOpaque,
+                              FixedShaderQualityTier::Default });
+                    }
+                    else if (definition.pipeline_family
+                             == FixedPipelineFamily::ForwardLit)
+                    {
+                        scene_profile = MakeIdentityForwardLitProfile();
+                        variant = ResolveFixedPipelineVariant(
+                            { FixedPipelineFamily::ForwardLit,
+                              definition.default_shader_profile,
+                              request.recipe.quality_tier });
+                    }
+                    else if (definition.pipeline_family
+                             == FixedPipelineFamily::Sky)
+                    {
+                        scene_profile = MakeSkyProfile();
+                        variant = ResolveFixedPipelineVariant(
+                            { FixedPipelineFamily::Sky,
+                              definition.default_shader_profile,
+                              request.recipe.quality_tier });
+                    }
+                    const bool requires_template_request =
+                        purpose == ShaderProgramPurpose::DepthOnly
+                     || purpose == ShaderProgramPurpose::ShadowDepth
+                     || definition.pipeline_family == FixedPipelineFamily::ForwardLit
+                     || definition.pipeline_family == FixedPipelineFamily::Sky;
+                    if (requires_template_request && variant
+                     && ResolveSceneRenderTemplateRequest(
+                            *variant, ShaderStage::Fragment, scene_profile,
+                            request.render_template_request,
+                            template_diagnostic))
+                        ;
+                    else if (requires_template_request)
+                    {
+                        ++failed;
+                        std::fprintf(stderr,
+                            "[ShaderCooker] FAIL %s [%s/%s] (template request)\n",
+                            definition.definition_id.c_str(),
+                            PurposeName(purpose).c_str(),
+                            PrimitiveName(primitive).c_str());
+                        continue;
+                    }
+                }
 
                 AutoDelete<mtl::ShaderBuildContext> build_context =
                     mtl::CreateMaterialFromDefinition(
