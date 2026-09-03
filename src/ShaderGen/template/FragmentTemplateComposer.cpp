@@ -34,6 +34,22 @@ namespace
         return AnsiString("#include \"") + AnsiString(path) + AnsiString("\"\n");
     }
 
+    const char *ResolvedInclude(
+        const FragmentTemplateComposer::ComposeInput &input,
+        const ShaderModuleSlotRole role,
+        const char *fallback)
+    {
+        if (input.resolved_template)
+        {
+            const RenderTemplateRequest &request =
+                input.resolved_template->request;
+            const RenderTemplateModuleRoot *root = request.FindModuleRoot(role);
+            if (root && !root->include_path.IsEmpty())
+                return root->include_path.c_str();
+        }
+        return fallback;
+    }
+
     bool ComposeForwardUnlit(
         const FragmentTemplateComposer::ComposeInput &input,
         ShaderDocument &document)
@@ -202,6 +218,8 @@ namespace
             input.module_options.sky_module && input.module_options.sky_module[0]
                 ? input.module_options.sky_module
                 : "sky/sky_atmosphere.glsl";
+        sky_module = ResolvedInclude(
+            input, ShaderModuleSlotRole::AmbientLightProvider, sky_module);
         AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
             IncludeTemplate(sky_module), "Sky.Provider", sky_module);
         AddTemplateBlock(document, ShaderDocumentBlockKind::Resource,
@@ -211,6 +229,8 @@ namespace
             input.surface_module && input.surface_module[0]
                 ? input.surface_module
                 : "surface/sky_minimal_surface.glsl";
+        surface_module = ResolvedInclude(
+            input, ShaderModuleSlotRole::SurfaceProvider, surface_module);
         AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
             IncludeTemplate(surface_module), "Sky.Surface", surface_module);
         AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
@@ -368,6 +388,8 @@ namespace
             input.surface_module && input.surface_module[0]
                 ? input.surface_module
                 : "surface/material_surface.glsl";
+        surface_module = ResolvedInclude(
+            input, ShaderModuleSlotRole::SurfaceProvider, surface_module);
         AddTemplateBlock(document, ShaderDocumentBlockKind::Function,
             IncludeTemplate(surface_module), "ShadowCaster.Surface",
             surface_module);
@@ -468,21 +490,29 @@ namespace
         const char *sky_module =
             input.module_options.sky_module && input.module_options.sky_module[0]
                 ? input.module_options.sky_module : "sky/sky_atmosphere.glsl";
+        sky_module = ResolvedInclude(
+            input, ShaderModuleSlotRole::AmbientLightProvider, sky_module);
         const char *direct_module =
             input.module_options.direct_lighting_module
                 && input.module_options.direct_lighting_module[0]
                 ? input.module_options.direct_lighting_module
                 : "lighting/direct_cook_torrance_pbr.glsl";
+        direct_module = ResolvedInclude(
+            input, ShaderModuleSlotRole::DirectLightProvider, direct_module);
         const char *indirect_module =
             input.module_options.indirect_lighting_module
                 && input.module_options.indirect_lighting_module[0]
                 ? input.module_options.indirect_lighting_module
                 : "lighting/indirect_sky_ambient.glsl";
+        indirect_module = ResolvedInclude(
+            input, ShaderModuleSlotRole::AmbientLightProvider, indirect_module);
         const char *algorithm_module =
             input.module_options.lighting_algorithm_module
                 && input.module_options.lighting_algorithm_module[0]
                 ? input.module_options.lighting_algorithm_module
                 : "lighting/forward_pbr.glsl";
+        algorithm_module = ResolvedInclude(
+            input, ShaderModuleSlotRole::LightingModel, algorithm_module);
         const char *material_module =
             input.module_options.material_source_module
                 && input.module_options.material_source_module[0]
@@ -497,6 +527,8 @@ namespace
                 && input.module_options.forward_lighting_module[0]
                 ? input.module_options.forward_lighting_module
                 : "compositor/forward_lighting.glsl";
+        forward_module = ResolvedInclude(
+            input, ShaderModuleSlotRole::OutputPolicy, forward_module);
         const char *paths[] =
         {
             sky_module, direct_module, indirect_module, algorithm_module,
