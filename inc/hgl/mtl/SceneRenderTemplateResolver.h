@@ -11,11 +11,13 @@ namespace hgl::graph::mtl
     {
         ShaderModuleSlotRole roles[MaxRenderTemplateModuleRoots]{};
         AnsiString module_names[MaxRenderTemplateModuleRoots];
+        AnsiString include_paths[MaxRenderTemplateModuleRoots];
         uint32 module_count = 0;
 
         bool AddModule(
             ShaderModuleSlotRole role,
-            const AnsiString &module_name) noexcept;
+            const AnsiString &module_name,
+            const AnsiString &include_path = {}) noexcept;
     };
 
     bool ResolveSceneRenderTemplateRequest(

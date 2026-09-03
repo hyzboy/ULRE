@@ -10,9 +10,11 @@ int main()
 
     SceneRenderTemplateProfile profile;
     if (!profile.AddModule(
-            ShaderModuleSlotRole::SurfaceProvider, "surface/material_surface")
+            ShaderModuleSlotRole::SurfaceProvider, "material_surface",
+            "surface/material_surface.glsl")
      || !profile.AddModule(
-            ShaderModuleSlotRole::OutputPolicy, "output/forward"))
+            ShaderModuleSlotRole::OutputPolicy, "forward_lighting",
+            "compositor/forward_lighting.glsl"))
         return 1;
 
     RenderTemplateRequest request;

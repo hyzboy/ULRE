@@ -4,7 +4,8 @@ namespace hgl::graph::mtl
 {
     bool SceneRenderTemplateProfile::AddModule(
         const ShaderModuleSlotRole role,
-        const AnsiString &module_name) noexcept
+        const AnsiString &module_name,
+        const AnsiString &include_path) noexcept
     {
         if (role == ShaderModuleSlotRole::Unknown
          || module_name.IsEmpty()
@@ -17,6 +18,8 @@ namespace hgl::graph::mtl
         }
         roles[module_count] = role;
         module_names[module_count] = module_name;
+        include_paths[module_count] = include_path.IsEmpty()
+            ? module_name : include_path;
         ++module_count;
         return true;
     }
@@ -45,6 +48,8 @@ namespace hgl::graph::mtl
                 out_diagnostic.module_name = profile.module_names[index];
                 return false;
             }
+            out_request.module_roots[index].include_path =
+                profile.include_paths[index];
         }
         return ValidateRenderTemplateRequest(out_request, out_diagnostic);
     }

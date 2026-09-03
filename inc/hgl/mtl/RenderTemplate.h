@@ -40,6 +40,7 @@ namespace hgl::graph::mtl
     {
         ShaderModuleSlotRole role = ShaderModuleSlotRole::Unknown;
         AnsiString module_name;
+        AnsiString include_path;
     };
 
     struct RenderTemplateRequest

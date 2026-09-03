@@ -155,6 +155,9 @@ namespace hgl::graph::mtl
             hash.AppendBytes(
                 module_roots[index].module_name.c_str(),
                 module_roots[index].module_name.Length());
+            hash.AppendBytes(
+                module_roots[index].include_path.c_str(),
+                module_roots[index].include_path.Length());
         }
         return hash;
     }
