@@ -50,8 +50,8 @@ struct MaterialDefinitionBuildRequest
     bool override_shader_program_purpose = false;
     mtl::ShaderProgramPurpose shader_program_purpose =
         mtl::ShaderProgramPurpose::ForwardColor;
-    // ECS render preparation will populate this once template composition
-    // replaces the current material-definition shader selection path.
+    // Render preparation supplies this resolved request. ShaderGen validates
+    // and emits it but does not select scene lighting or quality policies.
     RenderTemplateRequest render_template_request;
 
 };

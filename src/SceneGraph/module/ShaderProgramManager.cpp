@@ -18,6 +18,9 @@
 #include<hgl/mtl/ShaderCreateInfo.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/MaterialDefinitionFile.h>
+#include<hgl/mtl/BlendMode.h>
+#include<hgl/mtl/MaterialOutputContract.h>
+#include<hgl/mtl/SceneRenderTemplateResolver.h>
 #include<hgl/mtl/ShaderCacheRoot.h>
 #include<hgl/object/ObjectTracker.h>
 #include<hgl/filesystem/FileSystem.h>
@@ -45,6 +48,71 @@ namespace
 
         return mtl::TryGetMaterialDefinitionByID(
             mtl::GetFallbackMaterialDefinitionID(), out_bmi);
+    }
+
+    bool ResolveRuntimeRenderTemplateRequest(
+        const mtl::MaterialDefinition &definition,
+        const mtl::MaterialDefinitionBuildRequest &request,
+        mtl::RenderTemplateRequest &out_request)
+    {
+        if (out_request.template_id != mtl::RenderTemplateID::Unknown)
+            return true;
+
+        const mtl::ShaderProgramPurpose purpose =
+            request.override_shader_program_purpose
+                ? request.shader_program_purpose
+                : mtl::GetShaderProgramPurpose(definition.compositor_pass);
+        const bool depth_purpose =
+            purpose == mtl::ShaderProgramPurpose::DepthOnly
+         || purpose == mtl::ShaderProgramPurpose::ShadowDepth;
+        const bool masked =
+            definition.compositor_blend == BlendMode::Masked;
+        const mtl::FixedPipelineVariant *variant = nullptr;
+        mtl::SceneRenderTemplateProfile scene_profile{};
+
+        if (depth_purpose)
+        {
+            variant = mtl::ResolveFixedPipelineVariant(
+                { mtl::FixedPipelineFamily::ShadowCaster,
+                  masked ? mtl::FixedShaderProfile::ShadowCasterMasked
+                         : mtl::FixedShaderProfile::ShadowCasterOpaque,
+                  mtl::FixedShaderQualityTier::Default });
+            scene_profile = mtl::MakeShadowCasterProfile(masked);
+        }
+        else
+        {
+            const mtl::FixedShaderProfile profile =
+                request.recipe.resolved_shader_profile
+                    != mtl::FixedShaderProfile::Unknown
+                ? request.recipe.resolved_shader_profile
+                : definition.default_shader_profile;
+            variant = mtl::ResolveFixedPipelineVariantForQuality(
+                definition.pipeline_family,
+                definition.allowed_shader_profiles,
+                profile,
+                request.recipe.quality_tier);
+
+            if (definition.pipeline_family == mtl::FixedPipelineFamily::ForwardLit)
+                scene_profile = mtl::MakeIdentityForwardLitProfile();
+            else if (definition.pipeline_family
+                     == mtl::FixedPipelineFamily::ForwardUnlit)
+                scene_profile = mtl::MakeForwardUnlitProfile();
+            else if (definition.pipeline_family == mtl::FixedPipelineFamily::Sky)
+                scene_profile = mtl::MakeSkyProfile();
+        }
+
+        mtl::RenderTemplateValidationDiagnostic diagnostic{};
+        if (variant && scene_profile.module_count > 0
+         && mtl::ResolveSceneRenderTemplateRequest(
+                *variant, ShaderStage::Fragment, scene_profile,
+                out_request, diagnostic))
+            return true;
+
+        GLogError(
+            "[ShaderProgramManager] Render template request resolution failed: id=%s error=%s",
+            definition.definition_id.c_str(),
+            mtl::GetRenderTemplateValidationErrorName(diagnostic.error));
+        return false;
     }
 
     void CreateShaderStageList(ValueArray<VkPipelineShaderStageCreateInfo> &shader_stage_list,ShaderModuleMap *shader_maps)
@@ -499,8 +567,15 @@ namespace
         if (!ResolveMaterialDefinitionForRequest(request, out_definition))
             return nullptr;
 
+        mtl::MaterialDefinitionBuildRequest resolved_request = request;
+        if (!ResolveRuntimeRenderTemplateRequest(
+                out_definition, resolved_request,
+                resolved_request.render_template_request))
+            return nullptr;
+
         AutoDelete<mtl::ShaderBuildContext> ctx =
-            mtl::CreateMaterialFromDefinition(profile, out_definition, request);
+            mtl::CreateMaterialFromDefinition(
+                profile, out_definition, resolved_request);
         if (!ctx)
         {
             GLogError("[ShaderProgramManager] Material definition build failed: id=%s name=%s",

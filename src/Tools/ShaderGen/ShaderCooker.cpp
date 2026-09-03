@@ -377,6 +377,7 @@ int main(const int argc, char **argv)
                         purpose == ShaderProgramPurpose::DepthOnly
                      || purpose == ShaderProgramPurpose::ShadowDepth
                      || definition.pipeline_family == FixedPipelineFamily::ForwardLit
+                     || definition.pipeline_family == FixedPipelineFamily::ForwardUnlit
                      || definition.pipeline_family == FixedPipelineFamily::Sky;
                     if (requires_template_request && variant
                      && ResolveSceneRenderTemplateRequest(
