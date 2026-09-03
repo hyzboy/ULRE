@@ -137,6 +137,27 @@ endif()
 
 ####################################################################################################
 
+add_executable(SceneRenderTemplateResolverRegression
+    SceneRenderTemplateResolverRegression.cpp)
+
+target_link_libraries(SceneRenderTemplateResolverRegression
+    PRIVATE ULRE.ShaderGen
+            CMCore
+            CMCoreType)
+
+CreateProject(SceneRenderTemplateResolverRegression)
+
+if(BUILD_TESTING)
+    add_test(
+        NAME scene_render_template_resolver_regression
+        COMMAND SceneRenderTemplateResolverRegression)
+    set_tests_properties(
+        scene_render_template_resolver_regression
+        PROPERTIES LABELS "shadergen;template")
+endif()
+
+####################################################################################################
+
 add_executable(ShaderLegacyDocumentCompare
     ShaderLegacyDocumentCompare.cpp)
 

@@ -1,0 +1,27 @@
+#pragma once
+
+#include <hgl/mtl/FixedPipelineVariant.h>
+#include <hgl/mtl/RenderTemplate.h>
+
+namespace hgl::graph::mtl
+{
+    // Render-preparation output. Provider roots are always explicit; this
+    // resolver never invents identity or fallback modules.
+    struct SceneRenderTemplateProfile
+    {
+        ShaderModuleSlotRole roles[MaxRenderTemplateModuleRoots]{};
+        AnsiString module_names[MaxRenderTemplateModuleRoots];
+        uint32 module_count = 0;
+
+        bool AddModule(
+            ShaderModuleSlotRole role,
+            const AnsiString &module_name) noexcept;
+    };
+
+    bool ResolveSceneRenderTemplateRequest(
+        const FixedPipelineVariant &variant,
+        ShaderStage stage,
+        const SceneRenderTemplateProfile &profile,
+        RenderTemplateRequest &out_request,
+        RenderTemplateValidationDiagnostic &out_diagnostic) noexcept;
+}

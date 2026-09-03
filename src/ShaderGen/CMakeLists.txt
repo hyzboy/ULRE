@@ -36,7 +36,9 @@ SOURCE_GROUP("Document" FILES ${DOCUMENT_FILES})
 set(TEMPLATE_FILES
     ${SHADERGEN_INCLUDE_PATH}/RenderTemplate.h
     ${SHADERGEN_INCLUDE_PATH}/ResolvedRenderTemplate.h
+    ${SHADERGEN_INCLUDE_PATH}/SceneRenderTemplateResolver.h
     template/RenderTemplate.cpp
+    template/SceneRenderTemplateResolver.cpp
     ${SHADERGEN_INCLUDE_PATH}/FixedPipelineVariant.h
     template/FixedPipelineVariant.cpp
     ${SHADERGEN_INCLUDE_PATH}/FragmentTemplateComposer.h
