@@ -1683,21 +1683,20 @@ namespace
             request.defer_finalize = true;
             if (definition.pipeline_family == FixedPipelineFamily::ForwardUnlit)
             {
-                request.render_template_request.template_id =
-                    RenderTemplateID::ForwardUnlit;
-                request.render_template_request.template_version = 1;
-                request.render_template_request.stage =
-                    hgl::graph::ShaderStage::Fragment;
-                request.render_template_request.AddModuleRoot(
-                    ShaderModuleSlotRole::SurfaceProvider,
-                    "material_surface");
-                request.render_template_request.module_roots[0].include_path =
-                    "surface/material_surface.glsl";
-                request.render_template_request.AddModuleRoot(
-                    ShaderModuleSlotRole::OutputPolicy,
-                    "forward_lighting");
-                request.render_template_request.module_roots[1].include_path =
-                    "compositor/forward_lighting.glsl";
+                const FixedPipelineVariant *variant =
+                    ResolveFixedPipelineVariantForQuality(
+                        definition.pipeline_family,
+                        definition.allowed_shader_profiles,
+                        definition.default_shader_profile,
+                        FixedShaderQualityTier::Default);
+                const SceneRenderTemplateProfile profile =
+                    MakeForwardUnlitProfile();
+                RenderTemplateValidationDiagnostic template_diagnostic{};
+                if (!variant || !ResolveSceneRenderTemplateRequest(
+                        *variant, hgl::graph::ShaderStage::Fragment,
+                        profile, request.render_template_request,
+                        template_diagnostic))
+                    return std::unique_ptr<ShaderBuildContext>();
             }
             else if (definition.pipeline_family == FixedPipelineFamily::ForwardLit)
             {
@@ -2376,6 +2375,31 @@ namespace
                     request.override_shader_program_purpose =
                         override_purpose;
                     request.shader_program_purpose = purpose;
+                    const bool depth_purpose =
+                        purpose == ShaderProgramPurpose::DepthOnly
+                     || purpose == ShaderProgramPurpose::ShadowDepth;
+                    const bool masked =
+                        alpha_test || dither || alpha_to_coverage;
+                    const FixedPipelineVariant *variant = depth_purpose
+                        ? ResolveFixedPipelineVariant(
+                            { FixedPipelineFamily::ShadowCaster,
+                              masked ? FixedShaderProfile::ShadowCasterMasked
+                                     : FixedShaderProfile::ShadowCasterOpaque,
+                              FixedShaderQualityTier::Default })
+                        : ResolveFixedPipelineVariantForQuality(
+                            selected.pipeline_family,
+                            selected.allowed_shader_profiles,
+                            selected.default_shader_profile,
+                            FixedShaderQualityTier::Default);
+                    const SceneRenderTemplateProfile profile = depth_purpose
+                        ? MakeShadowCasterProfile(masked)
+                        : MakeIdentityForwardLitProfile();
+                    RenderTemplateValidationDiagnostic template_diagnostic{};
+                    if (!variant || !ResolveSceneRenderTemplateRequest(
+                            *variant, hgl::graph::ShaderStage::Fragment,
+                            profile, request.render_template_request,
+                            template_diagnostic))
+                        return std::unique_ptr<ShaderBuildContext>();
                     return std::unique_ptr<ShaderBuildContext>(
                         CreateMaterialFromDefinition(
                             nullptr, selected, request));

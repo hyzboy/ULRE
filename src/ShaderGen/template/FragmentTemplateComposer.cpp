@@ -324,8 +324,17 @@ namespace
         document.Clear();
         AddTemplateBlock(document, ShaderDocumentBlockKind::Version,
             AnsiString("#version 450\n"), "ShadowCaster.Version");
+        std::string defines = "#define HGL_COVERAGE_ONLY 1\n";
+        if (input.alpha_test)
+        {
+            defines += "#define HGL_ALPHA_TEST 1\n#define HGL_ALPHA_CUTOFF ";
+            defines += std::to_string(input.alpha_cutoff);
+            defines += "\n";
+        }
+        if (input.dither)
+            defines += "#define HGL_ALPHA_DITHER 1\n";
         AddTemplateBlock(document, ShaderDocumentBlockKind::Define,
-            AnsiString("#define HGL_COVERAGE_ONLY 1\n"), "ShadowCaster.Defines");
+            AnsiString(defines.c_str()), "ShadowCaster.Defines");
         if (input.code_module_glsl)
             AddTemplateBlock(document, ShaderDocumentBlockKind::Module,
                 AnsiString(input.code_module_glsl->c_str()),

@@ -23,7 +23,6 @@
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/mtl/ShaderCodeModuleCapabilityResolver.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
-#include <hgl/mtl/SceneRenderTemplateResolver.h>
 #include "compile/MaterialShaderEmitter.h"
 #include "builder/DefinitionDescriptorBuilder.h"
 #include "meshgen/MeshShaderAssembler.h"
@@ -164,6 +163,12 @@ namespace hgl::graph::mtl
                     definition.definition_name.c_str());
                 return false;
             }
+            if (!BuildMaterialCoverageContract(
+                    definition,
+                    request.recipe,
+                    plan.purpose,
+                    plan.coverage))
+                return false;
             {
                 hgl::hash::FNV1aHasher64 template_hasher;
                 template_hasher << plan.pipeline_variant->fragment_template
@@ -173,94 +178,69 @@ namespace hgl::graph::mtl
                                << plan.pipeline_variant->key.quality_tier;
                 plan.resolved_template_hash = template_hasher;
             }
-            RenderTemplateRequest resolved_request = request.render_template_request;
+            const RenderTemplateRequest &resolved_request =
+                request.render_template_request;
             if (resolved_request.template_id == RenderTemplateID::Unknown)
             {
-                SceneRenderTemplateProfile default_profile{};
-                switch (plan.pipeline_variant->fragment_template)
-                {
-                case RenderTemplateID::ForwardLitShadowedAO:
-                case RenderTemplateID::ForwardLitShadowedIdentityAO:
-                case RenderTemplateID::ForwardLitUnshadowedAO:
-                   default_profile = MakeIdentityForwardLitProfile();
-                   break;
-                case RenderTemplateID::ForwardUnlit:
-                   default_profile = MakeForwardUnlitProfile();
-                   break;
-                case RenderTemplateID::Sky:
-                   default_profile = MakeSkyProfile();
-                   break;
-                case RenderTemplateID::ShadowCasterOpaque:
-                case RenderTemplateID::ShadowCasterMasked:
-                   default_profile = MakeShadowCasterProfile(
-                       plan.pipeline_variant->fragment_template == RenderTemplateID::ShadowCasterMasked);
-                   break;
-                default:
-                   break;
-                }
-                if (default_profile.module_count > 0)
-                {
-                   RenderTemplateValidationDiagnostic diagnostic{};
-                   if (!ResolveSceneRenderTemplateRequest(
-                           *plan.pipeline_variant,
-                           ShaderStage::Fragment,
-                           default_profile,
-                           resolved_request,
-                           diagnostic))
-                   {
-                       GLogError(
-                           "[ShaderGen] Default render template request resolution failed: name=%s error=%s",
-                           definition.definition_name.c_str(),
-                           GetRenderTemplateValidationErrorName(
-                               diagnostic.error));
-                       return false;
-                   }
-                }
+                GLogError(
+                   "[ShaderGen] Material build requires a resolved render template request: name=%s",
+                   definition.definition_name.c_str());
+                return false;
             }
-            if (resolved_request.template_id != RenderTemplateID::Unknown)
             {
                 plan.render_template_request_storage = resolved_request;
                 plan.render_template_request = &plan.render_template_request_storage;
                 RenderTemplateValidationDiagnostic diagnostic{};
                 const ShaderCodeModuleRegistry &module_registry =
-                  GetShaderCodeModuleRegistry();
+                   GetShaderCodeModuleRegistry();
                 if (!ValidateRenderTemplateRequest(
                        *plan.render_template_request,
                        module_registry,
                        diagnostic)
-                  || plan.render_template_request->template_id
-                        != ((plan.purpose == ShaderProgramPurpose::DepthOnly
-                             || plan.purpose == ShaderProgramPurpose::ShadowDepth)
-                            ? (plan.coverage.requires_alpha_evaluation
-                                ? RenderTemplateID::ShadowCasterMasked
-                                : RenderTemplateID::ShadowCasterOpaque)
-                            : plan.pipeline_variant->fragment_template)
-                  || plan.render_template_request->template_version
-                        != plan.pipeline_variant->template_version)
-                {
-                   GLogError(
-                       "[ShaderGen] Render template request does not match pipeline variant: name=%s",
-                       definition.definition_name.c_str());
-                   return false;
-                }
-                plan.resolved_template_hash =
-                   plan.render_template_request->GetHash();
-                if (!ResolveRenderTemplate(
-                       *plan.render_template_request,
-                       GetShaderCodeModuleRegistry(),
-                       plan.resolved_render_template,
-                       diagnostic))
-                   return false;
-            }            else
+                 || plan.render_template_request->template_id
+                       != ((plan.purpose == ShaderProgramPurpose::DepthOnly
+                            || plan.purpose == ShaderProgramPurpose::ShadowDepth)
+                           ? (plan.coverage.requires_alpha_evaluation
+                               ? RenderTemplateID::ShadowCasterMasked
+                               : RenderTemplateID::ShadowCasterOpaque)
+                           : plan.pipeline_variant->fragment_template)
+                 || plan.render_template_request->template_version
+                       != plan.pipeline_variant->template_version)
             {
-                plan.render_template_request = nullptr;
-            }
-            if (!BuildMaterialCoverageContract(
-                    definition,
-                    request.recipe,
-                    plan.purpose,
-                    plan.coverage))
+                GLogError(
+                   "[ShaderGen] Render template request rejected: name=%s "
+                   "template=%s expected=%s validation=%s",
+                   definition.definition_name.c_str(),
+                   GetRenderTemplateName(
+                       plan.render_template_request->template_id),
+                   GetRenderTemplateName(
+                       (plan.purpose == ShaderProgramPurpose::DepthOnly
+                     || plan.purpose == ShaderProgramPurpose::ShadowDepth)
+                           ? (plan.coverage.requires_alpha_evaluation
+                               ? RenderTemplateID::ShadowCasterMasked
+                               : RenderTemplateID::ShadowCasterOpaque)
+                           : plan.pipeline_variant->fragment_template),
+                   GetRenderTemplateValidationErrorName(diagnostic.error));
                 return false;
+            }
+            plan.resolved_template_hash =
+                plan.render_template_request->GetHash();
+            if (!ResolveRenderTemplate(
+                   *plan.render_template_request,
+                   GetShaderCodeModuleRegistry(),
+                   plan.resolved_render_template,
+                   diagnostic))
+            {
+                GLogError(
+                   "[ShaderGen] Render template resolution failed: name=%s "
+                   "template=%s validation=%s",
+                   definition.definition_name.c_str(),
+                   GetRenderTemplateName(
+                       plan.render_template_request->template_id),
+                   GetRenderTemplateValidationErrorName(diagnostic.error));
+                return false;
+            }
+            }
             plan.depth_purpose =
                 plan.purpose == ShaderProgramPurpose::DepthOnly
              || plan.purpose == ShaderProgramPurpose::ShadowDepth;

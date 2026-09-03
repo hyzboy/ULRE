@@ -6,6 +6,7 @@
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
 #include <hgl/mtl/MaterialShaderCompiler.h>
 #include <hgl/mtl/SamplerPreset.h>
+#include <hgl/mtl/SceneRenderTemplateResolver.h>
 #include <hgl/mtl/ShaderBuildContext.h>
 #include <hgl/mtl/ShaderCreateInfo.h>
 #include <hgl/mtl/ShaderKeyUtility.h>
@@ -27,6 +28,50 @@ namespace
         ShaderProgramPurpose purpose;
         bool requires_geometry;
     };
+
+    bool ResolveFixtureTemplateRequest(
+        const MaterialDefinition &definition,
+        const ShaderProgramPurpose purpose,
+        RenderTemplateRequest &out_request)
+    {
+        const bool depth_purpose =
+            purpose == ShaderProgramPurpose::DepthOnly
+         || purpose == ShaderProgramPurpose::ShadowDepth;
+        const bool masked = definition.compositor_blend == BlendMode::Masked;
+        const FixedPipelineVariant *variant = nullptr;
+        SceneRenderTemplateProfile profile{};
+
+        if (depth_purpose)
+        {
+            variant = ResolveFixedPipelineVariant(
+                { FixedPipelineFamily::ShadowCaster,
+                  masked ? FixedShaderProfile::ShadowCasterMasked
+                         : FixedShaderProfile::ShadowCasterOpaque,
+                  FixedShaderQualityTier::Default });
+            profile = MakeShadowCasterProfile(masked);
+        }
+        else
+        {
+            variant = ResolveFixedPipelineVariantForQuality(
+                definition.pipeline_family,
+                definition.allowed_shader_profiles,
+                definition.default_shader_profile,
+                FixedShaderQualityTier::Default);
+            if (definition.pipeline_family == FixedPipelineFamily::ForwardLit)
+                profile = MakeIdentityForwardLitProfile();
+            else if (definition.pipeline_family
+                     == FixedPipelineFamily::ForwardUnlit)
+                profile = MakeForwardUnlitProfile();
+            else if (definition.pipeline_family == FixedPipelineFamily::Sky)
+                profile = MakeSkyProfile();
+        }
+
+        RenderTemplateValidationDiagnostic diagnostic{};
+        return variant && profile.module_count > 0
+            && ResolveSceneRenderTemplateRequest(
+                *variant, ShaderStage::Fragment, profile,
+                out_request, diagnostic);
+    }
 
     const char *GetBlockKindName(const ShaderDocumentBlockKind kind)
     {
@@ -341,6 +386,15 @@ namespace
         request.override_shader_program_purpose =
             fixture.purpose != ShaderProgramPurpose::ForwardColor;
         request.shader_program_purpose = fixture.purpose;
+        if (!ResolveFixtureTemplateRequest(
+                definition, fixture.purpose,
+                request.render_template_request))
+        {
+            GLogError(
+                "[ShaderLegacyDocumentCompare] fixture=%s cannot resolve template request",
+                fixture.name);
+            return false;
+        }
 
         AutoDelete<ShaderBuildContext> context(
             CreateMaterialFromDefinition(nullptr, definition, request, &capture));
