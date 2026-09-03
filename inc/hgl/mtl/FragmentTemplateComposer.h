@@ -4,10 +4,8 @@
 #include <hgl/mtl/MaterialCoverageContract.h>
 #include <hgl/mtl/MaterialOutputContract.h>
 #include <hgl/mtl/MaterialStageInterface.h>
-#include <hgl/mtl/PassType.h>
 #include <hgl/mtl/RenderTemplate.h>
 #include <hgl/mtl/ResolvedRenderTemplate.h>
-#include <hgl/mtl/SurfaceType.h>
 #include <hgl/mtl/ShaderDocument.h>
 
 #include <string>
@@ -26,9 +24,6 @@ namespace hgl::graph::mtl
             const RenderTemplateRequest *request = nullptr;
             const ResolvedRenderTemplate *resolved_template = nullptr;
             const FixedPipelineVariant *variant = nullptr;
-            SurfaceType surface = SurfaceType::Unlit;
-            PassType pass = PassType::ForwardOpaque;
-            const char *fragment_source = nullptr;
             const char *surface_module = nullptr;
             const char *sky_module = nullptr;
             const char *direct_lighting_module = nullptr;
@@ -39,7 +34,6 @@ namespace hgl::graph::mtl
             const char *forward_lighting_module = nullptr;
             bool enable_material_source_provider = false;
             bool enable_ntb_provider = false;
-            bool enable_scene_lighting = false;
             bool alpha_test = false;
             float alpha_cutoff = 0.5f;
             bool dither = false;

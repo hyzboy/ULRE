@@ -563,26 +563,6 @@ namespace hgl::graph::mtl
                         output_diagnostic.error));
                 return false;
             }
-            PassType effective_pass = definition.compositor_pass;
-            const char *effective_fragment_source =
-                definition.fragment_source;
-            if (plan.purpose
-                == ShaderProgramPurpose::DepthOnly)
-            {
-                effective_pass = plan.coverage.requires_alpha_evaluation
-                    ? PassType::EarlyZMasked
-                    : PassType::EarlyZSolid;
-                effective_fragment_source = nullptr;
-            }
-            else if (plan.purpose
-                == ShaderProgramPurpose::ShadowDepth)
-            {
-                effective_pass = plan.coverage.requires_alpha_evaluation
-                    ? PassType::ShadowMasked
-                    : PassType::ShadowOpaque;
-                effective_fragment_source = nullptr;
-            }
-
             ShaderDocument local_fragment_document;
             ShaderDocument &fragment_document = document_capture
                 ? document_capture->fragment_source_document
@@ -596,9 +576,6 @@ namespace hgl::graph::mtl
                 plan.resolved_render_template.IsValid()
                     ? &plan.resolved_render_template : nullptr;
             compose_input.variant = plan.pipeline_variant;
-            compose_input.surface = definition.compositor_surface;
-            compose_input.pass = effective_pass;
-            compose_input.fragment_source = effective_fragment_source;
             compose_input.surface_module = definition.fragment_surface_module;
             compose_input.alpha_test =
                 plan.coverage.mode == MaterialCoverageMode::AlphaTest
@@ -621,8 +598,6 @@ namespace hgl::graph::mtl
             compose_input.enable_ntb_provider =
                 compose_input.ntb_module != nullptr
                 && compose_input.ntb_module[0] != '\0';
-            compose_input.enable_scene_lighting =
-                plan.purpose == ShaderProgramPurpose::ForwardColor;
             compose_input.code_module_glsl = &code_module_glsl;
             if (!composer.Compose(
                     compose_input, fragment_document, fragment_diagnostics))
