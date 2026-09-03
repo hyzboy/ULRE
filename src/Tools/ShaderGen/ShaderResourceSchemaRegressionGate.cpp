@@ -2718,6 +2718,49 @@ namespace
                 request.recipe.mtl_def_id = definition.definition_id;
                 request.geometry_vertex_format = &geometry;
                 request.defer_finalize = true;
+                RenderTemplateValidationDiagnostic template_diagnostic{};
+                if (definition.pipeline_family == FixedPipelineFamily::ForwardLit)
+                {
+                    const FixedPipelineVariant *variant =
+                        ResolveFixedPipelineVariant(
+                            { FixedPipelineFamily::ForwardLit,
+                              definition.default_shader_profile,
+                              FixedShaderQualityTier::High });
+                    if (!variant)
+                        return std::unique_ptr<ShaderBuildContext>();
+                    SceneRenderTemplateProfile profile =
+                        MakeIdentityForwardLitProfile();
+                    if (!ResolveSceneRenderTemplateRequest(
+                            *variant, hgl::graph::ShaderStage::Fragment,
+                            profile, request.render_template_request,
+                            template_diagnostic))
+                        return std::unique_ptr<ShaderBuildContext>();
+                }
+                else if (definition.pipeline_family
+                         == FixedPipelineFamily::ForwardUnlit)
+                {
+                    SceneRenderTemplateProfile profile;
+                    if (!profile.AddModule(
+                            ShaderModuleSlotRole::SurfaceProvider,
+                            "material_surface",
+                            "surface/material_surface.glsl")
+                     || !profile.AddModule(
+                            ShaderModuleSlotRole::OutputPolicy,
+                            "forward_lighting",
+                            "compositor/forward_lighting.glsl"))
+                        return std::unique_ptr<ShaderBuildContext>();
+                    const FixedPipelineVariant *variant =
+                        ResolveFixedPipelineVariant(
+                            { FixedPipelineFamily::ForwardUnlit,
+                              definition.default_shader_profile,
+                              FixedShaderQualityTier::Default });
+                    if (!variant
+                     || !ResolveSceneRenderTemplateRequest(
+                            *variant, hgl::graph::ShaderStage::Fragment,
+                            profile, request.render_template_request,
+                            template_diagnostic))
+                        return std::unique_ptr<ShaderBuildContext>();
+                }
                 return std::unique_ptr<ShaderBuildContext>(
                     CreateMaterialFromDefinition(
                         nullptr, definition, request));
@@ -2753,7 +2796,7 @@ namespace
                         "#include \"lighting/forward_flat.glsl\"")
                         == std::string::npos
                  || unlit_fs.find(
-                        "#include \"compositor/flat_lighting.glsl\"")
+                        "#include \"common/surface_interface.glsl\"")
                         == std::string::npos
                  || lit_fs.find(
                         "EvalSurface(si, materialDataIndex)")
