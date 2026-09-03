@@ -6,6 +6,7 @@
 #include <hgl/mtl/MaterialStageInterface.h>
 #include <hgl/mtl/PassType.h>
 #include <hgl/mtl/RenderTemplate.h>
+#include <hgl/mtl/ResolvedRenderTemplate.h>
 #include <hgl/mtl/SurfaceType.h>
 #include <hgl/mtl/ShaderDocument.h>
 
@@ -46,6 +47,7 @@ namespace hgl::graph::mtl
         struct ComposeInput
         {
             const RenderTemplateRequest *request = nullptr;
+            const ResolvedRenderTemplate *resolved_template = nullptr;
             const FixedPipelineVariant *variant = nullptr;
             SurfaceType surface = SurfaceType::Unlit;
             PassType pass = PassType::ForwardOpaque;

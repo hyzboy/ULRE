@@ -634,42 +634,56 @@ namespace hgl::graph::mtl
         ShaderDocument &out_document,
         ShaderDocumentDiagnostics &out_diagnostics) const
     {
-        if (input.request)
+        ComposeInput resolved_input = input;
+        if (input.resolved_template)
+        {
+            if (!input.resolved_template->IsValid())
+               return false;
+            if (input.request
+             && input.request->GetHash()
+                   != input.resolved_template->request.GetHash())
+               return false;
+            resolved_input.request = &input.resolved_template->request;
+        }
+
+        if (resolved_input.request)
         {
             RenderTemplateValidationDiagnostic diagnostic{};
             if (!ValidateRenderTemplateRequest(
-                    *input.request,
-                    GetShaderCodeModuleRegistry(),
-                    diagnostic))
-                return false;
-            if (input.variant
-             && (input.request->template_id != input.variant->fragment_template
-              || input.request->template_version != input.variant->template_version))
-                return false;
+                   *resolved_input.request,
+                   GetShaderCodeModuleRegistry(),
+                   diagnostic))
+               return false;
+            if (resolved_input.variant
+             && (resolved_input.request->template_id
+                   != resolved_input.variant->fragment_template
+              || resolved_input.request->template_version
+                   != resolved_input.variant->template_version))
+               return false;
         }
 
-        if (input.request
-         && input.request->template_id == RenderTemplateID::ForwardUnlit)
-            return ComposeForwardUnlit(input, out_document);
-        if (input.request
-         && input.request->template_id == RenderTemplateID::Sky)
-            return ComposeSky(input, out_document);
-        if (input.request
-         && (input.request->template_id == RenderTemplateID::ShadowCasterOpaque
-          || input.request->template_id == RenderTemplateID::ShadowCasterMasked))
-            return ComposeShadow(input, out_document);
-        if (input.request
-         && (input.request->template_id == RenderTemplateID::ForwardLitShadowedAO
-          || input.request->template_id
-                 == RenderTemplateID::ForwardLitShadowedIdentityAO
-          || input.request->template_id == RenderTemplateID::ForwardLitUnshadowedAO))
-            return ComposeForwardLit(input, out_document);
-        if (input.request
-         && (input.request->template_id == RenderTemplateID::Decal
-          || input.request->template_id == RenderTemplateID::PostProcessSSAO
-          || input.request->template_id == RenderTemplateID::PostProcessDOF))
+        if (resolved_input.request
+         && resolved_input.request->template_id == RenderTemplateID::ForwardUnlit)
+            return ComposeForwardUnlit(resolved_input, out_document);
+        if (resolved_input.request
+         && resolved_input.request->template_id == RenderTemplateID::Sky)
+            return ComposeSky(resolved_input, out_document);
+        if (resolved_input.request
+         && (resolved_input.request->template_id == RenderTemplateID::ShadowCasterOpaque
+          || resolved_input.request->template_id == RenderTemplateID::ShadowCasterMasked))
+            return ComposeShadow(resolved_input, out_document);
+        if (resolved_input.request
+         && (resolved_input.request->template_id == RenderTemplateID::ForwardLitShadowedAO
+          || resolved_input.request->template_id
+                == RenderTemplateID::ForwardLitShadowedIdentityAO
+          || resolved_input.request->template_id == RenderTemplateID::ForwardLitUnshadowedAO))
+            return ComposeForwardLit(resolved_input, out_document);
+        if (resolved_input.request
+         && (resolved_input.request->template_id == RenderTemplateID::Decal
+          || resolved_input.request->template_id == RenderTemplateID::PostProcessSSAO
+          || resolved_input.request->template_id == RenderTemplateID::PostProcessDOF))
             return ComposeUnimplemented(
-                input.request->template_id, out_document);
+               resolved_input.request->template_id, out_document);
 
         const std::string empty_code_module_glsl;
         const std::string &code_module_glsl = input.code_module_glsl
