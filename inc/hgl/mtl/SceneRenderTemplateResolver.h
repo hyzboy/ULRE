@@ -25,6 +25,13 @@ namespace hgl::graph::mtl
     SceneRenderTemplateProfile MakeSkyProfile() noexcept;
     SceneRenderTemplateProfile MakeShadowCasterProfile(bool masked) noexcept;
 
+    bool ResolveShadowCasterRequest(
+        bool masked,
+        ShaderStage stage,
+        const SceneRenderTemplateProfile &profile,
+        RenderTemplateRequest &out_request,
+        RenderTemplateValidationDiagnostic &out_diagnostic) noexcept;
+
     bool ResolveSceneRenderTemplateRequest(
         const FixedPipelineVariant &variant,
         ShaderStage stage,

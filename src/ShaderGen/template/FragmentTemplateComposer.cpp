@@ -695,6 +695,10 @@ namespace hgl::graph::mtl
             if (resolved_input.variant
              && (resolved_input.request->template_id
                    != resolved_input.variant->fragment_template
+                 && resolved_input.request->template_id
+                       != RenderTemplateID::ShadowCasterOpaque
+                 && resolved_input.request->template_id
+                       != RenderTemplateID::ShadowCasterMasked
               || resolved_input.request->template_version
                    != resolved_input.variant->template_version))
                return false;

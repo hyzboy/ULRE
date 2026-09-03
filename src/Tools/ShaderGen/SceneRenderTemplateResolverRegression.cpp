@@ -64,6 +64,18 @@ int main()
     if (shadow_profile.module_count != 2
      || shadow_profile.roles[0] != ShaderModuleSlotRole::SurfaceProvider)
         return 10;
+    RenderTemplateRequest shadow_request;
+    if (!ResolveShadowCasterRequest(
+            true, hgl::graph::ShaderStage::Fragment, shadow_profile,
+            shadow_request, diagnostic)
+     || shadow_request.template_id != RenderTemplateID::ShadowCasterMasked)
+        return 11;
+    RenderTemplateRequest opaque_request;
+    if (!ResolveShadowCasterRequest(
+            false, hgl::graph::ShaderStage::Fragment,
+            MakeShadowCasterProfile(false), opaque_request, diagnostic)
+     || opaque_request.template_id != RenderTemplateID::ShadowCasterOpaque)
+        return 12;
 
     SceneRenderTemplateProfile duplicate;
     SceneRenderTemplateProfile missing_path;

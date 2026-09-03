@@ -224,7 +224,12 @@ namespace hgl::graph::mtl
                         module_registry,
                         diagnostic)
                  || plan.render_template_request->template_id
-                        != plan.pipeline_variant->fragment_template
+                        != ((plan.purpose == ShaderProgramPurpose::DepthOnly
+                             || plan.purpose == ShaderProgramPurpose::ShadowDepth)
+                            ? (plan.coverage.requires_alpha_evaluation
+                                ? RenderTemplateID::ShadowCasterMasked
+                                : RenderTemplateID::ShadowCasterOpaque)
+                            : plan.pipeline_variant->fragment_template)
                  || plan.render_template_request->template_version
                         != plan.pipeline_variant->template_version)
                 {

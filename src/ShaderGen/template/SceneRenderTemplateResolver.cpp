@@ -69,6 +69,22 @@ namespace hgl::graph::mtl
         return profile;
     }
 
+    bool ResolveShadowCasterRequest(
+        const bool masked,
+        const ShaderStage stage,
+        const SceneRenderTemplateProfile &profile,
+        RenderTemplateRequest &out_request,
+        RenderTemplateValidationDiagnostic &out_diagnostic) noexcept
+    {
+        FixedPipelineVariant variant{};
+        variant.fragment_template = masked
+            ? RenderTemplateID::ShadowCasterMasked
+            : RenderTemplateID::ShadowCasterOpaque;
+        variant.template_version = 1;
+        return ResolveSceneRenderTemplateRequest(
+            variant, stage, profile, out_request, out_diagnostic);
+    }
+
     bool SceneRenderTemplateProfile::AddModule(
         const ShaderModuleSlotRole role,
         const AnsiString &module_name,

@@ -4623,6 +4623,65 @@ namespace
             request.defer_finalize = true;
             request.override_shader_program_purpose = variant.override_purpose;
             request.shader_program_purpose = variant.purpose;
+            if (variant.purpose == ShaderProgramPurpose::DepthOnly
+             || variant.purpose == ShaderProgramPurpose::ShadowDepth)
+            {
+                const bool masked = definition.compositor_blend == BlendMode::Masked;
+                const SceneRenderTemplateProfile profile =
+                    MakeShadowCasterProfile(masked);
+                const FixedPipelineVariant shadow_variant{
+                    { FixedPipelineFamily::ShadowCaster,
+                      masked ? FixedShaderProfile::ShadowCasterMasked
+                             : FixedShaderProfile::ShadowCasterOpaque,
+                      FixedShaderQualityTier::Default },
+                    masked ? RenderTemplateID::ShadowCasterMasked
+                           : RenderTemplateID::ShadowCasterOpaque,
+                    1 };
+                RenderTemplateValidationDiagnostic template_diagnostic{};
+                if (!ResolveSceneRenderTemplateRequest(
+                        shadow_variant, hgl::graph::ShaderStage::Fragment,
+                        profile, request.render_template_request,
+                        template_diagnostic))
+                {
+                    result.diagnostics.emplace_back(
+                        std::string("shadow request resolve failed: ")
+                        + variant.golden_slug);
+                    continue;
+                }
+            }
+            else if (variant.purpose == ShaderProgramPurpose::ForwardColor)
+            {
+                const FixedPipelineFamily family = definition.pipeline_family;
+                const FixedShaderQualityTier quality =
+                    family == FixedPipelineFamily::ForwardLit
+                        ? FixedShaderQualityTier::High
+                        : FixedShaderQualityTier::Default;
+                const FixedPipelineVariant *forward_variant =
+                    ResolveFixedPipelineVariant(
+                        { family, definition.default_shader_profile, quality });
+                if (!forward_variant)
+                {
+                    result.diagnostics.emplace_back(
+                        std::string("forward variant resolve failed: ")
+                        + variant.golden_slug);
+                    continue;
+                }
+                const SceneRenderTemplateProfile profile =
+                    family == FixedPipelineFamily::ForwardLit
+                        ? MakeIdentityForwardLitProfile()
+                        : MakeForwardUnlitProfile();
+                RenderTemplateValidationDiagnostic template_diagnostic{};
+                if (!ResolveSceneRenderTemplateRequest(
+                        *forward_variant, hgl::graph::ShaderStage::Fragment,
+                        profile, request.render_template_request,
+                        template_diagnostic))
+                {
+                    result.diagnostics.emplace_back(
+                        std::string("forward request resolve failed: ")
+                        + variant.golden_slug);
+                    continue;
+                }
+            }
 
             const std::unique_ptr<ShaderBuildContext> ctx(
                 CreateMaterialFromDefinition(nullptr, definition, request));
