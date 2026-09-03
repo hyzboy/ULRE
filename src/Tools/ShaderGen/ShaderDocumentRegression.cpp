@@ -1,6 +1,7 @@
 #include <hgl/mtl/ShaderDocument.h>
 #include <hgl/mtl/FixedPipelineVariant.h>
 #include <hgl/mtl/RenderTemplate.h>
+#include <hgl/mtl/ResolvedRenderTemplate.h>
 #include <hgl/mtl/ShaderCodeModuleFile.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/mtl/ShaderLegacyAuditShell.h>
@@ -265,6 +266,16 @@ int main()
     if (!ValidateRenderTemplateRequest(
             template_request, root_registry, template_diagnostic))
         return 25;
+    ResolvedRenderTemplate resolved_template{};
+    if (!ResolveRenderTemplate(
+            template_request, root_registry, resolved_template,
+            template_diagnostic)
+     || !resolved_template.IsValid()
+     || resolved_template.definition->id != template_request.template_id
+     || resolved_template.module_root_count != template_request.module_root_count
+     || resolved_template.manifest.code_module_count != 7
+     || resolved_template.stable_hash == 0)
+        return 29;
     root_modules[1].provided_capabilities = 0;
     if (ValidateRenderTemplateRequest(
             template_request, root_registry, template_diagnostic)

@@ -120,4 +120,5 @@ namespace hgl::graph::mtl
         const RenderTemplateRequest &request,
         const ShaderCodeModuleRegistry &module_registry,
         RenderTemplateValidationDiagnostic &out_diagnostic) noexcept;
+
 }

@@ -1,4 +1,5 @@
 #include <hgl/mtl/RenderTemplate.h>
+#include <hgl/mtl/ResolvedRenderTemplate.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
 #include <hgl/mtl/ShaderCodeResourceManifest.h>
 
@@ -359,5 +360,54 @@ namespace hgl::graph::mtl
                 ShaderModuleSlotRole::Unknown,
                 "");
         return true;
+    }
+
+    bool ResolveRenderTemplate(
+        const RenderTemplateRequest &request,
+        const ShaderCodeModuleRegistry &module_registry,
+        ResolvedRenderTemplate &out_template,
+        RenderTemplateValidationDiagnostic &out_diagnostic) noexcept
+    {
+        out_template = {};
+        if (!ValidateRenderTemplateRequest(
+                request, module_registry, out_diagnostic))
+            return false;
+
+        const RenderTemplateDefinition *definition =
+            FindRenderTemplate(request.template_id);
+        const char *root_names[MaxRenderTemplateModuleRoots]{};
+        out_template.definition = definition;
+        out_template.request = request;
+        out_template.module_root_count = request.module_root_count;
+        for (uint32 index = 0; index < request.module_root_count; ++index)
+        {
+            const ShaderCodeModuleDefinition *module =
+                module_registry.FindByName(
+                    request.module_roots[index].module_name.c_str());
+            if (!module)
+                return SetFailure(
+                    out_diagnostic,
+                    RenderTemplateValidationError::ModuleNotFound,
+                    request,
+                    request.module_roots[index].role,
+                    request.module_roots[index].module_name);
+            out_template.module_roots[index] = module;
+            root_names[index] = module->name;
+        }
+        if (!BuildShaderCodeResourceManifest(
+                root_names, request.module_root_count,
+                out_template.manifest, &module_registry))
+            return SetFailure(
+                out_diagnostic,
+                out_template.manifest.error
+                    == ShaderCodeResourceManifestError::ResourceConflict
+                    ? RenderTemplateValidationError::ModuleConflict
+                    : RenderTemplateValidationError::ModuleGraphInvalid,
+                request);
+
+        hgl::hash::FNV1aHasher64 hash;
+        hash << request.GetHash() << out_template.manifest.stable_hash;
+        out_template.stable_hash = hash;
+        return out_template.IsValid();
     }
 }
