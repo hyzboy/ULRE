@@ -175,14 +175,6 @@ set(PROFILE_FILES
     ${ROOT_INCLUDE_PATH}/hgl/mtl/contract/ShaderGenProfileTargetVersion.h)
 SOURCE_GROUP("Device Profile" FILES ${PROFILE_FILES})
 
-set(RELEASE_SHELL_FILES
-    ${SHADERGEN_INCLUDE_PATH}/ShaderRuntimeReleaseShell.h
-    ${SHADERGEN_INCLUDE_PATH}/ShaderRuntimeReadOnlyValidationShell.h
-    ${SHADERGEN_INCLUDE_PATH}/ShaderRuntimeReleaseDocumentation.h
-    release/ShaderRuntimeReleaseShell.cpp
-    release/ShaderRuntimeReadOnlyValidationShell.cpp
-    release/ShaderRuntimeReleaseDocumentation.cpp)
-SOURCE_GROUP("Release Shell" FILES ${RELEASE_SHELL_FILES})
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -201,7 +193,6 @@ add_cm_library(ULRE.ShaderGen "ULRE"
     ${BUILDER_FILES}
     ${MATERIAL_TYPE_FILES}
     ${PROFILE_FILES}
-    ${RELEASE_SHELL_FILES}
 )
 
 if(ULRE_ENABLE_RELEASE_SHELL)

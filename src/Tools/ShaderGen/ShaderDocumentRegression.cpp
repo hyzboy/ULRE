@@ -3,7 +3,6 @@
 #include <hgl/mtl/ResolvedRenderTemplate.h>
 #include <hgl/mtl/ShaderCodeModuleFile.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
-#include <hgl/mtl/ShaderRuntimeReadOnlyValidationShell.h>
 #include "../../ShaderGen/document/DocumentFragmentBuilder.h"
 
 using namespace hgl::graph::mtl;
@@ -90,18 +89,6 @@ int main()
      || builder_diagnostics.GetCount() != 1)
         return 11;
 
-    ShaderRuntimeReadOnlyValidationShell validation;
-    validation.BeginValidation();
-    validation.SetCacheState(false);
-    validation.SetArtifactReadable(false);
-    validation.SetSchemaState(false);
-    validation.SetModuleReady(false);
-    validation.CompleteValidation();
-    if (validation.GetStage() != ShaderRuntimeValidationStage::Complete
-     || !validation.GetSummary().dry_run
-     || validation.GetSummary().cache_valid
-     || validation.GetSummary().artifact_readable)
-        return 12;
 
     RenderTemplateRequest template_request{};
     template_request.template_id = RenderTemplateID::ForwardLitShadowedAO;

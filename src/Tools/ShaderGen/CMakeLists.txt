@@ -180,17 +180,6 @@ if(BUILD_TESTING)
         PROPERTIES LABELS "shadergen;document;production")
 endif()
 
-####################################################################################################
-
-# 需要时可直接运行：
-#   cmake --build <build_dir> --target MaterialPresetExhaustiveCompile
-#   cmake --build <build_dir> --target ShaderResourceSchemaRegressionGate
-# 在生成目录执行：
-#   .\\test\\Debug\\MaterialPresetExhaustiveCompile.exe
-
-
-####################################################################################################
-
 # 离线 shader 预编译（方向三：离线 cook + 运行时 readonly 加载）
 # 枚举 材质×purpose×图元 变体，经生产管线编译 SPV 写入 ShaderArtifactStore
 add_executable(ShaderCooker
