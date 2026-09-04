@@ -16,6 +16,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
+#include<hgl/mtl/SceneRenderTemplateResolver.h>
 #include<hgl/vk/VKShaderProgram.h>
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
@@ -392,6 +393,13 @@ namespace hgl::ecs
             mtl_request.recipe = recipe;
             mtl_request.primitive_type = graph::PrimitiveType::Triangles;
             // CharQuad mode: no geometry_vertex_format needed (self-declares SSBOs)
+            graph::mtl::RenderTemplateValidationDiagnostic template_diagnostic{};
+            if (!graph::mtl::ResolveSceneRenderTemplateRequest(
+                    graph::mtl::RenderTemplateID::ForwardUnlit,
+                    graph::ShaderStage::Fragment,
+                    graph::mtl::MakeForwardUnlitProfile(),
+                    mtl_request.render_template_request, template_diagnostic))
+                return nullptr;
             guard.material = material_manager->AcquireShaderProgram(mtl_request);
         }
         if (!guard.material)

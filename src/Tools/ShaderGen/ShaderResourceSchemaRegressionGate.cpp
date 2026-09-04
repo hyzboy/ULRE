@@ -57,7 +57,7 @@ using namespace hgl::graph::mtl;
 namespace
 {
     static bool ComposeTemplateText(
-        const FixedPipelineVariant &variant,
+        const RenderTemplateID template_id,
         const SceneRenderTemplateProfile &profile,
         const MaterialDefinition *definition,
         const bool alpha_test,
@@ -71,7 +71,7 @@ namespace
         RenderTemplateRequest request{};
         RenderTemplateValidationDiagnostic template_diagnostic{};
         if (!ResolveSceneRenderTemplateRequest(
-                variant, ShaderStage::Fragment, profile, request,
+                template_id, ShaderStage::Fragment, profile, request,
                 template_diagnostic)
          || (definition
              && !AppendMaterialRenderTemplateRoots(*definition, request)))
@@ -92,7 +92,6 @@ namespace
         FragmentTemplateComposer composer;
         FragmentTemplateComposer::ComposeInput input{};
         input.resolved_template = &resolved_template;
-        input.variant = &variant;
         input.alpha_test = alpha_test;
         input.alpha_cutoff = alpha_cutoff;
         input.dither = dither;
@@ -579,7 +578,6 @@ namespace
         MaterialRecipe equivalent_binding_recipe = recipe;
         equivalent_binding_recipe.recipe_name = "DifferentName";
         equivalent_binding_recipe.mtl_def_id = "DifferentDefinition";
-        equivalent_binding_recipe.material_lod = 7;
         equivalent_binding_recipe.render_state_overrides.has_alpha_cutoff = true;
         equivalent_binding_recipe.render_state_overrides.alpha_cutoff = 0.25f;
         if (GetBindingSourceHash(recipe)
@@ -1016,37 +1014,6 @@ namespace
             return result;
         }
 
-        const FixedPipelineVariant *lit_variant =
-            ResolveFixedPipelineVariant(
-               { FixedPipelineFamily::ForwardLit,
-                 lit.default_shader_profile, FixedShaderQualityTier::High });
-        const FixedPipelineVariant *unlit_variant =
-            ResolveFixedPipelineVariant(
-               { FixedPipelineFamily::ForwardUnlit,
-                 unlit.default_shader_profile, FixedShaderQualityTier::Default });
-        const FixedPipelineVariant *sky_variant =
-            ResolveFixedPipelineVariant(
-               { FixedPipelineFamily::Sky, FixedShaderProfile::SkyConstant,
-                 FixedShaderQualityTier::Default });
-        const FixedPipelineVariant *shadow_opaque_variant =
-            ResolveFixedPipelineVariant(
-               { FixedPipelineFamily::ShadowCaster,
-                 FixedShaderProfile::ShadowCasterOpaque,
-                 FixedShaderQualityTier::Default });
-        const FixedPipelineVariant *shadow_masked_variant =
-            ResolveFixedPipelineVariant(
-               { FixedPipelineFamily::ShadowCaster,
-                 FixedShaderProfile::ShadowCasterMasked,
-                 FixedShaderQualityTier::Default });
-        if (!lit_variant || !unlit_variant || !sky_variant
-         || !shadow_opaque_variant || !shadow_masked_variant)
-        {
-            result.diagnostics.emplace_back(
-               "native fixed pipeline variants are unavailable");
-            result.passed = false;
-            return result;
-        }
-
         MaterialCoverageContract masked_coverage{};
         masked_coverage.mode = MaterialCoverageMode::AlphaTestDither;
         masked_coverage.alpha_cutoff = 0.25f;
@@ -1059,21 +1026,24 @@ namespace
         std::string shadow_masked_text;
         std::string error;
         if (!ComposeTemplateText(
-               *lit_variant, MakeIdentityForwardLitProfile(), &lit,
+               RenderTemplateID::ForwardLitShadowedAO,
+               MakeIdentityForwardLitProfile(), &lit,
                false, 0.5f, false, &color_output, nullptr, lit_text, error)
          || !ComposeTemplateText(
-               *unlit_variant, MakeForwardUnlitProfile(), &unlit,
+               RenderTemplateID::ForwardUnlit, MakeForwardUnlitProfile(), &unlit,
                true, 0.25f, true, &color_output, &masked_coverage,
                unlit_text, error)
          || !ComposeTemplateText(
-               *sky_variant, MakeSkyProfile(), nullptr,
+               RenderTemplateID::Sky, MakeSkyProfile(), nullptr,
                false, 0.5f, false, &color_output, nullptr, sky_text, error)
          || !ComposeTemplateText(
-               *shadow_opaque_variant, MakeShadowCasterProfile(false), nullptr,
+               RenderTemplateID::ShadowCasterOpaque,
+               MakeShadowCasterProfile(), nullptr,
                false, 0.5f, false, &shadow_output, nullptr,
                shadow_opaque_text, error)
          || !ComposeTemplateText(
-               *shadow_masked_variant, MakeShadowCasterProfile(true), &unlit,
+               RenderTemplateID::ShadowCasterMasked,
+               MakeShadowCasterProfile(), &unlit,
                true, 0.25f, true, &shadow_output, &masked_coverage,
                shadow_masked_text, error))
         {
@@ -1657,69 +1627,47 @@ namespace
         const auto build = [](
             const contract::PhysicalDeviceProfileLite *profile,
             const MaterialDefinition &definition,
-            const GeometryVertexFormat &geometry)
+            const GeometryVertexFormat &geometry,
+            const RenderTemplateID template_id,
+            const SceneRenderTemplateProfile &scene_profile)
         {
             MaterialDefinitionBuildRequest request{};
             request.recipe.mtl_def_id = definition.definition_id;
             request.geometry_vertex_format = &geometry;
             request.defer_finalize = true;
-            if (definition.pipeline_family == FixedPipelineFamily::ForwardUnlit)
-            {
-                const FixedPipelineVariant *variant =
-                    ResolveFixedPipelineVariantForQuality(
-                        definition.pipeline_family,
-                        definition.allowed_shader_profiles,
-                        definition.default_shader_profile,
-                        FixedShaderQualityTier::Default);
-                const SceneRenderTemplateProfile profile =
-                    MakeForwardUnlitProfile();
-                RenderTemplateValidationDiagnostic template_diagnostic{};
-                if (!variant || !ResolveSceneRenderTemplateRequest(
-                        *variant, hgl::graph::ShaderStage::Fragment,
-                        profile, request.render_template_request,
-                        template_diagnostic)
-                 || !AppendMaterialRenderTemplateRoots(
-                        definition, request.render_template_request))
-                    return std::unique_ptr<ShaderBuildContext>();
-            }
-            else if (definition.pipeline_family == FixedPipelineFamily::ForwardLit)
-            {
-                request.render_template_request.template_id =
-                    RenderTemplateID::ForwardLitShadowedAO;
-                request.render_template_request.template_version = 1;
-                request.render_template_request.stage =
-                    hgl::graph::ShaderStage::Fragment;
-                SceneRenderTemplateProfile profile =
-                    MakeIdentityForwardLitProfile();
-                const FixedPipelineVariant *variant =
-                    ResolveFixedPipelineVariant(
-                        { FixedPipelineFamily::ForwardLit,
-                          FixedShaderProfile::ForwardLitPBRIBLRGBA16F2,
-                          FixedShaderQualityTier::High });
-                RenderTemplateValidationDiagnostic template_diagnostic{};
-                if (!variant
-                 || !ResolveSceneRenderTemplateRequest(
-                        *variant,
-                        hgl::graph::ShaderStage::Fragment,
-                        profile, request.render_template_request,
-                        template_diagnostic)
-                 || !AppendMaterialRenderTemplateRoots(
-                        definition, request.render_template_request))
-                    return std::unique_ptr<ShaderBuildContext>();
-            }
+            RenderTemplateValidationDiagnostic template_diagnostic{};
+            if (!ResolveSceneRenderTemplateRequest(
+                    template_id, hgl::graph::ShaderStage::Fragment,
+                    scene_profile, request.render_template_request,
+                    template_diagnostic)
+             || !AppendMaterialRenderTemplateRoots(
+                    definition, request.render_template_request))
+                return std::unique_ptr<ShaderBuildContext>();
             return std::unique_ptr<ShaderBuildContext>(
                 CreateMaterialFromDefinition(
                     profile, definition, request));
         };
 
-        const auto lit_a = build(nullptr, lit, lit_geometry_a);
-        const auto lit_b = build(nullptr, lit, lit_geometry_b);
-        const auto color = build(nullptr, vertex_color, color_geometry);
+        const auto lit_a = build(
+            nullptr, lit, lit_geometry_a,
+            RenderTemplateID::ForwardLitShadowedAO,
+            MakeIdentityForwardLitProfile());
+        const auto lit_b = build(
+            nullptr, lit, lit_geometry_b,
+            RenderTemplateID::ForwardLitShadowedAO,
+            MakeIdentityForwardLitProfile());
+        const auto color = build(
+            nullptr, vertex_color, color_geometry,
+            RenderTemplateID::ForwardUnlit,
+            MakeForwardUnlitProfile());
         contract::PhysicalDeviceProfileLite profile{};
         profile.api_version = contract::MakeVkVersion(1, 4);
         profile.limits.max_uniform_buffer_range = 65536;
         profile.limits.max_storage_buffer_range = 1ull << 30;
-        const auto lit_targeted = build(&profile, lit, lit_geometry_a);
+        const auto lit_targeted = build(
+            &profile, lit, lit_geometry_a,
+            RenderTemplateID::ForwardLitShadowedAO,
+            MakeIdentityForwardLitProfile());
 
         if (!lit_a || !lit_b || !color || !lit_targeted
          || !lit_a->HasProgramLink()
@@ -1882,7 +1830,10 @@ namespace
                 definition.definition_id = shared_definition_ids[i];
                 definition.definition_name = shared_definition_ids[i];
                 shared_builds.push_back(
-                    build(nullptr, definition, lit_geometry_a));
+                    build(
+                        nullptr, definition, lit_geometry_a,
+                        RenderTemplateID::ForwardLitShadowedAO,
+                        MakeIdentityForwardLitProfile()));
             }
 
             if (shared_builds.size() != 4
@@ -2361,23 +2312,16 @@ namespace
                      || purpose == ShaderProgramPurpose::ShadowDepth;
                     const bool masked =
                         alpha_test || dither || alpha_to_coverage;
-                    const FixedPipelineVariant *variant = depth_purpose
-                        ? ResolveFixedPipelineVariant(
-                            { FixedPipelineFamily::ShadowCaster,
-                              masked ? FixedShaderProfile::ShadowCasterMasked
-                                     : FixedShaderProfile::ShadowCasterOpaque,
-                              FixedShaderQualityTier::Default })
-                        : ResolveFixedPipelineVariantForQuality(
-                            selected.pipeline_family,
-                            selected.allowed_shader_profiles,
-                            selected.default_shader_profile,
-                            FixedShaderQualityTier::Default);
+                    const RenderTemplateID template_id = depth_purpose
+                        ? (masked ? RenderTemplateID::ShadowCasterMasked
+                                  : RenderTemplateID::ShadowCasterOpaque)
+                        : RenderTemplateID::ForwardLitShadowedAO;
                     const SceneRenderTemplateProfile profile = depth_purpose
-                        ? MakeShadowCasterProfile(masked)
+                        ? MakeShadowCasterProfile()
                         : MakeIdentityForwardLitProfile();
                     RenderTemplateValidationDiagnostic template_diagnostic{};
-                    if (!variant || !ResolveSceneRenderTemplateRequest(
-                            *variant, hgl::graph::ShaderStage::Fragment,
+                    if (!ResolveSceneRenderTemplateRequest(
+                            template_id, hgl::graph::ShaderStage::Fragment,
                             profile, request.render_template_request,
                             template_diagnostic)
                      || !AppendMaterialRenderTemplateRoots(
@@ -2697,57 +2641,32 @@ namespace
             };
             const auto build = [](
                 const MaterialDefinition &definition,
-                const GeometryVertexFormat &geometry)
+                const GeometryVertexFormat &geometry,
+                const RenderTemplateID template_id,
+                const SceneRenderTemplateProfile &scene_profile)
             {
                 MaterialDefinitionBuildRequest request{};
                 request.recipe.mtl_def_id = definition.definition_id;
                 request.geometry_vertex_format = &geometry;
                 request.defer_finalize = true;
                 RenderTemplateValidationDiagnostic template_diagnostic{};
-                if (definition.pipeline_family == FixedPipelineFamily::ForwardLit)
-                {
-                    const FixedPipelineVariant *variant =
-                        ResolveFixedPipelineVariant(
-                            { FixedPipelineFamily::ForwardLit,
-                              definition.default_shader_profile,
-                              FixedShaderQualityTier::High });
-                    if (!variant)
-                        return std::unique_ptr<ShaderBuildContext>();
-                    SceneRenderTemplateProfile profile =
-                        MakeIdentityForwardLitProfile();
-                    if (!ResolveSceneRenderTemplateRequest(
-                            *variant, hgl::graph::ShaderStage::Fragment,
-                            profile, request.render_template_request,
-                            template_diagnostic)
-                     || !AppendMaterialRenderTemplateRoots(
-                            definition, request.render_template_request))
-                        return std::unique_ptr<ShaderBuildContext>();
-                }
-                else if (definition.pipeline_family
-                         == FixedPipelineFamily::ForwardUnlit)
-                {
-                    SceneRenderTemplateProfile profile;
-                    profile = MakeForwardUnlitProfile();
-                    const FixedPipelineVariant *variant =
-                        ResolveFixedPipelineVariant(
-                            { FixedPipelineFamily::ForwardUnlit,
-                              definition.default_shader_profile,
-                              FixedShaderQualityTier::Default });
-                    if (!variant
-                     || !ResolveSceneRenderTemplateRequest(
-                            *variant, hgl::graph::ShaderStage::Fragment,
-                            profile, request.render_template_request,
-                            template_diagnostic)
-                     || !AppendMaterialRenderTemplateRoots(
-                            definition, request.render_template_request))
-                        return std::unique_ptr<ShaderBuildContext>();
-                }
+                if (!ResolveSceneRenderTemplateRequest(
+                        template_id, hgl::graph::ShaderStage::Fragment,
+                        scene_profile, request.render_template_request,
+                        template_diagnostic)
+                 || !AppendMaterialRenderTemplateRoots(
+                        definition, request.render_template_request))
+                    return std::unique_ptr<ShaderBuildContext>();
                 return std::unique_ptr<ShaderBuildContext>(
                     CreateMaterialFromDefinition(
                         nullptr, definition, request));
             };
-            const auto lit_build = build(lit, lit_geometry);
-            const auto unlit_build = build(unlit, unlit_geometry);
+            const auto lit_build = build(
+                lit, lit_geometry, RenderTemplateID::ForwardLitShadowedAO,
+                MakeIdentityForwardLitProfile());
+            const auto unlit_build = build(
+                unlit, unlit_geometry, RenderTemplateID::ForwardUnlit,
+                MakeForwardUnlitProfile());
             if (!lit_build || !unlit_build)
             {
                 result.diagnostics.emplace_back(
@@ -2819,20 +2738,15 @@ namespace
                 "material/unlit_source.glsl") != 0)
             result.diagnostics.emplace_back("PureColor must use one FS module");
 
-        const FixedPipelineVariant *variant =
-            ResolveFixedPipelineVariant(
-                { FixedPipelineFamily::ForwardUnlit,
-                  pure_color.default_shader_profile,
-                  FixedShaderQualityTier::Default });
         OutputContract output{};
         MaterialOutputContractDiagnostic output_diagnostic{};
         std::string text;
         std::string error;
-        if (!variant
-         || !BuildMaterialOutputContract(
+        if (!BuildMaterialOutputContract(
                 PassType::ForwardOpaque, output, output_diagnostic)
          || !ComposeTemplateText(
-                *variant, MakeForwardUnlitProfile(), &pure_color,
+                RenderTemplateID::ForwardUnlit, MakeForwardUnlitProfile(),
+                &pure_color,
                 false, 0.5f, false, &output, nullptr, text, error)
          || text.find("#include \"material/unlit_source.glsl\"")
                 == std::string::npos
@@ -3086,10 +3000,6 @@ namespace
             "source = \"file\"\n"
             "bootstrap = \"None\"\n"
             "provider_policy = \"AllowDerived\"\n"
-            "[pipeline]\n"
-            "family = \"forward_lit\"\n"
-            "profiles = [\"pbr_ibl_rgba16f2\"]\n"
-            "default_profile = \"pbr_ibl_rgba16f2\"\n"
             "[transform]\n"
             "source = \"Vec3Position\"\n"
             "mapping = \"Passthrough3D\"\n"
@@ -3126,12 +3036,6 @@ namespace
              || definition.vertex_node_config.position_mapping != PositionMappingMode::Passthrough3D
              || definition.vertex_semantic_requirements.GetCount() != 3
              || definition.ubo_requirements.size() != 2
-             || definition.pipeline_family != FixedPipelineFamily::ForwardLit
-             || !IsFixedShaderProfileAllowed(
-                    definition.allowed_shader_profiles,
-                    FixedShaderProfile::ForwardLitPBRIBLRGBA16F2)
-             || definition.default_shader_profile
-                   != FixedShaderProfile::ForwardLitPBRIBLRGBA16F2
              || !ResolveMaterialRenderState(
                     definition, MaterialRecipe{}).alpha_test)
             {
@@ -3163,10 +3067,6 @@ namespace
             "source = \"file\"\n"
             "bootstrap = \"None\"\n"
             "provider_policy = \"GeometryOnly\"\n"
-            "[pipeline]\n"
-            "family = \"forward_unlit\"\n"
-            "profiles = [\"pure_color\"]\n"
-            "default_profile = \"pure_color\"\n"
             "[fragment]\n"
             "material_source_module = \"material/unlit_source.glsl\"\n"
             "[unknown]\n"
@@ -3243,12 +3143,7 @@ namespace
                 continue;
             }
 
-            if (file_definition->pipeline_family != registry_definition.pipeline_family
-             || file_definition->allowed_shader_profiles
-                    != registry_definition.allowed_shader_profiles
-             || file_definition->default_shader_profile
-                    != registry_definition.default_shader_profile
-             || HashResolvedMaterialRenderState(
+            if (HashResolvedMaterialRenderState(
                     ResolveMaterialRenderState(
                         *file_definition, MaterialRecipe{}))
                     != HashResolvedMaterialRenderState(
@@ -3303,10 +3198,10 @@ namespace
             MaterialCoverageContract coverage{};
             RenderTemplateRequest coverage_request{};
             RenderTemplateValidationDiagnostic coverage_diagnostic{};
-            if (!ResolveShadowCasterRequest(
-                    false,
+            if (!ResolveSceneRenderTemplateRequest(
+                    RenderTemplateID::ShadowCasterOpaque,
                     hgl::graph::ShaderStage::Fragment,
-                    MakeShadowCasterProfile(false),
+                    MakeShadowCasterProfile(),
                     coverage_request,
                     coverage_diagnostic)
              || !AppendMaterialRenderTemplateRoots(
@@ -4609,21 +4504,27 @@ namespace
             const char *definition_id;
             const char *golden_slug;
             ShaderProgramPurpose purpose;
+            RenderTemplateID template_id;
             bool has_geometry;   // CharQuad 文本材质无需几何顶点格式（mesh 自声明 SSBO）
         };
 
         static const PilotVariant kVariants[] =
         {
             { "Lit", "lit-forward-opaque",
-              ShaderProgramPurpose::ForwardColor, true },
+              ShaderProgramPurpose::ForwardColor,
+              RenderTemplateID::ForwardLitShadowedAO, true },
             { "Lit", "lit-depth-only",
-              ShaderProgramPurpose::DepthOnly, true },
+              ShaderProgramPurpose::DepthOnly,
+              RenderTemplateID::ShadowCasterOpaque, true },
             { "Lit", "lit-shadow-depth",
-              ShaderProgramPurpose::ShadowDepth, true },
+              ShaderProgramPurpose::ShadowDepth,
+              RenderTemplateID::ShadowCasterOpaque, true },
             { "VertexPaletteColor", "vertex-palette-color-forward",
-              ShaderProgramPurpose::ForwardColor, true },
+              ShaderProgramPurpose::ForwardColor,
+              RenderTemplateID::ForwardUnlit, true },
             { "builtin/text_gpu", "text-gpu-charquad",
-              ShaderProgramPurpose::ForwardColor, false },
+              ShaderProgramPurpose::ForwardColor,
+              RenderTemplateID::ForwardUnlit, false },
         };
 
         for (const PilotVariant &variant : kVariants)
@@ -4641,69 +4542,24 @@ namespace
             request.geometry_vertex_format = variant.has_geometry ? &geometry : nullptr;
             request.defer_finalize = true;
             request.shader_program_purpose = variant.purpose;
-            if (variant.purpose == ShaderProgramPurpose::DepthOnly
-             || variant.purpose == ShaderProgramPurpose::ShadowDepth)
+            const SceneRenderTemplateProfile profile =
+                variant.template_id == RenderTemplateID::ForwardLitShadowedAO
+                    ? MakeIdentityForwardLitProfile()
+                    : (variant.template_id == RenderTemplateID::ForwardUnlit
+                        ? MakeForwardUnlitProfile()
+                        : MakeShadowCasterProfile());
+            RenderTemplateValidationDiagnostic template_diagnostic{};
+            if (!ResolveSceneRenderTemplateRequest(
+                    variant.template_id, hgl::graph::ShaderStage::Fragment,
+                    profile, request.render_template_request,
+                    template_diagnostic)
+             || !AppendMaterialRenderTemplateRoots(
+                    definition, request.render_template_request))
             {
-                const bool masked = ResolveMaterialRenderState(
-                    definition, request.recipe).alpha_test;
-                const SceneRenderTemplateProfile profile =
-                    MakeShadowCasterProfile(masked);
-                const FixedPipelineVariant shadow_variant{
-                    { FixedPipelineFamily::ShadowCaster,
-                      masked ? FixedShaderProfile::ShadowCasterMasked
-                             : FixedShaderProfile::ShadowCasterOpaque,
-                      FixedShaderQualityTier::Default },
-                    masked ? RenderTemplateID::ShadowCasterMasked
-                           : RenderTemplateID::ShadowCasterOpaque,
-                    1 };
-                RenderTemplateValidationDiagnostic template_diagnostic{};
-                if (!ResolveSceneRenderTemplateRequest(
-                        shadow_variant, hgl::graph::ShaderStage::Fragment,
-                        profile, request.render_template_request,
-                        template_diagnostic)
-                 || !AppendMaterialRenderTemplateRoots(
-                        definition, request.render_template_request))
-                {
-                    result.diagnostics.emplace_back(
-                        std::string("shadow request resolve failed: ")
-                        + variant.golden_slug);
-                    continue;
-                }
-            }
-            else if (variant.purpose == ShaderProgramPurpose::ForwardColor)
-            {
-                const FixedPipelineFamily family = definition.pipeline_family;
-                const FixedShaderQualityTier quality =
-                    family == FixedPipelineFamily::ForwardLit
-                        ? FixedShaderQualityTier::High
-                        : FixedShaderQualityTier::Default;
-                const FixedPipelineVariant *forward_variant =
-                    ResolveFixedPipelineVariant(
-                        { family, definition.default_shader_profile, quality });
-                if (!forward_variant)
-                {
-                    result.diagnostics.emplace_back(
-                        std::string("forward variant resolve failed: ")
-                        + variant.golden_slug);
-                    continue;
-                }
-                const SceneRenderTemplateProfile profile =
-                    family == FixedPipelineFamily::ForwardLit
-                        ? MakeIdentityForwardLitProfile()
-                        : MakeForwardUnlitProfile();
-                RenderTemplateValidationDiagnostic template_diagnostic{};
-                if (!ResolveSceneRenderTemplateRequest(
-                        *forward_variant, hgl::graph::ShaderStage::Fragment,
-                        profile, request.render_template_request,
-                        template_diagnostic)
-                 || !AppendMaterialRenderTemplateRoots(
-                        definition, request.render_template_request))
-                {
-                    result.diagnostics.emplace_back(
-                        std::string("forward request resolve failed: ")
-                        + variant.golden_slug);
-                    continue;
-                }
+                result.diagnostics.emplace_back(
+                    std::string("template request resolve failed: ")
+                    + variant.golden_slug);
+                continue;
             }
 
             const std::unique_ptr<ShaderBuildContext> ctx(

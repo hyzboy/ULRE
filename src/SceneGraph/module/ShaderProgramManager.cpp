@@ -54,63 +54,21 @@ namespace
         const mtl::MaterialDefinitionBuildRequest &request,
         mtl::RenderTemplateRequest &out_request)
     {
-        if (out_request.template_id != mtl::RenderTemplateID::Unknown)
-            return true;
-
-        const mtl::ShaderProgramPurpose purpose =
-            request.shader_program_purpose;
-        const bool depth_purpose =
-            purpose == mtl::ShaderProgramPurpose::DepthOnly
-         || purpose == mtl::ShaderProgramPurpose::ShadowDepth;
-        const mtl::ResolvedMaterialRenderState render_state =
-            mtl::ResolveMaterialRenderState(definition, request.recipe);
-        const bool masked = render_state.alpha_test;
-        const mtl::FixedPipelineVariant *variant = nullptr;
-        mtl::SceneRenderTemplateProfile scene_profile{};
-
-        if (depth_purpose)
+        (void)request;
+        if (out_request.template_id == mtl::RenderTemplateID::Unknown)
         {
-            variant = mtl::ResolveFixedPipelineVariant(
-                { mtl::FixedPipelineFamily::ShadowCaster,
-                  masked ? mtl::FixedShaderProfile::ShadowCasterMasked
-                         : mtl::FixedShaderProfile::ShadowCasterOpaque,
-                  mtl::FixedShaderQualityTier::Default });
-            scene_profile = mtl::MakeShadowCasterProfile(masked);
-        }
-        else
-        {
-            const mtl::FixedShaderProfile profile =
-                request.recipe.resolved_shader_profile
-                    != mtl::FixedShaderProfile::Unknown
-                ? request.recipe.resolved_shader_profile
-                : definition.default_shader_profile;
-            variant = mtl::ResolveFixedPipelineVariantForQuality(
-                definition.pipeline_family,
-                definition.allowed_shader_profiles,
-                profile,
-                request.recipe.quality_tier);
-
-            if (definition.pipeline_family == mtl::FixedPipelineFamily::ForwardLit)
-                scene_profile = mtl::MakeIdentityForwardLitProfile();
-            else if (definition.pipeline_family
-                     == mtl::FixedPipelineFamily::ForwardUnlit)
-                scene_profile = mtl::MakeForwardUnlitProfile();
-            else if (definition.pipeline_family == mtl::FixedPipelineFamily::Sky)
-                scene_profile = mtl::MakeSkyProfile();
+            GLogError(
+                "[ShaderProgramManager] Render template request is not caller-selected: id=%s",
+                definition.definition_id.c_str());
+            return false;
         }
 
-        mtl::RenderTemplateValidationDiagnostic diagnostic{};
-        if (variant && scene_profile.module_count > 0
-         && mtl::ResolveSceneRenderTemplateRequest(
-                *variant, ShaderStage::Fragment, scene_profile,
-                out_request, diagnostic)
-         && mtl::AppendMaterialRenderTemplateRoots(definition, out_request))
+        if (mtl::AppendMaterialRenderTemplateRoots(definition, out_request))
             return true;
 
         GLogError(
-            "[ShaderProgramManager] Render template request resolution failed: id=%s error=%s",
-            definition.definition_id.c_str(),
-            mtl::GetRenderTemplateValidationErrorName(diagnostic.error));
+            "[ShaderProgramManager] Render template request completion failed: id=%s",
+            definition.definition_id.c_str());
         return false;
     }
 
@@ -281,6 +239,46 @@ namespace
     }
 
 }//namespace
+
+bool SelectCurrentSceneRenderTemplateRequest(
+    const mtl::MaterialDefinition &definition,
+    const mtl::MaterialDefinitionBuildRequest &request,
+    mtl::RenderTemplateRequest &out_request)
+{
+    const bool depth_purpose =
+        request.shader_program_purpose == mtl::ShaderProgramPurpose::DepthOnly
+     || request.shader_program_purpose == mtl::ShaderProgramPurpose::ShadowDepth;
+    const bool masked = mtl::ResolveMaterialRenderState(
+        definition, request.recipe).alpha_test;
+    const bool has_material_source =
+        definition.material_source_module
+     && definition.material_source_module[0];
+    const bool has_ntb_provider =
+        definition.ntb_module && definition.ntb_module[0];
+    const mtl::RenderTemplateID template_id = depth_purpose
+        ? (masked ? mtl::RenderTemplateID::ShadowCasterMasked
+                  : mtl::RenderTemplateID::ShadowCasterOpaque)
+        : (has_ntb_provider ? mtl::RenderTemplateID::ForwardLitShadowedAO
+           : (has_material_source ? mtl::RenderTemplateID::ForwardUnlit
+                                  : mtl::RenderTemplateID::Sky));
+    const mtl::SceneRenderTemplateProfile scene_profile =
+        depth_purpose ? mtl::MakeShadowCasterProfile()
+        : (has_ntb_provider ? mtl::MakeIdentityForwardLitProfile()
+           : (has_material_source ? mtl::MakeForwardUnlitProfile()
+                                  : mtl::MakeSkyProfile()));
+    mtl::RenderTemplateValidationDiagnostic diagnostic{};
+    if (scene_profile.module_count > 0
+     && mtl::ResolveSceneRenderTemplateRequest(
+            template_id, ShaderStage::Fragment, scene_profile,
+            out_request, diagnostic))
+        return true;
+
+    GLogError(
+        "[ShaderProgramManager] Scene render route selection failed: id=%s error=%s",
+        definition.definition_id.c_str(),
+        mtl::GetRenderTemplateValidationErrorName(diagnostic.error));
+    return false;
+}
 
 GRAPH_MODULE_CONSTRUCT(ShaderProgramManager)
 {

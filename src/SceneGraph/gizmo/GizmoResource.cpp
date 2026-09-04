@@ -3,6 +3,7 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/MaterialDefinitionRegistry.h>
 #include<hgl/mtl/MaterialRecipe.h>
+#include<hgl/mtl/SceneRenderTemplateResolver.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/color/Color.h>
 #include<hgl/graph/geo/InlineGeometry.h>
@@ -183,6 +184,13 @@ namespace hgl::graph
                 request.recipe = recipe;
                 request.primitive_type = PrimitiveType::Triangles;
                 request.geometry_vertex_format = &gizmo_gvf;
+                mtl::RenderTemplateValidationDiagnostic template_diagnostic{};
+                if (!mtl::ResolveSceneRenderTemplateRequest(
+                        mtl::RenderTemplateID::ForwardUnlit,
+                        ShaderStage::Fragment,
+                        mtl::MakeForwardUnlitProfile(),
+                        request.render_template_request, template_diagnostic))
+                    return false;
 
                 if(!gizmo_mtl_manager->BuildShaderResourceSchema(request, gizmo_material_layout))
                     return(false);

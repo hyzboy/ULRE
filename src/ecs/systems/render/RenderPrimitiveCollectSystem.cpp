@@ -569,13 +569,34 @@ namespace hgl::ecs
             return true;
         }
 
-        // 统一 MaterialDefinition 入口：由 AcquireShaderProgram 内部处理 2D/3D/Text/Sky 分支，
-        // ECS 不再持有材质 config 细节知识。
+        // SceneGraph owns the existing provider-shape routing policy. It
+        // selects a concrete template request before ShaderGen is invoked.
         graph::mtl::MaterialDefinitionBuildRequest mtl_request{};
         mtl_request.recipe = effective_recipe;
         mtl_request.primitive_type = primitive_type;
         mtl_request.geometry_vertex_format = geometry_vertex_format;
         mtl_request.shader_program_purpose = effective_purpose;
+        graph::mtl::MaterialDefinition template_definition{};
+        if (!graph::mtl::TryGetMaterialDefinitionByID(
+                effective_recipe.mtl_def_id, template_definition)
+         && !graph::mtl::TryGetMaterialDefinitionByID(
+                graph::mtl::GetFallbackMaterialDefinitionID(),
+                template_definition))
+        {
+            GLogWarning(
+                "[RenderPrimitiveCollectSystem] Cannot select template for material=%s",
+                effective_recipe.mtl_def_id.c_str());
+            return false;
+        }
+        if (!graph::SelectCurrentSceneRenderTemplateRequest(
+                template_definition, mtl_request,
+                mtl_request.render_template_request))
+        {
+            GLogWarning(
+                "[RenderPrimitiveCollectSystem] Template selection failed for material=%s",
+                effective_recipe.mtl_def_id.c_str());
+            return false;
+        }
         graph::ShaderProgram *resolved_program =
             material_manager->AcquireShaderProgram(mtl_request);
 

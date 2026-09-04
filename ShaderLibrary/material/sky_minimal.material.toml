@@ -5,11 +5,6 @@ source = "file"
 bootstrap = "None"
 provider_policy = "GeometryOnly"
 
-[pipeline]
-family = "sky"
-profiles = ["constant"]
-default_profile = "constant"
-
 [transform]
 source = "Vec3Position"
 mapping = "Passthrough3D"

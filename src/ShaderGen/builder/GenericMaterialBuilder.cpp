@@ -114,23 +114,6 @@ namespace hgl::graph::mtl
             GenericMaterialBuildPlan &plan)
         {
             plan.purpose = request.shader_program_purpose;
-            const FixedShaderProfile selected_profile =
-                request.recipe.resolved_shader_profile
-                    != FixedShaderProfile::Unknown
-                ? request.recipe.resolved_shader_profile
-                : definition.default_shader_profile;
-            plan.pipeline_variant = ResolveFixedPipelineVariantForQuality(
-                definition.pipeline_family,
-                definition.allowed_shader_profiles,
-                selected_profile,
-                request.recipe.quality_tier);
-            if (!plan.pipeline_variant)
-            {
-                GLogError(
-                    "[ShaderGen] Material has no registered pipeline variant: name=%s",
-                    definition.definition_name.c_str());
-                return false;
-            }
             const RenderTemplateRequest &resolved_request =
                 request.render_template_request;
             if (resolved_request.template_id == RenderTemplateID::Unknown)
@@ -148,15 +131,6 @@ namespace hgl::graph::mtl
                     plan.coverage))
                 return false;
             {
-                hgl::hash::FNV1aHasher64 template_hasher;
-                template_hasher << plan.pipeline_variant->fragment_template
-                               << plan.pipeline_variant->template_version
-                               << plan.pipeline_variant->key.family
-                               << plan.pipeline_variant->key.profile
-                               << plan.pipeline_variant->key.quality_tier;
-                plan.resolved_template_hash = template_hasher;
-            }
-            {
                 plan.render_template_request_storage = resolved_request;
                 plan.render_template_request = &plan.render_template_request_storage;
                 RenderTemplateValidationDiagnostic diagnostic{};
@@ -166,29 +140,19 @@ namespace hgl::graph::mtl
                        *plan.render_template_request,
                        module_registry,
                        diagnostic)
-                 || plan.render_template_request->template_id
-                       != ((plan.purpose == ShaderProgramPurpose::DepthOnly
-                            || plan.purpose == ShaderProgramPurpose::ShadowDepth)
-                           ? (plan.coverage.requires_alpha_evaluation
-                               ? RenderTemplateID::ShadowCasterMasked
-                               : RenderTemplateID::ShadowCasterOpaque)
-                           : plan.pipeline_variant->fragment_template)
-                 || plan.render_template_request->template_version
-                       != plan.pipeline_variant->template_version)
+                 || ((plan.purpose == ShaderProgramPurpose::DepthOnly
+                   || plan.purpose == ShaderProgramPurpose::ShadowDepth)
+                  && plan.render_template_request->template_id
+                      != (plan.coverage.requires_alpha_evaluation
+                           ? RenderTemplateID::ShadowCasterMasked
+                           : RenderTemplateID::ShadowCasterOpaque)))
             {
                 GLogError(
                    "[ShaderGen] Render template request rejected: name=%s "
-                   "template=%s expected=%s validation=%s",
+                   "template=%s validation=%s",
                    definition.definition_name.c_str(),
                    GetRenderTemplateName(
                        plan.render_template_request->template_id),
-                   GetRenderTemplateName(
-                       (plan.purpose == ShaderProgramPurpose::DepthOnly
-                     || plan.purpose == ShaderProgramPurpose::ShadowDepth)
-                           ? (plan.coverage.requires_alpha_evaluation
-                               ? RenderTemplateID::ShadowCasterMasked
-                               : RenderTemplateID::ShadowCasterOpaque)
-                           : plan.pipeline_variant->fragment_template),
                    GetRenderTemplateValidationErrorName(diagnostic.error));
                 return false;
             }
@@ -503,7 +467,6 @@ namespace hgl::graph::mtl
             mesh_compose_input.resolved_input_glsl = &input_glsl_str;
             mesh_compose_input.provider_glsl = &provider_glsl_str;
             mesh_compose_input.stage_interface = &plan.stage_interface;
-            mesh_compose_input.variant = plan.pipeline_variant;
             if (!mesh_composer.Compose(mesh_compose_input, mesh_document))
             {
                 GLogError("[ShaderGen] Generic material mesh document build failed: name=%s",
@@ -544,11 +507,9 @@ namespace hgl::graph::mtl
             const std::string code_module_glsl = BuildCodeModuleGLSL(
                 plan.manifest.IsValid() ? &plan.manifest : nullptr);
             FragmentTemplateComposer::ComposeInput compose_input{};
-            compose_input.request = plan.render_template_request;
             compose_input.resolved_template =
                 plan.resolved_render_template.IsValid()
                     ? &plan.resolved_render_template : nullptr;
-            compose_input.variant = plan.pipeline_variant;
             compose_input.alpha_test =
                 plan.coverage.mode == MaterialCoverageMode::AlphaTest
              || plan.coverage.mode

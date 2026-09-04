@@ -142,6 +142,37 @@ namespace
     {
         return primitive == PrimitiveType::Lines ? "lines" : "triangles";
     }
+
+    bool ResolveCookRenderTemplateRequest(
+        const mtl::MaterialDefinition &definition,
+        const mtl::ShaderProgramPurpose purpose,
+        const bool masked,
+        RenderTemplateRequest &out_request,
+        RenderTemplateValidationDiagnostic &out_diagnostic)
+    {
+        const bool depth_purpose =
+            purpose == ShaderProgramPurpose::DepthOnly
+         || purpose == ShaderProgramPurpose::ShadowDepth;
+        const bool has_material_source =
+            definition.material_source_module
+         && definition.material_source_module[0];
+        const bool has_ntb_provider =
+            definition.ntb_module && definition.ntb_module[0];
+        const RenderTemplateID template_id = depth_purpose
+            ? (masked ? RenderTemplateID::ShadowCasterMasked
+                      : RenderTemplateID::ShadowCasterOpaque)
+            : (has_ntb_provider ? RenderTemplateID::ForwardLitShadowedAO
+               : (has_material_source ? RenderTemplateID::ForwardUnlit
+                                      : RenderTemplateID::Sky));
+        const SceneRenderTemplateProfile scene_profile = depth_purpose
+            ? MakeShadowCasterProfile()
+            : (has_ntb_provider ? MakeIdentityForwardLitProfile()
+               : (has_material_source ? MakeForwardUnlitProfile()
+                                      : MakeSkyProfile()));
+        return ResolveSceneRenderTemplateRequest(
+            template_id, ShaderStage::Fragment, scene_profile,
+            out_request, out_diagnostic);
+    }
 }
 
 int main(const int argc, char **argv)
@@ -289,9 +320,11 @@ int main(const int argc, char **argv)
 
         for (const mtl::ShaderProgramPurpose purpose : purposes)
         {
-            // Sky 管线族无深度/阴影 pass（引擎定义的不支持组合）
+            // A material without a fragment source is the current sky route;
+            // it has no depth or shadow pass.
             if (purpose != mtl::ShaderProgramPurpose::ForwardColor
-             && definition.pipeline_family == FixedPipelineFamily::Sky)
+             && (!definition.material_source_module
+              || !definition.material_source_module[0]))
             {
                 ++skipped;
                 continue;
@@ -328,8 +361,7 @@ int main(const int argc, char **argv)
                 request.defer_finalize = false;
                 {
                     RenderTemplateValidationDiagnostic template_diagnostic{};
-                    const FixedPipelineVariant *variant = nullptr;
-                    SceneRenderTemplateProfile scene_profile;
+                    bool masked = false;
                     if (purpose == ShaderProgramPurpose::DepthOnly
                      || purpose == ShaderProgramPurpose::ShadowDepth)
                     {
@@ -339,11 +371,8 @@ int main(const int argc, char **argv)
                         RenderTemplateRequest coverage_request{};
                         const bool coverage_request_masked =
                             render_state.alpha_test;
-                        if (!ResolveShadowCasterRequest(
-                                coverage_request_masked,
-                                ShaderStage::Fragment,
-                                MakeShadowCasterProfile(
-                                    coverage_request_masked),
+                        if (!ResolveCookRenderTemplateRequest(
+                                definition, purpose, coverage_request_masked,
                                 coverage_request,
                                 template_diagnostic)
                          || !AppendMaterialRenderTemplateRoots(
@@ -370,59 +399,14 @@ int main(const int argc, char **argv)
                                 PrimitiveName(primitive).c_str());
                             continue;
                         }
-                        const bool masked = render_state.alpha_test
+                        masked = render_state.alpha_test
                             && coverage.requires_alpha_evaluation;
-                        scene_profile = MakeShadowCasterProfile(masked);
-                        variant = ResolveFixedPipelineVariant(
-                            { FixedPipelineFamily::ShadowCaster,
-                              masked ? FixedShaderProfile::ShadowCasterMasked
-                                     : FixedShaderProfile::ShadowCasterOpaque,
-                              FixedShaderQualityTier::Default });
                     }
-                    else if (definition.pipeline_family
-                             == FixedPipelineFamily::ForwardLit)
-                    {
-                        scene_profile = MakeIdentityForwardLitProfile();
-                        variant = ResolveFixedPipelineVariantForQuality(
-                            FixedPipelineFamily::ForwardLit,
-                            definition.allowed_shader_profiles,
-                            definition.default_shader_profile,
-                            request.recipe.quality_tier);
-                    }
-                    else if (definition.pipeline_family
-                             == FixedPipelineFamily::ForwardUnlit)
-                    {
-                        scene_profile = MakeForwardUnlitProfile();
-                        variant = ResolveFixedPipelineVariantForQuality(
-                            FixedPipelineFamily::ForwardUnlit,
-                            definition.allowed_shader_profiles,
-                            definition.default_shader_profile,
-                            FixedShaderQualityTier::Default);
-                    }
-                    else if (definition.pipeline_family
-                             == FixedPipelineFamily::Sky)
-                    {
-                        scene_profile = MakeSkyProfile();
-                        variant = ResolveFixedPipelineVariantForQuality(
-                            FixedPipelineFamily::Sky,
-                            definition.allowed_shader_profiles,
-                            definition.default_shader_profile,
-                            request.recipe.quality_tier);
-                    }
-                    const bool requires_template_request =
-                        purpose == ShaderProgramPurpose::DepthOnly
-                     || purpose == ShaderProgramPurpose::ShadowDepth
-                     || definition.pipeline_family == FixedPipelineFamily::ForwardLit
-                     || definition.pipeline_family == FixedPipelineFamily::ForwardUnlit
-                     || definition.pipeline_family == FixedPipelineFamily::Sky;
-                    if (requires_template_request && variant
-                     && ResolveSceneRenderTemplateRequest(
-                            *variant, ShaderStage::Fragment, scene_profile,
+                    if (!ResolveCookRenderTemplateRequest(
+                            definition, purpose, masked,
                             request.render_template_request, template_diagnostic)
-                     && AppendMaterialRenderTemplateRoots(
+                     || !AppendMaterialRenderTemplateRoots(
                             definition, request.render_template_request))
-                        ;
-                    else if (requires_template_request)
                     {
                         ++failed;
                         std::fprintf(stderr,

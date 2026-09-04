@@ -91,85 +91,6 @@ namespace hgl::graph::mtl
             return false;
         }
 
-        bool ParsePipelineFamily(
-            const std::string &name, FixedPipelineFamily &out) noexcept
-        {
-            static const struct
-            {
-                const char *name;
-                FixedPipelineFamily value;
-            } table[] =
-            {
-                { "forward_lit", FixedPipelineFamily::ForwardLit },
-                { "forward_unlit", FixedPipelineFamily::ForwardUnlit },
-                { "shadow_caster", FixedPipelineFamily::ShadowCaster },
-                { "sky", FixedPipelineFamily::Sky },
-                { "decal", FixedPipelineFamily::Decal },
-                { "postprocess", FixedPipelineFamily::PostProcess }
-            };
-
-            for (const auto &entry : table)
-            {
-                if (name == entry.name)
-                {
-                    out = entry.value;
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        bool ParseShaderProfile(
-            const std::string &name, FixedShaderProfile &out) noexcept
-        {
-            for (uint32 value = uint32(FixedShaderProfile::Unknown) + 1;
-                 value <= uint32(FixedShaderProfile::PostProcessDOF);
-                 ++value)
-            {
-                const FixedShaderProfile profile = FixedShaderProfile(value);
-                if (name == GetFixedShaderProfileName(profile))
-                {
-                    out = profile;
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        bool ParsePipeline(
-            const toml::value &pipeline,
-            MaterialDefinition &definition) noexcept
-        {
-            std::string family_name;
-            std::string default_profile_name;
-            if (!ReadRequiredString(pipeline, "family", family_name)
-             || !ReadRequiredString(
-                    pipeline, "default_profile", default_profile_name)
-             || !ParsePipelineFamily(family_name, definition.pipeline_family)
-             || !ParseShaderProfile(
-                    default_profile_name, definition.default_shader_profile)
-             || !pipeline.contains("profiles")
-             || !pipeline.at("profiles").is_array())
-                return false;
-
-            definition.allowed_shader_profiles = 0;
-            for (const toml::value &item : pipeline.at("profiles").as_array())
-            {
-                if (!item.is_string())
-                    return false;
-
-                FixedShaderProfile profile;
-                if (!ParseShaderProfile(item.as_string(), profile))
-                    return false;
-                definition.allowed_shader_profiles |=
-                    GetFixedShaderProfileMask(profile);
-            }
-
-            return IsFixedShaderProfileAllowed(
-                definition.allowed_shader_profiles,
-                definition.default_shader_profile);
-        }
-
         bool ParseCullMode(const std::string &name, VkCullModeFlags &out)
         {
             static const struct { const char *name; VkCullModeFlags value; } table[] = {
@@ -497,9 +418,6 @@ namespace hgl::graph::mtl
             out.definition.definition_id = id;
             out.definition.definition_name = name;
             out.definition.source_kind = MaterialDefinitionSourceKind::File;
-            if (!root.contains("pipeline")
-             || !ParsePipeline(root.at("pipeline"), out.definition))
-                return false;
             if (root.contains("transform"))
             {
                 if (!ParseTransformGraph(
@@ -799,14 +717,8 @@ namespace hgl::graph::mtl
     {
         if (!ValidateKnownKeys(root, {
                 "schema", "id", "name", "source", "bootstrap", "provider_policy",
-                "pipeline",
                 "transform", "fragment", "vertex", "resources",
                 "mesh_shader", "render_state"}))
-            return false;
-
-        if (root.contains("pipeline")
-         && !ValidateKnownKeys(root.at("pipeline"), {
-                "family", "profiles", "default_profile"}))
             return false;
 
         if (root.contains("transform")
@@ -887,12 +799,7 @@ namespace hgl::graph::mtl
         return !definition.definition_id.empty()
             && !definition.definition_name.empty()
             && definition.source_kind == MaterialDefinitionSourceKind::File
-            && !definition.vertex_semantic_requirements.IsEmpty()
-            && definition.pipeline_family != FixedPipelineFamily::Unknown
-            && definition.allowed_shader_profiles != 0
-            && IsFixedShaderProfileAllowed(
-                definition.allowed_shader_profiles,
-                definition.default_shader_profile);
+            && !definition.vertex_semantic_requirements.IsEmpty();
     }
 
     bool MaterialDefinitionFileRegistry::LoadFile(const OSString &path)

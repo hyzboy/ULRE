@@ -1,5 +1,4 @@
 #include <hgl/mtl/ShaderDocument.h>
-#include <hgl/mtl/FixedPipelineVariant.h>
 #include <hgl/mtl/RenderTemplate.h>
 #include <hgl/mtl/ResolvedRenderTemplate.h>
 #include <hgl/mtl/ShaderCodeModuleFile.h>
@@ -202,28 +201,11 @@ int main()
             != RenderTemplateValidationError::DuplicateSlotRole)
         return 21;
 
-    const FixedShaderVariantKey variant_key{
-        FixedPipelineFamily::ForwardLit,
-        FixedShaderProfile::ForwardLitPBRIBLRGBA16F2,
-        FixedShaderQualityTier::High
-    };
-    const FixedPipelineVariant *variant =
-        ResolveFixedPipelineVariant(variant_key);
-    if (!variant
-     || variant->fragment_template != RenderTemplateID::ForwardLitShadowedAO
-     || variant->template_version != 1
-     || !IsFixedShaderProfileAllowed(
-            GetFixedShaderProfileMask(
-                FixedShaderProfile::ForwardLitPBRIBLRGBA16F2),
-            FixedShaderProfile::ForwardLitPBRIBLRGBA16F2)
-     || IsFixedShaderProfileAllowed(
-            GetFixedShaderProfileMask(
-                FixedShaderProfile::ForwardLitPBRIBLRGBA16F2),
-            FixedShaderProfile::ForwardLitFakePBRSH)
-     || ResolveFixedPipelineVariant({
-            FixedPipelineFamily::ForwardLit,
-            FixedShaderProfile::ForwardLitPBRIBLRGBA16F2,
-            FixedShaderQualityTier::Low }))
+    const RenderTemplateDefinition *forward_lit_template =
+        FindRenderTemplate(RenderTemplateID::ForwardLitShadowedAO);
+    if (!forward_lit_template
+     || forward_lit_template->version != 1
+     || forward_lit_template->stage != hgl::graph::ShaderStage::Fragment)
         return 22;
 
     const char slot_module[] =

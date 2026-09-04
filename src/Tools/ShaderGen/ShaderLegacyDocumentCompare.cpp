@@ -39,38 +39,27 @@ namespace
          || purpose == ShaderProgramPurpose::ShadowDepth;
         const bool masked = ResolveMaterialRenderState(
             definition, MaterialRecipe{}).alpha_test;
-        const FixedPipelineVariant *variant = nullptr;
-        SceneRenderTemplateProfile profile{};
-
-        if (depth_purpose)
-        {
-            variant = ResolveFixedPipelineVariant(
-                { FixedPipelineFamily::ShadowCaster,
-                  masked ? FixedShaderProfile::ShadowCasterMasked
-                         : FixedShaderProfile::ShadowCasterOpaque,
-                  FixedShaderQualityTier::Default });
-            profile = MakeShadowCasterProfile(masked);
-        }
-        else
-        {
-            variant = ResolveFixedPipelineVariantForQuality(
-                definition.pipeline_family,
-                definition.allowed_shader_profiles,
-                definition.default_shader_profile,
-                FixedShaderQualityTier::Default);
-            if (definition.pipeline_family == FixedPipelineFamily::ForwardLit)
-                profile = MakeIdentityForwardLitProfile();
-            else if (definition.pipeline_family
-                     == FixedPipelineFamily::ForwardUnlit)
-                profile = MakeForwardUnlitProfile();
-            else if (definition.pipeline_family == FixedPipelineFamily::Sky)
-                profile = MakeSkyProfile();
-        }
+        const bool has_material_source =
+            definition.material_source_module
+         && definition.material_source_module[0];
+        const bool has_ntb_provider =
+            definition.ntb_module && definition.ntb_module[0];
+        const RenderTemplateID template_id = depth_purpose
+            ? (masked ? RenderTemplateID::ShadowCasterMasked
+                      : RenderTemplateID::ShadowCasterOpaque)
+            : (has_ntb_provider ? RenderTemplateID::ForwardLitShadowedAO
+               : (has_material_source ? RenderTemplateID::ForwardUnlit
+                                      : RenderTemplateID::Sky));
+        const SceneRenderTemplateProfile profile = depth_purpose
+            ? MakeShadowCasterProfile()
+            : (has_ntb_provider ? MakeIdentityForwardLitProfile()
+               : (has_material_source ? MakeForwardUnlitProfile()
+                                      : MakeSkyProfile()));
 
         RenderTemplateValidationDiagnostic diagnostic{};
-        return variant && profile.module_count > 0
+        return profile.module_count > 0
             && ResolveSceneRenderTemplateRequest(
-                *variant, ShaderStage::Fragment, profile,
+                template_id, ShaderStage::Fragment, profile,
                 out_request, diagnostic)
             && AppendMaterialRenderTemplateRoots(definition, out_request);
     }

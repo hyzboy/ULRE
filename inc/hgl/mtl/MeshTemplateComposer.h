@@ -1,6 +1,5 @@
 #pragma once
 
-#include <hgl/mtl/FixedPipelineVariant.h>
 #include <hgl/mtl/MaterialStageInterface.h>
 #include <hgl/mtl/MeshShaderMode.h>
 #include <hgl/mtl/ShaderDocument.h>
@@ -13,7 +12,6 @@ namespace hgl::graph::mtl
     public:
         struct ComposeInput
         {
-            const FixedPipelineVariant *variant = nullptr;
             VertexShaderNodeConfig node_config;
             MaterialVertexVaryingConfig varying_config;
             VkFormat position_format = VK_FORMAT_UNDEFINED;

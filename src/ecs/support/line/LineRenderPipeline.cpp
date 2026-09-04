@@ -18,6 +18,7 @@
 #include <hgl/graph/mesh/GeometryDrawRange.h>
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/mtl/MaterialDefinitionRegistry.h>
+#include <hgl/mtl/SceneRenderTemplateResolver.h>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/VKShaderProgram.h>
 #include <hgl/vk/VKBuffer.h>
@@ -392,6 +393,13 @@ namespace hgl::ecs
             mtl_request.recipe = recipe;
             mtl_request.primitive_type = graph::PrimitiveType::Lines;
             mtl_request.geometry_vertex_format = &line_gvf;
+            graph::mtl::RenderTemplateValidationDiagnostic template_diagnostic{};
+            if (!graph::mtl::ResolveSceneRenderTemplateRequest(
+                    graph::mtl::RenderTemplateID::ForwardUnlit,
+                    graph::ShaderStage::Fragment,
+                    graph::mtl::MakeForwardUnlitProfile(),
+                    mtl_request.render_template_request, template_diagnostic))
+                return false;
             material_ = mat_mgr->AcquireShaderProgram(mtl_request);
         }
         if (!material_)

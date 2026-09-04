@@ -58,8 +58,7 @@ namespace hgl::graph::mtl
         return profile;
     }
 
-    SceneRenderTemplateProfile MakeShadowCasterProfile(
-        const bool masked) noexcept
+    SceneRenderTemplateProfile MakeShadowCasterProfile() noexcept
     {
         SceneRenderTemplateProfile profile;
         profile.AddModule(
@@ -67,25 +66,9 @@ namespace hgl::graph::mtl
             "material_surface", "surface/material_surface.glsl");
         profile.AddModule(
             ShaderModuleSlotRole::OutputPolicy,
-            masked ? "forward_lighting" : "forward_lighting",
+            "forward_lighting",
             "compositor/forward_lighting.glsl");
         return profile;
-    }
-
-    bool ResolveShadowCasterRequest(
-        const bool masked,
-        const ShaderStage stage,
-        const SceneRenderTemplateProfile &profile,
-        RenderTemplateRequest &out_request,
-        RenderTemplateValidationDiagnostic &out_diagnostic) noexcept
-    {
-        FixedPipelineVariant variant{};
-        variant.fragment_template = masked
-            ? RenderTemplateID::ShadowCasterMasked
-            : RenderTemplateID::ShadowCasterOpaque;
-        variant.template_version = 1;
-        return ResolveSceneRenderTemplateRequest(
-            variant, stage, profile, out_request, out_diagnostic);
     }
 
     bool SceneRenderTemplateProfile::AddModule(
@@ -111,16 +94,32 @@ namespace hgl::graph::mtl
     }
 
     bool ResolveSceneRenderTemplateRequest(
-        const FixedPipelineVariant &variant,
+        const RenderTemplateID template_id,
         const ShaderStage stage,
         const SceneRenderTemplateProfile &profile,
         RenderTemplateRequest &out_request,
         RenderTemplateValidationDiagnostic &out_diagnostic) noexcept
     {
         out_request = {};
-        out_request.template_id = variant.fragment_template;
+        out_request.template_id = template_id;
         out_request.stage = stage;
-        out_request.template_version = variant.template_version;
+        out_diagnostic = {};
+        out_diagnostic.template_id = template_id;
+        const RenderTemplateDefinition *definition =
+            FindRenderTemplate(template_id);
+        if (!definition)
+        {
+            out_diagnostic.error =
+                RenderTemplateValidationError::UnknownTemplate;
+            return false;
+        }
+        if (stage != definition->stage)
+        {
+            out_diagnostic.error =
+                RenderTemplateValidationError::StageMismatch;
+            return false;
+        }
+        out_request.template_version = definition->version;
         for (uint32 index = 0; index < profile.module_count; ++index)
         {
             if (!out_request.AddModuleRoot(
@@ -140,7 +139,6 @@ namespace hgl::graph::mtl
         // Material capability roots are appended by the caller after selecting
         // this scene profile. Full template validation runs once that request
         // is complete in the material build path.
-        out_diagnostic = {};
         return true;
     }
 

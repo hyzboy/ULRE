@@ -15,6 +15,8 @@ class GeometryVertexFormat;
 namespace mtl
 {
     struct MaterialDefinitionBuildRequest;
+    struct MaterialDefinition;
+    struct RenderTemplateRequest;
 }//namespace mtl
 
 namespace mtl
@@ -25,6 +27,13 @@ namespace mtl
 }//namespace mtl
 
 using ShaderProgramID = int;
+
+// SceneGraph policy for the existing material provider shapes. Callers that
+// need a route selected from material data use this before acquiring a program.
+bool SelectCurrentSceneRenderTemplateRequest(
+    const mtl::MaterialDefinition &definition,
+    const mtl::MaterialDefinitionBuildRequest &request,
+    mtl::RenderTemplateRequest &out_request);
 
 GRAPH_MODULE_CLASS(ShaderProgramManager)
 {

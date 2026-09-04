@@ -5,11 +5,6 @@ source = "file"
 bootstrap = "None"
 provider_policy = "GeometryOnly"
 
-[pipeline]
-family = "forward_lit"
-profiles = ["pbr_ibl_rgba16f2"]
-default_profile = "pbr_ibl_rgba16f2"
-
 [transform]
 source = "Vec3Position"
 mapping = "Passthrough3D"

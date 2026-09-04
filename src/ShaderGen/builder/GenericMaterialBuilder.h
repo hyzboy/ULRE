@@ -14,7 +14,6 @@
 #include <hgl/mtl/MaterialCoverageContract.h>
 #include <hgl/mtl/MaterialStageInterface.h>
 #include <hgl/mtl/ShaderLinkSpec.h>
-#include <hgl/mtl/FixedPipelineVariant.h>
 #include <hgl/mtl/ResolvedRenderTemplate.h>
 
 #include <string>
@@ -44,7 +43,6 @@ namespace hgl::graph::mtl
         mtl::ShaderProgramPurpose purpose =
             mtl::ShaderProgramPurpose::ForwardColor;
         bool depth_purpose = false;
-        const FixedPipelineVariant *pipeline_variant = nullptr;
         RenderTemplateRequest render_template_request_storage;
         const RenderTemplateRequest *render_template_request = nullptr;
         ResolvedRenderTemplate resolved_render_template;

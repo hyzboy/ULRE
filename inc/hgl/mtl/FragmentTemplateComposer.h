@@ -1,6 +1,5 @@
 #pragma once
 
-#include <hgl/mtl/FixedPipelineVariant.h>
 #include <hgl/mtl/MaterialCoverageContract.h>
 #include <hgl/mtl/MaterialOutputContract.h>
 #include <hgl/mtl/MaterialStageInterface.h>
@@ -13,17 +12,14 @@
 namespace hgl::graph::mtl
 {
     // Template-first fragment emission entry point.
-    // Normal callers must provide a validated RenderTemplateRequest or
-    // ResolvedRenderTemplate; implicit auto-composition is intentionally
-    // disabled.
+    // Normal callers provide a resolved template. Validation and module-graph
+    // resolution happen once before native document emission.
     class FragmentTemplateComposer
     {
     public:
         struct ComposeInput
         {
-            const RenderTemplateRequest *request = nullptr;
             const ResolvedRenderTemplate *resolved_template = nullptr;
-            const FixedPipelineVariant *variant = nullptr;
             bool alpha_test = false;
             float alpha_cutoff = 0.5f;
             bool dither = false;

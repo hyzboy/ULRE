@@ -12,7 +12,6 @@
 #include <hgl/type/ValueArray.h>
 #include <hgl/mtl/ShaderLinkSpec.h>
 #include <hgl/mtl/MaterialVertexVaryingConfig.h>
-#include <hgl/mtl/FixedPipelineVariant.h>
 #include <hgl/util/hash/FNV1a.h>
 #include <hgl/type/String.h>
 #include <cstdint>
@@ -198,10 +197,6 @@ namespace hgl::graph::mtl
         MaterialDefinitionSourceKind source_kind = MaterialDefinitionSourceKind::BuiltIn;         // 来源类型
         MaterialDefinitionBootstrapKind bootstrap_kind = MaterialDefinitionBootstrapKind::None;
 
-        // Lod / 质量包络
-        uint16_t default_lod   = 0;
-        uint16_t lod_count     = 1;
-
         // Part-B: 材质私有数据 SSBO（单槽，固定 slot 0 / 名字 DefaultMaterialPrivateDataSlotName）。
         // UserDefined = 无私有数据 SSBO。
         SSBOType material_private_data = SSBOType::UserDefined;
@@ -251,12 +246,6 @@ namespace hgl::graph::mtl
         MeshShaderMode mesh_shader_mode = MeshShaderMode::VertexPassthrough;
         uint32_t mesh_shader_max_invocations = 0;  // 0 = 使用 EmitMeshTemplateDocument 默认值
 
-        // Fixed template selection envelope. Root modules remain the
-        // responsibility of ECS/render preparation, never this definition.
-        FixedPipelineFamily pipeline_family = FixedPipelineFamily::Unknown;
-        FixedShaderProfileMask allowed_shader_profiles = 0;
-        FixedShaderProfile default_shader_profile =
-            FixedShaderProfile::Unknown;
     };
 
     inline void ConfigureMaterialVertexSemanticContract(
@@ -284,13 +273,8 @@ namespace hgl::graph::mtl
         std::string recipe_name;               // 配方名称（人类可读）
         std::string mtl_def_id;                // MaterialDefinition字符串主键（材质标识 / 未来文件名）
         VertexShaderNodeConfig vertex_node_config = MakeDefault3DNodeConfig();
-        uint16_t material_lod = 0;            // 作者层选择的材质 LOD
 
         MaterialRenderStateOverrides render_state_overrides;
-        FixedShaderQualityTier quality_tier =
-            FixedShaderQualityTier::Default;
-        FixedShaderProfile resolved_shader_profile =
-            FixedShaderProfile::Unknown;
 
         std::vector<RecipeTextureBinding> textures; // 所有纹理语义绑定
         std::vector<RecipeSSBOAssetBinding> ssbo_assets; // 所有 SSBO 运行时绑定（name/slot/type/id/row）
@@ -499,10 +483,6 @@ namespace hgl::graph::mtl
     {
         if (recipe.mtl_def_id.empty())
             recipe.mtl_def_id = definition.definition_id;
-
-        if (definition.lod_count > 0 && recipe.material_lod >= definition.lod_count)
-            recipe.material_lod = definition.default_lod;
-
     }
 
     inline uint64_t HashMaterialRecipe(const MaterialRecipe &recipe) noexcept
@@ -513,7 +493,6 @@ namespace hgl::graph::mtl
           << recipe.mtl_def_id;
 
         h << recipe.vertex_node_config
-          << recipe.material_lod
           << recipe.render_state_overrides.has_double_sided
           << recipe.render_state_overrides.double_sided
           << recipe.render_state_overrides.has_alpha_test

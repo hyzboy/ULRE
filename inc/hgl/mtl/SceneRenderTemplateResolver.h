@@ -1,6 +1,5 @@
 #pragma once
 
-#include <hgl/mtl/FixedPipelineVariant.h>
 #include <hgl/mtl/RenderTemplate.h>
 
 namespace hgl::graph::mtl
@@ -23,17 +22,13 @@ namespace hgl::graph::mtl
     SceneRenderTemplateProfile MakeIdentityForwardLitProfile() noexcept;
     SceneRenderTemplateProfile MakeForwardUnlitProfile() noexcept;
     SceneRenderTemplateProfile MakeSkyProfile() noexcept;
-    SceneRenderTemplateProfile MakeShadowCasterProfile(bool masked) noexcept;
+    SceneRenderTemplateProfile MakeShadowCasterProfile() noexcept;
 
-    bool ResolveShadowCasterRequest(
-        bool masked,
-        ShaderStage stage,
-        const SceneRenderTemplateProfile &profile,
-        RenderTemplateRequest &out_request,
-        RenderTemplateValidationDiagnostic &out_diagnostic) noexcept;
-
+    // Builds a request from an identity explicitly selected by the caller.
+    // The template definition supplies its version; this utility only copies
+    // the provided scene roots and never selects a rendering policy.
     bool ResolveSceneRenderTemplateRequest(
-        const FixedPipelineVariant &variant,
+        RenderTemplateID template_id,
         ShaderStage stage,
         const SceneRenderTemplateProfile &profile,
         RenderTemplateRequest &out_request,

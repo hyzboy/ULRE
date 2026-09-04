@@ -39,8 +39,6 @@ set(TEMPLATE_FILES
     ${SHADERGEN_INCLUDE_PATH}/SceneRenderTemplateResolver.h
     template/RenderTemplate.cpp
     template/SceneRenderTemplateResolver.cpp
-    ${SHADERGEN_INCLUDE_PATH}/FixedPipelineVariant.h
-    template/FixedPipelineVariant.cpp
     ${SHADERGEN_INCLUDE_PATH}/FragmentTemplateComposer.h
     template/FragmentTemplateComposer.cpp
     ${SHADERGEN_INCLUDE_PATH}/MeshTemplateComposer.h

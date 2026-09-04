@@ -37,11 +37,9 @@ namespace
         const FragmentTemplateComposer::ComposeInput &input,
         const ShaderModuleSlotRole role)
     {
-        const RenderTemplateRequest *request = input.resolved_template
-            ? &input.resolved_template->request
-            : input.request;
-        const RenderTemplateModuleRoot *root = request
-            ? request->FindModuleRoot(role) : nullptr;
+        const RenderTemplateModuleRoot *root = input.resolved_template
+            ? input.resolved_template->request.FindModuleRoot(role)
+            : nullptr;
         return root && !root->include_path.IsEmpty()
             ? root->include_path.c_str() : nullptr;
     }
@@ -621,31 +619,6 @@ namespace
         return true;
     }
 
-    bool ComposeUnimplemented(
-        const RenderTemplateID template_id,
-        ShaderDocument &document)
-    {
-        document.Clear();
-        const char *name = "Unimplemented";
-        switch (template_id)
-        {
-        case RenderTemplateID::Decal: name = "Decal"; break;
-        case RenderTemplateID::PostProcessSSAO: name = "PostProcessSSAO"; break;
-        case RenderTemplateID::PostProcessDOF: name = "PostProcessDOF"; break;
-        default: return false;
-        }
-
-        AddTemplateBlock(document, ShaderDocumentBlockKind::Version,
-            AnsiString("#version 450\n"), name);
-        AnsiString main_body = AnsiString("\n// ") + AnsiString(name)
-            + AnsiString(" is registered but not implemented yet.\n"
-                         "void main()\n"
-                         "{\n"
-                         "}\n");
-        AddTemplateBlock(document, ShaderDocumentBlockKind::MainBody,
-            main_body, name);
-        return true;
-    }
 }
 
 namespace hgl::graph::mtl
@@ -655,72 +628,58 @@ namespace hgl::graph::mtl
         ShaderDocument &out_document,
         ShaderDocumentDiagnostics &out_diagnostics) const
     {
-        ComposeInput resolved_input = input;
-        if (!input.request && !input.resolved_template)
+        if (!input.resolved_template)
         {
            ShaderDocumentDiagnostic *diagnostic = out_diagnostics.Create();
-           diagnostic->code = "template-no-request";
+           diagnostic->code = "template-not-resolved";
            diagnostic->message =
-               "FragmentTemplateComposer requires a validated RenderTemplateRequest or ResolvedRenderTemplate; legacy composition fallback is disabled.";
+               "FragmentTemplateComposer requires a valid ResolvedRenderTemplate.";
            diagnostic->block_index = -1;
            diagnostic->source.stage = "fragment";
            diagnostic->source.logical_name = "FragmentTemplateComposer";
            return false;
         }
 
-        if (input.resolved_template)
+        if (!input.resolved_template->IsValid())
         {
-           if (!input.resolved_template->IsValid())
-               return false;
-           if (input.request
-            && input.request->GetHash()
-                   != input.resolved_template->request.GetHash())
-               return false;
-           resolved_input.request = &input.resolved_template->request;
+           ShaderDocumentDiagnostic *diagnostic = out_diagnostics.Create();
+           diagnostic->code = "template-invalid";
+           diagnostic->message =
+               "FragmentTemplateComposer received an invalid resolved template.";
+           diagnostic->block_index = -1;
+           diagnostic->source.stage = "fragment";
+           diagnostic->source.logical_name = "FragmentTemplateComposer";
+           return false;
         }
 
-        if (resolved_input.request)
-        {
-           RenderTemplateValidationDiagnostic diagnostic{};
-           if (!ValidateRenderTemplateRequest(
-                   *resolved_input.request,
-                   GetShaderCodeModuleRegistry(),
-                   diagnostic))
-               return false;
-           if (resolved_input.variant
-            && (resolved_input.request->template_id
-                   != resolved_input.variant->fragment_template
-                 && resolved_input.request->template_id
-                       != RenderTemplateID::ShadowCasterOpaque
-                 && resolved_input.request->template_id
-                       != RenderTemplateID::ShadowCasterMasked
-              || resolved_input.request->template_version
-                   != resolved_input.variant->template_version))
-               return false;
-        }
-
-        if (resolved_input.request
-         && resolved_input.request->template_id == RenderTemplateID::ForwardUnlit)
-           return ComposeForwardUnlit(resolved_input, out_document);
-        if (resolved_input.request
-         && resolved_input.request->template_id == RenderTemplateID::Sky)
-           return ComposeSky(resolved_input, out_document);
-        if (resolved_input.request
-         && (resolved_input.request->template_id == RenderTemplateID::ShadowCasterOpaque
-          || resolved_input.request->template_id == RenderTemplateID::ShadowCasterMasked))
-           return ComposeShadow(resolved_input, out_document);
-        if (resolved_input.request
-         && (resolved_input.request->template_id == RenderTemplateID::ForwardLitShadowedAO
-          || resolved_input.request->template_id
+        const RenderTemplateID template_id =
+           input.resolved_template->request.template_id;
+        if (template_id == RenderTemplateID::ForwardUnlit)
+          return ComposeForwardUnlit(input, out_document);
+        if (template_id == RenderTemplateID::Sky)
+          return ComposeSky(input, out_document);
+        if (template_id == RenderTemplateID::ShadowCasterOpaque
+         || template_id == RenderTemplateID::ShadowCasterMasked)
+          return ComposeShadow(input, out_document);
+        if (template_id == RenderTemplateID::ForwardLitShadowedAO
+         || template_id
                 == RenderTemplateID::ForwardLitShadowedIdentityAO
-          || resolved_input.request->template_id == RenderTemplateID::ForwardLitUnshadowedAO))
-           return ComposeForwardLit(resolved_input, out_document);
-        if (resolved_input.request
-         && (resolved_input.request->template_id == RenderTemplateID::Decal
-          || resolved_input.request->template_id == RenderTemplateID::PostProcessSSAO
-          || resolved_input.request->template_id == RenderTemplateID::PostProcessDOF))
-           return ComposeUnimplemented(
-               resolved_input.request->template_id, out_document);
+         || template_id == RenderTemplateID::ForwardLitUnshadowedAO)
+          return ComposeForwardLit(input, out_document);
+        if (template_id == RenderTemplateID::Decal
+         || template_id == RenderTemplateID::PostProcessSSAO
+         || template_id == RenderTemplateID::PostProcessDOF)
+        {
+            ShaderDocumentDiagnostic *diagnostic = out_diagnostics.Create();
+            diagnostic->code = "template-not-implemented";
+            diagnostic->message = AnsiString(
+                "The requested render template has no native fragment emitter: ")
+                + GetRenderTemplateName(template_id);
+            diagnostic->block_index = -1;
+            diagnostic->source.stage = "fragment";
+            diagnostic->source.logical_name = "FragmentTemplateComposer";
+            return false;
+        }
 
         ShaderDocumentDiagnostic *diagnostic = out_diagnostics.Create();
         diagnostic->code = "template-unregistered";

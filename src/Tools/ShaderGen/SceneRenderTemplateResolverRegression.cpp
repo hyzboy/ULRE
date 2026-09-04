@@ -7,10 +7,6 @@ using namespace hgl::graph::mtl;
 
 int main()
 {
-    FixedPipelineVariant variant{};
-    variant.fragment_template = RenderTemplateID::ForwardUnlit;
-    variant.template_version = 1;
-
     SceneRenderTemplateProfile profile;
     if (!profile.AddModule(
             ShaderModuleSlotRole::SurfaceProvider, "material_surface",
@@ -26,7 +22,7 @@ int main()
     RenderTemplateRequest request;
     RenderTemplateValidationDiagnostic diagnostic{};
     if (!ResolveSceneRenderTemplateRequest(
-            variant, hgl::graph::ShaderStage::Fragment,
+            RenderTemplateID::ForwardUnlit, hgl::graph::ShaderStage::Fragment,
             profile, request, diagnostic))
         return 2;
     if (request.template_id != RenderTemplateID::ForwardUnlit
@@ -54,7 +50,6 @@ int main()
         return 6;
     FragmentTemplateComposer composer;
     FragmentTemplateComposer::ComposeInput compose_input{};
-    compose_input.request = &request;
     compose_input.resolved_template = &resolved;
     ShaderDocument document;
     ShaderDocumentDiagnostics document_diagnostics;
@@ -67,20 +62,22 @@ int main()
      || sky_profile.roles[0] != ShaderModuleSlotRole::AmbientLightProvider)
         return 9;
     const SceneRenderTemplateProfile shadow_profile =
-        MakeShadowCasterProfile(true);
+        MakeShadowCasterProfile();
     if (shadow_profile.module_count != 2
      || shadow_profile.roles[0] != ShaderModuleSlotRole::SurfaceProvider)
         return 10;
     RenderTemplateRequest shadow_request;
-    if (!ResolveShadowCasterRequest(
-            true, hgl::graph::ShaderStage::Fragment, shadow_profile,
+    if (!ResolveSceneRenderTemplateRequest(
+            RenderTemplateID::ShadowCasterMasked,
+            hgl::graph::ShaderStage::Fragment, shadow_profile,
             shadow_request, diagnostic)
      || shadow_request.template_id != RenderTemplateID::ShadowCasterMasked)
         return 11;
     RenderTemplateRequest opaque_request;
-    if (!ResolveShadowCasterRequest(
-            false, hgl::graph::ShaderStage::Fragment,
-            MakeShadowCasterProfile(false), opaque_request, diagnostic)
+    if (!ResolveSceneRenderTemplateRequest(
+            RenderTemplateID::ShadowCasterOpaque,
+            hgl::graph::ShaderStage::Fragment,
+            MakeShadowCasterProfile(), opaque_request, diagnostic)
      || opaque_request.template_id != RenderTemplateID::ShadowCasterOpaque)
         return 12;
 

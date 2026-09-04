@@ -145,7 +145,7 @@ inline const char *GetFallbackMaterialDefinitionID()
 
 /**
  * Normalize a MaterialRecipe in-place:
- *   1. Fills mtl_def_id and lod from the matched MaterialDefinition if they are unset.
+ *   1. Fills mtl_def_id from the matched MaterialDefinition if it is unset.
  *   2. Applies definition defaults and resolved render state to the recipe.
  *
  * This is the canonical pre-processing step that must be called before the recipe is stored
