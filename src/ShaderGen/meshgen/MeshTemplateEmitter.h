@@ -7,8 +7,8 @@
 // 复用现有 s1_* 模块（LoadVertexData 读 SSBO）——通过宏把 gl_VertexIndex
 // 替换为 gl_LocalInvocationIndex（mesh shader 无 gl_VertexIndex）。
 //
-// 输出契约：varying/descriptor/Stage1/2/3 结构，
-// 由 CompileCompositorMaterial 注入 binding_preamble + 索引表声明。
+// 输出：带来源溯源的 ShaderDocument 块（varying/descriptor/Stage1/2/3 结构），
+// 由 MeshTemplateComposer 组合、BuildMaterialStageDocument 合并资源声明。
 
 #pragma once
 

@@ -13,9 +13,9 @@
 //
 // 固定布局：set 间按 Scene(0) < PerObject(1) < Material(2) < Bindless(3)。
 // 行表 SSBO 声明（mtl_private_data_index / mtl_texture_layer_rows / l2w_index_rows）
-// 不在此定义默认值：由 CompileCompositorMaterial 依据 descriptor_info 统一生成并
+// 不在此定义默认值：由 CompileMaterial 依据 descriptor_info 统一生成并
 // 注入（buffer 声明 + Resolve 函数，不再写死在 .glsl）。
-// 材质实例 mtl SSBO 的 struct/buffer 声明同样由 CompileCompositorMaterial 统一生成并注入。
+// 材质实例 mtl SSBO 的 struct/buffer 声明同样由 CompileMaterial 统一生成并注入。
 
 #ifndef DESCRIPTOR_MACROS_GLSL
 #define DESCRIPTOR_MACROS_GLSL

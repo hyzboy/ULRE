@@ -49,9 +49,9 @@ namespace
         "//\n"
         "// 固定布局：set 间按 Scene(0) < PerObject(1) < Material(2) < Bindless(3)。\n"
         "// 行表 SSBO 声明（mtl_private_data_index / mtl_texture_layer_rows / l2w_index_rows）\n"
-        "// 不在此定义默认值：由 CompileCompositorMaterial 依据 descriptor_info 统一生成并\n"
+        "// 不在此定义默认值：由 CompileMaterial 依据 descriptor_info 统一生成并\n"
         "// 注入（buffer 声明 + Resolve 函数，不再写死在 .glsl）。\n"
-        "// 材质实例 mtl SSBO 的 struct/buffer 声明同样由 CompileCompositorMaterial 统一生成并注入。\n"
+        "// 材质实例 mtl SSBO 的 struct/buffer 声明同样由 CompileMaterial 统一生成并注入。\n"
         "\n"
         "#ifndef DESCRIPTOR_MACROS_GLSL\n"
         "#define DESCRIPTOR_MACROS_GLSL\n";
@@ -162,7 +162,7 @@ namespace
     //
     // 参与检查的类别：VertexGeometry（几何 ABI，s1_* 模块按宏声明 binding）与
     // SceneGlobal（全局 UBO）。不参与：PerDraw 行表类（l2w_index/private_data_index
-    // 的 buffer 声明由 CompileCompositorMaterial 生成注入，无默认宏）、MaterialData
+    // 的 buffer 声明由 CompileMaterial 生成注入，无默认宏）、MaterialData
     // （binding=-1 per-material 动态）、以及 CharQuad 文本三 SSBO（宏侧有、目录未收录，
     // 属 mesh 模式内部约定，非通用资源）。
     bool NeedsGLSLBindingMacro(const DescriptorResourceCatalogEntry &row)

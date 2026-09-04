@@ -3700,7 +3700,7 @@ namespace
             1
         };
 
-        CompositorMaterialBuildConfig config{};
+        MaterialCompileConfig config{};
         config.material_private_data = SSBOType::EmissiveSurface;
         config.defer_finalize = true;
         // mesh 化后顶点路径统一走 Mesh stage（VS 已彻底废弃）
@@ -3720,7 +3720,7 @@ namespace
             ShaderDocumentBlockKind::Raw,
             "layout(location=0) out vec4 outColor;\n"
             "void main(){outColor=vec4(1.0);}\n");
-        ShaderBuildContext *build_spec = CompileCompositorMaterial(
+        ShaderBuildContext *build_spec = CompileMaterial(
             nullptr,
             compiler_input,
             mesh_document,
@@ -3831,7 +3831,7 @@ namespace
             1
         };
 
-        CompositorMaterialBuildConfig config{};
+        MaterialCompileConfig config{};
         config.defer_finalize = true;
         config.shader_stage_flag_bits = uint32_t(hgl::graph::mtl::ShaderStage::MeshFragment);
 
@@ -3850,7 +3850,7 @@ namespace
             ShaderDocumentBlockKind::Raw,
             "layout(location=0) out vec4 outColor;\n"
             "void main(){outColor=vec4(1.0);}\n");
-        ShaderBuildContext *build_spec = CompileCompositorMaterial(
+        ShaderBuildContext *build_spec = CompileMaterial(
             nullptr,
             compiler_input,
             mesh_document,

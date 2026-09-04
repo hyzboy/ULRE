@@ -58,9 +58,12 @@ namespace hgl::graph::mtl
                  const AnsiString &text,
                  const ShaderDocumentSource &source = {});
 
+        /// 整文档序列化：校验恰有一个 Version 块且位于首位，然后拼接全部块
         bool Serialize(AnsiString &out_text,
                        ShaderDocumentDiagnostics &out_diagnostics) const;
 
+        /// 片段序列化：无校验直接拼接——供没有 Version 块的子文档
+        ///（输入/provider 片段）使用，合并前的中间形态
         bool SerializeFragment(AnsiString &out_text,
                                ShaderDocumentDiagnostics &out_diagnostics) const;
 

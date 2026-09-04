@@ -34,8 +34,8 @@ namespace hgl::graph::mtl
         // mesh per-draw 参数表（IndirectMeshDraw）：替代 push constant——per-draw 段偏移经
         // gl_DrawID 查表（间接合批的关键：多命令一次 vkCmdDrawMeshTasksIndirectEXT 提交时
         // 每命令各自的参数只能靠 GPU 侧查表；直接绘制 gl_DrawID=0 → row 0）。
-        // 声明用 MESH_DRAW_PARAMS_SET/BINDING 宏（descriptor_macros.glsl 默认值 +
-        // CompileCompositorMaterial binding_preamble 注入实际值）。字段顺序与 CPU 侧
+        // 声明用 MESH_DRAW_PARAMS_SET/BINDING 宏（descriptor_macros.glsl 默认值）。
+        // 字段顺序与 CPU 侧
         // per-draw 参数行严格一致（std430 全 4 字节成员，24B 无 padding）——
         // 字段名/类型遍历 kMeshDrawParamsField*（ShaderBufferSources.h X 列表单一真源，
         // 与 CPU struct MeshDrawParams 同源，改字段只改那一处）。

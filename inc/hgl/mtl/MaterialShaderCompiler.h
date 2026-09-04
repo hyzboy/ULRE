@@ -4,7 +4,7 @@ namespace hgl::graph::mtl {}
 
 /// MaterialShaderCompiler.h — canonical material input → ShaderBuildContext
 ///
-/// 使用 CompileCompositorMaterial 编译 Compositor 模板产出的完整 GLSL。
+/// 使用 CompileMaterial 编译 Compositor 模板产出的完整 GLSL。
 /// 内部流程：
 ///   1. Build DescriptorSetLayoutAllocator from the canonical descriptor input.
 ///   2. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
@@ -48,7 +48,7 @@ struct MaterialShaderCompilerInput
     uint32 descriptor_entry_count = 0;
 };
 
-struct CompositorMaterialBuildConfig
+struct MaterialCompileConfig
 {
     PrimitiveType primitive_type = PrimitiveType::Triangles;
     uint32_t shader_stage_flag_bits = uint32_t(ShaderStage::MeshFragment);
@@ -57,7 +57,7 @@ struct CompositorMaterialBuildConfig
     // 已随单槽类型收敛删除。
     SSBOType material_private_data = SSBOType::UserDefined;
     // Optional: capability declaration source for development-time subset validation.
-    // When non-null, CompileCompositorMaterial checks Layout requirements ⊆ Definition capabilities.
+    // When non-null, CompileMaterial checks Layout requirements ⊆ Definition capabilities.
     const mtl::MaterialDefinition *material_definition = nullptr;
     // Optional unified stage/link contract. When supplied, the compiler
     // validates the declared VS/FS interface before compiling the local SPV.
@@ -96,21 +96,21 @@ std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names);
  * @param config    编译期配置视图
  * @return          编译好的 ShaderBuildContext*; 失败返回 nullptr
  */
-ShaderBuildContext *CompileCompositorMaterial(
+ShaderBuildContext *CompileMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialShaderCompilerInput &input,
     const ShaderDocument &mesh_source_document,
     const ShaderDocument &fragment_source_document,
-    const CompositorMaterialBuildConfig &config);
+    const MaterialCompileConfig &config);
 
-// Diagnostic-only overload. Keeping capture outside CompositorMaterialBuildConfig
+// Diagnostic-only overload. Keeping capture outside MaterialCompileConfig
 // preserves the layout of the production compiler configuration.
-ShaderBuildContext *CompileCompositorMaterial(
+ShaderBuildContext *CompileMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialShaderCompilerInput &input,
     const ShaderDocument &mesh_source_document,
     const ShaderDocument &fragment_source_document,
-    const CompositorMaterialBuildConfig &config,
+    const MaterialCompileConfig &config,
     MaterialShaderDocumentCapture *document_capture);
 
 }//namespace hgl::graph::mtl

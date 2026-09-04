@@ -575,14 +575,14 @@ namespace hgl::graph::mtl
             const MaterialDefinitionBuildRequest &request,
             GenericMaterialBuildPlan &plan,
             MaterialShaderCompilerInput &out_compiler_input,
-            CompositorMaterialBuildConfig &out_config)
+            MaterialCompileConfig &out_config)
         {
             out_compiler_input = MaterialShaderCompilerInput{
                 definition.definition_name.c_str(),
                 request.primitive_type,
                 plan.descriptors.data(), static_cast<uint32>(plan.descriptors.size())
             };
-            CompositorMaterialBuildConfig &config = out_config;
+            MaterialCompileConfig &config = out_config;
             config.primitive_type = request.primitive_type;
             config.shader_stage_flag_bits =
                 uint32(ShaderStage::MeshFragment);
@@ -689,12 +689,12 @@ namespace hgl::graph::mtl
             return nullptr;
 
         MaterialShaderCompilerInput compiler_input{};
-        CompositorMaterialBuildConfig config{};
+        MaterialCompileConfig config{};
         if (!FinalizeProgramLink(profile, definition, request, plan,
                                  compiler_input, config))
             return nullptr;
 
-        ShaderBuildContext *result = CompileCompositorMaterial(
+        ShaderBuildContext *result = CompileMaterial(
             profile, compiler_input,
             document_capture
                 ? document_capture->mesh_source_document

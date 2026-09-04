@@ -19,6 +19,10 @@ namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
 
+    // ── 内部前向声明（2026-09 de-export：仅本文件消费，不再导出）────────
+    std::string BuildMeshIndexTableDecls(const DescriptorSetLayoutAllocator &descriptor_info);
+    std::string BuildFSIndexTableDecls(const DescriptorSetLayoutAllocator &descriptor_info);
+
 bool BuildCodeModuleDocument(
     const ShaderCodeResourceManifest *manifest,
     const char *stage,
@@ -51,16 +55,6 @@ bool BuildCodeModuleDocument(
         out_document.Add(ShaderDocumentBlockKind::Module, code, source);
     }
     return true;
-}
-
-ShaderDocument BuildCodeModuleDocument(
-    const ShaderCodeResourceManifest *manifest,
-    const char *stage,
-    const char *material)
-{
-    ShaderDocument document;
-    BuildCodeModuleDocument(manifest, stage, material, document);
-    return document;
 }
 
 std::string BuildSamplerMacros(const std::vector<std::string> &sampler_names)
@@ -236,25 +230,8 @@ bool BuildMaterialResourceDocument(
     return true;
 }
 
-// ── Step 5c: 编译期宏（compile_defines）──────────────────────────────────────
-// 遍历 MaterialDefinition.compile_defines，为每个名字生成 "#define <name> 1\n"。
-// 用于在 GLSL 中通过 #ifdef 切换代码路径（如 TEXT_SDF_ENABLED）。
-std::string BuildCompileDefineMacros(
-    const CompositorMaterialBuildConfig &config)
-{
-    ShaderDocument document;
-    if (!BuildCompileDefineDocument(config, document))
-        return {};
-
-    ShaderDocumentDiagnostics diagnostics;
-    AnsiString serialized;
-    if (!document.SerializeFragment(serialized, diagnostics))
-        return {};
-    return std::string(serialized.c_str(), serialized.Length());
-}
-
 bool BuildCompileDefineDocument(
-    const CompositorMaterialBuildConfig &config,
+    const MaterialCompileConfig &config,
     ShaderDocument &out_document)
 {
     out_document.Clear();
@@ -435,7 +412,7 @@ bool BuildMaterialStageDocument(
     const ShaderDocument &source_document,
     const ShaderStage stage,
     const char *material,
-    const CompositorMaterialBuildConfig &config,
+    const MaterialCompileConfig &config,
     const DescriptorSetLayoutAllocator &descriptor_info,
     const SSBOType material_private_data,
     ShaderDocument &out_document,

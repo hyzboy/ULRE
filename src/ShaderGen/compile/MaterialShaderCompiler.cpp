@@ -295,15 +295,15 @@ static bool ValidateDefinitionCapabilitySubset(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CompileCompositorMaterial — Compositor 模板完整 GLSL → ShaderBuildContext
+// CompileMaterial — Compositor 模板完整 GLSL → ShaderBuildContext
 //
 // 使用 SetFinalGLSL + CreateShaderDirect 直接编译。
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CompileCompositorMaterial 内部辅助实现
+// CompileMaterial 内部辅助实现
 //
-// CompileCompositorMaterial 的 7 步流水线被拆分为多个静态辅助函数，
+// CompileMaterial 的 7 步流水线被拆分为多个静态辅助函数，
 // 描述符注册 / 行表声明 / binding 宏注入改为配表驱动，主函数仅做编排。
 // 所有失败路径统一走 CompileContext::Fail() + FailCompile()（打印并 delete ctx）。
 // ═══════════════════════════════════════════════════════════════════════════
@@ -326,7 +326,7 @@ static ShaderBuildContext *FailCompile(CompileContext &c)
     if (!c.last_error.empty())
     {
         std::fprintf(stderr,
-            "[CompileCompositorMaterial] material=%s failed: %s\n",
+            "[CompileMaterial] material=%s failed: %s\n",
             c.input && c.input->debug_name ? c.input->debug_name : "<unnamed>",
             c.last_error.c_str());
     }
@@ -338,7 +338,7 @@ static ShaderBuildContext *FailCompile(CompileContext &c)
 // ── Step 1: Config（primitive 校验留在主函数）────────────────────────────────
 static bool PrepareBaseDescriptorContract(
     const MaterialShaderCompilerInput &input,
-    const CompositorMaterialBuildConfig &config,
+    const MaterialCompileConfig &config,
     uint32_t &out_shader_stage_bits,
     DescriptorContract &out_base_contract,
     bool &out_with_local_to_world,
@@ -367,7 +367,7 @@ static bool PrepareBaseDescriptorContract(
 
 // ── Step 2: 创建 ShaderBuildContext ─────────────────────────────────────────
 static bool CreateBuildContext(
-    const CompositorMaterialBuildConfig &config,
+    const MaterialCompileConfig &config,
     const uint32_t shader_stage_bits,
     const bool with_local_to_world,
     CompileContext &c)
@@ -385,7 +385,7 @@ static bool CreateBuildContext(
 // 均可选；双源并存时必须类型一致，否则冲突硬失败。
 // 顶点数据 SSBO（Vertex*）走固定名路径（PerObject 集），不进入材质数据槽。
 static bool ResolveEffectiveMaterialPrivateData(
-    const CompositorMaterialBuildConfig &config,
+    const MaterialCompileConfig &config,
     CompileContext &c,
     SSBOType &out_material_private_data)
 {
@@ -414,7 +414,7 @@ static bool ResolveEffectiveMaterialPrivateData(
 
 // ── Step 3b: 有效契约 → 固定序列化条目 ───────────────────────────────────────
 static bool BuildEffectiveDescriptorEntries(
-    const CompositorMaterialBuildConfig &config,
+    const MaterialCompileConfig &config,
     const DescriptorContract &base_contract,
     const SSBOType material_private_data,
     const uint32_t material_ssbo_stage_bits,
@@ -602,7 +602,7 @@ static bool RegisterMaterialPrivateDataSlotDescriptors(
 // ── Step 6: ShaderResourceSchema 构建与校验 ──────────────────────────────────
 static bool BuildAndValidateResourceSchema(
     const DescriptorContract &effective_descriptor_contract,
-    const CompositorMaterialBuildConfig &config,
+    const MaterialCompileConfig &config,
     CompileContext &c,
     ShaderResourceSchema &out_schema)
 {
@@ -617,7 +617,7 @@ static bool BuildAndValidateResourceSchema(
         for (const auto &diag : contract_diagnostics)
         {
             std::fprintf(stderr,
-                "[CompileCompositorMaterial][ShaderResourceSchema] material=%s: %s\n",
+                "[CompileMaterial][ShaderResourceSchema] material=%s: %s\n",
                 c.input->debug_name ? c.input->debug_name : "<unnamed>",
                 diag.c_str());
         }
@@ -636,7 +636,7 @@ static bool BuildAndValidateResourceSchema(
             for (const auto &diag : capability_diagnostics)
             {
                 std::fprintf(stderr,
-                    "[CompileCompositorMaterial][DefinitionCapability] material=%s: %s\n",
+                    "[CompileMaterial][DefinitionCapability] material=%s: %s\n",
                     c.input->debug_name ? c.input->debug_name : "<unnamed>",
                     diag.c_str());
             }
@@ -663,30 +663,30 @@ static bool BuildArtifactMetadata(
     return true;
 }
 
-ShaderBuildContext *CompileCompositorMaterial(
+ShaderBuildContext *CompileMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialShaderCompilerInput &input,
     const ShaderDocument &mesh_source_document,
     const ShaderDocument &fragment_source_document,
-    const CompositorMaterialBuildConfig &config)
+    const MaterialCompileConfig &config)
 {
-    return CompileCompositorMaterial(
+    return CompileMaterial(
         profile, input, mesh_source_document, fragment_source_document, config, nullptr);
 }
 
-ShaderBuildContext *CompileCompositorMaterial(
+ShaderBuildContext *CompileMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialShaderCompilerInput &input,
     const ShaderDocument &mesh_source_document,
     const ShaderDocument &fragment_source_document,
-    const CompositorMaterialBuildConfig &config,
+    const MaterialCompileConfig &config,
     MaterialShaderDocumentCapture *document_capture)
 {
     if (mesh_source_document.GetBlockCount() == 0
      || fragment_source_document.GetBlockCount() == 0)
     {
         std::fprintf(stderr,
-            "[CompileCompositorMaterial] material=%s: source document is empty\n",
+            "[CompileMaterial] material=%s: source document is empty\n",
             input.debug_name ? input.debug_name : "<unnamed>");
         return nullptr;
     }
@@ -696,7 +696,7 @@ ShaderBuildContext *CompileCompositorMaterial(
     if (input.primitive_type != primitive_type)
     {
         std::fprintf(stderr,
-            "[CompileCompositorMaterial] material=%s: primitive_type mismatch "
+            "[CompileMaterial] material=%s: primitive_type mismatch "
             "(input=%d, config=%d)\n",
             input.debug_name ? input.debug_name : "<unnamed>",
             int(input.primitive_type), int(primitive_type));
