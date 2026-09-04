@@ -123,8 +123,8 @@ namespace
         VkFormat position_format,
         MeshShaderMode mode = MeshShaderMode::VertexPassthrough,
         uint32_t max_invocations = 64,
-        const std::string &resolved_input_glsl = {},
-        const std::string &provider_glsl = {},
+        const ShaderDocument *resolved_input_document = nullptr,
+        const ShaderDocument *provider_document = nullptr,
         const hgl::ValueArray<InterStageSemanticContractEntry>
             *resolved_stage_interface = nullptr)
     {
@@ -136,8 +136,8 @@ namespace
                 mode,
                 max_invocations,
                 document,
-                resolved_input_glsl,
-                provider_glsl,
+                resolved_input_document,
+                provider_document,
                 resolved_stage_interface))
             return {};
 
