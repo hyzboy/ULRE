@@ -37,12 +37,6 @@ namespace hgl::graph::mtl
             *item = diagnostic;
         }
 
-        static bool IsLegacyVersionBlock(const ShaderDocumentBlock &block)
-        {
-            return block.kind == ShaderDocumentBlockKind::Raw
-                && block.text.Length() >= 8
-                && block.text.Left(8) == "#version";
-        }
     }
 
     void ShaderDocument::Clear()
@@ -82,8 +76,7 @@ namespace hgl::graph::mtl
         for (int i = 0; i < blocks.GetCount(); ++i)
         {
             const ShaderDocumentBlock &block = *blocks[i];
-            if (block.kind == ShaderDocumentBlockKind::Version
-             || (i == 0 && IsLegacyVersionBlock(block)))
+            if (block.kind == ShaderDocumentBlockKind::Version)
             {
                 ++version_count;
                 if (first_non_version >= 0)

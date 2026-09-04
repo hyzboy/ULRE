@@ -530,12 +530,12 @@ bool BuildMaterialStageDocument(
         AnsiString first_block(stage_glsl);
         if (injection.GetBlockCount() > 0)
             first_block += "\n";
-        out_document.Add(ShaderDocumentBlockKind::Raw, first_block, source);
+        out_document.Add(ShaderDocumentBlockKind::Version, first_block, source);
     }
     else
     {
         out_document.Add(
-            ShaderDocumentBlockKind::Raw,
+            ShaderDocumentBlockKind::Version,
             stage_glsl.Left(version_end + 1),
             source);
     }

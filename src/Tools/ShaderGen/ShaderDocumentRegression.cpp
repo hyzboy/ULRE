@@ -3,7 +3,6 @@
 #include <hgl/mtl/ResolvedRenderTemplate.h>
 #include <hgl/mtl/ShaderCodeModuleFile.h>
 #include <hgl/mtl/ShaderCodeModuleRegistry.h>
-#include <hgl/mtl/ShaderLegacyAuditShell.h>
 #include <hgl/mtl/ShaderRuntimeReadOnlyValidationShell.h>
 #include "../../ShaderGen/document/DocumentFragmentBuilder.h"
 
@@ -45,24 +44,25 @@ int main()
     if (diagnostics[0]->source.stage.IsEmpty())
         return 10;
 
-    const AnsiString legacy = "#version 460\nvoid main() {}\n";
-    ShaderDocument raw_document;
+    const AnsiString version = "#version 460\n";
+    ShaderDocument version_document;
     ShaderDocumentSource raw_source;
     raw_source.stage = "fragment";
-    raw_document.Add(ShaderDocumentBlockKind::Raw, legacy, raw_source);
+    version_document.Add(ShaderDocumentBlockKind::Version, version, raw_source);
     AnsiString raw_serialized;
     ShaderDocumentDiagnostics raw_diagnostics;
-    if (!raw_document.Serialize(raw_serialized, raw_diagnostics)
-     || raw_serialized != legacy
-     || raw_document.GetBlockCount() != 1
-     || raw_document.GetBlock(0).source.stage != "fragment")
+    if (!version_document.Serialize(raw_serialized, raw_diagnostics)
+     || raw_serialized != version
+     || version_document.GetBlockCount() != 1
+     || version_document.GetBlock(0).kind != ShaderDocumentBlockKind::Version
+     || version_document.GetBlock(0).source.stage != "fragment")
         return 3;
 
     ShaderDocument injected;
     ShaderDocumentSource injected_source;
     injected_source.stage = "mesh";
     injected.Add(
-        ShaderDocumentBlockKind::Raw,
+        ShaderDocumentBlockKind::Version,
         "#version 460\n",
         injected_source);
     injected.Add(
@@ -90,13 +90,6 @@ int main()
      || builder_diagnostics.GetCount() != 1)
         return 11;
 
-    ShaderLegacyAuditShell audit;
-    audit.BeginAudit();
-    audit.CompleteAudit();
-    if (audit.GetState() != ShaderLegacyAuditState::ReadyForCleanup
-     || !audit.IsCleanupSafe())
-        return 12;
-
     ShaderRuntimeReadOnlyValidationShell validation;
     validation.BeginValidation();
     validation.SetCacheState(false);
@@ -108,7 +101,7 @@ int main()
      || !validation.GetSummary().dry_run
      || validation.GetSummary().cache_valid
      || validation.GetSummary().artifact_readable)
-        return 13;
+        return 12;
 
     RenderTemplateRequest template_request{};
     template_request.template_id = RenderTemplateID::ForwardLitShadowedAO;

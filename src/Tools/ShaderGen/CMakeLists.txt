@@ -158,26 +158,26 @@ endif()
 
 ####################################################################################################
 
-add_executable(ShaderLegacyDocumentCompare
-    ShaderLegacyDocumentCompare.cpp)
+add_executable(ShaderDocumentProductionRegression
+    ShaderDocumentProductionRegression.cpp)
 
-target_link_libraries(ShaderLegacyDocumentCompare
+target_link_libraries(ShaderDocumentProductionRegression
     PRIVATE ULRE.ShaderGen
             ULRE.Vulkan
             CMCore
             CMMath
             CMCoreType)
 
-CreateProject(ShaderLegacyDocumentCompare)
+CreateProject(ShaderDocumentProductionRegression)
 
 if(BUILD_TESTING)
     add_test(
-        NAME shader_legacy_document_compare
-        COMMAND ShaderLegacyDocumentCompare --smoke
+        NAME shader_document_production_regression
+        COMMAND ShaderDocumentProductionRegression --smoke
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
     set_tests_properties(
-        shader_legacy_document_compare
-        PROPERTIES LABELS "shadergen;document;comparison")
+        shader_document_production_regression
+        PROPERTIES LABELS "shadergen;document;production")
 endif()
 
 ####################################################################################################

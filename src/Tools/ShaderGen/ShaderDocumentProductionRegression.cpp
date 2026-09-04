@@ -176,7 +176,7 @@ namespace
         const AnsiString actual_context = GetContext(
             actual, actual_length, offset);
         GLogError(
-            "[ShaderLegacyDocumentCompare] fixture=%s stage=%s GLSL mismatch "
+            "[ShaderDocumentProductionRegression] fixture=%s stage=%s GLSL mismatch "
             "offset=%d document(line=%d,length=%d,context=\"%s\") "
             "actual(line=%d,length=%d,context=\"%s\") "
             "block=%d kind=%s source={material=%s,stage=%s,module=%s,path=%s,name=%s}",
@@ -209,7 +209,7 @@ namespace
              || block.source.logical_name.IsEmpty())
             {
                 GLogError(
-                    "[ShaderLegacyDocumentCompare] fixture=%s stage=%s source "
+                    "[ShaderDocumentProductionRegression] fixture=%s stage=%s source "
                     "document block=%d has invalid metadata "
                     "{stage=%s,module=%s,path=%s,name=%s}",
                     fixture, stage, i, block.source.stage.c_str(),
@@ -225,7 +225,7 @@ namespace
                 != ShaderDocumentBlockKind::MainBody)
         {
             GLogError(
-                "[ShaderLegacyDocumentCompare] fixture=%s stage=%s source "
+                "[ShaderDocumentProductionRegression] fixture=%s stage=%s source "
                 "document order invalid: blocks=%d versions=%d mains=%d "
                 "first=%s last=%s",
                 fixture, stage, document.GetBlockCount(), version_count, main_count,
@@ -250,7 +250,7 @@ namespace
         if (!document.Serialize(out_serialized, diagnostics))
         {
             GLogError(
-                "[ShaderLegacyDocumentCompare] fixture=%s stage=%s final "
+                "[ShaderDocumentProductionRegression] fixture=%s stage=%s final "
                 "document serialization failed (diagnostics=%d)",
                 fixture, stage, diagnostics.GetCount());
             return false;
@@ -262,7 +262,7 @@ namespace
          || out_serialized.Left(8).Comp("#version") != 0)
         {
             GLogError(
-                "[ShaderLegacyDocumentCompare] fixture=%s stage=%s final "
+                "[ShaderDocumentProductionRegression] fixture=%s stage=%s final "
                 "document invariant failed: versions=%d mains=%d first=\"%s\"",
                 fixture, stage, version_count, main_count,
                 GetContext(out_serialized.c_str(), out_serialized.Length(), 0).c_str());
@@ -282,7 +282,7 @@ namespace
         if (!actual_stage)
         {
             GLogError(
-                "[ShaderLegacyDocumentCompare] fixture=%s stage=%s is absent "
+                "[ShaderDocumentProductionRegression] fixture=%s stage=%s is absent "
                 "from its production ShaderBuildContext",
                 fixture, stage_name);
             return false;
@@ -294,7 +294,7 @@ namespace
         if (!source_document.Serialize(source_serialized, diagnostics))
         {
             GLogError(
-                "[ShaderLegacyDocumentCompare] fixture=%s stage=%s source "
+                "[ShaderDocumentProductionRegression] fixture=%s stage=%s source "
                 "document serialization failed (diagnostics=%d)",
                 fixture, stage_name, diagnostics.GetCount());
             return false;
@@ -308,7 +308,7 @@ namespace
          || stage_key.definition_hash != source_hash)
         {
             GLogError(
-                "[ShaderLegacyDocumentCompare] fixture=%s stage=%s source hash "
+                "[ShaderDocumentProductionRegression] fixture=%s stage=%s source hash "
                 "mismatch: serialized=%llu document=%llu stage-key=%llu",
                 fixture, stage_name,
                 static_cast<unsigned long long>(source_hash),
@@ -332,7 +332,7 @@ namespace
          || final_hash != actual_hash)
         {
             GLogError(
-                "[ShaderLegacyDocumentCompare] fixture=%s stage=%s final hash "
+                "[ShaderDocumentProductionRegression] fixture=%s stage=%s final hash "
                 "mismatch: serialized=%llu document=%llu actual=%llu",
                 fixture, stage_name,
                 static_cast<unsigned long long>(final_hash),
@@ -353,7 +353,7 @@ namespace
         if (!TryGetMaterialDefinitionByID(fixture.material_id, definition))
         {
             GLogError(
-                "[ShaderLegacyDocumentCompare] fixture=%s cannot resolve material=%s",
+                "[ShaderDocumentProductionRegression] fixture=%s cannot resolve material=%s",
                 fixture.name, fixture.material_id);
             return false;
         }
@@ -380,7 +380,7 @@ namespace
                 request.render_template_request))
         {
             GLogError(
-                "[ShaderLegacyDocumentCompare] fixture=%s cannot resolve template request",
+                "[ShaderDocumentProductionRegression] fixture=%s cannot resolve template request",
                 fixture.name);
             return false;
         }
@@ -391,7 +391,7 @@ namespace
          || !context->HasProgramArtifactMetadata())
         {
             GLogError(
-                "[ShaderLegacyDocumentCompare] fixture=%s production material "
+                "[ShaderDocumentProductionRegression] fixture=%s production material "
                 "build failed or did not expose program identity",
                 fixture.name);
             return false;
@@ -423,7 +423,7 @@ namespace
          || metadata.generated_source_digest != uint64(source_hasher))
         {
             GLogError(
-                "[ShaderLegacyDocumentCompare] fixture=%s program/stage key "
+                "[ShaderDocumentProductionRegression] fixture=%s program/stage key "
                 "mismatch: program=%llu/%llu mesh=%llu/%llu fragment=%llu/%llu "
                 "source=%llu/%llu",
                 fixture.name,
@@ -460,15 +460,15 @@ namespace
 
 int main(const int argc, char **argv)
 {
-    if (!hgl::logger::InitLogger(OS_TEXT("ShaderLegacyDocumentCompare")))
+    if (!hgl::logger::InitLogger(OS_TEXT("ShaderDocumentProductionRegression")))
         return 3;
 
     bool full = false;
     if (!ParseFull(argc, argv, full))
     {
         GLogError(
-            "[ShaderLegacyDocumentCompare] usage: "
-            "ShaderLegacyDocumentCompare [--smoke|--full]");
+            "[ShaderDocumentProductionRegression] usage: "
+            "ShaderDocumentProductionRegression [--smoke|--full]");
         return 2;
     }
 
@@ -478,7 +478,7 @@ int main(const int argc, char **argv)
     if (!SamplerPresetLibrary::Instance().Load(sampler_toml.ToOSString()))
     {
         GLogError(
-            "[ShaderLegacyDocumentCompare] cannot load sampler presets from %s",
+            "[ShaderDocumentProductionRegression] cannot load sampler presets from %s",
             ToU8String(sampler_toml.ToOSString()).c_str());
         return 4;
     }
@@ -512,7 +512,7 @@ int main(const int argc, char **argv)
     }
 
     GLogInfo(
-        "[ShaderLegacyDocumentCompare] %s production fixtures passed",
+        "[ShaderDocumentProductionRegression] %s production fixtures passed",
         full ? "full" : "smoke");
     return 0;
 }

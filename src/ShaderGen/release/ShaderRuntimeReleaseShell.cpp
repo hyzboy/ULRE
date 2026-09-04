@@ -92,7 +92,7 @@ namespace hgl::graph::mtl
     AnsiString ShaderRuntimeReleaseShell::GetPendingReleaseChecklist() const
     {
         return AnsiString("1. Keep ShaderDocument and ShaderCodeModule available for dev/debug\n")
-             + "2. Preserve ShaderLegacyDocumentCompare and regression gates\n"
+             + "2. Preserve ShaderDocumentProductionRegression and regression gates\n"
              + "3. Add release packaging guard before actual runtime split\n"
              + "4. Only execute Legacy cleanup after zero-reference audit and full rebuild\n"
              + "5. Switch to SPV-only runtime only near final release freeze";

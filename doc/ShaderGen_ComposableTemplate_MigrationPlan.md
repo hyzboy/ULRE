@@ -286,7 +286,7 @@ fragment document 的 block source 能追溯到 template 和 slot module。
 每个 Phase 都执行：
 
 1. Debug 与 Release 的 ShaderGen target build。
-2. `ShaderDocumentRegression`、`ShaderLegacyDocumentCompare`、
+2. `ShaderDocumentRegression`、`ShaderDocumentProductionRegression`、
    `ShaderResourceSchemaRegressionGate` 与 `ShaderCookSmoke`。
 3. 对受影响 fixture 比较 Document block 顺序/source、GLSL hash、stage/program key、
    descriptor/interface/output contract 和 SPV artifact hash。

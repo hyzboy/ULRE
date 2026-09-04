@@ -211,7 +211,7 @@ role + surface/purpose/capability predicate
 - 同输入的 GLSL 字节、Document block 顺序和来源稳定；
 - source digest、stage/program key、schema/metadata 稳定；
 - 输出 SPV 字节相同，或有明确 recipe/template version 引起的安全 cache 失效；
-- Debug/Release 构建、ShaderDocumentRegression、ShaderLegacyDocumentCompare、
+- Debug/Release 构建、ShaderDocumentRegression、ShaderDocumentProductionRegression、
   ShaderResourceSchemaRegressionGate、ShaderCookSmoke 通过；
 - 两个独立 artifact store 的路径、文件数、hash、metadata 对比一致；
 - 缓存 registry/recipe 的排序完全显式，绝不依赖 map 注册或遍历顺序。
