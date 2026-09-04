@@ -453,10 +453,9 @@ namespace hgl::graph::mtl
                 provider_glsl_str = plan.resolved_provider_glsl;
             }
 
-            ShaderDocument local_mesh_document;
             ShaderDocument &mesh_document = document_capture
                 ? document_capture->mesh_source_document
-                : local_mesh_document;
+                : plan.mesh_source_document;
             MeshTemplateComposer mesh_composer;
             MeshTemplateComposer::ComposeInput mesh_compose_input{};
             mesh_compose_input.node_config = plan.vertex_node_config;
@@ -499,10 +498,9 @@ namespace hgl::graph::mtl
                         output_diagnostic.error));
                 return false;
             }
-            ShaderDocument local_fragment_document;
             ShaderDocument &fragment_document = document_capture
                 ? document_capture->fragment_document
-                : local_fragment_document;
+                : plan.fragment_source_document;
             ShaderDocumentDiagnostics fragment_diagnostics;
             const std::string code_module_glsl = BuildCodeModuleGLSL(
                 plan.manifest.IsValid() ? &plan.manifest : nullptr);
@@ -674,8 +672,13 @@ namespace hgl::graph::mtl
 
         ShaderBuildContext *result = CompileCompositorMaterial(
             profile, compiler_input,
-            plan.ms,
-            plan.fs, config, document_capture);
+            document_capture
+                ? document_capture->mesh_source_document
+                : plan.mesh_source_document,
+            document_capture
+                ? document_capture->fragment_document
+                : plan.fragment_source_document,
+            config, document_capture);
         if (!result)
             GLogError("[ShaderGen] Generic material compilation failed: name=%s",
                       definition.definition_name.c_str());

@@ -59,10 +59,10 @@ namespace hgl::graph::mtl
     /// FS 阶段行表声明（TextureLayerRowsData named-slot struct + buffer）
     std::string BuildFSIndexTableDecls(const DescriptorSetLayoutAllocator &descriptor_info);
 
-    /// 构建可直接提交给 ShaderCreateInfo 的完整 stage 文档。现有 Mesh/Compositor
-    /// 发射器提供 stage_glsl 主体；此处按稳定字节顺序写入已解出的材质片段。
+    /// 将模板 source document 与已解出的材质片段合并为最终 stage document。
+    /// source document 必须以 Version block 开始。
     bool BuildMaterialStageDocument(
-        const AnsiString &stage_glsl,
+        const ShaderDocument &source_document,
         ShaderStage stage,
         const char *material,
         const CompositorMaterialBuildConfig &config,

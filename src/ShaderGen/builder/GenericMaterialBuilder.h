@@ -72,6 +72,8 @@ namespace hgl::graph::mtl
         // Phase 4: stage sources
         std::string ms;   // mesh stage（唯一顶点路径——VS 已废弃）
         std::string fs;
+        ShaderDocument mesh_source_document;
+        ShaderDocument fragment_source_document;
         mtl::OutputContract output_contract;
 
         // Phase 5: program link + compile config

@@ -3706,11 +3706,25 @@ namespace
         // mesh 化后顶点路径统一走 Mesh stage（VS 已彻底废弃）
         config.shader_stage_flag_bits = uint32_t(hgl::graph::mtl::ShaderStage::MeshFragment);
 
+        ShaderDocument mesh_document;
+        mesh_document.Add(
+            ShaderDocumentBlockKind::Version, "#version 460\n");
+        mesh_document.Add(
+            ShaderDocumentBlockKind::Raw,
+            "layout(location=0) in vec2 Position;\n"
+            "void main(){gl_Position=vec4(Position,0.0,1.0);}\n");
+        ShaderDocument fragment_document;
+        fragment_document.Add(
+            ShaderDocumentBlockKind::Version, "#version 460\n");
+        fragment_document.Add(
+            ShaderDocumentBlockKind::Raw,
+            "layout(location=0) out vec4 outColor;\n"
+            "void main(){outColor=vec4(1.0);}\n");
         ShaderBuildContext *build_spec = CompileCompositorMaterial(
             nullptr,
             compiler_input,
-            "#version 460\nlayout(location=0) in vec2 Position;\nvoid main(){gl_Position=vec4(Position,0.0,1.0);}\n",
-            "#version 460\nlayout(location=0) out vec4 outColor;\nvoid main(){outColor=vec4(1.0);}\n",
+            mesh_document,
+            fragment_document,
             config);
         if (!build_spec)
         {
@@ -3821,16 +3835,26 @@ namespace
         config.defer_finalize = true;
         config.shader_stage_flag_bits = uint32_t(hgl::graph::mtl::ShaderStage::MeshFragment);
 
+        ShaderDocument mesh_document;
+        mesh_document.Add(
+            ShaderDocumentBlockKind::Version, "#version 460\n");
+        mesh_document.Add(
+            ShaderDocumentBlockKind::Raw,
+            "#include \"common/descriptor_macros.glsl\"\n"
+            "layout(location=0) in vec2 Position;\n"
+            "void main(){gl_Position=vec4(Position,L2W_SET,L2W_BINDING);}\n");
+        ShaderDocument fragment_document;
+        fragment_document.Add(
+            ShaderDocumentBlockKind::Version, "#version 460\n");
+        fragment_document.Add(
+            ShaderDocumentBlockKind::Raw,
+            "layout(location=0) out vec4 outColor;\n"
+            "void main(){outColor=vec4(1.0);}\n");
         ShaderBuildContext *build_spec = CompileCompositorMaterial(
             nullptr,
             compiler_input,
-            "#version 460\n"
-            "#include \"common/descriptor_macros.glsl\"\n"
-            "layout(location=0) in vec2 Position;\n"
-            "void main(){gl_Position=vec4(Position,L2W_SET,L2W_BINDING);}\n",
-            "#version 460\n"
-            "layout(location=0) out vec4 outColor;\n"
-            "void main(){outColor=vec4(1.0);}\n",
+            mesh_document,
+            fragment_document,
             config);
         if (!build_spec)
         {

@@ -444,7 +444,7 @@ namespace
 }
 
 bool BuildMaterialStageDocument(
-    const AnsiString &stage_glsl,
+    const ShaderDocument &source_document,
     const ShaderStage stage,
     const char *material,
     const CompositorMaterialBuildConfig &config,
@@ -520,37 +520,30 @@ bool BuildMaterialStageDocument(
     AppendStageResourceBlocks(
         injection, resources, stage, stage_name, material);
 
-    ShaderDocumentSource source;
+    if (source_document.GetBlockCount() == 0
+     || source_document.GetBlock(0).kind != ShaderDocumentBlockKind::Version)
+    {
+        AddStageDiagnostic(
+            out_diagnostics,
+            "source-version",
+            "Material stage source document must start with a Version block");
+        return false;
+    }
+
+    const ShaderDocumentBlock &version = source_document.GetBlock(0);
+    ShaderDocumentSource source = version.source;
     source.stage = stage_name;
     source.material = material ? material : "";
-    source.logical_name = "MaterialStageSource";
-    const int version_end = stage_glsl.FindChar('\n');
-    if (version_end < 0)
-    {
-        AnsiString first_block(stage_glsl);
-        if (injection.GetBlockCount() > 0)
-            first_block += "\n";
-        out_document.Add(ShaderDocumentBlockKind::Version, first_block, source);
-    }
-    else
-    {
-        out_document.Add(
-            ShaderDocumentBlockKind::Version,
-            stage_glsl.Left(version_end + 1),
-            source);
-    }
+    out_document.Add(ShaderDocumentBlockKind::Version, version.text, source);
 
     AppendDocumentBlocks(out_document, injection, stage_name, material);
-
-    if (version_end >= 0
-     && version_end + 1 < stage_glsl.Length())
+    for (int index = 1; index < source_document.GetBlockCount(); ++index)
     {
-        out_document.Add(
-            ShaderDocumentBlockKind::Raw,
-            stage_glsl.SubString(
-                version_end + 1,
-                stage_glsl.Length() - version_end - 1),
-            source);
+        const ShaderDocumentBlock &block = source_document.GetBlock(index);
+        ShaderDocumentSource block_source = block.source;
+        block_source.stage = stage_name;
+        block_source.material = material ? material : "";
+        out_document.Add(block.kind, block.text, block_source);
     }
     return true;
 }

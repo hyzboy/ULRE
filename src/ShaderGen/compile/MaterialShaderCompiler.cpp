@@ -666,26 +666,27 @@ static bool BuildArtifactMetadata(
 ShaderBuildContext *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialShaderCompilerInput &input,
-    const std::string &         ms_glsl,
-    const std::string &         fs_glsl,
+    const ShaderDocument &mesh_source_document,
+    const ShaderDocument &fragment_source_document,
     const CompositorMaterialBuildConfig &config)
 {
     return CompileCompositorMaterial(
-        profile, input, ms_glsl, fs_glsl, config, nullptr);
+        profile, input, mesh_source_document, fragment_source_document, config, nullptr);
 }
 
 ShaderBuildContext *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
     const MaterialShaderCompilerInput &input,
-    const std::string &ms_glsl,
-    const std::string &fs_glsl,
+    const ShaderDocument &mesh_source_document,
+    const ShaderDocument &fragment_source_document,
     const CompositorMaterialBuildConfig &config,
     MaterialShaderDocumentCapture *document_capture)
 {
-    if (ms_glsl.empty() || fs_glsl.empty())
+    if (mesh_source_document.GetBlockCount() == 0
+     || fragment_source_document.GetBlockCount() == 0)
     {
         std::fprintf(stderr,
-            "[CompileCompositorMaterial] material=%s: ms_glsl or fs_glsl is empty\n",
+            "[CompileCompositorMaterial] material=%s: source document is empty\n",
             input.debug_name ? input.debug_name : "<unnamed>");
         return nullptr;
     }
@@ -777,10 +778,8 @@ ShaderBuildContext *CompileCompositorMaterial(
         fragment_final_document = &document_capture->fragment_final_document;
     }
     ShaderDocumentDiagnostics document_diagnostics;
-    const AnsiString mesh_stage_glsl(ms_glsl.c_str(), int(ms_glsl.size()));
-    const AnsiString fragment_stage_glsl(fs_glsl.c_str(), int(fs_glsl.size()));
     if (!BuildMaterialStageDocument(
-            mesh_stage_glsl,
+            mesh_source_document,
             ShaderStage::Mesh,
             input.debug_name,
             config,
@@ -789,7 +788,7 @@ ShaderBuildContext *CompileCompositorMaterial(
             *mesh_final_document,
             document_diagnostics)
      || !BuildMaterialStageDocument(
-            fragment_stage_glsl,
+            fragment_source_document,
             ShaderStage::Fragment,
             input.debug_name,
             config,
