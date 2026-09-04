@@ -237,8 +237,8 @@ namespace hgl::graph::mtl
         {
             plan.vertex_node_config =
                 ResolveMaterialVertexNodeConfig(definition, request);
-            plan.resolved_vertex_input_glsl.clear();
-            plan.resolved_provider_glsl.clear();
+            plan.resolved_vertex_input_document.Clear();
+            plan.resolved_provider_document.Clear();
             plan.resolved_provider_graph_hash = 0;
 
             // CharQuad: mesh shader self-declares all SSBOs; no vertex ABI needed.
@@ -255,8 +255,28 @@ namespace hgl::graph::mtl
                     return false;
                 }
                 plan.position_format = resolved_abi.position_format;
-                plan.resolved_vertex_input_glsl = resolved_abi.vertex_input_glsl.c_str();
-                plan.resolved_provider_glsl = resolved_abi.provider_glsl;
+                if (!resolved_abi.vertex_input_glsl.IsEmpty())
+                {
+                    ShaderDocumentSource input_source;
+                    input_source.stage = "mesh";
+                    input_source.module = "vertex-input";
+                    input_source.logical_name = "MeshTemplateEmitter.ResolvedInput";
+                    plan.resolved_vertex_input_document.Add(
+                        ShaderDocumentBlockKind::Module,
+                        resolved_abi.vertex_input_glsl,
+                        input_source);
+                }
+                if (!resolved_abi.provider_glsl.empty())
+                {
+                    ShaderDocumentSource provider_source;
+                    provider_source.stage = "mesh";
+                    provider_source.module = "vertex-provider";
+                    provider_source.logical_name = "MeshTemplateEmitter.Provider";
+                    plan.resolved_provider_document.Add(
+                        ShaderDocumentBlockKind::Module,
+                        AnsiString(resolved_abi.provider_glsl.c_str()),
+                        provider_source);
+                }
                 plan.resolved_provider_graph_hash = resolved_abi.provider_graph_hash;
                 {
                     hgl::hash::FNV1aHasher64 h;
@@ -422,9 +442,6 @@ namespace hgl::graph::mtl
 
             MeshShaderMode ms_mode;
             uint32_t max_invocations;
-            std::string input_glsl_str;
-            std::string provider_glsl_str;
-
             if (is_char_quad)
             {
                 ms_mode = MeshShaderMode::CharQuad;
@@ -441,16 +458,12 @@ namespace hgl::graph::mtl
                 ms_mode = MeshShaderMode::LineQuad;
                 max_invocations = ClampMeshInvocationsByDevice(
                     profile, ms_mode, kMeshLineQuadMaxInvocations);
-                input_glsl_str    = plan.resolved_vertex_input_glsl;
-                provider_glsl_str = plan.resolved_provider_glsl;
             }
             else
             {
                 ms_mode = MeshShaderMode::VertexPassthrough;
                 max_invocations = ClampMeshInvocationsByDevice(
                     profile, ms_mode, kMeshVertexPassthroughMaxInvocations);
-                input_glsl_str    = plan.resolved_vertex_input_glsl;
-                provider_glsl_str = plan.resolved_provider_glsl;
             }
 
             ShaderDocument &mesh_document = document_capture
@@ -463,8 +476,10 @@ namespace hgl::graph::mtl
             mesh_compose_input.position_format = plan.position_format;
             mesh_compose_input.mode = ms_mode;
             mesh_compose_input.max_invocations = max_invocations;
-            mesh_compose_input.resolved_input_glsl = &input_glsl_str;
-            mesh_compose_input.provider_glsl = &provider_glsl_str;
+            mesh_compose_input.resolved_input_document =
+                &plan.resolved_vertex_input_document;
+            mesh_compose_input.provider_document =
+                &plan.resolved_provider_document;
             mesh_compose_input.stage_interface = &plan.stage_interface;
             if (!mesh_composer.Compose(mesh_compose_input, mesh_document))
             {
@@ -502,8 +517,17 @@ namespace hgl::graph::mtl
                 ? document_capture->fragment_document
                 : plan.fragment_source_document;
             ShaderDocumentDiagnostics fragment_diagnostics;
-            const std::string code_module_glsl = BuildCodeModuleGLSL(
-                plan.manifest.IsValid() ? &plan.manifest : nullptr);
+            ShaderDocument code_module_document;
+            if (!BuildCodeModuleDocument(
+                    plan.manifest.IsValid() ? &plan.manifest : nullptr,
+                    "fragment",
+                    definition.definition_name.c_str(),
+                    code_module_document))
+            {
+                GLogError("[ShaderGen] Generic material code module document build failed: name=%s",
+                          definition.definition_name.c_str());
+                return false;
+            }
             FragmentTemplateComposer::ComposeInput compose_input{};
             compose_input.resolved_template =
                 plan.resolved_render_template.IsValid()
@@ -520,7 +544,7 @@ namespace hgl::graph::mtl
             compose_input.fragment_inputs = &plan.stage_interface;
             compose_input.output_contract = &plan.output_contract;
             compose_input.coverage_contract = &plan.coverage;
-            compose_input.code_module_glsl = &code_module_glsl;
+            compose_input.code_module_document = &code_module_document;
             if (!composer.Compose(
                     compose_input, fragment_document, fragment_diagnostics))
             {

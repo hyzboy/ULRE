@@ -8,7 +8,6 @@ namespace hgl::graph::mtl
         const ComposeInput &input,
         ShaderDocument &out_document) const
     {
-        const std::string empty;
         return EmitMeshTemplateDocument(
             input.node_config,
             input.varying_config,
@@ -16,8 +15,8 @@ namespace hgl::graph::mtl
             input.mode,
             input.max_invocations,
             out_document,
-            input.resolved_input_glsl ? *input.resolved_input_glsl : empty,
-            input.provider_glsl ? *input.provider_glsl : empty,
+            input.resolved_input_document,
+            input.provider_document,
             input.stage_interface);
     }
 }

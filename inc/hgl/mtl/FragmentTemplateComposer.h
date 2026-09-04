@@ -27,7 +27,7 @@ namespace hgl::graph::mtl
                 *fragment_inputs = nullptr;
             const OutputContract *output_contract = nullptr;
             const MaterialCoverageContract *coverage_contract = nullptr;
-            const std::string *code_module_glsl = nullptr;
+            const ShaderDocument *code_module_document = nullptr;
         };
 
         bool Compose(

@@ -57,8 +57,8 @@ namespace hgl::graph::mtl
         // Phase 2: vertex ABI
         VkFormat position_format = VK_FORMAT_UNDEFINED;
         VertexShaderNodeConfig vertex_node_config;
-        std::string resolved_vertex_input_glsl;
-        std::string resolved_provider_glsl;
+        ShaderDocument resolved_vertex_input_document;
+        ShaderDocument resolved_provider_document;
         uint64 resolved_provider_graph_hash = 0;
 
         hgl::graph::PrimitiveType primitive_type = hgl::graph::PrimitiveType::Triangles;

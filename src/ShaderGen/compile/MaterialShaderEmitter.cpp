@@ -19,18 +19,6 @@ namespace hgl::graph::mtl
 {
     using namespace hgl::graph::mtl;
 
-std::string BuildCodeModuleGLSL(const ShaderCodeResourceManifest *manifest)
-{
-    ShaderDocument document;
-    if (!BuildCodeModuleDocument(manifest, nullptr, nullptr, document))
-        return {};
-    ShaderDocumentDiagnostics diagnostics;
-    AnsiString serialized;
-    if (!document.SerializeFragment(serialized, diagnostics))
-        return {};
-    return std::string(serialized.c_str(), serialized.Length());
-}
-
 bool BuildCodeModuleDocument(
     const ShaderCodeResourceManifest *manifest,
     const char *stage,

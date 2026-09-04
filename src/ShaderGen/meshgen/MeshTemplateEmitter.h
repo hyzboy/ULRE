@@ -52,8 +52,8 @@ namespace hgl::graph::mtl
         MeshShaderMode mode,
         uint32_t max_invocations,
         ShaderDocument &out_document,
-        const std::string &resolved_input_glsl = {},
-        const std::string &provider_glsl = {},
+        const ShaderDocument *resolved_input_document = nullptr,
+        const ShaderDocument *provider_document = nullptr,
         const ValueArray<InterStageSemanticContractEntry>
             *resolved_stage_interface = nullptr)
     {
@@ -127,6 +127,17 @@ namespace hgl::graph::mtl
                     source.path = path;
                 out_document.Add(kind, AnsiString(text.c_str()), source);
             };
+        const auto append_document =
+            [&out_document](const ShaderDocument *document)
+            {
+                if (!document)
+                    return;
+                for (int index = 0; index < document->GetBlockCount(); ++index)
+                {
+                    const ShaderDocumentBlock &block = document->GetBlock(index);
+                    out_document.Add(block.kind, block.text, block.source);
+                }
+            };
 
         std::string fragment;
         fragment.reserve(kMeshShaderInitialReserve);
@@ -161,15 +172,9 @@ namespace hgl::graph::mtl
 
         if (mode != MeshShaderMode::CharQuad)
         {
-            fragment.clear();
-            if (!resolved_input_glsl.empty())
-            {
-                fragment += resolved_input_glsl;
-                if (resolved_input_glsl.back() != '\n')
-                    fragment += "\n";
-                add_block(ShaderDocumentBlockKind::Module, fragment,
-                          "MeshTemplateEmitter.ResolvedInput", "vertex-input");
-            }
+            if (resolved_input_document
+             && resolved_input_document->GetBlockCount() > 0)
+                append_document(resolved_input_document);
             else
             {
                 // 非索引直通：Position 从 SSBO 读（s1_position_* 模块）
@@ -191,15 +196,7 @@ namespace hgl::graph::mtl
                           "MeshTemplateEmitter.DefaultInput", "vertex-input", input_module);
             }
 
-            fragment.clear();
-            if (!provider_glsl.empty())
-            {
-                fragment += provider_glsl;
-                if (provider_glsl.back() != '\n')
-                    fragment += "\n";
-                add_block(ShaderDocumentBlockKind::Module, fragment,
-                          "MeshTemplateEmitter.Provider", "vertex-provider");
-            }
+            append_document(provider_document);
 
             fragment.clear();
             EmitColorPaletteUBO(fragment, varying_cfg);

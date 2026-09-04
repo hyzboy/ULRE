@@ -17,8 +17,8 @@ namespace hgl::graph::mtl
             VkFormat position_format = VK_FORMAT_UNDEFINED;
             MeshShaderMode mode = MeshShaderMode::VertexPassthrough;
             uint32 max_invocations = 0;
-            const std::string *resolved_input_glsl = nullptr;
-            const std::string *provider_glsl = nullptr;
+            const ShaderDocument *resolved_input_document = nullptr;
+            const ShaderDocument *provider_document = nullptr;
             const ValueArray<InterStageSemanticContractEntry>
                 *stage_interface = nullptr;
         };

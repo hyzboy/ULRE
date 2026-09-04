@@ -28,6 +28,20 @@ namespace
         document.Add(kind, text, source);
     }
 
+    void AppendDocumentBlocks(
+        ShaderDocument &out_document,
+        const ShaderDocument *fragment)
+    {
+        if (!fragment)
+            return;
+
+        for (int index = 0; index < fragment->GetBlockCount(); ++index)
+        {
+            const ShaderDocumentBlock &block = fragment->GetBlock(index);
+            out_document.Add(block.kind, block.text, block.source);
+        }
+    }
+
     AnsiString IncludeTemplate(const char *path)
     {
         return AnsiString("#include \"") + AnsiString(path) + AnsiString("\"\n");
@@ -101,11 +115,7 @@ namespace
             IncludeTemplate(output_policy_module),
             "ForwardUnlit.OutputPolicy",
             output_policy_module);
-        if (input.code_module_glsl)
-            AddTemplateBlock(
-                document, ShaderDocumentBlockKind::Module,
-                AnsiString(input.code_module_glsl->c_str()),
-                "ForwardUnlit.CodeModule");
+        AppendDocumentBlocks(document, input.code_module_document);
         AddTemplateBlock(
             document, ShaderDocumentBlockKind::Function,
             IncludeTemplate(material_source_module),
@@ -326,10 +336,7 @@ namespace
             defines += "#define HGL_ALPHA_DITHER 1\n";
         AddTemplateBlock(document, ShaderDocumentBlockKind::Define,
             AnsiString(defines.c_str()), "ShadowCaster.Defines");
-        if (input.code_module_glsl)
-            AddTemplateBlock(document, ShaderDocumentBlockKind::Module,
-                AnsiString(input.code_module_glsl->c_str()),
-                "ShadowCaster.CodeModule");
+        AppendDocumentBlocks(document, input.code_module_document);
 
         if (input.output_contract)
         {
@@ -594,10 +601,7 @@ namespace
                     AnsiString(declaration.c_str()), "ForwardLit.Output");
             }
         }
-        if (input.code_module_glsl)
-            AddTemplateBlock(document, ShaderDocumentBlockKind::Module,
-                AnsiString(input.code_module_glsl->c_str()),
-                "ForwardLit.CodeModule");
+        AppendDocumentBlocks(document, input.code_module_document);
 
         std::string main_body = "\nvoid main()\n{\n";
         if (input.fragment_inputs)
@@ -666,21 +670,6 @@ namespace hgl::graph::mtl
                 == RenderTemplateID::ForwardLitShadowedIdentityAO
          || template_id == RenderTemplateID::ForwardLitUnshadowedAO)
           return ComposeForwardLit(input, out_document);
-        if (template_id == RenderTemplateID::Decal
-         || template_id == RenderTemplateID::PostProcessSSAO
-         || template_id == RenderTemplateID::PostProcessDOF)
-        {
-            ShaderDocumentDiagnostic *diagnostic = out_diagnostics.Create();
-            diagnostic->code = "template-not-implemented";
-            diagnostic->message = AnsiString(
-                "The requested render template has no native fragment emitter: ")
-                + GetRenderTemplateName(template_id);
-            diagnostic->block_index = -1;
-            diagnostic->source.stage = "fragment";
-            diagnostic->source.logical_name = "FragmentTemplateComposer";
-            return false;
-        }
-
         ShaderDocumentDiagnostic *diagnostic = out_diagnostics.Create();
         diagnostic->code = "template-unregistered";
         diagnostic->message =

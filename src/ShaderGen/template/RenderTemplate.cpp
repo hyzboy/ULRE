@@ -58,17 +58,6 @@ namespace hgl::graph::mtl
             { ShaderModuleSlotRole::OutputPolicy }
         };
 
-        constexpr RenderTemplateSlot DecalSlots[] =
-        {
-            { ShaderModuleSlotRole::SurfaceProvider },
-            { ShaderModuleSlotRole::OutputPolicy }
-        };
-
-        constexpr RenderTemplateSlot PostProcessSlots[] =
-        {
-            { ShaderModuleSlotRole::OutputPolicy }
-        };
-
         constexpr RenderTemplateDefinition Templates[] =
         {
             { RenderTemplateID::ForwardLitShadowedAO,
@@ -91,16 +80,7 @@ namespace hgl::graph::mtl
               ShadowCasterMaskedSlots, uint32(sizeof(ShadowCasterMaskedSlots) / sizeof(ShadowCasterMaskedSlots[0])) },
             { RenderTemplateID::Sky,
               "sky", ShaderStage::Fragment, 1,
-              SkySlots, uint32(sizeof(SkySlots) / sizeof(SkySlots[0])) },
-            { RenderTemplateID::Decal,
-              "decal", ShaderStage::Fragment, 1,
-              DecalSlots, uint32(sizeof(DecalSlots) / sizeof(DecalSlots[0])) },
-            { RenderTemplateID::PostProcessSSAO,
-              "postprocess_ssao", ShaderStage::Fragment, 1,
-              PostProcessSlots, uint32(sizeof(PostProcessSlots) / sizeof(PostProcessSlots[0])) },
-            { RenderTemplateID::PostProcessDOF,
-              "postprocess_dof", ShaderStage::Fragment, 1,
-              PostProcessSlots, uint32(sizeof(PostProcessSlots) / sizeof(PostProcessSlots[0])) }
+              SkySlots, uint32(sizeof(SkySlots) / sizeof(SkySlots[0])) }
         };
 
         bool HasSlot(

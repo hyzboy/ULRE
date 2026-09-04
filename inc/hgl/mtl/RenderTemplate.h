@@ -16,10 +16,7 @@ namespace hgl::graph::mtl
         ForwardUnlit,
         ShadowCasterOpaque,
         ShadowCasterMasked,
-        Sky,
-        Decal,
-        PostProcessSSAO,
-        PostProcessDOF
+        Sky
     };
 
     enum class ShaderModuleSlotRole : uint8
